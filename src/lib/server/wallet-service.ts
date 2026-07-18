@@ -14,7 +14,7 @@ import { audit } from "./audit";
 import { sendEmailToUser, depositConfirmedHtml, withdrawalSentHtml, withdrawalUnderReviewHtml, amlRejectRefundHtml } from "./email";
 import { db, type StoredTxn } from "./store";
 import { randomId } from "./crypto";
-import { dispatchDeposit, dispatchWithdrawal } from "./payments";
+import { dispatchDeposit, dispatchWithdrawal, verifyDepositStatus, verifyWithdrawalStatus } from "./payments";
 import { isPaymentPaused } from "./payment-ops";
 import { isMaintenanceMode, maintenanceMessage } from "./platform-config";
 import { rateCheck } from "./rate-limit";
@@ -471,22 +471,63 @@ export async function settlePaymentWebhook(input: { providerRef: string; status:
 }
 
 /**
- * Sweep deposits/withdrawals stuck in PROCESSING past `olderThanMs` (no webhook
- * ever arrived) into a terminal state — deposits FAIL (never credited),
- * withdrawals reverse the hold. Intended to be run on a schedule (cron). Returns
- * how many of each it swept.
+ * Sweep deposits/withdrawals stuck in PROCESSING past `olderThanMs` (the webhook
+ * was delayed or lost). Intended to run on a schedule (cron).
+ *
+ * ⚠️ MONEY-SAFETY: it must NEVER terminalize a payment on a timer alone. A withdrawal
+ * that is genuinely in flight at the gateway, blind-reversed here, would refund the
+ * player AND still pay out → double-pay; a deposit the customer actually paid,
+ * blind-failed here, is money taken with no credit. So for each stale txn we ask the
+ * provider's AUTHORITATIVE signed status endpoint (the same re-query the webhook
+ * trusts) and only settle on a definitive answer:
+ *   CONFIRMED → credit/release (via the exactly-once settlePaymentWebhook path),
+ *   FAILED    → fail/reverse,
+ *   PENDING   → LEAVE PROCESSING and re-check next sweep (never auto-terminalize),
+ *   UNSUPPORTED (no real gateway — mock/test) → fall back to the timer terminal,
+ *     which is safe there because no real money moved.
+ * A withdrawal with no providerRef (dispatch never got one) is left for manual
+ * review rather than blind-reversed.
  */
-export async function reconcileStalePayments(olderThanMs = 30 * 60 * 1000): Promise<{ depositsFailed: number; withdrawalsReversed: number }> {
+export async function reconcileStalePayments(olderThanMs = 30 * 60 * 1000): Promise<{ depositsFailed: number; withdrawalsReversed: number; depositsConfirmed: number; withdrawalsConfirmed: number; leftPending: number }> {
   const cutoff = Date.now() - olderThanMs;
   const stale = (await db.txn.listByStatus("PROCESSING")).filter((t) => Date.parse(t.createdAt) < cutoff);
   let depositsFailed = 0;
   let withdrawalsReversed = 0;
+  let depositsConfirmed = 0;
+  let withdrawalsConfirmed = 0;
+  let leftPending = 0;
   for (const t of stale) {
-    if (t.type === "DEPOSIT") { if (await settleDepositFailed(t.id, "reconcile-timeout")) depositsFailed++; }
-    else if (t.type === "WITHDRAWAL") { if (await settleWithdrawalFailed(t.id, "reconcile-timeout")) withdrawalsReversed++; }
+    const ref = t.providerRef;
+    if (t.type === "DEPOSIT") {
+      if (!ref) { if (await settleDepositFailed(t.id, "reconcile-timeout-no-ref")) depositsFailed++; continue; } // never pushed → nothing charged
+      const v = await verifyDepositStatus(ref);
+      if (v.status === "CONFIRMED") {
+        const r = await settlePaymentWebhook({ providerRef: ref, status: "CONFIRMED", amount: v.amount }); // exactly-once + amount-tamper check
+        if (r.handled) depositsConfirmed++;
+      } else if (v.status === "FAILED") {
+        if (await settleDepositFailed(t.id, "reconcile-verified-failed")) depositsFailed++;
+      } else if (v.status === "UNSUPPORTED") {
+        if (await settleDepositFailed(t.id, "reconcile-timeout")) depositsFailed++; // mock/test — no money credited, safe
+      } else {
+        leftPending++; // PENDING — still in flight; leave PROCESSING for the next sweep
+      }
+    } else if (t.type === "WITHDRAWAL") {
+      if (!ref) { leftPending++; audit({ category: "WALLET", action: "payments.reconcile_needs_review", actorId: null, targetType: "Transaction", targetId: t.id, payload: { reason: "stale withdrawal has no providerRef — not auto-reversed" } }); continue; }
+      const v = await verifyWithdrawalStatus(ref);
+      if (v.status === "CONFIRMED") {
+        const r = await settlePaymentWebhook({ providerRef: ref, status: "CONFIRMED" }); // release the hold, exactly-once
+        if (r.handled) withdrawalsConfirmed++;
+      } else if (v.status === "FAILED") {
+        if (await settleWithdrawalFailed(t.id, "reconcile-verified-failed")) withdrawalsReversed++;
+      } else if (v.status === "UNSUPPORTED") {
+        if (await settleWithdrawalFailed(t.id, "reconcile-timeout")) withdrawalsReversed++; // mock/test only — no real payout in flight
+      } else {
+        leftPending++; // PENDING — payout may be in flight; NEVER blind-reverse
+      }
+    }
   }
-  if (stale.length) audit({ category: "WALLET", action: "payments.reconcile_sweep", actorId: null, targetType: null, targetId: null, payload: { olderThanMs, depositsFailed, withdrawalsReversed } });
-  return { depositsFailed, withdrawalsReversed };
+  if (stale.length) audit({ category: "WALLET", action: "payments.reconcile_sweep", actorId: null, targetType: null, targetId: null, payload: { olderThanMs, depositsFailed, withdrawalsReversed, depositsConfirmed, withdrawalsConfirmed, leftPending } });
+  return { depositsFailed, withdrawalsReversed, depositsConfirmed, withdrawalsConfirmed, leftPending };
 }
 
 /** Withdrawal — debits wallet immediately, dispatches to provider, settles. */
@@ -605,7 +646,9 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
   }
 
   // ── Provider dispatch (UNLOCKED): never hold a wallet lock across network I/O.
-  const result = await dispatchWithdrawal({ provider: parse.data.provider, amount: net, msisdn: parse.data.msisdn, userId });
+  // `amount: net` is what the gateway disburses; `grossAmount: amount` is the full
+  // withdrawal value the AML ≥1M second-officer hold is evaluated against.
+  const result = await dispatchWithdrawal({ provider: parse.data.provider, amount: net, grossAmount: amount, msisdn: parse.data.msisdn, userId });
 
   // ── Phase B (locked): settle by applying DELTAS to a fresh wallet read ──────
   // We must never write back an absolute balance/hold captured before the await

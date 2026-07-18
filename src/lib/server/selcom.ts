@@ -212,7 +212,14 @@ function envelopeSettlementVerdict(json: SelcomEnvelope): "CONFIRMED" | "FAILED"
 }
 
 // ── Deposit (collection): create-order-minimal → wallet-payment (USSD push) ─────
-export async function selcomDeposit(env: SelcomEnv, opts: { orderId: string; amount: number; msisdn: string; userId: string }): Promise<{ ok: true } | { ok: false; reason: "PROVIDER_DOWN" | "DECLINED" | "TIMEOUT" }> {
+// Reason taxonomy is MONEY-SAFETY load-bearing:
+//   PROVIDER_DOWN / DECLINED = DEFINITIVE — the customer was NOT charged (order
+//     never created, or Selcom cleanly rejected the push) → safe to fail the txn.
+//   AMBIGUOUS = the USSD push MAY have reached the handset (network timeout / HTTP
+//     error AFTER the request left) → the customer might still approve + pay, so we
+//     must NOT declare failure. The caller keeps the deposit PROCESSING and lets the
+//     authoritative order-status re-query (webhook + reconcile sweep) settle it.
+export async function selcomDeposit(env: SelcomEnv, opts: { orderId: string; amount: number; msisdn: string; userId: string }): Promise<{ ok: true } | { ok: false; reason: "PROVIDER_DOWN" | "DECLINED" | "AMBIGUOUS" }> {
   const phone = toSelcomMsisdn(opts.msisdn);
   // 1) Create the order. Field order is load-bearing (== Signed-Fields order).
   const createBody: Record<string, string | number> = {
@@ -227,26 +234,39 @@ export async function selcomDeposit(env: SelcomEnv, opts: { orderId: string; amo
   if (env.webhookUrl) createBody.webhook = Buffer.from(env.webhookUrl).toString("base64");
   let create: SelcomResponse;
   try {
+    // Before any USSD push — the customer cannot have been charged yet, so a
+    // failure/timeout here is DEFINITIVE (safe to fail the deposit).
     create = await selcomFetch(env, "POST", "/checkout/create-order-minimal", createBody);
-  } catch (err) {
-    return { ok: false, reason: isAbort(err) ? "TIMEOUT" : "PROVIDER_DOWN" };
+  } catch {
+    return { ok: false, reason: "PROVIDER_DOWN" };
   }
   if (!create.ok || selcomInitiateVerdict(create.json) === "FAILED") return { ok: false, reason: "PROVIDER_DOWN" };
 
-  // 2) Push the USSD PIN prompt to the handset for that order.
+  // 2) Push the USSD PIN prompt to the handset for that order. From here on a
+  //    timeout/HTTP error is AMBIGUOUS — the prompt may have gone out and the
+  //    customer may pay — so never hard-fail it.
   const payBody = { transid: opts.orderId, order_id: opts.orderId, msisdn: phone };
   let pay: SelcomResponse;
   try {
     pay = await selcomFetch(env, "POST", "/checkout/wallet-payment", payBody);
-  } catch (err) {
-    return { ok: false, reason: isAbort(err) ? "TIMEOUT" : "PROVIDER_DOWN" };
+  } catch {
+    return { ok: false, reason: "AMBIGUOUS" };
   }
-  if (!pay.ok || selcomInitiateVerdict(pay.json) === "FAILED") return { ok: false, reason: "DECLINED" };
+  if (!pay.ok) return { ok: false, reason: "AMBIGUOUS" };                          // HTTP error after send — push may have happened
+  if (selcomInitiateVerdict(pay.json) === "FAILED") return { ok: false, reason: "DECLINED" }; // clean Selcom rejection
   return { ok: true }; // async — the webhook/order-status settles it
 }
 
 // ── Withdrawal (disbursement): wallet-cashin ────────────────────────────────────
-export async function selcomWithdraw(env: SelcomEnv, opts: { transid: string; amount: number; msisdn: string; utilityCode: string }): Promise<{ ok: true } | { ok: false; reason: "PROVIDER_DOWN" | "TIMEOUT" }> {
+// Reason taxonomy is MONEY-SAFETY load-bearing (a payout must NEVER be reversed
+// while it might still be in flight — that double-pays the player):
+//   FAILED    = DEFINITIVE Selcom rejection (res.ok && a hard-fail resultcode) →
+//               the disbursement did not happen → safe to reverse the hold.
+//   AMBIGUOUS = network timeout, connection error, or non-2xx HTTP → the request
+//               may have reached Selcom and the payout may be processing → the
+//               caller keeps the withdrawal PROCESSING (hold intact) and lets the
+//               authoritative walletcashin/query re-query resolve it.
+export async function selcomWithdraw(env: SelcomEnv, opts: { transid: string; amount: number; msisdn: string; utilityCode: string }): Promise<{ ok: true } | { ok: false; reason: "FAILED" | "AMBIGUOUS" }> {
   // Field order is load-bearing. `utilityref` = the PAYEE msisdn (not `msisdn`).
   const body: Record<string, string | number> = {
     transid: opts.transid,
@@ -259,11 +279,12 @@ export async function selcomWithdraw(env: SelcomEnv, opts: { transid: string; am
   let res: SelcomResponse;
   try {
     res = await selcomFetch(env, "POST", "/walletcashin/process", body);
-  } catch (err) {
-    return { ok: false, reason: isAbort(err) ? "TIMEOUT" : "PROVIDER_DOWN" };
+  } catch {
+    return { ok: false, reason: "AMBIGUOUS" }; // timeout / network after send — payout may be in flight
   }
-  if (!res.ok || selcomInitiateVerdict(res.json) === "FAILED") return { ok: false, reason: "PROVIDER_DOWN" };
-  return { ok: true }; // async — the payout webhook confirms/reverses
+  if (!res.ok) return { ok: false, reason: "AMBIGUOUS" };                          // HTTP error — ambiguous, may have been accepted
+  if (selcomInitiateVerdict(res.json) === "FAILED") return { ok: false, reason: "FAILED" }; // definitive reject — safe to reverse
+  return { ok: true }; // async (incl. 999/INPROGRESS) — the payout query confirms/reverses
 }
 
 // ── Order-status: the AUTHORITATIVE reconciliation for a collection ─────────────

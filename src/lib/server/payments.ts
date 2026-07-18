@@ -28,7 +28,7 @@ import { audit } from "./audit";
 import { randomId } from "./crypto";
 import { getPaymentProvider, getDemoAsyncEnabled, type PaymentProviderId } from "./payment-control";
 import { isLiveMoneyMode } from "./runtime-mode";
-import { selcomEnv, selcomDeposit, selcomWithdraw, mnoToSelcomCashin } from "./selcom";
+import { selcomEnv, selcomDeposit, selcomWithdraw, selcomVerifyOrder, selcomVerifyCashin, mnoToSelcomCashin } from "./selcom";
 
 export type PaymentProvider = "MPESA" | "TIGO_PESA" | "AIRTEL_MONEY" | "HALO_PESA" | "MIXX" | "TTCL_PESA" | "CARD" | "BANK_TRANSFER" | "INTERNAL";
 
@@ -76,22 +76,28 @@ export async function dispatchDeposit(opts: { provider: PaymentProvider; amount:
   return routed.adapter.deposit({ ...opts, correlationId });
 }
 
-/** Initiate a withdrawal disbursement through the active gateway. Amounts
- *  ≥ AML_REVIEW_THRESHOLD_TZS are held for review and NOT sent to the gateway. */
-export async function dispatchWithdrawal(opts: { provider: PaymentProvider; amount: number; msisdn?: string; userId: string }): Promise<WithdrawResult> {
+/** Initiate a withdrawal disbursement through the active gateway. Payouts whose
+ *  GROSS value ≥ AML_REVIEW_THRESHOLD_TZS are held for review and NOT sent to the
+ *  gateway. `amount` is what the gateway actually disburses (net of the fee);
+ *  `grossAmount` (defaults to `amount`) is the full withdrawal value the AML gate
+ *  is evaluated against — evaluating on `net` would let a gross withdrawal just
+ *  over the threshold slip past the mandatory second-officer review. */
+export async function dispatchWithdrawal(opts: { provider: PaymentProvider; amount: number; grossAmount?: number; msisdn?: string; userId: string }): Promise<WithdrawResult> {
   const correlationId = `wdr_${randomId(10)}`;
+  const amlBasis = opts.grossAmount ?? opts.amount;
   audit({
     category: "WALLET",
     action: "withdraw.dispatch",
     actorId: opts.userId,
     targetType: "User",
     targetId: opts.userId,
-    payload: { correlationId, provider: opts.provider, amount: opts.amount, msisdn: opts.msisdn ? mask(opts.msisdn) : null },
+    payload: { correlationId, provider: opts.provider, amount: opts.amount, grossAmount: amlBasis, msisdn: opts.msisdn ? mask(opts.msisdn) : null },
   });
   // Compliance FIRST, before any adapter is touched — a large payout is held for
   // a second-officer AML review; we never dispatch it to the gateway on the spot.
-  if (opts.amount >= AML_REVIEW_THRESHOLD_TZS) {
-    audit({ category: "COMPLIANCE", action: "withdraw.aml_review_triggered", actorId: opts.userId, targetType: "User", targetId: opts.userId, payload: { correlationId, amount: opts.amount, threshold: AML_REVIEW_THRESHOLD_TZS } });
+  // Evaluated on the GROSS withdrawal value, not the net-of-fee disbursement.
+  if (amlBasis >= AML_REVIEW_THRESHOLD_TZS) {
+    audit({ category: "COMPLIANCE", action: "withdraw.aml_review_triggered", actorId: opts.userId, targetType: "User", targetId: opts.userId, payload: { correlationId, amount: opts.amount, grossAmount: amlBasis, threshold: AML_REVIEW_THRESHOLD_TZS } });
     return { ok: true, providerRef: `${opts.provider}-${randomId(6).toUpperCase()}`, status: "AML_REVIEW", correlationId };
   }
   const routed = await resolveActiveAdapter("withdraw", correlationId);
@@ -190,7 +196,11 @@ const selcomAdapter: PaymentAdapter = {
     // order_id = OUR correlation id → it becomes providerRef, so the callback
     // (which echoes order_id) correlates back to this exact transaction.
     const r = await selcomDeposit(env, { orderId: correlationId, amount, msisdn, userId });
-    if (!r.ok) return { ok: false, reason: r.reason, correlationId };
+    // AMBIGUOUS (the USSD push may have reached the handset) → do NOT fail: return
+    // PENDING so the deposit stays PROCESSING and the authoritative order-status
+    // re-query (webhook/reconcile) credits it exactly-once IF the customer paid.
+    // Only a DEFINITIVE PROVIDER_DOWN/DECLINED (customer not charged) fails.
+    if (!r.ok && r.reason !== "AMBIGUOUS") return { ok: false, reason: r.reason, correlationId };
     return { ok: true, status: "PENDING", providerRef: correlationId, correlationId };
   },
   async withdraw({ provider, amount, msisdn, correlationId }) {
@@ -201,10 +211,43 @@ const selcomAdapter: PaymentAdapter = {
     const utilityCode = mnoToSelcomCashin(provider);
     if (!utilityCode) return { ok: false, reason: "PROVIDER_DOWN", correlationId }; // rail not served by MNO cash-in
     const r = await selcomWithdraw(env, { transid: correlationId, amount, msisdn, utilityCode });
-    if (!r.ok) return { ok: false, reason: r.reason === "TIMEOUT" ? "PROVIDER_DOWN" : r.reason, correlationId };
+    // A payout is reversed ONLY on a DEFINITIVE Selcom rejection (reason FAILED —
+    // the disbursement did not happen). AMBIGUOUS (timeout/network/HTTP error) may
+    // be in flight → return PENDING so the hold is KEPT and the walletcashin/query
+    // re-query (webhook/reconcile) confirms or reverses it. Never blind-reverse.
+    if (!r.ok && r.reason === "FAILED") return { ok: false, reason: "PROVIDER_DOWN", correlationId };
     return { ok: true, status: "PENDING", providerRef: correlationId, correlationId };
   },
 };
+
+// ── AUTHORITATIVE STATUS RE-QUERY (for the reconcile sweep) ────────────────────
+// Lets `wallet-service.reconcileStalePayments` resolve a stuck PROCESSING txn from
+// the provider's own signed status endpoint instead of blindly timing it out (which
+// double-pays withdrawals and strands paid deposits). Provider-agnostic: returns
+// UNSUPPORTED when the active adapter has no real gateway (mock/test) or is not
+// configured, PENDING while the movement is still in flight/ambiguous (leave it
+// PROCESSING and re-check later), and only CONFIRMED/FAILED when Selcom is definitive.
+export type VerifyStatus = "CONFIRMED" | "FAILED" | "PENDING" | "UNSUPPORTED";
+
+export async function verifyDepositStatus(providerRef: string): Promise<{ status: VerifyStatus; amount?: number }> {
+  if ((await getPaymentProvider()) !== "selcom") return { status: "UNSUPPORTED" };
+  const env = selcomEnv();
+  if (!env) return { status: "UNSUPPORTED" };
+  const r = await selcomVerifyOrder(env, providerRef);
+  if (r.status === "CONFIRMED") return { status: "CONFIRMED", amount: r.amount };
+  if (r.status === "FAILED") return { status: "FAILED", amount: r.amount };
+  return { status: "PENDING" };
+}
+
+export async function verifyWithdrawalStatus(providerRef: string): Promise<{ status: VerifyStatus }> {
+  if ((await getPaymentProvider()) !== "selcom") return { status: "UNSUPPORTED" };
+  const env = selcomEnv();
+  if (!env) return { status: "UNSUPPORTED" };
+  const r = await selcomVerifyCashin(env, providerRef);
+  if (r.status === "CONFIRMED") return { status: "CONFIRMED" };
+  if (r.status === "FAILED") return { status: "FAILED" };
+  return { status: "PENDING" };
+}
 
 const azampayAdapter: PaymentAdapter = {
   name: "azampay",

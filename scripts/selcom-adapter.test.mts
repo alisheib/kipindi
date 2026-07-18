@@ -16,6 +16,8 @@ import {
   selcomInitiateVerdict,
   verifySelcomCallback,
   selcomPing,
+  selcomDeposit,
+  selcomWithdraw,
 } from "../src/lib/server/selcom.ts";
 
 let pass = 0, fail = 0;
@@ -103,6 +105,65 @@ ok("missing timestamp → rejected", verifySelcomCallback({ signedFields: cbHead
   ok("probe targets /checkout/order-status", /\/v1\/checkout\/order-status\?/.test(capturedUrl));
   ok("probe does NOT hit bare /order-status", !/\/v1\/order-status\?/.test(capturedUrl));
 }
+
+// ── MONEY-SAFETY: initiate outcome classification (never reverse a maybe-sent payout) ──
+// A network timeout / HTTP error AFTER the request left must be AMBIGUOUS, not a hard
+// failure — the payout may be in flight and the deposit push may have reached the
+// handset. Only a DEFINITIVE Selcom rejection is FAILED/DECLINED. Regression guard for
+// the double-pay / charged-not-credited bug.
+const FAKE_ENV = { baseUrl: "https://apigw.selcommobile.com/v1", apiKey: "k", apiSecret: "s", vendor: "v", pin: "1234", timeoutMs: 5_000 };
+const jsonResp = (code: string, status = 200) =>
+  new Response(JSON.stringify({ resultcode: code, result: code === "000" ? "SUCCESS" : (["111", "927", "999"].includes(code) ? "PENDING" : "FAIL") }), { status, headers: { "content-type": "application/json" } });
+
+async function withFetch(handler: (url: string, method: string) => Promise<Response> | Response, fn: () => Promise<void>) {
+  const real = globalThis.fetch;
+  globalThis.fetch = (async (url: unknown, init?: { method?: string }) => handler(String(url), init?.method ?? "GET")) as typeof fetch;
+  try { await fn(); } finally { globalThis.fetch = real; }
+}
+
+// selcomWithdraw — the disbursement submit
+await withFetch(() => { throw Object.assign(new Error("aborted"), { name: "AbortError" }); }, async () => {
+  const r = await selcomWithdraw(FAKE_ENV, { transid: "t1", amount: 1000, msisdn: "0712345678", utilityCode: "VMCASHIN" });
+  ok("withdraw timeout → AMBIGUOUS (do NOT reverse)", !r.ok && r.reason === "AMBIGUOUS");
+});
+await withFetch(() => jsonResp("500", 500), async () => {
+  const r = await selcomWithdraw(FAKE_ENV, { transid: "t2", amount: 1000, msisdn: "0712345678", utilityCode: "VMCASHIN" });
+  ok("withdraw HTTP 500 → AMBIGUOUS", !r.ok && r.reason === "AMBIGUOUS");
+});
+await withFetch(() => jsonResp("038", 200), async () => {
+  const r = await selcomWithdraw(FAKE_ENV, { transid: "t3", amount: 1000, msisdn: "0712345678", utilityCode: "VMCASHIN" });
+  ok("withdraw definitive FAIL code → FAILED (safe to reverse)", !r.ok && r.reason === "FAILED");
+});
+await withFetch(() => jsonResp("999", 200), async () => {
+  const r = await selcomWithdraw(FAKE_ENV, { transid: "t4", amount: 1000, msisdn: "0712345678", utilityCode: "VMCASHIN" });
+  ok("withdraw 999 AMBIGUOUS envelope → accepted/pending (never FAILED)", r.ok === true);
+});
+await withFetch(() => jsonResp("000", 200), async () => {
+  const r = await selcomWithdraw(FAKE_ENV, { transid: "t5", amount: 1000, msisdn: "0712345678", utilityCode: "VMCASHIN" });
+  ok("withdraw 000 → accepted", r.ok === true);
+});
+
+// selcomDeposit — create-order then wallet-payment (USSD push)
+await withFetch((u) => u.includes("create-order") ? jsonResp("000") : (() => { throw Object.assign(new Error("x"), { name: "AbortError" }); })(), async () => {
+  const r = await selcomDeposit(FAKE_ENV, { orderId: "o1", amount: 1000, msisdn: "0712345678", userId: "u" });
+  ok("deposit: order ok but pay-push times out → AMBIGUOUS (leave PROCESSING)", !r.ok && r.reason === "AMBIGUOUS");
+});
+await withFetch((u) => u.includes("create-order") ? jsonResp("000") : jsonResp("500", 500), async () => {
+  const r = await selcomDeposit(FAKE_ENV, { orderId: "o2", amount: 1000, msisdn: "0712345678", userId: "u" });
+  ok("deposit: pay-push HTTP 500 → AMBIGUOUS", !r.ok && r.reason === "AMBIGUOUS");
+});
+await withFetch((u) => u.includes("create-order") ? jsonResp("000") : jsonResp("038"), async () => {
+  const r = await selcomDeposit(FAKE_ENV, { orderId: "o3", amount: 1000, msisdn: "0712345678", userId: "u" });
+  ok("deposit: pay-push clean reject → DECLINED", !r.ok && r.reason === "DECLINED");
+});
+await withFetch(() => { throw Object.assign(new Error("x"), { name: "AbortError" }); }, async () => {
+  const r = await selcomDeposit(FAKE_ENV, { orderId: "o4", amount: 1000, msisdn: "0712345678", userId: "u" });
+  ok("deposit: create-order fails (before any push) → PROVIDER_DOWN (safe fail)", !r.ok && r.reason === "PROVIDER_DOWN");
+});
+await withFetch((u) => u.includes("create-order") ? jsonResp("000") : jsonResp("000"), async () => {
+  const r = await selcomDeposit(FAKE_ENV, { orderId: "o5", amount: 1000, msisdn: "0712345678", userId: "u" });
+  ok("deposit: both steps ok → accepted", r.ok === true);
+});
 
 console.log(`\nselcom-adapter: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);
