@@ -13,7 +13,7 @@ import { db } from "./store";
 import { generateOtp, hashOtp, hashPassword, randomId, verifyOtp, verifyPassword } from "./crypto";
 import { rateCheck } from "./rate-limit";
 import { sms, otpMessage } from "./sms";
-import { LoginRequestSchema, OtpVerifySchema, RegisterSchema } from "./validators";
+import { LoginRequestSchema, OtpVerifySchema, RegisterSchema, emailAddress } from "./validators";
 import type { z } from "zod";
 import { createSession, destroySession, getSession, type SessionData } from "./session";
 import { withLock } from "./locks";
@@ -22,6 +22,7 @@ import { displayLabel } from "@/lib/display-label";
 import { resolvePhoneEmail } from "./email-map";
 import { validatePasswordStrength } from "./password-policy";
 import { is2faEnabled } from "./player-2fa";
+import { isLiveMoneyMode } from "./runtime-mode";
 
 /** Mask a phone for an audit payload — keep country code + last 2 (e.g.
  *  "+25570*****19"). The audit entry already carries actorId, so the full number
@@ -44,17 +45,34 @@ function adminBootstrapPhones(): Set<string> {
 const OTP_TTL_MS = 5 * 60 * 1000;
 const TERMS_VERSION = "2026-04-01";
 
-async function clientMeta() {
-  const h = await headers();
-  return {
-    ip: h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null,
-    ua: h.get("user-agent") ?? null,
-  };
+/**
+ * Best-effort request metadata for audit entries (IP + user agent).
+ *
+ * Next's `headers()` THROWS when there is no request scope — a background job,
+ * a cron sweep, a migration script, or a test harness calling an auth function
+ * directly. That turned "we couldn't label this audit entry with an IP" into a
+ * hard crash of whatever called it, which is the wrong trade: this is metadata,
+ * not a control. Fail open to nulls and let the caller proceed; the audit entry
+ * is still written, just without a source IP.
+ */
+async function clientMeta(): Promise<{ ip: string | null; ua: string | null }> {
+  try {
+    const h = await headers();
+    return {
+      ip: h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null,
+      ua: h.get("user-agent") ?? null,
+    };
+  } catch {
+    return { ip: null, ua: null };
+  }
 }
 
 export type ServiceResult<T = void> =
   | { ok: true; data?: T }
-  | { ok: false; error: string; code?: "RATE_LIMITED" | "INVALID" | "EXPIRED" | "ALREADY_EXISTS" | "NOT_FOUND" | "TOO_MANY_ATTEMPTS" | "SUSPENDED" | "SELECTION_CLOSED" | "CONFLICT" | "TOO_EARLY" | "OBJECTION_OPEN"; retryAfterSec?: number };
+  // EMAIL_UNVERIFIED is distinct from INVALID on purpose: the deposit surface
+  // renders it as a recoverable "confirm your inbox" step with a resend action,
+  // not as a form error the player cannot act on.
+  | { ok: false; error: string; code?: "RATE_LIMITED" | "INVALID" | "EXPIRED" | "ALREADY_EXISTS" | "NOT_FOUND" | "TOO_MANY_ATTEMPTS" | "SUSPENDED" | "SELECTION_CLOSED" | "CONFLICT" | "TOO_EARLY" | "OBJECTION_OPEN" | "EMAIL_UNVERIFIED"; retryAfterSec?: number };
 
 /** Step 1: request OTP for login (existing user). */
 export async function requestLoginOtp(input: z.input<typeof LoginRequestSchema>): Promise<ServiceResult<{ otpId: string }>> {
@@ -341,6 +359,8 @@ export async function currentSession(): Promise<SessionData | null> {
 
 export type PasswordRegisterInput = {
   phone: string;            // E.164, e.g. +255712345678
+  /** REQUIRED — receipts go here, and verifying it is what unlocks the first deposit. */
+  email: string;
   password: string;
   passwordConfirm: string;
   dob: string;              // YYYY-MM-DD
@@ -358,6 +378,7 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
   // password rules ourselves so we don't bend the OTP-era validators.
   const baseParse = RegisterSchema.safeParse({
     phone: input.phone,
+    email: input.email,
     dob: input.dob,
     acceptTerms: input.acceptTerms,
     acceptAge: input.acceptAge,
@@ -395,6 +416,23 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
     return { ok: false, error: "An account with that phone already exists.", code: "ALREADY_EXISTS" };
   }
 
+  // ONE ACCOUNT PER EMAIL. Load-bearing for the deposit gate: a verified email is
+  // what unlocks depositing, so if one inbox could verify unlimited accounts the
+  // gate would be decorative — and multi-accounting is an AML/RG problem in its
+  // own right (self-exclusion and deposit caps are per-account). Enforced here in
+  // application code rather than by a DB @unique because adding a unique index to
+  // the LIVE money DB risks failing `migrate deploy` (which would take prod down)
+  // if any duplicate already exists; the index is a follow-up once prod is
+  // confirmed clean. The surrounding `register:${phone}` lock does NOT serialise
+  // two different phones racing the same email, so this is best-effort against a
+  // deliberate concurrent attack — good enough, since the attacker still cannot
+  // verify two inboxes.
+  const emailHolder = await db.user.findByEmail(baseParse.data.email);
+  if (emailHolder) {
+    audit({ category: "SECURITY", action: "register.duplicate_email", actorId: null, targetType: "User", targetId: emailHolder.id, ip: meta.ip });
+    return { ok: false, error: "An account with that email already exists.", code: "ALREADY_EXISTS" };
+  }
+
   const salt = randomId(16);
   const hash = await hashPassword(input.password, salt);
 
@@ -406,7 +444,12 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
   const user = await db.user.create({
     id: `usr_${randomId(12)}`,
     phoneE164: phone,
-    email: resolvePhoneEmail(phone),
+    // The address the player typed — receipts, the verification link, and the
+    // deposit gate all key off this. (PHONE_EMAIL_MAP is a legacy override for
+    // pre-existing admin/test accounts that registered before email was
+    // collected; it must not shadow an address a real player just gave us.)
+    email: baseParse.data.email,
+    emailVerifiedAt: null,
     passwordHash: hash,
     passwordSalt: salt,
     failedLoginCount: 0,
@@ -430,11 +473,22 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
 
   // Auto-create wallet. Tester phones get 100K TZS for QA sessions;
   // everyone else gets the configured starter balance (default 0).
+  //
+  // ⛔ LIVE MONEY: this credit writes `balance` DIRECTLY — it posts NO ledger
+  // entry, so every shilling it creates is money minted from nothing and the
+  // wallet↔ledger trial balance breaks by exactly that amount, permanently.
+  // That was acceptable pre-launch (test float, DB rebaselined at go-live); it
+  // is not acceptable now. In LIVE money mode BOTH sources are forced to 0 —
+  // the tester bootstrap AND an admin-set `starterBalanceTzs` — so no env var
+  // or config row can mint. A real welcome promo must go through the BONUS
+  // wallet (bonus-service), which is properly ledgered and wagering-tracked.
+  const liveMoney = isLiveMoneyMode();
   const testerPhones = new Set(
     (process.env.TESTER_BOOTSTRAP_PHONES ?? "").split(",").map(s => s.trim()).filter(Boolean),
   );
   const { getEffectiveConfig } = await import("./market-config");
-  const starterBalance = testerPhones.has(phone) ? 100_000 : ((await getEffectiveConfig()).starterBalanceTzs ?? 0);
+  const requestedStarter = testerPhones.has(phone) ? 100_000 : ((await getEffectiveConfig()).starterBalanceTzs ?? 0);
+  const starterBalance = liveMoney ? 0 : requestedStarter;
   await db.wallet.create({
     id: `wlt_${randomId(12)}`,
     userId: user.id,
@@ -445,6 +499,15 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
   });
   if (starterBalance > 0) {
     audit({ category: "WALLET", action: "wallet.starter_credit", actorId: user.id, targetType: "Wallet", targetId: user.id, payload: { amount: starterBalance } });
+  } else if (requestedStarter > 0) {
+    // Refused, not silently dropped — an operator who set the var/config must be
+    // able to see WHY the wallet came up empty.
+    audit({
+      category: "SECURITY",
+      action: "wallet.starter_credit_refused_live",
+      actorId: user.id, targetType: "Wallet", targetId: user.id,
+      payload: { requested: requestedStarter, reason: "LIVE money mode — unledgered starter credit would mint money and break the trial balance." },
+    });
   }
 
   // Affiliate referral binding — if the user arrived via a ?ref= link, bind
@@ -490,6 +553,14 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
       html: welcomeHtml({ name: displayLabel(user) }),
       tag: "welcome",
     }).catch(() => {});
+
+    // Confirmation link, sent IMMEDIATELY at sign-up — the player needs a verified
+    // address before their first deposit, so the link must already be waiting in
+    // their inbox by the time they reach the wallet. Best-effort by contract
+    // (sendEmailVerification swallows its own errors); a failed send is recoverable
+    // from the deposit gate's "Resend" action, so it must never fail registration.
+    const { sendEmailVerification } = await import("./email-verification");
+    await sendEmailVerification(user.id, user.email, displayLabel(user));
   }
 
   await createSession({
@@ -504,18 +575,65 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
   }); // end withLock register
 }
 
-export type PasswordLoginInput = { phone: string; password: string };
+/**
+ * Sign-in accepts EITHER a phone number OR an email address in one field.
+ *
+ * Email became mandatory + unique at sign-up (2026-07-18), so it is now a
+ * first-class credential: players who remember their email but not which of
+ * their numbers they registered with can still get in. The field is
+ * discriminated by a literal `@` — an address can never be a valid TZ MSISDN
+ * and vice-versa, so there is no ambiguity to resolve.
+ */
+export type PasswordLoginInput = { identifier: string; password: string };
+
+/** Mask an email for an audit payload — never log a full address (PDPA).
+ *  `ali.sheib@50pick.tz` → `al***@50pick.tz`. */
+function maskEmailForAudit(email: string): string {
+  const [local = "", domain = ""] = email.split("@");
+  return `${local.slice(0, 2)}***@${domain}`;
+}
+
+/**
+ * Resolve a sign-in identifier to the credential it actually is.
+ *
+ * Exported and pure so the discrimination rule can be tested exhaustively on its
+ * own — `loginWithPassword` itself mints a session cookie and therefore cannot
+ * run outside a request scope.
+ *
+ * The discriminator is a literal `@`: no valid Tanzanian MSISDN contains one and
+ * no valid address omits one, so there is no ambiguous input to arbitrate. Each
+ * branch then runs the SAME schema the rest of the app uses (`emailAddress` /
+ * `LoginRequestSchema`), so sign-in can never accept a shape that registration
+ * would have rejected. Returns null when the input is neither.
+ */
+export function resolveLoginIdentifier(
+  raw: string,
+): { kind: "email"; value: string } | { kind: "phone"; value: string } | null {
+  const trimmed = (raw ?? "").trim();
+  if (!trimmed) return null;
+  if (trimmed.includes("@")) {
+    const parsed = emailAddress.safeParse(trimmed);
+    return parsed.success ? { kind: "email", value: parsed.data } : null;
+  }
+  const parsed = LoginRequestSchema.safeParse({ phone: trimmed });
+  return parsed.success ? { kind: "phone", value: parsed.data.phone } : null;
+}
 
 const LOCKOUT_MAX_FAILS = 5;
 const LOCKOUT_DURATION_MS = 30 * 60 * 1000;   // 30-minute lockout per LCCP guidance
 
 export async function loginWithPassword(input: PasswordLoginInput): Promise<ServiceResult<{ userId: string; role: string; twoFactorRequired?: boolean }>> {
-  const parse = LoginRequestSchema.safeParse({ phone: input.phone });
-  if (!parse.success) return { ok: false, error: parse.error.errors[0]?.message ?? "Invalid phone.", code: "INVALID" };
-  const phone = parse.data.phone;
+  // Resolve the single identifier field to either an email or a phone lookup.
+  const resolved = resolveLoginIdentifier(input.identifier);
+  if (!resolved) return { ok: false, error: "Enter a valid email address or phone number.", code: "INVALID" };
+  const isEmailLogin = resolved.kind === "email";
+  const lookupKey = resolved.value;                    // rate-limit + lookup key (normalised)
+  const auditKey = isEmailLogin                        // the MASKED form safe to persist
+    ? maskEmailForAudit(resolved.value)
+    : maskPhoneForAudit(resolved.value);
   const meta = await clientMeta();
 
-  const rl = rateCheck(phone, "auth.login");
+  const rl = rateCheck(lookupKey, "auth.login");
   if (!rl.allowed) return { ok: false, error: "Too many attempts. Please wait.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
   if (meta.ip) {
     const rlIp = rateCheck(meta.ip, "auth.login.ip");
@@ -525,10 +643,20 @@ export async function loginWithPassword(input: PasswordLoginInput): Promise<Serv
     }
   }
 
-  const user = await db.user.findByPhone(phone);
+  const user = isEmailLogin ? await db.user.findByEmail(lookupKey) : await db.user.findByPhone(lookupKey);
   if (!user) {
-    audit({ category: "SECURITY", action: "auth.login.unknown_phone", actorId: null, targetType: "Phone", targetId: maskPhoneForAudit(phone), ip: meta.ip });
-    return { ok: false, error: "No account with that phone. Create one to get started.", code: "NOT_FOUND" };
+    audit({
+      category: "SECURITY",
+      action: isEmailLogin ? "auth.login.unknown_email" : "auth.login.unknown_phone",
+      actorId: null, targetType: isEmailLogin ? "Email" : "Phone", targetId: auditKey, ip: meta.ip,
+    });
+    return {
+      ok: false,
+      error: isEmailLogin
+        ? "No account with that email. Create one to get started."
+        : "No account with that phone. Create one to get started.",
+      code: "NOT_FOUND",
+    };
   }
   if (user.status === "SELF_EXCLUDED") {
     audit({ category: "COMPLIANCE", action: "auth.blocked_self_excluded", actorId: user.id, targetType: "User", targetId: user.id });
@@ -589,7 +717,7 @@ export async function loginWithPassword(input: PasswordLoginInput): Promise<Serv
         retryAfterSec: Math.ceil(LOCKOUT_DURATION_MS / 1000),
       };
     }
-    return { ok: false, error: "Wrong phone or password.", code: "INVALID" };
+    return { ok: false, error: isEmailLogin ? "Wrong email or password." : "Wrong phone or password.", code: "INVALID" };
   }
 
   // Successful login — clear the brute-force counter + lockout.

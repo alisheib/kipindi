@@ -20,9 +20,24 @@ import { randomId } from "@/lib/server/crypto";
 
 const DEMO_PHONE = "+255700000000";
 const DEMO_DISPLAY = "Demo Player";
+const DEMO_EMAIL = "demo.player@50pick.test";
 const DEMO_STARTING_BALANCE = 100_000;
 
-async function ensureDemoUser() {
+/**
+ * `emailState` decides which side of the DEPOSIT EMAIL GATE the demo session
+ * lands on, so the harness can screenshot BOTH without hand-editing the DB:
+ *   "verified" (default) — confirmed address → the real deposit form renders
+ *   "unverified"         — address on file, not confirmed → the gate renders
+ *   "none"               — no address at all → the gate's "add an email" variant
+ * Reached as /auth/demo?email=unverified. Dev-only route (404 in production).
+ */
+type EmailState = "verified" | "unverified" | "none";
+
+async function ensureDemoUser(emailState: EmailState) {
+  const emailFields = {
+    email: emailState === "none" ? null : DEMO_EMAIL,
+    emailVerifiedAt: emailState === "verified" ? new Date().toISOString() : null,
+  };
   let user = await db.user.findByPhone(DEMO_PHONE);
   if (!user) {
     const now = new Date().toISOString();
@@ -44,6 +59,7 @@ async function ensureDemoUser() {
       marketingOptIn: false,
       twoFactorEnabled: false,
       avatarDataUrl: null,
+      ...emailFields,
       createdAt: now,
       updatedAt: now,
       lastLoginAt: now,
@@ -71,6 +87,9 @@ async function ensureDemoUser() {
     if (w && w.balance !== DEMO_STARTING_BALANCE) {
       await db.wallet.update(w.id, { balance: DEMO_STARTING_BALANCE });
     }
+    // Re-apply the requested email state so a single demo user can be flipped
+    // between gate/no-gate across successive harness runs.
+    await db.user.update(user.id, emailFields);
   }
   return { userId: user.id, phoneE164: user.phoneE164 };
 }
@@ -79,7 +98,9 @@ async function bootstrapDemo(req: NextRequest) {
   if (process.env.NODE_ENV === "production") {
     return NextResponse.json({ ok: false, error: "Not available" }, { status: 404 });
   }
-  const { userId, phoneE164 } = await ensureDemoUser();
+  const raw = req.nextUrl.searchParams.get("email");
+  const emailState: EmailState = raw === "unverified" || raw === "none" ? raw : "verified";
+  const { userId, phoneE164 } = await ensureDemoUser(emailState);
   await createSession({
     userId,
     phoneE164,

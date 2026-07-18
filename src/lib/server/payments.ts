@@ -28,12 +28,24 @@ import { audit } from "./audit";
 import { randomId } from "./crypto";
 import { getPaymentProvider, getDemoAsyncEnabled, type PaymentProviderId } from "./payment-control";
 import { isLiveMoneyMode } from "./runtime-mode";
-import { selcomEnv, selcomDeposit, selcomWithdraw, selcomVerifyOrder, selcomVerifyCashin, mnoToSelcomCashin } from "./selcom";
+import { selcomEnv, selcomDeposit, selcomCardCheckout, selcomWithdraw, selcomVerifyOrder, selcomVerifyCashin, mnoToSelcomCashin, type SelcomBilling } from "./selcom";
 
 export type PaymentProvider = "MPESA" | "TIGO_PESA" | "AIRTEL_MONEY" | "HALO_PESA" | "MIXX" | "TTCL_PESA" | "CARD" | "BANK_TRANSFER" | "INTERNAL";
 
 export type DepositResult =
-  | { ok: true; providerRef: string; status: "CONFIRMED" | "PENDING"; correlationId: string }
+  | {
+      ok: true;
+      providerRef: string;
+      status: "CONFIRMED" | "PENDING";
+      correlationId: string;
+      /** Hosted-checkout (CARD) only: the Selcom gateway URL the buyer must be
+       *  sent to in order to enter their card details. Absent on the mobile-money
+       *  rail, where the prompt goes to the handset instead of the browser.
+       *  ⚠️ Its presence NEVER implies money moved — the deposit is still
+       *  PROCESSING and is credited only by the authoritative order-status
+       *  re-query, exactly as on every other rail. */
+      redirectUrl?: string;
+    }
   | { ok: false; reason: "INSUFFICIENT_FUNDS" | "PROVIDER_DOWN" | "TIMEOUT" | "DECLINED" | "FRAUD"; correlationId: string };
 
 export type WithdrawResult =
@@ -42,7 +54,27 @@ export type WithdrawResult =
 
 /** What the wrapper hands an adapter — the caller's request plus the correlation
  *  id the wrapper already minted and audited. */
-export type DispatchOpts = { provider: PaymentProvider; amount: number; msisdn?: string; userId: string; correlationId: string };
+export type DispatchOpts = {
+  provider: PaymentProvider;
+  amount: number;
+  msisdn?: string;
+  userId: string;
+  correlationId: string;
+  /** CARD only — the hosted-checkout context the mobile-money rail has no use for. */
+  card?: CardCheckoutContext;
+};
+
+/** Everything the Selcom hosted card checkout needs that the wallet layer must
+ *  supply: who the buyer is, the billing details they entered (Selcom rejects card
+ *  orders without them), and where to send them back to. */
+export type CardCheckoutContext = {
+  buyerEmail: string;
+  buyerName: string;
+  buyerPhone: string;
+  billing: SelcomBilling;
+  redirectUrl: string;
+  cancelUrl: string;
+};
 
 /** Never auto-disburse a payout at/above this without a review hold. Kept equal
  *  to the AML-hold trigger in wallet-service so nothing slips through single-officer. */
@@ -61,7 +93,7 @@ export type PaymentAdapter = {
 // ── PUBLIC WRAPPER — the only thing wallet-service imports ────────────────────
 
 /** Initiate a deposit collection through the active gateway. */
-export async function dispatchDeposit(opts: { provider: PaymentProvider; amount: number; msisdn?: string; userId: string }): Promise<DepositResult> {
+export async function dispatchDeposit(opts: { provider: PaymentProvider; amount: number; msisdn?: string; userId: string; card?: CardCheckoutContext }): Promise<DepositResult> {
   const correlationId = `dep_${randomId(10)}`;
   audit({
     category: "WALLET",
@@ -189,9 +221,37 @@ const NOT_WIRED = (name: string) =>
 // order-status re-query — is the sole authority that credits/confirms, exactly once.
 const selcomAdapter: PaymentAdapter = {
   name: "selcom",
-  async deposit({ amount, msisdn, userId, correlationId }) {
+  async deposit({ provider, amount, msisdn, userId, correlationId, card }) {
     const env = selcomEnv();
     if (!env) return { ok: false, reason: "PROVIDER_DOWN", correlationId };
+
+    // ── CARD: hosted-checkout redirect, a different rail entirely ────────────
+    // The buyer enters their card on Selcom's page, so there is no MSISDN and no
+    // USSD push; we hand back the gateway URL and the caller redirects. Money is
+    // still credited ONLY by the authoritative order-status re-query, so this
+    // rail inherits the same exactly-once settlement as every other one.
+    if (provider === "CARD") {
+      // Refuse rather than silently fall through to the USSD push. Before this
+      // branch existed, choosing "Card" on the deposit form reached the code
+      // below and pushed a MOBILE-MONEY prompt to the phone number field — a
+      // player picking Card got charged over mobile money instead.
+      if (!card) return { ok: false, reason: "DECLINED", correlationId };
+      const r = await selcomCardCheckout(env, {
+        orderId: correlationId,
+        amount,
+        buyerEmail: card.buyerEmail,
+        buyerName: card.buyerName,
+        buyerPhone: card.buyerPhone,
+        billing: card.billing,
+        redirectUrl: card.redirectUrl,
+        cancelUrl: card.cancelUrl,
+      });
+      if (!r.ok) return { ok: false, reason: r.reason, correlationId };
+      // PENDING: the order exists but the buyer has not paid yet — they have not
+      // even seen the card form. Nothing is credited until order-status says so.
+      return { ok: true, status: "PENDING", providerRef: correlationId, correlationId, redirectUrl: r.gatewayUrl };
+    }
+
     if (!msisdn) return { ok: false, reason: "DECLINED", correlationId }; // no handset to push the USSD prompt to
     // order_id = OUR correlation id → it becomes providerRef, so the callback
     // (which echoes order_id) correlates back to this exact transaction.

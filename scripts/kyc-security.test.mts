@@ -26,16 +26,19 @@ async function mkUser(id: string, phone: string) {
   });
 }
 
-// ─── 1. EMAIL uniqueness — TEMPORARILY DISABLED (Ali, 2026-06-14) for testing.
-// Duplicates are currently ALLOWED so testers can reuse an email across accounts.
-// When the block is re-enabled in setUserEmail, flip these back to "blocked".
+// ─── 1. EMAIL uniqueness — RE-ENABLED at real-money launch (2026-07-18).
+// One account per email is load-bearing: a CONFIRMED email is what unlocks the
+// first deposit, so a shared address would let one inbox open unlimited
+// depositing accounts and would hollow out every per-account control (deposit
+// caps, self-exclusion). Case-insensitive — matching must not be defeatable by
+// capitalisation.
 await mkUser("usr_e_a", "+255710000201");
 await mkUser("usr_e_b", "+255710000202");
 let r = await setUserEmail("usr_e_a", "Shared.Email@Example.com");
 ok("email A set ok", r.ok && (r as { changed: boolean }).changed);
 r = await setUserEmail("usr_e_b", "shared.email@example.com"); // same, different case
-ok("duplicate email ALLOWED (uniqueness temporarily off)", r.ok && (r as { changed: boolean }).changed);
-ok("user B email IS set (normalized)", (await db.user.findById("usr_e_b"))?.email === "shared.email@example.com");
+ok("duplicate email BLOCKED (case-insensitive)", !r.ok);
+ok("user B email left UNSET after the block", !(await db.user.findById("usr_e_b"))?.email);
 r = await setUserEmail("usr_e_a", "shared.email@example.com"); // same owner, unchanged
 ok("same owner re-set is a no-op", r.ok && !(r as { changed: boolean }).changed);
 

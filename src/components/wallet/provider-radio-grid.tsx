@@ -3,7 +3,12 @@
  * withdraw forms (spec A6 tile system). Both render byte-for-byte identical
  * tiles; this is the single source of truth. Server component (no client
  * state) — the enclosing <form> reads the checked `provider` radio on submit,
- * and all interactive states are pure CSS (`group-has-[:checked]`).
+ * and all interactive states are pure CSS (`group-has-[:checked]/tile`).
+ *
+ * ⚠️ The group is NAMED (`group/tile`). An unnamed `group` here would also be
+ * satisfied by any ANCESTOR marked `group` — the deposit form is one, so every
+ * tile's selection ring and check pip lit up at once regardless of which radio
+ * was actually checked. Naming scopes the match to this label.
  *
  * Tile: 48×48 PaymentLogo slot + provider name (Inter 500) beneath.
  *   • selected  — 2px royal `--brand-500` ring + check pip (120ms scale-in;
@@ -35,7 +40,7 @@ export function ProviderRadioGrid({
         return (
           <label
             key={p.id}
-            className={`group relative flex flex-col items-center gap-2 px-2 py-3.5 rounded-md border border-border transition-colors ${
+            className={`group/tile relative flex flex-col items-center gap-2 px-2 py-3.5 rounded-md border border-border transition-colors ${
               p.unavailable ? "opacity-40 cursor-not-allowed" : "cursor-pointer hover:border-border-strong"
             }`}
             style={{ background: "var(--bg-inset)" }}
@@ -43,6 +48,11 @@ export function ProviderRadioGrid({
             <input
               type="radio"
               name="provider"
+              // Stable id so a form can react to the CHOSEN rail in pure CSS
+              // (`group-has-[#provider-CARD:checked]`) — the deposit form uses it
+              // to reveal card-billing fields and hide the mobile-money handset
+              // field without any client state. Keep the `provider-<ID>` shape.
+              id={`provider-${p.id}`}
               value={p.id}
               required
               disabled={p.unavailable}
@@ -52,12 +62,12 @@ export function ProviderRadioGrid({
             {/* Royal selection ring — scales in 120ms; instant under reduced-motion. */}
             <span
               aria-hidden
-              className="pointer-events-none absolute inset-0 rounded-md ring-2 ring-brand-500 opacity-0 scale-95 transition duration-[120ms] ease-out motion-reduce:transition-none group-has-[:checked]:opacity-100 group-has-[:checked]:scale-100"
+              className="pointer-events-none absolute inset-0 rounded-md ring-2 ring-brand-500 opacity-0 scale-95 transition duration-[120ms] ease-out motion-reduce:transition-none group-has-[:checked]/tile:opacity-100 group-has-[:checked]/tile:scale-100"
             />
             {/* Check pip — top-right. */}
             <span
               aria-hidden
-              className="absolute right-1.5 top-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-brand-500 text-white opacity-0 scale-75 transition duration-[120ms] ease-out motion-reduce:transition-none group-has-[:checked]:opacity-100 group-has-[:checked]:scale-100"
+              className="absolute right-1.5 top-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-brand-500 text-white opacity-0 scale-75 transition duration-[120ms] ease-out motion-reduce:transition-none group-has-[:checked]/tile:opacity-100 group-has-[:checked]/tile:scale-100"
             >
               <I.check s={11} />
             </span>

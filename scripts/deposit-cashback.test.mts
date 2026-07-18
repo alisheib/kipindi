@@ -25,7 +25,7 @@ function makePlayer(id: string) {
     id, phoneE164: `+25572000${id.slice(-4)}`, passwordHash: null, passwordSalt: null,
     failedLoginCount: 0, lockedUntil: null, role: "PLAYER", status: "ACTIVE", locale: "EN",
     displayName: null, dob: "1990-01-01", region: "TZ", acceptedTermsVersion: "v1", acceptedTermsAt: now,
-    marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null, email: `${id}@t.tz`,
+    marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null, email: `${id}@t.tz`, emailVerifiedAt: now,
     createdAt: now, updatedAt: now, lastLoginAt: now, closedAt: null,
   } as never);
   db.wallet.create({ id: `wlt_${id}`, userId: id, balance: 0, pending: 0, hold: 0, bonusBalance: 0, currency: "TZS", status: "ACTIVE", createdAt: now, updatedAt: now } as never);

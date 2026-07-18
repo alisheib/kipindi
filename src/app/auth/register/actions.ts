@@ -10,6 +10,7 @@ import { registerWithPassword, requestRegisterOtp } from "@/lib/server/auth-serv
  */
 export async function startRegisterAction(formData: FormData) {
   const phone = String(formData.get("phone") ?? "");
+  const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   const passwordConfirm = String(formData.get("passwordConfirm") ?? "");
   const dob = String(formData.get("dob") ?? "");
@@ -24,13 +25,15 @@ export async function startRegisterAction(formData: FormData) {
   const safeNext = /^\/(?![/\\])/.test(nextRaw) && !nextRaw.startsWith("/auth/") ? nextRaw : "";
 
   const result = await registerWithPassword({
-    phone, password, passwordConfirm, dob,
+    phone, email, password, passwordConfirm, dob,
     acceptTerms, acceptAge, marketingOptIn, referralCode, inviteCode,
   });
 
   if (!result.ok) {
     const params = new URLSearchParams({
       phone,
+      // Carry the email back so a failed sign-up doesn't make the player retype it.
+      email,
       error: result.code === "ALREADY_EXISTS" ? "exists"
         : result.code === "RATE_LIMITED" ? "rate_limited"
         : "invalid",
@@ -64,7 +67,7 @@ export async function startRegisterOtpAction(formData: FormData) {
   const safeNext = /^\/(?![/\\])/.test(nextRaw) && !nextRaw.startsWith("/auth/") ? nextRaw : "";
 
   const result = await requestRegisterOtp({
-    phone, dob,
+    phone, email: String(formData.get("email") ?? "").trim(), dob,
     acceptTerms: acceptTerms as true,
     acceptAge: acceptAge as true,
     marketingOptIn,

@@ -17,6 +17,8 @@ import { DepositAmount } from "./deposit-amount";
 import { DepositConfirm } from "./deposit-confirm";
 import { IdempotencyKeyField } from "@/components/wallet/idempotency-key-field";
 import { ProviderRadioGrid } from "@/components/wallet/provider-radio-grid";
+import { CardBillingFields } from "@/components/wallet/card-billing-fields";
+import { EmailVerifyGate } from "@/components/wallet/email-verify-gate";
 
 export const metadata = { title: "Deposit" };
 
@@ -32,7 +34,10 @@ const PROVIDERS = [
 
 const QUICK_AMOUNTS = [1_000, 5_000, 10_000, 25_000, 50_000, 100_000];
 
-export default async function DepositPage({ searchParams }: { searchParams: Promise<{ error?: string; provider?: string; amount?: string; msisdn?: string }> }) {
+export default async function DepositPage({ searchParams }: { searchParams: Promise<{
+  error?: string; provider?: string; amount?: string; msisdn?: string;
+  bFirst?: string; bLast?: string; bAddr?: string; bCity?: string; bRegion?: string; bPost?: string;
+}> }) {
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/wallet/deposit");
   const { t } = await getServerT();
@@ -42,9 +47,22 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
   const prevProvider = sp.provider ?? "";
   const prevAmount = sp.amount ?? "";
   const prevMsisdn = sp.msisdn ?? "";
+  // Billing values round-tripped through the error redirect so a rejected card
+  // deposit never makes the player retype their address.
+  const prevBilling = {
+    firstName: sp.bFirst ?? "",
+    lastName: sp.bLast ?? "",
+    address1: sp.bAddr ?? "",
+    city: sp.bCity ?? "",
+    region: sp.bRegion ?? "",
+    postcode: sp.bPost ?? "",
+  };
 
   let user: Awaited<ReturnType<typeof db.user.findById>> | null = null;
   try { user = await db.user.findById(session.userId); } catch { /* graceful — default limits */ }
+  // The deposit gate. Read here purely to choose what to RENDER; wallet-service
+  // re-checks it on submit, so this is presentation, never the enforcement.
+  const emailVerified = !!user?.emailVerifiedAt;
   const adminTest = !!user && ADMIN_TEST_ROLES.has(user.role) && process.env.NODE_ENV !== "production" && process.env.ADMIN_TEST_DEPOSITS !== "false";
   const maxAmount = adminTest ? 1_000_000_000 : DEPOSIT_MAX_TZS;
   const quickAmounts = adminTest ? [100_000, 1_000_000, 5_000_000, 20_000_000, 100_000_000] : QUICK_AMOUNTS;
@@ -77,20 +95,34 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
 
       {showCashback && <CashbackPromo percent={bonusCfg.cashbackPercentage} mode={bonusCfg.cashbackMode} compact cta={false} />}
 
-      <form action={depositAction} className="rounded-xl glass-panel p-5 lg:p-6 space-y-5">
+      {/* ── EMAIL GATE ────────────────────────────────────────────────────────
+          A confirmed address is required before the FIRST deposit (browse free →
+          verify email to deposit → KYC to withdraw). We render the gate INSTEAD
+          of the form rather than letting the player fill everything in and be
+          rejected on submit — the server enforces it either way, but being told
+          up front, with the action that fixes it, is the difference between a
+          gate and a dead end. */}
+      {!emailVerified ? (
+        <EmailVerifyGate email={user?.email ?? null} />
+      ) : (
+      <form action={depositAction} className="group/deposit rounded-xl glass-panel p-5 lg:p-6 space-y-5">
         <IdempotencyKeyField />
         <fieldset>
           <FieldLegend as="legend" className="mb-2">
-            {t.wallet.mobileMoney}
+            {t.wallet.choosePaymentMethod}
           </FieldLegend>
           <ProviderRadioGrid providers={PROVIDERS} defaultProvider={prevProvider} unavailableLabel={t.common.temporarilyUnavailable} />
         </fieldset>
 
         <DepositAmount max={maxAmount} quickAmounts={quickAmounts} adminTest={adminTest} defaultValue={prevAmount} />
 
-        <div>
+        {/* Handset number — mobile-money rails only. Hidden (not unmounted) for
+            CARD, where the buyer enters their details on Selcom's page instead
+            and there is no USSD prompt to push anywhere. No html `required`: it
+            would block submit while hidden. depositAction enforces it. */}
+        <div className="group-has-[#provider-CARD:checked]/deposit:hidden">
           <FieldLegend as="label" htmlFor="msisdn" className="block mb-2">
-            {t.auth.phone} {t.common.optional}
+            {t.wallet.mobileMoneyNumber}
           </FieldLegend>
           <Input
             id="msisdn"
@@ -104,12 +136,29 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
             mono
             defaultValue={prevMsisdn}
           />
+          <p className="mt-1.5 text-[11.5px] text-text-subtle">{t.wallet.mobileMoneyNumberHint}</p>
         </div>
+
+        {/* Billing details — CARD only. Selcom rejects card orders without them. */}
+        <CardBillingFields
+          copy={{
+            legend: t.wallet.billingLegend,
+            why: t.wallet.billingWhy,
+            firstName: t.wallet.billingFirstName,
+            lastName: t.wallet.billingLastName,
+            address: t.wallet.billingAddress,
+            city: t.wallet.billingCity,
+            region: t.wallet.billingRegion,
+            postcode: t.wallet.billingPostcode,
+          }}
+          defaults={prevBilling}
+        />
 
         {/* Deposit confirms before dispatch (audit M9), matching bet + withdraw.
             Money-in → gold trigger (micro-spec §1). */}
         <DepositConfirm />
       </form>
+      )}
 
       {/* Trust strip — the regulator seal is a licensed asset (⊘ pending, Ali);
           this slot is a deliberately-labeled placeholder, never a fabricated mark. */}

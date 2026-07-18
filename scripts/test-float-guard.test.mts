@@ -66,12 +66,26 @@ for (const v of ["false", "0", "", "yes", "1", "TRUE", "True"]) {
   ok("no-DB case still exits 0", r.status === 0, `status=${r.status}`);
 }
 
+// ── THE PRODUCTION HARD REFUSAL: no env combination may mint on live money ───
+// Post-go-live the platform holds real player balances. TEST_FUNDING alone is no
+// longer an acceptable last line of defence (one mis-set Railway variable would
+// credit TZS 1,000,000 into every real wallet), so production refuses outright.
+{
+  const r = runSeeder({ NODE_ENV: "production", TEST_FUNDING: "true", DATABASE_URL: UNREACHABLE_DB });
+  ok("production + TEST_FUNDING=true → STILL refuses to mint", SKIPPED.test(r.out) && /REFUSING/i.test(r.out), r.out.slice(0, 200));
+  ok("production refusal happens BEFORE touching the database", !/ECONNREFUSED|connect|P1001|Can't reach/i.test(r.out), r.out.slice(0, 200));
+  ok("production refusal still exits 0 (must never block next start)", r.status === 0, `status=${r.status}`);
+}
+
 // ── The guard must be the FIRST thing the script does ────────────────────────
 {
   const src = spawnSync(process.execPath, ["-e", `process.stdout.write(require('fs').readFileSync(${JSON.stringify(SEEDER)},'utf8'))`], { encoding: "utf8" }).stdout ?? "";
   const guardAt = src.indexOf('TEST_FUNDING !== "true"');
+  const prodAt = src.indexOf('NODE_ENV === "production"');
   const prismaAt = src.search(/new PrismaClient|\$connect|prisma\./);
   ok("the TEST_FUNDING guard exists verbatim (strict !== \"true\")", guardAt > -1);
+  ok("the production hard-refusal exists verbatim", prodAt > -1);
+  ok("the production refusal precedes the TEST_FUNDING read", prodAt > -1 && prodAt < guardAt, `prod@${prodAt} guard@${guardAt}`);
   ok("the guard precedes any Prisma/database use", guardAt > -1 && (prismaAt === -1 || guardAt < prismaAt), `guard@${guardAt} prisma@${prismaAt}`);
 }
 

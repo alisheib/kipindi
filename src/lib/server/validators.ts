@@ -96,8 +96,21 @@ export const withdrawAmount = z
   .min(WITHDRAW_MIN_TZS, `Minimum withdrawal is TZS ${tzs(WITHDRAW_MIN_TZS)}`)
   .max(WITHDRAW_MAX_TZS, `Single withdrawal cap is TZS ${tzs(WITHDRAW_MAX_TZS)}`);
 
+/** A real, deliverable email address. REQUIRED at sign-up: it is where deposit
+ *  receipts and the verification link go, and a verified address is what unlocks
+ *  the first deposit (browse free → verify email to deposit → KYC to withdraw).
+ *  Normalised to lower-case here so uniqueness and lookups can never drift on case. */
+export const emailAddress = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .min(5, { message: "Enter your email address" })
+  .max(254, { message: "That email address is too long" })
+  .email({ message: "Enter a valid email address" });
+
 export const RegisterSchema = z.object({
   phone: tzPhone,
+  email: emailAddress,
   dob: dateOfBirth,
   acceptTerms: z.literal(true, { message: "You must accept the Terms" }),
   acceptAge: z.literal(true, { message: "You must confirm you are 18+" }),

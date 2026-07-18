@@ -16,6 +16,7 @@ import { db } from "@/lib/server/store";
 import { currentSession } from "@/lib/server/auth-service";
 import { audit } from "@/lib/server/audit";
 import { setUserEmail, sendEmailVerification } from "@/lib/server/email-verification";
+import { rateCheck } from "@/lib/server/rate-limit";
 
 const MAX_AVATAR_BYTES = 96 * 1024; // 96 KB after client-side resize
 
@@ -78,6 +79,15 @@ export async function resendEmailVerificationAction(): Promise<{ ok: true; sent:
   if (!user) return { ok: false, error: "User not found." };
   if (!user.email) return { ok: false, error: "Add an email first." };
   if (user.emailVerifiedAt) return { ok: true, sent: false }; // already confirmed
+  // Rate-limited: this is now reachable from the deposit gate, where a player who
+  // is stuck will tap it repeatedly — and an attacker could otherwise use a
+  // signed-in account to flood a third party's inbox with our mail (and burn our
+  // sending reputation). Checked AFTER the already-confirmed no-op so a harmless
+  // repeat tap on a verified account never eats budget.
+  const rl = rateCheck(session.userId, "email.verify.resend");
+  if (!rl.allowed) {
+    return { ok: false, error: `Please wait ${Math.max(1, Math.ceil(rl.retryAfterSec ?? 60))}s before requesting another link.` };
+  }
   const name = user.displayName?.trim().split(/\s+/)[0] || undefined;
   await sendEmailVerification(session.userId, user.email, name);
   audit({ category: "COMPLIANCE", action: "user.email.verification_resent", actorId: session.userId, targetType: "User", targetId: session.userId });

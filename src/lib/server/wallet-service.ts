@@ -14,7 +14,7 @@ import { audit } from "./audit";
 import { sendEmailToUser, depositConfirmedHtml, withdrawalSentHtml, withdrawalUnderReviewHtml, amlRejectRefundHtml } from "./email";
 import { db, type StoredTxn } from "./store";
 import { randomId } from "./crypto";
-import { dispatchDeposit, dispatchWithdrawal, verifyDepositStatus, verifyWithdrawalStatus } from "./payments";
+import { dispatchDeposit, dispatchWithdrawal, verifyDepositStatus, verifyWithdrawalStatus, type CardCheckoutContext } from "./payments";
 import { isPaymentPaused } from "./payment-ops";
 import { isMaintenanceMode, maintenanceMessage } from "./platform-config";
 import { rateCheck } from "./rate-limit";
@@ -31,7 +31,14 @@ import type { ServiceResult } from "./auth-service";
 import { formatTzs } from "@/lib/utils";
 
 /** Deposit — debits external (mobile money), credits wallet on success. */
-export async function deposit(userId: string, input: z.input<typeof DepositSchema>, idempotencyKey?: string): Promise<ServiceResult<{ txnId: string; status: StoredTxn["status"]; balance: number }>> {
+export async function deposit(
+  userId: string,
+  input: z.input<typeof DepositSchema>,
+  idempotencyKey?: string,
+  /** CARD only — buyer + billing details and the return URLs for Selcom's hosted
+   *  checkout. Ignored on the mobile-money rails, which push to the handset. */
+  card?: CardCheckoutContext,
+): Promise<ServiceResult<{ txnId: string; status: StoredTxn["status"]; balance: number; redirectUrl?: string }>> {
   const rl = rateCheck(userId, "wallet.deposit");
   if (!rl.allowed) return { ok: false, error: "Too many deposit attempts.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
 
@@ -77,6 +84,38 @@ export async function deposit(userId: string, input: z.input<typeof DepositSchem
   const wallet = await db.wallet.findByUserId(userId);
   if (!wallet) return { ok: false, error: "Wallet not found.", code: "NOT_FOUND" };
   if (wallet.status !== "ACTIVE") return { ok: false, error: "Wallet frozen.", code: "SUSPENDED" };
+
+  // ── EMAIL-VERIFICATION GATE (the middle rung of the trust ladder) ───────────
+  // browse free → VERIFY EMAIL TO DEPOSIT → KYC to withdraw.
+  //
+  // Why deposit and not sign-up: blocking sign-up costs conversion for no safety
+  // gain, whereas the first deposit is the first moment a real inbox actually
+  // matters — that address is where the receipt goes, and it is the evidence we
+  // rely on in a chargeback or a regulator dispute. Withdrawal stays KYC-gated
+  // (a heavier check for money leaving).
+  //
+  // Deliberately placed AFTER the wallet/lockout checks and BEFORE the reserving
+  // lock: a blocked deposit must not create a PROCESSING row, consume a deposit
+  // cap, or reach the gateway. `depositor` is already loaded above.
+  //
+  // ⚠️ Admins are NOT exempt. The bypass above only relaxes caps/SOF for test
+  // funding off-production; the ownership signal is cheap to satisfy and an
+  // exemption here is exactly how a gate rots.
+  if (!depositor?.emailVerifiedAt) {
+    audit({
+      category: "COMPLIANCE",
+      action: "deposit.email_unverified_blocked",
+      actorId: userId, targetType: "User", targetId: userId,
+      payload: { hasEmail: !!depositor?.email },
+    });
+    return {
+      ok: false,
+      code: "EMAIL_UNVERIFIED",
+      error: depositor?.email
+        ? "Confirm your email address before your first deposit. We sent a link to your inbox — open it, then come back."
+        : "Add and confirm your email address before your first deposit.",
+    };
+  }
 
   // Self-exclusion / cooling-off lockout — enforced even for admin test-funding
   // so a self-excluded player cannot receive deposits regardless of role.
@@ -194,7 +233,7 @@ export async function deposit(userId: string, input: z.input<typeof DepositSchem
   audit({ category: "WALLET", action: "deposit.initiated", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { provider: parse.data.provider, amount: parse.data.amount } });
 
   // Dispatch to provider
-  const result = await dispatchDeposit({ provider: parse.data.provider, amount: parse.data.amount, msisdn: parse.data.msisdn, userId });
+  const result = await dispatchDeposit({ provider: parse.data.provider, amount: parse.data.amount, msisdn: parse.data.msisdn, userId, card });
   if (!result.ok) {
     await db.txn.update(txnId, { status: "FAILED", description: `${friendlyProvider(parse.data.provider)} deposit failed: ${result.reason}` });
     audit({ category: "WALLET", action: "deposit.failed", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { reason: result.reason, correlationId: result.correlationId } });
@@ -210,9 +249,12 @@ export async function deposit(userId: string, input: z.input<typeof DepositSchem
     // pushes a prompt to the customer's handset. Money has NOT moved yet, so we
     // must NOT credit the wallet here. Leave the txn PROCESSING — the webhook is
     // the SOLE authority that credits it, exactly once, on a confirmed callback.
-    audit({ category: "WALLET", action: "deposit.pending", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { providerRef: result.providerRef } });
+    audit({ category: "WALLET", action: "deposit.pending", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { providerRef: result.providerRef, hosted: !!result.redirectUrl } });
     const cur = await db.wallet.findByUserId(userId);
-    return { ok: true, data: { txnId, status: "PROCESSING", balance: cur?.balance ?? 0 } };
+    // `redirectUrl` (card/hosted checkout) is passed straight through for the
+    // caller to send the buyer to. It carries NO money meaning — the txn is
+    // PROCESSING either way, and only the signed order-status re-query credits.
+    return { ok: true, data: { txnId, status: "PROCESSING", balance: cur?.balance ?? 0, redirectUrl: result.redirectUrl } };
   }
 
   // Synchronous provider (or the dev mock): the collection already settled, so
@@ -435,6 +477,96 @@ async function settleWithdrawalFailed(txnId: string, reason: string): Promise<bo
     })).catch(() => {});
   }
   return !!done;
+}
+
+/** What the card return leg renders. `state` is derived ONLY from the signed
+ *  re-query + the stored transaction — never from the return URL's parameters. */
+export type DepositReturnOutcome = {
+  state: "PAID" | "PENDING" | "FAILED" | "UNKNOWN";
+  balance: number;
+  txn?: {
+    id: string;
+    amount: number;
+    providerRef: string | null;
+    providerLabel: string;
+    createdAt: string;
+  };
+};
+
+/**
+ * Resolve the outcome of a card deposit for the RETURN LEG, authoritatively.
+ *
+ * Selcom appends `payment_status` + `transid` to the return URL, but those are
+ * unsigned and browser-supplied — anyone can type `?payment_status=COMPLETED`.
+ * So this function ignores them entirely. It takes only the `order_id` we
+ * pre-seeded, and:
+ *
+ *   1. loads OUR transaction row for that providerRef,
+ *   2. checks the row actually belongs to the signed-in user (an attacker must
+ *      not be able to read another player's deposit by guessing a reference),
+ *   3. if it is still PROCESSING, asks Selcom's SIGNED order-status endpoint and
+ *      settles through `settlePaymentWebhook` — the same exactly-once, amount-
+ *      tamper-checked path the webhook uses, so a return leg racing a webhook
+ *      credits exactly once,
+ *   4. re-reads the row and reports what is now true.
+ *
+ * Safe to call repeatedly: refresh, back-button, or returning hours later all
+ * land on step 3/4 and converge on the same answer. A deposit that is genuinely
+ * still in flight reports PENDING, never FAILED — telling a player their payment
+ * failed while it is still moving is what makes them pay twice.
+ */
+export async function settleDepositFromReturn(userId: string, orderId: string): Promise<DepositReturnOutcome> {
+  const wallet = await db.wallet.findByUserId(userId);
+  const balanceOf = async () => (await db.wallet.findByUserId(userId))?.balance ?? wallet?.balance ?? 0;
+
+  if (!orderId) return { state: "UNKNOWN", balance: await balanceOf() };
+
+  let txn = await db.txn.findByProviderRef(orderId);
+  // Unknown reference, or someone else's — same answer either way. We do NOT
+  // distinguish them: confirming "that reference exists but isn't yours" would
+  // leak the existence of other players' transactions.
+  if (!txn || txn.userId !== userId) {
+    if (txn && txn.userId !== userId) {
+      audit({
+        category: "SECURITY",
+        action: "deposit.return_ownership_mismatch",
+        actorId: userId, targetType: "Transaction", targetId: txn.id,
+        payload: { providerRef: orderId },
+      });
+    }
+    return { state: "UNKNOWN", balance: await balanceOf() };
+  }
+
+  // Still open → ask the authority. verifyDepositStatus returns PENDING for
+  // anything non-terminal (incl. INPROGRESS and unrecognised values), so an
+  // in-flight payment stays PROCESSING rather than being failed here.
+  if (txn.status === "PROCESSING" && txn.providerRef) {
+    const v = await verifyDepositStatus(txn.providerRef);
+    if (v.status === "CONFIRMED") {
+      await settlePaymentWebhook({ providerRef: txn.providerRef, status: "CONFIRMED", amount: v.amount });
+    } else if (v.status === "FAILED") {
+      await settlePaymentWebhook({ providerRef: txn.providerRef, status: "FAILED" });
+    }
+    // PENDING / UNSUPPORTED → leave it PROCESSING for the webhook + reconcile sweep.
+    txn = (await db.txn.findById(txn.id)) ?? txn;
+  }
+
+  const state: DepositReturnOutcome["state"] =
+    txn.status === "CONFIRMED" ? "PAID" :
+    txn.status === "PROCESSING" ? "PENDING" :
+    "FAILED"; // FAILED / REVERSED / anything terminal-but-not-credited
+
+  return {
+    state,
+    balance: await balanceOf(),
+    txn: {
+      id: txn.id,
+      amount: Math.abs(txn.amount),
+      providerRef: txn.providerRef,
+      providerLabel: friendlyProvider(txn.provider),
+      createdAt: txn.createdAt,
+    },
+  };
 }
 
 /**

@@ -7,6 +7,7 @@ import { listSettlementQueue, getSettlementHealth } from "@/lib/server/market-se
 import { formatTzs, formatDateTime } from "@/lib/utils";
 import { SettleButton } from "./settle-button";
 import Link from "next/link";
+import { ControlledElsewhere } from "@/components/admin/controlled-elsewhere";
 
 export const metadata = { title: "Admin · Settlement" };
 export const dynamic = "force-dynamic";
@@ -69,6 +70,10 @@ export default async function AdminSettlementPage() {
             deltaDir={health.autoSettle ? "up" : "down"}
           />
         </div>
+        <ControlledElsewhere
+          what="Automatic settlement" sw="Malipo ya kiotomatiki"
+          where="Payments ops" href="/admin/payments"
+        />
 
         <AdminCard title="Payout queue" sw="Foleni ya malipo" padding="p-0">
           {queue.length === 0 ? (

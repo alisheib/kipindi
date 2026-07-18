@@ -22,7 +22,10 @@ function sanitizeNext(raw: string): string {
  * signed and the OTP delivery is reliable.
  */
 export async function startLoginAction(formData: FormData) {
-  const phone = String(formData.get("phone") ?? "");
+  // One field, either credential. `phone` is still read as a fallback so any
+  // cached/older form markup (or a password manager that autofills the legacy
+  // field name) keeps working.
+  const identifier = String(formData.get("identifier") ?? formData.get("phone") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   const nextRaw = String(formData.get("next") ?? "");
   // Open-redirect safety: only accept a same-origin path. Reject any
@@ -33,10 +36,10 @@ export async function startLoginAction(formData: FormData) {
   // And never let `next` send the user back to the auth pages themselves.
   const safeNext = next && !next.startsWith("/auth/") ? next : "";
 
-  const result = await loginWithPassword({ phone, password });
+  const result = await loginWithPassword({ identifier, password });
   if (!result.ok) {
     const params = new URLSearchParams({
-      phone,
+      identifier,
       error: result.code === "NOT_FOUND" ? "no_account"
         : result.code === "RATE_LIMITED" ? "rate_limited"
         : result.code === "SUSPENDED" ? "blocked"

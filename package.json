@@ -94,7 +94,11 @@
     "db:reset": "prisma migrate reset",
     "db:push": "prisma db push",
     "test:txn-search": "tsx scripts/txn-search.test.mts",
-    "test:float-guard": "tsx scripts/test-float-guard.test.mts"
+    "test:float-guard": "tsx scripts/test-float-guard.test.mts",
+    "test:card-deposit": "tsx scripts/card-deposit.test.mts",
+    "test:deposit-gate": "tsx scripts/deposit-gate-return.test.mts",
+    "test:auth-email": "tsx scripts/auth-email-signin.test.mts",
+    "e2e:card": "tsx scripts/card-flow-e2e.test.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

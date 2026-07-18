@@ -257,6 +257,118 @@ export async function selcomDeposit(env: SelcomEnv, opts: { orderId: string; amo
   return { ok: true }; // async — the webhook/order-status settles it
 }
 
+// ── Card deposit (collection): hosted checkout redirect ────────────────────────
+/**
+ * Billing details for a card order. Selcom REJECTS card payments with no billing
+ * info ("Card payments with no billing info will get rejected"), and these fields
+ * feed the acquirer's AVS/fraud screening — so they are collected from the player
+ * on the deposit form and passed through verbatim. We deliberately do NOT invent
+ * or default them: a fabricated billing address is both a lie to the acquirer and
+ * a reason for the issuer to decline.
+ */
+export type SelcomBilling = {
+  firstName: string;
+  lastName: string;
+  address1: string;
+  city: string;
+  stateOrRegion: string;
+  postcodeOrPobox: string;
+  /** ISO-3166 alpha-2, e.g. "TZ". */
+  country: string;
+  phone: string;
+};
+
+/**
+ * Create a HOSTED-CHECKOUT order and return the gateway URL to send the buyer to.
+ *
+ * ⚠️ This is a DIFFERENT rail from the mobile-money USSD push above:
+ *   - endpoint is `/checkout/create-order`, NOT `create-order-minimal` — the
+ *     minimal endpoint cannot be used for cards and silently hides the card
+ *     option on the gateway page;
+ *   - `payment_methods` restricts the hosted page to CARD;
+ *   - `billing.*` keys are FLAT DOTTED STRINGS (not a nested object);
+ *   - `no_of_items` is mandatory;
+ *   - `redirect_url` / `cancel_url` / `webhook` are base64 on the wire (and ONLY
+ *     those three).
+ *
+ * Failure here is DEFINITIVE and safe to fail the deposit on: nothing can have
+ * been charged, because the buyer has not yet reached the card form. (Contrast the
+ * USSD path, where a timeout after the push is genuinely ambiguous.)
+ */
+export async function selcomCardCheckout(
+  env: SelcomEnv,
+  opts: {
+    orderId: string;
+    amount: number;
+    buyerEmail: string;
+    buyerName: string;
+    buyerPhone: string;
+    billing: SelcomBilling;
+    /** Where Selcom returns the buyer after the card form. We pre-seed `order_id`
+     *  ourselves — Selcom does NOT append it (it appends payment_status + transid). */
+    redirectUrl: string;
+    cancelUrl: string;
+  },
+): Promise<{ ok: true; gatewayUrl: string } | { ok: false; reason: "PROVIDER_DOWN" | "DECLINED" }> {
+  const phone = toSelcomMsisdn(opts.buyerPhone);
+  const b = opts.billing;
+  const body: Record<string, string | number> = {
+    vendor: env.vendor,
+    order_id: opts.orderId,
+    buyer_email: opts.buyerEmail,
+    buyer_name: opts.buyerName,
+    buyer_phone: phone,
+    amount: Math.round(opts.amount),
+    currency: "TZS",
+    payment_methods: "CARD",
+    redirect_url: Buffer.from(opts.redirectUrl).toString("base64"),
+    cancel_url: Buffer.from(opts.cancelUrl).toString("base64"),
+    "billing.firstname": b.firstName,
+    "billing.lastname": b.lastName,
+    "billing.address_1": b.address1,
+    "billing.city": b.city,
+    "billing.state_or_region": b.stateOrRegion,
+    "billing.postcode_or_pobox": b.postcodeOrPobox,
+    "billing.country": b.country,
+    "billing.phone": toSelcomMsisdn(b.phone),
+    no_of_items: 1,
+  };
+  if (env.webhookUrl) body.webhook = Buffer.from(env.webhookUrl).toString("base64");
+
+  let res: SelcomResponse;
+  try {
+    res = await selcomFetch(env, "POST", "/checkout/create-order", body);
+  } catch {
+    return { ok: false, reason: "PROVIDER_DOWN" }; // nothing charged — buyer never saw a card form
+  }
+  if (!res.ok) return { ok: false, reason: "PROVIDER_DOWN" };
+  if (selcomInitiateVerdict(res.json) === "FAILED") return { ok: false, reason: "DECLINED" };
+
+  const gatewayUrl = decodeGatewayUrl(res.json.data?.[0]?.payment_gateway_url);
+  // An accepted order with no usable URL is useless to the buyer — fail cleanly
+  // rather than redirect them somewhere broken. Nothing was charged.
+  if (!gatewayUrl) return { ok: false, reason: "PROVIDER_DOWN" };
+  return { ok: true, gatewayUrl };
+}
+
+/**
+ * `data[0].payment_gateway_url` is base64-encoded on the wire — every official
+ * Selcom client (WooCommerce plugin, Laravel demo) base64-decodes it. But Selcom's
+ * own docs sample for the FULL create-order shows it *unencoded*, so we handle
+ * both: decode, and if the result doesn't look like a URL, fall back to the raw
+ * value. Returns null when neither form is usable.
+ */
+export function decodeGatewayUrl(raw: unknown): string | null {
+  const s = String(raw ?? "").trim();
+  if (!s) return null;
+  try {
+    const decoded = Buffer.from(s, "base64").toString("utf8").trim();
+    if (/^https?:\/\//i.test(decoded)) return decoded;
+  } catch { /* not base64 — fall through */ }
+  if (/^https?:\/\//i.test(s)) return s;
+  return null;
+}
+
 // ── Withdrawal (disbursement): wallet-cashin ────────────────────────────────────
 // Reason taxonomy is MONEY-SAFETY load-bearing (a payout must NEVER be reversed
 // while it might still be in flight — that double-pays the player):
@@ -304,8 +416,19 @@ export async function selcomVerifyOrder(env: SelcomEnv, orderId: string): Promis
   const rawAmt = row.amount;
   const amount = rawAmt != null && !Number.isNaN(Number(rawAmt)) ? Number(rawAmt) : undefined;
   if (ps === "COMPLETED") return { status: "CONFIRMED", amount };
-  if (ps === "PENDING" || ps === "") return { status: null }; // not terminal yet
-  return { status: "FAILED", amount }; // any other terminal value = not paid
+  // Documented order-status enum: PENDING · COMPLETED · CANCELLED · USERCANCELLED
+  // · REJECTED · INPROGRESS. Only CANCELLED/USERCANCELLED/REJECTED are terminal
+  // failures.
+  //
+  // ⚠️ MONEY-SAFETY: `INPROGRESS` used to fall through to the catch-all FAILED
+  // below. A customer who had approved the charge but whose settlement was still
+  // moving would have had their deposit marked FAILED — money taken by Selcom
+  // with no credit on our side, and the reconcile sweep would never revisit it
+  // because FAILED is terminal. Non-terminal states must ALWAYS return null so
+  // the deposit stays PROCESSING and is re-queried. Anything unrecognised is
+  // treated as non-terminal too: waiting is recoverable, a wrong FAILED is not.
+  if (ps === "CANCELLED" || ps === "USERCANCELLED" || ps === "REJECTED") return { status: "FAILED", amount };
+  return { status: null }; // PENDING · INPROGRESS · empty · anything unknown → re-query
 }
 
 /**

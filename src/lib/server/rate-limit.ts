@@ -40,6 +40,11 @@ export const RATE_RULES: Record<string, RateRule> = {
   "auth.login":    { capacity: 8,  refillPerMin: 2 },
   "auth.register": { capacity: 3,  refillPerMin: 0.2 },   // 3 per hour per phone
   "password_reset":{ capacity: 5,  refillPerMin: 0.2 },   // 5 reset-link requests per ~hour per phone
+  // Confirmation-link resends, per user. Reachable from the deposit gate, so a
+  // stuck player will tap it — 3 quickly is generous, then ~1 every 2 min. Tight
+  // enough that a signed-in account can't flood a third party's inbox with our
+  // mail (which would also burn our sending reputation).
+  "email.verify.resend": { capacity: 3, refillPerMin: 0.5 },
   // Per-IP buckets for credential stuffing / mass-registration abuse.
   // Capacities above are per-phone; these add a separate ceiling per IP.
   "auth.register.ip": { capacity: 10, refillPerMin: 0.5 }, // 10 fresh phones per IP per ~20 min

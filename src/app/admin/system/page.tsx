@@ -1,4 +1,5 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
+import { ControlledElsewhere } from "@/components/admin/controlled-elsewhere";
 import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { SystemActions, SupportConfigForm, TimezoneForm, MaintenanceModeForm, AnnouncementForm } from "./system-client";
@@ -157,6 +158,10 @@ export default async function AdminSystemPage() {
               }
               deltaDir={settlement.autoSettle ? "up" : "down"}
               pulse={settlement.autoSettle && !settlement.lastSweepAt}
+            />
+            <ControlledElsewhere
+              what="Automatic settlement" sw="Malipo ya kiotomatiki"
+              where="Payments ops" href="/admin/payments"
             />
           </div>
 

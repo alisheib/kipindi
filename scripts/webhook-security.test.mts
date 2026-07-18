@@ -61,6 +61,8 @@ async function fundedUser(id: string): Promise<void> {
     failedLoginCount: 0, lockedUntil: null, role: "PLAYER", status: "ACTIVE", locale: "EN",
     displayName: null, dob: null, region: null, acceptedTermsVersion: null, acceptedTermsAt: null,
     marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null,
+    // Depositing requires a CONFIRMED email address (wallet-service gate).
+    email: `${id}@t.tz`, emailVerifiedAt: now(),
     createdAt: now(), updatedAt: now(), lastLoginAt: null, closedAt: null,
   } as never);
   await db.wallet.create({

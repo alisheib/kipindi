@@ -23,7 +23,7 @@ export async function generateMetadata() {
 export default async function RegisterPage({
   searchParams,
 }: {
-  searchParams: Promise<{ phone?: string; error?: string; message?: string; ref?: string; invite?: string; next?: string }>;
+  searchParams: Promise<{ phone?: string; email?: string; error?: string; message?: string; ref?: string; invite?: string; next?: string }>;
 }) {
   // Bounce-authed-users guard lives in src/app/auth/layout.tsx so the
   // redirect happens before any page hooks run (avoids a Next.js 16
@@ -31,6 +31,7 @@ export default async function RegisterPage({
   const { t } = await getServerT();
   const sp = await searchParams;
   const phoneDefault = (sp.phone ?? "").replace(/^\+255/, "").replace(/\D+/g, "").slice(0, 9);
+  const emailDefault = (sp.email ?? "").trim().slice(0, 254);
   const refCode = (sp.ref ?? "").trim().slice(0, 16);
   // Carry the post-auth destination (e.g. the market the player tapped YES on)
   // through registration so they land back on it — new players are PENDING_KYC
@@ -180,6 +181,30 @@ export default async function RegisterPage({
                 name="phone"
                 required
                 defaultValue={phoneDefault}
+                size="lg"
+                aria-invalid={sp.error === "exists" ? "true" : undefined}
+              />
+            </Field>
+
+            {/* Email is REQUIRED at sign-up: it is where the confirmation link and
+                every deposit receipt go, and confirming it is what unlocks the
+                first deposit. `type="email"` gives mobile keyboards the right
+                layout and the browser its own format check before submit; the
+                server re-validates with the same `emailAddress` schema regardless. */}
+            <Field label={t.auth.emailLabel} hint={t.auth.emailSignupHint}>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                required
+                inputMode="email"
+                autoComplete="email"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                maxLength={254}
+                defaultValue={emailDefault}
+                placeholder={t.auth.emailPlaceholder}
                 size="lg"
                 aria-invalid={sp.error === "exists" ? "true" : undefined}
               />

@@ -12,8 +12,13 @@
  * check. We persist only the *result* (`user.emailVerifiedAt`), not the token.
  *
  * Transactional mail (receipts, KYC notices) still sends to an unverified
- * address — verification is an ownership signal we surface and can later gate
- * on, not a hard switch that would silently drop a player's receipts.
+ * address — we never silently drop a player's receipts.
+ *
+ * ⚠️ As of the 2026-07-18 real-money launch, `emailVerifiedAt` IS a hard gate on
+ * the money-in path: `wallet-service.deposit()` refuses a deposit until it is
+ * set (browse free → verify email to deposit → KYC to withdraw). Anything that
+ * changes an address therefore clears the flag and re-gates depositing — that is
+ * intentional, and `setUserEmail` is the single writer that guarantees it.
  */
 import { db } from "./store";
 import { audit } from "./audit";
@@ -93,14 +98,24 @@ export async function setUserEmail(
   // Unchanged — leave verified state alone, don't re-send.
   if (next === current) return { ok: true, changed: false, verificationSent: false };
 
-  // Email uniqueness DISABLED for testing (Ali, 2026-06-14). Multiple testers
-  // share the same email. RE-ENABLE before real-money launch by uncommenting the
-  // block below AND restoring the @unique on User.email in schema.prisma.
-  // const holder = await db.user.findByEmail(next);
-  // if (holder && holder.id !== userId) {
-  //   audit({ category: "SECURITY", action: "user.email.duplicate_blocked", actorId: userId, targetType: "User", targetId: userId, payload: { conflictUserId: holder.id } });
-  //   return { ok: false, error: "That email is already linked to another account." };
-  // }
+  // ONE ACCOUNT PER EMAIL — RE-ENABLED at real-money launch (2026-07-18).
+  //
+  // It was disabled 2026-06-14 so several testers could share one inbox. That is
+  // no longer survivable: a verified email now UNLOCKS DEPOSITING, so a shared
+  // address would let one inbox open unlimited depositing accounts, and per-account
+  // controls (deposit caps, self-exclusion) are only as strong as the one-person-
+  // one-account assumption underneath them.
+  //
+  // Enforced in application code, not by a DB @unique: adding a unique index to the
+  // live money DB risks failing `prisma migrate deploy` — which would take
+  // production down — if any duplicate is already present. The index is a follow-up
+  // once prod is confirmed duplicate-free. Mirrors the identical check in
+  // auth-service.registerWithPassword.
+  const holder = await db.user.findByEmail(next);
+  if (holder && holder.id !== userId) {
+    audit({ category: "SECURITY", action: "user.email.duplicate_blocked", actorId: userId, targetType: "User", targetId: userId, payload: { conflictUserId: holder.id } });
+    return { ok: false, error: "That email is already linked to another account." };
+  }
 
   // New / changed address: store it, reset verification, send a fresh link.
   await db.user.update(userId, { email: next, emailVerifiedAt: null });

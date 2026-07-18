@@ -2,8 +2,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { I } from "@/components/ui/glyphs";
 import { AuthShell } from "@/components/auth/auth-shell";
-import { Field } from "@/components/ui/input";
-import { PhoneInput } from "@/components/ui/phone-input";
+import { Field, Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { RateLimitBanner } from "@/components/auth/rate-limit-banner";
@@ -19,7 +18,7 @@ export async function generateMetadata() {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ phone?: string; error?: string; retry?: string; next?: string; closed?: string; excluded?: string; cooled?: string; reset?: string }>;
+  searchParams: Promise<{ phone?: string; identifier?: string; error?: string; retry?: string; next?: string; closed?: string; excluded?: string; cooled?: string; reset?: string }>;
 }) {
   // Note: the "bounce authed users away from this page" check lives in
   // src/app/auth/layout.tsx so the redirect happens before the page renders.
@@ -31,7 +30,10 @@ export default async function LoginPage({
   const jar = await cookies();
   const wasRevoked = jar.get("kp_revoked")?.value === "1";
   if (wasRevoked) try { jar.delete("kp_revoked"); } catch {}
-  const phoneDefault = (sp.phone ?? "").replace(/^\+255/, "").replace(/\D+/g, "").slice(0, 9);
+  // Re-fill whatever the player typed. `?identifier=` is what the action now
+  // round-trips; `?phone=` is still honoured so older links (and the sign-up
+  // page's "already have an account?" hand-off) keep working.
+  const identifierDefault = (sp.identifier ?? sp.phone ?? "").trim().slice(0, 254);
   const retrySec = Number.parseInt(sp.retry ?? "", 10);
   // ?next= is set by the proxy when an unauthed user hits a protected
   // route. We round-trip it through a hidden field so the login action
@@ -158,13 +160,27 @@ export default async function LoginPage({
 
           <form action={startLoginAction} className="space-y-4">
             {nextSafe && <input type="hidden" name="next" value={nextSafe} />}
-            <Field label={t.auth.phone} hint={t.auth.phonePlaceholder}>
-              <PhoneInput
-                id="phone"
-                name="phone"
+            {/* ONE field, either credential. Email became mandatory + unique at
+                sign-up, so players who remember their address but not which of
+                their numbers they registered with can still get in. A plain text
+                input (not PhoneInput, which forces a +255 prefix and 9 digits) —
+                the server discriminates on a literal `@`. */}
+            <Field label={t.auth.emailOrPhone} hint={t.auth.emailOrPhoneHint}>
+              <Input
+                id="identifier"
+                name="identifier"
+                type="text"
                 required
-                defaultValue={phoneDefault}
+                inputMode="email"
+                autoComplete="username"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                maxLength={254}
+                defaultValue={identifierDefault}
+                placeholder={t.auth.emailOrPhonePlaceholder}
                 size="lg"
+                aria-invalid={sp.error === "no_account" ? "true" : undefined}
               />
             </Field>
 
