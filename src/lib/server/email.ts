@@ -51,22 +51,80 @@ type SendInput = {
   trackLinks?: boolean;
 };
 
-export async function sendEmail({ to, subject, html, tag, trackLinks = true }: SendInput): Promise<{ ok: boolean; messageId?: string }> {
+/**
+ * TEST-ONLY OUTBOX — the rendered HTML of every email we tried to send.
+ *
+ * Why this exists: the local stub logs only `To:` and `Subject:`, so a test
+ * could prove a send was ATTEMPTED but not what the player would actually read.
+ * That is not good enough for money mail — the whole class of bug we are
+ * hunting (a receipt carrying the wrong reference) lives in the body, and would
+ * sail past a "was sendEmail called?" assertion.
+ *
+ * Off unless `EMAIL_OUTBOX_CAPTURE=1`, and it REFUSES to arm in production, so
+ * a live instance can never accumulate player mail in memory. Capped so a long
+ * test run cannot grow unbounded.
+ */
+const OUTBOX_MAX = 500;
+// Read lazily, not at module load: ESM evaluates imports before the importing
+// module's first statement, so a test that set the flag at the top of its file
+// would still find a const captured as `false`.
+const outboxArmed = (): boolean =>
+  process.env.EMAIL_OUTBOX_CAPTURE === "1" && process.env.NODE_ENV !== "production";
+const _outbox: { to: string; subject: string; html: string; tag?: string }[] = [];
+
+/** Everything captured so far (empty unless armed). */
+export function emailOutbox(): readonly { to: string; subject: string; html: string; tag?: string }[] {
+  return _outbox;
+}
+/** Drop captured mail — call between test cases so assertions can't read stale sends. */
+export function clearEmailOutbox(): void {
+  _outbox.length = 0;
+}
+
+/**
+ * Why this returns a `reason` and not just `ok`.
+ *
+ * "Delivered", "there was nobody to deliver to", and "we refuse to deliver to
+ * this address because it hard-bounced" are three different facts, and the last
+ * one used to be reported as `{ ok: true }` — indistinguishable from a real
+ * send. That is what let the UI tell a player "Sent. Check your inbox." about a
+ * confirmation link that was never going to arrive, on the one flow that unlocks
+ * depositing, with no way out and no signal to an operator.
+ *
+ * Callers that genuinely don't care (receipts, notifications) can keep ignoring
+ * the result. Callers that make a PROMISE to the player must read it.
+ */
+export type SendResult = {
+  ok: boolean;
+  messageId?: string;
+  /** `sent` · `stub` (no provider configured) · `no-address` · `suppressed` · `failed`. */
+  reason: "sent" | "stub" | "no-address" | "suppressed" | "failed";
+};
+
+export async function sendEmail({ to, subject, html, tag, trackLinks = true }: SendInput): Promise<SendResult> {
+  // Capture BEFORE the skip/suppression returns below, so a test can assert on
+  // mail addressed to a stub/suppressed address too.
+  if (outboxArmed()) {
+    if (_outbox.length >= OUTBOX_MAX) _outbox.shift();
+    _outbox.push({ to, subject, html, tag });
+  }
   // Skip stub addresses (phone-only users without email)
   if (!to || to.endsWith("@stub") || to.endsWith("@none")) {
-    return { ok: true };
+    return { ok: true, reason: "no-address" };
   }
   // Skip addresses that hard-bounced or filed a spam complaint (Postmark webhook
   // → suppression list). Protects sender reputation; never throws.
   if (isSuppressed(to)) {
     console.log(`[email] suppressed (bounced/complained): ${to} | ${subject}`);
-    return { ok: true };
+    // ok:false — we did NOT deliver, and a caller promising the player an email
+    // must be able to tell the difference.
+    return { ok: false, reason: "suppressed" };
   }
 
   const pm = client();
   if (!pm) {
     console.log(`[email-stub] To: ${to} | Subject: ${subject}`);
-    return { ok: true, messageId: "stub" };
+    return { ok: true, messageId: "stub", reason: "stub" };
   }
 
   try {
@@ -82,11 +140,11 @@ export async function sendEmail({ to, subject, html, tag, trackLinks = true }: S
       TrackLinks: trackLinks ? LinkTrackingOptions.HtmlOnly : LinkTrackingOptions.None,
       MessageStream: "outbound",
     });
-    return { ok: true, messageId: res.MessageID };
+    return { ok: true, messageId: res.MessageID, reason: "sent" };
   } catch (err) {
     const e = err as Error & { statusCode?: number; errorCode?: number };
     console.error(`[email] Send failed: ${e.message} (to=${to}, statusCode=${e.statusCode ?? "?"}, errorCode=${e.errorCode ?? "?"})`);
-    return { ok: false };
+    return { ok: false, reason: "failed" };
   }
 }
 
@@ -304,7 +362,7 @@ function refNote(): string {
 export async function sendEmailToUser(
   userId: string,
   build: (email: string) => SendInput,
-): Promise<void> {
+): Promise<SendResult> {
   try {
     const { db } = await import("./store");
     const user = await db.user.findById(userId);
@@ -314,14 +372,16 @@ export async function sendEmailToUser(
     const email = user?.email || resolvePhoneEmail(user?.phoneE164 ?? "");
     if (!email) {
       console.warn(`[email] sendEmailToUser skipped — no email for user ${userId.slice(0, 14)}… (user.email=${user?.email ?? "null"}, phone=${user?.phoneE164?.slice(0, 6) ?? "?"}…)`);
-      return;
+      return { ok: false, reason: "no-address" };
     }
     const input = build(email);
     console.log(`[email] sending "${input.subject}" → ${email} (tag=${input.tag ?? "none"})`);
     const result = await sendEmail(input);
-    if (!result.ok) console.warn(`[email] sendEmailToUser delivery failed for ${email} (subject="${input.subject}")`);
+    if (!result.ok) console.warn(`[email] sendEmailToUser delivery failed for ${email} (reason=${result.reason}, subject="${input.subject}")`);
+    return result;
   } catch (err) {
     console.error("[email] sendEmailToUser failed:", (err as Error)?.message);
+    return { ok: false, reason: "failed" };
   }
 }
 
@@ -342,8 +402,33 @@ export function welcomeHtml({ name }: { name: string }): string {
   `);
 }
 
-export function depositConfirmedHtml({ amount, method, reference, balance }: {
-  amount: number; method: string; reference: string; balance: number;
+/**
+ * The identifier block every deposit surface shares.
+ *
+ * A deposit has TWO references and the player needs both:
+ *  - `reference`  — our internal `txn_…`. What 50pick support searches on, and
+ *                   what `/wallet/receipt/[id]` is addressed by.
+ *  - `gatewayRef` — Selcom's `dep_…` order id. What the PLAYER's bank, their
+ *                   card statement and Selcom's own support desk key off.
+ *
+ * Sending only the internal id (the bug this fixes) left a player disputing a
+ * card charge with a reference no one on the money rail could look up. Both are
+ * printed, explicitly labelled, and MUST match `/wallet/receipt/[id]`,
+ * `/wallet/deposit/return` and `/admin/transactions` exactly.
+ *
+ * `gatewayRef` is genuinely absent on the internal/mock rail and on a deposit
+ * that failed before the gateway ever issued one — there we print nothing rather
+ * than a placeholder presented as fact.
+ */
+function depositRefRows(reference: string, gatewayRef?: string | null): { label: string; value: string }[] {
+  return [
+    { label: "50pick reference", value: reference },
+    ...(gatewayRef ? [{ label: "Gateway reference", value: gatewayRef }] : []),
+  ];
+}
+
+export function depositConfirmedHtml({ amount, method, reference, gatewayRef, balance }: {
+  amount: number; method: string; reference: string; gatewayRef?: string | null; balance: number;
 }): string {
   return wrapGold(`
     ${eyebrow("Deposit confirmed", "Amana imethibitishwa", true)}
@@ -352,10 +437,102 @@ export function depositConfirmedHtml({ amount, method, reference, balance }: {
     ${detailRows([
       { label: "Amount", value: formatTzs(amount), tone: "good" },
       { label: "Method", value: method },
-      { label: "Reference", value: reference },
+      ...depositRefRows(reference, gatewayRef),
       { label: "New balance", value: formatTzs(balance) },
     ])}
     ${ctaButton("/wallet", "View wallet · Tazama pochi")}
+    ${refNote()}
+  `);
+}
+
+/**
+ * Deposit accepted by us but NOT yet paid — the player is mid-flow at their bank
+ * or has a USSD PIN prompt waiting on their handset.
+ *
+ * This email exists because silence here is the single condition that makes a
+ * player pay twice: a mobile-money collection can sit unresolved for up to 30
+ * minutes with nothing on screen once they've navigated away. It states, as
+ * plainly as we can, that no second attempt is needed. Plain royal chrome — gold
+ * is reserved for money that has actually ARRIVED (gold discipline), and this
+ * money has not.
+ */
+export function depositPendingHtml({ amount, method, reference, gatewayRef }: {
+  amount: number; method: string; reference: string; gatewayRef?: string | null;
+}): string {
+  return wrap(`
+    ${eyebrow("Payment processing", "Malipo yanashughulikiwa")}
+    ${heading("We're waiting on your payment")}
+    ${subtitle("Your deposit has been started but the money has not reached us yet. This usually takes a few seconds, and can take up to 30 minutes on mobile money.")}
+    ${subtitleSw("Amana yako imeanza lakini pesa bado haijatufikia. Kawaida huchukua sekunde chache, na inaweza kuchukua hadi dakika 30 kwa pesa za simu.")}
+    ${detailRows([
+      { label: "Amount", value: formatTzs(amount) },
+      { label: "Method", value: method },
+      ...depositRefRows(reference, gatewayRef),
+      { label: "Status", value: "Processing" },
+    ])}
+    ${subtitle("Please do NOT pay again — a second attempt would take a second payment from you. We'll email you the moment it clears, or if it fails.")}
+    ${subtitleSw("TAFADHALI usilipe tena — jaribio la pili litachukua malipo ya pili kutoka kwako. Tutakutumia barua pepe mara itakapokamilika, au ikishindikana.")}
+    ${ctaButton("/wallet", "Check your wallet · Angalia pochi")}
+    ${refNote()}
+  `);
+}
+
+/**
+ * The deposit did not go through. The ONE thing this email exists to say is that
+ * no money was taken — a player who sees "failed" and a silent bank app will
+ * otherwise assume they have been charged, and open a dispute.
+ *
+ * `reason` is our own friendly string, never the raw gateway code.
+ */
+export function depositFailedHtml({ amount, method, reference, gatewayRef, reason }: {
+  amount: number; method: string; reference: string; gatewayRef?: string | null; reason?: string;
+}): string {
+  return wrap(`
+    ${eyebrow("Deposit failed", "Amana imeshindikana")}
+    ${heading("Your deposit didn't go through")}
+    ${subtitle("No money was taken. Your balance is unchanged and nothing has been charged to your card or mobile money account.")}
+    ${subtitleSw("Hakuna pesa iliyochukuliwa. Salio lako halijabadilika na hakuna kilichokatwa kwenye kadi au akaunti yako ya simu.")}
+    ${detailRows([
+      { label: "Amount attempted", value: formatTzs(amount) },
+      { label: "Method", value: method },
+      ...depositRefRows(reference, gatewayRef),
+      ...(reason ? [{ label: "Reason", value: reason }] : []),
+      { label: "Status", value: "Failed" },
+    ])}
+    ${subtitle("You're welcome to try again whenever you like. If your bank or mobile money account DOES show a charge for this attempt, quote the references above and we'll trace it.")}
+    ${subtitleSw("Unaweza kujaribu tena wakati wowote. Kama benki au akaunti yako ya simu INAONYESHA malipo, tutumie kumbukumbu zilizo hapo juu na tutaifuatilia.")}
+    ${ctaButton("/wallet/deposit", "Try again · Jaribu tena")}
+    ${refNote()}
+  `);
+}
+
+/**
+ * A deposit that arrived while the account was self-excluded or cooling off, and
+ * was therefore auto-reversed rather than credited (GLI-19 / LCCP).
+ *
+ * This used to send nothing at all. A self-excluded player is precisely the
+ * player who must never be left wondering where their money went — the silence
+ * reads as a platform that kept it. We state plainly that it was not credited
+ * and that it goes back the way it came, and we deliberately do NOT invite them
+ * to deposit again: there is no CTA into the deposit flow on this one.
+ */
+export function depositReversedHtml({ amount, method, reference, gatewayRef }: {
+  amount: number; method: string; reference: string; gatewayRef?: string | null;
+}): string {
+  return wrap(`
+    ${eyebrow("Deposit reversed", "Amana imerudishwa")}
+    ${heading("This deposit was reversed")}
+    ${subtitle("Your account is currently self-excluded or in a cooling-off period, so we could not add these funds. The deposit has been reversed and returned to the account it came from.")}
+    ${subtitleSw("Akaunti yako kwa sasa imejifungia au iko katika kipindi cha kupumzika, hivyo hatukuweza kuongeza pesa hizi. Amana imerudishwa kwenye akaunti iliyotoka.")}
+    ${detailRows([
+      { label: "Amount", value: formatTzs(amount) },
+      { label: "Method", value: method },
+      ...depositRefRows(reference, gatewayRef),
+      { label: "Status", value: "Reversed" },
+    ])}
+    ${subtitle("Your exclusion stays in place — this is the protection working as intended. If a refund has not reached you within 5 working days, quote the references above and we'll trace it.")}
+    ${subtitleSw("Kujifungia kwako kunaendelea — hii ni ulinzi ukifanya kazi ipasavyo. Kama marejesho hayajakufikia ndani ya siku 5 za kazi, tutumie kumbukumbu zilizo hapo juu.")}
+    ${refNote()}
   `);
 }
 

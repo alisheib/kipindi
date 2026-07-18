@@ -52,6 +52,18 @@ export default async function RegisterPage({
         cta: { href: `/auth/login?phone=${encodeURIComponent(phoneDefault)}`, label: t.auth.signInTitle },
       };
     }
+    // A duplicate EMAIL is a different problem with a different remedy from a
+    // duplicate PHONE, and conflating them sent the player to sign in with a
+    // phone that has no account — an endless loop with the real cause never
+    // stated. Point them at the address, and at password recovery.
+    if (sp.error === "email_exists") {
+      return {
+        tone: "warning" as const,
+        title: t.auth.emailExists,
+        body: t.auth.emailExistsBody,
+        cta: { href: `/auth/login?identifier=${encodeURIComponent(emailDefault)}`, label: t.auth.signInTitle },
+      };
+    }
     if (sp.error === "rate_limited") {
       return {
         tone: "warning" as const,

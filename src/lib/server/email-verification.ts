@@ -24,6 +24,7 @@ import { db } from "./store";
 import { audit } from "./audit";
 import { signSession, verifySession } from "./crypto";
 import { sendEmail, sendEmailToUser, emailVerifyHtml, emailChangedHtml } from "./email";
+import type { SendResult } from "./email";
 import { notify } from "./notification-service";
 import { displayLabel } from "@/lib/display-label";
 
@@ -53,19 +54,38 @@ export function buildEmailVerifyUrl(userId: string, email: string): string {
  * Fire (best-effort) the confirmation email for `email`. Never throws — a
  * failed send must not break the profile/KYC save that triggered it.
  */
-export async function sendEmailVerification(userId: string, email: string, name?: string): Promise<void> {
+/**
+ * Returns the DELIVERY OUTCOME, not void.
+ *
+ * It used to swallow everything, so `setUserEmail` and the resend action both
+ * reported `sent: true` unconditionally and the UI said "Sent. Check your inbox"
+ * even when the address was on the hard-bounce suppression list and nothing had
+ * been sent at all. On the flow that unlocks depositing, that left a player
+ * tapping Resend until the rate limit stopped them, with no way forward.
+ */
+export async function sendEmailVerification(userId: string, email: string, name?: string): Promise<SendResult> {
   try {
     const verifyUrl = buildEmailVerifyUrl(userId, email);
     // Send to the just-set address explicitly (not the resolved fallback): the
     // whole point is to confirm THIS address.
-    await sendEmailToUser(userId, () => ({
+    const result = await sendEmailToUser(userId, () => ({
       to: email,
       subject: "Confirm your email · 50pick",
       html: emailVerifyHtml({ name, verifyUrl }),
       tag: "email-verify",
+      // ⛔ NEVER track this link. It is the single link that unlocks depositing,
+      // and Postmark's click-tracking rewrites it through a redirect domain — a
+      // mis-set tracking domain would send every confirmation click nowhere and
+      // silently close the money-in path. (The email-changed alert already
+      // passes this; the link that actually matters had been missed.)
+      // It also stops corporate/Gmail link scanners pre-fetching the URL and
+      // auto-confirming an address no human ever opened.
+      trackLinks: false,
     }));
+    return result;
   } catch (err) {
     console.error("[email-verify] send failed:", (err as Error)?.message);
+    return { ok: false, reason: "failed" };
   }
 }
 
@@ -80,7 +100,7 @@ export async function sendEmailVerification(userId: string, email: string, name?
 export async function setUserEmail(
   userId: string,
   email: string,
-): Promise<{ ok: true; changed: boolean; verificationSent: boolean } | { ok: false; error: string }> {
+): Promise<{ ok: true; changed: boolean; verificationSent: boolean; deliveryIssue?: SendResult["reason"] } | { ok: false; error: string }> {
   const next = email.trim().toLowerCase();
   const user = await db.user.findById(userId);
   if (!user) return { ok: false, error: "User not found." };
@@ -121,7 +141,9 @@ export async function setUserEmail(
   await db.user.update(userId, { email: next, emailVerifiedAt: null });
   audit({ category: "COMPLIANCE", action: "user.email.set", actorId: userId, targetType: "User", targetId: userId, payload: { verified: false } });
   const name = (user.displayName?.trim().split(/\s+/)[0]) || displayLabel({ id: userId, displayName: user.displayName ?? null });
-  await sendEmailVerification(userId, next, name);
+  // Report what ACTUALLY happened. A suppressed (previously hard-bounced) address
+  // silently swallowed the link and we still told the player to check their inbox.
+  const send = await sendEmailVerification(userId, next, name);
 
   // Security alert to the PREVIOUS address (if any): an account-takeover that
   // swaps the email must still reach the real owner on the address they control.
@@ -150,7 +172,7 @@ export async function setUserEmail(
       href: "/profile/account",
     });
   }
-  return { ok: true, changed: true, verificationSent: true };
+  return { ok: true, changed: true, verificationSent: send.ok, deliveryIssue: send.ok ? undefined : send.reason };
 }
 
 /**

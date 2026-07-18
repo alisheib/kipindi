@@ -24,17 +24,41 @@ import { PageHeader } from "@/components/ui/page-header";
 import { PageHero } from "@/components/ui/page-hero";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
+import type { StoredTxn } from "@/lib/server/store";
 import { getServerT } from "@/lib/i18n-server";
 import { formatTzs, formatDateTime } from "@/lib/utils";
 
 export const metadata = { title: "Receipt" };
 export const dynamic = "force-dynamic";
 
-const STATUS_TONE: Record<string, { chip: string; key: "paid" | "pending" | "failed" }> = {
-  CONFIRMED:  { chip: "border-yes-700/60 bg-yes-500/10 text-yes-300",     key: "paid" },
-  PROCESSING: { chip: "border-brand-700/60 bg-brand-500/10 text-brand-300", key: "pending" },
-  FAILED:     { chip: "border-no-700/60 bg-no-500/10 text-no-300",         key: "failed" },
-  REVERSED:   { chip: "border-no-700/60 bg-no-500/10 text-no-300",         key: "failed" },
+/**
+ * Every stored status, explicitly — no `?? PROCESSING` fallback.
+ *
+ * The table used to hold only 4 of the 7 and default the rest to the PENDING
+ * presentation, which meant a CANCELLED payment was shown to the player as
+ * "Processing" — i.e. we told them money might still be coming when it never
+ * was. `Record<StoredTxn["status"], …>` makes that unrepresentable: adding a
+ * status to the enum now fails the build here until it is given an honest face.
+ *
+ * `label` is the shared wallet lexicon, so this chip and the wallet-history row
+ * for the same transaction can never disagree.
+ */
+type StatusLabelKey =
+  | "txnStatusPending" | "txnStatusProcessing" | "txnStatusReview"
+  | "txnStatusConfirmed" | "txnStatusFailed" | "txnStatusReversed" | "txnStatusCancelled";
+
+const STATUS_TONE: Record<StoredTxn["status"], {
+  chip: string;
+  key: "paid" | "pending" | "failed";
+  label: StatusLabelKey;
+}> = {
+  CONFIRMED:  { chip: "border-yes-700/60 bg-yes-500/10 text-yes-300",       key: "paid",    label: "txnStatusConfirmed" },
+  PROCESSING: { chip: "border-brand-700/60 bg-brand-500/10 text-brand-300", key: "pending", label: "txnStatusProcessing" },
+  PENDING:    { chip: "border-brand-700/60 bg-brand-500/10 text-brand-300", key: "pending", label: "txnStatusPending" },
+  AML_REVIEW: { chip: "border-info-700/60 bg-info-500/10 text-info-fg",     key: "pending", label: "txnStatusReview" },
+  FAILED:     { chip: "border-no-700/60 bg-no-500/10 text-no-300",          key: "failed",  label: "txnStatusFailed" },
+  REVERSED:   { chip: "border-no-700/60 bg-no-500/10 text-no-300",          key: "failed",  label: "txnStatusReversed" },
+  CANCELLED:  { chip: "border-no-700/60 bg-no-500/10 text-no-300",          key: "failed",  label: "txnStatusCancelled" },
 };
 
 export default async function ReceiptPage({ params }: { params: Promise<{ id: string }> }) {
@@ -48,11 +72,8 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
   // them would confirm the existence of another player's transaction id.
   if (!txn || txn.userId !== session.userId) notFound();
 
-  const tone = STATUS_TONE[txn.status] ?? STATUS_TONE.PROCESSING;
-  const statusLabel =
-    tone.key === "paid" ? t.wallet.receiptStatusPaid :
-    tone.key === "pending" ? t.wallet.receiptStatusPending :
-    t.wallet.receiptStatusFailed;
+  const tone = STATUS_TONE[txn.status];
+  const statusLabel = t.wallet[tone.label];
 
   const isCredit = txn.amount > 0;
 

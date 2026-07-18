@@ -14,6 +14,7 @@ import { useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { Chip } from "@/components/ui/chip";
+import { Callout } from "@/components/ui/callout";
 import { Toggle } from "@/components/ui/toggle";
 import { ConfirmModal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
@@ -108,6 +109,15 @@ export function ControlPlane({ controls }: { controls: PaymentControlsView }) {
             {live ? <I.shieldcheck s={16} /> : <I.bolt s={16} />}
             {live ? "REAL MONEY LIVE" : "TEST MODE"}
           </span>
+          {/* The ACTIVE PROVIDER sits beside the mode, not 200px further down in
+              the selector. These are the two facts an operator needs before
+              touching anything ("is this real money, and who is taking it?"),
+              and reading them used to mean reading two separate cards. */}
+          <Chip size="lg" variant={controls.liveMockRefused ? "danger" : "neutral"}>
+            <I.mobileMoney s={14} />
+            {PROVIDER_LABEL[controls.provider]}
+            {!controls.liveMockRefused && controls.gatewayConfigured && controls.provider !== "mock" && <I.check s={13} className="text-yes-300" />}
+          </Chip>
           <div className="min-w-0">
             <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">Operations mode · Hali ya uendeshaji</p>
             <p className="text-caption text-text-secondary">
@@ -117,11 +127,49 @@ export function ControlPlane({ controls }: { controls: PaymentControlsView }) {
             </p>
           </div>
         </div>
+
+        {/* ── THE ONE THING BLOCKING A REAL DEPOSIT ──────────────────────────
+            This was a two-line hint. It is the single most consequential state
+            this page can be in — real money is on, and every player trying to
+            deposit is being refused — so it now states the live consequence in
+            the present tense and names the exact control that fixes it.
+            role="alert" because it describes an active failure, not a note. */}
         {controls.liveMockRefused && (
-          <p className="mt-3 flex items-start gap-2 rounded-md border border-no-500 bg-no-soft/40 p-2 text-caption text-no-200">
-            <I.warning s={15} className="mt-0.5 shrink-0" />
-            <span><strong>Misconfiguration:</strong> real money is LIVE but the active provider is the mock — every payment is being refused. Configure Selcom and switch to it.</span>
-          </p>
+          <Callout
+            tone="danger"
+            emphasis="strong"
+            live
+            glyph="warning"
+            className="mt-3"
+            title="Every deposit is being refused right now"
+          >
+            <p>
+              Real money is <strong>LIVE</strong> but the active provider is the <strong>mock</strong>, which
+              takes no money. Every player deposit is failing with <code className="font-mono">PROVIDER_DOWN</code>.
+            </p>
+            <p className="mt-2">
+              <strong className="text-text">To fix it:</strong> in <strong>Payment provider</strong> directly
+              below, press <strong>Selcom</strong>.
+              {controls.selectable.selcom
+                ? " That is the whole switch — it takes effect immediately."
+                : " Selcom is not selectable yet because its credentials are missing (PAYMENT_API_KEY, PAYMENT_API_SECRET, PAYMENT_VENDOR_ID, PAYMENT_API_URL). Set them in Railway first."}
+            </p>
+          </Callout>
+        )}
+
+        {/* ── PRECEDENCE, MADE VISIBLE ───────────────────────────────────────
+            `getPaymentProvider()` is `store.provider ?? envProvider()`, so a
+            value an officer saved here SILENTLY OUTRANKS PAYMENT_AGGREGATOR.
+            That is how a Railway env correctly set to `selcom` sat behind a
+            persisted `mock` with nothing on screen explaining why. If the two
+            disagree, say so, and say which one is actually in force. */}
+        {controls.providerExplicit && controls.provider !== controls.env.provider && (
+          <Callout tone="warning" glyph="info" className="mt-3">
+            This overrides the environment. <code className="font-mono">PAYMENT_AGGREGATOR</code> is
+            set to <strong>{controls.env.provider}</strong>, but an officer saved{" "}
+            <strong>{controls.provider}</strong> here and the saved value wins. What you see above is
+            what is actually running.
+          </Callout>
         )}
       </div>
 

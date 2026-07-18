@@ -1,0 +1,13 @@
+-- Deposit "still waiting" email — exactly-once marker.
+--
+-- The reconcile sweep runs on a schedule. When it finds a deposit that is STILL
+-- PROCESSING past the stale cutoff, it emails the player ("we're still waiting,
+-- please don't pay again"). Without a durable marker that mail would be re-sent
+-- on every sweep for as long as the deposit stayed in flight. This column is the
+-- marker; it carries no money meaning.
+--
+-- SAFETY: additive, nullable, no default, no backfill, no index → PostgreSQL
+-- adds it as a catalogue-only change with no table rewrite and no lock held for
+-- the length of the table. Existing rows read as NULL = "not yet told", which is
+-- the correct interpretation for every historical deposit.
+ALTER TABLE "Transaction" ADD COLUMN IF NOT EXISTS "pendingNotifiedAt" TIMESTAMP(3);

@@ -35,10 +35,11 @@ export async function startRegisterAction(formData: FormData) {
       // Carry the email back so a failed sign-up doesn't make the player retype it.
       email,
       error: result.code === "ALREADY_EXISTS" ? "exists"
+        : result.code === "EMAIL_EXISTS" ? "email_exists"
         : result.code === "RATE_LIMITED" ? "rate_limited"
         : "invalid",
     });
-    if (result.error && result.code !== "ALREADY_EXISTS" && result.code !== "RATE_LIMITED") {
+    if (result.error && result.code !== "ALREADY_EXISTS" && result.code !== "EMAIL_EXISTS" && result.code !== "RATE_LIMITED") {
       params.set("message", result.error);
     }
     if (safeNext) params.set("next", safeNext); // don't lose intent on a retry

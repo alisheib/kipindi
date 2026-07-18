@@ -10,6 +10,7 @@ import { buildDsarBundle } from "@/lib/server/privacy";
 import { revokeUserSessions } from "@/lib/server/session-registry";
 import { COMPLIANCE_ROLES } from "@/lib/server/roles";
 import { requireAdminTotp } from "@/lib/server/admin-guard";
+import { setUserEmail } from "@/lib/server/email-verification";
 
 /**
  * Privileged player-management actions. Each one:
@@ -162,11 +163,13 @@ export async function setPlayerEmailAction(formData: FormData) {
   const target = await db.user.findById(userId);
   if (!target) return { ok: false as const, error: "Player not found." };
   const prev = target.email ?? null;
-  try {
-    await db.user.update(userId, { email, emailVerifiedAt: null });
-  } catch {
-    return { ok: false as const, error: "Couldn't save that email — it may already be in use." };
-  }
+  // Route through the SINGLE writer rather than touching db.user directly.
+  // Writing here bypassed the one-account-per-email check (which is app-level,
+  // not a DB index, so the direct write silently succeeded on a duplicate) and
+  // never sent a confirmation link — leaving the player unverified, un-emailed,
+  // and unable to deposit after a support agent "fixed" their address.
+  const r = await setUserEmail(userId, email);
+  if (!r.ok) return { ok: false as const, error: r.error };
   audit({
     category: "ADMIN",
     action: "player.email.set_by_officer",

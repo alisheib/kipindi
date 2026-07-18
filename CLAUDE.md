@@ -28,6 +28,18 @@
 > → signed order-status re-query → exactly-once credit) + **player receipts** (`/wallet/receipt/[id]`).
 > **Email is now mandatory at sign-up and GATES THE FIRST DEPOSIT**; sign-in takes email *or* phone.
 > Ladder: browse free → confirm email to deposit → KYC to withdraw.
+> ✅ **SELCOM STATES/NOTIFICATIONS/VERIFICATION COMPLETED 2026-07-19.** Every deposit state
+> (PROCESSING · CONFIRMED · FAILED · REVERSED) now has a player notification, an email where
+> it matters, a truthful label and a receipt link; deposit emails carry BOTH the 50pick and
+> the GATEWAY reference. The reconcile sweep — written, tested, and **never actually
+> scheduled** — is now on the lifecycle ticker (Ali's call: deposits AND withdrawals), so a
+> paid-but-unwebhooked deposit can no longer strand forever. A standing app-wide
+> **unconfirmed-email bar** (kit `NoticeBar`) now shows the deposit gate everywhere, with
+> Resend in the bar. Five auth/email defects fixed — the worst: **login was rewriting
+> `user.email` from `PHONE_EMAIL_MAP` without clearing `emailVerifiedAt`**, laundering an
+> unconfirmed inbox into a verified one (that env var is set in prod, to Ali's own number).
+> Proof: `test:deposit-notifications` (71) · `test:auth-email-integrity` (28) ·
+> `e2e:card` (100) · browser-journey 76×3 identical. See `docs/SELCOM-COMPLETION-PROMPT.md`.
 > 🔴 **TWO OPERATOR ACTIONS REMAIN BEFORE A REAL DEPOSIT WORKS** (both are audited admin-UI
 > decisions on purpose, so they carry a named actor — do not script them):
 >   1. **/admin/payments → set provider to `selcom`.** A persisted `mock` outranks

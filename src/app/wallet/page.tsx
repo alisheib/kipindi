@@ -22,8 +22,13 @@ function adaptTxn(t: StoredTxn): Transaction {
     DEPOSIT: "deposit", WITHDRAWAL: "withdraw", BET_PLACED: "bet", BET_PAYOUT: "payout", BET_REFUND: "refund",
     BONUS_CREDIT: "deposit", ADJUSTMENT_CREDIT: "deposit", ADJUSTMENT_DEBIT: "withdraw", CASHOUT: "payout", HOUSE_FEE: "withdraw",
   };
+  // 1:1 with the stored status — no collapsing. This used to fold PROCESSING
+  // into "pending" (so an in-flight gateway payment was indistinguishable from
+  // one we hadn't sent yet) and REVERSED + CANCELLED into "failed" (so a deposit
+  // reversed by the self-exclusion guard read as a declined card). Different
+  // events, different remedies, different words.
   const statusMap: Record<StoredTxn["status"], Transaction["status"]> = {
-    PENDING: "pending", PROCESSING: "pending", AML_REVIEW: "review", CONFIRMED: "confirmed", FAILED: "failed", REVERSED: "failed", CANCELLED: "failed",
+    PENDING: "pending", PROCESSING: "processing", AML_REVIEW: "review", CONFIRMED: "confirmed", FAILED: "failed", REVERSED: "reversed", CANCELLED: "cancelled",
   };
   return {
     id: t.id,
@@ -33,6 +38,7 @@ function adaptTxn(t: StoredTxn): Transaction {
     description: t.description ?? "",
     createdAt: t.createdAt,
     positionId: t.positionId ?? null,
+    providerRef: t.providerRef ?? null,
   };
 }
 

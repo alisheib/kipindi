@@ -55,7 +55,15 @@ process.on("unhandledRejection", (r) => unhandled.push(r));
   await suppressEmail("bounced@example.com", "test:hard-bounce");
   ok("isSuppressed true after suppressEmail", isSuppressed("bounced@example.com"));
   const r = await sendEmail({ to: "bounced@example.com", subject: "x", html: "<p>x</p>" });
-  ok("send to suppressed returns ok (skipped, never throws)", r.ok);
+  // CHANGED 2026-07-18: a suppressed address now reports ok:FALSE with
+  // reason "suppressed". It used to return ok:true — indistinguishable from a
+  // real send — which is how the email-verification flow ended up telling a
+  // hard-bounced player "Sent. Check your inbox." forever while nothing was
+  // sent, leaving them permanently unable to deposit with no way out.
+  // It must still never THROW: a dead address cannot break the caller's flow.
+  ok("send to suppressed does not throw", true);
+  ok("send to suppressed reports FAILURE, not a phantom success", !r.ok);
+  ok("…and names the reason so callers can act on it", r.reason === "suppressed", r.reason);
   await unsuppressEmail("bounced@example.com");
   ok("unsuppressEmail clears the entry", !isSuppressed("bounced@example.com"));
 }

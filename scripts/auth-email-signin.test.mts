@@ -104,14 +104,19 @@ for (const [label, email] of [
 
   const second = await registerWithPassword(base({ email: shared }));
   ok("a SECOND account on the same email is refused", !second.ok);
-  ok("refusal is reported as ALREADY_EXISTS", !second.ok && second.code === "ALREADY_EXISTS", !second.ok ? String(second.code) : "");
+  // EMAIL_EXISTS, not the generic ALREADY_EXISTS (changed 2026-07-18). The
+  // register page turned the shared code into "that PHONE is already
+  // registered" and linked to sign-in with the player's brand-new phone — an
+  // account that does not exist — so a duplicate EMAIL sent them round a loop
+  // that never named the real cause. The two conditions now carry two codes.
+  ok("refusal is reported as EMAIL_EXISTS (distinct from a duplicate phone)", !second.ok && second.code === "EMAIL_EXISTS", !second.ok ? String(second.code) : "");
   ok("refusal message names the email (not the phone)", !second.ok && /email/i.test(second.error), !second.ok ? second.error : "");
 
   const upper = await registerWithPassword(base({ email: shared.toUpperCase() }));
-  ok("uniqueness is CASE-INSENSITIVE (SHARED@… is the same inbox)", !upper.ok && upper.code === "ALREADY_EXISTS");
+  ok("uniqueness is CASE-INSENSITIVE (SHARED@… is the same inbox)", !upper.ok && upper.code === "EMAIL_EXISTS");
 
   const mixed = await registerWithPassword(base({ email: "Shared.Inbox@Example.Com" }));
-  ok("uniqueness holds for mixed case too", !mixed.ok && mixed.code === "ALREADY_EXISTS");
+  ok("uniqueness holds for mixed case too", !mixed.ok && mixed.code === "EMAIL_EXISTS");
 }
 
 // Duplicate PHONE is still refused independently of email.

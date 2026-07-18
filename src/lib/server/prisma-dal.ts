@@ -218,6 +218,7 @@ function toStoredTxn(t: any): StoredTxn {
     updatedAt: iso(t.updatedAt)!,
     completedAt: iso(t.completedAt),
     idempotencyKey: t.idempotencyKey ?? null,
+    pendingNotifiedAt: iso(t.pendingNotifiedAt),
   };
 }
 
@@ -794,7 +795,7 @@ export const prismaDb = {
         const data: Record<string, any> = {};
         for (const [k, v] of Object.entries(patch)) {
           if (k === "createdAt" || k === "updatedAt") continue;
-          if (k === "completedAt") {
+          if (k === "completedAt" || k === "pendingNotifiedAt") {
             data[k] = v ? new Date(v as string) : null;
           } else {
             data[k] = v;

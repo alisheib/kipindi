@@ -11,7 +11,7 @@
  *    on OUR commission, never on a player's money.
  */
 import { audit } from "./audit";
-import { sendEmailToUser, depositConfirmedHtml, withdrawalSentHtml, withdrawalUnderReviewHtml, amlRejectRefundHtml } from "./email";
+import { sendEmailToUser, depositConfirmedHtml, depositPendingHtml, depositFailedHtml, depositReversedHtml, withdrawalSentHtml, withdrawalUnderReviewHtml, amlRejectRefundHtml } from "./email";
 import { db, type StoredTxn } from "./store";
 import { randomId } from "./crypto";
 import { dispatchDeposit, dispatchWithdrawal, verifyDepositStatus, verifyWithdrawalStatus, type CardCheckoutContext } from "./payments";
@@ -235,6 +235,13 @@ export async function deposit(
   // Dispatch to provider
   const result = await dispatchDeposit({ provider: parse.data.provider, amount: parse.data.amount, msisdn: parse.data.msisdn, userId, card });
   if (!result.ok) {
+    // NOTE: deliberately no notification/email here, unlike settleDepositFailed.
+    // This failure is SYNCHRONOUS — we return `friendlyDepositReason` and the
+    // player reads it on screen in the same breath, with the FAILED row already
+    // visible in their wallet history. An inbox entry and an email about
+    // something they were just told, and have very likely already retried, is
+    // noise. The gap G2 closed was the ASYNCHRONOUS failure, where the player is
+    // no longer looking. Don't "make this consistent" — the two are different.
     await db.txn.update(txnId, { status: "FAILED", description: `${friendlyProvider(parse.data.provider)} deposit failed: ${result.reason}` });
     audit({ category: "WALLET", action: "deposit.failed", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { reason: result.reason, correlationId: result.correlationId } });
     return { ok: false, error: friendlyDepositReason(result.reason), code: "INVALID" };
@@ -250,6 +257,19 @@ export async function deposit(
     // must NOT credit the wallet here. Leave the txn PROCESSING — the webhook is
     // the SOLE authority that credits it, exactly once, on a confirmed callback.
     audit({ category: "WALLET", action: "deposit.pending", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { providerRef: result.providerRef, hosted: !!result.redirectUrl } });
+    // Put the in-flight deposit in the player's inbox NOW (G3). Until this, a
+    // PROCESSING deposit produced no player-visible signal anywhere except a row
+    // in wallet history labelled "pending" — and a mobile-money collection can
+    // sit unresolved for up to 30 minutes. That silence is the exact condition
+    // that makes a player pay a second time, so the body leads with "don't pay
+    // again" and the entry deep-links to this deposit's own receipt.
+    //
+    // The in-app entry is free and instant, so it fires on EVERY pending deposit.
+    // The pending EMAIL deliberately does not fire here — see the reconcile sweep
+    // (`notifyStillPendingDeposits`), which sends it only once a deposit has
+    // actually been slow. Emailing at t=0 would put a "we're waiting" mail in the
+    // inbox of every card payer who completes in eight seconds.
+    notifyDeposit(userId, { status: "PROCESSING", amount: parse.data.amount, provider: friendlyProvider(parse.data.provider), txnId });
     const cur = await db.wallet.findByUserId(userId);
     // `redirectUrl` (card/hosted checkout) is passed straight through for the
     // caller to send the buyer to. It carries NO money meaning — the txn is
@@ -322,11 +342,15 @@ async function settleDepositConfirmed(txnId: string, providerRef?: string): Prom
     // Ledger DEPOSIT was posted atomically with the credit inside the lock (C3).
     audit({ category: "WALLET", action: "deposit.confirmed", actorId: t.userId, targetType: "Transaction", targetId: t.id, payload: { providerRef: providerRef ?? t.providerRef, balanceAfter: outcome.balance } });
     emit("wallet:balance", { userId: t.userId, balance: outcome.balance });
-    notifyDeposit(t.userId, t.amount, friendlyProvider(t.provider));
+    // The gateway ref is what the player's BANK and Selcom's support desk key
+    // off; t.id is what WE key off. The receipt, the return page, the admin table
+    // and this email must all show the same pair — one payment, one identity.
+    const gatewayRef = providerRef ?? t.providerRef;
+    notifyDeposit(t.userId, { status: "CONFIRMED", amount: t.amount, provider: friendlyProvider(t.provider), txnId: t.id });
     sendEmailToUser(t.userId, (email) => ({
       to: email,
       subject: `Deposit confirmed · ${formatTzs(t.amount)}`,
-      html: depositConfirmedHtml({ amount: t.amount, method: friendlyProvider(t.provider), reference: t.id, balance: outcome.balance }),
+      html: depositConfirmedHtml({ amount: t.amount, method: friendlyProvider(t.provider), reference: t.id, gatewayRef, balance: outcome.balance }),
       tag: "deposit",
     })).catch(() => {});
     // Affiliate accrual (first-deposit bonus / threshold prize) — best-effort.
@@ -363,22 +387,67 @@ async function settleDepositConfirmed(txnId: string, providerRef?: string): Prom
     }
   } else if (outcome.rgReversed && outcome.txn) {
     // Deposit was auto-reversed because the account is self-excluded / cooling-off.
-    // No credit, no confirmation email — just the compliance trail + a balance ping.
+    // No credit and no CONFIRMATION email — but the player must still be TOLD.
+    // Staying silent here was the worst of the notification gaps: a self-excluded
+    // player who sees money leave their bank and never arrive has every reason to
+    // believe the platform kept it. We tell them it was reversed and why, without
+    // inviting them back into the deposit flow (see depositReversedHtml).
     const t = outcome.txn;
+    const gatewayRef = providerRef ?? t.providerRef;
     audit({ category: "COMPLIANCE", action: "deposit.auto_reversed.rg_lockout", actorId: t.userId, targetType: "Transaction", targetId: t.id, payload: { amount: t.amount, provider: t.provider ?? "INTERNAL" } });
     emit("wallet:balance", { userId: t.userId, balance: outcome.balance });
+    notifyDeposit(t.userId, { status: "REVERSED", amount: t.amount, provider: friendlyProvider(t.provider), txnId: t.id });
+    sendEmailToUser(t.userId, (email) => ({
+      to: email,
+      subject: `Deposit reversed · ${formatTzs(t.amount)}`,
+      html: depositReversedHtml({ amount: t.amount, method: friendlyProvider(t.provider), reference: t.id, gatewayRef }),
+      tag: "deposit",
+    })).catch(() => {});
   }
   return { credited: outcome.credited, balance: outcome.balance };
 }
 
+/**
+ * Turn an internal settlement reason into something a player can act on.
+ *
+ * Deliberately separate from `friendlyDepositReason`, which maps the gateway's
+ * DISPATCH-time codes. These are OUR post-dispatch settlement reasons, and they
+ * are a different vocabulary — collapsing the two would leave one of them
+ * silently unmapped as it grew. Anything unrecognised falls through to a
+ * truthful generic rather than leaking an internal token into an inbox.
+ */
+function friendlyFailureReason(reason: string): string | undefined {
+  switch (reason) {
+    case "provider-reported-failure": return "Your payment provider declined the payment.";
+    case "reconcile-verified-failed": return "Your payment provider confirmed the payment did not complete.";
+    case "reconcile-timeout-no-ref":  return "The payment was never started with your provider.";
+    case "reconcile-timeout":         return "The payment wasn't confirmed in time and has been cancelled.";
+    default:                          return undefined;
+  }
+}
+
 /** Mark a still-pending deposit FAILED (webhook failure / reconciliation
  *  timeout). No wallet movement — a PENDING deposit was never credited.
- *  Idempotent: only acts while the txn is PROCESSING. */
+ *  Idempotent: only acts while the txn is PROCESSING — which is also what makes
+ *  the player-facing notification + email below fire EXACTLY ONCE. */
 async function settleDepositFailed(txnId: string, reason: string): Promise<boolean> {
   const t = await db.txn.findById(txnId);
   if (!t || t.status !== "PROCESSING") return false;
   await db.txn.update(txnId, { status: "FAILED", description: `${friendlyProvider(t.provider)} deposit failed: ${reason}` });
   audit({ category: "WALLET", action: "deposit.failed", actorId: t.userId, targetType: "Transaction", targetId: txnId, payload: { reason } });
+  // Tell the player. This path used to write an audit row and stop — so a player
+  // whose card was declined, or whose deposit was reconciled to failed half an
+  // hour later, was never informed at all. The one thing both messages lead with
+  // is that NO MONEY WAS TAKEN: a silent failure reads as a charge that vanished,
+  // and sends the player to their bank to open a dispute against us.
+  const friendly = friendlyFailureReason(reason);
+  notifyDeposit(t.userId, { status: "FAILED", amount: t.amount, provider: friendlyProvider(t.provider), txnId: t.id, reason: friendly });
+  sendEmailToUser(t.userId, (email) => ({
+    to: email,
+    subject: `Deposit failed · ${formatTzs(t.amount)}`,
+    html: depositFailedHtml({ amount: t.amount, method: friendlyProvider(t.provider), reference: t.id, gatewayRef: t.providerRef, reason: friendly }),
+    tag: "deposit",
+  })).catch(() => {});
   return true;
 }
 
@@ -660,6 +729,54 @@ export async function reconcileStalePayments(olderThanMs = 30 * 60 * 1000): Prom
   }
   if (stale.length) audit({ category: "WALLET", action: "payments.reconcile_sweep", actorId: null, targetType: null, targetId: null, payload: { olderThanMs, depositsFailed, withdrawalsReversed, depositsConfirmed, withdrawalsConfirmed, leftPending } });
   return { depositsFailed, withdrawalsReversed, depositsConfirmed, withdrawalsConfirmed, leftPending };
+}
+
+/**
+ * Email players whose deposit is STILL in flight after `olderThanMs` (G3).
+ *
+ * Why this is separate from the notification fired at initiate: the in-app entry
+ * is free, so it goes out on every pending deposit. An email is not free — a
+ * "we're waiting on your payment" mail sent to every card payer who completes in
+ * eight seconds is noise, and noise is how a player learns to ignore the mail
+ * that actually matters. So the email is reserved for the case that genuinely
+ * hurts: a collection that has gone quiet for half an hour, where the player has
+ * long since closed the tab and is deciding whether to pay again.
+ *
+ * ⚠️ This moves NO money and terminalizes NOTHING. It only informs. It is kept
+ * out of `reconcileStalePayments` on purpose: that function's contract is "settle
+ * from the gateway's authoritative status", and mixing a notification concern
+ * into it would make a money-critical function harder to reason about.
+ *
+ * Exactly-once via `pendingNotifiedAt`, claimed with a conditional update so two
+ * concurrent sweeps (or two app instances) can't both mail the same player.
+ */
+export async function notifyStillPendingDeposits(olderThanMs = 30 * 60 * 1000): Promise<{ notified: number }> {
+  const cutoff = Date.now() - olderThanMs;
+  const stuck = (await db.txn.listByStatus("PROCESSING")).filter(
+    (t) => t.type === "DEPOSIT" && !t.pendingNotifiedAt && Date.parse(t.createdAt) < cutoff,
+  );
+  let notified = 0;
+  for (const t of stuck) {
+    // Claim under the wallet lock and re-read, so a deposit that settled between
+    // the list above and here is not mailed "still waiting" after it has already
+    // been confirmed — the single most confusing mail we could send.
+    const claimed = await withLock(`wallet:${t.userId}`, async () => {
+      const cur = await db.txn.findById(t.id);
+      if (!cur || cur.status !== "PROCESSING" || cur.pendingNotifiedAt) return false;
+      await db.txn.update(t.id, { pendingNotifiedAt: new Date().toISOString() });
+      return true;
+    });
+    if (!claimed) continue;
+    notified++;
+    sendEmailToUser(t.userId, (email) => ({
+      to: email,
+      subject: `Still waiting on your deposit · ${formatTzs(t.amount)}`,
+      html: depositPendingHtml({ amount: t.amount, method: friendlyProvider(t.provider), reference: t.id, gatewayRef: t.providerRef }),
+      tag: "deposit",
+    })).catch(() => {});
+    audit({ category: "WALLET", action: "deposit.pending_notified", actorId: null, targetType: "Transaction", targetId: t.id, payload: { olderThanMs, amount: t.amount } });
+  }
+  return { notified };
 }
 
 /** Withdrawal — debits wallet immediately, dispatches to provider, settles. */

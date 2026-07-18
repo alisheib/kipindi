@@ -195,6 +195,9 @@ export type StoredTxn = {
   completedAt: string | null;
   /** Client-generated UUID — prevents double-submit on 2G. Null for internal txns. */
   idempotencyKey?: string | null;
+  /** Set once we've emailed the player that this deposit is taking a while.
+   *  Exactly-once guard for the reconcile sweep's "still pending" mail. */
+  pendingNotifiedAt?: string | null;
 };
 
 export type StoredResponsibleGambling = {

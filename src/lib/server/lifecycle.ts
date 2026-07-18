@@ -82,6 +82,42 @@ async function maybeReconcileLedger(): Promise<void> {
   }).catch(() => {});
 }
 
+// ── Payment reconciliation + stuck-deposit notice ───────────────────────────
+// Every 5 minutes (not every tick — each stale txn costs a signed round-trip to
+// Selcom's status endpoint, and the cutoff is 30 minutes anyway, so a 1-minute
+// cadence would be 5x the gateway traffic for zero extra freshness).
+//
+// ⚠️ WHY THIS EXISTS: `reconcileStalePayments` was written, tested and documented
+// as "intended to run on a schedule" — and then never wired to one. Nothing in
+// the app called it. A deposit the player genuinely PAID whose webhook was lost
+// or delayed past the return page therefore sat PROCESSING forever, uncredited,
+// with no recovery except an officer noticing it in the /admin/payments retry
+// queue. That is money taken and not delivered, and it was live.
+//
+// Enabled for BOTH deposits and withdrawals by Ali's decision, 2026-07-18. See
+// the note on automatic payout below: these are different things, and the
+// distinction is load-bearing.
+const PAYMENT_SWEEP_EVERY_MS = 5 * 60 * 1000;
+let lastPaymentSweepAt = 0;
+
+async function maybePaymentSweeps(): Promise<void> {
+  const now = Date.now();
+  if (now - lastPaymentSweepAt < PAYMENT_SWEEP_EVERY_MS) return;
+  lastPaymentSweepAt = now;
+  const { reconcileStalePayments, notifyStillPendingDeposits } = await import("./wallet-service");
+  // Settle first, then notify — so a deposit this very sweep just resolved is
+  // already terminal and is NOT then emailed "we're still waiting on it".
+  const r = await reconcileStalePayments();
+  if (r.depositsConfirmed || r.depositsFailed || r.withdrawalsConfirmed || r.withdrawalsReversed || r.leftPending) {
+    console.log(
+      `[lifecycle] payment reconcile — deposits +${r.depositsConfirmed}/-${r.depositsFailed}, ` +
+        `withdrawals +${r.withdrawalsConfirmed}/-${r.withdrawalsReversed}, ${r.leftPending} still in flight`,
+    );
+  }
+  const n = await notifyStillPendingDeposits();
+  if (n.notified) console.log(`[lifecycle] told ${n.notified} player(s) their deposit is still pending`);
+}
+
 /** Run one lifecycle pass. Each sweep is self-contained and best-effort; one
  *  failing must never stop the others or throw out of the tick. */
 export async function runLifecyclePass(): Promise<void> {
@@ -93,11 +129,21 @@ export async function runLifecyclePass(): Promise<void> {
     await notifyDueMarketsForResolution().catch((e) => console.error("[lifecycle] resolution-due sweep:", e));
     await autoResolveExpiredDemoMarkets().catch((e) => console.error("[lifecycle] demo auto-resolve:", e));
 
-    // ── AUTOMATIC PAYOUT IS PAUSED (Ali, 2026-07-13) ────────────────────────
+    // ── AUTOMATIC MARKET PAYOUT IS PAUSED (Ali, 2026-07-13) ─────────────────
     // Nothing pays a market by itself. Every payout is a deliberate officer
     // action at /admin/settlement until the payment aggregator (Selcom/Azampay)
-    // is integrated — we are not letting the platform move money on a timer
-    // before the real money-out rail exists and has been reconciled against.
+    // is integrated — we are not letting the platform DECIDE to move money on a
+    // timer before the real money-out rail exists and has been reconciled against.
+    //
+    // ⚠️ Do not read this as "no money moves on a timer" — since 2026-07-18
+    // `maybePaymentSweeps` reconciles stuck payments on the ticker (Ali's call).
+    // The two are different in kind and the difference is the whole point:
+    //   • Market payout DECIDES to pay, from our own settlement logic. Paused.
+    //   • Reconcile does NOT decide anything. It asks Selcom's signed status
+    //     endpoint what already happened at the gateway and makes our records
+    //     agree with it — crediting a deposit the player provably paid, failing
+    //     one they provably didn't. Refusing to run it doesn't keep money still;
+    //     it just leaves our books disagreeing with reality.
     //
     // NOTE this does not weaken the settlement gate: a resolved market still
     // holds its pool, still honours the objection window, and still refuses to
@@ -116,6 +162,7 @@ export async function runLifecyclePass(): Promise<void> {
     }
 
     await expireActiveGrants().catch((e) => console.error("[lifecycle] bonus expiry:", e));
+    await maybePaymentSweeps().catch((e) => console.error("[lifecycle] payment sweeps:", e));
     await maybeReconcileLedger().catch((e) => console.error("[lifecycle] trial balance:", e));
   } finally {
     running = false;

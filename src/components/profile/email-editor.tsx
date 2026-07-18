@@ -15,7 +15,7 @@ import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
 import { updateProfileBasicsAction, resendEmailVerificationAction } from "@/app/profile/actions";
 
-export function EmailEditor({ currentEmail, currentName, verified }: { currentEmail: string | null; currentName: string; verified?: boolean }) {
+export function EmailEditor({ currentEmail, verified }: { currentEmail: string | null; verified?: boolean }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(currentEmail ?? "");
   const [pending, start] = useTransition();
@@ -28,7 +28,9 @@ export function EmailEditor({ currentEmail, currentName, verified }: { currentEm
     if (v === (currentEmail ?? "")) { setEditing(false); return; }
     start(async () => {
       const fd = new FormData();
-      fd.set("displayName", currentName || "Player"); // basics action requires a name
+      // Deliberately do NOT send displayName — this editor changes an email and
+      // nothing else. It used to send `currentName || "Player"`, which wrote the
+      // literal string "Player" over the name of anyone who hadn't set one.
       fd.set("email", v); // "" clears it
       const r = await updateProfileBasicsAction(fd);
       if (!r.ok) { toast({ title: t.toast.emailFailed, description: r.error, variant: "danger" }); return; }

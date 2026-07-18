@@ -133,7 +133,13 @@ export default async function DepositReturnPage({
           <I.wallet s={14} />
           {t.error.backToWallet}
         </Link>
-        {outcome.state === "PAID" && outcome.txn && (
+        {/* The receipt is offered on PENDING too, not just PAID. A player left
+            waiting is precisely the one who needs a stable, bookmarkable page
+            carrying both references — the receipt updates itself as the deposit
+            settles, so sending them there beats sending them to a wallet list
+            they have to search. Withheld only on FAILED/UNKNOWN, where there is
+            either nothing to track or no transaction we can vouch for. */}
+        {(outcome.state === "PAID" || outcome.state === "PENDING") && outcome.txn && (
           <Link
             href={`/wallet/receipt/${outcome.txn.id}` as never}
             className="btn btn-ghost btn-lg btn-pill w-full inline-flex items-center justify-center gap-1.5"

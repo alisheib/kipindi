@@ -237,15 +237,95 @@ export function notifySelectionClosed(userId: string, opts: {
   });
 }
 
-export function notifyDeposit(userId: string, amount: number, provider: string) {
+/**
+ * Deposit inbox entry — every terminal AND non-terminal state, not just the
+ * happy one.
+ *
+ * This used to fire ONLY on CONFIRMED, which meant a player whose card was
+ * declined, whose payment sat processing for half an hour, or whose deposit was
+ * auto-reversed on a self-exclusion got an empty inbox and had to guess. On a
+ * real-money platform every state the money can be in is a state the player is
+ * entitled to see.
+ *
+ * `href` points at the addressable receipt when we have a txn id, so the player
+ * lands on the identifiers (ours AND the gateway's) rather than a wallet list
+ * they then have to search.
+ */
+export function notifyDeposit(
+  userId: string,
+  opts: {
+    status: "PROCESSING" | "CONFIRMED" | "FAILED" | "REVERSED";
+    amount: number;
+    provider: string;
+    /** Internal txn id — makes the notification deep-link to its own receipt. */
+    txnId?: string;
+    /** Friendly, player-safe reason. Never a raw gateway code. */
+    reason?: string;
+  },
+) {
+  const amt = formatTzs(opts.amount);
+  const href = opts.txnId ? `/wallet/receipt/${opts.txnId}` : "/wallet";
+
+  if (opts.status === "CONFIRMED") {
+    return notify({
+      userId,
+      kind: "DEPOSIT",
+      titleEn: `Deposit confirmed · ${amt}`,
+      titleSw: `Amana imethibitishwa · ${amt}`,
+      titleZh: `充值已确认 · ${amt}`,
+      bodyEn: `Funds added via ${opts.provider}.`,
+      bodySw: `Pesa imeingia kupitia ${opts.provider}.`,
+      bodyZh: `已通过 ${opts.provider} 入账。`,
+      href,
+    });
+  }
+
+  if (opts.status === "PROCESSING") {
+    // The anti-double-pay message. A player who navigates away mid-collection
+    // has no other signal that we are still waiting, and paying twice is the
+    // expensive mistake this line exists to prevent.
+    return notify({
+      userId,
+      kind: "DEPOSIT",
+      titleEn: `Deposit processing · ${amt}`,
+      titleSw: `Amana inashughulikiwa · ${amt}`,
+      titleZh: `充值处理中 · ${amt}`,
+      bodyEn: `Waiting for ${opts.provider} to confirm. Don't pay again — we'll tell you as soon as it clears.`,
+      bodySw: `Tunasubiri ${opts.provider} kuthibitisha. Usilipe tena — tutakujulisha itakapokamilika.`,
+      bodyZh: `正在等待 ${opts.provider} 确认。请勿重复支付，款项到账后我们会立即通知您。`,
+      href,
+    });
+  }
+
+  if (opts.status === "FAILED") {
+    // "No money was taken" is the whole point of this one — without it a failed
+    // deposit reads as a charge that vanished.
+    return notify({
+      userId,
+      kind: "DEPOSIT",
+      titleEn: `Deposit failed · ${amt}`,
+      titleSw: `Amana imeshindikana · ${amt}`,
+      titleZh: `充值失败 · ${amt}`,
+      bodyEn: opts.reason
+        ? `No money was taken. ${opts.reason}`
+        : "No money was taken. Your balance is unchanged.",
+      bodySw: "Hakuna pesa iliyochukuliwa. Salio lako halijabadilika.",
+      bodyZh: "未扣除任何款项，您的余额未发生变化。",
+      href,
+    });
+  }
+
+  // REVERSED — arrived while the account was self-excluded / cooling off.
   return notify({
     userId,
     kind: "DEPOSIT",
-    titleEn: `Deposit confirmed · ${formatTzs(amount)}`,
-    titleSw: `Amana imethibitishwa · ${formatTzs(amount)}`,
-    bodyEn: `Funds added via ${provider}.`,
-    bodySw: `Pesa imeingia kupitia ${provider}.`,
-    href: "/wallet",
+    titleEn: `Deposit reversed · ${amt}`,
+    titleSw: `Amana imerudishwa · ${amt}`,
+    titleZh: `充值已退回 · ${amt}`,
+    bodyEn: "Your account is self-excluded, so this deposit was not added. It has been returned to where it came from.",
+    bodySw: "Akaunti yako imejifungia, hivyo amana hii haikuongezwa. Imerudishwa ilikotoka.",
+    bodyZh: "您的账户处于自我限制状态，此笔充值未入账，已原路退回。",
+    href,
   });
 }
 

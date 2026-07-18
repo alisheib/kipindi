@@ -37,6 +37,7 @@ import { displayLabel, displayInitials } from "@/lib/display-label";
 import { getServerT } from "@/lib/i18n-server";
 import { getPlatformConfig, maintenanceMessage } from "@/lib/server/platform-config";
 import { AnnouncementBanner } from "./announcement-banner";
+import { EmailVerifyBanner } from "./email-verify-banner";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const { t } = await getServerT();
@@ -60,6 +61,8 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     isAdmin?: boolean;
   } = { initials: guestUser.initials, name: guestUser.name, phone: guestUser.phone, isAuthed: false, balance: null };
   let realityCheckMin = 30;
+  /** Non-null = signed in with an UNCONFIRMED address → show the standing bar. */
+  let emailVerifyState: { email: string | null } | null = null;
   if (session) {
     // Batch all three queries in parallel — eliminates the sequential
     // waterfall. Promise.allSettled so one failing query can't crash
@@ -91,6 +94,14 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       isAdmin: hasRole(u?.role, ADMIN_CONSOLE_ROLES),
     };
     realityCheckMin = rg?.realityCheckIntervalMin || 30;
+    // Email confirmation gates depositing, so an unconfirmed address is a live
+    // limitation on the account and belongs on every page — not only on the
+    // deposit form the player may not reach for days. `u` is null only if the
+    // user fetch failed above, in which case we stay silent rather than accuse a
+    // player of being unverified on the strength of a failed query.
+    emailVerifyState = u
+      ? (u.emailVerifiedAt ? null : { email: u.email ?? null })
+      : null;
   }
 
   // Site-wide operator banner (§9.3 #5) — maintenance notice takes priority
@@ -115,6 +126,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       <Suspense fallback={null}><NavProgress /></Suspense>
       <TopAppBar user={topUser} />
       <AnnouncementBanner maintenance={maintBanner} announcement={announcement} />
+      {emailVerifyState && <EmailVerifyBanner email={emailVerifyState.email} />}
       <LiveTicker events={getTickerFeed()} />
       <main id="main-content" className="pb-[calc(88px+env(safe-area-inset-bottom))] lg:pb-0">
         <RouteTransition>{children}</RouteTransition>

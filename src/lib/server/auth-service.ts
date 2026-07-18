@@ -72,7 +72,7 @@ export type ServiceResult<T = void> =
   // EMAIL_UNVERIFIED is distinct from INVALID on purpose: the deposit surface
   // renders it as a recoverable "confirm your inbox" step with a resend action,
   // not as a form error the player cannot act on.
-  | { ok: false; error: string; code?: "RATE_LIMITED" | "INVALID" | "EXPIRED" | "ALREADY_EXISTS" | "NOT_FOUND" | "TOO_MANY_ATTEMPTS" | "SUSPENDED" | "SELECTION_CLOSED" | "CONFLICT" | "TOO_EARLY" | "OBJECTION_OPEN" | "EMAIL_UNVERIFIED"; retryAfterSec?: number };
+  | { ok: false; error: string; code?: "RATE_LIMITED" | "INVALID" | "EXPIRED" | "ALREADY_EXISTS" | "EMAIL_EXISTS" | "NOT_FOUND" | "TOO_MANY_ATTEMPTS" | "SUSPENDED" | "SELECTION_CLOSED" | "CONFLICT" | "TOO_EARLY" | "OBJECTION_OPEN" | "EMAIL_UNVERIFIED"; retryAfterSec?: number };
 
 /** Step 1: request OTP for login (existing user). */
 export async function requestLoginOtp(input: z.input<typeof LoginRequestSchema>): Promise<ServiceResult<{ otpId: string }>> {
@@ -430,7 +430,11 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
   const emailHolder = await db.user.findByEmail(baseParse.data.email);
   if (emailHolder) {
     audit({ category: "SECURITY", action: "register.duplicate_email", actorId: null, targetType: "User", targetId: emailHolder.id, ip: meta.ip });
-    return { ok: false, error: "An account with that email already exists.", code: "ALREADY_EXISTS" };
+    // EMAIL_EXISTS, not ALREADY_EXISTS: the register page turns the generic
+    // code into "that PHONE is already registered" and links to sign-in with the
+    // brand-new phone — an account that does not exist — so the player loops
+    // forever and is never told the real cause was their email address.
+    return { ok: false, error: "An account with that email already exists.", code: "EMAIL_EXISTS" };
   }
 
   const salt = randomId(16);
@@ -762,14 +766,25 @@ export async function loginWithPassword(input: PasswordLoginInput): Promise<Serv
     return { ok: true, data: { userId: user.id, role: effectiveRole, twoFactorRequired: true } };
   }
 
-  // Bind env-mapped email (phone → email). Later this moves to KYC.
+  // ⛔ DO NOT re-introduce an email WRITE here.
+  //
+  // This used to persist the PHONE_EMAIL_MAP address onto the user
+  // (`db.user.update(user.id, { email })`) on every sign-in, and it defeated the
+  // deposit gate three ways:
+  //   1. it never cleared `emailVerifiedAt`, so a player who had confirmed one
+  //      address silently ended up "verified" against a DIFFERENT, unconfirmed
+  //      inbox — and every deposit receipt went there;
+  //   2. it clobbered an address the player had just corrected in their profile,
+  //      on their next login, with nothing on screen explaining why;
+  //   3. it bypassed the one-account-per-email check, reopening multi-accounting.
+  // `email-verification.setUserEmail()` is the ONLY writer of `user.email`, and
+  // it is the thing that re-gates depositing. The map is now READ-ONLY — used
+  // solely as a delivery fallback when an account has no address on file.
   const emailForPhone = resolvePhoneEmail(user.phoneE164);
-  if (emailForPhone && user.email !== emailForPhone) {
-    await db.user.update(user.id, { email: emailForPhone });
-  }
 
-  // Login notification email — best-effort
-  const userEmail = emailForPhone ?? user.email;
+  // Login notification email — best-effort. Prefer the account's OWN address;
+  // the map is only a fallback for accounts that never stored one.
+  const userEmail = user.email ?? emailForPhone;
   if (userEmail) {
     const { displayLabel } = await import("../display-label");
     const userRef = { id: user.id, displayName: user.displayName };
@@ -809,9 +824,10 @@ export async function completeTwoFactorLogin(userId: string): Promise<ServiceRes
   }
   const meta = await clientMeta();
 
+  // Read-only fallback — see the note on the password-login path above. Writing
+  // the mapped address here silently un-gated deposits and clobbered profile edits.
   const emailForPhone = resolvePhoneEmail(user.phoneE164);
-  if (emailForPhone && user.email !== emailForPhone) await db.user.update(user.id, { email: emailForPhone });
-  const userEmail = emailForPhone ?? user.email;
+  const userEmail = user.email ?? emailForPhone;
   if (userEmail) {
     sendEmail({
       to: userEmail,

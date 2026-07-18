@@ -21,7 +21,11 @@ import { rateCheck } from "@/lib/server/rate-limit";
 const MAX_AVATAR_BYTES = 96 * 1024; // 96 KB after client-side resize
 
 const BasicsSchema = z.object({
-  displayName: z.string().trim().min(1).max(40),
+  // OPTIONAL. The email editor only wants to change an address, and when it was
+  // required that component had to invent a value — it sent the literal English
+  // string "Player", which then got PERSISTED as the display name of anyone who
+  // had not set one. An omitted field now means "leave the name alone".
+  displayName: z.string().trim().min(1).max(40).optional(),
   locale: z.enum(["EN", "SW"]).optional(),
   // Optional contact email — once on file, the player receives transactional
   // receipts (deposit/withdraw/win/KYC/etc.). Empty string clears it. Validated
@@ -35,7 +39,7 @@ export async function updateProfileBasicsAction(formData: FormData): Promise<{ o
 
   const rawEmail = formData.get("email");
   const parsed = BasicsSchema.safeParse({
-    displayName: formData.get("displayName"),
+    displayName: formData.get("displayName") ?? undefined,
     locale: formData.get("locale") || undefined,
     email: rawEmail === null ? undefined : rawEmail,
   });
@@ -43,7 +47,7 @@ export async function updateProfileBasicsAction(formData: FormData): Promise<{ o
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
   const next = await db.user.update(session.userId, {
-    displayName: parsed.data.displayName,
+    ...(parsed.data.displayName !== undefined ? { displayName: parsed.data.displayName } : {}),
     ...(parsed.data.locale ? { locale: parsed.data.locale } : {}),
   });
   if (!next) return { ok: false, error: "User not found." };
@@ -64,7 +68,7 @@ export async function updateProfileBasicsAction(formData: FormData): Promise<{ o
     actorId: session.userId,
     targetType: "User",
     targetId: session.userId,
-    payload: { displayName: parsed.data.displayName, locale: parsed.data.locale ?? null, emailSet: parsed.data.email ? true : parsed.data.email === "" ? false : undefined },
+    payload: { displayName: parsed.data.displayName ?? null, locale: parsed.data.locale ?? null, emailSet: parsed.data.email ? true : parsed.data.email === "" ? false : undefined },
   });
   revalidatePath("/profile");
   return { ok: true, emailVerificationSent };
@@ -72,12 +76,16 @@ export async function updateProfileBasicsAction(formData: FormData): Promise<{ o
 
 /** Re-send the email confirmation link for the player's current address.
  *  No-op (still ok) if there's no email or it's already confirmed. */
-export async function resendEmailVerificationAction(): Promise<{ ok: true; sent: boolean } | { ok: false; error: string }> {
+export async function resendEmailVerificationAction(): Promise<{ ok: true; sent: boolean } | { ok: false; error: string; retryAfterSec?: number }> {
+  // ⚠️ `error` is a CODE, not prose. This action is rendered on player surfaces
+  // in EN/SW/ZH, and it used to return English sentences that were printed
+  // verbatim — the one untranslated corner of an otherwise trilingual flow.
+  // The caller maps these through the dictionary.
   const session = await currentSession();
-  if (!session) return { ok: false, error: "Sign in required." };
+  if (!session) return { ok: false, error: "NOT_SIGNED_IN" };
   const user = await db.user.findById(session.userId);
-  if (!user) return { ok: false, error: "User not found." };
-  if (!user.email) return { ok: false, error: "Add an email first." };
+  if (!user) return { ok: false, error: "USER_NOT_FOUND" };
+  if (!user.email) return { ok: false, error: "NO_EMAIL" };
   if (user.emailVerifiedAt) return { ok: true, sent: false }; // already confirmed
   // Rate-limited: this is now reachable from the deposit gate, where a player who
   // is stuck will tap it repeatedly — and an attacker could otherwise use a
@@ -86,11 +94,26 @@ export async function resendEmailVerificationAction(): Promise<{ ok: true; sent:
   // repeat tap on a verified account never eats budget.
   const rl = rateCheck(session.userId, "email.verify.resend");
   if (!rl.allowed) {
-    return { ok: false, error: `Please wait ${Math.max(1, Math.ceil(rl.retryAfterSec ?? 60))}s before requesting another link.` };
+    return { ok: false, error: "RATE_LIMITED", retryAfterSec: Math.max(1, Math.ceil(rl.retryAfterSec ?? 60)) };
   }
   const name = user.displayName?.trim().split(/\s+/)[0] || undefined;
-  await sendEmailVerification(session.userId, user.email, name);
-  audit({ category: "COMPLIANCE", action: "user.email.verification_resent", actorId: session.userId, targetType: "User", targetId: session.userId });
+  const send = await sendEmailVerification(session.userId, user.email, name);
+  audit({ category: "COMPLIANCE", action: "user.email.verification_resent", actorId: session.userId, targetType: "User", targetId: session.userId, payload: { delivered: send.ok, reason: send.reason } });
+  if (!send.ok) {
+    // Do NOT claim a send that did not happen. `suppressed` is the one that
+    // matters: the address hard-bounced or filed a spam complaint, so we refuse
+    // to mail it and no amount of tapping Resend will ever work. Without this
+    // branch the player is told "Sent — check your inbox" forever, cannot
+    // deposit, and has no way out. Tell them the truth and name the way out
+    // (change the address), and leave an audit trail an operator can find.
+    audit({
+      category: "COMPLIANCE",
+      action: "user.email.verification_undeliverable",
+      actorId: session.userId, targetType: "User", targetId: session.userId,
+      payload: { reason: send.reason },
+    });
+    return { ok: false, error: send.reason === "suppressed" ? "EMAIL_SUPPRESSED" : "EMAIL_SEND_FAILED" };
+  }
   return { ok: true, sent: true };
 }
 

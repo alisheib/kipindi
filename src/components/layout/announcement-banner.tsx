@@ -10,17 +10,11 @@
  *     for the session (re-shows automatically when the message changes).
  */
 import { useEffect, useState } from "react";
-import { I } from "@/components/ui/glyphs";
+import { NoticeBar } from "@/components/ui/notice-bar";
+import type { NoticeBarTone } from "@/components/ui/notice-bar";
 
 type Tone = "info" | "warning" | "success";
-type Kind = Tone | "maintenance";
-
-const TONE: Record<Kind, { bar: string; dot: string }> = {
-  maintenance: { bar: "border-claret-edge bg-claret-soft text-claret-100", dot: "var(--claret-400)" },
-  warning:     { bar: "border-warning-border bg-warning-bg/60 text-warning-fg", dot: "var(--warning-fg)" },
-  info:        { bar: "border-info-border bg-info-bg/50 text-info-fg", dot: "var(--info-fg)" },
-  success:     { bar: "border-yes-700 bg-yes-500/12 text-yes-200", dot: "var(--yes-400)" },
-};
+type Kind = NoticeBarTone;
 
 const DISMISS_KEY = "kp-banner-dismissed";
 
@@ -49,29 +43,20 @@ export function AnnouncementBanner({
   }, [message, dismissible]);
 
   if (!active || dismissed) return null;
-  const tone = TONE[active.kind];
 
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      className={`flex items-center gap-2.5 border-b px-4 py-2 lg:px-6 ${tone.bar}`}
+    <NoticeBar
+      tone={active.kind}
+      onDismiss={
+        active.dismissible
+          ? () => {
+              try { sessionStorage.setItem(DISMISS_KEY, active.message); } catch { /* ignore */ }
+              setDismissed(true);
+            }
+          : undefined
+      }
     >
-      <span className="shrink-0 inline-block h-2 w-2 rounded-full" style={{ background: tone.dot }} aria-hidden />
-      <p className="min-w-0 flex-1 text-[12.5px] leading-snug font-medium">{active.message}</p>
-      {active.dismissible && (
-        <button
-          type="button"
-          onClick={() => {
-            try { sessionStorage.setItem(DISMISS_KEY, active.message); } catch { /* ignore */ }
-            setDismissed(true);
-          }}
-          aria-label="Dismiss"
-          className="shrink-0 inline-flex h-6 w-6 items-center justify-center rounded-md opacity-70 hover:opacity-100 transition-opacity"
-        >
-          <I.x s={14} />
-        </button>
-      )}
-    </div>
+      {active.message}
+    </NoticeBar>
   );
 }

@@ -243,11 +243,23 @@ function TxnRow({ tx }: { tx: Transaction }) {
   const { t } = useT();
   const [expanded, setExpanded] = useState(false);
   const isCredit = tx.amount > 0;
+  // Tone AND label for every state the money can actually be in. The label was
+  // previously the raw enum printed lowercase (`{tx.status}`) — the one place on
+  // this screen that never got translated, so SW and ZH players read "pending".
   const statusTone =
     tx.status === "confirmed" ? "text-yes-300"
-    : tx.status === "pending" ? "text-warning-fg"
+    : tx.status === "pending" || tx.status === "processing" ? "text-warning-fg"
     : tx.status === "review"  ? "text-info-fg"
     : "text-no-300";
+  const statusLabel: Record<Transaction["status"], string> = {
+    pending: t.wallet.txnStatusPending,
+    processing: t.wallet.txnStatusProcessing,
+    review: t.wallet.txnStatusReview,
+    confirmed: t.wallet.txnStatusConfirmed,
+    failed: t.wallet.txnStatusFailed,
+    reversed: t.wallet.txnStatusReversed,
+    cancelled: t.wallet.txnStatusCancelled,
+  };
   const arrowBg =
     isCredit ? "bg-yes-500/10 text-yes-300" : "bg-no-500/10 text-no-300";
   return (
@@ -274,7 +286,7 @@ function TxnRow({ tx }: { tx: Transaction }) {
             <Cash>{`${isCredit ? "+" : ""}${formatTzs(Math.abs(tx.amount))}`}</Cash>
           </p>
           <p className={`mt-0.5 font-mono text-[9px] uppercase tracking-[0.14em] font-semibold ${statusTone}`}>
-            {tx.status}
+            {statusLabel[tx.status]}
           </p>
         </div>
       </button>
@@ -288,10 +300,30 @@ function TxnRow({ tx }: { tx: Transaction }) {
             <p className="font-mono text-[9px] uppercase tracking-[0.10em] text-text-faint">{t.wallet.amount}</p>
             <p className="font-mono font-bold tabular-nums text-text">{formatTzs(Math.abs(tx.amount))}</p>
           </div>
+          {/* Both references, in FULL. This used to print `tx.id.slice(0, 16)`
+              and nothing else — a truncated internal id is useless to quote at
+              a bank, and the gateway reference (the one the bank and Selcom can
+              actually look up) wasn't here at all. Same two labels as the
+              receipt page, the return page and the deposit emails. */}
           <div className="rounded-md border border-border/60 bg-bg-overlay/40 px-2.5 py-1.5">
-            <p className="font-mono text-[9px] uppercase tracking-[0.10em] text-text-faint">{t.error.reference}</p>
-            <p className="font-mono text-text-muted truncate">{tx.id.slice(0, 16)}</p>
+            <p className="font-mono text-[9px] uppercase tracking-[0.10em] text-text-faint">{t.wallet.transactionId}</p>
+            <p className="font-mono text-text-muted break-all">{tx.id}</p>
           </div>
+          {tx.providerRef && (
+            <div className="rounded-md border border-border/60 bg-bg-overlay/40 px-2.5 py-1.5">
+              <p className="font-mono text-[9px] uppercase tracking-[0.10em] text-text-faint">{t.wallet.gatewayReference}</p>
+              <p className="font-mono text-text-muted break-all">{tx.providerRef}</p>
+            </div>
+          )}
+          {(tx.type === "deposit" || tx.type === "withdraw") && (
+            <Link
+              href={`/wallet/receipt/${tx.id}`}
+              className="rounded-md border border-border/60 bg-bg-overlay/40 px-2.5 py-1.5 hover:border-brand-400 transition-colors block"
+            >
+              <p className="font-mono text-[9px] uppercase tracking-[0.10em] text-text-faint">{t.wallet.receiptEyebrow}</p>
+              <p className="font-mono text-[11px] text-brand-300 underline-offset-2 hover:underline">{t.wallet.viewReceipt}</p>
+            </Link>
+          )}
           {tx.positionId && (
             <Link
               href="/positions"

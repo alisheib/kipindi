@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Callout } from "@/components/ui/callout";
 import { useT } from "@/lib/i18n";
 import { resendEmailVerificationAction } from "@/app/profile/actions";
+import { verifyErrorMessage } from "@/lib/verify-error";
 
 export function EmailVerifyGate({ email }: { email: string | null }) {
   const { t } = useT();
@@ -39,7 +40,8 @@ export function EmailVerifyGate({ email }: { email: string | null }) {
             ? { tone: "ok", message: t.wallet.verifyResent }
             : { tone: "ok", message: t.wallet.verifyAlreadyDone });
         } else {
-          setResult({ tone: "err", message: r.error });
+          // `r.error` is a CODE — never render it raw at a player.
+          setResult({ tone: "err", message: verifyErrorMessage(t, r.error, r.retryAfterSec) });
         }
       } catch {
         setResult({ tone: "err", message: t.error.somethingDidntWork });

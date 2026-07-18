@@ -395,6 +395,12 @@ model Transaction {
   // Client-generated UUID — prevents double-submit on 2G (same key = same intent).
   // Nullable: internal txns (settlement, refund) don't carry one.
   idempotencyKey  String?          @unique
+  // Stamped when we email the player that this deposit is TAKING A WHILE (the
+  // reconcile sweep does it, not the initiate path — see notifyStillPendingDeposits).
+  // Its only job is exactly-once: the sweep re-runs on a schedule and would
+  // otherwise re-send the same "still waiting" mail every cycle. Same pattern as
+  // Market.selectionClosedNotifiedAt. Null = not yet told / not applicable.
+  pendingNotifiedAt DateTime?
 
   // Prevent duplicate deposits/withdrawals from the same payment provider
   // transaction. A retried webhook with the same providerRef must not
