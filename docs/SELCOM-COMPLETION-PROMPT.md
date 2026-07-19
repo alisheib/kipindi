@@ -142,11 +142,24 @@ truthful, and that PROCESSING deposits are visible rather than silently absent.
   say so plainly rather than implying PG coverage.
 - `NEXT_PUBLIC_LICENSE_REF` is still `TZ-GBT-2026-XXXX` — ask Ali for the real GBT number.
 
-═══ TWO OPERATOR ACTIONS STILL OPEN (Ali does these, in the admin UI) ═══
-1. `/admin/payments` → set provider to `selcom`. Until then every deposit is refused.
-2. Clear the persisted `test.overrides` conflicted-resolution flag (warns each boot).
-   POCA §16 is enforced at runtime regardless — hygiene, not exposure.
-Make G5 good enough that both are obvious without explanation.
+═══ ONE OPERATOR ACTION STILL OPEN (Ali, in the admin UI) ═══
+1. `/admin/payments` → set provider to `selcom`. Until then every deposit is refused
+   with PROVIDER_DOWN. All four Selcom credentials ARE set in Railway.
+   **No redeploy needed** — verified empirically 2026-07-19: `setPaymentControls`
+   assigns `store.provider` before persisting, so the flip is live in-process at once.
+   (True because production runs ONE container; each container caches this config, so
+   with several, a flip on one would not reach the others until they re-hydrate.)
+2. ✅ DONE 2026-07-19 — the persisted `test.overrides` conflicted-resolution flag was
+   cleared via `scripts/ops-clear-conflicted-override.mjs`, run against the prod DB
+   through the Postgres PUBLIC proxy (`railway run` alone does not work: it injects
+   `postgres.railway.internal`, which only resolves inside Railway). Confirmed by the
+   compliance warning disappearing from the boot log.
+
+Operator guide for non-technical admins: **`50pick-runbook.pdf`** (repo root) — start,
+the two stop options, and the one number to watch. ⚠️ Switching the provider to MOCK
+stops deposits and withdrawals but does NOT stop betting (`buyPosition` checks
+`isMaintenanceMode`, never the provider), so Maintenance mode is the control for a
+full pause.
 
 ═══ STANDARDS (non-negotiable) ═══
 UI-kit only — extend the kit, never hand-roll a duplicate. ONE control per setting;
