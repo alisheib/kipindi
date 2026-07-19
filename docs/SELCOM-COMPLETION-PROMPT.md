@@ -155,6 +155,13 @@ truthful, and that PROCESSING deposits are visible rather than silently absent.
    `postgres.railway.internal`, which only resolves inside Railway). Confirmed by the
    compliance warning disappearing from the boot log.
 
+⚠️ **Railway housekeeping (cost only, no risk):** 8 orphaned `redis-volume-*` (~40 GB) cannot
+be deleted — `railway volume delete` (CLI v5.26) reports success and does nothing, the GraphQL
+API returns 403 for every token/header combination, and the dashboard architecture canvas only
+draws ATTACHED volumes so they are invisible there. Use `railway volume list --json` for the
+truth. Keep `redis-volume-5JMf` (Redis) and `postgres-volume` (the LIVE money DB). Escalate to
+Railway support if it ever matters.
+
 Operator guide for non-technical admins: **`50pick-runbook.pdf`** (repo root) — start,
 the two stop options, and the one number to watch. ⚠️ Switching the provider to MOCK
 stops deposits and withdrawals but does NOT stop betting (`buyPosition` checks
