@@ -125,6 +125,14 @@ Ali created Cloudflare account, entered `50pick.tz`, configured:
 4. Click the Redis tile -> Connect tab -> copy REDIS_URL
 5. Go to 50pick service -> Variables -> add `REDIS_URL` using Railway reference: `${{Redis.REDIS_URL}}`
 
+> ⚠️ **This step only WIRES Redis — it does not turn it on, and must not.** The
+> app treats `REDIS_URL` as configuration and `REDIS_ENABLED="true"` as
+> activation (see `src/lib/server/redis.ts` and RAILWAY.md). Leave
+> `REDIS_ENABLED` unset here: arming cross-container rate limits and SSE fan-out
+> is a deliberate, separately-verified change, not a side effect of a CDN
+> runbook. When you do enable it, confirm on **/admin/system** that the Redis
+> card reports both `connected` and `subscribed`.
+
 ### Step 2: Create Cloudflare Account + Add Domain
 
 1. Go to dash.cloudflare.com -> Sign up (or log in)

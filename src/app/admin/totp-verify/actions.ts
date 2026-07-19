@@ -6,7 +6,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { verifyTotp } from "@/lib/server/totp";
 import { audit } from "@/lib/server/audit";
 import { signSession } from "@/lib/server/crypto";
-import { rateCheck } from "@/lib/server/rate-limit";
+import { rateCheckAsync } from "@/lib/server/rate-limit";
 import { TOTP_COOKIE_NAME, TOTP_TTL_SEC } from "@/lib/server/totp-cookie";
 
 export async function verifyAdminTotpAction(formData: FormData) {
@@ -14,7 +14,7 @@ export async function verifyAdminTotpAction(formData: FormData) {
   if (!session) redirect("/auth/admin");
 
   // Rate limit TOTP verification — prevents brute-forcing the 6-digit code.
-  const rl = rateCheck(session.userId, "totp.verify");
+  const rl = await rateCheckAsync(session.userId, "totp.verify");
   if (!rl.allowed) {
     audit({
       category: "SECURITY",

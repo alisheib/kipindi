@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { requestPasswordReset } from "@/lib/server/password-reset";
-import { rateCheck } from "@/lib/server/rate-limit";
+import { rateCheckAsync } from "@/lib/server/rate-limit";
 import { tzPhone } from "@/lib/server/validators";
 
 export async function requestResetAction(formData: FormData) {
@@ -16,7 +16,7 @@ export async function requestResetAction(formData: FormData) {
   if (!parsed.success) redirect(`/auth/forgot-password?error=phone_required&phone=${encodeURIComponent(phone)}`);
   const normalized = parsed.data;
 
-  const rl = rateCheck(normalized, "password_reset");
+  const rl = await rateCheckAsync(normalized, "password_reset");
   if (!rl.allowed) {
     redirect(`/auth/forgot-password?error=rate_limited&phone=${encodeURIComponent(phone)}`);
   }

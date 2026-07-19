@@ -10,6 +10,7 @@ import { smsHealthSnapshot, sms as smsClient } from "@/lib/server/sms";
 import { rateLimitSnapshot } from "@/lib/server/rate-limit";
 import { admissionSnapshot } from "@/lib/server/admission";
 import { retrySnapshot } from "@/lib/server/retry";
+import { redisHealth } from "@/lib/server/redis";
 import { listMarkets, getSettlementHealth, isAutoSettleEnabled, type SettlementHealth } from "@/lib/server/market-service";
 import { hasDatabase, pingDatabase } from "@/lib/server/prisma";
 import { formatTime, formatTzs } from "@/lib/utils";
@@ -35,6 +36,15 @@ export default async function AdminSystemPage() {
   // card must never be able to 500 the system page.
   const admission = admissionSnapshot();
   const retryTotal = Object.values(retrySnapshot()).reduce((a, b) => a + b, 0);
+  // Redis is optional and fail-open, so the operator needs to see WHICH mode we
+  // are actually in — a silent degrade is the whole design, and a silent degrade
+  // nobody can observe is how you run for a month on per-container limits while
+  // believing they are shared. Defaulted, never awaited: this card must not be
+  // able to 500 the system page.
+  const redis = (() => {
+    try { return redisHealth(); }
+    catch { return { configured: false, enabled: false, urlPresent: false, connected: false, clientStatus: "none", subscribed: false, breakerOpen: false, lastError: null, subscriberError: null, consecutiveFailures: 0 }; }
+  })();
   const liveMarkets = await listMarkets({ status: "LIVE" }).then(l => l.length).catch(() => 0);
   const resolvedMarkets = await listMarkets({ status: "RESOLVED" }).then(l => l.length).catch(() => 0);
   // F11 — is settlement actually happening? Degrade to an empty (not fabricated)
@@ -121,6 +131,53 @@ export default async function AdminSystemPage() {
               <> {retryTotal.toLocaleString()} transient DB {retryTotal === 1 ? "failure was" : "failures were"} retried and recovered.</>
             ) : null}
             {" "}Counters are per-container and reset on deploy.
+          </p>
+          {/* Redis posture. Bets never touch Redis either way — stated plainly so
+              nobody reads a red badge here as a betting incident. */}
+          <p className="mt-2 text-[12px] text-text-muted">
+            <strong className="text-text">Redis</strong>{" · "}
+            {!redis.configured ? (
+              redis.urlPresent ? (
+                // Arming takes TWO keys. An operator who wired REDIS_URL (the
+                // Railway service reference, or the Cloudflare runbook step) will
+                // otherwise assume the layer is live when it is deliberately inert.
+                <span>URL set but REDIS_ENABLED is not &quot;true&quot; — inert by design. Rate limits and SSE are per-container. Bets are unaffected.</span>
+              ) : (
+                <span>not configured — rate limits and SSE are per-container. Bets are unaffected.</span>
+              )
+            ) : redis.breakerOpen ? (
+              <span className="text-danger">
+                configured, but the fail-open breaker is OPEN after {redis.consecutiveFailures} consecutive
+                failures — degraded to per-container limits and SSE. Bets are unaffected.
+              </span>
+            ) : redis.clientStatus === "end" ? (
+              // `end` shows 0 failures and 0 breaker trips because no command is
+              // ever attempted again — it reads healthy unless we name it.
+              <span className="text-danger">
+                client has ENDED and is not reconnecting — degraded to per-container limits and SSE until this
+                container restarts. Bets are unaffected.
+              </span>
+            ) : redis.connected ? (
+              redis.subscribed ? (
+                <span className="text-success">
+                  connected — rate limits and SSE fan-out are shared across containers. Never on the bet path.
+                </span>
+              ) : (
+                // Command client healthy, pub/sub subscribed to nothing: shared
+                // limits work, real-time updates do not. Distinct states, distinct copy.
+                <span className="text-warning">
+                  connected for rate limits, but SSE fan-out is NOT subscribed — real-time updates stay
+                  per-container. Bets are unaffected.
+                </span>
+              )
+            ) : (
+              <span className="text-warning">
+                configured but not connected — degraded to per-container limits and SSE. Bets are unaffected.
+              </span>
+            )}
+            {redis.configured && redis.lastError ? (
+              <> {" "}Last error: <span className="font-mono">{redis.lastError.slice(0, 80)}</span>.</>
+            ) : null}
           </p>
         </AdminCard>
 
@@ -375,7 +432,10 @@ export default async function AdminSystemPage() {
           </AdminCard>
         </div>
 
-        {/* Rate-limit observability */}
+        {/* Rate-limit observability. This is THIS container's mirror of the
+            buckets it has itself evaluated. Under Redis the authoritative budget
+            is shared across containers; this table stays the honest local view
+            rather than pretending to be a platform-wide total. */}
         <AdminCard title="Rate limiter · live buckets" sw="Vikomo vya mara · token-bucket per (action, key)">
           {buckets.length === 0 ? (
             <p className="text-caption text-text-tertiary py-4 text-center">No active rate-limit buckets — system is idle.</p>
@@ -424,7 +484,9 @@ export default async function AdminSystemPage() {
               Audit chain → same HMAC scheme persisted as <code>prevHash</code> + <code>entryHash</code> columns;
               nightly cron re-verifies the entire chain and pages on-call if a break is detected.
               Markets are AI-generated; the SMS adapter is env-switched (<code>SMS_PROVIDER</code>);
-              rate-limit buckets are in-process today and become Redis cluster in production.
+              rate-limit buckets evaluate in Redis when <code>REDIS_URL</code> is set (one shared budget
+              across containers) and fall back to in-process buckets whenever it is not — see the Redis
+              line on the Bet queue card for which mode is live right now.
             </p>
           </div>
         </AdminCard>

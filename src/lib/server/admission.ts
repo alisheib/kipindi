@@ -36,6 +36,10 @@
  *  4. Redis is NEVER on this path. Admission is in-process and synchronous by
  *     design — a Redis hiccup must not be able to stop bets. Telemetry is
  *     exported for the operator card, but nothing here awaits a network call.
+ *     Still true after Redis landed (2026-07-19): this file imports no client,
+ *     and the bet-path rate-limit checks in market-service deliberately stayed
+ *     on the synchronous in-memory bucket so nothing inside a slot can block on
+ *     a socket. Enforced by a test in scripts/redis-failopen.test.mts.
  */
 
 import { AsyncLocalStorage } from "node:async_hooks";

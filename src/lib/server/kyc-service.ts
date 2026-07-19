@@ -18,7 +18,7 @@ import type { StoredUser, KycExtraRequest } from "./store";
 import { randomId } from "./crypto";
 import { putKycDocument } from "./storage";
 import { verifyNida } from "./nida";
-import { rateCheck } from "./rate-limit";
+import { rateCheckAsync } from "./rate-limit";
 import { KycNidaSchema } from "./validators";
 import type { z } from "zod";
 import type { ServiceResult } from "./auth-service";
@@ -98,7 +98,7 @@ export async function startKyc(userId: string): Promise<ServiceResult<{ kycId: s
 }
 
 export async function submitNidaStep(userId: string, input: z.input<typeof KycNidaSchema>): Promise<ServiceResult<{ verified: boolean; reason?: string }>> {
-  const rl = rateCheck(userId, "kyc.submit");
+  const rl = await rateCheckAsync(userId, "kyc.submit");
   if (!rl.allowed) return { ok: false, error: "Too many attempts.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
 
   const parse = KycNidaSchema.safeParse(input);

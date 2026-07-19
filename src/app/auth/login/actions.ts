@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { loginWithPassword, requestLoginOtp, verifyOtpAndAuth, completeTwoFactorLogin } from "@/lib/server/auth-service";
 import { signSession, verifySession } from "@/lib/server/crypto";
-import { rateCheck } from "@/lib/server/rate-limit";
+import { rateCheckAsync } from "@/lib/server/rate-limit";
 import { verifyPlayer2faChallenge } from "@/lib/server/player-2fa";
 
 /** Short-lived, HMAC-signed pre-session token proving the password step passed. */
@@ -86,7 +86,7 @@ export async function verifyLogin2faAction(formData: FormData) {
   }
   const userId = payload!.uid!;
   const nextParam = safeNext ? `&next=${encodeURIComponent(safeNext)}` : "";
-  const rl = rateCheck(userId, "totp.verify");
+  const rl = await rateCheckAsync(userId, "totp.verify");
   if (!rl.allowed) {
     redirect((`/auth/2fa?error=rate_limited${nextParam}`) as never);
   }

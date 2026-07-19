@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
-import { rateCheck } from "@/lib/server/rate-limit";
+import { rateCheckAsync } from "@/lib/server/rate-limit";
 import {
   generateAIPoll,
   generateAIPollBatch,
@@ -92,7 +92,7 @@ export async function generatePollBatchAction(formData: FormData) {
   // Per-officer rate-limit: a batch fires up to 200 paid AI generations, so cap
   // how often it can be triggered (caps runaway Anthropic spend within the
   // trusted-admin boundary).
-  const rl = rateCheck(officerId, "ai.batch");
+  const rl = await rateCheckAsync(officerId, "ai.batch");
   if (!rl.allowed) {
     return { ok: false as const, error: `Too many batch generations — wait ${rl.retryAfterSec}s before the next batch.` };
   }

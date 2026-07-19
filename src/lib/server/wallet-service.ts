@@ -17,7 +17,7 @@ import { randomId } from "./crypto";
 import { dispatchDeposit, dispatchWithdrawal, verifyDepositStatus, verifyWithdrawalStatus, type CardCheckoutContext } from "./payments";
 import { isPaymentPaused } from "./payment-ops";
 import { isMaintenanceMode, maintenanceMessage } from "./platform-config";
-import { rateCheck } from "./rate-limit";
+import { rateCheckAsync } from "./rate-limit";
 import { DepositSchema, AdminDepositSchema, WithdrawSchema } from "./validators";
 import { checkDepositLimit, isLockedOut } from "./responsible-gambling";
 import { notifyDeposit, notifyWithdraw, notifyAdminsAmlReview } from "./notification-service";
@@ -39,7 +39,7 @@ export async function deposit(
    *  checkout. Ignored on the mobile-money rails, which push to the handset. */
   card?: CardCheckoutContext,
 ): Promise<ServiceResult<{ txnId: string; status: StoredTxn["status"]; balance: number; redirectUrl?: string }>> {
-  const rl = rateCheck(userId, "wallet.deposit");
+  const rl = await rateCheckAsync(userId, "wallet.deposit");
   if (!rl.allowed) return { ok: false, error: "Too many deposit attempts.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
 
   // Idempotency: if this key was already used, return the existing txn result.
@@ -792,7 +792,7 @@ export async function notifyStillPendingDeposits(olderThanMs = 30 * 60 * 1000): 
  * 85,000. Taxes are only ever on OUR commission (see payments.ts).
  */
 export async function withdraw(userId: string, input: z.input<typeof WithdrawSchema>, idempotencyKey?: string): Promise<ServiceResult<{ txnId: string; status: StoredTxn["status"]; fee: number; net: number }>> {
-  const rl = rateCheck(userId, "wallet.withdraw");
+  const rl = await rateCheckAsync(userId, "wallet.withdraw");
   if (!rl.allowed) return { ok: false, error: "Too many withdrawal attempts.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
 
   // Idempotency: if this key was already used, return the existing txn result.

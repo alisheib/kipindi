@@ -11,7 +11,7 @@ import { headers } from "next/headers";
 import { audit } from "./audit";
 import { db } from "./store";
 import { generateOtp, hashOtp, hashPassword, randomId, verifyOtp, verifyPassword } from "./crypto";
-import { rateCheck } from "./rate-limit";
+import { rateCheckAsync } from "./rate-limit";
 import { sms, otpMessage } from "./sms";
 import { LoginRequestSchema, OtpVerifySchema, RegisterSchema, emailAddress } from "./validators";
 import type { z } from "zod";
@@ -81,7 +81,7 @@ export async function requestLoginOtp(input: z.input<typeof LoginRequestSchema>)
   const phone = parse.data.phone;
   const meta = await clientMeta();
 
-  const rl = rateCheck(phone, "otp.send");
+  const rl = await rateCheckAsync(phone, "otp.send");
   if (!rl.allowed) {
     audit({ category: "SECURITY", action: "otp.rate_limited", actorId: null, targetType: "Phone", targetId: maskPhoneForAudit(phone), payload: { ip: meta.ip } });
     return { ok: false, error: "Too many attempts. Please wait · Subiri kidogo.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
@@ -108,7 +108,7 @@ export async function requestLoginOtp(input: z.input<typeof LoginRequestSchema>)
   // Hard ~30s spacing between sends, on top of the otp.send burst cap. Protects
   // against SMS-pumping / toll fraud on a paid provider and drives the resend
   // countdown shown to the user.
-  const cool = rateCheck(phone, "otp.resend");
+  const cool = await rateCheckAsync(phone, "otp.resend");
   if (!cool.allowed) {
     return { ok: false, error: `Please wait ${cool.retryAfterSec}s before requesting another code.`, code: "RATE_LIMITED", retryAfterSec: cool.retryAfterSec };
   }
@@ -123,7 +123,7 @@ export async function requestRegisterOtp(input: z.input<typeof RegisterSchema>):
   const meta = await clientMeta();
   const phone = parse.data.phone;
 
-  const rl = rateCheck(phone, "auth.register");
+  const rl = await rateCheckAsync(phone, "auth.register");
   if (!rl.allowed) return { ok: false, error: "Too many attempts.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
 
   const existing = await db.user.findByPhone(phone);
@@ -206,7 +206,7 @@ export async function verifyOtpAndAuth(input: z.input<typeof OtpVerifySchema>): 
   const { phone, code, purpose } = parse.data;
   const meta = await clientMeta();
 
-  const rl = rateCheck(phone, "otp.verify");
+  const rl = await rateCheckAsync(phone, "otp.verify");
   if (!rl.allowed) return { ok: false, error: "Too many attempts.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
 
   // Try ALL active OTPs for this phone+purpose, not just the most recent.
@@ -394,13 +394,13 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
   const phone = baseParse.data.phone;
   const meta = await clientMeta();
 
-  const rl = rateCheck(phone, "auth.register");
+  const rl = await rateCheckAsync(phone, "auth.register");
   if (!rl.allowed) return { ok: false, error: "Too many attempts. Please wait.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
 
   // Per-IP cap on registration to block credential-stuffing / mass-fake-account
   // bursts from a single source. Looser than the per-phone cap.
   if (meta.ip) {
-    const rlIp = rateCheck(meta.ip, "auth.register.ip");
+    const rlIp = await rateCheckAsync(meta.ip, "auth.register.ip");
     if (!rlIp.allowed) {
       audit({ category: "SECURITY", action: "register.ip_rate_limited", actorId: null, targetType: "Ip", targetId: meta.ip });
       return { ok: false, error: "Too many sign-ups from this network. Please try again later.", code: "RATE_LIMITED", retryAfterSec: rlIp.retryAfterSec };
@@ -637,10 +637,10 @@ export async function loginWithPassword(input: PasswordLoginInput): Promise<Serv
     : maskPhoneForAudit(resolved.value);
   const meta = await clientMeta();
 
-  const rl = rateCheck(lookupKey, "auth.login");
+  const rl = await rateCheckAsync(lookupKey, "auth.login");
   if (!rl.allowed) return { ok: false, error: "Too many attempts. Please wait.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
   if (meta.ip) {
-    const rlIp = rateCheck(meta.ip, "auth.login.ip");
+    const rlIp = await rateCheckAsync(meta.ip, "auth.login.ip");
     if (!rlIp.allowed) {
       audit({ category: "SECURITY", action: "login.ip_rate_limited", actorId: null, targetType: "Ip", targetId: meta.ip });
       return { ok: false, error: "Too many sign-in attempts from this network. Please try again later.", code: "RATE_LIMITED", retryAfterSec: rlIp.retryAfterSec };

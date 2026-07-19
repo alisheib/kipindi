@@ -16,7 +16,7 @@ import { db } from "@/lib/server/store";
 import { currentSession } from "@/lib/server/auth-service";
 import { audit } from "@/lib/server/audit";
 import { setUserEmail, sendEmailVerification } from "@/lib/server/email-verification";
-import { rateCheck } from "@/lib/server/rate-limit";
+import { rateCheckAsync } from "@/lib/server/rate-limit";
 
 const MAX_AVATAR_BYTES = 96 * 1024; // 96 KB after client-side resize
 
@@ -92,7 +92,7 @@ export async function resendEmailVerificationAction(): Promise<{ ok: true; sent:
   // signed-in account to flood a third party's inbox with our mail (and burn our
   // sending reputation). Checked AFTER the already-confirmed no-op so a harmless
   // repeat tap on a verified account never eats budget.
-  const rl = rateCheck(session.userId, "email.verify.resend");
+  const rl = await rateCheckAsync(session.userId, "email.verify.resend");
   if (!rl.allowed) {
     return { ok: false, error: "RATE_LIMITED", retryAfterSec: Math.max(1, Math.ceil(rl.retryAfterSec ?? 60)) };
   }

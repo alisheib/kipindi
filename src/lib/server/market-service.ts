@@ -344,6 +344,15 @@ export async function buyPosition(userId: string, opts: BuyOpts): Promise<BuyRes
 }
 
 async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResult> {
+  // SYNCHRONOUS rateCheck, NOT rateCheckAsync — deliberate, and load-bearing.
+  // We are already inside an admission slot here (withAdmission →
+  // withTransientRetry → this), so awaiting a Redis round trip would hold one of
+  // the ~16 scarce slots for up to a command timeout on every bet. A slow Redis
+  // would throttle bet throughput platform-wide, which is exactly what
+  // admission.ts invariant 4 forbids. The bet path keeps the in-process bucket:
+  // it is per-container and therefore looser under multi-instance, and that is
+  // the correct trade — a burst-control on betting is far less important than a
+  // bet never waiting on a cache. Every other action uses rateCheckAsync.
   const rl = rateCheck(userId, "bet.place");
   if (!rl.allowed) return { ok: false, error: "Slow down.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
 
@@ -1248,6 +1257,9 @@ export async function cashOutPosition(
   userId: string,
   positionId: string,
 ): Promise<ServiceResult<{ value: number; balance: number }>> {
+  // Synchronous by design, same reason as buyPositionInner above: cash-out runs
+  // under admission too, and Redis must never be able to slow a player's exit
+  // from a position.
   const rl = rateCheck(userId, "bet.cashout");
   if (!rl.allowed) return { ok: false, error: "Slow down.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
 

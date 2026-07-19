@@ -18,6 +18,7 @@ import { checkAdminTotp } from "@/lib/server/admin-guard";
 import { db } from "@/lib/server/store";
 import { admissionSnapshot } from "@/lib/server/admission";
 import { retrySnapshot } from "@/lib/server/retry";
+import { redisHealth } from "@/lib/server/redis";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -43,22 +44,37 @@ export async function GET() {
   }
 
   const snap = admissionSnapshot();
+  // Real health from the client itself, not a guess from the env var. The
+  // previous stub in this file reported only whether REDIS_URL was SET, which
+  // would have shown a green "configured" against a Redis that had been
+  // unreachable for hours — the operator needs `connected` and `breakerOpen` to
+  // tell "cross-container limits are live" from "we quietly fell back".
+  const redis = redisHealth();
   return NextResponse.json({
     ok: true,
     scope: "this container only — counters are in-process",
     admission: snap,
     retries: retrySnapshot(),
-    redis: redisHealth(),
+    redis: {
+      ...redis,
+      note: !redis.configured
+        ? redis.urlPresent
+          // Two keys arm the layer. Say which one is missing, or an operator who
+          // set the URL reasonably assumes it is live.
+          ? "REDIS_URL is set but REDIS_ENABLED is not \"true\" — the layer is inert by design. Rate limits and SSE are per-container."
+          : "REDIS_URL not set — rate limits and SSE are per-container. Bets are unaffected either way."
+        : redis.breakerOpen
+          ? "Redis configured but the fail-open breaker is OPEN — degraded to per-container behaviour. Bets are unaffected."
+          : redis.clientStatus === "end"
+            ? "Redis client has ENDED and is not reconnecting — degraded to per-container behaviour until the container restarts. Bets are unaffected."
+            : redis.connected
+              // Connected is NOT the same as fanning out. A subscriber that is
+              // 'ready' but subscribed to nothing looks identical from the
+              // command client's side, so report the two independently.
+              ? redis.subscribed
+                ? "REDIS_ENABLED and connected — cross-container rate limits and SSE fan-out are live. Never on the bet path."
+                : "Connected — cross-container rate limits are live, but SSE fan-out is NOT subscribed. Real-time updates are per-container."
+              : "Redis armed but not connected — degraded to per-container behaviour. Bets are unaffected.",
+    },
   });
-}
-
-/** Redis is optional and fail-open; report it honestly rather than implying health. */
-function redisHealth(): { configured: boolean; note: string } {
-  const configured = !!process.env.REDIS_URL;
-  return {
-    configured,
-    note: configured
-      ? "REDIS_URL set — used for cross-container rate limits and SSE fan-out only, never the bet path"
-      : "REDIS_URL not set — rate limits and SSE are per-container. Bets are unaffected either way.",
-  };
 }

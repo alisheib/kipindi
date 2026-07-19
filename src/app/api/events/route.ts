@@ -14,10 +14,12 @@
  * Wire format per event:
  *   data: {"type":"wallet:balance","data":{"userId":"...","balance":1234}}
  *
- * No external dependencies — uses native ReadableStream + EventEmitter.
+ * Uses native ReadableStream + the process event bus. When REDIS_URL is set the
+ * bus additionally fans out across containers (see event-bus.ts) — this route
+ * needs no knowledge of that; `subscribe()` hides it and works either way.
  */
 import { getSession } from "@/lib/server/session";
-import { eventBus, type SseEventMap, type SseEventType } from "@/lib/server/event-bus";
+import { subscribe, type SseEventType } from "@/lib/server/event-bus";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -76,28 +78,34 @@ export async function GET() {
       }, 15_000);
 
       // ── Event listeners ────────────────────────────────────────────
-      const handlers: Array<{ event: SseEventType; fn: (data: unknown) => void }> = [];
+      // subscribe() hands back its own disposer, so the handler identity we
+      // registered can never drift from the one we remove — a mismatch would
+      // leak a listener per disconnected client and, on a bus capped at 500,
+      // eventually break the stream for everyone.
+      const unsubscribes: Array<() => void> = [];
 
       for (const event of ALL_EVENTS) {
-        const fn = (data: unknown) => {
+        unsubscribes.push(subscribe(event, (data) => {
           // User-scoped events: only forward if the payload belongs to
           // this session's user.
+          // `?? {}` because with Redis fan-out on, `data` arrives off the wire
+          // from another container. event-bus.ts validates the shape, but this
+          // dereference must not be the thing that depends on it: a null payload
+          // here threw inside EventEmitter's synchronous dispatch, which skips
+          // every listener registered after this one — i.e. one malformed frame
+          // dropped the event for every other connected client on the container.
           if (USER_SCOPED.has(event)) {
-            const payload = data as { userId?: string };
+            const payload = (data ?? {}) as { userId?: string };
             if (payload.userId !== userId) return;
           }
           send(JSON.stringify({ type: event, data }));
-        };
-        eventBus.on(event, fn);
-        handlers.push({ event, fn });
+        }));
       }
 
       // ── Cleanup on disconnect ──────────────────────────────────────
       cleanup = () => {
         clearInterval(heartbeat);
-        for (const { event, fn } of handlers) {
-          eventBus.removeListener(event, fn);
-        }
+        for (const off of unsubscribes) off();
       };
     },
 

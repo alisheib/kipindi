@@ -1,7 +1,7 @@
 "use server";
 
 import { getSession } from "@/lib/server/session";
-import { rateCheck } from "@/lib/server/rate-limit";
+import { rateCheckAsync } from "@/lib/server/rate-limit";
 import { loadConfig, saveConfig } from "@/lib/server/config-store";
 import { SUPPORT_EMAIL, SUPPORT_PHONE } from "@/lib/support-config";
 
@@ -123,7 +123,7 @@ export async function chatWithClaude(
   if (!session) return null;
 
   // Burst rate limit — prevent rapid-fire spamming of the API.
-  const rl = rateCheck(session.userId, "chat.send");
+  const rl = await rateCheckAsync(session.userId, "chat.send");
   if (!rl.allowed) return null;
 
   // Hard daily cap — once reached, return the capacity message and do NOT
