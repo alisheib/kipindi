@@ -265,11 +265,16 @@ async function makeMarket(title: string): Promise<string> {
     `failures=${h.consecutiveFailures} open=${h.breakerOpen}`);
   ok("E: lastError captured for the operator card", typeof h.lastError === "string" && h.lastError.length > 0);
 
-  // With the breaker open, calls must short-circuit — 50 of them in a few ms.
+  // With the breaker open, calls must short-circuit instead of each paying the
+  // 1s commandTimeout. The bound is deliberately LOOSE: without the breaker these
+  // 50 calls would take ~50 SECONDS, so anything in the low seconds still proves
+  // the point by a factor of 25+. A tight bound (this was 250ms) measures the CI
+  // runner's mood rather than our code, and a money platform's CI that cries wolf
+  // is worse than no CI — people stop reading it.
   const t0 = Date.now();
   for (let i = 0; i < 50; i++) await withRedis(async (r) => r.ping(), null);
   const elapsed = Date.now() - t0;
-  ok("E: breaker-open calls are effectively free", elapsed < 250, `${elapsed}ms for 50 calls`);
+  ok("E: breaker-open calls short-circuit (not 50x commandTimeout)", elapsed < 2_000, `${elapsed}ms for 50 calls`);
 
   // And the limiter keeps working through an open breaker.
   const r = await rateCheckAsync("rf_breaker_key", "chat.send");
@@ -346,7 +351,9 @@ async function makeMarket(title: string): Promise<string> {
   // Not merely successful — UNSLOWED. If a bet ever awaited Redis, 20 bets would
   // cost 20 × commandTimeout (1s) at minimum. This is the timing proof that the
   // bet path never awaits a socket.
-  ok("G: bets were not slowed by the dead cache", elapsed < 5_000, `${elapsed}ms for ${N} bets`);
+  // 20 bets awaiting Redis would cost >= 20s (20 x the 1s commandTimeout), so a
+  // 10s bound still proves it by 2x while surviving a slow shared CI runner.
+  ok("G: bets were not slowed by the dead cache", elapsed < 10_000, `${elapsed}ms for ${N} bets`);
 }
 
 // ════════════════════════════════════════════════════════════════════════════
