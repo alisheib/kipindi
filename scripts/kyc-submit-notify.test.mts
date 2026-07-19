@@ -23,9 +23,13 @@ console.log = (...a: unknown[]) => { logs.push(a.map(String).join(" ")); };
 const flush = () => new Promise((r) => setTimeout(r, 60)); // let fire-and-forget sends settle
 const clearLogs = () => { logs = []; };
 
+let phoneSeq = 0;
 async function mkUser(id: string, status: string, role: string, opts: { email?: string | null; displayName?: string | null } = {}) {
   await db.user.create({
-    id, phoneE164: `+25570000${id.slice(-4)}`, passwordHash: null, passwordSalt: null, failedLoginCount: 0, lockedUntil: null,
+    // Monotonic, NOT `id.slice(-4)` — that collided across ids sharing their last
+    // four characters. The in-memory Map keys on id and never noticed; Postgres
+    // rejects it on the phoneE164 unique index.
+    id, phoneE164: `+25571${String(++phoneSeq).padStart(6, "0")}`, passwordHash: null, passwordSalt: null, failedLoginCount: 0, lockedUntil: null,
     role: role as never, status: status as never, locale: "EN", displayName: opts.displayName ?? ("Handle " + id.slice(-3)),
     dob: "1990-01-01", region: "TZ", acceptedTermsVersion: "v1", acceptedTermsAt: now, marketingOptIn: false, twoFactorEnabled: false,
     avatarDataUrl: null, email: opts.email ?? null, emailVerifiedAt: null, createdAt: now, updatedAt: now, lastLoginAt: now, closedAt: null,

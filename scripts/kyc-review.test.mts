@@ -4,8 +4,14 @@ import { db } from "../src/lib/server/store.ts";
 let pass=0, fail=0; const ok=(l,c,x="")=>{ c?pass++:fail++; console.log(`${c?"PASS":"FAIL"} ${l} ${x}`); };
 const now = new Date().toISOString();
 
+// Monotonic, NOT derived from the id: `id.slice(-4)` collided
+// ("usr_officer0001" and "usr_p0001" both end "0001"), which the in-memory Map
+// never noticed because it keys on id, while Postgres rejects it on the
+// phoneE164 unique index. That collision is why this suite could not run
+// against a real database.
+let phoneSeq = 0;
 async function mkUser(id, status, email=null) {
-  await db.user.create({ id, phoneE164:`+25570000${id.slice(-4)}`, passwordHash:null, passwordSalt:null, failedLoginCount:0, lockedUntil:null, role:"PLAYER", status, locale:"EN", displayName:"Test "+id.slice(-3), dob:"1990-01-01", region:"TZ", acceptedTermsVersion:"v1", acceptedTermsAt:now, marketingOptIn:false, twoFactorEnabled:false, avatarDataUrl:null, email, createdAt:now, updatedAt:now, lastLoginAt:now, closedAt:null });
+  await db.user.create({ id, phoneE164:`+25570${String(++phoneSeq).padStart(6,"0")}`, passwordHash:null, passwordSalt:null, failedLoginCount:0, lockedUntil:null, role:"PLAYER", status, locale:"EN", displayName:"Test "+id.slice(-3), dob:"1990-01-01", region:"TZ", acceptedTermsVersion:"v1", acceptedTermsAt:now, marketingOptIn:false, twoFactorEnabled:false, avatarDataUrl:null, email, createdAt:now, updatedAt:now, lastLoginAt:now, closedAt:null });
 }
 async function mkKyc(userId, status) {
   await db.kyc.upsert({ id:`kyc_${userId}`, userId, status, rejectReason:null, rejectNote:null, nidaNumber:"19900101", nidaVerifiedAt:now, fullName:"Jay Tester", dob:"1990-01-01", documents:[{docType:"NIDA_FRONT",storageKey:"a",uploadedAt:now},{docType:"NIDA_BACK",storageKey:"b",uploadedAt:now},{docType:"SELFIE",storageKey:"c",uploadedAt:now}], reviewerId:null, reviewedAt:null, submittedAt:now, createdAt:now, updatedAt:now });

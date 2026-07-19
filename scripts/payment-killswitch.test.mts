@@ -22,7 +22,11 @@ async function mkUser(id: string): Promise<void> {
     id, phoneE164: `+25596${String(++seq).padStart(7, "0")}`, passwordHash: null, passwordSalt: null,
     failedLoginCount: 0, lockedUntil: null, role: "PLAYER", status: "ACTIVE", locale: "EN",
     displayName: null, dob: null, region: null, acceptedTermsVersion: null, acceptedTermsAt: null,
-    marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null, email: `${id}@test.tz`, emailVerifiedAt: now,
+    // now(), not `now` — passing the FUNCTION made the in-memory Map store a
+    // function where a timestamp belonged (it never complains), while Prisma
+    // rejected it as an invalid Date. That is why this suite could never run
+    // against a real database.
+    marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null, email: `${id}@test.tz`, emailVerifiedAt: now(),
     createdAt: now(), updatedAt: now(), lastLoginAt: null, closedAt: null,
   } as never);
   await db.wallet.create({ id: `wal_${id}`, userId: id, balance: 500_000, pending: 0, hold: 0, currency: "TZS", status: "ACTIVE", createdAt: now(), updatedAt: now() } as StoredWallet);
