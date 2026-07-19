@@ -109,6 +109,28 @@ export interface MarketStore {
   // movement, so a mid-bet failure rolls the pool increment back with the debit.
   // Ignored by the in-memory store (same contract as PositionStore.set below).
   set(m: StoredMarket, tx?: Prisma.TransactionClient | null): Promise<void>;
+  /**
+   * Narrow UPDATE of ONLY the named columns.
+   *
+   * `set` is a FULL-ROW upsert whose update block rewrites yesPool/noPool/
+   * predictorCount unconditionally. Every sweep that merely stamps a timestamp on
+   * a LIVE market used to read the row, spread it, and write the whole thing
+   * back — so a bet that incremented the pool between that read and that write
+   * had its stake ERASED. The market advisory lock was the only thing preventing
+   * it. Stamping narrowly removes the lost-update window itself, which is what
+   * makes it safe to stop taking the market lock on the bet path.
+   */
+  stamp(id: string, fields: Partial<StoredMarket>, tx?: Prisma.TransactionClient | null): Promise<void>;
+  /**
+   * Atomic pool delta — `yesPool`/`noPool`/`predictorCount` by increment, never
+   * by read-modify-write. Mirrors db.wallet.adjust: the database computes the new
+   * value, so concurrent writers cannot clobber each other.
+   */
+  addToPool(
+    id: string,
+    deltas: { yesPool?: number; noPool?: number; predictorCount?: number },
+    tx?: Prisma.TransactionClient | null,
+  ): Promise<{ yesPool: number; noPool: number } | null>;
   delete(id: string): Promise<void>;
   has(id: string): Promise<boolean>;
   values(): Promise<StoredMarket[]>;
@@ -136,6 +158,21 @@ export interface PositionStore {
 const memoryMarkets: MarketStore = {
   async get(id, _tx) { return markets.get(id) ?? null; },
   async set(m, _tx) { markets.set(m.id, m); },
+  async stamp(id, fields, _tx) {
+    const cur = markets.get(id);
+    if (cur) markets.set(id, { ...cur, ...fields });
+  },
+  async addToPool(id, deltas, _tx) {
+    const cur = markets.get(id);
+    if (!cur) return null;
+    // The in-memory Map is single-process and every caller is serialized by the
+    // in-memory mutex, so a read-modify-write is safe HERE (it is not on Postgres).
+    cur.yesPool += deltas.yesPool ?? 0;
+    cur.noPool += deltas.noPool ?? 0;
+    cur.predictorCount += deltas.predictorCount ?? 0;
+    cur.updatedAt = new Date().toISOString();
+    return { yesPool: cur.yesPool, noPool: cur.noPool };
+  },
   async delete(id) { markets.delete(id); },
   async has(id) { return markets.has(id); },
   async values() { return Array.from(markets.values()); },
@@ -170,10 +207,59 @@ function pc() {
   return c;
 }
 
+/** Columns `stamp` is allowed to write, and how to coerce each to a DB value.
+ *  An allowlist rather than a spread so `stamp` can never be handed a whole
+ *  StoredMarket and quietly become the full-row write it exists to replace. */
+const STAMPABLE: Record<string, (v: unknown) => unknown> = {
+  status: (v) => v,
+  resolvedOutcome: (v) => v,
+  resolutionEvidence: (v) => v,
+  resolutionStage1By: (v) => v,
+  resolutionStage2By: (v) => v,
+  settledAt: (v) => (v ? new Date(v as string) : null),
+  resolutionStage1At: (v) => (v ? new Date(v as string) : null),
+  resolutionStage2At: (v) => (v ? new Date(v as string) : null),
+  objectionsClosedAt: (v) => (v ? new Date(v as string) : null),
+  resolutionNotifiedAt: (v) => (v ? new Date(v as string) : null),
+  selectionClosedNotifiedAt: (v) => (v ? new Date(v as string) : null),
+  closingSoonNotifiedAt: (v) => (v ? new Date(v as string) : null),
+  selectionClosedAt: (v) => (v ? new Date(v as string) : null),
+  sentinelOutcome: (v) => v,
+  sentinelEvidence: (v) => v,
+  sentinelReasoning: (v) => v,
+  sentinelSourceUrl: (v) => v,
+  sentinelConfidence: (v) => v,
+  sentinelClosedAt: (v) => (v ? new Date(v as string) : null),
+  updatedAt: (v) => (v ? new Date(v as string) : new Date()),
+};
+
 const prismaMarkets: MarketStore = {
   async get(id, tx) {
     const r = await (tx ?? pc()).predictionMarket.findUnique({ where: { id } });
     return r ? toStoredMarket(r) : null;
+  },
+  async stamp(id, fields, tx) {
+    const data: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(fields)) {
+      const coerce = STAMPABLE[k];
+      if (!coerce) throw new Error(`marketStore.stamp: '${k}' is not a stampable column (pool/title fields must not be written this way)`);
+      data[k] = coerce(v);
+    }
+    if (Object.keys(data).length === 0) return;
+    if (!("updatedAt" in data)) data.updatedAt = new Date();
+    await (tx ?? pc()).predictionMarket.update({ where: { id }, data });
+  },
+  async addToPool(id, deltas, tx) {
+    const data: Record<string, unknown> = { updatedAt: new Date() };
+    if (deltas.yesPool !== undefined) data.yesPool = { increment: deltas.yesPool };
+    if (deltas.noPool !== undefined) data.noPool = { increment: deltas.noPool };
+    if (deltas.predictorCount !== undefined) data.predictorCount = { increment: deltas.predictorCount };
+    // RETURNING, not updateMany: recordSnapshot and the SSE odds push need the
+    // TRUE committed pools, not the values this caller believed it was writing.
+    const row = await (tx ?? pc()).predictionMarket.update({
+      where: { id }, data, select: { yesPool: true, noPool: true },
+    });
+    return { yesPool: num(row.yesPool), noPool: num(row.noPool) };
   },
   async set(m, tx) {
     await (tx ?? pc()).predictionMarket.upsert({

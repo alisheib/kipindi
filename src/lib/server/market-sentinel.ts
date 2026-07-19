@@ -486,8 +486,10 @@ export async function runSentinelSweep(opts?: { force?: boolean }): Promise<Sent
     }
 
     // HIGH CONFIDENCE: outcome locked — close market + store AI recommendation.
-    // Lock the market to prevent a concurrent buyPosition from having its pool
-    // increment overwritten by the sentinel's read-modify-write.
+    // The lock still serialises the status re-check, but the WRITE is now a narrow
+    // stamp: this is the LIVE→CLOSED transition, so bets may be committing
+    // concurrently, and the full-row write this used to do rewrote yesPool/noPool
+    // from a snapshot read moments earlier — silently erasing those stakes.
     try {
       await withLock(`market:${item.market.id}`, async () => {
         const fresh = await marketStore.get(item.market.id);
@@ -495,16 +497,18 @@ export async function runSentinelSweep(opts?: { force?: boolean }): Promise<Sent
           result.action = "skipped";
           return;
         }
-        fresh.status = "CLOSED";
-        fresh.updatedAt = new Date().toISOString();
-        // Store AI recommendation for the resolver queue
-        fresh.sentinelOutcome = result.outcome === "YES" || result.outcome === "NO" ? result.outcome : null;
-        fresh.sentinelEvidence = result.evidence?.slice(0, 500) || null;
-        fresh.sentinelReasoning = result.reasoning?.slice(0, 1000) || null;
-        fresh.sentinelSourceUrl = result.sourceUrl || null;
-        fresh.sentinelConfidence = result.confidence;
-        fresh.sentinelClosedAt = new Date().toISOString();
-        await marketStore.set(fresh);
+        const nowIso = new Date().toISOString();
+        await marketStore.stamp(item.market.id, {
+          status: "CLOSED",
+          updatedAt: nowIso,
+          // AI recommendation for the resolver queue
+          sentinelOutcome: result.outcome === "YES" || result.outcome === "NO" ? result.outcome : null,
+          sentinelEvidence: result.evidence?.slice(0, 500) || null,
+          sentinelReasoning: result.reasoning?.slice(0, 1000) || null,
+          sentinelSourceUrl: result.sourceUrl || null,
+          sentinelConfidence: result.confidence,
+          sentinelClosedAt: nowIso,
+        });
         result.action = "closed";
       });
 

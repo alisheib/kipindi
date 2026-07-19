@@ -24,7 +24,7 @@
  *                         entry and the chain verifies end-to-end.
  */
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
-import { createMarket, buyPosition, cashOutPosition, getMarket, resolveMarket, settleMarket, listPositionsForMarket, ratesFor } from "../src/lib/server/market-service.ts";
+import { createMarket, buyPosition, cashOutPosition, getMarket, resolveMarket, settleMarket, listPositionsForMarket, ratesFor, notifyClosingSoonMarkets, notifySelectionClosedMarkets, notifyDueMarketsForResolution } from "../src/lib/server/market-service.ts";
 import { poolFee } from "../src/lib/payout.ts";
 import { positionStore } from "../src/lib/server/market-dal.ts";
 import { getEffectiveConfig } from "../src/lib/server/market-config.ts";
@@ -289,6 +289,63 @@ ok("house take is positive (fees collected)", expectedHouseTake > 0, `house=${ex
     r1.ok && r2.ok ? `${r1.data!.positionId} vs ${r2.data!.positionId}` : "");
   ok("idempotent: debited exactly once", (await bal("idem_u")) === before - 12_000, `bal=${await bal("idem_u")} expected=${before - 12_000}`);
   await assertNoNegatives("after idempotent double-submit");
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// 12 · NO LOST STAKES — a market sweep running CONCURRENTLY with live betting
+//      must not erase a single shilling of pool.
+//
+//      marketStore.set is a FULL-ROW upsert. Every sweep that merely stamps a
+//      timestamp on a LIVE market used to read the row, spread it, and write the
+//      whole thing back — so any bet that incremented the pool between that read
+//      and that write had its stake silently ERASED. The market advisory lock was
+//      the ONLY thing standing between that and lost player money, which is why
+//      the lock cannot be dropped from the bet path until every such write is a
+//      narrow stamp or an atomic delta.
+//
+//      This law is PERMANENT. If it ever fails, a sweep has gone back to writing
+//      whole market rows and player stakes are being destroyed in production.
+// ════════════════════════════════════════════════════════════════════════════
+{
+  const N = 12;
+  const stake = 3_000;
+  // The closing-soon sweep only touches a LIVE market whose cutoff is inside
+  // CLOSING_SOON_WINDOW_MS (60 min); makeMarket() defaults to 7 days out.
+  const soon = await createMarket({
+    titleEn: "Sweep race market", titleSw: "Soko la majaribio", category: "macro",
+    sourceUrl: "https://bot.go.tz", resolutionCriterion: "Resolves at the official date.",
+    resolutionAt: new Date(Date.now() + 30 * 60_000).toISOString(), proposedBy: "test",
+  } as never);
+  marketIds.push(soon.id);
+
+  for (let i = 0; i < N; i++) await fundedUser(`sweep_u${i}`, 50_000);
+
+  // Fire the sweeps INTO the middle of the burst, not before or after it.
+  const bets = Array.from({ length: N }, (_, i) =>
+    buyPosition(`sweep_u${i}`, { marketId: soon.id, side: i % 2 ? "YES" : "NO", stake }),
+  );
+  const sweeps = [
+    notifyClosingSoonMarkets(),
+    notifySelectionClosedMarkets(),
+    notifyDueMarketsForResolution(),
+    notifyClosingSoonMarkets(),
+  ];
+  const [betResults] = await Promise.all([Promise.all(bets), Promise.all(sweeps)]);
+
+  const accepted = betResults.filter((r) => r.ok).length;
+  const m = (await getMarket(soon.id))!;
+  const positions = await listPositionsForMarket(soon.id);
+  const sumStakes = positions.reduce((s, p) => s + p.stake, 0);
+
+  ok("12: every bet placed during the sweep succeeded", accepted === N, `accepted=${accepted}/${N}`);
+  ok("12: pool == Σ stakes (no stake erased by the sweep)",
+    m.yesPool + m.noPool === sumStakes,
+    `pool=${m.yesPool + m.noPool} Σstakes=${sumStakes} drift=${m.yesPool + m.noPool - sumStakes}`);
+  ok("12: pool == accepted × stake", m.yesPool + m.noPool === accepted * stake,
+    `pool=${m.yesPool + m.noPool} expected=${accepted * stake}`);
+  ok("12: predictorCount matches positions", m.predictorCount === positions.length,
+    `count=${m.predictorCount} positions=${positions.length}`);
+  await assertNoNegatives("after sweep-vs-bets race");
 }
 
 // ════════════════════════════════════════════════════════════════════════════
