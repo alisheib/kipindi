@@ -44,7 +44,10 @@ async function seedDepositCap(userId: string, dailyDepositLimit: number): Promis
   await db.responsible.upsert({
     userId,
     dailyDepositLimit, weeklyDepositLimit: null, monthlyDepositLimit: null, dailyLossLimit: null,
-    sessionTimeLimitMin: null, realityCheckIntervalMin: null,
+    // realityCheckIntervalMin is NON-nullable (Int @default(30)); the old
+    // `null` here only survived because of the `as` cast below and the
+    // in-memory Map, and blew up on real Postgres.
+    sessionTimeLimitMin: null, realityCheckIntervalMin: 30,
     selfExclusionUntil: null, coolingOffUntil: null,
     pendingIncreaseTo: null, pendingIncreaseEffectiveAt: null,
     pendingWeeklyIncreaseTo: null, pendingWeeklyIncreaseEffectiveAt: null,

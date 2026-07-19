@@ -18,6 +18,16 @@ const now = new Date().toISOString();
 // `await` is load-bearing on Postgres: the in-memory DAL returns synchronously,
 // the Prisma twin returns a Promise. Without it this suite passes in memory and
 // tests nothing at all against a real database.
+// The User row must exist first: Postgres enforces Wallet_userId_fkey, the
+// in-memory Map does not. Without this the suite dies on a real database — i.e.
+// the atomic-wallet proof only ever ran where atomicity is trivially true.
+await db.user.create({
+  id: "usr_t", phoneE164: "+255960000001", passwordHash: null, passwordSalt: null,
+  failedLoginCount: 0, lockedUntil: null, role: "PLAYER", status: "ACTIVE", locale: "EN",
+  displayName: null, dob: null, region: null, acceptedTermsVersion: null, acceptedTermsAt: null,
+  marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null,
+  createdAt: now, updatedAt: now, lastLoginAt: null, closedAt: null,
+} as never);
 await db.wallet.create({ id: "wlt_t", userId: "usr_t", balance: 1000, pending: 0, hold: 0, currency: "TZS", status: "ACTIVE", createdAt: now, updatedAt: now });
 
 // 1. Credit applies a positive delta.

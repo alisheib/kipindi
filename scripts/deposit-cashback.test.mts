@@ -20,19 +20,20 @@ function ok(label: string, cond: boolean, extra?: string) {
 }
 
 const now = new Date().toISOString();
-function makePlayer(id: string) {
-  db.user.create({
+async function makePlayer(id: string) {
+  await db.user.create({
     id, phoneE164: `+25572000${id.slice(-4)}`, passwordHash: null, passwordSalt: null,
     failedLoginCount: 0, lockedUntil: null, role: "PLAYER", status: "ACTIVE", locale: "EN",
     displayName: null, dob: "1990-01-01", region: "TZ", acceptedTermsVersion: "v1", acceptedTermsAt: now,
     marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null, email: `${id}@t.tz`, emailVerifiedAt: now,
     createdAt: now, updatedAt: now, lastLoginAt: now, closedAt: null,
   } as never);
-  db.wallet.create({ id: `wlt_${id}`, userId: id, balance: 0, pending: 0, hold: 0, bonusBalance: 0, currency: "TZS", status: "ACTIVE", createdAt: now, updatedAt: now } as never);
+  await db.wallet.create({ id: `wlt_${id}`, userId: id, balance: 0, pending: 0, hold: 0, bonusBalance: 0, currency: "TZS", status: "ACTIVE", createdAt: now, updatedAt: now } as never);
 }
-const bal = (uid: string) => db.wallet.findByUserId(uid)?.balance ?? -1;
-const bonus = (uid: string) => db.wallet.findByUserId(uid)?.bonusBalance ?? -1;
-const ref = (txnId: string) => db.txn.findById(txnId)?.providerRef ?? "";
+// async: Prisma returns a Promise, the in-memory Map returns a value.
+const bal = async (uid: string) => (await db.wallet.findByUserId(uid))?.balance ?? -1;
+const bonus = async (uid: string) => (await db.wallet.findByUserId(uid))?.bonusBalance ?? -1;
+const ref = async (txnId: string) => (await db.txn.findById(txnId))?.providerRef ?? "";
 
 // Ensure config: 10% cashback in AUTO mode (the deposit-auto-credit path).
 // Default is REQUEST mode (player requests after loss); AUTO is the legacy path
@@ -42,41 +43,41 @@ ok("cashback config ready (AUTO mode, 10%)", getBonusConfig().cashbackPercentage
 
 // ── ASYNC deposit → webhook confirms → 10% cashback to bonus wallet ─────────
 process.env.PAYMENTS_DEMO_ASYNC = "true";
-makePlayer("usr_cb1");
+await makePlayer("usr_cb1");
 const d1 = await deposit("usr_cb1", { provider: "MPESA", amount: 50_000 });
 const t1 = d1.ok ? d1.data!.txnId : "";
-ok("deposit pending, no cashback yet", bonus("usr_cb1") === 0);
+ok("deposit pending, no cashback yet", await bonus("usr_cb1") === 0);
 
-await settlePaymentWebhook({ providerRef: ref(t1), status: "CONFIRMED" });
-ok("deposit credited to real balance", bal("usr_cb1") === 50_000);
-ok("10% cashback credited to bonus wallet", bonus("usr_cb1") === 5_000, `bonus=${bonus("usr_cb1")}`);
+await settlePaymentWebhook({ providerRef: await ref(t1), status: "CONFIRMED" });
+ok("deposit credited to real balance", await bal("usr_cb1") === 50_000);
+ok("10% cashback credited to bonus wallet", await bonus("usr_cb1") === 5_000, `bonus=${await bonus("usr_cb1")}`);
 
-const grant = db.bonusGrant.findBySourceRef(`deposit:${t1}`);
+const grant = await db.bonusGrant.findBySourceRef(`deposit:${t1}`);
 ok("cashback grant exists with CASHBACK source", !!grant && grant.source === "CASHBACK", grant ? grant.source : "no grant");
 ok("cashback grant uses default 5× wagering", !!grant && grant.wagerRequiredTzs === 25_000, grant ? `req=${grant.wagerRequiredTzs}` : "no grant");
 
 // Retry the SAME webhook → cashback must NOT double up.
-await settlePaymentWebhook({ providerRef: ref(t1), status: "CONFIRMED" });
-ok("retried webhook does not double cashback", bonus("usr_cb1") === 5_000, `bonus=${bonus("usr_cb1")}`);
+await settlePaymentWebhook({ providerRef: await ref(t1), status: "CONFIRMED" });
+ok("retried webhook does not double cashback", await bonus("usr_cb1") === 5_000, `bonus=${await bonus("usr_cb1")}`);
 
 // ── SYNC deposit path also earns cashback ──────────────────────────────────
 delete process.env.PAYMENTS_DEMO_ASYNC;
-makePlayer("usr_cb2");
+await makePlayer("usr_cb2");
 await deposit("usr_cb2", { provider: "MPESA", amount: 12_000 });
-ok("sync deposit credited", bal("usr_cb2") === 12_000);
-ok("sync deposit cashback = 1,200", bonus("usr_cb2") === 1_200, `bonus=${bonus("usr_cb2")}`);
+ok("sync deposit credited", await bal("usr_cb2") === 12_000);
+ok("sync deposit cashback = 1,200", await bonus("usr_cb2") === 1_200, `bonus=${await bonus("usr_cb2")}`);
 
 // ── Tiny deposit whose 10% floors to 0 → no grant ──────────────────────────
-makePlayer("usr_cb3");
+await makePlayer("usr_cb3");
 await deposit("usr_cb3", { provider: "MPESA", amount: 5 }); // floor(0.5) = 0
-ok("sub-unit cashback creates no grant", bonus("usr_cb3") === 0, `bonus=${bonus("usr_cb3")}`);
+ok("sub-unit cashback creates no grant", await bonus("usr_cb3") === 0, `bonus=${await bonus("usr_cb3")}`);
 
 // ── cashbackEnabled = false → no new cashback (deposit still works) ─────────
 setBonusConfig({ cashbackEnabled: false }, "test");
-makePlayer("usr_cb4");
+await makePlayer("usr_cb4");
 await deposit("usr_cb4", { provider: "MPESA", amount: 30_000 });
-ok("deposit still credited with cashback off", bal("usr_cb4") === 30_000);
-ok("no cashback when disabled", bonus("usr_cb4") === 0, `bonus=${bonus("usr_cb4")}`);
+ok("deposit still credited with cashback off", await bal("usr_cb4") === 30_000);
+ok("no cashback when disabled", await bonus("usr_cb4") === 0, `bonus=${await bonus("usr_cb4")}`);
 setBonusConfig({ cashbackEnabled: true }, "test"); // restore
 
 console.log(`\ndeposit-cashback: ${pass} passed, ${fail} failed`);

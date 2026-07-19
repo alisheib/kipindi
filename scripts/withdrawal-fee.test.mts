@@ -45,8 +45,13 @@ async function kycdUser(id: string, balance: number): Promise<void> {
     id: `wal_${id}`, userId: id, balance, pending: 0, hold: 0,
     currency: "TZS", status: "ACTIVE", createdAt: now(), updatedAt: now(),
   } as StoredWallet);
+  // `id` is REQUIRED: the Prisma upsert keys its where-clause on it. Omitted,
+  // this throws on a real database while the in-memory Map happily accepts it —
+  // so the withdrawal-fee proof never ran against Postgres.
   await db.kyc.upsert({
+    id: `kyc_${id}`,
     userId: id, status: "APPROVED", nidaNumber: "12345678901234567890",
+    documents: [],
     createdAt: now(), updatedAt: now(),
   } as never);
 }

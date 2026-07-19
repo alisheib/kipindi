@@ -18,11 +18,56 @@ export function hasDatabase(): boolean {
   return !!process.env.DATABASE_URL;
 }
 
+/**
+ * Explicit connection-pool sizing.
+ *
+ * Prisma's default pool is `cpu_count * 2 + 1` — on a 2-vCPU Railway container
+ * that is **5**. The load harness (`scripts/load/spike-a-proof.mts`) measures
+ * the safe ceiling at almost exactly **pool ÷ 2** concurrent bets, because a bet
+ * holds one connection for its wallet work and needs a second for the market:
+ *
+ *     pool= 5 → 2 concurrent bets   pool=20 → 9 concurrent bets
+ *     pool=10 → 4 concurrent bets   pool=40 → 19 concurrent bets
+ *
+ * So the shipped default let just TWO players bet simultaneously before the
+ * rest started failing on "Timed out fetching a new connection from the pool".
+ *
+ * ⚠️ This is a CAPACITY ceiling, not a money-safety one — the same harness
+ * measures **0 TZS leaked at every pool size**, because the bet path is a single
+ * `$transaction` (audit C3): under pool pressure a bet is rejected cleanly
+ * rather than debiting a wallet with no position. Raising this buys throughput
+ * and a better error rate; it is not load-bearing for correctness.
+ *
+ * 20 is deliberately conservative against Postgres' own `max_connections`
+ * (Railway's default is 100) so a second app instance still fits.
+ * Override with PRISMA_CONNECTION_LIMIT if the instance size changes.
+ */
+function pooledDatabaseUrl(): string | undefined {
+  const raw = process.env.DATABASE_URL;
+  if (!raw) return undefined;
+  const limit = Number(process.env.PRISMA_CONNECTION_LIMIT ?? 20);
+  try {
+    const u = new URL(raw);
+    // Never override an explicit operator setting already on the URL.
+    if (!u.searchParams.has("connection_limit") && Number.isFinite(limit) && limit > 0) {
+      u.searchParams.set("connection_limit", String(limit));
+    }
+    if (!u.searchParams.has("pool_timeout")) u.searchParams.set("pool_timeout", "20");
+    return u.toString();
+  } catch {
+    // A URL we can't parse is left EXACTLY as-is: connecting with the operator's
+    // original string is always better than failing to connect at all.
+    return raw;
+  }
+}
+
 export function prisma(): PrismaClient | null {
   if (!hasDatabase()) return null;
   if (globalThis.__50PICK_PRISMA) return globalThis.__50PICK_PRISMA;
+  const url = pooledDatabaseUrl();
   const client = new PrismaClient({
     log: process.env.NODE_ENV === "production" ? ["error"] : ["error", "warn"],
+    ...(url ? { datasources: { db: { url } } } : {}),
   });
   // Cache the singleton in EVERY environment. The previous code only cached
   // in dev (to survive HMR) — in production it returned a brand-new client on

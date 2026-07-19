@@ -12,7 +12,11 @@ export function resolvePhoneEmail(phone: string): string | null {
   if (!raw) return null;
   for (const pair of raw.split(",")) {
     const [p, e] = pair.split(":").map((s) => s.trim());
-    if (p === phone && e) return e;
+    // Lower-case on the way out. An uppercase entry here used to produce a
+    // mixed-case address that the (case-sensitive) Postgres email lookup could
+    // never find again — breaking email sign-in and the duplicate guard for
+    // exactly the accounts this map touches.
+    if (p === phone && e) return e.toLowerCase();
   }
   return null;
 }

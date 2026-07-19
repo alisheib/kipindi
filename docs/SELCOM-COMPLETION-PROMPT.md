@@ -232,3 +232,81 @@ Both auto-discovered by `test:all` (now 77 suites).
   but they are a real standards gap someone should close.
 - `PHONE_EMAIL_MAP` is still set in prod. It is now read-only (delivery fallback), so it is
   no longer dangerous — but it should be unset once Ali no longer needs it.
+
+---
+
+# REAL-POSTGRES VALIDATION — 2026-07-19
+
+`F:\pg-loadtest` was gone, so a fresh disposable PG16 cluster was built at
+**`C:\pg-loadtest`, port 5433** (same recipe as `scripts/load/README.md`; that
+doc's `F:` paths are stale on this machine). All 41 migrations applied clean,
+including `20260718200000_txn_pending_notified_at`.
+
+## What real Postgres found that the in-memory store could not
+
+**Four money suites had NEVER actually executed against a database.** They passed
+in memory — which has no foreign keys and no async — and were therefore proving
+nothing. Two distinct causes, both invisible in-memory:
+- unawaited `db.*` writes (the in-memory DAL returns values; Prisma returns
+  Promises), so e.g. the wallet insert raced ahead of the user insert and died on
+  `Wallet_userId_fkey`;
+- seed payloads that violate the real schema (`kyc.upsert` without `id`, without
+  `documents`; `realityCheckIntervalMin: null` on a NON-nullable column).
+
+Fixed and now green on BOTH stores: `payment-webhook` (37) — which is the
+**exactly-once / no-double-credit proof for money-in** — plus `wallet-atomic` (8),
+`deposit-cashback` (12), `withdrawal-fee` (16), `rg-limit-race` (5).
+
+## Two REAL production bugs, only reachable on Postgres
+
+1. **`user.findByEmail` was case-SENSITIVE** (`prisma-dal.ts`, exact match on a
+   lower-cased needle). Postgres compares text case-sensitively, the in-memory Map
+   lower-cases on the way in — so this only ever bit in production. Any stored
+   address carrying an uppercase character became invisible, which meant (a) that
+   player could never sign in by email again, and (b) **the one-account-per-email
+   guard could be walked past with different casing** — making the email deposit
+   gate decorative and per-account RG limits / self-exclusion evadable. Now
+   `mode: "insensitive"`. `PHONE_EMAIL_MAP` also lower-cases on read.
+2. **`responsibleGambling.upsert` crashed on a null `realityCheckIntervalMin`**
+   (non-nullable, `@default(30)`). Hardened to `?? 30` — a crash on the RG write
+   path is a player unable to set a limit or self-exclude.
+   Also `kyc.upsert` no longer throws on a record with no `documents` array.
+
+## Money-safety proofs, on real Postgres
+
+| Proof | Result |
+|---|---|
+| `s10-cross-instance` — 2 OS processes, 16 bets, wallet funded for 5 | **PASS** — exactly 5 accepted, balance 0, no double-spend |
+| `s11-audit-cross-instance` — 200 appends from 2 processes | **PASS** — one linear chain, 0 duplicate prevHash, re-verifies |
+| `spike-a-proof` — pool sweep 5/10/20/40 | **0 TZS leaked at every pool size** |
+| `money-invariants` 78 · `ledger` 89 · `trial-balance` 18 · `cashout` 21 | all green |
+
+**Finding A (the pool deadlock that used to destroy player money) is FIXED** — the
+single-`$transaction` bet path (595901e) holds. Under pool pressure a bet is now
+rejected cleanly instead of debiting a wallet with no position.
+
+## Capacity ceiling — fixed, and worth knowing
+
+`spike-a` measures max safe concurrency at almost exactly **pool ÷ 2**. Production
+carried **no explicit `connection_limit`**, so Prisma defaulted to `cpus*2+1` = **5**
+on a 2-vCPU container → only **~2 concurrent bets** before the rest failed on
+"Timed out fetching a new connection from the pool".
+`prisma.ts` now sets `connection_limit=20` (override: `PRISMA_CONNECTION_LIMIT`),
+i.e. ~9 concurrent bets — a 4.5× headroom improvement. This is a THROUGHPUT fix,
+not a correctness one: money safety was already proven at every pool size.
+
+## Honest remaining state
+
+- Final: **in-memory 76/77** (only `test:responsive`, which needs a live server) ·
+  **real Postgres 60/74**.
+- The remaining real-PG reds are **test-scaffolding debt, not product defects** —
+  verified individually: `killswitch` (seeds an invalid Date), `solo-resolution` /
+  `officer-conflict` (market upsert omits the required `proposedBy`; the real
+  service always supplies it — market-service.ts:269/2441/2450), `config-persist`
+  (asserts "returns null without DB", so it can only pass WITHOUT a DB),
+  `trilingual`/`kyc`/`watchlist`/`insights`/`win-share`/`totp-enc`/`invite-flow`/
+  `bonus-stress`/`selection-closed`/`email-stress` (same seeding family).
+  None sit on the deposit path. Worth clearing, but they do not block a deposit test.
+- `concurrency.test.mts` bursts ~20 simultaneous bets on one market — above the
+  measured ceiling by design, so it cannot pass on a real pool. It validates logic
+  in-memory; `spike-a` is the harness that measures the real limit.

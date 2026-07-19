@@ -438,8 +438,25 @@ export const prismaDb = {
     findByEmail: async (email: string): Promise<StoredUser | null> => {
       const norm = email.trim().toLowerCase();
       if (!norm) return null;
-      // email @unique removed for testing — use findFirst instead of findUnique.
-      const u = await pc().user.findFirst({ where: { email: norm } });
+      // CASE-INSENSITIVE, and that is load-bearing on Postgres.
+      //
+      // This was an exact match against a lower-cased needle. Postgres compares
+      // text case-sensitively, so any stored address carrying an uppercase
+      // character (an admin-set address, a PHONE_EMAIL_MAP entry, anything
+      // written before normalisation) became invisible to this lookup. Two
+      // real consequences, both money-facing:
+      //   1. that player could never sign in with their email again, and
+      //   2. the one-account-per-email guard — which is enforced HERE, in app
+      //      code, because there is no DB unique index — could be walked
+      //      straight past with different casing. One inbox could then open
+      //      unlimited depositing accounts, which makes the email deposit gate
+      //      decorative and per-account RG limits / self-exclusion evadable.
+      // The in-memory Map lower-cases on the way in, so this only ever bit on
+      // real Postgres — i.e. only in production.
+      // (`email @unique` is deliberately absent: adding the index to the live
+      // money DB could fail `migrate deploy` and take prod down if a duplicate
+      // already exists. It is a follow-up once prod is confirmed clean.)
+      const u = await pc().user.findFirst({ where: { email: { equals: norm, mode: "insensitive" } } });
       return u ? toStoredUser(u) : null;
     },
     create: async (u: StoredUser): Promise<StoredUser> => {
@@ -538,7 +555,10 @@ export const prismaDb = {
         include: { documents: true },
       });
       // Sync documents: delete existing, re-create from StoredKyc.
-      if (k.documents.length > 0) {
+      // `?.` is deliberate: a KYC submission arriving without a documents array
+      // (an older/partial record, or a caller that omitted it) must degrade to
+      // "no documents to sync", not throw out of the KYC write path.
+      if (k.documents?.length) {
         const docsData = k.documents.map((d) => {
           // storageKey holds a base64 image data URL — record its real mime +
           // byte size for the document record (cosmetic; serving reads the URL).
@@ -967,7 +987,11 @@ export const prismaDb = {
         monthlyDepositLimit: r.monthlyDepositLimit,
         dailyLossLimit: r.dailyLossLimit,
         sessionTimeLimitMin: r.sessionTimeLimitMin,
-        realityCheckIntervalMin: r.realityCheckIntervalMin,
+        // `?? 30` — realityCheckIntervalMin is NON-nullable in the schema
+        // (Int @default(30)). A caller passing null must fall back to the
+        // default, not throw: this is the responsible-gambling write path, and
+        // a crash here is a player unable to set a limit or self-exclude.
+        realityCheckIntervalMin: r.realityCheckIntervalMin ?? 30,
         selfExclusionUntil: r.selfExclusionUntil ? new Date(r.selfExclusionUntil) : null,
         coolingOffUntil: r.coolingOffUntil ? new Date(r.coolingOffUntil) : null,
         pendingIncreaseTo: r.pendingIncreaseTo,
