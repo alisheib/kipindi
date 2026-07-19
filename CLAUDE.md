@@ -62,6 +62,19 @@
 > 📋 Remaining: deploy 3 (transient retry) · deploy 4 (narrow market stamps + atomic pool
 > deltas incl. cash-out) · deploy 5 (drop the market lock from the bet path — **only after
 > a ≥1 week soak of deploy 4**). Plan: `docs/LOAD_DAY1_FINDINGS.md`.
+> 🪪 **NIDA POLICY (Ali, 2026-07-19) — read [`docs/NIDA-POLICY.md`](docs/NIDA-POLICY.md).**
+> The control is **format + uniqueness only (one NIDA, one account)**. There is **no
+> authority check and none is wanted** — `nida.ts` is a mock, so `nidaVerifiedAt` means
+> "format accepted", never "government confirmed". Identity assurance comes from the
+> DOCUMENTS a human officer reviews. Two surfaces were claiming otherwise and are fixed:
+> the admin KYC checklist said **"NIDA verified — government match"** (it told an officer
+> a government had confirmed an identity, inviting a withdrawal release on evidence that
+> does not exist), and player copy said withdrawals go only to a *"NIDA-verified account"*.
+> **The mechanics are INTERNAL**: docs and admin state them plainly; player surfaces
+> neither claim the check nor advertise its absence.
+> ⚠️ Open gap: the uniqueness check is app-level read-then-write with no unique index, so
+> two *different* users submitting the same NIDA at the same instant can both pass. The
+> exact pre-flight query + `CREATE UNIQUE INDEX CONCURRENTLY` is in the policy doc.
 > 🔴 **TWO OPERATOR ACTIONS REMAIN BEFORE A REAL DEPOSIT WORKS** (both are audited admin-UI
 > decisions on purpose, so they carry a named actor — do not script them):
 >   1. **/admin/payments → set provider to `selcom`.** A persisted `mock` outranks

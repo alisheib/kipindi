@@ -53,7 +53,17 @@ export default async function KycWorkstationPage({ params }: { params: Promise<{
   const age18 = kyc.dob ? (Date.now() - Date.parse(kyc.dob)) / (365.25 * 24 * 3600_000) >= 18 : null;
   const allDocs = ["NIDA_FRONT", "NIDA_BACK", "SELFIE"].every((t) => present.has(t));
   const autoChecks = [
-    { label: "NIDA verified", state: (kyc.nidaVerifiedAt ? "pass" : "pending") as "pass" | "fail" | "pending", detail: kyc.nidaVerifiedAt ? "government match" : "not verified" },
+    // POLICY (Ali, 2026-07-19): the NIDA control is FORMAT + UNIQUENESS only —
+    // one NIDA number, one account. There is deliberately no authority check;
+    // `nida.ts` is a deterministic mock and no request has ever reached the
+    // National Identification Authority.
+    //
+    // So this row must NOT read "NIDA verified / government match", as it used to.
+    // That told a compliance officer a government confirmed this identity, which
+    // would invite them to approve a withdrawal on evidence that does not exist.
+    // It now states exactly what was actually checked, and the officer's decision
+    // rests on the DOCUMENTS — which is what already happens in practice.
+    { label: "NIDA number", state: (kyc.nidaNumber ? "pass" : "pending") as "pass" | "fail" | "pending", detail: kyc.nidaNumber ? "format valid · unique to this account (no authority check by design)" : "not recorded" },
     { label: "18 or older", state: (age18 === null ? "pending" : age18 ? "pass" : "fail") as "pass" | "fail" | "pending", detail: kyc.dob ? `DOB ${kyc.dob}` : "no DOB" },
     { label: "All documents present", state: (allDocs ? "pass" : "fail") as "pass" | "fail" | "pending", detail: `${present.size}/3 uploaded` },
     { label: "Source-of-funds on file", state: (sof ? "pass" : "pending") as "pass" | "fail" | "pending", detail: sof ? sof.reviewStatus : "not required / absent" },
