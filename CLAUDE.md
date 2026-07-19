@@ -75,12 +75,20 @@
 > ⚠️ Open gap: the uniqueness check is app-level read-then-write with no unique index, so
 > two *different* users submitting the same NIDA at the same instant can both pass. The
 > exact pre-flight query + `CREATE UNIQUE INDEX CONCURRENTLY` is in the policy doc.
-> 🔴 **TWO OPERATOR ACTIONS REMAIN BEFORE A REAL DEPOSIT WORKS** (both are audited admin-UI
-> decisions on purpose, so they carry a named actor — do not script them):
->   1. **/admin/payments → set provider to `selcom`.** A persisted `mock` outranks
->      `PAYMENT_AGGREGATOR`, so deposits are still refused (`PROVIDER_DOWN`) until flipped.
->   2. **Clear the persisted `test.overrides` conflicted-resolution flag** (boot warns each
->      deploy). POCA §16 is *enforced at runtime* regardless, so this is hygiene, not exposure.
+> ✅ **OPERATOR ACTION 2 OF 2 IS DONE (2026-07-19).** The persisted `test.overrides`
+> conflicted-resolution flag was cleared in production via
+> `scripts/ops-clear-conflicted-override.mjs` (true → false, confirmed by the compliance
+> warning disappearing from the boot log).
+> 🔴 **ONE OPERATOR ACTION STILL BLOCKS EVERY DEPOSIT — 30 seconds, and it is the ONLY
+> thing between the platform and real-money testers:**
+>   **/admin/payments → set the active provider to `selcom`.** `getPaymentProvider()` is
+>   `store.provider ?? envProvider()`, so the persisted `mock` **outranks**
+>   `PAYMENT_AGGREGATOR=selcom` (which IS set, with all four Selcom credentials present).
+>   Until it is flipped, every deposit is refused with `PROVIDER_DOWN` and the boot log
+>   warns on each deploy. It stays an admin-UI action because that is what puts a NAMED
+>   ACTOR in the compliance trail on the switch that turns on real money movement.
+>   (`scripts/ops-set-payment-provider.mjs` exists as a break-glass path and REFUSES to run
+>   without `--actor`.) **Redeploy afterwards — the config is cached in-process.**
 > ⚠️ deposit-only — withdrawals still need Selcom disbursement creds + float PIN.
 > ⚠️ `NEXT_PUBLIC_LICENSE_REF` is still the placeholder `TZ-GBT-2026-XXXX` — the footer shows
 > it as "(pending)". Replace with the real GBT number before public launch.
