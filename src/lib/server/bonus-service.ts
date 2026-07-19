@@ -226,13 +226,22 @@ export async function recordWagering(userId: string, stakeTzs: number): Promise<
  * + fulfilment are one atomic unit — re-acquiring the key would deadlock). The
  * caller must fire notifyBonusFulfilled for the returned grants after the lock.
  */
-export async function recordWageringLocked(userId: string, stakeTzs: number): Promise<WageringResult> {
+export async function recordWageringLocked(userId: string, stakeTzs: number, tx?: Prisma.TransactionClient | null): Promise<WageringResult> {
   const amount = tzs(stakeTzs);
   if (!(amount > 0)) return { fulfilled: [], creditedToRealTzs: 0 };
-  return recordWageringCore(userId, amount);
+  return recordWageringCore(userId, amount, tx);
 }
 
-async function recordWageringCore(userId: string, amount: number): Promise<WageringResult> {
+/**
+ * `tx` is REQUIRED for correctness when the caller already holds an open
+ * transaction that has written this wallet (the bet path does — it debits the
+ * wallet, then accrues turnover here). Postgres row locks are held to commit, so
+ * issuing these UPDATEs on a SEPARATE pool connection blocks on the caller's own
+ * uncommitted row and self-deadlocks until the transaction times out (P2028 at
+ * 30s). Reads are left un-threaded on purpose: MVCC means a SELECT never blocks
+ * on an uncommitted writer, so they cost a transient connection but cannot hang.
+ */
+async function recordWageringCore(userId: string, amount: number, tx?: Prisma.TransactionClient | null): Promise<WageringResult> {
   const fulfilled: StoredBonusGrant[] = [];
   let creditedToReal = 0;
   let remainingTurnover = amount;
@@ -255,7 +264,7 @@ async function recordWageringCore(userId: string, amount: number): Promise<Wager
         // — and the old code proceeded anyway, crediting real withdrawable balance
         // while the bonus was NOT debited (minting cash). On a guard miss, abort this
         // grant and leave it ACTIVE for a later reconcile.
-        const updatedWallet = await db.wallet.adjust(g.walletId, { bonusBalance: -moved, balance: moved }, { requireBonusBalanceGte: moved });
+        const updatedWallet = await db.wallet.adjust(g.walletId, { bonusBalance: -moved, balance: moved }, { requireBonusBalanceGte: moved }, tx);
         if (!updatedWallet) {
           audit({ category: "WALLET", action: "bonus.fulfill_aborted_guard", actorId: userId, targetType: "BonusGrant", targetId: g.id, payload: { moved, reason: "bonusBalance<remainder" } });
           continue;
@@ -282,12 +291,15 @@ async function recordWageringCore(userId: string, amount: number): Promise<Wager
           createdAt: now,
           updatedAt: now,
           completedAt: now,
-        });
-        // Dual-write: bonus unlock to double-entry ledger (fire-and-forget).
-        postLedgerEntries(`bfulfill_${bonusTxnId}`, bonusCreditEntries({ txnId: bonusTxnId, userId, amount: moved })).catch(() => {});
+        }, tx);
+        // Dual-write: bonus unlock to double-entry ledger. In tx mode this joins
+        // the caller's transaction (so it rolls back with the unlock); otherwise
+        // it stays fire-and-forget as before.
+        if (tx) await postLedgerEntries(`bfulfill_${bonusTxnId}`, bonusCreditEntries({ txnId: bonusTxnId, userId, amount: moved }), tx);
+        else postLedgerEntries(`bfulfill_${bonusTxnId}`, bonusCreditEntries({ txnId: bonusTxnId, userId, amount: moved })).catch(() => {});
         creditedToReal += moved;
       }
-      const done = await db.bonusGrant.update(g.id, { wageredTzs: newWagered, remainingTzs: 0, status: "FULFILLED", fulfilledAt: new Date().toISOString() });
+      const done = await db.bonusGrant.update(g.id, { wageredTzs: newWagered, remainingTzs: 0, status: "FULFILLED", fulfilledAt: new Date().toISOString() }, tx);
       if (done) fulfilled.push(done);
       audit({
         category: "WALLET",
@@ -298,9 +310,9 @@ async function recordWageringCore(userId: string, amount: number): Promise<Wager
         payload: { amountTzs: g.amountTzs, movedToRealTzs: moved, wageredTzs: newWagered, wagerRequiredTzs: g.wagerRequiredTzs },
       });
       // Sequential: activate the next queued grant now that this one is done.
-      await activateNextQueued(userId);
+      await activateNextQueued(userId, tx);
     } else if (applied > 0) {
-      await db.bonusGrant.update(g.id, { wageredTzs: newWagered });
+      await db.bonusGrant.update(g.id, { wageredTzs: newWagered }, tx);
     }
   }
   return { fulfilled, creditedToRealTzs: creditedToReal };
@@ -573,7 +585,7 @@ export async function cancelGrant(grantId: string, actorId: string, reason?: str
  * expiry, and cancellation paths. No-op when sequential mode is off or no grants
  * are queued. Must run INSIDE the wallet lock for the user.
  */
-async function activateNextQueued(userId: string): Promise<void> {
+async function activateNextQueued(userId: string, tx?: Prisma.TransactionClient | null): Promise<void> {
   const cfg = getBonusConfig();
   if (!cfg.sequentialBonuses) return;
 
@@ -590,8 +602,8 @@ async function activateNextQueued(userId: string): Promise<void> {
   const wallet = await db.wallet.findByUserId(userId);
   if (!wallet || wallet.status !== "ACTIVE") return;
 
-  await db.bonusGrant.update(nextQueued.id, { status: "ACTIVE" });
-  await db.wallet.adjust(wallet.id, { bonusBalance: nextQueued.remainingTzs });
+  await db.bonusGrant.update(nextQueued.id, { status: "ACTIVE" }, tx);
+  await db.wallet.adjust(wallet.id, { bonusBalance: nextQueued.remainingTzs }, undefined, tx);
   // Dual-write: queued bonus activation to double-entry ledger (fire-and-forget).
   postLedgerEntries(`bonus_${nextQueued.id}`, bonusGrantEntries({ groupId: `bonus_${nextQueued.id}`, userId, amount: nextQueued.remainingTzs })).catch(() => {});
   audit({

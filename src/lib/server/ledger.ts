@@ -25,6 +25,7 @@
  */
 
 import { prisma } from "./prisma";
+import { currentLockTx } from "./locks";
 import { randomId } from "./crypto";
 import { audit } from "./audit";
 import type { LedgerEntryType, Prisma } from "@prisma/client";
@@ -40,8 +41,22 @@ import type { LedgerEntryType, Prisma } from "@prisma/client";
  * both modes. Lock note: the money paths already hold their wallet/market
  * advisory lock; this inner tx takes NO advisory lock, so it can't reorder the
  * wallet→market lock order or deadlock.
+ *
+ * When a withLock() is already held, we JOIN its transaction instead of opening
+ * a second one. Opening our own used to pin an extra pool connection on top of
+ * the one (or two) the enclosing locks already held — the bet path cost three
+ * connections and capped out at pool÷3. Joining makes the whole movement, its
+ * locks and its reads a single transaction on a single connection.
+ *
+ * ⚠️ Consequence for callers: when joined, a throw in `fn` rolls back the ENTIRE
+ * enclosing lock scope, not just this movement, and the rollback only happens
+ * once the error escapes withLock. A caller that catches its own abort INSIDE
+ * the lock would commit the partial writes it meant to discard — so aborts must
+ * propagate out of withLock and be mapped to a rejection there.
  */
 export async function withMoneyTx<T>(fn: (tx: Prisma.TransactionClient | null) => Promise<T>): Promise<T> {
+  const joined = currentLockTx();
+  if (joined) return fn(joined);
   const pcc = prisma();
   if (!pcc) return fn(null);
   return pcc.$transaction((tx) => fn(tx), { timeout: 30000, maxWait: 10000 });

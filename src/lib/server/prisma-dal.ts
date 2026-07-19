@@ -916,8 +916,8 @@ export const prismaDb = {
       });
       return Number(result._sum.amount ?? 0);
     },
-    sumGamblingNetSince: async (userId: string, sinceMs: number): Promise<number> => {
-      const result = await pc().transaction.aggregate({
+    sumGamblingNetSince: async (userId: string, sinceMs: number, tx?: Prisma.TransactionClient | null): Promise<number> => {
+      const result = await (tx ?? pc()).transaction.aggregate({
         where: {
           userId,
           type: { in: ["BET_PLACED", "BET_PAYOUT", "BET_REFUND", "CASHOUT"] },

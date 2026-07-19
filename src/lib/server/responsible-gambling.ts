@@ -17,6 +17,7 @@
  *  - Self-exclusion is one-way until expiry; the player CANNOT cancel it themselves
  *  - All state changes audited (COMPLIANCE category)
  */
+import type { Prisma } from "@prisma/client";
 import { audit } from "./audit";
 import { db } from "./store";
 import type { StoredResponsibleGambling, StoredTxn } from "./store";
@@ -332,11 +333,17 @@ export async function checkDepositLimit(userId: string, amount: number) {
  * prefers realized-only loss, exclude BET_PLACED rows whose position is still
  * OPEN from the sum. The new stake is treated as fully at-risk.
  */
-export async function checkLossLimit(userId: string, stakeTzs: number) {
+export async function checkLossLimit(userId: string, stakeTzs: number, tx?: Prisma.TransactionClient | null) {
+  // `tx` enrols the 24h aggregate in the caller's transaction (the bet holds one
+  // for its whole duration), so the read costs no extra pool connection while
+  // the bet's advisory locks are held. getRgSettings is deliberately NOT
+  // threaded: it lazily CREATES default settings, and those defaults should
+  // outlive a bet that rolls back. It reads committed state either way, so the
+  // C4 guarantee — the cap is re-read inside the wallet lock — is unchanged.
   const r = await getRgSettings(userId);
   if (r.dailyLossLimit === null) return { allowed: true as const };
   const since = Date.now() - 86_400 * 1000;
-  const net = await db.txn.sumGamblingNetSince(userId, since);
+  const net = await db.txn.sumGamblingNetSince(userId, since, tx);
   const lossSoFar = Math.max(0, -net);
   if (lossSoFar + stakeTzs > r.dailyLossLimit) {
     return {

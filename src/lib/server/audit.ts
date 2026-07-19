@@ -38,7 +38,10 @@
 import { createHmac } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { hasDatabase, prisma } from "./prisma";
-import { hashKey64 } from "./locks";
+// From ./lock-key, NOT ./locks: audit is reachable from the client module graph
+// (utils.ts → platform-config → audit), and locks.ts pulls in node:async_hooks,
+// which cannot be bundled into a browser chunk.
+import { hashKey64 } from "./lock-key";
 
 export type AuditCategory = "AUTH" | "KYC" | "WALLET" | "BET" | "ADMIN" | "COMPLIANCE" | "SECURITY" | "SYSTEM";
 

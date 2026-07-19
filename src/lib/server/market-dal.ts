@@ -99,7 +99,11 @@ function toStoredPosition(r: any): StoredPosition {
 // ---------------------------------------------------------------------------
 
 export interface MarketStore {
-  get(id: string): Promise<StoredMarket | null>;
+  // tx: read THROUGH the enclosing lock's transaction. The bet path holds one
+  // transaction for the whole bet (see locks.ts); reading on a separate pool
+  // connection would both cost an extra connection and miss this transaction's
+  // own uncommitted writes.
+  get(id: string, tx?: Prisma.TransactionClient | null): Promise<StoredMarket | null>;
   // tx (bet-stake single-tx): pass a Prisma transaction client to persist the
   // pool mutation in the SAME transaction as the stake's wallet/txn/ledger
   // movement, so a mid-bet failure rolls the pool increment back with the debit.
@@ -120,7 +124,9 @@ export interface PositionStore {
   values(): Promise<StoredPosition[]>;
   listForUser(userId: string, limit?: number): Promise<StoredPosition[]>;
   listForMarket(marketId: string): Promise<StoredPosition[]>;
-  findByIdempotencyKey(key: string): Promise<StoredPosition | null>;
+  // tx: see MarketStore.get — the idempotency probe runs inside the bet's
+  // transaction so it costs no extra pool connection.
+  findByIdempotencyKey(key: string, tx?: Prisma.TransactionClient | null): Promise<StoredPosition | null>;
 }
 
 // ---------------------------------------------------------------------------
@@ -128,7 +134,7 @@ export interface PositionStore {
 // ---------------------------------------------------------------------------
 
 const memoryMarkets: MarketStore = {
-  async get(id) { return markets.get(id) ?? null; },
+  async get(id, _tx) { return markets.get(id) ?? null; },
   async set(m, _tx) { markets.set(m.id, m); },
   async delete(id) { markets.delete(id); },
   async has(id) { return markets.has(id); },
@@ -148,7 +154,7 @@ const memoryPositions: PositionStore = {
   async listForMarket(marketId) {
     return Array.from(positions.values()).filter((p) => p.marketId === marketId);
   },
-  async findByIdempotencyKey(key) {
+  async findByIdempotencyKey(key, _tx) {
     for (const p of positions.values()) if (p.idempotencyKey === key) return p;
     return null;
   },
@@ -165,8 +171,8 @@ function pc() {
 }
 
 const prismaMarkets: MarketStore = {
-  async get(id) {
-    const r = await pc().predictionMarket.findUnique({ where: { id } });
+  async get(id, tx) {
+    const r = await (tx ?? pc()).predictionMarket.findUnique({ where: { id } });
     return r ? toStoredMarket(r) : null;
   },
   async set(m, tx) {
@@ -292,8 +298,8 @@ const prismaPositions: PositionStore = {
     const rows = await pc().position.findMany({ where: { marketId } });
     return rows.map(toStoredPosition);
   },
-  async findByIdempotencyKey(key) {
-    const r = await pc().position.findUnique({ where: { idempotencyKey: key } });
+  async findByIdempotencyKey(key, tx) {
+    const r = await (tx ?? pc()).position.findUnique({ where: { idempotencyKey: key } });
     return r ? toStoredPosition(r) : null;
   },
 };
