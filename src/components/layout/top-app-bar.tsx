@@ -138,7 +138,14 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
             </Link>
           )}
 
-          <NotificationsPanel />
+          {/* Signed-in only. A notification bell shown to a visitor with no
+              account is an inbox that can never have anything in it: opening it
+              fires fetchMyNotifications(), which has no session to read, so the
+              panel can only ever render its empty state. It also invites a tap
+              that leads nowhere, on the surface where a new visitor is deciding
+              whether to sign up. The Deposit link beside it is gated the same
+              way — this one was simply missed. */}
+          {user.isAuthed && <NotificationsPanel />}
 
           <AvatarMenu
             initials={user.initials}
