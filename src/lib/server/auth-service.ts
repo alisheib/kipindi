@@ -72,7 +72,7 @@ export type ServiceResult<T = void> =
   // EMAIL_UNVERIFIED is distinct from INVALID on purpose: the deposit surface
   // renders it as a recoverable "confirm your inbox" step with a resend action,
   // not as a form error the player cannot act on.
-  | { ok: false; error: string; code?: "RATE_LIMITED" | "INVALID" | "EXPIRED" | "ALREADY_EXISTS" | "EMAIL_EXISTS" | "NOT_FOUND" | "TOO_MANY_ATTEMPTS" | "SUSPENDED" | "SELECTION_CLOSED" | "CONFLICT" | "TOO_EARLY" | "OBJECTION_OPEN" | "EMAIL_UNVERIFIED"; retryAfterSec?: number };
+  | { ok: false; error: string; code?: "RATE_LIMITED" | "INVALID" | "EXPIRED" | "ALREADY_EXISTS" | "EMAIL_EXISTS" | "NOT_FOUND" | "TOO_MANY_ATTEMPTS" | "SUSPENDED" | "SELECTION_CLOSED" | "CONFLICT" | "TOO_EARLY" | "OBJECTION_OPEN" | "EMAIL_UNVERIFIED" | "BUSY"; retryAfterSec?: number };
 
 /** Step 1: request OTP for login (existing user). */
 export async function requestLoginOtp(input: z.input<typeof LoginRequestSchema>): Promise<ServiceResult<{ otpId: string }>> {

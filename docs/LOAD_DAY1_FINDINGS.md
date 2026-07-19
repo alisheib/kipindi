@@ -1,5 +1,53 @@
 # Load & Scale Suite — Day 1 Findings (first-ever Postgres run)
 
+---
+
+## ⚡ UPDATE 2026-07-19 — Findings A and E are FIXED and re-measured
+
+Deploys 1 (collapse the nested transactions) and 2 (admission control) landed. The
+capacity numbers below are superseded; the money-safety verdicts still stand.
+
+| | before | after | how |
+|---|---|---|---|
+| **Connections per bet** | 3 (wallet tx + market tx + money tx) | **1** | `withLock` carries its tx via `AsyncLocalStorage`; a nested lock takes its advisory lock on the SAME tx; `withMoneyTx` joins it |
+| **DB round-trips per bet** | 39 (10 txn-control) | **34 (6 txn-control)** | 2 BEGIN/COMMIT pairs eliminated — `spike-e-census` |
+| **Max concurrent bets, pool 20** | ~9 (pool÷2) | **200+, all succeeding** | admission control queues instead of failing |
+| **Behaviour past the ceiling** | raw `P2024` in the player's face, 100% failure at pool 5 / C 20 | **queue, then succeed**; only a hopeless queue is refused, as a retryable `BUSY` | `admission.ts` |
+| **p95 at C=200 on one market** | n/a (failed) | **1,507 ms** (budget 15,000 ms) | `spike-f-saturation` |
+
+**Measured on real Postgres, `spike-f-saturation`, pool 20, one market:**
+
+```
+c=  1  ok=  1 busy=0 raw=0  p50=  83ms p95=   83ms  drift=0 orphans=0 leaked=0
+c=  5  ok=  5 busy=0 raw=0  p50=  75ms p95=  104ms  drift=0 orphans=0 leaked=0
+c= 10  ok= 10 busy=0 raw=0  p50= 143ms p95=  205ms  drift=0 orphans=0 leaked=0
+c= 25  ok= 25 busy=0 raw=0  p50= 178ms p95=  294ms  drift=0 orphans=0 leaked=0
+c= 50  ok= 50 busy=0 raw=0  p50= 246ms p95=  429ms  drift=0 orphans=0 leaked=0
+c=100  ok=100 busy=0 raw=0  p50= 749ms p95= 1144ms  drift=0 orphans=0 leaked=0
+c=200  ok=200 busy=0 raw=0  p50= 807ms p95= 1507ms  drift=0 orphans=0 leaked=0
+```
+
+Zero raw DB errors, zero TZS leaked, `pool == Σ stakes` at every level, and no bet
+was shed or timed out — the queue absorbed the whole burst.
+
+### Two defects real Postgres found during this work (both fixed)
+
+1. **Self-deadlock on the wallet row.** Once the bet is one transaction, any code
+   inside the lock that writes the SAME rows on a DIFFERENT pool connection blocks
+   on our own uncommitted row and hangs to the 30 s tx timeout (`P2028`).
+   `recordWageringCore` / `activateNextQueued` did exactly that; both now take the
+   caller's `tx`. Reads are deliberately left un-threaded — MVCC means a SELECT
+   never blocks on an uncommitted writer.
+2. **Aborts must escape the lock.** `BetAbort` used to be caught INSIDE the market
+   lock. With the transactions joined, catching it there would COMMIT the partial
+   debit it meant to discard. It now propagates out of `withLock` (rolling the whole
+   bet back) and is mapped to the same player-facing rejection outside.
+
+⚠️ Still open from Day 1: **Finding B** (read-path OOM) and **Finding C** (settlement
+cliff / void hole) are NOT addressed by this work.
+
+---
+
 > **Status: correctness verdict, not yet a capacity table.** These are the Day-1
 > spike results. The full capacity calibration (Railway staging) is future work.
 > Every number below is from **real PostgreSQL 16** (local, disposable, marker-gated) —

@@ -19,6 +19,7 @@ import { audit } from "./audit";
 import { db } from "./store";
 import { randomId } from "./crypto";
 import { withLock } from "./locks";
+import { withAdmission, AdmissionBusy } from "./admission";
 import { emit } from "./event-bus";
 import { spendBonusLocked, recordWageringLocked, reverseWagering, refundBonusToActive, refundBonusLocked, expireActiveGrants, type BonusAllocation } from "./bonus-service";
 import { notifyBonusFulfilled } from "./notification-service";
@@ -304,8 +305,38 @@ class BetAbort extends Error {
   constructor(readonly reason: "NO_FUNDS") { super(`bet aborted: ${reason}`); }
 }
 
-/** Player buys a position on a market. */
-export async function buyPosition(userId: string, opts: { marketId: string; side: Side; stake: number; idempotencyKey?: string }): Promise<ServiceResult<{ positionId: string; balance: number; payoutIfWin: number }>> {
+type BuyOpts = { marketId: string; side: Side; stake: number; idempotencyKey?: string };
+type BuyResult = ServiceResult<{ positionId: string; balance: number; payoutIfWin: number }>;
+
+/**
+ * Player buys a position on a market.
+ *
+ * Admission control wraps the SERVICE, not the server action, on purpose: the
+ * action is only one of several entry points (dev-test routes, the lifecycle
+ * ticker, every scripts/load harness). Gating the action would let those bypass
+ * the semaphore entirely — and the saturation proof would then be measuring an
+ * ungated path while claiming the gated one was safe.
+ *
+ * Saturation surfaces as a BUSY rejection the UI can retry with the SAME
+ * idempotency key. It never reaches the player as a raw P2024.
+ */
+export async function buyPosition(userId: string, opts: BuyOpts): Promise<BuyResult> {
+  try {
+    return await withAdmission(() => buyPositionInner(userId, opts));
+  } catch (err) {
+    if (err instanceof AdmissionBusy) {
+      return {
+        ok: false,
+        error: "We're busy right now — your stake hasn't moved. Try again in a moment.",
+        code: "BUSY",
+        retryAfterSec: 1,
+      };
+    }
+    throw err;
+  }
+}
+
+async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResult> {
   const rl = rateCheck(userId, "bet.place");
   if (!rl.allowed) return { ok: false, error: "Slow down.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
 
@@ -363,24 +394,30 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
   // bets each read the pre-bet 24h net loss and both clear a cap only one should.
 
   let wageringFulfilled: { amountTzs: number }[] = [];
-  const result = await withLock(`wallet:${userId}`, async () => {
+  // Captured inside the lock, USED after it commits — see the note at the
+  // recordSnapshot/emit call below for why these can't fire inside any more.
+  type CommittedBet = { positionId: string; placedAt: string; yesPool: number; noPool: number; payoutIfWin: number; bonusPart: number; walletId: string; bonusAllocations: BonusAllocation[]; usedTx: boolean };
+  let committed: CommittedBet | null = null;
+  let result: ServiceResult<{ positionId: string; balance: number; payoutIfWin: number }>;
+  try {
+  result = await withLock(`wallet:${userId}`, async (lockTx) => {
     // Idempotency: if this key was already used, return the existing position.
     // This prevents double-submit on 2G (same key = same intent, two taps).
     if (opts.idempotencyKey) {
-      const existing = await positionStore.findByIdempotencyKey(opts.idempotencyKey);
+      const existing = await positionStore.findByIdempotencyKey(opts.idempotencyKey, lockTx);
       if (existing) {
-        const w = await db.wallet.findByUserId(userId);
+        const w = await db.wallet.findByUserId(userId, lockTx);
         return { ok: true as const, data: { positionId: existing.id, balance: w?.balance ?? 0, payoutIfWin: existing.potentialPayout } };
       }
     }
 
-    const wallet = await db.wallet.findByUserId(userId);
+    const wallet = await db.wallet.findByUserId(userId, lockTx);
     if (!wallet || wallet.status !== "ACTIVE") return { ok: false as const, error: "Wallet unavailable.", code: "NOT_FOUND" as const };
 
     // Daily loss-limit gate (RG / GLI-19), re-read INSIDE the lock so a concurrent
     // bet that already committed its stake is counted (audit C4). Before any debit,
     // so a rejected bet never moves money.
-    const lossCheck = await checkLossLimit(userId, opts.stake);
+    const lossCheck = await checkLossLimit(userId, opts.stake, lockTx);
     if (!lossCheck.allowed) {
       audit({ category: "COMPLIANCE", action: "bet.loss_limit_blocked", actorId: userId, targetType: "User", targetId: userId, payload: { stake: opts.stake, reason: lossCheck.reason } });
       return { ok: false as const, error: lossCheck.reason ?? "Daily loss limit reached.", code: "INVALID" as const };
@@ -445,12 +482,12 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
     let newBalance = realAvail;
     let bonusAllocations: BonusAllocation[] = [];
     let usedTx = false;
-    const outcome = await withLock(`market:${opts.marketId}`, async (): Promise<"OK" | "CLOSED" | "NO_FUNDS"> => {
-      const fresh = await marketStore.get(opts.marketId);
+    const outcome = await withLock(`market:${opts.marketId}`, async (lockTx): Promise<"OK" | "CLOSED"> => {
+      const fresh = await marketStore.get(opts.marketId, lockTx);
       if (!fresh || fresh.status !== "LIVE" || isSelectionClosed(fresh) || Date.parse(fresh.resolutionAt) <= Date.now()) {
         return "CLOSED";
       }
-      try {
+      {
         await withMoneyTx(async (tx) => {
           usedTx = tx !== null;
           if (realPart > 0) {
@@ -513,15 +550,16 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
           // silently dropping the ledger row (was fire-and-forget .catch()).
           await postLedgerEntries(`stake_${betTxnId}`, stakeEntries({ txnId: betTxnId, userId, marketId: opts.marketId, realPart, bonusPart }), tx);
         });
-      } catch (err) {
-        if (err instanceof BetAbort) return "NO_FUNDS";
-        throw err; // unexpected failure — the tx already rolled back; surface it
       }
-      // COMMITTED — only now snapshot the pool + push live odds, so subscribers
-      // and the history chart never see a pool state that later rolled back.
-      recordSnapshot(fresh.id, fresh.yesPool, fresh.noPool);
-      // SSE: push live odds to all connected clients
-      emit("market:odds", { marketId: fresh.id, yesPct: impliedYesPct(fresh) });
+      // NOT committed yet — withMoneyTx now JOINS the lock's transaction, which
+      // only commits when the outermost withLock returns. Snapshotting or
+      // emitting here would publish a pool the transaction can still roll back,
+      // exactly the leak the old post-tx placement existed to prevent. Both are
+      // deferred to `committed` and fired after withLock resolves.
+      committed = {
+        positionId, placedAt, yesPool: fresh.yesPool, noPool: fresh.noPool,
+        payoutIfWin, bonusPart, walletId: wallet.id, bonusAllocations, usedTx,
+      };
       return "OK";
     });
 
@@ -539,23 +577,66 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
       });
       return { ok: false as const, error: "Selections closed while placing your bet. · Uchaguzi umefungwa.", code: "SELECTION_CLOSED" as const };
     }
-    if (outcome === "NO_FUNDS") {
-      return { ok: false as const, error: "Not enough balance.", code: "INVALID" as const };
+    // The bet's audit trail, inbox receipt and email all moved BELOW the lock.
+    // They are fire-and-forget and need no lock, but the market advisory lock is
+    // now held until the outer transaction ends (it rides the same tx), so any
+    // work left in here extends the hold on a hot market for no benefit.
+
+    // Wagering accrues on the FULL stake (turnover) INSIDE this wallet lock, so
+    // spend + wagering + any fulfilment are one atomic unit (no race with a
+    // concurrent second bet on the same wallet). Turnover from this bet is
+    // reversed if the bet is later refunded (see reverseWagering in the void
+    // paths) — that's what prevents bonus from clearing to cash with no risk.
+    // Best-effort: a wagering hiccup must never fail a placed bet.
+    try {
+      // lockTx: this runs after the wallet debit inside the SAME transaction, so
+      // its wallet/grant UPDATEs must ride that transaction — on a separate
+      // connection they would block on our own uncommitted wallet row (P2028).
+      const wr = await recordWageringLocked(userId, opts.stake, lockTx);
+      wageringFulfilled = wr.fulfilled;
+    } catch (err) {
+      // Never block a placed bet — but DON'T fail silently: a lost turnover
+      // accrual stalls bonus clearing, so leave a trace (mirrors the affiliate
+      // accrual_error handling above).
+      audit({ category: "SYSTEM", action: "bonus.wagering_error", actorId: userId, targetType: "Position", targetId: positionId, payload: { stake: opts.stake, error: String((err as Error)?.message ?? err) } });
     }
+
+    return { ok: true as const, data: { positionId, balance: newBalance, payoutIfWin } };
+  });
+  } catch (err) {
+    // BetAbort now has to escape withLock to do its job. Since withMoneyTx joins
+    // the lock's transaction, catching it INSIDE would let the enclosing lock
+    // commit the very writes the abort meant to discard — a real debit with no
+    // position. Letting it reach here rolls the whole bet back, then we map it to
+    // the same clean rejection the player always saw. (In-memory there is no
+    // rollback, so spendBonusLocked's hand-compensation above still applies.)
+    if (err instanceof BetAbort) {
+      return { ok: false, error: "Not enough balance.", code: "INVALID" };
+    }
+    throw err;
+  }
+
+  // ── COMMITTED ──────────────────────────────────────────────────────────────
+  // Everything below runs only after the lock's transaction actually committed,
+  // so no subscriber, chart point, receipt or email can describe a bet that
+  // rolled back.
+  if (result.ok && committed) {
+    const c: CommittedBet = committed;
+    recordSnapshot(opts.marketId, c.yesPool, c.noPool);
+    emit("market:odds", { marketId: opts.marketId, yesPct: impliedYesPct({ ...market, yesPool: c.yesPool, noPool: c.noPool }) });
 
     // Deferred from spendBonusLocked in tx mode (see there): raised only after
     // the transaction committed, so the audit can never narrate a rolled-back spend.
-    if (usedTx && bonusPart > 0) {
-      audit({ category: "WALLET", action: "bonus.spent", actorId: userId, targetType: "Wallet", targetId: wallet.id, payload: { spent: bonusPart, allocations: bonusAllocations } });
+    if (c.usedTx && c.bonusPart > 0) {
+      audit({ category: "WALLET", action: "bonus.spent", actorId: userId, targetType: "Wallet", targetId: c.walletId, payload: { spent: c.bonusPart, allocations: c.bonusAllocations } });
     }
-
     audit({
       category: "BET",
       action: "market.position.opened",
       actorId: userId,
       targetType: "Position",
-      targetId: positionId,
-      payload: { marketId: market.id, side: opts.side, stake: opts.stake, payoutIfWin },
+      targetId: c.positionId,
+      payload: { marketId: market.id, side: opts.side, stake: opts.stake, payoutIfWin: c.payoutIfWin },
     });
     // Inbox receipt — kit-faithful, opens to the market detail. The cash-out terms
     // it quotes come from THIS POLL'S frozen rates, not a hardcoded "5 min / 9%".
@@ -563,10 +644,10 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
     notifyBetPlaced(userId, {
       side: opts.side,
       stake: opts.stake,
-      payoutIfWin,
+      payoutIfWin: c.payoutIfWin,
       marketTitle: market.titleEn,
       marketId: market.id,
-      positionId,
+      positionId: c.positionId,
       cashOutFeeRate: betRates.cashOutFeeRate,
       freeExitGraceMinutes: betRates.freeExitGraceMinutes,
     });
@@ -579,31 +660,13 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
       to: email,
       subject: `Bet placed · ${opts.side} on "${market.titleEn.slice(0, 40)}"`,
       html: betPlacedHtml({
-        reference: positionId, side: opts.side, stake: opts.stake,
-        marketTitle: market.titleEn, placedAt, resolutionDate: market.resolutionAt.slice(0, 10),
+        reference: c.positionId, side: opts.side, stake: opts.stake,
+        marketTitle: market.titleEn, placedAt: c.placedAt, resolutionDate: market.resolutionAt.slice(0, 10),
         cashOutFeeRate: betRates.cashOutFeeRate, freeExitGraceMinutes: betRates.freeExitGraceMinutes,
       }),
       tag: "bet-placed",
     })).catch(() => {});
-
-    // Wagering accrues on the FULL stake (turnover) INSIDE this wallet lock, so
-    // spend + wagering + any fulfilment are one atomic unit (no race with a
-    // concurrent second bet on the same wallet). Turnover from this bet is
-    // reversed if the bet is later refunded (see reverseWagering in the void
-    // paths) — that's what prevents bonus from clearing to cash with no risk.
-    // Best-effort: a wagering hiccup must never fail a placed bet.
-    try {
-      const wr = await recordWageringLocked(userId, opts.stake);
-      wageringFulfilled = wr.fulfilled;
-    } catch (err) {
-      // Never block a placed bet — but DON'T fail silently: a lost turnover
-      // accrual stalls bonus clearing, so leave a trace (mirrors the affiliate
-      // accrual_error handling above).
-      audit({ category: "SYSTEM", action: "bonus.wagering_error", actorId: userId, targetType: "Position", targetId: positionId, payload: { stake: opts.stake, error: String((err as Error)?.message ?? err) } });
-    }
-
-    return { ok: true as const, data: { positionId, balance: newBalance, payoutIfWin } };
-  });
+  }
 
   // Dual-channel on the bet-placement fulfilment path too (matches recordWagering).
   for (const g of wageringFulfilled) {

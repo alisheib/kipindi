@@ -40,6 +40,28 @@
 > unconfirmed inbox into a verified one (that env var is set in prod, to Ali's own number).
 > Proof: `test:deposit-notifications` (71) · `test:auth-email-integrity` (28) ·
 > `e2e:card` (100) · browser-journey 76×3 identical. See `docs/SELCOM-COMPLETION-PROMPT.md`.
+> ⚡ **BET CONCURRENCY — DEPLOYS 1 & 2 OF 5 SHIPPED 2026-07-19.** A bet used to pin
+> THREE pooled connections (wallet lock tx → nested market lock tx → money tx), so the
+> ceiling was pool÷3 and past it a raw Prisma `P2024` hit the player. Now: `withLock`
+> carries its tx on an `AsyncLocalStorage`, a nested lock joins it, and `withMoneyTx`
+> joins too — **1 connection per bet** (round-trips 39→34, txn-control 10→6). On top of
+> that, **`admission.ts`** queues bets FIFO beyond `maxInFlight` (=pool−4, clamped to
+> pool−2) with a 500-deep queue and a 15s budget, so **load becomes latency, not errors**;
+> saturation surfaces as a retryable `BUSY`, never a raw DB error.
+> **Measured on real Postgres, pool 20, ONE market: 200 concurrent bets → 200 succeeded,
+> p95 1,507 ms, 0 TZS leaked, pool == Σ stakes, nothing shed.** (Old ceiling: ~9.)
+> Harness: `scripts/load/spike-f-saturation.mts`; invariants: `npm run test:bet-admission`.
+> ⚠️ **Two rules the collapsed transaction imposes — read before touching a money path:**
+> (1) an abort must **escape `withLock`**; caught inside, the enclosing tx COMMITS the
+> partial debit it meant to discard. (2) any **write** inside a lock must take the
+> caller's `tx`, or it blocks on our own uncommitted row and hangs to the 30s timeout
+> (`P2028`) — this is what `recordWageringCore` did. Reads are fine un-threaded (MVCC).
+> `hashKey64` now lives in `lock-key.ts`: `audit.ts` needs only that pure helper and is
+> reachable from the CLIENT graph, so importing it from `locks.ts` pulled
+> `node:async_hooks` into a browser chunk and broke the build.
+> 📋 Remaining: deploy 3 (transient retry) · deploy 4 (narrow market stamps + atomic pool
+> deltas incl. cash-out) · deploy 5 (drop the market lock from the bet path — **only after
+> a ≥1 week soak of deploy 4**). Plan: `docs/LOAD_DAY1_FINDINGS.md`.
 > 🔴 **TWO OPERATOR ACTIONS REMAIN BEFORE A REAL DEPOSIT WORKS** (both are audited admin-UI
 > decisions on purpose, so they carry a named actor — do not script them):
 >   1. **/admin/payments → set provider to `selcom`.** A persisted `mock` outranks
