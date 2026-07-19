@@ -20,6 +20,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Modal } from "@/components/ui/modal";
+import { Callout } from "@/components/ui/callout";
 import { I } from "@/components/ui/glyphs";
 import { haptics } from "@/lib/haptics";
 import { HouseLeanWarning } from "./house-lean-warning";
@@ -28,6 +29,10 @@ import { DEFAULT_CASHOUT_FEE_RATE, DEFAULT_FREE_EXIT_GRACE_MINUTES, DEFAULT_PAID
 import { formatTzs, formatNumber } from "@/lib/utils";
 
 const QUOTE_HOLD_MS = 10_000;
+/** How long a bet may wait before we explain the wait. Short enough that the
+ *  pause never feels like a hang, long enough that an ordinary fast bet never
+ *  flashes a "busy" message at the player. */
+const BUSY_HINT_MS = 1_500;
 
 type Props = {
   open: boolean;
@@ -81,6 +86,14 @@ export function BetConfirmModal({
   const stripRef = useRef<HTMLDivElement>(null);
   const lastSecLabelRef = useRef<number>(Math.ceil(QUOTE_HOLD_MS / 1000));
 
+  // Quote-clock freeze + the "we're holding your place" hint. The dialog STAYS
+  // OPEN while a bet waits for admission, so the player must be told why — an
+  // unexplained multi-second pause on a money action reads as a hang, and a
+  // player who force-refreshes there is the one most likely to double-submit.
+  const frozenElapsedRef = useRef<number | null>(null);
+  const busyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showBusy, setShowBusy] = useState(false);
+
   // Pin the latest callbacks + pending flag so the timer effect only
   // restarts when `open` actually flips. Otherwise the parent re-creating
   // its onCancel arrow each render would restart the countdown forever
@@ -105,10 +118,26 @@ export function BetConfirmModal({
       // their bet is still being placed. We bank the elapsed time and
       // resume from there once the server responds.
       if (pendingRef.current) {
-        // Shift the start time forward so elapsed stays frozen
-        startedAtRef.current = performance.now() - (QUOTE_HOLD_MS - (lastSecLabelRef.current * 1000));
+        // Freeze by banking the REAL elapsed time once, on the pending edge, and
+        // holding it. The old version re-derived it every frame from the
+        // Math.ceil'd seconds LABEL, so the clock quantised to whole seconds and
+        // rounded backwards — handing the player up to ~1s of extra quote on each
+        // submit. It also spun a RAF for the whole network call to re-assign the
+        // same value.
+        if (frozenElapsedRef.current === null) {
+          frozenElapsedRef.current = performance.now() - startedAtRef.current;
+          // Surface the wait only once it is long enough to be worth explaining.
+          busyTimerRef.current = setTimeout(() => setShowBusy(true), BUSY_HINT_MS);
+        }
+        startedAtRef.current = performance.now() - frozenElapsedRef.current;
         rafRef.current = requestAnimationFrame(tick);
         return;
+      }
+      // Resumed (or never paused) — drop the freeze and any busy hint.
+      if (frozenElapsedRef.current !== null) {
+        frozenElapsedRef.current = null;
+        if (busyTimerRef.current) { clearTimeout(busyTimerRef.current); busyTimerRef.current = null; }
+        setShowBusy(false);
       }
       const elapsed = performance.now() - startedAtRef.current;
       const left = Math.max(0, QUOTE_HOLD_MS - elapsed);
@@ -143,6 +172,9 @@ export function BetConfirmModal({
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
       clearTimeout(backstop);
+      if (busyTimerRef.current) { clearTimeout(busyTimerRef.current); busyTimerRef.current = null; }
+      frozenElapsedRef.current = null;
+      setShowBusy(false);
     };
   }, [open]);
 
@@ -271,6 +303,19 @@ export function BetConfirmModal({
             {t.dialog.quoteHeldFor} <strong className="font-mono text-brand-300">{seconds}s</strong> · {t.dialog.thenReaim}
           </span>
         </div>
+
+        {/* Saturation hint. The dialog deliberately STAYS OPEN while a bet waits
+            for a slot, so after ~1.5s of waiting we explain the pause rather than
+            leave the player staring at a frozen money dialog. The reassurance
+            ("your stake hasn't moved") is literally true: admission takes its slot
+            BEFORE any transaction opens, so a queued bet has touched nothing. */}
+        {showBusy && (
+          <div className="mt-4">
+            <Callout tone="info" glyph="clock" live>
+              {t.dialog.busyHolding}
+            </Callout>
+          </div>
+        )}
 
         {/* CTAs — confirm is full-width (primary action, easy tap target),
             cancel is secondary below. Side (YES/NO) omitted from button

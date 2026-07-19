@@ -8,6 +8,8 @@ import { db } from "@/lib/server/store";
 import { verifyChain, getAuditPage } from "@/lib/server/audit";
 import { smsHealthSnapshot, sms as smsClient } from "@/lib/server/sms";
 import { rateLimitSnapshot } from "@/lib/server/rate-limit";
+import { admissionSnapshot } from "@/lib/server/admission";
+import { retrySnapshot } from "@/lib/server/retry";
 import { listMarkets, getSettlementHealth, isAutoSettleEnabled, type SettlementHealth } from "@/lib/server/market-service";
 import { hasDatabase, pingDatabase } from "@/lib/server/prisma";
 import { formatTime, formatTzs } from "@/lib/utils";
@@ -29,6 +31,10 @@ export default async function AdminSystemPage() {
   let totalUsers = 0;
   try { totalUsers = (await db.user.list()).length; } catch { /* graceful */ }
   const buckets = rateLimitSnapshot();
+  // Bet-queue health. Wrapped like every other reading on this page: a health
+  // card must never be able to 500 the system page.
+  const admission = admissionSnapshot();
+  const retryTotal = Object.values(retrySnapshot()).reduce((a, b) => a + b, 0);
   const liveMarkets = await listMarkets({ status: "LIVE" }).then(l => l.length).catch(() => 0);
   const resolvedMarkets = await listMarkets({ status: "RESOLVED" }).then(l => l.length).catch(() => 0);
   // F11 — is settlement actually happening? Degrade to an empty (not fabricated)
@@ -72,6 +78,50 @@ export default async function AdminSystemPage() {
             Takes effect <strong>immediately</strong> — no redeploy — and every flip is written to the audit chain.
           </p>
           <MaintenanceModeForm enabled={platform.maintenanceMode ?? false} note={platform.maintenanceNote ?? ""} />
+        </AdminCard>
+
+        {/* Bet queue — admission converts saturation from errors into latency,
+            which is the right trade but makes it INVISIBLE unless someone can see
+            the queue. shed/timedOut are the two numbers that mean players were
+            actually turned away; everything else is healthy waiting. */}
+        <AdminCard title="Bet queue" sw="Foleni ya kubashiri">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <AdminKpi
+              label="In flight" sw="Zinazoendelea"
+              value={String(admission.inFlight)}
+              delta={`limit ${admission.limits.maxInFlight} · pool ${admission.poolSize}`}
+            />
+            <AdminKpi
+              label="Queue depth" sw="Waliopo foleni"
+              value={String(admission.queueDepth)}
+              delta={`max ${admission.limits.maxQueue}`}
+              tone={admission.queueDepth > 0 ? "danger" : undefined}
+              pulse={admission.queueDepth > 0}
+            />
+            <AdminKpi
+              label="Wait p95" sw="Kusubiri p95"
+              value={`${admission.waitP95} ms`}
+              delta={`p50 ${admission.waitP50} · p99 ${admission.waitP99} · budget ${admission.limits.maxWaitMs}`}
+            />
+            <AdminKpi
+              label="Turned away" sw="Waliokataliwa"
+              value={String(admission.shed + admission.timedOut)}
+              delta={`${admission.admitted.toLocaleString()} admitted`}
+              tone={admission.shed + admission.timedOut > 0 ? "danger" : "success"}
+              pulse={admission.shed + admission.timedOut > 0}
+            />
+          </div>
+          <p className="mt-3 text-[12px] text-text-muted">
+            A bet beyond <strong className="text-text">{admission.limits.maxInFlight}</strong> in flight
+            waits in a FIFO queue for up to <strong className="text-text">{(admission.limits.maxWaitMs / 1000).toFixed(0)}s</strong> instead
+            of failing. <strong className="text-text">Turned away</strong>{" "}counts the bets that were
+            genuinely refused (queue full, or the wait budget elapsed) — if it is not
+            zero, players saw a &ldquo;busy&rdquo; message and capacity needs attention.
+            {retryTotal > 0 ? (
+              <> {retryTotal.toLocaleString()} transient DB {retryTotal === 1 ? "failure was" : "failures were"} retried and recovered.</>
+            ) : null}
+            {" "}Counters are per-container and reset on deploy.
+          </p>
         </AdminCard>
 
         {/* F11 — SETTLEMENT. A resolved market does NOT pay at resolution: its pool

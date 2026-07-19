@@ -216,6 +216,12 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, max
     payoutIfWin: number;
     positionId?: string;
     error?: string;
+    /** Mapped, translated headline. Without this the raw server string became
+     *  the modal TITLE, so SW/ZH players read English on a money failure. */
+    title?: string;
+    /** BUSY only — the platform was saturated, nothing was debited, and the
+     *  SAME idempotency key can be safely resubmitted. */
+    retryable?: boolean;
   } | null>(null);
   const [pending, startTransition] = useTransition();
   const trackRef = useRef<HTMLDivElement>(null);
@@ -755,37 +761,63 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, max
     setConfirmOpen(true);
   };
 
-  /** Translate a server error message into a user-friendly title + body
-   *  + variant. International betting platforms always close the betting
-   *  popup on resolution and fire a clear toast — never leave a half-open
-   *  modal with a generic banner inside. */
-  const errorToToast = (err: string): { title: string; body: string; variant: "danger" | "warning" } => {
-    const e = err.toLowerCase();
-    if (e.includes("balance") || e.includes("funds") || e.includes("wallet"))
-      return {
-        title: t.common.insufficientBalance,
-        body: t.common.topUpWallet,
-        variant: "danger",
-      };
-    if (e.includes("closed") || e.includes("resolv") || e.includes("voided"))
-      return {
-        title: t.common.marketClosed,
-        body: t.common.marketStoppedPredictions,
-        variant: "warning",
-      };
-    if (e.includes("self") && e.includes("exclu"))
-      return {
-        title: t.common.accountSelfExclusion,
-        body: t.common.predictionsPaused,
-        variant: "warning",
-      };
-    if (e.includes("rate") || e.includes("limit"))
-      return {
-        title: t.common.slowDown,
-        body: t.common.tooManyAttemptsRow,
-        variant: "warning",
-      };
-    return { title: t.common.couldNotPlace, body: err, variant: "danger" };
+  /** Translate a server rejection into a user-facing title + body + variant.
+   *
+   *  Branches on the TYPED `code`, never on the prose. It used to substring-match
+   *  English words against the server's message, which had three live consequences:
+   *    - the fallback rendered the raw server string as the TITLE of a money-failure
+   *      dialog, so a Swahili or Chinese player got an English sentence;
+   *    - RATE_LIMITED never matched, because the server sends "Slow down." which
+   *      contains neither "rate" nor "limit" — and retryAfterSec was discarded;
+   *    - "Wallet unavailable." (a NOT_FOUND) matched the *balance* branch and told
+   *      the player to top up.
+   *  `code` is already on the wire — buyPosition sets it on every rejection and the
+   *  server action returns the result verbatim. */
+  const errorToToast = (
+    code: string | undefined,
+    err: string,
+  ): { title: string; body: string; variant: "danger" | "warning"; retryable?: boolean } => {
+    switch (code) {
+      case "BUSY":
+        // Saturation, not a refusal. The stake has not moved and the same
+        // idempotency key can be safely resubmitted.
+        return { title: t.common.busyTitle, body: t.common.busyBody, variant: "warning", retryable: true };
+      case "RATE_LIMITED":
+        return { title: t.common.slowDown, body: t.common.tooManyAttemptsRow, variant: "warning" };
+      case "SELECTION_CLOSED":
+        return { title: t.common.marketClosed, body: t.common.marketStoppedPredictions, variant: "warning" };
+      case "SUSPENDED":
+        return { title: t.common.accountSelfExclusion, body: t.common.predictionsPaused, variant: "warning" };
+      case "NOT_FOUND":
+        return { title: t.common.couldNotPlace, body: t.common.marketStoppedPredictions, variant: "danger" };
+      case "INVALID":
+        // INVALID is overloaded (bad stake, closed market, insufficient balance,
+        // RG loss limit). Balance is the common case and the only one with a
+        // useful action, so disambiguate on the server's own wording — but ONLY
+        // here, where a wrong guess costs a slightly-off hint rather than a
+        // mistranslated headline.
+        if (/balance|funds|salio/i.test(err)) {
+          return { title: t.common.insufficientBalance, body: t.common.topUpWallet, variant: "danger" };
+        }
+        return { title: t.common.couldNotPlace, body: err, variant: "danger" };
+      default:
+        return { title: t.common.couldNotPlace, body: err, variant: "danger" };
+    }
+  };
+
+  /**
+   * Resubmit a BUSY bet with the SAME idempotency key.
+   *
+   * Reusing the key is what makes this safe: if the first attempt actually
+   * committed and only its response was lost, the server's findByIdempotencyKey
+   * probe returns that existing position instead of opening a second one. Minting
+   * a fresh key here — which is what `openConfirm` does — would turn a retry into
+   * a double bet, so this deliberately does NOT go through openConfirm.
+   */
+  const retrySubmit = () => {
+    if (!lockedQuote || pending) return;
+    setResultOpen(false);
+    submit();
   };
 
   const submit = () => {
@@ -805,20 +837,27 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, max
       // open with the same locked quote was racing into double-place.
       setConfirmOpen(false);
       if (!r.ok) {
-        const t = errorToToast(r.error);
+        const mapped = errorToToast((r as { code?: string }).code, r.error);
         // Centered failure modal — a corner toast alone is too easy to miss
         // for a money-handling failure. Toast still fires as a secondary
         // signal in the corner so the user has both.
-        toast({ title: t.title, description: t.body, variant: t.variant });
-        setResultData({ variant: "danger", side: q.side, stake: q.stake, payoutIfWin: 0, error: t.body });
+        toast({ title: mapped.title, description: mapped.body, variant: mapped.variant });
+        setResultData({
+          variant: "danger", side: q.side, stake: q.stake, payoutIfWin: 0,
+          error: mapped.body, title: mapped.title, retryable: mapped.retryable,
+        });
         setResultOpen(true);
-        // Reset dial so the failed stake doesn't linger — the player
-        // should re-aim rather than seeing a stale amount.
-        setPos(initial);
-        setExactStakeState(null);
-        setExactMultiplierState(null);
-        setStakeText("");
-        setMultText("");
+        // Wipe the dial only on a TERMINAL failure. BUSY is the platform asking
+        // the player to wait, not a refusal — clearing a carefully-aimed stake and
+        // multiplier there would punish them for our load, and it would also
+        // destroy the aim that the Retry button needs.
+        if (!mapped.retryable) {
+          setPos(initial);
+          setExactStakeState(null);
+          setExactMultiplierState(null);
+          setStakeText("");
+          setMultText("");
+        }
         return;
       }
       toast({
@@ -1432,7 +1471,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, max
           open={resultOpen}
           variant={resultData.variant}
           eyebrow={resultData.variant === "success" ? t.common.betPlacedEyebrow : t.common.couldNotPlaceBet}
-          title={resultData.variant === "success" ? `${resultData.side} · ${formatTzs(resultData.stake)}` : (resultData.error ?? t.error.tryAgain)}
+          title={resultData.variant === "success" ? `${resultData.side} · ${formatTzs(resultData.stake)}` : (resultData.title ?? resultData.error ?? t.error.tryAgain)}
           subtitle={
             resultData.variant === "success"
               ? (marketTitle ?? t.common.positionOpenNotify)
@@ -1444,9 +1483,25 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, max
             { label: t.dialog.payoutLabel, value: t.market.atResolution },
           ] : undefined}
           footnote={resultData.variant === "success" ? t.common.goodLuck : undefined}
-          primaryLabel={resultData.variant === "success" ? t.common.doneSawa : t.common.close}
-          secondaryLabel={resultData.variant === "success" ? t.common.viewPositions : undefined}
-          onSecondary={resultData.variant === "success" ? () => router.push("/positions") : undefined}
+          // BUSY offers Retry as the PRIMARY action. Without it the failure modal
+          // had only "Close" — a dead end that made a transient capacity blip look
+          // like a refusal, and left the player to re-aim from scratch.
+          primaryLabel={
+            resultData.variant === "success" ? t.common.doneSawa
+              : resultData.retryable ? t.common.retryNow
+              : t.common.close
+          }
+          onPrimary={resultData.retryable ? retrySubmit : undefined}
+          secondaryLabel={
+            resultData.variant === "success" ? t.common.viewPositions
+              : resultData.retryable ? t.common.close
+              : undefined
+          }
+          onSecondary={
+            resultData.variant === "success" ? () => router.push("/positions")
+              : resultData.retryable ? () => setResultOpen(false)
+              : undefined
+          }
           onClose={() => setResultOpen(false)}
           // No auto-close on success — let the player read the result
           // and decide whether to tap "View positions" or "Done". The
