@@ -70,7 +70,13 @@ export default async function DepositReturnPage({
     t.wallet.returnPendingBody;
 
   return (
-    <main className="mx-auto max-w-[560px] px-3 lg:px-6 py-6 space-y-5">
+    // pb-28 on mobile: the bottom nav is `fixed` below lg (bottom-nav.tsx:41) and
+    // the chat FAB floats above it, so a page ending at py-6 has its last element
+    // sitting UNDERNEATH both. Here that is the footnote explaining we confirm
+    // every payment with the gateway before the balance moves — reassurance on a
+    // money screen, and it was unreadable on a phone. Reverts at lg, where the
+    // nav is not fixed.
+    <main className="mx-auto max-w-[560px] px-3 lg:px-6 py-6 pb-28 lg:pb-6 space-y-5">
       <PageHero glow={outcome.state === "PAID" ? "gold" : undefined}>
         <PageHeader
           tone={tone === "gold" ? "gold" : undefined}

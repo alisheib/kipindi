@@ -62,13 +62,23 @@ export function LiveTicker({ events }: { events: TickerEvent[] }) {
         overflow: "hidden",
         position: "relative",
         userSelect: "none",
+        display: "flex",
+        alignItems: "stretch",
       }}
     >
-      {/* Fixed LIVE label */}
+      {/* Fixed LIVE label.
+          IN FLOW (flex item), not absolutely positioned over the track. It used to
+          be absolute with the track carrying a hardcoded paddingLeft: 80 — but the
+          label's width is LOCALE-DEPENDENT ("LIVE" / "MUBASHARA" / "直播"), so no
+          single padding can clear it. In Swahili the marquee visibly scrolled
+          underneath the label. Flex makes the track start wherever the label
+          actually ends, in every locale, with no measurement. The gradient is now
+          solid across the label and fades only in its trailing padding, so nothing
+          is ever legible beneath the text. */}
       <div style={{
-        position: "absolute", left: 0, top: 0, bottom: 0, zIndex: 10,
-        display: "flex", alignItems: "center", paddingLeft: 16, paddingRight: 32,
-        background: "linear-gradient(90deg, var(--bg-inset) 60%, oklch(11% 0.11 268 / 0) 100%)",
+        flex: "0 0 auto", zIndex: 10,
+        display: "flex", alignItems: "center", paddingLeft: 16, paddingRight: 24,
+        background: "linear-gradient(90deg, var(--bg-inset) 0%, var(--bg-inset) 70%, oklch(11% 0.11 268 / 0) 100%)",
       }}>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
           <span className="live-dot" style={{ width: 6, height: 6 }} />
@@ -84,10 +94,18 @@ export function LiveTicker({ events }: { events: TickerEvent[] }) {
         background: "linear-gradient(270deg, var(--bg-inset), oklch(11% 0.11 268 / 0))",
       }} />
 
-      {/* Horizontal marquee */}
-      <div className="ticker-track" style={{ paddingLeft: 80, animationPlayState: paused ? "paused" : "running" }}>
-        <Items events={events} prefix="a" verbs={verbs} />
-        <Items events={events} prefix="b" verbs={verbs} />
+      {/* VIEWPORT — the clipping box. .ticker-track is the ANIMATED element
+          (inline-flex, flex-shrink:0, translateX(-50%)), so it must stay free to
+          overflow and translate; clipping has to happen on a wrapper, not on the
+          track itself. Without this box the marquee rendered straight across the
+          LIVE label and ate the first characters — in Swahili "MUBASHARA" and
+          "TZS" collided into "MUBASHARAZS". The container's own overflow:hidden
+          does not help: it clips at the window edge, not at the label. */}
+      <div style={{ flex: "1 1 auto", minWidth: 0, overflow: "hidden", display: "flex", alignItems: "center" }}>
+        <div className="ticker-track" style={{ animationPlayState: paused ? "paused" : "running" }}>
+          <Items events={events} prefix="a" verbs={verbs} />
+          <Items events={events} prefix="b" verbs={verbs} />
+        </div>
       </div>
     </div>
   );
