@@ -20,6 +20,7 @@ import { db } from "./store";
 import { randomId } from "./crypto";
 import { withLock } from "./locks";
 import { withAdmission, AdmissionBusy } from "./admission";
+import { withTransientRetry } from "./retry";
 import { emit } from "./event-bus";
 import { spendBonusLocked, recordWageringLocked, reverseWagering, refundBonusToActive, refundBonusLocked, expireActiveGrants, type BonusAllocation } from "./bonus-service";
 import { notifyBonusFulfilled } from "./notification-service";
@@ -322,7 +323,13 @@ type BuyResult = ServiceResult<{ positionId: string; balance: number; payoutIfWi
  */
 export async function buyPosition(userId: string, opts: BuyOpts): Promise<BuyResult> {
   try {
-    return await withAdmission(() => buyPositionInner(userId, opts));
+    // Retry sits INSIDE admission (a retry keeps the slot it already queued for)
+    // and OUTSIDE withLock (each attempt needs a fresh transaction — retrying in
+    // an aborted one is 25P02). Gated on the caller's idempotency key: without
+    // one, a retry would be a double bet, so we make exactly one attempt.
+    return await withAdmission(() =>
+      withTransientRetry(() => buyPositionInner(userId, opts), !!opts.idempotencyKey),
+    );
   } catch (err) {
     if (err instanceof AdmissionBusy) {
       return {
@@ -518,13 +525,20 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
           }
 
           // Money is secured — apply the pool increment and persist everything.
-          // (In-memory `fresh` aliases the stored object, so the mutation comes
-          // AFTER the two throw points above — an abort must not corrupt pools.)
-          if (opts.side === "YES") fresh.yesPool += opts.stake;
-          else                     fresh.noPool  += opts.stake;
-          fresh.predictorCount += 1;
+          // ATOMIC DELTA, computed by the database, rather than the old
+          // read-modify-write full-row `set`. Correct today because the market
+          // lock is still held, but it removes the lost-update window itself,
+          // which is the prerequisite for dropping that lock (deploy 5/5).
+          // Placed AFTER the two throw points above so an abort never touches
+          // pools (in-memory `fresh` aliases the stored object).
+          const pools = await marketStore.addToPool(
+            opts.marketId,
+            opts.side === "YES" ? { yesPool: opts.stake, predictorCount: 1 } : { noPool: opts.stake, predictorCount: 1 },
+            tx,
+          );
+          // Use the TRUE committed pools for the snapshot/odds push below.
+          if (pools) { fresh.yesPool = pools.yesPool; fresh.noPool = pools.noPool; }
           fresh.updatedAt = placedAt;
-          await marketStore.set(fresh, tx);
           await positionStore.set(position, tx);
 
           // The real-wallet ledger records only the REAL cash that left `balance`
@@ -787,7 +801,18 @@ export async function autoResolveExpiredDemoMarkets(): Promise<{ resolved: numbe
       cur.status = "RESOLVED";
       cur.updatedAt = cur.resolutionStage2At;
       cur.settledAt = null; // ADJUDICATED only — settleMarket moves the money
-      await marketStore.set(cur);
+      // stamp, not set: LIVE→RESOLVED on a market that may still be taking bets.
+      await marketStore.stamp(m.id, {
+        resolutionStage1By: cur.resolutionStage1By,
+        resolutionStage1At: cur.resolutionStage1At,
+        resolutionStage2By: cur.resolutionStage2By,
+        resolutionStage2At: cur.resolutionStage2At,
+        objectionsClosedAt: cur.objectionsClosedAt,
+        resolvedOutcome: cur.resolvedOutcome,
+        status: "RESOLVED",
+        updatedAt: cur.updatedAt,
+        settledAt: null,
+      });
       recordSnapshot(cur.id, cur.yesPool, cur.noPool);
 
       audit({
@@ -876,7 +901,9 @@ export async function notifySelectionClosedMarkets(): Promise<{ notified: number
       if (!cur || cur.status !== "LIVE" || cur.selectionClosedNotifiedAt) return false;
       const cutoff = cur.selectionClosedAt ? Date.parse(cur.selectionClosedAt) : Date.parse(cur.resolutionAt);
       if (!Number.isFinite(cutoff) || cutoff > now) return false;
-      await marketStore.set({ ...cur, selectionClosedNotifiedAt: new Date().toISOString() });
+      // stamp, not set: a full-row write here would erase the pool increments of
+      // any bet that committed between the read above and this write.
+      await marketStore.stamp(m.id, { selectionClosedNotifiedAt: new Date().toISOString() });
       return true;
     });
     if (!stamped) continue;
@@ -1013,7 +1040,7 @@ export async function notifyClosingSoonMarkets(): Promise<{ notified: number; wa
       if (!Number.isFinite(cutoff)) return false;
       const ms = cutoff - now;
       if (ms <= 0 || ms > CLOSING_SOON_WINDOW_MS) return false;
-      await marketStore.set({ ...cur, closingSoonNotifiedAt: new Date().toISOString() });
+      await marketStore.stamp(m.id, { closingSoonNotifiedAt: new Date().toISOString() });
       return true;
     });
     if (!stamped) continue;
@@ -1044,7 +1071,7 @@ export async function notifyDueMarketsForResolution(): Promise<{ notified: numbe
       const cur = await marketStore.get(m.id);
       // Re-check inside the lock so two concurrent sweeps can't both alert.
       if (!cur || cur.status !== "LIVE" || cur.resolutionNotifiedAt || Date.parse(cur.resolutionAt) > now) return false;
-      await marketStore.set({ ...cur, resolutionNotifiedAt: new Date().toISOString() });
+      await marketStore.stamp(m.id, { resolutionNotifiedAt: new Date().toISOString() });
       return true;
     });
     if (!stamped) continue;
@@ -1347,10 +1374,18 @@ export async function cashOutPosition(
     // whole debit comes from there. The clamp is belt-and-braces against a future
     // change breaking that invariant: pay the lesser rather than mint.
     const ownDebit = Math.min(ownPool, gross);
-    if (ownYes) m.yesPool = Math.max(0, m.yesPool - ownDebit);
-    else        m.noPool  = Math.max(0, m.noPool  - ownDebit);
+    // ATOMIC DELTA, not a read-modify-write. This is a genuine pool mutation on a
+    // market that is still LIVE and still taking bets, so it cannot be a `stamp`
+    // and it must not be a full-row `set`: writing back `m` would rewrite BOTH
+    // pools from the snapshot read at the top of this lock and erase the stakes of
+    // every bet committed since. The database computes the new value, so a bet and
+    // a cash-out can no longer clobber one another.
+    const pools = await marketStore.addToPool(m.id, ownYes ? { yesPool: -ownDebit } : { noPool: -ownDebit });
+    // Use the TRUE committed pools for the chart and the odds push, never the
+    // values this caller assumed.
+    m.yesPool = pools?.yesPool ?? Math.max(0, m.yesPool - (ownYes ? ownDebit : 0));
+    m.noPool = pools?.noPool ?? Math.max(0, m.noPool - (ownYes ? 0 : ownDebit));
     m.updatedAt = now;
-    await marketStore.set(m);
     recordSnapshot(m.id, m.yesPool, m.noPool);
     // SSE: push updated odds after cash-out changes the pool
     emit("market:odds", { marketId: m.id, yesPct: impliedYesPct(m) });
@@ -1493,7 +1528,18 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
     m.resolutionEvidence = evidence;
     m.status = "CLOSED";
     m.updatedAt = m.resolutionStage1At;
-    await marketStore.set(m);
+    // stamp, not set: this is the LIVE→CLOSED transition, so bets can still be
+    // committing concurrently. A full-row write would rewrite yesPool/noPool from
+    // the snapshot read at the top of this callback and silently destroy the
+    // stakes of every bet placed in between.
+    await marketStore.stamp(m.id, {
+      resolutionStage1By: m.resolutionStage1By,
+      resolutionStage1At: m.resolutionStage1At,
+      resolvedOutcome: m.resolvedOutcome,
+      resolutionEvidence: m.resolutionEvidence,
+      status: "CLOSED",
+      updatedAt: m.updatedAt,
+    });
     audit({
       category: "ADMIN",
       action: "market.resolve.stage1",
