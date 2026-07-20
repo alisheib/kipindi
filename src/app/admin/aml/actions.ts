@@ -127,94 +127,41 @@ export async function approveAmlAction(formData: FormData) {
     // settleWithdrawalConfirmed (which already does the hold-release + ledger +
     // notification atomically) — this action must not be able to complete.
     //
-    // Deposits are unaffected: they never reach this branch.
-    if (txn.type === "WITHDRAWAL") {
-      audit({
-        category: "COMPLIANCE",
-        action: "aml.approve.blocked_no_payout_rail",
-        actorId: session.userId,
-        targetType: "Transaction",
-        targetId: txnId,
-        payload: { amount: txn.amount, note: "Approval refused: releasing the hold here would mark the payout complete without dispatching it." },
-      });
-      return {
-        ok: false as const,
-        error:
-          "Withdrawal approval is disabled. Approving here would release the hold and mark the payout sent WITHOUT contacting the payment provider — the player would lose the money. Re-enable only once approved withdrawals are dispatched to the gateway and settled by the webhook/reconcile path.",
-      };
-    }
-
-    const requiresTwo = Math.abs(txn.amount) >= TWO_PERSON_THRESHOLD_TZS;
-    if (requiresTwo) {
-      const first = await getFirstSignature(txnId);
-      if (!first) {
-        await setFirstSignature(txnId, { actorId: session.userId, at: new Date().toISOString() });
-        audit({
-          category: "ADMIN",
-          action: "aml.approve.stage1",
-          actorId: session.userId,
-          targetType: "Transaction",
-          targetId: txnId,
-          payload: { amount: txn.amount, reason: reason || null, threshold: TWO_PERSON_THRESHOLD_TZS },
-        });
-        revalidatePath("/admin/aml");
-        return { ok: true as const, stage: "stage1" as const, message: "Stage 1 recorded — second officer required to release." };
-      }
-      if (first.actorId === session.userId) {
-        return { ok: false as const, error: "Second-officer approval must come from a different reviewer." };
-      }
-      await releaseWithdrawalHold();
-      await db.txn.update(txnId, {
-        status: "CONFIRMED",
-        completedAt: new Date().toISOString(),
-        amlReason: reason || txn.amlReason,
-      });
-      audit({
-        category: "ADMIN",
-        action: "aml.approved",
-        actorId: session.userId,
-        targetType: "Transaction",
-        targetId: txnId,
-        payload: {
-          amount: txn.amount,
-          reason: reason || null,
-          twoPersonApproval: "complete",
-          firstOfficer: first.actorId,
-          firstOfficerAt: first.at,
-          secondOfficer: session.userId,
-        },
-      });
-      // The withdrawal ledger post and the "on its way" notification that used to
-      // live here are gone: TypeScript now proves this line is unreachable for a
-      // WITHDRAWAL (the guard above narrows the type), which is exactly the point.
-      // When approved withdrawals are dispatched for real, settleWithdrawalConfirmed
-      // owns the hold-release, the ledger and the notification — atomically, and only
-      // after the gateway has accepted the payout. Do not re-add them here.
-      revalidatePath("/admin/aml");
-      return { ok: true as const, stage: "complete" as const };
-    }
-
-    // Below threshold — single-officer approval.
-    await releaseWithdrawalHold();
-    await db.txn.update(txnId, {
-      status: "CONFIRMED",
-      completedAt: new Date().toISOString(),
-      amlReason: reason || txn.amlReason,
-    });
-    // Withdrawal ledger post removed — unreachable here by construction (see the
-    // guard above), and it credited EXTERNAL for money that had never been sent.
+    // A DEPOSIT is just as unsafe here, for the mirror-image reason: this action
+    // never credits a wallet. The only balance write below is the withdrawal
+    // hold-release, so approving a held DEPOSIT would mark it CONFIRMED with no
+    // credit and no ledger entry — the player's money kept, and the books now
+    // asserting it was settled. Deposits only reach AML_REVIEW via the
+    // RG-suspense path, where what is owed is a REFUND, not an approval.
+    const blocked =
+      txn.type === "WITHDRAWAL"
+        ? "Withdrawal approval is disabled. Approving here would release the hold and mark the payout sent WITHOUT contacting the payment provider — the player would lose the money. Re-enable only once approved withdrawals are dispatched to the gateway and settled by the webhook/reconcile path."
+        : "Deposit approval is disabled. This action never credits a wallet, so approving would mark the deposit settled without the player receiving anything. A deposit held here is awaiting a REFUND (the player self-excluded before it landed) — return the money once the payout rail is live, then resolve it.";
     audit({
-      category: "ADMIN",
-      action: "aml.approved",
+      category: "COMPLIANCE",
+      action: "aml.approve.blocked_unsafe_settlement",
       actorId: session.userId,
       targetType: "Transaction",
       targetId: txnId,
-      payload: { amount: txn.amount, reason: reason || null, twoPersonApproval: "below-threshold" },
+      payload: { amount: txn.amount, type: txn.type, note: "Approval refused: this action cannot move the money it claims to settle." },
     });
-    // notifyWithdrawalSent removed — it told the player their money was on its way
-    // when nothing had been dispatched. Unreachable here by construction.
-    revalidatePath("/admin/aml");
-    return { ok: true as const, stage: "complete" as const };
+    return { ok: false as const, error: blocked };
+    // ⛔ EVERYTHING THAT USED TO FOLLOW IS DELETED, AND TYPESCRIPT PROVED IT DEAD.
+    //
+    // The two-officer flow, the hold release, the CONFIRMED status write, the ledger
+    // post and the player notification all lived here. With the guard above in place
+    // tsc narrowed `txn` to `undefined` for the whole remainder — i.e. it is formally
+    // unreachable — so it is removed rather than left behind for someone to re-enable
+    // without the dispatch it was always missing.
+    //
+    // Reinstating approval means: dispatch to the gateway FIRST, set PROCESSING with a
+    // real providerRef, keep the hold, and let settleWithdrawalConfirmed own the
+    // terminal state — it already does hold-release + ledger + notification atomically,
+    // and only after the provider has accepted. For a held DEPOSIT the correct action is
+    // a REFUND to the player, not an approval; it has no wallet-credit path here at all.
+    //
+    // The stage-1 signature helpers (getFirstSignature/setFirstSignature) are kept for
+    // that future flow.
   });
 }
 
