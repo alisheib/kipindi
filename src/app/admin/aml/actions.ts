@@ -110,6 +110,40 @@ export async function approveAmlAction(formData: FormData) {
       });
     };
 
+    // ⛔ APPROVING A WITHDRAWAL HERE DOES NOT SEND ANY MONEY.
+    //
+    // Everything below releases the hold, marks the transaction CONFIRMED, posts a
+    // WITHDRAWAL ledger group crediting EXTERNAL, and emails the player "your
+    // withdrawal is on its way" — with ZERO calls to the payment gateway. The
+    // player's balance is gone, the books say it left the platform, and nothing was
+    // ever dispatched. That is destroyed money, and it is worst on the LARGEST
+    // payouts: dispatchWithdrawal returns AML_REVIEW with a FABRICATED providerRef
+    // (payments.ts, the >= AML_REVIEW_THRESHOLD_TZS branch) BEFORE the adapter and
+    // therefore before the missing-float-PIN guard, so the control believed to
+    // protect big withdrawals is the one that bypasses every other protection.
+    //
+    // Until an approved withdrawal is actually dispatched to the gateway — set
+    // PROCESSING with a REAL providerRef, hold retained, and settled by
+    // settleWithdrawalConfirmed (which already does the hold-release + ledger +
+    // notification atomically) — this action must not be able to complete.
+    //
+    // Deposits are unaffected: they never reach this branch.
+    if (txn.type === "WITHDRAWAL") {
+      audit({
+        category: "COMPLIANCE",
+        action: "aml.approve.blocked_no_payout_rail",
+        actorId: session.userId,
+        targetType: "Transaction",
+        targetId: txnId,
+        payload: { amount: txn.amount, note: "Approval refused: releasing the hold here would mark the payout complete without dispatching it." },
+      });
+      return {
+        ok: false as const,
+        error:
+          "Withdrawal approval is disabled. Approving here would release the hold and mark the payout sent WITHOUT contacting the payment provider — the player would lose the money. Re-enable only once approved withdrawals are dispatched to the gateway and settled by the webhook/reconcile path.",
+      };
+    }
+
     const requiresTwo = Math.abs(txn.amount) >= TWO_PERSON_THRESHOLD_TZS;
     if (requiresTwo) {
       const first = await getFirstSignature(txnId);
@@ -150,14 +184,12 @@ export async function approveAmlAction(formData: FormData) {
           secondOfficer: session.userId,
         },
       });
-      // Tell the player their (now AML-cleared) withdrawal is on its way — same
-      // receipt as an ordinary withdrawal. Previously this path was silent.
-      if (txn.type === "WITHDRAWAL") {
-        const gross = Math.abs(txn.amount);
-        const wFee = txn.fee ?? 0;
-        postLedgerEntries(`wdr_${txn.id}`, withdrawalEntries({ txnId: txn.id, userId: txn.userId, grossAmount: gross, fee: wFee, gatewayShare: await gatewayShareFor(gross, wFee), provider: txn.provider ?? "INTERNAL" })).catch(() => {});
-        notifyWithdrawalSent(txn);
-      }
+      // The withdrawal ledger post and the "on its way" notification that used to
+      // live here are gone: TypeScript now proves this line is unreachable for a
+      // WITHDRAWAL (the guard above narrows the type), which is exactly the point.
+      // When approved withdrawals are dispatched for real, settleWithdrawalConfirmed
+      // owns the hold-release, the ledger and the notification — atomically, and only
+      // after the gateway has accepted the payout. Do not re-add them here.
       revalidatePath("/admin/aml");
       return { ok: true as const, stage: "complete" as const };
     }
@@ -169,12 +201,8 @@ export async function approveAmlAction(formData: FormData) {
       completedAt: new Date().toISOString(),
       amlReason: reason || txn.amlReason,
     });
-    // Dual-write: withdrawal confirmed via AML → double-entry ledger.
-    if (txn.type === "WITHDRAWAL") {
-      const gross = Math.abs(txn.amount);
-      const wFee = txn.fee ?? 0;
-        postLedgerEntries(`wdr_${txn.id}`, withdrawalEntries({ txnId: txn.id, userId: txn.userId, grossAmount: gross, fee: wFee, gatewayShare: await gatewayShareFor(gross, wFee), provider: txn.provider ?? "INTERNAL" })).catch(() => {});
-    }
+    // Withdrawal ledger post removed — unreachable here by construction (see the
+    // guard above), and it credited EXTERNAL for money that had never been sent.
     audit({
       category: "ADMIN",
       action: "aml.approved",
@@ -183,7 +211,8 @@ export async function approveAmlAction(formData: FormData) {
       targetId: txnId,
       payload: { amount: txn.amount, reason: reason || null, twoPersonApproval: "below-threshold" },
     });
-    if (txn.type === "WITHDRAWAL") notifyWithdrawalSent(txn);
+    // notifyWithdrawalSent removed — it told the player their money was on its way
+    // when nothing had been dispatched. Unreachable here by construction.
     revalidatePath("/admin/aml");
     return { ok: true as const, stage: "complete" as const };
   });

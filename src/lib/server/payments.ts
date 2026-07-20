@@ -139,7 +139,17 @@ export async function dispatchWithdrawal(opts: { provider: PaymentProvider; amou
   // Evaluated on the GROSS withdrawal value, not the net-of-fee disbursement.
   if (amlBasis >= AML_REVIEW_THRESHOLD_TZS) {
     audit({ category: "COMPLIANCE", action: "withdraw.aml_review_triggered", actorId: opts.userId, targetType: "User", targetId: opts.userId, payload: { correlationId, amount: opts.amount, grossAmount: amlBasis, threshold: AML_REVIEW_THRESHOLD_TZS } });
-    return { ok: true, providerRef: `${opts.provider}-${randomId(6).toUpperCase()}`, status: "AML_REVIEW", correlationId };
+    // The reference here used to be FABRICATED (`${provider}-${randomId(6)}`), which
+    // was indistinguishable from a real gateway reference to everything downstream —
+    // reconciliation, the compliance ledger and /admin/transactions all treated a
+    // payout that had never been dispatched as one the gateway had accepted.
+    //
+    // Nothing has been sent to any provider at this point: this branch returns BEFORE
+    // resolveActiveAdapter, and therefore before the float-PIN guard and before the
+    // LIVE-mode mock refusal. The correlation id is OUR id and is honest about that;
+    // a real providerRef is only ever minted when the gateway actually accepts the
+    // payout, on approval-dispatch.
+    return { ok: true, providerRef: correlationId, status: "AML_REVIEW", correlationId };
   }
   const routed = await resolveActiveAdapter("withdraw", correlationId);
   if (!routed.ok) return { ok: false, reason: "PROVIDER_DOWN", correlationId };
