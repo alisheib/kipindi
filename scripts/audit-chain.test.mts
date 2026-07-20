@@ -95,6 +95,29 @@ await (async () => {
   const latest = getAuditPage({ limit: 1 })[0]; // newest-first; live ring ref
   latest.payload = { nested: { a: 2, z: 1 }, note: "x", amount: 100, provider: "AZAM" }; // same data, keys reordered
   ok("canonical hash survives payload key reorder", verifyChain().valid);
+
+  // 10. undefined-vs-null payload asymmetry (found on production entry
+  //     aud_mrq93f08_18lx2r, 2026-07-18 config.global.updated).
+  //     JSON.stringify DROPS a key whose value is `undefined`, but Prisma persists
+  //     it as `null`. So an entry logged with { warn: undefined } was hashed over an
+  //     object with no `warn` key and stored with "warn": null — permanently
+  //     unverifiable, and indistinguishable from tampering. The payload is now
+  //     normalised before it is hashed OR stored, so both see the same object.
+  await audit({
+    category: "ADMIN", action: "config.updated", actorId: "usr_d",
+    targetType: "Config", targetId: "global",
+    payload: { warn: undefined, after: { rate: 0.1 }, note: undefined },
+  });
+  await auditFlush();
+  ok("chain valid with undefined payload values", verifyChain().valid);
+  const undef = getAuditPage({ limit: 1 })[0];
+  // The stored payload must not carry the dropped keys at all — if it did, the
+  // round-trip through Postgres would reintroduce them as null and break the hash.
+  ok("undefined payload keys are omitted, not stored as null",
+    undef.payload !== undefined && !("warn" in (undef.payload as object)) && !("note" in (undef.payload as object)));
+  // Simulate the Postgres round-trip that produced the production failure.
+  undef.payload = JSON.parse(JSON.stringify({ ...(undef.payload as object) }));
+  ok("hash survives the persisted-payload round-trip", verifyChain().valid);
 })();
 
 console.log(`\naudit-chain: ${pass} passed, ${fail} failed`);

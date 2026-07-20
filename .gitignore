@@ -62,3 +62,4 @@ db-check.*
 scratch-*.js
 scratch-*.cjs
 *.zip
+.50pick-reports/

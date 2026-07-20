@@ -120,6 +120,29 @@ function canonicalize(v: unknown): unknown {
   return out;
 }
 
+/**
+ * Normalise a payload to exactly what will be PERSISTED, before it is hashed.
+ *
+ * The bug this fixes: `JSON.stringify` DROPS keys whose value is `undefined`, but
+ * Prisma persists them as `null`. So an entry logged with `{ warn: undefined }`
+ * was hashed over an object with no `warn` key, and stored as `{"warn": null}` —
+ * and could never re-verify. Confirmed on production entry
+ * `aud_mrq93f08_18lx2r` (config.global.updated), and it accounts for the
+ * scattered unverifiable rows across the log rather than any tampering.
+ *
+ * Round-tripping through JSON here makes the hashed object and the stored object
+ * byte-identical by construction: undefined keys disappear on BOTH sides.
+ */
+function normalizePayload(p: unknown): Record<string, unknown> | undefined {
+  if (p == null) return undefined;
+  try {
+    return JSON.parse(JSON.stringify(p)) as Record<string, unknown>;
+  } catch {
+    // Unserialisable payload (cycles, BigInt). Never let an audit write fail on it.
+    return { unserializable: true };
+  }
+}
+
 function hashEntry(entry: Omit<AuditEntry, "entryHash">): string {
   const stable = JSON.stringify({
     id:         entry.id,
@@ -360,6 +383,11 @@ export function audit(
     .catch(() => {}) // isolate from any prior task's failure
     .then(async () => {
       await hydrate(); // warm the read-cache ring once per process (no-op without a DB)
+      // Normalise BEFORE hashing or storing, so the hashed bytes and the stored
+      // bytes cannot diverge. See normalizePayload — undefined keys used to be
+      // dropped by the hash and persisted as null, making the entry permanently
+      // unverifiable.
+      entry = { ...entry, payload: normalizePayload(entry.payload) };
       let stamped: AuditEntry;
       if (hasDatabase()) {
         try {
