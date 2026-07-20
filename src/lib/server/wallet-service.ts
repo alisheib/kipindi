@@ -233,8 +233,20 @@ export async function deposit(
   }
   audit({ category: "WALLET", action: "deposit.initiated", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { provider: parse.data.provider, amount: parse.data.amount } });
 
+  // Mint the correlation id and PERSIST it BEFORE dispatching.
+  //
+  // It used to be written only after dispatch returned, so a crash, a redeploy or a
+  // DB blip in that window left a genuinely paid deposit with no reference at all —
+  // nothing for reconcile or the fast-credit poll to re-query, and reconcile read
+  // "no reference" as "never pushed" and failed it. Persisting first means the
+  // reference always exists from the moment the gateway could possibly have been
+  // told about it.
+  const correlationId = `dep_${randomId(10)}`;
+  // Best-effort: if this write fails we still dispatch, and the post-dispatch write
+  // below is the authoritative one. It must never block a deposit.
+  try { await db.txn.update(txnId, { providerRef: correlationId }); } catch { /* non-fatal */ }
   // Dispatch to provider
-  const result = await dispatchDeposit({ provider: parse.data.provider, amount: parse.data.amount, msisdn: parse.data.msisdn, userId, card });
+  const result = await dispatchDeposit({ provider: parse.data.provider, amount: parse.data.amount, msisdn: parse.data.msisdn, userId, card, correlationId });
   if (!result.ok) {
     // NOTE: deliberately no notification/email here, unlike settleDepositFailed.
     // This failure is SYNCHRONOUS — we return `friendlyDepositReason` and the
@@ -252,8 +264,10 @@ export async function deposit(
     return { ok: false, error: friendlyDepositReason(result.reason), code: "INVALID" };
   }
 
-  // Record the provider reference NOW so an asynchronous confirmation webhook
-  // can correlate back to this transaction (and so reconciliation can find it).
+  // Overwrite with the reference the adapter actually returned. The pre-dispatch
+  // write above guarantees SOME reference exists even if we crash here; this write
+  // makes it the authoritative one, because the mock and AML branches return a
+  // different value from the correlation id we minted. Keep both writes.
   await db.txn.update(txnId, { providerRef: result.providerRef });
 
   if (result.status === "PENDING") {
@@ -797,7 +811,25 @@ export async function reconcileStalePayments(olderThanMs = 30 * 60 * 1000): Prom
   for (const t of stale) {
     const ref = t.providerRef;
     if (t.type === "DEPOSIT") {
-      if (!ref) { if (await settleDepositFailed(t.id, "reconcile-timeout-no-ref")) depositsFailed++; continue; } // never pushed → nothing charged
+      if (!ref) {
+        // "No providerRef" is NOT proof the deposit never reached the gateway. The
+        // reference is written just AFTER dispatch returns, so a crash, a redeploy or
+        // a DB blip in that window leaves a genuinely PAID deposit with no reference —
+        // and failing it here tells the player "the payment was never started with
+        // your provider" about money that has already left their handset.
+        //
+        // In live money mode, refuse to guess: leave it PROCESSING and put it in front
+        // of an operator, exactly as the withdrawal arm below already does. Only the
+        // mock/test rail, where nothing can have been charged, still auto-fails.
+        if (isLiveMoneyMode()) {
+          leftPending++;
+          audit({ category: "WALLET", action: "payments.reconcile_needs_review", actorId: null, targetType: "Transaction", targetId: t.id,
+            payload: { reason: "deposit has no providerRef — cannot prove it was never dispatched; not auto-failed", amount: t.amount } });
+        } else if (await settleDepositFailed(t.id, "reconcile-timeout-no-ref")) {
+          depositsFailed++;
+        }
+        continue;
+      }
       const v = await verifyDepositStatus(ref);
       if (v.status === "CONFIRMED") {
         const r = await settlePaymentWebhook({ providerRef: ref, status: "CONFIRMED", amount: v.amount }); // exactly-once + amount-tamper check

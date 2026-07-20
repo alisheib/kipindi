@@ -102,8 +102,11 @@ export type PaymentAdapter = {
 // ── PUBLIC WRAPPER — the only thing wallet-service imports ────────────────────
 
 /** Initiate a deposit collection through the active gateway. */
-export async function dispatchDeposit(opts: { provider: PaymentProvider; amount: number; msisdn?: string; userId: string; card?: CardCheckoutContext }): Promise<DepositResult> {
-  const correlationId = `dep_${randomId(10)}`;
+export async function dispatchDeposit(opts: { provider: PaymentProvider; amount: number; msisdn?: string; userId: string; card?: CardCheckoutContext; correlationId?: string }): Promise<DepositResult> {
+  // The caller may mint the id and PERSIST it before calling, so a crash between
+  // dispatch and the write cannot leave a paid deposit with no reference to
+  // reconcile against. Fall back to minting here for callers that don't.
+  const correlationId = opts.correlationId ?? `dep_${randomId(10)}`;
   audit({
     category: "WALLET",
     action: "deposit.dispatch",
