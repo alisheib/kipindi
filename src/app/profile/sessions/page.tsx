@@ -53,6 +53,11 @@ export default async function SessionsPage() {
   // the never-faked regulator seal).
   const deviceLine = browser && os ? `${browser} on ${os}`
     : browser ?? os ?? (isMobile ? t.profile.deviceMobile : t.profile.deviceDesktop);
+  // Icon matches the ACTUAL device (was hard-coded to the phone glyph, so a
+  // desktop session showed a phone): tablet → phone → desktop. Wires the kit's
+  // deviceTablet / devicePhone / deviceDesktop glyphs.
+  const isTablet = /ipad/.test(ua) || (/android/.test(ua) && !/mobile/.test(ua));
+  const DeviceGlyph = isTablet ? I.deviceTablet : isMobile ? I.devicePhone : I.deviceDesktop;
 
   return (
     <main className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-5">
@@ -76,7 +81,7 @@ export default async function SessionsPage() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-aqua-500/15 text-aqua-300">
-              <I.smartphone s={18} />
+              <DeviceGlyph s={18} />
             </span>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
