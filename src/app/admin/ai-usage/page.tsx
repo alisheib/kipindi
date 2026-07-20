@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
-import { AdminMeter } from "@/components/admin/admin-charts";
+import { AdminAreaChart, AdminMeter } from "@/components/admin/admin-charts";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { Chip } from "@/components/ui/chip";
@@ -172,6 +172,26 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
           />
           <AdminKpi label="Stored (180d)" sw="Jumla" value={usd(s.windows.all.costUsd)} delta={`${s.windows.all.calls} calls`} />
         </div>
+
+        {/* 30-day spend trend — real Anthropic daily cost. Only rendered when the
+            admin Cost API key is set (the estimate-only path has no per-day
+            series), so we draw the truth or nothing — never a fabricated line. */}
+        {anthropic && anthropic.daily.length >= 2 && (
+          <AdminCard
+            title="Daily spend · 30 days"
+            sw="Matumizi ya kila siku"
+            action={<span className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">Anthropic Cost API · USD</span>}
+          >
+            <AdminAreaChart
+              series={anthropic.daily.map((d, i) => ({ x: i, y: d.costUsd }))}
+              xLabels={anthropic.daily.map((d) => d.date.slice(5))}
+              height={200}
+              fillVar="var(--royal)"
+              strokeVar="var(--royal)"
+              yLabel="USD"
+            />
+          </AdminCard>
+        )}
 
         {/* Credit limit + cycle */}
         <AdminCard title="Credit budget" sw="Bajeti ya salio">

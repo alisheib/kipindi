@@ -2,6 +2,7 @@ import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-she
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { RefreshButton } from "@/components/admin/refresh-button";
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
+import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { Select } from "@/components/ui/select";
@@ -161,9 +162,29 @@ export default async function AdminMarketsPage({
                         </Link>
                       </td>
                       <td className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">{m.category}</td>
+                      {/* B6: a settled market shows its VERDICT (read from resolvedOutcome),
+                          never a pool-implied probability standing in for the outcome. Only a
+                          live/pending market shows the crowd probability bar. */}
                       <td>
-                        <ProbabilityBar yesPct={yes} size="micro" resolved={m.status === "RESOLVED"} />
-                        <p className="mt-1 font-mono text-[10px] text-text-subtle">{yes}% YES</p>
+                        {m.resolvedOutcome === "YES" || m.resolvedOutcome === "NO" ? (
+                          <>
+                            <span className={`inline-flex items-center gap-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.08em] ${m.resolvedOutcome === "YES" ? "text-yes-300" : "text-no-300"}`}>
+                              <span className="h-1.5 w-1.5 rounded-pill" style={{ background: m.resolvedOutcome === "YES" ? "var(--yes-400)" : "var(--no-400)" }} />
+                              Settled {m.resolvedOutcome}
+                            </span>
+                            <p className="mt-1 font-mono text-[10px] text-text-subtle">closed at {yes}% YES</p>
+                          </>
+                        ) : m.resolvedOutcome === "VOID" || m.status === "VOIDED" ? (
+                          <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-tertiary">Void · refunded</span>
+                        ) : m.status === "RESOLVED" ? (
+                          // Resolved but outcome not readable — show no side rather than a guess.
+                          <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-tertiary">Settled</span>
+                        ) : (
+                          <>
+                            <ProbabilityBar yesPct={yes} size="micro" />
+                            <p className="mt-1 font-mono text-[10px] text-text-subtle">{yes}% YES</p>
+                          </>
+                        )}
                       </td>
                       <td className="text-right font-mono tabular-nums text-text">{formatTzs(m.yesPool + m.noPool)}</td>
                       <td className="font-mono text-[11px] text-text-muted whitespace-nowrap">
@@ -204,9 +225,12 @@ export default async function AdminMarketsPage({
                   );
                 })}
                 {filtered.length === 0 && (
-                  <tr>
-                    <td colSpan={9} className="!py-6 text-center text-text-tertiary">No markets match the current filter.</td>
-                  </tr>
+                  <AdminTableEmpty
+                    colSpan={9}
+                    kind="markets"
+                    title="No markets match"
+                    body="No market fits the current filter. Clear the filter to see the full curation queue."
+                  />
                 )}
               </tbody>
             </table>

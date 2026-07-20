@@ -14,18 +14,10 @@ import { ActionOverlay, useActionOverlay } from "@/components/admin/action-overl
 
 type Format = "xlsx" | "pdf";
 
-export function GenerateButton({ id, available = true }: { id: string; available?: boolean }) {
+export function GenerateButton({ id }: { id: string }) {
   const [busy, setBusy] = useState<Format | null>(null);
   const overlay = useActionOverlay();
   const { toast } = useToast();
-
-  if (!available) {
-    return (
-      <span className="inline-flex items-center gap-1.5 rounded-pill border border-border bg-bg-sunken px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-text-tertiary" title="Builder not wired yet">
-        <I.clock size={12} aria-hidden /> Coming soon
-      </span>
-    );
-  }
 
   const handle = async (format: Format) => {
     if (busy) return;

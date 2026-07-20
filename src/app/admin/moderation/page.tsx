@@ -1,4 +1,4 @@
-import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
+import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { listForModeration } from "@/lib/server/comments-store";
 import { ModerationQueue } from "./moderation-client";
 
@@ -13,10 +13,14 @@ export default async function AdminModerationPage() {
     <>
       <AdminPageHead title="Comment moderation" sw="Usimamizi wa maoni" period={false} />
       <div className="px-4 lg:px-6 py-5 space-y-4">
-        <AdminCard
-          title="Review queue"
-          sw={`${items.length} item${items.length === 1 ? "" : "s"} · ${hidden} auto-hidden · ${reported} reported`}
-        >
+        {/* KPI band — the page was previously just one card with these counts
+            buried in a subtitle; surface them so the queue has a hierarchy. */}
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+          <AdminKpi label="In queue" sw="Kwenye foleni" value={items.length} delta="awaiting review" deltaDir="flat" pulse={items.length > 0} />
+          <AdminKpi label="Auto-hidden" sw="Zimefichwa" value={hidden} delta="held by the filter" deltaDir="flat" />
+          <AdminKpi label="Reported" sw="Zimeripotiwa" value={reported} delta="visible · flagged" deltaDir="flat" />
+        </div>
+        <AdminCard title="Review queue" sw="Foleni ya ukaguzi">
           <ModerationQueue items={items} />
         </AdminCard>
       </div>

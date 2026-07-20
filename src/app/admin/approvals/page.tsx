@@ -71,6 +71,7 @@ export default async function AdminApprovalsPage({
       <AdminPageHead
         title="Two-person approvals"
         sw="Idhini ya watu wawili"
+        period={false}
         actions={
           <span
             className="font-mono text-micro tracking-[0.10em] uppercase px-2.5 h-7 inline-flex items-center gap-1.5 rounded-md border"

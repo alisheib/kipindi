@@ -93,7 +93,7 @@ The regulator-facing ISO integrity report emits `"Chain verification: Valid · n
 - **N+1 wallet lookups on the player list** — `players/page.tsx:46-50,153` — sort-by-balance is O(all users) round-trips. Pre-load via `listAll()`.
 - **"Production theatre" copy** — retention page (`retention/page.tsx:25-36,102`) presents S3+KMS snapshots, nightly purge cron, two-person/IP-capture as live when not implemented; players-page footer claims the same. Mark as "target architecture / not yet enforced."
 - **Audit payload dumps full before/after config to any admin viewer** — `audit/page.tsx:134`, `config/page.tsx:196` — compounds the flat-role issue. Redact by tier.
-- **Hand-rolled table empty states** instead of a shared atom across ~15 admin tables — `players/page.tsx:181` et al. Add a thin `TableEmptyRow({colSpan,en,sw})`.
+- ~~**Hand-rolled table empty states** instead of a shared atom across ~15 admin tables — `players/page.tsx:181` et al. Add a thin `TableEmptyRow({colSpan,en,sw})`.~~ ✅ **DONE 2026-07-20** — created `src/components/admin/admin-table-empty.tsx` (`AdminTableEmpty`, a colspan row wrapping the shared `EmptyState`) and adopted it across 10 table empties in 8 files (markets, markets/[id], players, players/[id], self-exclusions, privacy×2, compliance, aml×2, finance). reports generation-log also unified onto `EmptyState`.
 - **Arbitrary `text-[NNpx]` sizes vs the type scale** — ~370 occurrences (systemic house style, internally consistent). Map common sizes onto `text-micro/caption/body-sm`.
 
 ---

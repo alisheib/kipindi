@@ -139,17 +139,18 @@ export default async function ResolverQueuePage({
               const t = timeUntil(m.resolutionAt);
               const yes = impliedYesPct(m);
               const stage1 = !!m.resolutionStage1By;
-              // Confidence: derived from how lopsided the pool is (proxy for crowd certainty)
-              const confidence = Math.round(Math.abs(yes - 50) * 2);
               return (
                 <AdminCard key={m.id} padding="p-0" data-market-id={m.id}>
                   <div className="flex items-start gap-4 p-4 border-b border-border">
+                    {/* B6: the dial shows the CROWD's YES lean (impliedYesPct) — nothing more.
+                        It previously showed pool "lopsidedness" fed into a YES-green/NO-rose
+                        ConfidenceDial, so a 90%-NO market rendered a YES-leaning needle labelled
+                        "80%" — a false directional signal on the resolution surface. The verdict
+                        is decided from the source, never from crowd sentiment. */}
                     <CircularProgress
-                      value={confidence}
+                      value={yes}
                       size={64}
-                      stroke={5}
-                      tone={confidence > 75 ? "yes" : confidence > 40 ? "teal" : "warning"}
-                      label={`${confidence}%`}
+                      label="crowd"
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-baseline gap-2">

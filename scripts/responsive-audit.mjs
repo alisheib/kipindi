@@ -77,6 +77,9 @@ const ADMIN = [
   "/admin/bonuses", "/admin/invites", "/admin/compliance", "/admin/moderation",
   "/admin/aml", "/admin/self-exclusions", "/admin/privacy", "/admin/retention",
   "/admin/audit", "/admin/system", "/admin/ai-usage", "/admin/approvals",
+  // Index routes that were missing from the sweep (they render growable
+  // tables / KPI bands and now carry pagination + shared empty states).
+  "/admin/objections", "/admin/settlement", "/admin/events", "/admin/insights",
 ];
 
 let pass = 0, fail = 0, warn = 0;

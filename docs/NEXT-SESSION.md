@@ -1,7 +1,7 @@
 # 50pick — next-session brief
 
 Read the two always-on skills first (`.claude/skills/50pick-standards` +
-`.claude/skills/50pick-audit`), then this. Last updated 2026-07-16.
+`.claude/skills/50pick-audit`), then this. Last updated 2026-07-20 (admin console pass).
 
 ## State at handoff
 - **The Final Audit is COMPLETE** — all 11 Criticals + all Highs + all Mediums
@@ -15,6 +15,66 @@ Read the two always-on skills first (`.claude/skills/50pick-standards` +
   gateway. Live tracker: **`docs/ENHANCEMENT-PLAN-STATUS.md`** (grouped: (A)
   code-doable / (B) needs-Ali / (C) optional).
 - Go-live + payment-gateway map: **`docs/GO-LIVE-READINESS.md`**.
+
+## Done (Session — 2026-07-20, ADMIN-only console detail pass)
+
+Full scan of the operator console (41 routes: `src/app/admin/**` + `src/components/admin/**`).
+Gate green: `tsc` clean · `npm run build` OK · `test:all` 82/83 (only `test:responsive` fails
+locally — needs a live :3000) · `test:tokens`/`test:outcome`/`test:integrity` all pass. Visual:
+scoped `responsive-audit` (SURFACE=admin, 360+1280, EN+SW) = **144 pass / 0 fail** (36 soft
+touch-target warnings, all pre-existing chrome).
+
+- **Loaders — all 41 routes now have a real skeleton.** 8 had NO `loading.tsx` (events,
+  insights, kyc/[id], objections, payments, resolver/[id], settlement, transactions); 32 were a
+  bare centred `BrandSpinner`. Each now renders the real `AdminPageHead` + a body skeleton that
+  mirrors the page's KPI band / table columns / card stacks, composed from a new shared kit
+  **`src/components/admin/admin-skeletons.tsx`** (SkBody/SkKpiRow/SkCard/SkFormCard/SkTableCard/
+  SkChip/SkBar/SkBlock). Template was `ai-polls/[id]/loading.tsx`.
+- **Pagination on every genuinely-unbounded list** (shared `AdminPagination`): invite campaigns,
+  invite contacts, objections queue, settlement payout queue, payments retry queue, config
+  per-market overrides. Verified NOT to touch intentionally-capped lists (affiliate leaderboard =
+  service-side top-10; finance top-10/drift-20; compliance "next-in-queue" previews; live feeds).
+- **Shared empty states.** New **`src/components/admin/admin-table-empty.tsx`** (the
+  `TableEmptyRow` the 2026-06-28 audit §3 asked for) wraps the shared `EmptyState` atom in a
+  colspan row. Adopted across 10 hand-rolled table empties in 8 files (markets, markets/[id],
+  players, players/[id], self-exclusions, privacy ×2, compliance, aml ×2, finance). reports
+  generation-log empty also unified onto `EmptyState`.
+- **B6 (settled outcome is READ, never inferred) on two admin surfaces — VISUAL only, reads
+  stored fields, no arithmetic touched:** (1) the markets list showed a pool-implied `%` for
+  RESOLVED rows and never the verdict — now reads `resolvedOutcome` (Settled YES/NO · Void · or
+  "Settled" with no side when unknown). (2) resolver-queue fed **pool-lopsidedness** into a
+  `CircularProgress`/`ConfidenceDial` as `yesPct`, so a 90%-NO market drew a YES-green needle
+  labelled "80%" — now shows the honest crowd YES% ("crowd"). ⚠️ `CircularProgress`' `tone`/
+  `stroke` props are DEAD (the impl ignores them) — don't rely on them.
+- **Named fixes:** removed the dead "Coming soon" branch in reports `generate-button.tsx` (no
+  call site set `available={false}`); ai-usage now draws a 30-day spend `AdminAreaChart` from
+  `anthropic.daily` (data already computed, was discarded) — only when the Cost API key is set,
+  else nothing (no fabricated line); moderation got a real KPI band (In queue / Auto-hidden /
+  Reported); dropped the stray `PeriodPicker` from 4 pages that never read `?range` (objections,
+  approvals, compliance, cohorts); objections body re-wrapped to the standard
+  `px-4 lg:px-6 py-5 space-y-4` (its content was unpadded). Added objections/settlement/events/
+  insights to the `responsive-audit` admin list.
+
+⚠️ **Money-logic risks FOUND — reported, not fixed (out of a visual pass's remit):**
+- **Silent-zero-on-failure is widespread** on money/analytics reads — `.catch(() => 0 | [] | {})`
+  in finance (heaviest), overview, live, approvals, players, cohorts, kyc/[id], resolver/[id],
+  resolver-queue. A failed query renders "TZS 0" / an empty queue as if real (an approvals or
+  settlement queue reading empty on a fetch error is the dangerous case). Contradicts A-5. Fix =
+  an explicit "unavailable" state, not a zero — a deliberate follow-up.
+- **PII in list views:** privacy on-behalf table + self-exclusion roster render the full
+  `displayName` (phones are masked). 2026-06-28 audit §3 flagged it; left to a compliance call.
+
+**Deferred / decided (with reasons):**
+- **KPI `series`/spark slot** still unused on most tiles (only cohorts + reports feed it). Wiring
+  24h/7d mini-series into overview/finance/live needs new per-tile series data — an enhancement,
+  not a visual tweak.
+- **Segment error boundaries:** decided the single `admin/error.tsx` (→ shared `RouteError`) is
+  sufficient — admin routes are stateless server-renders reachable from the sidebar, so a segment
+  boundary preserves nothing extra. Documented, not added.
+- **Confirms on KYC approve/reject + candidates publish:** these lack a final confirm modal
+  (unlike settlement / AML-approve / objection / resolver stage-2). Left as-is — adding a modal to
+  a compliance/AI-pipeline flow is behavioural, beyond a visual pass; flagged for review.
+- **system rate-limiter table** silently `slice(0,25)`s ephemeral buckets — low value, deferred.
 
 ## Done (Session N — 2026-07-20, visual + a user-reported settlement bug)
 

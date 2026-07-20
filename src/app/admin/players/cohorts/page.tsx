@@ -63,7 +63,7 @@ export default async function AdminCohortsPage() {
 
   return (
     <>
-      <AdminPageHead title="Cohorts" sw="Vikundi" />
+      <AdminPageHead title="Cohorts" sw="Vikundi" period={false} />
 
       <div className="px-4 lg:px-6 py-5 space-y-4">
         {/* Headline KPIs — cumulative registrations feed the A8 spark. */}

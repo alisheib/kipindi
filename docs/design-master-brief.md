@@ -210,17 +210,27 @@ specific change. Be candid; we would rather redo a built thing now than ship it 
 | ~~`BrandTopo`~~ | ~~opacity 0.05 = invisible on navy~~ | ✅ **DONE** — verified 2026-07-20. Component default is `opacity = 0.09` (`brand-topo.tsx:7`) and every one of the 7 call sites passes 0.08–0.09. Already in spec; **do not "re-fix" this.** | ✅ |
 
 ### 5d. Admin console (restraint — internal tooling)
+
+> **Update 2026-07-20 (admin console detail pass):** several rows below are now DONE — see
+> `docs/NEXT-SESSION.md`. Closed: `ai-usage` daily-spend chart (`AdminAreaChart` from
+> `anthropic.daily`, shown only when the Cost API key is set); `moderation` KPI band; all 41
+> loaders are now real skeletons; every unbounded admin list is paginated; hand-rolled table
+> empties routed through the shared `EmptyState` via `AdminTableEmpty`. Still open: the
+> `AdminKpi spark` slot is fed only by cohorts + reports (wiring the rest needs new per-tile
+> series data); `players` still shows counts in header chips (no KPI band); the hand-rolled
+> distribution bars on `cohorts`; `players/[id]` risk gauge.
+
 | Route | Gap | Suggested viz | Pri |
 |---|---|---|---|
-| `ai-usage` | **Cost dashboard with no time-series** | `AdminAreaChart` daily spend; credit **gauge**; feature-cost StackedBar | **H** |
+| `ai-usage` | ✅ **DONE 2026-07-20** — daily-spend `AdminAreaChart` wired from `anthropic.daily` (only with the Cost API key; else nothing, no fabricated line). Credit gauge (`AdminMeter`) was already present. | ~~`AdminAreaChart` daily spend~~ | ✅ |
 | `players` | **No AdminKpi band** (counts in header chips); local SortTh | Add KPI band + status-mix bar; use kit SortTh | M |
-| `moderation` | **Sparsest page**, no hierarchy | KPI band (reported/auto-hidden/resolved) | M |
+| `moderation` | ✅ **DONE 2026-07-20** — KPI band added (In queue / Auto-hidden / Reported) | ~~KPI band~~ | ✅ |
 | `ai-polls` + `candidates` | Multi-stage pipeline described in **prose, never drawn** | Shared **`AdminFunnelChart`** from `countByState()` | M |
 | `players/cohorts` | **Hand-rolled** distribution + month bars | `AdminBarList` + `AdminAreaChart` | M |
 | `config` / `privacy` / `invites` / `audit` | fee-vs-ceiling / DSAR-SLA aging / conversion / 24h-by-category all text-only | **`AdminMeter`** gauges + `AdminStackedBars` (data already computed) | M |
 | `players/[id]` | Risk score is a bare number | Reuse **`CircularProgress`** gauge (as resolver-queue) | M |
-| overview/live/finance/markets… | Headline **`AdminKpi spark` slot unused** | Feed 24h/7d mini-series into the top band (one helper lifts the whole console) | M |
-| many tables | Zero-rows fall back to plain text | Route all through illustrated **`EmptyState`** | M |
+| overview/live/finance/markets… | Headline **`AdminKpi spark` slot** — still fed only by cohorts + reports (2026-07-20); the rest need per-tile 24h/7d series data | Feed 24h/7d mini-series into the top band (one helper lifts the whole console) | M |
+| many tables | ✅ **DONE 2026-07-20** — table zero-row states routed through the shared `EmptyState` via the new `AdminTableEmpty` colspan helper (markets, markets/[id], players, players/[id], self-exclusions, privacy×2, compliance, aml×2, finance) | ~~Route all through illustrated `EmptyState`~~ | ✅ |
 
 ---
 
