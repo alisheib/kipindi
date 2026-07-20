@@ -1,5 +1,6 @@
 import { AdminPageHead, AdminKpi, AdminCard } from "@/components/admin/admin-shell";
 import { AdminAreaChart, AdminStackedBars, AdminBarList } from "@/components/admin/admin-charts";
+import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import {
   depositsTotal,
   withdrawalsTotal,
@@ -312,7 +313,7 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
                   </tr>
                 ))}
                 {provs.length === 0 && (
-                  <tr><td colSpan={6} className="!py-6 text-center text-text-tertiary">No provider activity in this window.</td></tr>
+                  <AdminTableEmpty colSpan={6} kind="admin" title="No provider data" body="No provider activity in this window." />
                 )}
               </tbody>
             </table>

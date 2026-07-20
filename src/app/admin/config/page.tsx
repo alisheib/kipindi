@@ -1,4 +1,5 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
+import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { getGlobalConfig, listMarketOverrides, DEFAULT_GLOBAL_CONFIG } from "@/lib/server/market-config";
@@ -17,11 +18,15 @@ import { formatTzs, formatDateTime } from "@/lib/utils";
 export const metadata = { title: "Admin · Market config" };
 export const dynamic = "force-dynamic";
 
-export default async function AdminConfigPage() {
+export default async function AdminConfigPage({ searchParams }: { searchParams: Promise<{ opage?: string }> }) {
+  const sp = await searchParams;
   const config = await getGlobalConfig().catch(() => DEFAULT_GLOBAL_CONFIG);
   const overrides = await listMarketOverrides().catch(() => []);
+  const oPage = parsePage(sp.opage, overrides.length);
+  const overridesPage = overrides.slice((oPage - 1) * PER_PAGE, oPage * PER_PAGE);
+  const oBase = buildBaseHref("/admin/config", sp, "opage");
   const overrideMarketNames = new Map<string, string>();
-  for (const { marketId } of overrides) {
+  for (const { marketId } of overridesPage) {
     const m = await getMarket(marketId).catch(() => null);
     if (m) overrideMarketNames.set(marketId, m.titleEn);
   }
@@ -170,7 +175,7 @@ export default async function AdminConfigPage() {
                     </tr>
                   </thead>
                   <tbody className="text-text-muted">
-                    {overrides.map(({ marketId, over }) => {
+                    {overridesPage.map(({ marketId, over }) => {
                       return (
                         <tr key={marketId} className="border-b border-border/50 last:border-b-0 align-top">
                           <td className="p-3">
@@ -203,6 +208,7 @@ export default async function AdminConfigPage() {
                 </table>
               </ScrollX>
             )}
+            {overrides.length > 0 && <AdminPagination total={overrides.length} page={oPage} baseHref={oBase} param="opage" />}
           </div>
         </AdminCard>
 

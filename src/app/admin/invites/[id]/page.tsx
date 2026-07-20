@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { notFound } from "next/navigation";
 import { AdminPageHead, AdminKpi, AdminCard } from "@/components/admin/admin-shell";
+import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { Chip } from "@/components/ui/chip";
 import { EmptyState } from "@/components/ui/empty-state";
 import { I } from "@/components/ui/glyphs";
@@ -21,8 +22,9 @@ const STATUS_CHIP: Record<string, "active" | "resolved" | "paused" | "pending"> 
   DRAFT: "pending", SENDING: "active", SENT: "resolved", CANCELLED: "paused",
 };
 
-export default async function AdminCampaignDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function AdminCampaignDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ page?: string }> }) {
   const { id } = await params;
+  const sp = await searchParams;
   let detail: Awaited<ReturnType<typeof getCampaignDetail>> = null;
   try { detail = await getCampaignDetail(id); } catch { /* graceful */ }
   if (!detail) notFound();
@@ -30,6 +32,9 @@ export default async function AdminCampaignDetailPage({ params }: { params: Prom
   const queued = counts.QUEUED ?? 0;
   const smsLive = smsConfigured();
   const queuedPhone = entries.filter((e) => e.contactType === "PHONE" && e.status === "QUEUED").length;
+  const page = parsePage(sp.page, entries.length);
+  const entryRows = entries.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+  const base = buildBaseHref(`/admin/invites/${id}`, sp);
 
   return (
     <>
@@ -75,6 +80,7 @@ export default async function AdminCampaignDetailPage({ params }: { params: Prom
               bodySw="Ongeza barua pepe au simu juu, kisha bonyeza Tuma."
             />
           ) : (
+            <>
             <ScrollX label="Invite contacts">
               <table className="admin-tbl min-w-[560px]">
                 <thead>
@@ -87,7 +93,7 @@ export default async function AdminCampaignDetailPage({ params }: { params: Prom
                   </tr>
                 </thead>
                 <tbody>
-                  {entries.map((e) => (
+                  {entryRows.map((e) => (
                     <tr key={e.id}>
                       <td className="font-mono text-text-muted">{e.contactValue}</td>
                       <td className="text-text-subtle">{e.contactType === "EMAIL" ? "Email" : "Phone"}</td>
@@ -99,6 +105,8 @@ export default async function AdminCampaignDetailPage({ params }: { params: Prom
                 </tbody>
               </table>
             </ScrollX>
+            <AdminPagination total={entries.length} page={page} baseHref={base} />
+            </>
           )}
         </AdminCard>
       </div>

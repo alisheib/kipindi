@@ -1,4 +1,5 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
+import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { ObjectionStatusBadge } from "@/components/admin/status-badge";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -22,7 +23,8 @@ const REASON_LABEL: Record<string, string> = {
   OTHER: OBJECTION.reasonOther.en,
 };
 
-export default async function AdminObjectionsPage() {
+export default async function AdminObjectionsPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+  const sp = await searchParams;
   const objections = await listObjections();
 
   // Join each objection to its market + objector. The objector is shown by
@@ -45,10 +47,14 @@ export default async function AdminObjectionsPage() {
 
   const open = rows.filter((r) => r.o.status === "OPEN");
   const frozenTzs = open.reduce((sum, r) => sum + r.pool, 0);
+  const page = parsePage(sp.page, rows.length);
+  const pageRows = rows.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+  const base = buildBaseHref("/admin/objections", sp);
 
   return (
-    <div className="space-y-5">
-      <AdminPageHead title="Objections" sw="Pingamizi" />
+    <>
+      <AdminPageHead title="Objections" sw="Pingamizi" period={false} />
+      <div className="px-4 lg:px-6 py-5 space-y-4">
       <p className="text-[12.5px] leading-relaxed text-text-muted">
         Player disputes against a market verdict. An OPEN objection freezes that market&rsquo;s
         settlement — nobody is paid until you rule.
@@ -98,7 +104,7 @@ export default async function AdminObjectionsPage() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map(({ o, market, who, pool, actionable }) => (
+                {pageRows.map(({ o, market, who, pool, actionable }) => (
                   <tr key={o.id}>
                     <td><ObjectionStatusBadge status={o.status} /></td>
                     <td>
@@ -161,7 +167,9 @@ export default async function AdminObjectionsPage() {
             </table>
           </ScrollX>
         )}
+        {rows.length > 0 && <AdminPagination total={rows.length} page={page} baseHref={base} />}
       </AdminCard>
-    </div>
+      </div>
+    </>
   );
 }

@@ -1,5 +1,6 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage } from "@/components/admin/admin-pagination";
+import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
@@ -128,7 +129,12 @@ export default async function AdminSelfExclusionsPage({
                   </tr>
                 ))}
                 {roster.length === 0 && (
-                  <tr><td colSpan={6} className="!py-6 text-center text-text-tertiary">No players currently in self-exclusion or cooling-off.</td></tr>
+                  <AdminTableEmpty
+                    colSpan={6}
+                    kind="admin"
+                    title="Roster empty"
+                    body="No players are currently in self-exclusion or cooling-off."
+                  />
                 )}
               </tbody>
             </table>

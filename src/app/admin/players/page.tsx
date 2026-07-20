@@ -1,5 +1,6 @@
 import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
+import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import { Chip } from "@/components/ui/chip";
 import { Avatar } from "@/components/ui/avatar";
 import { Select } from "@/components/ui/select";
@@ -181,7 +182,12 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                   );
                 }))}
                 {filtered.length === 0 && (
-                  <tr><td colSpan={7} className="!py-6 text-center text-text-tertiary">No players match the current filter.</td></tr>
+                  <AdminTableEmpty
+                    colSpan={7}
+                    kind="admin"
+                    title="No players match"
+                    body="No players match the current filter — try clearing it."
+                  />
                 )}
               </tbody>
             </table>

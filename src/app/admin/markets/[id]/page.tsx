@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
+import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import { Avatar } from "@/components/ui/avatar";
 import { Chip } from "@/components/ui/chip";
 import { Stat } from "@/components/ui/stat";
@@ -358,11 +359,21 @@ export default async function MarketPredictorsPage({
                   );
                 })}
                 {filtered.length === 0 && (
-                  <tr>
-                    <td colSpan={8} className="!py-8 text-center text-text-tertiary font-mono text-[11px] uppercase tracking-[0.14em]">
-                      {allPositions.length === 0 ? "No positions on this market yet." : "No positions match the current filter."}
-                    </td>
-                  </tr>
+                  allPositions.length === 0 ? (
+                    <AdminTableEmpty
+                      colSpan={8}
+                      kind="positions"
+                      title="No positions yet"
+                      body="No one has taken a position on this market yet."
+                    />
+                  ) : (
+                    <AdminTableEmpty
+                      colSpan={8}
+                      kind="positions"
+                      title="No matches"
+                      body="No positions match the current filter — try clearing it."
+                    />
+                  )
                 )}
               </tbody>
             </table>

@@ -369,13 +369,11 @@ export default async function AdminReportsPage({
         <AdminCard title="Generation log" sw="Kumbukumbu ya kuzalisha" padding={generated.length > 0 ? "p-0" : "p-4"}
           action={<RefreshButton variant="icon" className="!h-7 !w-7" />}>
           {generated.length === 0 ? (
-            <div className="flex items-center gap-3 py-4">
-              <I.shieldcheck s={18} />
-              <p className="text-caption text-text-secondary">
-                No reports generated yet. Each generated report is logged here with reviewer, timestamp,
-                period covered, and a signed receipt the regulator can verify.
-              </p>
-            </div>
+            <EmptyState
+              kind="audit"
+              title="No reports generated yet"
+              body="Each generated report is logged here with its reviewer, timestamp, period covered, and a signed receipt the regulator can verify."
+            />
           ) : (
             <ScrollX label="Report library">
               <table className="admin-tbl">

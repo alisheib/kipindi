@@ -2,6 +2,7 @@ import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-she
 import { CEREMONY } from "@/lib/admin-status-lexicon";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
+import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import { Chip } from "@/components/ui/chip";
 import { db, type StoredTxn } from "@/lib/server/store";
 import { formatTzs, formatDateTime } from "@/lib/utils";
@@ -124,7 +125,7 @@ export default async function AdminAmlPage({
                   );
                 })}
                 {inReviewAll.length === 0 && (
-                  <tr><td colSpan={7} className="!py-6 text-center text-text-tertiary">No transactions awaiting review.</td></tr>
+                  <AdminTableEmpty colSpan={7} kind="admin" title="Queue clear" body="No transactions are awaiting review." />
                 )}
               </tbody>
             </table>
@@ -183,7 +184,7 @@ export default async function AdminAmlPage({
                   </tr>
                 ))}
                 {flagsAll.length === 0 && (
-                  <tr><td colSpan={6} className="!py-6 text-center text-text-tertiary">No suspicious patterns detected.</td></tr>
+                  <AdminTableEmpty colSpan={6} kind="admin" title="No flags" body="No suspicious betting patterns detected." />
                 )}
               </tbody>
             </table>

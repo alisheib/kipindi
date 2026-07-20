@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Route } from "next";
 import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
+import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { AdminMeter } from "@/components/admin/admin-charts";
 import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
@@ -26,8 +27,12 @@ const ageLabel = (msv: number) => {
   return `${Math.max(0, Math.floor(msv / 60_000))}m`;
 };
 
-export default async function PaymentsOpsPage() {
+export default async function PaymentsOpsPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+  const sp = await searchParams;
   const [health, kill, recon, queue, controls] = await Promise.all([allMnoHealth(), getKillSwitches(), reconcile(), retryQueue(), getPaymentControls()]);
+  const page = parsePage(sp.page, queue.length);
+  const queueRows = queue.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+  const base = buildBaseHref("/admin/payments", sp);
 
   return (
     <>
@@ -163,7 +168,7 @@ export default async function PaymentsOpsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {queue.map((r) => (
+                  {queueRows.map((r) => (
                     <tr key={r.id} className={r.ageMs > 3_600_000 ? "border-l-2 border-no-500" : ""}>
                       <td className="font-mono text-text-subtle">{r.id.slice(0, 14)}…</td>
                       <td className="font-mono">{r.provider}</td>
@@ -178,6 +183,7 @@ export default async function PaymentsOpsPage() {
               </table>
             </ScrollX>
           )}
+          {queue.length > 0 && <AdminPagination total={queue.length} page={page} baseHref={base} />}
         </AdminCard>
 
         <AdminCard className="border-info-border bg-info-bg/15">

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AdminPageHead, AdminCard, AdminKpi, AdminStackedBar, StatusPill, FeedRow } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
+import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import { AdminFunnelChart } from "@/components/admin/admin-charts";
 import { I } from "@/components/ui/glyphs";
 import { db, type StoredTxn } from "@/lib/server/store";
@@ -60,6 +61,7 @@ export default async function AdminCompliancePage({
       <AdminPageHead
         title="Compliance"
         sw="Kanuni"
+        period={false}
         actions={
           <Link
             href="/admin/reports"
@@ -345,7 +347,7 @@ async function PlayerSafetyPanel({ sp }: { sp: { page?: string; sort?: string; d
               </tr>
             ))}
             {flags.length === 0 && (
-              <tr><td colSpan={5} className="p-6 text-center text-text-tertiary">No markers of harm detected.</td></tr>
+              <AdminTableEmpty colSpan={5} kind="admin" title="No harm markers" body="No markers of harm detected across players." />
             )}
           </tbody>
         </table>

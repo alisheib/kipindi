@@ -1,4 +1,5 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
+import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Chip } from "@/components/ui/chip";
@@ -12,10 +13,14 @@ import { ControlledElsewhere } from "@/components/admin/controlled-elsewhere";
 export const metadata = { title: "Admin · Settlement" };
 export const dynamic = "force-dynamic";
 
-export default async function AdminSettlementPage() {
+export default async function AdminSettlementPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+  const sp = await searchParams;
   const [queue, health] = await Promise.all([listSettlementQueue(), getSettlementHealth()]);
   const ready = queue.filter((r) => r.state === "READY");
   const readyTzs = ready.reduce((s, r) => s + r.pool, 0);
+  const page = parsePage(sp.page, queue.length);
+  const queueRows = queue.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+  const base = buildBaseHref("/admin/settlement", sp);
 
   return (
     <>
@@ -99,7 +104,7 @@ export default async function AdminSettlementPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {queue.map((r) => (
+                  {queueRows.map((r) => (
                     <tr key={r.id}>
                       <td>
                         {r.state === "READY" ? (
@@ -152,6 +157,7 @@ export default async function AdminSettlementPage() {
               </table>
             </ScrollX>
           )}
+          {queue.length > 0 && <AdminPagination total={queue.length} page={page} baseHref={base} />}
         </AdminCard>
 
         <p className="text-caption text-text-secondary">

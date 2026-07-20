@@ -3,6 +3,7 @@ import Link from "next/link";
 import { AdminPageHead, AdminKpi, AdminCard, FeedRow } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
+import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import { Avatar } from "@/components/ui/avatar";
 import { Chip } from "@/components/ui/chip";
 import { ScrollX } from "@/components/ui/scroll-x";
@@ -287,7 +288,9 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
                         <td className={["py-2 pl-3 font-mono tabular text-right", t.amount >= 0 ? "text-text" : "text-text-secondary"].join(" ")}>{formatTzs(t.amount)}</td>
                       </tr>
                     ))}
-                    {txns.length === 0 && <tr><td colSpan={5} className="py-6 text-center text-text-tertiary">No transactions.</td></tr>}
+                    {txns.length === 0 && (
+                      <AdminTableEmpty colSpan={5} kind="admin" title="No transactions" body="This player has no recorded transactions yet." />
+                    )}
                   </tbody>
                 </table>
               </ScrollX>

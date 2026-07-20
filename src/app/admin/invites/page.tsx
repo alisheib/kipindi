@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Route } from "next";
 import { AdminPageHead, AdminKpi, AdminCard } from "@/components/admin/admin-shell";
+import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { Chip } from "@/components/ui/chip";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ScrollX } from "@/components/ui/scroll-x";
@@ -15,8 +16,12 @@ const STATUS_CHIP: Record<string, "active" | "resolved" | "paused" | "pending"> 
   DRAFT: "pending", SENDING: "active", SENT: "resolved", CANCELLED: "paused",
 };
 
-export default async function AdminInvitesPage() {
+export default async function AdminInvitesPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+  const sp = await searchParams;
   const [campaigns, stats] = await Promise.all([listCampaigns().catch(() => []), getInviteStats().catch(() => ({ campaigns: 0, totalInvites: 0, totalRegistered: 0, conversionPct: 0 }))]);
+  const page = parsePage(sp.page, campaigns.length);
+  const pageRows = campaigns.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+  const base = buildBaseHref("/admin/invites", sp);
 
   return (
     <>
@@ -43,6 +48,7 @@ export default async function AdminInvitesPage() {
               bodySw="Tengeneza moja juu kuanza kualika wachezaji."
             />
           ) : (
+            <>
             <ScrollX label="Invite campaigns">
               <table className="admin-tbl min-w-[720px]">
                 <thead>
@@ -57,7 +63,7 @@ export default async function AdminInvitesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {campaigns.map((c) => (
+                  {pageRows.map((c) => (
                     <tr key={c.id}>
                       <td><Link href={`/admin/invites/${c.id}` as Route} className="font-semibold text-text hover:text-brand-300 transition-colors">{c.name}</Link></td>
                       <td className="font-mono text-text-muted">{c.code}</td>
@@ -71,6 +77,8 @@ export default async function AdminInvitesPage() {
                 </tbody>
               </table>
             </ScrollX>
+            <AdminPagination total={campaigns.length} page={page} baseHref={base} />
+            </>
           )}
         </AdminCard>
       </div>

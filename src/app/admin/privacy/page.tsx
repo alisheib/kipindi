@@ -6,6 +6,7 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
+import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import { Chip } from "@/components/ui/chip";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { db } from "@/lib/server/store";
@@ -100,7 +101,7 @@ export default async function AdminPrivacyPage({
                   </tr>
                 ))}
                 {requests.length === 0 && (
-                  <tr><td colSpan={6} className="p-6 text-center text-text-tertiary">No DSAR requests on file.</td></tr>
+                  <AdminTableEmpty colSpan={6} kind="audit" title="No DSAR requests" body="No data-subject access requests are on file." />
                 )}
               </tbody>
             </table>
@@ -130,9 +131,7 @@ export default async function AdminPrivacyPage({
               </thead>
               <tbody>
                 {recentUsers.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="py-6 text-center text-caption text-text-tertiary">No recent players.</td>
-                  </tr>
+                  <AdminTableEmpty colSpan={5} kind="admin" title="No recent players" body="No recently created player accounts to export." />
                 )}
                 {recentUsers.map((u) => (
                   <tr key={u.id} className="border-b border-border-subtle/40 last:border-b-0">
