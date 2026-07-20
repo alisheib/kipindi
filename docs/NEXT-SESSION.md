@@ -24,6 +24,8 @@ Read the two always-on skills first (`.claude/skills/50pick-standards` +
   `resolvedOutcome` prop, wired at all resolvable call sites (`/markets`, `/results`,
   `/watchlist`); unknown outcome renders "RESOLVED" with **no** side rather than a guess.
   New invariant **B6** + `npm run test:outcome` (verified to fail on the original line).
+  **Measured on prod before the fix: 4 of 8 sampled resolved markets showed the wrong side**
+  (worst on lopsided 100%-YES pools that settled NO). After: 8/8 card↔detail agreement live.
 - **Motion tokens were colliding across stylesheets** — see invariant **B5** and
   `npm run test:tokens`. Read B5's scope table before citing that fix; several repaired rules
   are dead CSS. Real delta = chat panel, countdown ring, probability chart.

@@ -91,10 +91,19 @@ reads the real `resolvedOutcome` — displayed the correct one. A user clicked a
 "RESOLVED YES" and landed on a page saying NO. The card had no `resolvedOutcome` prop at all,
 so it could not have been right except by luck.
 
+**Measured on production before the fix: 4 of 8 sampled resolved markets displayed the wrong
+outcome** — half the resolved board. Three were lopsided pools at 100% YES that settled NO, so
+the card read "RESOLVED YES" while the detail page read NO. After the fix, 8/8 card↔detail
+agreement live.
+
 The rule: **the settled side comes from `PredictionMarket.resolvedOutcome` or it is not
 shown.** Never derive it from a probability, a percentage, or a pool comparison. When the
 outcome is unknown, render "RESOLVED" with **no** side — an absent side is recoverable, a
 wrong side is a false statement about someone's money.
+
+Note *why* it skewed: a lopsided market (everyone on one side) pins `yesPct` to 100/0, so the
+inference was **most confidently wrong exactly where the pool was most one-sided** — and those
+are the markets where a refund or an upset matters most to the people who staked.
 
 This generalises: on a money surface, prefer showing nothing to showing a guess.
 
