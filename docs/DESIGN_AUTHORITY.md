@@ -107,11 +107,26 @@ are the markets where a refund or an upset matters most to the people who staked
 
 This generalises: on a money surface, prefer showing nothing to showing a guess.
 
-Enforced by **`scripts/outcome-display.test.mts`** (`npm run test:outcome`, in `test:all` and
-`predeploy`). It fails on (1) any YES/NO ternary keyed off a probability variable, (2) a
-`<MarketCard>` that can render RESOLVED without passing `resolvedOutcome`, (3) the card
-reintroducing probability-based inference. Verified to fail on the original buggy line and
-pass on the fix.
+**Full-surface audit (2026-07-20) — the defect was isolated to `market-card.tsx`.** Verified
+clean: `resolveMarket()` and the whole payout path take the officer-supplied outcome as input
+(`winningSidePositions = filter(p => p.side === opts.outcome)`) and never infer; `/positions`
+uses the stored per-position `status === "WIN"|"LOSS"` written at settlement; `/results`
+counters filter on `resolvedOutcome`; the win-share OG card resolves its side from an
+HMAC-signed token re-read from the ledger; emails/notifications never state a side. A codebase
+sweep for pool comparisons (`yesPool > noPool` and friends) and percentage thresholds returns
+**zero** hits outside the payout math itself.
+
+Two enforcement layers:
+
+- **`scripts/outcome-display.test.mts`** (`npm run test:outcome`, in `test:all` + `predeploy`)
+  — static. Fails on (1) a YES/NO ternary keyed off *any* probability variable, raw percentage
+  or direct pool comparison, (2) a `<MarketCard>` that can render RESOLVED without passing
+  `resolvedOutcome`, (3) the card reintroducing inference. Verified to fail on both the
+  original `yesPct >= 50` line and a `yesPool > noPool` variant, and to pass on the fix.
+- **`scripts/outcome-parity.mjs`** (`npm run qa:outcome`) — behavioural, against the running
+  site. For every resolved market on the board it opens the detail page and asserts the two
+  outcomes agree. This is the check that would have caught the user report directly. Live
+  result after the fix: **14/14 match**, including a VOID.
 
 ---
 

@@ -54,7 +54,16 @@ const files = walk(SRC);
 //    Catches: `yesPct >= 50 ? t.common.yes : t.common.no`
 //             `pct > 50 ? "YES" : "NO"`, `impliedYesPct(m) >= 50 ? ...`
 // ---------------------------------------------------------------------------
-const PROB = /\b(yesPct|impliedYesPct\([^)]*\)|yesPercent|probability|pct)\b\s*(>=|>|<=|<)\s*\d+\s*\?/i;
+// Anything that could stand in for "which side is ahead": an explicit probability
+// variable, a raw percentage, or a direct pool comparison. All of them are the crowd's
+// money — none of them is the settled result.
+const PROB = new RegExp(
+  "\\b(?:" +
+    "yesPct|impliedYesPct\\([^)]*\\)|yesPercent|yesProb|probability|percent|pct" +   // probability-ish
+    "|yesPool|noPool" +                                                              // raw pools
+  ")\\b\\s*(?:>=|>|<=|<|===|!==|==)\\s*(?:\\d+(?:\\.\\d+)?|yesPool|noPool)\\s*\\?",
+  "i",
+);
 const SIDE = /(t\.common\.(yes|no)|["'`](YES|NO)["'`])/;
 const inferred: string[] = [];
 for (const f of files) {
