@@ -739,7 +739,11 @@ export async function creditConfirmedDeposits(
       const v = await verifyDepositStatus(t.providerRef!);
       if (v.status !== "CONFIRMED") continue; // PENDING / FAILED / UNSUPPORTED — not ours to act on
       const r = await settlePaymentWebhook({ providerRef: t.providerRef!, status: "CONFIRMED", amount: v.amount });
-      if (r.handled) confirmed++;
+      // `handled` is ALSO true for "already-confirmed" — the idempotent no-op when
+      // another path settled first. Counting that as a credit inflates the metric and
+      // makes a duplicate poll look like a duplicate payment in the audit log, which
+      // is exactly the wrong signal on a money surface. Count only a fresh settle.
+      if (r.handled && r.reason === "deposit-confirmed") confirmed++;
     } catch (err) {
       // A provider blip must not stop the lane for the other in-flight deposits.
       console.error("[payments] fast credit re-query failed", { txnId: t.id, err: (err as Error)?.message });

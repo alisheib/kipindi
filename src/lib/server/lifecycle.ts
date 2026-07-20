@@ -187,9 +187,11 @@ export async function runLifecyclePass(): Promise<void> {
     }
 
     await expireActiveGrants().catch((e) => console.error("[lifecycle] bonus expiry:", e));
-    // Every tick, not every 5 minutes: a debited player must not wait on the stale
-    // sweep. Confirm-only, so it cannot fail a slow deposit.
-    await fastCreditInFlightDeposits().catch((e) => console.error("[lifecycle] fast credit:", e));
+    // NOTE: the deposit fast-credit lane is deliberately NOT called here. It has its
+    // own 15s timer (see startLifecycleTicker). Calling it from both meant two
+    // concurrent passes every 60s — the overlap guard only covers the dedicated
+    // timer — which doubled the gateway calls and wrote duplicate
+    // payments.fast_credit audit rows. Observed in production 2026-07-20 12:49:47.
     await maybePaymentSweeps().catch((e) => console.error("[lifecycle] payment sweeps:", e));
     await maybeReconcileLedger().catch((e) => console.error("[lifecycle] trial balance:", e));
   } finally {
