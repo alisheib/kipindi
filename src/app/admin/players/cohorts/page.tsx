@@ -1,5 +1,5 @@
 import { AdminPageHead, AdminCard, AdminKpi, AdminFunnel } from "@/components/admin/admin-shell";
-import { AdminBarList, AdminMeter } from "@/components/admin/admin-charts";
+import { AdminBarList, AdminMeter, AdminAreaChart } from "@/components/admin/admin-charts";
 import { db } from "@/lib/server/store";
 import { kycFunnel, userStatusCounts } from "@/lib/server/analytics";
 import { Chip } from "@/components/ui/chip";
@@ -122,26 +122,19 @@ export default async function AdminCohortsPage() {
           </AdminCard>
         </div>
 
-        {/* Registration over time */}
+        {/* Registrations over time — AdminAreaChart (A8) replaces the hand-rolled
+            vertical bars, matching the time-series idiom used on overview / finance
+            / live so the whole console reads as one system. */}
         <AdminCard title="Registrations over time" sw="Kujisajili">
           {months.length === 0 ? (
             <p className="text-caption text-text-tertiary py-3 text-center">No registrations yet.</p>
           ) : (
-            <div className="flex items-end gap-2 h-32">
-              {months.map(({ month, count }) => {
-                const max = Math.max(...months.map((m) => m.count));
-                const h = Math.round((count / max) * 100);
-                return (
-                  <div key={month} className="flex-1 flex flex-col items-center gap-1.5 min-w-0">
-                    <div className="w-full bg-bg-sunken rounded-sm relative flex-1">
-                      <div className="absolute inset-x-0 bottom-0 bg-royal/80 rounded-sm" style={{ height: `${h}%` }} />
-                    </div>
-                    <span className="font-mono text-micro tabular text-text-tertiary">{month.slice(2)}</span>
-                    <span className="font-mono text-micro tabular text-text">{count}</span>
-                  </div>
-                );
-              })}
-            </div>
+            <AdminAreaChart
+              series={months.map((m, i) => ({ x: i, y: m.count }))}
+              xLabels={months.map((m) => m.month.slice(2))}
+              height={160}
+              yLabel="Registrations"
+            />
           )}
         </AdminCard>
       </div>

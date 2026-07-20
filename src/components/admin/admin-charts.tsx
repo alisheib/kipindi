@@ -387,6 +387,67 @@ export function AdminBarList({
   );
 }
 
+/* ===== AdminGauge — radial value gauge for a single 0..max score (A8) =====
+   A distinct primitive from AdminMeter (a horizontal bar): a ring that fills
+   value/max with the number at its centre — the right shape for a headline
+   score (risk, health, confidence). Static SVG (no motion) so it is
+   reduced-motion-safe by construction. `colorVar` drives BOTH the arc and the
+   centred number, so the caller owns the semantic — e.g. a risk band maps to
+   --yes-500 / --warning-500 / --danger-500 (never gold: gold = earned money). */
+
+export function AdminGauge({
+  value,
+  max = 100,
+  size = 76,
+  stroke = 8,
+  colorVar = "var(--brand-500)",
+  trackVar = "var(--border)",
+  display,
+  ariaLabel,
+}: {
+  value: number;
+  max?: number;
+  size?: number;
+  stroke?: number;
+  colorVar?: string;
+  trackVar?: string;
+  /** Override the centred text (default: the raw value). */
+  display?: string;
+  ariaLabel?: string;
+}) {
+  const pct = max > 0 ? Math.max(0, Math.min(1, value / max)) : 0;
+  const r = (size - stroke) / 2;
+  const circ = 2 * Math.PI * r;
+  const c = size / 2;
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={ariaLabel ?? `${value} of ${max}`}>
+      <circle cx={c} cy={c} r={r} fill="none" stroke={trackVar} strokeWidth={stroke} />
+      <circle
+        cx={c}
+        cy={c}
+        r={r}
+        fill="none"
+        stroke={colorVar}
+        strokeWidth={stroke}
+        strokeLinecap="round"
+        strokeDasharray={circ}
+        strokeDashoffset={circ * (1 - pct)}
+        transform={`rotate(-90 ${c} ${c})`}
+      />
+      <text
+        x={c}
+        y={c}
+        textAnchor="middle"
+        dominantBaseline="central"
+        style={{ fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: Math.round(size * 0.3), letterSpacing: "-0.03em" }}
+        fill={colorVar}
+      >
+        {display ?? value}
+      </text>
+    </svg>
+  );
+}
+
 function compact(n: number): string {
   const abs = Math.abs(n);
   if (abs >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}B`;

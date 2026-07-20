@@ -1,5 +1,6 @@
-import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
+import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
+import { SortTh } from "@/components/admin/admin-sort";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import { Chip } from "@/components/ui/chip";
 import { Avatar } from "@/components/ui/avatar";
@@ -69,32 +70,38 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
   const paged = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
   const baseHref = buildBaseHref("/admin/players", { q: sp.q, status: sp.status, sort: sp.sort, dir: sp.dir });
 
+  // One pass over the population → the status→count map that feeds both the KPI
+  // band and the status-mix bar (was seven separate .filter() passes).
+  const statusCounts: Record<string, number> = {};
+  for (const u of all) statusCounts[u.status] = (statusCounts[u.status] ?? 0) + 1;
   const counts = {
     total: all.length,
-    active: all.filter((u) => u.status === "ACTIVE").length,
-    pending_kyc: all.filter((u) => u.status === "PENDING_KYC").length,
-    suspended: all.filter((u) => u.status === "SUSPENDED").length,
-    self_excluded: all.filter((u) => u.status === "SELF_EXCLUDED").length,
-    cooled_off: all.filter((u) => u.status === "COOLED_OFF").length,
-    closed: all.filter((u) => u.status === "CLOSED").length,
+    active: statusCounts.ACTIVE ?? 0,
+    pending_kyc: statusCounts.PENDING_KYC ?? 0,
+    suspended: statusCounts.SUSPENDED ?? 0,
+    self_excluded: statusCounts.SELF_EXCLUDED ?? 0,
   };
+  const blocked = counts.suspended + counts.self_excluded;
 
   return (
     <>
-      <AdminPageHead
-        title="Players"
-        sw="Wachezaji"
-        period={false}
-        actions={
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <Chip size="sm" variant="success">{counts.active} active</Chip>
-            {counts.pending_kyc > 0 && <Chip size="sm" variant="warning">{counts.pending_kyc} pending KYC</Chip>}
-            {(counts.suspended + counts.self_excluded) > 0 && <Chip size="sm" variant="danger">{counts.suspended + counts.self_excluded} blocked</Chip>}
-          </div>
-        }
-      />
+      <AdminPageHead title="Players" sw="Wachezaji" period={false} />
 
       <div className="px-4 lg:px-6 py-5 space-y-4">
+        {/* Headline KPIs — replaces the header count-chips with the console-standard
+            band (matches overview / cohorts). Blocked = suspended + self-excluded. */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <AdminKpi label="Total players" sw="Jumla ya wachezaji" value={counts.total.toLocaleString()} />
+          <AdminKpi label="Active" sw="Hai" value={counts.active.toLocaleString()} tone="success" delta={`${counts.total ? Math.round((counts.active / counts.total) * 100) : 0}%`} deltaDir="up" />
+          <AdminKpi label="Pending KYC" sw="Inasubiri KYC" value={counts.pending_kyc.toLocaleString()} delta={counts.pending_kyc > 0 ? "needs review" : "clear"} deltaDir={counts.pending_kyc > 0 ? "up" : "flat"} />
+          <AdminKpi label="Blocked" sw="Zimezuiwa" value={blocked.toLocaleString()} tone={blocked > 0 ? "danger" : undefined} delta={`${counts.suspended} susp · ${counts.self_excluded} excl`} deltaDir="flat" />
+        </div>
+
+        {/* Population status mix — one at-a-glance segmented bar (green Active /
+            amber pending / rose blocked / grey closed). Complements the numeric
+            band; the detailed per-status breakdown lives on Cohorts. */}
+        <StatusMix counts={statusCounts} />
+
         <AdminCard padding="p-3">
           <form className="flex flex-wrap items-center gap-2">
             <div className="relative flex-1 min-w-0 sm:min-w-[260px]">
@@ -146,9 +153,9 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                   <th className="text-left">Player</th>
                   <th className="text-left">Phone</th>
                   <th className="text-left">Status</th>
-                  <SortTh field="balance" label="Wallet" current={sortField} dir={sortDir} align="right" sp={sp} />
-                  <SortTh field="joined" label="Joined" current={sortField} dir={sortDir} sp={sp} />
-                  <SortTh field="login" label="Last login" current={sortField} dir={sortDir} sp={sp} />
+                  <SortTh field="balance" label="Wallet" current={sortField} dir={sortDir} align="right" sp={sp} baseHref="/admin/players" />
+                  <SortTh field="joined" label="Joined" current={sortField} dir={sortDir} sp={sp} baseHref="/admin/players" />
+                  <SortTh field="login" label="Last login" current={sortField} dir={sortDir} sp={sp} baseHref="/admin/players" />
                   <th className="text-left">Drill-down</th>
                 </tr>
               </thead>
@@ -206,20 +213,39 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
   );
 }
 
-function SortTh({ field, label, current, dir, align, sp }: { field: string; label: string; current: string; dir: string; align?: string; sp: Record<string, string | undefined> }) {
-  const isActive = current === field;
-  const nextDir = isActive && dir === "desc" ? "asc" : "desc";
-  const params = new URLSearchParams();
-  if (sp.q) params.set("q", sp.q);
-  if (sp.status) params.set("status", sp.status);
-  params.set("sort", field);
-  params.set("dir", nextDir);
+/* Population status mix — a single segmented bar + legend, reusing the console's
+   semantic status colours (green Active · amber pending/cooling · rose blocked ·
+   grey closed). Zero-count statuses are dropped so the bar and legend stay clean. */
+const MIX_ORDER: ReadonlyArray<{ key: string; label: string; color: string }> = [
+  { key: "ACTIVE",        label: "Active",        color: "var(--yes-500)" },
+  { key: "PENDING_KYC",   label: "Pending KYC",   color: "var(--warning-500)" },
+  { key: "COOLED_OFF",    label: "Cooled off",    color: "var(--warning-500)" },
+  { key: "SUSPENDED",     label: "Suspended",     color: "var(--no-500)" },
+  { key: "SELF_EXCLUDED", label: "Self-excluded", color: "var(--no-500)" },
+  { key: "CLOSED",        label: "Closed",        color: "var(--border-strong)" },
+];
+
+function StatusMix({ counts }: { counts: Record<string, number> }) {
+  const segs = MIX_ORDER.map((m) => ({ ...m, value: counts[m.key] ?? 0 })).filter((m) => m.value > 0);
+  const total = segs.reduce((s, m) => s + m.value, 0);
+  if (total === 0) return null;
   return (
-    <th className={align === "right" ? "text-right" : "text-left"}>
-      <a href={`/admin/players?${params.toString()}`} className={`inline-flex items-center gap-1 hover:text-text ${isActive ? "text-text" : ""}`}>
-        {label}
-        {isActive && <span className="text-brand-300">{dir === "asc" ? "↑" : "↓"}</span>}
-      </a>
-    </th>
+    <AdminCard title="Population mix" sw="Mchanganyiko wa hadhi">
+      <div className="flex h-3 w-full overflow-hidden rounded-pill" role="img" aria-label="Player status distribution">
+        {segs.map((m) => (
+          <div key={m.key} style={{ width: `${(m.value / total) * 100}%`, background: m.color }} title={`${m.label}: ${m.value}`} />
+        ))}
+      </div>
+      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5">
+        {segs.map((m) => (
+          <span key={m.key} className="inline-flex items-center gap-1.5 text-caption text-text-secondary">
+            <span className="h-2 w-2 rounded-pill shrink-0" style={{ background: m.color }} aria-hidden />
+            {m.label}
+            <span className="font-mono tabular text-text">{m.value}</span>
+            <span className="font-mono text-micro text-text-tertiary">· {Math.round((m.value / total) * 100)}%</span>
+          </span>
+        ))}
+      </div>
+    </AdminCard>
   );
 }

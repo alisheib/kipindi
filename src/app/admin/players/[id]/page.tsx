@@ -4,6 +4,7 @@ import { AdminPageHead, AdminKpi, AdminCard, FeedRow } from "@/components/admin/
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
+import { AdminGauge } from "@/components/admin/admin-charts";
 import { Avatar } from "@/components/ui/avatar";
 import { Chip } from "@/components/ui/chip";
 import { ScrollX } from "@/components/ui/scroll-x";
@@ -186,17 +187,19 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
                 )}
               </div>
             </div>
-            <div className="text-right ml-auto">
+            <div className="ml-auto flex flex-col items-center gap-1.5">
               <p className="font-mono text-micro uppercase tracking-[0.14em] text-text-tertiary">Risk score</p>
-              <p
-                className={[
-                  "font-mono font-bold tabular leading-none mt-1 text-display-3",
-                  riskBand === "high" ? "text-danger" : riskBand === "medium" ? "text-warning-fg" : "text-success",
-                ].join(" ")}
-              >
-                {riskScore}
-              </p>
-              <p className="font-mono text-micro text-text-tertiary tracking-wider mt-1">{riskBand} · review monthly</p>
+              {/* Radial gauge (AdminGauge) — arc + number coloured by band with the
+                  SAME tokens the rest of the console uses for risk. NOT ConfidenceDial:
+                  that is a YES/NO tipping dial and would misread as a bet split. */}
+              <AdminGauge
+                value={riskScore}
+                max={100}
+                size={80}
+                colorVar={riskBand === "high" ? "var(--danger-500)" : riskBand === "medium" ? "var(--warning-500)" : "var(--yes-500)"}
+                ariaLabel={`Risk score ${riskScore} of 100 — ${riskBand} risk`}
+              />
+              <p className="font-mono text-micro text-text-tertiary tracking-wider">{riskBand} · review monthly</p>
             </div>
           </div>
         </AdminCard>
