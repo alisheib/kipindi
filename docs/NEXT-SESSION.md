@@ -37,9 +37,13 @@ Read the two always-on skills first (`.claude/skills/50pick-standards` +
 board while the same header reads "6 live · TZS 501k in play". Ali chose leave-as-is on
 2026-07-20, before seeing it rendered. It is the first screen a tester hits.
 
-⚠️ **Still broken:** the MarketCard sparkline draws on **zero** live cards — `market-history.ts`
-is an in-memory Map on both store paths (4 TODOs), so history dies every deploy. The fix is
-persistence, not UI.
+✅ **FIXED 2026-07-20 @ `6b1975b`** — was: "the MarketCard sparkline draws on zero live cards;
+`market-history.ts` is an in-memory Map on both store paths". That diagnosis was right but
+incomplete. The same root cause was *also* making `/markets/[id]` render a **fabricated** price
+chart: with history wiped on every deploy, `seedHistory()` generated a synthetic LCG random walk
+for every market and drew it as real. The card was blank because it obeyed the A-5
+no-fabrication rule; the detail page did not. Now persisted in a `MarketSnapshot` table,
+`seedHistory` deleted, charts start empty and fill with real bets. Guard: `npm run test:history`.
 
 ## Done (Session M — money-ops, all live + verified)
 A1 R2 storage seam (H8) · A2 audited balance-adjust + force-reverify KYC · A3 PSP

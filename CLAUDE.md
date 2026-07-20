@@ -20,6 +20,22 @@
 > (DNS→R2→payment keys→the switch) is `docs/next-session-prompt.md`. **Nothing in
 > the plan now blocks launch — the one remaining unblock is the payment aggregator
 > API keys.** Remaining code = optional admin features (A6/A7/A13–A16) + polish.
+> 🔴 **PRICE HISTORY WAS FABRICATED — FIXED + LIVE @ `6b1975b` (2026-07-20).** `seedHistory()`
+> generated a synthetic LCG random walk and `/markets/[id]` rendered it as real price history
+> to real-money bettors, on EVERY market, after EVERY deploy (history lived in a Map that each
+> deploy wiped, so the "legacy demo markets only" guard never held). This broke the platform's
+> own **A-5 no-fabrication rule** that `market-card.tsx` cites and obeys — which is exactly why
+> the card sparkline was blank while the detail chart drew a confident curve. Now: real
+> `MarketSnapshot` table, `seedHistory` **deleted**, charts start EMPTY and fill with real bets.
+> ⛔ **Never reintroduce a fallback that invents chart points** — guard at `npm run test:history`
+> (rejects a seeder by name AND any LCG constant, so a rename does not slip past; verified to
+> fail when the bug is reintroduced). Two things the fix surfaced: `recordSnapshot` is called
+> **fire-and-forget** from six sites on the bet path, so every history WRITE must swallow its own
+> errors (an unhandled rejection kills the container mid-bet); and boards must use
+> `getCardCharts()` — never map `getCardChart` across a list. Migration was **pre-applied via
+> Railway before the push**, so boot logged "No pending migrations" and could not fail. Access +
+> deploy model: `.claude/skills/railway/`. Outstanding polish/i18n/scale backlog (audited, ranked,
+> nothing shipped): **`docs/POLISH-BACKLOG.md`**.
 > 🚀 **GO-LIVE (2026-07-18) — CARD DEPOSITS + EMAIL-GATED MONEY-IN SHIPPED @ `3a31a87`.**
 > **DNS is DONE**: `50pick.tz` AND `www.50pick.tz` both resolve to Railway and serve the
 > app (the old "Apache parking page" warning is obsolete — verified 2026-07-18).
