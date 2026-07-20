@@ -55,11 +55,18 @@
      Glide  · default state transitions (hover, focus, color)
      Arrive · entry — bubble pop, message slide-in, citation reveal
      Sink   · exit  — panel dismiss, hover-out
-     Conduct· sheet sweep / panel mount — the longest, most deliberate */
-  --ease-glide:   180ms cubic-bezier(0.2, 0.8, 0.2, 1);
-  --ease-arrive:  280ms cubic-bezier(0.16, 0.84, 0.36, 1);
-  --ease-sink:    160ms cubic-bezier(0.4, 0, 1, 1);
-  --ease-conduct: 420ms cubic-bezier(0.22, 0.61, 0.36, 1);
+     Conduct· sheet sweep / panel mount — the longest, most deliberate
+
+     NAMESPACED --cm-* on purpose. These were once --ease-glide/--arrive/--sink/
+     --conduct, which collide with the four identically-named tokens in globals.css.
+     This file is @imported at the TOP of globals.css, so globals' bare curves won and
+     every chat transition/animation here silently resolved to 0s — the whole panel had
+     no motion at all. Curve and duration are split so a consumer must state both.
+     Guarded by scripts/token-collision.test.mts. */
+  --cm-ease-glide:   cubic-bezier(0.2, 0.8, 0.2, 1);    --cm-dur-glide:   180ms;
+  --cm-ease-arrive:  cubic-bezier(0.16, 0.84, 0.36, 1); --cm-dur-arrive:  280ms;
+  --cm-ease-sink:    cubic-bezier(0.4, 0, 1, 1);        --cm-dur-sink:    160ms;
+  --cm-ease-conduct: cubic-bezier(0.22, 0.61, 0.36, 1); --cm-dur-conduct: 420ms;
 
   /* ---------- Z-stack ---------- */
   --z-bubble: 60;
@@ -71,9 +78,9 @@
    Every chat-surface transition collapses to a fade or to none. */
 @media (prefers-reduced-motion: reduce) {
   :root {
-    --ease-glide:   0ms linear;
-    --ease-arrive:  0ms linear;
-    --ease-sink:    0ms linear;
-    --ease-conduct: 120ms linear; /* one quiet fade — never a slide */
+    --cm-ease-glide:   linear; --cm-dur-glide:   0ms;
+    --cm-ease-arrive:  linear; --cm-dur-arrive:  0ms;
+    --cm-ease-sink:    linear; --cm-dur-sink:    0ms;
+    --cm-ease-conduct: linear; --cm-dur-conduct: 120ms; /* one quiet fade — never a slide */
   }
 }

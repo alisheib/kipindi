@@ -442,9 +442,11 @@ Already shipped (was on this list before):
 ## Postponed features
 
 - **Hero slideshow / video background** — full-bleed Ken Burns image slideshow
-  for the landing page. Component built at `src/components/landing/hero-slideshow.tsx`,
-  20 WebP images in `public/hero/slides/`. Waiting for professional album before
-  activating.
+  for the landing page. ⚠️ **The component and slides no longer exist** —
+  `src/components/landing/` (incl. `hero-slideshow.tsx`) was deleted in `5fc3784` and
+  `public/hero/slides/` is empty; the landing hero is now a single inline
+  `hero-bg.webp`. Verified 2026-07-20. Reviving this means rebuilding it, not
+  re-activating it. Still waiting on a professional album either way.
 - **Full Prisma entity migration** — COMPLETE. All entities migrated to
   per-row Prisma tables. `USE_PRISMA_DAL=true` on production. See
   `docs/DATA-LAYER.md`.

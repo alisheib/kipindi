@@ -176,7 +176,7 @@ specific change. Be candid; we would rather redo a built thing now than ship it 
 | `/positions` | Countdown as plain text | Mini **countdown ring** on open cards; YES/NO exposure bar | L |
 | `/positions/performance` | Best-win/streak text-only | **Streak pip-chain / flame** row; gilt "best win" crest | L |
 | `/leaderboard` | **No podium** (top-3 are plain numbers); empty-state draws a podium the real board never uses | **Top-3 podium header** (crest + TierBadge + avatar, gilt #1) | **H** |
-| MarketCard (shared) | **`spark` + `traders` fetched but never rendered** (dead cost on 4 pages) | Render a YES%-/volume **sparkline + trader-crest stack**, or stop fetching — one card upgrade lifts home/markets/live/results | **H** |
+| ~~MarketCard (shared)~~ | ~~`spark` + `traders` fetched but never rendered~~ | ✅ **DONE** — verified 2026-07-20. `market-card.tsx` renders both (`Spark` via Catmull-Rom `smoothPath` at L94–99, trader crest-stack at L289–292), and `/`, `/markets`, `/results` all call `getCardChart()` and pass `spark`/`move24h`/`traders` (e.g. `markets/page.tsx:300-302`). **Do not "re-fix" this.** | ✅ |
 
 ### 5b. Player — money & profile
 | Route | Gap | Suggested asset/feature | Pri |
@@ -207,7 +207,7 @@ specific change. Be candid; we would rather redo a built thing now than ship it 
 | `api/og/*` | Dynamic OG is **markets-only**; static PNGs generic | Dynamic OG for leaderboard/results/proposals/profile; align hero gradient to navy | M |
 | `manifest.json` | No `shortcuts`; narrow screenshot mislabeled | PWA **shortcuts** (Markets/Wallet/Deposit); fix narrow screenshot | M |
 | `legal/*` | Prose-only; no per-doc identity | **GiltCorner-framed `LegalHeader`** + per-doc icon (terms/shield/RG/AML) | M |
-| `BrandTopo` | opacity 0.05 = invisible on navy | Bump ~0.08–0.10 where used | L |
+| ~~`BrandTopo`~~ | ~~opacity 0.05 = invisible on navy~~ | ✅ **DONE** — verified 2026-07-20. Component default is `opacity = 0.09` (`brand-topo.tsx:7`) and every one of the 7 call sites passes 0.08–0.09. Already in spec; **do not "re-fix" this.** | ✅ |
 
 ### 5d. Admin console (restraint — internal tooling)
 | Route | Gap | Suggested viz | Pri |
@@ -225,9 +225,9 @@ specific change. Be candid; we would rather redo a built thing now than ship it 
 ---
 
 ## 6. CROSS-CUTTING — the highest-leverage shared work (do these first)
-1. **MarketCard `spark` + trader-crest** — render the already-fetched data; lifts 4 pages at once. **[H]**
-2. **`AuthShell` + brand side-rail** — one component brings hero warmth to all 6 auth pages. **[H]**
-3. **Shared `RouteError`** — consistent branded error across 7 boundaries. **[H]**
+1. ~~**MarketCard `spark` + trader-crest**~~ — ✅ **SHIPPED** (verified 2026-07-20, see §5a).
+2. ~~**`AuthShell` + brand side-rail**~~ — ✅ **SHIPPED** (`src/components/auth/auth-shell.tsx`).
+3. ~~**Shared `RouteError`**~~ — ✅ **SHIPPED** (`src/components/ui/route-error.tsx`; all 7 boundaries funnel into it).
 4. **`PageHero` adoption** — 5 routes (3× proposals, fairness, invite) skip the existing masthead. **[M]**
 5. **Shared "reward burst" asset** — pays off on proposals-approved, KYC-approved, create-success, payout. **[M]**
 6. **Real MNO/payment logo set** — biggest iconography upgrade (deposit + withdraw + wallet). **[H]**

@@ -6,9 +6,11 @@ Read the two always-on skills first (`.claude/skills/50pick-standards` +
 ## State at handoff
 - **The Final Audit is COMPLETE** — all 11 Criticals + all Highs + all Mediums
   closed. Record: `docs/FINAL-AUDIT-REMEDIATION.md`.
-- **Prod HEALTHY.** Verify against **`https://kipindi-production.up.railway.app`**
-  (the `50pick.tz` custom domain currently parks on an Apache page — DNS not yet
-  pointed at Railway). Railway CLI = alisheib07 (`railway logs -s 50pick`).
+- **Prod HEALTHY.** Verify against **`https://50pick.tz`** — the live app
+  (re-confirmed 2026-07-20). `www.50pick.tz` and `kipindi-production.up.railway.app`
+  serve the same Railway instance. The old "custom domain parks on an Apache page"
+  note was true on 2026-07-16 and was fixed by the DNS cutover on 2026-07-17 — it is
+  **obsolete, do not re-raise it.** Railway CLI = alisheib07 (`railway logs -s 50pick`).
 - Now finishing the **perfection-plan §9 enhancement work** before the payment
   gateway. Live tracker: **`docs/ENHANCEMENT-PLAN-STATUS.md`** (grouped: (A)
   code-doable / (B) needs-Ali / (C) optional).

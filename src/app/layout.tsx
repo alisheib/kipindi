@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { AppShell } from "@/components/layout/app-shell";
 import { LazyOverlays } from "@/components/layout/lazy-overlays";
 import { ScrollRestore } from "@/components/ui/scroll-restore";
+import { appUrl } from "@/lib/app-url";
 import "./globals.css";
 import "./state-tokens.css";
 import "./micro-patterns.css";
@@ -30,7 +31,9 @@ const jbm = JetBrains_Mono({
   display: "swap",
 });
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://kipindi-production.up.railway.app";
+// One source of truth — do not re-derive the base URL here. This line used to
+// duplicate app-url.ts and the two could drift independently.
+const APP_URL = appUrl();
 const APP_DESC = "Tanzania-licensed prediction markets. Pick YES or NO on real events — winners share the pool minus our commission. Mobile-first, trilingual EN/SW/ZH.";
 
 export const metadata: Metadata = {

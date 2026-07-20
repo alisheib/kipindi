@@ -2,8 +2,9 @@ import { getServerT } from "@/lib/i18n-server";
 
 export default async function ResultsLoading() {
   const { t } = await getServerT();
+  // Width MUST match results/page.tsx (1280) — a mismatch reflows on every route transition.
   return (
-    <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-5">
+    <main className="mx-auto max-w-[1280px] px-3 lg:px-6 py-6 space-y-5">
       <header aria-hidden>
         <div className="h-3 w-16 rounded bg-bg-overlay kp-shimmer-track" />
         <div className="mt-1 h-7 w-48 rounded bg-bg-overlay kp-shimmer-track" />

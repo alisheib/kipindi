@@ -53,8 +53,15 @@ After every `git push origin main`:
 4. **Live-DB** — prod HTTP 200 + `railway logs -s 50pick` shows a clean boot (no `[snag]`
    error blocks, no boot throw; known fail-open warnings are OK).
 
-⚠️ **Verify against `https://kipindi-production.up.railway.app`** — the custom domain
-`50pick.tz`/`www` currently parks on an Apache page (a misleading 200 from the wrong host).
+✅ **Verify against `https://50pick.tz`** (and `www`) — this is the live app. Confirmed
+2026-07-20: serves the real Next.js app off Railway (`server: railway-hikari`,
+`x-powered-by: Next.js`), and both OG images resolve.
+
+> The old warning that `50pick.tz` "parks on an Apache page" is **obsolete** — that was
+> true on 2026-07-16, before the DNS cutover. `kipindi-production.up.railway.app` still
+> resolves and is fine for a smoke test, but it is NOT the address to quote or to put in
+> front of a user.
+
 `railway status` / `railway logs -s 50pick` for the real app (CLI = alisheib07).
 
 ## Migrations

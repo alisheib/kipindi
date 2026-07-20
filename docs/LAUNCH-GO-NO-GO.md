@@ -74,8 +74,9 @@
 6. [ ] Verify on the fresh DB: trial balance = **TZS 0 drift**, audit chain verifies,
        a real small deposit→bet→settle→withdraw round-trip is correct end-to-end.
 7. [ ] **Flip `AUTO_SETTLE=true`** (auto-payout) — only now, rail live + reconciled.
-8. [ ] Repoint DNS confirmed: `https://50pick.tz` serves the app (not Apache) with a
-       valid cert; verify + `railway logs` clean.
+8. [x] Repoint DNS confirmed: `https://50pick.tz` serves the app (not Apache) with a
+       valid cert; verify + `railway logs` clean. **DONE** — cutover 2026-07-17,
+       re-verified 2026-07-20 (`server: railway-hikari`, `x-powered-by: Next.js`).
 
 ## 6 · Strongly recommended before holding customer funds (👤 arrange)
 - [ ] Third-party **penetration test**.

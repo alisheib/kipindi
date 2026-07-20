@@ -46,10 +46,9 @@ These are environment / infra actions, each verified against the code:
   `MIXX_WEBHOOK_SECRET` still to set as each provider is enabled (exact names). Boot
   warns per missing secret in production; a provider whose secret is missing rejects
   EVERY callback (401) → deposits never credit.
-- [ ] **Repoint DNS** `50pick.tz` + `www.50pick.tz` → Railway. They currently
-  resolve to an Apache parking page; the app is only reachable at
-  `https://kipindi-production.up.railway.app`. Verify-after-deploy uses the
-  railway.app host until this is fixed.
+- [x] **Repoint DNS** `50pick.tz` + `www.50pick.tz` → Railway. **DONE** (Netpoa→Cloudflare
+  cutover 2026-07-17; re-verified 2026-07-20 — both hosts serve the real app,
+  `server: railway-hikari`). Verify-after-deploy now uses `https://50pick.tz`.
 - [ ] **Clear the `test.overrides.allowConflictedResolution` flag** via the admin
   UI (runtime already forces POCA §16 off in prod; clear it so intent is clean).
 - [ ] **Sentry** (optional but recommended): set `SENTRY_DSN` + `npm i @sentry/node`

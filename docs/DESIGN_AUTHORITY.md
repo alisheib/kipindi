@@ -1,5 +1,5 @@
 STATUS: authoritative — the design invariants of 50pick. Cited by code
-(`globals.css`, `theme-provider.tsx`). Last verified against the build 2026-07-15.
+(`globals.css`, `theme-provider.tsx`). Last verified against the build 2026-07-20.
 
 # 50pick — Design Authority
 
@@ -14,8 +14,11 @@ a regression (that was audit finding C9).
 3. **This file** — the *invariants* (what must stay true).
 
 ⚠️ **`50PICK/design_handoff_prediction_market_kit/kit/`** is a **SUPERSEDED snapshot**
-(teal 215, dead `[data-theme="light"]`). Historical only. **Do NOT build from it** —
-following it reverts the brand to teal and resurrects the killed light theme.
+(teal 215, dead `[data-theme="light"]`). **The folder no longer exists on disk** — it was
+deleted in the 2026-07-15 finalization (archive: `F:/50pick-design-archive/` + git history).
+Historical only. **Do NOT build from it** — following it reverts the brand to teal and
+resurrects the killed light theme. If a note tells you to "consult the kit first", that note
+is stale; consult `globals.css` instead.
 
 ---
 
@@ -75,6 +78,34 @@ Money controls must meet WCAG AA (≥ 4.5:1 for text on button fills, ≥ 3.0:1 
 control borders). Where a token fails, **darken the fill** rather than lighten the
 label, to preserve the YES/NO convention. Contrast is re-checked by
 `scripts/` contrast tooling on any token change.
+
+## B5 — One definition site per motion token; easings are bare curves
+
+Added 2026-07-20 after motion was found **silently dead across the whole platform**.
+
+`globals.css` defined `--ease-micro: 100ms cubic-bezier(…)` — a shorthand with the duration
+baked in. `micro-patterns.css` loads *after* it and redefined the same name as a bare curve.
+Last declaration wins, so every rule written as `transition: border-color var(--ease-micro)`
+expanded to a transition with **no duration → 0s**. Input focus rings, selects, textareas,
+tabs, button shadows, progress bars and the probability-chart crosshair all snapped instantly.
+Nothing errored. The same shadowing set `--dur-stage` 820ms → 240ms (countdown ring and chart
+draw-in ran 3.4× too fast), killed all four chat easings (the AI panel had **zero** motion),
+and let a button drop-glow overwrite the ambient badge `--glow-gold`.
+
+The rules:
+1. **A motion/elevation token is defined in exactly ONE file.** `globals.css` owns
+   `--ease-*`, `--dur-*`, `--glow-*`, `--shadow-*`. Other stylesheets *consume*, never redeclare.
+   A stylesheet needing its own scale must **namespace** it (the chat layer uses `--cm-*`).
+2. **Easing tokens are bare curves.** No duration baked in. Ever.
+3. **Every `transition`/`animation` states a duration before the easing:**
+   `transition: opacity var(--dur-micro) var(--ease-micro);`
+
+Enforced by **`scripts/token-collision.test.mts`** (`npm run test:tokens`, in `test:all` and
+`predeploy`). It fails on a cross-file duplicate, a duration-bearing easing token, or a
+duration-less transition. It caught a real regression during its own introduction — the chat
+`prefers-reduced-motion` block was still overriding the pre-rename token names.
+
+---
 
 ## Related
 

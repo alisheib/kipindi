@@ -75,7 +75,7 @@ Default config ships `trigger:"SIGNUP"`, `referrerAmountTzs:10_000`, `recipient:
 - **Leaderboard re-implements `TierBadge`.** `src/app/leaderboard/page.tsx:225` ignores the exported `<TierBadge>` / `.tier-*` classes; same tier looks different here vs everywhere. Also `sovereign` + `silver` both render "S" (`:233`). **Fix:** import the canonical badge.
 
 ### Nav / IA
-- **Two orphan hero components — heavy, unreferenced.** `src/components/landing/hero-constellation.tsx` and `hero-slideshow.tsx` are imported nowhere (live landing uses static `hero-bg.webp`). Slideshow references 20 image assets; constellation runs 7 dials + 18 particles. **Fix:** delete, or wire one in deliberately and drop the static hero.
+- ~~**Two orphan hero components — heavy, unreferenced.**~~ ✅ **RESOLVED** in `5fc3784` — both `hero-constellation.tsx` (655L) and `hero-slideshow.tsx` (220L) were deleted, along with the `components/landing` directory. Re-verified 2026-07-20: the files do not exist and nothing references them. **Do not re-raise.**
 - **Source-of-Funds has low discoverability.** `src/app/profile/page.tsx:210` — reachable only from the settings grid; no banner/notification drives players there when AML thresholds trigger (KYC gets a dedicated banner + avatar-menu entry). **Fix:** surface SoF the way KYC is when required.
 
 ---

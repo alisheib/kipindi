@@ -3,17 +3,22 @@
    Nothing here changes identity — palette/idiom per design-master-brief.md. */
 
 :root{
-  /* §0 motion */
-  --ease-micro: cubic-bezier(.2,.8,.2,1);   --dur-micro: 120ms;
-  --ease-stage: cubic-bezier(.4,0,.2,1);    --dur-stage: 240ms;
+  /* §0 motion — NOTE: --ease-micro / --ease-stage / --dur-micro / --dur-stage are
+     owned by globals.css and deliberately NOT redefined here. This file used to
+     redeclare them, and because it loads LAST it silently won: globals' easings were
+     duration-baked shorthands, so every `transition: X var(--ease-micro)` over there
+     collapsed to 0s, and --dur-stage was forced 820ms → 240ms. Consume, don't redefine.
+     Guarded by scripts/token-collision.test.mts. */
   --ease-enter: cubic-bezier(.4,0,.2,1);    --dur-enter: 480ms;
   --ease-spring: cubic-bezier(.2,1.4,.4,1); --dur-spring: 280ms;
   --dur-spin: .7s;
   /* §0 z-scale */
   --z-sticky:40; --z-dropdown:50; --z-tooltip:60; --z-toast:70; --z-scrim:80; --z-modal:81; --z-critical:90;
-  /* §0 glows — the only sanctioned ones */
-  --glow-gold: 0 4px 18px -8px rgba(212,152,36,.45);
-  --glow-gold-hover: 0 6px 24px -8px rgba(212,152,36,.60);
+  /* §0 glows — the only sanctioned ones.
+     Named *-btn because globals.css --glow-gold is a different intent (an ambient
+     omnidirectional badge glow); these are directional drop-glows for buttons. */
+  --glow-gold-btn: 0 4px 18px -8px rgba(212,152,36,.45);
+  --glow-gold-btn-hover: 0 6px 24px -8px rgba(212,152,36,.60);
   --ring-focus: 0 0 0 2px #0A0E33, 0 0 0 4px #6CA2FF;
   --halo-live: 0 0 0 4px rgba(54,186,186,.15);
   --shadow-modal: 0 24px 60px -24px rgba(0,0,0,.65);
@@ -25,8 +30,8 @@
 .is-interactive:focus-visible{outline:none;box-shadow:var(--ring-focus)}
 .is-interactive:active:not(:disabled){transform:scale(.98)}
 .is-interactive:disabled{opacity:.45;filter:none;cursor:not-allowed}
-.btn-gold-glow{box-shadow:var(--glow-gold)}
-.btn-gold-glow:hover:not(:disabled){box-shadow:var(--glow-gold-hover)}
+.btn-gold-glow{box-shadow:var(--glow-gold-btn)}
+.btn-gold-glow:hover:not(:disabled){box-shadow:var(--glow-gold-btn-hover)}
 .btn-loading{pointer-events:none}
 .btn-spin{width:14px;height:14px;border-radius:50%;
   border:2px solid color-mix(in oklab,currentColor 30%,transparent);
@@ -50,7 +55,7 @@
 /* ---------- §4 dropdown / select menu ---------- */
 .menu50{background:#131645;border:1px solid rgba(245,248,255,.10);border-radius:14px;
   padding:6px;min-width:220px;z-index:var(--z-dropdown);
-  animation:menuIn var(--dur-stage) var(--ease-stage)}
+  animation:menuIn var(--dur-quick) var(--ease-stage)}
 @keyframes menuIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 .menu50 [role="menuitemradio"],.menu50 [role="menuitem"]{display:flex;align-items:center;gap:10px;
   height:40px;padding:0 12px;border-radius:8px;font-size:13.5px;cursor:pointer}
@@ -71,7 +76,7 @@
 @keyframes rise50{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 .to-top50{position:fixed;right:24px;bottom:88px;width:44px;height:44px;border-radius:50%;
   border:1px solid rgba(245,248,255,.14);background:rgba(19,22,69,.9);backdrop-filter:blur(6px);
-  color:#F5F8FF;z-index:var(--z-sticky);animation:rise50 var(--dur-stage) var(--ease-stage)}
+  color:#F5F8FF;z-index:var(--z-sticky);animation:rise50 var(--dur-quick) var(--ease-stage)}
 /* overflow-panel scrollbars only — never the root document */
 .scroll50::-webkit-scrollbar{width:10px;height:10px}
 .scroll50::-webkit-scrollbar-thumb{background:rgba(245,248,255,.14);border-radius:5px}
@@ -89,7 +94,7 @@
 @keyframes dots50{0%,60%,100%{opacity:.25}30%{opacity:1}}
 .progress50{height:8px;border-radius:4px;background:rgba(245,248,255,.06);overflow:hidden}
 .progress50>i{display:block;height:100%;background:#4983F4;border-radius:4px;
-  transition:width var(--dur-stage) var(--ease-stage)}
+  transition:width var(--dur-quick) var(--ease-stage)}
 .stale50{display:inline-flex;align-items:center;gap:5px;height:20px;padding:0 8px;border-radius:999px;
   font:500 10px 'JetBrains Mono',monospace;border:1px solid currentColor;letter-spacing:.06em}
 .stale50--ok{color:#36BABA}.stale50--warn{color:#FEC766}.stale50--bad{color:#E6424C}
@@ -122,7 +127,7 @@
 .toast50{display:flex;gap:10px;align-items:flex-start;min-width:320px;max-width:420px;
   background:#131645;border:1px solid rgba(245,248,255,.10);border-left-width:3px;border-radius:14px;
   padding:12px 14px;position:relative;overflow:hidden;z-index:var(--z-toast);
-  animation:toastIn var(--dur-stage) var(--ease-stage)}
+  animation:toastIn var(--dur-quick) var(--ease-stage)}
 @keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 .toast50--success{border-left-color:#00A24F}.toast50--error{border-left-color:#E6424C}
 .toast50--info{border-left-color:#4983F4}.toast50--money{border-left-color:#D49824}

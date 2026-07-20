@@ -140,10 +140,19 @@ money DB. There is no staging. After every push verify:
 - **Logical** — the change does what it claims.
 - **Visual** — screenshot the live page and LOOK.
 - **Live-DB** — prod HTTP 200 + `railway logs -s 50pick` shows a clean boot.
-⚠️ **Verify against `https://kipindi-production.up.railway.app`** — as of 2026-07-16 the custom
-domain `50pick.tz`/`www` DNS parks on an Apache page (a misleading 200 from the wrong host),
-not Railway. (Ali/ops: repoint the CNAME.) Migrations: additive where possible, tested on the
-local PG first, prod gets them via the deploy — never by hand.
+✅ **Verify against `https://50pick.tz`** — the live app (re-confirmed 2026-07-20:
+`server: railway-hikari`, `x-powered-by: Next.js`). `www.50pick.tz` and
+`kipindi-production.up.railway.app` serve the same instance. The old "50pick.tz parks on an
+Apache page" warning was true on 2026-07-16 and was fixed by the Netpoa→Cloudflare cutover on
+2026-07-17 — **do not re-raise it.**
+
+⚠️ `NEXT_PUBLIC_APP_URL` (`https://www.50pick.tz`) is load-bearing for MONEY — it builds the
+Selcom card `redirect_url`/`cancel_url` and the email-confirmation link. The code default in
+`src/lib/app-url.ts` is the custom domain so a missing env var degrades safely rather than
+stranding a card deposit on a railway.app host.
+
+Migrations: additive where possible, tested on the local PG first, prod gets them via the
+deploy — never by hand.
 
 ## 9. Known gotchas (carry forward — from perfection-plan §6)
 - **Dev in-memory store is SYNC** — `db.user.*` etc. return values (not Promises) in-memory
