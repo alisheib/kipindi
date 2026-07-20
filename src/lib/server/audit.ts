@@ -414,6 +414,62 @@ export function getAuditById(id: string): AuditEntry | undefined {
 }
 
 /**
+ * Durable page reader — reads the AUDIT TABLE, not the in-memory ring.
+ *
+ * `getAuditPage` above serves the ring, which is capped at MAX_IN_MEM (10,000)
+ * and is per-container: it cannot see entries written by another instance, and
+ * it empties on every deploy. That is fine for the admin console's recent-activity
+ * view, and wrong for an export that claims to cover the log.
+ *
+ * The ISO 27001 export used `getAuditPage({ limit: 100_000 })` and described itself
+ * as "genesis → now". It returned at most 10,000 rows from one container, while the
+ * same page printed `verifyChainFull()`'s full-database total beside it — so the
+ * header could read "Total entries: 10,000" next to "487,332 entries verified".
+ *
+ * Returns oldest-first so the chain reads in order, and includes prevHash/entryHash
+ * so an external auditor can walk it from the artifact itself.
+ */
+export async function getAuditPageDurable(
+  opts: { limit?: number; category?: AuditCategory } = {},
+): Promise<{ entries: AuditEntry[]; total: number; truncated: boolean }> {
+  const limit = opts.limit ?? 10_000;
+  const db = prisma();
+  if (!db) {
+    // No database (tests, local no-DB runs) — the ring is all there is. Report
+    // honestly rather than implying completeness.
+    const entries = getAuditPage({ limit, category: opts.category }).reverse();
+    return { entries, total: ring.length, truncated: ring.length > entries.length };
+  }
+  const where = opts.category ? { category: opts.category } : {};
+  const total = await db.auditLog.count({ where });
+  const rows = await db.auditLog.findMany({
+    where,
+    orderBy: { createdAt: "asc" },
+    take: limit,
+    select: {
+      id: true, category: true, action: true, actorId: true, targetType: true,
+      targetId: true, payload: true, ip: true, userAgent: true, createdAt: true,
+      prevHash: true, entryHash: true,
+    },
+  });
+  const entries: AuditEntry[] = rows.map((r) => ({
+    id: r.id,
+    category: r.category as AuditCategory,
+    action: r.action,
+    actorId: r.actorId,
+    targetType: r.targetType,
+    targetId: r.targetId,
+    payload: (r.payload ?? undefined) as Record<string, unknown> | undefined,
+    ip: r.ip,
+    userAgent: r.userAgent,
+    createdAt: r.createdAt.toISOString(),
+    prevHash: r.prevHash,
+    entryHash: r.entryHash,
+  }));
+  return { entries, total, truncated: total > entries.length };
+}
+
+/**
  * Verify the entire chain end-to-end. Returns the first tamper point, or null
  * if the chain is fully intact. Used by the admin dashboard's "verify chain"
  * action and by automated tests.

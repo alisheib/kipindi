@@ -11,7 +11,7 @@
 
 import { createHash } from "node:crypto";
 import { db } from "../store";
-import { getAuditPage, verifyChain, verifyChainFull } from "../audit";
+import { getAuditPage, getAuditPageDurable, verifyChain, verifyChainFull } from "../audit";
 import {
   providerSummary, depositsTotal, withdrawalsTotal,
   grossGamingRevenue, netGamingRevenue, kycFunnel, rgRosterCounts,
@@ -426,20 +426,36 @@ export async function buildSxRegister(generatorId: string): Promise<Report> {
 // 5 · ISO 27001 FULL AUDIT LOG
 // ─────────────────────────────────────────────────────────────────────
 
+/** Rows exported per run. The chain is walkable from the artifact, so this is a
+ *  document-size bound, not a data bound — and the cap is disclosed on the page. */
+const ISO_EXPORT_LIMIT = 25_000;
+
 export async function buildIsoAudit(generatorId: string): Promise<Report> {
-  const entries = getAuditPage({ limit: 100_000 });
+  // Read the audit TABLE, not the in-memory ring. `getAuditPage({limit: 100_000})`
+  // returned at most MAX_IN_MEM (10,000) rows from THIS container — and this document
+  // called itself "Lifetime (genesis → now)" while printing the full-DB verified total
+  // beside it, so the header could read "Total entries: 10,000" next to
+  // "487,332 entries verified".
+  const { entries, total, truncated } = await getAuditPageDurable({ limit: ISO_EXPORT_LIMIT });
   return {
     title: "ISO 27001 · Append-only Audit Log",
-    subtitle: "Hash-chained record of every state change since genesis",
+    subtitle: truncated
+      ? `Hash-chained record — oldest ${entries.length.toLocaleString()} of ${total.toLocaleString()} entries`
+      : "Hash-chained record of every state change since genesis",
     reference: makeReference("ISO", generatorId),
     meta: {
       generatedAt: new Date().toISOString(),
       generatedBy: generatorId,
-      period: "Lifetime (genesis → now)",
+      period: truncated
+        ? `Genesis → entry ${entries.length.toLocaleString()} of ${total.toLocaleString()} (export capped)`
+        : "Lifetime (genesis → now)",
       classification: "Regulator hand-off",
     },
     summary: [
-      { label: "Total entries", value: entries.length.toLocaleString(), tone: "neutral" },
+      // Rows IN THIS FILE vs rows in the log — two different numbers, both stated,
+      // so they can never appear to contradict each other again.
+      { label: "Entries in this export", value: entries.length.toLocaleString(), tone: "neutral" },
+      { label: "Entries in the log", value: total.toLocaleString(), tone: "neutral" },
       // Full-chain verification against the persisted DB — not just the in-memory
       // 10k ring. Falls back to in-memory when no DB is available.
       await (async (): Promise<SummaryItem> => {
@@ -448,8 +464,11 @@ export async function buildIsoAudit(generatorId: string): Promise<Report> {
           ? { label: "Chain verification", value: "Valid", tone: "good", delta: `HMAC-SHA-256, ${v.total.toLocaleString()} entries verified (full DB chain)` }
           : { label: "Chain verification", value: "BROKEN", tone: "bad", delta: `First break at ${v.firstBreakAt ?? "unknown"} (entry #${v.index ?? "?"} of ${v.total})` };
       })(),
-      { label: "Earliest entry", value: entries[entries.length - 1]?.createdAt?.slice(0, 19).replace("T", " ") ?? "—", tone: "neutral" },
-      { label: "Latest entry", value: entries[0]?.createdAt?.slice(0, 19).replace("T", " ") ?? "—", tone: "neutral" },
+      // Rows are now oldest-first (chain order), so first/last are the other way round
+      // from the ring-backed version. These describe THIS EXPORT's span — with a cap in
+      // play, the last row here is not the newest entry in the log.
+      { label: "First entry in export", value: entries[0]?.createdAt?.slice(0, 19).replace("T", " ") ?? "—", tone: "neutral" },
+      { label: "Last entry in export", value: entries[entries.length - 1]?.createdAt?.slice(0, 19).replace("T", " ") ?? "—", tone: "neutral" },
     ],
     sections: [
       {
@@ -462,6 +481,10 @@ export async function buildIsoAudit(generatorId: string): Promise<Report> {
           { header: "Action",     key: "action",    width: 22 },
           { header: "Actor",      key: "actorId",   width: 14 },
           { header: "Target",     key: "target",    width: 16 },
+          // prevHash is what makes the chain walkable FROM this document. Without it the
+          // artifact promised "walking the chain proves no entry was added, edited or
+          // removed" while giving the reader only one side of each link.
+          { header: "Prev hash",  sub: "SHA-256",   key: "prevHash",  width: 18 },
           { header: "Entry hash", sub: "SHA-256",   key: "entryHash", width: 18 },
         ],
         rows: entries.map((e) => ({
@@ -471,6 +494,7 @@ export async function buildIsoAudit(generatorId: string): Promise<Report> {
           action: e.action,
           actorId: e.actorId ?? "—",
           target: e.targetType ? `${e.targetType}:${(e.targetId ?? "").slice(0, 14)}` : "—",
+          prevHash: e.prevHash === "GENESIS" ? "GENESIS" : e.prevHash.slice(0, 16) + "…",
           entryHash: e.entryHash.slice(0, 16) + "…",
         })),
       },
@@ -690,14 +714,25 @@ const maskNidaTail = (n: string | null | undefined) => (n ? `•••• ${n.sl
 
 export async function buildKycReverify(generatorId: string): Promise<Report> {
   const now = Date.now();
-  const dueWindowMs = REVERIFY_MONTHS * 30 * 24 * 3600_000; // ≈ 24 months
+  // Calendar months, not 30-day approximations. `REVERIFY_MONTHS * 30 days` is 720
+  // days ≈ 23.7 months, so every due date drifted ~10 days early and the "DUE NOW"
+  // count was overstated. addMonths keeps the anniversary date exact.
+  const addMonths = (ms: number, months: number): number => {
+    const d = new Date(ms);
+    const target = new Date(d);
+    target.setUTCMonth(target.getUTCMonth() + months);
+    // Clamp a month-end anniversary (e.g. 31 Jan + 1 month) to the last valid day
+    // rather than letting it roll into the following month.
+    if (target.getUTCDate() !== d.getUTCDate()) target.setUTCDate(0);
+    return target.getTime();
+  };
   const approved = (await db.kyc.list()).filter((k) => k.status === "APPROVED");
 
   let dueNow = 0, dueSoon = 0;
   const rows: Row[] = approved.map((k) => {
     const anchor = k.reviewedAt ?? k.nidaVerifiedAt ?? k.submittedAt ?? k.updatedAt;
     const anchorMs = anchor ? new Date(anchor).getTime() : now;
-    const dueAt = anchorMs + dueWindowMs;
+    const dueAt = addMonths(anchorMs, REVERIFY_MONTHS);
     const daysToDue = Math.round((dueAt - now) / (24 * 3600_000));
     const status = daysToDue <= 0 ? "DUE NOW" : daysToDue <= 90 ? "DUE ≤ 90d" : "OK";
     if (status === "DUE NOW") dueNow++; else if (status === "DUE ≤ 90d") dueSoon++;
@@ -862,10 +897,18 @@ export async function buildMatchIntegrity(generatorId: string): Promise<Report> 
   }));
 
   return {
-    title: "Match-integrity quarterly review",
-    subtitle: "Voided markets, refunded stakes, and integrity activity",
+    // Titled "quarterly" but computed over all history — the cadence is how often it
+    // is FILED, not the window it covers. Say which, rather than let a reader assume
+    // these figures describe one quarter.
+    title: "Match-integrity review",
+    subtitle: "Voided markets, refunded stakes, and integrity activity — cumulative to date",
     reference: makeReference("INTEG", generatorId),
-    meta: { generatedAt: new Date().toISOString(), generatedBy: generatorId, period: `As of ${new Date().toISOString().slice(0, 10)}`, classification: "Regulator hand-off" },
+    meta: {
+      generatedAt: new Date().toISOString(),
+      generatedBy: generatorId,
+      period: `Cumulative to ${eatDateLabel(Date.now())} (EAT) — not a single quarter`,
+      classification: "Regulator hand-off",
+    },
     summary: [
       { label: "Voided markets", value: voidedMarkets.length.toLocaleString("en-US"), tone: voidedMarkets.length > 0 ? "neutral" : "good" },
       { label: "Refund transactions", value: refunds.length.toLocaleString("en-US"), tone: "neutral" },
@@ -888,7 +931,15 @@ export async function buildMatchIntegrity(generatorId: string): Promise<Report> 
       {
         title: "Stake refunds",
         titleSw: "Marejesho ya dau",
-        description: "Individual stake refunds posted to player wallets (most recent 200).",
+        // The table is capped but the totals row reports the FULL set. Say so on both,
+        // so a reader cannot add up the visible rows, get a different number, and lose
+        // confidence in the document. Same discipline as the X-Export-Truncated header
+        // on the transactions CSV.
+        description:
+          refunds.length > refundRows.length
+            ? `Individual stake refunds posted to player wallets. Showing the most recent ` +
+              `${refundRows.length} of ${refunds.length}; the total below covers all ${refunds.length}.`
+            : "Individual stake refunds posted to player wallets.",
         columns: [
           { header: "Date", key: "when", format: "date", width: 14 },
           { header: "Player", key: "player", width: 18 },
@@ -896,7 +947,12 @@ export async function buildMatchIntegrity(generatorId: string): Promise<Report> 
           { header: "Reference", key: "ref", width: 28 },
         ],
         rows: refundRows,
-        totals: { when: "Total", player: "", amount: refundTotal, ref: `${refunds.length} refunds` },
+        totals: {
+          when: refunds.length > refundRows.length ? "Total (all)" : "Total",
+          player: "",
+          amount: refundTotal,
+          ref: `${refunds.length} refunds`,
+        },
       },
     ],
     notes: [
