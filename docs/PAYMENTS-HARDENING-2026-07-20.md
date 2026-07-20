@@ -104,19 +104,45 @@ confirmation email carrying both references and the new balance. Email is **Post
 (`POSTMARK_API_KEY`), not Resend — a wrong assumption that briefly produced a false "email is
 broken" alarm. Read `email.ts` before claiming anything about mail.
 
-## Still open
+## Also fixed the same day
 
-- **`providerRef` is persisted AFTER dispatch** (`wallet-service.ts`). A crash in that window
-  leaves a paid deposit with no ref, and reconcile treats no-ref as "never pushed" and fails it.
-  Mint the correlation id in `deposit()` and persist it in the same `db.txn.create`; and never
-  auto-FAIL a no-ref deposit in live mode (mirror the withdrawal arm).
+**L6 — a paid deposit could be failed for lacking a reference** (`3359b9a`). The `providerRef`
+was written only AFTER dispatch, so a crash or redeploy in that window left a genuinely paid
+deposit with no reference — and reconcile read "no reference" as "never pushed" and FAILED it,
+emailing the player that the payment was never started. The correlation id is now minted in
+`deposit()` and persisted BEFORE dispatch (the post-dispatch write is KEPT and remains
+authoritative — mock and AML branches return a different value). Reconcile no longer auto-fails
+a no-ref deposit in live mode.
+
+**The audit chain no longer reports BROKEN** (`1f31df7`). It never was tampered with: 5,364
+entries, one GENESIS row, zero link breaks. `AUDIT_CHAIN_SECRET` was introduced after entries
+had been signed with the `SESSION_SECRET` fallback, so earlier rows stopped recomputing.
+Verification now tries every key an entry could legitimately have been signed with, and reports
+CHAIN LINKS (the real tamper evidence) separately from hash recomputation.
+⛔ Historical hashes are deliberately NOT recomputed under the current key — that would rewrite
+the very record whose purpose is to prove nothing was rewritten. Tamper detection is proven
+still working: severing a link and altering a field are both still caught (`test:audit` 25).
+
+## Still open — WAITING ON SELCOM
+
+Both blockers are now on Selcom's side. Nothing further to build until they reply.
+
+1. **Callbacks never arrive.** Zero webhook audit entries, ever. Polling covers it, so this
+   costs LATENCY (~15s vs seconds), not correctness — but the correct shape is webhook-primary
+   with polling as the backstop. Ask them to enable callbacks to
+   `https://www.50pick.tz/api/webhooks/payments`, confirm the base64 `webhook` param is
+   honoured, that our egress IPs are allow-listed for callbacks too, and which signature scheme
+   they use. Clean example to give them: `dep_9a98e90052cdb11eaa7c` (20 Jul, 1,000 TZS, Mixx) —
+   paid successfully, no callback.
+2. **Withdrawals cannot pay out.** `PAYMENT_VENDOR_PIN` unset; needs Wallet Cashin access, a
+   float account and the float PIN. See `docs/SELCOM-DISBURSEMENT-REQUEST.md`.
+
+## Still open — ours, not urgent
+
 - **AML approve/reject writes are not atomic** — `db.*` do not auto-join the lock's transaction;
   only `withMoneyTx` consults `currentLockTx()`. Largely moot while both approvals are blocked.
-- **The webhook still never arrives.** Polling is doing the primary job, which is backwards.
-  Ask Selcom to enable callbacks to `https://www.50pick.tz/api/webhooks/payments` for the
-  vendor. Correct shape is webhook-primary, poll as backstop.
-- **Withdrawals cannot pay out** — `PAYMENT_VENDOR_PIN` unset pending Selcom disbursement creds.
 - **The poll loop is sequential and per-container.** ~30 concurrent in-flight deposits fills the
   15s window; with N containers every container polls every deposit. Fine at current volume.
-- **The audit chain reports BROKEN** — see `CLAUDE.md`. Key rotation, not tampering. Needs a
-  compliance decision; ⛔ do not "fix" it by recomputing historical hashes.
+- **Web push is a silent no-op** — `VAPID_*` unset, so `push-service` logs `[push-stub]` and
+  returns success. In-app notifications and email both work, so nothing is missed; players just
+  get no push banner.
