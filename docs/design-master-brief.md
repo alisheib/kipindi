@@ -165,6 +165,19 @@ specific change. Be candid; we would rather redo a built thing now than ship it 
 
 ## 5. PER-PAGE MANIFEST (grounded — from a full read of all ~66 routes)
 
+> **⚠️ Update 2026-07-21 — most of the §5/§6/§7 [H] backlog below is ALREADY SHIPPED.**
+> A grounded re-survey found these implemented and rendering: category-art layer
+> (topic-chip glyphs · `/markets/[id]` watermark · home category row · MarketCard
+> watermark); PageHero on proposals-list/new + fairness; leaderboard top-3 gilt PODIUM;
+> invite share-card + QR + `navigator.share` + EarningsRing; wallet 30-day balance
+> sparkline + real MNO logos in Methods; `RewardBurst` on proposals-approved AND
+> KYC-APPROVED; KYC progress rail + per-slot ID silhouettes; SoF per-source glyphs;
+> fairness provably-fair diagram; help per-FAQ glyphs; RG self-care art; legal per-doc
+> header icons. The rows below are the ORIGINAL brief and are kept for provenance —
+> **`docs/NEXT-SESSION.md` (2026-07-21 block) is the current truth** on what shipped,
+> what's deferred (money-data-gated: KPI money-tile sparks, wallet limit meters), and
+> what genuinely remains (wider dynamic OG). Prove a row against the code before acting.
+
 ### 5a. Player — core
 | Route | Gap | Suggested asset/feature | Pri |
 |---|---|---|---|

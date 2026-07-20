@@ -1,7 +1,7 @@
 # 50pick — next-session brief
 
 Read the two always-on skills first (`.claude/skills/50pick-standards` +
-`.claude/skills/50pick-audit`), then this. Last updated 2026-07-20 (admin console pass).
+`.claude/skills/50pick-audit`), then this. Last updated 2026-07-21 (platform-wide design pass).
 
 ## State at handoff
 - **The Final Audit is COMPLETE** — all 11 Criticals + all Highs + all Mediums
@@ -15,6 +15,81 @@ Read the two always-on skills first (`.claude/skills/50pick-standards` +
   gateway. Live tracker: **`docs/ENHANCEMENT-PLAN-STATUS.md`** (grouped: (A)
   code-doable / (B) needs-Ali / (C) optional).
 - Go-live + payment-gateway map: **`docs/GO-LIVE-READINESS.md`**.
+
+## Done (Session — 2026-07-21, platform-wide DESIGN + missing-detail pass)
+
+Method: acted as "Claude Design". Before touching anything, ran a 4-lane grounded
+survey (leaderboard/invite/wallet · category-art + PageHero · KYC/sessions/SoF/
+fairness/help/RG/legal · admin viz + silent-zero). **Headline finding: most of the
+design-master-brief §5–§7 [H] backlog is ALREADY SHIPPED** — proving before fixing
+kept us from re-building finished work. See "Proven already-done" below.
+
+Gate green on every push: `tsc` + `next build` clean · `test:tokens`/`test:outcome`/
+`test:integrity` pass · money-safety suites (money-invariants 83 · wallet · ledger 89
+· trial-balance · payout-alloc · concurrency · admin-money-ops · admin-roles) all
+green · `test:i18n` parity 1420/1420/1420. Visual: real screenshots read for every
+new surface × state (incl. a temp admin preview route for the A-5 failure states).
+All 4 batches LIVE on https://50pick.tz (fresh boot + smoke: admin=307, register=200,
+OG=200 image/png; no 500s).
+
+1. **Admin players console viz** (`e7af7b2`). New **`AdminGauge`** primitive
+   (`admin-charts.tsx`) — a radial value gauge (the console only had the horizontal
+   `AdminMeter`); static SVG so reduced-motion-safe. `players/[id]` risk score is now
+   that gauge, coloured by the SAME band tokens the page used (`--yes/--warning/
+   --danger-500`). ⚠️ Deliberately NOT `ConfidenceDial`/`CircularProgress` as the
+   6-28 audit suggested — that is a YES/NO tipping dial and would misread a risk score
+   as a bet split (B2). `players/cohorts` "Registrations over time" hand-rolled height%
+   bars → `AdminAreaChart`. `players` list: header count-chips → console-standard
+   `AdminKpi` band (Total/Active/Pending KYC/Blocked) + a new **Population-mix**
+   segmented bar (green Active / amber pending / rose blocked / grey closed); local
+   hand-rolled `SortTh` → shared `admin-sort` `SortTh` (44px tap target).
+
+2. **Sessions device glyph** (`d31bba9`). `/profile/sessions` hard-coded
+   `I.smartphone`, so a desktop session showed a phone. Now follows the parsed UA:
+   tablet→`deviceTablet`, phone→`devicePhone`, else `deviceDesktop`. Wired 3 dead glyphs.
+
+3. **Silent-zero → explicit "unavailable" (A-5)** (`e040fba`). Admin money/analytics
+   reads used `.catch(()=>0|[])`, rendering "TZS 0" / an empty queue as if real — a
+   fabricated figure and, for the compliance queues, a false "nothing pending".
+   **Display-only, no money arithmetic touched.** New `AdminKpi unavailable` ("n/a ·
+   couldn't compute", amber) + `AdminLoadError` strip (admin-shell.tsx). Applied to
+   finance (7 money scalars + taxAccrued guard), overview (active/GGR/NGR + AML count),
+   live (GGR/active), approvals (KYC/AML/SOF queues distinguish failed-read from empty),
+   resolver-queue (failed read ≠ "Queue is clear"). A GENUINE zero still shows "TZS 0";
+   only failures change. **Deferred:** benign empty CHARTS still say "No data in this
+   window" on failure — they don't fabricate a number, so lower priority.
+
+4. **Branded OG for shared invite/registration links** (`86c09ef`). `/auth/register`
+   OG was the site default; a shared `?ref=CODE` link now unfurls with a branded
+   "You've been invited · Predict events. Not chance." card via the existing
+   `/api/og/page` route. Zero new i18n keys (reuses `common.youveBeenInvited` /
+   `auth.signUpTitle` / `auth.railTagline`); no fabricated reward figure.
+
+### Proven ALREADY-DONE 2026-07-21 (do NOT re-chase — verified in code)
+Category-art layer (topic-chip glyphs, `/markets/[id]` watermark, home category row,
+MarketCard watermark); PageHero on proposals-list/new + fairness; Leaderboard top-3
+gilt PODIUM; Invite share-card + QR + `navigator.share` + EarningsRing; Wallet 30-day
+balance sparkline + real MNO logos in Methods; `RewardBurst` on proposals-approved AND
+KYC-APPROVED; KYC progress rail + per-slot ID silhouettes; Source-of-funds per-source
+glyphs; Fairness provably-fair diagram; Help per-FAQ glyphs; RG self-care art + helpline
+callout; Legal per-doc header icons. (The kit glyphs `kycRail`/`fairnessChain`/
+`rgSelfCare` are unwired, but each page has an equivalent bespoke component — NOT a gap.)
+
+### Genuinely remaining / DEFERRED (need data or are money-adjacent — NOT a visual tweak)
+- **AdminKpi spark on money tiles** (overview/finance/live GGR/NGR/active): needs an
+  HONEST per-metric 24h/7d series. `moneyFlowSeries` is net-flow, not GGR — feeding it
+  into a GGR spark implies a trend that isn't that metric's (fabrication). Requires a
+  bucketed analytics helper = money-adjacent enhancement.
+- **Wallet limit-usage meters**: Limits tab shows platform caps; the RG page sets
+  personal limits but computes NO "used today/week/loss" figure. A usage meter needs
+  that money-adjacent sum — out of a visual pass's remit.
+- **Wallet txn-list provider logos**: the row's green/rose in/out arrow is already the
+  right primary indicator and the row has no `provider` enum (only `providerRef`, shown
+  expanded). Adding a logo risks clutter for no clear win — left as-is.
+- **Wider dynamic OG** (leaderboard/results/proposals/profile): same easy pattern the
+  invite OG now proves — a fast follow-up via `/api/og/page`.
+- **PII in two admin list views** (privacy on-behalf, self-exclusion roster): still a
+  compliance mask-vs-justified-need call, unchanged.
 
 ## Done (Session — 2026-07-20, ADMIN-only console detail pass)
 
