@@ -717,11 +717,22 @@ export async function settlePaymentWebhook(input: { providerRef: string; status:
  * amount-tamper-checked — identical to the webhook path. A callback arriving later
  * for the same reference is a no-op.
  */
-export async function creditConfirmedDeposits(olderThanMs = 20_000): Promise<{ checked: number; confirmed: number }> {
-  const cutoff = Date.now() - olderThanMs;
-  const inFlight = (await db.txn.listByStatus("PROCESSING")).filter(
-    (t) => t.type === "DEPOSIT" && !!t.providerRef && Date.parse(t.createdAt) < cutoff,
-  );
+export async function creditConfirmedDeposits(
+  olderThanMs = 8_000,
+  fastWindowMs = 10 * 60 * 1000,
+): Promise<{ checked: number; confirmed: number }> {
+  const now = Date.now();
+  const cutoff = now - olderThanMs;
+  // Poll only deposits inside the fast window. A deposit older than that is no
+  // longer someone staring at a spinner, and the 5-minute sweep plus the 30-minute
+  // reconcile already own it — so the number of gateway calls per poll stays bounded
+  // by CONCURRENT deposits, not by the size of the transaction table.
+  const windowStart = now - fastWindowMs;
+  const inFlight = (await db.txn.listByStatus("PROCESSING")).filter((t) => {
+    if (t.type !== "DEPOSIT" || !t.providerRef) return false;
+    const at = Date.parse(t.createdAt);
+    return at < cutoff && at >= windowStart;
+  });
   let confirmed = 0;
   for (const t of inFlight) {
     try {

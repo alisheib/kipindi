@@ -34,7 +34,14 @@ import { getAutoSettleEnabled } from "./payment-control";
 const TICK_MS = 60_000;       // run the lifecycle sweeps once a minute
 const FIRST_TICK_MS = 8_000;  // first pass shortly after boot (let the app settle)
 
+/** How often in-flight deposits are re-queried against the gateway. Deliberately
+ *  much faster than TICK_MS: the player has already been debited and is staring at
+ *  a pending screen. Only deposits inside DEPOSIT_FAST_WINDOW_MS are polled at this
+ *  rate, so the call volume stays bounded no matter how many deposits exist. */
+const DEPOSIT_POLL_MS = 15_000;
+
 let timer: ReturnType<typeof setInterval> | null = null;
+let depositTimer: ReturnType<typeof setInterval> | null = null;
 let running = false;
 
 // ── Nightly wallet↔ledger trial balance (audit C3) ──────────────────────────
@@ -204,4 +211,27 @@ export function startLifecycleTicker(): void {
   setTimeout(() => { void runLifecyclePass(); }, FIRST_TICK_MS);
   timer = setInterval(() => { void runLifecyclePass(); }, TICK_MS);
   console.log(`[lifecycle] ticker started — every ${TICK_MS / 1000}s`);
+
+  // Deposits get their OWN, much faster timer. A player watching a spinner after
+  // their money has already left their mobile-money account is the single worst
+  // wait on the platform, and the 60s lifecycle cadence is too slow for it.
+  // Kept separate from the lifecycle pass on purpose: that pass does market
+  // sweeps and trial-balance work that must NOT run four times a minute.
+  depositTimer = setInterval(() => { void runDepositPoll(); }, DEPOSIT_POLL_MS);
+  console.log(`[lifecycle] deposit fast-credit poll — every ${DEPOSIT_POLL_MS / 1000}s`);
+}
+
+/** Poll in-flight deposits. Guarded against overlap: a slow provider must not
+ *  stack up polls, which at this cadence would otherwise pile on. */
+let depositPolling = false;
+async function runDepositPoll(): Promise<void> {
+  if (depositPolling) return;
+  depositPolling = true;
+  try {
+    await fastCreditInFlightDeposits();
+  } catch (e) {
+    console.error("[lifecycle] deposit poll:", e);
+  } finally {
+    depositPolling = false;
+  }
 }
