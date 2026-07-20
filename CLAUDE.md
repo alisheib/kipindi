@@ -20,6 +20,30 @@
 > (DNS→R2→payment keys→the switch) is `docs/next-session-prompt.md`. **Nothing in
 > the plan now blocks launch — the one remaining unblock is the payment aggregator
 > API keys.** Remaining code = optional admin features (A6/A7/A13–A16) + polish.
+> 💳 **MOBILE-MONEY DEPOSITS NOW WORK END-TO-END (2026-07-20) — full record:
+> [`docs/PAYMENTS-HARDENING-2026-07-20.md`](docs/PAYMENTS-HARDENING-2026-07-20.md).**
+> EVERY mobile-money deposit had been failing: `create-order-minimal` requires `no_of_items`
+> and only the CARD path sent it (`4256d02`). Found only because failure diagnostics were added
+> first (`0abdef6`) — the adapter used to `catch { return PROVIDER_DOWN }` and discard Selcom's
+> own resultcode/message, so a real failed deposit left NO explanation anywhere. Selcom's reason
+> is now written into the `deposit.failed` **audit payload**, which survives log rotation.
+> ⚡ **Credit is ~15s, not 30min:** `creditConfirmedDeposits()` re-queries the signed
+> order-status on its OWN 15s timer (`lifecycle.ts`, separate from the 60s tick).
+> ⚠️ **The lane can ONLY confirm — never fail/reverse/terminalise.** That asymmetry is why
+> polling 4×/min is safe; all terminal decisions stay in the 30-min sweep. Do not "simplify" it.
+> ⚠️ **Selcom's WEBHOOK NEVER ARRIVES** (zero webhook audit entries, ever) — polling is doing
+> the primary job, which is backwards. Ask Selcom to enable callbacks for the vendor.
+> 🔴 **FOUR MONEY-SAFETY DEFECTS CLOSED** (`ab72f77`, `6825a32`, `1ec60ca`): approving a
+> withdrawal in `/admin/aml` released the hold, credited EXTERNAL in the ledger and emailed
+> "on its way" with **ZERO gateway calls** (worst ≥1M, which returned a FABRICATED providerRef
+> before the float-PIN guard); a deposit landing after self-exclusion was kept with **no ledger
+> entry at all** (trial balance stayed clean *because* nothing was posted) — now booked to
+> `HOUSE:RG_SUSPENSE`; reconcile blind-reversed live payouts on `UNSUPPORTED`; and approving a
+> **deposit** was equally unsafe (no wallet-credit path). ⛔ **AML approval is BLOCKED for both
+> types** — re-enabling means dispatch FIRST, then let `settleWithdrawalConfirmed` own the
+> terminal state. ⛔ Never credit `PLAYER` for RG-suspense money (it is trial-balanced against
+> the wallet → permanent false drift). **The deposit CREDIT path was audited and is sound —
+> double-credit is impossible; do not touch it.** Email is **Postmark**, not Resend.
 > 🔴 **PRICE HISTORY WAS FABRICATED — FIXED + LIVE @ `6b1975b` (2026-07-20).** `seedHistory()`
 > generated a synthetic LCG random walk and `/markets/[id]` rendered it as real price history
 > to real-money bettors, on EVERY market, after EVERY deploy (history lived in a Map that each
