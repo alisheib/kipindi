@@ -14,10 +14,23 @@ import { startRegisterAction } from "./actions";
 import { HELPLINE } from "@/lib/support-config";
 import { getServerT } from "@/lib/i18n-server";
 import { formatTzs } from "@/lib/utils";
+import { appUrl } from "@/lib/app-url";
 
-export async function generateMetadata() {
+export async function generateMetadata({ searchParams }: { searchParams: Promise<{ ref?: string; invite?: string }> }) {
   const { t } = await getServerT();
-  return { title: t.auth.signUpTitle };
+  const sp = await searchParams;
+  const invited = !!((sp.ref ?? "").trim() || (sp.invite ?? "").trim());
+  // A shared invite/registration link now unfurls with a branded card instead of
+  // the site-default OG. Reuses the generic OG route + existing trilingual copy —
+  // no new strings, no fabricated reward figure.
+  const ogTitle = invited ? t.common.youveBeenInvited : t.auth.signUpTitle;
+  const ogSub = t.auth.railTagline;
+  const ogImage = `${appUrl()}/api/og/page?title=${encodeURIComponent(ogTitle)}&sub=${encodeURIComponent(ogSub)}`;
+  return {
+    title: t.auth.signUpTitle,
+    openGraph: { title: ogTitle, description: ogSub, images: [{ url: ogImage, width: 1200, height: 630 }] },
+    twitter: { card: "summary_large_image", title: ogTitle, description: ogSub, images: [ogImage] },
+  };
 }
 
 export default async function RegisterPage({
