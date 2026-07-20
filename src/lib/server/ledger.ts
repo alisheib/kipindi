@@ -179,11 +179,35 @@ export const acct = {
   bonus: "SYSTEM:BONUS" as const,
   adjustment: "SYSTEM:ADJUSTMENT" as const,
   void: "SYSTEM:VOID" as const,
+  /** Money the platform HOLDS but does not own: a deposit that arrived after the
+   *  player self-excluded. It cannot be credited (the account is excluded) and it
+   *  has not been returned yet (that needs the outbound disbursement rail). It must
+   *  not sit invisible — a non-zero balance here is money we owe a player.
+   *  ⛔ Never credit PLAYER for this: PLAYER is trial-balanced against the wallet,
+   *  so crediting it for money never added to the wallet creates permanent drift. */
+  rgSuspense: "HOUSE:RG_SUSPENSE" as const,
 };
 
 // ── Pre-built entry helpers for each money path ────────────────────────────
 
 /** Deposit: external money → player wallet */
+/** A deposit that landed after the player self-excluded. The money DID arrive from
+ *  the provider, so the external side must be recorded exactly as for a normal
+ *  deposit; it is parked in RG suspense instead of the player's account because it
+ *  cannot be credited and has not yet been returned. Balanced, so the trial balance
+ *  stays true — and visible, so nobody can quietly keep it. */
+export function rgSuspenseEntries(opts: {
+  txnId: string;
+  userId: string;
+  amount: number;
+  provider: string;
+}): LedgerLine[] {
+  return [
+    { account: acct.external(opts.provider), entryType: "DEPOSIT", amount: -opts.amount, txnId: opts.txnId, userId: opts.userId, memo: `Deposit from ${opts.provider} (player excluded)` },
+    { account: acct.rgSuspense, entryType: "DEPOSIT", amount: opts.amount, txnId: opts.txnId, userId: opts.userId, memo: `Held for return — account excluded at settlement` },
+  ];
+}
+
 export function depositEntries(opts: {
   txnId: string;
   userId: string;

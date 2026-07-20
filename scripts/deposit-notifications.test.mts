@@ -185,7 +185,15 @@ await setPaymentControls({ provider: "mock" }, "test").catch(() => {});
   await flush();
   ok("C1 webhook handled it", res.handled);
   const t = await db.txn.findById("txn_dn_rg");
-  ok("C2 txn is REVERSED, not CONFIRMED", t?.status === "REVERSED", t?.status ?? "none");
+  // Was: status === "REVERSED". The excluded player must still never be CREDITED —
+  // that part of the intent is unchanged and is what this really asserts. But
+  // REVERSED reads as "settled, nothing owed" and dropped the deposit out of every
+  // operator queue while the cash sat in the provider float with no ledger entry at
+  // all. It is now AML_REVIEW with an rg_refund_due reason, so it stays in front of a
+  // human until the money is actually returned to the player.
+  ok("C2 txn is not CONFIRMED — excluded player is never credited", t?.status !== "CONFIRMED", t?.status ?? "none");
+  ok("C2b txn is held for review, not silently settled", t?.status === "AML_REVIEW", t?.status ?? "none");
+  ok("C2c the reason records that a refund is owed", (t?.amlReason ?? "").startsWith("rg_refund_due"), t?.amlReason ?? "none");
   ok("C3 an excluded player was NOT credited", (await balanceOf("usr_dn_rg")) === 0);
 
   const ns = await notifsFor("usr_dn_rg");

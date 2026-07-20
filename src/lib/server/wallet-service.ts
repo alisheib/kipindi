@@ -24,7 +24,7 @@ import { checkDepositLimit, isLockedOut } from "./responsible-gambling";
 import { notifyDeposit, notifyWithdraw, notifyAdminsAmlReview } from "./notification-service";
 import { withLock } from "./locks";
 import { emit } from "./event-bus";
-import { postLedgerEntries, depositEntries, withdrawalEntries, internalCreditEntries, adjustmentEntries, withMoneyTx } from "./ledger";
+import { postLedgerEntries, depositEntries, rgSuspenseEntries, withdrawalEntries, internalCreditEntries, adjustmentEntries, withMoneyTx } from "./ledger";
 import { getEffectiveConfig } from "./market-config";
 import { computeWithdrawalFee } from "@/lib/payout";
 import type { z } from "zod";
@@ -319,11 +319,41 @@ async function settleDepositConfirmed(txnId: string, providerRef?: string): Prom
     // plugs an outbound reversal in right here.
     const rgLock = await isLockedOut(t.userId);
     if (rgLock.locked) {
-      await db.txn.update(txnId, {
-        status: "REVERSED",
-        completedAt: new Date().toISOString(),
-        amlReason: `rg_${rgLock.reason}`,
-        description: `${t.description ?? "Deposit"} · auto-reversed (account excluded)`,
+      // The comment above was written when the only rail was the INTERNAL stub, where
+      // "no money actually moved, so this IS the refund". That is no longer true: on a
+      // live gateway the player HAS been debited. Marking the deposit REVERSED and
+      // returning here wrote NO ledger entry at all — so the cash sat in the provider
+      // float, the platform quietly kept it, and the trial balance still reconciled
+      // clean precisely because nothing had been posted on either side.
+      //
+      // Record it instead. The external side is booked exactly as for a normal
+      // deposit; the money is parked in HOUSE:RG_SUSPENSE because it can neither be
+      // credited (the account is excluded) nor yet returned (that needs the outbound
+      // disbursement rail). Balanced, so the books stay true — and visible, so a
+      // non-zero suspense balance is a standing "we owe a player money" signal.
+      //
+      // Status is AML_REVIEW, not REVERSED: REVERSED reads as "settled, nothing owed"
+      // and would drop out of every operator queue. This must stay in front of a human
+      // until the money is actually returned.
+      await withMoneyTx(async (tx) => {
+        await db.txn.update(txnId, {
+          status: "AML_REVIEW",
+          amlReason: `rg_refund_due_${rgLock.reason}`,
+          description: `${t.description ?? "Deposit"} · held for return (account excluded)`,
+        }, tx);
+        await postLedgerEntries(
+          `rgsusp_${t.id}`,
+          rgSuspenseEntries({ txnId: t.id, userId: t.userId, amount: Math.abs(t.amount), provider: t.provider ?? "INTERNAL" }),
+          tx,
+        );
+      });
+      audit({
+        category: "COMPLIANCE",
+        action: "deposit.rg_refund_due",
+        actorId: t.userId,
+        targetType: "Transaction",
+        targetId: t.id,
+        payload: { amount: Math.abs(t.amount), reason: rgLock.reason, note: "Deposit arrived after exclusion — held in HOUSE:RG_SUSPENSE pending return to the player." },
       });
       return { credited: false, balance: fresh.balance, txn: t, rgReversed: true };
     }
@@ -799,7 +829,19 @@ export async function reconcileStalePayments(olderThanMs = 30 * 60 * 1000): Prom
       } else if (v.status === "FAILED") {
         if (await settleWithdrawalFailed(t.id, "reconcile-verified-failed")) withdrawalsReversed++;
       } else if (v.status === "UNSUPPORTED") {
-        if (await settleWithdrawalFailed(t.id, "reconcile-timeout")) withdrawalsReversed++; // mock/test only — no real payout in flight
+        // UNSUPPORTED means "we could not ask", NOT "nothing happened". It is
+        // reachable with no operator action at all: any PAYMENT_API_* variable
+        // dropped makes selcomEnv() null, and a single transient DB error while
+        // hydrating the payment control-plane pins the provider to the env fallback
+        // for the life of the process. Reversing on that refunds a payout that may
+        // already be on its way to the customer's handset — paying twice.
+        //
+        // Deliberately NOT mode-gated like the deposit arm above: a withdrawal that
+        // has a providerRef is never auto-reversed in ANY mode. Gating it would leave
+        // a branch shaped exactly like the bug, waiting for someone to flip a flag.
+        leftPending++;
+        audit({ category: "WALLET", action: "payments.reconcile_needs_review", actorId: null, targetType: "Transaction", targetId: t.id,
+          payload: { reason: "payout status unavailable — never auto-reversed", providerRef: ref } });
       } else {
         leftPending++; // PENDING — payout may be in flight; NEVER blind-reverse
       }
