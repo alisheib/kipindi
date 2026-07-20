@@ -347,6 +347,7 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
                 predictors={m.predictorCount}
                 timeLeft={`${t.market.resolvedOutcome} ${m.resolvedOutcome}`}
                 status="RESOLVED"
+                resolvedOutcome={m.resolvedOutcome}
                 sourceUrl={m.sourceUrl}
                 spark={(cardCharts.get(m.id) ?? { spark: [] }).spark}
                 comments={commentCounts.get(m.id) ?? 0}

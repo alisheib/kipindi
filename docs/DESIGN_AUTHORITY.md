@@ -79,6 +79,33 @@ control borders). Where a token fails, **darken the fill** rather than lighten t
 label, to preserve the YES/NO convention. Contrast is re-checked by
 `scripts/` contrast tooling on any token change.
 
+## B6 — A settled outcome is READ, never inferred
+
+Added 2026-07-20 after users reported resolved cards contradicting the detail page.
+
+`market-card.tsx` rendered the settled result as `yesPct >= 50 ? YES : NO`. `yesPct` is
+`impliedYesPct()` — `yesPool / (yesPool + noPool)`, the crowd's **money split**. It is
+mathematically unrelated to how the market settled. On any upset (crowd 70% on YES, market
+resolves NO) the board displayed the **opposite of the truth**, while `/markets/[id]` — which
+reads the real `resolvedOutcome` — displayed the correct one. A user clicked a card marked
+"RESOLVED YES" and landed on a page saying NO. The card had no `resolvedOutcome` prop at all,
+so it could not have been right except by luck.
+
+The rule: **the settled side comes from `PredictionMarket.resolvedOutcome` or it is not
+shown.** Never derive it from a probability, a percentage, or a pool comparison. When the
+outcome is unknown, render "RESOLVED" with **no** side — an absent side is recoverable, a
+wrong side is a false statement about someone's money.
+
+This generalises: on a money surface, prefer showing nothing to showing a guess.
+
+Enforced by **`scripts/outcome-display.test.mts`** (`npm run test:outcome`, in `test:all` and
+`predeploy`). It fails on (1) any YES/NO ternary keyed off a probability variable, (2) a
+`<MarketCard>` that can render RESOLVED without passing `resolvedOutcome`, (3) the card
+reintroducing probability-based inference. Verified to fail on the original buggy line and
+pass on the fix.
+
+---
+
 ## B5 — One definition site per motion token; easings are bare curves
 
 Added 2026-07-20 after motion was found **silently dead across the whole platform**.

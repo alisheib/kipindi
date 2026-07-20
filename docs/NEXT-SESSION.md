@@ -16,6 +16,29 @@ Read the two always-on skills first (`.claude/skills/50pick-standards` +
   code-doable / (B) needs-Ali / (C) optional).
 - Go-live + payment-gateway map: **`docs/GO-LIVE-READINESS.md`**.
 
+## Done (Session N — 2026-07-20, visual + a user-reported settlement bug)
+
+- 🔴 **Resolved market cards showed the WRONG outcome.** `market-card.tsx` derived the settled
+  side from `yesPct >= 50` (the crowd's money split) instead of `resolvedOutcome`, so every
+  upset rendered the opposite of the truth and contradicted the detail page. Card now takes a
+  `resolvedOutcome` prop, wired at all resolvable call sites (`/markets`, `/results`,
+  `/watchlist`); unknown outcome renders "RESOLVED" with **no** side rather than a guess.
+  New invariant **B6** + `npm run test:outcome` (verified to fail on the original line).
+- **Motion tokens were colliding across stylesheets** — see invariant **B5** and
+  `npm run test:tokens`. Read B5's scope table before citing that fix; several repaired rules
+  are dead CSS. Real delta = chat panel, countdown ring, probability chart.
+- 4 loading-skeleton widths aligned to their pages; `appUrl()` deduplicated and defaulted to
+  the live domain; dead `lucide-react` removed.
+- `npm run qa:visual` — new post-deploy live check (10 routes × 360/1280, screenshots).
+
+⚠️ **Open, worth deciding:** `/markets` defaults to the "Today" filter and can render an empty
+board while the same header reads "6 live · TZS 501k in play". Ali chose leave-as-is on
+2026-07-20, before seeing it rendered. It is the first screen a tester hits.
+
+⚠️ **Still broken:** the MarketCard sparkline draws on **zero** live cards — `market-history.ts`
+is an in-memory Map on both store paths (4 TODOs), so history dies every deploy. The fix is
+persistence, not UI.
+
 ## Done (Session M — money-ops, all live + verified)
 A1 R2 storage seam (H8) · A2 audited balance-adjust + force-reverify KYC · A3 PSP
 reconcile match/write-off · A4 withdrawal + bulk retry · A5 aggregates (verified

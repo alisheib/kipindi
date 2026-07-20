@@ -296,6 +296,7 @@ async function ResultsContent({
                     predictors={m.predictorCount}
                     timeLeft={m.resolvedOutcome === "VOID" ? t.common.voided : `${t.market.resolvedOutcome} ${m.resolvedOutcome}`}
                     status={m.status === "VOIDED" ? "VOIDED" : "RESOLVED"}
+                    resolvedOutcome={m.resolvedOutcome}
                     sourceUrl={m.sourceUrl}
                     spark={(cardCharts.get(m.id) ?? { spark: [] }).spark}
                   />

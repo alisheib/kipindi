@@ -60,6 +60,7 @@ export default async function WatchlistPage() {
                 predictors={m.predictorCount}
                 timeLeft={timeLeft}
                 status={m.status === "VOIDED" ? "VOIDED" : m.status === "RESOLVED" ? "RESOLVED" : m.status}
+                resolvedOutcome={m.resolvedOutcome}
                 selectionClosed={!resolved && (isSelectionClosed(m) || isClosedByTime(m))}
                 sourceUrl={m.sourceUrl}
               />

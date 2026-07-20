@@ -22,6 +22,14 @@ type Props = {
   predictors: number;
   timeLeft: string;
   status: "LIVE" | "RESOLVED" | "CLOSED" | "VOIDED" | "DRAFT";
+  /** The SETTLED outcome, straight from `PredictionMarket.resolvedOutcome`.
+   *
+   *  Required for correctness on a resolved card. This card used to derive the
+   *  outcome from `yesPct >= 50` — i.e. from the crowd's money split — which is a
+   *  completely independent quantity. Every upset (crowd 70% YES, settles NO)
+   *  rendered the OPPOSITE of the truth, so the board and the detail page
+   *  contradicted each other on real money. Never infer this. */
+  resolvedOutcome?: "YES" | "NO" | "VOID" | null;
   sourceUrl?: string;
   /** Recent YES% series for the sparkline (optional). */
   spark?: number[];
@@ -196,7 +204,7 @@ function HowItWorks() {
 }
 
 export function MarketCard({
-  id, titleEn, titleSw, titleZh, category, yesPct, volume, predictors, timeLeft, status, spark, move24h, traders, selectionClosed, comments, className,
+  id, titleEn, titleSw, titleZh, category, yesPct, volume, predictors, timeLeft, status, resolvedOutcome, spark, move24h, traders, selectionClosed, comments, className,
 }: Props) {
   const router = useRouter();
   const { t, locale } = useT();
@@ -206,6 +214,14 @@ export function MarketCard({
   });
   const live = status === "LIVE" && !selectionClosed;
   const isResolved = status === "RESOLVED";
+  /** The settled side, or null when we genuinely don't know. Never inferred from
+   *  yesPct — see the `resolvedOutcome` prop doc. When null we show "RESOLVED"
+   *  with no side rather than risk stating the wrong one on a money surface. */
+  const outcomeLabel =
+    resolvedOutcome === "YES" ? t.common.yes
+    : resolvedOutcome === "NO" ? t.common.no
+    : resolvedOutcome === "VOID" ? t.market.statusVoid
+    : null;
   // Real YES% history only, ≥4 points (else hide — A-5 no-fabrication rule).
   const showSpark = Array.isArray(spark) && spark.length >= 4;
   // Trader crest — avatars when we have seeds; the predictor-count row renders
@@ -268,7 +284,7 @@ export function MarketCard({
         </div>
         <div className="mcardp-prob">
           <div className="mcardp-pctcap">{isResolved ? t.market.result : t.common.yes}</div>
-          <div className="mcardp-pct">{isResolved ? (yesPct >= 50 ? t.common.yes : t.common.no) : <>{yesPct}<span className="u">%</span></>}</div>
+          <div className="mcardp-pct">{isResolved ? (outcomeLabel ?? "—") : <>{yesPct}<span className="u">%</span></>}</div>
         </div>
       </div>
 
@@ -311,7 +327,7 @@ export function MarketCard({
         // exact same vertical rhythm as the live YES/NO row (card-height parity).
         <div className="mcardp-actions" style={{ gridTemplateColumns: "1fr" }}>
           <div className="btn btn-ghost btn-md justify-center pointer-events-none opacity-85">
-            <I.resolved s={15} /> {isResolved ? `${t.market.statusResolved} ${yesPct >= 50 ? t.common.yes : t.common.no}` : t.market.statusClosed}
+            <I.resolved s={15} /> {isResolved ? [t.market.statusResolved, outcomeLabel].filter(Boolean).join(" ") : t.market.statusClosed}
           </div>
         </div>
       )}
