@@ -104,7 +104,8 @@
     "test:deposit-notifications": "tsx scripts/deposit-notifications.test.mts",
     "test:auth-email-integrity": "tsx scripts/auth-email-integrity.test.mts",
     "test:auth-email": "tsx scripts/auth-email-signin.test.mts",
-    "e2e:card": "tsx scripts/card-flow-e2e.test.mts"
+    "e2e:card": "tsx scripts/card-flow-e2e.test.mts",
+    "qa:visual": "node scripts/live-visual-check.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

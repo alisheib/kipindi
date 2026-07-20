@@ -105,6 +105,21 @@ Enforced by **`scripts/token-collision.test.mts`** (`npm run test:tokens`, in `t
 duration-less transition. It caught a real regression during its own introduction — the chat
 `prefers-reduced-motion` block was still overriding the pre-rename token names.
 
+**Honest scope of the 2026-07-20 fix.** The token layer was genuinely broken, but not every
+repaired rule reaches a user — several are dead CSS with zero component usages. Measured:
+
+| Repaired rule | Component usages | User-visible? |
+|---|---|---|
+| chat easings (`--cm-*`) | whole chat panel | **yes** — panel had *zero* motion |
+| `.countdown-ring .ring-arc` | 3 | **yes** — 240ms → 820ms sweep |
+| `.pchart-*` (draw-in, crosshair) | 2 | **yes** — draw 240→820ms, crosshair 0s→120ms |
+| `.input` / `.select` CSS classes | 3 / 2 | partly — the `Input` **atom** uses Tailwind `transition-all duration-150`, not `.input`, so most fields were never affected |
+| `.pbar-yes` / `.pbar-no` | **0** | no — dead CSS |
+| `.win-seal`, `.badge-unlock-coin`, `.win-card-rare` | **0** | no — dead CSS (the `--ease-celebrate` phantom 600ms delay was real but unreachable) |
+
+Do not cite this fix as "restored motion everywhere". It restored the token *contract*; the
+visible delta is the chat panel, the countdown ring and the probability chart.
+
 ---
 
 ## Related

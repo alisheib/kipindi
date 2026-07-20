@@ -176,7 +176,7 @@ specific change. Be candid; we would rather redo a built thing now than ship it 
 | `/positions` | Countdown as plain text | Mini **countdown ring** on open cards; YES/NO exposure bar | L |
 | `/positions/performance` | Best-win/streak text-only | **Streak pip-chain / flame** row; gilt "best win" crest | L |
 | `/leaderboard` | **No podium** (top-3 are plain numbers); empty-state draws a podium the real board never uses | **Top-3 podium header** (crest + TierBadge + avatar, gilt #1) | **H** |
-| ~~MarketCard (shared)~~ | ~~`spark` + `traders` fetched but never rendered~~ | ✅ **DONE** — verified 2026-07-20. `market-card.tsx` renders both (`Spark` via Catmull-Rom `smoothPath` at L94–99, trader crest-stack at L289–292), and `/`, `/markets`, `/results` all call `getCardChart()` and pass `spark`/`move24h`/`traders` (e.g. `markets/page.tsx:300-302`). **Do not "re-fix" this.** | ✅ |
+| MarketCard (shared) | **Sparkline is wired end-to-end but renders on ZERO cards in production.** The render path is complete — `market-card.tsx` draws it (`Spark`, Catmull-Rom `smoothPath` L94–99) and `/`, `/markets`, `/results` all call `getCardChart()` and pass `spark`/`move24h`/`traders` (`markets/page.tsx:300-302`). The **data** is the gap: `market-history.ts` is still an in-memory `Map` on BOTH store paths (the Prisma impl is 4 `TODO`s, L80–100), so history is wiped on every deploy and per-instance. `getCardChart` returns `{spark: []}` below 2 points, and the card hides the spark below 4 — so cards stay flat until enough bets land on the *same instance* after a deploy. **Measured live 2026-07-20: `.mcardp-spark` count = 0 on /markets, /live and /results.** Fix = persist history (the `PredictionMarket.history` JSON column those TODOs describe), NOT more render work. | **H** |
 
 ### 5b. Player — money & profile
 | Route | Gap | Suggested asset/feature | Pri |
@@ -225,7 +225,9 @@ specific change. Be candid; we would rather redo a built thing now than ship it 
 ---
 
 ## 6. CROSS-CUTTING — the highest-leverage shared work (do these first)
-1. ~~**MarketCard `spark` + trader-crest**~~ — ✅ **SHIPPED** (verified 2026-07-20, see §5a).
+1. **MarketCard `spark`** — render path SHIPPED, but it draws on **zero** live cards because
+   market history is in-memory and dies every deploy. The remaining work is **persistence**, not
+   UI. See §5a. **[H]**
 2. ~~**`AuthShell` + brand side-rail**~~ — ✅ **SHIPPED** (`src/components/auth/auth-shell.tsx`).
 3. ~~**Shared `RouteError`**~~ — ✅ **SHIPPED** (`src/components/ui/route-error.tsx`; all 7 boundaries funnel into it).
 4. **`PageHero` adoption** — 5 routes (3× proposals, fairness, invite) skip the existing masthead. **[M]**
