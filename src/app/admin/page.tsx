@@ -23,11 +23,13 @@ const CATEGORY_VARIANT: Record<AuditCategory, "gold" | "royal" | "danger" | "suc
 };
 
 export default async function AdminOverviewPage() {
-  const active24h = await activePlayers("today").catch(() => 0);
-  const ggr = await grossGamingRevenue("today").catch(() => 0);
-  const ngr = await netGamingRevenue("today").catch(() => 0);
-  let amlPending = 0;
-  try { amlPending = (await db.txn.listByStatus("AML_REVIEW")).length; } catch { /* graceful */ }
+  // A-5: null (not 0) on a failed read → an explicit "couldn't compute" tile,
+  // never a fabricated "TZS 0" / "0 pending" presented as real.
+  const active24h = await activePlayers("today").catch(() => null);
+  const ggr = await grossGamingRevenue("today").catch(() => null);
+  const ngr = await netGamingRevenue("today").catch(() => null);
+  let amlPending: number | null = 0;
+  try { amlPending = (await db.txn.listByStatus("AML_REVIEW")).length; } catch { amlPending = null; }
   const kyc = await kycFunnel().catch(() => ({ registered: 0, started: 0, pending: 0, approved: 0 }));
   const provs = await providerSummary("28d").then((l) => l.slice(0, 5)).catch(() => []);
   const rg = await rgRosterCounts().catch(() => ({ selfExcluded: 0, cooledOff: 0, expiringThisWeek: 0 }));
@@ -47,10 +49,10 @@ export default async function AdminOverviewPage() {
       <div className="px-4 lg:px-6 py-5 space-y-4">
         {/* §A — KPI strip */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-          <AdminKpi label="Active players" sw="Wachezaji hai"     value={active24h.toLocaleString()} delta="last 24h" pulse />
-          <AdminKpi label="GGR · 24h"      sw="Mapato ya jumla"   value={`TZS ${formatTzsCompact(ggr).replace("TZS ", "")}`} delta="vs yesterday" />
-          <AdminKpi label="NGR · 24h"      sw="Mapato halisi"     value={`TZS ${formatTzsCompact(ngr).replace("TZS ", "")}`} delta="net of bonus + fees" />
-          <AdminKpi label="AML pending"    sw="Inasubiri ukaguzi" value={amlPending} delta="needs review" deltaDir={amlPending > 0 ? "up" : "flat"} pulse={amlPending > 0} />
+          <AdminKpi label="Active players" sw="Wachezaji hai"     value={active24h === null ? "" : active24h.toLocaleString()} unavailable={active24h === null} delta="last 24h" pulse={active24h !== null} />
+          <AdminKpi label="GGR · 24h"      sw="Mapato ya jumla"   value={ggr === null ? "" : `TZS ${formatTzsCompact(ggr).replace("TZS ", "")}`} unavailable={ggr === null} delta="vs yesterday" />
+          <AdminKpi label="NGR · 24h"      sw="Mapato halisi"     value={ngr === null ? "" : `TZS ${formatTzsCompact(ngr).replace("TZS ", "")}`} unavailable={ngr === null} delta="net of bonus + fees" />
+          <AdminKpi label="AML pending"    sw="Inasubiri ukaguzi" value={amlPending ?? ""} unavailable={amlPending === null} delta="needs review" deltaDir={(amlPending ?? 0) > 0 ? "up" : "flat"} pulse={(amlPending ?? 0) > 0} />
         </div>
 
         {/* §B — Money flow + activity */}

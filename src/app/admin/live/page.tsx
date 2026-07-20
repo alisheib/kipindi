@@ -25,8 +25,9 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminLivePage() {
   const liveMatches = (matches as MatchStub[]).filter((m) => m.status === "live");
-  const ggr = await grossGamingRevenue("today").catch(() => 0);
-  const active = await activePlayers("today").catch(() => 0);
+  // A-5: null (not 0) on a failed read → an explicit "couldn't compute" tile.
+  const ggr = await grossGamingRevenue("today").catch(() => null);
+  const active = await activePlayers("today").catch(() => null);
   const flow = await moneyFlowSeries("today", 24).catch(() => []);
 
   // Recent BET events
@@ -54,8 +55,8 @@ export default async function AdminLivePage() {
       <div className="px-4 lg:px-6 py-5 space-y-4">
         {/* KPI strip */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <AdminKpi label="Active players · live" sw="Wachezaji hai"   value={active.toLocaleString()} pulse />
-          <AdminKpi label="GGR · 24h"             sw="Mapato"           value={`TZS ${formatTzsCompact(ggr).replace("TZS ", "")}`} />
+          <AdminKpi label="Active players · live" sw="Wachezaji hai"   value={active === null ? "" : active.toLocaleString()} unavailable={active === null} pulse={active !== null} />
+          <AdminKpi label="GGR · 24h"             sw="Mapato"           value={ggr === null ? "" : `TZS ${formatTzsCompact(ggr).replace("TZS ", "")}`} unavailable={ggr === null} />
           <AdminKpi label="Live matches"           sw="Mechi za moja"    value={liveMatches.length} pulse={liveMatches.length > 0} />
         </div>
 

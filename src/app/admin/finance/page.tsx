@@ -58,15 +58,17 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
   // The PeriodPicker round-trips via ?range= — honour it (default 7d).
   const period: Period = VALID_PERIODS.includes(sp.range as Period) ? (sp.range as Period) : "7d";
 
-  const dep = await depositsTotal(period).catch(() => ({ amount: 0, count: 0 }));
-  const wd  = await withdrawalsTotal(period).catch(() => ({ amount: 0, count: 0 }));
-  const ggr = await grossGamingRevenue(period).catch(() => 0);
-  const ngr = await netGamingRevenue(period).catch(() => 0);
-  const margin = await operatorMarginPct(period).catch(() => 0);
-  const liability = await walletLiabilityTotal().catch(() => 0);
+  // A-5: money figures resolve to null (not 0) on a failed read, so the tile
+  // renders an explicit "n/a · couldn't compute" instead of a fabricated "TZS 0".
+  const dep = await depositsTotal(period).catch(() => null);
+  const wd  = await withdrawalsTotal(period).catch(() => null);
+  const ggr = await grossGamingRevenue(period).catch(() => null);
+  const ngr = await netGamingRevenue(period).catch(() => null);
+  const margin = await operatorMarginPct(period).catch(() => null);
+  const liability = await walletLiabilityTotal().catch(() => null);
   const provs = await providerSummary(period).catch(() => []);
   const top = await topNgrContributors(10).catch(() => []);
-  const activePeriod = await activePlayers(period).catch(() => 0);
+  const activePeriod = await activePlayers(period).catch(() => null);
   const flow = await moneyFlowSeries(period, 28).catch(() => []);
   const margins = await marginSeries(period, 28).catch(() => []);
   const provBars = await providerStackedSeries(period, 14).catch(() => []);
@@ -86,7 +88,7 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
   // Wallet↔ledger trial balance (audit C3) — proves the books match the money.
   // Read-only; guarded so a slow/failed scan never takes the finance page down.
   const tb = await trialBalance().catch(() => null);
-  const taxAccrued = rates
+  const taxAccrued = rates && ggr !== null
     ? Math.round(Math.max(0, ggr) * (rates.traTaxOnCommissionRate + rates.gbtLevyOnCommissionRate))
     : null;
 
@@ -108,10 +110,10 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
       <div className="px-4 lg:px-6 py-5 space-y-4">
         {/* KPI 8-up */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <AdminKpi label="Deposits in"     sw="Amana"             value={`TZS ${formatTzsCompact(dep.amount).replace("TZS ", "")}`} delta={`${dep.count.toLocaleString()} txns`} />
-          <AdminKpi label="Withdrawals out" sw="Utoaji"            value={`TZS ${formatTzsCompact(wd.amount).replace("TZS ", "")}`}  delta={`${wd.count.toLocaleString()} txns`} />
-          <AdminKpi label="GGR"             sw="Mapato ya jumla"    value={`TZS ${formatTzsCompact(ggr).replace("TZS ", "")}`}        delta={`${period}`} />
-          <AdminKpi label="NGR"             sw="Mapato halisi"      value={`TZS ${formatTzsCompact(ngr).replace("TZS ", "")}`}        delta="net of bonus + fees" />
+          <AdminKpi label="Deposits in"     sw="Amana"             value={dep ? `TZS ${formatTzsCompact(dep.amount).replace("TZS ", "")}` : ""} unavailable={dep === null} delta={dep ? `${dep.count.toLocaleString()} txns` : undefined} />
+          <AdminKpi label="Withdrawals out" sw="Utoaji"            value={wd ? `TZS ${formatTzsCompact(wd.amount).replace("TZS ", "")}` : ""}  unavailable={wd === null}  delta={wd ? `${wd.count.toLocaleString()} txns` : undefined} />
+          <AdminKpi label="GGR"             sw="Mapato ya jumla"    value={ggr === null ? "" : `TZS ${formatTzsCompact(ggr).replace("TZS ", "")}`}        unavailable={ggr === null} delta={`${period}`} />
+          <AdminKpi label="NGR"             sw="Mapato halisi"      value={ngr === null ? "" : `TZS ${formatTzsCompact(ngr).replace("TZS ", "")}`}        unavailable={ngr === null} delta="net of bonus + fees" />
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <AdminKpi
@@ -121,9 +123,9 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
             delta={taxAccrued === null ? "rates unavailable" : "TRA + GBT on commission"}
             deltaDir="flat"
           />
-          <AdminKpi label="Operator margin"  sw="Faida"         value={`${margin.toFixed(1)}%`} delta="capped-fee model" deltaDir="flat" />
-          <AdminKpi label="Wallet liability" sw="Madeni"        value={`TZS ${formatTzsCompact(liability).replace("TZS ", "")}`} delta="real-time" />
-          <AdminKpi label="Active players"   sw="Wachezaji"     value={activePeriod.toLocaleString()} delta={`${period}`} />
+          <AdminKpi label="Operator margin"  sw="Faida"         value={margin === null ? "" : `${margin.toFixed(1)}%`} unavailable={margin === null} delta="capped-fee model" deltaDir="flat" />
+          <AdminKpi label="Wallet liability" sw="Madeni"        value={liability === null ? "" : `TZS ${formatTzsCompact(liability).replace("TZS ", "")}`} unavailable={liability === null} delta="real-time" />
+          <AdminKpi label="Active players"   sw="Wachezaji"     value={activePeriod === null ? "" : activePeriod.toLocaleString()} unavailable={activePeriod === null} delta={`${period}`} />
         </div>
 
         {/* THE HOUSE ACCOUNTS — straight from the double-entry ledger.

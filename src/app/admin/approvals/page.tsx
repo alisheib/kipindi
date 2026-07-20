@@ -1,4 +1,4 @@
-import { AdminPageHead, AdminCard, AdminKpi, FeedRow } from "@/components/admin/admin-shell";
+import { AdminPageHead, AdminCard, AdminKpi, FeedRow, AdminLoadError } from "@/components/admin/admin-shell";
 import { CEREMONY } from "@/lib/admin-status-lexicon";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
@@ -24,11 +24,17 @@ export default async function AdminApprovalsPage({
   }>;
 }) {
   const sp = await searchParams;
+  // A-5: track whether each queue read FAILED (vs genuinely empty), so a backend
+  // error shows an explicit "couldn't load" state — never a false "queue empty"
+  // that hides pending compliance work.
   let amlAll: StoredTxn[] = [];
-  try { amlAll = (await db.txn.listByStatus("AML_REVIEW")) as StoredTxn[]; } catch { /* graceful */ }
+  let amlFailed = false;
+  try { amlAll = (await db.txn.listByStatus("AML_REVIEW")) as StoredTxn[]; } catch { amlFailed = true; }
   let sofAll: StoredSourceOfFunds[] = [];
-  try { sofAll = (await db.sourceOfFunds.listPending()) as StoredSourceOfFunds[]; } catch { /* graceful */ }
-  const kycPendingAll = await listPendingKyc().catch(() => []);
+  let sofFailed = false;
+  try { sofAll = (await db.sourceOfFunds.listPending()) as StoredSourceOfFunds[]; } catch { sofFailed = true; }
+  let kycFailed = false;
+  const kycPendingAll = await listPendingKyc().catch(() => { kycFailed = true; return []; });
   const recent = getAuditPage({ category: "ADMIN", limit: 60 });
 
   // KYC queue (prefix "kyc") — newest submission first by default.
@@ -84,9 +90,9 @@ export default async function AdminApprovalsPage({
 
       <div className="px-4 lg:px-6 py-5 space-y-4">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <AdminKpi label="KYC pending" sw="Vitambulisho" value={kycPendingAll.length} pulse={kycPendingAll.length > 0} />
-          <AdminKpi label="AML pending" sw="Inasubiri ukaguzi" value={amlAll.length} pulse={amlAll.length > 0} />
-          <AdminKpi label="SOF declarations" sw="Asili ya pesa" value={sofAll.length} pulse={sofAll.length > 0} />
+          <AdminKpi label="KYC pending" sw="Vitambulisho" value={kycFailed ? "" : kycPendingAll.length} unavailable={kycFailed} pulse={!kycFailed && kycPendingAll.length > 0} />
+          <AdminKpi label="AML pending" sw="Inasubiri ukaguzi" value={amlFailed ? "" : amlAll.length} unavailable={amlFailed} pulse={!amlFailed && amlAll.length > 0} />
+          <AdminKpi label="SOF declarations" sw="Asili ya pesa" value={sofFailed ? "" : sofAll.length} unavailable={sofFailed} pulse={!sofFailed && sofAll.length > 0} />
           <AdminKpi label="Avg cosign time" sw="Wastani"      value="—"  delta="last 7d" />
         </div>
 
@@ -95,7 +101,9 @@ export default async function AdminApprovalsPage({
           title="KYC · awaiting verification"
           sw="Vitambulisho vinasubiri"
         >
-          {kycPendingAll.length === 0 ? (
+          {kycFailed ? (
+            <AdminLoadError what="the KYC queue" />
+          ) : kycPendingAll.length === 0 ? (
             <div className="flex items-center gap-3 py-4">
               <I.shieldcheck s={18} />
               <p className="text-caption text-text-secondary">No identity submissions pending. New submissions appear here the moment a player submits for review.</p>
@@ -137,7 +145,9 @@ export default async function AdminApprovalsPage({
           sw="Foleni ya AML"
           action={<a href="/admin/aml" className="font-mono text-micro tracking-[0.10em] uppercase text-royal-300">go to AML →</a>}
         >
-          {amlAll.length === 0 ? (
+          {amlFailed ? (
+            <AdminLoadError what="the AML queue" />
+          ) : amlAll.length === 0 ? (
             <div className="flex items-center gap-3 py-4">
               <I.shieldcheck s={18} />
               <p className="text-caption text-text-secondary">Queue empty. New AML triggers appear here for first review.</p>
@@ -175,7 +185,9 @@ export default async function AdminApprovalsPage({
 
         {/* SOF declarations */}
         <AdminCard title="Source-of-funds declarations · pending review" sw="Tamko za asili ya pesa">
-          {sofAll.length === 0 ? (
+          {sofFailed ? (
+            <AdminLoadError what="the source-of-funds queue" />
+          ) : sofAll.length === 0 ? (
             <div className="flex items-center gap-3 py-4">
               <I.shieldcheck s={18} />
               <p className="text-caption text-text-secondary">No SOF declarations pending. Players auto-trigger this when cumulative deposits exceed TZS 5M / 30 days.</p>

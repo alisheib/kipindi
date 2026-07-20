@@ -193,6 +193,7 @@ export function AdminKpi({
   pulse,
   spark = true,
   series,
+  unavailable,
 }: {
   label: string;
   sw?: string;
@@ -208,7 +209,28 @@ export function AdminKpi({
   spark?: boolean;
   /** Mini 24h/7d series — renders the A8 sparkline in the tile's spark slot. */
   series?: number[];
+  /** A-5: the underlying read FAILED. Renders an explicit "n/a · couldn't
+   *  compute" tile instead of the passed value, so a failed money/analytics read
+   *  never shows a fabricated "TZS 0" as if it were real. NOT the same as a
+   *  genuine zero. */
+  unavailable?: boolean;
 }) {
+  if (unavailable) {
+    return (
+      <div
+        className="rounded-lg glass-panel p-3.5 flex flex-col gap-1.5 min-h-[110px]"
+        title="This figure could not be computed — a data read failed. It is NOT zero."
+      >
+        <span className="font-mono uppercase text-text-tertiary truncate" style={{ fontSize: 9.5, letterSpacing: "0.08em", lineHeight: 1.3 }}>{label}</span>
+        <div className="font-mono font-bold text-text-tertiary leading-none" style={{ fontSize: 20, letterSpacing: "-0.01em" }}>n/a</div>
+        {sw && <div className="text-text-tertiary italic leading-tight" style={{ fontSize: 10.5 }}>{sw}</div>}
+        <div className="mt-auto inline-flex items-center gap-1.5">
+          <span aria-hidden className="h-1.5 w-1.5 rounded-pill inline-block" style={{ background: "var(--warning-500)" }} />
+          <span className="font-mono uppercase tracking-wider text-warning-fg" style={{ fontSize: 9.5 }}>couldn&apos;t compute</span>
+        </div>
+      </div>
+    );
+  }
   const effectiveTone = tone ?? (gold ? "gold" : undefined);
   const valueToneCls =
     effectiveTone === "danger" ? "text-danger"
@@ -258,6 +280,23 @@ export function AdminKpi({
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+/* ===== AdminLoadError — explicit "a read failed" state (A-5) ===== */
+/* Renders when a list / queue / panel read FAILED, so a backend error never
+   shows as a benign empty ("nothing pending") or a fabricated zero. Amber
+   caution, not danger: the data may well exist — we just couldn't read it.
+   Pair with AdminKpi `unavailable` on the matching count tile. */
+export function AdminLoadError({ what }: { what?: string }) {
+  return (
+    <div className="flex items-start gap-3 rounded-md border border-warning-border bg-warning-bg/20 px-4 py-3">
+      <span aria-hidden className="mt-1 h-2 w-2 shrink-0 rounded-pill" style={{ background: "var(--warning-500)" }} />
+      <div className="text-caption text-text-secondary">
+        <p className="font-semibold text-warning-fg">Couldn&apos;t load{what ? ` ${what}` : ""}</p>
+        <p className="mt-0.5">A data read failed — this may not be empty. Refresh to retry.</p>
+      </div>
     </div>
   );
 }

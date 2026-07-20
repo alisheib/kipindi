@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
+import { AdminPageHead, AdminCard, AdminLoadError } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { RefreshButton } from "@/components/admin/refresh-button";
 import { Chip } from "@/components/ui/chip";
@@ -55,7 +55,11 @@ export default async function ResolverQueuePage({
     : windowFilter === "all" ? Infinity
     : 24 * 3600_000;
 
-  const pending = (await listMarkets().catch(() => [])).filter((m) => {
+  // A-5: distinguish a FAILED market read from a genuinely-clear queue, so a
+  // backend error never renders "Queue is clear" and hides pending settlements.
+  let marketsFailed = false;
+  const allMarkets = await listMarkets().catch(() => { marketsFailed = true; return []; });
+  const pending = allMarkets.filter((m) => {
     const due = Date.parse(m.resolutionAt);
     if (m.status === "CLOSED") return true;
     if (m.status === "LIVE") return windowMs === Infinity || due - now < windowMs;
@@ -124,7 +128,9 @@ export default async function ResolverQueuePage({
           </form>
         </AdminCard>
 
-        {pending.length === 0 ? (
+        {marketsFailed ? (
+          <AdminLoadError what="the resolver queue" />
+        ) : pending.length === 0 ? (
           <EmptyState
             kind="audit"
             title={hasFilter ? "No markets match" : "Queue is clear"}
