@@ -193,6 +193,20 @@ async function selcomFetch(env: SelcomEnv, method: "POST" | "GET", path: string,
  *  as ACCEPTED → the money movement stays PROCESSING and is resolved by the status
  *  re-query / reconcile sweep. ⚠️ Money-safety: 999 must NOT be a hard fail — the
  *  request may have gone through, so failing it could reverse a real payout. */
+/** One-line, log-safe summary of a Selcom reply: HTTP status, result code, result
+ *  and message. Contains no credentials — the whole point is that a failed
+ *  money movement must be explainable after the fact. */
+export function describeSelcom(r: SelcomResponse): string {
+  const j = r.json ?? {};
+  const parts = [
+    `HTTP ${r.httpStatus}`,
+    j.resultcode != null ? `resultcode=${String(j.resultcode)}` : null,
+    j.result != null ? `result=${String(j.result)}` : null,
+    j.message != null ? `message=${String(j.message).slice(0, 200)}` : null,
+  ].filter(Boolean);
+  return parts.join(" · ");
+}
+
 export function selcomInitiateVerdict(json: SelcomEnvelope): "ACCEPTED" | "FAILED" {
   const code = String(json.resultcode ?? "").trim();
   const result = String(json.result ?? "").toUpperCase();
@@ -219,7 +233,7 @@ function envelopeSettlementVerdict(json: SelcomEnvelope): "CONFIRMED" | "FAILED"
 //     error AFTER the request left) → the customer might still approve + pay, so we
 //     must NOT declare failure. The caller keeps the deposit PROCESSING and lets the
 //     authoritative order-status re-query (webhook + reconcile sweep) settle it.
-export async function selcomDeposit(env: SelcomEnv, opts: { orderId: string; amount: number; msisdn: string; userId: string }): Promise<{ ok: true } | { ok: false; reason: "PROVIDER_DOWN" | "DECLINED" | "AMBIGUOUS" }> {
+export async function selcomDeposit(env: SelcomEnv, opts: { orderId: string; amount: number; msisdn: string; userId: string }): Promise<{ ok: true } | { ok: false; reason: "PROVIDER_DOWN" | "DECLINED" | "AMBIGUOUS"; detail?: string }> {
   const phone = toSelcomMsisdn(opts.msisdn);
   // 1) Create the order. Field order is load-bearing (== Signed-Fields order).
   const createBody: Record<string, string | number> = {
@@ -237,10 +251,23 @@ export async function selcomDeposit(env: SelcomEnv, opts: { orderId: string; amo
     // Before any USSD push — the customer cannot have been charged yet, so a
     // failure/timeout here is DEFINITIVE (safe to fail the deposit).
     create = await selcomFetch(env, "POST", "/checkout/create-order-minimal", createBody);
-  } catch {
-    return { ok: false, reason: "PROVIDER_DOWN" };
+  } catch (err) {
+    // A real deposit failed in production (2026-07-20, order dep_bdd96021d0e07638cd5c)
+    // and this branch discarded the reason entirely — there was nothing in the logs,
+    // nothing in the audit payload beyond "PROVIDER_DOWN", and the failure was
+    // therefore undiagnosable. Never swallow a money-path error silently.
+    const detail = `transport: ${(err as Error)?.message ?? String(err)}`;
+    console.error("[selcom] create-order failed", { orderId: opts.orderId, detail });
+    return { ok: false, reason: "PROVIDER_DOWN", detail };
   }
-  if (!create.ok || selcomInitiateVerdict(create.json) === "FAILED") return { ok: false, reason: "PROVIDER_DOWN" };
+  if (!create.ok || selcomInitiateVerdict(create.json) === "FAILED") {
+    // Selcom's own words. resultcode/message carry the actionable cause (missing
+    // field, unknown vendor, IP not allow-listed, MNO not enabled); none of it is
+    // secret, and without it a failed deposit cannot be explained to the player.
+    const detail = describeSelcom(create);
+    console.error("[selcom] create-order rejected", { orderId: opts.orderId, detail });
+    return { ok: false, reason: "PROVIDER_DOWN", detail };
+  }
 
   // 2) Push the USSD PIN prompt to the handset for that order. From here on a
   //    timeout/HTTP error is AMBIGUOUS — the prompt may have gone out and the
@@ -249,11 +276,24 @@ export async function selcomDeposit(env: SelcomEnv, opts: { orderId: string; amo
   let pay: SelcomResponse;
   try {
     pay = await selcomFetch(env, "POST", "/checkout/wallet-payment", payBody);
-  } catch {
-    return { ok: false, reason: "AMBIGUOUS" };
+  } catch (err) {
+    const detail = `transport after push: ${(err as Error)?.message ?? String(err)}`;
+    console.error("[selcom] wallet-payment transport error", { orderId: opts.orderId, detail });
+    return { ok: false, reason: "AMBIGUOUS", detail };
   }
-  if (!pay.ok) return { ok: false, reason: "AMBIGUOUS" };                          // HTTP error after send — push may have happened
-  if (selcomInitiateVerdict(pay.json) === "FAILED") return { ok: false, reason: "DECLINED" }; // clean Selcom rejection
+  if (!pay.ok) {
+    // HTTP error AFTER the push — the prompt may have reached the handset, so this
+    // stays ambiguous and the deposit remains PROCESSING. Log it: an ambiguous
+    // outcome is exactly the case an operator will have to reconcile by hand.
+    const detail = describeSelcom(pay);
+    console.error("[selcom] wallet-payment HTTP error", { orderId: opts.orderId, detail });
+    return { ok: false, reason: "AMBIGUOUS", detail };
+  }
+  if (selcomInitiateVerdict(pay.json) === "FAILED") {
+    const detail = describeSelcom(pay);
+    console.error("[selcom] wallet-payment declined", { orderId: opts.orderId, detail });
+    return { ok: false, reason: "DECLINED", detail };
+  }
   return { ok: true }; // async — the webhook/order-status settles it
 }
 

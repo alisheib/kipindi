@@ -46,7 +46,16 @@ export type DepositResult =
        *  re-query, exactly as on every other rail. */
       redirectUrl?: string;
     }
-  | { ok: false; reason: "INSUFFICIENT_FUNDS" | "PROVIDER_DOWN" | "TIMEOUT" | "DECLINED" | "FRAUD"; correlationId: string };
+  | {
+      ok: false;
+      reason: "INSUFFICIENT_FUNDS" | "PROVIDER_DOWN" | "TIMEOUT" | "DECLINED" | "FRAUD";
+      correlationId: string;
+      /** Log-safe explanation from the provider (HTTP status, result code, message).
+       *  Carried into the failure audit entry so a failed real-money deposit can be
+       *  explained after the fact — a live 5,000 TZS deposit failed on 2026-07-20
+       *  with nothing recorded beyond "PROVIDER_DOWN". Never contains credentials. */
+      detail?: string;
+    };
 
 export type WithdrawResult =
   | { ok: true; providerRef: string; status: "CONFIRMED" | "PENDING" | "AML_REVIEW"; correlationId: string }
@@ -260,7 +269,7 @@ const selcomAdapter: PaymentAdapter = {
     // PENDING so the deposit stays PROCESSING and the authoritative order-status
     // re-query (webhook/reconcile) credits it exactly-once IF the customer paid.
     // Only a DEFINITIVE PROVIDER_DOWN/DECLINED (customer not charged) fails.
-    if (!r.ok && r.reason !== "AMBIGUOUS") return { ok: false, reason: r.reason, correlationId };
+    if (!r.ok && r.reason !== "AMBIGUOUS") return { ok: false, reason: r.reason, correlationId, detail: r.detail };
     return { ok: true, status: "PENDING", providerRef: correlationId, correlationId };
   },
   async withdraw({ provider, amount, msisdn, correlationId }) {

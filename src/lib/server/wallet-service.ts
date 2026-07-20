@@ -243,7 +243,11 @@ export async function deposit(
     // noise. The gap G2 closed was the ASYNCHRONOUS failure, where the player is
     // no longer looking. Don't "make this consistent" — the two are different.
     await db.txn.update(txnId, { status: "FAILED", description: `${friendlyProvider(parse.data.provider)} deposit failed: ${result.reason}` });
-    audit({ category: "WALLET", action: "deposit.failed", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { reason: result.reason, correlationId: result.correlationId } });
+    // `detail` carries the provider's own explanation (HTTP status, result code,
+    // message). Without it a failed real-money deposit is undiagnosable once the
+    // container's logs rotate — which is exactly what happened to the 5,000 TZS
+    // MIXX deposit on 2026-07-20: the audit row said only "PROVIDER_DOWN".
+    audit({ category: "WALLET", action: "deposit.failed", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { reason: result.reason, correlationId: result.correlationId, detail: result.detail } });
     return { ok: false, error: friendlyDepositReason(result.reason), code: "INVALID" };
   }
 
