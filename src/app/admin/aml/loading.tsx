@@ -1,10 +1,20 @@
-import { BrandSpinner } from "@/components/brand";
+import { AdminPageHead } from "@/components/admin/admin-shell";
+import { SkBody, SkKpiRow, SkTableCard, SkCard, SkChip } from "@/components/admin/admin-skeletons";
 
 export default function Loading() {
   return (
-    <div className="grid place-items-center py-16">
-      <BrandSpinner size={40} />
-    </div>
+    <>
+      <AdminPageHead title="AML · EDD queue" sw="Foleni ya AML" period={false} actions={<SkChip />} />
+      <SkBody>
+        {/* KPI band */}
+        <SkKpiRow count={4} />
+        {/* Review queue — flush p-0 card with no title row */}
+        <SkTableCard cols={7} rows={6} minWidth={720} title={false} />
+        {/* Two-person-approval warning */}
+        <SkCard lines={2} />
+        {/* Suspicious-bet detector — has its own header row */}
+        <SkTableCard cols={6} rows={5} minWidth={640} />
+      </SkBody>
+    </>
   );
 }
-
