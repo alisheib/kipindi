@@ -31,7 +31,7 @@ import { payoutFor, settledPayoutFor, allocateWinnerPayouts, poolFee, levySplit,
 import { getConflictedResolutionAllowed } from "./test-overrides";
 import { getAutoSettleEnabled } from "./payment-control";
 import { isMaintenanceMode, maintenanceMessage } from "./platform-config";
-import { recordSnapshot, seedHistory } from "./market-history";
+import { recordSnapshot } from "./market-history";
 import { notifyBetPlaced, notifyWin, notifyLoss, notifyRefund, notifyCashout, notifyAdminMarketResolution, notifyMarketCancelled, notifyAdminMarketCancelled, notifyOneSidedRefund, notifySelectionClosed } from "./notification-service";
 import { sendEmailToUser, betPlacedHtml, winNotificationHtml, lossNotificationHtml, cashOutReceiptHtml, oneSidedRefundHtml, marketResolutionAdminHtml, marketCancelledRefundHtml, marketCancelledAdminHtml, bonusFulfilledHtml, selectionClosedHtml } from "./email";
 import { onRecruitBet, onRecruitSettlement } from "./affiliate-service";
@@ -2663,9 +2663,9 @@ export async function seedDemoMarkets() {
     // createMarket throws on duplicate id; since we're idempotent on
     // existing-market count, this loop only fires when the count is low.
     try {
-      const m = await createMarket(s);
-      // Seed a believable history walk so the PriceChart isn't empty on first paint.
-      await seedHistory(m.id, m.yesPool, m.noPool);
+      await createMarket(s);
+      // No history seeding. A market with no bets has no price history, and its
+      // chart stays empty until real ones land (A-5 no-fabrication).
     } catch {
       // Ignore — likely already present from a prior partial seed.
     }

@@ -1031,9 +1031,41 @@ model PredictionMarket {
   comments   Comment[]
   watchers   Watchlist[]
   objections Objection[]
+  snapshots  MarketSnapshot[]
 
   @@index([status])
   @@index([resolutionAt])
+}
+
+/// Point-in-time record of a market's implied YES probability and pool sizes.
+///
+/// Written on every price-moving event (bet, cash-out, resolution) so the
+/// ProbabilityChart on /markets/[id] and the MarketCard sparkline render REAL
+/// history that survives a deploy.
+///
+/// Before this table, history lived in a process-local Map. Because every push
+/// to main is a live deploy, that Map was wiped several times a week — which in
+/// turn made `seedHistory()` fabricate a synthetic random walk for EVERY market
+/// on every detail-page render, violating the A-5 no-fabrication rule the
+/// MarketCard cites in its own source. Both the Map and seedHistory are gone.
+model MarketSnapshot {
+  id       String   @id @default(cuid())
+  marketId String
+  /// The instant this snapshot was taken.
+  t        DateTime @default(now())
+  /// Implied YES probability, 0..1 (NOT 0..100 — matches the kit PriceChart shape).
+  yes      Float
+  /// Pool sizes at this instant. Decimal to match PredictionMarket.yesPool/noPool
+  /// exactly; read for display only, never moves money.
+  yesPool  Decimal  @db.Decimal(18, 2)
+  noPool   Decimal  @db.Decimal(18, 2)
+  volume   Decimal  @db.Decimal(18, 2)
+
+  market PredictionMarket @relation(fields: [marketId], references: [id], onDelete: Cascade)
+
+  /// The only access pattern is newest-N points for one market, so this composite
+  /// serves both the read and the retention prune. Never query without marketId.
+  @@index([marketId, t])
 }
 
 model Position {

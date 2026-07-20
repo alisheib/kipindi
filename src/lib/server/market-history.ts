@@ -4,15 +4,41 @@
  * A snapshot is recorded on every price-moving event (a buyPosition or a
  * resolveMarket). The PriceChart on /markets/[id] reads this series.
  *
- * Capped per-market at MAX_POINTS (~14 days of activity at the kind of
- * volumes we see in demo). Older points get evicted FIFO.
+ * Capped per-market at MAX_POINTS. Older points get evicted FIFO.
  *
  * DAL pattern: all exported functions are async and routed through a
- * HistoryStore interface. When USE_PRISMA_DAL is set and a database is
- * available, the Prisma implementation will back to a JSON column on
- * PredictionMarket. Until then both paths use the same in-memory Map.
+ * HistoryStore interface. With a database available, history is durable in the
+ * MarketSnapshot table; without one (tests, local no-DB runs) it falls back to
+ * an in-memory Map.
+ *
+ * ── Why this file is the way it is ─────────────────────────────────────────
+ * History used to be in-memory on BOTH paths — the "Prisma" store was a
+ * verbatim copy of the memory one behind four TODOs. Since every push to main
+ * is a live deploy, that Map was wiped several times a week, so every chart
+ * went empty; and an empty chart triggered `seedHistory()`, which fabricated a
+ * synthetic random walk and rendered it to real-money bettors as real history.
+ * That broke the A-5 no-fabrication rule the MarketCard cites and obeys (it
+ * hides the sparkline below 4 REAL points — which is exactly why the card was
+ * blank while the detail chart showed a confident curve).
+ *
+ * seedHistory is deleted. A market with no bets now has an empty chart, and
+ * that is the correct, honest rendering. Do not reintroduce a fallback that
+ * invents points.
+ *
+ * ── Invariant: the write path must never reject ────────────────────────────
+ * recordSnapshot is called fire-and-forget (no await, no .catch) from six
+ * places in market-service.ts, on the bet and settlement paths. An unhandled
+ * rejection takes the Node process down, so every store WRITE swallows and
+ * logs its own errors. A lost chart point is a cosmetic loss; a crashed
+ * container mid-bet is not. Reads may throw — every caller already guards.
  */
 import { prisma, hasDatabase } from "./prisma";
+
+/** Prisma Decimal | number → number. Chart values are display-only. */
+function num(d: unknown): number {
+  if (d == null) return 0;
+  return Number(d);
+}
 
 export type MarketSnapshot = {
   /** ISO timestamp */
@@ -41,11 +67,11 @@ const history: Map<string, MarketSnapshot[]> =
 // ---------------------------------------------------------------------------
 
 interface HistoryStore {
+  /** Oldest-first, capped at MAX_POINTS. May throw; callers already guard. */
   get(marketId: string): Promise<MarketSnapshot[]>;
+  /** MUST NOT reject — see the header note on fire-and-forget callers. */
   append(marketId: string, snap: MarketSnapshot): Promise<void>;
   hasHistory(marketId: string): Promise<boolean>;
-  /** Bulk-set history for a market (used by seedHistory). */
-  setAll(marketId: string, snaps: MarketSnapshot[]): Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -65,39 +91,89 @@ const memoryStore: HistoryStore = {
   async hasHistory(marketId) {
     return (history.get(marketId)?.length ?? 0) > 0;
   },
-  async setAll(marketId, snaps) {
-    history.set(marketId, snaps);
-  },
 };
 
 // ---------------------------------------------------------------------------
-// Prisma implementation — TODO: back with a `history Json` column on
-// PredictionMarket once the schema is updated. For now, duplicates the
-// memory impl so the feature-flag switch is wired but both paths behave
-// identically.
+// Prisma implementation — durable, backed by the MarketSnapshot table.
 // ---------------------------------------------------------------------------
+
+/** How often an append also prunes. Pruning on every write would double the
+ *  cost of the hottest write on the platform; 1-in-N keeps the table bounded
+ *  at ~MAX_POINTS + N without paying for it on the bet path. */
+const PRUNE_EVERY = 50;
 
 const prismaStore: HistoryStore = {
-  // TODO: read from PredictionMarket.history JSON column
   async get(marketId) {
-    return history.get(marketId) ?? [];
+    const db = prisma();
+    if (!db) return [];
+    // Newest-first so the index serves the LIMIT, then reversed — every
+    // consumer (chart, sparkline, move24h) wants oldest-first. `take` bounds
+    // the read no matter how large the table grows.
+    const rows = await db.marketSnapshot.findMany({
+      where: { marketId },
+      orderBy: { t: "desc" },
+      take: MAX_POINTS,
+      select: { t: true, yes: true, yesPool: true, noPool: true, volume: true },
+    });
+    return rows.reverse().map((r) => ({
+      t: r.t.toISOString(),
+      yes: r.yes,
+      yesPool: num(r.yesPool),
+      noPool: num(r.noPool),
+      volume: num(r.volume),
+    }));
   },
-  // TODO: append to PredictionMarket.history JSON column
+
   async append(marketId, snap) {
-    const arr = history.get(marketId) ?? [];
-    arr.push(snap);
-    if (arr.length > MAX_POINTS) arr.splice(0, arr.length - MAX_POINTS);
-    history.set(marketId, arr);
+    const db = prisma();
+    if (!db) return;
+    try {
+      await db.marketSnapshot.create({
+        data: {
+          marketId,
+          t: new Date(snap.t),
+          yes: snap.yes,
+          yesPool: snap.yesPool,
+          noPool: snap.noPool,
+          volume: snap.volume,
+        },
+      });
+      if (Math.random() < 1 / PRUNE_EVERY) await pruneHistory(marketId);
+    } catch (err) {
+      // Swallowed by contract — see the header. A market that was deleted, or a
+      // transient DB blip, must never surface as an unhandled rejection on the
+      // bet path.
+      console.error("[market-history] snapshot append failed", { marketId, err });
+    }
   },
-  // TODO: check PredictionMarket.history JSON column
+
   async hasHistory(marketId) {
-    return (history.get(marketId)?.length ?? 0) > 0;
-  },
-  // TODO: write PredictionMarket.history JSON column
-  async setAll(marketId, snaps) {
-    history.set(marketId, snaps);
+    const db = prisma();
+    if (!db) return false;
+    return !!(await db.marketSnapshot.findFirst({ where: { marketId }, select: { id: true } }));
   },
 };
+
+/** FIFO retention: drop everything older than the newest MAX_POINTS points.
+ *  Never throws — it is only ever called from inside append's try block, but it
+ *  guards independently so a future caller cannot break the write contract. */
+async function pruneHistory(marketId: string): Promise<void> {
+  const db = prisma();
+  if (!db) return;
+  try {
+    const [cutoff] = await db.marketSnapshot.findMany({
+      where: { marketId },
+      orderBy: { t: "desc" },
+      skip: MAX_POINTS,
+      take: 1,
+      select: { t: true },
+    });
+    if (!cutoff) return;
+    await db.marketSnapshot.deleteMany({ where: { marketId, t: { lte: cutoff.t } } });
+  } catch (err) {
+    console.error("[market-history] prune failed", { marketId, err });
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Feature-flag switch
@@ -110,16 +186,22 @@ const store: HistoryStore = USE_PRISMA ? prismaStore : memoryStore;
 // Exported functions — all async, delegate to store
 // ---------------------------------------------------------------------------
 
+/** Record a price point. Never rejects — callers are fire-and-forget on the bet
+ *  and settlement paths, where an unhandled rejection would kill the process. */
 export async function recordSnapshot(marketId: string, yesPool: number, noPool: number): Promise<void> {
-  const total = yesPool + noPool;
-  const snap: MarketSnapshot = {
-    t: new Date().toISOString(),
-    yes: total > 0 ? yesPool / total : 0.5,
-    yesPool,
-    noPool,
-    volume: total,
-  };
-  await store.append(marketId, snap);
+  try {
+    const total = yesPool + noPool;
+    const snap: MarketSnapshot = {
+      t: new Date().toISOString(),
+      yes: total > 0 ? yesPool / total : 0.5,
+      yesPool,
+      noPool,
+      volume: total,
+    };
+    await store.append(marketId, snap);
+  } catch (err) {
+    console.error("[market-history] recordSnapshot failed", { marketId, err });
+  }
 }
 
 export async function getHistory(marketId: string): Promise<MarketSnapshot[]> {
@@ -144,39 +226,18 @@ export async function getCompressedHistory(marketId: string, targetPoints = 24):
 }
 
 /**
- * Seed a believable history for a freshly-created demo market so the chart
- * isn't visibly empty on first paint. Generates a smooth random walk landing
- * on the current YES probability. Idempotent — only seeds if no history yet.
+ * ⛔ `seedHistory()` USED TO LIVE HERE AND HAS BEEN DELETED. DO NOT REINTRODUCE IT.
+ *
+ * It generated a synthetic random walk (a seeded LCG) landing on the market's
+ * current YES probability, and `/markets/[id]` called it on every render. With
+ * history in a process-local Map that was wiped on each deploy, it fired for
+ * EVERY market, not the "legacy demo markets" its comment claimed — so real
+ * players saw invented price history on a licensed real-money platform.
+ *
+ * A market with too little history renders an EMPTY chart. That is correct.
+ * `getProbabilityChart` returns no ranges below 2 points and `getCardChart`
+ * returns an empty spark, both by design (A-5 no-fabrication).
  */
-export async function seedHistory(marketId: string, currentYesPool: number, currentNoPool: number, points = 16): Promise<void> {
-  if (await store.hasHistory(marketId)) return;
-  const total = currentYesPool + currentNoPool;
-  const endYes = total > 0 ? currentYesPool / total : 0.5;
-  const startYes = Math.max(0.10, Math.min(0.90, endYes + (Math.cos(marketId.length) * 0.18)));
-  const startedAt = Date.now() - points * 60_000;
-  // Deterministic hash → noise floor
-  let h = 0;
-  for (let i = 0; i < marketId.length; i++) h = (h * 31 + marketId.charCodeAt(i)) >>> 0;
-
-  const snaps: MarketSnapshot[] = [];
-  for (let i = 0; i < points; i++) {
-    const k = i / Math.max(1, points - 1);
-    h = (h * 1103515245 + 12345) >>> 0;
-    const noise = ((h % 1000) / 1000 - 0.5) * 0.05;
-    const yes = Math.max(0.05, Math.min(0.95, startYes + (endYes - startYes) * k + noise));
-    const v = Math.round(total * (0.2 + 0.8 * k));
-    const yesPool = Math.round(v * yes);
-    const noPool  = v - yesPool;
-    snaps.push({
-      t: new Date(startedAt + i * 60_000).toISOString(),
-      yes,
-      yesPool,
-      noPool,
-      volume: v,
-    });
-  }
-  await store.setAll(marketId, snaps);
-}
 
 // ── Chart data for the signature ProbabilityChart + card sparkline ──────────
 
@@ -225,12 +286,68 @@ export async function getProbabilityChart(marketId: string): Promise<{
 
 /** Lightweight card data: a short yes% sparkline series + the 24h move (points).
  *  move24h is undefined when there isn't enough history to compute it. */
-export async function getCardChart(marketId: string): Promise<{ spark: number[]; move24h?: number }> {
-  const all = await getHistory(marketId);
-  if (all.length < 2) return { spark: [] };
-  const spark = compress(all, 16).map((s) => Math.round(s.yes * 100));
+export async function getCardChart(marketId: string): Promise<CardChart> {
+  return cardChartFrom(await getHistory(marketId));
+}
+
+type CardChart = { spark: number[]; move24h?: number };
+const EMPTY_CARD: CardChart = { spark: [] };
+
+/** Shared by the single and batched readers so a card can never disagree with
+ *  itself depending on which path rendered it. */
+function cardChartFrom(points: { t: string; yes: number }[]): CardChart {
+  if (points.length < 2) return EMPTY_CARD;
+  const spark = compress(points, 16).map((s) => Math.round(s.yes * 100));
   const now = Date.now();
-  const dayAgo = all.find((s) => now - Date.parse(s.t) <= 24 * 3600_000) ?? all[0];
-  const cur = Math.round(all[all.length - 1].yes * 100);
+  const dayAgo = points.find((s) => now - Date.parse(s.t) <= 24 * 3600_000) ?? points[0];
+  const cur = Math.round(points[points.length - 1].yes * 100);
   return { spark, move24h: cur - Math.round(dayAgo.yes * 100) };
+}
+
+/** A card only ever needs enough history to draw 16 points and a 24h delta, so
+ *  the batched read is bounded by TIME rather than by count. Wider than 24h so a
+ *  quiet market still shows shape rather than flattening to nothing. */
+const CARD_WINDOW_MS = 7 * 24 * 3600_000;
+
+/**
+ * Card charts for a whole board in ONE query.
+ *
+ * Every board (`/`, `/markets`, `/results`) renders N cards, and calling
+ * `getCardChart` per card meant N round trips each pulling up to MAX_POINTS
+ * rows — 800 rows fetched to draw a 16-point sparkline, N times per render, on
+ * the hottest routes in the product. Always prefer this over mapping
+ * `getCardChart` across a list.
+ */
+export async function getCardCharts(marketIds: string[]): Promise<Map<string, CardChart>> {
+  const out = new Map<string, CardChart>();
+  if (marketIds.length === 0) return out;
+
+  const db = prisma();
+  if (!db) {
+    // No database (tests, local no-DB runs) — the memory Map has no per-query
+    // cost, so the simple path is correct here.
+    for (const id of marketIds) out.set(id, cardChartFrom(await getHistory(id)));
+    return out;
+  }
+
+  try {
+    const rows = await db.marketSnapshot.findMany({
+      where: { marketId: { in: marketIds }, t: { gte: new Date(Date.now() - CARD_WINDOW_MS) } },
+      orderBy: { t: "asc" },
+      select: { marketId: true, t: true, yes: true },
+    });
+    const grouped = new Map<string, { t: string; yes: number }[]>();
+    for (const r of rows) {
+      const arr = grouped.get(r.marketId);
+      const pt = { t: r.t.toISOString(), yes: r.yes };
+      if (arr) arr.push(pt);
+      else grouped.set(r.marketId, [pt]);
+    }
+    for (const id of marketIds) out.set(id, cardChartFrom(grouped.get(id) ?? []));
+  } catch (err) {
+    // A board must still render without its sparklines.
+    console.error("[market-history] batched card charts failed", err);
+    for (const id of marketIds) out.set(id, EMPTY_CARD);
+  }
+  return out;
 }

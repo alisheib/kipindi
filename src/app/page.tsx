@@ -5,7 +5,7 @@ import { FiftyLockup } from "@/components/brand";
 
 import { listMarkets, impliedYesPct, isClosedByTime, isSelectionClosed, traderSeedsByMarket } from "@/lib/server/market-service";
 
-import { getCardChart } from "@/lib/server/market-history";
+import { getCardCharts } from "@/lib/server/market-history";
 import { getSession } from "@/lib/server/session";
 import { getPlatformStats } from "@/lib/server/platform-stats";
 import { StatsBand } from "@/components/home/stats-band";
@@ -29,7 +29,8 @@ export default async function LandingPage() {
   // scan) + a short-TTL cache so the high-traffic landing doesn't recompute per view.
   const settledCount = stats.settledCount;
   const paidOut = stats.paidOutTzs;
-  const cardCharts = new Map(await Promise.all(live.map(async (m) => [m.id, await getCardChart(m.id).catch(() => ({ spark: [] as number[], move24h: undefined }))] as const)));
+  // One query for the whole board — never map getCardChart across a list.
+  const cardCharts = await getCardCharts(live.map((m) => m.id)).catch(() => new Map());
   const isAuthed = !!session;
 
   const TOPICS: Array<{ id: string; label: string }> = [

@@ -4,7 +4,7 @@ import { SignalPip } from "@/components/brand";
 import { I, categoryGlyph } from "@/components/ui/glyphs";
 import { MarketCard } from "@/components/markets/market-card";
 import { listMarkets, impliedYesPct, isClosedByTime, isSelectionClosed, traderSeedsByMarket, type MarketCategory } from "@/lib/server/market-service";
-import { getCardChart } from "@/lib/server/market-history";
+import { getCardCharts } from "@/lib/server/market-history";
 import { countComments } from "@/lib/server/comments-store";
 import { getServerT } from "@/lib/i18n-server";
 
@@ -266,7 +266,8 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
     : (await listMarkets({ status: "RESOLVED" }).catch(() => [])).slice(0, 3);
   const traderMap = await traderSeedsByMarket().catch(() => new Map());
   const allForCharts = [...pagedLive, ...resolved];
-  const cardCharts = new Map(await Promise.all(allForCharts.map(async (m) => [m.id, await getCardChart(m.id).catch(() => ({ spark: [] as number[], move24h: undefined }))] as const)));
+  // One query for the whole board — never map getCardChart across a list.
+  const cardCharts = await getCardCharts(allForCharts.map((m) => m.id)).catch(() => new Map());
   const commentCounts = new Map(await Promise.all(allForCharts.map(async (m) => [m.id, await countComments(m.id).catch(() => 0)] as const)));
 
   const resultCount = live.length + resolved.length;

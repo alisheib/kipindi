@@ -5,7 +5,7 @@ import { MarketCard } from "@/components/markets/market-card";
 import { Chip } from "@/components/ui/chip";
 import { TippingBar } from "@/components/brand";
 import { listMarkets, impliedYesPct, type MarketCategory } from "@/lib/server/market-service";
-import { getCardChart } from "@/lib/server/market-history";
+import { getCardCharts } from "@/lib/server/market-history";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { ResultsSearch } from "./results-search";
@@ -143,9 +143,8 @@ async function ResultsContent({
   const notableIds = new Set(notableList.map((m) => m.id));
 
   // Build chart data for visible page only
-  const cardCharts = new Map(
-    await Promise.all(paged.map(async (m) => [m.id, await getCardChart(m.id).catch(() => ({ spark: [] }))] as const)),
-  );
+  // One query for the whole board — never map getCardChart across a list.
+  const cardCharts = await getCardCharts(paged.map((m) => m.id)).catch(() => new Map());
 
   // Helpers
   const buildHref = (next: { cat?: string; sort?: string; page?: number }) => {

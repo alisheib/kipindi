@@ -16,7 +16,7 @@ import { Chip } from "@/components/ui/chip";
 import { cashOutValue, getMarket, impliedYesPct, isClosedByTime, isSelectionClosed, listPositionsForUser, ratesFor } from "@/lib/server/market-service";
 import { poolFee } from "@/lib/payout";
 import { getEffectiveConfig } from "@/lib/server/market-config";
-import { getProbabilityChart, seedHistory } from "@/lib/server/market-history";
+import { getProbabilityChart } from "@/lib/server/market-history";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { ensureAffiliateAccount } from "@/lib/server/affiliate-service";
@@ -191,9 +191,10 @@ export default async function MarketDetail({
     }
   }
 
-  // History — seed if empty (legacy demo markets), then build the signature
-  // ProbabilityChart's range-keyed series from real snapshots.
-  try { await seedHistory(m.id, m.yesPool, m.noPool); } catch { /* graceful */ }
+  // History — REAL snapshots only. This used to call seedHistory() first, which
+  // fabricated a random walk whenever history was empty; since history lived in
+  // a Map wiped on every deploy, that meant every market, every time. Deleted.
+  // A market without enough real points renders no chart (A-5 no-fabrication).
   let probChart: Awaited<ReturnType<typeof getProbabilityChart>> = { series: {}, ranges: [] };
   try { probChart = await getProbabilityChart(m.id); } catch { /* graceful */ }
   let comments: Awaited<ReturnType<typeof listComments>> = [];
