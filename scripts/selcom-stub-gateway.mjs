@@ -64,6 +64,18 @@ const server = createServer((req, res) => {
       const amount = Number(body.amount);
       const scenario = scenarioFor(amount);
 
+      // Mirror the REAL gateway's mandatory-field check. Every mobile-money deposit
+      // failed in production on 2026-07-20 with
+      //   HTTP 412 · "Parameter no_of_items is invalid or missing"
+      // and this stub happily accepted the same body, so no test could catch it.
+      // A stub that is more permissive than the real thing is worse than no stub.
+      if (body.no_of_items === undefined || body.no_of_items === null || Number(body.no_of_items) < 1) {
+        return send(res, 412, {
+          resultcode: "412", result: "FAIL",
+          message: "Parameter no_of_items is invalid or missing",
+        });
+      }
+
       if (scenario === "CREATE_FAIL") {
         return send(res, 200, { resultcode: "038", result: "FAILED", message: "Order creation failed (stub scenario)" });
       }

@@ -244,6 +244,14 @@ export async function selcomDeposit(env: SelcomEnv, opts: { orderId: string; amo
     buyer_phone: phone,
     amount: Math.round(opts.amount),
     currency: "TZS",
+    // MANDATORY. Selcom rejects create-order-minimal without it:
+    //   HTTP 412 · resultcode=412 · "Parameter no_of_items is invalid or missing"
+    // Confirmed against the live gateway on 2026-07-20 — every mobile-money deposit
+    // failed here. The card path (selcomCardCheckout) always sent it; this one never
+    // did, and the API digest's field list elides it behind a trailing "...".
+    // Position matters: key order IS the Signed-Fields order, and this mirrors the
+    // card path, where no_of_items sits last before `webhook`.
+    no_of_items: 1,
   };
   if (env.webhookUrl) createBody.webhook = Buffer.from(env.webhookUrl).toString("base64");
   let create: SelcomResponse;

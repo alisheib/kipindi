@@ -112,12 +112,23 @@ ok("missing timestamp → rejected", verifySelcomCallback({ signedFields: cbHead
 // handset. Only a DEFINITIVE Selcom rejection is FAILED/DECLINED. Regression guard for
 // the double-pay / charged-not-credited bug.
 const FAKE_ENV = { baseUrl: "https://apigw.selcommobile.com/v1", apiKey: "k", apiSecret: "s", vendor: "v", pin: "1234", timeoutMs: 5_000 };
-const jsonResp = (code: string, status = 200) =>
-  new Response(JSON.stringify({ resultcode: code, result: code === "000" ? "SUCCESS" : (["111", "927", "999"].includes(code) ? "PENDING" : "FAIL") }), { status, headers: { "content-type": "application/json" } });
+const jsonResp = (code: string, status = 200, message?: string) =>
+  new Response(JSON.stringify({
+    resultcode: code,
+    result: code === "000" ? "SUCCESS" : (["111", "927", "999"].includes(code) ? "PENDING" : "FAIL"),
+    ...(message ? { message } : {}),
+  }), { status, headers: { "content-type": "application/json" } });
 
-async function withFetch(handler: (url: string, method: string) => Promise<Response> | Response, fn: () => Promise<void>) {
+/** The handler also receives `init`, so a test can assert on the BODY we send —
+ *  a status-code-only stub cannot catch a missing mandatory field, which is how
+ *  the no_of_items defect reached production. */
+async function withFetch(
+  handler: (url: string, method: string, init?: RequestInit) => Promise<Response> | Response,
+  fn: () => Promise<void>,
+) {
   const real = globalThis.fetch;
-  globalThis.fetch = (async (url: unknown, init?: { method?: string }) => handler(String(url), init?.method ?? "GET")) as typeof fetch;
+  globalThis.fetch = (async (url: unknown, init?: RequestInit) =>
+    handler(String(url), init?.method ?? "GET", init)) as typeof fetch;
   try { await fn(); } finally { globalThis.fetch = real; }
 }
 
@@ -163,6 +174,42 @@ await withFetch(() => { throw Object.assign(new Error("x"), { name: "AbortError"
 await withFetch((u) => u.includes("create-order") ? jsonResp("000") : jsonResp("000"), async () => {
   const r = await selcomDeposit(FAKE_ENV, { orderId: "o5", amount: 1000, msisdn: "0712345678", userId: "u" });
   ok("deposit: both steps ok → accepted", r.ok === true);
+});
+
+// ── Mandatory create-order fields ────────────────────────────────────────────
+// EVERY mobile-money deposit failed in production on 2026-07-20 with
+//   HTTP 412 · resultcode=412 · "Parameter no_of_items is invalid or missing"
+// because this path never sent no_of_items (the card path always did, and the API
+// digest elides the field behind a trailing "..."). Assert the body Selcom actually
+// receives, not just the verdict — a status-code-only test cannot catch a missing
+// field, which is exactly why four real deposits had to fail to find it.
+{
+  let sent: Record<string, unknown> = {};
+  await withFetch((u, _m, init) => {
+    if (u.includes("create-order")) sent = JSON.parse(String(init?.body ?? "{}"));
+    return jsonResp("000");
+  }, async () => {
+    await selcomDeposit(FAKE_ENV, { orderId: "o6", amount: 1000, msisdn: "0712345678", userId: "u" });
+  });
+  ok("deposit create-order sends no_of_items", Number(sent.no_of_items) >= 1);
+  for (const f of ["vendor", "order_id", "buyer_email", "buyer_name", "buyer_phone", "amount", "currency"]) {
+    ok(`deposit create-order sends ${f}`, sent[f] !== undefined && sent[f] !== "");
+  }
+  // Key order IS the Signed-Fields order — a reorder silently breaks the signature.
+  const keys = Object.keys(sent);
+  ok("deposit create-order field order starts vendor,order_id,buyer_email",
+    keys[0] === "vendor" && keys[1] === "order_id" && keys[2] === "buyer_email");
+}
+
+// A 412 rejection must be a DEFINITIVE safe-fail with the reason preserved — this
+// is the branch that used to return PROVIDER_DOWN with the cause discarded.
+await withFetch((u) => u.includes("create-order")
+  ? jsonResp("412", 412, "Parameter no_of_items is invalid or missing")
+  : jsonResp("000"), async () => {
+  const r = await selcomDeposit(FAKE_ENV, { orderId: "o7", amount: 1000, msisdn: "0712345678", userId: "u" });
+  ok("deposit: create-order 412 → PROVIDER_DOWN (nothing charged)", !r.ok && r.reason === "PROVIDER_DOWN");
+  ok("deposit: 412 reason is preserved for diagnosis",
+    !r.ok && typeof r.detail === "string" && r.detail.includes("no_of_items"));
 });
 
 console.log(`\nselcom-adapter: ${pass} passed, ${fail} failed`);
