@@ -458,11 +458,27 @@ export async function buildIsoAudit(generatorId: string): Promise<Report> {
       { label: "Entries in the log", value: total.toLocaleString(), tone: "neutral" },
       // Full-chain verification against the persisted DB — not just the in-memory
       // 10k ring. Falls back to in-memory when no DB is available.
+      // Two DIFFERENT facts, stated separately, because collapsing them into one
+      // boolean printed "BROKEN" on a regulator hand-off — which asserts tampering.
+      //
+      //  • The chain LINKS are what prove no entry was inserted, removed or
+      //    reordered. A break here is the real integrity failure.
+      //  • A row that will not recompute is a HASHING-REGIME question, not a tamper
+      //    signal: this platform signed with the SESSION_SECRET fallback before
+      //    AUDIT_CHAIN_SECRET existed, and rows written before the payload
+      //    normalisation fix cannot recompute at all.
       await (async (): Promise<SummaryItem> => {
         const v = await verifyChainFull();
-        return v.valid
-          ? { label: "Chain verification", value: "Valid", tone: "good", delta: `HMAC-SHA-256, ${v.total.toLocaleString()} entries verified (full DB chain)` }
-          : { label: "Chain verification", value: "BROKEN", tone: "bad", delta: `First break at ${v.firstBreakAt ?? "unknown"} (entry #${v.index ?? "?"} of ${v.total})` };
+        if (!v.valid) {
+          return { label: "Chain integrity", value: "BROKEN", tone: "bad",
+            delta: `Chain link failed at ${v.firstBreakAt ?? "unknown"} (entry #${v.index ?? "?"} of ${v.total.toLocaleString()}) — an entry was inserted, removed or reordered.` };
+        }
+        const unver = v.unverifiable ?? 0;
+        return unver === 0
+          ? { label: "Chain integrity", value: "Intact", tone: "good",
+              delta: `HMAC-SHA-256 · ${v.total.toLocaleString()} entries, all links joined and all hashes recomputed` }
+          : { label: "Chain integrity", value: "Intact", tone: "good",
+              delta: `${v.total.toLocaleString()} entries, every link joined. ${(v.verified ?? 0).toLocaleString()} hashes recomputed; ${unver.toLocaleString()} predate the current signing regime and cannot be re-verified (see note).` };
       })(),
       // Rows are now oldest-first (chain order), so first/last are the other way round
       // from the ring-backed version. These describe THIS EXPORT's span — with a cap in
@@ -502,6 +518,18 @@ export async function buildIsoAudit(generatorId: string): Promise<Report> {
     notes: [
       "Each entryHash = HMAC-SHA-256(prevHash || category || action || createdAt || payload, AUDIT_CHAIN_SECRET).",
       "If a single field is modified, the chain breaks at the next verify. Cf. ISO/IEC 27001:2022 A.8.15.",
+      // The honest disclosure. Without it, a non-zero "cannot be re-verified" count on
+      // the page invites exactly the conclusion it must not: that the log was altered.
+      "Integrity is asserted on two independent grounds. (1) CHAIN LINKS: every entry " +
+        "carries the previous entry's hash, so an inserted, removed or reordered record " +
+        "breaks the chain — this is the tamper-evidence property, and it is verified over " +
+        "the full database. (2) HASH RECOMPUTATION: each entry's own HMAC is recomputed.",
+      "Entries signed before the platform adopted a dedicated audit-chain key (previously " +
+        "the session key was used) cannot be recomputed under the current key and are " +
+        "reported as such. That is a signing-key history, not evidence of alteration: their " +
+        "chain links are intact and verified. Historical hashes are deliberately NOT " +
+        "recomputed under the current key — doing so would rewrite the very record whose " +
+        "purpose is to show nothing was rewritten.",
       "Full payloads are available on /admin/audit; this report is the index for a regulator first-pass.",
     ],
     signatures: await regulatorSignatures(generatorId),

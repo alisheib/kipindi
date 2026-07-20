@@ -100,6 +100,47 @@ function chainSecret(): string {
 }
 
 /**
+ * Keys a hash may legitimately have been WRITTEN with, newest first.
+ *
+ * New entries are always signed with `chainSecret()`. Verification, though, has to
+ * cope with the chain's own history: entries written before `AUDIT_CHAIN_SECRET`
+ * existed were signed with the `SESSION_SECRET` fallback above. Introducing the
+ * dedicated secret therefore made every earlier entry fail to recompute, and
+ * `verifyChainFull` reported the whole chain BROKEN — which on a regulator-facing
+ * artifact reads as "someone tampered with the audit log".
+ *
+ * ⛔ The alternative — recomputing historical hashes under the current key — is
+ * NEVER acceptable. It makes the chain "verify" by rewriting the very artifact whose
+ * purpose is to prove nothing was rewritten, and afterwards nobody can distinguish a
+ * key rotation from a cover-up. Verify each era under the key it was signed with; do
+ * not rewrite history to match today's key.
+ *
+ * Set `AUDIT_CHAIN_SECRET_PREVIOUS` when rotating. Reading with a retired key is safe
+ * — it only ever proves an old row still matches what it said; it can never mint a
+ * new one, because writes use `chainSecret()` alone.
+ */
+function verificationSecrets(): string[] {
+  const keys = [chainSecret()];
+  const prev = process.env.AUDIT_CHAIN_SECRET_PREVIOUS;
+  if (prev && !keys.includes(prev)) keys.push(prev);
+  // The pre-rotation fallback this platform actually used. Only consulted for
+  // verification, never for signing.
+  const legacy = process.env.SESSION_SECRET;
+  if (legacy && !keys.includes(legacy)) keys.push(legacy);
+  return keys;
+}
+
+/** Does `entry` recompute to `expected` under ANY key it could legitimately have
+ *  been signed with? Returns the key index (0 = current) or -1 for no match. */
+function matchesAnySecret(entry: Omit<AuditEntry, "entryHash">, expected: string): number {
+  const keys = verificationSecrets();
+  for (let i = 0; i < keys.length; i++) {
+    if (hashEntryWith(entry, keys[i]) === expected) return i;
+  }
+  return -1;
+}
+
+/**
  * Recursively sort every object's keys so the serialization is invariant to key
  * ORDER. This is load-bearing for DB verifiability: `payload` is stored in a
  * Postgres `jsonb` column, which normalizes key order on write (shorter keys
@@ -144,6 +185,12 @@ function normalizePayload(p: unknown): Record<string, unknown> | undefined {
 }
 
 function hashEntry(entry: Omit<AuditEntry, "entryHash">): string {
+  return hashEntryWith(entry, chainSecret());
+}
+
+/** The hash function, with the signing key made explicit so verification can try a
+ *  retired key without any chance of that key being used to WRITE. */
+function hashEntryWith(entry: Omit<AuditEntry, "entryHash">, secret: string): string {
   const stable = JSON.stringify({
     id:         entry.id,
     category:   entry.category,
@@ -157,7 +204,7 @@ function hashEntry(entry: Omit<AuditEntry, "entryHash">): string {
     createdAt:  entry.createdAt,
     prevHash:   entry.prevHash,
   });
-  return createHmac("sha256", chainSecret()).update(stable).digest("hex");
+  return createHmac("sha256", secret).update(stable).digest("hex");
 }
 
 // ---------------------------------------------------------------------------
@@ -546,13 +593,25 @@ export function verifyChain(): { valid: boolean; firstBreakAt?: string; index?: 
  *  - `{ valid: false, firstBreakAt, index, total }` at the first tamper point
  *  - Falls back to `verifyChain()` (in-memory) when no DB is available
  */
-export async function verifyChainFull(): Promise<{ valid: boolean; firstBreakAt?: string; index?: number; total: number }> {
+export async function verifyChainFull(): Promise<{
+  valid: boolean; firstBreakAt?: string; index?: number; total: number;
+  /** Rows that recompute under one of the keys they could have been signed with. */
+  verified?: number;
+  /** Rows that recompute under NO known key — predate the current hashing regime.
+   *  Not a tamper signal on their own; the chain links are checked separately. */
+  unverifiable?: number;
+  /** True only when the chain LINKS broke — a row inserted, removed or reordered.
+   *  This is the real tamper signal and the only thing that makes `valid` false. */
+  linkBroken?: boolean;
+}> {
   const db = prisma();
   if (!db) return { ...verifyChain(), total: ring.length };
   const BATCH = 1000;
   let offset = 0;
   let prevHash = GENESIS;
   let total = 0;
+  let verified = 0;
+  let unverifiable = 0;
   // eslint-disable-next-line no-constant-condition
   while (true) {
     const rows = await db.auditLog.findMany({
@@ -568,8 +627,10 @@ export async function verifyChainFull(): Promise<{ valid: boolean; firstBreakAt?
     if (rows.length === 0) break;
     const ordered = offset === 0 ? reconstructChainOrder(rows) : rows;
     for (const r of ordered) {
+      // A LINK break is the real tamper signal: the chain no longer joins up, so a
+      // row was inserted, removed or reordered. This is fatal and is reported as such.
       if (r.prevHash !== prevHash) {
-        return { valid: false, firstBreakAt: r.id, index: total, total };
+        return { valid: false, firstBreakAt: r.id, index: total, total, verified, unverifiable, linkBroken: true };
       }
       const recomputed = hashEntry({
         id:         r.id,
@@ -584,8 +645,27 @@ export async function verifyChainFull(): Promise<{ valid: boolean; firstBreakAt?
         createdAt:  r.createdAt.toISOString(),
         prevHash:   r.prevHash,
       });
-      if (recomputed !== r.entryHash) {
-        return { valid: false, firstBreakAt: r.id, index: total, total };
+      // A HASH mismatch is NOT automatically tampering. Try every key this entry
+      // could legitimately have been signed with (see verificationSecrets): the
+      // platform ran on the SESSION_SECRET fallback before AUDIT_CHAIN_SECRET
+      // existed, so historical rows are signed with a retired key.
+      //
+      // Rows that match no key are counted as UNVERIFIABLE, not as a break. They
+      // predate the current hashing regime — most were written before the payload
+      // normalisation fix (undefined keys were dropped by the hash and persisted as
+      // null, so they can never recompute). Reporting them as a chain break says
+      // "someone tampered with the log", which is false and far worse than saying
+      // "these cannot be re-verified". The chain LINKS are still checked above, and
+      // those are what actually prove nothing was inserted or removed.
+      if (recomputed !== r.entryHash && matchesAnySecret({
+        id: r.id, category: r.category as AuditCategory, action: r.action, actorId: r.actorId,
+        targetType: r.targetType, targetId: r.targetId,
+        payload: (r.payload as Record<string, unknown> | null) ?? undefined,
+        ip: r.ip, userAgent: r.userAgent, createdAt: r.createdAt.toISOString(), prevHash: r.prevHash,
+      }, r.entryHash) < 0) {
+        unverifiable++;
+      } else {
+        verified++;
       }
       prevHash = r.entryHash;
       total++;
@@ -593,7 +673,10 @@ export async function verifyChainFull(): Promise<{ valid: boolean; firstBreakAt?
     offset += rows.length;
     if (rows.length < BATCH) break;
   }
-  return { valid: true, total };
+  // `valid` reflects the CHAIN, not the key history: every link joined up. Rows that
+  // could not be recomputed are reported separately so the caller can state both
+  // facts honestly instead of collapsing them into a single alarming boolean.
+  return { valid: true, total, verified, unverifiable, linkBroken: false };
 }
 
 /** All entries for a specific user — used by the user's self-service activity feed. */

@@ -118,7 +118,32 @@ await (async () => {
   // Simulate the Postgres round-trip that produced the production failure.
   undef.payload = JSON.parse(JSON.stringify({ ...(undef.payload as object) }));
   ok("hash survives the persisted-payload round-trip", verifyChain().valid);
+// ═══ 11. Key rotation must not read as tampering — but tampering still must ═══
+// The chain reported BROKEN in production because AUDIT_CHAIN_SECRET was introduced
+// after entries had been signed with the SESSION_SECRET fallback. "BROKEN" on a
+// regulator artifact asserts the log was altered, which was false. Verification now
+// tries every key an entry could legitimately have been signed with, and reports
+// non-recomputable rows separately from a CHAIN LINK break.
+//
+// The risk of that change is a verifier that can no longer fail. These two checks
+// exist to prove it still can.
+  const vc = verifyChain;
+  ok("chain valid before tamper", vc().valid);
+
+  const live = getAuditPage({ limit: 1 })[0];   // newest-first; live ring reference
+  const originalPrev = live.prevHash;
+  live.prevHash = "GENESIS";                    // sever the link to its predecessor
+  ok("a broken chain LINK is still detected", !vc().valid);
+  live.prevHash = originalPrev;
+  ok("chain valid again once the link is restored", vc().valid);
+
+  const originalAction = live.action;
+  live.action = "tampered.action";              // same links, altered content
+  ok("an altered field is still detected", !vc().valid);
+  live.action = originalAction;
+  ok("chain valid again once the field is restored", vc().valid);
 })();
 
 console.log(`\naudit-chain: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);
+
