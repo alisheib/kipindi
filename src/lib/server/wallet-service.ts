@@ -16,6 +16,7 @@ import { db, type StoredTxn } from "./store";
 import { randomId } from "./crypto";
 import { dispatchDeposit, dispatchWithdrawal, verifyDepositStatus, verifyWithdrawalStatus, type CardCheckoutContext } from "./payments";
 import { isPaymentPaused } from "./payment-ops";
+import { isLiveMoneyMode } from "./runtime-mode";
 import { isMaintenanceMode, maintenanceMessage } from "./platform-config";
 import { rateCheckAsync } from "./rate-limit";
 import { DepositSchema, AdminDepositSchema, WithdrawSchema } from "./validators";
@@ -693,6 +694,53 @@ export async function settlePaymentWebhook(input: { providerRef: string; status:
  * A withdrawal with no providerRef (dispatch never got one) is left for manual
  * review rather than blind-reversed.
  */
+/**
+ * FAST CREDIT LANE — the reason a player does not wait half an hour.
+ *
+ * The intended fast path is Selcom's callback, which credits in seconds. When that
+ * callback does not arrive (observed on the live rail 2026-07-20: a paid deposit sat
+ * PROCESSING with no webhook at all), the only other authority is the signed
+ * order-status re-query — and that used to live exclusively in the 30-minute stale
+ * sweep. A player who has already been debited will not wait 30 minutes, and will
+ * very reasonably pay again.
+ *
+ * So this runs on every lifecycle tick and re-queries deposits that have been in
+ * flight for more than a few seconds.
+ *
+ * ⚠️ It can ONLY confirm. It never fails, never reverses, never terminalises
+ * anything. That asymmetry is the whole safety argument: running a re-query every
+ * minute cannot turn a slow-but-valid deposit into a failed one, no matter what the
+ * provider or the network does. Every terminal decision stays with
+ * `reconcileStalePayments` and its deliberately patient 30-minute cutoff.
+ *
+ * Crediting goes through `settlePaymentWebhook`, so it is exactly-once and
+ * amount-tamper-checked — identical to the webhook path. A callback arriving later
+ * for the same reference is a no-op.
+ */
+export async function creditConfirmedDeposits(olderThanMs = 20_000): Promise<{ checked: number; confirmed: number }> {
+  const cutoff = Date.now() - olderThanMs;
+  const inFlight = (await db.txn.listByStatus("PROCESSING")).filter(
+    (t) => t.type === "DEPOSIT" && !!t.providerRef && Date.parse(t.createdAt) < cutoff,
+  );
+  let confirmed = 0;
+  for (const t of inFlight) {
+    try {
+      const v = await verifyDepositStatus(t.providerRef!);
+      if (v.status !== "CONFIRMED") continue; // PENDING / FAILED / UNSUPPORTED — not ours to act on
+      const r = await settlePaymentWebhook({ providerRef: t.providerRef!, status: "CONFIRMED", amount: v.amount });
+      if (r.handled) confirmed++;
+    } catch (err) {
+      // A provider blip must not stop the lane for the other in-flight deposits.
+      console.error("[payments] fast credit re-query failed", { txnId: t.id, err: (err as Error)?.message });
+    }
+  }
+  if (confirmed) {
+    audit({ category: "WALLET", action: "payments.fast_credit", actorId: null, targetType: null, targetId: null,
+      payload: { checked: inFlight.length, confirmed, olderThanMs } });
+  }
+  return { checked: inFlight.length, confirmed };
+}
+
 export async function reconcileStalePayments(olderThanMs = 30 * 60 * 1000): Promise<{ depositsFailed: number; withdrawalsReversed: number; depositsConfirmed: number; withdrawalsConfirmed: number; leftPending: number }> {
   const cutoff = Date.now() - olderThanMs;
   const stale = (await db.txn.listByStatus("PROCESSING")).filter((t) => Date.parse(t.createdAt) < cutoff);
@@ -712,7 +760,18 @@ export async function reconcileStalePayments(olderThanMs = 30 * 60 * 1000): Prom
       } else if (v.status === "FAILED") {
         if (await settleDepositFailed(t.id, "reconcile-verified-failed")) depositsFailed++;
       } else if (v.status === "UNSUPPORTED") {
-        if (await settleDepositFailed(t.id, "reconcile-timeout")) depositsFailed++; // mock/test — no money credited, safe
+        // UNSUPPORTED means "we could not ask" — the mock rail, or a live provider
+        // whose credentials are missing. Terminalising on that is only safe when no
+        // real money can be in flight. In LIVE money mode a missing/So-broken
+        // credential would otherwise blind-FAIL genuinely paid deposits within one
+        // sweep, with the audit reason indistinguishable from a real timeout.
+        if (isLiveMoneyMode()) {
+          leftPending++;
+          audit({ category: "WALLET", action: "payments.reconcile_needs_review", actorId: null, targetType: "Transaction", targetId: t.id,
+            payload: { reason: "provider status unavailable in LIVE mode — not auto-failed", providerRef: ref } });
+        } else if (await settleDepositFailed(t.id, "reconcile-timeout")) {
+          depositsFailed++; // mock/test — no money credited, safe
+        }
       } else {
         leftPending++; // PENDING — still in flight; leave PROCESSING for the next sweep
       }

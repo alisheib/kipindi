@@ -100,6 +100,24 @@ async function maybeReconcileLedger(): Promise<void> {
 const PAYMENT_SWEEP_EVERY_MS = 5 * 60 * 1000;
 let lastPaymentSweepAt = 0;
 
+/**
+ * Fast credit lane — runs on EVERY tick, not on the 5-minute sweep cadence.
+ *
+ * A player who has already been debited by their mobile-money provider will not
+ * wait for the 30-minute stale sweep, and will pay again. Selcom's callback is the
+ * intended fast path, but on 2026-07-20 a genuinely paid deposit sat PROCESSING
+ * with no webhook ever arriving. This re-queries the signed order-status directly,
+ * so credit no longer depends on the callback showing up.
+ *
+ * `creditConfirmedDeposits` can only CONFIRM — never fail, never reverse — so
+ * running it once a minute cannot turn a slow deposit into a failed one.
+ */
+async function fastCreditInFlightDeposits(): Promise<void> {
+  const { creditConfirmedDeposits } = await import("./wallet-service");
+  const r = await creditConfirmedDeposits();
+  if (r.confirmed) console.log(`[lifecycle] fast-credited ${r.confirmed} of ${r.checked} in-flight deposit(s)`);
+}
+
 async function maybePaymentSweeps(): Promise<void> {
   const now = Date.now();
   if (now - lastPaymentSweepAt < PAYMENT_SWEEP_EVERY_MS) return;
@@ -162,6 +180,9 @@ export async function runLifecyclePass(): Promise<void> {
     }
 
     await expireActiveGrants().catch((e) => console.error("[lifecycle] bonus expiry:", e));
+    // Every tick, not every 5 minutes: a debited player must not wait on the stale
+    // sweep. Confirm-only, so it cannot fail a slow deposit.
+    await fastCreditInFlightDeposits().catch((e) => console.error("[lifecycle] fast credit:", e));
     await maybePaymentSweeps().catch((e) => console.error("[lifecycle] payment sweeps:", e));
     await maybeReconcileLedger().catch((e) => console.error("[lifecycle] trial balance:", e));
   } finally {
