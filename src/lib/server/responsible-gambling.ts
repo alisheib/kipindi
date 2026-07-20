@@ -69,6 +69,8 @@ export async function getRgSettings(userId: string) {
     realityCheckIntervalMin: DEFAULT_REALITY_CHECK_MIN,
     selfExclusionUntil: null,
     coolingOffUntil: null,
+    selfExclusionStartedAt: null,
+    coolingOffStartedAt: null,
     pendingIncreaseTo: null,
     pendingIncreaseEffectiveAt: null,
     pendingWeeklyIncreaseTo: null,
@@ -208,7 +210,14 @@ export async function setLimits(userId: string, input: SetLimitInput) {
 export async function selfExclude(userId: string, period: keyof typeof SELF_EXCLUSION_PERIODS_SEC) {
   const cur = await getRgSettings(userId);
   const until = new Date(Date.now() + SELF_EXCLUSION_PERIODS_SEC[period] * 1000).toISOString();
-  await db.responsible.upsert({ ...cur, selfExclusionUntil: until });
+  // Stamp the start as well as the end — the cross-operator register has to state
+  // when the exclusion began, and without this it fell back to the account's
+  // registration date, which is wrong for every row.
+  await db.responsible.upsert({
+    ...cur,
+    selfExclusionUntil: until,
+    selfExclusionStartedAt: new Date().toISOString(),
+  });
   // Freeze user + wallet
   await db.user.update(userId, { status: "SELF_EXCLUDED" });
   const wallet = await db.wallet.findByUserId(userId);
@@ -242,7 +251,12 @@ export async function selfExclude(userId: string, period: keyof typeof SELF_EXCL
 export async function coolOff(userId: string, period: keyof typeof COOLING_OFF_PERIODS_SEC) {
   const cur = await getRgSettings(userId);
   const until = new Date(Date.now() + COOLING_OFF_PERIODS_SEC[period] * 1000).toISOString();
-  await db.responsible.upsert({ ...cur, coolingOffUntil: until });
+  // Stamp the start alongside the end — see selfExclude().
+  await db.responsible.upsert({
+    ...cur,
+    coolingOffUntil: until,
+    coolingOffStartedAt: new Date().toISOString(),
+  });
   await db.user.update(userId, { status: "COOLED_OFF" });
   audit({
     category: "COMPLIANCE",

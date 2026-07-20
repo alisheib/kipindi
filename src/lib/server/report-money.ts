@@ -40,12 +40,29 @@ import type { MarketCategory } from "./market-service";
 export type ReportPeriod = "today" | "7d" | "30d" | "mtd";
 export const REPORT_PERIODS: ReportPeriod[] = ["today", "7d", "30d", "mtd"];
 
-const EAT_OFFSET_MS = 3 * 3600_000; // East Africa Time = UTC+3, no DST.
+export const EAT_OFFSET_MS = 3 * 3600_000; // East Africa Time = UTC+3, no DST.
 const DAY_MS = 24 * 3600_000;
 
-/** Midnight EAT (as a UTC epoch ms) of the day containing `ms`. */
-function startOfEatDay(ms: number): number {
+/**
+ * Midnight EAT (as a UTC epoch ms) of the day containing `ms`.
+ *
+ * EXPORTED ON PURPOSE — this is the single definition of "a Tanzanian day" for
+ * every report. `buildDailyOps` used to derive its own window from
+ * `new Date().getFullYear()/getMonth()/getDate()`, which is SERVER-LOCAL; the
+ * Railway container runs UTC, so its "day" ran 03:00 → 03:00 EAT. That report
+ * computes the TRA and GBT levies, so the tax was assessed on the wrong 24
+ * hours, and consecutive daily filings could not be reconciled against the
+ * (EAT-correct) monthly pack. Import this — do not re-derive a day anywhere.
+ */
+export function startOfEatDay(ms: number): number {
   return Math.floor((ms + EAT_OFFSET_MS) / DAY_MS) * DAY_MS - EAT_OFFSET_MS;
+}
+
+/** The EAT calendar date (YYYY-MM-DD) containing `ms`. Never use
+ *  `toISOString().slice(0,10)` for a player- or regulator-facing date: between
+ *  21:00 and 24:00 EAT that prints tomorrow. */
+export function eatDateLabel(ms: number): string {
+  return new Date(ms + EAT_OFFSET_MS).toISOString().slice(0, 10);
 }
 
 /** Midnight EAT of the first day of the month containing `ms`. */

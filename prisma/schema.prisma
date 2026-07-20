@@ -599,6 +599,17 @@ model ResponsibleGambling {
   realityCheckIntervalMin    Int       @default(30)
   selfExclusionUntil         DateTime?
   coolingOffUntil            DateTime?
+  /// When the CURRENT self-exclusion / cooling-off period actually began.
+  ///
+  /// The cross-operator register must state when an exclusion started, not when the
+  /// account was opened. Before these columns the register printed `User.createdAt`
+  /// in its "Started" column — wrong for every row, and inconsistent with the
+  /// "days remaining" beside it, which was derived from the (correct) end date.
+  ///
+  /// Nullable and not backfilled: for exclusions set before this existed we do not
+  /// know the start, and the register prints "—" rather than inventing one.
+  selfExclusionStartedAt     DateTime?
+  coolingOffStartedAt        DateTime?
   pendingIncreaseTo          Decimal?  @db.Decimal(18, 2)
   pendingIncreaseEffectiveAt DateTime?
   pendingWeeklyIncreaseTo          Decimal?  @db.Decimal(18, 2)

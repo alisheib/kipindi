@@ -210,6 +210,10 @@ export type StoredResponsibleGambling = {
   realityCheckIntervalMin: number;
   selfExclusionUntil: string | null;
   coolingOffUntil: string | null;
+  /** When the CURRENT exclusion/cooling-off began. Null for periods set before this
+   *  was recorded — the cross-operator register prints "—" rather than guessing. */
+  selfExclusionStartedAt: string | null;
+  coolingOffStartedAt: string | null;
   pendingIncreaseTo: number | null;
   pendingIncreaseEffectiveAt: string | null;
   pendingWeeklyIncreaseTo: number | null;

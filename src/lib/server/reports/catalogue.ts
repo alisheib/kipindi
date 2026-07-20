@@ -17,6 +17,10 @@ import {
   grossGamingRevenue, netGamingRevenue, kycFunnel, rgRosterCounts,
 } from "../analytics";
 import { currentPackPeriod, packPeriodLabel, packPeriodBounds } from "../report-pack";
+// The single definition of a Tanzanian day. Never re-derive one locally.
+import { startOfEatDay, eatDateLabel } from "../report-money";
+// The SAR must report the same threshold the live AML hold enforces.
+import { AML_REVIEW_THRESHOLD_TZS } from "../payments";
 import { getGlobalConfig } from "../market-config";
 import type { Report, Row, SignatureRow, SummaryItem } from "./types";
 import { formatDateTime, formatTzs } from "@/lib/utils";
@@ -175,7 +179,23 @@ export async function buildGbtMonthly(generatorId: string, packPeriod: string = 
       "GGR = total stakes − total payouts (voids/refunds excluded from both sides).",
       "NGR = GGR − bonus cost − payment-processing fees (pre-tax operator bottom line).",
       "All amounts in Tanzanian Shillings (TZS). Rounded to the nearest shilling.",
-      "Generated from the live append-only audit log; row counts match the audit chain.",
+      // PROVENANCE — must describe what this builder actually reads.
+      //
+      // This line previously claimed "Generated from the live append-only audit log;
+      // row counts match the audit chain." That was FALSE: no figure in this pack comes
+      // from the audit log, and no row count is reconciled against the audit chain. It
+      // was printed on the artifact that passes through the two-officer signing chain to
+      // the Gaming Board. Never state a provenance this builder does not exercise.
+      "Source: the Transaction, User and KYC tables, aggregated for the named EAT calendar " +
+        "month. Financial figures are computed by the shared money module used by the " +
+        "operator console, so the console and this pack cannot disagree.",
+      // Scope caveat — the honest disclosure of §1.9. kycFunnel() and rgRosterCounts()
+      // take no window; they are as-of-generation snapshots sitting beside period-bounded
+      // money. Until they are windowed, the document must say so rather than let a reader
+      // assume every number shares the heading's period.
+      "Scope: deposits, withdrawals, GGR, NGR and the provider summary are bounded to the " +
+        "period above. The KYC funnel and responsible-gambling roster are point-in-time " +
+        "counts as at the generation timestamp, not period totals.",
     ],
     signatures: await regulatorSignatures(generatorId),
   };
@@ -185,8 +205,28 @@ export async function buildGbtMonthly(generatorId: string, packPeriod: string = 
 // 3 · FIU SUSPICIOUS-ACTIVITY REPORT
 // ─────────────────────────────────────────────────────────────────────
 
-export async function buildFiuSar(generatorId: string): Promise<Report> {
-  const cutoff = 1_000_000;
+export async function buildFiuSar(generatorId: string, packPeriod: string = currentPackPeriod()): Promise<Report> {
+  // Use the SAME threshold the live AML hold uses (payments.AML_REVIEW_THRESHOLD_TZS).
+  // A SAR that reports a different threshold from the control that generated the holds
+  // is internally inconsistent, and the two would silently drift apart on any change.
+  const cutoff = AML_REVIEW_THRESHOLD_TZS;
+
+  // A SAR must cover a stated reporting period. This was previously
+  // "Active queue (lifetime)" with no date filter at all, so it grew without bound
+  // and could not be filed for a window.
+  const bounds = packPeriodBounds(packPeriod);
+
+  // Money that actually MOVED, in or out of the platform. The previous filter was
+  // `Math.abs(amount) >= cutoff` across ALL types and ALL statuses, which reported to
+  // the Financial Intelligence Unit:
+  //   • large BET_PAYOUTs, BET_REFUNDs, BONUS_CREDITs and ADJUSTMENTs — internal
+  //     movements, not cash entering or leaving the regulated perimeter; and
+  //   • FAILED / CANCELLED / REVERSED transactions — money that never moved at all.
+  // Filing those as "suspicious activity" both buries the real signals and misstates
+  // the operator's exposure.
+  const CASH_MOVEMENT: ReadonlySet<string> = new Set(["DEPOSIT", "WITHDRAWAL"]);
+  const SETTLED: ReadonlySet<string> = new Set(["CONFIRMED", "AML_REVIEW"]);
+
   type Row = {
     playerId: string; phone: string; triggerKind: string; amount: number;
     txnId: string; triggerAt: string; reviewStatus: string;
@@ -196,7 +236,16 @@ export async function buildFiuSar(generatorId: string): Promise<Report> {
   // Cache user lookups to avoid repeated findById for the same user.
   const userCache = new Map<string, { phone: string } | null>();
   for (const t of await db.txn.listAll()) {
-    if (Math.abs(t.amount) < cutoff && t.status !== "AML_REVIEW") continue;
+    const at = new Date(t.createdAt).getTime();
+    if (at < bounds.start || at >= bounds.end) continue;
+
+    // An explicit AML hold is reportable whatever its type — an officer put it there.
+    const heldForAml = t.status === "AML_REVIEW";
+    // A threshold breach only counts when real cash crossed the perimeter.
+    const thresholdBreach =
+      CASH_MOVEMENT.has(t.type) && SETTLED.has(t.status) && Math.abs(t.amount) >= cutoff;
+    if (!heldForAml && !thresholdBreach) continue;
+
     if (!userCache.has(t.userId)) {
       const u = await db.user.findById(t.userId);
       userCache.set(t.userId, u ? { phone: `${u.phoneE164.slice(0, 4)}*****${u.phoneE164.slice(-2)}` } : null);
@@ -206,13 +255,15 @@ export async function buildFiuSar(generatorId: string): Promise<Report> {
     rows.push({
       playerId: t.userId,
       phone: cached.phone,
-      triggerKind: Math.abs(t.amount) >= cutoff ? "Threshold breach" : "AML review",
+      triggerKind: heldForAml ? "AML review" : "Threshold breach",
       amount: Math.abs(t.amount),
       txnId: t.id,
       triggerAt: t.createdAt,
       reviewStatus: t.status,
     });
   }
+  // Largest first — an FIU reviewer reads top-down.
+  rows.sort((a, b) => b.amount - a.amount);
   return {
     title: "Financial Intelligence Unit · Suspicious-Activity Report",
     subtitle: `Transactions over the ${formatTzs(cutoff)} threshold, or paused for AML review`,
@@ -220,7 +271,7 @@ export async function buildFiuSar(generatorId: string): Promise<Report> {
     meta: {
       generatedAt: new Date().toISOString(),
       generatedBy: generatorId,
-      period: "Active queue (lifetime)",
+      period: `${packPeriodLabel(packPeriod)} · ${packPeriod} (EAT)`,
       classification: "Confidential",
     },
     summary: [
@@ -231,7 +282,11 @@ export async function buildFiuSar(generatorId: string): Promise<Report> {
     sections: [
       {
         title: "Flagged transactions",
-        description: "Each row meets at least one of: (a) absolute amount over the threshold, (b) status set to AML review.",
+        description:
+          "Each row meets at least one of: (a) a confirmed deposit or withdrawal at or above " +
+          "the threshold, (b) a transaction an officer placed under AML review. Internal " +
+          "movements (payouts, refunds, bonuses, adjustments) and transactions that never " +
+          "settled are excluded — no money crossed the regulated perimeter.",
         columns: [
           { header: "Player ID",       key: "playerId",     width: 18 },
           { header: "Phone",            sub: "masked",      key: "phone",        width: 12 },
@@ -246,7 +301,15 @@ export async function buildFiuSar(generatorId: string): Promise<Report> {
     ],
     notes: [
       "Per FATF Recommendation 20 and the Anti-Money Laundering Act, 2006.",
-      "Each row is hash-chained to an audit entry — verify in /admin/audit before remittance.",
+      `Threshold: ${formatTzs(cutoff)}, the same value the platform's live AML hold applies.`,
+      "Scope: confirmed deposits and withdrawals at or above the threshold, plus any " +
+        "transaction placed under AML review, within the period above.",
+      // Softened from "Each row is hash-chained to an audit entry — verify in /admin/audit".
+      // Every row carries a transaction id, but this artifact does not emit the audit-entry
+      // reference, so a recipient cannot verify the chain FROM this document. Do not claim a
+      // verification path the reader has not been given.
+      "Each row carries its transaction ID. The corresponding append-only audit entries are " +
+        "held in the operator's audit log and can be produced on request.",
       "Confidential: do not share outside compliance + Financial Intelligence Unit.",
     ],
     signatures: await regulatorSignatures(generatorId),
@@ -282,7 +345,10 @@ export async function buildSxRegister(generatorId: string): Promise<Report> {
         nidaHash, phoneHash,
         region: u.region ?? "",
         periodKind: "Self-exclusion",
-        periodStarted: u.createdAt,
+        // The date the EXCLUSION began — never the account's registration date, which
+        // is what this column used to carry. Blank when the period predates the column,
+        // because an unknown start is recoverable and a wrong one is not.
+        periodStarted: r.selfExclusionStartedAt ?? "",
         periodEnds: r.selfExclusionUntil ?? "",
         daysRemaining: Math.ceil((sxAt - now) / 86_400_000),
         operator: "50pick",
@@ -293,7 +359,8 @@ export async function buildSxRegister(generatorId: string): Promise<Report> {
         nidaHash, phoneHash,
         region: u.region ?? "",
         periodKind: "Cooling-off",
-        periodStarted: u.createdAt,
+        // See above — real start, or blank. Not the registration date.
+        periodStarted: r.coolingOffStartedAt ?? "",
         periodEnds: r.coolingOffUntil ?? "",
         daysRemaining: Math.ceil((coAt - now) / 86_400_000),
         operator: "50pick",
@@ -334,8 +401,21 @@ export async function buildSxRegister(generatorId: string): Promise<Report> {
       },
     ],
     notes: [
-      "Salt is shared between operators by the Gaming Board of Tanzania. The same NIDA produces the same hash everywhere — that is what makes cross-operator enforcement work.",
+      // Was: "Salt is shared between operators by the Gaming Board of Tanzania. The same
+      // NIDA produces the same hash everywhere — that is what makes cross-operator
+      // enforcement work." The salt is read from a LOCAL environment variable
+      // (SX_REGISTER_SALT). No Gaming Board salt-distribution scheme is wired, so hashes
+      // in this file match no other operator's, and the cross-operator matching the note
+      // described would not actually happen. State the mechanism as it is.
+      "Identifiers are salted SHA-256 hashes. Cross-operator matching requires every " +
+        "operator to use the identical Gaming Board-issued salt; this file is generated " +
+        "with the salt configured for this operator. Confirm salt alignment with the " +
+        "Board before relying on these hashes to match another operator's register.",
       "Plain NIDA and phone numbers are NEVER written into this file by design (PDPA + LCCP).",
+      // Honest disclosure for the blank "Started" cells on legacy rows.
+      "\"Started\" is the date the exclusion period began. It is blank for periods set " +
+        "before the platform began recording exclusion start dates; the end date and days " +
+        "remaining are authoritative for every row.",
       "Schema GBT-v1 — increment if column shape changes.",
     ],
     signatures: await regulatorSignatures(generatorId),
@@ -409,10 +489,16 @@ export async function buildIsoAudit(generatorId: string): Promise<Report> {
 // ─────────────────────────────────────────────────────────────────────
 
 export async function buildDailyOps(generatorId: string): Promise<Report> {
-  const now = new Date();
-  const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  // The day MUST be the Tanzanian calendar day. This previously used
+  // `new Date().getFullYear()/getMonth()/getDate()`, which is SERVER-LOCAL — and the
+  // Railway container runs UTC, so the window was 03:00 → 03:00 EAT. Since this report
+  // computes the TRA and GBT levies below, the tax was assessed on the wrong 24 hours,
+  // the hourly breakdown was shifted three hours end to end, and consecutive daily
+  // filings could not be reconciled against the (EAT-correct) monthly pack.
+  const nowMs = Date.now();
+  const dayStart = startOfEatDay(nowMs);
   const dayEnd = dayStart + 24 * 3600_000;
-  const dateLabel = now.toISOString().slice(0, 10);
+  const dateLabel = eatDateLabel(dayStart);
 
   // All confirmed transactions today
   const allTxns = await db.txn.listAll();
@@ -451,9 +537,24 @@ export async function buildDailyOps(generatorId: string): Promise<Report> {
   const cfg = await getGlobalConfig();
   const TRA_RATE = cfg.traTaxOnCommissionRate;   // 10% of commission
   const GBT_RATE = cfg.gbtLevyOnCommissionRate;  // 5% of commission
-  const traTax = Math.max(0, ggr) * TRA_RATE;
-  const gbtLevy = Math.max(0, ggr) * GBT_RATE;
-  const marginPct = totalSales > 0 ? ((ggr / totalSales) * 100) : 0;
+  // Round the levies ONCE, here, and derive the net from the rounded components.
+  //
+  // These are percentages of a shilling amount, so they are genuinely fractional.
+  // Previously each component was rounded independently at render time while
+  // `netAfterTax` was computed from the UNROUNDED values, so the printed
+  // "Net after tax" could differ from (printed GGR − printed TRA − printed GBT)
+  // by up to 1 TZS. On a document that states a tax liability, the arithmetic on
+  // its own face must close. Rounding here also guarantees the PDF and the XLSX
+  // carry the same number: the PDF rounds for display (brand.fmtTzs) while the
+  // XLSX writes the raw value under a #,##0 mask, so an unrounded value would
+  // render differently in the two artifacts of the same report.
+  const traTax = Math.round(Math.max(0, ggr) * TRA_RATE);
+  const gbtLevy = Math.round(Math.max(0, ggr) * GBT_RATE);
+  // Margin is measured against stakes that were actually retained. totalSales
+  // still contains refunded stakes, which are returned in full — including them
+  // understates margin every time a market voids.
+  const retainedSales = totalSales - totalRefunds;
+  const marginPct = retainedSales > 0 ? ((ggr / retainedSales) * 100) : 0;
 
   // Net after taxes = what the operator actually keeps
   const netAfterTax = ggr - traTax - gbtLevy;
@@ -498,9 +599,9 @@ export async function buildDailyOps(generatorId: string): Promise<Report> {
     subtitle: dateLabel,
     reference: makeReference("DAILY", generatorId),
     meta: {
-      generatedAt: now.toISOString(),
+      generatedAt: new Date(nowMs).toISOString(),
       generatedBy: generatorId,
-      period: dateLabel,
+      period: `${dateLabel} (EAT)`,
       classification: "Internal",
     },
     summary: [
@@ -524,7 +625,7 @@ export async function buildDailyOps(generatorId: string): Promise<Report> {
         rows: [
           { metric: "Total sales (stakes placed)", value: totalSales, count: ticketCount, note: "Tickets" },
           { metric: "Total payouts", value: totalPayouts, count: payouts.length, note: "" },
-          { metric: "Gross gaming revenue (GGR)", value: ggr, count: null, note: "Sales - Payouts" },
+          { metric: "Gross gaming revenue (GGR)", value: ggr, count: null, note: "Sales − Payouts − Refunds" },
           { metric: "Operator margin", value: null, count: null, note: `${marginPct.toFixed(1)}%` },
           { metric: `TRA tax (${(TRA_RATE * 100).toFixed(0)}% of commission)`, value: Math.round(traTax), count: null, note: "On operator commission" },
           { metric: `GBT levy (${(GBT_RATE * 100).toFixed(0)}% of commission)`, value: Math.round(gbtLevy), count: null, note: "On operator commission" },
@@ -560,11 +661,20 @@ export async function buildDailyOps(generatorId: string): Promise<Report> {
       },
     ],
     notes: [
-      "GGR = total stakes placed − total payouts. This is the operator's commission from the pool.",
+      // The stated methodology MUST match the computed one. This note previously read
+      // "total stakes placed − total payouts", omitting the refund subtraction the code
+      // performs — so an auditor recomputing the tax from the printed formula derived a
+      // HIGHER GGR and a HIGHER liability than the document reports.
+      "GGR = total stakes placed − total payouts − refunded stakes. This is the operator's " +
+        "commission from the pool. Refunds are subtracted because a voided or one-sided " +
+        "market returns every stake in full, so no commission is earned on it.",
       `TRA tax = ${(TRA_RATE * 100).toFixed(0)}% of operator commission (Income Tax Act, Cap 332).`,
       `GBT levy = ${(GBT_RATE * 100).toFixed(0)}% of operator commission (Gaming Board of Tanzania licensing terms).`,
       "Total tax = TRA + GBT, deducted from the operator's commission — does NOT affect player payouts.",
-      "Margin = GGR / total sales × 100.",
+      "Each levy is rounded to the nearest shilling before the net is derived, so the " +
+        "figures on this page add up exactly as printed.",
+      "Margin = GGR / (total sales − refunded stakes) × 100.",
+      `Reporting day: ${dateLabel} 00:00–24:00 East Africa Time (UTC+3).`,
       "All amounts in Tanzanian Shillings (TZS).",
     ],
   };
