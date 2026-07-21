@@ -1099,6 +1099,10 @@ export const dict = {
       playerProtection: "Player protection",
       pageDescription: "Set deposit and time limits, take a break, or self-exclude.",
       limitsDescription: "Decreases take effect immediately. Increases deferred 24 hours. Leave blank to remove.",
+      // Read-only usage meters (value-vs-cap) shown beneath the limits you set.
+      usageTitle: "Your usage",
+      usageIntro: "How close you are to the limits you've set — the same figures the platform checks before a deposit or bet.",
+      limitReached: "Limit reached",
       breakDescription: "A short, one-way pause. You cannot bet, deposit, or sign in until it ends.",
       breakLength: "Break length",
       selfExcludeDescription: "Self-exclusion cannot be reversed until the period ends. Account frozen, wallet locked, no marketing.",
@@ -2333,6 +2337,10 @@ export const dict = {
       playerProtection: "Ulinzi wa mchezaji",
       pageDescription: "Weka mipaka ya amana na muda, pumzika au jizuie.",
       limitsDescription: "Kupunguza kunaanza mara moja. Kuongeza kunaahirishwa masaa 24. Acha tupu kuondoa.",
+      // Read-only usage meters — see the EN block.
+      usageTitle: "Matumizi yako",
+      usageIntro: "Umefika wapi kwenye mipaka uliyoiweka — takwimu zilezile ambazo mfumo huangalia kabla ya amana au dau.",
+      limitReached: "Kikomo kimefikiwa",
       breakDescription: "Mapumziko mafupi. Hutaweza kuweka dau, amana au kuingia hadi itakapomalizika.",
       breakLength: "Urefu wa mapumziko",
       selfExcludeDescription: "Kujizuia hakuwezi kubadilishwa hadi kipindi kimalize. Akaunti itagandishwa, pochi itafungwa.",
@@ -3566,6 +3574,10 @@ export const dict = {
       playerProtection: "玩家保护",
       pageDescription: "设置充值和时间限额、休息或自我排除。",
       limitsDescription: "降低立即生效。提高延迟24小时。留空则移除。",
+      // Read-only usage meters — see the EN block.
+      usageTitle: "您的使用情况",
+      usageIntro: "您距离所设限额还有多少 — 与平台在存款或下注前核对的数字相同。",
+      limitReached: "已达上限",
       breakDescription: "短暂暂停。在结束前您无法投注、充值或登录。",
       breakLength: "休息时长",
       selfExcludeDescription: "自我排除在期限结束前无法撤销。账户冻结、钱包锁定、停止营销。",

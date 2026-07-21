@@ -368,6 +368,37 @@ export async function checkLossLimit(userId: string, stakeTzs: number, tx?: Pris
   return { allowed: true as const };
 }
 
+export type LimitUsage = {
+  depositDay: number;
+  depositWeek: number;
+  depositMonth: number;
+  lossToday: number;
+};
+
+/**
+ * Read-only usage snapshot that powers the player's limit meters. Every figure
+ * is the EXACT quantity the enforcement gate computes — never a re-derivation:
+ *   - deposit day/week/month via `sumDepositsSince(..., includePending=true)` —
+ *     identical to `checkDepositLimit` (counts in-flight PROCESSING deposits,
+ *     which DO count toward the cap), so a meter reads what the gate enforces,
+ *     never an under-count that would let a player think they have more room.
+ *   - loss today = max(0, −gamblingNet(24h)) — identical to `checkLossLimit`.
+ * The same rolling windows (24h / 7d / 30d) as the gates. Mutates nothing.
+ */
+export async function getLimitUsage(userId: string): Promise<LimitUsage> {
+  const now = Date.now();
+  const cutoffMonth = now - 30 * 86_400 * 1000;
+  const cutoffWeek = now - 7 * 86_400 * 1000;
+  const cutoffDay = now - 86_400 * 1000;
+  const [depositMonth, depositWeek, depositDay, net] = await Promise.all([
+    db.txn.sumDepositsSince(userId, cutoffMonth, true),
+    db.txn.sumDepositsSince(userId, cutoffWeek, true),
+    db.txn.sumDepositsSince(userId, cutoffDay, true),
+    db.txn.sumGamblingNetSince(userId, cutoffDay),
+  ]);
+  return { depositDay, depositWeek, depositMonth, lossToday: Math.max(0, -net) };
+}
+
 /**
  * Markers-of-harm detector — LCCP SR Code 3.4.1.
  *

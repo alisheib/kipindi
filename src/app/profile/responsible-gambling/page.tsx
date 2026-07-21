@@ -8,7 +8,8 @@ import { PageHero } from "@/components/ui/page-hero";
 import { RgSunriseArt } from "@/components/rg/self-care-art";
 import { FieldLegend } from "@/components/ui/field-legend";
 import { currentSession } from "@/lib/server/auth-service";
-import { getRgSettings } from "@/lib/server/responsible-gambling";
+import { getRgSettings, getLimitUsage } from "@/lib/server/responsible-gambling";
+import { LimitUsageMeter } from "@/components/rg/limit-usage";
 import { setLimitsAction, selfExcludeAction, coolOffAction } from "./actions";
 import { RgConfirmSubmit } from "@/components/rg/rg-confirm-submit";
 import { SUPPORT_PHONE, SUPPORT_PHONE_TEL } from "@/lib/support-config";
@@ -43,6 +44,20 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
   let rg: Awaited<ReturnType<typeof getRgSettings>>;
   try { rg = await getRgSettings(session.userId); } catch { rg = { userId: session.userId, dailyDepositLimit: null, weeklyDepositLimit: null, monthlyDepositLimit: null, dailyLossLimit: null, sessionTimeLimitMin: null, realityCheckIntervalMin: 30, selfExclusionUntil: null, coolingOffUntil: null, selfExclusionStartedAt: null, coolingOffStartedAt: null, pendingIncreaseTo: null, pendingIncreaseEffectiveAt: null, pendingWeeklyIncreaseTo: null, pendingWeeklyIncreaseEffectiveAt: null, pendingMonthlyIncreaseTo: null, pendingMonthlyIncreaseEffectiveAt: null }; }
   const hasPendingIncrease = (rg.pendingIncreaseTo !== null && rg.pendingIncreaseEffectiveAt !== null) || (rg.pendingWeeklyIncreaseTo !== null && rg.pendingWeeklyIncreaseEffectiveAt !== null) || (rg.pendingMonthlyIncreaseTo !== null && rg.pendingMonthlyIncreaseEffectiveAt !== null);
+
+  // Read-only usage snapshot for the limit meters below. Every figure is the
+  // SAME quantity the deposit/loss gates enforce (getLimitUsage). null on a
+  // failed read → the usage section is simply hidden (never a fabricated 0).
+  const usage = await getLimitUsage(session.userId).catch(() => null);
+  const usageMeters = usage
+    ? ([
+        { key: "d", label: t.rg.dailyDeposit,   used: usage.depositDay,   cap: rg.dailyDepositLimit },
+        { key: "w", label: t.rg.weeklyDeposit,  used: usage.depositWeek,  cap: rg.weeklyDepositLimit },
+        { key: "m", label: t.rg.monthlyDeposit, used: usage.depositMonth, cap: rg.monthlyDepositLimit },
+        { key: "l", label: t.rg.dailyLoss,      used: usage.lossToday,    cap: rg.dailyLossLimit },
+      ] as const).filter((row): row is typeof row & { cap: number } => typeof row.cap === "number" && row.cap > 0)
+    : [];
+
   const sp = await searchParams;
 
   return (
@@ -120,6 +135,23 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
             <SubmitButton label={`${t.common.save} ${t.rg.setLimits.toLowerCase()}`} pendingLabel={`${t.common.loading}`} size="md" />
           </div>
         </form>
+
+        {/* Read-only usage meters — shown only for limits actually set. Every
+            figure is exactly what the deposit/loss gate checks (getLimitUsage),
+            so the player sees their real headroom, never a proxy. */}
+        {usageMeters.length > 0 && (
+          <div className="rounded-lg border border-border/70 bg-bg-elevated/30 p-4 space-y-3.5">
+            <div>
+              <p className="font-display text-[13.5px] font-semibold text-text">{t.rg.usageTitle}</p>
+              <p className="mt-0.5 text-[11.5px] text-text-tertiary leading-snug">{t.rg.usageIntro}</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-3.5">
+              {usageMeters.map((row) => (
+                <LimitUsageMeter key={row.key} label={row.label} used={row.used} cap={row.cap} overLabel={t.rg.limitReached} />
+              ))}
+            </div>
+          </div>
+        )}
       </section>
 
       {/* COOLING-OFF */}
