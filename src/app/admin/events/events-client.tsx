@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
+import { ScrollX } from "@/components/ui/scroll-x";
 import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
 import { formatDateTime } from "@/lib/utils";
@@ -63,7 +64,7 @@ export function EventsClient({
 
   if (listOnly) {
     return (
-      <div className="overflow-x-auto">
+      <ScrollX label="Scheduled events">
         <table className="w-full min-w-[720px] border-collapse text-[12.5px]">
           <thead>
             <tr className="text-left font-mono text-[10px] uppercase tracking-[0.12em] text-text-faint">
@@ -110,7 +111,7 @@ export function EventsClient({
             ))}
           </tbody>
         </table>
-      </div>
+      </ScrollX>
     );
   }
 

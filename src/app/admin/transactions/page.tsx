@@ -36,6 +36,18 @@ export const dynamic = "force-dynamic";
 
 const TYPES = ["DEPOSIT", "WITHDRAWAL", "BET_PLACED", "BET_PAYOUT", "BET_REFUND", "BONUS_CREDIT", "ADJUSTMENT_DEBIT", "ADJUSTMENT_CREDIT", "CASHOUT", "HOUSE_FEE"] as const;
 const STATUSES = ["PENDING", "PROCESSING", "AML_REVIEW", "CONFIRMED", "FAILED", "REVERSED", "CANCELLED"] as const;
+// Status → Chip variant, so the column reads as a badge like every other admin
+// table (was plain grey text). Money semantics: CONFIRMED=success, in-flight=info,
+// held-for-review=warning, did-not-complete/returned=danger.
+const TXN_STATUS_VARIANT: Record<(typeof STATUSES)[number], "success" | "info" | "warning" | "danger" | "neutral"> = {
+  CONFIRMED: "success",
+  PENDING: "info",
+  PROCESSING: "info",
+  AML_REVIEW: "warning",
+  FAILED: "danger",
+  REVERSED: "danger",
+  CANCELLED: "neutral",
+};
 const PROVIDERS = ["MPESA", "TIGO_PESA", "AIRTEL_MONEY", "HALO_PESA", "MIXX", "TTCL_PESA", "CARD", "BANK_TRANSFER", "INTERNAL"] as const;
 
 /** Preset windows — deliberately a select, not a date input: the house rule is that
@@ -217,7 +229,7 @@ export default async function AdminTransactionsPage({ searchParams }: { searchPa
                       <td className={["whitespace-nowrap text-right font-mono tabular font-semibold", out ? "text-text-secondary" : "text-text"].join(" ")}>
                         {out ? "−" : "+"}{formatTzs(Math.abs(t.amount))}
                       </td>
-                      <td className="whitespace-nowrap text-text-secondary">{t.status.replace(/_/g, " ")}</td>
+                      <td className="whitespace-nowrap"><Chip size="sm" variant={TXN_STATUS_VARIANT[t.status] ?? "neutral"}>{t.status.replace(/_/g, " ")}</Chip></td>
                       <td className="whitespace-nowrap">
                         {flag
                           ? <span title={flag.sw}><Chip variant={flag.level === "warn" ? "warning" : "info"} size="sm">{flag.label}</Chip></span>

@@ -1,4 +1,5 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
+import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { listSources, listDisabledCategories, seedDefaultSources } from "@/lib/server/source-registry";
@@ -78,11 +79,12 @@ export default async function AdminSourcesPage() {
                 </thead>
                 <tbody>
                   {sources.length === 0 && (
-                    <tr>
-                      <td colSpan={5} className="p-6 text-center text-text-tertiary text-[13px]">
-                        No sources yet for this category. Use "+ Add source" above.
-                      </td>
-                    </tr>
+                    <AdminTableEmpty
+                      colSpan={5}
+                      kind="admin"
+                      title="No sources yet"
+                      body={'No sources yet for this category. Use "+ Add source" above.'}
+                    />
                   )}
                   {sources.map((s) => (
                     <tr key={s.id} className="border-b border-border-subtle/50 last:border-b-0 align-top">

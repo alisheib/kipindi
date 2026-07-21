@@ -405,6 +405,12 @@ body {
 
 .mono    { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 .display { font-family: var(--font-display); letter-spacing: -0.02em; }
+/* `.tabular` — equal-width numerals for aligned number/money columns. It is used
+   ~230× across the app (almost always beside `font-mono`, which is already fixed-
+   width, so this was a no-op there) but was never defined, so any `.tabular` on a
+   NON-mono number silently did nothing. Defining it once makes every existing use
+   honest with zero churn. Prefer this or Tailwind's `tabular-nums`; both are equal. */
+.tabular { font-variant-numeric: tabular-nums; }
 
 /* ===========================================================================
    Tipping rails + heraldic furniture

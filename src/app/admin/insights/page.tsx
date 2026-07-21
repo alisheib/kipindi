@@ -14,6 +14,7 @@ import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-she
 import { AdminRestricted } from "@/components/admin/admin-restricted";
 import { AdminFunnelChart, AdminBarList } from "@/components/admin/admin-charts";
 import { Chip } from "@/components/ui/chip";
+import { ScrollX } from "@/components/ui/scroll-x";
 import { currentSession } from "@/lib/server/auth-service";
 import { hasRole, MONEY_ROLES } from "@/lib/server/roles";
 import { getInsights } from "@/lib/server/insights";
@@ -89,7 +90,7 @@ export default async function InsightsPage() {
           {cohorts.length === 0 ? (
             <p className="text-[13px] text-text-muted">No players yet.</p>
           ) : (
-            <div className="overflow-x-auto">
+            <ScrollX label="Cohort retention & value">
               <table className="w-full min-w-[640px] border-collapse text-[12px]">
                 <thead>
                   <tr className="text-left font-mono text-[10px] uppercase tracking-[0.12em] text-text-faint">
@@ -131,7 +132,7 @@ export default async function InsightsPage() {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </ScrollX>
           )}
           <p className="mt-3 border-t border-border/60 pt-3 text-[11.5px] leading-relaxed text-text-subtle">
             <strong className="text-text-muted">M<em>k</em></strong> = share of the cohort that placed a bet <em>k</em> months

@@ -15,7 +15,7 @@ import { exportUserData } from "@/lib/server/user-service";
 import { I } from "@/components/ui/glyphs";
 import { formatTzs, formatTzsCompact, formatDateTime, formatDateShort } from "@/lib/utils";
 import { displayLabel, displayInitials } from "@/lib/display-label";
-import { KycStatusBadge, kycStatusLabel, kycStatusVariant } from "@/components/admin/status-badge";
+import { KycStatusBadge, kycStatusLabel, kycStatusVariant, playerStatusVariant } from "@/components/admin/status-badge";
 import { KycReviewControls } from "@/components/admin/kyc-review-controls";
 import { SuspendControls } from "./suspend-controls";
 import { SetEmailForm } from "./set-email-form";
@@ -43,15 +43,6 @@ const CATEGORY_VARIANT: Record<AuditCategory, "royal" | "danger" | "success" | "
   COMPLIANCE: "warning",
   SECURITY:   "danger",
   SYSTEM:     "neutral",
-};
-
-const STATUS_VARIANT: Record<string, "success" | "warning" | "danger" | "neutral" | "info"> = {
-  ACTIVE: "success",
-  PENDING_KYC: "warning",
-  SUSPENDED: "danger",
-  SELF_EXCLUDED: "danger",
-  COOLED_OFF: "warning",
-  CLOSED: "neutral",
 };
 
 export default async function AdminPlayerDetailPage({ params, searchParams }: {
@@ -176,7 +167,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
                 </p>
               )}
               <div className="flex items-center gap-1.5 flex-wrap mt-2">
-                <Chip size="sm" variant={STATUS_VARIANT[user.status] ?? "neutral"}>● {user.status}</Chip>
+                <Chip size="sm" variant={playerStatusVariant(user.status)}>● {user.status}</Chip>
                 {kyc && (
                   <a href={`/admin/players/${id}?tab=kyc`} className="inline-block hover:opacity-80 transition-opacity">
                     <Chip size="sm" variant={kycStatusVariant(kyc.status)}>

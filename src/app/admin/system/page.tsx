@@ -463,6 +463,11 @@ export default async function AdminSystemPage() {
               </table>
             </ScrollX>
           )}
+          {buckets.length > 25 && (
+            <p className="mt-2 font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary text-right">
+              showing 25 of {buckets.length} active buckets
+            </p>
+          )}
         </AdminCard>
 
         <AdminCard

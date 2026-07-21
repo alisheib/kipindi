@@ -81,6 +81,20 @@ export function KycStatusBadge({ status, size = "sm" }: { status: KycStatus; siz
   return <Chip size={size} variant={kycStatusVariant(status)}>{kycStatusLabel(status)}</Chip>;
 }
 
+/* ── Player account status (players list + player detail) ────────────────── */
+
+/** Canonical variant per player account status — byte-identical to the map that
+ *  was duplicated in `players/page` and `players/[id]`: ACTIVE→success,
+ *  PENDING_KYC/COOLED_OFF→warning, SUSPENDED/SELF_EXCLUDED→danger, CLOSED (and any
+ *  unknown) → neutral. The two call sites still render their own label (the detail
+ *  page prefixes a ● dot), so only the variant map is shared. */
+export function playerStatusVariant(status: string): "success" | "warning" | "danger" | "neutral" {
+  return status === "ACTIVE" ? "success"
+    : status === "PENDING_KYC" || status === "COOLED_OFF" ? "warning"
+    : status === "SUSPENDED" || status === "SELF_EXCLUDED" ? "danger"
+    : "neutral";
+}
+
 /* ── DSAR / privacy-request status (Family 4) ────────────────────────────── */
 
 /** Byte-identical to privacy/page's prior ternary: PENDING→warning,

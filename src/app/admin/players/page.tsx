@@ -2,6 +2,7 @@ import { AdminPageHead, AdminCard, AdminKpi, AdminLoadError } from "@/components
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { SortTh } from "@/components/admin/admin-sort";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
+import { playerStatusVariant } from "@/components/admin/status-badge";
 import { Chip } from "@/components/ui/chip";
 import { Avatar } from "@/components/ui/avatar";
 import { Select } from "@/components/ui/select";
@@ -13,15 +14,6 @@ import { displayLabel, displayInitials } from "@/lib/display-label";
 
 export const metadata = { title: "Admin · Players" };
 export const dynamic = "force-dynamic";
-
-const STATUS_VARIANT: Record<string, "success" | "warning" | "danger" | "neutral" | "info"> = {
-  ACTIVE: "success",
-  PENDING_KYC: "warning",
-  SUSPENDED: "danger",
-  SELF_EXCLUDED: "danger",
-  COOLED_OFF: "warning",
-  CLOSED: "neutral",
-};
 
 export default async function AdminPlayersPage({ searchParams }: { searchParams: Promise<{ q?: string; status?: string; sort?: string; dir?: string; page?: string }> }) {
   const sp = await searchParams;
@@ -181,7 +173,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                       </td>
                       {/* Masked in the broad list view — full number only on the detail page (PII minimization). Search still matches the full number. */}
                       <td className="font-mono whitespace-nowrap">{u.phoneE164.length > 6 ? `${u.phoneE164.slice(0, 4)}****${u.phoneE164.slice(-2)}` : u.phoneE164}</td>
-                      <td><Chip size="sm" variant={STATUS_VARIANT[u.status] ?? "neutral"}>{u.status}</Chip></td>
+                      <td><Chip size="sm" variant={playerStatusVariant(u.status)}>{u.status}</Chip></td>
                       <td className="font-mono tabular text-right whitespace-nowrap">{wallet ? formatTzs(wallet.balance) : "—"}</td>
                       <td className="font-mono whitespace-nowrap">{formatDate(u.createdAt)}</td>
                       <td className="font-mono whitespace-nowrap">{u.lastLoginAt ? formatDate(u.lastLoginAt) : "—"}</td>

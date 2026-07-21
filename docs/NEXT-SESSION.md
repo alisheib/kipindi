@@ -117,23 +117,38 @@ Approve identity** ("unlocks real-money play"). KYC **reject** left as-is *by de
 gates behind a required reason-code + note two-step ("Confirm reject"), stronger friction than a
 yes/no modal; adding one would be a redundant third step.
 
-**⚪ POLISH — still open, non-blocking (a future batch, none block launch):** ~7 tables hand-roll
-empty states instead of the shared atom (sources, config×2, approvals×3, system buckets); dead
-no-op `.tabular` class on ~12 money cells (digits align only b/c `font-mono` — should be
-`tabular-nums`); `events`+`insights` tables bypass `ScrollX`/`.admin-tbl` (lose the a11y region);
-transactions status column is plain text not a `<Chip>`; local status→variant maps not centralized
-(players/bonuses/invites/candidates); rate-limiter table `slice(0,25)` with no "showing N of M".
+**⚪→✅ POLISH BATCH — SHIPPED (2026-07-21c, after the A-5 pass):**
+- **`.tabular` was a no-op class used ~230× app-wide** (not "~12 cells" — a pervasive convention),
+  always beside `font-mono` so digits happened to align; on any NON-mono number it did nothing.
+  Fixed the RIGHT way: **defined it once** (`.tabular { font-variant-numeric: tabular-nums }` in
+  globals.css) so all ~230 uses become honest — zero churn, zero regression (a mass-rename would
+  have been 230 risky diffs for no visual change).
+- **sources** table empty → shared `AdminTableEmpty` (visible + verified). **events + insights**
+  tables → `ScrollX` (gain the keyboard-focusable a11y region; kept their look — a full `.admin-tbl`
+  re-skin would restyle a working table for taste). **transactions** status column → `<Chip>` via a
+  local `TXN_STATUS_VARIANT` (was plain grey text). **rate-limiter** table → "showing 25 of N active
+  buckets" caption when truncated. **player status→variant map** deduped into shared
+  `playerStatusVariant()` (was byte-identical in `players` + `players/[id]`).
+- **Deliberately LEFT (not defects — documented):** the config×2 + approvals×3 *card-level* empties
+  are compact inline messages by intent (not blank panels), so not force-fit onto the heavier
+  `EmptyState` block. The `bonuses`/`invites`/`candidates` status maps are **single-use, domain-
+  distinct** enums (bonus ≠ invite ≠ candidate state) — local is correct; that's not duplication.
+- Gate: `tsc` + `next build` clean · `test:all` 82/83 (only `test:responsive`) · `test:tokens`
+  green (the new utility is fine) · 4 pages screenshot-read at 1280 (sources empty-state + insights
+  ScrollX table verified; no regressions).
 
-**✅ NOW DONE by the parallel FINALIZE lane 4 (above):** AdminKpi money-tile GGR/NGR/active
+**✅ DONE by the parallel FINALIZE lane 4:** AdminKpi money-tile GGR/NGR/active
 sparks (`1a79903` — honest per-metric `dailyKpiSeries()` through the canonical `summarise`, not
 the net-flow proxy) and wallet limit-usage meters (`b479c17` — `getLimitUsage()` reusing the exact
 gate sums). My audit had flagged both as money-data-gated; the FINALIZE session proved they were
 doable read-only and shipped them. **Only genuinely-deferred item left:** the single shared
 `admin/error.tsx` boundary is sufficient — segment boundaries preserve nothing extra here.
 
-**Net remaining before admin is "perfect":** only the ⚪ POLISH batch above (empty-state atom on
-~7 tables, dead `.tabular`→`tabular-nums`, ScrollX on events/insights, transactions status Chip,
-centralize the 4 status→variant maps, rate-limiter count caption). None block launch.
+**Net remaining before admin is "perfect": nothing structural.** A-5 no-fabrication is fully
+closed, the two one-click destructive actions are confirmed, the money-adjacent lanes shipped, and
+the polish batch is done. What's left is operator/Ali-only (the go-live gate in
+`docs/GO-LIVE-READINESS.md`) and open-by-design product features (A6/A7/A13–A16 etc.). The admin
+console itself is now consistent, honest, and complete.
 
 ## Done (Session — 2026-07-21, platform-wide DESIGN + missing-detail pass)
 
