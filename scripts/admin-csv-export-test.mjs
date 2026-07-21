@@ -17,11 +17,12 @@ const browser = await chromium.launch();
 const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
 await (await ctx.newPage()).goto(`${BASE}/auth/demo`, { waitUntil: "networkidle" });
 
+// tra-tax was removed in 2026-07 (no per-player withholding). Match strings
+// against the current report bodies (titles/notes in catalogue.ts).
 const TEMPLATES = [
   { id: "gbt-monthly", expectInBody: "GGR" },
-  { id: "tra-tax",     expectInBody: "Income Tax Act" },
-  { id: "fiu-sar",     expectInBody: "Suspicious Activity" },
-  { id: "sx-register", expectInBody: "self-exclusion register" },
+  { id: "fiu-sar",     expectInBody: "Suspicious-Activity" },
+  { id: "sx-register", expectInBody: "Self-exclusion" },
   { id: "iso-audit",   expectInBody: "ISO 27001" },
 ];
 

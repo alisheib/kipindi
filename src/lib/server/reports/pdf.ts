@@ -140,6 +140,8 @@ function drawFooter(ctx: DocCtx, pageNum: number, pageCount: number) {
 }
 
 function addContentPage(ctx: DocCtx): number {
+  // Inherit the document's size + orientation (set at construction) so a
+  // landscape report stays landscape across page breaks.
   ctx.doc.addPage();
   return CONTENT_TOP;
 }
@@ -190,7 +192,37 @@ function drawSummary(ctx: DocCtx, summary: SummaryItem[], startY: number): numbe
   const cols = Math.min(4, summary.length);
   const gap = 8;
   const cardW = (contentW - (cols - 1) * gap) / cols;
-  const cardH = 56;
+  const labelW = cardW - 24;
+  const hasAnyDelta = summary.some((k) => !!k.delta);
+
+  // A KPI label like "GROSS GAMING REVENUE" or "TRA 10% ON COMMISSION" is longer
+  // than one card width, so it wraps. Measure the tallest label (capped at two
+  // lines) once and lay every card to the SAME baselines — the value never
+  // collides with a wrapped label, and all cards in the row stay aligned.
+  const LINE_H = S.kpiLabel + 2;
+  doc.font(FN.bold).fontSize(S.kpiLabel);
+  let labelH = LINE_H;
+  for (const k of summary) {
+    const h = doc.heightOfString(toAnsiSafe(k.label.toUpperCase()), { width: labelW });
+    if (h > labelH) labelH = h;
+  }
+  labelH = Math.min(labelH, LINE_H * 2); // cap at two lines
+  // Values are usually one short token, but some (e.g. the ISO log's first/last
+  // entry timestamp "2026-07-21 09:13:15") are long enough to wrap. Measure the
+  // tallest value too, cap at two lines, and size the card so no value ever
+  // overflows into the delta or the card edge.
+  const VLINE_H = S.kpiValue + 3;
+  doc.font(FN.bold).fontSize(S.kpiValue);
+  let valueH = VLINE_H;
+  for (const k of summary) {
+    const h = doc.heightOfString(toAnsiSafe(k.value), { width: cardW - 20 });
+    if (h > valueH) valueH = h;
+  }
+  valueH = Math.min(valueH, VLINE_H * 2);
+  const PAD_TOP = 9;
+  const valueY = PAD_TOP + labelH + 5;
+  const cardH = valueY + valueH + (hasAnyDelta ? 12 : 6);
+
   const rows = Math.ceil(summary.length / cols);
   let y = ensureRoom(ctx, rows * (cardH + gap) + 12, startY);
   const blockTop = y;
@@ -205,13 +237,13 @@ function drawSummary(ctx: DocCtx, summary: SummaryItem[], startY: number): numbe
     doc.rect(x, yy, 3, cardH).fill(BRAND.gilt);
     doc.restore();
     doc.fillColor(BRAND.inkMuted).font(FN.bold).fontSize(S.kpiLabel)
-       .text(toAnsiSafe(k.label.toUpperCase()), x + 12, yy + 9, { width: cardW - 20, lineBreak: false });
+       .text(toAnsiSafe(k.label.toUpperCase()), x + 12, yy + PAD_TOP, { width: labelW, height: labelH, ellipsis: true });
     const tone = k.tone === "good" ? BRAND.yes : k.tone === "bad" ? BRAND.no : BRAND.royalDeep;
     doc.fillColor(tone).font(FN.bold).fontSize(S.kpiValue)
-       .text(toAnsiSafe(k.value), x + 12, yy + 22, { width: cardW - 20, lineBreak: false });
+       .text(toAnsiSafe(k.value), x + 12, yy + valueY, { width: cardW - 20, height: valueH, ellipsis: true });
     if (k.delta) {
       doc.fillColor(BRAND.inkSubtle).font(FN.regular).fontSize(S.kpiDelta)
-         .text(toAnsiSafe(k.delta), x + 12, yy + 42, { width: cardW - 20, lineBreak: false });
+         .text(toAnsiSafe(k.delta), x + 12, yy + valueY + valueH + 2, { width: cardW - 20, lineBreak: false });
     }
   }
   return blockTop + rows * (cardH + gap) + 10;
@@ -254,23 +286,47 @@ function measureRowHeight(doc: InstanceType<typeof PDFDocument>, row: Record<str
 
 /* ── Table header ─────────────────────────────────────────────────── */
 
+const TH_TOP = 6;      // pad above the header text
+const TH_BOT = 6;      // pad below the last header/sub line
+const TH_GAP = 2;      // gap between a wrapped header and its sub-line
+
+/** The header band's height, sized to fit the tallest (possibly two-line)
+ *  header plus a sub-line. Computed once and reused for both the room check and
+ *  every (continuation) draw, so the band never clips a wrapped header nor lets
+ *  a sub-label collide with it (e.g. "Reality chk" + "min"). */
+function tableHeaderHeight(doc: InstanceType<typeof PDFDocument>, sec: Section, colW: number[]): { headerH: number; headTextH: number } {
+  const oneLine = S.th + 2;
+  doc.font(FN.bold).fontSize(S.th);
+  let headTextH = oneLine;
+  for (let i = 0; i < sec.columns.length; i++) {
+    const h = doc.heightOfString(toAnsiSafe(sec.columns[i].header), { width: colW[i] - CELL_PAD_X * 2 });
+    if (h > headTextH) headTextH = h;
+  }
+  headTextH = Math.min(headTextH, oneLine * 2); // cap wrapped headers at two lines
+  const hasSub = sec.columns.some((c) => c.sub);
+  const headerH = TH_TOP + headTextH + (hasSub ? TH_GAP + (S.thSub + 2) : 0) + TH_BOT;
+  return { headerH, headTextH };
+}
+
 function drawTableHeader(ctx: DocCtx, sec: Section, colW: number[], y: number, continuation = false): number {
   const { doc, contentX, contentW } = ctx;
-  const hasSub = sec.columns.some((c) => c.sub);
-  const headerH = hasSub ? 30 : 24;
+  const { headerH, headTextH } = tableHeaderHeight(doc, sec, colW);
   doc.save();
   doc.rect(contentX, y, contentW, headerH).fill(BRAND.royal);
   doc.rect(contentX, y + headerH - 1.5, contentW, 1.5).fill(BRAND.gilt);
   doc.restore();
+  const subY = y + TH_TOP + headTextH + TH_GAP; // subs sit on one baseline, below the tallest header
   let xC = contentX;
   for (let i = 0; i < sec.columns.length; i++) {
     const c = sec.columns[i];
-    const textY = hasSub ? y + 6 : y + 7;
+    // Wrapping is allowed (capped to headTextH ≈ two lines with ellipsis) so a
+    // long header like "Reality chk" reads in full instead of overflowing into
+    // the neighbouring column.
     doc.fillColor(BRAND.white).font(FN.bold).fontSize(S.th)
-       .text(toAnsiSafe(c.header), xC + CELL_PAD_X, textY, { width: colW[i] - CELL_PAD_X * 2, align: c.align ?? "left", lineBreak: false, ellipsis: true });
+       .text(toAnsiSafe(c.header), xC + CELL_PAD_X, y + TH_TOP, { width: colW[i] - CELL_PAD_X * 2, height: headTextH, align: c.align ?? "left", ellipsis: true });
     if (c.sub) {
       doc.fillColor(BRAND.giltSoft).font(FN.regular).fontSize(S.thSub)
-         .text(toAnsiSafe(c.sub), xC + CELL_PAD_X, y + 18, { width: colW[i] - CELL_PAD_X * 2, align: c.align ?? "left", lineBreak: false, ellipsis: true });
+         .text(toAnsiSafe(c.sub), xC + CELL_PAD_X, subY, { width: colW[i] - CELL_PAD_X * 2, align: c.align ?? "left", lineBreak: false, ellipsis: true });
     }
     xC += colW[i];
   }
@@ -306,8 +362,7 @@ function drawSection(ctx: DocCtx, sec: Section, startY: number): number {
   }
 
   const colW = computeColWidths(sec.columns, contentW);
-  const hasSub = sec.columns.some((c) => c.sub);
-  const headerH = hasSub ? 30 : 24;
+  const { headerH } = tableHeaderHeight(doc, sec, colW);
   y = ensureRoom(ctx, headerH + MIN_ROW_H, y);
   y = drawTableHeader(ctx, sec, colW, y);
 
@@ -461,6 +516,7 @@ export async function renderPdf(report: Report): Promise<Buffer> {
     try {
       const doc = new PDFDocument({
         size: "A4",
+        layout: report.orientation ?? "portrait",
         margins: { top: 0, bottom: 0, left: 0, right: 0 },
         bufferPages: true,
         info: {

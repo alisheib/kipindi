@@ -61,12 +61,19 @@ async function login(ctx, tail, password) {
   await p.close();
 }
 
+// The 50pick-<slug>-<date>.<ext> filename slug is derived from the catalogue
+// entry NAME (route.ts → reportFilename(entry.name) in brand.ts), so each slug
+// must track REPORT_CATALOGUE[id].name. tra-tax was removed in 2026-07 (no
+// per-player withholding).
 const REPORTS = [
-  { id: "gbt-monthly", slug: "gbt-monthly-summary" },
-  { id: "tra-tax",     slug: "tra-withholding-tax" },
+  { id: "gbt-monthly", slug: "monthly-report" },
+  { id: "daily-ops",   slug: "daily-operations-report" },
   { id: "fiu-sar",     slug: "fiu-sar" },
   { id: "sx-register", slug: "self-exclusion-register" },
   { id: "iso-audit",   slug: "iso-27001-audit-log" },
+  { id: "kyc-reverify",    slug: "kyc-re-verification-roster" },
+  { id: "rg-engagement",   slug: "responsible-gambling-engagement" },
+  { id: "match-integrity", slug: "match-integrity-quarterly-review" },
 ];
 
 const browser = await chromium.launch();

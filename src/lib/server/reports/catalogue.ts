@@ -267,6 +267,9 @@ export async function buildFiuSar(generatorId: string, packPeriod: string = curr
   return {
     title: "Financial Intelligence Unit · Suspicious-Activity Report",
     subtitle: `Transactions over the ${formatTzs(cutoff)} threshold, or paused for AML review`,
+    // Landscape: the line-items carry two ~18-char IDs (player + transaction) plus
+    // a datetime — they wrap mid-token in portrait.
+    orientation: "landscape",
     reference: makeReference("FIU", generatorId),
     meta: {
       generatedAt: new Date().toISOString(),
@@ -288,13 +291,13 @@ export async function buildFiuSar(generatorId: string, packPeriod: string = curr
           "movements (payouts, refunds, bonuses, adjustments) and transactions that never " +
           "settled are excluded — no money crossed the regulated perimeter.",
         columns: [
-          { header: "Player ID",       key: "playerId",     width: 18 },
+          { header: "Player ID",       key: "playerId",     width: 15 },
           { header: "Phone",            sub: "masked",      key: "phone",        width: 12 },
           { header: "Trigger",          key: "triggerKind", width: 14 },
           { header: "Amount",           sub: "TZS",         key: "amount",       format: "tzs",      align: "right", width: 12 },
-          { header: "Transaction ID",   key: "txnId",       width: 18 },
-          { header: "Triggered at",     key: "triggerAt",   format: "datetime",  width: 16 },
-          { header: "Status",           key: "reviewStatus", width: 10 },
+          { header: "Transaction ID",   key: "txnId",       width: 15 },
+          { header: "Triggered at",     key: "triggerAt",   format: "datetime",  width: 18 },
+          { header: "Status",           key: "reviewStatus", width: 13 },
         ],
         rows,
       },
@@ -370,6 +373,9 @@ export async function buildSxRegister(generatorId: string): Promise<Report> {
   return {
     title: "Cross-operator Self-exclusion Register",
     subtitle: "Hashed identifiers — share with other licensed operators only",
+    // Landscape: nine columns including two full 64-char SHA-256 hashes — portrait
+    // shreds the "Days"/"Operator" columns to one glyph per line.
+    orientation: "landscape",
     reference: makeReference("SXR", generatorId),
     meta: {
       generatedAt: new Date().toISOString(),
@@ -443,6 +449,9 @@ export async function buildIsoAudit(generatorId: string): Promise<Report> {
       ? `Hash-chained record — oldest ${entries.length.toLocaleString()} of ${total.toLocaleString()} entries`
       : "Hash-chained record of every state change since genesis",
     reference: makeReference("ISO", generatorId),
+    // Landscape: eight columns including two SHA-256 hashes + a datetime — the
+    // densest table in the catalogue.
+    orientation: "landscape",
     meta: {
       generatedAt: new Date().toISOString(),
       generatedBy: generatorId,
@@ -483,8 +492,10 @@ export async function buildIsoAudit(generatorId: string): Promise<Report> {
       // Rows are now oldest-first (chain order), so first/last are the other way round
       // from the ring-backed version. These describe THIS EXPORT's span — with a cap in
       // play, the last row here is not the newest entry in the log.
-      { label: "First entry in export", value: entries[0]?.createdAt?.slice(0, 19).replace("T", " ") ?? "—", tone: "neutral" },
-      { label: "Last entry in export", value: entries[entries.length - 1]?.createdAt?.slice(0, 19).replace("T", " ") ?? "—", tone: "neutral" },
+      // Minute precision on the KPI tile (the audit table carries the full second-
+      // precision timestamp) so the value fits the tile on one line, un-truncated.
+      { label: "First entry in export", value: entries[0]?.createdAt?.slice(0, 16).replace("T", " ") ?? "—", tone: "neutral" },
+      { label: "Last entry in export", value: entries[entries.length - 1]?.createdAt?.slice(0, 16).replace("T", " ") ?? "—", tone: "neutral" },
     ],
     sections: [
       {
@@ -492,10 +503,12 @@ export async function buildIsoAudit(generatorId: string): Promise<Report> {
         description: "Each row carries the previous-entry hash and its own hash; walking the chain proves no entry was added, edited, or removed.",
         columns: [
           { header: "Entry ID",   key: "id",        width: 14 },
-          { header: "Created",    key: "createdAt", format: "datetime", width: 16 },
-          { header: "Category",   key: "category",  width: 10 },
-          { header: "Action",     key: "action",    width: 22 },
-          { header: "Actor",      key: "actorId",   width: 14 },
+          // Plain compact "YYYY-MM-DD HH:MM" — a formatted "21 Jul 2026, 08:59 UTC"
+          // wraps even in landscape; the compact form stays on one line and sorts.
+          { header: "Created",    sub: "UTC",       key: "createdAt", width: 15 },
+          { header: "Category",   key: "category",  width: 15 },
+          { header: "Action",     key: "action",    width: 18 },
+          { header: "Actor",      key: "actorId",   width: 16 },
           { header: "Target",     key: "target",    width: 16 },
           // prevHash is what makes the chain walkable FROM this document. Without it the
           // artifact promised "walking the chain proves no entry was added, edited or
@@ -505,7 +518,8 @@ export async function buildIsoAudit(generatorId: string): Promise<Report> {
         ],
         rows: entries.map((e) => ({
           id: e.id,
-          createdAt: e.createdAt,
+          // Compact, single-line, sortable: "2026-07-21 08:59" (UTC — noted in the sub-head).
+          createdAt: e.createdAt.slice(0, 16).replace("T", " "),
           category: e.category,
           action: e.action,
           actorId: e.actorId ?? "—",
@@ -851,6 +865,10 @@ export async function buildRgEngagement(generatorId: string): Promise<Report> {
   return {
     title: "Responsible-gambling engagement",
     subtitle: "Player-protection controls, limits, and self-exclusion activity",
+    // Landscape: the limits grid is ten columns (five money limits + session/
+    // reality-check/pending/exclusion dates) — portrait collides the "min"
+    // sub-heads and wraps money values mid-number.
+    orientation: "landscape",
     reference: makeReference("RGENG", generatorId),
     meta: { generatedAt: new Date().toISOString(), generatedBy: generatorId, period: `As of ${new Date().toISOString().slice(0, 10)}`, classification: "Internal" },
     summary: [

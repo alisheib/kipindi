@@ -64,6 +64,13 @@ export type Report = {
   title: string;
   /** Short subtitle — period label, jurisdiction, etc. */
   subtitle: string;
+  /** Page orientation for the PDF. Narrative/financial reports stay
+   *  "portrait" (the default); wide data appendices (audit-log dumps,
+   *  the cross-operator register, the RG limits grid, the SAR line-items)
+   *  set "landscape" so their many columns render on one line each instead
+   *  of wrapping mid-token. XLSX is always landscape+fit-to-width, so this
+   *  only affects the PDF. */
+  orientation?: "portrait" | "landscape";
   /** Code printed on every page for traceability — usually
    *  "<acronym>-<YYYYMMDD>-<actor-id-tail>". */
   reference: string;

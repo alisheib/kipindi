@@ -16,7 +16,9 @@ const BASE = process.env.BASE || "http://localhost:3000";
 const OUT = resolve(process.cwd(), ".50pick-shots/reports-smoke");
 mkdirSync(OUT, { recursive: true });
 
-const REPORTS = ["daily-ops", "gbt-monthly", "tra-tax", "fiu-sar", "sx-register", "iso-audit", "kyc-reverify", "rg-engagement", "match-integrity"];
+// Mirrors REPORT_CATALOGUE in src/lib/server/reports/catalogue.ts (tra-tax was
+// removed in 2026-07 — 50pick no longer withholds any per-player tax).
+const REPORTS = ["daily-ops", "gbt-monthly", "fiu-sar", "sx-register", "iso-audit", "kyc-reverify", "rg-engagement", "match-integrity"];
 
 let pass = 0, fail = 0;
 function log(label, ok, detail = "") {
