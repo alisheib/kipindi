@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
+import { ComingSoonBadge } from "@/components/ui/coming-soon-badge";
 import { getServerT } from "@/lib/i18n-server";
 import { getProposalsConfig } from "@/lib/server/proposals-config";
 import { formatTzs } from "@/lib/utils";
@@ -31,7 +32,10 @@ export async function ProposePromo({ href }: { href: string }) {
         <I.trophy s={22} />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="font-display text-[14.5px] font-bold text-text">{t.market.proposeAndGetPaid}</p>
+        <p className="flex flex-wrap items-center gap-2 font-display text-[14.5px] font-bold text-text">
+          {t.market.proposeAndGetPaid}
+          <ComingSoonBadge label={t.common.comingSoon} size="xs" />
+        </p>
         <p className="font-display italic text-text-subtle text-[11.5px]">
           {t.common.proposeEarn}
           {cfg.prizeTzs > 0 ? ` · ${formatTzs(cfg.prizeTzs)}` : ""}

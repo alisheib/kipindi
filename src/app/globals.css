@@ -687,6 +687,36 @@ body {
   100% { background-position: -100% 0; }
 }
 
+/* ---------- "Coming soon" gilt badge ----------
+   Shiny gold pill that flags a not-yet-live surface (e.g. proposing pools).
+   A moving specular band sweeps across the gilt fill so it reads as
+   unmistakably "new / coming soon" while the underlying link stays usable. */
+.cs-badge {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  color: var(--gold-50);
+  background: linear-gradient(135deg, var(--gold-400), var(--gold-600));
+  border: 1px solid color-mix(in oklab, var(--gold-300) 55%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, var(--gold-200) 45%, transparent),
+    0 2px 8px -3px color-mix(in oklab, var(--gold-500) 60%, transparent);
+}
+.cs-badge::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(110deg, transparent 34%, color-mix(in oklab, oklch(100% 0 0) 78%, transparent) 50%, transparent 66%);
+  background-size: 220% 100%;
+  animation: gold-shimmer 2.6s ease-in-out infinite;
+  pointer-events: none;
+}
+.cs-badge > * { position: relative; z-index: 2; }
+@media (prefers-reduced-motion: reduce) { .cs-badge::after { animation: none; opacity: 0.35; } }
+[data-motion="reduced"] .cs-badge::after,
+[data-motion="minimal"] .cs-badge::after { animation: none; opacity: 0.35; }
+
 /* ---------- Probability bar ---------- */
 .pbar {
   position: relative;

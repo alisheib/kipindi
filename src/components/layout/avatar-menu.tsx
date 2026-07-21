@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { Avatar } from "@/components/ui/avatar";
 import { I } from "@/components/ui/glyphs";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ComingSoonBadge } from "@/components/ui/coming-soon-badge";
 import { useT, type Locale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
@@ -118,7 +119,7 @@ export function AvatarMenu({
               <Item href="/profile"        icon={I.profile}      en="Profile"        sw="Wasifu"                       zh="个人资料" />
               <Item href="/wallet"         icon={I.wallet}       en="Wallet"         sw="Pochi"                        zh="钱包" />
               <Item href="/profile/invite" icon={I.gift}         en="Invite & Earn"  sw="Alika na upate zawadi"        zh="邀请赚钱" accent />
-              <Item href="/proposals"      icon={I.sparkle}      en="Propose & earn" sw="Pendekeza na upate zawadi"    zh="提议赚钱" accent />
+              <Item href="/proposals"      icon={I.sparkle}      en="Propose & earn" sw="Pendekeza na upate zawadi"    zh="提议赚钱" accent comingSoon />
               <Item href="/positions"      icon={I.portfolio}    en="Positions"      sw="Nafasi"                       zh="持仓" />
               <Item href="/results"        icon={I.resolved}     en="Results"        sw="Matokeo"                      zh="结果" />
               <Item href="/leaderboard"    icon={I.crown}        en="Leaderboard"    sw="Jedwali la Washindi"          zh="排行榜" />
@@ -218,10 +219,10 @@ function MobileLangPicker({ locale: current }: { locale: string }) {
   );
 }
 
-function Item({ href, icon: Ico, en, sw, zh, accent }: { href: string; icon: (p: { s?: number; className?: string }) => React.ReactElement; en: string; sw: string; zh: string; accent?: boolean }) {
-  const { locale } = useT();
+function Item({ href, icon: Ico, en, sw, zh, accent, comingSoon }: { href: string; icon: (p: { s?: number; className?: string }) => React.ReactElement; en: string; sw: string; zh: string; accent?: boolean; comingSoon?: boolean }) {
+  const { t, locale } = useT();
+  // System language only — no adjacent second-language gloss.
   const primary = locale === "sw" ? sw : locale === "zh" ? zh : en;
-  const secondary = locale === "en" ? sw : locale === "sw" ? en : en;
   return (
     <li>
       <Link
@@ -233,7 +234,7 @@ function Item({ href, icon: Ico, en, sw, zh, accent }: { href: string; icon: (p:
       >
         <span className={accent ? "text-gold-300" : "text-text-subtle"}><Ico s={15} /></span>
         {primary}
-        <span className="text-text-subtle italic font-normal text-label">· {secondary}</span>
+        {comingSoon && <ComingSoonBadge label={t.common.comingSoon} size="xs" className="ml-auto" />}
       </Link>
     </li>
   );

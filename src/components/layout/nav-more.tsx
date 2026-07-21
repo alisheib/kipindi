@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
+import { ComingSoonBadge } from "@/components/ui/coming-soon-badge";
+import { useT } from "@/lib/i18n";
 
 /**
  * NavMore — the top-bar overflow menu. At `lg` (1024–1279px) the primary nav
@@ -16,12 +18,13 @@ export function NavMore({
   items,
   label,
 }: {
-  items: readonly { href: string; label: string }[];
+  items: readonly { href: string; label: string; comingSoon?: boolean }[];
   label: string;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
+  const { t } = useT();
 
   // Close on navigation.
   useEffect(() => setOpen(false), [pathname]);
@@ -78,10 +81,11 @@ export function NavMore({
                 href={it.href as never}
                 role="menuitem"
                 aria-current={active ? "page" : undefined}
-                className="block rounded-lg px-3 py-2 text-[13.5px] transition-colors hover:bg-bg-overlay"
+                className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13.5px] transition-colors hover:bg-bg-overlay"
                 style={{ color: active ? "var(--text)" : "var(--text-subtle)", fontWeight: active ? 600 : 500 }}
               >
                 {it.label}
+                {it.comingSoon && <ComingSoonBadge label={t.common.comingSoon} size="xs" className="ml-auto" />}
               </Link>
             );
           })}

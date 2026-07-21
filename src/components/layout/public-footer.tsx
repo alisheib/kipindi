@@ -10,6 +10,7 @@
 
 import Link from "next/link";
 import { FiftyMark } from "@/components/brand";
+import { ComingSoonBadge } from "@/components/ui/coming-soon-badge";
 import { HELPLINE, HELPLINE_TEL, SUPPORT_EMAIL } from "@/lib/support-config";
 import { useT } from "@/lib/i18n";
 
@@ -64,7 +65,7 @@ export function PublicFooter() {
 
         <FooterCol heading={t.footer.fairness}>
           <FooterLink href="/fairness">{t.footer.resolutionAttestation}</FooterLink>
-          <FooterLink href="/proposals">{t.footer.proposeGetPaid}</FooterLink>
+          <FooterLink href="/proposals">{t.footer.proposeGetPaid} <ComingSoonBadge label={t.common.comingSoon} size="xs" className="ml-1.5" /></FooterLink>
           <FooterLink href="/legal/terms">{t.footer.gameRtp}</FooterLink>
           <FooterLink href="/help">{t.footer.helpSupport}</FooterLink>
         </FooterCol>

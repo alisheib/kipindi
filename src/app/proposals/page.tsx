@@ -10,6 +10,7 @@ import { PageHero } from "@/components/ui/page-hero";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ProposePromo } from "@/components/ui/propose-promo";
+import { ComingSoonBadge } from "@/components/ui/coming-soon-badge";
 import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { VoteControl } from "@/components/proposals/vote-control";
 import { StatusBadge } from "@/components/proposals/status-badge";
@@ -65,7 +66,10 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
       <h1 className="sr-only">{t.proposals.title}</h1>
 
       <PageHero glow="gold" contentClassName="relative z-10 p-5 lg:p-6 flex flex-col items-start gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-        <PageHeader tone="gold" icon={<I.trophy s={18} />} eyebrow={t.proposals.title} title={t.proposals.voteForMarkets} />
+        <div className="flex flex-col items-start gap-2">
+          <PageHeader tone="gold" icon={<I.trophy s={18} />} eyebrow={t.proposals.title} title={t.proposals.voteForMarkets} />
+          <ComingSoonBadge label={t.common.comingSoon} />
+        </div>
         {enabled && (
           <Link href={"/proposals/new" as never} className="shrink-0">
             <Button variant="gold" size="md" leading={<I.plus s={15} />}>{t.proposals.create}</Button>

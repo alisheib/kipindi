@@ -8,6 +8,7 @@ import { NotificationsPanel } from "@/components/layout/notifications-panel";
 import { AvatarMenu } from "@/components/layout/avatar-menu";
 import { NavMore } from "@/components/layout/nav-more";
 import { WalletBalancePill } from "@/components/layout/wallet-balance-pill";
+import { ComingSoonBadge } from "@/components/ui/coming-soon-badge";
 import { CashEye } from "@/components/ui/cash";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
@@ -49,7 +50,7 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
       ] as const);
   const MORE_ITEMS = user.isAuthed
     ? ([
-        { href: "/proposals",      label: t.common.propose },
+        { href: "/proposals",      label: t.common.propose, comingSoon: true },
         { href: "/profile/invite", label: t.common.invite },
         { href: "/leaderboard",    label: t.nav.leaderboard },
       ] as const)
@@ -163,7 +164,8 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
 }
 
 /** A single primary-nav link with the shared active-state logic. */
-function NavLink({ it, pathname }: { it: { href: string; label: string }; pathname: string }) {
+function NavLink({ it, pathname }: { it: { href: string; label: string; comingSoon?: boolean }; pathname: string }) {
+  const { t } = useT();
   const active =
     it.href === "/markets" ? pathname === "/" || pathname.startsWith("/markets")
     : it.href === "/proposals" ? pathname.startsWith("/proposals")
@@ -174,7 +176,7 @@ function NavLink({ it, pathname }: { it: { href: string; label: string }; pathna
     <Link
       href={it.href as never}
       aria-current={active ? "page" : undefined}
-      className="whitespace-nowrap"
+      className="inline-flex items-center gap-1.5 whitespace-nowrap"
       style={{
         padding: "7px 12px",
         borderRadius: "var(--r-sm)",
@@ -186,6 +188,7 @@ function NavLink({ it, pathname }: { it: { href: string; label: string }; pathna
       }}
     >
       {it.label}
+      {it.comingSoon && <ComingSoonBadge label={t.common.comingSoon} size="xs" />}
     </Link>
   );
 }
