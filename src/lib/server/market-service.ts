@@ -1733,7 +1733,7 @@ export async function settleMarket(
   const allMarketPositions = await listPositionsForMarket(m.id);
   const myPositions = allMarketPositions.filter((p) => p.status === "OPEN");
 
-  // One-sided market: all bets went to the same side, so there is no
+  // One-sided win: all bets went to the same side, so there is no
   // opposing pool to pay winnings from. Per the platform rules, all
   // bettors receive a full stake refund at 0% fee.
   const isOneSided = opts.outcome !== "VOID"
@@ -1801,7 +1801,7 @@ export async function settleMarket(
         stage1By: m.resolutionStage1By, stage2By: m.resolutionStage2By,
         sourceUrl: m.sourceUrl,
         evidence,
-        reason: "One-sided market — all bets on same side, full refund issued at 0% fee",
+        reason: "One-sided win — all bets on same side, full refund issued at 0% fee",
       },
     });
     try {

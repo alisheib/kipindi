@@ -80,7 +80,7 @@ Each phase has **Scope · Method · Tooling · Exit gate**. Ship phase-by-phase;
   - **Money invariants** — for every money path (deposit, bet, cashout, resolve YES/NO/VOID, one-sided refund, withdrawal, bonus grant/convert, referral, tax) assert *conservation* (in = out + house) + no-negative-balance + idempotency + audit-entry-exists. (Extends `solo-resolution`/`killswitch` pattern.)
   - **Concurrency** — extend the stress probes: simultaneous bet+cashout, double-submit, two-officer race, webhook replay, kill-switch flip mid-flight.
   - **Security/authz** — every server action + API route: role-gate, TOTP-gate, rate-limit, ownership check, input validation (zod), and a *negative* test (wrong role → blocked + audited).
-  - **Edge cases** — empty pools, one-sided markets, min/max stake, expired quote, selection-closed, self-exclusion lockout, KYC-gated withdrawal, dust amounts, huge amounts.
+  - **Edge cases** — empty pools, one-sided wins, min/max stake, expired quote, selection-closed, self-exclusion lockout, KYC-gated withdrawal, dust amounts, huge amounts.
   - **i18n integrity** — parity + no-untranslated + no-key-collisions + SW/ZH length stress on the tightest components.
   - **A11y automated** — extend `a11y-audit.mjs` to every route: axe-core pass (0 serious/critical), focus-order, landmark, alt-text.
 - **Tooling:** `tsx scripts/*.test.mts` + Playwright + axe-core.

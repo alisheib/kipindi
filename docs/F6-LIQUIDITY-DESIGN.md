@@ -16,11 +16,11 @@
 A fresh market is thin. Two bad things follow, and both are already visible in our
 own code:
 
-**(a) One-sided markets earn the operator nothing.** If every bet lands on one
+**(a) One-sided wins earn the operator nothing.** If every bet lands on one
 side there is no opposing pool to pay from, so we refund everyone at 0% fee
 (`market-service.ts:1269-1339`, audit `market.resolved.one_sided_refund`). The
 player is made whole — good — but the operator earns **zero**. Every one-sided
-market is a market we ran for free.
+win is a market we ran for free.
 
 **(b) A winner on a heavy favourite can LOSE money.**
 

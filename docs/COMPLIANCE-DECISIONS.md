@@ -6,6 +6,42 @@
 
 ---
 
+## 2026-07-21 · Player terminology: "one-sided market" → "one-sided win" (licence)
+
+**Owner decision:** Ali, explicit, 2026-07-21 (authorised in-session). **Critical for the
+GBT licence — apply everywhere.**
+
+**What changed:** every textual occurrence of the term **"one-sided market"** (and
+"one-sided markets") is now **"one-sided win"** — the player-facing disclaimer label in all
+three locales, the code comments/audit-reason text, and the design docs:
+- UI (`src/lib/i18n-dict.ts` → `market.oneSidedMarket`): EN "One-sided win" · SW
+  "Ushindi wa upande mmoja" · ZH "单边获胜" (rendered on `/markets/[id]` when a pool is
+  all on one side).
+- Code: `market-service.ts` settlement comment + the `market.resolved.one_sided_refund`
+  audit `reason` string.
+- Docs: `F6-LIQUIDITY-DESIGN.md`, `perfection-plan.md`.
+
+**What did NOT change (deliberate scope):**
+- The **mechanic is identical** — a one-sided pool still issues a **full refund at 0% fee**
+  (no money moves differently). Only the *label* changed.
+- The disclaimer **body copy stays factually truthful** — it still explains that every stake
+  is refunded and there is no opposing pool to pay winnings from. We do **not** claim anyone
+  "wins money" on a one-sided pool (that would violate the A‑5 no-fabrication rule). The
+  prominent term is the licence-preferred "win"; the explanation remains the honest refund.
+- The **machine identifiers are unchanged** on purpose — the audit action stays
+  `market.resolved.one_sided_refund`, and the code symbols (`isOneSided`, `notifyOneSidedRefund`,
+  `oneSidedRefundHtml`, the `oneSidedMarket` i18n key, `oneSidedBody`) keep their names.
+  Renaming symbols is refactoring with no licence value and real regression risk; the licence
+  concern is the *text a player/regulator reads*, which is now consistent.
+- Other "one-sided" **mechanic phrases** ("one-sided refund/pool/poll") are left as-is — they
+  are not the "market" term and are accurate descriptions of the refund.
+
+**Guardrail (⛔):** do not revert "one-sided win" back to "one-sided market" in player copy or
+docs, and do not "correct" it to imply a real cash win — the body must keep truthfully
+describing the full refund.
+
+---
+
 ## 2026-07-17 · Solo-resolution override: real-money-state lock (replaces the NODE_ENV hard-lock)
 
 **Owner decision:** Ali, explicit, 2026-07-17 (authorised in-session).
