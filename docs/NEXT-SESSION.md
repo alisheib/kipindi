@@ -91,6 +91,15 @@ callout; Legal per-doc header icons. (The kit glyphs `kycRail`/`fairnessChain`/
 - **PII in two admin list views** (privacy on-behalf, self-exclusion roster): still a
   compliance mask-vs-justified-need call, unchanged.
 
+### ▶ NEXT SESSION (run-until-done, Ali away) — paste `docs/FINALIZE-SESSION-PROMPT.md`
+Autonomous FINALIZE pass. Lanes, safe-first: (1) sparse "Today" board graceful "see this
+week →" fill; (2) mask PII in the 2 admin list views; (3) full-platform visual QA sweep
+(read screenshots, fix objective defects only); (4) ⚠️ LAST + careful + READ-ONLY — the two
+deferred money-adjacent items (AdminKpi money-tile sparks, wallet limit-usage meters), which
+must **STOP-and-report** on any payout/settlement/ledger/payment touch and stay deferred
+rather than ship a figure that isn't the real metric. The go-live gate (Selcom flip, float
+PIN, TEST_FUNDING off, secrets, DNS) is operator-only — see docs/GO-LIVE-READINESS.md.
+
 ## Done (Session — 2026-07-20, ADMIN-only console detail pass)
 
 Full scan of the operator console (41 routes: `src/app/admin/**` + `src/components/admin/**`).
