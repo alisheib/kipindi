@@ -1,4 +1,4 @@
-import { AdminPageHead, AdminKpi, AdminCard, FeedRow, AdminFunnel, AdminStackedBar } from "@/components/admin/admin-shell";
+import { AdminPageHead, AdminKpi, AdminCard, FeedRow, AdminFunnel, AdminStackedBar, AdminLoadError } from "@/components/admin/admin-shell";
 import { AdminAreaChart } from "@/components/admin/admin-charts";
 import { I } from "@/components/ui/glyphs";
 import { db } from "@/lib/server/store";
@@ -31,9 +31,12 @@ export default async function AdminOverviewPage() {
   const ngr = await netGamingRevenue("today").catch(() => null);
   let amlPending: number | null = 0;
   try { amlPending = (await db.txn.listByStatus("AML_REVIEW")).length; } catch { amlPending = null; }
-  const kyc = await kycFunnel().catch(() => ({ registered: 0, started: 0, pending: 0, approved: 0 }));
+  // A-5: null (not fabricated zeros) on a failed read so the KYC-funnel and
+  // self-exclusion cards show an explicit "couldn't load" instead of a false
+  // all-zero funnel / a false "nobody self-excluded" safety signal.
+  const kyc = await kycFunnel().catch(() => null);
   const provs = await providerSummary("28d").then((l) => l.slice(0, 5)).catch(() => []);
-  const rg = await rgRosterCounts().catch(() => ({ selfExcluded: 0, cooledOff: 0, expiringThisWeek: 0 }));
+  const rg = await rgRosterCounts().catch(() => null);
   const recent = getAuditPage({ limit: 12 });
   const flow = await moneyFlowSeries("today", 24).catch(() => []);
   // Read-only 7-day daily trend for the money-tile sparklines — each point is
@@ -47,7 +50,7 @@ export default async function AdminOverviewPage() {
   const provTotal = provs.reduce((s, p) => s + p.deposits, 0) || 1;
   const provColors = ["var(--royal)", "var(--gold)", "var(--aqua-400)", "var(--claret-400)", "var(--slate-400)"];
 
-  const conversion = kyc.registered === 0 ? 0 : (kyc.approved / kyc.registered) * 100;
+  const conversion = !kyc || kyc.registered === 0 ? 0 : (kyc.approved / kyc.registered) * 100;
 
   return (
     <>
@@ -111,17 +114,23 @@ export default async function AdminOverviewPage() {
         {/* §C — Secondary tiles */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <AdminCard title="KYC funnel" sw="Hatua za uthibitisho">
-            <AdminFunnel
-              steps={[
-                { label: "REG", value: kyc.registered.toLocaleString() },
-                { label: "STARTED", value: kyc.started.toLocaleString() },
-                { label: "PENDING", value: kyc.pending.toLocaleString() },
-                { label: "APPROVED", value: kyc.approved.toLocaleString() },
-              ]}
-            />
-            <p className="text-caption text-text-tertiary">
-              conversion {conversion.toFixed(1)}% · <span className="text-text-tertiary italic">uthibitisho</span>
-            </p>
+            {!kyc ? (
+              <AdminLoadError what="the KYC funnel" />
+            ) : (
+              <>
+                <AdminFunnel
+                  steps={[
+                    { label: "REG", value: kyc.registered.toLocaleString() },
+                    { label: "STARTED", value: kyc.started.toLocaleString() },
+                    { label: "PENDING", value: kyc.pending.toLocaleString() },
+                    { label: "APPROVED", value: kyc.approved.toLocaleString() },
+                  ]}
+                />
+                <p className="text-caption text-text-tertiary">
+                  conversion {conversion.toFixed(1)}% · <span className="text-text-tertiary italic">uthibitisho</span>
+                </p>
+              </>
+            )}
           </AdminCard>
 
           <AdminCard title="Provider mix" sw="Watoa huduma ya simu">
@@ -142,13 +151,19 @@ export default async function AdminOverviewPage() {
           </AdminCard>
 
           <AdminCard title="Self-exclusion" sw="Kujizuia">
-            <div className="flex items-baseline justify-between">
-              <span className="font-mono font-bold text-title-md tabular text-text">{rg.selfExcluded}</span>
-              {rg.expiringThisWeek > 0 && (
-                <span className="font-mono text-micro text-text-tertiary tracking-wider">▼ {rg.expiringThisWeek} expiring</span>
-              )}
-            </div>
-            <p className="text-caption text-text-tertiary">active roster · {rg.cooledOff} cooling-off</p>
+            {!rg ? (
+              <AdminLoadError what="self-exclusion figures" />
+            ) : (
+              <>
+                <div className="flex items-baseline justify-between">
+                  <span className="font-mono font-bold text-title-md tabular text-text">{rg.selfExcluded}</span>
+                  {rg.expiringThisWeek > 0 && (
+                    <span className="font-mono text-micro text-text-tertiary tracking-wider">▼ {rg.expiringThisWeek} expiring</span>
+                  )}
+                </div>
+                <p className="text-caption text-text-tertiary">active roster · {rg.cooledOff} cooling-off</p>
+              </>
+            )}
           </AdminCard>
 
           <AdminCard title="Match-integrity alerts" sw="Tahadhari za uadilifu">

@@ -72,6 +72,69 @@ cashout, fee-model, bonus-*, rg-race, webhook-sec, selcom, conflict-gate, …) G
      yes/no per B2) renders under the limits form, one per SET limit. +3 trilingual
      keys. Verified EN/SW/ZH at 1280+360; hidden when no limit set.
 
+## ⚖️ VALIDATION + REMEDIATION (2026-07-21c) — "is admin actually complete?" audit, then fixed
+
+> Ran as a **separate, parallel** deeper audit alongside the FINALIZE pass above (the two
+> collided on push — reconciled by rebase, both kept). The FINALIZE lanes closed the money-tile
+> sparks + wallet meters; THIS pass grounded-audited all 41 admin routes and found gaps the
+> FINALIZE prompt didn't cover — a second, deeper half of the A-5 no-fabrication rule, plus two
+> un-confirmed one-click destructive actions — and fixed them.
+
+Question asked: "is admin actually complete/perfect, or still missing things?" A grounded
+re-read of all 41 routes + `src/components/admin/**` (4 parallel lanes) found admin was NOT
+yet perfect — two claims were overstated and there were real fabrication gaps. **Everything
+found is now FIXED and LIVE** (see the two 🔴 + the confirm guards below). Gate green:
+`tsc` + `next build` clean · `test:all` 82/83 (only `test:responsive` needs a live :3000) ·
+money + guard suites all pass · visual: 5 touched pages screenshot-read at 1280 (happy path
+unchanged — genuine zeros still show as zeros; only the FAILED-read case changed).
+
+**Verified GENUINELY DONE (claims held up under scrutiny — not re-touched):**
+- ✅ **Loaders — 41/41 real, layout-matched skeletons.** No bare spinner, no missing file.
+- ✅ **Pagination — every unbounded list is paginated** (two client-state lists use a justified
+  `ClientPager` clone). All `.slice()` caps are the intentional preview/feed kind.
+
+**🔴→✅ FIXED — A-5 silent-zero, the analytics/compliance half `e040fba` missed.** The earlier
+fix covered only the top-line **money KPI strips**; the **count/compliance** surfaces still
+rendered a fabricated zero on a *failed* read. Now every one distinguishes failure from a
+genuine zero via the shipped `AdminKpi unavailable` / `AdminLoadError` pattern (**display-only,
+no arithmetic touched**):
+   - `players/[id]` — lifetime deposit/withdrawal/NGR KPIs + the risk gauge + the txn tab now
+     show "n/a · couldn't compute" on a failed export read (was fabricated **TZS 0**).
+   - overview KYC-funnel + self-exclusion cards; `compliance` KYC funnel + RG cards; `players`
+     list KPIs + table; `players/cohorts` KPIs + health/funnel/bars/chart; `self-exclusions`
+     KPIs + roster + header chips; `resolver/[id]` open-count. ⚠️ self-exclusion "0 excluded"
+     on a failed read (a *false safety signal*) is the one that mattered most — now honest.
+   - `kyc/[id]` was already clear (fails to `notFound()`, not a zero).
+
+**🔴→✅ CORRECTED (audit FALSE POSITIVE) — `/admin/live` does NOT render fake data.** The audit
+flagged the `ui-stubs` `matches` import, but `matches` is `[] ` (`ui-stubs.ts:53`) and the match
+table only renders `when liveMatches.length > 0` — so it never renders, no dead links, and the
+"Live matches: 0" KPI is a *genuine* zero. Nothing to fix; noted so it isn't re-chased.
+
+**🟡→✅ DONE — confirm modals on the one-click irreversible admin actions** (reuse `ConfirmDialog`,
+same as AML-approve): **candidate Publish** ("creates a live market players bet on") and **KYC
+Approve identity** ("unlocks real-money play"). KYC **reject** left as-is *by design* — it already
+gates behind a required reason-code + note two-step ("Confirm reject"), stronger friction than a
+yes/no modal; adding one would be a redundant third step.
+
+**⚪ POLISH — still open, non-blocking (a future batch, none block launch):** ~7 tables hand-roll
+empty states instead of the shared atom (sources, config×2, approvals×3, system buckets); dead
+no-op `.tabular` class on ~12 money cells (digits align only b/c `font-mono` — should be
+`tabular-nums`); `events`+`insights` tables bypass `ScrollX`/`.admin-tbl` (lose the a11y region);
+transactions status column is plain text not a `<Chip>`; local status→variant maps not centralized
+(players/bonuses/invites/candidates); rate-limiter table `slice(0,25)` with no "showing N of M".
+
+**✅ NOW DONE by the parallel FINALIZE lane 4 (above):** AdminKpi money-tile GGR/NGR/active
+sparks (`1a79903` — honest per-metric `dailyKpiSeries()` through the canonical `summarise`, not
+the net-flow proxy) and wallet limit-usage meters (`b479c17` — `getLimitUsage()` reusing the exact
+gate sums). My audit had flagged both as money-data-gated; the FINALIZE session proved they were
+doable read-only and shipped them. **Only genuinely-deferred item left:** the single shared
+`admin/error.tsx` boundary is sufficient — segment boundaries preserve nothing extra here.
+
+**Net remaining before admin is "perfect":** only the ⚪ POLISH batch above (empty-state atom on
+~7 tables, dead `.tabular`→`tabular-nums`, ScrollX on events/insights, transactions status Chip,
+centralize the 4 status→variant maps, rate-limiter count caption). None block launch.
+
 ## Done (Session — 2026-07-21, platform-wide DESIGN + missing-detail pass)
 
 Method: acted as "Claude Design". Before touching anything, ran a 4-lane grounded

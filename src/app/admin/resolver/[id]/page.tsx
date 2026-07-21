@@ -28,7 +28,10 @@ export default async function ResolutionCeremonyPage({ params }: { params: Promi
   const currentOfficerId = session?.userId ?? "";
 
   const yes = impliedYesPct(m);
-  const positions = await listPositionsForMarket(m.id).catch(() => []);
+  // A-5: distinguish a failed positions read from a genuine 0-open so the ceremony
+  // header shows "— open" rather than a fabricated "0 open".
+  let positionsFailed = false;
+  const positions = await listPositionsForMarket(m.id).catch(() => { positionsFailed = true; return []; });
   const openCount = positions.filter((p) => p.status === "OPEN").length;
   const grossPool = m.yesPool + m.noPool;
 
@@ -105,7 +108,7 @@ export default async function ResolutionCeremonyPage({ params }: { params: Promi
                 </div>
                 <div>
                   <dt className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">Positions</dt>
-                  <dd className="font-mono text-text">{m.predictorCount} predictors · {openCount} open</dd>
+                  <dd className="font-mono text-text">{m.predictorCount} predictors · {positionsFailed ? "—" : openCount} open</dd>
                 </div>
               </dl>
 

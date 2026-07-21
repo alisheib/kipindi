@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { AdminPageHead, AdminKpi, AdminCard, FeedRow } from "@/components/admin/admin-shell";
+import { AdminPageHead, AdminKpi, AdminCard, FeedRow, AdminLoadError } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
@@ -82,8 +82,12 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
   try { kyc = await db.kyc.findByUserId(id); } catch { /* graceful */ }
   let rg: Awaited<ReturnType<typeof db.responsible.get>> = null;
   try { rg = await db.responsible.get(id); } catch { /* graceful */ }
+  // A-5: distinguish a FAILED transaction read from a genuinely empty history.
+  // On failure the money KPIs + risk gauge + txn table show an explicit
+  // "unavailable" state — never a fabricated "TZS 0" lifetime figure.
   let data: Awaited<ReturnType<typeof exportUserData>> = { user, transactions: [] } as never;
-  try { data = await exportUserData(id); } catch { /* graceful */ }
+  let txnsFailed = false;
+  try { data = await exportUserData(id); } catch { txnsFailed = true; }
   const txns = data.transactions as StoredTxn[];
   // Merge the player's OWN actions with admin actions taken AGAINST them, so an
   // officer can see who suspended / reset / emailed / approved this account.
@@ -191,25 +195,36 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
               <p className="font-mono text-micro uppercase tracking-[0.14em] text-text-tertiary">Risk score</p>
               {/* Radial gauge (AdminGauge) — arc + number coloured by band with the
                   SAME tokens the rest of the console uses for risk. NOT ConfidenceDial:
-                  that is a YES/NO tipping dial and would misread as a bet split. */}
-              <AdminGauge
-                value={riskScore}
-                max={100}
-                size={80}
-                colorVar={riskBand === "high" ? "var(--danger-500)" : riskBand === "medium" ? "var(--warning-500)" : "var(--yes-500)"}
-                ariaLabel={`Risk score ${riskScore} of 100 — ${riskBand} risk`}
-              />
-              <p className="font-mono text-micro text-text-tertiary tracking-wider">{riskBand} · review monthly</p>
+                  that is a YES/NO tipping dial and would misread as a bet split.
+                  A-5: the score is derived from the transaction history — if that read
+                  failed, show "n/a" rather than a falsely-low score from empty data. */}
+              {txnsFailed ? (
+                <>
+                  <div className="h-20 w-20 flex items-center justify-center font-mono font-bold text-text-tertiary" style={{ fontSize: 20 }} title="Risk score could not be computed — the transaction read failed. It is NOT low.">n/a</div>
+                  <p className="font-mono text-micro text-warning-fg tracking-wider">couldn&apos;t compute</p>
+                </>
+              ) : (
+                <>
+                  <AdminGauge
+                    value={riskScore}
+                    max={100}
+                    size={80}
+                    colorVar={riskBand === "high" ? "var(--danger-500)" : riskBand === "medium" ? "var(--warning-500)" : "var(--yes-500)"}
+                    ariaLabel={`Risk score ${riskScore} of 100 — ${riskBand} risk`}
+                  />
+                  <p className="font-mono text-micro text-text-tertiary tracking-wider">{riskBand} · review monthly</p>
+                </>
+              )}
             </div>
           </div>
         </AdminCard>
 
         {/* §B — Quick stats strip */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <AdminKpi label="Lifetime deposit"    sw="Jumla ya amana"        value={`TZS ${formatTzsCompact(lifetimeDeposits).replace("TZS ", "")}`} delta={wallet ? `wallet ${formatTzs(wallet.balance)}` : "—"} />
-          <AdminKpi label="Lifetime withdrawal" sw="Jumla ya utoaji"       value={`TZS ${formatTzsCompact(lifetimeWithdrawals).replace("TZS ", "")}`} delta={`${txns.filter((t) => t.type === "WITHDRAWAL").length} txns`} />
-          <AdminKpi label="NGR contribution"    sw="Mchango wa mapato"     value={`TZS ${formatTzsCompact(ngr).replace("TZS ", "")}`} delta={`${txns.filter((t) => t.type === "BET_PLACED").length} positions`} />
-          <AdminKpi label="Last position"      sw="Nafasi ya mwisho"      value={(() => { const lb = txns.filter((t) => t.type === "BET_PLACED").sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]; return lb ? formatDateShort(lb.createdAt) : "never"; })()} delta={`${txns.filter((t) => t.type === "BET_PLACED").length} positions`} />
+          <AdminKpi label="Lifetime deposit"    sw="Jumla ya amana"        value={txnsFailed ? "" : `TZS ${formatTzsCompact(lifetimeDeposits).replace("TZS ", "")}`} unavailable={txnsFailed} delta={wallet ? `wallet ${formatTzs(wallet.balance)}` : "—"} />
+          <AdminKpi label="Lifetime withdrawal" sw="Jumla ya utoaji"       value={txnsFailed ? "" : `TZS ${formatTzsCompact(lifetimeWithdrawals).replace("TZS ", "")}`} unavailable={txnsFailed} delta={`${txns.filter((t) => t.type === "WITHDRAWAL").length} txns`} />
+          <AdminKpi label="NGR contribution"    sw="Mchango wa mapato"     value={txnsFailed ? "" : `TZS ${formatTzsCompact(ngr).replace("TZS ", "")}`} unavailable={txnsFailed} delta={`${txns.filter((t) => t.type === "BET_PLACED").length} positions`} />
+          <AdminKpi label="Last position"      sw="Nafasi ya mwisho"      value={txnsFailed ? "" : (() => { const lb = txns.filter((t) => t.type === "BET_PLACED").sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]; return lb ? formatDateShort(lb.createdAt) : "never"; })()} unavailable={txnsFailed} delta={`${txns.filter((t) => t.type === "BET_PLACED").length} positions`} />
         </div>
 
         {/* §C — Tabs */}
@@ -269,6 +284,9 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
               </div>
             )}
             {tab === "transactions" && (
+              txnsFailed ? (
+                <div className="p-4"><AdminLoadError what="this player's transactions" /></div>
+              ) : (
               <>
               <ScrollX label="Transactions">
                 <table className="admin-tbl min-w-[600px]">
@@ -299,6 +317,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
               </ScrollX>
               <AdminPagination total={txSorted.length} page={txPage} baseHref={txBase} param="txpage" />
               </>
+              )
             )}
             {tab === "kyc" && (
               <KycTab kyc={kyc} userEmail={user.email} userId={id} />

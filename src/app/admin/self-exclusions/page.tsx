@@ -1,4 +1,4 @@
-import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
+import { AdminPageHead, AdminCard, AdminKpi, AdminLoadError } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage } from "@/components/admin/admin-pagination";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import { Chip } from "@/components/ui/chip";
@@ -60,12 +60,15 @@ export default async function AdminSelfExclusionsPage({
   searchParams: Promise<{ page?: string }>;
 }) {
   const sp = await searchParams;
-  // Guard both loads (compliance/page.tsx already guards rgRosterCounts) so a
-  // store hiccup degrades to an empty roster instead of 500ing the page.
-  const roster = await buildRoster().catch(() => [] as Awaited<ReturnType<typeof buildRoster>>);
+  // A-5: track each read's failure. A failed roster/count read must NOT render a
+  // fabricated "0 excluded" — on a compliance surface that reads as a false
+  // "nobody is self-excluded" safety signal. Show an explicit "couldn't load".
+  let rosterFailed = false;
+  const roster = await buildRoster().catch(() => { rosterFailed = true; return [] as Awaited<ReturnType<typeof buildRoster>>; });
   const page = parsePage(sp.page, roster.length);
   const paged = roster.slice((page - 1) * PER_PAGE, page * PER_PAGE);
-  const counts = await rgRosterCounts().catch(() => ({ selfExcluded: 0, cooledOff: 0, expiringThisWeek: 0, pendingLimitIncrease: 0 }));
+  let countsFailed = false;
+  const counts = await rgRosterCounts().catch(() => { countsFailed = true; return { selfExcluded: 0, cooledOff: 0, expiringThisWeek: 0, pendingLimitIncrease: 0 }; });
 
   return (
     <>
@@ -75,26 +78,35 @@ export default async function AdminSelfExclusionsPage({
         period={false}
         actions={
           <div className="flex items-center gap-1.5 flex-wrap">
-            <Chip size="sm" variant="danger">{counts.selfExcluded} excluded</Chip>
-            <Chip size="sm" variant="warning">{counts.cooledOff} cooling-off</Chip>
+            {countsFailed ? (
+              <Chip size="sm" variant="neutral">counts n/a</Chip>
+            ) : (
+              <>
+                <Chip size="sm" variant="danger">{counts.selfExcluded} excluded</Chip>
+                <Chip size="sm" variant="warning">{counts.cooledOff} cooling-off</Chip>
+              </>
+            )}
           </div>
         }
       />
       <div className="px-4 lg:px-6 py-5 space-y-4">
         {/* KPIs */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <AdminKpi label="Self-excluded"        sw="Wamejizuia"         value={counts.selfExcluded.toLocaleString()} delta="active roster" />
-          <AdminKpi label="Cooling-off"           sw="Kupumzika"          value={counts.cooledOff.toLocaleString()} delta="in progress" />
-          <AdminKpi label="Expiring this week"    sw="Inakwisha wiki hii" value={counts.expiringThisWeek.toLocaleString()} delta="follow-up window" />
-          <AdminKpi label="Pending limit-increase" sw="Kuongeza kikomo"    value={counts.pendingLimitIncrease.toLocaleString()} delta="24h cool-down" />
+          <AdminKpi label="Self-excluded"        sw="Wamejizuia"         value={countsFailed ? "" : counts.selfExcluded.toLocaleString()} unavailable={countsFailed} delta="active roster" />
+          <AdminKpi label="Cooling-off"           sw="Kupumzika"          value={countsFailed ? "" : counts.cooledOff.toLocaleString()} unavailable={countsFailed} delta="in progress" />
+          <AdminKpi label="Expiring this week"    sw="Inakwisha wiki hii" value={countsFailed ? "" : counts.expiringThisWeek.toLocaleString()} unavailable={countsFailed} delta="follow-up window" />
+          <AdminKpi label="Pending limit-increase" sw="Kuongeza kikomo"    value={countsFailed ? "" : counts.pendingLimitIncrease.toLocaleString()} unavailable={countsFailed} delta="24h cool-down" />
         </div>
 
         {/* Roster table */}
         <AdminCard
           title="Roster · in order of next expiry"
           sw="Orodha"
-          action={<span className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">{roster.length} active</span>}
+          action={<span className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">{rosterFailed ? "—" : `${roster.length} active`}</span>}
         >
+          {rosterFailed ? (
+            <AdminLoadError what="the self-exclusion roster" />
+          ) : (
           <ScrollX label="Self-exclusion roster">
             <table className="admin-tbl min-w-[640px]">
               <thead>
@@ -143,7 +155,8 @@ export default async function AdminSelfExclusionsPage({
               </tbody>
             </table>
           </ScrollX>
-          <AdminPagination total={roster.length} page={page} baseHref="/admin/self-exclusions" />
+          )}
+          {!rosterFailed && <AdminPagination total={roster.length} page={page} baseHref="/admin/self-exclusions" />}
         </AdminCard>
 
         <AdminCard className="border-info-border bg-info-bg/15">

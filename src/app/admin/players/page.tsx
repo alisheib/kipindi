@@ -1,4 +1,4 @@
-import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
+import { AdminPageHead, AdminCard, AdminKpi, AdminLoadError } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { SortTh } from "@/components/admin/admin-sort";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
@@ -30,8 +30,11 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
   const sortField = (["joined", "login", "balance"] as const).includes(sp.sort as never) ? sp.sort! : "joined";
   const sortDir = sp.dir === "asc" ? "asc" : "desc";
 
+  // A-5: distinguish a failed population read from a genuinely empty player base,
+  // so the headline counts show "n/a" (not a fabricated "0 players") on failure.
   let all: Awaited<ReturnType<typeof db.user.list>> = [];
-  try { all = await db.user.list(); } catch { /* graceful */ }
+  let usersFailed = false;
+  try { all = await db.user.list(); } catch { usersFailed = true; }
   const filtered = all.filter((u) => {
     if (statusFilter && u.status !== statusFilter) return false;
     if (!query) return true;
@@ -91,10 +94,10 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
         {/* Headline KPIs — replaces the header count-chips with the console-standard
             band (matches overview / cohorts). Blocked = suspended + self-excluded. */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <AdminKpi label="Total players" sw="Jumla ya wachezaji" value={counts.total.toLocaleString()} />
-          <AdminKpi label="Active" sw="Hai" value={counts.active.toLocaleString()} tone="success" delta={`${counts.total ? Math.round((counts.active / counts.total) * 100) : 0}%`} deltaDir="up" />
-          <AdminKpi label="Pending KYC" sw="Inasubiri KYC" value={counts.pending_kyc.toLocaleString()} delta={counts.pending_kyc > 0 ? "needs review" : "clear"} deltaDir={counts.pending_kyc > 0 ? "up" : "flat"} />
-          <AdminKpi label="Blocked" sw="Zimezuiwa" value={blocked.toLocaleString()} tone={blocked > 0 ? "danger" : undefined} delta={`${counts.suspended} susp · ${counts.self_excluded} excl`} deltaDir="flat" />
+          <AdminKpi label="Total players" sw="Jumla ya wachezaji" value={usersFailed ? "" : counts.total.toLocaleString()} unavailable={usersFailed} />
+          <AdminKpi label="Active" sw="Hai" value={usersFailed ? "" : counts.active.toLocaleString()} unavailable={usersFailed} tone="success" delta={`${counts.total ? Math.round((counts.active / counts.total) * 100) : 0}%`} deltaDir="up" />
+          <AdminKpi label="Pending KYC" sw="Inasubiri KYC" value={usersFailed ? "" : counts.pending_kyc.toLocaleString()} unavailable={usersFailed} delta={counts.pending_kyc > 0 ? "needs review" : "clear"} deltaDir={counts.pending_kyc > 0 ? "up" : "flat"} />
+          <AdminKpi label="Blocked" sw="Zimezuiwa" value={usersFailed ? "" : blocked.toLocaleString()} unavailable={usersFailed} tone={blocked > 0 ? "danger" : undefined} delta={`${counts.suspended} susp · ${counts.self_excluded} excl`} deltaDir="flat" />
         </div>
 
         {/* Population status mix — one at-a-glance segmented bar (green Active /
@@ -189,12 +192,16 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                   );
                 }))}
                 {filtered.length === 0 && (
-                  <AdminTableEmpty
-                    colSpan={7}
-                    kind="admin"
-                    title="No players match"
-                    body="No players match the current filter — try clearing it."
-                  />
+                  usersFailed ? (
+                    <tr><td colSpan={7} className="p-4"><AdminLoadError what="the player list" /></td></tr>
+                  ) : (
+                    <AdminTableEmpty
+                      colSpan={7}
+                      kind="admin"
+                      title="No players match"
+                      body="No players match the current filter — try clearing it."
+                    />
+                  )
                 )}
               </tbody>
             </table>

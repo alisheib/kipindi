@@ -13,6 +13,7 @@ import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
 import { BrandSpinner } from "@/components/brand";
 import { AttestationRail } from "@/components/admin/attestation-rail";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { CEREMONY } from "@/lib/admin-status-lexicon";
 import {
   approveKycWorkstationAction,
@@ -141,14 +142,22 @@ export function KycDecisionRail({
             <I.shieldcheck s={14} /> Recommend approval
           </button>
         ) : (
-          <button
-            type="button"
-            disabled={!(canApproveDirect || canApproveAsChecker)}
-            onClick={() => run(approveKycWorkstationAction, "Identity approved")}
-            className="btn btn-primary btn-md w-full disabled:opacity-40"
-          >
-            <I.shieldcheck s={14} /> {makerCheckerRequired ? "Approve (second officer)" : "Approve identity"}
-          </button>
+          <ConfirmDialog
+            trigger={
+              <button
+                type="button"
+                disabled={!(canApproveDirect || canApproveAsChecker)}
+                className="btn btn-primary btn-md w-full disabled:opacity-40"
+              >
+                <I.shieldcheck s={14} /> {makerCheckerRequired ? "Approve (second officer)" : "Approve identity"}
+              </button>
+            }
+            title="Approve identity · Idhinisha kitambulisho"
+            body={<>This marks the player&apos;s identity as <strong>verified</strong> and unlocks full real-money deposits, play and withdrawals. Confirm the checklist reflects the documents you actually reviewed.</>}
+            confirmLabel="Yes, approve identity"
+            tone="brand"
+            onConfirm={() => run(approveKycWorkstationAction, "Identity approved")}
+          />
         )}
 
         {!rejectOpen ? (

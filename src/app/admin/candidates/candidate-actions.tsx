@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Select } from "@/components/ui/select";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ActionOverlay, useActionOverlay } from "@/components/admin/action-overlay";
 import { approveCandidateAction, rejectCandidateAction, publishCandidateAction } from "./actions";
 
@@ -80,14 +81,22 @@ export function CandidateActions({ id, mode }: { id: string; mode: "review" | "p
   if (mode === "publish") {
     return (
       <>
-        <button
-          type="button"
-          onClick={publish}
-          disabled={pending}
-          className="btn btn-primary btn-sm rounded-pill min-w-[120px]"
-        >
-          {pending ? "Publishing…" : "Publish"}
-        </button>
+        <ConfirmDialog
+          trigger={
+            <button
+              type="button"
+              disabled={pending}
+              className="btn btn-primary btn-sm rounded-pill min-w-[120px]"
+            >
+              {pending ? "Publishing…" : "Publish"}
+            </button>
+          }
+          title="Publish market · Chapisha soko"
+          body={<>This creates a <strong>live market</strong> that players can immediately place real-money bets on. Once bets are placed it cannot be un-published — only resolved or voided.</>}
+          confirmLabel="Yes, publish"
+          tone="brand"
+          onConfirm={publish}
+        />
         <ActionOverlay state={overlay.state} onDismiss={overlay.dismiss} />
       </>
     );

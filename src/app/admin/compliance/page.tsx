@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AdminPageHead, AdminCard, AdminKpi, AdminStackedBar, StatusPill, FeedRow } from "@/components/admin/admin-shell";
+import { AdminPageHead, AdminCard, AdminKpi, AdminStackedBar, StatusPill, FeedRow, AdminLoadError } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
@@ -33,8 +33,10 @@ export default async function AdminCompliancePage({
 }) {
   const sp = await searchParams;
   const chain = verifyChain();
-  const kyc = await kycFunnel().catch(() => ({ registered: 0, started: 0, pending: 0, approved: 0 }));
-  const rg = await rgRosterCounts().catch(() => ({ selfExcluded: 0, cooledOff: 0, expiringThisWeek: 0, pendingLimitIncrease: 0 }));
+  // A-5: on a regulator-facing surface a failed read must NOT render a fabricated
+  // all-zero funnel or a false "nobody self-excluded". null → explicit "couldn't load".
+  const kyc = await kycFunnel().catch(() => null);
+  const rg = await rgRosterCounts().catch(() => null);
   let aml: StoredTxn[] = [];
   try { aml = (await db.txn.listByStatus("AML_REVIEW")) as StoredTxn[]; } catch { /* graceful */ }
   const recentAml = aml.slice(0, 5);
@@ -48,13 +50,13 @@ export default async function AdminCompliancePage({
   const sxd = rgEvents.filter((e) => e.action === "rg.self_exclusion.activated").length;
   const rcTotal = continued + tookBreak + sxd || 1;
 
-  const kycConv = kyc.registered === 0 ? 0 : (kyc.approved / kyc.registered) * 100;
-  const kycSteps = [
+  const kycConv = !kyc || kyc.registered === 0 ? 0 : (kyc.approved / kyc.registered) * 100;
+  const kycSteps = kyc ? [
     { label: "Registered", value: kyc.registered },
     { label: "Started",    value: kyc.started,    conversionFromPrev: kyc.registered === 0 ? "—" : `${((kyc.started / kyc.registered) * 100).toFixed(1)}%` },
     { label: "Pending",    value: kyc.pending,    conversionFromPrev: kyc.started === 0 ? "—" : `${((kyc.pending / kyc.started) * 100).toFixed(1)}%` },
     { label: "Approved",   value: kyc.approved,   conversionFromPrev: kyc.started === 0 ? "—" : `${((kyc.approved / kyc.started) * 100).toFixed(1)}%` },
-  ];
+  ] : [];
 
   return (
     <>
@@ -116,11 +118,17 @@ export default async function AdminCompliancePage({
         {/* §B — KYC funnel + AML queue */}
         <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-3">
           <AdminCard title="KYC conversion funnel" sw="Hatua za uthibitisho">
-            <AdminFunnelChart steps={kycSteps} />
-            <div className="flex items-center justify-between pt-3 mt-2 border-t border-border-subtle text-caption text-text-tertiary">
-              <span>End-to-end approval: <span className="font-semibold text-text">{kycConv.toFixed(1)}%</span></span>
-              <a href="/admin/players?status=PENDING_KYC" className="text-royal-300 hover:underline font-medium">View pending →</a>
-            </div>
+            {!kyc ? (
+              <AdminLoadError what="the KYC funnel" />
+            ) : (
+              <>
+                <AdminFunnelChart steps={kycSteps} />
+                <div className="flex items-center justify-between pt-3 mt-2 border-t border-border-subtle text-caption text-text-tertiary">
+                  <span>End-to-end approval: <span className="font-semibold text-text">{kycConv.toFixed(1)}%</span></span>
+                  <a href="/admin/players?status=PENDING_KYC" className="text-royal-300 hover:underline font-medium">View pending →</a>
+                </div>
+              </>
+            )}
           </AdminCard>
           <AdminCard title="AML queue · 7-day" sw="Foleni ya AML">
             <div className="grid grid-cols-2 gap-2">
@@ -154,20 +162,20 @@ export default async function AdminCompliancePage({
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <AdminCard title="Self-exclusion" sw="Kujizuia">
             <div className="flex items-baseline justify-between">
-              <span className="font-mono font-bold text-title-md tabular text-text">{rg.selfExcluded}</span>
-              {rg.expiringThisWeek > 0 && (
+              <span className={["font-mono font-bold text-title-md tabular", rg ? "text-text" : "text-text-tertiary"].join(" ")}>{rg ? rg.selfExcluded : "n/a"}</span>
+              {rg && rg.expiringThisWeek > 0 && (
                 <span className="font-mono text-micro text-warning tracking-wider">{rg.expiringThisWeek} expiring</span>
               )}
             </div>
-            <p className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">active roster</p>
+            <p className={["font-mono text-micro tracking-[0.10em] uppercase", rg ? "text-text-tertiary" : "text-warning-fg"].join(" ")}>{rg ? "active roster" : "couldn't load"}</p>
           </AdminCard>
           <AdminCard title="Cooling-off" sw="Kupumzika">
-            <div className="font-mono font-bold text-title-md tabular text-text">{rg.cooledOff}</div>
-            <p className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">in progress</p>
+            <div className={["font-mono font-bold text-title-md tabular", rg ? "text-text" : "text-text-tertiary"].join(" ")}>{rg ? rg.cooledOff : "n/a"}</div>
+            <p className={["font-mono text-micro tracking-[0.10em] uppercase", rg ? "text-text-tertiary" : "text-warning-fg"].join(" ")}>{rg ? "in progress" : "couldn't load"}</p>
           </AdminCard>
           <AdminCard title="Limit-increase deferrals" sw="Kuongeza kikomo">
-            <div className="font-mono font-bold text-title-md tabular text-warning-fg">{rg.pendingLimitIncrease}</div>
-            <p className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">pending 24h cool-down</p>
+            <div className={["font-mono font-bold text-title-md tabular", rg ? "text-warning-fg" : "text-text-tertiary"].join(" ")}>{rg ? rg.pendingLimitIncrease : "n/a"}</div>
+            <p className={["font-mono text-micro tracking-[0.10em] uppercase", rg ? "text-text-tertiary" : "text-warning-fg"].join(" ")}>{rg ? "pending 24h cool-down" : "couldn't load"}</p>
           </AdminCard>
           <AdminCard title="Reality-check engagement" sw="Tahadhari ya hali halisi">
             <AdminStackedBar

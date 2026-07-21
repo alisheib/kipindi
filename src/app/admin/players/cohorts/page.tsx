@@ -1,4 +1,4 @@
-import { AdminPageHead, AdminCard, AdminKpi, AdminFunnel } from "@/components/admin/admin-shell";
+import { AdminPageHead, AdminCard, AdminKpi, AdminFunnel, AdminLoadError } from "@/components/admin/admin-shell";
 import { AdminBarList, AdminMeter, AdminAreaChart } from "@/components/admin/admin-charts";
 import { db } from "@/lib/server/store";
 import { kycFunnel, userStatusCounts } from "@/lib/server/analytics";
@@ -53,13 +53,18 @@ export default async function AdminCohortsPage() {
   // store error should degrade to empty cards, not 500 the whole cohorts screen.
   // `db.user.list()` is a Promise in prod (Prisma) but a sync array in the
   // in-memory dev store — Promise.resolve() normalises both so `.catch` is safe.
-  const allUsers = await Promise.resolve(db.user.list()).catch(() => [] as Awaited<ReturnType<typeof db.user.list>>);
+  // A-5: track each read's failure so a failed query shows an explicit
+  // "couldn't load" card rather than a fabricated all-zero cohort breakdown.
+  let usersFailed = false;
+  const allUsers = await Promise.resolve(db.user.list()).catch(() => { usersFailed = true; return [] as Awaited<ReturnType<typeof db.user.list>>; });
   const months = bucketByMonth(allUsers);
   const regions = bucketByRegion(allUsers);
   const ageBuckets = bucketByAge(allUsers);
-  const status = await userStatusCounts().catch(() => ({} as Record<string, number>));
+  let statusFailed = false;
+  const status = await userStatusCounts().catch(() => { statusFailed = true; return {} as Record<string, number>; });
   const total = Object.values(status).reduce((s, c) => s + c, 0);
-  const kyc = await kycFunnel().catch(() => ({ registered: 0, started: 0, pending: 0, approved: 0 }));
+  let kycFailed = false;
+  const kyc = await kycFunnel().catch(() => { kycFailed = true; return { registered: 0, started: 0, pending: 0, approved: 0 }; });
 
   return (
     <>
@@ -68,37 +73,47 @@ export default async function AdminCohortsPage() {
       <div className="px-4 lg:px-6 py-5 space-y-4">
         {/* Headline KPIs — cumulative registrations feed the A8 spark. */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <AdminKpi label="Total players" sw="Wachezaji"      value={total.toLocaleString()} series={cumulativeSeries(months)} />
-          <AdminKpi label="Active"        sw="Hai"             value={(status.ACTIVE ?? 0).toLocaleString()} deltaDir="up" delta={`${total === 0 ? 0 : Math.round(((status.ACTIVE ?? 0) / total) * 100)}%`} />
-          <AdminKpi label="Pending KYC"   sw="Inasubiri"       value={(status.PENDING_KYC ?? 0).toLocaleString()} delta="needs follow-up" />
-          <AdminKpi label="Self-excluded" sw="Wamejizuia"      value={(status.SELF_EXCLUDED ?? 0).toLocaleString()} delta="active roster" />
+          <AdminKpi label="Total players" sw="Wachezaji"      value={statusFailed ? "" : total.toLocaleString()} unavailable={statusFailed} series={usersFailed ? undefined : cumulativeSeries(months)} />
+          <AdminKpi label="Active"        sw="Hai"             value={statusFailed ? "" : (status.ACTIVE ?? 0).toLocaleString()} unavailable={statusFailed} deltaDir="up" delta={`${total === 0 ? 0 : Math.round(((status.ACTIVE ?? 0) / total) * 100)}%`} />
+          <AdminKpi label="Pending KYC"   sw="Inasubiri"       value={statusFailed ? "" : (status.PENDING_KYC ?? 0).toLocaleString()} unavailable={statusFailed} delta="needs follow-up" />
+          <AdminKpi label="Self-excluded" sw="Wamejizuia"      value={statusFailed ? "" : (status.SELF_EXCLUDED ?? 0).toLocaleString()} unavailable={statusFailed} delta="active roster" />
         </div>
 
         {/* Cohort health meters (A8) — value-vs-cap gauges, brand fill. */}
         <AdminCard title="Cohort health" sw="Afya ya kundi">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
-            <AdminMeter label="Active rate" value={status.ACTIVE ?? 0} cap={total} thresholdPct={0} format={(n) => n.toLocaleString()} />
-            <AdminMeter label="KYC approved" value={kyc.approved} cap={Math.max(kyc.registered, 1)} thresholdPct={0} format={(n) => n.toLocaleString()} />
-          </div>
+          {statusFailed || kycFailed ? (
+            <AdminLoadError what="cohort-health figures" />
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+              <AdminMeter label="Active rate" value={status.ACTIVE ?? 0} cap={total} thresholdPct={0} format={(n) => n.toLocaleString()} />
+              <AdminMeter label="KYC approved" value={kyc.approved} cap={Math.max(kyc.registered, 1)} thresholdPct={0} format={(n) => n.toLocaleString()} />
+            </div>
+          )}
         </AdminCard>
 
         {/* KYC funnel — repeat from compliance for cohort context */}
         <AdminCard title="KYC funnel" sw="Hatua za uthibitisho">
-          <AdminFunnel
-            steps={[
-              { label: "REGISTERED", value: kyc.registered.toLocaleString() },
-              { label: "STARTED",    value: kyc.started.toLocaleString() },
-              { label: "PENDING",    value: kyc.pending.toLocaleString() },
-              { label: "APPROVED",   value: kyc.approved.toLocaleString() },
-            ]}
-          />
+          {kycFailed ? (
+            <AdminLoadError what="the KYC funnel" />
+          ) : (
+            <AdminFunnel
+              steps={[
+                { label: "REGISTERED", value: kyc.registered.toLocaleString() },
+                { label: "STARTED",    value: kyc.started.toLocaleString() },
+                { label: "PENDING",    value: kyc.pending.toLocaleString() },
+                { label: "APPROVED",   value: kyc.approved.toLocaleString() },
+              ]}
+            />
+          )}
         </AdminCard>
 
         {/* Status mix + region + age side-by-side — AdminBarList (A8) replaces
             the hand-rolled distribution divs; brand fill only (no gold). */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
           <AdminCard title="By status" sw="Hali">
-            {total === 0 ? (
+            {statusFailed ? (
+              <AdminLoadError what="status data" />
+            ) : total === 0 ? (
               <p className="text-caption text-text-tertiary py-3 text-center">No status data.</p>
             ) : (
               <AdminBarList
@@ -108,7 +123,9 @@ export default async function AdminCohortsPage() {
           </AdminCard>
 
           <AdminCard title="By region" sw="Mkoa">
-            {regions.length === 0 ? (
+            {usersFailed ? (
+              <AdminLoadError what="region data" />
+            ) : regions.length === 0 ? (
               <p className="text-caption text-text-tertiary py-3 text-center">No region data.</p>
             ) : (
               <AdminBarList rows={regions.slice(0, 8).map(({ region, count }) => ({ label: region, value: count }))} />
@@ -116,9 +133,13 @@ export default async function AdminCohortsPage() {
           </AdminCard>
 
           <AdminCard title="By age band" sw="Umri">
-            <AdminBarList
-              rows={ageBuckets.map(({ band, count }) => ({ label: <span className="font-mono">{band}</span>, value: count }))}
-            />
+            {usersFailed ? (
+              <AdminLoadError what="age data" />
+            ) : (
+              <AdminBarList
+                rows={ageBuckets.map(({ band, count }) => ({ label: <span className="font-mono">{band}</span>, value: count }))}
+              />
+            )}
           </AdminCard>
         </div>
 
@@ -126,7 +147,9 @@ export default async function AdminCohortsPage() {
             vertical bars, matching the time-series idiom used on overview / finance
             / live so the whole console reads as one system. */}
         <AdminCard title="Registrations over time" sw="Kujisajili">
-          {months.length === 0 ? (
+          {usersFailed ? (
+            <AdminLoadError what="registration history" />
+          ) : months.length === 0 ? (
             <p className="text-caption text-text-tertiary py-3 text-center">No registrations yet.</p>
           ) : (
             <AdminAreaChart
