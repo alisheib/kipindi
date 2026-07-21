@@ -76,14 +76,18 @@ privacy list + player-detail. The players list showing a verified legal name to 
 officer is BY DESIGN (gated surface, officer needs identity) — NOT masked; the `display-label` doc
 was corrected to match reality (it wrongly said "we don't auto-promote NIDA→displayName").
 
+**Also done — market-ops polish (`57b15ec`):** emergency-void result strip gold→brand (gold =
+earned-money/resolved-seal only); /admin/objections now shows a "Compliance only" marker to a
+MODERATOR instead of Void/Reverse/Reject buttons that bounced them to login (uphold/reject is
+COMPLIANCE-gated in the action). Also `ce1817d` = this doc.
+
 **Remaining (LOW polish, non-blocking — next admin pass):** resolver-queue stage-1 one-click closes
-a LIVE market with no confirm; /admin/objections shows COMPLIANCE-only decision buttons to a
-MODERATOR (bounces to login — hide/disable); emergency-void result strip uses gold (→ brand);
-duplicated ClientPager/SortBtn in moderation + proposals clients; `publishCandidateAction` lacks the
-future-date guard `createMarketAction` has; a few payments tiles (Stat/Metric) + DSAR "Mark
-fulfilled" on ERASURE rows are minor. **Two-officer for LARGE balance adjustments is deferred BY
-DESIGN** (single-officer + 50M cap + atomic + audited today; a prepare→approve flow is a
-money-adjacent, separately-tested change).
+a LIVE market with no confirm (defensible — no money moves, two-officer downstream); duplicated
+ClientPager/SortBtn in moderation + proposals clients; `publishCandidateAction` lacks the
+future-date guard `createMarketAction` has; a few payments tiles (Stat/Metric) lack SW subtitles;
+DSAR "Mark fulfilled" is shown on ERASURE rows (always refused). **Two-officer for LARGE balance
+adjustments is deferred BY DESIGN** (single-officer + 50M cap + atomic + audited today; a
+prepare→approve flow is a money-adjacent, separately-tested change).
 
 ## Done (Session — 2026-07-21d, REPORTING subsystem finalize — end-to-end, human-read artifacts)
 
