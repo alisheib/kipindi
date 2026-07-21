@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
-import { setCreditLimit, resetCreditCycle } from "@/lib/server/ai-usage";
+import { setCreditLimit, resetCreditCycle, getCreditConfig } from "@/lib/server/ai-usage";
 import { setAiModel, setSentinelInterval, AVAILABLE_MODELS, INTERVAL_OPTIONS } from "@/lib/server/ai-ops-config";
 import { audit } from "@/lib/server/audit";
 import { CONFIG_ROLES } from "@/lib/server/roles";
@@ -24,14 +24,23 @@ async function ensureAdmin() {
 
 /** Set the per-cycle spend limit (USD). Admins are emailed at ~80% and at 100%. */
 export async function setCreditLimitAction(fd: FormData): Promise<{ ok: boolean; error?: string }> {
-  await ensureAdmin();
+  const s = await ensureAdmin();
   const raw = String(fd.get("limitUsd") ?? "").trim();
   const amount = Number(raw);
   if (!Number.isFinite(amount) || amount <= 0) {
     return { ok: false, error: "Enter a valid limit in USD (e.g. 20)." };
   }
   try {
+    const prior = await getCreditConfig();
     await setCreditLimit(amount);
+    audit({
+      category: "ADMIN",
+      action: "ai.credit_limit_changed",
+      actorId: s.userId,
+      targetType: "AiConfig",
+      targetId: "credits",
+      payload: { limitUsd: amount, priorLimitUsd: prior.limitUsd },
+    });
     revalidatePath("/admin/ai-usage");
     return { ok: true };
   } catch (err) {
@@ -42,9 +51,18 @@ export async function setCreditLimitAction(fd: FormData): Promise<{ ok: boolean;
 /** Start a fresh spend cycle (call right after topping up Anthropic credit).
  *  Resets "spent this cycle" to 0 and re-arms the limit alerts. */
 export async function resetCreditCycleAction(): Promise<{ ok: boolean; error?: string }> {
-  await ensureAdmin();
+  const s = await ensureAdmin();
   try {
+    const prior = await getCreditConfig();
     await resetCreditCycle();
+    audit({
+      category: "ADMIN",
+      action: "ai.credit_cycle_reset",
+      actorId: s.userId,
+      targetType: "AiConfig",
+      targetId: "credits",
+      payload: { priorCycleStartIso: prior.cycleStartIso, priorAlertedLevel: prior.alertedLevel },
+    });
     revalidatePath("/admin/ai-usage");
     return { ok: true };
   } catch (err) {

@@ -7,8 +7,9 @@ import { db } from "@/lib/server/store";
 import { verifyChainFull } from "@/lib/server/audit";
 import { audit } from "@/lib/server/audit";
 import { revalidatePath } from "next/cache";
-import { setSupportConfig } from "@/lib/support-config";
+import { setSupportConfig, getSupportConfig, SUPPORT_CONFIG_KEY } from "@/lib/support-config";
 import { setPlatformConfig } from "@/lib/server/platform-config";
+import { saveConfig } from "@/lib/server/config-store";
 import { CONFIG_ROLES } from "@/lib/server/roles";
 import { requireAdminTotp } from "@/lib/server/admin-guard";
 
@@ -47,7 +48,7 @@ export async function verifyChainAction() {
 }
 
 export async function updateSupportConfigAction(formData: FormData) {
-  await requireAdmin();
+  const session = await requireAdmin();
   const email = String(formData.get("email") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
   const helpline = String(formData.get("helpline") ?? "").trim();
@@ -55,7 +56,22 @@ export async function updateSupportConfigAction(formData: FormData) {
   try {
     const phoneTel = phone.replace(/[\s\-()]/g, "");
     const helplineTel = helpline.replace(/[\s\-()]/g, "");
-    setSupportConfig({ email, phone, phoneTel, helpline, helplineTel });
+    const before = getSupportConfig();
+    const next = setSupportConfig({ email, phone, phoneTel, helpline, helplineTel });
+    // Persist durably (SystemConfig) so the change SURVIVES the next deploy —
+    // previously it lived only in an in-memory global and silently reverted to
+    // the built-in DEFAULTS on every Railway push, with no audit trail. Hydrated
+    // back into the cache at boot (boot-checks.ts). Audited like every sibling
+    // config change (timezone / announcement / maintenance).
+    await saveConfig(SUPPORT_CONFIG_KEY, next);
+    audit({
+      category: "ADMIN",
+      action: "config.support_updated",
+      actorId: session.userId,
+      targetType: "System",
+      targetId: "support",
+      payload: { before, after: next },
+    });
     revalidatePath("/admin/system");
     return { ok: true as const };
   } catch (err) {

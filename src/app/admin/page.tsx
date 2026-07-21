@@ -48,7 +48,7 @@ export default async function AdminOverviewPage() {
 
   // Provider mix flex shares — total deposits across the top 5 providers
   const provTotal = provs.reduce((s, p) => s + p.deposits, 0) || 1;
-  const provColors = ["var(--royal)", "var(--gold)", "var(--aqua-400)", "var(--claret-400)", "var(--slate-400)"];
+  const provColors = ["var(--royal)", "var(--royal-300)", "var(--aqua-400)", "var(--claret-400)", "var(--slate-400)"];
 
   const conversion = !kyc || kyc.registered === 0 ? 0 : (kyc.approved / kyc.registered) * 100;
 

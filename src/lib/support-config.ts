@@ -15,6 +15,11 @@ export type SupportConfig = {
   helplineTel: string;
 };
 
+/** SystemConfig key the durable copy is persisted under. The in-memory cache
+ *  below is hydrated from it on boot (boot-checks.ts) and written on save
+ *  (admin/system/actions.ts) so an operator's change survives a deploy. */
+export const SUPPORT_CONFIG_KEY = "support_config";
+
 const DEFAULTS: SupportConfig = {
   // Must match the email service's ReplyTo (support@50pick.tz) so a user who
   // replies to a 50pick email and a user who taps "contact support" in the app

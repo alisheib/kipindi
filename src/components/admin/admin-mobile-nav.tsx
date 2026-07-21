@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
@@ -11,14 +11,38 @@ type NavGroup = { group: { en: string; sw: string }; items: ReadonlyArray<NavIte
 
 export function AdminMobileNavTrigger({ groups, badges, activeKey }: { groups: ReadonlyArray<NavGroup>; badges: Record<string, string | undefined>; activeKey: string }) {
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const wasOpen = useRef(false);
+
+  // A11y: Escape closes the panel; focus moves into the dialog (the close button)
+  // on open and returns to the trigger on close. focus() uses preventScroll so it
+  // adds no motion — reduced-motion-safe by construction.
+  useEffect(() => {
+    if (open) {
+      wasOpen.current = true;
+      closeRef.current?.focus({ preventScroll: true });
+      const onKeyDown = (e: KeyboardEvent) => {
+        if (e.key === "Escape") setOpen(false);
+      };
+      document.addEventListener("keydown", onKeyDown);
+      return () => document.removeEventListener("keydown", onKeyDown);
+    }
+    if (wasOpen.current) {
+      wasOpen.current = false;
+      triggerRef.current?.focus({ preventScroll: true });
+    }
+  }, [open]);
+
   return (
     <>
       <button
+        ref={triggerRef}
         type="button"
         aria-label="Open admin navigation"
         aria-expanded={open ? "true" : "false"}
         onClick={() => setOpen(true)}
-        className="lg:hidden inline-flex h-9 w-9 items-center justify-center rounded-md text-text-secondary hover:bg-bg-overlay"
+        className="lg:hidden inline-flex h-10 w-10 items-center justify-center rounded-md text-text-secondary hover:bg-bg-overlay"
       >
         <I.menu s={18} />
       </button>
@@ -36,10 +60,11 @@ export function AdminMobileNavTrigger({ groups, badges, activeKey }: { groups: R
                 <span className="font-display font-bold text-body-sm text-text">50pick · admin</span>
               </Link>
               <button
+                ref={closeRef}
                 type="button"
                 aria-label="Close admin navigation"
                 onClick={() => setOpen(false)}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-text-tertiary hover:bg-bg-overlay"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-md text-text-tertiary hover:bg-bg-overlay"
               >
                 <I.x s={16} />
               </button>

@@ -8,6 +8,7 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { Chip } from "@/components/ui/chip";
 import { db } from "@/lib/server/store";
+import { getAuditPage } from "@/lib/server/audit";
 import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
 
@@ -40,7 +41,9 @@ export default async function AdminRetentionPage() {
   const allUsers = await db.user.list();
   const userCount = allUsers.length;
   const closed = allUsers.filter((u) => u.status === "CLOSED").length;
-  const auditEntries = (globalThis as { __50PICK_AUDIT_RING?: unknown[] }).__50PICK_AUDIT_RING?.length ?? 0;
+  // Read through the audit API (like /admin/system) rather than poking the
+  // globalThis ring directly — best-effort, capped read.
+  const auditEntries = getAuditPage({ limit: 100_000 }).length;
 
   return (
     <>
