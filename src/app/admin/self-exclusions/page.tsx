@@ -6,6 +6,7 @@ import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { db } from "@/lib/server/store";
 import { rgRosterCounts } from "@/lib/server/analytics";
+import { maskName } from "@/lib/server/affiliate-service";
 import { formatDateTime } from "@/lib/utils";
 
 export const metadata = { title: "Admin · Self-exclusions" };
@@ -110,7 +111,10 @@ export default async function AdminSelfExclusionsPage({
                 {paged.map((r) => (
                   <tr key={r.userId}>
                     <td>
-                      <a href={`/admin/players/${r.userId}`} className="font-medium text-text hover:text-royal-300 hover:underline">{r.displayName ?? "—"}</a>
+                      {/* PII-minimised in the roster (self-excluded players are a
+                          sensitive cohort). Full identity only on the audited
+                          detail page — matches the masked-phone column. */}
+                      <a href={`/admin/players/${r.userId}`} className="font-medium text-text hover:text-royal-300 hover:underline">{maskName(r.displayName, r.phoneE164)}</a>
                       <span className="block font-mono text-micro text-text-tertiary">{r.userId.slice(0, 14)}…</span>
                     </td>
                     <td className="font-mono whitespace-nowrap">{r.phoneE164.length > 6 ? `${r.phoneE164.slice(0, 4)}****${r.phoneE164.slice(-2)}` : r.phoneE164}</td>

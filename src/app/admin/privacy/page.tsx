@@ -11,6 +11,7 @@ import { Chip } from "@/components/ui/chip";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { db } from "@/lib/server/store";
 import { listDsarRequests } from "@/lib/server/privacy";
+import { maskName } from "@/lib/server/affiliate-service";
 import { ExportDsarBundleButton, FulfillDsarButton } from "./dsar-controls";
 import { formatDateTime } from "@/lib/utils";
 import { I } from "@/components/ui/glyphs";
@@ -136,8 +137,11 @@ export default async function AdminPrivacyPage({
                 {recentUsers.map((u) => (
                   <tr key={u.id} className="border-b border-border-subtle/40 last:border-b-0">
                     <td className="py-2 pr-3">
+                      {/* PII-minimised in the list — this is a DSAR export queue.
+                          Full identity only on the audited detail page; matches
+                          the masked-phone column beside it. */}
                       <a href={`/admin/players/${u.id}`} className="font-medium text-text hover:text-royal-300 hover:underline">
-                        {u.displayName ?? "—"}
+                        {maskName(u.displayName, u.phoneE164)}
                       </a>
                       <span className="block font-mono text-micro text-text-tertiary">{u.id.slice(0, 14)}…</span>
                     </td>
