@@ -1,7 +1,57 @@
 # 50pick — next-session brief
 
 Read the two always-on skills first (`.claude/skills/50pick-standards` +
-`.claude/skills/50pick-audit`), then this. Last updated 2026-07-21 (platform-wide design pass).
+`.claude/skills/50pick-audit`), then this. Last updated 2026-07-21 (REPORTING subsystem finalize).
+
+## Done (Session — 2026-07-21d, REPORTING subsystem finalize — end-to-end, human-read artifacts)
+
+Dedicated session on the whole reporting subsystem (`src/lib/server/reports/**`,
+`report-money.ts`, `report-pack.ts`, `src/app/admin/reports/**`, the
+`/api/admin/reports/[id]` route). Method: **generated every one of the 8 catalogue
+reports to a real PDF AND XLSX from a seeded store, rasterized every PDF page (pdf.js)
+and READ them**, read the XLSX cells back, then fixed what the actual output revealed —
+not code-reading alone. LIVE `@837bc0d` (fresh boot verified: /admin/reports=307,
+report API unauth=401, health=200). Gate: `tsc` clean · `next build` clean · `test:all`
+82/83 (only `test:responsive`, the documented live-server exception; every money + guard +
+outcome + integrity + i18n-parity suite green).
+
+**Verdict: the engine was already genuinely regulator-grade** (crisp logo, royal band +
+gilt-on-totals-only, embedded Inter/JetBrains-Mono, attestation panel, footer w/
+ref·page·generated-at, PII masking, honest bilingual empty states, formula-injection
+guard on XLSX, A-5 no-fabrication throughout). Two SYSTEMIC rendering defects only visible
+in the rasterized output were fixed:
+1. **Wide tables (8+ cols) wrapped mid-token in portrait** — ISO log split "COMPLIANCE"→
+   "CO/MPL/IAN/CE" & datetimes to 4 lines; the cross-operator register shredded "120"
+   (Days)→"1/2/0" and "50pick"(Operator)→"50pi/ck"; the RG limits grid collided the "min"
+   sub-heads + wrapped money mid-number. Fix: new optional **`Report.orientation`** →
+   these four data appendices now render **LANDSCAPE** (iso-audit, sx-register,
+   rg-engagement, fiu-sar); narrative/financial reports stay portrait; XLSX unaffected.
+2. **KPI cards collided the value with a wrapped label** ("GROSS GAMING REVENUE", "TRA 10%
+   ON COMMISSION") and could ellipsis-truncate a long value. `drawSummary` now measures the
+   tallest label AND value (each capped at 2 lines) and lays all cards to shared baselines.
+   Also the **table-header band sizes to fit a wrapped header + its sub** (was fixed 30px,
+   which collided "Reality chk" with "min"); iso-audit got a compact single-line
+   `YYYY-MM-DD HH:MM` Created column + minute-precision first/last-entry KPI tiles; column
+   widths tuned on iso-audit + fiu-sar so words/IDs don't split.
+
+**Data path UNCHANGED (display-only):** re-confirmed gbt-monthly GGR/NGR, /admin/finance and
+the /admin/reports console all funnel through the ONE `summarise()`/`moneyForWindow()`
+primitive (`analytics.grossGamingRevenue/netGamingRevenue` delegate to it); daily-ops'
+inline `stakes−payouts−refunds` matches `summarise().ggr` exactly. FIU SAR flagged-volume
+ties out (3.2M+1.45M+1.1M = 5.75M). No money arithmetic touched.
+
+**Reports UI** (`/admin/reports`) verified LIVE at 360/768/1280/1920 EN+SW (seeded admin +
+stress data, screenshots read): royal tokens, 6-tile KPI strip w/ honest sparklines (no
+gold), Daily P&L + GGR-by-category BarList, maker-checker pack chain, bilingual template
+library, honest empty generation log — responsive, no overflow, **clean; no changes needed.**
+
+Also removed the stale `tra-tax` report (deleted 2026-07) from 3 smoke scripts + corrected
+their filename slugs / body-match strings. Files: `reports/pdf.ts`, `reports/types.ts`,
+`reports/catalogue.ts`, `scripts/{report-renderers-smoke,reports-smoke-test,admin-csv-export-test}.mjs`.
+
+⚠️ A **parallel session** was editing `globals.css` + `i18n-dict.ts` + proposals/nav
+(a "Coming soon / Propose & earn" feature) during this pass — those uncommitted files were
+left untouched; only the 6 reports files were staged/committed.
 
 ## State at handoff
 - **The Final Audit is COMPLETE** — all 11 Criticals + all Highs + all Mediums
