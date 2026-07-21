@@ -4,6 +4,7 @@ import { I } from "@/components/ui/glyphs";
 import { db } from "@/lib/server/store";
 import { getAuditPage, type AuditCategory } from "@/lib/server/audit";
 import { activePlayers, grossGamingRevenue, netGamingRevenue, kycFunnel, providerSummary, rgRosterCounts, moneyFlowSeries } from "@/lib/server/analytics";
+import { dailyKpiSeries } from "@/lib/server/report-money";
 import { formatTzsCompact } from "@/lib/utils";
 
 export const metadata = { title: "Admin · Overview" };
@@ -35,6 +36,12 @@ export default async function AdminOverviewPage() {
   const rg = await rgRosterCounts().catch(() => ({ selfExcluded: 0, cooledOff: 0, expiringThisWeek: 0 }));
   const recent = getAuditPage({ limit: 12 });
   const flow = await moneyFlowSeries("today", 24).catch(() => []);
+  // Read-only 7-day daily trend for the money-tile sparklines — each point is
+  // that day's REAL GGR/NGR/active (canonical `summarise`), so the spark is the
+  // metric's OWN recent history, not a net-flow proxy. `spark()` suppresses a
+  // meaningless all-zero line (honest data or nothing).
+  const trends = await dailyKpiSeries("7d").catch(() => ({ ggr: [], ngr: [], active: [] }));
+  const spark = (s: number[]) => (s.some((v) => v !== 0) ? s : undefined);
 
   // Provider mix flex shares — total deposits across the top 5 providers
   const provTotal = provs.reduce((s, p) => s + p.deposits, 0) || 1;
@@ -49,9 +56,9 @@ export default async function AdminOverviewPage() {
       <div className="px-4 lg:px-6 py-5 space-y-4">
         {/* §A — KPI strip */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-          <AdminKpi label="Active players" sw="Wachezaji hai"     value={active24h === null ? "" : active24h.toLocaleString()} unavailable={active24h === null} delta="last 24h" pulse={active24h !== null} />
-          <AdminKpi label="GGR · 24h"      sw="Mapato ya jumla"   value={ggr === null ? "" : `TZS ${formatTzsCompact(ggr).replace("TZS ", "")}`} unavailable={ggr === null} delta="vs yesterday" />
-          <AdminKpi label="NGR · 24h"      sw="Mapato halisi"     value={ngr === null ? "" : `TZS ${formatTzsCompact(ngr).replace("TZS ", "")}`} unavailable={ngr === null} delta="net of bonus + fees" />
+          <AdminKpi label="Active players" sw="Wachezaji hai"     value={active24h === null ? "" : active24h.toLocaleString()} unavailable={active24h === null} delta="last 24h" pulse={active24h !== null} series={spark(trends.active)} />
+          <AdminKpi label="GGR · 24h"      sw="Mapato ya jumla"   value={ggr === null ? "" : `TZS ${formatTzsCompact(ggr).replace("TZS ", "")}`} unavailable={ggr === null} delta="vs yesterday" series={spark(trends.ggr)} />
+          <AdminKpi label="NGR · 24h"      sw="Mapato halisi"     value={ngr === null ? "" : `TZS ${formatTzsCompact(ngr).replace("TZS ", "")}`} unavailable={ngr === null} delta="net of bonus + fees" series={spark(trends.ngr)} />
           <AdminKpi label="AML pending"    sw="Inasubiri ukaguzi" value={amlPending ?? ""} unavailable={amlPending === null} delta="needs review" deltaDir={(amlPending ?? 0) > 0 ? "up" : "flat"} pulse={(amlPending ?? 0) > 0} />
         </div>
 

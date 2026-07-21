@@ -16,6 +16,7 @@ import {
   providerStackedSeries,
   listProvidersInPeriod,
 } from "@/lib/server/analytics";
+import { dailyKpiSeries } from "@/lib/server/report-money";
 import { formatTzs, formatTzsCompact } from "@/lib/utils";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { GenerateButton } from "../reports/generate-button";
@@ -73,6 +74,11 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
   const margins = await marginSeries(period, 28).catch(() => []);
   const provBars = await providerStackedSeries(period, 14).catch(() => []);
   const providers = await listProvidersInPeriod(period).catch(() => []);
+  // Read-only 7-day daily trend for the GGR/NGR/active tile sparklines — each
+  // point is that day's REAL metric (canonical `summarise`), the metric's own
+  // recent history, not a proxy series. `spark()` hides an all-zero line.
+  const trends = await dailyKpiSeries("7d").catch(() => ({ ggr: [], ngr: [], active: [] }));
+  const spark = (s: number[]) => (s.some((v) => v !== 0) ? s : undefined);
 
   // Tax accrued — the REAL statutory levies, at the admin-configured rates, on
   // the same basis the Daily Operations report files with (TRA + GBT levied on
@@ -112,8 +118,8 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <AdminKpi label="Deposits in"     sw="Amana"             value={dep ? `TZS ${formatTzsCompact(dep.amount).replace("TZS ", "")}` : ""} unavailable={dep === null} delta={dep ? `${dep.count.toLocaleString()} txns` : undefined} />
           <AdminKpi label="Withdrawals out" sw="Utoaji"            value={wd ? `TZS ${formatTzsCompact(wd.amount).replace("TZS ", "")}` : ""}  unavailable={wd === null}  delta={wd ? `${wd.count.toLocaleString()} txns` : undefined} />
-          <AdminKpi label="GGR"             sw="Mapato ya jumla"    value={ggr === null ? "" : `TZS ${formatTzsCompact(ggr).replace("TZS ", "")}`}        unavailable={ggr === null} delta={`${period}`} />
-          <AdminKpi label="NGR"             sw="Mapato halisi"      value={ngr === null ? "" : `TZS ${formatTzsCompact(ngr).replace("TZS ", "")}`}        unavailable={ngr === null} delta="net of bonus + fees" />
+          <AdminKpi label="GGR"             sw="Mapato ya jumla"    value={ggr === null ? "" : `TZS ${formatTzsCompact(ggr).replace("TZS ", "")}`}        unavailable={ggr === null} delta={`${period}`} series={spark(trends.ggr)} />
+          <AdminKpi label="NGR"             sw="Mapato halisi"      value={ngr === null ? "" : `TZS ${formatTzsCompact(ngr).replace("TZS ", "")}`}        unavailable={ngr === null} delta="net of bonus + fees" series={spark(trends.ngr)} />
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <AdminKpi
@@ -125,7 +131,7 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
           />
           <AdminKpi label="Operator margin"  sw="Faida"         value={margin === null ? "" : `${margin.toFixed(1)}%`} unavailable={margin === null} delta="capped-fee model" deltaDir="flat" />
           <AdminKpi label="Wallet liability" sw="Madeni"        value={liability === null ? "" : `TZS ${formatTzsCompact(liability).replace("TZS ", "")}`} unavailable={liability === null} delta="real-time" />
-          <AdminKpi label="Active players"   sw="Wachezaji"     value={activePeriod === null ? "" : activePeriod.toLocaleString()} unavailable={activePeriod === null} delta={`${period}`} />
+          <AdminKpi label="Active players"   sw="Wachezaji"     value={activePeriod === null ? "" : activePeriod.toLocaleString()} unavailable={activePeriod === null} delta={`${period}`} series={spark(trends.active)} />
         </div>
 
         {/* THE HOUSE ACCOUNTS — straight from the double-entry ledger.

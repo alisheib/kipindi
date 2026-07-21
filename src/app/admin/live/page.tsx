@@ -6,6 +6,7 @@ import { db } from "@/lib/server/store";
 import { getAuditPage } from "@/lib/server/audit";
 import { matches } from "@/lib/ui-stubs";
 import { activePlayers, moneyFlowSeries, grossGamingRevenue } from "@/lib/server/analytics";
+import { dailyKpiSeries } from "@/lib/server/report-money";
 import { formatTzs, formatTzsCompact, formatTime } from "@/lib/utils";
 
 type MatchStub = {
@@ -29,6 +30,11 @@ export default async function AdminLivePage() {
   const ggr = await grossGamingRevenue("today").catch(() => null);
   const active = await activePlayers("today").catch(() => null);
   const flow = await moneyFlowSeries("today", 24).catch(() => []);
+  // Read-only 7-day daily trend for the GGR/active tile sparklines — the
+  // metric's own recent history (canonical `summarise`), not a proxy. `spark()`
+  // hides an all-zero line.
+  const trends = await dailyKpiSeries("7d").catch(() => ({ ggr: [], ngr: [], active: [] }));
+  const spark = (s: number[]) => (s.some((v) => v !== 0) ? s : undefined);
 
   // Recent BET events
   const betEvents = getAuditPage({ category: "BET", limit: 30 });
@@ -55,8 +61,8 @@ export default async function AdminLivePage() {
       <div className="px-4 lg:px-6 py-5 space-y-4">
         {/* KPI strip */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <AdminKpi label="Active players · live" sw="Wachezaji hai"   value={active === null ? "" : active.toLocaleString()} unavailable={active === null} pulse={active !== null} />
-          <AdminKpi label="GGR · 24h"             sw="Mapato"           value={ggr === null ? "" : `TZS ${formatTzsCompact(ggr).replace("TZS ", "")}`} unavailable={ggr === null} />
+          <AdminKpi label="Active players · live" sw="Wachezaji hai"   value={active === null ? "" : active.toLocaleString()} unavailable={active === null} pulse={active !== null} series={spark(trends.active)} />
+          <AdminKpi label="GGR · 24h"             sw="Mapato"           value={ggr === null ? "" : `TZS ${formatTzsCompact(ggr).replace("TZS ", "")}`} unavailable={ggr === null} series={spark(trends.ggr)} />
           <AdminKpi label="Live matches"           sw="Mechi za moja"    value={liveMatches.length} pulse={liveMatches.length > 0} />
         </div>
 

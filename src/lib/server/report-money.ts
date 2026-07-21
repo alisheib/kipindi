@@ -198,6 +198,38 @@ export async function dailyPnl(period: ReportPeriod, now = Date.now()): Promise<
   return { rows, totals };
 }
 
+export type KpiTrends = { ggr: number[]; ngr: number[]; active: number[] };
+
+/**
+ * Per-EAT-day KPI trend for the money-tile sparklines, oldest→newest. Each
+ * point is that day's REAL metric via the canonical `summarise()` — the SAME
+ * function the scalar GGR/NGR/active read — so a spark can never imply a trend
+ * that isn't the tile's own metric (the reason net-flow was rejected as a GGR
+ * spark). `active` is the day's distinct-txn-user count = `activePlayers`.
+ * Pure read (one `listAll` + in-memory day buckets); mutates nothing.
+ *
+ * Default "7d" = a 7-point recent daily trend; the money tiles show a "today"/
+ * period scalar with this as the recent history leading up to it.
+ */
+export async function dailyKpiSeries(period: ReportPeriod = "7d", now = Date.now()): Promise<KpiTrends> {
+  const { start, end } = periodBounds(period, now);
+  const all = await db.txn.listAll();
+  const inWindow = all.filter((t) => within(t, start, end));
+  const firstDay = startOfEatDay(start);
+  const ggr: number[] = [], ngr: number[] = [], active: number[] = [];
+  for (let day = firstDay; day < end; day += DAY_MS) {
+    const dayTxns = inWindow.filter((t) => {
+      const at = Date.parse(t.createdAt);
+      return at >= day && at < day + DAY_MS;
+    });
+    const m = summarise(dayTxns);
+    ggr.push(m.ggr);
+    ngr.push(m.ngr);
+    active.push(m.activePlayers);
+  }
+  return { ggr, ngr, active };
+}
+
 export type CategoryRow = {
   category: MarketCategory;
   stakes: number;
