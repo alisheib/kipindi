@@ -271,6 +271,45 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
   const commentCounts = new Map(await Promise.all(allForCharts.map(async (m) => [m.id, await countComments(m.id).catch(() => 0)] as const)));
 
   const resultCount = live.length + resolved.length;
+
+  // ── Sparse-board continuation nudge ──────────────────────────────────────
+  // The board defaults to when="today"; on a quiet day that's a small, single
+  // page while more markets settle further out. Rather than leave a fresh
+  // tester on a near-empty board, offer a calm "see wider" prompt. It is a
+  // NUDGE — pure links to a wider window — and never injects non-matching
+  // cards. Shown only when: not searching · a bounded window (soon/today/week)
+  // · the whole window fits on one page (sparse) · AND a wider window
+  // genuinely reveals MORE live markets (honest — no dead link).
+  type ContLink = { href: string; label: string };
+  let continuation: { lead: string; links: ContLink[] } | null = null;
+  if (!searching && live.length > 0 && totalLivePages === 1 && (whenId === "today" || whenId === "soon" || whenId === "week")) {
+    const msLeft = bettable.map((m) => Math.max(0, Date.parse(m.resolutionAt) - now));
+    const within = (cut: number | null) => (cut === null ? msLeft.length : msLeft.filter((ms) => ms <= cut).length);
+    const here = live.length; // == within(current window cutoff) on these branches
+    const catParam = cat ?? null; // `cat` is a real category or undefined (URL never carries ?cat=all)
+    const widerHref = (w: WhenFilter) => {
+      const params = new URLSearchParams();
+      if (w !== "today") params.set("when", w); // "today" is the default → no param
+      if (catParam) params.set("cat", catParam); // stay in the topic the player chose
+      const qs = params.toString();
+      return qs ? `/markets?${qs}` : "/markets";
+    };
+    // Candidate wider windows per bounded window, nearest-first; each is shown
+    // only if it actually contains more markets than the current view.
+    const WIDER: Record<"soon" | "today" | "week", Array<{ w: WhenFilter; cut: number | null; label: string }>> = {
+      soon:  [{ w: "today", cut: WHEN_CUTOFFS.today, label: t.market.contSeeToday }, { w: "all", cut: null, label: t.market.contSeeAll }],
+      today: [{ w: "week",  cut: WHEN_CUTOFFS.week,  label: t.market.contSeeWeek },  { w: "all", cut: null, label: t.market.contSeeAll }],
+      week:  [{ w: "all",   cut: null,               label: t.market.contSeeAll }],
+    };
+    const links = WIDER[whenId]
+      .filter((c) => within(c.cut) > here)
+      .map((c) => ({ href: widerHref(c.w), label: c.label }));
+    if (links.length > 0) {
+      const lead = whenId === "today" ? t.market.contTodayLead : whenId === "soon" ? t.market.contSoonLead : t.market.contWeekLead;
+      continuation = { lead, links };
+    }
+  }
+
   return (
     <>
       {searching && (
@@ -321,6 +360,21 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
       {totalLivePages > 1 && (
         <div className="mt-6 rounded-lg border border-border bg-bg-elevated/40 overflow-hidden">
           <Pagination total={totalLiveCount} page={safePage} perPage={PLAYER_PER_PAGE} baseHref={marketsBaseHref} ofLabel={t.common.of} prevLabel={t.common.previousPage} nextLabel={t.common.nextPage} />
+        </div>
+      )}
+
+      {/* Sparse-board continuation — a calm "see wider" nudge (mutually
+          exclusive with the pager: this shows only on a single-page board). */}
+      {continuation && (
+        <div className="mt-6 flex flex-col items-center gap-3 rounded-lg border border-border/70 bg-bg-elevated/40 px-4 py-4 text-center sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:text-left">
+          <p className="min-w-0 font-mono text-[12.5px] text-text-muted">{continuation.lead}</p>
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:shrink-0 sm:justify-end">
+            {continuation.links.map((l) => (
+              <Link key={l.href} href={l.href as never} className="btn btn-ghost btn-sm whitespace-nowrap">
+                {l.label} <span aria-hidden="true" className="ml-1">→</span>
+              </Link>
+            ))}
+          </div>
         </div>
       )}
 

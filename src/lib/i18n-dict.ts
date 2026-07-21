@@ -489,6 +489,15 @@ export const dict = {
       checkSpelling: "Check the spelling, try fewer words, or clear the search to see everything. Resolved markets that match appear below.",
       clearSearchLabel: "Clear search",
       seeAllCategories: "See all categories",
+      // Sparse-board continuation nudge (markets grid): a calm "see wider"
+      // prompt shown when a bounded time window is a small single-page board
+      // but more markets close further out. A nudge — never injects cards.
+      contTodayLead: "That's all closing today",
+      contSoonLead: "That's all closing within the hour",
+      contWeekLead: "That's all closing this week",
+      contSeeToday: "See today",
+      contSeeWeek: "See this week",
+      contSeeAll: "See all open",
       waitingForResults: "Waiting for results",
       recentlyResolved: "Recently resolved",
       allResults: "All results →",
@@ -1729,6 +1738,13 @@ export const dict = {
       checkSpelling: "Angalia tahajia au futa utafutaji kuona yote. Masoko yaliyotatuliwa yanayolingana yanaonekana chini.",
       clearSearchLabel: "Futa utafutaji",
       seeAllCategories: "Aina zote",
+      // Sparse-board continuation nudge (markets grid) — see the EN block.
+      contTodayLead: "Ndiyo yote yanayofunga leo",
+      contSoonLead: "Ndiyo yote yanayofunga ndani ya saa moja",
+      contWeekLead: "Ndiyo yote yanayofunga wiki hii",
+      contSeeToday: "Angalia ya leo",
+      contSeeWeek: "Angalia wiki hii",
+      contSeeAll: "Angalia yaliyo wazi",
       waitingForResults: "Inasubiri matokeo",
       recentlyResolved: "Matokeo ya hivi karibuni",
       allResults: "Matokeo yote →",
@@ -2955,6 +2971,13 @@ export const dict = {
       checkSpelling: "请检查拼写、减少搜索词或清除搜索查看全部。匹配的已结算市场显示在下方。",
       clearSearchLabel: "清除搜索",
       seeAllCategories: "查看全部类别",
+      // Sparse-board continuation nudge (markets grid) — see the EN block.
+      contTodayLead: "今天就这些即将结束的市场",
+      contSoonLead: "一小时内就这些即将结束的市场",
+      contWeekLead: "本周就这些即将结束的市场",
+      contSeeToday: "查看今天",
+      contSeeWeek: "查看本周",
+      contSeeAll: "查看全部开放",
       waitingForResults: "等待结果",
       recentlyResolved: "最近结算",
       allResults: "全部结果 →",
