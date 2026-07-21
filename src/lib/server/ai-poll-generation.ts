@@ -23,8 +23,8 @@ import { audit } from "./audit";
 import { getAIProvider, type AIPollGeneration, type AIProviderResponse, type PollIdea } from "./ai-provider";
 import { getAIPollConfig, computeSelectionClosedAt } from "./ai-poll-config";
 import { assertAiBudget } from "./ai-usage";
-import { listMarkets } from "./market-service";
-import { listSources, seedDefaultSources } from "./source-registry";
+import { listMarkets, resolvePublishCategory } from "./market-service";
+import { seedDefaultSources, getGeneratableCategories, isSourceTrusted } from "./source-registry";
 import { prisma, hasDatabase } from "./prisma";
 
 /* ─── Types ─── */
@@ -59,6 +59,7 @@ export type FilterReason =
   | "duplicate_poll"
   | "no_sources"
   | "invalid_source_url"
+  | "source_not_trusted"
   | "malformed_response"
   | "provider_error"
   | "missing_translation";
@@ -311,21 +312,6 @@ function normaliseTitle(s: string): string {
     .trim();
 }
 
-/** Is this URL's host on the operator's enabled trusted-source registry (any
- *  category)? Soft accuracy signal only — the officer curates the registry. */
-async function isOnTrustedRegistry(url: string): Promise<boolean> {
-  let host: string;
-  try {
-    host = new URL(url).hostname.toLowerCase();
-  } catch {
-    return false;
-  }
-  await seedDefaultSources();
-  return (await listSources({ enabledOnly: true })).some(
-    (src) => host === src.domain || host.endsWith(`.${src.domain}`),
-  );
-}
-
 /* ─── Validation + filtering ─── */
 
 type ValidationResult = {
@@ -527,16 +513,30 @@ async function validateAndFilter(
   } else {
     sanitised.sources = validSources;
     quality.push({ label: "Sources", score: Math.min(100, validSources.length * 50), status: validSources.length >= 2 ? "good" : "warning" });
-    // Trusted-source signal — soft (officer curates the registry). A source on
-    // the operator's enabled trusted-source list is a strong accuracy signal;
-    // an unknown domain is a flag to scrutinise, not an automatic reject.
-    const trustedFlags = await Promise.all(validSources.map((s) => isOnTrustedRegistry(s.url)));
-    const trustedCount = trustedFlags.filter(Boolean).length;
-    quality.push({
-      label: trustedCount > 0 ? "Trusted source" : "Source not on trusted registry",
-      score: trustedCount > 0 ? 100 : 45,
-      status: trustedCount > 0 ? "good" : "warning",
-    });
+    // HARD trusted-source gate (category-specific). The poll's primary source MUST
+    // sit on an ENABLED trusted domain for the category it will publish as — the
+    // SAME resolvePublishCategory + isSourceTrusted the publish action enforces.
+    // This is the "never generate outside our sources/categories" guarantee: a
+    // poll that fails here is FILTERED and never reaches review, so it can never
+    // surprise an officer at publish (the "www.african-markets.com not permitted"
+    // failure). We reorder so a trusted source is primary, because the publish
+    // gate checks sources[0]; without this, a trusted 2nd source wouldn't save a
+    // poll whose 1st source is untrusted.
+    await seedDefaultSources();
+    const resolvedCat = resolvePublishCategory(sanitised.category);
+    const trustFlags = await Promise.all(validSources.map((s) => isSourceTrusted(s.url, resolvedCat)));
+    const trustedPositions = trustFlags.map((t, i) => (t.ok ? i : -1)).filter((i) => i >= 0);
+    if (trustedPositions.length === 0) {
+      reasons.push("source_not_trusted");
+      quality.push({ label: "Source not on the trusted registry for this category", score: 0, status: "bad" });
+    } else {
+      if (trustedPositions[0] !== 0) {
+        const trusted = trustedPositions.map((i) => validSources[i]);
+        const rest = validSources.filter((_, i) => !trustedPositions.includes(i));
+        sanitised.sources = [...trusted, ...rest];
+      }
+      quality.push({ label: "Trusted source", score: 100, status: "good" });
+    }
   }
 
   // Invalid source URLs in original
@@ -604,6 +604,7 @@ async function validateAndFilter(
     "no_options",
     "too_few_options",
     "no_sources",
+    "source_not_trusted",
     "duplicate_poll",
     "low_confidence",
     "title_too_long",
@@ -778,13 +779,65 @@ export async function generateAIPoll(opts: {
     payload: { category: opts.category, prompt: opts.prompt, regenerationOf: opts.regenerationOf, controlled: !!(opts.controlledResolutionAt || opts.controlledSelectionClosedAt || opts.controlledTitle) },
   });
 
+  // ── SOURCE-DRIVEN GENERATION GATE ────────────────────────────────────────
+  // Constrain the generator to what the operator can actually resolve BEFORE we
+  // spend a token: the category must have ≥1 enabled trusted source (and not be
+  // disabled). If it doesn't, refuse now with a clear reason instead of paying
+  // to generate a poll that would be filtered — and tell the operator exactly
+  // where to fix it. This is the "AI never generates outside our sources /
+  // categories" guarantee, enforced at the earliest possible point.
+  // A banned category is refused precisely (and before spend), not lumped into
+  // the generic source failure — it's a policy violation, not a missing source.
+  const rawReqCat = (opts.category ?? "").trim().toLowerCase();
+  if (BANNED_CATEGORIES.has(rawReqCat)) {
+    poll.state = "FILTERED";
+    poll.filterReasons = ["banned_category"];
+    poll.qualityIndicators = [{ label: "Category (policy violation)", score: 0, status: "bad" }];
+    poll.overallQuality = 0;
+    poll.updatedAt = new Date().toISOString();
+    await store.set(poll);
+    audit({
+      category: "ADMIN",
+      action: "aipoll.filtered",
+      actorId: opts.actorId,
+      targetType: "AIPoll",
+      targetId: poll.id,
+      payload: { reasons: ["banned_category"], category: rawReqCat },
+    });
+    return poll;
+  }
+
+  const generatable = await getGeneratableCategories();
+  const resolvedReqCat = resolvePublishCategory(opts.category);
+  const allowedForCat = generatable.find((g) => g.category === resolvedReqCat);
+  if (!allowedForCat) {
+    poll.state = "FILTERED";
+    poll.category = resolvedReqCat;
+    poll.filterReasons = ["source_not_trusted"];
+    poll.qualityIndicators = [{ label: `No enabled trusted source for ${resolvedReqCat}`, score: 0, status: "bad" }];
+    poll.overallQuality = 0;
+    poll.rawResponse = `No enabled trusted source for category "${resolvedReqCat}". Add or enable one under Admin → Sources & categories, then generate again.`;
+    poll.updatedAt = new Date().toISOString();
+    await store.set(poll);
+    audit({
+      category: "ADMIN",
+      action: "aipoll.filtered",
+      actorId: opts.actorId,
+      targetType: "AIPoll",
+      targetId: poll.id,
+      payload: { reasons: ["source_not_trusted"], category: resolvedReqCat, reason: "no_enabled_source_for_category" },
+    });
+    return poll;
+  }
+
   // Call the AI provider — steer away from existing questions so we don't pay
-  // to generate a duplicate that the filter would reject post-hoc.
+  // to generate a duplicate that the filter would reject post-hoc, and hand it
+  // the operator's allowlist so it only ever cites approved domains.
   const avoidTitles = opts.avoidTitles ?? (await gatherExistingTitles());
   const provider = getAIProvider();
   let response: AIProviderResponse;
   try {
-    response = await provider.generate({ category: opts.category, prompt: opts.prompt, controlledTitle: opts.controlledTitle, avoidTitles });
+    response = await provider.generate({ category: resolvedReqCat, prompt: opts.prompt, controlledTitle: opts.controlledTitle, avoidTitles, allowedSources: generatable });
   } catch (err) {
     poll.state = "VALIDATION_FAILED";
     poll.filterReasons = ["provider_error"];
@@ -931,8 +984,6 @@ function copyGenerationToPoll(poll: StoredAIPoll, gen: AIPollGeneration) {
   poll.reasoning = gen.reasoning;
 }
 
-const BATCH_CATEGORIES = ["sports", "macro", "weather", "crypto", "culture", "infrastructure", "tech", "mixed"];
-
 /**
  * Generate a batch of polls in one operator action. Count is clamped to the
  * configured `maxBatchPerRun` ceiling (runaway / accidental-100k-burn guard).
@@ -952,7 +1003,18 @@ export type IdeaFilterResult = { kept: PollIdea[]; dropped: Array<{ idea: PollId
  */
 export function filterIdeas(
   ideas: PollIdea[],
-  opts: { minLeadHours: number; maxLeadDays: number; avoidTitles: string[]; now: number },
+  opts: {
+    minLeadHours: number;
+    maxLeadDays: number;
+    avoidTitles: string[];
+    now: number;
+    /** When supplied, drop any idea whose resolved category is NOT in this set
+     *  (no enabled trusted source / disabled category) — the free, Tier-1.5
+     *  half of the "never generate outside our sources" rule. Kept ideas are
+     *  re-keyed to their resolved MarketCategory so Tier-2 generates in a
+     *  category we can actually resolve. */
+    generatableCategories?: Set<string>;
+  },
 ): IdeaFilterResult {
   const earliest = opts.now + opts.minLeadHours * 3_600_000 - 86_400_000; // 24h grace
   const latest = opts.now + opts.maxLeadDays * 86_400_000;
@@ -962,6 +1024,10 @@ export function filterIdeas(
   for (const idea of ideas) {
     const cat = (idea.category || "").toLowerCase();
     if (!VALID_CATEGORIES.has(cat)) { dropped.push({ idea, reason: "invalid_category" }); continue; }
+    const outCat = opts.generatableCategories ? resolvePublishCategory(cat) : cat;
+    if (opts.generatableCategories && !opts.generatableCategories.has(outCat)) {
+      dropped.push({ idea, reason: "not_generatable" }); continue;
+    }
     const fp = normaliseTitle(idea.titleEn || "");
     if (!fp) { dropped.push({ idea, reason: "empty_title" }); continue; }
     const t = Date.parse(idea.resolutionDateGuess);
@@ -970,7 +1036,7 @@ export function filterIdeas(
     if (t > latest) { dropped.push({ idea, reason: "resolution_too_far" }); continue; }
     if (seen.has(fp)) { dropped.push({ idea, reason: "duplicate" }); continue; }
     seen.add(fp);
-    kept.push({ ...idea, category: cat });
+    kept.push({ ...idea, category: outCat });
   }
   return { kept, dropped };
 }
@@ -1003,11 +1069,36 @@ export async function generateAIPollBatch(opts: {
   const cfg = getAIPollConfig();
   const requested = Number.isFinite(opts.count) ? Math.floor(opts.count) : 1;
   const n = Math.max(1, Math.min(cfg.maxBatchPerRun, requested));
-  const rawCats = opts.categories && opts.categories.length > 0 ? opts.categories : BATCH_CATEGORIES;
-  // "mixed" means "all real categories" — expand for ideation, and rotate for top-up.
-  const cats = rawCats.includes("mixed")
-    ? BATCH_CATEGORIES.filter((c) => c !== "mixed")
-    : rawCats;
+
+  const summary: Record<AIPollState, number> = {
+    GENERATING: 0, VALIDATION_FAILED: 0, FILTERED: 0,
+    PENDING_REVIEW: 0, EDITING: 0, APPROVED: 0, REJECTED: 0, PUBLISHED: 0,
+  };
+  const generated: StoredAIPoll[] = [];
+
+  // Categories are DERIVED from the operator's registry — a batch only ever
+  // generates in categories that currently have an enabled trusted source.
+  // "mixed" = every generatable category. A requested category with no source
+  // is dropped here (logged), so we never spend on a doomed generation.
+  const generatable = await getGeneratableCategories();
+  const generatableCats = generatable.map((g) => g.category);
+  const generatableSet = new Set<string>(generatableCats);
+  if (generatableCats.length === 0) {
+    audit({
+      category: "ADMIN",
+      action: "aipoll.batch_no_sources",
+      actorId: opts.actorId,
+      targetType: "AIPoll",
+      targetId: "batch",
+      payload: { requested: n, reason: "no_generatable_categories" },
+    });
+    return { generated, summary };
+  }
+  const rawCats = opts.categories && opts.categories.length > 0 ? opts.categories : generatableCats;
+  const expanded = rawCats.includes("mixed")
+    ? generatableCats
+    : rawCats.map(resolvePublishCategory).filter((c) => generatableSet.has(c));
+  const cats = expanded.length > 0 ? Array.from(new Set(expanded)) : generatableCats;
 
   audit({
     category: "ADMIN",
@@ -1015,14 +1106,8 @@ export async function generateAIPollBatch(opts: {
     actorId: opts.actorId,
     targetType: "AIPoll",
     targetId: "batch",
-    payload: { requested, clampedTo: n, categories: cats },
+    payload: { requested, clampedTo: n, categories: cats, generatable: generatableCats },
   });
-
-  const generated: StoredAIPoll[] = [];
-  const summary: Record<AIPollState, number> = {
-    GENERATING: 0, VALIDATION_FAILED: 0, FILTERED: 0,
-    PENDING_REVIEW: 0, EDITING: 0, APPROVED: 0, REJECTED: 0, PUBLISHED: 0,
-  };
   // Two-tier: cheap Haiku ideation + free code filter, then Sonnet+web-search
   // enrichment ONLY on the survivors — so we stop paying full price for polls
   // that would be filtered for date/category/duplicate reasons. The avoid-list
@@ -1035,12 +1120,12 @@ export async function generateAIPollBatch(opts: {
   const poolSize = Math.min(cfg.maxBatchPerRun * 2, n * 2 + 4);
   let ideas: PollIdea[] = [];
   try {
-    const res = await provider.ideate({ categories: cats, count: poolSize, prompt: opts.prompt, avoidTitles: liveAvoid });
+    const res = await provider.ideate({ categories: cats, count: poolSize, prompt: opts.prompt, avoidTitles: liveAvoid, allowedSources: generatable });
     if (res.ok) ideas = res.ideas;
   } catch { /* ideation is best-effort — top-up below covers a total failure */ }
 
-  // ── Tier 1.5: free filter ──
-  const { kept } = filterIdeas(ideas, { minLeadHours: cfg.minLeadTimeHours, maxLeadDays: cfg.maxLeadTimeDays, avoidTitles: liveAvoid, now: Date.now() });
+  // ── Tier 1.5: free filter (also drops any idea in a non-generatable category) ──
+  const { kept } = filterIdeas(ideas, { minLeadHours: cfg.minLeadTimeHours, maxLeadDays: cfg.maxLeadTimeDays, avoidTitles: liveAvoid, now: Date.now(), generatableCategories: generatableSet });
   audit({ category: "ADMIN", action: "aipoll.batch_ideated", actorId: opts.actorId, targetType: "AIPoll", targetId: "batch", payload: { ideasReturned: ideas.length, keptAfterFilter: kept.length, requested: n } });
 
   // ── Tier 2: enrich survivors (up to n), each pinned to its idea ──

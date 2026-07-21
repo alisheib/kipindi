@@ -51,6 +51,36 @@ export const MAX_STAKE = 1_000_000;
 // political markets risk the licence. Do not add it back without a written
 // regulator carve-out.
 export type MarketCategory = "sports" | "macro" | "weather" | "crypto" | "culture" | "tech" | "other";
+
+/** The canonical, ordered set of market categories — the ONE list every surface
+ *  (source registry, admin filters, generation) should derive from rather than
+ *  re-declaring its own copy. */
+export const MARKET_CATEGORIES: readonly MarketCategory[] = [
+  "sports", "macro", "weather", "crypto", "culture", "tech", "other",
+] as const;
+
+const MARKET_CATEGORY_SET = new Set<string>(MARKET_CATEGORIES);
+
+/**
+ * Resolve an arbitrary (possibly legacy or generation-only) category string to
+ * the MarketCategory a published market + its trusted-source gate must agree on.
+ *
+ * This is the SINGLE mapping the AI-poll publish path uses for BOTH the
+ * `isSourceTrusted` gate and `createMarket`, so a poll is always gated against
+ * the exact category it publishes as. Previously the gate remapped
+ * tech/other→macro while market-creation kept tech/other — a tech poll was
+ * checked against MACRO sources yet published as a TECH market, so it could
+ * never satisfy the gate. `infrastructure` is a generation-only flavour with no
+ * MarketCategory of its own (and no way to register a source for it), so it
+ * folds into `macro`; anything unrecognised falls back to `other`.
+ */
+export function resolvePublishCategory(category: string): MarketCategory {
+  const c = (category ?? "").trim().toLowerCase();
+  if (MARKET_CATEGORY_SET.has(c)) return c as MarketCategory;
+  if (c === "infrastructure") return "macro";
+  return "other";
+}
+
 export type MarketStatus = "DRAFT" | "LIVE" | "CLOSED" | "RESOLVED" | "VOIDED";
 export type Side = "YES" | "NO";
 

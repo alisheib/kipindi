@@ -21,6 +21,7 @@ import {
 } from "@/lib/server/ai-poll-generation";
 import { getAIPollConfig } from "@/lib/server/ai-poll-config";
 import { getAIProvider } from "@/lib/server/ai-provider";
+import { getGeneratableCategories } from "@/lib/server/source-registry";
 import {
   GenerateForm,
   BatchGenerateForm,
@@ -89,6 +90,10 @@ export default async function AdminAIPollsPage({
   const progress = await aiPollDailyProgress();
   const config = getAIPollConfig();
   const totalAll = await countAIPollsTotal();
+  // Categories the generator is allowed to produce — those with an enabled
+  // trusted source (and not disabled). Drives the generate forms so an operator
+  // can never kick off a generation that would be rejected for lack of a source.
+  const generatableCategories = (await getGeneratableCategories()).map((g) => g.category);
 
   const pendingAll = await listAIPolls({ state: "PENDING_REVIEW" });
   const approvedAll = await listAIPolls({ state: "APPROVED" });
@@ -196,8 +201,8 @@ export default async function AdminAIPollsPage({
               AI never publishes — the officer&apos;s approval is the only path to a live market.
             </div>
           </div>
-          <GenerateForm />
-          <BatchGenerateForm maxBatch={config.maxBatchPerRun} remaining={progress.remaining} />
+          <GenerateForm generatable={generatableCategories} />
+          <BatchGenerateForm maxBatch={config.maxBatchPerRun} remaining={progress.remaining} generatable={generatableCategories} />
         </AdminCard>
 
         {/* Controls */}

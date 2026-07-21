@@ -2,7 +2,7 @@ import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-she
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
-import { listSources, listDisabledCategories, seedDefaultSources } from "@/lib/server/source-registry";
+import { listSources, listDisabledCategories, seedDefaultSources, getGeneratableCategories } from "@/lib/server/source-registry";
 import type { MarketCategory } from "@/lib/server/market-service";
 import { ToggleSource, RemoveSource, ToggleCategory, AddSourceForm } from "./source-controls";
 
@@ -16,6 +16,11 @@ export default async function AdminSourcesPage() {
   const all = await listSources();
   const enabled = all.filter((s) => s.enabled);
   const disabledCats = new Set(await listDisabledCategories());
+  // A category is "generatable" (AI polls + markets can be created in it) only
+  // when it is active AND has ≥1 enabled source. Surfacing this here closes the
+  // gap where an operator enables a source but the AI still can't use its
+  // category (or uses the wrong one).
+  const generatable = new Set((await getGeneratableCategories()).map((g) => g.category));
 
   // Group by category for the table
   const grouped = CATEGORIES.map((c) => ({
@@ -36,7 +41,7 @@ export default async function AdminSourcesPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <AdminKpi label="Trusted sources"     sw="Vyanzo vinavyoaminika" value={String(enabled.length)} delta={`${all.length} total`} />
           <AdminKpi label="Disabled sources"    sw="Vyanzo vimezimwa"      value={String(all.length - enabled.length)} delta="not in use" />
-          <AdminKpi label="Active categories"   sw="Aina hai"              value={String(CATEGORIES.length - disabledCats.size)} />
+          <AdminKpi label="Generatable categories" sw="Aina zinazozalishwa" value={String(generatable.size)} delta={`of ${CATEGORIES.length} · AI can generate these`} />
           <AdminKpi label="Disabled categories" sw="Aina zilizozimwa"      value={String(disabledCats.size)} />
         </div>
 
@@ -58,13 +63,24 @@ export default async function AdminSourcesPage() {
         </AdminCard>
 
         {/* Sources by category */}
-        {grouped.map(({ category, enabled: catEnabled, sources }) => (
+        {grouped.map(({ category, enabled: catEnabled, sources }) => {
+          const isGeneratable = generatable.has(category);
+          return (
           <AdminCard
             key={category}
             title={`${category[0].toUpperCase()}${category.slice(1)} · ${sources.length} source${sources.length === 1 ? "" : "s"}`}
             sw={catEnabled ? "Hai" : "Imezimwa"}
             padding="p-0"
             className={catEnabled ? "" : "opacity-60"}
+            action={
+              <span className={`font-mono text-[10px] tracking-[0.12em] uppercase px-2 py-0.5 rounded-pill border ${
+                isGeneratable
+                  ? "border-yes-700/40 bg-yes-500/10 text-yes-300"
+                  : "border-warning-border bg-warning-bg/30 text-warning-fg"
+              }`}>
+                {isGeneratable ? "AI can generate" : catEnabled ? "No enabled source · not generatable" : "category disabled"}
+              </span>
+            }
           >
             <ScrollX label="Sources">
               <table className="admin-tbl">
@@ -116,7 +132,8 @@ export default async function AdminSourcesPage() {
               </table>
             </ScrollX>
           </AdminCard>
-        ))}
+          );
+        })}
 
         <AdminCard className="border-info-border bg-info-bg/15">
           <div className="flex items-start gap-3">
@@ -128,6 +145,13 @@ export default async function AdminSourcesPage() {
                 <code className="font-mono"> /admin/markets/new</code> only accepts URLs whose host matches an
                 enabled source in this list. Disabling a source here prevents new markets from using it; existing
                 live markets continue under the source they were already wired to.
+              </p>
+              <p>
+                <strong className="text-text">AI poll generation is bound to this list too.</strong> The generator
+                is told, up front, exactly which categories have an enabled source and which domains it may cite —
+                so it only ever produces polls it can resolve. A category with <em>no</em> enabled source is not
+                generatable, and adding a source under the wrong category won&apos;t let the AI use it there. Enable a
+                source under the category you want the AI to generate in.
               </p>
             </div>
           </div>

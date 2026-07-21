@@ -14,7 +14,7 @@ import { audit } from "./audit";
 import { randomId } from "./crypto";
 import { prisma, hasDatabase } from "./prisma";
 import { loadConfig, saveConfig } from "./config-store";
-import type { MarketCategory } from "./market-service";
+import { MARKET_CATEGORIES, type MarketCategory } from "./market-service";
 
 const DISABLED_CATEGORIES_KEY = "sources.disabled_categories";
 
@@ -174,12 +174,30 @@ export async function listSources(filter?: { category?: MarketCategory; enabledO
     .sort((a, b) => a.category.localeCompare(b.category) || a.label.localeCompare(b.label));
 }
 
+/**
+ * Normalise a domain to its registrable form: lowercase, strip scheme, any path,
+ * and a leading "www." — so the trusted-match rule (host === domain ||
+ * host.endsWith("." + domain)) accepts BOTH the bare host and any subdomain
+ * (incl. www). Storing "www.african-markets.com" would only ever match a www
+ * host; storing "african-markets.com" matches both. Single normalisation point
+ * so seeded, admin-added, and programmatic sources are all consistent.
+ */
+export function normalizeDomain(input: string): string {
+  return (input ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, "")
+    .replace(/\/.*$/, "")
+    .replace(/^www\./, "");
+}
+
 export async function addSource(input: Omit<TrustedSource, "id" | "addedAt" | "enabled"> & { enabled?: boolean }): Promise<TrustedSource> {
   const row: TrustedSource = {
     id: `src_${randomId(8)}`,
     addedAt: new Date().toISOString(),
     enabled: input.enabled ?? true,
     ...input,
+    domain: normalizeDomain(input.domain),
   };
   await store.set(row);
   audit({
@@ -250,8 +268,49 @@ export async function setCategoryEnabled(c: MarketCategory, enabled: boolean, of
 }
 
 /**
+ * A category the AI generator is allowed to produce polls in: it is not
+ * operator-disabled AND has at least one enabled trusted source. Carries the
+ * exact enabled domains so the generator can be told precisely which URLs it
+ * may cite (and so the same list can be shown to the operator).
+ */
+export type GeneratableCategory = {
+  category: MarketCategory;
+  /** Enabled trusted-source domains for this category, sorted, de-duplicated. */
+  domains: string[];
+  /** Enabled-source labels, aligned with `domains` order, for prompt context. */
+  labels: string[];
+};
+
+/**
+ * The single source of truth for "what the AI may generate": every active
+ * (non-disabled) MarketCategory that has ≥1 enabled trusted source, with that
+ * category's enabled domains. A category with no enabled source is intentionally
+ * ABSENT — the generator must never propose a poll it could not resolve against
+ * an approved source (which is exactly the "www.african-markets.com not
+ * permitted" failure this prevents). Categories are returned in the canonical
+ * MARKET_CATEGORIES order.
+ */
+export async function getGeneratableCategories(): Promise<GeneratableCategory[]> {
+  await seedDefaultSources();
+  const enabled = await listSources({ enabledOnly: true });
+  const disabled = new Set(await listDisabledCategories());
+  const out: GeneratableCategory[] = [];
+  for (const category of MARKET_CATEGORIES) {
+    if (disabled.has(category)) continue;
+    const forCat = enabled.filter((s) => s.category === category);
+    if (forCat.length === 0) continue;
+    // De-dupe by domain, keep the first label seen for each.
+    const seen = new Map<string, string>();
+    for (const s of forCat) if (!seen.has(s.domain)) seen.set(s.domain, s.label);
+    const domains = Array.from(seen.keys()).sort();
+    out.push({ category, domains, labels: domains.map((d) => seen.get(d) ?? d) });
+  }
+  return out;
+}
+
+/**
  * Verify whether a market's source URL belongs to an enabled trusted-source
- * domain in the right category. Used by createMarket to gate publish.
+ * domain in the right category. The single gate every publish path calls.
  */
 export async function isSourceTrusted(url: string, category: MarketCategory): Promise<{ ok: boolean; reason?: string }> {
   if (await isCategoryDisabled(category)) return { ok: false, reason: `Category ${category} is disabled` };

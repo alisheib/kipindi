@@ -108,7 +108,9 @@ const queue: AIPollGeneration[] = [
   g({ titleEn: "Will a niche cultural event happen this season?", category: "culture", confidence: 41 }),      // low_conf → FILTERED
   g({ titleEn: "  will   SIMBA sc win the tanzanian premier league 2026 !! ", category: "sports" }),          // duplicate → FILTERED
   g({ titleEn: "Will the SGR Dodoma–Singida section open within the window?", category: "infrastructure",
-      sources: [{ url: "https://www.trc.go.tz/", publisher: "TRC" }] }),                                      // good
+      // infrastructure resolves to macro; cite a seeded macro source so it clears
+      // the generation-time trusted-source gate (trc.go.tz is not on the registry).
+      sources: [{ url: "https://www.bot.go.tz/infrastructure-report", publisher: "Bank of Tanzania" }] }),    // good
 ];
 let qi = 0;
 setAIProvider({ name: "fake-marketday", async generate() { return ok(queue[qi++] ?? queue[queue.length - 1]); } });
@@ -175,10 +177,15 @@ check("target met (2 published ≥ target 3? remaining shown)", prog.remaining =
 console.log("\n--- CLEANUP · deletions ---");
 const aFiltered = (await listAIPolls({ state: "FILTERED" }))[0];
 check("delete a FILTERED poll succeeds", (await deleteAIPoll(aFiltered.id, OFFICER)) === true);
+// Contract: deleteAIPoll() refuses ONLY GENERATING (in-flight) polls; every
+// settled/in-review/published state is deletable at the service layer. For a
+// PUBLISHED poll the admin action voids + refunds the live market first, then
+// deletes — see deletePollAction. (These assertions were stale: they predate
+// that broadening.)
 const aPending = (await listAIPolls({ state: "PENDING_REVIEW" }))[0];
-check("delete an in-play PENDING poll is refused", (await deleteAIPoll(aPending.id, OFFICER)) === false);
+check("delete a PENDING poll succeeds (only GENERATING is refused)", (await deleteAIPoll(aPending.id, OFFICER)) === true);
 const aPublished = (await listAIPolls({ state: "PUBLISHED" }))[0];
-check("delete a PUBLISHED poll is refused", (await deleteAIPoll(aPublished.id, OFFICER)) === false);
+check("delete a PUBLISHED poll succeeds at the service layer", (await deleteAIPoll(aPublished.id, OFFICER)) === true);
 
 // ── GUARDS: illegal transitions refused ──
 console.log("\n--- GUARDS · illegal transitions ---");

@@ -72,10 +72,12 @@ class GoodProvider implements AIProvider {
       titleSw: this.title + " (sw)",
       titleZh: this.title + " (zh)",
       category: "sports",
-      resolutionCriterion: "Verified by the official tournament committee on the resolution date.",
+      resolutionCriterion: "Verified by the official tournament committee (TFF) on the resolution date.",
       resolutionAt: this.resAt,
       options: [{ label: "YES" }, { label: "NO" }] as never,
-      sources: [{ url: "https://www.example.tz/report", publisher: "Official Source" }],
+      // Seeded, enabled sports source — the generation-time trusted-source gate
+      // now requires the primary source to be on the registry for the category.
+      sources: [{ url: "https://www.tff.or.tz/report", publisher: "TFF Official" }],
       confidence: 82,
       reasoning: "test poll with good confidence",
     };

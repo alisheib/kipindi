@@ -28,7 +28,7 @@ import {
   approveCandidate,
   markPublished,
 } from "@/lib/server/market-candidate";
-import { createMarket, emergencyVoidMarket, type MarketCategory } from "@/lib/server/market-service";
+import { createMarket, emergencyVoidMarket, resolvePublishCategory } from "@/lib/server/market-service";
 import { isSourceTrusted, seedDefaultSources } from "@/lib/server/source-registry";
 import { MARKET_OPS_ROLES } from "@/lib/server/roles";
 import { safeError } from "@/lib/server/safe-error";
@@ -202,8 +202,8 @@ export async function rejectPollAction(formData: FormData) {
     "duplicate_options", "too_few_options", "invalid_category",
     "banned_category", "low_confidence", "title_too_long",
     "criterion_too_long", "xss_detected", "null_bytes",
-    "duplicate_poll", "no_sources", "invalid_source_url", "malformed_response",
-    "missing_translation",
+    "duplicate_poll", "no_sources", "invalid_source_url", "source_not_trusted",
+    "malformed_response", "missing_translation",
   ]);
   const rawReasons = reasonsStr ? reasonsStr.split(",").filter((r) => VALID_FILTER_REASONS.has(r)) : [];
   const reasons: FilterReason[] = rawReasons.length > 0 ? rawReasons as FilterReason[] : ["malformed_response"];
@@ -295,9 +295,10 @@ export async function publishPollAction(formData: FormData) {
   // AI-generated source URL is only syntax-checked, never fetched, so a plausible
   // hallucinated domain could reach a live market. isSourceTrusted ALSO enforces
   // the operator's disabled-category list, which was likewise being bypassed here.
-  const publishCategory = (poll.category === "tech" || poll.category === "other"
-    ? "macro"
-    : poll.category === "infrastructure" ? "macro" : poll.category) as MarketCategory;
+  // The gate + createMarket now use the SAME resolvePublishCategory, so a poll is
+  // gated against the exact category it publishes as (previously tech/other were
+  // gated against macro but published as tech/other — an unsatisfiable mismatch).
+  const publishCategory = resolvePublishCategory(poll.category);
   const primarySource = poll.sources[0]?.url ?? "";
   await seedDefaultSources();
   const trust = await isSourceTrusted(primarySource, publishCategory);
@@ -316,8 +317,12 @@ export async function publishPollAction(formData: FormData) {
 
   try {
   // Create a market candidate through the existing pipeline
+  // The candidate pipeline's category type has no tech/other (it predates them),
+  // so fold those into macro for the intermediate record only. The market itself
+  // (below) keeps the faithful resolvePublishCategory value.
+  const candidateCategory = (publishCategory === "tech" || publishCategory === "other") ? "macro" : publishCategory;
   const candidate = await ingestCandidate({
-    category: (poll.category === "tech" || poll.category === "other" ? "macro" : poll.category) as "sports" | "macro" | "weather" | "crypto" | "culture" | "infrastructure",
+    category: candidateCategory as "sports" | "macro" | "weather" | "crypto" | "culture" | "infrastructure",
     proposedTitleEn: poll.titleEn,
     proposedTitleSw: poll.titleSw || undefined,
     proposedTitleZh: poll.titleZh || undefined,
@@ -348,18 +353,13 @@ export async function publishPollAction(formData: FormData) {
   });
   await approveCandidate(candidate.id, { officerId, note: `Auto-approved from AI poll ${poll.id}` });
 
-  // Create the actual market
+  // Create the actual market — SAME category the trusted-source gate above used.
   await seedDefaultSources();
-  const marketCategory = poll.category === "infrastructure" ? "macro"
-    : poll.category === "tech" ? "tech"
-    : poll.category === "other" ? "other"
-    : poll.category;
-
   const market = await createMarket({
     titleEn: poll.titleEn,
     titleSw: poll.titleSw || poll.titleEn,
     titleZh: poll.titleZh || null,
-    category: marketCategory as "sports" | "macro" | "weather" | "crypto" | "culture" | "tech" | "other",
+    category: publishCategory,
     sourceUrl: poll.sources[0]?.url ?? "",
     resolutionCriterion: poll.resolutionCriterion,
     resolutionAt: poll.resolutionAt,

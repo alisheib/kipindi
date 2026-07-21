@@ -72,15 +72,17 @@ function revealElement(elementId: string) {
 
 /* ─── Generate form ─── */
 
+// The canonical market categories (matches MarketCategory). Generation is
+// further restricted at runtime to the subset that has an enabled trusted
+// source — see the `generatable` prop on GenerateForm.
 const CATEGORIES = [
   { id: "sports", label: "Sports" },
   { id: "macro", label: "Macro / Economy" },
   { id: "weather", label: "Weather" },
   { id: "crypto", label: "Crypto" },
   { id: "culture", label: "Culture" },
-  { id: "infrastructure", label: "Infrastructure" },
   { id: "tech", label: "Tech" },
-  { id: "mixed", label: "Mixed / All" },
+  { id: "other", label: "Other" },
 ] as const;
 
 type GenPhase = "idle" | "calling" | "validating" | "filtering" | "done";
@@ -102,9 +104,13 @@ const PHASE_PROGRESS: Record<GenPhase, number> = {
   done: 100,
 };
 
-export function GenerateForm() {
+export function GenerateForm({ generatable }: { generatable: string[] }) {
   const [pending, start] = useTransition();
-  const [category, setCategory] = useState("sports");
+  // Only categories with an enabled trusted source can be generated; default to
+  // the first available one (falls back to "sports" only when the list is empty,
+  // in which case the button is disabled anyway).
+  const generatableSet = new Set(generatable);
+  const [category, setCategory] = useState(generatable[0] ?? "sports");
   const [prompt, setPrompt] = useState("");
   const [phase, setPhase] = useState<GenPhase>("idle");
   const [result, setResult] = useState<GenResult>(null);
@@ -264,21 +270,41 @@ export function GenerateForm() {
       <div className={active ? "pointer-events-none select-none opacity-30 blur-[1px] transition-all duration-200" : "transition-all duration-200"}>
         <div className="space-y-3">
           <div className="flex flex-wrap gap-2">
-            {CATEGORIES.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => setCategory(c.id)}
-                className={`px-3 py-1.5 rounded-pill text-[12px] font-mono uppercase tracking-[0.1em] border transition-colors ${
-                  category === c.id
-                    ? "border-brand-500 bg-brand-500/10 text-brand-300"
-                    : "border-border bg-bg-overlay text-text-muted hover:border-text-subtle"
-                }`}
-              >
-                {c.id === "mixed" && <I.shuffle s={11} className="inline-block mr-1 -mt-px" />}{c.label}
-              </button>
-            ))}
+            {CATEGORIES.map((c) => {
+              const enabled = generatableSet.has(c.id);
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => enabled && setCategory(c.id)}
+                  disabled={!enabled}
+                  title={enabled ? undefined : "No enabled trusted source — add one under Sources & categories to generate this category."}
+                  className={`px-3 py-1.5 rounded-pill text-[12px] font-mono uppercase tracking-[0.1em] border transition-colors ${
+                    !enabled
+                      ? "border-border/60 bg-bg-overlay/40 text-text-subtle/60 cursor-not-allowed line-through decoration-1"
+                      : category === c.id
+                        ? "border-brand-500 bg-brand-500/10 text-brand-300"
+                        : "border-border bg-bg-overlay text-text-muted hover:border-text-subtle"
+                  }`}
+                >
+                  {c.label}
+                </button>
+              );
+            })}
           </div>
+          {generatable.length === 0 ? (
+            <p className="flex items-start gap-1.5 text-[11.5px] text-warning-fg leading-snug">
+              <I.warning s={13} className="shrink-0 mt-0.5" />
+              No categories have an enabled trusted source yet. Add one under{" "}
+              <a href="/admin/sources" className="underline underline-offset-2 hover:text-text">Sources &amp; categories</a>{" "}
+              before generating — polls can only cite approved domains.
+            </p>
+          ) : (
+            <p className="text-[11px] text-text-subtle leading-snug">
+              Only categories with an enabled trusted source can be generated. Manage them under{" "}
+              <a href="/admin/sources" className="text-royal-300 underline-offset-2 hover:underline">Sources &amp; categories</a>.
+            </p>
+          )}
           <textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
@@ -378,7 +404,7 @@ export function GenerateForm() {
             <button
               type="button"
               onClick={generate}
-              disabled={pending || active}
+              disabled={pending || active || generatable.length === 0}
               className="btn btn-primary btn-sm rounded-pill min-w-[160px]"
             >
               {controlled ? "Generate controlled poll" : "Generate poll"}
@@ -489,7 +515,7 @@ export function GenerateForm() {
 type BatchPhase = "idle" | "running" | "done";
 type BatchSummary = { total: number; pending: number; filtered: number };
 
-export function BatchGenerateForm({ maxBatch, remaining }: { maxBatch: number; remaining: number }) {
+export function BatchGenerateForm({ maxBatch, remaining, generatable }: { maxBatch: number; remaining: number; generatable: string[] }) {
   const [pending, start] = useTransition();
   const suggested = Math.min(maxBatch, Math.max(1, remaining || 3));
   const [count, setCount] = useState(String(suggested));
@@ -591,7 +617,7 @@ export function BatchGenerateForm({ maxBatch, remaining }: { maxBatch: number; r
       <button
         type="button"
         onClick={run}
-        disabled={pending || active}
+        disabled={pending || active || generatable.length === 0}
         className="btn btn-ghost btn-sm rounded-pill min-w-[150px]"
       >
         {pending ? (
@@ -604,7 +630,9 @@ export function BatchGenerateForm({ maxBatch, remaining }: { maxBatch: number; r
         )}
       </button>
       <span className="text-[11px] text-text-subtle font-mono">
-        Two-tier: brainstorm → free filter → enrich keepers. Fewer rejects, lower cost.
+        {generatable.length === 0
+          ? "No trusted sources — add one under Sources & categories first."
+          : `Two-tier across ${generatable.join(", ")}. Brainstorm → free filter → enrich keepers.`}
       </span>
 
       {/* Simulated per-poll progress overlay */}
@@ -856,6 +884,7 @@ const REASON_LABELS: Record<string, string> = {
   duplicate_poll: "Duplicate of existing poll",
   no_sources: "No valid sources",
   invalid_source_url: "Invalid source URL",
+  source_not_trusted: "Source not on the trusted registry for this category",
   malformed_response: "Malformed AI response",
   provider_error: "AI provider error",
 };

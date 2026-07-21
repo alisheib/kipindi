@@ -44,9 +44,20 @@ const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString
 
 const CATEGORIES = ["sports", "macro", "weather", "crypto", "culture", "infrastructure", "tech"];
 
+// Seeded, enabled default domain per category (infrastructure folds to macro).
+// The generation-time trusted-source gate requires the primary source to be on
+// the registry for the poll's (resolved) category, so the fake provider must
+// cite the real seeded domains rather than throwaway example.com URLs.
+const SEEDED_DOMAIN: Record<string, string> = {
+  sports: "tff.or.tz", macro: "bot.go.tz", weather: "meteo.go.tz",
+  crypto: "coingecko.com", culture: "itv.co.tz", tech: "tcra.go.tz",
+  infrastructure: "bot.go.tz",
+};
+
 let genCounter = 0;
 function makeGeneration(category: string, confidence: number, overrides: Partial<AIPollGeneration> = {}): AIPollGeneration {
   genCounter++;
+  const domain = SEEDED_DOMAIN[category] ?? "tff.or.tz";
   return {
     titleEn: `Test poll #${genCounter}: ${category} question about something specific`,
     titleSw: `Kura ya jaribio #${genCounter}: swali la ${category}`,
@@ -59,7 +70,7 @@ function makeGeneration(category: string, confidence: number, overrides: Partial
       { label: "NO", descriptionEn: "It doesn't happen" },
     ],
     sources: [
-      { url: `https://source-${genCounter}.example.com`, publisher: `Source ${genCounter}` },
+      { url: `https://www.${domain}/p${genCounter}`, publisher: `Source ${genCounter}` },
     ],
     confidence,
     reasoning: `Auto-generated test poll #${genCounter} for ${category}.`,

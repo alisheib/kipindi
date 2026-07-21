@@ -29,7 +29,7 @@
  * where the model answers in prose instead of calling the tool.
  */
 import Anthropic from "@anthropic-ai/sdk";
-import type { AIProvider, AIProviderResponse, AIPollGeneration, GenerateRequest, IdeateRequest, IdeateResponse, PollIdea } from "./ai-provider";
+import type { AIProvider, AIProviderResponse, AIPollGeneration, GenerateRequest, IdeateRequest, IdeateResponse, PollIdea, AllowedSource } from "./ai-provider";
 import { getAIPollConfig } from "./ai-poll-config";
 import { ai } from "./ai-config";
 import { recordAiUsage, costOf } from "./ai-usage";
@@ -45,75 +45,86 @@ const VALID_CATEGORIES = [
  *  sentinel triage uses. No web search at this tier. */
 const IDEATION_MODEL = process.env.AI_POLL_IDEATION_MODEL || "claude-haiku-4-5-20251001";
 
-const SUBMIT_IDEAS_TOOL = {
-  name: "submit_ideas",
-  description: "Submit the brainstormed prediction-market ideas. Call exactly once with all ideas.",
-  input_schema: {
-    type: "object" as const,
-    properties: {
-      ideas: {
-        type: "array",
-        description: "The candidate poll ideas.",
-        items: {
-          type: "object",
-          properties: {
-            titleEn: { type: "string", description: "English YES/NO question, under 200 chars." },
-            category: { type: "string", enum: VALID_CATEGORIES },
-            resolutionDateGuess: { type: "string", description: "Approximate resolution date, ISO YYYY-MM-DD." },
-            why: { type: "string", description: "One short line on why it's a hot, uncertain, bettable market." },
-          },
-          required: ["titleEn", "category", "resolutionDateGuess", "why"],
-        },
-      },
-    },
-    required: ["ideas"],
-  },
-};
+/** Non-empty category enum for a tool schema — the operator's generatable
+ *  categories when we have them, else the full known set as a safe fallback. */
+function categoryEnum(allowed?: string[]): string[] {
+  const list = (allowed ?? []).filter((c) => VALID_CATEGORIES.includes(c));
+  return list.length > 0 ? list : VALID_CATEGORIES;
+}
 
-const SUBMIT_POLL_TOOL = {
-  name: "submit_poll",
-  description:
-    "Submit the finished YES/NO prediction-market poll. Call this exactly once, " +
-    "as your final action, with the complete poll.",
-  input_schema: {
-    type: "object" as const,
-    properties: {
-      titleEn: { type: "string", description: "English question, under 200 chars, clear binary YES/NO outcome." },
-      titleSw: { type: "string", description: "Kiswahili translation of the question — natural and fluent, same meaning as the English." },
-      titleZh: { type: "string", description: "Simplified Chinese (简体中文) translation of the question — natural and fluent, same meaning as the English." },
-      category: { type: "string", enum: VALID_CATEGORIES },
-      resolutionCriterion: { type: "string", description: "The specific, publicly verifiable condition + named source that decides YES." },
-      resolutionAt: { type: "string", description: "ISO 8601 datetime the question resolves. MUST be in the future." },
-      options: {
-        type: "array",
-        items: {
-          type: "object",
-          properties: {
-            label: { type: "string" },
-            descriptionEn: { type: "string" },
-            descriptionSw: { type: "string" },
-            descriptionZh: { type: "string" },
+function buildSubmitIdeasTool(allowedCategories?: string[]) {
+  return {
+    name: "submit_ideas",
+    description: "Submit the brainstormed prediction-market ideas. Call exactly once with all ideas.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        ideas: {
+          type: "array",
+          description: "The candidate poll ideas.",
+          items: {
+            type: "object",
+            properties: {
+              titleEn: { type: "string", description: "English YES/NO question, under 200 chars." },
+              category: { type: "string", enum: categoryEnum(allowedCategories) },
+              resolutionDateGuess: { type: "string", description: "Approximate resolution date, ISO YYYY-MM-DD." },
+              why: { type: "string", description: "One short line on why it's a hot, uncertain, bettable market." },
+            },
+            required: ["titleEn", "category", "resolutionDateGuess", "why"],
           },
-          required: ["label"],
         },
       },
-      sources: {
-        type: "array",
-        items: {
-          type: "object",
-          properties: {
-            url: { type: "string", description: "Real, reachable https URL of the source." },
-            publisher: { type: "string" },
-          },
-          required: ["url", "publisher"],
-        },
-      },
-      confidence: { type: "number", description: "0-100 self-assessment of how clear and resolvable this question is." },
-      reasoning: { type: "string", description: "Brief reasoning for why this is a good market." },
+      required: ["ideas"],
     },
-    required: ["titleEn", "titleSw", "titleZh", "category", "resolutionCriterion", "resolutionAt", "options", "sources", "confidence", "reasoning"],
-  },
-};
+  };
+}
+
+function buildSubmitPollTool(allowedCategories?: string[]) {
+  return {
+    name: "submit_poll",
+    description:
+      "Submit the finished YES/NO prediction-market poll. Call this exactly once, " +
+      "as your final action, with the complete poll.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        titleEn: { type: "string", description: "English question, under 200 chars, clear binary YES/NO outcome." },
+        titleSw: { type: "string", description: "Kiswahili translation of the question — natural and fluent, same meaning as the English." },
+        titleZh: { type: "string", description: "Simplified Chinese (简体中文) translation of the question — natural and fluent, same meaning as the English." },
+        category: { type: "string", enum: categoryEnum(allowedCategories) },
+        resolutionCriterion: { type: "string", description: "The specific, publicly verifiable condition + named source that decides YES." },
+        resolutionAt: { type: "string", description: "ISO 8601 datetime the question resolves. MUST be in the future." },
+        options: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              label: { type: "string" },
+              descriptionEn: { type: "string" },
+              descriptionSw: { type: "string" },
+              descriptionZh: { type: "string" },
+            },
+            required: ["label"],
+          },
+        },
+        sources: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              url: { type: "string", description: "Real, reachable https URL of the source — its domain MUST be one of the allowed source domains named in the system prompt." },
+              publisher: { type: "string" },
+            },
+            required: ["url", "publisher"],
+          },
+        },
+        confidence: { type: "number", description: "0-100 self-assessment of how clear and resolvable this question is." },
+        reasoning: { type: "string", description: "Brief reasoning for why this is a good market." },
+      },
+      required: ["titleEn", "titleSw", "titleZh", "category", "resolutionCriterion", "resolutionAt", "options", "sources", "confidence", "reasoning"],
+    },
+  };
+}
 
 /** Per-category "hot topic" steering so every category yields strong, current,
  *  debate-worthy markets — not weak or obvious ones. These are prompts to think
@@ -137,12 +148,29 @@ const CATEGORY_GUIDANCE: Record<string, string> = {
     "A genuinely interesting, verifiable real-world event with broad public interest in Tanzania that doesn't fit the other categories.",
 };
 
+/** Render the operator's source allowlist for the ONE category being generated.
+ *  Empty string when we have no allowlist for it (the generator refuses upstream
+ *  in that case, so this is only ever a defensive fallback). */
+function sourceAllowlistBlock(category: string, allowed?: AllowedSource[]): string {
+  const forCat = (allowed ?? []).find((a) => a.category === category);
+  if (!forCat || forCat.domains.length === 0) return "";
+  const lines = forCat.domains
+    .map((d, i) => `- ${d}${forCat.labels?.[i] ? ` — ${forCat.labels[i]}` : ""}`)
+    .join("\n");
+  return `\n\nSOURCE ALLOWLIST — HARD CONSTRAINT (a poll citing any other domain CANNOT be published and will be discarded):
+The source URL you cite for this ${category} question MUST be on one of these operator-approved domains (the domain itself or a subdomain of it):
+${lines}
+Pick a question that one of these official sources will settle. Do NOT cite any other domain, however authoritative it seems.\n`;
+}
+
 function buildSystemPrompt(opts: {
   nowIso: string;
+  category: string;
   minLeadHours: number;
   maxLeadDays: number;
   webSearch: boolean;
   avoidTitles?: string[];
+  allowedSources?: AllowedSource[];
 }): string {
   const earliest = new Date(Date.now() + opts.minLeadHours * 3_600_000).toISOString();
   const latest = new Date(Date.now() + opts.maxLeadDays * 86_400_000).toISOString();
@@ -151,7 +179,8 @@ function buildSystemPrompt(opts: {
   const avoidBlock = avoid.length
     ? `\n\nDO NOT DUPLICATE — the platform ALREADY has these questions live or in review. Your question must be MEANINGFULLY DIFFERENT (different subject, threshold, or resolution moment); never a paraphrase of any of these:\n${avoid.map((t) => `- ${t}`).join("\n")}\n`
     : "";
-  return `You are the 50pick poll generator — the sharpest prediction-market question writer in Tanzania, working for a GBT-licensed pari-mutuel platform.${avoidBlock}
+  const allowlistBlock = sourceAllowlistBlock(opts.category, opts.allowedSources);
+  return `You are the 50pick poll generator — the sharpest prediction-market question writer in Tanzania, working for a GBT-licensed pari-mutuel platform.${avoidBlock}${allowlistBlock}
 
 Your job: generate ONE excellent YES/NO prediction-market question for the given category, then submit it by calling the submit_poll tool.
 
@@ -168,7 +197,7 @@ HARD RULES:
 2. The event MUST still be genuinely open right now — it must NOT have already happened or been decided. ${opts.webSearch ? "Use web search to confirm the event is real, still upcoming, and unresolved, and to pin down exact names, dates and figures." : "Be conservative: if you are not certain an event is still in the future, do not use it."}
 3. resolutionAt MUST be between ${earliest} and ${latest} (i.e. ${opts.minLeadHours}h to ${opts.maxLeadDays}d from now). Never a past date. Note: betting closes BEFORE the resolution date (e.g. 1h before for sports, 2h for crypto, 1–2 days for macro). Pick events where this lead time makes sense.
 4. resolutionCriterion MUST name a specific, publicly verifiable source (official body, regulator, data provider, or major news agency) and the exact condition for a YES.
-5. Provide at least one REAL, reachable source URL. ${opts.webSearch ? "Only use URLs you actually found via web search — never invent one." : "Only cite well-known official domains you are confident exist."}
+5. Provide at least one REAL, reachable source URL whose domain is on the SOURCE ALLOWLIST above. ${opts.webSearch ? "Use web search to find the real page on one of those approved domains — never invent a URL, and never substitute a different domain." : "Cite the specific approved domain from the allowlist."}
 6. NEVER generate questions about: politics, elections, religion, violence, war, adult content, or the death/health of any individual. These are banned under the GBT license.
 7. Anchor in Tanzania / East Africa wherever possible. Global topics are welcome for crypto, weather, and major world sport.
 8. titleEn under 200 characters. Always include a natural, fluent titleSw (Kiswahili) AND titleZh (Simplified Chinese, 简体中文) — translate the MEANING in each, don't transliterate. Keep proper nouns, brand names, numbers and TZS amounts intact; English remains the official version used to settle the market.
@@ -208,7 +237,9 @@ export class ClaudeProvider implements AIProvider {
     try {
       const client = new Anthropic({ apiKey: this.apiKey });
 
-      const tools: Anthropic.Messages.ToolUnion[] = [SUBMIT_POLL_TOOL as unknown as Anthropic.Messages.Tool];
+      // Force the model to the ONE requested (generatable) category and, via the
+      // system prompt, to that category's approved source domains.
+      const tools: Anthropic.Messages.ToolUnion[] = [buildSubmitPollTool([category]) as unknown as Anthropic.Messages.Tool];
       if (cfg.webSearchEnabled) {
         tools.unshift({
           type: ai.webSearchTool.type,
@@ -222,10 +253,12 @@ export class ClaudeProvider implements AIProvider {
         max_tokens: 1500,
         system: buildSystemPrompt({
           nowIso,
+          category,
           minLeadHours: cfg.minLeadTimeHours,
           maxLeadDays: cfg.maxLeadTimeDays,
           webSearch: cfg.webSearchEnabled,
           avoidTitles: req.avoidTitles,
+          allowedSources: req.allowedSources,
         }),
         // When web search is on the model must be free to call it before
         // submit_poll, so we can only force *some* tool, not submit_poll
@@ -315,9 +348,9 @@ export class ClaudeProvider implements AIProvider {
       const resp = await client.messages.create({
         model: IDEATION_MODEL,
         max_tokens: 1500,
-        system: buildIdeationPrompt({ nowIso, minLeadHours: cfg.minLeadTimeHours, maxLeadDays: cfg.maxLeadTimeDays, categories, count, avoidTitles: req.avoidTitles }),
+        system: buildIdeationPrompt({ nowIso, minLeadHours: cfg.minLeadTimeHours, maxLeadDays: cfg.maxLeadTimeDays, categories, count, avoidTitles: req.avoidTitles, allowedSources: req.allowedSources }),
         tool_choice: { type: "tool", name: "submit_ideas" },
-        tools: [SUBMIT_IDEAS_TOOL as unknown as Anthropic.Messages.Tool],
+        tools: [buildSubmitIdeasTool(categories) as unknown as Anthropic.Messages.Tool],
         messages: [{ role: "user", content: userPrompt }],
       });
       const latencyMs = Date.now() - start;
@@ -356,6 +389,7 @@ function buildIdeationPrompt(opts: {
   categories: string[];
   count: number;
   avoidTitles?: string[];
+  allowedSources?: AllowedSource[];
 }): string {
   const earliest = new Date(Date.now() + opts.minLeadHours * 3_600_000).toISOString().slice(0, 10);
   const latest = new Date(Date.now() + opts.maxLeadDays * 86_400_000).toISOString().slice(0, 10);
@@ -363,7 +397,12 @@ function buildIdeationPrompt(opts: {
   const avoidBlock = avoid.length
     ? `\n\nDO NOT repeat anything equivalent to these existing questions:\n${avoid.map((t) => `- ${t}`).join("\n")}\n`
     : "";
-  return `You are the 50pick idea scout. Brainstorm ${opts.count} DISTINCT prediction-market IDEAS for a GBT-licensed Tanzanian pari-mutuel platform. This is a cheap first pass — just the seed of each market, no sources or full criteria yet.${avoidBlock}
+  // Per-category approved domains so ideation only seeds markets we can resolve.
+  const allowed = (opts.allowedSources ?? []).filter((a) => opts.categories.includes(a.category) && a.domains.length > 0);
+  const allowlistBlock = allowed.length
+    ? `\n\nAPPROVED SOURCES PER CATEGORY — only brainstorm ideas that ONE of these official sources can settle (do not propose a market resolvable only via some other outlet):\n${allowed.map((a) => `- ${a.category}: ${a.domains.join(", ")}`).join("\n")}\n`
+    : "";
+  return `You are the 50pick idea scout. Brainstorm ${opts.count} DISTINCT prediction-market IDEAS for a GBT-licensed Tanzanian pari-mutuel platform. This is a cheap first pass — just the seed of each market, no sources or full criteria yet.${avoidBlock}${allowlistBlock}
 
 CURRENT DATE: ${opts.nowIso}
 
@@ -373,6 +412,7 @@ RULES:
 - Each idea = a real, named, UPCOMING event resolving between ${earliest} and ${latest}. Never already-decided.
 - Genuinely uncertain (coin-flip-ish), crisp and specific. No vague/evergreen filler.
 - Anchor in Tanzania / East Africa where possible (global ok for crypto, weather, major world sport).
+- Each idea must be settleable by one of the approved official sources listed above for its category.
 - NEVER: politics, elections, religion, violence, war, adult content, death/health of individuals (banned under the GBT license).
 - All ${opts.count} ideas must be DISTINCT from each other and from any existing question listed above.
 

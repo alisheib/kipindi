@@ -259,6 +259,20 @@ the WHY, the kit pieces to reuse, the infra that already exists, and acceptance 
   ONE publish path not checking the trusted registry (manual/candidate/proposal all do). AI
   source URLs are only syntax-checked, never fetched, so a **plausible hallucinated domain
   could reach a live market** — and the operator's **disabled-category list was bypassed too**.
+- **✅ Shipped 2026-07-21 — source-driven generation (`docs/AI-POLL-SOURCES.md`).** The gate
+  above was still a *post-hoc* reject: the model would happily generate a macro poll citing
+  `www.african-markets.com`, an officer would approve it, and only **Publish** would fail with
+  "no enabled trusted source". Now the constraint is enforced **before and during** generation:
+  `getGeneratableCategories()` (enabled sources ∩ active categories) is the single source of
+  truth, injected into both the ideation and enrichment prompts and the `submit_poll`/`submit_ideas`
+  tool `category` enum, so the model can only pick a generatable category and cite an approved
+  domain. `validateAndFilter` hard-fails any poll whose primary source isn't trusted **for its
+  category** (`source_not_trusted`) and reorders a trusted source to primary (publish checks
+  `sources[0]`); a non-generatable/banned category is refused with **no spend**. The gate + market
+  creation now share one `resolvePublishCategory()`, fixing the tech/other mismatch (gated against
+  macro but published as tech/other). Admin generate forms only offer generatable categories;
+  `/admin/sources` shows per-category "AI can generate". Domains are normalised (strip `www.`/
+  scheme/path) at one point. Covered by `test:ai-source-allowlist` (in `test:all`).
 - **🔴 Fixed: the AI budget alerted but never blocked.** Nothing checked spend *before* an
   Anthropic call; the only real cost cap was "a human clicks Generate" — exactly what a
   calendar-driven generator removes. New `assertAiBudget()` refuses before spending.

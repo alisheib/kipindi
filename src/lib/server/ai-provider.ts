@@ -50,6 +50,14 @@ export type AIProviderResponse = {
   latencyMs: number;
 };
 
+/** The operator-curated allowlist the generator must stay inside: for each
+ *  category that currently has ≥1 enabled trusted source, the exact domains a
+ *  poll in that category may cite. Passed into every generation so the model is
+ *  constrained BEFORE it generates — never asked to guess a domain that would
+ *  later be rejected at publish. Mirror of source-registry `GeneratableCategory`
+ *  (kept structural here to avoid a server-only import in the interface). */
+export type AllowedSource = { category: string; domains: string[]; labels?: string[] };
+
 export type GenerateRequest = {
   category: string;
   prompt?: string;          // optional admin freeform guidance
@@ -63,6 +71,9 @@ export type GenerateRequest = {
    *  doesn't re-propose a question we already have (which would be filtered as a
    *  duplicate AFTER we'd already paid for the generation). */
   avoidTitles?: string[];
+  /** Operator's enabled categories + trusted domains. The model MUST pick the
+   *  category from this list and cite a source on one of its domains. */
+  allowedSources?: AllowedSource[];
 };
 
 /* ─── Tier-1 ideation (cheap Haiku brainstorm; no web search) ─── */
@@ -83,6 +94,9 @@ export type IdeateRequest = {
   count: number;
   prompt?: string;
   avoidTitles?: string[];
+  /** Same operator allowlist as GenerateRequest — steers ideation to categories
+   *  we can actually resolve, so we don't pay to enrich ideas we'd reject. */
+  allowedSources?: AllowedSource[];
 };
 
 export type IdeateResponse = {
@@ -317,6 +331,15 @@ export class MockClaudeProvider implements AIProvider {
         const poll = { ...randomFrom(pool) };
         // Randomize confidence slightly
         poll.confidence = Math.max(50, Math.min(100, poll.confidence + Math.floor(Math.random() * 20 - 10)));
+        // Cite an operator-allowed domain for this category when one is supplied,
+        // so a mock generation is actually publishable (the trusted-source gate
+        // is now enforced at generation time). Falls back to the fixture source.
+        const allowed = req.allowedSources?.find((a) => a.category === category);
+        if (allowed && allowed.domains.length > 0) {
+          const domain = allowed.domains[0];
+          const publisher = allowed.labels?.[0] ?? domain;
+          poll.sources = [{ url: `https://${domain}/`, publisher }];
+        }
         return {
           ok: true,
           generation: poll,

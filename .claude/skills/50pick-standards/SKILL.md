@@ -171,6 +171,10 @@ deploy — never by hand.
 - `docs/design-master-brief.md` — palette rationale / ground-truth sRGB.
 - `docs/FINAL-AUDIT-REMEDIATION.md` — the launch-gate remediation tracker (current stage).
 - `docs/DATA-LAYER.md` · `docs/FLOWS.md` — the data model + money/state flows.
+- `docs/AI-POLL-SOURCES.md` — AI poll generation is bound to the trusted-source registry
+  (`getGeneratableCategories()`): the model can only generate categories/domains the operator
+  has enabled, enforced before + during generation. Adding a source under the wrong category is
+  the usual "why won't it generate/publish" trap.
 - `docs/ui-rollout-tracker.md` — UI-kit rollout status.
 - `.claude/skills/50pick-audit/SKILL.md` — safe DB/migration/Railway ops + money invariants + verify protocol.
 - `CLAUDE.md` — architecture overview + the ACTIVE-WORK banner.

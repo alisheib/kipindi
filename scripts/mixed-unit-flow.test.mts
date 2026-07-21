@@ -55,6 +55,18 @@ const iso = new Date().toISOString();
 let uniq = 0;
 const actorId = "off_mixed_test";
 
+// Seeded, enabled default source per category (from seedDefaultSources) — the
+// generation-time trusted-source gate now requires the primary source to be on
+// the registry for its category, so the provider must cite the real domains.
+const SEEDED_DOMAIN: Record<string, string> = {
+  sports: "tff.or.tz",
+  crypto: "coingecko.com",
+  weather: "meteo.go.tz",
+  culture: "itv.co.tz",
+  tech: "tcra.go.tz",
+  macro: "bot.go.tz",
+};
+
 // ── Provider ──
 class TestProvider implements AIProvider {
   name = "test-mixed";
@@ -62,6 +74,7 @@ class TestProvider implements AIProvider {
   constructor(cat: string) { this.cat = cat; }
   async ideate() { return { ok: true, ideas: [], tokensUsed: 0, costUsd: 0 }; }
   async generate(): Promise<{ ok: true } & Record<string, unknown>> {
+    const domain = SEEDED_DOMAIN[this.cat] ?? "tff.or.tz";
     const gen: AIPollGeneration = {
       titleEn: `Mixed-unit test ${this.cat} #${++uniq}`,
       titleSw: `Test SW ${uniq}`,
@@ -70,7 +83,7 @@ class TestProvider implements AIProvider {
       resolutionCriterion: "Official result announced.",
       resolutionAt: future(14),
       options: [{ label: "YES" }, { label: "NO" }] as never,
-      sources: [{ url: "https://source.tz/test", publisher: "Test Source" }],
+      sources: [{ url: `https://www.${domain}/result`, publisher: "Official Source" }],
       confidence: 85,
       reasoning: "test poll",
     };

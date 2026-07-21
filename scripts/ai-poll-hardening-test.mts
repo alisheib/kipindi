@@ -84,9 +84,11 @@ fakeProvider(() => okResp(gen({ titleEn: "Will X happen too far C?", resolutionA
 p = await generateAIPoll({ category: "sports", actorId: ACTOR });
 check("resolves beyond horizon is FILTERED", p.state === "FILTERED" && p.filterReasons.includes("resolution_too_far"), p.filterReasons.join(","));
 
-// 5 · Banned category → FILTERED (banned_category)
+// 5 · Banned category → FILTERED (banned_category). Request a GENERATABLE
+// category so the poll reaches validation; the provider then returns a banned
+// category, which validateAndFilter must reject.
 fakeProvider(() => okResp(gen({ titleEn: "Will the minister be appointed D?", category: "politics" })));
-p = await generateAIPoll({ category: "other", actorId: ACTOR });
+p = await generateAIPoll({ category: "sports", actorId: ACTOR });
 check("banned category is FILTERED", p.state === "FILTERED" && p.filterReasons.includes("banned_category"), p.filterReasons.join(","));
 
 // 6 · XSS in title → FILTERED (xss_detected)

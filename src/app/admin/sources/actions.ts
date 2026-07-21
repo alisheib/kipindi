@@ -10,6 +10,7 @@ import {
   removeSource,
   setSourceEnabled,
   setCategoryEnabled,
+  normalizeDomain,
 } from "@/lib/server/source-registry";
 import type { MarketCategory } from "@/lib/server/market-service";
 import { MARKET_OPS_ROLES } from "@/lib/server/roles";
@@ -28,7 +29,7 @@ async function ensureAdmin() {
 
 export async function addSourceAction(formData: FormData) {
   const session = await ensureAdmin();
-  const domain = String(formData.get("domain") ?? "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+  const domain = normalizeDomain(String(formData.get("domain") ?? ""));
   const label = String(formData.get("label") ?? "").trim();
   const category = String(formData.get("category") ?? "other") as MarketCategory;
   const rationale = String(formData.get("rationale") ?? "").trim().slice(0, 500);

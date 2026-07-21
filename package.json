@@ -46,6 +46,7 @@
     "test:config": "tsx scripts/config-persist.test.mts",
     "test:ai-usage": "tsx scripts/ai-usage.test.mts",
     "test:ai-polls": "tsx scripts/ai-poll-ideas.test.mts",
+    "test:ai-source-allowlist": "tsx scripts/ai-poll-source-allowlist.test.mts",
     "test:ai-coordination": "tsx scripts/ai-poll-coordination.test.mts",
     "test:controlled-guards": "tsx scripts/ai-poll-controlled-guards.test.mts",
     "test:lifecycle-e2e": "tsx scripts/poll-lifecycle-e2e.test.mts",
