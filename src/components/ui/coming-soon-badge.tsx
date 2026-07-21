@@ -32,7 +32,7 @@ export function ComingSoonBadge({
       style={{ fontSize: d.fontSize, padding: d.padding, letterSpacing: d.tracking }}
     >
       <span className="inline-flex items-center" style={{ gap: d.gap }}>
-        <I.sparkle s={d.icon} aria-hidden />
+        <I.clock s={d.icon} aria-hidden />
         {label}
       </span>
     </span>
