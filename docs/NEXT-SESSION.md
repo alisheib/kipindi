@@ -16,6 +16,62 @@ Read the two always-on skills first (`.claude/skills/50pick-standards` +
   code-doable / (B) needs-Ali / (C) optional).
 - Go-live + payment-gateway map: **`docs/GO-LIVE-READINESS.md`**.
 
+## Done (Session — 2026-07-21b, autonomous FINALIZE pass — all 4 lanes)
+
+Ran the FINALIZE lanes safe-first, verifying each with human-read screenshots and
+pushing per coherent batch. Gate green on every push: `tsc` · `next build` ·
+`test:tokens`/`test:outcome`/`test:integrity` · `test:i18n` parity 1429×3. For the
+money-adjacent lane the FULL `npm run test:all` ran — **81 suites PASS, only
+`test:responsive` failed** (the documented local-only exception; its 3 fails were
+transient `Execution-context-destroyed`/navigation artifacts, not defects). Every
+money suite (money-invariants, ledger, trial-balance, payout-alloc, admin-money-ops,
+cashout, fee-model, bonus-*, rg-race, webhook-sec, selcom, conflict-gate, …) GREEN.
+
+1. **LANE 1 — sparse "Today" board continuation** (`672f1e7`, LIVE). The board
+   defaults to when=today; on a quiet day that's a small single page while more
+   markets settle later (the first screen a tester hits). When a bounded window
+   (soon/today/week) is a single-page board AND a wider window genuinely holds more
+   live markets, a slim strip nudges "That's all closing today — See this week → /
+   See all open →". A NUDGE, not a filter override — pure links, no non-matching
+   cards injected; each wider link shown only if it reveals more (no dead link).
+   +6 trilingual keys. Verified 360 EN/SW/ZH (SW wraps to stacked buttons) + 1280.
+
+2. **LANE 2 — PII masked in the two compliance list views** (`dc60a4c`, LIVE).
+   Self-exclusion roster + privacy on-behalf export rendered the full displayName
+   while the phone beside it was masked (2026-06-28 audit §3). Both now use the
+   platform `maskName()` ("As***i M."), consistent with the masked-phone column;
+   full identity stays on the audited detail page. Pure display. Closes the last
+   §3 item. Verified: privacy list 8 masked names, roster masked entry, EN+SW,
+   1280+360.
+
+3. **LANE 3 — full-platform visual QA sweep.** responsive-audit SURFACE=player
+   LOCALES=en,sw,zh + SURFACE=admin en,sw at 360/768/1280/1920, SHOTS_ALL, shots
+   read. **Player: 1344 passed · 0 hard failures** (overflow/clip/off-screen/console
+   all clean across 28 routes × 4 widths × 3 locales). The 336 soft touch-target
+   warnings are the documented-acceptable set (logo Home link, desktop nav links,
+   inline breadcrumb links — AA met via the 2.5.8 inline/equivalent-control
+   exception; A18-flagged future sweep) — NOT objective defects. The `/live`
+   carousel dots (18×8) are `aria-hidden`+`tabIndex=-1` decorative indicators with
+   the properly-sized ‹ › arrows + ←/→ + swipe as the real controls (2.5.8
+   equivalent-control) — left as-is. **No objective defects found; no fixes needed.**
+
+4. **LANE 4 — the two DEFERRED money-adjacent items, done HONESTLY + read-only.**
+   Neither needed a payout/settlement/ledger/wallet/payment LOGIC change (no
+   STOP-and-report), so both shipped:
+   - **(a) Money-tile sparks** (`1a79903`): new read-only `dailyKpiSeries()` in
+     report-money buckets txns by EAT day and reads each day's GGR/NGR/active via the
+     SAME canonical `summarise()` the scalar uses — the metric's OWN trend, never the
+     net-flow proxy the last session correctly rejected. Wired to overview/finance/
+     live tiles; `spark()` hides an all-zero series (no meaningless flat line).
+     Verified: the active spark renders with real data (12); GGR/NGR correctly show
+     no line at zero; layout intact.
+   - **(b) Wallet limit-usage meters** (`b479c17`): new read-only `getLimitUsage()`
+     returns the EXACT figures the deposit/loss gates enforce
+     (`sumDepositsSince(...includePending)` = checkDepositLimit; `sumGamblingNetSince`
+     = checkLossLimit). New `LimitUsageMeter` (neutral→warning→danger ramp, NOT
+     yes/no per B2) renders under the limits form, one per SET limit. +3 trilingual
+     keys. Verified EN/SW/ZH at 1280+360; hidden when no limit set.
+
 ## Done (Session — 2026-07-21, platform-wide DESIGN + missing-detail pass)
 
 Method: acted as "Claude Design". Before touching anything, ran a 4-lane grounded
@@ -91,14 +147,19 @@ callout; Legal per-doc header icons. (The kit glyphs `kycRail`/`fairnessChain`/
 - **PII in two admin list views** (privacy on-behalf, self-exclusion roster): still a
   compliance mask-vs-justified-need call, unchanged.
 
-### ▶ NEXT SESSION (run-until-done, Ali away) — paste `docs/FINALIZE-SESSION-PROMPT.md`
-Autonomous FINALIZE pass. Lanes, safe-first: (1) sparse "Today" board graceful "see this
-week →" fill; (2) mask PII in the 2 admin list views; (3) full-platform visual QA sweep
-(read screenshots, fix objective defects only); (4) ⚠️ LAST + careful + READ-ONLY — the two
-deferred money-adjacent items (AdminKpi money-tile sparks, wallet limit-usage meters), which
-must **STOP-and-report** on any payout/settlement/ledger/payment touch and stay deferred
-rather than ship a figure that isn't the real metric. The go-live gate (Selcom flip, float
-PIN, TEST_FUNDING off, secrets, DNS) is operator-only — see docs/GO-LIVE-READINESS.md.
+### ▶ FINALIZE pass — DONE 2026-07-21b (see the "2026-07-21b" Done block at the top)
+All four FINALIZE lanes are complete + live: (1) sparse-board continuation nudge, (2) PII
+masked in the 2 compliance lists, (3) full visual QA sweep (0 objective defects — no fixes
+needed), (4) BOTH deferred money-adjacent items shipped honestly (read-only, canonical
+`summarise`/gate functions — neither needed a payout/ledger/wallet-logic change, so no
+STOP-and-report). `docs/FINALIZE-SESSION-PROMPT.md` is spent — do NOT re-run it.
+
+### What genuinely remains before real money (all operator-only — NOT code)
+The go-live gate is Ali/ops, not engineering — see `docs/GO-LIVE-READINESS.md` §1:
+flip `/admin/payments` provider mock→selcom + redeploy · clear the conflicted-resolution
+flag · Selcom float PIN (cash-out) · turn OFF `TEST_FUNDING` + rebaseline the DB at launch ·
+webhook secrets (AZAMPAY/MIXX) · R2 · Sentry · VAPID · pentest · `AUTO_SETTLE=true` once the
+rail is live. No code lane blocks launch.
 
 ## Done (Session — 2026-07-20, ADMIN-only console detail pass)
 
