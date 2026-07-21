@@ -3,7 +3,6 @@
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { I } from "@/components/ui/glyphs";
 import { ActionOverlay, useActionOverlay } from "@/components/admin/action-overlay";
 import { approveAmlAction, rejectAmlAction } from "./actions";
@@ -62,28 +61,26 @@ export function AmlActionRow({ txnId, amount }: { txnId: string; amount: number 
   return (
     <div className="space-y-1.5">
       <div className="flex items-center gap-1.5">
-        <ConfirmDialog
-          trigger={
-            <Button
-              size="sm"
-              variant="yes"
-              disabled={busy !== null}
-              loading={busy === "approve"}
-              leading={<I.check s={12} />}
-              aria-label="Approve transaction"
-            >
-              Approve
-            </Button>
-          }
-          title={`Approve ${formatTzs(amount)}`}
-          body={<>This records your approval. For amounts over TZS 1M, a second, different officer must counter-sign before funds release. Once both officers approve, <strong>funds are released immediately</strong> and cannot be reversed.</>}
-          confirmLabel="Yes, approve"
-
-          onConfirm={() => submit("approve")}
-        />
+        {/* Approval is deliberately DISABLED server-side (approveAmlAction refuses:
+            releasing a hold without a real gateway dispatch would destroy the
+            money). Reflect that honestly rather than a confirm that always fails.
+            Reject works and returns the held funds to the player. Re-enable this
+            button together with the server action once approved withdrawals are
+            dispatched to the gateway + settled by the webhook/reconcile path. */}
+        <Button
+          size="sm"
+          variant="yes"
+          disabled
+          leading={<I.check s={12} />}
+          aria-label="Approve transaction — unavailable until the payout gateway is live"
+          title="Approval is unavailable until the payout gateway is live. Use Reject to return the held funds to the player."
+        >
+          Approve
+        </Button>
         <Button
           size="sm"
           variant="danger"
+          disabled={busy !== null}
           onClick={() => setExpanded((v) => !v)}
           aria-label="Reject transaction"
           aria-expanded={expanded ? "true" : "false"}
@@ -93,6 +90,9 @@ export function AmlActionRow({ txnId, amount }: { txnId: string; amount: number 
           Reject
         </Button>
       </div>
+      <p className="text-[10.5px] text-text-tertiary">
+        Approval is on hold until the payout gateway is live — clear a case with <span className="text-text-secondary">Reject</span>, which returns the held funds.
+      </p>
       {expanded && (
         <div className="flex items-start gap-1.5">
           <input

@@ -11,6 +11,7 @@ import { setBonusConfig, type BonusConfig } from "@/lib/server/bonus-config";
 import { creditBonus, cancelGrant } from "@/lib/server/bonus-service";
 import { MONEY_ROLES } from "@/lib/server/roles";
 import { requireAdminTotp } from "@/lib/server/admin-guard";
+import { audit } from "@/lib/server/audit";
 
 const ADMIN_ROLES = MONEY_ROLES; // role tier — see @/lib/server/roles
 
@@ -51,6 +52,24 @@ export async function grantBonusToPlayerAction(input: GrantInput):
       note: parse.data.note ? `Admin grant by ${s.userId}: ${parse.data.note}` : `Admin grant by ${s.userId}`,
     });
     if (!r.ok) return { ok: false, error: r.error };
+
+    // Non-repudiation: creditBonus() audits `bonus.credited` against the RECIPIENT
+    // (the money event). Emit a second ADMIN entry attributed to the granting
+    // OFFICER so an "what did officer X do?" query surfaces this money issuance
+    // (mirrors cancelGrant, which already records the officer as actorId).
+    audit({
+      category: "ADMIN",
+      action: "bonus.granted_by_officer",
+      actorId: s.userId,
+      targetType: "User",
+      targetId: user.id,
+      payload: {
+        grantId: r.grant.id,
+        amountTzs: parse.data.amountTzs,
+        wagerMultiplier: parse.data.wagerMultiplier ?? null,
+        expiryDays: parse.data.expiryDays ?? null,
+      },
+    });
 
     revalidatePath("/admin/bonuses");
     return { ok: true, grantId: r.grant.id, handle: user.displayName?.trim() || parse.data.phone };

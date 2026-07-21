@@ -62,7 +62,7 @@ export default async function PaymentsOpsPage({ searchParams }: { searchParams: 
             <div>
               <span className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-subtle">Drift</span>
               <p className={`font-mono text-[15px] font-bold tabular-nums ${recon.driftTzs !== 0 ? "text-danger" : "text-text"}`}>
-                {recon.driftTzs === 0 ? "TZS 0" : formatTzs(recon.driftTzs)}
+                {formatTzs(recon.driftTzs)}
               </p>
             </div>
             {recon.driftTzs !== 0 && (

@@ -10,23 +10,28 @@ import { useDeferredToast } from "@/components/ui/toast";
 import type { BonusConfig } from "@/lib/server/bonus-config";
 import { saveBonusConfigAction, grantBonusToPlayerAction, cancelGrantAction } from "./bonus-actions";
 import { formatTzs } from "@/lib/utils";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ConfirmModal } from "@/components/ui/modal";
 
-/** Cancel an ACTIVE grant from the ledger row. */
+/** Cancel an ACTIVE grant from the ledger row. Confirmed — it claws bonus money
+ *  back out of a player's wallet, so it should not fire on a single stray click. */
 export function CancelGrantButton({ grantId }: { grantId: string }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const { deferToast, toast } = useDeferredToast(pending);
   return (
-    <Button
-      variant="ghost" size="sm" loading={pending}
-      onClick={() => start(async () => {
+    <ConfirmDialog
+      tone="claret"
+      title="Cancel bonus grant · Ghairi bonasi"
+      body="Cancel this active bonus grant? The remaining bonus amount is removed from the player's bonus wallet. This cannot be undone."
+      confirmLabel="Yes, cancel grant"
+      onConfirm={() => start(async () => {
         const r = await cancelGrantAction(grantId);
         if (r.ok) { router.refresh(); deferToast({ title: `Bonus cancelled · ${formatTzs(r.removedTzs)} removed`, variant: "success" }); }
         else toast({ title: "Couldn't cancel", description: r.error, variant: "danger" });
       })}
-    >
-      Cancel
-    </Button>
+      trigger={<Button variant="ghost" size="sm" loading={pending}>Cancel</Button>}
+    />
   );
 }
 
@@ -210,10 +215,17 @@ export function GrantBonusForm() {
   const [multiplier, setMultiplier] = useState<number | "">("");
   const [expiry, setExpiry] = useState<number | "">("");
   const [note, setNote] = useState("");
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
+  // Validate first, then ask for an explicit confirm — a manual grant creates
+  // real bonus liability the player must play through, so it must not issue on
+  // a single stray click (parity with settlement / kill-switch / provider-switch).
   const grant = () => {
     if (!phone.trim()) { toast({ title: "Enter a phone number", variant: "danger" }); return; }
     if (!(amount > 0)) { toast({ title: "Enter a positive amount", variant: "danger" }); return; }
+    setConfirmOpen(true);
+  };
+  const doGrant = () => {
     start(async () => {
       const r = await grantBonusToPlayerAction({
         phone: phone.trim(),
@@ -252,6 +264,18 @@ export function GrantBonusForm() {
         </div>
       </div>
       <Button variant="primary" size="sm" leading={<I.plus s={14} />} loading={pending} onClick={grant}>Grant bonus</Button>
+      <ConfirmModal
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={() => { setConfirmOpen(false); doGrant(); }}
+        tone="warning"
+        title="Grant bonus · Toa bonasi"
+        confirmLabel="Yes, grant"
+        body={
+          <>Credit <b>{formatTzs(Math.round(amount || 0))}</b> to the bonus wallet of <b>+255 {phone.trim() || "—"}</b>
+          {multiplier === "" ? "" : ` at ${Number(multiplier)}× wagering`}? This creates real bonus liability the player must play through before it can be withdrawn.</>
+        }
+      />
     </div>
   );
 }

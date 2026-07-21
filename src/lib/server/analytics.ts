@@ -192,7 +192,11 @@ export async function userStatusCounts() {
   );
 }
 
-/** Top-N players by lifetime NGR contribution (anonymised id).
+/** Top-N players by lifetime GROSS gaming margin (stakes − payouts), anonymised.
+ *  NOTE: this is per-user GROSS margin, NOT full NGR — it excludes bonus cost,
+ *  fees and refunds, which are not attributable per player. The `ngr` field name
+ *  is kept for its single consumer (finance "Top-10 player concentration", which
+ *  is NOT labelled NGR in the UI); read it as "gross margin contribution".
  *  Single-pass over all transactions, grouped by userId. */
 export async function topNgrContributors(n = 10) {
   const map = new Map<string, { stakes: number; payouts: number }>();
@@ -213,13 +217,15 @@ export async function topNgrContributors(n = 10) {
   return out.sort((a, b) => b.ngr - a.ngr).slice(0, n);
 }
 
-/** Sum of operator margin = NGR / (NGR + payouts). */
+/** Operator margin = hold % over the period. Delegates to the CANONICAL
+ *  report-money summary so it EQUALS the GGR shown beside it on /admin/finance:
+ *  holdPct = (stakes − payouts − refunds) / stakes. (Previously it omitted
+ *  refunds, so a voided/one-sided poll made this tile disagree with GGR — a
+ *  figure that couldn't be reconciled to the canonical source.) */
 export async function operatorMarginPct(period: Period = "28d") {
-  const ts = await txnsInPeriod(period);
-  const stakes = ts.filter((t) => t.type === "BET_PLACED" && t.status === "CONFIRMED").reduce((s, t) => s + Math.abs(t.amount), 0);
-  const payouts = ts.filter((t) => (t.type === "BET_PAYOUT" || t.type === "CASHOUT") && t.status === "CONFIRMED").reduce((s, t) => s + Math.abs(t.amount), 0);
-  if (stakes === 0) return 0;
-  return ((stakes - payouts) / stakes) * 100;
+  const end = Date.now();
+  const { holdPct } = await moneyForWindow(end - periodToMs(period), end);
+  return holdPct;
 }
 
 /** Withdrawals over the AML threshold (1M TZS) — count + total. */
@@ -264,7 +270,11 @@ export async function moneyFlowSeries(period: Period = "today", buckets = 24) {
 }
 
 /**
- * Operator margin over time (per bucket). Margin = stakes / (stakes + payouts) × 100.
+ * Operator margin over time (per bucket). Margin = hold % using the SAME
+ * definition as the canonical report-money summary (report-money.ts `summarise`):
+ * holdPct = (stakes − payouts − refunds) / stakes × 100. Refunds MUST net out or
+ * a bucket containing a voided/one-sided poll overstates margin and the chart
+ * disagrees with the GGR line + the scalar margin tile.
  */
 export async function marginSeries(period: Period = "28d", buckets = 28) {
   const totalMs = periodToMs(period);
@@ -277,14 +287,16 @@ export async function marginSeries(period: Period = "28d", buckets = 28) {
     const bucketEnd = bucketStart + bucketMs;
     let stakes = 0;
     let payouts = 0;
+    let refunds = 0;
     for (const t of ts) {
       const at = new Date(t.createdAt).getTime();
       if (at < bucketStart || at >= bucketEnd) continue;
       if (t.status !== "CONFIRMED") continue;
       if (t.type === "BET_PLACED") stakes += Math.abs(t.amount);
       else if (t.type === "BET_PAYOUT" || t.type === "CASHOUT") payouts += Math.abs(t.amount);
+      else if (t.type === "BET_REFUND") refunds += Math.abs(t.amount);
     }
-    const margin = stakes === 0 ? 0 : ((stakes - payouts) / stakes) * 100;
+    const margin = stakes === 0 ? 0 : ((stakes - payouts - refunds) / stakes) * 100;
     const d = new Date(bucketStart);
     out.push({ x: i, y: margin, label: `${d.getDate()}/${d.getMonth() + 1}` });
   }

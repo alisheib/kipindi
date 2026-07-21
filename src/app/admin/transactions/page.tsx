@@ -126,7 +126,7 @@ export default async function AdminTransactionsPage({ searchParams }: { searchPa
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <AdminKpi label="Deposits in" sw="Amana zilizoingia" value={formatTzs(summary.depositsConfirmedTzs)} />
         <AdminKpi label="Withdrawals out" sw="Malipo yaliyotoka" value={formatTzs(summary.withdrawalsConfirmedTzs)} />
-        <AdminKpi label="Fees" sw="Ada" value={formatTzs(summary.feesTzs)} />
+        <AdminKpi label="Fees & commission" sw="Ada na tume" value={formatTzs(summary.feesTzs)} />
         <AdminKpi
           label="Unreconciled"
           sw="Hayajalinganishwa"

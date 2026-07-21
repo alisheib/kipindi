@@ -127,6 +127,11 @@ export function summarise(rows: ReadonlyArray<StoredTxn>, nowMs: number = Date.n
   for (const t of rows) {
     if (t.type === "DEPOSIT" && t.status === "CONFIRMED") s.depositsConfirmedTzs += Math.abs(t.amount);
     if (t.type === "WITHDRAWAL" && t.status === "CONFIRMED") s.withdrawalsConfirmedTzs += Math.abs(t.amount);
+    // NB: sums `t.fee` across ALL confirmed types, so this is gateway
+    // processing fees (DEPOSIT/WITHDRAWAL) PLUS the early-exit/cashout house
+    // COMMISSION (market-service stamps `fee` on CASHOUT). It is therefore NOT
+    // the canonical NGR "fees" component (report-money = gateway fees only) —
+    // the surfacing tile is labelled "Fees & commission" to match this scope.
     if (t.status === "CONFIRMED") s.feesTzs += t.fee ?? 0;
     if (t.status === "PROCESSING" || t.status === "PENDING") s.inFlightCount++;
     if (t.status === "AML_REVIEW") s.amlCount++;

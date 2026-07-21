@@ -10,6 +10,7 @@ import { Toggle } from "@/components/ui/toggle";
 import { Textarea } from "@/components/ui/textarea";
 import { DateSelect } from "@/components/ui/date-select";
 import { useToast } from "@/components/ui/toast";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SELECTION } from "@/lib/admin-status-lexicon";
 import { ActionOverlay, useActionOverlay } from "@/components/admin/action-overlay";
 import { RefreshButton } from "@/components/admin/refresh-button";
@@ -467,7 +468,14 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
                   <p className="mt-1 text-[10.5px] text-text-subtle">Pre-filled from the proposal · must be on the approved source registry.</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Button variant="primary" size="md" loading={pending} leading={<I.arrowRight size={15} />} onClick={goLive}>Publish live · Orodhesha</Button>
+                  <ConfirmDialog
+                    tone="claret"
+                    title="Publish live market · Orodhesha"
+                    body="Publish this proposal as a LIVE market? Players can immediately bet real money on it. It can only be reversed by an emergency void (which refunds every stake) — it cannot be un-published."
+                    confirmLabel="Yes, publish live"
+                    onConfirm={goLive}
+                    trigger={<Button variant="primary" size="md" loading={pending} leading={<I.arrowRight size={15} />}>Publish live · Orodhesha</Button>}
+                  />
                   <Button variant="ghost" size="md" leading={<I.edit s={15} />} onClick={openEdit}>Edit</Button>
                 </div>
                 <p className="text-[10.5px] text-text-subtle">You decide when it goes to market — publishing is a deliberate step, separate from approval.</p>
@@ -477,7 +485,14 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
             ) : !declining ? (
               <div className="space-y-2.5">
                 <div className="flex flex-wrap gap-2">
-                  <Button variant="primary" size="md" loading={pending} leading={<I.checkCircle size={15} />} onClick={approve}>Approve &amp; pay bonus · Kubali</Button>
+                  <ConfirmDialog
+                    tone="warning"
+                    title="Approve & pay bonus · Kubali"
+                    body="Approve this proposal? This immediately credits the proposer's bonus wallet (real bonus liability). Publishing the market is a separate step afterwards."
+                    confirmLabel="Yes, approve & pay"
+                    onConfirm={approve}
+                    trigger={<Button variant="primary" size="md" loading={pending} leading={<I.checkCircle size={15} />}>Approve &amp; pay bonus · Kubali</Button>}
+                  />
                   <Button variant="ghost" size="md" leading={<I.edit s={15} />} onClick={openEdit}>Edit</Button>
                   <Button variant="ghost" size="md" loading={pending} leading={<I.fileText s={15} />} onClick={sendBack}>Request changes</Button>
                   <Button variant="ghost" size="md" leading={<I.xCircle size={15} />} onClick={() => setDeclining(true)} className="!text-claret-300">Decline</Button>

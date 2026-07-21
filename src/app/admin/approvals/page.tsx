@@ -9,7 +9,7 @@ import { db, type StoredTxn, type StoredSourceOfFunds } from "@/lib/server/store
 import { getAuditPage } from "@/lib/server/audit";
 import { listPendingKyc } from "@/lib/server/kyc-service";
 import { SofReviewRow } from "./sof-review-client";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime, formatTzs } from "@/lib/utils";
 
 export const metadata = { title: "Admin · Two-person approvals" };
 export const dynamic = "force-dynamic";
@@ -171,7 +171,7 @@ export default async function AdminApprovalsPage({
                       <td className="py-2 pr-3 font-mono whitespace-nowrap">{formatDateTime(t.createdAt)}</td>
                       <td className="py-2 pr-3"><a href={`/admin/players/${t.userId}`} className="font-mono text-royal-300 hover:underline">{t.userId.slice(0, 14)}…</a></td>
                       <td className="py-2 pr-3 font-medium text-text">{t.type}</td>
-                      <td className="py-2 pr-3 font-mono tabular text-right">{(Math.abs(t.amount) / 1_000_000).toFixed(2)}M</td>
+                      <td className="py-2 pr-3 font-mono tabular text-right">{formatTzs(Math.abs(t.amount))}</td>
                       <td className="py-2 pl-3 text-text-secondary">{t.amlReason ?? "review"}</td>
                     </tr>
                   ))}
