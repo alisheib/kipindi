@@ -1,4 +1,4 @@
-import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
+import { AdminPageHead, AdminCard, AdminKpi, AdminLoadError } from "@/components/admin/admin-shell";
 import { CEREMONY } from "@/lib/admin-status-lexicon";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
@@ -22,9 +22,14 @@ export default async function AdminAmlPage({
   searchParams: Promise<{ rpage?: string; rsort?: string; rdir?: string; spage?: string; ssort?: string; sdir?: string }>;
 }) {
   const sp = await searchParams;
+  // A-5: track whether each read FAILED (vs genuinely empty). A DB blip must not
+  // render a clean AML EDD queue or a fabricated "0 pending / 0 flags" — that is a
+  // false compliance all-clear. Show an explicit "couldn't load" instead.
   let inReviewAll: StoredTxn[] = [];
-  try { inReviewAll = (await db.txn.listByStatus("AML_REVIEW")) as StoredTxn[]; } catch { /* graceful */ }
-  const flagsAll = await detectSuspiciousBets().catch(() => []);
+  let amlFailed = false;
+  try { inReviewAll = (await db.txn.listByStatus("AML_REVIEW")) as StoredTxn[]; } catch { amlFailed = true; }
+  let flagsFailed = false;
+  const flagsAll = await detectSuspiciousBets().catch(() => { flagsFailed = true; return []; });
   // Track which txns already have a stage-1 signature (waiting on second officer)
   const stage1 = new Map<string, { actorId: string | null; at: string }>();
   for (const e of getAuditPage({ category: "ADMIN", limit: 200 })) {
@@ -67,16 +72,20 @@ export default async function AdminAmlPage({
         title="AML · EDD queue"
         sw="Foleni ya AML"
         period={false}
-        actions={<Chip size="md" variant={inReviewAll.length > 0 ? "warning" : "neutral"}>{inReviewAll.length} pending</Chip>}
+        actions={<Chip size="md" variant={!amlFailed && inReviewAll.length > 0 ? "warning" : "neutral"}>{amlFailed ? "n/a" : `${inReviewAll.length} pending`}</Chip>}
       />
       <div className="px-4 lg:px-6 py-5 space-y-4">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <AdminKpi label="Pending review" sw="Inasubiri" value={inReviewAll.length.toLocaleString()} pulse={inReviewAll.length > 0} delta="EDD queue" spark={false} />
-          <AdminKpi label="≥ TZS 1M · 2-officer" sw="Zaidi ya 1M" value={largeCount.toLocaleString()} delta="two-person gate" spark={false} />
-          <AdminKpi label={CEREMONY.awaitingSecondSignature.en} sw={CEREMONY.awaitingSecondSignature.sw} value={awaitingSecond.toLocaleString()} delta="stage 1 recorded" spark={false} />
-          <AdminKpi label="Suspicious-bet flags" sw="Bendera za shaka" value={flagsAll.length.toLocaleString()} tone={flagsAll.length > 0 ? "danger" : undefined} delta="stake spike / velocity" spark={false} />
+          <AdminKpi label="Pending review" sw="Inasubiri" value={amlFailed ? "" : inReviewAll.length.toLocaleString()} unavailable={amlFailed} pulse={!amlFailed && inReviewAll.length > 0} delta="EDD queue" spark={false} />
+          <AdminKpi label="≥ TZS 1M · 2-officer" sw="Zaidi ya 1M" value={amlFailed ? "" : largeCount.toLocaleString()} unavailable={amlFailed} delta="two-person gate" spark={false} />
+          <AdminKpi label={CEREMONY.awaitingSecondSignature.en} sw={CEREMONY.awaitingSecondSignature.sw} value={amlFailed ? "" : awaitingSecond.toLocaleString()} unavailable={amlFailed} delta="stage 1 recorded" spark={false} />
+          <AdminKpi label="Suspicious-bet flags" sw="Bendera za shaka" value={flagsFailed ? "" : flagsAll.length.toLocaleString()} unavailable={flagsFailed} tone={!flagsFailed && flagsAll.length > 0 ? "danger" : undefined} delta="stake spike / velocity" spark={false} />
         </div>
         <AdminCard padding="p-0">
+          {amlFailed ? (
+            <div className="p-4"><AdminLoadError what="the AML queue" /></div>
+          ) : (
+            <>
           <ScrollX label="AML review queue">
             <table className="admin-tbl">
               <thead>
@@ -131,6 +140,8 @@ export default async function AdminAmlPage({
             </table>
           </ScrollX>
           <AdminPagination total={inReviewSorted.length} page={rPage} baseHref={rBaseHref} param="rpage" />
+            </>
+          )}
         </AdminCard>
 
         <AdminCard className="border-warning-border bg-warning-bg/15">
@@ -150,8 +161,12 @@ export default async function AdminAmlPage({
               <p className="font-bold text-text">Suspicious-bet detector · Tabia za shaka</p>
               <span className="text-caption text-text-tertiary">stake spike ≥ 10× user 30-day median; or velocity ≥ 100/24h</span>
             </div>
-            <Chip size="md" variant={flagsAll.length > 0 ? "warning" : "neutral"}>{flagsAll.length} flags</Chip>
+            <Chip size="md" variant={!flagsFailed && flagsAll.length > 0 ? "warning" : "neutral"}>{flagsFailed ? "n/a" : `${flagsAll.length} flags`}</Chip>
           </div>
+          {flagsFailed ? (
+            <div className="p-4"><AdminLoadError what="suspicious-bet flags" /></div>
+          ) : (
+            <>
           <ScrollX label="Suspicious bets">
             <table className="admin-tbl">
               <thead>
@@ -190,6 +205,8 @@ export default async function AdminAmlPage({
             </table>
           </ScrollX>
           <AdminPagination total={flagsSorted.length} page={sPage} baseHref={sBaseHref} param="spage" />
+            </>
+          )}
         </AdminCard>
       </div>
     </>

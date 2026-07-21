@@ -35,7 +35,10 @@ export default async function InsightsPage() {
   }
 
   const data = await getInsights().catch(() => null);
-  const cats = await categoryBreakdown("30d").catch(() => []);
+  // A-5: distinguish a FAILED read (null → "couldn't load") from a genuinely empty
+  // 30-day window (still "No settled volume"). A thrown query must not masquerade
+  // as a real zero — same null-pattern as getInsights above.
+  const cats = await categoryBreakdown("30d").catch(() => null);
 
   if (!data) {
     return (
@@ -145,7 +148,9 @@ export default async function InsightsPage() {
         <div className="grid gap-4 lg:grid-cols-2">
           {/* GGR by category — reuses the normative money module. */}
           <AdminCard title="GGR by category · 30d" sw="GGR kwa aina · siku 30">
-            {cats.length === 0 ? (
+            {cats === null ? (
+              <p className="text-[13px] text-warning-fg">Couldn&apos;t load category GGR — a data read failed, so this is not a real zero. Refresh to retry.</p>
+            ) : cats.length === 0 ? (
               <p className="text-[13px] text-text-muted">No settled volume in this window.</p>
             ) : (
               <AdminBarList

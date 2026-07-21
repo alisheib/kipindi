@@ -6,7 +6,7 @@ export default function Loading() {
     <>
       <AdminPageHead
         title="Market candidates"
-        sw="Mapendekezo ya soko \u00b7 AI-validated"
+        sw="Mapendekezo ya soko · AI-validated"
         period={false}
       />
       <SkBody>

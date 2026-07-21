@@ -6,7 +6,7 @@ export default function Loading() {
     <>
       <AdminPageHead
         title="AI poll generation"
-        sw="Uzalishaji wa kura \u00b7 Claude AI"
+        sw="Uzalishaji wa kura · Claude AI"
         period={false}
       />
       <SkBody>

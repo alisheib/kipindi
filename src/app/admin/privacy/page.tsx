@@ -3,7 +3,7 @@
  * - DSAR queue (PDPA + GDPR)
  * - Per-user export bundle (machine-readable JSON)
  */
-import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
+import { AdminPageHead, AdminCard, AdminKpi, AdminLoadError } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
@@ -29,8 +29,11 @@ export default async function AdminPrivacyPage({
   const requests = listDsarRequests();
   const pending = requests.filter((r) => r.status === "PENDING");
   const fulfilled = requests.filter((r) => r.status === "FULFILLED");
+  // A-5: a failed player-list read must NOT show "No recent players" — a false
+  // empty on the on-behalf export queue. Show an explicit "couldn't load" instead.
   let recentUsers: Awaited<ReturnType<typeof db.user.list>> = [];
-  try { recentUsers = (await db.user.list()).slice(0, 8); } catch { /* graceful */ }
+  let recentFailed = false;
+  try { recentUsers = (await db.user.list()).slice(0, 8); } catch { recentFailed = true; }
 
   // Sort (URL-driven), then paginate — newest request first by default.
   const { sort, dir } = parseSort(sp, ["filed", "user", "type", "status"] as const, "filed", "desc");
@@ -113,12 +116,15 @@ export default async function AdminPrivacyPage({
         <AdminCard
           title="On-behalf export · officer-initiated"
           sw="Toa data badala ya mtumiaji"
-          action={<span className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">{recentUsers.length} recent users</span>}
+          action={<span className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">{recentFailed ? "—" : `${recentUsers.length} recent users`}</span>}
         >
           <p className="text-caption text-text-tertiary mb-2">
             For walk-in or phone-in DSAR requests where the player has authenticated by phone OTP at the front-desk and the
             officer needs to hand them a copy of their data right now. Generates a JSON bundle with everything we hold.
           </p>
+          {recentFailed ? (
+            <AdminLoadError what="the recent-players list" />
+          ) : (
           <ScrollX label="On-behalf export" className="-mx-4 px-4">
             <table className="admin-tbl min-w-[640px]">
               <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle">
@@ -158,6 +164,7 @@ export default async function AdminPrivacyPage({
               </tbody>
             </table>
           </ScrollX>
+          )}
         </AdminCard>
 
         <AdminCard className="border-info-border bg-info-bg/15">

@@ -19,7 +19,7 @@ import { CandidateActions } from "./candidate-actions";
 import { CandidateFilterToolbar } from "./candidate-filters";
 import { datePresetToRange } from "./date-utils";
 
-export const metadata = { title: "Admin \u00b7 Market candidates" };
+export const metadata = { title: "Admin · Market candidates" };
 export const dynamic = "force-dynamic";
 
 const STATE_VARIANT: Record<Candidate["state"], "success" | "warning" | "danger" | "neutral" | "info"> = {
@@ -62,8 +62,12 @@ export default async function AdminCandidatesPage({
     EXTRACTED: 0, FILTERED_OUT: 0, VERIFYING: 0, SCORED: 0,
     PENDING_REVIEW: 0, APPROVED: 0, REJECTED: 0, PUBLISHED: 0,
   };
-  const counts = await countByState().catch(() => ZERO_COUNTS);
-  const spend = await recordSpend().catch(() => ({ dailyTokens: 0, dailyUsd: 0, runCount: 0 }));
+  // A-5: a failed count/spend read must render an explicit "n/a" KPI, not a
+  // fabricated "0 pending / $0 spend" that reads as a real (and reassuring) zero.
+  let countsFailed = false;
+  const counts = await countByState().catch(() => { countsFailed = true; return ZERO_COUNTS; });
+  let spendFailed = false;
+  const spend = await recordSpend().catch(() => { spendFailed = true; return { dailyTokens: 0, dailyUsd: 0, runCount: 0 }; });
   const totalAll = await countCandidatesTotal().catch(() => 0);
 
   const pendingAll = await listCandidates({ state: "PENDING_REVIEW" }).catch(() => []);
@@ -119,7 +123,7 @@ export default async function AdminCandidatesPage({
     <>
       <AdminPageHead
         title="Market candidates"
-        sw="Mapendekezo ya soko \u00b7 AI-validated"
+        sw="Mapendekezo ya soko · AI-validated"
         period={false}
       />
       <div className="px-4 lg:px-6 py-5 space-y-4">
@@ -127,27 +131,31 @@ export default async function AdminCandidatesPage({
           <AdminKpi
             label="Pending review"
             sw="Inasubiri ukaguzi"
-            value={counts.PENDING_REVIEW.toLocaleString()}
+            value={countsFailed ? "" : counts.PENDING_REVIEW.toLocaleString()}
+            unavailable={countsFailed}
             delta={`${counts.SCORED + counts.VERIFYING} earlier in pipeline`}
-            pulse={counts.PENDING_REVIEW > 0}
+            pulse={!countsFailed && counts.PENDING_REVIEW > 0}
           />
           <AdminKpi
-            label="Approved \u00b7 awaiting publish"
+            label="Approved · awaiting publish"
             sw="Yaliyoidhinishwa"
-            value={counts.APPROVED.toLocaleString()}
-            delta={`${counts.PUBLISHED} published \u00b7 lifetime`}
+            value={countsFailed ? "" : counts.APPROVED.toLocaleString()}
+            unavailable={countsFailed}
+            delta={`${counts.PUBLISHED} published · lifetime`}
           />
           <AdminKpi
-            label="Filtered \u00b7 rejected"
+            label="Filtered · rejected"
             sw="Yalikataliwa"
-            value={(counts.FILTERED_OUT + counts.REJECTED).toLocaleString()}
+            value={countsFailed ? "" : (counts.FILTERED_OUT + counts.REJECTED).toLocaleString()}
+            unavailable={countsFailed}
             delta="90% rejection target per spec"
           />
           <AdminKpi
-            label="Spend \u00b7 24h"
-            sw="Gharama \u00b7 saa 24"
-            value={fmtUsd(spend.dailyUsd)}
-            delta={`${spend.runCount} runs \u00b7 ${(spend.dailyTokens / 1000).toFixed(1)}k tokens`}
+            label="Spend · 24h"
+            sw="Gharama · saa 24"
+            value={spendFailed ? "" : fmtUsd(spend.dailyUsd)}
+            unavailable={spendFailed}
+            delta={`${spend.runCount} runs · ${(spend.dailyTokens / 1000).toFixed(1)}k tokens`}
           />
         </div>
 
@@ -200,9 +208,9 @@ export default async function AdminCandidatesPage({
             <div className="flex items-center justify-between px-4 lg:px-5 pt-4">
               <div>
                 <p className="font-display font-semibold text-body-sm text-text">
-                  Approved \u00b7 ready to publish
+                  Approved · ready to publish
                 </p>
-                <p className="text-caption italic text-text-tertiary">Yaliyoidhinishwa \u00b7 tayari kuchapishwa</p>
+                <p className="text-caption italic text-text-tertiary">Yaliyoidhinishwa · tayari kuchapishwa</p>
               </div>
               <Chip size="sm" variant="success">{approvedSorted.length} approved</Chip>
             </div>
@@ -427,7 +435,7 @@ function CandidateRow({
           {c.resolutionCriterion}
         </p>
         <p className="mt-1 font-mono text-[10.5px] text-text-subtle">
-          Resolves {fmtDate(c.resolutionAt)} {"\u00b7"}{" "}
+          Resolves {fmtDate(c.resolutionAt)} {"·"}{" "}
           {c.sources.slice(0, 2).map((s, i) => (
             <span key={i}>{s.publisher}{i < Math.min(c.sources.length, 2) - 1 ? " + " : ""}</span>
           ))}

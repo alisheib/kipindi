@@ -36,7 +36,7 @@ import {
 import { PollFilterToolbar } from "./poll-filters";
 import { datePresetToRange } from "./date-utils";
 
-export const metadata = { title: "Admin \u00b7 AI poll generation" };
+export const metadata = { title: "Admin · AI poll generation" };
 export const dynamic = "force-dynamic";
 
 const STATE_VARIANT: Record<AIPollState, "success" | "warning" | "danger" | "neutral" | "info"> = {
@@ -143,7 +143,7 @@ export default async function AdminAIPollsPage({
     <>
       <AdminPageHead
         title="AI poll generation"
-        sw="Uzalishaji wa kura \u00b7 Claude AI"
+        sw="Uzalishaji wa kura · Claude AI"
         period={false}
       />
       <div className="px-4 lg:px-6 py-5 space-y-4">
@@ -173,7 +173,7 @@ export default async function AdminAIPollsPage({
             label="Total spend"
             sw="Gharama jumla"
             value={fmtUsd(spend.totalUsd)}
-            delta={`${spend.totalGenerations} generations \u00b7 ${(spend.totalTokens / 1000).toFixed(1)}k tokens`}
+            delta={`${spend.totalGenerations} generations · ${(spend.totalTokens / 1000).toFixed(1)}k tokens`}
           />
         </div>
 
@@ -542,7 +542,7 @@ function PollRow({ poll, mode }: { poll: StoredAIPoll; mode: "review" | "publish
             {poll.options.map((o, i) => (
               <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-pill text-[10px] font-mono border border-border bg-bg-overlay">
                 {o.label}
-                {o.descriptionEn && <span className="ml-1 text-text-subtle">{"\u00b7"} {o.descriptionEn}</span>}
+                {o.descriptionEn && <span className="ml-1 text-text-subtle">{"·"} {o.descriptionEn}</span>}
               </span>
             ))}
           </div>
@@ -550,7 +550,7 @@ function PollRow({ poll, mode }: { poll: StoredAIPoll; mode: "review" | "publish
 
         {/* Meta line */}
         <p className="mt-1 font-mono text-[10.5px] text-text-subtle">
-          {poll.selectionClosedAt ? `${SELECTION.betsClose.en} ${fmtDate(poll.selectionClosedAt)} · ` : ""}{poll.resolutionAt ? `Resolves ${fmtDate(poll.resolutionAt)}` : "No resolution date"} {"\u00b7"}{" "}
+          {poll.selectionClosedAt ? `${SELECTION.betsClose.en} ${fmtDate(poll.selectionClosedAt)} · ` : ""}{poll.resolutionAt ? `Resolves ${fmtDate(poll.resolutionAt)}` : "No resolution date"} {"·"}{" "}
           {poll.sources.slice(0, 2).map((s, i) => (
             <span key={i}>{s.publisher}{i < Math.min(poll.sources.length, 2) - 1 ? " + " : ""}</span>
           ))}

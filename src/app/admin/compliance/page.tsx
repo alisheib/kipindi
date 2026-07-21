@@ -38,7 +38,8 @@ export default async function AdminCompliancePage({
   const kyc = await kycFunnel().catch(() => null);
   const rg = await rgRosterCounts().catch(() => null);
   let aml: StoredTxn[] = [];
-  try { aml = (await db.txn.listByStatus("AML_REVIEW")) as StoredTxn[]; } catch { /* graceful */ }
+  let amlFailed = false;
+  try { aml = (await db.txn.listByStatus("AML_REVIEW")) as StoredTxn[]; } catch { amlFailed = true; }
   const recentAml = aml.slice(0, 5);
   const recentApprovals = getAuditPage({ category: "ADMIN", limit: 50 }).filter((e) => e.action.startsWith("aml.")).slice(0, 8);
   const integrityAlerts = getAuditPage({ category: "BET", limit: 50 }).filter((e) => e.action.startsWith("integrity.alert.")).slice(0, 3);
@@ -132,14 +133,16 @@ export default async function AdminCompliancePage({
           </AdminCard>
           <AdminCard title="AML queue · 7-day" sw="Foleni ya AML">
             <div className="grid grid-cols-2 gap-2">
-              <AdminKpi label="Pending"  sw="Inasubiri"  value={aml.length}    spark={false} pulse={aml.length > 0} />
+              <AdminKpi label="Pending"  sw="Inasubiri"  value={amlFailed ? "" : aml.length} unavailable={amlFailed} spark={false} pulse={!amlFailed && aml.length > 0} />
               <AdminKpi label="Approved" sw="Imekubaliwa" value={recentApprovals.filter((e) => e.action === "aml.approved").length} spark={false} />
               <AdminKpi label="Rejected" sw="Imekataliwa" value={recentApprovals.filter((e) => e.action === "aml.rejected").length} spark={false} />
               <AdminKpi label="Avg time" sw="Wastani"     value="—"             spark={false} />
             </div>
             <div className="pt-3 mt-2 border-t border-border-subtle">
               <p className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary mb-1.5">Next in queue</p>
-              {recentAml.length === 0 ? (
+              {amlFailed ? (
+                <AdminLoadError what="the AML queue" />
+              ) : recentAml.length === 0 ? (
                 <p className="text-caption text-text-tertiary py-2">Queue empty.</p>
               ) : recentAml.map((t) => (
                 <FeedRow
@@ -281,7 +284,11 @@ export default async function AdminCompliancePage({
 }
 
 async function PlayerSafetyPanel({ sp }: { sp: { page?: string; sort?: string; dir?: string } }) {
-  const flags = await detectHarmMarkersForAllUsers().catch(() => []);
+  // A-5: a failed harm-detector read must NOT render all-zero marker chips or a
+  // "No markers of harm detected" table — on an LCCP §3.4.1 safety surface that is
+  // a false all-clear. Show an explicit "couldn't load" instead.
+  let harmFailed = false;
+  const flags = await detectHarmMarkersForAllUsers().catch(() => { harmFailed = true; return []; });
   const byMarker: Record<string, number> = {};
   for (const f of flags) byMarker[f.marker] = (byMarker[f.marker] ?? 0) + 1;
 
@@ -309,6 +316,10 @@ async function PlayerSafetyPanel({ sp }: { sp: { page?: string; sort?: string; d
       padding="p-0"
     >
       <div className="px-4 py-3 border-b border-border-subtle flex flex-wrap gap-1.5">
+        {harmFailed ? (
+          <Chip size="sm" variant="warning">markers n/a</Chip>
+        ) : (
+          <>
         <Chip size="sm" variant={byMarker["RAPID_DEPOSIT_ESCALATION"] ? "warning" : "neutral"}>
           {byMarker["RAPID_DEPOSIT_ESCALATION"] ?? 0} rapid-deposit
         </Chip>
@@ -324,7 +335,13 @@ async function PlayerSafetyPanel({ sp }: { sp: { page?: string; sort?: string; d
         <Chip size="sm" variant={byMarker["LIMIT_BREACH_HISTORY"] ? "warning" : "neutral"}>
           {byMarker["LIMIT_BREACH_HISTORY"] ?? 0} limit-breach
         </Chip>
+          </>
+        )}
       </div>
+      {harmFailed ? (
+        <div className="p-4"><AdminLoadError what="harm markers" /></div>
+      ) : (
+        <>
       <ScrollX label="Harm markers">
         <table className="admin-tbl">
           <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
@@ -361,6 +378,8 @@ async function PlayerSafetyPanel({ sp }: { sp: { page?: string; sort?: string; d
         </table>
       </ScrollX>
       <AdminPagination total={sorted.length} page={page} baseHref={baseHref} />
+        </>
+      )}
     </AdminCard>
   );
 }
