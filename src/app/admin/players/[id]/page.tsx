@@ -109,6 +109,21 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
   const riskScore = computeRiskScore(txns.length, lifetimeWithdrawals, kyc?.status === "APPROVED");
   const riskBand = riskScore >= 70 ? "high" : riskScore >= 40 ? "medium" : "low";
 
+  // Maker-checker parity (audit 2026-07-21): a HIGH-RISK KYC approval must go
+  // through the workstation's recommend→seal two-officer flow. Compute the same
+  // kycRiskScore the server guard (players/[id]/actions.approveKycAction) uses so
+  // the UI can hide the one-click Approve for high-risk rather than show a button
+  // that only errors. Note: this is the KYC-specific score, distinct from the
+  // account risk gauge (computeRiskScore) above. Only computed when reviewable.
+  let kycMakerCheckerRequired = false;
+  if (kyc && (kyc.status === "PENDING_REVIEW" || kyc.status === "ADDITIONAL_INFO_REQUIRED")) {
+    try {
+      const { kycRiskScore, KYC_MAKER_CHECKER_THRESHOLD } = await import("@/lib/server/kyc-risk");
+      const kr = await kycRiskScore(id);
+      kycMakerCheckerRequired = kr.score >= KYC_MAKER_CHECKER_THRESHOLD;
+    } catch { /* if risk can't be computed, the server guard still enforces it */ }
+  }
+
   const initials = displayInitials(user);
   const headerLabel = displayLabel(user);
   const isAutoHandle = !((user.displayName ?? "").trim().length > 0);
@@ -311,7 +326,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
               )
             )}
             {tab === "kyc" && (
-              <KycTab kyc={kyc} userEmail={user.email} userId={id} />
+              <KycTab kyc={kyc} userEmail={user.email} userId={id} makerCheckerRequired={kycMakerCheckerRequired} />
             )}
             {tab === "limits" && (
               <LimitsTab rg={rg} />
@@ -353,7 +368,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
   );
 }
 
-function KycTab({ kyc, userEmail, userId }: { kyc: Awaited<ReturnType<typeof db.kyc.findByUserId>>; userEmail?: string | null; userId: string }) {
+function KycTab({ kyc, userEmail, userId, makerCheckerRequired }: { kyc: Awaited<ReturnType<typeof db.kyc.findByUserId>>; userEmail?: string | null; userId: string; makerCheckerRequired?: boolean }) {
   if (!kyc) return <p className="text-caption text-text-tertiary py-4 text-center">No KYC record yet.</p>;
   const decided = kyc.status === "APPROVED" || kyc.status === "REJECTED";
   return (
@@ -492,7 +507,7 @@ function KycTab({ kyc, userEmail, userId }: { kyc: Awaited<ReturnType<typeof db.
 
       <div className="rounded-lg border border-border-subtle bg-bg-inset/30 p-3.5">
         <p className="font-mono text-micro tracking-[0.12em] uppercase text-text-tertiary mb-2.5">Officer decision</p>
-        <KycReviewControls userId={kyc.userId} status={kyc.status} />
+        <KycReviewControls userId={kyc.userId} status={kyc.status} makerCheckerRequired={makerCheckerRequired} />
       </div>
     </div>
   );

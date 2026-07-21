@@ -87,8 +87,22 @@ export async function suspendPlayerAction(formData: FormData) {
 
   const target = await db.user.findById(userId);
   if (!target) return { ok: false as const, error: "Player not found." };
-  if (target.status === "SUSPENDED") return { ok: false as const, error: "Player is already suspended." };
-  if (target.status === "CLOSED") return { ok: false as const, error: "Player account is closed." };
+  // RG-safety (audit 2026-07-21): only an ACTIVE account may be suspended. If a
+  // SELF_EXCLUDED / COOLED_OFF / PENDING_KYC player could be suspended, the
+  // restore path (which returns the account to ACTIVE) would silently LIFT a
+  // responsible-gambling self-exclusion, a cool-off, or a KYC gate — a
+  // compliance breach. Those states are governed by their own flows and a
+  // suspend adds nothing to an already-restricted account; restricting suspend
+  // to ACTIVE keeps restore→ACTIVE always correct.
+  if (target.status !== "ACTIVE") {
+    return {
+      ok: false as const,
+      error:
+        target.status === "SUSPENDED"
+          ? "Player is already suspended."
+          : `Cannot suspend — the account is ${target.status}. Only an ACTIVE account can be suspended; self-exclusion, cool-off, pending-KYC and closure are handled by their own controls.`,
+    };
+  }
 
   try {
     const prevStatus = target.status;
@@ -234,6 +248,28 @@ export async function approveKycAction(formData: FormData) {
   const officerId = await requireAdmin("approveKycAction");
   const userId = String(formData.get("userId") ?? "");
   try {
+    // Maker-checker parity (audit 2026-07-21): a HIGH-RISK approval must go
+    // through the KYC workstation's recommend→seal two-officer flow
+    // (kyc/[id]/kyc-actions.ts). This one-click player-page approve has no
+    // second-officer step, so it must NOT become a way to single-officer-approve
+    // a high-risk applicant the workstation would force two officers on. Low/
+    // medium-risk approvals continue to flow through here unchanged.
+    const { kycRiskScore, KYC_MAKER_CHECKER_THRESHOLD } = await import("@/lib/server/kyc-risk");
+    const risk = await kycRiskScore(userId);
+    if (risk.score >= KYC_MAKER_CHECKER_THRESHOLD) {
+      audit({
+        category: "COMPLIANCE",
+        action: "kyc.approve.maker_checker_required",
+        actorId: officerId,
+        targetType: "User",
+        targetId: userId,
+        payload: { riskScore: risk.score, from: "player-detail", route: "use-workstation" },
+      });
+      return {
+        ok: false as const,
+        error: `High-risk submission (score ${risk.score}) — approve it from the KYC workstation, where a second officer must recommend and seal it. Open it from Approvals → the pending KYC review.`,
+      };
+    }
     const { reviewKyc } = await import("@/lib/server/kyc-service");
     const r = await reviewKyc({ officerId, userId, decision: "APPROVE" });
     if (r.ok) {

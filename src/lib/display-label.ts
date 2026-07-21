@@ -13,11 +13,15 @@
  *      that operators and players can refer to in chat / disputes
  *      without exposing the real name or the masked phone.
  *
- * After KYC approval, the operator can copy the NIDA-verified name
- * into displayName from the admin player drill-in if they want to
- * surface it in the UI; we don't auto-promote NIDA → displayName,
- * because some regulators require the player to actively consent to
- * their real name being displayed beyond the verification record.
+ * On KYC approval the NIDA-verified legal name IS promoted into
+ * displayName (see `kyc-service.reviewKyc` — Ali's 2026-06-14 decision),
+ * so the INTERNAL, compliance-gated console can identify a verified player.
+ * This is safe because every PUBLIC surface masks the name independently —
+ * the leaderboard shows the first word only and comments mask + freeze the
+ * name at write time, so the full surname never leaks to other players.
+ * The admin players list + drill-in (both COMPLIANCE_ROLES-gated) therefore
+ * show the legal name by design; the more-sensitive self-exclusion roster
+ * and on-behalf DSAR list mask it via `maskName()`.
  *
  * Initials follow the same rule. "Player #A3F2K8" → "A3" so the
  * Avatar component shows something stable rather than "?".

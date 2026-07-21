@@ -15,6 +15,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Spinner } from "@/components/ui/spinner";
 import { I } from "@/components/ui/glyphs";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -24,7 +25,7 @@ import { approveKycAction, rejectKycAction, requestKycInfoAction } from "@/app/a
 
 type Mode = "idle" | "rejecting" | "requesting";
 
-export function KycReviewControls({ userId, status }: { userId: string; status: string }) {
+export function KycReviewControls({ userId, status, makerCheckerRequired }: { userId: string; status: string; makerCheckerRequired?: boolean }) {
   const reviewable = status === "PENDING_REVIEW" || status === "ADDITIONAL_INFO_REQUIRED";
   const [mode, setMode] = useState<Mode>("idle");
   const [reason, setReason] = useState("");
@@ -181,19 +182,33 @@ export function KycReviewControls({ userId, status }: { userId: string; status: 
   return (
     <>
       <div className="grid grid-cols-1 sm:flex sm:flex-wrap sm:items-center gap-2.5">
-        <ConfirmDialog
-          tone="warning"
-          title="Approve verification · Idhinisha"
-          body="Approve this identity verification? The player will be notified and (if gated by KYC) unlocked."
-          confirmLabel="Yes, approve"
-          onConfirm={approve}
-          trigger={
-            <button type="button" disabled={pending}
-              className="btn btn-yes btn-md w-full sm:w-auto inline-flex items-center justify-center gap-1.5" style={{ borderRadius: 999 }}>
-              {pending ? <Spinner size={15} /> : <I.check s={15} />} Approve
-            </button>
-          }
-        />
+        {makerCheckerRequired ? (
+          // High-risk: a single-officer approve would defeat the maker-checker
+          // rule the workstation enforces (recommend → a DIFFERENT officer seals).
+          // Route to the workstation instead of showing an Approve that errors.
+          <Link
+            href={`/admin/kyc/${userId}`}
+            title="High-risk submission — approval requires a second officer via the KYC workstation"
+            className="btn btn-ghost btn-md w-full sm:w-auto inline-flex items-center justify-center gap-1.5 text-warning-fg"
+            style={{ borderRadius: 999, borderColor: "var(--warning-500)" }}
+          >
+            <I.alertCircle s={15} /> Approve in workstation →
+          </Link>
+        ) : (
+          <ConfirmDialog
+            tone="warning"
+            title="Approve verification · Idhinisha"
+            body="Approve this identity verification? The player will be notified and (if gated by KYC) unlocked."
+            confirmLabel="Yes, approve"
+            onConfirm={approve}
+            trigger={
+              <button type="button" disabled={pending}
+                className="btn btn-yes btn-md w-full sm:w-auto inline-flex items-center justify-center gap-1.5" style={{ borderRadius: 999 }}>
+                {pending ? <Spinner size={15} /> : <I.check s={15} />} Approve
+              </button>
+            }
+          />
+        )}
         <button type="button" onClick={() => setMode("requesting")} disabled={pending}
           className="btn btn-primary btn-md w-full sm:w-auto inline-flex items-center justify-center gap-1.5" style={{ borderRadius: 999 }}>
           <I.alertCircle s={15} /> Request info…
@@ -203,6 +218,11 @@ export function KycReviewControls({ userId, status }: { userId: string; status: 
           <I.x s={15} /> Reject…
         </button>
       </div>
+      {makerCheckerRequired && (
+        <p className="mt-2 text-caption text-warning-fg">
+          High-risk verification — approval needs a second officer (maker-checker). Request-info and reject are available here; approve in the workstation.
+        </p>
+      )}
       <ActionOverlay state={overlay.state} onDismiss={overlay.dismiss} />
     </>
   );
