@@ -45,6 +45,11 @@ scripts/_walkthrough/
 Test Images/
 F1 Tetsing image/
 
+# Raw brand-asset drop folders (masters live here; the live copies are checked
+# in under public/). Never commit the drops themselves.
+Payment Gateways Logos/
+Email Signatures/
+
 # Translation docs + temp files (local working copies)
 *.doc
 *.docx

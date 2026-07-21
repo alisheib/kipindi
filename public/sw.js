@@ -8,7 +8,12 @@
  * Registered from src/lib/register-sw.ts (client-side, lazy).
  */
 
-const CACHE_NAME = "50pick-v2";
+// Bumped v2 → v3 (2026-07-21): the payment-provider marks (/pay/mixx.png,
+// /pay/halopesa.png) were replaced with new official logos. These are served
+// cache-first below (they match the .png rule), so without a cache-version bump
+// every returning visitor keeps seeing the OLD logo from the SW cache forever.
+// Bumping the name makes `activate` delete the stale cache and re-fetch fresh.
+const CACHE_NAME = "50pick-v3";
 // C2j — dedicated branded offline route (precached below) instead of falling
 // back to the data-heavy home page.
 const OFFLINE_URL = "/offline";

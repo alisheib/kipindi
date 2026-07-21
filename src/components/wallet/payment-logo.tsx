@@ -17,26 +17,26 @@
  */
 import { I } from "@/components/ui/glyphs";
 
-// Official MNO marks, sourced by Ali (2026-07-20).
+// Official MNO marks, sourced by Ali (mixx + halopesa refreshed 2026-07-21 to the
+// current transparent brand lockups).
 //
-// ⚠️ These four are NOT a matched set and cannot be treated as one:
+// All four are now transparent, but they are still NOT a matched set:
 //   • mpesa.svg      transparent, but a VERTICAL lockup (icon above wordmark)
-//   • airtel.png     transparent, horizontal
-//   • mixx.png       solid YELLOW background baked in
-//   • halopesa.png   solid ORANGE rounded square — and its wordmark is WHITE,
-//                    so the background CANNOT be stripped: white-on-transparent
-//                    would render invisible. The orange square IS the mark.
+//   • airtel.png     transparent, horizontal — red mark + grey "money"
+//   • mixx.png       transparent, horizontal — official "yas | mixx" lockup
+//                    (dark-blue badge, yellow "yas", DARK-BLUE "mixx" wordmark)
+//   • halopesa.png   transparent, horizontal — orange "halopesa" wordmark + swirl
 //
-// Because two of them carry their own background and all four differ in aspect
-// ratio, they are rendered on a WHITE tile rather than the dark inset slot used
-// for in-house glyphs. That is the standard checkout treatment for mixed-quality
-// MNO assets: it normalises the shapes, gives the transparent marks the light
-// background their brand guidelines assume, and stops the two coloured blocks
-// reading as stray rectangles on the dark theme.
+// They are rendered on a WHITE tile rather than the dark inset slot used for
+// in-house glyphs, and the tile must stay: mixx's wordmark is dark blue and
+// airtel's "money" is grey, so on the dark inset they'd be near-invisible. Every
+// one of these marks is drawn for a light surface. The white tile also normalises
+// the differing aspect ratios (mpesa vertical vs the rest horizontal) so the row
+// reads as one. This is the standard checkout treatment for MNO brand assets.
 //
-// Upgrade path: replace with horizontal, transparent SVG lockups from each
-// operator's own brand pack (Selcom can usually supply them). When all four are
-// transparent, the white tile can go and these can sit on the standard slot.
+// ⚠️ Cache note: these files keep their names (mixx.png / halopesa.png), and the
+// service worker (public/sw.js) caches /pay/*.png cache-first. When you swap a
+// mark, BUMP CACHE_NAME in sw.js or returning visitors keep the old logo forever.
 const MNO_LOGOS: Record<string, string | null> = {
   MPESA: "/pay/mpesa.svg",
   AIRTEL_MONEY: "/pay/airtel.png",
@@ -82,8 +82,9 @@ export function PaymentLogo({
         className="inline-flex items-center justify-center shrink-0 overflow-hidden"
         style={{
           ...slotStyle,
-          // White, not the dark inset: see the note on MNO_LOGOS. Two of these carry
-          // their own background and every one is drawn for a light surface.
+          // White, not the dark inset: see the note on MNO_LOGOS. Every mark is
+          // drawn for a light surface (mixx's wordmark is dark blue), so the dark
+          // inset would swallow them.
           background: "#FFFFFF",
           // A hairline keeps the white tile from bleeding into a light container
           // while staying invisible against the dark theme.
