@@ -54,7 +54,9 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
         <Field
           label="Fee ceiling (% of the smaller side)"
           hint={
-            config.feeCeilingRate > 0.5
+            config.feeCeilingRate === 0
+              ? `⚠ Current 0.0%. A 0% ceiling zeroes the fee on EVERY poll (fee = min(commission×pool, 0) = 0) — the house collects NO commission and winners keep the entire pool. Set 0 only for a deliberate free / goodwill period; otherwise raise it (e.g. 33.3%). Your commission rate above has no effect while this is 0.`
+              : config.feeCeilingRate > 0.5
               ? `⚠ Current ${ceilPct}%. Above 50% the house takes MORE than all the winners combined. Winners still never lose money, but check this is what you mean.`
               : `Current ${ceilPct}%. The fee can never exceed this share of the SMALLER side. The smaller side is the prize — cap the fee below it and a winning bet can never be paid less than it staked. At 33.3% winners always keep at least twice what we take.`
           }
