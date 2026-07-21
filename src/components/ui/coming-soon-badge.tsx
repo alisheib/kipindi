@@ -21,15 +21,15 @@ export function ComingSoonBadge({
 }) {
   const d =
     size === "xs"
-      ? { fontSize: 8.5, padding: "1.5px 6px", gap: 3, icon: 9 }
-      : { fontSize: 9.5, padding: "2.5px 8px", gap: 4, icon: 11 };
+      ? { fontSize: 8.5, padding: "3px 8px", gap: 4, icon: 9.5, tracking: "0.08em" }
+      : { fontSize: 9.5, padding: "4px 10px", gap: 5, icon: 11, tracking: "0.11em" };
   return (
     <span
       className={cn(
-        "cs-badge inline-flex items-center rounded-pill font-mono font-bold uppercase tracking-[0.1em] whitespace-nowrap leading-none align-middle",
+        "cs-badge inline-flex items-center rounded-pill font-mono font-bold uppercase whitespace-nowrap leading-none align-middle",
         className,
       )}
-      style={{ fontSize: d.fontSize, padding: d.padding }}
+      style={{ fontSize: d.fontSize, padding: d.padding, letterSpacing: d.tracking }}
     >
       <span className="inline-flex items-center" style={{ gap: d.gap }}>
         <I.sparkle s={d.icon} aria-hidden />

@@ -688,34 +688,46 @@ body {
 }
 
 /* ---------- "Coming soon" gilt badge ----------
-   Shiny gold pill that flags a not-yet-live surface (e.g. proposing pools).
-   A moving specular band sweeps across the gilt fill so it reads as
-   unmistakably "new / coming soon" while the underlying link stays usable. */
+   Gilt pill flagging a not-yet-live surface (e.g. proposing pools). A single
+   skewed highlight glints across on a GPU transform, then rests fully
+   off-screen — so it reads as a periodic premium shine, never a busy loop.
+   Both ends of the sweep sit off the pill, so the loop is seamless. */
 .cs-badge {
   position: relative;
   overflow: hidden;
   isolation: isolate;
   color: var(--gold-50);
-  background: linear-gradient(135deg, var(--gold-400), var(--gold-600));
-  border: 1px solid color-mix(in oklab, var(--gold-300) 55%, transparent);
+  background: linear-gradient(150deg, var(--gold-300) 0%, var(--gold-500) 48%, var(--gold-600) 100%);
+  border: 1px solid color-mix(in oklab, var(--gold-200) 60%, transparent);
   box-shadow:
-    inset 0 1px 0 color-mix(in oklab, var(--gold-200) 45%, transparent),
-    0 2px 8px -3px color-mix(in oklab, var(--gold-500) 60%, transparent);
+    inset 0 1px 0 color-mix(in oklab, var(--gold-50) 55%, transparent),
+    inset 0 -1px 0 color-mix(in oklab, var(--gold-600) 45%, transparent),
+    0 1px 6px -2px color-mix(in oklab, var(--gold-500) 55%, transparent);
+  text-shadow: 0 1px 0 color-mix(in oklab, var(--gold-600) 40%, transparent);
 }
-.cs-badge::after {
+.cs-badge::before {
   content: "";
   position: absolute;
-  inset: 0;
+  top: -30%;
+  bottom: -30%;
+  left: 0;
+  width: 32%;
   z-index: 1;
-  background: linear-gradient(110deg, transparent 34%, color-mix(in oklab, oklch(100% 0 0) 78%, transparent) 50%, transparent 66%);
-  background-size: 220% 100%;
-  animation: gold-shimmer 2.6s ease-in-out infinite;
+  background: linear-gradient(90deg, transparent, color-mix(in oklab, oklch(100% 0 0) 70%, transparent), transparent);
+  transform: translateX(-260%) skewX(-18deg);
+  animation: cs-glint 3.6s cubic-bezier(0.45, 0, 0.15, 1) infinite;
   pointer-events: none;
+  will-change: transform;
 }
 .cs-badge > * { position: relative; z-index: 2; }
-@media (prefers-reduced-motion: reduce) { .cs-badge::after { animation: none; opacity: 0.35; } }
-[data-motion="reduced"] .cs-badge::after,
-[data-motion="minimal"] .cs-badge::after { animation: none; opacity: 0.35; }
+@keyframes cs-glint {
+  0%   { transform: translateX(-260%) skewX(-18deg); }
+  26%  { transform: translateX(560%)  skewX(-18deg); }
+  100% { transform: translateX(560%)  skewX(-18deg); }
+}
+@media (prefers-reduced-motion: reduce) { .cs-badge::before { animation: none; opacity: 0; } }
+[data-motion="reduced"] .cs-badge::before,
+[data-motion="minimal"] .cs-badge::before { animation: none; opacity: 0; }
 
 /* ---------- Probability bar ---------- */
 .pbar {
