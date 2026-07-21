@@ -1,11 +1,20 @@
 /**
- * Reports smoke test — renders every catalogue entry in both PDF and
- * XLSX format and asserts the binary is non-empty + carries the right
- * MIME signature. Catches renderer crashes from type changes (e.g. the
- * new signatures + bilingual labels).
+ * Reports renderers smoke test — production-path.
  *
- * Runs in-process via Next.js dev API — no special wiring needed.
+ * Downloads every catalogue report in BOTH formats through the real
+ * `/api/admin/reports/[id]` route (admin session cookie + role gate + the
+ * TOTP step-up, which DISABLE_ADMIN_TOTP=true satisfies in dev), and asserts:
+ *   · HTTP 200 + a sensible size
+ *   · the right content-type (application/pdf / spreadsheetml)
+ *   · the file magic bytes (%PDF- / PK ZIP)
+ *   · a content-disposition filename of 50pick-<slug>-<date>.<ext>, where the
+ *     slug tracks REPORT_CATALOGUE[id].name (route.ts → reportFilename())
+ * plus the negative cases (unknown id → 404, bad format → 400).
  *
+ * Auth is bootstrapped via /api/dev-test/seed-admin (creates an ADMIN with a
+ * live session cookie in one call) — no brittle register-form automation.
+ *
+ *   DISABLE_ADMIN_TOTP=true npx next dev -p 3000
  *   BASE=http://localhost:3000  node scripts/report-renderers-smoke.mjs
  */
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -17,75 +26,64 @@ const OUT = resolve(process.cwd(), ".50pick-shots/reports-smoke");
 mkdirSync(OUT, { recursive: true });
 
 // Mirrors REPORT_CATALOGUE in src/lib/server/reports/catalogue.ts (tra-tax was
-// removed in 2026-07 — 50pick no longer withholds any per-player tax).
-const REPORTS = ["daily-ops", "gbt-monthly", "fiu-sar", "sx-register", "iso-audit", "kyc-reverify", "rg-engagement", "match-integrity"];
+// removed in 2026-07 — 50pick no longer withholds any per-player tax). The slug
+// is derived from the entry NAME by reportFilename() in brand.ts.
+const REPORTS = [
+  { id: "daily-ops",       slug: "daily-operations-report" },
+  { id: "gbt-monthly",     slug: "monthly-report" },
+  { id: "fiu-sar",         slug: "fiu-sar" },
+  { id: "sx-register",     slug: "self-exclusion-register" },
+  { id: "iso-audit",       slug: "iso-27001-audit-log" },
+  { id: "kyc-reverify",    slug: "kyc-re-verification-roster" },
+  { id: "rg-engagement",   slug: "responsible-gambling-engagement" },
+  { id: "match-integrity", slug: "match-integrity-quarterly-review" },
+];
 
 let pass = 0, fail = 0;
 function log(label, ok, detail = "") {
-  const t = ok ? "✓" : "✗";
-  console.log(`${t} ${label}${detail ? "  →  " + detail : ""}`);
+  console.log(`${ok ? "✓" : "✗"} ${label}${detail ? "  →  " + detail : ""}`);
   if (ok) pass++; else fail++;
 }
 
-const phoneTail = (off = 0) => "7" + String((Date.now() + off) % 100_000_000).padStart(8, "0");
-async function reg(ctx, tail, pwd) {
-  const p = await ctx.newPage();
-  await p.goto(`${BASE}/auth/register`, { waitUntil: "networkidle" });
-  await p.fill("#phone", tail);
-  await p.fill('input[name="dob"]', "1990-01-15");
-  await p.fill('input[name="password"]', pwd);
-  await p.fill('input[name="passwordConfirm"]', pwd);
-  await p.check('input[name="acceptAge"]', { force: true });
-  await p.check('input[name="acceptTerms"]', { force: true });
-  await p.click('button[type="submit"]');
-  await p.waitForTimeout(900);
-  await p.close();
-}
-async function login(ctx, tail, pwd) {
-  const p = await ctx.newPage();
-  await p.goto(`${BASE}/auth/login`, { waitUntil: "networkidle" });
-  await p.fill("#phone", tail);
-  await p.fill('input[name="password"]', pwd);
-  await p.click('button[type="submit"]');
-  await p.waitForTimeout(900);
-  await p.close();
-}
-
 const browser = await chromium.launch();
-const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
-await fetch(`${BASE}/api/dev-test/reset-rate-limits`, { method: "POST" }).catch(() => {});
+const ctx = await browser.newContext();
 
-const pwd = "Smoke!2026";
-const tail = phoneTail();
-await reg(ctx, tail, pwd);
-const promo = await fetch(`${BASE}/api/dev-test/promote-admin`, {
-  method: "POST", headers: { "content-type": "application/json" },
-  body: JSON.stringify({ phone: "+255" + tail }),
-}).then(r => r.json()).catch(() => null);
-log("0a admin promoted", promo?.role === "ADMIN");
-await login(ctx, tail, pwd);
+// Bootstrap: seed an admin (sets the session cookie in this context) + a little
+// money/audit data so the reports have rows to render.
+const seed = await ctx.request.post(`${BASE}/api/dev-test/seed-admin`, { data: {} });
+log("admin seeded + session cookie set", seed.status() === 200, String(seed.status()));
+await ctx.request.post(`${BASE}/api/dev-test/stress-regulator-grade`, { data: { n: 20, u: 12, b: 150, r: 8 } }).catch(() => {});
 
-// Pull session cookies for the API requests
-const cookies = await ctx.cookies();
-const cookieHeader = cookies.map(c => `${c.name}=${c.value}`).join("; ");
-
-for (const id of REPORTS) {
+for (const { id, slug } of REPORTS) {
   for (const fmt of ["pdf", "xlsx"]) {
     try {
-      const url = `${BASE}/api/admin/reports/${id}?format=${fmt}`;
-      const r = await fetch(url, { headers: { cookie: cookieHeader } });
-      const buf = Buffer.from(await r.arrayBuffer());
-      const ok = r.ok && buf.length > 1024;
-      const sig = fmt === "pdf"
-        ? buf.subarray(0, 4).toString() === "%PDF"
-        : buf[0] === 0x50 && buf[1] === 0x4b; // ZIP magic
-      log(`${id} · ${fmt} non-empty + signature`, ok && sig, `${(buf.length / 1024).toFixed(1)}kb`);
+      const res = await ctx.request.get(`${BASE}/api/admin/reports/${id}?format=${fmt}`);
+      const buf = Buffer.from(await res.body());
+      const ct = res.headers()["content-type"] || "";
+      const cd = res.headers()["content-disposition"] || "";
+      const magic = fmt === "pdf" ? buf.subarray(0, 5).toString() === "%PDF-" : (buf[0] === 0x50 && buf[1] === 0x4b);
+      const ctOk = fmt === "pdf" ? ct.includes("application/pdf") : ct.includes("spreadsheetml");
+      const fnOk = cd.includes(`50pick-${slug}-`) && cd.endsWith(`.${fmt}"`);
+      const ok = res.status() === 200 && buf.length > 2000 && magic && ctOk && fnOk;
+      log(`${id} · ${fmt}`, ok, `${res.status()} ${(buf.length / 1024).toFixed(1)}kb ct=${ctOk ? "ok" : ct} fn=${fnOk ? "ok" : cd.slice(0, 70)}`);
       if (ok) writeFileSync(resolve(OUT, `${id}.${fmt}`), buf);
     } catch (e) {
-      log(`${id} · ${fmt} render`, false, String(e?.message ?? e));
+      log(`${id} · ${fmt}`, false, String(e?.message ?? e));
     }
   }
 }
+
+// Negative cases — the route must reject a bad format and an unknown id.
+const badFmt = await ctx.request.get(`${BASE}/api/admin/reports/gbt-monthly?format=csv`);
+log("bad format → 400", badFmt.status() === 400, String(badFmt.status()));
+const unknown = await ctx.request.get(`${BASE}/api/admin/reports/does-not-exist?format=pdf`);
+log("unknown report → 404", unknown.status() === 404, String(unknown.status()));
+
+// Authz — an anonymous (cookie-less) caller must never receive a report.
+const anon = await browser.newContext();
+const anonRes = await anon.request.get(`${BASE}/api/admin/reports/gbt-monthly?format=pdf`);
+log("anonymous blocked (401/307)", anonRes.status() === 401 || anonRes.status() === 307, String(anonRes.status()));
+await anon.close();
 
 await ctx.close();
 await browser.close();

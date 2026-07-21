@@ -45,9 +45,24 @@ stress data, screenshots read): royal tokens, 6-tile KPI strip w/ honest sparkli
 gold), Daily P&L + GGR-by-category BarList, maker-checker pack chain, bilingual template
 library, honest empty generation log — responsive, no overflow, **clean; no changes needed.**
 
-Also removed the stale `tra-tax` report (deleted 2026-07) from 3 smoke scripts + corrected
-their filename slugs / body-match strings. Files: `reports/pdf.ts`, `reports/types.ts`,
-`reports/catalogue.ts`, `scripts/{report-renderers-smoke,reports-smoke-test,admin-csv-export-test}.mjs`.
+Also removed the stale `tra-tax` report (deleted 2026-07) from the smoke scripts.
+`report-renderers-smoke.mjs` was rewritten to the **production path** — bootstraps auth via
+`/api/dev-test/seed-admin` (no more brittle register-form automation, which broke when the
+`dob` field became a hidden custom picker) and asserts, for all 8 reports × both formats via
+the real `/api/admin/reports/[id]` route: 200 · content-type · magic bytes · the
+`50pick-<slug>-<date>.<ext>` content-disposition filename · plus bad-format→400, unknown→404,
+anonymous→401. **20/20 green** (run: `DISABLE_ADMIN_TOTP=true npx next dev` then
+`node scripts/report-renderers-smoke.mjs`). The redundant, brittle `reports-smoke-test.mjs`
+(same route, register-form auth) was deleted — its authz negatives folded in.
+`reports-verify-live.mts` (numbers-tie-out against a real DB, read-only) is unchanged and
+still the numeric-correctness check. Files: `reports/pdf.ts`, `reports/types.ts`,
+`reports/catalogue.ts`, `scripts/report-renderers-smoke.mjs`, `scripts/admin-csv-export-test.mjs`.
+
+**Verification harness proven this session (reusable):** seed the in-memory store → call each
+builder → `renderPdf`/`renderXlsx` → rasterize every PDF page with `pdfjs-dist` in a Chromium
+page (headless Chromium DOWNLOADS file:// PDFs; serve over a tiny node http server + dynamic-
+`import()` pdf.js + render to `<canvas>` + screenshot) → READ the PNGs. This is HOW the two
+rendering defects were found (a green suite never would have).
 
 ⚠️ A **parallel session** was editing `globals.css` + `i18n-dict.ts` + proposals/nav
 (a "Coming soon / Propose & earn" feature) during this pass — those uncommitted files were
