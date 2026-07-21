@@ -59,6 +59,18 @@ pagination / icon-refresh / mobile-nav trigger+close raised to ≥40px; mobile-n
 Esc-close + focus mgmt; refresh spinner honours reduced-motion. Gold discipline: the 2nd
 categorical chart-series colour (was `--gold`) → `--royal-300`.
 
+**Rates & fees — owner-directed verification + a guard-rail (`3ca495b`).** Confirmed the /admin/config
+"Rates & fees" surface end-to-end: **what an officer SETS is what the engine APPLIES.** Driven live —
+changed the commission via the Global rates form → it persisted, read back in the KPIs + form, and was
+audited (`config.global.updated`); the fee simulator recomputes on the exact saved config; and in code a
+NEW poll freezes the current effective config into its immutable `feeSnapshot` (market-service.ts:249),
+which is all settlement/payout ever read (never live constants) — so a rate change applies to future
+polls and can't re-price placed bets. The winner-floor guard (`validate()` sweeps the real payout fn)
+correctly REFUSES only configs that could pay a winner BELOW stake; a 0% ceiling is a valid zero-fee
+config (overpays, never underpays) and is allowed. Added a non-blocking WARNING when the fee ceiling is
+0% (it silently zeroes ALL commission — `fee = min(commission×pool, 0) = 0`), symmetric to the existing
+>50% warning. Every rate is settable from admin + per-market overrides; all audited.
+
 ⚠️ **ONE OWNER RULING NEEDED (🛑 STOP-flagged — relabelled only, sum NOT changed):** the
 /admin/transactions "Fees" tile sums `t.fee` across ALL confirmed rows, so it includes the CASHOUT
 house COMMISSION (gaming revenue, already in GGR), not just gateway processing fees → it can't
