@@ -1,7 +1,89 @@
 # 50pick — next-session brief
 
 Read the two always-on skills first (`.claude/skills/50pick-standards` +
-`.claude/skills/50pick-audit`), then this. Last updated 2026-07-21 (REPORTING subsystem finalize).
+`.claude/skills/50pick-audit`), then this. Last updated 2026-07-21 (ADMIN CONSOLE finalize).
+
+## Done (Session — 2026-07-21e, ADMIN CONSOLE finalize — audit + harden, human-read)
+
+Dedicated pass on the whole operator console (41 routes + `src/components/admin/**` +
+guards/actions). Method: 5 parallel grounded code-audits (every gap proven at file:line),
+independent in-code verification of the two HIGH findings, a live seeded store
+(seed-admin + stress-regulator-grade + stress-money + seed-kyc/candidates/ai-polls) with
+human-read screenshots at 1280/360 EN, then fixed + hardened in 4 coherent commits. Gate on
+the push: `tsc` clean · `next build` clean · `test:all` **82/83** (only `test:responsive`, the
+documented live-`:3000` exception — it failed solely because the dev server was stopped; every
+money/guard/kyc/integrity/tokens/i18n/contrast/trilingual suite PASSED). **LIVE `@8c2a5cc`**
+(fresh boot verified; all touched `/admin/*` = 307, `/` + `/auth/register` = 200, no 500s).
+
+**Two HIGH user-handling holes CLOSED — were live before this pass (the prior "admin is
+complete" was overstated):**
+1. **KYC maker-checker BYPASS (`9d51886`).** The player-page one-click Approve
+   (`players/[id]/actions.approveKycAction`) called `reviewKyc` directly with NO risk gate,
+   while the KYC workstation enforces a risk-thresholded recommend→seal two-officer gate — so a
+   HIGH-RISK applicant the workstation forces two officers on could be single-officer approved
+   from the player page (unlocking real-money withdrawals). Now the player-page approve blocks
+   `kycRiskScore >= KYC_MAKER_CHECKER_THRESHOLD` → routes to the workstation (audited
+   `kyc.approve.maker_checker_required`); the KYC tab shows "Approve in workstation" for
+   high-risk instead of an Approve that only errors.
+2. **Self-exclusion liftable by suspend→restore (`9d51886`).** `restorePlayerAction` hard-set
+   status ACTIVE and `suspendPlayerAction` accepted any non-SUSPENDED/CLOSED status — so a
+   SELF_EXCLUDED / COOLED_OFF / PENDING_KYC player could be suspended then "restored" to ACTIVE,
+   silently clearing an RG lock or KYC gate. Suspend now only accepts ACTIVE, so restore→ACTIVE
+   is always correct.
+
+**A-5 no-fabrication + a VISIBLE glyph bug (`e484035`).** Closed the last silent-zero/
+false-safety reads the earlier A-5 passes missed — aml (flagship: a DB blip no longer shows a
+clean "Queue clear / 0 pending" EDD queue), compliance (AML card + LCCP harm panel), candidates,
+moderation, insights, privacy — all now failed-flag → `AdminKpi unavailable` / `AdminLoadError`
+(genuine zeros unchanged). Also fixed the literal `·` escape rendering as GARBAGE TEXT
+("Mapendekezo ya soko · AI-validated", "APPROVED · AWAITING PUBLISH") on
+/admin/candidates + /admin/ai-polls (JSX doesn't process JS escapes in attribute/text) → real
+middot. Caught on a rasterized screenshot; a green suite never would have.
+
+**Money-surface honesty & safety (`3fec3d9`, NO payout/ledger/wallet arithmetic touched).**
+Confirms added to real-money one-click actions that lacked them (bonus grant + cancel, single-row
+WITHDRAWAL retry, proposal Publish-live + Approve-&-pay-bonus). AML "Approve" made honest — it is
+DELIBERATELY refused server-side (releasing without a gateway dispatch destroys money), so the
+button is now disabled with a note pointing to Reject, not a confirm that always fails (server
+guard untouched). `grantBonusToPlayerAction` now writes an officer-attributed audit
+(`bonus.granted_by_officer`, was recipient-only). **Reconciled finance "Operator margin" to the
+canonical source:** `operatorMarginPct`/`marginSeries` now use report-money `holdPct`
+((stakes−payouts−refunds)/stakes) so the margin tile/chart EQUAL the GGR beside them (they omitted
+refunds → unreconcilable on voided/one-sided polls). formatTzs on approvals AML amount + payments
+zero-drift; topNgr doc clarified (per-user gross margin, not NGR).
+
+**Config governance + kit a11y/gold (`8c2a5cc`).** Support-contact config now PERSISTS
+(SystemConfig) + audits (`config.support_updated`) + hydrates on boot (was in-memory only →
+silently reverted on every deploy, no trail). AI budget controls now audit. WCAG 2.5.5:
+pagination / icon-refresh / mobile-nav trigger+close raised to ≥40px; mobile-nav dialog gains
+Esc-close + focus mgmt; refresh spinner honours reduced-motion. Gold discipline: the 2nd
+categorical chart-series colour (was `--gold`) → `--royal-300`.
+
+⚠️ **ONE OWNER RULING NEEDED (🛑 STOP-flagged — relabelled only, sum NOT changed):** the
+/admin/transactions "Fees" tile sums `t.fee` across ALL confirmed rows, so it includes the CASHOUT
+house COMMISSION (gaming revenue, already in GGR), not just gateway processing fees → it can't
+reconcile to the canonical NGR "fees". Per STOP-AND-REPORT I only relabelled it **"Fees &
+commission / Ada na tume"** (+ a code comment on `txn-filters.summarise`). DECIDE: keep the
+combined figure under that honest label, or restrict `feesTzs` to GATEWAY_TYPES so it matches the
+canonical fee. Do not change it silently.
+
+**Verified GENUINELY GOOD (held up under scrutiny — do NOT re-chase):** role gates re-checked
+INSIDE every money/compliance/config action + `requireAdminTotp` (MODERATOR excluded); settlement +
+`adminAdjustBalance` money-safety (atomic/claim/50M cap); AML approve correctly disabled; A-5
+already done on finance/players[id]/cohorts/self-excl/approvals/overview/resolver-queue; B6
+outcome-is-read everywhere; all 41 `loading.tsx` real skeletons; PII masked in self-excl roster +
+privacy list + player-detail. The players list showing a verified legal name to a COMPLIANCE
+officer is BY DESIGN (gated surface, officer needs identity) — NOT masked; the `display-label` doc
+was corrected to match reality (it wrongly said "we don't auto-promote NIDA→displayName").
+
+**Remaining (LOW polish, non-blocking — next admin pass):** resolver-queue stage-1 one-click closes
+a LIVE market with no confirm; /admin/objections shows COMPLIANCE-only decision buttons to a
+MODERATOR (bounces to login — hide/disable); emergency-void result strip uses gold (→ brand);
+duplicated ClientPager/SortBtn in moderation + proposals clients; `publishCandidateAction` lacks the
+future-date guard `createMarketAction` has; a few payments tiles (Stat/Metric) + DSAR "Mark
+fulfilled" on ERASURE rows are minor. **Two-officer for LARGE balance adjustments is deferred BY
+DESIGN** (single-officer + 50M cap + atomic + audited today; a prepare→approve flow is a
+money-adjacent, separately-tested change).
 
 ## Done (Session — 2026-07-21d, REPORTING subsystem finalize — end-to-end, human-read artifacts)
 
