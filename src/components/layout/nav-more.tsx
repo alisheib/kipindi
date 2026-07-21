@@ -4,8 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
-import { ComingSoonBadge } from "@/components/ui/coming-soon-badge";
+import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
 import { useT } from "@/lib/i18n";
+import type { ProposalsState } from "@/lib/server/proposals-config";
 
 /**
  * NavMore — the top-bar overflow menu. At `lg` (1024–1279px) the primary nav
@@ -18,7 +19,7 @@ export function NavMore({
   items,
   label,
 }: {
-  items: readonly { href: string; label: string; comingSoon?: boolean }[];
+  items: readonly { href: string; label: string; proposalsBadge?: ProposalsState }[];
   label: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -85,7 +86,9 @@ export function NavMore({
                 style={{ color: active ? "var(--text)" : "var(--text-subtle)", fontWeight: active ? 600 : 500 }}
               >
                 {it.label}
-                {it.comingSoon && <ComingSoonBadge label={t.common.comingSoon} size="xs" className="ml-auto" />}
+                {it.proposalsBadge && (
+                  <ProposalsStateBadge state={it.proposalsBadge} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} size="xs" className="ml-auto" />
+                )}
               </Link>
             );
           })}

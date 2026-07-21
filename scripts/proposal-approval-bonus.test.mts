@@ -55,7 +55,7 @@ async function mkUser(role: "PLAYER" | "ADMIN" = "PLAYER"): Promise<string> {
 const bonusBal = async (uid: string) => (await getBonusSummary(uid)).bonusBalance;
 
 setBonusConfig({ enabled: true, defaultWagerMultiplier: 5, defaultExpiryDays: 30, proposalToBonus: true } as never, "test");
-setProposalsConfig({ enabled: true, prizeTzs: 20_000, hotThreshold: 200, rateLimit: 3 } as never, "test");
+setProposalsConfig({ state: "ACTIVE", prizeTzs: 20_000, hotThreshold: 200, rateLimit: 3 } as never, "test");
 
 const officer = await mkUser("ADMIN");
 

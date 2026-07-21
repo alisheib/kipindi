@@ -29,7 +29,7 @@ function isValidHttpUrl(raw: string): boolean {
   }
 }
 
-export function CreateProposalForm({ enabled, prizeTzs, rateLimit, openCount }: { enabled: boolean; prizeTzs: number; rateLimit: number; openCount: number }) {
+export function CreateProposalForm({ rateLimit, openCount }: { rateLimit: number; openCount: number }) {
   const router = useRouter();
   const { t } = useT();
   const { toast } = useToast();
@@ -50,7 +50,7 @@ export function CreateProposalForm({ enabled, prizeTzs, rateLimit, openCount }: 
   // Selection-close is optional; when set it must be a future date strictly before resolution.
   const closeValid = !closeDate || (/^\d{4}-\d{2}-\d{2}$/.test(closeDate) && Date.parse(`${closeDate}T23:59:59Z`) > Date.now() && (!dateValid || closeDate < date));
   const sourceValid = isValidHttpUrl(sourceUrl);
-  const valid = enabled && !atLimit && titleEn.trim().length >= 8 && titleEn.trim().length <= 120 && criterion.trim().length >= 12 && dateValid && closeValid && sourceValid;
+  const valid = !atLimit && titleEn.trim().length >= 8 && titleEn.trim().length <= 120 && criterion.trim().length >= 12 && dateValid && closeValid && sourceValid;
 
   const submit = () => {
     start(async () => {

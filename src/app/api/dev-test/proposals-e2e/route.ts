@@ -46,7 +46,7 @@ export async function POST() {
   const saved = getProposalsConfig();
 
   try {
-    setProposalsConfig({ enabled: true, prizeTzs: 20_000, hotThreshold: 200, rateLimit: 3 } as Partial<ProposalsConfig>, "system_test");
+    setProposalsConfig({ state: "ACTIVE", prizeTzs: 20_000, hotThreshold: 200, rateLimit: 3 } as Partial<ProposalsConfig>, "system_test");
 
     const P = await mkUser();
     const officer1 = await mkUser(OFFICER_ROLE);
@@ -157,8 +157,8 @@ export async function POST() {
     await ok("admin stats: listed-from-proposals ≥ 1", stats.listedFromProposals >= 1, `listed=${stats.listedFromProposals}`);
     await ok("admin stats: bonuses granted ≥ 20,000", stats.bonusesGrantedTzs >= 20_000, `granted=${stats.bonusesGrantedTzs}`);
 
-    // 12 · paused gating
-    setProposalsConfig({ enabled: false } as Partial<ProposalsConfig>, "system_test");
+    // 12 · non-active state gating (MAINTENANCE blocks writes)
+    setProposalsConfig({ state: "MAINTENANCE" } as Partial<ProposalsConfig>, "system_test");
     ok("paused: create blocked", (await createProposal((await mkUser()).id, { titleEn: "Should be blocked while paused", resolutionCriterion: "long enough criterion here", category: "sports", resolutionDate: futureDate(), sourceUrl: SRC })).ok === false);
     ok("paused: voting blocked", (await castVote((await mkUser()).id, p3id, "up")).ok === false);
 

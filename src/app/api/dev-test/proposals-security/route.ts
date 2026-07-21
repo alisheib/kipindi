@@ -45,7 +45,7 @@ export async function POST() {
   const saved = getProposalsConfig();
 
   try {
-    setProposalsConfig({ enabled: true, prizeTzs: 20_000, hotThreshold: 200, rateLimit: 3 } as Partial<ProposalsConfig>, "system_sec");
+    setProposalsConfig({ state: "ACTIVE", prizeTzs: 20_000, hotThreshold: 200, rateLimit: 3 } as Partial<ProposalsConfig>, "system_sec");
     const off1 = await mkUser("ADMIN");
     const off2 = await mkUser("ADMIN");
 
@@ -99,8 +99,8 @@ export async function POST() {
     // 6 · voting only on open proposals
     ok("voting blocked on resolved proposal", (await castVote((await mkUser()).id, pid, "up")).ok === false);
 
-    // 7 · paused gating
-    setProposalsConfig({ enabled: false } as Partial<ProposalsConfig>, "system_sec");
+    // 7 · non-active state gating (MAINTENANCE blocks writes)
+    setProposalsConfig({ state: "MAINTENANCE" } as Partial<ProposalsConfig>, "system_sec");
     ok("paused blocks create", (await createProposal((await mkUser()).id, { titleEn: "Blocked while paused proposal", resolutionCriterion: "Resolves from an official source.", category: "macro", resolutionDate: futureDate(), sourceUrl: SRC })).ok === false);
     ok("paused blocks voting", (await castVote((await mkUser()).id, pid, "up")).ok === false);
 

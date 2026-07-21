@@ -10,11 +10,12 @@
 
 import Link from "next/link";
 import { FiftyMark } from "@/components/brand";
-import { ComingSoonBadge } from "@/components/ui/coming-soon-badge";
+import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
 import { HELPLINE, HELPLINE_TEL, SUPPORT_EMAIL } from "@/lib/support-config";
 import { useT } from "@/lib/i18n";
+import type { ProposalsState } from "@/lib/server/proposals-config";
 
-export function PublicFooter() {
+export function PublicFooter({ proposalsState }: { proposalsState: ProposalsState }) {
   const { t } = useT();
   const license = process.env.NEXT_PUBLIC_LICENSE_REF ?? "TZ-GBT-2026-XXXX (pending)";
   return (
@@ -65,7 +66,14 @@ export function PublicFooter() {
 
         <FooterCol heading={t.footer.fairness}>
           <FooterLink href="/fairness">{t.footer.resolutionAttestation}</FooterLink>
-          <FooterLink href="/proposals">{t.footer.proposeGetPaid} <ComingSoonBadge label={t.common.comingSoon} size="xs" className="ml-1.5" /></FooterLink>
+          {/* Proposals: dropped from the footer entirely when DISABLED; otherwise
+              the current state flag rides the link (gilt / amber / none). */}
+          {proposalsState !== "DISABLED" && (
+            <FooterLink href="/proposals">
+              {t.footer.proposeGetPaid}
+              <ProposalsStateBadge state={proposalsState} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} size="xs" className="ml-1.5" />
+            </FooterLink>
+          )}
           <FooterLink href="/legal/terms">{t.footer.gameRtp}</FooterLink>
           <FooterLink href="/help">{t.footer.helpSupport}</FooterLink>
         </FooterCol>

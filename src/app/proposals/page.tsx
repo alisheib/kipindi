@@ -3,14 +3,15 @@ import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { currentSession } from "@/lib/server/auth-service";
 import { listBoard, type BoardFilter, type ProposalView } from "@/lib/server/proposals-service";
-import { getProposalsConfig } from "@/lib/server/proposals-config";
+import { getProposalsConfig, isProposalsActive } from "@/lib/server/proposals-config";
 import { Chip } from "@/components/ui/chip";
 import { Button } from "@/components/ui/button";
 import { PageHero } from "@/components/ui/page-hero";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ProposePromo } from "@/components/ui/propose-promo";
-import { ComingSoonBadge } from "@/components/ui/coming-soon-badge";
+import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
+import { ProposalsStateBanner, ProposalsUnavailable } from "@/components/proposals/proposals-state-views";
 import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { VoteControl } from "@/components/proposals/vote-control";
 import { StatusBadge } from "@/components/proposals/status-badge";
@@ -34,6 +35,26 @@ export const dynamic = "force-dynamic";
 export default async function ProposalsPage({ searchParams }: { searchParams: Promise<{ f?: string; page?: string }> }) {
   const { t, locale } = await getServerT();
 
+  // Feature gate (read once, up front). DISABLED hides the whole board and shows
+  // an honest, guided "not available" state — deep links to /proposals/* are
+  // redirected here, so this must be a real 200 with a way forward, not a 404.
+  const cfg = getProposalsConfig();
+  const state = cfg.state;
+  const active = isProposalsActive(cfg);
+  if (state === "DISABLED") {
+    return (
+      <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-12">
+        <h1 className="sr-only">{t.proposals.title}</h1>
+        <ProposalsUnavailable
+          title={t.proposals.unavailableTitle}
+          body={t.proposals.unavailableBody}
+          browseHref="/markets"
+          browseLabel={t.proposals.browseMarkets}
+        />
+      </main>
+    );
+  }
+
   const FILTERS: Array<{ id: BoardFilter; label: string }> = [
     { id: "hot", label: t.proposals.filterHot },
     { id: "new", label: t.proposals.filterNew },
@@ -56,9 +77,8 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
   const session = await currentSession();
   if (filter === "mine" && !session) redirect("/auth/login?next=/proposals");
 
-  const cfg = getProposalsConfig();
   const pageNum = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
-  const { proposals, matchedCount, totalProposals, totalVotes, enabled, page } = await listBoard(session?.userId ?? null, filter, pageNum, PLAYER_PER_PAGE).catch(() => ({ proposals: [] as ProposalView[], matchedCount: 0, totalProposals: 0, totalVotes: 0, enabled: false, page: 1 }));
+  const { proposals, matchedCount, totalProposals, totalVotes, page } = await listBoard(session?.userId ?? null, filter, pageNum, PLAYER_PER_PAGE).catch(() => ({ proposals: [] as ProposalView[], matchedCount: 0, totalProposals: 0, totalVotes: 0, state, active, page: 1 }));
   const proposalsBaseHref = `/proposals?f=${filter}`;
 
   return (
@@ -68,24 +88,26 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
       <PageHero glow="gold" contentClassName="relative z-10 p-5 lg:p-6 flex flex-col items-start gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div className="flex flex-col items-start gap-2">
           <PageHeader tone="gold" icon={<I.trophy s={18} />} eyebrow={t.proposals.title} title={t.proposals.voteForMarkets} />
-          <ComingSoonBadge label={t.common.comingSoon} />
+          {/* Gilt "coming soon" here, amber "maintenance" here, nothing when active. */}
+          <ProposalsStateBadge state={state} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} />
         </div>
-        {enabled && (
+        {active && (
           <Link href={"/proposals/new" as never} className="shrink-0">
             <Button variant="gold" size="md" leading={<I.plus s={15} />}>{t.proposals.create}</Button>
           </Link>
         )}
       </PageHero>
 
-      {/* Reward promo — shared gold "propose & get paid" card (→ create). */}
-      <ProposePromo href="/proposals/new" />
+      {/* Reward promo — shown only when the feature is live (the state banner
+          carries the message otherwise, so this gold CTA isn't redundant). */}
+      {active && <ProposePromo href="/proposals/new" />}
 
-      {!enabled && (
-        <div className="flex gap-2.5 rounded-xl border p-3" style={{ background: "color-mix(in oklab, var(--warning-500) 12%, transparent)", borderColor: "color-mix(in oklab, var(--warning-500) 30%, transparent)" }}>
-          <span className="shrink-0" style={{ color: "oklch(84% 0.15 80)" }}><I.info s={16} /></span>
-          <p className="text-[12px] leading-relaxed text-text-muted">{t.proposals.proposalsPaused}</p>
-        </div>
-      )}
+      {/* Guided state banner — gilt (coming soon) / amber (maintenance). */}
+      <ProposalsStateBanner
+        state={state}
+        title={state === "MAINTENANCE" ? t.proposals.maintenanceTitle : t.proposals.comingSoonTitle}
+        body={state === "MAINTENANCE" ? t.proposals.maintenanceBody : t.proposals.comingSoonBody}
+      />
 
       {/* Stats + filters */}
       <div className="flex flex-wrap items-center justify-between gap-2.5">
@@ -117,7 +139,7 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
         <>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {proposals.map((p) => (
-              <ProposalCard key={p.id} p={p} disabled={!enabled} t={t} locale={locale} ageStr={ageStr} />
+              <ProposalCard key={p.id} p={p} disabled={!active} t={t} locale={locale} ageStr={ageStr} />
             ))}
           </div>
           {matchedCount > PLAYER_PER_PAGE && (
@@ -126,23 +148,28 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
             </div>
           )}
         </>
+      ) : !active ? (
+        /* Not ACTIVE: the state banner above is the message. Showing a "be the
+           first to propose" empty state here would invite an action that is
+           blocked (and, for the reward, advertise a gated inducement). */
+        null
       ) : totalProposals === 0 ? (
         <EmptyState
           kind="proposals"
           title={t.proposals.noProposalsYet}
           body={`${t.proposals.noProposalsBody} ${t.proposals.noProposalsReward} ${formatTzs(cfg.prizeTzs)}.`}
-          action={enabled ? (
+          action={
             <Link href={"/proposals/new" as never}><Button variant="gold" size="sm" leading={<I.plus s={12} />}>{t.proposals.create}</Button></Link>
-          ) : undefined}
+          }
         />
       ) : (
         <EmptyState
           kind="proposals"
           title={t.proposals.noProposalsInFilter}
           body={t.proposals.noProposalsInFilterBody}
-          action={enabled ? (
+          action={
             <Link href={"/proposals/new" as never}><Button variant="gold" size="sm" leading={<I.plus s={12} />}>{t.proposals.create}</Button></Link>
-          ) : undefined}
+          }
         />
       )}
     </main>

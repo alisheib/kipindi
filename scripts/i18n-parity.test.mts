@@ -44,6 +44,7 @@ const IDENTICAL_OK = new Set<string>([
   "error.notFoundCode",         // "404"
   "proposals.titleSwPlaceholder", // Swahili-title field example — Swahili in every locale by design
   "proposals.titleZhPlaceholder", // Chinese-title field example — Chinese in every locale by design
+  "common.titleEnPlaceholder",    // English-title field example — English in every locale by design (the field is the required EN title)
   "profile.kycLabel",             // KYC — acronym
   "profile.sofBand2",             // "TZS 12M – 50M" — currency range
   "profile.sofBand3",             // "TZS 50M – 200M" — currency range

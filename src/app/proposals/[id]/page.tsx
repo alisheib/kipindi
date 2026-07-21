@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { currentSession } from "@/lib/server/auth-service";
 import { getProposalDetail, timelineStep } from "@/lib/server/proposals-service";
-import { getProposalsConfig } from "@/lib/server/proposals-config";
+import { getProposalsConfig, isProposalsActive } from "@/lib/server/proposals-config";
 import { Chip } from "@/components/ui/chip";
 import { Button } from "@/components/ui/button";
 import { VoteControl } from "@/components/proposals/vote-control";
@@ -33,12 +33,16 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 export default async function ProposalDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { t, locale } = await getServerT();
   const { id } = await params;
+  // DISABLED hides every proposals surface — send a direct link to the board,
+  // which renders the honest "not available" state.
+  const cfg = getProposalsConfig();
+  if (cfg.state === "DISABLED") redirect("/proposals");
+  const active = isProposalsActive(cfg);
   const session = await currentSession();
   let p: Awaited<ReturnType<typeof getProposalDetail>> | null = null;
   try { p = await getProposalDetail(id, session?.userId ?? null); } catch { /* graceful */ }
   if (!p) notFound();
 
-  const cfg = getProposalsConfig();
   const open = p.status === "REVIEW" || p.status === "CHANGES_REQUESTED";
   const showBonus = (p.status === "APPROVED" || p.status === "LISTED" || p.status === "RESOLVED") && p.bonusGrantedTzs > 0 && p.isMine;
 
@@ -54,7 +58,7 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
         <h1 className="font-display text-[19px] font-bold leading-snug tracking-[-0.01em]">{pickLocalized(locale, p.titleEn, p.titleSw, p.titleZh)}</h1>
         {p.description && <p className="mt-2 text-[13px] leading-relaxed text-text-muted">{p.description}</p>}
         <div className="mt-3.5 flex items-center gap-3">
-          <VoteControl proposalId={p.id} up={p.up} down={p.down} myVote={p.myVote} horizontal disabled={!cfg.enabled || !open} />
+          <VoteControl proposalId={p.id} up={p.up} down={p.down} myVote={p.myVote} horizontal disabled={!active || !open} />
           <span className="font-mono text-[11.5px] text-text-subtle">{t.proposals.byProposer} {p.proposerMasked} · {p.up + p.down} {t.proposals.votesCount}</span>
         </div>
       </section>

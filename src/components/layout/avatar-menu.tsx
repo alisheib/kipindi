@@ -7,9 +7,10 @@ import { usePathname } from "next/navigation";
 import { Avatar } from "@/components/ui/avatar";
 import { I } from "@/components/ui/glyphs";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { ComingSoonBadge } from "@/components/ui/coming-soon-badge";
+import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
 import { useT, type Locale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import type { ProposalsState } from "@/lib/server/proposals-config";
 
 export function AvatarMenu({
   initials,
@@ -19,6 +20,7 @@ export function AvatarMenu({
   avatarSrc = null,
   seed,
   isAdmin = false,
+  proposalsState = "COMING_SOON",
 }: {
   initials: string;
   name: string;
@@ -27,6 +29,7 @@ export function AvatarMenu({
   avatarSrc?: string | null;
   seed?: string;
   isAdmin?: boolean;
+  proposalsState?: ProposalsState;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -119,7 +122,11 @@ export function AvatarMenu({
               <Item href="/profile"        icon={I.profile}      en="Profile"        sw="Wasifu"                       zh="个人资料" />
               <Item href="/wallet"         icon={I.wallet}       en="Wallet"         sw="Pochi"                        zh="钱包" />
               <Item href="/profile/invite" icon={I.gift}         en="Invite & Earn"  sw="Alika na upate zawadi"        zh="邀请赚钱" accent />
-              <Item href="/proposals"      icon={I.sparkle}      en="Propose & earn" sw="Pendekeza na upate zawadi"    zh="提议赚钱" accent comingSoon />
+              {/* Proposals: hidden entirely when DISABLED; otherwise the state
+                  flag (gilt coming-soon / amber maintenance / none active). */}
+              {proposalsState !== "DISABLED" && (
+                <Item href="/proposals"    icon={I.sparkle}      en="Propose & earn" sw="Pendekeza na upate zawadi"    zh="提议赚钱" accent proposalsBadge={proposalsState} />
+              )}
               <Item href="/positions"      icon={I.portfolio}    en="Positions"      sw="Nafasi"                       zh="持仓" />
               <Item href="/results"        icon={I.resolved}     en="Results"        sw="Matokeo"                      zh="结果" />
               <Item href="/leaderboard"    icon={I.crown}        en="Leaderboard"    sw="Jedwali la Washindi"          zh="排行榜" />
@@ -219,7 +226,7 @@ function MobileLangPicker({ locale: current }: { locale: string }) {
   );
 }
 
-function Item({ href, icon: Ico, en, sw, zh, accent, comingSoon }: { href: string; icon: (p: { s?: number; className?: string }) => React.ReactElement; en: string; sw: string; zh: string; accent?: boolean; comingSoon?: boolean }) {
+function Item({ href, icon: Ico, en, sw, zh, accent, proposalsBadge }: { href: string; icon: (p: { s?: number; className?: string }) => React.ReactElement; en: string; sw: string; zh: string; accent?: boolean; proposalsBadge?: ProposalsState }) {
   const { t, locale } = useT();
   // System language only — no adjacent second-language gloss.
   const primary = locale === "sw" ? sw : locale === "zh" ? zh : en;
@@ -234,7 +241,9 @@ function Item({ href, icon: Ico, en, sw, zh, accent, comingSoon }: { href: strin
       >
         <span className={accent ? "text-gold-300" : "text-text-subtle"}><Ico s={15} /></span>
         {primary}
-        {comingSoon && <ComingSoonBadge label={t.common.comingSoon} size="xs" className="ml-auto" />}
+        {proposalsBadge && (
+          <ProposalsStateBadge state={proposalsBadge} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} size="xs" className="ml-auto" />
+        )}
       </Link>
     </li>
   );

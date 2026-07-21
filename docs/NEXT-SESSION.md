@@ -22,6 +22,31 @@ bottom. Last updated 2026-07-21.
   (form → persist → read-back → audit → immutable `feeSnapshot` on each new poll → payout reads
   only the snapshot). Fee simulator runs the real payout fn on the saved config. Added a
   non-blocking warning when the fee ceiling is 0% (silently zeroes all commission).
+- **Proposals feature-state finalized (2026-07-21) — 4-state, admin-controlled switch.** The old
+  boolean `enabled` on `src/lib/server/proposals-config.ts` is now a `state` machine —
+  **ACTIVE · COMING_SOON · MAINTENANCE · DISABLED** — driven entirely from `/admin/proposals`
+  (segmented selector, takes effect immediately with no redeploy, audited `proposals.config.updated`).
+  Old snapshots migrate via a new `defineConfig` `migrate` hook (`enabled:true→ACTIVE`,
+  `false→DISABLED`) so hydration never breaks. **Server-enforced** (the reward is a regulated
+  inducement): `createProposal` / `castVote` / the `createProposalAction` server action refuse in
+  every non-ACTIVE state (`isProposalsActive`) — never trust the client. Reflected on **every**
+  entry point (top-app-bar, nav-more, avatar-menu, public-footer, `/proposals` board + `[id]` +
+  `/proposals/new` composer, `propose-promo`, markets promo): COMING_SOON = gilt "coming soon"
+  badge + banner (aspirational); MAINTENANCE = amber `--warning` badge + banner (pause glyph,
+  visibly distinct from the gilt, never NO-rose); DISABLED = every entry point hidden +
+  `/proposals*` redirected to an honest muted "not available" board. New primitives:
+  `components/ui/maintenance-badge.tsx`, `components/ui/proposals-state-badge.tsx`,
+  `components/proposals/proposals-state-views.tsx`. Trilingual (EN/SW/ZH) guidance added; a short
+  `proposals.comingSoonTag`/`maintenanceTag` keeps badges from truncating in SW; the EN-title
+  composer placeholder was fixed to always be English. Proof: `npm run test:proposals-state`
+  (28 assertions — gate per state + migration + audit). **Verified live** across all 4 states ×
+  360/768/1280/1920 × EN/SW/ZH (128 screenshots, human-read via a 19-agent adversarial visual
+  audit) + a live server-refusal probe. ⚠️ **Deploy behaviour (owner decision):** default state is
+  **COMING_SOON**. On this deploy, prod lands in COMING_SOON if it has no persisted
+  `proposals.config` row (propose blocked, gilt "coming soon" preserved). If a row with
+  `enabled:true` exists it migrates to **ACTIVE** (feature fully open, no badge). Today prod shows
+  proposals *open but labelled "coming soon"* — so **after deploy, confirm the state at
+  `/admin/proposals` and set the one you want** (it applies instantly). To launch: pick **Active**.
 - Gate discipline held on every push: `tsc` + `next build` clean · `test:all` green on a fresh
   store (only `test:responsive` fails locally — it needs a live `:3000`, documented exception).
 

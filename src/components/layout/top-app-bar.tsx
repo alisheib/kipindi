@@ -8,10 +8,15 @@ import { NotificationsPanel } from "@/components/layout/notifications-panel";
 import { AvatarMenu } from "@/components/layout/avatar-menu";
 import { NavMore } from "@/components/layout/nav-more";
 import { WalletBalancePill } from "@/components/layout/wallet-balance-pill";
-import { ComingSoonBadge } from "@/components/ui/coming-soon-badge";
+import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
 import { CashEye } from "@/components/ui/cash";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
+import type { ProposalsState } from "@/lib/server/proposals-config";
+
+/** A primary-nav item; `proposalsBadge`, when set, rides a proposals entry point
+ *  and renders the gilt/amber state flag (never on ACTIVE/DISABLED). */
+type NavItem = { href: string; label: string; proposalsBadge?: ProposalsState };
 
 export type TopAppBarUser = {
   initials: string;
@@ -27,34 +32,38 @@ export type TopAppBarUser = {
   isAdmin?: boolean;
 };
 
-export function TopAppBar({ user }: { user: TopAppBarUser }) {
+export function TopAppBar({ user, proposalsState }: { user: TopAppBarUser; proposalsState: ProposalsState }) {
   const pathname = usePathname();
   const { t } = useT();
 
   // Core links render inline from `lg`; overflow links fold into the "More"
   // menu at lg and render inline only at `xl` (IA review R1 — no primary
   // destination is hidden on tablets/small laptops).
-  const CORE_ITEMS = user.isAuthed
-    ? ([
+  const CORE_ITEMS: NavItem[] = user.isAuthed
+    ? [
         { href: "/markets",   label: t.common.markets },
         { href: "/live",      label: t.nav.live },
         { href: "/results",   label: t.common.results },
         { href: "/positions", label: t.common.history },
         { href: "/wallet",    label: t.nav.wallet },
-      ] as const)
-    : ([
+      ]
+    : [
         { href: "/markets",     label: t.common.markets },
         { href: "/live",        label: t.nav.live },
         { href: "/results",     label: t.common.results },
         { href: "/leaderboard", label: t.nav.leaderboard },
-      ] as const);
-  const MORE_ITEMS = user.isAuthed
-    ? ([
-        { href: "/proposals",      label: t.common.propose, comingSoon: true },
+      ];
+  // Proposals is dropped from the nav entirely when DISABLED; otherwise it rides
+  // the current state flag (gilt coming-soon / amber maintenance / none active).
+  const MORE_ITEMS: NavItem[] = user.isAuthed
+    ? [
+        ...(proposalsState !== "DISABLED"
+          ? [{ href: "/proposals", label: t.common.propose, proposalsBadge: proposalsState } as NavItem]
+          : []),
         { href: "/profile/invite", label: t.common.invite },
         { href: "/leaderboard",    label: t.nav.leaderboard },
-      ] as const)
-    : ([] as const);
+      ]
+    : [];
 
   return (
     <header
@@ -156,6 +165,7 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
             avatarSrc={user.avatarSrc ?? null}
             seed={user.seed}
             isAdmin={user.isAdmin ?? false}
+            proposalsState={proposalsState}
           />
         </div>
       </div>
@@ -164,7 +174,7 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
 }
 
 /** A single primary-nav link with the shared active-state logic. */
-function NavLink({ it, pathname }: { it: { href: string; label: string; comingSoon?: boolean }; pathname: string }) {
+function NavLink({ it, pathname }: { it: NavItem; pathname: string }) {
   const { t } = useT();
   const active =
     it.href === "/markets" ? pathname === "/" || pathname.startsWith("/markets")
@@ -188,7 +198,9 @@ function NavLink({ it, pathname }: { it: { href: string; label: string; comingSo
       }}
     >
       {it.label}
-      {it.comingSoon && <ComingSoonBadge label={t.common.comingSoon} size="xs" />}
+      {it.proposalsBadge && (
+        <ProposalsStateBadge state={it.proposalsBadge} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} size="xs" />
+      )}
     </Link>
   );
 }

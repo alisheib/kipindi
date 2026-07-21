@@ -31,6 +31,12 @@ type DefineConfigOpts<T extends object, U> = {
   /** How `updates` combine with the current config. Default: shallow spread.
    *  `U` is the update shape (Partial<T> by default; DeepPartial<T> for nested). */
   merge?: (current: T, updates: U) => T;
+  /** Optional one-way migration applied to a persisted snapshot BEFORE it is
+   *  merged onto `defaults`. Lets a config evolve its shape (rename/replace a
+   *  field) without breaking hydration of older stored values. Receives the raw
+   *  persisted object and returns a clean `Partial<T>` in the current shape;
+   *  keys it drops fall back to the default. No-op when omitted. */
+  migrate?: (persisted: Record<string, unknown>) => Partial<T>;
 };
 
 /** The registry lives on globalThis so the in-memory cache survives hot-reloads,
@@ -45,17 +51,23 @@ const registry: Map<string, unknown> = (globalThis.__50PICK_CONFIGS ??= new Map(
 const hydrated: Set<string> = (globalThis.__50PICK_CONFIGS_HYDRATED ??= new Set());
 
 export function defineConfig<T extends object, U = Partial<T>>(opts: DefineConfigOpts<T, U>) {
-  const { key, defaults, validate, audit: auditOpts } = opts;
+  const { key, defaults, validate, audit: auditOpts, migrate } = opts;
   const merge = opts.merge ?? ((current: T, updates: U) => ({ ...current, ...(updates as object) }) as T);
 
   if (!registry.has(key)) registry.set(key, { ...defaults });
 
   // Eager hydrate once per key (guarded so re-imports under hot-reload don't
-  // re-hit the DB). No-ops without a database.
+  // re-hit the DB). No-ops without a database. A persisted snapshot is run
+  // through `migrate` first (if provided) so an older stored shape hydrates
+  // into the current one rather than leaking dead keys onto the config.
   if (!hydrated.has(key)) {
     hydrated.add(key);
-    void loadConfig<T>(key)
-      .then((persisted) => { if (persisted) registry.set(key, { ...defaults, ...persisted }); })
+    void loadConfig<Record<string, unknown>>(key)
+      .then((persisted) => {
+        if (!persisted) return;
+        const restored = migrate ? migrate(persisted) : (persisted as Partial<T>);
+        registry.set(key, { ...defaults, ...restored });
+      })
       .catch(() => {});
   }
 

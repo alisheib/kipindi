@@ -6,7 +6,6 @@ import { I } from "@/components/ui/glyphs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
-import { Toggle } from "@/components/ui/toggle";
 import { Textarea } from "@/components/ui/textarea";
 import { DateSelect } from "@/components/ui/date-select";
 import { useToast } from "@/components/ui/toast";
@@ -16,7 +15,7 @@ import { ActionOverlay, useActionOverlay } from "@/components/admin/action-overl
 import { RefreshButton } from "@/components/admin/refresh-button";
 import { StatusBadge } from "@/components/proposals/status-badge";
 import { CategoryIcon, CATEGORY_LABEL } from "@/components/proposals/category-icon";
-import type { ProposalsConfig } from "@/lib/server/proposals-config";
+import type { ProposalsConfig, ProposalsState } from "@/lib/server/proposals-config";
 import type { AdminQueueRow, DeclineReason } from "@/lib/server/proposals-service";
 import type { ProposalCategory } from "@/lib/server/store";
 import { saveProposalsConfigAction, approveProposalAction, goLiveProposalAction, declineProposalAction, requestChangesAction, editProposalAction } from "./actions";
@@ -26,6 +25,46 @@ const DECLINE_REASONS: DeclineReason[] = ["Politics", "Ambiguous outcome", "No o
 const CATEGORIES: ProposalCategory[] = ["sports", "macro", "weather", "crypto", "culture", "infrastructure", "tech", "mixed"];
 const TODAY = () => new Date().toISOString().slice(0, 10);
 const MAX_DATE = () => `${new Date().getFullYear() + 2}-12-31`;
+
+/** The 4-state feature machine — display order + per-state admin metadata. The
+ *  tones mirror the player-facing aesthetic system so the console reads the same
+ *  way the app does: royal = live · gilt = coming soon · amber = maintenance ·
+ *  muted = disabled. `state` is server-enforced; this is purely presentational. */
+const STATE_ORDER: ProposalsState[] = ["ACTIVE", "COMING_SOON", "MAINTENANCE", "DISABLED"];
+const STATE_META: Record<ProposalsState, {
+  label: string; sw: string; note: string;
+  icon: (typeof I)[keyof typeof I];
+  fg: string; selBg: string; selBorder: string;
+}> = {
+  ACTIVE: {
+    label: "Active", sw: "Inatumika",
+    note: "Live — players can propose, vote, and earn the approval reward. No badge shown.",
+    icon: I.trophy, fg: "var(--brand-300)",
+    selBg: "color-mix(in oklab, var(--brand-500) 16%, transparent)",
+    selBorder: "color-mix(in oklab, var(--brand-500) 45%, transparent)",
+  },
+  COMING_SOON: {
+    label: "Coming soon", sw: "Inakuja",
+    note: "Gilt “coming soon” badge shows on every entry point. Proposing & voting are blocked; players are guided that it opens soon.",
+    icon: I.clock, fg: "var(--gold-300)",
+    selBg: "color-mix(in oklab, var(--gold-500) 16%, transparent)",
+    selBorder: "color-mix(in oklab, var(--gold-500) 45%, transparent)",
+  },
+  MAINTENANCE: {
+    label: "Maintenance", sw: "Matengenezo",
+    note: "Amber “temporarily unavailable” treatment. Proposing & voting are blocked; players are told it’s back shortly.",
+    icon: I.pause, fg: "var(--warning-500)",
+    selBg: "color-mix(in oklab, var(--warning-500) 18%, transparent)",
+    selBorder: "color-mix(in oklab, var(--warning-500) 46%, transparent)",
+  },
+  DISABLED: {
+    label: "Disabled", sw: "Imezimwa",
+    note: "Every entry point is hidden and /proposals is redirected to an honest “not available” page.",
+    icon: I.xCircle, fg: "var(--text-muted)",
+    selBg: "color-mix(in oklab, var(--text-subtle) 14%, transparent)",
+    selBorder: "var(--border-strong)",
+  },
+};
 
 /** Client mirror of the server source-URL gate (http/https only) — used by the edit panel. */
 function isValidHttpUrl(raw: string): boolean {
@@ -151,7 +190,8 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
 
   const [search, setSearch] = useState("");
 
-  const on = c.enabled;
+  const meta = STATE_META[c.state];
+  const HeaderIcon = meta.icon;
 
   // Search (live, on every keystroke) → filter → sort → only the current page is
   // ever materialised in the DOM.
@@ -521,20 +561,58 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
         )}
       </div>
 
-      {/* Config */}
+      {/* Config — 4-state feature machine + economics */}
       <div className="overflow-hidden rounded-lg glass-panel">
-        <div className="flex flex-wrap items-center gap-3.5 border-b border-border px-4 py-3.5" style={{ background: on ? "transparent" : "color-mix(in oklab, var(--warning-500) 8%, transparent)" }}>
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px]" style={{ background: on ? "color-mix(in oklab, var(--brand-500) 16%, transparent)" : "color-mix(in oklab, var(--warning-500) 20%, transparent)", color: on ? "var(--brand-300)" : "var(--warning-fg)" }}>
-            {on ? <I.trophy s={21} /> : <I.pause s={21} />}
-          </span>
-          <div className="flex-1 min-w-0">
-            <div className="text-[15px] font-bold">Proposals feature · master switch</div>
-            <div className="mt-0.5 text-[12px] text-text-muted">{on ? "Live — players can submit and vote on proposals." : "Paused — the board is read-only; no new submissions."}</div>
+        <div className="flex flex-col gap-3 border-b border-border px-4 py-3.5 sm:flex-row sm:items-center sm:gap-3.5" style={{ background: meta.selBg }}>
+          <div className="flex min-w-0 flex-1 items-start gap-3.5">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px]" style={{ background: "color-mix(in oklab, var(--bg-base) 45%, transparent)", color: meta.fg, border: `1px solid ${meta.selBorder}` }}>
+              <HeaderIcon s={21} />
+            </span>
+            <div className="min-w-0">
+              <div className="text-[15px] font-bold">Proposals feature · state</div>
+              <div className="mt-0.5 text-[12px] text-text-muted">Controls what players see and can do — applies immediately on Save.</div>
+            </div>
           </div>
-          <span className="font-mono text-[11px] tracking-[0.1em]" style={{ color: on ? "var(--brand-300)" : "var(--warning-fg)" }}>{on ? "ON" : "PAUSED"}</span>
-          <Toggle on={on} onClick={() => setC((p) => ({ ...p, enabled: !p.enabled }))} aria-label="Proposals master switch" />
-          <Button variant="primary" size="sm" leading={<I.check s={14} />} loading={pending} onClick={saveConfig}>Save</Button>
+          <div className="flex shrink-0 items-center justify-between gap-3 sm:justify-end">
+            <span className="font-mono text-[11px] uppercase tracking-[0.1em]" style={{ color: meta.fg }}>{meta.label}</span>
+            <Button variant="primary" size="sm" leading={<I.check s={14} />} loading={pending} onClick={saveConfig}>Save</Button>
+          </div>
         </div>
+
+        {/* Segmented state selector — takes effect immediately (no redeploy),
+            audited as proposals.config.updated on Save. */}
+        <div className="border-b border-border px-4 py-4">
+          <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <Cap>Feature state</Cap>
+            <span className="font-mono text-[10px] text-text-subtle">· applies immediately on Save · no redeploy</span>
+          </div>
+          <div role="radiogroup" aria-label="Proposals feature state" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {STATE_ORDER.map((s) => {
+              const m = STATE_META[s];
+              const sel = c.state === s;
+              const Ico = m.icon;
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  role="radio"
+                  aria-checked={sel}
+                  onClick={() => setC((p) => ({ ...p, state: s }))}
+                  className="flex min-h-[44px] items-center gap-2 rounded-lg border px-3 py-2.5 text-left transition-colors"
+                  style={sel ? { borderColor: m.selBorder, background: m.selBg } : { borderColor: "var(--border)", background: "var(--bg-overlay)" }}
+                >
+                  <span className="shrink-0" style={{ color: sel ? m.fg : "var(--text-subtle)" }}><Ico s={16} /></span>
+                  <span className="min-w-0">
+                    <span className="block text-[12.5px] font-semibold leading-tight" style={{ color: sel ? "var(--text)" : "var(--text-muted)" }}>{m.label}</span>
+                    <span className="block truncate font-mono text-[10px] leading-tight text-text-subtle">{m.sw}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-2.5 flex items-start gap-1.5 text-[11px] leading-relaxed text-text-subtle"><I.info s={13} className="mt-px shrink-0" />{meta.note}</p>
+        </div>
+
         <div className="flex flex-wrap gap-5 p-4">
           <CField label="Approval bonus" hint="Bonus paid to the proposer on approval" prefix="TZS" width={200} value={c.prizeTzs} onChange={(n) => setC((p) => ({ ...p, prizeTzs: n }))} />
           <CField label="“Hot” vote threshold" hint="Net votes to flag as Hot" suffix="votes" width={180} value={c.hotThreshold} onChange={(n) => setC((p) => ({ ...p, hotThreshold: n }))} />

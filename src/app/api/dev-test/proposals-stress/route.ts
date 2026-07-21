@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
   let ops = 0;
 
   try {
-    setProposalsConfig({ enabled: true, prizeTzs: 20_000, hotThreshold: 200, rateLimit: RATE } as Partial<ProposalsConfig>, "system_stress");
+    setProposalsConfig({ state: "ACTIVE", prizeTzs: 20_000, hotThreshold: 200, rateLimit: RATE } as Partial<ProposalsConfig>, "system_stress");
 
     // Build proposals (respect rate limit; verify it blocks the overflow).
     const proposalIds: string[] = [];

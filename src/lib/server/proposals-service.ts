@@ -29,7 +29,7 @@ import {
   type ProposalStatus,
 } from "./store";
 import { formatTzs } from "@/lib/utils";
-import { getProposalsConfig } from "./proposals-config";
+import { getProposalsConfig, isProposalsActive, type ProposalsState } from "./proposals-config";
 import { getBonusConfig } from "./bonus-config";
 import { audit } from "./audit";
 import { randomId } from "./crypto";
@@ -137,10 +137,25 @@ export type CreateProposalInput = {
   sourceUrl: string;      // REQUIRED — trusted source for resolution
 };
 
+/** Honest, state-specific reason a write was refused while the feature is not
+ *  ACTIVE. English (server-layer) — the localized player guidance lives in the
+ *  UI copy; this is the defence-in-depth server refusal message. */
+export function proposalsBlockedReason(state: ProposalsState): string {
+  switch (state) {
+    case "COMING_SOON": return "Proposals aren't open yet — coming soon.";
+    case "MAINTENANCE": return "Proposals are temporarily unavailable — back shortly.";
+    case "DISABLED": return "Proposals aren't available right now.";
+    default: return "Proposals aren't available right now.";
+  }
+}
+
 export async function createProposal(userId: string, input: CreateProposalInput):
   Promise<{ ok: true; proposal: StoredProposal } | { ok: false; error: string; code: "PAUSED" | "RATE_LIMITED" | "INVALID" }> {
   const cfg = getProposalsConfig();
-  if (!cfg.enabled) return { ok: false, error: "Proposals are paused right now.", code: "PAUSED" };
+  // Server-enforced feature gate — the "get paid to propose" reward is a
+  // regulated inducement, so a submission is refused unless the feature is fully
+  // ACTIVE, regardless of what the client sent (COMPLIANCE-DECISIONS.md).
+  if (!isProposalsActive(cfg)) return { ok: false, error: proposalsBlockedReason(cfg.state), code: "PAUSED" };
 
   const titleEn = (input.titleEn ?? "").trim();
   const criterion = (input.resolutionCriterion ?? "").trim();
@@ -261,7 +276,8 @@ export async function castVote(userId: string, proposalId: string, dir: "up" | "
     | { ok: false; error: string }
   > {
   const cfg = getProposalsConfig();
-  if (!cfg.enabled) return { ok: false, error: "Voting is paused." };
+  // Voting is a feature interaction, gated by the same ACTIVE state as creating.
+  if (!isProposalsActive(cfg)) return { ok: false, error: proposalsBlockedReason(cfg.state) };
   // Serialize per-proposal so concurrent voters can't interleave the
   // record-then-recount and lose a tally.
   return withLock(`proposal:${proposalId}`, async () => {
@@ -383,7 +399,8 @@ export async function listBoard(viewerId: string | null, filter: BoardFilter = "
     matchedCount,
     totalProposals: all.length,
     totalVotes,
-    enabled: cfg.enabled,
+    state: cfg.state,
+    active: isProposalsActive(cfg),
     page: safePage,
     perPage,
   };

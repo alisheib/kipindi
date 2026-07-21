@@ -47,7 +47,7 @@ async function mkUser(role: "PLAYER" | "ADMIN" = "PLAYER"): Promise<string> {
 }
 
 setBonusConfig({ enabled: true, defaultWagerMultiplier: 5, defaultExpiryDays: 30, proposalToBonus: true } as never, "test");
-setProposalsConfig({ enabled: true, prizeTzs: 5_000, hotThreshold: 200, rateLimit: 20 } as never, "test");
+setProposalsConfig({ state: "ACTIVE", prizeTzs: 5_000, hotThreshold: 200, rateLimit: 20 } as never, "test");
 const officer = await mkUser("ADMIN");
 
 // 1. create WITHOUT close date → null

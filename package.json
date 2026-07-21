@@ -83,6 +83,7 @@
     "test:events": "tsx scripts/events-calendar.test.mts",
     "test:killswitch": "tsx scripts/payment-killswitch.test.mts",
     "test:proposals": "tsx scripts/proposal-approval-bonus.test.mts",
+    "test:proposals-state": "tsx scripts/proposals-state.test.mts",
     "test:proposal-close": "tsx scripts/proposal-selection-close.test.mts",
     "test:kyc": "tsx scripts/kyc-review.test.mts && tsx scripts/kyc-submit-notify.test.mts && tsx scripts/kyc-flow-stress.test.mts && tsx scripts/kyc-security.test.mts",
     "test:responsive": "node scripts/responsive-audit.mjs",

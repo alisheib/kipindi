@@ -34,7 +34,7 @@ export async function POST(req: Request) {
   store?.proposalVotes?.clear();
 
   try {
-    setProposalsConfig({ enabled: true } as Partial<ProposalsConfig>, "stress");
+    setProposalsConfig({ state: "ACTIVE" } as Partial<ProposalsConfig>, "stress");
     const proposer = `stress_${Date.now()}`;
     const r = await createProposal(proposer, {
       titleEn: "Hot poll capacity probe — will it scale?",

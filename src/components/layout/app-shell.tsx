@@ -36,6 +36,7 @@ import { hasRole, ADMIN_CONSOLE_ROLES } from "@/lib/server/roles";
 import { displayLabel, displayInitials } from "@/lib/display-label";
 import { getServerT } from "@/lib/i18n-server";
 import { getPlatformConfig, maintenanceMessage } from "@/lib/server/platform-config";
+import { getProposalsConfig } from "@/lib/server/proposals-config";
 import { AnnouncementBanner } from "./announcement-banner";
 import { EmailVerifyBanner } from "./email-verify-banner";
 
@@ -112,6 +113,10 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     ? { message: platformCfg.announcement.message, tone: platformCfg.announcement.tone }
     : null;
 
+  // Proposals feature-state — drives the entry-point badges (top bar, avatar
+  // menu, footer). Sync cache read; safe default (COMING_SOON) if unhydrated.
+  const proposalsState = getProposalsConfig().state;
+
   return (
     <div className="min-h-screen bg-bg-base text-text">
       {/* Skip-to-content — WCAG 2.4.1. Visually hidden until focused,
@@ -124,14 +129,14 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         {t.common.skipToContent}
       </a>
       <Suspense fallback={null}><NavProgress /></Suspense>
-      <TopAppBar user={topUser} />
+      <TopAppBar user={topUser} proposalsState={proposalsState} />
       <AnnouncementBanner maintenance={maintBanner} announcement={announcement} />
       {emailVerifyState && <EmailVerifyBanner email={emailVerifyState.email} />}
       <LiveTicker events={getTickerFeed()} />
       <main id="main-content" className="pb-[calc(88px+env(safe-area-inset-bottom))] lg:pb-0">
         <RouteTransition>{children}</RouteTransition>
       </main>
-      <PublicFooter />
+      <PublicFooter proposalsState={proposalsState} />
       <BottomNav isAuthed={!!session} />
       <RealityCheckHost enabled={!!session} intervalMin={realityCheckMin} userId={session?.userId ?? null} />
       <Suspense fallback={null}><LazyNotifyPoller /></Suspense>

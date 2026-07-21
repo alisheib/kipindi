@@ -1,12 +1,20 @@
 import { AdminPageHead, AdminKpi } from "@/components/admin/admin-shell";
 import { Chip } from "@/components/ui/chip";
-import { getProposalsConfig } from "@/lib/server/proposals-config";
+import { getProposalsConfig, type ProposalsState } from "@/lib/server/proposals-config";
 import { getAdminProposalStats, getAdminQueue } from "@/lib/server/proposals-service";
 import { formatTzs, formatNumber } from "@/lib/utils";
 import { AdminProposalsClient } from "./admin-proposals-client";
 
 export const metadata = { title: "Proposals · Admin" };
 export const dynamic = "force-dynamic";
+
+/** Header status chip per feature state — tones mirror the player aesthetic. */
+const STATE_CHIP: Record<ProposalsState, { variant: "active" | "gold" | "warning" | "neutral"; label: string }> = {
+  ACTIVE: { variant: "active", label: "Active" },
+  COMING_SOON: { variant: "gold", label: "Coming soon" },
+  MAINTENANCE: { variant: "warning", label: "Maintenance" },
+  DISABLED: { variant: "neutral", label: "Disabled" },
+};
 
 /**
  * /admin/proposals — player-proposal review console, on the shared admin shell.
@@ -24,7 +32,7 @@ export default async function AdminProposalsPage() {
         title="Market proposals"
         sw="Mapendekezo ya masoko"
         period={false}
-        actions={<Chip size="sm" variant={config.enabled ? "active" : "paused"}>{config.enabled ? "Active" : "Paused"}</Chip>}
+        actions={<Chip size="sm" variant={STATE_CHIP[config.state].variant}>{STATE_CHIP[config.state].label}</Chip>}
       />
 
       <div className="px-4 lg:px-6 py-5 space-y-4">
