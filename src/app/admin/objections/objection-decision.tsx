@@ -43,12 +43,26 @@ const COPY: Record<Mode, { title: string; effect: string; cta: string; danger?: 
   },
 };
 
-export function ObjectionDecision({ objectionId, canReverse }: { objectionId: string; canReverse: boolean }) {
+export function ObjectionDecision({ objectionId, canReverse, canDecide = true }: { objectionId: string; canReverse: boolean; canDecide?: boolean }) {
   const { toast } = useToast();
   const router = useRouter();
   const [mode, setMode] = useState<Mode | null>(null);
   const [note, setNote] = useState("");
   const [pending, start] = useTransition();
+
+  // Upholding/rejecting is COMPLIANCE-gated in the action. A MODERATOR can VIEW
+  // this queue (market-ops) but must not be shown buttons that redirect them to
+  // the login screen — show a clear read-only marker instead.
+  if (!canDecide) {
+    return (
+      <span
+        className="inline-flex items-center gap-1.5 font-mono text-[10.5px] uppercase tracking-[0.08em] text-text-tertiary"
+        title="Upholding or rejecting an objection is a compliance decision — ask an Admin or Compliance officer."
+      >
+        <I.alertCircle s={12} /> Compliance only
+      </span>
+    );
+  }
 
   const submit = () => {
     if (!mode) return;

@@ -7,6 +7,8 @@ import { I } from "@/components/ui/glyphs";
 import { listObjections } from "@/lib/server/objections-service";
 import { getMarket } from "@/lib/server/market-service";
 import { db } from "@/lib/server/store";
+import { currentSession } from "@/lib/server/auth-service";
+import { COMPLIANCE_ROLES, hasRole } from "@/lib/server/roles";
 import { displayLabel } from "@/lib/display-label";
 import { formatDateTime, formatTzs } from "@/lib/utils";
 import { OBJECTION } from "@/lib/admin-status-lexicon";
@@ -26,6 +28,12 @@ const REASON_LABEL: Record<string, string> = {
 export default async function AdminObjectionsPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const sp = await searchParams;
   const objections = await listObjections();
+  // Objections is MODERATOR-viewable (market-ops), but upholding/rejecting is
+  // COMPLIANCE-gated in the action. Compute it here so a MODERATOR sees a clear
+  // "compliance-only" state instead of decision buttons that bounce them to the
+  // login screen (the action redirects a non-COMPLIANCE actor).
+  const session = await currentSession();
+  const canDecide = hasRole(session?.role, COMPLIANCE_ROLES);
 
   // Join each objection to its market + objector. The objector is shown by
   // displayLabel() — never a phone number: this is a compliance surface, and an
@@ -139,6 +147,7 @@ export default async function AdminObjectionsPage({ searchParams }: { searchPara
                         <ObjectionDecision
                           objectionId={o.id}
                           canReverse={market?.resolvedOutcome === "YES" || market?.resolvedOutcome === "NO"}
+                          canDecide={canDecide}
                         />
                       ) : o.status === "OPEN" ? (
                         // Should be unreachable: an OPEN objection freezes settlement.

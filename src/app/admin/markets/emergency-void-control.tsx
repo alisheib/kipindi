@@ -76,7 +76,7 @@ export function EmergencyVoidControl({ marketId, title }: { marketId: string; ti
           details={result.detail ? [{ label: "Detail", value: result.detail }] : undefined}
           primaryLabel="Done · Sawa"
           onClose={() => setResultOpen(false)}
-          stripTone="gold"
+          stripTone="brand"
         />
       )}
     </>
