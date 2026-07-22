@@ -24,6 +24,22 @@ smoke scripts + `scripts/ui-regression.mjs` at 360/768/1280/1920) passes and is 
 
 ---
 
+## Post-launch UI enhancements
+
+- **[x] Player sign-in method switcher (2026-07-22)** — `/auth/login` used a single
+  plain "email or phone" text box (unprofessional; no phone formatting / length
+  guidance). Replaced with an aesthetic segmented **Phone / Email** switcher
+  (`src/components/auth/login-identifier.tsx`): the field morphs with the method —
+  **Phone** reuses the kit `<PhoneInput>` (mono, `+255` prefix, digits-only, 9-digit
+  cap, "712 345 678" grouping — the SAME control as admin sign-in); **Email** is a
+  plain email input. Label, placeholder and hint all swap per method; the header was
+  neutralised from "Continue with your phone" to "Welcome back". **Zero backend
+  change** — both methods submit `identifier`, discriminated server-side by a literal
+  `@` (email) vs `tzPhone` normalisation (a bare 9-digit MSISDN → `+255…`). New i18n
+  keys (`email`, `emailSignInHint`, `signInMethod`, `welcomeBack`) in EN/SW/ZH (parity
+  1443 each). Verified: `tsc` + `build` + `test:i18n` green; `scripts/login-switcher-shots.mjs`
+  (20 checks — phone+email × 360/1280 × EN/SW, no overflow, no console errors, shots read).
+
 ## Foundations (step 1)
 
 | Item | Status | Commit | Live evidence | Notes |

@@ -2,8 +2,9 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { I } from "@/components/ui/glyphs";
 import { AuthShell } from "@/components/auth/auth-shell";
-import { Field, Input } from "@/components/ui/input";
+import { Field } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
+import { LoginIdentifier } from "@/components/auth/login-identifier";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { RateLimitBanner } from "@/components/auth/rate-limit-banner";
 import { startLoginAction } from "./actions";
@@ -42,6 +43,9 @@ export default async function LoginPage({
   // path-only string before redirecting.
   const nextRaw = (sp.next ?? "").trim();
   const nextSafe = /^\/(?![/\\])/.test(nextRaw) ? nextRaw : "";
+  // Default the sign-in method to whatever the round-tripped value looks like
+  // (an "@" → email, otherwise phone — Tanzania is phone-first).
+  const defaultMethod: "email" | "phone" = identifierDefault.includes("@") ? "email" : "phone";
 
   const errorPanel = (() => {
     if (sp.reset === "1") return {
@@ -121,10 +125,10 @@ export default async function LoginPage({
               {t.auth.signInTitle}
             </p>
             <h1 className="mt-1.5 font-display text-[28px] font-bold leading-tight text-text tracking-[-0.02em]">
-              {t.auth.continueWithPhone}
+              {t.auth.welcomeBack}
             </h1>
             <p className="mt-1.5 text-[13.5px] text-text-muted">
-              {t.auth.enterPhonePassword}
+              {t.auth.emailOrPhoneHint}
             </p>
           </div>
 
@@ -160,29 +164,17 @@ export default async function LoginPage({
 
           <form action={startLoginAction} className="space-y-4">
             {nextSafe && <input type="hidden" name="next" value={nextSafe} />}
-            {/* ONE field, either credential. Email became mandatory + unique at
-                sign-up, so players who remember their address but not which of
-                their numbers they registered with can still get in. A plain text
-                input (not PhoneInput, which forces a +255 prefix and 9 digits) —
-                the server discriminates on a literal `@`. */}
-            <Field label={t.auth.emailOrPhone} hint={t.auth.emailOrPhoneHint}>
-              <Input
-                id="identifier"
-                name="identifier"
-                type="text"
-                required
-                inputMode="email"
-                autoComplete="username"
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
-                maxLength={254}
-                defaultValue={identifierDefault}
-                placeholder={t.auth.emailOrPhonePlaceholder}
-                size="lg"
-                aria-invalid={sp.error === "no_account" ? "true" : undefined}
-              />
-            </Field>
+            {/* Phone/Email switcher. Both methods submit under `identifier`; the
+                server discriminates on a literal `@` (email) vs `tzPhone`
+                normalisation (a bare 9-digit MSISDN → +255…). Phone mode reuses
+                the same pretty <PhoneInput> as the admin sign-in. Email is still
+                first-class so a player who remembers their address but not which
+                number they registered with can get in. */}
+            <LoginIdentifier
+              defaultMethod={defaultMethod}
+              defaultValue={identifierDefault}
+              invalid={sp.error === "no_account"}
+            />
 
             <Field label={t.auth.password} hint={t.auth.passwordHint}>
               <PasswordInput
