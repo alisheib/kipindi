@@ -65,3 +65,24 @@ non-generatable category is refused with **no spend**; a disabled category drops
 out; adding a source makes a category generatable; `filterIdeas` drops
 non-generatable ideas; and a batch only ever produces generatable categories.
 It is part of `npm run test:all`.
+
+## Live registry maintenance (2026-07-22)
+
+The production registry had accumulated duplicates and `www.`-prefixed domains
+from before `normalizeDomain` existed. It was normalized + de-duplicated
+(**42 → 23 rows**) so every domain is in registrable form and each
+(category, domain) appears once; `african-markets.com` is enabled under `macro`
+(and `sports`). Because `normalizeDomain` now strips `www.`/scheme/path on every
+add, new sources won't reintroduce the drift.
+
+Ops tools (read `DATABASE_URL` from the env — point it at the Railway Postgres
+public proxy for prod):
+- `scripts/inspect-sources.mjs` — READ-ONLY dump of the registry grouped by
+  category (domain · enabled), flags `african-markets` matches.
+- `scripts/cleanup-sources.mjs` — normalize + merge duplicate (category, domain)
+  rows, preserving enabled state. **Dry-run by default**; set `APPLY=1` to commit
+  (runs in a single transaction).
+
+Note: `scripts/r2-roundtrip.mjs` and any `railway run …` smoke run as plain node
+scripts (native import) and do NOT exercise the bundled Next server path — see
+the KYC/R2 fix in `docs/LIVE-HOSTING-STATUS.md` for why that gave false confidence.
