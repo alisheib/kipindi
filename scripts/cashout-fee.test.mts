@@ -72,6 +72,14 @@ async function makeMarket() {
   } as never);
 }
 
+// This suite exercises the PAID cash-out window (fee math, admin-tunable rate,
+// frozen-rate-on-retune). The default paidExitWindowMinutes is now 0 — the exit
+// LOCKS at the free window ("5-min free exit, then nothing") — so open an explicit
+// paid window here for the paid-fee cases below to sell into. The LATE-exit and
+// SHORT-poll cases (60 min / 3 min) still lock regardless. See cashout-lockout for
+// the default (no-paid-window) behaviour.
+await setGlobalConfig({ paidExitWindowMinutes: 15 }, "officer_test");
+
 // ── Default 10%: "he has 10k in the pool, sells early, we take 10%" ─────────
 //
 // NOTE the co-bettor (usr_co_a2) on the SAME side. Without one, usr_co_a is the
@@ -275,6 +283,26 @@ await fundedUser("usr_co_b");
   ok("settlement is NOT reduced by the cash-out fee", delta !== stakeMinusCashoutFee, `delta=${delta} cashoutWouldBe=${stakeMinusCashoutFee}`);
 
   await setGlobalConfig({ cashOutFeeRate: 0.09 }, "officer_test");
+}
+
+// ── DEFAULT POLICY (2026-07-22): paidExitWindowMinutes = 0 → "5-min free, then
+//    nothing". With no paid tail, an exit past the free grace is LOCKED. ───────
+{
+  await setGlobalConfig({ paidExitWindowMinutes: 0 }, "officer_test");
+  await fundedUser("usr_lock_a");
+  await fundedUser("usr_lock_b");
+  const m = await makeMarket(); // snapshots paidExitWindowMinutes = 0
+  const a = await buyPosition("usr_lock_a", { marketId: m.id, side: "YES", stake: 10_000 });
+  await buyPosition("usr_lock_b", { marketId: m.id, side: "NO", stake: 10_000 });
+  const posId = a.ok ? a.data!.positionId : "";
+  ok("DEFAULT: the poll froze paidExitWindowMinutes = 0", ratesFor((await getMarket(m.id))!).paidExitWindowMinutes === 0);
+
+  await backdatePastGrace(posId); // 10 min ago — past the 5-min free grace
+  const before = await bal("usr_lock_a");
+  const r = await cashOutPosition("usr_lock_a", posId);
+  ok("DEFAULT: past the 5-min grace with no paid window, the exit is LOCKED", !r.ok, r.ok ? "!! a sale succeeded after the grace with paid window = 0" : "");
+  ok("DEFAULT: no money moved on the locked exit", (await bal("usr_lock_a")) === before, `Δ=${(await bal("usr_lock_a")) - before}`);
+  await setGlobalConfig({ paidExitWindowMinutes: 15 }, "officer_test"); // restore for any later blocks
 }
 
 console.log(`\ncashout-fee: ${pass} passed, ${fail} failed`);

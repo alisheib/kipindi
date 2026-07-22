@@ -113,7 +113,7 @@ export async function dismissAll(userId: string) {
 export function notifyBetPlaced(userId: string, opts: {
   side: "YES" | "NO"; stake: number; payoutIfWin: number; marketTitle: string; marketId: string; positionId?: string;
   /** The poll's OWN rates. Hardcoding these numbers is how the copy came to lie. */
-  cashOutFeeRate: number; freeExitGraceMinutes: number;
+  cashOutFeeRate: number; freeExitGraceMinutes: number; paidExitWindowMinutes?: number;
 }) {
   const ref = opts.positionId ? ` · ${opts.positionId}` : "";
   // These were hardcoded "free exit within 5 min, then 9% fee applies" (and the
@@ -121,13 +121,21 @@ export function notifyBetPlaced(userId: string, opts: {
   // poll's frozen snapshot, so they cannot drift from what we actually charge.
   const mins = opts.freeExitGraceMinutes;
   const pct = +(opts.cashOutFeeRate * 100).toFixed(1);
+  const paid = opts.paidExitWindowMinutes ?? 0;
+  // Default policy: no paid tail — after the free window it locks to settlement.
+  const bodyEn = paid > 0
+    ? `${opts.marketTitle.slice(0, 70)} · free exit within ${mins} min, then a ${pct}% fee applies.${ref}`
+    : `${opts.marketTitle.slice(0, 70)} · free exit within ${mins} min, then it locks to settlement.${ref}`;
+  const bodySw = paid > 0
+    ? `${opts.marketTitle.slice(0, 50)} · toka bila gharama ndani ya dakika ${mins}, baadaye ada ya ${pct}% itatumika.${ref}`
+    : `${opts.marketTitle.slice(0, 50)} · toka bila gharama ndani ya dakika ${mins}, kisha linafungwa hadi malipo.${ref}`;
   return notify({
     userId,
     kind: "BET_PLACED",
     titleEn: `Bet placed · ${opts.side} ${formatTzs(opts.stake)}`,
     titleSw: `Dau limewekwa · ${opts.side} ${formatTzs(opts.stake)}`,
-    bodyEn: `${opts.marketTitle.slice(0, 70)} · free exit within ${mins} min, then a ${pct}% fee applies.${ref}`,
-    bodySw: `${opts.marketTitle.slice(0, 50)} · toka bila gharama ndani ya dakika ${mins}, baadaye ada ya ${pct}% itatumika.${ref}`,
+    bodyEn,
+    bodySw,
     href: `/markets/${opts.marketId}`,
   });
 }

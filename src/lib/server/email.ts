@@ -586,12 +586,17 @@ export function withdrawalUnderReviewHtml({ amount, reference }: {
  * hardcoded "5 minutes" and "9%", which would have started lying the moment an
  * admin retuned either one.
  */
-export function betPlacedHtml({ reference, side, stake, marketTitle, placedAt, resolutionDate, cashOutFeeRate, freeExitGraceMinutes }: {
+export function betPlacedHtml({ reference, side, stake, marketTitle, placedAt, resolutionDate, cashOutFeeRate, freeExitGraceMinutes, paidExitWindowMinutes = 0 }: {
   reference: string; side: "YES" | "NO"; stake: number; marketTitle: string; placedAt?: string; resolutionDate: string;
-  cashOutFeeRate: number; freeExitGraceMinutes: number;
+  cashOutFeeRate: number; freeExitGraceMinutes: number; paidExitWindowMinutes?: number;
 }): string {
   const mins = freeExitGraceMinutes;
   const pct = +(cashOutFeeRate * 100).toFixed(1);
+  // Default policy: no paid tail — the exit locks at the free window. Only a poll
+  // with a frozen paid window mentions the after-grace fee.
+  const exitLine = paidExitWindowMinutes > 0
+    ? `${mins}-min free exit · You can sell this position within ${mins} minutes for a full refund at no cost. After that, a ${pct}% fee applies on early exit.`
+    : `${mins}-min free exit · You can sell this position within ${mins} minutes for a full refund at no cost. After that, selling closes and the bet rides to settlement.`;
   return wrap(`
     ${eyebrow("Bet placed", "Dau limewekwa")}
     ${heading("Position open")}
@@ -604,7 +609,7 @@ export function betPlacedHtml({ reference, side, stake, marketTitle, placedAt, r
       { label: "Resolves", value: resolutionDate },
     ])}
     ${subtitle("Your payout depends on how the pool ends up split. We'll email you the exact amount the moment betting closes and the pools are final.")}
-    ${subtitle(`${mins}-min free exit · You can sell this position within ${mins} minutes for a full refund at no cost. After that, a ${pct}% fee applies on early exit.`)}
+    ${subtitle(exitLine)}
     ${refNote()}
     ${ctaButton("/positions", "View positions · Tazama madau")}
   `);

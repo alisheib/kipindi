@@ -703,6 +703,7 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
       positionId: c.positionId,
       cashOutFeeRate: betRates.cashOutFeeRate,
       freeExitGraceMinutes: betRates.freeExitGraceMinutes,
+      paidExitWindowMinutes: betRates.paidExitWindowMinutes,
     });
     // Note: `payoutIfWin` is deliberately NOT passed to the email. It printed a
     // "Potential return" figure that every in-app surface suppresses before betting
@@ -716,6 +717,7 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
         reference: c.positionId, side: opts.side, stake: opts.stake,
         marketTitle: market.titleEn, placedAt: c.placedAt, resolutionDate: market.resolutionAt.slice(0, 10),
         cashOutFeeRate: betRates.cashOutFeeRate, freeExitGraceMinutes: betRates.freeExitGraceMinutes,
+        paidExitWindowMinutes: betRates.paidExitWindowMinutes,
       }),
       tag: "bet-placed",
     })).catch(() => {});
@@ -1210,29 +1212,35 @@ export async function repairOrphanedPositions(): Promise<{ repaired: number; ref
 /**
  * Early cash-out value of an OPEN position, and WHETHER it can be sold at all.
  *
- * ── THE EXIT WINDOW (2026-07-15, Ali's design) ─────────────────────────────
+ * ── THE EXIT WINDOW (2026-07-15, Ali's design; paid tail removed 2026-07-22) ──
  *
- * Measured from when the bet was PLACED:
- *   • 0 .. freeExitGraceMinutes (5)          → FREE: full stake back, no fee.
- *   • free .. free+paidExitWindowMinutes (20)→ PAID: stake × (1 − cashOutFeeRate).
- *   • after that                             → LOCKED: rides to settlement.
+ * Measured from when the bet was PLACED, using the poll's OWN frozen rates:
+ *   • 0 .. freeExitGraceMinutes (5)                        → FREE: full stake back, no fee.
+ *   • [only if the poll froze paidExitWindowMinutes > 0]
+ *     free .. free+paidExitWindowMinutes                   → PAID: stake × (1 − cashOutFeeRate).
+ *   • after that                                           → LOCKED: rides to settlement.
+ *
+ * DEFAULT POLICY (2026-07-22): paidExitWindowMinutes = 0, so there is NO paid tail
+ * — the exit LOCKS the instant the 5-minute free grace ends ("5-min free exit,
+ * then nothing"). Legacy polls whose frozen snapshot set a paid window keep it;
+ * cashOutValue below reads each poll's own snapshot, so both behave correctly.
  *
  * WHY A HARD TIME LOCK. Every abusive exit — gutting a winner's prize, voiding a
  * poll you're losing — requires a LATE exit, because you can only tell you're
  * losing once the real-world event is near, which is HOURS OR DAYS after the bet.
- * Locking the exit ~20 minutes in means that by the time anyone could know the
- * outcome, their door shut long ago. It replaces the old side-collapse guard,
- * which only blocked the last shilling and trapped the eventual winner.
+ * Locking the exit ~5 minutes in (or ~20 for a legacy paid-window poll) means that
+ * by the time anyone could know the outcome, their door shut long ago. It replaces
+ * the old side-collapse guard, which only blocked the last shilling and trapped
+ * the eventual winner.
  *
  * ── SHORT / ENDING-SOON POLLS (Ali's edge case) ────────────────────────────
  *
  * The window is measured from the bet, but a poll can CLOSE (betting shuts) sooner
- * than 20 minutes — a short poll, or a bet placed near close. Two rules keep that
- * safe, and they auto-shrink the window to fit:
+ * than the exit window — a short poll, or a bet placed near close. Two rules keep
+ * that safe, and they auto-shrink the window to fit:
  *
  *   1. Selling always shuts at SELECTION CLOSE (isSelectionClosed, enforced in
- *      cashOutPosition), whichever comes first. A poll that closes 8 minutes after
- *      your bet gives you 5 free + 3 paid, then locks — never any exit after close.
+ *      cashOutPosition), whichever comes first — never any exit after close.
  *
  *   2. `RUNWAY` — cash-out is only offered if, when you bet, there were at least
  *      `freeExitGraceMinutes` of betting time LEFT. Bet 2 minutes before a poll

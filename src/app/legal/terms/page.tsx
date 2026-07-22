@@ -79,9 +79,10 @@ const CONTENT: Record<Locale, React.ReactNode> = {
           the pools are final and we notify you of the exact amount you will receive if your side wins.</strong>
         </p>
         <p>
-          Cash-out is available while betting is open. Within the free-exit window after placing a bet you may
-          sell for a full refund at no charge; after that an early-exit fee applies. If no bets are placed on the
-          opposing side, there is no prize to pay from and every stake is refunded in full, at no charge.
+          Cash-out is available for a short window after placing a bet: within the first 5 minutes you may sell for
+          a full refund at no charge. After that the position is locked and rides to settlement — it cannot be sold.
+          If no bets are placed on the opposing side, there is no prize to pay from and every stake is refunded in
+          full, at no charge.
         </p>
       </LegalSection>
 
@@ -194,9 +195,10 @@ const CONTENT: Record<Locale, React.ReactNode> = {
           utakachopata iwapo upande wako utashinda.</strong>
         </p>
         <p>
-          Kuuza dau (cash-out) kunapatikana wakati dau liko wazi. Ndani ya dirisha la kutoka bila gharama baada ya kuweka
-          dau, unaweza kuuza na kurudishiwa dau lako kamili bila malipo; baada ya hapo ada ya kutoka mapema itatumika.
-          Kama hakuna dau lililowekwa upande mwingine, hakuna zawadi ya kulipa na kila dau litarudishwa kamili, bila gharama.
+          Kuuza dau (cash-out) kunapatikana kwa muda mfupi baada ya kuweka dau: ndani ya dakika 5 za kwanza unaweza
+          kuuza na kurudishiwa dau lako kamili bila malipo. Baada ya hapo dau linafungwa na linaenda hadi malipo —
+          haliwezi kuuzwa. Kama hakuna dau lililowekwa upande mwingine, hakuna zawadi ya kulipa na kila dau litarudishwa
+          kamili, bila gharama.
         </p>
       </LegalSection>
 
@@ -299,8 +301,8 @@ const CONTENT: Record<Locale, React.ReactNode> = {
           <strong className="text-text">投注一经关闭，资金池即告最终确定，我们会通知您：若您所选一方获胜，您将收到的确切金额。</strong>
         </p>
         <p>
-          投注开放期间可进行兑现（cash-out）。在下注后的免费退出窗口内，您可全额取回本金且不收取任何费用；此后提前退出将
-          收取手续费。若无人投注对方，则没有奖金可供支付，所有注金将全额退还，不收取任何费用。
+          下注后有一小段兑现（cash-out）窗口：前 5 分钟内您可全额取回本金且不收取任何费用。此后持仓将被锁定并保留至结算 —
+          无法卖出。若无人投注对方，则没有奖金可供支付，所有注金将全额退还，不收取任何费用。
         </p>
       </LegalSection>
 

@@ -86,10 +86,12 @@ export type RateConfig = {
   /** Minutes after placing a bet during which an exit is FREE (full refund, zero
    *  fee). Was a hardcoded GRACE_PERIOD_MS in market-service.ts. */
   freeExitGraceMinutes: number;
-  /** Minutes of PAID exit (at cashOutFeeRate) AFTER the free window. Once free +
-   *  paid have elapsed, the exit LOCKS and the position rides to settlement.
-   *  This timer is what makes a late exit — the only kind that can gut a winner's
-   *  prize or void a poll you're losing — impossible. */
+  /** Minutes of PAID exit (at cashOutFeeRate) AFTER the free window. `0` (the
+   *  default since 2026-07-22) means NO paid window — the exit LOCKS the moment
+   *  the free grace elapses ("5-min free exit, then nothing"). Any positive value
+   *  re-opens a paid tail before the lock. Either way the position then rides to
+   *  settlement; the time-lock is what makes a late exit — the only kind that can
+   *  gut a winner's prize or void a poll you're losing — impossible. */
   paidExitWindowMinutes: number;
   /** Charged to the player on withdrawal (0.01 = 1%). This is the ONLY thing a
    *  player is ever charged besides the pool commission — there is no withholding
@@ -145,9 +147,9 @@ export const DEFAULT_GLOBAL_CONFIG: RateConfig = {
   feeCeilingRate: DEFAULT_FEE_CEILING_RATE,  // 1/3 — the exact fraction, not 0.33
   // Early exit after the free window. Goes to the HOUSE (it used to be left in
   // the pool, so we earned nothing on an early exit).
-  cashOutFeeRate: DEFAULT_CASHOUT_FEE_RATE,               // 0.10
+  cashOutFeeRate: DEFAULT_CASHOUT_FEE_RATE,               // 0.10 (only applies if a paid window is set)
   freeExitGraceMinutes: DEFAULT_FREE_EXIT_GRACE_MINUTES,      // 5
-  paidExitWindowMinutes: DEFAULT_PAID_EXIT_WINDOW_MINUTES,    // 15 → total 20-min exit window
+  paidExitWindowMinutes: DEFAULT_PAID_EXIT_WINDOW_MINUTES,    // 0 → exit locks at the free window (no paid exit)
   // Withdrawal. The ONLY thing a player is charged directly. No withholding tax.
   withdrawalFeeRate: DEFAULT_WITHDRAWAL_FEE_RATE,                     // 0.01 (1%)
   withdrawalGatewayShareRate: DEFAULT_WITHDRAWAL_GATEWAY_SHARE_RATE,  // 0.005 → gateway

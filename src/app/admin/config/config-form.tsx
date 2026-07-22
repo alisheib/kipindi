@@ -65,7 +65,7 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
         </Field>
         <Field
           label="Cash-out fee (%)"
-          hint={`Current ${cashOutPct}%. Charged on an EARLY exit after the free window, and booked to the house. Holding to settlement is unaffected.`}
+          hint={`Current ${cashOutPct}%. Only applies if a paid-exit window is set below (0 = no paid exit, so this is unused). Charged on an early exit after the free window and booked to the house; holding to settlement is unaffected.`}
         >
           <Input name="cashOutFeeRate" type="number" step="0.1" min="0" max="30" defaultValue={cashOutPct} mono />
         </Field>
@@ -77,7 +77,7 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
         </Field>
         <Field
           label="Paid-exit window (minutes)"
-          hint={`Current ${config.paidExitWindowMinutes} min. After the free window, selling is allowed at the cash-out fee for this long — then it LOCKS and the bet rides to settlement. Total sell window = ${config.freeExitGraceMinutes + config.paidExitWindowMinutes} min. This timer is what stops a losing player bailing late to gut a winner's prize.`}
+          hint={`Current ${config.paidExitWindowMinutes} min. ${config.paidExitWindowMinutes > 0 ? `After the free window, selling is allowed at the cash-out fee for this long — then it LOCKS. Total sell window = ${config.freeExitGraceMinutes + config.paidExitWindowMinutes} min.` : `0 = no paid exit: the sell window LOCKS the moment the ${config.freeExitGraceMinutes}-min free window ends (current policy — "5-min free exit, then nothing").`} The time-lock is what stops a losing player bailing late to gut a winner's prize.`}
         >
           <Input name="paidExitWindowMinutes" type="number" step="1" min="0" max="1440" defaultValue={config.paidExitWindowMinutes} mono />
         </Field>

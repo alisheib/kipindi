@@ -33,6 +33,13 @@ import {
   createMarket, buyPosition, cashOutPosition, cashOutValue, getMarket,
   resolveMarket, settleMarket, isSelectionClosed,
 } from "../src/lib/server/market-service.ts";
+import { setGlobalConfig } from "../src/lib/server/market-config.ts";
+
+// This suite tests the SELECTION-CLOSE lockout, not the time window. The default
+// paidExitWindowMinutes is now 0 (exit locks at the free window), so open an
+// explicit paid window so the "can still sell while selections are open" case
+// (10 min after the bet) has a window to sell into.
+await setGlobalConfig({ paidExitWindowMinutes: 15 }, "officer_test");
 
 let pass = 0, fail = 0;
 const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; console.log(`${c ? "PASS" : "FAIL"} ${l}${x ? ` — ${x}` : ""}`); };

@@ -66,9 +66,12 @@ export function BetConfirmModal({
   // used to hardcode "within 5 minutes … a 9% fee applies" in all three locales
   // (and the Swahili silently dropped the "full refund" half of the promise).
   const graceMins = rates?.freeExitGraceMinutes ?? DEFAULT_FREE_EXIT_GRACE_MINUTES;
-  const lockMins = graceMins + (rates?.paidExitWindowMinutes ?? DEFAULT_PAID_EXIT_WINDOW_MINUTES);
+  const paidMins = rates?.paidExitWindowMinutes ?? DEFAULT_PAID_EXIT_WINDOW_MINUTES;
+  const lockMins = graceMins + paidMins;
   const exitPct = +((rates?.cashOutFeeRate ?? DEFAULT_CASHOUT_FEE_RATE) * 100).toFixed(1);
-  const freeExitBody = t.dialog.freeExitBody
+  // Default policy has NO paid tail (paidExitWindowMinutes = 0): the exit locks at
+  // the free window. Only a poll that froze a paid window shows the fee terms.
+  const freeExitBody = (paidMins > 0 ? t.dialog.freeExitBody : t.dialog.freeExitBodyLocked)
     .replace(/\{mins\}/g, String(graceMins))
     .replace(/\{lock\}/g, String(lockMins))
     .replace(/\{pct\}/g, String(exitPct));

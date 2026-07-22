@@ -26,6 +26,7 @@
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import { createMarket, buyPosition, cashOutPosition, getMarket, resolveMarket, settleMarket, listPositionsForMarket, ratesFor, notifyClosingSoonMarkets, notifySelectionClosedMarkets, notifyDueMarketsForResolution } from "../src/lib/server/market-service.ts";
 import { poolFee } from "../src/lib/payout.ts";
+import { setGlobalConfig } from "../src/lib/server/market-config.ts";
 import { positionStore } from "../src/lib/server/market-dal.ts";
 import { getEffectiveConfig } from "../src/lib/server/market-config.ts";
 import { auditFlush, verifyChain, auditRingSize, getAuditPage } from "../src/lib/server/audit.ts";
@@ -223,9 +224,13 @@ ok("house take is positive (fees collected)", expectedHouseTake > 0, `house=${ex
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// 3 · CASHOUT then resolve — early exit pays stake−fee, fee stays in pool for
-//     the remaining winner, and the platform never mints.
+// 3 · CASHOUT then resolve — early exit pays stake−fee (fee to the house), the
+//     whole stake leaves the pool, and the platform never mints.
 // ════════════════════════════════════════════════════════════════════════════
+// The default paidExitWindowMinutes is now 0 (the exit locks at the free window);
+// this section tests the PAID early-exit path, so open an explicit paid window for
+// it. (The default-policy lock is covered by cashout-fee / cashout-lockout.)
+await setGlobalConfig({ paidExitWindowMinutes: 15 }, "officer_mi");
 {
   const mid = await makeMarket();
   await fundedUser("co_x", 100_000); // cashes out

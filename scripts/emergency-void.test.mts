@@ -15,6 +15,7 @@
  */
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import { createMarket, buyPosition, cashOutPosition, emergencyVoidMarket, getMarket, listPositionsForUser } from "../src/lib/server/market-service.ts";
+import { setGlobalConfig } from "../src/lib/server/market-config.ts";
 import { positionStore } from "../src/lib/server/market-dal.ts";
 
 import { listForUser } from "../src/lib/server/notification-service.ts";
@@ -64,6 +65,11 @@ for (const id of ["ev_a", "ev_c", "ev_d", "ev_e"]) await fundedUser(id);
 await fundedUser("ev_b", 1_000_000, "evb@test.tz"); // player WITH email → must be mailed
 await mkAdmin("ev_admin", "void-admin@test.tz");     // officer → must get the confirmation
 const startSystem = await sumWallets(); // pools = 0 (no market yet)
+
+// This test exercises an early PAID cash-out (stake − 10%) before the emergency
+// void. The default paidExitWindowMinutes is now 0 (exit locks at the free
+// window), so open an explicit paid window for the cash-out below to sell into.
+await setGlobalConfig({ paidExitWindowMinutes: 15 }, "officer_test");
 
 const m = await createMarket({
   titleEn: "Emergency void market", titleSw: "Soko la majaribio", category: "macro",

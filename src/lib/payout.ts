@@ -80,21 +80,27 @@
 export const DEFAULT_COMMISSION_RATE = 0.10;
 /** The fee can never exceed this share of the SMALLER side. A third. */
 export const DEFAULT_FEE_CEILING_RATE = 1 / 3;
-/** Early exit after the grace window; goes to the house. */
+/** Cash-out fee for the OPTIONAL paid-exit window, if a poll configures one
+ *  (`paidExitWindowMinutes > 0`); goes to the house. Unused by default — the
+ *  default policy has no paid window (see below), so nothing is ever charged. */
 export const DEFAULT_CASHOUT_FEE_RATE = 0.10;
 /** Minutes after placing a bet during which an exit is FREE (full refund). */
 export const DEFAULT_FREE_EXIT_GRACE_MINUTES = 5;
 /**
- * Minutes AFTER the free window during which an exit is allowed but charged
- * `cashOutFeeRate`. After free + paid, the exit is LOCKED and the position rides
- * to settlement.
+ * Minutes AFTER the free window during which an exit is still allowed but charged
+ * `cashOutFeeRate`. `0` (the default) means NO paid window: once the free grace
+ * elapses the exit LOCKS and the position rides to settlement — "5-min free exit,
+ * then nothing" (Ali, 2026-07-22). A poll may still carry a non-zero paid window
+ * in its frozen snapshot (legacy markets created before this change); the copy is
+ * data-driven and describes each poll's own terms.
  *
- * This is the timer that kills the "watch it lose, then bail" attack. A real-world
- * event resolves hours/days after the bet, so by the time a player could know the
- * outcome, their exit window (free + paid = 20 min by default) has long closed. No
- * late exit → no way to gut a winner's prize or void a poll you're losing.
+ * Either way this is the timer that kills the "watch it lose, then bail" attack:
+ * a real-world event resolves hours/days after the bet, so by the time a player
+ * could know the outcome the exit closed long ago. Locking at the free window
+ * (paid = 0) is strictly TIGHTER than the old free+paid window, so it is at least
+ * as safe against a late exit that could gut a winner's prize.
  */
-export const DEFAULT_PAID_EXIT_WINDOW_MINUTES = 15;
+export const DEFAULT_PAID_EXIT_WINDOW_MINUTES = 0;
 /** Charged to the player on withdrawal. */
 export const DEFAULT_WITHDRAWAL_FEE_RATE = 0.01;
 /** The slice of the withdrawal fee that goes to the payment gateway. */
@@ -148,7 +154,10 @@ export interface FeeRates {
 export interface FeeSnapshot extends FeeRates {
   cashOutFeeRate: number;
   freeExitGraceMinutes: number;
-  /** Minutes of paid (10%) exit AFTER the free window. Then exit locks. */
+  /** Minutes of paid (cashOutFeeRate) exit AFTER the free window, then the exit
+   *  locks. `0` = no paid window: the exit locks at the free grace (the default
+   *  policy since 2026-07-22). Frozen per poll, so legacy polls may still hold a
+   *  non-zero value. */
   paidExitWindowMinutes: number;
   traTaxOnCommissionRate: number;
   gbtLevyOnCommissionRate: number;
