@@ -72,11 +72,16 @@ let s3Client: any;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getS3(): Promise<{ client: any; mod: any }> {
-  // Computed specifier keeps @aws-sdk/client-s3 out of the static build graph.
-  const spec = ["@aws-sdk", "client-s3"].join("/");
+  // @aws-sdk/client-s3 is a real dependency but is loaded lazily (only when
+  // KYC_STORAGE=r2) via a plain dynamic import. It MUST be listed in
+  // next.config `serverExternalPackages` so the Next server bundler leaves it
+  // external and Node resolves it natively at runtime — same as pdfkit/exceljs.
+  // A previous "computed specifier" trick hid it from the build graph entirely,
+  // which meant the bundled server could not resolve it at runtime and every
+  // KYC document upload/view crashed with the message below. (Fixed 2026-07-22.)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mod: any = await import(/* @vite-ignore */ spec).catch(() => {
-    throw new Error("KYC_STORAGE=r2 but @aws-sdk/client-s3 is not installed — run `npm i @aws-sdk/client-s3`.");
+  const mod: any = await import("@aws-sdk/client-s3").catch((err) => {
+    throw new Error(`KYC_STORAGE=r2 but @aws-sdk/client-s3 could not be loaded (${(err as Error)?.message ?? err}). Ensure it is installed and listed in next.config serverExternalPackages.`);
   });
   if (!s3Client) {
     const endpoint = process.env.R2_ENDPOINT;

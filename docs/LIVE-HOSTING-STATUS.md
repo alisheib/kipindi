@@ -47,9 +47,18 @@
 - A parallel session may be doing the **Zoho email migration** — it owns only the mail
   records (MX/SPF/DKIM), never the web records.
 
-## R2 (KYC) — ✅ DONE + LIVE (2026-07-17)
+## R2 (KYC) — ✅ LIVE (2026-07-17) · 🔧 in-app crash fixed 2026-07-22
 - `@aws-sdk/client-s3` deployed (@9f4acd3); seam `src/lib/server/storage.ts`; smoke test
   `scripts/r2-roundtrip.mjs`.
+- **⚠️ Fixed 2026-07-22 — KYC/document uploads crashed in the live app** ("page hit a snag";
+  server log `KYC_STORAGE=r2 but @aws-sdk/client-s3 is not installed`). Root cause: `storage.ts`
+  loaded the SDK via a *computed specifier* (`["@aws-sdk","client-s3"].join("/")`) to keep it out
+  of the build graph, and it was NOT in `next.config` `serverExternalPackages` — so the Next
+  server bundle could not resolve it at runtime and `getS3()` threw on every upload/view. The
+  `r2-roundtrip.mjs` smoke passed anyway because it runs as a **plain node script** (native import),
+  never through the bundled server — false confidence. Fix: literal `import("@aws-sdk/client-s3")`
+  + added it to `serverExternalPackages` (same treatment as pdfkit/exceljs). Verified: runtime
+  import resolves, `tsc`+`build` green. Confirm on the live app after deploy.
 - Bucket `50pick-kyc` (Cloudflare R2, WEUR). All 5 Railway vars set: `KYC_STORAGE=r2`,
   `R2_BUCKET=50pick-kyc`, `R2_ENDPOINT=https://e6e5f86245721a28fea6fe1170feba12.r2.cloudflarestorage.com`,
   `R2_ACCESS_KEY_ID` + `R2_SECRET_ACCESS_KEY` (secret values — Railway only).

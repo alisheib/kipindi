@@ -7,12 +7,12 @@ const config: NextConfig = {
   // If Next 16's stricter server-action return-type checking trips the build,
   // revert this to `true` and rely on `npm run typecheck`.
   typescript: { ignoreBuildErrors: false },
-  // Externalise the binary-report dependencies so Next's bundler
-  // doesn't try to webpack them. pdfkit specifically uses
-  // fs.readFileSync to load its AFM font metrics, and exceljs has a
-  // few CJS-only edge cases. Both work cleanly as plain Node imports
-  // when treated as externals.
-  serverExternalPackages: ["pdfkit", "exceljs"],
+  // Externalise dependencies the Next server bundler shouldn't webpack.
+  // pdfkit uses fs.readFileSync for its AFM font metrics; exceljs has CJS-only
+  // edge cases; @aws-sdk/client-s3 is lazily imported by src/lib/server/storage.ts
+  // for R2 KYC storage and MUST be external so the bundled server can resolve it
+  // at runtime (otherwise every KYC document upload/view crashes — fixed 2026-07-22).
+  serverExternalPackages: ["pdfkit", "exceljs", "@aws-sdk/client-s3"],
   experimental: {
     optimizePackageImports: ["lucide-react", "date-fns"],
   },
