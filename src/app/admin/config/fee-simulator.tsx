@@ -42,9 +42,14 @@ export function FeeSimulator({ config }: { config: RateConfig }) {
   const noPool = num(noRaw);
   const stake = num(stakeRaw);
 
+  const isLoserShare = config.feeModel === "loser-share";
+
   const sim = useMemo(() => {
-    const fee = poolFee(yesPool, noPool, config);
+    // Pass the winning side: loser-share charges the LOSING pool, so its fee depends
+    // on the outcome. Capped-commission ignores the side (outcome-neutral).
+    const fee = poolFee(yesPool, noPool, config, side);
     const winningPool = side === "YES" ? yesPool : noPool;
+    const otherSide = side === "YES" ? "NO" : "YES";
 
     // The stake is assumed ALREADY IN the pools (this is a settlement preview, not
     // a new bet), so we use the settlement function directly.
@@ -52,10 +57,9 @@ export function FeeSimulator({ config }: { config: RateConfig }) {
       ? settledPayoutFor({ yesPool, noPool, side, stake }, config)
       : null;
 
-    // Outcome-neutrality, demonstrated rather than asserted: recompute the fee for
-    // the OPPOSITE outcome and show that it is the same number. If a future change
-    // ever makes the fee depend on who won, this line goes red on screen.
-    const feeIfOtherSideWon = poolFee(yesPool, noPool, config).fee;
+    // The fee if the OTHER side had won. For capped-commission this is identical
+    // (outcome-neutral). For loser-share it DIFFERS — the footer says which.
+    const feeIfOtherSideWon = poolFee(yesPool, noPool, config, otherSide).fee;
 
     const traLevy = Math.round(fee.fee * config.traTaxOnCommissionRate);
     const gbtLevy = Math.round(fee.fee * config.gbtLevyOnCommissionRate);
@@ -72,7 +76,10 @@ export function FeeSimulator({ config }: { config: RateConfig }) {
     };
   }, [yesPool, noPool, stake, side, config]);
 
-  const worst = useMemo(() => worstCaseWinnerRatio(config), [config]);
+  const worst = useMemo(
+    () => worstCaseWinnerRatio(config),
+    [config],
+  );
 
   return (
     <div className="space-y-4">
@@ -112,20 +119,39 @@ export function FeeSimulator({ config }: { config: RateConfig }) {
           money
           hint={sim.fee.pool > 0 ? `${((sim.fee.smaller / sim.fee.pool) * 100).toFixed(1)}% of pool` : undefined}
         />
-        <Stat
-          label={`Commission (${fmtRate(config.commissionRate)} of pool)`}
-          value={formatTzs(Math.round(sim.fee.commission))}
-          tone={sim.fee.capped ? "muted" : "default"}
-          money
-          hint={sim.fee.capped ? "capped — not charged" : "charged"}
-        />
-        <Stat
-          label={`Ceiling (${fmtRate(config.feeCeilingRate)} of smaller)`}
-          value={formatTzs(Math.round(sim.fee.ceiling))}
-          tone={sim.fee.capped ? "gold" : "muted"}
-          money
-          hint={sim.fee.capped ? "charged" : "slack"}
-        />
+        {isLoserShare ? (
+          <>
+            <Stat
+              label={`Losing pool (${side === "YES" ? "NO" : "YES"} side)`}
+              value={formatTzs(Math.round(side === "YES" ? noPool : yesPool))}
+              money
+              hint="the fee is a % of THIS"
+            />
+            <Stat
+              label={`Loser-share rate (${fmtRate(config.platformFeeRate + config.operatorFeeRate)})`}
+              value={fmtRate(config.platformFeeRate + config.operatorFeeRate)}
+              tone="gold"
+              hint={`Platform ${fmtRate(config.platformFeeRate)} + Operator ${fmtRate(config.operatorFeeRate)}`}
+            />
+          </>
+        ) : (
+          <>
+            <Stat
+              label={`Commission (${fmtRate(config.commissionRate)} of pool)`}
+              value={formatTzs(Math.round(sim.fee.commission))}
+              tone={sim.fee.capped ? "muted" : "default"}
+              money
+              hint={sim.fee.capped ? "capped — not charged" : "charged"}
+            />
+            <Stat
+              label={`Ceiling (${fmtRate(config.feeCeilingRate)} of smaller)`}
+              value={formatTzs(Math.round(sim.fee.ceiling))}
+              tone={sim.fee.capped ? "gold" : "muted"}
+              money
+              hint={sim.fee.capped ? "charged" : "slack"}
+            />
+          </>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-3 rounded-md border border-border/60 bg-bg-overlay/40 p-3 lg:grid-cols-4">
@@ -191,12 +217,21 @@ export function FeeSimulator({ config }: { config: RateConfig }) {
         </>
       ) : null}
 
-      {/* Outcome-neutrality, shown as a fact about these very numbers. */}
-      <p className="font-mono text-[10.5px] leading-relaxed text-text-subtle">
-        Outcome-neutral: the fee on these pools is {formatTzs(Math.round(sim.fee.fee))} whether YES wins or NO
-        wins ({formatTzs(Math.round(sim.feeIfOtherSideWon))} either way). The fee is computed from the two pool
-        sizes alone and never reads the outcome — that is what the pari-mutuel licence rests on.
-      </p>
+      {/* Fee vs. outcome — a fact about these very numbers, per the active model. */}
+      {isLoserShare ? (
+        <p className="font-mono text-[10.5px] leading-relaxed text-text-subtle">
+          Loser-share (Jay): the fee DEPENDS on who wins. On these pools it is {formatTzs(Math.round(sim.fee.fee))} if {side} wins
+          {" "}(a {fmtRate(config.platformFeeRate + config.operatorFeeRate)} slice of the losing side), and
+          {" "}{formatTzs(Math.round(sim.feeIfOtherSideWon))} if {side === "YES" ? "NO" : "YES"} wins. This is an owner-approved
+          override of the outcome-neutral posture — see docs/COMPLIANCE-DECISIONS.md.
+        </p>
+      ) : (
+        <p className="font-mono text-[10.5px] leading-relaxed text-text-subtle">
+          Outcome-neutral: the fee on these pools is {formatTzs(Math.round(sim.fee.fee))} whether YES wins or NO
+          wins ({formatTzs(Math.round(sim.feeIfOtherSideWon))} either way). The fee is computed from the two pool
+          sizes alone and never reads the outcome — that is what the pari-mutuel licence rests on.
+        </p>
+      )}
     </div>
   );
 }

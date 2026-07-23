@@ -1,10 +1,12 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useDeferredToast } from "@/components/ui/toast";
 import { Input, Field } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { ConfirmModal } from "@/components/ui/modal";
 import {
   updateGlobalConfigAction,
   setMarketOverrideAction,
@@ -18,18 +20,48 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
   const router = useRouter();
   const { deferToast, toast } = useDeferredToast(pending);
 
-  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const fd = new FormData(e.currentTarget);
+  // Fee-model UI state (drives conditional fields + the money-model confirm gate).
+  const [feeModel, setFeeModel] = useState<RateConfig["feeModel"]>(config.feeModel);
+  const [showEst, setShowEst] = useState<boolean>(config.showEstimatedWinnings);
+  const [confirmFd, setConfirmFd] = useState<FormData | null>(null);
+
+  const runSave = (fd: FormData) => {
     start(async () => {
       const r = await updateGlobalConfigAction(fd);
       if (!r.ok) {
         toast({ title: "Couldn't update", description: r.error, variant: "danger" });
       } else {
         router.refresh();
-        deferToast({ title: "Global config updated", variant: "success" });
+        deferToast({
+          title: "Global config updated",
+          description: r.warn,
+          variant: r.warn ? "warning" : "success",
+        });
       }
     });
+  };
+
+  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    // The checkbox posts nothing when unchecked — set it explicitly from state so
+    // "off" is an explicit false, not "leave unchanged".
+    fd.set("showEstimatedWinnings", showEst ? "true" : "false");
+
+    // Money-model change? (the fee model, its two rate slices, the estimate rate,
+    // or the show-estimate toggle) → confirm first, it reprices EVERY future poll.
+    const num = (v: FormDataEntryValue | null) => (v === null || v === "" ? null : Number(v) / 100);
+    const changed =
+      String(fd.get("feeModel") ?? config.feeModel) !== config.feeModel ||
+      (num(fd.get("platformFeeRate")) !== null && num(fd.get("platformFeeRate")) !== config.platformFeeRate) ||
+      (num(fd.get("operatorFeeRate")) !== null && num(fd.get("operatorFeeRate")) !== config.operatorFeeRate) ||
+      (num(fd.get("estimatedWinningsRate")) !== null && num(fd.get("estimatedWinningsRate")) !== config.estimatedWinningsRate) ||
+      showEst !== config.showEstimatedWinnings;
+    if (changed) {
+      setConfirmFd(fd);
+      return;
+    }
+    runSave(fd);
   };
 
   const commPct = (config.commissionRate * 100).toFixed(1);
@@ -39,6 +71,10 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
   const gwPct = (config.withdrawalGatewayShareRate * 100).toFixed(2);
   const traPct = (config.traTaxOnCommissionRate * 100).toFixed(1);
   const gbtPct = (config.gbtLevyOnCommissionRate * 100).toFixed(1);
+  const platformPct = (config.platformFeeRate * 100).toFixed(1);
+  const operatorPct = (config.operatorFeeRate * 100).toFixed(1);
+  const estPct = (config.estimatedWinningsRate * 100).toFixed(0);
+  const loserSharePct = ((config.platformFeeRate + config.operatorFeeRate) * 100).toFixed(1);
 
   return (
     <form onSubmit={onSubmit} className="space-y-3">
@@ -154,6 +190,78 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
           <Input name="gbtLevyOnCommissionRate" type="number" step="0.1" min="0" max="50" defaultValue={gbtPct} mono />
         </Field>
       </div>
+
+      {/* ── FEE MODEL (owner decision 2026-07-23 — Jay's "loser-share") ────────
+          These apply to FUTURE polls only. Every existing poll keeps the model +
+          rates it froze at creation, so the two maths never mix. */}
+      <div className="rounded-lg border border-border bg-bg-overlay p-3 space-y-3">
+        <div>
+          <p className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">Fee model</p>
+          <p className="mt-0.5 text-[11px] text-text-muted">
+            Applies to <strong>new polls only</strong>. Existing polls keep the model they were created under —
+            the two calculations never mix.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <Field
+            label="Fee model (new polls)"
+            hint={
+              feeModel === "loser-share"
+                ? "Loser-share (Jay): the fee is a % of the LOSING pool; the commission + ceiling above are unused for new polls."
+                : "Capped commission: fee = min(commission × pool, ceiling × smaller side). Uses the commission + ceiling fields above."
+            }
+          >
+            <Select
+              name="feeModel"
+              ariaLabel="Fee model for new polls"
+              defaultValue={config.feeModel}
+              onChange={(v) => setFeeModel(v as RateConfig["feeModel"])}
+              options={[
+                { value: "loser-share", label: "Loser-share (Jay) — 13% of losing pool" },
+                { value: "capped-commission", label: "Capped commission (legacy)" },
+              ]}
+            />
+          </Field>
+          {feeModel === "loser-share" ? (
+            <Field
+              label="Total loser-share fee"
+              hint={`Platform + Operator = ${loserSharePct}% of the LOSING pool. Charged only on the side that loses; winners split the rest of the pool.`}
+            >
+              <Input name="_loserShareTotal" type="text" defaultValue={`${loserSharePct}%`} mono disabled />
+            </Field>
+          ) : null}
+        </div>
+
+        {feeModel === "loser-share" ? (
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <Field label="Platform fee (%)" hint={`Current ${platformPct}%. Slice of the losing pool. Jay: 3%.`}>
+              <Input name="platformFeeRate" type="number" step="0.1" min="0" max="100" defaultValue={platformPct} mono />
+            </Field>
+            <Field label="Operator fee (%)" hint={`Current ${operatorPct}%. Slice of the losing pool. Jay: 10%. TRA + GBT come OUT of this, not the player.`}>
+              <Input name="operatorFeeRate" type="number" step="0.1" min="0" max="100" defaultValue={operatorPct} mono />
+            </Field>
+            <Field
+              label="Estimated-winnings bonus (%)"
+              hint={`Current ${estPct}%. The fixed pre-bet "possible winnings" a player sees = stake × ${(1 + config.estimatedWinningsRate).toFixed(2)}. A marketing ESTIMATE, not the real payout — the disclaimer says so. Jay: 50% → 1.5×.`}
+            >
+              <Input name="estimatedWinningsRate" type="number" step="1" min="0" max="500" defaultValue={estPct} mono />
+            </Field>
+            <Field label="Show estimate to players" hint="When on, loser-share polls show the pre-bet 1.5× estimate + disclaimer. When off, players see only qualitative copy.">
+              <label className="flex items-center gap-2 text-[13px] text-text-muted">
+                <input
+                  type="checkbox"
+                  name="showEstimatedWinnings"
+                  checked={showEst}
+                  onChange={(e) => setShowEst(e.currentTarget.checked)}
+                  className="h-4 w-4 accent-brand-500"
+                />
+                Show the “possible winnings” estimate pre-bet
+              </label>
+            </Field>
+          </div>
+        ) : null}
+      </div>
+
       <div className="flex items-center gap-2 pt-1">
         <Button type="submit" variant="yes" loading={pending}>
           Save · Hifadhi
@@ -168,6 +276,25 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
           A save is refused if any winner could be paid below their stake
         </p>
       </div>
+
+      <ConfirmModal
+        open={confirmFd !== null}
+        onClose={() => setConfirmFd(null)}
+        onConfirm={() => {
+          const fd = confirmFd;
+          setConfirmFd(null);
+          if (fd) runSave(fd);
+        }}
+        title="Change the fee model?"
+        body={
+          feeModel === "loser-share"
+            ? "New polls will use Jay's loser-share model: the fee is a percentage of the LOSING pool, and players see a fixed “possible winnings” estimate before betting. This changes the model for FUTURE polls only — every existing poll keeps its current rule. Continue?"
+            : "New polls will use the capped-commission model (min of a commission and a ceiling), and no pre-bet estimate is shown. This affects FUTURE polls only — existing polls keep their current rule. Continue?"
+        }
+        confirmLabel="Save fee model"
+        tone="warning"
+        tier="medium"
+      />
     </form>
   );
 }

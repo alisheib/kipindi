@@ -112,6 +112,29 @@ export const DEFAULT_GBT_LEVY_ON_COMMISSION_RATE = 0.05;
 /** Warn "thin upside" below this payout/stake ratio. */
 export const THIN_PROFIT_RATIO = 1.05;
 
+// ── Fee model ("loser-share", the Jay model — owner decision 2026-07-23) ──────
+// See docs/COMPLIANCE-DECISIONS.md and docs/FEE-MODEL-DECISION.md. The model is
+// FROZEN per poll (feeSnapshot.feeModel), so old polls keep `capped-commission`
+// and new polls use `loser-share` — the two maths NEVER mix. A snapshot with no
+// `feeModel` (every poll created before this change) is read as `capped-commission`.
+/** The DEFAULT model NEW polls freeze. Owner set this to Jay's model. */
+export const DEFAULT_FEE_MODEL: FeeModel = "loser-share";
+/** loser-share: the "Platform" slice of the fee, charged on the LOSING pool. */
+export const DEFAULT_PLATFORM_FEE_RATE = 0.03;
+/** loser-share: the "Operator" slice of the fee, charged on the LOSING pool.
+ *  Total loser-share fee = platformFeeRate + operatorFeeRate (Jay: 3% + 10% = 13%). */
+export const DEFAULT_OPERATOR_FEE_RATE = 0.10;
+/** The two loser-share slices summed may never exceed the whole losing pool. */
+export const MAX_LOSER_SHARE_RATE = 1.0;
+/** Display-only. The fixed "possible winnings" shown pre-bet = stake × (1 + rate).
+ *  Jay's sheet uses 0.5 → a 1.5× headline. It is a marketing estimate, NOT the
+ *  pari-mutuel payout, which is why the disclaimer is mandatory. */
+export const DEFAULT_ESTIMATED_WINNINGS_RATE = 0.5;
+/** Bound for the display estimate rate (0 = show stake back; 5 = 6× headline). */
+export const MAX_ESTIMATED_WINNINGS_RATE = 5;
+/** Whether loser-share polls show the pre-bet estimate at all (owner: on). */
+export const DEFAULT_SHOW_ESTIMATED_WINNINGS = true;
+
 // ── Admin bounds ────────────────────────────────────────────────────────────
 
 export const MAX_COMMISSION_RATE = 0.30;
@@ -139,10 +162,32 @@ export type Side = "YES" | "NO";
  */
 export type LeanLevel = "fair" | "thin";
 
-/** The two rates the fee is made of. Everything money-side takes exactly this. */
+/**
+ * Which fee formula a poll uses. Frozen per poll so the two maths never mix:
+ *  - `capped-commission`: fee = min(commissionRate·pool, feeCeilingRate·smaller).
+ *    Outcome-NEUTRAL. Every poll created before 2026-07-23 (no `feeModel` on its
+ *    snapshot) is read as this.
+ *  - `loser-share` (Jay): fee = (platformFeeRate + operatorFeeRate)·losingPool.
+ *    Outcome-DEPENDENT — the fee is a slice of whichever side LOSES, so `poolFee`
+ *    must be told the winning side. Owner decision 2026-07-23; new default.
+ */
+export type FeeModel = "capped-commission" | "loser-share";
+
+/**
+ * The rates the fee is made of. Everything money-side takes exactly this.
+ * `feeModel`/`platformFeeRate`/`operatorFeeRate` are OPTIONAL: absent ⇒ the legacy
+ * `capped-commission` maths (so an old snapshot or a bare `{commissionRate}` still
+ * behaves exactly as before).
+ */
 export interface FeeRates {
   commissionRate: number;
   feeCeilingRate: number;
+  /** Absent ⇒ `capped-commission`. */
+  feeModel?: FeeModel;
+  /** loser-share only. */
+  platformFeeRate?: number;
+  /** loser-share only. */
+  operatorFeeRate?: number;
 }
 
 /**
@@ -152,6 +197,11 @@ export interface FeeRates {
  * Stored as `PredictionMarket.feeSnapshot` (Json).
  */
 export interface FeeSnapshot extends FeeRates {
+  // A stamped snapshot ALWAYS resolves these (snapshotFromConfig / snapshotOrLegacy),
+  // so they are required here even though they are optional on the bare FeeRates.
+  feeModel: FeeModel;
+  platformFeeRate: number;
+  operatorFeeRate: number;
   cashOutFeeRate: number;
   freeExitGraceMinutes: number;
   /** Minutes of paid (cashOutFeeRate) exit AFTER the free window, then the exit
@@ -162,8 +212,13 @@ export interface FeeSnapshot extends FeeRates {
   traTaxOnCommissionRate: number;
   gbtLevyOnCommissionRate: number;
   thinProfitRatio: number;
-  /** Schema version of this snapshot — bump if the shape ever changes. */
-  v: 1;
+  /** Display-only (loser-share). Fixed pre-bet estimate = stake × (1 + this). */
+  estimatedWinningsRate: number;
+  /** Display-only (loser-share). Whether to show the pre-bet estimate at all. */
+  showEstimatedWinnings: boolean;
+  /** Schema version. `1` (or absent) = legacy `capped-commission`; `2` carries
+   *  `feeModel` + the loser-share/display fields. Old snapshots read as v1. */
+  v: 1 | 2;
   /** ISO timestamp the snapshot was stamped. Audit only; never read by the math. */
   stampedAt: string;
 }
@@ -179,6 +234,7 @@ export interface FeeSnapshot extends FeeRates {
 export type PollRates = Pick<
   FeeSnapshot,
   "commissionRate" | "feeCeilingRate" | "cashOutFeeRate" | "freeExitGraceMinutes" | "paidExitWindowMinutes" | "thinProfitRatio"
+  | "feeModel" | "platformFeeRate" | "operatorFeeRate" | "estimatedWinningsRate" | "showEstimatedWinnings"
 >;
 
 export interface FeeBreakdown {
@@ -231,34 +287,83 @@ export interface LevySplit {
 const clamp = (n: number, lo: number, hi: number): number =>
   Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : lo;
 
-/** Defensive read of the two rates. A NaN/absent rate must never become a big fee. */
-function readRates(rates: Partial<FeeRates> | undefined): FeeRates {
+interface ResolvedRates {
+  commissionRate: number;
+  feeCeilingRate: number;
+  feeModel: FeeModel;
+  platformFeeRate: number;
+  operatorFeeRate: number;
+}
+
+/**
+ * Defensive read of the rates. A NaN/absent rate must never become a big fee.
+ * CRUCIAL no-mix guarantee: an absent `feeModel` (every pre-2026-07-23 snapshot,
+ * or a bare `{commissionRate}`) resolves to `capped-commission`, so old money
+ * behaves exactly as before this change.
+ */
+function readRates(rates: Partial<FeeRates> | undefined): ResolvedRates {
   return {
     commissionRate: clamp(rates?.commissionRate ?? DEFAULT_COMMISSION_RATE, 0, 1),
     feeCeilingRate: clamp(rates?.feeCeilingRate ?? DEFAULT_FEE_CEILING_RATE, 0, MAX_FEE_CEILING_RATE),
+    feeModel: rates?.feeModel === "loser-share" ? "loser-share" : "capped-commission",
+    platformFeeRate: clamp(rates?.platformFeeRate ?? DEFAULT_PLATFORM_FEE_RATE, 0, 1),
+    operatorFeeRate: clamp(rates?.operatorFeeRate ?? DEFAULT_OPERATOR_FEE_RATE, 0, 1),
   };
 }
 
 // ── THE FEE ─────────────────────────────────────────────────────────────────
 
 /**
- * The commission on a pool. Outcome-neutral by construction: it takes the two
- * pool sizes and nothing else — there is no outcome parameter and there must
- * never be one (invariant 2).
+ * The commission on a pool.
+ *
+ * `capped-commission` (legacy, default): outcome-neutral — it takes the two pool
+ * sizes and nothing else (invariant 2), and `winningSide` is ignored.
+ *
+ * `loser-share` (Jay): the fee is `(platformFeeRate + operatorFeeRate) × losingPool`,
+ * so it is OUTCOME-DEPENDENT — `poolFee` must be told the winning side to know which
+ * pool loses. Money paths (settlement, `settledPayoutFor`, `payoutFor`) ALWAYS pass
+ * it. When it is omitted on a loser-share poll (display/guardrail previews only,
+ * where no outcome exists) the fee is previewed against the SMALLER pool as the
+ * loser (the favourite-wins case) — never used to move money.
+ *
+ * The winner floor holds under BOTH models (netPool ≥ winningPool ⇒ payout ≥ stake):
+ * loser-share removes only a slice ≤ 100% of the losing pool, so netPool =
+ * winningPool + losingPool·(1 − rate) ≥ winningPool.
  *
  * Note `feeCeilingRate` is clamped to <= 100% here as well as in admin
  * validation. Two locks on the one thing invariant 1 depends on.
  */
-export function poolFee(yesPool: number, noPool: number, rates: Partial<FeeRates>): FeeBreakdown {
-  const { commissionRate, feeCeilingRate } = readRates(rates);
+export function poolFee(yesPool: number, noPool: number, rates: Partial<FeeRates>, winningSide?: Side): FeeBreakdown {
+  const r = readRates(rates);
   const yes = Math.max(0, yesPool);
   const no = Math.max(0, noPool);
   const pool = yes + no;
   const smaller = Math.min(yes, no);
   const larger = Math.max(yes, no);
 
-  const commission = commissionRate * pool;
-  const ceiling = feeCeilingRate * smaller;
+  if (r.feeModel === "loser-share") {
+    // Jay's model: fee = (platformFeeRate + operatorFeeRate) × the LOSING pool.
+    // The loser is the side opposite the winner, so the fee needs the outcome. When
+    // it is not known (a pre-resolution preview, or the VOID audit) there is no loser
+    // and therefore no fee to charge yet: fee = 0. Money paths always pass the winner.
+    const loserRate = clamp(r.platformFeeRate + r.operatorFeeRate, 0, MAX_LOSER_SHARE_RATE);
+    const losingPool = winningSide === "YES" ? no : winningSide === "NO" ? yes : 0;
+    const fee = loserRate * losingPool;
+    return {
+      pool,
+      smaller,
+      larger,
+      commission: loserRate * pool,        // notional whole-pool figure — informational only
+      ceiling: losingPool,                 // the losing pool the fee is a share of
+      fee,
+      netPool: pool - fee,
+      capped: false,                       // no ceiling concept in this model
+      shareOfLosers: loserRate,            // our constant take on the losing side
+    };
+  }
+
+  const commission = r.commissionRate * pool;
+  const ceiling = r.feeCeilingRate * smaller;
   const fee = Math.min(commission, ceiling);
 
   return {
@@ -314,7 +419,10 @@ export function settledPayoutFor(
   opts: { yesPool: number; noPool: number; side: Side; stake: number },
   rates: Partial<FeeRates>,
 ): PayoutResult {
-  const fee = poolFee(opts.yesPool, opts.noPool, rates);
+  // The position's own side IS the winning side in the scenario this payout is for
+  // ("if MY side wins"). For loser-share that fixes the loser = the opposite pool;
+  // for capped-commission it is ignored (outcome-neutral).
+  const fee = poolFee(opts.yesPool, opts.noPool, rates, opts.side);
   const winningPool = opts.side === "YES" ? opts.yesPool : opts.noPool;
 
   if (winningPool <= 0 || opts.stake <= 0) {
@@ -457,7 +565,9 @@ export function worstCaseWinnerRatio(rates: Partial<FeeRates>): { ratio: number;
     for (const side of ["YES", "NO"] as const) {
       const winningPool = side === "YES" ? yes : no;
       if (winningPool <= 0) continue;
-      const { netPool } = poolFee(yes, no, rates);
+      // Pass `side` as the winning side so loser-share is swept honestly across
+      // BOTH outcomes (its fee depends on which side loses); capped ignores it.
+      const { netPool } = poolFee(yes, no, rates, side);
       const ratio = netPool / winningPool; // stake-independent
       if (ratio < worst) {
         worst = ratio;

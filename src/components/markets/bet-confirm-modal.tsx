@@ -264,27 +264,43 @@ export function BetConfirmModal({
           </div>
         </div>
 
-        {/* Payout disclosure — per management spec (license review · 2026-05)
-            the potential winning is NOT shown until the event has resolved.
-            Player commits on stake + multiplier + side; final payout
-            communicated post-resolution. */}
-        <div className="mt-3 rounded-lg border border-border bg-bg-overlay p-3">
-          <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-text-subtle mb-1">
-            {t.common.payout2}
-          </p>
-          {/* Pool-share invariant (micro-spec §10.2) — side-aware, mandatory
-              on the medium confirm: the player must see that a win means
-              sharing the pool, not a fixed odds payout. */}
-          <p className="text-[12.5px] font-semibold leading-relaxed text-text">
-            {t.dialog.poolShareIfWins.replace(
-              "{side}",
-              side === "YES" ? t.market.sideYesWord.toUpperCase() : t.market.sideNoWord.toUpperCase(),
-            )}
-          </p>
-          <p className="mt-1 text-[12px] leading-relaxed text-text-muted">
-            {t.dialog.payoutCalcBody}
-          </p>
-        </div>
+        {/* Payout disclosure.
+            - capped-commission (D3, license review · 2026-05): NO figure pre-bet —
+              only the qualitative pool-share copy.
+            - loser-share (Jay, owner decision 2026-07-23): show the fixed estimate
+              = stake × (1 + estimatedWinningsRate) with a mandatory disclaimer that
+              it is an estimate. See docs/COMPLIANCE-DECISIONS.md. */}
+        {rates?.feeModel === "loser-share" && rates?.showEstimatedWinnings !== false ? (
+          <div className="mt-3 rounded-lg border border-border bg-bg-overlay p-3">
+            <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-text-subtle mb-1">
+              {t.dialog.estimatedWinningsLabel}
+            </p>
+            <p className="text-[18px] font-bold tabular-nums text-text leading-none">
+              TZS {formatNumber(Math.round(stake * (1 + (rates?.estimatedWinningsRate ?? 0))))}
+            </p>
+            <p className="mt-1.5 text-[12px] leading-relaxed text-text-muted">
+              {t.dialog.estimateDisclaimer}
+            </p>
+          </div>
+        ) : (
+          <div className="mt-3 rounded-lg border border-border bg-bg-overlay p-3">
+            <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-text-subtle mb-1">
+              {t.common.payout2}
+            </p>
+            {/* Pool-share invariant (micro-spec §10.2) — side-aware, mandatory
+                on the medium confirm: the player must see that a win means
+                sharing the pool, not a fixed odds payout. */}
+            <p className="text-[12.5px] font-semibold leading-relaxed text-text">
+              {t.dialog.poolShareIfWins.replace(
+                "{side}",
+                side === "YES" ? t.market.sideYesWord.toUpperCase() : t.market.sideNoWord.toUpperCase(),
+              )}
+            </p>
+            <p className="mt-1 text-[12px] leading-relaxed text-text-muted">
+              {t.dialog.payoutCalcBody}
+            </p>
+          </div>
+        )}
 
         {/* Grace period disclosure */}
         <div className="mt-2 rounded-lg border border-brand-500/30 bg-brand-500/[0.07] px-3 py-2.5 flex items-start gap-2">

@@ -45,6 +45,20 @@ function parseRatio(raw: string | null): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
+/** A <select> for the fee model. Only the two known values are accepted. */
+function parseFeeModel(raw: string | null): RateConfig["feeModel"] | undefined {
+  if (raw === "capped-commission" || raw === "loser-share") return raw;
+  return undefined;
+}
+
+/** A checkbox. Absent (unchecked) ⇒ false; present ("on"/"true") ⇒ true.
+ *  The hidden companion input guarantees the key is always posted, so an unchecked
+ *  box reads as an explicit false rather than "leave unchanged". */
+function parseBool(raw: string | null): boolean | undefined {
+  if (raw == null) return undefined;
+  return raw === "on" || raw === "true" || raw === "1";
+}
+
 export async function updateGlobalConfigAction(formData: FormData) {
   const s = await ensureAdmin();
   try {
@@ -65,6 +79,14 @@ export async function updateGlobalConfigAction(formData: FormData) {
     // F11 — the settlement gate. Hours, not a rate: 0..168, 0 = no window.
     const objWindow = parseInteger(String(formData.get("objectionWindowHours") ?? ""));
     const gbt = parseRate(String(formData.get("gbtLevyOnCommissionRate") ?? ""));
+    // Fee model (Jay's "loser-share") — applies to FUTURE polls only.
+    const feeModel = parseFeeModel(formData.get("feeModel") as string | null);
+    const platform = parseRate(String(formData.get("platformFeeRate") ?? ""));
+    const operator = parseRate(String(formData.get("operatorFeeRate") ?? ""));
+    const estRate = parseRate(String(formData.get("estimatedWinningsRate") ?? ""));
+    // Checkbox: the form always posts this key (hidden companion), so its absence
+    // is impossible; a genuinely-absent key means "form didn't include it" → skip.
+    const showEst = formData.has("feeModel") ? parseBool(formData.get("showEstimatedWinnings") as string | null) : undefined;
     if (c !== undefined) updates.commissionRate = c;
     if (ceil !== undefined) updates.feeCeilingRate = ceil;
     if (co !== undefined) updates.cashOutFeeRate = co;
@@ -79,6 +101,11 @@ export async function updateGlobalConfigAction(formData: FormData) {
     if (tra !== undefined) updates.traTaxOnCommissionRate = tra;
     if (objWindow !== undefined) updates.objectionWindowHours = objWindow;
     if (gbt !== undefined) updates.gbtLevyOnCommissionRate = gbt;
+    if (feeModel !== undefined) updates.feeModel = feeModel;
+    if (platform !== undefined) updates.platformFeeRate = platform;
+    if (operator !== undefined) updates.operatorFeeRate = operator;
+    if (estRate !== undefined) updates.estimatedWinningsRate = estRate;
+    if (showEst !== undefined) updates.showEstimatedWinnings = showEst;
     // setGlobalConfig REFUSES a config under which a winner could be paid below
     // their stake (the winner-floor guardrail in validate()), and may return a
     // `warn` for a ceiling above 50%. Both surface to the officer.

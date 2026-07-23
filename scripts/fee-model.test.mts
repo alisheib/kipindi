@@ -81,6 +81,12 @@ async function makeMarket() {
   } as never);
 }
 
+// This suite validates the CAPPED-COMMISSION model. The platform default is now
+// loser-share (Jay), so pin the global config to capped-commission — every
+// makeMarket() below then freezes the model these sections assert. The loser-share
+// model has its own dedicated suite (scripts/jay-fee-model.test.mts).
+await setGlobalConfig({ feeModel: "capped-commission" }, "fee-model-test-setup");
+
 // ════════════════════════════════════════════════════════════════════════════
 // 1 · THE WINNER FLOOR — the whole point of the change.
 //     Swept across the lean range AND across every commissionRate an admin can

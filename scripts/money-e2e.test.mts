@@ -34,6 +34,7 @@ import {
   listPositionsForMarket, notifySelectionClosedMarkets, ratesFor,
 } from "../src/lib/server/market-service.ts";
 import { marketStore, positionStore } from "../src/lib/server/market-dal.ts";
+import { setGlobalConfig } from "../src/lib/server/market-config.ts";
 import { poolFee } from "../src/lib/payout.ts";
 
 if (!process.env.DATABASE_URL) {
@@ -55,7 +56,8 @@ const section = (s: string) => console.log(`\n${"═".repeat(74)}\n  ${s}\n${"�
 let phone = 700000000;
 async function player(id: string) {
   const p = `+255${++phone}`;
-  await prisma.user.create({ data: { id, phoneE164: p, role: "PLAYER", status: "ACTIVE", locale: "EN", displayName: id } });
+  // A verified email is required before a first deposit (wallet-service email gate).
+  await prisma.user.create({ data: { id, phoneE164: p, role: "PLAYER", status: "ACTIVE", locale: "EN", displayName: id, email: `${id}@test.tz`, emailVerifiedAt: new Date() } });
   await prisma.wallet.create({ data: { id: `wal_${id}`, userId: id, balance: 0, currency: "TZS", status: "ACTIVE" } });
   await prisma.kycSubmission.create({ data: { userId: id, status: "APPROVED", nidaNumber: `${19900101}${String(phone).slice(-10)}` } });
   return p;
@@ -80,6 +82,12 @@ async function pastGrace(posId: string) {
 
 await officer("officer_a");
 await officer("officer_b");
+
+// This suite's hardcoded numbers are the capped-commission model with a paid-exit
+// window. Pin both (the platform defaults are now loser-share + paidExitWindow=0) so
+// the suite is self-consistent and tests the capped e2e path against real Postgres.
+// loser-share conservation against Postgres is covered by the drift check either way.
+await setGlobalConfig({ feeModel: "capped-commission", paidExitWindowMinutes: 15 }, "e2e-setup");
 
 // ════════════════════════════════════════════════════════════════════════════
 section("1 · CASH IN — six players deposit through the real payment service");

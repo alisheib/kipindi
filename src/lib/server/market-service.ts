@@ -1757,11 +1757,14 @@ export async function settleMarket(
   const grossPool = m.yesPool + m.noPool;
   const winningPool = opts.outcome === "YES" ? m.yesPool : opts.outcome === "NO" ? m.noPool : 0;
 
-  // THE FEE. Computed ONCE, from the two pool numbers and the frozen rates, before
-  // we know or care which side won. It is byte-identical for a YES win and a NO win
-  // on the same final pools — that outcome-neutrality is what the pari-mutuel
-  // licence rests on (F6 §3.1), and it is why `poolFee` takes no outcome argument.
-  const settleFee = poolFee(m.yesPool, m.noPool, settleCfg);
+  // THE FEE, from the two pool numbers and the poll's FROZEN rates.
+  //  - capped-commission (legacy polls): outcome-neutral — byte-identical for a YES
+  //    or NO win on the same pools (F6 §3.1). The `winningSide` arg is ignored.
+  //  - loser-share (Jay polls, owner decision 2026-07-23): the fee is a slice of the
+  //    LOSING pool, so it DOES depend on the outcome — we pass the declared winner so
+  //    `poolFee` charges the correct (losing) side. VOID never reaches the fee.
+  const winningSide: Side | undefined = opts.outcome === "YES" || opts.outcome === "NO" ? opts.outcome : undefined;
+  const settleFee = poolFee(m.yesPool, m.noPool, settleCfg, winningSide);
 
   // Settle only OPEN positions. A CASHED_OUT (or otherwise already-settled)
   // position has already paid out and had its stake removed from the pool —
@@ -2028,12 +2031,16 @@ export async function settleMarket(
     payload: {
       outcome: opts.outcome,
       yesPool: m.yesPool, noPool: m.noPool,
-      payoutModel: "whole-pool-capped-fee",
+      // The model this poll FROZE at creation, so the chain records which maths paid.
+      payoutModel: settleCfg.feeModel === "loser-share" ? "whole-pool-loser-share" : "whole-pool-capped-fee",
       // The whole fee arithmetic, in the tamper-evident chain. An inspector (or a
-      // player who disputes a payout) can recompute the fee from these five
-      // numbers alone and check that `fee = min(commission, ceiling)` — and that
-      // it did not depend on which side won.
-      rates: { commissionRate: settleCfg.commissionRate, feeCeilingRate: settleCfg.feeCeilingRate },
+      // player who disputes a payout) can recompute the fee from these numbers:
+      //  - capped-commission: fee = min(commissionRate·pool, feeCeilingRate·smaller), outcome-neutral.
+      //  - loser-share: fee = (platformFeeRate+operatorFeeRate)·losingPool, where the
+      //    loser is the side opposite `outcome`.
+      rates: settleCfg.feeModel === "loser-share"
+        ? { feeModel: "loser-share", platformFeeRate: settleCfg.platformFeeRate, operatorFeeRate: settleCfg.operatorFeeRate }
+        : { feeModel: "capped-commission", commissionRate: settleCfg.commissionRate, feeCeilingRate: settleCfg.feeCeilingRate },
       grossPool: settleFee.pool,
       smallerSide: settleFee.smaller,
       commissionUncapped: Math.round(settleFee.commission),

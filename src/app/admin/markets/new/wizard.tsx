@@ -11,7 +11,11 @@ import { createMarketAction } from "@/app/markets/actions";
 
 const CATEGORIES = ["sports", "macro", "weather", "crypto", "culture", "tech", "other"] as const;
 
-export function NewMarketWizard() {
+type FeeInfo =
+  | { model: "loser-share"; feePct: string; estMult: string; showEstimate: boolean }
+  | { model: "capped-commission"; commissionPct: string; ceilingPct: string };
+
+export function NewMarketWizard({ feeInfo }: { feeInfo: FeeInfo }) {
   const [step, setStep] = useState(0);
   const [titleEn, setTitleEn] = useState("");
   const [titleSw, setTitleSw] = useState("");
@@ -57,6 +61,24 @@ export function NewMarketWizard() {
       <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle">
         Step {step + 1} / 4
       </p>
+
+      {/* What this market WILL freeze at creation (read-only). Change it at
+          /admin/config → Fee model. A poll settles by the model it was created under. */}
+      <div className="rounded-md border border-border bg-bg-overlay px-3 py-2.5 text-[11.5px] text-text-muted">
+        <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-text-subtle">Fee model frozen at creation</span>
+        {feeInfo.model === "loser-share" ? (
+          <p className="mt-1">
+            <strong className="text-text">Loser-share (Jay)</strong> — fee = <strong className="text-text">{feeInfo.feePct}%</strong> of the losing pool.
+            {feeInfo.showEstimate
+              ? <> Players see a fixed <strong className="text-text">{feeInfo.estMult}×</strong> &ldquo;possible winnings&rdquo; estimate before betting.</>
+              : <> The pre-bet estimate is hidden.</>}
+          </p>
+        ) : (
+          <p className="mt-1">
+            <strong className="text-text">Capped commission</strong> — fee = min({feeInfo.commissionPct}% of pool, {feeInfo.ceilingPct}% of the smaller side). No pre-bet estimate shown.
+          </p>
+        )}
+      </div>
 
       {step === 0 && (
         <Section title="Question" sw="Swali">

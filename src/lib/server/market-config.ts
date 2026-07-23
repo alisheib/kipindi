@@ -38,11 +38,19 @@ import {
   MAX_COMMISSION_RATE,
   MAX_FEE_CEILING_RATE,
   FEE_CEILING_WARN_ABOVE,
+  DEFAULT_FEE_MODEL,
+  DEFAULT_PLATFORM_FEE_RATE,
+  DEFAULT_OPERATOR_FEE_RATE,
+  DEFAULT_ESTIMATED_WINNINGS_RATE,
+  DEFAULT_SHOW_ESTIMATED_WINNINGS,
+  MAX_LOSER_SHARE_RATE,
+  MAX_ESTIMATED_WINNINGS_RATE,
   worstCaseWinnerRatio,
   payoutFor,
   settledPayoutFor,
   leanFor,
   type FeeSnapshot,
+  type FeeModel,
   type LeanLevel as LeanLevelType,
 } from "../payout";
 
@@ -58,6 +66,7 @@ export {
   worstCaseWinnerRatio,
   type LeanLevel,
   type FeeRates,
+  type FeeModel,
   type FeeSnapshot,
   type FeeBreakdown,
   type PayoutResult,
@@ -137,6 +146,29 @@ export type RateConfig = {
    *  deployment; for the licensed real-money product this MUST stay > 0 — it is
    *  the control we describe to the regulator. */
   objectionWindowHours: number;
+
+  // ── Fee MODEL (owner decision 2026-07-23 — Jay's "loser-share") ─────────────
+  // These are FROZEN per poll at creation. Changing them here reprices only FUTURE
+  // polls; every existing poll keeps the model + rates its snapshot froze, so the
+  // two maths never mix (docs/FEE-MODEL-DECISION.md, docs/COMPLIANCE-DECISIONS.md).
+  /**
+   * Which fee formula NEW polls use.
+   *  - `capped-commission`: fee = min(commissionRate·pool, feeCeilingRate·smaller).
+   *  - `loser-share` (Jay, default): fee = (platformFeeRate+operatorFeeRate)·losingPool.
+   * loser-share is outcome-DEPENDENT (the fee depends on which side loses) — an
+   * explicit owner override of the licence's outcome-neutral posture.
+   */
+  feeModel: FeeModel;
+  /** loser-share: "Platform" fee slice, share of the LOSING pool (Jay: 0.03). */
+  platformFeeRate: number;
+  /** loser-share: "Operator" fee slice, share of the LOSING pool (Jay: 0.10). */
+  operatorFeeRate: number;
+  /** loser-share DISPLAY only: the fixed pre-bet "possible winnings" a player is
+   *  shown = stake × (1 + this). Jay: 0.5 → a 1.5× headline. NOT the pari-mutuel
+   *  payout — the disclaimer beside it says so. */
+  estimatedWinningsRate: number;
+  /** loser-share DISPLAY only: whether to show that pre-bet estimate at all. */
+  showEstimatedWinnings: boolean;
 };
 
 export const DEFAULT_GLOBAL_CONFIG: RateConfig = {
@@ -169,6 +201,14 @@ export const DEFAULT_GLOBAL_CONFIG: RateConfig = {
   gbtLevyOnCommissionRate: DEFAULT_GBT_LEVY_ON_COMMISSION_RATE,  // 5% of our fee → GBT
   // The objection window players get before a verdict's money moves.
   objectionWindowHours: 24,
+  // Fee model NEW polls freeze. Owner (2026-07-23) set the default to Jay's
+  // "loser-share": fee = 13% of the losing pool (Platform 3% + Operator 10%),
+  // and players see a fixed 1.5× "possible winnings" estimate pre-bet.
+  feeModel: DEFAULT_FEE_MODEL,                          // "loser-share"
+  platformFeeRate: DEFAULT_PLATFORM_FEE_RATE,           // 0.03
+  operatorFeeRate: DEFAULT_OPERATOR_FEE_RATE,           // 0.10
+  estimatedWinningsRate: DEFAULT_ESTIMATED_WINNINGS_RATE, // 0.5 → 1.5× headline
+  showEstimatedWinnings: DEFAULT_SHOW_ESTIMATED_WINNINGS,  // true
 };
 
 /**
@@ -192,7 +232,14 @@ export function snapshotFromConfig(cfg: RateConfig): FeeSnapshot {
     traTaxOnCommissionRate: cfg.traTaxOnCommissionRate,
     gbtLevyOnCommissionRate: cfg.gbtLevyOnCommissionRate,
     thinProfitRatio: cfg.thinProfitRatio,
-    v: 1,
+    // Freeze the fee model + its rates onto the poll (v2). A poll settles by the
+    // model it was CREATED under, forever — the no-mix guarantee.
+    feeModel: cfg.feeModel,
+    platformFeeRate: cfg.platformFeeRate,
+    operatorFeeRate: cfg.operatorFeeRate,
+    estimatedWinningsRate: cfg.estimatedWinningsRate,
+    showEstimatedWinnings: cfg.showEstimatedWinnings,
+    v: 2,
     stampedAt: new Date().toISOString(),
   };
 }
@@ -226,6 +273,12 @@ function safeRate(v: unknown, fallback: number, hi = 1): number {
 export function snapshotOrLegacy(raw: unknown): FeeSnapshot {
   const s = raw as Partial<FeeSnapshot> | null | undefined;
   if (s && Number.isFinite(s.commissionRate) && Number.isFinite(s.feeCeilingRate)) {
+    // THE NO-MIX GUARANTEE. Only a snapshot that explicitly froze `feeModel:
+    // "loser-share"` (a v2 poll created after 2026-07-23) reads as loser-share.
+    // Everything else — every poll created before this change has NO feeModel —
+    // reads as the legacy `capped-commission` model, so its maths is byte-for-byte
+    // what it always was, and the loser-share/display fields are inert on it.
+    const isLoserShare = s.feeModel === "loser-share";
     return {
       commissionRate: safeRate(s.commissionRate, DEFAULT_COMMISSION_RATE),
       feeCeilingRate: safeRate(s.feeCeilingRate, DEFAULT_FEE_CEILING_RATE, MAX_FEE_CEILING_RATE),
@@ -235,7 +288,13 @@ export function snapshotOrLegacy(raw: unknown): FeeSnapshot {
       traTaxOnCommissionRate: safeRate(s.traTaxOnCommissionRate, DEFAULT_TRA_TAX_ON_COMMISSION_RATE),
       gbtLevyOnCommissionRate: safeRate(s.gbtLevyOnCommissionRate, DEFAULT_GBT_LEVY_ON_COMMISSION_RATE),
       thinProfitRatio: Number.isFinite(s.thinProfitRatio) ? (s.thinProfitRatio as number) : THIN_PROFIT_RATIO,
-      v: 1,
+      feeModel: isLoserShare ? "loser-share" : "capped-commission",
+      platformFeeRate: safeRate(s.platformFeeRate, DEFAULT_PLATFORM_FEE_RATE),
+      operatorFeeRate: safeRate(s.operatorFeeRate, DEFAULT_OPERATOR_FEE_RATE),
+      // Display fields are inert unless this poll is loser-share.
+      estimatedWinningsRate: isLoserShare ? safeRate(s.estimatedWinningsRate, DEFAULT_ESTIMATED_WINNINGS_RATE, MAX_ESTIMATED_WINNINGS_RATE) : 0,
+      showEstimatedWinnings: isLoserShare ? s.showEstimatedWinnings !== false : false,
+      v: isLoserShare ? 2 : 1,
       stampedAt: s.stampedAt ?? "legacy",
     };
   }
@@ -248,6 +307,12 @@ export function snapshotOrLegacy(raw: unknown): FeeSnapshot {
     traTaxOnCommissionRate: DEFAULT_TRA_TAX_ON_COMMISSION_RATE,
     gbtLevyOnCommissionRate: DEFAULT_GBT_LEVY_ON_COMMISSION_RATE,
     thinProfitRatio: THIN_PROFIT_RATIO,
+    // An un-snapshotted poll predates this change ⇒ legacy capped-commission, no estimate.
+    feeModel: "capped-commission",
+    platformFeeRate: DEFAULT_PLATFORM_FEE_RATE,
+    operatorFeeRate: DEFAULT_OPERATOR_FEE_RATE,
+    estimatedWinningsRate: 0,
+    showEstimatedWinnings: false,
     v: 1,
     stampedAt: "legacy",
   };
@@ -435,6 +500,37 @@ function validate(updates: Partial<RateConfig>): { ok: true; warn?: string } | {
     }
   }
 
+  // ── Fee-model fields (loser-share / Jay) ───────────────────────────────────
+  if (updates.feeModel !== undefined) {
+    if (updates.feeModel !== "capped-commission" && updates.feeModel !== "loser-share") {
+      return { ok: false, reason: "Fee model must be 'capped-commission' or 'loser-share'." };
+    }
+  }
+  if (updates.platformFeeRate !== undefined) {
+    if (Number.isNaN(updates.platformFeeRate) || updates.platformFeeRate < 0 || updates.platformFeeRate > MAX_LOSER_SHARE_RATE) {
+      return { ok: false, reason: "Platform fee must be 0-100% of the losing pool." };
+    }
+  }
+  if (updates.operatorFeeRate !== undefined) {
+    if (Number.isNaN(updates.operatorFeeRate) || updates.operatorFeeRate < 0 || updates.operatorFeeRate > MAX_LOSER_SHARE_RATE) {
+      return { ok: false, reason: "Operator fee must be 0-100% of the losing pool." };
+    }
+  }
+  // The loser-share fee is the SUM of the two slices, charged on the losing pool.
+  // It must stay <= 100% or netPool goes negative and a winner is paid below stake.
+  {
+    const pf = updates.platformFeeRate ?? store.global.platformFeeRate;
+    const of = updates.operatorFeeRate ?? store.global.operatorFeeRate;
+    if (pf + of > MAX_LOSER_SHARE_RATE) {
+      return { ok: false, reason: "Platform + Operator fee cannot exceed 100% of the losing pool — a winner would be paid below their stake." };
+    }
+  }
+  if (updates.estimatedWinningsRate !== undefined) {
+    if (Number.isNaN(updates.estimatedWinningsRate) || updates.estimatedWinningsRate < 0 || updates.estimatedWinningsRate > MAX_ESTIMATED_WINNINGS_RATE) {
+      return { ok: false, reason: `Estimated-winnings bonus must be 0-${(MAX_ESTIMATED_WINNINGS_RATE * 100).toFixed(0)}%.` };
+    }
+  }
+
   // ── THE GUARDRAIL ─────────────────────────────────────────────────────────
   // Refuse to save a config under which a winner could be paid below his stake.
   //
@@ -446,7 +542,13 @@ function validate(updates: Partial<RateConfig>): { ok: true; warn?: string } | {
   {
     const c = updates.commissionRate ?? store.global.commissionRate;
     const k = updates.feeCeilingRate ?? store.global.feeCeilingRate;
-    const worst = worstCaseWinnerRatio({ commissionRate: c, feeCeilingRate: k });
+    // Sweep under the EFFECTIVE model — for loser-share, worstCaseWinnerRatio
+    // evaluates both outcomes (its fee depends on the loser). The winner floor
+    // must hold whichever model + rates are about to be saved.
+    const fm = updates.feeModel ?? store.global.feeModel;
+    const pf = updates.platformFeeRate ?? store.global.platformFeeRate;
+    const of = updates.operatorFeeRate ?? store.global.operatorFeeRate;
+    const worst = worstCaseWinnerRatio({ commissionRate: c, feeCeilingRate: k, feeModel: fm, platformFeeRate: pf, operatorFeeRate: of });
     if (worst.ratio < 1) {
       return {
         ok: false,

@@ -143,6 +143,16 @@ the house has no position, so it has no incentive to influence an outcome.
 > **less** when the poll is lopsided — because taking more would come out of the
 > winners' own stakes.
 
+> **NOTE (2026-07-23) — the `loser-share` (Jay) fee model is an owner-authorised
+> exception to the paragraph above.** By owner decision (`docs/COMPLIANCE-DECISIONS.md`,
+> `docs/FEE-MODEL-DECISION.md`), NEW polls default to `feeModel: "loser-share"`: the fee is
+> a fixed % of the LOSING pool, so it IS outcome-dependent (the house takes more when the
+> big pool loses). The house still stakes NOTHING into the pool — it has no position and
+> cannot lose — but its *rake* now varies with the result. This is a deliberate,
+> documented override, not a regression; every existing poll stays `capped-commission`
+> (frozen per poll, no mixed maths). Do not "restore" outcome-neutrality for loser-share
+> polls. The capped-commission model above remains in force for every poll that froze it.
+
 The moment the house stakes into the pool, its P&L depends on which way the market
 resolves. Economically the product stops being pari-mutuel and starts being a
 **book**. That is a different licence class and a materially higher integrity bar.

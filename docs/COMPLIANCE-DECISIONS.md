@@ -6,6 +6,52 @@
 
 ---
 
+## 2026-07-23 · Fee model: "loser-share" (Jay) + pre-bet estimate — new polls
+
+**Owner decision:** Ali, explicit, 2026-07-23 (authorised in-session), on the recommendation
+of accountant Jay (`Proposal/50pick Calculations.xlsx`, reviewed in `docs/FEE-MODEL-DECISION.md`).
+
+**What changed (FUTURE polls only):** a new fee model, `loser-share`, is now the default a
+new poll freezes at creation:
+- **Fee = (platformFeeRate + operatorFeeRate) × the LOSING pool** (Jay's default: 3% + 10% =
+  **13% of the losing side**), instead of `capped-commission`'s `min(commission·pool, ⅓·smaller)`.
+- **Players see a fixed "possible winnings" estimate** pre-bet = `stake × (1 + estimatedWinningsRate)`
+  (Jay's default 0.5 → **1.5×**), with a mandatory "estimate only — the pool sets the real
+  amount" disclaimer. This is shown ONLY on `loser-share` polls.
+- Admin-managed at **/admin/config → Fee model** (`feeModel`, `platformFeeRate`, `operatorFeeRate`,
+  `estimatedWinningsRate`, `showEstimatedWinnings`); a change requires a confirm and is audited.
+
+**Two compliance postures this DELIBERATELY overrides (for `loser-share` polls only):**
+1. **Outcome-neutral fee (F6 §3.1).** `loser-share` is outcome-DEPENDENT — the fee is a slice
+   of whichever side loses, so the same pools yield a different fee per outcome. This is an
+   explicit owner override; the settlement audit records `payoutModel: "whole-pool-loser-share"`
+   and the two rate slices so an inspector can still recompute it.
+2. **Policy D3 (no pre-bet payout number).** `loser-share` polls show the fixed 1.5× estimate
+   before betting. The disclaimer keeps it honest (it is a marketing estimate, not the payout).
+
+**What did NOT change (the safety rails hold):**
+- **No mint / no leak.** `Σ payouts + fee == pool` exactly, proven under `loser-share` by
+  `money-invariants` (default is now loser-share), `jay-fee-model`, and `ledger` (double-entry).
+- **Winner floor.** A correct call is never paid below its stake — `netPool = winningPool +
+  losingPool·(1 − rate) ≥ winningPool`, `assertWinnerFloor` still enforced.
+- **Taxes out of OUR fee.** TRA 10% + GBT 5% still come out of the 13%, never the player.
+- **No mixed maths — the whole point.** The model is FROZEN per poll (`feeSnapshot.feeModel`,
+  schema `v:2`). Every poll created before this change has NO `feeModel` and is read as
+  `capped-commission` forever (`snapshotOrLegacy`), so existing/in-flight/settled polls are
+  untouched. `capped-commission` remains fully implemented and tested (`fee-model.test.mts`,
+  pinned to it).
+
+**Where it lives:** `src/lib/payout.ts` (`FeeModel`, `poolFee(…, winningSide?)`),
+`src/lib/server/market-config.ts` (RateConfig + snapshot), `market-service.ts` (settlement
+passes the winner), admin `config/` + `markets/new`, player `conviction-dial` / `bet-confirm-modal`.
+Golden test: `scripts/jay-fee-model.test.mts` (reproduces Jay's sheet: 84,500 / 2,080).
+
+**Guardrail (⛔):** do not "restore" outcome-neutrality or D3 for `loser-share` polls — the
+override is intentional and owner-authorised. Do not change existing polls' frozen model. Do
+not delete the `capped-commission` model (existing polls settle on it).
+
+---
+
 ## 2026-07-21 · Player terminology: "one-sided market" → "one-sided win" (licence)
 
 **Owner decision:** Ali, explicit, 2026-07-21 (authorised in-session). **Critical for the

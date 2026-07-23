@@ -146,11 +146,17 @@ for (let s = 0; s < scenarios.length; s++) {
   const mkt = (await getMarket(mid))!;
   const grossPool = mkt.yesPool + mkt.noPool;
   // The house take, computed INDEPENDENTLY of the measured payouts — that is the
-  // whole point of this oracle. It re-derives the fee from the RULE
-  // (min(commission × pool, ceiling × smallerSide)) against the poll's own frozen
-  // rates, so an over- or under-paying regression in settlement breaks
-  // conservation instead of quietly agreeing with itself.
-  const fee = poolFee(mkt.yesPool, mkt.noPool, ratesFor(mkt));
+  // whole point of this oracle. It re-derives the fee from the RULE against the
+  // poll's own frozen rates — capped-commission (min(commission × pool, ceiling ×
+  // smaller)) or loser-share (rate × losing pool) — so an over- or under-paying
+  // regression in settlement breaks conservation instead of quietly agreeing with
+  // itself. loser-share is outcome-dependent, so the oracle is told the winner.
+  const fee = poolFee(
+    mkt.yesPool,
+    mkt.noPool,
+    ratesFor(mkt),
+    sc.outcome === "YES" || sc.outcome === "NO" ? sc.outcome : undefined,
+  );
   expectedHouseTake += Math.round(fee.fee);
 
   // Snapshot balances, resolve, measure credits.

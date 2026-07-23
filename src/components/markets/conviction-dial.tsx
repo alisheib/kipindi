@@ -1371,28 +1371,49 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, max
         </div>
       </div>
 
-      {/* Payout disclosure — per management spec (license review · 2026-05)
-          the potential winning is NOT shown until the event has resolved.
-          During placement the player sees their stake, multiplier, and side;
-          the actual payout is communicated post-resolution via notification
-          + the Positions page. */}
-      {effectiveSide !== "NEUTRAL" && (
-        <div className="mt-3 rounded-md border border-border bg-bg-overlay px-3 py-2.5">
-          <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-text-subtle mb-1">
-            {t.common.payout2}
-            <InfoHint size={10} label={fill(t.dialog.payoutHowItWorks, { pct: pctNum(rates?.commissionRate ?? DEFAULT_COMMISSION_RATE), ceiling: fmtRate(rates?.feeCeilingRate ?? DEFAULT_FEE_CEILING_RATE) })} />
-          </p>
-          <p className="text-[12px] leading-relaxed text-text-muted">
-            {t.dialog.payoutCalcBody}
-          </p>
-        </div>
-      )}
+      {/* Payout disclosure.
+          - capped-commission polls (D3, license review · 2026-05): the potential
+            winning is NOT shown pre-bet — only qualitative copy.
+          - loser-share polls (Jay, owner decision 2026-07-23): show a FIXED
+            "possible winnings" estimate = stake × (1 + estimatedWinningsRate), with a
+            mandatory disclaimer that it is an estimate and the real payout comes from
+            the pool. See docs/COMPLIANCE-DECISIONS.md. */}
+      {effectiveSide !== "NEUTRAL" && (() => {
+        const showEstimate = rates?.feeModel === "loser-share" && rates?.showEstimatedWinnings !== false;
+        const estimate = Math.round(stake * (1 + (rates?.estimatedWinningsRate ?? 0)));
+        return (
+          <div className="mt-3 rounded-md border border-border bg-bg-overlay px-3 py-2.5">
+            <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-text-subtle mb-1">
+              {showEstimate ? t.dialog.estimatedWinningsLabel : t.common.payout2}
+              <InfoHint
+                size={10}
+                label={showEstimate
+                  ? t.dialog.estimateHowItWorks
+                  : fill(t.dialog.payoutHowItWorks, { pct: pctNum(rates?.commissionRate ?? DEFAULT_COMMISSION_RATE), ceiling: fmtRate(rates?.feeCeilingRate ?? DEFAULT_FEE_CEILING_RATE) })}
+              />
+            </p>
+            {showEstimate ? (
+              <>
+                <p className="text-[18px] font-bold tabular-nums text-text leading-none">
+                  TZS {formatNumber(estimate)}
+                </p>
+                <p className="mt-1 text-[11px] leading-relaxed text-text-subtle">
+                  {t.dialog.estimateDisclaimer}
+                </p>
+              </>
+            ) : (
+              <p className="text-[12px] leading-relaxed text-text-muted">
+                {t.dialog.payoutCalcBody}
+              </p>
+            )}
+          </div>
+        );
+      })()}
 
-      {/* D3: Qualitative lean warning — no payout figure, just a heads-up
-          that the pool is lopsided. Suppressed when the market is fully
-          one-sided (opposite pool = 0) because the settlement engine
-          issues a full refund at 0% fee — no risk to disclose. */}
+      {/* Qualitative lean warning for capped-commission polls. Loser-share polls
+          present the estimate on its own, so this is not shown for them. */}
       {effectiveSide !== "NEUTRAL" && lean !== "fair" &&
+        rates?.feeModel !== "loser-share" &&
         !((yesPool > 0 && noPool === 0) || (noPool > 0 && yesPool === 0)) && (
         <HouseLeanWarning level={lean} />
       )}

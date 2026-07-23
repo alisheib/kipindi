@@ -105,7 +105,14 @@ export default async function MarketDetail({
   // It cannot happen now: the rates ride on the market row. There is nothing to
   // fetch, nothing to fail, and nothing to invent.
   const marketRates = ratesFor(m);
-  const marketFee = poolFee(m.yesPool, m.noPool, marketRates);
+  // Used only by the RESOLVED panel below, where the outcome is known — pass it so a
+  // loser-share poll shows the fee actually charged (a slice of the side that lost).
+  const marketFee = poolFee(
+    m.yesPool,
+    m.noPool,
+    marketRates,
+    m.resolvedOutcome === "YES" || m.resolvedOutcome === "NO" ? m.resolvedOutcome : undefined,
+  );
   // Stake BOUNDS are entry-time, so they correctly read LIVE config (a poll does
   // not freeze how much you may stake) — and buyPosition re-validates them
   // server-side anyway, so the dial showing a stale bound cannot cost anyone

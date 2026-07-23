@@ -134,7 +134,14 @@ export default async function MarketPredictorsPage({
   // Read from the market's own feeSnapshot, so an officer sees what this poll will
   // actually settle at — not whatever is currently set in admin config.
   const marketRates = ratesFor(m);
-  const marketFee = poolFee(m.yesPool, m.noPool, marketRates);
+  const isLoserShare = marketRates.feeModel === "loser-share";
+  const resolvedSide = m.resolvedOutcome === "YES" || m.resolvedOutcome === "NO" ? m.resolvedOutcome : undefined;
+  // capped-commission is outcome-neutral (one fee). loser-share depends on the
+  // winner, so show BOTH scenarios (and, once resolved, the fee actually charged).
+  const marketFee = poolFee(m.yesPool, m.noPool, marketRates, resolvedSide);
+  const feeIfYes = poolFee(m.yesPool, m.noPool, marketRates, "YES");
+  const feeIfNo = poolFee(m.yesPool, m.noPool, marketRates, "NO");
+  const smallerSide = Math.min(m.yesPool, m.noPool);
 
   return (
     <>
@@ -206,39 +213,74 @@ export default async function MarketPredictorsPage({
               and what the winners will get. On a lopsided poll this is where the
               ceiling shows up: it is the difference between the headline commission
               and what we actually charge. */}
-          <div className="mt-3 pt-3 border-t border-border/60 grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <Stat
-              label="Smaller side (the prize)"
-              value={formatTzs(marketFee.smaller)}
-              money
-              hint={totalPool > 0 ? `${((marketFee.smaller / totalPool) * 100).toFixed(1)}% of pool` : "—"}
-            />
-            <Stat
-              label={`Commission (${(marketRates.commissionRate * 100).toFixed(0)}% of pool)`}
-              value={formatTzs(Math.round(marketFee.commission))}
-              tone={marketFee.capped ? "muted" : "default"}
-              money
-              hint={marketFee.capped ? "capped — not charged" : "charged"}
-            />
-            <Stat
-              label="Fee charged"
-              value={formatTzs(Math.round(marketFee.fee))}
-              tone="gold"
-              money
-              hint={marketFee.capped ? `capped at ${(marketRates.feeCeilingRate * 100).toFixed(0)}% of the smaller side` : "the full commission"}
-            />
-            <Stat
-              label="Worst winner ratio"
-              value={marketFee.larger > 0 ? `${(marketFee.netPool / marketFee.larger).toFixed(3)}×` : "—"}
-              tone={marketFee.larger > 0 && marketFee.netPool / marketFee.larger >= 1 ? "yes" : "muted"}
-              hint="never below 1.000×"
-            />
-          </div>
+          {isLoserShare ? (
+            <div className="mt-3 pt-3 border-t border-border/60 grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <Stat
+                label="Smaller side"
+                value={formatTzs(smallerSide)}
+                money
+                hint={totalPool > 0 ? `${((smallerSide / totalPool) * 100).toFixed(1)}% of pool` : "—"}
+              />
+              <Stat
+                label={`Loser-share rate`}
+                value={`${((marketRates.platformFeeRate + marketRates.operatorFeeRate) * 100).toFixed(1)}%`}
+                tone="gold"
+                hint="of whichever side loses"
+              />
+              <Stat
+                label="Fee if YES wins"
+                value={formatTzs(Math.round(feeIfYes.fee))}
+                money
+                hint={`${((marketRates.platformFeeRate + marketRates.operatorFeeRate) * 100).toFixed(0)}% of the NO pool`}
+              />
+              <Stat
+                label="Fee if NO wins"
+                value={formatTzs(Math.round(feeIfNo.fee))}
+                money
+                hint={`${((marketRates.platformFeeRate + marketRates.operatorFeeRate) * 100).toFixed(0)}% of the YES pool`}
+              />
+            </div>
+          ) : (
+            <div className="mt-3 pt-3 border-t border-border/60 grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <Stat
+                label="Smaller side (the prize)"
+                value={formatTzs(marketFee.smaller)}
+                money
+                hint={totalPool > 0 ? `${((marketFee.smaller / totalPool) * 100).toFixed(1)}% of pool` : "—"}
+              />
+              <Stat
+                label={`Commission (${(marketRates.commissionRate * 100).toFixed(0)}% of pool)`}
+                value={formatTzs(Math.round(marketFee.commission))}
+                tone={marketFee.capped ? "muted" : "default"}
+                money
+                hint={marketFee.capped ? "capped — not charged" : "charged"}
+              />
+              <Stat
+                label="Fee charged"
+                value={formatTzs(Math.round(marketFee.fee))}
+                tone="gold"
+                money
+                hint={marketFee.capped ? `capped at ${(marketRates.feeCeilingRate * 100).toFixed(0)}% of the smaller side` : "the full commission"}
+              />
+              <Stat
+                label="Worst winner ratio"
+                value={marketFee.larger > 0 ? `${(marketFee.netPool / marketFee.larger).toFixed(3)}×` : "—"}
+                tone={marketFee.larger > 0 && marketFee.netPool / marketFee.larger >= 1 ? "yes" : "muted"}
+                hint="never below 1.000×"
+              />
+            </div>
+          )}
 
-          {marketFee.smaller === 0 && totalPool > 0 ? (
+          {smallerSide === 0 && totalPool > 0 ? (
             <Callout tone="warning" className="mt-3" title="ONE-SIDED — this poll will refund everyone and earn nothing">
               Every stake is on the same side. There is no opposing pool to pay winnings from, so at settlement
               every player is refunded in full at zero fee. Consider promoting the other side before betting closes.
+            </Callout>
+          ) : isLoserShare ? (
+            <Callout tone="info" className="mt-3" title="LOSER-SHARE — the fee is a slice of the losing side">
+              We take {((marketRates.platformFeeRate + marketRates.operatorFeeRate) * 100).toFixed(0)}% of whichever side
+              loses: {formatTzs(Math.round(feeIfYes.fee))} if YES wins, {formatTzs(Math.round(feeIfNo.fee))} if NO wins.
+              Winners split the rest of the pool; a correct call always gets back at least its stake.
             </Callout>
           ) : marketFee.capped ? (
             <Callout tone="info" className="mt-3" title="LOPSIDED — the fee ceiling is binding">

@@ -15,6 +15,7 @@
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import { createMarket, buyPosition, resolveMarket, settleMarket, listPositionsForUser } from "../src/lib/server/market-service.ts";
 import { setConflictedResolutionAllowed, getConflictedResolutionAllowed } from "../src/lib/server/test-overrides.ts";
+import { setGlobalConfig } from "../src/lib/server/market-config.ts";
 import { getAuditPage } from "../src/lib/server/audit.ts";
 
 let pass = 0, fail = 0;
@@ -43,6 +44,10 @@ const mkMarket = (title: string) => createMarket({
   descriptionEn: "t", descriptionSw: "t", descriptionZh: "t",
   category: "FINANCE", resolutionAt: future, resolutionCriterion: "x", sourceUrl: "https://example.com", createdById: "clean",
 } as never);
+
+// This suite asserts capped-commission payout numbers; pin the model (the platform
+// default is now loser-share) so mkMarket() freezes the model it expects.
+await setGlobalConfig({ feeModel: "capped-commission" }, "solo-test-setup");
 
 await mkUser("officerX", "ADMIN");   // the tester — admin AND bettor
 await mkUser("officerY", "ADMIN", 0);

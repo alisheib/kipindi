@@ -47,13 +47,23 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
         period={false}
         actions={
           <Chip size="md" variant="resolved">
-            Pari-mutuel · capped fee
+            {config.feeModel === "loser-share" ? "Pari-mutuel · loser-share (Jay)" : "Pari-mutuel · capped fee"}
           </Chip>
         }
       />
       <div className="px-4 lg:px-6 py-5 space-y-4">
         {/* Snapshot KPIs */}
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+          <AdminKpi
+            label="Fee model (new polls)"
+            sw="Modeli ya ada"
+            value={config.feeModel === "loser-share" ? "Loser-share" : "Capped"}
+            delta={
+              config.feeModel === "loser-share"
+                ? `${((config.platformFeeRate + config.operatorFeeRate) * 100).toFixed(0)}% of losing pool · players see ${(1 + config.estimatedWinningsRate).toFixed(1)}× estimate`
+                : "min(commission, ceiling) · outcome-neutral"
+            }
+          />
           <AdminKpi label="Commission"        sw="Faida"   value={`${(config.commissionRate * 100).toFixed(1)}%`} delta="of the whole pool" />
           <AdminKpi label="Fee ceiling"       sw="Kikomo"  value={`${(config.feeCeilingRate * 100).toFixed(1)}%`} delta="of the smaller side" />
           {/* THE KPI THAT MATTERS. If this ever reads below 1.00×, a player who
@@ -77,11 +87,34 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
             then warned, as accepted behaviour, that "even winning positions can
             yield … a small net loss after fees". That edge case is the bug; it is
             gone, and so is the paragraph that normalised it. */}
+        {config.feeModel === "loser-share" ? (
+          <AdminCard className="border-warning-border bg-warning-bg/15">
+            <div className="flex items-start gap-3">
+              <I.warning size={18} className="text-warning shrink-0 mt-0.5" />
+              <div className="text-caption text-text-secondary space-y-1.5">
+                <p className="text-text font-bold">Loser-share model active (Jay) — new polls</p>
+                <p>
+                  New polls charge{" "}
+                  <code className="font-mono text-text">fee = (platform + operator) × losingPool</code>{" "}
+                  = {((config.platformFeeRate + config.operatorFeeRate) * 100).toFixed(0)}% of whichever side loses, and
+                  players are shown a fixed{" "}
+                  <code className="font-mono text-text">{(1 + config.estimatedWinningsRate).toFixed(2)}×</code>{" "}
+                  &ldquo;possible winnings&rdquo; estimate before betting (with a disclaimer that it is an estimate).
+                </p>
+                <p>
+                  <strong className="text-text">This is outcome-dependent</strong> — the fee differs by which side wins,
+                  an owner-approved override of the licence&apos;s outcome-neutral posture (docs/COMPLIANCE-DECISIONS.md).
+                  It applies to <strong>future polls only</strong>; existing polls keep the capped-fee model below.
+                </p>
+              </div>
+            </div>
+          </AdminCard>
+        ) : null}
         <AdminCard className="border-info-border bg-info-bg/15">
           <div className="flex items-start gap-3">
             <I.settings size={18} className="text-info shrink-0 mt-0.5" />
             <div className="text-caption text-text-secondary space-y-1.5">
-              <p className="text-text font-bold">Capped-fee pari-mutuel</p>
+              <p className="text-text font-bold">Capped-fee pari-mutuel {config.feeModel === "loser-share" ? "(legacy / existing polls)" : ""}</p>
               <p>
                 Every stake — YES and NO — joins one pool. At settlement:{" "}
                 <code className="font-mono text-text">fee = min(commission × pool, ceiling × smallerSide)</code>,{" "}
