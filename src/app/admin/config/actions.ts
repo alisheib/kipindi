@@ -79,7 +79,7 @@ export async function updateGlobalConfigAction(formData: FormData) {
     // F11 — the settlement gate. Hours, not a rate: 0..168, 0 = no window.
     const objWindow = parseInteger(String(formData.get("objectionWindowHours") ?? ""));
     const gbt = parseRate(String(formData.get("gbtLevyOnCommissionRate") ?? ""));
-    // Fee model (Jay's "loser-share") — applies to FUTURE polls only.
+    // Fee model (loser-share) — applies to FUTURE polls only.
     const feeModel = parseFeeModel(formData.get("feeModel") as string | null);
     const platform = parseRate(String(formData.get("platformFeeRate") ?? ""));
     const operator = parseRate(String(formData.get("operatorFeeRate") ?? ""));

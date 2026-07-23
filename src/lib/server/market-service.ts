@@ -1760,7 +1760,7 @@ export async function settleMarket(
   // THE FEE, from the two pool numbers and the poll's FROZEN rates.
   //  - capped-commission (legacy polls): outcome-neutral — byte-identical for a YES
   //    or NO win on the same pools (F6 §3.1). The `winningSide` arg is ignored.
-  //  - loser-share (Jay polls, owner decision 2026-07-23): the fee is a slice of the
+  //  - loser-share (new polls, owner decision 2026-07-23): the fee is a slice of the
   //    LOSING pool, so it DOES depend on the outcome — we pass the declared winner so
   //    `poolFee` charges the correct (losing) side. VOID never reaches the fee.
   const winningSide: Side | undefined = opts.outcome === "YES" || opts.outcome === "NO" ? opts.outcome : undefined;

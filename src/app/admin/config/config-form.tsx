@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useDeferredToast } from "@/components/ui/toast";
 import { Input, Field } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { Toggle } from "@/components/ui/toggle";
 import { Button } from "@/components/ui/button";
 import { ConfirmModal } from "@/components/ui/modal";
 import {
@@ -191,9 +192,9 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
         </Field>
       </div>
 
-      {/* ── FEE MODEL (owner decision 2026-07-23 — Jay's "loser-share") ────────
-          These apply to FUTURE polls only. Every existing poll keeps the model +
-          rates it froze at creation, so the two maths never mix. */}
+      {/* ── FEE MODEL (owner decision 2026-07-23) ─────────────────────────────
+          Applies to FUTURE polls only. Every existing poll keeps the model +
+          rates it froze at creation, so the two calculations never mix. */}
       <div className="rounded-lg border border-border bg-bg-overlay p-3 space-y-3">
         <div>
           <p className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">Fee model</p>
@@ -203,60 +204,72 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
           </p>
         </div>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <Field
-            label="Fee model (new polls)"
-            hint={
-              feeModel === "loser-share"
-                ? "Loser-share (Jay): the fee is a % of the LOSING pool; the commission + ceiling above are unused for new polls."
-                : "Capped commission: fee = min(commission × pool, ceiling × smaller side). Uses the commission + ceiling fields above."
-            }
-          >
+          <Field label="Fee model (new polls)" hint="How new polls charge their fee and what players see before betting.">
             <Select
               name="feeModel"
               ariaLabel="Fee model for new polls"
               defaultValue={config.feeModel}
               onChange={(v) => setFeeModel(v as RateConfig["feeModel"])}
               options={[
-                { value: "loser-share", label: "Loser-share (Jay) — 13% of losing pool" },
-                { value: "capped-commission", label: "Capped commission (legacy)" },
+                { value: "loser-share", label: "Loser-share — % of the losing pool" },
+                { value: "capped-commission", label: "Capped commission — % of the pool, capped" },
               ]}
             />
           </Field>
           {feeModel === "loser-share" ? (
             <Field
               label="Total loser-share fee"
-              hint={`Platform + Operator = ${loserSharePct}% of the LOSING pool. Charged only on the side that loses; winners split the rest of the pool.`}
+              hint="Platform + Operator, charged on the losing side. Winners split the rest of the pool."
             >
-              <Input name="_loserShareTotal" type="text" defaultValue={`${loserSharePct}%`} mono disabled />
+              <Input name="_loserShareTotal" type="text" defaultValue={`${loserSharePct}% of the losing pool`} mono disabled />
             </Field>
           ) : null}
         </div>
 
+        {/* What the selected model does — updates on every change so the officer
+            always sees exactly what new polls will apply. */}
+        <div className="rounded-md border border-border/70 bg-bg-base/40 px-3 py-2 text-[11.5px] leading-relaxed text-text-muted">
+          {feeModel === "loser-share" ? (
+            <>
+              <strong className="text-text">Loser-share.</strong> When a poll resolves, the fee is a fixed
+              percentage of the <strong>losing</strong> side&apos;s pool (Platform + Operator, set below). Winners get
+              their stake back plus a share of the rest of the pool. Players are shown an estimated
+              &ldquo;possible winnings&rdquo; before betting. The fee depends on which side loses.
+            </>
+          ) : (
+            <>
+              <strong className="text-text">Capped commission.</strong> The fee is a percentage of the whole pool,
+              but never more than a third of the smaller side, and it is the <strong>same whichever side wins</strong>.
+              No payout figure is shown to players before they bet. Uses the commission + ceiling fields above.
+            </>
+          )}
+        </div>
+
         {feeModel === "loser-share" ? (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <Field label="Platform fee (%)" hint={`Current ${platformPct}%. Slice of the losing pool. Jay: 3%.`}>
+            <Field label="Platform fee (%)" hint={`Current ${platformPct}%. Slice of the losing pool (default 3%).`}>
               <Input name="platformFeeRate" type="number" step="0.1" min="0" max="100" defaultValue={platformPct} mono />
             </Field>
-            <Field label="Operator fee (%)" hint={`Current ${operatorPct}%. Slice of the losing pool. Jay: 10%. TRA + GBT come OUT of this, not the player.`}>
+            <Field label="Operator fee (%)" hint={`Current ${operatorPct}%. Slice of the losing pool (default 10%). TRA + GBT come OUT of this, not the player.`}>
               <Input name="operatorFeeRate" type="number" step="0.1" min="0" max="100" defaultValue={operatorPct} mono />
             </Field>
             <Field
               label="Estimated-winnings bonus (%)"
-              hint={`Current ${estPct}%. The fixed pre-bet "possible winnings" a player sees = stake × ${(1 + config.estimatedWinningsRate).toFixed(2)}. A marketing ESTIMATE, not the real payout — the disclaimer says so. Jay: 50% → 1.5×.`}
+              hint={`Current ${estPct}%. The fixed pre-bet “possible winnings” a player sees = stake × ${(1 + config.estimatedWinningsRate).toFixed(2)}. A marketing ESTIMATE, not the real payout — the disclaimer says so (default 50% → 1.5×).`}
             >
               <Input name="estimatedWinningsRate" type="number" step="1" min="0" max="500" defaultValue={estPct} mono />
             </Field>
-            <Field label="Show estimate to players" hint="When on, loser-share polls show the pre-bet 1.5× estimate + disclaimer. When off, players see only qualitative copy.">
-              <label className="flex items-center gap-2 text-[13px] text-text-muted">
-                <input
-                  type="checkbox"
-                  name="showEstimatedWinnings"
-                  checked={showEst}
-                  onChange={(e) => setShowEst(e.currentTarget.checked)}
-                  className="h-4 w-4 accent-brand-500"
+            <Field label="Show estimate to players" hint="When on, loser-share polls show the pre-bet estimate + disclaimer. When off, players see only qualitative copy.">
+              <div className="flex items-center gap-2.5">
+                <Toggle
+                  on={showEst}
+                  onClick={() => setShowEst((v) => !v)}
+                  aria-label="Show the possible-winnings estimate to players before betting"
                 />
-                Show the “possible winnings” estimate pre-bet
-              </label>
+                <span className="text-[13px] text-text-muted">
+                  {showEst ? "Shown pre-bet" : "Hidden pre-bet"}
+                </span>
+              </div>
             </Field>
           </div>
         ) : null}
@@ -288,7 +301,7 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
         title="Change the fee model?"
         body={
           feeModel === "loser-share"
-            ? "New polls will use Jay's loser-share model: the fee is a percentage of the LOSING pool, and players see a fixed “possible winnings” estimate before betting. This changes the model for FUTURE polls only — every existing poll keeps its current rule. Continue?"
+            ? "New polls will use the loser-share model: the fee is a percentage of the LOSING pool, and players see a fixed “possible winnings” estimate before betting. This changes the model for FUTURE polls only — every existing poll keeps its current rule. Continue?"
             : "New polls will use the capped-commission model (min of a commission and a ceiling), and no pre-bet estimate is shown. This affects FUTURE polls only — existing polls keep their current rule. Continue?"
         }
         confirmLabel="Save fee model"

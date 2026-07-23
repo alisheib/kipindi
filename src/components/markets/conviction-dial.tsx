@@ -1374,7 +1374,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, max
       {/* Payout disclosure.
           - capped-commission polls (D3, license review · 2026-05): the potential
             winning is NOT shown pre-bet — only qualitative copy.
-          - loser-share polls (Jay, owner decision 2026-07-23): show a FIXED
+          - loser-share polls (owner decision 2026-07-23): show a FIXED
             "possible winnings" estimate = stake × (1 + estimatedWinningsRate), with a
             mandatory disclaimer that it is an estimate and the real payout comes from
             the pool. See docs/COMPLIANCE-DECISIONS.md. */}

@@ -267,7 +267,7 @@ export function BetConfirmModal({
         {/* Payout disclosure.
             - capped-commission (D3, license review · 2026-05): NO figure pre-bet —
               only the qualitative pool-share copy.
-            - loser-share (Jay, owner decision 2026-07-23): show the fixed estimate
+            - loser-share (owner decision 2026-07-23): show the fixed estimate
               = stake × (1 + estimatedWinningsRate) with a mandatory disclaimer that
               it is an estimate. See docs/COMPLIANCE-DECISIONS.md. */}
         {rates?.feeModel === "loser-share" && rates?.showEstimatedWinnings !== false ? (

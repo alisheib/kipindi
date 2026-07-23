@@ -112,23 +112,23 @@ export const DEFAULT_GBT_LEVY_ON_COMMISSION_RATE = 0.05;
 /** Warn "thin upside" below this payout/stake ratio. */
 export const THIN_PROFIT_RATIO = 1.05;
 
-// ── Fee model ("loser-share", the Jay model — owner decision 2026-07-23) ──────
+// ── Fee model ("loser-share" — owner decision 2026-07-23) ─────────────────────
 // See docs/COMPLIANCE-DECISIONS.md and docs/FEE-MODEL-DECISION.md. The model is
 // FROZEN per poll (feeSnapshot.feeModel), so old polls keep `capped-commission`
 // and new polls use `loser-share` — the two maths NEVER mix. A snapshot with no
 // `feeModel` (every poll created before this change) is read as `capped-commission`.
-/** The DEFAULT model NEW polls freeze. Owner set this to Jay's model. */
+/** The DEFAULT model NEW polls freeze. Owner set this to loser-share. */
 export const DEFAULT_FEE_MODEL: FeeModel = "loser-share";
 /** loser-share: the "Platform" slice of the fee, charged on the LOSING pool. */
 export const DEFAULT_PLATFORM_FEE_RATE = 0.03;
 /** loser-share: the "Operator" slice of the fee, charged on the LOSING pool.
- *  Total loser-share fee = platformFeeRate + operatorFeeRate (Jay: 3% + 10% = 13%). */
+ *  Total loser-share fee = platformFeeRate + operatorFeeRate (default 3% + 10% = 13%). */
 export const DEFAULT_OPERATOR_FEE_RATE = 0.10;
 /** The two loser-share slices summed may never exceed the whole losing pool. */
 export const MAX_LOSER_SHARE_RATE = 1.0;
 /** Display-only. The fixed "possible winnings" shown pre-bet = stake × (1 + rate).
- *  Jay's sheet uses 0.5 → a 1.5× headline. It is a marketing estimate, NOT the
- *  pari-mutuel payout, which is why the disclaimer is mandatory. */
+ *  Default 0.5 → a 1.5× headline. It is a marketing estimate, NOT the pari-mutuel
+ *  payout, which is why the disclaimer is mandatory. */
 export const DEFAULT_ESTIMATED_WINNINGS_RATE = 0.5;
 /** Bound for the display estimate rate (0 = show stake back; 5 = 6× headline). */
 export const MAX_ESTIMATED_WINNINGS_RATE = 5;
@@ -167,7 +167,7 @@ export type LeanLevel = "fair" | "thin";
  *  - `capped-commission`: fee = min(commissionRate·pool, feeCeilingRate·smaller).
  *    Outcome-NEUTRAL. Every poll created before 2026-07-23 (no `feeModel` on its
  *    snapshot) is read as this.
- *  - `loser-share` (Jay): fee = (platformFeeRate + operatorFeeRate)·losingPool.
+ *  - `loser-share`: fee = (platformFeeRate + operatorFeeRate)·losingPool.
  *    Outcome-DEPENDENT — the fee is a slice of whichever side LOSES, so `poolFee`
  *    must be told the winning side. Owner decision 2026-07-23; new default.
  */
@@ -319,7 +319,7 @@ function readRates(rates: Partial<FeeRates> | undefined): ResolvedRates {
  * `capped-commission` (legacy, default): outcome-neutral — it takes the two pool
  * sizes and nothing else (invariant 2), and `winningSide` is ignored.
  *
- * `loser-share` (Jay): the fee is `(platformFeeRate + operatorFeeRate) × losingPool`,
+ * `loser-share`: the fee is `(platformFeeRate + operatorFeeRate) × losingPool`,
  * so it is OUTCOME-DEPENDENT — `poolFee` must be told the winning side to know which
  * pool loses. Money paths (settlement, `settledPayoutFor`, `payoutFor`) ALWAYS pass
  * it. When it is omitted on a loser-share poll (display/guardrail previews only,
@@ -342,7 +342,7 @@ export function poolFee(yesPool: number, noPool: number, rates: Partial<FeeRates
   const larger = Math.max(yes, no);
 
   if (r.feeModel === "loser-share") {
-    // Jay's model: fee = (platformFeeRate + operatorFeeRate) × the LOSING pool.
+    // loser-share: fee = (platformFeeRate + operatorFeeRate) × the LOSING pool.
     // The loser is the side opposite the winner, so the fee needs the outcome. When
     // it is not known (a pre-resolution preview, or the VOID audit) there is no loser
     // and therefore no fee to charge yet: fee = 0. Money paths always pass the winner.

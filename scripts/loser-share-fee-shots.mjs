@@ -1,5 +1,5 @@
 /**
- * Visual + a11y check for the loser-share (Jay) fee-model surfaces.
+ * Visual + a11y check for the loser-share fee-model surfaces.
  * Screenshots at 360/768/1280/1920, asserts no console errors, no horizontal
  * overflow, and that the new fee-model admin controls actually render.
  * Shots → .50pick-shots/.
@@ -31,16 +31,16 @@ async function shoot(pathname, name, checks) {
     await page.waitForTimeout(200);
     const of = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     ok(`${name}: no horizontal overflow @${w}w`, of <= 1, `overflow=${of}px`);
-    await page.screenshot({ path: `.50pick-shots/jay-${name}-${w}.png`, fullPage: false });
+    await page.screenshot({ path: `.50pick-shots/loser-share-${name}-${w}.png`, fullPage: false });
   }
 }
 
 // 1 · /admin/config — the fee-model section.
 await shoot("/admin/config", "config", async () => {
-  const model = await page.getByText(/Fee model/i).count();
-  ok("config: 'Fee model' section present", model >= 1, `count=${model}`);
-  const jay = await page.getByText(/Loser-share|13% of losing pool/i).count();
-  ok("config: loser-share option/KPI present", jay >= 1, `count=${jay}`);
+  const section = await page.getByText(/Fee model/i).count();
+  ok("config: 'Fee model' section present", section >= 1, `count=${section}`);
+  const lsOpt = await page.getByText(/Loser-share|losing pool/i).count();
+  ok("config: loser-share option/KPI present", lsOpt >= 1, `count=${lsOpt}`);
 });
 
 // 2 · /admin/markets/new — the frozen-fee banner.
@@ -49,8 +49,14 @@ await shoot("/admin/markets/new", "wizard", async () => {
   ok("wizard: fee-model banner present", banner >= 1, `count=${banner}`);
 });
 
+// 3 · /admin/finance — the per-poll settlement-fees (accountant) card renders.
+await shoot("/admin/finance", "finance", async () => {
+  const card = await page.getByText(/Settlement fees by poll/i).count();
+  ok("finance: settlement-fees-by-poll card present", card >= 1, `count=${card}`);
+});
+
 ok("no console errors", errs.length === 0, errs.slice(0, 3).join(" | "));
 
 await browser.close();
-console.log(`\njay-fee-model-shots: ${pass} passed, ${fail} failed`);
+console.log(`\nloser-share-fee-shots: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

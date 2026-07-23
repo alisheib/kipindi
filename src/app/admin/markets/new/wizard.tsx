@@ -68,7 +68,7 @@ export function NewMarketWizard({ feeInfo }: { feeInfo: FeeInfo }) {
         <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-text-subtle">Fee model frozen at creation</span>
         {feeInfo.model === "loser-share" ? (
           <p className="mt-1">
-            <strong className="text-text">Loser-share (Jay)</strong> — fee = <strong className="text-text">{feeInfo.feePct}%</strong> of the losing pool.
+            <strong className="text-text">Loser-share</strong> — fee = <strong className="text-text">{feeInfo.feePct}%</strong> of the losing pool.
             {feeInfo.showEstimate
               ? <> Players see a fixed <strong className="text-text">{feeInfo.estMult}×</strong> &ldquo;possible winnings&rdquo; estimate before betting.</>
               : <> The pre-bet estimate is hidden.</>}

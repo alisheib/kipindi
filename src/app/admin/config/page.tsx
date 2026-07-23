@@ -47,7 +47,7 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
         period={false}
         actions={
           <Chip size="md" variant="resolved">
-            {config.feeModel === "loser-share" ? "Pari-mutuel · loser-share (Jay)" : "Pari-mutuel · capped fee"}
+            {config.feeModel === "loser-share" ? "Pari-mutuel · loser-share" : "Pari-mutuel · capped fee"}
           </Chip>
         }
       />
@@ -92,7 +92,7 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
             <div className="flex items-start gap-3">
               <I.warning size={18} className="text-warning shrink-0 mt-0.5" />
               <div className="text-caption text-text-secondary space-y-1.5">
-                <p className="text-text font-bold">Loser-share model active (Jay) — new polls</p>
+                <p className="text-text font-bold">Loser-share model active — new polls</p>
                 <p>
                   New polls charge{" "}
                   <code className="font-mono text-text">fee = (platform + operator) × losingPool</code>{" "}

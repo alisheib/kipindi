@@ -11,6 +11,8 @@
 import { db } from "./store";
 import type { StoredTxn, StoredUser } from "./store";
 import { moneyForWindow } from "./report-money";
+import { listMarkets, ratesFor } from "./market-service";
+import { poolFee, levySplit, type FeeModel } from "../payout";
 
 export type Period = "today" | "7d" | "28d" | "qtd";
 /** Either a rolling window (Period, ending now) OR explicit epoch bounds
@@ -62,6 +64,66 @@ export async function grossGamingRevenue(period: Window = "today") {
 export async function netGamingRevenue(period: Window = "today") {
   const { start, end } = windowBounds(period);
   return (await moneyForWindow(start, end)).ngr;
+}
+
+export type PollFeeRow = {
+  marketId: string;
+  title: string;
+  settledAt: string;
+  outcome: "YES" | "NO";
+  feeModel: FeeModel;
+  pool: number;
+  fee: number;
+  operatorNet: number;
+};
+export type SettlementFeesByPoll = {
+  rows: PollFeeRow[];
+  byModel: Record<FeeModel, { count: number; fee: number }>;
+  totalFee: number;
+};
+
+/**
+ * Per-poll settlement commission for the period, WITH the fee model each poll used
+ * — so an accountant can see, poll by poll, whether it was `loser-share` (a % of the
+ * losing side) or `capped-commission`, and reconcile the fee. The fee is recomputed
+ * from the poll's OWN frozen snapshot + declared outcome via `poolFee` — the exact
+ * function and inputs settlement used, so it equals the booked commission to the
+ * shilling. Read-only; moves no money. Only YES/NO settlements bear a fee (VOID /
+ * one-sided are full refunds at 0 fee and are omitted).
+ */
+export async function settlementFeesByPoll(period: Window = "28d"): Promise<SettlementFeesByPoll> {
+  const { start, end } = windowBounds(period);
+  const markets = await listMarkets({ status: "RESOLVED" }).catch(() => []);
+  const rows: PollFeeRow[] = [];
+  const byModel: Record<FeeModel, { count: number; fee: number }> = {
+    "loser-share": { count: 0, fee: 0 },
+    "capped-commission": { count: 0, fee: 0 },
+  };
+  for (const m of markets) {
+    if (!m.settledAt) continue; // adjudicated but not yet settled → no fee booked
+    const ts = new Date(m.settledAt).getTime();
+    if (ts < start || ts >= end) continue;
+    if (m.resolvedOutcome !== "YES" && m.resolvedOutcome !== "NO") continue; // VOID = refund, 0 fee
+    const rates = ratesFor(m);
+    const fb = poolFee(m.yesPool, m.noPool, rates, m.resolvedOutcome);
+    const fee = Math.round(fb.fee);
+    const { operatorNet } = levySplit(fee, rates);
+    const model = rates.feeModel;
+    rows.push({
+      marketId: m.id,
+      title: m.titleEn,
+      settledAt: m.settledAt,
+      outcome: m.resolvedOutcome,
+      feeModel: model,
+      pool: m.yesPool + m.noPool,
+      fee,
+      operatorNet,
+    });
+    byModel[model].count += 1;
+    byModel[model].fee += fee;
+  }
+  rows.sort((a, b) => new Date(b.settledAt).getTime() - new Date(a.settledAt).getTime());
+  return { rows, byModel, totalFee: rows.reduce((s, r) => s + r.fee, 0) };
 }
 
 export async function depositsTotal(period: Window = "today") {

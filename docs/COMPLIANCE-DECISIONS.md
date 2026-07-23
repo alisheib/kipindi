@@ -43,8 +43,20 @@ new poll freezes at creation:
 
 **Where it lives:** `src/lib/payout.ts` (`FeeModel`, `poolFee(…, winningSide?)`),
 `src/lib/server/market-config.ts` (RateConfig + snapshot), `market-service.ts` (settlement
-passes the winner), admin `config/` + `markets/new`, player `conviction-dial` / `bet-confirm-modal`.
-Golden test: `scripts/jay-fee-model.test.mts` (reproduces Jay's sheet: 84,500 / 2,080).
+passes the winner), admin `config/` (kit `Select` + `Toggle`, a kit `ConfirmModal` that warns
+on EITHER model switch, and a per-model description that updates on select) + `markets/new`,
+player `conviction-dial` / `bet-confirm-modal`, and the help FAQ / hedge copy (model-aware).
+Golden test: `scripts/loser-share-fee.test.mts` (reproduces the accountant's sheet: 84,500 / 2,080).
+
+**Naming (owner directive):** the product NEVER brands the model after the accountant. UI + code
+call it **`loser-share`**; "Jay" appears only as the person who proposed it, and only in this
+decision log. Do not reintroduce "Jay" into UI/code.
+
+**Accountant visibility:** `/admin/finance` has a **"Settlement fees by poll"** card
+(`analytics.settlementFeesByPoll(period)`) listing each settled poll's fee MODEL + fee + operator
+net for the period, with per-model totals — so an accountant can reconcile which model applied to
+which poll. The per-poll fee is recomputed from the poll's frozen snapshot (equals the booked
+commission). The `/admin/markets/[id]` view also shows the model + both-outcome fees per poll.
 
 **Guardrail (⛔):** do not "restore" outcome-neutrality or D3 for `loser-share` polls — the
 override is intentional and owner-authorised. Do not change existing polls' frozen model. Do

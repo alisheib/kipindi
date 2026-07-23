@@ -220,7 +220,7 @@ export function FeeSimulator({ config }: { config: RateConfig }) {
       {/* Fee vs. outcome — a fact about these very numbers, per the active model. */}
       {isLoserShare ? (
         <p className="font-mono text-[10.5px] leading-relaxed text-text-subtle">
-          Loser-share (Jay): the fee DEPENDS on who wins. On these pools it is {formatTzs(Math.round(sim.fee.fee))} if {side} wins
+          Loser-share: the fee DEPENDS on who wins. On these pools it is {formatTzs(Math.round(sim.fee.fee))} if {side} wins
           {" "}(a {fmtRate(config.platformFeeRate + config.operatorFeeRate)} slice of the losing side), and
           {" "}{formatTzs(Math.round(sim.feeIfOtherSideWon))} if {side === "YES" ? "NO" : "YES"} wins. This is an owner-approved
           override of the outcome-neutral posture — see docs/COMPLIANCE-DECISIONS.md.

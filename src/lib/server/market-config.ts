@@ -147,24 +147,24 @@ export type RateConfig = {
    *  the control we describe to the regulator. */
   objectionWindowHours: number;
 
-  // ── Fee MODEL (owner decision 2026-07-23 — Jay's "loser-share") ─────────────
+  // ── Fee MODEL (owner decision 2026-07-23) ─────────────
   // These are FROZEN per poll at creation. Changing them here reprices only FUTURE
   // polls; every existing poll keeps the model + rates its snapshot froze, so the
   // two maths never mix (docs/FEE-MODEL-DECISION.md, docs/COMPLIANCE-DECISIONS.md).
   /**
    * Which fee formula NEW polls use.
    *  - `capped-commission`: fee = min(commissionRate·pool, feeCeilingRate·smaller).
-   *  - `loser-share` (Jay, default): fee = (platformFeeRate+operatorFeeRate)·losingPool.
+   *  - `loser-share` (default): fee = (platformFeeRate+operatorFeeRate)·losingPool.
    * loser-share is outcome-DEPENDENT (the fee depends on which side loses) — an
    * explicit owner override of the licence's outcome-neutral posture.
    */
   feeModel: FeeModel;
-  /** loser-share: "Platform" fee slice, share of the LOSING pool (Jay: 0.03). */
+  /** loser-share: "Platform" fee slice, share of the LOSING pool (default 0.03). */
   platformFeeRate: number;
-  /** loser-share: "Operator" fee slice, share of the LOSING pool (Jay: 0.10). */
+  /** loser-share: "Operator" fee slice, share of the LOSING pool (default 0.10). */
   operatorFeeRate: number;
   /** loser-share DISPLAY only: the fixed pre-bet "possible winnings" a player is
-   *  shown = stake × (1 + this). Jay: 0.5 → a 1.5× headline. NOT the pari-mutuel
+   *  shown = stake × (1 + this). default 0.5 → a 1.5× headline. NOT the pari-mutuel
    *  payout — the disclaimer beside it says so. */
   estimatedWinningsRate: number;
   /** loser-share DISPLAY only: whether to show that pre-bet estimate at all. */
@@ -201,7 +201,7 @@ export const DEFAULT_GLOBAL_CONFIG: RateConfig = {
   gbtLevyOnCommissionRate: DEFAULT_GBT_LEVY_ON_COMMISSION_RATE,  // 5% of our fee → GBT
   // The objection window players get before a verdict's money moves.
   objectionWindowHours: 24,
-  // Fee model NEW polls freeze. Owner (2026-07-23) set the default to Jay's
+  // Fee model NEW polls freeze. Owner (2026-07-23) set the default to
   // "loser-share": fee = 13% of the losing pool (Platform 3% + Operator 10%),
   // and players see a fixed 1.5× "possible winnings" estimate pre-bet.
   feeModel: DEFAULT_FEE_MODEL,                          // "loser-share"
@@ -500,7 +500,7 @@ function validate(updates: Partial<RateConfig>): { ok: true; warn?: string } | {
     }
   }
 
-  // ── Fee-model fields (loser-share / Jay) ───────────────────────────────────
+  // ── Fee-model fields (loser-share) ───────────────────────────────────
   if (updates.feeModel !== undefined) {
     if (updates.feeModel !== "capped-commission" && updates.feeModel !== "loser-share") {
       return { ok: false, reason: "Fee model must be 'capped-commission' or 'loser-share'." };

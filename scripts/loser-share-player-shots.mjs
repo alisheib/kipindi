@@ -53,11 +53,11 @@ for (const w of [360, 768, 1280]) {
   await page.waitForTimeout(200);
   const of = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   ok(`no horizontal overflow @${w}w`, of <= 1, `overflow=${of}px`);
-  await page.screenshot({ path: `.50pick-shots/jay-player-estimate-${w}.png`, fullPage: false });
+  await page.screenshot({ path: `.50pick-shots/loser-share-player-estimate-${w}.png`, fullPage: false });
 }
 
 ok("no console errors", errs.length === 0, errs.slice(0, 3).join(" | "));
 
 await browser.close();
-console.log(`\njay-player-estimate-shots: ${pass} passed, ${fail} failed`);
+console.log(`\nloser-share-player-shots: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

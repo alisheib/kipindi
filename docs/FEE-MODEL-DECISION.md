@@ -60,7 +60,11 @@ fixed 1.5× "possible winnings" estimate pre-bet with a disclaimer.
 
 Implemented **versioned, no mixed maths**: the model is frozen per poll (`feeSnapshot.feeModel`,
 `v:2`), so only polls created from 2026-07-23 use it; every existing poll keeps
-`capped-commission`. Admin-managed at /admin/config → Fee model. Full record + the two
-compliance overrides (outcome-neutrality, D3) are logged in `docs/COMPLIANCE-DECISIONS.md`
+`capped-commission`. Admin-managed at /admin/config → Fee model (kit Select + Toggle, a
+model-switch confirm that warns on EITHER direction, and a per-model description). The product
+does NOT brand the model "Jay" — it is `loser-share` in UI + code; "Jay" is only the proposer,
+recorded here. Accountants reconcile per poll via the **"Settlement fees by poll"** card on
+/admin/finance (model + fee + operator net per settled poll, per-model totals). Full record + the
+two compliance overrides (outcome-neutrality, D3) are logged in `docs/COMPLIANCE-DECISIONS.md`
 (2026-07-23 entry). Money conservation + winner floor proven under the new model
-(`scripts/jay-fee-model.test.mts`, `money-invariants`, `ledger`).
+(`scripts/loser-share-fee.test.mts`, `money-invariants`, `ledger`, `money-e2e` real Postgres).

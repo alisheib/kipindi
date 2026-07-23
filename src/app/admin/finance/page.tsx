@@ -15,6 +15,7 @@ import {
   marginSeries,
   providerStackedSeries,
   listProvidersInPeriod,
+  settlementFeesByPoll,
 } from "@/lib/server/analytics";
 import { dailyKpiSeries } from "@/lib/server/report-money";
 import { formatTzs, formatTzsCompact } from "@/lib/utils";
@@ -94,6 +95,10 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
   // Wallet↔ledger trial balance (audit C3) — proves the books match the money.
   // Read-only; guarded so a slow/failed scan never takes the finance page down.
   const tb = await trialBalance().catch(() => null);
+  // Per-poll settlement commission WITH the fee model each poll used — so an
+  // accountant can reconcile which model applied to which poll over the period.
+  const pollFees = await settlementFeesByPoll(period).catch(() => null);
+  const feeModelLabel = rates?.feeModel === "loser-share" ? "loser-share (new polls)" : "capped-fee (new polls)";
   const taxAccrued = rates && ggr !== null
     ? Math.round(Math.max(0, ggr) * (rates.traTaxOnCommissionRate + rates.gbtLevyOnCommissionRate))
     : null;
@@ -129,7 +134,7 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
             delta={taxAccrued === null ? "rates unavailable" : "TRA + GBT on commission"}
             deltaDir="flat"
           />
-          <AdminKpi label="Operator margin"  sw="Faida"         value={margin === null ? "" : `${margin.toFixed(1)}%`} unavailable={margin === null} delta="capped-fee model" deltaDir="flat" />
+          <AdminKpi label="Operator margin"  sw="Faida"         value={margin === null ? "" : `${margin.toFixed(1)}%`} unavailable={margin === null} delta={feeModelLabel} deltaDir="flat" />
           <AdminKpi label="Wallet liability" sw="Madeni"        value={liability === null ? "" : `TZS ${formatTzsCompact(liability).replace("TZS ", "")}`} unavailable={liability === null} delta="real-time" />
           <AdminKpi label="Active players"   sw="Wachezaji"     value={activePeriod === null ? "" : activePeriod.toLocaleString()} unavailable={activePeriod === null} delta={`${period}`} series={spark(trends.active)} />
         </div>
@@ -169,6 +174,75 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
                   />
                 ))}
             </div>
+          )}
+        </AdminCard>
+
+        {/* SETTLEMENT FEES BY POLL — which fee model each settled poll used and the
+            commission taken, so an accountant can reconcile per poll and per period.
+            The fee is recomputed from each poll's OWN frozen snapshot + outcome (the
+            same inputs settlement used ⇒ equals the booked commission). VOID /
+            one-sided polls refund in full at 0 fee and are not listed. */}
+        <AdminCard
+          title="Settlement fees by poll"
+          sw="Ada za malipo kwa kila soko"
+          action={
+            pollFees ? (
+              <span className="font-mono text-[10px] tracking-[0.10em] uppercase text-text-tertiary">
+                loser-share {pollFees.byModel["loser-share"].count} · TZS {formatTzsCompact(pollFees.byModel["loser-share"].fee).replace("TZS ", "")} — capped {pollFees.byModel["capped-commission"].count} · TZS {formatTzsCompact(pollFees.byModel["capped-commission"].fee).replace("TZS ", "")}
+              </span>
+            ) : null
+          }
+        >
+          {!pollFees || pollFees.rows.length === 0 ? (
+            <p className="text-caption text-text-tertiary">
+              No polls settled with a fee in this period. VOID and one-sided polls refund in full at zero fee, so
+              they are not listed here.
+            </p>
+          ) : (
+            <>
+              <ScrollX label="Settlement fees by poll" className="-mx-4 px-4">
+                <table className="admin-tbl min-w-[720px]">
+                  <thead>
+                    <tr>
+                      <th className="text-left">Poll</th>
+                      <th className="text-left">Settled</th>
+                      <th className="text-left">Fee model</th>
+                      <th className="text-left">Outcome</th>
+                      <th className="text-right">Pool</th>
+                      <th className="text-right">Fee taken</th>
+                      <th className="text-right">Operator net</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pollFees.rows.slice(0, 50).map((r) => (
+                      <tr key={r.marketId}>
+                        <td className="text-left max-w-[280px] truncate" title={r.title}>{r.title}</td>
+                        <td className="text-left whitespace-nowrap">{new Date(r.settledAt).toISOString().slice(0, 10)}</td>
+                        <td className="text-left">
+                          <span
+                            className={`inline-block rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] ${
+                              r.feeModel === "loser-share" ? "bg-brand-500/15 text-brand-300" : "bg-bg-inset text-text-muted"
+                            }`}
+                          >
+                            {r.feeModel === "loser-share" ? "Loser-share" : "Capped"}
+                          </span>
+                        </td>
+                        <td className="text-left">{r.outcome}</td>
+                        <td className="text-right">{formatTzs(r.pool)}</td>
+                        <td className="text-right">{formatTzs(r.fee)}</td>
+                        <td className="text-right">{formatTzs(r.operatorNet)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </ScrollX>
+              <p className="mt-2 text-[11px] text-text-subtle">
+                {pollFees.rows.length > 50
+                  ? `Showing the 50 most recent of ${pollFees.rows.length} settled polls this period. `
+                  : ""}
+                Total commission this period: TZS {formatTzs(pollFees.totalFee)}.
+              </p>
+            </>
           )}
         </AdminCard>
 

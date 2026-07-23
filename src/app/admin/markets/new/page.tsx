@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export default async function NewMarketPage() {
   // What this market WILL freeze at creation — shown read-only in the wizard so the
-  // officer (and Jay) can see the fee model + estimate that new polls apply.
+  // officer can see the fee model + estimate that new polls apply.
   const config = await getGlobalConfig();
   const feeInfo =
     config.feeModel === "loser-share"
