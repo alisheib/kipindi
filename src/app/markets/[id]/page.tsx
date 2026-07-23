@@ -113,6 +113,11 @@ export default async function MarketDetail({
     marketRates,
     m.resolvedOutcome === "YES" || m.resolvedOutcome === "NO" ? m.resolvedOutcome : undefined,
   );
+  // The headline fee % to cite in player copy — loser-share's combined rate, else
+  // the capped commission. Keeps the hedge/fee copy honest per the poll's model.
+  const feeHeadlinePct = marketRates.feeModel === "loser-share"
+    ? pctNum((marketRates.platformFeeRate ?? 0) + (marketRates.operatorFeeRate ?? 0))
+    : pctNum(marketRates.commissionRate);
   // Stake BOUNDS are entry-time, so they correctly read LIVE config (a poll does
   // not freeze how much you may stake) — and buyPosition re-validates them
   // server-side anyway, so the dial showing a stale bound cannot cost anyone
@@ -466,9 +471,9 @@ export default async function MarketDetail({
                   </p>
                   <p className="mt-1 text-[12px] leading-snug text-text-muted">
                     {hedgeBoth
-                      ? fill(t.market.hedgeBothBody, { pct: pctNum(marketRates.commissionRate) })
+                      ? fill(t.market.hedgeBothBody, { pct: feeHeadlinePct })
                       : hedgeOpposite
-                        ? fill(t.market.hedgeOppositeBody, { pct: pctNum(marketRates.commissionRate) })
+                        ? fill(t.market.hedgeOppositeBody, { pct: feeHeadlinePct })
                         : t.market.hedgeAddBody}
                   </p>
                 </div>

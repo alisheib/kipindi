@@ -85,7 +85,11 @@ export default async function HelpPage() {
                   </span>
                 </summary>
                 <p className="mt-2 pl-[25px] text-[12.5px] text-text-muted leading-relaxed">
-                  {fill(t.help[`${key}a` as keyof typeof t.help], { pct: pctNum(cfg.commissionRate), ceiling: fmtRate(cfg.feeCeilingRate) })}
+                  {/* The fee FAQ (faq1) is model-specific: loser-share polls charge a
+                      % of the losing side, not a capped commission on the pool. */}
+                  {key === "faq1" && cfg.feeModel === "loser-share"
+                    ? fill(t.help.faq1aLoser, { pct: pctNum((cfg.platformFeeRate ?? 0) + (cfg.operatorFeeRate ?? 0)) })
+                    : fill(t.help[`${key}a` as keyof typeof t.help], { pct: pctNum(cfg.commissionRate), ceiling: fmtRate(cfg.feeCeilingRate) })}
                   {key === "faq5" && ` ${SUPPORT_PHONE()} (${t.common.free}).`}
                 </p>
               </details>
