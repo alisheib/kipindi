@@ -35,6 +35,7 @@ product is or how it is built; it links. The full document-ownership table is in
 | **2** | `updown-oracle.ts` — six refusal gates, AI-pause honoured, metered | 🟢 **DONE** |
 | **3** | `updown-service.ts` + `updown-scheduler.ts` + `rateOverrides` + display-field fix | 🟢 **DONE** — `test:updown-engine` 42/42, money drift 0 |
 | **4** | Player UI — `/updown`, round detail, `UpDownCard`, nav, EN/SW/ZH | 🟢 **DONE** — built to the D1/D2 specs |
+| **4.5** | Finalization pass — premium nav, post-bet redirect, Similar markets, notification suppression, loading states, adversarial hardening | 🟢 **DONE** |
 | **5** | Reports, analytics, notification digest, admin rounds explorer + settings | ⬜ Not started |
 | **6** | Staged enable (Gold 5-min → Silver → 15/30-min) + archive/retention job | ⬜ Not started |
 

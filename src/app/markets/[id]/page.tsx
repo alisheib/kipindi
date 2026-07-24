@@ -9,6 +9,8 @@ import { WatchStar } from "@/components/markets/watch-star";
 import { isWatching } from "@/lib/server/watchlist-service";
 import { resolveWinShareToken } from "@/lib/server/share-token";
 import { SidePicker } from "@/components/markets/side-picker";
+import { MarketCard } from "@/components/markets/market-card";
+import { getSimilarMarkets } from "@/lib/server/market-service";
 import { ChartToggle } from "@/components/markets/chart-toggle";
 import { SellButton } from "@/components/markets/sell-button";
 import { ResolutionPanel } from "@/components/markets/resolution-panel";
@@ -132,6 +134,17 @@ export default async function MarketDetail({
   let watching = false;
   if (session) { try { watching = await isWatching(m.id, session.userId); } catch { /* graceful */ } }
   const isResolved = m.status === "RESOLVED" || m.status === "VOIDED";
+
+  // "Similar markets" rail — other genuinely bettable markets so a confirmed bet
+  // flows into another instead of a dead end. MARKET product line only: an Up & Down
+  // round detail already lives on /updown with its own board, and the long-form
+  // MarketCard is the wrong surface for a price round. Best-effort — a failure here
+  // must never take down the market page.
+  // 3 fills one clean row at desktop (the detail-page grid is 3-across); a 4th would
+  // strand a single card on a second row.
+  const similar = m.productLine !== "UPDOWN"
+    ? await getSimilarMarkets(m, 3).catch(() => [])
+    : [];
 
   // F11 — decide the viewer's objection standing HERE, on the server, so the panel
   // never dangles a control the service would refuse. The same rules are re-checked
@@ -495,6 +508,7 @@ export default async function MarketDetail({
                 rates={marketRates}
                 minStake={stakeCfg.minStake}
                 maxStake={stakeCfg.maxStake}
+                boardHref={m.productLine === "UPDOWN" ? "/updown" : "/markets"}
               />
               </>
             ) : (
@@ -565,6 +579,38 @@ export default async function MarketDetail({
         </aside>
       </div>
 
+      {/* ── Similar markets — keep the session flowing into another bet ── */}
+      {similar.length > 0 && (
+        <section className="mt-8" aria-labelledby="similar-markets-heading">
+          <div className="mb-3 flex items-center gap-2">
+            <I.sparkle s={15} />
+            <h2 id="similar-markets-heading" className="font-display text-[16px] font-bold text-text">
+              {t.market.similarMarkets}
+            </h2>
+          </div>
+          <p className="mb-4 text-[12.5px] text-text-muted">{t.market.similarMarketsBody}</p>
+          <div className="market-grid">
+            {similar.map((s) => (
+              <MarketCard
+                key={s.id}
+                id={s.id}
+                titleEn={s.titleEn}
+                titleSw={s.titleSw}
+                titleZh={s.titleZh}
+                category={s.category}
+                yesPct={impliedYesPct(s)}
+                volume={s.yesPool + s.noPool}
+                predictors={s.predictorCount}
+                timeLeft={similarTimeLeft(s.resolutionAt, t)}
+                status="LIVE"
+                selectionClosed={isSelectionClosed(s)}
+                sourceUrl={s.sourceUrl}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* ── Comments — full width, below both columns ── */}
       <CommentsThread
         marketId={m.id}
@@ -574,6 +620,18 @@ export default async function MarketDetail({
       />
     </main>
   );
+}
+
+/** Compact "time left" for a similar-market card — mirrors the board's phrasing so a
+ *  card reads the same here as it does on /markets. */
+function similarTimeLeft(iso: string, t: Awaited<ReturnType<typeof getServerT>>["t"]): string {
+  const ms = Date.parse(iso) - Date.now();
+  if (ms <= 0) return t.market.closed;
+  const d = Math.floor(ms / (24 * 3600_000));
+  if (d > 0) return `${d}${t.market.dLeft}`;
+  const h = Math.floor(ms / 3600_000);
+  if (h > 0) return `${h}${t.market.hLeft}`;
+  return `${Math.max(1, Math.floor(ms / 60_000))}${t.market.mLeft}`;
 }
 
 function KPI({ label, value, icon, mono }: { label: string; value: string; icon?: React.ReactNode; mono?: boolean }) {

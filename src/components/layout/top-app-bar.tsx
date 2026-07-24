@@ -246,6 +246,16 @@ function NavLink({ it, pathname }: { it: NavItem; pathname: string }) {
             }),
       }}
     >
+      {/* The product signature: a tiny up/down pair — green up, rose down — that says
+          "this is the price game" at a glance, on the purple base. It marries Ali's two
+          ideas (purple + a green/red hint) without a garish full split, and green/rose
+          appear only inside a betting-adjacent mark, never as navigation colour. */}
+      {accent && (
+        <span aria-hidden className="inline-flex flex-col items-center justify-center" style={{ marginRight: 1, lineHeight: 0 }}>
+          <I.trendingUp s={9} style={{ color: "var(--yes-400)", marginBottom: -2 }} />
+          <I.trendingDown s={9} style={{ color: "var(--no-400)", marginTop: -2 }} />
+        </span>
+      )}
       {it.label}
       {it.proposalsBadge && (
         <ProposalsStateBadge state={it.proposalsBadge} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} size="xs" />

@@ -36,10 +36,13 @@ type Props = {
    *  so its range reflects the operator's min/max, not a hardcoded 500–100k. */
   minStake?: number;
   maxStake?: number;
+  /** Board to return to after a successful bet — `/updown` for a round, `/markets`
+   *  otherwise. Threaded to the dial. */
+  boardHref?: string;
 };
 
 export function SidePicker({
-  marketId, marketTitle, yesPool, noPool, yesPct, resolutionAt, balance, initialSide, rates, minStake, maxStake,
+  marketId, marketTitle, yesPool, noPool, yesPct, resolutionAt, balance, initialSide, rates, minStake, maxStake, boardHref,
 }: Props) {
   const { t } = useT();
   const [side, setSide] = useState<"YES" | "NO" | null>(initialSide ?? null);
@@ -78,6 +81,7 @@ export function SidePicker({
           rates={rates}
           baseStake={minStake}
           maxStake={maxStake}
+          boardHref={boardHref}
         />
         <NotifyPrompt marketId={marketId} marketTitle={marketTitle} />
       </div>

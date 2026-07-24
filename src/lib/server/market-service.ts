@@ -285,6 +285,33 @@ export async function getMarket(id: string) {
   return (await marketStore.get(id)) ?? null;
 }
 
+/**
+ * Markets a player might bet on NEXT, for the "Similar markets" rail on the detail
+ * page — so a confirmed bet flows straight into another rather than a dead end.
+ *
+ * ONLY genuinely bettable rows: LIVE, not closed by time, selections still open. A
+ * closed or awaiting-settlement market in a "bet on these too" rail would be a broken
+ * promise. Same PRODUCT LINE as the anchor (an Up & Down detail page recommends other
+ * rounds, not day-long polls), and same category floated to the front, with other
+ * live markets backfilling so the rail is never thin. Excludes the anchor itself.
+ */
+export async function getSimilarMarkets(
+  anchor: Pick<StoredMarket, "id" | "category" | "productLine">,
+  limit = 4,
+): Promise<StoredMarket[]> {
+  const live = (await marketStore.listBoard({ productLine: anchor.productLine ?? "MARKET", status: "LIVE" }))
+    .filter((m) => !isDemoMarket(m))
+    .filter((m) => m.id !== anchor.id)
+    .filter((m) => !isClosedByTime(m) && !isSelectionClosed(m));
+  // Same category first (most "similar"), then everything else — soonest to close
+  // ranks higher within each group, so the rail leads with markets a player can still
+  // act on for the longest, not ones about to shut.
+  const sameCat = live.filter((m) => m.category === anchor.category);
+  const otherCat = live.filter((m) => m.category !== anchor.category);
+  const byClose = (a: StoredMarket, b: StoredMarket) => a.resolutionAt.localeCompare(b.resolutionAt);
+  return [...sameCat.sort(byClose), ...otherCat.sort(byClose)].slice(0, limit);
+}
+
 /** A market is "closed by time" once resolutionAt has passed, regardless
  *  of whether the resolver has run stage-1 yet. The server enforces this
  *  at buyPosition (line ~185), and the client uses it to disable the dial

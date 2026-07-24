@@ -68,3 +68,8 @@ scratch-*.js
 scratch-*.cjs
 *.zip
 .50pick-reports/
+
+# Ephemeral visual-verification screenshots
+docs/shots-updown/
+docs/shots-final/
+docs/shots-resolver/

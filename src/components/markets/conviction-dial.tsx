@@ -150,9 +150,14 @@ type Props = {
    *  `taxRate` slot with the other three zeroed — a hack that could not survive a
    *  fee that is no longer a flat percentage of the pool. */
   rates?: PollRates;
+  /** Where "keep predicting" sends the player after a successful bet — the board
+   *  for THIS product line (`/updown` for a round, `/markets` otherwise). Continuing
+   *  the session on the same product beats dropping an Up & Down bettor onto the
+   *  long-form board. Defaults to `/markets`. */
+  boardHref?: string;
 };
 
-export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, maxStake, initial = 0.5, marketTitle, resolutionAt, balance, lockedSide, rates }: Props) {
+export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, maxStake, initial = 0.5, marketTitle, resolutionAt, balance, lockedSide, rates, boardHref = "/markets" }: Props) {
   // The side the dial is locked to (null = free bidirectional). The choice is
   // made on the market card (outside) and is FINAL here — the in-dial YES/NO
   // pills are display-only indicators, NOT switchable. To change sides the
@@ -1507,12 +1512,21 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, max
           // BUSY offers Retry as the PRIMARY action. Without it the failure modal
           // had only "Close" — a dead end that made a transient capacity blip look
           // like a refusal, and left the player to re-aim from scratch.
+          // Success PRIMARY is now "Keep predicting" → the board for THIS product
+          // line. The bet is confirmed (the crest + details are the informed-consent
+          // record), and the natural forward action continues the session rather than
+          // parking the player on a detail page they have already acted on. "View
+          // positions" stays available as the secondary.
           primaryLabel={
-            resultData.variant === "success" ? t.common.doneSawa
+            resultData.variant === "success" ? t.common.keepPredicting
               : resultData.retryable ? t.common.retryNow
               : t.common.close
           }
-          onPrimary={resultData.retryable ? retrySubmit : undefined}
+          onPrimary={
+            resultData.variant === "success" ? () => { setResultOpen(false); router.push(boardHref as never); }
+              : resultData.retryable ? retrySubmit
+              : undefined
+          }
           secondaryLabel={
             resultData.variant === "success" ? t.common.viewPositions
               : resultData.retryable ? t.common.close
@@ -1523,12 +1537,15 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, max
               : resultData.retryable ? () => setResultOpen(false)
               : undefined
           }
-          onClose={() => setResultOpen(false)}
-          // No auto-close on success — let the player read the result
-          // and decide whether to tap "View positions" or "Done". The
-          // previous 10s timer closed the modal before mobile users
-          // could process the CTA.
-          autoCloseMs={undefined}
+          // A player who reads the confirmation and does nothing is carried onward
+          // to the board too — matching the platform's 5 s success-dismiss standard
+          // (CLAUDE.md) and the "keep the session flowing" intent. Failures still stay
+          // until dismissed (they never reach this branch: autoCloseMs is success-only).
+          onClose={() => {
+            setResultOpen(false);
+            if (resultData.variant === "success") router.push(boardHref as never);
+          }}
+          autoCloseMs={resultData.variant === "success" ? 5000 : undefined}
           stripTone={resultData.variant === "success" ? (resultData.side === "YES" ? "yes" : "no") : undefined}
         />
       )}
