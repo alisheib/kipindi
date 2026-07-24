@@ -36,6 +36,8 @@ import { ai } from "./ai-config";
 import { recordAiUsage } from "./ai-usage";
 import { getAiOpsConfig } from "./ai-ops-config";
 import { getPlatformTimezone } from "./platform-config";
+import { loadConfig, saveConfig } from "./config-store";
+import { audit } from "./audit";
 import type { StoredMarket } from "./market-service";
 
 // --- Configuration -----------------------------------------------------------
@@ -67,9 +69,79 @@ function getClient(): Anthropic | null {
   return client;
 }
 
-/** True when the sentinel can run at all (API key present + not disabled). */
+/** True when the sentinel CAN run at all (API key present + not env-disabled). This
+ *  is the deployment-level gate; the operator PAUSE below layers on top of it. */
 export function sentinelEnabled(): boolean {
   return !!process.env.ANTHROPIC_API_KEY && process.env.SENTINEL_ENABLED !== "false";
+}
+
+// ── Operator PAUSE for the AI resolution check ───────────────────────────────
+//
+// The old global sweep had a pause/resume the operator used as a budget/kill switch.
+// The sweep is gone (markets are AI-checked at their own resolve time now), but the
+// PAUSE is still wanted: a persisted, admin-tunable switch that stops the automatic
+// resolve-date AI call platform-wide, without changing anything else.
+//
+//   ACTIVE  → at a market's resolve date the AI check runs (the normal flow).
+//   PAUSED  → no automatic AI call; the resolve trigger still fires on time and goes
+//             straight to the human ceremony (officers resolve, no AI recommendation).
+//             Money flow is identical. A deliberate per-market "Re-check this market
+//             now" is NOT gated by this — it is an explicit, single, operator-chosen call.
+//
+// Persisted via config-store so it survives deploys (the same durability the old
+// pause had). globalThis-cached, hydrated once — the house pattern.
+const PAUSE_KEY = "sentinel.paused";
+declare global {
+  // eslint-disable-next-line no-var
+  var __50PICK_SENTINEL_PAUSED: boolean | undefined;
+  // eslint-disable-next-line no-var
+  var __50PICK_SENTINEL_PAUSED_HYDRATED: boolean | undefined;
+}
+
+async function ensurePauseHydrated(): Promise<void> {
+  if (globalThis.__50PICK_SENTINEL_PAUSED_HYDRATED) return;
+  globalThis.__50PICK_SENTINEL_PAUSED_HYDRATED = true;
+  const stored = await loadConfig<{ paused: boolean }>(PAUSE_KEY);
+  if (stored && typeof stored.paused === "boolean") globalThis.__50PICK_SENTINEL_PAUSED = stored.paused;
+}
+
+/** Has an officer paused the automatic AI resolution check? (Persisted.) */
+export async function isResolutionAiPaused(): Promise<boolean> {
+  await ensurePauseHydrated();
+  return globalThis.__50PICK_SENTINEL_PAUSED === true;
+}
+
+/** The automatic resolve-date AI check runs only when the deployment allows it AND
+ *  an officer has not paused it. This is what the resolve trigger consults. */
+export async function isResolutionAiActive(): Promise<boolean> {
+  if (!sentinelEnabled()) return false;
+  return !(await isResolutionAiPaused());
+}
+
+/** Pause or resume the automatic AI resolution check. Persisted + audited. */
+export async function setResolutionAiPaused(paused: boolean, officerId: string): Promise<void> {
+  await ensurePauseHydrated();
+  globalThis.__50PICK_SENTINEL_PAUSED = paused;
+  await saveConfig(PAUSE_KEY, { paused });
+  audit({
+    category: "ADMIN",
+    action: paused ? "sentinel.resolution_paused" : "sentinel.resolution_resumed",
+    actorId: officerId,
+    targetType: "System",
+    targetId: "market-sentinel",
+    payload: { paused, note: paused
+      ? "Automatic resolve-date AI check PAUSED — markets fall to the human ceremony until resumed. Manual per-market re-check still available."
+      : "Automatic resolve-date AI check RESUMED." },
+  });
+}
+
+/** Status for the admin toggle: whether the deployment supports AI, whether an
+ *  officer paused it, and the resulting active state. */
+export async function getResolutionAiStatus(): Promise<{ hasKey: boolean; enabled: boolean; paused: boolean; active: boolean }> {
+  const hasKey = !!process.env.ANTHROPIC_API_KEY;
+  const enabled = sentinelEnabled();
+  const paused = await isResolutionAiPaused();
+  return { hasKey, enabled, paused, active: enabled && !paused };
 }
 
 // --- Types -------------------------------------------------------------------

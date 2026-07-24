@@ -76,6 +76,13 @@ for (const width of WIDTHS) {
   const toggle = page.locator('[role="switch"][aria-label^="Auto-resolve at resolve date"]');
   (await toggle.count()) > 0 ? pass("auto-resolve toggle present") : fail("auto-resolve toggle MISSING");
 
+  // The AI pause/resume switch (or its "no key" disabled state) must be present.
+  const aiToggle = page.locator('[role="switch"][aria-label^="AI resolution check"]');
+  const aiNoKey = page.locator('text=AI checks · no key');
+  ((await aiToggle.count()) > 0 || (await aiNoKey.count()) > 0)
+    ? pass("AI pause switch present")
+    : fail("AI pause switch MISSING");
+
   // Tap-target floor (kit rule: >= 40px on interactive controls) — check the
   // per-market re-check button where it exists.
   const recheck = page.locator('button:has-text("Re-check this market now")').first();

@@ -80,6 +80,29 @@ export async function setResolutionModeAction(formData: FormData): Promise<
 }
 
 /**
+ * Pause or resume the AUTOMATIC AI resolution check platform-wide. When paused, a
+ * market reaching its resolve date goes straight to the human ceremony (no AI call,
+ * no recommendation); the per-market "Re-check this market now" button still works.
+ * Persisted + audited in setResolutionAiPaused. Not dangerous/irreversible → no
+ * confirm gate; the toggle applies directly.
+ */
+export async function setAiPausedAction(formData: FormData): Promise<
+  { ok: true; paused: boolean } | { ok: false; error: string }
+> {
+  const g = await gate("setAiPaused");
+  if (!g.ok) return { ok: false, error: g.error };
+  const paused = String(formData.get("paused") ?? "") === "true";
+  try {
+    const { setResolutionAiPaused } = await import("@/lib/server/market-sentinel");
+    await setResolutionAiPaused(paused, g.userId);
+    revalidatePath("/admin/resolver-queue");
+    return { ok: true, paused };
+  } catch (err) {
+    return { ok: false, error: safeError(err, "Could not change AI pause state") };
+  }
+}
+
+/**
  * Run the AI resolution check on ONE market NOW. Returns a short human-readable
  * outcome for the toast. Arms the market's timer afterwards so a market the check
  * just sealed gets its settle timer without waiting for the reconciler.

@@ -409,6 +409,74 @@ const undetermined = (marketId: string): SentinelResult => ({
   disarmAll();
 }
 
+// ─── 11. AI resolution PAUSE — and its reflection on every other path ───
+// The operator's budget/kill switch: pause the automatic resolve-date AI check
+// platform-wide. It must (a) stop the automatic AI call, (b) still resolve markets
+// (human ceremony) so nothing stalls, (c) override AUTO mode (no AI result ⇒ no
+// auto-seal, ever), and (d) NOT gate a deliberate manual re-check.
+{
+  disarmAll();
+  const {
+    isResolutionAiPaused, isResolutionAiActive, setResolutionAiPaused, getResolutionAiStatus,
+  } = await import("../src/lib/server/market-sentinel.ts");
+  const prevKey = process.env.ANTHROPIC_API_KEY;
+  // Make the deployment "AI-capable" so the pause flag is the ONLY variable. No real
+  // API call happens below: every automatic path here is paused (skips the call), and
+  // the one active path passes an explicit assessment (also skips the call).
+  process.env.ANTHROPIC_API_KEY = "test-key-never-dialed";
+
+  await setResolutionAiPaused(false, "test_officer");
+  ok("11.1 default: not paused", (await isResolutionAiPaused()) === false);
+  ok("11.2 active when key present + not paused", (await isResolutionAiActive()) === true);
+  const st = await getResolutionAiStatus();
+  ok("11.3 status reflects active/hasKey", st.active === true && st.paused === false && st.hasKey === true);
+
+  await setResolutionAiPaused(true, "test_officer");
+  ok("11.4 pause flag persists in-process", (await isResolutionAiPaused()) === true);
+  ok("11.5 NOT active when paused (even with a key)", (await isResolutionAiActive()) === false);
+
+  // (a)+(b) PAUSED + automatic trigger past resolutionAt → human fallback, AI skipped.
+  await setGlobalConfig({ resolutionMode: "human" }, "test_officer");
+  await mk("mkt_paused_trigger", { resolutionAt: iso(now - HOUR) });
+  const rp = await resolveDueMarket("mkt_paused_trigger"); // no opts → would call AI if active
+  const mp = await marketStore.get("mkt_paused_trigger");
+  ok("11.6 paused: automatic trigger still resolves (human fallback)", rp.status === "closed-human", `status=${rp.status}`);
+  ok("11.7 paused: AI genuinely skipped — no recommendation stored, market CLOSED",
+    mp?.status === "CLOSED" && mp?.sentinelOutcome == null && mp?.sentinelConfidence == null && !!mp?.resolutionNotifiedAt);
+
+  // (c) PAUSED + AUTO mode → must STILL be human fallback (no AI result ⇒ never auto-seals).
+  await setGlobalConfig({ resolutionMode: "auto" }, "test_officer");
+  await mk("mkt_paused_auto", { resolutionAt: iso(now - HOUR) });
+  const rpa = await resolveDueMarket("mkt_paused_auto");
+  const mpa = await marketStore.get("mkt_paused_auto");
+  ok("11.8 paused overrides AUTO mode — human fallback, never auto-sealed",
+    rpa.status === "closed-human" && mpa?.status === "CLOSED" && mpa?.resolvedOutcome == null, `status=${rpa.status} mstatus=${mpa?.status}`);
+
+  // (d) Manual re-check BYPASSES pause: an explicit assessment is used even while paused
+  //     (and, in auto mode, seals it) — the deliberate single-market operator action.
+  await mk("mkt_paused_manual", { resolutionAt: iso(now - HOUR) });
+  const rm = await resolveDueMarket("mkt_paused_manual", { assessment: confidentYes("mkt_paused_manual") });
+  const mm = await marketStore.get("mkt_paused_manual");
+  ok("11.9 manual re-check bypasses pause (explicit assessment honoured → auto-seals)",
+    rm.status === "resolved-auto" && mm?.status === "RESOLVED" && mm?.resolvedOutcome === "YES", `status=${rm.status}`);
+
+  await setResolutionAiPaused(false, "test_officer");
+  ok("11.10 resume restores active", (await isResolutionAiActive()) === true);
+
+  // Reflection on the SETTLE path: pausing the AI must not touch settlement at all —
+  // an already-RESOLVED market still settles on its timer while the AI is paused.
+  await setResolutionAiPaused(true, "test_officer");
+  await mk("mkt_paused_settle", { status: "RESOLVED", resolvedOutcome: "YES", objectionsClosedAt: iso(now - HOUR) });
+  const sr = await settleMarket("mkt_paused_settle", { actorId: "system" });
+  ok("11.11 settlement is unaffected by the AI pause", sr.ok === true && !!(await marketStore.get("mkt_paused_settle"))?.settledAt);
+
+  // Cleanup — leave global state exactly as we found it.
+  await setResolutionAiPaused(false, "test_officer");
+  await setGlobalConfig({ resolutionMode: "human" }, "test_officer");
+  if (prevKey === undefined) delete process.env.ANTHROPIC_API_KEY; else process.env.ANTHROPIC_API_KEY = prevKey;
+  disarmAll();
+}
+
 disarmAll();
 console.log(`\n${fail === 0 ? "ALL SCHEDULER SCENARIOS PASS" : "SOME FAILED"} — ${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

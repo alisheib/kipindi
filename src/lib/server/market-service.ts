@@ -1185,11 +1185,18 @@ export async function resolveDueMarket(
   if (!claim.ok) return { status: claim.reason === "claimed" ? "claimed-elsewhere" : "skipped" };
 
   // ── 2. AI deep check OUTSIDE the lock (slow web search; must not pin a DB conn) ─
+  // Skipped entirely when the operator has PAUSED the AI (or the deployment has no
+  // key): the market then falls straight to the human ceremony below. A caller that
+  // passed an explicit assessment (the manual "Re-check this market now") bypasses
+  // the pause — that is a deliberate, single, operator-chosen call.
   let assessment: SentinelResult | null = opts?.assessment ?? null;
   if (assessment === null && !("assessment" in (opts ?? {}))) {
     try {
-      const { sentinelCheckOne } = await import("./market-sentinel");
-      assessment = await sentinelCheckOne(marketId);
+      const { sentinelCheckOne, isResolutionAiActive } = await import("./market-sentinel");
+      if (await isResolutionAiActive()) {
+        assessment = await sentinelCheckOne(marketId);
+      }
+      // else: AI paused/disabled → assessment stays null → human fallback.
     } catch (e) {
       console.error(`[resolve] AI check errored for ${marketId} — falling back to human:`, e);
     }

@@ -12,8 +12,10 @@ import { CircularProgress } from "@/components/markets/circular-progress";
 import { ResolveControls } from "./resolve-controls";
 import { ConflictOverrideToggle } from "./conflict-override-toggle";
 import { ResolutionModeToggle } from "./resolution-mode-toggle";
+import { AiPauseToggle } from "./ai-pause-toggle";
 import { RecheckButton } from "./recheck-button";
 import { getConflictedResolutionAllowed, isConflictOverrideHardLocked } from "@/lib/server/test-overrides";
+import { getResolutionAiStatus } from "@/lib/server/market-sentinel";
 import { getGlobalConfig } from "@/lib/server/market-config";
 import { isLiveMoneyMode } from "@/lib/server/runtime-mode";
 import { formatDateTime } from "@/lib/utils";
@@ -86,6 +88,9 @@ export default async function ResolverQueuePage({
   const resolutionMode = rateCfg?.resolutionMode ?? "human";
   const resolveThreshold = rateCfg?.resolveConfidenceThreshold ?? 90;
   const liveMoney = isLiveMoneyMode();
+  // AI pause/resume state for the header switch (the budget/kill switch for the
+  // automatic resolve-date AI check).
+  const aiStatus = await getResolutionAiStatus().catch(() => ({ hasKey: false, enabled: false, paused: false, active: false }));
 
   // Paginate
   const page = parsePage(sp.page, pending.length);
@@ -101,6 +106,7 @@ export default async function ResolverQueuePage({
         period={false}
         actions={
           <div className="flex items-center gap-2.5 flex-wrap">
+            <AiPauseToggle active={aiStatus.active} hasKey={aiStatus.hasKey} />
             <ResolutionModeToggle mode={resolutionMode} threshold={resolveThreshold} liveMoney={liveMoney} />
             <ConflictOverrideToggle enabled={conflictOverride} hardLocked={conflictHardLocked} />
             <div className="flex items-center gap-2.5 font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle">
