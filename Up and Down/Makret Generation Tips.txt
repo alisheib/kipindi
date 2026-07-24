@@ -1,0 +1,23 @@
+Here have different kind of generating poll where it will be regenerating everytime it's series of poll ends ( one polls finished the other one comes up automated ).
+
+If u can make it in one thats no worries.
+
+If we keep different so we can start a new chain of its own u can suggest on this.
+
+But this poll will be completely different than those as it will be regenerating after I generate it once.
+
+The connections
+
+Generating the poll
+
+- Should must get source link. It's not a must to use same site. We can use different but if it can use same one only no worries I just want to see which _will be cheaper. But u decide this._
+- after getting the source and it should make sure to use the same link to resolve.
+- once it resolve it should regenerate same kind of poll.
+- no need for the AI to rush. It should show regenerating and than when it finds with 100% sources.
+- how the poll should look? I have attached to Documents.
+1. BTC Up or Down
+2. Place for amount and selection bottom
+3. U can see the volume, players, amount and timer. These are must to show.
+
+
+we wil sue gld silver etc.. not btc or anythgi we make admnf lexible
