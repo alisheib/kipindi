@@ -1,97 +1,71 @@
-# GO-LIVE session prompt — 50pick.tz (copy-paste)
+# 50pick — next-session prompt (copy-paste)
 
-> The single, self-contained prompt to run the go-live mission. Everything code
-> is DONE; this session is DNS + R2 + payment keys + the switch. Written 2026-07-17.
+> Self-contained continuation prompt. Rewritten 2026-07-24 after the single-admin
+> resolution + switchable-payments session. (The previous 2026-07-17 GO-LIVE prompt
+> is retired — go-live happened, and its solo-resolution section is now wrong: that
+> override was deleted.)
 
 ---
 
-You are running 50pick's GO-LIVE mission (repo `F:\kipindi-main`; every push to
-`main` = a LIVE production deploy to the money DB). Read `.claude/skills/50pick-standards`
-+ `.claude/skills/50pick-audit` first. Prod verify host: `kipindi-production.up.railway.app`
-until DNS lands, then `https://www.50pick.tz`. Railway CLI = alisheib07.
+You are continuing work on **50pick** (repo `F:\kipindi-main`, branch `main`; Node 24).
+Read `.claude/skills/50pick-standards` + `.claude/skills/50pick-audit` first, and
+`docs/COMPLIANCE-DECISIONS.md` (newest entries first) before touching resolution or payments.
 
-STATE — everything code is DONE, merged, live, and verified:
-- Final Audit COMPLETE (all 11 Criticals + Highs + Mediums). GBT licence obtained.
-- §9 enhancement batch merged + live.
-- ALL money paths atomic — bet-stake single-`$transaction` merged @ 595901e
-  (independently verified: e2e:money 57/57, e2e:fault 34/34, s10 PASS).
-- Route/auth audit done: sensitive admin VIEWS tier-gated (MODERATOR can't see
-  money/PII/config); `/watchlist` + `/proposals/new` edge-protected (@56e376b).
-- Solo-resolution override re-gated to real-money state: works pre-launch for
-  testers, auto-hard-locks when TEST_FUNDING is unset at go-live (@2d26008,
-  docs/COMPLIANCE-DECISIONS.md).
-- UI/CSS/design validated at 360/768/1280/1920 (0 hard failures; disciplined token
-  palette; docs/VISUAL-CONSISTENCY-AUDIT.md). One product note (not a blocker):
-  `/markets` defaults to the "Today" filter, which can render an empty board — Ali
-  to decide whether to default to "All"/"Ending soon" or fall back when empty.
-- Payment plumbing built; only the outbound adapter body is stubbed. Adapter
-  scaffold + runbook ready on branch `feat/payment-adapter`.
-- Railway static egress IPs ACTIVE: 162.220.232.250 / 152.55.176.240 /
-  152.55.177.181 (sent to the PSP; webhook `https://www.50pick.tz/api/webhooks/payments`).
+**Standing rules (Ali):**
+- Work on `main` and **commit + push cleanly yourself** — every push to `main` is a LIVE deploy.
+- **One control, one place** — never let two surfaces edit the same setting.
+- Full QA before EACH commit, run more than once. Update docs/trackers alongside every change.
+- Player surfaces never narrate ops detail; real data or nothing (no fabrication).
+- ⚠️ **A Railway deploy can FAIL after a clean build.** After pushing, ALWAYS run
+  `railway deployment list` — a 200 from the site does NOT mean your commit is live.
+  Verify with a code marker (a changed string), then `railway redeploy --service 50pick
+  --from-source --yes` if the deploy failed. Railway CLI = **alisheib07**.
 
-## ⭐ ACCESS I NEED FROM ALI TO TAKE YOU LIVE (grant at session start)
-- **Railway** — CLI already logged in as alisheib07 (no action). I'll set env vars
-  + read logs + manage domains/deploys via the CLI.
-- **Cloudflare** — the 50pick.tz account (created 2026-07-03). Best: create a scoped
-  **API token → Zone : DNS : Edit** for `50pick.tz` and paste it to me, so I set all
-  DNS records myself. Otherwise screen-share and I dictate each record.
-- **Netpoa** (registrar) — ONE action: change the domain nameservers to the two
-  Cloudflare gives us. Either do it when I hand you the 2 values, or give me access.
-- **Postmark** — dashboard access (or paste me the values): the **DKIM `._domainkey`
-  TXT** (name+value) + the Return-Path/`pm-bounces` CNAME for `50pick.tz`, so email
-  survives the DNS move. (Postmark account/API key/templates are untouched.)
-- **Payment aggregator (Selcom/AzamPay)** — which one you signed + the **API docs**
-  (collection + disbursement + webhook signature) + **sandbox creds** + **base URL**
-  + **API key/secret** + **webhook signing secret**. Paste secrets in-session (never
-  into the repo).
-- **Cloudflare R2** — create bucket `50pick-kyc` + an R2 API token (Object R/W) and
-  paste: account id (for the endpoint), access key id, secret.
-🔐 All secrets go into Railway env vars or are pasted to me in-session — never committed.
+**Live state (verified 2026-07-24, main @ `6ee1e5a`, deploy `17c3af50` SUCCESS):**
+- Prod is **TEST money-mode** (`TEST_FUNDING=true`) on `https://www.50pick.tz` (+ apex, both 200).
+- Boot clean: 44 migrations (none pending), 19 market timers armed, ledger balanced.
+- **Resolution:** single-admin is the permanent DEFAULT in all money modes — one admin
+  resolves any market in one action, **even one they hold a position in**. The two-officer
+  ceremony + officer-conflict block are RETIRED. Two-admin authorization is an OPTIONAL
+  toggle in the **resolver-queue header only**, one flag `requireTwoOfficer` (default false)
+  in `src/lib/server/resolution-policy.ts`. No real-money hard-lock.
+  ⛔ Do NOT re-add an officer-conflict block, and do NOT expose that flag anywhere else
+  (not RateConfig, not `/admin/config`). `test-overrides.ts` is DELETED and a
+  `content-integrity` **RESOLVE** guard fails the build if its symbols return.
+- **Payments:** provider is operator-switchable (**mock ↔ Selcom**) from `/admin/payments`
+  in ANY money mode — no Railway env change, no redeploy. Switching to the mock while real
+  money is LIVE needs a typed **"MOCK"** confirm, writes a COMPLIANCE audit, and shows a
+  persistent simulation banner + "· SIM" chip. Only surviving gate: a real provider needs
+  its creds. Kill-switch = the emergency stop. `selcomAdapter` is WIRED; azampay is a stub.
+- **Settlement:** per-market timers (no `AUTO_SETTLE`, no global sweep). Auto-resolve is an
+  owner toggle in the **AI toolkit** top-bar dropdown (the one place for every AI switch).
 
-RUN IN THIS ORDER (each step has a dedicated doc — follow it exactly):
+**Gate to run before any push** (prod is TEST money-mode):
+```
+npx tsc --noEmit && npm run build && npm run test:all
+# real Postgres (F:\pg-loadtest is a local PG16 on :5433):
+DATABASE_URL='postgresql://postgres:pw@localhost:5433/kipindi_load?schema=<fresh>' \
+  USE_PRISMA_DAL=true npx prisma db push --skip-generate --accept-data-loss
+DATABASE_URL='...same...' USE_PRISMA_DAL=true npx tsx scripts/money-e2e.test.mts   # expect drift 0.00
+# visual (needs: DISABLE_ADMIN_TOTP=true npm run dev):
+BASE=http://localhost:3000 node scripts/resolver-queue-shots.mjs
+BASE=http://localhost:3000 node scripts/payments-control-shots.mjs
+```
+Last known green: `test:all` **84/84**, `e2e:money` **63/63 drift 0.00** (both single-admin
+and two-officer paths), visual 0 overflow / 0 console errors.
 
-1 · DNS CUTOVER FIRST (propagation needs lead time). `docs/CLOUDFLARE-SETUP-GUIDE.md`
-   ⭐ section §A–§D **and §C2 (mail carry-over — the mailbox MX + Postmark DKIM/
-   pm-bounces MUST be recreated or ali.sheib@50pick.tz + all app email break)**.
-   Free plan is fine; grey-cloud (DNS only) until Railway certs issue. Verify:
-   both hosts serve the app, `railway domain status 50pick.tz -s 50pick` →
-   Verified: yes, Postmark DKIM+Return-Path green, a test email lands.
+**Known non-issues (don't chase):**
+- Boot warns `AZAMPAY_WEBHOOK_SECRET` / `MIXX_WEBHOOK_SECRET` unset — those providers aren't
+  contracted. Selcom's secret IS set.
+- `resolver-queue-shots.mjs` can report "toolkit switch MISSING" — the AI-toolkit dropdown
+  sometimes doesn't open headlessly. The labels DO match the code; it's harness flakiness.
 
-2 · R2 (parallel with DNS propagation). Bucket `50pick-kyc` + API token → Railway
-   vars EXACT: `KYC_STORAGE=r2`, `R2_BUCKET`, `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`,
-   `R2_SECRET_ACCESS_KEY` → `npm i @aws-sdk/client-s3` → KYC upload→admin-view test.
+**Open / next candidates (Ali's call):**
+- Withdrawals still need their own Selcom creds + `PAYMENT_VENDOR_PIN` (deposits are live-capable).
+- ⛔ **REMOVE before public launch:** the dev/test money-credit CLI scripts in the repo; rotate
+  the leaked DB password.
+- `NEXT_PUBLIC_LICENSE_REF` is still the placeholder `TZ-GBT-2026-XXXX`.
+- See `docs/perfection-plan.md` and `docs/feature-backlog.md`.
 
-3 · PAYMENT INTEGRATION (when keys arrive). `docs/PAYMENT-INTEGRATION-CHECKLIST.md`
-   on `feat/payment-adapter`: fill the signed provider's two adapter bodies (VERIFY
-   every endpoint/field/signature against their real docs — NEVER guess a signature),
-   set creds + webhook secret, confirm the `route.ts` inbound contract + `normalizeStatus`,
-   map MNO→aggregator. Test: `PAYMENTS_DEMO_ASYNC=true` suites, full gate, `e2e:money`
-   on the local PG (drift 0.00), a sandbox round-trip (deposit push → webhook →
-   credited exactly once; withdrawal payout; ≥1M → AML hold). Merge → main → deploy → verify.
-
-4 · THE SWITCH (only after 1–3 green). `docs/LAUNCH-GO-NO-GO.md` §5:
-   unset `TEST_FUNDING` → format/rebaseline the DB (clean genesis) → verify trial
-   balance = TZS 0 drift + audit chain VALID → one real small deposit→bet→settle→
-   withdraw round-trip → **nothing to flip for settlement** (there is no
-   `AUTO_SETTLE` env var / admin toggle any more — each adjudicated market carries
-   its own timer that fires at its `objectionsClosedAt` and pays itself): instead
-   verify on **/admin/system** that "Timers armed" is non-zero with a sane "next
-   fire", and that **/admin/settlement** has nothing stranded in "Ready to settle"
-   → confirm https://50pick.tz + https://www.50pick.tz serve with valid certs →
-   announce.
-
-5 · POST-LAUNCH WATCH. railway logs clean · /admin/payments reconcile drift 0 ·
-   nightly `ledger.trial_balance_drift` stays quiet · /admin/system scheduler
-   health (timers armed / next fire) + /admin/settlement "Ready to settle" not
-   piling up — settle by hand there if a market is stuck · first real player flows.
-
-GUARDRAILS (unchanged): every push = LIVE deploy; full `npm run test:all` before
-any money push; verify after every push (tech/logical/visual screenshot/live-DB
-200/railway logs); never `throw` at boot on a non-fatal; migrations on the local
-disposable PG (`F:\pg-loadtest:5433`) only; NEVER commit secrets (creds → Railway
-vars or pasted in-session only); keep the trackers + CLAUDE.md + memory current.
-
-DEFER to post-launch stabilization (NOT launch day): Redis + replicas (scale step;
-Redis already in the Railway project, unwired), Cloudflare orange-proxy/WAF flip,
-PG load benchmark, optional admin features (A6/A7/A13–A16). Two small policy calls
-for Ali when convenient: RG-limit override vs cooling-off; which comm "resend" sends.
+Tell me what you want to work on, or say "audit" and I'll run the standards + audit skills
+across the current state and report findings before changing anything.
