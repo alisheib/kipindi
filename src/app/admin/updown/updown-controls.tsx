@@ -168,7 +168,7 @@ export function AddAssetForm() {
 
   if (!open) {
     return (
-      <button type="button" onClick={() => setOpen(true)} className="btn btn-primary btn-sm">
+      <button type="button" onClick={() => setOpen(true)} className="btn btn-primary btn-md">
         + Add asset
       </button>
     );
@@ -245,7 +245,7 @@ export function AddChainForm({ assets }: { assets: Array<{ id: string; key: stri
 
   if (!open) {
     return (
-      <button type="button" onClick={() => setOpen(true)} className="btn btn-primary btn-sm">
+      <button type="button" onClick={() => setOpen(true)} className="btn btn-primary btn-md">
         + Add chain
       </button>
     );
@@ -322,9 +322,9 @@ export function ThresholdsForm({
         </Field>
       </div>
       <p className="text-[11.5px] leading-[1.55] text-text-subtle max-w-[80ch]">
-        <strong>Staleness</strong> is how far the source&rsquo;s own quoted time may sit from the round boundary before a
-        reading is refused. A refused reading is retried; a boundary that never confirms voids its rounds and refunds
-        every stake in full — we never settle on a guessed price.
+        <strong>Staleness</strong>{" "}is how far the source&rsquo;s own quoted time may sit from the round boundary
+        before a reading is refused. A refused reading is retried; a boundary that never confirms voids its rounds and
+        refunds every stake in full — we never settle on a guessed price.
       </p>
       <button type="submit" disabled={pending} className="btn btn-primary btn-md">
         {pending ? "Saving…" : "Save thresholds"}

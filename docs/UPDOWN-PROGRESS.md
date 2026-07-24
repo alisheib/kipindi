@@ -31,9 +31,9 @@ product is or how it is built; it links. The full document-ownership table is in
 | Phase | Content | Status |
 |---|---|---|
 | **0** | Scale prerequisite — `productLine` + indexed board queries | 🟡 **In progress** |
-| **1** | Schema (4 tables), DAL, `updown-config.ts`, admin asset + chain pages | ⬜ Not started |
-| **2** | `updown-oracle.ts` + observation ledger + AI-toolkit pause + usage metering | ⬜ Not started |
-| **3** | `updown-service.ts` + `updown-scheduler.ts` + rate overrides + display-field fix | ⬜ Not started |
+| **1** | Schema (4 tables), DAL, `updown-config.ts`, admin asset + chain pages | 🟢 **DONE + LIVE** |
+| **2** | `updown-oracle.ts` + observation ledger + AI-toolkit pause + usage metering | 🟡 Oracle written; needs its test + wiring |
+| **3** | `updown-service.ts` + `updown-scheduler.ts` + rate overrides + display-field fix | ⬜ Next |
 | **4** | Player UI — `/updown`, round detail, `UpDownCard`, nav, SSE, EN/SW/ZH | ⬜ Blocked on design |
 | **5** | Reports, analytics, notification digest, admin rounds explorer + settings | ⬜ Not started |
 | **6** | Staged enable (Gold 5-min → Silver → 15/30-min) + archive/retention job | ⬜ Not started |

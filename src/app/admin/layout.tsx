@@ -70,11 +70,25 @@ const TOTP_EXEMPT = new Set<string>([
 // /admin/kyc and the /admin/resolver detail route, so those pages highlighted
 // nothing. One definition now, guarded by `npm run test:admin-nav`.
 
+/** Segments whose title-cased form is wrong or unreadable. Title-casing turns
+ *  "updown" into "Updown", which is not the product's name — the game is "Up & Down"
+ *  everywhere it is written. Add a segment here rather than accepting a mangled crumb. */
+const CRUMB_LABELS: Record<string, string> = {
+  updown: "Up & Down",
+  aml: "AML",
+  kyc: "KYC",
+  "ai-polls": "AI polls",
+  "ai-usage": "AI usage",
+  "2fa": "2FA",
+  dsar: "DSAR",
+};
+
 function crumbsFromPath(path: string): string[] {
   const parts = path.replace(/^\/admin\/?/, "").split("/").filter(Boolean);
   if (parts.length === 0) return ["Admin", "Overview"];
   // Title-case + drop dynamic segments like ids
-  return ["Admin", ...parts.map((p) => p.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()))];
+  return ["Admin", ...parts.map((p) =>
+    CRUMB_LABELS[p] ?? p.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()))];
 }
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {

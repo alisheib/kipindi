@@ -1,5 +1,5 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
-import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
+import { EmptyState } from "@/components/ui/empty-state";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { listAssets, listChains, getUpDownConfig, ALLOWED_DURATIONS } from "@/lib/server/updown-config";
 import { observationStore } from "@/lib/server/updown-dal";
@@ -60,16 +60,19 @@ export default async function AdminUpDownPage() {
         </div>
 
         {/* ── Assets ─────────────────────────────────────────────────────── */}
-        <AdminCard
-          title={`Assets · ${assets.length}`}
-          sw="Bidhaa"
-          padding="p-0"
-          action={
-            <span className="font-mono text-[10px] tracking-[0.12em] uppercase text-text-tertiary">
-              source must be approved at /admin/sources
-            </span>
-          }
-        >
+        <AdminCard title={`Assets · ${assets.length}`} sw="Bidhaa" padding="p-0">
+          {/* The empty state renders OUTSIDE the scroll container. Inside it, the
+              table's min-width would clip the message at 360px and force a sideways
+              scroll to read an empty state — the "clipped-not-scrolled" bug that
+              passes an automated overflow check and only shows in the screenshot. */}
+          {assets.length === 0 ? (
+            <div className="p-4">
+              <EmptyState
+                title="No assets yet"
+                body="Add Gold and Silver to begin. An asset needs an approved price source before it can be enabled — a round resolves against that exact link."
+              />
+            </div>
+          ) : (
             <ScrollX label="Up & Down assets">
               <table className="w-full min-w-[640px] text-[12.5px]">
                 <thead>
@@ -83,13 +86,6 @@ export default async function AdminUpDownPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {assets.length === 0 && (
-                    <AdminTableEmpty
-                      colSpan={6}
-                      title="No assets yet"
-                      body="Add Gold and Silver to begin. An asset needs an approved price source before it can be enabled — a round resolves against that exact link."
-                    />
-                  )}
                   {assets.map((a) => {
                     const mine = chains.filter((c) => c.assetId === a.id);
                     const live = mine.filter((c) => c.state === "RUNNING").length;
@@ -121,6 +117,12 @@ export default async function AdminUpDownPage() {
                 </tbody>
               </table>
             </ScrollX>
+          )}
+          <p className="px-4 pb-4 pt-3 text-[11.5px] leading-[1.55] text-text-subtle">
+            An asset&rsquo;s price source must be an approved trusted source at{" "}
+            <span className="font-mono text-[11px]">/admin/sources</span> — checked when it is added, when it is
+            enabled, and again each time a chain starts.
+          </p>
         </AdminCard>
 
         {/* ── Chains ─────────────────────────────────────────────────────── */}
@@ -130,6 +132,14 @@ export default async function AdminUpDownPage() {
           padding="p-0"
           action={<AddChainForm assets={assets.filter((a) => a.enabled).map((a) => ({ id: a.id, key: a.key, nameEn: a.nameEn }))} />}
         >
+          {chains.length === 0 ? (
+            <div className="p-4">
+              <EmptyState
+                title="No chains configured"
+                body={`A chain is one asset at one duration (${ALLOWED_DURATIONS.join(" / ")} min). It emits rounds back to back. New chains start stopped.`}
+              />
+            </div>
+          ) : (
             <ScrollX label="Up & Down chains">
               <table className="w-full min-w-[620px] text-[12.5px]">
                 <thead>
@@ -142,13 +152,6 @@ export default async function AdminUpDownPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {chains.length === 0 && (
-                    <AdminTableEmpty
-                      colSpan={5}
-                      title="No chains configured"
-                      body={`A chain is one asset at one duration (${ALLOWED_DURATIONS.join(" / ")} min). It emits rounds back to back. New chains start stopped.`}
-                    />
-                  )}
                   {chains.map((c) => {
                     const a = assetById.get(c.assetId);
                     const label = `${a?.key ?? "?"} ${c.durationMinutes}m`;
@@ -188,6 +191,7 @@ export default async function AdminUpDownPage() {
                 </tbody>
               </table>
             </ScrollX>
+          )}
         </AdminCard>
 
         {/* ── Oracle health ──────────────────────────────────────────────── */}
