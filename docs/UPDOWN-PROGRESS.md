@@ -13,9 +13,16 @@
 | **Overall status** | 🟡 In progress |
 | **Blocked on** | **Railway access** — apply the `productLine` migration + verify the deploy (Ali) |
 
-**Companion docs:** [`UPDOWN-DESIGN-PROMPTS.md`](UPDOWN-DESIGN-PROMPTS.md) ·
-`UPDOWN-SPEC.md` (pending) · `UPDOWN-ARCHITECTURE.md` (pending) ·
-[`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md)
+**This document owns STATUS only** — the phase board, checklists, decision log, risk
+register, open questions and session log. It deliberately does **not** restate what the
+product is or how it is built; it links. The full document-ownership table is in
+[`UPDOWN-ARCHITECTURE.md`](UPDOWN-ARCHITECTURE.md).
+
+- **What it is** → [`UPDOWN-SPEC.md`](UPDOWN-SPEC.md)
+- **How it is built** → [`UPDOWN-ARCHITECTURE.md`](UPDOWN-ARCHITECTURE.md)
+- **Design brief + review** → [`UPDOWN-DESIGN-PROMPTS.md`](UPDOWN-DESIGN-PROMPTS.md)
+- **Compliance-bearing decisions** → [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md)
+- **Original requirements** → `Up and Down/` (repo root, verbatim)
 
 ---
 
@@ -37,14 +44,10 @@ Legend: ⬜ not started · 🟡 in progress · 🟢 done + verified · 🔴 bloc
 
 ## 2 · Phase 0 — scale prerequisite
 
-**Why it exists.** `listMarkets()` read the WHOLE `PredictionMarket` table
-(`findMany()` with no `where`) and filtered in JS, from ~25 surfaces including `/`,
-`/live`, `/markets`, `/results`, `/fairness`, `/api/health`, `report-money.ts` and
-`analytics.ts`. Up & Down adds ~800 rows/day (~300k/year). This must land, and be
-verified, **before the first Up & Down row exists.**
-
-Phase 0 ships alone and is valuable alone — it is pure hardening of the existing
-product with no behaviour change.
+Rationale and the read-path rule: [`UPDOWN-ARCHITECTURE.md`](UPDOWN-ARCHITECTURE.md) §6.
+Phase 0 ships alone and is valuable alone — pure hardening of the existing product,
+no behaviour change — and had to land **before the first Up & Down row exists.**
+Committed `fdea3eb`.
 
 | # | Item | Status | Notes |
 |---|---|---|---|
@@ -165,7 +168,7 @@ Source: `F:\kipindi-main\Up Down Design System\` — `handoff/D1-updown-card-spe
 | D2-1 · tape value-flash, 220 ms opacity, no movement | Accepted — reduced-motion safe. |
 | D2-2 · paused chain keeps the price tape live | **Yes.** The asset still trades; only our rounds pause. Showing it frozen would be the lie. |
 | D2-3 · pips filtered per asset+duration | Correct — a global strip would mix chains. |
-| D2-4 · lift max-width to ~1648px for a 4-col grid at 1920 | **Rejected — and my brief was wrong, not the design.** The platform has a 3-tier max-width convention (1280 grid / 1080 content / 640 forms). The board stays at 1232–1280 and remains **3-col at 1920**. `docs/UPDOWN-DESIGN-PROMPTS.md` D2 is to be corrected. |
+| D2-4 · lift max-width to ~1648px for a 4-col grid at 1920 | **Rejected — and my brief was wrong, not the design.** The platform has a 3-tier max-width convention (1280 grid / 1080 content / 640 forms). The board stays at 1232–1280 and remains **3-col at 1920**. `UPDOWN-DESIGN-PROMPTS.md` D2 corrected 2026-07-24. |
 
 **Escalated to Ali** — see Q5/Q6 in §7.
 

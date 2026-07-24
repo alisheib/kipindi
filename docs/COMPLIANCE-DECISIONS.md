@@ -6,6 +6,103 @@
 
 ---
 
+## 2026-07-24 · "Up & Down" product line — fee basis, instant settlement, notification digest
+
+> ⏳ **DECIDED, NOT YET LIVE.** The decisions below are owner-authorised as of
+> 2026-07-24 and the architecture is built around them, but the behaviour ships in
+> Phases 3–5. Nothing in production behaves this way yet. This entry exists now so a
+> future session does not "correct" the design back to the platform default without
+> realising it was a deliberate, dated choice. Update this block when it goes live.
+
+**Owner decision:** Ali, explicit, 2026-07-24, on a presented trade-off with the
+arithmetic and the risks on the table.
+
+**What Up & Down is.** A second product line: short-term price rounds (5/15/30 min) on
+Gold and Silver, running in continuous chains. Each round is a `PredictionMarket` row
+(`productLine: "UPDOWN"`, UP = YES, DOWN = NO), so **every money path — bet, settle,
+refund, ledger, audit — is the existing, proven code.** Spec: `docs/UPDOWN-SPEC.md`.
+Architecture: `docs/UPDOWN-ARCHITECTURE.md`.
+
+### 1. Fee basis — `capped-commission` at 13% of the pool
+
+Up & Down rounds freeze `feeModel: "capped-commission"`, `commissionRate: 0.13`,
+`feeCeilingRate: 1/3` — i.e. `fee = min(0.13 × pool, ⅓ × smaller side)`.
+
+The management proposal is built on "13% commission on the total poll volume"
+(TZS 1,300 on a TZS 10,000 pool). The platform default is `loser-share` — 13% of the
+**losing** pool — which on a balanced round yields TZS 650, **half** the proposal's
+figure. Rather than invent a third model, this uses the `capped-commission` maths that
+already exists and is already tested (`test:fee-model`, 77 assertions) at a 13% rate,
+which reproduces the proposal's number exactly.
+
+**Why this is the safer of the two for the licence:** `capped-commission` is
+**outcome-neutral** — the fee is a function of the two pool sizes and nothing else, so
+it is byte-identical whether UP or DOWN wins. That is the property the pari-mutuel
+licence rests on (`docs/F6-LIQUIDITY-DESIGN.md` §3.1). `loser-share`, the model
+long-form polls now use, is outcome-dependent and was itself an explicit owner
+override. Up & Down therefore sits *closer* to the licence posture, not further from it.
+The ⅓ ceiling preserves the winner floor: a winning bet can never be paid below stake.
+
+⛔ **The two models never mix.** The model is frozen per poll at creation; long-form
+polls keep `loser-share`, Up & Down rounds keep `capped-commission`, and
+`snapshotOrLegacy` reads only what each poll froze.
+
+### 2. Settlement is IMMEDIATE — the objection window does not apply
+
+Winners are paid the moment the outcome is confirmed. The platform-wide 24-hour
+objection window is **not** applied to Up & Down rounds.
+
+**Why.** A five-minute round that pays out tomorrow is not a five-minute round. Holding
+~800 pools/day open for 24 hours would also mean thousands of unsettled pools standing
+at any moment.
+
+**What still protects the money — none of this is bypassed:**
+- The **standing-objection freeze** still runs. Settlement calls the normal
+  `settleMarket()` gate, **not** `force`, so an objection filed against a round still
+  stops its money.
+- The already-settled idempotency guard, the winner floor and exact conservation are
+  untouched.
+- Every round stores a **full settlement proof**: open price, close price, both source
+  links, and **both timestamps the source itself quoted**. This is materially stronger
+  evidence than a long-form poll carries, because it is machine-checkable by the player.
+- Disputes are handled **after** payout, with `emergencyVoidMarket` as the audited
+  reversal path.
+
+**The honest limitation, stated plainly:** the pre-payout dispute window is the control
+being traded away. It is replaced by stronger evidence and a post-payout reversal, not
+by nothing — but a player cannot freeze a round before it pays.
+
+### 3. Per-round notifications are digested
+
+Per-round bet-placed / win / loss **notifications and emails are suppressed** for
+Up & Down and replaced by an in-app result plus a **daily digest**. A player running
+twenty rounds an hour would otherwise receive forty emails, which is both unusable and
+a worse RG signal than a single readable summary.
+
+⚠️ **The money record is NOT digested.** Transaction, ledger and audit rows are written
+per round exactly as today. Only the player-facing *notification* is aggregated. Loss
+notifications remain direct and non-euphemistic within the digest (LCCP harm-prevention
+— see the loss-notification rule in `CLAUDE.md`).
+
+### 4. Resolution stays on the AI sentinel
+
+No external price-feed contract. The cost/latency/determinism trade-off was presented
+and the AI path chosen. It is made sound by an **immutable observation ledger**: a price
+is read once per (asset, grid boundary) and shared by every round edge on that instant,
+enforced by `@@unique([assetId, boundaryAt])`. Consequences: one AI call per asset per
+boundary instead of one per round, and round N's close **is** round N+1's open — so the
+AI can never disagree with itself between adjacent rounds, because it is never asked
+twice. A reading whose source-quoted time is too far from the boundary is **refused**,
+and a boundary that will not confirm **VOIDs its rounds with a full refund** rather than
+settling on a guess.
+
+**Guardrail for future work (⛔):** do not "optimise" the observation ledger into
+per-round price columns, and never update a CONFIRMED observation's price. Both would
+silently reintroduce the possibility of two adjacent rounds disagreeing about the same
+instant.
+
+---
+
 ## 2026-07-24 · Single-admin resolution by default; two-admin authorization optional; officer-conflict block removed
 
 **Owner decision:** Ali, explicit, 2026-07-24 (authorised in-session): *"when solo admin, allow

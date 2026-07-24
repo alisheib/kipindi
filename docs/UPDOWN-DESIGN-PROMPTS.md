@@ -271,7 +271,9 @@ Design the Up & Down page — surface D2, built from the D1 card.
 · Asset tabs: Gold · Silver. Design so a third and fourth can be enabled later without
   the layout breaking — an operator can turn assets on at any time.
 · Duration tabs: 5 · 15 · 30 min. Visually secondary to the asset tabs.
-· Card grid: 1 column at 360, 2 at 768, 3 at 1280, 4 at 1920. Equal heights, buttons
+· Card grid: 1 column at 360, 2 at 768, 3 at 1280. It STAYS 3-across at 1920 — the
+  platform uses a fixed 3-tier max-width system (1280 grid pages / 1080 content /
+  640 forms) and the board must not break it by widening. Equal heights, buttons
   aligned across every row.
 · Recent results strip: the last ~12 finished rounds as small green-up / rose-down
   pips, oldest to newest. This is the page's heartbeat.
