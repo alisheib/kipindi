@@ -2,39 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { NAV_GROUPS } from "./admin-nav-groups";
+import { NAV_GROUPS, activeKeyFromPath } from "./admin-nav-groups";
 
-function activeKeyFromPath(path: string): string {
-  if (path === "/admin")                              return "overview";
-  if (path.startsWith("/admin/live"))                 return "live";
-  if (path.startsWith("/admin/finance"))              return "finance";
-  if (path.startsWith("/admin/reports"))              return "reports";
-  if (path.startsWith("/admin/players/cohorts"))      return "cohorts";
-  if (path.startsWith("/admin/players"))              return "players";
-  if (path.startsWith("/admin/sources"))              return "sources";
-  if (path.startsWith("/admin/config"))               return "config";
-
-  if (path.startsWith("/admin/ai-polls"))             return "ai-polls";
-  if (path.startsWith("/admin/candidates"))           return "candidates";
-  if (path.startsWith("/admin/proposals"))            return "proposals";
-  if (path.startsWith("/admin/markets"))              return "markets";
-  if (path.startsWith("/admin/resolver-queue"))       return "resolver";
-  if (path.startsWith("/admin/affiliate"))            return "affiliate";
-  if (path.startsWith("/admin/moderation"))           return "moderation";
-  if (path.startsWith("/admin/compliance"))           return "compliance";
-  if (path.startsWith("/admin/aml"))                  return "aml";
-  if (path.startsWith("/admin/self-exclusions"))      return "sx";
-  if (path.startsWith("/admin/audit"))                return "audit";
-  if (path.startsWith("/admin/system"))               return "system";
-  if (path.startsWith("/admin/ai-usage"))             return "ai-usage";
-  if (path.startsWith("/admin/settlement"))           return "settlement";
-  if (path.startsWith("/admin/objections"))           return "objections";
-  if (path.startsWith("/admin/approvals"))            return "approvals";
-  if (path.startsWith("/admin/2fa"))                  return "2fa";
-  if (path.startsWith("/admin/privacy"))              return "privacy";
-  if (path.startsWith("/admin/retention"))            return "retention";
-  return "overview";
-}
+// The route→nav-key resolver is imported from admin-nav-groups.ts — see the note
+// there. This file's local copy was the one missing /admin/payments, /admin/kyc and
+// the /admin/resolver detail route.
 
 export function AdminSidebarNav({ badges, fallbackKey }: { badges: Record<string, string | undefined>; fallbackKey: string }) {
   const pathname = usePathname();

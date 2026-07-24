@@ -13,6 +13,7 @@ import { ConfidentialBand, AdminSidebar, AdminTopBar, type AdminSession } from "
 import { TOTP_COOKIE_NAME, TOTP_TTL_SEC } from "@/lib/server/totp-cookie";
 import { ADMIN_CONSOLE_ROLES, MONEY_ROLES, COMPLIANCE_ROLES, CONFIG_ROLES, hasRole, type Role } from "@/lib/server/roles";
 import { AdminRestricted } from "@/components/admin/admin-restricted";
+import { activeKeyFromPath } from "@/components/admin/admin-nav-groups";
 
 const ADMIN_ROLES = ADMIN_CONSOLE_ROLES; // role tier — see @/lib/server/roles
 
@@ -63,43 +64,11 @@ const TOTP_EXEMPT = new Set<string>([
   "/admin/2fa/setup",
 ]);
 
-/**
- * Map the URL to the active sidebar key. Keep this in sync with NAV_GROUPS
- * in `admin-shell.tsx`.
- */
-function activeKeyFromPath(path: string): string {
-  if (path === "/admin")                              return "overview";
-  if (path.startsWith("/admin/live"))                 return "live";
-  if (path.startsWith("/admin/finance"))              return "finance";
-  if (path.startsWith("/admin/reports"))              return "reports";
-  if (path.startsWith("/admin/payments"))             return "payments";
-  if (path.startsWith("/admin/players/cohorts"))      return "cohorts";
-  if (path.startsWith("/admin/players"))              return "players";
-  if (path.startsWith("/admin/privacy"))              return "privacy";
-  if (path.startsWith("/admin/retention"))            return "retention";
-  if (path.startsWith("/admin/sources"))              return "sources";
-  if (path.startsWith("/admin/config"))               return "config";
-  if (path.startsWith("/admin/ai-polls"))             return "ai-polls";
-  if (path.startsWith("/admin/candidates"))           return "candidates";
-  if (path.startsWith("/admin/proposals"))            return "proposals";
-  if (path.startsWith("/admin/markets"))              return "markets";
-  if (path.startsWith("/admin/resolver-queue"))       return "resolver";
-  if (path.startsWith("/admin/resolver"))             return "resolver";
-  if (path.startsWith("/admin/affiliate"))            return "affiliate";
-  if (path.startsWith("/admin/moderation"))           return "moderation";
-  if (path.startsWith("/admin/compliance"))           return "compliance";
-  if (path.startsWith("/admin/aml"))                  return "aml";
-  if (path.startsWith("/admin/self-exclusions"))      return "sx";
-  if (path.startsWith("/admin/audit"))                return "audit";
-  if (path.startsWith("/admin/system"))               return "system";
-  if (path.startsWith("/admin/ai-usage"))             return "ai-usage";
-  if (path.startsWith("/admin/kyc"))                  return "approvals";
-  if (path.startsWith("/admin/settlement"))           return "settlement";
-  if (path.startsWith("/admin/objections"))           return "objections";
-  if (path.startsWith("/admin/approvals"))            return "approvals";
-  if (path.startsWith("/admin/2fa"))                  return "2fa";
-  return "overview";
-}
+// The route→nav-key resolver (`activeKeyFromPath`) lives WITH `NAV_GROUPS` in
+// admin-nav-groups.ts. It used to be copy-pasted here AND in admin-sidebar-nav.tsx,
+// and the two had already drifted — the sidebar copy was missing /admin/payments,
+// /admin/kyc and the /admin/resolver detail route, so those pages highlighted
+// nothing. One definition now, guarded by `npm run test:admin-nav`.
 
 function crumbsFromPath(path: string): string[] {
   const parts = path.replace(/^\/admin\/?/, "").split("/").filter(Boolean);
