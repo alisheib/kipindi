@@ -632,6 +632,22 @@ function validate(updates: Partial<RateConfig>): { ok: true; warn?: string } | {
   return { ok: true };
 }
 
+/**
+ * The rate validator, exported so OTHER products validate through the SAME rules.
+ *
+ * An Up & Down chain freezes its own rate profile (capped-commission @ 13%) onto the
+ * rounds it creates, and that profile has to clear exactly the checks a global config
+ * change clears — above all the WINNER-FLOOR GUARDRAIL, which refuses any rates under
+ * which a correct call could be paid less than it staked.
+ *
+ * Writing a second validator for the second product is how two definitions of one
+ * truth start, and the one that drifts is always the one nobody is looking at. There
+ * is one validator; this is it.
+ */
+export function validateRateConfig(updates: Partial<RateConfig>): { ok: true; warn?: string } | { ok: false; reason: string } {
+  return validate(updates);
+}
+
 export async function setGlobalConfig(updates: Partial<RateConfig>, officerId: string):
   Promise<{ ok: true; config: RateConfig; warn?: string } | { ok: false; error: string }> {
   await ensureHydrated();
