@@ -31,7 +31,11 @@ export async function getPlatformStats(): Promise<PlatformStats> {
 
   const [paidOutTzs, resolved] = await Promise.all([
     Promise.resolve(db.txn.sumConfirmedByTypes(["BET_PAYOUT", "CASHOUT"])).catch(() => 0),
-    listMarkets({ status: "RESOLVED" }).catch(() => [] as Awaited<ReturnType<typeof listMarkets>>),
+    // MONEY READ → productLine "ALL". `paidOutTzs` beside it already counts EVERY
+    // payout txn, Up & Down included, so counting only long-form polls here would
+    // pair a whole-platform payout total with a partial settled-poll count — two
+    // numbers on the same card that no longer describe the same thing.
+    listMarkets({ status: "RESOLVED", productLine: "ALL" }).catch(() => [] as Awaited<ReturnType<typeof listMarkets>>),
   ]);
   const value: PlatformStats = { settledCount: resolved.length, paidOutTzs };
   globalThis.__50PICK_PLATFORM_STATS = { at: now, value };

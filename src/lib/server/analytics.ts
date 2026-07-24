@@ -93,7 +93,11 @@ export type SettlementFeesByPoll = {
  */
 export async function settlementFeesByPoll(period: Window = "28d"): Promise<SettlementFeesByPoll> {
   const { start, end } = windowBounds(period);
-  const markets = await listMarkets({ status: "RESOLVED" }).catch(() => []);
+  // MONEY READ → productLine "ALL". This is the per-poll commission breakdown, split
+  // by fee model — and Up & Down rounds are the ONLY polls on `capped-commission @
+  // 13%`, so omitting them would leave that model's row permanently empty and
+  // understate settlement fees. Guarded by test:product-line.
+  const markets = await listMarkets({ status: "RESOLVED", productLine: "ALL" }).catch(() => []);
   const rows: PollFeeRow[] = [];
   const byModel: Record<FeeModel, { count: number; fee: number }> = {
     "loser-share": { count: 0, fee: 0 },

@@ -1046,6 +1046,21 @@ model PredictionMarket {
    *  the (paid) AI call for the same market. A claim older than the TTL is stale and
    *  may be re-claimed (crash recovery). See resolveDueMarket in market-service.ts. */
   resolveClaimedAt     DateTime?
+  /** Which PRODUCT this row belongs to. `"MARKET"` = a long-form 50pick poll (the
+   *  original product, and every row that existed before this column). `"UPDOWN"` =
+   *  one round of an Up & Down price chain.
+   *
+   *  It exists because the two products have wildly different row economics: a
+   *  long-form poll is created a few times a day, an Up & Down chain emits one row
+   *  every few MINUTES. Without a discriminator the player board would scan hundreds
+   *  of thousands of settled rounds to render a dozen polls.
+   *
+   *  ⚠️ READ-PATH RULE. `listMarkets()` defaults to `productLine: "MARKET"`, so player
+   *  boards exclude rounds automatically. Any MONEY or REGULATOR read — GGR, the
+   *  ledger reconciliation, statutory reports, platform stats — must opt IN with
+   *  `productLine: "ALL"`, or Up & Down revenue silently disappears from the books.
+   *  `npm run test:product-line` fails if one of those call sites regresses. */
+  productLine         String                 @default("MARKET")
   proposedBy          String
   createdAt           DateTime               @default(now())
   updatedAt           DateTime               @updatedAt
@@ -1058,6 +1073,9 @@ model PredictionMarket {
 
   @@index([status])
   @@index([resolutionAt])
+  /// The board query: "the LIVE rows of THIS product, soonest first". Composite so
+  /// Postgres can serve filter + sort from the index alone once the table is large.
+  @@index([productLine, status, resolutionAt])
 }
 
 /// Point-in-time record of a market's implied YES probability and pool sizes.

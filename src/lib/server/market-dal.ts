@@ -8,7 +8,7 @@
 import { prisma } from "./prisma";
 import { hasDatabase } from "./prisma";
 import type { Prisma } from "@prisma/client";
-import type { StoredMarket, StoredPosition, MarketStatus, MarketCategory, Side } from "./market-service";
+import type { StoredMarket, StoredPosition, MarketStatus, MarketCategory, Side, ProductLineFilter } from "./market-service";
 
 // ---------------------------------------------------------------------------
 // Globals — same Maps as before, just accessed through this DAL
@@ -72,6 +72,9 @@ function toStoredMarket(r: any): StoredMarket {
     sentinelClosedAt: iso(r.sentinelClosedAt) ?? null,
     resolutionMode: (r.resolutionMode as StoredMarket["resolutionMode"]) ?? null,
     resolveClaimedAt: iso(r.resolveClaimedAt) ?? null,
+    // Coerced, not trusted: a row read before the column existed (or through an old
+    // client) has no value, and every such row is a long-form poll.
+    productLine: r.productLine === "UPDOWN" ? "UPDOWN" : "MARKET",
     proposedBy: r.proposedBy,
     createdAt: iso(r.createdAt)!,
     updatedAt: iso(r.updatedAt)!,
@@ -144,8 +147,32 @@ export interface MarketStore {
    * A TARGETED, INDEXED query — never `values()`. The scheduler hydrates + reconciles
    * off this, so on a board with thousands of settled markets it reads only the
    * handful still in flight (status is indexed; settledAt filters the small residue).
+   *
+   * `productLine` defaults to `"MARKET"`: Up & Down rounds are driven by their own
+   * per-CHAIN scheduler, so the per-market scheduler must not arm timers for them.
    */
-  pending(): Promise<StoredMarket[]>;
+  pending(productLine?: ProductLineFilter): Promise<StoredMarket[]>;
+  /**
+   * THE BOARD QUERY — an INDEXED `findMany`, pushed down to Postgres.
+   *
+   * This replaces `values()` on every listing path. `values()` reads the ENTIRE table
+   * and the caller filters in JS; that was survivable while the table held tens of
+   * long-form polls, and stops being survivable the moment Up & Down starts emitting
+   * a row every few minutes (~300k rows/year). Served by
+   * `@@index([productLine, status, resolutionAt])`.
+   *
+   * `productLine` is REQUIRED here on purpose — a caller must state which product it
+   * means rather than inheriting a silent default at this layer. `listMarkets()` in
+   * market-service.ts is where the `"MARKET"` default lives, in one place, next to
+   * the rule that explains it.
+   */
+  listBoard(q: {
+    productLine: ProductLineFilter;
+    status?: MarketStatus;
+    category?: MarketCategory;
+    /** Cap the rows returned. Omit for "all of them" (the historical behaviour). */
+    limit?: number;
+  }): Promise<StoredMarket[]>;
 }
 
 export interface PositionStore {
@@ -188,10 +215,20 @@ const memoryMarkets: MarketStore = {
   async delete(id) { markets.delete(id); },
   async has(id) { return markets.has(id); },
   async values() { return Array.from(markets.values()); },
-  async pending() {
-    return Array.from(markets.values()).filter(
-      (m) => m.status === "LIVE" || ((m.status === "RESOLVED" || m.status === "VOIDED") && !m.settledAt),
-    );
+  async pending(productLine = "MARKET") {
+    return Array.from(markets.values())
+      .filter((m) => productLine === "ALL" || (m.productLine ?? "MARKET") === productLine)
+      .filter((m) => m.status === "LIVE" || ((m.status === "RESOLVED" || m.status === "VOIDED") && !m.settledAt));
+  },
+  async listBoard(q) {
+    const rows = Array.from(markets.values())
+      .filter((m) => q.productLine === "ALL" || (m.productLine ?? "MARKET") === q.productLine)
+      .filter((m) => !q.status || m.status === q.status)
+      .filter((m) => !q.category || m.category === q.category)
+      // Same ordering as the Prisma implementation, so a test that passes in memory
+      // means the same thing in production.
+      .sort((a, b) => a.resolutionAt.localeCompare(b.resolutionAt));
+    return q.limit != null ? rows.slice(0, q.limit) : rows;
   },
 };
 
@@ -312,6 +349,7 @@ const prismaMarkets: MarketStore = {
         sentinelClosedAt: m.sentinelClosedAt ? new Date(m.sentinelClosedAt) : null,
         resolutionMode: m.resolutionMode ?? null,
         resolveClaimedAt: m.resolveClaimedAt ? new Date(m.resolveClaimedAt) : null,
+        productLine: m.productLine ?? "MARKET",
         proposedBy: m.proposedBy,
         createdAt: new Date(m.createdAt),
       },
@@ -343,6 +381,10 @@ const prismaMarkets: MarketStore = {
         sentinelClosedAt: m.sentinelClosedAt ? new Date(m.sentinelClosedAt) : null,
         resolutionMode: m.resolutionMode ?? null,
         resolveClaimedAt: m.resolveClaimedAt ? new Date(m.resolveClaimedAt) : null,
+        // `productLine` is deliberately ABSENT from the update block: a row's product
+        // is fixed at creation. Allowing an update would let a stale in-memory copy
+        // silently reclassify a settled Up & Down round as a long-form poll, moving
+        // its money between product lines in every report after the fact.
       },
     });
   },
@@ -357,16 +399,32 @@ const prismaMarkets: MarketStore = {
     const rows = await pc().predictionMarket.findMany();
     return rows.map(toStoredMarket);
   },
-  async pending() {
+  async pending(productLine = "MARKET") {
     // Indexed on status; the OR keeps the settle candidates (adjudicated, money not
     // yet moved) without a second query. The residue is tiny relative to the table.
     const rows = await pc().predictionMarket.findMany({
       where: {
+        ...(productLine === "ALL" ? {} : { productLine }),
         OR: [
           { status: "LIVE" },
           { status: { in: ["RESOLVED", "VOIDED"] }, settledAt: null },
         ],
       },
+    });
+    return rows.map(toStoredMarket);
+  },
+  async listBoard(q) {
+    const rows = await pc().predictionMarket.findMany({
+      where: {
+        ...(q.productLine === "ALL" ? {} : { productLine: q.productLine }),
+        ...(q.status ? { status: q.status } : {}),
+        ...(q.category ? { category: q.category } : {}),
+      },
+      // Matches the old in-JS `sort((a,b) => a.resolutionAt.localeCompare(b.resolutionAt))`
+      // so callers see byte-identical ordering — this change is a query-plan change,
+      // not a behaviour change.
+      orderBy: { resolutionAt: "asc" },
+      ...(q.limit != null ? { take: q.limit } : {}),
     });
     return rows.map(toStoredMarket);
   },

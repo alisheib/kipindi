@@ -87,6 +87,30 @@ export function resolvePublishCategory(category: string): MarketCategory {
 export type MarketStatus = "DRAFT" | "LIVE" | "CLOSED" | "RESOLVED" | "VOIDED";
 export type Side = "YES" | "NO";
 
+/**
+ * Which PRODUCT a market row belongs to.
+ *
+ *  - `MARKET` — a long-form 50pick poll (sports, macro, weather…). Every row that
+ *    existed before this discriminator, via the column default.
+ *  - `UPDOWN` — one round of an Up & Down price chain (5/15/30 min).
+ *
+ * The two share this table — and therefore share every proven money path (bet,
+ * settle, refund, ledger, audit) — but have wildly different row economics: a poll
+ * is created a few times a day, a chain emits a row every few minutes. The
+ * discriminator is what keeps the player board from scanning hundreds of thousands
+ * of settled rounds to render a dozen polls.
+ */
+export type ProductLine = "MARKET" | "UPDOWN";
+
+/**
+ * The product filter a read may ask for. `"ALL"` is the deliberate opt-in for money
+ * and regulator reads — see the READ-PATH RULE on `listMarkets`.
+ */
+export type ProductLineFilter = ProductLine | "ALL";
+
+/** The default every player-facing board gets: long-form polls only. */
+export const DEFAULT_PRODUCT_LINE: ProductLine = "MARKET";
+
 export type StoredMarket = {
   id: string;
   titleEn: string;
@@ -156,6 +180,10 @@ export type StoredMarket = {
    *  trigger's AI check, so N instances never double-spend the AI call. See
    *  resolveDueMarket. Null = unclaimed; a claim older than the TTL is stale. */
   resolveClaimedAt?: string | null;
+  /** Which product this row belongs to — see `ProductLine`. Absent on rows read
+   *  before the column existed; the DAL coerces those to `"MARKET"`, which is what
+   *  every historical row is. */
+  productLine: ProductLine;
   proposedBy: string;
   createdAt: string;
   updatedAt: string;
@@ -218,12 +246,39 @@ export function isDemoMarket(m: Pick<StoredMarket, "titleEn">): boolean {
   return m.titleEn.startsWith("Demo · ");
 }
 
-export async function listMarkets(filter?: { status?: MarketStatus; category?: MarketCategory }) {
-  return (await marketStore.values())
-    .filter((m) => !isDemoMarket(m))
-    .filter((m) => !filter?.status   || m.status === filter.status)
-    .filter((m) => !filter?.category || m.category === filter.category)
-    .sort((a, b) => a.resolutionAt.localeCompare(b.resolutionAt));
+/**
+ * List markets, **long-form polls only by default**.
+ *
+ * ⚠️ THE READ-PATH RULE. `productLine` defaults to `"MARKET"`, so every player board
+ * (`/`, `/live`, `/markets`, `/results`, `/fairness`) excludes Up & Down rounds for
+ * free — which is what stops a board scanning hundreds of thousands of settled rounds
+ * to render a dozen polls.
+ *
+ * The corollary is the dangerous half, and it is why this default is spelled out in
+ * three places: **any MONEY or REGULATOR read must opt IN with `productLine: "ALL"`**,
+ * or Up & Down stakes, payouts and commission silently vanish from GGR, the statutory
+ * reports and the platform stats — a books-level defect that no test would notice,
+ * because every number would still reconcile *with itself*. The call sites that must
+ * opt in are enumerated and asserted by `npm run test:product-line`.
+ *
+ * (This is the "audit the READ path, not just the write path" lesson: the write path
+ * here is trivially correct — it is the readers that decide whether the money is
+ * visible.)
+ *
+ * Pushed down to an indexed query via `marketStore.listBoard`; it used to read the
+ * WHOLE table with `values()` and filter in JS.
+ */
+export async function listMarkets(filter?: {
+  status?: MarketStatus;
+  category?: MarketCategory;
+  /** Defaults to `"MARKET"`. Pass `"ALL"` for money/regulator reads. */
+  productLine?: ProductLineFilter;
+}) {
+  return (await marketStore.listBoard({
+    status: filter?.status,
+    category: filter?.category,
+    productLine: filter?.productLine ?? DEFAULT_PRODUCT_LINE,
+  })).filter((m) => !isDemoMarket(m));
 }
 
 export async function getMarket(id: string) {
@@ -259,6 +314,9 @@ export type CreateMarketInput = {
   resolutionAt: string;
   selectionClosedAt?: string | null;
   proposedBy: string;
+  /** Which product this row belongs to. Defaults to `"MARKET"` — only the Up & Down
+   *  engine passes `"UPDOWN"`. */
+  productLine?: ProductLine;
 };
 
 export async function createMarket(input: CreateMarketInput) {
@@ -308,6 +366,7 @@ export async function createMarket(input: CreateMarketInput) {
     resolutionStage2By: null, resolutionStage2At: null,
     objectionsClosedAt: null,
     settledAt: null,
+    productLine: input.productLine ?? DEFAULT_PRODUCT_LINE,
     proposedBy: input.proposedBy,
     createdAt: now,
     updatedAt: now,
@@ -2318,7 +2377,11 @@ export type SettlementQueueRow = {
  */
 export async function listSettlementQueue(): Promise<SettlementQueueRow[]> {
   const now = Date.now();
-  const unsettled = (await marketStore.values()).filter(
+  // `pending("ALL")` is the INDEXED form of "LIVE or adjudicated-but-unsettled", so
+  // this no longer reads the whole table. "ALL" is deliberate: this is a MONEY
+  // worklist — an unsettled Up & Down round is money that has not moved and must
+  // never be invisible to the officer who has to act on it.
+  const unsettled = (await marketStore.pending("ALL")).filter(
     (m) => (m.status === "RESOLVED" || m.status === "VOIDED") && !m.settledAt,
   );
   const { countOpenObjections } = await import("./objections-service");
@@ -2371,7 +2434,10 @@ export type SettlementHealth = {
  */
 export async function getSettlementHealth(): Promise<SettlementHealth> {
   const now = Date.now();
-  const unsettled = (await marketStore.values()).filter(
+  // Indexed, and "ALL" on purpose — see listSettlementQueue. A settle timer dropped
+  // on an Up & Down round is exactly the silent money-shaped failure this readout
+  // exists to make loud.
+  const unsettled = (await marketStore.pending("ALL")).filter(
     (m) => (m.status === "RESOLVED" || m.status === "VOIDED") && !m.settledAt,
   );
 

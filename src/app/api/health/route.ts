@@ -22,8 +22,11 @@ export async function GET() {
     try { userCount = await db.user.count(); } catch { /* graceful */ } // audit H4 — COUNT(*), not a full scan every probe
     const auditCount = auditRingSize();
     const smsHealth = smsHealthSnapshot();
-    const liveMarkets = await listMarkets({ status: "LIVE" }).then((l) => l.length).catch(() => -1);
-    const resolvedMarkets = await listMarkets({ status: "RESOLVED" }).then((l) => l.length).catch(() => -1);
+    // OPS READ → productLine "ALL". A health probe reports what the platform is
+    // actually running; a stalled Up & Down chain must show up here as a live-market
+    // count that stops moving, not be filtered out of the signal.
+    const liveMarkets = await listMarkets({ status: "LIVE", productLine: "ALL" }).then((l) => l.length).catch(() => -1);
+    const resolvedMarkets = await listMarkets({ status: "RESOLVED", productLine: "ALL" }).then((l) => l.length).catch(() => -1);
 
     return NextResponse.json(
       {

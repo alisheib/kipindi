@@ -245,7 +245,11 @@ export type CategoryRow = {
 export async function categoryBreakdown(period: ReportPeriod, now = Date.now()): Promise<CategoryRow[]> {
   const { start, end } = periodBounds(period, now);
   // positionId → category lookup (market-scoped).
-  const markets = await listMarkets();
+  // MONEY READ → productLine "ALL". This attributes staked volume and fees to a
+  // category; excluding Up & Down rounds would drop their entire turnover out of the
+  // revenue breakdown while every remaining number still reconciled with itself,
+  // which is the worst shape a books defect can take. Guarded by test:product-line.
+  const markets = await listMarkets({ productLine: "ALL" });
   const posCat = new Map<string, MarketCategory>();
   for (const m of markets) {
     for (const p of await listPositionsForMarket(m.id)) posCat.set(p.id, m.category);

@@ -44,8 +44,10 @@ export default async function AdminSystemPage() {
     try { return redisHealth(); }
     catch { return { configured: false, enabled: false, urlPresent: false, connected: false, clientStatus: "none", subscribed: false, breakerOpen: false, lastError: null, subscriberError: null, consecutiveFailures: 0 }; }
   })();
-  const liveMarkets = await listMarkets({ status: "LIVE" }).then(l => l.length).catch(() => 0);
-  const resolvedMarkets = await listMarkets({ status: "RESOLVED" }).then(l => l.length).catch(() => 0);
+  // OPS READ → productLine "ALL". Same reasoning as /api/health: this card is the
+  // operator's view of what is actually running, both product lines included.
+  const liveMarkets = await listMarkets({ status: "LIVE", productLine: "ALL" }).then(l => l.length).catch(() => 0);
+  const resolvedMarkets = await listMarkets({ status: "RESOLVED", productLine: "ALL" }).then(l => l.length).catch(() => 0);
   // F11 — is settlement actually happening? Degrade to an empty (not fabricated)
   // reading if this throws; never let a health card take the page down.
   const settlement: SettlementHealth = await getSettlementHealth().catch(() => ({

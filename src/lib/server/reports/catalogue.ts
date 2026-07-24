@@ -922,7 +922,11 @@ export async function buildRgEngagement(generatorId: string): Promise<Report> {
 
 export async function buildMatchIntegrity(generatorId: string): Promise<Report> {
   const { listMarkets } = await import("../market-service");
-  const voidedMarkets = await listMarkets({ status: "VOIDED" });
+  // REGULATOR READ → productLine "ALL". This report reconciles voided markets against
+  // BET_REFUND transactions, and that refund total already includes every product. A
+  // voided Up & Down round refunds real money, so leaving it out would show refunds
+  // with no market to explain them — the exact discrepancy an inspector looks for.
+  const voidedMarkets = await listMarkets({ status: "VOIDED", productLine: "ALL" });
   const refunds = (await db.txn.listAll()).filter((t) => t.type === "BET_REFUND");
   const refundTotal = refunds.reduce((s, t) => s + Math.abs(t.amount), 0);
 
