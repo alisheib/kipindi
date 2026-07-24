@@ -209,24 +209,41 @@ function NavLink({ it, pathname }: { it: NavItem; pathname: string }) {
     : it.href === "/positions" ? pathname.startsWith("/positions")
     : it.href === "/updown" ? pathname.startsWith("/updown")
     : pathname === it.href;
-  // A product-line accent (see NavItem.accent): a brand-indigo left rule plus a tinted
-  // label, present whether or not the tab is active. Deliberately NOT the active pill,
-  // so identity and active-state stay visually distinct.
+  // A product-line accent (see NavItem.accent): a glassy indigo PILL, in the kit's own
+  // button idiom — translucent brand fill, hairline brand border, the inset top
+  // highlight every `.btn` carries, and a soft glow. It reads as a distinct thing you
+  // can enter, not as a nav item someone drew a line next to.
+  //
+  // It brightens when active rather than swapping to the flat active pill, so identity
+  // and active-state reinforce each other instead of competing.
   const accent = it.accent === true;
+  const accentStyle: React.CSSProperties = {
+    background: active
+      ? "linear-gradient(180deg, oklch(52% 0.17 262 / 0.55), oklch(44% 0.15 262 / 0.45))"
+      : "linear-gradient(180deg, oklch(48% 0.15 262 / 0.34), oklch(40% 0.13 262 / 0.26))",
+    border: `1px solid ${active ? "var(--brand-400)" : "color-mix(in oklab, var(--brand-500) 55%, transparent)"}`,
+    color: active ? "var(--text)" : "var(--brand-300)",
+    boxShadow: active
+      ? "inset 0 1px 0 oklch(100% 0 0 / 0.16), 0 0 16px -4px oklch(63% 0.18 262 / 0.55)"
+      : "inset 0 1px 0 oklch(100% 0 0 / 0.10), 0 0 12px -6px oklch(63% 0.18 262 / 0.40)",
+  };
   return (
     <Link
       href={it.href as never}
       aria-current={active ? "page" : undefined}
       className="inline-flex items-center gap-1.5 whitespace-nowrap"
       style={{
-        padding: "7px 12px",
-        borderRadius: "var(--r-sm)",
+        padding: accent ? "6px 14px" : "7px 12px",
+        borderRadius: accent ? "var(--r-pill)" : "var(--r-sm)",
         fontSize: 13.5,
-        fontWeight: active ? 600 : accent ? 600 : 500,
-        color: active ? "var(--text)" : accent ? "var(--brand-300)" : "var(--text-subtle)",
-        background: active ? "oklch(40% 0.08 264 / 0.4)" : accent ? "oklch(40% 0.12 262 / 0.18)" : "transparent",
-        boxShadow: accent && !active ? "inset 2px 0 0 var(--brand-500)" : undefined,
-        transition: "color 150ms ease-out, background 150ms ease-out, font-weight 0ms",
+        fontWeight: active || accent ? 600 : 500,
+        transition: "color 150ms ease-out, background 150ms ease-out, box-shadow 150ms ease-out, font-weight 0ms",
+        ...(accent
+          ? accentStyle
+          : {
+              color: active ? "var(--text)" : "var(--text-subtle)",
+              background: active ? "oklch(40% 0.08 264 / 0.4)" : "transparent",
+            }),
       }}
     >
       {it.label}
