@@ -151,6 +151,16 @@ async function maybeReconcileSchedules(): Promise<void> {
   lastScheduleReconcileAt = now;
   const r = await reconcileMarketSchedules();
   if (r.healed > 0) console.log(`[lifecycle] scheduler reconcile — re-armed ${r.healed} of ${r.pending} pending market timer(s)`);
+  // The same healing for Up & Down chains, which run on their own timers. Separate
+  // call (not folded into the above) because the two schedulers are deliberately
+  // independent — one failing must not stop the other being healed.
+  try {
+    const { reconcileUpDownChains } = await import("./updown-scheduler");
+    const u = await reconcileUpDownChains();
+    if (u.healed > 0) console.log(`[lifecycle] Up & Down reconcile — re-armed ${u.healed} of ${u.running} chain timer(s)`);
+  } catch (e) {
+    console.error("[lifecycle] Up & Down reconcile:", e);
+  }
 }
 
 /** Run one lifecycle pass. Each chore is self-contained and best-effort; one

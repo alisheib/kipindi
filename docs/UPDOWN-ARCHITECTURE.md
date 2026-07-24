@@ -252,14 +252,26 @@ not two.
 | `prisma/schema.prisma` | The four tables + `productLine` | ✅ done |
 | `src/lib/server/market-dal.ts` | `listBoard()`, product-filtered `pending()` | ✅ done |
 | `src/lib/server/market-service.ts` | `ProductLine`, `listMarkets` default, `createMarket` | ✅ done |
-| `src/lib/server/updown-dal.ts` | Prisma + in-memory stores for the four tables | ⬜ Phase 1 |
-| `src/lib/server/updown-config.ts` | Asset/chain registry, rate profile, thresholds | ⬜ Phase 1 |
-| `src/lib/server/updown-oracle.ts` | The price observation (AI + gates) | ⬜ Phase 2 |
-| `src/lib/server/updown-service.ts` | Round lifecycle; the ONLY UP/DOWN ↔ YES/NO mapping | ⬜ Phase 3 |
-| `src/lib/server/updown-scheduler.ts` | Per-chain timers, hydrate, fire gate, reconcile | ⬜ Phase 3 |
+| `src/lib/server/updown-dal.ts` | Prisma + in-memory stores for the four tables | ✅ done |
+| `src/lib/server/updown-config.ts` | Asset/chain registry, grid maths, rate profile, thresholds | ✅ done |
+| `src/lib/server/updown-oracle.ts` | The price observation — six refusal gates | ✅ done |
+| `src/lib/server/updown-service.ts` | Round lifecycle; the ONLY UP/DOWN ↔ YES/NO mapping | ✅ done |
+| `src/lib/server/updown-scheduler.ts` | Per-chain timers, hydrate, own fire gate, reconcile | ✅ done |
+| `src/instrumentation.ts` · `lifecycle.ts` | Boot hydrate + self-healing reconcile wired in | ✅ done |
+| `src/app/admin/updown/**` | Console: assets · chains · oracle health · thresholds | ✅ done |
 | `src/app/updown/**` | Player board + round detail | ⬜ Phase 4 |
 | `src/components/updown/**` | `UpDownCard`, `PriceTape`, `RoundStrip`, `SettlementProof` | ⬜ Phase 4 |
-| `src/app/admin/updown/**` | Assets · chains · rounds · settings | ⬜ Phase 1/5 |
+| `src/app/admin/updown/rounds` | Round explorer + proof drawer | ⬜ Phase 5 |
+
+### Tests guarding this subsystem
+
+| Script | Guards |
+|---|---|
+| `test:product-line` (30) | Money reads see both products; player boards see long-form only. **Verified to fail when a call site regresses.** |
+| `test:updown-config` (62) | Grid derived-not-accumulated · source gate · winner floor · **observations write-once** |
+| `test:updown-engine` (43) | UP=YES through settlement · voids refund in full · shared observations · exactly-once settlement · **money conservation, drift 0** |
+| `test:admin-nav` (16) | ONE route resolver; every nav href round-trips |
+| `updown-admin-shots` · `updown-admin-e2e-shots` | 360/768/1280/1920, empty AND populated, driven through the real UI |
 
 ---
 

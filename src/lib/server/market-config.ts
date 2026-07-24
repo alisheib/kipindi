@@ -319,10 +319,24 @@ export function snapshotOrLegacy(raw: unknown): FeeSnapshot {
       feeModel: isLoserShare ? "loser-share" : "capped-commission",
       platformFeeRate: safeRate(s.platformFeeRate, DEFAULT_PLATFORM_FEE_RATE),
       operatorFeeRate: safeRate(s.operatorFeeRate, DEFAULT_OPERATOR_FEE_RATE),
-      // Display fields are inert unless this poll is loser-share.
-      estimatedWinningsRate: isLoserShare ? safeRate(s.estimatedWinningsRate, DEFAULT_ESTIMATED_WINNINGS_RATE, MAX_ESTIMATED_WINNINGS_RATE) : 0,
-      showEstimatedWinnings: isLoserShare ? s.showEstimatedWinnings !== false : false,
-      v: isLoserShare ? 2 : 1,
+      // DISPLAY-ONLY, and MODEL-INDEPENDENT.
+      //
+      // These two never touch the maths — they drive the pre-bet "possible winnings"
+      // headline and nothing else. They were originally gated to loser-share because
+      // that was the only model that used them; Up & Down then arrived on
+      // capped-commission needing the same "× 1.4 est." headline, and a gate that
+      // silently zeroed it would have made the card impossible to build correctly.
+      //
+      // The gate is now on WHAT THE POLL FROZE, not on which model it uses: a poll
+      // that explicitly stamped a rate gets it, a poll that never did gets 0 and the
+      // headline is hidden. So every pre-existing capped-commission poll behaves
+      // EXACTLY as before (none of them stamped these fields), and nothing about any
+      // payout changes for any poll under either model.
+      estimatedWinningsRate: safeRate(s.estimatedWinningsRate, 0, MAX_ESTIMATED_WINNINGS_RATE),
+      showEstimatedWinnings: s.showEstimatedWinnings === true,
+      // v2 = "carries the fee-model + display fields". A poll that froze either the
+      // loser-share model or a display estimate is v2; a bare legacy snapshot is v1.
+      v: isLoserShare || s.showEstimatedWinnings === true ? 2 : 1,
       stampedAt: s.stampedAt ?? "legacy",
     };
   }

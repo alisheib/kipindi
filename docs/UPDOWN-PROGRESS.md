@@ -32,8 +32,8 @@ product is or how it is built; it links. The full document-ownership table is in
 |---|---|---|
 | **0** | Scale prerequisite — `productLine` + indexed board queries | 🟡 **In progress** |
 | **1** | Schema (4 tables), DAL, `updown-config.ts`, admin asset + chain pages | 🟢 **DONE + LIVE** |
-| **2** | `updown-oracle.ts` + observation ledger + AI-toolkit pause + usage metering | 🟡 Oracle written; needs its test + wiring |
-| **3** | `updown-service.ts` + `updown-scheduler.ts` + rate overrides + display-field fix | ⬜ Next |
+| **2** | `updown-oracle.ts` — six refusal gates, AI-pause honoured, metered | 🟢 **DONE** |
+| **3** | `updown-service.ts` + `updown-scheduler.ts` + `rateOverrides` + display-field fix | 🟢 **DONE** — `test:updown-engine` 42/42, money drift 0 |
 | **4** | Player UI — `/updown`, round detail, `UpDownCard`, nav, SSE, EN/SW/ZH | ⬜ Blocked on design |
 | **5** | Reports, analytics, notification digest, admin rounds explorer + settings | ⬜ Not started |
 | **6** | Staged enable (Gold 5-min → Silver → 15/30-min) + archive/retention job | ⬜ Not started |
@@ -206,4 +206,24 @@ keyframe + reduced-motion gate · asset icon-chip recipe · mono micro-labels at
 
 | Date | Session did | Outcome |
 |---|---|---|
-| 2026-07-24 | Read `Up and Down/` in full; mapped scheduler, market lifecycle, fee models, reports, admin, permissions; resolved the 3 conflicts with Ali; wrote the plan + design brief; started Phase 0 | Plan agreed. Phase 0a done, 0b/0c in progress. |
+| 2026-07-24 | Read `Up and Down/` in full; mapped the scheduler, market lifecycle, fee models, reports, admin and permissions; resolved the 3 conflicts with Ali; wrote the plan, the spec, the architecture and the design brief; built **Phases 0 → 1e** and the oracle | **7 commits, all LIVE and deploy-verified.** `fdea3eb` `3dc1213` `6f736f1` `78e2653` `357edb9` `fc9b277` `8daef3a` |
+
+### What the session actually found (not just what it built)
+
+Four defects that pre-dated this feature, each caught by a different discipline:
+
+| Found by | Defect |
+|---|---|
+| **Data engineering** | `listMarkets()` read the WHOLE `PredictionMarket` table from ~25 surfaces and filtered in JS. Fine at tens of rows; fatal at 300k/yr. Now an indexed query. |
+| **Routing** | `activeKeyFromPath` existed TWICE and had **already drifted** — `/admin/payments`, `/admin/kyc` and `/admin/resolver/[id]` highlighted nothing in the sidebar. One definition now, with two structural guards. |
+| **Visual review** | The admin page passed every automated check at all four widths and was still wrong at 360: card titles colliding, and empty states **clipped rather than scrolled**. Only visible in the screenshot. |
+| **The integrity guard, on me** | I hand-rolled a money formatter with `toLocaleString` instead of the kit's `formatTzs()` — the exact rule that guard enforces. |
+
+### Standing risks carried forward
+
+- **R2 (money reads)** is the one that would hurt most and is the least visible: it
+  fails silently *with every number still reconciling*. `test:product-line` is verified
+  to fail when a call site regresses — never weaken it to make it pass.
+- **Q1 (price source domains)** blocks any chain actually running.
+- **`.btn-sm` at 30px** on ~100 admin buttons is under the ≥40px tap floor. Raised only
+  on this feature's buttons; the platform-wide call is Ali's (Q9).

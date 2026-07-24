@@ -26,7 +26,7 @@ import { spendBonusLocked, recordWageringLocked, reverseWagering, refundBonusToA
 import { notifyBonusFulfilled } from "./notification-service";
 import { isLockedOut, checkLossLimit } from "./responsible-gambling";
 import { rateCheck } from "./rate-limit";
-import { getEffectiveConfig, getEffectiveResolutionMode, snapshotFromConfig, snapshotOrLegacy } from "./market-config";
+import { getEffectiveConfig, getEffectiveResolutionMode, snapshotFromConfig, snapshotOrLegacy, type RateConfig } from "./market-config";
 import { payoutFor, settledPayoutFor, allocateWinnerPayouts, poolFee, levySplit, type FeeSnapshot } from "@/lib/payout";
 import { getRequireTwoOfficerResolution } from "./resolution-policy";
 import { isMaintenanceMode, maintenanceMessage } from "./platform-config";
@@ -317,6 +317,22 @@ export type CreateMarketInput = {
   /** Which product this row belongs to. Defaults to `"MARKET"` — only the Up & Down
    *  engine passes `"UPDOWN"`. */
   productLine?: ProductLine;
+  /**
+   * Per-poll rate overlay, applied ON TOP of live config before the snapshot is
+   * frozen. This is how a SECOND product prices differently without a second freezing
+   * mechanism: an Up & Down chain carries `capped-commission @ 13%` and passes it
+   * here, while long-form polls keep the global `loser-share` default.
+   *
+   * It still goes through `snapshotFromConfig`, so the frozen snapshot has exactly the
+   * same shape and the same guarantees — settlement, cash-out and every preview read
+   * it identically and cannot tell which product created it.
+   *
+   * ⚠️ Overrides are validated by the CALLER (`validateRateConfig`, the same validator
+   * global config uses, including the winner-floor guardrail). They are not
+   * re-validated here, because `createMarket` is on the hot path and the only callers
+   * that pass them are configuration surfaces that have already refused a bad profile.
+   */
+  rateOverrides?: Partial<RateConfig>;
 };
 
 export async function createMarket(input: CreateMarketInput) {
@@ -344,7 +360,13 @@ export async function createMarket(input: CreateMarketInput) {
   // creation; settlement, cash-out and every preview price against this copy for
   // the rest of the poll's life. An admin retuning a rate tomorrow cannot reach
   // back and reprice a bet placed today.
-  const feeSnapshot = snapshotFromConfig(await getEffectiveConfig(id));
+  // `rateOverrides` (the Up & Down chain profile) layers on top of live config, then
+  // the WHOLE thing is frozen through the one snapshot function — so a second product
+  // can price differently without a second freezing mechanism.
+  const feeSnapshot = snapshotFromConfig({
+    ...(await getEffectiveConfig(id)),
+    ...(input.rateOverrides ?? {}),
+  });
 
   const m: StoredMarket = {
     id,

@@ -45,6 +45,7 @@
     "test:product-line": "tsx scripts/product-line.test.mts",
     "test:updown-config": "tsx scripts/updown-config.test.mts",
     "test:admin-nav": "tsx scripts/admin-nav.test.mts",
+    "test:updown-engine": "tsx scripts/updown-engine.test.mts",
     "test:markets": "tsx scripts/market-resolution-notify.test.mts",
     "test:selection-closed": "tsx scripts/selection-closed-notify.test.mts",
     "test:config": "tsx scripts/config-persist.test.mts",

@@ -139,6 +139,12 @@ const PRIO: Record<DeadlineKind, number> = { "closing-soon": 0, "notify-closed":
  * testable without timers or a clock.
  */
 export function nextDeadlineFor(m: StoredMarket, offsetMs = 0, now = Date.now()): Deadline | null {
+  // ⛔ Up & Down rounds are driven by their OWN per-chain scheduler
+  // (updown-scheduler.ts). Two engines racing the same row is a money hazard, and the
+  // notify transitions below are meaningless on a 5-minute round anyway. Returning
+  // null here — plus `marketStore.pending()` defaulting to "MARKET" — is what keeps
+  // the two apart. Do not "unify" the schedulers.
+  if (m.productLine === "UPDOWN") return null;
   const candidates: Deadline[] = [];
   const demo = isDemoMarket(m);
   if (m.status === "LIVE") {

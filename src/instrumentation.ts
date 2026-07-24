@@ -36,6 +36,17 @@ export async function register() {
     } catch (err) {
       console.error("[instrumentation] Failed to hydrate market scheduler:", err);
     }
+    // Up & Down chain scheduler — one timer per RUNNING chain (not per round). Kept
+    // SEPARATE from the market scheduler on purpose: Up & Down rounds are excluded
+    // from it (nextDeadlineFor returns null), and the two have their own fire gates so
+    // neither product can starve the other. A boundary missed while DOWN fires after a
+    // short grace — delayed, never skipped. See updown-scheduler.ts.
+    try {
+      const { hydrateUpDownOnBoot } = await import("./lib/server/updown-scheduler");
+      await hydrateUpDownOnBoot();
+    } catch (err) {
+      console.error("[instrumentation] Failed to hydrate Up & Down scheduler:", err);
+    }
     // Lifecycle ticker — the periodic backstop: it reconciles the scheduler (re-arms
     // any market that lost its timer), expires bonus grants, reconciles stuck
     // payments, and runs the nightly trial balance. It does NOT drive market
