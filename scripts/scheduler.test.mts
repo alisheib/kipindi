@@ -33,6 +33,8 @@ import {
   hydrateSchedulerOnBoot,
   reconcileMarketSchedules,
   runDueMarketTransitions,
+  fireGateState,
+  withFireSlot,
 } from "../src/lib/server/market-scheduler.ts";
 import {
   decideAutoResolve,
@@ -350,6 +352,60 @@ const undetermined = (marketId: string): SentinelResult => ({
   await setGlobalConfig({ resolutionMode: "human" }, "test_officer"); // restore the default
   const back = nextDeadlineFor(settled!, 0, Date.now());
   ok("9.10 a settled market has no further deadline", back === null);
+  disarmAll();
+}
+
+// ─── 10. a burst of same-instant deadlines must NOT stampede the DB pool ───
+// The sweep this replaced settled sequentially (one open transaction at a time).
+// Independent timers can all land together — markets created together share an
+// objection window — so an unbounded fan-out empties the connection pool and
+// surfaces as a raw Prisma P2024 (observed in production). The gate must hold.
+{
+  disarmAll();
+  const N = 12;
+  const ids: string[] = [];
+  for (let i = 0; i < N; i++) {
+    const id = `mkt_burst_${i}`;
+    ids.push(id);
+    // Every one of them settle-due at the SAME instant.
+    await mk(id, { status: "RESOLVED", resolvedOutcome: "YES", objectionsClosedAt: iso(now - HOUR) });
+  }
+  const before = fireGateState();
+  ok("10.1 gate starts idle", before.inFlight === 0, JSON.stringify(before));
+  ok("10.2 the cap is a small number well under the DB pool", before.max >= 1 && before.max <= 8, `max=${before.max}`);
+
+  // Prove the cap against REAL contention, on the real primitive fireMarket uses.
+  // (Driving it through the timers alone is worthless here: in-memory settles finish
+  // instantly, so the observed peak stays 0 and a no-op gate would "pass".)
+  let peak = 0;
+  let completed = 0;
+  await Promise.all(
+    Array.from({ length: 20 }, () =>
+      withFireSlot(async () => {
+        peak = Math.max(peak, fireGateState().inFlight);
+        await sleep(25); // hold the slot long enough for the others to pile up
+        peak = Math.max(peak, fireGateState().inFlight);
+        completed++;
+      }),
+    ),
+  );
+  ok("10.3 the gate actually engaged (work really did contend)", peak > 1, `peak=${peak}`);
+  ok("10.4 never exceeded the concurrency cap", peak <= before.max, `peak=${peak} cap=${before.max}`);
+  ok("10.5 every queued task still ran (queued, never dropped)", completed === 20, `completed=${completed}/20`);
+
+  // …and the real timer path still settles the whole burst.
+  await Promise.all(ids.map((id) => armMarket(id)));
+  for (let i = 0; i < 60; i++) {
+    const left = (await marketStore.pending()).filter((m) => ids.includes(m.id) && !m.settledAt).length;
+    if (left === 0) break;
+    await sleep(50);
+  }
+  const settled = [];
+  for (const id of ids) settled.push(!!(await marketStore.get(id))?.settledAt);
+  ok("10.6 every market in the same-instant burst settled",
+    settled.every(Boolean), `settled=${settled.filter(Boolean).length}/${N}`);
+  const drained = fireGateState();
+  ok("10.7 the gate drained — no leaked slots", drained.inFlight === 0 && drained.queued === 0, JSON.stringify(drained));
   disarmAll();
 }
 

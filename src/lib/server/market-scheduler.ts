@@ -59,6 +59,64 @@ function schedulerEnabled(): boolean {
   return process.env.MARKET_SCHEDULER !== "false";
 }
 
+// ── Fire concurrency gate ────────────────────────────────────────────────────
+//
+// WHY THIS EXISTS. The sweep this replaced settled markets in a sequential
+// `for … await` loop, so at most ONE settlement transaction was ever open. Per-market
+// timers fire INDEPENDENTLY — and markets created together share an objection window,
+// so a dozen `objectionsClosedAt` deadlines routinely land on the same instant. Each
+// settleMarket() holds a pooled connection for a whole transaction, so an unbounded
+// fan-out would empty the pool and surface as a raw Prisma P2024 — the exact failure
+// already observed in production (see admission.ts / docs/LOAD_DAY1_FINDINGS.md).
+//
+// The gate converts that burst into a short queue: the TRIGGER still fires at the
+// exact second, only the work queues. Kept well below the pool so ordinary requests
+// (login, wallet, admin, bets) always have connections spare — the same reasoning as
+// the bet-path admission gate, which we deliberately do NOT reuse here: that one is
+// sized for bets and must never have scheduler work competing for its slots.
+const MAX_CONCURRENT_FIRES = Math.max(
+  1,
+  Number.parseInt(process.env.MARKET_SCHEDULER_CONCURRENCY || "3", 10) || 3,
+);
+let firesInFlight = 0;
+const fireWaiters: Array<() => void> = [];
+
+/** Take a fire slot, waiting FIFO if the gate is full. Returns its release fn. */
+async function acquireFireSlot(): Promise<() => void> {
+  // `while`, not `if`: a woken waiter must RE-CHECK, or two waiters released in the
+  // same tick both proceed and the cap silently doubles.
+  while (firesInFlight >= MAX_CONCURRENT_FIRES) {
+    await new Promise<void>((resolve) => fireWaiters.push(resolve));
+  }
+  firesInFlight++;
+  let released = false;
+  return () => {
+    if (released) return; // idempotent — a double release would corrupt the count
+    released = true;
+    firesInFlight--;
+    fireWaiters.shift()?.();
+  };
+}
+
+/**
+ * Run `fn` holding a fire slot. The slot is taken OUTSIDE the work and released in
+ * `finally` on every path (including a throw) — a leaked slot would permanently
+ * shrink the gate. Exported so the cap can be tested against real contention.
+ */
+export async function withFireSlot<T>(fn: () => Promise<T>): Promise<T> {
+  const release = await acquireFireSlot();
+  try {
+    return await fn();
+  } finally {
+    release();
+  }
+}
+
+/** Observability for the admin health readout + the concurrency test. */
+export function fireGateState(): { inFlight: number; queued: number; max: number } {
+  return { inFlight: firesInFlight, queued: fireWaiters.length, max: MAX_CONCURRENT_FIRES };
+}
+
 // ── The registry — one live timer per market id, on globalThis (survives HMR) ───
 export type DeadlineKind = "closing-soon" | "notify-closed" | "resolve" | "settle";
 export type Deadline = { at: number; kind: DeadlineKind };
@@ -222,8 +280,17 @@ async function fireMarket(id: string): Promise<void> {
     const dl = nextDeadlineFor(m, await resolveOffsetMs());
     // Only act if a deadline is genuinely due (guards a stale/early fire).
     if (dl && dl.at <= Date.now() + 1000) {
-      const r = await runTransition(id, dl.kind);
-      retryMs = r.retryMs;
+      // Bound how many transitions hold a DB transaction at once (see the gate above).
+      retryMs = await withFireSlot(async () => {
+        // Re-read under the slot: a market can be settled/resolved while we queued,
+        // and acting on the pre-queue snapshot would re-run a finished transition.
+        const fresh = await marketStore.get(id);
+        if (!fresh) return 0;
+        const freshDl = nextDeadlineFor(fresh, await resolveOffsetMs());
+        if (!freshDl || freshDl.at > Date.now() + 1000) return 0;
+        const r = await runTransition(id, freshDl.kind);
+        return r.retryMs;
+      });
     }
   } catch (e) {
     console.error(`[scheduler] fire ${id} failed:`, e);
