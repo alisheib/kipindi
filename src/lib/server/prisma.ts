@@ -19,40 +19,62 @@ export function hasDatabase(): boolean {
 }
 
 /**
+ * The canonical Prisma connection-pool size — the SINGLE SOURCE OF TRUTH.
+ *
+ * `admission.ts` sizes the bet gate off the SAME number, so this must not live in
+ * two places (it did, as two `?? 20` literals that could silently drift). Both read
+ * `PRISMA_CONNECTION_LIMIT` and fall back to this. Override the env in Railway to
+ * retune without a deploy.
+ */
+export const DEFAULT_PRISMA_CONNECTION_LIMIT = 40;
+
+/** The resolved connection limit: env override → the canonical default. */
+export function connectionLimit(): number {
+  const n = Number(process.env.PRISMA_CONNECTION_LIMIT);
+  return Number.isFinite(n) && n > 0 ? n : DEFAULT_PRISMA_CONNECTION_LIMIT;
+}
+
+/**
  * Explicit connection-pool sizing.
  *
- * Prisma's default pool is `cpu_count * 2 + 1` — on a 2-vCPU Railway container
- * that is **5**. The load harness (`scripts/load/spike-a-proof.mts`) measures
- * the safe ceiling at almost exactly **pool ÷ 2** concurrent bets, because a bet
- * holds one connection for its wallet work and needs a second for the market:
+ * Prisma's default pool is `cpu_count * 2 + 1` — tiny on a Railway container. A bet
+ * holds ONE pooled connection for its whole `$transaction` (the audit-C3 single-tx
+ * path: the nested wallet→market advisory locks and withMoneyTx all JOIN that one
+ * transaction — see locks.ts), so the safe concurrent-bet ceiling is roughly the
+ * pool minus a few slots kept for non-bet traffic. That is exactly how admission.ts
+ * sizes the gate (`maxInFlight = pool − 4`, hard-capped at `pool − 2`).
  *
- *     pool= 5 → 2 concurrent bets   pool=20 → 9 concurrent bets
- *     pool=10 → 4 concurrent bets   pool=40 → 19 concurrent bets
+ * SIZING (measured on prod, 2026-07-24): Postgres `max_connections = 100`,
+ * `superuser_reserved = 3` → 97 usable; steady-state ~15 connections in use; ONE app
+ * instance. At the old limit of 20, ~16 concurrent bets saturated the pool while 80+
+ * connections sat idle — a self-imposed ceiling. 40 roughly doubles the safe
+ * concurrency and still fits comfortably: even the brief old+new overlap of a rolling
+ * deploy is 2 × 40 = 80 < 97. If you ever run >2 permanent instances, drop
+ * `PRISMA_CONNECTION_LIMIT` so N × limit stays under ~90.
  *
- * So the shipped default let just TWO players bet simultaneously before the
- * rest started failing on "Timed out fetching a new connection from the pool".
+ * ⚠️ CAPACITY, not money-safety — the load harness measures **0 TZS leaked at every
+ * pool size**, because a bet under pool pressure is rejected cleanly (admission
+ * queues it; a true exhaustion rejects rather than half-writing). Raising this buys
+ * throughput and a better error rate; it is not load-bearing for correctness.
  *
- * ⚠️ This is a CAPACITY ceiling, not a money-safety one — the same harness
- * measures **0 TZS leaked at every pool size**, because the bet path is a single
- * `$transaction` (audit C3): under pool pressure a bet is rejected cleanly
- * rather than debiting a wallet with no position. Raising this buys throughput
- * and a better error rate; it is not load-bearing for correctness.
- *
- * 20 is deliberately conservative against Postgres' own `max_connections`
- * (Railway's default is 100) so a second app instance still fits.
- * Override with PRISMA_CONNECTION_LIMIT if the instance size changes.
+ * `pool_timeout = 10` (Prisma's own default): the ceiling on how long a query waits
+ * for a free slot before erroring. Lowered from 20 so a DB-unreachable blip surfaces
+ * and recovers in ~10s instead of hanging every request for 20s (observed 2026-07-24:
+ * a Railway internal-network blip made all pooled connections hang, cascading into
+ * P2024s — the pool was fine, the DB was briefly gone). The gate keeps bets queued
+ * rather than racing for this slot, so a shorter wait costs no legitimate throughput.
  */
 function pooledDatabaseUrl(): string | undefined {
   const raw = process.env.DATABASE_URL;
   if (!raw) return undefined;
-  const limit = Number(process.env.PRISMA_CONNECTION_LIMIT ?? 20);
+  const limit = connectionLimit();
   try {
     const u = new URL(raw);
     // Never override an explicit operator setting already on the URL.
     if (!u.searchParams.has("connection_limit") && Number.isFinite(limit) && limit > 0) {
       u.searchParams.set("connection_limit", String(limit));
     }
-    if (!u.searchParams.has("pool_timeout")) u.searchParams.set("pool_timeout", "20");
+    if (!u.searchParams.has("pool_timeout")) u.searchParams.set("pool_timeout", "10");
     return u.toString();
   } catch {
     // A URL we can't parse is left EXACTLY as-is: connecting with the operator's

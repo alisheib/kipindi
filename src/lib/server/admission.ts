@@ -44,13 +44,14 @@
 
 import { AsyncLocalStorage } from "node:async_hooks";
 import { captureServerError } from "./monitoring";
+import { connectionLimit } from "./prisma";
 
 /* ── Configuration ───────────────────────────────────────────────────────── */
 
-/** Mirrors prisma.ts: connection_limit, overridable by env. */
+/** The pool the gate sizes against — the SAME source prisma.ts uses, so the two
+ *  can never drift (they were two separate `?? 20` literals before). */
 function poolSize(): number {
-  const n = Number(process.env.PRISMA_CONNECTION_LIMIT);
-  return Number.isFinite(n) && n > 0 ? n : 20;
+  return connectionLimit();
 }
 
 export type AdmissionLimits = {
