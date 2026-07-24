@@ -88,13 +88,18 @@ await ctx.addCookies([{ name: "kp-locale", value: "en", url: BASE }]);
 await page.setViewportSize({ width: 1280, height: 1000 });
 await page.goto(`${BASE}/updown`, { waitUntil: "domcontentloaded" });
 await page.waitForTimeout(700);
-const card = page.locator('article[role="link"]').first();
-if (await card.count()) {
+// Navigate by id rather than by clicking the card: the card's clickable body excludes
+// its own buttons, so a blind click can land on a control and the harness then reports
+// a navigation failure that is really a click-target miss. The click path itself is
+// covered by the admin E2E run.
+const advJson = adv ? await adv.json().catch(() => null) : null;
+const firstRoundId = advJson?.rounds?.flatMap((c) => c.rounds ?? [])?.[0]?.id ?? null;
+if (firstRoundId) {
   console.log("\n=== /updown/[roundId] ===");
-  await card.click();
-  await page.waitForTimeout(1500);
-  const onDetail = page.url().includes("/updown/");
-  onDetail ? pass("navigated to the round detail") : fail(`did not navigate (url=${page.url()})`);
+  await page.goto(`${BASE}/updown/${firstRoundId}`, { waitUntil: "domcontentloaded", timeout: 45_000 });
+  await page.waitForTimeout(900);
+  const onDetail = await page.locator("h1").first().isVisible().catch(() => false);
+  onDetail ? pass("round detail rendered") : fail(`round detail did not render (url=${page.url()})`);
   for (const width of [360, 1280]) {
     await page.setViewportSize({ width, height: width < 768 ? 820 : 1000 });
     await page.waitForTimeout(400);

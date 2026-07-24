@@ -424,6 +424,24 @@ async function armMarketTimer(id: string): Promise<void> {
   }
 }
 
+/**
+ * Whether PER-EVENT player notifications and emails are suppressed for this market.
+ *
+ * True for Up & Down rounds. A player running twenty 5-minute rounds an hour would
+ * otherwise receive forty emails and forty inbox entries — unusable, and a worse
+ * responsible-gambling signal than one readable summary. They are replaced by the
+ * result on the round card plus a daily digest (owner decision 2026-07-24,
+ * docs/COMPLIANCE-DECISIONS.md).
+ *
+ * ⛔ THIS SUPPRESSES COMMUNICATION ONLY. The transaction, the ledger entry and the
+ * audit-chain row are written for EVERY round exactly as before — never gate a money
+ * record on this predicate. If you find yourself wrapping an `audit()` or a wallet
+ * write in it, that is the bug.
+ */
+export function perEventNotificationsSuppressed(m: Pick<StoredMarket, "productLine">): boolean {
+  return m.productLine === "UPDOWN";
+}
+
 /** Fire-and-forget: cancel this market's scheduler timer (settled / voided / deleted). */
 async function disarmMarketTimer(id: string): Promise<void> {
   try {
@@ -810,6 +828,10 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
     // Inbox receipt — kit-faithful, opens to the market detail. The cash-out terms
     // it quotes come from THIS POLL'S frozen rates, not a hardcoded "5 min / 9%".
     const betRates = ratesFor(market);
+    // Up & Down: no per-round receipt. The card already shows the stake, and forty
+    // inbox entries an hour is noise, not information. Money records are unaffected —
+    // the txn, ledger and audit rows above are already written.
+    if (!perEventNotificationsSuppressed(market)) {
     notifyBetPlaced(userId, {
       side: opts.side,
       stake: opts.stake,
@@ -837,6 +859,7 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
       }),
       tag: "bet-placed",
     })).catch(() => {});
+    }
   }
 
   // Dual-channel on the bet-placement fulfilment path too (matches recordWagering).
@@ -2206,25 +2229,34 @@ export async function settleMarket(
         // Tamper-evident chain entry for the payout credit (txn row is the
         // ledger; this anchors it in the HMAC audit chain too).
         audit({ category: "WALLET", action: "bet.payout", actorId: p.userId, targetType: "Position", targetId: p.id, payload: { marketId: m.id, outcome: opts.outcome, payout, balanceAfter } });
-        // Win receipt — opens the position so they can see the payout.
-        notifyWin(p.userId, payout, `${m.titleEn} · ${p.id}`, "/positions");
-        sendEmailToUser(p.userId, (email) => ({
-          to: email,
-          subject: `You won · ${formatTzs(payout)}`,
-          html: winNotificationHtml({ reference: p.id, payout, stake: p.stake, marketTitle: m.titleEn, settledAt }),
-          tag: "win",
-        })).catch(() => {});
+        // Win receipt — opens the position so they can see the payout. Suppressed for
+        // Up & Down (see perEventNotificationsSuppressed): the money above is already
+        // credited, booked and audited; only the message is digested.
+        if (!perEventNotificationsSuppressed(m)) {
+          notifyWin(p.userId, payout, `${m.titleEn} · ${p.id}`, "/positions");
+          sendEmailToUser(p.userId, (email) => ({
+            to: email,
+            subject: `You won · ${formatTzs(payout)}`,
+            html: winNotificationHtml({ reference: p.id, payout, stake: p.stake, marketTitle: m.titleEn, settledAt }),
+            tag: "win",
+          })).catch(() => {});
+        }
       } else {
         p.status = "LOSS"; p.finalPayout = 0; p.settledAt = settledAt;
         await positionStore.set(p);
-        // Loss receipt — kit copy reframes loss as "pool grew".
-        notifyLoss(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id, positionId: p.id });
-        sendEmailToUser(p.userId, (email) => ({
-          to: email,
-          subject: `Bet lost · ${formatTzs(p.stake)}`,
-          html: lossNotificationHtml({ reference: p.id, stake: p.stake, marketTitle: m.titleEn, settledAt }),
-          tag: "loss",
-        })).catch(() => {});
+        // Loss receipt. ⚠️ Losses stay DIRECT and non-euphemistic wherever they are
+        // shown — suppressing the per-round message for Up & Down does not soften it,
+        // it moves it into the daily digest, which still states each loss plainly
+        // (LCCP harm-prevention).
+        if (!perEventNotificationsSuppressed(m)) {
+          notifyLoss(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id, positionId: p.id });
+          sendEmailToUser(p.userId, (email) => ({
+            to: email,
+            subject: `Bet lost · ${formatTzs(p.stake)}`,
+            html: lossNotificationHtml({ reference: p.id, stake: p.stake, marketTitle: m.titleEn, settledAt }),
+            tag: "loss",
+          })).catch(() => {});
+        }
       }
 
       // ── REFERRAL COMMISSION — accrued HERE, from the fee we ACTUALLY charged.

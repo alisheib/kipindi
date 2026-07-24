@@ -165,9 +165,13 @@ export async function getBoard(opts?: { assetKey?: string; durationMinutes?: num
   // to stake on whichever timer they like. `mapped` is newest-first, so the first
   // started round IS the current one; anything behind it is a round still confirming.
   const current = started[0] ?? null;
-  const stillConfirming = started.slice(1).filter((r) => r.state === "confirming");
+  // At most ONE confirming round — the one that just closed, which the player who bet
+  // on it wants to see resolve. Older confirming rounds are a source outage, not
+  // content: showing a column of them turns an ops problem into a wall of identical
+  // cards and buries the round that is actually playable.
+  const justClosed = started.slice(1).find((r) => r.state === "confirming") ?? null;
   const lastDone = mapped.find((r) => r.state === "resolved" || r.state === "void");
-  const rounds = [current, ...stillConfirming, lastDone].filter(Boolean).slice(0, 6) as BoardRound[];
+  const rounds = [current, justClosed, lastDone].filter(Boolean) as BoardRound[];
 
   // The heartbeat strip — oldest → newest, real outcomes only.
   const recent = mapped

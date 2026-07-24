@@ -16,7 +16,27 @@ import type { ProposalsState } from "@/lib/server/proposals-config";
 
 /** A primary-nav item; `proposalsBadge`, when set, rides a proposals entry point
  *  and renders the gilt/amber state flag (never on ACTIVE/DISABLED). */
-type NavItem = { href: string; label: string; proposalsBadge?: ProposalsState };
+type NavItem = {
+  href: string;
+  label: string;
+  proposalsBadge?: ProposalsState;
+  /**
+   * Marks a destination as a DISTINCT PRODUCT LINE rather than another page of the
+   * same game — currently only Up & Down. It gets a brand-indigo treatment even when
+   * inactive, so a player can tell at a glance that it is a different kind of game.
+   *
+   * Brand indigo is the one accent free to mean this: gold means earned money,
+   * green/rose mean betting actions, and cyan already means "active tab". The accent
+   * must therefore read as IDENTITY, never be confusable with the active state — which
+   * is why it is a left rule + tinted label, not the active pill.
+   *
+   * ⏳ Ali's final treatment is pending (Q8 / design prompt D6). This is the restrained
+   * interim: no per-second timer in global chrome — a countdown on every page is a
+   * persistent urgency cue (an RG problem for a licensed operator) and a per-second
+   * re-render on a platform whose bar is "usable on a low-end Android over 2G".
+   */
+  accent?: boolean;
+};
 
 export type TopAppBarUser = {
   initials: string;
@@ -39,9 +59,14 @@ export function TopAppBar({ user, proposalsState }: { user: TopAppBarUser; propo
   // Core links render inline from `lg`; overflow links fold into the "More"
   // menu at lg and render inline only at `xl` (IA review R1 — no primary
   // destination is hidden on tablets/small laptops).
+  // Up & Down sits directly after Markets in BOTH navs — it is a peer product line, not
+  // a sub-page of Markets, and a player must be able to reach it from any width. (It was
+  // added to the bottom nav first and missed here, which meant it was invisible on
+  // desktop entirely: the bottom bar is `lg:hidden`.)
   const CORE_ITEMS: NavItem[] = user.isAuthed
     ? [
         { href: "/markets",   label: t.common.markets },
+        { href: "/updown",    label: t.market.udTitle, accent: true },
         { href: "/live",      label: t.nav.live },
         { href: "/results",   label: t.common.results },
         { href: "/positions", label: t.common.history },
@@ -49,6 +74,7 @@ export function TopAppBar({ user, proposalsState }: { user: TopAppBarUser; propo
       ]
     : [
         { href: "/markets",     label: t.common.markets },
+        { href: "/updown",      label: t.market.udTitle, accent: true },
         { href: "/live",        label: t.nav.live },
         { href: "/results",     label: t.common.results },
         { href: "/leaderboard", label: t.nav.leaderboard },
@@ -181,7 +207,12 @@ function NavLink({ it, pathname }: { it: NavItem; pathname: string }) {
     : it.href === "/proposals" ? pathname.startsWith("/proposals")
     : it.href === "/results" ? pathname.startsWith("/results")
     : it.href === "/positions" ? pathname.startsWith("/positions")
+    : it.href === "/updown" ? pathname.startsWith("/updown")
     : pathname === it.href;
+  // A product-line accent (see NavItem.accent): a brand-indigo left rule plus a tinted
+  // label, present whether or not the tab is active. Deliberately NOT the active pill,
+  // so identity and active-state stay visually distinct.
+  const accent = it.accent === true;
   return (
     <Link
       href={it.href as never}
@@ -191,9 +222,10 @@ function NavLink({ it, pathname }: { it: NavItem; pathname: string }) {
         padding: "7px 12px",
         borderRadius: "var(--r-sm)",
         fontSize: 13.5,
-        fontWeight: active ? 600 : 500,
-        color: active ? "var(--text)" : "var(--text-subtle)",
-        background: active ? "oklch(40% 0.08 264 / 0.4)" : "transparent",
+        fontWeight: active ? 600 : accent ? 600 : 500,
+        color: active ? "var(--text)" : accent ? "var(--brand-300)" : "var(--text-subtle)",
+        background: active ? "oklch(40% 0.08 264 / 0.4)" : accent ? "oklch(40% 0.12 262 / 0.18)" : "transparent",
+        boxShadow: accent && !active ? "inset 2px 0 0 var(--brand-500)" : undefined,
         transition: "color 150ms ease-out, background 150ms ease-out, font-weight 0ms",
       }}
     >
