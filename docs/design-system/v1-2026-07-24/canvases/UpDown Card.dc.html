@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="theme/globals.css">
+  <style>
+    @keyframes ud-count-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
+    @media (prefers-reduced-motion: reduce) { .ud-urgent { animation: none !important; } }
+  </style>
+</helmet>
+<div style="display: flex; flex-direction: column; height: 100%; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--shadow-card); padding: 14px 14px 12px; font-family: var(--font-body); color: var(--text); box-sizing: border-box; min-width: 0">
+
+  <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; min-width: 0">
+    <div style="display: flex; gap: 10px; min-width: 0">
+      <div style="width: 40px; height: 40px; flex-shrink: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: {{ iconBg }}; border: 1px solid {{ iconBorder }}; font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: {{ iconInk }}">{{ iconLabel }}</div>
+      <div style="min-width: 0">
+        <div style="display: flex; align-items: center; gap: 6px; min-width: 0">
+          <p style="margin: 0; font-family: var(--font-display); font-size: 14.5px; font-weight: 600; line-height: 1.25; letter-spacing: -0.01em; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0">{{ title }}</p>
+          <span class="chip" style="flex-shrink: 0">{{ duration }}</span>
+        </div>
+        <p style="margin: 4px 0 0; display: flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 9.5px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-subtle)">
+          <span class="live-dot"></span>
+          LIVE · {{ assetTicker }}
+        </p>
+      </div>
+    </div>
+    <div style="text-align: right; flex-shrink: 0">
+      <sc-if value="{{ priceUp }}" hint-placeholder-val="{{ true }}">
+        <p style="margin: 0; display: flex; align-items: center; justify-content: flex-end; gap: 4px; font-family: var(--font-mono); font-size: 15.5px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--yes-300)">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"></path></svg>
+          {{ livePrice }}
+        </p>
+        <p style="margin: 2px 0 0; font-family: var(--font-mono); font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--yes-300)">{{ movePct }}</p>
+      </sc-if>
+      <sc-if value="{{ priceDown }}" hint-placeholder-val="{{ false }}">
+        <p style="margin: 0; display: flex; align-items: center; justify-content: flex-end; gap: 4px; font-family: var(--font-mono); font-size: 15.5px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--no-300)">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M19 12l-7 7-7-7"></path></svg>
+          {{ livePrice }}
+        </p>
+        <p style="margin: 2px 0 0; font-family: var(--font-mono); font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--no-300)">{{ movePct }}</p>
+      </sc-if>
+      <sc-if value="{{ priceNone }}" hint-placeholder-val="{{ false }}">
+        <p style="margin: 0; font-family: var(--font-mono); font-size: 15.5px; font-weight: 700; color: var(--text-faint)">—</p>
+        <p style="margin: 2px 0 0; font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint)">awaiting read</p>
+      </sc-if>
+    </div>
+  </div>
+
+  <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; padding: 9px 12px; background: var(--bg-inset); border: 1px solid color-mix(in oklab, var(--border) 70%, transparent); border-radius: var(--r-md)">
+    <div>
+      <p style="margin: 0; font-family: var(--font-mono); font-size: 8.5px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-faint)">{{ countLabel }}</p>
+      <sc-if value="{{ countNormal }}" hint-placeholder-val="{{ true }}">
+        <p style="margin: 2px 0 0; font-family: var(--font-mono); font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: 0.05em; line-height: 1; color: var(--text)">{{ countdown }}</p>
+      </sc-if>
+      <sc-if value="{{ countUrgent }}" hint-placeholder-val="{{ false }}">
+        <p class="ud-urgent" style="margin: 2px 0 0; font-family: var(--font-mono); font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: 0.05em; line-height: 1; color: var(--no-300); animation: ud-count-pulse 1s cubic-bezier(0.65, 0, 0.35, 1) infinite">{{ countdown }}</p>
+      </sc-if>
+      <sc-if value="{{ countDone }}" hint-placeholder-val="{{ false }}">
+        <p style="margin: 2px 0 0; font-family: var(--font-mono); font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: 0.05em; line-height: 1; color: var(--text-subtle)">00:00</p>
+      </sc-if>
+    </div>
+    <sc-if value="{{ statusChip }}" hint-placeholder-val="{{ false }}">
+      <span class="chip chip-pending" style="flex-shrink: 0">{{ statusLabel }}</span>
+    </sc-if>
+  </div>
+
+  <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 8px">
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap">
+      <p style="margin: 0; display: flex; align-items: baseline; gap: 5px; font-family: var(--font-mono); font-size: 11.5px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text-muted); min-width: 0"><span style="font-size: 8.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint)">Vol</span> {{ volume }}</p>
+      <p style="margin: 0; display: inline-flex; align-items: center; gap: 4px; font-family: var(--font-mono); font-size: 11.5px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text-muted)">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4 3.5-6 8-6s8 2 8 6"></path></svg>
+        {{ players }}
+      </p>
+    </div>
+    <div>
+      <div style="display: flex; justify-content: space-between; margin-bottom: 4px">
+        <span style="font-family: var(--font-mono); font-size: 9.5px; font-weight: 700; letter-spacing: 0.06em; font-variant-numeric: tabular-nums; color: var(--yes-300)">UP {{ upPct }}%</span>
+        <span style="font-family: var(--font-mono); font-size: 9.5px; font-weight: 700; letter-spacing: 0.06em; font-variant-numeric: tabular-nums; color: var(--no-300)">{{ downPct }}% DOWN</span>
+      </div>
+      <div style="display: flex; gap: 2px; height: 5px; border-radius: var(--r-pill); overflow: hidden">
+        <div style="width: {{ upW }}; background: var(--yes-500)"></div>
+        <div style="flex: 1; background: var(--no-500)"></div>
+      </div>
+    </div>
+  </div>
+
+  <sc-if value="{{ showActions }}" hint-placeholder-val="{{ true }}">
+    <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 8px">
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; height: 44px; background: var(--bg-inset); border: 1px solid var(--border); border-radius: var(--r-md); padding: 0 12px 0 14px">
+        <span style="display: flex; align-items: baseline; gap: 7px">
+          <span style="font-family: var(--font-mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0.04em; color: var(--text-subtle)">TZS</span>
+          <span style="font-family: var(--font-mono); font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text)">{{ stake }}</span>
+        </span>
+        <span style="display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text-muted)">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+          {{ projected }}
+        </span>
+      </div>
+      <div style="display: flex; gap: 8px">
+        <button class="btn btn-yes btn-lg" disabled="{{ actionsDisabled }}" style="flex: 1; gap: 6px; min-width: 0">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-5 4 4 8-8"></path><path d="M14 8h6v6"></path></svg>
+          Up <span style="font-family: var(--font-mono); font-weight: 600; font-size: 12.5px; opacity: 0.85">× 1.4 est.</span>
+        </button>
+        <button class="btn btn-no btn-lg" disabled="{{ actionsDisabled }}" style="flex: 1; gap: 6px; min-width: 0">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l5 5 4-4 8 8"></path><path d="M14 16h6v-6"></path></svg>
+          Down <span style="font-family: var(--font-mono); font-weight: 600; font-size: 12.5px; opacity: 0.85">× 1.4 est.</span>
+        </button>
+      </div>
+      <p style="margin: 0; font-size: 10px; line-height: 1.45; color: var(--text-faint)">× figures are pool estimates, not fixed odds — final payout depends on how the pools close.</p>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ showConfirming }}" hint-placeholder-val="{{ false }}">
+    <div style="margin-top: 12px; padding: 14px; border: 1px solid var(--border); border-radius: var(--r-md); background: color-mix(in oklab, var(--bg-inset) 70%, transparent); display: flex; flex-direction: column; gap: 5px">
+      <span style="display: flex; align-items: center; gap: 7px">
+        <span class="chip chip-pending">Confirming price</span>
+      </span>
+      <p style="margin: 4px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--text-muted)">Reading the close price from {{ sourceName }}. The result posts as soon as the source confirms — real data or nothing.</p>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ showResolved }}" hint-placeholder-val="{{ false }}">
+    <div style="margin-top: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--bg-inset); display: flex; align-items: center; justify-content: space-between; gap: 10px">
+      <sc-if value="{{ outcomeUp }}" hint-placeholder-val="{{ true }}">
+        <span style="display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 14px; font-weight: 700; letter-spacing: 0.04em; color: var(--yes-300)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"></path></svg>
+          UP WINS
+        </span>
+      </sc-if>
+      <sc-if value="{{ outcomeDown }}" hint-placeholder-val="{{ false }}">
+        <span style="display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 14px; font-weight: 700; letter-spacing: 0.04em; color: var(--no-300)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M19 12l-7 7-7-7"></path></svg>
+          DOWN WINS
+        </span>
+      </sc-if>
+      <span style="text-align: right; font-family: var(--font-mono); font-size: 10.5px; font-variant-numeric: tabular-nums; line-height: 1.5; color: var(--text-muted)">closed {{ closePrice }}<br>open {{ openPrice }}</span>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ showVoid }}" hint-placeholder-val="{{ false }}">
+    <div style="margin-top: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--r-md); background: color-mix(in oklab, var(--bg-inset) 70%, transparent); display: flex; flex-direction: column; gap: 5px">
+      <span style="display: flex; align-items: center; gap: 7px">
+        <span class="chip">VOID · Refunded</span>
+      </span>
+      <p style="margin: 4px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--text-muted)">The price didn't move enough to call. Every stake has been returned in full.</p>
+    </div>
+  </sc-if>
+
+  <p style="margin: 12px 0 0; padding-top: 10px; border-top: 1px solid color-mix(in oklab, var(--border) 55%, transparent); font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.03em; color: var(--text-faint); display: flex; justify-content: space-between; gap: 8px; margin-top: auto; padding-top: 10px">
+    <span style="min-width: 0; display: flex; gap: 4px; white-space: nowrap"><span style="overflow: hidden; text-overflow: ellipsis">Source: {{ sourceName }}</span><span style="flex-shrink: 0; font-variant-numeric: tabular-nums">· quoted {{ sourceQuotedAt }}</span></span>
+    <span style="flex-shrink: 0; font-variant-numeric: tabular-nums">open {{ openPrice }}</span>
+  </p>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;: {&quot;width&quot;: 360, &quot;height&quot;: 430}, &quot;variant&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;default&quot;: &quot;open&quot;, &quot;options&quot;: [&quot;open&quot;, &quot;final30&quot;, &quot;closed&quot;, &quot;confirming&quot;, &quot;resolvedUp&quot;, &quot;resolvedDown&quot;, &quot;voidState&quot;, &quot;stress&quot;], &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;State&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const v = this.props.variant ?? "open";
+    const gold = { iconLabel: "Au", iconBg: "color-mix(in oklab, var(--gold-500) 16%, transparent)", iconBorder: "color-mix(in oklab, var(--gold-400) 45%, transparent)", iconInk: "var(--gold-300)" };
+    const silver = { iconLabel: "Ag", iconBg: "color-mix(in oklab, var(--text-subtle) 14%, transparent)", iconBorder: "color-mix(in oklab, var(--text-subtle) 45%, transparent)", iconInk: "var(--text-muted)" };
+    const base = {
+      ...gold, title: "Gold Up or Down", assetTicker: "GOLD", duration: "5 MIN",
+      livePrice: "$2,417.60", movePct: "+0.34%", dir: "up",
+      countdown: "04:12", countLabel: "Closes in", state: "open",
+      volume: "TZS 320,000", players: "25", upPct: 58,
+      stake: "100", projected: "140",
+      openPrice: "$2,409.40", closePrice: "$2,421.10",
+      sourceName: "Kitco", sourceQuotedAt: "14:34:58",
+    };
+    const variants = {
+      open: base,
+      final30: { ...base, countdown: "00:23", state: "final30", movePct: "\u22120.30%", livePrice: "$2,402.15", dir: "down", upPct: 44 },
+      closed: { ...base, state: "closed", countLabel: "Selections closed", statusLabel: "Awaiting result", movePct: "+0.12%", livePrice: "$2,412.30" },
+      confirming: { ...base, state: "confirming", countLabel: "Selections closed", statusLabel: "Confirming price", dir: "none" },
+      resolvedUp: { ...base, state: "resolvedUp", countLabel: "Round settled", upPct: 61 },
+      resolvedDown: { ...base, ...silver, title: "Silver Up or Down", assetTicker: "SILVER", state: "resolvedDown", countLabel: "Round settled", livePrice: "$30.84", movePct: "\u22120.51%", dir: "down", openPrice: "$31.02", closePrice: "$30.84", upPct: 52, volume: "TZS 8,450,000", players: "112", duration: "15 MIN" },
+      voidState: { ...base, state: "void", countLabel: "Round settled", movePct: "+0.01%", livePrice: "$2,409.65", upPct: 50 },
+      stress: { ...base, title: "West Texas Intermediate Crude Oil Up or Down", assetTicker: "WTI CRUDE", iconLabel: "Oil", volume: "TZS 123,456,789", players: "1,204", livePrice: "$81,240.55", movePct: "+12.85%", duration: "30 MIN", countdown: "27:41", stake: "250,000", projected: "350,000", sourceName: "ICE Benchmark Administration" },
+    };
+    const d = variants[v] ?? base;
+    const s = d.state;
+    const open = s === "open" || s === "final30";
+    return {
+      ...d,
+      players: d.players,
+      priceUp: d.dir === "up", priceDown: d.dir === "down", priceNone: d.dir === "none",
+      countNormal: s === "open", countUrgent: s === "final30",
+      countDone: !open,
+      statusChip: s === "closed" || s === "confirming",
+      showActions: open || s === "closed",
+      actionsDisabled: s === "closed",
+      showConfirming: s === "confirming",
+      showResolved: s === "resolvedUp" || s === "resolvedDown",
+      outcomeUp: s === "resolvedUp", outcomeDown: s === "resolvedDown",
+      showVoid: s === "void",
+      downPct: 100 - d.upPct,
+      upW: d.upPct + "%",
+    };
+  }
+}
+</script>
+</body>
+</html>

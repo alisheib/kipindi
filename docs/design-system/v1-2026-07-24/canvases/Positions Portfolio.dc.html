@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <meta name="design_doc_mode" content="canvas">
+  <link rel="stylesheet" href="theme/globals.css">
+</helmet>
+<section style="padding: 48px 56px 96px; background: oklch(11% 0.08 268); min-height: 100%; font-family: var(--font-body); color: var(--text); display: flex; flex-direction: column; gap: 40px">
+
+  <div style="max-width: 720px">
+    <p style="margin: 0; font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.16em; font-weight: 700; color: var(--gilt)">50pick · Brief #1</p>
+    <h1 style="margin: 6px 0 0; font-family: var(--font-display); font-size: 30px; font-weight: 700; letter-spacing: -0.02em; color: var(--text)">Positions portfolio — P&amp;L strip + performance</h1>
+    <p style="margin: 10px 0 0; font-size: 14px; line-height: 1.6; color: var(--text-muted)">One coherent system on the royal/gilt tokens. "Your standing" is a single ledger panel (not four loose boxes); the win-rate cell carries the gilt Needle; gold appears only on earned money; unrealised value is always labelled "if settled now". Losses read calm, never punishing.</p>
+  </div>
+
+  <div id="1a" style="display: flex; flex-direction: column; gap: 12px; width: fit-content">
+    <div style="display: flex; align-items: center; gap: 10px">
+      <a href="#1a" style="display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 22px; padding: 0 7px; border-radius: var(--r-pill); background: var(--gold-500); color: var(--gold-fg); font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-decoration: none">1a</a>
+      <span style="font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-subtle)">/positions · desktop 1440 · open + settled</span>
+    </div>
+    <div style="width: 1440px; border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--shadow-royal)">
+      <dc-import name="Positions Page" scenario="mixed" hint-size="1440px,1100px"></dc-import>
+    </div>
+  </div>
+
+  <div style="display: flex; align-items: flex-start; gap: 40px; flex-wrap: wrap">
+    <div id="1b" style="display: flex; flex-direction: column; gap: 12px; width: fit-content">
+      <div style="display: flex; align-items: center; gap: 10px">
+        <a href="#1b" style="display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 22px; padding: 0 7px; border-radius: var(--r-pill); background: var(--gold-500); color: var(--gold-fg); font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-decoration: none">1b</a>
+        <span style="font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-subtle)">/positions · mobile 390</span>
+      </div>
+      <div style="width: 390px; border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--shadow-royal)">
+        <dc-import name="Positions Page" scenario="mixed" hint-size="390px,1400px"></dc-import>
+      </div>
+    </div>
+
+    <div id="1d" style="display: flex; flex-direction: column; gap: 12px; width: fit-content">
+      <div style="display: flex; align-items: center; gap: 10px">
+        <a href="#1d" style="display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 22px; padding: 0 7px; border-radius: var(--r-pill); background: var(--gold-500); color: var(--gold-fg); font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-decoration: none">1d</a>
+        <span style="font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-subtle)">/positions/performance · mobile 390</span>
+      </div>
+      <div style="width: 390px; border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--shadow-royal)">
+        <dc-import name="Performance Page" scenario="mixed" hint-size="390px,1400px"></dc-import>
+      </div>
+    </div>
+  </div>
+
+  <div id="1c" style="display: flex; flex-direction: column; gap: 12px; width: fit-content">
+    <div style="display: flex; align-items: center; gap: 10px">
+      <a href="#1c" style="display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 22px; padding: 0 7px; border-radius: var(--r-pill); background: var(--gold-500); color: var(--gold-fg); font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-decoration: none">1c</a>
+      <span style="font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-subtle)">/positions/performance · desktop 1440</span>
+    </div>
+    <div style="width: 1440px; border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--shadow-royal)">
+      <dc-import name="Performance Page" scenario="mixed" hint-size="1440px,1150px"></dc-import>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 16px">
+    <p style="margin: 0; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-subtle)">States — empty · loading · net-loss · big-win</p>
+    <div style="display: flex; align-items: flex-start; gap: 32px; flex-wrap: wrap">
+
+      <div id="1e" style="display: flex; flex-direction: column; gap: 10px; width: fit-content">
+        <div style="display: flex; align-items: center; gap: 10px">
+          <a href="#1e" style="display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 22px; padding: 0 7px; border-radius: var(--r-pill); background: var(--gold-500); color: var(--gold-fg); font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-decoration: none">1e</a>
+          <span style="font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-subtle)">Positions · empty</span>
+        </div>
+        <div style="width: 390px; border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden">
+          <dc-import name="Positions Page" scenario="empty" hint-size="390px,540px"></dc-import>
+        </div>
+      </div>
+
+      <div id="1f" style="display: flex; flex-direction: column; gap: 10px; width: fit-content">
+        <div style="display: flex; align-items: center; gap: 10px">
+          <a href="#1f" style="display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 22px; padding: 0 7px; border-radius: var(--r-pill); background: var(--gold-500); color: var(--gold-fg); font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-decoration: none">1f</a>
+          <span style="font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-subtle)">Positions · loading skeleton</span>
+        </div>
+        <div style="width: 390px; border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden">
+          <dc-import name="Positions Page" scenario="loading" hint-size="390px,900px"></dc-import>
+        </div>
+      </div>
+
+      <div id="1g" style="display: flex; flex-direction: column; gap: 10px; width: fit-content">
+        <div style="display: flex; align-items: center; gap: 10px">
+          <a href="#1g" style="display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 22px; padding: 0 7px; border-radius: var(--r-pill); background: var(--gold-500); color: var(--gold-fg); font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-decoration: none">1g</a>
+          <span style="font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-subtle)">Positions · net loss</span>
+        </div>
+        <div style="width: 390px; border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden">
+          <dc-import name="Positions Page" scenario="netloss" hint-size="390px,1400px"></dc-import>
+        </div>
+      </div>
+
+      <div id="1h" style="display: flex; flex-direction: column; gap: 10px; width: fit-content">
+        <div style="display: flex; align-items: center; gap: 10px">
+          <a href="#1h" style="display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 22px; padding: 0 7px; border-radius: var(--r-pill); background: var(--gold-500); color: var(--gold-fg); font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-decoration: none">1h</a>
+          <span style="font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-subtle)">Performance · big win</span>
+        </div>
+        <div style="width: 390px; border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden">
+          <dc-import name="Performance Page" scenario="bigwin" hint-size="390px,1300px"></dc-import>
+        </div>
+      </div>
+
+      <div id="1i" style="display: flex; flex-direction: column; gap: 10px; width: fit-content">
+        <div style="display: flex; align-items: center; gap: 10px">
+          <a href="#1i" style="display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 22px; padding: 0 7px; border-radius: var(--r-pill); background: var(--gold-500); color: var(--gold-fg); font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-decoration: none">1i</a>
+          <span style="font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-subtle)">Performance · net loss</span>
+        </div>
+        <div style="width: 390px; border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden">
+          <dc-import name="Performance Page" scenario="netloss" hint-size="390px,1300px"></dc-import>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+</x-dc>
+</body>
+</html>

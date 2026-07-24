@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <meta name="design_doc_mode" content="canvas">
+  <link rel="stylesheet" href="theme/globals.css">
+</helmet>
+<section style="padding: 48px 56px 96px; background: oklch(11% 0.08 268); min-height: 100%; font-family: var(--font-body); color: var(--text); display: flex; flex-direction: column; gap: 44px">
+
+  <div style="max-width: 720px">
+    <p style="margin: 0; font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.16em; font-weight: 700; color: var(--gilt)">Up &amp; Down · Surface D2</p>
+    <h1 style="margin: 6px 0 0; font-family: var(--font-display); font-size: 30px; font-weight: 700; letter-spacing: -0.02em; color: var(--text)">/updown board</h1>
+    <p style="margin: 10px 0 0; font-size: 14px; line-height: 1.6; color: var(--text-muted)">Built from the D1 card. Price tape streams both assets; asset tabs take a third and fourth without reflow; duration tabs sit visually secondary; the last-rounds pip strip is the page heartbeat (VOID renders as a neutral dash pip). Redlines in <span style="font-family: var(--font-mono); font-size: 12.5px; color: var(--aqua-300)">handoff/D2-updown-board-spec.md</span>.</p>
+  </div>
+
+  <div id="3a" style="display: flex; flex-direction: column; gap: 14px; width: fit-content">
+    <div style="display: flex; align-items: center; gap: 10px">
+      <a href="#3a" style="display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 22px; padding: 0 7px; border-radius: var(--r-pill); background: var(--gold-500); color: var(--gold-fg); font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-decoration: none">3a</a>
+      <span style="font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-subtle)">Board · desktop 1280</span>
+    </div>
+    <div style="width: 1280px; border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--shadow-royal)">
+      <dc-import name="UpDown Board" scenario="default" hint-size="1280px,1100px"></dc-import>
+    </div>
+  </div>
+
+  <div style="display: flex; align-items: flex-start; gap: 32px; flex-wrap: wrap">
+    <div id="3b" style="display: flex; flex-direction: column; gap: 14px; width: fit-content">
+      <div style="display: flex; align-items: center; gap: 10px">
+        <a href="#3b" style="display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 22px; padding: 0 7px; border-radius: var(--r-pill); background: var(--gold-500); color: var(--gold-fg); font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-decoration: none">3b</a>
+        <span style="font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-subtle)">Board · mobile 360</span>
+      </div>
+      <div style="width: 360px; border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--shadow-royal)">
+        <dc-import name="UpDown Board" scenario="default" hint-size="360px,2400px"></dc-import>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 32px">
+      <div id="3c" style="display: flex; flex-direction: column; gap: 14px; width: fit-content">
+        <div style="display: flex; align-items: center; gap: 10px">
+          <a href="#3c" style="display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 22px; padding: 0 7px; border-radius: var(--r-pill); background: var(--gold-500); color: var(--gold-fg); font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-decoration: none">3c</a>
+          <span style="font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-subtle)">Paused chain · empty state · 360</span>
+        </div>
+        <div style="width: 360px; border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden">
+          <dc-import name="UpDown Board" scenario="empty" hint-size="360px,760px"></dc-import>
+        </div>
+      </div>
+
+      <div id="3d" style="display: flex; flex-direction: column; gap: 14px; width: fit-content">
+        <div style="display: flex; align-items: center; gap: 10px">
+          <a href="#3d" style="display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 22px; padding: 0 7px; border-radius: var(--r-pill); background: var(--gold-500); color: var(--gold-fg); font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-decoration: none">3d</a>
+          <span style="font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-subtle)">Loading skeleton · 360</span>
+        </div>
+        <div style="width: 360px; border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden">
+          <dc-import name="UpDown Board" scenario="loading" hint-size="360px,900px"></dc-import>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+</x-dc>
+</body>
+</html>

@@ -348,7 +348,71 @@ Then redlines + contract per §5.
 
 ---
 
-### D5 · Bottom navigation glyph
+### D6 · Top-nav identity for Up & Down
+
+**Ali's ask (2026-07-24):** *"the writing for Up & Down in the top navigation bar — I
+want it maybe with purple highlight or something that makes it unique, maybe a small
+timer next to it, or anything in purple. Be aesthetic, just to make people know it's
+another game."*
+
+**Reviewed across the roles before speccing. Three findings that shape the prompt:**
+
+1. **Compliance — a persistent global countdown is an RG risk.** A ticking timer in
+   chrome that appears on *every page* is a constant urgency cue. Regulators read
+   persistent urgency as pressure-to-play, and 50pick is a licensed real-money
+   operator. A **static "next round" time** or a calm pulse carries the same "this is
+   live" meaning without manufacturing urgency on pages the player is not even betting
+   on. The card's own countdown is where urgency belongs — it is scoped to a round the
+   player chose to look at.
+2. **Engineering — a 1-second interval in global chrome re-renders every page, every
+   second.** The platform's own bar is "usable on a low-end Android over 2G". A
+   per-second global timer is the wrong place to spend that budget. It also risks the
+   nav timer and the card timer visibly disagreeing by a second, which reads as broken.
+3. **Colour — purple is available, and it is the *right* choice.** Brand indigo
+   (`--brand-500` / `--brand-400`, hue 262–268) is the brand canvas and carries **no
+   semantic load** — unlike gold (earned money), green/rose (betting actions) or cyan
+   (active nav). So purple can mean "different product" without colliding with
+   anything. ⚠️ But cyan already marks the ACTIVE tab, so the purple must read as
+   *category identity*, present whether or not the tab is active, and must never be
+   confusable with the active state.
+
+```
+Surface D6 — top navigation identity for the new "Up & Down" product.
+
+CONTEXT: 50pick now has two product lines. "Markets" holds long-form polls that
+resolve in days. "Up & Down" holds short-term price rounds that resolve in minutes.
+A player looking at the top bar should be able to tell, instantly and without
+reading, that Up & Down is a DIFFERENT KIND OF GAME — faster, live, continuous.
+
+WHAT I WANT: a purple identity treatment on the Up & Down nav item. Purple = brand
+indigo (--brand-500 / --brand-400). It is the one accent with no semantic job, so it
+is free to mean "different product".
+
+CONSTRAINTS — these are hard:
+· Cyan already means ACTIVE TAB. Purple must read as category identity and must be
+  present whether the tab is active or not. The two must never be confusable — show
+  me Up & Down in BOTH active and inactive states so I can check that.
+· NO per-second ticking countdown in the top bar. It is a persistent urgency cue on
+  every page (a responsible-gambling problem for a licensed operator) and a
+  per-second global re-render (a performance problem on low-end Android over 2G).
+  Instead, propose a calm liveness signal — e.g. a soft pulsing dot, a static "next
+  round 14:35", or a thin progress hairline that fills over the round. It should feel
+  alive without nagging.
+· It must survive 360px, and it must survive Swahili and Chinese labels (~35% text
+  expansion). Show the stress case.
+· No gold anywhere near it — gold means earned money.
+· It must not restyle or overshadow the other nav items. Up & Down is a sibling of
+  Markets, not a promotion.
+
+GIVE ME THREE OPTIONS, side by side in the real top bar:
+  A. Purple pill/underline treatment on the label alone — quietest.
+  B. Purple + a small liveness element (dot / hairline / next-round time).
+  C. Something you think is better — you have the brand; surprise me, but stay
+     within the constraints above.
+
+For each: the desktop top bar at 1280, the mobile bar at 360, and both the active and
+inactive states. Then the redlines and the rationale for which you would ship.
+```
 
 ```
 Surface D5. The mobile bottom nav goes to five tabs: Markets · Up & Down · Live ·

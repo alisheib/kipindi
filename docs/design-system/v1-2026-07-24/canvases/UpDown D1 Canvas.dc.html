@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <meta name="design_doc_mode" content="canvas">
+  <link rel="stylesheet" href="theme/globals.css">
+</helmet>
+<section style="padding: 48px 56px 96px; background: oklch(11% 0.08 268); min-height: 100%; font-family: var(--font-body); color: var(--text); display: flex; flex-direction: column; gap: 44px">
+
+  <div style="max-width: 720px">
+    <p style="margin: 0; font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.16em; font-weight: 700; color: var(--gilt)">Up &amp; Down · Surface D1</p>
+    <h1 style="margin: 6px 0 0; font-family: var(--font-display); font-size: 30px; font-weight: 700; letter-spacing: -0.02em; color: var(--text)">UpDownCard — all seven states</h1>
+    <p style="margin: 10px 0 0; font-size: 14px; line-height: 1.6; color: var(--text-muted)">Faster, tenser cousin of the MarketCard — same materials, higher tempo. The countdown is the only manufactured urgency; green/rose live only in price movement and the betting actions; "× 1.4" is marked as an estimate on the button and under it; the source line never drops. Redlines + contract in <span style="font-family: var(--font-mono); font-size: 12.5px; color: var(--aqua-300)">handoff/D1-updown-card-spec.md</span>.</p>
+  </div>
+
+  <div id="2a" style="display: flex; flex-direction: column; gap: 14px">
+    <div style="display: flex; align-items: center; gap: 10px">
+      <a href="#2a" style="display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 22px; padding: 0 7px; border-radius: var(--r-pill); background: var(--gold-500); color: var(--gold-fg); font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-decoration: none">2a</a>
+      <span style="font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-subtle)">Seven states · 360px</span>
+    </div>
+    <div style="display: flex; align-items: flex-start; gap: 24px; flex-wrap: wrap">
+      <div style="width: 360px; display: flex; flex-direction: column; gap: 8px">
+        <p style="margin: 0; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint)">1 · Open for betting</p>
+        <dc-import name="UpDown Card" variant="open" hint-size="360px,430px"></dc-import>
+      </div>
+      <div style="width: 360px; display: flex; flex-direction: column; gap: 8px">
+        <p style="margin: 0; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint)">2 · Final 30 seconds</p>
+        <dc-import name="UpDown Card" variant="final30" hint-size="360px,430px"></dc-import>
+      </div>
+      <div style="width: 360px; display: flex; flex-direction: column; gap: 8px">
+        <p style="margin: 0; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint)">3 · Selections closed</p>
+        <dc-import name="UpDown Card" variant="closed" hint-size="360px,430px"></dc-import>
+      </div>
+      <div style="width: 360px; display: flex; flex-direction: column; gap: 8px">
+        <p style="margin: 0; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint)">4 · Confirming price</p>
+        <dc-import name="UpDown Card" variant="confirming" hint-size="360px,360px"></dc-import>
+      </div>
+      <div style="width: 360px; display: flex; flex-direction: column; gap: 8px">
+        <p style="margin: 0; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint)">5 · Resolved UP</p>
+        <dc-import name="UpDown Card" variant="resolvedUp" hint-size="360px,360px"></dc-import>
+      </div>
+      <div style="width: 360px; display: flex; flex-direction: column; gap: 8px">
+        <p style="margin: 0; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint)">6 · Resolved DOWN (silver)</p>
+        <dc-import name="UpDown Card" variant="resolvedDown" hint-size="360px,360px"></dc-import>
+      </div>
+      <div style="width: 360px; display: flex; flex-direction: column; gap: 8px">
+        <p style="margin: 0; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint)">7 · VOID / refunded</p>
+        <dc-import name="UpDown Card" variant="voidState" hint-size="360px,360px"></dc-import>
+      </div>
+    </div>
+  </div>
+
+  <div id="2b" style="display: flex; flex-direction: column; gap: 14px; width: fit-content">
+    <div style="display: flex; align-items: center; gap: 10px">
+      <a href="#2b" style="display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 22px; padding: 0 7px; border-radius: var(--r-pill); background: var(--gold-500); color: var(--gold-fg); font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-decoration: none">2b</a>
+      <span style="font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-subtle)">3-across grid · 1280px board · equal heights, aligned baselines</span>
+    </div>
+    <div style="width: 1280px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 24px; box-sizing: border-box; box-shadow: var(--shadow-royal)">
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; align-items: stretch">
+        <dc-import name="UpDown Card" variant="open" hint-size="100%,430px"></dc-import>
+        <dc-import name="UpDown Card" variant="final30" hint-size="100%,430px"></dc-import>
+        <dc-import name="UpDown Card" variant="closed" hint-size="100%,430px"></dc-import>
+        <dc-import name="UpDown Card" variant="confirming" hint-size="100%,360px"></dc-import>
+        <dc-import name="UpDown Card" variant="resolvedDown" hint-size="100%,360px"></dc-import>
+        <dc-import name="UpDown Card" variant="voidState" hint-size="100%,360px"></dc-import>
+      </div>
+    </div>
+  </div>
+
+  <div id="2c" style="display: flex; flex-direction: column; gap: 14px; width: fit-content">
+    <div style="display: flex; align-items: center; gap: 10px">
+      <a href="#2c" style="display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 22px; padding: 0 7px; border-radius: var(--r-pill); background: var(--gold-500); color: var(--gold-fg); font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-decoration: none">2c</a>
+      <span style="font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-subtle)">Stress test · long asset name + 9-digit volume · 360px</span>
+    </div>
+    <div style="width: 360px">
+      <dc-import name="UpDown Card" variant="stress" hint-size="360px,460px"></dc-import>
+    </div>
+  </div>
+</section>
+</x-dc>
+</body>
+</html>
