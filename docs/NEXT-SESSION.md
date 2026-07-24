@@ -3,7 +3,7 @@
 Read the two always-on skills first (`.claude/skills/50pick-standards` +
 `.claude/skills/50pick-audit`), then this. **Current-state only** — old per-session logs were
 consolidated 2026-07-21; the detail lives in git history + the authoritative docs listed at the
-bottom. Last updated 2026-07-21.
+bottom. Last updated 2026-07-24.
 
 ## Current state (LIVE, healthy)
 - **Final Audit COMPLETE** — all 11 Criticals + all Highs + all Mediums closed
@@ -86,6 +86,21 @@ bottom. Last updated 2026-07-21.
   prod**. `TEST_FUNDING=true` pre-launch lets testers solo-resolve; it hard-locks at go-live.
 - **bet-stake single-`$transaction`** merged; **M2** largest-remainder payout done; **C3/C6** ledger
   + audit-chain done. See `docs/COMPLIANCE-DECISIONS.md`.
+- **Settlement has NO global on/off switch — by design (owner decision 2026-07-24, recorded in
+  `docs/COMPLIANCE-DECISIONS.md`).** `AUTO_SETTLE`, the `/admin/payments` `autoSettle` toggle,
+  `getAutoSettleEnabled()` and the global `settleDueMarkets()` sweep are DELETED — do not re-add
+  them or go hunting for them. Settlement is **per-market timer-driven**: an adjudicated market arms
+  its own timer for its `objectionsClosedAt` and pays itself then; a ~5-minute reconciler re-arms any
+  market whose timer was dropped; `/admin/system` shows live scheduler health (timers armed + next
+  fire). The payout gates are UNCHANGED — objection window · standing objection freezes the pool ·
+  winner-floor · exact conservation · idempotent (no double-pay). `/admin/settlement` remains the
+  **human fallback** (manual "Settle now" + the objection-frozen view).
+- **No global AI "sentinel sweep"** — no 4-hourly pass over live markets, no sweep interval, no
+  pause/resume, no sentinel countdown. Each market is AI-checked at its own resolution time by the
+  per-market scheduler; an operator re-checks ONE market on demand with "Re-check this market now"
+  on `/admin/resolver-queue`. That page also carries **resolution mode**: the two-officer ceremony
+  ("human", the default) or "auto", where the AI seals the outcome only above its confidence
+  threshold (low confidence / UNKNOWN always falls back to human).
 
 ## Remaining before real money
 **Code (LOW polish, non-blocking):** resolver-queue stage-1 one-click closes a LIVE market with no
@@ -104,7 +119,10 @@ the combined figure, or restrict `feesTzs` to GATEWAY_TYPES. Don't change silent
 **Operator / ops go-live gate (NOT code — the real blocker):** flip `/admin/payments` provider
 mock→selcom + redeploy · clear the conflicted-resolution flag · Selcom float PIN (cash-out) · turn
 OFF `TEST_FUNDING` + rebaseline the DB at launch · `AZAMPAY_/MIXX_WEBHOOK_SECRET` (SELCOM set) · R2
-creds · Sentry DSN · VAPID · pentest · flip `AUTO_SETTLE=true` once the rail is live + reconciled.
+creds · Sentry DSN · VAPID · pentest · **settlement — nothing to flip** (there is no global switch
+any more): once the rail is live + reconciled, confirm on `/admin/system` that "Timers armed" is
+non-zero with a sane next fire, that `/admin/settlement` has nothing stuck in "Ready to settle",
+and that `/admin/resolver-queue` is in the resolution mode you intend.
 Full map: `docs/GO-LIVE-READINESS.md` + `docs/GO-LIVE-RUNBOOK.md` + `docs/LAUNCH-GO-NO-GO.md`.
 
 ## Guardrails (do not violate)

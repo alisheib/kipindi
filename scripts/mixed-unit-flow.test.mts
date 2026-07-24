@@ -9,14 +9,26 @@
  *   3. Edits polls — changes resolutionAt, verifies selectionClosedAt recomputes
  *   4. Publishes polls → creates live markets — verifies dates propagate
  *   5. Places bets — verifies selection-close blocking at minute precision
- *   6. Runs selection-closed sweep — verifies notifications fire at the right time
- *   7. Runs resolution-due sweep — verifies officer alerts
+ *   6. Fires the per-market selection-closed trigger — verifies notifications fire
+ *      at the right time, and exactly once
+ *   7. Fires the per-market resolution-due trigger — verifies the market is stamped
+ *      CLOSED and officers are alerted
  *   8. Simulates sentinel closure — verifies the two-officer dance
+ *
+ * The lifecycle SWEEPS were replaced by PER-MARKET timers, so steps 6/7 now call
+ * the per-market triggers — the exact code path those timers fire. The timers
+ * themselves are covered by scripts/scheduler.test.mts; here they are switched off
+ * (MARKET_SCHEDULER=false) so a background fire can never race the explicit trigger
+ * this file is asserting on. Nothing else in the flow depends on the scheduler.
  *
  * Run: npm run test:mixed-flow
  */
 delete process.env.ANTHROPIC_API_KEY;
 process.env.SESSION_SECRET ??= "test-only-session-secret-32chars-min-aaaa";
+// Deterministic: this file drives every lifecycle transition explicitly, so the
+// per-market timers armed by createMarket() must not fire a transition behind our
+// back (scripts/scheduler.test.mts is what proves the timers themselves work).
+process.env.MARKET_SCHEDULER = "false";
 
 import {
   generateAIPoll, editAIPoll, approveAIPoll, markAIPollPublished,
@@ -29,7 +41,7 @@ import {
 import { setAIProvider, type AIProvider, type AIPollGeneration } from "../src/lib/server/ai-provider.ts";
 import {
   createMarket, getMarket, buyPosition, isSelectionClosed, isClosedByTime,
-  notifySelectionClosedMarkets, notifyDueMarketsForResolution,
+  notifySelectionClosedForMarket, resolveDueMarket,
   resolveMarket,
 } from "../src/lib/server/market-service.ts";
 import { marketStore, positionStore } from "../src/lib/server/market-dal.ts";
@@ -328,9 +340,9 @@ section("5. Bet placement — selection close at minute precision");
 }
 
 // ═══════════════════════════════════════════════════════════════
-// STEP 6: Selection-closed notification sweep
+// STEP 6: Selection-closed notification trigger
 // ═══════════════════════════════════════════════════════════════
-section("6. Selection-closed notification sweep");
+section("6. Selection-closed notification trigger (per-market)");
 {
   // Create a market with selection closed + an open position
   const mkt = await createMarket({
@@ -348,16 +360,22 @@ section("6. Selection-closed notification sweep");
   mktF.selectionClosedAt = ago(3);
   await marketStore.set(mktF);
 
-  const r = await notifySelectionClosedMarkets();
+  const r = await notifySelectionClosedForMarket(mkt.id);
   await new Promise((res) => setTimeout(res, 100));
-  ok("6.1 sweep notified >= 1 market", r.notified >= 1, JSON.stringify(r));
+  ok("6.1 trigger notified the market", r.notified && r.bettors >= 1, JSON.stringify(r));
 
-  const bells = (await listForUser("usr_mf_player")).filter((n) => n.kind === "SELECTION_CLOSED");
+  const bells = (await listForUser("usr_mf_player")).filter(
+    (n) => n.kind === "SELECTION_CLOSED" && n.href === `/markets/${mkt.id}`,
+  );
   ok("6.2 player got SELECTION_CLOSED bell", bells.length >= 1, `got ${bells.length}`);
 
-  // Idempotency
-  const r2 = await notifySelectionClosedMarkets();
-  ok("6.3 re-sweep is idempotent", r2.notified === 0 || r2.bettors === 0);
+  // Idempotency — a re-fire (second timer, reconciler race) must not re-notify.
+  const r2 = await notifySelectionClosedForMarket(mkt.id);
+  ok("6.3 re-fire is idempotent", !r2.notified && r2.bettors === 0, JSON.stringify(r2));
+  const bells2 = (await listForUser("usr_mf_player")).filter(
+    (n) => n.kind === "SELECTION_CLOSED" && n.href === `/markets/${mkt.id}`,
+  );
+  ok("6.4 no duplicate bell from the re-fire", bells2.length === bells.length, `${bells.length} → ${bells2.length}`);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -376,9 +394,30 @@ section("7. Resolution-due officer alert");
   mktR.selectionClosedAt = ago(30);
   await marketStore.set(mktR);
 
-  const r = await notifyDueMarketsForResolution();
+  // No ANTHROPIC_API_KEY here, so pass the assessment explicitly: `null` skips the
+  // AI entirely and takes the HUMAN fallback path — deterministic, no network.
+  const r = await resolveDueMarket(mkt.id, { assessment: null });
   await new Promise((res) => setTimeout(res, 100));
-  ok("7.1 resolution-due sweep fires", r.notified >= 1, JSON.stringify(r));
+  ok("7.1 resolution-due trigger fires (human fallback)", r.status === "closed-human", JSON.stringify(r));
+
+  // The trigger now also stamps the market CLOSED — betting is over, the two-officer
+  // ceremony takes it from here.
+  const afterR = await marketStore.get(mkt.id) as any;
+  ok("7.2 market stamped CLOSED", afterR?.status === "CLOSED", afterR?.status);
+  ok("7.3 resolutionNotifiedAt stamped", !!afterR?.resolutionNotifiedAt);
+
+  const alerts = (await listForUser("off_mf_alice")).filter(
+    (n) => n.href === "/admin/resolver-queue" && n.bodyEn.includes(mkt.titleEn),
+  );
+  ok("7.4 officer alerted", alerts.length >= 1, `got ${alerts.length}`);
+
+  // Idempotency — the market is no longer LIVE, so a re-fire must do nothing.
+  const r2 = await resolveDueMarket(mkt.id, { assessment: null });
+  ok("7.5 re-fire is idempotent", r2.status === "skipped", JSON.stringify(r2));
+  const alerts2 = (await listForUser("off_mf_alice")).filter(
+    (n) => n.href === "/admin/resolver-queue" && n.bodyEn.includes(mkt.titleEn),
+  );
+  ok("7.6 no duplicate officer alert", alerts2.length === alerts.length, `${alerts.length} → ${alerts2.length}`);
 }
 
 // ═══════════════════════════════════════════════════════════════

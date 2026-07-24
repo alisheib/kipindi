@@ -72,11 +72,18 @@ RUN IN THIS ORDER (each step has a dedicated doc — follow it exactly):
 4 · THE SWITCH (only after 1–3 green). `docs/LAUNCH-GO-NO-GO.md` §5:
    unset `TEST_FUNDING` → format/rebaseline the DB (clean genesis) → verify trial
    balance = TZS 0 drift + audit chain VALID → one real small deposit→bet→settle→
-   withdraw round-trip → flip `AUTO_SETTLE=true` → confirm https://50pick.tz +
-   https://www.50pick.tz serve with valid certs → announce.
+   withdraw round-trip → **nothing to flip for settlement** (there is no
+   `AUTO_SETTLE` env var / admin toggle any more — each adjudicated market carries
+   its own timer that fires at its `objectionsClosedAt` and pays itself): instead
+   verify on **/admin/system** that "Timers armed" is non-zero with a sane "next
+   fire", and that **/admin/settlement** has nothing stranded in "Ready to settle"
+   → confirm https://50pick.tz + https://www.50pick.tz serve with valid certs →
+   announce.
 
 5 · POST-LAUNCH WATCH. railway logs clean · /admin/payments reconcile drift 0 ·
-   nightly `ledger.trial_balance_drift` stays quiet · first real player flows.
+   nightly `ledger.trial_balance_drift` stays quiet · /admin/system scheduler
+   health (timers armed / next fire) + /admin/settlement "Ready to settle" not
+   piling up — settle by hand there if a market is stuck · first real player flows.
 
 GUARDRAILS (unchanged): every push = LIVE deploy; full `npm run test:all` before
 any money push; verify after every push (tech/logical/visual screenshot/live-DB

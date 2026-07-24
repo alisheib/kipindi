@@ -1,35 +1,26 @@
 /**
- * Lifecycle ticker — the production trigger for time-based market transitions.
+ * Lifecycle ticker — the periodic backstop for the NON-market chores, plus the
+ * self-healing reconcile for the per-market scheduler.
  *
- * Bet-placed, win and loss notifications fire synchronously on the player's bet
- * action and the officer's resolve action, so those are always reliable. But two
- * transitions are driven by the CLOCK, not by a user action, and so have no
- * natural trigger:
- *   1. Selection close  → notify bettors "selections closed, waiting for results"
- *   2. Resolution due   → alert officers a real market is ready to resolve
- *      (+ auto-resolve expired Demo markets, expire stale bonus grants)
- *
- * These used to be wired only into a page-hit sweep (seedDemoMarkets) that is no
- * longer called from anywhere, so they silently stopped firing. This ticker runs
- * them on a fixed interval, INDEPENDENT of the AI sentinel (which is gated by an
- * API key + a pause switch + a budget). Every sweep is idempotent (per-market
- * lock + a "notified" stamp), so running them repeatedly is safe.
+ * Time-based MARKET transitions (closing-soon, selection-closed, resolve, settle)
+ * are no longer swept here — each market carries its own precise timer, armed at
+ * create/resolve and hydrated at boot (see market-scheduler.ts). All this ticker
+ * still does, once a minute, is:
+ *   • reconcile the scheduler — re-arm any pending market that lost its timer
+ *     (~5-min cadence; the ONLY market work left, and purely self-healing);
+ *   • expire stale bonus grants;
+ *   • reconcile stuck payments + notify still-pending deposits (~5-min);
+ *   • run the nightly wallet↔ledger trial balance (daily).
+ * A separate, faster timer fast-credits in-flight deposits every 15s.
  *
  * Started once from instrumentation.register() on the Node runtime.
  */
 
-import {
-  notifyClosingSoonMarkets,
-  notifySelectionClosedMarkets,
-  notifyDueMarketsForResolution,
-  autoResolveExpiredDemoMarkets,
-  repairOrphanedPositions,
-  settleDueMarkets,
-} from "./market-service";
+import { repairOrphanedPositions } from "./market-service";
+import { reconcileMarketSchedules } from "./market-scheduler";
 import { expireActiveGrants } from "./bonus-service";
 import { trialBalance } from "./ledger";
 import { audit } from "./audit";
-import { getAutoSettleEnabled } from "./payment-control";
 
 const TICK_MS = 60_000;       // run the lifecycle sweeps once a minute
 const FIRST_TICK_MS = 8_000;  // first pass shortly after boot (let the app settle)
@@ -143,48 +134,40 @@ async function maybePaymentSweeps(): Promise<void> {
   if (n.notified) console.log(`[lifecycle] told ${n.notified} player(s) their deposit is still pending`);
 }
 
-/** Run one lifecycle pass. Each sweep is self-contained and best-effort; one
- *  failing must never stop the others or throw out of the tick. */
+// ── Per-market scheduler reconcile (self-healing backstop, ~5-min cadence) ───
+// Market transitions — closing-soon, selection-closed, resolve, settle — are now
+// driven by PER-MARKET timers (market-scheduler.ts): armed on create/resolve,
+// hydrated at boot, re-armed after every fire. Nothing is swept on a fixed cadence
+// any more. This reconcile is the ONLY market work the ticker still does, and it
+// exists purely to HEAL: every ~5 minutes it re-arms any pending market that has no
+// live timer (dropped by an error, created during a brief scheduler outage) and
+// fires anything already past a deadline. Bounded to a targeted indexed query.
+const SCHEDULE_RECONCILE_EVERY_MS = 5 * 60 * 1000;
+let lastScheduleReconcileAt = 0;
+
+async function maybeReconcileSchedules(): Promise<void> {
+  const now = Date.now();
+  if (now - lastScheduleReconcileAt < SCHEDULE_RECONCILE_EVERY_MS) return;
+  lastScheduleReconcileAt = now;
+  const r = await reconcileMarketSchedules();
+  if (r.healed > 0) console.log(`[lifecycle] scheduler reconcile — re-armed ${r.healed} of ${r.pending} pending market timer(s)`);
+}
+
+/** Run one lifecycle pass. Each chore is self-contained and best-effort; one
+ *  failing must never stop the others or throw out of the tick.
+ *
+ *  Market resolution + settlement are NOT here — they are timer-driven now (see
+ *  market-scheduler.ts). All that remains on the ticker are the non-market chores
+ *  (bonus expiry, payment reconcile, trial balance) plus the schedule reconciler
+ *  that heals any lost per-market timer. */
 export async function runLifecyclePass(): Promise<void> {
   if (running) return; // never overlap passes
   running = true;
   try {
-    await notifyClosingSoonMarkets().catch((e) => console.error("[lifecycle] closing-soon sweep:", e));
-    await notifySelectionClosedMarkets().catch((e) => console.error("[lifecycle] selection-closed sweep:", e));
-    await notifyDueMarketsForResolution().catch((e) => console.error("[lifecycle] resolution-due sweep:", e));
-    await autoResolveExpiredDemoMarkets().catch((e) => console.error("[lifecycle] demo auto-resolve:", e));
-
-    // ── AUTOMATIC MARKET PAYOUT IS PAUSED (Ali, 2026-07-13) ─────────────────
-    // Nothing pays a market by itself. Every payout is a deliberate officer
-    // action at /admin/settlement until the payment aggregator (Selcom/Azampay)
-    // is integrated — we are not letting the platform DECIDE to move money on a
-    // timer before the real money-out rail exists and has been reconciled against.
-    //
-    // ⚠️ Do not read this as "no money moves on a timer" — since 2026-07-18
-    // `maybePaymentSweeps` reconciles stuck payments on the ticker (Ali's call).
-    // The two are different in kind and the difference is the whole point:
-    //   • Market payout DECIDES to pay, from our own settlement logic. Paused.
-    //   • Reconcile does NOT decide anything. It asks Selcom's signed status
-    //     endpoint what already happened at the gateway and makes our records
-    //     agree with it — crediting a deposit the player provably paid, failing
-    //     one they provably didn't. Refusing to run it doesn't keep money still;
-    //     it just leaves our books disagreeing with reality.
-    //
-    // NOTE this does not weaken the settlement gate: a resolved market still
-    // holds its pool, still honours the objection window, and still refuses to
-    // pay while an objection stands. All that changes is WHO presses go — a
-    // human, not the clock. The guards live in settleMarket() and are re-checked
-    // under the market lock on every manual settle, so the officer cannot pay a
-    // market early or pay one that is under dispute.
-    //
-    // TO RE-ENABLE once the gateway is live: flip auto-settle ON from
-    // /admin/payments (or set AUTO_SETTLE=true). That is the whole switch — the
-    // sweep, its idempotency and its heartbeat are all still here and still tested;
-    // they are simply not driven by the ticker today. `getAutoSettleEnabled()`
-    // reads the admin control-plane, falling back to the env.
-    if (await getAutoSettleEnabled()) {
-      await settleDueMarkets().catch((e) => console.error("[lifecycle] settlement sweep:", e));
-    }
+    // Heal any pending market that lost its per-market timer (idempotent — every
+    // transition re-checks its stamp under the market lock, so racing a live timer
+    // can never double-notify or double-pay).
+    await maybeReconcileSchedules().catch((e) => console.error("[lifecycle] schedule reconcile:", e));
 
     await expireActiveGrants().catch((e) => console.error("[lifecycle] bonus expiry:", e));
     // NOTE: the deposit fast-credit lane is deliberately NOT called here. It has its

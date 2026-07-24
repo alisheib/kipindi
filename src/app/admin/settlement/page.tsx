@@ -8,7 +8,6 @@ import { listSettlementQueue, getSettlementHealth } from "@/lib/server/market-se
 import { formatTzs, formatDateTime } from "@/lib/utils";
 import { SettleButton } from "./settle-button";
 import Link from "next/link";
-import { ControlledElsewhere } from "@/components/admin/controlled-elsewhere";
 
 export const metadata = { title: "Admin · Settlement" };
 export const dynamic = "force-dynamic";
@@ -27,28 +26,30 @@ export default async function AdminSettlementPage({ searchParams }: { searchPara
       <AdminPageHead title="Settlement" sw="Malipo" period={false} />
       <div className="px-4 lg:px-6 py-5 space-y-4">
 
-        {/* The single most important fact on this page: nothing pays itself. */}
+        {/* The single most important fact on this page: how a market gets paid. */}
         <div
           className={
-            health.autoSettle
+            ready.length > 0
               ? "flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg/25 px-3 py-2.5 text-[12.5px] text-warning-fg"
               : "flex items-start gap-2 rounded-md border border-brand-500 bg-brand-500/10 px-3 py-2.5 text-[12.5px] text-text-muted"
           }
         >
           <I.alertCircle size={15} className="mt-[1px] shrink-0" />
-          {health.autoSettle ? (
+          {ready.length > 0 ? (
             <p>
-              <strong>Automatic payout is ON.</strong> The lifecycle sweep pays markets on its own,
-              once every 60s. Markets should not sit in &ldquo;Ready&rdquo; for long — if they do,
-              the sweep has stopped and players are going unpaid.
+              <strong>{ready.length} market{ready.length === 1 ? "" : "s"} sat past the window without paying.</strong>{" "}
+              Each resolved market carries its own settle timer that fires the moment its objection
+              window closes, so &ldquo;Ready&rdquo; should clear within seconds. Anything lingering here
+              lost its timer — the reconciler re-arms it within 5 minutes, or you can pay it now with
+              <em> Settle now</em>. The objection window, the objection freeze and the winner-floor all
+              still apply: this button cannot pay a market early, one under dispute, or one twice.
             </p>
           ) : (
             <p>
-              <strong>Automatic payout is PAUSED — every payout here is manual.</strong> Nothing pays
-              a market by itself until the payment aggregator (Selcom / Azampay) is integrated. A
-              resolved market holds its pool until an officer presses <em>Settle now</em>. The
-              objection window and the objection freeze still apply: this button cannot pay a market
-              early, cannot pay one under dispute, and cannot pay one twice.
+              <strong>Settlement runs on per-market timers.</strong> When two officers seal a verdict
+              (or the AI auto-resolves), that market gets its own timer set to its objection-window
+              close; it pays itself then, provided no objection stands. This page is the human
+              fallback — settle by hand, or see what an objection is freezing.
             </p>
           )}
         </div>
@@ -69,16 +70,12 @@ export default async function AdminSettlementPage({ searchParams }: { searchPara
             value={String(health.frozenByObjection.count)} delta={formatTzs(health.frozenByObjection.tzs)}
           />
           <AdminKpi
-            label="Auto payout" sw="Malipo ya kiotomatiki"
-            value={health.autoSettle ? "ON" : "PAUSED"}
-            delta={health.autoSettle ? "sweep is driving payouts" : "manual until gateway"}
-            deltaDir={health.autoSettle ? "up" : "down"}
+            label="Timers armed" sw="Vipima muda"
+            value={String(health.scheduler.armed)}
+            delta={health.scheduler.nextFireAt ? `next ${formatDateTime(health.scheduler.nextFireAt)}` : "none pending"}
+            deltaDir={health.scheduler.armed > 0 ? "up" : undefined}
           />
         </div>
-        <ControlledElsewhere
-          what="Automatic settlement" sw="Malipo ya kiotomatiki"
-          where="Payments ops" href="/admin/payments"
-        />
 
         <AdminCard title="Payout queue" sw="Foleni ya malipo" padding="p-0">
           {queue.length === 0 ? (

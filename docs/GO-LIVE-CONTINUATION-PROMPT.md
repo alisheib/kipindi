@@ -48,8 +48,12 @@
 `src/lib/server/payment-control.ts` + `runtime-mode.ts`, surfaced on `/admin/payments`:
 - **Master mode indicator** `TEST` / `LIVE` — driven by `isLiveMoneyMode()` = `production &&
   TEST_FUNDING !== "true"` (the SINGLE source; POCA §16 lock references the same predicate).
-- **Runtime toggles (admin, audited):** payment provider `mock↔selcom`; auto-settle on/off;
-  demo-async on/off. DB-backed (config-store); env is the fallback when no override is set.
+- **Runtime toggles (admin, audited):** payment provider `mock↔selcom`; demo-async on/off.
+  DB-backed (config-store); env is the fallback when no override is set.
+- ⛔ **There is NO settlement toggle** — the `autoSettle` control and the `AUTO_SETTLE` env var were
+  DELETED (2026-07-24). Market payout is **per-market timer-driven**: an adjudicated market arms its
+  own timer at its `objectionsClosedAt` and pays itself then (`src/lib/server/market-scheduler.ts`),
+  with a ~5-min reconciler re-arming any dropped timer. See §6.7.
 - **LIVE-mode hard-locks:** mock is REFUSED on real money (use the kill-switch to pause, not the
   mock); a real provider can't be selected unless its creds are present; demo-async forced off.
 - **Kill-switch** (per-MNO, `payment-ops.ts`) = the instant emergency stop.
@@ -118,8 +122,15 @@ On the Railway `50pick` service, batched into one redeploy where possible:
 4. Remove dead vars **`SPORTS_API_PROVIDER`** + **`DEMO_MODE_ENABLED`** (read nowhere).
 5. Flip provider → **selcom** in `/admin/payments` (deposits; withdrawals too once the PIN is set).
 6. One real small **deposit → bet → settle → withdraw** end-to-end on the live platform.
-7. Only then flip **auto-settle ON** (admin toggle or `AUTO_SETTLE=true`) — after the payout rail is
-   live and reconciled.
+7. **Settlement — nothing to flip; verify instead.** There is no `AUTO_SETTLE` var and no auto-settle
+   toggle: every adjudicated market pays itself on its own timer at `objectionsClosedAt`. Once the
+   payout rail is live and reconciled, confirm on **`/admin/system`** that **Timers armed** > 0 with a
+   sane **next fire**, and that **`/admin/settlement`** has nothing stuck in **Ready to settle**
+   (that page stays the human fallback — manual *Settle now* + the objection-frozen view). Payout
+   gates are unchanged and still enforced: objection window, objection freeze, winner-floor, exact
+   conservation, idempotency. Owner decision recorded in `docs/COMPLIANCE-DECISIONS.md` (2026-07-24).
+   Related: the AI **resolution mode** on `/admin/resolver-queue` defaults to **human** (two-officer
+   ceremony) — leave it there unless Ali explicitly asks for **auto**.
 8. **DNS:** confirm `50pick.tz`/`www` resolve to Railway (as of 2026-07-17 they still showed the old
    Apache parking page — verify `railway domain status 50pick.tz -s 50pick` = Verified + cert issued;
    see `docs/GO-LIVE-RUNBOOK.md`). Then set `PAYMENT_WEBHOOK_URL` + register the callback in the
@@ -161,8 +172,10 @@ DO (in order, per docs/GO-LIVE-CONTINUATION-PROMPT.md §5–6):
 3. The go-live switch: unset TEST_FUNDING → rebaseline the DB to clean genesis → verify trial
    balance 0 drift + audit chain valid → set real NEXT_PUBLIC_LICENSE_REF → remove dead
    SPORTS_API_PROVIDER + DEMO_MODE_ENABLED → flip provider→selcom → one real deposit→bet→settle→
-   withdraw → flip auto-settle ON. Confirm DNS (50pick.tz→Railway) + set PAYMENT_WEBHOOK_URL +
-   register the Selcom callback.
+   withdraw. There is NO auto-settle switch (AUTO_SETTLE is deleted) — settlement is per-market
+   timer-driven, so instead VERIFY /admin/system (timers armed + next fire) and that
+   /admin/settlement has nothing stuck in "Ready to settle". Confirm DNS (50pick.tz→Railway) +
+   set PAYMENT_WEBHOOK_URL + register the Selcom callback.
 
 ⛔ Do NOT re-widen the POCA §16 / TEST_FUNDING hard-locks. 🔐 Never commit secrets. Full test:all
 before every money push; verify after every push.

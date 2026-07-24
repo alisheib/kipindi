@@ -10,8 +10,13 @@
  *                     This is how Selcom is "INTEGRATED but not used": default `mock`,
  *                     flip to `selcom` from admin the moment Ali is ready. The per-MNO
  *                     KILL-SWITCH (payment-ops.ts) remains the instant emergency stop.
- *   2. `autoSettle` — whether the lifecycle ticker pays resolved markets on its own.
- *   3. `demoAsync`  — the mock adapter's async behaviour (TEST-only; inert on LIVE).
+ *   2. `demoAsync`  — the mock adapter's async behaviour (TEST-only; inert on LIVE).
+ *
+ * NOTE: the old `autoSettle` / `AUTO_SETTLE` control is GONE. Market settlement is
+ * now driven by per-market timers that fire at each market's objection-window close
+ * (market-scheduler.ts) — there is no global on/off for it. The objection window,
+ * winner-floor and objection-freeze are the real gates; /admin/settlement remains
+ * the human fallback (settle by hand, view frozen markets).
  *
  * Persistence & shape mirror the existing hand-rolled config modules
  * (payment-ops.ts kill-switches, test-overrides.ts): a `globalThis` cache hydrated
@@ -49,10 +54,9 @@ const ALL_PROVIDERS: PaymentProviderId[] = ["mock", "selcom", "azampay"];
 /** A stored control. `null` = "not set by an officer — inherit the env fallback". */
 type Controls = {
   provider: PaymentProviderId | null;
-  autoSettle: boolean | null;
   demoAsync: boolean | null;
 };
-const DEFAULTS: Controls = { provider: null, autoSettle: null, demoAsync: null };
+const DEFAULTS: Controls = { provider: null, demoAsync: null };
 
 const KEY = "payments.control";
 
@@ -70,7 +74,6 @@ async function ensureHydrated(): Promise<void> {
   const stored = await loadConfig<Partial<Controls>>(KEY);
   if (stored) {
     if (stored.provider === null || (typeof stored.provider === "string" && ALL_PROVIDERS.includes(stored.provider))) store.provider = stored.provider ?? null;
-    if (stored.autoSettle === null || typeof stored.autoSettle === "boolean") store.autoSettle = stored.autoSettle ?? null;
     if (stored.demoAsync === null || typeof stored.demoAsync === "boolean") store.demoAsync = stored.demoAsync ?? null;
   }
 }
@@ -80,7 +83,6 @@ function envProvider(): PaymentProviderId {
   const v = (process.env.PAYMENT_AGGREGATOR ?? "").toLowerCase();
   return v === "selcom" || v === "azampay" ? v : "mock";
 }
-const envAutoSettle = (): boolean => process.env.AUTO_SETTLE === "true";
 const envDemoAsync = (): boolean => process.env.PAYMENTS_DEMO_ASYNC === "true";
 
 // ── Resolvers (money-path reads — DB override, else env) ──────────────────────
@@ -92,14 +94,6 @@ const envDemoAsync = (): boolean => process.env.PAYMENTS_DEMO_ASYNC === "true";
 export async function getPaymentProvider(): Promise<PaymentProviderId> {
   await ensureHydrated();
   return store.provider ?? envProvider();
-}
-
-/** Does the lifecycle ticker settle resolved markets automatically? DB override →
- *  `AUTO_SETTLE` env. Off by default (manual settlement) until the payout rail is
- *  live and reconciled. */
-export async function getAutoSettleEnabled(): Promise<boolean> {
-  await ensureHydrated();
-  return store.autoSettle ?? envAutoSettle();
 }
 
 /** The mock adapter's async behaviour (returns PENDING; the webhook settles).
@@ -135,8 +129,6 @@ export type PaymentControlsView = {
   provider: PaymentProviderId;
   /** true = an officer set it in the DB; false = inherited from the env. */
   providerExplicit: boolean;
-  autoSettle: boolean;
-  autoSettleExplicit: boolean;
   demoAsync: boolean;
   demoAsyncExplicit: boolean;
   /** Is the currently-selected provider actually configured (creds present)? */
@@ -153,7 +145,7 @@ export type PaymentControlsView = {
   /** Whether each real provider can be selected right now (creds present). */
   selectable: Record<PaymentProviderId, boolean>;
   /** The raw env fallbacks, for the "inherited from env" hint. */
-  env: { provider: PaymentProviderId; autoSettle: boolean; demoAsync: boolean };
+  env: { provider: PaymentProviderId; demoAsync: boolean };
 };
 
 export async function getPaymentControls(): Promise<PaymentControlsView> {
@@ -165,8 +157,6 @@ export async function getPaymentControls(): Promise<PaymentControlsView> {
     mode: moneyMode(),
     provider,
     providerExplicit: store.provider !== null,
-    autoSettle: store.autoSettle ?? envAutoSettle(),
-    autoSettleExplicit: store.autoSettle !== null,
     demoAsync: live ? false : (store.demoAsync ?? envDemoAsync()),
     demoAsyncExplicit: store.demoAsync !== null,
     gatewayConfigured,
@@ -177,18 +167,17 @@ export async function getPaymentControls(): Promise<PaymentControlsView> {
       selcom: paymentProviderConfigured("selcom"),
       azampay: paymentProviderConfigured("azampay"),
     },
-    env: { provider: envProvider(), autoSettle: envAutoSettle(), demoAsync: envDemoAsync() },
+    env: { provider: envProvider(), demoAsync: envDemoAsync() },
   };
 }
 
-export type ControlsUpdate = Partial<{ provider: PaymentProviderId; autoSettle: boolean; demoAsync: boolean }>;
+export type ControlsUpdate = Partial<{ provider: PaymentProviderId; demoAsync: boolean }>;
 
 /** Snapshot for audit — the effective (resolved) values, so before/after read
  *  truthfully even when a field is inherited from the env. */
-function effectiveSnapshot(): { provider: PaymentProviderId; autoSettle: boolean; demoAsync: boolean } {
+function effectiveSnapshot(): { provider: PaymentProviderId; demoAsync: boolean } {
   return {
     provider: store.provider ?? envProvider(),
-    autoSettle: store.autoSettle ?? envAutoSettle(),
     demoAsync: isLiveMoneyMode() ? false : (store.demoAsync ?? envDemoAsync()),
   };
 }
@@ -222,7 +211,6 @@ export async function setPaymentControls(
 
   const before = effectiveSnapshot();
   if (updates.provider !== undefined) store.provider = updates.provider;
-  if (updates.autoSettle !== undefined) store.autoSettle = updates.autoSettle;
   if (updates.demoAsync !== undefined) store.demoAsync = updates.demoAsync;
   void saveConfig(KEY, { ...store });
 

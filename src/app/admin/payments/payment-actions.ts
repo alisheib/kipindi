@@ -52,11 +52,12 @@ export async function toggleKillSwitchAction(formData: FormData): Promise<Result
 }
 
 /**
- * Operations control-plane — set the active payment provider, auto-settle, and
- * demo-async at runtime. Gated to ADMIN/COMPLIANCE + 2FA and audited. The
- * LIVE-mode hard-locks (no mock on real money, real provider must be configured,
- * no demo-async on real money) are enforced in `setPaymentControls`, which refuses
- * an invalid write — this action just carries the officer id and revalidates.
+ * Operations control-plane — set the active payment provider and demo-async at
+ * runtime. Gated to ADMIN/COMPLIANCE + 2FA and audited. The LIVE-mode hard-locks
+ * (no mock on real money, real provider must be configured, no demo-async on real
+ * money) are enforced in `setPaymentControls`, which refuses an invalid write —
+ * this action just carries the officer id and revalidates. (Settlement is no longer
+ * a control here — it is timer-driven per market; see market-scheduler.ts.)
  */
 export async function setPaymentControlsAction(formData: FormData): Promise<Result> {
   const g = await gate("setPaymentControls");
@@ -64,8 +65,6 @@ export async function setPaymentControlsAction(formData: FormData): Promise<Resu
   const updates: ControlsUpdate = {};
   const provider = formData.get("provider");
   if (typeof provider === "string" && provider) updates.provider = provider as PaymentProviderId;
-  const autoSettle = formData.get("autoSettle");
-  if (typeof autoSettle === "string" && autoSettle) updates.autoSettle = autoSettle === "true";
   const demoAsync = formData.get("demoAsync");
   if (typeof demoAsync === "string" && demoAsync) updates.demoAsync = demoAsync === "true";
   if (Object.keys(updates).length === 0) return { ok: false, error: "No change requested." };

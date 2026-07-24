@@ -39,7 +39,7 @@
 1. **DNS cutover** (Netpoa → Cloudflare) — **DONE 2026-07-17**; tzNIC registry flipped ~15:23, propagating + Railway verifying (§2–§3).
 2. **R2 KYC storage** — **✅ DONE + LIVE 2026-07-17** (bucket `50pick-kyc`, round-trip PASS) (§5).
 3. **Selcom payment adapter** — branch staged; needs Selcom keys/docs (§6).
-4. **The switch** — unset `TEST_FUNDING`, rebaseline DB, flip `AUTO_SETTLE` (§7).
+4. **The switch** — unset `TEST_FUNDING`, rebaseline DB, verify the settlement timers (§7).
 5. **Post-launch watch** (§8).
 
 ---
@@ -210,7 +210,18 @@ scheme, MNO channel codes, sandbox creds.
 5. **Format/rebaseline the DB** → clean genesis (ledger/audit/wallets from zero).
 6. Verify on the fresh DB: trial balance = TZS 0 drift, audit chain valid, one real small
    deposit→bet→settle→withdraw round-trip correct.
-7. **Flip `AUTO_SETTLE=true`** (auto-payout) — only now.
+7. **Settlement — nothing to flip.** There is no `AUTO_SETTLE` env var and no auto-settle toggle
+   any more; settlement is **per-market timer-driven**. When a market is adjudicated it gets its own
+   timer set to its `objectionsClosedAt` and pays itself then — the objection window, the freeze on
+   a standing objection, the winner-floor, exact conservation and idempotency (no double-pay) are
+   all still enforced. **Verify instead:**
+   - `/admin/system` → **Timers armed** > 0 with a sane **next fire** (a ~5-minute reconciler
+     re-arms any market whose timer was dropped).
+   - `/admin/settlement` → **Ready to settle** not silently piling up, and anything under **Frozen
+     by objection** understood. Manual **Settle now** here stays the human fallback.
+   - `/admin/resolver-queue` → the intended **resolution mode**: **human** (two-officer ceremony,
+     the default) unless the owner has deliberately enabled **auto** AI sealing above the
+     confidence threshold.
 8. Confirm `https://50pick.tz` + `https://www.50pick.tz` serve with valid certs; logs clean.
 
 **Env cleanup to fold into the switch redeploy** (per Ali, 2026-07-17):
@@ -228,6 +239,9 @@ scheme, MNO channel codes, sandbox creds.
 ## 8. Post-launch watch
 - `railway logs -s 50pick` clean · `/admin/payments` reconcile drift 0 · nightly
   `ledger.trial_balance_drift` quiet · first real player flows.
+- **Settlement scheduler:** `/admin/system` → timers armed with the next fire advancing ·
+  `/admin/settlement` → **Ready to settle** clearing on its own (a queue that only grows means
+  timers are not firing) · watch the first real market pay itself at its objection-window close.
 - Run the full responsive matrix (360/768/1280/1920) against the live site with a test admin.
 - Consider: Postmark 2FA on; enable Cloudflare DNSSEC; flip Cloudflare proxy/WAF on.
 

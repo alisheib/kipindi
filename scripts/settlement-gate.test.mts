@@ -12,7 +12,10 @@
  *
  *   1. GATE      — a resolved market pays NOBODY while its window is open. The
  *                  pool is intact, positions are OPEN, settledAt is null.
- *   2. SWEEP     — once the window closes, the lifecycle sweep pays exactly once.
+ *   2. TRIGGER   — once the window closes, the market's own settle trigger pays
+ *                  exactly once. (The global sweep is gone: every transition is now
+ *                  driven by a per-market timer — market-scheduler.ts. Tests drive
+ *                  the identical code path with runDueMarketTransitions().)
  *   3. FREEZE    — an OPEN objection blocks settlement even past the window, so
  *                  an officer always reads it before the money moves.
  *   4. REMEDY    — an upheld objection can VOID or REVERSE the verdict, because
@@ -29,9 +32,12 @@ process.env.OTP_PEPPER ??= "test-only-otp-pepper-16chars";
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import { marketStore, positionStore } from "../src/lib/server/market-dal.ts";
 import {
-  createMarket, buyPosition, getMarket, resolveMarket, settleMarket, settleDueMarkets,
+  createMarket, buyPosition, getMarket, resolveMarket, settleMarket,
   emergencyVoidMarket, getSettlementHealth, listSettlementQueue,
 } from "../src/lib/server/market-service.ts";
+import {
+  runDueMarketTransitions, armMarket, getSchedulerHealth,
+} from "../src/lib/server/market-scheduler.ts";
 import {
   fileObjection, upholdObjection, rejectObjection,
   countOpenObjections, objectionEligibility,
@@ -116,12 +122,15 @@ async function closeWindow(mid: string): Promise<void> {
   // And settlement REFUSES while the window is open.
   const early = await settleMarket(mid);
   ok("1: settleMarket refuses inside the window", !early.ok && early.code === "TOO_EARLY", JSON.stringify(early));
-  const swept = await settleDueMarkets();
-  ok("1: the sweep does not settle it either", swept.settled === 0, JSON.stringify(swept));
-  ok("1: still unpaid after the sweep", (await bal("g1_win")) === winBefore);
+  // …and driving EVERY market's due transitions (the exact code path the per-market
+  // timers run) does not settle it either — the deadline simply is not due yet.
+  const swept = await runDueMarketTransitions();
+  ok("1: driving every due transition does not settle it either", swept.ran === 0, JSON.stringify(swept));
+  ok("1: settledAt is STILL null after the drive", (await getMarket(mid))!.settledAt === null);
+  ok("1: still unpaid after the drive", (await bal("g1_win")) === winBefore);
 }
 
-// ═══ 2 · THE SWEEP — once the window closes, the money moves, exactly once ══
+// ═══ 2 · THE TRIGGER — once the window closes, the money moves, exactly once ══
 {
   const mid = await makeMarket();
   await fundedUser("g2_win");
@@ -133,8 +142,8 @@ async function closeWindow(mid: string): Promise<void> {
   const winBefore = await bal("g2_win");
   await closeWindow(mid);
 
-  const swept = await settleDueMarkets();
-  ok("2: the sweep settles the due market", swept.settled === 1, JSON.stringify(swept));
+  const swept = await runDueMarketTransitions();
+  ok("2: the settle trigger fires for exactly the due market", swept.ran === 1, JSON.stringify(swept));
 
   const m = (await getMarket(mid))!;
   const delta = (await bal("g2_win")) - winBefore;
@@ -145,9 +154,11 @@ async function closeWindow(mid: string): Promise<void> {
   ok("2: winner position is WIN", win.status === "WIN", `status=${win.status}`);
   ok("2: loser position is LOSS", lose.status === "LOSS", `status=${lose.status}`);
 
-  // NO DOUBLE-PAY: sweep again, settle again — the money must not move twice.
+  // NO DOUBLE-PAY: re-fire the trigger, settle again — the money must not move
+  // twice. `force` bypasses the window + a standing objection, NEVER settledAt.
   const paid = await bal("g2_win");
-  await settleDueMarkets();
+  const refire = await runDueMarketTransitions();
+  ok("2: a re-fired trigger finds nothing left to do", refire.ran === 0, JSON.stringify(refire));
   const again = await settleMarket(mid, { force: true });
   ok("2: a second settle is refused", !again.ok, JSON.stringify(again));
   ok("2: the winner is NOT paid twice", (await bal("g2_win")) === paid,
@@ -175,8 +186,9 @@ async function closeWindow(mid: string): Promise<void> {
   const winBefore = await bal("g3_win");
   const blocked = await settleMarket(mid);
   ok("3: settlement is FROZEN by the open objection", !blocked.ok && blocked.code === "OBJECTION_OPEN", JSON.stringify(blocked));
-  const swept = await settleDueMarkets();
-  ok("3: the sweep will not settle a frozen market", swept.settled === 0, JSON.stringify(swept));
+  const swept = await runDueMarketTransitions();
+  ok("3: the trigger will not settle a frozen market", swept.ran === 0, JSON.stringify(swept));
+  ok("3: settledAt is still null on the frozen market", (await getMarket(mid))!.settledAt === null);
   ok("3: money is still in the pool", (await bal("g3_win")) === winBefore);
 
   // The officer reads it and rejects — the verdict stands, the freeze lifts.
@@ -185,8 +197,8 @@ async function closeWindow(mid: string): Promise<void> {
   ok("3: officer can reject with a reason", rej.ok, JSON.stringify(rej));
   ok("3: no open objections remain", (await countOpenObjections(mid)) === 0);
 
-  const after = await settleDueMarkets();
-  ok("3: the market settles once the freeze lifts", after.settled === 1, JSON.stringify(after));
+  const after = await runDueMarketTransitions();
+  ok("3: the market settles once the freeze lifts", after.ran === 1, JSON.stringify(after));
   ok("3: the winner is finally paid", (await bal("g3_win")) > winBefore);
 }
 
@@ -222,7 +234,7 @@ async function closeWindow(mid: string): Promise<void> {
      !!m.objectionsClosedAt && Date.parse(m.objectionsClosedAt) > Date.now());
 
   await closeWindow(mid);
-  await settleDueMarkets();
+  await runDueMarketTransitions();
 
   ok("4: the player who was RIGHT gets paid", (await bal("g4_no")) > noBefore,
      `delta=${(await bal("g4_no")) - noBefore}`);
@@ -254,7 +266,7 @@ async function closeWindow(mid: string): Promise<void> {
   ok("5: officer upholds with VOID", up.ok, JSON.stringify(up));
   ok("5: the market is VOIDED", (await getMarket(mid))!.status === "VOIDED");
 
-  await settleDueMarkets(); // a VOID does not need a fresh window — refunds harm nobody
+  await runDueMarketTransitions(); // a VOID does not need a fresh window — refunds harm nobody
 
   ok("5: stake fully refunded to the YES bettor", (await bal("g5_a")) === aStart, `bal=${await bal("g5_a")} start=${aStart}`);
   ok("5: stake fully refunded to the NO bettor", (await bal("g5_b")) === bStart, `bal=${await bal("g5_b")} start=${bStart}`);
@@ -313,7 +325,7 @@ async function closeWindow(mid: string): Promise<void> {
 
   // Once settled, the objection route is closed and says so honestly.
   await closeWindow(mid);
-  await settleDueMarkets();
+  await runDueMarketTransitions();
   const late = await fileObjection("g6_opp", { marketId: mid, reason: "WRONG_OUTCOME", detail: "Actually I changed my mind, I want to dispute this again." });
   ok("6: cannot object to a market that has already paid out", !late.ok, JSON.stringify(late));
   const eligLate = await objectionEligibility("g6_opp", mid);
@@ -369,10 +381,10 @@ async function closeWindow(mid: string): Promise<void> {
   const m = (await getMarket(mid))!;
   ok("8: the void stamps settledAt (money moved here)", !!m.settledAt);
 
-  // …and the sweep must NOT then settle it a second time.
-  const swept = await settleDueMarkets();
-  ok("8: the sweep does not re-settle a voided market", swept.settled === 0, JSON.stringify(swept));
-  ok("8: balances unchanged after the sweep", (await bal("g8_a")) === aStart && (await bal("g8_b")) === bStart);
+  // …and the settle trigger must NOT then settle it a second time.
+  const swept = await runDueMarketTransitions();
+  ok("8: the trigger does not re-settle a voided market", swept.ran === 0, JSON.stringify(swept));
+  ok("8: balances unchanged after the drive", (await bal("g8_a")) === aStart && (await bal("g8_b")) === bStart);
 
   // Once settled, the hatch is closed — we never claw money back out of wallets.
   const late = await emergencyVoidMarket({
@@ -486,8 +498,8 @@ async function closeWindow(mid: string): Promise<void> {
 
   // …and the winner actually gets paid once the window closes.
   await closeWindow(mid);
-  const swept = await settleDueMarkets();
-  ok("10: the market settles despite the griefer", swept.settled === 1, JSON.stringify(swept));
+  const swept = await runDueMarketTransitions();
+  ok("10: the market settles despite the griefer", swept.ran === 1, JSON.stringify(swept));
   ok("10: the winner is PAID (no denial of payout)", (await bal("g10_victim")) > victimBefore,
      `delta=${(await bal("g10_victim")) - victimBefore}`);
 
@@ -505,11 +517,11 @@ async function closeWindow(mid: string): Promise<void> {
   ok("10: both objections freeze the market", (await countOpenObjections(mid2)) === 2);
 }
 
-// ═══ 11 · THE WATCHDOG — a dead sweep must be LOUD, not silent ══════════════
-// Settlement is now the job of a background sweep. If that sweep stops running,
-// no market ever pays and nothing else in the system complains — players just
-// quietly go unpaid. getSettlementHealth() is what turns that into an alarm, so
-// it has to actually fire, and it has to blame the right thing.
+// ═══ 11 · THE WATCHDOG — a dead trigger must be LOUD, not silent ════════════
+// Settlement is the job of the market's OWN timer. If that timer is never armed
+// (or is dropped), no market ever pays and nothing else in the system complains —
+// players just quietly go unpaid. getSettlementHealth() is what turns that into an
+// alarm, so it has to actually fire, and it has to blame the right thing.
 {
   const before = await getSettlementHealth();
 
@@ -527,7 +539,7 @@ async function closeWindow(mid: string): Promise<void> {
   ok("11: it holds real money", waiting.awaiting.tzs >= 18_000, `tzs=${waiting.awaiting.tzs}`);
   ok("11: and it is NOT overdue", waiting.readyToSettle.count === before.readyToSettle.count, `overdue=${waiting.readyToSettle.count}`);
 
-  // Window closes and the sweep does NOT run. This is the failure we must catch:
+  // Window closes and the trigger does NOT fire. This is the failure we must catch:
   // the money is due, nothing is disputing it, and it has not been paid.
   await closeWindow(mid);
   const stuck = await getSettlementHealth();
@@ -535,16 +547,31 @@ async function closeWindow(mid: string): Promise<void> {
      stuck.readyToSettle.count === before.readyToSettle.count + 1, `overdue=${stuck.readyToSettle.count}`);
   ok("11: the alarm reports the money that is stranded", stuck.readyToSettle.tzs >= 18_000, `tzs=${stuck.readyToSettle.tzs}`);
 
-  // Run the sweep — the alarm must clear.
-  await settleDueMarkets();
+  // The old global sweep left a `lastSweepAt` heartbeat to prove settlement was
+  // alive. Settlement is armed PER MARKET now, so the equivalent liveness proof is
+  // that the due market carries a live SETTLE trigger and that health surfaces it —
+  // a due market with no armed timer is exactly the silent non-payment above.
+  await armMarket(mid, { graceOnPast: true });
+  const armedNow = await getSettlementHealth();
+  ok("11: the due market carries a live SETTLE trigger",
+     getSchedulerHealth().entries.some((e) => e.marketId === mid && e.kind === "settle"),
+     JSON.stringify(getSchedulerHealth().entries.filter((e) => e.marketId === mid)));
+  ok("11: health surfaces the live scheduler (armed timers + next fire)",
+     armedNow.scheduler.armed >= 1 && !!armedNow.scheduler.nextFireAt, JSON.stringify(armedNow.scheduler));
+
+  // Fire what is due — the alarm must clear.
+  await runDueMarketTransitions();
   const healed = await getSettlementHealth();
   ok("11: once it is settled, nothing is left ready", healed.readyToSettle.count === before.readyToSettle.count,
      `overdue=${healed.readyToSettle.count}`);
-  ok("11: the sweep records a heartbeat", !!healed.lastSweepAt);
+  await armMarket(mid); // re-arm from committed state — there must be nothing left to arm
+  ok("11: a settled market arms NO further trigger (nothing can fire on it twice)",
+     !getSchedulerHealth().entries.some((e) => e.marketId === mid),
+     JSON.stringify(getSchedulerHealth().entries.filter((e) => e.marketId === mid)));
 
-  // A market frozen by an OPEN objection past its window is NOT the sweep's fault —
-  // it is waiting on an officer. Blaming the sweeper for it would cry wolf and
-  // train the operator to ignore a real alarm.
+  // A market frozen by an OPEN objection past its window is NOT the scheduler's
+  // fault — it is waiting on an officer. Blaming the trigger for it would cry wolf
+  // and train the operator to ignore a real alarm.
   // Measure against the CURRENT baseline — earlier sections legitimately leave
   // their own objection-frozen markets behind, so only the delta is meaningful.
   const frozenBase = healed.frozenByObjection.count;
@@ -565,12 +592,14 @@ async function closeWindow(mid: string): Promise<void> {
      `tzs=${frozen.frozenByObjection.tzs}`);
 }
 
-// ═══ 12 · AUTOMATIC PAYOUT IS PAUSED — the clock must not move money ════════
-// Ali's call: nothing pays a market by itself until the payment aggregator is
-// integrated. Every payout is a deliberate officer action. The sweep code is NOT
-// deleted — it is simply not driven by the ticker (AUTO_SETTLE=true re-arms it) —
-// so what has to be true today is: a full lifecycle pass pays NOBODY, and the
-// manual path pays correctly while still honouring every guard.
+// ═══ 12 · THE TICKER MOVES NO MONEY — payout is the market's own trigger ════
+// The lifecycle ticker no longer settles anything: the global sweep and its
+// AUTO_SETTLE gate are gone, and money moves only through the market's OWN settle
+// trigger (per-market timer → settleMarket, under the market lock) or an officer's
+// hand at /admin/settlement. So what has to be true is: a full lifecycle pass pays
+// NOBODY and merely keeps the triggers armed; the officer's manual path pays
+// correctly while still honouring every guard; and the armed trigger, when it
+// fires, does pay — settlement was moved, not deleted.
 {
   const mid = await makeMarket();
   await fundedUser("g12_win");
@@ -578,12 +607,12 @@ async function closeWindow(mid: string): Promise<void> {
   await buyPosition("g12_win", { marketId: mid, side: "YES", stake: 10_000 });
   await buyPosition("g12_lose", { marketId: mid, side: "NO", stake: 10_000 });
   await adjudicate(mid, "YES");
-  await closeWindow(mid); // due, unblocked — the sweep WOULD have paid this
+  await closeWindow(mid); // due, unblocked — this market's own trigger is what pays it
 
   const winBefore = await bal("g12_win");
 
-  // The real production tick. It must not pay.
-  delete process.env.AUTO_SETTLE;
+  // The real production tick. It must not pay: it does the non-market chores and
+  // re-arms lost per-market timers, nothing more.
   const { runLifecyclePass } = await import("../src/lib/server/lifecycle.ts");
   await runLifecyclePass();
 
@@ -591,9 +620,16 @@ async function closeWindow(mid: string): Promise<void> {
      `delta=${(await bal("g12_win")) - winBefore}`);
   ok("12: the market is still unsettled", (await getMarket(mid))!.settledAt === null);
 
-  // It shows up as the officer's work, not as a fault.
+  // The readout that replaced `autoSettle`: is the automatic path actually live?
+  // That is now "is a trigger armed, and when does it next fire" — a due market with
+  // no armed timer is the money-shaped failure the old flag stood for.
+  await armMarket(mid, { graceOnPast: true }); // the reconciler's own arming path
   const health = await getSettlementHealth();
-  ok("12: auto-settle reports as OFF", health.autoSettle === false);
+  ok("12: health reports a LIVE scheduler (armed timers + a next fire time)",
+     health.scheduler.armed >= 1 && !!health.scheduler.nextFireAt, JSON.stringify(health.scheduler));
+  ok("12: and the due market itself carries the armed SETTLE trigger",
+     getSchedulerHealth().entries.some((e) => e.marketId === mid && e.kind === "settle"),
+     JSON.stringify(getSchedulerHealth().entries.filter((e) => e.marketId === mid)));
   ok("12: the market is queued as READY for a human", health.readyToSettle.count >= 1,
      `ready=${health.readyToSettle.count}`);
   const queue = await listSettlementQueue();
@@ -628,11 +664,8 @@ async function closeWindow(mid: string): Promise<void> {
   ok("12: manual settle still refuses a market under OBJECTION",
      !disputed.ok && disputed.code === "OBJECTION_OPEN", JSON.stringify(disputed));
 
-  // And when AUTO_SETTLE is re-armed (post-gateway), the sweep works again — the
-  // code was paused, not removed.
-  process.env.AUTO_SETTLE = "true";
-  const armed = await getSettlementHealth();
-  ok("12: AUTO_SETTLE=true reports as ON", armed.autoSettle === true);
+  // And the armed trigger is not decoration: when it fires, it DOES pay — the
+  // settlement path was moved onto per-market timers, not removed.
   const mid3 = await makeMarket();
   await fundedUser("g12_c");
   await fundedUser("g12_d");
@@ -641,10 +674,16 @@ async function closeWindow(mid: string): Promise<void> {
   await adjudicate(mid3, "YES");
   await closeWindow(mid3);
   const cBefore = await bal("g12_c");
-  await runLifecyclePass();
-  ok("12: with AUTO_SETTLE=true the tick pays again (paused, not deleted)",
-     (await bal("g12_c")) > cBefore, `delta=${(await bal("g12_c")) - cBefore}`);
-  delete process.env.AUTO_SETTLE;
+  const fired = await runDueMarketTransitions();
+  ok("12: the market's own settle trigger pays it (moved onto timers, not deleted)",
+     (await bal("g12_c")) > cBefore, `delta=${(await bal("g12_c")) - cBefore} ${JSON.stringify(fired)}`);
+  ok("12: and it settled exactly the one due market", fired.ran === 1, JSON.stringify(fired));
+  // Once the money has moved, health must report NO trigger left on it — the
+  // scheduler is the only thing that could ever fire on this market a second time.
+  await armMarket(mid3);
+  ok("12: a paid market arms no further trigger (the scheduler cannot double-pay)",
+     !getSchedulerHealth().entries.some((e) => e.marketId === mid3),
+     JSON.stringify(getSchedulerHealth().entries.filter((e) => e.marketId === mid3)));
 }
 
 console.log(`\nsettlement-gate: ${pass} passed, ${fail} failed`);

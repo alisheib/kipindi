@@ -23,8 +23,16 @@
  *   6. AUDITED          — every settlement writes a tamper-evident audit-chain
  *                         entry and the chain verifies end-to-end.
  */
+// The lifecycle is driven EXPLICITLY here (§12 fires the transitions into the
+// middle of a betting burst), so the ambient per-market timers are off: a timer
+// that fired on its own would consume the transition before the race and quietly
+// turn §12 into a no-op. runDueMarketTransitions() ignores this flag and still
+// runs the real transition code path.
+process.env.MARKET_SCHEDULER = "false";
+
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
-import { createMarket, buyPosition, cashOutPosition, getMarket, resolveMarket, settleMarket, listPositionsForMarket, ratesFor, notifyClosingSoonMarkets, notifySelectionClosedMarkets, notifyDueMarketsForResolution } from "../src/lib/server/market-service.ts";
+import { createMarket, buyPosition, cashOutPosition, getMarket, resolveMarket, settleMarket, listPositionsForMarket, ratesFor } from "../src/lib/server/market-service.ts";
+import { runDueMarketTransitions } from "../src/lib/server/market-scheduler.ts";
 import { poolFee } from "../src/lib/payout.ts";
 import { setGlobalConfig } from "../src/lib/server/market-config.ts";
 import { positionStore } from "../src/lib/server/market-dal.ts";
@@ -303,10 +311,10 @@ await setGlobalConfig({ paidExitWindowMinutes: 15 }, "officer_mi");
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// 12 · NO LOST STAKES — a market sweep running CONCURRENTLY with live betting
-//      must not erase a single shilling of pool.
+// 12 · NO LOST STAKES — a lifecycle transition running CONCURRENTLY with live
+//      betting must not erase a single shilling of pool.
 //
-//      marketStore.set is a FULL-ROW upsert. Every sweep that merely stamps a
+//      marketStore.set is a FULL-ROW upsert. Every transition that merely stamps a
 //      timestamp on a LIVE market used to read the row, spread it, and write the
 //      whole thing back — so any bet that incremented the pool between that read
 //      and that write had its stake silently ERASED. The market advisory lock was
@@ -314,13 +322,14 @@ await setGlobalConfig({ paidExitWindowMinutes: 15 }, "officer_mi");
 //      the lock cannot be dropped from the bet path until every such write is a
 //      narrow stamp or an atomic delta.
 //
-//      This law is PERMANENT. If it ever fails, a sweep has gone back to writing
-//      whole market rows and player stakes are being destroyed in production.
+//      This law is PERMANENT. If it ever fails, a lifecycle transition has gone
+//      back to writing whole market rows and player stakes are being destroyed in
+//      production.
 // ════════════════════════════════════════════════════════════════════════════
 {
   const N = 12;
   const stake = 3_000;
-  // The closing-soon sweep only touches a LIVE market whose cutoff is inside
+  // The closing-soon transition only touches a LIVE market whose cutoff is inside
   // CLOSING_SOON_WINDOW_MS (60 min); makeMarket() defaults to 7 days out.
   const soon = await createMarket({
     titleEn: "Sweep race market", titleSw: "Soko la majaribio", category: "macro",
@@ -331,23 +340,35 @@ await setGlobalConfig({ paidExitWindowMinutes: 15 }, "officer_mi");
 
   for (let i = 0; i < N; i++) await fundedUser(`sweep_u${i}`, 50_000);
 
-  // Fire the sweeps INTO the middle of the burst, not before or after it.
+  // Fire the lifecycle drains INTO the middle of the burst, not before or after
+  // it. runDueMarketTransitions() runs EVERY currently-due transition for every
+  // pending market (closing-soon, selection-closed, resolve, settle) through the
+  // exact code path the per-market timers use — the same full-row write pressure
+  // on a LIVE market that the old notify sweeps applied. Four of them race the
+  // bets, exactly as the four sweeps did.
   const bets = Array.from({ length: N }, (_, i) =>
     buyPosition(`sweep_u${i}`, { marketId: soon.id, side: i % 2 ? "YES" : "NO", stake }),
   );
   const sweeps = [
-    notifyClosingSoonMarkets(),
-    notifySelectionClosedMarkets(),
-    notifyDueMarketsForResolution(),
-    notifyClosingSoonMarkets(),
+    runDueMarketTransitions(),
+    runDueMarketTransitions(),
+    runDueMarketTransitions(),
+    runDueMarketTransitions(),
   ];
-  const [betResults] = await Promise.all([Promise.all(bets), Promise.all(sweeps)]);
+  const [betResults, sweepResults] = await Promise.all([Promise.all(bets), Promise.all(sweeps)]);
 
   const accepted = betResults.filter((r) => r.ok).length;
   const m = (await getMarket(soon.id))!;
   const positions = await listPositionsForMarket(soon.id);
   const sumStakes = positions.reduce((s, p) => s + p.stake, 0);
+  const transitionsRun = sweepResults.reduce((s, r) => s + r.ran, 0);
 
+  // The race must be REAL: if no transition was actually due, the drains would be
+  // no-ops and this whole law would silently stop being tested. Exactly one runs —
+  // four concurrent drains collapse to a single closing-soon stamp under the lock.
+  ok("12: the drain really wrote to the LIVE market mid-burst (exactly-once)",
+    transitionsRun === 1 && !!m.closingSoonNotifiedAt,
+    `ran=${transitionsRun} closingSoonNotifiedAt=${m.closingSoonNotifiedAt}`);
   ok("12: every bet placed during the sweep succeeded", accepted === N, `accepted=${accepted}/${N}`);
   ok("12: pool == Σ stakes (no stake erased by the sweep)",
     m.yesPool + m.noPool === sumStakes,

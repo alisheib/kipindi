@@ -1034,6 +1034,18 @@ model PredictionMarket {
   sentinelSourceUrl    String?
   sentinelConfidence   Int?
   sentinelClosedAt     DateTime?
+  /** Per-market override of the global resolution mode (RateConfig.resolutionMode).
+   *  NULL = inherit the global default. "human" = AI recommends, a two-officer
+   *  ceremony seals + settles (POCA §16). "auto" = at resolutionAt the AI seals +
+   *  settles WITHOUT the ceremony when its confidence clears the threshold —
+   *  owner-controlled from the resolver queue; overrides the two-officer rule
+   *  (Ali's dated decision 2026-07-24, docs/COMPLIANCE-DECISIONS.md). */
+  resolutionMode       String?
+  /** Multi-instance claim stamp — set under the market advisory lock the instant a
+   *  resolve trigger begins its AI check, so N app instances can never double-spend
+   *  the (paid) AI call for the same market. A claim older than the TTL is stale and
+   *  may be re-claimed (crash recovery). See resolveDueMarket in market-service.ts. */
+  resolveClaimedAt     DateTime?
   proposedBy          String
   createdAt           DateTime               @default(now())
   updatedAt           DateTime               @updatedAt

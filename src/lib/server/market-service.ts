@@ -26,10 +26,9 @@ import { spendBonusLocked, recordWageringLocked, reverseWagering, refundBonusToA
 import { notifyBonusFulfilled } from "./notification-service";
 import { isLockedOut, checkLossLimit } from "./responsible-gambling";
 import { rateCheck } from "./rate-limit";
-import { getEffectiveConfig, snapshotFromConfig, snapshotOrLegacy } from "./market-config";
+import { getEffectiveConfig, getEffectiveResolutionMode, snapshotFromConfig, snapshotOrLegacy } from "./market-config";
 import { payoutFor, settledPayoutFor, allocateWinnerPayouts, poolFee, levySplit, type FeeSnapshot } from "@/lib/payout";
 import { getConflictedResolutionAllowed } from "./test-overrides";
-import { getAutoSettleEnabled } from "./payment-control";
 import { isMaintenanceMode, maintenanceMessage } from "./platform-config";
 import { recordSnapshot } from "./market-history";
 import { notifyBetPlaced, notifyWin, notifyLoss, notifyRefund, notifyCashout, notifyAdminMarketResolution, notifyMarketCancelled, notifyAdminMarketCancelled, notifyOneSidedRefund, notifySelectionClosed } from "./notification-service";
@@ -39,6 +38,10 @@ import { postLedgerEntries, stakeEntries, settlementPayoutEntries, refundEntries
 import type { ServiceResult } from "./auth-service";
 import { marketStore, positionStore } from "./market-dal";
 import { formatTzs } from "@/lib/utils";
+// Type-only (erased at build) — no runtime cycle with market-sentinel, which
+// itself imports only the StoredMarket TYPE from here. The AI check is invoked
+// via a dynamic import inside resolveDueMarket.
+import type { SentinelResult } from "./market-sentinel";
 
 // OPERATOR_MARGIN (a dead 0.09 constant with no call sites) is gone. So is
 // CASHOUT_SLIPPAGE. Rates live in RateConfig and, for a poll that exists, in its
@@ -117,8 +120,8 @@ export type StoredMarket = {
    *  A market that is RESOLVED with `settledAt: null` has been adjudicated but
    *  its pool is still intact and every position is still OPEN: that is the state
    *  a player objects from, and it is what makes the objection window a real gate
-   *  rather than a countdown drawn over money that already left. `settleDueMarkets`
-   *  stamps this once the window has closed and no objection is open. */
+   *  rather than a countdown drawn over money that already left. The per-market
+   *  settle timer stamps this once the window has closed and no objection is open. */
   settledAt: string | null;
   /** The officer's recorded evidence excerpt — the exact quote from the official
    *  source that justifies the verdict, captured at stage-1 of the two-officer
@@ -146,6 +149,13 @@ export type StoredMarket = {
   sentinelSourceUrl?: string | null;
   sentinelConfidence?: number | null;
   sentinelClosedAt?: string | null;
+  /** Per-market override of the global resolution mode. Null = inherit the global
+   *  RateConfig default. See getEffectiveResolutionMode in market-config.ts. */
+  resolutionMode?: "human" | "auto" | null;
+  /** Multi-instance claim stamp set under the market lock before the resolve
+   *  trigger's AI check, so N instances never double-spend the AI call. See
+   *  resolveDueMarket. Null = unclaimed; a claim older than the TTL is stale. */
+  resolveClaimedAt?: string | null;
   proposedBy: string;
   createdAt: string;
   updatedAt: string;
@@ -313,7 +323,32 @@ export async function createMarket(input: CreateMarketInput) {
     // prove, to a player or an inspector, what this poll was priced at.
     payload: { titleEn: m.titleEn, category: m.category, sourceUrl: m.sourceUrl, resolutionAt: m.resolutionAt, selectionClosedAt: m.selectionClosedAt, feeSnapshot },
   });
+  // Arm this market's per-market timers (closing-soon → selection-closed → resolve).
+  // Fire-and-forget: a scheduler hiccup must never fail market creation; the 5-min
+  // reconciler heals any market that ends up without a live timer.
+  void armMarketTimer(m.id);
   return m;
+}
+
+/** Fire-and-forget: (re)arm this market's scheduler timer for its next deadline.
+ *  A dynamic import breaks the market-service ⇄ market-scheduler module cycle, and
+ *  matches the codebase's existing lazy-import pattern. Best-effort by design — the
+ *  reconciler is the backstop, so a scheduler error never breaks a money write. */
+async function armMarketTimer(id: string): Promise<void> {
+  try {
+    const { armMarket } = await import("./market-scheduler");
+    await armMarket(id);
+  } catch (e) {
+    console.error(`[market] arm timer ${id} failed (reconciler will heal):`, e);
+  }
+}
+
+/** Fire-and-forget: cancel this market's scheduler timer (settled / voided / deleted). */
+async function disarmMarketTimer(id: string): Promise<void> {
+  try {
+    const { disarmMarket } = await import("./market-scheduler");
+    disarmMarket(id);
+  } catch { /* best-effort — a stale timer is harmless: fireMarket re-reads and no-ops */ }
 }
 
 /**
@@ -806,334 +841,478 @@ export async function autoResolveExpiredDemoMarkets(): Promise<{ resolved: numbe
   let resolved = 0;
   const now = Date.now();
   for (const m of await marketStore.values()) {
-    if (!m.titleEn.startsWith("Demo · ")) continue;
+    if (!isDemoMarket(m)) continue;
     if (m.status !== "LIVE") continue;
     if (Date.parse(m.resolutionAt) > now) continue;
-
-    // Re-validate and settle under a per-market lock for IDEMPOTENCY. This
-    // runs fire-and-forget on every /markets hit, so two concurrent requests
-    // can both pass the cheap LIVE/expired pre-checks above and, without a
-    // lock, both settle the same market → winners paid twice. Take the same
-    // `market:` lock the human resolver uses, then re-read and re-check inside
-    // it: the first run flips status to RESOLVED, every later run no-ops.
-    const didResolve = await withLock(`market:${m.id}`, async () => {
-      const cur = await marketStore.get(m.id);
-      if (!cur || cur.status !== "LIVE") return false;
-      if (Date.parse(cur.resolutionAt) > now) return false;
-
-      // Outcome weighted by pool lean — if the crowd believed YES at 70%,
-      // YES wins ~70% of the time. Falls back to a fair 50/50 when pools
-      // are empty (no bets placed yet → market just resolves YES half the
-      // time).
-      const total = cur.yesPool + cur.noPool;
-      const yesProb = total > 0 ? cur.yesPool / total : 0.5;
-      const outcome: Side = Math.random() < yesProb ? "YES" : "NO";
-
-      // Run the exact settlement codepath used by the resolver-queue's
-      // stage-2 confirm — same pay-winners / forfeit-losers / notify /
-      // audit shape, just bypassing the two-officer staging dance which
-      // makes no sense for a synthetic demo market.
-      cur.resolutionStage1By = "system_demo_auto";
-      cur.resolutionStage1At = new Date(now).toISOString();
-      cur.resolutionStage2By = "system_demo_auto";
-      cur.resolutionStage2At = new Date(now).toISOString();
-      cur.objectionsClosedAt = new Date(now).toISOString(); // no window for a synthetic market
-      cur.resolvedOutcome = outcome;
-      cur.status = "RESOLVED";
-      cur.updatedAt = cur.resolutionStage2At;
-      cur.settledAt = null; // ADJUDICATED only — settleMarket moves the money
-      // stamp, not set: LIVE→RESOLVED on a market that may still be taking bets.
-      await marketStore.stamp(m.id, {
-        resolutionStage1By: cur.resolutionStage1By,
-        resolutionStage1At: cur.resolutionStage1At,
-        resolutionStage2By: cur.resolutionStage2By,
-        resolutionStage2At: cur.resolutionStage2At,
-        objectionsClosedAt: cur.objectionsClosedAt,
-        resolvedOutcome: cur.resolvedOutcome,
-        status: "RESOLVED",
-        updatedAt: cur.updatedAt,
-        settledAt: null,
-      });
-      recordSnapshot(cur.id, cur.yesPool, cur.noPool);
-
-      audit({
-        category: "ADMIN",
-        action: "market.resolved.demo_auto",
-        actorId: "system_demo_auto",
-        targetType: "Market",
-        targetId: cur.id,
-        payload: {
-          outcome,
-          yesPool: cur.yesPool, noPool: cur.noPool,
-          reason: "Demo market countdown elapsed; no human officer required for synthetic markets",
-        },
-      });
-      return true;
-    });
-
-    // ── SETTLE VIA THE REAL CODEPATH ─────────────────────────────────────────
-    //
-    // This used to be a HAND-COPIED settlement loop, ~75 lines duplicating
-    // settleMarket's pay-winners/forfeit-losers/ledger/notify logic. Its comment
-    // claimed it ran "the exact settlement codepath used by the resolver-queue's
-    // stage-2 confirm". It did not — it was a copy, and the copy had already
-    // drifted: it was MISSING THE ONE-SIDED REFUND BRANCH entirely, so a demo poll
-    // whose outcome landed on an empty side would have paid nobody and quietly
-    // eaten the pool. It would also have needed its own copy of the new capped-fee
-    // maths, its own winner-floor assertion, and its own snapshot lookup — three
-    // more chances to drift.
-    //
-    // Now it adjudicates (above, under the lock) and then calls the ONE settlement
-    // function (below, which takes the lock itself — so this must be OUTSIDE the
-    // lock: withLock is not re-entrant and nesting it would self-deadlock).
-    // Exactly the shape of the real flow: resolveMarket adjudicates, settleMarket
-    // pays. One settlement codepath. One fee model. Nothing left to diverge.
-    if (didResolve) {
-      const settled = await settleMarket(m.id, { force: true, actorId: "system_demo_auto" });
-      if (!settled.ok) console.error(`[demo-auto] settle failed for ${m.id}: ${settled.error}`);
-      resolved++;
-    }
+    if (await resolveDemoMarketOne(m.id)) resolved++;
   }
   return { resolved };
 }
 
 /**
- * Alert officers that REAL markets have closed and are awaiting their
- * two-officer resolution. Real (non-Demo) markets never auto-resolve — they
- * wait in the resolver queue for a human pair. This sweep finds markets that
- * are LIVE + past resolutionAt + not yet alerted, and pushes a one-time in-app
- * notification (the main bell, deep-linking to the resolver queue) to every
- * admin/compliance/moderator, then stamps resolutionNotifiedAt so each market
- * alerts exactly once. Runs fire-and-forget on /markets hits (self-healing, no
- * cron); the per-market flag + a lock make it idempotent.
+ * Auto-resolve ONE expired demo market (dev-only; prod-locked). Random outcome
+ * weighted by pool lean, adjudicated under the market lock, then settled via the
+ * ONE real settlement codepath (settleMarket). Idempotent — the lock + the
+ * LIVE re-check make a second call a no-op. Called by the sweep above AND by the
+ * per-market resolve trigger (resolveDueMarket → this, for "Demo · " markets), so
+ * demo markets still auto-resolve on their own timer without a global sweep.
+ * Returns true if it resolved this market.
  */
+async function resolveDemoMarketOne(id: string): Promise<boolean> {
+  if (process.env.NODE_ENV === "production") return false;
+  const now = Date.now();
+  const didResolve = await withLock(`market:${id}`, async () => {
+    const cur = await marketStore.get(id);
+    if (!cur || cur.status !== "LIVE" || !isDemoMarket(cur)) return false;
+    if (Date.parse(cur.resolutionAt) > now) return false;
+
+    // Outcome weighted by pool lean — if the crowd believed YES at 70%, YES wins
+    // ~70% of the time. Falls back to a fair 50/50 when pools are empty.
+    const total = cur.yesPool + cur.noPool;
+    const yesProb = total > 0 ? cur.yesPool / total : 0.5;
+    const outcome: Side = Math.random() < yesProb ? "YES" : "NO";
+
+    const nowIso = new Date(now).toISOString();
+    // stamp, not set: LIVE→RESOLVED on a market that may still be taking bets.
+    await marketStore.stamp(id, {
+      resolutionStage1By: "system_demo_auto", resolutionStage1At: nowIso,
+      resolutionStage2By: "system_demo_auto", resolutionStage2At: nowIso,
+      objectionsClosedAt: nowIso, // no window for a synthetic market
+      resolvedOutcome: outcome,
+      status: "RESOLVED",
+      updatedAt: nowIso,
+      settledAt: null, // ADJUDICATED only — settleMarket moves the money
+    });
+    recordSnapshot(cur.id, cur.yesPool, cur.noPool);
+    audit({
+      category: "ADMIN",
+      action: "market.resolved.demo_auto",
+      actorId: "system_demo_auto",
+      targetType: "Market",
+      targetId: cur.id,
+      payload: {
+        outcome,
+        yesPool: cur.yesPool, noPool: cur.noPool,
+        reason: "Demo market countdown elapsed; no human officer required for synthetic markets",
+      },
+    });
+    return true;
+  });
+
+  // Settle via the ONE settlement function (outside the lock — withLock is not
+  // re-entrant). Same pari-mutuel maths, one-sided refund and winner-floor as
+  // every real settlement; nothing hand-copied here to drift.
+  if (didResolve) {
+    const settled = await settleMarket(id, { force: true, actorId: "system_demo_auto" });
+    if (!settled.ok) console.error(`[demo-auto] settle failed for ${id}: ${settled.error}`);
+    void disarmMarketTimer(id); // resolved + settled → no further deadlines
+  }
+  return didResolve;
+}
+
 /**
- * Notify bettors that a market's SELECTION WINDOW has closed — betting has
- * stopped and the market is now "waiting for results". The selection close is a
- * computed cutoff (selectionClosedAt, falling back to resolutionAt), not a
- * status change, so there's no natural event to hang this on — this sweep is the
- * trigger. It finds LIVE, non-Demo markets whose cutoff has passed but whose
- * bettors haven't been told yet, sends each distinct bettor (open positions)
- * BOTH an in-app bell notification AND an email, then stamps
- * selectionClosedNotifiedAt so each market fires exactly once.
+ * SELECTION CLOSED — notify ONE market's bettors that betting has stopped and the
+ * exact "if you win" payout is now frozen. The per-market scheduler fires this at
+ * the selection cutoff (selectionClosedAt, falling back to resolutionAt).
  *
- * Idempotent + concurrency-safe via the per-market lock + the stamp (mirrors
- * notifyDueMarketsForResolution). Demo markets are excluded — they auto-resolve
+ * Idempotent + concurrency-safe: the `selectionClosedNotifiedAt` stamp is written
+ * INSIDE the market lock, so a re-fire, the reconciler racing the timer, or two
+ * instances can never double-notify. Demo markets are excluded — they auto-resolve
  * the instant they expire, so "waiting for results" would be immediately
  * contradicted by the win/loss receipt.
  */
-export async function notifySelectionClosedMarkets(): Promise<{ notified: number; bettors: number }> {
+export async function notifySelectionClosedForMarket(marketId: string): Promise<{ notified: boolean; bettors: number }> {
   const now = Date.now();
-  let notified = 0;
-  let bettorsNotified = 0;
-  const due = (await marketStore.values()).filter((m) => {
-    if (m.status !== "LIVE") return false;
-    if (m.titleEn.startsWith("Demo · ")) return false;
-    if (m.selectionClosedNotifiedAt) return false;
-    const cutoff = m.selectionClosedAt ? Date.parse(m.selectionClosedAt) : Date.parse(m.resolutionAt);
-    return Number.isFinite(cutoff) && cutoff <= now;
+  // Stamp inside the lock so two concurrent fires can't both notify.
+  const stamped = await withLock(`market:${marketId}`, async () => {
+    const cur = await marketStore.get(marketId);
+    if (!cur || cur.status !== "LIVE" || isDemoMarket(cur) || cur.selectionClosedNotifiedAt) return false;
+    const cutoff = cur.selectionClosedAt ? Date.parse(cur.selectionClosedAt) : Date.parse(cur.resolutionAt);
+    if (!Number.isFinite(cutoff) || cutoff > now) return false;
+    // stamp, not set: a full-row write here would erase the pool increments of any
+    // bet that committed between the read above and this write.
+    await marketStore.stamp(marketId, { selectionClosedNotifiedAt: new Date().toISOString() });
+    return true;
   });
-  if (due.length === 0) return { notified: 0, bettors: 0 };
+  if (!stamped) return { notified: false, bettors: 0 };
 
-  for (const m of due) {
-    // Stamp inside the lock so two concurrent sweeps can't both notify.
-    const stamped = await withLock(`market:${m.id}`, async () => {
-      const cur = await marketStore.get(m.id);
-      if (!cur || cur.status !== "LIVE" || cur.selectionClosedNotifiedAt) return false;
-      const cutoff = cur.selectionClosedAt ? Date.parse(cur.selectionClosedAt) : Date.parse(cur.resolutionAt);
-      if (!Number.isFinite(cutoff) || cutoff > now) return false;
-      // stamp, not set: a full-row write here would erase the pool increments of
-      // any bet that committed between the read above and this write.
-      await marketStore.stamp(m.id, { selectionClosedNotifiedAt: new Date().toISOString() });
-      return true;
-    });
-    if (!stamped) continue;
-    notified++;
+  const m = await marketStore.get(marketId);
+  if (!m) return { notified: true, bettors: 0 };
 
-    // ── THE EXACT PAYOUT, DISCLOSED THE MOMENT BETTING CLOSES ────────────────
-    //
-    // Once selections close the pools are FROZEN. So the payout stops being a
-    // projection and becomes an exact number — arithmetic, not a forecast. We tell
-    // every player precisely what they receive if their side wins, to the shilling.
-    //
-    // It is computed by `settledPayoutFor` — THE FUNCTION THAT ACTUALLY SETTLES —
-    // against the poll's own frozen fee snapshot. Not a re-derivation, not an
-    // estimate, and emphatically not a model: what we tell him here and what we
-    // pay him at settlement come out of the same line of code, so they cannot
-    // disagree. (It also asserts the winner floor, so a poll that could underpay a
-    // winner would throw HERE, at disclosure time, days before any money moves.)
-    //
-    // This does not touch the D3 policy (license review 2026-05), which hides the
-    // payout figure BEFORE a bet is placed. Betting is over; there is nothing left
-    // to influence.
-    const open = (await listPositionsForMarket(m.id)).filter((p) => p.status === "OPEN");
-    const closeFee = poolFee(m.yesPool, m.noPool, ratesFor(m));
+  // ── THE EXACT PAYOUT, DISCLOSED THE MOMENT BETTING CLOSES ──────────────────
+  //
+  // Once selections close the pools are FROZEN. So the payout stops being a
+  // projection and becomes an exact number — arithmetic, not a forecast. We tell
+  // every player precisely what they receive if their side wins, to the shilling.
+  //
+  // It is computed by `settledPayoutFor` — THE FUNCTION THAT ACTUALLY SETTLES —
+  // against the poll's own frozen fee snapshot. Not a re-derivation, not an
+  // estimate, and emphatically not a model: what we tell him here and what we pay
+  // him at settlement come out of the same line of code, so they cannot disagree.
+  // (It also asserts the winner floor, so a poll that could underpay a winner would
+  // throw HERE, at disclosure time, days before any money moves.)
+  //
+  // This does not touch the D3 policy (license review 2026-05), which hides the
+  // payout figure BEFORE a bet is placed. Betting is over; nothing left to influence.
+  const open = (await listPositionsForMarket(m.id)).filter((p) => p.status === "OPEN");
+  const closeFee = poolFee(m.yesPool, m.noPool, ratesFor(m));
 
-    // Persist each position's exact payoutIfWin.
-    const payoutByPosition = new Map<string, number>();
-    for (const p of open) {
-      const { payout } = settledPayoutFor(
-        { yesPool: m.yesPool, noPool: m.noPool, side: p.side, stake: p.stake },
-        ratesFor(m),
-      );
-      payoutByPosition.set(p.id, payout);
-      p.potentialPayout = payout;
-      await positionStore.set(p);
-    }
-
-    // A player may hold both YES and NO. Sum what he'd receive per side so the
-    // notification tells him the truth about his own book, not one leg of it.
-    const bettors = Array.from(new Set(open.map((p) => p.userId)));
-    for (const userId of bettors) {
-      bettorsNotified++;
-      const mine = open.filter((p) => p.userId === userId);
-      const ifYes = mine.filter((p) => p.side === "YES").reduce((s, p) => s + (payoutByPosition.get(p.id) ?? 0), 0);
-      const ifNo = mine.filter((p) => p.side === "NO").reduce((s, p) => s + (payoutByPosition.get(p.id) ?? 0), 0);
-
-      notifySelectionClosed(userId, {
-        marketTitle: m.titleEn, marketId: m.id,
-        payoutIfYes: ifYes, payoutIfNo: ifNo,
-        hasYes: mine.some((p) => p.side === "YES"),
-        hasNo: mine.some((p) => p.side === "NO"),
-      }).catch(() => {});
-      sendEmailToUser(userId, (email) => ({
-        to: email,
-        subject: `Betting closed — if you're right you receive ${formatTzs(Math.max(ifYes, ifNo))} · ${m.titleEn.slice(0, 40)}`,
-        html: selectionClosedHtml({
-          marketTitle: m.titleEn, closedAt: m.selectionClosedAt ?? m.resolutionAt, resolvesAt: m.resolutionAt, marketId: m.id,
-          payoutIfYes: mine.some((p) => p.side === "YES") ? ifYes : null,
-          payoutIfNo: mine.some((p) => p.side === "NO") ? ifNo : null,
-        }),
-        tag: "selection-closed",
-      })).catch(() => {});
-    }
-
-    // ── ADMIN: flag a lopsided / thin poll at close, while it can still be managed
-    //
-    // The fee being CAPPED is the signal: it means 10%-of-pool exceeded a third of
-    // the prize, i.e. the poll is lopsided enough that an uncapped rake would have
-    // bitten into the winners. Winners are safe — that is what the ceiling is for —
-    // but their upside is thin, we earn less than the headline rate, and an officer
-    // should know before the result lands.
-    const winnerRatio = closeFee.larger > 0 ? closeFee.netPool / closeFee.larger : 0;
-    if (closeFee.capped || closeFee.smaller === 0) {
-      audit({
-        category: "ADMIN",
-        action: "market.selection_closed.thin_poll",
-        actorId: "system",
-        targetType: "Market",
-        targetId: m.id,
-        payload: {
-          titleEn: m.titleEn,
-          yesPool: m.yesPool, noPool: m.noPool,
-          pool: closeFee.pool, smallerSide: closeFee.smaller,
-          smallerPctOfPool: closeFee.pool > 0 ? +(closeFee.smaller / closeFee.pool * 100).toFixed(1) : 0,
-          commissionUncapped: Math.round(closeFee.commission),
-          feeCharged: Math.round(closeFee.fee),
-          feeWasCapped: closeFee.capped,
-          worstWinnerRatio: +winnerRatio.toFixed(4),
-          reason: closeFee.smaller === 0
-            ? "ONE-SIDED — no opposing pool. Every stake will be refunded in full; this poll earns nothing."
-            : "LOPSIDED — the fee hit the ceiling. Winners are protected (never below stake) but upside is thin and our take is below the headline rate.",
-        },
-      });
-    }
+  // Persist each position's exact payoutIfWin.
+  const payoutByPosition = new Map<string, number>();
+  for (const p of open) {
+    const { payout } = settledPayoutFor(
+      { yesPool: m.yesPool, noPool: m.noPool, side: p.side, stake: p.stake },
+      ratesFor(m),
+    );
+    payoutByPosition.set(p.id, payout);
+    p.potentialPayout = payout;
+    await positionStore.set(p);
   }
-  return { notified, bettors: bettorsNotified };
+
+  // A player may hold both YES and NO. Sum what he'd receive per side so the
+  // notification tells him the truth about his own book, not one leg of it.
+  const bettors = Array.from(new Set(open.map((p) => p.userId)));
+  let bettorsNotified = 0;
+  for (const userId of bettors) {
+    bettorsNotified++;
+    const mine = open.filter((p) => p.userId === userId);
+    const ifYes = mine.filter((p) => p.side === "YES").reduce((s, p) => s + (payoutByPosition.get(p.id) ?? 0), 0);
+    const ifNo = mine.filter((p) => p.side === "NO").reduce((s, p) => s + (payoutByPosition.get(p.id) ?? 0), 0);
+
+    notifySelectionClosed(userId, {
+      marketTitle: m.titleEn, marketId: m.id,
+      payoutIfYes: ifYes, payoutIfNo: ifNo,
+      hasYes: mine.some((p) => p.side === "YES"),
+      hasNo: mine.some((p) => p.side === "NO"),
+    }).catch(() => {});
+    sendEmailToUser(userId, (email) => ({
+      to: email,
+      subject: `Betting closed — if you're right you receive ${formatTzs(Math.max(ifYes, ifNo))} · ${m.titleEn.slice(0, 40)}`,
+      html: selectionClosedHtml({
+        marketTitle: m.titleEn, closedAt: m.selectionClosedAt ?? m.resolutionAt, resolvesAt: m.resolutionAt, marketId: m.id,
+        payoutIfYes: mine.some((p) => p.side === "YES") ? ifYes : null,
+        payoutIfNo: mine.some((p) => p.side === "NO") ? ifNo : null,
+      }),
+      tag: "selection-closed",
+    })).catch(() => {});
+  }
+
+  // ── ADMIN: flag a lopsided / thin poll at close, while it can still be managed
+  //
+  // The fee being CAPPED is the signal: it means 10%-of-pool exceeded a third of
+  // the prize, i.e. the poll is lopsided enough that an uncapped rake would have
+  // bitten into the winners. Winners are safe — that is what the ceiling is for —
+  // but their upside is thin, we earn less than the headline rate, and an officer
+  // should know before the result lands.
+  const winnerRatio = closeFee.larger > 0 ? closeFee.netPool / closeFee.larger : 0;
+  if (closeFee.capped || closeFee.smaller === 0) {
+    audit({
+      category: "ADMIN",
+      action: "market.selection_closed.thin_poll",
+      actorId: "system",
+      targetType: "Market",
+      targetId: m.id,
+      payload: {
+        titleEn: m.titleEn,
+        yesPool: m.yesPool, noPool: m.noPool,
+        pool: closeFee.pool, smallerSide: closeFee.smaller,
+        smallerPctOfPool: closeFee.pool > 0 ? +(closeFee.smaller / closeFee.pool * 100).toFixed(1) : 0,
+        commissionUncapped: Math.round(closeFee.commission),
+        feeCharged: Math.round(closeFee.fee),
+        feeWasCapped: closeFee.capped,
+        worstWinnerRatio: +winnerRatio.toFixed(4),
+        reason: closeFee.smaller === 0
+          ? "ONE-SIDED — no opposing pool. Every stake will be refunded in full; this poll earns nothing."
+          : "LOPSIDED — the fee hit the ceiling. Winners are protected (never below stake) but upside is thin and our take is below the headline rate.",
+      },
+    });
+  }
+  return { notified: true, bettors: bettorsNotified };
 }
 
 /** How far ahead of close we nudge watchers. */
 const CLOSING_SOON_WINDOW_MS = 60 * 60_000; // 1 hour
 
 /**
- * F3 — alert WATCHERS that a market they follow closes within the hour.
+ * CLOSING SOON — alert WATCHERS that ONE market they follow closes within the hour.
+ * The per-market scheduler fires this at (cutoff − CLOSING_SOON_WINDOW_MS).
  *
- * Idempotency is the same one-shot stamp the selection-closed sweep uses:
- * `closingSoonNotifiedAt` is written INSIDE `withLock("market:{id}")`, so two
- * concurrent sweeps (or the ticker racing the /markets fire-and-forget trigger)
- * can never double-alert a follower.
- *
- * Only fires for markets still OPEN for selections and inside the window — a
- * market that is already past its cutoff is handled by the selection-closed
- * sweep, not this one. Watchers under an RG lockout are suppressed (audited)
- * inside `alertWatchersClosingSoon`.
+ * Idempotent + concurrency-safe: `closingSoonNotifiedAt` is written INSIDE the
+ * market lock, so a re-fire, the reconciler, or two instances can never double-alert
+ * a follower. Only fires while the market is still OPEN for selections and inside
+ * the window; a market already past its cutoff is the selection-closed transition's
+ * job. Watchers under an RG lockout are suppressed (audited) inside
+ * `alertWatchersClosingSoon`. Demo markets are excluded.
  */
-export async function notifyClosingSoonMarkets(): Promise<{ notified: number; watchers: number }> {
+export async function notifyClosingSoonForMarket(marketId: string): Promise<{ notified: boolean; watchers: number }> {
   const now = Date.now();
-  let notified = 0;
-  let watchersNotified = 0;
-  const due = (await marketStore.values()).filter((m) => {
-    if (m.status !== "LIVE") return false;
-    if (m.titleEn.startsWith("Demo · ")) return false;
-    if (m.closingSoonNotifiedAt) return false;
-    const cutoff = m.selectionClosedAt ? Date.parse(m.selectionClosedAt) : Date.parse(m.resolutionAt);
+  const stamped = await withLock(`market:${marketId}`, async () => {
+    const cur = await marketStore.get(marketId);
+    if (!cur || cur.status !== "LIVE" || isDemoMarket(cur) || cur.closingSoonNotifiedAt) return false;
+    const cutoff = cur.selectionClosedAt ? Date.parse(cur.selectionClosedAt) : Date.parse(cur.resolutionAt);
     if (!Number.isFinite(cutoff)) return false;
     const ms = cutoff - now;
-    return ms > 0 && ms <= CLOSING_SOON_WINDOW_MS; // inside the window, not yet closed
+    if (ms <= 0 || ms > CLOSING_SOON_WINDOW_MS) return false; // past close, or too far out
+    await marketStore.stamp(marketId, { closingSoonNotifiedAt: new Date().toISOString() });
+    return true;
   });
-  if (due.length === 0) return { notified: 0, watchers: 0 };
+  if (!stamped) return { notified: false, watchers: 0 };
 
-  for (const m of due) {
-    const stamped = await withLock(`market:${m.id}`, async () => {
-      const cur = await marketStore.get(m.id);
-      if (!cur || cur.status !== "LIVE" || cur.closingSoonNotifiedAt) return false;
-      const cutoff = cur.selectionClosedAt ? Date.parse(cur.selectionClosedAt) : Date.parse(cur.resolutionAt);
-      if (!Number.isFinite(cutoff)) return false;
-      const ms = cutoff - now;
-      if (ms <= 0 || ms > CLOSING_SOON_WINDOW_MS) return false;
-      await marketStore.stamp(m.id, { closingSoonNotifiedAt: new Date().toISOString() });
-      return true;
-    });
-    if (!stamped) continue;
-    notified++;
-
-    const cutoff = m.selectionClosedAt ? Date.parse(m.selectionClosedAt) : Date.parse(m.resolutionAt);
-    const minutes = Math.max(1, Math.round((cutoff - now) / 60_000));
-    const { alertWatchersClosingSoon } = await import("./watchlist-service");
-    watchersNotified += await alertWatchersClosingSoon(m.id, m.titleEn, minutes);
-  }
-  return { notified, watchers: watchersNotified };
+  const m = await marketStore.get(marketId);
+  if (!m) return { notified: true, watchers: 0 };
+  const cutoff = m.selectionClosedAt ? Date.parse(m.selectionClosedAt) : Date.parse(m.resolutionAt);
+  const minutes = Math.max(1, Math.round((cutoff - now) / 60_000));
+  const { alertWatchersClosingSoon } = await import("./watchlist-service");
+  const watchers = await alertWatchersClosingSoon(m.id, m.titleEn, minutes);
+  return { notified: true, watchers };
 }
 
-export async function notifyDueMarketsForResolution(): Promise<{ notified: number }> {
-  const now = Date.now();
-  let notified = 0;
-  const due = (await marketStore.values()).filter(
-    (m) => m.status === "LIVE"
-      && !m.titleEn.startsWith("Demo · ")
-      && Date.parse(m.resolutionAt) <= now
-      && !m.resolutionNotifiedAt,
-  );
-  if (due.length === 0) return { notified: 0 };
-
+/**
+ * Alert every admin/officer that a REAL market is closed-by-time and awaiting the
+ * two-officer ceremony — both the in-app bell AND an email deep-linking to the
+ * resolver queue. Called by the human-fallback branch of the resolve trigger. The
+ * once-only guarantee is the `resolutionNotifiedAt` stamp resolveDueMarket sets
+ * before this runs; best-effort throughout (a dropped notification never blocks
+ * the transition).
+ */
+async function alertOfficersMarketDue(m: StoredMarket): Promise<void> {
   const officers = await db.user.listByRoles(["ADMIN", "COMPLIANCE", "MODERATOR"]); // audit M5
-  for (const m of due) {
-    const stamped = await withLock(`market:${m.id}`, async () => {
-      const cur = await marketStore.get(m.id);
-      // Re-check inside the lock so two concurrent sweeps can't both alert.
-      if (!cur || cur.status !== "LIVE" || cur.resolutionNotifiedAt || Date.parse(cur.resolutionAt) > now) return false;
-      await marketStore.stamp(m.id, { resolutionNotifiedAt: new Date().toISOString() });
-      return true;
-    });
-    if (!stamped) continue;
-    notified++;
-    // Every admin/officer gets BOTH the in-app bell AND an email with a button
-    // straight to the resolver queue — same dual-channel pattern as a new KYC
-    // submission. (For now: ALL admins. When live we'll narrow who receives the
-    // email by role/right.) sendEmailToUser resolves each officer's address and
-    // silently skips anyone without one; all best-effort, never blocks the sweep.
-    for (const o of officers) {
-      notifyAdminMarketResolution(o.id, { title: m.titleEn, marketId: m.id }).catch(() => {});
-      sendEmailToUser(o.id, (email) => ({
-        to: email,
-        subject: `Market awaiting resolution · ${m.titleEn.slice(0, 60)}`,
-        html: marketResolutionAdminHtml({ title: m.titleEn, closedAt: m.resolutionAt, reviewUrl: "/admin/resolver-queue" }),
-        tag: "market-resolve-admin",
-        trackLinks: false,
-      })).catch(() => {});
+  for (const o of officers) {
+    notifyAdminMarketResolution(o.id, { title: m.titleEn, marketId: m.id }).catch(() => {});
+    sendEmailToUser(o.id, (email) => ({
+      to: email,
+      subject: `Market awaiting resolution · ${m.titleEn.slice(0, 60)}`,
+      html: marketResolutionAdminHtml({ title: m.titleEn, closedAt: m.resolutionAt, reviewUrl: "/admin/resolver-queue" }),
+      tag: "market-resolve-admin",
+      trackLinks: false,
+    })).catch(() => {});
+  }
+}
+
+/** The system actor that stands in for both officers on an AUTO-resolved market. */
+export const AUTO_RESOLVER_ACTOR = "system_auto_resolver";
+/** A resolve claim older than this is stale and may be re-claimed (crash recovery). */
+const RESOLVE_CLAIM_TTL_MS = 10 * 60_000;
+
+/**
+ * THE auto-resolve decision — pure, so it is exhaustively unit-testable without a
+ * network call or a database. Given the AI assessment, the market's effective mode,
+ * and the confidence floor, decide whether to seal the outcome automatically.
+ *
+ * AUTO fires ONLY when ALL hold — otherwise we ALWAYS fall back to the human
+ * ceremony (never auto-resolve on a shaky signal, whatever the mode):
+ *   - mode is "auto" (operator opted in, globally or per-market);
+ *   - the AI produced a concrete YES/NO (never UNKNOWN);
+ *   - it says the outcome is determined (irreversibly locked);
+ *   - confidence ≥ the threshold; and
+ *   - it carried real evidence (guards a hallucinated "determined" with no source).
+ */
+export function decideAutoResolve(args: {
+  assessment: SentinelResult | null;
+  mode: "human" | "auto";
+  threshold: number;
+}): { goAuto: boolean; haveOutcome: boolean; confident: boolean } {
+  const { assessment: a, mode, threshold } = args;
+  const haveOutcome = !!a && a.action === "assessed" && (a.outcome === "YES" || a.outcome === "NO");
+  const confident =
+    haveOutcome && !!a && a.determined &&
+    a.confidence >= threshold &&
+    !!a.evidence && a.evidence.trim().length >= 10;
+  return { goAuto: mode === "auto" && confident, haveOutcome, confident };
+}
+
+export type ResolveTriggerResult = {
+  /** `early-noop` = an operator re-checked BEFORE resolutionAt and the AI found no
+   *  locked outcome, so the market was left LIVE (its recommendation was recorded and
+   *  the scheduled trigger still fires on time). */
+  status: "resolved-auto" | "closed-human" | "demo" | "skipped" | "claimed-elsewhere" | "early-noop";
+  outcome?: Side | null;
+  confidence?: number | null;
+  mode?: "human" | "auto";
+};
+
+/**
+ * RESOLVE TRIGGER — the heart of scheduled resolution. Fired by the per-market
+ * scheduler exactly at resolutionAt(+offset), and by the resolver-queue "Re-check
+ * this market now" button. Runs the AI check on THIS one market, then:
+ *
+ *   • "human" (default), OR confidence below the floor, OR the AI can't determine
+ *     an outcome  → stamp CLOSED, store the AI recommendation, alert officers, STOP.
+ *     The two-officer ceremony seals + settles (unchanged).
+ *   • "auto" (operator toggle) AND confidence ≥ threshold with real evidence
+ *     → seal RESOLVED with the AI's outcome, open the objection window, and arm the
+ *     settle timer. The winner-floor, objection gate and exact-conservation are all
+ *     re-checked at settle time; the payout maths is unchanged. This OVERRIDES the
+ *     two-officer / POCA §16 rule — an explicit owner decision (docs/COMPLIANCE-DECISIONS.md).
+ *
+ * Money/idempotency invariants:
+ *   - A CLAIM stamp (resolveClaimedAt) is taken UNDER THE LOCK before the AI call,
+ *     so N instances never double-spend the (paid) AI request; a stale claim
+ *     (> TTL, e.g. after a crash) is re-claimable.
+ *   - The AI call runs OUTSIDE the lock (it is slow — it must not pin a DB
+ *     connection or block bets on the market).
+ *   - The WRITE re-enters the lock and re-checks status===LIVE && !resolutionNotifiedAt,
+ *     so two fires (or two instances) produce EXACTLY ONE transition.
+ *
+ * `opts.assessment` lets a caller that already ran the AI (the "re-check now"
+ * action) pass the result in rather than paying for it twice; tests use the same
+ * seam to drive the real branching + real DB writes without the network.
+ */
+export async function resolveDueMarket(
+  marketId: string,
+  opts?: { assessment?: SentinelResult | null },
+): Promise<ResolveTriggerResult> {
+  const pre = await marketStore.get(marketId);
+  if (!pre) return { status: "skipped" };
+  // Demo markets: dev-only random auto-resolution — no AI, no ceremony.
+  if (isDemoMarket(pre)) {
+    await resolveDemoMarketOne(marketId);
+    return { status: "demo" };
+  }
+
+  // ── 1. CLAIM under the market lock (multi-instance safe) ─────────────────────
+  const claim = await withLock(`market:${marketId}`, async () => {
+    const m = await marketStore.get(marketId);
+    if (!m) return { ok: false as const, reason: "gone" as const };
+    if (m.status !== "LIVE") return { ok: false as const, reason: "not-live" as const };
+    if (m.resolutionNotifiedAt) return { ok: false as const, reason: "already" as const };
+    if (m.resolveClaimedAt && Date.now() - Date.parse(m.resolveClaimedAt) < RESOLVE_CLAIM_TTL_MS) {
+      return { ok: false as const, reason: "claimed" as const };
+    }
+    await marketStore.stamp(marketId, { resolveClaimedAt: new Date().toISOString() });
+    return { ok: true as const, market: m };
+  });
+  if (!claim.ok) return { status: claim.reason === "claimed" ? "claimed-elsewhere" : "skipped" };
+
+  // ── 2. AI deep check OUTSIDE the lock (slow web search; must not pin a DB conn) ─
+  let assessment: SentinelResult | null = opts?.assessment ?? null;
+  if (assessment === null && !("assessment" in (opts ?? {}))) {
+    try {
+      const { sentinelCheckOne } = await import("./market-sentinel");
+      assessment = await sentinelCheckOne(marketId);
+    } catch (e) {
+      console.error(`[resolve] AI check errored for ${marketId} — falling back to human:`, e);
     }
   }
-  return { notified };
+
+  // ── 3. Decide: auto-seal (owner toggle + confidence floor) or human fallback ──
+  const mode = await getEffectiveResolutionMode(claim.market.resolutionMode);
+  const cfg = await getEffectiveConfig(marketId); // per-market override honoured
+  const threshold = cfg.resolveConfidenceThreshold;
+  const a = assessment;
+  const { goAuto, haveOutcome, confident } = decideAutoResolve({ assessment: a, mode, threshold });
+
+  const sentinelFields = haveOutcome && a
+    ? {
+        sentinelOutcome: a.outcome as "YES" | "NO",
+        sentinelEvidence: a.evidence?.slice(0, 500) || null,
+        sentinelReasoning: a.reasoning?.slice(0, 1000) || null,
+        sentinelSourceUrl: a.sourceUrl || null,
+        sentinelConfidence: a.confidence,
+        sentinelClosedAt: new Date().toISOString(),
+      }
+    : {};
+
+  const applied = await withLock(`market:${marketId}`, async () => {
+    const m = await marketStore.get(marketId);
+    // Re-check under the lock — a second fire / another instance may have run.
+    if (!m || m.status !== "LIVE" || m.resolutionNotifiedAt) return { done: false as const };
+    const nowIso = new Date().toISOString();
+    if (goAuto && a) {
+      const windowMs = Math.max(0, cfg.objectionWindowHours) * 3600_000;
+      const objectionsClosedAt = new Date(Date.parse(nowIso) + windowMs).toISOString();
+      await marketStore.stamp(marketId, {
+        status: "RESOLVED",
+        resolvedOutcome: a.outcome as "YES" | "NO",
+        resolutionStage1By: AUTO_RESOLVER_ACTOR, resolutionStage1At: nowIso,
+        resolutionStage2By: AUTO_RESOLVER_ACTOR, resolutionStage2At: nowIso,
+        resolutionEvidence: (a.evidence || "").slice(0, 2000) || null,
+        objectionsClosedAt,
+        settledAt: null, // ADJUDICATED only — the settle timer pays after the window
+        resolutionNotifiedAt: nowIso,
+        updatedAt: nowIso,
+        ...sentinelFields,
+      });
+      recordSnapshot(marketId, m.yesPool, m.noPool);
+      return {
+        done: true as const, auto: true as const, outcome: a.outcome as Side,
+        objectionsClosedAt, objectionWindowHours: cfg.objectionWindowHours,
+        yesPool: m.yesPool, noPool: m.noPool,
+      };
+    }
+    // EARLY RE-CHECK GUARD. The scheduled trigger fires at/after resolutionAt, when
+    // betting is closed by time anyway — closing there is right. But an operator can
+    // also re-check a market EARLY from the resolver queue; closing that market when
+    // the AI found no locked outcome would kill live betting for no reason. So when
+    // we are ahead of resolutionAt AND the AI is not confident, record its read and
+    // leave the market LIVE — crucially WITHOUT stamping resolutionNotifiedAt, so the
+    // real trigger still fires on time.
+    const pastResolution = Date.parse(m.resolutionAt) <= Date.now();
+    if (!pastResolution && !confident) {
+      // RELEASE THE CLAIM. Nothing transitioned, so resolutionNotifiedAt is not set
+      // and the claim is the only thing standing between this market and its next
+      // check. Leaving it would make an operator's second "Re-check now" (or the
+      // scheduled trigger, if it lands inside the TTL) report "already running" when
+      // nothing is. The claim exists to stop CONCURRENT AI calls, not to rate-limit.
+      await marketStore.stamp(marketId, { ...sentinelFields, resolveClaimedAt: null, updatedAt: nowIso });
+      return { done: false as const, early: true as const };
+    }
+    // HUMAN fallback: close to bets + store any recommendation; officers seal via ceremony.
+    await marketStore.stamp(marketId, {
+      status: "CLOSED",
+      resolutionNotifiedAt: nowIso,
+      updatedAt: nowIso,
+      ...sentinelFields,
+    });
+    recordSnapshot(marketId, m.yesPool, m.noPool);
+    return { done: true as const, auto: false as const, market: m };
+  });
+
+  if (!applied.done) return { status: "early" in applied && applied.early ? "early-noop" : "skipped" };
+
+  if (applied.auto) {
+    audit({
+      category: "COMPLIANCE",
+      action: "market.autoresolved",
+      actorId: AUTO_RESOLVER_ACTOR,
+      targetType: "Market",
+      targetId: marketId,
+      payload: {
+        outcome: applied.outcome, confidence: a?.confidence ?? null, threshold, mode,
+        evidence: a?.evidence, reasoning: a?.reasoning, sourceUrl: a?.sourceUrl,
+        yesPool: applied.yesPool, noPool: applied.noPool,
+        objectionsClosedAt: applied.objectionsClosedAt, objectionWindowHours: applied.objectionWindowHours,
+        note: "AI auto-resolved WITHOUT the two-officer ceremony (operator enabled auto mode). Money is still gated on the objection window + winner-floor; the settle timer pays after the window closes with nothing standing. Overrides the two-officer / POCA §16 rule — Ali's dated decision, docs/COMPLIANCE-DECISIONS.md.",
+      },
+    });
+    emit("market:resolve", { marketId, outcome: applied.outcome }); // SSE broadcast
+    // The settle timer (for objectionsClosedAt) is armed by the caller: fireMarket
+    // re-arms after every fire, and the "re-check now" admin action arms explicitly.
+    return { status: "resolved-auto", outcome: applied.outcome, confidence: a?.confidence ?? null, mode };
+  }
+
+  // Human fallback — alert officers with the AI recommendation (if any).
+  await alertOfficersMarketDue(applied.market);
+  audit({
+    category: "ADMIN",
+    action: "market.resolve_trigger.human",
+    actorId: AUTO_RESOLVER_ACTOR,
+    targetType: "Market",
+    targetId: marketId,
+    payload: {
+      mode,
+      aiDetermined: !!a?.determined,
+      aiOutcome: haveOutcome ? a?.outcome : null,
+      aiConfidence: a?.confidence ?? null,
+      threshold,
+      note: !haveOutcome
+        ? "AI could not determine an outcome (source not yet published or unverifiable) → human fallback"
+        : mode === "auto" && !confident
+          ? "auto mode but AI confidence below the threshold → human fallback (never auto-resolve on a shaky signal)"
+          : "human mode — AI recommendation pre-filled for the two-officer ceremony",
+    },
+  });
+  return { status: "closed-human", outcome: haveOutcome ? (a!.outcome as Side) : null, confidence: a?.confidence ?? null, mode };
 }
 
 /**
@@ -1624,7 +1803,7 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
   // Stage 2 — ADJUDICATE. The second officer countersigns and the verdict becomes
   // final, but NO MONEY MOVES HERE. The pool stays intact and every position stays
   // OPEN until the objection window closes with no objection standing, at which
-  // point settleDueMarkets() calls settleMarket() and the money is paid.
+  // point this market's per-market settle timer calls settleMarket() and pays.
   //
   // That deferral is the whole point of the window. It used to be decorative — we
   // stamped objectionsClosedAt and then paid the winners on the very next line, so
@@ -1669,6 +1848,10 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
   return { ok: true, data: { stage: "complete", settlesAt: m.objectionsClosedAt } };
   }); // end withLock market
 
+  // Re-arm the per-market timer AFTER the lock commits (armMarket re-reads the row,
+  // so it must see the committed state): stage-1 → CLOSED has no deadline (disarm);
+  // stage-2 → RESOLVED arms the settle timer for objectionsClosedAt.
+  if (result.ok) void armMarketTimer(opts.marketId);
   return result;
 }
 
@@ -2125,79 +2308,24 @@ export async function settleMarket(
       audit({ category: "SYSTEM", action: "affiliate.settlement_accrual_error", actorId: r.userId, targetType: "Market", targetId: marketId, payload: { error: String(err), operatorFee: r.operatorFee } });
     }
   }
+  // Money has moved — this market has no further time-based transition. Cancel its
+  // timer (a stale one would just re-read a settled row and no-op, but disarming
+  // keeps the registry clean).
+  if (result.ok) void disarmMarketTimer(marketId);
   return result;
 }
 
-/**
- * SETTLEMENT SWEEP — pays out every adjudicated market whose objection window has
- * closed. Runs on the lifecycle ticker (once a minute), which is what turns the
- * window from a promise into a mechanism: nothing else pays a resolved market.
- *
- * Every guard that matters lives in settleMarket() and is re-checked under the
- * market lock, so this sweep is deliberately dumb — it proposes candidates, it
- * does not decide. Running it twice concurrently is safe (the lock serialises and
- * the settledAt guard makes the second call a no-op), and a market that is not yet
- * due, or that has an objection standing, simply refuses and is picked up on a
- * later pass.
- */
-export async function settleDueMarkets(): Promise<{ settled: number; skipped: number }> {
-  const now = Date.now();
-  const candidates = (await marketStore.values()).filter(
-    (m) => (m.status === "RESOLVED" || m.status === "VOIDED")
-      && !m.settledAt
-      && !!m.objectionsClosedAt
-      && Date.parse(m.objectionsClosedAt) <= now,
-  );
-
-  let settled = 0;
-  let skipped = 0;
-  for (const m of candidates) {
-    try {
-      const r = await settleMarket(m.id, { actorId: "system" });
-      if (r.ok) settled++;
-      else skipped++; // TOO_EARLY / OBJECTION_OPEN / already settled — all benign
-    } catch (e) {
-      // Fail closed: the money stays in the pool and we retry on the next pass.
-      skipped++;
-      console.error(`[settle] ${m.id} failed — money left in pool, will retry:`, e);
-    }
-  }
-
-  // Heartbeat. This sweep is now the ONLY thing that pays a resolved market, so
-  // if it silently stops running, nobody gets paid and nothing else complains.
-  // Recording the beat is what makes that failure visible instead of invisible —
-  // see getSettlementHealth(), surfaced on /admin/system.
-  setLastSweep({ at: new Date().toISOString(), settled, skipped });
-  return { settled, skipped };
-}
-
-/**
- * The heartbeat is held on globalThis, NOT in a module-level `let`.
- *
- * The sweep is started from instrumentation.register(); the /admin/system page
- * that reads the heartbeat is rendered in a different module graph. A plain
- * module-level variable is per-module-instance, so the page read `null` even
- * while the ticker was demonstrably running — the health card cried "ticker has
- * not run" on a perfectly healthy system. A false alarm on the one dial that says
- * whether players are being paid is worse than no dial: it trains the operator to
- * ignore it. globalThis is per-PROCESS, so both sides see the same beat (and it
- * is the pattern the rest of this codebase already uses for singletons).
- */
-declare global {
-  // eslint-disable-next-line no-var
-  var __50PICK_LAST_SWEEP: { at: string; settled: number; skipped: number } | undefined;
-}
-const setLastSweep = (v: { at: string; settled: number; skipped: number }) => { globalThis.__50PICK_LAST_SWEEP = v; };
-const getLastSweep = () => globalThis.__50PICK_LAST_SWEEP ?? null;
-
-/** Is anything allowed to pay a market on its own? Paused until the payment
- *  aggregator is integrated — see lifecycle.ts. SYNC env-only read, kept for the
- *  degraded display fallback; the effective value (which honours the admin
- *  control-plane toggle) is `getAutoSettleEnabled()` in payment-control.ts, used by
- *  the ticker and `getSettlementHealth()`. */
-export function isAutoSettleEnabled(): boolean {
-  return process.env.AUTO_SETTLE === "true";
-}
+// ── SETTLEMENT IS NOW PER-MARKET + TIMER-DRIVEN ─────────────────────────────
+//
+// The global `settleDueMarkets()` sweep, its `__50PICK_LAST_SWEEP` heartbeat, and
+// the `AUTO_SETTLE` gate (`isAutoSettleEnabled`) are GONE. Each resolved/voided
+// market carries its own scheduler timer that fires at `objectionsClosedAt` and
+// calls `settleMarket()` directly (see market-scheduler.ts). The 5-minute
+// `reconcileMarketSchedules()` backstop re-arms any market that lost its timer, so
+// nothing goes unpaid if a timer is dropped. Every guard that matters — the
+// objection window, a standing objection, the winner-floor, exact conservation,
+// idempotency (settledAt) — still lives in `settleMarket()` and is re-checked under
+// the market lock, so a re-fire or two instances can never double-pay.
 
 export type SettlementQueueRow = {
   id: string;
@@ -2245,11 +2373,9 @@ export async function listSettlementQueue(): Promise<SettlementQueueRow[]> {
 }
 
 export type SettlementHealth = {
-  /** False = nothing pays by itself; an officer settles each market by hand. */
-  autoSettle: boolean;
-  /** When the sweep last ran. Null = never (expected while auto-settle is off). */
-  lastSweepAt: string | null;
-  lastSweep: { settled: number; skipped: number } | null;
+  /** Per-market scheduler health — how many resolve/settle timers are armed and
+   *  when the next one fires. Replaces the old sweep heartbeat. */
+  scheduler: { armed: number; nextFireAt: string | null };
   /** Adjudicated, money still in the pool, objection window still running. */
   awaiting: { count: number; tzs: number; nextDueAt: string | null };
   /** Frozen by a standing objection — waiting on an OFFICER to rule. */
@@ -2257,22 +2383,20 @@ export type SettlementHealth = {
   /**
    * Window closed, nothing disputing it, money still in the pool.
    *
-   * While automatic payout is PAUSED this is simply the officer's work queue —
-   * these markets are waiting for a human to press Settle at /admin/settlement.
-   * It is normal for this to be non-zero.
-   *
-   * If AUTO_SETTLE is ever turned back on, the meaning flips: the sweep should be
-   * clearing these within a minute, so a number that sits here is an ALARM — it
-   * means the ticker is dead and players are silently going unpaid.
+   * The per-market settle timer clears these within moments of the window closing.
+   * A number that SITS here means timers were dropped — the 5-minute reconciler
+   * heals that, but a persistently non-zero count is the signal that settlement has
+   * stalled. The manual /admin/settlement queue is the human fallback for exactly
+   * this (settle by hand, or investigate the scheduler).
    */
   readyToSettle: { count: number; tzs: number; oldestDueAt: string | null };
 };
 
 /**
- * Is settlement actually happening? Before the gate, "resolved" meant "paid", so
- * there was nothing to watch. Now a market can sit adjudicated-and-unpaid, and the
- * only thing that moves it is a background sweep — so the sweep failing is a
- * silent, money-shaped failure. This is the readout that makes it loud.
+ * Is settlement actually happening? A market can sit adjudicated-and-unpaid until
+ * its per-market settle timer fires, so a dropped timer is a silent, money-shaped
+ * failure. This readout makes it loud: the awaiting/frozen/ready queues plus live
+ * scheduler health (armed timers + next fire).
  */
 export async function getSettlementHealth(): Promise<SettlementHealth> {
   const now = Date.now();
@@ -2307,10 +2431,15 @@ export async function getSettlementHealth(): Promise<SettlementHealth> {
     }
   }
 
+  let scheduler = { armed: 0, nextFireAt: null as string | null };
+  try {
+    const { getSchedulerHealth } = await import("./market-scheduler");
+    const h = getSchedulerHealth();
+    scheduler = { armed: h.armed, nextFireAt: h.nextFireAt };
+  } catch { /* scheduler may not be running (tests / boot) — report zeroes */ }
+
   return {
-    autoSettle: await getAutoSettleEnabled(),
-    lastSweepAt: getLastSweep()?.at ?? null,
-    lastSweep: getLastSweep() ? { settled: getLastSweep()!.settled, skipped: getLastSweep()!.skipped } : null,
+    scheduler,
     awaiting, frozenByObjection: frozen, readyToSettle,
   };
 }
@@ -2321,11 +2450,11 @@ export async function getSettlementHealth(): Promise<SettlementHealth> {
  * (no stage-1 officer recorded). If the sentinel was wrong, this is the fix.
  */
 export async function adminReopenMarket(marketId: string, officerId: string): Promise<ServiceResult<{ market: StoredMarket }>> {
-  return withLock(`market:${marketId}`, async () => {
+  const result = await withLock(`market:${marketId}`, async () => {
     const m = await marketStore.get(marketId);
-    if (!m) return { ok: false, error: "Market not found.", code: "NOT_FOUND" };
-    if (m.status !== "CLOSED") return { ok: false, error: "Only closed markets can be reopened.", code: "INVALID" };
-    if (m.resolutionStage1By) return { ok: false, error: "Cannot reopen — resolution already started.", code: "INVALID" };
+    if (!m) return { ok: false as const, error: "Market not found.", code: "NOT_FOUND" as const };
+    if (m.status !== "CLOSED") return { ok: false as const, error: "Only closed markets can be reopened.", code: "INVALID" as const };
+    if (m.resolutionStage1By) return { ok: false as const, error: "Cannot reopen — resolution already started.", code: "INVALID" as const };
 
     m.status = "LIVE";
     m.updatedAt = new Date().toISOString();
@@ -2337,6 +2466,14 @@ export async function adminReopenMarket(marketId: string, officerId: string): Pr
     m.sentinelSourceUrl = null;
     m.sentinelConfidence = null;
     m.sentinelClosedAt = null;
+    // Reopening puts the market back INTO the lifecycle, so clear the one-shot
+    // transition stamps + the resolve claim. Otherwise the resolve trigger would
+    // see resolutionNotifiedAt set and never re-fire, and the reopened market would
+    // sit LIVE past its (usually re-edited) resolution date with nothing to move it.
+    m.resolutionNotifiedAt = null;
+    m.selectionClosedNotifiedAt = null;
+    m.closingSoonNotifiedAt = null;
+    m.resolveClaimedAt = null;
     await marketStore.set(m);
 
     audit({
@@ -2345,11 +2482,14 @@ export async function adminReopenMarket(marketId: string, officerId: string): Pr
       actorId: officerId,
       targetType: "Market",
       targetId: m.id,
-      payload: { reason: "Sentinel judgment overridden by admin" },
+      payload: { reason: "Sentinel/resolve-trigger closure overridden by admin — market back to LIVE" },
     });
 
-    return { ok: true, data: { market: m } };
+    return { ok: true as const, data: { market: m } };
   });
+  // Re-arm the lifecycle timers now the market is LIVE again (after the lock commits).
+  if (result.ok) void armMarketTimer(marketId);
+  return result;
 }
 
 /**
@@ -2489,8 +2629,8 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
     m.resolutionStage1At = now;
     m.resolutionStage2By = opts.officerId;
     m.resolutionStage2At = now;
-    // The money moved HERE — stamp it, or settleDueMarkets would see a VOIDED
-    // market with settledAt still null and try to settle it a second time.
+    // The money moved HERE — stamp it, or the per-market settle timer would see a
+    // VOIDED market with settledAt still null and try to settle it a second time.
     m.settledAt = now;
     // Surface the recorded cancellation reason as the settlement-proof evidence so
     // a voided market tells players WHY it was pulled (same value already sent in
@@ -2550,6 +2690,8 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
       audit({ category: "WALLET", action: "bonus.refund_forfeited", actorId: r.userId, targetType: "User", targetId: r.userId, payload: { requested: r.amount, refundedToBonus, forfeited: r.amount - refundedToBonus, reason: "emergency void, no active grant" } });
     }
   }
+  // Voided + settled in one action — no further time-based transition. Disarm.
+  if (result.ok) void disarmMarketTimer(opts.marketId);
   return result;
 }
 
@@ -2578,7 +2720,10 @@ export async function seedDemoMarkets() {
   // Both are idempotent; running them on every /markets page hit is
   // safe and keeps state self-healing without a cron.
   autoResolveExpiredDemoMarkets().catch(() => {});
-  notifyDueMarketsForResolution().catch(() => {});
+  // Heal any market that lost its per-market timer (resolution + settlement are now
+  // timer-driven, not swept) — dev self-heal on a page hit, mirroring the ticker's
+  // reconciler. Dynamic import breaks the market-service ⇄ market-scheduler cycle.
+  import("./market-scheduler").then((s) => s.reconcileMarketSchedules()).catch(() => {});
   repairOrphanedPositions().catch(() => {});
   // 3. Expire bonus grants past their validity window — removes the unspent
   //    remainder from the bonus wallet and notifies the player. Idempotent and

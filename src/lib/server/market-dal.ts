@@ -70,6 +70,8 @@ function toStoredMarket(r: any): StoredMarket {
     sentinelSourceUrl: r.sentinelSourceUrl ?? null,
     sentinelConfidence: r.sentinelConfidence ?? null,
     sentinelClosedAt: iso(r.sentinelClosedAt) ?? null,
+    resolutionMode: (r.resolutionMode as StoredMarket["resolutionMode"]) ?? null,
+    resolveClaimedAt: iso(r.resolveClaimedAt) ?? null,
     proposedBy: r.proposedBy,
     createdAt: iso(r.createdAt)!,
     updatedAt: iso(r.updatedAt)!,
@@ -134,6 +136,16 @@ export interface MarketStore {
   delete(id: string): Promise<void>;
   has(id: string): Promise<boolean>;
   values(): Promise<StoredMarket[]>;
+  /**
+   * Every market with a PENDING time-based transition — i.e. what the per-market
+   * scheduler must arm a timer for: LIVE markets (closing-soon / selection-closed /
+   * resolve triggers) and adjudicated-but-unsettled markets (settle trigger).
+   *
+   * A TARGETED, INDEXED query — never `values()`. The scheduler hydrates + reconciles
+   * off this, so on a board with thousands of settled markets it reads only the
+   * handful still in flight (status is indexed; settledAt filters the small residue).
+   */
+  pending(): Promise<StoredMarket[]>;
 }
 
 export interface PositionStore {
@@ -176,6 +188,11 @@ const memoryMarkets: MarketStore = {
   async delete(id) { markets.delete(id); },
   async has(id) { return markets.has(id); },
   async values() { return Array.from(markets.values()); },
+  async pending() {
+    return Array.from(markets.values()).filter(
+      (m) => m.status === "LIVE" || ((m.status === "RESOLVED" || m.status === "VOIDED") && !m.settledAt),
+    );
+  },
 };
 
 const memoryPositions: PositionStore = {
@@ -230,6 +247,8 @@ const STAMPABLE: Record<string, (v: unknown) => unknown> = {
   sentinelSourceUrl: (v) => v,
   sentinelConfidence: (v) => v,
   sentinelClosedAt: (v) => (v ? new Date(v as string) : null),
+  resolutionMode: (v) => v,
+  resolveClaimedAt: (v) => (v ? new Date(v as string) : null),
   updatedAt: (v) => (v ? new Date(v as string) : new Date()),
 };
 
@@ -291,6 +310,8 @@ const prismaMarkets: MarketStore = {
         sentinelSourceUrl: m.sentinelSourceUrl ?? null,
         sentinelConfidence: m.sentinelConfidence ?? null,
         sentinelClosedAt: m.sentinelClosedAt ? new Date(m.sentinelClosedAt) : null,
+        resolutionMode: m.resolutionMode ?? null,
+        resolveClaimedAt: m.resolveClaimedAt ? new Date(m.resolveClaimedAt) : null,
         proposedBy: m.proposedBy,
         createdAt: new Date(m.createdAt),
       },
@@ -320,6 +341,8 @@ const prismaMarkets: MarketStore = {
         sentinelSourceUrl: m.sentinelSourceUrl ?? null,
         sentinelConfidence: m.sentinelConfidence ?? null,
         sentinelClosedAt: m.sentinelClosedAt ? new Date(m.sentinelClosedAt) : null,
+        resolutionMode: m.resolutionMode ?? null,
+        resolveClaimedAt: m.resolveClaimedAt ? new Date(m.resolveClaimedAt) : null,
       },
     });
   },
@@ -332,6 +355,19 @@ const prismaMarkets: MarketStore = {
   },
   async values() {
     const rows = await pc().predictionMarket.findMany();
+    return rows.map(toStoredMarket);
+  },
+  async pending() {
+    // Indexed on status; the OR keeps the settle candidates (adjudicated, money not
+    // yet moved) without a second query. The residue is tiny relative to the table.
+    const rows = await pc().predictionMarket.findMany({
+      where: {
+        OR: [
+          { status: "LIVE" },
+          { status: { in: ["RESOLVED", "VOIDED"] }, settledAt: null },
+        ],
+      },
+    });
     return rows.map(toStoredMarket);
   },
 };

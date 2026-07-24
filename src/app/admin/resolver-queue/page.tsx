@@ -11,7 +11,11 @@ import { ProbabilityBar } from "@/components/markets/probability-bar";
 import { CircularProgress } from "@/components/markets/circular-progress";
 import { ResolveControls } from "./resolve-controls";
 import { ConflictOverrideToggle } from "./conflict-override-toggle";
+import { ResolutionModeToggle } from "./resolution-mode-toggle";
+import { RecheckButton } from "./recheck-button";
 import { getConflictedResolutionAllowed, isConflictOverrideHardLocked } from "@/lib/server/test-overrides";
+import { getGlobalConfig } from "@/lib/server/market-config";
+import { isLiveMoneyMode } from "@/lib/server/runtime-mode";
 import { formatDateTime } from "@/lib/utils";
 import { CEREMONY, SELECTION } from "@/lib/admin-status-lexicon";
 
@@ -76,6 +80,12 @@ export default async function ResolverQueuePage({
   const windowLabel = (WINDOW_OPTIONS.find((o) => o.value === windowFilter)?.label ?? "").toLowerCase();
   const conflictOverride = await getConflictedResolutionAllowed().catch(() => false);
   const conflictHardLocked = isConflictOverrideHardLocked();
+  // Resolution mode (human ceremony vs AI auto-resolve at the resolve date) + the
+  // confidence floor below which auto ALWAYS falls back to a human ceremony.
+  const rateCfg = await getGlobalConfig().catch(() => null);
+  const resolutionMode = rateCfg?.resolutionMode ?? "human";
+  const resolveThreshold = rateCfg?.resolveConfidenceThreshold ?? 90;
+  const liveMoney = isLiveMoneyMode();
 
   // Paginate
   const page = parsePage(sp.page, pending.length);
@@ -91,6 +101,7 @@ export default async function ResolverQueuePage({
         period={false}
         actions={
           <div className="flex items-center gap-2.5 flex-wrap">
+            <ResolutionModeToggle mode={resolutionMode} threshold={resolveThreshold} liveMoney={liveMoney} />
             <ConflictOverrideToggle enabled={conflictOverride} hardLocked={conflictHardLocked} />
             <div className="flex items-center gap-2.5 font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle">
               <span>{pending.length} pending</span>
@@ -271,6 +282,8 @@ export default async function ResolverQueuePage({
 
                   <div className="p-4 space-y-3">
                     <ResolveControls marketId={m.id} stage={stage1 ? "stage2" : "stage1"} stagedOutcome={m.resolvedOutcome} />
+                    {/* Per-market AI re-check (replaces the old global sentinel sweep). */}
+                    <RecheckButton marketId={m.id} />
                     {/* Full evidence-first ceremony (evidence excerpt + typed-SEAL). */}
                     <Link
                       href={`/admin/resolver/${m.id}` as never}

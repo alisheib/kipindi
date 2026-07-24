@@ -25,16 +25,21 @@ export async function register() {
     const { runBootChecks } = await import("./lib/server/boot-checks");
     await runBootChecks();
 
+    // Per-market scheduler — arm a timer for every market with a pending time
+    // transition (closing-soon / selection-closed / resolve / settle). This is the
+    // primary driver of market lifecycle; deadlines missed while the server was DOWN
+    // fire after a short staggered grace (never skipped). Replaces the old global AI
+    // sentinel sweep loop. See market-scheduler.ts.
     try {
-      const { startSentinel } = await import("./lib/server/market-sentinel");
-      startSentinel();
+      const { hydrateSchedulerOnBoot } = await import("./lib/server/market-scheduler");
+      await hydrateSchedulerOnBoot();
     } catch (err) {
-      console.error("[instrumentation] Failed to start sentinel:", err);
+      console.error("[instrumentation] Failed to hydrate market scheduler:", err);
     }
-    // Lifecycle ticker — drives the CLOCK-based transitions (selection close →
-    // notify bettors, resolution due → alert officers, demo auto-resolve, bonus
-    // expiry). Independent of the AI sentinel above so it runs even with no
-    // ANTHROPIC_API_KEY / while the sentinel is paused.
+    // Lifecycle ticker — the periodic backstop: it reconciles the scheduler (re-arms
+    // any market that lost its timer), expires bonus grants, reconciles stuck
+    // payments, and runs the nightly trial balance. It does NOT drive market
+    // transitions any more (those are the scheduler's job).
     try {
       const { startLifecycleTicker } = await import("./lib/server/lifecycle");
       startLifecycleTicker();
