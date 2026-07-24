@@ -34,7 +34,7 @@ product is or how it is built; it links. The full document-ownership table is in
 | **1** | Schema (4 tables), DAL, `updown-config.ts`, admin asset + chain pages | 🟢 **DONE + LIVE** |
 | **2** | `updown-oracle.ts` — six refusal gates, AI-pause honoured, metered | 🟢 **DONE** |
 | **3** | `updown-service.ts` + `updown-scheduler.ts` + `rateOverrides` + display-field fix | 🟢 **DONE** — `test:updown-engine` 42/42, money drift 0 |
-| **4** | Player UI — `/updown`, round detail, `UpDownCard`, nav, SSE, EN/SW/ZH | ⬜ Blocked on design |
+| **4** | Player UI — `/updown`, round detail, `UpDownCard`, nav, EN/SW/ZH | 🟢 **DONE** — built to the D1/D2 specs |
 | **5** | Reports, analytics, notification digest, admin rounds explorer + settings | ⬜ Not started |
 | **6** | Staged enable (Gold 5-min → Silver → 15/30-min) + archive/retention job | ⬜ Not started |
 
@@ -190,6 +190,24 @@ keyframe + reduced-motion gate · asset icon-chip recipe · mono micro-labels at
 | Q5 | **The gold asset-icon tint.** The Gold asset's icon chip uses a gold tint as *asset identity*, which collides with the platform rule that gold means *earned money only*. Options: (a) accept it — real asset artwork will replace the placeholder anyway; (b) use a neutral metallic ring so gold keeps one meaning. | 2026-07-24 | ⬜ Pending |
 | Q6 | **Card title at 360px** — ellipsise on one line (as designed), or 2-line clamp? Recommend the **clamp**: "Gold Up or Down" is short in English but Swahili and Chinese expand, and the card is bottom-pinned so the extra ~18px keeps grid alignment. | 2026-07-24 | ⬜ Pending |
 | Q7 | Real asset artwork (Gold/Silver marks) — the `Au`/`Ag` glyph chips are placeholders. | 2026-07-24 | ⬜ Pending |
+
+---
+
+## 7b · What visual review caught that the test suite could not
+
+Every one of these passed the automated checks — zero overflow, zero console errors —
+and was still wrong in the image. This is why the standard is "READ the screenshots".
+
+| Surface | Defect |
+|---|---|
+| `/admin/updown` | Card titles COLLIDING with their action text at 360px |
+| `/admin/updown` | Empty states CLIPPED not scrolled — reading "no assets yet" needed a sideways scroll, because `AdminTableEmpty` sat inside a `min-w-[640px]` table |
+| `/admin/updown` | Breadcrumb read "Updown" — the product is "Up & Down" |
+| `/updown` | **Hydration mismatch** — the countdown read `Date.now()` on the server AND the client, so the two disagreed by the response time |
+| `/updown` | **Gold and Silver rendered the identical "XA" chip** — `ticker.slice(0,2)` on XAU/XAG. Now the real element symbols (Au/Ag) |
+| `/updown` | THREE "LIVE" 5-min rounds stacked with different countdowns — a round whose window had not opened was shown as bettable |
+| `/updown/[roundId]` | **No countdown at all** on the page where a player commits a stake |
+| harness | The locale cookie is `kp-locale`, not `locale` — so the first "SW" and "ZH" runs were silently English, and the trilingual pass was worthless until fixed |
 
 ---
 

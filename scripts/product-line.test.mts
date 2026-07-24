@@ -64,6 +64,9 @@ const MUST_OPT_IN: Array<{ file: string; why: string; minCalls: number }> = [
   { file: "src/app/admin/system/page.tsx",
     why: "operator's view of what is actually running",
     minCalls: 2 },
+  { file: "src/app/live/page.tsx",
+    why: "\"ON LIVE — shows everything\" (Markets Appearing.txt): the ONE player board that shows both product lines",
+    minCalls: 1 },
 ];
 
 /** Every `listMarkets(...)` invocation in a file, with its argument text. */

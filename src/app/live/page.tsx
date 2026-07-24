@@ -31,7 +31,10 @@ export const dynamic = "force-dynamic";
 export default async function LivePage() {
   const [{ t, locale }, liveRaw, traderMap] = await Promise.all([
     getServerT(),
-    listMarkets({ status: "LIVE" }).catch(() => [] as Awaited<ReturnType<typeof listMarkets>>),
+    // "ON LIVE — shows everything" (Markets Appearing.txt). This is the ONE player
+    // board that deliberately opts into BOTH product lines: /markets holds long-form
+    // polls, /updown holds the short-term rounds, and /live is where they meet.
+    listMarkets({ status: "LIVE", productLine: "ALL" }).catch(() => [] as Awaited<ReturnType<typeof listMarkets>>),
     traderSeedsByMarket().catch(() => new Map() as Awaited<ReturnType<typeof traderSeedsByMarket>>),
   ]);
 

@@ -2094,3 +2094,13 @@ textarea::-webkit-resizer {
   ::view-transition-old(root),
   ::view-transition-new(root) { animation: none !important; }
 }
+
+/* ── Up & Down: final-30-seconds urgency ────────────────────────────────────
+   The ONE piece of motion the Up & Down card adds. Opacity only — no movement,
+   no scale — so it reads as a pulse rather than a nag, and it costs nothing on a
+   low-end Android. Reduced-motion turns it off entirely: urgency must never be
+   conveyed by motion alone (the digits also shift to rose). Kit-level so any
+   surface can use it; never hard-code this animation in a component. */
+.ud-count-pulse { animation: ud-count-pulse 1s var(--ease-conduct, ease-in-out) infinite; }
+@keyframes ud-count-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+@media (prefers-reduced-motion: reduce) { .ud-count-pulse { animation: none; } }

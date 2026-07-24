@@ -12,22 +12,30 @@ export function BottomNav({ isAuthed = false }: { isAuthed?: boolean }) {
   // IA review R2: for a bettor, Positions (my bets / did I win?) is a more
   // frequent return than Invite — so Positions takes the 5th tab. Invite stays
   // one tap away in the avatar directory + the lg "More" menu.
+  // Up & Down is a peer destination, not a promotion: Markets holds long-form polls,
+  // Up & Down holds the short-term price rounds, Live shows both (Markets Appearing.txt).
+  //
+  // It takes the slot Profile used to hold. The bar stays at FIVE — a sixth tab makes
+  // every target too narrow at 360px — and nothing is lost, because Profile is already
+  // the top-bar avatar menu.
   const items = isAuthed
     ? [
         { href: "/markets",   glyph: "markets" as const,   label: t.common.markets },
+        { href: "/updown",    glyph: "trendingUp" as const, label: t.market.udTitle },
         { href: "/live",      glyph: "bolt" as const,      label: t.nav.live },
         { href: "/positions", glyph: "portfolio" as const, label: t.nav.bets },
         { href: "/wallet",    glyph: "wallet" as const,    label: t.nav.wallet },
-        { href: "/profile",   glyph: "profile" as const,   label: t.common.profile },
       ]
     : [
         { href: "/markets",     glyph: "markets" as const,    label: t.common.markets },
+        { href: "/updown",      glyph: "trendingUp" as const, label: t.market.udTitle },
         { href: "/live",        glyph: "bolt" as const,       label: t.nav.live },
         { href: "/auth/login",  glyph: "logIn" as const,      label: t.common.signIn },
       ];
 
   const isActive = (href: string) => {
     if (href === "/markets") return pathname === "/" || pathname.startsWith("/markets");
+    if (href === "/updown") return pathname.startsWith("/updown");
     if (href === "/wallet") return pathname.startsWith("/wallet");
     if (href === "/positions") return pathname.startsWith("/positions");
     if (href === "/profile") return pathname.startsWith("/profile") && pathname !== "/profile/invite";
