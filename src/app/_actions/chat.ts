@@ -118,6 +118,12 @@ export async function chatWithClaude(
 ): Promise<{ text: string } | null> {
   if (!process.env.ANTHROPIC_API_KEY) return null;
 
+  // Operator kill-switch (AI toolkit) — when the chatbot is disabled, make NO AI
+  // call. Defense-in-depth: the widget is already unmounted in the layout when
+  // disabled, but the action must refuse too so a stale client can't burn credits.
+  const { isChatbotEnabled } = await import("@/lib/server/ai-controls");
+  if (!(await isChatbotEnabled())) return null;
+
   // Auth gate — unauthenticated callers must not burn API credits.
   const session = await getSession();
   if (!session) return null;

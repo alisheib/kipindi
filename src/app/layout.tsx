@@ -4,6 +4,7 @@ import { Sora, Inter, JetBrains_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AppShell } from "@/components/layout/app-shell";
 import { LazyOverlays } from "@/components/layout/lazy-overlays";
+import { isChatbotEnabled } from "@/lib/server/ai-controls";
 import { ScrollRestore } from "@/components/ui/scroll-restore";
 import { appUrl } from "@/lib/app-url";
 import "./globals.css";
@@ -95,6 +96,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const jar = await cookies();
   const cookieLocale = jar.get("kp-locale")?.value;
   const lang = cookieLocale === "sw" || cookieLocale === "zh" ? cookieLocale : "en";
+  // Chatbot on/off (AI toolkit). Default ON if the read fails — a config hiccup must
+  // never silently hide a working help widget.
+  const chatbotEnabled = await isChatbotEnabled().catch(() => true);
   return (
     <html lang={lang} suppressHydrationWarning className={`${sora.variable} ${inter.variable} ${jbm.variable}`}>
       <body className="font-sans antialiased">
@@ -106,7 +110,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               dynamic() with ssr:false to defer their JS from the initial
               bundle. */}
           <Suspense fallback={null}>
-            <LazyOverlays />
+            <LazyOverlays chatbotEnabled={chatbotEnabled} />
           </Suspense>
         </ThemeProvider>
       </body>

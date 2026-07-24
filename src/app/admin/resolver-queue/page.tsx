@@ -11,13 +11,8 @@ import { ProbabilityBar } from "@/components/markets/probability-bar";
 import { CircularProgress } from "@/components/markets/circular-progress";
 import { ResolveControls } from "./resolve-controls";
 import { ConflictOverrideToggle } from "./conflict-override-toggle";
-import { ResolutionModeToggle } from "./resolution-mode-toggle";
-import { AiPauseToggle } from "./ai-pause-toggle";
 import { RecheckButton } from "./recheck-button";
 import { getConflictedResolutionAllowed, isConflictOverrideHardLocked } from "@/lib/server/test-overrides";
-import { getResolutionAiStatus } from "@/lib/server/market-sentinel";
-import { getGlobalConfig } from "@/lib/server/market-config";
-import { isLiveMoneyMode } from "@/lib/server/runtime-mode";
 import { formatDateTime } from "@/lib/utils";
 import { CEREMONY, SELECTION } from "@/lib/admin-status-lexicon";
 
@@ -82,15 +77,9 @@ export default async function ResolverQueuePage({
   const windowLabel = (WINDOW_OPTIONS.find((o) => o.value === windowFilter)?.label ?? "").toLowerCase();
   const conflictOverride = await getConflictedResolutionAllowed().catch(() => false);
   const conflictHardLocked = isConflictOverrideHardLocked();
-  // Resolution mode (human ceremony vs AI auto-resolve at the resolve date) + the
-  // confidence floor below which auto ALWAYS falls back to a human ceremony.
-  const rateCfg = await getGlobalConfig().catch(() => null);
-  const resolutionMode = rateCfg?.resolutionMode ?? "human";
-  const resolveThreshold = rateCfg?.resolveConfidenceThreshold ?? 90;
-  const liveMoney = isLiveMoneyMode();
-  // AI pause/resume state for the header switch (the budget/kill switch for the
-  // automatic resolve-date AI check).
-  const aiStatus = await getResolutionAiStatus().catch(() => ({ hasKey: false, enabled: false, paused: false, active: false }));
+  // NOTE: the AI resolution pause + auto-resolve toggles used to live here. They now
+  // live ONLY in the admin top-bar "AI toolkit" dropdown (one place, no redundancy).
+  // This page keeps the non-AI Solo-resolve override and the per-market re-check.
 
   // Paginate
   const page = parsePage(sp.page, pending.length);
@@ -106,8 +95,6 @@ export default async function ResolverQueuePage({
         period={false}
         actions={
           <div className="flex items-center gap-2.5 flex-wrap">
-            <AiPauseToggle active={aiStatus.active} hasKey={aiStatus.hasKey} />
-            <ResolutionModeToggle mode={resolutionMode} threshold={resolveThreshold} liveMoney={liveMoney} />
             <ConflictOverrideToggle enabled={conflictOverride} hardLocked={conflictHardLocked} />
             <div className="flex items-center gap-2.5 font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle">
               <span>{pending.length} pending</span>

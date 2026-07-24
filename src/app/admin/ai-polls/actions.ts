@@ -59,6 +59,9 @@ async function requireAdmin(action: string): Promise<{ userId: string; sessionId
 
 export async function generatePollAction(formData: FormData) {
   const { userId: officerId } = await requireAdmin("generatePollAction");
+  // AI toolkit kill-switch — refuse when poll generation is disabled.
+  const { isPollGenEnabled } = await import("@/lib/server/ai-controls");
+  if (!(await isPollGenEnabled())) return { ok: false as const, error: "AI poll generation is disabled (AI toolkit)." };
   const category = String(formData.get("category") ?? "sports");
   const prompt = String(formData.get("prompt") ?? "");
   const regenerationOf = String(formData.get("regenerationOf") ?? "");
@@ -89,6 +92,9 @@ export async function generatePollAction(formData: FormData) {
 
 export async function generatePollBatchAction(formData: FormData) {
   const { userId: officerId } = await requireAdmin("generatePollBatchAction");
+  // AI toolkit kill-switch — refuse when poll generation is disabled.
+  const { isPollGenEnabled } = await import("@/lib/server/ai-controls");
+  if (!(await isPollGenEnabled())) return { ok: false as const, error: "AI poll generation is disabled (AI toolkit)." };
   // Per-officer rate-limit: a batch fires up to 200 paid AI generations, so cap
   // how often it can be triggered (caps runaway Anthropic spend within the
   // trusted-admin boundary).

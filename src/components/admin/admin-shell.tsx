@@ -11,6 +11,8 @@ import { I } from "@/components/ui/glyphs";
 import { AdminMobileNavTrigger } from "./admin-mobile-nav";
 import { AdminSidebarNav } from "./admin-sidebar-nav";
 import { RefreshButton } from "./refresh-button";
+import { AiToolkit } from "./ai-toolkit";
+import { getAiToolkitStatus } from "@/lib/server/ai-controls";
 import { NAV_GROUPS } from "./admin-nav-groups";
 import { PeriodPicker } from "./period-picker";
 import { AdminSpark } from "./admin-charts";
@@ -86,13 +88,17 @@ export async function AdminSidebar({ activeKey }: { activeKey: string }) {
 export async function AdminTopBar({ crumbs, session, activeKey }: { crumbs: string[]; session: AdminSession; activeKey: string }) {
   const badges = await getSidebarBadges();
   return (
-    <div className="flex items-center justify-between px-4 lg:px-6 border-b border-border gap-3"
+    <div className="relative z-40 flex items-center justify-between px-4 lg:px-6 border-b border-border gap-3"
       style={{
         height: 56,
         background: "color-mix(in oklab, var(--panel) 78%, transparent)",
         backdropFilter: "blur(14px) saturate(1.3)",
         WebkitBackdropFilter: "blur(14px) saturate(1.3)",
       }}>
+      {/* relative z-40: `backdrop-filter` above makes this bar its own stacking
+          context, which would otherwise TRAP the AI-toolkit dropdown's z-50 below
+          the page content (the search input painted over it at 360). Elevating the
+          whole bar lets the dropdown overlay the page. Stays below portaled modals (z-100). */}
       <div className="flex items-center gap-2 min-w-0">
         <AdminMobileNavTrigger groups={NAV_GROUPS} badges={badges} activeKey={activeKey} />
       <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-body-sm text-text-tertiary min-w-0 overflow-hidden">
@@ -126,10 +132,11 @@ export async function AdminTopBar({ crumbs, session, activeKey }: { crumbs: stri
             refreshed from one predictable spot (screens with a filter bar also
             expose a contextual refresh next to their filters). */}
         <RefreshButton variant="icon" className="!h-7 !w-7" />
-        {/* The old global market-sentinel countdown widget is gone — markets are now
-            resolved by per-market timers, not a global sweep. Scheduler health lives
-            on /admin/system + /admin/settlement; re-check a single market from the
-            resolver queue. */}
+        {/* AI toolkit — the ONE place every AI feature is switched on/off (chatbot,
+            market resolution, auto-resolve, poll generation). Replaces the old
+            per-feature toggles + the removed sentinel countdown, so no AI control
+            lives in two places. */}
+        <AiToolkit status={await getAiToolkitStatus()} />
         {/* No notification bell here — the platform's main bell (in AppShell's
             top bar) is the single notification surface for everyone, admins
             included. New-KYC alerts arrive there as in-app notifications. */}

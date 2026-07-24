@@ -23,7 +23,7 @@ const FirstVisitPrimer = dynamic(
   { ssr: false },
 );
 
-export function LazyOverlays() {
+export function LazyOverlays({ chatbotEnabled = true }: { chatbotEnabled?: boolean }) {
   // Register service worker once on mount (non-blocking)
   useEffect(() => {
     import("@/lib/register-sw").then(({ registerServiceWorker }) => {
@@ -33,7 +33,9 @@ export function LazyOverlays() {
 
   return (
     <>
-      <ChatRoot />
+      {/* Chatbot on/off comes from the AI toolkit (server-read in the root layout).
+          When disabled the widget is not mounted at all — no bubble, no JS, no calls. */}
+      {chatbotEnabled && <ChatRoot />}
       <FirstVisitPrimer />
     </>
   );

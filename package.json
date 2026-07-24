@@ -64,6 +64,7 @@
     "test:invites": "tsx scripts/invite-service.test.mts",
     "test:invite-flow": "tsx scripts/invite-flow.test.mts",
     "test:scheduler": "tsx scripts/scheduler.test.mts",
+    "test:ai-controls": "tsx scripts/ai-controls.test.mts",
     "test:admin-roles": "tsx scripts/admin-roles.test.mts",
     "test:ledger": "tsx scripts/ledger.test.mts",
     "test:trial-balance": "tsx scripts/trial-balance.test.mts",

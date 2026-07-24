@@ -72,19 +72,12 @@ for (const width of WIDTHS) {
   const onPage = await page.locator('h1:has-text("Resolver queue")').first().isVisible().catch(() => false);
   onPage ? pass("resolver queue rendered") : fail("did NOT render the resolver queue (auth redirect?)");
 
-  // The new mode toggle must be present and operable.
-  const toggle = page.locator('[role="switch"][aria-label^="Auto-resolve at resolve date"]');
-  (await toggle.count()) > 0 ? pass("auto-resolve toggle present") : fail("auto-resolve toggle MISSING");
+  // The AI-toolkit dropdown lives in the admin top bar (the ONE home for every AI
+  // switch; the old per-page toggles were removed).
+  const aiBtn = page.locator('button[aria-label="AI toolkit"]');
+  (await aiBtn.count()) > 0 ? pass("AI toolkit button present (top bar)") : fail("AI toolkit button MISSING");
 
-  // The AI pause/resume switch (or its "no key" disabled state) must be present.
-  const aiToggle = page.locator('[role="switch"][aria-label^="AI resolution check"]');
-  const aiNoKey = page.locator('text=AI checks · no key');
-  ((await aiToggle.count()) > 0 || (await aiNoKey.count()) > 0)
-    ? pass("AI pause switch present")
-    : fail("AI pause switch MISSING");
-
-  // Tap-target floor (kit rule: >= 40px on interactive controls) — check the
-  // per-market re-check button where it exists.
+  // The per-market re-check stays on the market card. Tap-target floor (>= 40px).
   const recheck = page.locator('button:has-text("Re-check this market now")').first();
   if (await recheck.count()) {
     const box = await recheck.boundingBox();
@@ -97,19 +90,36 @@ for (const width of WIDTHS) {
 
   await shoot(page, `resolver-queue-${width}`);
 
-  // The compliance ConfirmModal (the popup sweep the standards require at 360 + 1280).
-  if (width === 360 || width === 1280) {
-    if (await toggle.count()) {
-      await toggle.first().click();
-      await page.waitForTimeout(500);
-      const dlg = page.locator('[role="alertdialog"]');
-      (await dlg.count()) > 0 ? pass("confirm modal opened") : fail("confirm modal did NOT open");
-      const mOverflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-      mOverflow <= 1 ? pass("modal: no horizontal overflow") : fail(`modal HORIZONTAL OVERFLOW ${mOverflow}px`);
-      await shoot(page, `resolver-confirm-${width}`);
-      await page.keyboard.press("Escape"); // must NOT leave auto enabled
-      await page.waitForTimeout(300);
+  // Open the AI toolkit and verify its four switches + the compliance confirm, at
+  // 360 + 1280 (the popup sweep the standards require).
+  if ((width === 360 || width === 1280) && (await aiBtn.count()) > 0) {
+    await aiBtn.first().click();
+    await page.waitForTimeout(400);
+    // Assert by the switch aria-label (unique to the panel) — a bare text= match also
+    // hits the hidden mobile sidebar's "AI poll generation" nav item.
+    for (const label of ["Help chatbot", "AI market resolution", "Auto-resolve when confident", "AI poll generation"]) {
+      const sw = page.locator(`[role="switch"][aria-label^="${label}"]`).first();
+      (await sw.isVisible().catch(() => false)) ? pass(`toolkit switch: ${label}`) : fail(`toolkit switch MISSING: ${label}`);
     }
+    const dOverflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    dOverflow <= 1 ? pass("toolkit panel: no horizontal overflow") : fail(`toolkit panel OVERFLOW ${dOverflow}px`);
+    await shoot(page, `ai-toolkit-${width}`);
+
+    // Enabling auto-resolve must raise the compliance ConfirmModal.
+    const autoToggle = page.locator('[role="switch"][aria-label^="Auto-resolve when confident"]');
+    if ((await autoToggle.count()) > 0 && await autoToggle.first().isEnabled().catch(() => false)) {
+      await autoToggle.first().click();
+      await page.waitForTimeout(400);
+      const dlg = page.locator('[role="alertdialog"]');
+      (await dlg.count()) > 0 ? pass("auto-resolve confirm modal opened") : fail("auto-resolve confirm modal did NOT open");
+      const mOverflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      mOverflow <= 1 ? pass("confirm: no horizontal overflow") : fail(`confirm OVERFLOW ${mOverflow}px`);
+      await shoot(page, `ai-toolkit-confirm-${width}`);
+      await page.keyboard.press("Escape"); // must NOT enable auto
+      await page.waitForTimeout(250);
+    }
+    await page.keyboard.press("Escape"); // close the dropdown
+    await page.waitForTimeout(200);
   }
 
   if (consoleErrors.length) fail(`console errors: ${consoleErrors.slice(0, 3).join(" | ")}`);
