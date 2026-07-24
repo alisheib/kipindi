@@ -48,6 +48,11 @@ import { marketStore, positionStore } from "../src/lib/server/market-dal.ts";
 import { listForUser } from "../src/lib/server/notification-service.ts";
 import { formatDuration } from "../src/components/ui/duration-input.tsx";
 import { db } from "../src/lib/server/store.ts";
+import { setRequireTwoOfficerResolution } from "../src/lib/server/resolution-policy.ts";
+// Step 8 exercises the two-officer dance (stage-1 by Alice, same-officer stage-2
+// rejected, different officer seals). Two-admin authorization is OFF by default now,
+// so enable it. (Single-admin one-action sealing is proven in test:two-admin.)
+await setRequireTwoOfficerResolution(true, "mixed-flow-setup");
 
 let pass = 0, fail = 0;
 function ok(label: string, cond: boolean, extra = "") {

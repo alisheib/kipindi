@@ -178,7 +178,7 @@ uploads store to R2. The steps below are the record of what was done:
 **Branch staged (this session): `feat/payment-selcom`** (cut fresh off current `main` +
 cherry-picked the adapter scaffold; `tsc` green). ⚠️ **Do NOT merge the old `feat/payment-adapter`
 branch — it is ~17 commits behind `main` and would revert the bet-stake atomicity, the route
-tier-gating, and the solo-resolution lock.** Use `feat/payment-selcom`.
+tier-gating, and the resolution-policy changes.** Use `feat/payment-selcom`.
 
 **Remaining (needs Selcom keys/docs from Ali):**
 1. Fill `selcomAdapter.deposit`/`withdraw` in `src/lib/server/payments.ts` (return
@@ -206,7 +206,10 @@ scheme, MNO channel codes, sandbox creds.
 2. R2 live + a KYC upload→view round-trip works.
 3. Full gate on the go-live commit: `tsc` + `build` + `test:all` + `test:integrity`; on real
    PG: `s10`, `s11`, `e2e:money` (drift 0).
-4. **Unset `TEST_FUNDING`** → also auto-hard-locks the solo-resolution override (POCA §16).
+4. **Unset `TEST_FUNDING`** → flips the platform to LIVE money-mode. NOTE: resolution
+   authorization is NO LONGER coupled to this — single-admin resolution is the permanent default in
+   all modes; two-admin authorization is an optional resolver-queue toggle (docs/COMPLIANCE-DECISIONS.md,
+   2026-07-24). Unsetting `TEST_FUNDING` no longer changes any resolution lock.
 5. **Format/rebaseline the DB** → clean genesis (ledger/audit/wallets from zero).
 6. Verify on the fresh DB: trial balance = TZS 0 drift, audit chain valid, one real small
    deposit→bet→settle→withdraw round-trip correct.
@@ -219,9 +222,12 @@ scheme, MNO channel codes, sandbox creds.
      re-arms any market whose timer was dropped).
    - `/admin/settlement` → **Ready to settle** not silently piling up, and anything under **Frozen
      by objection** understood. Manual **Settle now** here stays the human fallback.
-   - `/admin/resolver-queue` → the intended **resolution mode**: **human** (two-officer ceremony,
-     the default) unless the owner has deliberately enabled **auto** AI sealing above the
-     confidence threshold.
+   - `/admin/resolver-queue` → the intended **resolution mode**: **human** (an officer seals;
+     single-admin by default, or two-officer if **Two-admin authorization** is toggled on) unless the
+     owner has deliberately enabled **auto** AI sealing above the confidence threshold.
+   - `/admin/payments` → the intended **provider**: **Selcom** for real payments. The **mock** is
+     operator-selectable in every mode as a deliberate simulation (typed "MOCK" confirm + persistent
+     banner); it must NOT be the active provider when you want real deposits/withdrawals.
 8. Confirm `https://50pick.tz` + `https://www.50pick.tz` serve with valid certs; logs clean.
 
 **Env cleanup to fold into the switch redeploy** (per Ali, 2026-07-17):

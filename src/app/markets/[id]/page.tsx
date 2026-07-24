@@ -159,6 +159,10 @@ export default async function MarketDetail({
   // — never synthetic/auto (demo, sentinel) resolution whose ids are "system_*".
   const _s1 = m.resolutionStage1By, _s2 = m.resolutionStage2By;
   const twoOfficer = !!(_s1 && _s2 && _s1 !== _s2 && !_s1.startsWith("system") && !_s2.startsWith("system"));
+  // Single-admin (the default authorization): ONE genuine human officer sealed it
+  // (s1===s2, both real). Distinct from auto/system resolution (ids "system_*"),
+  // which claims neither line. Lets the panel state honestly how it resolved.
+  const singleOfficer = !twoOfficer && !!(_s1 && !_s1.startsWith("system"));
   // One-sided: all bets are on the same side — winners would win their own money.
   // Platform rule: full refund at 0% fee at resolution. Surface a disclaimer so
   // players know before they place or hold a bet.
@@ -328,6 +332,7 @@ export default async function MarketDetail({
               outcome={m.resolvedOutcome}
               resolvedAt={m.resolutionStage2At ?? m.updatedAt}
               twoOfficer={twoOfficer}
+              singleOfficer={singleOfficer}
               sourceUrl={m.sourceUrl}
               objectionsClosedAt={m.objectionsClosedAt}
               serverNow={Date.now()}

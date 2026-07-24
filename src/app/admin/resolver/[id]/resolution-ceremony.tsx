@@ -44,11 +44,14 @@ export function ResolutionCeremony({
   stage,
   stagedOutcome,
   isSelfCountersign,
+  twoAdmin,
 }: {
   marketId: string;
   stage: "stage1" | "stage2";
   stagedOutcome: Outcome | null;
   isSelfCountersign: boolean;
+  /** false (default) = single admin seals in one act; true = two-officer ceremony. */
+  twoAdmin: boolean;
 }) {
   const [pending, startTransition] = useTransition();
   const router = useRouter();
@@ -92,6 +95,83 @@ export function ResolutionCeremony({
         <span className="font-mono text-[12px] uppercase tracking-[0.16em] text-text-muted">
           Recording attestation…
         </span>
+      </div>
+    );
+  }
+
+  // ── SINGLE-ADMIN (default) — one officer resolves + seals in ONE action ─────
+  // Two-admin authorization is OFF, so there is no stage-1/stage-2 split: pick the
+  // verdict, declare the evidence, type SEAL, and the market is sealed in one call
+  // (resolveMarket returns "complete"). No second officer, no self-countersign block.
+  if (!twoAdmin) {
+    const composedEvidence =
+      verdict === "VOID" && voidReason
+        ? `[void reason: ${VOID_REASONS.find((r) => r.value === voidReason)?.label ?? voidReason}] ${evidence}`.trim()
+        : evidence;
+    const sealed = sealText.trim().toUpperCase() === "SEAL";
+    const canSeal = !!verdict && (verdict !== "VOID" || !!voidReason) && sealed;
+    return (
+      <div className="space-y-4">
+        <VerdictCards value={verdict} onChange={(v) => { setVerdict(v); if (v !== "VOID") setVoidReason(""); }} />
+
+        {verdict === "VOID" && (
+          <label className="block">
+            <span className="mb-1 block font-mono text-[10px] uppercase tracking-[0.14em] text-claret-300">
+              Void reason · Sababu ya kubatilisha <span className="text-claret-300">*</span>
+            </span>
+            <select
+              value={voidReason}
+              onChange={(e) => setVoidReason(e.target.value)}
+              className="h-9 w-full rounded-md border border-claret-edge bg-bg-overlay px-2.5 text-[12.5px] text-text admin-focus"
+            >
+              <option value="">Select a reason…</option>
+              {VOID_REASONS.map((r) => (
+                <option key={r.value} value={r.value}>{r.label}</option>
+              ))}
+            </select>
+          </label>
+        )}
+
+        <label className="block">
+          <span className="mb-1 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">
+            <I.fileText s={12} /> {bi(CEREMONY.evidenceExcerpt)}
+          </span>
+          <textarea
+            value={evidence}
+            onChange={(e) => setEvidence(e.target.value)}
+            rows={3}
+            maxLength={2000}
+            placeholder="Paste the exact quote from the official source that settles this market…"
+            className="w-full rounded-md border border-border bg-bg-overlay px-3 py-2 text-[12.5px] leading-relaxed text-text admin-focus resize-y placeholder:text-text-subtle"
+          />
+          <span className="mt-0.5 block text-right font-mono text-[10px] text-text-subtle">{evidence.length}/2000</span>
+        </label>
+
+        <label className="block">
+          <span className="mb-1 block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-claret-300">
+            Type SEAL to publish · Andika SEAL
+          </span>
+          <input
+            value={sealText}
+            onChange={(e) => setSealText(e.target.value)}
+            placeholder="SEAL"
+            autoComplete="off"
+            spellCheck={false}
+            className="h-10 w-full rounded-md border border-claret-edge bg-bg-overlay px-3 font-mono text-[14px] tracking-[0.3em] uppercase text-text admin-focus placeholder:tracking-[0.3em] placeholder:text-text-subtle"
+          />
+        </label>
+
+        <button
+          type="button"
+          disabled={!canSeal}
+          onClick={() => verdict && fire(verdict, composedEvidence)}
+          className="btn btn-claret btn-lg w-full disabled:opacity-40"
+        >
+          <I.shieldcheck s={16} /> Resolve &amp; seal{verdict ? ` ${verdict}` : ""}
+        </button>
+        <p className="text-center font-mono text-[10px] text-text-subtle">
+          {sealed ? "Armed — this seals the verdict (single-admin authorization)." : "Type SEAL to arm. One officer seals; winners are paid after the objection window."}
+        </p>
       </div>
     );
   }

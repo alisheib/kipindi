@@ -91,8 +91,11 @@
 - **Selcom (deposits) — set + validated:** `PAYMENT_API_URL` (prod `apigw/v1`), `PAYMENT_VENDOR_ID`,
   `PAYMENT_API_KEY`, `PAYMENT_API_SECRET` (secret values — Railway only). `PAYMENT_AGGREGATOR`
   intentionally **unset** (→ mock; flip via admin). **Missing for payouts:** `PAYMENT_VENDOR_PIN`.
-- **To change at the go-live switch:** unset `TEST_FUNDING` (→ auto-hard-locks solo-resolution),
-  set real `NEXT_PUBLIC_LICENSE_REF` (currently placeholder `TZ-GBT-2026-XXXX`).
+- **To change at the go-live switch:** unset `TEST_FUNDING` (→ LIVE money-mode; this no longer
+  changes any resolution lock — single-admin resolution is the default, two-admin authorization is an
+  optional resolver-queue toggle, docs/COMPLIANCE-DECISIONS.md 2026-07-24), flip `/admin/payments` to
+  **Selcom** (the mock is an operator-selectable simulator, not for real money), set real
+  `NEXT_PUBLIC_LICENSE_REF` (currently placeholder `TZ-GBT-2026-XXXX`).
 - **⛔ No `AUTO_SETTLE` — the var no longer exists** (nor the `/admin/payments` auto-settle toggle
   or the global settle sweep). Settlement is **per-market timer-driven**: an adjudicated market arms
   its own timer for its `objectionsClosedAt` and pays itself then; a ~5-min reconciler re-arms any

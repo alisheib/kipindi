@@ -847,7 +847,7 @@ export function kycSubmittedAdminHtml({ reference, phoneMasked, name, nidaMasked
 
 /**
  * Sent to every admin/officer when a REAL market's event time has passed and it
- * is waiting for the two-officer resolution. Mirrors the KYC admin email: a
+ * is waiting for an officer to resolve it. Mirrors the KYC admin email: a
  * clear nudge with a button straight to the resolver queue. Carries only the
  * market title — the outcome decision happens in the secured admin surface.
  */
@@ -857,7 +857,7 @@ export function marketResolutionAdminHtml({ title, closedAt, reviewUrl }: {
   return wrap(`
     ${eyebrow("Market · awaiting resolution")}
     ${heading("A market has closed and needs resolving")}
-    ${subtitle("Its event time has passed. Two officers must confirm the outcome before winners are paid.")}
+    ${subtitle("Its event time has passed. An officer must confirm the outcome against the public source before winners are paid.")}
     ${detailRows([
       { label: "Market", value: title },
       { label: "Closed", value: fmtDateTime(closedAt) },

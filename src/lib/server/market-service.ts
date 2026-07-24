@@ -28,7 +28,7 @@ import { isLockedOut, checkLossLimit } from "./responsible-gambling";
 import { rateCheck } from "./rate-limit";
 import { getEffectiveConfig, getEffectiveResolutionMode, snapshotFromConfig, snapshotOrLegacy } from "./market-config";
 import { payoutFor, settledPayoutFor, allocateWinnerPayouts, poolFee, levySplit, type FeeSnapshot } from "@/lib/payout";
-import { getConflictedResolutionAllowed } from "./test-overrides";
+import { getRequireTwoOfficerResolution } from "./resolution-policy";
 import { isMaintenanceMode, maintenanceMessage } from "./platform-config";
 import { recordSnapshot } from "./market-history";
 import { notifyBetPlaced, notifyWin, notifyLoss, notifyRefund, notifyCashout, notifyAdminMarketResolution, notifyMarketCancelled, notifyAdminMarketCancelled, notifyOneSidedRefund, notifySelectionClosed } from "./notification-service";
@@ -1703,71 +1703,35 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
   // that justifies the verdict). Recorded into the immutable audit payload at
   // each attestation so the fairness story is provable; capped defensively.
   const evidence = (opts.evidence ?? "").trim().slice(0, 2000) || null;
-  // Solo-resolution override (default OFF) — ⚠️ NOT FOR PRODUCTION, testing /
-  // consultant-evaluation only (see test-overrides.ts header). When an admin
-  // enables it on the resolver queue, a single officer may resolve a market
-  // end-to-end even if they hold a position in it — so a tester acting as admin
-  // + player can settle a market alone and have their own position pay out
-  // normally (win pays, loss deducted from their wallet). It relaxes BOTH the
-  // position-conflict block (below) AND the "second officer must differ" gate
-  // (stage-2). Every bypass is written to the COMPLIANCE trail; production
-  // behaviour is unchanged while the flag is OFF — and it MUST be OFF for any
-  // real-money launch (leaving it ON lets an admin pay their own bets).
-  const testingResolveOverride = await getConflictedResolutionAllowed();
-  // Officer-conflict hard-block (Elevation #12): an officer who holds a position
-  // in this market MUST NOT resolve it — they have a financial interest in the
-  // outcome. This is a POCA §16 / GBT licensing requirement. Checked before
-  // the lock so a conflicted officer gets a fast, clear rejection.
-  const officerPositions = (await listPositionsForMarket(opts.marketId))
-    .filter((p) => p.userId === opts.officerId && (p.status === "OPEN" || p.status === "WIN" || p.status === "LOSS"));
-  if (officerPositions.length > 0) {
-    if (!testingResolveOverride) {
-      audit({
-        category: "COMPLIANCE",
-        action: "market.resolve.conflict_blocked",
-        actorId: opts.officerId,
-        targetType: "Market",
-        targetId: opts.marketId,
-        payload: { positionCount: officerPositions.length, positionIds: officerPositions.map((p) => p.id) },
-      });
-      return { ok: false, error: "You hold a position in this market and cannot resolve it — assign a different officer.", code: "CONFLICT" };
-    }
-    audit({
-      category: "COMPLIANCE",
-      action: "market.resolve.conflict_overridden",
-      actorId: opts.officerId,
-      targetType: "Market",
-      targetId: opts.marketId,
-      payload: { positionCount: officerPositions.length, positionIds: officerPositions.map((p) => p.id), note: "TESTING override active — conflicted officer allowed to resolve; their positions settle normally." },
-    });
-  }
+  // TWO-ADMIN AUTHORIZATION (default OFF) — the single flag governing resolution:
+  //   OFF (default): a SINGLE admin resolves the market in ONE action, even one who
+  //     holds a position in it. The officer-conflict block is GONE.
+  //   ON: the classic two-officer ceremony — stage-1 by A, stage-2 by a DIFFERENT B.
+  // Owner decision 2026-07-24 (docs/COMPLIANCE-DECISIONS.md), all money modes, no
+  // hard-lock. Toggled ONLY from the resolver-queue header (resolution-policy.ts).
+  // NOTE: AI auto-resolve (resolutionMode:auto) is a SEPARATE, orthogonal axis — it
+  // governs the AI path (resolveDueMarket), not this human path.
+  const requireTwoOfficer = await getRequireTwoOfficerResolution();
 
-  // No money moves in this function any more — the refund/wagering bookkeeping
-  // that used to live here moved with the payout loops into settleMarket().
+  // No money moves in this function — the refund/wagering bookkeeping lives in settleMarket().
   const result = await withLock(`market:${opts.marketId}`, async (): Promise<ServiceResult<{ stage: "stage1" | "complete"; settlesAt?: string | null }>> => {
   const m = await marketStore.get(opts.marketId);
   if (!m) return { ok: false, error: "Market not found.", code: "NOT_FOUND" };
   if (m.status === "RESOLVED" || m.status === "VOIDED") return { ok: false, error: "Market already resolved.", code: "INVALID" };
 
-  if (!m.resolutionStage1By) {
-    // Stage-1: the officer is STAGING the outcome. This transitions LIVE → CLOSED
-    // (no money moves). An officer can stage any LIVE or CLOSED market — this is
-    // the intentional early-close path (the sentinel does the same via its own
-    // CLOSED write). resolutionAt doesn't gate stage-1 so officers can close a
-    // market early when the outcome is already known.
+  // ── TWO-ADMIN MODE, first call: STAGE the outcome (LIVE → CLOSED, no money) ──
+  // Only in two-admin mode do we split into stages; single-admin seals in one call.
+  if (requireTwoOfficer && !m.resolutionStage1By) {
     m.resolutionStage1By = opts.officerId;
     m.resolutionStage1At = new Date().toISOString();
     m.resolvedOutcome = opts.outcome;
-    // Denormalise the officer's evidence excerpt onto the market so the player-
-    // facing settlement-proof panel can render it (source of truth stays the audit
-    // chain below). Stage-1 is canonical — the stage-2 field is a countersign note.
+    // Denormalise the evidence excerpt for the player settlement-proof panel (source
+    // of truth stays the audit chain). Stage-1 is canonical; stage-2 is a countersign.
     m.resolutionEvidence = evidence;
     m.status = "CLOSED";
     m.updatedAt = m.resolutionStage1At;
-    // stamp, not set: this is the LIVE→CLOSED transition, so bets can still be
-    // committing concurrently. A full-row write would rewrite yesPool/noPool from
-    // the snapshot read at the top of this callback and silently destroy the
-    // stakes of every bet placed in between.
+    // stamp, not set: LIVE→CLOSED while bets may still be committing; a full-row write
+    // would rewrite yesPool/noPool from the pre-lock snapshot and erase in-flight stakes.
     await marketStore.stamp(m.id, {
       resolutionStage1By: m.resolutionStage1By,
       resolutionStage1At: m.resolutionStage1At,
@@ -1786,46 +1750,43 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
     });
     return { ok: true, data: { stage: "stage1" } };
   }
-  if (m.resolutionStage1By === opts.officerId && !testingResolveOverride) {
-    return { ok: false, error: "Second-officer must be a different reviewer.", code: "INVALID" };
+
+  // ── TWO-ADMIN MODE, second call: the countersigner MUST differ from stage-1 ──
+  if (requireTwoOfficer && m.resolutionStage1By && m.resolutionStage1By === opts.officerId) {
+    return { ok: false, error: "Two-admin authorization is on — a different officer must confirm this resolution.", code: "INVALID" };
   }
-  if (m.resolutionStage1By === opts.officerId && testingResolveOverride) {
-    // Solo-resolution testing path — the same officer confirms stage-2. Recorded
-    // so the single-officer settlement is never silent in the compliance trail.
-    audit({
-      category: "COMPLIANCE",
-      action: "market.resolve.solo_overridden",
-      actorId: opts.officerId,
-      targetType: "Market",
-      targetId: m.id,
-      payload: { note: "TESTING override active — same officer confirmed stage-1 and stage-2 (two-officer rule bypassed)." },
-    });
-  }
-  // The second officer is confirming the first officer's decision — they cannot
-  // silently settle on a *different* outcome than the one recorded at stage 1.
-  // Without this, a colluding/erroneous stage-2 officer could pay the wrong side.
-  if (opts.outcome !== m.resolvedOutcome) {
+  // If a stage-1 verdict was already staged (two-admin), a completing officer cannot
+  // silently switch the outcome — reject a mismatch. (No prior stage in single-admin.)
+  if (m.resolutionStage1By && opts.outcome !== m.resolvedOutcome) {
     return { ok: false, error: "Stage-2 outcome must match the Stage-1 decision. Reject and restart to change it.", code: "INVALID" };
   }
-  // Stage 2 — ADJUDICATE. The second officer countersigns and the verdict becomes
-  // final, but NO MONEY MOVES HERE. The pool stays intact and every position stays
-  // OPEN until the objection window closes with no objection standing, at which
-  // point this market's per-market settle timer calls settleMarket() and pays.
+
+  // ── ADJUDICATE — single-admin one-shot, OR two-admin stage-2. NO MONEY MOVES ──
+  // The pool stays intact and every position stays OPEN until the objection window
+  // closes with no objection standing; the per-market settle timer then pays. That
+  // deferral is what makes the objection window a real gate (see settleMarket).
   //
-  // That deferral is the whole point of the window. It used to be decorative — we
-  // stamped objectionsClosedAt and then paid the winners on the very next line, so
-  // a player "objecting" was arguing about money that had already left the pool,
-  // and there was no remedy path at all (emergencyVoidMarket refuses a settled
-  // market). Holding settlement until the window elapses is what lets an upheld
-  // objection actually change the outcome, and it is what makes the control we
-  // describe to the regulator a true statement.
+  // Single-admin: stage-1 fields are stamped to this same officer in one action
+  // (LIVE → RESOLVED directly). Two-admin: stage-1 was set by A on the earlier call.
+  const soloResolved = !m.resolutionStage1By || m.resolutionStage1By === opts.officerId;
+  const stage1By = m.resolutionStage1By ?? opts.officerId;
+  const stage1At = m.resolutionStage1At ?? new Date().toISOString();
   const adjCfg = await getEffectiveConfig(m.id);
   const windowMs = Math.max(0, adjCfg.objectionWindowHours) * 3600_000;
+  const nowIso = new Date().toISOString();
+  m.resolutionStage1By = stage1By;
+  m.resolutionStage1At = stage1At;
+  m.resolvedOutcome = opts.outcome;
+  // Stage-1 evidence is canonical. Single-admin (soloResolved): the one call carries
+  // the evidence. Two-admin: stage-1 already denormalised the source quote — the
+  // stage-2 officer's field is a countersign NOTE (audit-only), so it must NOT
+  // overwrite the stage-1 evidence shown on the player settlement-proof panel.
+  m.resolutionEvidence = soloResolved ? (evidence ?? m.resolutionEvidence ?? null) : (m.resolutionEvidence ?? evidence ?? null);
   m.resolutionStage2By = opts.officerId;
-  m.resolutionStage2At = new Date().toISOString();
-  m.objectionsClosedAt = new Date(Date.parse(m.resolutionStage2At) + windowMs).toISOString();
+  m.resolutionStage2At = nowIso;
+  m.objectionsClosedAt = new Date(Date.parse(nowIso) + windowMs).toISOString();
   m.status = opts.outcome === "VOID" ? "VOIDED" : "RESOLVED";
-  m.updatedAt = m.resolutionStage2At;
+  m.updatedAt = nowIso;
   m.settledAt = null; // money has NOT moved — settleMarket stamps this
   await marketStore.set(m);
   recordSnapshot(m.id, m.yesPool, m.noPool); // final point on the chart
@@ -1839,11 +1800,14 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
     targetId: m.id,
     payload: {
       outcome: opts.outcome,
+      // Which authorization path sealed it — a single admin, or two distinct officers.
+      resolutionAuth: requireTwoOfficer ? "two-officer" : "single-admin",
+      soloResolved,
       yesPool: m.yesPool, noPool: m.noPool,
       grossPool: m.yesPool + m.noPool,
       stage1By: m.resolutionStage1By, stage2By: m.resolutionStage2By,
       sourceUrl: m.sourceUrl,
-      evidence,
+      evidence: m.resolutionEvidence,
       objectionsClosedAt: m.objectionsClosedAt,
       objectionWindowHours: adjCfg.objectionWindowHours,
       settlement: windowMs > 0
@@ -2539,20 +2503,12 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
     return { ok: false, error: "Forbidden: ADMIN or COMPLIANCE role required to void a market.", code: "INVALID" };
   }
 
-  // Officer-conflict hard-block (Elevation #12): same rule as resolveMarket.
-  const officerPositions = (await listPositionsForMarket(opts.marketId))
-    .filter((p) => p.userId === opts.officerId && (p.status === "OPEN" || p.status === "WIN" || p.status === "LOSS"));
-  if (officerPositions.length > 0) {
-    audit({
-      category: "COMPLIANCE",
-      action: "market.emergency_void.conflict_blocked",
-      actorId: opts.officerId,
-      targetType: "Market",
-      targetId: opts.marketId,
-      payload: { positionCount: officerPositions.length, positionIds: officerPositions.map((p) => p.id) },
-    });
-    return { ok: false, error: "You hold a position in this market and cannot void it — assign a different officer.", code: "CONFLICT" };
-  }
+  // Officer-conflict block removed (owner decision 2026-07-24) — an admin may void a
+  // market they hold a position in. An emergency void only REFUNDS every stake at 0
+  // fee (nobody wins or loses), so there is no self-interest to guard against; and
+  // the whole conflict-of-interest posture was retired with two-admin authorization
+  // (see resolution-policy.ts + docs/COMPLIANCE-DECISIONS.md). The ADMIN/COMPLIANCE
+  // role gate + 2FA above still stand.
 
   const pendingBonusRefunds: Array<{ userId: string; amount: number }> = [];
   const pendingWagerReversals: Array<{ userId: string; stake: number }> = [];

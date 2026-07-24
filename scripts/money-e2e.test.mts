@@ -35,6 +35,7 @@ import {
 } from "../src/lib/server/market-service.ts";
 import { marketStore, positionStore } from "../src/lib/server/market-dal.ts";
 import { setGlobalConfig } from "../src/lib/server/market-config.ts";
+import { setRequireTwoOfficerResolution } from "../src/lib/server/resolution-policy.ts";
 import { poolFee } from "../src/lib/payout.ts";
 
 if (!process.env.DATABASE_URL) {
@@ -88,6 +89,11 @@ await officer("officer_b");
 // the suite is self-consistent and tests the capped e2e path against real Postgres.
 // loser-share conservation against Postgres is covered by the drift check either way.
 await setGlobalConfig({ feeModel: "capped-commission", paidExitWindowMinutes: 15 }, "e2e-setup");
+// Sections 5-7 model a two-DISTINCT-officer resolution (officer_a stages, officer_b
+// seals) — that flow only exists under two-admin authorization, which is OFF by
+// default now. Enable it for those sections; section 8b flips it OFF and proves the
+// single-admin one-action path conserves money on real Postgres too.
+await setRequireTwoOfficerResolution(true, "e2e-setup");
 
 // ════════════════════════════════════════════════════════════════════════════
 section("1 · CASH IN — six players deposit through the real payment service");
@@ -268,6 +274,41 @@ section("7 · VOIDED POLL — refund everybody");
   ok("void: YES bettor refunded in full (25,000)", (await bal("p_win1")) - b1 === 25_000);
   ok("void: NO bettor refunded in full (15,000)", (await bal("p_lose1")) - b2 === 15_000);
   ok("void: the house took nothing", (await getMarket(m.id))!.status === "VOIDED");
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+section("7b · SINGLE-ADMIN resolution (the default) — one officer, one action, on real PG");
+// The platform default: two-admin authorization OFF, so ONE officer resolves in a
+// single call (incl. one who holds a position). Money must conserve exactly like the
+// two-officer path above. (2026-07-24, docs/COMPLIANCE-DECISIONS.md.)
+// ════════════════════════════════════════════════════════════════════════════
+{
+  await setRequireTwoOfficerResolution(false, "e2e-single-admin");
+  const m = await mkPoll("Single admin seals this one");
+  await buyPosition("p_win1", { marketId: m.id, side: "YES", stake: 40_000 });
+  await buyPosition("p_lose1", { marketId: m.id, side: "NO", stake: 60_000 });
+
+  const fresh = (await getMarket(m.id))!;
+  const fee = poolFee(fresh.yesPool, fresh.noPool, ratesFor(fresh));
+  const winBefore = await bal("p_win1");
+  const loseBefore = await bal("p_lose1");
+
+  // ONE call seals it — no second officer.
+  const r = await resolveMarket({ marketId: m.id, outcome: "YES", officerId: "officer_solo" });
+  ok("7b: single admin resolves in one action (stage complete)", r.ok && r.data?.stage === "complete", r.ok ? "" : r.error);
+  const s = await settleMarket(m.id, { force: true, actorId: "officer_solo" });
+  ok("7b: single-admin settlement succeeded", s.ok, s.ok ? "" : (s as { error?: string }).error);
+
+  const settled = await listPositionsForMarket(m.id);
+  const winPos = settled.find((p) => p.userId === "p_win1")!;
+  const losePos = settled.find((p) => p.userId === "p_lose1")!;
+  const winDelta = (await bal("p_win1")) - winBefore;
+  ok("7b: YES winner paid (≥ stake, floor holds)", winPos.status === "WIN" && (winPos.finalPayout ?? 0) >= winPos.stake && winDelta === winPos.finalPayout);
+  ok("7b: NO loser zeroed, nothing credited", losePos.status === "LOSS" && Number(losePos.finalPayout) === 0 && (await bal("p_lose1")) === loseBefore);
+  const conservation = fee.pool - ((winPos.finalPayout ?? 0) + fee.fee);
+  ok("7b: NO MINT / NO LEAK — single-admin payout + fee reconstitute the pool", Math.abs(conservation) <= 3, `dust ${conservation.toFixed(2)}`);
+  // Restore two-admin ON for any later section that models the two-officer dance.
+  await setRequireTwoOfficerResolution(true, "e2e-single-admin-restore");
 }
 
 // ════════════════════════════════════════════════════════════════════════════

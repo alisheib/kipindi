@@ -191,19 +191,19 @@ export function AiToolkit({ status }: { status: AiToolkitStatus }) {
         onConfirm={confirmAutoOn}
         tone="claret"
         eyebrow="Compliance · Uzingatiaji"
-        title="Auto-resolve markets without the two-officer ceremony?"
+        title="Auto-resolve markets without a human officer?"
         confirmLabel="Yes, enable auto-resolve"
-        cancelLabel="Keep human ceremony"
+        cancelLabel="Keep human resolution"
         body={
           <>
             <p>
               With this ON, a market reaching its resolve date is sealed by the <strong>AI alone</strong> —
-              no second officer — whenever it is at least <strong>{confidenceThreshold}% confident</strong>
+              no human officer — whenever it is at least <strong>{confidenceThreshold}% confident</strong>
               the outcome is locked. The money then pays automatically once the objection window closes.
             </p>
             <p className="mt-2">
-              <strong>This overrides the two-officer rule (POCA §16).</strong> A low-confidence or UNKNOWN
-              read always falls back to a human ceremony; the objection window, objection freeze and
+              <strong>This overrides human resolution (POCA §16).</strong> A low-confidence or UNKNOWN
+              read always falls back to a human officer; the objection window, objection freeze and
               winner-floor still gate every payout; every auto-resolution is audited with the AI&rsquo;s evidence.
             </p>
           </>

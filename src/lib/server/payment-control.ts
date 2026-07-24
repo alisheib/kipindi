@@ -19,26 +19,30 @@
  * the human fallback (settle by hand, view frozen markets).
  *
  * Persistence & shape mirror the existing hand-rolled config modules
- * (payment-ops.ts kill-switches, test-overrides.ts): a `globalThis` cache hydrated
+ * (payment-ops.ts kill-switches, resolution-policy.ts): a `globalThis` cache hydrated
  * once from `SystemConfig` via config-store, an async hydration guard on every read
  * (money-path reads must be correct, not eventually-consistent), and an audited
  * `set`. A field left `null` means "inherit the deployment env" — so a brand-new
  * deployment with no DB row behaves EXACTLY as the env did before this module
  * existed. An explicit value (set by an officer) overrides the env.
  *
- * ── SAFETY MODEL (the whole point) ────────────────────────────────────────────
- * `isLiveMoneyMode()` (production && TEST_FUNDING!=="true") gates the hard-locks:
- *   • LIVE mode FORBIDS `provider=mock` — the mock fabricates confirmations, so
- *     running real money through it would mint/lose money. To STOP payments in LIVE
- *     use the kill-switch, never the mock. Both `setPaymentControls` (refuses the
- *     write) AND `resolveActiveAdapter` in payments.ts (refuses at dispatch, returns
- *     PROVIDER_DOWN + a SECURITY audit) enforce this — belt and braces.
+ * ── SAFETY MODEL (guardrails, not hard-locks) ─────────────────────────────────
+ * Owner decision 2026-07-24 (docs/COMPLIANCE-DECISIONS.md): admins may switch the
+ * provider — INCLUDING to `mock` — in ANY money mode, LIVE or TEST, without a
+ * Railway env change or redeploy. "We are admins, we control the system." The old
+ * LIVE-mode hard-locks (refuse-to-select mock, refuse-at-dispatch, force demo-async
+ * off) are GONE. What remains is honest surfacing, not blocking:
+ *   • Selecting `mock` while `isLiveMoneyMode()` is a deliberate SIMULATION: the mock
+ *     FABRICATES confirmations, so deposits credit real wallets with no real funds
+ *     and withdrawals pay nobody. It is allowed, but it requires a typed confirm in
+ *     the UI (control-plane.tsx), writes a COMPLIANCE audit, and raises a persistent
+ *     loud banner (`simulationActiveOnLiveMoney`) for as long as it is active.
  *   • A real provider (`selcom`/`azampay`) may only be selected once its credentials
- *     are present (`paymentProviderConfigured`).
- *   • `demoAsync` is a TEST tool — forced OFF in LIVE mode.
- * ⛔ Compliance-critical switches (`TEST_FUNDING` money-minting, POCA §16 solo-
- * resolution) are DELIBERATELY NOT here — they stay deployment-level / hard-locked
- * (see test-overrides.ts + docs/COMPLIANCE-DECISIONS.md). Controllable ≠ unsafe.
+ *     are present (`paymentProviderConfigured`) — otherwise every call would fail.
+ *   • The kill-switch (payment-ops.ts) remains the emergency STOP; use it to halt
+ *     payments, not the mock.
+ * ⛔ `TEST_FUNDING` money-minting stays deployment-level (not here). Two-admin
+ * resolution moved to resolution-policy.ts. Controllable ≠ unsafe — it is audited.
  *
  * Every change is audited (WALLET + a COMPLIANCE breadcrumb for the money-rail
  * switch) with a `{ before, after, changes }` payload, visible in /admin/audit.
@@ -88,20 +92,20 @@ const envDemoAsync = (): boolean => process.env.PAYMENTS_DEMO_ASYNC === "true";
 // ── Resolvers (money-path reads — DB override, else env) ──────────────────────
 
 /** The active payment provider. DB override → `PAYMENT_AGGREGATOR` env → `mock`.
- *  NOTE: this returns the *configured* value truthfully even if it is `mock` in
- *  LIVE mode; the dispatch layer (payments.ts) is what REFUSES to move real money
- *  on the mock. Kept that way so the admin surface can show the danger honestly. */
+ *  Returns exactly what is selected — including `mock` in LIVE mode, which the
+ *  dispatch layer (payments.ts) now HONOURS (a deliberate simulation) rather than
+ *  refusing. The admin surface flags the simulation loudly via getPaymentControls. */
 export async function getPaymentProvider(): Promise<PaymentProviderId> {
   await ensureHydrated();
   return store.provider ?? envProvider();
 }
 
 /** The mock adapter's async behaviour (returns PENDING; the webhook settles).
- *  TEST-only — FORCED OFF whenever real money is live: it only affects the mock,
- *  which never runs in LIVE mode, and a "demo-async ON" state must never appear on
- *  a real-money board. DB override → `PAYMENTS_DEMO_ASYNC` env when in TEST mode. */
+ *  Only affects the mock adapter. No longer force-off in LIVE mode — the mock is
+ *  now operator-selectable in any mode (owner decision 2026-07-24), and if an admin
+ *  is deliberately simulating on a real-money deployment they may want the async
+ *  path too. DB override → `PAYMENTS_DEMO_ASYNC` env. */
 export async function getDemoAsyncEnabled(): Promise<boolean> {
-  if (isLiveMoneyMode()) return false;
   await ensureHydrated();
   return store.demoAsync ?? envDemoAsync();
 }
@@ -133,16 +137,20 @@ export type PaymentControlsView = {
   demoAsyncExplicit: boolean;
   /** Is the currently-selected provider actually configured (creds present)? */
   gatewayConfigured: boolean;
-  /** LIVE mode but the resolved provider is `mock` — a dangerous misconfiguration;
-   *  dispatch will refuse (PROVIDER_DOWN). Surfaced so the admin can fix it. */
-  liveMockRefused: boolean;
+  /** LIVE money mode AND the active provider is `mock` — a deliberate SIMULATION on
+   *  real money (mock fabricates confirmations: deposits credit real wallets with no
+   *  real funds, withdrawals pay nobody). NOT refused — flagged with a persistent
+   *  loud banner so it can never be running silently. */
+  simulationActiveOnLiveMoney: boolean;
   locks: {
-    /** demo-async can't be turned on (LIVE mode). */
+    /** Retained for shape stability; always false — no LIVE-mode hard-locks remain
+     *  (owner decision 2026-07-24). Selecting mock/demo-async is guardrailed in the
+     *  UI (typed confirm + banner), not blocked. */
     demoAsyncLocked: boolean;
-    /** the mock provider can't be selected (LIVE mode). */
     mockForbidden: boolean;
   };
-  /** Whether each real provider can be selected right now (creds present). */
+  /** Whether each provider can be selected right now. mock is ALWAYS selectable;
+   *  real providers require their creds. */
   selectable: Record<PaymentProviderId, boolean>;
   /** The raw env fallbacks, for the "inherited from env" hint. */
   env: { provider: PaymentProviderId; demoAsync: boolean };
@@ -157,13 +165,13 @@ export async function getPaymentControls(): Promise<PaymentControlsView> {
     mode: moneyMode(),
     provider,
     providerExplicit: store.provider !== null,
-    demoAsync: live ? false : (store.demoAsync ?? envDemoAsync()),
+    demoAsync: store.demoAsync ?? envDemoAsync(),
     demoAsyncExplicit: store.demoAsync !== null,
     gatewayConfigured,
-    liveMockRefused: live && provider === "mock",
-    locks: { demoAsyncLocked: live, mockForbidden: live },
+    simulationActiveOnLiveMoney: live && provider === "mock",
+    locks: { demoAsyncLocked: false, mockForbidden: false },
     selectable: {
-      mock: !live,
+      mock: true,
       selcom: paymentProviderConfigured("selcom"),
       azampay: paymentProviderConfigured("azampay"),
     },
@@ -178,35 +186,30 @@ export type ControlsUpdate = Partial<{ provider: PaymentProviderId; demoAsync: b
 function effectiveSnapshot(): { provider: PaymentProviderId; demoAsync: boolean } {
   return {
     provider: store.provider ?? envProvider(),
-    demoAsync: isLiveMoneyMode() ? false : (store.demoAsync ?? envDemoAsync()),
+    demoAsync: store.demoAsync ?? envDemoAsync(),
   };
 }
 
 /**
- * Apply an audited change to the control-plane. Every requested change is
- * validated against the LIVE-mode hard-locks BEFORE anything is written; a single
- * invalid field rejects the whole update (no partial application). Persists +
- * audits. Returns the refreshed view.
+ * Apply an audited change to the control-plane. The only remaining validation is
+ * that a REAL provider must have its credentials present (otherwise every call
+ * would fail) — the LIVE-mode mock/demo-async hard-locks are gone (owner decision
+ * 2026-07-24); selecting the mock in LIVE is guardrailed in the UI (typed confirm +
+ * persistent banner), not blocked here. A single invalid field rejects the whole
+ * update (no partial application). Persists + audits. Returns the refreshed view.
  */
 export async function setPaymentControls(
   updates: ControlsUpdate,
   officerId: string,
 ): Promise<{ ok: true; controls: PaymentControlsView } | { ok: false; error: string }> {
   await ensureHydrated();
-  const live = isLiveMoneyMode();
 
   if (updates.provider !== undefined) {
     const p = updates.provider;
     if (!ALL_PROVIDERS.includes(p)) return { ok: false, error: "Unknown payment provider." };
-    if (live && p === "mock") {
-      return { ok: false, error: "Real money is LIVE — the mock provider is disabled. To halt payments use the kill-switch, not the mock." };
-    }
     if (REAL_PROVIDERS.includes(p) && !paymentProviderConfigured(p)) {
       return { ok: false, error: `${p} is not configured. Set its API credentials (PAYMENT_API_KEY / PAYMENT_API_SECRET / PAYMENT_VENDOR_ID / PAYMENT_API_URL) in Railway before selecting it.` };
     }
-  }
-  if (updates.demoAsync === true && live) {
-    return { ok: false, error: "Demo-async is a TEST-mode tool and cannot be enabled on a real-money deployment." };
   }
 
   const before = effectiveSnapshot();
@@ -226,13 +229,17 @@ export async function setPaymentControls(
   // The money-rail switch is compliance-relevant — a second, category-COMPLIANCE
   // breadcrumb so it also shows in the compliance audit view.
   if (updates.provider !== undefined && before.provider !== after.provider) {
+    // The mock is a simulation adapter; selecting it while real money is LIVE is the
+    // compliance-notable case (the UI also demands a typed confirm + persistent
+    // banner while it is active), so tag the breadcrumb distinctly.
+    const liveMockSim = isLiveMoneyMode() && after.provider === "mock";
     audit({
       category: "COMPLIANCE",
-      action: "payments.provider.switched",
+      action: liveMockSim ? "payments.simulation.activated" : "payments.provider.switched",
       actorId: officerId,
       targetType: "PaymentProvider",
       targetId: updates.provider,
-      payload: { from: before.provider, to: after.provider, mode: moneyMode(), note: "Active payment rail changed from the operations control-plane." },
+      payload: { from: before.provider, to: after.provider, mode: moneyMode(), liveMockSimulation: liveMockSim, note: liveMockSim ? "Simulation adapter selected while real money is LIVE — deliberate operator action; the mock does not touch the real payment rail." : "Active payment rail changed from the operations control-plane." },
     });
   }
   return { ok: true, controls: await getPaymentControls() };
@@ -241,10 +248,10 @@ export async function setPaymentControls(
 /**
  * Boot-time payment-mode sanity alarm (fail-OPEN — never throws; a real-money
  * platform must not be taken down by an alarm). In LIVE mode it warns loudly if
- * the resolved provider is the mock (dispatch will refuse every payment) or a real
- * provider whose credentials are missing (every call will fail). The runtime guard
- * in payments.ts is the actual enforcement; this just surfaces the misconfig at
- * boot instead of in the first player's failed deposit.
+ * the resolved provider is the mock (a deliberate SIMULATION — it does not touch the
+ * real payment rail) or a real provider whose credentials are missing (every call
+ * will fail). This just surfaces the state at boot; the admin surface carries the
+ * persistent simulation banner while the mock is active.
  */
 export async function assertPaymentModeSane(): Promise<void> {
   if (!isLiveMoneyMode()) return;
@@ -252,16 +259,16 @@ export async function assertPaymentModeSane(): Promise<void> {
   try {
     provider = await getPaymentProvider();
   } catch (err) {
-    console.error("[payments] Could not resolve the active provider at boot (runtime dispatch still enforces the LIVE-mode guard):", err);
+    console.error("[payments] Could not resolve the active provider at boot:", err);
     return;
   }
   if (provider === "mock") {
     console.error(
       "\n" + "!".repeat(72) + "\n" +
-        "[payments] WARNING: real money is LIVE but the active provider is the MOCK.\n" +
-        "  Every deposit/withdrawal will be REFUSED (PROVIDER_DOWN) — the mock is\n" +
-        "  never allowed to move real money. Set PAYMENT_AGGREGATOR=selcom (+ creds)\n" +
-        "  or flip the provider in /admin/payments before customers arrive.\n" +
+        "[payments] NOTICE: real money is LIVE and the active provider is the MOCK.\n" +
+        "  This is a SIMULATION (deliberate operator choice) — the mock does not touch\n" +
+        "  the real payment rail. Switch to Selcom in /admin/payments (or set\n" +
+        "  PAYMENT_AGGREGATOR=selcom + creds) to process real deposits/withdrawals.\n" +
         "!".repeat(72) + "\n",
     );
     return;

@@ -35,6 +35,9 @@ type Props = {
   resolvedAt: string | null;
   /** True only when two DISTINCT real officers confirmed (not demo/auto). */
   twoOfficer: boolean;
+  /** True when ONE genuine human officer resolved it (single-admin authorization,
+   *  the default). Mutually exclusive with twoOfficer; both false = auto/system. */
+  singleOfficer?: boolean;
   sourceUrl: string;
   objectionsClosedAt: string | null;
   serverNow: number;
@@ -93,7 +96,7 @@ const fmtPct = (r: number) => {
 };
 
 export function ResolutionPanel({
-  marketId, outcome, resolvedAt, twoOfficer, sourceUrl, objectionsClosedAt, serverNow,
+  marketId, outcome, resolvedAt, twoOfficer, singleOfficer, sourceUrl, objectionsClosedAt, serverNow,
   yesPool, noPool, fee, rates, evidence, settledAt, objection,
 }: Props) {
   const { t } = useT();
@@ -120,12 +123,17 @@ export function ResolutionPanel({
 
       {/* Attestation (only when genuinely two-officer) + timestamp + source */}
       <div className="space-y-2">
-        {twoOfficer && (
+        {twoOfficer ? (
           <p className="flex items-start gap-2 text-[12.5px] text-text-muted">
             <I.sealCheck s={14} className="mt-[1px] shrink-0 text-yes-300" />
             <span>{t.market.resTwoOfficer}</span>
           </p>
-        )}
+        ) : singleOfficer ? (
+          <p className="flex items-start gap-2 text-[12.5px] text-text-muted">
+            <I.sealCheck s={14} className="mt-[1px] shrink-0 text-yes-300" />
+            <span>{t.market.resSingleOfficer}</span>
+          </p>
+        ) : null}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11.5px] text-text-subtle">
           {resolvedAt && (
             <span className="inline-flex items-center gap-1.5 tabular-nums">

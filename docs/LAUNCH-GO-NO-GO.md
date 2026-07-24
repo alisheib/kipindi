@@ -58,23 +58,27 @@
 - [ ] **Geo-fencing / sanctions-PEP screening** — planned, not built. Confirm
       whether GBT requires either on day 1.
 - [ ] **Who seals an outcome on day 1?** /admin/resolver-queue carries a
-      resolution-mode toggle: **"Require human ceremony"** (the default — the AI
-      recommends, two officers seal) vs **"Auto-resolve at resolve date"** (the AI
-      seals the outcome itself once its confidence clears the threshold; a
-      low-confidence or UNKNOWN read always falls back to the ceremony). Confirm the
-      default (human) is the launch posture. Either way the market still pays on its
-      own settle timer after the objection window — see §5.7.
+      resolution-mode toggle: **human** (the default — the AI recommends, an officer
+      seals) vs **"Auto-resolve at resolve date"** (the AI seals the outcome itself
+      once its confidence clears the threshold; a low-confidence or UNKNOWN read
+      always falls back to the human path). In human mode, resolution is
+      **single-admin by default** (one officer seals in one action); the resolver-queue
+      **"Two-admin authorization"** toggle re-imposes the two-distinct-officer ceremony
+      if the owner wants it (docs/COMPLIANCE-DECISIONS.md, 2026-07-24). Confirm the
+      intended posture. Either way the market still pays on its own settle timer after
+      the objection window — see §5.7.
 
 ## 5 · THE GO-LIVE SWITCH — run in this exact order (🤖 me + 👤 you)
 1. [ ] Payment rail merged, deployed, **sandbox round-trip proven** + reconciles to 0.
 2. [ ] R2 live + a KYC upload→view round-trip works.
 3. [ ] Full gate on the go-live commit: `tsc` + `build` + `test:all` + `test:integrity`;
        on real PG: `s10` (double-spend), `s11` (audit fork), `money-e2e` (drift 0).
-4. [ ] **Unset `TEST_FUNDING`** (stop minting un-ledgered test money). ⚠️ This ALSO
-       auto-hard-locks the solo-resolution override (POCA §16) — from this point an
-       officer can never resolve a market they hold a position in. See
-       `docs/COMPLIANCE-DECISIONS.md` (2026-07-17). Confirm the resolver-queue toggle
-       shows "locked (live)" after go-live.
+4. [ ] **Unset `TEST_FUNDING`** (stop minting un-ledgered test money). NOTE: this flips
+       the platform to LIVE money-mode but no longer changes any resolution lock —
+       single-admin resolution is the permanent default in all modes and two-admin
+       authorization is an optional resolver-queue toggle (the old solo-resolution
+       hard-lock was removed; docs/COMPLIANCE-DECISIONS.md, 2026-07-24). Also confirm
+       `/admin/payments` shows **Selcom** active (not the mock simulator) for real money.
 5. [ ] **Format / rebaseline the DB** → clean genesis (ledger, audit chain, wallets
        from zero; clears the test float + pre-audit rows). *This is the point where
        "clean" becomes real — after it, ANY trial-balance drift = a real defect.*

@@ -9,7 +9,7 @@ import { OperationResultModal } from "@/components/markets/operation-result-moda
 import { ConfirmModal } from "@/components/ui/modal";
 import { formatDateTime } from "@/lib/utils";
 
-export function ResolveControls({ marketId, stage, stagedOutcome }: { marketId: string; stage: "stage1" | "stage2"; stagedOutcome?: "YES" | "NO" | "VOID" | null }) {
+export function ResolveControls({ marketId, stage, stagedOutcome, twoAdmin = false }: { marketId: string; stage: "stage1" | "stage2"; stagedOutcome?: "YES" | "NO" | "VOID" | null; twoAdmin?: boolean }) {
   const [pending, startTransition] = useTransition();
   const [submittedSide, setSubmittedSide] = useState<"YES" | "NO" | "VOID" | null>(null);
   const [pendingOutcome, setPendingOutcome] = useState<"YES" | "NO" | "VOID" | null>(null);
@@ -66,12 +66,14 @@ export function ResolveControls({ marketId, stage, stagedOutcome }: { marketId: 
     });
   };
 
-  // Stage-1 fires straight through — it only stages a side, no money
-  // moves yet. Stage-2 is irreversible (payouts credit, positions
-  // close), so it's gated behind an explicit confirm dialog. This is
-  // the LCCP / GBT "informed-consent" pattern for irreversible writes.
+  // What needs an explicit confirm (the LCCP / GBT "informed-consent" pattern for
+  // an irreversible seal):
+  //  - Single-admin (twoAdmin=false, the default): ONE action seals the market, so
+  //    always confirm.
+  //  - Two-admin: stage-1 only STAGES a side (no seal) → fire straight through;
+  //    stage-2 seals → confirm.
   const submit = (outcome: "YES" | "NO" | "VOID") => {
-    if (stage === "stage2") {
+    if (!twoAdmin || stage === "stage2") {
       setPendingOutcome(outcome);
       setConfirmOpen(true);
       return;
@@ -187,9 +189,9 @@ function SettleConfirm({
       body={
         <>
           <p>
-            <strong>This is final.</strong> {outcome === "VOID"
-              ? "Every stake will be refunded and the market closes — no payouts, no margin, no undo."
-              : "Payouts credit to every winning wallet, every losing position closes, and an immutable entry lands in the audit log."}
+            <strong>This seals the verdict.</strong> {outcome === "VOID"
+              ? "Every stake is refunded and the market closes — no payouts, no margin, no undo."
+              : "The outcome is recorded and audited. Winners are paid automatically once the objection window closes with nothing standing; an upheld objection can still change it until then."}
           </p>
           <p className="text-text-subtle italic text-[12px] mt-1.5">
             Hatua hii haiwezi kubatilishwa.

@@ -6,6 +6,96 @@
 
 ---
 
+## 2026-07-24 · Single-admin resolution by default; two-admin authorization optional; officer-conflict block removed
+
+**Owner decision:** Ali, explicit, 2026-07-24 (authorised in-session): *"when solo admin, allow
+him to resolve even if he holds a position in it — we should end this matter forever,"* and *"one
+place controls one thing."*
+
+**What changed.** Market resolution used to be a mandatory **two-officer ceremony** (stage-1 by A,
+stage-2 by a different B), and an officer holding a position was **hard-blocked** from resolving.
+Both are retired:
+
+- **Single-admin resolution is the permanent DEFAULT, in ALL money modes (LIVE and TEST).** One
+  admin resolves any market in ONE action — **including a market they hold a position in.** Their
+  own position settles like any player's.
+- **Two-admin authorization is an OPTIONAL toggle** (`resolution-policy.ts`, flag
+  `requireTwoOfficer`, default `false`), switchable from the **resolver-queue header** only —
+  ONE control, ONE place. When ON, the classic two-distinct-officer ceremony returns (B ≠ A gate).
+- **There is NO real-money hard-lock** on this — unlike the (now-removed) 2026-07-17 solo-override.
+  It is the owner's call in every mode, consistent with the auto-resolve precedent (below).
+- **The officer-conflict block is deleted** from `resolveMarket` AND `emergencyVoidMarket`.
+
+**Why this is acceptable to the compliance posture:** the relaxed control is the *pre-payout*
+authorization step, not the money movement. Every payout is still gated by the untouched controls —
+the objection window (`TOO_EARLY`), the objection freeze (`OBJECTION_OPEN`), the already-settled
+idempotency guard, the winner-floor and exact-conservation — and **every** resolution writes an
+immutable ADMIN audit (`market.adjudicated`) tagged `resolutionAuth: "single-admin" | "two-officer"`.
+The toggle change writes a COMPLIANCE audit (`resolution.two_admin_enabled` / `…_disabled`). Player
+and public surfaces state the truth: a single-officer resolution shows "Resolved by an officer
+against the declared public source" (never a fabricated two-signature claim); the two-officer badge
+shows ONLY for two genuinely distinct human officers.
+
+**One-place-one-thing cleanup:** `test-overrides.ts` (`allowConflictedResolution`,
+`getConflictedResolutionAllowed`, `isConflictOverrideHardLocked`, `setConflictedResolutionAllowed`,
+`assertProductionComplianceLocks`), the conflict-override toggle + action, and the
+`assertProductionComplianceLocks()` boot call are **deleted**. A `content-integrity` guard (`RESOLVE`)
+fails the build if any of those symbols — or an import of `test-overrides` — returns to `src/**`.
+
+**Guardrail for future work (⛔):** do NOT re-add an officer-conflict block or a second place that
+edits the two-admin flag (e.g. RateConfig / `/admin/config`). The single flag lives only in
+`resolution-policy.ts`, set only from the resolver-queue header.
+
+**Code:** `src/lib/server/resolution-policy.ts` (the one flag) · `market-service.ts`
+(`resolveMarket`, `emergencyVoidMarket`) · `admin/resolver-queue/` (two-admin-toggle +
+resolution-policy-action + page + resolve-controls) · `admin/resolver/[id]/` (page +
+resolution-ceremony) · `resolution-panel.tsx` · `markets/[id]/page.tsx` · `page.tsx` ·
+`fairness/page.tsx` · `i18n-dict.ts` · `email.ts`.
+**Tests:** `test:two-admin` (single-admin default incl. position-holder + money conservation; two-admin
+B≠A; simulated-LIVE no hard-lock; audit, 18/18) · `test:officer-conflict` (position-holder can
+resolve/void; evidence; predicate, 21/21) · `test:settlement-gate` (single-admin path hits the same
+gate, 121/121) · `content-integrity` `RESOLVE` guard.
+
+---
+
+## 2026-07-24 · Operator-switchable payment provider (mock ↔ Selcom), any money mode
+
+**Owner decision:** Ali, explicit, 2026-07-24: *"we are admins, we control the system — allow us to
+toggle anytime, LIVE or TEST; we can change later."*
+
+**What changed.** The mock provider used to be **hard-locked off whenever real money was LIVE** —
+`setPaymentControls` refused to persist `provider=mock`, `resolveActiveAdapter` refused at dispatch
+(`PROVIDER_DOWN` + SECURITY audit), and `demoAsync` was force-off. That forced pre-launch testers
+onto real Selcom. Those hard-locks are **removed**. Admins may now switch the provider — **including
+to the mock** — from `/admin/payments` in **any** money mode, with no Railway env change or redeploy.
+
+**The guardrails that replace the locks (not blocks):**
+- **The mock is a self-contained simulator** — it does not touch the real payment gateway in either
+  direction. Selecting it while real money is LIVE is a deliberate **simulation**.
+- **Typed confirm.** Switching to the mock while `isLiveMoneyMode()` requires typing `MOCK` in the
+  control-plane confirm (hard tier).
+- **Persistent banner.** While the mock is active on real money, `/admin/payments` shows a loud,
+  role="alert" banner (`simulationActiveOnLiveMoney`) and the active-provider chip reads "· SIM";
+  the boot alarm logs a NOTICE. It can never run silently.
+- **Audited.** The switch writes a COMPLIANCE audit (`payments.simulation.activated`), and each
+  dispatch under the live-money simulation leaves a `payments.simulation.dispatch` breadcrumb.
+- **The ONE surviving gate:** a REAL provider (`selcom`/`azampay`) still cannot be selected until its
+  credentials are present — otherwise every call would fail.
+- **The kill-switch remains the emergency STOP** — to halt payments, use it, not the mock.
+
+**Why this is acceptable:** the state is impossible to reach by accident (typed confirm), impossible
+to leave running unseen (persistent banner + audit + boot notice), and cannot move real funds (the
+mock does not reach the real rail). Provider selection is an operational, reversible control — not a
+money-minting one (that is `TEST_FUNDING`, which stays deployment-level and is NOT here).
+
+**Code:** `src/lib/server/payment-control.ts` · `payments.ts` (`resolveActiveAdapter`) ·
+`admin/payments/control-plane.tsx`.
+**Tests:** `test:payment-control` (mock selectable + dispatch runs the simulator in LIVE; demo-async
+settable; credential gate remains; simulation flag, 39/39) · `test:payment-killswitch` (kill-switch
+still the stop, 11/11).
+
+---
+
 ## 2026-07-24 · Per-market scheduled resolution: operator-controlled auto-resolve + timer-driven settlement
 
 **Owner decision:** Ali, explicit, 2026-07-24 (authorised in-session), as part of replacing the
@@ -182,6 +272,13 @@ describing the full refund.
 ---
 
 ## 2026-07-17 · Solo-resolution override: real-money-state lock (replaces the NODE_ENV hard-lock)
+
+> ⚠️ **HISTORICAL — SUPERSEDED by the 2026-07-24 "Single-admin resolution by default"
+> entry above.** The `allowConflictedResolution` override, its hard-lock
+> (`isConflictOverrideHardLocked`), the officer-conflict block and the whole
+> `test-overrides.ts` module were **removed**. Single-admin resolution is now the
+> permanent DEFAULT with no hard-lock, and two-admin authorization is the optional
+> toggle. Kept for provenance; do NOT restore anything described below.
 
 **Owner decision:** Ali, explicit, 2026-07-17 (authorised in-session).
 

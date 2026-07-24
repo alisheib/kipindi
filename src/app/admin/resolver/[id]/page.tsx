@@ -7,7 +7,7 @@ import { I } from "@/components/ui/glyphs";
 import { ProbabilityBar } from "@/components/markets/probability-bar";
 import { CountdownRing } from "@/components/positions/countdown-ring";
 import { getMarket, impliedYesPct, listPositionsForMarket } from "@/lib/server/market-service";
-import { getConflictedResolutionAllowed } from "@/lib/server/test-overrides";
+import { getRequireTwoOfficerResolution } from "@/lib/server/resolution-policy";
 import { getAuditPage } from "@/lib/server/audit";
 import { officerLabel } from "@/lib/server/actor-label";
 import { currentSession } from "@/lib/server/auth-service";
@@ -39,10 +39,12 @@ export default async function ResolutionCeremonyPage({ params }: { params: Promi
   const stage1By = m.resolutionStage1By;
   const stage2By = m.resolutionStage2By;
   const stage: "stage1" | "stage2" = stage1By ? "stage2" : "stage1";
-  // The testing override (resolver-queue toggle) lets one officer seal their own
-  // stage-1 for solo resolution — so don't block self-countersign when it's ON.
-  const testingOverride = await getConflictedResolutionAllowed().catch(() => false);
-  const isSelfCountersign = stage === "stage2" && !!currentOfficerId && currentOfficerId === stage1By && !testingOverride;
+  // Two-admin authorization (resolver-queue toggle, default OFF): the ONE flag for
+  // how many officers a resolution needs. OFF ⇒ single admin seals in one action —
+  // no second officer, no self-countersign block. ON ⇒ stage-2 must be a DIFFERENT
+  // officer, so a same-officer countersign is blocked.
+  const requireTwoOfficer = await getRequireTwoOfficerResolution().catch(() => false);
+  const isSelfCountersign = requireTwoOfficer && stage === "stage2" && !!currentOfficerId && currentOfficerId === stage1By;
 
   const [officerA, officerB] = await Promise.all([officerLabel(stage1By), officerLabel(stage2By)]);
 
@@ -83,10 +85,12 @@ export default async function ResolutionCeremonyPage({ params }: { params: Promi
                   <Chip size="sm" variant={m.status === "VOIDED" ? "claret" : "resolved"}>
                     {m.status === "VOIDED" ? "VOIDED" : `SEALED · ${m.resolvedOutcome}`}
                   </Chip>
-                ) : stage === "stage2" ? (
+                ) : requireTwoOfficer && stage === "stage2" ? (
                   <Chip size="sm" variant="warning">{CEREMONY.awaitingSecondOfficer.en.toUpperCase()}</Chip>
-                ) : (
+                ) : requireTwoOfficer ? (
                   <Chip size="sm" variant="pending">{CEREMONY.awaitingStage1.en.toUpperCase()}</Chip>
+                ) : (
+                  <Chip size="sm" variant="pending">AWAITING RESOLUTION</Chip>
                 )}
                 <span className="ml-auto font-mono text-[10px] text-text-subtle">{m.id}</span>
               </div>
@@ -170,23 +174,39 @@ export default async function ResolutionCeremonyPage({ params }: { params: Promi
 
           {/* ── Verdict rail (right) ─────────────────────────────────────── */}
           <div className="space-y-4 lg:sticky lg:top-4">
-            <AdminCard title={CEREMONY.twoOfficerAttestation.en} sw={CEREMONY.twoOfficerAttestation.sw}>
-              <div className="grid grid-cols-2 gap-2">
+            <AdminCard
+              title={requireTwoOfficer ? CEREMONY.twoOfficerAttestation.en : "Resolving officer"}
+              sw={requireTwoOfficer ? CEREMONY.twoOfficerAttestation.sw : "Afisa mtatuzi"}
+            >
+              {requireTwoOfficer ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <AttestSlot
+                    label={`Officer A · ${CEREMONY.stage1.en}`}
+                    name={officerA}
+                    at={m.resolutionStage1At}
+                    outcome={stage1By ? m.resolvedOutcome : null}
+                    color={verdictColor(m.resolvedOutcome)}
+                  />
+                  <AttestSlot
+                    label={`Officer B · ${CEREMONY.stage2.en}`}
+                    name={officerB}
+                    at={m.resolutionStage2At}
+                    outcome={stage2By ? m.resolvedOutcome : null}
+                    color={verdictColor(m.resolvedOutcome)}
+                  />
+                </div>
+              ) : (
+                // Single-admin authorization: ONE officer seals. Show a single slot
+                // (stage-1 and stage-2 stamp the same officer) — not a two-slot grid
+                // that would imply a second signatory that never existed.
                 <AttestSlot
-                  label={`Officer A · ${CEREMONY.stage1.en}`}
+                  label="Resolved by"
                   name={officerA}
-                  at={m.resolutionStage1At}
+                  at={m.resolutionStage1At ?? m.resolutionStage2At}
                   outcome={stage1By ? m.resolvedOutcome : null}
                   color={verdictColor(m.resolvedOutcome)}
                 />
-                <AttestSlot
-                  label={`Officer B · ${CEREMONY.stage2.en}`}
-                  name={officerB}
-                  at={m.resolutionStage2At}
-                  outcome={stage2By ? m.resolvedOutcome : null}
-                  color={verdictColor(m.resolvedOutcome)}
-                />
-              </div>
+              )}
             </AdminCard>
 
             {/* Objection window — only exists once sealed. */}
@@ -212,7 +232,10 @@ export default async function ResolutionCeremonyPage({ params }: { params: Promi
             )}
 
             {/* Verdict controls (or a sealed banner when done). */}
-            <AdminCard title={settled ? "Sealed" : stage === "stage2" ? "Countersign & seal" : "Stage-1 attestation"} sw={settled ? undefined : "Hatua ya utatuzi"}>
+            <AdminCard
+              title={settled ? "Sealed" : requireTwoOfficer ? (stage === "stage2" ? "Countersign & seal" : "Stage-1 attestation") : "Resolve & seal"}
+              sw={settled ? undefined : "Hatua ya utatuzi"}
+            >
               {settled ? (
                 <div className="flex items-start gap-2.5">
                   <I.shieldcheck s={18} style={{ color: verdictColor(m.resolvedOutcome) }} className="mt-0.5 shrink-0" />
@@ -221,7 +244,9 @@ export default async function ResolutionCeremonyPage({ params }: { params: Promi
                       {m.status === "VOIDED" ? "Voided · stakes refunded" : `Sealed ${m.resolvedOutcome}`}
                     </p>
                     <p className="mt-0.5 text-[12px] text-text-muted">
-                      Both officers attested. The verdict is published and the audit entry is immutable.
+                      {stage1By && stage2By && stage1By !== stage2By
+                        ? "Both officers attested. The verdict is published and the audit entry is immutable."
+                        : "Resolved by an officer. The verdict is published and the audit entry is immutable."}
                     </p>
                   </div>
                 </div>
@@ -231,6 +256,7 @@ export default async function ResolutionCeremonyPage({ params }: { params: Promi
                   stage={stage}
                   stagedOutcome={m.resolvedOutcome}
                   isSelfCountersign={isSelfCountersign}
+                  twoAdmin={requireTwoOfficer}
                 />
               )}
             </AdminCard>

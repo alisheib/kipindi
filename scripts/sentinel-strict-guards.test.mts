@@ -20,6 +20,11 @@ process.env.SESSION_SECRET ??= "test-only-session-secret-32chars-min-aaaa";
 delete process.env.ANTHROPIC_API_KEY;
 
 import { createMarket, resolveMarket, getMarket } from "../src/lib/server/market-service.ts";
+import { setRequireTwoOfficerResolution } from "../src/lib/server/resolution-policy.ts";
+// This suite asserts the stage-1 (LIVE→CLOSED, no seal) behaviour, which only exists
+// under the two-officer ceremony. Two-admin authorization is OFF by default now, so
+// enable it here. (Single-admin one-action sealing is proven in test:two-admin.)
+await setRequireTwoOfficerResolution(true, "sentinel-guards-setup");
 import { marketStore } from "../src/lib/server/market-dal.ts";
 import { db } from "../src/lib/server/store.ts";
 
@@ -164,7 +169,7 @@ section("3. Two-officer dance");
   // Stage 2 by Alice again → blocked
   const s2a = await resolveMarket({ marketId: mkt.id, outcome: "YES", officerId: "off_sg_alice" });
   ok("3.2 same officer for stage-2 → blocked", !s2a.ok);
-  ok("3.3 error says 'different reviewer'", (s2a as { error?: string }).error?.includes("different reviewer") ?? false);
+  ok("3.3 error says a different officer must confirm", (s2a as { error?: string }).error?.includes("different officer") ?? false);
 
   // Stage 2 by Bob with DIFFERENT outcome → blocked
   const s2b = await resolveMarket({ marketId: mkt.id, outcome: "NO", officerId: "off_sg_bob" });

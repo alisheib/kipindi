@@ -43,6 +43,13 @@ import {
   countOpenObjections, objectionEligibility,
 } from "../src/lib/server/objections-service.ts";
 import { getGlobalConfig } from "../src/lib/server/market-config.ts";
+import { setRequireTwoOfficerResolution } from "../src/lib/server/resolution-policy.ts";
+
+// This suite's `adjudicate()` helper models a two-DISTINCT-officer ceremony (stage-1
+// by alpha, stage-2 by beta). Two-admin authorization is OPTIONAL and OFF by default
+// now, so enable it for the bulk of the suite; the final block flips it OFF to prove
+// the single-admin one-action path hits the SAME objection/settlement gate.
+await setRequireTwoOfficerResolution(true, "settlement-gate-setup");
 
 let pass = 0, fail = 0;
 const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; console.log(`${c ? "PASS" : "FAIL"} ${l}${x ? ` — ${x}` : ""}`); };
@@ -684,6 +691,40 @@ async function closeWindow(mid: string): Promise<void> {
   ok("12: a paid market arms no further trigger (the scheduler cannot double-pay)",
      !getSchedulerHealth().entries.some((e) => e.marketId === mid3),
      JSON.stringify(getSchedulerHealth().entries.filter((e) => e.marketId === mid3)));
+}
+
+// ═══ 13 · SINGLE-ADMIN default hits the SAME gate ══════════════════════════
+// Two-admin authorization OFF (the platform default): a single officer resolves in
+// ONE action. The objection window, the no-pay-while-open gate, and the per-market
+// settle trigger must behave IDENTICALLY to the two-officer path above.
+{
+  await setRequireTwoOfficerResolution(false, "settlement-gate-single-admin");
+  const mid = await makeMarket();
+  await fundedUser("g13_win");
+  await fundedUser("g13_lose");
+  await buyPosition("g13_win", { marketId: mid, side: "YES", stake: 8_000 });
+  await buyPosition("g13_lose", { marketId: mid, side: "NO", stake: 8_000 });
+
+  const winBefore = await bal("g13_win");
+  const poolBefore = await pool(mid);
+
+  // ONE call seals it — no second officer.
+  const r = await resolveMarket({ marketId: mid, outcome: "YES", officerId: "gate_solo" });
+  const m = (await getMarket(mid))!;
+  ok("13: single admin resolves in one action (stage complete)", r.ok && r.data?.stage === "complete", r.ok ? "" : r.error);
+  ok("13: market is RESOLVED", m.status === "RESOLVED", `status=${m.status}`);
+  ok("13: objection window is OPEN", !!m.objectionsClosedAt && Date.parse(m.objectionsClosedAt) > Date.now());
+  ok("13: winner NOT paid while the window is open (same gate)", (await bal("g13_win")) === winBefore,
+     `delta=${(await bal("g13_win")) - winBefore}`);
+  ok("13: settledAt is null (money has not moved)", m.settledAt === null, `settledAt=${m.settledAt}`);
+  ok("13: the pool is still intact", (await pool(mid)) === poolBefore, `pool=${await pool(mid)} was=${poolBefore}`);
+
+  // Window closes → the per-market trigger pays, exactly like the two-officer path.
+  await closeWindow(mid);
+  const cBefore = await bal("g13_win");
+  const fired = await runDueMarketTransitions();
+  ok("13: single-admin market settles via the same timer path once its window closes",
+     (await bal("g13_win")) > cBefore, `delta=${(await bal("g13_win")) - cBefore} ${JSON.stringify(fired)}`);
 }
 
 console.log(`\nsettlement-gate: ${pass} passed, ${fail} failed`);

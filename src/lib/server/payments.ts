@@ -162,12 +162,15 @@ export async function dispatchWithdrawal(opts: { provider: PaymentProvider; amou
 // ── ADAPTER SELECTION ─────────────────────────────────────────────────────────
 
 /**
- * Resolve the adapter to use for THIS dispatch, honouring the runtime control-plane
- * and the LIVE-mode safety guard. ⛔ Real money never runs on the mock: the mock
- * fabricates confirmations, so routing to it in LIVE mode would mint/lose money.
- * Refuse + SECURITY-audit; the operator halts payments with the kill-switch and
- * resumes by selecting a real provider (belt-and-braces with `setPaymentControls`,
- * which refuses to even persist `provider=mock` in LIVE mode).
+ * Resolve the adapter to use for THIS dispatch, honouring the runtime control-plane.
+ * Dispatch now HONOURS whatever provider is selected in every money mode — including
+ * the mock in LIVE mode, which is a deliberate SIMULATION (owner decision 2026-07-24,
+ * docs/COMPLIANCE-DECISIONS.md): the mock is a self-contained bubble that does not
+ * touch the real payment rail. The admin surface flags an active live-money
+ * simulation loudly (persistent banner) and the switch is COMPLIANCE-audited at
+ * selection time; the kill-switch remains the emergency STOP. When the mock is
+ * simulating on real money, leave a breadcrumb per dispatch so the audit trail shows
+ * exactly which flows ran on the simulator.
  */
 async function resolveActiveAdapter(
   flow: "deposit" | "withdraw",
@@ -176,14 +179,13 @@ async function resolveActiveAdapter(
   const provider = await getPaymentProvider();
   if (isLiveMoneyMode() && provider === "mock") {
     audit({
-      category: "SECURITY",
-      action: "payments.live_mock_refused",
+      category: "COMPLIANCE",
+      action: "payments.simulation.dispatch",
       actorId: null,
       targetType: "PaymentControlPlane",
       targetId: flow,
-      payload: { correlationId, note: "Real money is LIVE but the active provider is the mock — refusing to move money on a fabricated rail." },
+      payload: { correlationId, note: "Real money is LIVE and the active provider is the mock — this flow ran on the simulator (deliberate), not the real payment rail." },
     });
-    return { ok: false };
   }
   return { ok: true, adapter: adapterFor(provider) };
 }

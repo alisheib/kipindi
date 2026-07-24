@@ -1,20 +1,22 @@
 /**
- * Payments operations control-plane — resolver + LIVE-mode hard-lock proofs.
+ * Payments operations control-plane — resolver + operator-switchable-provider proofs.
  *
- * Pins the safety matrix so nobody can silently widen it: the mock is forbidden on
- * real money, a real provider must be configured before it can be selected, and
- * demo-async is forced off in LIVE mode. Also confirms the env-fallback behaviour
- * (no DB override → behave exactly as the deployment env did) and the dispatch-level
- * refusal (real money never routes to the mock). No real DB — the in-memory store
- * is reset between phases.
+ * Owner decision 2026-07-24 (docs/COMPLIANCE-DECISIONS.md): admins may switch the
+ * provider — INCLUDING to the mock — in ANY money mode; the LIVE-mode mock/demo-async
+ * hard-locks are GONE. This suite pins the NEW matrix so nobody re-adds a hard-lock
+ * or silently removes the remaining guardrail: the mock is always selectable and, in
+ * LIVE mode, dispatch HONOURS it as a deliberate simulation (flagged, not refused);
+ * demo-async is settable in every mode; the ONE surviving gate is that a REAL
+ * provider must be configured before it can be selected. Also confirms the
+ * env-fallback behaviour (no DB override → behave exactly as the deployment env did).
+ * No real DB — the in-memory store is reset between phases.
  *
  * The old global `autoSettle` / `AUTO_SETTLE` axis is DELETED — settlement is now
  * driven by per-market timers (market-scheduler.ts), not by a payments toggle. The
  * assertions that used to cover it are replaced (not dropped) by pins that the axis
  * cannot come back through this control-plane: the view exposes no settlement field,
  * the env fallback hint carries no settlement key, and a stray `autoSettle` in an
- * update is inert. Plus the credential gate and the no-partial-application rule are
- * now proven in TEST mode too, not only in LIVE.
+ * update is inert.
  */
 import {
   getPaymentProvider,
@@ -108,38 +110,41 @@ const smuggled = await setPaymentControls({ autoSettle: true } as unknown as Par
 ok("TEST: stray autoSettle field is inert (not stored, not on the view)",
   smuggled.ok === true && !("autoSettle" in smuggled.controls) && g.__50PICK_PAY_CONTROL.autoSettle === undefined);
 
-// ── LIVE-mode hard-locks ──────────────────────────────────────────────────────
+// ── LIVE-mode: NO hard-locks — provider is operator-switchable, mock guardrailed ─
 resetStore(); setEnv("production", undefined); setCreds(true);
 const mockLive = await setPaymentControls({ provider: "mock" }, "officer");
-ok("LIVE: provider=mock REFUSED", mockLive.ok === false);
+ok("LIVE: provider=mock now ALLOWED (deliberate simulation)", mockLive.ok === true);
+ok("LIVE: provider now mock", (await getPaymentProvider()) === "mock");
 const demoLive = await setPaymentControls({ demoAsync: true }, "officer");
-ok("LIVE: demoAsync=true REFUSED", demoLive.ok === false);
-ok("LIVE: demoAsync forced off", (await getDemoAsyncEnabled()) === false);
+ok("LIVE: demoAsync=true now ALLOWED", demoLive.ok === true);
+ok("LIVE: demoAsync honoured (not forced off)", (await getDemoAsyncEnabled()) === true);
+// The ONE surviving gate: a REAL provider must still have its creds.
 setCreds(false);
 const selcomNoCreds = await setPaymentControls({ provider: "selcom" }, "officer");
-ok("LIVE: selcom w/o creds REFUSED", selcomNoCreds.ok === false);
+ok("LIVE: selcom w/o creds still REFUSED (credential gate remains)", selcomNoCreds.ok === false);
 setCreds(true);
 const selcomLive = await setPaymentControls({ provider: "selcom" }, "officer");
 ok("LIVE: selcom WITH creds → ok", selcomLive.ok === true);
 
-// ── getPaymentControls view (LIVE, mock via env fallback = misconfig) ─────────
+// ── getPaymentControls view (LIVE, mock via env fallback = active simulation) ──
 resetStore(); setEnv("production", undefined); setCreds(false); delete E.PAYMENT_AGGREGATOR;
 const view = await getPaymentControls();
 ok("view mode LIVE", view.mode === "LIVE");
 ok("view provider mock (fallback)", view.provider === "mock");
-ok("view liveMockRefused true", view.liveMockRefused === true);
-ok("view locks.mockForbidden true", view.locks.mockForbidden === true);
-ok("view locks.demoAsyncLocked true", view.locks.demoAsyncLocked === true);
-ok("view selectable.mock false (LIVE)", view.selectable.mock === false);
+ok("view simulationActiveOnLiveMoney true", view.simulationActiveOnLiveMoney === true);
+ok("view locks.mockForbidden false (no hard-lock)", view.locks.mockForbidden === false);
+ok("view locks.demoAsyncLocked false (no hard-lock)", view.locks.demoAsyncLocked === false);
+ok("view selectable.mock true (always selectable)", view.selectable.mock === true);
 ok("view selectable.selcom false (no creds)", view.selectable.selcom === false);
 setCreds(true);
 const view2 = await getPaymentControls();
 ok("view selectable.selcom true (creds present)", view2.selectable.selcom === true);
+ok("view simulationActiveOnLiveMoney still true (provider still mock)", view2.simulationActiveOnLiveMoney === true);
 
-// ── Dispatch-level: real money NEVER routes to the mock ───────────────────────
+// ── Dispatch-level: LIVE + mock now RUNS (a deliberate simulation), not refused ─
 resetStore(); setEnv("production", undefined); delete E.PAYMENT_AGGREGATOR; setCreds(false); // → provider resolves mock
 const dep = await dispatchDeposit({ provider: "MPESA", amount: 1000, userId: "u_test" });
-ok("LIVE + mock → dispatch refused PROVIDER_DOWN", dep.ok === false && dep.reason === "PROVIDER_DOWN");
+ok("LIVE + mock → dispatch RUNS the simulator (ok)", dep.ok === true);
 
 // TEST mode: mock is allowed to run.
 resetStore(); setEnv("development", undefined); delete E.PAYMENT_AGGREGATOR;

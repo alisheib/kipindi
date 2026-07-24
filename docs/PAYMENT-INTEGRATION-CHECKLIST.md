@@ -11,7 +11,11 @@
   pattern (mirrors `sms.ts`). `dispatchDeposit`/`dispatchWithdrawal` (the wrapper)
   own the correlation id, the `*.dispatch` audit, and the **AML ≥ 1M review hold**.
   `pickAdapter()` selects `mock` (default) / `selcom` / `azampay` on
-  `PAYMENT_AGGREGATOR`. The real adapters currently `throw NOT_WIRED`.
+  `PAYMENT_AGGREGATOR` OR the runtime control-plane override (`/admin/payments`).
+  **`selcomAdapter` is WIRED** (real deposit/withdraw); only `azampayAdapter` still
+  `throw`s `NOT_WIRED` (AzamPay is not contracted). The **mock is operator-selectable
+  in every money mode** (owner decision 2026-07-24) — a deliberate simulation with a
+  typed "MOCK" confirm + persistent banner; it does NOT touch the real gateway.
 - **Inbound webhook** — `src/app/api/webhooks/payments/route.ts`: HMAC-SHA-256 over
   `${timestamp}.${body}`, mandatory timestamp + 5-min replay window, timing-safe,
   per-provider secret, **fails closed** in prod.

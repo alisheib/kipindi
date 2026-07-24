@@ -32,6 +32,11 @@ process.env.MARKET_SCHEDULER = "false";
 
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import { createMarket, buyPosition, cashOutPosition, getMarket, resolveMarket, settleMarket, listPositionsForMarket, ratesFor } from "../src/lib/server/market-service.ts";
+import { setRequireTwoOfficerResolution } from "../src/lib/server/resolution-policy.ts";
+// This suite's helpers model a two-DISTINCT-officer resolution (alpha stages, beta
+// seals). Two-admin authorization is OFF by default now, so enable it here so the
+// two-call flow behaves as written. (Single-admin is proven in test:two-admin.)
+await setRequireTwoOfficerResolution(true, "money-invariants-setup");
 import { runDueMarketTransitions } from "../src/lib/server/market-scheduler.ts";
 import { poolFee } from "../src/lib/payout.ts";
 import { setGlobalConfig } from "../src/lib/server/market-config.ts";

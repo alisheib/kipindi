@@ -146,6 +146,38 @@ for (const f of srcFiles) {
   }
 }
 
+// ── RESOLVE · the retired solo-resolution override must not return ────────────
+// Single-admin resolution + optional two-admin authorization (2026-07-24,
+// docs/COMPLIANCE-DECISIONS.md) DELETED the old `allowConflictedResolution`
+// "solo-resolution" override module (test-overrides.ts) and the officer-conflict
+// hard-lock. The ONE control is now resolution-policy.ts. These symbols must stay
+// dead in LIVE code — a returning one would mean two places controlling one thing.
+{
+  const DEAD_SYMBOLS = [
+    "allowConflictedResolution",
+    "getConflictedResolutionAllowed",
+    "setConflictedResolutionAllowed",
+    "isConflictOverrideHardLocked",
+    "assertProductionComplianceLocks",
+  ];
+  for (const f of srcFiles) {
+    for (const [i, line] of read(f).split("\n").entries()) {
+      const s = line.trim();
+      // Comments are allowed to NAME these — several files document the removal.
+      if (s.startsWith("//") || s.startsWith("*") || s.startsWith("/*")) continue;
+      for (const sym of DEAD_SYMBOLS) {
+        if (new RegExp(`\\b${sym}\\b`).test(line)) {
+          fail("RESOLVE", `${f}:${i + 1}: live reference to removed symbol '${sym}' — resolution authorization is one flag now (resolution-policy.ts)`);
+        }
+      }
+      // The deleted module itself must never be imported again.
+      if (/from\s+["'][^"']*\/test-overrides["']/.test(line)) {
+        fail("RESOLVE", `${f}:${i + 1}: imports the deleted test-overrides module — use resolution-policy.ts`);
+      }
+    }
+  }
+}
+
 if (fails.length) {
   console.error(`\ncontent-integrity: ${fails.length} FAILURE(S) — misleading/superseded content detected:\n` + fails.map((x) => "  ✗ " + x).join("\n") + "\n");
   process.exit(1);

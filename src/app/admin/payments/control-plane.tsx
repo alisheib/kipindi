@@ -2,13 +2,16 @@
 
 /**
  * Operations control-plane — the master mode indicator + the runtime payment
- * toggles (provider · auto-settle · demo-async). Every change goes through the
- * audited `setPaymentControlsAction`; the LIVE-mode hard-locks are enforced
- * server-side in `setPaymentControls`, and mirrored here as disabled affordances
- * with a plain-language reason so an officer never fights an invisible wall.
+ * toggles (provider · demo-async). Every change goes through the audited
+ * `setPaymentControlsAction`. Admins may switch the provider — including to the
+ * mock — in ANY money mode (owner decision 2026-07-24). There are no hard-locks;
+ * the guardrails are: a real provider needs its creds, switching TO the mock while
+ * real money is LIVE demands a typed "MOCK" confirm (it is a deliberate simulation),
+ * and a persistent banner shows for as long as that simulation is active.
  *
- * Consequential changes (switching the money rail, arming auto-settle) route
- * through <ConfirmModal>. Reversible/test toggles apply directly.
+ * Consequential changes (switching the money rail) route through <ConfirmModal>;
+ * the mock-on-live-money switch uses its hard (type-the-word) tier. Reversible/test
+ * toggles apply directly.
  */
 import { useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
@@ -23,7 +26,7 @@ import type { PaymentControlsView, PaymentProviderId } from "@/lib/server/paymen
 
 const PROVIDER_LABEL: Record<PaymentProviderId, string> = { mock: "Mock (test)", selcom: "Selcom", azampay: "AzamPay" };
 
-type Pending = { update: Record<string, string>; title: string; body: ReactNode; confirmLabel: string; tone: "brand" | "warning" | "claret" } | null;
+type Pending = { update: Record<string, string>; title: string; body: ReactNode; confirmLabel: string; tone: "brand" | "warning" | "claret"; tier?: "medium" | "hard"; typedWord?: string } | null;
 
 export function ControlPlane({ controls }: { controls: PaymentControlsView }) {
   const [busy, startTransition] = useTransition();
@@ -49,18 +52,35 @@ export function ControlPlane({ controls }: { controls: PaymentControlsView }) {
 
   const chooseProvider = (p: PaymentProviderId) => {
     if (p === controls.provider) return;
-    const selectable = p === "mock" ? controls.selectable.mock : controls.selectable[p];
+    const selectable = controls.selectable[p];
     if (!selectable) {
-      toast({ title: "Unavailable", description: p === "mock" ? "The mock cannot be selected while real money is live — use the kill-switch to pause payments." : `${PROVIDER_LABEL[p]} is not configured yet (set its API credentials in Railway).`, variant: "danger" });
+      // Only reachable for a real provider whose creds are missing — the mock is
+      // always selectable now.
+      toast({ title: "Unavailable", description: `${PROVIDER_LABEL[p]} is not configured yet (set its API credentials in Railway).`, variant: "danger" });
       return;
     }
     const toReal = p !== "mock";
+    // Switching TO the mock while real money is LIVE is a deliberate SIMULATION —
+    // demand a typed "MOCK" confirm (hard tier) and colour it claret.
+    const mockOnLive = p === "mock" && live;
     setPending({
       update: { provider: p },
-      title: `Switch payment rail to ${PROVIDER_LABEL[p]}?`,
-      tone: toReal ? "warning" : "brand",
-      confirmLabel: `Switch to ${PROVIDER_LABEL[p]}`,
-      body: (
+      title: mockOnLive ? "Simulate payments on real money?" : `Switch payment rail to ${PROVIDER_LABEL[p]}?`,
+      tone: mockOnLive ? "claret" : toReal ? "warning" : "brand",
+      tier: mockOnLive ? "hard" : "medium",
+      typedWord: mockOnLive ? "MOCK" : undefined,
+      confirmLabel: mockOnLive ? "Start simulation" : `Switch to ${PROVIDER_LABEL[p]}`,
+      body: mockOnLive ? (
+        <>
+          Real money is <strong>LIVE</strong>, and you are switching the rail to the <strong>mock</strong>.
+          The mock is a self-contained simulator — it does <strong>not</strong> touch the real payment
+          gateway in either direction. While it is active, deposits and withdrawals are simulated, not real.
+          <span className="mt-2 block">
+            This is a deliberate operator action, audited as a compliance event, and a persistent banner
+            will show here until you switch back to a real provider. Type <strong>MOCK</strong> to confirm.
+          </span>
+        </>
+      ) : (
         <>
           The active payment rail becomes <strong>{PROVIDER_LABEL[p]}</strong>. All new deposits and
           withdrawals route through it immediately. {toReal
@@ -102,42 +122,43 @@ export function ControlPlane({ controls }: { controls: PaymentControlsView }) {
               the selector. These are the two facts an operator needs before
               touching anything ("is this real money, and who is taking it?"),
               and reading them used to mean reading two separate cards. */}
-          <Chip size="lg" variant={controls.liveMockRefused ? "danger" : "neutral"}>
+          <Chip size="lg" variant={controls.simulationActiveOnLiveMoney ? "warning" : "neutral"}>
             <I.mobileMoney s={14} />
             {PROVIDER_LABEL[controls.provider]}
-            {!controls.liveMockRefused && controls.gatewayConfigured && controls.provider !== "mock" && <I.check s={13} className="text-yes-300" />}
+            {controls.simulationActiveOnLiveMoney && <span className="ml-1 font-mono text-[10px]">· SIM</span>}
+            {!controls.simulationActiveOnLiveMoney && controls.gatewayConfigured && controls.provider !== "mock" && <I.check s={13} className="text-yes-300" />}
           </Chip>
           <div className="min-w-0">
             <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">Operations mode · Hali ya uendeshaji</p>
             <p className="text-caption text-text-secondary">
               {live
-                ? "Real deposits & withdrawals move real money. Compliance-critical rails are hard-locked."
+                ? "Real deposits & withdrawals move real money. The provider is operator-switchable; the kill-switch is the emergency stop."
                 : "Pre-launch test float — no real money. Toggles below are freely settable for testing."}
             </p>
           </div>
         </div>
 
-        {/* ── THE ONE THING BLOCKING A REAL DEPOSIT ──────────────────────────
-            This was a two-line hint. It is the single most consequential state
-            this page can be in — real money is on, and every player trying to
-            deposit is being refused — so it now states the live consequence in
-            the present tense and names the exact control that fixes it.
-            role="alert" because it describes an active failure, not a note. */}
-        {controls.liveMockRefused && (
+        {/* ── PERSISTENT SIMULATION BANNER ───────────────────────────────────
+            Real money is on AND the active rail is the mock — a deliberate
+            simulation. This is not a failure, but it must never run silently:
+            deposits/withdrawals are simulated, not real. Shows for as long as the
+            simulation is active. role="alert" because operators must notice it. */}
+        {controls.simulationActiveOnLiveMoney && (
           <Callout
-            tone="danger"
+            tone="warning"
             emphasis="strong"
             live
             glyph="warning"
             className="mt-3"
-            title="Every deposit is being refused right now"
+            title="Payment simulation is active on real money"
           >
             <p>
-              Real money is <strong>LIVE</strong> but the active provider is the <strong>mock</strong>, which
-              takes no money. Every player deposit is failing with <code className="font-mono">PROVIDER_DOWN</code>.
+              Real money is <strong>LIVE</strong>, but the active provider is the <strong>mock</strong> — a
+              self-contained simulator that does <strong>not</strong> touch the real payment gateway. Deposits
+              and withdrawals are being <strong>simulated</strong>, not processed for real.
             </p>
             <p className="mt-2">
-              <strong className="text-text">To fix it:</strong> in <strong>Payment provider</strong> directly
+              <strong className="text-text">To process real payments:</strong> in <strong>Payment provider</strong> directly
               below, press <strong>Selcom</strong>.
               {controls.selectable.selcom
                 ? " That is the whole switch — it takes effect immediately."
@@ -177,7 +198,7 @@ export function ControlPlane({ controls }: { controls: PaymentControlsView }) {
         <div className="mt-2 inline-flex w-full flex-wrap gap-1.5 rounded-lg border border-border-subtle bg-bg-inset p-1.5" role="radiogroup" aria-label="Active payment provider">
           {providerOptions.map((p) => {
             const active = controls.provider === p;
-            const selectable = p === "mock" ? controls.selectable.mock : controls.selectable[p];
+            const selectable = controls.selectable[p];
             const disabled = busy || (!active && !selectable);
             return (
               <button
@@ -187,7 +208,7 @@ export function ControlPlane({ controls }: { controls: PaymentControlsView }) {
                 aria-checked={active}
                 disabled={disabled}
                 onClick={() => chooseProvider(p)}
-                title={!selectable && !active ? (p === "mock" ? "Disabled while real money is live" : "Not configured") : undefined}
+                title={!selectable && !active ? "Not configured" : undefined}
                 className="inline-flex min-h-[40px] flex-1 items-center justify-center gap-1.5 rounded-md px-3 font-mono text-[12px] font-bold uppercase tracking-[0.08em] transition-colors disabled:cursor-not-allowed disabled:opacity-40"
                 style={active
                   ? { background: "var(--brand-500)", color: "var(--pearl-50)" }
@@ -224,12 +245,12 @@ export function ControlPlane({ controls }: { controls: PaymentControlsView }) {
           icon={<I.clock s={14} />}
           label="Demo async (test)"
           sw="Majaribio ya async"
-          hint={controls.locks.demoAsyncLocked ? "TEST-only — locked off on real money." : controls.demoAsync ? "Mock returns PENDING; webhook settles." : "Mock settles synchronously."}
+          hint={controls.demoAsync ? "Mock returns PENDING; webhook settles." : "Mock settles synchronously."}
           on={controls.demoAsync}
           explicit={controls.demoAsyncExplicit}
           envValue={controls.env.demoAsync}
-          disabled={busy || controls.locks.demoAsyncLocked}
-          locked={controls.locks.demoAsyncLocked}
+          disabled={busy}
+          locked={false}
           onChange={(next) => apply({ demoAsync: String(next) })}
         />
       </div>
@@ -241,6 +262,8 @@ export function ControlPlane({ controls }: { controls: PaymentControlsView }) {
         title={pending?.title ?? ""}
         body={pending?.body ?? null}
         tone={pending?.tone ?? "brand"}
+        tier={pending?.tier ?? "medium"}
+        typedWord={pending?.typedWord}
         confirmLabel={pending?.confirmLabel}
       />
     </>

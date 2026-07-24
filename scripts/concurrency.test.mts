@@ -13,6 +13,11 @@
  */
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import { createMarket, buyPosition, resolveMarket, settleMarket, getMarket, cashOutPosition } from "../src/lib/server/market-service.ts";
+import { setRequireTwoOfficerResolution } from "../src/lib/server/resolution-policy.ts";
+// This suite races two DISTINCT officers through the two-stage ceremony. Two-admin
+// authorization is OFF by default now, so enable it so the stage-1/stage-2 flow the
+// races depend on behaves as written. (Single-admin is proven in test:two-admin.)
+await setRequireTwoOfficerResolution(true, "concurrency-setup");
 import { positionStore } from "../src/lib/server/market-dal.ts";
 import { withdraw } from "../src/lib/server/wallet-service.ts";
 import { bindRecruit, ensureAffiliateAccount, onRecruitBet } from "../src/lib/server/affiliate-service.ts";

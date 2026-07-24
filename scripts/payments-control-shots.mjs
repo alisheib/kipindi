@@ -32,7 +32,9 @@ ok("mode indicator present", modeBadge >= 1, `count=${modeBadge}`);
 const radiogroup = await page.getByRole("radiogroup", { name: /payment provider/i }).count();
 ok("provider radiogroup present", radiogroup >= 1, `count=${radiogroup}`);
 const switches = await page.getByRole("switch").count();
-ok("toggle switches present (auto-settle + demo-async)", switches >= 2, `count=${switches}`);
+// Auto-settle was removed (per-market timers own settlement now); only the
+// demo-async toggle remains on this control-plane.
+ok("demo-async toggle present", switches >= 1, `count=${switches}`);
 
 // Provider option tap targets ≥ 40px
 const radios = page.getByRole("radio");

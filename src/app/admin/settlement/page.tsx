@@ -46,7 +46,7 @@ export default async function AdminSettlementPage({ searchParams }: { searchPara
             </p>
           ) : (
             <p>
-              <strong>Settlement runs on per-market timers.</strong> When two officers seal a verdict
+              <strong>Settlement runs on per-market timers.</strong> When an officer seals a verdict
               (or the AI auto-resolves), that market gets its own timer set to its objection-window
               close; it pays itself then, provided no objection stands. This page is the human
               fallback — settle by hand, or see what an objection is freezing.
@@ -83,7 +83,7 @@ export default async function AdminSettlementPage({ searchParams }: { searchPara
               <EmptyState
                 kind="admin"
                 title="Nothing awaiting settlement"
-                body="Every resolved market has been paid. A market appears here once two officers have sealed its verdict — its money waits in the pool until you settle it."
+                body="Every resolved market has been paid. A market appears here once an officer has sealed its verdict — its money waits in the pool until you settle it."
               />
             </div>
           ) : (

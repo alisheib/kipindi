@@ -1,9 +1,10 @@
 /**
  * Public resolution-attestation page · /fairness
  *
- * Lists every recently-resolved market with its source URL, the two officers
- * who signed off, and the audit-chain entry. Anyone (regulator, lab, player)
- * can verify each resolution against its public source.
+ * Lists every recently-resolved market with its source URL, the officer(s) who
+ * signed off (one by default; two when two-admin authorization is enabled), and
+ * the audit-chain entry. Anyone (regulator, lab, player) can verify each
+ * resolution against its public source.
  */
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
@@ -162,14 +163,25 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
                       </Chip>
                     </td>
                     <td className="p-3 font-mono text-[11px] text-text-muted">
-                      <div className="flex items-center gap-1">
-                        <I.users s={11} />
-                        <span>{m.resolutionStage1By?.slice(0, 12) ?? "\u2014"}\u2026</span>
-                      </div>
-                      <div className="flex items-center gap-1 mt-0.5">
-                        <I.shieldcheck s={11} />
-                        <span>{m.resolutionStage2By?.slice(0, 12) ?? "\u2014"}\u2026</span>
-                      </div>
+                      {m.resolutionStage1By && m.resolutionStage2By && m.resolutionStage1By !== m.resolutionStage2By ? (
+                        <>
+                          <div className="flex items-center gap-1">
+                            <I.users s={11} />
+                            <span>{m.resolutionStage1By.slice(0, 12)}\u2026</span>
+                          </div>
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <I.shieldcheck s={11} />
+                            <span>{m.resolutionStage2By.slice(0, 12)}\u2026</span>
+                          </div>
+                        </>
+                      ) : (
+                        // Single-admin (the default): one officer sealed it \u2014 show one
+                        // line, not the same id twice under a two-signatory frame.
+                        <div className="flex items-center gap-1">
+                          <I.shieldcheck s={11} />
+                          <span>{(m.resolutionStage2By ?? m.resolutionStage1By)?.slice(0, 12) ?? "\u2014"}\u2026</span>
+                        </div>
+                      )}
                     </td>
                     <td className="p-3 font-mono text-[11px] text-text-muted whitespace-nowrap">{fmtTime(m.resolutionStage2At)}</td>
                     <td className="p-3">

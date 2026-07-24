@@ -10,9 +10,9 @@ import { listMarkets, impliedYesPct, type MarketCategory } from "@/lib/server/ma
 import { ProbabilityBar } from "@/components/markets/probability-bar";
 import { CircularProgress } from "@/components/markets/circular-progress";
 import { ResolveControls } from "./resolve-controls";
-import { ConflictOverrideToggle } from "./conflict-override-toggle";
+import { TwoAdminToggle } from "./two-admin-toggle";
 import { RecheckButton } from "./recheck-button";
-import { getConflictedResolutionAllowed, isConflictOverrideHardLocked } from "@/lib/server/test-overrides";
+import { getRequireTwoOfficerResolution } from "@/lib/server/resolution-policy";
 import { formatDateTime } from "@/lib/utils";
 import { CEREMONY, SELECTION } from "@/lib/admin-status-lexicon";
 
@@ -75,11 +75,12 @@ export default async function ResolverQueuePage({
   const overdueCount = pending.filter((m) => Date.parse(m.resolutionAt) <= now).length;
   const awaitingStage2 = pending.filter((m) => !!m.resolutionStage1By).length;
   const windowLabel = (WINDOW_OPTIONS.find((o) => o.value === windowFilter)?.label ?? "").toLowerCase();
-  const conflictOverride = await getConflictedResolutionAllowed().catch(() => false);
-  const conflictHardLocked = isConflictOverrideHardLocked();
-  // NOTE: the AI resolution pause + auto-resolve toggles used to live here. They now
-  // live ONLY in the admin top-bar "AI toolkit" dropdown (one place, no redundancy).
-  // This page keeps the non-AI Solo-resolve override and the per-market re-check.
+  // Two-admin authorization: OFF (default) = single admin resolves in one action;
+  // ON = two-officer ceremony. This is the ONE place it is controlled.
+  const requireTwoOfficer = await getRequireTwoOfficerResolution().catch(() => false);
+  // NOTE: the AI resolution pause + auto-resolve toggles live ONLY in the admin
+  // top-bar "AI toolkit" dropdown (one place, no redundancy). This page owns the
+  // two-admin authorization toggle + the per-market re-check.
 
   // Paginate
   const page = parsePage(sp.page, pending.length);
@@ -95,11 +96,11 @@ export default async function ResolverQueuePage({
         period={false}
         actions={
           <div className="flex items-center gap-2.5 flex-wrap">
-            <ConflictOverrideToggle enabled={conflictOverride} hardLocked={conflictHardLocked} />
+            <TwoAdminToggle enabled={requireTwoOfficer} />
             <div className="flex items-center gap-2.5 font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle">
               <span>{pending.length} pending</span>
               {overdueCount > 0 && <><span className="text-border">·</span><span className="text-claret-300">{overdueCount} overdue</span></>}
-              {awaitingStage2 > 0 && <><span className="text-border">·</span><span className="text-warning-300">{awaitingStage2} awaiting 2nd</span></>}
+              {requireTwoOfficer && awaitingStage2 > 0 && <><span className="text-border">·</span><span className="text-warning-300">{awaitingStage2} awaiting 2nd</span></>}
             </div>
           </div>
         }
@@ -239,42 +240,54 @@ export default async function ResolverQueuePage({
                     </div>
                   )}
 
-                  <div className="px-4 py-3 border-b border-border">
-                    <div className="flex items-center gap-2 mb-2">
-                      <I.users s={14} />
-                      <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-semibold text-text-muted">{CEREMONY.twoOfficerRule.en}</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 text-[12px]">
-                      <div className={`rounded-md border p-2 ${
-                        stage1
-                          ? (m.resolvedOutcome === "NO" ? "border-no-700 bg-no-500/10" : m.resolvedOutcome === "VOID" ? "border-claret-700 bg-claret-500/10" : "border-yes-700 bg-yes-500/10")
-                          : "border-border bg-bg-overlay"
-                      }`}>
-                        <div className="flex items-center gap-1.5">
-                          <I.shieldcheck s={12} />
-                          <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{CEREMONY.stage1.en}</span>
-                        </div>
-                        <p className={`mt-1 font-mono text-[11px] ${stage1 ? "text-text-muted" : "text-text-subtle"}`}>
-                          {stage1 ? `${m.resolutionStage1By?.slice(0, 14)}…` : "awaiting"}
-                        </p>
-                        {stage1 && m.resolvedOutcome && (
-                          <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle">
-                            staged <span className={`font-bold ${m.resolvedOutcome === "YES" ? "text-yes-300" : m.resolvedOutcome === "NO" ? "text-no-300" : "text-claret-300"}`}>{m.resolvedOutcome}</span>
+                  {/* The two-officer ceremony status only applies when two-admin
+                      authorization is ON. In single-admin mode (the default) one
+                      officer resolves in one action, so there is no stage-1/stage-2. */}
+                  {requireTwoOfficer ? (
+                    <div className="px-4 py-3 border-b border-border">
+                      <div className="flex items-center gap-2 mb-2">
+                        <I.users s={14} />
+                        <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-semibold text-text-muted">{CEREMONY.twoOfficerRule.en}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-[12px]">
+                        <div className={`rounded-md border p-2 ${
+                          stage1
+                            ? (m.resolvedOutcome === "NO" ? "border-no-700 bg-no-500/10" : m.resolvedOutcome === "VOID" ? "border-claret-700 bg-claret-500/10" : "border-yes-700 bg-yes-500/10")
+                            : "border-border bg-bg-overlay"
+                        }`}>
+                          <div className="flex items-center gap-1.5">
+                            <I.shieldcheck s={12} />
+                            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{CEREMONY.stage1.en}</span>
+                          </div>
+                          <p className={`mt-1 font-mono text-[11px] ${stage1 ? "text-text-muted" : "text-text-subtle"}`}>
+                            {stage1 ? `${m.resolutionStage1By?.slice(0, 14)}…` : "awaiting"}
                           </p>
-                        )}
-                      </div>
-                      <div className="rounded-md border border-border bg-bg-overlay p-2">
-                        <div className="flex items-center gap-1.5">
-                          <I.alertCircle s={12} />
-                          <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{CEREMONY.stage2.en}</span>
+                          {stage1 && m.resolvedOutcome && (
+                            <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle">
+                              staged <span className={`font-bold ${m.resolvedOutcome === "YES" ? "text-yes-300" : m.resolvedOutcome === "NO" ? "text-no-300" : "text-claret-300"}`}>{m.resolvedOutcome}</span>
+                            </p>
+                          )}
                         </div>
-                        <p className="mt-1 font-mono text-[11px] text-text-subtle">{stage1 ? `confirm ${m.resolvedOutcome}` : "unlocks after stage 1"}</p>
+                        <div className="rounded-md border border-border bg-bg-overlay p-2">
+                          <div className="flex items-center gap-1.5">
+                            <I.alertCircle s={12} />
+                            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{CEREMONY.stage2.en}</span>
+                          </div>
+                          <p className="mt-1 font-mono text-[11px] text-text-subtle">{stage1 ? `confirm ${m.resolvedOutcome}` : "unlocks after stage 1"}</p>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="px-4 py-3 border-b border-border">
+                      <div className="flex items-center gap-1.5">
+                        <I.shieldcheck s={12} className="text-text-subtle" />
+                        <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">Single-admin resolution · one action seals it</span>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="p-4 space-y-3">
-                    <ResolveControls marketId={m.id} stage={stage1 ? "stage2" : "stage1"} stagedOutcome={m.resolvedOutcome} />
+                    <ResolveControls marketId={m.id} stage={stage1 ? "stage2" : "stage1"} stagedOutcome={m.resolvedOutcome} twoAdmin={requireTwoOfficer} />
                     {/* Per-market AI re-check (replaces the old global sentinel sweep). */}
                     <RecheckButton marketId={m.id} />
                     {/* Full evidence-first ceremony (evidence excerpt + typed-SEAL). */}

@@ -707,8 +707,8 @@ export function notifyAdminKycReview(adminUserId: string, opts: { playerLabel: s
 }
 
 /**
- * In-app alert to an officer that a market has closed and is waiting for the
- * two-officer resolution. Lands in the main bell and deep-links to the resolver
+ * In-app alert to an officer that a market has closed and is waiting to be
+ * resolved. Lands in the main bell and deep-links to the resolver
  * queue. Fired once per market by the resolution-due sweep.
  */
 export function notifyAdminMarketResolution(adminUserId: string, opts: { title: string; marketId: string }) {
