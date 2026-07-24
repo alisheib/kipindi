@@ -1,10 +1,15 @@
 /**
- * AI operations config — admin-tunable model and sentinel sweep interval.
+ * AI operations config — the admin-tunable Claude model for poll generation and
+ * the per-market sentinel resolution check.
  *
- * Persisted to SystemConfig (production) via config-store; falls back to
- * env vars → code defaults without a DB (local dev / tests).
+ * Persisted to SystemConfig (production) via config-store; falls back to env vars →
+ * code defaults without a DB (local dev / tests). Changes take effect on the NEXT
+ * AI call — no redeploy.
  *
- * Changes take effect on the NEXT sentinel sweep or AI call — no redeploy.
+ * HISTORY: this also carried `sentinelIntervalMs` — the cadence of the global
+ * sentinel SWEEP. That sweep is gone (markets are now checked exactly at their own
+ * resolve time by the per-market scheduler), so the interval concept, its
+ * INTERVAL_OPTIONS and setSentinelInterval, went with it. Only the model remains.
  */
 import { loadConfig, saveConfig } from "./config-store";
 import { hasDatabase } from "./prisma";
@@ -14,17 +19,11 @@ import { hasDatabase } from "./prisma";
 // ---------------------------------------------------------------------------
 
 export type AiOpsConfig = {
-  /** Primary Claude model for poll generation + sentinel deep checks. */
+  /** Primary Claude model for poll generation + sentinel resolution checks. */
   model: string;
-  /** Sentinel sweep interval in milliseconds. */
-  sentinelIntervalMs: number;
 };
 
 const DEFAULT_MODEL = process.env.AI_MODEL || "claude-sonnet-4-6";
-const DEFAULT_INTERVAL_MS = parseInt(
-  process.env.SENTINEL_INTERVAL_MS || String(4 * 60 * 60_000),
-  10,
-);
 
 /** Models the admin can choose. Only production-grade IDs that actually work
  *  with the Anthropic API — no experimental/preview/deprecated. */
@@ -32,16 +31,6 @@ export const AVAILABLE_MODELS = [
   { id: "claude-haiku-4-5-20251001", label: "Haiku 4.5", cost: "$1 / $5 per MTok", tier: "Fast & cheap" },
   { id: "claude-sonnet-4-6",         label: "Sonnet 4.6", cost: "$3 / $15 per MTok", tier: "Balanced (default)" },
   { id: "claude-opus-4-6",           label: "Opus 4.6",   cost: "$5 / $25 per MTok", tier: "Most capable" },
-] as const;
-
-export const INTERVAL_OPTIONS = [
-  { ms: 15 * 60_000,      label: "Every 15 minutes" },
-  { ms: 30 * 60_000,      label: "Every 30 minutes" },
-  { ms: 60 * 60_000,      label: "Every 1 hour" },
-  { ms: 2 * 60 * 60_000,  label: "Every 2 hours" },
-  { ms: 4 * 60 * 60_000,  label: "Every 4 hours" },
-  { ms: 6 * 60 * 60_000,  label: "Every 6 hours" },
-  { ms: 12 * 60 * 60_000, label: "Every 12 hours" },
 ] as const;
 
 // ---------------------------------------------------------------------------
@@ -71,15 +60,10 @@ async function save(c: AiOpsConfig): Promise<void> {
 
 export async function getAiOpsConfig(): Promise<AiOpsConfig> {
   const c = await load();
-  if (c && typeof c.model === "string" && typeof c.sentinelIntervalMs === "number") {
-    return {
-      model: AVAILABLE_MODELS.some((m) => m.id === c.model) ? c.model : DEFAULT_MODEL,
-      sentinelIntervalMs: INTERVAL_OPTIONS.some((o) => o.ms === c.sentinelIntervalMs)
-        ? c.sentinelIntervalMs
-        : DEFAULT_INTERVAL_MS,
-    };
+  if (c && typeof c.model === "string") {
+    return { model: AVAILABLE_MODELS.some((m) => m.id === c.model) ? c.model : DEFAULT_MODEL };
   }
-  const fresh: AiOpsConfig = { model: DEFAULT_MODEL, sentinelIntervalMs: DEFAULT_INTERVAL_MS };
+  const fresh: AiOpsConfig = { model: DEFAULT_MODEL };
   await save(fresh);
   return fresh;
 }
@@ -90,12 +74,4 @@ export async function setAiModel(model: string): Promise<void> {
   }
   const cur = await getAiOpsConfig();
   await save({ ...cur, model });
-}
-
-export async function setSentinelInterval(intervalMs: number): Promise<void> {
-  if (!INTERVAL_OPTIONS.some((o) => o.ms === intervalMs)) {
-    throw new Error(`Invalid interval: ${intervalMs}`);
-  }
-  const cur = await getAiOpsConfig();
-  await save({ ...cur, sentinelIntervalMs: intervalMs });
 }

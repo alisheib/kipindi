@@ -90,7 +90,17 @@ rails stay safe. Selcom is INTEGRATED but not used until Ali flips a toggle.
      flip to `selcom` when Ali is ready; the existing **kill-switch** is the instant emergency
      stop back to safe/paused. Guard: refuse `selcom` unless `paymentGatewayConfigured()` (creds
      present); a boot-check refuses real money on `mock` in LIVE mode.
-  2. **Auto-settle:** on/off — `AUTO_SETTLE` reads the DB config (fallback to env). Admin-toggleable.
+  2. **Auto-settle:** on/off — ⚠️ **SUPERSEDED (2026-07-24, see `docs/COMPLIANCE-DECISIONS.md`).**
+     This axis was built as planned and has since been **DELETED**: the `AUTO_SETTLE` env, the
+     `autoSettle` admin toggle on `/admin/payments`, `getAutoSettleEnabled()` and the global
+     `settleDueMarkets()` sweep are all gone. Settlement is now **per-market and timer-driven** —
+     an adjudicated market arms its own timer at its `objectionsClosedAt` and pays itself then
+     (`market-scheduler.ts`), with a ~5-minute `reconcileMarketSchedules()` backstop that re-arms
+     any market whose timer was dropped. **There is no global settlement on/off switch to build or
+     flip.** The real payout gates are unchanged and still enforced (the objection window, a
+     standing objection freezing the pool, the winner-floor, exact conservation, idempotency —
+     no double-pay); `/admin/settlement` remains the HUMAN FALLBACK (manual "Settle now" + the
+     objection-frozen view); `/admin/system` shows live scheduler health (armed timers + next fire).
   3. **Payments demo-async:** on/off (mock's async behaviour; test-only).
 - **⛔ COMPLIANCE-CRITICAL — keep as deployment-level / hard-locked, NOT casual admin toggles:**
   - `TEST_FUNDING` (mints the pre-launch testing float AND gates POCA §16 solo-resolution via
@@ -128,7 +138,10 @@ exactly-once webhook, amount-tamper defense, RG re-check, taxes only on 50pick's
 ## After this session → the go-live switch (docs/LAUNCH-GO-NO-GO.md §5)
 Once payments + control-plane are merged/verified and certs are live: unset `TEST_FUNDING` →
 rebaseline the DB (clean genesis) → verify trial balance 0 drift + audit chain valid → one real
-small deposit→bet→settle→withdraw → flip auto-settle on. Also fold in: set real
+small deposit→bet→settle→withdraw → **nothing to flip for settlement** (it is per-market
+timer-driven, no global switch): instead verify on `/admin/system` that market timers are armed
+with a sane next fire, and that `/admin/settlement` shows nothing stuck in **Ready to settle**.
+Also fold in: set real
 `NEXT_PUBLIC_LICENSE_REF`, remove dead `SPORTS_API_PROVIDER` + `DEMO_MODE_ENABLED`.
 
 ## Reference

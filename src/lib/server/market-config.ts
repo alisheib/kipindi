@@ -147,6 +147,28 @@ export type RateConfig = {
    *  the control we describe to the regulator. */
   objectionWindowHours: number;
 
+  // ── Scheduled resolution (per-market timer, replaces the poll-everything sweep) ──
+  // Operational, NOT priced into a position, so — like objectionWindowHours — these
+  // stay LIVE (they are read at resolve-trigger time, never frozen into feeSnapshot).
+  /**
+   * How a market's outcome is sealed when its resolve timer fires at resolutionAt.
+   *  - "human" (default): the AI web-checks the market and pre-fills a recommendation,
+   *    then officers seal + settle via the two-officer ceremony (POCA §16).
+   *  - "auto": the AI seals AND settles WITHOUT the ceremony, but ONLY when its
+   *    confidence clears `resolveConfidenceThreshold`; low-confidence / UNKNOWN always
+   *    falls back to human. Owner-controlled (per-market override lives on the market
+   *    row). It overrides the two-officer rule when enabled — Ali's dated decision
+   *    2026-07-24, see docs/COMPLIANCE-DECISIONS.md.
+   */
+  resolutionMode: "human" | "auto";
+  /** Minimum AI confidence (0-100) required to AUTO-resolve. Below this the market
+   *  always falls back to the human ceremony, whatever the mode. Default 90. */
+  resolveConfidenceThreshold: number;
+  /** Minutes AFTER resolutionAt to fire the resolve trigger. Default 0 = fire exactly
+   *  at resolutionAt. A small positive offset gives an official source time to publish
+   *  before the AI checks. */
+  resolveOffsetMinutes: number;
+
   // ── Fee MODEL (owner decision 2026-07-23) ─────────────
   // These are FROZEN per poll at creation. Changing them here reprices only FUTURE
   // polls; every existing poll keeps the model + rates its snapshot froze, so the
@@ -201,6 +223,12 @@ export const DEFAULT_GLOBAL_CONFIG: RateConfig = {
   gbtLevyOnCommissionRate: DEFAULT_GBT_LEVY_ON_COMMISSION_RATE,  // 5% of our fee → GBT
   // The objection window players get before a verdict's money moves.
   objectionWindowHours: 24,
+  // Scheduled resolution. Default HUMAN — the AI recommends, officers seal (POCA §16).
+  // Flip to "auto" (globally or per-market) to let the AI seal + settle on its own
+  // above the confidence floor; low-confidence always falls back to human.
+  resolutionMode: "human",
+  resolveConfidenceThreshold: 90, // matches the sentinel's long-standing close threshold
+  resolveOffsetMinutes: 0,        // fire exactly at resolutionAt
   // Fee model NEW polls freeze. Owner (2026-07-23) set the default to
   // "loser-share": fee = 13% of the losing pool (Platform 3% + Operator 10%),
   // and players see a fixed 1.5× "possible winnings" estimate pre-bet.
@@ -377,6 +405,16 @@ export async function getGlobalConfig(): Promise<RateConfig> {
   return { ...store.global };
 }
 
+/**
+ * The resolution mode in force for a single market: its own column override wins,
+ * else the global default. Used by the resolve trigger (resolveDueMarket) and by
+ * the scheduler. `marketOverride` is `PredictionMarket.resolutionMode` (nullable).
+ */
+export async function getEffectiveResolutionMode(marketOverride: string | null | undefined): Promise<"human" | "auto"> {
+  if (marketOverride === "human" || marketOverride === "auto") return marketOverride;
+  return (await getGlobalConfig()).resolutionMode;
+}
+
 export async function listMarketOverrides(): Promise<Array<{ marketId: string; over: Partial<RateConfig> }>> {
   await ensureHydrated();
   return Array.from(store.perMarket.entries()).map(([marketId, over]) => ({ marketId, over }));
@@ -451,6 +489,27 @@ function validate(updates: Partial<RateConfig>): { ok: true; warn?: string } | {
     // act and it is audited like every other config change.
     if (!Number.isFinite(h) || h < 0 || h > 168) {
       return { ok: false, reason: "Objection window must be 0-168 hours (0 = no window)." };
+    }
+  }
+  if (updates.resolutionMode !== undefined) {
+    if (updates.resolutionMode !== "human" && updates.resolutionMode !== "auto") {
+      return { ok: false, reason: "Resolution mode must be 'human' or 'auto'." };
+    }
+  }
+  if (updates.resolveConfidenceThreshold !== undefined) {
+    const c = updates.resolveConfidenceThreshold;
+    // Floor at 50: auto-resolving below a coin-flip's confidence is never sane on a
+    // real-money outcome. 100 is allowed (auto only on certainty).
+    if (!Number.isFinite(c) || c < 50 || c > 100) {
+      return { ok: false, reason: "Auto-resolve confidence threshold must be 50-100." };
+    }
+  }
+  if (updates.resolveOffsetMinutes !== undefined) {
+    const o = updates.resolveOffsetMinutes;
+    // Cap at 24h: a resolve trigger further out than that just strands a settled
+    // market unresolved for no reason (officers can always resolve early by hand).
+    if (!Number.isFinite(o) || o < 0 || o > 1440) {
+      return { ok: false, reason: "Resolve offset must be 0-1440 minutes (0 = fire at resolution time)." };
     }
   }
   if (updates.minStake !== undefined) {

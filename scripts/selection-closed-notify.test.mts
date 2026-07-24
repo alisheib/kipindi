@@ -1,15 +1,21 @@
 /**
- * Tests the "selections closed — waiting for results" lifecycle sweep:
+ * Tests the "selections closed — waiting for results" lifecycle transition:
  * bettors on a market whose selection window has passed get a one-time in-app
  * notification + email; it fires exactly once; future-cutoff and Demo markets
  * are excluded. In-memory store.
+ *
+ * The lifecycle sweep was replaced by PER-MARKET timers, so the trigger is now
+ * notifySelectionClosedForMarket(marketId) — the same code path the real timers
+ * fire. The old sweep's selectivity (future cutoff / Demo excluded) now lives
+ * INSIDE the trigger, so we fire it at every market and aggregate the results:
+ * identical assertions, plus an explicit per-market refusal check.
  *
  * Run: npm run test:selection-closed
  */
 process.env.SESSION_SECRET ??= "test-only-session-secret-32chars-min-aaaa";
 
 import { marketStore, positionStore } from "../src/lib/server/market-dal.ts";
-import { notifySelectionClosedMarkets } from "../src/lib/server/market-service.ts";
+import { notifySelectionClosedForMarket } from "../src/lib/server/market-service.ts";
 import { listForUser } from "../src/lib/server/notification-service.ts";
 import { selectionClosedHtml } from "../src/lib/server/email.ts";
 import { db } from "../src/lib/server/store.ts";
@@ -48,6 +54,24 @@ async function mkUser(id: string, email: string | null = null) {
   });
 }
 
+/**
+ * Fire the per-market selection-closed trigger at EVERY market in the fixture and
+ * aggregate — the exact tally the old poll-everything sweep returned. Sequential
+ * (not Promise.all) so the counts are deterministic. `per` keeps each market's own
+ * verdict so we can assert WHICH markets the trigger refused.
+ */
+async function fireAll(ids: string[]) {
+  const per = new Map<string, { notified: boolean; bettors: number }>();
+  for (const id of ids) per.set(id, await notifySelectionClosedForMarket(id));
+  const all = [...per.values()];
+  return {
+    notified: all.filter((r) => r.notified).length,
+    bettors: all.reduce((s, r) => s + r.bettors, 0),
+    per,
+  };
+}
+const ALL_MARKETS = ["mkt_sc_1", "mkt_sc_future", "mkt_sc_demo"];
+
 // 0. Email template renders.
 {
   // §6: once betting closes the pools are FROZEN, so the payout stops being a
@@ -83,11 +107,14 @@ mkPosition("pos_c1", "mkt_sc_future", "usr_sc_carol");
 await mkMarket("mkt_sc_demo", { titleEn: "Demo · quick market", selectionClosedAt: ago(5), resolutionAt: ahead(5) });
 mkPosition("pos_d1", "mkt_sc_demo", "usr_sc_alice");
 
-const r1 = await notifySelectionClosedMarkets();
-await new Promise((res) => setTimeout(res, 150)); // flush fire-and-forget emails
+const r1 = await fireAll(ALL_MARKETS);
+await new Promise((res) => setTimeout(res, 150)); // flush fire-and-forget bells + emails
 
-ok("1 market notified", r1.notified === 1, JSON.stringify(r1));
-ok("2 distinct bettors notified (alice once despite 2 positions)", r1.bettors === 2, JSON.stringify(r1));
+ok("1 market notified", r1.notified === 1, JSON.stringify({ notified: r1.notified, bettors: r1.bettors }));
+ok("2 distinct bettors notified (alice once despite 2 positions)", r1.bettors === 2, JSON.stringify({ notified: r1.notified, bettors: r1.bettors }));
+ok("the closed market is the one that fired", r1.per.get("mkt_sc_1")?.notified === true && r1.per.get("mkt_sc_1")?.bettors === 2, JSON.stringify(r1.per.get("mkt_sc_1")));
+ok("future-cutoff market refused by the trigger", r1.per.get("mkt_sc_future")?.notified === false && r1.per.get("mkt_sc_future")?.bettors === 0, JSON.stringify(r1.per.get("mkt_sc_future")));
+ok("Demo market refused by the trigger", r1.per.get("mkt_sc_demo")?.notified === false && r1.per.get("mkt_sc_demo")?.bettors === 0, JSON.stringify(r1.per.get("mkt_sc_demo")));
 
 const aliceNs = (await listForUser("usr_sc_alice")).filter((n) => n.kind === "SELECTION_CLOSED");
 const bobNs = (await listForUser("usr_sc_bob")).filter((n) => n.kind === "SELECTION_CLOSED");
@@ -98,9 +125,10 @@ ok("carol (future market) got NONE", carolNs.length === 0, `got ${carolNs.length
 ok("alice's bell deep-links to the market", aliceNs[0]?.href === "/markets/mkt_sc_1", aliceNs[0]?.href);
 ok("alice's bell did NOT come from the demo market", !aliceNs.some((n) => n.href === "/markets/mkt_sc_demo"));
 
-// 4. Idempotency — running again notifies nobody new.
-const r2 = await notifySelectionClosedMarkets();
-ok("second sweep notifies 0 markets", r2.notified === 0, JSON.stringify(r2));
+// 4. Idempotency — re-firing every trigger notifies nobody new.
+const r2 = await fireAll(ALL_MARKETS);
+ok("second fire notifies 0 markets", r2.notified === 0, JSON.stringify({ notified: r2.notified, bettors: r2.bettors }));
+ok("re-firing the already-notified market is a no-op", r2.per.get("mkt_sc_1")?.notified === false && r2.per.get("mkt_sc_1")?.bettors === 0, JSON.stringify(r2.per.get("mkt_sc_1")));
 const aliceAfter = (await listForUser("usr_sc_alice")).filter((n) => n.kind === "SELECTION_CLOSED");
 ok("alice still has exactly ONE bell after re-sweep", aliceAfter.length === 1, `got ${aliceAfter.length}`);
 
@@ -112,9 +140,11 @@ ok("market stamped selectionClosedNotifiedAt", !!m1?.selectionClosedNotifiedAt, 
 const fut = await marketStore.get("mkt_sc_future");
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 await marketStore.set({ ...(fut as any), selectionClosedAt: ago(1) });
-const r3 = await notifySelectionClosedMarkets();
+const r3 = await fireAll(ALL_MARKETS);
+await new Promise((res) => setTimeout(res, 150)); // flush fire-and-forget bells + emails
 const carolAfter = (await listForUser("usr_sc_carol")).filter((n) => n.kind === "SELECTION_CLOSED");
-ok("carol notified once her market's window closed", carolAfter.length === 1 && r3.notified === 1, `${carolAfter.length} / ${JSON.stringify(r3)}`);
+ok("carol notified once her market's window closed", carolAfter.length === 1 && r3.notified === 1, `${carolAfter.length} / ${JSON.stringify({ notified: r3.notified, bettors: r3.bettors })}`);
+ok("and it was HER market that fired, for exactly 1 bettor", r3.per.get("mkt_sc_future")?.notified === true && r3.per.get("mkt_sc_future")?.bettors === 1, JSON.stringify(r3.per.get("mkt_sc_future")));
 
 console.log(`\nselection-closed-notify: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

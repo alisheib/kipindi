@@ -161,7 +161,10 @@ F1–F5/F7–F9/F11/F13, regulator-pack maker-checker.
 - [ ] **R2 bucket + credentials** (activates A1). Cloudflare R2 (S3-compatible).
 - [ ] **⭐ Payment aggregator API keys (Selcom/AzamPay) — IN PROGRESS (keys today).**
       Wire `PAYMENT_AGGREGATOR`/`PAYMENT_API_KEY`/`PAYMENT_API_SECRET` + the two
-      outbound calls in `payments.ts` → then `AUTO_SETTLE=true`. Inbound webhook,
+      outbound calls in `payments.ts` → then nothing to flip for settlement: the
+      old global settle switch is GONE (settlement is per-market timer-driven), so
+      just confirm on `/admin/system` that "Timers armed" is non-zero with a sane
+      next fire and "Ready to settle" is not stacking up. Inbound webhook,
       settlement state-machine, ledger, ops are ALL built. `SELCOM_WEBHOOK_SECRET`
       is set in prod; `AZAMPAY_`/`MIXX_WEBHOOK_SECRET` still to set per provider
       enabled. See `GO-LIVE-READINESS.md` §2 for the exact wiring.

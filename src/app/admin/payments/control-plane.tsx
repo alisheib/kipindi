@@ -79,17 +79,6 @@ export function ControlPlane({ controls }: { controls: PaymentControlsView }) {
     });
   };
 
-  const setAutoSettle = (next: boolean) => {
-    if (!next) { apply({ autoSettle: "false" }); return; } // turning off is always safe → direct
-    setPending({
-      update: { autoSettle: "true" },
-      title: "Enable automatic settlement?",
-      tone: "warning",
-      confirmLabel: "Enable auto-settle",
-      body: <>The lifecycle ticker will pay out resolved markets on its own (once their objection window closes with nothing standing). Only enable this once the payout rail is live and reconciled. You can turn it off again at any time.</>,
-    });
-  };
-
   return (
     <>
       {/* Master mode indicator */}
@@ -228,19 +217,9 @@ export function ControlPlane({ controls }: { controls: PaymentControlsView }) {
         </div>
       </div>
 
-      {/* Auto-settle + demo-async toggles */}
+      {/* Demo-async toggle. (Settlement is timer-driven per market now — no global
+          auto-settle switch; see the /admin/settlement queue + /admin/system health.) */}
       <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-        <ToggleRow
-          icon={<I.bolt s={14} />}
-          label="Automatic settlement"
-          sw="Malipo ya kiotomatiki"
-          hint={controls.autoSettle ? "Ticker pays resolved markets automatically." : "Manual — an officer settles each market."}
-          on={controls.autoSettle}
-          explicit={controls.autoSettleExplicit}
-          envValue={controls.env.autoSettle}
-          disabled={busy}
-          onChange={setAutoSettle}
-        />
         <ToggleRow
           icon={<I.clock s={14} />}
           label="Demo async (test)"

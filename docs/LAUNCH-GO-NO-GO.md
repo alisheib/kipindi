@@ -57,6 +57,13 @@
       code; confirm the ruling for the finance reports (doesn't block betting).
 - [ ] **Geo-fencing / sanctions-PEP screening** — planned, not built. Confirm
       whether GBT requires either on day 1.
+- [ ] **Who seals an outcome on day 1?** /admin/resolver-queue carries a
+      resolution-mode toggle: **"Require human ceremony"** (the default — the AI
+      recommends, two officers seal) vs **"Auto-resolve at resolve date"** (the AI
+      seals the outcome itself once its confidence clears the threshold; a
+      low-confidence or UNKNOWN read always falls back to the ceremony). Confirm the
+      default (human) is the launch posture. Either way the market still pays on its
+      own settle timer after the objection window — see §5.7.
 
 ## 5 · THE GO-LIVE SWITCH — run in this exact order (🤖 me + 👤 you)
 1. [ ] Payment rail merged, deployed, **sandbox round-trip proven** + reconciles to 0.
@@ -73,7 +80,18 @@
        "clean" becomes real — after it, ANY trial-balance drift = a real defect.*
 6. [ ] Verify on the fresh DB: trial balance = **TZS 0 drift**, audit chain verifies,
        a real small deposit→bet→settle→withdraw round-trip is correct end-to-end.
-7. [ ] **Flip `AUTO_SETTLE=true`** (auto-payout) — only now, rail live + reconciled.
+7. [ ] **Settlement — nothing to flip; verify instead.** There is no `AUTO_SETTLE` env
+       var and no auto-settle admin toggle any more: each adjudicated market arms its
+       own timer at its `objectionsClosedAt` and pays itself then (a ~5-minute
+       reconciler re-arms any market whose timer was dropped). So on the go-live commit,
+       **check /admin/system → "Settlement"**: "Timers armed" is non-zero with a sane
+       "next fire", and **"Ready to settle" is 0** — a count that *sits* above 0 means
+       timers were dropped and players are not being paid. **/admin/settlement** stays
+       the human fallback (manual settle + the objection-frozen view). The payout gates
+       are unchanged: objection window, a standing objection freezes the pool,
+       winner-floor, exact conservation, idempotency (no double-pay). This supersedes
+       the old "automatic payout is paused, every payout is a manual officer action"
+       posture — see `docs/COMPLIANCE-DECISIONS.md` (2026-07-24).
 8. [x] Repoint DNS confirmed: `https://50pick.tz` serves the app (not Apache) with a
        valid cert; verify + `railway logs` clean. **DONE** — cutover 2026-07-17,
        re-verified 2026-07-20 (`server: railway-hikari`, `x-powered-by: Next.js`).

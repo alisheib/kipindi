@@ -6,6 +6,87 @@
 
 ---
 
+## 2026-07-24 · Per-market scheduled resolution: operator-controlled auto-resolve + timer-driven settlement
+
+**Owner decision:** Ali, explicit, 2026-07-24 (authorised in-session), as part of replacing the
+poll-everything lifecycle sweep with a precise **per-market timer** keyed to each market's own
+resolution date (`src/lib/server/market-scheduler.ts`).
+
+Two compliance-relevant postures change here. Both are deliberate.
+
+### 1. Auto-resolve — the operator's toggle governs, in BOTH money modes
+
+**Control:** `resolutionMode` — `"human"` (default) or `"auto"` — global at
+`/admin/resolver-queue` (kit `Toggle` + `ConfirmModal`), with an optional per-market override
+(`PredictionMarket.resolutionMode`).
+
+- **`human` (default):** at a market's resolution time the AI web-checks the outcome and
+  **pre-fills a recommendation**; two officers then seal + settle it. Unchanged behaviour.
+- **`auto`:** the AI **seals the outcome itself** — stamping RESOLVED and opening the objection
+  window — **without the two-officer ceremony**.
+
+**This overrides the two-officer / POCA §16 rule when enabled.** Ali's directive was explicit:
+*the toggle works as toggled — LIVE or TEST, the operator decides.* So, unlike the
+solo-resolution override below, there is **deliberately NO real-money hard-lock** on this control.
+It is the owner's call, taken with the consequence stated on screen (the confirm dialog is sterner
+still when real money is LIVE).
+
+**The safety floor that is NOT negotiable (and must not be removed):**
+- **Never auto-resolve on a shaky signal.** Auto fires only when ALL hold: the AI returned a
+  concrete YES/NO (never UNKNOWN), said the outcome is irreversibly *determined*, cleared
+  `resolveConfidenceThreshold` (default **90**, min 50), and supplied real evidence (a
+  hallucination guard). Anything less **always** falls back to the human ceremony. This is the pure,
+  exhaustively-tested `decideAutoResolve()`.
+- **Money still waits.** Auto-resolve adjudicates only — it moves no money. The objection window,
+  the objection freeze, the winner-floor and exact-conservation all still gate the payout.
+- **Never silent.** Every auto-resolution writes a COMPLIANCE audit (`market.autoresolved`) with the
+  AI's outcome, confidence, evidence, reasoning and source URL; every mode change writes
+  `market.resolution_mode.auto_enabled` / `…human_restored` with the money-mode it was made in.
+
+### 2. Settlement is timer-driven — `AUTO_SETTLE` is removed
+
+**What changed:** the `settleDueMarkets()` sweep, its heartbeat, the `AUTO_SETTLE` env var, the
+`autoSettle` control-plane toggle and `getAutoSettleEnabled()` are **all deleted**. Each
+adjudicated market now carries its own **settle timer** that fires at its `objectionsClosedAt` and
+calls the unchanged `settleMarket()`.
+
+**This reverses the earlier "automatic market payout is PAUSED" posture** (Ali, 2026-07-13), under
+which every payout was a manual officer action. That entry is superseded — do not restore it.
+
+**Why this is safe:** the pause was a coarse "nothing pays itself" switch standing in for the real
+controls. Those real controls are untouched and are re-checked under the market lock on every
+attempt: the objection window (`TOO_EARLY`), a standing objection (`OBJECTION_OPEN`), the
+already-settled idempotency guard (no double-pay), the winner-floor assertion, and exact
+conservation. **The payout maths is byte-for-byte unchanged** (loser-share / capped-commission per
+the poll's frozen snapshot — see the 2026-07-23 entry). Settlement credits a player's 50pick
+wallet; it is not a gateway disbursement, so it does not depend on the withdrawal rail.
+
+**What remains as the human fallback:** `/admin/settlement` keeps the manual **Settle now** button
+and the objection-frozen view. Anything sitting in "Ready to settle" now means a timer was dropped —
+the ~5-minute `reconcileMarketSchedules()` backstop re-arms it, and `/admin/system` shows live
+scheduler health (armed timers + next fire).
+
+**Guardrails (⛔):**
+- Do **not** re-introduce a `NODE_ENV`/real-money hard-lock on `resolutionMode` — Ali decided the
+  toggle governs directly. (This is the deliberate *difference* from the solo-resolution lock below;
+  the two controls are not the same and must not be "harmonised".)
+- Do **not** lower or bypass the confidence floor, the evidence guard, or the UNKNOWN→human
+  fallback. Auto-resolve on a shaky signal is the one thing this design must never do.
+- Do **not** resurrect `AUTO_SETTLE`/`settleDueMarkets` or re-add a global settlement pause switch.
+- Do **not** let the resolve trigger close a market **early** (before `resolutionAt`) when the AI has
+  no locked outcome — the `early-noop` guard exists so a manual re-check cannot kill live betting.
+
+**Code:** `market-scheduler.ts` (timers, `nextDeadlineFor`, boot hydrate, reconciler) ·
+`market-service.ts` (`resolveDueMarket`, `decideAutoResolve`, per-market notify transitions) ·
+`market-sentinel.ts` (per-market AI check only — the global sweep is gone) ·
+`market-config.ts` (`resolutionMode`, `resolveConfidenceThreshold`, `resolveOffsetMinutes`) ·
+`admin/resolver-queue/` (mode toggle + per-market re-check).
+**Tests:** `test:scheduler` (deadline matrix, >24.8-day timer chaining, boot hydrate never skips a
+missed deadline, reconciler healing, concurrent-fire exactly-once, the full auto-vs-human matrix,
+the early-re-check guard, and auto-seal → window → settle) · `test:settlement-gate` (the payout gates).
+
+---
+
 ## 2026-07-23 · Fee model: "loser-share" (Jay) + pre-bet estimate — new polls
 
 **Owner decision:** Ali, explicit, 2026-07-23 (authorised in-session), on the recommendation

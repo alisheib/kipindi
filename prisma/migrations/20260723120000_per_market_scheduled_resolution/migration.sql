@@ -1,0 +1,22 @@
+-- Per-market scheduled resolution — the per-market timer replaces the poll-everything sweep.
+--
+-- Two additive, nullable columns on PredictionMarket. Neither carries a default,
+-- a backfill, or an index, so PostgreSQL adds each as a catalogue-only change with
+-- no table rewrite — safe to apply on a live table. Existing rows read as NULL,
+-- which is the correct interpretation for every historical market.
+--
+-- resolutionMode:  per-market override of the global RateConfig resolution mode.
+--   NULL   = inherit the global default (see RateConfig.resolutionMode, default "human").
+--   "human"= the AI recommends and a two-officer ceremony seals + settles (POCA §16).
+--   "auto" = at resolutionAt the AI seals + settles WITHOUT the ceremony when its
+--            confidence clears the threshold. Owner-controlled from the resolver
+--            queue; overrides the two-officer rule. See docs/COMPLIANCE-DECISIONS.md
+--            (Ali's dated decision 2026-07-24).
+--
+-- resolveClaimedAt: multi-instance claim stamp. Set under the market advisory lock
+--   the instant a resolve trigger begins its AI check, so N app instances can never
+--   double-spend the (paid) AI call for the same market. A claim older than the TTL
+--   is treated as stale and may be re-claimed (crash recovery). See resolveDueMarket
+--   in src/lib/server/market-service.ts.
+ALTER TABLE "PredictionMarket" ADD COLUMN IF NOT EXISTS "resolutionMode" TEXT;
+ALTER TABLE "PredictionMarket" ADD COLUMN IF NOT EXISTS "resolveClaimedAt" TIMESTAMP(3);

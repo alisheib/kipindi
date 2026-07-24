@@ -13,7 +13,6 @@ import { AdminSidebarNav } from "./admin-sidebar-nav";
 import { RefreshButton } from "./refresh-button";
 import { NAV_GROUPS } from "./admin-nav-groups";
 import { PeriodPicker } from "./period-picker";
-import { SentinelCountdown } from "./sentinel-countdown";
 import { AdminSpark } from "./admin-charts";
 import { formatDateISO } from "@/lib/utils";
 
@@ -127,8 +126,10 @@ export async function AdminTopBar({ crumbs, session, activeKey }: { crumbs: stri
             refreshed from one predictable spot (screens with a filter bar also
             expose a contextual refresh next to their filters). */}
         <RefreshButton variant="icon" className="!h-7 !w-7" />
-        {/* Live market-sentinel countdown (deploy-proof) + reset / run-now. */}
-        <SentinelCountdown />
+        {/* The old global market-sentinel countdown widget is gone — markets are now
+            resolved by per-market timers, not a global sweep. Scheduler health lives
+            on /admin/system + /admin/settlement; re-check a single market from the
+            resolver queue. */}
         {/* No notification bell here — the platform's main bell (in AppShell's
             top bar) is the single notification surface for everyone, admins
             included. New-KYC alerts arrive there as in-app notifications. */}

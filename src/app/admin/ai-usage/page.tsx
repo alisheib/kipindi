@@ -14,7 +14,7 @@ import { getAiUsageSummary, listAiUsage, type AiFeature, type UsageBucket, type 
 import { getAnthropicSpend } from "@/lib/server/anthropic-billing";
 import { CreditControls } from "./credit-controls";
 import { AiOpsControls } from "./ai-ops-controls";
-import { getAiOpsConfig, AVAILABLE_MODELS, INTERVAL_OPTIONS } from "@/lib/server/ai-ops-config";
+import { getAiOpsConfig, AVAILABLE_MODELS } from "@/lib/server/ai-ops-config";
 import { ai } from "@/lib/server/ai-config";
 
 export const metadata = { title: "Admin \u00b7 AI usage & credits" };
@@ -72,15 +72,12 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
   // Fetch all matching rows for in-memory sort (the DAL returns newest-first;
   // we re-sort client-side so SortTh column headers work). Cap at 10k to keep
   // memory bounded; the 180-day retention + filters keeps this well under.
-  const { listMarkets } = await import("@/lib/server/market-service");
-  const [summary, listed, anthropic, aiOps, allMarkets] = await Promise.all([
+  const [summary, listed, anthropic, aiOps] = await Promise.all([
     getAiUsageSummary(),
     listAiUsage(filter, 1, 10_000),
     getAnthropicSpend(),
     getAiOpsConfig(),
-    listMarkets(),
   ]);
-  const liveMarketCount = allMarkets.filter((m) => m.status === "LIVE").length;
   const s = summary;
 
   // Sort
@@ -239,19 +236,17 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
           <CreditControls limitUsd={c.limitUsd} />
         </AdminCard>
 
-        {/* AI operations — model + sentinel interval */}
+        {/* AI operations — the Claude model for poll generation + resolution checks */}
         <AdminCard title="AI operations" sw="Mipangilio ya AI">
           <p className="text-caption text-text-secondary mb-4">
-            Control which Claude model powers the platform and how aggressively the sentinel monitors live markets.
-            All changes apply immediately — no redeploy needed. Each setting explains exactly what it affects below.
+            Control which Claude model powers the platform. Changes apply immediately — no redeploy needed.
+            Markets are AI-checked exactly at their own resolution time by the per-market scheduler (there is no
+            fixed sweep interval); use “Re-check this market now” on the resolver queue for a one-off check.
           </p>
           <AiOpsControls
             currentModel={aiOps.model}
-            currentIntervalMs={aiOps.sentinelIntervalMs}
             triageModel={ai.triageModel}
             models={AVAILABLE_MODELS}
-            intervals={INTERVAL_OPTIONS}
-            liveMarketCount={liveMarketCount}
           />
         </AdminCard>
 

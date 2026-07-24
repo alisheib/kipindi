@@ -4,7 +4,7 @@
 > adapter bodies is already built + tested. Realistic time to a working staging
 > round-trip: **under an hour.** Branch: `feat/payment-adapter` (the adapter
 > scaffold is already here — you fill two functions, wire creds, test, merge).
-> Companion: `GO-LIVE-READINESS.md` §2. Last updated 2026-07-16.
+> Companion: `GO-LIVE-READINESS.md` §2. Last updated 2026-07-24.
 
 ## What's already done (do NOT rebuild)
 - **Adapter seam** — `src/lib/server/payments.ts` is now the env-switched adapter
@@ -105,9 +105,19 @@ callback `provider` back. `INTERNAL` never touches the gateway.
       (200s + logs clean + a staging round-trip).
 - [ ] Go-live DB hygiene (see GO-LIVE-READINESS §1): unset `TEST_FUNDING`,
       format/rebaseline the DB, rebaseline pre-C6 audit rows.
-- [ ] Only THEN flip `AUTO_SETTLE=true` (auto-payout) — after the payout rail is
-      live and reconciled. Add a boot-check using `paymentGatewayConfigured()` so
-      production refuses to run real money on the mock adapter.
+- [ ] **Market payout: nothing to flip.** There is no `AUTO_SETTLE` env var or
+      auto-settle toggle any more — settlement is **per-market timer-driven** (an
+      adjudicated market pays itself when its `objectionsClosedAt` passes; owner
+      decision 2026-07-24, see `COMPLIANCE-DECISIONS.md`). So once the payout rail is
+      live and reconciled, **verify** instead of flipping: on `/admin/system` →
+      *Settlement*, **Timers armed** is non-zero with a sensible *next fire*, and
+      **Ready to settle** is 0. Anything parked in "Ready to settle" is overdue — the
+      ~5-minute reconciler re-arms dropped timers, and `/admin/settlement`
+      ("Settle now") stays the human fallback. The payout gates are unchanged: the
+      objection window, an objection freezing the pool, the winner-floor, exact
+      conservation and exactly-once.
+- [ ] Add a boot-check using `paymentGatewayConfigured()` so production refuses to run
+      real money on the mock adapter.
 
 ## Rollback
 Unset `PAYMENT_AGGREGATOR` (→ mock) or flip the per-provider kill-switch on

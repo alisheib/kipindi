@@ -115,9 +115,12 @@ the WHY, the kit pieces to reuse, the infra that already exists, and acceptance 
 
 #### F3 · Watchlist / follow + smart alerts  ⭐  ✅ SHIPPED 2026-07-13 (0ad5525)
 - **Status:** DONE. `Watchlist` model + ⭐ toggle on market detail (optimistic) +
-  `/watchlist` view. **Closing-soon sweep** in the lifecycle ticker, idempotent via a
-  `closingSoonNotifiedAt` one-shot stamp written inside `withLock` (concurrent sweeps
-  can't double-alert). **Settled alert** fans out to watchers on `resolveMarket`,
+  `/watchlist` view. **Closing-soon alert**, idempotent via a
+  `closingSoonNotifiedAt` one-shot stamp written inside `withLock` (concurrent fires
+  can't double-alert). *(It was a sweep on the lifecycle ticker when it shipped;
+  since 2026-07-24 each market arms its own `closing-soon` timer at cutoff − 1h in
+  `market-scheduler.ts` — the stamp + lock are unchanged.)*
+  **Settled alert** fans out to watchers on `resolveMarket`,
   EXCLUDING bettors (they already get their win/loss receipt). **RG suppression** —
   self-excluded / cooling-off players are never alerted (audited); their star is
   preserved. Alert wording is factual, never "bet now" (LCCP SR 3.4). `test:watchlist`
@@ -299,8 +302,11 @@ the WHY, the kit pieces to reuse, the infra that already exists, and acceptance 
   (`emergencyVoidMarket` refuses a settled market). So F11 = **make the window real**:
   - Stage-2 of the ceremony now only **adjudicates** — the verdict is recorded, the pool stays
     whole and every position stays OPEN. The payout/refund logic moved verbatim into
-    `settleMarket()`, and `settleDueMarkets()` (lifecycle ticker) pays a market only once its
-    window has elapsed **and** no objection is standing.
+    `settleMarket()`, which pays a market only once its window has elapsed **and** no objection
+    is standing. *(What DRIVES it has since changed: the `settleDueMarkets()` lifecycle sweep was
+    replaced 2026-07-24 by a per-market settle timer keyed to the market's own
+    `objectionsClosedAt` — see §4 and `docs/COMPLIANCE-DECISIONS.md`. The gates inside
+    `settleMarket()` are unchanged.)*
   - Players who staked can object (`ObjectionDialog`) — an OPEN objection **freezes the money**.
   - Officers rule at `/admin/objections`: **VOID** (refund every stake) or **REVERSE** (pay the
     other side), possible *only* because the money has not moved. COMPLIANCE-gated at the
@@ -335,38 +341,53 @@ we already built (lowest risk, fastest to value).
 
 ---
 
-## 4 · DEFERRED — re-enable automatic payout when the payment gateway lands
+## 4 · SHIPPED — automatic payout, as a per-market settle timer
 
-**Status: PAUSED on purpose (Ali, 2026-07-13). Nothing is broken and nothing was deleted.**
+**Status: LIVE (2026-07-24). Each market pays itself, on its own timer. There is no global
+on/off switch for settlement any more.**
+
+> **History (superseded, kept as record):** ~~automatic payout was PAUSED on purpose (Ali,
+> 2026-07-13) until the payment aggregator landed, so every payout was a manual officer action.~~
+> That posture was **reversed by owner decision on 2026-07-24** — see
+> `docs/COMPLIANCE-DECISIONS.md`, entry *"Settlement is timer-driven — `AUTO_SETTLE` is removed"*.
+> The pause was a coarse stand-in for the real controls, and settlement credits a player's 50pick
+> **wallet** (it is not a gateway disbursement), so it never depended on the withdrawal rail.
 
 Since F11, a resolved market is **adjudicated, not paid**: its pool is held until the objection
-window closes. The code that pays it (`settleDueMarkets()` on the lifecycle ticker) is complete,
-idempotent, and fully tested — but it is **not being driven**, because we are not letting the
-platform move money on a timer before the **payment aggregator (Selcom / Azampay)** is integrated
-and reconciled against.
+window closes. What *pays* it is now per-market and timer-driven — when a market is adjudicated it
+**arms its own settle timer** for its `objectionsClosedAt`, and at that instant the timer calls the
+unchanged `settleMarket()` (`src/lib/server/market-scheduler.ts`, deadline kind `settle`). Nothing
+sweeps all markets on a cadence. On the lifecycle ticker a ~5-minute `reconcileMarketSchedules()`
+backstop re-arms any pending market that has no live timer, and boot hydrate re-arms everything
+after a deploy — a missed deadline is delayed, never skipped.
 
-**Today:** an officer pays each market by hand at **`/admin/settlement`** (*Money → Settlement*).
-The queue shows Ready / Window-open / Objection, and the button calls `settleMarket()` **without**
-`force`, so it cannot pay a market early, cannot pay one under dispute, and cannot pay one twice.
-ADMIN/COMPLIANCE only, TOTP, audited.
+**The payout gates are unchanged**, and every one is re-checked under the market lock on each
+attempt: the objection window (`TOO_EARLY`), a standing objection freezing the pool
+(`OBJECTION_OPEN`), the winner-floor, exact conservation, and the already-settled idempotency stamp
+(no double-pay). A spurious re-fire, the reconciler racing a live timer, or two instances all
+collapse to exactly one payout.
 
-**The pause is one line** — `src/lib/server/lifecycle.ts`:
+**The human fallback stays:** an officer can still pay a market by hand at **`/admin/settlement`**
+(*Money → Settlement*). The queue shows Ready / Window-open / Objection, and the button calls
+`settleMarket()` **without** `force`, so it cannot pay a market early, cannot pay one under dispute,
+and cannot pay one twice. ADMIN/COMPLIANCE only, TOTP, audited.
 
-```ts
-if (process.env.AUTO_SETTLE === "true") {
-  await settleDueMarkets();
-}
-```
+### Operating it (there is nothing to switch on)
+1. **Nothing to flip.** `AUTO_SETTLE`, the `autoSettle` toggle on `/admin/payments`,
+   `getAutoSettleEnabled()` and `settleDueMarkets()` are all **deleted** — any older runbook step
+   that says "set `AUTO_SETTLE=true` at go-live" points at a control that does not exist.
+2. **Verify on `/admin/system` → Settlement** that **"Timers armed"** is non-zero whenever markets
+   are pending, and check the *next fire* time under it. That tile is live scheduler health.
+3. **"Ready to settle" should sit at ~0**, and its meaning has flipped: a market whose window has
+   closed is paid by its own timer within moments, so a number that *lingers* there is an
+   **alarm** — timers were dropped and players are silently going unpaid. The 5-minute reconciler is
+   the automatic heal; `/admin/settlement` → *Settle now* is the human one.
+4. **Never set `LIFECYCLE_TICKER=false`** (it carries the reconciler) or **`MARKET_SCHEDULER=false`**
+   (it disables the per-market timers outright).
+5. **Coverage:** `npm run test:scheduler` (`scripts/scheduler.test.mts`) drives the deadline matrix,
+   boot hydrate, reconciler healing, concurrent-fire exactly-once, and adjudicate → window → settle.
+   ⚠ `scripts/settlement-gate.test.mts` still imports the deleted `settleDueMarkets` and needs
+   updating before it will run — the payout gates it asserts are themselves unchanged.
 
-### To re-enable, once the aggregator is integrated
-1. Confirm the money-out rail works end-to-end and reconciles (this is the actual blocker —
-   automatic settlement is only safe once a payout can be *traced to a real transfer*).
-2. Set **`AUTO_SETTLE=true`** on Railway. That is the whole switch.
-3. Watch `/admin/system` → **Settlement**. In auto mode the meaning of "Ready to settle" flips:
-   the sweep should clear it within a minute, so a number that *sits* there is an **alarm** — it
-   means the lifecycle ticker is dead and players are silently going unpaid. Also never set
-   `LIFECYCLE_TICKER=false`.
-4. `scripts/settlement-gate.test.mts` §12 already covers both halves — with the flag off a full
-   lifecycle pass pays nobody; with it on the sweep pays again. Nothing new to write.
-
-**Do not "fix" the paused sweep by deleting it.** It is the path we go back to.
+**⛔ Do not resurrect `AUTO_SETTLE` / `settleDueMarkets`, and do not add a new global settlement
+pause switch** (`docs/COMPLIANCE-DECISIONS.md`, 2026-07-24).

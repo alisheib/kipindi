@@ -3,7 +3,7 @@
  *
  * Locks the invariants that matter:
  *  - follow/unfollow persists and is idempotent
- *  - the closing-soon sweep fires ONCE per market (one-shot stamp), even when run
+ *  - the closing-soon TRIGGER fires ONCE per market (one-shot stamp), even when run
  *    repeatedly / concurrently — a follower is never spammed
  *  - it only fires INSIDE the 1h window (not for far-off or already-closed markets)
  *  - a SETTLED market alerts watchers but NOT bettors (who get their own receipt)
@@ -13,10 +13,17 @@
  */
 process.env.SESSION_SECRET ??= "test-only-session-secret-32chars-aaaa";
 process.env.OTP_PEPPER ??= "test-only-otp-pepper-16chars";
+// The closing-soon transition is now driven by a PER-MARKET timer that createMarket
+// arms automatically. A market born inside the 1h window has an already-past
+// closing-soon deadline, so its ambient timer would fire (and consume the one-shot
+// stamp) while this file is asserting on it. Disable the timers so THIS test drives
+// the transition itself, deterministically — the timer/arming path is covered by
+// scripts/scheduler.test.mts. (Read at call time by market-scheduler.schedulerEnabled.)
+process.env.MARKET_SCHEDULER = "false";
 
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import { marketStore } from "../src/lib/server/market-dal.ts";
-import { notifyClosingSoonMarkets, createMarket, buyPosition, resolveMarket, settleMarket } from "../src/lib/server/market-service.ts";
+import { notifyClosingSoonForMarket, createMarket, buyPosition, resolveMarket, settleMarket } from "../src/lib/server/market-service.ts";
 import { toggleWatch, isWatching, listWatchedMarketIds, alertableWatcherIds } from "../src/lib/server/watchlist-service.ts";
 import { listForUser } from "../src/lib/server/notification-service.ts";
 import { selfExclude, coolOff } from "../src/lib/server/responsible-gambling.ts";
@@ -83,24 +90,70 @@ await mkUser("wl_cooled");
   await toggleWatch(soon, "wl_b");
   await toggleWatch(far, "wl_a");
 
-  const r1 = await notifyClosingSoonMarkets();
-  ok("sweep alerted exactly 1 market", r1.notified === 1, `notified=${r1.notified}`);
+  const r1 = await notifyClosingSoonForMarket(soon);
+  ok("trigger alerted the closing-soon market", r1.notified === true, `notified=${r1.notified}`);
   ok("both watchers alerted", r1.watchers === 2, `watchers=${r1.watchers}`);
   ok("wl_a got a watchlist alert", (await watchNotes("wl_a")).length === 1);
   ok("wl_b got a watchlist alert", (await watchNotes("wl_b")).length === 1);
 
-  // The far-off market must not have been touched.
+  // The far-off market must refuse the trigger outright (outside the 1h window).
+  const rFar = await notifyClosingSoonForMarket(far);
+  ok("far market refuses the trigger", rFar.notified === false && rFar.watchers === 0, JSON.stringify(rFar));
   ok("far market NOT stamped", !(await marketStore.get(far))?.closingSoonNotifiedAt);
+  ok("far market's watcher got NO extra alert", (await watchNotes("wl_a")).length === 1);
 
-  // Re-running the sweep must NOT re-alert (one-shot stamp).
-  const r2 = await notifyClosingSoonMarkets();
-  ok("second sweep alerts nobody (idempotent)", r2.notified === 0 && r2.watchers === 0, `${JSON.stringify(r2)}`);
+  // Store-wide: exactly ONE market carries the stamp — the old sweep's
+  // "notified === 1" assertion, now checked against the store itself so a stray
+  // alert on any other market (m1 included) still fails the test.
+  const stampedAll = (await marketStore.values()).filter((m) => m.closingSoonNotifiedAt);
+  ok("exactly 1 market stamped closing-soon store-wide", stampedAll.length === 1 && stampedAll[0]?.id === soon, `stamped=${stampedAll.length}`);
+
+  // Re-running the trigger must NOT re-alert (one-shot stamp).
+  const r2 = await notifyClosingSoonForMarket(soon);
+  ok("second trigger alerts nobody (idempotent)", r2.notified === false && r2.watchers === 0, `${JSON.stringify(r2)}`);
   ok("wl_a still has exactly 1 alert (no spam)", (await watchNotes("wl_a")).length === 1);
 
-  // Concurrent sweeps must also not double-fire.
-  const [c1, c2, c3] = await Promise.all([notifyClosingSoonMarkets(), notifyClosingSoonMarkets(), notifyClosingSoonMarkets()]);
-  ok("concurrent sweeps alert nobody", c1.notified + c2.notified + c3.notified === 0);
+  // Concurrent triggers on an ALREADY-stamped market must also not double-fire.
+  const [c1, c2, c3] = await Promise.all([notifyClosingSoonForMarket(soon), notifyClosingSoonForMarket(soon), notifyClosingSoonForMarket(soon)]);
+  ok("concurrent triggers alert nobody", [c1, c2, c3].filter((r) => r.notified).length === 0 && c1.watchers + c2.watchers + c3.watchers === 0);
   ok("still exactly 1 alert after concurrency", (await watchNotes("wl_a")).length === 1);
+}
+
+// ── 2b. Three CONCURRENT triggers on a FRESH market alert EXACTLY ONCE ────
+// The real race: the scheduler timer, the reconciler and a re-fire can all hit the
+// same un-stamped market at once. Only one may win — a follower is never spammed.
+{
+  const race = await mkMarket("m_race", 25);
+  await toggleWatch(race, "wl_a");
+  await toggleWatch(race, "wl_b");
+  const aBefore = (await watchNotes("wl_a")).length;
+  const bBefore = (await watchNotes("wl_b")).length;
+
+  const rs = await Promise.all([
+    notifyClosingSoonForMarket(race),
+    notifyClosingSoonForMarket(race),
+    notifyClosingSoonForMarket(race),
+  ]);
+  ok("exactly ONE concurrent trigger won", rs.filter((r) => r.notified).length === 1, JSON.stringify(rs));
+  ok("watchers alerted exactly once in total", rs.reduce((s, r) => s + r.watchers, 0) === 2, `sum=${rs.reduce((s, r) => s + r.watchers, 0)}`);
+  ok("wl_a got exactly 1 new alert", (await watchNotes("wl_a")).length === aBefore + 1);
+  ok("wl_b got exactly 1 new alert", (await watchNotes("wl_b")).length === bBefore + 1);
+  ok("race market stamped once", !!(await marketStore.get(race))?.closingSoonNotifiedAt);
+}
+
+// ── 2c. A market already PAST its cutoff is never nudged ──────────────────
+// "Closes within the hour" is a lie once selections have closed — that market
+// belongs to the selection-closed transition, not this one.
+{
+  const late = await mkMarket("m_late", 20);
+  await toggleWatch(late, "wl_b");
+  const bBefore = (await watchNotes("wl_b")).length;
+  await marketStore.stamp(late, { resolutionAt: iso(now - 5 * 60_000) }); // cutoff now in the past
+
+  const rLate = await notifyClosingSoonForMarket(late);
+  ok("past-cutoff market refuses the trigger", rLate.notified === false && rLate.watchers === 0, JSON.stringify(rLate));
+  ok("past-cutoff market NOT stamped", !(await marketStore.get(late))?.closingSoonNotifiedAt);
+  ok("its watcher got NO alert", (await watchNotes("wl_b")).length === bBefore);
 }
 
 // ── 3. RG suppression — excluded / cooled-off watchers are never alerted ──
@@ -118,11 +171,13 @@ await mkUser("wl_cooled");
   ok("active watcher retained", alertable.includes("wl_b"));
 
   const before = (await watchNotes("wl_excluded")).length;
-  const r = await notifyClosingSoonMarkets();
-  ok("sweep ran for the RG market", r.notified === 1, `notified=${r.notified}`);
+  const bBefore = (await watchNotes("wl_b")).length;
+  const r = await notifyClosingSoonForMarket(mkt);
+  ok("trigger ran for the RG market", r.notified === true, `notified=${r.notified}`);
   ok("only the active watcher was alerted", r.watchers === 1, `watchers=${r.watchers}`);
   ok("self-excluded got NO new alert", (await watchNotes("wl_excluded")).length === before);
   ok("cooling-off got NO alert", (await watchNotes("wl_cooled")).length === 0);
+  ok("active watcher DID get the alert", (await watchNotes("wl_b")).length === bBefore + 1);
   // The star itself survives the break — taking a break must not destroy state.
   ok("excluded user's star is preserved", (await isWatching(mkt, "wl_excluded")) === true);
 }

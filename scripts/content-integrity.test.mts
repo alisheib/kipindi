@@ -106,6 +106,46 @@ for (const f of srcFiles) {
   }
 }
 
+// ── SCHED · the removed sweep machinery must not silently return ─────────────
+// Per-market scheduled resolution (2026-07-24, docs/COMPLIANCE-DECISIONS.md) deleted
+// the global settlement sweep, the AUTO_SETTLE gate and the global AI sentinel sweep.
+// Each market now carries its own timer. These symbols must stay dead in LIVE code:
+// re-introducing one would mean two mechanisms racing to move the same money.
+{
+  const DEAD_SYMBOLS = [
+    "settleDueMarkets",
+    "getAutoSettleEnabled",
+    "isAutoSettleEnabled",
+    "runSentinelSweep",
+    "applySentinelConfigChange",
+    "setSentinelInterval",
+  ];
+  for (const f of srcFiles) {
+    for (const [i, line] of read(f).split("\n").entries()) {
+      const s = line.trim();
+      // Comments are allowed to NAME these — several files document the removal.
+      if (s.startsWith("//") || s.startsWith("*") || s.startsWith("/*")) continue;
+      for (const sym of DEAD_SYMBOLS) {
+        if (new RegExp(`\\b${sym}\\b`).test(line)) {
+          fail("SCHED", `${f}:${i + 1}: live reference to removed symbol '${sym}' — settlement/resolution are per-market timers now (market-scheduler.ts)`);
+        }
+      }
+      // The env var is gone too: settlement has no global on/off switch.
+      if (/process\.env\.AUTO_SETTLE\b/.test(line)) {
+        fail("SCHED", `${f}:${i + 1}: reads process.env.AUTO_SETTLE — that gate was removed; settlement is timer-driven`);
+      }
+    }
+  }
+  // And no current-truth doc may tell an operator to flip a control that no longer exists.
+  for (const f of ["README.md", "CLAUDE.md", "docs/GO-LIVE-RUNBOOK.md", "docs/LAUNCH-GO-NO-GO.md", "docs/PAYMENT-INTEGRATION-CHECKLIST.md"]) {
+    for (const line of read(f).split("\n")) {
+      if (/AUTO_SETTLE\s*=\s*true/.test(line) && !/removed|no longer|superseded|does not exist|deleted|gone/i.test(line)) {
+        fail("SCHED", `${f}: "${line.trim().slice(0, 90)}" — instructs flipping AUTO_SETTLE, which no longer exists`);
+      }
+    }
+  }
+}
+
 if (fails.length) {
   console.error(`\ncontent-integrity: ${fails.length} FAILURE(S) — misleading/superseded content detected:\n` + fails.map((x) => "  ✗ " + x).join("\n") + "\n");
   process.exit(1);

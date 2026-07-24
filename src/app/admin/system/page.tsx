@@ -1,5 +1,4 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
-import { ControlledElsewhere } from "@/components/admin/controlled-elsewhere";
 import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { SystemActions, SupportConfigForm, TimezoneForm, MaintenanceModeForm, AnnouncementForm } from "./system-client";
@@ -11,7 +10,7 @@ import { rateLimitSnapshot } from "@/lib/server/rate-limit";
 import { admissionSnapshot } from "@/lib/server/admission";
 import { retrySnapshot } from "@/lib/server/retry";
 import { redisHealth } from "@/lib/server/redis";
-import { listMarkets, getSettlementHealth, isAutoSettleEnabled, type SettlementHealth } from "@/lib/server/market-service";
+import { listMarkets, getSettlementHealth, type SettlementHealth } from "@/lib/server/market-service";
 import { hasDatabase, pingDatabase } from "@/lib/server/prisma";
 import { formatTime, formatTzs } from "@/lib/utils";
 import { getPlatformConfig } from "@/lib/server/platform-config";
@@ -50,8 +49,7 @@ export default async function AdminSystemPage() {
   // F11 — is settlement actually happening? Degrade to an empty (not fabricated)
   // reading if this throws; never let a health card take the page down.
   const settlement: SettlementHealth = await getSettlementHealth().catch(() => ({
-    autoSettle: isAutoSettleEnabled(),
-    lastSweepAt: null, lastSweep: null,
+    scheduler: { armed: 0, nextFireAt: null },
     awaiting: { count: 0, tzs: 0, nextDueAt: null },
     frozenByObjection: { count: 0, tzs: 0 },
     readyToSettle: { count: 0, tzs: 0, oldestDueAt: null },
@@ -181,33 +179,13 @@ export default async function AdminSystemPage() {
           </p>
         </AdminCard>
 
-        {/* F11 — SETTLEMENT. A resolved market does NOT pay at resolution: its pool
-            is held until the objection window closes. Automatic payout is currently
-            PAUSED (see lifecycle.ts) — an officer settles each market by hand at
-            /admin/settlement until the payment aggregator is integrated. So a
-            market sitting in "Ready to settle" is WORK TO DO, not a fault; it only
-            becomes an alarm if automatic payout is switched back on and the sweep
-            then fails to clear it. */}
+        {/* SETTLEMENT. A resolved market does NOT pay at resolution: its pool is held
+            until the objection window closes. Each resolved market then pays itself
+            via its own per-market settle timer (market-scheduler.ts), so anything
+            sitting in "Ready to settle" means a timer was dropped — the 5-minute
+            reconciler re-arms it, and /admin/settlement is the human fallback. */}
         <AdminCard title="Settlement" sw="Malipo">
-          {!settlement.autoSettle ? (
-            <div className="flex items-start gap-2 rounded-md border border-brand-500 bg-brand-500/10 px-3 py-2.5 mb-3 text-[12.5px] text-text-muted">
-              <I.alertCircle size={15} className="mt-[1px] shrink-0 text-brand-300" />
-              <p>
-                <strong className="text-text">Automatic payout is PAUSED — payouts are manual.</strong>{" "}
-                Nothing pays a market by itself until the payment aggregator is integrated.
-                {settlement.readyToSettle.count > 0 ? (
-                  <>
-                    {" "}<strong className="text-text">{settlement.readyToSettle.count} market
-                    {settlement.readyToSettle.count === 1 ? " is" : "s are"} ready to pay
-                    ({formatTzs(settlement.readyToSettle.tzs)})</strong> — settle them at{" "}
-                    <strong>/admin/settlement</strong>.
-                  </>
-                ) : (
-                  <> Nothing is waiting to be paid right now.</>
-                )}
-              </p>
-            </div>
-          ) : settlement.readyToSettle.count > 0 ? (
+          {settlement.readyToSettle.count > 0 ? (
             <div className="flex items-start gap-2 rounded-md border border-danger-border bg-danger-bg/25 px-3 py-2.5 mb-3 text-[12.5px] text-danger-fg">
               <I.alertCircle size={15} className="mt-[1px] shrink-0" />
               <div>
@@ -215,11 +193,12 @@ export default async function AdminSystemPage() {
                   {settlement.readyToSettle.count} market{settlement.readyToSettle.count === 1 ? " is" : "s are"} OVERDUE — players are not being paid.
                 </p>
                 <p className="mt-0.5">
-                  Automatic payout is ON, so the sweep should have cleared these within a minute.
-                  Their window closed, nothing is disputing them, and the money
-                  ({formatTzs(settlement.readyToSettle.tzs)}) is still in the pool — the lifecycle
-                  ticker is not running. Check <code className="mx-1 font-mono">LIFECYCLE_TICKER</code>
-                  is not <code className="mx-1 font-mono">false</code>, or settle by hand at
+                  Their objection window closed, nothing is disputing them, and the money
+                  ({formatTzs(settlement.readyToSettle.tzs)}) is still in the pool — so their settle
+                  timers did not fire. The reconciler re-arms lost timers every 5 minutes; if this
+                  persists, check <code className="mx-1 font-mono">LIFECYCLE_TICKER</code> and{" "}
+                  <code className="mx-1 font-mono">MARKET_SCHEDULER</code> are not{" "}
+                  <code className="mx-1 font-mono">false</code>, or settle by hand at
                   /admin/settlement.
                 </p>
               </div>
@@ -227,7 +206,7 @@ export default async function AdminSystemPage() {
           ) : (
             <p className="flex items-center gap-1.5 mb-3 text-[12.5px] text-success">
               <I.check size={14} className="shrink-0" />
-              Automatic payout is ON and nothing is overdue — every due market has been paid.
+              Nothing is overdue — every market past its objection window has been paid by its timer.
             </p>
           )}
 
@@ -253,33 +232,26 @@ export default async function AdminSystemPage() {
               delta={formatTzs(settlement.frozenByObjection.tzs)}
             />
             <AdminKpi
-              label="Auto payout"
-              sw="Malipo ya kiotomatiki"
-              value={settlement.autoSettle ? "ON" : "PAUSED"}
+              label="Timers armed"
+              sw="Vipima muda"
+              value={String(settlement.scheduler.armed)}
               delta={
-                settlement.autoSettle
-                  ? settlement.lastSweepAt
-                    ? `last sweep ${formatTime(settlement.lastSweepAt)}`
-                    : "ticker has not run"
-                  : "manual until gateway"
+                settlement.scheduler.nextFireAt
+                  ? `next fire ${formatTime(settlement.scheduler.nextFireAt)}`
+                  : "none pending"
               }
-              deltaDir={settlement.autoSettle ? "up" : "down"}
-              pulse={settlement.autoSettle && !settlement.lastSweepAt}
-            />
-            <ControlledElsewhere
-              what="Automatic settlement" sw="Malipo ya kiotomatiki"
-              where="Payments ops" href="/admin/payments"
+              deltaDir={settlement.scheduler.armed > 0 ? "up" : undefined}
             />
           </div>
 
           <p className="mt-3 text-caption text-text-secondary">
             A resolved market is <strong>adjudicated, not paid</strong>. Its money stays in the pool
-            until the objection window closes with no objection standing. Today an{" "}
-            <strong>officer</strong> then pays it at <strong>/admin/settlement</strong> — automatic
-            payout is paused until the payment aggregator is integrated (re-enable with{" "}
-            <code className="font-mono">AUTO_SETTLE=true</code>).
-            &ldquo;Awaiting window&rdquo; is too early to pay. &ldquo;Frozen by objection&rdquo; is
-            waiting on a ruling at <strong>/admin/objections</strong>.
+            until the objection window closes with no objection standing — then its own{" "}
+            <strong>per-market settle timer</strong> pays it. &ldquo;Awaiting window&rdquo; is too
+            early to pay. &ldquo;Frozen by objection&rdquo; is waiting on a ruling at{" "}
+            <strong>/admin/objections</strong>. &ldquo;Timers armed&rdquo; counts every market with a
+            pending scheduled transition (close, resolve or settle); the lifecycle reconciler re-arms
+            any that go missing, and <strong>/admin/settlement</strong> is the human fallback.
           </p>
         </AdminCard>
 

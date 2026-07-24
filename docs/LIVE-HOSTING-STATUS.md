@@ -22,7 +22,7 @@
 | R2 (KYC storage) | 🟢 **LIVE** | bucket `50pick-kyc`; 5 vars set in Railway; prod-env round-trip PASS |
 | Selcom payments (deposits) | 🟢 **LIVE code, OFF** | merged `main @213165c`; provider=mock default; deposit creds set + **GENUINELY validated** (corrected probe hits `/checkout/order-status` → HTTP 200 + envelope `404 order-not-found` = signature/creds/IP reached the real handler; a bad-auth request returns 401/403). Next: 1 real deposit test → flip provider→selcom |
 | Selcom payouts (withdrawals) | 🔴 Blocked | needs **disbursement creds + float PIN** from Selcom (what we have is deposit-only); set `PAYMENT_VENDOR_PIN` |
-| The go-live switch | ⚪ Not started | after the deposit test + certs: unset TEST_FUNDING, rebaseline, licence ref, AUTO_SETTLE — see `docs/GO-LIVE-CONTINUATION-PROMPT.md` §6 |
+| The go-live switch | ⚪ Not started | after the deposit test + certs: unset TEST_FUNDING, rebaseline, licence ref — **no settlement flag to flip** (settlement is per-market timer-driven; verify on `/admin/system`) — see `docs/GO-LIVE-CONTINUATION-PROMPT.md` §6 |
 
 ## ✅ DOMAIN CUTOVER — DONE (how it went, for the record)
 - tzNIC registry flipped to Cloudflare ~15:23 (Netpoa pushed it after ~3h + a support ticket).
@@ -92,8 +92,16 @@
   `PAYMENT_API_KEY`, `PAYMENT_API_SECRET` (secret values — Railway only). `PAYMENT_AGGREGATOR`
   intentionally **unset** (→ mock; flip via admin). **Missing for payouts:** `PAYMENT_VENDOR_PIN`.
 - **To change at the go-live switch:** unset `TEST_FUNDING` (→ auto-hard-locks solo-resolution),
-  set `AUTO_SETTLE=true`, set real `NEXT_PUBLIC_LICENSE_REF` (currently placeholder
-  `TZ-GBT-2026-XXXX`).
+  set real `NEXT_PUBLIC_LICENSE_REF` (currently placeholder `TZ-GBT-2026-XXXX`).
+- **⛔ No `AUTO_SETTLE` — the var no longer exists** (nor the `/admin/payments` auto-settle toggle
+  or the global settle sweep). Settlement is **per-market timer-driven**: an adjudicated market arms
+  its own timer for its `objectionsClosedAt` and pays itself then; a ~5-min reconciler re-arms any
+  dropped timer. Nothing to flip at the switch — instead **verify** on `/admin/system` that
+  "Timers armed" is non-zero with a sane next fire, and that nothing is stuck under "Ready to
+  settle" on `/admin/settlement` (which stays the human fallback: manual *Settle now* + the
+  objection-frozen view). Payout gates are unchanged (objection window, objection freeze,
+  winner-floor, exact conservation, idempotency). Owner decision 2026-07-24 —
+  see `docs/COMPLIANCE-DECISIONS.md`.
 - **Staying as-is (Ali's calls):** `DISABLE_ADMIN_TOTP=true` (2FA later), `SMS_PROVIDER=console`
   (launching without SMS).
 - **To remove at the switch (still set, no-op):** `SPORTS_API_PROVIDER` (markets are

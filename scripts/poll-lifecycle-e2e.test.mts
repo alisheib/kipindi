@@ -17,6 +17,11 @@
  */
 delete process.env.ANTHROPIC_API_KEY;
 process.env.SESSION_SECRET ??= "test-only-session-secret-32chars-min-aaaa";
+// §6/§7 drive the lifecycle transitions EXPLICITLY (one market at a time), so the
+// ambient per-market timers are off: a timer that fired on its own would consume the
+// transition before the assertion and quietly turn the idempotency checks into
+// no-ops. The transition functions themselves are the real ones the timers call.
+process.env.MARKET_SCHEDULER = "false";
 
 import {
   generateAIPoll, editAIPoll, approveAIPoll, getAIPoll,
@@ -26,7 +31,7 @@ import { computeSelectionClosedAt, getAIPollConfig } from "../src/lib/server/ai-
 import { setAIProvider, type AIProvider, type AIPollGeneration } from "../src/lib/server/ai-provider.ts";
 import {
   createMarket, getMarket, buyPosition, isSelectionClosed, isClosedByTime,
-  notifySelectionClosedMarkets, notifyDueMarketsForResolution,
+  notifySelectionClosedForMarket, resolveDueMarket,
   listPositionsForMarket,
 } from "../src/lib/server/market-service.ts";
 import { marketStore, positionStore } from "../src/lib/server/market-dal.ts";
@@ -333,13 +338,13 @@ section("5. Selection close → bet blocking");
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// SECTION 6: Notification chain — selection closed sweep
+// SECTION 6: Notification chain — selection closed trigger
 // ═══════════════════════════════════════════════════════════════════
-section("6. Notification chain — selection closed sweep");
+section("6. Notification chain — selection closed trigger");
 {
   // Create with future dates, then backdate selectionClosedAt
   const mkt = await createMarket({
-    titleEn: `Notify sweep market #${++uniq}`,
+    titleEn: `Notify trigger market #${++uniq}`,
     titleSw: "Test",
     category: "sports",
     sourceUrl: "https://test.tz",
@@ -360,16 +365,17 @@ section("6. Notification chain — selection closed sweep");
     finalPayout: null, settledAt: null, placedAt: iso,
   } as any);
 
-  const r = await notifySelectionClosedMarkets();
+  const r = await notifySelectionClosedForMarket(mkt.id);
   await new Promise((res) => setTimeout(res, 100));
-  ok("6.1 sweep notified 1 market", r.notified >= 1, JSON.stringify(r));
+  ok("6.1 trigger notified this market", r.notified === true, JSON.stringify(r));
+  ok("6.1b trigger reached the market's bettor", r.bettors >= 1, JSON.stringify(r));
 
   const bells = (await listForUser("usr_e2e_player1")).filter((n) => n.kind === "SELECTION_CLOSED");
   ok("6.2 player got SELECTION_CLOSED bell", bells.length >= 1, `got ${bells.length}`);
 
-  // Idempotency
-  const r2 = await notifySelectionClosedMarkets();
-  ok("6.3 re-sweep notified 0 (idempotent)", r2.notified === 0 || r2.bettors === 0, JSON.stringify(r2));
+  // Idempotency — a re-fire (timer retry, reconciler, second instance) must not re-notify
+  const r2 = await notifySelectionClosedForMarket(mkt.id);
+  ok("6.3 re-trigger notified nobody (idempotent)", r2.notified === false && r2.bettors === 0, JSON.stringify(r2));
 
   // Stamp check
   const stamped = await marketStore.get(mkt.id);
@@ -377,9 +383,9 @@ section("6. Notification chain — selection closed sweep");
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// SECTION 7: Notification chain — resolution due sweep
+// SECTION 7: Notification chain — resolution due trigger
 // ═══════════════════════════════════════════════════════════════════
-section("7. Notification chain — resolution due sweep");
+section("7. Notification chain — resolution due trigger");
 {
   // Create with future date, then backdate to simulate an overdue market
   const mkt = await createMarket({
@@ -397,9 +403,11 @@ section("7. Notification chain — resolution due sweep");
   mktR.selectionClosedAt = ago(30);
   await marketStore.set(mktR);
 
-  const r = await notifyDueMarketsForResolution();
+  // `assessment: null` skips the (offline) AI call and takes the HUMAN fallback path —
+  // the same branch a live market takes when the AI can't determine an outcome.
+  const r = await resolveDueMarket(mkt.id, { assessment: null });
   await new Promise((res) => setTimeout(res, 100));
-  ok("7.1 sweep notified >= 1 market", r.notified >= 1, JSON.stringify(r));
+  ok("7.1 resolve trigger took the human fallback", r.status === "closed-human", JSON.stringify(r));
 
   // Officer should have a bell (kind is "PROPOSAL" — closest existing admin/ops kind)
   const anyAdminBell = (await listForUser("usr_e2e_admin")).filter(
@@ -410,6 +418,17 @@ section("7. Notification chain — resolution due sweep");
   // Stamp
   const stamped = await marketStore.get(mkt.id);
   ok("7.3 market has resolutionNotifiedAt stamp", !!(stamped as any)?.resolutionNotifiedAt);
+  // The resolve trigger also shuts the market to bets (LIVE → CLOSED) before the
+  // two-officer ceremony seals it.
+  ok("7.4 resolve trigger stamped the market CLOSED", stamped?.status === "CLOSED", stamped?.status ?? "missing");
+
+  // Exactly-once: a re-fire finds it no longer LIVE and must not re-alert / re-stamp
+  const r2 = await resolveDueMarket(mkt.id, { assessment: null });
+  ok("7.5 re-trigger is a no-op (exactly-once)", r2.status === "skipped", JSON.stringify(r2));
+  const after = await marketStore.get(mkt.id);
+  ok("7.6 re-trigger left the stamp untouched",
+     (after as any)?.resolutionNotifiedAt === (stamped as any)?.resolutionNotifiedAt &&
+     after?.status === "CLOSED");
 }
 
 // ═══════════════════════════════════════════════════════════════════

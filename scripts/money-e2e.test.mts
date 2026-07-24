@@ -16,7 +16,7 @@
  *   CASH IN     deposit()            — real payment dispatch
  *   PLAY        buyPosition()        — YES and NO, several players
  *   CASH OUT    cashOutPosition()    — inside the free window (free) AND after it (fee → house)
- *   CLOSE       notifySelectionClosedMarkets() — the exact payout is disclosed
+ *   CLOSE       notifySelectionClosedForMarket() — the exact payout is disclosed
  *   SETTLE      resolveMarket() x2 + settleMarket() — winners paid, losers zeroed
  *   ONE-SIDED   a poll nobody opposed → everybody refunded, we earn nothing
  *   VOID        an emergency-voided poll → everybody refunded
@@ -31,7 +31,7 @@ import { PrismaClient } from "@prisma/client";
 import { deposit, withdraw } from "../src/lib/server/wallet-service.ts";
 import {
   createMarket, buyPosition, cashOutPosition, getMarket, resolveMarket, settleMarket,
-  listPositionsForMarket, notifySelectionClosedMarkets, ratesFor,
+  listPositionsForMarket, notifySelectionClosedForMarket, ratesFor,
 } from "../src/lib/server/market-service.ts";
 import { marketStore, positionStore } from "../src/lib/server/market-dal.ts";
 import { setGlobalConfig } from "../src/lib/server/market-config.ts";
@@ -169,13 +169,18 @@ section("3 · CASH OUT (early exit) — inside the free window, and after it");
 section("4 · BETTING CLOSES — the exact payout is disclosed");
 // ════════════════════════════════════════════════════════════════════════════
 {
-  // Force the selection cutoff into the past, then run the real sweep.
+  // Force the selection cutoff into the past, then fire the REAL per-market
+  // selection-closed transition — the exact function the market timer calls.
   const m = (await marketStore.get(m1.id))!;
   m.selectionClosedAt = new Date(Date.now() - 60_000).toISOString();
   await marketStore.set(m);
 
-  const r = await notifySelectionClosedMarkets();
-  ok("the selection-closed sweep ran", r.notified === 1, `notified ${r.notified} market(s)`);
+  const r = await notifySelectionClosedForMarket(m1.id);
+  ok("the selection-closed transition ran for this poll", r.notified === true, `notified=${r.notified}`);
+  // The old sweep asserted it touched EXACTLY one market; per-market, the equivalent
+  // scope check is that it reached exactly the four bettors still holding a position
+  // (the two early exits are out).
+  ok("it disclosed to exactly the 4 remaining bettors", r.bettors === 4, `bettors ${r.bettors}`);
 
   const fresh = (await getMarket(m1.id))!;
   const fee = poolFee(fresh.yesPool, fresh.noPool, ratesFor(fresh));

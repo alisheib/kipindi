@@ -3,7 +3,8 @@
 > **STATUS: authoritative pre-launch reference.** Consolidates what must be true
 > before real money flows, and exactly what to wire to integrate the payment
 > aggregator. Companion to `docs/FINAL-AUDIT-REMEDIATION.md` (the audit tracker)
-> and `docs/perfection-plan.md` (the 0-issue plan). Last updated 2026-07-16.
+> and `docs/perfection-plan.md` (the 0-issue plan). Last updated 2026-07-24
+> (§1/§2/§4 re-cut for timer-driven per-market settlement).
 
 ---
 
@@ -55,7 +56,10 @@ These are environment / infra actions, each verified against the code:
   → the H6 monitoring seam activates automatically (`src/lib/server/monitoring.ts`).
 - [ ] **KYC object storage** (H8): wire **Cloudflare R2** so KYC images move out of
   Postgres (today `KycDocument.storageKey` holds an inline base64 data URL).
-- [ ] **`AUTO_SETTLE`**: leave OFF until the gateway is live and reconciled (see §4).
+- [ ] **Settlement timers**: nothing to flip — settlement is per-market and
+  timer-driven (see §4), there is no global on/off. On `/admin/system` → Settlement
+  confirm **"Timers armed"** is non-zero with a sensible *next fire*, and
+  **"Ready to settle"** reads **0** (anything sitting there is an unpaid market).
 - [ ] Blocked/external: H2 Redis rate-limiter, TRA tax-base ruling, trademarked
   MNO logos, third-party pentest, DR-restore rehearsal.
 
@@ -109,8 +113,10 @@ two functions. Today deposits/withdrawals are simulated with `setTimeout`.
    aggregator's status vocabulary → `normalizeStatus`.
 5. **Outbound reversal** — add the real refund/reversal call at the RG-lockout
    auto-reverse point (`wallet-service.ts` ~L250) once real money can move.
-6. **Re-enable auto-payout** — flip `AUTO_SETTLE=true` (see §4) only AFTER the rail
-   is live + reconciled.
+6. **Payout posture — nothing to flip** (see §4). Settlement is per-market
+   timer-driven; the `AUTO_SETTLE` switch no longer exists. Once the rail is live +
+   reconciled, just verify on `/admin/system` → Settlement that timers are armed and
+   "Ready to settle" is 0; `/admin/settlement` stays the human fallback.
 
 ### Enum & selection
 `PaymentProvider` (schema L101–111): `MPESA, TIGO_PESA, AIRTEL_MONEY, HALO_PESA,
@@ -121,7 +127,8 @@ MIXX, TTCL_PESA, CARD, BANK_TRANSFER, INTERNAL`. Selection is **client-driven**
 **Key files:** `payments.ts` (the stub) · `api/webhooks/payments/route.ts` (inbound)
 · `wallet-service.ts` (settlement + dispatch callers) · `crypto.ts` (HMAC) ·
 `payment-ops.ts` (kill-switch/health/reconcile) · `boot-checks.ts` (secret warnings)
-· `lifecycle.ts` + `market-service.ts` (AUTO_SETTLE) · `.env.example` / `RAILWAY.md`.
+· `market-scheduler.ts` (per-market settle timers + the 5-min reconciler) +
+`lifecycle.ts` + `market-service.ts` (`settleMarket`) · `.env.example` / `RAILWAY.md`.
 
 ---
 
@@ -145,12 +152,32 @@ MIXX, TTCL_PESA, CARD, BANK_TRANSFER, INTERNAL`. Selection is **client-driven**
 
 ## 4 · Settlement & payout posture
 
-Automatic payout is **PAUSED** (`AUTO_SETTLE` unset). A resolved market holds its
-pool through the objection window; an officer settles it by hand at
-`/admin/settlement`. The sweep, its idempotency and its gate are all built and
-tested — flip `AUTO_SETTLE=true` **only once the payout rail (the gateway) is live
-and reconciled**, so the platform never moves money on a timer before real
-money-out exists. Settlement is money-atomic and resumable (C3).
+Settlement is **per-market and timer-driven** — there is **no global on/off switch**
+to set at go-live. A resolved market is *adjudicated, not paid*: it holds its pool
+through the objection window, and its own settle timer (`market-scheduler.ts`, armed
+at the market's `objectionsClosedAt`) pays it when that window closes with nothing
+disputing it. A ~5-minute reconciler (`reconcileMarketSchedules()`) re-arms any
+market whose timer was dropped, so nothing goes unpaid. `/admin/settlement` remains
+the **human fallback** — manual "Settle now" plus the objection-frozen view.
+
+Every payout gate is unchanged and re-checked under the market lock inside
+`settleMarket()`: the objection window, a standing objection freezing the pool, the
+winner-floor, exact conservation, and idempotency (`settledAt`) — so a re-fire, the
+reconciler racing a timer, or two instances can never double-pay. Settlement is
+money-atomic and resumable (C3).
+
+**How to watch it:** `/admin/system` → Settlement shows live scheduler health —
+"Timers armed" (+ next fire), "Awaiting window", "Frozen by objection", and
+"Ready to settle", which must read **0**; anything sitting there is overdue (a timer
+was dropped). If it persists, check `LIFECYCLE_TICKER` / `MARKET_SCHEDULER` are not
+`false`, or settle by hand at `/admin/settlement`.
+
+> *Superseded (history):* this section previously read "automatic payout is **PAUSED**
+> (`AUTO_SETTLE` unset) … every payout is a manual officer action", to be re-armed by
+> flipping `AUTO_SETTLE=true` after the gateway went live. That posture — and the
+> `AUTO_SETTLE` env var, its `autoSettle` toggle on `/admin/payments`, and the global
+> `settleDueMarkets()` sweep — were removed by the owner decision of **2026-07-24**
+> (recorded in `docs/COMPLIANCE-DECISIONS.md`). Do not go looking for that switch.
 
 ---
 
