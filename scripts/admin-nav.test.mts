@@ -94,11 +94,13 @@ const ok = (label: string, cond: boolean, extra = "") => {
      activeKeyFromPath("/admin/does-not-exist") === "overview");
 }
 
-// ── 6 · Up & Down is wired in ───────────────────────────────────────────────
+// ── 6 · Up & Down is its own sealed section ─────────────────────────────────
 {
-  ok("6 · /admin/updown resolves", activeKeyFromPath("/admin/updown") === "updown");
-  ok("6 · a sub-route resolves too", activeKeyFromPath("/admin/updown/rounds") === "updown");
-  ok("6 · a nav item owns the key", navKeys().has("updown"));
+  ok("6 · /admin/updown → overview", activeKeyFromPath("/admin/updown") === "updown");
+  // The Rounds sub-page has its OWN key so the sidebar highlights it distinctly from
+  // the Overview — the more-specific prefix must win (ordered before /admin/updown).
+  ok("6 · /admin/updown/rounds → its own key", activeKeyFromPath("/admin/updown/rounds") === "updown-rounds");
+  ok("6 · both keys are owned by nav items", navKeys().has("updown") && navKeys().has("updown-rounds"));
 }
 
 console.log(`\nadmin-nav: ${pass} passed, ${fail} failed`);

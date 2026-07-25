@@ -49,12 +49,19 @@ export const NAV_GROUPS: ReadonlyArray<{
       { href: "/admin/proposals",      label: "Player proposals", key: "proposals" },
       { href: "/admin/markets",        label: "Curation queue", key: "markets" },
       { href: "/admin/resolver-queue", label: "Resolver queue", key: "resolver" },
-      // Up & Down is the second product line: assets, chains and the price oracle.
-      // It sits under Markets because it IS markets — every round is a
-      // PredictionMarket row — just on a different clock.
-      { href: "/admin/updown",         label: "Up & Down",      key: "updown" },
       { href: "/admin/sources",        label: "Sources & categories", key: "sources" },
       { href: "/admin/config",         label: "Rates & fees", key: "config" },
+    ],
+  },
+  {
+    // Up & Down is a SEPARATE GAME (Ali, 2026-07-25 — "sealed completely"), so it gets
+    // its own admin section rather than riding under Markets: its economics, chains,
+    // rounds and settings all live here, and nothing about it is mixed into the
+    // long-form-poll surfaces.
+    group: { en: "Up & Down", sw: "Juu na Chini" },
+    items: [
+      { href: "/admin/updown",         label: "Overview",  key: "updown" },
+      { href: "/admin/updown/rounds",  label: "Rounds",    key: "updown-rounds" },
     ],
   },
   {
@@ -118,6 +125,7 @@ const ROUTE_KEYS: ReadonlyArray<readonly [prefix: string, key: string]> = [
   ["/admin/markets", "markets"],
   ["/admin/resolver-queue", "resolver"],
   ["/admin/resolver", "resolver"],
+  ["/admin/updown/rounds", "updown-rounds"],
   ["/admin/updown", "updown"],
   ["/admin/affiliate", "affiliate"],
   ["/admin/bonuses", "bonuses"],
