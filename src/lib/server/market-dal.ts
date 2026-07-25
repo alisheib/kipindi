@@ -183,7 +183,15 @@ export interface PositionStore {
   // ledger loss. Ignored by the in-memory store.
   set(p: StoredPosition, tx?: Prisma.TransactionClient | null): Promise<void>;
   values(): Promise<StoredPosition[]>;
-  listForUser(userId: string, limit?: number): Promise<StoredPosition[]>;
+  /**
+   * A user's positions, newest first. `productLine` filters to ONE game via the
+   * market relation — `"MARKET"` for the Bets page (long-form polls), `"UPDOWN"` for
+   * the Up & Down history, omitted for everything (both games), which is the historical
+   * behaviour. The two games are separate portfolios (Ali, 2026-07-25), and doing the
+   * filter as an indexed JOIN here keeps a heavy Up & Down player's Bets page from
+   * loading — and then discarding — thousands of round positions.
+   */
+  listForUser(userId: string, limit?: number, productLine?: ProductLineFilter): Promise<StoredPosition[]>;
   listForMarket(marketId: string): Promise<StoredPosition[]>;
   // tx: see MarketStore.get — the idempotency probe runs inside the bet's
   // transaction so it costs no extra pool connection.
@@ -236,9 +244,11 @@ const memoryPositions: PositionStore = {
   async get(id) { return positions.get(id) ?? null; },
   async set(p, _tx) { positions.set(p.id, p); },
   async values() { return Array.from(positions.values()); },
-  async listForUser(userId, limit = 100) {
+  async listForUser(userId, limit = 100, productLine) {
+    const pl = productLine && productLine !== "ALL" ? productLine : null;
     return Array.from(positions.values())
       .filter((p) => p.userId === userId)
+      .filter((p) => !pl || (markets.get(p.marketId)?.productLine ?? "MARKET") === pl)
       .sort((a, b) => b.placedAt.localeCompare(a.placedAt))
       .slice(0, limit);
   },
@@ -466,9 +476,11 @@ const prismaPositions: PositionStore = {
     const rows = await pc().position.findMany();
     return rows.map(toStoredPosition);
   },
-  async listForUser(userId, limit = 100) {
+  async listForUser(userId, limit = 100, productLine) {
+    const pl = productLine && productLine !== "ALL" ? productLine : null;
     const rows = await pc().position.findMany({
-      where: { userId },
+      // Indexed JOIN on the market relation — the DB filters by game, not the app.
+      where: { userId, ...(pl ? { market: { productLine: pl } } : {}) },
       orderBy: { placedAt: "desc" },
       take: limit,
     });

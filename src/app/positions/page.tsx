@@ -31,7 +31,9 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
 
   // Fetch the full history (no silent 100-cap), then paginate the settled
   // archive with the shared player page size so older positions stay reachable.
-  const positions = await listPositionsForUser(session.userId, 5_000).catch(() => []);
+  // MARKET only — the Bets page is the long-form-poll portfolio. Up & Down bets are a
+  // separate game with their own history at /updown/history (Ali, 2026-07-25).
+  const positions = await listPositionsForUser(session.userId, 5_000, "MARKET").catch(() => []);
   // F5 — the viewer's affiliate code, so a shared pick/win carries their link.
   const myRefCode = await ensureAffiliateAccount(session.userId).then((a) => a.code).catch(() => undefined);
   const open = positions.filter((p) => p.status === "OPEN");

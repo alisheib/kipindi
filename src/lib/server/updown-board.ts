@@ -106,7 +106,9 @@ async function toBoardRound(
 async function myStakesByMarket(userId: string | undefined): Promise<Map<string, { up: number; down: number }>> {
   const out = new Map<string, { up: number; down: number }>();
   if (!userId) return out;
-  const positions = await listPositionsForUser(userId, 500).catch(() => []);
+  // UPDOWN only — this map powers the card's "you're in" indicator, so it must not
+  // pull the player's long-form-poll positions.
+  const positions = await listPositionsForUser(userId, 500, "UPDOWN").catch(() => []);
   for (const p of positions) {
     if (p.status !== "OPEN") continue; // only live money on the round counts as "you're in"
     const e = out.get(p.marketId) ?? { up: 0, down: 0 };
@@ -209,6 +211,75 @@ export async function getBoard(opts?: { assetKey?: string; durationMinutes?: num
     .map((r) => r.outcome!) as Array<"UP" | "DOWN" | "VOID">;
 
   return { assets, activeAsset, activeDuration, rounds, recent, chainPaused: chain.state !== "RUNNING" };
+}
+
+/**
+ * The player's OWN Up & Down history — one row per position they hold/held on a round,
+ * newest first. Its own portfolio, separate from the long-form /positions page
+ * (Ali, 2026-07-25). Reads the money the settlement path already wrote (position status
+ * + finalPayout); adds NO money logic.
+ */
+export type MyRoundRow = {
+  positionId: string;
+  roundId: string | null;
+  marketId: string;
+  assetKey: string;
+  assetNameEn: string;
+  assetNameSw: string;
+  assetNameZh: string | null;
+  durationMinutes: number;
+  side: "UP" | "DOWN";
+  stake: number;
+  status: "OPEN" | "WIN" | "LOSS" | "VOID" | "CASHED_OUT";
+  payout: number | null;
+  outcome: "UP" | "DOWN" | "VOID" | null;
+  openPrice: number | null;
+  closePrice: number | null;
+  decimals: number;
+  placedAt: string;
+  settledAt: string | null;
+  closesAt: string | null;
+};
+
+export async function getMyUpDownHistory(userId: string, limit = 200): Promise<MyRoundRow[]> {
+  const positions = await listPositionsForUser(userId, limit, "UPDOWN").catch(() => []);
+  if (positions.length === 0) return [];
+  // Resolve each position's round + asset. Bounded by the page limit; distinct markets
+  // are cached so multiple positions on one round cost one lookup.
+  const roundCache = new Map<string, Awaited<ReturnType<typeof roundStore.getByMarketId>>>();
+  const assetCache = new Map<string, StoredAsset | null>();
+  const chainCache = new Map<string, StoredChain | null>();
+  const rows: MyRoundRow[] = [];
+  for (const p of positions) {
+    let round = roundCache.get(p.marketId);
+    if (round === undefined) { round = await roundStore.getByMarketId(p.marketId).catch(() => null); roundCache.set(p.marketId, round); }
+    let chain = round ? chainCache.get(round.chainId) : null;
+    if (round && chain === undefined) { chain = await chainStore.get(round.chainId).catch(() => null); chainCache.set(round.chainId, chain); }
+    let asset = chain ? assetCache.get(chain.assetId) : null;
+    if (chain && asset === undefined) { asset = await assetStore.get(chain.assetId).catch(() => null); assetCache.set(chain.assetId, asset); }
+    rows.push({
+      positionId: p.id,
+      roundId: round?.id ?? null,
+      marketId: p.marketId,
+      assetKey: asset?.key ?? "?",
+      assetNameEn: asset?.nameEn ?? "Unknown",
+      assetNameSw: asset?.nameSw ?? "Unknown",
+      assetNameZh: asset?.nameZh ?? null,
+      durationMinutes: chain?.durationMinutes ?? 0,
+      side: p.side === "YES" ? "UP" : "DOWN",
+      stake: p.stake,
+      status: p.status,
+      payout: p.finalPayout,
+      outcome: round?.outcome ?? null,
+      openPrice: round?.openPrice ?? null,
+      closePrice: round?.closePrice ?? null,
+      decimals: asset?.decimals ?? 2,
+      placedAt: p.placedAt,
+      settledAt: p.settledAt,
+      closesAt: round?.closesAt ?? null,
+    });
+  }
+  return rows;
 }
 
 /** One round, for the detail page — with its settlement proof when it has one. */

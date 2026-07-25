@@ -922,8 +922,8 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
   return result;
 }
 
-export async function listPositionsForUser(userId: string, limit = 100) {
-  return positionStore.listForUser(userId, limit);
+export async function listPositionsForUser(userId: string, limit = 100, productLine?: ProductLineFilter) {
+  return positionStore.listForUser(userId, limit, productLine);
 }
 
 export async function listPositionsForMarket(marketId: string) {

@@ -63,7 +63,18 @@ export default async function UpDownPage({
       {/* Rounds turn over in minutes, so the board refreshes itself. */}
       <RefreshPoller intervalMs={20_000} />
 
-      <PageHeader eyebrow={t.market.udStreaming} title={t.market.udTitle} subtitle={t.market.udTagline} />
+      <div className="flex items-start justify-between gap-3">
+        <PageHeader eyebrow={t.market.udStreaming} title={t.market.udTitle} subtitle={t.market.udTagline} />
+        {/* This game's own portfolio — separate from the long-form Bets page. */}
+        <Link
+          href="/updown/history"
+          className="mt-1 inline-flex shrink-0 items-center gap-1.5 rounded-pill border border-border bg-bg-elevated px-3 py-2 font-mono text-[11px] uppercase tracking-[0.10em] text-text-muted hover:text-text hover:border-brand-400 transition-colors"
+        >
+          <I.portfolio s={13} />
+          <span className="hidden sm:inline">{t.market.udHistoryTitle}</span>
+          <I.chevronRight s={11} />
+        </Link>
+      </div>
 
       {/* ── Price tape — real readings only; an asset with no confirmed price
              shows an em-dash rather than a plausible-looking zero. ─────────── */}
