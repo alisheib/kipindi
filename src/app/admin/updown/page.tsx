@@ -5,6 +5,8 @@ import { listAssets, listChains, getUpDownConfig, ALLOWED_DURATIONS } from "@/li
 import { observationStore } from "@/lib/server/updown-dal";
 import { poolFee } from "@/lib/payout";
 import { formatTzs } from "@/lib/utils";
+import { moneyByGame, periodBounds } from "@/lib/server/report-money";
+import { featureCostWindows } from "@/lib/server/ai-usage";
 import { AddAssetForm, AddChainForm, ToggleAsset, ChainStateControls, ThresholdsForm } from "./updown-controls";
 
 export const metadata = { title: "Admin · Up & Down" };
@@ -42,6 +44,17 @@ export default async function AdminUpDownPage() {
 
   const feePreview = poolFee(FEE_PREVIEW_POOL / 2, FEE_PREVIEW_POOL / 2, cfg.defaultRateProfile, "YES");
 
+  // This game's OWN economics — 30-day money split (Up & Down only) + its own AI spend.
+  // GGR is TZS (commission we keep on this game); AI cost is USD (what the oracle spent
+  // running it). Two different currencies, shown as two distinct facts — never blended.
+  const EMPTY_GAME = { game: "UPDOWN" as const, stakes: 0, payouts: 0, refunds: 0, ggr: 0, holdPct: 0, bets: 0, players: 0 };
+  const [byGame, aiCost] = await Promise.all([
+    moneyByGame(periodBounds("30d").start, Date.now()).catch(() => ({ market: EMPTY_GAME, updown: EMPTY_GAME })),
+    featureCostWindows("updown").catch(() => ({ today: 0, last7: 0, last30: 0, all: 0, calls: 0 })),
+  ]);
+  const pnl = byGame.updown;
+  const usd = (n: number) => `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
   return (
     <>
       <AdminPageHead
@@ -58,6 +71,28 @@ export default async function AdminUpDownPage() {
           <AdminKpi label="Fee · balanced 10,000" sw="Ada" value={formatTzs(Math.round(feePreview.fee))} delta="capped-commission 13%" spark={false} />
           <AdminKpi label="Staleness window" sw="Muda wa bei" value={`${cfg.maxStalenessSeconds}s`} delta={`confidence ≥ ${cfg.confidenceThreshold}`} spark={false} />
         </div>
+
+        {/* ── This game's economics (Up & Down ONLY) ─────────────────────────
+            Sealed from the long-form polls: its own GGR, hold and turnover, beside
+            its own AI spend. GGR is TZS (commission kept on this game); AI cost is
+            USD (what the oracle spent) — two distinct facts, never blended. */}
+        <AdminCard
+          title="Up & Down economics · this game only"
+          sw="Uchumi wa mchezo huu"
+          action={<span className="font-mono text-[10px] tracking-[0.12em] uppercase text-text-tertiary">last 30 days · UPDOWN only</span>}
+        >
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <AdminKpi label="GGR · this game" sw="Mapato" value={formatTzs(Math.round(pnl.ggr))} delta={`hold ${pnl.holdPct.toFixed(1)}%`} tone={pnl.ggr >= 0 ? "success" : "danger"} spark={false} gold />
+            <AdminKpi label="Staked" sw="Zilizowekwa" value={formatTzs(Math.round(pnl.stakes))} delta={`${pnl.bets.toLocaleString()} bets`} spark={false} />
+            <AdminKpi label="Paid out" sw="Zilizolipwa" value={formatTzs(Math.round(pnl.payouts))} delta={`${pnl.players.toLocaleString()} players`} spark={false} />
+            <AdminKpi label="AI oracle cost" sw="Gharama ya AI" value={usd(aiCost.last30)} delta={`${aiCost.calls.toLocaleString()} calls · 90d ${usd(aiCost.all)}`} spark={false} />
+          </div>
+          <p className="mt-3 text-[11.5px] leading-[1.55] text-text-subtle max-w-[80ch]">
+            This is <strong>Up &amp; Down alone</strong> — long-form polls are reported separately under Money → Reports.
+            GGR is the commission kept on this game (TZS); AI cost is what its price oracle spent (USD). The platform&rsquo;s
+            combined figures, and the TRA/GBT levy on total commission, are unchanged.
+          </p>
+        </AdminCard>
 
         {/* ── Assets ─────────────────────────────────────────────────────── */}
         <AdminCard title={`Assets · ${assets.length}`} sw="Bidhaa" padding="p-0">

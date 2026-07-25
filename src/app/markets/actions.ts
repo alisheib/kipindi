@@ -79,6 +79,9 @@ export async function buyPositionAction(formData: FormData) {
     revalidatePath(`/markets/${marketId}`);
     revalidatePath("/positions");
     revalidatePath("/wallet");
+    // The Up & Down card quick-bet uses this SAME action (no parallel money path), so
+    // the board must refresh too — its volume/players/your-position all move on a bet.
+    revalidatePath("/updown");
   }
   return r;
 }

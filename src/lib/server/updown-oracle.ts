@@ -225,7 +225,7 @@ Search the approved page now, then call report_price exactly once. The reading s
       | { input_tokens?: number; output_tokens?: number; server_tool_use?: { web_search_requests?: number } }
       | undefined;
     await recordAiUsage({
-      feature: "sentinel", // metered under the resolution-AI budget; one AI spend line
+      feature: "updown", // Up & Down is its OWN spend line — see the AiFeature note
       model,
       inputTokens: u?.input_tokens ?? 0,
       outputTokens: u?.output_tokens ?? 0,
@@ -307,7 +307,7 @@ Search the approved page now, then call report_price exactly once. The reading s
     };
   } catch (err) {
     await recordAiUsage({
-      feature: "sentinel",
+      feature: "updown", // Up & Down's own spend line, on the failure path too
       model,
       ok: false,
       latencyMs: Date.now() - started,

@@ -12,7 +12,7 @@ import { getAuditPage } from "@/lib/server/audit";
 import { GenerateButton } from "./generate-button";
 import { ReportPackCard } from "./report-pack-card";
 import { formatDateTime, formatTzs, formatTzsCompact } from "@/lib/utils";
-import { reportSummary, dailyPnl, categoryBreakdown, type ReportPeriod } from "@/lib/server/report-money";
+import { reportSummary, dailyPnl, categoryBreakdown, moneyByGame, periodBounds, type ReportPeriod } from "@/lib/server/report-money";
 import { currentSession } from "@/lib/server/auth-service";
 import { hasRole, CONFIG_ROLES } from "@/lib/server/roles";
 import { AdminRestricted } from "@/components/admin/admin-restricted";
@@ -164,6 +164,10 @@ export default async function AdminReportsPage({
   const { current, prior } = await reportSummary(period, generatedAt);
   const { rows: pnlRows, totals } = await dailyPnl(period, generatedAt);
   const categories = await categoryBreakdown(period, generatedAt);
+  // Per-game split (Up & Down vs long-form polls). The KPI strip + statutory pack stay
+  // COMBINED (TRA/GBT is levied on total commission); this is an additive breakdown so
+  // management sees which game earns what.
+  const byGame = await moneyByGame(periodBounds(period, generatedAt).start, generatedAt).catch(() => null);
   const activeRows = pnlRows.filter((r) => r.stakes !== 0 || r.payouts !== 0 || r.bonus !== 0 || r.fees !== 0);
   // KPI sparklines — real daily series (AdminSpark hides <2 pts, e.g. "today").
   const ggrSpark = pnlRows.map((r) => r.ggr);
@@ -286,6 +290,57 @@ export default async function AdminReportsPage({
               </ScrollX>
             )}
           </AdminCard>
+
+          {byGame && (byGame.market.stakes > 0 || byGame.updown.stakes > 0) && (
+            <AdminCard title="By game" sw="Kwa mchezo · Markets vs Up &amp; Down" padding="p-0">
+              <ScrollX label="Money by game">
+                <table className="admin-table w-full min-w-[560px]">
+                  <thead>
+                    <tr>
+                      <th className="text-left">Game</th>
+                      <th className="text-right">Staked</th>
+                      <th className="text-right">Paid out</th>
+                      <th className="text-right">Refunds</th>
+                      <th className="text-right">GGR</th>
+                      <th className="text-right">Hold %</th>
+                      <th className="text-right">Bets</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      { label: "Markets · long-form polls", g: byGame.market },
+                      { label: "Up & Down · price rounds", g: byGame.updown },
+                    ].map(({ label, g }) => (
+                      <tr key={g.game}>
+                        <td className="text-left font-semibold text-text">{label}</td>
+                        <td className="font-mono tabular text-right text-text">{formatTzs(g.stakes)}</td>
+                        <td className="font-mono tabular text-right text-text">{formatTzs(g.payouts)}</td>
+                        <td className="font-mono tabular text-right text-text-tertiary">{formatTzs(g.refunds)}</td>
+                        <td className={["font-mono tabular text-right font-semibold", g.ggr < 0 ? "text-danger" : "text-text"].join(" ")}>{formatTzs(g.ggr)}</td>
+                        <td className="font-mono tabular text-right text-text">{g.holdPct.toFixed(1)}%</td>
+                        <td className="font-mono tabular text-right text-text-tertiary">{g.bets.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td className="text-left font-bold text-text">Combined</td>
+                      <td className="font-mono tabular text-right font-bold text-text">{formatTzs(byGame.market.stakes + byGame.updown.stakes)}</td>
+                      <td className="font-mono tabular text-right font-bold text-text">{formatTzs(byGame.market.payouts + byGame.updown.payouts)}</td>
+                      <td className="font-mono tabular text-right font-bold text-text-tertiary">{formatTzs(byGame.market.refunds + byGame.updown.refunds)}</td>
+                      <td className="font-mono tabular text-right font-bold text-text">{formatTzs(byGame.market.ggr + byGame.updown.ggr)}</td>
+                      <td className="font-mono tabular text-right font-bold text-text">—</td>
+                      <td className="font-mono tabular text-right font-bold text-text-tertiary">{(byGame.market.bets + byGame.updown.bets).toLocaleString()}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </ScrollX>
+              <p className="px-4 py-3 text-[11px] text-text-tertiary leading-snug">
+                Bet-derived money only. Deposits, withdrawals, bonuses and payment fees belong to neither game and stay in
+                the platform totals above. The statutory pack and the TRA/GBT levy read the COMBINED commission.
+              </p>
+            </AdminCard>
+          )}
 
           {categories.length > 0 && (
             <AdminCard title="GGR by category" sw="Mapato kwa aina · share of GGR">

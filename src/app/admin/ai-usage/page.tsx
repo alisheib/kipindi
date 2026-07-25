@@ -34,16 +34,20 @@ function ts(iso: string): string {
 const FEATURE_LABEL: Record<AiFeature, string> = {
   polls: "Poll generation",
   chat: "Help chatbot",
-  sentinel: "Market Sentinel",
+  sentinel: "Market Sentinel (polls)",
+  updown: "Up & Down oracle",
   other: "Other",
 };
 const FEATURE_VARIANT: Record<AiFeature, "info" | "success" | "warning" | "neutral"> = {
   polls: "info",
   chat: "success",
   sentinel: "warning",
+  updown: "info",
   other: "neutral",
 };
-const FEATURES: AiFeature[] = ["sentinel", "polls", "chat", "other"];
+// Up & Down first — it is the highest-frequency spender (one oracle call per asset per
+// grid boundary) and Ali wants each game's cost legible at a glance.
+const FEATURES: AiFeature[] = ["updown", "sentinel", "polls", "chat", "other"];
 
 type SP = Record<string, string | string[] | undefined>;
 function one(v: string | string[] | undefined): string {
@@ -129,7 +133,7 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
   const health = s.health;
   const banner =
     health === "failing"
-      ? { cls: "border-no-700/60 bg-no-500/10", icon: <I.warning s={16} className="text-no-300 shrink-0 mt-0.5" />, title: "AI calls are FAILING", body: `Every AI call in the last 24h errored (${s.recent24h.err} failed). The Sentinel, poll generation and chatbot are down \u2014 almost always an exhausted Anthropic balance or a bad key. Top up and reset the cycle below.` }
+      ? { cls: "border-no-700/60 bg-no-500/10", icon: <I.warning s={16} className="text-no-300 shrink-0 mt-0.5" />, title: "AI calls are FAILING", body: `Every AI call in the last 24h errored (${s.recent24h.err} failed). The Up & Down oracle, market resolution, poll generation and chatbot are all down \u2014 almost always an exhausted Anthropic balance or a bad key. Top up and reset the cycle below.` }
       : health === "idle"
       ? { cls: "border-border bg-bg-overlay", icon: <I.clock s={16} className="text-text-tertiary shrink-0 mt-0.5" />, title: "AI idle", body: "No AI calls in the last 24h \u2014 normal during quiet periods." }
       : { cls: "border-success/40 bg-success/10", icon: <I.checkCircle s={16} className="text-success shrink-0 mt-0.5" />, title: "AI is healthy", body: `${s.recent24h.ok} successful AI call${s.recent24h.ok === 1 ? "" : "s"} in the last 24h, ${s.recent24h.err} error${s.recent24h.err === 1 ? "" : "s"}.` };
@@ -291,7 +295,7 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
                         kind="admin"
                         title="No AI usage recorded yet"
                         titleSw="Bado hakuna matumizi ya AI"
-                        body="AI calls will appear here once the chatbot, sentinel, or poll generator runs."
+                        body="AI calls will appear here once the Up & Down oracle, market resolution, poll generation, or chatbot runs — each on its own line."
                       />
                     </td>
                   </tr>

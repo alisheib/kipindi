@@ -20,7 +20,12 @@ import { withLock } from "./locks";
 import { randomId } from "./crypto";
 import { audit } from "./audit";
 
-export type AiFeature = "polls" | "chat" | "sentinel" | "other";
+// One bucket per distinct AI spend line. `updown` is the Up & Down price oracle,
+// kept SEPARATE from `sentinel` (normal-market resolution) so the admin AI-usage page
+// can say exactly what each game costs (Ali, 2026-07-25 — Up & Down is its own game).
+// Historical rows the oracle wrote as `sentinel` (the one pre-separation seeded chain)
+// stay attributed there; everything new lands in `updown`.
+export type AiFeature = "polls" | "chat" | "sentinel" | "updown" | "other";
 
 // Per-MTok USD pricing by model family + web-search per-call price. Matches the
 // public Anthropic rates; unknown models fall back to Sonnet-tier so an estimate
@@ -240,7 +245,7 @@ export async function getAiUsageSummary(): Promise<AiUsageSummary> {
 
   const windows = { today: emptyBucket(), last7: emptyBucket(), last30: emptyBucket(), all: emptyBucket() };
   const byFeature: Record<AiFeature, UsageBucket> = {
-    polls: emptyBucket(), chat: emptyBucket(), sentinel: emptyBucket(), other: emptyBucket(),
+    polls: emptyBucket(), chat: emptyBucket(), sentinel: emptyBucket(), updown: emptyBucket(), other: emptyBucket(),
   };
   const recent24h = emptyBucket();
 
@@ -271,6 +276,29 @@ export async function getAiUsageSummary(): Promise<AiUsageSummary> {
       alertedLevel: cfg.alertedLevel,
     },
   };
+}
+
+/**
+ * Cost (USD) for ONE feature across the standard windows. Powers a game's own
+ * economics readout (e.g. the Up & Down admin overview shows exactly what its oracle
+ * costs) without pulling the whole cross-feature summary. Same event source + pricing
+ * as `getAiUsageSummary`, so the numbers reconcile to the AI-usage page to the cent.
+ */
+export async function featureCostWindows(feature: AiFeature): Promise<{ today: number; last7: number; last30: number; all: number; calls: number }> {
+  const now = Date.now();
+  const since90 = new Date(now - 90 * 86_400_000).toISOString();
+  const events = (await aiUsageDal.recent(since90, 200_000)).filter((e) => e.feature === feature);
+  const todayStart = new Date().toISOString().slice(0, 10) + "T00:00:00.000Z";
+  const d7 = new Date(now - 7 * 86_400_000).toISOString();
+  const d30 = new Date(now - 30 * 86_400_000).toISOString();
+  let today = 0, last7 = 0, last30 = 0, all = 0;
+  for (const e of events) {
+    all = round6(all + e.costUsd);
+    if (e.createdAt >= d30) last30 = round6(last30 + e.costUsd);
+    if (e.createdAt >= d7) last7 = round6(last7 + e.costUsd);
+    if (e.createdAt >= todayStart) today = round6(today + e.costUsd);
+  }
+  return { today, last7, last30, all, calls: events.length };
 }
 
 /** Paginated, filtered detail view for the admin page. */

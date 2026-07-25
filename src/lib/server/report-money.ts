@@ -36,6 +36,7 @@ import { db } from "./store";
 import type { StoredTxn } from "./store";
 import { listMarkets, listPositionsForMarket } from "./market-service";
 import type { MarketCategory } from "./market-service";
+import { positionStore, marketStore } from "./market-dal";
 
 export type ReportPeriod = "today" | "7d" | "30d" | "mtd";
 export const REPORT_PERIODS: ReportPeriod[] = ["today", "7d", "30d", "mtd"];
@@ -163,6 +164,87 @@ export async function reportSummary(period: ReportPeriod, now = Date.now()): Pro
     current: summarise(all.filter((t) => within(t, bounds.start, bounds.end))),
     prior: summarise(all.filter((t) => within(t, prior.start, prior.end))),
   };
+}
+
+// ── Per-game money split (Up & Down vs long-form polls) ──────────────────────
+//
+// Ali, 2026-07-25: "Up & Down is a game and normal polls are another game completely."
+// The money is one ledger, but management must see what EACH game earns. Every bet
+// transaction carries `positionId` → Position → market → `productLine`, so the split
+// is a join, not a schema change. Only BET-derived money is game-specific
+// (stakes / payouts / refunds / GGR); deposits, withdrawals, bonuses and payment fees
+// are platform-level and are NOT attributed to a game — they belong to neither.
+//
+// ⚠️ The combined `MoneySummary`/`summarise` above is UNCHANGED and stays the base for
+// every existing reader and the statutory pack — TRA/GBT is levied on TOTAL commission
+// across both games. This is additive.
+
+export type GameLine = "MARKET" | "UPDOWN";
+
+export type GameMoney = {
+  game: GameLine;
+  stakes: number;
+  payouts: number;
+  refunds: number;
+  /** stakes − payouts − refunds — this game's commission (what we keep on it). */
+  ggr: number;
+  /** ggr / stakes × 100 — this game's hold. */
+  holdPct: number;
+  /** Count of settled+open BET_PLACED txns attributed to this game in the window. */
+  bets: number;
+  /** Distinct players who staked on this game in the window. */
+  players: number;
+};
+
+function emptyGame(game: GameLine): GameMoney {
+  return { game, stakes: 0, payouts: 0, refunds: 0, ggr: 0, holdPct: 0, bets: 0, players: 0 };
+}
+
+/**
+ * The viewer of a report needs money split by GAME. Builds the positionId→productLine
+ * map once (join over the position + market stores) and buckets the window's bet txns.
+ *
+ * SCALE NOTE: like `summarise`/`moneyForWindow` this walks the in-memory stores; at
+ * real volume the whole reporting layer wants a SQL GROUP BY (positionId join). That is
+ * a platform-wide reporting optimisation, tracked separately — this stays consistent
+ * with the existing all-time-scan pattern rather than introducing a lone exception.
+ */
+export async function moneyByGame(start: number, end: number): Promise<{ market: GameMoney; updown: GameMoney }> {
+  const [allTxn, positions, markets] = await Promise.all([
+    db.txn.listAll(),
+    positionStore.values(),
+    marketStore.values(),
+  ]);
+  const plByMarket = new Map<string, GameLine>(markets.map((m) => [m.id, (m.productLine === "UPDOWN" ? "UPDOWN" : "MARKET")]));
+  const plByPosition = new Map<string, GameLine>(positions.map((p) => [p.id, plByMarket.get(p.marketId) ?? "MARKET"]));
+
+  const out: Record<GameLine, GameMoney & { _players: Set<string> }> = {
+    MARKET: { ...emptyGame("MARKET"), _players: new Set<string>() },
+    UPDOWN: { ...emptyGame("UPDOWN"), _players: new Set<string>() },
+  };
+
+  for (const t of allTxn) {
+    if (t.status !== "CONFIRMED") continue;
+    if (!within(t, start, end)) continue;
+    if (!t.positionId) continue; // deposits/withdrawals/bonus have no position → platform-level, not a game
+    if (t.type !== "BET_PLACED" && t.type !== "BET_PAYOUT" && t.type !== "CASHOUT" && t.type !== "BET_REFUND") continue;
+    const game = plByPosition.get(t.positionId) ?? "MARKET";
+    const g = out[game];
+    const amt = Math.abs(t.amount);
+    if (t.type === "BET_PLACED") { g.stakes += amt; g.bets += 1; g._players.add(t.userId); }
+    else if (t.type === "BET_PAYOUT" || t.type === "CASHOUT") g.payouts += amt;
+    else if (t.type === "BET_REFUND") g.refunds += amt;
+  }
+
+  const finish = (g: GameMoney & { _players: Set<string> }): GameMoney => {
+    const ggr = g.stakes - g.payouts - g.refunds;
+    return {
+      game: g.game, stakes: g.stakes, payouts: g.payouts, refunds: g.refunds,
+      ggr, holdPct: g.stakes > 0 ? (ggr / g.stakes) * 100 : 0,
+      bets: g.bets, players: g._players.size,
+    };
+  };
+  return { market: finish(out.MARKET), updown: finish(out.UPDOWN) };
 }
 
 export type DailyPnlRow = {

@@ -12,7 +12,7 @@
 import { assetStore, chainStore, roundStore, observationStore, type StoredAsset, type StoredChain, type StoredRound } from "./updown-dal";
 import { marketStore } from "./market-dal";
 import { getUpDownConfig } from "./updown-config";
-import { ratesFor } from "./market-service";
+import { ratesFor, listPositionsForUser } from "./market-service";
 import { impliedYesPct } from "./market-service";
 
 export type BoardAsset = {
@@ -50,6 +50,12 @@ export type BoardRound = {
   estMultiplier: number | null;
   state: "open" | "closing" | "confirming" | "resolved" | "void";
   settled: boolean;
+  /** The signed-in viewer's OWN open stake on each side of this round, in TZS (0 when
+   *  none, or when signed out). Powers the "you're in" indicator + quick-bet state on
+   *  the card. Read from the viewer's OPEN positions — the real money, not client
+   *  state — so it survives a refresh. */
+  myUpStake: number;
+  myDownStake: number;
 };
 
 /** The player-visible state of a round. Derived, so board and detail always agree. */
@@ -62,7 +68,11 @@ export function roundState(r: StoredRound, closesAtMs: number, now = Date.now())
   return "open";
 }
 
-async function toBoardRound(r: StoredRound, chain: StoredChain): Promise<BoardRound | null> {
+async function toBoardRound(
+  r: StoredRound,
+  chain: StoredChain,
+  mine?: { up: number; down: number },
+): Promise<BoardRound | null> {
   const m = await marketStore.get(r.marketId);
   if (!m) return null;
   const rates = ratesFor(m);
@@ -86,7 +96,25 @@ async function toBoardRound(r: StoredRound, chain: StoredChain): Promise<BoardRo
     estMultiplier: rates.showEstimatedWinnings ? 1 + rates.estimatedWinningsRate : null,
     state: roundState(r, closesAtMs),
     settled: !!r.settledAt,
+    myUpStake: mine?.up ?? 0,
+    myDownStake: mine?.down ?? 0,
   };
+}
+
+/** The viewer's OPEN stake per market, split UP(=YES)/DOWN(=NO). Empty when signed
+ *  out. One query, then grouped — never an N+1 across the board. */
+async function myStakesByMarket(userId: string | undefined): Promise<Map<string, { up: number; down: number }>> {
+  const out = new Map<string, { up: number; down: number }>();
+  if (!userId) return out;
+  const positions = await listPositionsForUser(userId, 500).catch(() => []);
+  for (const p of positions) {
+    if (p.status !== "OPEN") continue; // only live money on the round counts as "you're in"
+    const e = out.get(p.marketId) ?? { up: 0, down: 0 };
+    if (p.side === "YES") e.up += p.stake;
+    else e.down += p.stake;
+    out.set(p.marketId, e);
+  }
+  return out;
 }
 
 /** The most recent CONFIRMED reading for an asset, or null. */
