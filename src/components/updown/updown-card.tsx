@@ -23,11 +23,22 @@
  *  · The footer shows the timestamp THE SOURCE published, never our boundary.
  */
 
+import { useState, useTransition, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { cn, formatTzs } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
+import { useDeferredToast } from "@/components/ui/toast";
+import { buyPositionAction } from "@/app/markets/actions";
 import { useCountdown, mmss } from "./round-countdown";
+
+/** Preset quick-stake steps, clamped to the chain's [min, max]. A fast game wants a
+ *  one-tap amount, not a keyboard — these cover the common stakes and dedupe. */
+function quickStakes(min: number, max: number): number[] {
+  const base = [min, min * 2, min * 5, min * 10].filter((v) => v <= max);
+  const set = Array.from(new Set([...base, max])).filter((v) => v >= min && v <= max).sort((a, b) => a - b);
+  return set.slice(0, 4);
+}
 
 export type UpDownCardState = "open" | "closing" | "confirming" | "resolved" | "void";
 
@@ -61,6 +72,20 @@ export type UpDownCardProps = {
   /** ISO — the time THE SOURCE quoted, not our boundary. */
   sourceQuotedAt: string | null;
   className?: string;
+
+  // ── Quick-bet (fast game — one tap places a bet, no navigation) ────────────
+  /** The PredictionMarket this round IS — the bet goes to the SAME buyPosition path
+   *  the dial uses. Absent ⇒ the card is display-only (buttons route to the detail). */
+  marketId?: string;
+  /** Signed-out taps route to sign-in instead of placing. */
+  isAuthed?: boolean;
+  /** Quick-stake selector bounds (the chain's, else the platform default). */
+  minStake?: number;
+  maxStake?: number;
+  /** The viewer's OWN open stake per side on THIS round (server truth), shown as the
+   *  "you're in" indicator and topped up optimistically on each tap. */
+  myUpStake?: number;
+  myDownStake?: number;
 };
 
 
@@ -116,6 +141,7 @@ export function UpDownCard(props: UpDownCardProps) {
     livePrice, openPrice, movePct, closesAtMs, volumeTzs, players, upPct,
     estMultiplier, state, outcome, closePrice, voidReason,
     sourceName, sourceQuotedAt, className,
+    marketId, isAuthed, minStake, maxStake, myUpStake = 0, myDownStake = 0,
   } = props;
   const { t } = useT();
   const router = useRouter();
@@ -132,10 +158,72 @@ export function UpDownCard(props: UpDownCardProps) {
   const priceColor = dir === "up" ? "var(--yes-300)" : dir === "down" ? "var(--no-300)" : "var(--text-muted)";
   const quoted = hhmmss(sourceQuotedAt);
 
+  // ── Quick-bet state ────────────────────────────────────────────────────────
+  // A one-tap bet that keeps the card in place: we DON'T reorder the board or
+  // router.refresh() on each tap (the game is fast — many taps in a row must feel
+  // instant), we bump an OPTIMISTIC per-side delta and let the board's 20s poller
+  // reconcile server truth. The delta resets whenever the server value advances
+  // (the effect below), so a reconciled refresh never double-counts.
+  const canQuickBet = bettable && !!marketId && isAuthed === true;
+  const stakes = useMemo(() => quickStakes(minStake ?? 100, maxStake ?? 100_000), [minStake, maxStake]);
+  const [stakeIdx, setStakeIdx] = useState(0);
+  const stake = stakes[Math.min(stakeIdx, stakes.length - 1)] ?? (minStake ?? 100);
+  const [optUp, setOptUp] = useState(0);
+  const [optDown, setOptDown] = useState(0);
+  const [pending, startBet] = useTransition();
+  const { toast } = useDeferredToast(pending);
+  // Server truth advanced (the board's poller refreshed this page) ⇒ drop the optimistic
+  // deltas; the fresh myUp/myDownStake already contains the bets we placed, so keeping
+  // the deltas would double-count. Keyed on the raw server values, so it only fires when
+  // they actually change — not on every optimistic tap.
+  useEffect(() => { setOptUp(0); setOptDown(0); }, [myUpStake, myDownStake]);
+  const shownUp = myUpStake + optUp;
+  const shownDown = myDownStake + optDown;
+
+  const sideLabel = (side: "UP" | "DOWN") => (side === "UP" ? t.market.udUp : t.market.udDown);
+
+  // Signed-out / display-only cards keep the old behaviour: open the round detail
+  // (where the sign-in gate lives) rather than trying to place from the card.
   const go = (side: "UP" | "DOWN") => (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
     window.dispatchEvent(new Event("50pick:navigating"));
     router.push(`/updown/${roundId}?side=${side}`);
+  };
+
+  const place = (side: "UP" | "DOWN") => (e: React.MouseEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    if (!marketId) return;
+    const amount = stake;
+    // Optimistic first — the tap feels instant even before the round-trip returns.
+    if (side === "UP") setOptUp((v) => v + amount); else setOptDown((v) => v + amount);
+    const key =
+      (globalThis.crypto?.randomUUID?.() as string | undefined) ??
+      `${roundId}-${side}-${amount}-${optUp + optDown}`;
+    startBet(async () => {
+      const fd = new FormData();
+      fd.set("marketId", marketId);
+      fd.set("side", side === "UP" ? "YES" : "NO");
+      fd.set("stake", String(amount));
+      fd.set("idempotencyKey", key);
+      try {
+        const r = await buyPositionAction(fd);
+        if (r && "ok" in r && r.ok) {
+          toast({
+            title: t.market.udBetPlaced,
+            description: `${sideLabel(side)} · ${formatTzs(amount)}`,
+            variant: "success",
+          });
+        } else {
+          // Roll the optimistic delta back — the money never moved.
+          if (side === "UP") setOptUp((v) => Math.max(0, v - amount)); else setOptDown((v) => Math.max(0, v - amount));
+          const msg = r && "error" in r ? r.error : t.market.udBetFailed;
+          toast({ title: t.market.udBetFailed, description: msg, variant: "danger" });
+        }
+      } catch {
+        if (side === "UP") setOptUp((v) => Math.max(0, v - amount)); else setOptDown((v) => Math.max(0, v - amount));
+        toast({ title: t.market.udBetFailed, variant: "danger" });
+      }
+    });
   };
 
   return (
@@ -232,19 +320,67 @@ export function UpDownCard(props: UpDownCardProps) {
       <div style={{ marginTop: "auto", paddingTop: 12 }}>
         {bettable ? (
           <>
+            {/* "You're in" — the player's OWN live stake this round (server truth +
+                optimistic tap), shown only for the side(s) actually backed. */}
+            {(shownUp > 0 || shownDown > 0) && (
+              <div className="mb-2 flex flex-wrap items-center gap-1.5 font-mono text-[10px]">
+                <span className="uppercase tracking-[0.10em] text-text-faint">{t.market.udYoureIn}</span>
+                {shownUp > 0 && (
+                  <span className="chip chip-yes tabular-nums">{t.market.udUp} {formatTzs(shownUp)}</span>
+                )}
+                {shownDown > 0 && (
+                  <span className="chip chip-no tabular-nums">{t.market.udDown} {formatTzs(shownDown)}</span>
+                )}
+              </div>
+            )}
+
+            {/* Stake selector — one-tap presets, no keyboard. Only when the card can
+                actually place (signed-in + has its market). */}
+            {canQuickBet && stakes.length > 1 && (
+              <div className="mb-2 flex items-center gap-1" role="radiogroup" aria-label={t.market.udStake}>
+                <span className="mr-0.5 font-mono text-[8.5px] uppercase tracking-[0.12em] text-text-faint">{t.market.udStake}</span>
+                {stakes.map((s, i) => {
+                  const on = i === Math.min(stakeIdx, stakes.length - 1);
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      role="radio"
+                      aria-checked={on}
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setStakeIdx(i); }}
+                      className="rounded-md px-2 py-1 font-mono text-[10.5px] font-semibold tabular-nums transition-colors"
+                      style={{
+                        border: `1px solid ${on ? "var(--border-strong)" : "transparent"}`,
+                        background: on ? "var(--bg-inset)" : "color-mix(in oklab, var(--bg-inset) 45%, transparent)",
+                        color: on ? "var(--text)" : "var(--text-subtle)",
+                      }}
+                    >
+                      {formatTzs(s)}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-2">
-              <button type="button" onClick={go("UP")} className="btn btn-yes btn-lg"
-                      aria-label={`${t.market.udUp} — ${assetName}`}>
+              <button type="button" onClick={canQuickBet ? place("UP") : go("UP")} className="btn btn-yes btn-lg"
+                      aria-label={`${t.market.udUp} — ${assetName}${canQuickBet ? ` · ${formatTzs(stake)}` : ""}`}>
                 <I.trendingUp s={14} /> {t.market.udUp}
                 {estMultiplier != null && <span className="font-mono text-[12.5px] opacity-85">× {estMultiplier.toFixed(1)} est.</span>}
               </button>
-              <button type="button" onClick={go("DOWN")} className="btn btn-no btn-lg"
-                      aria-label={`${t.market.udDown} — ${assetName}`}>
+              <button type="button" onClick={canQuickBet ? place("DOWN") : go("DOWN")} className="btn btn-no btn-lg"
+                      aria-label={`${t.market.udDown} — ${assetName}${canQuickBet ? ` · ${formatTzs(stake)}` : ""}`}>
                 <I.trendingDown s={14} /> {t.market.udDown}
                 {estMultiplier != null && <span className="font-mono text-[12.5px] opacity-85">× {estMultiplier.toFixed(1)} est.</span>}
               </button>
             </div>
-            {estMultiplier != null && (
+            {canQuickBet ? (
+              <p className="mt-1.5 flex items-center gap-1 text-[10px] leading-[1.45] text-text-faint">
+                {pending
+                  ? <><span className="live-dot" /> {formatTzs(stake)} · {t.market.udStreaming}</>
+                  : <>{t.market.udTapToBet} · {formatTzs(stake)}</>}
+              </p>
+            ) : estMultiplier != null && (
               <p className="mt-1.5 text-[10px] leading-[1.45] text-text-faint">{t.market.udEstimateNote}</p>
             )}
           </>

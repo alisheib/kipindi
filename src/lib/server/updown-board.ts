@@ -130,17 +130,22 @@ async function latestConfirmed(assetId: string): Promise<{ price: number; quoted
  * Everything `/updown` needs: the enabled assets with their live prices, the durations
  * each actually runs, and the open rounds for the selected asset+duration.
  */
-export async function getBoard(opts?: { assetKey?: string; durationMinutes?: number }): Promise<{
+export async function getBoard(opts?: { assetKey?: string; durationMinutes?: number; userId?: string }): Promise<{
   assets: BoardAsset[];
   activeAsset: BoardAsset | null;
   activeDuration: number | null;
   rounds: BoardRound[];
   recent: Array<"UP" | "DOWN" | "VOID">;
   chainPaused: boolean;
+  /** Stake bounds for the ACTIVE chain — the quick-bet stake selector's range. */
+  stakeBounds: { min: number; max: number };
 }> {
-  const [enabled, allChains] = await Promise.all([
+  const cfg = await getUpDownConfig();
+  const defaultBounds = { min: cfg.defaultMinStake, max: cfg.defaultMaxStake };
+  const [enabled, allChains, mineByMarket] = await Promise.all([
     assetStore.list({ enabledOnly: true }).catch(() => [] as StoredAsset[]),
     chainStore.list().catch(() => [] as StoredChain[]),
+    myStakesByMarket(opts?.userId),
   ]);
 
   const assets: BoardAsset[] = await Promise.all(
@@ -160,21 +165,23 @@ export async function getBoard(opts?: { assetKey?: string; durationMinutes?: num
   );
 
   const activeAsset = (opts?.assetKey ? assets.find((a) => a.key === opts.assetKey) : undefined) ?? assets[0] ?? null;
-  if (!activeAsset) return { assets, activeAsset: null, activeDuration: null, rounds: [], recent: [], chainPaused: false };
+  if (!activeAsset) return { assets, activeAsset: null, activeDuration: null, rounds: [], recent: [], chainPaused: false, stakeBounds: defaultBounds };
 
   const activeDuration =
     (opts?.durationMinutes && activeAsset.durations.includes(opts.durationMinutes) ? opts.durationMinutes : undefined)
     ?? activeAsset.durations[0] ?? null;
   if (activeDuration == null) {
-    return { assets, activeAsset, activeDuration: null, rounds: [], recent: [], chainPaused: true };
+    return { assets, activeAsset, activeDuration: null, rounds: [], recent: [], chainPaused: true, stakeBounds: defaultBounds };
   }
 
   const chain = allChains.find((c) => c.assetId === activeAsset.id && c.durationMinutes === activeDuration);
-  if (!chain) return { assets, activeAsset, activeDuration, rounds: [], recent: [], chainPaused: true };
+  if (!chain) return { assets, activeAsset, activeDuration, rounds: [], recent: [], chainPaused: true, stakeBounds: defaultBounds };
+
+  const stakeBounds = { min: chain.minStake ?? cfg.defaultMinStake, max: chain.maxStake ?? cfg.defaultMaxStake };
 
   // Newest first, bounded — never an unbounded scan of a table that grows every minute.
   const raw = await roundStore.list({ chainId: chain.id, limit: 24 }).catch(() => []);
-  const mapped = (await Promise.all(raw.map((r) => toBoardRound(r, chain)))).filter(Boolean) as BoardRound[];
+  const mapped = (await Promise.all(raw.map((r) => toBoardRound(r, chain, mineByMarket.get(r.marketId))))).filter(Boolean) as BoardRound[];
 
   // The board shows what a player can act on or has just watched: open + confirming,
   // plus the most recent settled one for continuity.
@@ -210,7 +217,7 @@ export async function getBoard(opts?: { assetKey?: string; durationMinutes?: num
     .reverse()
     .map((r) => r.outcome!) as Array<"UP" | "DOWN" | "VOID">;
 
-  return { assets, activeAsset, activeDuration, rounds, recent, chainPaused: chain.state !== "RUNNING" };
+  return { assets, activeAsset, activeDuration, rounds, recent, chainPaused: chain.state !== "RUNNING", stakeBounds };
 }
 
 /**

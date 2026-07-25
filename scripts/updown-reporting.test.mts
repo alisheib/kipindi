@@ -43,7 +43,12 @@ const a = await funded("rep_a", 1_000_000);
 const b = await funded("rep_b", 1_000_000);
 
 const H = 3600_000;
-const windowStart = Date.now() - 3600_000; // capture everything this run does
+// A window that generously brackets this whole run. `within()` is half-open [start, end):
+// if we passed `end = Date.now()` at assert time, a bet whose createdAt lands in that
+// exact millisecond would be excluded (a fast run makes this flaky — 40k → 25k → 0). The
+// store is fresh, so only this run's txns exist; a ±1h bracket captures them all.
+const windowStart = Date.now() - H;
+const windowEnd = Date.now() + H;
 
 // ── A long-form MARKET poll ─────────────────────────────────────────────────
 const poll = await createMarket({
@@ -80,7 +85,7 @@ try { await Promise.resolve(db.txn.create({ id: `txn_dep_${seq}`, walletId: `wal
 
 // ── Split BEFORE settlement (stakes only) ────────────────────────────────────
 {
-  const g = await moneyByGame(windowStart, Date.now());
+  const g = await moneyByGame(windowStart, windowEnd);
   ok("1 · MARKET stakes = the poll's 100,000", g.market.stakes === 100_000, `got ${g.market.stakes}`);
   ok("2 · UPDOWN stakes = the round's 40,000", g.updown.stakes === 40_000, `got ${g.updown.stakes}`);
   ok("3 · the two games do not bleed into each other", g.market.stakes !== g.updown.stakes && g.updown.stakes === 40_000);
@@ -97,7 +102,7 @@ const co = await confirm(B(1), 2410);
 await closeRound(r.data.id, co, 2410);
 
 {
-  const g = await moneyByGame(windowStart, Date.now());
+  const g = await moneyByGame(windowStart, windowEnd);
   ok("6 · MARKET GGR is this game's commission only", g.market.ggr > 0 && g.market.payouts > 0, `mkt ggr ${g.market.ggr} payouts ${g.market.payouts}`);
   ok("7 · UPDOWN GGR is this game's commission only", g.updown.ggr > 0 && g.updown.payouts > 0, `ud ggr ${g.updown.ggr} payouts ${g.updown.payouts}`);
   // Combined GGR from the split must equal each game summed — the additive guarantee.

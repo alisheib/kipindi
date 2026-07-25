@@ -17,6 +17,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { I } from "@/components/ui/glyphs";
 import { getBoard } from "@/lib/server/updown-board";
+import { currentSession } from "@/lib/server/auth-service";
 import { getServerT } from "@/lib/i18n-server";
 import { pickLocalized } from "@/lib/localized";
 import { UpDownCard } from "@/components/updown/updown-card";
@@ -39,9 +40,11 @@ export default async function UpDownPage({
 }) {
   const sp = await searchParams;
   const { t, locale } = await getServerT();
+  const session = await currentSession();
   const board = await getBoard({
     assetKey: sp.asset,
     durationMinutes: sp.d ? Number(sp.d) : undefined,
+    userId: session?.userId,
   }).catch(() => null);
 
   if (!board || board.assets.length === 0) {
@@ -55,8 +58,9 @@ export default async function UpDownPage({
     );
   }
 
-  const { assets, activeAsset, activeDuration, rounds, recent, chainPaused } = board;
+  const { assets, activeAsset, activeDuration, rounds, recent, chainPaused, stakeBounds } = board;
   const href = (assetKey: string, d?: number) => `/updown?asset=${assetKey}${d ? `&d=${d}` : ""}`;
+  const isAuthed = !!session;
 
   return (
     <div className="mx-auto w-full max-w-[1280px] px-4 py-6">
@@ -197,6 +201,12 @@ export default async function UpDownPage({
                 voidReason={r.voidReason as never}
                 sourceName={activeAsset!.sourceDomain}
                 sourceQuotedAt={activeAsset!.sourceQuotedAt}
+                marketId={r.marketId}
+                isAuthed={isAuthed}
+                minStake={stakeBounds.min}
+                maxStake={stakeBounds.max}
+                myUpStake={r.myUpStake}
+                myDownStake={r.myDownStake}
               />
             ))}
           </div>
