@@ -311,6 +311,81 @@ let round1Id = "";
      after - before === 40_000 - fee, `Δ${after - before}, expected ${40_000 - fee}`);
 }
 
+// ── 8B · Payout SHAPE: proportional split, one-sided refund, hedge, and the
+//        "× est." headline is an ESTIMATE — not a cap and not a floor ──────────
+{
+  // Round P — the WINNING side is the UNDERDOG (small), the losing side is large.
+  // Two winners of different sizes let us prove (a) the split is proportional to
+  // stake and (b) the realised multiple can dwarf the "× 1.4 est." headline.
+  const openObs = await stubObservation(B(20), 2400.00);
+  const rp = await openRound(chain, B(20), openObs, 2400.00);
+  if (!rp.ok) throw new Error(rp.error);
+  const mp = (await marketStore.get(rp.data.marketId))!;
+  const rates = ratesFor(mp);
+  const est = rates.showEstimatedWinnings ? 1 + rates.estimatedWinningsRate : null; // 1.4
+  const bp1 = await buyPosition(alice, { marketId: mp.id, side: "YES", stake: 20_000 });
+  const bp2 = await buyPosition(bob, { marketId: mp.id, side: "YES", stake: 5_000 });
+  const bp3 = await buyPosition(carol, { marketId: mp.id, side: "NO", stake: 75_000 });
+  ok("8b.1 · underdog-pool bets placed", bp1.ok && bp2.ok && bp3.ok,
+     [bp1, bp2, bp3].filter((b) => !b.ok).map((b) => (b as { error: string }).error).join("; "));
+  const cp = await closeRound(rp.data.id, await stubObservation(B(21), 2412.50), 2412.50);
+  ok("8b.2 · price rose → UP → the small YES side wins", cp.ok && cp.data.outcome === "UP");
+  const pp = await listPositionsForMarket(mp.id);
+  const aliceWin = pp.find((p) => p.userId === alice)!;
+  const bobWin = pp.find((p) => p.userId === bob)!;
+  // Proportional: alice staked 4× bob, so alice's payout is 4× bob's (to rounding dust).
+  const ratioOfPayouts = (aliceWin.finalPayout ?? 0) / (bobWin.finalPayout ?? 1);
+  ok("8b.3 · ⛔ two winners split the net pool IN PROPORTION to stake (20k:5k = 4:1)",
+     Math.abs(ratioOfPayouts - 4) < 0.01, `alice/bob payout ratio ${ratioOfPayouts.toFixed(3)}`);
+  // The realised multiple here is ~3.67× — FAR above the "× 1.4 est." headline. The
+  // estimate is illustrative marketing, not a ceiling (nor, on a crowded side, a floor).
+  const realised = (aliceWin.finalPayout ?? 0) / aliceWin.stake;
+  ok("8b.4 · the '× est.' headline is an ESTIMATE, not a cap — realised can far exceed it",
+     est != null && realised > est, `realised ${realised.toFixed(2)}× vs est ${est}×`);
+  ok("8b.5 · ★ neither winner is paid below stake", (aliceWin.finalPayout ?? 0) >= aliceWin.stake && (bobWin.finalPayout ?? 0) >= bobWin.stake);
+
+  // Round Q — ONE-SIDED: every bet on UP, nothing on the other side. Per the licence
+  // "one-sided win": no opposing pool to win, so every stake is refunded at 0 fee.
+  const oq = await stubObservation(B(22), 2412.50);
+  const rq = await openRound(chain, B(22), oq, 2412.50);
+  if (!rq.ok) throw new Error(rq.error);
+  const mq = (await marketStore.get(rq.data.marketId))!;
+  const beforeQ = await walletsTotal();
+  await buyPosition(alice, { marketId: mq.id, side: "YES", stake: 30_000 });
+  await buyPosition(bob, { marketId: mq.id, side: "YES", stake: 20_000 });
+  await closeRound(rq.data.id, await stubObservation(B(23), 2420.00), 2420.00);
+  const pq = await listPositionsForMarket(mq.id);
+  ok("8b.6 · a one-sided round refunds EVERY stake in full (finalPayout == stake)",
+     pq.every((p) => (p.finalPayout ?? -1) === p.stake), pq.map((p) => `${p.stake}→${p.finalPayout}`).join(", "));
+  ok("8b.7 · ★ a one-sided round earns the house NOTHING (0 fee)",
+     Math.round(poolFee(mq.yesPool, mq.noPool, ratesFor(mq), "YES").fee) === 0);
+  ok("8b.8 · ★ and costs the players nothing net — wallets return to pre-round",
+     (await walletsTotal()) === beforeQ, `${beforeQ} → ${await walletsTotal()}`);
+
+  // Round R — HEDGE: one player backs BOTH sides of the SAME round. The two
+  // positions settle independently; the winner pays, the loser loses, and the net
+  // wallet movement is exactly the winning payout (both stakes already left).
+  const or = await stubObservation(B(24), 2400.00);
+  const rr = await openRound(chain, B(24), or, 2400.00);
+  if (!rr.ok) throw new Error(rr.error);
+  const mr = (await marketStore.get(rr.data.marketId))!;
+  const beforeR = (await db.wallet.findByUserId(alice))!.balance;
+  await buyPosition(alice, { marketId: mr.id, side: "YES", stake: 15_000, idempotencyKey: "hedge-yes" });
+  await buyPosition(alice, { marketId: mr.id, side: "NO", stake: 15_000, idempotencyKey: "hedge-no" });
+  await buyPosition(bob, { marketId: mr.id, side: "YES", stake: 10_000 });
+  const afterStakes = (await db.wallet.findByUserId(alice))!.balance;
+  ok("8b.9 · a hedged player is charged BOTH stakes", beforeR - afterStakes === 30_000, `Δ${beforeR - afterStakes}`);
+  await closeRound(rr.data.id, await stubObservation(B(25), 2410.00), 2410.00);
+  const pr = await listPositionsForMarket(mr.id);
+  const aliceYes = pr.find((p) => p.userId === alice && p.side === "YES")!;
+  const aliceNo = pr.find((p) => p.userId === alice && p.side === "NO")!;
+  ok("8b.10 · ⛔ the hedge settles per-position — YES wins, NO loses (not netted into one)",
+     aliceYes.status === "WIN" && aliceNo.status === "LOSS", `yes=${aliceYes.status} no=${aliceNo.status}`);
+  const afterSettle = (await db.wallet.findByUserId(alice))!.balance;
+  ok("8b.11 · the hedged player's net wallet move == the winning payout only",
+     afterSettle - afterStakes === (aliceYes.finalPayout ?? 0), `Δ${afterSettle - afterStakes} vs payout ${aliceYes.finalPayout}`);
+}
+
 // ── 9 · ★ MONEY CONSERVATION across everything above ────────────────────────
 {
   const end = await walletsTotal();
