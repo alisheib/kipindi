@@ -22,6 +22,10 @@ type Market = {
   move24h?: number;
   spark?: number[];
   traders?: string[];
+  /** Which game this card belongs to — /live is the one board that mixes both. */
+  productLine?: "MARKET" | "UPDOWN";
+  /** For an Up & Down round: its round id, so the card links to /updown/[roundId]. */
+  roundId?: string | null;
 };
 
 /**
@@ -164,16 +168,26 @@ function PulseCard({ market, index }: { market: Market; index: number }) {
   const title = pickLocalized(locale, market.titleEn, market.titleSw, market.titleZh);
   const Cat = I[categoryGlyph(market.category)];
   const yes = market.yesPct;
+  const isUpDown = market.productLine === "UPDOWN";
+  // Up & Down rounds link to their OWN page (via roundId), never the poll detail.
+  const href = isUpDown ? (market.roundId ? `/updown/${market.roundId}` : "/updown") : `/markets/${market.id}`;
   return (
     <Link
-      href={`/markets/${market.id}` as never}
+      href={href as never}
       className="kp-rise group flex flex-col rounded-xl border border-border bg-bg-elevated p-4 transition-colors hover:border-border-strong"
       style={{ animationDelay: `${Math.min(index, 10) * 45}ms` }}
     >
       <div className="mb-2 flex items-center justify-between gap-2">
         <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle">
-          <Cat s={13} />
-          {market.category}
+          {isUpDown ? (
+            // The game tag — so a mixed wall reads as two games at a glance.
+            <span className="inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 font-bold tracking-[0.10em]"
+                  style={{ background: "oklch(40% 0.12 262 / 0.35)", border: "1px solid var(--brand-500)", color: "var(--brand-200)" }}>
+              <I.trendingUp s={11} /> {t.market.udTitle}
+            </span>
+          ) : (
+            <><Cat s={13} />{market.category}</>
+          )}
         </span>
         <span className={`inline-flex items-center gap-1 font-mono text-[10px] tabular-nums ${market.selectionClosed ? "text-gold-300" : "text-text-subtle"}`}>
           {market.selectionClosed && <I.hourglassOff s={11} />}
@@ -187,8 +201,8 @@ function PulseCard({ market, index }: { market: Market; index: number }) {
         <TippingBar yesPct={yes} height={9} showLabels={false} recastOnHover={false} />
       </div>
       <div className="mt-2.5 flex items-center justify-between font-mono text-[12px] tabular-nums">
-        <span className="font-bold text-yes-300">{t.common.yes} <span className="opacity-75">@ {yes}%</span></span>
-        <span className="font-bold text-no-300">{t.common.no} <span className="opacity-75">@ {100 - yes}%</span></span>
+        <span className="font-bold text-yes-300">{isUpDown ? t.market.udUp : t.common.yes} <span className="opacity-75">@ {yes}%</span></span>
+        <span className="font-bold text-no-300">{isUpDown ? t.market.udDown : t.common.no} <span className="opacity-75">@ {100 - yes}%</span></span>
       </div>
     </Link>
   );

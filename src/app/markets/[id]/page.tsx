@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { I, categoryGlyph } from "@/components/ui/glyphs";
 import { BackLink } from "@/components/ui/back-link";
 import { TippingBar } from "@/components/brand";
@@ -19,6 +19,7 @@ import { cashOutValue, getMarket, impliedYesPct, isClosedByTime, isSelectionClos
 import { poolFee } from "@/lib/payout";
 import { getEffectiveConfig } from "@/lib/server/market-config";
 import { getProbabilityChart } from "@/lib/server/market-history";
+import { roundStore } from "@/lib/server/updown-dal";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { ensureAffiliateAccount } from "@/lib/server/affiliate-service";
@@ -93,6 +94,17 @@ export default async function MarketDetail({
   try { m = await getMarket(id); } catch { /* graceful */ }
   if (!m) notFound();
 
+  // Up & Down is a SEPARATE game with its own detail surface (countdown, price,
+  // quick-bet). This route renders the long-form-poll detail, which is the wrong UI
+  // for a 5-minute price round — so any link that lands an Up & Down market here
+  // (a shared /live card, an old bookmark, a search result) is bounced to the round
+  // page. Fixing it at the destination means every caller routes correctly, not just
+  // the ones we remembered to special-case.
+  if (m.productLine === "UPDOWN") {
+    const round = await roundStore.getByMarketId(m.id).catch(() => null);
+    redirect(round ? `/updown/${round.id}${side ? `?side=${side}` : ""}` : "/updown");
+  }
+
   const yesPct = impliedYesPct(m);
 
   // THIS POLL'S OWN RATES — frozen onto the market at creation and loaded with it.
@@ -136,15 +148,12 @@ export default async function MarketDetail({
   const isResolved = m.status === "RESOLVED" || m.status === "VOIDED";
 
   // "Similar markets" rail — other genuinely bettable markets so a confirmed bet
-  // flows into another instead of a dead end. MARKET product line only: an Up & Down
-  // round detail already lives on /updown with its own board, and the long-form
-  // MarketCard is the wrong surface for a price round. Best-effort — a failure here
+  // flows into another instead of a dead end. This page is MARKET-only (Up & Down was
+  // redirected to /updown above), so it always fills. Best-effort — a failure here
   // must never take down the market page.
   // 3 fills one clean row at desktop (the detail-page grid is 3-across); a 4th would
   // strand a single card on a second row.
-  const similar = m.productLine !== "UPDOWN"
-    ? await getSimilarMarkets(m, 3).catch(() => [])
-    : [];
+  const similar = await getSimilarMarkets(m, 3).catch(() => []);
 
   // F11 — decide the viewer's objection standing HERE, on the server, so the panel
   // never dangles a control the service would refuse. The same rules are re-checked
@@ -508,7 +517,7 @@ export default async function MarketDetail({
                 rates={marketRates}
                 minStake={stakeCfg.minStake}
                 maxStake={stakeCfg.maxStake}
-                boardHref={m.productLine === "UPDOWN" ? "/updown" : "/markets"}
+                boardHref="/markets"
               />
               </>
             ) : (

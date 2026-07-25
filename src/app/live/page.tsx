@@ -19,6 +19,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { LivePulseGrid } from "./pulse-grid";
 import { FeaturedContest } from "./featured-contest";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
+import { roundStore } from "@/lib/server/updown-dal";
 import { getServerT } from "@/lib/i18n-server";
 import { pickLocalized } from "@/lib/localized";
 
@@ -52,6 +53,21 @@ export default async function LivePage() {
   // Exclude markets whose resolution time has passed — they're closed/awaiting
   // settlement, not live, and must not show a LIVE badge on the board.
   const all = liveRaw.filter((m) => !isClosedByTime(m));
+
+  // /live shows BOTH games, so an Up & Down round must (a) wear an "Up & Down" chip
+  // so a mixed wall still reads as two games, and (b) link to its OWN round page, not
+  // the long-form-poll detail. Resolve marketId→roundId for the live Up & Down set
+  // only (bounded), so the card links straight to /updown/[roundId] with no redirect
+  // hop. (The /markets/[id] redirect is the safety net for every other caller.)
+  const updownIds = all.filter((m) => m.productLine === "UPDOWN").map((m) => m.id);
+  const roundByMarket = new Map<string, string>();
+  await Promise.all(
+    updownIds.map(async (mid) => {
+      const r = await roundStore.getByMarketId(mid).catch(() => null);
+      if (r) roundByMarket.set(mid, r.id);
+    }),
+  );
+
   // Build a serialisable snapshot for the client component. The C1e dense card
   // needs only odds/title/timing, so we no longer fetch a per-market spark chart
   // here (that was pure waste on a wall that can hold thousands of bars).
@@ -67,6 +83,8 @@ export default async function LivePage() {
     timeLeft: isSelectionClosed(m) ? t.market.waitingForResults : timeLeftStr(m.resolutionAt),
     selectionClosed: isSelectionClosed(m),
     traders: traderMap.get(m.id),
+    productLine: m.productLine === "UPDOWN" ? ("UPDOWN" as const) : ("MARKET" as const),
+    roundId: roundByMarket.get(m.id) ?? null,
   }));
 
   const tippingMarkets = markets.filter((m) => Math.abs(m.yesPct - 50) < 8).length;
