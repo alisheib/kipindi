@@ -11,15 +11,15 @@
  * mid-round would imply a result that does not exist yet.
  */
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { BackLink } from "@/components/ui/back-link";
 import { EmptyState } from "@/components/ui/empty-state";
-import { I } from "@/components/ui/glyphs";
 import { getRoundDetail } from "@/lib/server/updown-board";
+import { currentSession } from "@/lib/server/auth-service";
 import { getServerT } from "@/lib/i18n-server";
 import { pickLocalized } from "@/lib/localized";
 import { formatTzs } from "@/lib/utils";
 import { RoundCountdown } from "@/components/updown/round-countdown";
+import { UpDownBetBox } from "@/components/updown/updown-bet-box";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +45,8 @@ export default async function UpDownRoundPage({
 }) {
   const { roundId } = await params;
   const { t, locale } = await getServerT();
-  const detail = await getRoundDetail(roundId).catch(() => null);
+  const session = await currentSession();
+  const detail = await getRoundDetail(roundId, session?.userId).catch(() => null);
   if (!detail) notFound();
 
   const { round, asset, proof, minStake, maxStake } = detail;
@@ -138,21 +139,18 @@ export default async function UpDownRoundPage({
       {/* ── Act, or explain why you cannot ──────────────────────────────── */}
       {round.state === "open" ? (
         <section className="mt-4 rounded-xl p-4" style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
-          <p className="text-[12.5px] leading-[1.55] text-text-muted">
-            {t.market.udTagline}
-          </p>
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <Link href={`/markets/${round.marketId}?side=YES` as never} className="btn btn-yes btn-lg justify-center">
-              <I.trendingUp s={15} /> {t.market.udUp}
-            </Link>
-            <Link href={`/markets/${round.marketId}?side=NO` as never} className="btn btn-no btn-lg justify-center">
-              <I.trendingDown s={15} /> {t.market.udDown}
-            </Link>
-          </div>
-          <p className="mt-2 text-[10.5px] leading-[1.45] text-text-faint">{t.market.udEstimateNote}</p>
-          <p className="mt-1 font-mono text-[10px] text-text-faint">
-            {formatTzs(minStake)} – {formatTzs(maxStake)}
-          </p>
+          {/* Bets INLINE through the same buyPosition path — Up & Down is its own game,
+              so the round page never bounces off to the long-form poll detail. */}
+          <UpDownBetBox
+            marketId={round.marketId}
+            isAuthed={!!session}
+            minStake={minStake}
+            maxStake={maxStake}
+            myUpStake={round.myUpStake}
+            myDownStake={round.myDownStake}
+            estMultiplier={round.estMultiplier}
+            signInHref={`/auth/login?next=${encodeURIComponent(`/updown/${roundId}`)}`}
+          />
         </section>
       ) : round.state === "confirming" ? (
         <section className="mt-4 rounded-xl p-4" style={{ background: "var(--bg-inset)", border: "1px solid var(--border)" }}>

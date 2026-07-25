@@ -290,7 +290,7 @@ export async function getMyUpDownHistory(userId: string, limit = 200): Promise<M
 }
 
 /** One round, for the detail page — with its settlement proof when it has one. */
-export async function getRoundDetail(roundId: string): Promise<{
+export async function getRoundDetail(roundId: string, userId?: string): Promise<{
   round: BoardRound;
   asset: BoardAsset;
   titleEn: string;
@@ -310,7 +310,10 @@ export async function getRoundDetail(roundId: string): Promise<{
   const m = await marketStore.get(r.marketId);
   if (!a || !m) return null;
 
-  const board = await toBoardRound(r, chain);
+  // The viewer's OWN open stake per side on THIS round — powers the "you're in"
+  // indicator + optimistic base on the inline bet box (same source as the board card).
+  const mine = userId ? (await myStakesByMarket(userId)).get(r.marketId) : undefined;
+  const board = await toBoardRound(r, chain, mine);
   if (!board) return null;
 
   const live = await latestConfirmed(a.id);
