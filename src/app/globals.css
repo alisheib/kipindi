@@ -1168,6 +1168,26 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
 .odds-flash-up   { animation: odds-flash-up   600ms var(--ease-sink); }
 .odds-flash-down { animation: odds-flash-down 600ms var(--ease-sink); }
 
+/* ---------- Up & Down quick-bet success pulse ----------
+   Non-intrusive confirmation for a placed bet (replaces the happy-path toast).
+   A brief ring pulse on the card + a flash on the side just tapped. Kept short so
+   rapid repeat taps re-fire cleanly. Motion is removed under reduced-motion; the
+   aria-live announcement carries the confirmation regardless. */
+@keyframes ud-place-pulse {
+  0%   { box-shadow: 0 0 0 0 color-mix(in oklab, var(--yes-500) 55%, transparent); }
+  100% { box-shadow: 0 0 0 8px color-mix(in oklab, var(--yes-500) 0%, transparent); }
+}
+.ud-place-pulse { animation: ud-place-pulse 240ms var(--ease-sink); }
+@keyframes ud-side-flash {
+  0%   { transform: scale(1); filter: brightness(1); }
+  30%  { transform: scale(1.035); filter: brightness(1.28); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+.ud-side-flash { animation: ud-side-flash 220ms var(--ease-sink); }
+@media (prefers-reduced-motion: reduce) {
+  .ud-place-pulse, .ud-side-flash { animation: none !important; }
+}
+
 /* ---------- FiftyMark idle breathing ---------- */
 @keyframes mark-breathe { 0%, 100% { transform: rotate(0deg) scale(1); } 50% { transform: rotate(0.6deg) scale(1.015); } }
 .mark-breathe { animation: mark-breathe 6s var(--ease-conduct) infinite; transform-origin: center; }

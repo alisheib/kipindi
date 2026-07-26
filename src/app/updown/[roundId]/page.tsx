@@ -149,6 +149,7 @@ export default async function UpDownRoundPage({
             myUpStake={round.myUpStake}
             myDownStake={round.myDownStake}
             estMultiplier={round.estMultiplier}
+            assetName={name}
             signInHref={`/auth/login?next=${encodeURIComponent(`/updown/${roundId}`)}`}
           />
         </section>

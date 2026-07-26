@@ -23,6 +23,7 @@ import { createAsset, setAssetEnabled, createChain, setChainState, __resetUpDown
 import { chainStore, observationStore, __resetUpDownMemoryStores } from "../src/lib/server/updown-dal.ts";
 import { openRound, closeRound } from "../src/lib/server/updown-service.ts";
 import { seedDefaultSources, addSource } from "../src/lib/server/source-registry.ts";
+import { parseStake, quickStakes, stakeIsValid } from "../src/components/updown/stake-math.ts";
 
 let pass = 0, fail = 0;
 const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; console.log(`${c ? "PASS" : "FAIL"} ${l}${x ? ` — ${x}` : ""}`); };
@@ -154,12 +155,34 @@ async function mine(userId: string | undefined): Promise<{ up: number; down: num
   ok("18 · a fractional stake is refused", !frac.ok);
 }
 
+// ── 6B · CUSTOM stake — the free-typed amount (client math + server placement) ──
+{
+  // Pure stake math (the client's placement gate — buyPosition re-validates server-side).
+  ok("20 · parseStake reads a grouped amount", parseStake("1,250") === 1_250, `got ${parseStake("1,250")}`);
+  ok("21 · parseStake rejects empty / non-numeric / zero",
+     parseStake("") === null && parseStake("abc") === null && parseStake("0") === null);
+  ok("22 · quickStakes stays within [min,max] and dedupes",
+     quickStakes(100, 50_000).every((s) => s >= 100 && s <= 50_000) && new Set(quickStakes(100, 50_000)).size === quickStakes(100, 50_000).length);
+  // The chain here is min 100 / max 50,000.
+  ok("23 · stakeIsValid gates on the chain bounds",
+     stakeIsValid("1234", 100, 50_000) && !stakeIsValid("50", 100, 50_000) && !stakeIsValid("60000", 100, 50_000) && !stakeIsValid("", 100, 50_000));
+
+  // A NON-preset custom amount within bounds places through the same path.
+  const before = (await db.wallet.findByUserId(alice))!.balance;
+  const custom = await buyPosition(alice, { marketId, side: "YES", stake: 1_337, idempotencyKey: "qb-custom-ok" });
+  ok("24 · a valid custom amount places", custom.ok, custom.ok ? "" : custom.error);
+  const after = (await db.wallet.findByUserId(alice))!.balance;
+  ok("25 · exactly the custom amount left the wallet", before - after === 1_337, `moved ${before - after}`);
+  const m = await mine(alice);
+  ok("26 · the custom amount joins the UP 'you're in'", m.up === 10_000 + 1_337, `up ${m.up}`);
+}
+
 // ── 7 · a CLOSED round refuses new taps ──────────────────────────────────────
 {
   const co = await confirm(closeIso, 2410);
   await closeRound(r.data.id, co, 2410);
   const late = await buyPosition(bob, { marketId, side: "YES", stake: 1_000, idempotencyKey: "qb-late" });
-  ok("19 · a closed round refuses a late tap", !late.ok, late.ok ? "accepted a bet on a closed round!" : late.error);
+  ok("27 · a closed round refuses a late tap", !late.ok, late.ok ? "accepted a bet on a closed round!" : late.error);
 }
 
 console.log(`\nupdown-quickbet: ${pass} passed, ${fail} failed`);

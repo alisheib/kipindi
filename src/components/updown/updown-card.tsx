@@ -27,7 +27,8 @@ import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { cn, formatTzs } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
-import { useUpDownQuickBet } from "./use-quick-bet";
+import { useUpDownQuickBet, usePlacePulse } from "./use-quick-bet";
+import { UpDownStakeControls } from "./updown-stake-controls";
 import { useCountdown, mmss } from "./round-countdown";
 
 export type UpDownCardState = "open" | "closing" | "confirming" | "resolved" | "void";
@@ -154,10 +155,12 @@ export function UpDownCard(props: UpDownCardProps) {
   // router.refresh() per tap — the game is fast, so taps must feel instant; the
   // board's 20s poller reconciles server truth.
   const canQuickBet = bettable && !!marketId && isAuthed === true;
-  const { stakes, stakeIdx, setStakeIdx, stake, shownUp, shownDown, pending, place } = useUpDownQuickBet({
+  const bet = useUpDownQuickBet({
     marketId, minStake, maxStake, myUpStake, myDownStake,
     copy: { placed: t.market.udBetPlaced, failed: t.market.udBetFailed, up: t.market.udUp, down: t.market.udDown },
   });
+  // A placed bet pulses the whole card (non-intrusive confirmation, reduced-motion aware).
+  const cardPulse = usePlacePulse(bet.justPlaced?.nonce);
 
   // Signed-out / display-only cards keep the old behaviour: open the round detail
   // (where the sign-in gate lives) rather than trying to place from the card.
@@ -167,14 +170,9 @@ export function UpDownCard(props: UpDownCardProps) {
     router.push(`/updown/${roundId}?side=${side}`);
   };
 
-  const onPlace = (side: "UP" | "DOWN") => (e: React.MouseEvent) => {
-    e.preventDefault(); e.stopPropagation();
-    place(side);
-  };
-
   return (
     <article
-      className={cn("mcardp group", className)}
+      className={cn("mcardp group", cardPulse && "ud-place-pulse", className)}
       aria-label={`${assetName} ${t.market.udTitle} · ${durationMinutes} ${t.market.udMin}`}
       style={{ cursor: "pointer", display: "flex", flexDirection: "column" }}
       role="link"
@@ -265,71 +263,31 @@ export function UpDownCard(props: UpDownCardProps) {
       {/* ── The one action / status block. Exactly one renders. ────────── */}
       <div style={{ marginTop: "auto", paddingTop: 12 }}>
         {bettable ? (
-          <>
-            {/* "You're in" — the player's OWN live stake this round (server truth +
-                optimistic tap), shown only for the side(s) actually backed. */}
-            {(shownUp > 0 || shownDown > 0) && (
-              <div className="mb-2 flex flex-wrap items-center gap-1.5 font-mono text-[10px]">
-                <span className="uppercase tracking-[0.10em] text-text-faint">{t.market.udYoureIn}</span>
-                {shownUp > 0 && (
-                  <span className="chip chip-yes tabular-nums">{t.market.udUp} {formatTzs(shownUp)}</span>
-                )}
-                {shownDown > 0 && (
-                  <span className="chip chip-no tabular-nums">{t.market.udDown} {formatTzs(shownDown)}</span>
-                )}
+          canQuickBet ? (
+            // Authed + has its market → the shared quick-bet control (chips + custom
+            // amount + place buttons + success pulse), identical to the round page.
+            <UpDownStakeControls bet={bet} estMultiplier={estMultiplier} assetName={assetName} size="card" stopPropagation />
+          ) : (
+            // Signed-out / display-only → the buttons route to the round detail, where
+            // the sign-in gate lives. No stake control, no money path from here.
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={go("UP")} className="btn btn-yes btn-lg"
+                        aria-label={`${t.market.udUp} — ${assetName}`}>
+                  <I.trendingUp s={14} /> {t.market.udUp}
+                  {estMultiplier != null && <span className="font-mono text-[12.5px] opacity-85">× {estMultiplier.toFixed(1)} est.</span>}
+                </button>
+                <button type="button" onClick={go("DOWN")} className="btn btn-no btn-lg"
+                        aria-label={`${t.market.udDown} — ${assetName}`}>
+                  <I.trendingDown s={14} /> {t.market.udDown}
+                  {estMultiplier != null && <span className="font-mono text-[12.5px] opacity-85">× {estMultiplier.toFixed(1)} est.</span>}
+                </button>
               </div>
-            )}
-
-            {/* Stake selector — one-tap presets, no keyboard. Only when the card can
-                actually place (signed-in + has its market). */}
-            {canQuickBet && stakes.length > 1 && (
-              <div className="mb-2 flex items-center gap-1" role="radiogroup" aria-label={t.market.udStake}>
-                <span className="mr-0.5 font-mono text-[8.5px] uppercase tracking-[0.12em] text-text-faint">{t.market.udStake}</span>
-                {stakes.map((s, i) => {
-                  const on = i === Math.min(stakeIdx, stakes.length - 1);
-                  return (
-                    <button
-                      key={s}
-                      type="button"
-                      role="radio"
-                      aria-checked={on}
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setStakeIdx(i); }}
-                      className="rounded-md px-2 py-1 font-mono text-[10.5px] font-semibold tabular-nums transition-colors"
-                      style={{
-                        border: `1px solid ${on ? "var(--border-strong)" : "transparent"}`,
-                        background: on ? "var(--bg-inset)" : "color-mix(in oklab, var(--bg-inset) 45%, transparent)",
-                        color: on ? "var(--text)" : "var(--text-subtle)",
-                      }}
-                    >
-                      {formatTzs(s)}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-2">
-              <button type="button" onClick={canQuickBet ? onPlace("UP") : go("UP")} className="btn btn-yes btn-lg"
-                      aria-label={`${t.market.udUp} — ${assetName}${canQuickBet ? ` · ${formatTzs(stake)}` : ""}`}>
-                <I.trendingUp s={14} /> {t.market.udUp}
-                {estMultiplier != null && <span className="font-mono text-[12.5px] opacity-85">× {estMultiplier.toFixed(1)} est.</span>}
-              </button>
-              <button type="button" onClick={canQuickBet ? onPlace("DOWN") : go("DOWN")} className="btn btn-no btn-lg"
-                      aria-label={`${t.market.udDown} — ${assetName}${canQuickBet ? ` · ${formatTzs(stake)}` : ""}`}>
-                <I.trendingDown s={14} /> {t.market.udDown}
-                {estMultiplier != null && <span className="font-mono text-[12.5px] opacity-85">× {estMultiplier.toFixed(1)} est.</span>}
-              </button>
-            </div>
-            {canQuickBet ? (
-              <p className="mt-1.5 flex items-center gap-1 text-[10px] leading-[1.45] text-text-faint">
-                {pending
-                  ? <><span className="live-dot" /> {formatTzs(stake)} · {t.market.udStreaming}</>
-                  : <>{t.market.udTapToBet} · {formatTzs(stake)}</>}
-              </p>
-            ) : estMultiplier != null && (
-              <p className="mt-1.5 text-[10px] leading-[1.45] text-text-faint">{t.market.udEstimateNote}</p>
-            )}
-          </>
+              {estMultiplier != null && (
+                <p className="mt-1.5 text-[10px] leading-[1.45] text-text-faint">{t.market.udEstimateNote}</p>
+              )}
+            </>
+          )
         ) : state === "confirming" ? (
           // CALM. No red, no spinner, and above all no number we do not have.
           <div className="rounded-xl p-3.5" style={{ background: "color-mix(in oklab, var(--bg-inset) 70%, transparent)", border: "1px solid var(--border)" }}>

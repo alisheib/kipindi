@@ -1,18 +1,30 @@
 "use client";
 
-import { useState, useTransition, useMemo, useEffect } from "react";
-import { useDeferredToast } from "@/components/ui/toast";
+import { useState, useTransition, useMemo, useEffect, useRef, useCallback } from "react";
+import { useToast } from "@/components/ui/toast";
 import { buyPositionAction } from "@/app/markets/actions";
 import { formatTzs } from "@/lib/utils";
+import { quickStakes, parseStake } from "./stake-math";
+
+// Re-exported so existing importers of these helpers keep working.
+export { quickStakes, parseStake } from "./stake-math";
+
+export type PlacedSignal = { side: "UP" | "DOWN"; amount: number; nonce: number };
 
 /**
- * Preset quick-stake steps, clamped to the chain's [min, max]. A fast game wants a
- * one-tap amount, not a keyboard — these cover the common stakes and dedupe.
+ * Turns each new placement `nonce` into a short-lived boolean the surface uses to add
+ * the success-pulse class, then clears it so a rapid next tap re-fires cleanly. Motion
+ * itself is removed under `prefers-reduced-motion` in CSS — this only toggles the class.
  */
-export function quickStakes(min: number, max: number): number[] {
-  const base = [min, min * 2, min * 5, min * 10].filter((v) => v <= max);
-  const set = Array.from(new Set([...base, max])).filter((v) => v >= min && v <= max).sort((a, b) => a - b);
-  return set.slice(0, 4);
+export function usePlacePulse(nonce: number | undefined, ms = 260): boolean {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    if (!nonce) return;
+    setOn(true);
+    const id = setTimeout(() => setOn(false), ms);
+    return () => clearTimeout(id);
+  }, [nonce, ms]);
+  return on;
 }
 
 /**
@@ -26,6 +38,15 @@ export function quickStakes(min: number, max: number): number[] {
  * double-counts. Each tap gets a fresh idempotency key — deliberate repeat taps are
  * deliberate repeat bets (the "bet a lot in one tap" ask). A failed tap rolls its
  * optimistic delta back and shows the server's reason.
+ *
+ * SUCCESS feedback is NOT a toast (it piled up on rapid taps). The hook emits a
+ * `justPlaced` signal (side + a monotonic nonce) that the surface turns into a 150–250ms
+ * success pulse, fires a short mobile haptic, and sets an `aria-live` message for screen
+ * readers. Only FAILURES toast — the user must see those regardless.
+ *
+ * STAKE can be a preset chip OR a custom typed amount. `customMode` swaps the source;
+ * `customValid` gates placement so a bad amount never reaches the server (which also
+ * re-validates the bounds — this is UX, not the security boundary).
  */
 export function useUpDownQuickBet(opts: {
   marketId?: string;
@@ -33,17 +54,36 @@ export function useUpDownQuickBet(opts: {
   maxStake?: number;
   myUpStake?: number;
   myDownStake?: number;
-  /** Toast copy — passed in so the hook stays i18n-agnostic. */
+  /** i18n copy — the hook stays language-agnostic. `placed` is the aria-live prefix. */
   copy: { placed: string; failed: string; up: string; down: string };
 }) {
-  const { marketId, minStake, maxStake, myUpStake = 0, myDownStake = 0, copy } = opts;
-  const stakes = useMemo(() => quickStakes(minStake ?? 100, maxStake ?? 100_000), [minStake, maxStake]);
+  const { marketId, myUpStake = 0, myDownStake = 0, copy } = opts;
+  const min = opts.minStake ?? 100;
+  const max = opts.maxStake ?? 100_000;
+  const stakes = useMemo(() => quickStakes(min, max), [min, max]);
   const [stakeIdx, setStakeIdx] = useState(0);
-  const stake = stakes[Math.min(stakeIdx, stakes.length - 1)] ?? (minStake ?? 100);
+
+  // ── Custom amount ──────────────────────────────────────────────────────────
+  const [customMode, setCustomMode] = useState(false);
+  const [customValue, setCustomValue] = useState("");
+  const customParsed = parseStake(customValue);
+  const customValid = customParsed != null && customParsed >= min && customParsed <= max;
+
+  const presetStake = stakes[Math.min(stakeIdx, stakes.length - 1)] ?? min;
+  const stake = customMode ? (customValid ? customParsed! : 0) : presetStake;
+  /** Placement is allowed only when the chosen amount is usable. */
+  const stakeReady = customMode ? customValid : presetStake > 0;
+
   const [optUp, setOptUp] = useState(0);
   const [optDown, setOptDown] = useState(0);
   const [pending, startBet] = useTransition();
-  const { toast } = useDeferredToast(pending);
+  const { toast } = useToast();
+
+  // Success pulse signal + a screen-reader announcement, in place of the old toast.
+  const [justPlaced, setJustPlaced] = useState<PlacedSignal | null>(null);
+  const [liveMessage, setLiveMessage] = useState("");
+  const nonce = useRef(0);
+
   // Server truth advanced (the surface's poller refreshed) ⇒ drop the optimistic
   // deltas; the fresh myUp/myDownStake already contains the bets we placed, so keeping
   // them would double-count. Keyed on the raw server values so it fires only when they
@@ -52,8 +92,12 @@ export function useUpDownQuickBet(opts: {
   const shownUp = myUpStake + optUp;
   const shownDown = myDownStake + optDown;
 
+  const enterCustom = useCallback(() => { setCustomMode(true); }, []);
+  const exitCustom = useCallback(() => { setCustomMode(false); }, []);
+  const pickPreset = useCallback((i: number) => { setCustomMode(false); setStakeIdx(i); }, []);
+
   const place = (side: "UP" | "DOWN") => {
-    if (!marketId) return;
+    if (!marketId || !stakeReady) return;
     const amount = stake;
     // Optimistic first — the tap feels instant even before the round-trip returns.
     if (side === "UP") setOptUp((v) => v + amount); else setOptDown((v) => v + amount);
@@ -69,7 +113,12 @@ export function useUpDownQuickBet(opts: {
       try {
         const r = await buyPositionAction(fd);
         if (r && "ok" in r && r.ok) {
-          toast({ title: copy.placed, description: `${side === "UP" ? copy.up : copy.down} · ${formatTzs(amount)}`, variant: "success" });
+          // Non-intrusive success: a pulse the surface animates, a screen-reader line,
+          // and a short haptic where supported. Deliberately NOT a toast.
+          nonce.current += 1;
+          setJustPlaced({ side, amount, nonce: nonce.current });
+          setLiveMessage(`${copy.placed} · ${side === "UP" ? copy.up : copy.down} · ${formatTzs(amount)}`);
+          try { (navigator as Navigator & { vibrate?: (p: number) => boolean }).vibrate?.(12); } catch { /* unsupported */ }
         } else {
           if (side === "UP") setOptUp((v) => Math.max(0, v - amount)); else setOptDown((v) => Math.max(0, v - amount));
           const msg = r && "error" in r ? r.error : copy.failed;
@@ -82,5 +131,12 @@ export function useUpDownQuickBet(opts: {
     });
   };
 
-  return { stakes, stakeIdx, setStakeIdx, stake, shownUp, shownDown, pending, place };
+  return {
+    stakes, stakeIdx, setStakeIdx: pickPreset, stake, stakeReady,
+    shownUp, shownDown, pending, place,
+    // custom amount
+    min, max, customMode, customValue, setCustomValue, customValid, enterCustom, exitCustom,
+    // feedback
+    justPlaced, liveMessage,
+  };
 }
