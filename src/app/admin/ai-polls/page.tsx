@@ -35,7 +35,7 @@ import {
   DeleteAllButton,
 } from "./poll-actions";
 import { PollFilterToolbar } from "./poll-filters";
-import { datePresetToRange } from "./date-utils";
+import { resolveRange } from "@/lib/server/date-range";
 
 export const metadata = { title: "Admin · AI poll generation" };
 export const dynamic = "force-dynamic";
@@ -74,7 +74,9 @@ export default async function AdminAIPollsPage({
     q?: string;
     state?: string;
     category?: string;
-    date?: string;
+    range?: string;
+    from?: string;
+    to?: string;
     page?: string;
     psort?: string;
     pdir?: string;
@@ -120,17 +122,19 @@ export default async function AdminAIPollsPage({
   const approved = approvedSorted.slice((aPage - 1) * PER_PAGE, aPage * PER_PAGE);
   const aBase = buildBaseHref("/admin/ai-polls", sp, "apage");
 
-  // Build filter for the "all activity" table
-  const dateRange = datePresetToRange(sp.date ?? "");
+  // Build filter for the "all activity" table — created-date window via the platform
+  // resolver (presets + custom date+hour+minute); only filters when a window is set.
+  const hasDate = !!(sp.range && sp.range !== "all") || !!sp.from || !!sp.to;
+  const win = hasDate ? resolveRange(sp) : null;
   const filtered = await listAIPolls({
     state: (sp.state as AIPollState) || undefined,
     category: sp.category || undefined,
     search: sp.q || undefined,
-    dateFrom: dateRange.from,
-    dateTo: dateRange.to,
+    dateFrom: win ? new Date(win.start).toISOString() : undefined,
+    dateTo: win ? new Date(win.end).toISOString() : undefined,
   });
 
-  const hasFilters = sp.q || sp.state || sp.category || sp.date;
+  const hasFilters = sp.q || sp.state || sp.category || hasDate;
 
   // Paginate
   const page = parsePage(sp.page, filtered.length);
@@ -141,7 +145,9 @@ export default async function AdminAIPollsPage({
     q: sp.q,
     state: sp.state,
     category: sp.category,
-    date: sp.date,
+    range: sp.range,
+    from: sp.from,
+    to: sp.to,
   });
 
   return (

@@ -17,7 +17,7 @@ import {
 } from "@/lib/server/market-candidate";
 import { CandidateActions } from "./candidate-actions";
 import { CandidateFilterToolbar } from "./candidate-filters";
-import { datePresetToRange } from "./date-utils";
+import { resolveRange } from "@/lib/server/date-range";
 
 export const metadata = { title: "Admin · Market candidates" };
 export const dynamic = "force-dynamic";
@@ -45,7 +45,9 @@ export default async function AdminCandidatesPage({
     q?: string;
     state?: string;
     category?: string;
-    date?: string;
+    range?: string;
+    from?: string;
+    to?: string;
     page?: string;
     psort?: string;
     pdir?: string;
@@ -95,17 +97,20 @@ export default async function AdminCandidatesPage({
   const approved = approvedSorted.slice((aPage - 1) * PER_PAGE, aPage * PER_PAGE);
   const aBase = buildBaseHref("/admin/candidates", sp, "apage");
 
-  // Build filter for "all activity" table
-  const dateRange = datePresetToRange(sp.date ?? "");
+  // Build filter for "all activity" table — created-date window via the platform
+  // resolver (presets + custom date+hour+minute). Only filters when a window is set;
+  // "all"/none means every candidate.
+  const hasDate = !!(sp.range && sp.range !== "all") || !!sp.from || !!sp.to;
+  const win = hasDate ? resolveRange(sp) : null;
   const filtered = await listCandidates({
     state: (sp.state as CandidateState) || undefined,
     category: sp.category || undefined,
     search: sp.q || undefined,
-    dateFrom: dateRange.from,
-    dateTo: dateRange.to,
+    dateFrom: win ? new Date(win.start).toISOString() : undefined,
+    dateTo: win ? new Date(win.end).toISOString() : undefined,
   }).catch(() => []);
 
-  const hasFilters = sp.q || sp.state || sp.category || sp.date;
+  const hasFilters = sp.q || sp.state || sp.category || hasDate;
 
   // Paginate
   const page = parsePage(sp.page, filtered.length);
@@ -116,7 +121,9 @@ export default async function AdminCandidatesPage({
     q: sp.q,
     state: sp.state,
     category: sp.category,
-    date: sp.date,
+    range: sp.range,
+    from: sp.from,
+    to: sp.to,
   });
 
   return (

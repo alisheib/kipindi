@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useState, useTransition } from "react";
 import { I } from "@/components/ui/glyphs";
 import { RefreshButton } from "@/components/admin/refresh-button";
+import { DateTimeRangeFilter } from "@/components/ui/datetime-range-filter";
 
 const ALL_STATES = [
   { id: "", label: "All states" },
@@ -27,14 +28,6 @@ const ALL_CATEGORIES = [
   { id: "tech", label: "Tech" },
 ] as const;
 
-const DATE_PRESETS = [
-  { id: "", label: "All time" },
-  { id: "today", label: "Today" },
-  { id: "yesterday", label: "Yesterday" },
-  { id: "7d", label: "Last 7 days" },
-  { id: "30d", label: "Last 30 days" },
-] as const;
-
 export function PollFilterToolbar({ totalFiltered, totalAll }: { totalFiltered: number; totalAll: number }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -43,7 +36,7 @@ export function PollFilterToolbar({ totalFiltered, totalAll }: { totalFiltered: 
   const currentSearch = searchParams.get("q") ?? "";
   const currentState = searchParams.get("state") ?? "";
   const currentCategory = searchParams.get("category") ?? "";
-  const currentDate = searchParams.get("date") ?? "";
+  const currentDate = searchParams.get("range") ?? searchParams.get("from") ?? "";
 
   const [search, setSearch] = useState(currentSearch);
 
@@ -102,24 +95,8 @@ export function PollFilterToolbar({ totalFiltered, totalAll }: { totalFiltered: 
 
       {/* Filter chips row */}
       <div className="flex items-center gap-2 flex-wrap">
-        {/* Date presets */}
-        <div className="flex items-center gap-1 flex-wrap gap-y-1.5">
-          <I.calendar size={12} className="text-text-subtle mr-0.5" />
-          {DATE_PRESETS.map((d) => (
-            <button
-              key={d.id}
-              type="button"
-              onClick={() => push({ date: d.id })}
-              className={`px-2.5 py-1 rounded-pill text-[10.5px] font-mono uppercase tracking-[0.08em] border transition-colors ${
-                currentDate === d.id
-                  ? "border-brand-500 bg-brand-500/10 text-brand-300 font-bold"
-                  : "border-border bg-bg-overlay text-text-muted hover:border-text-subtle"
-              }`}
-            >
-              {d.label}
-            </button>
-          ))}
-        </div>
+        {/* Created-date window — platform date+hour+minute filter (presets + custom). */}
+        <DateTimeRangeFilter defaultPreset="all" presetIds={["today", "yesterday", "7d", "30d", "all"]} />
 
         <span className="w-px h-5 bg-border/60" />
 

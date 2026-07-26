@@ -9,7 +9,8 @@ import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
-import { DateSelect } from "@/components/ui/date-select";
+import { DateTimeRangeFilter } from "@/components/ui/datetime-range-filter";
+import { resolveRange } from "@/lib/server/date-range";
 import { getAiUsageSummary, listAiUsage, type AiFeature, type UsageBucket, type AiUsageFilter, type AiUsageEventRecord } from "@/lib/server/ai-usage";
 import { getAnthropicSpend } from "@/lib/server/anthropic-billing";
 import { CreditControls } from "./credit-controls";
@@ -59,17 +60,21 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
   const feature = one(sp.feature);
   const status = one(sp.status);
   const q = one(sp.q).trim();
-  const sinceDay = one(sp.since);
-  const untilDay = one(sp.until);
   const sortRaw = one(sp.sort);
   const dirRaw = one(sp.dir);
   const pageRaw = one(sp.page);
 
+  // Created-date window via the platform resolver — presets + custom date+hour+minute,
+  // EAT-safe (the old since/until treated the day as UTC). Only filters when set.
+  const rangeId = one(sp.range);
+  const hasWin = !!(rangeId && rangeId !== "all") || !!one(sp.from) || !!one(sp.to);
+  const win = hasWin ? resolveRange({ range: rangeId, from: one(sp.from), to: one(sp.to) }) : null;
+
   const filter: AiUsageFilter = {
     feature: FEATURES.includes(feature as AiFeature) ? feature : undefined,
     status: status === "ok" || status === "error" ? status : undefined,
-    since: sinceDay ? `${sinceDay}T00:00:00.000Z` : undefined,
-    until: untilDay ? `${untilDay}T23:59:59.999Z` : undefined,
+    since: win ? new Date(win.start).toISOString() : undefined,
+    until: win ? new Date(win.end).toISOString() : undefined,
     search: q || undefined,
   };
 
@@ -114,8 +119,9 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
     feature: filter.feature,
     status,
     q: q || undefined,
-    since: sinceDay || undefined,
-    until: untilDay || undefined,
+    range: rangeId || undefined,
+    from: one(sp.from) || undefined,
+    to: one(sp.to) || undefined,
     sort: sortRaw || undefined,
     dir: dirRaw || undefined,
   };
@@ -346,17 +352,14 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
                   />
                 </div>
               </div>
+              {/* Window is the platform date+hour+minute filter; hidden inputs keep it
+                  when the form's other fields (feature/status/search) are applied. */}
+              {rangeId ? <input type="hidden" name="range" value={rangeId} /> : null}
+              {one(sp.from) ? <input type="hidden" name="from" value={one(sp.from)} /> : null}
+              {one(sp.to) ? <input type="hidden" name="to" value={one(sp.to)} /> : null}
               <div className="flex flex-col gap-1">
-                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">From</span>
-                <div className="w-[150px]">
-                  <DateSelect name="since" size="sm" defaultValue={sinceDay} />
-                </div>
-              </div>
-              <div className="flex flex-col gap-1">
-                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">To</span>
-                <div className="w-[150px]">
-                  <DateSelect name="until" size="sm" defaultValue={untilDay} />
-                </div>
+                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">Window</span>
+                <DateTimeRangeFilter defaultPreset="all" presetIds={["today", "yesterday", "24h", "7d", "30d", "all"]} />
               </div>
               <label className="flex flex-col gap-1 flex-1 min-w-[180px]">
                 <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">Search</span>
@@ -367,7 +370,7 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
               </label>
               <div className="flex items-center gap-2 pt-4">
                 <Button type="submit" size="sm">Filter</Button>
-                {(filter.feature || status || q || sinceDay || untilDay) && (
+                {(filter.feature || status || q || hasWin) && (
                   <a href="/admin/ai-usage" className="btn btn-ghost btn-sm">Clear</a>
                 )}
               </div>

@@ -49,35 +49,6 @@ export const COMPANY = {
   jurisdiction: "Tanzania",
 } as const;
 
-type AnyDoc = {
-  save(): AnyDoc; restore(): AnyDoc;
-  rect(x: number, y: number, w: number, h: number): AnyDoc;
-  circle(x: number, y: number, r: number): AnyDoc;
-  fill(color?: string): AnyDoc; stroke(color?: string): AnyDoc;
-  fillColor(c: string): AnyDoc; strokeColor(c: string): AnyDoc;
-  lineWidth(w: number): AnyDoc;
-  moveTo(x: number, y: number): AnyDoc; lineTo(x: number, y: number): AnyDoc;
-  clip(): AnyDoc;
-};
-
-export function drawCrest(doc: AnyDoc, x: number, y: number, r: number): void {
-  doc.save();
-  doc.circle(x, y, r).clip();
-  doc.fillColor(BRAND.yes).rect(x - r, y - r, r, 2 * r).fill();
-  doc.fillColor("#B7263A").rect(x, y - r, r, 2 * r).fill();
-  doc.restore();
-  doc.save();
-  doc.lineWidth(Math.max(0.5, r * 0.10));
-  doc.strokeColor(BRAND.gilt);
-  doc.moveTo(x - r * 0.94, y - r * 0.34).lineTo(x + r * 0.94, y + r * 0.34).stroke();
-  doc.restore();
-  doc.save();
-  doc.lineWidth(Math.max(0.5, r * 0.10));
-  doc.strokeColor(BRAND.royalDeep);
-  doc.circle(x, y, r).stroke();
-  doc.restore();
-}
-
 export function toAnsiSafe(s: string): string {
   return s
     .replace(/→/g, "->").replace(/←/g, "<-")
@@ -91,26 +62,29 @@ export function fmtTzs(n: number): string {
   return Math.round(n).toLocaleString("en-US");
 }
 
+// Reports render in EAT (UTC+3, no DST) — the platform's operating timezone and the
+// same zone the on-screen filters resolve against. A report and the console it was
+// generated from must agree on what "26 Jul, 14:30" means. Shift to EAT, then read the
+// UTC fields of the shifted instant.
+const EAT_MS = 3 * 3600_000;
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
 export function fmtDate(iso: string | Date | null | undefined): string {
   if (!iso) return "";
   const d = typeof iso === "string" ? new Date(iso) : iso;
   if (isNaN(d.getTime())) return "";
-  const day = d.getUTCDate();
-  const mon = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getUTCMonth()];
-  const yr = d.getUTCFullYear();
-  return `${day} ${mon} ${yr}`;
+  const e = new Date(d.getTime() + EAT_MS);
+  return `${e.getUTCDate()} ${MONTHS[e.getUTCMonth()]} ${e.getUTCFullYear()}`;
 }
 
 export function fmtDateTime(iso: string | Date | null | undefined): string {
   if (!iso) return "";
   const d = typeof iso === "string" ? new Date(iso) : iso;
   if (isNaN(d.getTime())) return "";
-  const day = d.getUTCDate();
-  const mon = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getUTCMonth()];
-  const yr = d.getUTCFullYear();
-  const hh = String(d.getUTCHours()).padStart(2, "0");
-  const mm = String(d.getUTCMinutes()).padStart(2, "0");
-  return `${day} ${mon} ${yr}, ${hh}:${mm} UTC`;
+  const e = new Date(d.getTime() + EAT_MS);
+  const hh = String(e.getUTCHours()).padStart(2, "0");
+  const mm = String(e.getUTCMinutes()).padStart(2, "0");
+  return `${e.getUTCDate()} ${MONTHS[e.getUTCMonth()]} ${e.getUTCFullYear()}, ${hh}:${mm} EAT`;
 }
 
 export function reportFilename(title: string, ext: "xlsx" | "pdf"): string {
