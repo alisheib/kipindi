@@ -19,6 +19,7 @@ import { hasRole, MONEY_ROLES } from "@/lib/server/roles";
 import { audit } from "@/lib/server/audit";
 import { db } from "@/lib/server/store";
 import { attentionOf, type TxnSearchFilters } from "@/lib/server/txn-filters";
+import { resolveRange } from "@/lib/server/date-range";
 import type { StoredTxn } from "@/lib/server/store";
 
 export const dynamic = "force-dynamic";
@@ -30,14 +31,6 @@ const MAX_ROWS = 50_000;
 const TYPES = ["DEPOSIT", "WITHDRAWAL", "BET_PLACED", "BET_PAYOUT", "BET_REFUND", "BONUS_CREDIT", "ADJUSTMENT_DEBIT", "ADJUSTMENT_CREDIT", "CASHOUT", "HOUSE_FEE"];
 const STATUSES = ["PENDING", "PROCESSING", "AML_REVIEW", "CONFIRMED", "FAILED", "REVERSED", "CANCELLED"];
 const PROVIDERS = ["MPESA", "TIGO_PESA", "AIRTEL_MONEY", "HALO_PESA", "MIXX", "TTCL_PESA", "CARD", "BANK_TRANSFER", "INTERNAL"];
-
-function rangeToFromMs(range: string, now = Date.now()): number | undefined {
-  const DAY = 86_400_000;
-  if (range === "today") return new Date(new Date(now).toISOString().slice(0, 10)).getTime();
-  if (range === "7d") return now - 7 * DAY;
-  if (range === "28d") return now - 28 * DAY;
-  return undefined;
-}
 
 /** RFC-4180 quoting + spreadsheet-formula neutralisation. */
 function cell(v: string | number | null | undefined): string {
@@ -70,7 +63,9 @@ export async function GET(req: Request) {
 
   const url = new URL(req.url);
   const g = (k: string) => url.searchParams.get(k) ?? undefined;
-  const range = g("range") ?? "28d";
+  // ONE window resolver — same as the page, so the CSV matches the on-screen filter
+  // exactly (presets + custom date+hour+minute, EAT-safe). Default 28d.
+  const range = resolveRange({ range: g("range"), from: g("from"), to: g("to") }, Date.now(), "28d");
   const type = TYPES.includes(g("type") ?? "") ? (g("type") as StoredTxn["type"]) : undefined;
   const status = STATUSES.includes(g("status") ?? "") ? (g("status") as StoredTxn["status"]) : undefined;
   const provider = PROVIDERS.includes(g("provider") ?? "") ? (g("provider") as NonNullable<StoredTxn["provider"]>) : undefined;
@@ -82,7 +77,9 @@ export async function GET(req: Request) {
     types: type ? [type] : undefined,
     statuses: status ? [status] : undefined,
     providers: provider ? [provider] : undefined,
-    fromMs: rangeToFromMs(range),
+    // "All time" (preset all → start 0) means no lower bound; else the resolved window.
+    fromMs: range.start > 0 ? range.start : undefined,
+    toMs: range.end,
     take: MAX_ROWS,
     sort: { field: "createdAt", dir: "desc" },
   };
@@ -97,7 +94,7 @@ export async function GET(req: Request) {
     targetType: "Transaction",
     targetId: null,
     payload: {
-      filters: { range, type: type ?? null, status: status ?? null, provider: provider ?? null, q: q ?? null, attentionOnly },
+      filters: { range: range.preset, from: range.from ?? null, to: range.to ?? null, window: range.label, type: type ?? null, status: status ?? null, provider: provider ?? null, q: q ?? null, attentionOnly },
       rows: rows.length, matched: total, truncated,
       depositsConfirmedTzs: summary.depositsConfirmedTzs,
       withdrawalsConfirmedTzs: summary.withdrawalsConfirmedTzs,

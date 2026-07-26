@@ -67,7 +67,7 @@ export function eatDateLabel(ms: number): string {
 }
 
 /** Midnight EAT of the first day of the month containing `ms`. */
-function startOfEatMonth(ms: number): number {
+export function startOfEatMonth(ms: number): number {
   const d = new Date(ms + EAT_OFFSET_MS);
   return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1) - EAT_OFFSET_MS;
 }
@@ -86,6 +86,17 @@ export function periodBounds(period: ReportPeriod, now = Date.now()): { start: n
 export function priorBounds(bounds: { start: number; end: number }): { start: number; end: number } {
   const len = bounds.end - bounds.start;
   return { start: bounds.start - len, end: bounds.start };
+}
+
+/**
+ * A reporting window — either a legacy preset id (dashboards/sparklines) OR an already-
+ * resolved `{start,end}` (from `resolveRange`, which supports the full preset set + a
+ * custom date+hour+minute range). `boundsOf` normalises either to epoch-ms bounds, so
+ * every report function accepts both and custom windows flow through unchanged.
+ */
+export type Window = ReportPeriod | { start: number; end: number };
+export function boundsOf(w: Window, now = Date.now()): { start: number; end: number } {
+  return typeof w === "string" ? periodBounds(w, now) : w;
 }
 
 export type MoneySummary = {
@@ -151,12 +162,12 @@ export async function moneyForWindow(start: number, end: number): Promise<MoneyS
 }
 
 /** Period summary + the equal-length prior window (for the compare toggle). */
-export async function reportSummary(period: ReportPeriod, now = Date.now()): Promise<{
+export async function reportSummary(period: Window, now = Date.now()): Promise<{
   bounds: { start: number; end: number };
   current: MoneySummary;
   prior: MoneySummary;
 }> {
-  const bounds = periodBounds(period, now);
+  const bounds = boundsOf(period, now);
   const prior = priorBounds(bounds);
   const all = await db.txn.listAll();
   return {
@@ -261,8 +272,8 @@ export type DailyPnlRow = {
 
 /** One row per EAT calendar day in the period, oldest→newest, + totals.
  *  "today" collapses to a single row; longer periods give the daily P&L grid. */
-export async function dailyPnl(period: ReportPeriod, now = Date.now()): Promise<{ rows: DailyPnlRow[]; totals: DailyPnlRow }> {
-  const { start, end } = periodBounds(period, now);
+export async function dailyPnl(period: Window, now = Date.now()): Promise<{ rows: DailyPnlRow[]; totals: DailyPnlRow }> {
+  const { start, end } = boundsOf(period, now);
   const all = await db.txn.listAll();
   const inWindow = all.filter((t) => within(t, start, end));
   const firstDay = startOfEatDay(start);
@@ -293,8 +304,8 @@ export type KpiTrends = { ggr: number[]; ngr: number[]; active: number[] };
  * Default "7d" = a 7-point recent daily trend; the money tiles show a "today"/
  * period scalar with this as the recent history leading up to it.
  */
-export async function dailyKpiSeries(period: ReportPeriod = "7d", now = Date.now()): Promise<KpiTrends> {
-  const { start, end } = periodBounds(period, now);
+export async function dailyKpiSeries(period: Window = "7d", now = Date.now()): Promise<KpiTrends> {
+  const { start, end } = boundsOf(period, now);
   const all = await db.txn.listAll();
   const inWindow = all.filter((t) => within(t, start, end));
   const firstDay = startOfEatDay(start);
@@ -324,8 +335,8 @@ export type CategoryRow = {
 /** Share-of-GGR by market category, via positionId → market.category.
  *  In production this is a single GROUP BY join; here we build the lookup map
  *  from the in-memory stores. Categories with no staked activity are omitted. */
-export async function categoryBreakdown(period: ReportPeriod, now = Date.now()): Promise<CategoryRow[]> {
-  const { start, end } = periodBounds(period, now);
+export async function categoryBreakdown(period: Window, now = Date.now()): Promise<CategoryRow[]> {
+  const { start, end } = boundsOf(period, now);
   // positionId → category lookup (market-scoped).
   // MONEY READ → productLine "ALL". This attributes staked volume and fees to a
   // category; excluding Up & Down rounds would drop their entire turnover out of the

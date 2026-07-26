@@ -46,7 +46,7 @@ import type { SentinelResult } from "./market-sentinel";
 // OPERATOR_MARGIN (a dead 0.09 constant with no call sites) is gone. So is
 // CASHOUT_SLIPPAGE. Rates live in RateConfig and, for a poll that exists, in its
 // immutable feeSnapshot — nothing money-side is hardcoded any more.
-export const MIN_STAKE = 100;
+export const MIN_STAKE = 1_000;
 export const MAX_STAKE = 1_000_000;
 
 // NOTE: Politics is intentionally NOT in this list — Tanzania Gaming Board

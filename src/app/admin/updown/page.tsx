@@ -5,7 +5,9 @@ import { listAssets, listChains, getUpDownConfig, ALLOWED_DURATIONS } from "@/li
 import { observationStore } from "@/lib/server/updown-dal";
 import { poolFee } from "@/lib/payout";
 import { formatTzs } from "@/lib/utils";
-import { moneyByGame, periodBounds } from "@/lib/server/report-money";
+import { moneyByGame } from "@/lib/server/report-money";
+import { resolveRange } from "@/lib/server/date-range";
+import { DateTimeRangeFilter } from "@/components/ui/datetime-range-filter";
 import { featureCostWindows } from "@/lib/server/ai-usage";
 import { AddAssetForm, AddChainForm, ToggleAsset, ChainStateControls, ThresholdsForm } from "./updown-controls";
 
@@ -24,7 +26,10 @@ function fmtTime(iso: string | null): string {
   return Number.isFinite(d.getTime()) ? d.toISOString().slice(11, 19) + " UTC" : "—";
 }
 
-export default async function AdminUpDownPage() {
+export default async function AdminUpDownPage({ searchParams }: { searchParams: Promise<{ range?: string; from?: string; to?: string }> }) {
+  const sp = await searchParams;
+  // The economics card's window — presets + custom date+hour+minute, EAT-safe (default 30d).
+  const range = resolveRange(sp, Date.now(), "30d");
   const [assets, chains, cfg] = await Promise.all([
     listAssets().catch(() => []),
     listChains().catch(() => []),
@@ -49,7 +54,7 @@ export default async function AdminUpDownPage() {
   // running it). Two different currencies, shown as two distinct facts — never blended.
   const EMPTY_GAME = { game: "UPDOWN" as const, stakes: 0, payouts: 0, refunds: 0, ggr: 0, holdPct: 0, bets: 0, players: 0 };
   const [byGame, aiCost] = await Promise.all([
-    moneyByGame(periodBounds("30d").start, Date.now()).catch(() => ({ market: EMPTY_GAME, updown: EMPTY_GAME })),
+    moneyByGame(range.start, range.end).catch(() => ({ market: EMPTY_GAME, updown: EMPTY_GAME })),
     featureCostWindows("updown").catch(() => ({ today: 0, last7: 0, last30: 0, all: 0, calls: 0 })),
   ]);
   const pnl = byGame.updown;
@@ -79,8 +84,13 @@ export default async function AdminUpDownPage() {
         <AdminCard
           title="Up & Down economics · this game only"
           sw="Uchumi wa mchezo huu"
-          action={<span className="font-mono text-[10px] tracking-[0.12em] uppercase text-text-tertiary">last 30 days · UPDOWN only</span>}
+          action={<span className="font-mono text-[10px] tracking-[0.12em] uppercase text-text-tertiary">{range.label} · UPDOWN only</span>}
         >
+          {/* This game's money over a chosen window — presets + custom date+hour+minute.
+              (AI oracle cost stays on standard lookbacks — a separate spend concept.) */}
+          <div className="mb-3">
+            <DateTimeRangeFilter defaultPreset="30d" presetIds={["today", "yesterday", "24h", "7d", "30d", "mtd", "all"]} />
+          </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <AdminKpi label="GGR · this game" sw="Mapato" value={formatTzs(Math.round(pnl.ggr))} delta={`hold ${pnl.holdPct.toFixed(1)}%`} tone={pnl.ggr >= 0 ? "success" : "danger"} spark={false} gold />
             <AdminKpi label="Staked" sw="Zilizowekwa" value={formatTzs(Math.round(pnl.stakes))} delta={`${pnl.bets.toLocaleString()} bets`} spark={false} />

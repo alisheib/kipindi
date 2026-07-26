@@ -80,8 +80,8 @@ await buyPosition("player_1", { marketId: mkt1.id, side: "NO", stake: 2000 });
     resolutionCriterion: "x", sourceUrl: "https://example.com",
     createdById: "clean_officer",
   });
-  await buyPosition("officer_a", { marketId: mkt2.id, side: "YES", stake: 500 });
-  await buyPosition("player_1", { marketId: mkt2.id, side: "NO", stake: 500 });
+  await buyPosition("officer_a", { marketId: mkt2.id, side: "YES", stake: 2_000 });
+  await buyPosition("player_1", { marketId: mkt2.id, side: "NO", stake: 2_000 });
   const res = await emergencyVoidMarket({ marketId: mkt2.id, officerId: "officer_a", reason: "operator decision" });
   ok("position-holding officer can emergency-void", res.ok, res.ok ? "" : (res as { error?: string }).error);
 }
@@ -141,8 +141,8 @@ async function mkEvMarket(crit: string): Promise<string> {
 {
   await setRequireTwoOfficerResolution(true, "officer-conflict-test");
   const id = await mkEvMarket("Evidence stage-2 preserve");
-  await buyPosition("player_1", { marketId: id, side: "YES", stake: 500 });
-  await buyPosition("player_1", { marketId: id, side: "NO", stake: 500 });
+  await buyPosition("player_1", { marketId: id, side: "YES", stake: 2_000 });
+  await buyPosition("player_1", { marketId: id, side: "NO", stake: 2_000 });
   const quote = "Official source confirms the YES condition was met at settlement time.";
   const s1 = await resolveMarket({ marketId: id, outcome: "YES", officerId: "officer_a", evidence: quote });
   ok("two-admin stage-1 ok", s1.ok && s1.data?.stage === "stage1", s1.ok ? "" : s1.error);

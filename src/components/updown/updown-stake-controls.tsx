@@ -16,6 +16,7 @@
  */
 import { useEffect, useRef } from "react";
 import { I } from "@/components/ui/glyphs";
+import { Input } from "@/components/ui/input";
 import { cn, formatTzs } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { usePlacePulse, type useUpDownQuickBet } from "./use-quick-bet";
@@ -104,37 +105,29 @@ export function UpDownStakeControls({
         </button>
       </div>
 
-      {/* Inline custom-amount field — appears only in custom mode; no layout jump elsewhere. */}
+      {/* Inline custom-amount field — the SAME kit money Input the conviction dial uses
+          (TZS prefix sub-cell + strict numeric filtering + error state). Appears only in
+          custom mode; the bounds/error sit on a hint line so it stays narrow at 360px. */}
       {bet.customMode && (
-        <div className={cn("mb-2", compact ? "" : "mb-3")}>
-          <div
-            className={cn(
-              "flex items-center gap-1.5 rounded-lg border px-2.5 transition-colors brand-focus-within",
-              compact ? "h-9" : "h-10",
-            )}
-            style={{ background: "var(--bg-inset)", borderColor: customInvalid ? "var(--no-500)" : "var(--border)" }}
-          >
-            <span className="font-mono text-[10px] uppercase tracking-[0.10em] text-text-faint">TZS</span>
-            <input
-              ref={inputRef}
-              type="text" inputMode="numeric" autoComplete="off"
-              value={bet.customValue}
-              onChange={(e) => bet.setCustomValue(e.target.value.replace(/[^\d]/g, "").slice(0, 9))}
-              onClick={(e) => { if (stopPropagation) e.stopPropagation(); }}
-              onKeyDown={(e) => { if (e.key === "Escape") { e.stopPropagation(); bet.exitCustom(); } }}
-              aria-label={t.market.udCustomAmount}
-              aria-invalid={customInvalid}
-              placeholder="0"
-              className="min-w-0 flex-1 bg-transparent font-mono tabular-nums text-text outline-none placeholder:text-text-subtle/40"
-              style={{ fontSize: compact ? 13 : 14 }}
-            />
-            <span className="shrink-0 font-mono text-[10px] tabular-nums text-text-subtle">
-              {formatTzs(bet.min)}–{formatTzs(bet.max)}
-            </span>
-          </div>
-          {customInvalid && (
-            <p className="mt-1 font-mono text-[10px] text-no-300">{t.market.udStakeRange}</p>
-          )}
+        <div className={cn("mb-2", !compact && "mb-3")}>
+          <Input
+            ref={inputRef}
+            prefix="TZS"
+            mono
+            size={compact ? "sm" : "md"}
+            inputMode="numeric"
+            value={bet.customValue}
+            onChange={(e) => bet.setCustomValue(e.target.value.slice(0, 9))}
+            onClick={(e) => { if (stopPropagation) e.stopPropagation(); }}
+            onKeyDown={(e) => { if (e.key === "Escape") { e.stopPropagation(); bet.exitCustom(); } }}
+            aria-label={t.market.udCustomAmount}
+            aria-invalid={customInvalid}
+            error={customInvalid}
+            placeholder="0"
+          />
+          <p className={cn("mt-1 font-mono text-[10px] tabular-nums", customInvalid ? "text-no-300" : "text-text-subtle")}>
+            {customInvalid ? `${t.market.udStakeRange} · ` : ""}{formatTzs(bet.min)} – {formatTzs(bet.max)}
+          </p>
         </div>
       )}
 

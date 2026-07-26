@@ -58,8 +58,8 @@ export function useUpDownQuickBet(opts: {
   copy: { placed: string; failed: string; up: string; down: string };
 }) {
   const { marketId, myUpStake = 0, myDownStake = 0, copy } = opts;
-  const min = opts.minStake ?? 100;
-  const max = opts.maxStake ?? 100_000;
+  const min = opts.minStake ?? 1_000;
+  const max = opts.maxStake ?? 1_000_000;
   const stakes = useMemo(() => quickStakes(min, max), [min, max]);
   const [stakeIdx, setStakeIdx] = useState(0);
 

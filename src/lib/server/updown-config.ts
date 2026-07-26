@@ -79,8 +79,8 @@ export const DEFAULT_UPDOWN_CONFIG: UpDownConfig = {
   confidenceThreshold: 85,
   maxObservationAttempts: 4,
   retryBackoffSeconds: [15, 45, 120],
-  defaultMinStake: 100,
-  defaultMaxStake: 100_000,
+  defaultMinStake: 1_000,
+  defaultMaxStake: 1_000_000,
   defaultRateProfile: {
     feeModel: "capped-commission",
     commissionRate: 0.13,

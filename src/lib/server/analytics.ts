@@ -169,7 +169,7 @@ export async function providerSummary(period: Window = "today") {
 }
 
 /** Active players in the period — anyone with at least one bet or deposit. */
-export async function activePlayers(period: Period = "today") {
+export async function activePlayers(period: Window = "today") {
   const ts = await txnsInPeriod(period);
   return new Set(ts.map((t) => t.userId)).size;
 }
@@ -288,9 +288,9 @@ export async function topNgrContributors(n = 10) {
  *  holdPct = (stakes − payouts − refunds) / stakes. (Previously it omitted
  *  refunds, so a voided/one-sided poll made this tile disagree with GGR — a
  *  figure that couldn't be reconciled to the canonical source.) */
-export async function operatorMarginPct(period: Period = "28d") {
-  const end = Date.now();
-  const { holdPct } = await moneyForWindow(end - periodToMs(period), end);
+export async function operatorMarginPct(period: Window = "28d") {
+  const { start, end } = windowBounds(period);
+  const { holdPct } = await moneyForWindow(start, end);
   return holdPct;
 }
 
@@ -305,14 +305,15 @@ export async function amlThresholdBreaches(period: Period = "7d") {
  * the period. Each bucket has the net flow (deposits + bets stake) − (payouts +
  * cashouts + withdrawals). Useful for the money-flow area chart.
  */
-export async function moneyFlowSeries(period: Period = "today", buckets = 24) {
-  const totalMs = periodToMs(period);
-  const now = Date.now();
+export async function moneyFlowSeries(period: Window = "today", buckets = 24) {
+  const { start, end } = windowBounds(period);
+  const totalMs = end - start;
   const bucketMs = totalMs / buckets;
+  const intraday = totalMs <= 36 * 3600_000; // ≤ ~1.5 days → hour:minute labels
   const ts = await txnsInPeriod(period);
   const out: Array<{ x: number; y: number; label: string }> = [];
   for (let i = 0; i < buckets; i++) {
-    const bucketStart = now - totalMs + i * bucketMs;
+    const bucketStart = start + i * bucketMs;
     const bucketEnd = bucketStart + bucketMs;
     let inflow = 0;
     let outflow = 0;
@@ -328,7 +329,7 @@ export async function moneyFlowSeries(period: Period = "today", buckets = 24) {
     const net = inflow - outflow;
     const d = new Date(bucketStart);
     const label =
-      period === "today" ? `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}` :
+      intraday ? `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}` :
       `${d.getDate()}/${d.getMonth() + 1}`;
     out.push({ x: i, y: net, label });
   }
@@ -342,14 +343,14 @@ export async function moneyFlowSeries(period: Period = "today", buckets = 24) {
  * a bucket containing a voided/one-sided poll overstates margin and the chart
  * disagrees with the GGR line + the scalar margin tile.
  */
-export async function marginSeries(period: Period = "28d", buckets = 28) {
-  const totalMs = periodToMs(period);
-  const now = Date.now();
+export async function marginSeries(period: Window = "28d", buckets = 28) {
+  const { start, end } = windowBounds(period);
+  const totalMs = end - start;
   const bucketMs = totalMs / buckets;
   const ts = await txnsInPeriod(period);
   const out: Array<{ x: number; y: number; label: string }> = [];
   for (let i = 0; i < buckets; i++) {
-    const bucketStart = now - totalMs + i * bucketMs;
+    const bucketStart = start + i * bucketMs;
     const bucketEnd = bucketStart + bucketMs;
     let stakes = 0;
     let payouts = 0;
@@ -370,16 +371,16 @@ export async function marginSeries(period: Period = "28d", buckets = 28) {
 }
 
 /** Per-day provider deposit volume — for the stacked-bar provider chart. */
-export async function providerStackedSeries(period: Period = "28d", buckets = 14) {
-  const totalMs = periodToMs(period);
-  const now = Date.now();
+export async function providerStackedSeries(period: Window = "28d", buckets = 14) {
+  const { start, end } = windowBounds(period);
+  const totalMs = end - start;
   const bucketMs = totalMs / buckets;
   const ts = (await txnsInPeriod(period)).filter((t) => t.type === "DEPOSIT" && t.status === "CONFIRMED");
   // Discover provider order
   const providers = Array.from(new Set(ts.map((t) => t.provider ?? "OTHER"))).slice(0, 5);
   const out: Array<{ label: string; segments: number[] }> = [];
   for (let i = 0; i < buckets; i++) {
-    const bucketStart = now - totalMs + i * bucketMs;
+    const bucketStart = start + i * bucketMs;
     const bucketEnd = bucketStart + bucketMs;
     const segments = providers.map(() => 0);
     for (const t of ts) {
@@ -394,7 +395,7 @@ export async function providerStackedSeries(period: Period = "28d", buckets = 14
   return out;
 }
 
-export async function listProvidersInPeriod(period: Period = "28d") {
+export async function listProvidersInPeriod(period: Window = "28d") {
   return Array.from(new Set((await txnsInPeriod(period)).map((t) => t.provider ?? "OTHER").filter((p) => p !== "INTERNAL"))).slice(0, 5);
 }
 

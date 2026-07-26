@@ -207,12 +207,12 @@ export const DEFAULT_GLOBAL_CONFIG: RateConfig = {
   // Withdrawal. The ONLY thing a player is charged directly. No withholding tax.
   withdrawalFeeRate: DEFAULT_WITHDRAWAL_FEE_RATE,                     // 0.01 (1%)
   withdrawalGatewayShareRate: DEFAULT_WITHDRAWAL_GATEWAY_SHARE_RATE,  // 0.005 → gateway
-  minStake: 100,
-  // Must equal the dial's reachable cap (baseStake 500 × maxMultiplier 200 =
-  // 100,000) so the server enforces exactly what the UI shows — otherwise a
-  // crafted POST could stake far above the displayed limit. Admin can raise it
-  // at /admin/config (raise the dial's maxMultiplier to match if you do).
-  maxStake: 100_000,
+  // Platform stake floor — 1,000 TZS across ALL products (markets, polls, Up & Down),
+  // owner decision 2026-07-26. Enforced server-side in buyPosition via getEffectiveConfig.
+  minStake: 1_000,
+  // Platform stake ceiling — 1,000,000 TZS across all products (owner, 2026-07-26).
+  // The server enforces exactly what the UI offers; a crafted POST above this is rejected.
+  maxStake: 1_000_000,
   thinProfitRatio: THIN_PROFIT_RATIO,
   // Starter balance for new wallets. 0 in production — only tester phones
   // (TESTER_BOOTSTRAP_PHONES env) get 100K for QA. Admin can raise this

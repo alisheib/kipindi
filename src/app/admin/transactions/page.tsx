@@ -29,6 +29,8 @@ import { currentSession } from "@/lib/server/auth-service";
 import { hasRole, MONEY_ROLES } from "@/lib/server/roles";
 import { db } from "@/lib/server/store";
 import { attentionOf, GATEWAY_TYPES, type TxnSearchFilters } from "@/lib/server/txn-filters";
+import { resolveRange } from "@/lib/server/date-range";
+import { DateTimeRangeFilter } from "@/components/ui/datetime-range-filter";
 import { formatTzs, formatDateTimeSafe } from "@/lib/utils";
 import type { StoredTxn } from "@/lib/server/store";
 
@@ -50,20 +52,6 @@ const TXN_STATUS_VARIANT: Record<(typeof STATUSES)[number], "success" | "info" |
 };
 const PROVIDERS = ["MPESA", "TIGO_PESA", "AIRTEL_MONEY", "HALO_PESA", "MIXX", "TTCL_PESA", "CARD", "BANK_TRANSFER", "INTERNAL"] as const;
 
-/** Preset windows — deliberately a select, not a date input: the house rule is that
- *  date entry goes through DateSelect, and a filter bar does not need free dates. */
-const RANGES = { today: "Today", "7d": "Last 7 days", "28d": "Last 28 days", all: "All time" } as const;
-const RANGE_SW: Record<keyof typeof RANGES, string> = { today: "Leo", "7d": "Siku 7", "28d": "Siku 28", all: "Muda wote" };
-type RangeKey = keyof typeof RANGES;
-
-function rangeToFromMs(range: RangeKey, now = Date.now()): number | undefined {
-  const DAY = 86_400_000;
-  if (range === "today") return new Date(new Date(now).toISOString().slice(0, 10)).getTime();
-  if (range === "7d") return now - 7 * DAY;
-  if (range === "28d") return now - 28 * DAY;
-  return undefined;
-}
-
 type SP = Record<string, string | undefined>;
 
 export default async function AdminTransactionsPage({ searchParams }: { searchParams: Promise<SP> }) {
@@ -73,7 +61,8 @@ export default async function AdminTransactionsPage({ searchParams }: { searchPa
   }
 
   const sp = await searchParams;
-  const range = (sp.range && sp.range in RANGES ? sp.range : "28d") as RangeKey;
+  // ONE platform window resolver (presets + custom date+hour+minute, EAT-safe). Default 28d.
+  const range = resolveRange({ range: sp.range, from: sp.from, to: sp.to }, Date.now(), "28d");
   const type = TYPES.includes(sp.type as never) ? (sp.type as StoredTxn["type"]) : undefined;
   const status = STATUSES.includes(sp.status as never) ? (sp.status as StoredTxn["status"]) : undefined;
   const provider = PROVIDERS.includes(sp.provider as never) ? (sp.provider as NonNullable<StoredTxn["provider"]>) : undefined;
@@ -85,7 +74,9 @@ export default async function AdminTransactionsPage({ searchParams }: { searchPa
     types: type ? [type] : undefined,
     statuses: status ? [status] : undefined,
     providers: provider ? [provider] : undefined,
-    fromMs: rangeToFromMs(range),
+    // "All time" (start 0) means no lower bound; otherwise the resolved window.
+    fromMs: range.start > 0 ? range.start : undefined,
+    toMs: range.end,
     take: PER_PAGE,
   };
 
@@ -99,7 +90,7 @@ export default async function AdminTransactionsPage({ searchParams }: { searchPa
 
   const baseHref = buildBaseHref("/admin/transactions", sp, "page");
   const qs = new URLSearchParams(
-    Object.entries({ range, type, status, provider, q, attention: attentionOnly ? "1" : undefined })
+    Object.entries({ range: sp.range, from: sp.from, to: sp.to, type, status, provider, q, attention: attentionOnly ? "1" : undefined })
       .filter(([, v]) => v != null && v !== "") as [string, string][],
   ).toString();
 
@@ -108,8 +99,6 @@ export default async function AdminTransactionsPage({ searchParams }: { searchPa
       <AdminPageHead
         title="Transactions"
         sw="Miamala"
-        // The window is one filter among several and lives in the Filter card —
-        // showing the shell's period picker here too would be a dead control.
         period={false}
         actions={
           <a
@@ -160,7 +149,17 @@ export default async function AdminTransactionsPage({ searchParams }: { searchPa
       )}
 
       <AdminCard title="Filter" sw="Chuja" className="mt-4">
+        {/* Window — the platform date+hour+minute filter (presets + custom). It drives
+            ?range/?from/?to directly; the form below keeps them via hidden inputs so a
+            field change (type/status/…) preserves the window. */}
+        <div className="mb-3">
+          <span className="mb-1.5 block font-mono text-[10px] uppercase tracking-[0.12em] text-text-tertiary">Window · Dirisha</span>
+          <DateTimeRangeFilter defaultPreset="28d" presetIds={["today", "yesterday", "24h", "7d", "28d", "30d", "mtd", "all"]} />
+        </div>
         <form method="get" action="/admin/transactions" className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
+          {sp.range ? <input type="hidden" name="range" value={sp.range} /> : null}
+          {sp.from ? <input type="hidden" name="from" value={sp.from} /> : null}
+          {sp.to ? <input type="hidden" name="to" value={sp.to} /> : null}
           <label className="flex flex-col gap-1 lg:col-span-2">
             <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-tertiary">Search · Tafuta</span>
             <input
@@ -168,7 +167,6 @@ export default async function AdminTransactionsPage({ searchParams }: { searchPa
               className="admin-focus min-h-[40px] rounded-lg border border-border bg-bg-overlay px-3 text-sm text-text placeholder:text-text-subtle"
             />
           </label>
-          <FilterSelect name="range" label="Window · Dirisha" value={range} options={Object.entries(RANGES).map(([v, l]) => [v, `${l} · ${RANGE_SW[v as RangeKey]}`])} />
           <FilterSelect name="type" label="Type · Aina" value={type ?? ""} options={[["", "All"], ...TYPES.map((t) => [t, t.replace(/_/g, " ")] as [string, string])]} />
           <FilterSelect name="status" label="Status · Hali" value={status ?? ""} options={[["", "All"], ...STATUSES.map((s) => [s, s.replace(/_/g, " ")] as [string, string])]} />
           <FilterSelect name="provider" label="Provider · Mtoa" value={provider ?? ""} options={[["", "All"], ...PROVIDERS.map((p) => [p, p.replace(/_/g, " ")] as [string, string])]} />
@@ -189,7 +187,7 @@ export default async function AdminTransactionsPage({ searchParams }: { searchPa
         title={`Movements · ${total.toLocaleString()}`}
         sw="Miamala"
         className="mt-4"
-        action={<span className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-tertiary">{RANGES[range]}</span>}
+        action={<span className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-tertiary">{range.label}</span>}
       >
         {rows.length === 0 ? (
           <EmptyState

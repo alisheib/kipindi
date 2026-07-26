@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { AdminPageHead, AdminCard, AdminKpi, PeriodPicker } from "@/components/admin/admin-shell";
+import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
+import { DateTimeRangeFilter } from "@/components/ui/datetime-range-filter";
 import { AdminBarList } from "@/components/admin/admin-charts";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { RefreshButton } from "@/components/admin/refresh-button";
@@ -12,7 +13,8 @@ import { getAuditPage } from "@/lib/server/audit";
 import { GenerateButton } from "./generate-button";
 import { ReportPackCard } from "./report-pack-card";
 import { formatDateTime, formatTzs, formatTzsCompact } from "@/lib/utils";
-import { reportSummary, dailyPnl, categoryBreakdown, moneyByGame, periodBounds, type ReportPeriod } from "@/lib/server/report-money";
+import { reportSummary, dailyPnl, categoryBreakdown, moneyByGame } from "@/lib/server/report-money";
+import { resolveRange } from "@/lib/server/date-range";
 import { currentSession } from "@/lib/server/auth-service";
 import { hasRole, CONFIG_ROLES } from "@/lib/server/roles";
 import { AdminRestricted } from "@/components/admin/admin-restricted";
@@ -20,13 +22,6 @@ import { AdminRestricted } from "@/components/admin/admin-restricted";
 export const metadata = { title: "Admin · Reports" };
 export const dynamic = "force-dynamic";
 
-const REPORT_SEGMENTS = [
-  { id: "today", label: "Today" },
-  { id: "7d", label: "7d" },
-  { id: "30d", label: "30d" },
-  { id: "mtd", label: "MTD" },
-] as const;
-const VALID_REPORT_PERIODS: ReportPeriod[] = ["today", "7d", "30d", "mtd"];
 const CAT_LABEL: Record<string, string> = {
   sports: "Sports", macro: "Macro", weather: "Weather", crypto: "Crypto",
   culture: "Culture", tech: "Tech", other: "Other",
@@ -143,7 +138,7 @@ const TEMPLATES = [
 export default async function AdminReportsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; sort?: string; dir?: string; range?: string; cmp?: string }>;
+  searchParams: Promise<{ page?: string; sort?: string; dir?: string; range?: string; from?: string; to?: string; cmp?: string }>;
 }) {
   // Reports/exports expose regulator-grade data → CONFIG_ROLES only, NEVER
   // MODERATOR (roles.ts). The admin layout only gates ADMIN_CONSOLE_ROLES (which
@@ -158,16 +153,18 @@ export default async function AdminReportsPage({
 
   // ── Reporting console (Batch 3 §1) — real aggregates on the normative money
   //    definitions (report-money.ts). "vs prior" is opt-in via ?cmp=1.
-  const period: ReportPeriod = VALID_REPORT_PERIODS.includes(sp.range as ReportPeriod) ? (sp.range as ReportPeriod) : "7d";
   const compare = sp.cmp === "1";
   const generatedAt = Date.now();
-  const { current, prior } = await reportSummary(period, generatedAt);
-  const { rows: pnlRows, totals } = await dailyPnl(period, generatedAt);
-  const categories = await categoryBreakdown(period, generatedAt);
+  // ONE platform-wide window resolver — presets + custom date+hour+minute, EAT-safe.
+  const range = resolveRange(sp, generatedAt);
+  const win = { start: range.start, end: range.end };
+  const { current, prior } = await reportSummary(win, generatedAt);
+  const { rows: pnlRows, totals } = await dailyPnl(win, generatedAt);
+  const categories = await categoryBreakdown(win, generatedAt);
   // Per-game split (Up & Down vs long-form polls). The KPI strip + statutory pack stay
   // COMBINED (TRA/GBT is levied on total commission); this is an additive breakdown so
   // management sees which game earns what.
-  const byGame = await moneyByGame(periodBounds(period, generatedAt).start, generatedAt).catch(() => null);
+  const byGame = await moneyByGame(range.start, range.end).catch(() => null);
   const activeRows = pnlRows.filter((r) => r.stakes !== 0 || r.payouts !== 0 || r.bonus !== 0 || r.fees !== 0);
   // KPI sparklines — real daily series (AdminSpark hides <2 pts, e.g. "today").
   const ggrSpark = pnlRows.map((r) => r.ggr);
@@ -176,6 +173,8 @@ export default async function AdminReportsPage({
   const cmpHref = (() => {
     const p = new URLSearchParams();
     if (sp.range) p.set("range", sp.range);
+    if (sp.from) p.set("from", sp.from);
+    if (sp.to) p.set("to", sp.to);
     if (!compare) p.set("cmp", "1");
     const qs = p.toString();
     return qs ? `/admin/reports?${qs}` : "/admin/reports";
@@ -204,7 +203,7 @@ export default async function AdminReportsPage({
         period={false}
         actions={
           <>
-            <PeriodPicker segments={REPORT_SEGMENTS} defaultId="7d" />
+            <DateTimeRangeFilter defaultPreset="7d" />
             <Link
               href={cmpHref as never}
               scroll={false}
@@ -223,7 +222,7 @@ export default async function AdminReportsPage({
       <div className="px-4 lg:px-6 py-5 space-y-4">
         {/* Freshness stamp + normative money definitions (one source of truth) */}
         <div className="flex flex-wrap items-center justify-between gap-2 -mt-1">
-          <p className="font-mono text-[10.5px] text-text-tertiary">generated {eatStamp(generatedAt)} EAT · snapshot</p>
+          <p className="font-mono text-[10.5px] text-text-tertiary">generated {eatStamp(generatedAt)} EAT · {range.label}</p>
           <p className="font-mono text-[10px] text-text-tertiary tracking-tight">GGR = Stakes − Payouts · NGR = GGR − Bonus − Fees · Hold % = GGR / Stakes</p>
         </div>
 

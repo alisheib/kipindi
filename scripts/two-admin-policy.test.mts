@@ -111,8 +111,8 @@ ok("ON: a DIFFERENT officer seals stage-2", bS2diff.ok && bS2diff.data?.stage ==
 // Re-disable restores single-admin.
 await setRequireTwoOfficerResolution(false, "test_admin");
 const mC = await mkMarket("C market");
-await buyPosition("officerX", { marketId: mC.id, side: "YES", stake: 500 });
-await buyPosition("playerP", { marketId: mC.id, side: "NO", stake: 500 });
+await buyPosition("officerX", { marketId: mC.id, side: "YES", stake: 2_000 });
+await buyPosition("playerP", { marketId: mC.id, side: "NO", stake: 2_000 });
 const reSolo = await resolveMarket({ marketId: mC.id, outcome: "YES", officerId: "officerX" });
 ok("OFF again: single admin seals in one action once more", reSolo.ok && reSolo.data?.stage === "complete", reSolo.ok ? "" : reSolo.error);
 
@@ -123,8 +123,8 @@ try {
   process.env.NODE_ENV = "production";
   delete process.env.TEST_FUNDING; // NODE_ENV=production && TEST_FUNDING unset ⇒ LIVE
   const mLive = await mkMarket("LIVE market");
-  await buyPosition("officerX", { marketId: mLive.id, side: "YES", stake: 400 });
-  await buyPosition("playerP", { marketId: mLive.id, side: "NO", stake: 600 });
+  await buyPosition("officerX", { marketId: mLive.id, side: "YES", stake: 4_000 });
+  await buyPosition("playerP", { marketId: mLive.id, side: "NO", stake: 6_000 });
   const liveSolo = await resolveMarket({ marketId: mLive.id, outcome: "YES", officerId: "officerX" });
   ok("LIVE: single admin (position-holder) still resolves in one action (no hard-lock)", liveSolo.ok && liveSolo.data?.stage === "complete", liveSolo.ok ? "" : liveSolo.error);
 } finally {

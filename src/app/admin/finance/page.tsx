@@ -18,10 +18,11 @@ import {
   settlementFeesByPoll,
 } from "@/lib/server/analytics";
 import { dailyKpiSeries } from "@/lib/server/report-money";
+import { resolveRange } from "@/lib/server/date-range";
+import { DateTimeRangeFilter } from "@/components/ui/datetime-range-filter";
 import { formatTzs, formatTzsCompact } from "@/lib/utils";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { GenerateButton } from "../reports/generate-button";
-import type { Period } from "@/lib/server/analytics";
 import { currentSession } from "@/lib/server/auth-service";
 import { hasRole, MONEY_ROLES } from "@/lib/server/roles";
 import { getEffectiveConfig } from "@/lib/server/market-config";
@@ -44,9 +45,7 @@ const HOUSE_ACCOUNT_NOTE: Record<string, string> = {
 export const metadata = { title: "Admin · Finance" };
 export const dynamic = "force-dynamic";
 
-const VALID_PERIODS: Period[] = ["today", "7d", "28d", "qtd"];
-
-export default async function AdminFinancePage({ searchParams }: { searchParams: Promise<{ range?: string }> }) {
+export default async function AdminFinancePage({ searchParams }: { searchParams: Promise<{ range?: string; from?: string; to?: string }> }) {
   // Money data is MONEY_ROLES only — NEVER MODERATOR (roles.ts). The admin layout
   // only gates ADMIN_CONSOLE_ROLES (which DOES include MODERATOR), so without this
   // a moderator could read owner-grade GGR/NGR and the top-contributor list.
@@ -57,8 +56,9 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
   }
 
   const sp = await searchParams;
-  // The PeriodPicker round-trips via ?range= — honour it (default 7d).
-  const period: Period = VALID_PERIODS.includes(sp.range as Period) ? (sp.range as Period) : "7d";
+  // ONE platform window resolver — presets + custom date+hour+minute, EAT-safe (default 7d).
+  const range = resolveRange(sp, Date.now(), "7d");
+  const period = { start: range.start, end: range.end };
 
   // A-5: money figures resolve to null (not 0) on a failed read, so the tile
   // renders an explicit "n/a · couldn't compute" instead of a fabricated "TZS 0".
@@ -108,13 +108,14 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
       <AdminPageHead
         title="Finance"
         sw="Fedha"
+        period={false}
         actions={
-          // Branded Excel + PDF export pair. Both call the same
-          // /api/admin/reports endpoint with the GBT monthly summary
-          // (currently the most complete finance report); a future
-          // sprint splits this into "daily reconciliation" and "weekly
-          // P&L" with the same button shape.
-          <GenerateButton id="gbt-monthly" />
+          <>
+            {/* Platform date+hour+minute window (presets + custom), EAT-safe. */}
+            <DateTimeRangeFilter defaultPreset="7d" presetIds={["today", "yesterday", "24h", "7d", "28d", "30d", "mtd", "qtd"]} />
+            {/* Branded Excel + PDF export — the GBT monthly statutory pack. */}
+            <GenerateButton id="gbt-monthly" />
+          </>
         }
       />
 
@@ -123,7 +124,7 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <AdminKpi label="Deposits in"     sw="Amana"             value={dep ? `TZS ${formatTzsCompact(dep.amount).replace("TZS ", "")}` : ""} unavailable={dep === null} delta={dep ? `${dep.count.toLocaleString()} txns` : undefined} />
           <AdminKpi label="Withdrawals out" sw="Utoaji"            value={wd ? `TZS ${formatTzsCompact(wd.amount).replace("TZS ", "")}` : ""}  unavailable={wd === null}  delta={wd ? `${wd.count.toLocaleString()} txns` : undefined} />
-          <AdminKpi label="GGR"             sw="Mapato ya jumla"    value={ggr === null ? "" : `TZS ${formatTzsCompact(ggr).replace("TZS ", "")}`}        unavailable={ggr === null} delta={`${period}`} series={spark(trends.ggr)} />
+          <AdminKpi label="GGR"             sw="Mapato ya jumla"    value={ggr === null ? "" : `TZS ${formatTzsCompact(ggr).replace("TZS ", "")}`}        unavailable={ggr === null} delta={range.label} series={spark(trends.ggr)} />
           <AdminKpi label="NGR"             sw="Mapato halisi"      value={ngr === null ? "" : `TZS ${formatTzsCompact(ngr).replace("TZS ", "")}`}        unavailable={ngr === null} delta="net of bonus + fees" series={spark(trends.ngr)} />
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -136,7 +137,7 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
           />
           <AdminKpi label="Operator margin"  sw="Faida"         value={margin === null ? "" : `${margin.toFixed(1)}%`} unavailable={margin === null} delta={feeModelLabel} deltaDir="flat" />
           <AdminKpi label="Wallet liability" sw="Madeni"        value={liability === null ? "" : `TZS ${formatTzsCompact(liability).replace("TZS ", "")}`} unavailable={liability === null} delta="real-time" />
-          <AdminKpi label="Active players"   sw="Wachezaji"     value={activePeriod === null ? "" : activePeriod.toLocaleString()} unavailable={activePeriod === null} delta={`${period}`} series={spark(trends.active)} />
+          <AdminKpi label="Active players"   sw="Wachezaji"     value={activePeriod === null ? "" : activePeriod.toLocaleString()} unavailable={activePeriod === null} delta={range.label} series={spark(trends.active)} />
         </div>
 
         {/* THE HOUSE ACCOUNTS — straight from the double-entry ledger.
