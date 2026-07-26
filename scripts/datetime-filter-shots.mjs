@@ -37,6 +37,9 @@ const routes = [
   ["transactions", "/admin/transactions"],
   ["finance", "/admin/finance"],
   ["updown-admin", "/admin/updown"],
+  ["candidates", "/admin/candidates"],
+  ["ai-polls", "/admin/ai-polls"],
+  ["ai-usage", "/admin/ai-usage"],
 ];
 
 for (const [name, path] of routes) {
