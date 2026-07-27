@@ -31,7 +31,7 @@ Read `.claude/skills/50pick-standards` + `.claude/skills/50pick-audit` first, th
   `updown-custom-stake-shots`, `datetime-filter-shots`, `routing-audit`). READ the PNGs in
   `docs/shots-*` (gitignored). Real-Postgres `e2e:money`/`updown-engine` run in CI (no local PG).
 
-## Current live state (main @ `99f77cf`, 2026-07-27 — all deploy-verified)
+## Current live state (main @ `2144ab7`, 2026-07-27 — all deploy-verified)
 
 **Up & Down is production-final** (short-term Gold/Silver price rounds, a SEPARATE product line):
 - Sealed apart from long-form polls: money/AI-cost/portfolio/admin split by `productLine`
@@ -45,6 +45,10 @@ Read `.claude/skills/50pick-standards` + `.claude/skills/50pick-audit` first, th
   chips, max 2 + "+N"), round-level KPIs (rounds / bets sub-stat / net-positive win-rate);
   fixed a KPI that counted positions as rounds. **Stake floor**: `stakeBoundsFor`/`getBoard`
   clamp the min at the product default so stale chain data can't surface a sub-1,000 preset.
+- **Stake bounds enforced = displayed (anti-tampering, `9e508e4`)**: `buyPosition` for UPDOWN
+  resolves bounds through the SAME `stakeBoundsFor` the card reads (new `stakeBoundsForUpDownMarket`);
+  a per-chain min/max set at /admin/updown is now enforced on the money path, not just shown.
+  Proven in `updown-engine.test` §8B (66/66). ⛔ one stake-bounds resolver — never re-inline it.
 - Full-flow visual scan done (live cards · board · round detail · history, EN/SW/ZH × 4 widths):
   the price-fallback label is **"Awaiting price"** (was ops-jargon "Awaiting read"; EN/ZH aligned
   to SW). Shows only when the live feed is quiet (A-5 fallback), never a fabricated 0.
@@ -61,6 +65,11 @@ Read `.claude/skills/50pick-standards` + `.claude/skills/50pick-audit` first, th
 - Routing audited (`scripts/routing-audit.mjs`, 54 checks): `/updown/history` now edge-protected;
   0 dead links; auth/admin gating + login `?next=` bounce-back all open-redirect-safe.
 - The gilt "coming soon" badge was calmed (muted tag, no glint) after a player report.
+- **Responsive clips fixed (`2144ab7`)**: the global top-bar avatar clipped off-screen at the
+  lg–xl band (1024–1279px) — the language toggle now yields to the avatar menu there (one control
+  per width; keep the top-bar right cluster minimal at that band), and the `/live` hero carousel arrow no longer
+  clips at 320px. `test:responsive` is now **2175 passed · 0 failed** (was 2150·25); its 512
+  warnings are pre-existing `.btn-sm` 30px tap-target notes (platform-wide bump = Ali's call, Q9).
 
 ## Known / carried-forward (not bugs — deliberate or documented)
 - **Soft-404**: invalid market/round ids render the correct not-found page with a **200** status
