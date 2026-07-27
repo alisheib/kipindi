@@ -66,6 +66,11 @@ Read `.claude/skills/50pick-standards` + `.claude/skills/50pick-audit` first, th
 - **`public/brand.rar`** — a local brand-asset archive; now `*.rar`-gitignored (won't deploy).
 
 ## Good candidate next steps (Ali's call)
+- **PRIORITY — Motion + Haptics kit adoption & de-dup.** The designers dropped `/Motion Language/`
+  + `/Haptics/` at the repo root ("perfect, consistent kits"). Make them the canonical motion +
+  haptics language, use them correctly everywhere, and remove redundancy (there's already a
+  `src/lib/haptics.ts` + a bundled `theme/globals.css` snapshot). Full self-contained brief:
+  **`docs/MOTION-HAPTICS-ADOPTION-PROMPT.md`** — start there.
 - Real-Postgres load pass for the Up & Down concurrent quick-bet (`test:updown-load` PG mode) if a
   scratch DB is available.
 - `/profile/activity` → the shared DateTimeRangeFilter (needs the between-window DAL method).
