@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="theme/globals.css">
+  <style>
+    @keyframes ud-count-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+    @media (prefers-reduced-motion: reduce) { .ud-pulse, .ud-point { animation: none !important; } }
+    @keyframes ud-point { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+    a { color: var(--aqua-300); }
+    a:hover { color: var(--aqua-200); }
+  </style>
+</helmet>
+<div data-screen-label="{{ screenLabel }}" style="background: var(--bg); color: var(--text); font-family: var(--font-body); min-height: 100%; padding: 22px 16px 56px">
+  <main style="max-width: 1232px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px">
+
+    <a href="#" style="display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 12px; color: var(--text-subtle); text-decoration: none; width: fit-content">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"></path></svg>
+      Up &amp; Down
+    </a>
+
+    <header style="display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap">
+      <div style="display: flex; align-items: center; gap: 12px; min-width: 0">
+        <span aria-hidden="true" style="flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; font-family: var(--font-mono); font-size: 14px; font-weight: 700; background: color-mix(in oklab, var(--gold-500) 16%, transparent); border: 1px solid color-mix(in oklab, var(--gold-400) 45%, transparent); color: var(--gold-300)">Au</span>
+        <div style="min-width: 0">
+          <h1 style="margin: 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap">
+            <span style="font-family: var(--font-display); font-size: 20px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.25; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap">Gold Up or Down</span>
+            <span class="chip">5 MIN</span>
+          </h1>
+          <p style="margin: 4px 0 0; display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 9.5px; font-weight: 600; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-subtle)">
+            <sc-if value="{{ isOpen }}" hint-placeholder-val="{{ true }}">
+              <span class="live-dot" aria-hidden="true"></span>
+            </sc-if>
+            {{ statusLine }}
+          </p>
+        </div>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 10px; padding: 9px 14px; background: var(--bg-inset); border: 1px solid color-mix(in oklab, var(--border) 70%, transparent); border-radius: var(--r-md)">
+        <span style="font-family: var(--font-mono); font-size: 8.5px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-faint)">{{ countLabel }}</span>
+        <span class="{{ countClass }}" style="{{ countStyle }}">{{ countdown }}</span>
+      </div>
+    </header>
+
+    <div style="display: grid; grid-template-columns: {{ cols }}; gap: 16px; align-items: start">
+
+      <section aria-label="Price since round opened" style="background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--shadow-card); padding: 16px 16px 10px; min-width: 0">
+        <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap">
+          <div>
+            <p style="margin: 0; font-family: var(--font-mono); font-size: 8.5px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-faint)">{{ priceLabel }}</p>
+            <div style="margin-top: 5px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap">
+              <sc-if value="{{ hasPrice }}" hint-placeholder-val="{{ true }}">
+                <span style="{{ bigPriceStyle }}">{{ bigPrice }}</span>
+                <span style="{{ moveStyle }}">{{ moveLabel }}</span>
+              </sc-if>
+              <sc-if value="{{ noPrice }}" hint-placeholder-val="{{ false }}">
+                <span style="font-family: var(--font-mono); font-size: 26px; font-weight: 700; line-height: 1; color: var(--text-faint)">—</span>
+                <span style="font-family: var(--font-mono); font-size: 9px; font-weight: 600; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-faint)">Awaiting read</span>
+              </sc-if>
+            </div>
+          </div>
+          <div style="text-align: right">
+            <p style="margin: 0; font-family: var(--font-mono); font-size: 8.5px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-faint)">Open</p>
+            <p style="margin: 5px 0 0; font-family: var(--font-mono); font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-muted)">{{ openPrice }}</p>
+          </div>
+        </div>
+
+        <div style="margin-top: 12px; position: relative">
+          <svg viewBox="0 0 640 220" width="100%" style="display: block; overflow: visible" role="img" aria-label="{{ chartAlt }}">
+            <defs>
+              <linearGradient id="udUp" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="var(--yes-400)" stop-opacity="0.26"></stop>
+                <stop offset="100%" stop-color="var(--yes-400)" stop-opacity="0.02"></stop>
+              </linearGradient>
+              <linearGradient id="udDown" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="var(--no-400)" stop-opacity="0.02"></stop>
+                <stop offset="100%" stop-color="var(--no-400)" stop-opacity="0.26"></stop>
+              </linearGradient>
+              <clipPath id="udAbove"><rect x="0" y="0" width="640" height="{{ chart.openY }}"></rect></clipPath>
+              <clipPath id="udBelow"><rect x="0" y="{{ chart.openY }}" width="640" height="220"></rect></clipPath>
+            </defs>
+
+            <g clip-path="url(#udAbove)"><path d="{{ chart.areaUp }}" fill="url(#udUp)"></path></g>
+            <g clip-path="url(#udBelow)"><path d="{{ chart.areaDown }}" fill="url(#udDown)"></path></g>
+
+            <line x1="0" y1="{{ chart.openY }}" x2="606" y2="{{ chart.openY }}" stroke="var(--gilt)" stroke-width="1.25" stroke-dasharray="3 4" opacity="0.75"></line>
+            <text x="0" y="{{ chart.openTextY }}" fill="var(--gilt)" font-family="var(--font-mono)" font-size="9" font-weight="600" letter-spacing="0.12em" opacity="0.9">OPEN {{ openPrice }}</text>
+
+            <path d="{{ chart.line }}" fill="none" stroke="{{ chart.stroke }}" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"></path>
+
+            <sc-if value="{{ hasPrice }}" hint-placeholder-val="{{ true }}">
+              <g>
+                <circle class="ud-point" cx="{{ chart.lastX }}" cy="{{ chart.lastY }}" r="7" fill="{{ chart.stroke }}" opacity="0.22" style="animation: ud-point 1.6s ease-in-out infinite"></circle>
+                <circle cx="{{ chart.lastX }}" cy="{{ chart.lastY }}" r="3.6" fill="{{ chart.stroke }}"></circle>
+                <text x="{{ chart.tagX }}" y="{{ chart.tagY }}" text-anchor="{{ chart.tagAnchor }}" fill="{{ chart.stroke }}" font-family="var(--font-mono)" font-size="11" font-weight="700">{{ bigPrice }}</text>
+              </g>
+            </sc-if>
+          </svg>
+        </div>
+
+        <p style="margin: 8px 0 0; display: flex; align-items: center; justify-content: space-between; gap: 10px; font-family: var(--font-mono); font-size: 9.5px; color: var(--text-faint); flex-wrap: wrap">
+          <span>{{ aboveBelow }}</span>
+          <span>Source: {{ sourceName }} · quoted {{ sourceQuotedAt }}</span>
+        </p>
+      </section>
+
+      <div style="display: flex; flex-direction: column; gap: 16px; min-width: 0">
+
+        <section aria-label="Pool" style="background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--shadow-card); padding: 14px 16px 16px">
+          <p style="margin: 0; font-family: var(--font-mono); font-size: 8.5px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-faint)">Pool</p>
+          <div style="margin-top: 10px; display: flex; align-items: baseline; justify-content: space-between; gap: 12px">
+            <div>
+              <p style="margin: 0; font-family: var(--font-mono); font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; color: var(--text)">{{ volume }}</p>
+              <p style="margin: 4px 0 0; font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-faint)">Volume</p>
+            </div>
+            <div style="text-align: right">
+              <p style="margin: 0; display: flex; align-items: center; justify-content: flex-end; gap: 5px; font-family: var(--font-mono); font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; color: var(--text)">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.4"></circle><path d="M5.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"></path></svg>
+                {{ players }}
+              </p>
+              <p style="margin: 4px 0 0; font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-faint)">Players</p>
+            </div>
+          </div>
+
+          <div style="margin-top: 14px">
+            <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-family: var(--font-mono); font-size: 9.5px; font-weight: 700; letter-spacing: 0.06em">
+              <span style="color: var(--yes-300)">UP {{ upPct }}%</span>
+              <span style="color: var(--no-300)">{{ downPct }}% DOWN</span>
+            </div>
+            <div style="margin-top: 6px; display: flex; gap: 2px; height: 6px">
+              <span style="width: {{ upWidth }}; background: var(--yes-500); border-radius: var(--r-pill)"></span>
+              <span style="flex: 1; background: var(--no-500); border-radius: var(--r-pill)"></span>
+            </div>
+            <div style="margin-top: 6px; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-family: var(--font-mono); font-size: 10.5px; font-variant-numeric: tabular-nums; color: var(--text-muted)">
+              <span>{{ upTzs }}</span>
+              <span>{{ downTzs }}</span>
+            </div>
+          </div>
+        </section>
+
+        <sc-if value="{{ isOpen }}" hint-placeholder-val="{{ true }}">
+          <section aria-label="Your stake" style="background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--shadow-card); padding: 14px 16px 16px">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px">
+              <p style="margin: 0; font-family: var(--font-mono); font-size: 8.5px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-faint)">Your pick</p>
+              <span class="{{ pickChip }}" style="display: inline-flex; align-items: center; gap: 5px">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ pickArrow }}"></path></svg>
+                {{ pick }}
+              </span>
+            </div>
+            <p style="margin: 8px 0 0; font-size: 12px; line-height: 1.5; color: var(--text-muted)">Locked when you chose {{ pick }} on the board. To take the other side, leave this round.</p>
+
+            <div style="margin-top: 14px; height: 46px; display: flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--bg-inset); border: 1px solid var(--border); border-radius: var(--r-md); padding: 0 12px 0 14px">
+              <span style="display: flex; align-items: baseline; gap: 7px; min-width: 0">
+                <span style="font-family: var(--font-mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0.04em; color: var(--text-subtle)">TZS</span>
+                <span style="font-family: var(--font-mono); font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text)">{{ stake }}</span>
+              </span>
+              <span style="display: flex; align-items: center; gap: 6px; flex-shrink: 0">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+                <span style="font-family: var(--font-mono); font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text-muted)">{{ projected }}</span>
+              </span>
+            </div>
+
+            <div style="margin-top: 8px; display: flex; gap: 6px">
+              <sc-for list="{{ presets }}" as="p" hint-placeholder-count="4">
+                <button onClick="{{ p.onClick }}" style="{{ p.style }}">{{ p.label }}</button>
+              </sc-for>
+            </div>
+
+            <button class="btn btn-gold btn-lg" style="margin-top: 12px; width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px">
+              <span>Confirm {{ pick }}</span>
+              <span style="font-family: var(--font-mono); font-weight: 600; opacity: 0.85">TZS {{ stake }}</span>
+            </button>
+            <p style="margin: 8px 0 0; font-size: 10px; line-height: 1.45; color: var(--text-faint)">{{ estQualifier }}</p>
+          </section>
+        </sc-if>
+
+        <sc-if value="{{ isResolved }}" hint-placeholder-val="{{ false }}">
+          <section aria-label="Your result" style="background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--shadow-card); padding: 14px 16px 16px">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px">
+              <p style="margin: 0; font-family: var(--font-mono); font-size: 8.5px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-faint)">Your result</p>
+              <span class="{{ resultChip }}">{{ resultLabel }}</span>
+            </div>
+            <div style="margin-top: 12px; display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap">
+              <div>
+                <p style="margin: 0; font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-faint)">Paid out</p>
+                <p style="margin: 5px 0 0; font-family: var(--font-mono); font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; color: {{ payoutInk }}">{{ payout }}</p>
+              </div>
+              <div style="text-align: right">
+                <p style="margin: 0; font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-faint)">Your pick · stake</p>
+                <p style="margin: 5px 0 0; font-family: var(--font-mono); font-size: 12px; font-variant-numeric: tabular-nums; color: var(--text-muted)">{{ pick }} · TZS {{ stake }}</p>
+              </div>
+            </div>
+            <a href="#" class="btn btn-ghost btn-sm" style="margin-top: 14px; width: 100%; text-decoration: none">Open in Positions</a>
+          </section>
+        </sc-if>
+      </div>
+    </div>
+
+    <sc-if value="{{ isResolved }}" hint-placeholder-val="{{ false }}">
+      <section aria-label="Settlement proof" style="background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--shadow-card); padding: 16px 18px 18px">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap">
+          <span class="gilt-eyebrow">Settlement proof</span>
+          <span style="font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-subtle)">Round {{ roundId }} · auditable record</span>
+        </div>
+        <div class="gilt-rule" style="margin: 10px 0 14px"></div>
+
+        <div style="display: grid; grid-template-columns: {{ proofCols }}; gap: 14px">
+          <sc-for list="{{ observations }}" as="o" hint-placeholder-count="2">
+            <div style="background: var(--bg-inset); border: 1px solid color-mix(in oklab, var(--border) 70%, transparent); border-radius: var(--r-md); padding: 12px 14px 13px">
+              <p style="margin: 0; font-family: var(--font-mono); font-size: 8.5px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-faint)">{{ o.label }}</p>
+              <p style="margin: 7px 0 0; font-family: var(--font-mono); font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; color: var(--text)">{{ o.price }}</p>
+              <dl style="margin: 11px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 5px 10px; font-family: var(--font-mono); font-size: 10.5px">
+                <dt style="color: var(--text-faint)">Source</dt>
+                <dd style="margin: 0"><a href="{{ o.href }}" style="text-decoration: none">{{ o.source }}</a></dd>
+                <dt style="color: var(--text-faint)">Quoted</dt>
+                <dd style="margin: 0; color: var(--text-muted); font-variant-numeric: tabular-nums">{{ o.quotedAt }}</dd>
+                <dt style="color: var(--text-faint)">Observed</dt>
+                <dd style="margin: 0; color: var(--text-muted); font-variant-numeric: tabular-nums">{{ o.observedAt }}</dd>
+              </dl>
+            </div>
+          </sc-for>
+
+          <div style="background: var(--bg-inset); border: 1px solid color-mix(in oklab, var(--border) 70%, transparent); border-radius: var(--r-md); padding: 12px 14px 13px">
+            <p style="margin: 0; font-family: var(--font-mono); font-size: 8.5px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-faint)">Outcome</p>
+            <p style="margin: 7px 0 0; display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 19px; font-weight: 700; letter-spacing: 0.04em; line-height: 1; color: {{ outcomeInk }}">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ outcomeArrow }}"></path></svg>
+              {{ outcome }}
+            </p>
+            <dl style="margin: 11px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 5px 10px; font-family: var(--font-mono); font-size: 10.5px">
+              <dt style="color: var(--text-faint)">Move</dt>
+              <dd style="margin: 0; color: var(--text-muted); font-variant-numeric: tabular-nums">{{ moveAbs }}</dd>
+              <dt style="color: var(--text-faint)">Percent</dt>
+              <dd style="margin: 0; color: var(--text-muted); font-variant-numeric: tabular-nums">{{ movePctLabel }}</dd>
+              <dt style="color: var(--text-faint)">Rule</dt>
+              <dd style="margin: 0; color: var(--text-muted)">close &gt; open ⇒ UP</dd>
+            </dl>
+          </div>
+        </div>
+
+        <div style="margin-top: 14px">
+          <p style="margin: 0 0 7px; font-family: var(--font-mono); font-size: 8.5px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-faint)">Evidence excerpt</p>
+          <pre style="margin: 0; background: var(--bg-inset); border: 1px solid color-mix(in oklab, var(--border) 70%, transparent); border-left: 2px solid color-mix(in oklab, var(--gilt) 55%, transparent); border-radius: var(--r-sm); padding: 11px 13px; font-family: var(--font-mono); font-size: 10.5px; line-height: 1.65; color: var(--text-muted); white-space: pre-wrap; overflow-wrap: break-word">{{ evidence }}</pre>
+        </div>
+
+        <p style="margin: 12px 0 0; font-size: 11px; line-height: 1.55; color: var(--text-faint)">Both prices are read from the named source at the round boundary. If a read cannot be confirmed the round is voided and every stake is returned in full — nothing is estimated after the fact.</p>
+      </section>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;: {&quot;width&quot;: 1232, &quot;height&quot;: 900}, &quot;state&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;default&quot;: &quot;open&quot;, &quot;options&quot;: [&quot;open&quot;, &quot;resolved&quot;], &quot;tsType&quot;: &quot;\&quot;open\&quot; | \&quot;resolved\&quot;&quot;, &quot;section&quot;: &quot;State&quot;}, &quot;width&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;default&quot;: &quot;desktop&quot;, &quot;options&quot;: [&quot;desktop&quot;, &quot;mobile&quot;], &quot;tsType&quot;: &quot;\&quot;desktop\&quot; | \&quot;mobile\&quot;&quot;, &quot;section&quot;: &quot;State&quot;}}">
+class Component extends DCLogic {
+  state = { stake: 100 };
+
+  tzs(n) { return Math.round(n).toLocaleString("en-US"); }
+  usd(n) { return "$" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+  /* Deterministic walk: demo data standing in for a real feed, identical every load.
+     Never a simulation — "real data or nothing" applies to production, and this file
+     is the design specimen. */
+  series(open, close, n) {
+    const pts = [];
+    for (let i = 0; i < n; i++) {
+      const t = i / (n - 1);
+      const wobble = i === 0 || i === n - 1 ? 0 : Math.sin(i * 1.7) * 1.15 + Math.sin(i * 0.63) * 0.72;
+      pts.push(open + (close - open) * t + wobble);
+    }
+    pts[n - 1] = close;
+    return pts;
+  }
+
+  renderVals() {
+    const resolved = (this.props.state ?? "open") === "resolved";
+    const narrow = (this.props.width ?? "desktop") === "mobile";
+    const stake = this.state.stake;
+
+    const openPrice = 2409.40;
+    const livePrice = resolved ? 2417.60 : 2413.85;
+    const pts = this.series(openPrice, livePrice, 34);
+
+    // chart geometry — viewBox 640×220, plot 0..606 × 18..196
+    const X0 = 0, X1 = 606, Y0 = 18, Y1 = 196;
+    const lo = Math.min(openPrice, ...pts), hi = Math.max(openPrice, ...pts);
+    const pad = (hi - lo) * 0.35 || 1;
+    const top = hi + pad, bot = lo - pad;
+    const xAt = (i) => X0 + (i / (pts.length - 1)) * (X1 - X0);
+    const yAt = (v) => Y0 + ((top - v) / (top - bot)) * (Y1 - Y0);
+    const line = pts.map((v, i) => (i ? "L " : "M ") + xAt(i).toFixed(1) + " " + yAt(v).toFixed(1)).join(" ");
+    const openY = yAt(openPrice);
+    const lastX = xAt(pts.length - 1), lastY = yAt(livePrice);
+    const areaEdge = (yEdge) => line + " L " + X1.toFixed(1) + " " + yEdge + " L " + X0.toFixed(1) + " " + yEdge + " Z";
+
+    const isUp = livePrice >= openPrice;
+    const ink = isUp ? "var(--yes-300)" : "var(--no-300)";
+    const move = livePrice - openPrice;
+    const movePct = (move / openPrice) * 100;
+    const sgn = (v) => (v >= 0 ? "+" : "\u2212");
+
+    const upPct = 58, downPct = 42;
+    const volume = 4820000;
+
+    const presetBase = {
+      flex: 1, height: 30, borderRadius: "var(--r-sm)", border: "1px solid var(--border)",
+      background: "color-mix(in oklab, var(--bg-elevated) 60%, transparent)",
+      color: "var(--text-muted)", fontFamily: "var(--font-mono)", fontSize: 11,
+      fontWeight: 600, cursor: "pointer", transition: "all 160ms cubic-bezier(0.4,0,0.2,1)",
+    };
+    const presets = [100, 500, 1000, 5000].map((v) => ({
+      label: v >= 1000 ? v / 1000 + "k" : String(v),
+      onClick: () => this.setState({ stake: v }),
+      style: stake === v
+        ? { ...presetBase, border: "1px solid var(--brand-500)", color: "var(--text)", background: "oklch(40% 0.12 262 / 0.35)" }
+        : presetBase,
+    }));
+
+    const countStyle = {
+      fontFamily: "var(--font-mono)", fontSize: 28, fontWeight: 700,
+      fontVariantNumeric: "tabular-nums", letterSpacing: "0.05em", lineHeight: 1,
+      color: resolved ? "var(--text-subtle)" : "var(--text)",
+    };
+
+    return {
+      screenLabel: resolved ? "Round detail — resolved" : "Round detail — open",
+      cols: narrow ? "1fr" : "minmax(0, 1.55fr) minmax(300px, 1fr)",
+      proofCols: narrow ? "1fr" : "repeat(3, 1fr)",
+      isOpen: !resolved,
+      isResolved: resolved,
+      statusLine: resolved ? "SETTLED \u00b7 GOLD" : "LIVE \u00b7 GOLD",
+      countLabel: resolved ? "ROUND SETTLED" : "CLOSES IN",
+      countdown: resolved ? "00:00" : "04:12",
+      countClass: "",
+      countStyle,
+
+      priceLabel: resolved ? "Close price" : "Live price",
+      hasPrice: true,
+      noPrice: false,
+      bigPrice: this.usd(livePrice),
+      bigPriceStyle: { fontFamily: "var(--font-mono)", fontSize: 26, fontWeight: 700, fontVariantNumeric: "tabular-nums", lineHeight: 1, letterSpacing: "-0.01em", color: ink },
+      moveLabel: sgn(movePct) + Math.abs(movePct).toFixed(2) + "%",
+      moveStyle: { fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 600, fontVariantNumeric: "tabular-nums", color: ink },
+      openPrice: this.usd(openPrice),
+      aboveBelow: (isUp ? "Above open by " : "Below open by ") + "$" + Math.abs(move).toFixed(2),
+      chartAlt: "Price since the round opened, currently " + (isUp ? "above" : "below") + " the open price",
+      chart: {
+        line,
+        areaUp: areaEdge(openY.toFixed(1)),
+        areaDown: areaEdge(openY.toFixed(1)),
+        openY: openY.toFixed(1),
+        openTextY: (openY - 6).toFixed(1),
+        stroke: ink,
+        lastX: lastX.toFixed(1),
+        lastY: lastY.toFixed(1),
+        tagX: (lastX - 10).toFixed(1),
+        tagY: (lastY + (isUp ? -12 : 18)).toFixed(1),
+        tagAnchor: "end",
+      },
+
+      volume: "TZS " + this.tzs(volume),
+      players: "312",
+      upPct, downPct,
+      upWidth: upPct + "%",
+      upTzs: "TZS " + this.tzs(volume * upPct / 100),
+      downTzs: "TZS " + this.tzs(volume * downPct / 100),
+
+      pick: "UP",
+      pickChip: "chip chip-yes",
+      pickArrow: "M5 15l7-7 7 7",
+      stake: this.tzs(stake),
+      projected: this.tzs(stake * 1.4),
+      presets,
+      estQualifier: "\u00d7 figures are pool estimates, not fixed odds \u2014 final payout depends on how the pools close.",
+
+      resultChip: "chip chip-resolved",
+      resultLabel: "Resolved \u00b7 Win",
+      payout: "TZS " + this.tzs(stake * 1.4),
+      payoutInk: "var(--gilt)",
+
+      roundId: "GLD-5M-0418",
+      sourceName: "Kitco",
+      sourceQuotedAt: "14:34:58",
+      observations: [
+        { label: "Open price", price: this.usd(openPrice), source: "Kitco \u2197", href: "#", quotedAt: "14:30:00 EAT", observedAt: "14:30:02 EAT" },
+        { label: "Close price", price: this.usd(livePrice), source: "Kitco \u2197", href: "#", quotedAt: "14:35:00 EAT", observedAt: "14:35:01 EAT" },
+      ],
+      outcome: "UP",
+      outcomeInk: "var(--yes-300)",
+      outcomeArrow: "M5 15l7-7 7 7",
+      moveAbs: sgn(move) + "$" + Math.abs(move).toFixed(2),
+      movePctLabel: sgn(movePct) + Math.abs(movePct).toFixed(3) + "%",
+      evidence: 'GET /gold/live  \u2014  200 OK\n{\n  "metal": "gold",\n  "currency": "USD",\n  "bid": 2417.60,\n  "quoted_at": "2026-07-27T14:35:00+03:00"\n}',
+    };
+  }
+}
+</script>
+</body>
+</html>

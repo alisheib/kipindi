@@ -6,7 +6,7 @@
  * data layer (`listMarkets()` defaults to `productLine: "MARKET"`), not by filtering
  * here.
  *
- * Built to `docs/design-system/v1-2026-07-24/specs/D2-updown-board-spec.md`, with one
+ * Built to `docs/design-system/v2-2026-07-27/02-components/_specs-as-delivered/D2-updown-board-spec.md`, with one
  * correction to the brief: the grid stays 3-across at 1920 rather than widening to 4 —
  * the platform has a fixed 3-tier max-width system (1280 grid / 1080 content / 640
  * forms) and the board must not break it.

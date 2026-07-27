@@ -19,6 +19,7 @@ import { useEffect, useRef, useState } from "react";
 import { Modal } from "@/components/ui/modal";
 import { RewardBurst } from "@/components/brand/reward-burst";
 import { haptics } from "@/lib/haptics";
+import { acknowledgeNeedle } from "@/lib/needle-bridge";
 import { useT } from "@/lib/i18n";
 import { formatNumber, formatTzs } from "@/lib/utils";
 
@@ -70,6 +71,12 @@ export function WinCelebrationHost() {
   const [payload, setPayload] = useState<WinCelebrationPayload | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // A won position is a HELD position that just resolved — the one signal that earns
+  // The Needle its acknowledge() nudge (one quarter-turn back to true, no win/loss
+  // variant). Fired on dismiss so the quiet nod is visible as the celebration clears,
+  // not hidden behind its modal. No-ops if the object is hidden/suppressed.
+  const dismiss = () => { setOpen(false); acknowledgeNeedle(); };
+
   useEffect(() => {
     const onCelebrate = (e: Event) => {
       const detail = (e as CustomEvent<WinCelebrationPayload>).detail;
@@ -80,7 +87,7 @@ export function WinCelebrationHost() {
         haptics.celebrate();
       }
       if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(() => setOpen(false), 4_500);
+      timerRef.current = setTimeout(dismiss, 4_500);
     };
     window.addEventListener(EVENT_NAME, onCelebrate as EventListener);
     return () => {
@@ -97,7 +104,7 @@ export function WinCelebrationHost() {
   return (
     <Modal
       open={open}
-      onClose={() => setOpen(false)}
+      onClose={dismiss}
       ariaLabel={heading}
       maxWidth={380}
       zIndex={1700}
@@ -154,7 +161,7 @@ export function WinCelebrationHost() {
 
           <button
             type="button"
-            onClick={() => setOpen(false)}
+            onClick={dismiss}
             className="btn btn-gold btn-md w-full mt-5"
           >
             {t.common.continue}

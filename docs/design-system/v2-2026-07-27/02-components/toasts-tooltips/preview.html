@@ -1,0 +1,11 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>50pick — Toasts & tooltips</title>
+<link rel="stylesheet" href="../../01-foundations/tokens.css">
+<style>
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);padding:40px;margin:0}
+h1{font-family:var(--font-display);font-size:22px;margin:0 0 6px}
+.note{color:var(--text-muted);font-size:12.5px;max-width:680px;line-height:1.6;margin:0 0 28px}
+h2{font-family:var(--font-mono);font-size:10.5px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-subtle);margin:34px 0 12px;font-weight:600}
+.row{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.cap{font-family:var(--font-mono);font-size:9.5px;color:var(--text-faint);margin-top:6px}
+a{color:var(--text-link)}a:hover{color:var(--text-link-hover)}
+</style></head><body><h1>Toasts & tooltips</h1><p class="note">GIVEN. Toast glyphs are typographic (✓ ! × i), not emoji. Entrance: toast-slide + 5s auto-dismiss hairline (toast-bar), both reduced-motion clamped.</p><h2>Toast kinds</h2><div style="display:flex;flex-direction:column;gap:12px;max-width:380px"><div class="toast toast-success"><div class="toast-icon">✓</div><div><div class="toast-title">Bet placed</div><div class="toast-body">TZS 25,000 on YES — good luck.</div></div></div><div class="toast toast-warning"><div class="toast-icon">!</div><div><div class="toast-title">Odds moved</div><div class="toast-body">The pool shifted while you were confirming.</div></div></div><div class="toast toast-danger"><div class="toast-icon">×</div><div><div class="toast-title">Payment failed</div><div class="toast-body">M-Pesa declined the charge. Nothing was staked.</div></div></div><div class="toast toast-info"><div class="toast-icon">i</div><div><div class="toast-title">Round voided</div><div class="toast-body">Price did not move enough to call. Stake refunded in full.</div></div></div></div><h2>Tooltip</h2><div style="padding-top:44px"><span class="tooltip"><span class="tooltip-popover" style="opacity:1;visibility:visible">Pool-share estimate</span><span class="chip">× 1.4 est.</span></span></div></body></html>

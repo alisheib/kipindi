@@ -1,0 +1,32 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>50pick Design System — v1.1 · 2026-07-27</title>
+<link rel="stylesheet" href="01-foundations/tokens.css">
+<style>
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);margin:0;padding:48px 40px;line-height:1.6}
+main{max-width:760px;margin:0 auto}
+h1{font-family:var(--font-display);font-size:26px;margin:0}
+.eyebrow{font-family:var(--font-mono);font-size:11px;letter-spacing:0.16em;text-transform:uppercase;font-weight:700;color:var(--gilt);margin:0 0 6px}
+p{color:var(--text-muted);font-size:13.5px;max-width:620px}
+a{color:var(--text-link)}a:hover{color:var(--text-link-hover)}
+table{width:100%;border-collapse:collapse;margin-top:24px}
+td{padding:12px 14px;border-top:1px solid var(--border);font-size:13.5px;vertical-align:top}
+td:first-child{font-family:var(--font-mono);font-size:12.5px;white-space:nowrap}
+.warn{border:1px solid var(--border-strong);border-radius:var(--r-md);background:var(--bg-elevated);padding:12px 16px;font-size:12.5px;color:var(--text-muted);margin-top:28px}
+</style></head><body><main>
+<p class="eyebrow">50pick.tz · Design System Archive</p>
+<h1>v1.1 — frozen 27 July 2026</h1>
+<p>The canonical record of the 50pick theme and every designed surface. Start with <a href="00-START-HERE.md">00-START-HERE.md</a>. Every value is exact; every artifact is marked GIVEN (handed to us) or INVENTED (designed June–July 2026); anything that never existed is listed as a gap, not fabricated.</p>
+<table>
+<tr><td><a href="00-START-HERE.md">00-START-HERE.md</a></td><td>What this archive is and how to read it</td></tr>
+<tr><td>01-foundations/</td><td><a href="01-foundations/tokens.css">tokens.css</a> (source of truth) · <a href="01-foundations/tokens.json">tokens.json</a> · <a href="01-foundations/colour.md">colour</a> · <a href="01-foundations/typography.md">typography</a> · <a href="01-foundations/spacing-shape.md">spacing &amp; shape</a> · <a href="01-foundations/elevation-motion.md">elevation &amp; motion</a></td></tr>
+<tr><td>02-components/</td><td><a href="02-components/README.md">index</a> — 18 component folders, each preview.html + spec.md. Try <a href="02-components/buttons/preview.html">buttons</a>, <a href="02-components/market-card/preview.html">MarketCard</a>, <a href="02-components/tipping-bar-and-dials/preview.html">TippingBar</a></td></tr>
+<tr><td>03-glyphs/</td><td><a href="03-glyphs/contact-sheet.html">contact sheet</a> — 39 stroke icons + individual SVGs</td></tr>
+<tr><td>04-brand/</td><td><a href="04-brand/preview.html">mark, wordmark, lockup</a> · <a href="04-brand/brand.md">rules &amp; never-do list</a></td></tr>
+<tr><td>05-pages/</td><td><a href="05-pages/README.md">route map</a> — runnable screens: <a href="05-pages/Positions%20Portfolio.dc.html">Positions canvas</a> · <a href="05-pages/UpDown%20D1%20Canvas.dc.html">Up &amp; Down D1</a> · <a href="05-pages/UpDown%20D2%20Canvas.dc.html">D2 board</a></td></tr>
+<tr><td>06-patterns-and-rules/</td><td><a href="06-patterns-and-rules/RULES.md">The 12 laws</a> — money, YES/NO, gold, real-data-or-nothing, losses, a11y, languages, emoji…</td></tr>
+<tr><td>08-motion/</td><td><a href="08-motion/README.md">The Settle</a> — four curves, six duration tiers, the −14° axis · <a href="08-motion/motion.css">motion.css</a> · live: <a href="05-pages/Motion%20Language.dc.html">Motion Language</a></td></tr>
+<tr><td>09-needle/</td><td><a href="09-needle/CLAUDE-CODE-BRIEF.md">Claude Code brief</a> (copy-paste to implement) · <a href="09-needle/MEASUREMENT-PLAN.md">measurement plan + kill criteria</a> · <a href="09-needle/COMPLIANCE-MEMO.md">compliance memo (draft)</a> · <a href="09-needle/NEEDLE-SPEC.md">The Needle spec</a> (read §0 before touching its colour) · <a href="09-needle/Needle%20Playground.html">bare playground — try it</a> · <a href="09-needle/needle-physics.js">engine</a></td></tr>
+<tr><td>10-haptics/</td><td><a href="10-haptics/README.md">haptic vocabulary</a> — physical events only, rate-limited, mutable</td></tr>
+<tr><td>07-provenance/</td><td><a href="07-provenance/CHANGELOG.md">changelog</a> · <a href="07-provenance/SUPERSEDED.md">superseded (do not resurrect)</a> · <a href="07-provenance/SOURCES.md">given vs inferred</a> · <a href="07-provenance/OPEN-GAPS.md">open gaps</a> · kit-source/ &amp; app-source/ verbatim</td></tr>
+</table>
+<div class="warn">Two warnings for future maintainers: (1) kit-source/ contains the superseded teal-era specimens — read SUPERSEDED.md before treating anything there as current. (2) If any doc disagrees with tokens.css, tokens.css wins.</div>
+</main></body></html>

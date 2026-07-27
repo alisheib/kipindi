@@ -3,7 +3,7 @@
 /**
  * UpDownCard — the iconic surface of the Up & Down product.
  *
- * Built to the reviewed spec: `docs/design-system/v1-2026-07-24/specs/D1-updown-card-spec.md`.
+ * Built to the reviewed spec: `docs/design-system/v2-2026-07-27/02-components/_specs-as-delivered/D1-updown-card-spec.md`.
  * KIT-ONLY — `.chip`, `.live-dot`, `.btn-yes` / `.btn-no`, `formatTzs`, kit glyphs. No
  * primitive is forked here; anything genuinely new belongs in the kit.
  *

@@ -39,10 +39,11 @@ export type FeedbackPrefs = {
   haptics: boolean;                          // master switch
   motion: "system" | "on" | "off";           // "off" = reduce motion in-app
   perToken: Record<HapticToken, boolean>;    // fine-grained, optional
+  needleHidden: boolean;                     // hide The Needle pause object (navbar/settings toggle)
 };
 
 function load(): FeedbackPrefs {
-  const base: FeedbackPrefs = { haptics: true, motion: "system", perToken: { ...DEFAULT_ENABLED } };
+  const base: FeedbackPrefs = { haptics: true, motion: "system", perToken: { ...DEFAULT_ENABLED }, needleHidden: false };
   if (typeof localStorage === "undefined") return base;
   try {
     const raw = localStorage.getItem(STORE_KEY);
@@ -52,6 +53,7 @@ function load(): FeedbackPrefs {
       haptics: p.haptics !== false,
       motion: p.motion ?? "system",
       perToken: { ...base.perToken, ...(p.perToken ?? {}) },
+      needleHidden: p.needleHidden === true,
     };
   } catch {
     return base;
@@ -67,6 +69,12 @@ export function getPrefs(): FeedbackPrefs {
 export function setPrefs(patch: Partial<FeedbackPrefs>): void {
   prefs = { ...prefs, ...patch, perToken: { ...prefs.perToken, ...(patch.perToken ?? {}) } };
   try { localStorage.setItem(STORE_KEY, JSON.stringify(prefs)); } catch {}
+  // Bridge the master haptics switch to the vendored Needle module, which reads a
+  // separate legacy key ("50pick.haptics.muted"). One toggle, one behaviour.
+  try { localStorage.setItem("50pick.haptics.muted", prefs.haptics ? "0" : "1"); } catch {}
+  // Let live listeners (The Needle, the settings panel, the navbar toggle) react
+  // without a reload.
+  try { window.dispatchEvent(new CustomEvent("50pick:feedback-changed", { detail: getPrefs() })); } catch {}
 }
 
 const supported = () =>

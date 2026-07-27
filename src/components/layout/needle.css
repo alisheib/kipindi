@@ -1,0 +1,69 @@
+/* The Needle — pause-object styles.
+   Ported from docs/design-system/v2-2026-07-27/09-needle/Needle Playground.html
+   (the <style> block), with integration-only adaptations — behaviour, geometry,
+   colour and timing are unchanged:
+     1. Every selector is scoped under #needle-root so nothing leaks into the app.
+        The playground's bare `svg { … }` rule would otherwise restyle every glyph
+        in the product (display:block + overflow:visible on all icons).
+     2. The @keyframes is renamed `needle-wake-breathe` to avoid a global name clash.
+     3. The demo page's `html, body { overflow:hidden; … }` reset is NOT included —
+        it would kill app scrolling. The object needs none of it (it is position:fixed).
+   Tokens (--bg, --gilt, --brand-400/500, --aqua-300/400/500, --gold-300) all resolve
+   to the live src/app/globals.css. */
+
+/* Transform responsibilities are split so nothing ever fights:
+   #needle = position · #tilt = inertia lean + impact squash · #disc = spin */
+/* Reads the real safe-area insets so the object never parks under a notch,
+   a home indicator, or the iOS URL bar. */
+#needle-root #safe { position: fixed; top: 0; left: 0; width: 0; height: 0; pointer-events: none; visibility: hidden;
+        padding-top: env(safe-area-inset-top, 0px); padding-right: env(safe-area-inset-right, 0px);
+        padding-bottom: env(safe-area-inset-bottom, 0px); padding-left: env(safe-area-inset-left, 0px); }
+/* z-index: DEVIATION from the playground's 900. The brief assumed app modals live at
+   1000; 50pick's real stack is lower — top bar 30, dropdowns 50, menus 60, card popover
+   90, MODALS 100, selects 120–130, banners 200, toasts 1800. So the object sits at 25:
+   above page content, but below the top bar and EVERY overlay/decision, so a fidget can
+   never obscure navigation, a menu, or a live money-commit dialog (its scrim covers it).
+   Recorded in 09-needle CHANGELOG. */
+#needle-root #needle { position: fixed; top: 0; left: 0; width: var(--nsize, 80px); height: var(--nsize, 80px); z-index: 25; pointer-events: none; }
+#needle-root #tilt   { position: absolute; inset: 0; transform-style: preserve-3d; }
+#needle-root #hit    { position: absolute; inset: 0; border-radius: 50%; pointer-events: auto; cursor: grab; touch-action: none; display: block; }
+/* The rim spins and the hub carries. Different jobs deserve different cursors. */
+#needle-root #hub    { position: absolute; left: 33%; top: 33%; width: 34%; height: 34%; border-radius: 50%; pointer-events: auto; cursor: grab; touch-action: none; }
+#needle-root #hit    { cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24'><path d='M5 12a7 7 0 1 1 3 5.8' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round'/><path d='M4.4 8.2 5 12l3.8-.6' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round'/></svg>") 12 12, grab; }
+/* Tucked, the circle's tappable chord tapers to nothing toward the viewport
+   interior. These pads cover the visible half edge-to-edge instead: a uniform
+   ~42x80 target. Note the mirroring — parked on the RIGHT edge, it is the box's
+   LEFT half that is actually on screen. */
+#needle-root #hit.tuck-right  { inset: 0 auto 0 0; width: var(--npad, 44px); border-radius: 999px 0 0 999px; }
+#needle-root #hit.tuck-left   { inset: 0 0 0 auto; width: var(--npad, 44px); border-radius: 0 999px 999px 0; }
+#needle-root #hit.tuck-bottom { inset: 0 0 auto 0; height: var(--npad, 44px); border-radius: 999px 999px 0 0; }
+#needle-root #hit.tuck-top    { inset: auto 0 0 0; height: var(--npad, 44px); border-radius: 0 0 999px 999px; }
+#needle-root #hit:focus-visible { outline: 2px solid var(--brand-500); outline-offset: 5px; }
+#needle-root #trail, #needle-root #glow, #needle-root #ring, #needle-root #shadow, #needle-root #wake { position: absolute; border-radius: 50%; pointer-events: none; }
+#needle-root #shadow { inset: 4%; opacity: 0; box-shadow: 0 14px 30px -8px oklch(4% 0.04 268 / 0.85); transition: opacity 220ms linear; }
+#needle-root #wake   { inset: var(--halo, -34%); opacity: 0; transition: opacity 320ms linear; }
+#needle-root #wake.on { opacity: 1; animation: needle-wake-breathe 3.6s cubic-bezier(0.65,0,0.35,1) infinite; }
+@keyframes needle-wake-breathe {
+  0%,100% { opacity: calc(var(--pmax, 1) * 0.42); transform: scale(0.94); }
+  50%     { opacity: var(--pmax, 1);              transform: scale(1.06); }
+}
+#needle-root #trail  { inset: -15%; opacity: 0; filter: blur(6px);
+          background: conic-gradient(from 0deg, transparent 0deg, color-mix(in oklab, var(--gilt) 52%, transparent) 34deg, color-mix(in oklab, var(--gilt) 12%, transparent) 74deg, transparent 104deg, transparent 360deg); }
+#needle-root #glow   { inset: calc(var(--halo, -34%) * 0.7); opacity: 0; transition: opacity 160ms linear;
+          background: radial-gradient(circle, color-mix(in oklab, var(--gilt) 26%, transparent) 0%, color-mix(in oklab, var(--brand-400) 10%, transparent) 45%, transparent 68%); }
+#needle-root #ring   { inset: -5%; opacity: 0; border: 1.5px solid color-mix(in oklab, var(--gilt) 78%, transparent); }
+/* The closed ring. The trail arc only completes into a full circle above 88% of
+   max spin — the mark's "tipping point" motif momentarily resolved into a whole.
+   Nothing is awarded and nothing is announced. */
+#needle-root #whole  { inset: -15%; opacity: 0; pointer-events: none; border-radius: 50%;
+          background: conic-gradient(from 0deg, color-mix(in oklab, var(--gilt) 30%, transparent) 0deg, color-mix(in oklab, var(--gold-300) 46%, transparent) 120deg, color-mix(in oklab, var(--gilt) 30%, transparent) 240deg, color-mix(in oklab, var(--gold-300) 46%, transparent) 360deg);
+          filter: blur(7px); transition: opacity 200ms linear; }
+@media (prefers-reduced-motion: reduce) { #needle-root #whole { display: none; } }
+#needle-root svg { display: block; overflow: visible; shape-rendering: geometricPrecision; }
+@media (prefers-reduced-motion: reduce) { #needle-root #trail, #needle-root #ring { display: none; } #needle-root #wake.on { animation: none; opacity: 0.8; } }
+
+/* Integration: visibility gate (navbar toggle + money-surface suppression).
+   display:none removes the object from hit-testing entirely, which is exactly
+   what "hide on money surfaces" requires. The engine instance stays mounted so
+   position/presence persist; the host pauses its rAF loop while hidden. */
+#needle-root[hidden], #needle-root.needle-suppressed { display: none; }

@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="theme/globals.css">
+  <link rel="stylesheet" href="theme/motion.css">
+  <style>
+    @keyframes nf-in { from { opacity: 0; transform: translateY(10px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    @keyframes nf-hint { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    @keyframes nf-dockbreathe { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.75; } }
+    @keyframes nf-wake {
+      0%, 100% { opacity: calc(var(--pmax, 1) * 0.42); transform: scale(0.94); }
+      50%      { opacity: var(--pmax, 1);              transform: scale(1.06); }
+    }
+    /* Tucked, the circle's tappable chord tapers to nothing toward the viewport
+       interior. These pads cover the visible half edge-to-edge instead. */
+    .nf-hit.tuck-right  { inset: 0 auto 0 0 !important; width: var(--npad, 44px) !important; border-radius: 999px 0 0 999px !important; }
+    .nf-hit.tuck-left   { inset: 0 0 0 auto !important; width: var(--npad, 44px) !important; border-radius: 0 999px 999px 0 !important; }
+    .nf-hit.tuck-bottom { inset: 0 0 auto 0 !important; height: var(--npad, 44px) !important; border-radius: 999px 999px 0 0 !important; }
+    .nf-hit.tuck-top    { inset: auto 0 0 0 !important; height: var(--npad, 44px) !important; border-radius: 0 0 999px 999px !important; }
+    @media (prefers-reduced-motion: reduce) { .nf-breathe { animation: none !important; opacity: 0.55 !important; } }
+  </style>
+</helmet>
+
+<div style="background: var(--bg); color: var(--text); font-family: var(--font-body); min-height: 100%; padding: 0 0 80px; position: relative; overflow-x: hidden">
+
+  <header style="padding: 56px 40px 34px; border-bottom: 1px solid var(--border)">
+    <div style="max-width: 1120px; margin: 0 auto">
+      <p style="margin: 0; font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.18em; font-weight: 700; color: var(--gilt)">50pick · Motion identity · Object 01</p>
+      <h1 style="margin: 8px 0 0; font-family: var(--font-display); font-size: 40px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.05">The Needle</h1>
+      <p style="margin: 14px 0 0; font-size: 15px; line-height: 1.65; color: var(--text-muted); max-width: 680px; text-wrap: pretty">One physical object, built from the mark itself. Pull it out of the dock, throw it across the screen, grab its rim and whip it. However hard you spin it, it slows, corrects once, and comes to rest as the logo — exactly. That is the whole point: <em style="font-style: normal; color: var(--text)">the needle always finds true.</em> It is a pause object, not a game. It never scores, never rewards, and never appears while money is moving.</p>
+    </div>
+  </header>
+
+  <main style="max-width: 1120px; margin: 0 auto; padding: 34px 40px 0">
+
+    <section style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; align-items: start">
+
+      <div style="position: relative; overflow: hidden; border: 1px solid var(--border); background: var(--bg-elevated); border-radius: var(--r-lg); padding: 20px">
+        <svg aria-hidden="true" width="54" height="54" viewBox="0 0 54 54" style="position: absolute; top: 0; right: 0; pointer-events: none; overflow: visible"><line x1="40.6" y1="-8" x2="27.2" y2="46" stroke="var(--gilt)" stroke-width="1.25" stroke-linecap="round" opacity="0.5"></line><circle cx="33.9" cy="19" r="2.6" fill="var(--gilt)" opacity="0.85"></circle></svg>
+        <p style="margin: 0; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-subtle)">Where it lives</p>
+        <p style="margin: 8px 0 16px; font-size: 13px; line-height: 1.6; color: var(--text-muted)">Inside the responsible-play card — the same surface that carries session length and deposit limits. Reachable, never in the way.</p>
+
+        <div style="border: 1px solid color-mix(in oklab, var(--border) 75%, transparent); border-radius: var(--r-md); background: var(--bg-inset); padding: 16px">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+            <span class="gilt-eyebrow">Take a breath</span>
+            <span style="font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint)">Session 41 min</span>
+          </div>
+          <div class="gilt-rule" style="margin: 10px 0 14px"></div>
+          <p style="margin: 0 0 14px; font-size: 12.5px; line-height: 1.6; color: var(--text-muted)">Markets will still be here in five minutes. If today is loud, pull the needle out and spin it for a while.</p>
+
+          <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap">
+            <button ref="{{ dockRef }}" onPointerDown="{{ onDockGrab }}" onKeyDown="{{ onDockKey }}" aria-label="Needle pause object. Press Enter to release it onto the screen." style="position: relative; width: 74px; height: 74px; flex-shrink: 0; border-radius: 50%; border: 1px dashed var(--border-strong); background: color-mix(in oklab, var(--bg-overlay) 60%, transparent); cursor: grab; display: flex; align-items: center; justify-content: center; padding: 0; touch-action: none; transition: border-color 140ms linear, transform 140ms cubic-bezier(0.32, 0.72, 0, 1)" style-hover="border-color: var(--gilt); transform: translateY(-2px)" style-active="transform: translateY(0)">
+              <span class="nf-breathe" aria-hidden="true" style="position: absolute; inset: -6px; border-radius: 50%; background: radial-gradient(circle, color-mix(in oklab, var(--gilt) 16%, transparent), transparent 66%); animation: nf-dockbreathe 4.6s cubic-bezier(0.65, 0, 0.35, 1) infinite; pointer-events: none"></span>
+              <sc-if value="{{ isDocked }}" hint-placeholder-val="{{ true }}">
+                <svg viewBox="0 0 100 100" width="46" height="46" aria-hidden="true" style="position: relative; display: block">
+                  <path d="M 38.87 5.37 A 46 46 0 0 0 61.13 94.63 Z" fill="#1EA362" opacity="0.9"></path>
+                  <path d="M 38.87 5.37 A 46 46 0 0 1 61.13 94.63 Z" fill="#B03A3E" opacity="0.9"></path>
+                  <line x1="38.39" y1="3.43" x2="61.61" y2="96.57" stroke="#E3BC66" stroke-width="3.5" stroke-linecap="round"></line>
+                  <circle cx="50" cy="50" r="5" fill="#E3BC66"></circle>
+                  <circle cx="50" cy="50" r="1.7" fill="#1A2140"></circle>
+                </svg>
+              </sc-if>
+              <sc-if value="{{ isOut }}" hint-placeholder-val="{{ false }}">
+                <span style="position: relative; font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint); line-height: 1.4">drop<br>here</span>
+              </sc-if>
+            </button>
+            <div style="min-width: 0">
+              <p style="margin: 0; font-family: var(--font-display); font-size: 14px; font-weight: 600">{{ dockTitle }}</p>
+              <p style="margin: 4px 0 0; font-size: 12px; line-height: 1.5; color: var(--text-muted); max-width: 220px">{{ dockBody }}</p>
+              <sc-if value="{{ isOut }}" hint-placeholder-val="{{ false }}">
+                <button onClick="{{ recall }}" class="btn btn-ghost btn-sm" style="margin-top: 10px">Put it back</button>
+              </sc-if>
+            </div>
+          </div>
+        </div>
+
+        <p style="margin: 16px 0 0; font-family: var(--font-mono); font-size: 10px; line-height: 1.7; color: var(--text-faint)">Look at the right edge of your screen — it is already there. Tap the sliver to pop it out · gold hub to carry · rim to spin · throw it anywhere · it tucks itself back</p>
+      </div>
+
+      <div style="position: relative; overflow: hidden; border: 1px solid var(--border); background: var(--bg-elevated); border-radius: var(--r-lg); padding: 20px">
+        <svg aria-hidden="true" width="54" height="54" viewBox="0 0 54 54" style="position: absolute; top: 0; right: 0; pointer-events: none; overflow: visible"><line x1="40.6" y1="-8" x2="27.2" y2="46" stroke="var(--gilt)" stroke-width="1.25" stroke-linecap="round" opacity="0.5"></line><circle cx="33.9" cy="19" r="2.6" fill="var(--gilt)" opacity="0.85"></circle></svg>
+        <p style="margin: 0; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-subtle)">Live readout</p>
+        <p style="margin: 8px 0 16px; font-size: 13px; line-height: 1.6; color: var(--text-muted)">Read straight off the physics loop, so the numbers in the spec are the numbers on screen.</p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px">
+          <sc-for list="{{ readouts }}" as="r" hint-placeholder-count="4">
+            <div style="border: 1px solid color-mix(in oklab, var(--border) 70%, transparent); background: var(--bg-inset); border-radius: var(--r-md); padding: 11px 13px">
+              <p style="margin: 0; font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-faint)">{{ r.label }}</p>
+              <p ref="{{ r.ref }}" style="margin: 5px 0 0; font-family: var(--font-mono); font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; color: {{ r.ink }}">{{ r.init }}</p>
+            </div>
+          </sc-for>
+        </div>
+        <div style="margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap">
+          <button onClick="{{ flick }}" class="btn btn-ghost btn-sm">Spin it</button>
+          <button onClick="{{ throwIt }}" class="btn btn-ghost btn-sm">Throw it</button>
+          <button onClick="{{ centre }}" class="btn btn-ghost btn-sm">Fetch it</button>
+          <button onClick="{{ recall }}" class="btn btn-ghost btn-sm">Tuck away</button>
+          <button onClick="{{ resetHint }}" class="btn btn-ghost btn-sm">Replay first-run</button>
+        </div>
+      </div>
+    </section>
+
+    <section style="margin-top: 40px">
+      <p style="margin: 0; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; font-weight: 600; color: var(--text-subtle)">Every state</p>
+      <h2 style="margin: 8px 0 18px; font-family: var(--font-display); font-size: 24px; font-weight: 600; letter-spacing: -0.02em">Thirteen, all implemented</h2>
+      <div style="border: 1px solid var(--border); border-radius: var(--r-md); overflow: hidden">
+        <sc-for list="{{ states }}" as="st" hint-placeholder-count="13">
+          <div style="display: grid; grid-template-columns: 150px 1fr 250px; gap: 16px; padding: 12px 18px; border-bottom: 1px solid color-mix(in oklab, var(--border) 45%, transparent); background: var(--bg-elevated); align-items: start">
+            <span style="font-family: var(--font-mono); font-size: 11.5px; font-weight: 700; color: var(--text)">{{ st.name }}</span>
+            <span style="font-size: 12.5px; line-height: 1.55; color: var(--text-muted)">{{ st.what }}</span>
+            <span style="font-family: var(--font-mono); font-size: 9.5px; line-height: 1.6; color: var(--text-faint)">{{ st.spec }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <section style="margin-top: 40px; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px">
+      <sc-for list="{{ notes }}" as="n" hint-placeholder-count="4">
+        <div style="position: relative; overflow: hidden; border: 1px solid var(--border); background: var(--bg-elevated); border-radius: var(--r-md); padding: 17px 19px">
+          <svg aria-hidden="true" width="46" height="46" viewBox="0 0 46 46" style="position: absolute; top: 0; right: 0; pointer-events: none; overflow: visible"><line x1="34.6" y1="-7" x2="23.2" y2="39" stroke="var(--gilt)" stroke-width="1.1" stroke-linecap="round" opacity="0.42"></line><circle cx="28.9" cy="16" r="2.2" fill="var(--gilt)" opacity="0.8"></circle></svg>
+          <p style="margin: 0; font-family: var(--font-display); font-size: 15px; font-weight: 600">{{ n.title }}</p>
+          <p style="margin: 8px 0 0; font-size: 12.5px; line-height: 1.6; color: var(--text-muted)">{{ n.body }}</p>
+        </div>
+      </sc-for>
+    </section>
+  </main>
+
+  <div ref="{{ toyRef }}" style="{{ toyStyle }}">
+    <span ref="{{ hitRef }}" class="{{ hitClass }}" onPointerDown="{{ onGrab }}" onKeyDown="{{ onKey }}" onPointerEnter="{{ onHoverIn }}" onPointerLeave="{{ onHoverOut }}" onFocus="{{ onToyFocus }}" onBlur="{{ onToyBlur }}" role="button" tabindex="0" aria-label="Needle — an optional fidget toy. Nothing here affects your account. Space to spin, arrow keys to move, Escape to tuck it away." style="{{ hitStyle }}"></span>
+    <div ref="{{ tiltRef }}" style="position: absolute; inset: 0; transform-style: preserve-3d">
+      <span ref="{{ wakeRef }}" aria-hidden="true" style="position: absolute; inset: -34%; border-radius: 50%; opacity: 0; pointer-events: none; transition: opacity 320ms linear"></span>
+      <span ref="{{ glowRef }}" aria-hidden="true" style="position: absolute; inset: -24%; border-radius: 50%; background: radial-gradient(circle, color-mix(in oklab, var(--gilt) 26%, transparent) 0%, color-mix(in oklab, var(--brand-400) 10%, transparent) 45%, transparent 68%); opacity: 0; pointer-events: none; transition: opacity 160ms linear"></span>
+      <span ref="{{ trailRef }}" aria-hidden="true" style="position: absolute; inset: -15%; border-radius: 50%; opacity: 0; pointer-events: none; filter: blur(6px); background: conic-gradient(from 0deg, transparent 0deg, color-mix(in oklab, var(--gilt) 52%, transparent) 34deg, color-mix(in oklab, var(--gilt) 12%, transparent) 74deg, transparent 104deg, transparent 360deg)"></span>
+      <span ref="{{ shadowRef }}" aria-hidden="true" style="position: absolute; inset: 4%; border-radius: 50%; opacity: 0; pointer-events: none; box-shadow: 0 14px 30px -8px oklch(4% 0.04 268 / 0.85); transition: opacity 220ms linear"></span>
+      <span ref="{{ ringRef }}" aria-hidden="true" style="position: absolute; inset: -5%; border-radius: 50%; border: 1.5px solid color-mix(in oklab, var(--gilt) 78%, transparent); opacity: 0; pointer-events: none"></span>
+      <svg ref="{{ svgRef }}" viewBox="0 0 100 100" width="100%" height="100%" aria-hidden="true" style="position: relative; display: block; overflow: visible; shape-rendering: geometricPrecision">
+        <defs>
+          <linearGradient id="nfFaceL" x1="0.1" y1="0" x2="0.8" y2="1">
+            <stop offset="0%" stop-color="#1C9264"></stop>
+            <stop offset="100%" stop-color="#146F4C"></stop>
+          </linearGradient>
+          <linearGradient id="nfFaceR" x1="0.1" y1="0" x2="0.8" y2="1">
+            <stop offset="0%" stop-color="#A83A43"></stop>
+            <stop offset="100%" stop-color="#822A33"></stop>
+          </linearGradient>
+          <radialGradient id="nfGloss" cx="0.5" cy="0.5" r="0.5">
+            <stop offset="0%" stop-color="#ffffff" stop-opacity="0.30"></stop>
+            <stop offset="55%" stop-color="#ffffff" stop-opacity="0.10"></stop>
+            <stop offset="100%" stop-color="#ffffff" stop-opacity="0"></stop>
+          </radialGradient>
+          <clipPath id="nfFaceClip"><circle cx="50" cy="50" r="46"></circle></clipPath>
+          <linearGradient id="nfSpec" x1="0.12" y1="0" x2="0.72" y2="1">
+            <stop offset="0%" stop-color="#ffffff" stop-opacity="0.17"></stop>
+            <stop offset="30%" stop-color="#ffffff" stop-opacity="0.04"></stop>
+            <stop offset="56%" stop-color="#0A0E28" stop-opacity="0.12"></stop>
+            <stop offset="100%" stop-color="#0A0E28" stop-opacity="0.42"></stop>
+          </linearGradient>
+          <radialGradient id="nfVig" cx="0.5" cy="0.5" r="0.5">
+            <stop offset="62%" stop-color="#0A0E28" stop-opacity="0"></stop>
+            <stop offset="88%" stop-color="#0A0E28" stop-opacity="0.16"></stop>
+            <stop offset="100%" stop-color="#0A0E28" stop-opacity="0.40"></stop>
+          </radialGradient>
+          <linearGradient id="nfRim" x1="0.15" y1="0" x2="0.85" y2="1">
+            <stop offset="0%" stop-color="#ffffff" stop-opacity="0.52"></stop>
+            <stop offset="42%" stop-color="#ffffff" stop-opacity="0.06"></stop>
+            <stop offset="100%" stop-color="#E3BC66" stop-opacity="0.34"></stop>
+          </linearGradient>
+          <linearGradient id="nfBlend" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="#146F4C"></stop>
+            <stop offset="100%" stop-color="#822A33"></stop>
+          </linearGradient>
+          <radialGradient id="nfHub" cx="0.34" cy="0.28" r="0.85">
+            <stop offset="0%" stop-color="#FFF3D4"></stop>
+            <stop offset="42%" stop-color="#EFCC7C"></stop>
+            <stop offset="78%" stop-color="#D8AE55"></stop>
+            <stop offset="100%" stop-color="#A87D33"></stop>
+          </radialGradient>
+          <filter id="nfCast" x="-40%" y="-40%" width="180%" height="180%">
+            <feDropShadow dx="0" dy="7" stdDeviation="6.5" flood-color="oklch(5% 0.05 268)" flood-opacity="0.58"></feDropShadow>
+          </filter>
+        </defs>
+        <g filter="url(#nfCast)">
+          <g ref="{{ bodyRef }}" style="transform-origin: 50px 50px">
+            <path d="M 38.87 5.37 A 46 46 0 0 0 61.13 94.63 Z" fill="url(#nfFaceL)"></path>
+            <path d="M 38.87 5.37 A 46 46 0 0 1 61.13 94.63 Z" fill="url(#nfFaceR)"></path>
+            <path d="M 38.87 5.37 A 46 46 0 0 0 61.13 94.63" fill="none" stroke="#54EDA6" stroke-width="var(--inlay, 2.6)" opacity="0.95"></path>
+            <path d="M 38.87 5.37 A 46 46 0 0 1 61.13 94.63" fill="none" stroke="#FF7B82" stroke-width="var(--inlay, 2.6)" opacity="0.95"></path>
+            <line x1="38.39" y1="3.43" x2="61.61" y2="96.57" stroke="#070A1E" stroke-width="7.5" stroke-linecap="round" opacity="0.62"></line>
+            <line x1="38.39" y1="3.43" x2="61.61" y2="96.57" stroke="#FFE7B0" stroke-width="4.4" stroke-linecap="round" style="filter: drop-shadow(0 0 3px rgba(255,214,120,0.9))"></line>
+          </g>
+          <circle ref="{{ blendRef }}" cx="50" cy="50" r="46" fill="url(#nfBlend)" opacity="0"></circle>
+          <g ref="{{ smearARef }}" style="transform-origin: 50px 50px" opacity="0">
+            <line x1="38.39" y1="3.43" x2="61.61" y2="96.57" stroke="#F0D08A" stroke-width="3.6" stroke-linecap="round"></line>
+          </g>
+          <g ref="{{ smearBRef }}" style="transform-origin: 50px 50px" opacity="0">
+            <line x1="38.39" y1="3.43" x2="61.61" y2="96.57" stroke="#F0D08A" stroke-width="3" stroke-linecap="round"></line>
+          </g>
+          <circle cx="50" cy="50" r="46" fill="url(#nfSpec)"></circle>
+          <circle cx="50" cy="50" r="46" fill="url(#nfVig)"></circle>
+          <circle cx="50" cy="50" r="46.4" fill="none" stroke="#080B22" stroke-width="1.4" opacity="0.72"></circle>
+          <circle cx="50" cy="50" r="47.3" fill="none" stroke="url(#nfRim)" stroke-width="1.5"></circle>
+          <circle ref="{{ arcRef }}" cx="50" cy="50" r="47.3" fill="none" stroke="var(--aqua-300)" stroke-width="1.9" opacity="0" style="filter: drop-shadow(0 0 5px color-mix(in oklab, var(--aqua-400) 70%, transparent))"></circle>
+          <circle cx="50" cy="50" r="10" fill="#0A0E28" opacity="0.34"></circle>
+          <circle cx="50" cy="50" r="7.4" fill="#0A0E28" opacity="0.58"></circle>
+          <circle cx="50" cy="50" r="6.3" fill="url(#nfHub)"></circle>
+          <circle cx="50" cy="50" r="6.3" fill="none" stroke="#7C5A22" stroke-width="0.5" opacity="0.7"></circle>
+          <circle cx="47.9" cy="47.6" r="1.7" fill="#FFF8E6" opacity="0.72"></circle>
+          <circle cx="50" cy="50" r="1.5" fill="#141A38"></circle>
+        </g>
+      </svg>
+    </div>
+  </div>
+
+  <sc-if value="{{ showHint }}" hint-placeholder-val="{{ false }}">
+    <div role="dialog" aria-label="About the needle" style="{{ hintStyle }}">
+      <p style="margin: 0; font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gilt)">Not a market</p>
+      <p style="margin: 7px 0 0; font-size: 13px; line-height: 1.55; color: var(--text)">Nothing here is a bet, a prediction or a prize. It is just the needle.</p>
+      <p style="margin: 7px 0 0; font-size: 12.5px; line-height: 1.55; color: var(--text-muted)">Hold the gold pivot to carry it. Grab the edge and whip it to spin. However hard you throw it, it comes back to true — spin it when the day is loud.</p>
+      <div style="display: flex; gap: 8px; margin-top: 13px">
+        <button onClick="{{ dismissHint }}" class="btn btn-gold btn-sm" style="flex: 1">Got it</button>
+        <button onClick="{{ recall }}" class="btn btn-ghost btn-sm">Put it back</button>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;sessionMinutes&quot;: {&quot;editor&quot;: &quot;range&quot;, &quot;default&quot;: 0, &quot;min&quot;: 0, &quot;max&quot;: 90, &quot;step&quot;: 5, &quot;unit&quot;: &quot; min&quot;, &quot;tsType&quot;: &quot;number&quot;, &quot;section&quot;: &quot;Presence&quot;}, &quot;material&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;default&quot;: &quot;brass&quot;, &quot;options&quot;: [&quot;brass&quot;, &quot;glass&quot;, &quot;lead&quot;], &quot;tsType&quot;: &quot;\&quot;brass\&quot; | \&quot;glass\&quot; | \&quot;lead\&quot;&quot;, &quot;section&quot;: &quot;Feel&quot;}, &quot;discipline&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;default&quot;: &quot;always&quot;, &quot;options&quot;: [&quot;always&quot;, &quot;prefers&quot;, &quot;free&quot;], &quot;tsType&quot;: &quot;\&quot;always\&quot; | \&quot;prefers\&quot; | \&quot;free\&quot;&quot;, &quot;section&quot;: &quot;Feel&quot;}, &quot;habitat&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;default&quot;: &quot;edge&quot;, &quot;options&quot;: [&quot;edge&quot;, &quot;roaming&quot;], &quot;tsType&quot;: &quot;\&quot;edge\&quot; | \&quot;roaming\&quot;&quot;, &quot;section&quot;: &quot;Feel&quot;}}">
+class Component extends DCLogic {
+  state = { mode: "docked", showHint: false, focused: false, hintSeen: true, ready: false };
+  samples = [];
+
+  componentDidMount() {
+    let seen = true;
+    try { seen = localStorage.getItem("50pick.needle.hintSeen") === "1"; } catch (e) {}
+    this.setState({ hintSeen: seen });
+
+    Promise.all([import("./needle-physics.js"), import("./needle-haptics.js")]).then(([m, h]) => {
+      this.CONST = m.CONST;
+      this.hx = h;
+      this.body = new m.NeedleBody({
+        size: 80,
+        bounds: () => ({ w: window.innerWidth, h: window.innerHeight }),
+        onImpact: (i) => this.impact(i),
+        onCross: () => this.hx.haptic("cross"),
+        onPark: () => { this.hx.haptic("tuck"); this.save(); this.forceUpdate(); },
+        onTrue: () => this.hx && this.hx.haptic("trueFound"),
+        onRecord: (kind, best) => this.setState({ record: kind, best: Object.assign({}, best) }),
+        onSleep: () => this.asleep(),
+      });
+      this.body.calm = this.reduced() ? 0.34 : 1;
+      let saved = null;
+      try { saved = JSON.parse(localStorage.getItem("50pick.needle.pos") || "null"); } catch (e) {}
+      this.body.y = saved && Number.isFinite(saved.y) ? saved.y : Math.max(0, window.innerHeight * 0.52 - 40);
+      this.body.x = 0;
+      this.body.snapPark(saved && saved.edge ? saved.edge : "right");
+      if (typeof window !== "undefined") window.__needle = this.body;
+      this.applyTuning();
+      this.setState({ ready: true }, () => this.paint(0));
+    });
+
+    this.onMove = (e) => this.move(e);
+    this.onUp = (e) => this.up(e);
+    this.onResize = () => { if (this.body) { this.body.reclamp(); this.paint(); } };
+    this.onVis = () => {
+      if (document.hidden) this.stop();
+      else if (this.body && this.body.awake) { this.body.acc = 0; this.start(); }
+    };
+    this.mq = typeof matchMedia === "function" ? matchMedia("(prefers-reduced-motion: reduce)") : null;
+    this.onMq = () => { if (this.body) this.body.calm = this.reduced() ? 0.34 : 1; };
+    if (this.mq && this.mq.addEventListener) this.mq.addEventListener("change", this.onMq);
+    window.addEventListener("pointermove", this.onMove, { passive: false });
+    window.addEventListener("pointerup", this.onUp);
+    window.addEventListener("pointercancel", this.onUp);
+    window.addEventListener("blur", this.onUp);
+    window.addEventListener("resize", this.onResize);
+    document.addEventListener("visibilitychange", this.onVis);
+  }
+
+  componentWillUnmount() {
+    this.stop();
+    clearTimeout(this._hintT);
+    window.removeEventListener("pointermove", this.onMove);
+    window.removeEventListener("pointerup", this.onUp);
+    window.removeEventListener("pointercancel", this.onUp);
+    window.removeEventListener("blur", this.onUp);
+    window.removeEventListener("resize", this.onResize);
+    document.removeEventListener("visibilitychange", this.onVis);
+    if (this.mq && this.mq.removeEventListener) this.mq.removeEventListener("change", this.onMq);
+  }
+
+  reduced() { return !!(this.mq ? this.mq.matches : typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches); }
+
+  /* Three dials that reshape the whole object rather than nudging one property.
+     MATERIAL rewrites mass and energy loss; DISCIPLINE decides how badly it wants
+     to be the logo again; HABITAT decides whether it lives on the screen edge or
+     stays wherever you left it. */
+  applyTuning() {
+    const b = this.body, C = this.CONST;
+    if (!b || !C) return;
+    const materials = {
+      brass: { TAU_LIN: 520, TAU_ANG: 1420, MU_LIN: 0.00026, MU_ANG: 0.00015, RESTITUTION: 0.58, WALL_FRICTION: 0.88, SPIN_COUPLING: 0.014 },
+      glass: { TAU_LIN: 760, TAU_ANG: 2100, MU_LIN: 0.00012, MU_ANG: 0.00007, RESTITUTION: 0.82, WALL_FRICTION: 0.95, SPIN_COUPLING: 0.023 },
+      lead:  { TAU_LIN: 300, TAU_ANG: 820,  MU_LIN: 0.00062, MU_ANG: 0.00034, RESTITUTION: 0.24, WALL_FRICTION: 0.72, SPIN_COUPLING: 0.008 },
+    };
+    const lock = { always: 1, prefers: 0.28, free: 0 };
+    b.setSession(this.props.sessionMinutes ?? 0);
+    Object.assign(C, materials[this.props.material] || materials.brass);
+    const d = this.props.discipline ?? "always";
+    b.trueLock = lock[d] != null ? lock[d] : 1;
+    b.autoPark = (this.props.habitat ?? "edge") !== "roaming";
+    if (!b.autoPark && (b.parked || b.parking)) { b.wake(); this.start(); }
+    if (b.autoPark && !b.held && !b.parked && !b.parking) { b.stillFor = C.PARK_DELAY; this.start(); }
+  }
+
+  componentDidUpdate(prev) {
+    if (!this.body) return;
+    if (prev.material !== this.props.material || prev.discipline !== this.props.discipline
+        || prev.habitat !== this.props.habitat || prev.sessionMinutes !== this.props.sessionMinutes) {
+      this.applyTuning();
+    }
+  }
+
+  start() {
+    if (this._raf || !this.body) return;
+    this._last = performance.now();
+    if (this.toy) this.toy.style.willChange = "transform";
+    const tick = (t) => {
+      const dt = t - this._last;
+      this._last = t;
+      this.body.advance(dt);
+      this.paint(dt);
+      const easing = Math.abs(1 - (this._sq || 1)) > 0.0015 || (this._hover || 0) !== (this._hoverTo || 0);
+      this._raf = (this.body.awake || easing) ? requestAnimationFrame(tick) : null;
+      if (!this._raf) { this._sq = 1; this._sqV = 0; this.paint(16); }
+    };
+    this._raf = requestAnimationFrame(tick);
+  }
+  stop() { if (this._raf) { cancelAnimationFrame(this._raf); this._raf = null; } }
+
+  paint(dt) {
+    const b = this.body;
+    if (!b) return;
+    const step = dt || 16.67;
+    if (dt) {
+      const f = Math.max(0, Math.min(3, step / 16.67));
+      this._hover = (this._hover || 0) + (((this._hoverTo || 0) - (this._hover || 0)) * 0.22 * f);
+      if (Math.abs((this._hoverTo || 0) - this._hover) < 0.05) this._hover = this._hoverTo || 0;
+    }
+    const hv = b.parked ? (this._hover || 0) : 0;
+    const nx = b.edge === "right" ? -1 : b.edge === "left" ? 1 : 0;
+    const ny = b.edge === "bottom" ? -1 : b.edge === "top" ? 1 : 0;
+    if (this.toy) this.toy.style.transform = "translate3d(" + (b.x + nx * hv).toFixed(2) + "px," + (b.y + ny * hv).toFixed(2) + "px,0)";
+    if (this.disc) this.disc.style.transform = "rotate(" + b.a.toFixed(2) + "deg)";
+
+    // vector motion smear: two ghost needles lag by angle, wedges average to a ring
+    const sp = Math.abs(b.w);
+    const dir = b.w < 0 ? 1 : -1;
+    const lag = Math.min(46, sp * 26);
+    const gA = Math.min(0.5, sp * 0.42);
+    if (this.smearA && Math.abs(gA - (this._gA || 0)) > 0.015) {
+      this.smearA.setAttribute("opacity", gA.toFixed(3));
+      this.smearB.setAttribute("opacity", Math.min(0.28, sp * 0.24).toFixed(3));
+      this._gA = gA;
+    }
+    if (this.smearA && gA > 0.004) {
+      this.smearA.style.transform = "rotate(" + (b.a + dir * lag * 0.5).toFixed(2) + "deg)";
+      this.smearB.style.transform = "rotate(" + (b.a + dir * lag).toFixed(2) + "deg)";
+    }
+    if (this.blend) {
+      const bo = Math.min(0.9, Math.max(0, (sp - 0.55) * 0.85));
+      if (Math.abs(bo - (this._bo || 0)) > 0.015) { this.blend.setAttribute("opacity", bo.toFixed(3)); this._bo = bo; }
+    }
+    if (this.trail) {
+      const o = this.reduced() ? 0 : Math.min(0.66, sp / 2.2);
+      if (Math.abs(o - (this._trail || 0)) > 0.02) { this.trail.style.opacity = o.toFixed(2); this._trail = o; }
+      if (o > 0.01) this.trail.style.transform = "rotate(" + (b.a * dir * -0.35 + (b.w < 0 ? 180 : 0)).toFixed(1) + "deg)";
+    }
+
+    // inertia lean + impact compression (spring integrated once per frame, in tick)
+    if (this.tilt) {
+      const lean = this.reduced() ? 0 : 1;
+      const rx = Math.max(-7, Math.min(7, -b.vy * 2.6)) * lean;
+      const ry = Math.max(-7, Math.min(7, b.vx * 2.6)) * lean;
+      if (dt) {
+        this._sqV = (this._sqV || 0) + (1 - (this._sq || 1)) * 0.055 * (step / 16.67);
+        this._sqV *= 0.86;
+        this._sq = (this._sq || 1) + this._sqV;
+      }
+      if (this._sq == null) this._sq = 1;
+      const t = "perspective(420px) rotateX(" + rx.toFixed(2) + "deg) rotateY(" + ry.toFixed(2) + "deg) scale(" + this._sq.toFixed(4) + ")";
+      if (t !== this._tilt) { this.tilt.style.transform = t; this._tilt = t; }
+    }
+
+    // Keyed on edge as well as state — re-parking on a different edge has to move
+    // the grab pad and the halo with it.
+    const tucked = b.parked && !b.held ? b.edge : "";
+    if (tucked !== this._tucked) {
+      if (this.shadow) this.shadow.style.opacity = tucked ? "0.9" : "0";
+      if (this.arc) this.arc.setAttribute("opacity", tucked ? "0.85" : "0");
+      if (this.hit) {
+        this.hit.className = tucked ? "nf-hit tuck-" + tucked : "nf-hit";
+        if (tucked) this.hit.style.setProperty("--npad", b.padPx() + "px");
+      }
+      if (this.wake) {
+        const at = b.edge === "right" ? "28% 50%" : b.edge === "left" ? "72% 50%" : b.edge === "top" ? "50% 72%" : "50% 28%";
+        this.wake.style.setProperty("--pmax", (0.42 + b.presence * 0.58).toFixed(3));
+        this.wake.style.animationDuration = (4.6 - b.presence * 1.4).toFixed(2) + "s";
+        this.wake.style.background = tucked
+          ? "radial-gradient(circle at " + at + ", color-mix(in oklab, var(--aqua-400) 46%, transparent) 0%, color-mix(in oklab, var(--aqua-500) 20%, transparent) 38%, transparent 64%)"
+          : "none";
+        this.wake.style.opacity = tucked ? "1" : "0";
+        this.wake.style.animation = tucked && !this.reduced() ? "nf-wake 3.6s cubic-bezier(0.65,0,0.35,1) infinite" : "none";
+      }
+      this._tucked = tucked;
+    }
+    this.readout();
+  }
+
+  readout() {
+    const b = this.body;
+    if (!b) return;
+    const set = (el, v) => { if (el && el.textContent !== v) el.textContent = v; };
+    set(this.rSpin, b.rpm < 1 ? "0 rpm" : Math.round(b.rpm) + " rpm");
+    set(this.rSpeed, b.speed < 8 ? "0 px/s" : Math.round(b.speed) + " px/s");
+    set(this.rAngle, (((b.a % 360) + 360) % 360).toFixed(0) + "\u00b0");
+    set(this.rState, this.phase());
+  }
+
+  phase() {
+    const b = this.body;
+    if (!b) return "loading";
+    if (b.held === "spin") return "spinning";
+    if (b.held === "move") return "carried";
+    if (b.parking) return "parking";
+    if (b.parked) return "tucked \u00b7 " + b.edge;
+    if (b.moving) return "in flight";
+    if (b.settling) return "settling";
+    if (Math.abs(b.w) > 0.004) return "coasting";
+    return "at rest";
+  }
+
+  impact(info) {
+    if (this.hx) this.hx.hapticImpact(info.speed);
+    if (!this.ring || this.reduced()) return;
+    const r = this.ring;
+    r.style.transition = "none";
+    r.style.opacity = String(Math.min(0.5, info.speed * 0.5));
+    r.style.transform = "translate(" + (-info.nx * 6) + "px," + (-info.ny * 6) + "px) scale(1)";
+    requestAnimationFrame(() => {
+      r.style.transition = "opacity 260ms linear, transform 260ms cubic-bezier(0.32, 0.72, 0, 1)";
+      r.style.opacity = "0";
+      r.style.transform = "translate(0,0) scale(1.22)";
+    });
+  }
+
+  asleep() {
+    if (this.hx) this.hx.haptic("settled");
+    this.readout();
+    this.save();
+    if (this.toy) this.toy.style.willChange = "auto";
+    this.forceUpdate();
+  }
+
+  save() {
+    if (!this.body) return;
+    try {
+      localStorage.setItem("50pick.needle.pos", JSON.stringify({
+        x: Math.round(this.body.x), y: Math.round(this.body.y), edge: this.body.edge,
+      }));
+    } catch (e) {}
+  }
+
+  grab(e, fromDock) {
+    const b = this.body;
+    if (!b) return;
+    if (e.button !== undefined && e.button !== 0) return;
+    if (this._pid != null) return;                       // ignore a second finger
+    this._pid = e.pointerId != null ? e.pointerId : 0;
+    this._wasParked = b.parked || b.parking;
+    this._down = { x: e.clientX, y: e.clientY, t: performance.now() };
+    if (fromDock) {
+      b.place(e.clientX - b.radius, e.clientY - b.radius);
+      if (!this.state.hintSeen) {
+        clearTimeout(this._hintT);
+        this._hintT = setTimeout(() => this.setState({ showHint: true }), 420);
+      }
+    }
+    const kind = fromDock || this._wasParked ? "move" : b.grabKind(e.clientX, e.clientY);
+    b.hold(kind);
+    this.samples = [{ x: e.clientX, y: e.clientY, a: Math.atan2(e.clientY - b.cy, e.clientX - b.cx) * 180 / Math.PI, t: performance.now() }];
+    if (this.hx) this.hx.haptic("grab");
+    if (this.toy) { this.toy.style.cursor = "grabbing"; this.toy.style.willChange = "transform"; }
+    if (this.glow) this.glow.style.opacity = "1";
+    if (e.preventDefault) e.preventDefault();
+    this.paint();
+    this.forceUpdate();
+  }
+
+  move(e) {
+    const b = this.body;
+    if (!b || !b.held) return;
+    if (this._pid != null && e.pointerId != null && e.pointerId !== this._pid) return;
+    e.preventDefault();
+    const last = this.samples[this.samples.length - 1];
+    if (b.held === "move") {
+      b.dragBy(e.clientX - last.x, e.clientY - last.y);
+      this.samples.push({ x: e.clientX, y: e.clientY, a: last.a, t: performance.now() });
+    } else {
+      const a = b.turnTo(e.clientX, e.clientY, last.a);
+      this.samples.push({ x: e.clientX, y: e.clientY, a, t: performance.now() });
+    }
+    if (this.samples.length > 8) this.samples.shift();
+    // no paint here: the rAF loop is already running while held, and painting
+    // twice in one frame is how you get a stutter on a slow device
+  }
+
+  up(e) {
+    const b = this.body;
+    if (!b || !b.held) return;
+    if (this._pid != null && e && e.pointerId != null && e.pointerId !== this._pid) return;
+    this._pid = null;
+    const kind = b.held;
+    const d = this._down;
+    const travelled = d && e && e.clientX != null ? Math.hypot(e.clientX - d.x, e.clientY - d.y) : 0;
+    const quick = d ? performance.now() - d.t < 320 : false;
+
+    if (this.toy) this.toy.style.cursor = "grab";
+    if (this.glow) this.glow.style.opacity = "0";
+
+    // A tap on the tucked sliver pops it out instead of throwing it nowhere.
+    if (this._wasParked && quick && travelled < 8) {
+      if (this.hx) this.hx.haptic("wake");
+      b.wake(true);
+      if (!this.state.hintSeen) this.setState({ showHint: true });
+      this.start();
+      this.forceUpdate();
+      return;
+    }
+
+    b.release(this.samples, kind);
+    this.start();
+    this.forceUpdate();
+  }
+
+  tuck(edge) {
+    const b = this.body;
+    if (!b) return;
+    b.held = null;
+    b.parkTo(edge || b.nearestEdge());
+    this.start();
+  }
+
+  summon() {
+    const b = this.body;
+    if (!b) return;
+    b.unpark();
+    b.vx = b.vy = 0;
+    b.place(window.innerWidth / 2 - b.radius, window.innerHeight / 2 - b.radius);
+    b.stillFor = 0;
+    this.paint();
+    if (this.hit) this.hit.focus();
+    this.start();
+    this.forceUpdate();
+  }
+
+  key(e) {
+    const b = this.body;
+    if (!b) return;
+    const step = e.shiftKey ? 48 : 12;
+    if (e.key === "Escape") { e.preventDefault(); this.tuck(); return; }
+    if (e.key === " " || e.key === "Enter") {
+      e.preventDefault();
+      if (b.parked || b.parking) { b.wake(); this.start(); return; }
+      b.flick(1.7);
+      this.start();
+      return;
+    }
+    const map = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
+    if (map[e.key]) {
+      e.preventDefault();
+      b.unpark();
+      b.dragBy(map[e.key][0], map[e.key][1]);
+      this.paint();
+      this.save();
+      this.start();
+    }
+  }
+
+  renderVals() {
+    const b = this.body;
+    const tucked = !!b && (b.parked || b.parking);
+    const ro = (k) => (el) => { this[k] = el; };
+    return {
+      isDocked: tucked,
+      isOut: !tucked,
+      showHint: this.state.showHint,
+      dockTitle: tucked ? "Tucked on the " + (b ? b.edge : "right") + " edge" : "In play",
+      dockBody: tucked
+        ? "Tap the sliver at the screen edge to pop it out, or fetch it here."
+        : "Carry it by the gold hub, whip the rim to spin it, throw it anywhere. It tucks itself back after a moment.",
+
+      dockRef: (el) => { this.dockEl = el; },
+      hitRef: (el) => { this.hit = el; },
+      hitClass: "nf-hit",
+      hitStyle: "position: absolute; inset: 0; border-radius: 50%; cursor: grab; pointer-events: auto; touch-action: none; -webkit-tap-highlight-color: transparent; display: block; outline: " +
+        (this.state.focused ? "2px solid var(--brand-500)" : "none") + "; outline-offset: 5px;",
+      toyRef: (el) => { this.toy = el; if (el && this.body) el.style.transform = "translate3d(" + this.body.x + "px," + this.body.y + "px,0)"; },
+      bodyRef: (el) => { this.disc = el; if (el && this.body) el.style.transform = "rotate(" + this.body.a + "deg)"; },
+      trailRef: (el) => { this.trail = el; },
+      glowRef: (el) => { this.glow = el; },
+      ringRef: (el) => { this.ring = el; },
+      svgRef: (el) => { this.svg = el; },
+      tiltRef: (el) => { this.tilt = el; },
+      wakeRef: (el) => { this.wake = el; },
+      shadowRef: (el) => { this.shadow = el; },
+      arcRef: (el) => { this.arc = el; },
+      blendRef: (el) => { this.blend = el; },
+      smearARef: (el) => { this.smearA = el; },
+      smearBRef: (el) => { this.smearB = el; },
+
+      toyStyle: "position: fixed; top: 0; left: 0; z-index: 900; width: 80px; height: 80px; pointer-events: none; -webkit-user-select: none; user-select: none; border-radius: 50%; padding: 0; border: 0; background: none; animation: nf-in 340ms cubic-bezier(0.16, 0.9, 0.24, 1.004) both;",
+      hintStyle: "position: fixed; z-index: 950; right: 24px; bottom: 24px; width: min(300px, calc(100vw - 48px)); background: var(--bg-elevated2); border: 1px solid var(--border-strong); border-radius: var(--r-lg); box-shadow: var(--shadow-royal); padding: 16px 17px 15px; animation: nf-hint 340ms cubic-bezier(0.16, 0.9, 0.24, 1.004) both;",
+
+      onGrab: (e) => this.grab(e, false),
+      onDockGrab: (e) => this.grab(e, true),
+      onKey: (e) => this.key(e),
+      onDockKey: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); this.summon(); } },
+      onHoverIn: (e) => { if (e.pointerType !== "touch" && this.body && this.body.parked) { this._hoverTo = 7; this.start(); } },
+      onHoverOut: () => { this._hoverTo = 0; this.start(); },
+      onToyFocus: () => this.setState({ focused: true }),
+      onToyBlur: () => this.setState({ focused: false }),
+      recall: () => this.tuck(),
+      dismissHint: () => {
+        try { localStorage.setItem("50pick.needle.hintSeen", "1"); } catch (e) {}
+        this.setState({ showHint: false, hintSeen: true });
+      },
+      resetHint: () => {
+        try { localStorage.removeItem("50pick.needle.hintSeen"); } catch (e) {}
+        this.setState({ hintSeen: false, showHint: this.state.mode === "free" });
+      },
+      flick: () => {
+        if (!this.body) return;
+        this.summon();
+        setTimeout(() => { this.body.flick(2.1); this.start(); }, 30);
+      },
+      centre: () => this.summon(),
+      throwIt: () => {
+        const bd = this.body;
+        if (!bd) return;
+        bd.unpark();
+        bd.place(60, 60);
+        bd.vx = (bd.calm < 1 ? 0.5 : 2.4);
+        bd.vy = (bd.calm < 1 ? 0.3 : 1.5);
+        bd.w = bd.calm < 1 ? 0.3 : 1.2;
+        bd.settling = false;
+        this.start();
+      },
+
+      readouts: [
+        { label: "Spin", init: "0 rpm", ink: "var(--gilt)", ref: ro("rSpin") },
+        { label: "Travel", init: "0 px/s", ink: "var(--text)", ref: ro("rSpeed") },
+        { label: "Angle from true", init: "0\u00b0", ink: "var(--text)", ref: ro("rAngle") },
+        { label: "Phase", init: "tucked", ink: "var(--aqua-300)", ref: ro("rState") },
+      ],
+
+      states: [
+        { name: "tucked", what: "The resting state. It parks against the nearest screen edge with half the disc showing, above everything, blocking nothing \u2014 the wrapper is pointer-transparent and only the object itself takes input. While tucked the grab area becomes a full-height pad over the visible half, because a circle's tappable chord tapers to nothing toward the viewport interior.", spec: "peek 50% = 40px \u00b7 pad 40\u00d780 \u00b7 rAF stopped" },
+        { name: "tap to wake", what: "A tap on the sliver (under 8px of travel, under 320ms) pops it fully into view beside the edge instead of throwing it nowhere.", spec: "wake() \u00b7 park spring k=4.2e\u22125, \u03b6=0.92" },
+        { name: "auto-park", what: "260ms after it stops moving it glides back to the nearest edge and tucks itself. Side edges are preferred 1.35:1 over top and bottom, because a disc on the top edge eats the reading column.", spec: "PARK_DELAY 260ms \u00b7 weighted nearest-edge" },
+        { name: "first run", what: "Anchored disclaimer: not a market, not a bet, no prize. Shown once, remembered, replayable from the panel.", spec: "340ms --m-settle \u00b7 50pick.needle.hintSeen" },
+        { name: "carried", what: "Pointer inside the gold hub (34% radius) moves the body 1:1. No easing while held \u2014 the finger is the physics.", spec: "grab=move \u00b7 8-sample pointer trail" },
+        { name: "spun", what: "Grab anywhere outside the hub and it tracks true angular delta about the centre, unwrapped across \u00b1180\u00b0, so it follows your wrist exactly.", spec: "grab=spin \u00b7 atan2 delta" },
+        { name: "thrown", what: "Release velocity is a recency-weighted fit over the last 110ms, so the flick you feel is the flick you performed. Carrying it fast also imparts a little spin.", spec: "clamp 3.4 px/ms \u00b7 2.8 deg/ms" },
+        { name: "collision", what: "Walls resolve as real impulses: normal component reflects at 0.58 restitution, tangential loses 12%, and that lost momentum becomes spin \u2014 clip an edge on an angle and it starts turning. Micro-bounces under 0.22 px/ms are suppressed so it never buzzes.", spec: "e=0.58 \u00b7 \u03bc_t=0.88 \u00b7 spin coupling 0.055/px" },
+        { name: "in flight", what: "Viscous drag plus Coulomb friction, so it glides then genuinely stops instead of crawling forever. A disc spinning against a wall walks along it, faintly.", spec: "v\u00d7=e^(\u2212dt/520) \u2212 0.00028dt \u00b7 roll 0.010" },
+        { name: "coasting", what: "Free spin decays over ~1.4s. Motion blur steps at three thresholds and a gilt arc trail fades in with speed \u2014 both stepped, never recomputed per frame.", spec: "w\u00d7=e^(\u2212dt/1420) \u00b7 blur 0.55/1.2/2px" },
+        { name: "settling", what: "Below 0.06 deg/ms a spring at \u03b6=0.88 takes over and pulls to the nearest whole turn: one hair of overshoot, then still. It always lands as the logo, to the degree.", spec: "k=1.65e\u22125 \u00b7 \u03b6=0.88 \u00b7 target=round(a/360)\u00d7360" },
+        { name: "at rest", what: "The loop stops dead, will-change is released, angle snaps exact, edge and position persist. Zero CPU until touched.", spec: "0 frames \u00b7 50pick.needle.pos {x,y,edge}" },
+        { name: "resized", what: "On resize or rotation it re-derives its parked pose from the new viewport, so it is never stranded off-screen or floating in the middle of a phone in landscape.", spec: "reclamp() \u2192 snapPark(edge)" },
+        { name: "backgrounded", what: "Tab hidden cancels the loop; returning clears the accumulator so it resumes exactly where it was instead of teleporting through a 4-second delta.", spec: "visibilitychange \u00b7 acc = 0" },
+        { name: "focused", what: "Fully keyboard-operable with a real focus ring: space wakes it then spins it, arrows move (shift = 48px), escape tucks it back to the nearest edge.", spec: "outline 2px --brand-500, offset 5px" },
+        { name: "reduced motion", what: "Flicks are capped to a single slow correcting turn, impact ripples and the halo are off, blur and trail stay put. The object still works, quietly.", spec: "calm 0.34 \u00b7 live matchMedia listener" },
+        { name: "presence", what: "Prominence is a function of session length, not a constant. Peek grows from 50% to 74%, the halo brightens and its breath quickens over the first hour, then holds. Silent, blocking nothing \u2014 it simply becomes harder to not notice the longer you have been playing.", spec: "peek 0.50\u21920.74 \u00b7 halo 0.42\u21921.0 \u00b7 breath 4.6s\u21923.2s \u00b7 setSession(min)" },
+        { name: "hover peek", what: "On desktop, hovering the tucked sliver leans it 7px out of the edge \u2014 the affordance that says grabbable before you have to guess. Touch is excluded, since there is no hover to give.", spec: "7px ease 0.22 \u00b7 pointerType !== touch" },
+        { name: "acknowledge", what: "Platform hook. When a round the player holds actually settles, the shell calls needle.acknowledge() and the needle gives one quarter-turn that resolves straight back to true. One tick. Never a celebration, never a reward.", spec: "w = 0.62 deg/ms \u00b7 0.22 under reduced motion" },
+        { name: "never in the way", what: "It is fixed-position above the app but its bounding box does not exist to the pointer: only the circle is hittable, so every click, scroll and hover underneath behaves as if it were not there.", spec: "wrapper pointer-events:none \u00b7 circular hit target" },
+      ],
+
+      notes: [
+        { title: "Why it always finds true", body: "A fidget that stops at a random angle is a toy. One that always comes to rest as the mark is an argument: markets swing, and they settle. The spring target is the nearest multiple of 360\u00b0, so no matter how many turns you put into it, the resting frame is pixel-identical to the logo." },
+        { title: "Deterministic on every device", body: "The simulator runs fixed 120Hz substeps behind an accumulator, capped at six per frame. A 60Hz Android and a 144Hz desktop produce the same trajectory from the same flick \u2014 no frame-rate feel, no jank spiral after a tab switch." },
+        { title: "What it costs", body: "One rAF while moving and nothing at all when still: the loop cancels itself on sleep and will-change is released. Only transform, opacity and filter are touched, so there is no layout or paint in the animation frame." },
+        { title: "The line we will not cross", body: "No score, no streak, no reward, no sound, no leaderboard, and never a surface where money is in play. It is a pause object, not a game. The moment it gamifies, it stops being the brand and starts being the problem." },
+        { title: "Presence is the whole point", body: "Drag SESSION MINUTES and watch the object. This is a responsible-play surface, so its prominence tracks how long the player has been going: at 0 it is a whisper you could ignore, and by an hour it peeks further out of the edge, glows brighter and breathes faster. It never nags, never blocks, never speaks \u2014 it just becomes harder to not notice. That is what makes it the feature rather than a fidget parked next to one." },
+        { title: "Four dials, not forty", body: "SESSION MINUTES drives presence. MATERIAL (brass, glass, lead) rewrites mass, restitution and energy loss together. DISCIPLINE sets how strongly it homes back to the logo. HABITAT decides edge-parking or roaming. Each reshapes the whole object; none is a pixel nudge. Ship values: brass \u00b7 always \u00b7 edge." },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

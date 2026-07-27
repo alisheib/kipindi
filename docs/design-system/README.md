@@ -3,7 +3,7 @@
 > **Start here for anything visual.** This is the entry point for every design
 > question, every new screen, and every future theme change.
 >
-> **Last updated:** 2026-07-24 · **Current version:** `v1-2026-07-24`
+> **Last updated:** 2026-07-27 · **Current version:** `v2-2026-07-27` — the complete system and the ONLY archive (the earlier `v1-2026-07-24` was retired into it; see §6)
 
 ---
 
@@ -25,8 +25,10 @@ keeping both in sync.
 
 ## 1 · Where truth actually lives
 
-**⚠️ THE MOST IMPORTANT TABLE IN THIS FOLDER.** Nothing in `v1-2026-07-24/` overrides
-these. The archive is a *record of designs*, not the definition of the system.
+**⚠️ THE MOST IMPORTANT TABLE IN THIS FOLDER.** Nothing in `v2-2026-07-27/` overrides
+these. An archive is a *record of designs*, not the definition of the system — this holds
+even though v2's `00-START-HERE.md` calls its own `tokens.css` "the theme"; that file is
+a dated snapshot, and the live `src/app/globals.css` wins on any conflict.
 
 | Truth | Authoritative source | Never |
 |---|---|---|
@@ -48,29 +50,36 @@ behind the code rather than re-deriving it.
 ```
 docs/design-system/
 ├── README.md                    ← you are here — the rule book + index
-└── v1-2026-07-24/
-    ├── specs/                   implementation specs: redlines + prop contracts
-    ├── canvases/                rendered design mockups (.dc.html, open in a browser)
-    ├── components/              proposed component code, NOT yet in src/
-    └── provenance/              what Claude Design was told, and by whom
+└── v2-2026-07-27/               ← CURRENT — the complete design system, the ONLY archive (installed 2026-07-27)
+    ├── 00-START-HERE.md         manifest + order of authority
+    ├── 01-foundations/          tokens.css / tokens.json (SNAPSHOT — see §1) + colour/type/space/elevation docs
+    ├── 02-components/           every component (preview.html + spec.md); _specs-as-delivered/ holds D1/D2/D3 + P&L handoff code
+    ├── 03-glyphs/               39 stroke SVGs + contact sheet
+    ├── 04-brand/                brand.md + preview
+    ├── 05-pages/                every screen as a runnable .dc.html
+    ├── 06-patterns-and-rules/   RULES.md — the 12 platform laws
+    ├── 07-provenance/           CHANGELOG · SUPERSEDED · SOURCES · OPEN-GAPS · kit-source (teal, dead) · app-source (diff refs)
+    ├── 08-motion/               motion.css — "The Settle" motion language
+    ├── 09-needle/               The Needle: physics engine + haptics + spec + playground
+    └── 10-haptics/              named haptic vocabulary
 ```
 
-### `v1-2026-07-24/specs/`
-| File | Covers | Status |
-|---|---|---|
-| `D1-updown-card-spec.md` | The Up & Down round card — 7 states, redlines, prop contract | ✅ Reviewed, approved with 3 open questions |
-| `D2-updown-board-spec.md` | The `/updown` board — tabs, grid, results strip, empty, skeleton | ✅ Reviewed, 1 item rejected (see §4) |
-| `README-handoff.md` | Positions P&L work (a separate, earlier brief) | ⬜ Not yet implemented |
+### `v2-2026-07-27/` — the complete system (CURRENT)
+The full export that §6 previously said was pending: foundations, every component with
+every state, the glyph sheet, brand, every page, the pattern rules
+(`06-patterns-and-rules/RULES.md` — the 12 laws), motion, The Needle, haptics, and the
+provenance trail (`07-provenance/`: CHANGELOG, SUPERSEDED, SOURCES, OPEN-GAPS). Authority
+order *inside the archive*: `tokens.css` > `RULES.md` > component spec / `_specs-as-delivered/`
+> prose — but **§1 still wins**: the live `src/app/globals.css` is the token truth; the
+archive's `tokens.css` is a dated snapshot. `07-provenance/kit-source/*` is the superseded
+teal generation — **never build from it**.
 
-### `v1-2026-07-24/components/`
-Proposed implementations from the Positions P&L brief. **These are not live** —
-they have not been reviewed against the current `src/` and must not be dropped in
-without one. Treat as design intent expressed in code.
-
-### `v1-2026-07-24/provenance/`
-The rules and briefs Claude Design was given. `01-RULES-and-invariants.md` is a useful
-plain-English summary of the brand invariants — but [`DESIGN_AUTHORITY.md`](../DESIGN_AUTHORITY.md)
-wins on any conflict.
+### `v1-2026-07-24/` — retired 2026-07-27
+The earlier partial archive (Up & Down D1/D2 specs + the Positions P&L brief only) was
+**100% contained in v2** — verified by content hash, every one of its 16 files — and was
+referenced by no code, so it was deleted: one archive, one home. Its history is in git;
+its content is in v2. The two `src/` comments that used to cite `v1-*/specs/` were
+repointed to `v2-2026-07-27/02-components/_specs-as-delivered/`.
 
 ---
 
@@ -118,17 +127,23 @@ uses teal 215 and a light theme, both killed.
 
 ---
 
-## 6 · ⏳ What this archive is still missing
+## 6 · ✅ The complete system has landed
 
-**This is not yet the complete design system.** `v1-2026-07-24` covers the Up & Down
-and Positions work only. The full archive — foundations, every component with every
-state, the glyph sheet, brand assets, every page ever designed, the pattern rules, and
-a changelog/superseded record — has been requested from Claude Design but **not yet
-delivered**.
+The full archive that this section used to say was pending **arrived and was installed
+on 2026-07-27** as `v2-2026-07-27/` (see §2): foundations, every component with every
+state, the glyph sheet, brand, every page, the pattern rules, motion, The Needle,
+haptics, and the changelog/superseded/open-gaps record. It supersedes `v1-2026-07-24/`
+(a documented superset — nothing removed).
 
-The export prompt is drafted and ready to run. When that ZIP arrives it becomes
-`v2-<date>/` alongside this one, and this README's §2 grows to index it. Until then,
-**§1 remains the only authority** — do not treat this folder as complete.
+Installed by moving the delivered archive here and deleting every duplicate — the four
+`New developments/…` sibling kits were byte-identical subsets (verified by content hash)
+and were removed, the loose `New developments/` staging folder was removed, the
+fully-redundant `v1-2026-07-24/` archive (100% contained in v2, hash-verified) was
+retired, and the two stale `src/` comments that cited the v1 spec paths were repointed to
+v2. Dead `tsconfig` excludes and `.gitignore` lines pointing at long-gone kits were pruned
+too. Full audit trail:
+[`v2-2026-07-27/07-provenance/CHANGELOG.md`](v2-2026-07-27/07-provenance/CHANGELOG.md).
+**§1 remains the only token authority** (`src/app/globals.css`); the archive is the record.
 
 ---
 
@@ -137,7 +152,8 @@ The export prompt is drafted and ready to run. When that ZIP arrives it becomes
 1. Read [`DESIGN_AUTHORITY.md`](../DESIGN_AUTHORITY.md) — the invariants are law.
 2. Check `src/components/ui/**` for a primitive that already does it. **Extend the kit;
    never fork it.**
-3. Read the closest spec in `v1-*/specs/` for the redline idiom to match.
+3. Read the closest spec in `v2-2026-07-27/02-components/` (component `spec.md`, or
+   `_specs-as-delivered/` for D1/D2/D3 + P&L) for the redline idiom to match.
 4. If a genuinely new value is needed, **add it to the kit** (`globals.css` + the
    component), never hard-code it in one file — and say so in the spec.
 5. Verify at **360 / 768 / 1280 / 1920**, in EN + SW + ZH, and **look at the

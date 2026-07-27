@@ -70,11 +70,6 @@ scratch-*.cjs
 *.rar
 .50pick-reports/
 
-# Loose design-kit drops at the repo root (archive elsewhere; never build/deploy from here)
-/Haptics/
-/Motion Language/
-/Needle Fidget Project/
-
 # Ephemeral visual-verification screenshots
 docs/shots-updown/
 docs/shots-final/

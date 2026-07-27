@@ -13,15 +13,27 @@ import { useT } from "@/lib/i18n";
 import { getPrefs, setPrefs, haptics } from "@/lib/haptics";
 
 export function FeedbackSettings() {
-  const { t } = useT();
+  const { t, locale } = useT();
   const [hapticsOn, setHapticsOn] = useState(true);
   const [reduceMotion, setReduceMotion] = useState(false);
+  const [needleShown, setNeedleShown] = useState(true);
 
   useEffect(() => {
     const p = getPrefs();
     setHapticsOn(p.haptics);
     setReduceMotion(p.motion === "off");
+    setNeedleShown(!p.needleHidden);
+    // Keep in sync if the navbar toggle flips it while this panel is open.
+    const onChange = () => setNeedleShown(!getPrefs().needleHidden);
+    window.addEventListener("50pick:feedback-changed", onChange);
+    return () => window.removeEventListener("50pick:feedback-changed", onChange);
   }, []);
+
+  const toggleNeedle = () => {
+    const nextShown = !needleShown;
+    setNeedleShown(nextShown);
+    setPrefs({ needleHidden: !nextShown });
+  };
 
   const toggleHaptics = () => {
     const next = !hapticsOn;
@@ -64,8 +76,31 @@ export function FeedbackSettings() {
           on={reduceMotion}
           onToggle={toggleMotion}
         />
+        <Row
+          icon={<NeedleGlyph />}
+          title={locale === "sw" ? "Sindano (kichezeo)" : locale === "zh" ? "指针玩具" : "The Needle"}
+          subtitle={
+            locale === "sw"
+              ? "Kichezeo cha hiari kwenye ukingo wa skrini. Hakiathiri akaunti yako."
+              : locale === "zh"
+                ? "屏幕边缘的可选小玩具，不会影响你的账户。"
+                : "An optional fidget on the edge of the screen. It never affects your account."
+          }
+          on={needleShown}
+          onToggle={toggleNeedle}
+        />
       </div>
     </section>
+  );
+}
+
+/** The 50pick mark in miniature — a disc with the needle on its pivot. */
+function NeedleGlyph() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 100 100" aria-hidden="true" className="text-brand-300">
+      <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" strokeWidth="8" opacity="0.5" />
+      <line x1="38" y1="8" x2="62" y2="92" stroke="currentColor" strokeWidth="8" strokeLinecap="round" />
+    </svg>
   );
 }
 

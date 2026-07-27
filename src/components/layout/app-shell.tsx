@@ -39,6 +39,7 @@ import { getPlatformConfig, maintenanceMessage } from "@/lib/server/platform-con
 import { getProposalsConfig } from "@/lib/server/proposals-config";
 import { AnnouncementBanner } from "./announcement-banner";
 import { EmailVerifyBanner } from "./email-verify-banner";
+import { Needle } from "./needle";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const { t } = await getServerT();
@@ -151,6 +152,13 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       <Suspense fallback={null}>
         <LazyPullToRefresh />
       </Suspense>
+      {/* The Needle — persistent edge-parked pause object, mounted ONCE in the shell
+          so it survives route changes. Signed-in players only (it is a
+          responsible-play surface whose presence tracks session length, and every
+          viewer must be able to hide it — the toggle lives in the avatar menu, which
+          is authed-only). Hides itself on money surfaces and when toggled off. Not
+          rendered on /admin (that branch returns early). */}
+      {session && <Needle />}
     </div>
   );
 }

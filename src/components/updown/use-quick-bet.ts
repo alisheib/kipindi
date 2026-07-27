@@ -4,6 +4,7 @@ import { useState, useTransition, useMemo, useEffect, useRef, useCallback } from
 import { useToast } from "@/components/ui/toast";
 import { buyPositionAction } from "@/app/markets/actions";
 import { formatTzs } from "@/lib/utils";
+import { haptics } from "@/lib/haptics";
 import { quickStakes, parseStake } from "./stake-math";
 
 // Re-exported so existing importers of these helpers keep working.
@@ -118,7 +119,9 @@ export function useUpDownQuickBet(opts: {
           nonce.current += 1;
           setJustPlaced({ side, amount, nonce: nonce.current });
           setLiveMessage(`${copy.placed} · ${side === "UP" ? copy.up : copy.down} · ${formatTzs(amount)}`);
-          try { (navigator as Navigator & { vibrate?: (p: number) => boolean }).vibrate?.(12); } catch { /* unsupported */ }
+          // Named token from the central vocabulary (respects the master switch,
+          // per-token prefs and reduced-motion) — not a raw navigator.vibrate.
+          haptics.confirm();
         } else {
           if (side === "UP") setOptUp((v) => Math.max(0, v - amount)); else setOptDown((v) => Math.max(0, v - amount));
           const msg = r && "error" in r ? r.error : copy.failed;
