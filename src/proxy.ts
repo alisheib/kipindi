@@ -27,7 +27,7 @@ const SESSION_COOKIE = "kp_session";
 // each page's own session check). `/watchlist` and `/proposals/new` are
 // user-specific too, so they belong here (audit 2026-07-17). Public `/proposals`
 // (list) and `/proposals/[id]` stay open; only the `/new` composer is gated.
-const PROTECTED_PREFIXES = ["/wallet", "/positions", "/profile", "/watchlist", "/proposals/new", "/admin"];
+const PROTECTED_PREFIXES = ["/wallet", "/positions", "/profile", "/watchlist", "/proposals/new", "/updown/history", "/admin"];
 function isProtected(pathname: string): boolean {
   return PROTECTED_PREFIXES.some(p => pathname === p || pathname.startsWith(p + "/"));
 }
