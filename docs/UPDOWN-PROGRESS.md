@@ -9,9 +9,9 @@
 | **Feature** | Up & Down — short-term price rounds (5/15/30 min) on Gold + Silver |
 | **Branch** | `main` (every push is a LIVE deploy) |
 | **Started** | 2026-07-24 |
-| **Current phase** | **Phase 0 — scale prerequisite (code complete, gate green)** |
-| **Overall status** | 🟡 In progress |
-| **Blocked on** | **Railway access** — apply the `productLine` migration + verify the deploy (Ali) |
+| **Current phase** | **Finalized — LIVE + production-verified** (all phases 0→4 + sealing + quick-bet + presentation) |
+| **Overall status** | 🟢 Live · production-final |
+| **Blocked on** | Nothing — shipped. Stake bounds default 1,000/1,000,000 (admin-tunable, auto-migrated). |
 
 **This document owns STATUS only** — the phase board, checklists, decision log, risk
 register, open questions and session log. It deliberately does **not** restate what the
@@ -226,6 +226,9 @@ and was still wrong in the image. This is why the standard is "READ the screensh
 | Date | Session did | Outcome |
 |---|---|---|
 | 2026-07-24 | Read `Up and Down/` in full; mapped the scheduler, market lifecycle, fee models, reports, admin and permissions; resolved the 3 conflicts with Ali; wrote the plan, the spec, the architecture and the design brief; built **Phases 0 → 1e** and the oracle | **7 commits, all LIVE and deploy-verified.** `fdea3eb` `3dc1213` `6f736f1` `78e2653` `357edb9` `fc9b277` `8daef3a` |
+| 2026-07-25 | **Sealed Up & Down as a SEPARATE game**: AI cost split (`feature:"updown"`), per-game money via `positionId→productLine` (`moneyByGame`), player portfolio `/updown/history`, dedicated `/admin/updown` nav group + rounds explorer, one-tap quick-bet (`useUpDownQuickBet`, card + round page), `/markets/[id]→/updown/[roundId]` redirect, `/live` game chip. | LIVE @`30f3772`; test:updown-quickbet + reporting green |
+| 2026-07-26 | **Card UX + platform DateTime filter**: premium bet confirmation (card success pulse + haptics + aria-live, reduced-motion aware; dropped happy-path toast) + **custom stake** ("＋ Custom" chip → kit `Input`); ONE `resolveRange` + `DateTimeRangeFilter` (presets + custom date+hour+minute, EAT-safe) replaced every ad-hoc date filter across reports/finance/transactions/ai-usage/ai-polls/candidates/updown; reports dead `drawCrest` removed + timestamps UTC→EAT. | LIVE `56ce6db`→`8965973`; test:date-range (23) + full test:all green |
+| 2026-07-27 | **Stake bounds + presentation finalize**: default **1,000 / 1,000,000** everywhere as the admin-managed DB default, with a version-gated auto-migration so a stale persisted config adopts them on deploy (deliberate overrides preserved); dial scale + Up & Down presets now derive from the live bounds. Home **Up & Down discovery band** (fast-game promo, real live-round count). Calmed the gilt "coming soon" badge (player-reported as distracting). Full QA gauntlet re-run + docs. | LIVE `46d9bbb`, `dfb86e4`; config-persist 14/14, full test:all 93/93 |
 
 ### What the session actually found (not just what it built)
 

@@ -67,6 +67,7 @@ db-check.*
 scratch-*.js
 scratch-*.cjs
 *.zip
+*.rar
 .50pick-reports/
 
 # Ephemeral visual-verification screenshots
