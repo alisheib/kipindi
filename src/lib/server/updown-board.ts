@@ -11,7 +11,7 @@
  */
 import { assetStore, chainStore, roundStore, observationStore, type StoredAsset, type StoredChain, type StoredRound } from "./updown-dal";
 import { marketStore } from "./market-dal";
-import { getUpDownConfig } from "./updown-config";
+import { getUpDownConfig, stakeBoundsFor } from "./updown-config";
 import { ratesFor, listPositionsForUser } from "./market-service";
 import { impliedYesPct } from "./market-service";
 
@@ -177,13 +177,11 @@ export async function getBoard(opts?: { assetKey?: string; durationMinutes?: num
   const chain = allChains.find((c) => c.assetId === activeAsset.id && c.durationMinutes === activeDuration);
   if (!chain) return { assets, activeAsset, activeDuration, rounds: [], recent: [], chainPaused: true, stakeBounds: defaultBounds };
 
-  // The product default is the FLOOR — a chain override may raise the min, never drop it
-  // below the platform floor (currently 1,000). Guards against a stale/low stored chain min
-  // ever surfacing a sub-floor preset on the card.
-  const stakeBounds = {
-    min: Math.max(chain.minStake ?? cfg.defaultMinStake, cfg.defaultMinStake),
-    max: Math.max(chain.maxStake ?? cfg.defaultMaxStake, cfg.defaultMinStake),
-  };
+  // ONE resolver, shared with the money path (buyPosition → stakeBoundsForUpDownMarket):
+  // the product default is the FLOOR — a chain override may raise the min, never drop it
+  // below the platform floor (currently 1,000). What the card shows here is exactly what a
+  // bet is validated against, so display and enforcement can never diverge.
+  const stakeBounds = await stakeBoundsFor(chain);
 
   // Newest first, bounded — never an unbounded scan of a table that grows every minute.
   const raw = await roundStore.list({ chainId: chain.id, limit: 24 }).catch(() => []);

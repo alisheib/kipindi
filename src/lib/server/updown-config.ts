@@ -28,7 +28,7 @@ import { randomId } from "./crypto";
 import { loadConfig, saveConfig } from "./config-store";
 import { isSourceTrusted, normalizeDomain } from "./source-registry";
 import { validateRateConfig } from "./market-config";
-import { assetStore, chainStore, type StoredAsset, type StoredChain, type ChainState } from "./updown-dal";
+import { assetStore, chainStore, roundStore, type StoredAsset, type StoredChain, type ChainState } from "./updown-dal";
 import type { RateConfig } from "./market-config";
 import type { MarketCategory } from "./market-service";
 
@@ -573,6 +573,21 @@ export async function stakeBoundsFor(chain: StoredChain): Promise<{ min: number;
     min: Math.max(chain.minStake ?? cfg.defaultMinStake, cfg.defaultMinStake),
     max: Math.max(chain.maxStake ?? cfg.defaultMaxStake, cfg.defaultMinStake),
   };
+}
+
+/**
+ * The stake bounds in force for the round backing a given market, resolved through the
+ * SAME `stakeBoundsFor` the board displays. This is the SINGLE source the money path
+ * (`buyPosition`) reads for an Up & Down market, so what the card shows and what a bet is
+ * validated against are one number, never two. Returns null when the market has no
+ * Up & Down round (a long-form poll), letting the caller keep the global-config path.
+ */
+export async function stakeBoundsForUpDownMarket(marketId: string): Promise<{ min: number; max: number } | null> {
+  const round = await roundStore.getByMarketId(marketId);
+  if (!round) return null;
+  const chain = await chainStore.get(round.chainId);
+  if (!chain) return null;
+  return stakeBoundsFor(chain);
 }
 
 /** The rate profile a chain freezes onto its rounds — its own, else the default. */

@@ -24,6 +24,7 @@ import { assetStore, chainStore, roundStore, observationStore, __resetUpDownMemo
 import {
   createAsset, setAssetEnabled, createChain, setChainState,
   boundaryAfter, cleanGridAnchor, __resetUpDownConfig,
+  stakeBoundsForUpDownMarket,
 } from "../src/lib/server/updown-config.ts";
 import {
   decideOutcome, outcomeToSide, minMoveFor, roundTitle,
@@ -384,6 +385,70 @@ let round1Id = "";
   const afterSettle = (await db.wallet.findByUserId(alice))!.balance;
   ok("8b.11 · the hedged player's net wallet move == the winning payout only",
      afterSettle - afterStakes === (aliceYes.finalPayout ?? 0), `Δ${afterSettle - afterStakes} vs payout ${aliceYes.finalPayout}`);
+}
+
+// ── 8B · Stake bounds are ENFORCED on the money path, not merely DISPLAYED ───
+// The card reads stakeBoundsFor(chain); buyPosition must validate against the SAME bounds,
+// through the SAME resolver — or a tampering client could POST a stake the card would never
+// offer (below a raised per-chain min, or above a lowered per-chain max). One source, both
+// surfaces. `dave` is funded OUTSIDE the §9 conservation set, so his bets don't perturb it.
+{
+  const dave = await fundedUser("ud_dave", 500_000);
+
+  // (a) A DELIBERATELY NARROW window: 2,000–5,000 — both strictly inside the global
+  //     1,000–1,000,000, so the OLD global-only check would have ACCEPTED 1,500 and 6,000.
+  const cN = await createChain({ assetId: asset.id, durationMinutes: 15, minStake: 2_000, maxStake: 5_000 }, OFFICER);
+  ok("8B.1 · narrow-bounds chain (2k–5k) created", cN.ok, cN.ok ? "" : cN.error);
+  if (cN.ok) {
+    await setChainState(cN.data.id, "RUNNING", OFFICER);
+    const nChain = (await chainStore.get(cN.data.id))!;
+    const obsN = await stubObservation(B(30), 2400.0);
+    const rN = await openRound(nChain, B(30), obsN, 2400.0);
+    ok("8B.2 · narrow round opens LIVE", rN.ok, rN.ok ? "" : rN.error);
+    if (rN.ok) {
+      const mId = rN.data.marketId;
+      // The shared resolver returns EXACTLY the chain window — the value the card renders.
+      const rb = await stakeBoundsForUpDownMarket(mId);
+      ok("8B.3 · the shared resolver reports the chain window (2k–5k) — one source, both surfaces",
+         !!rb && rb.min === 2_000 && rb.max === 5_000, JSON.stringify(rb));
+
+      const before = (await db.wallet.findByUserId(dave))!.balance;
+      const below = await buyPosition(dave, { marketId: mId, side: "YES", stake: 1_500 });
+      ok("8B.4 · a stake BELOW the chain min (1,500) is REJECTED — was globally-legal before the fix",
+         !below.ok && (below as { code?: string }).code === "INVALID", below.ok ? "ACCEPTED — tampering gap!" : (below as { error: string }).error);
+      const above = await buyPosition(dave, { marketId: mId, side: "YES", stake: 6_000 });
+      ok("8B.5 · a stake ABOVE the chain max (6,000) is REJECTED — was globally-legal before the fix",
+         !above.ok && (above as { code?: string }).code === "INVALID", above.ok ? "ACCEPTED — tampering gap!" : (above as { error: string }).error);
+      const afterRejects = (await db.wallet.findByUserId(dave))!.balance;
+      ok("8B.6 · the rejected bets moved NO money", afterRejects === before, `${before} → ${afterRejects}`);
+
+      const within = await buyPosition(dave, { marketId: mId, side: "YES", stake: 3_000 });
+      ok("8B.7 · a stake WITHIN the window (3,000) is accepted", within.ok, within.ok ? "" : (within as { error: string }).error);
+    }
+  }
+
+  // (b) A stale chain min stored BELOW the platform floor (100) must be FLOORED to 1,000 on
+  //     BOTH surfaces — display and money path — so no sub-floor stake can ever be placed.
+  const cS = await createChain({ assetId: asset.id, durationMinutes: 30, minStake: 100, maxStake: 50_000 }, OFFICER);
+  ok("8B.8 · stale-min chain (stored min 100) created", cS.ok, cS.ok ? "" : cS.error);
+  if (cS.ok) {
+    await setChainState(cS.data.id, "RUNNING", OFFICER);
+    const sChain = (await chainStore.get(cS.data.id))!;
+    const obsS = await stubObservation(B(36), 2400.0);
+    const rS = await openRound(sChain, B(36), obsS, 2400.0);
+    ok("8B.9 · stale-min round opens LIVE", rS.ok, rS.ok ? "" : rS.error);
+    if (rS.ok) {
+      const mId = rS.data.marketId;
+      const rb = await stakeBoundsForUpDownMarket(mId);
+      ok("8B.10 · the stored 100 min is FLOORED to 1,000 on the money path (max preserved)",
+         !!rb && rb.min === 1_000 && rb.max === 50_000, JSON.stringify(rb));
+      const sub = await buyPosition(dave, { marketId: mId, side: "NO", stake: 500 });
+      ok("8B.11 · a sub-floor stake (500) is REJECTED even though the chain stored 100",
+         !sub.ok && (sub as { code?: string }).code === "INVALID", sub.ok ? "ACCEPTED — floor bypassed!" : (sub as { error: string }).error);
+      const atFloor = await buyPosition(dave, { marketId: mId, side: "NO", stake: 1_000 });
+      ok("8B.12 · a stake AT the floor (1,000) is accepted", atFloor.ok, atFloor.ok ? "" : (atFloor as { error: string }).error);
+    }
+  }
 }
 
 // ── 9 · ★ MONEY CONSERVATION across everything above ────────────────────────

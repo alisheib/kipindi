@@ -27,6 +27,7 @@ import { notifyBonusFulfilled } from "./notification-service";
 import { isLockedOut, checkLossLimit } from "./responsible-gambling";
 import { rateCheck } from "./rate-limit";
 import { getEffectiveConfig, getEffectiveResolutionMode, snapshotFromConfig, snapshotOrLegacy, type RateConfig } from "./market-config";
+import { stakeBoundsForUpDownMarket } from "./updown-config";
 import { payoutFor, settledPayoutFor, allocateWinnerPayouts, poolFee, levySplit, type FeeSnapshot } from "@/lib/payout";
 import { getRequireTwoOfficerResolution } from "./resolution-policy";
 import { isMaintenanceMode, maintenanceMessage } from "./platform-config";
@@ -583,18 +584,28 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
     return { ok: false, error: blockedMsg, code: "SUSPENDED" };
   }
 
-  // Stake bounds come from runtime config — global with optional per-market override.
-  const stakeCfg = await getEffectiveConfig(opts.marketId);
-  if (!Number.isInteger(opts.stake) || opts.stake < stakeCfg.minStake || opts.stake > stakeCfg.maxStake) {
-    return { ok: false, error: `Stake must be a whole number between ${formatTzs(stakeCfg.minStake)} and ${formatTzs(stakeCfg.maxStake)}.`, code: "INVALID" };
-  }
-  if (opts.side !== "YES" && opts.side !== "NO") return { ok: false, error: "Invalid side.", code: "INVALID" };
-
   const market = await marketStore.get(opts.marketId);
   if (!market) return { ok: false, error: "Market not found.", code: "NOT_FOUND" };
   if (market.status !== "LIVE") return { ok: false, error: "Market is not accepting predictions.", code: "INVALID" };
   if (isSelectionClosed(market)) return { ok: false, error: "Selections are closed — waiting for results. · Uchaguzi umefungwa — tunasubiri matokeo.", code: "SELECTION_CLOSED" };
   if (Date.parse(market.resolutionAt) <= Date.now()) return { ok: false, error: "Market has closed.", code: "INVALID" };
+
+  // Stake bounds. The platform config gives the global window (plus any per-market override);
+  // for an Up & Down market the AUTHORITATIVE bounds live on its chain (set at /admin/updown,
+  // floored to the product minimum) and are exactly what the card displays. Enforce THOSE — via
+  // the same `stakeBoundsFor` resolver the board reads — so the money path can never accept a
+  // stake the card would refuse: one source, no display/enforcement split, no tampering gap.
+  const stakeCfg = await getEffectiveConfig(opts.marketId);
+  let minStake = stakeCfg.minStake;
+  let maxStake = stakeCfg.maxStake;
+  if (market.productLine === "UPDOWN") {
+    const b = await stakeBoundsForUpDownMarket(opts.marketId);
+    if (b) { minStake = b.min; maxStake = b.max; }
+  }
+  if (!Number.isInteger(opts.stake) || opts.stake < minStake || opts.stake > maxStake) {
+    return { ok: false, error: `Stake must be a whole number between ${formatTzs(minStake)} and ${formatTzs(maxStake)}.`, code: "INVALID" };
+  }
+  if (opts.side !== "YES" && opts.side !== "NO") return { ok: false, error: "Invalid side.", code: "INVALID" };
 
   // Daily loss-limit gate (RG / GLI-19) is re-checked INSIDE the wallet lock
   // below (audit C4), not here — checking outside the lock let two concurrent
