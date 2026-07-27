@@ -560,10 +560,19 @@ export async function setChainState(id: string, state: ChainState, officerId: st
   return after ? { ok: true, data: after } : { ok: false, error: "Chain disappeared during state change." };
 }
 
-/** The stake bounds in force for a chain — its own override, else the product default. */
+/**
+ * The stake bounds in force for a chain — its own override, else the product default.
+ * The product default is the FLOOR: a per-chain override may raise the minimum but never
+ * drop it below `defaultMinStake` (the platform stake floor, currently 1,000). This
+ * guarantees no surface can ever present a sub-floor stake, even if a chain row was
+ * created/stored with an older, lower minimum before the floor was raised.
+ */
 export async function stakeBoundsFor(chain: StoredChain): Promise<{ min: number; max: number }> {
   const cfg = await getUpDownConfig();
-  return { min: chain.minStake ?? cfg.defaultMinStake, max: chain.maxStake ?? cfg.defaultMaxStake };
+  return {
+    min: Math.max(chain.minStake ?? cfg.defaultMinStake, cfg.defaultMinStake),
+    max: Math.max(chain.maxStake ?? cfg.defaultMaxStake, cfg.defaultMinStake),
+  };
 }
 
 /** The rate profile a chain freezes onto its rounds — its own, else the default. */

@@ -11,10 +11,9 @@ import Link from "next/link";
 import { BackLink } from "@/components/ui/back-link";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
-import { ScrollX } from "@/components/ui/scroll-x";
 import { I } from "@/components/ui/glyphs";
 import { currentSession } from "@/lib/server/auth-service";
-import { getMyUpDownHistory } from "@/lib/server/updown-board";
+import { getMyUpDownHistory, type MyRoundRow } from "@/lib/server/updown-board";
 import { getServerT } from "@/lib/i18n-server";
 import { pickLocalized } from "@/lib/localized";
 import { formatTzs, formatTzsSigned } from "@/lib/utils";
@@ -37,15 +36,38 @@ export default async function UpDownHistoryPage() {
   const session = await currentSession();
   if (!session) redirect(`/auth/login?next=${encodeURIComponent("/updown/history")}`);
 
-  const rows = await getMyUpDownHistory(session.userId, 200).catch(() => []);
+  const rows = await getMyUpDownHistory(session.userId, 400).catch(() => []);
 
-  // P&L summary — settled rounds only (an open round has no realised result yet).
-  const settled = rows.filter((r) => r.status !== "OPEN");
-  const staked = settled.reduce((s, r) => s + r.stake, 0);
-  const returned = settled.reduce((s, r) => s + (r.payout ?? 0), 0);
+  // GROUP BY ROUND. Up & Down is a fast game — placing many bets on one 5-minute round is
+  // normal, so a per-position list reads as a redundant cluster and miscounts "rounds".
+  // One card per round: the bets collapse to chips (max 2 + "+N"), and the round shows the
+  // player's aggregate stake / return / net across all their positions on it.
+  const groups = new Map<string, {
+    row: MyRoundRow;               // representative (asset/duration/outcome/prices/round)
+    bets: MyRoundRow[];            // every position on this round, newest first
+    stake: number; returned: number;
+    anyOpen: boolean; latest: number;
+  }>();
+  for (const r of rows) {
+    const g = groups.get(r.marketId) ?? { row: r, bets: [], stake: 0, returned: 0, anyOpen: false, latest: 0 };
+    g.bets.push(r);
+    g.stake += r.stake;
+    g.returned += r.payout ?? 0;
+    if (r.status === "OPEN") g.anyOpen = true;
+    const at = Date.parse(r.placedAt) || 0;
+    if (at >= g.latest) { g.latest = at; }
+    groups.set(r.marketId, g);
+  }
+  const rounds = [...groups.values()].sort((a, b) => b.latest - a.latest);
+
+  // P&L strip — ROUND-level now. A round counts once; a round is "won" when the player's
+  // net on it is positive (settled, non-void). Open rounds carry no realised result.
+  const settledRounds = rounds.filter((g) => !g.anyOpen && g.row.outcome !== "VOID");
+  const staked = settledRounds.reduce((s, g) => s + g.stake, 0);
+  const returned = settledRounds.reduce((s, g) => s + g.returned, 0);
   const net = returned - staked;
-  const wins = settled.filter((r) => r.status === "WIN").length;
-  const decided = settled.filter((r) => r.status === "WIN" || r.status === "LOSS").length;
+  const decided = settledRounds.length;
+  const wins = settledRounds.filter((g) => g.returned > g.stake).length;
   const winRate = decided > 0 ? Math.round((wins / decided) * 100) : null;
 
   return (
@@ -77,8 +99,8 @@ export default async function UpDownHistoryPage() {
             </div>
             <div className="rounded-xl border border-border bg-bg-elevated p-3.5">
               <div className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-faint">{t.market.udRoundsPlayed}</div>
-              <div className="mt-0.5 font-mono text-[19px] font-bold tabular-nums text-text">{rows.length}</div>
-              <div className="font-mono text-[10px] text-text-subtle">{settled.length} settled</div>
+              <div className="mt-0.5 font-mono text-[19px] font-bold tabular-nums text-text">{rounds.length}</div>
+              <div className="font-mono text-[10px] text-text-subtle">{rows.length} {t.market.udBets}</div>
             </div>
             <div className="rounded-xl border border-border bg-bg-elevated p-3.5 col-span-2 sm:col-span-1">
               <div className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-faint">{t.market.udWinRate}</div>
@@ -87,63 +109,70 @@ export default async function UpDownHistoryPage() {
             </div>
           </div>
 
-          {/* ── Rounds table ───────────────────────────────────────────────── */}
-          <div className="mt-4 rounded-xl border border-border bg-bg-elevated overflow-hidden">
-            <ScrollX label={t.market.udHistoryTitle}>
-              <table className="w-full min-w-[720px] text-[12.5px]">
-                <thead>
-                  <tr className="text-left font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle border-b border-border-subtle">
-                    <th className="px-4 py-2.5 font-semibold">Round</th>
-                    <th className="px-4 py-2.5 font-semibold">{t.market.udYourPick}</th>
-                    <th className="px-4 py-2.5 font-semibold text-right">{t.market.udStakedLabel}</th>
-                    <th className="px-4 py-2.5 font-semibold text-right">Open → Close</th>
-                    <th className="px-4 py-2.5 font-semibold">{t.market.udResultLabel}</th>
-                    <th className="px-4 py-2.5 font-semibold text-right">Return</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((r) => {
-                    const name = pickLocalized(locale, r.assetNameEn, r.assetNameSw, r.assetNameZh);
-                    const net = (r.payout ?? 0) - r.stake;
-                    const resultChip =
-                      r.status === "WIN" ? { cls: "chip-yes", label: t.market.udWon }
-                      : r.status === "LOSS" ? { cls: "chip-no", label: t.market.udLost }
-                      : r.status === "VOID" || r.outcome === "VOID" ? { cls: "chip-pending", label: t.market.udVoided }
-                      : r.status === "CASHED_OUT" ? { cls: "chip-pending", label: t.market.statusClosed }
-                      : { cls: "chip-live", label: t.market.udOpenLabel };
-                    const inner = (
-                      <>
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <div className="font-mono font-bold text-text">{r.assetKey} {r.durationMinutes}m</div>
-                          <div className="font-mono text-[10px] text-text-subtle">{name} · {fmtDate(r.placedAt)}</div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className={"chip " + (r.side === "UP" ? "chip-yes" : "chip-no")}>
-                            {r.side === "UP" ? t.market.udUp : t.market.udDown}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-right font-mono tabular-nums text-text">{formatTzs(r.stake)}</td>
-                        <td className="px-4 py-3 text-right font-mono text-[11px] tabular-nums text-text-muted whitespace-nowrap">
-                          {usd(r.openPrice, r.decimals)} → {usd(r.closePrice, r.decimals)}
-                        </td>
-                        <td className="px-4 py-3"><span className={"chip " + resultChip.cls}>{resultChip.label}</span></td>
-                        <td className="px-4 py-3 text-right font-mono tabular-nums font-semibold"
-                            style={{ color: r.status === "OPEN" ? "var(--text-subtle)" : net > 0 ? "var(--yes-300)" : net < 0 ? "var(--no-300)" : "var(--text)" }}>
-                          {r.status === "OPEN" ? "—" : r.status === "WIN" || r.status === "CASHED_OUT" ? formatTzs(r.payout ?? 0) : r.status === "VOID" ? formatTzs(r.stake) : formatTzs(0)}
-                        </td>
-                      </>
-                    );
-                    return r.roundId ? (
-                      <tr key={r.positionId} className="border-b border-border-subtle/60 last:border-0 hover:bg-bg-inset/40 transition-colors">
-                        {inner}
-                      </tr>
-                    ) : (
-                      <tr key={r.positionId} className="border-b border-border-subtle/60 last:border-0">{inner}</tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </ScrollX>
+          {/* ── Rounds — one card per round; bets collapse to chips (max 2 + "+N"). ── */}
+          <div className="mt-4 grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))" }}>
+            {rounds.map((g) => {
+              const r = g.row;
+              const name = pickLocalized(locale, r.assetNameEn, r.assetNameSw, r.assetNameZh);
+              const net = g.returned - g.stake;
+              // Round outcome (what happened) — factual; the player's own result is the net.
+              const result =
+                g.anyOpen ? { cls: "chip-live", label: t.market.udInPlay, live: true }
+                : r.outcome === "VOID" ? { cls: "chip-pending", label: t.market.udVoided, live: false }
+                : r.outcome === "UP" ? { cls: "chip-yes", label: t.market.udUpWins, live: false }
+                : r.outcome === "DOWN" ? { cls: "chip-no", label: t.market.udDownWins, live: false }
+                : { cls: "chip-pending", label: t.market.udConfirmingPrice, live: false };
+              const shown = g.bets.slice(0, 2);
+              const extra = g.bets.length - shown.length;
+              const roundLink = r.roundId ? `/updown/${r.roundId}` : null;
+              const CardTag: "a" | "div" = roundLink ? "a" : "div";
+              return (
+                <CardTag
+                  key={r.marketId}
+                  {...(roundLink ? { href: roundLink } : {})}
+                  className={"block rounded-xl border border-border bg-bg-elevated p-3.5 transition-colors" + (roundLink ? " hover:border-brand-400" : "")}
+                >
+                  {/* Header: asset + duration + when · round outcome */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="font-display text-[14px] font-semibold text-text">
+                        {name} <span className="chip align-middle">{r.durationMinutes} {t.market.udMin}</span>
+                      </div>
+                      <div className="mt-0.5 font-mono text-[10px] text-text-subtle">{r.assetKey} · {fmtDate(r.placedAt)}</div>
+                    </div>
+                    <span className={"chip shrink-0 " + result.cls}>
+                      {result.live && <span className="live-dot" />}{result.label}
+                    </span>
+                  </div>
+
+                  {/* Bets on this round — capped at 2 chips + a "+N" overflow. */}
+                  <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                    {shown.map((b) => (
+                      <span key={b.positionId} className={"chip tabular-nums " + (b.side === "UP" ? "chip-yes" : "chip-no")}>
+                        {b.side === "UP" ? "↑" : "↓"} {formatTzs(b.stake)}
+                      </span>
+                    ))}
+                    {extra > 0 && <span className="chip" title={`${g.bets.length} ${t.market.udBets}`}>+{extra}</span>}
+                    <span className="font-mono text-[10px] text-text-faint">· {g.bets.length} {t.market.udBets}</span>
+                  </div>
+
+                  {/* Money: staked → return + net; prices. */}
+                  <div className="mt-3 flex items-end justify-between gap-2 border-t border-border-subtle/60 pt-2.5">
+                    <div className="font-mono text-[10.5px] text-text-subtle tabular-nums">
+                      <div>{formatTzs(g.stake)}{g.anyOpen ? "" : <> → {formatTzs(g.returned)}</>}</div>
+                      <div className="mt-0.5 text-[10px] text-text-faint">{usd(r.openPrice, r.decimals)} → {usd(r.closePrice, r.decimals)}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-mono text-[9px] uppercase tracking-[0.12em] text-text-faint">{t.market.udNetReturn}</div>
+                      <div className="font-mono text-[15px] font-bold tabular-nums"
+                           style={{ color: g.anyOpen ? "var(--text-subtle)" : net > 0 ? "var(--yes-300)" : net < 0 ? "var(--no-300)" : "var(--text)" }}>
+                        {g.anyOpen ? "—" : net === 0 ? formatTzs(0) : formatTzsSigned(net)}
+                      </div>
+                    </div>
+                  </div>
+                </CardTag>
+              );
+            })}
           </div>
           <p className="mt-3 flex items-center gap-1.5 text-[11.5px] text-text-subtle">
             <I.info s={12} />

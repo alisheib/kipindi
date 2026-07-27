@@ -177,7 +177,13 @@ export async function getBoard(opts?: { assetKey?: string; durationMinutes?: num
   const chain = allChains.find((c) => c.assetId === activeAsset.id && c.durationMinutes === activeDuration);
   if (!chain) return { assets, activeAsset, activeDuration, rounds: [], recent: [], chainPaused: true, stakeBounds: defaultBounds };
 
-  const stakeBounds = { min: chain.minStake ?? cfg.defaultMinStake, max: chain.maxStake ?? cfg.defaultMaxStake };
+  // The product default is the FLOOR — a chain override may raise the min, never drop it
+  // below the platform floor (currently 1,000). Guards against a stale/low stored chain min
+  // ever surfacing a sub-floor preset on the card.
+  const stakeBounds = {
+    min: Math.max(chain.minStake ?? cfg.defaultMinStake, cfg.defaultMinStake),
+    max: Math.max(chain.maxStake ?? cfg.defaultMaxStake, cfg.defaultMinStake),
+  };
 
   // Newest first, bounded — never an unbounded scan of a table that grows every minute.
   const raw = await roundStore.list({ chainId: chain.id, limit: 24 }).catch(() => []);

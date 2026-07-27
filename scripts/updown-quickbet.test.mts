@@ -19,7 +19,7 @@ process.env.SESSION_SECRET ??= "test-only-session-secret-32chars-min-aaaa";
 import { db } from "../src/lib/server/store.ts";
 import { buyPosition, MAX_STAKE } from "../src/lib/server/market-service.ts";
 import { getBoard } from "../src/lib/server/updown-board.ts";
-import { createAsset, setAssetEnabled, createChain, setChainState, __resetUpDownConfig } from "../src/lib/server/updown-config.ts";
+import { createAsset, setAssetEnabled, createChain, setChainState, stakeBoundsFor, __resetUpDownConfig } from "../src/lib/server/updown-config.ts";
 import { chainStore, observationStore, __resetUpDownMemoryStores } from "../src/lib/server/updown-dal.ts";
 import { openRound, closeRound } from "../src/lib/server/updown-service.ts";
 import { seedDefaultSources, addSource } from "../src/lib/server/source-registry.ts";
@@ -58,6 +58,14 @@ const chainR = await createChain({ assetId: asset.data.id, durationMinutes: 5, m
 if (!chainR.ok) throw new Error(chainR.error);
 await setChainState(chainR.data.id, "RUNNING", "off");
 const chain = (await chainStore.get(chainR.data.id))!;
+
+// ── 0 · STAKE FLOOR — a chain stored with a below-floor min (100, legacy) must never
+//        surface a sub-floor bound; the product default (1,000) is the hard floor. ─────
+{
+  const b = await stakeBoundsFor(chain);
+  ok("0.1 · a stale chain min (100) is floored to the platform min (1,000)", b.min === 1_000, `got ${b.min}`);
+  ok("0.2 · the chain's own higher max is preserved", b.max === 50_000, `got ${b.max}`);
+}
 
 // A round that is OPEN RIGHT NOW: opened 2 min ago (so the board shows it —
 // `opensAt <= now` is load-bearing), closing 3 min out (so betting is allowed —
