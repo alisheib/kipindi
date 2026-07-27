@@ -1,11 +1,12 @@
 # Selcom Disbursement (Payouts / Withdrawals) — Activation Runbook
 
 > **Status: Selcom disbursement API GRANTED (2026-07-27).** The request in
-> [`SELCOM-DISBURSEMENT-REQUEST.md`](SELCOM-DISBURSEMENT-REQUEST.md) is fulfilled — Selcom has
-> given us Wallet-Cashin (disbursement) access. **Payouts are NOT live yet:** they still need
-> the float PIN/creds set in Railway, three small code phases, and one real end-to-end test.
-> This doc is the single source of truth for turning payouts on. No secret values here — creds
-> live in Railway env only, referenced by NAME.
+> [`SELCOM-DISBURSEMENT-REQUEST.md`](SELCOM-DISBURSEMENT-REQUEST.md) is fulfilled. Per Selcom's
+> email (Masanja Paul, 2026-07-27): **`wallet-cashin` (mobile-money payout) AND `qwiksend` (bank
+> payout) endpoints are enabled, on the SAME API credentials used for collection.** **Payouts are
+> NOT live yet:** they still need the **float PIN** set in Railway, three small code phases, and one
+> real end-to-end test. This doc is the single source of truth for turning payouts on. No secret
+> values here — creds live in Railway env only, referenced by NAME.
 
 ---
 
@@ -46,7 +47,7 @@ Three things — **none of them "write the payout code"** — blocked real money
 | 3 | Payee name confirmation | **Add** `walletcashin/namelookup` → show the registered payee name in the confirm modal before dispatch. |
 | 4 | Float balance visibility | **Add** `vendor/balance` read to `/admin/payments`. A dry float = every payout FAILS silently. |
 | 5 | AML ≥ 1M payouts | **Implement** approve → dispatch → PROCESSING → settle. Unblocks 1M–5M and removes the destroyed-money risk. |
-| 6 | `BANK_TRANSFER` (offered in the withdraw UI, unwired → `PROVIDER_DOWN`) | **Remove** from the withdraw provider list for launch (mobile-money only). Wire Selcom **Qwiksend** (`/v1/qwiksend/process`) as a separate fast-follow. |
+| 6 | `BANK_TRANSFER` (offered in the withdraw UI, unwired → `PROVIDER_DOWN`) | **Remove** from the withdraw list for launch (mobile-money only). Selcom **enabled Qwiksend** (bank payout) on our account too (email 2026-07-27) — wire it as a fast-follow (`/v1/qwiksend/process` + bank-shortcode list + `qwiksend/lookup` name check + bank/account UI). No longer Selcom-blocked; implementation work only. |
 
 ---
 
@@ -58,6 +59,17 @@ Confirm with Selcom / obtain:
 - Confirmed utilitycodes per MNO we pay (esp. HaloPesa / TTCL).
 - Our **Railway egress IPs allow-listed for disbursement** too: `162.220.232.250`, `152.55.176.240`, `152.55.177.181`.
 - Any daily/transaction **disbursement limits** or float-account KYC/AML requirements.
+
+**CONFIRMED by Selcom (email 2026-07-27, Masanja Paul): the SAME API credentials used for collection
+are used for disbursement**, with both `wallet-cashin` and `qwiksend` enabled. So no separate creds —
+set **only `PAYMENT_VENDOR_PIN`**. (`selcomDisburseEnv()` + the `PAYMENT_DISBURSE_*` fallback rows
+below stay in for robustness but will be unused.)
+
+> ⚠️ **LAST OPEN ITEM — the float PIN.** "Same API credentials" covers API key/secret/vendor. Wallet
+> Cashin additionally requires a `pin` field = the **float-account PIN**, plus a **funded float
+> account**. Confirm with Selcom: (a) the float PIN value, and (b) that the float is funded/how to top
+> it up. **This is the only thing still gating a real payout.** The PIN is a secret → set it straight
+> in the Railway dashboard, never in chat or git.
 
 Then set env (Railway `50pick` service, secret — never in git):
 
