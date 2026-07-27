@@ -65,6 +65,18 @@ are used for disbursement**, with both `wallet-cashin` and `qwiksend` enabled. S
 set **only `PAYMENT_VENDOR_PIN`**. (`selcomDisburseEnv()` + the `PAYMENT_DISBURSE_*` fallback rows
 below stay in for robustness but will be unused.)
 
+> ### 🔧 Implementation progress (2026-07-27)
+> Verified against production env (read-only): all four deposit creds + `SELCOM_WEBHOOK_SECRET` +
+> `PAYMENT_WEBHOOK_URL` are set; the **only missing variable is `PAYMENT_VENDOR_PIN`**.
+> - **Phase 1 — DONE + tested:** `selcomDisburseEnv()` (same-creds default + `PAYMENT_DISBURSE_*` fallback),
+>   HaloPesa/TTCL routed via universal `CASHIN`, adapter + `verifyWithdrawalStatus` wired to it. `.env.example`
+>   completed. `test:selcom` 65/0.
+> - **Phase 2 — DONE + tested:** AML approve now DISPATCHES (`dispatchApprovedWithdrawal`): AML_REVIEW →
+>   PROCESSING → gateway → exactly-once settle; two-officer gate kept; Approve button re-enabled; provider
+>   refusal reverts to review (no auto-refund). `test:payments` 47/0. The old "approval destroys money" block is gone.
+> - **Phase 3 — in progress:** withdrawal money-grade UX/emails (destination phone + payee name in the confirm
+>   modal, gateway ref in the "sent" email), remove `BANK_TRANSFER` (mobile-money only), float balance on `/admin/payments`.
+>
 > ⚠️ **LAST OPEN ITEM — the float PIN.** "Same API credentials" covers API key/secret/vendor. Wallet
 > Cashin additionally requires a `pin` field = the **float-account PIN**, plus a **funded float
 > account**. Confirm with Selcom: (a) the float PIN value, and (b) that the float is funded/how to top

@@ -18,6 +18,8 @@ import {
   selcomPing,
   selcomDeposit,
   selcomWithdraw,
+  selcomEnv,
+  selcomDisburseEnv,
 } from "../src/lib/server/selcom.ts";
 
 let pass = 0, fail = 0;
@@ -62,10 +64,47 @@ ok("MPESA → VMCASHIN", mnoToSelcomCashin("MPESA") === "VMCASHIN");
 ok("AIRTEL_MONEY → AMCASHIN", mnoToSelcomCashin("AIRTEL_MONEY") === "AMCASHIN");
 ok("TIGO_PESA → TPCASHIN", mnoToSelcomCashin("TIGO_PESA") === "TPCASHIN");
 ok("MIXX → TPCASHIN", mnoToSelcomCashin("MIXX") === "TPCASHIN");
-ok("HALO_PESA → HPCASHIN", mnoToSelcomCashin("HALO_PESA") === "HPCASHIN");
-ok("TTCL_PESA → TTCASHIN", mnoToSelcomCashin("TTCL_PESA") === "TTCASHIN");
+ok("HALO_PESA → CASHIN (MNP auto-route; HPCASHIN unverified)", mnoToSelcomCashin("HALO_PESA") === "CASHIN");
+ok("TTCL_PESA → CASHIN (MNP auto-route; TTCASHIN unverified)", mnoToSelcomCashin("TTCL_PESA") === "CASHIN");
 ok("CARD → null (unsupported by MNO cash-in)", mnoToSelcomCashin("CARD") === null);
+ok("BANK_TRANSFER → null (uses Qwiksend, not wallet cash-in)", mnoToSelcomCashin("BANK_TRANSFER") === null);
 ok("INTERNAL → null", mnoToSelcomCashin("INTERNAL") === null);
+
+// ── selcomDisburseEnv: same creds as deposits by default, PAYMENT_DISBURSE_* overrides ──
+// Selcom confirmed (2026-07-27) the same credentials serve collection + disbursement,
+// so with no PAYMENT_DISBURSE_* set this MUST equal selcomEnv(). The overrides are the
+// escape hatch for a future separate float account; each falls back to the deposit var.
+{
+  const save = { ...process.env };
+  process.env.PAYMENT_API_URL = "https://apigw.selcommobile.com/v1/";
+  process.env.PAYMENT_API_KEY = "depkey";
+  process.env.PAYMENT_API_SECRET = "depsecret";
+  process.env.PAYMENT_VENDOR_ID = "depvendor";
+  process.env.PAYMENT_VENDOR_PIN = "9999";
+  for (const k of ["PAYMENT_DISBURSE_URL", "PAYMENT_DISBURSE_API_KEY", "PAYMENT_DISBURSE_API_SECRET", "PAYMENT_DISBURSE_VENDOR_ID", "PAYMENT_DISBURSE_PIN"]) delete process.env[k];
+  const dep = selcomEnv();
+  const same = selcomDisburseEnv();
+  ok("disburseEnv defaults to deposit creds (same account)",
+    !!same && !!dep && same.apiKey === "depkey" && same.apiSecret === "depsecret" && same.vendor === "depvendor" && same.pin === "9999" && same.baseUrl === "https://apigw.selcommobile.com/v1");
+  ok("disburseEnv pin falls back to PAYMENT_VENDOR_PIN", same?.pin === "9999");
+  // Now move payouts to a separate float account (vendor + pin), keeping deposit key/secret.
+  process.env.PAYMENT_DISBURSE_VENDOR_ID = "floatvendor";
+  process.env.PAYMENT_DISBURSE_PIN = "1234";
+  const sep = selcomDisburseEnv();
+  ok("disburseEnv uses PAYMENT_DISBURSE_VENDOR_ID/PIN when set",
+    !!sep && sep.vendor === "floatvendor" && sep.pin === "1234" && sep.apiKey === "depkey");
+  // Separate signing creds too.
+  process.env.PAYMENT_DISBURSE_API_KEY = "floatkey";
+  process.env.PAYMENT_DISBURSE_API_SECRET = "floatsecret";
+  const sep2 = selcomDisburseEnv();
+  ok("disburseEnv uses PAYMENT_DISBURSE_API_KEY/SECRET when set",
+    !!sep2 && sep2.apiKey === "floatkey" && sep2.apiSecret === "floatsecret");
+  // Missing mandatory deposit creds → null (treated as PROVIDER_DOWN upstream).
+  delete process.env.PAYMENT_API_KEY;
+  ok("disburseEnv null when base deposit creds absent", selcomDisburseEnv() === null);
+  for (const k of Object.keys(process.env)) if (!(k in save)) delete process.env[k];
+  Object.assign(process.env, save);
+}
 
 // ── Initiate verdict ──────────────────────────────────────────────────────────
 ok("000 → ACCEPTED", selcomInitiateVerdict({ resultcode: "000", result: "SUCCESS" }) === "ACCEPTED");

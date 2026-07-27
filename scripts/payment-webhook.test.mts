@@ -11,7 +11,7 @@
  *   - the synchronous (mock-CONFIRMED) path still credits immediately (regression)
  */
 import { db } from "../src/lib/server/store.ts";
-import { deposit, withdraw, settlePaymentWebhook, reconcileStalePayments } from "../src/lib/server/wallet-service.ts";
+import { deposit, withdraw, settlePaymentWebhook, reconcileStalePayments, dispatchApprovedWithdrawal } from "../src/lib/server/wallet-service.ts";
 
 let pass = 0, fail = 0;
 function ok(label: string, cond: boolean) {
@@ -123,11 +123,28 @@ delete process.env.PAYMENTS_DEMO_ASYNC;
 // net let it slip the mandatory second-officer hold. Must be AML_REVIEW on gross.
 await makePlayer("usr_aml", { balance: 2_000_000, kyc: "APPROVED" });
 const amlWd = await withdraw("usr_aml", { provider: "MPESA", amount: 1_000_000 });
+const amlWdTxn = amlWd.ok ? amlWd.data!.txnId : "";
 ok("gross-1M withdrawal → AML_REVIEW (net 990k must NOT slip the hold)", amlWd.ok === true && amlWd.data!.status === "AML_REVIEW");
 ok("AML-held funds stay in hold, not disbursed", await hold("usr_aml") === 1_000_000 && await bal("usr_aml") === 1_000_000);
 await makePlayer("usr_aml2", { balance: 600_000, kyc: "APPROVED" });
 const belowWd = await withdraw("usr_aml2", { provider: "MPESA", amount: 500_000 });
 ok("below-threshold withdrawal is not AML-held", belowWd.ok === true && belowWd.data!.status !== "AML_REVIEW");
+
+// ── AML APPROVE → DISPATCH: the payout half of the review flow ──────────────
+// A large withdrawal held in AML_REVIEW must be able to PAY OUT once approved.
+// dispatchApprovedWithdrawal bypasses the AML hold (review already happened),
+// dispatches to the gateway, keeps the hold until the provider confirms, and
+// settles exactly-once. Previously approval was hard-blocked → large payouts
+// dead-ended at "return only". Here the provider is the sync mock → settles now.
+{
+  const d = await dispatchApprovedWithdrawal(amlWdTxn);
+  ok("approved dispatch (sync mock) → CONFIRMED", d.ok === true && d.status === "CONFIRMED");
+  ok("approved payout releases the hold (money left the platform)", await hold("usr_aml") === 0 && await bal("usr_aml") === 1_000_000);
+  ok("approved withdrawal txn CONFIRMED", await st(amlWdTxn) === "CONFIRMED");
+  // Idempotent: a settled payout is no longer AML_REVIEW, so re-dispatch is refused.
+  const again = await dispatchApprovedWithdrawal(amlWdTxn);
+  ok("re-dispatch of a settled payout is refused (exactly-once)", again.ok === false);
+}
 
 // ── SELCOM MODE: reconcile re-queries; a pending payout is NEVER blind-reversed ──
 // Drives the real Selcom adapter with a stubbed gateway. Proves: (1) an accepted-but-
@@ -170,6 +187,33 @@ cashinQueryStatus = "000"; // Selcom now confirms the payout
 const sweep2 = await reconcileStalePayments(-1);
 ok("confirmed payout releases the hold via re-query", await st(selWdTxn) === "CONFIRMED" && await hold("usr_sel") === 0);
 ok("reconcile counted a withdrawal confirmed", sweep2.withdrawalsConfirmed >= 1);
+
+// ── AML APPROVE → DISPATCH on the real Selcom adapter (stubbed gateway) ──────
+// Approving a reviewed ≥1M payout must DISPATCH it (PROCESSING + real ref, hold
+// kept) — never mark it sent without the gateway — then settle via re-query.
+await makePlayer("usr_selaml", { balance: 3_000_000, kyc: "APPROVED" });
+const selAml = await withdraw("usr_selaml", { provider: "MPESA", amount: 1_500_000, msisdn: "0712345678" });
+const selAmlTxn = selAml.ok ? selAml.data!.txnId : "";
+ok("selcom ≥1M withdrawal → AML_REVIEW held", selAml.ok === true && selAml.data!.status === "AML_REVIEW" && await hold("usr_selaml") === 1_500_000);
+cashinQueryStatus = "111"; // gateway accepts but is still pending after dispatch
+const disp = await dispatchApprovedWithdrawal(selAmlTxn);
+ok("approved selcom payout → PROCESSING (dispatched, not blind-confirmed)", disp.ok === true && disp.status === "PROCESSING" && await st(selAmlTxn) === "PROCESSING");
+ok("approved selcom payout kept the hold + got a REAL provider ref", await hold("usr_selaml") === 1_500_000 && !!await ref(selAmlTxn));
+cashinQueryStatus = "000"; // gateway now confirms the payout
+await reconcileStalePayments(-1);
+ok("approved selcom payout settles via re-query (hold released)", await st(selAmlTxn) === "CONFIRMED" && await hold("usr_selaml") === 0);
+
+// Provider refusal (float PIN not yet set) must NOT auto-refund a just-approved
+// payout — it reverts to AML_REVIEW (hold intact) for the officer to retry/reject.
+await makePlayer("usr_selaml2", { balance: 3_000_000, kyc: "APPROVED" });
+const selAml2 = await withdraw("usr_selaml2", { provider: "MPESA", amount: 1_200_000, msisdn: "0712345678" });
+const selAml2Txn = selAml2.ok ? selAml2.data!.txnId : "";
+const savedPin = process.env.PAYMENT_VENDOR_PIN;
+delete process.env.PAYMENT_VENDOR_PIN; // simulate the float PIN not yet configured
+const failDisp = await dispatchApprovedWithdrawal(selAml2Txn);
+ok("approved payout with no float PIN is refused (provider down)", failDisp.ok === false);
+ok("refused payout reverts to AML_REVIEW, hold intact (no auto-refund)", await st(selAml2Txn) === "AML_REVIEW" && await hold("usr_selaml2") === 1_200_000);
+process.env.PAYMENT_VENDOR_PIN = savedPin;
 
 // Deposit: credits ONLY from the signed order-status re-query.
 await makePlayer("usr_seld", { balance: 0, kyc: "APPROVED" });

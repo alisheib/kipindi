@@ -60,6 +60,34 @@ export function selcomEnv(): SelcomEnv | null {
   };
 }
 
+/**
+ * Read Selcom creds for DISBURSEMENT (payouts / Wallet Cashin).
+ *
+ * Selcom confirmed (email 2026-07-27, Masanja Paul) that **the same API credentials
+ * used for collection are used for disbursement**, so by default this is identical to
+ * `selcomEnv()` — no separate account. The optional `PAYMENT_DISBURSE_*` overrides
+ * exist only for the future case where an operator moves payouts to a separate float
+ * account/creds: each override falls back to the corresponding deposit var, so leaving
+ * them all unset ⇒ disbursement runs on exactly the deposit credentials.
+ *
+ * The `pin` (float-account PIN) resolves `PAYMENT_DISBURSE_PIN` → `PAYMENT_VENDOR_PIN`;
+ * `selcomAdapter.withdraw` treats a missing pin as PROVIDER_DOWN (Wallet Cashin requires it).
+ */
+export function selcomDisburseEnv(): SelcomEnv | null {
+  const base = selcomEnv();
+  if (!base) return null;
+  const url = process.env.PAYMENT_DISBURSE_URL?.replace(/\/+$/, "");
+  return {
+    baseUrl: url || base.baseUrl,
+    apiKey: process.env.PAYMENT_DISBURSE_API_KEY || base.apiKey,
+    apiSecret: process.env.PAYMENT_DISBURSE_API_SECRET || base.apiSecret,
+    vendor: process.env.PAYMENT_DISBURSE_VENDOR_ID || base.vendor,
+    pin: process.env.PAYMENT_DISBURSE_PIN || base.pin,
+    webhookUrl: base.webhookUrl,
+    timeoutMs: base.timeoutMs,
+  };
+}
+
 // ── Signing ───────────────────────────────────────────────────────────────────
 
 /** ISO-8601 timestamp in Africa/Dar_es_Salaam (UTC+3, no DST), no milliseconds —
@@ -140,15 +168,22 @@ export function toSelcomMsisdn(raw: string): string {
 }
 
 /** Map our MNO enum → Selcom wallet-cashin `utilitycode` (disbursement/payout).
- *  Returns null for rails Selcom mobile-money cash-in can't serve (card/bank/internal). */
+ *  Returns null for rails Selcom mobile-money cash-in can't serve (card/bank/internal).
+ *
+ *  The MPESA/Airtel/Tigo codes are confirmed. HaloPesa (`HPCASHIN`) and TTCL (`TTCASHIN`)
+ *  were single-source and NOT verified against the live gateway, so they route through the
+ *  universal `CASHIN` code instead: Selcom auto-routes it by MNP lookup on the payee number
+ *  (docs — "All wallet cashin … automatically route the traffic based on MNP Lookup"), which
+ *  is correct regardless of the exact per-MNO code. Pin them back to `HPCASHIN`/`TTCASHIN`
+ *  only once Selcom confirms those codes. */
 export function mnoToSelcomCashin(provider: PaymentProvider): string | null {
   switch (provider) {
-    case "MPESA":        return "VMCASHIN"; // Vodacom M-Pesa
-    case "AIRTEL_MONEY": return "AMCASHIN"; // Airtel Money
-    case "TIGO_PESA":    return "TPCASHIN"; // Tigo Pesa
+    case "MPESA":        return "VMCASHIN"; // Vodacom M-Pesa (confirmed)
+    case "AIRTEL_MONEY": return "AMCASHIN"; // Airtel Money (confirmed)
+    case "TIGO_PESA":    return "TPCASHIN"; // Tigo Pesa (confirmed)
     case "MIXX":         return "TPCASHIN"; // Mixx by Yas (formerly Tigo Pesa)
-    case "HALO_PESA":    return "HPCASHIN"; // HaloPesa (single-source — verify)
-    case "TTCL_PESA":    return "TTCASHIN"; // TTCL T-Pesa (single-source — verify)
+    case "HALO_PESA":    return "CASHIN";   // universal MNP auto-route (HPCASHIN unverified)
+    case "TTCL_PESA":    return "CASHIN";   // universal MNP auto-route (TTCASHIN unverified)
     default:             return null;       // CARD / BANK_TRANSFER / INTERNAL
   }
 }

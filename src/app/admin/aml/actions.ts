@@ -6,15 +6,13 @@ import { currentSession } from "@/lib/server/auth-service";
 import { db, type StoredTxn } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
 import { withLock } from "@/lib/server/locks";
-import { notifyWithdrawalSent } from "@/lib/server/wallet-service";
-import { getEffectiveConfig } from "@/lib/server/market-config";
+import { dispatchApprovedWithdrawal } from "@/lib/server/wallet-service";
 import { loadConfig, saveConfig } from "@/lib/server/config-store";
 
 import { TWO_PERSON_THRESHOLD_TZS } from "./constants";
 import { formatTzs } from "@/lib/utils";
 import { MONEY_ROLES } from "@/lib/server/roles";
 import { requireAdminTotp } from "@/lib/server/admin-guard";
-import { postLedgerEntries, withdrawalEntries } from "@/lib/server/ledger";
 
 const ADMIN_ROLES = MONEY_ROLES; // role tier — see @/lib/server/roles
 
@@ -37,17 +35,6 @@ async function requireAdmin() {
 type Stage1Sig = { actorId: string; at: string };
 const STAGE1_KEY = (txnId: string) => `aml.stage1:${txnId}`;
 const stage1Mem = new Map<string, Stage1Sig>();
-/**
- * The payment gateway's slice of the 1% withdrawal fee, at the rates in force.
- * Clamped to the fee actually charged on the txn so the ledger group can never be
- * unbalanced by a config change between initiation and AML release.
- */
-async function gatewayShareFor(gross: number, fee: number): Promise<number> {
-  const cfg = await getEffectiveConfig().catch(() => null);
-  if (!cfg) return 0;
-  return Math.min(fee, Math.max(0, Math.round(gross * Math.max(0, cfg.withdrawalGatewayShareRate))));
-}
-
 async function getFirstSignature(txnId: string): Promise<Stage1Sig | null> {
   const mem = stage1Mem.get(txnId);
   if (mem) return mem;
@@ -61,15 +48,22 @@ async function setFirstSignature(txnId: string, sig: Stage1Sig): Promise<void> {
 }
 
 /**
- * Approve a transaction held in AML_REVIEW.
+ * Approve a withdrawal held in AML_REVIEW and DISPATCH the payout.
  *
- * Two-person rule (POCA Cap 423 §16 + FATF R.10): for amounts ≥ the AML-hold
- * threshold (TWO_PERSON_THRESHOLD_TZS, = the payments AML trigger), two
- * different officers must approve. The first click records `aml.approve.stage1`
- * — the txn stays in AML_REVIEW. A different officer's second click flips to
- * CONFIRMED and records `aml.approved` linking back to the first officer's id.
+ * Two-person rule (POCA Cap 423 §16 + FATF R.10): every AML-held withdrawal is
+ * ≥ TWO_PERSON_THRESHOLD_TZS, so two DIFFERENT officers must approve. The first
+ * officer's click records `aml.approve.stage1` (the txn stays AML_REVIEW). A second,
+ * different officer's click hands off to `dispatchApprovedWithdrawal`, which moves
+ * AML_REVIEW → PROCESSING with a REAL provider reference, sends the payout to the
+ * gateway, and lets the webhook/reconcile path settle it EXACTLY-ONCE. The hold is
+ * kept until the provider confirms — no money is ever marked "sent" without dispatch.
  *
- * For amounts under the threshold, single-officer approval still applies.
+ * This replaces the old hard-block: previously approval was refused entirely because
+ * it would have released the hold + marked the payout sent WITHOUT contacting the
+ * gateway (destroyed money). The dispatch-first flow removes that hazard.
+ *
+ * A DEPOSIT held in AML awaits a REFUND, not an approval (this action never credits a
+ * wallet) — resolve those with Reject.
  */
 export async function approveAmlAction(formData: FormData) {
   const { session } = await requireAdmin();
@@ -77,91 +71,69 @@ export async function approveAmlAction(formData: FormData) {
   const reason = String(formData.get("reason") ?? "").trim().slice(0, 500);
   if (!txnId) return { ok: false as const, error: "Missing transaction id." };
   // Releasing money is the highest-risk action — a recorded justification is
-  // mandatory (FATF R.10 / EDD), matching the reject path. (Was optional.)
+  // mandatory (FATF R.10 / EDD), matching the reject path.
   if (reason.length < 5) return { ok: false as const, error: "Reason is required (≥ 5 chars) to release funds." };
 
-  // Lock the transaction to prevent TOCTOU — two officers clicking
-  // approve simultaneously could both read AML_REVIEW status and both
-  // flip to CONFIRMED, bypassing the two-person rule.
+  // Lock the transaction to prevent TOCTOU — two officers clicking approve at once
+  // could otherwise both pass the AML_REVIEW check and bypass the two-person rule.
   return withLock(`aml-txn:${txnId}`, async () => {
     const all = (await db.txn.listByStatus("AML_REVIEW")) as StoredTxn[];
     const txn = all.find((t) => t.id === txnId);
     if (!txn) return { ok: false as const, error: "Transaction not in AML_REVIEW." };
 
-    // No self-review: an officer who happens to own this transaction must never
-    // approve their own money movement (separation of duties). KYC/SoF already
-    // block this; the AML queue did not.
+    // No self-review: an officer must never approve their own money movement
+    // (separation of duties).
     if (txn.userId === session.userId) {
       audit({ category: "SECURITY", action: "aml.self_review_blocked", actorId: session.userId, targetType: "Transaction", targetId: txnId, payload: { amount: txn.amount, kind: "approve" } });
       return { ok: false as const, error: "You cannot approve your own transaction." };
     }
 
-    // Releasing an AML-approved withdrawal must clear this txn's `hold` exactly
-    // like withdraw()'s success path. withdraw() moved balance→hold; on approve
-    // the money leaves the platform, so the hold is dropped (NOT returned to
-    // balance — that would re-credit the player). Without this, `hold` leaks
-    // upward forever on every approved withdrawal (≥ TZS 1M), corrupting the
-    // balance+hold ledger invariant and liability accounting.
-    const releaseWithdrawalHold = async () => {
-      if (txn.type !== "WITHDRAWAL") return;
-      await withLock(`wallet:${txn.userId}`, async () => {
-        const w = await db.wallet.findByUserId(txn.userId);
-        if (w) await db.wallet.adjust(w.id, { hold: -Math.abs(txn.amount) });
-      });
-    };
+    // A DEPOSIT held here awaits a REFUND, not approval — this action never credits a
+    // wallet, so approving would mark it settled with nothing delivered. Deposits reach
+    // AML_REVIEW via the RG-suspense path, where what is owed is a refund. Use Reject.
+    if (txn.type !== "WITHDRAWAL") {
+      audit({ category: "COMPLIANCE", action: "aml.approve.deposit_refused", actorId: session.userId, targetType: "Transaction", targetId: txnId, payload: { amount: txn.amount, type: txn.type } });
+      return { ok: false as const, error: "A deposit held for review cannot be approved here — it awaits a refund. Use Reject to return the funds to the player." };
+    }
 
-    // ⛔ APPROVING A WITHDRAWAL HERE DOES NOT SEND ANY MONEY.
-    //
-    // Everything below releases the hold, marks the transaction CONFIRMED, posts a
-    // WITHDRAWAL ledger group crediting EXTERNAL, and emails the player "your
-    // withdrawal is on its way" — with ZERO calls to the payment gateway. The
-    // player's balance is gone, the books say it left the platform, and nothing was
-    // ever dispatched. That is destroyed money, and it is worst on the LARGEST
-    // payouts: dispatchWithdrawal returns AML_REVIEW with a FABRICATED providerRef
-    // (payments.ts, the >= AML_REVIEW_THRESHOLD_TZS branch) BEFORE the adapter and
-    // therefore before the missing-float-PIN guard, so the control believed to
-    // protect big withdrawals is the one that bypasses every other protection.
-    //
-    // Until an approved withdrawal is actually dispatched to the gateway — set
-    // PROCESSING with a REAL providerRef, hold retained, and settled by
-    // settleWithdrawalConfirmed (which already does the hold-release + ledger +
-    // notification atomically) — this action must not be able to complete.
-    //
-    // A DEPOSIT is just as unsafe here, for the mirror-image reason: this action
-    // never credits a wallet. The only balance write below is the withdrawal
-    // hold-release, so approving a held DEPOSIT would mark it CONFIRMED with no
-    // credit and no ledger entry — the player's money kept, and the books now
-    // asserting it was settled. Deposits only reach AML_REVIEW via the
-    // RG-suspense path, where what is owed is a REFUND, not an approval.
-    const blocked =
-      txn.type === "WITHDRAWAL"
-        ? "Withdrawal approval is disabled. Approving here would release the hold and mark the payout sent WITHOUT contacting the payment provider — the player would lose the money. Re-enable only once approved withdrawals are dispatched to the gateway and settled by the webhook/reconcile path."
-        : "Deposit approval is disabled. This action never credits a wallet, so approving would mark the deposit settled without the player receiving anything. A deposit held here is awaiting a REFUND (the player self-excluded before it landed) — return the money once the payout rail is live, then resolve it.";
+    const gross = Math.abs(txn.amount);
+
+    // Two-person rule for amounts ≥ the threshold (every AML-held withdrawal qualifies).
+    if (gross >= TWO_PERSON_THRESHOLD_TZS) {
+      const first = await getFirstSignature(txnId);
+      if (!first) {
+        // First officer: record the stage-1 co-signature; the txn stays AML_REVIEW.
+        await setFirstSignature(txnId, { actorId: session.userId, at: new Date().toISOString() });
+        audit({ category: "COMPLIANCE", action: "aml.approve.stage1", actorId: session.userId, targetType: "Transaction", targetId: txnId, payload: { amount: gross, reason } });
+        revalidatePath("/admin/aml");
+        return { ok: true as const, stage: "stage1" as const, message: "First approval recorded. A second, different officer must approve to release the funds." };
+      }
+      if (first.actorId === session.userId) {
+        return { ok: false as const, error: "A different officer must give the second approval (two-person rule)." };
+      }
+    }
+
+    // Approved (second officer for ≥ threshold; single officer otherwise). Dispatch the
+    // payout: dispatchApprovedWithdrawal moves AML_REVIEW → PROCESSING with a REAL
+    // provider reference and lets the webhook/reconcile path settle it exactly-once.
+    // The hold is kept until the provider confirms; a provider refusal leaves the txn
+    // under review (never a silent auto-refund) so it can be retried or rejected.
+    const firstOfficer = await getFirstSignature(txnId);
+    const dispatched = await dispatchApprovedWithdrawal(txnId);
+    if (!dispatched.ok) {
+      audit({ category: "COMPLIANCE", action: "aml.approve.dispatch_failed", actorId: session.userId, targetType: "Transaction", targetId: txnId, payload: { amount: gross, error: dispatched.error } });
+      return { ok: false as const, error: dispatched.error };
+    }
     audit({
       category: "COMPLIANCE",
-      action: "aml.approve.blocked_unsafe_settlement",
+      action: "aml.approved",
       actorId: session.userId,
       targetType: "Transaction",
       targetId: txnId,
-      payload: { amount: txn.amount, type: txn.type, note: "Approval refused: this action cannot move the money it claims to settle." },
+      payload: { amount: gross, reason, firstOfficerId: firstOfficer?.actorId ?? null, secondOfficerId: session.userId, dispatchStatus: dispatched.status },
     });
-    return { ok: false as const, error: blocked };
-    // ⛔ EVERYTHING THAT USED TO FOLLOW IS DELETED, AND TYPESCRIPT PROVED IT DEAD.
-    //
-    // The two-officer flow, the hold release, the CONFIRMED status write, the ledger
-    // post and the player notification all lived here. With the guard above in place
-    // tsc narrowed `txn` to `undefined` for the whole remainder — i.e. it is formally
-    // unreachable — so it is removed rather than left behind for someone to re-enable
-    // without the dispatch it was always missing.
-    //
-    // Reinstating approval means: dispatch to the gateway FIRST, set PROCESSING with a
-    // real providerRef, keep the hold, and let settleWithdrawalConfirmed own the
-    // terminal state — it already does hold-release + ledger + notification atomically,
-    // and only after the provider has accepted. For a held DEPOSIT the correct action is
-    // a REFUND to the player, not an approval; it has no wallet-credit path here at all.
-    //
-    // The stage-1 signature helpers (getFirstSignature/setFirstSignature) are kept for
-    // that future flow.
+    revalidatePath("/admin/aml");
+    return { ok: true as const, stage: "complete" as const, message: dispatched.status === "CONFIRMED" ? "Payout sent." : "Payout dispatched — settling now." };
   });
 }
 

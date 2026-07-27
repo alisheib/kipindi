@@ -28,7 +28,7 @@ import { audit } from "./audit";
 import { randomId } from "./crypto";
 import { getPaymentProvider, getDemoAsyncEnabled, type PaymentProviderId } from "./payment-control";
 import { isLiveMoneyMode } from "./runtime-mode";
-import { selcomEnv, selcomDeposit, selcomCardCheckout, selcomWithdraw, selcomVerifyOrder, selcomVerifyCashin, mnoToSelcomCashin, type SelcomBilling } from "./selcom";
+import { selcomEnv, selcomDisburseEnv, selcomDeposit, selcomCardCheckout, selcomWithdraw, selcomVerifyOrder, selcomVerifyCashin, mnoToSelcomCashin, type SelcomBilling } from "./selcom";
 
 export type PaymentProvider = "MPESA" | "TIGO_PESA" | "AIRTEL_MONEY" | "HALO_PESA" | "MIXX" | "TTCL_PESA" | "CARD" | "BANK_TRANSFER" | "INTERNAL";
 
@@ -126,7 +126,7 @@ export async function dispatchDeposit(opts: { provider: PaymentProvider; amount:
  *  `grossAmount` (defaults to `amount`) is the full withdrawal value the AML gate
  *  is evaluated against — evaluating on `net` would let a gross withdrawal just
  *  over the threshold slip past the mandatory second-officer review. */
-export async function dispatchWithdrawal(opts: { provider: PaymentProvider; amount: number; grossAmount?: number; msisdn?: string; userId: string }): Promise<WithdrawResult> {
+export async function dispatchWithdrawal(opts: { provider: PaymentProvider; amount: number; grossAmount?: number; msisdn?: string; userId: string; reviewed?: boolean }): Promise<WithdrawResult> {
   const correlationId = `wdr_${randomId(10)}`;
   const amlBasis = opts.grossAmount ?? opts.amount;
   audit({
@@ -135,12 +135,18 @@ export async function dispatchWithdrawal(opts: { provider: PaymentProvider; amou
     actorId: opts.userId,
     targetType: "User",
     targetId: opts.userId,
-    payload: { correlationId, provider: opts.provider, amount: opts.amount, grossAmount: amlBasis, msisdn: opts.msisdn ? mask(opts.msisdn) : null },
+    payload: { correlationId, provider: opts.provider, amount: opts.amount, grossAmount: amlBasis, msisdn: opts.msisdn ? mask(opts.msisdn) : null, reviewed: !!opts.reviewed },
   });
   // Compliance FIRST, before any adapter is touched — a large payout is held for
   // a second-officer AML review; we never dispatch it to the gateway on the spot.
   // Evaluated on the GROSS withdrawal value, not the net-of-fee disbursement.
-  if (amlBasis >= AML_REVIEW_THRESHOLD_TZS) {
+  //
+  // EXCEPTION: `reviewed` — this payout has ALREADY passed the two-officer AML
+  // review and is being dispatched by the officer-approved path
+  // (dispatchApprovedWithdrawal → admin/aml/actions.ts). Re-holding it here would
+  // dead-end it back into the same queue it just cleared, so we go straight to the
+  // gateway. `reviewed` is only ever set by that server-side path, never by a player.
+  if (!opts.reviewed && amlBasis >= AML_REVIEW_THRESHOLD_TZS) {
     audit({ category: "COMPLIANCE", action: "withdraw.aml_review_triggered", actorId: opts.userId, targetType: "User", targetId: opts.userId, payload: { correlationId, amount: opts.amount, grossAmount: amlBasis, threshold: AML_REVIEW_THRESHOLD_TZS } });
     // The reference here used to be FABRICATED (`${provider}-${randomId(6)}`), which
     // was indistinguishable from a real gateway reference to everything downstream —
@@ -288,7 +294,7 @@ const selcomAdapter: PaymentAdapter = {
     return { ok: true, status: "PENDING", providerRef: correlationId, correlationId };
   },
   async withdraw({ provider, amount, msisdn, correlationId }) {
-    const env = selcomEnv();
+    const env = selcomDisburseEnv();
     if (!env) return { ok: false, reason: "PROVIDER_DOWN", correlationId };
     if (!env.pin) return { ok: false, reason: "PROVIDER_DOWN", correlationId }; // wallet-cashin requires the float PIN
     if (!msisdn) return { ok: false, reason: "ACCOUNT_NOT_VERIFIED", correlationId }; // no payee number
@@ -325,7 +331,7 @@ export async function verifyDepositStatus(providerRef: string): Promise<{ status
 
 export async function verifyWithdrawalStatus(providerRef: string): Promise<{ status: VerifyStatus }> {
   if ((await getPaymentProvider()) !== "selcom") return { status: "UNSUPPORTED" };
-  const env = selcomEnv();
+  const env = selcomDisburseEnv();
   if (!env) return { status: "UNSUPPORTED" };
   const r = await selcomVerifyCashin(env, providerRef);
   if (r.status === "CONFIRMED") return { status: "CONFIRMED" };

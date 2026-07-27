@@ -6,27 +6,32 @@ import { useToast } from "@/components/ui/toast";
 import { I } from "@/components/ui/glyphs";
 import { ActionOverlay, useActionOverlay } from "@/components/admin/action-overlay";
 import { approveAmlAction, rejectAmlAction } from "./actions";
+import { TWO_PERSON_THRESHOLD_TZS } from "./constants";
 import { useRouter } from "next/navigation";
 import { formatTzs } from "@/lib/utils";
 
 export function AmlActionRow({ txnId, amount }: { txnId: string; amount: number }) {
   const [busy, setBusy] = useState<"approve" | "reject" | null>(null);
-  const [expanded, setExpanded] = useState(false);
+  const [mode, setMode] = useState<"approve" | "reject" | null>(null);
   const [reason, setReason] = useState("");
-  const [pending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
   const overlay = useActionOverlay();
   const { toast } = useToast();
   const router = useRouter();
 
   const submit = (kind: "approve" | "reject") => {
-    if (kind === "reject" && reason.trim().length < 5) {
-      toast({ title: "Reason required", description: "Reject needs a reason of at least 5 characters.", variant: "warning" });
+    // Both approve (releasing funds) and reject (returning funds) require a recorded
+    // justification — the server enforces ≥ 5 chars; mirror it here for a fast message.
+    if (reason.trim().length < 5) {
+      toast({ title: "Reason required", description: `${kind === "approve" ? "Approval" : "Reject"} needs a reason of at least 5 characters.`, variant: "warning" });
       return;
     }
     setBusy(kind);
     overlay.run(
       kind === "approve" ? `Approving ${formatTzs(amount)}…` : "Rejecting transaction…",
-      kind === "approve" ? "Recording your approval. For large amounts, a second officer is required." : "Returning funds to player wallet.",
+      kind === "approve"
+        ? "Recording your approval. Large payouts need a second, different officer; the final approval dispatches the payout to the gateway."
+        : "Returning funds to player wallet.",
     );
     startTransition(async () => {
       try {
@@ -40,9 +45,9 @@ export function AmlActionRow({ txnId, amount }: { txnId: string; amount: number 
           const message = (result as { message?: string }).message;
           router.refresh();
           if (stage === "stage1") {
-            overlay.succeed("Stage 1 recorded", message ?? "Second officer required before funds release.");
+            overlay.succeed("Stage 1 recorded", message ?? "A second, different officer must approve to release the funds.");
           } else if (kind === "approve") {
-            overlay.succeed(`Approved · ${formatTzs(amount)}`, "Transaction confirmed.");
+            overlay.succeed(`Approved · ${formatTzs(amount)}`, message ?? "Payout dispatched to the gateway.");
           } else {
             overlay.succeed("Rejected", "Funds returned to wallet.");
           }
@@ -53,27 +58,33 @@ export function AmlActionRow({ txnId, amount }: { txnId: string; amount: number 
         overlay.fail("AML action failed", "Server error — please try again.");
       }
       setBusy(null);
-      setExpanded(false);
+      setMode(null);
       setReason("");
     });
+  };
+
+  const toggle = (kind: "approve" | "reject") => {
+    setMode((m) => (m === kind ? null : kind));
+    setReason("");
   };
 
   return (
     <div className="space-y-1.5">
       <div className="flex items-center gap-1.5">
-        {/* Approval is deliberately DISABLED server-side (approveAmlAction refuses:
-            releasing a hold without a real gateway dispatch would destroy the
-            money). Reflect that honestly rather than a confirm that always fails.
-            Reject works and returns the held funds to the player. Re-enable this
-            button together with the server action once approved withdrawals are
-            dispatched to the gateway + settled by the webhook/reconcile path. */}
+        {/* Approve DISPATCHES the payout to the gateway (dispatchApprovedWithdrawal):
+            AML_REVIEW → PROCESSING with a real provider ref, settled exactly-once by
+            the webhook/reconcile path — the hold is kept until the provider confirms.
+            Large payouts (≥ 1M) require two different officers. Reject returns the held
+            funds to the player. */}
         <Button
           size="sm"
           variant="yes"
-          disabled
+          disabled={busy !== null}
+          onClick={() => toggle("approve")}
+          aria-label="Approve transaction"
+          aria-expanded={mode === "approve" ? "true" : "false"}
           leading={<I.check s={12} />}
-          aria-label="Approve transaction — unavailable until the payout gateway is live"
-          title="Approval is unavailable until the payout gateway is live. Use Reject to return the held funds to the player."
+          trailing={<I.chevronDown s={11} />}
         >
           Approve
         </Button>
@@ -81,9 +92,9 @@ export function AmlActionRow({ txnId, amount }: { txnId: string; amount: number 
           size="sm"
           variant="danger"
           disabled={busy !== null}
-          onClick={() => setExpanded((v) => !v)}
+          onClick={() => toggle("reject")}
           aria-label="Reject transaction"
-          aria-expanded={expanded ? "true" : "false"}
+          aria-expanded={mode === "reject" ? "true" : "false"}
           leading={<I.x s={12} />}
           trailing={<I.chevronDown s={11} />}
         >
@@ -91,18 +102,18 @@ export function AmlActionRow({ txnId, amount }: { txnId: string; amount: number 
         </Button>
       </div>
       <p className="text-[10.5px] text-text-tertiary">
-        Approval is on hold until the payout gateway is live — clear a case with <span className="text-text-secondary">Reject</span>, which returns the held funds.
+        Large payouts (≥ {formatTzs(TWO_PERSON_THRESHOLD_TZS)}) need <span className="text-text-secondary">two different officers</span>; approval dispatches the payout. <span className="text-text-secondary">Reject</span> returns the held funds.
       </p>
-      {expanded && (
+      {mode && (
         <div className="flex items-start gap-1.5">
           <input
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="Rejection reason (required)"
-            aria-label="Rejection reason"
+            placeholder={mode === "approve" ? "Approval reason (required)" : "Rejection reason (required)"}
+            aria-label={mode === "approve" ? "Approval reason" : "Rejection reason"}
             className="flex-1 h-8 px-2 rounded-md border border-border bg-bg-inset text-text-secondary text-caption font-mono focus:outline-none admin-focus transition-colors"
           />
-          <Button size="sm" variant="danger" onClick={() => submit("reject")} loading={busy === "reject"} disabled={busy !== null}>
+          <Button size="sm" variant={mode === "approve" ? "yes" : "danger"} onClick={() => submit(mode)} loading={busy === mode} disabled={busy !== null}>
             Submit
           </Button>
         </div>

@@ -14,7 +14,7 @@ import { audit } from "./audit";
 import { sendEmailToUser, depositConfirmedHtml, depositPendingHtml, depositFailedHtml, depositReversedHtml, withdrawalSentHtml, withdrawalUnderReviewHtml, amlRejectRefundHtml } from "./email";
 import { db, type StoredTxn } from "./store";
 import { randomId } from "./crypto";
-import { dispatchDeposit, dispatchWithdrawal, verifyDepositStatus, verifyWithdrawalStatus, type CardCheckoutContext } from "./payments";
+import { dispatchDeposit, dispatchWithdrawal, verifyDepositStatus, verifyWithdrawalStatus, type CardCheckoutContext, type PaymentProvider } from "./payments";
 import { isPaymentPaused } from "./payment-ops";
 import { isLiveMoneyMode } from "./runtime-mode";
 import { isMaintenanceMode, maintenanceMessage } from "./platform-config";
@@ -562,6 +562,87 @@ export function notifyWithdrawalSent(txn: { id: string; userId: string; amount: 
     html: withdrawalSentHtml({ amount: net, destination: friendlyProvider(txn.provider), reference: txn.id }),
     tag: "withdrawal",
   })).catch(() => {});
+}
+
+/**
+ * Dispatch a withdrawal that has PASSED AML review (officer-approved) to the payment
+ * gateway. Called ONLY from admin/aml/actions.ts, AFTER the two-officer approval gate.
+ *
+ * This is the missing half of the large-payout flow. Previously a ≥ TZS 1M withdrawal
+ * entered AML_REVIEW and could only be *rejected* (refunded) — approving it would have
+ * released the hold and marked it "sent" WITHOUT ever contacting the gateway (destroyed
+ * money). This function does the honest thing: move the held txn AML_REVIEW → PROCESSING,
+ * send the payout to the gateway with a REAL provider reference (bypassing the AML hold —
+ * review already happened), and let the SAME exactly-once webhook/reconcile path settle it.
+ *
+ * MONEY-SAFETY:
+ *  - The `hold` placed by withdraw() is KEPT throughout. Money only leaves the platform on
+ *    the authoritative settleWithdrawalConfirmed (webhook / walletcashin/query re-query),
+ *    exactly like an ordinary payout — never on the strength of this call alone.
+ *  - A provider refusal (PROVIDER_DOWN / definitive reject) reverts the txn to AML_REVIEW
+ *    with the hold intact, so the officer can retry once the rail is up or reject-refund
+ *    explicitly. A just-approved large payout is never silently auto-refunded to the player.
+ *  - AMBIGUOUS (maybe-in-flight) comes back as PENDING → the txn stays PROCESSING and is
+ *    resolved by the signed re-query; it is never blind-reversed (that would double-pay).
+ */
+export async function dispatchApprovedWithdrawal(
+  txnId: string,
+): Promise<{ ok: true; status: "PROCESSING" | "CONFIRMED" } | { ok: false; error: string }> {
+  const pre = await db.txn.findById(txnId);
+  if (!pre) return { ok: false, error: "Transaction not found." };
+  if (pre.type !== "WITHDRAWAL") return { ok: false, error: "Not a withdrawal." };
+  if (pre.status !== "AML_REVIEW") return { ok: false, error: `Withdrawal is ${pre.status}, not under review.` };
+
+  const gross = Math.abs(pre.amount);
+  const fee = pre.fee ?? 0;
+  const net = gross - fee; // what the gateway actually disburses (the payee receives net)
+  const provider = (pre.provider ?? "INTERNAL") as PaymentProvider;
+
+  // Claim: AML_REVIEW → PROCESSING under the wallet lock so a double-approve or a
+  // concurrent reject can't both act. The hold stays exactly where withdraw() put it.
+  const claimed = await withLock(`wallet:${pre.userId}`, async () => {
+    const t = await db.txn.findById(txnId);
+    if (!t || t.status !== "AML_REVIEW") return null;
+    await db.txn.update(txnId, { status: "PROCESSING" });
+    return t;
+  });
+  if (!claimed) return { ok: false, error: "Withdrawal already actioned." };
+
+  // Dispatch to the gateway OUTSIDE the wallet lock — never hold a lock across network I/O.
+  const result = await dispatchWithdrawal({
+    provider,
+    amount: net,
+    grossAmount: gross,
+    msisdn: claimed.msisdn ?? undefined,
+    userId: claimed.userId,
+    reviewed: true, // already AML-reviewed: skip the hold, go straight to the gateway
+  });
+
+  if (!result.ok) {
+    // The gateway did not accept it (config down or a definitive reject). Do NOT
+    // auto-refund a just-approved large payout — put it back under review, hold intact,
+    // so an officer can retry once the rail is up or reject-refund deliberately.
+    await withLock(`wallet:${claimed.userId}`, async () => {
+      const t = await db.txn.findById(txnId);
+      if (t && t.status === "PROCESSING") await db.txn.update(txnId, { status: "AML_REVIEW" });
+    });
+    audit({ category: "COMPLIANCE", action: "withdraw.approved_dispatch_failed", actorId: null, targetType: "Transaction", targetId: txnId, payload: { reason: result.reason, providerRef: result.correlationId } });
+    return { ok: false, error: "The payment provider did not accept the payout. It stays under review — retry once the rail is available, or return the funds." };
+  }
+
+  // Record the REAL provider reference so the webhook + reconcile can correlate/settle it.
+  await db.txn.update(txnId, { providerRef: result.providerRef });
+  audit({ category: "COMPLIANCE", action: "withdraw.approved_dispatched", actorId: null, targetType: "Transaction", targetId: txnId, payload: { providerRef: result.providerRef, gross, net, status: result.status } });
+
+  if (result.status === "CONFIRMED") {
+    // Synchronous provider (mock / demo) — settle now via the exactly-once path.
+    await settleWithdrawalConfirmed(txnId);
+    return { ok: true, status: "CONFIRMED" };
+  }
+  // PENDING (real async payout): stays PROCESSING; the walletcashin/query webhook +
+  // reconcile sweep confirm or reverse it. Tell the player their payout is on its way.
+  notifyWithdraw(claimed.userId, { status: "INITIATED", amount: gross, net, provider: friendlyProvider(provider) });
+  return { ok: true, status: "PROCESSING" };
 }
 
 /** Reverse a held withdrawal whose payout failed: return the funds to spendable
