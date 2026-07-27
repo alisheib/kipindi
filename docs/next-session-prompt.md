@@ -81,20 +81,38 @@ Read `.claude/skills/50pick-standards` + `.claude/skills/50pick-audit` first, th
   a clean, bounded follow-up if wanted.
 - **`public/brand.rar`** — a local brand-asset archive; now `*.rar`-gitignored (won't deploy).
 
+## ⚠️ THIS FILE IS STALE BELOW THE "Current live state" HEADING (it describes `2144ab7`)
+Since it was written, six more sessions landed: Selcom disbursement phases 1–3, The Needle,
+Up & Down D3, the design-system v2 consolidation, the motion layer, and its adoption.
+**Read `docs/NEXT-SESSION.md` first — it is the current-state brief.** Two corrections that
+matter most, because acting on the old text would be wrong:
+- **The payment provider is `selcom` in prod, NOT `mock`** (verified read-only 2026-07-27). The
+  "flip provider mock→selcom" blocker is CLOSED. Money-mode is still TEST (`TEST_FUNDING` on).
+- **AML Approve now really DISPATCHES** to the gateway (`dispatchApprovedWithdrawal`). The old
+  "AML approve is deliberately disabled because releasing without a dispatch destroys money"
+  rule is RETIRED — do not re-disable it.
+
 ## Good candidate next steps (Ali's call)
-- **PRIORITY — Motion + Haptics kit adoption & de-dup.** The designers dropped THREE kits at the
-  repo root ("perfect, consistent kits"): `/Motion Language/`, `/Haptics/`, and now
-  `/Needle Fidget Project/` (needle physics + haptics + its own motion/globals CSS — likely the
-  newer consolidated package; read its `NEEDLE-SPEC.md` first). Make them the ONE canonical motion +
-  haptics language, use them correctly everywhere, and remove redundancy (there's already a
-  `src/lib/haptics.ts` + a bundled `theme/globals.css` snapshot). All three are gitignored/untracked.
-  Full self-contained brief: **`docs/MOTION-HAPTICS-ADOPTION-PROMPT.md`** — start there.
+- ✅ **DONE — Motion + Haptics kit adoption & de-dup** (`f67e2d95`, 2026-07-28). The three root
+  kits were adopted and deleted; the motion layer, which had **zero consumers**, is now genuinely
+  the app's motion language. Record: the `2026-07-28` entry in
+  `docs/design-system/v2-2026-07-27/07-provenance/CHANGELOG.md`. Guard: `npm run test:motion`.
+  `docs/MOTION-HAPTICS-ADOPTION-PROMPT.md` is RETIRED — do not re-run it.
 - Real-Postgres load pass for the Up & Down concurrent quick-bet (`test:updown-load` PG mode) if a
   scratch DB is available.
+- **Up & Down Phase 5 + 6** — reports/analytics/notification digest/admin rounds-explorer settings;
+  then the staged enable (Gold 5-min → Silver → 15/30-min) + archive/retention job. Not started.
+- **Up & Down D4 + D5 were never DESIGNED** — the admin console (KPI row, chains table, oracle
+  health, round explorer + proof drawer) and the bottom-nav glyph. See the archive's OPEN-GAPS.
+- **Bet-concurrency Deploy 5** — the ≥1 week soak of deploy 4 has now elapsed (shipped 2026-07-19).
+  Drop the market lock from the bet path; the pool write is already an atomic delta.
 - `/profile/activity` → the shared DateTimeRangeFilter (needs the between-window DAL method).
 - Consider a hard-404 status for invalid ids if SEO/scraper signals matter (architectural).
-- Withdrawals go-live — Selcom disbursement API **GRANTED 2026-07-27**; set the float PIN/creds +
-  ship the activation phases in `docs/SELCOM-DISBURSEMENT-ACTIVATION.md`.
+- 🔴 **Withdrawals go-live — the ONE remaining launch gate, and it is NOT code.** Phases 1–3 are
+  shipped and live. Selcom confirmed (email 2026-07-27) the SAME creds serve disbursement, so
+  nothing else is needed except **`PAYMENT_VENDOR_PIN`** (the float-account PIN) **+ a funded
+  float**. Set it in the Railway dashboard — secret, never chat or git — then run the admin
+  **Test Selcom** button from an allow-listed IP. `docs/SELCOM-DISBURSEMENT-ACTIVATION.md`.
 
 ## Authoritative docs
 `docs/UPDOWN-PROGRESS.md` (status + session log) · `docs/UPDOWN-ARCHITECTURE.md` ·

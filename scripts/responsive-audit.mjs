@@ -129,12 +129,22 @@ async function assertCell(page) {
       }
       return false;
     };
+    // The Needle (#needle-root) is EXEMPT from the edge rules, by design — not a bug.
+    // It is a draggable pause object that deliberately rests half-tucked against a
+    // viewport edge ("Peek", NEEDLE-SPEC §"Presence"); the spec sizes the peek so the
+    // exposed part still clears the 40px tap floor. Reading it as "off-screen fixed" /
+    // "clipped control" produced 392 false failures on every surface × width the moment
+    // the Needle shipped (2026-07-27), which is what took this sweep from 2175·0 to
+    // 1780·392. Exempt the object, keep the rules honest for everything else.
+    const inNeedle = (el) => !!el.closest?.("#needle-root");
+
     const offscreen = [];
     for (const el of document.querySelectorAll("*")) {
       const cs = getComputedStyle(el);
       if (cs.position !== "fixed" && cs.position !== "sticky") continue;
       if (cs.display === "none" || cs.visibility === "hidden" || cs.opacity === "0") continue;
       if (cs.position === "sticky" && inXScroller(el)) continue;
+      if (inNeedle(el)) continue;
       const r = el.getBoundingClientRect();
       if (r.width === 0 || r.height === 0) continue;
       if (r.right > vw + 2 || r.left < -2) {
@@ -163,6 +173,7 @@ async function assertCell(page) {
       if (r.width === 0 || r.height === 0) continue;
       const cs = getComputedStyle(el);
       if (cs.visibility === "hidden" || cs.display === "none") continue;
+      if (inNeedle(el)) continue;   // deliberate edge-tuck — see the note above
       if ((r.right > vw + 2 || r.left < -2) && !hasScrollableAncestor(el)) {
         const label = (el.getAttribute("aria-label") || el.textContent || "").trim().slice(0, 22);
         clipped.push(`${el.tagName.toLowerCase()}[${label}] l${Math.round(r.left)} r${Math.round(r.right)}>vw${vw}`);

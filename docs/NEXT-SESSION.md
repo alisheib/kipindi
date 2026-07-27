@@ -3,7 +3,34 @@
 Read the two always-on skills first (`.claude/skills/50pick-standards` +
 `.claude/skills/50pick-audit`), then this. **Current-state only** — old per-session logs were
 consolidated 2026-07-21; the detail lives in git history + the authoritative docs listed at the
-bottom. Last updated 2026-07-24.
+bottom. **Last updated 2026-07-28 (head `f67e2d95`).**
+
+## ⚡ What changed since 2026-07-24 — read this before anything else
+Six sessions landed. Three of them **retire rules stated further down this file**, so acting on
+the old text would be actively wrong:
+
+1. 🟢 **The payment provider is `selcom` in prod, NOT `mock`** (verified read-only 2026-07-27).
+   The long-standing "flip provider mock→selcom" blocker is **CLOSED**. Deposits run on the real
+   rail. Money-mode is still TEST (`TEST_FUNDING` on) — turning that off + rebaselining the DB is
+   a launch-day step.
+2. 🟢 **AML Approve now really DISPATCHES** (`dispatchApprovedWithdrawal`: AML_REVIEW → PROCESSING
+   → gateway → exactly-once settle; two-officer gate kept; a provider refusal reverts to review,
+   no auto-refund). ⛔ **The "AML Approve is deliberately disabled" rule below is RETIRED** — do
+   not re-disable it. Selcom disbursement phases 1–3 are shipped and live.
+3. 🟢 **Design system consolidated to ONE archive** (`docs/design-system/v2-2026-07-27/`), **The
+   Needle** shipped, the **motion layer** landed and — as of `f67e2d95` — is genuinely **adopted**
+   (it had zero consumers before). `docs/MOTION-HAPTICS-ADOPTION-PROMPT.md` is retired.
+   New guard: **`npm run test:motion`**. Also shipped: **Up & Down D3** round detail.
+
+🔴 **THE ONE REMAINING LAUNCH GATE IS NOT CODE:** `PAYMENT_VENDOR_PIN` (the Selcom float-account
+PIN) + a funded float. Selcom confirmed the same creds serve disbursement, so nothing else is
+outstanding on their side. Set it in the Railway dashboard (secret — never chat/git), then hit
+the admin **Test Selcom** button from an allow-listed IP.
+
+⚠️ **Two suites need a live server on :3000 and fail without one — expected, not a regression:**
+`test:responsive` and `test:motion`. Serverless runs should pass `--skip responsive,motion`.
+⚠️ **A parallel session may share this repo.** `git fetch` before analysing, and only ever stage
+your own files — never `git add -A`.
 
 ## Current state (LIVE, healthy)
 - **Final Audit COMPLETE** — all 11 Criticals + all Highs + all Mediums closed
@@ -80,8 +107,9 @@ bottom. Last updated 2026-07-24.
 - **PII**: self-exclusion roster + privacy on-behalf list mask via `maskName()`. The admin players
   LIST shows a verified legal name to a COMPLIANCE officer BY DESIGN (gated surface, officer needs
   identity) — NOT masked; `display-label` doc corrected to match.
-- **AML Approve is deliberately disabled** server-side (releasing without a gateway dispatch would
-  destroy money) — do not "re-enable" without the real dispatch + settle path.
+- ⛔ ~~**AML Approve is deliberately disabled** server-side~~ — **RETIRED 2026-07-27.** The real
+  dispatch + settle path now exists (`dispatchApprovedWithdrawal`), so Approve is enabled and
+  genuinely pays out. See the "What changed" block at the top.
 - **Solo-resolution** is real-money-state locked (POCA §16); **testing overrides default OFF in
   prod**. `TEST_FUNDING=true` pre-launch lets testers solo-resolve; it hard-locks at go-live.
 - **bet-stake single-`$transaction`** merged; **M2** largest-remainder payout done; **C3/C6** ledger

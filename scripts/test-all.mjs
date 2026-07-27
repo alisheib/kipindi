@@ -14,7 +14,13 @@
  *   node scripts/test-all.mjs --no-tsc     # skip the typecheck step
  *   node scripts/test-all.mjs --only money # only suites whose key contains "money"
  *   node scripts/test-all.mjs --filter kyc,ledger,wallet
- *   node scripts/test-all.mjs --skip responsive  # drop suites needing a live server (CI)
+ *   node scripts/test-all.mjs --skip responsive,motion  # drop suites needing a live server
+ *
+ * ⚠️ TWO suites need a live server on :3000 and FAIL without one — that is expected,
+ * not a regression: `test:responsive` (9-width sweep) and `test:motion` (proves the
+ * motion layer's tokens resolve in a real browser; a green unit suite cannot see a
+ * dead `var()`, which is how the B5 outage killed all motion silently). Boot the app
+ * and run them, or pass `--skip responsive,motion` in a serverless run.
  */
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
