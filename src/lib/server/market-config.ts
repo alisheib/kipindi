@@ -380,11 +380,35 @@ const store =
 // table, so admin retunes of fee/tax/stake config survive deploys instead of
 // silently reverting to DEFAULT_GLOBAL_CONFIG.
 const MARKET_CONFIG_KEY = "market.config";
-type PersistedMarketConfig = { global: RateConfig; perMarket: Array<[string, Partial<RateConfig>]> };
+/**
+ * Persisted-config schema version. Bump when a DEFAULT that a live config may have
+ * frozen at an old value must be reconciled forward (see `migrateLegacyConfig`).
+ *  v2 (2026-07-27): stake bounds default 100/100,000 → 1,000/1,000,000.
+ */
+const CONFIG_VERSION = 2;
+type PersistedMarketConfig = { global: RateConfig; perMarket: Array<[string, Partial<RateConfig>]>; v?: number };
 
 declare global {
   // eslint-disable-next-line no-var
   var __50PICK_MARKET_CONFIG_HYDRATED: boolean | undefined;
+}
+
+/**
+ * Forward-reconcile a config persisted under an older CONFIG_VERSION. Because `persist()`
+ * writes the WHOLE global snapshot, a value that was merely the OLD default freezes in the
+ * DB and shadows a new code default. This bumps ONLY values still sitting on a known
+ * legacy default, so a deliberate admin choice is never touched. Pure + exported so the
+ * migration is unit-tested directly (config-persist.test.mts).
+ */
+export function reconcileConfigDefaults(global: RateConfig, fromVersion: number): { global: RateConfig; changed: boolean } {
+  const g = { ...global };
+  let changed = false;
+  if (fromVersion < 2) {
+    // Stake bounds: 100/100,000 (legacy defaults) → the current 1,000/1,000,000.
+    if (g.minStake === 100) { g.minStake = DEFAULT_GLOBAL_CONFIG.minStake; changed = true; }
+    if (g.maxStake === 100_000) { g.maxStake = DEFAULT_GLOBAL_CONFIG.maxStake; changed = true; }
+  }
+  return { global: g, changed };
 }
 
 /** Load persisted config into the cache once per process (before first read). */
@@ -396,12 +420,18 @@ async function ensureHydrated(): Promise<void> {
     // Merge over defaults so a newly-added field gets its default, not undefined.
     store.global = { ...DEFAULT_GLOBAL_CONFIG, ...stored.global };
     store.perMarket = new Map(stored.perMarket ?? []);
+    // One-time forward migration for legacy defaults; self-heals on first read after deploy.
+    const storedVersion = stored.v ?? 1;
+    if (storedVersion < CONFIG_VERSION) {
+      store.global = reconcileConfigDefaults(store.global, storedVersion).global;
+      persist(); // re-write with the new version + any migrated values
+    }
   }
 }
 
 /** Write the whole config through to the DB (fire-and-forget; never throws). */
 function persist(): void {
-  void saveConfig(MARKET_CONFIG_KEY, { global: store.global, perMarket: Array.from(store.perMarket.entries()) });
+  void saveConfig(MARKET_CONFIG_KEY, { global: store.global, perMarket: Array.from(store.perMarket.entries()), v: CONFIG_VERSION });
 }
 
 /** Read merged config — per-market overrides on top of global. */

@@ -6,7 +6,7 @@
  * gauntlet against Postgres.
  */
 import { loadConfig, saveConfig } from "../src/lib/server/config-store.ts";
-import { getGlobalConfig, setGlobalConfig } from "../src/lib/server/market-config.ts";
+import { getGlobalConfig, setGlobalConfig, reconcileConfigDefaults, DEFAULT_GLOBAL_CONFIG } from "../src/lib/server/market-config.ts";
 import { getProposalsConfig, setProposalsConfig } from "../src/lib/server/proposals-config.ts";
 
 let pass = 0, fail = 0;
@@ -51,6 +51,18 @@ await (async () => {
   const p = setProposalsConfig({ prizeTzs: 33_000 }, "usr_officer");
   ok("setProposalsConfig ok", p.ok === true);
   ok("prizeTzs persisted in cache", getProposalsConfig().prizeTzs === 33_000);
+
+  // 5. CONFIG MIGRATION — a config persisted before v2 with the LEGACY stake defaults
+  //    (100 / 100,000) is bumped forward to the new defaults (1,000 / 1,000,000) on
+  //    hydrate, so production adopts the new bounds with no manual re-save. A DELIBERATE
+  //    custom value is never touched, and a v2+ config is left alone.
+  ok("new defaults are 1,000 / 1,000,000", DEFAULT_GLOBAL_CONFIG.minStake === 1_000 && DEFAULT_GLOBAL_CONFIG.maxStake === 1_000_000);
+  const legacy = reconcileConfigDefaults({ ...DEFAULT_GLOBAL_CONFIG, minStake: 100, maxStake: 100_000 }, 1);
+  ok("legacy 100/100,000 → 1,000/1,000,000", legacy.changed && legacy.global.minStake === 1_000 && legacy.global.maxStake === 1_000_000);
+  const custom = reconcileConfigDefaults({ ...DEFAULT_GLOBAL_CONFIG, minStake: 5_000, maxStake: 250_000 }, 1);
+  ok("a deliberate custom min/max is preserved", !custom.changed && custom.global.minStake === 5_000 && custom.global.maxStake === 250_000);
+  const already = reconcileConfigDefaults({ ...DEFAULT_GLOBAL_CONFIG, minStake: 100, maxStake: 100_000 }, 2);
+  ok("a v2+ config is not migrated again", !already.changed && already.global.minStake === 100);
 })();
 
 console.log(`\nconfig-persist: ${pass} passed, ${fail} failed`);

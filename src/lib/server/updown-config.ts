@@ -103,13 +103,27 @@ function cfgStore(): UpDownConfig {
   return (globalThis.__50PICK_UPDOWN_CONFIG ??= { ...DEFAULT_UPDOWN_CONFIG });
 }
 
+/** Persisted-config schema version — bump when a frozen legacy default must move forward.
+ *  v2 (2026-07-27): default stake bounds 100/100,000 → 1,000/1,000,000. */
+const UPDOWN_CONFIG_VERSION = 2;
+
 async function ensureHydrated(): Promise<void> {
   if (globalThis.__50PICK_UPDOWN_CONFIG_HYDRATED) return;
   globalThis.__50PICK_UPDOWN_CONFIG_HYDRATED = true;
-  const stored = await loadConfig<Partial<UpDownConfig>>(UPDOWN_CONFIG_KEY);
+  const stored = await loadConfig<Partial<UpDownConfig> & { v?: number }>(UPDOWN_CONFIG_KEY);
   // Merge OVER the defaults, so a newly-added field gets its default rather than
   // undefined on a deployment whose persisted blob predates it.
-  if (stored) globalThis.__50PICK_UPDOWN_CONFIG = { ...DEFAULT_UPDOWN_CONFIG, ...stored };
+  if (stored) {
+    globalThis.__50PICK_UPDOWN_CONFIG = { ...DEFAULT_UPDOWN_CONFIG, ...stored };
+    // One-time forward migration: bump default stake bounds still on the legacy defaults
+    // (a deliberate custom value is untouched). Self-heals on first read after deploy.
+    if ((stored.v ?? 1) < UPDOWN_CONFIG_VERSION) {
+      const c = globalThis.__50PICK_UPDOWN_CONFIG;
+      if (c.defaultMinStake === 100) c.defaultMinStake = DEFAULT_UPDOWN_CONFIG.defaultMinStake;
+      if (c.defaultMaxStake === 100_000) c.defaultMaxStake = DEFAULT_UPDOWN_CONFIG.defaultMaxStake;
+      void saveConfig(UPDOWN_CONFIG_KEY, { ...c, v: UPDOWN_CONFIG_VERSION });
+    }
+  }
 }
 
 export async function getUpDownConfig(): Promise<UpDownConfig> {
@@ -161,7 +175,7 @@ export async function setUpDownConfig(
 
   const before = { ...cfgStore() };
   globalThis.__50PICK_UPDOWN_CONFIG = { ...before, ...updates };
-  void saveConfig(UPDOWN_CONFIG_KEY, cfgStore());
+  void saveConfig(UPDOWN_CONFIG_KEY, { ...cfgStore(), v: UPDOWN_CONFIG_VERSION });
   audit({
     category: "ADMIN",
     action: "updown.config.updated",

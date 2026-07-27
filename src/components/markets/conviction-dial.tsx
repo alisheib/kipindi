@@ -157,7 +157,7 @@ type Props = {
   boardHref?: string;
 };
 
-export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, maxStake, initial = 0.5, marketTitle, resolutionAt, balance, lockedSide, rates, boardHref = "/markets" }: Props) {
+export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, maxStake, initial = 0.5, marketTitle, resolutionAt, balance, lockedSide, rates, boardHref = "/markets" }: Props) {
   // The side the dial is locked to (null = free bidirectional). The choice is
   // made on the market card (outside) and is FINAL here — the in-dial YES/NO
   // pills are display-only indicators, NOT switchable. To change sides the
@@ -257,7 +257,8 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, max
   // reads (input.value vs. Place-button text) during the 150 ms
   // settle window. The architect-stress E.1 invariant catches that.
   const stakeTargetFromSlider = baseStake * (1 + conviction * (maxMultiplier - 1));
-  const stakeFromSlider = Math.max(100, Math.round(stakeTargetFromSlider / 100) * 100);
+  // Snap to the nearest 100, but never below the configured minimum (baseStake).
+  const stakeFromSlider = Math.max(baseStake, Math.round(stakeTargetFromSlider / 100) * 100);
 
   // THREE coordinated inputs share one source of truth:
   //   1 · DRAG the dial         → pos  → stakeFromSlider (snap-to-100)
@@ -1116,11 +1117,20 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, max
                 y1={trackY - 4} y2={trackY + trackH + 4}
                 stroke="var(--bar-track-border)" strokeWidth="1" />
 
-          {/* Tachymeter detents */}
-          {[1000, 5000, 10000, 25000, 50000, 100000].flatMap((tzs) => {
+          {/* Tachymeter detents — derived from the LIVE [baseStake, maxStake] (admin-
+              tunable), never hardcoded, so the scale always spans the configured range
+              (e.g. up to 1,000,000) and stays correct if the min/max change. */}
+          {(() => {
+            const nice = [1, 2, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000];
+            const set = nice.map((k) => k * baseStake).filter((t) => t >= baseStake && t <= baseStake * maxMultiplier);
+            // Guarantee the max edge is present as the final detent.
+            const edge = Math.round(baseStake * maxMultiplier);
+            if (!set.includes(edge)) set.push(edge);
+            return set;
+          })().flatMap((tzs) => {
             const m = tzs / baseStake;
             const dist = Math.sqrt(Math.max(0, (m - 1) / (maxMultiplier - 1)));
-            const isEdge = tzs === baseStake * maxMultiplier;
+            const isEdge = tzs === Math.round(baseStake * maxMultiplier);
             return ["YES", "NO"].map((s) => {
               const px = s === "YES" ? (0.5 - 0.5 * dist) * width : (0.5 + 0.5 * dist) * width;
               return (
@@ -1143,7 +1153,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, max
                       opacity={0.55}
                       letterSpacing="0.04em"
                     >
-                      {tzs >= 1000 ? `${tzs / 1000}k` : String(tzs)}
+                      {tzs >= 1_000_000 ? `${tzs % 1_000_000 === 0 ? tzs / 1_000_000 : (tzs / 1_000_000).toFixed(1)}M` : tzs >= 1000 ? `${tzs / 1000}k` : String(tzs)}
                     </text>
                   )}
                 </g>
