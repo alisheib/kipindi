@@ -31,7 +31,7 @@ Read `.claude/skills/50pick-standards` + `.claude/skills/50pick-audit` first, th
   `updown-custom-stake-shots`, `datetime-filter-shots`, `routing-audit`). READ the PNGs in
   `docs/shots-*` (gitignored). Real-Postgres `e2e:money`/`updown-engine` run in CI (no local PG).
 
-## Current live state (main @ `b80626a`, 2026-07-27 — all deploy-verified)
+## Current live state (main @ `99f77cf`, 2026-07-27 — all deploy-verified)
 
 **Up & Down is production-final** (short-term Gold/Silver price rounds, a SEPARATE product line):
 - Sealed apart from long-form polls: money/AI-cost/portfolio/admin split by `productLine`
@@ -41,6 +41,13 @@ Read `.claude/skills/50pick-standards` + `.claude/skills/50pick-audit` first, th
   a **card success pulse + haptic + aria-live** confirmation (NOT a toast; reduced-motion aware).
 - Presentation: dedicated `/updown` tab + a **home discovery band** (fast-game promo) + `/live`
   prioritises them (soonest-resolution) with a game chip; `/markets`+`/results` stay poll-only.
+- **History groups by round** — `/updown/history` shows one card per round (bets collapse to
+  chips, max 2 + "+N"), round-level KPIs (rounds / bets sub-stat / net-positive win-rate);
+  fixed a KPI that counted positions as rounds. **Stake floor**: `stakeBoundsFor`/`getBoard`
+  clamp the min at the product default so stale chain data can't surface a sub-1,000 preset.
+- Full-flow visual scan done (live cards · board · round detail · history, EN/SW/ZH × 4 widths):
+  the price-fallback label is **"Awaiting price"** (was ops-jargon "Awaiting read"; EN/ZH aligned
+  to SW). Shows only when the live feed is quiet (A-5 fallback), never a fabricated 0.
 
 **Platform-wide (this session):**
 - **DateTime range filter** — ONE `resolveRange` (`lib/server/date-range.ts`) +
@@ -66,11 +73,13 @@ Read `.claude/skills/50pick-standards` + `.claude/skills/50pick-audit` first, th
 - **`public/brand.rar`** — a local brand-asset archive; now `*.rar`-gitignored (won't deploy).
 
 ## Good candidate next steps (Ali's call)
-- **PRIORITY — Motion + Haptics kit adoption & de-dup.** The designers dropped `/Motion Language/`
-  + `/Haptics/` at the repo root ("perfect, consistent kits"). Make them the canonical motion +
+- **PRIORITY — Motion + Haptics kit adoption & de-dup.** The designers dropped THREE kits at the
+  repo root ("perfect, consistent kits"): `/Motion Language/`, `/Haptics/`, and now
+  `/Needle Fidget Project/` (needle physics + haptics + its own motion/globals CSS — likely the
+  newer consolidated package; read its `NEEDLE-SPEC.md` first). Make them the ONE canonical motion +
   haptics language, use them correctly everywhere, and remove redundancy (there's already a
-  `src/lib/haptics.ts` + a bundled `theme/globals.css` snapshot). Full self-contained brief:
-  **`docs/MOTION-HAPTICS-ADOPTION-PROMPT.md`** — start there.
+  `src/lib/haptics.ts` + a bundled `theme/globals.css` snapshot). All three are gitignored/untracked.
+  Full self-contained brief: **`docs/MOTION-HAPTICS-ADOPTION-PROMPT.md`** — start there.
 - Real-Postgres load pass for the Up & Down concurrent quick-bet (`test:updown-load` PG mode) if a
   scratch DB is available.
 - `/profile/activity` → the shared DateTimeRangeFilter (needs the between-window DAL method).
