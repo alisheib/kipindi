@@ -44,6 +44,14 @@ anywhere (local or git) — one canonical home a future session will find, or de
     prefers-reduced-motion / hidden doc / unsupported (iOS Safari → none; do NOT fake it).
   - `README.md` — RULE: **physical events only — contact, passing true, coming to rest;
     NEVER encouragement, reward, or to pull attention.**
+- **`Needle Fidget Project/packages/needle/`** — a THIRD drop (added 2026-07-27, gitignored).
+  Contains `needle-physics.js`, `needle-haptics.js`, `theme/motion.css`, `theme/globals.css`,
+  `NEEDLE-SPEC.md`, `CLAUDE-CODE-BRIEF.md`, `Needle Playground.html`, `README.md`. ⚠️ It
+  OVERLAPS both earlier kits (its own `motion.css`/`globals.css` + `needle-haptics.js`) and is
+  likely the newer CONSOLIDATED "Needle" package — read `NEEDLE-SPEC.md` + `CLAUDE-CODE-BRIEF.md`
+  FIRST and treat it as the probable source of truth if it supersedes the split Motion/Haptics
+  drops. Reconcile all THREE into ONE canonical home; do not adopt duplicates. The `-physics`
+  layer (needle motion physics) is new vs the earlier drops — likely feeds `conviction-dial`.
 
 ## What already exists in the app (the redundancy to resolve)
 - **`src/lib/haptics.ts`** ALREADY EXISTS — a different haptics module: `HapticToken` type,
