@@ -154,8 +154,10 @@ export function AvatarMenu({
                 </Link>
               </div>
             )}
-            {/* Language toggle — visible only on mobile (desktop has the top-bar toggle) */}
-            <div className="border-t border-border px-3.5 py-2.5 sm:hidden">
+            {/* Language toggle — visible where the top-bar toggle is NOT: on mobile (< sm)
+                and at the lg–xl band (1024–1279), where the top bar hides it to keep the
+                avatar on-screen. Exactly one language control is reachable at every width. */}
+            <div className="border-t border-border px-3.5 py-2.5 sm:hidden lg:block xl:hidden">
               <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle mb-1.5">{t.common.language}</p>
               <MobileLangPicker locale={locale} />
             </div>

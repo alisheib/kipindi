@@ -163,7 +163,7 @@ export default async function UpDownHistoryPage() {
                       <div className="mt-0.5 text-[10px] text-text-faint">{usd(r.openPrice, r.decimals)} → {usd(r.closePrice, r.decimals)}</div>
                     </div>
                     <div className="text-right">
-                      <div className="font-mono text-[9px] uppercase tracking-[0.12em] text-text-faint">{t.market.udNetReturn}</div>
+                      <div className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-faint">{t.market.udNetReturn}</div>
                       <div className="font-mono text-[15px] font-bold tabular-nums"
                            style={{ color: g.anyOpen ? "var(--text-subtle)" : net > 0 ? "var(--yes-300)" : net < 0 ? "var(--no-300)" : "var(--text)" }}>
                         {g.anyOpen ? "—" : net === 0 ? formatTzs(0) : formatTzsSigned(net)}

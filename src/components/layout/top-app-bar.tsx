@@ -131,7 +131,15 @@ export function TopAppBar({ user, proposalsState }: { user: TopAppBarUser; propo
         <div className="flex-1" />
 
         <div className="shrink-0 flex items-center gap-2">
-          <LanguageToggle />
+          {/* Language toggle. Hidden at the lg–xl band (1024–1279): there the desktop nav
+              (6 core links + More) turns on and the full cluster + toggle overflowed 1024,
+              pushing the avatar off-screen. Same compromise the balance pill makes at this
+              exact band — and language stays one tap away in the avatar menu, which surfaces
+              its own picker for precisely this band (avatar-menu: sm:hidden lg:block xl:hidden).
+              One language control is visible at every width, never two. */}
+          <div className="lg:hidden xl:block">
+            <LanguageToggle />
+          </div>
 
           {user.isAuthed && user.balance !== null && user.balance !== undefined && (
             // Balance glance-pill visibility follows available width:
