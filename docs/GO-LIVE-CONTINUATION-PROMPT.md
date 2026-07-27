@@ -18,8 +18,9 @@
 - **Still pre-launch:** `TEST_FUNDING=true` on Railway → TEST mode (test float, no real money;
   POCA §16 solo-resolution + money-minting hard-locks are *relaxed* only because of this).
 - **Two things remain:** (1) one small **real deposit test** to prove the full pipe, then flip
-  deposits on; (2) **payout/withdrawal credentials + float PIN** from Selcom (what we have is
-  deposit-only). Then the formal **go-live switch** (§6).
+  deposits on; (2) **payouts** — Selcom disbursement (Wallet Cashin) API **GRANTED 2026-07-27**;
+  set the float PIN/creds + ship the activation phases (see
+  **`docs/SELCOM-DISBURSEMENT-ACTIVATION.md`**). Then the formal **go-live switch** (§6).
 
 ---
 
@@ -73,12 +74,13 @@ Secrets live in **Railway env only** (never the repo). Names + status:
 | `PAYMENT_API_SECRET` | Selcom API secret (Collections) | ✅ set + **validated** |
 | `SELCOM_WEBHOOK_SECRET` | inbound webhook HMAC secret | ✅ set (pre-existing) |
 | `PAYMENT_WEBHOOK_URL` | per-order callback URL (base64'd on the wire) | ⬜ optional — set to `https://www.50pick.tz/api/webhooks/payments` (or the Railway URL until DNS cuts over) |
-| `PAYMENT_VENDOR_PIN` | float-account **PIN** for **payouts** (Wallet Cashin) | ❌ **NOT set — needed for withdrawals** |
+| `PAYMENT_VENDOR_PIN` | float-account **PIN** for **payouts** (Wallet Cashin) | ⬜ **API granted 2026-07-27 — set this** (or `PAYMENT_DISBURSE_*` if a separate account) |
+| `PAYMENT_DISBURSE_*` | *(only if Selcom issued a separate disbursement account)* `_VENDOR_ID`/`_PIN`/`_URL`/`_API_KEY`/`_API_SECRET`, each falling back to the deposit `PAYMENT_*` var | ⬜ optional |
 | `PAYMENT_AGGREGATOR` | env fallback for the provider | ⬜ unset (→ mock) — leave unset; flip via admin |
 
-- ⚠️ **What we have is COLLECTIONS (deposit) only.** The creds are labelled "Customer to Business";
-  there is **no float PIN**, so **withdrawals cannot run yet**. Email `support@selcom.net` (or the
-  Selcom contact) for **disbursement/payout access + the float PIN**, then set `PAYMENT_VENDOR_PIN`.
+- ✅ **Disbursement (Wallet Cashin) access GRANTED 2026-07-27.** Set the float PIN/creds and ship the
+  three activation phases — full runbook: **`docs/SELCOM-DISBURSEMENT-ACTIVATION.md`**. (Earlier note:
+  the original creds were COLLECTIONS/"Customer to Business" only, with no float PIN — now resolved.)
 - ⚠️ **Prod creds are IP-allow-listed** to the Railway static egress
   (`162.220.232.250 / 152.55.176.240 / 152.55.177.181`). Selcom rejects calls from any other IP →
   **there is no local test**; validate from the deployed app (the Test button, or the real flow).
@@ -108,8 +110,10 @@ Secrets live in **Railway env only** (never the repo). Names + status:
    → approve the USSD PIN prompt → confirm the wallet credits **exactly once** and reconciliation
    drift = TZS 0. Then keep Selcom on (deposits live) or revert to mock. NB the test balance is
    wiped at the go-live DB rebaseline; the money is in the Selcom float (recoverable).
-2. **Payout creds + PIN** from Selcom → set `PAYMENT_VENDOR_PIN` (+ any disbursement-specific
-   vendor) → withdrawals work. Re-run "Test Selcom" and a small real withdrawal.
+2. **Payouts (disbursement API granted 2026-07-27)** → set `PAYMENT_VENDOR_PIN` (or `PAYMENT_DISBURSE_*`
+   if a separate account) + ship the 3 activation phases in **`docs/SELCOM-DISBURSEMENT-ACTIVATION.md`**
+   (separate-cred safety + `CASHIN` fallback · AML approve→dispatch · name-lookup/float-balance/drop
+   `BANK_TRANSFER`). Re-run "Test Selcom" and a small real withdrawal.
 3. **Then the go-live switch (§6).**
 
 ## 6. The go-live switch (docs/LAUNCH-GO-NO-GO.md §5) — do all, in order

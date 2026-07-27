@@ -5,7 +5,10 @@
 > Full procedures/architecture live in [`GO-LIVE-RUNBOOK.md`](GO-LIVE-RUNBOOK.md); this file
 > is just "where are we RIGHT NOW."
 >
-> **Last updated: 2026-07-18 ~03:55 — 🚀 DOMAIN LIVE. https://50pick.tz + https://www.50pick.tz
+> **Last updated: 2026-07-27 — 💸 SELCOM DISBURSEMENT (payout) API GRANTED. Withdrawals not live
+> yet: set the float PIN/creds + ship the activation phases in `docs/SELCOM-DISBURSEMENT-ACTIVATION.md`.**
+>
+> **2026-07-18 ~03:55 — 🚀 DOMAIN LIVE. https://50pick.tz + https://www.50pick.tz
 > serve the app with valid Let's Encrypt certs; global DNS propagated (all major resolvers →
 > Railway). SELCOM built + LIVE (OFF/mock default; deposit creds GENUINELY validated via the
 > corrected `/checkout/order-status` probe — @213165c). R2 KYC LIVE.
@@ -21,7 +24,7 @@
 | Railway verify + cert | 🟢 **VALID** | both Verified: yes, cert VALID (Let's Encrypt CN=50pick.tz, exp 2026-10-15) |
 | R2 (KYC storage) | 🟢 **LIVE** | bucket `50pick-kyc`; 5 vars set in Railway; prod-env round-trip PASS |
 | Selcom payments (deposits) | 🟢 **LIVE code, OFF** | merged `main @213165c`; provider=mock default; deposit creds set + **GENUINELY validated** (corrected probe hits `/checkout/order-status` → HTTP 200 + envelope `404 order-not-found` = signature/creds/IP reached the real handler; a bad-auth request returns 401/403). Next: 1 real deposit test → flip provider→selcom |
-| Selcom payouts (withdrawals) | 🔴 Blocked | needs **disbursement creds + float PIN** from Selcom (what we have is deposit-only); set `PAYMENT_VENDOR_PIN` |
+| Selcom payouts (withdrawals) | 🟡 **API granted (2026-07-27), activation pending** | Selcom disbursement (Wallet Cashin) access GRANTED. NOT live yet: set `PAYMENT_VENDOR_PIN` (or `PAYMENT_DISBURSE_*` if a separate account), flip provider→selcom, ship 3 code phases (`selcomDisburseEnv` + `CASHIN` fallback · AML approve→dispatch · name-lookup/float-balance/drop `BANK_TRANSFER`), then one real ~1,000 TZS payout. Runbook: `docs/SELCOM-DISBURSEMENT-ACTIVATION.md` |
 | The go-live switch | ⚪ Not started | after the deposit test + certs: unset TEST_FUNDING, rebaseline, licence ref — **no settlement flag to flip** (settlement is per-market timer-driven; verify on `/admin/system`) — see `docs/GO-LIVE-CONTINUATION-PROMPT.md` §6 |
 
 ## ✅ DOMAIN CUTOVER — DONE (how it went, for the record)
@@ -79,8 +82,9 @@
   request 404s too) and never actually exercised the signature. Fixed in @213165c.
 - **Full handoff (money model, creds/PINs, integration, pending, go-live switch, copy-paste
   prompt): `docs/GO-LIVE-CONTINUATION-PROMPT.md`.** Signing digest: `docs/SELCOM-API-DIGEST.md`.
-- **Pending:** (1) one small real deposit test → flip deposits on; (2) **disbursement creds +
-  float PIN** from Selcom → set `PAYMENT_VENDOR_PIN` → withdrawals work.
+- **Pending:** (1) one small real deposit test → flip deposits on; (2) **payouts** — Selcom
+  disbursement API GRANTED 2026-07-27; set `PAYMENT_VENDOR_PIN` (or `PAYMENT_DISBURSE_*` if a
+  separate account) + ship the activation phases in `docs/SELCOM-DISBURSEMENT-ACTIVATION.md`.
 - ⚠️ Prod creds are **IP-allow-listed** to the Railway egress — validate from the deployed app,
   never locally.
 
@@ -90,7 +94,8 @@
   `NEXT_PUBLIC_APP_URL=https://www.50pick.tz`.
 - **Selcom (deposits) — set + validated:** `PAYMENT_API_URL` (prod `apigw/v1`), `PAYMENT_VENDOR_ID`,
   `PAYMENT_API_KEY`, `PAYMENT_API_SECRET` (secret values — Railway only). `PAYMENT_AGGREGATOR`
-  intentionally **unset** (→ mock; flip via admin). **Missing for payouts:** `PAYMENT_VENDOR_PIN`.
+  intentionally **unset** (→ mock; flip via admin). **For payouts (API granted 2026-07-27):** set
+  `PAYMENT_VENDOR_PIN` (or the `PAYMENT_DISBURSE_*` set if Selcom issued a separate disbursement account).
 - **To change at the go-live switch:** unset `TEST_FUNDING` (→ LIVE money-mode; this no longer
   changes any resolution lock — single-admin resolution is the default, two-admin authorization is an
   optional resolver-queue toggle, docs/COMPLIANCE-DECISIONS.md 2026-07-24), flip `/admin/payments` to

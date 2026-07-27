@@ -84,7 +84,8 @@ Read `.claude/skills/50pick-standards` + `.claude/skills/50pick-audit` first, th
   scratch DB is available.
 - `/profile/activity` → the shared DateTimeRangeFilter (needs the between-window DAL method).
 - Consider a hard-404 status for invalid ids if SEO/scraper signals matter (architectural).
-- Withdrawals go-live (separate Selcom creds + PIN) — see `docs/GO-LIVE-CONTINUATION-PROMPT.md`.
+- Withdrawals go-live — Selcom disbursement API **GRANTED 2026-07-27**; set the float PIN/creds +
+  ship the activation phases in `docs/SELCOM-DISBURSEMENT-ACTIVATION.md`.
 
 ## Authoritative docs
 `docs/UPDOWN-PROGRESS.md` (status + session log) · `docs/UPDOWN-ARCHITECTURE.md` ·
