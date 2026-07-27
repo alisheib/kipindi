@@ -11,7 +11,7 @@
  * 360px: VOLUME · PLAYERS · AMOUNT · TIMER.
  *
  * ── HONESTY RULES BAKED INTO THIS COMPONENT ─────────────────────────────────
- *  · `livePrice = null` renders an em-dash and "awaiting read". NEVER a zero, never a
+ *  · `livePrice = null` renders an em-dash and "awaiting price". NEVER a zero, never a
  *    stale value dressed as current. (Platform rule A-5 — real data or nothing.)
  *  · The `× 1.4` on the buttons is a DISPLAY ESTIMATE, not fixed odds. It is marked
  *    "est." on the button and carries a qualifier line beneath. Pari-mutuel payouts
@@ -42,7 +42,7 @@ export type UpDownCardProps = {
   durationMinutes: number;
   /** Quote precision — the price is never shown to more digits than the source gives. */
   decimals: number;
-  /** null ⇒ "—" + awaiting read. NEVER render 0 for an unknown price. */
+  /** null ⇒ "—" + awaiting price. NEVER render 0 for an unknown price. */
   livePrice: number | null;
   openPrice: number | null;
   movePct: number | null;
