@@ -36,7 +36,7 @@ type Rect = { x: number; y: number; w: number; h: number };
 type Counts = { impact: number; cross: number; park: number; sleep: number; trued: number; detent: number; quarters: number; caught: number; interaction: number; record: number };
 type Body = InstanceType<typeof NeedleBody>;
 
-function diameterFor(vp: VP) { return Math.round(Math.max(56, Math.min(88, Math.min(vp.w, vp.h) * 0.155))); }
+function diameterFor(vp: VP) { return Math.round(Math.max(56, Math.min(64, Math.min(vp.w, vp.h) * 0.155))); }
 
 function make(vp: VP, obstacles?: Rect[] | (() => Rect[])) {
   const counts: Counts = { impact: 0, cross: 0, park: 0, sleep: 0, trued: 0, detent: 0, quarters: 0, caught: 0, interaction: 0, record: 0 };
@@ -449,44 +449,37 @@ console.log("Needle physics torture gauntlet\n");
   else fail("soak corrupted state");
 }
 
-// ═══ 16. App-chrome insets + sides-only parking: it NEVER rests under the top bar/bottom nav.
-//    Mirrors the host (needle.tsx): a phone with a 56px top bar + 96px bottom nav fed as
-//    insets, and nearestEdge overridden to left/right only. From any throw/spin it must park
-//    on a side rail with the WHOLE disc inside the content band (clear of both bars).
+// ═══ 16. Floats free over the whole viewport + rests on a side rail. The fix for
+//    "sticks to / disappears behind the nav bars": the host feeds NO app-bar insets — the
+//    object sits ABOVE the bars (z-45, needle.css) and passes over them — and overrides
+//    nearestEdge to the left/right rails only. From any throw/spin it must reach ALL FOUR
+//    corners freely (nothing blocks travel) and come to rest on a side rail, as the logo.
 {
-  const vp = { w: 390, h: 844, insets: { top: 56, right: 0, bottom: 96, left: 0 } };
-  let bad = 0, topBottom = 0, underChrome = 0;
-  for (let i = 0; i < 2500; i++) {
+  const vp = { w: 390, h: 844 };   // phone; only device safe-area insets (0 here), no app bars
+  let bad = 0, topBottom = 0;
+  const corner = { tl: false, tr: false, bl: false, br: false };
+  for (let i = 0; i < 3000; i++) {
     const { b } = make(vp);
     b.nearestEdge = () => { const L = b.limits(); return (b.cx - L.minX) <= ((L.maxX + b.size) - b.cx) ? "left" : "right"; };
     b.snapPark(pick(["left", "right"])); b.unpark();
     b.place(rr(0, vp.w - b.size), rr(0, vp.h - b.size));
     launch(b, rr(-9, 9), rr(-9, 9), rr(-2.8, 2.8));
-    settle(b, "chrome");
-    if (!b.parked) { bad++; continue; }
-    if (b.edge === "top" || b.edge === "bottom") topBottom++;
-    // whole disc (cy ± radius) must sit inside [insetTop, h - insetBottom]
-    if (b.cy - b.radius < vp.insets.top - 1 || b.cy + b.radius > vp.h - vp.insets.bottom + 1) underChrome++;
-  }
-  if (bad) fail(`chrome: ${bad} did not park`);
-  if (topBottom) fail(`chrome: ${topBottom} parked on top/bottom (must be sides only)`);
-  else pass("app-chrome: always parks on a side rail, never top/bottom");
-  if (underChrome) fail(`chrome: ${underChrome} rested with the disc under the top bar / bottom nav`);
-  else pass("app-chrome: the whole disc always rests inside the content band (never under a bar)");
-
-  // Free motion must also never cross into the chrome bands (it bounces off them like walls).
-  let breach = 0;
-  for (let i = 0; i < 400; i++) {
-    const { b } = make(vp); b.autoPark = false;
-    b.place(rr(0, vp.w - b.size), rr(vp.insets.top, vp.h - vp.insets.bottom - b.size));
-    launch(b, rr(-9, 9), rr(-9, 9), rr(-2.8, 2.8));
     for (let f = 0; f < 900; f++) {
-      b.advance(DT); if (!frameOk(b, "chrome-free")) { breach++; break; }
-      if (!b.held && !b.parking && !b.parked && (b.y < vp.insets.top - 1 || b.y + b.size > vp.h - vp.insets.bottom + 1)) { breach++; break; }
+      b.advance(DT); if (!frameOk(b, "free")) { bad++; break; }
+      const topQ = b.cy < vp.h * 0.22, botQ = b.cy > vp.h * 0.78, leftH = b.cx < vp.w * 0.5;
+      if (topQ && leftH) corner.tl = true; if (topQ && !leftH) corner.tr = true;
+      if (botQ && leftH) corner.bl = true; if (botQ && !leftH) corner.br = true;
       if (!b.awake) break;
     }
+    if (!b.parked) { bad++; continue; }
+    if (b.edge === "top" || b.edge === "bottom") topBottom++;
+    if (!restIsLogo(b)) bad++;
   }
-  if (breach === 0) pass("app-chrome: free motion never crosses into the top-bar / bottom-nav bands"); else fail(`${breach} runs crossed into a chrome band while free`);
+  if (bad) fail(`free/park: ${bad} failures`);
+  if (topBottom) fail(`free/park: ${topBottom} rested on top/bottom (must rest on a side rail)`);
+  else pass("floats free, rests on a side rail, as the logo");
+  if (corner.tl && corner.tr && corner.bl && corner.br) pass("reaches all four corners freely (nothing blocks travel)");
+  else fail(`did not reach all corners: ${JSON.stringify(corner)}`);
 }
 
 console.log(`\n${failures === 0 ? "ALL PASS" : failures + " FAILED"}`);

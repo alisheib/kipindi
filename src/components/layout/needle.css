@@ -18,13 +18,14 @@
 #needle-root #safe { position: fixed; top: 0; left: 0; width: 0; height: 0; pointer-events: none; visibility: hidden;
         padding-top: env(safe-area-inset-top, 0px); padding-right: env(safe-area-inset-right, 0px);
         padding-bottom: env(safe-area-inset-bottom, 0px); padding-left: env(safe-area-inset-left, 0px); }
-/* z-index: DEVIATION from the playground's 900. The brief assumed app modals live at
-   1000; 50pick's real stack is lower — top bar 30, dropdowns 50, menus 60, card popover
-   90, MODALS 100, selects 120–130, banners 200, toasts 1800. So the object sits at 25:
-   above page content, but below the top bar and EVERY overlay/decision, so a fidget can
-   never obscure navigation, a menu, or a live money-commit dialog (its scrim covers it).
-   Recorded in 09-needle CHANGELOG. */
-#needle-root #needle { position: fixed; top: 0; left: 0; width: var(--nsize, 80px); height: var(--nsize, 80px); z-index: 25; pointer-events: none; }
+/* z-index: the object must FLOAT ABOVE the app's nav chrome so it can never be hidden
+   behind or trapped under a bar — the bug that made it "stick" to the bottom nav on phones
+   and the top bar on desktop, and vanish on some pages. 50pick's real stack: top bar 30,
+   bottom nav 40, dropdowns 50, menus 60, popovers 90, MODALS 100, selects 120–130, banners
+   200, toasts 1800. 45 sits ABOVE both nav bars (so it passes over them, front-most) but
+   BELOW every dropdown / menu / popover / decision and modal (a fidget must never cover
+   one). DEVIATION from the playground's 900 (which assumed modals at 1000). 09-needle CHANGELOG. */
+#needle-root #needle { position: fixed; top: 0; left: 0; width: var(--nsize, 80px); height: var(--nsize, 80px); z-index: 45; pointer-events: none; }
 #needle-root #tilt   { position: absolute; inset: 0; transform-style: preserve-3d; }
 #needle-root #hit    { position: absolute; inset: 0; border-radius: 50%; pointer-events: auto; cursor: grab; touch-action: none; display: block; }
 /* The rim spins and the hub carries. Different jobs deserve different cursors. */

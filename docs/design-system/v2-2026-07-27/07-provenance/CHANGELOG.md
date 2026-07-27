@@ -1,16 +1,23 @@
 # Changelog (reconstructed)
 
-## 2026-07-27 (repo · fix) — The Needle can never rest under the app chrome
-Bug: at z-25 (below the top bar + bottom nav) the object could park at the top/bottom edge
-and half-tuck UNDER a bar, where it was hidden AND unclickable (the bar ate the pointer).
-Fix (no engine edit): (1) the fixed chrome is fed to the engine's `insets` — its documented
-purpose ("never park under a fixed app bar") — via `data-needle-inset-top` on the top bar and
-`data-needle-inset-bottom` on the bottom nav, measured live; the object now bounces off them
-like walls and treats the content band as its whole world. (2) `nearestEdge` is overridden on
-the instance to the LEFT/RIGHT rails only (the design's own "sides win" preference), so it
-always rests where it is fully visible and clickable. Verified: `test:needle` §16 (parks side-
-only, whole disc inside the content band, free motion never enters a chrome band) and
-`needle-visual.mjs` (settles on a side rail clear of a real top bar + bottom nav) — ALL PASS.
+## 2026-07-27 (repo · fix) — The Needle floats OVER the nav bars, never trapped behind one
+Bug (reported by users): it stuck to the bottom nav on phones + the top bar on desktop, and
+vanished on some pages — all one root cause: it sat at z-25, BELOW the nav chrome, so a bar
+covered it (hidden AND unclickable). An interim attempt walled it OUT of the bars via insets,
+but the object is supposed to pass OVER them, not avoid them. Final fix: **z-index 45** —
+ABOVE the top bar (z-30) and bottom nav (z-40) so it floats over them and passes through
+freely, but BELOW every dropdown (50) / menu (60) / popover (90) / modal (100), so it never
+covers a decision. No app-bar insets (it is not walled out — it floats over); it still respects
+device safe-area insets, and `nearestEdge` is overridden on the instance to rest on the
+LEFT/RIGHT rails only (off the reading column / nav centre). Show/hide is a persisted toggle in
+the avatar menu + Settings → Sound & feedback (reachable at every width). Verified: `test:needle`
+§16 (floats free, reaches ALL FOUR corners, rests on a side rail as the logo) + `needle-visual.mjs`
+(z=45 above both bars; rests on a rail) — ALL PASS.
+
+Also: **diameter cap 88 → 64.** The strokes hold a constant ~2.3 CSS px, so on the big 88px
+desktop disc they read thin and washed while the crisp, premium mobile look came from the
+smaller disc making the gold needle + rim proportionally bolder. Keeping it FAB-scale (56–64)
+at every width makes desktop as refined as mobile (screenshots re-verified at 360/768/1280/1920).
 
 ## 2026-07-27 (repo) — The Needle wired into the app, and torture-verified
 Integration of `09-needle/` into the live 50pick app (physics/spec/renderer unchanged;

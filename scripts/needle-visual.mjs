@@ -91,19 +91,14 @@ const $ = (id) => root.querySelector("#" + id);
 const el = $("needle"), disc = $("disc"), tilt = $("tilt"), wake = $("wake");
 const clampN = (v,lo,hi)=>v<lo?lo:v>hi?hi:v;
 const vp = () => { const v=window.visualViewport; return { w: Math.round(v?v.width:innerWidth), h: Math.round(v?v.height:innerHeight) }; };
-const diameter = () => Math.round(clampN(Math.min(vp().w,vp().h)*0.155,56,88));
+const diameter = () => Math.round(clampN(Math.min(vp().w,vp().h)*0.155,56,64));
 const haloInset = () => { const v=vp(); const t=clampN((Math.min(v.w,v.h)-360)/(900-360),0,1); return -(14+t*20).toFixed(1); };
-// Chrome-aware insets (mirrors src/components/layout/needle.tsx).
-function measureInsets(){ let top=0, bottom=0; const h=vp().h;
-  document.querySelectorAll("[data-needle-inset-top]").forEach((n)=>{ const r=n.getBoundingClientRect(); if(r.height>0&&r.top<h*0.5) top=Math.max(top,r.bottom); });
-  document.querySelectorAll("[data-needle-inset-bottom]").forEach((n)=>{ const r=n.getBoundingClientRect(); if(r.height>0&&r.bottom>h*0.5) bottom=Math.max(bottom,h-r.top); });
-  return {top,right:0,bottom,left:0}; }
-let insetCache = measureInsets();
-const body = new NeedleBody({ size: diameter(), bounds: () => { const v=vp(); return { w:v.w, h:v.h, insets:insetCache }; } });
-// Sides-only parking (mirrors the host override).
+// No app-bar insets — the object floats ABOVE the bars (z-45) and passes over them.
+const body = new NeedleBody({ size: diameter(), bounds: () => { const v=vp(); return { w:v.w, h:v.h, insets:{top:0,right:0,bottom:0,left:0} }; } });
+// Sides-only resting (mirrors the host override).
 body.nearestEdge = () => { const L=body.limits(); return (body.cx-L.minX)<=((L.maxX+body.size)-body.cx)?"left":"right"; };
 function render(){ el.style.transform = "translate3d("+body.x.toFixed(2)+"px,"+body.y.toFixed(2)+"px,0)"; disc.style.transform = "rotate("+body.a.toFixed(2)+"deg)"; tilt.style.transform="perspective(420px) scale(1)"; const w = body.parked && !body.held ? body.edge : ""; wake.classList.toggle("on", !!w); }
-function applyViewport(){ insetCache = measureInsets(); const d=diameter(); if(d!==body.size) body.setSize(d); el.style.setProperty("--nsize", d+"px"); el.style.setProperty("--inlay",(2.6*(88/d)).toFixed(2)); el.style.setProperty("--halo", haloInset()+"%"); el.style.setProperty("--needlew",(4.4*Math.max(1,74/d)).toFixed(2)); body.reclamp(); render(); }
+function applyViewport(){ const d=diameter(); if(d!==body.size) body.setSize(d); el.style.setProperty("--nsize", d+"px"); el.style.setProperty("--inlay",(2.6*(88/d)).toFixed(2)); el.style.setProperty("--halo", haloInset()+"%"); el.style.setProperty("--needlew",(4.4*Math.max(1,74/d)).toFixed(2)); body.reclamp(); render(); }
 // Show the whole disc, centred, for the render check.
 body.unpark(); body.place(vp().w/2 - body.radius, vp().h/2 - body.radius);
 applyViewport(); render();
@@ -137,12 +132,12 @@ console.log(`Needle visual gauntlet  (${BASE})\n`);
 
 const browser = await chromium.launch();
 const WIDTHS = [
-  { tag: "360", w: 360, h: 740, expect: Math.round(Math.min(360,740)*0.155) },
-  { tag: "768", w: 768, h: 1024, expect: Math.round(Math.min(768,1024)*0.155) },
-  { tag: "1280", w: 1280, h: 800, expect: Math.round(clamp88(Math.min(1280,800)*0.155)) },
-  { tag: "1920", w: 1920, h: 1080, expect: 88 },
+  { tag: "360", w: 360, h: 740 },
+  { tag: "768", w: 768, h: 1024 },
+  { tag: "1280", w: 1280, h: 800 },
+  { tag: "1920", w: 1920, h: 1080 },
 ];
-function clamp88(v){ return Math.max(56, Math.min(88, v)); }
+function clampD(v){ return Math.max(56, Math.min(64, v)); }
 
 for (const bp of WIDTHS) {
   const page = await browser.newPage({ viewport: { width: bp.w, height: bp.h } });
@@ -168,7 +163,7 @@ for (const bp of WIDTHS) {
       hitTarget: (() => { const h = root.querySelector("#hit"); const r = h.getBoundingClientRect(); return Math.min(r.width, r.height); })(),
     };
   });
-  const expected = clamp88(Math.round(Math.min(bp.w, bp.h) * 0.155)) + "px";
+  const expected = clampD(Math.round(Math.min(bp.w, bp.h) * 0.155)) + "px";
   if (!info.ready) fail(`${bp.tag}: harness did not become ready`);
   if (info.svgCount === 1) pass(`${bp.tag}: disc SVG rendered`); else fail(`${bp.tag}: expected 1 svg, got ${info.svgCount}`);
   if (info.nsize === expected) pass(`${bp.tag}: responsive diameter ${info.nsize} (correct)`); else fail(`${bp.tag}: diameter ${info.nsize}, expected ${expected}`);
@@ -188,20 +183,19 @@ for (const bp of WIDTHS) {
     await page.evaluate(() => window.__render());
     await page.screenshot({ path: `${SHOTS}/1280-settled.png` });
 
-    // Chrome exclusion: after settling it must rest on a side rail, with the whole disc
-    // clear of the (fake, but marked-identically) top bar and bottom nav — the fix for
-    // "the fidget got stuck under the top bar and couldn't be clicked".
+    // z-order: the object must float ABOVE the top bar + bottom nav (so it passes over
+    // them and is never hidden/trapped behind one), and come to rest on a side rail.
     const chrome = await page.evaluate(() => {
-      const nd = document.querySelector("#needle-root #needle").getBoundingClientRect();
-      const tb = document.querySelector("[data-needle-inset-top]").getBoundingClientRect();
-      const bn = document.querySelector("[data-needle-inset-bottom]").getBoundingClientRect();
-      return { edge: window.__needle.edge, ndTop: nd.top, ndBottom: nd.bottom, topBar: tb.bottom, botBar: bn.top };
+      const ndZ = getComputedStyle(document.querySelector("#needle-root #needle")).zIndex;
+      const tbZ = getComputedStyle(document.querySelector("[data-needle-inset-top]")).zIndex;
+      const bnZ = getComputedStyle(document.querySelector("[data-needle-inset-bottom]")).zIndex;
+      return { ndZ: Number(ndZ), tbZ: Number(tbZ), bnZ: Number(bnZ), edge: window.__needle.edge };
     });
-    const onSide = chrome.edge === "left" || chrome.edge === "right";
-    if (onSide && chrome.ndTop >= chrome.topBar - 1 && chrome.ndBottom <= chrome.botBar + 1)
-      pass(`chrome: rests on the ${chrome.edge} rail, clear of both bars (disc ${chrome.ndTop.toFixed(0)}–${chrome.ndBottom.toFixed(0)} inside ${chrome.topBar.toFixed(0)}–${chrome.botBar.toFixed(0)})`);
+    if (chrome.ndZ > chrome.tbZ && chrome.ndZ > chrome.bnZ)
+      pass(`z-order: needle z=${chrome.ndZ} floats ABOVE top bar (z=${chrome.tbZ}) + bottom nav (z=${chrome.bnZ}) — passes over, never behind`);
     else
-      fail(`chrome: NOT clear — edge=${chrome.edge} disc ${chrome.ndTop.toFixed(0)}–${chrome.ndBottom.toFixed(0)} vs bars ${chrome.topBar.toFixed(0)}/${chrome.botBar.toFixed(0)}`);
+      fail(`z-order: needle z=${chrome.ndZ} is NOT above the bars (${chrome.tbZ}/${chrome.bnZ})`);
+    if (chrome.edge === "left" || chrome.edge === "right") pass(`rests on the ${chrome.edge} rail`); else fail(`rested on ${chrome.edge} (should be a side rail)`);
 
     const suppressed = await page.evaluate(() => { const r = document.getElementById("needle-root"); r.classList.add("needle-suppressed"); const disp = getComputedStyle(r).display; const rect = r.querySelector("#needle").getBoundingClientRect(); return { disp, painted: rect.width > 0 && rect.height > 0 }; });
     if (suppressed.disp === "none" && !suppressed.painted) pass("suppress gate: .needle-suppressed hides the object (root display:none, nothing painted)"); else fail(`suppress gate: root display=${suppressed.disp}, painted=${suppressed.painted}`);

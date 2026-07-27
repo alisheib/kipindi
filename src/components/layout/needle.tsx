@@ -207,8 +207,10 @@ function mountNeedle(
     return keepOuts;
   }
 
-  /** CSS env() safe-area insets, read from the hidden probe. */
-  function envInsets() {
+  /* CSS env() safe-area insets (notch / home indicator). The object still respects the
+     DEVICE's safe areas, but NOT the app bars — it floats ABOVE them (z-45) and passes over
+     them freely, so they must never wall it in (that is what made it stick to a bar). */
+  function insets() {
     const s = getComputedStyle(safe);
     return {
       top: parseFloat(s.paddingTop) || 0,
@@ -218,39 +220,18 @@ function mountNeedle(
     };
   }
 
-  /* Travel-box insets = env safe-area PLUS the fixed app chrome the object must never rest
-     under (the top bar, the bottom nav). The object sits at z-25, BELOW that chrome, so a
-     tuck under it would be both hidden AND unclickable (the bar eats the pointer). Feeding
-     the chrome as insets is exactly what the engine's inset feature is for ("never park
-     under a fixed app bar") — the object then treats the content band as its whole world
-     and bounces off the bars like walls. Measured live from any [data-needle-inset-top] /
-     [data-needle-inset-bottom] element, cached, and refreshed on every applyViewport. */
-  let insetCache = { top: 0, right: 0, bottom: 0, left: 0 };
-  function measureInsets() {
-    const env = envInsets();
-    let top = env.top, bottom = env.bottom;
-    const vh = viewport().h;
-    for (const n of document.querySelectorAll("[data-needle-inset-top]")) {
-      const r = (n as HTMLElement).getBoundingClientRect();
-      if (r.height > 0 && r.top < vh * 0.5) top = Math.max(top, r.bottom);
-    }
-    for (const n of document.querySelectorAll("[data-needle-inset-bottom]")) {
-      const r = (n as HTMLElement).getBoundingClientRect();
-      if (r.height > 0 && r.bottom > vh * 0.5) bottom = Math.max(bottom, vh - r.top);
-    }
-    insetCache = { top, right: env.right, bottom, left: env.left };
-    return insetCache;
-  }
-  measureInsets();
-
   function viewport() {
     const vv = window.visualViewport;
     return { w: Math.round(vv ? vv.width : innerWidth), h: Math.round(vv ? vv.height : innerHeight) };
   }
 
   function diameter() {
+    // Cap at 64, not 88. The strokes hold a constant ~2.3 CSS px, so on a big (88px)
+    // desktop disc they read thin and washed — the crisp, premium look on mobile comes
+    // from the SMALLER disc making the gold needle + rim proportionally bolder. Keeping it
+    // FAB-scale (56–64) everywhere makes desktop as refined as mobile.
     const v = viewport();
-    return Math.round(clampN(Math.min(v.w, v.h) * 0.155, 56, 88));
+    return Math.round(clampN(Math.min(v.w, v.h) * 0.155, 56, 64));
   }
 
   function haloInset() {
@@ -261,7 +242,7 @@ function mountNeedle(
 
   const opts: NeedleOptions = {
     size: diameter(),
-    bounds: () => { const v = viewport(); return { w: v.w, h: v.h, insets: insetCache }; },
+    bounds: () => { const v = viewport(); return { w: v.w, h: v.h, insets: insets() }; },
     obstacles: readKeepOuts,
     onImpact: (i) => {
       hapticImpact(i.speed);
@@ -295,13 +276,13 @@ function mountNeedle(
   body.calm = mq.matches ? 0.34 : 1;
   on(mq, "change", () => { body.calm = mq.matches ? 0.34 : 1; });
 
-  /* Park on the LEFT/RIGHT rails only. With a top bar AND a bottom nav, the horizontal
-     edges are the only safe resting places — a top/bottom tuck slides half the disc under
-     the fixed chrome, where it is hidden and unclickable. This is the design's own stated
-     preference ("sides win — a disc on the top or bottom edge eats the reading column").
-     Overriding this instance method is host customisation, NOT an edit to the vendored
-     engine; the engine's internal auto-park calls this.nearestEdge(), so it is respected
-     everywhere. */
+  /* Rest on the LEFT/RIGHT rails only. The object floats ABOVE the nav bars (z-45) and
+     passes over them freely during a throw, but it should COME TO REST on a side rail —
+     off the reading column and off the top/bottom bars where the tabs and buttons live, so
+     it never settles on top of a nav control. This is the design's own stated preference
+     ("sides win — a disc on the top or bottom edge eats the reading column"). Overriding
+     this instance method is host customisation, NOT an edit to the vendored engine; the
+     engine's internal auto-park calls this.nearestEdge(), so it is respected everywhere. */
   body.nearestEdge = () => {
     const L = body.limits();
     return (body.cx - L.minX) <= ((L.maxX + body.size) - body.cx) ? "left" : "right";
@@ -483,7 +464,6 @@ function mountNeedle(
   on(hit, "pointerleave", (() => { hoverTo = 0; start(); }) as EventListener);
 
   function applyViewport() {
-    measureInsets();               // fixed-chrome heights may change with breakpoint/safe-area
     const d = diameter();
     if (d !== body.size) body.setSize(d);
     el.style.setProperty("--nsize", d + "px");

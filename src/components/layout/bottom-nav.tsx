@@ -46,9 +46,6 @@ export function BottomNav({ isAuthed = false }: { isAuthed?: boolean }) {
   return (
     <nav
       aria-label={t.nav.primary}
-      // The Needle keeps its resting zone above this bar (it sits at z-25, below this
-      // z-40 nav, so it must never park under it and become unclickable).
-      data-needle-inset-bottom
       className="lg:hidden fixed left-2.5 right-2.5 z-40 rounded-[26px] border border-border-strong"
       style={{
         bottom: "calc(9px + env(safe-area-inset-bottom))",
