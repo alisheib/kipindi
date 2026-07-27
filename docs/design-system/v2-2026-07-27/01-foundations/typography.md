@@ -14,7 +14,9 @@ Live product loads via Google Fonts: Sora 400–800, Inter 400–700, JetBrains 
 Every numeral is JetBrains Mono with `font-variant-numeric: tabular-nums`. No exceptions — including numbers inside body sentences when they are data (stakes, odds, times).
 
 ## Type scale (tokens)
---type-hero 72 · display-1 60 · display-2 44 · h1 32 · h2 24 · h3 20 · h4 17 · body 15 · small 13 · micro 11 (px).
+--type-hero 72 · display-1 60 · display-2 44 · h1 32 · h2 24 · h3 20 · h4 17 · body 15 · small 13 · micro 11 · **label 9.5 · nano 8.5** (px).
+
+**v1.1 (2026-07-27):** `--type-label: 9.5px` + `--type-nano: 8.5px` added to globals.css — the blessed sub-`micro` tier for UPPERCASE mono tracking microlabels (below the 11px reading floor; never reading copy). **`--type-h1` (32px) is the market-question hero size (`.mterm-q`), NOT a page-title token** — page/section `<h1>`s use the 28px "Page title" step below; the token is retained at 32 so Markets is not restyled.
 
 ## Working sizes as used (GIVEN kit + 2026 surfaces)
 | Role | Spec |

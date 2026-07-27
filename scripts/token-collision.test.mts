@@ -32,8 +32,13 @@ import { join, relative } from "node:path";
 const ROOT = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
 const SRC = join(ROOT, "src");
 
-/** Token families where cross-file redefinition is a real bug, not a theme override. */
-const GUARDED = /^--(ease|dur|glow|z|shadow|ring|halo)-/;
+/** Token families where cross-file redefinition is a real bug, not a theme override.
+ *  `m` (motion curves --m-*) and `t` (motion durations --t-*) added with the motion
+ *  layer (src/app/motion.css, Phase 3.2) — they must live in exactly one file so a
+ *  stray redefinition can never silently shadow the settle timing the way --ease-micro
+ *  once did. (Regex needs the trailing hyphen, so families like --text- and
+ *  --transition- never match a bare `m`/`t`.) */
+const GUARDED = /^--(ease|dur|glow|z|shadow|ring|halo|m|t)-/;
 
 /**
  * Tokens legitimately re-declared in a *scoped* block (theme/motion/media variants)

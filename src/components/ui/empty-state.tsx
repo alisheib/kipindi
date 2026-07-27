@@ -2,7 +2,10 @@
 
 /**
  * EmptyState — kit-faithful: 360px (or full-width) boxed, dashed border,
- * line-art SVG illustration in brand-teal stroke with gold accent.
+ * line-art SVG illustration: a restrained --text-faint etch (via currentColor) with a
+ * single gold accent. (v1.1 reconciliation, 2026-07-27: the old kit "--teal-400 stroke"
+ * is retired with the teal era; where a brand stroke is wanted it is --brand-400, never
+ * teal. The default line-art stays the neutral --text-faint so it reads as etching.)
  * Title (display 16/600), body (13), optional ghost CTA.
  *
  * The kit explicitly forbids mascots / full-color cartoons.

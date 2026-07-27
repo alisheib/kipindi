@@ -21,6 +21,18 @@
 7. **ud-count-pulse** lives in the D1 component, not tokens.css — promote to the kit stylesheet with its reduced-motion gate.
 8. **Estimate multiplier** — one shared "× 1.4" vs per-side estimates: open question to product (D1 spec Q1).
 
+## Inconsistencies — v1.1 RESOLVED (repo · 2026-07-27, Phase 3.2/3.3)
+1. **Skeletons → ONE system, two modes.** `.skeleton` (filled block placeholder) is canonical; `.kp-shimmer-track` is its sanctioned *overlay* mode (shimmer over real layout in 15 surfaces). Both already share the 1.4s ease-in-out cadence + a `prefers-reduced-motion`/`[data-motion="minimal"]` gate, so they read as one system — kept both rather than churn 15 components for zero visual gain.
+2. **Toasts → already ONE system.** The kit toast (`components/ui/toast.tsx`) is the only toast; it composes `.toast`/`.toast-icon`/`.toast-title`/`.toast-body` (panel) with `.toast-anim` (entrance + auto-dismiss hairline, driving `toast-slide`/`toast-bar`). These are complementary layers of one component, not two worlds — no duplicate to retire.
+3. **Empty-state stroke → teal RETIRED.** Live line-art strokes the restrained `--text-faint` (via `currentColor`) with one gold accent; `--teal-400` is gone with the teal era and the stale "brand-teal" comment is fixed. Where a *brand* stroke is wanted it is `--brand-400`, never teal.
+4. **Sub-10px micro-type → BLESSED via tokens.** Added `--type-label: 9.5px` + `--type-nano: 8.5px` (globals.css) — the two microlabel steps the card/round/pool surfaces use. They are UPPERCASE mono tracking labels, not reading copy, so they sit intentionally below the 11px `--type-micro` reading floor. Documented in typography.md.
+5. **LeaderboardRow** — the podium redesign already shipped (gilt ring/crown compliant, flame → non-emoji flame chip); no gold-for-plain-rank, no emoji. Considered addressed by the A10 rollout.
+6. **Type scale h1 → documented.** Page/section `<h1>`s render at the 28px step; `--type-h1: 32px` is retained as the **market-question hero** size (`.mterm-q`) and is not a page-title token. typography.md now states both roles rather than re-tuning the token (Markets must not be restyled).
+7. **`ud-count-pulse` → PROMOTED** to the kit stylesheet (globals.css) with its reduced-motion gate; `ud-point` (D3 live-price dot) landed beside it the same way.
+8. **Estimate multiplier → one shared estimate, always "est."** The contract and both live surfaces (D1 card, D3 round) carry a single `estMultiplier`, always rendered with the "× … est." qualifier + the pool-estimate note; per-side estimates are not introduced unless the backend ever quotes them.
+
+**Motion layer (Phase 3.2):** `08-motion/motion.css` landed as `src/app/motion.css` (imported after globals/state-tokens/micro-patterns). Additive `--m-*` curves + `--t-*` durations + `.m-*` utilities + keyframes; overrides nothing; in-app reduced-motion selector adapted to `html.kp-reduce-motion`. Token-collision guard extended to the `--m-*`/`--t-*` families. Token diff vs the archive found no other referenced-but-undefined tokens (`--accent-*`/`--aqua-*`/`--claret-*` all already defined; chat/pearl tokens are chat-scoped).
+
 ## Unspecified (nobody has ever said)
 - Print/PDF/email surfaces (statements, receipts) — no rules.
 - Offline/poor-connectivity states beyond skeletons.

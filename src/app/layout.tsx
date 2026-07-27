@@ -10,6 +10,7 @@ import { appUrl } from "@/lib/app-url";
 import "./globals.css";
 import "./state-tokens.css";
 import "./micro-patterns.css";
+import "./motion.css";
 
 const sora = Sora({
   subsets: ["latin", "latin-ext"],

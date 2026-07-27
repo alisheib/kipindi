@@ -183,6 +183,12 @@
   --type-body:      15px;
   --type-small:     13px;
   --type-micro:     11px;
+  /* Nano tier (Phase 3.3, blessed 2026-07-27): the sub-10px mono UPPERCASE tracking
+     microlabels the card/round/pool surfaces introduced — NOT reading copy, always
+     letter-spaced caps, so they escape the 11px reading floor. Two documented steps,
+     no lower. See typography.md. */
+  --type-label:     9.5px;
+  --type-nano:      8.5px;
 
   /* ---------- Spacing ---------- */
   --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px;

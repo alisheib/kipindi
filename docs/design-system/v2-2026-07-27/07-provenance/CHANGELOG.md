@@ -1,5 +1,25 @@
 # Changelog (reconstructed)
 
+## 2026-07-27 (repo · foundation) — Phase 3.2 motion layer + 3.3 inconsistency reconciliation
+- **Motion layer landed.** `08-motion/motion.css` → `src/app/motion.css`, imported after
+  globals/state-tokens/micro-patterns in `layout.tsx`. Additive `--m-*` curves (settle/glide/
+  leave/pivot/breathe) + `--t-*` durations (flick…max, 620ms ceiling) + `.m-*` utilities +
+  keyframes; overrides nothing. In-app reduced-motion selector adapted to the class this repo
+  actually toggles, `html.kp-reduce-motion`.
+- **Collision guard extended** (`scripts/token-collision.test.mts`): the `--m-*`/`--t-*` families
+  are now guarded (single-file definition) so a stray redefinition can never silently shadow the
+  settle timing the way `--ease-micro` once did. `test:tokens` green — 7 css files, 61 tokens.
+- **Token diff vs the archive:** no genuinely-new colour tokens needed — `--accent-*`, `--aqua-*`,
+  `--claret-*` are all already defined; the only referenced-but-undefined hits were element-scoped
+  inline vars and chat-subsystem tokens. Nothing added beyond the motion layer + the nano type tier.
+- **~8 inconsistencies reconciled** (see 07-provenance/OPEN-GAPS.md "v1.1 RESOLVED"): skeletons are
+  one system in two modes (`.skeleton` block + `.kp-shimmer-track` overlay, shared 1.4s cadence);
+  toasts are already one composed component; empty-state teal retired (neutral `--text-faint` etch,
+  brand stroke = `--brand-400`); sub-10px microlabels blessed via `--type-label: 9.5px` +
+  `--type-nano: 8.5px`; `--type-h1` documented as the market-question hero (page titles = 28px);
+  `ud-count-pulse`/`ud-point` promoted to the kit; one shared `estMultiplier` with an "est."
+  qualifier. Doc-and-token reconciliations only — no risky component churn on a live money app.
+
 ## 2026-07-27 (repo · feature) — Up & Down D3 round detail (`/updown/[roundId]`) built to spec
 The round page rebuilt to `02-components/_specs-as-delivered/D3-updown-round-spec.md` (canvas
 `05-pages/UpDown Round.dc.html`): back link → header (44px asset mark + title + status line +
