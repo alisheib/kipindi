@@ -10,6 +10,36 @@
 
 ---
 
+## ✅ Status — CODE COMPLETE, DEPLOYED & LIVE (2026-07-27)
+
+All three phases are built, tested (`test:all` **94/94**, `tsc` clean, `build` OK), committed and
+**deployed to production**: Phase 1+2 `38aab05`, Phase 3 `e046c51` (Railway deploy `b96f42f0` = SUCCESS,
+app restarted onto the new commit). Active provider is already `selcom`, gateway configured, money-mode
+TEST. **Nothing in the code blocks a real payout.**
+
+### What is LEFT — the only blockers (both operational, not code)
+1. **Float PIN** — `PAYMENT_VENDOR_PIN` is NOT set. Wallet Cashin needs the float-account `pin` (the
+   credentials package Selcom sent has Vendor/API-Key/Secret/URL but **no PIN**). Get it from the Selcom
+   Portal (register: `https://portal.selcompay.com/register` → enterprise code `61247989` → TIN) or from Selcom.
+2. **Float funding** — confirm the disbursement float is funded and how to top it up (payouts draw from it).
+
+Set the PIN in Railway + fund the float → a KYC-approved account can do a real ~1,000 TZS payout end-to-end.
+
+### Simplified reply email to Selcom (reply to Masanja's "disbursements enabled" email)
+
+> Hi Masanja,
+>
+> Thank you — noted that the same API credentials are used for disbursement. We've integrated Wallet Cashin
+> and are ready to test payouts.
+>
+> One thing: `POST /v1/walletcashin/process` requires a `pin` field (float-account PIN). Do the same
+> credentials cover this, or is there a separate float PIN we should use? And please confirm the float
+> account is funded / how we top it up.
+>
+> Thanks!
+
+---
+
 ## 1. Why nothing could be paid OUT before (it was never missing code)
 
 The withdrawal/payout code has always been fully built and tested:
