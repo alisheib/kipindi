@@ -90,7 +90,7 @@ ok("sync deposit credits immediately", await bal("usr_sync") === 12_000);
 // ── WITHDRAWAL: async hold → webhook CONFIRMED releases ────────────────────
 process.env.PAYMENTS_DEMO_ASYNC = "true";
 await makePlayer("usr_wd", { balance: 100_000, kyc: "APPROVED" });
-const wd1 = await withdraw("usr_wd", { provider: "MPESA", amount: 20_000 });
+const wd1 = await withdraw("usr_wd", { provider: "MPESA", amount: 20_000, msisdn: "0712345678" });
 ok("async withdrawal returns PROCESSING", wd1.ok && wd1.data!.status === "PROCESSING");
 ok("withdrawal moves funds into hold", await bal("usr_wd") === 80_000 && await hold("usr_wd") === 20_000);
 const wdTxn = wd1.ok ? wd1.data!.txnId : "";
@@ -99,7 +99,7 @@ ok("confirmed payout releases the hold", await hold("usr_wd") === 0 && await bal
 ok("withdrawal txn CONFIRMED", await st(wdTxn) === "CONFIRMED");
 
 // ── WITHDRAWAL: async → webhook FAILED returns the funds ───────────────────
-const wd2 = await withdraw("usr_wd", { provider: "MPESA", amount: 20_000 });
+const wd2 = await withdraw("usr_wd", { provider: "MPESA", amount: 20_000, msisdn: "0712345678" });
 const wd2Txn = wd2.ok ? wd2.data!.txnId : "";
 ok("2nd withdrawal holds again", await bal("usr_wd") === 60_000 && await hold("usr_wd") === 20_000);
 await settlePaymentWebhook({ providerRef: await ref(wd2Txn), status: "FAILED" });
@@ -122,12 +122,12 @@ delete process.env.PAYMENTS_DEMO_ASYNC;
 // A gross 1,000,000 withdrawal nets 990,000 after the 1% fee. Evaluating AML on
 // net let it slip the mandatory second-officer hold. Must be AML_REVIEW on gross.
 await makePlayer("usr_aml", { balance: 2_000_000, kyc: "APPROVED" });
-const amlWd = await withdraw("usr_aml", { provider: "MPESA", amount: 1_000_000 });
+const amlWd = await withdraw("usr_aml", { provider: "MPESA", amount: 1_000_000, msisdn: "0712345678" });
 const amlWdTxn = amlWd.ok ? amlWd.data!.txnId : "";
 ok("gross-1M withdrawal → AML_REVIEW (net 990k must NOT slip the hold)", amlWd.ok === true && amlWd.data!.status === "AML_REVIEW");
 ok("AML-held funds stay in hold, not disbursed", await hold("usr_aml") === 1_000_000 && await bal("usr_aml") === 1_000_000);
 await makePlayer("usr_aml2", { balance: 600_000, kyc: "APPROVED" });
-const belowWd = await withdraw("usr_aml2", { provider: "MPESA", amount: 500_000 });
+const belowWd = await withdraw("usr_aml2", { provider: "MPESA", amount: 500_000, msisdn: "0712345678" });
 ok("below-threshold withdrawal is not AML-held", belowWd.ok === true && belowWd.data!.status !== "AML_REVIEW");
 
 // ── AML APPROVE → DISPATCH: the payout half of the review flow ──────────────

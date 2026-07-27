@@ -170,9 +170,14 @@ export const AdminDepositSchema = z.object({
 });
 
 export const WithdrawSchema = z.object({
-  provider: z.enum(["MPESA", "AIRTEL_MONEY", "HALO_PESA", "MIXX", "BANK_TRANSFER"]),
+  // Mobile-money payouts only (Selcom Wallet Cashin). BANK_TRANSFER was removed —
+  // it has no account-capture and routes to a different rail (Qwiksend), so offering
+  // it here only produced a PROVIDER_DOWN failure. Bank payouts are a separate epic.
+  provider: z.enum(["MPESA", "AIRTEL_MONEY", "HALO_PESA", "MIXX"]),
   amount: withdrawAmount,
-  msisdn: tzPhone.optional(),
+  // REQUIRED: the payee mobile number is where the money is sent. It was previously
+  // optional server-side while required client-side — the mismatch is closed here.
+  msisdn: tzPhone,
   // Optional until the licensed SMS provider (Selcom/Beem) is signed — the
   // withdrawal is gated by KYC + AML + (planned) step-up SMS verification.
   // We do NOT present an OTP field that isn't actually enforced.

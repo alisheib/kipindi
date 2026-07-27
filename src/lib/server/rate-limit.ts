@@ -90,6 +90,8 @@ export const RATE_RULES: Record<string, RateRule> = {
   "kyc.submit":    { capacity: 5,  refillPerMin: 0.5 },
   "wallet.deposit":{ capacity: 20, refillPerMin: 4 },
   "wallet.withdraw":{ capacity: 6, refillPerMin: 0.5 },
+  "wallet.payee_lookup":{ capacity: 20, refillPerMin: 6 }, // payee name-lookup on the withdraw confirm — bounded to deter name enumeration
+
   "bet.place":     { capacity: 30, refillPerMin: 10 },
   "bet.cashout":   { capacity: 10, refillPerMin: 2 },   // 10 burst, ~30s between after burst
   "ai.batch":      { capacity: 5,  refillPerMin: 0.25 }, // 5 batch-generations burst, ~4/hr — caps AI-spend abuse

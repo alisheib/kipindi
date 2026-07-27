@@ -551,7 +551,7 @@ async function settleWithdrawalConfirmed(txnId: string): Promise<boolean> {
  * large (≥ TZS 1M) two-officer-approved withdrawal gets the same confirmation as
  * an ordinary one — previously the AML approve path released the funds silently.
  */
-export function notifyWithdrawalSent(txn: { id: string; userId: string; amount: number; fee: number; provider: string | null }): void {
+export function notifyWithdrawalSent(txn: { id: string; userId: string; amount: number; fee: number; provider: string | null; msisdn?: string | null; providerRef?: string | null }): void {
   const gross = Math.abs(txn.amount);
   // Net of the 1% withdrawal fee — the only deduction. There is no withholding tax.
   const net = gross - (txn.fee ?? 0);
@@ -559,7 +559,8 @@ export function notifyWithdrawalSent(txn: { id: string; userId: string; amount: 
   sendEmailToUser(txn.userId, (email) => ({
     to: email,
     subject: `Withdrawal sent · ${formatTzs(net)}`,
-    html: withdrawalSentHtml({ amount: net, destination: friendlyProvider(txn.provider), reference: txn.id }),
+    // The player's MNO keys off the gateway reference; print both like deposits do.
+    html: withdrawalSentHtml({ amount: net, destination: friendlyProvider(txn.provider), destinationPhone: txn.msisdn ?? null, reference: txn.id, gatewayRef: txn.providerRef ?? null }),
     tag: "withdrawal",
   })).catch(() => {});
 }

@@ -74,8 +74,16 @@ below stay in for robustness but will be unused.)
 > - **Phase 2 — DONE + tested:** AML approve now DISPATCHES (`dispatchApprovedWithdrawal`): AML_REVIEW →
 >   PROCESSING → gateway → exactly-once settle; two-officer gate kept; Approve button re-enabled; provider
 >   refusal reverts to review (no auto-refund). `test:payments` 47/0. The old "approval destroys money" block is gone.
-> - **Phase 3 — in progress:** withdrawal money-grade UX/emails (destination phone + payee name in the confirm
->   modal, gateway ref in the "sent" email), remove `BANK_TRANSFER` (mobile-money only), float balance on `/admin/payments`.
+> - **Phase 3 — DONE:** withdrawal money-grade UX + notifications. Confirm modal shows the destination phone
+>   **and the registered payee name** (best-effort `walletcashin/namelookup`, never blocks a payout);
+>   `BANK_TRANSFER` removed (mobile-money only); msisdn required consistently client+server; the "payout sent"
+>   email is a proper terminal receipt (amount, destination + phone, both references, wallet CTA, ref-note) and
+>   AML SLA copy is consistent across surfaces; float-balance readout + low-float warning on `/admin/payments`.
+>   Full suite green: `tsc` clean, `build` OK, `test:all` all suites pass.
+>
+> **Prod state (verified 2026-07-27, read-only):** active provider = `selcom` (via `PAYMENT_AGGREGATOR`),
+> gateway configured, money-mode = TEST (`TEST_FUNDING` on). **`PAYMENT_VENDOR_PIN` is NOT set** — the one
+> remaining gate. Once the float PIN is set (and the float is funded), a real payout can be tested end-to-end.
 >
 > ⚠️ **LAST OPEN ITEM — the float PIN.** "Same API credentials" covers API key/secret/vendor. Wallet
 > Cashin additionally requires a `pin` field = the **float-account PIN**, plus a **funded float

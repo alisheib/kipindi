@@ -28,7 +28,7 @@ import { audit } from "./audit";
 import { randomId } from "./crypto";
 import { getPaymentProvider, getDemoAsyncEnabled, type PaymentProviderId } from "./payment-control";
 import { isLiveMoneyMode } from "./runtime-mode";
-import { selcomEnv, selcomDisburseEnv, selcomDeposit, selcomCardCheckout, selcomWithdraw, selcomVerifyOrder, selcomVerifyCashin, mnoToSelcomCashin, type SelcomBilling } from "./selcom";
+import { selcomEnv, selcomDisburseEnv, selcomDeposit, selcomCardCheckout, selcomWithdraw, selcomVerifyOrder, selcomVerifyCashin, selcomCashinNameLookup, selcomFloatBalance, mnoToSelcomCashin, type SelcomBilling } from "./selcom";
 
 export type PaymentProvider = "MPESA" | "TIGO_PESA" | "AIRTEL_MONEY" | "HALO_PESA" | "MIXX" | "TTCL_PESA" | "CARD" | "BANK_TRANSFER" | "INTERNAL";
 
@@ -337,6 +337,34 @@ export async function verifyWithdrawalStatus(providerRef: string): Promise<{ sta
   if (r.status === "CONFIRMED") return { status: "CONFIRMED" };
   if (r.status === "FAILED") return { status: "FAILED" };
   return { status: "PENDING" };
+}
+
+/**
+ * Resolve the registered account-holder name for a payee mobile number, so the
+ * withdraw confirm screen can show WHO is being paid before "Send funds". Best-effort
+ * and provider-agnostic: returns null unless the active provider is Selcom, configured,
+ * and the MNO supports look-up (M-Pesa does not). Never throws; never blocks a payout.
+ */
+export async function lookupPayeeName(provider: PaymentProvider, msisdn: string): Promise<string | null> {
+  if ((await getPaymentProvider()) !== "selcom") return null;
+  const env = selcomDisburseEnv();
+  if (!env) return null;
+  const utilityCode = mnoToSelcomCashin(provider);
+  if (!utilityCode) return null;
+  const r = await selcomCashinNameLookup(env, { utilityCode, msisdn, transid: `nl_${randomId(10)}` });
+  return r?.name ?? null;
+}
+
+/**
+ * The disbursement float's available balance (TZS), for the operator console. Returns
+ * null unless Selcom is the active provider, configured, and the float PIN is set —
+ * a dry float makes every payout fail, so this feeds the low-float warning.
+ */
+export async function getFloatBalance(): Promise<{ balance: number } | null> {
+  if ((await getPaymentProvider()) !== "selcom") return null;
+  const env = selcomDisburseEnv();
+  if (!env) return null;
+  return selcomFloatBalance(env, `fb_${randomId(10)}`);
 }
 
 const azampayAdapter: PaymentAdapter = {

@@ -29,12 +29,13 @@ export async function generateMetadata() {
   return { title: t.wallet.withdrawTitle };
 }
 
+// Mobile-money payout rails only (Selcom Wallet Cashin). Bank transfer is a
+// separate rail (Qwiksend) with its own account capture — not offered here.
 const PROVIDERS = [
   { id: "MPESA",        name: "M-Pesa",        hue: 152 },
   { id: "AIRTEL_MONEY", name: "Airtel Money",  hue: 22 },
   { id: "HALO_PESA",    name: "HaloPesa",      hue: 80 },
   { id: "MIXX",         name: "Mixx by Yas",   hue: 280 },
-  { id: "BANK_TRANSFER",name: "Bank transfer", hue: 200 },
 ] as const;
 
 export default async function WithdrawPage({ searchParams }: { searchParams: Promise<{ error?: string; provider?: string; amount?: string; msisdn?: string }> }) {

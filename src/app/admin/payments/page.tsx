@@ -9,6 +9,7 @@ import { ScrollX } from "@/components/ui/scroll-x";
 import { PaymentLogo } from "@/components/wallet/payment-logo";
 import { allMnoHealth, getKillSwitches, reconcile, retryQueue } from "@/lib/server/payment-ops";
 import { getPaymentControls } from "@/lib/server/payment-control";
+import { getFloatBalance } from "@/lib/server/payments";
 import { formatTzs, formatTzsCompact, formatDateTime } from "@/lib/utils";
 import { KillSwitch } from "./kill-switch-toggle";
 import { ControlPlane } from "./control-plane";
@@ -29,7 +30,9 @@ const ageLabel = (msv: number) => {
 
 export default async function PaymentsOpsPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const sp = await searchParams;
-  const [health, kill, recon, queue, controls] = await Promise.all([allMnoHealth(), getKillSwitches(), reconcile(), retryQueue(), getPaymentControls()]);
+  const [health, kill, recon, queue, controls, floatBal] = await Promise.all([allMnoHealth(), getKillSwitches(), reconcile(), retryQueue(), getPaymentControls(), getFloatBalance().catch(() => null)]);
+  // Warn below one max-withdrawal of headroom — a dry float fails every payout.
+  const FLOAT_LOW_TZS = 1_000_000;
   const page = parsePage(sp.page, queue.length);
   const queueRows = queue.slice((page - 1) * PER_PAGE, page * PER_PAGE);
   const base = buildBaseHref("/admin/payments", sp);
@@ -49,6 +52,31 @@ export default async function PaymentsOpsPage({ searchParams }: { searchParams: 
         {/* Operations control-plane — mode indicator + runtime payment toggles. */}
         <AdminCard title="Operations control-plane" sw="Udhibiti wa uendeshaji">
           <ControlPlane controls={controls} />
+        </AdminCard>
+
+        {/* Disbursement float — payouts debit this Selcom float account; a dry float
+            fails every withdrawal. Null when Selcom isn't the active provider or the
+            float PIN isn't set yet (no fabricated zero). */}
+        <AdminCard>
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">Disbursement float · Salio la malipo</span>
+            {floatBal === null ? (
+              <span className="font-mono text-[11px] text-text-tertiary">Unavailable — select Selcom and set the float PIN to read the live balance.</span>
+            ) : (
+              <>
+                <div>
+                  <span className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-subtle">Available</span>
+                  <p className={`font-mono text-[15px] font-bold tabular-nums ${floatBal.balance < FLOAT_LOW_TZS ? "text-danger" : "text-text"}`}>{formatTzs(floatBal.balance)}</p>
+                </div>
+                {floatBal.balance < FLOAT_LOW_TZS && (
+                  <span className="inline-flex items-center gap-1.5 font-mono text-[11px] text-danger">
+                    <I.alertCircle s={13} /> Low float — top up; payouts fail when it runs dry.
+                  </span>
+                )}
+              </>
+            )}
+          </div>
+          <p className="mt-2 font-mono text-[10px] text-text-tertiary">Live from Selcom vendor/balance — read fresh on each load.</p>
         </AdminCard>
 
         {/* Reconciliation strip — ledger vs PSP settlement. */}

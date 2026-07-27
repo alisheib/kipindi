@@ -61,7 +61,7 @@ ok("resumed MPESA deposit works again", dResumed.ok, dResumed.ok ? "" : dResumed
 
 // Withdrawal kill-switch.
 await setKillSwitch("MPESA", "withdrawals", true, "ops_admin");
-const wBlocked = await withdraw("payer", { provider: "MPESA", amount: 5_000 });
+const wBlocked = await withdraw("payer", { provider: "MPESA", amount: 5_000, msisdn: "0712345678" });
 ok("paused MPESA withdrawal BLOCKED at money path", !wBlocked.ok && wBlocked.code === "SUSPENDED", wBlocked.ok ? "unexpected ok" : wBlocked.error);
 await setKillSwitch("MPESA", "withdrawals", false, "ops_admin");
 

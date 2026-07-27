@@ -536,19 +536,38 @@ export function depositReversedHtml({ amount, method, reference, gatewayRef }: {
   `);
 }
 
-export function withdrawalSentHtml({ amount, destination, reference }: {
-  amount: number; destination: string; reference: string;
+/** Normalise a stored msisdn to display form "+2557XXXXXXXX". */
+function displayMsisdn(raw?: string | null): string | null {
+  if (!raw) return null;
+  const d = String(raw).replace(/\D/g, "");
+  const norm = d.startsWith("255") ? d : d.startsWith("0") ? "255" + d.slice(1) : d.length === 9 ? "255" + d : d;
+  return norm ? "+" + norm : null;
+}
+
+/**
+ * Payout confirmed — the gateway has accepted the disbursement and the money is on
+ * its way to the player's mobile money account. This is the TERMINAL receipt for a
+ * successful withdrawal, so it carries the same weight as `depositConfirmedHtml`:
+ * both references (ours + the gateway's, which the player's MNO keys off), the
+ * destination number, a wallet CTA and the standard traceable ref-note.
+ */
+export function withdrawalSentHtml({ amount, destination, destinationPhone, reference, gatewayRef }: {
+  amount: number; destination: string; destinationPhone?: string | null; reference: string; gatewayRef?: string | null;
 }): string {
+  const phone = displayMsisdn(destinationPhone);
   return wrap(`
     ${eyebrow("Withdrawal sent", "Pesa imetumwa")}
-    ${heading("Withdrawal on its way")}
-    ${subtitle("Your provider should pay out within moments.")}
-    ${subtitleSw("Mtoa huduma wako atalipa hivi punde.")}
+    ${heading("Your payout is on its way")}
+    ${subtitle("We've sent your withdrawal to your mobile money account. It should arrive within moments.")}
+    ${subtitleSw("Tumetuma pesa yako kwenye akaunti yako ya simu. Itafika hivi punde.")}
     ${detailRows([
-      { label: "Amount", value: formatTzs(amount) },
-      { label: "Destination", value: destination },
-      { label: "Reference", value: reference },
+      { label: "Amount", value: formatTzs(amount), tone: "good" },
+      { label: "Destination", value: phone ? `${destination} · ${phone}` : destination },
+      { label: "50pick reference", value: reference },
+      ...(gatewayRef ? [{ label: "Gateway reference", value: gatewayRef }] : []),
     ])}
+    ${ctaButton("/wallet", "View wallet · Tazama pochi")}
+    ${refNote()}
   `);
 }
 
@@ -558,13 +577,14 @@ export function withdrawalUnderReviewHtml({ amount, reference }: {
   return wrap(`
     ${eyebrow("Under review", "Inakaguliwa")}
     ${heading("Withdrawal under review")}
-    ${subtitle("Amounts over TZS 1,000,000 are reviewed by our compliance team. This usually takes under 2 hours.")}
-    ${subtitleSw("Kiasi kikubwa kinakaguliwa na timu yetu ya ufuatiliaji. Kawaida huchukua chini ya masaa 2.")}
+    ${subtitle("Amounts over TZS 1,000,000 are reviewed by our compliance team. This usually takes a few hours (up to 24 hours), and we'll email you the moment it's sent.")}
+    ${subtitleSw("Kiasi kinachozidi TZS 1,000,000 kinakaguliwa na timu yetu ya ufuatiliaji. Kawaida huchukua saa chache (hadi saa 24), na tutakutumia barua pepe mara itakapotumwa.")}
     ${detailRows([
       { label: "Amount", value: formatTzs(amount) },
-      { label: "Reference", value: reference },
-      { label: "Status", value: "AML review" },
+      { label: "50pick reference", value: reference },
+      { label: "Status", value: "Under review" },
     ])}
+    ${refNote()}
   `);
 }
 

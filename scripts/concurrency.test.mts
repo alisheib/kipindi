@@ -224,9 +224,9 @@ async function makeMarket(): Promise<string> {
   const key = "cc-wd-key";
   const amount = 20_000;
   const [w1, w2, w3] = await Promise.all([
-    withdraw(uid, { provider: "MPESA", amount }, key),
-    withdraw(uid, { provider: "MPESA", amount }, key),
-    withdraw(uid, { provider: "MPESA", amount }, key),
+    withdraw(uid, { provider: "MPESA", amount, msisdn: "0712345678" }, key),
+    withdraw(uid, { provider: "MPESA", amount, msisdn: "0712345678" }, key),
+    withdraw(uid, { provider: "MPESA", amount, msisdn: "0712345678" }, key),
   ]);
   ok("E: all three withdrawal calls ok", w1.ok && w2.ok && w3.ok, `${w1.ok}/${w2.ok}/${w3.ok}`);
   const ids = [w1, w2, w3].map((r) => (r.ok ? r.data!.txnId : "?"));

@@ -533,6 +533,54 @@ export async function selcomVerifyCashin(env: SelcomEnv, transid: string): Promi
 }
 
 /**
+ * Wallet-Cashin NAME LOOKUP — resolve the registered account holder for a payee
+ * mobile number BEFORE a payout, so the player can confirm they're paying the right
+ * person. Docs: GET /v1/walletcashin/namelookup (Signed-Fields: utilitycode,utilityref,transid).
+ *
+ * Best-effort by design: lookup availability varies by MNO (e.g. M-Pesa/VMCASHIN has
+ * none), so this returns null whenever a name can't be resolved — the caller shows the
+ * number alone and NEVER blocks the withdrawal on it. `transid` must be a fresh id
+ * (not a payout transid). Field insertion order IS the Signed-Fields order.
+ */
+export async function selcomCashinNameLookup(env: SelcomEnv, opts: { utilityCode: string; msisdn: string; transid: string }): Promise<{ name: string } | null> {
+  let res: SelcomResponse;
+  try {
+    res = await selcomFetch(env, "GET", "/walletcashin/namelookup", {
+      utilitycode: opts.utilityCode,
+      utilityref: toSelcomMsisdn(opts.msisdn),
+      transid: opts.transid,
+    });
+  } catch {
+    return null;
+  }
+  if (!res.ok || String(res.json.resultcode ?? "").trim() !== "000") return null;
+  const name = res.json.data?.[0]?.name;
+  return typeof name === "string" && name.trim() ? { name: name.trim() } : null;
+}
+
+/**
+ * Float-account BALANCE — the disbursement float's available balance. Docs:
+ * POST /v1/vendor/balance {vendor, pin, transid} (Signed-Fields: vendor,pin,transid).
+ *
+ * Requires the float PIN. A dry float makes every payout FAIL, so this backs the
+ * operator's low-float warning on /admin/payments. Returns null when unavailable
+ * (no PIN, network error, or a non-success envelope) rather than a misleading zero.
+ */
+export async function selcomFloatBalance(env: SelcomEnv, transid: string): Promise<{ balance: number } | null> {
+  if (!env.pin) return null; // the balance query is authenticated by the float PIN
+  let res: SelcomResponse;
+  try {
+    res = await selcomFetch(env, "POST", "/vendor/balance", { vendor: env.vendor, pin: env.pin, transid });
+  } catch {
+    return null;
+  }
+  if (!res.ok || String(res.json.resultcode ?? "").trim() !== "000") return null;
+  const raw = res.json.data?.[0]?.balance;
+  const n = Number(raw);
+  return Number.isFinite(n) ? { balance: n } : null;
+}
+
+/**
  * Connectivity + credential check that moves NO money: a signed order-status query
  * for a fixed probe id. Valid creds/signature/IP → a normal envelope (e.g. "order
  * not found"); wrong creds or a non-allow-listed IP → an auth/network rejection.
