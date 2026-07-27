@@ -13,7 +13,6 @@ import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import { haptics } from "@/lib/haptics";
 import { toggleWatchAction } from "@/app/markets/actions";
 
 export function WatchStar({
@@ -45,7 +44,9 @@ export function WatchStar({
     }
     const prev = on;
     setOn(!prev); // optimistic
-    haptics.select();
+    // No haptic. Watching a market is a preference, not a physical event — the kit's
+    // haptic rule is contact / passing true / coming to rest, NEVER encouragement or
+    // attention-pulling. The star's own state change is the feedback.
     start(async () => {
       const r = await toggleWatchAction(marketId);
       if (!r.ok) {

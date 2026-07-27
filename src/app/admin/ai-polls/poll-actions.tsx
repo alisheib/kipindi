@@ -419,7 +419,7 @@ export function GenerateForm({ generatable }: { generatable: string[] }) {
       {/* Generation overlay — fixed scrim blocks the entire page while running */}
       {active && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={(e) => e.stopPropagation()}>
-          <div className="w-[90vw] max-w-[420px] rounded-xl border border-border bg-bg-elevated p-5 shadow-e4" style={{ animation: "np-rise 200ms cubic-bezier(.2,.8,.2,1)" }} onClick={(e) => e.stopPropagation()}>
+          <div className="m-dialog-in w-[90vw] max-w-[420px] rounded-xl border border-border bg-bg-elevated p-5 shadow-e4" onClick={(e) => e.stopPropagation()}>
             {phase !== "done" ? (
               /* ── In-progress ── */
               <div className="space-y-4">
@@ -638,7 +638,7 @@ export function BatchGenerateForm({ maxBatch, remaining, generatable }: { maxBat
       {/* Simulated per-poll progress overlay */}
       {active && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={(e) => e.stopPropagation()}>
-          <div className="w-[90vw] max-w-[440px] rounded-xl border border-border bg-bg-elevated p-5 shadow-e4" style={{ animation: "np-rise 200ms cubic-bezier(.2,.8,.2,1)" }} onClick={(e) => e.stopPropagation()}>
+          <div className="m-dialog-in w-[90vw] max-w-[440px] rounded-xl border border-border bg-bg-elevated p-5 shadow-e4" onClick={(e) => e.stopPropagation()}>
             {phase === "running" ? (
               <div className="space-y-4">
                 <div className="flex items-center gap-3">

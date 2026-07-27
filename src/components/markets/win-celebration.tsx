@@ -84,7 +84,12 @@ export function WinCelebrationHost() {
       setPayload(detail);
       setOpen(true);
       if (!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
-        haptics.celebrate();
+        // `success` (money settled), NOT `celebrate`. The 7-pulse celebrate flourish
+        // is reinforcement, and the kit's haptic rule is explicit: physical events
+        // only — never reward. On a real-money product a congratulatory buzz on a win
+        // is also the exact pattern responsible-gambling guidance warns about. The
+        // money landing is a real event and still deserves feedback, so it keeps one.
+        haptics.success();
       }
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(dismiss, 4_500);

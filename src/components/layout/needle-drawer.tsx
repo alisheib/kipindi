@@ -174,13 +174,17 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
               )}
             </div>
           </div>
+          {/* Bespoke keyframes on purpose: the desktop panel is centred with
+              translate(-50%,-50%), which the kit's translateY-only arrivals would wipe.
+              Curve + duration come from the motion layer, so it settles like everything
+              else ("The Settle"); only the transform differs. */}
           <style>{`
             @media (prefers-reduced-motion: no-preference) {
-              .needle-sheet { animation: needle-sheet-rise 200ms cubic-bezier(.2,.8,.2,1); }
+              .needle-sheet { animation: needle-sheet-rise var(--t-base) var(--m-settle); }
               @keyframes needle-sheet-rise { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
               @media (min-width: 640px) {
-                .needle-sheet { animation: needle-sheet-pop 180ms cubic-bezier(.2,.8,.2,1); }
-                @keyframes needle-sheet-pop { from { transform: translate(-50%, -50%) scale(0.96); opacity: 0; } to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
+                .needle-sheet { animation: needle-sheet-pop var(--t-quick) var(--m-settle); }
+                @keyframes needle-sheet-pop { from { transform: translate(-50%, -50%) scale(0.975); opacity: 0; } to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
               }
             }
           `}</style>

@@ -144,15 +144,14 @@ export function Modal({
         aria-label={t.common.cancel}
         tabIndex={-1}
         onClick={closeOnScrim ? onClose : undefined}
-        className="fixed inset-0 bg-black/60 backdrop-blur-md"
-        style={{ animation: "kp-modal-fade 160ms ease-out" }}
+        className="m-scrim fixed inset-0 bg-black/60"
       />
       <div
         ref={panelRef}
-        className={`relative w-full border border-border-strong bg-bg-elevated shadow-[0_30px_80px_oklch(5%_0.05_264_/_0.65),inset_0_1px_0_rgba(255,255,255,0.06)] p-5 lg:p-6 ${
+        className={`${sheet ? "m-sheet-in kp-modal-sheet" : "m-dialog-in"} relative w-full border border-border-strong bg-bg-elevated shadow-[0_30px_80px_oklch(5%_0.05_264_/_0.65),inset_0_1px_0_rgba(255,255,255,0.06)] p-5 lg:p-6 ${
           sheet ? "rounded-t-xl sm:rounded-xl sm:my-auto" : "my-auto rounded-xl"
         } ${panelClassName}`}
-        style={{ maxWidth, animation: `${sheet ? "kp-sheet-rise 260ms" : "kp-modal-rise 200ms"} var(--ease-arrive)` }}
+        style={{ maxWidth }}
       >
         {showClose && (
           <button
@@ -166,14 +165,14 @@ export function Modal({
         )}
         {children}
       </div>
-      <style>{`
-        @keyframes kp-modal-fade { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes kp-modal-rise { from { transform: translateY(8px) scale(.98); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
-        @keyframes kp-sheet-rise { from { transform: translateY(24px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        @media (prefers-reduced-motion: reduce) {
-          [role="dialog"] > *, [role="alertdialog"] > * { animation: none !important; }
-        }
-      `}</style>
+      {/* The sheet variant docks to the bottom edge only below `sm` (see the wrapper's
+          items-end sm:items-center). Above it the panel is a centered dialog, so it must
+          arrive as one — a full-height sheet rise on a centred panel reads as a mistake.
+          Scoped to `.kp-modal-sheet`, NOT to `.m-sheet-in` itself: overriding the kit
+          utility globally would silently break any future real bottom sheet at ≥sm.
+          Swaps the kit keyframe only; no new motion vocabulary. Reduced motion is handled
+          globally by motion.css. */}
+      <style>{`@media (min-width: 640px) { .kp-modal-sheet { animation-name: m-settle-lift; } }`}</style>
     </div>,
     document.body,
   );

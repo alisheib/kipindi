@@ -245,8 +245,11 @@ export function NotificationsPanel() {
               // landscape phone (≤360px tall) and scrolls internally instead of
               // running off the bottom.
               "sm:left-auto sm:right-4 sm:top-[64px] sm:w-[380px] sm:max-w-[calc(100vw-24px)] sm:max-h-[min(480px,calc(100dvh-80px))]",
+              "m-float-in",
             )}
-            style={{ animation: "np-rise 180ms cubic-bezier(.2,.8,.2,1)" }}
+            // Anchored (kit law 1): the bell panel hangs off the RIGHT of its trigger,
+            // so it grows from that corner, not `.m-float-in`'s default top-left.
+            style={{ transformOrigin: "top right" }}
           >
             <div className="flex items-center justify-between border-b border-border bg-transparent px-3 shrink-0" style={{ height: 44 }}>
               <p className="font-mono text-micro font-bold uppercase tracking-[0.18em] text-text min-w-0 truncate">
@@ -361,10 +364,11 @@ export function NotificationsPanel() {
               )}
             </div>
           </div>
+          {/* `np-rise` was ALSO defined here, duplicating globals.css — the panel arrival
+              now uses the kit's `.m-float-in`, so the local copy is gone. One fact, one home. */}
           <style>{`
-            @keyframes np-rise { from { transform: translateY(-6px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
             @keyframes notif-badge-pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.25); } }
-            .notif-badge-pulse { animation: notif-badge-pulse 2s ease-in-out infinite; }
+            .notif-badge-pulse { animation: notif-badge-pulse 2s var(--m-breathe) infinite; }
             @media (prefers-reduced-motion: reduce) { .notif-badge-pulse { animation: none; } }
           `}</style>
         </>,

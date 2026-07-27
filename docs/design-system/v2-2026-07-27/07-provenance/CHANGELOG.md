@@ -1,5 +1,59 @@
 # Changelog (reconstructed)
 
+## 2026-07-28 (repo · foundation) — Phase 3.4: the motion layer is ADOPTED, not just present
+Phase 3.2 landed `motion.css` and imported it. It had **zero consumers** — 29 occurrences of
+`.m-*` in `src/`, every one of them inside the definition file. The stylesheet shipped to every
+player and nothing used it, while the app kept moving on a second, older vocabulary. This phase
+closes that: one motion language, actually applied.
+
+- **One timing scale.** `globals.css` held a SECOND independent scale beside the kit's — four
+  curves and five tiers, three of which duplicated the kit outright (`--ease-conduct` was
+  byte-identical to `--m-breathe`; `--dur-quick`/`--dur-arrive` already equalled `--t-base`/
+  `--t-stage`). Worse, **`--ease-arrive` was `cubic-bezier(0.34, 1.56, 0.64, 1)` — a *pivot*-class
+  overshoot, which the kit reserves for the needle and dials ONLY — applied to every arrival in
+  the product.** That is precisely why arrivals never read as "The Settle". All `--ease-*`/`--dur-*`
+  are now **aliases** onto `--m-*`/`--t-*`; new code uses the kit names directly. Aliasing rather
+  than rewriting ~150 call sites was deliberate: one reviewable edit, and B5 stays intact
+  (globals.css is still the single definition site of the legacy names).
+- **🛑 One documented exception to the 620ms ceiling: `--dur-stage` stays 820ms.** Its consumers
+  are the two countdown rings' `stroke-dashoffset` transition, driven by a **1-second tick**. That
+  is progress *smoothing*, not a transition: at 820ms the arc glides almost continuously between
+  ticks; clamped to `--t-max` it would finish early and sit frozen ~380ms of every second —
+  visibly steppier. The kit's ceiling governs transitions; a continuously-updating progress arc is
+  a third case it does not cover. **Do not "fix" this to `--t-max`.**
+- **Dialog motion was defined THREE times** — `.dialog-anim`/`.sheet-anim` in globals.css,
+  `kp-modal-rise`/`kp-sheet-rise` inline in the Modal primitive, and the kit's own
+  `.m-dialog-in`/`.m-sheet-in`/`.m-scrim`. **The canonical `Modal` used none of the shared ones**;
+  it rolled its own. Now every dialog, sheet and scrim in the app — money confirms included —
+  composes the three kit classes. Scrim blur follows the kit's `--m-blur-behind` (7px, was a
+  Tailwind 12px). The two admin dialogs that bypass `Modal` were repointed too.
+- **9 duplicate/dead keyframes retired**: `dialog-rise`, `scrim-fade`, `sheet-rise`, `reveal-up`
+  (+ `.reveal-up-d1..d4`), `kp-slide-up`, `ray-spin` (zero consumers), `pchart-draw`,
+  `mcardp-spark-draw`, `dot-pulse-soft` — the last three byte-identical to kit keyframes.
+  ⚠️ `.route-enter` — **every page arrival in the product** — turned out to reference `reveal-up`,
+  so it now runs the kit's `m-settle-in` at `--t-move`. That is the single most-seen motion here.
+- **Utilities on the real surfaces**: `.btn` takes the kit's `--m-lift` (−2px, the only hover
+  displacement) and `--m-press` (0.97, the only press scale) and no longer sinks *below* rest on
+  press; `.live-dot` takes the `.m-live-pip` cadence (2600ms breathe, was a 1.4s 0.3↔1 blink — a
+  hard blink on a money board reads as an alarm, not as "live"); `.tab-indicator` takes the
+  `.m-indicator` tier; `.stagger-item` uses the kit's 4-step × `--m-stagger` cascade.
+- **Haptics: the physical-only rule is now TRUE, not just written.** The kit's rule is *contact,
+  passing true, coming to rest — never encouragement, reward, or to pull attention.* Removed the
+  reward/attention buzzes on `watch-star` and `vote-control` (preferences, not events — and
+  proposals carry a regulated reward). **`win-celebration` and the `gold` toast fire `success`
+  (money settled) instead of the 7-pulse `celebrate` flourish**: a congratulatory buzz on a
+  gambling win is reinforcement, against both the kit and RG practice. The `celebrate` token is
+  kept defined with no caller so the owner can overrule this in one line.
+- **Verified in a real browser, not just green suites** — `scripts/motion-adoption-verify.mjs`
+  (41/41) asserts every kit token AND every legacy alias resolves through to a real
+  cubic-bezier/duration in computed style, that a real `.btn` computes a non-zero duration and a
+  cubic-bezier timing function, and that the 9 retired keyframes are gone while the kit's are
+  present. This exists because the B5 outage (2026-07-20) killed all motion platform-wide with
+  zero errors and a green suite; re-pointing token families is exactly that shape of change.
+  Plus `scripts/motion-adoption-shots.mjs`, which scrubs the dialog animation by `currentTime`
+  (a screenshot round-trip costs more than the 340ms arrival, so wall-clock sampling only ever
+  captures post-settle frames).
+
 ## 2026-07-27 (repo · foundation) — Phase 3.2 motion layer + 3.3 inconsistency reconciliation
 - **Motion layer landed.** `08-motion/motion.css` → `src/app/motion.css`, imported after
   globals/state-tokens/micro-patterns in `layout.tsx`. Additive `--m-*` curves (settle/glide/

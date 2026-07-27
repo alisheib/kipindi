@@ -79,7 +79,7 @@ export function ShareButton({
           <div
             role="dialog"
             aria-label={t.dialog.shareMarket}
-            className="fixed left-3 right-3 bottom-3 sm:left-auto sm:right-6 sm:top-20 sm:bottom-auto sm:w-[320px] z-popover rounded-xl border border-border bg-bg-elevated shadow-e5 overflow-hidden kp-slide-up"
+            className="fixed left-3 right-3 bottom-3 sm:left-auto sm:right-6 sm:top-20 sm:bottom-auto sm:w-[320px] z-popover rounded-xl border border-border bg-bg-elevated shadow-e5 overflow-hidden m-in"
             style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
           >
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">

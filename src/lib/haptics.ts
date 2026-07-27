@@ -4,6 +4,17 @@
 // the Web Vibration API (Android/Chrome), no-ops on iOS Safari (we lean on the
 // paired animation there), respects the user's "Sound & feedback" setting and
 // reduced-motion intent.
+//
+// ⚠️ THE RULE (design system, 10-haptics — adopted 2026-07-28):
+//   **Physical events only — contact, passing true, coming to rest.
+//     NEVER encouragement, reward, or to pull attention.**
+// So a haptic marks something that actually HAPPENED to the player's money or
+// state: a wager landed, a payout settled, a destructive gate needs a decision,
+// an action failed. It never rewards. Selecting, watching, voting and liking are
+// preferences, not events — they are silent, and that is deliberate: on a
+// real-money product a congratulatory buzz is reinforcement, which is both
+// against the kit and against responsible-gambling practice.
+// Before adding a call, ask "did something land, or am I congratulating them?"
 
 export type HapticToken =
   | "tap"        // routine acknowledgement — OFF by default
@@ -12,7 +23,9 @@ export type HapticToken =
   | "success"    // money settled / verified
   | "warning"    // pay attention (destructive confirm)
   | "error"      // validation / transaction failed
-  | "celebrate"; // the peak — win, badge unlock, level up
+  | "celebrate"; // ⛔ RETIRED BY THE PHYSICAL-ONLY RULE — no caller, by design.
+                 //    Kept defined so restoring it is a one-line change if the
+                 //    owner ever overrules the kit. Wins fire `success` instead.
 
 // Exact vibrate() patterns in ms. [buzz, pause, buzz, …].
 // A coherent family: light → heavy. `celebrate` is a heraldic seal-stamp
@@ -114,7 +127,7 @@ export const haptics = {
 // Usage:
 //   import { haptics } from "@/lib/haptics";
 //   haptics.confirm();                 // on bet placed — same frame as the seal
-//   haptics.celebrate();               // on win reveal — same frame as win-burst
+//   haptics.success();                 // on win reveal / money settled
 //
 // iOS note: navigator.vibrate is absent in Safari. fire() no-ops; the paired
 // animation (win-burst / seal-impress / value-flash) carries the moment so the

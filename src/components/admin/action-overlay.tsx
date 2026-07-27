@@ -74,8 +74,7 @@ export function ActionOverlay({ state, onDismiss }: { state: OverlayState; onDis
       onClick={(e) => e.stopPropagation()}
     >
       <div
-        className="w-[90vw] max-w-[380px] rounded-xl border border-border bg-bg-elevated p-5 shadow-e4"
-        style={{ animation: "np-rise 200ms cubic-bezier(.2,.8,.2,1)" }}
+        className="m-dialog-in w-[90vw] max-w-[380px] rounded-xl border border-border bg-bg-elevated p-5 shadow-e4"
       >
         {state.phase === "running" && (
           <div className="space-y-3">

@@ -11,7 +11,6 @@ import { I } from "@/components/ui/glyphs";
 import { voteAction } from "@/app/proposals/actions";
 import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
-import { haptics } from "@/lib/haptics";
 
 type Dir = "up" | "down" | null;
 
@@ -45,7 +44,9 @@ export function VoteControl({
 
   const click = (dir: "up" | "down") => {
     if (disabled) return;
-    haptics.select();
+    // No haptic. A vote is a choice, not a physical event (kit rule: contact /
+    // passing true / coming to rest, never encouragement). Proposals also carry a
+    // regulated reward, so a reinforcing buzz on the vote itself is doubly wrong.
     setPop((n) => n + 1); // re-trigger the count flourish
     const next: Dir = vote === dir ? null : dir;
     // Snapshot the live state *before* the optimistic update, so a failure rolls

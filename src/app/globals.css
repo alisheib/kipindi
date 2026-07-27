@@ -204,11 +204,16 @@
      which silently broke the moment micro-patterns.css redefined them as bare curves —
      every `transition: X var(--ease-micro)` then resolved to a 0s (instant) transition.
      One definition site, one convention. Guarded by scripts/token-collision.test.mts. */
-  --ease-micro:     cubic-bezier(0.2, 0.8, 0.2, 1);
-  --ease-stage:     cubic-bezier(0.4, 0, 0.2, 1);
-  --ease-celebrate: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --dur-micro:      120ms;   /* taps, focus rings, hover tints */
-  --dur-celebrate:  600ms;
+  /* ⚠️ DEPRECATED ALIASES — 2026-07-28. These names stay only so the ~150 existing
+     rules keep working; they now resolve to the motion layer's curves/tiers
+     (src/app/motion.css, "The Settle"). NEW CODE USES `--m-*` / `--t-*` DIRECTLY.
+     Aliasing rather than rewriting every call site is deliberate: it makes the whole
+     product move on one language in a single, reviewable edit, and it keeps the
+     B5 law intact (globals.css is still the one definition site of `--ease-*`/`--dur-*`). */
+  --ease-micro:     var(--m-glide);    /* was cubic-bezier(0.2, 0.8, 0.2, 1) */
+  --ease-stage:     var(--m-glide);    /* was cubic-bezier(0.4, 0, 0.2, 1) — dup of --ease-sink */
+  --ease-celebrate: var(--m-settle);   /* was cubic-bezier(0.2, 0.8, 0.2, 1) — dup of --ease-micro */
+  --dur-micro:      var(--t-quick);    /* taps, focus rings, hover tints — was 120ms */
 
   /* ---------- Surfaces — Royal-indigo canvas, anchored to #060a50 ---------- */
   /* Per the new design kit: deep midnight indigo canvas, slightly elevated
@@ -473,13 +478,19 @@ body {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  transition: transform .1s var(--ease-micro), box-shadow .16s var(--ease-micro), filter .12s, background .16s;
+  /* Kit motion (`.m-raise` + `.m-press`, motion.css): the raised plane IS the whole
+     hover vocabulary and `--m-press` is the only scale a control may take. */
+  transition: transform var(--t-flick) var(--m-glide),
+              box-shadow var(--t-quick) var(--m-glide),
+              filter     var(--t-quick) linear,
+              background var(--t-quick) linear;
   white-space: nowrap;
   -webkit-user-select: none;
   user-select: none;
 }
-.btn:hover:not(:disabled)  { transform: translateY(-1px); }
-.btn:active:not(:disabled) { transform: translateY(1px) scale(0.97); filter: brightness(0.93); }
+.btn:hover:not(:disabled)  { transform: translateY(var(--m-lift)); }
+/* Press returns to rest and scales — it never sinks BELOW the resting plane. */
+.btn:active:not(:disabled) { transform: translateY(0) scale(var(--m-press)); filter: brightness(0.93); }
 .btn:focus-visible { outline: 2px solid var(--brand-500); outline-offset: 2px; box-shadow: 0 0 0 4px oklch(63% 0.18 262 / 0.25); }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
@@ -633,7 +644,10 @@ body {
   border-radius: 50%;
   background: var(--live-400);
   flex-shrink: 0;
-  animation: live-pulse 1.4s ease-in-out infinite;
+  /* The kit's `.m-live-pip` cadence — one of exactly two loops allowed to run
+     unattended. Calmer and slower than the old 1.4s 0.3↔1 blink: on a real-money
+     board a hard blink reads as an alarm, not as "this is live". */
+  animation: m-breathe 2600ms var(--m-breathe) infinite;
 }
 /* Same technique as .live-dot but in the brand gold — used for the
    notification-bell unread indicator. The earlier dot used Tailwind's
@@ -1038,21 +1052,34 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
 ::-webkit-scrollbar-corner { background: transparent; }
 
 /* ===========================================================================
-   Motion polish layer (kit/tokens.css → motion section)
-   Adds 4 named easings, 5 duration tokens, 16 keyframes, and ~12 utility
-   classes used by the new motion components. See CHANGELOG-motion.md in
-   the design handoff for the integration rules.
+   Motion polish layer — ⚠️ DEPRECATED ALIASES (2026-07-28)
+   ---------------------------------------------------------------------------
+   This block used to be a SECOND, independent motion scale sitting beside the
+   kit's. Four of its curves and three of its tiers duplicated the motion layer
+   outright; `--ease-arrive`'s 1.56 overshoot was a *pivot*-class curve (the kit
+   reserves that for the needle and dials ONLY) applied to every arrival in the
+   product, which is precisely why arrivals never read as "The Settle".
+
+   They are now aliases onto src/app/motion.css. NEW CODE USES `--m-*`/`--t-*`.
    =========================================================================== */
 
 :root {
-  --ease-glide:    cubic-bezier(0.22, 1, 0.36, 1);     /* default — snappy out */
-  --ease-arrive:   cubic-bezier(0.34, 1.56, 0.64, 1);  /* gentle overshoot on entry */
-  --ease-sink:     cubic-bezier(0.4, 0, 0.2, 1);       /* exit / dismiss */
-  --ease-conduct:  cubic-bezier(0.65, 0, 0.35, 1);     /* in-and-out, breathing */
-  --dur-flick:  120ms;
-  --dur-quick:  220ms;
-  --dur-glide:  360ms;
-  --dur-arrive: 520ms;
+  --ease-glide:    var(--m-glide);     /* was cubic-bezier(0.22, 1, 0.36, 1)    */
+  --ease-arrive:   var(--m-settle);    /* was cubic-bezier(0.34, 1.56, 0.64, 1) */
+  --ease-sink:     var(--m-leave);     /* was cubic-bezier(0.4, 0, 0.2, 1)      */
+  --ease-conduct:  var(--m-breathe);   /* was cubic-bezier(0.65, 0, 0.35, 1) — byte-identical */
+  --dur-flick:  var(--t-quick);        /* was 120ms → 140ms */
+  --dur-quick:  var(--t-base);         /* was 220ms → 220ms, exact */
+  --dur-glide:  var(--t-move);         /* was 360ms → 340ms */
+  --dur-arrive: var(--t-stage);        /* was 520ms → 520ms, exact */
+
+  /* 🛑 DELIBERATE EXCEPTION to the kit's 620ms ceiling — do not "fix" this to --t-max.
+     Its only consumers are the two countdown rings' `stroke-dashoffset` transition and
+     two reveal animations. The rings are driven by a 1-SECOND tick, so this value is
+     progress SMOOTHING, not a transition: at 820ms the arc glides almost continuously
+     between ticks, whereas at 620ms it would finish early and sit frozen for ~380ms of
+     every second — visibly steppier. The kit's ceiling governs transitions; a
+     continuously-updating progress arc is a third case it does not cover. */
   --dur-stage:  820ms;
 }
 
@@ -1109,7 +1136,6 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ---------- Win celebration parts ---------- */
-@keyframes ray-spin       { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 @keyframes celebrate-pop  { 0% { transform: scale(0.6); opacity: 0; } 60% { transform: scale(1.06); opacity: 1; } 100% { transform: scale(1); } }
 @keyframes count-up-flash {
   0%   { color: var(--gold-300); text-shadow: 0 0 18px color-mix(in oklab, var(--gold-300) 60%, transparent); }
@@ -1184,26 +1210,22 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
   transition: transform var(--dur-glide) var(--ease-glide), opacity var(--dur-quick) var(--ease-glide);
 }
 
-/* ---------- Modal / dialog entrance ---------- */
-.dialog-anim       { animation: dialog-rise var(--dur-arrive) var(--ease-arrive) both; }
-.dialog-scrim-anim { animation: scrim-fade  var(--dur-glide)  var(--ease-glide)  both; }
-@keyframes dialog-rise { from { transform: translateY(16px) scale(0.96); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
-@keyframes scrim-fade  { from { opacity: 0; backdrop-filter: blur(0px); } to { opacity: 1; backdrop-filter: blur(8px); } }
-
-/* ---------- Bottom sheet entrance ---------- */
-.sheet-anim { animation: sheet-rise var(--dur-arrive) var(--ease-arrive) both; }
-@keyframes sheet-rise { from { transform: translateY(100%); } to { transform: translateY(0); } }
+/* ---------- Modal / dialog / sheet entrance — RETIRED 2026-07-28 ------------
+   Dialog motion used to be defined THREE times: `.dialog-anim`/`.sheet-anim` here,
+   `kp-modal-rise`/`kp-sheet-rise` inline in the Modal primitive, and the motion
+   layer's own `.m-dialog-in`/`.m-sheet-in`/`.m-scrim`. The kit owns it now — see
+   src/app/motion.css. Every dialog, sheet and scrim in the app composes those
+   three classes; `dialog-rise`, `scrim-fade`, `sheet-rise` and the `.dialog-anim`/
+   `.dialog-scrim-anim`/`.sheet-anim` wrappers are gone. Do not reintroduce them:
+   a second definition of "how a dialog arrives" is the drift bug, not a shortcut. */
 
 /* ---------- Skeleton bait — pulse pearl/gold ---------- */
 @keyframes shimmer-gilt { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
 
-/* ---------- Reveal-on-mount stagger helpers ---------- */
-.reveal-up      { animation: reveal-up var(--dur-arrive) var(--ease-arrive) both; }
-.reveal-up-d1   { animation: reveal-up var(--dur-arrive) var(--ease-arrive) both; animation-delay: 60ms;  }
-.reveal-up-d2   { animation: reveal-up var(--dur-arrive) var(--ease-arrive) both; animation-delay: 120ms; }
-.reveal-up-d3   { animation: reveal-up var(--dur-arrive) var(--ease-arrive) both; animation-delay: 180ms; }
-.reveal-up-d4   { animation: reveal-up var(--dur-arrive) var(--ease-arrive) both; animation-delay: 240ms; }
-@keyframes reveal-up { from { transform: translateY(8px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+/* ---------- Reveal-on-mount stagger helpers — RETIRED 2026-07-28 ------------
+   `.reveal-up`/`-d1..-d4` had ZERO consumers (only a stale comment in
+   route-transition.tsx referenced the name). The kit's `.m-in` + `data-stagger`
+   is the arrival vocabulary; it caps the cascade at 4 steps by design. */
 
 /* ---------- Tooltip refinement (kit `.tooltip-popover` — kp-tooltip stays for compat) ---------- */
 .tooltip-popover {
@@ -1213,15 +1235,19 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
 }
 .tooltip:hover .tooltip-popover { transform: translateX(-50%) translateY(0); opacity: 1; }
 
-/* ---------- Slide-up entrance (share popover, mobile nav) ---------- */
-.kp-slide-up { animation: kp-slide-up var(--dur-arrive) var(--ease-arrive) both; }
-@keyframes kp-slide-up { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+/* ---------- Slide-up entrance — RETIRED 2026-07-28 --------------------------
+   `.kp-slide-up` (share popover, admin mobile nav) was a 12px translateY arrival —
+   the kit's `.m-in` is the same gesture at 10px on the settle curve. Both consumers
+   now use `.m-in`. */
 
-/* ---------- Popover/overlay rise — used by notifications panel, admin
-   action-overlay, AI-poll overlays, and the sentinel countdown. Defined
-   globally (was previously only inline in notifications-panel, so it was a
-   no-op on admin pages that don't mount the bell). ---------- */
-@keyframes np-rise { from { transform: translateY(-6px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+/* ---------- Popover/overlay rise — RETIRED 2026-07-28 -----------------------
+   `np-rise` was invoked in SIX places with a hardcoded `cubic-bezier(.2,.8,.2,1)`
+   at FIVE different durations (120/160/180/200/200ms), and notifications-panel
+   redefined the keyframe locally on top of this one. Two vocabularies, five
+   speeds, one gesture. The kit already draws this exact −6px menu arrival:
+   floating menus/dropdowns/listboxes use `.m-float-in` (set `transform-origin`
+   to the trigger corner — kit law 1, Anchored), and centred overlays that are
+   really dialogs use `.m-dialog-in`. Do not reintroduce a third. */
 
 /* ---------- Skeleton shimmer ----------------------------------------------
    The loading sheen swept across PageLoader rows + the markets/live/leaderboard
@@ -1280,12 +1306,13 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
 }
 .press-pop { animation: press-pop var(--dur-flick) var(--ease-micro); }
 
-/* 1.2 — List / card entrance stagger. Reuses the kit `reveal-up` keyframe;
-   JS sets `--i` (item index, capped) and we derive the delay. Cap at 8 so
-   a 50-row leaderboard never feels like it's loading in slow motion. */
+/* 1.2 — List / card entrance stagger. Uses the kit arrival (`m-settle-in`,
+   motion.css); JS sets `--i` (item index) and we derive the delay. Capped at the
+   kit's 4 steps × `--m-stagger` — beyond that every remaining row lands together,
+   so a 50-row leaderboard never feels like it is loading in slow motion. */
 .stagger-item {
-  animation: reveal-up var(--dur-arrive) var(--ease-arrive) both;
-  animation-delay: calc(min(var(--i, 0), 8) * 45ms);
+  animation: m-settle-in var(--dur-arrive) var(--ease-arrive) both;
+  animation-delay: calc(min(var(--i, 0), 4) * var(--m-stagger));
 }
 
 /* 1.3 — Sliding tab / filter indicator. The gold underline TRANSLATES
@@ -1302,8 +1329,10 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
   box-shadow: 0 0 8px color-mix(in oklab, var(--brand-500) 55%, transparent);
   width: var(--w, 0px);
   transform: translateX(var(--x, 0px));
-  transition: transform var(--dur-quick) var(--ease-glide),
-              width var(--dur-quick) var(--ease-glide);
+  /* The kit's travelling-indicator timing (`.m-indicator`): one object glides,
+     never a cross-fade. Same tier as tabs/filters/bottom-nav everywhere else. */
+  transition: transform var(--t-base) var(--m-glide),
+              width var(--t-base) var(--m-glide);
   will-change: transform, width;
 }
 
@@ -1391,7 +1420,11 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
 
 /* 1.8 — Page / route transition. Light shared entrance — content rises a
    hair on navigate. Fast (quick) so it never delays perceived load. */
-.route-enter { animation: reveal-up var(--dur-quick) var(--ease-glide) both; }
+/* Every page arrival in the product. On the kit's signature settle curve — this is
+   the motion players see most, so it is the one that has to read as "The Settle".
+   `m-settle-in` lives in motion.css; `.route-enter` stays a class because
+   route-transition.tsx re-triggers it via classList. */
+.route-enter { animation: m-settle-in var(--t-move) var(--m-settle) both; }
 
 /* 1.9 — Skeleton → content cross-fade. The skeleton fades out as the real
    content fades up, instead of a hard pop. */
@@ -1400,7 +1433,7 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
   to   { opacity: 1; transform: translateY(0); }
 }
 .content-fade-in { animation: content-fade-in var(--dur-quick) var(--ease-glide) both; }
-.skel-fade-out { animation: scrim-fade var(--dur-quick) var(--ease-sink) reverse forwards; }
+.skel-fade-out { animation: m-leave-out var(--dur-quick) var(--ease-sink) forwards; }
 
 /* ---------------------------------------------------------------------------
    §2  BADGES & ACHIEVEMENTS  (sibling system to .tier-*)
@@ -1628,10 +1661,11 @@ html.kp-reduce-motion *::after {
 [data-motion="reduced"] .csrf-rest-ring,
 [data-motion="reduced"] .skeleton,
 [data-motion="reduced"] .settling-bar::before { animation: none !important; }
-/* live status-dot — KEPT at reduced, opacity-only (no box-shadow GPU cost) */
-@keyframes dot-pulse-soft { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+/* live status-dot — KEPT at reduced, opacity-only (no box-shadow GPU cost).
+   Uses the kit's `m-breathe`; the local `dot-pulse-soft` keyframe this used to
+   name was byte-identical to it and has been retired. */
 [data-motion="reduced"] .live-dot,
-[data-motion="reduced"] .cm-status-dot { animation: dot-pulse-soft 1.6s ease-in-out infinite !important; box-shadow: none !important; }
+[data-motion="reduced"] .cm-status-dot { animation: m-breathe 1.6s var(--m-breathe) infinite !important; box-shadow: none !important; }
 
 /* Sticky top-bar frosted blur — DESKTOP ONLY. On phones the bar is near-opaque
    (set inline on .app-topbar) with NO backdrop-filter, so it doesn't re-raster
@@ -1711,9 +1745,10 @@ html.kp-reduce-motion *::after {
 .pchart-line.is-drawn {
   stroke-dasharray: var(--pchart-len);
   stroke-dashoffset: var(--pchart-len);
-  animation: pchart-draw var(--dur-stage) var(--ease-glide) forwards;
+  /* `m-draw` is the kit's line-draw keyframe (motion.css) — identical to the
+     `pchart-draw` this used to define locally. One draw-on, one home. */
+  animation: m-draw var(--dur-stage) var(--ease-glide) forwards;
 }
-@keyframes pchart-draw { to { stroke-dashoffset: 0; } }
 
 /* Live point — aqua SignalPip echo + gilt value flag */
 .pchart-dot       { fill: var(--aqua-300); }
@@ -1902,8 +1937,7 @@ html.kp-reduce-motion *::after {
 /* A1 · 24h YES% sparkline directly under the bar; draws in on mount.
    pathLength=1 normalizes the dash regardless of the rendered card width. */
 .mcardp-spark { margin-top:-4px; }
-.mcardp-spark-line { stroke-dasharray:1; stroke-dashoffset:1; animation:mcardp-spark-draw 480ms cubic-bezier(.4,0,.2,1) forwards; }
-@keyframes mcardp-spark-draw { to { stroke-dashoffset:0; } }
+.mcardp-spark-line { stroke-dasharray:1; stroke-dashoffset:1; animation:m-draw var(--dur-arrive) var(--ease-glide) forwards; }
 @media (prefers-reduced-motion: reduce) {
   .mcardp-spark-line { animation:none; stroke-dasharray:none; stroke-dashoffset:0; }
 }

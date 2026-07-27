@@ -122,8 +122,10 @@ export function AiToolkit({ status }: { status: AiToolkitStatus }) {
           // Mobile: pin to the viewport's right edge (fixed, anchored to the
           // backdrop-filtered bar) so a 300px panel never runs off the LEFT edge when
           // the button sits mid-bar. Desktop (≥sm): drop under the button as usual.
-          className="fixed right-3 top-[58px] sm:absolute sm:right-0 sm:top-full sm:mt-2 w-[300px] max-w-[calc(100vw-24px)] rounded-lg glass-panel p-3.5 shadow-e4 z-50"
-          style={{ animation: "np-rise 160ms cubic-bezier(.2,.8,.2,1)" }}
+          className="m-float-in fixed right-3 top-[58px] sm:absolute sm:right-0 sm:top-full sm:mt-2 w-[300px] max-w-[calc(100vw-24px)] rounded-lg glass-panel p-3.5 shadow-e4 z-50"
+          // Anchored (kit law 1): this panel hangs off the RIGHT of its trigger, so it
+          // grows from that corner rather than the utility's default top-left.
+          style={{ transformOrigin: "top right" }}
         >
           <div className="flex items-center gap-2 mb-3">
             <span className="grid h-7 w-7 place-items-center rounded-md bg-brand-500/12 text-brand-300"><I.sparkle s={15} /></span>

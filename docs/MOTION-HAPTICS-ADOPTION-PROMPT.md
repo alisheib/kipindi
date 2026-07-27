@@ -1,9 +1,36 @@
-# 50pick — Motion + Haptics kit adoption & de-duplication (copy-paste prompt)
+# 50pick — Motion + Haptics kit adoption & de-duplication
 
-> Focused continuation prompt. The designers dropped two kits at the repo root and said
-> they are the perfect, consistent motion + haptics language for 50pick. This session
-> makes them the CANONICAL rule, uses them correctly everywhere, and removes all
-> redundancy (one source of truth; delete or archive the rest). Paste everything below.
+> ## ✅ DONE — 2026-07-27 (Phase 0 + 3.2/3.3) and 2026-07-28 (Phase 3.4).
+> **This prompt is retired. Do not re-run it.** The authoritative record of what was
+> actually done, and why, is
+> [`docs/design-system/v2-2026-07-27/07-provenance/CHANGELOG.md`](design-system/v2-2026-07-27/07-provenance/CHANGELOG.md)
+> — read the `2026-07-28` and `2026-07-27` entries. The text below is kept only as the
+> original brief, so a future session can see what was asked for versus what shipped.
+>
+> **Delivered:** loose root kits adopted + deleted (Phase 0) · `motion.css` landed and then
+> genuinely ADOPTED (it had zero consumers until 3.4) · the app's second motion scale
+> retired into aliases onto `--m-*`/`--t-*` · dialog motion unified from three definitions
+> to the kit's three classes · 9 duplicate/dead keyframes retired · `.btn` / `.live-dot` /
+> `.tab-indicator` / `.stagger-item` / `.route-enter` on kit values · haptics physical-only
+> rule enforced for real. Guarded by `scripts/motion-adoption-verify.mjs` (41 assertions in
+> a real browser, because a green unit suite cannot see a dead `var()`).
+>
+> **Deliberately NOT done, and why:**
+> - `--dur-stage` stays **820ms**, above the kit's 620ms ceiling — countdown-ring progress
+>   smoothing on a 1-second tick is not a transition. Documented in globals.css. Don't "fix" it.
+> - Bespoke keyframes remain where a kit utility cannot express them: `gold-pulse`/`aqua-pulse`
+>   (animate box-shadow halos, not opacity), the needle drawer's centred `translate(-50%,-50%)`
+>   arrival, and the SVG stroke-draws. All now run on kit **curves and tiers**, so they are one
+>   language even where the keyframe is local.
+> - Utility-level adoption of `.m-seal` (bet commit), `.m-needle` (conviction dial), `.m-tick`
+>   (odds change) and `.m-skeleton` was **not** forced onto surfaces that already have working,
+>   richer bespoke motion (`seal-place`, `ud-place-pulse`, `odds-flash-*`, `kp-shimmer-track`).
+>   Those now inherit the kit's curves via the aliases; swapping the keyframes too would be
+>   visual churn on a live money app for no gain. That is the one open thread if a future
+>   session wants literal utility coverage.
+>
+> ---
+> <details><summary>Original brief (historical)</summary>
 
 ---
 
@@ -116,3 +143,5 @@ anywhere (local or git) — one canonical home a future session will find, or de
   src/` shows only the canonical module; no import resolves into `Motion Language/` or `Haptics/`.
 - Commit in reviewable steps; push; verify the deploy. Update `docs/UPDOWN-PROGRESS.md` +
   retire this prompt when done.
+
+</details>

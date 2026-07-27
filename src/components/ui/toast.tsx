@@ -106,10 +106,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       }
       return merged;
     });
-    // Haptic punctuation, matched to the toast's meaning. `gold` = win/reward
-    // peak → celebrate; routine `default` toasts stay silent.
+    // Haptic punctuation, matched to the toast's meaning. Every one of these marks a
+    // real event landing — the kit's physical-only rule. `gold` takes `success` (money
+    // settled), never the `celebrate` flourish: a reward buzz is reinforcement, which
+    // the rule forbids. Routine `default` toasts stay silent.
     switch (next.variant) {
-      case "gold":    haptics.celebrate(); break;
+      case "gold":    haptics.success(); break;
       case "success": haptics.success(); break;
       case "warning": haptics.warning(); break;
       case "danger":  haptics.error(); break;

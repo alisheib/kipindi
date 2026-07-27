@@ -77,9 +77,9 @@ export function BalanceAdjustControls({
             type="button"
             aria-label="Cancel"
             onClick={() => { if (!pending) setOpen(false); }}
-            className="dialog-scrim-anim fixed inset-0 bg-black/60 backdrop-blur-sm"
+            className="m-scrim fixed inset-0 bg-black/60"
           />
-          <div className="dialog-anim relative z-10 my-auto w-full max-w-[420px] rounded-xl border border-border bg-bg-elevated p-5 shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6)]">
+          <div className="m-dialog-in relative z-10 my-auto w-full max-w-[420px] rounded-xl border border-border bg-bg-elevated p-5 shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6)]">
             <p className="font-mono text-[10px] uppercase tracking-[0.18em] font-bold text-text mb-1">Balance adjustment · Marekebisho</p>
             <h3 className="font-display text-[18px] font-bold text-text leading-tight">Credit or debit this balance</h3>
             <p className="mt-1 text-[12.5px] italic text-text-subtle">

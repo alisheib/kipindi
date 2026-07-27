@@ -98,6 +98,7 @@
     "test:proposal-close": "tsx scripts/proposal-selection-close.test.mts",
     "test:kyc": "tsx scripts/kyc-review.test.mts && tsx scripts/kyc-submit-notify.test.mts && tsx scripts/kyc-flow-stress.test.mts && tsx scripts/kyc-security.test.mts",
     "test:responsive": "node scripts/responsive-audit.mjs",
+    "test:motion": "node scripts/motion-adoption-verify.mjs",
     "test:all": "node scripts/test-all.mjs",
     "backfill:zh": "tsx scripts/backfill-zh-titles.mts",
     "qa:live": "node scripts/pre-deploy-live-check.mjs",
@@ -118,6 +119,7 @@
     "test:auth-email": "tsx scripts/auth-email-signin.test.mts",
     "e2e:card": "tsx scripts/card-flow-e2e.test.mts",
     "qa:visual": "node scripts/live-visual-check.mjs",
+    "qa:motion-shots": "node scripts/motion-adoption-shots.mjs",
     "test:outcome": "tsx scripts/outcome-display.test.mts",
     "test:history": "tsx scripts/history-fabrication.test.mts",
     "qa:outcome": "node scripts/outcome-parity.mjs"

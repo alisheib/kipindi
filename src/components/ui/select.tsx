@@ -159,13 +159,12 @@ export function Select({
         <div
           ref={listRef}
           role="listbox"
-          className="fixed z-[130] rounded-lg border border-border-strong bg-bg-elevated shadow-[0_16px_48px_-8px_rgba(0,0,0,0.6)] overflow-y-auto overscroll-contain"
+          className="m-float-in fixed z-[130] rounded-lg border border-border-strong bg-bg-elevated shadow-[0_16px_48px_-8px_rgba(0,0,0,0.6)] overflow-y-auto overscroll-contain"
           style={{
             top: pos.top,
             left: pos.left,
             width: pos.width,
             maxHeight: 240,
-            animation: "np-rise 120ms cubic-bezier(0.2, 0.8, 0.2, 1)",
           }}
         >
           {options.map((o, i) => (

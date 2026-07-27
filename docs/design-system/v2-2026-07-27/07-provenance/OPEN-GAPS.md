@@ -31,6 +31,16 @@
 7. **`ud-count-pulse` → PROMOTED** to the kit stylesheet (globals.css) with its reduced-motion gate; `ud-point` (D3 live-price dot) landed beside it the same way.
 8. **Estimate multiplier → one shared estimate, always "est."** The contract and both live surfaces (D1 card, D3 round) carry a single `estMultiplier`, always rendered with the "× … est." qualifier + the pool-estimate note; per-side estimates are not introduced unless the backend ever quotes them.
 
+**Motion layer ADOPTED (Phase 3.4, 2026-07-28).** Phase 3.2 landed the layer; it had **zero
+consumers** until now. The app's second, older motion scale is retired into aliases onto
+`--m-*`/`--t-*`; dialog motion (defined in three places, none of them the canonical `Modal`) is
+now the kit's three classes; 9 duplicate/dead keyframes are gone; `.btn`, `.live-dot`,
+`.tab-indicator`, `.stagger-item` and `.route-enter` all run kit values. Haptics honour the
+physical-only rule for real (reward buzzes removed; wins fire `success`, not `celebrate`).
+🛑 One deliberate exception: `--dur-stage` stays **820ms**, above the kit's 620ms ceiling — its
+consumers are countdown-ring progress smoothing on a 1-second tick, not transitions. Full detail
++ the two verification scripts: see CHANGELOG "2026-07-28".
+
 **Motion layer (Phase 3.2):** `08-motion/motion.css` landed as `src/app/motion.css` (imported after globals/state-tokens/micro-patterns). Additive `--m-*` curves + `--t-*` durations + `.m-*` utilities + keyframes; overrides nothing; in-app reduced-motion selector adapted to `html.kp-reduce-motion`. Token-collision guard extended to the `--m-*`/`--t-*` families. Token diff vs the archive found no other referenced-but-undefined tokens (`--accent-*`/`--aqua-*`/`--claret-*` all already defined; chat/pearl tokens are chat-scoped).
 
 ## Unspecified (nobody has ever said)

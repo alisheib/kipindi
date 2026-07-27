@@ -97,9 +97,9 @@ export function SuspendControls({
             type="button"
             aria-label="Cancel"
             onClick={() => { if (!pending) setMode(null); }}
-            className="dialog-scrim-anim fixed inset-0 bg-black/60 backdrop-blur-sm"
+            className="m-scrim fixed inset-0 bg-black/60"
           />
-          <div className="dialog-anim relative z-10 my-auto w-full max-w-[420px] rounded-xl border border-border bg-bg-elevated p-5 shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6)]">
+          <div className="m-dialog-in relative z-10 my-auto w-full max-w-[420px] rounded-xl border border-border bg-bg-elevated p-5 shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6)]">
             <p className="font-mono text-[10px] uppercase tracking-[0.18em] font-bold text-text mb-1">
               {mode === "suspend" ? "Suspend · Simamisha" : "Restore · Rejesha"}
             </p>

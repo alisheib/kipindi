@@ -9,7 +9,8 @@ import { useRef, useEffect, useState } from "react";
  * When the View Transitions API is available (Chrome 111+, Edge 111+),
  * uses `document.startViewTransition()` for a native cross-fade that the
  * browser can hardware-accelerate. Falls back to the existing `.route-enter`
- * CSS animation (reveal-up, dur-quick) on Firefox / Safari / older browsers.
+ * CSS animation (the kit's `m-settle-in` at `--t-move`) on Firefox / Safari /
+ * older browsers.
  *
  * Mount-guarded: only fires once per pathname change, never on filter/search updates.
  * Respects prefers-reduced-motion (View Transitions API handles this natively;

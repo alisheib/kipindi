@@ -1035,7 +1035,11 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
           cursor: closedNow || !armed ? "not-allowed" : (dragging ? "grabbing" : "grab"),
           // Locked → greyed + dimmed so it reads as inactive (unlock to colour it).
           filter: !closedNow && !armed ? "saturate(0.1) brightness(0.92) opacity(0.6)" : undefined,
-          transition: "filter 260ms ease, opacity 260ms ease",
+          // Kit tokens, not a raw `ease` keyword. NOTE: this is the LOCK/UNLOCK
+          // state fade only — the needle itself is driven straight from drag state
+          // with no CSS transition, and must stay that way: a transition here would
+          // put lag between the finger and the knob on a money control.
+          transition: "filter var(--t-base) var(--m-glide), opacity var(--t-base) var(--m-glide)",
         }}
       >
         {/* One-time coach hint — a nudging pill above the knob. Only once the
@@ -1562,12 +1566,12 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
 
       <style>{`
         @keyframes csrf-breathe { 0%,100% { opacity: 0.35; } 50% { opacity: 0.7; } }
-        .csrf-rest-ring { animation: csrf-breathe 2.4s ease-in-out infinite; }
+        .csrf-rest-ring { animation: csrf-breathe 2.4s var(--m-breathe) infinite; }
         /* Grab-pip focus ring — hidden until the track has keyboard focus. */
-        .dial-focus-ring { opacity: 0; transition: opacity 120ms ease; }
+        .dial-focus-ring { opacity: 0; transition: opacity var(--t-quick) var(--m-glide); }
         .dial-track:focus-visible .dial-focus-ring { opacity: 1; }
         /* Coach hint — a gentle downward nudge toward the knob. */
-        .dial-coach { transform: translateX(-50%); animation: dial-coach-nudge 2.2s ease-in-out infinite; }
+        .dial-coach { transform: translateX(-50%); animation: dial-coach-nudge 2.2s var(--m-breathe) infinite; }
         @keyframes dial-coach-nudge {
           0%,100% { transform: translateX(-50%) translateY(0); }
           50%     { transform: translateX(-50%) translateY(3px); }
