@@ -293,15 +293,68 @@ export async function getMyUpDownHistory(userId: string, limit = 200): Promise<M
   return rows;
 }
 
+/** Real intra-round price points for the D3 hero — CONFIRMED observations only, inside
+ *  the round window, oldest→newest, capped at ~60. NOTHING is sampled or simulated: the
+ *  oracle reads at grid boundaries, so a short round yields few real points and a long
+ *  one more; we hand the hero exactly the real reads (A-5, "real data or nothing"). Null
+ *  when fewer than two real points exist — the hero then draws the open line alone. */
+async function priceSeriesFor(
+  assetId: string, opensAtMs: number, endMs: number,
+): Promise<{ t: string; price: number }[] | null> {
+  const rows = await observationStore.list({ assetId, state: "CONFIRMED", limit: 120 }).catch(() => []);
+  const pts = rows
+    .filter((o) => o.price != null && o.boundaryAt != null)
+    .map((o) => ({ t: o.boundaryAt, price: o.price as number, ms: Date.parse(o.boundaryAt) }))
+    .filter((o) => Number.isFinite(o.ms) && o.ms >= opensAtMs && o.ms <= endMs)
+    .sort((a, b) => a.ms - b.ms);
+  if (pts.length < 2) return null;
+  // Never hand the hero more than ~60 points; even-step downsample if a finer feed ever
+  // produces more (mirrors market-history.getCompressedHistory). No point is invented.
+  const N = 60;
+  let out = pts;
+  if (pts.length > N) {
+    const step = (pts.length - 1) / (N - 1);
+    out = Array.from({ length: N }, (_, i) => pts[Math.round(i * step)]);
+  }
+  return out.map((p) => ({ t: p.t, price: p.price }));
+}
+
+/** The viewer's OWN position on THIS market, aggregated for the resolved "Your result"
+ *  panel. Reads only the money the settlement path already wrote (status + finalPayout) —
+ *  adds no money logic. Null when the viewer holds no position on this round. */
+async function myPositionFor(
+  userId: string | undefined, marketId: string,
+): Promise<{ side: "UP" | "DOWN"; stake: number; payout: number | null; result: "WIN" | "LOSS" | "VOID" | null } | null> {
+  if (!userId) return null;
+  const positions = (await listPositionsForUser(userId, 500, "UPDOWN").catch(() => [])).filter((p) => p.marketId === marketId);
+  if (positions.length === 0) return null;
+  let up = 0, down = 0, stake = 0, payout = 0, anyPayout = false, anyWin = false, anyVoid = false, allSettled = true;
+  for (const p of positions) {
+    stake += p.stake;
+    if (p.side === "YES") up += p.stake; else down += p.stake;
+    if (p.finalPayout != null) { payout += p.finalPayout; anyPayout = true; }
+    if (p.status === "WIN") anyWin = true;
+    else if (p.status === "VOID") anyVoid = true;
+    if (p.status === "OPEN") allSettled = false;
+  }
+  const side: "UP" | "DOWN" = up >= down ? "UP" : "DOWN";
+  const result: "WIN" | "LOSS" | "VOID" | null = !allSettled ? null : anyVoid && !anyWin ? "VOID" : anyWin ? "WIN" : "LOSS";
+  return { side, stake, payout: anyPayout ? payout : null, result };
+}
+
 /** One round, for the detail page — with its settlement proof when it has one. */
 export async function getRoundDetail(roundId: string, userId?: string): Promise<{
   round: BoardRound;
   asset: BoardAsset;
   titleEn: string;
+  /** Real confirmed price points inside the round window; null ⇒ hero draws open line only. */
+  priceSeries: { t: string; price: number }[] | null;
+  /** The viewer's own stake/result on this round, or null when they did not play it. */
+  myPosition: { side: "UP" | "DOWN"; stake: number; payout: number | null; result: "WIN" | "LOSS" | "VOID" | null } | null;
   proof: {
     openPrice: number | null; closePrice: number | null;
-    openSourceUrl: string | null; openQuotedAt: string | null;
-    closeSourceUrl: string | null; closeQuotedAt: string | null;
+    openSourceUrl: string | null; openQuotedAt: string | null; openObservedAt: string | null;
+    closeSourceUrl: string | null; closeQuotedAt: string | null; closeObservedAt: string | null;
     openEvidence: string | null; closeEvidence: string | null;
   } | null;
   minStake: number; maxStake: number;
@@ -326,6 +379,15 @@ export async function getRoundDetail(roundId: string, userId?: string): Promise<
     r.closeObservationId ? observationStore.get(r.closeObservationId) : Promise.resolve(null),
   ]);
 
+  // The window ends at close once decided, else "now" — so an open round shows the real
+  // reads so far and a resolved one the full window up to close.
+  const decided = board.state === "resolved" || board.state === "void";
+  const endMs = decided ? Date.parse(r.closesAt) : Date.now();
+  const [priceSeries, myPosition] = await Promise.all([
+    priceSeriesFor(a.id, Date.parse(r.opensAt), endMs),
+    myPositionFor(userId, r.marketId),
+  ]);
+
   const cfg = await getUpDownConfig();
   return {
     round: board,
@@ -336,13 +398,15 @@ export async function getRoundDetail(roundId: string, userId?: string): Promise<
       durations: [chain.durationMinutes],
     },
     titleEn: m.titleEn,
+    priceSeries,
+    myPosition,
     // The proof panel renders ONLY once the round is decided — showing a half-filled
     // receipt mid-round would imply a result that does not exist yet.
     proof: r.resolvedAt
       ? {
           openPrice: r.openPrice, closePrice: r.closePrice,
-          openSourceUrl: openObs?.sourceUrl ?? null, openQuotedAt: openObs?.sourceQuotedAt ?? null,
-          closeSourceUrl: closeObs?.sourceUrl ?? null, closeQuotedAt: closeObs?.sourceQuotedAt ?? null,
+          openSourceUrl: openObs?.sourceUrl ?? null, openQuotedAt: openObs?.sourceQuotedAt ?? null, openObservedAt: openObs?.confirmedAt ?? null,
+          closeSourceUrl: closeObs?.sourceUrl ?? null, closeQuotedAt: closeObs?.sourceQuotedAt ?? null, closeObservedAt: closeObs?.confirmedAt ?? null,
           openEvidence: openObs?.evidence ?? null, closeEvidence: closeObs?.evidence ?? null,
         }
       : null,

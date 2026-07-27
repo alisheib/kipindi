@@ -32,6 +32,29 @@ export function mmss(s: number | null): string {
 }
 
 /**
+ * D3 round-detail countdown POD — the boxed readout in the round header: 28px tabular
+ * digits with the label beside them, in the kit's inset-pod chrome. Open rounds tick
+ * live and pulse rose in the final 30s (reduced-motion turns the pulse off); once closed
+ * it shows a static 00:00 in `--text-subtle`. Same shared hook as everywhere else.
+ */
+export function RoundCountdownPod({ closesAtMs, isOpen, label }: { closesAtMs: number; isOpen: boolean; label: string }) {
+  const left = useCountdown(closesAtMs);
+  const running = isOpen && (left == null || left > 0);
+  const urgent = isOpen && left != null && left > 0 && left <= 30;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 14px", background: "var(--bg-inset)", border: "1px solid color-mix(in oklab, var(--border) 70%, transparent)", borderRadius: "var(--r-md)" }}>
+      <span className="font-mono text-[8.5px] font-semibold uppercase tracking-[0.12em] text-text-faint">{label}</span>
+      <span
+        className={urgent ? "ud-count-pulse" : undefined}
+        style={{ fontFamily: "var(--font-mono)", fontSize: 28, fontWeight: 700, fontVariantNumeric: "tabular-nums", letterSpacing: "0.05em", lineHeight: 1, color: urgent ? "var(--no-300)" : running ? "var(--text)" : "var(--text-subtle)" }}
+      >
+        {isOpen ? mmss(left) : "00:00"}
+      </span>
+    </div>
+  );
+}
+
+/**
  * The countdown as a standalone readout — used on the round detail page, where the
  * card's full countdown band would be redundant but the player still needs to see how
  * long is left. Same hook, same digits, same urgency rule as the card.

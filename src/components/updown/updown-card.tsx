@@ -108,14 +108,16 @@ function markFor(icon: string, ticker: string): string {
 
 /** Asset identity chip. Gold gets a gilt ring as ASSET IDENTITY — flagged in the spec
  *  as the one place gold is not "earned money"; real artwork replaces it (Q7). */
-function AssetMark({ icon, ticker }: { icon: string; ticker: string }) {
+/** The asset mark — a tinted glyph chip. Default 40px on the board card; the D3 round
+ *  page uses it at 44px (page scale). Gold tint is asset identity here, NOT earned money. */
+export function AssetMark({ icon, ticker, size = 40 }: { icon: string; ticker: string; size?: number }) {
   const gold = icon === "gold";
   return (
     <span
       aria-hidden
-      className="inline-flex shrink-0 items-center justify-center rounded-full font-mono text-[13px] font-bold"
+      className="inline-flex shrink-0 items-center justify-center rounded-full font-mono font-bold"
       style={{
-        width: 40, height: 40,
+        width: size, height: size, fontSize: size >= 44 ? 14 : 13,
         background: gold ? "color-mix(in oklab, var(--gold-500) 16%, transparent)" : "var(--bg-inset)",
         border: `1px solid ${gold ? "color-mix(in oklab, var(--gold-400) 45%, transparent)" : "var(--border)"}`,
         color: gold ? "var(--gold-300)" : "var(--text-subtle)",

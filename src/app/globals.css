@@ -2094,3 +2094,11 @@ textarea::-webkit-resizer {
 .ud-count-pulse { animation: ud-count-pulse 1s var(--ease-conduct, ease-in-out) infinite; }
 @keyframes ud-count-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
 @media (prefers-reduced-motion: reduce) { .ud-count-pulse { animation: none; } }
+
+/* ── Up & Down: the live price point on the D3 round hero ────────────────────
+   A slow opacity breath on the current-price dot (D3 round detail), so a still
+   image still reads as "live" without any movement. Kit-level beside its sibling
+   above; reduced-motion turns it off (the dot stays, just no breath). */
+.ud-point { animation: ud-point 1.6s var(--ease-conduct, ease-in-out) infinite; }
+@keyframes ud-point { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+@media (prefers-reduced-motion: reduce) { .ud-point { animation: none; } }

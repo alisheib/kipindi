@@ -1,5 +1,42 @@
 # Changelog (reconstructed)
 
+## 2026-07-27 (repo · feature) — Up & Down D3 round detail (`/updown/[roundId]`) built to spec
+The round page rebuilt to `02-components/_specs-as-delivered/D3-updown-round-spec.md` (canvas
+`05-pages/UpDown Round.dc.html`): back link → header (44px asset mark + title + status line +
+28px countdown pod) → two-column grid at 1280 (price hero left; pool + stake/result right) →
+full-width settlement proof once decided. Single dark royal theme; gold appears exactly twice
+per state (the gold Confirm on open; the winning payout + resolved-win chip on resolved).
+- **Price hero** (`src/components/updown/price-hero.tsx`, pure/server): gilt dashed open-price
+  reference line, area tint `--yes-400` above / `--no-400` below (two clip-paths split on the
+  open Y), price line in direction ink, breathing live point (`ud-point`), value tag, "Above/
+  Below open by $x · Source · quoted". No axis, no gridlines.
+- **⚠️ REAL DATA, honestly.** The spec's "~60 points" is aspirational: the oracle reads only at
+  grid boundaries, so `priceSeriesFor` (updown-board.ts) hands the hero **only the real CONFIRMED
+  reads inside the round window** (≈2 for a 5-min round, more for longer), downsampled to ≤60 if a
+  finer feed ever appears — **never a simulated walk** (A-5). `priceSeries=null` (fewer than two
+  real points) ⇒ the hero draws the open line alone. No fabricated curve, ever.
+- **Locked pick, no exit.** The pick is chosen on the board and carried here as `?side`; the stake
+  panel shows it as a chip **statement, not a control** ("to switch sides, leave this round" — no
+  cash-out). `RoundStakePanel` reuses the SAME `useUpDownQuickBet → buyPositionAction` money path
+  (single-direction gold Confirm when a side is locked; a safe two-way fallback when navigated to
+  directly, so betting is never blocked). Stake bounds 1k/1M enforced server-side as before.
+- **Exact tie ⇒ VOID + full refund** was already the server rule (`decideOutcome` voids on
+  `|move| < 1 tick`, which includes `close===open`); the receipt now **publishes** it — the "Rule"
+  row reads truthfully as the dead-band ("Up if the close is above the open · Down if below · Void
+  if it does not move"), not a literal `close=open`.
+- **Settlement proof**: three cards (open obs · close obs · outcome) with Source (aqua link),
+  quoted + **observed** timestamps in EAT, Move/Percent/Rule, a gilt-left-bordered evidence `<pre>`
+  (wraps, never clips at 360), and the void-refund closing note. Renders only when `proof != null`.
+- **Result panel** (resolved & played): real position (side/stake/payout/result) from
+  `myPositionFor`; payout gilt on a win, `--text` on loss/void; honest "TZS 0" on a loss.
+- New kit keyframe `ud-point` (globals.css, beside `ud-count-pulse`, reduced-motion gated) — the
+  one flagged new value; every other token/class already existed. 19 new `market.ud*` i18n keys in
+  EN+SW+ZH (parity 1556³).
+- **Verified:** typecheck ✓ · `next build` ✓ · test:tokens ✓ · test:i18n (1556³) ✓ · test:trilingual
+  ✓ · updown-engine 66 / updown-quickbet 28 / updown-config 62 / product-line 32 / updown-adversarial
+  13 ✓ · rendered both states (open/resolved) against the real compiled CSS at 1280 + 360 — layout,
+  chart, proof, gold discipline and zero-overflow confirmed by eye.
+
 ## 2026-07-27 (repo · feature) — The Needle: Spin/Bounce mode + an aesthetic controls drawer
 A second, user-selectable interaction plus a small settings surface — no new physics, just a
 new input on the proven engine.

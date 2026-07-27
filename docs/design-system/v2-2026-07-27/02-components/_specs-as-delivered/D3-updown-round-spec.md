@@ -158,3 +158,15 @@ UpDownRound
 6. **OPEN QUESTION — leaving the round.** The stake copy says "to take the other side, leave this round", which implies a cancel/withdraw path that has never been designed. If cash-out-before-close exists, it needs a panel here; if it does not, the copy should change.
 7. **OPEN QUESTION — series length.** The hero assumes ~34 samples over a 5-minute round. At 30 minutes the sampling rate must change or the line gets noisy; recommend a fixed sample count per duration rather than a fixed interval.
 8. **`priceSeries` timestamps are unused in the render** (index-spaced x-axis). Fine for equal sampling; if the feed can drop samples, x must become time-proportional or a gap will read as a price move that never happened.
+
+---
+
+## 4 · As built (repo · 2026-07-27) — open questions resolved
+
+Implemented at `src/app/updown/[roundId]/page.tsx` + `src/components/updown/{price-hero,round-stake-panel}.tsx` + `round-countdown.tsx` (`RoundCountdownPod`), data in `src/lib/server/updown-board.ts`.
+
+- **§3.5 exact ties → RESOLVED: VOID + full refund.** This was already the server rule — `decideOutcome` (`updown-service.ts`) voids on `|close − open| < minMove` (one tick), which includes `close === open`, and `settleMarket` refunds in full. The receipt now **publishes** it. The "Rule" row is stated as the true **dead-band**, not a literal `close = open`: *"Up if the close is above the open · Down if below · Void if it does not move."* (A receipt must not claim more precision than the mechanism has.)
+- **§3.6 leaving the round → RESOLVED: no exit.** The pick is final. It is chosen on the board and carried here as `?side`; the stake panel renders it as a **chip statement, not a control**, and there is no cash-out/withdraw path. Copy: "Locked from your pick on the board. To switch sides, leave this round." When navigated to WITHOUT a side (direct link), a safe two-way control renders so betting is never blocked. The one money commit is the gold Confirm, through the shared `useUpDownQuickBet → buyPositionAction` path (no parallel money path); bounds 1k/1M enforced server-side.
+- **§3.7 series length → RESOLVED (with a data caveat).** The oracle reads only at grid boundaries, so the "~60 samples" is not achievable from real data today. `priceSeriesFor` hands the hero **only the real CONFIRMED reads inside the round window** — ≈2 points for a 5-minute round, more for a 30-minute one — downsampled with an even-step to ≤60 if a finer feed is ever added. It **never fabricates** intermediate points (A-5). `priceSeries = null` (fewer than two real points) ⇒ the hero draws the gilt open line alone. A real ~60-point hero would require intra-round oracle sampling (backend follow-up); the render already handles both the sparse and the dense case.
+- **`ud-point`** promoted to the kit stylesheet (`globals.css`, beside `ud-count-pulse`, reduced-motion gated) — the one new value flagged in §85.3; everything else resolved to existing tokens/classes.
+- **Proof "Observed" timestamp** added from `observation.confirmedAt` (our observed time), rendered in EAT alongside the source's own quoted time, per §80.
