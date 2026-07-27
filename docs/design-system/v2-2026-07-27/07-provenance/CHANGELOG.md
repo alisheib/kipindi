@@ -1,5 +1,17 @@
 # Changelog (reconstructed)
 
+## 2026-07-27 (repo · fix) — The Needle can never rest under the app chrome
+Bug: at z-25 (below the top bar + bottom nav) the object could park at the top/bottom edge
+and half-tuck UNDER a bar, where it was hidden AND unclickable (the bar ate the pointer).
+Fix (no engine edit): (1) the fixed chrome is fed to the engine's `insets` — its documented
+purpose ("never park under a fixed app bar") — via `data-needle-inset-top` on the top bar and
+`data-needle-inset-bottom` on the bottom nav, measured live; the object now bounces off them
+like walls and treats the content band as its whole world. (2) `nearestEdge` is overridden on
+the instance to the LEFT/RIGHT rails only (the design's own "sides win" preference), so it
+always rests where it is fully visible and clickable. Verified: `test:needle` §16 (parks side-
+only, whole disc inside the content band, free motion never enters a chrome band) and
+`needle-visual.mjs` (settles on a side rail clear of a real top bar + bottom nav) — ALL PASS.
+
 ## 2026-07-27 (repo) — The Needle wired into the app, and torture-verified
 Integration of `09-needle/` into the live 50pick app (physics/spec/renderer unchanged;
 this is integration, not redesign).

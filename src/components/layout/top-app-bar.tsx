@@ -93,6 +93,9 @@ export function TopAppBar({ user, proposalsState }: { user: TopAppBarUser; propo
 
   return (
     <header
+      // The Needle reads this to keep its resting zone below the bar (it sits at z-25,
+      // below this header, so it must never park under it — src/lib/needle-bridge etc.).
+      data-needle-inset-top
       className="sticky top-0 z-30 app-topbar"
       style={{
         height: 56,

@@ -449,5 +449,45 @@ console.log("Needle physics torture gauntlet\n");
   else fail("soak corrupted state");
 }
 
+// ═══ 16. App-chrome insets + sides-only parking: it NEVER rests under the top bar/bottom nav.
+//    Mirrors the host (needle.tsx): a phone with a 56px top bar + 96px bottom nav fed as
+//    insets, and nearestEdge overridden to left/right only. From any throw/spin it must park
+//    on a side rail with the WHOLE disc inside the content band (clear of both bars).
+{
+  const vp = { w: 390, h: 844, insets: { top: 56, right: 0, bottom: 96, left: 0 } };
+  let bad = 0, topBottom = 0, underChrome = 0;
+  for (let i = 0; i < 2500; i++) {
+    const { b } = make(vp);
+    b.nearestEdge = () => { const L = b.limits(); return (b.cx - L.minX) <= ((L.maxX + b.size) - b.cx) ? "left" : "right"; };
+    b.snapPark(pick(["left", "right"])); b.unpark();
+    b.place(rr(0, vp.w - b.size), rr(0, vp.h - b.size));
+    launch(b, rr(-9, 9), rr(-9, 9), rr(-2.8, 2.8));
+    settle(b, "chrome");
+    if (!b.parked) { bad++; continue; }
+    if (b.edge === "top" || b.edge === "bottom") topBottom++;
+    // whole disc (cy ± radius) must sit inside [insetTop, h - insetBottom]
+    if (b.cy - b.radius < vp.insets.top - 1 || b.cy + b.radius > vp.h - vp.insets.bottom + 1) underChrome++;
+  }
+  if (bad) fail(`chrome: ${bad} did not park`);
+  if (topBottom) fail(`chrome: ${topBottom} parked on top/bottom (must be sides only)`);
+  else pass("app-chrome: always parks on a side rail, never top/bottom");
+  if (underChrome) fail(`chrome: ${underChrome} rested with the disc under the top bar / bottom nav`);
+  else pass("app-chrome: the whole disc always rests inside the content band (never under a bar)");
+
+  // Free motion must also never cross into the chrome bands (it bounces off them like walls).
+  let breach = 0;
+  for (let i = 0; i < 400; i++) {
+    const { b } = make(vp); b.autoPark = false;
+    b.place(rr(0, vp.w - b.size), rr(vp.insets.top, vp.h - vp.insets.bottom - b.size));
+    launch(b, rr(-9, 9), rr(-9, 9), rr(-2.8, 2.8));
+    for (let f = 0; f < 900; f++) {
+      b.advance(DT); if (!frameOk(b, "chrome-free")) { breach++; break; }
+      if (!b.held && !b.parking && !b.parked && (b.y < vp.insets.top - 1 || b.y + b.size > vp.h - vp.insets.bottom + 1)) { breach++; break; }
+      if (!b.awake) break;
+    }
+  }
+  if (breach === 0) pass("app-chrome: free motion never crosses into the top-bar / bottom-nav bands"); else fail(`${breach} runs crossed into a chrome band while free`);
+}
+
 console.log(`\n${failures === 0 ? "ALL PASS" : failures + " FAILED"}`);
 process.exit(failures === 0 ? 0 : 1);

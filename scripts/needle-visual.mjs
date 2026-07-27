@@ -79,6 +79,10 @@ const HARNESS = `<!doctype html><html lang="en"><head><meta charset="utf-8">
 </head><body>
 <!-- A decoy SVG OUTSIDE #needle-root: proves the scoped rule never leaks onto app glyphs. -->
 <svg id="decoy" width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="#caa24a"></circle></svg>
+<!-- Fake fixed chrome: a top bar + a floating bottom nav, marked exactly like the real
+     ones. The object must keep its resting zone clear of both (it sits below them at z-25). -->
+<div data-needle-inset-top style="position:fixed;top:0;left:0;right:0;height:56px;background:#0c1150;border-bottom:1px solid #23306a;z-index:30"></div>
+<div data-needle-inset-bottom style="position:fixed;bottom:9px;left:10px;right:10px;height:60px;border-radius:26px;background:#0c1150;border:1px solid #23306a;z-index:40"></div>
 <div id="needle-root">${MARKUP}</div>
 <script type="module">
 import { NeedleBody } from "/src/lib/needle-physics.js";
@@ -89,9 +93,17 @@ const clampN = (v,lo,hi)=>v<lo?lo:v>hi?hi:v;
 const vp = () => { const v=window.visualViewport; return { w: Math.round(v?v.width:innerWidth), h: Math.round(v?v.height:innerHeight) }; };
 const diameter = () => Math.round(clampN(Math.min(vp().w,vp().h)*0.155,56,88));
 const haloInset = () => { const v=vp(); const t=clampN((Math.min(v.w,v.h)-360)/(900-360),0,1); return -(14+t*20).toFixed(1); };
-const body = new NeedleBody({ size: diameter(), bounds: () => { const v=vp(); return { w:v.w, h:v.h, insets:{top:0,right:0,bottom:0,left:0} }; } });
+// Chrome-aware insets (mirrors src/components/layout/needle.tsx).
+function measureInsets(){ let top=0, bottom=0; const h=vp().h;
+  document.querySelectorAll("[data-needle-inset-top]").forEach((n)=>{ const r=n.getBoundingClientRect(); if(r.height>0&&r.top<h*0.5) top=Math.max(top,r.bottom); });
+  document.querySelectorAll("[data-needle-inset-bottom]").forEach((n)=>{ const r=n.getBoundingClientRect(); if(r.height>0&&r.bottom>h*0.5) bottom=Math.max(bottom,h-r.top); });
+  return {top,right:0,bottom,left:0}; }
+let insetCache = measureInsets();
+const body = new NeedleBody({ size: diameter(), bounds: () => { const v=vp(); return { w:v.w, h:v.h, insets:insetCache }; } });
+// Sides-only parking (mirrors the host override).
+body.nearestEdge = () => { const L=body.limits(); return (body.cx-L.minX)<=((L.maxX+body.size)-body.cx)?"left":"right"; };
 function render(){ el.style.transform = "translate3d("+body.x.toFixed(2)+"px,"+body.y.toFixed(2)+"px,0)"; disc.style.transform = "rotate("+body.a.toFixed(2)+"deg)"; tilt.style.transform="perspective(420px) scale(1)"; const w = body.parked && !body.held ? body.edge : ""; wake.classList.toggle("on", !!w); }
-function applyViewport(){ const d=diameter(); if(d!==body.size) body.setSize(d); el.style.setProperty("--nsize", d+"px"); el.style.setProperty("--inlay",(2.6*(88/d)).toFixed(2)); el.style.setProperty("--halo", haloInset()+"%"); el.style.setProperty("--needlew",(4.4*Math.max(1,74/d)).toFixed(2)); body.reclamp(); render(); }
+function applyViewport(){ insetCache = measureInsets(); const d=diameter(); if(d!==body.size) body.setSize(d); el.style.setProperty("--nsize", d+"px"); el.style.setProperty("--inlay",(2.6*(88/d)).toFixed(2)); el.style.setProperty("--halo", haloInset()+"%"); el.style.setProperty("--needlew",(4.4*Math.max(1,74/d)).toFixed(2)); body.reclamp(); render(); }
 // Show the whole disc, centred, for the render check.
 body.unpark(); body.place(vp().w/2 - body.radius, vp().h/2 - body.radius);
 applyViewport(); render();
@@ -175,6 +187,21 @@ for (const bp of WIDTHS) {
     else fail(`spin→rest: a%360=${restAngle} parked=${spun.parked}`);
     await page.evaluate(() => window.__render());
     await page.screenshot({ path: `${SHOTS}/1280-settled.png` });
+
+    // Chrome exclusion: after settling it must rest on a side rail, with the whole disc
+    // clear of the (fake, but marked-identically) top bar and bottom nav — the fix for
+    // "the fidget got stuck under the top bar and couldn't be clicked".
+    const chrome = await page.evaluate(() => {
+      const nd = document.querySelector("#needle-root #needle").getBoundingClientRect();
+      const tb = document.querySelector("[data-needle-inset-top]").getBoundingClientRect();
+      const bn = document.querySelector("[data-needle-inset-bottom]").getBoundingClientRect();
+      return { edge: window.__needle.edge, ndTop: nd.top, ndBottom: nd.bottom, topBar: tb.bottom, botBar: bn.top };
+    });
+    const onSide = chrome.edge === "left" || chrome.edge === "right";
+    if (onSide && chrome.ndTop >= chrome.topBar - 1 && chrome.ndBottom <= chrome.botBar + 1)
+      pass(`chrome: rests on the ${chrome.edge} rail, clear of both bars (disc ${chrome.ndTop.toFixed(0)}–${chrome.ndBottom.toFixed(0)} inside ${chrome.topBar.toFixed(0)}–${chrome.botBar.toFixed(0)})`);
+    else
+      fail(`chrome: NOT clear — edge=${chrome.edge} disc ${chrome.ndTop.toFixed(0)}–${chrome.ndBottom.toFixed(0)} vs bars ${chrome.topBar.toFixed(0)}/${chrome.botBar.toFixed(0)}`);
 
     const suppressed = await page.evaluate(() => { const r = document.getElementById("needle-root"); r.classList.add("needle-suppressed"); const disp = getComputedStyle(r).display; const rect = r.querySelector("#needle").getBoundingClientRect(); return { disp, painted: rect.width > 0 && rect.height > 0 }; });
     if (suppressed.disp === "none" && !suppressed.painted) pass("suppress gate: .needle-suppressed hides the object (root display:none, nothing painted)"); else fail(`suppress gate: root display=${suppressed.disp}, painted=${suppressed.painted}`);
