@@ -111,6 +111,9 @@ export class NeedleBody {
   readonly awake: boolean;
 
   limits(): { minX: number; minY: number; maxX: number; maxY: number; w: number; h: number; i: NeedleInsets };
+  linScale(): number;
+  maxLin(): number;
+  startRun(): void;
   setSize(next: number): boolean;
   setSession(minutes: number): boolean;
   acknowledge(): boolean;

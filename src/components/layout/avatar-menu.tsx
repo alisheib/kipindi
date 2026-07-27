@@ -10,7 +10,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
 import { useT, type Locale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import { isNeedleHidden, toggleNeedleHidden } from "@/lib/needle-bridge";
+import { NeedleControlsDrawer } from "@/components/layout/needle-drawer";
 import type { ProposalsState } from "@/lib/server/proposals-config";
 
 export function AvatarMenu({
@@ -162,11 +162,11 @@ export function AvatarMenu({
               <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle mb-1.5">{t.common.language}</p>
               <MobileLangPicker locale={locale} />
             </div>
-            {/* The Needle — show/hide toggle. Lives here (not as an always-visible
-                top-bar button) because the header already overflows at 1024–1279px;
-                the avatar menu is the right home for a preference. */}
+            {/* The Needle — opens the controls drawer (show/hide + Spin/Bounce). Lives
+                here (not as an always-visible top-bar button) because the header already
+                overflows at 1024–1279px; the avatar menu is the right home for it. */}
             <div className="border-t border-border px-2 py-2">
-              <NeedleToggleItem />
+              <NeedleControlsDrawer variant="menu-row" />
             </div>
             <div className="border-t border-border">
               <ConfirmDialog
@@ -232,50 +232,6 @@ function MobileLangPicker({ locale: current }: { locale: string }) {
         );
       })}
     </div>
-  );
-}
-
-/** Show/hide the Needle pause object. A preference, so it toggles in place and does
- *  not close the menu. Trilingual inline like the other rows (no i18n-dict keys). */
-function NeedleToggleItem() {
-  const { locale } = useT();
-  const [hidden, setHidden] = useState(false);
-  // Read after mount to avoid a hydration mismatch; stay in sync if the Settings
-  // panel flips it (both dispatch "50pick:feedback-changed").
-  useEffect(() => {
-    setHidden(isNeedleHidden());
-    const onChange = () => setHidden(isNeedleHidden());
-    window.addEventListener("50pick:feedback-changed", onChange);
-    return () => window.removeEventListener("50pick:feedback-changed", onChange);
-  }, []);
-  const label = locale === "sw" ? "Sindano (kichezeo)" : locale === "zh" ? "指针玩具" : "The Needle";
-  const shownLabel = locale === "sw" ? "Inaonekana" : locale === "zh" ? "显示" : "Shown";
-  const hiddenLabel = locale === "sw" ? "Imefichwa" : locale === "zh" ? "隐藏" : "Hidden";
-  return (
-    <button
-      type="button"
-      role="menuitemcheckbox"
-      aria-checked={!hidden}
-      onClick={() => setHidden(toggleNeedleHidden())}
-      className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2.5 font-display text-body-sm font-medium text-text transition-colors hover:bg-bg-overlay text-left"
-    >
-      <span className={hidden ? "text-text-subtle" : "text-brand-300"}>
-        {/* Dependency-free mini-mark: a disc with the needle on its pivot. */}
-        <svg width="15" height="15" viewBox="0 0 100 100" aria-hidden="true">
-          <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" strokeWidth="8" opacity="0.5" />
-          <line x1="38" y1="8" x2="62" y2="92" stroke="currentColor" strokeWidth="8" strokeLinecap="round" />
-        </svg>
-      </span>
-      <span className="flex-1">{label}</span>
-      <span
-        className={cn(
-          "font-mono text-[10px] uppercase tracking-[0.12em] rounded-pill px-2 py-0.5 border",
-          hidden ? "text-text-subtle border-border" : "text-brand-300 border-brand-500/50 bg-brand-500/10",
-        )}
-      >
-        {hidden ? hiddenLabel : shownLabel}
-      </span>
-    </button>
   );
 }
 

@@ -105,6 +105,8 @@ applyViewport(); render();
 window.addEventListener("resize", applyViewport);
 window.__needle = body;
 window.__settle = (n) => { for(let i=0;i<n;i++) body.advance(1000/60); render(); return { a: body.a, parked: body.parked, edge: body.edge }; };
+// BOUNCE-mode repel (mirrors needle.tsx bounceFrom): away from the tap point.
+window.__bounce = (px, py) => { body.held=null; body.parking=false; body.parked=false; body.target=null; let dx=body.cx-px, dy=body.cy-py; let d=Math.hypot(dx,dy)||1; const k=body.maxLin()*0.92; body.vx=(dx/d)*k; body.vy=(dy/d)*k; body.settling=false; body.startRun(); render(); return { vx: body.vx, vy: body.vy }; };
 window.__render = render;
 window.__ready = true;
 </script></body></html>`;
@@ -196,6 +198,11 @@ for (const bp of WIDTHS) {
     else
       fail(`z-order: needle z=${chrome.ndZ} is NOT above the bars (${chrome.tbZ}/${chrome.bnZ})`);
     if (chrome.edge === "left" || chrome.edge === "right") pass(`rests on the ${chrome.edge} rail`); else fail(`rested on ${chrome.edge} (should be a side rail)`);
+
+    // Bounce mode: a tap on the RIGHT of the object repels it LEFT (away from the finger).
+    const bounce = await page.evaluate(() => { const c = { x: window.__needle.cx, y: window.__needle.cy }; return window.__bounce(c.x + 30, c.y); });
+    if (bounce.vx < 0) pass(`bounce: a tap on the right repels it left (away from the finger) — vx=${bounce.vx.toFixed(2)}`);
+    else fail(`bounce: expected leftward vx after a right-side tap, got ${bounce.vx.toFixed(2)}`);
 
     const suppressed = await page.evaluate(() => { const r = document.getElementById("needle-root"); r.classList.add("needle-suppressed"); const disp = getComputedStyle(r).display; const rect = r.querySelector("#needle").getBoundingClientRect(); return { disp, painted: rect.width > 0 && rect.height > 0 }; });
     if (suppressed.disp === "none" && !suppressed.painted) pass("suppress gate: .needle-suppressed hides the object (root display:none, nothing painted)"); else fail(`suppress gate: root display=${suppressed.disp}, painted=${suppressed.painted}`);

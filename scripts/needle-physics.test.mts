@@ -66,6 +66,19 @@ function launch(b: Body, vx: number, vy: number, w = 0) {
   b.startRun();
 }
 
+/** Mirror the host's bounceFrom(): repel the body AWAY from a tap point. */
+function bounceLaunch(b: Body, px: number, py: number) {
+  b.held = null; b.parking = false; b.parked = false; b.target = null;
+  let dx = b.cx - px, dy = b.cy - py;
+  let d = Math.hypot(dx, dy);
+  if (d < 1) { const rad = (b.a * Math.PI) / 180; dx = Math.cos(rad); dy = Math.sin(rad); d = 1; }
+  const kick = b.maxLin() * 0.92;
+  b.vx = (dx / d) * kick; b.vy = (dy / d) * kick;
+  b.w = b.w + (dx >= 0 ? 1 : -1) * 0.7;
+  b.settling = false; b.stillFor = 0; b.startRun();
+  return { dirx: dx / d, diry: dy / d, kick };
+}
+
 function frameOk(b: Body, ctx: string): boolean {
   for (const [k, v] of Object.entries({ x: b.x, y: b.y, a: b.a, w: b.w, vx: b.vx, vy: b.vy })) {
     if (!Number.isFinite(v)) { fail(`${ctx}: non-finite ${k}=${v}`); return false; }
@@ -480,6 +493,49 @@ console.log("Needle physics torture gauntlet\n");
   else pass("floats free, rests on a side rail, as the logo");
   if (corner.tl && corner.tr && corner.bl && corner.br) pass("reaches all four corners freely (nothing blocks travel)");
   else fail(`did not reach all corners: ${JSON.stringify(corner)}`);
+}
+
+// ═══ 17. BOUNCE mode: every tap repels the object AWAY from the finger; it bounces + settles.
+{
+  let bad = 0, wrongDir = 0, notLogo = 0;
+  const kicks: Record<number, number[]> = {};
+  for (let i = 0; i < 3000; i++) {
+    const vp = pick(VIEWPORTS);
+    const { b } = make(vp);
+    b.nearestEdge = () => { const L = b.limits(); return (b.cx - L.minX) <= ((L.maxX + b.size) - b.cx) ? "left" : "right"; };
+    b.snapPark(pick(["left", "right"])); b.unpark();
+    b.place(rr(0, vp.w - b.size), rr(0, vp.h - b.size));
+    const px = b.cx + rr(-b.radius, b.radius), py = b.cy + rr(-b.radius, b.radius);
+    const cx0 = b.cx, cy0 = b.cy;
+    const info = bounceLaunch(b, px, py);
+    // the launch velocity must point AWAY from the tap
+    const away = b.vx * (cx0 - px) + b.vy * (cy0 - py);
+    if (Math.hypot(cx0 - px, cy0 - py) > 0.5 && away <= 0) wrongDir++;
+    (kicks[vp.w] ||= []).push(info.kick / Math.hypot(vp.w, vp.h));
+    const before = failures; settle(b, "bounce");
+    if (failures > before) { bad++; continue; }
+    if (!restIsLogo(b) || !b.parked) notLogo++;
+  }
+  if (wrongDir) fail(`bounce: ${wrongDir} launches did not go away from the tap`);
+  else pass("bounce: every tap repels the object away from the finger");
+  if (bad) fail(`bounce: ${bad} runs corrupted state`);
+  if (notLogo) fail(`bounce: ${notLogo} did not bounce + settle to the logo`);
+  else pass("bounce: always bounces off the walls and settles to the logo");
+  // responsiveness: kick as a fraction of the screen diagonal is constant → same feel everywhere
+  const ratios = Object.values(kicks).map((a) => a.reduce((s, x) => s + x, 0) / a.length);
+  const spread = Math.max(...ratios) - Math.min(...ratios);
+  if (spread < 0.001) pass(`bounce: kick is viewport-normalised (ratio spread ${spread.toFixed(6)} — same feel phone↔desktop)`);
+  else fail(`bounce: kick not viewport-normalised (ratio spread ${spread.toFixed(6)})`);
+
+  // repel-spam: 5,000 taps on one body never corrupt state.
+  const { b } = make({ w: 1280, h: 800 });
+  let corrupt = false;
+  for (let i = 0; i < 5000 && !corrupt; i++) {
+    bounceLaunch(b, b.cx + rr(-40, 40), b.cy + rr(-40, 40));
+    for (let f = 0; f < 40; f++) { b.advance(DT); if (!frameOk(b, "bounce-spam")) { corrupt = true; break; } if (!b.awake) break; }
+  }
+  if (!corrupt) { settle(b, "bounce-spam-final"); if (restIsLogo(b)) pass("bounce: 5,000-tap repel-spam never corrupts state, ends on the logo"); else fail("bounce-spam ended off-logo"); }
+  else fail("bounce-spam corrupted state");
 }
 
 console.log(`\n${failures === 0 ? "ALL PASS" : failures + " FAILED"}`);

@@ -1,5 +1,27 @@
 # Changelog (reconstructed)
 
+## 2026-07-27 (repo · feature) — The Needle: Spin/Bounce mode + an aesthetic controls drawer
+A second, user-selectable interaction plus a small settings surface — no new physics, just a
+new input on the proven engine.
+- **Bounce mode.** Every tap REPELS the object away from the finger: a viewport-normalised
+  linear impulse (`maxLin()*0.92`, so the kick is the same fraction of the screen on phone and
+  desktop), a little spin, a kick-squash and a proportional impact haptic; the engine's swept
+  collisions + restitution do the bouncing and it settles to the logo, ready for the next tap.
+  No grab/drag in bounce mode. "Spin" (grab/flick) stays the default. Persisted as
+  `needleMode` in `50pick:feedback` and read live in `needle.tsx`.
+- **Aesthetic controls drawer** (`src/components/layout/needle-drawer.tsx`) — a bottom sheet on
+  mobile / small centred panel on desktop, opened from the avatar menu ("The Needle ›") and
+  Settings → Sound & feedback ("Manage the Needle"). Holds the view-sight toggle (Show on
+  screen) + the Spin | Bounce segmented control with one-line hints; all tokens, trilingual,
+  reduced-motion-gated, ≥44px targets, `role="dialog"`.
+- **Robust by construction:** the prefs loader coerces any unknown `needleMode`→`"spin"` and
+  non-true `needleHidden`→`false`, so hostile localStorage can't break it; the engine guards
+  (proven) keep the physics finite under repel-spam.
+- **Verified:** `test:needle` §17 — every tap repels AWAY, bounces + settles to the logo, kick
+  viewport-normalised (ratio spread 0.000000), 5,000-tap repel-spam never corrupts — ALL PASS;
+  `needle-visual.mjs` — a right-side tap sends it left in a real browser — PASS; typecheck +
+  `test:tokens` + `next build` green.
+
 ## 2026-07-27 (repo · fix) — The Needle floats OVER the nav bars, never trapped behind one
 Bug (reported by users): it stuck to the bottom nav on phones + the top bar on desktop, and
 vanished on some pages — all one root cause: it sat at z-25, BELOW the nav chrome, so a bar

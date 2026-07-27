@@ -4,7 +4,7 @@
 // callers never need a ref to it. All calls are safe on the server and pre-mount
 // (they simply do nothing until the object is listening).
 
-import { getPrefs, setPrefs } from "@/lib/haptics";
+import { getPrefs, setPrefs, type NeedleMode } from "@/lib/haptics";
 
 function emit(type: string): void {
   if (typeof window === "undefined") return;
@@ -43,4 +43,17 @@ export function toggleNeedleHidden(): boolean {
   const next = !isNeedleHidden();
   setNeedleHidden(next);
   return next;
+}
+
+/**
+ * Interaction mode (persisted, live via "50pick:feedback-changed"):
+ *   "spin"   — grab it and flick/spin it with your finger (default).
+ *   "bounce" — every tap repels it away from your finger; it flies, bounces off the
+ *              walls and settles. Same proven engine, different input.
+ */
+export function getNeedleMode(): NeedleMode {
+  return getPrefs().needleMode;
+}
+export function setNeedleMode(mode: NeedleMode): void {
+  setPrefs({ needleMode: mode });   // dispatches "50pick:feedback-changed"
 }

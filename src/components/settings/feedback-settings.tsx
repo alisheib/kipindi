@@ -11,29 +11,18 @@ import { I } from "@/components/ui/glyphs";
 import { Toggle } from "@/components/ui/toggle";
 import { useT } from "@/lib/i18n";
 import { getPrefs, setPrefs, haptics } from "@/lib/haptics";
+import { NeedleControlsDrawer } from "@/components/layout/needle-drawer";
 
 export function FeedbackSettings() {
   const { t, locale } = useT();
   const [hapticsOn, setHapticsOn] = useState(true);
   const [reduceMotion, setReduceMotion] = useState(false);
-  const [needleShown, setNeedleShown] = useState(true);
 
   useEffect(() => {
     const p = getPrefs();
     setHapticsOn(p.haptics);
     setReduceMotion(p.motion === "off");
-    setNeedleShown(!p.needleHidden);
-    // Keep in sync if the navbar toggle flips it while this panel is open.
-    const onChange = () => setNeedleShown(!getPrefs().needleHidden);
-    window.addEventListener("50pick:feedback-changed", onChange);
-    return () => window.removeEventListener("50pick:feedback-changed", onChange);
   }, []);
-
-  const toggleNeedle = () => {
-    const nextShown = !needleShown;
-    setNeedleShown(nextShown);
-    setPrefs({ needleHidden: !nextShown });
-  };
 
   const toggleHaptics = () => {
     const next = !hapticsOn;
@@ -76,19 +65,24 @@ export function FeedbackSettings() {
           on={reduceMotion}
           onToggle={toggleMotion}
         />
-        <Row
-          icon={<NeedleGlyph />}
-          title={locale === "sw" ? "Sindano (kichezeo)" : locale === "zh" ? "指针玩具" : "The Needle"}
-          subtitle={
-            locale === "sw"
-              ? "Kichezeo cha hiari kwenye ukingo wa skrini. Hakiathiri akaunti yako."
-              : locale === "zh"
-                ? "屏幕边缘的可选小玩具，不会影响你的账户。"
-                : "An optional fidget on the edge of the screen. It never affects your account."
-          }
-          on={needleShown}
-          onToggle={toggleNeedle}
-        />
+        <div className="flex items-center gap-3 py-3.5">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md" style={{ background: "color-mix(in oklab, var(--brand-500) 12%, transparent)" }}>
+            <NeedleGlyph />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="font-display text-[13.5px] font-semibold text-text leading-tight">
+              {locale === "sw" ? "Sindano (kichezeo)" : locale === "zh" ? "指针玩具" : "The Needle"}
+            </p>
+            <p className="mt-0.5 text-[12px] text-text-muted leading-snug">
+              {locale === "sw"
+                ? "Onyesha/ficha na chagua jinsi inavyocheza (zungusha au dunda)."
+                : locale === "zh"
+                  ? "显示/隐藏并选择玩法（旋转或弹开）。"
+                  : "Show or hide it, and choose how it plays (spin or bounce)."}
+            </p>
+          </div>
+          <NeedleControlsDrawer variant="settings" />
+        </div>
       </div>
     </section>
   );

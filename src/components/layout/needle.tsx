@@ -183,6 +183,7 @@ function mountNeedle(
   let pending: { x: number; y: number } | null = null;
   let blurStep = -1, trailOpa = -1, tiltStr = "", squash = 1, squashV = 0, shadowOn = -1, wakeOn: string | number = -1, blendOpa = -1;
   let hoverOut = 0, hoverTo = 0, presenceOn = -1, wholeOpa = -1;
+  let mode = getPrefs().needleMode;   // "spin" (grab/flick) | "bounce" (tap repels it)
 
   // Visibility state: hidden on money routes / toggle (routeSuppressed, from React)
   // OR while a money modal is open (modalSuppress, from events). While hidden the
@@ -391,9 +392,31 @@ function mountNeedle(
   }
   function stop() { if (raf) { cancelAnimationFrame(raf); raf = null; } }
 
+  /* BOUNCE mode: a tap REPELS the object away from the finger. Same proven engine — a
+     viewport-normalised linear impulse away from the tap point (so it feels identical on
+     phone and desktop), a little spin for life, a kick-squash and an impact haptic. The
+     swept wall collisions + restitution do the bouncing; it settles to the logo, ready for
+     the next tap. No grab/drag in this mode: every press repels. */
+  function bounceFrom(px: number, py: number) {
+    body.held = null; body.parking = false; body.parked = false; body.target = null;
+    let dx = body.cx - px, dy = body.cy - py;
+    let d = Math.hypot(dx, dy);
+    if (d < 1) { const rad = (body.a * Math.PI) / 180; dx = Math.cos(rad); dy = Math.sin(rad); d = 1; }
+    const kick = body.maxLin() * 0.92;
+    body.vx = (dx / d) * kick;
+    body.vy = (dy / d) * kick;
+    body.w = body.w + (dx >= 0 ? 1 : -1) * 0.7;   // a little spin; the engine guard() caps it
+    body.settling = false; body.stillFor = 0;
+    body.startRun();
+    squashV -= 0.07;                               // a satisfying kick-squash
+    hapticImpact(Math.hypot(body.vx, body.vy));    // px/ms — proportional impact haptic
+    start();
+  }
+
   on(hit, "pointerdown", ((e: PointerEvent) => {
     if (e.button) return;
     if (pid !== null) return;
+    if (mode === "bounce") { e.preventDefault(); bounceFrom(e.clientX, e.clientY); return; }
     pid = e.pointerId;
     wasParked = body.parked || body.parking;
     down = { x: e.clientX, y: e.clientY, t: performance.now() };
@@ -447,6 +470,13 @@ function mountNeedle(
   on(hit, "keydown", ((e: KeyboardEvent) => {
     const step = e.shiftKey ? 48 : 12;
     if (e.key === "Escape") { e.preventDefault(); body.held = null; body.parkTo(body.nearestEdge()); start(); return; }
+    if (mode === "bounce" && (e.key === " " || e.key === "Enter")) {
+      // Keyboard equivalent of a repel — bounce away along the current angle.
+      e.preventDefault();
+      const rad = (body.a * Math.PI) / 180;
+      bounceFrom(body.cx + Math.cos(rad) * 80, body.cy + Math.sin(rad) * 80);
+      return;
+    }
     if (e.key === " " || e.key === "Enter") {
       e.preventDefault();
       if (body.parked || body.parking) body.wake(); else body.flick(1.7);
@@ -526,9 +556,11 @@ function mountNeedle(
   apiRef.current = { setSuppressed };
   setSuppressed(wantSuppressed.current);   // apply whatever React already computed
 
-  // Live-sync the Needle's mute cache with the app's "Sound & feedback" master switch.
+  // Live-sync the Needle's mute cache with the app's "Sound & feedback" master switch,
+  // and the interaction mode (spin/bounce) with the drawer.
   on(window, "50pick:feedback-changed", (() => {
     try { setMuted(getPrefs().haptics === false); } catch { /* ignore */ }
+    try { mode = getPrefs().needleMode; } catch { /* ignore */ }
   }) as EventListener);
   try { setMuted(getPrefs().haptics === false); } catch { /* ignore */ }
 

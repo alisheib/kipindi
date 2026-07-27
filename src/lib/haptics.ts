@@ -35,15 +35,18 @@ const DEFAULT_ENABLED: Record<HapticToken, boolean> = {
 
 const STORE_KEY = "50pick:feedback";
 
+export type NeedleMode = "spin" | "bounce";
+
 export type FeedbackPrefs = {
   haptics: boolean;                          // master switch
   motion: "system" | "on" | "off";           // "off" = reduce motion in-app
   perToken: Record<HapticToken, boolean>;    // fine-grained, optional
   needleHidden: boolean;                     // hide The Needle pause object (navbar/settings toggle)
+  needleMode: NeedleMode;                    // "spin" = grab/flick; "bounce" = tap repels it away
 };
 
 function load(): FeedbackPrefs {
-  const base: FeedbackPrefs = { haptics: true, motion: "system", perToken: { ...DEFAULT_ENABLED }, needleHidden: false };
+  const base: FeedbackPrefs = { haptics: true, motion: "system", perToken: { ...DEFAULT_ENABLED }, needleHidden: false, needleMode: "spin" };
   if (typeof localStorage === "undefined") return base;
   try {
     const raw = localStorage.getItem(STORE_KEY);
@@ -54,6 +57,7 @@ function load(): FeedbackPrefs {
       motion: p.motion ?? "system",
       perToken: { ...base.perToken, ...(p.perToken ?? {}) },
       needleHidden: p.needleHidden === true,
+      needleMode: p.needleMode === "bounce" ? "bounce" : "spin",
     };
   } catch {
     return base;
