@@ -70,6 +70,10 @@ scratch-*.cjs
 *.rar
 .50pick-reports/
 
+# Loose design-kit drops at the repo root (archive elsewhere; never build/deploy from here)
+/Haptics/
+/Motion Language/
+
 # Ephemeral visual-verification screenshots
 docs/shots-updown/
 docs/shots-final/
