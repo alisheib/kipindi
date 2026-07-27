@@ -14,14 +14,18 @@ import { getServerT } from "@/lib/i18n-server";
 export const dynamic = "force-dynamic";
 
 export default async function LandingPage() {
-  const [{ t }, liveRaw, traderMap, session, stats] = await Promise.all([
+  const [{ t }, liveRaw, updownLiveRaw, traderMap, session, stats] = await Promise.all([
     getServerT(),
     listMarkets({ status: "LIVE" }).catch(() => [] as Awaited<ReturnType<typeof listMarkets>>),
+    // The fast game is its own product line, so it never appears in the poll list above.
+    // Count its LIVE rounds for the home discovery band (real data — no fabricated count).
+    listMarkets({ status: "LIVE", productLine: "UPDOWN" }).catch(() => [] as Awaited<ReturnType<typeof listMarkets>>),
     traderSeedsByMarket().catch(() => new Map() as Awaited<ReturnType<typeof traderSeedsByMarket>>),
     getSession(),
     getPlatformStats(),
   ]);
   const live = liveRaw.filter((m) => !isClosedByTime(m)).slice(0, 6);
+  const updownLiveCount = updownLiveRaw.filter((m) => !isClosedByTime(m)).length;
 
   // C2a stats band — REAL aggregates, never fabricated. Markets settled = resolved
   // count; TZS paid out = Σ of CONFIRMED BET_PAYOUT + CASHOUT (same basis as the
@@ -194,6 +198,37 @@ export default async function LandingPage() {
 
       {/* Rest of page — centered container */}
       <div className="mx-auto max-w-[1280px] px-3 lg:px-6 space-y-8 lg:space-y-10">
+
+      {/* UP & DOWN discovery band — the fast game is a separate product line and never
+          appears in the poll lists, so the landing page promotes it explicitly (it was
+          otherwise invisible to a new visitor). Fast-market visual language: live pulse,
+          indigo brand accent, "higher or lower before the clock runs out". */}
+      <section>
+        <Link
+          href={"/updown" as never}
+          className="group relative block overflow-hidden rounded-2xl border border-brand-500/40 p-5 sm:p-6 transition-colors hover:border-brand-400"
+          style={{ background: "radial-gradient(120% 160% at 0% 0%, oklch(34% 0.15 262 / 0.55) 0%, oklch(20% 0.10 262 / 0.30) 55%, transparent 100%), var(--bg-elevated)" }}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="min-w-0">
+              <p className="mb-1 inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-brand-200">
+                <span className="live-dot" /> {t.home.updownEyebrow}
+              </p>
+              <h2 className="font-display text-[24px] md:text-[28px] font-bold text-text">{t.market.udTitle}</h2>
+              <p className="mt-1 max-w-[52ch] text-[13.5px] leading-[1.5] text-text-muted">{t.market.udTagline}</p>
+              <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.10em] text-text-subtle">
+                {updownLiveCount > 0
+                  ? <span className="text-brand-200">{updownLiveCount} {t.home.updownRoundsLive}</span>
+                  : t.home.updownStartsSoon}
+              </p>
+            </div>
+            <span className="btn btn-primary btn-lg shrink-0">
+              <I.trendingUp s={16} /> {t.home.updownCta}
+              <I.chevronRight s={14} />
+            </span>
+          </div>
+        </Link>
+      </section>
 
       {/* LIVE MARKETS — surfaced immediately, no scroll-the-marketing-page-first */}
       {live.length > 0 && (
