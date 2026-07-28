@@ -33,6 +33,27 @@ the admin **Test Selcom** button from an allow-listed IP.
 your own files — never `git add -A`.
 
 ## Current state (LIVE, healthy)
+- **2026-07-28 — MEASURE + INK-RAMP + SEARCH shipped (8 commits, `0b1e3322`→`57cafab2`, all live).**
+  Full record: [`docs/MEASURE-TEXT-SEARCH-AUDIT-2026-07-28.md`](MEASURE-TEXT-SEARCH-AUDIT-2026-07-28.md).
+  Three defects closed, each now guarded by a test verified to fail on its own bug:
+  🔴 **1,325 utility-class usages compiled to NOTHING** — `tailwind.config.ts` never
+  bridged `text.subtle/muted/faint`, the numeric `royal` ramp, or `gilt` at all, so a
+  four-step ink ramp rendered as two and everything meant to recede did not.
+  Contrast proved on every surface (faint is the tight one at 4.74–4.87 vs AA 4.5).
+  · **No width rule existed anywhere** — `admin/layout.tsx` had no cap, so 43 pages
+  rendered at 2,344px on a 2560 monitor with 1,492px-wide form fields. Now a six-tier
+  measure (DESIGN_AUTHORITY **B7**), and the responsive audit is **two-sided** at last
+  (it only ever asserted lower bounds, which is why this passed QA for so long).
+  · **12 duplicated searches, 10 broken on multi-word** — one grammar now
+  (`src/lib/search`), with `"phrase"`, `-exclude`, `field:value`, and `/regex/` on the
+  three admin surfaces where it costs nothing.
+  ⚠️ **Deferred on purpose, with measurements in the doc:** transactions/ai-usage
+  search into SQL, regex on those two, and the `User`/`Transaction` trigram indexes
+  (a plain `CREATE INDEX` blocks writes = blocks deposits). Postgres picks a seq scan
+  over the GIN index at 20k rows, so the benefit today is zero and the risk is not.
+  ⚠️ **`.claude/skills/50pick-audit/SKILL.md` says the local PG cluster is at
+  `F:\pg-loadtest`. That drive does not exist — it is `C:\pg-loadtest`.**
+
 - **Final Audit COMPLETE** — all 11 Criticals + all Highs + all Mediums closed
   (`docs/FINAL-AUDIT-REMEDIATION.md`). Money is provable: double-entry ledger + nightly
   wallet↔ledger trial balance, atomic money writes (`withMoneyTx`), fork-proof audit chain.
