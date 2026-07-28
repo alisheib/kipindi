@@ -512,8 +512,13 @@ Already shipped (was on this list before):
   active button). `effectiveSide` overrides geometric neutral when user
   has typed a value. Pre-click "Insufficient balance" warning when
   `stake > balance`.
-- **Viewport consistency** — 3-tier max-width system:
-  `1280px` (grid pages) / `1080px` (content pages) / `640px` (forms).
+- **Viewport consistency — THE MEASURE.** See `docs/DESIGN_AUTHORITY.md` **B7**.
+  Pages state their width through `<PageContainer tier>`; the numbers live in
+  `src/app/globals.css` and nowhere else. This line used to restate them
+  ("1280/1080/640") and had gone stale against a codebase that had drifted to
+  eight tiers — which is exactly why it now points instead of repeating.
+  Guarded by `npm run test:measure` + the upper-bound assertions in
+  `scripts/responsive-audit.mjs`.
 - **Positions page** — All/Open/Settled tab filter via URL params.
 - **Account activity** — category filter chips (dynamic from actual data).
 - **Bottom nav** — `aria-label` on every link.

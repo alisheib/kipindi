@@ -100,7 +100,7 @@ export function TopAppBar({ user, proposalsState }: { user: TopAppBarUser; propo
         borderBottom: "1px solid var(--border)",
       }}
     >
-      <div className="mx-auto max-w-[1280px] flex items-center h-full gap-2 px-3 sm:gap-4 sm:px-5">
+      <div className="mx-auto max-w-board flex items-center h-full gap-2 px-3 sm:gap-4 sm:px-5">
         {/* Brand lockup — kit: BrandLockup size={30} */}
         <Link href="/" aria-label={`50pick ${t.common.home}`} className="shrink-0 hover:opacity-90 transition-opacity">
           <span className="inline-flex sm:hidden"><FiftyMark size={26} /></span>

@@ -50,7 +50,20 @@ const BREAKPOINTS = [
   { tag: "tabletL", w: 1024, h: 768 },
   { tag: "laptop", w: 1280, h: 800 },
   { tag: "desktop", w: 1920, h: 1080 },
+  // DESIGN_AUTHORITY B7. The sweep used to stop at 1920, which is precisely why a
+  // 2,344px-wide admin console passed every cycle: the widest cell it ever looked
+  // at was narrower than the defect.
+  { tag: "wide", w: 2560, h: 1440 },
 ];
+/**
+ * The measure tiers, mirrored from globals.css. This is the ONE place the numbers
+ * are duplicated outside the stylesheet; `npm run test:measure` cross-checks the
+ * stylesheet against the same values, so a drift here fails there.
+ */
+const TIER_MAX = {
+  console: 1600, board: 1280, reading: 1080, form: 640, receipt: 560, auth: 1152,
+};
+
 const WIDTH_FILTER = process.env.WIDTHS
   ? process.env.WIDTHS.split(",").map((s) => s.trim())
   : null;
@@ -180,6 +193,16 @@ async function assertCell(page) {
       }
     }
 
+    // DESIGN_AUTHORITY B7 — the UPPER bound. Every criterion in this file used to
+    // be a lower/overflow bound (scrollWidth <= clientWidth), so "too wide" was
+    // invisible by construction: a 2,400px form scored a clean pass. <PageContainer>
+    // and the admin shell stamp data-measure, so the content column can be found
+    // and measured rather than guessed at.
+    const measured = [...document.querySelectorAll("[data-measure]")].map((el) => ({
+      tier: el.getAttribute("data-measure"),
+      w: Math.round(el.getBoundingClientRect().width),
+    }));
+
     // undersized touch targets (visible interactive controls)
     const small = [];
     const sel = 'button, a[href], [role="button"], [role="tab"], [role="menuitem"], input[type="checkbox"], input[type="radio"]';
@@ -198,7 +221,7 @@ async function assertCell(page) {
       }
     }
 
-    return { overflowPx, widestName, widestRight: Math.round(widestRight), vw, vh, offscreen, clipped: clipped.slice(0, 6), clippedCount: clipped.length, small: small.slice(0, 6), smallCount: small.length };
+    return { overflowPx, widestName, widestRight: Math.round(widestRight), vw, vh, offscreen, clipped: clipped.slice(0, 6), clippedCount: clipped.length, small: small.slice(0, 6), smallCount: small.length, measured };
   });
 }
 
@@ -235,6 +258,17 @@ async function sweep(browser, label, paths, contextFactory, guestContextFactory)
           ok(`${cell} no off-screen fixed`, r.offscreen.length === 0, r.offscreen.slice(0, 3).join(" | "));
           ok(`${cell} no clipped controls`, r.clippedCount === 0, r.clipped.join(" | "));
           soft(`${cell} touch targets ≥40`, r.smallCount === 0, `${r.smallCount} small: ${r.small.join(", ")}`);
+
+          // ── B7: the UPPER bound ────────────────────────────────────────────
+          // Exactly one capped content column per page, and it must not exceed
+          // its declared tier. Catches all three ways this breaks: the cap
+          // removed, the cap set to the wrong number, and a page that forgot the
+          // container entirely (which is what /admin/transactions had done).
+          const over = r.measured.filter((m) => m.w > (TIER_MAX[m.tier] ?? Infinity) + 1);
+          ok(`${cell} content column within its tier`, over.length === 0,
+            over.map((m) => `${m.tier} ${m.w}px > ${TIER_MAX[m.tier]}px`).join(" | "));
+          ok(`${cell} exactly one measure root`, r.measured.length <= 1,
+            r.measured.length > 1 ? `${r.measured.length} nested: ${r.measured.map((m) => m.tier).join(",")}` : "");
           const real = errs.filter((e) => !/fonts\.googleapis|fonts\.gstatic|Failed to load resource.*font|vibrate|webpack-hmr|WebSocket connection|_next\/static|hot-reloader/i.test(e));
           ok(`${cell} zero console errors`, real.length === 0, real.slice(0, 2).join(" | "));
           if (SHOTS_ALL || bp.tag === "xs" || bp.tag === "desktop" || bp.tag === "land") {

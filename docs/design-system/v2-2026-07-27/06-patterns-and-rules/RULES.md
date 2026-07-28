@@ -57,3 +57,13 @@ For each: the rule → the reason → an example of it being broken (so you reco
 ## 12 · One dark theme
 **Rule:** deep royal indigo (hue 268), no light mode, no toggle, ever.
 **Broken looks like:** any white-canvas variant "for print" shipping to players.
+
+## 13 · The measure (added 2026-07-28 — DESIGN_AUTHORITY B7)
+**Rule:** every page states its width once, through `<PageContainer tier>`, from a six-tier scale whose numbers live only in `globals.css` (console 1600 · board 1280 · reading 1080 · form 640 · receipt 560 · auth 1152). A page and its `loading.tsx` state the same tier. A field never exceeds the measure its `<FormColumn>` sets — the field measure is 460, and it is opt-in so inline toolbars still flex.
+**Reason:** width was the one thing the system never named, so it drifted into eight tiers, and the admin console — which had no cap at all — rendered at 2,344px on a 2560 monitor with 1,492px-wide text boxes. A rule that is not written is not a rule. And the QA gate could not see it: every criterion it asserted was a *lower* bound (no horizontal overflow), so "too wide" scored a clean pass at every width up to 1920.
+**Broken looks like:** a 43-row transactions table stretched to 2,400px so the eye loses the row between the ID and the amount; a settings form whose phone-number field is 1,400px wide; a skeleton 152px narrower than the page it becomes, jumping on every load; a notice bar 200px wider than the top bar above it, so the page changes width depending on whether there is an announcement.
+
+## 14 · A token class must resolve (added 2026-07-28 — DESIGN_AUTHORITY B8)
+**Rule:** a colour class must name a key that exists in `tailwind.config.ts`. If the bridge is missing, add it (only when the CSS variable really exists) or change the call site. Never leave a class in place hoping it renders.
+**Reason:** Tailwind emits nothing for a key it does not have, and there is no safelist. 1,325 usages across the app — including `text-gilt`, the brand needle's own colour — compiled to zero CSS, so a four-step ink ramp rendered as two and everything meant to recede did not. `tsc` cannot see it and the build does not warn. A palette audit cannot see it either: grepping for rogue *values* finds nothing wrong with a class that is spelled correctly and simply does not exist.
+**Broken looks like:** a caption that is exactly as bright as the heading above it; an admin table where the column headers, the timestamps and the amounts all read at one weight; a "quiet" hint that quietly isn't.

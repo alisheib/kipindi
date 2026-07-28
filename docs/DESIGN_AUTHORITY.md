@@ -173,6 +173,100 @@ visible delta is the chat panel, the countdown ring and the probability chart.
 
 ---
 
+## B7 — The measure: every page states its width, once
+
+Added 2026-07-28 after users reported that "sometimes the pages are too wide, and
+the input fields as well". Both halves were true, and neither was anyone's
+mistake — **there was no rule.** This file had B1–B6 and the design-system
+`RULES.md` had 12 laws; neither mentioned width. The only statement anywhere was a
+stale line in `CLAUDE.md` that the code did not match.
+
+So width was a hand-typed string (`mx-auto max-w-[1280px] px-3 lg:px-6`) repeated
+~60 times, drifted into **eight** page tiers where three were documented, and:
+
+- `src/app/admin/layout.tsx` had **no cap at all** — all 43 admin pages rendered at
+  `100vw − 216px`: 1,704px at 1920 and **2,344px at 2560**, while the player chrome
+  above them was capped at 1280.
+- The `Input` atom had a height, a radius, a border, a background… and **no width
+  rule** (`size` is height-only). Every field was as wide as whatever page it
+  landed on — `/admin/markets/new` measured **1,492px** text boxes.
+- `notice-bar.tsx` was 1480 against 1280 chrome and renders only on an
+  announcement / unconfirmed email / offline state. That is the **"sometimes"**.
+
+**The rules.**
+
+1. **Six tiers, and the numbers live in `globals.css` only.** `console` ·
+   `board` · `reading` · `form` · `receipt` · `auth` (auth is the split-pane
+   exception, not a general tier). `tailwind.config.ts` maps names onto the vars
+   and adds no values of its own. This file deliberately does not restate them —
+   a rule beside its value cannot be contradicted by a stale doc elsewhere.
+2. **A page states its width through `<PageContainer tier>` and nothing else.**
+   The tier is a TS union, so an invented width is a compile error, and it stamps
+   `data-measure` so the width can be *measured* at runtime rather than trusted.
+3. **A page and its `loading.tsx` state the same tier.** `/updown/[roundId]` was
+   1232 against a 1080 skeleton — a 152px jump on every load that no test could see.
+4. **A field never exceeds the measure its `<FormColumn>` sets.** `--field-max`
+   defaults to `none`, so the cap is opt-in per form and an inline admin toolbar
+   still flexes. Six atoms carry `.field-measure`; `OtpInput`,
+   `DateTimeRangeFilter` and `TimeSelect` are documented exemptions and the guard
+   asserts they *stay* exempt.
+
+**Why it survived every QA cycle, which is the part worth remembering:**
+`scripts/responsive-audit.mjs` asserted `scrollWidth ≤ clientWidth`, tap targets
+and off-screen overlays. **Every one of those is a lower bound**, and the sweep
+stopped at 1920. A 2,400px form scored a clean pass. A gate that can only detect
+*too narrow* will never report *too wide*.
+
+Two enforcement layers:
+- **`npm run test:measure`** — static. Tokens defined once with the expected
+  values; no new hand-typed width ≥500px outside a ratchet list that may only
+  shrink; page/loading tier parity; the admin cap present; the field atoms and
+  their exemptions.
+- **`scripts/responsive-audit.mjs`** — behavioural, now **two-sided**: a 2560
+  breakpoint, and per page "exactly one measure root, within its tier". Verified
+  to fail on the reintroduced bug (`console 2344px > 1600px` on every admin route)
+  and to pass on the fix.
+
+## B8 — A token class must resolve, or it is a typo
+
+Added 2026-07-28. **1,325 utility-class usages compiled to nothing**, platform-wide,
+for the life of the project.
+
+`globals.css` defined a four-step ink ramp; `tailwind.config.ts` never bridged
+three of its steps. Tailwind only emits a utility for a key present in the theme,
+and there is no safelist and `plugins: []` — so `text-text-subtle` (732 uses),
+`text-text-muted` (433), `text-text-faint` (59), `text-royal-300` (56) and
+`text-gilt` (the brand needle's own colour, with no family in the config at all)
+were not utilities. They were typos that `tsc` cannot see and the build does not
+warn about, and every one of those elements silently inherited its parent's ink.
+
+The visible consequence: a **four-step hierarchy rendered as two**. Everything
+written to recede — captions, hints, table headers, timestamps — did not recede.
+
+**The rule: every colour-utility class must name a key that exists in
+`tailwind.config.ts`. If a token has no key, bridge it or stop using it — never
+leave the class in place hoping it renders.** Where the CSS variable does not
+exist, fix the CALL SITE rather than invent a colour (`border-brand-700` →
+`border-brand-600`; `border-info-700` → `border-info-500`).
+
+Guarded by **`npm run test:bridge`**, verified to fail on the reintroduced bug.
+
+Contrast was **proven, not assumed** — making the quiet steps render for the first
+time is a real darkening, and law 9 of the design system names faint body copy as
+a failure mode. `npm run test:contrast` now covers the ramp on every surface it
+lands on: muted 12.67/12.33/12.51 · subtle 7.22/7.03/7.13/7.37 · **faint
+4.87/4.74/4.81** — all above AA 4.5, with faint the tight one. A rendered DOM
+sweep of 1,519 text nodes found one AA failure (leaderboard avatar initials,
+1.44:1) which reproduces identically with the change stashed — pre-existing, and
+recorded rather than quietly absorbed.
+
+⚠️ Why the 2026-07-17 `VISUAL-CONSISTENCY-AUDIT.md` signed this off as
+"launch-ready": it grepped for rogue *values* — raw hex, off-palette classes — and
+correctly found none. It never checked that the on-palette classes **resolve**. A
+dead class is invisible to a value audit.
+
+---
+
 ## Related
 
 - Palette rationale & history: `docs/design-master-brief.md`
