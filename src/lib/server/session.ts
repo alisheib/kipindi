@@ -15,7 +15,7 @@ export type SessionData = {
   userId: string;
   sessionId: string;
   phoneE164: string;
-  role: "PLAYER" | "AGENT" | "MODERATOR" | "ADMIN" | "COMPLIANCE" | "SUPPORT";
+  role: "PLAYER" | "AGENT" | "MODERATOR" | "ADMIN" | "COMPLIANCE" | "SUPPORT" | "FINANCE" | "GROWTH" | "AUDITOR";
   kycStatus: "NOT_STARTED" | "IN_PROGRESS" | "PENDING_REVIEW" | "APPROVED" | "REJECTED" | "ADDITIONAL_INFO_REQUIRED";
   iat: number;       // issued at (ms epoch)
   exp: number;       // absolute expiry (ms epoch) — hard cap, not extended on activity

@@ -29,7 +29,7 @@ export type StoredUser = {
   /** ISO-8601 timestamp until which the account refuses logins. Set when
    *  failedLoginCount crosses the threshold. */
   lockedUntil: string | null;
-  role: "PLAYER" | "AGENT" | "MODERATOR" | "ADMIN" | "COMPLIANCE" | "SUPPORT";
+  role: "PLAYER" | "AGENT" | "MODERATOR" | "ADMIN" | "COMPLIANCE" | "SUPPORT" | "FINANCE" | "GROWTH" | "AUDITOR";
   status: "ACTIVE" | "PENDING_KYC" | "SUSPENDED" | "SELF_EXCLUDED" | "COOLED_OFF" | "CLOSED";
   locale: "EN" | "SW" | "ZH";
   displayName: string | null;

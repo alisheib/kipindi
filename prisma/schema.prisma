@@ -23,6 +23,25 @@ enum UserRole {
   ADMIN
   COMPLIANCE
   SUPPORT
+  // RBAC (2026-07-28): staff roles added for role-based admin access. Appended
+  // at the end to match the `ALTER TYPE … ADD VALUE` migration order (Postgres
+  // appends). MODERATOR is surfaced in the UI as "Trading"; the enum value stays.
+  FINANCE
+  GROWTH
+  AUDITOR
+}
+
+// RBAC domains — the fixed code axis every admin route + action is tagged with.
+// The role→domain GRANTS are data (RoleDomainGrant, Owner-editable at /admin/roles);
+// this enum is the stable set of "areas" those grants toggle. See src/lib/server/rbac.ts.
+enum AdminDomain {
+  accounting
+  growth
+  compliance
+  trading
+  ops
+  support
+  overview
 }
 
 enum UserStatus {
@@ -195,6 +214,9 @@ model User {
   updatedAt            DateTime   @updatedAt
   lastLoginAt          DateTime?
   closedAt             DateTime?
+  // RBAC audit trail for staff role changes (nullable — only staff ever get set).
+  roleChangedAt        DateTime?
+  roleChangedBy        String?
 
   wallet                  Wallet?
   kycSubmissions          KycSubmission[]
@@ -1580,6 +1602,24 @@ model SystemConfig {
   key       String   @id
   value     Json
   updatedAt DateTime @updatedAt
+}
+
+// RBAC grant matrix — the DATA behind role-based admin access. One row per
+// (role, domain); `canView` drives nav + route visibility, `canAct` drives
+// mutations. Owner-edited live at /admin/roles (no deploy). The loader
+// `roleGrants()` falls back to the code DEFAULT_GRANTS when a row is absent, so
+// the system is correct even with an empty table — this table stores overrides.
+// ADMIN (Owner) is NEVER stored here: it bypasses the table (all view+act) so a
+// bad edit can never lock the Owner out. No FK — role/domain are enum columns.
+model RoleDomainGrant {
+  role      UserRole
+  domain    AdminDomain
+  canView   Boolean     @default(false)
+  canAct    Boolean     @default(false)
+  updatedAt DateTime    @updatedAt
+  updatedBy String?
+
+  @@id([role, domain])
 }
 
 // Single-active-session registry. One row per user = their ONE valid session.
