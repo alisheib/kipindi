@@ -22,6 +22,10 @@ import { hasDatabase, prisma } from "./prisma";
 import {
   ADMIN_DOMAINS,
   EDITABLE_ROLES,
+  STAFF_ROLES,
+  DOMAIN_LABEL,
+  DOMAIN_SUMMARY,
+  ROLE_LABEL,
   defaultGrant,
   type AdminDomain,
   type Grant,
@@ -95,6 +99,31 @@ export async function viewableDomains(role: Role): Promise<Set<AdminDomain>> {
   const s = new Set<AdminDomain>();
   for (const d of ADMIN_DOMAINS) if (effectiveGrant(store, role, d).canView) s.add(d);
   return s;
+}
+
+/** Plain-language "what each staff role can see/do" — computed from the LIVE grants
+ *  (so it reflects any /admin/roles edits). Feeds the consequence highlighting on
+ *  /admin/staff. Keyed by role; includes ADMIN (Owner = everything). */
+export async function staffRoleInfos(): Promise<
+  Record<string, { role: string; label: string; view: string[]; act: { label: string; act: string }[]; sensitive: boolean }>
+> {
+  const store = await loadOverrides();
+  const out: Record<string, { role: string; label: string; view: string[]; act: { label: string; act: string }[]; sensitive: boolean }> = {};
+  for (const role of STAFF_ROLES) {
+    const view: string[] = [];
+    const act: { label: string; act: string }[] = [];
+    let sensitive = false;
+    for (const d of ADMIN_DOMAINS) {
+      const g = effectiveGrant(store, role, d);
+      if (g.canView) view.push(DOMAIN_LABEL[d]);
+      if (g.canAct) {
+        act.push({ label: DOMAIN_LABEL[d], act: DOMAIN_SUMMARY[d].act });
+        if (d === "accounting" || d === "compliance") sensitive = true;
+      }
+    }
+    out[role] = { role, label: ROLE_LABEL[role], view, act, sensitive };
+  }
+  return out;
 }
 
 /** The effective matrix for the editable (non-Owner) staff roles — feeds /admin/roles. */

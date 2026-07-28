@@ -16,9 +16,9 @@
 
 | Metric | Now | Target |
 |---|---|---|
-| `test:rbac` | ✅ PASS (92 assertions, Phase 1) | PASS |
-| `test:staff-role` | — (Phase 3) | PASS |
-| `test:all` (twice) | ✅ 100/100 green ×2 (Phase 1) | PASS twice |
+| `test:rbac` | ✅ PASS (92 assertions) | PASS |
+| `test:staff-role` | ✅ PASS (24 assertions, Phase 3) | PASS |
+| `test:all` (twice) | ✅ 101/101 green ×2 (Phase 3) | PASS twice |
 | Existing guards (`admin-roles`, `admin-nav`, `officer-conflict`, `two-admin`) | ✅ green | stay green |
 | Last shipped (live-verified) | ✅ Phase 1 @`5da76fb` (uptime reset, Online) | each phase uptime-verified |
 | Railway deploy | ✅ Phase 1 deploy-verified (fresh container = migrate deploy ran) | SUCCESS + `uptimeSec` reset per phase |
@@ -120,8 +120,12 @@ sub-blocks render only for `compliance` view, and money/compliance controls only
             transactions/export→accounting·view}; in-page `hasRole` page-gates (insights/transactions/reports/finance→
             accounting·view, events→trading·view, objections canDecide→compliance·act) updated for new roles.
       - [ ] Player-detail KYC/PII sub-block gating (Support scope) — folded into Phase 3 (Support isn't assignable until then).
-- [ ] **Phase 3 — `/admin/staff`:** roster + `[id]` detail + `setStaffRoleAction` (Owner-only, TOTP, reason,
-      self-demotion block, `revokeUserSessions`, audit, consequence confirm); nav/route registration; `test:staff-role`.
+- [x] **Phase 3 — `/admin/staff`:** roster + `[id]` detail + `setStaffRoleAction` / `addStaffByPhoneAction`
+      (Owner-only via `requireOwner`, step-up 2FA, mandatory reason, **self-demotion block**, `revokeUserSessions`,
+      COMPLIANCE audit + role-history tab) with **consequence highlighting** (inline "will see / will do" panel in
+      kit type + semantic colours, `ConfirmModal tone="claret" tier="hard"` on money/PII roles) — Ali's ask.
+      Registered in a new Owner-only "Access" nav group + `ROUTE_KEYS`. Pure validation in `staff-roles.ts`;
+      `test:staff-role` (24). ⏳ Player-detail KYC/PII sub-block gating still folds into Phase 5.
 - [ ] **Phase 4 — `/admin/roles`:** matrix editor (Owner-only, `Toggle` grid, live-save, audited,
       reset-to-defaults, Owner-not-editable, consequence confirm); nav/route registration.
 - [ ] **Phase 5 — Verify + docs + memory:** both suites + `test:all` green twice; both migrations
@@ -152,6 +156,10 @@ sub-blocks render only for `compliance` view, and money/compliance controls only
   (`domainForPath`→`canView`, Owner-only staff/roles, console admission→`STAFF_ROLES`), nav domain filter
   (`filterNavGroups`), role chip + confidential-band role, and 15 action files migrated to `requireStaff`/`canAct`.
   tsc/build clean; test:all 100/100 (a `test:trilingual` flake cleared on re-run). Deploy-verified (uptime reset).
-- **Phase 2b** — (2026-07-28) — completed the ACTION layer: every remaining admin action file + all 5
-  `api/admin/*` routes + the 6 in-page `hasRole` page-gates now consult the data-driven grants. Zero old-tier
-  references left in app code (only stale comments remain, cleaned in Phase 5). tsc/build clean; test:all 100/100.
+- **Phase 2b** — `4da5cc0` (2026-07-28, LIVE-verified) — completed the ACTION layer: every remaining admin
+  action file + all 5 `api/admin/*` routes + the 6 in-page `hasRole` page-gates now consult the data-driven
+  grants. Zero old-tier references left in app code (only stale comments remain, cleaned in Phase 5). Deploy-verified.
+- **Phase 3** — (2026-07-28) — `/admin/staff` roster + `/admin/staff/[id]` detail; `setStaffRoleAction` /
+  `addStaffByPhoneAction` (Owner-only, 2FA, reason, self-demotion block, session revoke, COMPLIANCE audit +
+  history); consequence highlighting; new Owner-only "Access" nav group; `staff-roles.ts` + `staffRoleInfos()`;
+  `test:staff-role` (24). tsc/build clean; test:all 101/101 ×2.

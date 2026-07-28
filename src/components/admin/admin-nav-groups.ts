@@ -116,6 +116,15 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
       { href: "/admin/2fa/setup", label: "2FA setup", key: "2fa", domain: "ops", allStaff: true },
     ],
   },
+  {
+    // Owner-only: assign roles + edit the permission matrix. `ownerOnly` hides these
+    // from every non-ADMIN role (and the layout's isOwnerOnlyPath blocks the routes),
+    // so a granted-ops role can never see or reach them.
+    group: { en: "Access", sw: "Ufikiaji" },
+    items: [
+      { href: "/admin/staff", label: "Staff & roles", key: "staff", domain: "ops", ownerOnly: true },
+    ],
+  },
 ];
 
 /**
@@ -174,6 +183,7 @@ const ROUTE_KEYS: ReadonlyArray<readonly [prefix: string, key: string]> = [
   ["/admin/self-exclusions", "sx"],
   ["/admin/audit", "audit"],
   ["/admin/system", "system"],
+  ["/admin/staff", "staff"],
   ["/admin/ai-usage", "ai-usage"],
   ["/admin/kyc", "approvals"],
   ["/admin/settlement", "settlement"],
