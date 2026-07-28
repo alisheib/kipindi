@@ -7,7 +7,6 @@ export default function Loading() {
       <AdminPageHead
         title="Transactions"
         sw="Miamala"
-        period={false}
         actions={<SkChip className="h-[38px] w-28" />}
       />
       {/* This page has NO px body wrapper of its own — it returns top-level

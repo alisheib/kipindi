@@ -84,7 +84,6 @@ export default async function KycWorkstationPage({ params }: { params: Promise<{
       <AdminPageHead
         title="KYC workstation"
         sw="Kituo cha uthibitisho"
-        period={false}
         actions={
           <div className="flex items-center gap-2 flex-wrap">
             {queuePos >= 0 && (

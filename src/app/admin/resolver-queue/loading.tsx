@@ -7,7 +7,6 @@ export default function Loading() {
       <AdminPageHead
         title="Resolver queue"
         sw="Foleni ya utatuzi"
-        period={false}
         actions={
           <>
             <SkChip className="h-7 w-28" />

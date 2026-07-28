@@ -25,7 +25,7 @@ export default async function AdminInvitesPage({ searchParams }: { searchParams:
 
   return (
     <>
-      <AdminPageHead title="Invite campaigns" sw="Kampeni za mialiko" period={false} />
+      <AdminPageHead title="Invite campaigns" sw="Kampeni za mialiko" />
       <div className="px-4 lg:px-6 py-5 space-y-4">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <AdminKpi label="Campaigns" sw="Kampeni" value={stats.campaigns.toLocaleString()} delta="all-time" deltaDir="flat" />

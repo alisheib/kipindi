@@ -4,7 +4,7 @@ import { SkBody, SkKpiRow, SkChip, SkCard, SkFormCard, SkTableCard } from "@/com
 export default function Loading() {
   return (
     <>
-      <AdminPageHead title="Affiliate program" sw="Mpango wa marafiki" period={false} actions={<SkChip />} />
+      <AdminPageHead title="Affiliate program" sw="Mpango wa marafiki" actions={<SkChip />} />
       <SkBody>
         <SkKpiRow count={4} />
         {/* Config editor */}

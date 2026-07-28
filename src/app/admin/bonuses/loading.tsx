@@ -4,7 +4,7 @@ import { SkBody, SkKpiRow, SkChip, SkCard, SkFormCard, SkTableCard } from "@/com
 export default function Loading() {
   return (
     <>
-      <AdminPageHead title="Bonus wallet" sw="Pochi ya bonasi" period={false} actions={<SkChip />} />
+      <AdminPageHead title="Bonus wallet" sw="Pochi ya bonasi" actions={<SkChip />} />
       <SkBody>
         <SkKpiRow count={4} />
         {/* Grant a bonus */}

@@ -200,7 +200,6 @@ export default async function AdminReportsPage({
       <AdminPageHead
         title="Reports"
         sw="Ripoti"
-        period={false}
         actions={
           <>
             <DateTimeRangeFilter defaultPreset="7d" />

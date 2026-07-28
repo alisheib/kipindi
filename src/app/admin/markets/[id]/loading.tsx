@@ -7,7 +7,6 @@ export default function Loading() {
       <AdminPageHead
         title="Market predictors"
         sw="Watabiri wa soko"
-        period={false}
         actions={<SkChip className="h-8 w-24" />}
       />
       <SkBody>

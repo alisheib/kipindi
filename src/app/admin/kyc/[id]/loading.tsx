@@ -7,7 +7,6 @@ export default function Loading() {
       <AdminPageHead
         title="KYC workstation"
         sw="Kituo cha uthibitisho"
-        period={false}
         actions={<SkChip className="h-7 w-28" />}
       />
       {/* Two-column detail — matches the page's own wrapper (no space-y). */}

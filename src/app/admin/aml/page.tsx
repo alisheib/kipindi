@@ -71,7 +71,6 @@ export default async function AdminAmlPage({
       <AdminPageHead
         title="AML · EDD queue"
         sw="Foleni ya AML"
-        period={false}
         actions={<Chip size="md" variant={!amlFailed && inReviewAll.length > 0 ? "warning" : "neutral"}>{amlFailed ? "n/a" : `${inReviewAll.length} pending`}</Chip>}
       />
       <div className="px-4 lg:px-6 py-5 space-y-4">

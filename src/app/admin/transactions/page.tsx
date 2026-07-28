@@ -101,7 +101,6 @@ export default async function AdminTransactionsPage({ searchParams }: { searchPa
       <AdminPageHead
         title="Transactions"
         sw="Miamala"
-        period={false}
         actions={
           <a
             href={`/api/admin/transactions/export${qs ? `?${qs}` : ""}`}

@@ -7,7 +7,6 @@ export default function Loading() {
       <AdminPageHead
         title="Two-person approvals"
         sw="Idhini ya watu wawili"
-        period={false}
         actions={<SkChip className="h-7 w-40" />}
       />
       <SkBody>

@@ -55,7 +55,6 @@ export default async function AdminBonusesPage({
       <AdminPageHead
         title="Bonus wallet"
         sw="Pochi ya bonasi"
-        period={false}
         actions={<Chip size="sm" variant={config.enabled ? "active" : "paused"}>{config.enabled ? "Active" : "Paused"}</Chip>}
       />
 

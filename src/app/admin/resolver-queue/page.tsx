@@ -95,7 +95,6 @@ export default async function ResolverQueuePage({
       <AdminPageHead
         title="Resolver queue"
         sw="Foleni ya utatuzi"
-        period={false}
         actions={
           <div className="flex items-center gap-2.5 flex-wrap">
             <TwoAdminToggle enabled={requireTwoOfficer} />

@@ -4,7 +4,7 @@ import { SkBody, SkKpiRow, SkFormCard, SkTableCard } from "@/components/admin/ad
 export default function Loading() {
   return (
     <>
-      <AdminPageHead title="Invite campaigns" sw="Kampeni za mialiko" period={false} />
+      <AdminPageHead title="Invite campaigns" sw="Kampeni za mialiko" />
       <SkBody>
         <SkKpiRow count={4} />
         {/* New campaign */}

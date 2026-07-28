@@ -4,7 +4,7 @@ import { SkBody, SkKpiRow, SkTableCard, SkCard, SkChip } from "@/components/admi
 export default function Loading() {
   return (
     <>
-      <AdminPageHead title="AML · EDD queue" sw="Foleni ya AML" period={false} actions={<SkChip />} />
+      <AdminPageHead title="AML · EDD queue" sw="Foleni ya AML" actions={<SkChip />} />
       <SkBody>
         {/* KPI band */}
         <SkKpiRow count={4} />

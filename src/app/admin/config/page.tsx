@@ -45,7 +45,6 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
       <AdminPageHead
         title="Market config"
         sw="Mipangilio ya soko"
-        period={false}
         actions={
           <Chip size="md" variant="resolved">
             {config.feeModel === "loser-share" ? "Pari-mutuel · loser-share" : "Pari-mutuel · capped fee"}

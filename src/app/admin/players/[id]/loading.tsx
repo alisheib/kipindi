@@ -7,7 +7,6 @@ export default function Loading() {
       <AdminPageHead
         title="Player profile"
         sw="Wasifu wa mchezaji"
-        period={false}
         actions={
           <>
             <SkChip className="h-8 w-20" />

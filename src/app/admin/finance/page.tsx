@@ -108,7 +108,6 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
       <AdminPageHead
         title="Finance"
         sw="Fedha"
-        period={false}
         actions={
           <>
             {/* Platform date+hour+minute window (presets + custom), EAT-safe. */}

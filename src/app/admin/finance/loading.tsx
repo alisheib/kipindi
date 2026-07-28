@@ -4,7 +4,6 @@ import { SkBody, SkKpiRow, SkCard, SkBlock, SkTableCard, SkChip } from "@/compon
 export default function Loading() {
   return (
     <>
-      {/* period defaults to true → the real PeriodPicker renders, matching the page. */}
       <AdminPageHead title="Finance" sw="Fedha" actions={<SkChip />} />
       <SkBody>
         {/* KPI 8-up (two rows of four) */}

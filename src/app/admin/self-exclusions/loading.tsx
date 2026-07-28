@@ -7,7 +7,6 @@ export default function Loading() {
       <AdminPageHead
         title="Self-exclusion roster"
         sw="Sajili ya kujizuia"
-        period={false}
         actions={
           <>
             <SkChip className="h-6 w-24" />

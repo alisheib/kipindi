@@ -23,7 +23,7 @@ export default async function AdminSettlementPage({ searchParams }: { searchPara
 
   return (
     <>
-      <AdminPageHead title="Settlement" sw="Malipo" period={false} />
+      <AdminPageHead title="Settlement" sw="Malipo" />
       <div className="px-4 lg:px-6 py-5 space-y-4">
 
         {/* The single most important fact on this page: how a market gets paid. */}

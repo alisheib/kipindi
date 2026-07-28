@@ -7,7 +7,6 @@ export default function Loading() {
       <AdminPageHead
         title="Compliance"
         sw="Kanuni"
-        period={false}
         actions={<SkChip className="h-7 w-40" />}
       />
       <SkBody>

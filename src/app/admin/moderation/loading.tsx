@@ -4,7 +4,7 @@ import { SkBar, SkBody, SkChip, SkKpiRow } from "@/components/admin/admin-skelet
 export default function Loading() {
   return (
     <>
-      <AdminPageHead title="Comment moderation" sw="Usimamizi wa maoni" period={false} />
+      <AdminPageHead title="Comment moderation" sw="Usimamizi wa maoni" />
       <SkBody>
         {/* KPI band (being added to the page) */}
         <SkKpiRow count={3} cols="grid-cols-2 lg:grid-cols-3" />

@@ -7,7 +7,6 @@ export default function Loading() {
       <AdminPageHead
         title="Market config"
         sw="Mipangilio ya soko"
-        period={false}
         actions={<SkChip className="h-7 w-44" />}
       />
       <SkBody>

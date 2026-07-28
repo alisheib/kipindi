@@ -3,7 +3,7 @@ import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
 export default function Loading() {
   return (
     <>
-      <AdminPageHead title="Poll detail" sw="Maelezo ya kura" period={false} />
+      <AdminPageHead title="Poll detail" sw="Maelezo ya kura" />
       <div className="px-4 lg:px-6 py-5 space-y-4 animate-pulse">
         {/* Header card skeleton */}
         <AdminCard>

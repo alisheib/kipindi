@@ -4,7 +4,7 @@ import { SkBody, SkBar, SkKpiRow, SkChip, SkFormCard, SkTableCard } from "@/comp
 export default function Loading() {
   return (
     <>
-      <AdminPageHead title="Campaign" sw="Kampeni" period={false} actions={<SkChip />} />
+      <AdminPageHead title="Campaign" sw="Kampeni" actions={<SkChip />} />
       <SkBody>
         {/* Back link */}
         <SkBar className="h-3 w-28" />

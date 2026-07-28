@@ -7,7 +7,6 @@ export default function Loading() {
       <AdminPageHead
         title="Sources & categories"
         sw="Vyanzo na aina"
-        period={false}
         actions={<SkChip className="h-8 w-28" />}
       />
       <SkBody>

@@ -34,7 +34,6 @@ export default async function AdminSourcesPage() {
       <AdminPageHead
         title="Sources & categories"
         sw="Vyanzo na aina"
-        period={false}
         actions={<AddSourceForm />}
       />
       <div className="px-4 lg:px-6 py-5 space-y-4">

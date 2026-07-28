@@ -7,7 +7,6 @@ export default function Loading() {
       <AdminPageHead
         title="Audit log"
         sw="Kumbukumbu · append-only HMAC-chained"
-        period={false}
         actions={<SkChip className="h-7 w-24" />}
       />
       <SkBody>

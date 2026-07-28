@@ -53,7 +53,7 @@ export default async function AdminUpDownRoundsPage() {
 
   return (
     <>
-      <AdminPageHead title="Up & Down · Rounds" sw="Raundi za Juu na Chini" period={false} />
+      <AdminPageHead title="Up & Down · Rounds" sw="Raundi za Juu na Chini" />
       <div className="px-4 lg:px-6 py-5 space-y-4">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <AdminKpi label="Rounds shown" sw="Raundi" value={String(enriched.length)} delta="most recent 60" spark={false} />

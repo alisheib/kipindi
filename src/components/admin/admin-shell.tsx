@@ -14,7 +14,6 @@ import { RefreshButton } from "./refresh-button";
 import { AiToolkit } from "./ai-toolkit";
 import { getAiToolkitStatus } from "@/lib/server/ai-controls";
 import { NAV_GROUPS } from "./admin-nav-groups";
-import { PeriodPicker } from "./period-picker";
 import { AdminSpark } from "./admin-charts";
 import { formatDateISO } from "@/lib/utils";
 
@@ -168,12 +167,10 @@ export async function AdminTopBar({ crumbs, session, activeKey }: { crumbs: stri
 export function AdminPageHead({
   title,
   sw,
-  period = true,
   actions,
 }: {
   title: string;
   sw?: string;
-  period?: boolean;
   actions?: React.ReactNode;
 }) {
   return (
@@ -187,14 +184,12 @@ export function AdminPageHead({
         )}
       </div>
       <div className="flex items-center gap-2 flex-wrap">
-        {period && <PeriodPicker />}
         {actions}
       </div>
     </header>
   );
 }
 
-export { PeriodPicker };
 
 /* ===== KPI tile ===== */
 
@@ -349,30 +344,6 @@ export function AdminCard({
           {action && <div className="shrink-0">{action}</div>}
         </div>
       )}
-      {children}
-    </div>
-  );
-}
-
-/* ===== Block (placeholder for chart while real chart pending) ===== */
-
-export function AdminBlock({
-  height = "med",
-  children,
-}: {
-  height?: "tall" | "med" | "short";
-  children: React.ReactNode;
-}) {
-  const cls = height === "tall" ? "min-h-[240px]" : height === "short" ? "min-h-[100px]" : "min-h-[160px]";
-  return (
-    <div
-      className={[
-        "rounded-md bg-bg-sunken border border-dashed border-border-strong",
-        "flex flex-col items-center justify-center gap-1.5 p-4 text-center",
-        "font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary",
-        cls,
-      ].join(" ")}
-    >
       {children}
     </div>
   );

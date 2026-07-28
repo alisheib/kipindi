@@ -4,7 +4,7 @@ import { SkBody, SkBar, SkKpiRow, SkTableCard } from "@/components/admin/admin-s
 export default function Loading() {
   return (
     <>
-      <AdminPageHead title="Objections" sw="Pingamizi" period={false} />
+      <AdminPageHead title="Objections" sw="Pingamizi" />
       <SkBody>
         {/* Explainer */}
         <SkBar className="h-3 w-3/4" />

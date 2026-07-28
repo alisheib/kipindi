@@ -147,7 +147,6 @@ export default async function MarketPredictorsPage({
       <AdminPageHead
         title="Market predictors"
         sw="Watabiri wa soko"
-        period={false}
         actions={
           <Link href="/admin/markets" className="btn btn-ghost btn-sm inline-flex items-center gap-1.5">
             <I.chevronLeft s={13} />

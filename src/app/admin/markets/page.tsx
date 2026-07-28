@@ -80,7 +80,6 @@ export default async function AdminMarketsPage({
       <AdminPageHead
         title="Markets · curation queue"
         sw="Soko · foleni ya uongozaji"
-        period={false}
         actions={
           <Link href="/admin/markets/new" className="btn btn-primary btn-sm inline-flex items-center gap-1.5">
             <I.plus s={14} />

@@ -46,7 +46,7 @@ export default async function AdminEventsPage() {
 
   return (
     <>
-      <AdminPageHead title="Events" sw="Matukio" period={false} />
+      <AdminPageHead title="Events" sw="Matukio" />
       <div className="px-4 lg:px-6 py-5 space-y-4">
         <AdminCard title="Why this exists" sw="Kwa nini">
           <p className="text-[12.5px] leading-relaxed text-text-muted">

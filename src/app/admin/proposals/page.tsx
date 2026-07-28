@@ -31,7 +31,6 @@ export default async function AdminProposalsPage() {
       <AdminPageHead
         title="Market proposals"
         sw="Mapendekezo ya masoko"
-        period={false}
         actions={<Chip size="sm" variant={STATE_CHIP[config.state].variant}>{STATE_CHIP[config.state].label}</Chip>}
       />
 

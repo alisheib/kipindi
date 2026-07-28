@@ -8,7 +8,6 @@ export default function PollNotFound() {
       <AdminPageHead
         title="Poll not found"
         sw="Kura haikupatikana"
-        period={false}
         actions={
           <Link
             href="/admin/ai-polls"

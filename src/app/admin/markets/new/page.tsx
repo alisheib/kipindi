@@ -25,7 +25,7 @@ export default async function NewMarketPage() {
         };
   return (
     <>
-      <AdminPageHead title="New market" sw="Soko jipya" period={false} />
+      <AdminPageHead title="New market" sw="Soko jipya" />
       <div className="px-4 lg:px-6 py-5">
         {/* DESIGN_AUTHORITY B7 — this is a single-column authoring form on the
             1600px console tier. Without a measure the title/criterion fields ran

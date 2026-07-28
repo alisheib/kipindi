@@ -75,7 +75,6 @@ export default async function AdminSelfExclusionsPage({
       <AdminPageHead
         title="Self-exclusion roster"
         sw="Sajili ya kujizuia"
-        period={false}
         actions={
           <div className="flex items-center gap-1.5 flex-wrap">
             {countsFailed ? (

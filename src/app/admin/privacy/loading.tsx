@@ -7,7 +7,6 @@ export default function Loading() {
       <AdminPageHead
         title="Privacy · DSAR queue"
         sw="Faragha · Maombi ya data"
-        period={false}
         actions={<SkChip className="h-7 w-36" />}
       />
       <SkBody>

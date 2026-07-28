@@ -7,7 +7,6 @@ export default function Loading() {
       <AdminPageHead
         title="Two-factor authentication"
         sw="Uthibitisho wa hatua mbili"
-        period={false}
         actions={<SkChip className="h-[30px] w-32" />}
       />
       <SkBody>

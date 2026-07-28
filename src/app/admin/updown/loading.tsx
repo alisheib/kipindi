@@ -4,7 +4,7 @@ import { SkBody, SkKpiRow, SkCard, SkTableCard, SkChip } from "@/components/admi
 export default function Loading() {
   return (
     <>
-      <AdminPageHead title="Up & Down" sw="Juu na Chini" period={false} actions={<SkChip className="h-8 w-28" />} />
+      <AdminPageHead title="Up & Down" sw="Juu na Chini" actions={<SkChip className="h-8 w-28" />} />
       <SkBody>
         <SkKpiRow count={4} />
         {/* Assets table */}

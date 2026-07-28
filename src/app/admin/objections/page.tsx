@@ -61,7 +61,7 @@ export default async function AdminObjectionsPage({ searchParams }: { searchPara
 
   return (
     <>
-      <AdminPageHead title="Objections" sw="Pingamizi" period={false} />
+      <AdminPageHead title="Objections" sw="Pingamizi" />
       <div className="px-4 lg:px-6 py-5 space-y-4">
       <p className="text-[12.5px] leading-relaxed text-text-muted">
         Player disputes against a market verdict. An OPEN objection freezes that market&rsquo;s

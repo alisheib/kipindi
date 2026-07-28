@@ -45,7 +45,6 @@ export default async function AdminLivePage() {
       <AdminPageHead
         title="Live ops"
         sw="Operesheni za moja kwa moja"
-        period={false}
         actions={
           // Aqua = live-feed signal (admin gold-discipline: gold only on the resolved seal).
           <span

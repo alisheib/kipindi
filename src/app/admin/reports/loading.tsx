@@ -7,7 +7,6 @@ export default function Loading() {
       <AdminPageHead
         title="Reports"
         sw="Ripoti"
-        period={false}
         actions={
           <div className="flex items-center gap-2">
             <SkChip className="h-8 w-40" />

@@ -4,7 +4,7 @@ import { SkBody, SkKpiRow, SkTableCard } from "@/components/admin/admin-skeleton
 export default function Loading() {
   return (
     <>
-      <AdminPageHead title="Up & Down · Rounds" sw="Raundi za Juu na Chini" period={false} />
+      <AdminPageHead title="Up & Down · Rounds" sw="Raundi za Juu na Chini" />
       <SkBody>
         <SkKpiRow count={4} />
         <SkTableCard cols={7} rows={6} minWidth={880} />

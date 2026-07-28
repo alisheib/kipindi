@@ -66,7 +66,7 @@ export default async function AdminSystemPage() {
 
   return (
     <>
-      <AdminPageHead title="System" sw="Mfumo" period={false} />
+      <AdminPageHead title="System" sw="Mfumo" />
       <div className="px-4 lg:px-6 py-5 space-y-4">
         {/* Health KPIs */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

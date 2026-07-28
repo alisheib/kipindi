@@ -50,7 +50,6 @@ export default async function AdminRetentionPage() {
       <AdminPageHead
         title="Data retention schedule"
         sw="Ratiba ya kuhifadhi data"
-        period={false}
         actions={<Chip size="md" variant="neutral">{SCHEDULE.length} categories</Chip>}
       />
       <div className="px-4 lg:px-6 py-5 space-y-4">

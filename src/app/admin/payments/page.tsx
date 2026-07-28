@@ -42,7 +42,6 @@ export default async function PaymentsOpsPage({ searchParams }: { searchParams: 
       <AdminPageHead
         title="Payments operations"
         sw="Operesheni za malipo"
-        period={false}
         actions={
           <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle">MNO health · 24h window</span>
         }

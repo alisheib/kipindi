@@ -155,7 +155,6 @@ export default async function AdminAIPollsPage({
       <AdminPageHead
         title="AI poll generation"
         sw="Uzalishaji wa kura · Claude AI"
-        period={false}
       />
       <div className="px-4 lg:px-6 py-5 space-y-4">
         {/* KPI strip */}

@@ -63,7 +63,6 @@ export default async function ResolutionCeremonyPage({ params }: { params: Promi
       <AdminPageHead
         title="Resolution ceremony"
         sw="Sherehe ya utatuzi"
-        period={false}
         actions={
           <Link
             href={"/admin/resolver-queue" as Route}

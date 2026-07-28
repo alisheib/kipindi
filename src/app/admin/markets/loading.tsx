@@ -7,7 +7,6 @@ export default function Loading() {
       <AdminPageHead
         title="Markets · curation queue"
         sw="Soko · foleni ya uongozaji"
-        period={false}
         actions={<SkChip className="h-8 w-28" />}
       />
       <SkBody>

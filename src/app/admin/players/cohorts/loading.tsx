@@ -4,7 +4,7 @@ import { SkBody, SkCard, SkKpiRow } from "@/components/admin/admin-skeletons";
 export default function Loading() {
   return (
     <>
-      <AdminPageHead title="Cohorts" sw="Vikundi" period={false} />
+      <AdminPageHead title="Cohorts" sw="Vikundi" />
       <SkBody>
         <SkKpiRow count={4} />
         <SkCard lines={3} titleW="w-40" />

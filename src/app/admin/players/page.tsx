@@ -78,7 +78,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
 
   return (
     <>
-      <AdminPageHead title="Players" sw="Wachezaji" period={false} />
+      <AdminPageHead title="Players" sw="Wachezaji" />
 
       <div className="px-4 lg:px-6 py-5 space-y-4">
         {/* Headline KPIs — replaces the header count-chips with the console-standard

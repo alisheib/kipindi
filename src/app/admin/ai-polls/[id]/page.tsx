@@ -68,7 +68,6 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
       <AdminPageHead
         title="Poll detail"
         sw="Maelezo ya kura"
-        period={false}
         actions={
           <Link
             href="/admin/ai-polls"

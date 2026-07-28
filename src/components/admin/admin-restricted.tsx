@@ -25,7 +25,7 @@ export function AdminRestricted({
 }) {
   return (
     <>
-      <AdminPageHead title={title} sw={sw} period={false} />
+      <AdminPageHead title={title} sw={sw} />
       <div className="px-4 lg:px-6 py-5">
         <AdminCard title="Restricted" sw="Imezuiliwa">
           <div className="flex items-start gap-3">

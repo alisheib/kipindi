@@ -41,7 +41,6 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
       <AdminPageHead
         title={campaign.name}
         sw={`Code ${campaign.code}`}
-        period={false}
         actions={<Chip size="sm" variant={STATUS_CHIP[campaign.status] ?? "paused"}>{campaign.status.toLowerCase()}</Chip>}
       />
       <div className="px-4 lg:px-6 py-5 space-y-4">

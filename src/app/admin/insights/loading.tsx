@@ -4,7 +4,7 @@ import { SkBody, SkKpiRow, SkCard, SkTableCard } from "@/components/admin/admin-
 export default function Loading() {
   return (
     <>
-      <AdminPageHead title="Insights" sw="Maarifa" period={false} />
+      <AdminPageHead title="Insights" sw="Maarifa" />
       <SkBody>
         {/* Headline KPIs */}
         <SkKpiRow count={4} />

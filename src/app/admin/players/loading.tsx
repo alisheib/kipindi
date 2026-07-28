@@ -7,7 +7,6 @@ export default function Loading() {
       <AdminPageHead
         title="Players"
         sw="Wachezaji"
-        period={false}
         actions={
           <div className="flex gap-1.5">
             <SkChip className="h-6 w-16" />

@@ -68,7 +68,6 @@ export default async function AdminAuditPage({
       <AdminPageHead
         title="Audit log"
         sw="Kumbukumbu · append-only HMAC-chained"
-        period={false}
         actions={<GenerateButton id="iso-audit" />}
       />
 

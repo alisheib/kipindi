@@ -4,7 +4,7 @@ import { SkBody, SkCard } from "@/components/admin/admin-skeletons";
 export default function Loading() {
   return (
     <>
-      <AdminPageHead title="Events" sw="Matukio" period={false} />
+      <AdminPageHead title="Events" sw="Matukio" />
       <SkBody>
         {/* Why this exists */}
         <SkCard lines={3} titleW="w-40" />

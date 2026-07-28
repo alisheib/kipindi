@@ -4,7 +4,7 @@ import { SkBody, SkCard, SkKpiRow, SkTableCard } from "@/components/admin/admin-
 export default function Loading() {
   return (
     <>
-      <AdminPageHead title="Settlement" sw="Malipo" period={false} />
+      <AdminPageHead title="Settlement" sw="Malipo" />
       <SkBody>
         {/* Auto-settle banner */}
         <SkCard lines={1} titleW="w-64" />

@@ -65,7 +65,6 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
       <AdminPageHead
         title="Up & Down"
         sw="Juu na Chini"
-        period={false}
         actions={<AddAssetForm />}
       />
 

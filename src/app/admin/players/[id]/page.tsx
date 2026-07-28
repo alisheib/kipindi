@@ -149,7 +149,6 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
       <AdminPageHead
         title="Player profile"
         sw="Wasifu wa mchezaji"
-        period={false}
         actions={
           <div className="flex items-center gap-2 flex-wrap">
             <Link

@@ -43,7 +43,7 @@ export default async function InsightsPage() {
   if (!data) {
     return (
       <>
-        <AdminPageHead title="Insights" sw="Maarifa" period={false} />
+        <AdminPageHead title="Insights" sw="Maarifa" />
         <div className="px-4 lg:px-6 py-5">
           <AdminCard title="Unavailable" sw="Haipatikani">
             <p className="text-[13px] text-text-muted">Insight aggregates could not be computed right now.</p>
@@ -67,7 +67,7 @@ export default async function InsightsPage() {
 
   return (
     <>
-      <AdminPageHead title="Insights" sw="Maarifa" period={false} />
+      <AdminPageHead title="Insights" sw="Maarifa" />
 
       <div className="px-4 lg:px-6 py-5 space-y-4">
         {/* Headline KPIs — all real, all derived from the ledger. */}

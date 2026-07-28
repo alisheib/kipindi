@@ -26,7 +26,6 @@ export default async function TotpSetupPage() {
       <AdminPageHead
         title="Two-factor authentication"
         sw="Uthibitisho wa hatua mbili"
-        period={false}
         actions={
           <Chip size="md" variant={enabled ? "success" : "warning"}>
             {enabled ? "Enabled · Active" : "Not configured"}

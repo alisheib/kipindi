@@ -52,7 +52,6 @@ export default async function AdminPrivacyPage({
       <AdminPageHead
         title="Privacy · DSAR queue"
         sw="Faragha · Maombi ya data"
-        period={false}
         actions={<Chip size="md" variant={pending.length > 0 ? "warning" : "neutral"}>{pending.length} pending · 30d SLA</Chip>}
       />
       <div className="px-4 lg:px-6 py-5 space-y-4">

@@ -131,7 +131,6 @@ export default async function AdminCandidatesPage({
       <AdminPageHead
         title="Market candidates"
         sw="Mapendekezo ya soko · AI-validated"
-        period={false}
       />
       <div className="px-4 lg:px-6 py-5 space-y-4">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

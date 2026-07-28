@@ -4,7 +4,7 @@ import { SkBody, SkKpiRow, SkCard, SkBlock } from "@/components/admin/admin-skel
 export default function AdminLoading() {
   return (
     <>
-      <AdminPageHead title="Overview" sw="Muhtasari" period={false} />
+      <AdminPageHead title="Overview" sw="Muhtasari" />
       <SkBody>
         {/* §A — KPI strip */}
         <SkKpiRow count={4} cols="grid-cols-2 md:grid-cols-3 lg:grid-cols-4" />

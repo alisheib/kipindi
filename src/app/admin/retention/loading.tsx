@@ -7,7 +7,6 @@ export default function Loading() {
       <AdminPageHead
         title="Data retention schedule"
         sw="Ratiba ya kuhifadhi data"
-        period={false}
         actions={<SkChip className="h-7 w-28" />}
       />
       <SkBody>

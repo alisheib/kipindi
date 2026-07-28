@@ -4,7 +4,7 @@ import { SkBody, SkKpiRow, SkCard, SkTableCard } from "@/components/admin/admin-
 export default function Loading() {
   return (
     <>
-      <AdminPageHead title="AI usage & credits" sw="Matumizi ya AI na salio" period={false} />
+      <AdminPageHead title="AI usage & credits" sw="Matumizi ya AI na salio" />
       <SkBody>
         {/* Health banner */}
         <SkCard lines={1} titleW="w-56" />

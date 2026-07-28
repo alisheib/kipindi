@@ -7,7 +7,6 @@ export default function Loading() {
       <AdminPageHead
         title="Resolution ceremony"
         sw="Sherehe ya utatuzi"
-        period={false}
         actions={<SkChip className="h-7 w-20" />}
       />
       {/* Two-column detail — matches the page's own wrapper (no space-y). */}

@@ -7,7 +7,6 @@ export default function Loading() {
       <AdminPageHead
         title="Payments operations"
         sw="Operesheni za malipo"
-        period={false}
         actions={<SkChip className="h-7 w-44" />}
       />
       <SkBody>

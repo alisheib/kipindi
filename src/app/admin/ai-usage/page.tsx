@@ -146,7 +146,7 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
 
   return (
     <>
-      <AdminPageHead title="AI usage & credits" sw="Matumizi ya AI na salio" period={false} />
+      <AdminPageHead title="AI usage & credits" sw="Matumizi ya AI na salio" />
       <div className="px-4 lg:px-6 py-5 space-y-4">
         {/* Health banner */}
         <div className={`rounded-lg border px-4 py-3 flex items-start gap-3 ${banner.cls}`}>

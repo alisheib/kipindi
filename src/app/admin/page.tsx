@@ -54,7 +54,7 @@ export default async function AdminOverviewPage() {
 
   return (
     <>
-      <AdminPageHead title="Overview" sw="Muhtasari" period={false} />
+      <AdminPageHead title="Overview" sw="Muhtasari" />
 
       <div className="px-4 lg:px-6 py-5 space-y-4">
         {/* §A — KPI strip */}

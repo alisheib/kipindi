@@ -64,7 +64,6 @@ export default async function AdminCompliancePage({
       <AdminPageHead
         title="Compliance"
         sw="Kanuni"
-        period={false}
         actions={
           <Link
             href="/admin/reports"

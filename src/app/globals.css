@@ -2073,11 +2073,11 @@ html.kp-reduce-motion *::after {
 .trust-item svg { width: 16px; height: 16px; color: var(--gilt); flex-shrink: 0; }
 .trust-sep { width: 1px; height: 16px; background: var(--border); }
 
-/* ── Admin quality/confidence colour helpers ─────────────────────── */
-/* Use these instead of hardcoding oklch values for quality scores.   */
-.admin-quality-good { color: var(--yes-300); }
-.admin-quality-mid  { color: var(--gold-300); }
-.admin-quality-bad  { color: var(--claret-300); }
+/* `.admin-quality-good|mid|bad` lived here with a comment telling future work to
+   "use these instead of hardcoding oklch values for quality scores". They had ZERO
+   consumers in their entire life — an instruction nobody could follow because
+   nothing demonstrated it. Deleted 2026-07-28; the tokens they wrapped
+   (--yes-300 / --gold-300 / --claret-300) are reachable directly. */
 
 /* ── Focus rings ─────────────────────────────────────────────────── */
 /* Single source of truth for the brand focus ring on inputs.         */

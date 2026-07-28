@@ -14,7 +14,7 @@ export default async function AdminModerationPage() {
   const hidden = items.filter((i) => i.hidden).length;
   return (
     <>
-      <AdminPageHead title="Comment moderation" sw="Usimamizi wa maoni" period={false} />
+      <AdminPageHead title="Comment moderation" sw="Usimamizi wa maoni" />
       <div className="px-4 lg:px-6 py-5 space-y-4">
         {/* KPI band — the page was previously just one card with these counts
             buried in a subtitle; surface them so the queue has a hierarchy. */}

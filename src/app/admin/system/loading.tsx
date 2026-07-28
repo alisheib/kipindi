@@ -4,7 +4,7 @@ import { SkBar, SkBody, SkKpiRow, SkCard, SkFormCard, SkTableCard } from "@/comp
 export default function Loading() {
   return (
     <>
-      <AdminPageHead title="System" sw="Mfumo" period={false} />
+      <AdminPageHead title="System" sw="Mfumo" />
       <SkBody>
         {/* Health KPIs */}
         <SkKpiRow count={4} />
