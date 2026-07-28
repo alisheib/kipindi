@@ -80,6 +80,14 @@ const config: Config = {
           link: "var(--text-link)",
           linkHover: "var(--text-link-hover)",
           onBrand: "var(--text-on-brand)",
+          // DESIGN_AUTHORITY B8 — the ink ramp's three quiet steps. These were defined
+          // in globals.css from the start but NEVER bridged here, so `text-text-subtle`
+          // (732 uses), `text-text-muted` (433) and `text-text-faint` (59) compiled to
+          // NOTHING: a four-step hierarchy rendered as two, and every element meant to
+          // recede inherited its parent's ink instead. Guarded by `npm run test:bridge`.
+          muted: "var(--text-muted)",
+          subtle: "var(--text-subtle)",
+          faint: "var(--text-faint)",
         },
         royal: {
           DEFAULT: "var(--royal)",
@@ -88,7 +96,15 @@ const config: Config = {
           subtle: "var(--royal-subtle)",
           subtleHover: "var(--royal-subtle-hover)",
           fg: "var(--royal-fg)",
+          // The numeric ramp exists in globals.css (50–950) but was never exposed here,
+          // unlike `gold` below. `text-royal-300` (56 uses) + `text-royal-200` (13) were dead.
+          50:  "var(--royal-50)", 100: "var(--royal-100)", 200: "var(--royal-200)", 300: "var(--royal-300)", 400: "var(--royal-400)",
+          500: "var(--royal-500)", 600: "var(--royal-600)", 700: "var(--royal-700)", 800: "var(--royal-800)", 900: "var(--royal-900)", 950: "var(--royal-950)",
         },
+        // The gilt — the brand needle's own colour (Brand Kit v2). It had NO entry here
+        // at all, so `text-gilt` / `border-gilt` were dead. The CSS classes `.gilt` /
+        // `.gilt-strong` (globals.css) are the older way in; both are valid.
+        gilt: { DEFAULT: "var(--gilt)", strong: "var(--gilt-strong)" },
         gold: {
           DEFAULT: "var(--gold)",
           hover: "var(--gold-hover)",
@@ -99,10 +115,14 @@ const config: Config = {
           50:  "var(--gold-50)", 100: "var(--gold-100)", 200: "var(--gold-200)", 300: "var(--gold-300)", 400: "var(--gold-400)",
           500: "var(--gold-500)", 600: "var(--gold-600)", 700: "var(--gold-700)", 800: "var(--gold-800)", 900: "var(--gold-900)", 950: "var(--gold-950)",
         },
+        // The `500` steps are the base hue each semantic token is mixed from
+        // (globals.css:159-161). They exist as vars but were unreachable, so
+        // `bg-danger-500` / `border-danger-500` / `bg-info-500` compiled to nothing.
+        // There is deliberately no 300/700 step — the ramp has exactly one rung.
         success: { DEFAULT: "var(--success)", bg: "var(--success-bg)", border: "var(--success-border)", fg: "var(--success-fg)" },
-        warning: { DEFAULT: "var(--warning)", bg: "var(--warning-bg)", border: "var(--warning-border)", fg: "var(--warning-fg)" },
-        danger:  { DEFAULT: "var(--danger)",  bg: "var(--danger-bg)",  border: "var(--danger-border)",  fg: "var(--danger-fg)" },
-        info:    { DEFAULT: "var(--info)",    bg: "var(--info-bg)",    border: "var(--info-border)",    fg: "var(--info-fg)" },
+        warning: { DEFAULT: "var(--warning)", bg: "var(--warning-bg)", border: "var(--warning-border)", fg: "var(--warning-fg)", 500: "var(--warning-500)" },
+        danger:  { DEFAULT: "var(--danger)",  bg: "var(--danger-bg)",  border: "var(--danger-border)",  fg: "var(--danger-fg)",  500: "var(--danger-500)" },
+        info:    { DEFAULT: "var(--info)",    bg: "var(--info-bg)",    border: "var(--info-border)",    fg: "var(--info-fg)",    500: "var(--info-500)" },
         bet: {
           win: "var(--bet-win)",
           lose: "var(--bet-lose)",
@@ -210,6 +230,25 @@ const config: Config = {
         lg: "1024px",
         xl: "1280px",
         "2xl": "1536px",
+      },
+      /* The measure system — DESIGN_AUTHORITY B7. Names only: every value is a
+         `var(--w-*)` defined ONCE, in globals.css. Adding a number here instead of
+         a var would create the second definition site that made the width tiers
+         drift into eight variants in the first place.
+
+         PAGES must not use these directly — they use <PageContainer tier="…">, so
+         `tsc` rejects an invented tier and the runtime audit can find the content
+         column via its data-measure attribute. These classes exist for the handful
+         of CHROME consumers that are not pages: the top app bar, the public footer,
+         the notice bar, and the admin shell. */
+      maxWidth: {
+        console: "var(--w-console)",
+        board:   "var(--w-board)",
+        reading: "var(--w-reading)",
+        form:    "var(--w-form)",
+        receipt: "var(--w-receipt)",
+        auth:    "var(--w-auth)",
+        field:   "var(--w-field)",
       },
     },
   },

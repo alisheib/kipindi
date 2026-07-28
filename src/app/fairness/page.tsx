@@ -43,7 +43,7 @@ function FairnessChain({ steps }: { steps: { glyph: keyof typeof I; label: strin
           const Glyph = I[s.glyph];
           const circleCls = s.gilt
             ? "border-2 border-gold-500 bg-gold-500/10 text-gold-300"
-            : "border border-brand-700 bg-brand-500/10 text-brand-300";
+            : "border border-brand-600 bg-brand-500/10 text-brand-300";
           return (
             <li key={i} className="contents">
               <div className="flex w-[104px] shrink-0 flex-col items-center text-center">

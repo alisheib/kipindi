@@ -88,7 +88,7 @@ export async function AdminSidebar({ activeKey }: { activeKey: string }) {
 export async function AdminTopBar({ crumbs, session, activeKey }: { crumbs: string[]; session: AdminSession; activeKey: string }) {
   const badges = await getSidebarBadges();
   return (
-    <div className="relative z-40 flex items-center justify-between px-4 lg:px-6 border-b border-border gap-3"
+    <div className="relative z-40 border-b border-border"
       style={{
         height: 56,
         background: "color-mix(in oklab, var(--panel) 78%, transparent)",
@@ -99,6 +99,13 @@ export async function AdminTopBar({ crumbs, session, activeKey }: { crumbs: stri
           context, which would otherwise TRAP the AI-toolkit dropdown's z-50 below
           the page content (the search input painted over it at 360). Elevating the
           whole bar lets the dropdown overlay the page. Stays below portaled modals (z-100). */}
+      {/* DESIGN_AUTHORITY B7 — the bar's BACKGROUND stays full-bleed (it is chrome,
+          and a boxed blur strip would look broken against the sidebar), but its
+          CONTENT is capped to the same console measure as the page body below it.
+          Without this the breadcrumb sat at the far left while AdminPageHead began
+          at the centred column's edge — a visible misalignment above 1600px. Same
+          pattern the player top bar already uses. */}
+      <div className="mx-auto w-full max-w-console h-full flex items-center justify-between px-4 lg:px-6 gap-3">
       <div className="flex items-center gap-2 min-w-0">
         <AdminMobileNavTrigger groups={NAV_GROUPS} badges={badges} activeKey={activeKey} />
       <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-body-sm text-text-tertiary min-w-0 overflow-hidden">
@@ -152,6 +159,7 @@ export async function AdminTopBar({ crumbs, session, activeKey }: { crumbs: stri
           <span className="h-1.5 w-1.5 rounded-pill" style={{ background: "var(--aqua-400)" }} />
           <span className="hidden sm:inline">{((await db.user.findById(session.userId))?.displayName ?? "Officer").split(" ")[0]}</span>
         </span>
+      </div>
       </div>
     </div>
   );

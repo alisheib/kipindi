@@ -13,6 +13,7 @@ import {
   MarketOverrideForm,
   ClearOverrideButton,
 } from "./config-form";
+import { FormColumn } from "@/components/ui/form-column";
 import { formatTzs, formatDateTime } from "@/lib/utils";
 
 export const metadata = { title: "Admin · Market config" };
@@ -153,7 +154,7 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
             </span>
           }
         >
-          <FeeSimulator config={config} />
+          <FormColumn measure="form"><FeeSimulator config={config} /></FormColumn>
         </AdminCard>
 
         {/* Global config form */}
@@ -166,7 +167,12 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
             </span>
           }
         >
-          <GlobalConfigForm config={config} />
+          {/* B7 — the rates form is a two-up grid of percentages. On the 1600px
+              console each cell was ~780px wide for a value like "10.0". Bounding
+              the column puts each cell back around 310px. */}
+          <FormColumn measure="form">
+            <GlobalConfigForm config={config} />
+          </FormColumn>
         </AdminCard>
 
         {/* Per-market overrides */}
@@ -188,7 +194,7 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
           <div className="space-y-4">
             <div className="rounded-md glass-panel p-4">
               <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle mb-3">Add override</p>
-              <MarketOverrideForm globalConfig={config} />
+              <FormColumn measure="form"><MarketOverrideForm globalConfig={config} /></FormColumn>
             </div>
 
             {overrides.length === 0 ? (

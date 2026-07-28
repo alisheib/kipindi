@@ -65,7 +65,8 @@ export const PasswordInput = React.forwardRef<HTMLInputElement, Props>(function 
     <div>
       <span
         className={cn(
-          "flex items-stretch rounded-lg border border-border overflow-hidden brand-focus-within transition-colors",
+          // field-measure — DESIGN_AUTHORITY B7. No-op until a <FormColumn> opts in.
+          "field-measure flex items-stretch rounded-lg border border-border overflow-hidden brand-focus-within transition-colors",
           heightCls[size],
         )}
       >

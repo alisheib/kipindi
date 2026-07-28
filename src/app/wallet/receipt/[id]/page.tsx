@@ -53,9 +53,9 @@ const STATUS_TONE: Record<StoredTxn["status"], {
   label: StatusLabelKey;
 }> = {
   CONFIRMED:  { chip: "border-yes-700/60 bg-yes-500/10 text-yes-300",       key: "paid",    label: "txnStatusConfirmed" },
-  PROCESSING: { chip: "border-brand-700/60 bg-brand-500/10 text-brand-300", key: "pending", label: "txnStatusProcessing" },
-  PENDING:    { chip: "border-brand-700/60 bg-brand-500/10 text-brand-300", key: "pending", label: "txnStatusPending" },
-  AML_REVIEW: { chip: "border-info-700/60 bg-info-500/10 text-info-fg",     key: "pending", label: "txnStatusReview" },
+  PROCESSING: { chip: "border-brand-600/60 bg-brand-500/10 text-brand-300", key: "pending", label: "txnStatusProcessing" },
+  PENDING:    { chip: "border-brand-600/60 bg-brand-500/10 text-brand-300", key: "pending", label: "txnStatusPending" },
+  AML_REVIEW: { chip: "border-info-500/60 bg-info-500/10 text-info-fg",     key: "pending", label: "txnStatusReview" },
   FAILED:     { chip: "border-no-700/60 bg-no-500/10 text-no-300",          key: "failed",  label: "txnStatusFailed" },
   REVERSED:   { chip: "border-no-700/60 bg-no-500/10 text-no-300",          key: "failed",  label: "txnStatusReversed" },
   CANCELLED:  { chip: "border-no-700/60 bg-no-500/10 text-no-300",          key: "failed",  label: "txnStatusCancelled" },
@@ -100,7 +100,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
 
       {/* A pending receipt must not read as a completed one. */}
       {tone.key === "pending" && (
-        <p className="rounded-xl border border-brand-700/50 bg-brand-500/[0.08] px-4 py-3 text-[12.5px] leading-relaxed text-text-muted">
+        <p className="rounded-xl border border-brand-600/50 bg-brand-500/[0.08] px-4 py-3 text-[12.5px] leading-relaxed text-text-muted">
           {t.wallet.receiptPendingNote}
         </p>
       )}

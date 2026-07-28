@@ -150,7 +150,7 @@ export function DurationInput({
     <div className={cn("inline-flex flex-col", className)}>
       <div
         className={cn(
-          "inline-flex items-stretch rounded-lg border overflow-hidden brand-focus-within transition-colors w-full",
+          "field-measure inline-flex items-stretch rounded-lg border overflow-hidden brand-focus-within transition-colors w-full",
           h,
           errored ? "border-no-500" : "border-border",
         )}

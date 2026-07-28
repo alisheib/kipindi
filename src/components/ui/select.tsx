@@ -138,7 +138,7 @@ export function Select({
         aria-expanded={open}
         aria-haspopup="listbox"
         className={cn(
-          "flex items-center justify-between gap-2 w-full px-3 border border-border text-left",
+          "field-measure flex items-center justify-between gap-2 w-full px-3 border border-border text-left",
           "focus:outline-none brand-focus",
           "transition-colors font-mono",
           radius, txt, h,

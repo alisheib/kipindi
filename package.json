@@ -122,7 +122,9 @@
     "qa:motion-shots": "node scripts/motion-adoption-shots.mjs",
     "test:outcome": "tsx scripts/outcome-display.test.mts",
     "test:history": "tsx scripts/history-fabrication.test.mts",
-    "qa:outcome": "node scripts/outcome-parity.mjs"
+    "qa:outcome": "node scripts/outcome-parity.mjs",
+    "test:bridge": "tsx scripts/tailwind-bridge.test.mts",
+    "qa:contrast-rendered": "node scripts/contrast-rendered.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

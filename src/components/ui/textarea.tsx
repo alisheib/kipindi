@@ -18,7 +18,7 @@ export const Textarea = React.forwardRef<
       ref={ref}
       rows={rows}
       className={cn(
-        "w-full rounded-lg border border-border bg-bg-inset px-3.5 py-2.5 text-[16px] leading-relaxed text-text outline-none placeholder:text-text-subtle brand-focus hover:border-border-strong transition-colors resize-none",
+        "field-measure w-full rounded-lg border border-border bg-bg-inset px-3.5 py-2.5 text-[16px] leading-relaxed text-text outline-none placeholder:text-text-subtle brand-focus hover:border-border-strong transition-colors resize-none",
         className,
       )}
       {...rest}

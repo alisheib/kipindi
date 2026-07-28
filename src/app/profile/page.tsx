@@ -286,7 +286,7 @@ function Pill({ tone, children }: { tone: "yes" | "no" | "info" | "warning" | "n
 function Step({ n, title, detail, active, done }: { n: number; title: string; detail: string; active?: boolean; done?: boolean }) {
   const cls =
     done   ? "border-yes-700 bg-yes-500/10"
-    : active ? "border-brand-700 bg-brand-500/10"
+    : active ? "border-brand-600 bg-brand-500/10"
     :          "border-border bg-bg-overlay";
   const numCls =
     done   ? "bg-yes-500 text-yes-950"

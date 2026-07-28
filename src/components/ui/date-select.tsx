@@ -213,7 +213,7 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
     <>
       <div
         className={cn(
-          "flex items-stretch w-full rounded-lg border overflow-hidden transition-colors",
+          "field-measure flex items-stretch w-full rounded-lg border overflow-hidden transition-colors",
           sm ? "h-8" : "h-11",
           "brand-focus-within",
           invalid ? "border-no-500" : "border-border",

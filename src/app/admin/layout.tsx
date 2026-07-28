@@ -197,7 +197,21 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <AdminSidebar activeKey={activeKey} />
         <main className="flex-1 min-w-0 flex flex-col">
           <AdminTopBar crumbs={crumbs} session={adminSession} activeKey={activeKey} />
-          <div className="flex-1">
+          {/* DESIGN_AUTHORITY B7 — the console measure.
+              This div had NO max-width, so all 43 admin pages rendered at
+              100vw-216px: 1,704px at 1920 and 2,344px at 2560, while the player
+              chrome above them was capped at 1280. Every `w-full` field inherited
+              that width, which is why a single-column form like /admin/markets/new
+              had ~1,650px-wide text boxes.
+
+              The cap goes on the CONTENT COLUMN, not the shell: `mx-auto` centres
+              it while the sidebar stays flush against the left edge, which is what
+              a dashboard should do. Boxing the whole shell would float the sidebar
+              into the middle of a wide monitor.
+
+              `data-measure` is what lets scripts/responsive-audit.mjs assert the
+              upper bound at runtime — see `npm run test:measure`. */}
+          <div className="flex-1 mx-auto w-full max-w-console" data-measure="console">
             {readBlocked
               ? <AdminRestricted title={crumbs[crumbs.length - 1] ?? "Restricted"} need={readTier!.need} />
               : children}

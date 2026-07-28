@@ -2142,3 +2142,61 @@ textarea::-webkit-resizer {
 .ud-point { animation: ud-point 1.6s var(--ease-conduct, ease-in-out) infinite; }
 @keyframes ud-point { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
 @media (prefers-reduced-motion: reduce) { .ud-point { animation: none; } }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   THE MEASURE SYSTEM                                    DESIGN_AUTHORITY B7
+   ══════════════════════════════════════════════════════════════════════════════
+   Added 2026-07-28 after users reported that "sometimes the pages are too wide,
+   and the input fields as well".
+
+   Both halves were true and neither was anyone's mistake — there was simply no
+   rule. `DESIGN_AUTHORITY.md` (B1-B6) and the design-system RULES.md (12 laws)
+   contained NO width rule at all; the only statement anywhere was a stale line in
+   CLAUDE.md that the code did not match. So width was a hand-typed string
+   (`mx-auto max-w-[1280px] px-3 lg:px-6`) repeated ~60 times, which had drifted
+   into EIGHT page tiers where three were documented, and:
+
+     - `src/app/admin/layout.tsx` had NO cap at all, so all 43 admin pages
+       rendered at 100vw-216px — 2,344px on a 2560 monitor, while the player
+       chrome above them was capped at 1280.
+     - The `Input` atom had height, radius, border, background... and no width
+       rule, so every field was as wide as whatever page it landed on (~1,650px
+       on /admin/markets/new).
+     - `notice-bar.tsx` was 1480 against 1280 chrome, and renders only when there
+       is an announcement / unconfirmed email / offline state. That is literally
+       the "SOMETIMES" in the report.
+
+   And it survived every QA cycle because `scripts/responsive-audit.mjs` asserted
+   only `scrollWidth <= clientWidth` — a LOWER bound. A 2,400px form passed with a
+   green tick. The gate is now two-sided (see `npm run test:measure`).
+
+   THE NUMBERS LIVE HERE AND NOWHERE ELSE. B7 deliberately does not restate them;
+   `tailwind.config.ts` maps names onto these vars and adds no values of its own.
+   Consume via `<PageContainer tier>` — never re-type a width at a call site. */
+:root {
+  --w-console: 1600px;  /* admin console content column (sidebar sits outside)   */
+  --w-board:   1280px;  /* card grids — matches the top bar + footer chrome      */
+  --w-reading: 1080px;  /* detail / content / profile pages                      */
+  --w-form:     640px;  /* forms                                                 */
+  --w-receipt:  560px;  /* receipts + single-outcome confirmations               */
+  --w-auth:    1152px;  /* the auth split-pane ONLY — not a general tier         */
+  --w-field:    460px;  /* the measure of ONE control. Not a page tier.          */
+
+  /* Set by <FormColumn>, read by every field atom via `.field-measure`.
+     `none` by default, so adding the class to an atom is a no-op until a form
+     column opts in — a field inside an inline admin toolbar still flexes. */
+  --field-max: none;
+}
+
+/* A field never grows past the measure its column sets. The cap rides the
+   CONTAINER, not the raw <input>, so `.input-group` composites (prefix + field +
+   trailing) stay intact.
+
+   Carried by six atoms: Input, Select, Textarea, DateSelect, DurationInput,
+   PasswordInput. Three are deliberately EXEMPT, and the guard asserts they stay
+   exempt so nobody "completes the set" later:
+     - OtpInput            — a fixed six-cell group; a measure cap is meaningless.
+     - DateTimeRangeFilter — an inline chip row, not a form field.
+     - TimeSelect          — `inline-flex` with fixed-width segments, so it is
+                             intrinsically sized and cannot stretch in the first place. */
+.field-measure { max-width: var(--field-max, none); }

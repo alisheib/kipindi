@@ -1,4 +1,5 @@
 import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
+import { FormColumn } from "@/components/ui/form-column";
 import { getGlobalConfig } from "@/lib/server/market-config";
 import { NewMarketWizard } from "./wizard";
 
@@ -26,9 +27,17 @@ export default async function NewMarketPage() {
     <>
       <AdminPageHead title="New market" sw="Soko jipya" period={false} />
       <div className="px-4 lg:px-6 py-5">
-        <AdminCard>
-          <NewMarketWizard feeInfo={feeInfo} />
-        </AdminCard>
+        {/* DESIGN_AUTHORITY B7 — this is a single-column authoring form on the
+            1600px console tier. Without a measure the title/criterion fields ran
+            the full column: ~1,650px before the console was capped, ~1,490px
+            after. `form` (640) rather than `field` (460) because these are
+            sentence-length inputs (a market question in EN/SW/ZH), not a
+            phone number or an amount. */}
+        <FormColumn measure="form">
+          <AdminCard>
+            <NewMarketWizard feeInfo={feeInfo} />
+          </AdminCard>
+        </FormColumn>
       </div>
     </>
   );

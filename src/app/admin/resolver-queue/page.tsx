@@ -100,7 +100,7 @@ export default async function ResolverQueuePage({
             <div className="flex items-center gap-2.5 font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle">
               <span>{pending.length} pending</span>
               {overdueCount > 0 && <><span className="text-border">·</span><span className="text-claret-300">{overdueCount} overdue</span></>}
-              {requireTwoOfficer && awaitingStage2 > 0 && <><span className="text-border">·</span><span className="text-warning-300">{awaitingStage2} awaiting 2nd</span></>}
+              {requireTwoOfficer && awaitingStage2 > 0 && <><span className="text-border">·</span><span className="text-warning">{awaitingStage2} awaiting 2nd</span></>}
             </div>
           </div>
         }

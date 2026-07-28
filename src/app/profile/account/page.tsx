@@ -11,6 +11,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { getOwnActivity } from "@/lib/server/user-service";
 import { CloseAccountForm } from "./close-account-form";
+import { FormColumn } from "@/components/ui/form-column";
 import { EmailEditor } from "@/components/profile/email-editor";
 import { PasswordSection } from "@/components/profile/password-section";
 import { formatDateTimeSafe, formatDateTime } from "@/lib/utils";
@@ -88,9 +89,9 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
           />
         </div>
         {/* Contact email — opt-in; once set, transactional receipts are emailed. */}
-        <EmailEditor currentEmail={user?.email ?? null} verified={!!user?.emailVerifiedAt} />
+        <FormColumn measure="field"><EmailEditor currentEmail={user?.email ?? null} verified={!!user?.emailVerifiedAt} /></FormColumn>
         <div className="border-t border-border pt-3">
-          <PasswordSection hasPassword={!!(user?.passwordHash)} />
+          <FormColumn measure="field"><PasswordSection hasPassword={!!(user?.passwordHash)} /></FormColumn>
         </div>
       </section>
 
@@ -194,7 +195,7 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
         <p className="text-[12.5px] text-text-muted leading-snug">
           {t.profile.closeAccountDescription}
         </p>
-        <CloseAccountForm />
+        <FormColumn measure="field"><CloseAccountForm /></FormColumn>
         <p className="font-mono text-[11px] text-text-subtle">
           {t.common.help}? {t.common.email} <span className="text-text-muted">{SUPPORT_EMAIL()}</span>{" "}
           {t.common.or} <span className="text-text-muted">{SUPPORT_PHONE()}</span>.

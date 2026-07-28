@@ -93,7 +93,11 @@ export const Input = React.forwardRef<HTMLInputElement, Props>(function Input(
   return (
     <span
       className={cn(
-        "flex items-stretch rounded-lg border overflow-hidden brand-focus-within transition-all duration-150",
+        // `field-measure` (DESIGN_AUTHORITY B7) caps the field at whatever measure
+        // its <FormColumn> sets. It resolves to `none` by default, so this is a
+        // no-op in inline admin toolbars where the field is meant to flex — the
+        // cap only applies where a form column has opted in.
+        "field-measure flex items-stretch rounded-lg border overflow-hidden brand-focus-within transition-all duration-150",
         heightCls[size],
         errored ? "border-no-500" : "border-border hover:border-border-strong",
         containerClassName,

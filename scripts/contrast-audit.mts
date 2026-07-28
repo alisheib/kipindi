@@ -48,6 +48,18 @@ const T = {
   borderStrong: ok(0.44, 0.15, 268),
   borderControl: ok(0.52, 0.13, 268), // proposed --border-control
   text: ok(0.97, 0.01, 268), // --text (approx near-white)
+  // ── The ink ramp (added 2026-07-28 with DESIGN_AUTHORITY B8) ──────────────
+  // These three were defined in globals.css from the start but were never bridged
+  // into tailwind.config.ts, so `text-text-muted` / `-subtle` / `-faint` compiled
+  // to NOTHING — 1,224 usages inheriting their parent's ink instead of receding.
+  // Repairing the bridge makes them render for the first time, which is a real
+  // darkening of the quiet end of the hierarchy. That has to be PROVEN against AA,
+  // not assumed: RULES.md law 9 names faint body copy as a known failure mode.
+  textMuted: ok(0.86, 0.040, 268),  // --text-muted
+  textSubtle: ok(0.70, 0.080, 268), // --text-subtle
+  textFaint: ok(0.60, 0.090, 268),  // --text-faint
+  bgInset: ok(0.13, 0.12, 268),     // --bg-inset (sunken field wells)
+  panel: ok(0.17, 0.13, 268),       // --panel (sidebar / card surface)
 };
 
 // `decorative: true` = WCAG 1.4.11 exempt (a divider that is NOT the sole means
@@ -62,6 +74,18 @@ const CHECKS: Check[] = [
   { name: "--text on --bg", fg: T.text, bg: T.bg, min: 4.5 },
   { name: "--border on --bg (decorative — exempt)", fg: T.border, bg: T.bg, min: 3.0, decorative: true },
   { name: "--border-strong on --bg (decorative — exempt)", fg: T.borderStrong, bg: T.bg, min: 3.0, decorative: true },
+
+  // The ink ramp, on every surface it actually lands on. Body copy => 4.5.
+  { name: "--text-muted on --bg", fg: T.textMuted, bg: T.bg, min: 4.5 },
+  { name: "--text-muted on --bg-elevated", fg: T.textMuted, bg: T.bgElevated, min: 4.5 },
+  { name: "--text-muted on --panel", fg: T.textMuted, bg: T.panel, min: 4.5 },
+  { name: "--text-subtle on --bg", fg: T.textSubtle, bg: T.bg, min: 4.5 },
+  { name: "--text-subtle on --bg-elevated", fg: T.textSubtle, bg: T.bgElevated, min: 4.5 },
+  { name: "--text-subtle on --panel", fg: T.textSubtle, bg: T.panel, min: 4.5 },
+  { name: "--text-subtle on --bg-inset", fg: T.textSubtle, bg: T.bgInset, min: 4.5 },
+  { name: "--text-faint on --bg", fg: T.textFaint, bg: T.bg, min: 4.5 },
+  { name: "--text-faint on --bg-elevated", fg: T.textFaint, bg: T.bgElevated, min: 4.5 },
+  { name: "--text-faint on --panel", fg: T.textFaint, bg: T.panel, min: 4.5 },
 ];
 
 // H10 remaining fix (measured — apply next session, then this script goes green):
