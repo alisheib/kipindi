@@ -29,7 +29,7 @@ import {
   invalidateGrantsCache,
   __resetGrantsForTest,
 } from "../src/lib/server/rbac.ts";
-import { NAV_GROUPS } from "../src/components/admin/admin-nav-groups.ts";
+import { NAV_GROUPS, filterNavGroups } from "../src/components/admin/admin-nav-groups.ts";
 
 let pass = 0, fail = 0;
 const ok = (l: string, c: boolean) => { c ? pass++ : fail++; console.log(`${c ? "PASS" : "FAIL"} ${l}`); };
@@ -160,6 +160,43 @@ ok("defaultGrant covers every (role,domain)", STAFF_ROLES.every((r) => DOMAINS.e
   const g = defaultGrant(r, d);
   return typeof g.canView === "boolean" && typeof g.canAct === "boolean";
 })));
+
+// ── 12. The NAV reflects each role (nav layer of the gate, per role) ──────────
+__resetGrantsForTest();
+async function navKeysFor(role: Role): Promise<Set<string>> {
+  const vd = Array.from(await viewableDomains(role));
+  const groups = filterNavGroups(vd, role === "ADMIN");
+  return new Set(groups.flatMap((g) => g.items.map((i) => i.key)));
+}
+{
+  const owner = await navKeysFor("ADMIN");
+  ok("Owner nav shows Access (staff + roles)", owner.has("staff") && owner.has("roles"));
+  ok("Owner nav shows money + compliance + markets", owner.has("finance") && owner.has("compliance") && owner.has("markets"));
+
+  const fin = await navKeysFor("FINANCE");
+  ok("FINANCE nav shows money (finance/insights/rates)", fin.has("finance") && fin.has("insights") && fin.has("config"));
+  ok("FINANCE nav shows Overview", fin.has("overview"));
+  ok("FINANCE nav HIDES compliance/markets/growth/players/Access", !fin.has("compliance") && !fin.has("markets") && !fin.has("affiliate") && !fin.has("players") && !fin.has("staff") && !fin.has("roles"));
+
+  const sup = await navKeysFor("SUPPORT");
+  ok("SUPPORT nav shows the players roster", sup.has("players"));
+  ok("SUPPORT nav HIDES money/compliance/cohorts/Access", !sup.has("finance") && !sup.has("compliance") && !sup.has("cohorts") && !sup.has("staff"));
+
+  const trad = await navKeysFor("MODERATOR");
+  ok("Trading nav shows markets/resolver/moderation", trad.has("markets") && trad.has("resolver") && trad.has("moderation"));
+  ok("Trading nav HIDES money/compliance/rates/Access", !trad.has("finance") && !trad.has("compliance") && !trad.has("config") && !trad.has("staff"));
+
+  const aud = await navKeysFor("AUDITOR");
+  ok("Auditor nav shows accounting + compliance (view)", aud.has("finance") && aud.has("compliance"));
+  ok("Auditor nav HIDES Access + trading", !aud.has("staff") && !aud.has("markets"));
+
+  // Access (staff/roles) is Owner-only for EVERY non-Owner role; 2FA setup shows for all staff.
+  for (const r of ["COMPLIANCE", "MODERATOR", "FINANCE", "GROWTH", "AUDITOR", "SUPPORT"] as Role[]) {
+    const n = await navKeysFor(r);
+    ok(`${r} nav HIDES staff + roles (Owner-only)`, !n.has("staff") && !n.has("roles"));
+    ok(`${r} nav shows 2FA setup (all staff)`, n.has("2fa"));
+  }
+}
 
 console.log(`\nrbac: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);
