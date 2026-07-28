@@ -70,6 +70,7 @@ export function PollFilterToolbar({ totalFiltered, totalAll }: { totalFiltered: 
             placeholder={t.common.searchPolls}
             ariaLabel={t.common.searchPolls}
             helpFields={fieldNames(POLL_SEARCH)}
+            allowRegex
           />
         </div>
         {hasFilters && (

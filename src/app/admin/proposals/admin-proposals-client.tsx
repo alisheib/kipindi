@@ -366,6 +366,7 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
               placeholder={t.common.searchProposals}
               ariaLabel={t.common.searchProposals}
               helpFields={fieldNames(PROPOSAL_SEARCH)}
+            allowRegex
             />
           </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-b border-border px-4 py-2">

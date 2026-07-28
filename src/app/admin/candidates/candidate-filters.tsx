@@ -67,6 +67,7 @@ export function CandidateFilterToolbar({ totalFiltered, totalAll }: { totalFilte
             placeholder={t.common.searchCandidates}
             ariaLabel={t.common.searchCandidates}
             helpFields={fieldNames(CANDIDATE_SEARCH)}
+            allowRegex
           />
         </div>
         <button

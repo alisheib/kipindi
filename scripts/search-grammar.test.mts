@@ -168,5 +168,29 @@ check("empty query matches everything", matchesQuery(parseQuery(""), MARKETS[0],
 const straddle = parseQuery('"sports tff"', { fields: Object.keys(MARKET_SEARCH.fields) });
 check("a phrase does not match across two fields", matchesQuery(straddle, MARKETS[0], MARKET_SEARCH) === false);
 
+
+// ── 7. Regex mode, as actually shipped ───────────────────────────────────────
+// Enabled ONLY on admin surfaces that filter an already-loaded list in JS
+// (ai-polls, candidates, proposals). The SQL surfaces do NOT have it — see the
+// commit for the measured reason.
+log("\nRegex mode (JS executor)");
+const RX = (q: string) => parseQuery(q, { allowRegex: true });
+// Note the capital: regex mode is case-SENSITIVE unless /i is given, which is
+// the next assertion. An earlier version of this test used /simba|yanga/ and
+// failed — correctly, because the title reads "Will Simba win…".
+check("matches a simple alternation",
+  matchesQuery(RX("/Simba|Yanga/"), MARKETS[0], MARKET_SEARCH) === true);
+check("is case-insensitive with /i",
+  matchesQuery(RX("/SIMBA/i"), MARKETS[0], MARKET_SEARCH) === true);
+check("is case-SENSITIVE without /i",
+  matchesQuery(RX("/SIMBA/"), MARKETS[0], MARKET_SEARCH) === false);
+check("anchors work",
+  matchesQuery(RX("/^Will Simba/"), MARKETS[0], MARKET_SEARCH) === true);
+check("a non-matching pattern excludes",
+  matchesQuery(RX("/zzz[0-9]+/"), MARKETS[0], MARKET_SEARCH) === false);
+check("a rejected (unsafe) pattern matches NOTHING, never everything",
+  matchesQuery(RX("/(a+)+b/"), MARKETS[0], MARKET_SEARCH) === false);
+
+
 log(`\n${fail === 0 ? "ALL PASS" : `${fail} FAILURE(S)`}`);
 process.exit(fail ? 1 : 0);
