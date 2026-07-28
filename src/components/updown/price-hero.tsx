@@ -16,18 +16,25 @@
  */
 export function PriceHero({
   openPrice,
+  upTarget,
+  downTarget,
   livePrice,
   priceSeries,
   decimals,
   copy,
 }: {
   openPrice: number | null;
+  /** The frozen winning boundaries: reach up ⇒ UP wins, reach down ⇒ DOWN wins. */
+  upTarget?: number | null;
+  downTarget?: number | null;
   livePrice: number | null;
   priceSeries: { t: string; price: number }[] | null;
   decimals: number;
   copy: {
     priceLabel: string;     // "Live price" / "Close price"
     openLabel: string;      // "Open"
+    upLabel?: string;       // "Up target"
+    downLabel?: string;     // "Down target"
     awaitingRead: string;   // "Awaiting read"
     aboveBelow: string | null; // "Above open by $4.45" — null when no live price
     source: string | null;  // "Source: Kitco · quoted 14:34:58" — null when unknown
@@ -58,8 +65,10 @@ export function PriceHero({
   // ── Chart geometry — viewBox 640×220, plot 0..606 × 18..196 (verbatim from the spec).
   const X0 = 0, X1 = 606, Y0 = 18, Y1 = 196;
   const anchor = openPrice ?? prices[0] ?? 0;
-  const lo = Math.min(anchor, ...prices);
-  const hi = Math.max(anchor, ...prices);
+  // Include the winning boundaries in the domain so both target lines fit on the plot.
+  const band = [upTarget, downTarget].filter((v): v is number => v != null);
+  const lo = Math.min(anchor, ...prices, ...band);
+  const hi = Math.max(anchor, ...prices, ...band);
   const pad = (hi - lo) * 0.35 || 1;
   const top = hi + pad, bot = lo - pad;
   const xAt = (i: number) => (prices.length <= 1 ? X0 : X0 + (i / (prices.length - 1)) * (X1 - X0));
@@ -67,6 +76,8 @@ export function PriceHero({
   const hasLine = prices.length >= 2;
   const line = hasLine ? prices.map((v, i) => (i ? "L " : "M ") + xAt(i).toFixed(1) + " " + yAt(v).toFixed(1)).join(" ") : "";
   const openY = (openPrice != null ? yAt(openPrice) : yAt(anchor)).toFixed(1);
+  const upY = upTarget != null ? yAt(upTarget).toFixed(1) : null;
+  const downY = downTarget != null ? yAt(downTarget).toFixed(1) : null;
   const areaEdge = (yEdge: string) => line + " L " + X1.toFixed(1) + " " + yEdge + " L " + X0.toFixed(1) + " " + yEdge + " Z";
   const lastX = xAt(prices.length - 1).toFixed(1);
   const lastY = yAt(prices[prices.length - 1] ?? anchor).toFixed(1);
@@ -131,6 +142,25 @@ export function PriceHero({
           <text x="0" y={(parseFloat(openY) - 6).toFixed(1)} fill="var(--gilt)" fontFamily="var(--font-mono)" fontSize="9" fontWeight="600" letterSpacing="0.12em" opacity="0.9">
             {copy.openLabel.toUpperCase()} {usd(openPrice)}
           </text>
+
+          {/* The frozen winning boundaries. Reaching UP (emerald) wins UP; reaching DOWN
+              (rose) wins DOWN; the price staying between them voids + refunds. */}
+          {upY && (
+            <g>
+              <line x1="0" y1={upY} x2="606" y2={upY} stroke="var(--yes-400)" strokeWidth="1" strokeDasharray="2 5" opacity="0.6" />
+              <text x="606" y={(parseFloat(upY) - 4).toFixed(1)} textAnchor="end" fill="var(--yes-300)" fontFamily="var(--font-mono)" fontSize="8.5" fontWeight="600" letterSpacing="0.10em" opacity="0.9">
+                {(copy.upLabel ?? "UP").toUpperCase()} {usd(upTarget!)}
+              </text>
+            </g>
+          )}
+          {downY && (
+            <g>
+              <line x1="0" y1={downY} x2="606" y2={downY} stroke="var(--no-400)" strokeWidth="1" strokeDasharray="2 5" opacity="0.6" />
+              <text x="606" y={(parseFloat(downY) + 11).toFixed(1)} textAnchor="end" fill="var(--no-300)" fontFamily="var(--font-mono)" fontSize="8.5" fontWeight="600" letterSpacing="0.10em" opacity="0.9">
+                {(copy.downLabel ?? "DOWN").toUpperCase()} {usd(downTarget!)}
+              </text>
+            </g>
+          )}
 
           {hasLine && <path d={line} fill="none" stroke={ink} strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" />}
 

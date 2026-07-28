@@ -40,6 +40,11 @@ export type BoardRound = {
   closesAt: string;
   openPrice: number | null;
   closePrice: number | null;
+  /** The frozen winning boundaries: base ± margin (null on legacy rounds). The player
+   *  must reach one to win; between them the round voids and refunds. */
+  upTarget: number | null;
+  downTarget: number | null;
+  marginBps: number | null;
   outcome: "UP" | "DOWN" | "VOID" | null;
   voidReason: string | null;
   volumeTzs: number;
@@ -86,6 +91,9 @@ async function toBoardRound(
     closesAt: r.closesAt,
     openPrice: r.openPrice,
     closePrice: r.closePrice,
+    upTarget: r.upTarget,
+    downTarget: r.downTarget,
+    marginBps: r.marginBps,
     outcome: r.outcome,
     voidReason: r.voidReason,
     volumeTzs: m.yesPool + m.noPool,

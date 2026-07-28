@@ -143,12 +143,16 @@ export default async function UpDownRoundPage({
         <div className="grid grid-cols-1 items-start gap-4 xl:[grid-template-columns:minmax(0,1.55fr)_minmax(300px,1fr)]">
           <PriceHero
             openPrice={round.openPrice}
+            upTarget={round.upTarget}
+            downTarget={round.downTarget}
             livePrice={heroLive}
             priceSeries={priceSeries}
             decimals={dec}
             copy={{
               priceLabel: decided ? t.market.udClosePrice : t.market.udLivePrice,
               openLabel: t.market.udOpenPrice,
+              upLabel: t.market.udUp,
+              downLabel: t.market.udDown,
               awaitingRead: t.market.udAwaitingRead,
               aboveBelow: move != null && move !== 0 ? `${move > 0 ? t.market.udAboveOpenBy : t.market.udBelowOpenBy} $${Math.abs(move).toFixed(dec)}` : null,
               source,
@@ -278,6 +282,14 @@ export default async function UpDownRoundPage({
                   <dd className="m-0 tabular-nums text-text-muted">{pMove != null ? `${sgn(pMove)}$${Math.abs(pMove).toFixed(dec)}` : "—"}</dd>
                   <dt className="text-text-faint">{t.market.udPercent}</dt>
                   <dd className="m-0 tabular-nums text-text-muted">{pMovePct != null ? `${sgn(pMovePct)}${Math.abs(pMovePct).toFixed(3)}%` : "—"}</dd>
+                  {round.upTarget != null && round.downTarget != null && (
+                    <>
+                      <dt className="text-text-faint">{t.market.udUp}</dt>
+                      <dd className="m-0 tabular-nums" style={{ color: "var(--yes-300)" }}>≥ {usd(round.upTarget, dec)}</dd>
+                      <dt className="text-text-faint">{t.market.udDown}</dt>
+                      <dd className="m-0 tabular-nums" style={{ color: "var(--no-300)" }}>≤ {usd(round.downTarget, dec)}</dd>
+                    </>
+                  )}
                   <dt className="text-text-faint">{t.market.udRule}</dt>
                   <dd className="m-0 text-text-muted">{t.market.udRuleText}</dd>
                 </dl>
