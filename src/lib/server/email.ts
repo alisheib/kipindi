@@ -392,6 +392,21 @@ const wrapGold = (body: string) => wrap(body, { accent: "gold" });
 
 // ─── Email templates ────────────────────────────────────────────────────
 
+/** Staff role change — sent to the person when an Owner changes their role (or
+ *  removes their staff access). Plain royal chrome (not gold — this is an ops
+ *  notice, not earned money/status). */
+export function staffRoleChangedHtml({ name, roleLabel, isStaff }: { name: string; roleLabel: string; isStaff: boolean }): string {
+  return wrap(`
+    ${eyebrow("Staff access · Ufikiaji")}
+    ${heading(isStaff ? `Your role is now ${roleLabel}` : "Your staff access was removed")}
+    ${subtitle(isStaff
+      ? `Hi ${name}, an owner has set your 50pick staff role to ${roleLabel}. For security you've been signed out — sign in again and you'll see the sections for your new role.`
+      : `Hi ${name}, your 50pick staff access has been removed and you've been signed out of the admin console.`)}
+    ${subtitleSw(isStaff ? `Wajibu wako sasa ni ${roleLabel}. Tafadhali ingia tena.` : "Ufikiaji wako wa wafanyakazi umeondolewa.")}
+    ${ctaButton("/auth/admin", "Sign in · Ingia")}
+  `);
+}
+
 export function welcomeHtml({ name }: { name: string }): string {
   return wrap(`
     ${eyebrow("Welcome · Karibu")}

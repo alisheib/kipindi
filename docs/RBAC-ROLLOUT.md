@@ -157,6 +157,12 @@ sub-blocks render only for `compliance` view, and money/compliance controls only
 
 ## Shipped (append each commit)
 
+- **Follow-up** (2026-07-28) — role-change **email notification**: `applyRoleChange` now fire-and-forgets
+  `sendEmailToUser` with a `staffRoleChangedHtml` template (no-ops if the person has no address). Provisioned
+  a live FINANCE staffer (Alfonce, +255678703527) directly on the DB (one-off script, deleted). Nav-per-role
+  reflection locked in `test:rbac` (115). Validation: `test:all` 101/101 + adversarial security review.
+
+
 - **Phase 1** — `5da76fb` (2026-07-28) — role model + `AdminDomain` + `RoleDomainGrant` + loader +
   `requireStaff`/`requireOwner` guards + two additive migrations + `test:rbac` (92). tsc/build/test:all
   ×2 green; deploy-verified (container restart, `uptimeSec` reset, `auditEntries` 0, service Online).

@@ -18,6 +18,7 @@ import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
 import { revokeUserSessions } from "@/lib/server/session-registry";
 import { requireOwner } from "@/lib/server/rbac-guard";
+import { sendEmailToUser, staffRoleChangedHtml } from "@/lib/server/email";
 import { ROLE_LABEL, type Role } from "@/lib/server/roles";
 import { validateRoleChange, isStaffAssignable, type AssignableRole } from "@/lib/server/staff-roles";
 import { tzPhone } from "@/lib/server/validators";
@@ -25,7 +26,7 @@ import { safeError } from "@/lib/server/safe-error";
 
 async function applyRoleChange(
   officerId: string,
-  target: { id: string; role: string },
+  target: { id: string; role: string; displayName?: string | null },
   newRole: AssignableRole,
   reason: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
@@ -43,6 +44,15 @@ async function applyRoleChange(
       targetId: target.id,
       payload: { prevRole, newRole, reason },
     });
+    // Notify the person by email (fire-and-forget; sendEmailToUser no-ops cleanly when
+    // there's no address on file, so a staffer without an email never blocks the change).
+    const isStaff = newRole !== "PLAYER";
+    void sendEmailToUser(target.id, (email) => ({
+      to: email,
+      subject: isStaff ? `Your 50pick role is now ${ROLE_LABEL[newRole as Role]}` : "Your 50pick staff access was removed",
+      html: staffRoleChangedHtml({ name: target.displayName || "there", roleLabel: ROLE_LABEL[newRole as Role] ?? newRole, isStaff }),
+      tag: "staff-role-change",
+    }));
     revalidatePath("/admin/staff");
     revalidatePath(`/admin/staff/${target.id}`);
     return { ok: true };
