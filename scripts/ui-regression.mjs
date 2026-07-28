@@ -60,7 +60,7 @@ async function avatarMenu(page) {
 }
 async function marketFilter(page) {
   // click the first topic/filter chip if present; tolerate boards with none
-  const chip = page.locator("[role='tab'], .chip50, button").filter({ hasText: /Sports|Michezo|All|Zote/i }).first();
+  const chip = page.locator("[role='tab'], button").filter({ hasText: /Sports|Michezo|All|Zote/i }).first();
   if (await chip.count()) await chip.click({ timeout: 2000 }).catch(() => {});
 }
 

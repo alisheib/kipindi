@@ -7,7 +7,7 @@ import { getServerT } from "@/lib/i18n-server";
 export default async function UpDownRoundLoading() {
   const { t } = await getServerT();
   return (
-    <div className="mx-auto w-full max-w-[1080px] px-4 py-6" aria-busy="true">
+    <div className="mx-auto w-full max-w-board px-3 lg:px-6 py-6" aria-busy="true">
       <div className="h-4 w-24 rounded bg-bg-elevated kp-shimmer-track" aria-hidden />
       <div className="mt-3 h-7 w-64 rounded-md bg-bg-elevated kp-shimmer-track" aria-hidden />
       {/* price panel */}

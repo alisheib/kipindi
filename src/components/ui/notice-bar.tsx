@@ -60,7 +60,13 @@ export function NoticeBar({
       data-testid={testId}
       className={`border-b ${t.bar}`}
     >
-      <div className="mx-auto flex max-w-[1480px] flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2 lg:px-6">
+      {/* DESIGN_AUTHORITY B7 — was max-w-[1480px], the only 1480 in the repo,
+          against 1280 chrome (top-app-bar.tsx / public-footer.tsx). Because this
+          bar renders ONLY when there is an announcement, an unconfirmed email or
+          an offline state, the page appeared 200px wider some visits and not
+          others — which is precisely the "sometimes the pages are too wide" in
+          the original user report. */}
+      <div className="mx-auto flex max-w-board flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2 lg:px-6">
         {Glyph
           ? <Glyph s={15} className="shrink-0" aria-hidden />
           : <span className="shrink-0 inline-block h-2 w-2 rounded-full" style={{ background: t.accent }} aria-hidden />}

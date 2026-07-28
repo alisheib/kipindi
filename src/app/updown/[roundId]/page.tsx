@@ -111,8 +111,11 @@ export default async function UpDownRoundPage({
   const outcomeArrow = round.outcome === "UP" ? "M5 15l7-7 7 7" : round.outcome === "DOWN" ? "M5 9l7 7 7-7" : null;
   const evidence = proof?.closeEvidence ?? proof?.openEvidence ?? null;
 
+  // B7 — was max-w-[1232px] with an inline padding, while this route's own
+  // loading.tsx said 1080: a 152px layout jump on EVERY load, which no test
+  // could see. Both are now the board tier.
   return (
-    <div className="mx-auto w-full max-w-[1232px]" style={{ padding: "22px 16px 56px" }}>
+    <div className="mx-auto w-full max-w-board px-3 lg:px-6 pt-[22px] pb-14">
       <div className="flex flex-col gap-[18px]">
         <BackLink fallbackHref="/updown" label={t.market.udTitle} />
 

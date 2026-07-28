@@ -111,6 +111,11 @@ export default async function AdminTransactionsPage({ searchParams }: { searchPa
         }
       />
 
+      {/* B7 — this page was the ONE admin route with no body wrapper at all: it
+          went straight from AdminPageHead to the KPI grid, so every row sat flush
+          against the sidebar with zero left padding while all 42 sibling routes
+          had `px-4 lg:px-6 py-5`. */}
+      <div className="px-4 lg:px-6 py-5 space-y-4">
       {/* Compliance totals — over the WHOLE filtered set, not this page. */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <AdminKpi label="Deposits in" sw="Amana zilizoingia" value={formatTzs(summary.depositsConfirmedTzs)} />
@@ -261,6 +266,7 @@ export default async function AdminTransactionsPage({ searchParams }: { searchPa
         )}
         <AdminPagination page={page} total={total} baseHref={baseHref} />
       </AdminCard>
+      </div>
     </>
   );
 }

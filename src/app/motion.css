@@ -2,7 +2,9 @@
    50pick — MOTION LANGUAGE  ·  "The Settle"  ·  v1.0
    ---------------------------------------------------------------------------
    Landed from docs/design-system/v2-2026-07-27/08-motion/motion.css (Phase 3.2).
-   Imported AFTER globals.css + state-tokens.css + micro-patterns.css in layout.tsx.
+   Imported AFTER globals.css + state-tokens.css in layout.tsx.
+   (micro-patterns.css used to sit in this chain; it was deleted 2026-07-28 — 0 of
+   its 35 classes and 0 of its 17 tokens were referenced anywhere.)
    Adds motion tokens, utilities and keyframes. Overrides nothing; the legacy
    legacy easing/duration tokens stay valid so existing components keep working while
    they migrate. Guarded by scripts/token-collision.test.mts (the m- and t- families).

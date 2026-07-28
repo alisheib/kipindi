@@ -43,7 +43,8 @@ export default async function AdminLoginPage({ searchParams }: { searchParams?: 
   // phone (esp. the wider ZH strings). Flex sizes the child to the column instead.
   return (
     <main className="mx-auto flex min-h-[calc(100vh-44px)] items-center justify-center px-3 py-6">
-      <div className="w-full min-w-0 max-w-lg space-y-4">
+      {/* B7 — was max-w-lg (512) where every sibling auth form is max-w-md (448). */}
+      <div className="w-full min-w-0 max-w-md space-y-4">
         <header className="text-center space-y-1.5">
           <Link href="/" aria-label="50pick home" className="mb-2 inline-block">
             <FiftyLockup size={22} />

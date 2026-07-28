@@ -9,7 +9,6 @@ import { ScrollRestore } from "@/components/ui/scroll-restore";
 import { appUrl } from "@/lib/app-url";
 import "./globals.css";
 import "./state-tokens.css";
-import "./micro-patterns.css";
 import "./motion.css";
 
 const sora = Sora({

@@ -33,7 +33,11 @@ export default async function TotpSetupPage() {
           </Chip>
         }
       />
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      {/* DESIGN_AUTHORITY B7 — this route is in the layout's TOTP_EXEMPT set, so
+          admin/layout.tsx returns a bare fragment for it: no sidebar, and none of
+          the console measure. It was the single widest surface in the product —
+          a QR-enrolment form spanning the ENTIRE viewport. It caps itself. */}
+      <div className="mx-auto w-full max-w-form px-4 lg:px-6 py-5 space-y-4" data-measure="form">
         <AdminCard>
           <p className="text-body-sm text-text-secondary leading-relaxed">
             Required for all ADMIN, COMPLIANCE, and MODERATOR roles. We use the open TOTP standard (RFC 6238)
