@@ -97,7 +97,7 @@ matter most, because acting on the old text would be wrong:
   kits were adopted and deleted; the motion layer, which had **zero consumers**, is now genuinely
   the app's motion language. Record: the `2026-07-28` entry in
   `docs/design-system/v2-2026-07-27/07-provenance/CHANGELOG.md`. Guard: `npm run test:motion`.
-  `docs/MOTION-HAPTICS-ADOPTION-PROMPT.md` is RETIRED — do not re-run it.
+  Motion + haptics adoption is DONE — see `docs/design-system/v2-2026-07-27/07-provenance/CHANGELOG.md` (2026-07-27/28 entries).
 - Real-Postgres load pass for the Up & Down concurrent quick-bet (`test:updown-load` PG mode) if a
   scratch DB is available.
 - **Up & Down Phase 5 + 6** — reports/analytics/notification digest/admin rounds-explorer settings;

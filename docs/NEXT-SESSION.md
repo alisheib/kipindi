@@ -19,7 +19,7 @@ the old text would be actively wrong:
    not re-disable it. Selcom disbursement phases 1–3 are shipped and live.
 3. 🟢 **Design system consolidated to ONE archive** (`docs/design-system/v2-2026-07-27/`), **The
    Needle** shipped, the **motion layer** landed and — as of `f67e2d95` — is genuinely **adopted**
-   (it had zero consumers before). `docs/MOTION-HAPTICS-ADOPTION-PROMPT.md` is retired.
+   (it had zero consumers before). Motion + haptics adoption is DONE (see the design-system CHANGELOG).
    New guard: **`npm run test:motion`**. Also shipped: **Up & Down D3** round detail.
 
 🔴 **THE ONE REMAINING LAUNCH GATE IS NOT CODE:** `PAYMENT_VENDOR_PIN` (the Selcom float-account

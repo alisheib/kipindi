@@ -38,6 +38,8 @@ a dated snapshot, and the live `src/app/globals.css` wins on any conflict.
 | **Components** | `src/components/ui/**`, `src/components/admin/**` | Never hand-roll a one-off that duplicates a primitive — extend the kit |
 | **Glyphs** | `src/components/ui/glyphs.tsx` | Never import an icon library into a player surface |
 | **Brand marks** | `src/components/brand.tsx`, `public/brand/**` | Never re-tint, mirror or stretch |
+| **Control sizing** — button/input/chip heights | `--tap-min` + `--h-control-xs/sm/md/lg/xl` + `--h-input` in `globals.css`; sizes `.btn-xs/sm/md/lg/xl` | Never hard-code a control height or `h-8`/`min-h-[…]` override on a `.btn` — use a size class / token |
+| **Consistency enforcement** | `scripts/ui-consistency.test.mts` (`npm run test:ui-consistency`, in `test:all`) + tracker [`docs/UI-CONSISTENCY-AUDIT.md`](../UI-CONSISTENCY-AUDIT.md) | Never introduce a native `<select>`/`<input type=checkbox>`/`datetime-local`, an ad-hoc portal, or a hard-coded token literal where a kit primitive exists — the linter fails the build |
 
 **Rule of thumb:** if it renders in production, the code is the truth. This folder
 records *what was designed and why*, so a future session can understand the intent
@@ -158,3 +160,8 @@ too. Full audit trail:
    component), never hard-code it in one file — and say so in the spec.
 5. Verify at **360 / 768 / 1280 / 1920**, in EN + SW + ZH, and **look at the
    screenshots**. A green automated suite is not proof.
+6. Run **`npm run test:ui-consistency`** (the kit-adoption linter — fails on native controls,
+   ad-hoc portals, hard-coded token literals, off-token control heights) and
+   **`npm run test:responsive`** (tap sizes + overflow). Both are in `test:all`. If you
+   deliberately add a tracked exception, re-baseline with a documented reason and note it in
+   [`docs/UI-CONSISTENCY-AUDIT.md`](../UI-CONSISTENCY-AUDIT.md).
