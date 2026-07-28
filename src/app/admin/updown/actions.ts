@@ -5,8 +5,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
-import { CONFIG_ROLES, MARKET_OPS_ROLES } from "@/lib/server/roles";
-import { requireAdminTotp } from "@/lib/server/admin-guard";
+import { type AdminDomain } from "@/lib/server/roles";
+import { requireStaff } from "@/lib/server/rbac-guard";
 import {
   createAsset, updateAsset, setAssetEnabled,
   createChain, updateChain, setChainState,
@@ -27,17 +27,16 @@ import type { MarketCategory } from "@/lib/server/market-service";
  *
  * Widening either tier re-grants authority everywhere it is imported. Keep them tight.
  */
-async function ensure(tier: Set<string>) {
-  const session = await currentSession();
-  if (!session) redirect("/auth/admin");
-  const u = await db.user.findById(session.userId);
-  if (!u || !tier.has(u.role)) redirect("/auth/admin");
-  await requireAdminTotp(session.userId, session.sessionId);
-  return session;
+// RBAC: economics config (asset registry, rate profile, thresholds, price source) is
+// money-grade → `accounting`; chain start / pause / stop is operational → `trading`.
+// requireStaff enforces the role's canAct for the domain (Owner/ADMIN bypass), audits
+// a blocked attempt, then step-up 2FA. Mirrors the old CONFIG vs MARKET_OPS split.
+async function ensure(domain: AdminDomain) {
+  return requireStaff(domain);
 }
 
-const ensureConfig = () => ensure(CONFIG_ROLES as unknown as Set<string>);
-const ensureOps = () => ensure(MARKET_OPS_ROLES as unknown as Set<string>);
+const ensureConfig = () => ensure("accounting");
+const ensureOps = () => ensure("trading");
 
 const refresh = () => revalidatePath("/admin/updown");
 

@@ -113,10 +113,13 @@ sub-blocks render only for `compliance` view, and money/compliance controls only
       - [x] Role display — role chip in the admin top bar + role in the confidential band (Ali's "know who you are" ask).
       - [x] Action guard — `requireStaff`/`canAct` applied to 15 action files (ai-polls, candidates, sources, bonuses,
             invites, affiliate, config, system, ai-usage, approvals, objections, privacy, settlement, payments, reports, events).
-      - [ ] **2b:** remaining action files (players[mixed], aml, markets, kyc, resolver×2, updown, proposals, ai-toolkit,
-            3 `api/admin/*` routes) → `requireStaff`; in-page `hasRole` page-gates (insights/transactions/reports/objections/
-            finance) updated for new roles; player-detail KYC/PII sub-block gating (Support scope). *(Un-migrated files keep
-            the old tiers — safe: no regression for ADMIN/COMPLIANCE/MODERATOR; new roles are unassigned until Phase 3.)*
+      - [x] **2b action layer** — ALL remaining action files + API routes now data-driven: players[mixed:
+            support/accounting/compliance], aml→compliance, markets→trading, kyc→compliance, resolver×2→compliance,
+            updown[config→accounting/ops→trading], proposals[content→trading/config→accounting/approve→growth],
+            ai-toolkit→compliance, api/admin/{admission→ops·view, kyc-doc→compliance, reports→accounting·view,
+            transactions/export→accounting·view}; in-page `hasRole` page-gates (insights/transactions/reports/finance→
+            accounting·view, events→trading·view, objections canDecide→compliance·act) updated for new roles.
+      - [ ] Player-detail KYC/PII sub-block gating (Support scope) — folded into Phase 3 (Support isn't assignable until then).
 - [ ] **Phase 3 — `/admin/staff`:** roster + `[id]` detail + `setStaffRoleAction` (Owner-only, TOTP, reason,
       self-demotion block, `revokeUserSessions`, audit, consequence confirm); nav/route registration; `test:staff-role`.
 - [ ] **Phase 4 — `/admin/roles`:** matrix editor (Owner-only, `Toggle` grid, live-save, audited,
@@ -145,7 +148,10 @@ sub-blocks render only for `compliance` view, and money/compliance controls only
 - **Phase 1** — `5da76fb` (2026-07-28) — role model + `AdminDomain` + `RoleDomainGrant` + loader +
   `requireStaff`/`requireOwner` guards + two additive migrations + `test:rbac` (92). tsc/build/test:all
   ×2 green; deploy-verified (container restart, `uptimeSec` reset, `auditEntries` 0, service Online).
-- **Phase 2a** — (2026-07-28) — three gate layers wired: layout route VIEW gate (`domainForPath`→`canView`,
-  Owner-only staff/roles, console admission→`STAFF_ROLES`), nav domain filter (`filterNavGroups`), role
-  chip + confidential-band role, and 15 action files migrated to `requireStaff`/`canAct`. tsc/build clean;
-  test:all 100/100 (a `test:trilingual` flake cleared on re-run). No regression for ADMIN/existing roles.
+- **Phase 2a** — `25d488d` (2026-07-28, LIVE-verified) — three gate layers wired: layout route VIEW gate
+  (`domainForPath`→`canView`, Owner-only staff/roles, console admission→`STAFF_ROLES`), nav domain filter
+  (`filterNavGroups`), role chip + confidential-band role, and 15 action files migrated to `requireStaff`/`canAct`.
+  tsc/build clean; test:all 100/100 (a `test:trilingual` flake cleared on re-run). Deploy-verified (uptime reset).
+- **Phase 2b** — (2026-07-28) — completed the ACTION layer: every remaining admin action file + all 5
+  `api/admin/*` routes + the 6 in-page `hasRole` page-gates now consult the data-driven grants. Zero old-tier
+  references left in app code (only stale comments remain, cleaned in Phase 5). tsc/build clean; test:all 100/100.

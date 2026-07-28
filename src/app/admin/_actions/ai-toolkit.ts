@@ -21,20 +21,20 @@ import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
 import { safeError } from "@/lib/server/safe-error";
 import { requireAdminTotp } from "@/lib/server/admin-guard";
-import { COMPLIANCE_ROLES } from "@/lib/server/roles";
+import { canAct } from "@/lib/server/rbac";
 import { moneyMode } from "@/lib/server/runtime-mode";
 
 async function gate(action: string): Promise<{ ok: true; userId: string } | { ok: false; error: string }> {
   const session = await currentSession();
   if (!session) redirect("/auth/admin");
   const user = await db.user.findById(session.userId);
-  if (!user || !COMPLIANCE_ROLES.has(user.role)) {
+  if (!user || !(user.role === "ADMIN" || (await canAct(user.role, "compliance")))) {
     audit({
       category: "SECURITY", action: "privilege_escalation_blocked",
       actorId: session.userId, targetType: "Action", targetId: action,
-      payload: { role: user?.role ?? "unknown" },
+      payload: { role: user?.role ?? "unknown", domain: "compliance" },
     });
-    return { ok: false, error: "Forbidden: ADMIN or COMPLIANCE role required." };
+    return { ok: false, error: "Forbidden: compliance access is required (AI controls include the auto-resolve governance switch)." };
   }
   await requireAdminTotp(session.userId, session.sessionId);
   return { ok: true, userId: session.userId };

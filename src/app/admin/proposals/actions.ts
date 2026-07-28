@@ -15,24 +15,19 @@ import {
   type DeclineReason,
   type EditProposalInput,
 } from "@/lib/server/proposals-service";
-import { MARKET_OPS_ROLES, MONEY_ROLES, CONFIG_ROLES, type Role } from "@/lib/server/roles";
-import { requireAdminTotp } from "@/lib/server/admin-guard";
+import { type AdminDomain } from "@/lib/server/roles";
+import { requireStaff } from "@/lib/server/rbac-guard";
 
-// Content ops (edit / go-live / request-changes / decline) are market-ops.
-// Approving a proposal GRANTS a bonus (money) and setting the config changes the
-// prize economics — those are re-tiered below to exclude MODERATOR (see roles.ts:
-// money/economics are NEVER MODERATOR).
-async function ensureAdmin(tier: Set<Role> = MARKET_OPS_ROLES) {
-  const s = await currentSession();
-  if (!s) redirect("/auth/admin");
-  const u = await db.user.findById(s.userId);
-  if (!u || !tier.has(u.role)) redirect("/auth/admin");
-  await requireAdminTotp(s.userId, s.sessionId);
-  return s;
+// RBAC: content ops (edit / go-live / request-changes / decline) are `trading`; the
+// config save changes prize economics → `accounting`; approving a proposal GRANTS a
+// bonus reward → `growth`. requireStaff enforces canAct for the domain (Owner/ADMIN
+// bypass — money/economics stay off Trading by default), audits, then step-up 2FA.
+async function ensureAdmin(domain: AdminDomain = "trading") {
+  return requireStaff(domain);
 }
 
 export async function saveProposalsConfigAction(config: ProposalsConfig) {
-  const s = await ensureAdmin(CONFIG_ROLES);
+  const s = await ensureAdmin("accounting"); // config = prize economics (money-grade)
   try {
     const r = setProposalsConfig(config, s.userId);
     revalidatePath("/admin/proposals");
@@ -46,7 +41,7 @@ export async function saveProposalsConfigAction(config: ProposalsConfig) {
 /** Approve a proposal and grant the proposer's bonus INSTANTLY (exactly-once).
  *  Does NOT publish a market — that's a separate step (goLiveProposalAction). */
 export async function approveProposalAction(proposalId: string) {
-  const s = await ensureAdmin(MONEY_ROLES);
+  const s = await ensureAdmin("growth"); // approving a proposal grants a bonus reward
   try {
     const r = await approveProposal(proposalId, s.userId);
     revalidatePath("/admin/proposals");

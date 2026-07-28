@@ -15,7 +15,7 @@
  */
 import { NextResponse } from "next/server";
 import { currentSession } from "@/lib/server/auth-service";
-import { hasRole, MONEY_ROLES } from "@/lib/server/roles";
+import { canView } from "@/lib/server/rbac";
 import { audit } from "@/lib/server/audit";
 import { db } from "@/lib/server/store";
 import { attentionOf, type TxnSearchFilters } from "@/lib/server/txn-filters";
@@ -56,7 +56,7 @@ function toRow(t: StoredTxn): string {
 
 export async function GET(req: Request) {
   const session = await currentSession();
-  if (!session || !hasRole(session.role, MONEY_ROLES)) {
+  if (!session || !(session.role === "ADMIN" || (await canView(session.role, "accounting")))) {
     // Same shape as any other missing route — don't confirm the endpoint exists.
     return new NextResponse("Not Found", { status: 404 });
   }

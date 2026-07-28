@@ -24,7 +24,7 @@ import { formatTzs, formatTzsCompact } from "@/lib/utils";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { GenerateButton } from "../reports/generate-button";
 import { currentSession } from "@/lib/server/auth-service";
-import { hasRole, MONEY_ROLES } from "@/lib/server/roles";
+import { canView } from "@/lib/server/rbac";
 import { getEffectiveConfig } from "@/lib/server/market-config";
 import { houseAccountBalances, trialBalance } from "@/lib/server/ledger";
 import { Stat } from "@/components/ui/stat";
@@ -51,7 +51,7 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
   // a moderator could read owner-grade GGR/NGR and the top-contributor list.
   // Return BEFORE any money aggregate is computed.
   const session = await currentSession();
-  if (!hasRole(session?.role, MONEY_ROLES)) {
+  if (!session || !(session.role === "ADMIN" || (await canView(session.role, "accounting")))) {
     return <AdminRestricted title="Finance" sw="Fedha" need="Admin or Compliance" />;
   }
 

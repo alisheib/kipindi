@@ -16,7 +16,7 @@ import { formatDateTime, formatTzs, formatTzsCompact } from "@/lib/utils";
 import { reportSummary, dailyPnl, categoryBreakdown, moneyByGame } from "@/lib/server/report-money";
 import { resolveRange } from "@/lib/server/date-range";
 import { currentSession } from "@/lib/server/auth-service";
-import { hasRole, CONFIG_ROLES } from "@/lib/server/roles";
+import { canView } from "@/lib/server/rbac";
 import { AdminRestricted } from "@/components/admin/admin-restricted";
 
 export const metadata = { title: "Admin · Reports" };
@@ -145,7 +145,7 @@ export default async function AdminReportsPage({
   // DOES include MODERATOR), so without this a moderator could read + export the
   // statutory pack. Return BEFORE any report aggregate is computed.
   const session = await currentSession();
-  if (!hasRole(session?.role, CONFIG_ROLES)) {
+  if (!session || !(session.role === "ADMIN" || (await canView(session.role, "accounting")))) {
     return <AdminRestricted title="Reports" sw="Ripoti" need="Admin or Compliance" />;
   }
 

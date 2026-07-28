@@ -8,8 +8,8 @@ import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
 import { buildDsarBundle } from "@/lib/server/privacy";
 import { revokeUserSessions } from "@/lib/server/session-registry";
-import { COMPLIANCE_ROLES } from "@/lib/server/roles";
-import { requireAdminTotp } from "@/lib/server/admin-guard";
+import { type AdminDomain } from "@/lib/server/roles";
+import { requireStaff } from "@/lib/server/rbac-guard";
 import { setUserEmail } from "@/lib/server/email-verification";
 
 /**
@@ -27,25 +27,27 @@ import { setUserEmail } from "@/lib/server/email-verification";
  * two-officer flow and stay disabled until that's wired separately.
  */
 
-const ADMIN_ROLES = COMPLIANCE_ROLES; // role tier — see @/lib/server/roles
+// RBAC: the player workstation hosts actions of DIFFERENT sensitivities, so each maps
+// to the domain that governs it — support desk vs money vs compliance/PII. requireStaff
+// checks the role's canAct for that domain (Owner/ADMIN bypasses), audits a blocked
+// attempt, then enforces step-up 2FA. This is what lets a SUPPORT role suspend/reset a
+// player without being able to move money (accounting) or rule on KYC / export PII
+// (compliance). ⚠ Keep this map in sync with the action names below.
+const ACTION_DOMAIN: Record<string, AdminDomain> = {
+  exportPlayerDataAction: "compliance",
+  suspendPlayerAction: "support",
+  restorePlayerAction: "support",
+  adminResetPasswordAction: "support",
+  setPlayerEmailAction: "support",
+  adjustBalanceAction: "accounting",
+  forceReverifyKycAction: "compliance",
+  approveKycAction: "compliance",
+  rejectKycAction: "compliance",
+  requestKycInfoAction: "compliance",
+};
 
 async function requireAdmin(action: string): Promise<string> {
-  const session = await currentSession();
-  if (!session) redirect("/auth/admin");
-  const me = await db.user.findById(session.userId);
-  if (!me || !ADMIN_ROLES.has(me.role)) {
-    audit({
-      category: "SECURITY",
-      action: "privilege_escalation_blocked",
-      actorId: session.userId,
-      targetType: "Action",
-      targetId: action,
-      payload: { role: me?.role ?? "unknown" },
-    });
-    throw new Error("Forbidden: admin role required.");
-  }
-  await requireAdminTotp(session.userId, session.sessionId); // B3: 2FA at the action layer
-  return session.userId;
+  return (await requireStaff(ACTION_DOMAIN[action] ?? "compliance", action)).userId;
 }
 
 /**

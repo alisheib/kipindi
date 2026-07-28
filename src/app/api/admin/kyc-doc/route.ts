@@ -17,19 +17,19 @@ import { NextResponse } from "next/server";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
-import { COMPLIANCE_ROLES } from "@/lib/server/roles";
+import { canAct } from "@/lib/server/rbac";
 import { checkAdminTotp } from "@/lib/server/admin-guard";
 import { readKycDocument } from "@/lib/server/storage";
 
-const ADMIN_ROLES = COMPLIANCE_ROLES; // role tier — see @/lib/server/roles
+// RBAC: raw KYC/NIDA document access = compliance (see canAct). Owner/ADMIN bypasses.
 const DOC_TYPES = new Set(["NIDA_FRONT", "NIDA_BACK", "SELFIE"]);
 
 export async function GET(req: Request) {
   const session = await currentSession();
   if (!session) return NextResponse.json({ ok: false, error: "Unauthorised" }, { status: 401 });
   const me = await db.user.findById(session.userId);
-  if (!me || !ADMIN_ROLES.has(me.role)) {
-    audit({ category: "SECURITY", action: "kyc_doc.forbidden", actorId: session.userId, targetType: "Action", targetId: "kyc-doc", payload: { role: me?.role ?? "unknown" } });
+  if (!me || !(me.role === "ADMIN" || (await canAct(me.role, "compliance")))) {
+    audit({ category: "SECURITY", action: "kyc_doc.forbidden", actorId: session.userId, targetType: "Action", targetId: "kyc-doc", payload: { role: me?.role ?? "unknown", domain: "compliance" } });
     return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
   }
   // Step-up 2FA (audit finding B3): the admin layout enforces TOTP on page

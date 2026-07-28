@@ -12,7 +12,7 @@ import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
 import { AdminRestricted } from "@/components/admin/admin-restricted";
 import { EmptyState } from "@/components/ui/empty-state";
 import { currentSession } from "@/lib/server/auth-service";
-import { hasRole, MARKET_OPS_ROLES } from "@/lib/server/roles";
+import { canView } from "@/lib/server/rbac";
 import { listUpcomingEvents } from "@/lib/server/events-service";
 import { listSources, listDisabledCategories, seedDefaultSources } from "@/lib/server/source-registry";
 import { EventsClient } from "./events-client";
@@ -22,7 +22,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminEventsPage() {
   const session = await currentSession();
-  if (!hasRole(session?.role, MARKET_OPS_ROLES)) {
+  if (!session || !(session.role === "ADMIN" || (await canView(session.role, "trading")))) {
     return <AdminRestricted title="Events" sw="Matukio" need="Admin, Compliance or Moderator" />;
   }
 

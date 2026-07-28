@@ -30,7 +30,7 @@ import { Chip } from "@/components/ui/chip";
 import { Select } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { currentSession } from "@/lib/server/auth-service";
-import { hasRole, MONEY_ROLES } from "@/lib/server/roles";
+import { canView } from "@/lib/server/rbac";
 import { db } from "@/lib/server/store";
 import { attentionOf, GATEWAY_TYPES, type TxnSearchFilters } from "@/lib/server/txn-filters";
 import { resolveRange } from "@/lib/server/date-range";
@@ -60,7 +60,7 @@ type SP = Record<string, string | undefined>;
 
 export default async function AdminTransactionsPage({ searchParams }: { searchParams: Promise<SP> }) {
   const session = await currentSession();
-  if (!session || !hasRole(session.role, MONEY_ROLES)) {
+  if (!session || !(session.role === "ADMIN" || (await canView(session.role, "accounting")))) {
     return <AdminRestricted title="Transactions" sw="Miamala" need="Admin or Compliance" />;
   }
 

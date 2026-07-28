@@ -8,7 +8,7 @@ import { addComment, reportComment, deleteComment, restoreComment, type CommentS
 import { isSourceTrusted, seedDefaultSources } from "@/lib/server/source-registry";
 import { db, type ObjectionReason } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
-import { MARKET_OPS_ROLES } from "@/lib/server/roles";
+import { canAct } from "@/lib/server/rbac";
 import { requireAdminTotp } from "@/lib/server/admin-guard";
 
 /**
@@ -47,10 +47,11 @@ export async function mintWinShareTokenAction(positionId: string): Promise<{ ok:
  *  privileged write if the caller is not actually an admin. A leaked
  *  Server-Action ID would otherwise let a regular player resolve a
  *  market. Regulator: GBT / LCCP "least-privilege" + ISO 27001 A.9. */
-const ADMIN_ROLES = MARKET_OPS_ROLES; // role tier — see @/lib/server/roles
+// RBAC: market write actions are `trading` — canAct consults the role's grant
+// (Owner/ADMIN bypasses). Resolution is separately two-officer-gated in market-service.
 async function requireAdminOrThrow(userId: string, action: string) {
   const user = await db.user.findById(userId);
-  if (!user || !ADMIN_ROLES.has(user.role)) {
+  if (!user || !(user.role === "ADMIN" || (await canAct(user.role, "trading")))) {
     audit({
       category: "SECURITY",
       action: "privilege_escalation_blocked",

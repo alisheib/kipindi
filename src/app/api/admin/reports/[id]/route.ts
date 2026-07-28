@@ -19,10 +19,11 @@ import { REPORT_CATALOGUE, type ReportId } from "@/lib/server/reports/catalogue"
 import { renderXlsx } from "@/lib/server/reports/xlsx";
 import { renderPdf } from "@/lib/server/reports/pdf";
 import { reportFilename } from "@/lib/server/reports/brand";
-import { CONFIG_ROLES } from "@/lib/server/roles";
+import { canView } from "@/lib/server/rbac";
 import { checkAdminTotp } from "@/lib/server/admin-guard";
 
-const ADMIN_ROLES = CONFIG_ROLES; // role tier — see @/lib/server/roles
+// RBAC: report download = accounting VIEW (see canView) — read-only, so Auditor can
+// download too. Owner/ADMIN bypasses.
 
 export async function GET(
   req: Request,
@@ -33,7 +34,7 @@ export async function GET(
     return NextResponse.json({ ok: false, error: "Unauthorised" }, { status: 401 });
   }
   const u = await db.user.findById(session.userId);
-  if (!u || !ADMIN_ROLES.has(u.role)) {
+  if (!u || !(u.role === "ADMIN" || (await canView(u.role, "accounting")))) {
     return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
   }
   // Step-up 2FA (audit finding B3): a direct GET to this URL skips the admin

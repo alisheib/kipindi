@@ -8,7 +8,7 @@ import { listObjections } from "@/lib/server/objections-service";
 import { getMarket } from "@/lib/server/market-service";
 import { db } from "@/lib/server/store";
 import { currentSession } from "@/lib/server/auth-service";
-import { COMPLIANCE_ROLES, hasRole } from "@/lib/server/roles";
+import { canAct } from "@/lib/server/rbac";
 import { displayLabel } from "@/lib/display-label";
 import { formatDateTime, formatTzs } from "@/lib/utils";
 import { OBJECTION } from "@/lib/admin-status-lexicon";
@@ -33,7 +33,7 @@ export default async function AdminObjectionsPage({ searchParams }: { searchPara
   // "compliance-only" state instead of decision buttons that bounce them to the
   // login screen (the action redirects a non-COMPLIANCE actor).
   const session = await currentSession();
-  const canDecide = hasRole(session?.role, COMPLIANCE_ROLES);
+  const canDecide = !!session && (session.role === "ADMIN" || (await canAct(session.role, "compliance")));
 
   // Join each objection to its market + objector. The objector is shown by
   // displayLabel() — never a phone number: this is a compliance surface, and an

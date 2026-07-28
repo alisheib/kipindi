@@ -16,7 +16,7 @@ import { AdminFunnelChart, AdminBarList } from "@/components/admin/admin-charts"
 import { Chip } from "@/components/ui/chip";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { currentSession } from "@/lib/server/auth-service";
-import { hasRole, MONEY_ROLES } from "@/lib/server/roles";
+import { canView } from "@/lib/server/rbac";
 import { getInsights } from "@/lib/server/insights";
 import { categoryBreakdown } from "@/lib/server/report-money";
 import { formatTzs, formatNumber } from "@/lib/utils";
@@ -30,7 +30,7 @@ export default async function InsightsPage() {
   const session = await currentSession();
   // Owner-grade economics — moderators must not read this. Return BEFORE any of
   // the restricted data is computed.
-  if (!hasRole(session?.role, MONEY_ROLES)) {
+  if (!session || !(session.role === "ADMIN" || (await canView(session.role, "accounting")))) {
     return <AdminRestricted title="Insights" sw="Maarifa" need="Admin or Compliance" />;
   }
 

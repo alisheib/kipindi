@@ -15,7 +15,7 @@ import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
 import { safeError } from "@/lib/server/safe-error";
 import { requireAdminTotp } from "@/lib/server/admin-guard";
-import { COMPLIANCE_ROLES } from "@/lib/server/roles";
+import { canAct } from "@/lib/server/rbac";
 import { setRequireTwoOfficerResolution } from "@/lib/server/resolution-policy";
 
 export async function setTwoAdminAuthAction(formData: FormData): Promise<
@@ -24,13 +24,13 @@ export async function setTwoAdminAuthAction(formData: FormData): Promise<
   const session = await currentSession();
   if (!session) redirect("/auth/admin");
   const user = await db.user.findById(session.userId);
-  if (!user || !COMPLIANCE_ROLES.has(user.role)) {
+  if (!user || !(user.role === "ADMIN" || (await canAct(user.role, "compliance")))) {
     audit({
       category: "SECURITY", action: "privilege_escalation_blocked",
       actorId: session.userId, targetType: "Action", targetId: "setTwoAdminAuth",
-      payload: { role: user?.role ?? "unknown" },
+      payload: { role: user?.role ?? "unknown", domain: "compliance" },
     });
-    return { ok: false, error: "Forbidden: ADMIN or COMPLIANCE role required." };
+    return { ok: false, error: "Forbidden: compliance access is required." };
   }
   await requireAdminTotp(session.userId, session.sessionId);
 

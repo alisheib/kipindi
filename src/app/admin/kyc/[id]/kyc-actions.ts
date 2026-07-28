@@ -16,7 +16,7 @@ import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
 import { requireAdminTotp } from "@/lib/server/admin-guard";
 import { twoOfficerGate } from "@/lib/server/two-officer";
-import { COMPLIANCE_ROLES } from "@/lib/server/roles";
+import { canAct } from "@/lib/server/rbac";
 import { reviewKyc } from "@/lib/server/kyc-service";
 import { kycRiskScore, getApprovalRecommendation, KYC_MAKER_CHECKER_THRESHOLD } from "@/lib/server/kyc-risk";
 
@@ -34,9 +34,9 @@ async function gate(action: string): Promise<{ userId: string; sessionId: string
   const session = await currentSession();
   if (!session) redirect("/auth/admin");
   const user = await db.user.findById(session.userId);
-  if (!user || !COMPLIANCE_ROLES.has(user.role)) {
-    audit({ category: "SECURITY", action: "privilege_escalation_blocked", actorId: session.userId, targetType: "Action", targetId: action, payload: { role: user?.role ?? "unknown" } });
-    return { error: "Forbidden: ADMIN or COMPLIANCE role required." };
+  if (!user || !(user.role === "ADMIN" || (await canAct(user.role, "compliance")))) {
+    audit({ category: "SECURITY", action: "privilege_escalation_blocked", actorId: session.userId, targetType: "Action", targetId: action, payload: { role: user?.role ?? "unknown", domain: "compliance" } });
+    return { error: "Forbidden: compliance access is required." };
   }
   await requireAdminTotp(session.userId, session.sessionId);
   return { userId: session.userId, sessionId: session.sessionId };

@@ -13,7 +13,7 @@
  */
 import { NextResponse } from "next/server";
 import { currentSession } from "@/lib/server/auth-service";
-import { hasRole, CONFIG_ROLES } from "@/lib/server/roles";
+import { canView } from "@/lib/server/rbac";
 import { checkAdminTotp } from "@/lib/server/admin-guard";
 import { db } from "@/lib/server/store";
 import { admissionSnapshot } from "@/lib/server/admission";
@@ -23,9 +23,7 @@ import { redisHealth } from "@/lib/server/redis";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-// Role tier — see @/lib/server/roles. Queue health is operational config, not
-// money data or PII, so CONFIG_ROLES rather than MONEY_ROLES.
-const ADMIN_ROLES = CONFIG_ROLES;
+// RBAC: queue health is operational (ops) read data — canView("ops"). Owner/ADMIN bypasses.
 
 export async function GET() {
   const session = await currentSession();
@@ -34,7 +32,7 @@ export async function GET() {
   // Middleware cannot see roles, and a route handler bypasses the admin layout —
   // so re-check both here or a direct GET would skip the whole admin gate.
   const me = await db.user.findById(session.userId);
-  if (!me || !hasRole(me.role, ADMIN_ROLES)) {
+  if (!me || !(me.role === "ADMIN" || (await canView(me.role, "ops")))) {
     return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
   }
   // checkAdminTotp, NOT requireAdminTotp: the latter throws NEXT_REDIRECT, which
