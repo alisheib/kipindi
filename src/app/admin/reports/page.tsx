@@ -293,7 +293,10 @@ export default async function AdminReportsPage({
           {byGame && (byGame.market.stakes > 0 || byGame.updown.stakes > 0) && (
             <AdminCard title="By game" sw="Kwa mchezo · Markets vs Up &amp; Down" padding="p-0">
               <ScrollX label="Money by game">
-                <table className="admin-table w-full min-w-[560px]">
+                {/* `admin-table` was a typo — that class does not exist anywhere,
+                    so this table rendered with no cell padding, no header styling
+                    and no row borders. The real one is `.admin-tbl`. */}
+                <table className="admin-tbl w-full min-w-[560px]">
                   <thead>
                     <tr>
                       <th className="text-left">Game</th>

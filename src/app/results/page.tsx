@@ -8,7 +8,8 @@ import { listMarkets, impliedYesPct, type MarketCategory } from "@/lib/server/ma
 import { getCardCharts } from "@/lib/server/market-history";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
-import { ResultsSearch } from "./results-search";
+import { SearchBox } from "@/components/ui/search-box";
+import { parseQuery, matchesQuery, fieldNames, MARKET_SEARCH } from "@/lib/search";
 import { NotableCarousel } from "./notable-carousel";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { formatTzsCompact } from "@/lib/utils";
@@ -40,8 +41,10 @@ export default async function ResultsPage({
   const sp = await searchParams;
   const activeCat = sp.cat ?? "all";
   const activeSort: SortField = sp.sort === "volume" ? "volume" : "resolved";
-  const qRaw = (sp.q ?? "").trim().slice(0, 100);
-  const searching = qRaw.length > 0;
+  // Shared grammar (src/lib/search) — same rule as /markets and every admin list.
+  const parsed = parseQuery(sp.q, { fields: fieldNames(MARKET_SEARCH) });
+  const searching = parsed.mode !== "empty";
+  const qRaw = parsed.raw;
   const pageNum = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
 
   return (
@@ -94,12 +97,12 @@ async function ResultsContent({
     { id: "volume",   label: t.results.sortHighest },
   ];
 
-  const tokens = qRaw.toLowerCase().split(/\s+/).filter(Boolean);
-  const matches = (m: { titleEn: string; titleSw: string; titleZh?: string | null; category: string; resolutionCriterion?: string }) => {
-    if (!searching) return true;
-    const hay = `${m.titleEn} ${m.titleSw} ${m.titleZh ?? ""} ${m.category} ${m.resolutionCriterion ?? ""}`.toLowerCase();
-    return tokens.every((t) => hay.includes(t));
-  };
+  // Re-parse from the `qRaw` prop — this component receives the raw text, not the
+  // parse. parseQuery is pure and cheap, so re-deriving it here is simpler and
+  // safer than threading a parsed object through the props.
+  const parsed = parseQuery(qRaw, { fields: fieldNames(MARKET_SEARCH) });
+  const matches = (m: { titleEn: string; titleSw: string; titleZh?: string | null; category: string; resolutionCriterion?: string }) =>
+    matchesQuery(parsed, m as unknown as Record<string, string | null | undefined>, MARKET_SEARCH);
 
   // Fetch all resolved + voided
   const effectiveCat = searching ? undefined : (activeCat === "all" ? undefined : activeCat as MarketCategory);
@@ -198,7 +201,11 @@ async function ResultsContent({
       {/* Search — sticky below app bar, same as /markets */}
       <div className="sticky top-[56px] z-20 bg-bg-base py-2.5">
         <Suspense>
-          <ResultsSearch />
+          <SearchBox
+            placeholder={t.common.searchResults}
+            ariaLabel={t.common.searchResults}
+            helpFields={fieldNames(MARKET_SEARCH)}
+          />
         </Suspense>
       </div>
 

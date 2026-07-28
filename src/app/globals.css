@@ -816,18 +816,31 @@ body {
 }
 .input-group .input:focus { box-shadow: none; }
 
-/* Markets board search — an .input-group capped to a tasteful width on desktop
-   (full-width on mobile, since the cap exceeds a phone's content width). */
-.market-search { max-width: 460px; }
+/* The search field — an .input-group capped to the field measure on desktop
+   (full-width on mobile, since the cap exceeds a phone's content width).
+   `.market-search` was the ONLY width cap on any field in the entire product;
+   it is now `.search-box`, one of many, and it reads --w-field rather than a
+   hardcoded 460 (DESIGN_AUTHORITY B7).
+   `.market-search` is kept as an alias for one release so nothing breaks
+   mid-migration — delete it once every call site uses <SearchBox>. */
+.search-box,
+.market-search { max-width: var(--w-field); }
+.search-box .prefix,
 .market-search .prefix { display: inline-flex; align-items: center; }
+.search-box .input,
 .market-search .input { flex: 1; min-width: 0; font-size: 13px; }
+.search-box .clear-btn,
 .market-search .clear-btn {
   display: grid; place-items: center; flex-shrink: 0;
   width: 38px; height: 38px; margin-right: 3px;
   background: transparent; border: none; cursor: pointer;
   color: var(--text-subtle); transition: color var(--dur-micro) var(--ease-micro);
 }
+.search-box .clear-btn:hover,
 .market-search .clear-btn:hover { color: var(--text); }
+/* The wrapper carries the echo line under the box, so the cap must sit on the
+   wrapper too or the hint stretches the full container width. */
+.search-box-wrap { max-width: var(--w-field); }
 
 /* Admin AI-polls: briefly ring a poll row that was just generated/regenerated
    so the operator's eye lands on it after the list refreshes + scrolls. */

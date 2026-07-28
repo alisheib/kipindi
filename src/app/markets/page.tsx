@@ -11,7 +11,8 @@ import { getServerT } from "@/lib/i18n-server";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ProposePromo } from "@/components/ui/propose-promo";
 import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
-import { MarketSearch } from "./market-search";
+import { SearchBox } from "@/components/ui/search-box";
+import { parseQuery, matchesQuery, fieldNames, MARKET_SEARCH } from "@/lib/search";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 
 export async function generateMetadata() {
@@ -65,7 +66,11 @@ export default async function MarketsPage({ searchParams }: { searchParams: Prom
           board; the board background sits behind it so cards scroll cleanly
           under. The sidebar's sticky offset below is set to clear this bar. */}
       <div className="sticky top-[56px] z-20 mt-4 bg-bg-base py-2.5">
-        <MarketSearch />
+        <SearchBox
+          placeholder={t.common.searchMarkets}
+          ariaLabel={t.common.searchMarkets}
+          helpFields={fieldNames(MARKET_SEARCH)}
+        />
       </div>
 
       {/* Filters as a left column on desktop, stacked above the grid on mobile.
@@ -182,20 +187,18 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
   // that settles > 24h out). Only fall back to today for an UNKNOWN when key.
   const rawCutoff = WHEN_CUTOFFS[whenId];
   const whenCutoff = rawCutoff === undefined ? WHEN_CUTOFFS.today : rawCutoff;
-  // Cap the query length (defensive — keeps the URL + match work bounded).
-  const qRaw = (sp.q ?? "").trim().slice(0, 100);
-  const searching = qRaw.length > 0;
-  // Token-based AND match: every whitespace-separated word must appear somewhere
-  // in the market's searchable text (EN title, SW title, category, resolution
-  // criterion), in any order. So "simba win" matches "Will Simba SC win…", and
-  // "rains april" matches "…long rains begin… before April 15". Substring, not
-  // regex — no injection, and partial words ("crypt") still hit.
-  const tokens = qRaw.toLowerCase().split(/\s+/).filter(Boolean);
-  const matches = (m: { titleEn: string; titleSw: string; titleZh?: string | null; category: string; resolutionCriterion?: string }) => {
-    if (!searching) return true;
-    const hay = `${m.titleEn} ${m.titleSw} ${m.titleZh ?? ""} ${m.category} ${m.resolutionCriterion ?? ""}`.toLowerCase();
-    return tokens.every((t) => hay.includes(t));
-  };
+  // The shared grammar (src/lib/search). This page's old hand-rolled token-AND
+  // matcher was one of only TWO that got multi-word right; the other ten surfaces
+  // did a single contiguous `.includes()`. It is now one rule for all of them —
+  // and this page gains "quoted phrase", -exclude and field: for free.
+  // No regex here: `allowRegex` is admin-only by construction.
+  const parsed = parseQuery(sp.q, { fields: fieldNames(MARKET_SEARCH) });
+  const searching = parsed.mode !== "empty";
+  // The raw text, already trimmed and length-clamped by the parser — used for the
+  // result-count copy and to carry the query across filter links.
+  const qRaw = parsed.raw;
+  const matches = (m: { titleEn: string; titleSw: string; titleZh?: string | null; category: string; resolutionCriterion?: string }) =>
+    matchesQuery(parsed, m as unknown as Record<string, string | null | undefined>, MARKET_SEARCH);
   const now = Date.now();
   // A name search is global: ignore the category filter so a remembered market
   // surfaces no matter which topic chip happens to be active.

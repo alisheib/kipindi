@@ -124,6 +124,7 @@
     "test:history": "tsx scripts/history-fabrication.test.mts",
     "qa:outcome": "node scripts/outcome-parity.mjs",
     "test:bridge": "tsx scripts/tailwind-bridge.test.mts",
+    "test:search": "tsx scripts/search-grammar.test.mts",
     "qa:contrast-rendered": "node scripts/contrast-rendered.mjs"
   },
   "dependencies": {
