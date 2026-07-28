@@ -11,6 +11,7 @@ import { ScrollX } from "@/components/ui/scroll-x";
 import { db, type StoredTxn } from "@/lib/server/store";
 import { getAuditForActor, getAuditForTarget, audit as recordAudit, type AuditCategory } from "@/lib/server/audit";
 import { currentSession } from "@/lib/server/auth-service";
+import { canAct, canView } from "@/lib/server/rbac";
 import { exportUserData } from "@/lib/server/user-service";
 import { I } from "@/components/ui/glyphs";
 import { formatTzs, formatTzsCompact, formatDateTime, formatDateShort } from "@/lib/utils";
@@ -67,6 +68,15 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
   if (viewer) {
     recordAudit({ category: "COMPLIANCE", action: "player.record_viewed", actorId: viewer.userId, targetType: "User", targetId: id });
   }
+  // RBAC: gate the sensitive sub-blocks by the VIEWER's grants. The actions behind these
+  // controls are already domain-gated server-side; this hides the controls + PII a role
+  // isn't entitled to — e.g. SUPPORT runs the desk (suspend/reset) without seeing KYC/PII
+  // or the money control. canAct/canView return true for ADMIN (Owner bypass).
+  const vRole = viewer?.role;
+  const capSupport = vRole ? await canAct(vRole, "support") : false;
+  const capMoney = vRole ? await canAct(vRole, "accounting") : false;
+  const capCompliance = vRole ? await canAct(vRole, "compliance") : false;
+  const canSeePII = vRole ? await canView(vRole, "compliance") : false;
   let wallet: Awaited<ReturnType<typeof db.wallet.findByUserId>> = null;
   try { wallet = await db.wallet.findByUserId(id); } catch { /* graceful */ }
   let kyc: Awaited<ReturnType<typeof db.kyc.findByUserId>> = null;
@@ -136,6 +146,8 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
     { id: "exclusion",    label: "Self-exclusion", count: undefined,    icon: <I.shieldOff s={12} /> },
     { id: "audit",        label: "Audit",          count: audit.length, icon: <I.alertCircle s={12} /> },
   ];
+  // RBAC: hide the KYC tab (PII / ID documents) from viewers without compliance VIEW.
+  const visibleTabs = TABS.filter((t) => t.id !== "kyc" || canSeePII);
 
   // KYC is the most critical tab — give it an at-a-glance status so an officer
   // immediately sees whether it needs action. Warn = not approved (needs you),
@@ -158,7 +170,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
               <I.chevronLeft s={13} />
               Players
             </Link>
-            <ExportPlayerButton userId={id} />
+            {capCompliance && <ExportPlayerButton userId={id} />}
           </div>
         }
       />
@@ -182,7 +194,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
               )}
               <div className="flex items-center gap-1.5 flex-wrap mt-2">
                 <Chip size="sm" variant={playerStatusVariant(user.status)}>● {user.status}</Chip>
-                {kyc && (
+                {kyc && canSeePII && (
                   <a href={`/admin/players/${id}?tab=kyc`} className="inline-block hover:opacity-80 transition-opacity">
                     <Chip size="sm" variant={kycStatusVariant(kyc.status)}>
                       {kyc.status === "APPROVED" ? <I.shieldcheck s={10} className="inline -mt-0.5 mr-0.5" /> : <I.shieldAlert s={10} className="inline -mt-0.5 mr-0.5" />}
@@ -235,7 +247,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
         {/* §C — Tabs */}
         <AdminCard padding="p-0">
           <nav aria-label="Player tabs" className="flex gap-4 px-4 border-b border-border-subtle overflow-x-auto">
-            {TABS.map((t) => {
+            {visibleTabs.map((t) => {
               const active = t.id === tab;
               const isKyc = t.id === "kyc";
               // The KYC tab stays visually loud when it's not approved, even
@@ -324,8 +336,8 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
               </>
               )
             )}
-            {tab === "kyc" && (
-              <KycTab kyc={kyc} userEmail={user.email} userId={id} makerCheckerRequired={kycMakerCheckerRequired} />
+            {tab === "kyc" && canSeePII && (
+              <KycTab kyc={kyc} userEmail={user.email} userId={id} makerCheckerRequired={kycMakerCheckerRequired} canActSupport={capSupport} canActCompliance={capCompliance} />
             )}
             {tab === "limits" && (
               <LimitsTab rg={rg} />
@@ -349,25 +361,28 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
           </div>
         </AdminCard>
 
-        {/* §D — Account actions (live + audited) */}
-        <AdminCard title="Account actions" sw="Vitendo vya akaunti">
-          <div className="flex items-center gap-3 flex-wrap">
-            <SuspendControls userId={data.user!.id} currentStatus={data.user!.status} />
-            <ResetPasswordButton userId={data.user!.id} />
-            <BalanceAdjustControls userId={data.user!.id} currentBalance={wallet?.balance ?? 0} />
-            {kyc?.status === "APPROVED" && <ForceReverifyControls userId={data.user!.id} />}
-            <p className="text-caption text-text-tertiary flex items-center gap-1.5 ml-auto">
-              <I.shieldcheck s={12} />
-              Every action is audited · reason required
-            </p>
-          </div>
-        </AdminCard>
+        {/* §D — Account actions (live + audited). Each control shows only for the role
+            that may use it; the whole card hides if the viewer can do none of them. */}
+        {(capSupport || capMoney || capCompliance) && (
+          <AdminCard title="Account actions" sw="Vitendo vya akaunti">
+            <div className="flex items-center gap-3 flex-wrap">
+              {capSupport && <SuspendControls userId={data.user!.id} currentStatus={data.user!.status} />}
+              {capSupport && <ResetPasswordButton userId={data.user!.id} />}
+              {capMoney && <BalanceAdjustControls userId={data.user!.id} currentBalance={wallet?.balance ?? 0} />}
+              {kyc?.status === "APPROVED" && capCompliance && <ForceReverifyControls userId={data.user!.id} />}
+              <p className="text-caption text-text-tertiary flex items-center gap-1.5 ml-auto">
+                <I.shieldcheck s={12} />
+                Every action is audited · reason required
+              </p>
+            </div>
+          </AdminCard>
+        )}
       </div>
     </>
   );
 }
 
-function KycTab({ kyc, userEmail, userId, makerCheckerRequired }: { kyc: Awaited<ReturnType<typeof db.kyc.findByUserId>>; userEmail?: string | null; userId: string; makerCheckerRequired?: boolean }) {
+function KycTab({ kyc, userEmail, userId, makerCheckerRequired, canActSupport, canActCompliance }: { kyc: Awaited<ReturnType<typeof db.kyc.findByUserId>>; userEmail?: string | null; userId: string; makerCheckerRequired?: boolean; canActSupport: boolean; canActCompliance: boolean }) {
   if (!kyc) return <p className="text-caption text-text-tertiary py-4 text-center">No KYC record yet.</p>;
   const decided = kyc.status === "APPROVED" || kyc.status === "REJECTED";
   return (
@@ -416,7 +431,7 @@ function KycTab({ kyc, userEmail, userId, makerCheckerRequired }: { kyc: Awaited
           ) : (
             <>
               <p className="text-body-sm font-semibold text-warning-fg">No email on file — KYC notifications will not reach this player</p>
-              <SetEmailForm userId={userId} />
+              {canActSupport && <SetEmailForm userId={userId} />}
             </>
           )}
         </div>
@@ -504,10 +519,12 @@ function KycTab({ kyc, userEmail, userId, makerCheckerRequired }: { kyc: Awaited
         </div>
       )}
 
-      <div className="rounded-lg border border-border-subtle bg-bg-inset/30 p-3.5">
-        <p className="font-mono text-micro tracking-[0.12em] uppercase text-text-tertiary mb-2.5">Officer decision</p>
-        <KycReviewControls userId={kyc.userId} status={kyc.status} makerCheckerRequired={makerCheckerRequired} />
-      </div>
+      {canActCompliance && (
+        <div className="rounded-lg border border-border-subtle bg-bg-inset/30 p-3.5">
+          <p className="font-mono text-micro tracking-[0.12em] uppercase text-text-tertiary mb-2.5">Officer decision</p>
+          <KycReviewControls userId={kyc.userId} status={kyc.status} makerCheckerRequired={makerCheckerRequired} />
+        </div>
+      )}
     </div>
   );
 }

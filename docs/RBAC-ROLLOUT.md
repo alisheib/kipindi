@@ -119,7 +119,9 @@ sub-blocks render only for `compliance` view, and money/compliance controls only
             ai-toolkit→compliance, api/admin/{admission→ops·view, kyc-doc→compliance, reports→accounting·view,
             transactions/export→accounting·view}; in-page `hasRole` page-gates (insights/transactions/reports/finance→
             accounting·view, events→trading·view, objections canDecide→compliance·act) updated for new roles.
-      - [ ] Player-detail KYC/PII sub-block gating (Support scope) — folded into Phase 3 (Support isn't assignable until then).
+      - [x] Player-detail KYC/PII sub-block gating (Support scope) — done in Phase 5: the KYC tab (PII/ID docs) hides
+      unless the viewer has `compliance` view; each action control renders only for its capability (support desk
+      vs `accounting` money vs `compliance` KYC/DSAR), and the actions card hides entirely if the viewer can do none.
 - [x] **Phase 3 — `/admin/staff`:** roster + `[id]` detail + `setStaffRoleAction` / `addStaffByPhoneAction`
       (Owner-only via `requireOwner`, step-up 2FA, mandatory reason, **self-demotion block**, `revokeUserSessions`,
       COMPLIANCE audit + role-history tab) with **consequence highlighting** (inline "will see / will do" panel in
@@ -131,8 +133,11 @@ sub-blocks render only for `compliance` view, and money/compliance controls only
       Act toggles, `DOMAIN_SUMMARY` "See/Do" hints (consequence), and a claret/hard "Reset to defaults"
       (`resetRoleGrantsAction`). Both actions Owner-only + COMPLIANCE-audited + cache-invalidated (applies next
       request, no deploy). Registered in the Access nav group + `ROUTE_KEYS`.
-- [ ] **Phase 5 — Verify + docs + memory:** both suites + `test:all` green twice; both migrations
-      deploy-verified; docs updated (`roles.ts` header, `DESIGN_AUTHORITY.md`, design-system README); memory updated.
+- [x] **Phase 5 — Verify + docs + memory:** player-detail sub-block gating (above); both suites + `test:all`
+      green twice; migrations deploy-verified across phases. Docs of record: this tracker + the `roles.ts`
+      header (DESIGN_AUTHORITY is design-tokens only, README is component-ownership — no access-control section
+      to update, so RBAC lives here). Memory updated (superseded `kipindi-rbac-plan`). Historical per-page comments
+      that reference the old tiers are left as-is (harmless context; the code + this tracker are authoritative).
 
 ## Verification (definition of done)
 
