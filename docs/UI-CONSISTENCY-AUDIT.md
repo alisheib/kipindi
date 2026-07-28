@@ -70,14 +70,24 @@
 - [x] This tracker created
 - [x] Gate green (tsc + static linters + build); rebased onto parallel work; committed + pushed; deploy verified
 
-### Phase 1 · Money-critical correctness
-- [ ] `players/[id]/balance-adjust-controls.tsx` → kit `Modal` (focus-trap, lock, Esc)
-- [ ] `players/[id]/suspend-controls.tsx` → kit `Modal`
-- [ ] `payments/reconcile-controls.tsx` Match/Write-off → kit `ConfirmModal`
-- [ ] `players/[id]/force-reverify-controls.tsx` → kit `ConfirmModal`
-- [ ] AML approve/reject → kit `ConfirmModal` (or documented reliance on two-officer gate)
+### Phase 1 · Money-critical correctness — ✅ complete
+- [x] `players/[id]/balance-adjust-controls.tsx` → kit `Modal` (focus-trap, lock, Esc) + kit `<Button>`
+- [x] `players/[id]/suspend-controls.tsx` → kit `Modal` + kit `<Button>`
+- [x] `payments/reconcile-controls.tsx` Match/Write-off → kit `Modal` confirm surface (was inline text-links) + kit `<Button>`
+- [x] `players/[id]/force-reverify-controls.tsx` → kit `Modal` confirm surface + kit `<Button>`
+- [x] AML approve/reject — **assessed: already compliant** (kit `Button` + reason→Submit + `ActionOverlay` result + the authoritative two-officer server gate). Left as-is; not the no-confirm problem.
 - [x] `reports/page.tsx:296` `.admin-table` → `.admin-tbl` (fixes unstyled table) — done by parallel session @7d58354
-- [ ] Document + allowlist the deliberate gold-for-confirm money-commit exception
+- [x] Gold-for-confirm exception documented (see Accepted exceptions below)
+
+**Accepted exceptions (documented, allowlisted):**
+- **Gold-for-confirm on the money-commit.** `modal.tsx`'s `ConfirmModal` forbids gold as a
+  confirm tone (gold-discipline), and that holds for admin/destructive confirms. But the
+  PLAYER money-commit — the "place your wager / confirm deposit" button in
+  `bet-confirm-modal.tsx` and `round-stake-panel.tsx` — deliberately uses `btn-gold`: gold is
+  the earned-money/commit language there, and the commit IS the money moment. This is the ONE
+  sanctioned gold CTA; do not "fix" it. (Formalise in `DESIGN_AUTHORITY.md` gold-budget note in Phase 4.)
+- **Dense mouse-only admin inline controls** may sit at `--h-control-xs` (32px) below the 40px
+  finger floor — e.g. compact table-row triggers. Desktop/mouse context; documented floor exception.
 
 ### Phase 2 · Dedup & consolidate onto shared primitives
 - [ ] Shared `SearchInput` (`market-search` ≈ `results-search`)

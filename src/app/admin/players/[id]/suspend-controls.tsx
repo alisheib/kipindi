@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useDeferredToast } from "@/components/ui/toast";
+import { Modal } from "@/components/ui/modal";
+import { Button } from "@/components/ui/button";
 import { I } from "@/components/ui/glyphs";
 import { suspendPlayerAction, restorePlayerAction } from "./actions";
 
@@ -28,6 +30,7 @@ export function SuspendControls({
   const { deferToast, toast } = useDeferredToast(pending);
   const [mode, setMode] = useState<"suspend" | "restore" | null>(null);
   const [reason, setReason] = useState("");
+  const reasonRef = useRef<HTMLTextAreaElement>(null);
 
   const isSuspended = currentStatus === "SUSPENDED";
   const isClosed = currentStatus === "CLOSED";
@@ -86,73 +89,71 @@ export function SuspendControls({
         </button>
       )}
 
-      {mode && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label={mode === "suspend" ? "Suspend player" : "Restore player"}
-          className="fixed inset-0 z-[100] flex justify-center px-4 py-4 overflow-y-auto overscroll-contain"
-        >
-          <button
-            type="button"
-            aria-label="Cancel"
-            onClick={() => { if (!pending) setMode(null); }}
-            className="m-scrim fixed inset-0 bg-black/60"
+      <Modal
+        open={!!mode}
+        onClose={() => { if (!pending) setMode(null); }}
+        role="alertdialog"
+        ariaLabel={mode === "suspend" ? "Suspend player" : "Restore player"}
+        maxWidth={420}
+        closeOnScrim={!pending}
+        showClose={!pending}
+        ariaBusy={pending}
+        initialFocus={reasonRef}
+      >
+        <p className="font-mono text-[10px] uppercase tracking-[0.18em] font-bold text-text mb-1">
+          {mode === "suspend" ? "Suspend · Simamisha" : "Restore · Rejesha"}
+        </p>
+        <h3 className="font-display text-[18px] font-bold text-text leading-tight">
+          {mode === "suspend"
+            ? "Lock this account?"
+            : "Restore account access?"}
+        </h3>
+        <p className="mt-1 text-[12.5px] italic text-text-subtle">
+          {mode === "suspend"
+            ? "Login + bets + deposits will be blocked until restored."
+            : "Login + bets + deposits will be re-enabled."}
+        </p>
+        <label className="mt-3 block">
+          <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle">
+            Reason · Sababu (required, audit-logged)
+          </span>
+          <textarea
+            ref={reasonRef}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Why are you taking this action?"
+            className="mt-1 w-full rounded-md border border-border bg-bg-overlay px-2.5 py-2 text-[13px] text-text outline-none admin-focus transition-colors"
+            rows={3}
+            maxLength={500}
           />
-          <div className="m-dialog-in relative z-10 my-auto w-full max-w-[420px] rounded-xl border border-border bg-bg-elevated p-5 shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6)]">
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] font-bold text-text mb-1">
-              {mode === "suspend" ? "Suspend · Simamisha" : "Restore · Rejesha"}
-            </p>
-            <h3 className="font-display text-[18px] font-bold text-text leading-tight">
-              {mode === "suspend"
-                ? "Lock this account?"
-                : "Restore account access?"}
-            </h3>
-            <p className="mt-1 text-[12.5px] italic text-text-subtle">
-              {mode === "suspend"
-                ? "Login + bets + deposits will be blocked until restored."
-                : "Login + bets + deposits will be re-enabled."}
-            </p>
-            <label className="mt-3 block">
-              <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle">
-                Reason · Sababu (required, audit-logged)
-              </span>
-              <textarea
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder="Why are you taking this action?"
-                className="mt-1 w-full rounded-md border border-border bg-bg-overlay px-2.5 py-2 text-[13px] text-text outline-none admin-focus transition-colors"
-                rows={3}
-                maxLength={500}
-                autoFocus
-              />
-              <span className="font-mono text-[10px] text-text-subtle">
-                {reason.trim().length} / 500
-              </span>
-            </label>
-            <div className="mt-4 flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={submit}
-                disabled={pending || reason.trim().length < 5}
-                className={`${mode === "suspend" ? "btn btn-no btn-lg" : "btn btn-yes btn-lg"} w-full`}
-              >
-                {pending
-                  ? "Working…"
-                  : mode === "suspend" ? "Suspend · Simamisha" : "Restore · Rejesha"}
-              </button>
-              <button
-                type="button"
-                onClick={() => { if (!pending) setMode(null); }}
-                className="btn btn-ghost btn-md w-full"
-                disabled={pending}
-              >
-                Cancel · Ghairi
-              </button>
-            </div>
-          </div>
+          <span className="font-mono text-[10px] text-text-subtle">
+            {reason.trim().length} / 500
+          </span>
+        </label>
+        <div className="mt-4 flex flex-col gap-2">
+          <Button
+            type="button"
+            variant={mode === "suspend" ? "no" : "yes"}
+            size="lg"
+            fullWidth
+            loading={pending}
+            disabled={reason.trim().length < 5}
+            onClick={submit}
+          >
+            {mode === "suspend" ? "Suspend · Simamisha" : "Restore · Rejesha"}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="md"
+            fullWidth
+            disabled={pending}
+            onClick={() => { if (!pending) setMode(null); }}
+          >
+            Cancel · Ghairi
+          </Button>
         </div>
-      )}
+      </Modal>
     </>
   );
 }

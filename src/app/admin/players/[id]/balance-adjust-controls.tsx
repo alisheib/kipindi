@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useDeferredToast } from "@/components/ui/toast";
+import { Modal } from "@/components/ui/modal";
+import { Button } from "@/components/ui/button";
 import { I } from "@/components/ui/glyphs";
 import { formatTzs } from "@/lib/utils";
 import { adjustBalanceAction } from "./actions";
@@ -27,6 +29,7 @@ export function BalanceAdjustControls({
   const [direction, setDirection] = useState<"credit" | "debit">("credit");
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
+  const amountRef = useRef<HTMLInputElement>(null);
 
   const amt = Number(amount.replace(/[,\s]/g, ""));
   const valid = Number.isFinite(amt) && amt > 0 && reason.trim().length >= 5;
@@ -66,93 +69,92 @@ export function BalanceAdjustControls({
         Adjust balance
       </button>
 
-      {open && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Adjust player balance"
-          className="fixed inset-0 z-[100] flex justify-center px-4 py-4 overflow-y-auto overscroll-contain"
-        >
-          <button
-            type="button"
-            aria-label="Cancel"
-            onClick={() => { if (!pending) setOpen(false); }}
-            className="m-scrim fixed inset-0 bg-black/60"
-          />
-          <div className="m-dialog-in relative z-10 my-auto w-full max-w-[420px] rounded-xl border border-border bg-bg-elevated p-5 shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6)]">
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] font-bold text-text mb-1">Balance adjustment · Marekebisho</p>
-            <h3 className="font-display text-[18px] font-bold text-text leading-tight">Credit or debit this balance</h3>
-            <p className="mt-1 text-[12.5px] italic text-text-subtle">
-              Current balance {formatTzs(currentBalance)}. Money-safe + audit-logged; a debit can&rsquo;t drive the balance negative.
-            </p>
+      <Modal
+        open={open}
+        onClose={() => { if (!pending) setOpen(false); }}
+        ariaLabel="Adjust player balance"
+        maxWidth={420}
+        closeOnScrim={!pending}
+        showClose={!pending}
+        ariaBusy={pending}
+        initialFocus={amountRef}
+      >
+        <p className="font-mono text-[10px] uppercase tracking-[0.18em] font-bold text-text mb-1">Balance adjustment · Marekebisho</p>
+        <h3 className="font-display text-[18px] font-bold text-text leading-tight">Credit or debit this balance</h3>
+        <p className="mt-1 text-[12.5px] italic text-text-subtle">
+          Current balance {formatTzs(currentBalance)}. Money-safe + audit-logged; a debit can&rsquo;t drive the balance negative.
+        </p>
 
-            {/* Direction toggle */}
-            <div className="mt-3 grid grid-cols-2 gap-2" role="radiogroup" aria-label="Direction">
-              {(["credit", "debit"] as const).map((d) => (
-                <button
-                  key={d}
-                  type="button"
-                  role="radio"
-                  aria-checked={direction === d}
-                  onClick={() => setDirection(d)}
-                  className={
-                    "min-h-11 rounded-md border font-mono text-[11px] uppercase tracking-[0.12em] transition-colors " +
-                    (direction === d
-                      ? (d === "credit" ? "border-yes-700 bg-yes-500/15 text-yes-300" : "border-no-700 bg-no-500/15 text-no-300")
-                      : "border-border bg-bg-overlay text-text-subtle hover:text-text")
-                  }
-                >
-                  {d === "credit" ? "Credit (+)" : "Debit (−)"}
-                </button>
-              ))}
-            </div>
-
-            <label className="mt-3 block">
-              <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle">Amount (TZS)</span>
-              <input
-                inputMode="numeric"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value.replace(/[^\d,]/g, ""))}
-                placeholder="e.g. 50,000"
-                className="mt-1 w-full rounded-md border border-border bg-bg-overlay px-2.5 py-2 text-[13px] tabular-nums text-text outline-none admin-focus transition-colors"
-                autoFocus
-              />
-            </label>
-
-            <label className="mt-3 block">
-              <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle">Reason · Sababu (required, audit-logged)</span>
-              <textarea
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder="Why is this adjustment being made?"
-                className="mt-1 w-full rounded-md border border-border bg-bg-overlay px-2.5 py-2 text-[13px] text-text outline-none admin-focus transition-colors"
-                rows={3}
-                maxLength={300}
-              />
-              <span className="font-mono text-[10px] text-text-subtle">{reason.trim().length} / 300</span>
-            </label>
-
-            <div className="mt-4 flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={submit}
-                disabled={pending || !valid}
-                className={`${direction === "credit" ? "btn btn-yes" : "btn btn-no"} btn-lg w-full`}
-              >
-                {pending ? "Working…" : `${direction === "credit" ? "Credit" : "Debit"} ${amt > 0 ? formatTzs(Math.round(amt)) : "balance"}`}
-              </button>
-              <button
-                type="button"
-                onClick={() => { if (!pending) setOpen(false); }}
-                className="btn btn-ghost btn-md w-full min-h-11"
-                disabled={pending}
-              >
-                Cancel · Ghairi
-              </button>
-            </div>
-          </div>
+        {/* Direction toggle */}
+        <div className="mt-3 grid grid-cols-2 gap-2" role="radiogroup" aria-label="Direction">
+          {(["credit", "debit"] as const).map((d) => (
+            <button
+              key={d}
+              type="button"
+              role="radio"
+              aria-checked={direction === d}
+              onClick={() => setDirection(d)}
+              className={
+                "min-h-11 rounded-md border font-mono text-[11px] uppercase tracking-[0.12em] transition-colors " +
+                (direction === d
+                  ? (d === "credit" ? "border-yes-700 bg-yes-500/15 text-yes-300" : "border-no-700 bg-no-500/15 text-no-300")
+                  : "border-border bg-bg-overlay text-text-subtle hover:text-text")
+              }
+            >
+              {d === "credit" ? "Credit (+)" : "Debit (−)"}
+            </button>
+          ))}
         </div>
-      )}
+
+        <label className="mt-3 block">
+          <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle">Amount (TZS)</span>
+          <input
+            ref={amountRef}
+            inputMode="numeric"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value.replace(/[^\d,]/g, ""))}
+            placeholder="e.g. 50,000"
+            className="mt-1 w-full rounded-md border border-border bg-bg-overlay px-2.5 py-2 text-[13px] tabular-nums text-text outline-none admin-focus transition-colors"
+          />
+        </label>
+
+        <label className="mt-3 block">
+          <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle">Reason · Sababu (required, audit-logged)</span>
+          <textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Why is this adjustment being made?"
+            className="mt-1 w-full rounded-md border border-border bg-bg-overlay px-2.5 py-2 text-[13px] text-text outline-none admin-focus transition-colors"
+            rows={3}
+            maxLength={300}
+          />
+          <span className="font-mono text-[10px] text-text-subtle">{reason.trim().length} / 300</span>
+        </label>
+
+        <div className="mt-4 flex flex-col gap-2">
+          <Button
+            type="button"
+            variant={direction === "credit" ? "yes" : "no"}
+            size="lg"
+            fullWidth
+            loading={pending}
+            disabled={!valid}
+            onClick={submit}
+          >
+            {`${direction === "credit" ? "Credit" : "Debit"} ${amt > 0 ? formatTzs(Math.round(amt)) : "balance"}`}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="md"
+            fullWidth
+            disabled={pending}
+            onClick={() => { if (!pending) setOpen(false); }}
+          >
+            Cancel · Ghairi
+          </Button>
+        </div>
+      </Modal>
     </>
   );
 }
