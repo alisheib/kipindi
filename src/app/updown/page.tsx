@@ -110,7 +110,7 @@ export default async function UpDownPage({
                   className="inline-flex h-9 items-center rounded-md px-4 text-[13.5px] font-semibold transition-colors"
                   style={{
                     border: `1px solid ${on ? "var(--brand-500)" : "var(--border)"}`,
-                    background: on ? "oklch(40% 0.12 262 / 0.35)" : "color-mix(in oklab, var(--bg-elevated) 60%, transparent)",
+                    background: on ? "var(--pill-active)" : "color-mix(in oklab, var(--bg-elevated) 60%, transparent)",
                     color: on ? "var(--text)" : "var(--text-muted)",
                     textDecoration: "none",
                   }}>

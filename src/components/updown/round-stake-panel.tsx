@@ -113,7 +113,7 @@ export function RoundStakePanel(props: {
               style={{
                 flex: 1, height: 30, borderRadius: "var(--r-sm)",
                 border: `1px solid ${on ? "var(--brand-500)" : "var(--border)"}`,
-                background: on ? "oklch(40% 0.12 262 / 0.35)" : "color-mix(in oklab, var(--bg-elevated) 60%, transparent)",
+                background: on ? "var(--pill-active)" : "color-mix(in oklab, var(--bg-elevated) 60%, transparent)",
                 color: on ? "var(--text)" : "var(--text-muted)",
               }}
             >
@@ -128,7 +128,7 @@ export function RoundStakePanel(props: {
           style={{
             flex: 1, height: 30, borderRadius: "var(--r-sm)",
             border: `1px solid ${bet.customMode ? "var(--brand-500)" : "var(--border)"}`,
-            background: bet.customMode ? "oklch(40% 0.12 262 / 0.35)" : "color-mix(in oklab, var(--bg-elevated) 60%, transparent)",
+            background: bet.customMode ? "var(--pill-active)" : "color-mix(in oklab, var(--bg-elevated) 60%, transparent)",
             color: bet.customMode ? "var(--text)" : "var(--text-muted)",
           }}
         >

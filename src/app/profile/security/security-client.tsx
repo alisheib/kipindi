@@ -5,6 +5,7 @@ import QRCode from "qrcode";
 import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { OtpInput } from "@/components/ui/otp-input";
 import { Chip } from "@/components/ui/chip";
 import { useToast } from "@/components/ui/toast";
@@ -204,10 +205,7 @@ function BackupCodes({ codes, onDone, t, toast }: { codes: string[]; onDone: () 
         <span>{t.security.backupWarn}</span>
       </div>
       <Button variant="ghost" size="sm" leading={<I.copy s={14} />} onClick={copyAll}>{t.security.copyCodes}</Button>
-      <label className="flex items-center gap-2 text-[13px] text-text-muted">
-        <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} className="h-[18px] w-[18px] accent-brand-500" />
-        {t.security.savedAck}
-      </label>
+      <Checkbox checked={ack} onChange={setAck} label={t.security.savedAck} className="text-[13px] text-text-muted" />
       <Button variant="primary" size="md" fullWidth disabled={!ack} onClick={onDone}>{t.security.done}</Button>
     </section>
   );

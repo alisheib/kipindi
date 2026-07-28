@@ -15,10 +15,10 @@
 
 | Metric | Baseline (Phase 0) | Now | Target |
 |---|---|---|---|
-| `test:ui-consistency` findings | **95** across 61 (rule,file) pairs | 95 | **0** |
+| `test:ui-consistency` findings | **95** across 61 (rule,file) pairs | **90** across 57 pairs | **0** |
 | `test:responsive` tap-target warnings | ~512 | ~512 | **0** (minus documented dense-admin exception) |
-| Last commit | Phase 0 (merged onto `7d58354`) | — | — |
-| Railway deploy | pending | — | SUCCESS + live-verified |
+| Last shipped | Phase 2a `pending` | Phase 1 `765f5d7` (live) · Phase 0 `aeb8274` (live) | — |
+| Railway deploy | Phase 0 + 1 live-verified | — | SUCCESS + live-verified |
 
 > **Note (2026-07-28):** Phase 0 rebased onto a parallel session's design-system/search
 > work (`7d58354`). That session already: deleted the dead `PeriodPicker` (my Phase-2
@@ -89,16 +89,20 @@
 - **Dense mouse-only admin inline controls** may sit at `--h-control-xs` (32px) below the 40px
   finger floor — e.g. compact table-row triggers. Desktop/mouse context; documented floor exception.
 
-### Phase 2 · Dedup & consolidate onto shared primitives
-- [ ] Shared `SearchInput` (`market-search` ≈ `results-search`)
-- [ ] Shared `Carousel` (`featured-contest` ≈ `notable-carousel`; 320px arrow-fix lives once)
+### Phase 2 · Dedup & consolidate onto shared primitives — 🔄 in progress
+- [x] Restore `var(--pill-active)` in `updown/page.tsx`, `round-stake-panel.tsx` (×2), `live/pulse-grid.tsx` — **done @Phase 2a** (4 error findings → 0, pixel-identical)
+- [x] `profile/security` checkbox → kit `Checkbox` — **done @Phase 2a** (controlled, safe)
 - [x] Unify the two `?range=` date controls — `PeriodPicker` deleted by parallel session @7640bab (moot)
-- [ ] Consolidate ≥5 chip/tab/filter styles onto kit `Chip`/`Tabs` (+ revive or delete `.ticket-*`/`.pool*`/`.pnl-*`)
-- [ ] Restore `var(--pill-active)` in `updown/page.tsx`, `round-stake-panel.tsx`, `live/pulse-grid.tsx`
-- [ ] Dedup `candidate-filters.tsx` ≈ `poll-filters.tsx`
-- [ ] Migrate divergent tables (updown ×3, events, insights) → `.admin-tbl`; introduce `AdminTable` helper
-- [ ] Native controls → kit: `<select>`→`Select`, `datetime-local`→`DateSelect`/`TimeSelect`, `checkbox`→`Checkbox`
-- [ ] Deposit CTA (`top-app-bar.tsx`) → `btn-gold`
+- [ ] **Transactions filter checkbox → kit `Checkbox`** — BLOCKED: server reads `attention === "1"`; kit Checkbox submits `"on"`. Needs a `value` prop added to the kit Checkbox first, then local admin QA. ⚠️ do not blind-ship.
+- [ ] Native `<select>` (transactions `FilterSelect`, `kyc/[id]`, `resolver/[id]`) → kit `Select` — GET-form value semantics; needs local admin QA against a running build.
+- [ ] Native `datetime-local` (`events-client`, `markets/new/wizard`) → kit `DateSelect`/`TimeSelect` — ⚠️ resolution-time value format is validation-sensitive; verify carefully.
+- [ ] Migrate divergent tables (updown ×3, events, insights) → `.admin-tbl`; introduce `AdminTable` helper — needs per-table restyle (drop bespoke th/td classes) + visual QA.
+- [ ] Shared `SearchInput` / `Carousel`; consolidate chip/tab styles (+ revive/delete `.ticket-*`); dedup `candidate-filters`≈`poll-filters` — reconcile with the parallel session's search-grammar migration first.
+- [~] Deposit CTA (`top-app-bar.tsx`) — **kept as a deliberate CTA**, not flattened to `btn-gold`. It is an intentionally gradient/glowing 44px pill (prominence = conversion); not a tracked linter finding. Documented as an accepted exception, like the money-commit gold CTA.
+
+> **Note:** the remaining Phase-2 items are form-native / table-restyle / big-dedup changes on
+> live admin surfaces. Per "test perfectly", they need a local `build && start` + admin auth to
+> exercise (GET-form submission, filter value semantics) before shipping — not blind pushes.
 
 ### Phase 3 · Adoption breadth + tap-floor bump
 - [ ] Bump control-height tokens (sm→40, md→44, lg→48) + `.mcardp-actions` 36→40 — before/after screenshots for sign-off
