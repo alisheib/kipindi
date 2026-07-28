@@ -511,6 +511,10 @@ body {
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
 /* Kit per-size horizontal padding (kit/tokens.css) — sm12/md16/lg20/xl24; xl gets --r-lg. */
+/* Dense, MOUSE-ONLY size for admin filter rows — aligns flush with the h-8 (32px)
+   search inputs + the kit Select `xs`. Replaces the `btn-sm h-8` inline override so
+   the height lives on the --h-control-xs token, not a per-call utility. */
+.btn-xs { height: var(--h-control-xs); padding: 0 12px; font-size: 13px; }
 .btn-sm { height: var(--h-control-sm); padding: 0 12px; font-size: 13px; }
 .btn-md { height: var(--h-control-md); padding: 0 16px; font-size: 14px; }
 .btn-lg { height: var(--h-control-lg); padding: 0 20px; font-size: 15px; }

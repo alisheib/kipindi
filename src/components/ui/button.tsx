@@ -24,9 +24,10 @@ type Variant =
   | "claret"
   | "aqua-ghost"
   | "secondary"; // legacy alias
-type Size = "sm" | "md" | "lg" | "xl";
+type Size = "xs" | "sm" | "md" | "lg" | "xl";
 
 const sizeCls: Record<Size, string> = {
+  xs: "btn-xs",
   sm: "btn-sm",
   md: "btn-md",
   lg: "btn-lg",

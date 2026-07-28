@@ -115,7 +115,7 @@ export default async function AdminMarketsPage({
               <Select name="category" defaultValue={categoryFilter} size="xs" placeholder="All categories"
                 options={[{ value: "", label: "All categories" }, ...CATEGORY_OPTIONS.map((c) => ({ value: c, label: c }))]} />
             </div>
-            <button type="submit" className="btn btn-primary btn-sm h-8">
+            <button type="submit" className="btn btn-primary btn-xs">
               Search
             </button>
             {hasFilter && (

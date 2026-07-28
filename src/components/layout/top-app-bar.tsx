@@ -162,18 +162,14 @@ export function TopAppBar({ user, proposalsState }: { user: TopAppBarUser; propo
           )}
 
           {user.isAuthed && !pathname.startsWith("/wallet/deposit") && (
+            // The money-in CTA, now on the kit's flat-solid gold family (was the only
+            // gold GRADIENT left in a flat-gold system). `.btn btn-gold` carries the
+            // kit inset highlight + a built-in gold hover-glow, so it stays a premium
+            // CTA without bespoke inline styling. Pill shape; label hidden < sm.
             <Link
               href="/wallet/deposit"
               aria-label={t.common.deposit}
-              className="inline-flex items-center justify-center gap-1.5 rounded-pill font-display font-bold text-[12px] tracking-[-0.01em] transition-all duration-150 hover:brightness-110 hover:shadow-[0_0_18px_-2px_var(--gold-400)] active:scale-[0.97]"
-              style={{
-                height: 44,
-                padding: "0 12px",
-                background: "linear-gradient(135deg, var(--gold-500), var(--gold-600))",
-                color: "var(--gold-50)",
-                border: "1px solid color-mix(in oklab, var(--gold-400) 50%, transparent)",
-                boxShadow: "inset 0 1px 0 color-mix(in oklab, var(--gold-300) 25%, transparent), 0 2px 8px -2px color-mix(in oklab, var(--gold-500) 35%, transparent)",
-              }}
+              className="btn btn-gold btn-md btn-pill"
             >
               <I.plus s={14} />
               <span className="hidden sm:inline">

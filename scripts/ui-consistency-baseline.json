@@ -1,7 +1,7 @@
 {
   "_note": "UI-consistency baseline: known drift counts per rule::file. Regenerate after a remediation phase with `npm run test:ui-consistency -- --update-baseline`. DONE when this is empty. See docs/UI-CONSISTENCY-AUDIT.md.",
   "_generated": "run with --update-baseline",
-  "_total": 85,
+  "_total": 77,
   "counts": {
     "adhoc-portal::src/components/admin/action-overlay.tsx": 1,
     "adhoc-portal::src/components/admin/admin-mobile-nav.tsx": 1,
@@ -9,11 +9,7 @@
     "adhoc-portal::src/components/markets/market-card.tsx": 1,
     "adhoc-portal::src/components/markets/share-button.tsx": 1,
     "adhoc-portal::src/components/ui/date-select.tsx": 1,
-    "btn-inline-height-override::src/app/admin/ai-polls/poll-filters.tsx": 1,
-    "btn-inline-height-override::src/app/admin/candidates/candidate-filters.tsx": 2,
-    "btn-inline-height-override::src/app/admin/markets/page.tsx": 2,
-    "btn-inline-height-override::src/app/admin/players/page.tsx": 2,
-    "btn-inline-height-override::src/app/admin/resolver-queue/page.tsx": 2,
+    "btn-inline-height-override::src/app/admin/markets/page.tsx": 1,
     "btn-inline-height-override::src/components/rg/reality-check.tsx": 2,
     "native-datetime::src/app/admin/events/events-client.tsx": 1,
     "native-datetime::src/app/admin/markets/new/wizard.tsx": 1,

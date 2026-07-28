@@ -124,11 +124,11 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                 ]}
               />
             </div>
-            <button type="submit" className="btn btn-primary btn-sm h-8">
+            <button type="submit" className="btn btn-primary btn-xs">
               Search
             </button>
             {(query || statusFilter) && (
-              <a href="/admin/players" className="btn btn-ghost btn-sm h-8">
+              <a href="/admin/players" className="btn btn-ghost btn-xs">
                 Clear
               </a>
             )}

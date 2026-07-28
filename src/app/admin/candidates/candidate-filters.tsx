@@ -73,7 +73,7 @@ export function CandidateFilterToolbar({ totalFiltered, totalAll }: { totalFilte
         <button
           type="button"
           onClick={() => push({ q: search })}
-          className="btn btn-primary btn-sm rounded-pill min-w-[80px] h-8"
+          className="btn btn-primary btn-xs rounded-pill min-w-[80px]"
         >
           Search
         </button>
@@ -84,7 +84,7 @@ export function CandidateFilterToolbar({ totalFiltered, totalAll }: { totalFilte
               setSearch("");
               startTransition(() => router.push("/admin/candidates"));
             }}
-            className="btn btn-ghost btn-sm rounded-pill text-text-subtle hover:text-text h-8"
+            className="btn btn-ghost btn-xs rounded-pill text-text-subtle hover:text-text"
           >
             Clear
           </button>

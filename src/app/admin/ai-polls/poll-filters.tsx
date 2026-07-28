@@ -80,7 +80,7 @@ export function PollFilterToolbar({ totalFiltered, totalAll }: { totalFiltered: 
               setSearch("");
               startTransition(() => router.push("/admin/ai-polls"));
             }}
-            className="btn btn-ghost btn-sm rounded-pill text-text-subtle hover:text-text h-8"
+            className="btn btn-ghost btn-xs rounded-pill text-text-subtle hover:text-text"
           >
             Clear
           </button>

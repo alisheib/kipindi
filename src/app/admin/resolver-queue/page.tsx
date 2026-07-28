@@ -128,8 +128,8 @@ export default async function ResolverQueuePage({
               <Select name="category" defaultValue={categoryFilter} size="xs" placeholder="All categories"
                 options={[{ value: "", label: "All categories" }, ...CATEGORY_OPTIONS.map((c) => ({ value: c, label: c }))]} />
             </div>
-            <button type="submit" className="btn btn-primary btn-sm h-8">Filter</button>
-            {hasFilter && <a href="/admin/resolver-queue" className="btn btn-ghost btn-sm h-8">Clear</a>}
+            <button type="submit" className="btn btn-primary btn-xs">Filter</button>
+            {hasFilter && <a href="/admin/resolver-queue" className="btn btn-ghost btn-xs">Clear</a>}
             <RefreshButton className="ml-auto" />
           </form>
         </AdminCard>

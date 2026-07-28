@@ -147,7 +147,7 @@ const litBtnHeights: string[] = [];
 for (const f of files) {
   const rel = relative(ROOT, f).replace(/\\/g, "/");
   const body = decomment(readFileSync(f, "utf8"));
-  for (const m of body.matchAll(/\.btn-(sm|md|lg|xl)\s*\{([^}]*)\}/gi)) {
+  for (const m of body.matchAll(/\.btn-(xs|sm|md|lg|xl)\s*\{([^}]*)\}/gi)) {
     const heightDecl = m[2].match(/height\s*:\s*([^;]+)/i);
     if (heightDecl && !/var\(--h-control-/.test(heightDecl[1])) {
       litBtnHeights.push(`${rel}: .btn-${m[1]} height="${heightDecl[1].trim()}"`);
