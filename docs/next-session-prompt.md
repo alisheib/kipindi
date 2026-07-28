@@ -1,6 +1,12 @@
 # 50pick — next-session prompt (copy-paste)
 
-> Self-contained continuation prompt. Rewritten 2026-07-27 after the Up & Down
+> ⏭️ **NEXT UP (2026-07-28): build full admin RBAC.** Plan + copy-paste prompt:
+> `C:\Users\asheib\.claude\plans\ye-shti-spllna-iwan-reactive-moore.md` (tracker will be
+> `docs/RBAC-ROLLOUT.md`). 7 roles / one per employee / grants editable at `/admin/roles` /
+> owner-only role changes. The **UI-consistency program is DONE + LIVE** (detector
+> `test:ui-consistency`, tracker `docs/UI-CONSISTENCY-AUDIT.md`).
+>
+> Self-contained continuation prompt below. Rewritten 2026-07-27 after the Up & Down
 > finalization + platform DateTime-filter + stake-bounds + routing-audit sessions.
 > Paste everything below the line into a fresh session.
 
