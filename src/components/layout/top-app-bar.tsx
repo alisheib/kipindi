@@ -241,7 +241,13 @@ function NavLink({ it, pathname }: { it: NavItem; pathname: string }) {
       aria-current={active ? "page" : undefined}
       className="inline-flex items-center gap-1.5 whitespace-nowrap"
       style={{
-        padding: accent ? "6px 14px" : "7px 12px",
+        // One consistent nav-link box for EVERY item — the accent (Up & Down) pill
+        // used to run 6px 14px vs 7px 12px for the rest, so it read visibly taller and
+        // wider than its siblings. Height + horizontal padding are now identical across
+        // all links (no bigger than before); the accent differs only in colour/border/glow
+        // (identity), never size.
+        height: 34,
+        padding: "0 11px",
         borderRadius: accent ? "var(--r-pill)" : "var(--r-sm)",
         fontSize: 13.5,
         fontWeight: active || accent ? 600 : 500,
