@@ -1,3 +1,4 @@
+import { parseQuery, matchesQuery, fieldNames, USER_SEARCH } from "@/lib/search";
 import { AdminPageHead, AdminCard, AdminKpi, AdminLoadError } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { SortTh } from "@/components/admin/admin-sort";
@@ -27,17 +28,14 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
   let all: Awaited<ReturnType<typeof db.user.list>> = [];
   let usersFailed = false;
   try { all = await db.user.list(); } catch { usersFailed = true; }
+  // Shared grammar (src/lib/search). Previously a single contiguous `.includes()`,
+  // so an officer typing a name AND a phone fragment — the most natural way to
+  // find one player — got nothing back. `displayLabel` is computed, not a column,
+  // so it is supplied on the record here (see USER_SEARCH.handle).
+  const parsed = parseQuery(query, { fields: fieldNames(USER_SEARCH) });
   const filtered = all.filter((u) => {
     if (statusFilter && u.status !== statusFilter) return false;
-    if (!query) return true;
-    return (
-      u.id.toLowerCase().includes(query) ||
-      u.phoneE164.toLowerCase().includes(query) ||
-      (u.displayName ?? "").toLowerCase().includes(query) ||
-      // Auto-handle search — operator can paste "Player #A3F2K8" or
-      // just "A3F2K8" and it resolves to the right account.
-      displayLabel(u).toLowerCase().includes(query)
-    );
+    return matchesQuery(parsed, { ...u, displayLabel: displayLabel(u) } as unknown as Record<string, string | null | undefined>, USER_SEARCH);
   });
 
   // Sort

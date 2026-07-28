@@ -1,5 +1,7 @@
 "use client";
 
+import { parseQuery, matchesQuery, fieldNames, PROPOSAL_SEARCH } from "@/lib/search";
+import { SearchBox } from "@/components/ui/search-box";
 import { useState, useMemo, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
@@ -9,6 +11,7 @@ import { Chip } from "@/components/ui/chip";
 import { Textarea } from "@/components/ui/textarea";
 import { DateSelect } from "@/components/ui/date-select";
 import { useToast } from "@/components/ui/toast";
+import { useT } from "@/lib/i18n";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SELECTION } from "@/lib/admin-status-lexicon";
 import { ActionOverlay, useActionOverlay } from "@/components/admin/action-overlay";
@@ -165,6 +168,7 @@ function SortBtn({ field, label, current, dir, onSort }: { field: QSort; label: 
 export function AdminProposalsClient({ config, queue }: { config: ProposalsConfig; queue: AdminQueueRow[] }) {
   const router = useRouter();
   const { toast } = useToast();
+  const { t } = useT();
   const overlay = useActionOverlay();
   const [pending, start] = useTransition();
   const [c, setC] = useState<ProposalsConfig>(config);
@@ -196,7 +200,7 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
   // Search (live, on every keystroke) → filter → sort → only the current page is
   // ever materialised in the DOM.
   const filteredQueue = useMemo(() => {
-    const s = search.trim().toLowerCase();
+    const parsedSearch = parseQuery(search, { fields: fieldNames(PROPOSAL_SEARCH) });
     return queue.filter((q) => {
       const passFilter =
         qFilter === "all" ? true
@@ -204,15 +208,8 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
         : qFilter === "approved" ? q.status === "APPROVED"
         : (q.score < 0 || (q.down > 0 && q.down >= q.up));
       if (!passFilter) return false;
-      if (!s) return true;
-      return (
-        q.title.toLowerCase().includes(s)
-        || (q.titleSw ?? "").toLowerCase().includes(s)
-        || (q.titleZh ?? "").toLowerCase().includes(s)
-        || q.proposerMasked.toLowerCase().includes(s)
-        || q.category.toLowerCase().includes(s)
-        || q.id.toLowerCase().includes(s)
-      );
+      // Shared grammar (src/lib/search) — was a single contiguous `.includes()`.
+      return matchesQuery(parsedSearch, q as unknown as Record<string, string | null | undefined>, PROPOSAL_SEARCH);
     });
   }, [queue, qFilter, search]);
   const sortedQueue = useMemo(() => {
@@ -360,17 +357,16 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
             </div>
           </div>
           <div className="border-b border-border px-4 py-2.5">
-            <div className="relative">
-              <I.search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-subtle" />
-              <input
-                type="search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by title, proposer, category, or ID…"
-                aria-label="Search proposals"
-                className="h-8 w-full rounded-md border border-border bg-bg-overlay pl-9 pr-3 text-[12.5px] text-text outline-none admin-focus transition-colors placeholder:text-text-subtle"
-              />
-            </div>
+            {/* One SearchBox. `controlled` — this list is already in memory and
+                sorted/paged client-side, so a URL round-trip would buy nothing. */}
+            <SearchBox
+              mode="controlled"
+              value={search}
+              onChange={setSearch}
+              placeholder={t.common.searchProposals}
+              ariaLabel={t.common.searchProposals}
+              helpFields={fieldNames(PROPOSAL_SEARCH)}
+            />
           </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-b border-border px-4 py-2">
             <Cap>Sort</Cap>

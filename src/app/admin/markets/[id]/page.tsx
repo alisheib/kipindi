@@ -1,3 +1,4 @@
+import { parseQuery, matchesQuery, fieldNames, USER_SEARCH } from "@/lib/search";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
@@ -73,6 +74,7 @@ export default async function MarketPredictorsPage({
 
   const sp = await searchParams;
   const query = (sp.q ?? "").trim().toLowerCase();
+  const parsedQ = parseQuery(query, { fields: fieldNames(USER_SEARCH) });
   const sideFilter = ["YES", "NO"].includes(sp.side ?? "") ? sp.side! : "";
   const statusFilter = ["OPEN", "WIN", "LOSS", "VOID", "CASHED_OUT"].includes(sp.status ?? "") ? sp.status! : "";
 
@@ -92,15 +94,12 @@ export default async function MarketPredictorsPage({
   const filtered = allPositions.filter((p) => {
     if (sideFilter && p.side !== sideFilter) return false;
     if (statusFilter && p.status !== statusFilter) return false;
-    if (query) {
+    // Shared grammar (src/lib/search) — the predictors list is searched by the
+    // same rule as the players roster, including the computed auto-handle.
+    if (parsedQ.mode !== "empty") {
       const u = userMap.get(p.userId);
       if (!u) return false;
-      const label = displayLabel(u).toLowerCase();
-      if (
-        !u.phoneE164.includes(query) &&
-        !u.id.toLowerCase().includes(query) &&
-        !label.includes(query)
-      ) return false;
+      return matchesQuery(parsedQ, { ...u, displayLabel: displayLabel(u) } as unknown as Record<string, string | null | undefined>, USER_SEARCH);
     }
     return true;
   });

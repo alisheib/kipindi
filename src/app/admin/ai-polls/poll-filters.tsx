@@ -1,5 +1,8 @@
 "use client";
 
+import { useT } from "@/lib/i18n";
+import { SearchBox } from "@/components/ui/search-box";
+import { fieldNames, POLL_SEARCH } from "@/lib/search";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useState, useTransition } from "react";
 import { I } from "@/components/ui/glyphs";
@@ -31,6 +34,7 @@ const ALL_CATEGORIES = [
 export function PollFilterToolbar({ totalFiltered, totalAll }: { totalFiltered: number; totalAll: number }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t } = useT();
   const [, startTransition] = useTransition();
 
   const currentSearch = searchParams.get("q") ?? "";
@@ -58,26 +62,16 @@ export function PollFilterToolbar({ totalFiltered, totalAll }: { totalFiltered: 
     <div className="space-y-3">
       {/* Search bar */}
       <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-[420px]">
-          <I.search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-subtle pointer-events-none" />
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") push({ q: search });
-            }}
-            placeholder="Search polls by title, category, ID, or criterion..."
-            className="w-full h-8 pl-9 pr-3 rounded-md border border-border bg-bg-overlay text-[12.5px] text-text placeholder:text-text-subtle outline-none admin-focus transition-colors"
+        {/* One SearchBox — was a bespoke input + a "Search" button with no
+            debounce, and its own 420px cap. The cap now comes from the field
+            measure token, and typing filters as you pause. */}
+        <div className="flex-1">
+          <SearchBox
+            placeholder={t.common.searchPolls}
+            ariaLabel={t.common.searchPolls}
+            helpFields={fieldNames(POLL_SEARCH)}
           />
         </div>
-        <button
-          type="button"
-          onClick={() => push({ q: search })}
-          className="btn btn-primary btn-sm rounded-pill min-w-[80px] h-8"
-        >
-          Search
-        </button>
         {hasFilters && (
           <button
             type="button"

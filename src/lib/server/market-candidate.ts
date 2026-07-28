@@ -13,6 +13,7 @@
  * standard: AI accelerates, never decides.
  */
 
+import { parseQuery, matchesQuery, fieldNames, CANDIDATE_SEARCH } from "@/lib/search";
 import { randomId } from "./crypto";
 import { audit } from "./audit";
 import { prisma, hasDatabase } from "./prisma";
@@ -251,6 +252,7 @@ export type CandidateFilter = {
 
 export async function listCandidates(filter?: CandidateFilter): Promise<Candidate[]> {
   const q = filter?.search?.trim().toLowerCase();
+  const parsedQ = parseQuery(q, { fields: fieldNames(CANDIDATE_SEARCH) });
   const all = await candidateStore.values();
   return all
     .filter((c) => {
@@ -258,12 +260,8 @@ export async function listCandidates(filter?: CandidateFilter): Promise<Candidat
       if (filter?.category && c.category !== filter.category) return false;
       if (filter?.dateFrom && c.createdAt < filter.dateFrom) return false;
       if (filter?.dateTo && c.createdAt > filter.dateTo) return false;
-      if (q) {
-        const hay = [c.proposedTitleEn, c.proposedTitleSw, c.proposedTitleZh, c.category, c.id, c.resolutionCriterion]
-          .filter(Boolean).join(" ").toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
-      return true;
+      // Shared grammar (src/lib/search) — same rule as every other list.
+      return matchesQuery(parsedQ, c as unknown as Record<string, string | null | undefined>, CANDIDATE_SEARCH);
     })
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }

@@ -18,6 +18,8 @@
  * Access: MONEY_ROLES only (ADMIN, COMPLIANCE) — msisdn + gateway refs are PII and
  * settlement data. Exports are audited in the API route.
  */
+import { SearchBox } from "@/components/ui/search-box";
+import { fieldNames, TXN_SEARCH } from "@/lib/search";
 import Link from "next/link";
 import { AdminPageHead, AdminKpi, AdminCard } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
@@ -161,17 +163,25 @@ export default async function AdminTransactionsPage({ searchParams }: { searchPa
           <span className="mb-1.5 block font-mono text-[10px] uppercase tracking-[0.12em] text-text-tertiary">Window · Dirisha</span>
           <DateTimeRangeFilter defaultPreset="28d" presetIds={["today", "yesterday", "24h", "7d", "28d", "30d", "mtd", "all"]} />
         </div>
+        {/* Search sits ABOVE the form and drives ?q directly (same pattern as the
+            window filter above it), with a hidden mirror INSIDE the form so that
+            changing type/status/provider and pressing Apply preserves the query.
+            Without the mirror, Apply would submit the form's fields only and
+            silently drop ?q — on a compliance browser that reads as "no such
+            transaction". */}
+        <div className="mb-3">
+          <span className="mb-1.5 block font-mono text-[10px] uppercase tracking-[0.12em] text-text-tertiary">Search · Tafuta</span>
+          <SearchBox
+            placeholder="Gateway ref, phone, txn or player id"
+            ariaLabel="Search transactions"
+            helpFields={fieldNames(TXN_SEARCH)}
+          />
+        </div>
         <form method="get" action="/admin/transactions" className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
           {sp.range ? <input type="hidden" name="range" value={sp.range} /> : null}
           {sp.from ? <input type="hidden" name="from" value={sp.from} /> : null}
           {sp.to ? <input type="hidden" name="to" value={sp.to} /> : null}
-          <label className="flex flex-col gap-1 lg:col-span-2">
-            <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-tertiary">Search · Tafuta</span>
-            <input
-              type="search" name="q" defaultValue={q ?? ""} placeholder="Gateway ref, phone, txn or player id"
-              className="admin-focus min-h-[40px] rounded-lg border border-border bg-bg-overlay px-3 text-sm text-text placeholder:text-text-subtle"
-            />
-          </label>
+          {q ? <input type="hidden" name="q" value={q} /> : null}
           <FilterSelect name="type" label="Type · Aina" value={type ?? ""} options={[["", "All"], ...TYPES.map((t) => [t, t.replace(/_/g, " ")] as [string, string])]} />
           <FilterSelect name="status" label="Status · Hali" value={status ?? ""} options={[["", "All"], ...STATUSES.map((s) => [s, s.replace(/_/g, " ")] as [string, string])]} />
           <FilterSelect name="provider" label="Provider · Mtoa" value={provider ?? ""} options={[["", "All"], ...PROVIDERS.map((p) => [p, p.replace(/_/g, " ")] as [string, string])]} />

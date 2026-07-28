@@ -18,6 +18,7 @@
  *   VALIDATION_FAILED (terminal — admin can view raw response)
  */
 
+import { parseQuery, matchesQuery, fieldNames, POLL_SEARCH } from "@/lib/search";
 import { randomId } from "./crypto";
 import { audit } from "./audit";
 import { getAIProvider, type AIPollGeneration, type AIProviderResponse, type PollIdea } from "./ai-provider";
@@ -636,6 +637,7 @@ export type AIPollFilter = {
 
 export async function listAIPolls(filter?: AIPollFilter): Promise<StoredAIPoll[]> {
   const q = filter?.search?.trim().toLowerCase();
+  const parsedQ = parseQuery(q, { fields: fieldNames(POLL_SEARCH) });
   const all = await store.values();
   return all
     .filter((p) => {
@@ -643,12 +645,9 @@ export async function listAIPolls(filter?: AIPollFilter): Promise<StoredAIPoll[]
       if (filter?.category && p.category !== filter.category) return false;
       if (filter?.dateFrom && p.createdAt < filter.dateFrom) return false;
       if (filter?.dateTo && p.createdAt > filter.dateTo) return false;
-      if (q) {
-        const hay = [p.titleEn, p.titleSw, p.titleZh, p.category, p.id, p.resolutionCriterion, p.reasoning]
-          .filter(Boolean).join(" ").toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
-      return true;
+      // Shared grammar (src/lib/search) — was one contiguous `.includes()` over a
+      // joined haystack, which also let a "phrase" match across a field boundary.
+      return matchesQuery(parsedQ, p as unknown as Record<string, string | null | undefined>, POLL_SEARCH);
     })
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }

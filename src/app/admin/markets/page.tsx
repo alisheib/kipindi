@@ -1,3 +1,4 @@
+import { parseQuery, matchesQuery, fieldNames, MARKET_SEARCH } from "@/lib/search";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { RefreshButton } from "@/components/admin/refresh-button";
@@ -46,15 +47,13 @@ export default async function AdminMarketsPage({
     : "";
 
   const all = await listMarkets().catch(() => []);
+  // Shared grammar (src/lib/search) — was a single contiguous `.includes()`, so a
+  // two-word query found nothing. Now every word must match, in any field.
+  const parsed = parseQuery(query, { fields: fieldNames(MARKET_SEARCH) });
   const filtered = all.filter((m) => {
     if (statusFilter && m.status !== statusFilter) return false;
     if (categoryFilter && m.category !== categoryFilter) return false;
-    if (!query) return true;
-    return (
-      m.id.toLowerCase().includes(query) ||
-      m.titleEn.toLowerCase().includes(query) ||
-      (m.titleSw ?? "").toLowerCase().includes(query)
-    );
+    return matchesQuery(parsed, m as unknown as Record<string, string | null | undefined>, MARKET_SEARCH);
   });
 
   // Sort (URL-driven), then paginate.

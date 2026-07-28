@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { parseQuery, matchesQuery, fieldNames, MARKET_SEARCH } from "@/lib/search";
 import { AdminPageHead, AdminCard, AdminLoadError } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { RefreshButton } from "@/components/admin/refresh-button";
@@ -49,6 +50,7 @@ export default async function ResolverQueuePage({
   const windowFilter = (WINDOW_OPTIONS as readonly { value: string }[]).some((o) => o.value === sp.window) ? sp.window! : "24h";
   const categoryFilter = (CATEGORY_OPTIONS as readonly string[]).includes(sp.category ?? "") ? sp.category as MarketCategory : "";
   const query = (sp.q ?? "").trim().toLowerCase();
+  const parsedQ = parseQuery(query, { fields: fieldNames(MARKET_SEARCH) });
 
   const now = Date.now();
   const windowMs = windowFilter === "48h" ? 48 * 3600_000
@@ -67,8 +69,8 @@ export default async function ResolverQueuePage({
     return false;
   }).filter((m) => {
     if (categoryFilter && m.category !== categoryFilter) return false;
-    if (query && !m.titleEn.toLowerCase().includes(query) && !(m.titleSw ?? "").toLowerCase().includes(query)) return false;
-    return true;
+    // Shared grammar — was a single contiguous `.includes()` on two title columns.
+    return matchesQuery(parsedQ, m as unknown as Record<string, string | null | undefined>, MARKET_SEARCH);
   }).sort((a, b) => Date.parse(a.resolutionAt) - Date.parse(b.resolutionAt));
 
   // Triage counts for the header summary.

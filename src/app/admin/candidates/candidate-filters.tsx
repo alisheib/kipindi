@@ -1,5 +1,8 @@
 "use client";
 
+import { useT } from "@/lib/i18n";
+import { SearchBox } from "@/components/ui/search-box";
+import { fieldNames, CANDIDATE_SEARCH } from "@/lib/search";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useState, useTransition } from "react";
 import { I } from "@/components/ui/glyphs";
@@ -30,6 +33,7 @@ const ALL_CATEGORIES = [
 export function CandidateFilterToolbar({ totalFiltered, totalAll }: { totalFiltered: number; totalAll: number }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t } = useT();
   const [, startTransition] = useTransition();
 
   const currentSearch = searchParams.get("q") ?? "";
@@ -57,17 +61,12 @@ export function CandidateFilterToolbar({ totalFiltered, totalAll }: { totalFilte
     <div className="space-y-3">
       {/* Search bar */}
       <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-[420px]">
-          <I.search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-subtle pointer-events-none" />
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") push({ q: search });
-            }}
-            placeholder="Search candidates by title, category, or ID..."
-            className="w-full h-8 pl-9 pr-3 rounded-md border border-border bg-bg-overlay text-[12.5px] text-text placeholder:text-text-subtle outline-none admin-focus transition-colors"
+        {/* One SearchBox — see poll-filters.tsx. */}
+        <div className="flex-1">
+          <SearchBox
+            placeholder={t.common.searchCandidates}
+            ariaLabel={t.common.searchCandidates}
+            helpFields={fieldNames(CANDIDATE_SEARCH)}
           />
         </div>
         <button

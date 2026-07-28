@@ -41,6 +41,7 @@ export const dict = {
       viewAll: "View all →", clearSearch: "Clear search",
       // Search grammar (SearchBox + SearchHelp). Taught by clickable example
       // rather than a syntax reference — the operator is non-technical.
+      searchPolls: "Search polls", searchCandidates: "Search candidates", searchProposals: "Search proposals",
       searchWords: "words", searchPhrase: "exact phrase", searchHiding: "hiding",
       searchField: "field", searchPattern: "pattern",
       searchHelpTitle: "How to search",
@@ -1400,6 +1401,7 @@ export const dict = {
       pending: "Inasubiri", voided: "Imebatilishwa", cashedOut: "Imetolewa",
       yes: "NDIO", no: "HAPANA",
       viewAll: "Tazama zote →", clearSearch: "Futa utafutaji",
+      searchPolls: "Tafuta kura", searchCandidates: "Tafuta wagombea", searchProposals: "Tafuta mapendekezo",
       searchWords: "maneno", searchPhrase: "kifungu kamili", searchHiding: "kuficha",
       searchField: "sehemu", searchPattern: "muundo",
       searchHelpTitle: "Jinsi ya kutafuta",
@@ -2728,6 +2730,7 @@ export const dict = {
       pending: "待处理", voided: "已作废", cashedOut: "已兑现",
       yes: "是", no: "否",
       viewAll: "查看全部 →", clearSearch: "清除搜索",
+      searchPolls: "搜索投票", searchCandidates: "搜索候选", searchProposals: "搜索提案",
       searchWords: "个词", searchPhrase: "完整短语", searchHiding: "排除",
       searchField: "字段", searchPattern: "模式",
       searchHelpTitle: "如何搜索",

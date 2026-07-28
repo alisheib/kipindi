@@ -7,6 +7,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { I, categoryGlyph } from "@/components/ui/glyphs";
 import { pickLocalized } from "@/lib/localized";
 import { useT } from "@/lib/i18n";
+import { SearchBox } from "@/components/ui/search-box";
+import { parseQuery, matchesQuery, fieldNames, MARKET_SEARCH } from "@/lib/search";
 
 type Market = {
   id: string;
@@ -44,16 +46,14 @@ export function LivePulseGrid({ markets }: { markets: Market[] }) {
   // live wall by question text (EN/SW) or category. Same kit search primitives as
   // the Markets board so height, sunken bg, focus ring, and iOS font polish match.
   const [query, setQuery] = useState("");
+  // Shared grammar (src/lib/search). Client-side by design: the wall is already
+  // loaded, so a URL round-trip would buy nothing. Same rule as every other
+  // surface — this one previously did a single contiguous `.includes()`.
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return markets;
-    return markets.filter(
-      (m) =>
-        m.titleEn.toLowerCase().includes(q) ||
-        (m.titleSw ?? "").toLowerCase().includes(q) ||
-        (m.titleZh ?? "").toLowerCase().includes(q) ||
-        m.category.toLowerCase().includes(q),
-    );
+    const parsed = parseQuery(query, { fields: fieldNames(MARKET_SEARCH) });
+    if (parsed.mode === "empty") return markets;
+    return markets.filter((m) =>
+      matchesQuery(parsed, m as unknown as Record<string, string | null | undefined>, MARKET_SEARCH));
   }, [markets, query]);
 
   // Render in batches and append as the user scrolls — keeps the DOM light
@@ -95,31 +95,18 @@ export function LivePulseGrid({ markets }: { markets: Market[] }) {
 
   return (
     <>
-      <div className="input-group market-search max-w-[460px]">
-        <span className="prefix" aria-hidden>
-          <I.search s={16} />
-        </span>
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={t.common.searchLiveMarkets}
-          aria-label={t.common.searchLiveMarkets}
-          enterKeyHint="search"
-          autoComplete="off"
-          className="input input-mono"
-        />
-        {query && (
-          <button
-            type="button"
-            aria-label={t.common.clearSearch}
-            className="clear-btn"
-            onClick={() => setQuery("")}
-          >
-            <I.x s={15} />
-          </button>
-        )}
-      </div>
+      {/* One SearchBox everywhere. `controlled` because the wall is already
+          loaded — a URL round-trip would buy nothing here. The duplicated
+          max-w-[460px] is gone: the cap now rides `.search-box` from the field
+          measure token (DESIGN_AUTHORITY B7). */}
+      <SearchBox
+        mode="controlled"
+        value={query}
+        onChange={setQuery}
+        placeholder={t.common.searchLiveMarkets}
+        ariaLabel={t.common.searchLiveMarkets}
+        helpFields={fieldNames(MARKET_SEARCH)}
+      />
 
       {filtered.length === 0 ? (
         <EmptyState

@@ -125,6 +125,7 @@
     "qa:outcome": "node scripts/outcome-parity.mjs",
     "test:bridge": "tsx scripts/tailwind-bridge.test.mts",
     "test:search": "tsx scripts/search-grammar.test.mts",
+    "test:search-adoption": "tsx scripts/search-adoption.test.mts",
     "qa:contrast-rendered": "node scripts/contrast-rendered.mjs"
   },
   "dependencies": {
