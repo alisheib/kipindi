@@ -5,17 +5,13 @@ import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { setAffiliateConfig, type AffiliateConfig } from "@/lib/server/affiliate-config";
-import { MONEY_ROLES } from "@/lib/server/roles";
 import { requireAdminTotp } from "@/lib/server/admin-guard";
+import { requireStaff } from "@/lib/server/rbac-guard";
 
-const ADMIN_ROLES = MONEY_ROLES; // role tier — see @/lib/server/roles
-
+// RBAC: authorization is data-driven — requireStaff checks this role's canAct for the
+// domain (Owner/ADMIN bypasses), audits a blocked attempt, then enforces step-up 2FA.
 async function ensureAdmin() {
-  const s = await currentSession();
-  if (!s) redirect("/auth/admin");
-  const u = await db.user.findById(s.userId);
-  if (!u || !ADMIN_ROLES.has(u.role)) redirect("/auth/admin");
-  return s;
+  return requireStaff("growth");
 }
 
 export async function saveAffiliateConfigAction(config: AffiliateConfig) {

@@ -15,25 +15,12 @@ import {
 } from "@/lib/server/market-candidate";
 import { createMarket } from "@/lib/server/market-service";
 import { isSourceTrusted, seedDefaultSources } from "@/lib/server/source-registry";
-import { MARKET_OPS_ROLES } from "@/lib/server/roles";
-import { requireAdminTotp } from "@/lib/server/admin-guard";
+import { requireStaff } from "@/lib/server/rbac-guard";
 
-const ADMIN_ROLES = MARKET_OPS_ROLES; // role tier — see @/lib/server/roles
-
+// RBAC: authorization is data-driven — requireStaff checks canAct for `trading`
+// (Owner/ADMIN bypasses), audits a blocked attempt, then enforces step-up 2FA.
 async function requireAdmin(action: string): Promise<string> {
-  const session = await currentSession();
-  if (!session) redirect("/auth/admin");
-  const u = await db.user.findById(session.userId);
-  if (!u || !ADMIN_ROLES.has(u.role)) {
-    audit({
-      category: "SECURITY", action: "privilege_escalation_blocked",
-      actorId: session.userId, targetType: "Action", targetId: action,
-      payload: { role: u?.role ?? "unknown" },
-    });
-    throw new Error("Forbidden: admin role required.");
-  }
-  await requireAdminTotp(session.userId, session.sessionId);
-  return session.userId;
+  return (await requireStaff("trading", action)).userId;
 }
 
 export async function approveCandidateAction(formData: FormData) {

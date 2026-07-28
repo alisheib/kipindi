@@ -11,48 +11,23 @@ import { hasTotp } from "@/lib/server/totp";
 import { verifySession, signSession } from "@/lib/server/crypto";
 import { ConfidentialBand, AdminSidebar, AdminTopBar, type AdminSession } from "@/components/admin/admin-shell";
 import { TOTP_COOKIE_NAME, TOTP_TTL_SEC } from "@/lib/server/totp-cookie";
-import { ADMIN_CONSOLE_ROLES, MONEY_ROLES, COMPLIANCE_ROLES, CONFIG_ROLES, hasRole, type Role } from "@/lib/server/roles";
+import { isStaffRole, isAdmin, isOwnerOnlyPath, domainForPath, DOMAIN_LABEL } from "@/lib/server/roles";
+import { canView, viewableDomains } from "@/lib/server/rbac";
 import { AdminRestricted } from "@/components/admin/admin-restricted";
 import { activeKeyFromPath } from "@/components/admin/admin-nav-groups";
 
-const ADMIN_ROLES = ADMIN_CONSOLE_ROLES; // role tier — see @/lib/server/roles
-
 /**
- * READ-tier gate (audit 2026-07-17). The console gate above admits MODERATOR
- * (ADMIN_CONSOLE_ROLES), but money / compliance-PII / config-and-regulator-data
- * SURFACES must be ADMIN/COMPLIANCE only to even VIEW — the same rule the tiers
- * enforce for the ACTIONS (roles.ts). Rendering AdminRestricted here (instead of
- * `children`) means React never renders the page subtree, so a MODERATOR's browser
- * never receives the data AND the page's server data-fetch never runs. Market-ops
- * surfaces (markets, resolver, candidates, proposals, sources, moderation,
- * objections, live, ai-polls, events, overview) stay broad — MODERATOR's job.
- * Most-specific prefix wins (first match). finance/insights/reports keep their own
- * in-page gate too (harmless belt-and-suspenders).
+ * RBAC VIEW gate (2026-07-28). Console admission below admits any STAFF role; this
+ * gate then decides, per route, whether the viewer's ROLE may SEE it — driven by the
+ * data-backed grant matrix (roleGrants), not hardcoded tiers. Every /admin/** route
+ * maps to exactly one AdminDomain (domainForPath); `canView(role, domain)` consults
+ * the role's grants (ADMIN/Owner bypasses → sees all). Rendering <AdminRestricted>
+ * instead of `children` means the page subtree AND its server data-fetch never run,
+ * so a role never receives data for a domain it can't view. `/admin/staff` and
+ * `/admin/roles` are Owner-only (isOwnerOnlyPath), checked ahead of the domain gate.
+ * This is the ROUTE layer of the three-layer gate; it MUST agree with the nav filter
+ * (filterNavGroups) and the action guard (requireStaff) — all keyed off the same domains.
  */
-const READ_TIERS: Array<{ prefix: string; tier: Set<Role>; need: string }> = [
-  { prefix: "/admin/finance",         tier: MONEY_ROLES,      need: "Admin or Compliance" },
-  { prefix: "/admin/insights",        tier: MONEY_ROLES,      need: "Admin or Compliance" },
-  { prefix: "/admin/payments",        tier: MONEY_ROLES,      need: "Admin or Compliance" },
-  { prefix: "/admin/settlement",      tier: MONEY_ROLES,      need: "Admin or Compliance" },
-  { prefix: "/admin/aml",             tier: MONEY_ROLES,      need: "Admin or Compliance" },
-  { prefix: "/admin/bonuses",         tier: MONEY_ROLES,      need: "Admin or Compliance" },
-  { prefix: "/admin/affiliate",       tier: MONEY_ROLES,      need: "Admin or Compliance" },
-  { prefix: "/admin/players",         tier: COMPLIANCE_ROLES, need: "Admin or Compliance" },
-  { prefix: "/admin/kyc",             tier: COMPLIANCE_ROLES, need: "Admin or Compliance" },
-  { prefix: "/admin/approvals",       tier: COMPLIANCE_ROLES, need: "Admin or Compliance" },
-  { prefix: "/admin/privacy",         tier: COMPLIANCE_ROLES, need: "Admin or Compliance" },
-  { prefix: "/admin/self-exclusions", tier: COMPLIANCE_ROLES, need: "Admin or Compliance" },
-  { prefix: "/admin/compliance",      tier: COMPLIANCE_ROLES, need: "Admin or Compliance" },
-  { prefix: "/admin/reports",         tier: CONFIG_ROLES,     need: "Admin or Compliance" },
-  { prefix: "/admin/config",          tier: CONFIG_ROLES,     need: "Admin or Compliance" },
-  { prefix: "/admin/system",          tier: CONFIG_ROLES,     need: "Admin or Compliance" },
-  { prefix: "/admin/ai-usage",        tier: CONFIG_ROLES,     need: "Admin or Compliance" },
-  { prefix: "/admin/retention",       tier: CONFIG_ROLES,     need: "Admin or Compliance" },
-  { prefix: "/admin/audit",           tier: CONFIG_ROLES,     need: "Admin or Compliance" },
-];
-function requiredReadTier(path: string): { tier: Set<Role>; need: string } | null {
-  return READ_TIERS.find((r) => path === r.prefix || path.startsWith(r.prefix + "/")) ?? null;
-}
 
 /**
  * Routes inside /admin/* that DON'T require an admin TOTP cookie:
@@ -104,7 +79,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     redirect(loginUrl as never);
   }
   const u = await db.user.findById(session.userId);
-  const allowed = u && ADMIN_ROLES.has(u.role);
+  const allowed = u && isStaffRole(u.role);
   if (!allowed) {
     // Wrong role (e.g. player session) — send to admin login with deep-link preserved.
     const h0 = await headers();
@@ -184,19 +159,24 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     } catch { /* read-only render context — next mutable request resyncs */ }
   }
 
-  // READ-tier gate: money / compliance-PII / config surfaces are ADMIN/COMPLIANCE
-  // only to VIEW. When the role falls short we render AdminRestricted in place of
-  // `children` — the page subtree (and its server data-fetch) never runs.
-  const readTier = requiredReadTier(path);
-  const readBlocked = !!readTier && !hasRole(session.role, readTier.tier);
+  // RBAC VIEW gate — Owner-only surfaces first, then the route's domain. Uses the
+  // live DB role (u.role), the authoritative source. AdminRestricted replaces the
+  // subtree so gated data never renders nor fetches.
+  const viewerRole = u!.role;
+  const ownerOnly = isOwnerOnlyPath(path);
+  const domain = domainForPath(path);
+  const viewBlocked = ownerOnly ? !isAdmin(viewerRole) : !(await canView(viewerRole, domain));
+  const need = ownerOnly ? "Owner (ADMIN) only" : `${DOMAIN_LABEL[domain]} access`;
+  const viewDomains = Array.from(await viewableDomains(viewerRole));
+  const isOwner = isAdmin(viewerRole);
 
   return (
     <div className="min-h-screen bg-bg-base text-text">
       <ConfidentialBand session={adminSession} />
       <div className="flex">
-        <AdminSidebar activeKey={activeKey} />
+        <AdminSidebar activeKey={activeKey} viewDomains={viewDomains} isOwner={isOwner} />
         <main className="flex-1 min-w-0 flex flex-col">
-          <AdminTopBar crumbs={crumbs} session={adminSession} activeKey={activeKey} />
+          <AdminTopBar crumbs={crumbs} session={adminSession} activeKey={activeKey} viewDomains={viewDomains} isOwner={isOwner} />
           {/* DESIGN_AUTHORITY B7 — the console measure.
               This div had NO max-width, so all 43 admin pages rendered at
               100vw-216px: 1,704px at 1920 and 2,344px at 2560, while the player
@@ -212,8 +192,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               `data-measure` is what lets scripts/responsive-audit.mjs assert the
               upper bound at runtime — see `npm run test:measure`. */}
           <div className="flex-1 mx-auto w-full max-w-console" data-measure="console">
-            {readBlocked
-              ? <AdminRestricted title={crumbs[crumbs.length - 1] ?? "Restricted"} need={readTier!.need} />
+            {viewBlocked
+              ? <AdminRestricted title={crumbs[crumbs.length - 1] ?? "Restricted"} need={need} />
               : children}
           </div>
         </main>

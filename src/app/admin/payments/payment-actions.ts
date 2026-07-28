@@ -15,7 +15,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
 import { requireAdminTotp } from "@/lib/server/admin-guard";
-import { COMPLIANCE_ROLES } from "@/lib/server/roles";
+import { canAct } from "@/lib/server/rbac";
 import { setKillSwitch, type Mno, MNOS } from "@/lib/server/payment-ops";
 import { setPaymentControls, type ControlsUpdate, type PaymentProviderId } from "@/lib/server/payment-control";
 import { selcomEnv, selcomPing } from "@/lib/server/selcom";
@@ -29,9 +29,9 @@ async function gate(action: string): Promise<{ userId: string; sessionId: string
   const session = await currentSession();
   if (!session) redirect("/auth/admin");
   const user = await db.user.findById(session.userId);
-  if (!user || !COMPLIANCE_ROLES.has(user.role)) {
-    audit({ category: "SECURITY", action: "privilege_escalation_blocked", actorId: session.userId, targetType: "Action", targetId: action, payload: { role: user?.role ?? "unknown" } });
-    return { error: "Forbidden: ADMIN or COMPLIANCE role required." };
+  if (!user || !(user.role === "ADMIN" || (await canAct(user.role, "accounting")))) {
+    audit({ category: "SECURITY", action: "privilege_escalation_blocked", actorId: session.userId, targetType: "Action", targetId: action, payload: { role: user?.role ?? "unknown", domain: "accounting" } });
+    return { error: "Forbidden: your role cannot manage payments." };
   }
   await requireAdminTotp(session.userId, session.sessionId);
   return { userId: session.userId, sessionId: session.sessionId };

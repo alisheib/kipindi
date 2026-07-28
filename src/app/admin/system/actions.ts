@@ -10,18 +10,12 @@ import { revalidatePath } from "next/cache";
 import { setSupportConfig, getSupportConfig, SUPPORT_CONFIG_KEY } from "@/lib/support-config";
 import { setPlatformConfig } from "@/lib/server/platform-config";
 import { saveConfig } from "@/lib/server/config-store";
-import { CONFIG_ROLES } from "@/lib/server/roles";
-import { requireAdminTotp } from "@/lib/server/admin-guard";
+import { requireStaff } from "@/lib/server/rbac-guard";
 
-const ADMIN_ROLES = CONFIG_ROLES; // role tier — see @/lib/server/roles
-
+// RBAC: authorization is data-driven — requireStaff checks this role's canAct for the
+// domain (Owner/ADMIN bypasses), audits a blocked attempt, then enforces step-up 2FA.
 async function requireAdmin() {
-  const session = await currentSession();
-  if (!session) redirect("/auth/admin");
-  const u = await db.user.findById(session.userId);
-  if (!(u && ADMIN_ROLES.has(u.role))) redirect("/auth/admin");
-  await requireAdminTotp(session.userId, session.sessionId);
-  return session;
+  return requireStaff("ops");
 }
 
 export async function verifyChainAction() {

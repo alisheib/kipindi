@@ -108,6 +108,11 @@ export const ROLE_LABEL: Record<Role, string> = {
   SUPPORT: "Support",
 };
 
+/** Safe role→label for display in the admin chrome (falls back to the raw value). */
+export function roleLabel(role: string | null | undefined): string {
+  return (role && ROLE_LABEL[role as Role]) || (role ?? "—");
+}
+
 /** Short label per domain (headings, chips). */
 export const DOMAIN_LABEL: Record<AdminDomain, string> = {
   overview: "Overview",

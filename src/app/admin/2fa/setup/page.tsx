@@ -6,18 +6,18 @@ import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { hasTotp } from "@/lib/server/totp";
 import { TotpSetupClient } from "./setup-client";
-import { ADMIN_CONSOLE_ROLES } from "@/lib/server/roles";
+import { isStaffRole } from "@/lib/server/roles";
 
 export const metadata = { title: "Admin · 2FA setup" };
 export const dynamic = "force-dynamic";
 
-const ADMIN_ROLES = ADMIN_CONSOLE_ROLES; // role tier — see @/lib/server/roles
+// RBAC: any staff role may open the console + enrol 2FA (see isStaffRole).
 
 export default async function TotpSetupPage() {
   const session = await currentSession();
   if (!session) redirect("/auth/admin");
   const u = await db.user.findById(session.userId);
-  if (!(u && ADMIN_ROLES.has(u.role))) redirect("/auth/admin");
+  if (!(u && isStaffRole(u.role))) redirect("/auth/admin");
 
   const enabled = await hasTotp(session.userId);
 

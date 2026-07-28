@@ -13,7 +13,8 @@ import { AdminSidebarNav } from "./admin-sidebar-nav";
 import { RefreshButton } from "./refresh-button";
 import { AiToolkit } from "./ai-toolkit";
 import { getAiToolkitStatus } from "@/lib/server/ai-controls";
-import { NAV_GROUPS } from "./admin-nav-groups";
+import { filterNavGroups } from "./admin-nav-groups";
+import { roleLabel, type AdminDomain } from "@/lib/server/roles";
 import { AdminSpark } from "./admin-charts";
 import { formatDateISO } from "@/lib/utils";
 
@@ -41,7 +42,7 @@ export async function ConfidentialBand({ session }: { session: AdminSession }) {
         <span className="text-white">Staff · Confidential · Internal only</span>
       </span>
       <span className="hidden sm:inline text-white/70">
-        50pick Africa · session #{shortSessionLabel(session)} · officer · {email}
+        50pick Africa · {roleLabel(session.role)} · session #{shortSessionLabel(session)} · {email}
       </span>
     </div>
   );
@@ -66,8 +67,10 @@ export async function getSidebarBadges() {
   };
 }
 
-export async function AdminSidebar({ activeKey }: { activeKey: string }) {
+export async function AdminSidebar({ activeKey, viewDomains, isOwner }: { activeKey: string; viewDomains: AdminDomain[]; isOwner: boolean }) {
   const badges = await getSidebarBadges();
+  // RBAC nav gate — show only the groups/items whose domain the viewer may see.
+  const groups = filterNavGroups(viewDomains, isOwner);
   return (
     <aside className="hidden lg:flex shrink-0 border-r border-border flex-col gap-1 sticky top-0 self-start max-h-screen overflow-y-auto"
       style={{ width: 216, padding: "18px 14px", background: "var(--panel)" }}>
@@ -75,7 +78,7 @@ export async function AdminSidebar({ activeKey }: { activeKey: string }) {
         <FiftyMark size={18} simplified aria-hidden />
         <span className="font-display font-bold text-body-sm text-text">50pick · admin</span>
       </Link>
-      <AdminSidebarNav badges={badges} fallbackKey={activeKey} />
+      <AdminSidebarNav groups={groups} badges={badges} fallbackKey={activeKey} />
       <div className="mt-auto pt-3 border-t border-dashed border-border-subtle text-caption text-text-tertiary px-2">
         <div>v2.4 · deployed {formatDateISO(new Date().toISOString())}</div>
         <div className="mt-1">EN · SW · ZH</div>
@@ -84,8 +87,9 @@ export async function AdminSidebar({ activeKey }: { activeKey: string }) {
   );
 }
 
-export async function AdminTopBar({ crumbs, session, activeKey }: { crumbs: string[]; session: AdminSession; activeKey: string }) {
+export async function AdminTopBar({ crumbs, session, activeKey, viewDomains, isOwner }: { crumbs: string[]; session: AdminSession; activeKey: string; viewDomains: AdminDomain[]; isOwner: boolean }) {
   const badges = await getSidebarBadges();
+  const groups = filterNavGroups(viewDomains, isOwner);
   return (
     <div className="relative z-40 border-b border-border"
       style={{
@@ -106,7 +110,7 @@ export async function AdminTopBar({ crumbs, session, activeKey }: { crumbs: stri
           pattern the player top bar already uses. */}
       <div className="mx-auto w-full max-w-console h-full flex items-center justify-between px-4 lg:px-6 gap-3">
       <div className="flex items-center gap-2 min-w-0">
-        <AdminMobileNavTrigger groups={NAV_GROUPS} badges={badges} activeKey={activeKey} />
+        <AdminMobileNavTrigger groups={groups} badges={badges} activeKey={activeKey} />
       <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-body-sm text-text-tertiary min-w-0 overflow-hidden">
         {crumbs.map((c, i) => {
           const isLast = i === crumbs.length - 1;
@@ -150,8 +154,15 @@ export async function AdminTopBar({ crumbs, session, activeKey }: { crumbs: stri
             (Reports, Finance, Audit, System…) where player search is out of
             context and confusing. The dedicated /admin/players page has its own
             search — that's the single, correctly-scoped place to find a player. */}
-        <span className="font-mono text-micro tracking-[0.14em] uppercase px-2.5 h-7 inline-flex items-center rounded-md border border-border bg-bg-inset text-text-secondary">
-          ACTIVE
+        {/* Role chip — every staff member sees WHICH role they're operating as
+            (Owner / Compliance / Trading / Finance / Growth / Auditor / Support).
+            Replaces the old always-"ACTIVE" label; the aqua-dot officer pill beside
+            it already carries the live/active signal. */}
+        <span
+          title={`You are signed in as ${roleLabel(session.role)}`}
+          className="font-mono text-micro tracking-[0.14em] uppercase px-2.5 h-7 inline-flex items-center rounded-md border border-border bg-bg-inset text-text-secondary"
+        >
+          {roleLabel(session.role)}
         </span>
         <span className="font-mono text-micro tracking-[0.14em] px-2.5 h-7 inline-flex items-center rounded-md border border-border bg-bg-elevated text-text gap-1.5">
           {/* Aqua = officer-active signal (admin live-feed hue), not gold. */}

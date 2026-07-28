@@ -10,12 +10,12 @@ import { hasTotp } from "@/lib/server/totp";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { startLoginAction } from "@/app/auth/login/actions";
 import { SUPPORT_EMAIL } from "@/lib/support-config";
-import { ADMIN_CONSOLE_ROLES } from "@/lib/server/roles";
+import { isStaffRole } from "@/lib/server/roles";
 
 export const metadata = { title: "Admin sign in · Kuingia" };
 export const dynamic = "force-dynamic";
 
-const ADMIN_ROLES = ADMIN_CONSOLE_ROLES; // role tier — see @/lib/server/roles
+// RBAC: any staff role may open the console (see isStaffRole).
 
 export default async function AdminLoginPage({ searchParams }: { searchParams?: Promise<{ next?: string }> }) {
   const nextRaw = (await searchParams)?.next ?? "";
@@ -25,7 +25,7 @@ export default async function AdminLoginPage({ searchParams }: { searchParams?: 
   const session = await currentSession();
   if (session) {
     const u = await db.user.findById(session.userId);
-    const isAdmin = u && ADMIN_ROLES.has(u.role);
+    const isAdmin = u && isStaffRole(u.role);
     if (isAdmin) {
       if (process.env.DISABLE_ADMIN_TOTP !== "true" && await hasTotp(session.userId)) {
         redirect(next ? `/admin/totp-verify?next=${encodeURIComponent(next)}` : "/admin/totp-verify");

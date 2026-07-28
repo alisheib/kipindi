@@ -5,18 +5,18 @@ import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { hasTotp } from "@/lib/server/totp";
 import { TotpVerifyForm } from "./verify-form";
-import { ADMIN_CONSOLE_ROLES } from "@/lib/server/roles";
+import { isStaffRole } from "@/lib/server/roles";
 
 export const metadata = { title: "Admin · 2FA verification" };
 export const dynamic = "force-dynamic";
 
-const ADMIN_ROLES = ADMIN_CONSOLE_ROLES; // role tier — see @/lib/server/roles
+// RBAC: any staff role may open the console (see isStaffRole).
 
 export default async function AdminTotpVerifyPage({ searchParams }: { searchParams?: Promise<{ next?: string }> }) {
   const session = await currentSession();
   if (!session) redirect("/auth/admin");
   const u = await db.user.findById(session.userId);
-  const isAdmin = u && ADMIN_ROLES.has(u.role);
+  const isAdmin = u && isStaffRole(u.role);
   if (!isAdmin) redirect("/");
 
   // When TOTP is globally disabled via env var, skip straight to admin.

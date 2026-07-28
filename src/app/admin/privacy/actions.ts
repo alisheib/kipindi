@@ -6,16 +6,17 @@ import { fileDsarRequest, fulfillDsarRequest, buildDsarBundle } from "@/lib/serv
 import { getSession } from "@/lib/server/session";
 import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
-import { COMPLIANCE_ROLES } from "@/lib/server/roles";
+import { canAct } from "@/lib/server/rbac";
 import { requireAdminTotp } from "@/lib/server/admin-guard";
 
-const ADMIN_ROLES = COMPLIANCE_ROLES; // role tier — see @/lib/server/roles
-
+// RBAC: authorization is data-driven — canAct checks the role's grant for `compliance`
+// (Owner/ADMIN bypasses inside canAct). Kept as a soft {ok:false} return because this
+// surface returns errors rather than redirecting; then step-up 2FA.
 async function requireOfficer(): Promise<{ ok: true; userId: string } | { ok: false; error: string }> {
   const session = await getSession();
   if (!session) return { ok: false, error: "Sign in." };
   const u = await db.user.findById(session.userId);
-  if (!u || !ADMIN_ROLES.has(u.role)) return { ok: false, error: "Not authorised." };
+  if (!u || !(u.role === "ADMIN" || (await canAct(u.role, "compliance")))) return { ok: false, error: "Not authorised." };
   await requireAdminTotp(session.userId, session.sessionId);
   return { ok: true, userId: session.userId };
 }

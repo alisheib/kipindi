@@ -1,19 +1,16 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { currentSession } from "@/lib/server/auth-service";
-import { hasRole, MARKET_OPS_ROLES } from "@/lib/server/roles";
-import { requireAdminTotp } from "@/lib/server/admin-guard";
+import { requireStaff } from "@/lib/server/rbac-guard";
 import { addEvent, removeEvent, getEvent, markEventGenerated, eventSteer } from "@/lib/server/events-service";
 import { generateAIPoll } from "@/lib/server/ai-poll-generation";
 import { computeSelectionClosedAt } from "@/lib/server/ai-poll-config";
 import type { MarketCategory } from "@/lib/server/market-service";
 
-/** Same guard the other market-ops actions use: role tier + step-up TOTP. */
+/** RBAC: data-driven — requireStaff checks the role's canAct for `trading`
+ *  (Owner/ADMIN bypasses, DB-authoritative role), audits + step-up TOTP. */
 async function requireOfficer(action: string): Promise<{ userId: string }> {
-  const s = await currentSession();
-  if (!s || !hasRole(s.role, MARKET_OPS_ROLES)) throw new Error(`Forbidden: ${action}`);
-  await requireAdminTotp(s.userId, s.sessionId);
+  const s = await requireStaff("trading", action);
   return { userId: s.userId };
 }
 

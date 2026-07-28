@@ -20,8 +20,8 @@
 | `test:staff-role` | — (Phase 3) | PASS |
 | `test:all` (twice) | ✅ 100/100 green ×2 (Phase 1) | PASS twice |
 | Existing guards (`admin-roles`, `admin-nav`, `officer-conflict`, `two-admin`) | ✅ green | stay green |
-| Last shipped (live-verified) | Phase 1 landing | each phase uptime-verified |
-| Railway deploy | Phase 1 pending verify | SUCCESS + `uptimeSec` reset per phase |
+| Last shipped (live-verified) | ✅ Phase 1 @`5da76fb` (uptime reset, Online) | each phase uptime-verified |
+| Railway deploy | ✅ Phase 1 deploy-verified (fresh container = migrate deploy ran) | SUCCESS + `uptimeSec` reset per phase |
 
 ---
 
@@ -106,9 +106,17 @@ sub-blocks render only for `compliance` view, and money/compliance controls only
       + `RoleDomainGrant` + nullable `User.roleChangedAt/By`); `schema.prisma` models; `roles.ts`/`rbac.ts`
       (`AdminDomain`, `STAFF_ROLES`, `DEFAULT_GRANTS`, `ROUTE_DOMAINS`+`domainForPath`+completeness assert,
       `roleGrants` loader+cache, `canView`/`canAct`, `requireStaff`); `test:rbac`.
-- [ ] **Phase 2 — Gate layers:** layout `ROUTE_DOMAINS`→`canView` (replaces `READ_TIERS`) + `OWNER_ONLY_PREFIXES`
-      + console admission → `STAFF_ROLES`; nav `domain` per item + filter in sidebar/mobile nav (hide empty
-      groups); every action file → `requireStaff(domain)`; player-detail sub-block gating.
+- [~] **Phase 2 — Gate layers (core shipped @2a; remainder in 2b):**
+      - [x] Route VIEW gate — layout `ROUTE_DOMAINS`→`canView` (replaced `READ_TIERS`) + `OWNER_ONLY_PREFIXES`
+            + console admission widened to `STAFF_ROLES` (login/2FA/verify pages too).
+      - [x] Nav filter — `domain` per `NAV_GROUPS` item + `filterNavGroups` in sidebar + mobile nav (empty groups hidden).
+      - [x] Role display — role chip in the admin top bar + role in the confidential band (Ali's "know who you are" ask).
+      - [x] Action guard — `requireStaff`/`canAct` applied to 15 action files (ai-polls, candidates, sources, bonuses,
+            invites, affiliate, config, system, ai-usage, approvals, objections, privacy, settlement, payments, reports, events).
+      - [ ] **2b:** remaining action files (players[mixed], aml, markets, kyc, resolver×2, updown, proposals, ai-toolkit,
+            3 `api/admin/*` routes) → `requireStaff`; in-page `hasRole` page-gates (insights/transactions/reports/objections/
+            finance) updated for new roles; player-detail KYC/PII sub-block gating (Support scope). *(Un-migrated files keep
+            the old tiers — safe: no regression for ADMIN/COMPLIANCE/MODERATOR; new roles are unassigned until Phase 3.)*
 - [ ] **Phase 3 — `/admin/staff`:** roster + `[id]` detail + `setStaffRoleAction` (Owner-only, TOTP, reason,
       self-demotion block, `revokeUserSessions`, audit, consequence confirm); nav/route registration; `test:staff-role`.
 - [ ] **Phase 4 — `/admin/roles`:** matrix editor (Owner-only, `Toggle` grid, live-save, audited,
@@ -134,4 +142,10 @@ sub-blocks render only for `compliance` view, and money/compliance controls only
 
 ## Shipped (append each commit)
 
-- _(none yet — Phase 0 landing)_
+- **Phase 1** — `5da76fb` (2026-07-28) — role model + `AdminDomain` + `RoleDomainGrant` + loader +
+  `requireStaff`/`requireOwner` guards + two additive migrations + `test:rbac` (92). tsc/build/test:all
+  ×2 green; deploy-verified (container restart, `uptimeSec` reset, `auditEntries` 0, service Online).
+- **Phase 2a** — (2026-07-28) — three gate layers wired: layout route VIEW gate (`domainForPath`→`canView`,
+  Owner-only staff/roles, console admission→`STAFF_ROLES`), nav domain filter (`filterNavGroups`), role
+  chip + confidential-band role, and 15 action files migrated to `requireStaff`/`canAct`. tsc/build clean;
+  test:all 100/100 (a `test:trilingual` flake cleared on re-run). No regression for ADMIN/existing roles.

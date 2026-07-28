@@ -11,19 +11,12 @@ import {
   clearMarketOverride,
   type RateConfig,
 } from "@/lib/server/market-config";
-import { CONFIG_ROLES } from "@/lib/server/roles";
-import { requireAdminTotp } from "@/lib/server/admin-guard";
+import { requireStaff } from "@/lib/server/rbac-guard";
 
-const ADMIN_ROLES = CONFIG_ROLES; // role tier — see @/lib/server/roles
-
+// RBAC: authorization is data-driven — requireStaff checks this role's canAct for the
+// domain (Owner/ADMIN bypasses), audits a blocked attempt, then enforces step-up 2FA.
 async function ensureAdmin() {
-  const s = await currentSession();
-  if (!s) redirect("/auth/admin");
-  // Role check here too — Server Actions bypass the admin layout's gate.
-  const u = await db.user.findById(s.userId);
-  if (!u || !ADMIN_ROLES.has(u.role)) redirect("/auth/admin");
-  await requireAdminTotp(s.userId, s.sessionId); // B3: 2FA at the action layer
-  return s;
+  return requireStaff("accounting");
 }
 
 function parseRate(raw: string | null, scale = 100): number | undefined {

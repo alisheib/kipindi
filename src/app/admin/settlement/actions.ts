@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
-import { MONEY_ROLES } from "@/lib/server/roles";
+import { canAct } from "@/lib/server/rbac";
 import { requireAdminTotp } from "@/lib/server/admin-guard";
 import { settleMarket } from "@/lib/server/market-service";
 import { formatTzs } from "@/lib/utils";
@@ -17,7 +17,7 @@ async function requireMoneyOfficer() {
   const session = await currentSession();
   if (!session) redirect("/auth/admin");
   const u = await db.user.findById(session.userId);
-  if (!(u && MONEY_ROLES.has(u.role))) redirect("/auth/admin");
+  if (!(u && (u.role === "ADMIN" || (await canAct(u.role, "accounting"))))) redirect("/auth/admin");
   return session;
 }
 

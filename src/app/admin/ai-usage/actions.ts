@@ -8,18 +8,12 @@ import { db } from "@/lib/server/store";
 import { setCreditLimit, resetCreditCycle, getCreditConfig } from "@/lib/server/ai-usage";
 import { setAiModel, AVAILABLE_MODELS } from "@/lib/server/ai-ops-config";
 import { audit } from "@/lib/server/audit";
-import { CONFIG_ROLES } from "@/lib/server/roles";
-import { requireAdminTotp } from "@/lib/server/admin-guard";
+import { requireStaff } from "@/lib/server/rbac-guard";
 
-const ADMIN_ROLES = CONFIG_ROLES; // role tier — see @/lib/server/roles
-
+// RBAC: authorization is data-driven — requireStaff checks this role's canAct for the
+// domain (Owner/ADMIN bypasses), audits a blocked attempt, then enforces step-up 2FA.
 async function ensureAdmin() {
-  const s = await currentSession();
-  if (!s) redirect("/auth/admin");
-  const u = await db.user.findById(s.userId);
-  if (!u || !ADMIN_ROLES.has(u.role)) redirect("/auth/admin");
-  await requireAdminTotp(s.userId, s.sessionId);
-  return s;
+  return requireStaff("ops");
 }
 
 /** Set the per-cycle spend limit (USD). Admins are emailed at ~80% and at 100%. */

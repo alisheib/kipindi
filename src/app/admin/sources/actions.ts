@@ -13,18 +13,12 @@ import {
   normalizeDomain,
 } from "@/lib/server/source-registry";
 import type { MarketCategory } from "@/lib/server/market-service";
-import { MARKET_OPS_ROLES } from "@/lib/server/roles";
-import { requireAdminTotp } from "@/lib/server/admin-guard";
+import { requireStaff } from "@/lib/server/rbac-guard";
 
-const ADMIN_ROLES = MARKET_OPS_ROLES; // role tier — see @/lib/server/roles
-
+// RBAC: authorization is data-driven — requireStaff checks this role's canAct for the
+// domain (Owner/ADMIN bypasses), audits a blocked attempt, then enforces step-up 2FA.
 async function ensureAdmin() {
-  const session = await currentSession();
-  if (!session) redirect("/auth/admin");
-  const u = await db.user.findById(session.userId);
-  if (!u || !ADMIN_ROLES.has(u.role)) redirect("/auth/admin");
-  await requireAdminTotp(session.userId, session.sessionId);
-  return session;
+  return requireStaff("trading");
 }
 
 export async function addSourceAction(formData: FormData) {

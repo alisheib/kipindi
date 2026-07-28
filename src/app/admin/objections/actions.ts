@@ -4,8 +4,8 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
-import { COMPLIANCE_ROLES } from "@/lib/server/roles";
 import { requireAdminTotp } from "@/lib/server/admin-guard";
+import { requireStaff } from "@/lib/server/rbac-guard";
 import { upholdObjection, rejectObjection } from "@/lib/server/objections-service";
 import type { ObjectionRemedy } from "@/lib/server/store";
 
@@ -17,14 +17,10 @@ import type { ObjectionRemedy } from "@/lib/server/store";
  * same class of act as emergencyVoidMarket, which the service already restricts
  * to ADMIN/COMPLIANCE — so a MODERATOR must not be able to reach it here either.
  */
-const ADMIN_ROLES = COMPLIANCE_ROLES;
-
+// RBAC: authorization is data-driven — requireStaff checks this role's canAct for the
+// domain (Owner/ADMIN bypasses), audits a blocked attempt, then enforces step-up 2FA.
 async function requireOfficer() {
-  const session = await currentSession();
-  if (!session) redirect("/auth/admin");
-  const u = await db.user.findById(session.userId);
-  if (!(u && ADMIN_ROLES.has(u.role))) redirect("/auth/admin");
-  return session;
+  return requireStaff("compliance");
 }
 
 /**

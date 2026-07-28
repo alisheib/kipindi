@@ -11,46 +11,62 @@
  * file, and `assertNavKeysResolve()` fails the build if a prefix maps to a key that
  * no nav item owns — so a typo cannot silently highlight nothing again.
  */
-export const NAV_GROUPS: ReadonlyArray<{
-  group: { en: string; sw: string };
-  items: ReadonlyArray<{ href: string; label: string; key: string; badge?: string }>;
-}> = [
+import type { AdminDomain } from "@/lib/server/roles";
+
+/** A nav item carries the RBAC `domain` it belongs to (drives visibility). Two
+ *  flags override the domain check: `allStaff` (always shown to any staff — e.g.
+ *  2FA setup) and `ownerOnly` (only ADMIN — e.g. staff/roles). See `filterNavGroups`. */
+export type NavItem = {
+  href: string;
+  label: string;
+  key: string;
+  badge?: string;
+  domain: AdminDomain;
+  ownerOnly?: boolean;
+  allStaff?: boolean;
+};
+export type NavGroup = { group: { en: string; sw: string }; items: ReadonlyArray<NavItem> };
+
+export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
   {
     group: { en: "Overview", sw: "Muhtasari" },
     items: [
-      { href: "/admin",      label: "Overview", key: "overview" },
-      { href: "/admin/live", label: "Live ops", key: "live" },
+      { href: "/admin",      label: "Overview", key: "overview", domain: "overview" },
+      { href: "/admin/live", label: "Live ops", key: "live", domain: "overview" },
     ],
   },
   {
     group: { en: "Money", sw: "Pesa" },
     items: [
-      { href: "/admin/insights", label: "Insights", key: "insights" },
-      { href: "/admin/settlement",    label: "Settlement", key: "settlement" },
-      { href: "/admin/finance", label: "Finance", key: "finance" },
-      { href: "/admin/reports", label: "Reports", key: "reports" },
-      { href: "/admin/payments", label: "Payments ops", key: "payments" },
-      { href: "/admin/transactions", label: "Transactions", key: "transactions" },
+      { href: "/admin/insights", label: "Insights", key: "insights", domain: "accounting" },
+      { href: "/admin/settlement",    label: "Settlement", key: "settlement", domain: "accounting" },
+      { href: "/admin/finance", label: "Finance", key: "finance", domain: "accounting" },
+      { href: "/admin/reports", label: "Reports", key: "reports", domain: "accounting" },
+      { href: "/admin/payments", label: "Payments ops", key: "payments", domain: "accounting" },
+      { href: "/admin/transactions", label: "Transactions", key: "transactions", domain: "accounting" },
     ],
   },
   {
     group: { en: "Players", sw: "Wachezaji" },
     items: [
-      { href: "/admin/players",         label: "Roster",  key: "players" },
-      { href: "/admin/players/cohorts", label: "Cohorts", key: "cohorts" },
+      // Roster is `support` (the player desk); cohorts is aggregate `growth` analytics —
+      // so this group shows different items to Support vs Growth.
+      { href: "/admin/players",         label: "Roster",  key: "players", domain: "support" },
+      { href: "/admin/players/cohorts", label: "Cohorts", key: "cohorts", domain: "growth" },
     ],
   },
   {
     group: { en: "Markets", sw: "Masoko" },
     items: [
-      { href: "/admin/events",          label: "Event calendar", key: "events" },
-      { href: "/admin/ai-polls",        label: "AI poll generation", key: "ai-polls" },
-      { href: "/admin/candidates",     label: "AI candidates", key: "candidates" },
-      { href: "/admin/proposals",      label: "Player proposals", key: "proposals" },
-      { href: "/admin/markets",        label: "Curation queue", key: "markets" },
-      { href: "/admin/resolver-queue", label: "Resolver queue", key: "resolver" },
-      { href: "/admin/sources",        label: "Sources & categories", key: "sources" },
-      { href: "/admin/config",         label: "Rates & fees", key: "config" },
+      { href: "/admin/events",          label: "Event calendar", key: "events", domain: "trading" },
+      { href: "/admin/ai-polls",        label: "AI poll generation", key: "ai-polls", domain: "trading" },
+      { href: "/admin/candidates",     label: "AI candidates", key: "candidates", domain: "trading" },
+      { href: "/admin/proposals",      label: "Player proposals", key: "proposals", domain: "trading" },
+      { href: "/admin/markets",        label: "Curation queue", key: "markets", domain: "trading" },
+      { href: "/admin/resolver-queue", label: "Resolver queue", key: "resolver", domain: "trading" },
+      { href: "/admin/sources",        label: "Sources & categories", key: "sources", domain: "trading" },
+      // Rates & fees change platform economics (money-grade) — `accounting`, not trading.
+      { href: "/admin/config",         label: "Rates & fees", key: "config", domain: "accounting" },
     ],
   },
   {
@@ -60,43 +76,65 @@ export const NAV_GROUPS: ReadonlyArray<{
     // long-form-poll surfaces.
     group: { en: "Up & Down", sw: "Juu na Chini" },
     items: [
-      { href: "/admin/updown",         label: "Overview",  key: "updown" },
-      { href: "/admin/updown/rounds",  label: "Rounds",    key: "updown-rounds" },
+      { href: "/admin/updown",         label: "Overview",  key: "updown", domain: "trading" },
+      { href: "/admin/updown/rounds",  label: "Rounds",    key: "updown-rounds", domain: "trading" },
     ],
   },
   {
     group: { en: "Growth", sw: "Ukuaji" },
     items: [
-      { href: "/admin/affiliate", label: "Affiliate", key: "affiliate" },
-      { href: "/admin/bonuses",   label: "Bonuses",   key: "bonuses" },
-      { href: "/admin/invites",   label: "Invites",   key: "invites" },
+      { href: "/admin/affiliate", label: "Affiliate", key: "affiliate", domain: "growth" },
+      { href: "/admin/bonuses",   label: "Bonuses",   key: "bonuses", domain: "growth" },
+      { href: "/admin/invites",   label: "Invites",   key: "invites", domain: "growth" },
     ],
   },
   {
     group: { en: "Compliance", sw: "Kanuni" },
     items: [
-      { href: "/admin/compliance",      label: "Compliance",     key: "compliance" },
+      { href: "/admin/compliance",      label: "Compliance",     key: "compliance", domain: "compliance" },
       // F11 — an OPEN objection freezes a market's settlement, so this queue holds
       // real money hostage until an officer clears it. It sits high on purpose.
-      { href: "/admin/objections",      label: "Objections",     key: "objections" },
-      { href: "/admin/moderation",      label: "Comment moderation", key: "moderation" },
-      { href: "/admin/aml",             label: "AML queue",      key: "aml" },
-      { href: "/admin/self-exclusions", label: "Self-exclusions", key: "sx" },
-      { href: "/admin/privacy",         label: "Privacy / DSAR", key: "privacy" },
-      { href: "/admin/retention",       label: "Retention",      key: "retention" },
-      { href: "/admin/audit",           label: "Audit log",      key: "audit" },
+      { href: "/admin/objections",      label: "Objections",     key: "objections", domain: "compliance" },
+      // Comment moderation is content ops (Trading's remit) even though it lives in
+      // the Compliance group visually — so it shows to Trading, not to Compliance.
+      { href: "/admin/moderation",      label: "Comment moderation", key: "moderation", domain: "trading" },
+      { href: "/admin/aml",             label: "AML queue",      key: "aml", domain: "compliance" },
+      { href: "/admin/self-exclusions", label: "Self-exclusions", key: "sx", domain: "compliance" },
+      { href: "/admin/privacy",         label: "Privacy / DSAR", key: "privacy", domain: "compliance" },
+      { href: "/admin/retention",       label: "Retention",      key: "retention", domain: "compliance" },
+      { href: "/admin/audit",           label: "Audit log",      key: "audit", domain: "compliance" },
     ],
   },
   {
     group: { en: "System", sw: "Mfumo" },
     items: [
-      { href: "/admin/system",    label: "System",    key: "system" },
-      { href: "/admin/ai-usage",  label: "AI usage & credits", key: "ai-usage" },
-      { href: "/admin/approvals", label: "Approvals", key: "approvals" },
-      { href: "/admin/2fa/setup", label: "2FA setup", key: "2fa" },
+      { href: "/admin/system",    label: "System",    key: "system", domain: "ops" },
+      { href: "/admin/ai-usage",  label: "AI usage & credits", key: "ai-usage", domain: "ops" },
+      { href: "/admin/approvals", label: "Approvals", key: "approvals", domain: "compliance" },
+      // 2FA setup secures the logged-in officer's own account — every staff role must
+      // reach it (the layout even force-redirects here on first login).
+      { href: "/admin/2fa/setup", label: "2FA setup", key: "2fa", domain: "ops", allStaff: true },
     ],
   },
 ];
+
+/**
+ * Filter the nav to what a viewer may SEE. An item shows when: `allStaff` (any staff),
+ * or `ownerOnly` && the viewer is the Owner (ADMIN), or the viewer's viewable domains
+ * include the item's domain. Empty groups are dropped. This is the NAV layer of the
+ * three-layer gate — it MUST agree with the route + action gates (same domains).
+ */
+export function filterNavGroups(
+  viewDomains: ReadonlySet<AdminDomain> | readonly AdminDomain[],
+  isOwner: boolean,
+): NavGroup[] {
+  const set = viewDomains instanceof Set ? viewDomains : new Set(viewDomains);
+  const visible = (it: NavItem) =>
+    !!it.allStaff || (it.ownerOnly ? isOwner : set.has(it.domain));
+  return NAV_GROUPS
+    .map((g) => ({ ...g, items: g.items.filter(visible) }))
+    .filter((g) => g.items.length > 0);
+}
 
 /**
  * Route prefix → nav key. ORDER MATTERS: the first match wins, so a more specific

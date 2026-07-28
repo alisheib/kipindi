@@ -6,15 +6,15 @@ import { revalidatePath } from "next/cache";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { provisionTotp, verifyTotp, removeTotp, hasTotp } from "@/lib/server/totp";
-import { ADMIN_CONSOLE_ROLES } from "@/lib/server/roles";
+import { isStaffRole } from "@/lib/server/roles";
 
-const ADMIN_ROLES = ADMIN_CONSOLE_ROLES; // role tier — see @/lib/server/roles
+// RBAC: any staff role may open the console + enrol 2FA (see isStaffRole).
 
 async function requireAdmin() {
   const session = await currentSession();
   if (!session) redirect("/auth/admin");
   const u = await db.user.findById(session.userId);
-  if (!(u && ADMIN_ROLES.has(u.role))) redirect("/auth/admin");
+  if (!(u && isStaffRole(u.role))) redirect("/auth/admin");
   return { session, user: u };
 }
 

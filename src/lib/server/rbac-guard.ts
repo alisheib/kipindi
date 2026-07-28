@@ -14,14 +14,17 @@ import { db } from "./store";
 import { audit } from "./audit";
 import { requireAdminTotp } from "./admin-guard";
 import { canAct } from "./rbac";
+import type { SessionData } from "./session";
 import type { AdminDomain, Role } from "./roles";
 
 /**
- * The single shared ACTION guard. session → live DB role → ADMIN passes → else
- * `canAct(role, domain)` → else SECURITY audit + throw → step-up 2FA. Returns the
- * officer's userId. `action` (optional) is recorded on a blocked attempt.
+ * The single shared ACTION guard — replaces the per-file `ensureAdmin()`/`requireAdmin()`.
+ * session → live DB role → ADMIN passes → else `canAct(role, domain)` → else SECURITY
+ * audit + throw → step-up 2FA. Returns the officer's SESSION (so call sites keep using
+ * `.userId` / `.sessionId` exactly as before). `action` (optional) is recorded on a
+ * blocked attempt for traceability.
  */
-export async function requireStaff(domain: AdminDomain, action?: string): Promise<string> {
+export async function requireStaff(domain: AdminDomain, action?: string): Promise<SessionData> {
   const session = await currentSession();
   if (!session) redirect("/auth/admin");
   const me = await db.user.findById(session.userId);
@@ -41,13 +44,14 @@ export async function requireStaff(domain: AdminDomain, action?: string): Promis
     }
   }
   await requireAdminTotp(session.userId, session.sessionId); // step-up 2FA at the action layer
-  return session.userId;
+  return session;
 }
 
 /**
- * Owner-only ACTION guard — for staff-role assignment + grant-matrix edits.
+ * Owner-only ACTION guard — for staff-role assignment + grant-matrix edits. Returns
+ * the Owner's session. Never routed through the grant table (ADMIN hardcoded).
  */
-export async function requireOwner(action: string): Promise<string> {
+export async function requireOwner(action: string): Promise<SessionData> {
   const session = await currentSession();
   if (!session) redirect("/auth/admin");
   const me = await db.user.findById(session.userId);
@@ -63,5 +67,5 @@ export async function requireOwner(action: string): Promise<string> {
     throw new Error("Forbidden: Owner (ADMIN) only.");
   }
   await requireAdminTotp(session.userId, session.sessionId);
-  return session.userId;
+  return session;
 }

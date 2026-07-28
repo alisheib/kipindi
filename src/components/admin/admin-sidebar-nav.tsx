@@ -2,19 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { NAV_GROUPS, activeKeyFromPath } from "./admin-nav-groups";
+import { activeKeyFromPath, type NavGroup } from "./admin-nav-groups";
 
 // The route→nav-key resolver is imported from admin-nav-groups.ts — see the note
 // there. This file's local copy was the one missing /admin/payments, /admin/kyc and
-// the /admin/resolver detail route.
+// the /admin/resolver detail route. `groups` is pre-filtered by the server (the RBAC
+// nav gate) so a role only ever sees its own domains — see filterNavGroups.
 
-export function AdminSidebarNav({ badges, fallbackKey }: { badges: Record<string, string | undefined>; fallbackKey: string }) {
+export function AdminSidebarNav({ groups, badges, fallbackKey }: { groups: ReadonlyArray<NavGroup>; badges: Record<string, string | undefined>; fallbackKey: string }) {
   const pathname = usePathname();
   const activeKey = pathname ? activeKeyFromPath(pathname) : fallbackKey;
 
   return (
     <>
-      {NAV_GROUPS.map((g) => (
+      {groups.map((g) => (
         <div key={g.group.en}>
           <div className="px-2 pt-3 pb-1.5 font-mono text-micro uppercase tracking-[0.18em] text-text-tertiary">
             {g.group.en} · {g.group.sw}

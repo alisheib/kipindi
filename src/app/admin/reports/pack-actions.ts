@@ -17,7 +17,7 @@ import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
 import { twoOfficerGate } from "@/lib/server/two-officer";
 import { requireAdminTotp } from "@/lib/server/admin-guard";
-import { COMPLIANCE_ROLES } from "@/lib/server/roles";
+import { canAct } from "@/lib/server/rbac";
 import { getReportPack, packIdFor, currentPackPeriod } from "@/lib/server/report-pack";
 import { buildGbtMonthly } from "@/lib/server/reports/catalogue";
 import { renderPdf } from "@/lib/server/reports/pdf";
@@ -28,9 +28,9 @@ async function requireSigningOfficer(): Promise<{ userId: string; sessionId: str
   const session = await currentSession();
   if (!session) redirect("/auth/admin");
   const user = await db.user.findById(session.userId);
-  if (!user || !COMPLIANCE_ROLES.has(user.role)) {
-    audit({ category: "SECURITY", action: "privilege_escalation_blocked", actorId: session.userId, targetType: "Action", targetId: "report-pack", payload: { role: user?.role ?? "unknown" } });
-    return { error: "Forbidden: a compliance-signing officer (ADMIN or COMPLIANCE) is required." };
+  if (!user || !(user.role === "ADMIN" || (await canAct(user.role, "accounting")))) {
+    audit({ category: "SECURITY", action: "privilege_escalation_blocked", actorId: session.userId, targetType: "Action", targetId: "report-pack", payload: { role: user?.role ?? "unknown", domain: "accounting" } });
+    return { error: "Forbidden: a report-pack signing officer (accounting access) is required." };
   }
   return { userId: session.userId, sessionId: session.sessionId };
 }

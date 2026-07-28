@@ -9,19 +9,13 @@ import { db } from "@/lib/server/store";
 import { tzPhone } from "@/lib/server/validators";
 import { setBonusConfig, type BonusConfig } from "@/lib/server/bonus-config";
 import { creditBonus, cancelGrant } from "@/lib/server/bonus-service";
-import { MONEY_ROLES } from "@/lib/server/roles";
-import { requireAdminTotp } from "@/lib/server/admin-guard";
+import { requireStaff } from "@/lib/server/rbac-guard";
 import { audit } from "@/lib/server/audit";
 
-const ADMIN_ROLES = MONEY_ROLES; // role tier — see @/lib/server/roles
-
+// RBAC: authorization is data-driven — requireStaff checks this role's canAct for the
+// domain (Owner/ADMIN bypasses), audits a blocked attempt, then enforces step-up 2FA.
 async function ensureAdmin() {
-  const s = await currentSession();
-  if (!s) redirect("/auth/admin");
-  const u = await db.user.findById(s.userId);
-  if (!u || !ADMIN_ROLES.has(u.role)) redirect("/auth/admin");
-  await requireAdminTotp(s.userId, s.sessionId); // B3: 2FA at the action layer
-  return s;
+  return requireStaff("growth");
 }
 
 const GrantSchema = z.object({
