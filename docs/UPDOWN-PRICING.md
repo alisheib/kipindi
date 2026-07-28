@@ -49,6 +49,23 @@ per-chain margin override and the void-rate readout (below).
 Validation: `marginBps` is a whole number of basis points, **0–2000** (0–20%). Above 20% a round would
 almost never reach a boundary and would void perpetually.
 
+## Admin controls (where to change it, live)
+
+`/admin/updown` (accounting-gated) exposes every lever, each with in-app instructions:
+
+- **Thresholds → Round margin (%)** — the global `defaultMarginBps`, entered as a percentage (`0.5` = 50 bps).
+  The help text states the win/void rule and that the margin is frozen at open, so a change here affects only
+  **new** rounds — a live round keeps the boundaries it opened with.
+- **Add chain → Margin % (optional)** — the per-chain override; blank inherits the product default.
+- **Chains table → Margin column** — each chain's effective band (its override, else the default, tagged `·def`).
+- **Chains table → Void rate** — voids ÷ resolved over the last 50 rounds for that chain (amber at ≥ 40%). This
+  is the feedback loop for the lever: a high void rate means the margin is too wide for that asset/duration —
+  tighten it there without touching the other chains.
+
+The `%` ↔ bps conversion lives in `src/app/admin/updown/actions.ts` (`Math.round(pct × 100)`, guarded so a
+stake-only chain edit never clears an existing override); the void-rate sample is computed read-only in
+`src/app/admin/updown/page.tsx` from `roundStore`.
+
 ## Where every piece lives
 
 | Concern | Symbol | File |

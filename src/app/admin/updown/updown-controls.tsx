@@ -254,7 +254,7 @@ export function AddChainForm({ assets }: { assets: Array<{ id: string; key: stri
   return (
     <form onSubmit={onSubmit} className="rounded-lg border border-border bg-bg-elevated p-4 space-y-3">
       <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle">Add chain</p>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <Field label="Asset">
           <Select name="assetId" defaultValue={assets[0].id}
             options={assets.map((a) => ({ value: a.id, label: `${a.key} · ${a.nameEn}` }))} />
@@ -263,9 +263,13 @@ export function AddChainForm({ assets }: { assets: Array<{ id: string; key: stri
           <Select name="durationMinutes" defaultValue="5"
             options={DURATIONS.map((d) => ({ value: String(d), label: `${d} min` }))} />
         </Field>
+        <Field label="Margin % (optional)"><Input name="marginPct" type="number" step="0.01" min="0" max="20" placeholder="inherit (0.5)" size="sm" /></Field>
         <Field label="Min stake (optional)"><Input name="minStake" type="number" placeholder="inherit" size="sm" /></Field>
         <Field label="Max stake (optional)"><Input name="maxStake" type="number" placeholder="inherit" size="sm" /></Field>
       </div>
+      <p className="font-mono text-[9.5px] leading-[1.5] text-text-faint">
+        Margin is the ± winning band for this chain — blank inherits the product default (0.5%). Frozen onto each round at open.
+      </p>
       <div className="flex gap-2">
         <button type="submit" disabled={pending} className="btn btn-primary btn-md">
           {pending ? "Adding…" : "Add chain"}
@@ -279,10 +283,10 @@ export function AddChainForm({ assets }: { assets: Array<{ id: string; key: stri
 // ── Thresholds ───────────────────────────────────────────────────────────────
 
 export function ThresholdsForm({
-  maxStalenessSeconds, confidenceThreshold, maxObservationAttempts, defaultMinStake, defaultMaxStake,
+  maxStalenessSeconds, confidenceThreshold, maxObservationAttempts, defaultMinStake, defaultMaxStake, defaultMarginBps,
 }: {
   maxStalenessSeconds: number; confidenceThreshold: number; maxObservationAttempts: number;
-  defaultMinStake: number; defaultMaxStake: number;
+  defaultMinStake: number; defaultMaxStake: number; defaultMarginBps: number;
 }) {
   const [pending, start] = useTransition();
   const router = useRouter();
@@ -304,7 +308,10 @@ export function ThresholdsForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-3">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <Field label="Round margin (%)">
+          <Input name="defaultMarginPct" type="number" step="0.01" min="0" max="20" defaultValue={(defaultMarginBps / 100).toFixed(2)} size="sm" />
+        </Field>
         <Field label="Staleness (s)">
           <Input name="maxStalenessSeconds" type="number" defaultValue={String(maxStalenessSeconds)} min="5" max="300" size="sm" />
         </Field>
@@ -321,6 +328,13 @@ export function ThresholdsForm({
           <Input name="defaultMaxStake" type="number" defaultValue={String(defaultMaxStake)} min="1" size="sm" />
         </Field>
       </div>
+      <p className="text-[11.5px] leading-[1.55] text-text-subtle max-w-[80ch]">
+        <strong>Round margin</strong>{" "}is the ± band around each round&rsquo;s opening price. UP wins if the price
+        reaches <em>open + margin</em>, DOWN if it reaches <em>open − margin</em>; a smaller move voids the round and
+        refunds every stake in full. Default <strong>0.5%</strong> (the 50pick factor) — lower it for fast or quiet
+        rounds to reduce voids. It is frozen onto each round at open, so a change here affects only <strong>new</strong>{" "}
+        rounds; set it per chain to tune a single asset or duration.
+      </p>
       <p className="text-[11.5px] leading-[1.55] text-text-subtle max-w-[80ch]">
         <strong>Staleness</strong>{" "}is how far the source&rsquo;s own quoted time may sit from the round boundary
         before a reading is refused. A refused reading is retried; a boundary that never confirms voids its rounds and

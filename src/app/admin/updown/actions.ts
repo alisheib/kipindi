@@ -119,11 +119,14 @@ export async function createChainAction(formData: FormData) {
     return { ok: false as const, error: `Duration must be one of ${ALLOWED_DURATIONS.join(", ")} minutes.` };
   }
   try {
+    const marginPct = num(formData, "marginPct");
     const r = await createChain({
       assetId,
       durationMinutes: duration as Duration,
       minStake: num(formData, "minStake") ?? null,
       maxStake: num(formData, "maxStake") ?? null,
+      // % in the UI → basis points. Blank = inherit the product default.
+      marginBps: marginPct != null ? Math.round(marginPct * 100) : null,
     }, session.userId);
     if (!r.ok) return { ok: false as const, error: r.error };
     refresh();
@@ -154,10 +157,17 @@ export async function updateChainAction(formData: FormData) {
   const session = await ensureOps();
   const id = String(formData.get("id") ?? "");
   try {
-    const r = await updateChain(id, {
+    const patch: { minStake: number | null; maxStake: number | null; marginBps?: number | null } = {
       minStake: num(formData, "minStake") ?? null,
       maxStake: num(formData, "maxStake") ?? null,
-    }, session.userId);
+    };
+    // Only touch the margin when the field is present, so a stake-only edit never
+    // silently clears a chain's margin override. Blank-but-present = inherit (null).
+    if (formData.has("marginPct")) {
+      const marginPct = num(formData, "marginPct");
+      patch.marginBps = marginPct != null ? Math.round(marginPct * 100) : null;
+    }
+    const r = await updateChain(id, patch, session.userId);
     if (!r.ok) return { ok: false as const, error: r.error };
     refresh();
     return { ok: true as const };
@@ -171,12 +181,15 @@ export async function updateChainAction(formData: FormData) {
 export async function updateThresholdsAction(formData: FormData) {
   const session = await ensureConfig();
   try {
+    const marginPct = num(formData, "defaultMarginPct");
     const r = await setUpDownConfig({
       maxStalenessSeconds: num(formData, "maxStalenessSeconds"),
       confidenceThreshold: num(formData, "confidenceThreshold"),
       maxObservationAttempts: num(formData, "maxObservationAttempts"),
       defaultMinStake: num(formData, "defaultMinStake"),
       defaultMaxStake: num(formData, "defaultMaxStake"),
+      // Round margin: % in the UI → basis points (0.5% → 50). See UPDOWN-PRICING.md.
+      defaultMarginBps: marginPct != null ? Math.round(marginPct * 100) : undefined,
     }, session.userId);
     if (!r.ok) return { ok: false as const, error: r.error };
     refresh();

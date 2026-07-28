@@ -2,7 +2,7 @@ import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-she
 import { EmptyState } from "@/components/ui/empty-state";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { listAssets, listChains, getUpDownConfig, ALLOWED_DURATIONS } from "@/lib/server/updown-config";
-import { observationStore } from "@/lib/server/updown-dal";
+import { observationStore, roundStore } from "@/lib/server/updown-dal";
 import { poolFee } from "@/lib/payout";
 import { formatTzs } from "@/lib/utils";
 import { moneyByGame } from "@/lib/server/report-money";
@@ -46,6 +46,22 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
     const recent = await observationStore.list({ assetId: a.id, limit: 1 }).catch(() => []);
     return { asset: a, last: recent[0] ?? null };
   }));
+
+  // Per-chain void rate — how often a chain's recently-resolved rounds refunded (the
+  // price moved less than the margin). Read-only sample of the last rounds; a chain with
+  // no resolved rounds shows "—". This is the lever's feedback: a high void rate means the
+  // margin is too wide for that asset/duration. Chains are few, so N+1 reads are fine here.
+  const VOID_SAMPLE = 50;
+  const chainStats = new Map(
+    await Promise.all(
+      chains.map(async (c) => {
+        const rounds = await roundStore.list({ chainId: c.id, limit: VOID_SAMPLE }).catch(() => []);
+        const resolved = rounds.filter((r) => r.outcome != null);
+        const voids = resolved.filter((r) => r.outcome === "VOID").length;
+        return [c.id, { resolved: resolved.length, voids, rate: resolved.length ? voids / resolved.length : null }] as const;
+      }),
+    ),
+  );
 
   const feePreview = poolFee(FEE_PREVIEW_POOL / 2, FEE_PREVIEW_POOL / 2, cfg.defaultRateProfile, "YES");
 
@@ -185,12 +201,14 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
             </div>
           ) : (
             <ScrollX label="Up & Down chains">
-              <table className="admin-tbl min-w-[620px]">
+              <table className="admin-tbl min-w-[820px]">
                 <thead>
                   <tr className="text-left font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle border-b border-border-subtle">
                     <th className="px-4 py-2.5 font-semibold">Chain</th>
                     <th className="px-4 py-2.5 font-semibold">State</th>
                     <th className="px-4 py-2.5 font-semibold">Next boundary</th>
+                    <th className="px-4 py-2.5 font-semibold text-right">Margin</th>
+                    <th className="px-4 py-2.5 font-semibold text-right">Void rate</th>
                     <th className="px-4 py-2.5 font-semibold text-right">Stake bounds</th>
                     <th className="px-4 py-2.5 font-semibold text-right">Controls</th>
                   </tr>
@@ -218,6 +236,26 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
                         </td>
                         <td className="px-4 py-3 font-mono text-[11.5px] text-text-muted whitespace-nowrap">
                           {fmtTime(c.nextBoundaryAt)}
+                        </td>
+                        <td className="px-4 py-3 text-right font-mono text-[11.5px] whitespace-nowrap">
+                          {/* Effective winning band: this chain's override, else the product default. */}
+                          <span className={c.marginBps != null ? "text-text-muted" : "text-text-subtle"}>
+                            {((c.marginBps ?? cfg.defaultMarginBps) / 100).toFixed(2)}%
+                          </span>
+                          {c.marginBps == null && <span className="text-text-faint"> ·def</span>}
+                        </td>
+                        <td className="px-4 py-3 text-right font-mono text-[11.5px] whitespace-nowrap">
+                          {(() => {
+                            const s = chainStats.get(c.id);
+                            if (!s || s.resolved === 0) return <span className="text-text-faint">—</span>;
+                            const pct = s.rate! * 100;
+                            return (
+                              <>
+                                <span className={pct >= 40 ? "text-warning-fg" : "text-text-muted"}>{pct.toFixed(0)}%</span>
+                                <span className="text-text-faint"> {s.voids}/{s.resolved}</span>
+                              </>
+                            );
+                          })()}
                         </td>
                         <td className="px-4 py-3 text-right font-mono text-[11.5px] text-text-muted whitespace-nowrap">
                           {c.minStake != null || c.maxStake != null
@@ -295,6 +333,7 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
             maxObservationAttempts={cfg.maxObservationAttempts}
             defaultMinStake={cfg.defaultMinStake}
             defaultMaxStake={cfg.defaultMaxStake}
+            defaultMarginBps={cfg.defaultMarginBps}
           />
         </AdminCard>
       </div>
