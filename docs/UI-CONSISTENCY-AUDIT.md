@@ -15,10 +15,14 @@
 
 | Metric | Baseline (Phase 0) | Now | Target |
 |---|---|---|---|
-| `test:ui-consistency` findings | **95** across 61 (rule,file) pairs | **90** across 57 pairs | **0** |
-| `test:responsive` tap-target warnings | ~512 | ~512 | **0** (minus documented dense-admin exception) |
-| Last shipped | Phase 2a `pending` | Phase 1 `765f5d7` (live) · Phase 0 `aeb8274` (live) | — |
-| Railway deploy | Phase 0 + 1 live-verified | — | SUCCESS + live-verified |
+| `test:ui-consistency` findings | **95** across 61 (rule,file) pairs | **85** across 53 pairs; **all error-severity control findings = 0** | **0** |
+| `test:responsive` (public player, xs/sm/tablet/laptop) | — | **96 passed · 0 failed · 16 warn** (live, 45c79d7) | 0 fail |
+| Last shipped (all live-verified) | — | `45c79d7` Phase 2b · `0c36cd4` nav · `caedd50` 2a · `765f5d7` P1 · `aeb8274` P0 | — |
+| Railway deploy | — | 5 clean production deploys, each uptime-verified | SUCCESS + live-verified |
+
+**Error-severity control drift cleared:** native-select 4→0 · native-checkbox 2→0 · hardcoded-pill-active 4→0 · admin-table typo →0.
+**Nav consistency (your live report):** top-bar nav links + language-toggle unified to one 34px height (toggle was ~50px, the tallest thing in the 56px bar); Up & Down accent pill no longer over-sized (119→113px, same box as siblings). Responsiveness re-verified: 0 overflow / 0 clipped / 0 off-screen at 320–1280.
+Remaining findings are WARNINGS (raw-button 57 — same shape, already on `.btn`; btn-inline 11; table-not-admin-tbl 9; adhoc-portal 6) + native-datetime 2 (deferred — resolution-time value format). The detector fails the build on any NEW drift.
 
 > **Note (2026-07-28):** Phase 0 rebased onto a parallel session's design-system/search
 > work (`7d58354`). That session already: deleted the dead `PeriodPicker` (my Phase-2

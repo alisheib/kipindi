@@ -1,5 +1,23 @@
 # Open gaps — missing, inconsistent, or never specified
 
+> **Update 2026-07-28 (UI-consistency program — see [`docs/UI-CONSISTENCY-AUDIT.md`](../../../UI-CONSISTENCY-AUDIT.md)):**
+> items 4–7 below were "no design anywhere", but the primitives now **exist in code and are the
+> canonical, consistency-audited implementations** — treat the code as the spec until a formal
+> redline lands:
+> - **Selects / date-time** → `src/components/ui/select.tsx` (portaled, keyboard-nav, hidden-input
+>   form submission), `date-select.tsx` / `time-select.tsx` / `datetime-range-filter.tsx`. Every
+>   admin native `<select>` was migrated onto the kit `Select`; native `<input type=checkbox>` onto
+>   the kit `Checkbox` (which now takes a form-native `value`). The one remaining native control is
+>   `datetime-local` (events, markets/new wizard) — deferred because the resolution-time value format
+>   is validation-sensitive.
+> - **Modals / confirm dialogs** → `src/components/ui/modal.tsx` (`Modal` + `ConfirmModal`: portal,
+>   focus-trap, scroll-lock, Esc, focus-return). All money-critical admin surfaces were moved onto it.
+> - **Top bar / bottom nav** → `src/components/layout/top-app-bar.tsx` / `bottom-nav.tsx`; the top-bar
+>   nav-links + language toggle were unified to ONE consistent control height (34px).
+> - **Notice bars** → `src/components/ui/notice-bar.tsx`.
+> The enforceable guard is `scripts/ui-consistency.test.mts` (`npm run test:ui-consistency`), which
+> fails the build on any NEW drift back to a native/ad-hoc control.
+
 ## Never designed (known, briefed, outstanding)
 1. **Up & Down D4 — admin console** (KPI row, chains table, oracle health + DEGRADED, round explorer + proof drawer). Dense admin table patterns don't exist at all yet.
 2. **Up & Down D5 — bottom-nav glyph** (three options requested in the brief).
