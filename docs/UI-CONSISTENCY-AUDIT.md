@@ -15,10 +15,10 @@
 
 | Metric | Baseline (Phase 0) | Now | Target |
 |---|---|---|---|
-| `test:ui-consistency` findings | **95** across 61 (rule,file) pairs | **85** across 53 pairs; **all error-severity control findings = 0** | **0** |
-| `test:responsive` (public player, xs/sm/tablet/laptop) | — | **96 passed · 0 failed · 16 warn** (live, 45c79d7) | 0 fail |
-| Last shipped (all live-verified) | — | `45c79d7` Phase 2b · `0c36cd4` nav · `caedd50` 2a · `765f5d7` P1 · `aeb8274` P0 | — |
-| Railway deploy | — | 5 clean production deploys, each uptime-verified | SUCCESS + live-verified |
+| `test:ui-consistency` findings | **95** across 61 (rule,file) pairs | **77** across 49 pairs; **all error-severity control findings = 0** | **0** |
+| `test:responsive` (public player, xs/sm/tablet/laptop) | — | **96 passed · 0 failed · 16 warn** (live) | 0 fail |
+| Last shipped (all live-verified) | — | `411e2b8` btn-xs+deposit · `45c79d7` 2b · `0c36cd4` nav · `caedd50` 2a · `765f5d7` P1 · `aeb8274` P0 | — |
+| Railway deploy | — | 6+ clean production deploys, each uptime-verified | SUCCESS + live-verified |
 
 **Error-severity control drift cleared:** native-select 4→0 · native-checkbox 2→0 · hardcoded-pill-active 4→0 · admin-table typo →0.
 **Nav consistency (your live report):** top-bar nav links + language-toggle unified to one 34px height (toggle was ~50px, the tallest thing in the 56px bar); Up & Down accent pill no longer over-sized (119→113px, same box as siblings). Responsiveness re-verified: 0 overflow / 0 clipped / 0 off-screen at 320–1280.
@@ -97,21 +97,26 @@ Remaining findings are WARNINGS (raw-button 57 — same shape, already on `.btn`
 - [x] Restore `var(--pill-active)` in `updown/page.tsx`, `round-stake-panel.tsx` (×2), `live/pulse-grid.tsx` — **done @Phase 2a** (4 error findings → 0, pixel-identical)
 - [x] `profile/security` checkbox → kit `Checkbox` — **done @Phase 2a** (controlled, safe)
 - [x] Unify the two `?range=` date controls — `PeriodPicker` deleted by parallel session @7640bab (moot)
-- [ ] **Transactions filter checkbox → kit `Checkbox`** — BLOCKED: server reads `attention === "1"`; kit Checkbox submits `"on"`. Needs a `value` prop added to the kit Checkbox first, then local admin QA. ⚠️ do not blind-ship.
-- [ ] Native `<select>` (transactions `FilterSelect`, `kyc/[id]`, `resolver/[id]`) → kit `Select` — GET-form value semantics; needs local admin QA against a running build.
-- [ ] Native `datetime-local` (`events-client`, `markets/new/wizard`) → kit `DateSelect`/`TimeSelect` — ⚠️ resolution-time value format is validation-sensitive; verify carefully.
-- [ ] Migrate divergent tables (updown ×3, events, insights) → `.admin-tbl`; introduce `AdminTable` helper — needs per-table restyle (drop bespoke th/td classes) + visual QA.
+- [x] **Transactions filter checkbox → kit `Checkbox`** — done @2b. Added a form-native `value` prop to the kit Checkbox (backward-compatible), so `attention=1` GET semantics are preserved.
+- [x] Native `<select>` (transactions `FilterSelect`, `kyc/[id]`, `resolver/[id]`) → kit `Select` — done @2b. Form GET submission preserved via the kit's hidden input; controlled selects via `value`/`onChange`.
+- [x] Deposit CTA (`top-app-bar.tsx`) → kit `.btn btn-gold btn-md btn-pill` — done @411e2b8. Was the last gold GRADIENT in a flat-gold system; now flat + kit hover-glow, no bespoke inline styling. ⏳ authed-only → Ali to visually confirm on the live top bar.
+- [x] `.btn-xs` (32px dense size) + admin filter buttons off `btn-sm h-8` inline overrides — done @411e2b8.
+- [ ] Native `datetime-local` (`events-client`, `markets/new/wizard`) → kit `DateSelect`/`TimeSelect` — ⚠️ DEFERRED: resolution-time value format is validation-sensitive (money-critical); reworking to two fields needs careful QA. Documented in OPEN-GAPS.
+- [ ] Migrate divergent tables (updown ×3, events, insights) → `.admin-tbl`; introduce `AdminTable` helper — needs per-table restyle (drop bespoke th/td classes) + admin visual QA.
 - [ ] Shared `SearchInput` / `Carousel`; consolidate chip/tab styles (+ revive/delete `.ticket-*`); dedup `candidate-filters`≈`poll-filters` — reconcile with the parallel session's search-grammar migration first.
-- [~] Deposit CTA (`top-app-bar.tsx`) — **kept as a deliberate CTA**, not flattened to `btn-gold`. It is an intentionally gradient/glowing 44px pill (prominence = conversion); not a tracked linter finding. Documented as an accepted exception, like the money-commit gold CTA.
 
-> **Note:** the remaining Phase-2 items are form-native / table-restyle / big-dedup changes on
-> live admin surfaces. Per "test perfectly", they need a local `build && start` + admin auth to
-> exercise (GET-form submission, filter value semantics) before shipping — not blind pushes.
+> **Note:** the remaining Phase-2 items are table-restyle / big-dedup / validation-sensitive changes
+> on live surfaces. They need admin visual QA (or careful value-format handling) before shipping —
+> not blind pushes. The detector fails the build on any NEW drift meanwhile.
 
-### Phase 3 · Adoption breadth + tap-floor bump
-- [ ] Bump control-height tokens (sm→40, md→44, lg→48) + `.mcardp-actions` 36→40 — before/after screenshots for sign-off
-- [ ] Raise `responsive-audit.mjs` tap threshold to 40
-- [ ] Ad-hoc portals → kit `Modal(sheet)`: `needle-drawer`, `market-card` "How it works", `share-button`
+### Phase 3 · Consistency (REFRAMED — not enlargement) + adoption breadth
+> **Reframed 2026-07-28 on Ali's live feedback ("things look big").** The original plan bumped every
+> control to a 40px floor; the live signal was the opposite — the nav read *too big/inconsistent*, not
+> too small. So Phase 3 is **consistency onto one height system**, NOT a blanket enlargement.
+- [x] Top-bar nav links unified to one 34px box (accent == regular) — @0c36cd4
+- [x] Language toggle 44→34 (was the tallest element in the bar) — @45c79d7
+- [x] Admin filter buttons + deposit CTA onto the token/kit system — @411e2b8
+- [ ] Ad-hoc portals → kit `Modal(sheet)`: `needle-drawer`, `market-card` "How it works", `share-button` (player; `market-card` is the iconic surface — verify against live)
 - [ ] Raw `.btn` money confirms → kit `<Button>` (spinner / `aria-busy`)
 - [ ] Card unification: UpDownCard inline pool-bar → `TippingBar`; `updown/history` box → `.mcardp` + kit `Stat`
 
