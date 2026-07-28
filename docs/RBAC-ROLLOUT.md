@@ -126,8 +126,11 @@ sub-blocks render only for `compliance` view, and money/compliance controls only
       kit type + semantic colours, `ConfirmModal tone="claret" tier="hard"` on money/PII roles) — Ali's ask.
       Registered in a new Owner-only "Access" nav group + `ROUTE_KEYS`. Pure validation in `staff-roles.ts`;
       `test:staff-role` (24). ⏳ Player-detail KYC/PII sub-block gating still folds into Phase 5.
-- [ ] **Phase 4 — `/admin/roles`:** matrix editor (Owner-only, `Toggle` grid, live-save, audited,
-      reset-to-defaults, Owner-not-editable, consequence confirm); nav/route registration.
+- [x] **Phase 4 — `/admin/roles`:** matrix editor (Owner-only) — per-role cards with a See/Do `Toggle` per domain,
+      live-save via `setRoleGrantAction` (canAct⇒canView enforced; ADMIN refused), amber caution on money/PII
+      Act toggles, `DOMAIN_SUMMARY` "See/Do" hints (consequence), and a claret/hard "Reset to defaults"
+      (`resetRoleGrantsAction`). Both actions Owner-only + COMPLIANCE-audited + cache-invalidated (applies next
+      request, no deploy). Registered in the Access nav group + `ROUTE_KEYS`.
 - [ ] **Phase 5 — Verify + docs + memory:** both suites + `test:all` green twice; both migrations
       deploy-verified; docs updated (`roles.ts` header, `DESIGN_AUTHORITY.md`, design-system README); memory updated.
 
@@ -159,7 +162,10 @@ sub-blocks render only for `compliance` view, and money/compliance controls only
 - **Phase 2b** — `4da5cc0` (2026-07-28, LIVE-verified) — completed the ACTION layer: every remaining admin
   action file + all 5 `api/admin/*` routes + the 6 in-page `hasRole` page-gates now consult the data-driven
   grants. Zero old-tier references left in app code (only stale comments remain, cleaned in Phase 5). Deploy-verified.
-- **Phase 3** — (2026-07-28) — `/admin/staff` roster + `/admin/staff/[id]` detail; `setStaffRoleAction` /
-  `addStaffByPhoneAction` (Owner-only, 2FA, reason, self-demotion block, session revoke, COMPLIANCE audit +
-  history); consequence highlighting; new Owner-only "Access" nav group; `staff-roles.ts` + `staffRoleInfos()`;
-  `test:staff-role` (24). tsc/build clean; test:all 101/101 ×2.
+- **Phase 3** — `83e7947` (2026-07-28, LIVE-verified) — `/admin/staff` roster + `/admin/staff/[id]` detail;
+  `setStaffRoleAction` / `addStaffByPhoneAction` (Owner-only, 2FA, reason, self-demotion block, session revoke,
+  COMPLIANCE audit + history); consequence highlighting; new Owner-only "Access" nav group; `staff-roles.ts` +
+  `staffRoleInfos()`; `test:staff-role` (24). tsc/build clean; test:all 101/101 ×2. Deploy-verified.
+- **Phase 4** — (2026-07-28) — `/admin/roles` grant-matrix editor: per-role See/Do toggles, live-save
+  (`setRoleGrantAction`, canAct⇒canView, ADMIN refused), amber money/PII caution + See/Do hints, claret
+  reset-to-defaults; Owner-only + COMPLIANCE-audited + cache-invalidated. tsc/build clean; test:all 101/101 ×2.

@@ -123,6 +123,7 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
     group: { en: "Access", sw: "Ufikiaji" },
     items: [
       { href: "/admin/staff", label: "Staff & roles", key: "staff", domain: "ops", ownerOnly: true },
+      { href: "/admin/roles", label: "Role permissions", key: "roles", domain: "ops", ownerOnly: true },
     ],
   },
 ];
@@ -184,6 +185,7 @@ const ROUTE_KEYS: ReadonlyArray<readonly [prefix: string, key: string]> = [
   ["/admin/audit", "audit"],
   ["/admin/system", "system"],
   ["/admin/staff", "staff"],
+  ["/admin/roles", "roles"],
   ["/admin/ai-usage", "ai-usage"],
   ["/admin/kyc", "approvals"],
   ["/admin/settlement", "settlement"],
