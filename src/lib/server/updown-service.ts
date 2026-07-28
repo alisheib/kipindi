@@ -21,7 +21,7 @@ import { audit } from "./audit";
 import { withLock } from "./locks";
 import { marketStore } from "./market-dal";
 import { createMarket, settleMarket } from "./market-service";
-import { getUpDownConfig, rateProfileFor, stakeBoundsFor, boundaryAfter } from "./updown-config";
+import { getUpDownConfig, rateProfileFor, stakeBoundsFor, boundaryAfter, marginBpsForChain, computeTargets } from "./updown-config";
 import {
   assetStore, chainStore, roundStore, observationStore,
   type StoredAsset, type StoredChain, type StoredRound, type RoundOutcome, type VoidReason,
@@ -67,6 +67,30 @@ export function decideOutcome(
   const delta = closePrice - openPrice;
   if (Math.abs(delta) < minMove) return { outcome: "VOID", voidReason: "no-move" };
   return { outcome: delta > 0 ? "UP" : "DOWN", voidReason: null };
+}
+
+/**
+ * THE OUTCOME RULE (margin model). Uses the round's FROZEN winning boundaries: the close
+ * price at or above the up-target ⇒ UP, at or below the down-target ⇒ DOWN, strictly
+ * between ⇒ VOID+refund (the price moved less than the margin), any missing price/target
+ * ⇒ VOID("source-failed"). Pure, so the one comparison that decides real money reads on
+ * its own. (Equivalent to `|close − open| ≥ margin`, but read off the stored targets so a
+ * later config edit can never move a live round's boundaries.)
+ */
+export function decideOutcomeByTargets(
+  closePrice: number | null,
+  upTarget: number | null,
+  downTarget: number | null,
+): { outcome: RoundOutcome; voidReason: VoidReason | null } {
+  if (
+    closePrice == null || upTarget == null || downTarget == null ||
+    !Number.isFinite(closePrice) || !Number.isFinite(upTarget) || !Number.isFinite(downTarget)
+  ) {
+    return { outcome: "VOID", voidReason: "source-failed" };
+  }
+  if (closePrice >= upTarget) return { outcome: "UP", voidReason: null };
+  if (closePrice <= downTarget) return { outcome: "DOWN", voidReason: null };
+  return { outcome: "VOID", voidReason: "no-move" };
 }
 
 /** UP→YES, DOWN→NO, VOID→VOID. The single mapping. */
@@ -185,6 +209,12 @@ export async function openRound(
 
   const [profile, bounds] = await Promise.all([rateProfileFor(chain), stakeBoundsFor(chain)]);
 
+  // The frozen winning boundaries: base ± (base × marginBps/10000). Null if the boundary
+  // wasn't confirmed at open (no openPrice) — such a round falls back at close and voids.
+  const cfg = await getUpDownConfig();
+  const marginBps = marginBpsForChain(chain, cfg);
+  const targets = openPrice != null ? computeTargets(openPrice, marginBps, asset) : null;
+
   // The money row. `rateOverrides` is how the chain's frozen fee profile
   // (capped-commission @ 13%) reaches the poll snapshot through the SAME
   // snapshotFromConfig path every long-form poll uses — one freezing mechanism.
@@ -195,10 +225,13 @@ export async function openRound(
     category: (asset.category as never) ?? "macro",
     sourceUrl: asset.priceSourceUrl,
     // Stated in the players' terms, and it is literally what settlement compares.
-    resolutionCriterion:
-      `${asset.nameEn} (${asset.symbol}) price at ${closeIso}, read from ${asset.sourceDomain}, ` +
-      `compared with the price at ${openBoundaryIso}. UP if higher by more than ` +
-      `${minMoveFor(asset).toFixed(asset.decimals)}, DOWN if lower by more than that, otherwise VOID and every stake is refunded.`,
+    resolutionCriterion: targets
+      ? `${asset.nameEn} (${asset.symbol}) price at ${closeIso}, read from ${asset.sourceDomain}. ` +
+        `Opening price ${openPrice}. UP if the price reaches ${targets.upTarget} (+${(marginBps / 100).toFixed(2)}%), ` +
+        `DOWN if it reaches ${targets.downTarget} (−${(marginBps / 100).toFixed(2)}%), otherwise VOID and every stake is refunded.`
+      : `${asset.nameEn} (${asset.symbol}) price at ${closeIso}, read from ${asset.sourceDomain}, ` +
+        `compared with the price at ${openBoundaryIso}. UP if higher by more than ` +
+        `${minMoveFor(asset).toFixed(asset.decimals)}, DOWN if lower by more than that, otherwise VOID and every stake is refunded.`,
     resolutionAt: closeIso,
     // Selections close AT the boundary: the bet is on the price at that instant, so a
     // later entry would be betting on a move that has already happened.
@@ -221,6 +254,9 @@ export async function openRound(
     closeObservationId: null,
     openPrice,
     closePrice: null,
+    marginBps,
+    upTarget: targets?.upTarget ?? null,
+    downTarget: targets?.downTarget ?? null,
     outcome: null,
     voidReason: null,
     resolvedAt: null,
@@ -245,6 +281,7 @@ export async function openRound(
       roundNumber, marketId: market.id,
       opensAt: openBoundaryIso, boundaryAt: closeIso,
       openPrice, openObservationId,
+      marginBps, upTarget: targets?.upTarget ?? null, downTarget: targets?.downTarget ?? null,
       rateProfile: profile, stakeBounds: bounds,
     },
   });
@@ -279,7 +316,12 @@ export async function closeRound(
   const asset = chain ? await assetStore.get(chain.assetId) : null;
   if (!chain || !asset) return { ok: false, error: "Round's chain or asset no longer exists." };
 
-  const { outcome, voidReason } = decideOutcome(round.openPrice, closePrice, minMoveFor(asset));
+  // Use the round's FROZEN targets (the margin model). Legacy rounds opened before the
+  // margin model have null targets and fall back to the openPrice ± minMove rule.
+  const useTargets = round.upTarget != null && round.downTarget != null;
+  const { outcome, voidReason } = useTargets
+    ? decideOutcomeByTargets(closePrice, round.upTarget, round.downTarget)
+    : decideOutcome(round.openPrice, closePrice, minMoveFor(asset));
   const finalVoidReason = outcome === "VOID" ? (voidReason ?? voidReasonIfNoPrice) : null;
   const side = outcomeToSide(outcome);
   const nowIso = new Date().toISOString();
@@ -296,8 +338,12 @@ export async function closeRound(
       resolutionStage2By: "system_updown", resolutionStage2At: nowIso,
       resolutionEvidence:
         side === "VOID"
-          ? `Round voided (${finalVoidReason}). Every stake is refunded in full.`
-          : `Open ${round.openPrice} → close ${closePrice} (${asset.symbol}, ${asset.sourceDomain}). Moved ${((closePrice ?? 0) - (round.openPrice ?? 0)).toFixed(asset.decimals)}.`,
+          ? useTargets
+            ? `Round voided (${finalVoidReason}): close ${closePrice} stayed inside the band [${round.downTarget}, ${round.upTarget}] (open ${round.openPrice} ± ${((round.marginBps ?? 0) / 100).toFixed(2)}%). Every stake is refunded in full.`
+            : `Round voided (${finalVoidReason}). Every stake is refunded in full.`
+          : useTargets
+            ? `Close ${closePrice} ${outcome === "UP" ? `≥ up target ${round.upTarget}` : `≤ down target ${round.downTarget}`} (open ${round.openPrice} ± ${((round.marginBps ?? 0) / 100).toFixed(2)}%, ${asset.symbol}, ${asset.sourceDomain}).`
+            : `Open ${round.openPrice} → close ${closePrice} (${asset.symbol}, ${asset.sourceDomain}). Moved ${((closePrice ?? 0) - (round.openPrice ?? 0)).toFixed(asset.decimals)}.`,
       // Settlement is immediate for Up & Down — the window is zero-length, NOT skipped.
       // settleMarket still runs its standing-objection check below.
       objectionsClosedAt: nowIso,

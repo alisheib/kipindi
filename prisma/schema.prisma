@@ -1299,6 +1299,10 @@ model UpDownChain {
   /// is frozen per poll.
   rateProfile Json?
 
+  /// Per-round winning-boundary margin in basis points (50 = 0.5%). Null = inherit the
+  /// product default (`updown.config.defaultMarginBps`). Frozen onto each round at open.
+  marginBps Int?
+
   createdBy String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1335,6 +1339,12 @@ model UpDownRound {
   /// list, from a 2-decimal metal to an 8-decimal crypto pair.
   openPrice          Decimal? @db.Decimal(24, 8)
   closePrice         Decimal? @db.Decimal(24, 8)
+  /// The winning boundaries FROZEN at open: base ± (base × marginBps/10000). Settlement
+  /// compares closePrice against these, and the player sees them. Null on legacy rounds
+  /// (opened before the margin model) → those fall back to the openPrice ± minMove rule.
+  marginBps          Int?
+  upTarget           Decimal? @db.Decimal(24, 8)
+  downTarget         Decimal? @db.Decimal(24, 8)
 
   outcome    UpDownRoundOutcome?
   /// Why a round VOIDed, when it did: "no-move" (inside minMove), "source-failed"

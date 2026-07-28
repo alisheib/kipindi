@@ -24,14 +24,14 @@ import { assetStore, chainStore, roundStore, observationStore, __resetUpDownMemo
 import {
   createAsset, setAssetEnabled, createChain, setChainState,
   boundaryAfter, cleanGridAnchor, __resetUpDownConfig,
-  stakeBoundsForUpDownMarket,
+  stakeBoundsForUpDownMarket, setUpDownConfig,
 } from "../src/lib/server/updown-config.ts";
 import {
-  decideOutcome, outcomeToSide, minMoveFor, roundTitle,
+  decideOutcome, decideOutcomeByTargets, outcomeToSide, minMoveFor, roundTitle,
   openRound, closeRound, advanceChain,
 } from "../src/lib/server/updown-service.ts";
 import { marketStore } from "../src/lib/server/market-dal.ts";
-import { buyPosition, listPositionsForMarket, ratesFor } from "../src/lib/server/market-service.ts";
+import { buyPosition, listPositionsForMarket, ratesFor, createMarket } from "../src/lib/server/market-service.ts";
 import { addSource, seedDefaultSources } from "../src/lib/server/source-registry.ts";
 import { db } from "../src/lib/server/store.ts";
 import { poolFee } from "../src/lib/payout.ts";
@@ -109,6 +109,21 @@ const chain = (await chainStore.get(c.data.id))!;
   ok("1.10 · the title exists in all THREE languages, each distinct",
      new Set([roundTitle(asset, 5, "en"), roundTitle(asset, 5, "sw"), roundTitle(asset, 5, "zh")]).size === 3,
      `${roundTitle(asset, 5, "sw")} | ${roundTitle(asset, 5, "zh")}`);
+}
+
+// ── 1B · The MARGIN outcome rule (pure) — the PDF's winning boundaries ────────
+{
+  // PDF example: base 4120, 0.5% margin → up 4140.6, down 4099.4.
+  ok("1B.1 · close ABOVE the up target is UP", decideOutcomeByTargets(4145, 4140.6, 4099.4).outcome === "UP");
+  ok("1B.2 · close EXACTLY at the up target is UP (≥ boundary wins)", decideOutcomeByTargets(4140.6, 4140.6, 4099.4).outcome === "UP");
+  ok("1B.3 · close BELOW the down target is DOWN", decideOutcomeByTargets(4095, 4140.6, 4099.4).outcome === "DOWN");
+  ok("1B.4 · close EXACTLY at the down target is DOWN (≤ boundary wins)", decideOutcomeByTargets(4099.4, 4140.6, 4099.4).outcome === "DOWN");
+  const inBand = decideOutcomeByTargets(4110, 4140.6, 4099.4);
+  ok("1B.5 · close INSIDE the band voids — moved less than the margin", inBand.outcome === "VOID" && inBand.voidReason === "no-move");
+  ok("1B.6 · a missing close price voids as source-failed", decideOutcomeByTargets(null, 4140.6, 4099.4).voidReason === "source-failed");
+  ok("1B.7 · missing targets void as source-failed (a legacy round has none)", decideOutcomeByTargets(4110, null, null).voidReason === "source-failed");
+  ok("1B.8 · a hair BELOW the up target is still in-band (VOID), not UP", decideOutcomeByTargets(4140.59, 4140.6, 4099.4).outcome === "VOID");
+  ok("1B.9 · a hair ABOVE the down target is still in-band (VOID), not DOWN", decideOutcomeByTargets(4099.41, 4140.6, 4099.4).outcome === "VOID");
 }
 
 // ── Helper: a confirmed observation at a boundary, without touching the API ──
@@ -290,12 +305,12 @@ let round1Id = "";
   const m = (await marketStore.get(r.data.marketId))!;
   await buyPosition(alice, { marketId: m.id, side: "YES", stake: 20_000 });
   await buyPosition(carol, { marketId: m.id, side: "NO", stake: 20_000 });
-  const closeObs = await stubObservation(B(11), 2410.00);
+  const closeObs = await stubObservation(B(11), 2415.00);
   const before = await walletsTotal();
   const [c1, c2, c3] = await Promise.all([
-    closeRound(r.data.id, closeObs, 2410.00),
-    closeRound(r.data.id, closeObs, 2410.00),
-    closeRound(r.data.id, closeObs, 2410.00),
+    closeRound(r.data.id, closeObs, 2415.00),
+    closeRound(r.data.id, closeObs, 2415.00),
+    closeRound(r.data.id, closeObs, 2415.00),
   ]);
   const after = await walletsTotal();
   // The CONTRACT under concurrency is not "all succeed" — it is "exactly one does the
@@ -354,7 +369,7 @@ let round1Id = "";
   const beforeQ = await walletsTotal();
   await buyPosition(alice, { marketId: mq.id, side: "YES", stake: 30_000 });
   await buyPosition(bob, { marketId: mq.id, side: "YES", stake: 20_000 });
-  await closeRound(rq.data.id, await stubObservation(B(23), 2420.00), 2420.00);
+  await closeRound(rq.data.id, await stubObservation(B(23), 2430.00), 2430.00);
   const pq = await listPositionsForMarket(mq.id);
   ok("8b.6 · a one-sided round refunds EVERY stake in full (finalPayout == stake)",
      pq.every((p) => (p.finalPayout ?? -1) === p.stake), pq.map((p) => `${p.stake}→${p.finalPayout}`).join(", "));
@@ -376,7 +391,7 @@ let round1Id = "";
   await buyPosition(bob, { marketId: mr.id, side: "YES", stake: 10_000 });
   const afterStakes = (await db.wallet.findByUserId(alice))!.balance;
   ok("8b.9 · a hedged player is charged BOTH stakes", beforeR - afterStakes === 30_000, `Δ${beforeR - afterStakes}`);
-  await closeRound(rr.data.id, await stubObservation(B(25), 2410.00), 2410.00);
+  await closeRound(rr.data.id, await stubObservation(B(25), 2415.00), 2415.00);
   const pr = await listPositionsForMarket(mr.id);
   const aliceYes = pr.find((p) => p.userId === alice && p.side === "YES")!;
   const aliceNo = pr.find((p) => p.userId === alice && p.side === "NO")!;
@@ -478,6 +493,133 @@ let round1Id = "";
      START_TOTAL > 0 && house > 0, `started ${START_TOTAL}, house ${house}`);
   ok("9.1 · ★★ MONEY CONSERVATION — every shilling is a payout, a refund, an open pool, or our fee",
      Math.abs(drift) <= 2, `drift ${drift} TZS`);
+}
+
+// ── 10 · ★ THE MARGIN MODEL end-to-end — the PDF's base ± 0.5% boundaries ─────
+{
+  const spx = await createAsset({
+    key: "SPX", symbol: "SPX", nameEn: "S&P 500", nameSw: "S&P 500", nameZh: "标普500", iconKey: "chart",
+    priceSourceUrl: "https://www.kitco.com/price/precious-metals", category: "macro",
+    decimals: 2, minMoveTicks: 1,
+  }, OFFICER);
+  if (!spx.ok) throw new Error(spx.error);
+  await setAssetEnabled(spx.data.id, true, OFFICER);
+  const spxAsset = (await assetStore.get(spx.data.id))!;
+  const spxC = await createChain({ assetId: spxAsset.id, durationMinutes: 5 }, OFFICER);
+  if (!spxC.ok) throw new Error(spxC.error);
+  await setChainState(spxC.data.id, "RUNNING", OFFICER);
+  const spxChain = (await chainStore.get(spxC.data.id))!;
+  ok("10.0 · a fresh chain inherits the 0.5% default margin (no override stored)", spxChain.marginBps === null);
+
+  const dan = await fundedUser("ud_dan", 500_000);
+  const eve = await fundedUser("ud_eve", 500_000);
+  const twoWallets = async () => (await db.wallet.findByUserId(dan))!.balance + (await db.wallet.findByUserId(eve))!.balance;
+  const anchor2 = cleanGridAnchor(Date.now() + 120_000);
+  const SB = (k: number) => new Date(anchor2 + k * 5 * 60_000).toISOString();
+  const stubSpx = async (iso: string, price: number) => {
+    const o = await observationStore.ensure(spxAsset.id, iso);
+    await observationStore.confirm(o.id, { price, sourceUrl: spxAsset.priceSourceUrl, sourceQuotedAt: iso, evidence: `SPX ${price}`, confidence: 96, model: "test-stub", rawHash: `sh${price}-${iso}` });
+    return o.id;
+  };
+
+  // 10a — the PDF example, FROZEN on the round: base 4120 → up 4140.6, down 4099.4.
+  const r0 = await openRound(spxChain, SB(0), await stubSpx(SB(0), 4120.00), 4120.00);
+  if (!r0.ok) throw new Error(r0.error);
+  const round0 = (await roundStore.get(r0.data.id))!;
+  ok("10.1 · ⛔ the PDF example freezes on the round: base 4120, 0.5% → up 4140.6, down 4099.4",
+     round0.marginBps === 50 && round0.upTarget === 4140.6 && round0.downTarget === 4099.4,
+     `bps=${round0.marginBps} up=${round0.upTarget} down=${round0.downTarget}`);
+  const m0 = (await marketStore.get(r0.data.marketId))!;
+  await buyPosition(dan, { marketId: m0.id, side: "YES", stake: 50_000 });
+  await buyPosition(eve, { marketId: m0.id, side: "NO", stake: 50_000 });
+  const c0 = await closeRound(r0.data.id, await stubSpx(SB(1), 4145.00), 4145.00);
+  ok("10.2 · close 4145 reached the up target (4140.6) → UP, and it SETTLES",
+     c0.ok && c0.data.outcome === "UP" && c0.data.settled === true, c0.ok ? c0.data.outcome : c0.error);
+
+  // 10b — a real move SMALLER than the margin → VOID + full refund (the key new behaviour).
+  const rB = await openRound(spxChain, SB(1), await stubSpx(SB(1), 4145.00), 4145.00);
+  if (!rB.ok) throw new Error(rB.error);
+  const roundB = (await roundStore.get(rB.data.id))!;
+  const mB = (await marketStore.get(rB.data.marketId))!;
+  const beforeB = await twoWallets();
+  await buyPosition(dan, { marketId: mB.id, side: "YES", stake: 20_000 });
+  await buyPosition(eve, { marketId: mB.id, side: "NO", stake: 20_000 });
+  // Base 4145 → margin ≈ 20.7 → band ≈ [4124.3, 4165.7]. Close 4150 moved +5 < margin → VOID.
+  const cB = await closeRound(rB.data.id, await stubSpx(SB(2), 4150.00), 4150.00);
+  ok("10.3 · ⛔ a +5 move that DIDN'T reach the boundary (margin ≈ 20.7) VOIDs — no-move",
+     cB.ok && cB.data.outcome === "VOID" && (await roundStore.get(rB.data.id))!.voidReason === "no-move",
+     `up=${roundB.upTarget} down=${roundB.downTarget} close=4150 → ${cB.ok ? cB.data.outcome : cB.error}`);
+  ok("10.4 · ★ the in-band void refunds every stake in full", (await twoWallets()) === beforeB, `${beforeB} → ${await twoWallets()}`);
+
+  // 10c — DOWN at the lower boundary settles as NO (UP=YES / DOWN=NO holds).
+  const rD = await openRound(spxChain, SB(2), await stubSpx(SB(2), 4150.00), 4150.00);
+  if (!rD.ok) throw new Error(rD.error);
+  const mD = (await marketStore.get(rD.data.marketId))!;
+  await buyPosition(dan, { marketId: mD.id, side: "YES", stake: 10_000 });
+  await buyPosition(eve, { marketId: mD.id, side: "NO", stake: 10_000 });
+  // Base 4150 → down ≈ 4129.25. Close 4100 is well below → DOWN.
+  const cD = await closeRound(rD.data.id, await stubSpx(SB(3), 4100.00), 4100.00);
+  ok("10.5 · close 4100 reached the down boundary → DOWN → NO is paid",
+     cD.ok && cD.data.outcome === "DOWN" && (await marketStore.get(mD.id))!.resolvedOutcome === "NO",
+     cD.ok ? cD.data.outcome : cD.error);
+
+  // 10d — a LEGACY round (targets null, opened before the margin model) falls back to the
+  // openPrice ± minMove rule and still settles. Hand-built to simulate a pre-migration row.
+  const legacyMkt = await createMarket({
+    titleEn: "SPX legacy round", titleSw: "SPX legacy", titleZh: "SPX legacy",
+    category: "macro", sourceUrl: spxAsset.priceSourceUrl,
+    resolutionCriterion: "legacy openPrice±minMove", resolutionAt: SB(20), selectionClosedAt: null,
+    proposedBy: "system_updown", productLine: "UPDOWN",
+  });
+  await roundStore.create({
+    id: "udr_legacy_1", chainId: spxChain.id, marketId: legacyMkt.id, roundNumber: 9001,
+    opensAt: SB(19), closesAt: SB(20), boundaryAt: SB(20),
+    openObservationId: null, closeObservationId: null,
+    openPrice: 4120.00, closePrice: null,
+    marginBps: null, upTarget: null, downTarget: null,
+    outcome: null, voidReason: null, resolvedAt: null, settledAt: null,
+    createdAt: nowIso(), updatedAt: nowIso(),
+  } as never);
+  await buyPosition(dan, { marketId: legacyMkt.id, side: "YES", stake: 10_000 });
+  await buyPosition(eve, { marketId: legacyMkt.id, side: "NO", stake: 10_000 });
+  const cL = await closeRound("udr_legacy_1", null, 4121.00); // +1.00 > minMove 0.01 → UP via fallback
+  ok("10.6 · ⛔ a legacy round (null targets) falls back to openPrice±minMove and settles UP",
+     cL.ok && cL.data.outcome === "UP", cL.ok ? cL.data.outcome : cL.error);
+
+  // 10e — conservation across the margin chain: players + open pools + house fees == start.
+  const spxStart = 1_000_000; // dan + eve funded 500k each
+  const spxEnd = await twoWallets();
+  const spxRounds = await roundStore.list({ chainId: spxChain.id });
+  let openPools = 0, house = 0;
+  for (const rr of spxRounds) {
+    const mm = await marketStore.get(rr.marketId);
+    if (!mm) continue;
+    if (!mm.settledAt) openPools += mm.yesPool + mm.noPool;
+    else if (mm.resolvedOutcome && mm.resolvedOutcome !== "VOID") house += Math.round(poolFee(mm.yesPool, mm.noPool, ratesFor(mm), mm.resolvedOutcome).fee);
+  }
+  // The legacy round is on spxChain, so it's already counted in the loop above.
+  const drift = (spxEnd + openPools + house) - spxStart;
+  ok("10.7 · ★★ MONEY CONSERVATION under the margin model — payout, refund, open pool, or fee",
+     Math.abs(drift) <= 2, `drift ${drift} TZS (players ${spxEnd} + pools ${openPools} + house ${house})`);
+}
+
+// ── 11 · ⛔ FROZEN: a mid-round margin change cannot move a LIVE round's boundaries ──
+{
+  const rf = await openRound(chain, B(40), await stubObservation(B(40), 2400.00), 2400.00);
+  if (!rf.ok) throw new Error(rf.error);
+  const frozen = (await roundStore.get(rf.data.id))!;
+  ok("11.1 · the round froze up 2412 / down 2388 at open (Gold 2400, 0.5%)",
+     frozen.upTarget === 2412 && frozen.downTarget === 2388, `up=${frozen.upTarget} down=${frozen.downTarget}`);
+  // The operator now WIDENS the default margin to 5% (a fresh round would use up 2520).
+  await setUpDownConfig({ defaultMarginBps: 500 }, OFFICER);
+  const stillFrozen = (await roundStore.get(rf.data.id))!;
+  ok("11.2 · ⛔ after a config change to 5%, the LIVE round's targets are UNCHANGED (frozen at open)",
+     stillFrozen.upTarget === 2412 && stillFrozen.downTarget === 2388, `up=${stillFrozen.upTarget}`);
+  // Close at 2415: UP under the FROZEN 0.5% band (≥ 2412), but would be VOID under the NEW 5% band (< 2520).
+  const cf = await closeRound(rf.data.id, await stubObservation(B(41), 2415.00), 2415.00);
+  ok("11.3 · ⛔ it resolves by its FROZEN band → UP — a config edit can never re-price a bet already taken",
+     cf.ok && cf.data.outcome === "UP", cf.ok ? cf.data.outcome : cf.error);
+  await setUpDownConfig({ defaultMarginBps: 50 }, OFFICER); // restore
 }
 
 console.log(`\nupdown-engine: ${pass} passed, ${fail} failed`);

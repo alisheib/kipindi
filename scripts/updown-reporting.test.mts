@@ -97,9 +97,9 @@ try { await Promise.resolve(db.txn.create({ id: `txn_dep_${seq}`, walletId: `wal
 // MARKET poll: resolve YES (single-admin path).
 await resolveMarket({ marketId: poll.id, outcome: "YES", officerId: "off", evidence: "test" });
 await settleMarket(poll.id, { actorId: "off", force: true });
-// UPDOWN round: close UP (=YES) at a higher price.
-const co = await confirm(B(1), 2410);
-await closeRound(r.data.id, co, 2410);
+// UPDOWN round: close UP (=YES) ABOVE the up target (base 2400 + 0.5% margin = 2412).
+const co = await confirm(B(1), 2415);
+await closeRound(r.data.id, co, 2415);
 
 {
   const g = await moneyByGame(windowStart, windowEnd);

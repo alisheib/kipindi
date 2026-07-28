@@ -26,7 +26,7 @@ import {
   createAsset, updateAsset, setAssetEnabled, listAssets,
   createChain, updateChain, setChainState, listChains,
   getUpDownConfig, setUpDownConfig, __resetUpDownConfig,
-  stakeBoundsFor, rateProfileFor,
+  stakeBoundsFor, rateProfileFor, computeTargets, marginBpsForChain,
   ALLOWED_DURATIONS, DEFAULT_UPDOWN_CONFIG,
 } from "../src/lib/server/updown-config.ts";
 import { assetStore, chainStore, observationStore, __resetUpDownMemoryStores } from "../src/lib/server/updown-dal.ts";
@@ -360,6 +360,67 @@ let goldId = "";
 
   ok("7.6 · ALLOWED_DURATIONS is exactly 5/15/30",
      JSON.stringify([...ALLOWED_DURATIONS]) === JSON.stringify([5, 15, 30]));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 8 · THE MARGIN MODEL — the PDF's base ± margin config + pure boundary maths
+// ═══════════════════════════════════════════════════════════════════════════
+
+{
+  __resetUpDownConfig();
+  ok("8.1 · the default margin is 50 bps = 0.5% (the '50pick' factor)",
+     DEFAULT_UPDOWN_CONFIG.defaultMarginBps === 50 && (await getUpDownConfig()).defaultMarginBps === 50);
+
+  // ⛔ computeTargets IS the PDF: base 4120, 0.5% → margin 20.6, up 4140.6, down 4099.4.
+  const t = computeTargets(4120, 50, { decimals: 2, minMoveTicks: 1 });
+  ok("8.2 · ⛔ the PDF example: base 4120 × 0.5% → margin 20.6, up 4140.6, down 4099.4",
+     t.margin === 20.6 && t.upTarget === 4140.6 && t.downTarget === 4099.4,
+     `margin ${t.margin}, up ${t.upTarget}, down ${t.downTarget}`);
+  ok("8.3 · the boundaries are equidistant from the base (symmetric band)",
+     Math.abs((t.upTarget - 4120) - (4120 - t.downTarget)) < 1e-9);
+
+  // Scale-invariance — 0.5% behaves the same on a crypto pair as on a metal.
+  const btc = computeTargets(60000, 50, { decimals: 2, minMoveTicks: 1 });
+  ok("8.4 · scale-invariant: 60,000 × 0.5% → margin 300, up 60,300, down 59,700",
+     btc.margin === 300 && btc.upTarget === 60300 && btc.downTarget === 59700, `margin ${btc.margin}`);
+
+  // The tick FLOOR — a near-zero margin can't fall below the source's minimum move.
+  const tiny = computeTargets(1.00, 1, { decimals: 2, minMoveTicks: 1 }); // 1bp of 1.00 = 0.0001 < tick 0.01
+  ok("8.5 · a sub-tick margin is FLOORED to the source's minimum move (0.01)",
+     tiny.margin === 0.01 && tiny.upTarget === 1.01 && tiny.downTarget === 0.99, `margin ${tiny.margin}`);
+
+  // marginBpsForChain — a chain's own override wins; else the product default.
+  const cfg = await getUpDownConfig();
+  ok("8.6 · a chain with no override inherits the product default margin (50)",
+     marginBpsForChain({ marginBps: null } as never, cfg) === 50);
+  ok("8.7 · a chain override wins over the default",
+     marginBpsForChain({ marginBps: 20 } as never, cfg) === 20);
+
+  // Config validation — whole bps, 0-2000 (0-20%); 0 disables the %-band.
+  ok("8.8 · a margin above 2000 bps (20%) is refused",
+     !(await setUpDownConfig({ defaultMarginBps: 2500 }, OFFICER)).ok);
+  ok("8.9 · a fractional bps is refused (whole basis points only)",
+     !(await setUpDownConfig({ defaultMarginBps: 12.5 as never }, OFFICER)).ok);
+  ok("8.10 · a negative margin is refused",
+     !(await setUpDownConfig({ defaultMarginBps: -1 }, OFFICER)).ok);
+  const setOk = await setUpDownConfig({ defaultMarginBps: 30 }, OFFICER);
+  ok("8.11 · a sane margin (30 bps = 0.3%) is accepted and persists",
+     setOk.ok && (await getUpDownConfig()).defaultMarginBps === 30);
+  ok("8.12 · 0 bps is accepted — disables the %-band (reverts to the source min-move)",
+     (await setUpDownConfig({ defaultMarginBps: 0 }, OFFICER)).ok);
+
+  // A per-chain margin override on updateChain, validated + stored.
+  __resetUpDownConfig();
+  const chains = await listChains({ assetId: goldId });
+  if (chains[0]) {
+    ok("8.13 · a per-chain margin above the cap is refused",
+       !(await updateChain(chains[0].id, { marginBps: 9999 }, OFFICER)).ok);
+    ok("8.14 · a per-chain margin override (25 bps) is accepted",
+       (await updateChain(chains[0].id, { marginBps: 25 }, OFFICER)).ok);
+    const after = (await chainStore.get(chains[0].id))!;
+    ok("8.15 · …stored on the chain (25), and marginBpsForChain returns it over the default",
+       after.marginBps === 25 && marginBpsForChain(after, await getUpDownConfig()) === 25, `stored ${after.marginBps}`);
+  }
 }
 
 // ── Result ──────────────────────────────────────────────────────────────────

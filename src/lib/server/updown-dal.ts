@@ -69,6 +69,8 @@ export type StoredChain = {
   maxStake: number | null;
   /** Partial RateConfig this chain freezes onto each round it creates. */
   rateProfile: Record<string, unknown> | null;
+  /** Winning-boundary margin (bps, 50 = 0.5%); null = inherit the product default. */
+  marginBps: number | null;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -87,6 +89,10 @@ export type StoredRound = {
   closeObservationId: string | null;
   openPrice: number | null;
   closePrice: number | null;
+  /** Winning boundaries FROZEN at open: base ± margin. Null on legacy rounds (→ fallback). */
+  marginBps: number | null;
+  upTarget: number | null;
+  downTarget: number | null;
   outcome: RoundOutcome | null;
   voidReason: VoidReason | null;
   resolvedAt: string | null;
@@ -146,6 +152,7 @@ function toChain(r: any): StoredChain {
     currentRoundId: r.currentRoundId ?? null,
     minStake: r.minStake ?? null, maxStake: r.maxStake ?? null,
     rateProfile: (r.rateProfile as Record<string, unknown> | null) ?? null,
+    marginBps: r.marginBps ?? null,
     createdBy: r.createdBy, createdAt: iso(r.createdAt)!, updatedAt: iso(r.updatedAt)!,
   };
 }
@@ -157,6 +164,7 @@ function toRound(r: any): StoredRound {
     openObservationId: r.openObservationId ?? null,
     closeObservationId: r.closeObservationId ?? null,
     openPrice: num(r.openPrice), closePrice: num(r.closePrice),
+    marginBps: r.marginBps ?? null, upTarget: num(r.upTarget), downTarget: num(r.downTarget),
     outcome: (r.outcome as RoundOutcome | null) ?? null,
     voidReason: (r.voidReason as VoidReason | null) ?? null,
     resolvedAt: iso(r.resolvedAt), settledAt: iso(r.settledAt),
@@ -429,6 +437,7 @@ const CHAIN_PATCHABLE: Record<string, (v: unknown) => unknown> = {
   minStake: (v) => v,
   maxStake: (v) => v,
   rateProfile: (v) => v,
+  marginBps: (v) => v,
 };
 
 const prismaChains: ChainStore = {
@@ -456,6 +465,7 @@ const prismaChains: ChainStore = {
       currentRoundId: c.currentRoundId,
       minStake: c.minStake, maxStake: c.maxStake,
       rateProfile: (c.rateProfile ?? undefined) as never,
+      marginBps: c.marginBps,
       createdBy: c.createdBy,
     };
     await pc().upDownChain.upsert({
@@ -516,6 +526,7 @@ const prismaRounds: RoundStore = {
         opensAt: new Date(r.opensAt), closesAt: new Date(r.closesAt), boundaryAt: new Date(r.boundaryAt),
         openObservationId: r.openObservationId, closeObservationId: r.closeObservationId,
         openPrice: r.openPrice, closePrice: r.closePrice,
+        marginBps: r.marginBps, upTarget: r.upTarget, downTarget: r.downTarget,
         outcome: r.outcome, voidReason: r.voidReason,
         resolvedAt: dt(r.resolvedAt), settledAt: dt(r.settledAt),
         createdAt: new Date(r.createdAt),

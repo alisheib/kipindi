@@ -72,6 +72,14 @@ export type UpDownConfig = {
    * Frozen onto each round at creation, so the two models never mix.
    */
   defaultRateProfile: Partial<RateConfig>;
+  /**
+   * The winning-boundary margin, in basis points, a NEW chain gets by default and every
+   * round inherits when its chain has no override. **50 = 0.5%** — the "50pick" factor from
+   * the pricing model: UP wins at base + 0.5%, DOWN at base − 0.5%, otherwise the round
+   * VOIDs and every stake is refunded. Frozen onto each round at open (editing it only
+   * affects FUTURE rounds). 0 disables the %-band and reverts to the source's min-move rule.
+   */
+  defaultMarginBps: number;
 };
 
 export const DEFAULT_UPDOWN_CONFIG: UpDownConfig = {
@@ -90,6 +98,7 @@ export const DEFAULT_UPDOWN_CONFIG: UpDownConfig = {
     estimatedWinningsRate: 0.4,
     showEstimatedWinnings: true,
   },
+  defaultMarginBps: 50, // 0.5% — the "50pick" pricing-model default (base ± 0.5% boundaries).
 };
 
 declare global {
@@ -163,6 +172,14 @@ export async function setUpDownConfig(
     const hi = updates.defaultMaxStake ?? cfgStore().defaultMaxStake;
     if (!Number.isFinite(lo) || lo < 1) return { ok: false, error: "Minimum stake must be at least TZS 1." };
     if (!Number.isFinite(hi) || hi < lo) return { ok: false, error: "Maximum stake must be at least the minimum stake." };
+  }
+  if (updates.defaultMarginBps !== undefined) {
+    const m = updates.defaultMarginBps;
+    // 0 = no %-band (revert to the source min-move); cap at 2000 bps (20%) — beyond that a
+    // round would almost never reach a boundary and would void perpetually.
+    if (!Number.isInteger(m) || m < 0 || m > 2000) {
+      return { ok: false, error: "Round margin must be a whole number of basis points, 0-2000 (0-20%). 50 = 0.5%." };
+    }
   }
 
   let warn: string | undefined;
@@ -418,7 +435,18 @@ export type ChainInput = {
   minStake?: number | null;
   maxStake?: number | null;
   rateProfile?: Partial<RateConfig> | null;
+  /** Winning-boundary margin (bps); null/undefined = inherit the product default. */
+  marginBps?: number | null;
 };
+
+/** Shared validation for a margin override (bps). Null = inherit; else a whole 0-2000. */
+function checkMarginBps(m: number | null | undefined): string | null {
+  if (m == null) return null;
+  if (!Number.isInteger(m) || m < 0 || m > 2000) {
+    return "Margin must be a whole number of basis points, 0-2000 (0-20%). Leave blank to inherit the default (0.5%).";
+  }
+  return null;
+}
 
 export async function listChains(opts?: { assetId?: string; state?: ChainState }): Promise<StoredChain[]> {
   return chainStore.list(opts);
@@ -446,6 +474,8 @@ export async function createChain(input: ChainInput, officerId: string): Promise
   const profile = input.rateProfile ?? cfg.defaultRateProfile;
   const v = validateRateConfig(profile);
   if (!v.ok) return { ok: false, error: v.reason };
+  const marginErr = checkMarginBps(input.marginBps);
+  if (marginErr) return { ok: false, error: marginErr };
 
   const now = new Date().toISOString();
   const row: StoredChain = {
@@ -462,6 +492,7 @@ export async function createChain(input: ChainInput, officerId: string): Promise
     minStake: input.minStake ?? null,
     maxStake: input.maxStake ?? null,
     rateProfile: profile as Record<string, unknown>,
+    marginBps: input.marginBps ?? null,
     createdBy: officerId,
     createdAt: now,
     updatedAt: now,
@@ -477,7 +508,7 @@ export async function createChain(input: ChainInput, officerId: string): Promise
 
 export async function updateChain(
   id: string,
-  updates: { minStake?: number | null; maxStake?: number | null; rateProfile?: Partial<RateConfig> | null },
+  updates: { minStake?: number | null; maxStake?: number | null; rateProfile?: Partial<RateConfig> | null; marginBps?: number | null },
   officerId: string,
 ): Promise<ServiceResult<StoredChain>> {
   const cur = await chainStore.get(id);
@@ -497,6 +528,11 @@ export async function updateChain(
     const v = validateRateConfig(profile);
     if (!v.ok) return { ok: false, error: v.reason };
     patch.rateProfile = profile as Record<string, unknown>;
+  }
+  if (updates.marginBps !== undefined) {
+    const marginErr = checkMarginBps(updates.marginBps);
+    if (marginErr) return { ok: false, error: marginErr };
+    patch.marginBps = updates.marginBps;
   }
   await chainStore.patch(id, patch);
   audit({
@@ -594,6 +630,33 @@ export async function stakeBoundsForUpDownMarket(marketId: string): Promise<{ mi
 export async function rateProfileFor(chain: StoredChain): Promise<Partial<RateConfig>> {
   const cfg = await getUpDownConfig();
   return (chain.rateProfile as Partial<RateConfig> | null) ?? cfg.defaultRateProfile;
+}
+
+/** The winning-boundary margin (bps) a chain applies — its own override, else the default. */
+export function marginBpsForChain(chain: StoredChain, cfg: UpDownConfig): number {
+  return chain.marginBps ?? cfg.defaultMarginBps;
+}
+
+/**
+ * The frozen winning boundaries for a round: `base ± (base × marginBps/10000)`, rounded to
+ * the asset's price precision and FLOORED at the source's minimum move so a near-zero
+ * margin still cannot be decided by sub-tick noise. Pure — the money-critical arithmetic,
+ * exhaustively testable. Matches the pricing model exactly: base 4120, 50 bps → margin 20.6,
+ * up 4140.6, down 4099.4.
+ */
+export function computeTargets(
+  openPrice: number,
+  marginBps: number,
+  asset: { decimals: number; minMoveTicks: number },
+): { margin: number; upTarget: number; downTarget: number } {
+  const tick = asset.minMoveTicks * Math.pow(10, -asset.decimals);
+  const raw = openPrice * (marginBps / 10_000);
+  const margin = Math.max(Number(raw.toFixed(asset.decimals)), tick);
+  return {
+    margin,
+    upTarget: Number((openPrice + margin).toFixed(asset.decimals)),
+    downTarget: Number((openPrice - margin).toFixed(asset.decimals)),
+  };
 }
 
 /** Test helper — drop the hydrated config cache so a case starts from defaults. */
