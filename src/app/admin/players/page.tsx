@@ -8,6 +8,8 @@ import { Chip } from "@/components/ui/chip";
 import { Avatar } from "@/components/ui/avatar";
 import { Select } from "@/components/ui/select";
 import { db } from "@/lib/server/store";
+import { currentSession } from "@/lib/server/auth-service";
+import { canView } from "@/lib/server/rbac";
 import { formatTzs, formatDate } from "@/lib/utils";
 import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
@@ -18,6 +20,9 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminPlayersPage({ searchParams }: { searchParams: Promise<{ q?: string; status?: string; sort?: string; dir?: string; page?: string }> }) {
   const sp = await searchParams;
+  // RBAC: only accounting-view roles see wallet balances (Support = roster, no money).
+  const _session = await currentSession();
+  const canSeeMoney = _session ? await canView(_session.role, "accounting") : false;
   const query = (sp.q ?? "").trim().toLowerCase();
   const statusFilter = sp.status ?? "";
   const sortField = (["joined", "login", "balance"] as const).includes(sp.sort as never) ? sp.sort! : "joined";
@@ -172,7 +177,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                       {/* Masked in the broad list view — full number only on the detail page (PII minimization). Search still matches the full number. */}
                       <td className="font-mono whitespace-nowrap">{u.phoneE164.length > 6 ? `${u.phoneE164.slice(0, 4)}****${u.phoneE164.slice(-2)}` : u.phoneE164}</td>
                       <td><Chip size="sm" variant={playerStatusVariant(u.status)}>{u.status}</Chip></td>
-                      <td className="font-mono tabular text-right whitespace-nowrap">{wallet ? formatTzs(wallet.balance) : "—"}</td>
+                      <td className="font-mono tabular text-right whitespace-nowrap">{canSeeMoney && wallet ? formatTzs(wallet.balance) : "—"}</td>
                       <td className="font-mono whitespace-nowrap">{formatDate(u.createdAt)}</td>
                       <td className="font-mono whitespace-nowrap">{u.lastLoginAt ? formatDate(u.lastLoginAt) : "—"}</td>
                       <td>

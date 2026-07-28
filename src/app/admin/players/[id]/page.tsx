@@ -77,6 +77,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
   const capMoney = vRole ? await canAct(vRole, "accounting") : false;
   const capCompliance = vRole ? await canAct(vRole, "compliance") : false;
   const canSeePII = vRole ? await canView(vRole, "compliance") : false;
+  const canSeeMoney = vRole ? await canView(vRole, "accounting") : false;
   let wallet: Awaited<ReturnType<typeof db.wallet.findByUserId>> = null;
   try { wallet = await db.wallet.findByUserId(id); } catch { /* graceful */ }
   let kyc: Awaited<ReturnType<typeof db.kyc.findByUserId>> = null;
@@ -147,7 +148,8 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
     { id: "audit",        label: "Audit",          count: audit.length, icon: <I.alertCircle s={12} /> },
   ];
   // RBAC: hide the KYC tab (PII / ID documents) from viewers without compliance VIEW.
-  const visibleTabs = TABS.filter((t) => t.id !== "kyc" || canSeePII);
+  // KYC tab needs compliance-view; Transactions (money history) needs accounting-view.
+  const visibleTabs = TABS.filter((t) => (t.id !== "kyc" || canSeePII) && (t.id !== "transactions" || canSeeMoney));
 
   // KYC is the most critical tab — give it an at-a-glance status so an officer
   // immediately sees whether it needs action. Warn = not approved (needs you),
@@ -202,7 +204,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
                     </Chip>
                   </a>
                 )}
-                {kyc?.nidaVerifiedAt && <Chip size="sm" variant="neutral"><I.check s={10} className="inline -mt-0.5 mr-0.5" />NIDA verified</Chip>}
+                {kyc?.nidaVerifiedAt && canSeePII && <Chip size="sm" variant="neutral"><I.check s={10} className="inline -mt-0.5 mr-0.5" />NIDA verified</Chip>}
                 {rg?.dailyDepositLimit && (
                   <Chip size="sm" variant="warning">limit {formatTzsCompact(rg.dailyDepositLimit).replace("TZS ", "")}/day</Chip>
                 )}
@@ -236,13 +238,16 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
           </div>
         </AdminCard>
 
-        {/* §B — Quick stats strip */}
+        {/* §B — Quick stats strip (money/activity) — accounting-view only, so a
+            SUPPORT agent running the desk never sees a player's financials. */}
+        {canSeeMoney && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <AdminKpi label="Lifetime deposit"    sw="Jumla ya amana"        value={txnsFailed ? "" : `TZS ${formatTzsCompact(lifetimeDeposits).replace("TZS ", "")}`} unavailable={txnsFailed} delta={wallet ? `wallet ${formatTzs(wallet.balance)}` : "—"} />
           <AdminKpi label="Lifetime withdrawal" sw="Jumla ya utoaji"       value={txnsFailed ? "" : `TZS ${formatTzsCompact(lifetimeWithdrawals).replace("TZS ", "")}`} unavailable={txnsFailed} delta={`${txns.filter((t) => t.type === "WITHDRAWAL").length} txns`} />
           <AdminKpi label="NGR contribution"    sw="Mchango wa mapato"     value={txnsFailed ? "" : `TZS ${formatTzsCompact(ngr).replace("TZS ", "")}`} unavailable={txnsFailed} delta={`${txns.filter((t) => t.type === "BET_PLACED").length} positions`} />
           <AdminKpi label="Last position"      sw="Nafasi ya mwisho"      value={txnsFailed ? "" : (() => { const lb = txns.filter((t) => t.type === "BET_PLACED").sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]; return lb ? formatDateShort(lb.createdAt) : "never"; })()} unavailable={txnsFailed} delta={`${txns.filter((t) => t.type === "BET_PLACED").length} positions`} />
         </div>
+        )}
 
         {/* §C — Tabs */}
         <AdminCard padding="p-0">
@@ -300,7 +305,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
                 {audit.length === 0 && <p className="text-caption text-text-tertiary py-6 text-center">No recorded activity yet.</p>}
               </div>
             )}
-            {tab === "transactions" && (
+            {tab === "transactions" && canSeeMoney && (
               txnsFailed ? (
                 <div className="p-4"><AdminLoadError what="this player's transactions" /></div>
               ) : (

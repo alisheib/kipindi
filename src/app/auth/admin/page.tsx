@@ -76,7 +76,7 @@ export default async function AdminLoginPage({ searchParams }: { searchParams?: 
             <I.shieldcheck s={16} className="text-brand-300 shrink-0 mt-0.5" />
             <div className="text-[12.5px] text-text-muted">
               <p className="font-display font-semibold text-text">
-                For ADMIN, COMPLIANCE, MODERATOR roles only
+                For 50pick staff accounts only
               </p>
               <p>Step 1: phone OTP. Step 2: 6-digit authenticator code (RFC 6238). Both events audited.</p>
             </div>

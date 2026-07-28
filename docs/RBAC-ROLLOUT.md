@@ -155,6 +155,33 @@ sub-blocks render only for `compliance` view, and money/compliance controls only
 - Owner acceptance: each role sees ONLY its pages (nav + direct-URL + mutations); a grant edit takes effect
   next request with no deploy; consequence text legible + correctly coloured; Owner never lockable.
 
+## Adversarial security review (2026-07-28) — verdict + follow-ups
+
+**Verdict: no privilege-escalation or unauthorized-data-fetch hole; ship-able on a single instance.**
+Redirections correct + ordered (live DB role); route→domain completeness enforced; both Owner-only surfaces
+locked ahead of the domain gate; every admin mutation + `api/admin` route independently re-gated + step-up TOTP;
+`x-pathname` is set by the edge proxy (not client-spoofable); a fresh FINANCE staffer logs in fine (login blocks
+only SELF_EXCLUDED/SUSPENDED/CLOSED — not email/KYC).
+
+**Fixed same-session:**
+- E1 — `emergencyVoidMarketAction` was hardcoded `["ADMIN","COMPLIANCE"]` → now `canAct("compliance")` so a
+  `/admin/roles` revoke actually removes the power (matrix is authoritative for the void money-act).
+- F1/F2 — the player money data (lifetime KPIs, wallet balance, Transactions tab) + the roster wallet column +
+  the NIDA-verified chip now gate behind `canView("accounting")` / `canSeePII` — a SUPPORT desk agent no longer
+  sees a player's financials or KYC status. Admin-login stale copy fixed.
+
+**Known follow-ups (fail-closed — no data-leak or escalation; Owner unaffected):**
+- B1/B2/B4/B5 — some controls are hosted on a page whose VIEW domain ≠ the control's ACT domain, so a delegated
+  role sees a button it can't use while the acting role can't open the page (emergency-void on `/admin/markets`,
+  the two-officer toggle + recheck on `/admin/resolver-queue`, updown/proposals config). Owner can do all of it.
+- B3 — balance-adjust lives on `/admin/players/[id]` (support-view); FINANCE has accounting-act but no players
+  view by default, so **to let Finance adjust balances, grant FINANCE the Players/support view at `/admin/roles`**
+  (or move the control). No one but the Owner can adjust balances until then.
+- E2 — objection-ruling service guard is role-hardcoded (a matrix *grant* to a custom role won't enable it; a
+  *revoke* is still honored by the action layer).
+- E3 — the grant cache is process-local; on a multi-container deploy a revoke won't propagate to other containers
+  until restart. Fine on one instance; add a TTL / Redis pub-sub before scaling out.
+
 ## Shipped (append each commit)
 
 - **Follow-up** (2026-07-28) — role-change **email notification**: `applyRoleChange` now fire-and-forgets

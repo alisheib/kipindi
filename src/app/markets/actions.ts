@@ -154,7 +154,7 @@ export async function emergencyVoidMarketAction(formData: FormData) {
   const session = await currentSession();
   if (!session) redirect("/auth/login");
   const user = await db.user.findById(session.userId);
-  if (!user || !["ADMIN", "COMPLIANCE"].includes(user.role)) {
+  if (!user || !(user.role === "ADMIN" || (await canAct(user.role, "compliance")))) {
     audit({
       category: "SECURITY",
       action: "privilege_escalation_blocked",
