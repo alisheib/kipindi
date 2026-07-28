@@ -72,7 +72,7 @@ export default async function AdminUpDownRoundsPage() {
             </div>
           ) : (
             <ScrollX label="Up & Down rounds">
-              <table className="w-full min-w-[880px] text-[12.5px]">
+              <table className="admin-tbl min-w-[880px]">
                 <thead>
                   <tr className="text-left font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle border-b border-border-subtle">
                     <th className="px-4 py-2.5 font-semibold">Round</th>

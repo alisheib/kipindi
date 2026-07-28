@@ -49,14 +49,35 @@ function decomment(s: string): string {
 
 type Finding = { rule: string; file: string; line: number; snippet: string };
 
-// Portals that are legitimate: the kit overlay primitives + the two intentional
-// slide-overs. Anything else calling createPortal is an ad-hoc overlay off the kit.
+// Portals that are legitimate NON-MODAL overlays — each is a distinct, sanctioned
+// pattern (NOT a centered dialog, so the kit Modal is the wrong tool):
+//   modal/select/tooltip/toast  — kit overlay primitives
+//   avatar-menu/notifications-panel — intentional slide-overs
+//   action-overlay              — admin progress/result overlay primitive
+//   admin-mobile-nav            — admin nav drawer
+//   needle-drawer               — the Needle bottom-sheet (Modal `sheet` is centered ≥sm)
+//   market-card                 — the "How it works" hover popover (anchored, not modal)
+//   share-button                — the share menu popover (anchored dropdown)
+// Anything ELSE calling createPortal is an ad-hoc overlay that should adopt the kit.
 const PORTAL_ALLOW = new Set([
-  "modal.tsx", "select.tsx", "tooltip.tsx", "toast.tsx",
+  "modal.tsx", "select.tsx", "date-select.tsx", "tooltip.tsx", "toast.tsx",
   "avatar-menu.tsx", "notifications-panel.tsx",
+  "action-overlay.tsx", "admin-mobile-nav.tsx", "needle-drawer.tsx",
+  "market-card.tsx", "share-button.tsx",
 ]);
 // Kit files that legitimately render the native element they wrap.
 const KIT_NATIVE = new Set(["select.tsx", "checkbox.tsx", "toggle.tsx", "button.tsx", "submit-button.tsx"]);
+// Native date/time entry that is DELIBERATELY kept native: the market-resolution
+// timestamp is money-critical and the browser's `datetime-local` is the most reliable
+// precise-entry control; the kit has no combined date+time picker (only a range filter).
+// Documented in docs/design-system/.../07-provenance/OPEN-GAPS.md.
+const DATETIME_ALLOW = new Set(["events-client.tsx", "wizard.tsx"]);
+// The kit primitives (and kit-level overlays) legitimately author raw `<button class="btn">`
+// — they DEFINE the kit; flagging them as "should use <Button>" is a false positive.
+const isKitFile = (f: string) => {
+  const p = f.replace(/\\/g, "/");
+  return p.includes("/components/ui/") || p.endsWith("/action-overlay.tsx");
+};
 
 type Rule = {
   id: string;
@@ -92,8 +113,8 @@ const RULES: Rule[] = [
   {
     id: "native-datetime",
     severity: "error",
-    desc: "native date/time input — use kit DateSelect/TimeSelect/DateTimeRangeFilter",
-    scan: (b) => matches(/type=["'](?:datetime-local|date|time|month|week)["']/g, b),
+    desc: "native date/time input — use kit DateSelect/TimeSelect/DateTimeRangeFilter (DATETIME_ALLOW = deliberate money-critical exceptions)",
+    scan: (b, f) => (DATETIME_ALLOW.has(basename(f)) ? [] : matches(/type=["'](?:datetime-local|date|time|month|week)["']/g, b)),
   },
   {
     id: "native-checkbox",
@@ -127,7 +148,7 @@ const RULES: Rule[] = [
     severity: "warning",
     desc: "raw <button className='btn …'> — prefer the kit <Button> (spinner, aria-busy, icon slots)",
     scan: (b, f) =>
-      KIT_NATIVE.has(basename(f))
+      KIT_NATIVE.has(basename(f)) || isKitFile(f)
         ? []
         : matches(/<button\b[^>]*?className=\{?["'`][^"'`]*\bbtn\b[^"'`]*["'`]/gs, b),
   },
@@ -148,6 +169,8 @@ const RULES: Rule[] = [
       const out: Array<{ index: number; snippet: string }> = [];
       for (const m of b.matchAll(/<table\b([^>]*)>/g)) {
         const attrs = m[1];
+        // HTML-email layout tables (role="presentation") are not admin data tables — skip.
+        if (/role=["']presentation["']/.test(attrs)) continue;
         const cls = attrs.match(/className=\{?["'`]([^"'`]+)["'`]/);
         const classVal = cls ? cls[1] : "";
         if (!/\badmin-tbl\b/.test(classVal)) {

@@ -94,7 +94,7 @@ export default async function InsightsPage() {
             <p className="text-[13px] text-text-muted">No players yet.</p>
           ) : (
             <ScrollX label="Cohort retention & value">
-              <table className="w-full min-w-[640px] border-collapse text-[12px]">
+              <table className="admin-tbl min-w-[640px]">
                 <thead>
                   <tr className="text-left font-mono text-[10px] uppercase tracking-[0.12em] text-text-faint">
                     <th className="py-2 pr-3 font-semibold">Cohort</th>

@@ -65,7 +65,7 @@ export function EventsClient({
   if (listOnly) {
     return (
       <ScrollX label="Scheduled events">
-        <table className="w-full min-w-[720px] border-collapse text-[12.5px]">
+        <table className="admin-tbl min-w-[720px]">
           <thead>
             <tr className="text-left font-mono text-[10px] uppercase tracking-[0.12em] text-text-faint">
               <th className="py-2 pr-3 font-semibold">Event</th>
