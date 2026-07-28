@@ -15,6 +15,7 @@ export function Checkbox({
   onChange,
   label,
   name,
+  value,
   required,
   className,
 }: {
@@ -23,6 +24,9 @@ export function Checkbox({
   onChange?: (checked: boolean) => void;
   label?: React.ReactNode;
   name?: string;
+  /** Submitted value when checked (form-native). Defaults to the browser's "on".
+   *  Set it when a server reads an explicit value, e.g. `?attention=1`. */
+  value?: string;
   required?: boolean;
   className?: string;
 }) {
@@ -61,6 +65,7 @@ export function Checkbox({
       <input
         type="checkbox"
         name={name}
+        value={value}
         required={required}
         checked={on}
         onChange={() => toggle()}

@@ -11,6 +11,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
+import { Select } from "@/components/ui/select";
 import { BrandSpinner } from "@/components/brand";
 import { AttestationRail } from "@/components/admin/attestation-rail";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -171,10 +172,14 @@ export function KycDecisionRail({
           </div>
         ) : (
           <div className="space-y-2 rounded-md border border-claret-edge bg-claret-soft/40 p-2.5">
-            <select value={reasonCode} onChange={(e) => setReasonCode(e.target.value)} className="h-9 w-full rounded-md border border-claret-edge bg-bg-overlay px-2.5 text-[12.5px] text-text admin-focus">
-              <option value="">Reason code…</option>
-              {REJECT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
+            <Select
+              value={reasonCode}
+              onChange={setReasonCode}
+              ariaLabel="Reason code"
+              placeholder="Reason code…"
+              size="sm"
+              options={REJECT_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+            />
             <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="Note to the player (required for “Other”)…" className="w-full rounded-md border border-border bg-bg-overlay px-2.5 py-1.5 text-[12px] text-text admin-focus resize-y placeholder:text-text-subtle" />
             <div className="grid grid-cols-2 gap-2">
               <button type="button" disabled={!reasonCode} onClick={() => run(rejectKycWorkstationAction, "Submission rejected", { reasonCode, note })} className="btn btn-claret btn-md w-full disabled:opacity-40">Confirm reject</button>

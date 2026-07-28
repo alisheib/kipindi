@@ -34,10 +34,13 @@ export function LanguageToggle() {
             aria-pressed={active}
             onClick={() => setLocale(code)}
             style={{
-              // 44px-tall tap target (WCAG 2.5.5 AAA); visible only ≥sm. Height via
-              // minHeight + flex-centring so the glyph stays 11.5px and the pill
-              // keeps its 9px side padding (no horizontal reflow in the top bar).
-              minHeight: 44,
+              // Height matches the primary nav-link rhythm (34px) so the toggle no
+              // longer renders as the tallest element in the 56px bar — one consistent
+              // control height across the top bar. Still clears WCAG AA 2.5.8 (24px
+              // pointer target); visible only ≥sm. 9px side padding = no horizontal
+              // reflow. (Was minHeight 44 = AAA, but that made the capsule ~50px, taller
+              // than every neighbour — consistency wins here.)
+              minHeight: 34,
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",

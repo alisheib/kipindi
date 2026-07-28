@@ -17,6 +17,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
+import { Select } from "@/components/ui/select";
 import { resolveMarketAction } from "@/app/markets/actions";
 import { BrandSpinner } from "@/components/brand";
 import { formatDateTime } from "@/lib/utils";
@@ -119,16 +120,14 @@ export function ResolutionCeremony({
             <span className="mb-1 block font-mono text-[10px] uppercase tracking-[0.14em] text-claret-300">
               Void reason · Sababu ya kubatilisha <span className="text-claret-300">*</span>
             </span>
-            <select
+            <Select
               value={voidReason}
-              onChange={(e) => setVoidReason(e.target.value)}
-              className="h-9 w-full rounded-md border border-claret-edge bg-bg-overlay px-2.5 text-[12.5px] text-text admin-focus"
-            >
-              <option value="">Select a reason…</option>
-              {VOID_REASONS.map((r) => (
-                <option key={r.value} value={r.value}>{r.label}</option>
-              ))}
-            </select>
+              onChange={setVoidReason}
+              ariaLabel="Void reason"
+              placeholder="Select a reason…"
+              size="sm"
+              options={VOID_REASONS.map((r) => ({ value: r.value, label: r.label }))}
+            />
           </label>
         )}
 
@@ -192,16 +191,14 @@ export function ResolutionCeremony({
             <span className="mb-1 block font-mono text-[10px] uppercase tracking-[0.14em] text-claret-300">
               Void reason · Sababu ya kubatilisha <span className="text-claret-300">*</span>
             </span>
-            <select
+            <Select
               value={voidReason}
-              onChange={(e) => setVoidReason(e.target.value)}
-              className="h-9 w-full rounded-md border border-claret-edge bg-bg-overlay px-2.5 text-[12.5px] text-text admin-focus"
-            >
-              <option value="">Select a reason…</option>
-              {VOID_REASONS.map((r) => (
-                <option key={r.value} value={r.value}>{r.label}</option>
-              ))}
-            </select>
+              onChange={setVoidReason}
+              ariaLabel="Void reason"
+              placeholder="Select a reason…"
+              size="sm"
+              options={VOID_REASONS.map((r) => ({ value: r.value, label: r.label }))}
+            />
           </label>
         )}
 

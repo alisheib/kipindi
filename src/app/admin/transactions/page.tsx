@@ -27,6 +27,8 @@ import { AdminRestricted } from "@/components/admin/admin-restricted";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Chip } from "@/components/ui/chip";
+import { Select } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { currentSession } from "@/lib/server/auth-service";
 import { hasRole, MONEY_ROLES } from "@/lib/server/roles";
 import { db } from "@/lib/server/store";
@@ -185,8 +187,8 @@ export default async function AdminTransactionsPage({ searchParams }: { searchPa
           <FilterSelect name="status" label="Status · Hali" value={status ?? ""} options={[["", "All"], ...STATUSES.map((s) => [s, s.replace(/_/g, " ")] as [string, string])]} />
           <FilterSelect name="provider" label="Provider · Mtoa" value={provider ?? ""} options={[["", "All"], ...PROVIDERS.map((p) => [p, p.replace(/_/g, " ")] as [string, string])]} />
           <div className="flex flex-col gap-2 sm:col-span-2 sm:flex-row sm:items-center sm:justify-between lg:col-span-6">
-            <label className="admin-focus flex min-h-[40px] cursor-pointer items-center gap-2 rounded-lg border border-border bg-bg-overlay px-3 text-sm text-text-secondary">
-              <input type="checkbox" name="attention" value="1" defaultChecked={attentionOnly} className="shrink-0 accent-[var(--royal)]" />
+            <label className="flex min-h-[40px] cursor-pointer items-center gap-2 rounded-lg border border-border bg-bg-overlay px-3 text-sm text-text-secondary">
+              <Checkbox name="attention" value="1" defaultChecked={attentionOnly} />
               <span className="whitespace-nowrap">Attention only · Uangalizi</span>
             </label>
             <div className="flex gap-2">
@@ -284,12 +286,12 @@ function FilterSelect({ name, label, value, options }: { name: string; label: st
   return (
     <label className="flex flex-col gap-1">
       <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-tertiary">{label}</span>
-      <select
-        name={name} defaultValue={value}
-        className="admin-focus min-h-[40px] rounded-lg border border-border bg-bg-overlay px-3 text-sm text-text"
-      >
-        {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-      </select>
+      <Select
+        name={name}
+        defaultValue={value}
+        ariaLabel={label}
+        options={options.map(([v, l]) => ({ value: v, label: l }))}
+      />
     </label>
   );
 }

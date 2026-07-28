@@ -1,7 +1,7 @@
 {
   "_note": "UI-consistency baseline: known drift counts per rule::file. Regenerate after a remediation phase with `npm run test:ui-consistency -- --update-baseline`. DONE when this is empty. See docs/UI-CONSISTENCY-AUDIT.md.",
   "_generated": "run with --update-baseline",
-  "_total": 90,
+  "_total": 85,
   "counts": {
     "adhoc-portal::src/components/admin/action-overlay.tsx": 1,
     "adhoc-portal::src/components/admin/admin-mobile-nav.tsx": 1,
@@ -15,12 +15,8 @@
     "btn-inline-height-override::src/app/admin/players/page.tsx": 2,
     "btn-inline-height-override::src/app/admin/resolver-queue/page.tsx": 2,
     "btn-inline-height-override::src/components/rg/reality-check.tsx": 2,
-    "native-checkbox::src/app/admin/transactions/page.tsx": 1,
     "native-datetime::src/app/admin/events/events-client.tsx": 1,
     "native-datetime::src/app/admin/markets/new/wizard.tsx": 1,
-    "native-select::src/app/admin/kyc/[id]/kyc-decision-rail.tsx": 1,
-    "native-select::src/app/admin/resolver/[id]/resolution-ceremony.tsx": 2,
-    "native-select::src/app/admin/transactions/page.tsx": 1,
     "raw-button-btn-class::src/app/admin/ai-polls/poll-actions.tsx": 14,
     "raw-button-btn-class::src/app/admin/candidates/candidate-actions.tsx": 3,
     "raw-button-btn-class::src/app/admin/kyc/[id]/kyc-decision-rail.tsx": 1,
