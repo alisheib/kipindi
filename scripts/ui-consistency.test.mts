@@ -1,0 +1,283 @@
+/**
+ * UI-consistency linter — the static half of the platform-wide UI-consistency
+ * program (Phase 0). The rendered half lives in scripts/responsive-audit.mjs
+ * (tap sizes, overflow, focus rings); this catches DRIFT FROM THE KIT in source:
+ * native controls where a kit primitive exists, hard-coded design-token literals,
+ * ad-hoc portals off the kit Modal, undefined CSS classes, raw buttons that should
+ * be the kit <Button>, inline height overrides on .btn-*, and tables that skip the
+ * shared .admin-tbl skin.
+ *
+ * Baseline model (so "detect everything" is enforceable without a big-bang fix):
+ *   - Findings are aggregated to a COUNT per `rule::file` (robust to line shifts).
+ *   - scripts/ui-consistency-baseline.json records today's known counts.
+ *   - The suite FAILS only when a (rule,file) exceeds its baseline count, or a new
+ *     (rule,file) appears — i.e. NEW drift. Pre-existing drift is tracked, not fatal.
+ *   - As each remediation phase lands, regenerate the baseline; the counts shrink.
+ *   - DONE = the baseline is empty (see docs/UI-CONSISTENCY-AUDIT.md).
+ *
+ * Run:     npm run test:ui-consistency
+ * Rebase:  npm run test:ui-consistency -- --update-baseline   (after a remediation)
+ * Report:  npm run test:ui-consistency -- --report            (per-rule tally, no fail)
+ */
+import { readFileSync, readdirSync, statSync, writeFileSync, existsSync } from "node:fs";
+import { join, relative, basename } from "node:path";
+
+const ROOT = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
+const SRC = join(ROOT, "src");
+const BASELINE = join(ROOT, "scripts", "ui-consistency-baseline.json");
+const UPDATE = process.argv.includes("--update-baseline");
+const REPORT = process.argv.includes("--report");
+
+// ---------------------------------------------------------------------------
+// File walk — every .ts/.tsx under src, excluding declaration files.
+// ---------------------------------------------------------------------------
+function walk(dir: string): string[] {
+  const out: string[] = [];
+  for (const e of readdirSync(dir)) {
+    const p = join(dir, e);
+    if (statSync(p).isDirectory()) out.push(...walk(p));
+    else if (/\.(tsx?|mts)$/.test(e) && !e.endsWith(".d.ts")) out.push(p);
+  }
+  return out;
+}
+const rel = (f: string) => relative(ROOT, f).replace(/\\/g, "/");
+
+// Strip JS/TS/JSX comments so commented-out examples never trip a rule.
+function decomment(s: string): string {
+  return s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+}
+
+type Finding = { rule: string; file: string; line: number; snippet: string };
+
+// Portals that are legitimate: the kit overlay primitives + the two intentional
+// slide-overs. Anything else calling createPortal is an ad-hoc overlay off the kit.
+const PORTAL_ALLOW = new Set([
+  "modal.tsx", "select.tsx", "tooltip.tsx", "toast.tsx",
+  "avatar-menu.tsx", "notifications-panel.tsx",
+]);
+// Kit files that legitimately render the native element they wrap.
+const KIT_NATIVE = new Set(["select.tsx", "checkbox.tsx", "toggle.tsx", "button.tsx", "submit-button.tsx"]);
+
+type Rule = {
+  id: string;
+  severity: "error" | "warning";
+  desc: string;
+  scan: (body: string, file: string) => Array<{ index: number; snippet: string }>;
+};
+
+// Helper: collect all regex matches with their string index.
+function matches(re: RegExp, body: string): Array<{ index: number; snippet: string }> {
+  const out: Array<{ index: number; snippet: string }> = [];
+  for (const m of body.matchAll(re)) {
+    out.push({ index: m.index ?? 0, snippet: m[0].replace(/\s+/g, " ").trim().slice(0, 80) });
+  }
+  return out;
+}
+// Helper: className attribute values (string literals) with their index.
+function classNames(body: string): Array<{ index: number; value: string; raw: string }> {
+  const out: Array<{ index: number; value: string; raw: string }> = [];
+  for (const m of body.matchAll(/className=\{?["'`]([^"'`]+)["'`]/g)) {
+    out.push({ index: m.index ?? 0, value: m[1], raw: m[0] });
+  }
+  return out;
+}
+
+const RULES: Rule[] = [
+  {
+    id: "native-select",
+    severity: "error",
+    desc: "raw <select> — use the kit <Select> (src/components/ui/select.tsx)",
+    scan: (b, f) => (KIT_NATIVE.has(basename(f)) ? [] : matches(/<select[\s>]/g, b)),
+  },
+  {
+    id: "native-datetime",
+    severity: "error",
+    desc: "native date/time input — use kit DateSelect/TimeSelect/DateTimeRangeFilter",
+    scan: (b) => matches(/type=["'](?:datetime-local|date|time|month|week)["']/g, b),
+  },
+  {
+    id: "native-checkbox",
+    severity: "error",
+    desc: "raw <input type=checkbox> — use the kit <Checkbox>",
+    scan: (b, f) => (KIT_NATIVE.has(basename(f)) ? [] : matches(/type=["']checkbox["']/g, b)),
+  },
+  {
+    id: "hardcoded-pill-active",
+    severity: "error",
+    desc: "hard-coded --pill-active literal — use var(--pill-active)",
+    scan: (b) => matches(/oklch\(\s*40%\s+0\.12\s+262\s*\/\s*0\.35\s*\)/g, b),
+  },
+  {
+    id: "adhoc-portal",
+    severity: "warning",
+    desc: "createPortal off the kit Modal — use <Modal> / <Modal sheet> (has focus-trap + scroll-lock)",
+    scan: (b, f) => (PORTAL_ALLOW.has(basename(f)) ? [] : matches(/createPortal\s*\(/g, b)),
+  },
+  {
+    id: "undefined-admin-table-class",
+    severity: "error",
+    desc: "className 'admin-table' is not defined in globals.css (only .admin-tbl) — renders unstyled",
+    scan: (b) =>
+      classNames(b)
+        .filter((c) => /\badmin-table\b/.test(c.value))
+        .map((c) => ({ index: c.index, snippet: c.raw.slice(0, 80) })),
+  },
+  {
+    id: "raw-button-btn-class",
+    severity: "warning",
+    desc: "raw <button className='btn …'> — prefer the kit <Button> (spinner, aria-busy, icon slots)",
+    scan: (b, f) =>
+      KIT_NATIVE.has(basename(f))
+        ? []
+        : matches(/<button\b[^>]*?className=\{?["'`][^"'`]*\bbtn\b[^"'`]*["'`]/gs, b),
+  },
+  {
+    id: "btn-inline-height-override",
+    severity: "warning",
+    desc: "height override (h-N / min-h-[] ) on a .btn — size via --h-control-* tokens, not utilities",
+    scan: (b) =>
+      classNames(b)
+        .filter((c) => /\bbtn\b/.test(c.value) && /(?:^|\s)(h-\d|min-h-\[)/.test(c.value))
+        .map((c) => ({ index: c.index, snippet: c.raw.slice(0, 80) })),
+  },
+  {
+    id: "table-not-admin-tbl",
+    severity: "warning",
+    desc: "<table> not using the shared .admin-tbl skin — adopt it (or the AdminTable helper)",
+    scan: (b) => {
+      const out: Array<{ index: number; snippet: string }> = [];
+      for (const m of b.matchAll(/<table\b([^>]*)>/g)) {
+        const attrs = m[1];
+        const cls = attrs.match(/className=\{?["'`]([^"'`]+)["'`]/);
+        const classVal = cls ? cls[1] : "";
+        if (!/\badmin-tbl\b/.test(classVal)) {
+          out.push({ index: m.index ?? 0, snippet: `<table ${attrs.trim()}>`.slice(0, 80) });
+        }
+      }
+      return out;
+    },
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Scan.
+// ---------------------------------------------------------------------------
+const files = walk(SRC);
+const findings: Finding[] = [];
+for (const f of files) {
+  const relFile = rel(f);
+  const body = decomment(readFileSync(f, "utf8"));
+  const lineStarts: number[] = [0];
+  for (let i = 0; i < body.length; i++) if (body[i] === "\n") lineStarts.push(i + 1);
+  const lineOf = (idx: number) => {
+    let lo = 0, hi = lineStarts.length - 1;
+    while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (lineStarts[mid] <= idx) lo = mid; else hi = mid - 1; }
+    return lo + 1;
+  };
+  for (const r of RULES) {
+    for (const hit of r.scan(body, f)) {
+      findings.push({ rule: r.id, file: relFile, line: lineOf(hit.index), snippet: hit.snippet });
+    }
+  }
+}
+
+// Aggregate to counts per `rule::file`.
+const counts = new Map<string, number>();
+for (const fd of findings) counts.set(`${fd.rule}::${fd.file}`, (counts.get(`${fd.rule}::${fd.file}`) ?? 0) + 1);
+
+const severityOf = (ruleId: string) => RULES.find((r) => r.id === ruleId)!.severity;
+
+// Per-rule tally (for the report + tracker doc).
+const perRule = new Map<string, number>();
+for (const fd of findings) perRule.set(fd.rule, (perRule.get(fd.rule) ?? 0) + 1);
+
+function printTally() {
+  console.log("  Findings by rule:");
+  for (const r of RULES) {
+    const n = perRule.get(r.id) ?? 0;
+    console.log(`    ${n.toString().padStart(4)}  [${r.severity === "error" ? "E" : "W"}] ${r.id}`);
+  }
+  console.log(`  ── ${findings.length} findings across ${counts.size} (rule,file) pairs, ${files.length} source files.`);
+}
+
+// ---------------------------------------------------------------------------
+// --update-baseline: write today's counts and exit.
+// ---------------------------------------------------------------------------
+if (UPDATE) {
+  const obj: Record<string, number> = {};
+  for (const k of [...counts.keys()].sort()) obj[k] = counts.get(k)!;
+  const payload = {
+    _note:
+      "UI-consistency baseline: known drift counts per rule::file. Regenerate after a remediation " +
+      "phase with `npm run test:ui-consistency -- --update-baseline`. DONE when this is empty. " +
+      "See docs/UI-CONSISTENCY-AUDIT.md.",
+    _generated: "run with --update-baseline",
+    _total: findings.length,
+    counts: obj,
+  };
+  writeFileSync(BASELINE, JSON.stringify(payload, null, 2) + "\n");
+  console.log("UI-consistency linter — baseline updated\n");
+  printTally();
+  console.log(`\n  Wrote ${counts.size} (rule,file) entries to ${rel(BASELINE)}`);
+  process.exit(0);
+}
+
+// ---------------------------------------------------------------------------
+// --report: tally only, never fail.
+// ---------------------------------------------------------------------------
+if (REPORT) {
+  console.log("UI-consistency linter — report\n");
+  printTally();
+  process.exit(0);
+}
+
+// ---------------------------------------------------------------------------
+// Compare against the baseline. Fail ONLY on new/increased drift.
+// ---------------------------------------------------------------------------
+console.log("UI-consistency linter\n");
+if (!existsSync(BASELINE)) {
+  console.log("  FAIL — no baseline file. Generate one with:");
+  console.log("         npm run test:ui-consistency -- --update-baseline");
+  process.exit(1);
+}
+const baseline: Record<string, number> = JSON.parse(readFileSync(BASELINE, "utf8")).counts ?? {};
+
+const regressions: string[] = [];
+for (const [key, n] of counts) {
+  const base = baseline[key] ?? 0;
+  if (n > base) {
+    const [rule, file] = key.split("::");
+    const extra = findings
+      .filter((fd) => fd.rule === rule && fd.file === file)
+      .slice(0, 3)
+      .map((fd) => `L${fd.line} ${fd.snippet}`)
+      .join("  ·  ");
+    regressions.push(`[${severityOf(rule) === "error" ? "E" : "W"}] ${rule} in ${file}: ${base} → ${n}\n        ${extra}`);
+  }
+}
+// Fixed (baseline higher than current) — not a failure; a nudge to re-baseline.
+const fixed: string[] = [];
+for (const [key, base] of Object.entries(baseline)) {
+  const n = counts.get(key) ?? 0;
+  if (n < base) fixed.push(`${key}: ${base} → ${n}`);
+}
+
+const baselineTotal = Object.values(baseline).reduce((a, b) => a + b, 0);
+printTally();
+console.log(`\n  Baseline: ${Object.keys(baseline).length} (rule,file) pairs, ${baselineTotal} known findings.`);
+
+if (fixed.length) {
+  console.log(`\n  ✓ ${fixed.length} baseline entr${fixed.length === 1 ? "y" : "ies"} improved — re-baseline to lock in the win:`);
+  for (const s of fixed.slice(0, 20)) console.log(`      ${s}`);
+  console.log("      → npm run test:ui-consistency -- --update-baseline");
+}
+
+if (regressions.length) {
+  console.log(`\n  FAIL — ${regressions.length} NEW/increased drift (not in the baseline):\n`);
+  for (const s of regressions) console.log(`      ${s}`);
+  console.log("\n  Fix the drift (use the kit primitive), or if intentional, re-baseline with a documented reason.");
+  process.exit(1);
+}
+
+console.log("\n  ALL PASS — no new UI-consistency drift beyond the tracked baseline.");
+process.exit(0);

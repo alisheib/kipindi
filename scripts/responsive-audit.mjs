@@ -203,10 +203,16 @@ async function assertCell(page) {
       w: Math.round(el.getBoundingClientRect().width),
     }));
 
-    // undersized touch targets (visible interactive controls)
+    // undersized touch targets — EVERY interactive control family, not just
+    // buttons/links (UI-consistency program: also inputs, selects, textareas,
+    // switches, options, filter chips, tabs). Threshold stays <38 in Phase 0 so
+    // .btn-md (38px) doesn't warn; it rises toward the true 40px floor (Law 9)
+    // once the control-height tokens bump in Phase 3. Soft-only — never a hard fail.
     const small = [];
-    const sel = 'button, a[href], [role="button"], [role="tab"], [role="menuitem"], input[type="checkbox"], input[type="radio"]';
+    const sel = 'button, a[href], [role="button"], [role="tab"], [role="menuitem"], [role="option"], [role="switch"], input:not([type="hidden"]), select, textarea';
+    const seen = new Set();
     for (const el of document.querySelectorAll(sel)) {
+      if (seen.has(el)) continue; seen.add(el);
       const r = el.getBoundingClientRect();
       // <8px in either axis = visually-hidden/skip-link (expands on focus) — exempt
       if (r.width < 8 || r.height < 8) continue;
@@ -215,8 +221,10 @@ async function assertCell(page) {
       // inline text links inside prose are exempt (WCAG 2.5.8)
       const inlineLink = el.tagName === "A" && cs.display.includes("inline");
       if (inlineLink) continue;
+      // multi-line text entry may legitimately exceed a control's min height — a
+      // tall textarea is fine; only flag it when it's genuinely too SHORT.
       if (r.height < 38 || r.width < 24) {
-        const label = (el.getAttribute("aria-label") || el.textContent || "").trim().slice(0, 24);
+        const label = (el.getAttribute("aria-label") || el.getAttribute("placeholder") || el.textContent || "").trim().slice(0, 24);
         small.push(`${el.tagName.toLowerCase()}[${label}] ${Math.round(r.width)}×${Math.round(r.height)}`);
       }
     }

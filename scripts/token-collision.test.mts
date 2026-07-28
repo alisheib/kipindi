@@ -135,5 +135,30 @@ check(
   durationless.length ? `${durationless.length}: ${durationless.slice(0, 10).join(" | ")}` : "",
 );
 
+// ---------------------------------------------------------------------------
+// 4. Button size classes reference a control-height token, never a literal px.
+//    Heights live in ONE place (--h-control-* in globals.css) so the tap-floor
+//    is enforceable and a future hard-coded `.btn-sm { height: 30px }` can't
+//    silently drift off the floor. (Introduced by the UI-consistency program,
+//    Phase 0. Broader "any control references a token" lives in the
+//    ui-consistency linter, which carries a baseline for the pre-existing cases.)
+// ---------------------------------------------------------------------------
+const litBtnHeights: string[] = [];
+for (const f of files) {
+  const rel = relative(ROOT, f).replace(/\\/g, "/");
+  const body = decomment(readFileSync(f, "utf8"));
+  for (const m of body.matchAll(/\.btn-(sm|md|lg|xl)\s*\{([^}]*)\}/gi)) {
+    const heightDecl = m[2].match(/height\s*:\s*([^;]+)/i);
+    if (heightDecl && !/var\(--h-control-/.test(heightDecl[1])) {
+      litBtnHeights.push(`${rel}: .btn-${m[1]} height="${heightDecl[1].trim()}"`);
+    }
+  }
+}
+check(
+  "button sizes reference --h-control-* (no literal px height)",
+  litBtnHeights.length === 0,
+  litBtnHeights.length ? `${litBtnHeights.length}: ${litBtnHeights.join(" | ")}` : "",
+);
+
 log(`\n${fail === 0 ? "ALL PASS" : `${fail} FAILED`} — ${files.length} css files, ${definedIn.size} guarded tokens`);
 process.exit(fail === 0 ? 0 : 1);

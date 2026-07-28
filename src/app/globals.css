@@ -197,6 +197,22 @@
   /* ---------- Radius — additive +4 rhythm ---------- */
   --r-xs: 4px; --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-xl: 24px; --r-pill: 999px;
 
+  /* ---------- Control heights (UI-consistency program, Phase 0) ----------
+     Interactive control heights live HERE, in ONE place, so the tap-floor is
+     enforceable (scripts/token-collision.test.mts checks that every .btn-* height
+     references one of these) instead of being hard-coded per size class. Introduced
+     at the CURRENT pixel values so this step is pixel-stable; the tap-floor bump
+     (--h-control-sm→40, -md→44, -lg→48, and .mcardp-actions 36→40) lands in Phase 3
+     with before/after visual sign-off. --tap-min is the 40px finger/primary/money
+     floor (Law 9); --h-control-xs is the documented dense, MOUSE-ONLY admin exception. */
+  --tap-min:      40px;
+  --h-control-xs: 32px;   /* dense mouse-only admin inline controls (documented floor exception) */
+  --h-control-sm: 30px;   /* .btn-sm · Phase 3 → 40 */
+  --h-control-md: 38px;   /* .btn-md · Phase 3 → 44 (aligns with --h-input) */
+  --h-control-lg: 46px;   /* .btn-lg · Phase 3 → 48 */
+  --h-control-xl: 56px;   /* .btn-xl */
+  --h-input:      44px;   /* .input / .input-group — already at the tap floor */
+
   /* ---------- Motion ----------
      Easing tokens are BARE CURVES. Always pair one with an explicit duration:
        transition: border-color var(--dur-micro) var(--ease-micro);
@@ -495,10 +511,10 @@ body {
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
 /* Kit per-size horizontal padding (kit/tokens.css) — sm12/md16/lg20/xl24; xl gets --r-lg. */
-.btn-sm { height: 30px; padding: 0 12px; font-size: 13px; }
-.btn-md { height: 38px; padding: 0 16px; font-size: 14px; }
-.btn-lg { height: 46px; padding: 0 20px; font-size: 15px; }
-.btn-xl { height: 56px; padding: 0 24px; font-size: 16.5px; border-radius: var(--r-lg); }
+.btn-sm { height: var(--h-control-sm); padding: 0 12px; font-size: 13px; }
+.btn-md { height: var(--h-control-md); padding: 0 16px; font-size: 14px; }
+.btn-lg { height: var(--h-control-lg); padding: 0 20px; font-size: 15px; }
+.btn-xl { height: var(--h-control-xl); padding: 0 24px; font-size: 16.5px; border-radius: var(--r-lg); }
 
 /* Fully-rounded button — replaces the inline `style={{ borderRadius: var(--r-pill) }}`
    override repeated across ~14 CTAs (auth, kyc, wallet, profile, market sign-in). */
@@ -769,7 +785,7 @@ body {
 /* ---------- Input ---------- */
 .input {
   width: 100%;
-  height: 44px;
+  height: var(--h-input);
   padding: 0 14px;
   border-radius: var(--r-md);
   border: 1px solid var(--border-control); /* audit H10 — the input outline is its only boundary (WCAG 1.4.11) */
