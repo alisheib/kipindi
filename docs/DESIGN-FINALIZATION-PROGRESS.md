@@ -28,8 +28,37 @@ finished work nor assume unfinished work is finished.
 | 7 · Polish sweep + hero overlay | ✅ done | `6dc66d9` |
 | Final `test:all` + screenshots | ✅ done | 102/104 — see below |
 
-**Branch `design-final` is pushed to origin. `main` is untouched — no deploy has been
-triggered. Ali reviews and merges.**
+## 🟢 LIVE on `main` @ `300a17b` (merge commit), 2026-07-29
+
+Ali merged and pushed; Railway deployed in ~2 minutes. **Verified live at
+`https://www.50pick.tz`, not assumed** — because a green build plus a 200 response does
+not prove your commit is serving.
+
+**The fingerprint method.** Before the merge, the live CSS was fetched and confirmed to
+*not* contain `tipbar-empty` / `chip-new` / `mcardp-info` — classes that exist only in
+this branch. After the deploy they are present. That A/B is what makes "live" a fact.
+
+**Token values, A/B'd against the captured pre-deploy stylesheet** (the build serves
+hex + `lab()`, never the `oklch()` we author — asserting on `oklch` checks a format the
+browser never receives):
+
+| token | pre-deploy | live now | |
+|---|---|---|---|
+| `--text-faint` | `#697eb6` | `#6f84bd` | **the AA fix** — exactly `oklch(62% .09 268)` |
+| `--bg` | `#03003a` | `#02002f` | deeper canvas |
+| `--border` | `#1c2f7a` | `#213480` | crisper edge |
+
+**Live behaviour**, EN/SW/ZH × 360/768/1280/1920: `/`, `/markets`, `/live`, `/results`
+all 200 · no fabricated 50% · no `@ 50%` buttons · no bare `TZS 0` · card buttons measure
+**40px** · zero horizontal overflow · zero console/page errors. **ALL PASS.**
+
+The new states are correctly *dormant* on the live board: featuring is suppressed above 4
+cards (the board has 15), and no zero-activity market exists right now, so no NEW badge or
+cold-start rail renders. They are honest states, not decoration — they appear only when
+they are true.
+
+Verification script: `scratchpad/verify-live.mjs` (kept out of the repo deliberately;
+`BASE=https://www.50pick.tz node verify-live.mjs` from the repo root, which has playwright).
 
 ### Final gate run
 
