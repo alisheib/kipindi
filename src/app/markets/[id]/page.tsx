@@ -194,6 +194,12 @@ export default async function MarketDetail({
   // so the page swaps it out for an "awaiting settlement" card.
   const closedByTime = isClosedByTime(m) && !isResolved;
   const selectionClosed = isSelectionClosed(m) && !isResolved;
+  // COLD-START — the same rule the board and the card use (volume 0 +
+  // predictors 0 on a live, still-open market), so the three surfaces can never
+  // disagree about whether a market has a crowd price. One rule, one meaning.
+  const freshMarket =
+    m.status === "LIVE" && !selectionClosed && !closedByTime && !isResolved &&
+    m.yesPool + m.noPool === 0 && m.predictorCount === 0;
 
   // ── C1a hero lifecycle state — open · closing · waiting · resolved ──
   // Server-computed (page is force-dynamic + RefreshPoller re-fetches every 15s,
@@ -341,12 +347,33 @@ export default async function MarketDetail({
             order-2 on mobile (below the bet widget), order-1 on desktop (left col) */}
         <section className="order-2 lg:order-1 lg:col-start-1 lg:row-start-1 lg:row-span-2 min-w-0 space-y-5">
 
-          {/* 1. Probability bar — current crowd signal */}
-          <TippingBar yesPct={yesPct} height={28} showLabels resolved={isResolved} />
+          {/* 1. Probability bar — current crowd signal, or an honest empty rail.
+              COLD-START (2026-07-29): with an empty pool `impliedYesPct()` returns
+              the DEFAULT 50, and this bar rendered it as a real, fully-coloured
+              50/50 split with a centred needle and the word "TIPPING" — on a
+              market with TZS 0 and zero predictors. Step 2 removed that lie from
+              the card; it was still here, on the page where a player is actually
+              about to stake. Same law (RULES 5), bigger surface. */}
+          <TippingBar
+            yesPct={yesPct}
+            height={28}
+            showLabels
+            resolved={isResolved}
+            empty={freshMarket}
+            emptyLabel={t.market.noBetsYet}
+          />
+          {freshMarket && (
+            <p className="-mt-3 text-center font-mono text-[11px] tracking-[0.06em] text-text-faint">
+              {t.market.noBetsYet} · {t.market.beFirst}
+            </p>
+          )}
 
           {/* 2. KPI strip — volume, participation, timing at a glance */}
           <div className="grid grid-cols-3 gap-3">
-            <KPI label={t.market.volume}     value={formatTzsCompact(m.yesPool + m.noPool)} icon={<I.chart s={14} />} />
+            {/* "TZS 0" is factually true, but on a fresh market it reads as
+                failure rather than as an opening. Same words the card uses, so
+                the two surfaces say the same thing about the same state. */}
+            <KPI label={t.market.volume}     value={freshMarket ? t.market.noPoolYet : formatTzsCompact(m.yesPool + m.noPool)} icon={<I.chart s={14} />} />
             <KPI label={t.market.predictors} value={String(m.predictorCount)}     icon={<I.users s={14} />} />
             <KPI label={t.market.resolves}   value={fmtTime(m.resolutionAt)} mono />
           </div>
