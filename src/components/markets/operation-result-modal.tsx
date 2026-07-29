@@ -91,7 +91,14 @@ const TONE: Record<OperationVariant, { fg: string; bg: string; brd: string; shad
     bg: "oklch(40% 0.10 152 / 0.18)",
     brd: "oklch(45% 0.13 152)",
     shadow: "0 0 0 6px oklch(45% 0.13 152 / 0.18)",
-    primaryBtn: "btn-gold",
+    // NOT btn-gold. Success is not the same thing as EARNED MONEY, and gold means
+    // only the latter (RULES law 3). A deposit, a KYC approval and a submitted
+    // proposal are all "success", and none of them is money the player has won.
+    // The gold button is opted INTO with stripTone="gold"; see effectiveBtn below.
+    // This value was btn-gold and is unreachable for the success variant today —
+    // but a dead default that says the wrong thing is a trap for whoever next
+    // edits effectiveBtn, so it now states the rule instead of contradicting it.
+    primaryBtn: "btn-primary",
   },
   danger: {
     fg: "oklch(78% 0.16 22)",
@@ -245,7 +252,7 @@ export function OperationResultModal({
           that schedules the close, so the bar and the dismiss land on the same
           frame. The panel's `overflow-hidden` clips it to the rounded corners. */}
       {variant === "success" && (
-        <div className="absolute inset-x-0 top-0 h-1 overflow-hidden rounded-t-xl" aria-hidden>
+        <div className="absolute inset-x-0 top-0 h-1 overflow-hidden rounded-t-modal" aria-hidden>
           <div
             ref={stripRef}
             className="h-full w-full origin-left"

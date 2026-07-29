@@ -152,7 +152,38 @@ that is **already done**. Recorded so nobody re-does them or reports them as new
 - **"Recent activity" on market detail** — deferred to Ali (see decision 3).
 - **Full numeric radius bridge** — deferred to Ali (see the open gap above).
 
+## Step 6 — popup consistency · ✅ done
+
+**The routing was already correct**, and the audit says so rather than inventing work:
+
+- `wallet/wallet-result-modal.tsx` — the prompt's named starting point — **already**
+  routes through `OperationResultModal`. Verified, not "fixed".
+- `test:design-frozen` proves the general case: **no hand-rolled `createPortal`
+  outside the shared primitives.** The last offender was market-card's popover,
+  closed in Step 1. Slide-overs, dropdowns and the calendar are a documented
+  *different* pattern (see `modal.tsx`'s header) and are named in the guard's
+  exemption list so the exemption is deliberate rather than accidental.
+- `win-celebration.tsx` renders through the shared `Modal` and consumes gold
+  tokens. It is left as-is: gold is *correct* there (a settled win is earned
+  money), it already has the focus trap and scroll lock, and rebuilding the win
+  moment on top of `OperationResultModal` would be a redesign — which the brief
+  forbids.
+
+**`stripTone` audit — the gold rule holds, and now says so.** Every success result
+opts *into* gold; nothing inherits it. `TONE.success.primaryBtn` was `btn-gold`,
+which is unreachable for the success variant today (`effectiveBtn` overrides it
+from `stripTone`, default `brand`) — but a dead default that contradicts the law
+is a trap for whoever next edits that line. It now reads `btn-primary` and states
+the rule. Deposits, KYC approvals and submitted proposals are all "success" and
+none of them is money the player has won.
+
 ## Found in passing — real defects, NOT fixed (outside this pass's scope)
+
+- **A gold "Submit proposal" button** — `src/app/proposals/new/create-form.tsx:162`
+  uses `<Button variant="gold">`. RULES law 3 allows gold on "the final money-commit
+  button"; submitting a proposal commits no money. It is plausibly a deliberate
+  product choice given the "Propose Markets & Get Paid" framing, so it is Ali's call,
+  not a silent recolour of a CTA. Seen 2026-07-29 during the Step 6 stripTone audit.
 
 - **`23masaa yaliyobaki` — missing space in SW/ZH time-left.** `timeLeftStr()` in
   `markets/page.tsx` builds `${h}${t.market.hLeft}`. English is correct because "h" is a
