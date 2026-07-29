@@ -417,11 +417,27 @@
   --hero-no-accent:    var(--no-300);
   --hero-tag-yes:      var(--yes-300);
 
-  /* TippingBar — kit royal track + gilt needle */
+  /* TippingBar — kit royal track + gilt needle.
+     ⚠️ 2026-07-29: this family existed from the start and `brand.tsx` did not use
+     ANY of it — the component re-typed `oklch(50% 0.20 268)`, `oklch(58% 0.17 268)`
+     and `oklch(86% 0.13 82)` inline, byte-for-byte the values below. The tokens
+     were the dead half of a split truth: editing them changed nothing on screen,
+     which is the most dangerous kind of drift because the system LOOKS canonical.
+     The fills/glows below were the missing half; the bar now consumes all of it. */
   --bar-track:            oklch(50% 0.20 268);
   --bar-track-border:     oklch(58% 0.17 268);
   --bar-needle:           var(--gilt);
-  --bar-needle-glow:      color-mix(in oklab, var(--gilt) 40%, transparent);
+  --bar-needle-glow:      color-mix(in oklab, var(--gilt) 55%, transparent);
+  --bar-fill-yes:         linear-gradient(90deg, oklch(50% 0.14 152) 0%, oklch(58% 0.16 152) 100%);
+  --bar-fill-no:          linear-gradient(270deg, oklch(52% 0.16 22) 0%, oklch(60% 0.18 22) 100%);
+  --bar-glow-yes:         0 0 18px oklch(58% 0.16 152 / 0.35);
+  --bar-glow-no:          0 0 18px oklch(60% 0.18 22 / 0.35);
+  /* The resolved shimmer + the hover-recast gilt sweep. */
+  --bar-shimmer:          linear-gradient(90deg, transparent 0%, oklch(75% 0.13 85 / 0.5) 50%, transparent 100%);
+  --bar-sweep:            linear-gradient(90deg, transparent 0%, oklch(78% 0.13 80 / 0) 20%, oklch(78% 0.13 80 / 0.90) 50%, oklch(78% 0.13 80 / 0) 80%, transparent 100%);
+  /* Cold-start (Step 2): the neutral "awaiting first bet" track. A dashed rail,
+     no split, no needle — an empty market is not a balanced contest. */
+  --bar-empty-track:      repeating-linear-gradient(90deg, var(--border-strong) 0 8px, transparent 8px 15px);
   --bar-label-yes:        oklch(94% 0.10 152);
   --bar-label-yes-strong: var(--yes-200);
   --bar-label-no:         oklch(94% 0.08 22);
@@ -823,6 +839,137 @@ body {
   background-size: 220% 100%;
   animation: gold-shimmer 1.6s ease-in-out infinite;
   pointer-events: none;
+}
+
+/* ── TippingBar — the signature split rail + gilt needle (DESIGN_AUTHORITY B10) ──
+   Every rule here used to be an inline `style={{…}}` object inside brand.tsx —
+   21 of them, including the whole colour recipe, both glows, the needle, the
+   shimmer, the sweep and a `<style>` tag carrying two @keyframes. The component
+   even re-typed the --bar-* token VALUES by hand instead of reading the tokens
+   that were sitting in globals.css for it (see the family's note there).
+
+   The bar's height is a prop, so it arrives as ONE inline custom property,
+   --tb-h, and every derived measurement (the pill radius, the needle overhang)
+   is computed from it in CSS. That is the line this file draws: a value the
+   caller chooses at runtime comes in as a variable; a value the DESIGN chooses
+   lives here. `width`, `left` and `rotate` stay inline because they are the
+   live data — the crowd's actual split — not design. */
+.tipbar-rail {
+  position: relative;
+  height: var(--tb-h);
+  border-radius: calc(var(--tb-h) / 2);
+  background: var(--bar-track);
+  box-shadow: inset 0 0 0 1px var(--bar-track-border);
+  overflow: visible;
+}
+/* The recast is a hover GESTURE, not a link — keep the arrow so the bar never
+   advertises itself as clickable. Scoped to the recast variant on purpose: on a
+   market card the bar sits inside a <Link> with recastOnHover={false}, and there
+   the pointer cursor is correct and must be inherited. */
+.tipbar-recast { cursor: default; }
+.tipbar-fill { position: absolute; top: 0; bottom: 0; }
+/* The animated side fills. `transition` is applied only when the bar is
+   animating (.tipbar-anim), so a static placement in a 20-card grid does no
+   compositing work at all. --m-pivot is the kit's needle-and-dials-ONLY
+   overshoot; the bar had hand-typed cubic-bezier(.34,1.56,.64,1) at 540ms,
+   a curve the kit had already named and a duration off its scale. */
+.tipbar-anim .tipbar-fill,
+.tipbar-anim .tipbar-needle {
+  transition: width var(--t-stage) var(--m-pivot), left var(--t-stage) var(--m-pivot), transform var(--t-stage) var(--m-pivot);
+}
+.tipbar-yes {
+  left: 0;
+  background: var(--bar-fill-yes);
+  box-shadow: var(--bar-glow-yes);
+  border-radius: calc(var(--tb-h) / 2) 0 0 calc(var(--tb-h) / 2);
+}
+.tipbar-no {
+  right: 0;
+  background: var(--bar-fill-no);
+  box-shadow: var(--bar-glow-no);
+  border-radius: 0 calc(var(--tb-h) / 2) calc(var(--tb-h) / 2) 0;
+}
+/* When one side owns the whole rail it needs BOTH ends rounded, or the bar reads
+   as "all track + a needle jammed on the edge". Keyed off the TARGET, never the
+   animated value: mid-recast both halves pass through 50/50, and border-radius
+   is not in the transition list, so deriving it from the animated value made the
+   corners snap in and out — the "edges appear and fade incorrectly" glitch. */
+.tipbar-fill[data-full] { border-radius: calc(var(--tb-h) / 2); }
+.tipbar-needle {
+  position: absolute;
+  top: -6px;
+  bottom: -6px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--bar-needle);
+  box-shadow: 0 0 12px var(--bar-needle-glow);
+  transform-origin: 50% 100%;
+}
+.tipbar-shimmer {
+  position: absolute;
+  inset: 0;
+  border-radius: calc(var(--tb-h) / 2);
+  overflow: hidden;
+  pointer-events: none;
+}
+.tipbar-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--bar-shimmer);
+  animation: tb-shimmer var(--t-max) var(--m-glide) 1;
+}
+.tipbar-sweep { position: absolute; inset: 0; border-radius: calc(var(--tb-h) / 2); overflow: hidden; pointer-events: none; }
+.tipbar-sweep::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--bar-sweep);
+  background-size: 35% 100%;
+  background-repeat: no-repeat;
+  background-position: -35% 0;
+  mix-blend-mode: screen;
+  animation: tb-sweep var(--t-stage) var(--m-settle) both;
+}
+/* Cold-start: a neutral dashed rail. No split, no needle, no labels — an empty
+   market has no crowd price, and a centred 50/50 would be a fabricated one (A-5). */
+.tipbar-empty {
+  height: var(--tb-h);
+  border-radius: calc(var(--tb-h) / 2);
+  background: var(--bar-empty-track);
+  box-shadow: inset 0 0 0 1px var(--border);
+  opacity: 0.55;
+}
+.tipbar-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+}
+.tipbar-labels .tb-yes { color: var(--bar-label-yes); }
+.tipbar-labels .tb-no  { color: var(--bar-label-no); }
+.tipbar-labels .tb-yes strong { color: var(--bar-label-yes-strong); font-variant-numeric: tabular-nums; }
+.tipbar-labels .tb-no  strong { color: var(--bar-label-no-strong);  font-variant-numeric: tabular-nums; }
+.tipbar-labels strong { font-weight: 500; }
+.tipbar-labels strong[data-lead] { font-weight: 700; }
+/* Was 9px italic — illegible on mobile. 10.5px + 500 + 0.10em reads cleanly
+   without overpowering the YES/NO percentages either side of it. */
+.tipbar-lean {
+  color: var(--bar-label-tipping);
+  font-style: italic;
+  text-transform: uppercase;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.10em;
+  opacity: 0.85;
+}
+@keyframes tb-shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+@keyframes tb-sweep {
+  0%   { background-position: -35% 0; opacity: 0; }
+  15%  { opacity: 0.9; }
+  100% { background-position: 135% 0; opacity: 0; }
 }
 
 /* ---------- Input ---------- */
