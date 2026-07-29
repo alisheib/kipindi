@@ -43,7 +43,7 @@ at the call site and each resolves through the one definition site in globals.cs
 (4/8/12/16/24px), so `rounded-md` renders 8px while `--r-md` is 12px. Bridging
 them would shift every corner in the product; Ali deferred it on 2026-07-29. The
 numeric scale is frozen as legacy — do not renumber it. See
-`docs/DESIGN-FINALIZATION-PROGRESS.md`.
+`docs/DESIGN_AUTHORITY.md` (B9/B10).
 
 ## Glass
 .glass-panel (tokens.css) — the ledger/hero surface: translucent royal fill + blur + 1px border (exact recipe extracted verbatim in 02-components/stat-tiles/spec.md). Dialog scrims animate backdrop-filter blur(0→8px) via scrim-fade.

@@ -2152,13 +2152,13 @@ Undated docs claiming completion states are the H13/C9 trap in miniature. Someon
 |---|---|
 | `docs/consistency-audit.md` *(dated 07-04)* | Claims consistency verified — against the **teal kit** era. Findings may be inverted now. |
 | `docs/responsiveness-audit.md` | Undated. Claims responsive verified. **I could not verify** (no browser). |
-| `docs/navigation-ia-review.md` | Undated. Referenced by live code (`withdraw/page.tsx:99` cites *"IA review R6"*) — so **some of it shipped**. Which parts? Unknown. |
+| `docs/FLOWS.md` | Undated. Referenced by live code (`withdraw/page.tsx:99` cites *"IA review R6"*) — so **some of it shipped**. Which parts? Unknown. |
 | `docs/status-lexicon-inventory.md` | Undated. Lexicon **is** centralised (`admin-status-lexicon.ts`) → likely BUILT. |
 | `docs/perfection-plan.md` | Undated. Aspirational. |
 | `docs/proposals.md`, `docs/feature-backlog.md` | Undated wishlists. Fine — **label them wishlists**. |
-| `docs/ui-rollout-tracker.md` *(07-13)* | Newest. Cites `DESIGN_AUTHORITY B3` — **a doc that doesn't exist**. |
+| `docs/design-system/v2-2026-07-27/07-provenance/CHANGELOG.md` *(07-13)* | Newest. Cites `DESIGN_AUTHORITY B3` — **a doc that doesn't exist**. |
 
-**`navigation-ia-review.md` deserves attention:** live code cites *"IA review R6"* as authority for a redirect. If R6 shipped and R1–R5 didn't, nobody can tell which rules are live. Same shape as C9 — **prose as authority, unbound to code**.
+**`FLOWS.md` deserves attention:** live code cites *"IA review R6"* as authority for a redirect. If R6 shipped and R1–R5 didn't, nobody can tell which rules are live. Same shape as C9 — **prose as authority, unbound to code**.
 
 ## 16.4 KEEP — verified accurate
 
@@ -2263,7 +2263,7 @@ git rm -r "50PICK/design_handoff_prediction_market_kit/"
 | `Final UI enhancement Kit/.../code/glyphs-additions.tsx` | all 12 glyphs merged into `src/components/ui/glyphs.tsx`; also typechecked (**M12**) |
 | `Final UI enhancement Kit/50pick-design-final.zip` | duplicate of the extracted folder beside it |
 | `Final UI enhancement Kit/files(2).zip` | unnamed archive, unknown provenance |
-| `docs/SESSION_STATUS.md`, `docs/next-session-prompt.md`, `docs/ui-rollout-tracker.md` | session scratch |
+| `docs/SESSION_STATUS.md`, `docs/NEXT-PLAN.md`, `docs/design-system/v2-2026-07-27/07-provenance/CHANGELOG.md` | session scratch |
 
 ## 18.5 REGENERATE (not delete) — brand assets are the OLD logo · **corrected in v8**
 
@@ -2416,7 +2416,7 @@ cp "Final logo design/mark-a-simplified.svg" public/brand/mark-simplified.svg
 grep -rlE '<text|r="44\.6"' public/brand public/icons   # must return 0 hits
 
 # 6. Session scratch
-git rm docs/SESSION_STATUS.md docs/next-session-prompt.md docs/ui-rollout-tracker.md
+git rm docs/SESSION_STATUS.md docs/NEXT-PLAN.md docs/design-system/v2-2026-07-27/07-provenance/CHANGELOG.md
 
 # 7. Verify
 npx tsc --noEmit && npm run build

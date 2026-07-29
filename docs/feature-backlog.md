@@ -1,5 +1,5 @@
 > **STATUS: backlog / wishlist** — future ideas, not committed requirements or
-> current work. Launch-gate work is `docs/FINAL-AUDIT-REMEDIATION.md`.
+> current work. Launch-gate work is `docs/perfection-plan.md`.
 
 # 50pick / Kipindi — Feature Backlog & Planning Input
 
@@ -9,7 +9,7 @@
 > implementation plan (via ExitPlanMode) before writing any code.
 >
 > Created 2026-07-12 from the product brainstorm (player · owner · designer ·
-> compliance · growth · ops lenses). See `next-session-prompt.md` for the
+> compliance · growth · ops lenses). See `NEXT-PLAN.md` for the
 > canonical handoff (a separate parallel sprint).
 
 ---
@@ -331,13 +331,13 @@ axes a real-money prediction market lives or dies on — and F1–F5 all reuse i
 we already built (lowest risk, fastest to value).
 
 ## 3 · How the planning phase runs
-1. In **plan mode**, read this doc + `next-session-prompt.md §2` (paths) + `CLAUDE.md`.
+1. In **plan mode**, read this doc + `NEXT-PLAN.md §2` (paths) + `CLAUDE.md`.
 2. Pick the batch (default: F1). Research the exact files/fields/kit atoms it touches.
 3. Produce an implementation plan (ExitPlanMode) covering: data model changes (if any),
    server + UI, the kit atoms reused, trilingual keys, the stress/visual/hardening test
    plan, and the six-role sign-off checklist — **before** writing code.
 4. On approval, build → verify (stress + visual + hardened) → six-role → push → deploy green.
-5. Tick this doc, mirror into `SESSION_STATUS.md`, append to `ui-rollout-tracker.md`.
+5. Tick this doc, mirror into `SESSION_STATUS.md`, append to `design-system/v2-2026-07-27/07-provenance/CHANGELOG.md`.
 
 ---
 

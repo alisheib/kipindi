@@ -260,7 +260,7 @@ sweep of 1,519 text nodes found one AA failure (leaderboard avatar initials,
 1.44:1) which reproduces identically with the change stashed — pre-existing, and
 recorded rather than quietly absorbed.
 
-⚠️ Why the 2026-07-17 `VISUAL-CONSISTENCY-AUDIT.md` signed this off as
+⚠️ Why the 2026-07-17 `DESIGN_AUTHORITY.md` signed this off as
 "launch-ready": it grepped for rogue *values* — raw hex, off-palette classes — and
 correctly found none. It never checked that the on-palette classes **resolve**. A
 dead class is invisible to a value audit.
@@ -301,6 +301,34 @@ Guarded by `npm run test:design-frozen` (static, ratchet — the allowlist may o
 alongside `test:tokens` and `test:bridge`.
 
 **Full law:** `06-patterns-and-rules/MERGE-DISCIPLINE.md` (also RULES.md law 16).
+
+### What the freeze pass found — do not undo these
+
+The 2026-07-29 pass (LIVE on `main`) found that **three gates were passing while the
+thing they guarded was broken.** Each fix is load-bearing:
+
+1. **`scripts/contrast-audit.mts` now PARSES `globals.css`.** It used to hand-mirror the
+   token values with a comment saying "update both together" — they were not. Its copy
+   said `--bg-elevated` was L=0.19 against a real 0.22. Consequence: `--text-faint` on
+   every elevated card measured **4.50, under the 4.5 AA floor**, while the gate printed a
+   comfortable 4.74. **Do not "simplify" it back to hardcoded values.**
+2. **`--text-faint` is 62%, and that is an accessibility floor, not a style choice.**
+   Darkening it requires re-running `test:contrast`, which now tells the truth.
+3. **`test:bridge` checks `shadow-*` against `boxShadow`,** not the colour map. Tailwind
+   resolves it there; the old check made `shadow-overlay` pass only by colliding with a
+   key in the `bg` family while correctly-bridged rungs were reported dead.
+
+Two more standing rules from the same pass:
+
+4. **The numeric `borderRadius` scale in `tailwind.config.ts` is frozen as LEGACY.**
+   `rounded-md` is 8px while `--r-md` is 12px — they disagree. Reconciling them shifts
+   every corner in the product, so it was deliberately deferred. New design uses the
+   semantic `rounded-card` / `control` / `chip` / `modal`. **Do not renumber the scale.**
+5. **Cold-start is ONE rule with THREE consumers.** The board, the market card and the
+   detail page each derive it as `volume === 0 && predictors === 0` on a live, open
+   market. The detail page shipped a fabricated 50/50 split and a "TIPPING" badge above
+   "TZS 0" until this pass. If the rule changes, change all three — a card and a detail
+   page disagreeing about someone's money is exactly the defect B6 exists for.
 
 ---
 

@@ -188,5 +188,5 @@ case to `scripts/payment-webhook.test.mts`.
   `src/app/api/webhooks/payments/route.ts` · `src/app/wallet/withdraw/*`
 - Tests: `scripts/selcom-adapter.test.mts` · `payment-webhook.test.mts` · `payment-control.test.mts`
 - Related docs: [`SELCOM-DISBURSEMENT-REQUEST.md`](SELCOM-DISBURSEMENT-REQUEST.md) ·
-  [`SELCOM-API-DIGEST.md`](SELCOM-API-DIGEST.md) · [`GO-LIVE-CONTINUATION-PROMPT.md`](GO-LIVE-CONTINUATION-PROMPT.md) ·
+  [`SELCOM-API-DIGEST.md`](SELCOM-API-DIGEST.md) · [`GO-LIVE-RUNBOOK.md`](GO-LIVE-RUNBOOK.md) ·
   [`LIVE-HOSTING-STATUS.md`](LIVE-HOSTING-STATUS.md)

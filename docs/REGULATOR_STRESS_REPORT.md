@@ -26,7 +26,7 @@
 >
 > **These numbers are therefore not evidence of production concurrency safety, and must not be
 > presented as such.** The load & scale suite that will produce honest, Postgres-backed numbers is
-> specified in `docs/next-session-prompt.md`. **Nothing in §1/§2 should be quoted to the Gaming
+> specified in `docs/NEXT-PLAN.md`. **Nothing in §1/§2 should be quoted to the Gaming
 > Board until that suite has run.**
 >
 > The *non-performance* findings in §3 onwards (fuzz, path traversal, XSS/SQLi rejection,

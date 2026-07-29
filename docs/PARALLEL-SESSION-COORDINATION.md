@@ -54,9 +54,9 @@ npm ci && npx prisma generate
   `market-config.ts`, `bonus-config.ts`, `bonus-service.ts`
 - `src/app/admin/`: `players/**`, `payments/**`, `finance/**`, `settlement/**`, `aml/**`
 - `scripts/load/**` and the money test scripts
-- `docs/FINAL-AUDIT-REMEDIATION.md`, `GO-LIVE-READINESS.md`,
-  `ENHANCEMENT-PLAN-STATUS.md` (M maintains the trackers; E keeps its own
-  `docs/session-E-notes.md`)
+- `docs/perfection-plan.md`, `LAUNCH-GO-NO-GO.md`,
+  `perfection-plan.md` (M maintains the trackers; E keeps its own
+  the git history)
 
 **Everything else is Session E's** — `src/components/**`, the other `src/app/**`
 routes, the non-money config modules, `src/lib/i18n/**`, `globals.css`,
@@ -70,7 +70,7 @@ routes, the non-money config modules, `src/lib/i18n/**`, `globals.css`,
   touch UI modals.
 
 ## Handoff / status
-- Session E maintains `docs/session-E-notes.md` (its own progress log) and reports
+- Session E maintains the git history (its own progress log) and reports
   each ready batch (branch pushed + summary + any DENYLIST needs).
 - Session M merges, deploys, and records the audit/enhancement trackers.
 - Neither session edits the other's tracker/notes file.

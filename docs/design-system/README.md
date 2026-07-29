@@ -39,7 +39,7 @@ a dated snapshot, and the live `src/app/globals.css` wins on any conflict.
 | **Glyphs** | `src/components/ui/glyphs.tsx` | Never import an icon library into a player surface |
 | **Brand marks** | `src/components/brand.tsx`, `public/brand/**` | Never re-tint, mirror or stretch |
 | **Control sizing** — button/input/chip heights | `--tap-min` + `--h-control-xs/sm/md/lg/xl` + `--h-input` in `globals.css`; sizes `.btn-xs/sm/md/lg/xl` | Never hard-code a control height or `h-8`/`min-h-[…]` override on a `.btn` — use a size class / token |
-| **Consistency enforcement** | `scripts/ui-consistency.test.mts` (`npm run test:ui-consistency`, in `test:all`) + tracker [`docs/UI-CONSISTENCY-AUDIT.md`](../UI-CONSISTENCY-AUDIT.md) | Never introduce a native `<select>`/`<input type=checkbox>`/`datetime-local`, an ad-hoc portal, or a hard-coded token literal where a kit primitive exists — the linter fails the build |
+| **Consistency enforcement** | `scripts/ui-consistency.test.mts` (`npm run test:ui-consistency`, in `test:all`) + tracker [`npm run test:ui-consistency`](../DESIGN_AUTHORITY.md) | Never introduce a native `<select>`/`<input type=checkbox>`/`datetime-local`, an ad-hoc portal, or a hard-coded token literal where a kit primitive exists — the linter fails the build |
 
 **Rule of thumb:** if it renders in production, the code is the truth. This folder
 records *what was designed and why*, so a future session can understand the intent
@@ -97,7 +97,7 @@ reconstructible copy — **nothing unique was lost.**
 | `theme/globals.css` (97,006 bytes) | A **stale snapshot**. The live file is 102,215 bytes. Keeping it invites someone to build from it. |
 | `uploads/globals_css-*.css` (97,109 bytes) | A **third, different** stale copy. Three versions of one file is the drift bug itself. |
 | `uploads/*.jsx`, `uploads/*.tsx` | Copies of our own `src/` files, sent as context. Git history is the archive for those. |
-| `uploads/UPDOWN-DESIGN-PROMPTS.md` | Already lives at [`docs/UPDOWN-DESIGN-PROMPTS.md`](../UPDOWN-DESIGN-PROMPTS.md) |
+| `uploads/UPDOWN-SPEC.md` | Already lives at [`docs/UPDOWN-SPEC.md`](../UPDOWN-SPEC.md) |
 | `support.js`, `.thumbnail` | Claude Design editor runtime artifacts, not design content |
 
 **The superseded teal kit** (`50PICK/design_handoff_prediction_market_kit/`) is **not in
@@ -164,4 +164,4 @@ too. Full audit trail:
    ad-hoc portals, hard-coded token literals, off-token control heights) and
    **`npm run test:responsive`** (tap sizes + overflow). Both are in `test:all`. If you
    deliberately add a tracked exception, re-baseline with a documented reason and note it in
-   [`docs/UI-CONSISTENCY-AUDIT.md`](../UI-CONSISTENCY-AUDIT.md).
+   [`npm run test:ui-consistency`](../DESIGN_AUTHORITY.md).

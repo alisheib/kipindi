@@ -12,8 +12,8 @@ One fact, one home. Nothing below is restated in another doc; each links instead
 |---|---|---|
 | **`UPDOWN-ARCHITECTURE.md`** (this) | Data model · engines · money path · scale · file map | Status, dates, business rationale, UI redlines |
 | [`UPDOWN-SPEC.md`](UPDOWN-SPEC.md) | What the product IS — rules, workflows, states, copy rules | Table shapes, function names |
-| [`UPDOWN-PROGRESS.md`](UPDOWN-PROGRESS.md) | Status only — phase board, checklists, decision log, risk register, open questions, session log | Architecture or product rules (it links) |
-| [`UPDOWN-DESIGN-PROMPTS.md`](UPDOWN-DESIGN-PROMPTS.md) | The Claude Design brief + the design review record | Implementation detail |
+| [`UPDOWN-SPEC.md`](UPDOWN-SPEC.md) | Status only — phase board, checklists, decision log, risk register, open questions, session log | Architecture or product rules (it links) |
+| [`UPDOWN-SPEC.md`](UPDOWN-SPEC.md) | The Claude Design brief + the design review record | Implementation detail |
 | [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) | Owner decisions that touch a **compliance control** | Anything not compliance-bearing |
 | `Up and Down/` (repo root) | The management team's original requirements, verbatim | — |
 
@@ -184,7 +184,7 @@ for free. The dangerous half is the corollary:
 > platform stats **while every remaining number still reconciles with itself**. Nothing
 > would look broken.
 
-The opted-in call sites are listed in [`UPDOWN-PROGRESS.md`](UPDOWN-PROGRESS.md) §5 and
+The opted-in call sites are listed in [`UPDOWN-SPEC.md`](UPDOWN-SPEC.md) §5 and
 asserted by `npm run test:product-line`, which is verified to fail when one regresses.
 
 Row growth (~300k rounds/year) is handled by: no `MarketSnapshot` writes for `UPDOWN`,

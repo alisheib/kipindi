@@ -35,7 +35,7 @@ next start` **against the live money DB**. There is no staging. So:
 
 ## 1. Where the work stands — read this FIRST
 - **GO-LIVE runbook & execution record (source of truth for launch):** [`docs/GO-LIVE-RUNBOOK.md`](../../docs/GO-LIVE-RUNBOOK.md) — architecture, the exact DNS-cutover steps we ran (Netpoa→Cloudflare, 2026-07-17) + gotchas, the final DNS/mail config, the env-var registry, and the R2/Selcom/switch procedures. 🔐 It contains NO secret values (secrets live in Railway env vars only).
-- **Living tracker (audit source of truth):** [`docs/FINAL-AUDIT-REMEDIATION.md`](../../docs/FINAL-AUDIT-REMEDIATION.md). Its **"▶ WHERE WE ARE"** block names the current stage, what's closed, and what's LEFT. Update it at the end of every stage.
+- **Living tracker (audit source of truth):** [`docs/perfection-plan.md`](../../docs/perfection-plan.md). Its **"▶ WHERE WE ARE"** block names the current stage, what's closed, and what's LEFT. Update it at the end of every stage.
 - The audit itself: `Final Audit 1507/50pick-FINAL-AUDIT-v8-FINAL-2026-07-15.md` (11 Critical, 11 High, 11 Medium, 6 Low).
 - Work in **stages**: after each → run tests → update the tracker's WHERE-WE-ARE block → commit → `git push origin main`.
 - Keep the tracker, `CLAUDE.md`'s "ACTIVE WORK" banner, and the `final-audit-remediation` memory in sync so any new session instantly knows the stage.

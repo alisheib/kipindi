@@ -9,7 +9,7 @@
 > and where to look before editing anything.
 
 > ⏳ **ACTIVE WORK — pre-real-money launch.** The **Final Audit is COMPLETE** (all
-> 11 Criticals + Highs + Mediums, record: [`docs/FINAL-AUDIT-REMEDIATION.md`](docs/FINAL-AUDIT-REMEDIATION.md))
+> 11 Criticals + Highs + Mediums, record: [`docs/perfection-plan.md`](docs/perfection-plan.md))
 > **and the §9 enhancement batch is DONE + LIVE.** Money-ops (A1–A5, M2 exact payouts,
 > audited balance-adjust + force-reverify-KYC) and Session-E's §9 UI/compliance work
 > (A8 unified maker-checker · A9 config factory · A10 money-format guard · A11 six
@@ -17,11 +17,11 @@
 > zero-conflict @ `023dfbf` and verified on prod. **ALL money paths are now atomic** —
 > bet-stake single-`$transaction` merged @ `595901e` (2026-07-17; verified e2e:money
 > 57/57 + e2e:fault 34/34 + s10). **GBT licence obtained.** The go-live mission
-> (DNS→R2→payment keys→the switch) is `docs/next-session-prompt.md`. **Nothing in
+> (DNS→R2→payment keys→the switch) is `docs/NEXT-PLAN.md`. **Nothing in
 > the plan now blocks launch — the one remaining unblock is the payment aggregator
 > API keys.** Remaining code = optional admin features (A6/A7/A13–A16) + polish.
 > 💳 **MOBILE-MONEY DEPOSITS NOW WORK END-TO-END (2026-07-20) — full record:
-> [`docs/PAYMENTS-HARDENING-2026-07-20.md`](docs/PAYMENTS-HARDENING-2026-07-20.md).**
+> [`docs/SELCOM-API-DIGEST.md`](`docs/SELCOM-API-DIGEST.md`).**
 > EVERY mobile-money deposit had been failing: `create-order-minimal` requires `no_of_items`
 > and only the CARD path sent it (`4256d02`). Found only because failure diagnostics were added
 > first (`0abdef6`) — the adapter used to `catch { return PROVIDER_DOWN }` and discard Selcom's
@@ -79,7 +79,7 @@
 > `user.email` from `PHONE_EMAIL_MAP` without clearing `emailVerifiedAt`**, laundering an
 > unconfirmed inbox into a verified one (that env var is set in prod, to Ali's own number).
 > Proof: `test:deposit-notifications` (71) · `test:auth-email-integrity` (28) ·
-> `e2e:card` (100) · browser-journey 76×3 identical. See `docs/SELCOM-COMPLETION-PROMPT.md`.
+> `e2e:card` (100) · browser-journey 76×3 identical. See `docs/SELCOM-API-DIGEST.md`.
 > ⚡ **BET CONCURRENCY — DEPLOYS 1 & 2 OF 5 SHIPPED 2026-07-19.** A bet used to pin
 > THREE pooled connections (wallet lock tx → nested market lock tx → money tx), so the
 > ceiling was pool÷3 and past it a raw Prisma `P2024` hit the player. Now: `withLock`
@@ -132,7 +132,7 @@
 > ⚠️ deposit-only — withdrawals still need Selcom disbursement creds + float PIN.
 > ⚠️ `NEXT_PUBLIC_LICENSE_REF` is still the placeholder `TZ-GBT-2026-XXXX` — the footer shows
 > it as "(pending)". Replace with the real GBT number before public launch.
-> ⭐ **Full handoff + copy-paste go-live prompt: [`docs/GO-LIVE-CONTINUATION-PROMPT.md`](docs/GO-LIVE-CONTINUATION-PROMPT.md)**
+> ⭐ **Full handoff + copy-paste go-live prompt: [`docs/GO-LIVE-RUNBOOK.md`](docs/GO-LIVE-RUNBOOK.md)**
 > (money model, creds/PINs, integration, pending, the switch). Runbook: [`docs/GO-LIVE-RUNBOOK.md`](docs/GO-LIVE-RUNBOOK.md).
 > ⚠️ do NOT merge the stale remote `feat/payment-adapter`.
 > 🧭 **START HERE — two always-on skills:**
@@ -142,9 +142,9 @@
 > • **`50pick-audit`** (`.claude/skills/50pick-audit/SKILL.md`) — the ops playbook (safe
 >   DB/migration workflow, Railway access, money invariants, ⚠️ every push = a LIVE prod
 >   deploy, verify-after-push protocol).
-> 📍 **Current trackers:** [`docs/ENHANCEMENT-PLAN-STATUS.md`](docs/ENHANCEMENT-PLAN-STATUS.md)
+> 📍 **Current trackers:** [`docs/perfection-plan.md`](docs/perfection-plan.md)
 > (the finish-the-plan queue, grouped code-doable / needs-Ali / optional) ·
-> [`docs/GO-LIVE-READINESS.md`](docs/GO-LIVE-READINESS.md) (pre-launch ops + payment-gateway
+> [`docs/LAUNCH-GO-NO-GO.md`](docs/LAUNCH-GO-NO-GO.md) (pre-launch ops + payment-gateway
 > map) · [`docs/PARALLEL-SESSION-COORDINATION.md`](docs/PARALLEL-SESSION-COORDINATION.md)
 > (when two sessions run at once — Session M owns `main`/deploys/money/schema; Session E is
 > branch-only).
@@ -719,17 +719,17 @@ The platform is **feature-complete and hardening for launch**. Progress and
 handoff live in a small set of living docs — read these, in order:
 
 1. **`docs/SESSION_STATUS.md`** — read-first current state, launch blockers, gotchas.
-2. **`docs/next-session-prompt.md`** — the canonical next-session handoff (paths map + open work).
+2. **`docs/NEXT-PLAN.md`** — the canonical next-session handoff (paths map + open work).
 3. **`docs/perfection-plan.md`** — the 0-issue launch plan (phases A–G; the master QA plan).
-4. **`docs/ui-rollout-tracker.md`** — per-batch work log (newest at the top of the Batch log).
+4. **`docs/design-system/v2-2026-07-27/07-provenance/CHANGELOG.md`** — per-batch work log (newest at the top of the Batch log).
 
 Session protocol: `git pull` → `npx prisma generate` → `tsc` + `npm run test:all`
 (45/45) → read SESSION_STATUS → work one item → test + live-drive → **commit AND
 push** (Railway auto-deploys; Ali reviews live). Update the living docs before you end.
 
 Point-in-time audits (kept for record): `docs/PHASE_E_AUDIT_*`, `ADMIN_VIEW_AUDIT_*`,
-`PLAYER_VIEW_AUDIT_*`, `ARCHITECTURE_AUDIT_*`, `navigation-ia-review.md`. Design source
+`PLAYER_VIEW_AUDIT_*`, `ARCHITECTURE_AUDIT_*`, `FLOWS.md`. Design source
 of truth: `docs/design-master-brief.md` + `docs/DESIGN_AUTHORITY.md` (invariants B1–B4).
-Active launch work: `docs/FINAL-AUDIT-REMEDIATION.md` (+ `docs/NEXT-SESSION.md`).
+Active launch work: `docs/perfection-plan.md` (+ `docs/NEXT-PLAN.md`).
 (Superseded/historical design docs — consistency-audit, kit-gap-audit, visual-assets-brief,
 glyph-reference — were removed in the 2026-07-15 finalization; see `F:/50pick-design-archive/` + git history.)

@@ -95,7 +95,7 @@ export async function POST(req: Request) {
   // exist ONLY on the in-memory path (market-dal.ts / store.ts). Point it at
   // Postgres and its position/wallet/pool checks silently read ZERO and report
   // PASS — a green test measuring nothing. Refuse rather than lie.
-  // For real Postgres load testing use scripts/load/ (see docs/next-session-prompt.md).
+  // For real Postgres load testing use scripts/load/ (see `docs/NEXT-PLAN.md`).
   if (hasDatabase()) {
     return NextResponse.json({
       ok: false,
