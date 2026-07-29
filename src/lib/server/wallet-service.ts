@@ -647,8 +647,15 @@ export async function dispatchApprovedWithdrawal(
 }
 
 /** Reverse a held withdrawal whose payout failed: return the funds to spendable
- *  balance, release the hold, mark FAILED. Exactly-once under the wallet lock. */
-async function settleWithdrawalFailed(txnId: string, reason: string): Promise<boolean> {
+ *  balance, release the hold, mark FAILED. Exactly-once under the wallet lock.
+ *
+ *  Exported for the officer-driven release at `/admin/payments` ("Return to
+ *  player"), which is the ONLY way to free a payout the provider refused outright —
+ *  a 403 never becomes terminal, so no automatic path can resolve it. That action
+ *  re-queries the provider and refuses on a COMPLETED verdict before calling this,
+ *  and the idempotency here is what makes a race with the sweep or a late callback
+ *  safe. */
+export async function settleWithdrawalFailed(txnId: string, reason: string): Promise<boolean> {
   const pre = await db.txn.findById(txnId);
   if (!pre) return false;
   const done = await withLock(`wallet:${pre.userId}`, async (): Promise<StoredTxn | null> => {
@@ -1243,7 +1250,13 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
     }
     // Reverse the hold (return funds) + mark FAILED — shared, idempotent path.
     await settleWithdrawalFailed(txnId, result.reason);
-    return { ok: false, error: "Withdrawal failed. Funds returned to your balance.", code: "INVALID" };
+    // PROVIDER_DOWN is not the player's doing and not their account — it is our
+    // rail being unavailable. Telling them "withdrawal failed" invites them to
+    // retry immediately, fail again, and conclude their money is stuck. Say what
+    // is true: the payout rail is down and their balance never moved.
+    return result.reason === "PROVIDER_DOWN"
+      ? { ok: false, error: "Withdrawals are temporarily unavailable. Your balance is unchanged — please try again later.", code: "INVALID" }
+      : { ok: false, error: "Withdrawal failed. Funds returned to your balance.", code: "INVALID" };
   }
 
   // Record the provider reference for webhook correlation / reconciliation, and

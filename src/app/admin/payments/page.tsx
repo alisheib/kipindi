@@ -16,6 +16,8 @@ import { ControlPlane } from "./control-plane";
 import { RetryControls } from "./retry-controls";
 import { ReconcileControls } from "./reconcile-controls";
 import { BulkRetryControls } from "./bulk-retry-controls";
+import { StuckPayoutControls } from "./stuck-payout-controls";
+import { db } from "@/lib/server/store";
 
 export const metadata = { title: "Admin · Payments ops" };
 export const dynamic = "force-dynamic";
@@ -33,6 +35,15 @@ export default async function PaymentsOpsPage({ searchParams }: { searchParams: 
   const [health, kill, recon, queue, controls, floatBal] = await Promise.all([allMnoHealth(), getKillSwitches(), reconcile(), retryQueue(), getPaymentControls(), getFloatBalance().catch(() => null)]);
   // Warn below one max-withdrawal of headroom — a dry float fails every payout.
   const FLOAT_LOW_TZS = 1_000_000;
+  // Payouts frozen in PROCESSING. A withdrawal whose provider call was refused
+  // outright (e.g. Selcom's 403 "endpoint not enabled") never becomes terminal, so
+  // nothing automatic can resolve it and the player's money stays held. Surfaced
+  // here, oldest first, so an officer can see and release them.
+  const FROZEN_AFTER_MS = 30 * 60 * 1000;
+  const frozenPayouts = (await db.txn.listByStatus("PROCESSING").catch(() => []))
+    .filter((t) => t.type === "WITHDRAWAL" && Date.now() - Date.parse(t.createdAt) > FROZEN_AFTER_MS)
+    .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt))
+    .slice(0, 25);
   const page = parsePage(sp.page, queue.length);
   const queueRows = queue.slice((page - 1) * PER_PAGE, page * PER_PAGE);
   const base = buildBaseHref("/admin/payments", sp);
@@ -77,6 +88,37 @@ export default async function PaymentsOpsPage({ searchParams }: { searchParams: 
           </div>
           <p className="mt-2 font-mono text-[10px] text-text-tertiary">Live from Selcom vendor/balance — read fresh on each load.</p>
         </AdminCard>
+
+        {/* Frozen payouts — a player's money held with nothing able to release it. */}
+        {frozenPayouts.length > 0 && (
+          <AdminCard>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <span className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.14em] text-danger">
+                <I.alertCircle s={14} /> Frozen payouts · {frozenPayouts.length}
+              </span>
+              <span className="font-mono text-[10px] text-text-tertiary">
+                In PROCESSING over 30 minutes — the player&rsquo;s money is held and nothing automatic can release it.
+              </span>
+            </div>
+            <ul className="mt-3 space-y-2 border-t border-border-subtle pt-3">
+              {frozenPayouts.map((t) => (
+                <li key={t.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                  <div className="min-w-0">
+                    <p className="font-mono text-[11px] text-text-secondary">
+                      {formatTzs(Math.abs(t.amount))} · {t.msisdn ?? "—"} · held {ageLabel(Date.now() - Date.parse(t.createdAt))}
+                    </p>
+                    {/* What the gateway last said. Before 2026-07-29 this was never
+                        recorded and a frozen payout was completely unexplainable. */}
+                    <p className="font-mono text-[9.5px] text-text-tertiary break-all">
+                      {t.id} · {t.providerStatus ?? "no provider response recorded"}
+                    </p>
+                  </div>
+                  <StuckPayoutControls txnId={t.id} amountLabel={formatTzs(Math.abs(t.amount))} />
+                </li>
+              ))}
+            </ul>
+          </AdminCard>
+        )}
 
         {/* Reconciliation strip — ledger vs PSP settlement. */}
         <AdminCard>

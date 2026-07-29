@@ -504,8 +504,28 @@ export async function selcomWithdraw(env: SelcomEnv, opts: { transid: string; am
   }
   const detail = `${describeSelcom(res)} · ${shape}`;
   if (!res.ok) {
+    // ⛔ 401/403 IS DEFINITIVE — the request was REFUSED AT THE DOOR.
+    //
+    // Selcom rejected the call before it could reach any disbursement logic, so no
+    // payout can possibly be in flight and reversing the hold cannot double-pay.
+    // That distinction is what makes this safe, and it is not a generalisation to
+    // other HTTP errors: a 502 or a timeout genuinely might have been processed.
+    //
+    // 🔴 WHY THIS EXISTS. 2026-07-29: Selcom answered every wallet-cashin call with
+    //   HTTP 403 · resultcode=403 · "API endpoint not enabled for the vendor (4035)"
+    // because the disbursement product was never actually switched on for the
+    // vendor account. Classifying that as AMBIGUOUS parked two REAL payouts
+    // (10,000 + 5,000 TZS) in PROCESSING with the player's money held — and since a
+    // 403 never becomes terminal, the stale sweep could never resolve them either.
+    // The money would have stayed frozen indefinitely, on an error that was never
+    // going to change on its own. A player must get their balance back and a plain
+    // "withdrawals are unavailable", not an eternal spinner.
+    if (res.httpStatus === 401 || res.httpStatus === 403) {
+      console.error(`[selcom] walletcashin/process REFUSED — not enabled/unauthorised (${opts.transid}) — ${detail}`);
+      return { ok: false, reason: "FAILED", detail };
+    }
     console.error(`[selcom] walletcashin/process AMBIGUOUS (${opts.transid}) — ${detail}`);
-    return { ok: false, reason: "AMBIGUOUS", detail };                             // HTTP error — ambiguous, may have been accepted
+    return { ok: false, reason: "AMBIGUOUS", detail };                             // other HTTP error — may have been accepted
   }
   if (selcomInitiateVerdict(res.json) === "FAILED") {
     console.error(`[selcom] walletcashin/process REJECTED (${opts.transid}) — ${detail}`);
