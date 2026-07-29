@@ -185,7 +185,90 @@ ok("HUDUMA_AGENT is NOT in the automatic ladder",
   !PAYOUT_LADDER.includes("HUDUMA_AGENT" as PayoutRail),
   "cash-at-an-agent must never be substituted for mobile money behind the player's back");
 
-console.log("\n── 6 · The capability probe ────────────────────────────────────");
+console.log("\n── 6 · 🔴 THE LADDER'S BEHAVIOUR (money-safety) ────────────────");
+
+// Drive the real adapter. `selcomDisburseEnv()` reads these.
+process.env.PAYMENT_API_URL = ENV.baseUrl;
+process.env.PAYMENT_API_KEY = ENV.apiKey;
+process.env.PAYMENT_API_SECRET = ENV.apiSecret;
+process.env.PAYMENT_VENDOR_ID = ENV.vendor;
+process.env.PAYMENT_VENDOR_PIN = ENV.pin;
+const { selcomAdapter } = await import("../src/lib/server/payments.ts");
+const dispatch = (correlationId: string) =>
+  selcomAdapter.withdraw({ provider: "MPESA", amount: 4925, msisdn: "0757619808", userId: "u1", correlationId });
+
+/** Which rail endpoints were actually POSTed to, in order. */
+const posted = (calls: string[]) =>
+  calls.filter((u) => u.includes("/process") || u.includes("/cashin"))
+    .map((u) => (PAYOUT_RAIL_IDS.find((r) => u.includes(PAYOUT_RAILS[r].process)) ?? "?"));
+
+// A definitive refusal on rung 1 → the ladder ADVANCES to rung 2.
+await withFetch((u) => u.includes("/walletcashin/process")
+  ? jsonResp("403", 403, "API endpoint not enabled for the vendor (4035)")
+  : jsonResp("000"), async (calls) => {
+  const r = await dispatch("wdr_ladder_1");
+  ok("a definitive 4035 on rail 1 ADVANCES to rail 2", posted(calls).join(">") === "WALLET_CASHIN>SELCOM_PESA", posted(calls).join(" > "));
+  ok("…and the payout ends up ACCEPTED on the rail that took it", r.ok && r.status === "PENDING");
+  ok("…tagged with the rail that actually carried it", r.ok && r.rail === "SELCOM_PESA");
+  ok("…and the trail records BOTH rungs", (r.attempts ?? []).length === 2);
+  ok("…rung 1 recorded as FAILED, rung 2 as ACCEPTED",
+    r.attempts?.[0].outcome === "FAILED" && r.attempts?.[1].outcome === "ACCEPTED");
+  // Selcom treats transid as the idempotency key — reusing one across two endpoints
+  // muddles the single identifier used to ask "did this pay?".
+  ok("…each rung used a DISTINCT transid", r.attempts![0].transid !== r.attempts![1].transid);
+  ok("…rung 1 kept the audited correlation id", r.attempts![0].transid === "wdr_ladder_1");
+  ok("…providerRef is the transid of the rail that took it", r.ok && r.providerRef === r.attempts![1].transid);
+});
+
+// 🔴 THE ONE THAT MATTERS. A timeout on rung 1 might have been taken by Selcom.
+// The ladder MUST stop: trying rung 2 here pays the player twice.
+await withFetch((u) => u.includes("/walletcashin/process")
+  ? (() => { throw Object.assign(new Error("aborted"), { name: "AbortError" }); })()
+  : jsonResp("000"), async (calls) => {
+  const r = await dispatch("wdr_ladder_2");
+  ok("🔴 an AMBIGUOUS rail 1 STOPS the ladder — rail 2 is never called",
+    posted(calls).join(">") === "WALLET_CASHIN",
+    "advancing on a timeout is a DOUBLE PAYMENT: the first rail may still be in flight");
+  ok("…the payout stays PENDING so the hold is KEPT, not reversed", r.ok && r.status === "PENDING");
+  ok("…and it is attributed to the rail that might hold it", r.ok && r.rail === "WALLET_CASHIN");
+});
+
+// Same rule for an HTTP error that is not a 401/403.
+await withFetch((u) => u.includes("/walletcashin/process") ? jsonResp("500", 500) : jsonResp("000"), async (calls) => {
+  const r = await dispatch("wdr_ladder_3");
+  ok("🔴 an HTTP 500 on rail 1 also STOPS the ladder", posted(calls).join(">") === "WALLET_CASHIN");
+  ok("…hold kept (PENDING), never reversed", r.ok && r.status === "PENDING");
+});
+
+// Every rung definitively refused → clean failure, so the caller returns the money.
+// An honest "unavailable" beats an eternal pending with the player's balance held.
+await withFetch(() => jsonResp("403", 403, "API endpoint not enabled for the vendor (4035)"), async (calls) => {
+  const r = await dispatch("wdr_ladder_4");
+  ok("all rails definitively refused → PROVIDER_DOWN (money returned)", !r.ok && r.reason === "PROVIDER_DOWN");
+  ok("…every rung was actually tried", posted(calls).length === PAYOUT_LADDER.length);
+  ok("…and the failure names each rung for an operator",
+    !r.ok && PAYOUT_LADDER.every((rail) => (r.detail ?? "").includes(rail)), r.detail);
+});
+
+// Accepted on the first rail → the ladder stops immediately; no stray second call.
+await withFetch(() => jsonResp("000"), async (calls) => {
+  const r = await dispatch("wdr_ladder_5");
+  ok("an accepted rail 1 never touches rail 2", posted(calls).join(">") === "WALLET_CASHIN");
+  ok("…and reads exactly like a pre-ladder payout (correlation id preserved)",
+    r.ok && r.providerRef === "wdr_ladder_5" && r.rail === "WALLET_CASHIN");
+});
+
+// The float PIN is a hard precondition — wallet-cashin cannot be signed without it.
+await withFetch(() => jsonResp("000"), async (calls) => {
+  const saved = process.env.PAYMENT_VENDOR_PIN;
+  delete process.env.PAYMENT_VENDOR_PIN;
+  const r = await dispatch("wdr_ladder_6");
+  ok("no float PIN → refused BEFORE any network call", !r.ok && calls.length === 0);
+  ok("…and it says which precondition failed", !r.ok && (r.detail ?? "").includes("float PIN"));
+  process.env.PAYMENT_VENDOR_PIN = saved;
+});
+
+console.log("\n── 7 · The capability probe ────────────────────────────────────");
 
 await withFetch(() => jsonResp("403", 403, "API endpoint not enabled for the vendor (4035)"), async () => {
   const p = await selcomProbeRail(ENV, "SELCOM_PESA");

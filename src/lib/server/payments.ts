@@ -276,7 +276,10 @@ const NOT_WIRED = (name: string) =>
 // reference (our own correlation id, which we send to Selcom as the order_id/transid
 // and which it echoes on the callback), and the webhook — settling from the signed
 // order-status re-query — is the sole authority that credits/confirms, exactly once.
-const selcomAdapter: PaymentAdapter = {
+/** Exported for `scripts/payout-rails.test.mts` — the ladder's behaviour (advance on a
+ *  refusal, stop dead on an ambiguity) is money-safety logic and has to be driven
+ *  directly, not inferred from the shape of a constant. */
+export const selcomAdapter: PaymentAdapter = {
   name: "selcom",
   async deposit({ provider, amount, msisdn, userId, correlationId, card }) {
     const env = selcomEnv();
@@ -402,9 +405,13 @@ async function runPayoutLadder(
       continue;
     }
 
-    // Fresh transid per rung — see the doc comment. The first rung keeps the already
-    // minted+audited correlation id so single-rail payouts read exactly as before.
-    const transid = attempts.length === 0 ? correlationId : `wdr_${randomId(10)}`;
+    // Fresh transid per rung — see the doc comment. The first rail we ACTUALLY call
+    // keeps the already minted-and-audited correlation id, so an ordinary single-rail
+    // payout reads exactly as it did before the ladder existed. Counting real calls
+    // rather than loop turns matters: a skipped rung must not burn the correlation id
+    // and leave the first live request wearing an unaudited one.
+    const dispatched = attempts.filter((a) => a.outcome !== "SKIPPED").length;
+    const transid = dispatched === 0 ? correlationId : `wdr_${randomId(10)}`;
     const r = await selcomPayout(env, rail, { transid, amount, msisdn, utilityCode, name: opts.payeeName });
 
     if (r.ok) {
