@@ -29,9 +29,19 @@ This file is the brief. Copy the block at the bottom into a fresh session.
 
 ### The four things that would hurt most, worst first
 
-1. **No backups.** A licensed real-money operator with player balances and a settlement
-   ledger has **no `db:backup`, no `db:restore`, no verified restore drill.** Everything
-   else on this list is recoverable. This is not.
+1. **No backups — and the admin console was claiming otherwise.** A licensed real-money
+   operator with player balances and a settlement ledger has **no `db:backup`, no
+   `db:restore`, no verified restore drill.** Everything else on this list is
+   recoverable. This is not.
+
+   ⚠️ Worse, until 2026-07-29 `/admin/compliance` rendered a **hardcoded green ✓**
+   reading *"Auto-snapshot on every mutation · HMAC-signed · last 12 retained ·
+   disk-backed"*, and `/admin/system` stated *"Backup → Postgres point-in-time recovery
+   … replicated across two regions"* as fact. None of it existed: no script, no snapshot
+   writer, and nothing reads `STORE_BACKUP_DIR` (it survives only in `.gitignore`). The
+   tick sat beside the audit-chain card, which reads live state, so it borrowed real
+   credibility. Both now state the truth. **When you build backups, wire this card to the
+   REAL last-run state — do not restore a static tick.**
 2. **No error tracking.** Nothing reports a production exception. The only reason we know
    the site is healthy is that someone ran a script by hand. A silent 500 on the deposit
    path could run for days.

@@ -457,9 +457,14 @@ export default async function AdminSystemPage() {
 
         <AdminCard className="border-info-border bg-info-bg/15">
           <div className="text-caption text-text-secondary space-y-1">
-            <p className="text-text font-bold">Production posture</p>
+            <p className="text-text font-bold">Production posture — TARGET, not current state</p>
+            <p className="text-warning-fg">
+              ⚠️ The backup line below describes the INTENDED posture and is not yet built: there is no
+              snapshot job, no verified restore, and nothing reads <code>STORE_BACKUP_DIR</code>. Corrected
+              2026-07-29 — it previously read as a statement of fact on a page an officer trusts.
+            </p>
             <p>
-              Backup → Postgres point-in-time recovery + audit log replicated synchronously across two regions.
+              Backup (TARGET) → Postgres point-in-time recovery + audit log replicated synchronously across two regions.
               Audit chain → same HMAC scheme persisted as <code>prevHash</code> + <code>entryHash</code> columns;
               nightly cron re-verifies the entire chain and pages on-call if a break is detected.
               Markets are AI-generated; the SMS adapter is env-switched (<code>SMS_PROVIDER</code>);
