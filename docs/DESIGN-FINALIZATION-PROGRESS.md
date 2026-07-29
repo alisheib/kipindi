@@ -152,6 +152,16 @@ that is **already done**. Recorded so nobody re-does them or reports them as new
 - **"Recent activity" on market detail** — deferred to Ali (see decision 3).
 - **Full numeric radius bridge** — deferred to Ali (see the open gap above).
 
+## Found in passing — real defects, NOT fixed (outside this pass's scope)
+
+- **`23masaa yaliyobaki` — missing space in SW/ZH time-left.** `timeLeftStr()` in
+  `markets/page.tsx` builds `${h}${t.market.hLeft}`. English is correct because "h" is a
+  unit suffix ("23h left"); Swahili is not, because `hLeft` is a whole word
+  ("masaa yaliyobaki"). Same shape in `similarTimeLeft()` on the detail page. Visible on
+  every card in SW. It is a small fix but it touches shared dictionary values across
+  several call sites, so it is a localisation change, not a design one — flagging rather
+  than folding it in. Seen 2026-07-29 during Step 3 verification.
+
 ## Flagged for Ali — action outside the code
 
 - **Set `TZ=Africa/Dar_es_Salaam` on Railway.** Step 7 item 2 (selection-close time is 3h wrong)
