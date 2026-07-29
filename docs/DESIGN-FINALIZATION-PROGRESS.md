@@ -60,6 +60,33 @@ they are true.
 Verification script: `scratchpad/verify-live.mjs` (kept out of the repo deliberately;
 `BASE=https://www.50pick.tz node verify-live.mjs` from the repo root, which has playwright).
 
+### Railway confirmation (CLI, 2026-07-29)
+
+Project `50pick` (`5e87353c-1d59-433d-a683-a32b9149f74c`) · environment `production` ·
+services `Postgres`, `Redis`, `50pick`.
+
+| deployment | commit | status |
+|---|---|---|
+| `6e5a8655` 15:23 | `5a9e9af` | **SUCCESS — currently live** |
+| `144d715b` 15:14 | `300a17b` (design merge) | REMOVED |
+| `2115ce1d` 10:56 | `56f1298` (pre-design) | REMOVED |
+
+⚠️ **`REMOVED` is not a failure.** Railway marks the previous deployment REMOVED when a
+newer one takes over; it is the normal lifecycle. `300a17b` served correctly — proven
+independently at the time by the CSS fingerprint, before `5a9e9af` replaced it. The live
+deployment `5a9e9af` is a descendant of `300a17b`, so it contains the whole design pass.
+
+**Production logs: zero application errors.** The only error-shaped line is an Up & Down
+price-feed notice ("No usable price" for S&P 500 from the approved Kitco page) — a
+pre-existing data-source condition in a different product line, and arguably the system
+behaving correctly under law 5 by refusing to invent a price. It is unrelated to this
+pass. (It also tripped a naive error regex by containing the literal "500".)
+
+⚠️ **CLI account trap:** the Railway CLI on this machine was authenticated as
+`awarkehmobiles@outlook.com`, which can see only `awarkeh-mobiles` — `railway status` in
+this repo returned "Unauthorized" until re-login as `alisheib07@gmail.com`. Logging in
+for one project **replaces** the session for the other.
+
 ### Final gate run
 
 `npm run test:all` → **102/104 green**. The two reds are `test:responsive` and
