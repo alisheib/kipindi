@@ -48,6 +48,26 @@ To reproduce a clean run: `BASE=http://localhost:3011 node scripts/motion-adopti
 against a dev server started in a separate worktree (Next 16 refuses a second dev server in
 the same directory, which is why the stale one cannot simply be restarted alongside).
 
+### `test:responsive` — 5016 passed · 24 failed, and the 24 are pre-existing
+
+Run as `SURFACE=player LOCALES=en,sw,zh` against a clean server built from this branch
+(the full-surface run crashes in the admin `overlaySweep` on the Playwright
+"Execution context was destroyed" race that POLISH-BACKLOG §4 already documents as a
+flake, not a defect).
+
+All 24 hard failures are **one** issue, repeated across pages and widths:
+
+```
+button[Menyu ya akaunti]  l1275 r1315 > vw1280      (laptop width, SW only)
+```
+
+The account-menu button clips off the right edge at the 1280 band in Swahili, whose
+nav labels are longer than English. **Proven pre-existing, not assumed:** checking out
+`main` at the branch point (`56f1298`), rebuilding, and running the same check
+reproduces the identical failure on `/help`, `/fairness` and `/legal/terms`. It is the
+header-overflow band already known at 1024–1279px. Nothing in this pass touches the top
+bar or the nav labels.
+
 ### Verified in a real browser, not just in tests
 
 Driven at 360 / 768 / 1280 / 1920 × EN / SW / ZH against a seeded board:
@@ -57,7 +77,36 @@ Driven at 360 / 768 / 1280 / 1920 × EN / SW / ZH against a seeded board:
   headline, **no** `TZS 0`. Asserted against the rendered DOM *and* computed styles, so a
   class that resolved to nothing could not pass.
 - Category chips read `Crypto` / `Kripto` / `加密货币`.
-- Zero horizontal overflow at every width in every locale; zero console/page errors.
+- Zero horizontal overflow at every width in every locale (including 320px); zero
+  console/page errors.
+- **Measured, not inferred, in computed styles:** the YES/NO card buttons render at
+  exactly **40px** (the tap floor they were 4px under); `.mcardp` composes three real
+  shadow layers including the inset top-highlight; the card popover is a genuine
+  `aria-modal` dialog at `rounded-modal` (16px) carrying `--shadow-modal`; and
+  `--shadow-modal` / `--shadow-overlay` / `--shadow-overlay-up` / `--shadow-card-top` /
+  `--glow-selected` / `--bar-empty-track` / `--tap-min` all resolve to real values at
+  runtime. Class presence was never accepted as proof — a class that resolves to nothing
+  is exactly the B8 defect.
+
+### How to reproduce this verification
+
+Next 16 refuses a second `next dev` in the same directory, and the long-running dev
+server in the main worktree is in a stale Turbopack state. So verification runs in a
+separate worktree:
+
+```bash
+git worktree add --detach F:/kipindi-verify <sha>
+cd F:/kipindi-verify && npm install          # a junctioned node_modules is rejected by Turbopack
+NODE_ENV=development npx next dev -p 3011
+curl -X POST http://localhost:3011/api/dev-test/seed-markets
+BASE=http://localhost:3011 SURFACE=player LOCALES=en,sw,zh node scripts/responsive-audit.mjs
+BASE=http://localhost:3011 node scripts/motion-adoption-verify.mjs
+```
+
+⚠️ Do **not** `git checkout` inside that worktree while its dev server is running —
+Turbopack's module graph corrupts and routes start returning 404 that build fine. Kill
+the server, `rm -rf .next/dev`, checkout, restart. A 404 from that state is an artifact,
+not a regression; the production build is the arbiter.
 
 ---
 
