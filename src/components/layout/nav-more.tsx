@@ -71,8 +71,7 @@ export function NavMore({
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-[calc(100%+6px)] z-[50] min-w-[190px] rounded-xl border border-border-strong bg-bg-elevated/95 p-1 backdrop-blur-xl"
-          style={{ boxShadow: "0 20px 44px -18px oklch(8% 0.09 264 / 0.85), inset 0 1px 0 oklch(100% 0 0 / 0.06)" }}
+          className="absolute right-0 top-[calc(100%+6px)] z-[50] min-w-[190px] rounded-modal border border-border-strong bg-bg-elevated/95 p-1 backdrop-blur-xl shadow-overlay"
         >
           {items.map((it) => {
             const active = pathname.startsWith(it.href);

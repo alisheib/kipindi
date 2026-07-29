@@ -159,7 +159,7 @@ export function Select({
         <div
           ref={listRef}
           role="listbox"
-          className="m-float-in fixed z-[130] rounded-lg border border-border-strong bg-bg-elevated shadow-[0_16px_48px_-8px_rgba(0,0,0,0.6)] overflow-y-auto overscroll-contain"
+          className="m-float-in fixed z-[130] rounded-control border border-border-strong bg-bg-elevated shadow-overlay overflow-y-auto overscroll-contain"
           style={{
             top: pos.top,
             left: pos.left,

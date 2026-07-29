@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createPortal } from "react-dom";
 import Link from "next/link";
 import { TippingBar } from "@/components/brand";
 import { I, categoryGlyph } from "@/components/ui/glyphs";
 import { Avatar } from "@/components/ui/avatar";
+import { Modal } from "@/components/ui/modal";
 import { cn, formatTzs } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { pickLocalized } from "@/lib/localized";
@@ -117,88 +117,49 @@ function initialsFor(seed: string): string {
 }
 
 /** Small info icon that opens a brief "how betting works" popup.
- *  Portaled to body because the card has overflow:hidden (watermark bleed). */
+ *
+ *  DESIGN_AUTHORITY B10 (2026-07-29): this used to be a hand-rolled
+ *  `createPortal` + its own scrim + its own `0 16px 40px -8px oklch(…)`
+ *  drop-shadow + its own rise animation, hand-positioned off a
+ *  getBoundingClientRect. It was the last bespoke popup in a player surface —
+ *  and being bespoke, it had NO focus trap, NO focus return, and none of the
+ *  Android scroll/zoom lock the shared primitive gives every other dialog.
+ *
+ *  It now goes through <Modal>, so it inherits all of that plus the one
+ *  shadow/radius/motion vocabulary. The visible change: it presents as the
+ *  product's standard centred dialog instead of a card-anchored bubble. The
+ *  copy is unchanged. */
 function HowItWorks() {
   const { t } = useT();
   const [open, setOpen] = useState(false);
-  const btnRef = useRef<HTMLButtonElement>(null);
-  const [pos, setPos] = useState({ top: 0, right: 0 });
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
-
-  const toggle = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!open && btnRef.current) {
-      const r = btnRef.current.getBoundingClientRect();
-      setPos({ top: r.top - 8, right: window.innerWidth - r.right });
-    }
-    setOpen((v) => !v);
-  };
 
   return (
     <>
       <button
-        ref={btnRef}
         type="button"
         aria-label={t.common.howItWorks}
-        onClick={toggle}
-        className="inline-flex items-center justify-center rounded-md transition-all"
-        style={{
-          width: 28,
-          height: 28,
-          // 28px visible + padding gives a 44px touch target (WCAG 2.5.5)
-          padding: 8,
-          boxSizing: "content-box",
-          color: open ? "var(--brand-300)" : "var(--text-subtle)",
-          background: open ? "oklch(63% 0.18 262 / 0.18)" : "oklch(40% 0.08 264 / 0.25)",
-          border: `1px solid ${open ? "var(--brand-500)" : "var(--border)"}`,
-          position: "relative",
-          zIndex: 2,
-        }}
-        onMouseEnter={(e) => { if (!open) { e.currentTarget.style.color = "var(--text)"; e.currentTarget.style.borderColor = "var(--brand-400)"; e.currentTarget.style.background = "oklch(63% 0.18 262 / 0.12)"; } }}
-        onMouseLeave={(e) => { if (!open) { e.currentTarget.style.color = "var(--text-subtle)"; e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.background = "oklch(40% 0.08 264 / 0.25)"; } }}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(true); }}
+        className="mcardp-info"
+        data-open={open || undefined}
       >
         <I.info s={12} />
       </button>
-      {open && typeof document !== "undefined" && createPortal(
-        <>
-          <div className="fixed inset-0 z-[90]" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); }} />
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="fixed z-[91] w-[260px] rounded-xl border border-border-strong p-3.5"
-            style={{
-              bottom: `calc(100vh - ${pos.top}px)`,
-              right: pos.right,
-              background: "var(--bg-elevated2)",
-              boxShadow: "0 16px 40px -8px oklch(6% 0.08 264 / 0.7)",
-              animation: "orm-rise 160ms ease-out",
-            }}
-          >
-            <button
-              type="button"
-              aria-label={t.common.close}
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); }}
-              className="absolute right-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded-sm text-text-subtle hover:text-text transition-colors"
-            >
-              <I.x s={12} />
-            </button>
-            <p className="font-display text-[13px] font-bold text-text" style={{ marginBottom: 6 }}>{t.common.howItWorks}</p>
-            <p className="text-[11.5px] leading-[1.55] text-text-muted">
-              {t.common.howItWorksBody}
-            </p>
-            <p className="text-[10.5px] leading-[1.5] text-text-subtle italic" style={{ marginTop: 6 }}>
-              {t.common.howItWorksFine}
-            </p>
-          </div>
-        </>,
-        document.body,
-      )}
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        ariaLabel={t.common.howItWorks}
+        maxWidth={320}
+      >
+        <p className="mb-1.5 font-display text-[13px] font-bold text-text">{t.common.howItWorks}</p>
+        <p className="text-[11.5px] leading-[1.55] text-text-muted">
+          {t.common.howItWorksBody}
+        </p>
+        <p className="mt-1.5 text-[10.5px] leading-[1.5] text-text-subtle italic">
+          {t.common.howItWorksFine}
+        </p>
+      </Modal>
     </>
   );
 }

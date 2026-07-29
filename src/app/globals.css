@@ -349,10 +349,49 @@
   --shadow-3: 0 4px 14px oklch(14% 0.08 268 / 0.50);
   --shadow-4: 0 8px 28px -8px oklch(14% 0.08 268 / 0.55);
   --shadow-5: 0 14px 44px -12px oklch(14% 0.08 268 / 0.62);
+  /* ---------- The FLOATING-SURFACE rungs (DESIGN_AUTHORITY B10) ----------
+     Added 2026-07-29. The ladder above covers surfaces that sit ON the page.
+     Anything that floats ABOVE it — a dialog, a menu, a drawer, a popover —
+     used to type its own drop-shadow, so the product shipped SEVEN of them:
+     the Modal's `0 30px 80px oklch(5% .05 264 / .65)`, and six more in
+     avatar-menu / notifications-panel / needle-drawer / date-select /
+     nav-more / the market-card popover, each a slightly different hand-typed
+     rgba or oklch. Same visual job, seven answers, none of them a token — so
+     "make the popups consistent" meant editing seven files. Now it is two.
+
+     --shadow-modal   the centred dialog: the deepest cast, plus the 1px top
+                      inner highlight that gives the panel its lit edge.
+     --shadow-overlay every other floating surface (menus, drawers, popovers,
+                      calendars). Shallower than a modal ON PURPOSE — it is
+                      attached to a trigger, not a scrim, so it must not claim
+                      the same depth as a dialog that owns the whole screen.
+
+     Both keep the hue-268 royal cast of the ladder above rather than the
+     neutral rgba() the six bespoke versions drifted into — a black shadow on
+     an indigo canvas reads grey/dead, which is why they never quite matched. */
+  --shadow-modal:   0 30px 80px oklch(5% 0.05 268 / 0.65), inset 0 1px 0 oklch(100% 0 0 / 0.06);
+  --shadow-overlay: 0 24px 56px -16px oklch(5% 0.05 268 / 0.62), inset 0 1px 0 oklch(100% 0 0 / 0.06);
+  /* Same rung, cast UPWARD — for a surface docked to the BOTTOM edge (the needle
+     drawer, a bottom sheet). A downward cast on a bottom-docked panel throws its
+     shadow off-screen and the panel reads as pasted onto the viewport. Direction
+     is the only difference; keep the depth identical so the two read as one system. */
+  --shadow-overlay-up: 0 -24px 56px -16px oklch(5% 0.05 268 / 0.62), inset 0 1px 0 oklch(100% 0 0 / 0.06);
+  /* The card top-highlight — the 1px lit edge that makes an elevated surface
+     read as lit from above rather than as a flat rectangle. It was retyped
+     inline at ~8 sites (globals.css:984, .badge--unlocked, the buttons, the
+     Modal); this is its one definition site. Compose it, never retype it:
+       box-shadow: var(--shadow-card-top), var(--shadow-4); */
+  --shadow-card-top: inset 0 1px 0 oklch(98% 0.01 268 / 0.08);
   --glow-gold:    0 0 24px -4px color-mix(in oklab, var(--gold-500) 60%, transparent);
   --glow-blue:    0 0 24px -4px color-mix(in oklab, var(--teal-400) 60%, transparent);
   --glow-win:     0 0 32px -4px color-mix(in oklab, var(--yes-400) 60%, transparent);
   --glow-jackpot: 0 0 60px -8px color-mix(in oklab, var(--gold-400) 70%, transparent);
+  /* The "this one is selected" brand halo — the calendar's chosen day, the active
+     pager button. Was typed three ways in two files (0 0 12px oklch(55% .20 264 /
+     .45) and 0 0 8px oklch(63% .18 262 / .15)), i.e. two different hues and two
+     different intensities for one meaning. One rung, mixed off --brand-500 so it
+     tracks the brand automatically instead of pinning a raw hue. */
+  --glow-selected: 0 0 12px -1px color-mix(in oklab, var(--brand-500) 45%, transparent);
 
   --g-brand:    linear-gradient(135deg, var(--teal-700), var(--teal-500));
   --g-gold:     linear-gradient(180deg, var(--gold-300), var(--gold-600));
@@ -1985,6 +2024,24 @@ html.kp-reduce-motion *::after {
 .mcardp-meta .dot { width:3px;height:3px;border-radius:50%;background:var(--border-strong); flex-shrink:0; }
 .mcardp-meta .live { color: var(--yes-300); display:inline-flex; align-items:center; gap:5px; }
 .mcardp-meta-right { margin-left:auto; display:inline-flex; align-items:center; flex-shrink:0; }
+/* The "how it works" trigger. Was 8 inline style props plus two onMouseEnter/
+   onMouseLeave handlers that re-typed four colours in JS to fake :hover — a hover
+   state living in an event handler instead of a stylesheet (B10). 28px visible +
+   8px padding on content-box = the 44px touch target (WCAG 2.5.5). */
+.mcardp-info {
+  position: relative; z-index: 2;
+  display: inline-flex; align-items: center; justify-content: center;
+  box-sizing: content-box; width: 28px; height: 28px; padding: 8px;
+  border-radius: var(--r-md);
+  color: var(--text-subtle);
+  background: var(--bg-overlay);
+  border: 1px solid var(--border);
+  transition: color var(--dur-micro) var(--ease-micro), border-color var(--dur-micro) var(--ease-micro), background-color var(--dur-micro) var(--ease-micro);
+}
+.mcardp-info[data-open] { color: var(--brand-300); background: var(--brand-soft); border-color: var(--brand-500); }
+@media (hover: hover) {
+  .mcardp-info:not([data-open]):hover { color: var(--text); border-color: var(--brand-400); }
+}
 /* Details link — its own constant 1-line row so it never shifts card height. */
 .mcardp-details { display:inline-flex; align-items:center; justify-content:flex-end; gap:4px; font-family: var(--font-display); font-weight:600; font-size:11.5px; text-decoration:none; }
 @media (hover: hover) {

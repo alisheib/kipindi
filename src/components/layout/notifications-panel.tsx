@@ -239,7 +239,7 @@ export function NotificationsPanel() {
             role="dialog"
             aria-label={t.notif.title}
             className={cn(
-              "fixed left-3 right-3 top-[calc(env(safe-area-inset-top)+72px)] z-[61] rounded-xl border border-border-strong bg-bg-elevated/85 backdrop-blur-xl overflow-hidden shadow-[0_24px_64px_-16px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.06)] flex flex-col",
+              "fixed left-3 right-3 top-[calc(env(safe-area-inset-top)+72px)] z-[61] rounded-modal border border-border-strong bg-bg-elevated/85 backdrop-blur-xl overflow-hidden shadow-overlay flex flex-col",
               "max-h-[calc(100dvh-env(safe-area-inset-top)-72px-env(safe-area-inset-bottom)-72px)]",
               // max-h is viewport-bound (not a flat 480) so the panel fits a short
               // landscape phone (≤360px tall) and scrolls internally instead of
