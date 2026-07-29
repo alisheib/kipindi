@@ -303,11 +303,23 @@ export function OperationResultModal({
         {details && details.length > 0 && (
           <div className="mt-4 grid grid-cols-1 gap-2 text-left">
             {details.map((d, i) => (
+              /* The value must FIT, wrapping to a second row if it has to.
+                 A reference here is a 25-character cuid with no spaces in it
+                 (wallet-result-modal passes the transaction id), and this row used
+                 to be a plain `flex justify-between`: flex items default to
+                 `min-width:auto`, so neither child could shrink below its content,
+                 the value overflowed the panel, and the panel's `overflow-hidden`
+                 CLIPPED it. Wide screens hid this — at 360px the reference a player
+                 needs to quote to support was cut off mid-string. Reported from a
+                 real withdrawal, 2026-07-29.
+                 `min-w-0` restores shrinkability, `break-all` is the only break that
+                 works on an unbroken token, and `flex-wrap` + `ml-auto` lets the
+                 value drop onto its own full-width row and stay right-aligned. */
               <div
                 key={i}
-                className="rounded-md border border-border bg-bg-overlay/60 px-3 py-2 flex items-baseline justify-between gap-3"
+                className="rounded-md border border-border bg-bg-overlay/60 px-3 py-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5"
               >
-                <div>
+                <div className="min-w-0">
                   <p className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-text-subtle">
                     {d.label}
                   </p>
@@ -316,7 +328,7 @@ export function OperationResultModal({
                   )}
                 </div>
                 <p
-                  className="font-mono text-[14px] font-bold tabular-nums"
+                  className="min-w-0 ml-auto text-right font-mono text-[14px] font-bold tabular-nums break-all"
                   style={{
                     color:
                       d.tone === "good" ? "oklch(78% 0.13 152)" :
