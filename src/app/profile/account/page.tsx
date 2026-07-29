@@ -19,7 +19,12 @@ import { ExportDataButton } from "./export-data-button";
 import { SUPPORT_EMAIL, SUPPORT_PHONE } from "@/lib/support-config";
 import { getServerT } from "@/lib/i18n-server";
 
-export const metadata = { title: "My account" };
+// Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
+// "My account", which a Swahili player saw in their browser tab and history.
+export async function generateMetadata() {
+  const { t } = await getServerT();
+  return { title: t.profile.myAccount };
+}
 export const dynamic = "force-dynamic";
 
 export default async function AccountPage({ searchParams }: { searchParams?: Promise<{ error?: string; act?: string }> }) {

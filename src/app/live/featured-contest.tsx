@@ -94,7 +94,7 @@ export function FeaturedContest({
           <div className="flex shrink-0 items-center gap-2">
             <Arrow dir="prev" onClick={() => go(-1)} />
             <span className="font-mono text-[10.5px] tabular-nums text-text-subtle select-none">
-              {idx + 1}<span className="text-text-tertiary"> / {n}</span>
+              {idx + 1}<span className="text-text-faint"> / {n}</span>
             </span>
             <Arrow dir="next" onClick={() => go(1)} />
           </div>

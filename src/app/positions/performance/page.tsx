@@ -4,7 +4,7 @@ import { BackLink } from "@/components/ui/back-link";
 import { PageHeader } from "@/components/ui/page-header";
 import { I } from "@/components/ui/glyphs";
 import { GiltCorner } from "@/components/brand";
-import { formatTzsAbs, formatTzsSigned } from "@/lib/utils";
+import { formatTzsAbs, formatTzsSigned, formatDayShort } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PnlChart } from "@/components/positions/pnl-chart";
 import { listPositionsForUser, getMarket } from "@/lib/server/market-service";
@@ -98,7 +98,7 @@ export default async function PerformancePage() {
       id: p.id, marketId: p.marketId,
       title: m ? pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh) : p.marketId.slice(0, 8),
       side: p.side, stake: p.stake,
-      date: d.toLocaleDateString("en-GB", { day: "numeric", month: "short" }),
+      date: formatDayShort(d.toISOString()),
       pnl: pnlOf(p), statusLabel: statusLabel(p.status),
     };
   });

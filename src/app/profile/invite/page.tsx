@@ -15,7 +15,12 @@ import { ReferralShare } from "./invite-client";
 import { formatDateShort as fmtDate, formatNumber } from "@/lib/utils";
 import { getServerT } from "@/lib/i18n-server";
 
-export const metadata = { title: "Invite & Earn" };
+// Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
+// "Invite & Earn", which a Swahili player saw in their browser tab and history.
+export async function generateMetadata() {
+  const { t } = await getServerT();
+  return { title: t.profile.inviteEarn };
+}
 export const dynamic = "force-dynamic";
 
 /** Compact TZS for the ring center: 31000 → "31K", 1_284_000 → "1.3M". */

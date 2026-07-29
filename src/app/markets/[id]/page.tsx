@@ -26,7 +26,7 @@ import { ensureAffiliateAccount } from "@/lib/server/affiliate-service";
 import { listComments } from "@/lib/server/comments-store";
 import { CommentsThread } from "@/components/markets/comments-thread";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
-import { formatDateTime, formatTzsCompact, formatTzs, fill, pctNum } from "@/lib/utils";
+import { formatDateTime, formatDayTime, formatTzsCompact, formatTzs, fill, pctNum } from "@/lib/utils";
 import { appUrl } from "@/lib/app-url";
 import { getServerT } from "@/lib/i18n-server";
 import { pickLocalized } from "@/lib/localized";
@@ -597,7 +597,7 @@ export default async function MarketDetail({
               <h3 className="mt-1.5 font-display text-[15px] font-bold text-text">{t.market.waitingForResultsAside}</h3>
               <p className="mt-3 text-[12px] text-text-muted leading-snug">
                 {t.market.newPredictionsNotAccepted}
-                {m.resolutionAt && ` ${t.market.resultsExpectedBy} ${new Date(m.resolutionAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}.`}
+                {m.resolutionAt && ` ${t.market.resultsExpectedBy} ${formatDayTime(m.resolutionAt)}.`}
               </p>
             </div>
           ) : closedByTime ? (

@@ -36,7 +36,12 @@ import { getServerT } from "@/lib/i18n-server";
 import { formatTzs, formatDateTime } from "@/lib/utils";
 import { settleDepositFromReturn } from "@/lib/server/wallet-service";
 
-export const metadata = { title: "Deposit result" };
+// Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
+// "Deposit result", which a Swahili player saw in their browser tab and history.
+export async function generateMetadata() {
+  const { t } = await getServerT();
+  return { title: t.common.deposit };
+}
 export const dynamic = "force-dynamic";
 
 export default async function DepositReturnPage({

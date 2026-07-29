@@ -10,7 +10,12 @@ import { getSession } from "@/lib/server/session";
 import { formatDateTime } from "@/lib/utils";
 import { getServerT, type Dict } from "@/lib/i18n-server";
 
-export const metadata = { title: "Active sessions" };
+// Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
+// "Active sessions", which a Swahili player saw in their browser tab and history.
+export async function generateMetadata() {
+  const { t } = await getServerT();
+  return { title: t.profile.activeSessions };
+}
 export const dynamic = "force-dynamic";
 
 // Relative "2h ago" using the shared generic ago-suffixes (proposals.*Ago).

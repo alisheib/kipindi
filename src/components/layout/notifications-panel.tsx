@@ -52,14 +52,20 @@ const tintFor = (k: StoredNotification["kind"]) => {
   }
 };
 
-function relTime(iso: string): string {
+/** Relative age of a notification.
+ *
+ *  POLISH-BACKLOG §1.8: this returned "now" / "5m" / "3h" / "2d" as English
+ *  literals, inside the bell — a surface a Swahili player opens constantly, and
+ *  the one place the product tells them their money moved. The unit strings are
+ *  now dictionary values, so `t` has to be passed in. */
+function relTime(iso: string, t: ReturnType<typeof useT>["t"]): string {
   const diff = Date.now() - new Date(iso).getTime();
   const m = Math.floor(diff / 60_000);
-  if (m < 1) return "now";
-  if (m < 60) return `${m}m`;
+  if (m < 1) return t.common.relNow;
+  if (m < 60) return `${m}${t.common.relMinutes}`;
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h`;
-  return `${Math.floor(h / 24)}d`;
+  if (h < 24) return `${h}${t.common.relHours}`;
+  return `${Math.floor(h / 24)}${t.common.relDays}`;
 }
 
 /** Pick the right locale field from a notification, falling back to English. */
@@ -321,7 +327,7 @@ export function NotificationsPanel() {
                       </p>
                       <div className="mt-1 flex items-center justify-end">
                         <span className="font-mono text-[10.5px] tabular-nums text-text-subtle">
-                          {relTime(n.createdAt)}
+                          {relTime(n.createdAt, t)}
                         </span>
                       </div>
                     </div>

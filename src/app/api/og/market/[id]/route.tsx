@@ -189,7 +189,7 @@ export async function GET(
 
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 14, opacity: 0.6, fontFamily: "JetBrains Mono, monospace" }}>
             <span>Predict events. Not chance.</span>
-            <span>{m.yesPool + m.noPool} TZS volume · {m.predictorCount} predictors</span>
+            <span>{tzs(m.yesPool + m.noPool)} TZS volume · {m.predictorCount} predictors</span>
           </div>
         </div>
       </div>

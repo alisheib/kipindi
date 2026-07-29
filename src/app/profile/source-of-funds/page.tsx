@@ -15,7 +15,12 @@ import { submitSourceOfFundsAction } from "./actions";
 import { formatDate } from "@/lib/utils";
 import { getServerT } from "@/lib/i18n-server";
 
-export const metadata = { title: "Source of funds" };
+// Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
+// "Source of funds", which a Swahili player saw in their browser tab and history.
+export async function generateMetadata() {
+  const { t } = await getServerT();
+  return { title: t.profile.sourceOfFunds };
+}
 export const dynamic = "force-dynamic";
 
 export default async function SourceOfFundsPage({ searchParams }: { searchParams?: Promise<{ error?: string; saved?: string; src?: string; occ?: string; band?: string; emp?: string; other?: string }> }) {

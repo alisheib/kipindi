@@ -2234,11 +2234,18 @@ html.kp-reduce-motion *::after {
 @media (prefers-reduced-motion: reduce) {
   .mcardp-spark-line { animation:none; stroke-dasharray:none; stroke-dashoffset:0; }
 }
-.mcardp-actions { display:grid; grid-template-columns:1fr 1fr; gap: 8px; margin: 13px 0 11px; }
+/* margin 13/11 → 11/9 absorbs the 36→40px button bump below, so card height is
+   unchanged and the live vs resolved branches stay in parity. */
+.mcardp-actions { display:grid; grid-template-columns:1fr 1fr; gap: 8px; margin: 11px 0 9px; }
 /* Resolved/closed cards run one full-width pill in the SAME vertical rhythm as
    the live YES/NO row, so card heights match across a mixed grid. */
 .mcardp-actions--single { grid-template-columns: 1fr; }
-.mcardp-actions .btn { height: 36px; font-size: 13px; font-weight: 600; min-width: 0; padding: 0 10px; letter-spacing: 0.04em; border-radius: var(--r-md); transition: transform .12s ease-out, box-shadow .16s ease-out, filter .12s; }
+/* 36 → 40px (POLISH-BACKLOG §1.4). These are the product's most-tapped money
+   controls and they sat BELOW the 40px tap floor law 9 sets — on a card, on a
+   phone, for the two buttons that place a bet. --tap-min is that floor's one
+   definition site, so this reads it rather than restating 40. The kit floor at
+   --h-control-* is deliberately NOT touched: 148 call sites including admin. */
+.mcardp-actions .btn { height: var(--tap-min); font-size: 13px; font-weight: 600; min-width: 0; padding: 0 10px; letter-spacing: 0.04em; border-radius: var(--r-md); transition: transform .12s ease-out, box-shadow .16s ease-out, filter .12s; }
 .mcardp-actions .btn:active:not(:disabled) { transform: translateY(1px) scale(0.96); }
 /* Stats row — single line (no wrap), time + info pinned right. Kept on one line
    so the footer height is identical on every card (a previous double margin-auto

@@ -20,7 +20,12 @@ import { ProviderRadioGrid } from "@/components/wallet/provider-radio-grid";
 import { CardBillingFields } from "@/components/wallet/card-billing-fields";
 import { EmailVerifyGate } from "@/components/wallet/email-verify-gate";
 
-export const metadata = { title: "Deposit" };
+// Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
+// "Deposit", which a Swahili player saw in their browser tab and history.
+export async function generateMetadata() {
+  const { t } = await getServerT();
+  return { title: t.common.deposit };
+}
 
 const ADMIN_TEST_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
 
