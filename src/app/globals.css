@@ -2086,6 +2086,40 @@ html.kp-reduce-motion *::after {
   gap: 14px;
   grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
 }
+/* FEATURED (2026-07-29) — the top market of a board leads, instead of every card
+   competing at one weight. It spans two columns from `md` up, so on a wide board
+   the eye has somewhere to land first and a short board still reads composed
+   rather than as leftovers. It is a STATE OF THE CARD (a `featured` prop), never
+   a second card component — B9.
+   Deliberately restrained: one extra column, a slightly stronger edge, and the
+   royal wash the hero already uses. No new glow vocabulary, no size change to
+   the type — a "featured" card that restyles itself would be a second design. */
+.mcardp--featured {
+  border-color: var(--border-royal);
+  background:
+    radial-gradient(120% 140% at 0% 0%, var(--bg-royal-soft) 0%, transparent 55%),
+    var(--bg-elevated);
+}
+@media (min-width: 768px) {
+  .market-grid > .mcardp--featured { grid-column: span 2; }
+}
+/* The board's section headings — Featured / New markets / Recently resolved.
+   One rule, so the three sections cannot drift apart. */
+.board-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.board-section-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
 /* v2 Dark Glass — staggered card entrance on page load. Each child gets a
    rising fade-in with staggered delay, capped at 8 items (45ms each) so large
    grids never feel sluggish. Cards end at opacity:1 + transform:none as the

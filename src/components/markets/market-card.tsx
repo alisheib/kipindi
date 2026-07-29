@@ -56,6 +56,16 @@ type Props = {
    * pass it.
    */
   isNew?: boolean;
+  /**
+   * Lead card of a board. Spans two columns from `md` up and takes a slightly
+   * stronger edge + the royal wash, so a board has somewhere for the eye to
+   * land and a SHORT board still reads composed rather than as leftovers.
+   *
+   * A state of this card, never a second component (B9) — and deliberately
+   * restrained: no type-size change, no new glow. A "featured" card that
+   * restyled itself would be a second design to keep in sync forever.
+   */
+  featured?: boolean;
   className?: string;
 };
 
@@ -182,7 +192,7 @@ function HowItWorks() {
 }
 
 export function MarketCard({
-  id, titleEn, titleSw, titleZh, category, yesPct, volume, predictors, timeLeft, status, resolvedOutcome, spark, move24h, traders, selectionClosed, comments, isNew, className,
+  id, titleEn, titleSw, titleZh, category, yesPct, volume, predictors, timeLeft, status, resolvedOutcome, spark, move24h, traders, selectionClosed, comments, isNew, featured, className,
 }: Props) {
   const router = useRouter();
   const { t, locale } = useT();
@@ -387,7 +397,7 @@ export function MarketCard({
   // Non-live: keep the whole card a link so results/history stay viewable.
   return live ? (
     <article
-      className={cn("mcardp group", className)}
+      className={cn("mcardp group", featured && "mcardp--featured", className)}
       style={{ cursor: "pointer" }}
       aria-label={title}
       role="link"
@@ -403,7 +413,7 @@ export function MarketCard({
       {body}
     </article>
   ) : (
-    <Link href={`/markets/${id}` as never} className={cn("mcardp group", className)}>
+    <Link href={`/markets/${id}` as never} className={cn("mcardp group", featured && "mcardp--featured", className)}>
       {body}
     </Link>
   );
