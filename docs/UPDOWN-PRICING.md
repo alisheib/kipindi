@@ -79,6 +79,23 @@ stake-only chain edit never clears an existing override); the void-rate sample i
 | Resolve by targets / fallback + evidence | `closeRound` (`useTargets = round.upTarget != null`) | `src/lib/server/updown-service.ts` |
 | Storage | `StoredRound.{marginBps,upTarget,downTarget}`, `StoredChain.marginBps` | `src/lib/server/updown-dal.ts` |
 | DB columns | `UpDownRound.{marginBps,upTarget,downTarget}`, `UpDownChain.marginBps` (Decimal(24,8)/Int, nullable) | `prisma/schema.prisma` + `migrations/20260728150000_updown_margin` |
+| Board → card threading | `BoardRound.{upTarget,downTarget}`, `toBoardRound` | `src/lib/server/updown-board.ts` |
+| **Player card — "Target to win" band** | `UpDownCard` (`upTarget`/`downTarget` props; `Up ≥` / `Down ≤` + `± buffer`) | `src/components/updown/updown-card.tsx` |
+| Detail hero + settlement proof | `PriceHero` target lines + proof rows | `src/components/updown/price-hero.tsx`, `src/app/updown/[roundId]/page.tsx` |
+| Label copy | `udWinTarget` (EN/SW/ZH) | `src/lib/i18n-dict.ts` |
+
+## Player display (what the bettor sees)
+
+The two frozen targets are surfaced on every player surface, matching the PDF's Up/Down target
+breakdown and the approved paper prototype:
+
+- **Board card** — a "Target to win" band under the pool split: `Up ≥ $<upTarget>` (emerald) /
+  `Down ≤ $<downTarget>` (rose) + the `± <buffer>` (base × margin). Hidden when the price/targets
+  aren't confirmed or the round is settled/void. Fixed 50/50 grid → no overflow at 360px, incl.
+  6-figure assets; verified across EN/SW/ZH. Spec:
+  `docs/design-system/v2-2026-07-27/02-components/_specs-as-delivered/D1-updown-card-spec.md`.
+- **Round detail** — the price hero draws the up/down boundary lines with their prices; the
+  settlement proof states `≥ upTarget` / `≤ downTarget` beside the open/close.
 
 The tick **floor**: `computeTargets` never lets the margin fall below the asset's minimum move
 (`minMoveTicks × 10^−decimals`), so a degenerate (near-zero) margin can't be decided by sub-tick noise.

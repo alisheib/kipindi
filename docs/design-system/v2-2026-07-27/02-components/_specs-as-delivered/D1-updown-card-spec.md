@@ -32,6 +32,14 @@ Stats band (all four survive 360: countdown above counts as the fourth)
 - row: volume `VOL TZS 320,000` — mono 11.5px/600 tabular `--text-muted`, "VOL" prefix 8.5px `--text-faint`; players: 11px person stroke glyph (2px) + mono 11.5px/600
 - pool split: labels `UP 58%` (`--yes-300`) / `42% DOWN` (`--no-300`), mono 9.5px/700 ls 0.06em; bar 5px tall, radius `--r-pill`, 2px gap, fills `--yes-500` / `--no-500`. Words + colour, per the "never colour-only" rule.
 
+Winning-targets band (the PDF's Up/Down target prices — added 2026-07-28)
+- shown **only** when `upTarget`/`downTarget` are known **and** state ∉ {resolved, void}; absent otherwise — we never render a boundary we don't have, and a settled card shows its outcome instead.
+- container: bg `--bg-inset`, border 1px `color-mix(--border 70%, transparent)`, radius `--r-md` — the countdown band's recipe; margin-top 8px.
+- header row: left label mono 8px/600 ls 0.12em uppercase `--text-faint` = "TARGET TO WIN" (`t.market.udWinTarget`, EN/SW/ZH), truncates; right `± $<buffer>` mono 8px tabular, shrink-0. Buffer = `upTarget − openPrice` = base × margin (the 0.5% "50pick factor"), mirroring the paper prototype's `4119.23 × 0.5% = 20.60 (±)`.
+- values: **`grid-cols-2`** (NOT justify-between — a fixed 50/50 split guarantees no horizontal overflow on a 6-figure asset), gap 8px, mono 12px/700 tabular, leading-tight; left `Up ≥ $<upTarget>` `--yes-300`, right (text-right) `Down ≤ $<downTarget>` `--no-300`. The `≥`/`≤` states the winning condition; direction is carried by colour + word (no inline arrow, so long prices never wrap the row).
+- meaning: reach ≥ upTarget ⇒ UP wins, ≤ downTarget ⇒ DOWN wins, strictly between ⇒ VOID + full refund. Frozen at open (a later config/margin edit never moves a live round). Full math: `docs/UPDOWN-PRICING.md`.
+- responsive: verified by rendering the real board card at 360 / 768 / 1280 × EN/SW/ZH — overflow 0 at every width, incl. a 6-figure BTC stress case; band correctly absent on an awaiting-price round.
+
 Stake row
 - 44px tall (≥40 tap target), bg `--bg-inset`, border 1px `--border`, radius `--r-md` (12px input radius), padding 0 12px 0 14px
 - "TZS" prefix: mono 10.5px/600 ls 0.04em `--text-subtle`; amount: mono 15px/700 tabular `--text`
@@ -74,6 +82,8 @@ UpDownCard
   durationMinutes  5 | 15 | 30
   livePrice        number | null               // null => "—" + AWAITING READ; NEVER render 0
   openPrice        number                      // the line; always known once round exists
+  upTarget         number | null               // frozen winning boundary (base + margin); null on legacy/awaiting rounds → targets band hidden
+  downTarget       number | null               // frozen winning boundary (base − margin); null → band hidden
   movePct          number | null               // null => omit row (with livePrice null)
   secondsLeft      number                      // <=30 triggers urgency; 0 + state drives label
   volumeTzs        number                      // TZS-formatted with separators
@@ -109,3 +119,4 @@ Unknown-value rendering (real data or nothing)
 3. **Icon artwork** — mono "Au"/"Ag" glyph chips are placeholders; supply real asset marks and the recipe keeps only the tinted ring.
 4. **Resolved band and the player's own position** (won/lost/payout) is intentionally NOT on the board card — that belongs to D3/Bets. Confirm.
 5. **Stress title** ellipsises on one line; alternative is a 2-line clamp (+~18px card height, still baseline-aligned since footer is bottom-pinned). Preference?
+6. **Winning-targets band** (added 2026-07-28) realises the "50pick Dynamic Engine" PDF on the card — the two target prices a side must reach to win, matching the approved paper prototype. Open question: whether to add the ↗/↘ arrows inside the boxes (the sketch has them); currently omitted so 6-figure prices can't overflow at 360px, with the arrows kept on the Up/Down buttons below.
