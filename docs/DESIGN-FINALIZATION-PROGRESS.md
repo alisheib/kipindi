@@ -18,8 +18,8 @@ finished work nor assume unfinished work is finished.
 | Step | State | Commit |
 |---|---|---|
 | Baseline gates | ✅ green before any edit | — |
-| 0 · Merge-discipline law installed | ✅ done | `f3f9128` |
-| 1 · Canonicalize & FREEZE primitives | ⬜ not started | — |
+| 0 · Merge-discipline law installed | ✅ done | `d691cc6` |
+| 1 · Canonicalize & FREEZE primitives | ✅ done | `c46e221` `fcab6ed` +1 |
 | 2 · Cold-start / low-liquidity states | ⬜ not started | — |
 | 3 · Board stays full | ⬜ not started | — |
 | 4 · Desktop right rail | ⬜ not started | — |
@@ -81,6 +81,54 @@ Gates: `tsc` 0 · `test:tokens` PASS · `test:measure` PASS · `test:i18n` PASS
   pointing at the full law.
 - `06-patterns-and-rules/RULES.md` — **law 15** and **law 16** added after law 14, in the
   existing rule → reason → broken-looks-like voice.
+
+---
+
+## Step 1 — Canonicalize & FREEZE the primitives · ✅ done
+
+Three commits: `c46e221` (elevation vocabulary + popups), `fcab6ed` (TippingBar), and the
+freeze guard + kit docs.
+
+**What was actually wrong** (each of these was a *second home for a design truth*):
+
+1. **Seven floating surfaces, seven drop-shadows.** Modal · avatar-menu ·
+   notifications-panel · needle-drawer · date-select · nav-more · market-card popover.
+   Several used neutral `rgba(0,0,0,…)`, which on an indigo canvas reads grey — the
+   reason they never matched. → `--shadow-modal` / `--shadow-overlay` /
+   `--shadow-overlay-up`, all hue-268.
+2. **`--shadow-card` / `--shadow-royal` were never bridged** into Tailwind, so
+   `shadow-card` was a dead class (a live B8 trap) and callers wrote
+   `shadow-[var(--shadow-card)]` to get it at all.
+3. **The TippingBar ignored its own tokens.** `--bar-track`, `--bar-track-border`,
+   `--bar-needle` existed in `globals.css` *for this component* and `brand.tsx` used none
+   of them — it re-typed the identical values inline. **Editing those tokens changed
+   nothing on screen.** This is the most dangerous drift shape: the system looks
+   canonical while the component quietly owns the values.
+4. **`.is-interactive` / `.spark-draw` / `.btn-spin` had zero consumers** anywhere — not
+   TSX, not CSS, not a spec. POLISH-BACKLOG §1.3 suspected duplicates of the deleted
+   `micro-patterns.css`; the truth was worse. `.is-interactive` was also a *third* motion
+   vocabulary beside `--m-*`/`--t-*`. Deleted, with their reduced-motion overrides and the
+   orphaned `--spin-duration`.
+
+**New guard — `npm run test:design-frozen`** (added to `predeploy`). Ratchet of 45 files /
+244 lines, and it may only shrink. It also fails on a *stale* exemption, so cleaning a file
+forces the list to tighten rather than silently carrying a dead pass. Verified to fail on a
+reintroduced violation and pass on the fix.
+
+**`test:bridge` was fixed, not worked around.** It resolved `shadow-*` against the *colour*
+map; Tailwind resolves it against `boxShadow`. So `shadow-overlay` passed only by colliding
+with a key in the `bg` family, while correctly-bridged rungs were reported dead. It now
+checks the right map, and its family parser no longer mistakes nested keys for top-level
+families (that phantom inflated the count to 58; the real number is 20). Verified: the
+tightened parser surfaces **zero** new dead classes — it closes a false-pass rather than
+papering over one.
+
+### ⚠️ One visible behaviour change for Ali to eyeball
+
+The market-card **"how it works"** popup now presents as the product's standard centred
+dialog instead of a card-anchored bubble. Copy unchanged. It was the last hand-rolled popup
+in a player surface and, being hand-rolled, had **no focus trap, no focus return and no
+Android scroll/zoom lock**. Routing it through `Modal` is what gives it those.
 
 ---
 
