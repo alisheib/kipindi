@@ -882,6 +882,97 @@ export async function creditConfirmedDeposits(
   return { checked: inFlight.length, confirmed };
 }
 
+/**
+ * FAST PAYOUT LANE — the same courtesy for money going OUT.
+ *
+ * 🔴 WHY THIS EXISTS. On 2026-07-29 a real 10,000 TZS withdrawal
+ * (`txn_8ad70b448950261a60fc860a`) sat in PROCESSING while its owner watched the
+ * balance already gone from their wallet. Nothing was wrong — Selcom genuinely had
+ * it in progress — but NOTHING re-queried it for the first 30 minutes, because the
+ * stale sweep is the only thing that asks and it ignores anything younger than that.
+ * Deposits got a 15-second re-query lane in July for exactly this reason
+ * (`creditConfirmedDeposits`); payouts never did. The asymmetry was invisible until
+ * real money went out.
+ *
+ * ⚠️ CONFIRM-ONLY, DELIBERATELY. This lane can settle a payout as COMPLETE and
+ * release the hold. It can NEVER fail or reverse one. That is the property that
+ * makes it safe to run every 15 seconds: the worst case is that it does nothing.
+ * A reversal refunds a player whose money may already be on its way to their
+ * handset — a double-pay — so reversals stay exclusively with the 30-minute
+ * `reconcileStalePayments`, which is written to be conservative about exactly that
+ * (see its UNSUPPORTED arm). A payout that genuinely FAILED therefore still takes
+ * up to 30 minutes to return to the wallet; that delay is the cost of never paying
+ * twice, and it is the right trade.
+ *
+ * The window is [olderThanMs, fastWindowMs] = [8s, 30min], which meets the stale
+ * sweep exactly at its 30-minute cutoff — no gap where nobody is asking, and no
+ * overlap where both are. Gateway calls per poll are bounded by CONCURRENT payouts,
+ * not by the size of the transaction table.
+ *
+ * Settlement goes through `settlePaymentWebhook`, the same exactly-once path the
+ * real callback uses, so a callback and this lane racing cannot double-release.
+ */
+/**
+ * Which in-flight payouts the fast lane is allowed to touch.
+ *
+ * Exported so `test:fast-payout` can drive the window boundaries directly — the
+ * selection is where an off-by-one silently means "nobody is asking about this
+ * payout", which is the exact failure that left a real withdrawal unqueried for
+ * 38 minutes. A test that could only observe the lane's aggregate result would
+ * not distinguish "correctly skipped" from "wrongly skipped".
+ */
+export function isFastPayoutCandidate(
+  t: { type: string; providerRef?: string | null; createdAt: string },
+  nowMs: number,
+  olderThanMs: number,
+  fastWindowMs: number,
+): boolean {
+  if (t.type !== "WITHDRAWAL" || !t.providerRef) return false;
+  const at = Date.parse(t.createdAt);
+  if (!Number.isFinite(at)) return false;
+  return at < nowMs - olderThanMs && at >= nowMs - fastWindowMs;
+}
+
+export async function settleConfirmedWithdrawals(
+  olderThanMs = 8_000,
+  fastWindowMs = 30 * 60 * 1000,
+): Promise<{ checked: number; confirmed: number }> {
+  const now = Date.now();
+  const inFlight = (await db.txn.listByStatus("PROCESSING")).filter((t) =>
+    isFastPayoutCandidate(t, now, olderThanMs, fastWindowMs),
+  );
+  let confirmed = 0;
+  for (const t of inFlight) {
+    try {
+      const v = await verifyWithdrawalStatus(t.providerRef!);
+      // Keep the LATEST provider answer on the row, every pass. A payout that stalls
+      // for an hour should be able to tell an operator what it has been hearing that
+      // whole time — the 2026-07-29 incident had no such trail, so "still in flight"
+      // and "the gateway is refusing us" were indistinguishable.
+      if (v.detail && v.detail !== t.providerStatus) {
+        try { await db.txn.update(t.id, { providerStatus: `${v.status}: ${v.detail}`.slice(0, 500) }); } catch { /* non-fatal */ }
+      }
+      // PENDING is also what a FAILED QUERY looks like (verifyWithdrawalStatus maps
+      // an unreachable/rejected provider call to PENDING), and FAILED is left to the
+      // stale sweep. Only a definitive CONFIRMED is actionable here.
+      if (v.status !== "CONFIRMED") continue;
+      const r = await settlePaymentWebhook({ providerRef: t.providerRef!, status: "CONFIRMED" });
+      // `handled` is also true for the idempotent already-settled no-op. Counting
+      // that would make a duplicate poll look like a duplicate payout in the audit
+      // log — precisely the wrong signal on a money surface.
+      if (r.handled && r.reason === "withdrawal-confirmed") confirmed++;
+    } catch (err) {
+      // One provider blip must not stop the lane for the other in-flight payouts.
+      console.error("[payments] fast payout re-query failed", { txnId: t.id, err: (err as Error)?.message });
+    }
+  }
+  if (confirmed) {
+    audit({ category: "WALLET", action: "payments.fast_payout", actorId: null, targetType: null, targetId: null,
+      payload: { checked: inFlight.length, confirmed, olderThanMs } });
+  }
+  return { checked: inFlight.length, confirmed };
+}
+
 export async function reconcileStalePayments(olderThanMs = 30 * 60 * 1000): Promise<{ depositsFailed: number; withdrawalsReversed: number; depositsConfirmed: number; withdrawalsConfirmed: number; leftPending: number }> {
   const cutoff = Date.now() - olderThanMs;
   const stale = (await db.txn.listByStatus("PROCESSING")).filter((t) => Date.parse(t.createdAt) < cutoff);
@@ -937,6 +1028,12 @@ export async function reconcileStalePayments(olderThanMs = 30 * 60 * 1000): Prom
     } else if (t.type === "WITHDRAWAL") {
       if (!ref) { leftPending++; audit({ category: "WALLET", action: "payments.reconcile_needs_review", actorId: null, targetType: "Transaction", targetId: t.id, payload: { reason: "stale withdrawal has no providerRef — not auto-reversed" } }); continue; }
       const v = await verifyWithdrawalStatus(ref);
+      // Same trail as the fast lane: a payout stuck across many sweeps must record
+      // what the gateway keeps telling us, not just that it is still stuck.
+      if (v.detail && `${v.status}: ${v.detail}` !== t.providerStatus) {
+        try { await db.txn.update(t.id, { providerStatus: `${v.status}: ${v.detail}`.slice(0, 500) }); } catch { /* non-fatal */ }
+        console.log(`[payments] payout ${t.id} (${ref}) — ${v.status}: ${v.detail}`);
+      }
       if (v.status === "CONFIRMED") {
         const r = await settlePaymentWebhook({ providerRef: ref, status: "CONFIRMED" }); // release the hold, exactly-once
         if (r.handled) withdrawalsConfirmed++;
@@ -1138,13 +1235,30 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
   // above — concurrent deposits/credits would be silently clobbered. Reversing
   // *this* withdrawal's hold delta is the only safe mutation.
   if (!result.ok) {
+    // Record WHAT THE GATEWAY SAID before reversing, or the reason dies with the
+    // request. `providerStatus` is written first so it survives even if the
+    // settle path below throws.
+    if (result.detail) {
+      try { await db.txn.update(txnId, { providerStatus: result.detail.slice(0, 500) }); } catch { /* non-fatal */ }
+    }
     // Reverse the hold (return funds) + mark FAILED — shared, idempotent path.
     await settleWithdrawalFailed(txnId, result.reason);
     return { ok: false, error: "Withdrawal failed. Funds returned to your balance.", code: "INVALID" };
   }
 
-  // Record the provider reference for webhook correlation / reconciliation.
-  await db.txn.update(txnId, { providerRef: result.providerRef });
+  // Record the provider reference for webhook correlation / reconciliation, and
+  // WHAT SELCOM ACTUALLY SAID when it accepted.
+  //
+  // 🔴 `providerStatus` had never been written by any code path in this repo — the
+  // column existed and was dead. On 2026-07-29 two real payouts sat PROCESSING and
+  // the platform could not say whether Selcom had queued them, refused them for an
+  // empty float, or rejected the utility code, because the envelope was discarded
+  // at the adapter. "Accepted" is exactly the state that stalls, so the accepted
+  // detail is the one most worth keeping.
+  await db.txn.update(txnId, {
+    providerRef: result.providerRef,
+    ...(result.detail ? { providerStatus: result.detail.slice(0, 500) } : {}),
+  });
 
   if (result.status === "AML_REVIEW") {
     // Funds stay in `hold` pending manual review — no settle delta yet.

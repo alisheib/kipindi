@@ -116,6 +116,21 @@ async function fastCreditInFlightDeposits(): Promise<void> {
   if (r.confirmed) console.log(`[lifecycle] fast-credited ${r.confirmed} of ${r.checked} in-flight deposit(s)`);
 }
 
+/**
+ * The same lane for money going OUT — added 2026-07-29 after a real payout sat
+ * PROCESSING for over half an hour with nothing re-querying it, because the
+ * 30-minute stale sweep was the only thing that asked. Deposits had had a fast lane
+ * since July; payouts had none, and the asymmetry only showed once real money left.
+ *
+ * `settleConfirmedWithdrawals` can only CONFIRM — never fail, never reverse — so
+ * running it every 15s cannot turn a slow payout into a reversed one. See its header.
+ */
+async function fastSettleInFlightPayouts(): Promise<void> {
+  const { settleConfirmedWithdrawals } = await import("./wallet-service");
+  const r = await settleConfirmedWithdrawals();
+  if (r.confirmed) console.log(`[lifecycle] fast-settled ${r.confirmed} of ${r.checked} in-flight payout(s)`);
+}
+
 async function maybePaymentSweeps(): Promise<void> {
   const now = Date.now();
   if (now - lastPaymentSweepAt < PAYMENT_SWEEP_EVERY_MS) return;
@@ -213,7 +228,7 @@ export function startLifecycleTicker(): void {
   // Kept separate from the lifecycle pass on purpose: that pass does market
   // sweeps and trial-balance work that must NOT run four times a minute.
   depositTimer = setInterval(() => { void runDepositPoll(); }, DEPOSIT_POLL_MS);
-  console.log(`[lifecycle] deposit fast-credit poll — every ${DEPOSIT_POLL_MS / 1000}s`);
+  console.log(`[lifecycle] payment fast poll (deposits + payouts) — every ${DEPOSIT_POLL_MS / 1000}s`);
 }
 
 /** Poll in-flight deposits. Guarded against overlap: a slow provider must not
@@ -224,8 +239,16 @@ async function runDepositPoll(): Promise<void> {
   depositPolling = true;
   try {
     await fastCreditInFlightDeposits();
+    // Payouts run in the SAME guarded pass, sequentially — not on a second timer.
+    // One overlap guard covers both lanes, so a stalled provider can never let two
+    // passes stack up and double the gateway calls (the 2026-07-20 duplicate
+    // fast_credit incident is what that guard exists for). Its own try/catch:
+    // a failing deposit lane must not silently take the payout lane with it.
+    await fastSettleInFlightPayouts().catch((e) => console.error("[lifecycle] payout poll:", e));
   } catch (e) {
     console.error("[lifecycle] deposit poll:", e);
+    // The deposit lane threw before reaching the payouts above — run them anyway.
+    await fastSettleInFlightPayouts().catch((err) => console.error("[lifecycle] payout poll:", err));
   } finally {
     depositPolling = false;
   }

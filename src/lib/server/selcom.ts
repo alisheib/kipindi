@@ -461,7 +461,26 @@ export function decodeGatewayUrl(raw: unknown): string | null {
 //               may have reached Selcom and the payout may be processing → the
 //               caller keeps the withdrawal PROCESSING (hold intact) and lets the
 //               authoritative walletcashin/query re-query resolve it.
-export async function selcomWithdraw(env: SelcomEnv, opts: { transid: string; amount: number; msisdn: string; utilityCode: string }): Promise<{ ok: true } | { ok: false; reason: "FAILED" | "AMBIGUOUS" }> {
+/**
+ * 🔴 EVERY OUTCOME CARRIES `detail` — WHAT SELCOM ACTUALLY SAID.
+ *
+ * This function used to return a bare `{ok:true}` and throw the envelope away. On
+ * 2026-07-29 two real payouts (10,000 and 5,000 TZS) sat in PROCESSING and nobody
+ * could say why: Selcom had accepted both and issued references, no callback ever
+ * came, and `Transaction.providerStatus` was empty because nothing ever wrote it.
+ * An hour went into guessing between a dry float, a disabled product and a wrong
+ * utility code — a question Selcom's own reply answers in one line.
+ *
+ * `describeSelcom()` was written for exactly this ("a failed money movement must be
+ * explainable after the fact") and was wired into the DEPOSIT path only. The payout
+ * path — the one that moves money OUT to a real human — was the undiagnosable half.
+ *
+ * `detail` is returned on the SUCCESS arm too, not just failures: "accepted" is
+ * precisely the state that stalled, and `resultcode=111 INPROGRESS` versus
+ * `resultcode=000 SUCCESS` is the difference between "queued" and "paid". It is
+ * log-safe by construction (no credentials, message truncated).
+ */
+export async function selcomWithdraw(env: SelcomEnv, opts: { transid: string; amount: number; msisdn: string; utilityCode: string }): Promise<{ ok: true; detail: string } | { ok: false; reason: "FAILED" | "AMBIGUOUS"; detail: string }> {
   // Field order is load-bearing. `utilityref` = the PAYEE msisdn (not `msisdn`).
   const body: Record<string, string | number> = {
     transid: opts.transid,
@@ -471,15 +490,34 @@ export async function selcomWithdraw(env: SelcomEnv, opts: { transid: string; am
     vendor: env.vendor,
     pin: env.pin ?? "",
   };
+  // The request shape too — a payout rejected for a wrong utilitycode looks
+  // identical from the outside to one rejected for an empty float. Never logs
+  // `pin`, and the payee number is masked.
+  const shape = `utilitycode=${opts.utilityCode} payee=${maskMsisdn(toSelcomMsisdn(opts.msisdn))} amount=${Math.round(opts.amount)} vendor=${env.vendor} pin=${env.pin ? "set" : "MISSING"}`;
   let res: SelcomResponse;
   try {
     res = await selcomFetch(env, "POST", "/walletcashin/process", body);
-  } catch {
-    return { ok: false, reason: "AMBIGUOUS" }; // timeout / network after send — payout may be in flight
+  } catch (err) {
+    const detail = `network: ${(err as Error)?.message ?? "unknown"} · ${shape}`;
+    console.error(`[selcom] walletcashin/process AMBIGUOUS (${opts.transid}) — ${detail}`);
+    return { ok: false, reason: "AMBIGUOUS", detail }; // timeout / network after send — payout may be in flight
   }
-  if (!res.ok) return { ok: false, reason: "AMBIGUOUS" };                          // HTTP error — ambiguous, may have been accepted
-  if (selcomInitiateVerdict(res.json) === "FAILED") return { ok: false, reason: "FAILED" }; // definitive reject — safe to reverse
-  return { ok: true }; // async (incl. 999/INPROGRESS) — the payout query confirms/reverses
+  const detail = `${describeSelcom(res)} · ${shape}`;
+  if (!res.ok) {
+    console.error(`[selcom] walletcashin/process AMBIGUOUS (${opts.transid}) — ${detail}`);
+    return { ok: false, reason: "AMBIGUOUS", detail };                             // HTTP error — ambiguous, may have been accepted
+  }
+  if (selcomInitiateVerdict(res.json) === "FAILED") {
+    console.error(`[selcom] walletcashin/process REJECTED (${opts.transid}) — ${detail}`);
+    return { ok: false, reason: "FAILED", detail };                                // definitive reject — safe to reverse
+  }
+  console.log(`[selcom] walletcashin/process accepted (${opts.transid}) — ${detail}`);
+  return { ok: true, detail }; // async (incl. 999/INPROGRESS) — the payout query confirms/reverses
+}
+
+/** Mask a payee number for logs: keep the country prefix and last two digits. */
+function maskMsisdn(m: string): string {
+  return m.length > 6 ? `${m.slice(0, 5)}***${m.slice(-2)}` : "***";
 }
 
 // ── Order-status: the AUTHORITATIVE reconciliation for a collection ─────────────
@@ -521,15 +559,21 @@ export async function selcomVerifyOrder(env: SelcomEnv, orderId: string): Promis
  * callback — the same money-safe posture as deposits. Returns null while the
  * payout is still in progress / ambiguous, so we simply query again later.
  */
-export async function selcomVerifyCashin(env: SelcomEnv, transid: string): Promise<{ status: "CONFIRMED" | "FAILED" | null }> {
+export async function selcomVerifyCashin(env: SelcomEnv, transid: string): Promise<{ status: "CONFIRMED" | "FAILED" | null; detail: string }> {
   let res: SelcomResponse;
   try {
     res = await selcomFetch(env, "GET", "/walletcashin/query", { transid });
-  } catch {
-    return { status: null };
+  } catch (err) {
+    // ⚠️ A null here is indistinguishable from "still in progress" to the caller,
+    // and that ambiguity is deliberate (never auto-reverse on a failed question).
+    // But it MUST be distinguishable to a human, or an unreachable gateway reads
+    // as a healthy pending payout forever — which is exactly how a stalled payout
+    // looked for 38 minutes on 2026-07-29.
+    return { status: null, detail: `network: ${(err as Error)?.message ?? "unknown"}` };
   }
-  if (!res.ok) return { status: null };
-  return { status: envelopeSettlementVerdict(res.json) };
+  const detail = describeSelcom(res);
+  if (!res.ok) return { status: null, detail };
+  return { status: envelopeSettlementVerdict(res.json), detail };
 }
 
 /**
@@ -567,17 +611,37 @@ export async function selcomCashinNameLookup(env: SelcomEnv, opts: { utilityCode
  * (no PIN, network error, or a non-success envelope) rather than a misleading zero.
  */
 export async function selcomFloatBalance(env: SelcomEnv, transid: string): Promise<{ balance: number } | null> {
-  if (!env.pin) return null; // the balance query is authenticated by the float PIN
+  return (await selcomFloatBalanceDetailed(env, transid)).balance;
+}
+
+/**
+ * The same query, but it says WHY it could not answer.
+ *
+ * `selcomFloatBalance` returns a bare null for four completely different causes —
+ * no PIN, network failure, a non-success envelope, or an unparseable number — and
+ * on 2026-07-29 that made an operator (and me) read "Selcom refused our IP" as
+ * "the PIN is missing", while a real payout stalled. A dry float makes every payout
+ * fail, so the ONE number an operator needs during a payout incident must never be
+ * ambiguous about whether it is zero or unknown.
+ */
+export async function selcomFloatBalanceDetailed(
+  env: SelcomEnv,
+  transid: string,
+): Promise<{ balance: { balance: number } | null; reason: string }> {
+  if (!env.pin) return { balance: null, reason: "float PIN not set (PAYMENT_VENDOR_PIN)" };
   let res: SelcomResponse;
   try {
     res = await selcomFetch(env, "POST", "/vendor/balance", { vendor: env.vendor, pin: env.pin, transid });
-  } catch {
-    return null;
+  } catch (err) {
+    return { balance: null, reason: `network: ${(err as Error)?.message ?? "unknown"}` };
   }
-  if (!res.ok || String(res.json.resultcode ?? "").trim() !== "000") return null;
+  const detail = describeSelcom(res);
+  if (!res.ok) return { balance: null, reason: `HTTP error — ${detail}` };
+  if (String(res.json.resultcode ?? "").trim() !== "000") return { balance: null, reason: `rejected — ${detail}` };
   const raw = res.json.data?.[0]?.balance;
   const n = Number(raw);
-  return Number.isFinite(n) ? { balance: n } : null;
+  if (!Number.isFinite(n)) return { balance: null, reason: `unparseable balance ${JSON.stringify(raw)} — ${detail}` };
+  return { balance: { balance: n }, reason: `ok — ${detail}` };
 }
 
 /**

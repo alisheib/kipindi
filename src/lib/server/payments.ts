@@ -57,9 +57,19 @@ export type DepositResult =
       detail?: string;
     };
 
+/**
+ * `detail` — what the gateway ACTUALLY said, on both arms.
+ *
+ * Added 2026-07-29 after two real payouts stalled in PROCESSING and the platform
+ * could not say why: the adapter returned a bare ok/reason and the envelope was
+ * discarded, so `Transaction.providerStatus` stayed empty and the only evidence was
+ * a log line nobody had written. Present on the SUCCESS arm too — "accepted" is the
+ * state that stalled, and `000 SUCCESS` vs `111 INPROGRESS` is the whole diagnosis.
+ * Log-safe by construction (see describeSelcom): no credentials, payee masked.
+ */
 export type WithdrawResult =
-  | { ok: true; providerRef: string; status: "CONFIRMED" | "PENDING" | "AML_REVIEW"; correlationId: string }
-  | { ok: false; reason: "INSUFFICIENT_BALANCE" | "PROVIDER_DOWN" | "ACCOUNT_NOT_VERIFIED" | "DAILY_LIMIT" | "FRAUD"; correlationId: string };
+  | { ok: true; providerRef: string; status: "CONFIRMED" | "PENDING" | "AML_REVIEW"; correlationId: string; detail?: string }
+  | { ok: false; reason: "INSUFFICIENT_BALANCE" | "PROVIDER_DOWN" | "ACCOUNT_NOT_VERIFIED" | "DAILY_LIMIT" | "FRAUD"; correlationId: string; detail?: string };
 
 /** What the wrapper hands an adapter — the caller's request plus the correlation
  *  id the wrapper already minted and audited. */
@@ -295,18 +305,22 @@ const selcomAdapter: PaymentAdapter = {
   },
   async withdraw({ provider, amount, msisdn, correlationId }) {
     const env = selcomDisburseEnv();
-    if (!env) return { ok: false, reason: "PROVIDER_DOWN", correlationId };
-    if (!env.pin) return { ok: false, reason: "PROVIDER_DOWN", correlationId }; // wallet-cashin requires the float PIN
-    if (!msisdn) return { ok: false, reason: "ACCOUNT_NOT_VERIFIED", correlationId }; // no payee number
+    // Each refusal now says WHICH precondition failed. All three used to collapse
+    // into an indistinguishable PROVIDER_DOWN, so "payouts are down" could mean a
+    // missing PIN, an unconfigured gateway or an unsupported network, and an
+    // operator had no way to tell which without reading the source.
+    if (!env) return { ok: false, reason: "PROVIDER_DOWN", correlationId, detail: "selcom disburse env not configured (PAYMENT_API_URL/KEY/SECRET/VENDOR_ID)" };
+    if (!env.pin) return { ok: false, reason: "PROVIDER_DOWN", correlationId, detail: "float PIN not set (PAYMENT_VENDOR_PIN) — wallet-cashin requires it" };
+    if (!msisdn) return { ok: false, reason: "ACCOUNT_NOT_VERIFIED", correlationId, detail: "no payee msisdn on the account" };
     const utilityCode = mnoToSelcomCashin(provider);
-    if (!utilityCode) return { ok: false, reason: "PROVIDER_DOWN", correlationId }; // rail not served by MNO cash-in
+    if (!utilityCode) return { ok: false, reason: "PROVIDER_DOWN", correlationId, detail: `no wallet-cashin utility code for provider ${provider}` };
     const r = await selcomWithdraw(env, { transid: correlationId, amount, msisdn, utilityCode });
     // A payout is reversed ONLY on a DEFINITIVE Selcom rejection (reason FAILED —
     // the disbursement did not happen). AMBIGUOUS (timeout/network/HTTP error) may
     // be in flight → return PENDING so the hold is KEPT and the walletcashin/query
     // re-query (webhook/reconcile) confirms or reverses it. Never blind-reverse.
-    if (!r.ok && r.reason === "FAILED") return { ok: false, reason: "PROVIDER_DOWN", correlationId };
-    return { ok: true, status: "PENDING", providerRef: correlationId, correlationId };
+    if (!r.ok && r.reason === "FAILED") return { ok: false, reason: "PROVIDER_DOWN", correlationId, detail: r.detail };
+    return { ok: true, status: "PENDING", providerRef: correlationId, correlationId, detail: r.detail };
   },
 };
 
@@ -329,14 +343,20 @@ export async function verifyDepositStatus(providerRef: string): Promise<{ status
   return { status: "PENDING" };
 }
 
-export async function verifyWithdrawalStatus(providerRef: string): Promise<{ status: VerifyStatus }> {
-  if ((await getPaymentProvider()) !== "selcom") return { status: "UNSUPPORTED" };
+/**
+ * ⚠️ PENDING here means EITHER "genuinely in progress" OR "we could not get an
+ * answer" — deliberately conflated, because both must leave the payout alone. The
+ * `detail` exists so a HUMAN can still tell them apart: on 2026-07-29 a stalled
+ * payout and a gateway refusing our IP were indistinguishable for an hour.
+ */
+export async function verifyWithdrawalStatus(providerRef: string): Promise<{ status: VerifyStatus; detail?: string }> {
+  if ((await getPaymentProvider()) !== "selcom") return { status: "UNSUPPORTED", detail: "active provider is not selcom" };
   const env = selcomDisburseEnv();
-  if (!env) return { status: "UNSUPPORTED" };
+  if (!env) return { status: "UNSUPPORTED", detail: "selcom disburse env not configured" };
   const r = await selcomVerifyCashin(env, providerRef);
-  if (r.status === "CONFIRMED") return { status: "CONFIRMED" };
-  if (r.status === "FAILED") return { status: "FAILED" };
-  return { status: "PENDING" };
+  if (r.status === "CONFIRMED") return { status: "CONFIRMED", detail: r.detail };
+  if (r.status === "FAILED") return { status: "FAILED", detail: r.detail };
+  return { status: "PENDING", detail: r.detail };
 }
 
 /**
