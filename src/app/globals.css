@@ -235,14 +235,20 @@
   /* Per the new design kit: deep midnight indigo canvas, slightly elevated
      cards, sunken hover-down. The hue is 268 (royal indigo) and the canvas
      lightness drops to ~15% so cards stack with depth. */
-  --bg:            oklch(15% 0.130 268);   /* canvas — deep midnight indigo */
-  --bg-elevated:   oklch(22% 0.140 268);   /* elevated card */
+  /* DEPTH (Step 5, 2026-07-29). The brief was "cards sit above the canvas".
+     The obvious move — lighten --bg-elevated — is the WRONG one here:
+     --text-faint on --bg-elevated is the tightest pair in the whole ramp at
+     4.74 against a 4.5 floor, so lightening the card spends the accessibility
+     budget to buy separation. Deepening the CANVAS buys the same separation and
+     *improves* every ratio on it instead. Same delta, opposite risk. */
+  --bg:            oklch(13.5% 0.130 268); /* canvas — deep midnight indigo (was 15%) */
+  --bg-elevated:   oklch(22% 0.140 268);   /* elevated card — deliberately UNCHANGED */
   --bg-overlay:    oklch(11% 0.110 268);   /* sunken / hover-down */
   --bg-royal-soft: oklch(30% 0.165 268);   /* highlighted surface (modal, hero) */
   --bg-inset:      oklch(11% 0.110 268);   /* sunken input / toggle track */
   --bg-elevated2:  oklch(26% 0.150 268);   /* second-elevation card */
   --panel:         oklch(20% 0.130 268);   /* nav / sidebar chrome */
-  --border:        oklch(34% 0.130 268);
+  --border:        oklch(36% 0.130 268);   /* crisper edge (was 34%) — Step 5 depth */
   --border-strong: oklch(44% 0.150 268);
   --border-royal:  oklch(56% 0.170 268);
   --border-gold:   oklch(78% 0.13 80);
@@ -254,7 +260,15 @@
   --text:          oklch(98% 0.012 268);
   --text-muted:    oklch(86% 0.040 268);
   --text-subtle:   oklch(70% 0.080 268);
-  --text-faint:    oklch(60% 0.090 268);
+  /* 60% → 62% on 2026-07-29, and it is an ACCESSIBILITY fix, not a design tweak.
+     `test:contrast` had been mirroring the token values by hand and its copy of
+     --bg-elevated said L=0.19 while this file said 0.22. Against the real
+     background, faint ink measured 4.50 — under the 4.5 AA floor — on every
+     elevated card in the product, while the gate printed a comfortable 4.74.
+     The gate now parses this file, so the number it prints is the number that
+     ships. 62% restores the margin the project believed it already had
+     (4.88 / 5.33 / 5.07). Do not darken this without re-running the audit. */
+  --text-faint:    oklch(62% 0.090 268);
   --dial-neutral:  oklch(56% 0.030 268);
   --live-400:      oklch(64% 0.20 25);
   --gilt:          oklch(86% 0.13 82);
@@ -2162,7 +2176,10 @@ html.kp-reduce-motion *::after {
    sparkline, trader crest-stack) fit authentically. Title-left / YES%-right
    head keeps it landscape; fixed title reserve keeps bars aligned across cards. */
 .mcardp { position: relative; display: flex; flex-direction: column; gap: 10px; padding: 14px 15px 13px; border-radius: var(--r-lg); background: var(--bg-elevated);
-  border: 1px solid var(--border); box-shadow: 0 1px 2px oklch(8% 0.07 264 / 0.35); overflow: hidden; isolation: isolate;
+  /* Step 5 depth: the SHARED card rungs, composed — the 1px lit top edge over
+     the standard card cast. Was a bespoke `0 1px 2px oklch(8% 0.07 264 / 0.35)`
+     typed here, a fourth elevation value one component wide (B10). */
+  border: 1px solid var(--border); box-shadow: var(--shadow-card-top), var(--shadow-card); overflow: hidden; isolation: isolate;
   height: 100%; /* fill the stretched grid cell so every card is the same height */
   transition: transform .2s ease-out, border-color .2s ease-out, box-shadow .2s ease-out; cursor: pointer; }
 @media (hover: hover) {
