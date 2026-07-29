@@ -2102,6 +2102,11 @@ html.kp-reduce-motion *::after {
 }
 @media (min-width: 768px) {
   .market-grid > .mcardp--featured { grid-column: span 2; }
+  /* The launch-day case: ONE market matches the window. Spanning 2 of 3 columns
+     would leave a visible hole to its right — the same "lonely card" problem one
+     column narrower. A sole card takes the whole row instead, so the band reads
+     as a deliberate lead rather than as a grid with a gap in it. */
+  .market-grid > .mcardp--featured:only-child { grid-column: 1 / -1; }
 }
 /* The board's section headings — Featured / New markets / Recently resolved.
    One rule, so the three sections cannot drift apart. */
