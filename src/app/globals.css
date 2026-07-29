@@ -707,6 +707,22 @@ body {
 .chip-politics { background: var(--claret-soft); color: var(--claret-200); border-color: var(--claret-edge); }
 .chip-signal   { background: oklch(74% 0.11 195 / 0.20); color: var(--aqua-300); border-color: oklch(78% 0.10 195 / 0.5); }
 .chip-hot-rose { height: 23px; padding: 0 9px; font-size: 11px; background: oklch(50% 0.19 25 / 0.22); color: var(--no-300); border-color: oklch(58% 0.2 25 / 0.5); }
+/* NEW market badge (cold-start, 2026-07-29). Brand blue: it is CHROME — "this
+   just opened" — not a betting semantic and NEVER gold. 01-foundations/colour.md
+   calls out a gold "NEW" chip by name as a law break, because gold must mean
+   money you have earned the instant it is seen (RULES law 3).
+   Sits at a lighter weight than .chip-pending above so NEW and SOON stay
+   distinguishable on the same board; they can never appear on the same CARD,
+   since a fresh market short-circuits to NEW before SOON is considered. */
+.chip-new {
+  height: 23px; padding: 0 9px; font-size: 11px;
+  color: var(--brand-300);
+  background: oklch(63% 0.18 262 / 0.16);
+  border-color: oklch(63% 0.18 262 / 0.40);
+}
+/* Signal chips carry the card's one loud word, so they run bolder than a plain
+   chip. Was `style={{ fontWeight: 700 }}` inline on the market card. */
+.chip-strong { font-weight: 700; }
 
 /* ---------- LiveDot + animations ---------- */
 /* Bright red-orange pulsing dot. Uses opacity animation so it works
@@ -2129,7 +2145,9 @@ html.kp-reduce-motion *::after {
 .mcardp .chip .live-dot { width: 5px; height: 5px; }
 /* Category glyph — BARE neutral glyph (no box), identical to the /live dense
    card's category treatment so the cards read as one system. Never gold. */
-.mcardp-catico { display:inline-flex; align-items:center; justify-content:center; color: var(--text-subtle); flex-shrink:0; }
+/* margin-left was an inline `style={{ marginLeft: 2 }}` — a 2px nudge that
+   separates the glyph from whichever signal chip precedes it. Kept exactly. */
+.mcardp-catico { display:inline-flex; align-items:center; justify-content:center; color: var(--text-subtle); flex-shrink:0; margin-left: 2px; }
 .mcardp-catico svg { width: 13px; height: 13px; }
 .mcardp-cat { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-subtle); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .mcardp-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; flex: 1 1 auto; }
@@ -2161,6 +2179,9 @@ html.kp-reduce-motion *::after {
   .mcardp-spark-line { animation:none; stroke-dasharray:none; stroke-dashoffset:0; }
 }
 .mcardp-actions { display:grid; grid-template-columns:1fr 1fr; gap: 8px; margin: 13px 0 11px; }
+/* Resolved/closed cards run one full-width pill in the SAME vertical rhythm as
+   the live YES/NO row, so card heights match across a mixed grid. */
+.mcardp-actions--single { grid-template-columns: 1fr; }
 .mcardp-actions .btn { height: 36px; font-size: 13px; font-weight: 600; min-width: 0; padding: 0 10px; letter-spacing: 0.04em; border-radius: var(--r-md); transition: transform .12s ease-out, box-shadow .16s ease-out, filter .12s; }
 .mcardp-actions .btn:active:not(:disabled) { transform: translateY(1px) scale(0.96); }
 /* Stats row — single line (no wrap), time + info pinned right. Kept on one line
@@ -2190,7 +2211,28 @@ html.kp-reduce-motion *::after {
   .mcardp-info:not([data-open]):hover { color: var(--text); border-color: var(--brand-400); }
 }
 /* Details link — its own constant 1-line row so it never shifts card height. */
-.mcardp-details { display:inline-flex; align-items:center; justify-content:flex-end; gap:4px; font-family: var(--font-display); font-weight:600; font-size:11.5px; text-decoration:none; }
+.mcardp-details { display:inline-flex; align-items:center; justify-content:flex-end; gap:4px; font-family: var(--font-display); font-weight:600; font-size:11.5px; text-decoration:none; color: var(--accent-400); }
+.mcardp-timeleft { display:inline-flex; align-items:center; gap:6px; }
+
+/* ── Cold-start (2026-07-29) ────────────────────────────────────────────────
+   A LIVE market nobody has bet on yet. The card must not assert a 50% split, a
+   centred needle or a TIPPING badge — all three read as "contested" on a market
+   with no crowd at all, and a board of them looks dead rather than new. It shows
+   emptiness as an INVITATION, and never invents a price (RULES law 5).
+   These are classes, not inline styles, precisely because the delivered bundle
+   shipped them inline and law 15 names that as the failure mode by example. */
+.mcardp-pct--empty { color: var(--text-faint); font-size: 22px; }
+.mcardp-nobets {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-align: center;
+  color: var(--text-faint);
+  margin-top: 6px;
+}
+/* The invitation. Brand blue = chrome, deliberately NOT gold: gold means money
+   you have earned (RULES law 3), and nobody has earned anything here yet. */
+.mcardp-befirst { color: var(--brand-300); }
 @media (hover: hover) {
   .mcardp-details:hover { text-decoration: underline; }
 }

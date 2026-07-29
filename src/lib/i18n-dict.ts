@@ -531,6 +531,13 @@ export const dict = {
       allResults: "All results →",
       resolvedOutcome: "Resolved",
       tipping: "tipping",
+      // Cold-start — a LIVE market with no bets yet. Kept short: these sit on a
+      // 360px card alongside SW/ZH, where ~35% expansion is the budget.
+      // (The NEW badge itself reuses common.newBadge — it already exists in all
+      // three locales with exactly this text; law 15, search before you add.)
+      noBetsYet: "No bets yet",
+      beFirst: "Be the first to predict",
+      noPoolYet: "No pool yet",
       closed: "closed",
       dLeft: "d left", hLeft: "h left", mLeft: "m left",
       similarMarkets: "Similar markets", similarMarketsBody: "Live now — place another prediction without going back.",
@@ -1876,6 +1883,9 @@ export const dict = {
       allResults: "Matokeo yote →",
       resolvedOutcome: "Imetatuliwa",
       tipping: "inasogea",
+      noBetsYet: "Bila dau bado",
+      beFirst: "Kuwa wa kwanza kutabiri",
+      noPoolYet: "Hakuna dau bado",
       closed: "imefungwa",
       dLeft: "siku zimebaki", hLeft: "masaa yaliyobaki", mLeft: "dakika zimebaki",
       similarMarkets: "Masoko yanayofanana", similarMarketsBody: "Hai sasa — weka utabiri mwingine bila kurudi nyuma.",
@@ -3205,6 +3215,9 @@ export const dict = {
       allResults: "全部结果 →",
       resolvedOutcome: "已结算",
       tipping: "活跃",
+      noBetsYet: "暂无投注",
+      beFirst: "成为第一个预测者",
+      noPoolYet: "暂无奖池",
       closed: "已关闭",
       dLeft: "天后", hLeft: "小时后", mLeft: "分钟后",
       similarMarkets: "相似市场", similarMarketsBody: "正在进行——无需返回即可再下一注。",
