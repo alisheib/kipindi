@@ -211,6 +211,7 @@ function toStoredTxn(t: any): StoredTxn {
     provider: t.provider ?? null,
     providerRef: t.providerRef,
     providerStatus: t.providerStatus ?? null,
+    payoutRail: t.payoutRail ?? null,
     msisdn: t.msisdn,
     description: t.description,
     positionId: t.positionId,

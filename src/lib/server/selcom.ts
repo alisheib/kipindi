@@ -452,54 +452,200 @@ export function decodeGatewayUrl(raw: unknown): string | null {
   return null;
 }
 
-// ── Withdrawal (disbursement): wallet-cashin ────────────────────────────────────
+// ── Disbursement: THE PAYOUT RAILS ──────────────────────────────────────────────
+/**
+ * Selcom exposes several ways to push money out, and they are NOT interchangeable
+ * plumbing — each is a separately provisioned product with its own endpoint, its own
+ * status query, and a materially different experience for the person receiving the
+ * money. We model them as one table so the signer, the verdict taxonomy and the
+ * logging are written once.
+ *
+ * 🔴 WHY MORE THAN ONE. 2026-07-29: `walletcashin` answered every call with
+ * `HTTP 403 · 4035 · "API endpoint not enabled for the vendor"`, and Selcom's own
+ * credentials email turned out to be titled "Credentials for **Collections**" — the
+ * disbursement product had never been switched on. A platform whose only payout rail
+ * is one third-party product that can be switched off (or, as Selcom later claimed,
+ * knocked out by a TIPS outage) has no payout capability at all. Hence a ladder.
+ *
+ * ⚠️ `WALLET_CASHIN` is the only rail proven against the live gateway. The other two
+ * are built from the published API reference and are gated behind `selcomProbeRails`
+ * — we do not point real money at an unverified endpoint on a guess.
+ */
+export type PayoutRail = "WALLET_CASHIN" | "SELCOM_PESA" | "HUDUMA_AGENT";
+
+export const PAYOUT_RAIL_IDS: readonly PayoutRail[] = ["WALLET_CASHIN", "SELCOM_PESA", "HUDUMA_AGENT"] as const;
+
+export function isPayoutRail(v: unknown): v is PayoutRail {
+  return typeof v === "string" && (PAYOUT_RAIL_IDS as readonly string[]).includes(v);
+}
+
+/**
+ * A withdrawal row written before rails existed has no `payoutRail`, and every one of
+ * those went out on wallet-cashin because it was the only rail that ever ran. Reading
+ * the default here — rather than back-filling the live money table — keeps the fix to
+ * code and means a wrong guess can never be baked into the ledger.
+ */
+export function railOf(payoutRail: string | null | undefined): PayoutRail {
+  return isPayoutRail(payoutRail) ? payoutRail : "WALLET_CASHIN";
+}
+
+/**
+ * Human name for the rail that carried a payout — for receipts, emails and the admin
+ * console. Returns null for WALLET_CASHIN: money arriving in the mobile-money account
+ * the player typed is the expected outcome, and labelling it adds noise to every
+ * ordinary receipt. A label appears precisely when the destination was NOT the obvious
+ * one, which is the case worth explaining.
+ */
+export function payoutRailLabel(rail: string | null | undefined): string | null {
+  const r = railOf(rail);
+  return r === "WALLET_CASHIN" ? null : PAYOUT_RAILS[r].label;
+}
+
+/**
+ * What the player must actually DO to get their money, when it is not simply sitting
+ * in their wallet. Huduma is the case that matters: the cash is waiting at an agent and
+ * nothing arrives on the phone, so a payout email that says "should arrive within
+ * moments" would be a plain lie. Bilingual because these are the instructions someone
+ * follows standing in a shop.
+ */
+export function payoutRailNote(rail: string | null | undefined): { en: string; sw: string } | null {
+  if (railOf(rail) !== "HUDUMA_AGENT") return null;
+  return {
+    en: "Your cash is waiting at any Selcom Huduma agent. Dial *150*50#, choose Selcom → Huduma Cashout, then give the agent code and amount to collect it. Nothing will arrive on your phone.",
+    sw: "Pesa yako inakusubiri kwa wakala yeyote wa Selcom Huduma. Piga *150*50#, chagua Selcom → Huduma Cashout, kisha mpe wakala namba na kiasi ili uichukue. Hakuna kitakachofika kwenye simu yako.",
+  };
+}
+
+type RailSpec = {
+  /** POST endpoint that moves the money. */
+  process: string;
+  /** GET endpoint that authoritatively re-states it. Asking the WRONG one is a double-pay. */
+  query: string;
+  /** Selcom `utilitycode`, or null for rails whose body carries none. */
+  utilityCode: string | null;
+  /** Human label for logs and the admin console. */
+  label: string;
+  /**
+   * Build the request body. **Key insertion order IS the `Signed-Fields` order** —
+   * reordering after signing is a 401, so these mirror the API reference samples
+   * field for field.
+   */
+  body(env: SelcomEnv, opts: PayoutOpts): Record<string, string | number>;
+};
+
+export type PayoutOpts = {
+  transid: string;
+  amount: number;
+  /** Payee MSISDN — becomes `utilityref` on every rail. */
+  msisdn: string;
+  /** Per-MNO cash-in code. Only `WALLET_CASHIN` uses it; ignored elsewhere. */
+  utilityCode?: string;
+  /** Payee name — Huduma prints it on the agent's screen. Optional everywhere. */
+  name?: string;
+};
+
+export const PAYOUT_RAILS: Record<PayoutRail, RailSpec> = {
+  // Docs: POST /v1/walletcashin/process — Signed-Fields transid,utilitycode,utilityref,amount,vendor,pin
+  // `utilityref` = the PAYEE msisdn (NOT `msisdn`, which is the optional sender).
+  WALLET_CASHIN: {
+    process: "/walletcashin/process",
+    query: "/walletcashin/query",
+    utilityCode: null, // supplied per-MNO by mnoToSelcomCashin()
+    label: "Mobile money (Wallet Cashin)",
+    body: (env, o) => ({
+      transid: o.transid,
+      utilitycode: o.utilityCode ?? "CASHIN",
+      utilityref: toSelcomMsisdn(o.msisdn),
+      amount: Math.round(o.amount),
+      vendor: env.vendor,
+      pin: env.pin ?? "",
+    }),
+  },
+  // Docs: POST /v1/selcompesa/cashin — Signed-Fields transid,utilityref,amount,vendor,pin,msisdn
+  // ⚠️ The reference is self-contradictory here: its parameter TABLE lists a static
+  // `utilitycode: SPSCASHIN`, but the worked curl sample carries no such field and its
+  // Signed-Fields omits it. We follow the WIRE SAMPLE, because that is the thing Selcom
+  // actually signed. If this rail 401s on first contact, that contradiction is the first
+  // suspect — add `utilitycode: "SPSCASHIN"` immediately after `transid`.
+  SELCOM_PESA: {
+    process: "/selcompesa/cashin",
+    query: "/selcompesa/query",
+    utilityCode: "SPSCASHIN",
+    label: "Selcom Pesa wallet",
+    body: (env, o) => ({
+      transid: o.transid,
+      utilityref: toSelcomMsisdn(o.msisdn),
+      amount: Math.round(o.amount),
+      vendor: env.vendor,
+      pin: env.pin ?? "",
+    }),
+  },
+  // Docs: POST /v1/hudumacashin/process — Signed-Fields transid,utilitycode,utilityref,amount,vendor,pin,name
+  // Debits our float into a TEMPORARY wallet on Selcom's own platform; the payee dials
+  // *150*50# and collects CASH from any Selcom Huduma agent. No MNO, no national switch.
+  HUDUMA_AGENT: {
+    process: "/hudumacashin/process",
+    query: "/hudumacashin/query",
+    utilityCode: "HUDUMACI",
+    label: "Cash at a Selcom agent",
+    body: (env, o) => {
+      const b: Record<string, string | number> = {
+        transid: o.transid,
+        utilitycode: "HUDUMACI",
+        utilityref: toSelcomMsisdn(o.msisdn),
+        amount: Math.round(o.amount),
+        vendor: env.vendor,
+        pin: env.pin ?? "",
+      };
+      // Optional — appended last to match the reference sample's field order. Omitted
+      // entirely when absent so it never appears in Signed-Fields as an empty value.
+      if (o.name?.trim()) b.name = o.name.trim();
+      return b;
+    },
+  },
+};
+
 // Reason taxonomy is MONEY-SAFETY load-bearing (a payout must NEVER be reversed
 // while it might still be in flight — that double-pays the player):
-//   FAILED    = DEFINITIVE Selcom rejection (res.ok && a hard-fail resultcode) →
-//               the disbursement did not happen → safe to reverse the hold.
-//   AMBIGUOUS = network timeout, connection error, or non-2xx HTTP → the request
+//   FAILED    = DEFINITIVE Selcom rejection (401/403, or res.ok && a hard-fail
+//               resultcode) → the disbursement did not happen → safe to reverse.
+//   AMBIGUOUS = network timeout, connection error, or any other non-2xx → the request
 //               may have reached Selcom and the payout may be processing → the
 //               caller keeps the withdrawal PROCESSING (hold intact) and lets the
-//               authoritative walletcashin/query re-query resolve it.
+//               authoritative per-rail re-query resolve it.
 /**
+ * Send a payout on ONE named rail.
+ *
  * 🔴 EVERY OUTCOME CARRIES `detail` — WHAT SELCOM ACTUALLY SAID.
  *
- * This function used to return a bare `{ok:true}` and throw the envelope away. On
- * 2026-07-29 two real payouts (10,000 and 5,000 TZS) sat in PROCESSING and nobody
- * could say why: Selcom had accepted both and issued references, no callback ever
- * came, and `Transaction.providerStatus` was empty because nothing ever wrote it.
- * An hour went into guessing between a dry float, a disabled product and a wrong
- * utility code — a question Selcom's own reply answers in one line.
- *
- * `describeSelcom()` was written for exactly this ("a failed money movement must be
- * explainable after the fact") and was wired into the DEPOSIT path only. The payout
- * path — the one that moves money OUT to a real human — was the undiagnosable half.
+ * This used to return a bare `{ok:true}` and throw the envelope away. On 2026-07-29
+ * two real payouts (10,000 and 5,000 TZS) sat in PROCESSING and nobody could say why:
+ * Selcom had accepted both and issued references, no callback ever came, and
+ * `Transaction.providerStatus` was empty because nothing ever wrote it. An hour went
+ * into guessing between a dry float, a disabled product and a wrong utility code — a
+ * question Selcom's own reply answers in one line.
  *
  * `detail` is returned on the SUCCESS arm too, not just failures: "accepted" is
  * precisely the state that stalled, and `resultcode=111 INPROGRESS` versus
  * `resultcode=000 SUCCESS` is the difference between "queued" and "paid". It is
- * log-safe by construction (no credentials, message truncated).
+ * log-safe by construction (no credentials, message truncated, payee masked).
+ *
+ * ⚠️ The caller must NEVER advance to another rail on `AMBIGUOUS` — see the ladder in
+ * `payments.ts`. That is the one move that turns a fallback into a double payment.
  */
-export async function selcomWithdraw(env: SelcomEnv, opts: { transid: string; amount: number; msisdn: string; utilityCode: string }): Promise<{ ok: true; detail: string } | { ok: false; reason: "FAILED" | "AMBIGUOUS"; detail: string }> {
-  // Field order is load-bearing. `utilityref` = the PAYEE msisdn (not `msisdn`).
-  const body: Record<string, string | number> = {
-    transid: opts.transid,
-    utilitycode: opts.utilityCode,
-    utilityref: toSelcomMsisdn(opts.msisdn),
-    amount: Math.round(opts.amount),
-    vendor: env.vendor,
-    pin: env.pin ?? "",
-  };
-  // The request shape too — a payout rejected for a wrong utilitycode looks
-  // identical from the outside to one rejected for an empty float. Never logs
-  // `pin`, and the payee number is masked.
-  const shape = `utilitycode=${opts.utilityCode} payee=${maskMsisdn(toSelcomMsisdn(opts.msisdn))} amount=${Math.round(opts.amount)} vendor=${env.vendor} pin=${env.pin ? "set" : "MISSING"}`;
+export async function selcomPayout(env: SelcomEnv, rail: PayoutRail, opts: PayoutOpts): Promise<{ ok: true; detail: string } | { ok: false; reason: "FAILED" | "AMBIGUOUS"; detail: string }> {
+  const spec = PAYOUT_RAILS[rail];
+  const body = spec.body(env, opts);
+  // The request shape too — a payout rejected for a wrong utilitycode looks identical
+  // from the outside to one rejected for an empty float. Never logs `pin`, and the
+  // payee number is masked.
+  const shape = `rail=${rail} utilitycode=${String(body.utilitycode ?? spec.utilityCode ?? "n/a")} payee=${maskMsisdn(toSelcomMsisdn(opts.msisdn))} amount=${Math.round(opts.amount)} vendor=${env.vendor} pin=${env.pin ? "set" : "MISSING"}`;
   let res: SelcomResponse;
   try {
-    res = await selcomFetch(env, "POST", "/walletcashin/process", body);
+    res = await selcomFetch(env, "POST", spec.process, body);
   } catch (err) {
     const detail = `network: ${(err as Error)?.message ?? "unknown"} · ${shape}`;
-    console.error(`[selcom] walletcashin/process AMBIGUOUS (${opts.transid}) — ${detail}`);
+    console.error(`[selcom] ${spec.process} AMBIGUOUS (${opts.transid}) — ${detail}`);
     return { ok: false, reason: "AMBIGUOUS", detail }; // timeout / network after send — payout may be in flight
   }
   const detail = `${describeSelcom(res)} · ${shape}`;
@@ -520,19 +666,27 @@ export async function selcomWithdraw(env: SelcomEnv, opts: { transid: string; am
     // The money would have stayed frozen indefinitely, on an error that was never
     // going to change on its own. A player must get their balance back and a plain
     // "withdrawals are unavailable", not an eternal spinner.
+    //
+    // It is ALSO what makes the fallback ladder possible: "refused at the door" is
+    // exactly the condition under which trying the next rail cannot double-pay.
     if (res.httpStatus === 401 || res.httpStatus === 403) {
-      console.error(`[selcom] walletcashin/process REFUSED — not enabled/unauthorised (${opts.transid}) — ${detail}`);
+      console.error(`[selcom] ${spec.process} REFUSED — not enabled/unauthorised (${opts.transid}) — ${detail}`);
       return { ok: false, reason: "FAILED", detail };
     }
-    console.error(`[selcom] walletcashin/process AMBIGUOUS (${opts.transid}) — ${detail}`);
+    console.error(`[selcom] ${spec.process} AMBIGUOUS (${opts.transid}) — ${detail}`);
     return { ok: false, reason: "AMBIGUOUS", detail };                             // other HTTP error — may have been accepted
   }
   if (selcomInitiateVerdict(res.json) === "FAILED") {
-    console.error(`[selcom] walletcashin/process REJECTED (${opts.transid}) — ${detail}`);
+    console.error(`[selcom] ${spec.process} REJECTED (${opts.transid}) — ${detail}`);
     return { ok: false, reason: "FAILED", detail };                                // definitive reject — safe to reverse
   }
-  console.log(`[selcom] walletcashin/process accepted (${opts.transid}) — ${detail}`);
+  console.log(`[selcom] ${spec.process} accepted (${opts.transid}) — ${detail}`);
   return { ok: true, detail }; // async (incl. 999/INPROGRESS) — the payout query confirms/reverses
+}
+
+/** Mobile-money payout — the original rail, kept as a named entry point. */
+export async function selcomWithdraw(env: SelcomEnv, opts: { transid: string; amount: number; msisdn: string; utilityCode: string }): Promise<{ ok: true; detail: string } | { ok: false; reason: "FAILED" | "AMBIGUOUS"; detail: string }> {
+  return selcomPayout(env, "WALLET_CASHIN", opts);
 }
 
 /** Mask a payee number for logs: keep the country prefix and last two digits. */
@@ -580,9 +734,33 @@ export async function selcomVerifyOrder(env: SelcomEnv, orderId: string): Promis
  * payout is still in progress / ambiguous, so we simply query again later.
  */
 export async function selcomVerifyCashin(env: SelcomEnv, transid: string): Promise<{ status: "CONFIRMED" | "FAILED" | null; detail: string }> {
+  return selcomVerifyPayout(env, "WALLET_CASHIN", transid);
+}
+
+/**
+ * Authoritative status of a payout, ON THE RAIL IT ACTUALLY WENT OUT ON.
+ *
+ * 🔴 THE RAIL ARGUMENT IS MONEY-SAFETY CRITICAL — IT IS NOT A TIDY-UP.
+ *
+ * Every rail has its own status endpoint, and each only knows its own transids. Ask
+ * `/walletcashin/query` about a payout that went out on `/selcompesa/cashin` and you
+ * get an envelope for a transaction it has never heard of. Any resultcode that is not
+ * `000/111/927/999` falls through `envelopeSettlementVerdict` to **FAILED** — and the
+ * stale reconcile sweep treats FAILED as "the payout definitively did not happen" and
+ * refunds the player. The money is already gone. That is a double payment, caused by
+ * nothing but asking the wrong endpoint.
+ *
+ * So the rail is threaded from the `Transaction` row (`payoutRail`, defaulted through
+ * `railOf()`) all the way here. A missing rail resolves to WALLET_CASHIN, which is
+ * true for every row written before rails existed.
+ *
+ * Returns null while the payout is still in progress or the question could not be
+ * asked — the caller must then leave the withdrawal PROCESSING and try again later.
+ */
+export async function selcomVerifyPayout(env: SelcomEnv, rail: PayoutRail, transid: string): Promise<{ status: "CONFIRMED" | "FAILED" | null; detail: string }> {
   let res: SelcomResponse;
   try {
-    res = await selcomFetch(env, "GET", "/walletcashin/query", { transid });
+    res = await selcomFetch(env, "GET", PAYOUT_RAILS[rail].query, { transid });
   } catch (err) {
     // ⚠️ A null here is indistinguishable from "still in progress" to the caller,
     // and that ambiguity is deliberate (never auto-reverse on a failed question).
@@ -686,4 +864,52 @@ export async function selcomPing(env: SelcomEnv): Promise<{ reachable: boolean; 
 
 function isAbort(err: unknown): boolean {
   return err instanceof Error && (err.name === "AbortError" || err.name === "TimeoutError");
+}
+
+// ── Rail capability probe ───────────────────────────────────────────────────────
+export type RailProbe = {
+  rail: PayoutRail;
+  /** ENABLED = provisioned. NOT_ENABLED = Selcom refused at the door. UNKNOWN = we could not ask. */
+  verdict: "ENABLED" | "NOT_ENABLED" | "UNKNOWN";
+  detail: string;
+};
+
+/**
+ * Is this rail switched on for our vendor? Asks the rail's OWN status endpoint about
+ * a transid that does not exist. **Moves no money** — nothing is created, nothing is
+ * paid; the same trick `selcomPing` already uses for the collection side.
+ *
+ * 🔴 WHY IT EXISTS. Rails are provisioned per product, per vendor, and we cannot see
+ * that from our side. On 2026-07-29 we burned an evening unable to distinguish "the
+ * national switch is down" from "this product was never switched on" — the answers
+ * are a phone call apart but they look identical from a failed payout. On 2026-07-30
+ * this probe answered it in seconds: WALLET_CASHIN and QWIKSEND enabled, SELCOM_PESA
+ * and HUDUMA_AGENT both `4035`, and — the actual blocker nobody had checked — a float
+ * balance of TZS 0.
+ *
+ * ⚠️ `UNKNOWN` is deliberately NOT `NOT_ENABLED`. A timeout must never be recorded as
+ * a provisioning fact, or one bad minute permanently disables a working rail. The
+ * ladder treats UNKNOWN as "try it anyway": attempting a live rail costs one refused
+ * request, while skipping one costs the player their payout.
+ */
+export async function selcomProbeRail(env: SelcomEnv, rail: PayoutRail): Promise<RailProbe> {
+  try {
+    const res = await selcomFetch(env, "GET", PAYOUT_RAILS[rail].query, { transid: "50pick-probe-0001" });
+    // Refused at the door (401/403, typically resultcode 403 "not enabled for the
+    // vendor (4035)") = not provisioned. ANY other answer — including "no such
+    // transaction" — means the endpoint engaged with us on its merits, which is all
+    // "enabled" has to mean here.
+    const enabled = res.httpStatus !== 401 && res.httpStatus !== 403;
+    return { rail, verdict: enabled ? "ENABLED" : "NOT_ENABLED", detail: describeSelcom(res) };
+  } catch (err) {
+    return { rail, verdict: "UNKNOWN", detail: `network: ${isAbort(err) ? "timeout" : ((err as Error)?.message ?? "connection-failed")}` };
+  }
+}
+
+/** Probe every rail. Serial by design — this is diagnostics, not a hot path, and we
+ *  would rather be gentle with a gateway that is already having a bad night. */
+export async function selcomProbeRails(env: SelcomEnv): Promise<RailProbe[]> {
+  const out: RailProbe[] = [];
+  for (const rail of PAYOUT_RAIL_IDS) out.push(await selcomProbeRail(env, rail));
+  return out;
 }

@@ -199,6 +199,17 @@ export type StoredTxn = {
    * re-query. Log-safe by construction: no credentials, payee masked, truncated.
    */
   providerStatus?: string | null;
+  /**
+   * Which Selcom payout rail this withdrawal went out on — `PayoutRail` in
+   * `selcom.ts`. Null on deposits and on payouts written before rails existed.
+   *
+   * 🔴 Read it through `railOf()`, never raw. Each rail's status endpoint only knows
+   * its own transids, so re-querying a payout on the wrong one returns an envelope
+   * for a transaction it has never seen — which resolves to FAILED and makes the
+   * reconcile sweep refund a player whose money already left. Null means
+   * WALLET_CASHIN, which is true for every legacy row.
+   */
+  payoutRail?: string | null;
   msisdn: string | null;
   description: string | null;
   positionId: string | null;

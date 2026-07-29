@@ -37,6 +37,7 @@ import { resolveRange } from "@/lib/server/date-range";
 import { DateTimeRangeFilter } from "@/components/ui/datetime-range-filter";
 import { formatTzs, formatDateTimeSafe } from "@/lib/utils";
 import type { StoredTxn } from "@/lib/server/store";
+import { payoutRailLabel } from "@/lib/server/selcom";
 
 export const dynamic = "force-dynamic";
 
@@ -270,6 +271,15 @@ export default async function AdminTransactionsPage({ searchParams }: { searchPa
                         {t.providerRef
                           ? <span className="text-text-secondary" title={t.providerStatus ?? undefined}>
                               {t.providerRef}{t.providerStatus ? " ⓘ" : ""}
+                              {/* Which rail carried it. Shown only when it is NOT the
+                                  default mobile-money rail, so ordinary rows stay quiet
+                                  and the exceptions stand out — an officer reconciling a
+                                  payout has to know which endpoint actually holds it. */}
+                              {payoutRailLabel(t.payoutRail) && (
+                                <span className="ml-1.5 text-[10px] uppercase tracking-[0.1em] text-[var(--gold-300)]">
+                                  {t.payoutRail === "SELCOM_PESA" ? "pesa" : "agent"}
+                                </span>
+                              )}
                             </span>
                           : GATEWAY_TYPES.includes(t.type)
                             ? <span className="text-[var(--gold-300)]" title={t.providerStatus ?? "No gateway reference — this movement cannot be reconciled"}>missing</span>

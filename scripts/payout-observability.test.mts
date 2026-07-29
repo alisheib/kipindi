@@ -46,25 +46,34 @@ function bodyOf(src: string, signature: string): string {
 
 console.log("\n── 1 · The gateway's answer is captured, not discarded ─────────");
 
-const withdrawFn = bodyOf(selcom, "export async function selcomWithdraw");
-ok("selcomWithdraw was found", withdrawFn.length > 0);
-ok("selcomWithdraw describes the reply", withdrawFn.includes("describeSelcom"));
-ok("selcomWithdraw returns detail on the ACCEPTED arm too",
+// `selcomPayout` is the one function every rail goes through — the old single-rail
+// `selcomWithdraw` is now a named wrapper around it. These assertions follow the
+// body, because that is where the evidence is either captured or lost.
+const withdrawFn = bodyOf(selcom, "export async function selcomPayout");
+ok("selcomPayout was found", withdrawFn.length > 0);
+ok("selcomPayout describes the reply", withdrawFn.includes("describeSelcom"));
+ok("selcomPayout returns detail on the ACCEPTED arm too",
   /ok:\s*true,\s*detail/.test(withdrawFn),
   "'accepted' is the state that stalled — it is the most important one to explain");
-ok("selcomWithdraw returns detail on every failure arm",
+ok("selcomPayout returns detail on every failure arm",
   (withdrawFn.match(/ok:\s*false[^}]*detail/g) ?? []).length >= 3);
-ok("selcomWithdraw logs the request shape (utilitycode/amount/pin-presence)",
-  withdrawFn.includes("utilitycode=") && withdrawFn.includes("pin="),
+ok("selcomPayout logs the request shape (rail/utilitycode/amount/pin-presence)",
+  withdrawFn.includes("utilitycode=") && withdrawFn.includes("pin=") && withdrawFn.includes("rail="),
   "a wrong utility code and an empty float look identical without it");
-ok("selcomWithdraw NEVER logs the pin value",
+ok("selcomPayout NEVER logs the pin value",
   !/pin=\$\{(env\.)?pin\}/.test(withdrawFn) && withdrawFn.includes('pin ? "set" : "MISSING"'));
-ok("selcomWithdraw masks the payee number", withdrawFn.includes("maskMsisdn"));
+ok("selcomPayout masks the payee number", withdrawFn.includes("maskMsisdn"));
 
-const verifyFn = bodyOf(selcom, "export async function selcomVerifyCashin");
-ok("selcomVerifyCashin returns detail", verifyFn.includes("detail"));
-ok("selcomVerifyCashin explains a network failure rather than a bare null",
+const verifyFn = bodyOf(selcom, "export async function selcomVerifyPayout");
+ok("selcomVerifyPayout returns detail", verifyFn.includes("detail"));
+ok("selcomVerifyPayout explains a network failure rather than a bare null",
   verifyFn.includes("network:"));
+// 🔴 The rail is what decides WHICH endpoint is asked. Querying the wrong one returns
+// a stranger's envelope, which reads as FAILED, which refunds a player whose money
+// has already gone out. This assertion is the guard on that.
+ok("selcomVerifyPayout queries the rail's OWN endpoint, not a hardcoded one",
+  verifyFn.includes("PAYOUT_RAILS[rail].query") && !verifyFn.includes('"/walletcashin/query"'),
+  "one hardcoded endpoint across many rails is a double payment waiting to happen");
 
 const floatFn = bodyOf(selcom, "export async function selcomFloatBalanceDetailed");
 ok("a detailed float-balance query exists", floatFn.length > 0);
@@ -89,8 +98,17 @@ ok("the Prisma DAL maps providerStatus", /providerStatus:\s*t\.providerStatus/.t
 // A log line is lost on the next deploy; the row is what an operator reads at 2am.
 ok("withdraw() persists the accepted detail", /providerRef:\s*result\.providerRef[\s\S]{0,200}providerStatus/.test(wallet));
 ok("withdraw() persists the detail on failure BEFORE reversing",
-  /if \(!result\.ok\)[\s\S]{0,400}providerStatus[\s\S]{0,200}settleWithdrawalFailed/.test(wallet),
+  /if \(!result\.ok\)[\s\S]{0,700}providerStatus[\s\S]{0,300}settleWithdrawalFailed/.test(wallet),
   "or the reason dies with the request");
+// The ladder can try several rails before giving up. `providerStatus` holds one line
+// and is overwritten by the next status re-query, so without a per-attempt trail the
+// answer to "why did this go out on Selcom Pesa?" is gone by morning.
+ok("every rail attempt is recorded, not just the last one",
+  /recordRailAttempts/.test(wallet) && bodyOf(wallet, "function recordRailAttempts").includes("withdraw.rail_attempt"),
+  "a ladder with no trail cannot explain itself to a player or a regulator");
+ok("the rail is persisted next to the reference on BOTH dispatch paths",
+  (wallet.match(/payoutRail:\s*result\.rail/g) ?? []).length >= 2,
+  "player-initiated and AML-approved payouts must both be re-queryable");
 ok("the fast payout lane refreshes providerStatus each pass",
   bodyOf(wallet, "export async function settleConfirmedWithdrawals").includes("providerStatus"));
 ok("the stale reconcile refreshes providerStatus each sweep",

@@ -1,0 +1,25 @@
+-- Payout rails (2026-07-30): record WHICH Selcom endpoint carried a withdrawal.
+--
+-- Additive + idempotent — safe on the live money DB. A nullable ADD COLUMN is
+-- catalogue-only on PostgreSQL 11+ (no table rewrite, no lock held over data), and the
+-- Transaction table is the busiest one we have.
+--
+-- 🔴 THIS COLUMN IS MONEY-SAFETY, NOT REPORTING. Every Selcom payout rail has its own
+-- status endpoint, and each only knows its own transids. Re-querying a payout against
+-- the wrong endpoint returns an envelope for a transaction it has never seen; anything
+-- outside resultcode 000/111/927/999 resolves to FAILED; and reconcileStalePayments
+-- treats FAILED as "the payout definitively did not happen" and refunds the player.
+-- The money is already gone. Storing the rail is what routes every later re-query to
+-- the endpoint that actually holds the payout.
+--
+-- Values: WALLET_CASHIN | SELCOM_PESA | HUDUMA_AGENT (PayoutRail in
+-- src/lib/server/selcom.ts). A plain TEXT column rather than a Postgres enum,
+-- deliberately: adding a column is additive where creating and extending an enum type
+-- is not, and the allowed set is already pinned by isPayoutRail() and asserted in
+-- scripts/payout-rails.test.mts.
+--
+-- NO BACKFILL, ON PURPOSE. NULL is read through railOf() as WALLET_CASHIN, which is
+-- true for every payout ever written — it was the only rail that existed. Defaulting in
+-- code rather than UPDATEing the ledger keeps a wrong guess out of the money table.
+
+ALTER TABLE "Transaction" ADD COLUMN IF NOT EXISTS "payoutRail" TEXT;

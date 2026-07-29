@@ -193,7 +193,7 @@ export async function rejectAmlAction(formData: FormData) {
       void sendEmailToUser(txn.userId, (email) => ({
         to: email,
         subject: `Withdrawal returned · ${formatTzs(Math.abs(txn.amount))}`,
-        html: amlRejectRefundHtml({ amount: Math.abs(txn.amount), reason }),
+        html: amlRejectRefundHtml({ amount: Math.abs(txn.amount), reason, reference: txn.id, gatewayRef: txn.providerRef ?? null }),
         tag: "aml-refund",
       })).catch(() => {});
     }

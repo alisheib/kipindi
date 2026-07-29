@@ -9,7 +9,8 @@ import { ScrollX } from "@/components/ui/scroll-x";
 import { PaymentLogo } from "@/components/wallet/payment-logo";
 import { allMnoHealth, getKillSwitches, reconcile, retryQueue } from "@/lib/server/payment-ops";
 import { getPaymentControls } from "@/lib/server/payment-control";
-import { getFloatBalance } from "@/lib/server/payments";
+import { getFloatBalance, refreshRailProbes, PAYOUT_LADDER } from "@/lib/server/payments";
+import { PAYOUT_RAILS } from "@/lib/server/selcom";
 import { formatTzs, formatTzsCompact, formatDateTime } from "@/lib/utils";
 import { KillSwitch } from "./kill-switch-toggle";
 import { ControlPlane } from "./control-plane";
@@ -32,7 +33,15 @@ const ageLabel = (msv: number) => {
 
 export default async function PaymentsOpsPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const sp = await searchParams;
-  const [health, kill, recon, queue, controls, floatBal] = await Promise.all([allMnoHealth(), getKillSwitches(), reconcile(), retryQueue(), getPaymentControls(), getFloatBalance().catch(() => null)]);
+  // `railProbes` asks each Selcom payout endpoint whether it is provisioned for this
+  // vendor. It moves NO money (a signed status query for a transid that does not
+  // exist) and it is the thing that answers, in seconds, the question that cost an
+  // entire evening on 2026-07-29: is the rail down, or was it never switched on?
+  const [health, kill, recon, queue, controls, floatBal, railProbes] = await Promise.all([
+    allMnoHealth(), getKillSwitches(), reconcile(), retryQueue(), getPaymentControls(),
+    getFloatBalance().catch(() => null),
+    refreshRailProbes().catch(() => []),
+  ]);
   // Warn below one max-withdrawal of headroom — a dry float fails every payout.
   const FLOAT_LOW_TZS = 1_000_000;
   // Payouts frozen in PROCESSING. A withdrawal whose provider call was refused
@@ -88,6 +97,37 @@ export default async function PaymentsOpsPage({ searchParams }: { searchParams: 
           </div>
           <p className="mt-2 font-mono text-[10px] text-text-tertiary">Live from Selcom vendor/balance — read fresh on each load.</p>
         </AdminCard>
+
+        {/* Payout rails — which Selcom disbursement products are actually provisioned
+            for this vendor. Probed live (money-free status queries) on every load.
+            A payout tries the ladder in order and skips anything marked NOT ENABLED. */}
+        {railProbes.length > 0 && (
+          <AdminCard title="Payout rails" sw="Njia za malipo">
+            <div className="space-y-2">
+              {railProbes.map((p) => {
+                const rung = PAYOUT_LADDER.indexOf(p.rail);
+                const tone = p.verdict === "ENABLED" ? "text-success" : p.verdict === "NOT_ENABLED" ? "text-danger" : "text-warning";
+                return (
+                  <div key={p.rail} className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                    <span className={`font-mono text-[10px] uppercase tracking-[0.12em] ${tone}`}>
+                      {p.verdict === "ENABLED" ? "enabled" : p.verdict === "NOT_ENABLED" ? "not enabled" : "unknown"}
+                    </span>
+                    <span className="font-mono text-[11px] text-text">{PAYOUT_RAILS[p.rail].label}</span>
+                    <span className="font-mono text-[10px] text-text-subtle">
+                      {rung >= 0 ? `fallback #${rung + 1}` : "manual only"}
+                    </span>
+                    <span className="font-mono text-[10px] text-text-tertiary break-all">{p.detail}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="mt-2 font-mono text-[10px] text-text-tertiary">
+              A payout walks the ladder in order and skips a rail Selcom has told us is not provisioned.
+              It advances ONLY on a definitive refusal — never on a timeout, which might still be in flight.
+              &ldquo;Manual only&rdquo; rails are implemented and reachable, but never substituted automatically.
+            </p>
+          </AdminCard>
+        )}
 
         {/* Frozen payouts — a player's money held with nothing able to release it. */}
         {frozenPayouts.length > 0 && (

@@ -403,6 +403,22 @@ model Transaction {
   provider          PaymentProvider?
   providerRef       String?
   providerStatus    String?
+  // WHICH Selcom payout rail this withdrawal actually went out on — one of
+  // PayoutRail in src/lib/server/selcom.ts (WALLET_CASHIN | SELCOM_PESA |
+  // HUDUMA_AGENT). Deposits leave it null.
+  //
+  // 🔴 MONEY-SAFETY, NOT BOOKKEEPING. Each rail's status endpoint only knows its own
+  // transids. Re-querying a payout on the wrong endpoint returns an envelope for a
+  // transaction it has never seen, which resolves to FAILED, which makes the stale
+  // reconcile sweep refund a player whose money has already left. Storing the rail is
+  // what lets `railOf()` send every re-query to the endpoint that actually owns it.
+  //
+  // A plain String, not a Prisma enum: this migration has to run against a live money
+  // database, and adding a column is purely additive where creating an enum type is
+  // not. The allowed values are pinned by `isPayoutRail()` and asserted in
+  // scripts/payout-rails.test.mts. Null on legacy rows reads as WALLET_CASHIN — true
+  // for every payout written before rails existed, so no backfill is needed.
+  payoutRail        String?
   msisdn            String? // recipient/sender phone for mobile money
   description       String?
   // Soft reference to the prediction-market Position this ledger entry belongs

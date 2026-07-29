@@ -24,7 +24,7 @@ import { verifyWebhookSignature } from "@/lib/server/crypto";
 import { audit } from "@/lib/server/audit";
 import { settlePaymentWebhook } from "@/lib/server/wallet-service";
 import { db } from "@/lib/server/store";
-import { selcomEnv, selcomVerifyOrder, selcomVerifyCashin, verifySelcomCallback } from "@/lib/server/selcom";
+import { selcomEnv, selcomVerifyOrder, selcomVerifyPayout, railOf, verifySelcomCallback } from "@/lib/server/selcom";
 
 /** Map the many provider-specific status spellings to our two terminal states.
  *  Anything not recognised is treated as a non-terminal update we simply ack. */
@@ -212,10 +212,16 @@ async function handleSelcomCallback(req: Request, body: string): Promise<NextRes
     status = verdict.status;
     amount = verdict.amount;
   } else {
-    // Withdrawal (wallet-cashin): AUTHORITATIVE re-query via the docs'
-    // GET /v1/walletcashin/query — we do not trust the callback body/signature
-    // for a payout confirmation either. (sigOk above is captured for audit only.)
-    const verdict = await selcomVerifyCashin(env, transid || ref);
+    // Withdrawal: AUTHORITATIVE re-query on THE RAIL THIS PAYOUT ACTUALLY USED — we
+    // do not trust the callback body/signature for a payout confirmation either.
+    // (sigOk above is captured for audit only.)
+    //
+    // 🔴 The rail comes off the transaction row. Every rail's query endpoint only
+    // knows its own transids, so asking wallet-cashin about a Selcom Pesa payout
+    // returns a stranger's envelope, which resolves to FAILED and refunds a player
+    // whose money already left. `railOf` defaults null to WALLET_CASHIN — correct for
+    // every row written before rails existed.
+    const verdict = await selcomVerifyPayout(env, railOf(txn.payoutRail), transid || ref);
     status = verdict.status;
   }
 

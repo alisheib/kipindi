@@ -1,0 +1,126 @@
+# Payout rails and the fallback ladder
+
+> One page on how money leaves 50pick, why there is more than one way out, and the single
+> rule that stops a fallback from becoming a double payment.
+> Written 2026-07-30, after the incident in [`SELCOM-PAYOUT-INCIDENT-2026-07-30.md`](SELCOM-PAYOUT-INCIDENT-2026-07-30.md).
+
+## Why this exists
+
+On 29 July 2026 every withdrawal failed. Six attempts, three different Selcom errors, TZS 15,000 of a
+player's money frozen — and for several hours no way to tell whether the cause was a national-switch
+outage, a malformed request, or a product that had never been switched on. Those have completely
+different fixes and they looked identical from the outside.
+
+Two things came out of it:
+
+1. **A platform with one payout rail has no payout capability.** That rail is a third-party product
+   that can be unprovisioned, dried out, or knocked offline, and when it is, players cannot be paid.
+2. **Provisioning is a fact to be measured, not inherited from an email.** A written assurance that
+   an endpoint was enabled turned out to be wrong, and we built on it for two days.
+
+## The rails
+
+Defined once as a table — `PAYOUT_RAILS` in [`src/lib/server/selcom.ts`](../src/lib/server/selcom.ts).
+Each entry carries its process endpoint, its **own** status-query endpoint, its utility code, and a
+body builder whose **key insertion order is the `Signed-Fields` order** (reordering after signing is
+a 401).
+
+| Rail | Where the money lands | Rides TIPS? | In the auto-ladder? |
+|---|---|---|---|
+| `WALLET_CASHIN` | The player's mobile-money account | yes | ✅ first |
+| `SELCOM_PESA` | A Selcom Pesa wallet on the same number | no — Selcom-internal | ✅ second |
+| `HUDUMA_AGENT` | **Cash** at any Selcom agent, via `*150*50#` | no — Selcom-internal | ❌ manual only |
+
+Qwiksend (bank transfer) is documented in the API digest but not integrated: we capture no bank
+details, and a bank transfer very likely rides TIPS anyway.
+
+**Why Huduma is not automatic.** It does not send money to a phone. It parks cash at an agent the
+player has to travel to and collect in person. Silently converting "money in my M-Pesa" into "go find
+an agent" is not a fallback, it is a different product — and a player waiting for an SMS that will
+never arrive is worse off than one who simply gets their balance back and retries. It is fully
+implemented, probe-checked and operator-dispatchable; it just never happens behind the player's back.
+Adding it to `PAYOUT_LADDER` without a consent step would be a mistake.
+
+## 🔴 The rule
+
+`runPayoutLadder` in [`src/lib/server/payments.ts`](../src/lib/server/payments.ts):
+
+| Rail outcome | Ladder | Why |
+|---|---|---|
+| **ACCEPTED** (incl. `999`/`111`/`927`) | **STOP**, keep the hold | It may be in flight |
+| **AMBIGUOUS** — timeout, network error, any non-401/403 HTTP error | **STOP**, keep the hold | **We do not know if Selcom took it. Advancing here pays the player twice.** |
+| **FAILED** — 401/403, or 2xx with a hard-fail resultcode (`4035`, `010`) | **ADVANCE** | Refused at the door; nothing can be in flight |
+| probe says NOT_ENABLED | **SKIP**, no request | Don't burn a round-trip on a known `4035` |
+| every rung exhausted | `PROVIDER_DOWN` → clean reversal | Money back, honest message, no eternal spinner |
+
+"Refused at the door" is the *only* state in which advancing is safe, and that is the whole design.
+`AMBIGUOUS` stopping the ladder is asserted in `scripts/payout-rails.test.mts` for every rail.
+
+Each attempt gets its **own `transid`** — Selcom treats it as the idempotency key, so reusing one
+across two endpoints muddles the single identifier we use to ask "did this pay?".
+
+## The other half: asking the right endpoint
+
+Every rail's status endpoint only knows its own transids. Ask `/walletcashin/query` about a payout
+sent through `/selcompesa/cashin` and you get an envelope for a transaction it has never heard of;
+any resultcode outside `000/111/927/999` resolves to **FAILED**; and `reconcileStalePayments` treats
+FAILED as "definitively did not happen" and refunds the player. **The money is already gone.** A
+double payment caused by nothing but a hardcoded URL.
+
+So the rail is persisted on `Transaction.payoutRail` at dispatch and threaded through every
+re-query: the fast payout lane, the stale reconcile sweep, the payment webhook, and the officer's
+"reverse stuck payout" check. `railOf(null)` resolves to `WALLET_CASHIN` — true for every row written
+before rails existed, which is why no backfill was needed on the live money table.
+
+`scripts/payout-rails.test.mts` §3 is the regression: verify a `SELCOM_PESA` payout, assert the call
+went to `/selcompesa/query` and **never** to `/walletcashin/query`.
+
+## The probe
+
+`scripts/selcom-probe.mjs`, and the same logic in-app via `selcomProbeRails`, surfaced on
+`/admin/payments` on every load.
+
+It asks each rail's status endpoint about a transid that does not exist. **It moves no money.**
+`401/403` ⇒ NOT_ENABLED. Any other answer — including "not found" — ⇒ ENABLED, because the endpoint
+engaged with us on its merits, which is all "enabled" needs to mean. A network error ⇒ **UNKNOWN,
+never NOT_ENABLED**: one bad minute must not permanently disable a working rail, so the ladder tries
+UNKNOWN rails anyway. One wasted request is cheaper than a payout that never goes out.
+
+```
+railway ssh node scripts/selcom-probe.mjs
+```
+
+Run it from inside the container — the credentials are pinned to three egress IPs, so a call from a
+laptop fails regardless of signature. It also re-queries the two payouts still frozen from the
+incident, and reads the float balance.
+
+## The trail
+
+`providerStatus` holds one line and is overwritten by every status re-query, so by the time anyone
+looks at a stuck payout the dispatch story is gone — exactly what happened on 2026-07-29. Every rung
+of the ladder therefore writes its own audit row (`withdraw.rail_attempt`: rail, transid, outcome,
+detail). "We paid you on Selcom Pesa because mobile money was refused" is a sentence the platform has
+to be able to evidence months later, to the player and to a regulator.
+
+Player-facing, `withdrawRefRows()` in `email.ts` now prints the 50pick reference, the gateway
+reference and — when it is not the obvious one — the rail. The "Withdrawal returned" mail, which goes
+out on *every* failed payout, previously carried no identifier at all.
+
+## Tests
+
+- `npm run test:payout-rails` — the rail table, `railOf` defaults, **the double-pay regression**, the
+  verdict taxonomy on all three rails, the ladder's shape, and the probe's verdicts.
+- `npm run test:payout-observability` — nothing is logged that shouldn't be (never the PIN, payee
+  always masked), everything is captured that should be, and `selcomVerifyPayout` uses the rail's own
+  endpoint rather than a hardcoded one.
+- `npm run test:payments`, `test:fast-payout`, `test:selcom` — the pre-existing money-safety suites,
+  unchanged in intent.
+
+## Current state (2026-07-30)
+
+- 🔴 **Float: `TZS 0.00`.** Nothing pays out until it is funded. This is the live blocker.
+- ✅ `WALLET_CASHIN` enabled. ❌ `SELCOM_PESA` and `HUDUMA_AGENT` both `4035` — **ask Selcom to enable
+  them**; they are the rails that survive a TIPS outage.
+- Two payouts still unresolved at `999` since 17:04 EAT — only Selcom can close those.
+- Withdrawals should stay closed to players (per-MNO kill switch on `/admin/payments`) until one real
+  TZS 1,000 payout has been watched end-to-end.

@@ -442,6 +442,29 @@ function depositRefRows(reference: string, gatewayRef?: string | null): { label:
   ];
 }
 
+/**
+ * The same identifiers for the money going OUT — the deposit side has had them since
+ * the reference audit; the payout side never did.
+ *
+ * 🔴 WHY THIS MATTERS MORE ON A PAYOUT. `amlRejectRefundHtml` is the mail every failed
+ * withdrawal sends, and it printed no reference at all. On 2026-07-29 a player received
+ * four "Withdrawal returned" emails with nothing in them a human could look up — not our
+ * transaction id, not Selcom's, nothing. When they asked what happened, neither they nor
+ * support had a single identifier to quote.
+ *
+ * `payoutRail` is included because with a fallback ladder the destination is no longer
+ * implied by the request: "we paid you on Selcom Pesa because mobile money was refused"
+ * is a sentence the platform has to be able to evidence, months later, to the player and
+ * to a regulator.
+ */
+function withdrawRefRows(reference: string, gatewayRef?: string | null, railLabel?: string | null): { label: string; value: string }[] {
+  return [
+    { label: "50pick reference", value: reference },
+    ...(gatewayRef ? [{ label: "Gateway reference", value: gatewayRef }] : []),
+    ...(railLabel ? [{ label: "Paid via", value: railLabel }] : []),
+  ];
+}
+
 export function depositConfirmedHtml({ amount, method, reference, gatewayRef, balance }: {
   amount: number; method: string; reference: string; gatewayRef?: string | null; balance: number;
 }): string {
@@ -566,20 +589,23 @@ function displayMsisdn(raw?: string | null): string | null {
  * both references (ours + the gateway's, which the player's MNO keys off), the
  * destination number, a wallet CTA and the standard traceable ref-note.
  */
-export function withdrawalSentHtml({ amount, destination, destinationPhone, reference, gatewayRef }: {
+export function withdrawalSentHtml({ amount, destination, destinationPhone, reference, gatewayRef, railLabel, railNote }: {
   amount: number; destination: string; destinationPhone?: string | null; reference: string; gatewayRef?: string | null;
+  /** Human name of the rail that carried it — printed only when it is not the default. */
+  railLabel?: string | null;
+  /** Rail-specific collection instructions, when the money is NOT simply in their wallet. */
+  railNote?: { en: string; sw: string } | null;
 }): string {
   const phone = displayMsisdn(destinationPhone);
   return wrap(`
     ${eyebrow("Withdrawal sent", "Pesa imetumwa")}
     ${heading("Your payout is on its way")}
-    ${subtitle("We've sent your withdrawal to your mobile money account. It should arrive within moments.")}
-    ${subtitleSw("Tumetuma pesa yako kwenye akaunti yako ya simu. Itafika hivi punde.")}
+    ${subtitle(railNote?.en ?? "We've sent your withdrawal to your mobile money account. It should arrive within moments.")}
+    ${subtitleSw(railNote?.sw ?? "Tumetuma pesa yako kwenye akaunti yako ya simu. Itafika hivi punde.")}
     ${detailRows([
       { label: "Amount", value: formatTzs(amount), tone: "good" },
       { label: "Destination", value: phone ? `${destination} · ${phone}` : destination },
-      { label: "50pick reference", value: reference },
-      ...(gatewayRef ? [{ label: "Gateway reference", value: gatewayRef }] : []),
+      ...withdrawRefRows(reference, gatewayRef, railLabel),
     ])}
     ${ctaButton("/wallet", "View wallet · Tazama pochi")}
     ${refNote()}
@@ -983,14 +1009,25 @@ export function coolOffHtml({ duration, endDate }: { duration: string; endDate: 
   `);
 }
 
-export function amlRejectRefundHtml({ amount, reason }: { amount: number; reason: string }): string {
+export function amlRejectRefundHtml({ amount, reason, reference, gatewayRef, railLabel }: {
+  amount: number; reason: string;
+  /** Our transaction id. Optional only because older callers predate it — always pass it. */
+  reference?: string | null;
+  gatewayRef?: string | null;
+  railLabel?: string | null;
+}): string {
   return wrap(`
     ${eyebrow("Withdrawal returned", "Pesa imerudishwa")}
     ${heading("Withdrawal returned to wallet")}
-    ${subtitle("Your withdrawal has been returned to your wallet balance.")}
+    ${subtitle("Your withdrawal has been returned to your wallet balance. Nothing was taken — the full amount is available again.")}
+    ${subtitleSw("Pesa yako imerudishwa kwenye salio lako. Hakuna kilichochukuliwa.")}
     ${detailRows([
-      { label: "Amount refunded", value: formatTzs(amount) },
+      { label: "Amount refunded", value: formatTzs(amount), tone: "good" },
       { label: "Reason", value: reason },
+      // This mail goes out on EVERY failed payout and used to carry no identifier at
+      // all — a player asking "what happened to my money?" had nothing to quote and
+      // neither did support.
+      ...(reference ? withdrawRefRows(reference, gatewayRef, railLabel) : []),
     ])}
     ${subtitle(`If you have questions, contact <a href="mailto:${REPLY_TO}" style="color:${BRAND_LINK};text-decoration:none">${REPLY_TO}</a>`)}
   `);

@@ -204,7 +204,10 @@ export async function reverseStuckPayoutAction(formData: FormData): Promise<Resu
   let providerSays = "not asked (no provider reference)";
   if (t.providerRef) {
     const { verifyWithdrawalStatus } = await import("@/lib/server/payments");
-    const v = await verifyWithdrawalStatus(t.providerRef);
+    // The rail matters even here: this check is the last thing standing between an
+    // officer and a double payment, and it is only as good as asking the endpoint
+    // that actually holds this payout.
+    const v = await verifyWithdrawalStatus(t.providerRef, t.payoutRail);
     providerSays = `${v.status}${v.detail ? `: ${v.detail}` : ""}`;
     if (v.status === "CONFIRMED") {
       audit({ category: "COMPLIANCE", action: "payments.payout_reverse_refused", actorId: g.userId, targetType: "Transaction", targetId: txnId,

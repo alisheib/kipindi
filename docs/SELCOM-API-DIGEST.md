@@ -55,12 +55,46 @@ The Authorization token here is byte-identical to the official docs example.
 - Response envelope: `{ reference, resultcode, result, message, data[] }`. Codes: `000`=SUCCESS · `111`=PENDING · `999`=AMBIGUOUS (must query order-status) · other=FAIL.
 - The network is inferred from the buyer `msisdn` — the confirmed flow does NOT pass a collection channel string.
 
-## 4. Disbursement (money OUT) — Wallet Cashin
-- `POST /v1/walletcashin/process` — `{ transid, utilitycode, utilityref, amount, vendor, pin, msisdn? }`.
-  - **`utilityref` = the receiver (payee) MSISDN**, NOT `msisdn`. `msisdn` (optional) = sender.
-  - `pin` = the float-account PIN. `vendor` = your Selcom float/till id. Signed-Fields = all keys.
-  - Response envelope as §3. `000`=SUCCESS, `111`=PENDING (→ reconcile).
-- Bank: `/v1/qwiksend/lookup` then `/v1/qwiksend/process` — **UNCERTAIN** field names; not used for MNO payouts.
+## 4. Disbursement (money OUT) — FOUR RAILS
+
+⚠️ **Each rail is provisioned separately, per vendor.** Being able to authenticate proves nothing
+about which of these you may call — an unprovisioned one answers `HTTP 403 · resultcode=403 ·
+"API endpoint not enabled for the vendor (4035)"`. Measure it, never assume:
+`railway ssh node scripts/selcom-probe.mjs` (money-free), or read `/admin/payments`.
+Implemented as one table — `PAYOUT_RAILS` in `src/lib/server/selcom.ts`.
+
+| Rail | Process | Status query | Rides TIPS? | State 2026-07-30 |
+|---|---|---|---|---|
+| Wallet Cashin | `POST /v1/walletcashin/process` | `GET /v1/walletcashin/query?transid=` | yes | ✅ enabled |
+| Selcom Pesa | `POST /v1/selcompesa/cashin` | `GET /v1/selcompesa/query?transid=` | no (Selcom-internal) | ❌ 4035 |
+| Huduma Agent Cashout | `POST /v1/hudumacashin/process` | `GET /v1/hudumacashin/query?transid=` | no (Selcom-internal) | ❌ 4035 |
+| Qwiksend (bank) | `POST /v1/qwiksend/process` | `GET /v1/qwiksend/query?transid=` | likely yes | ✅ enabled, NOT integrated |
+
+- **Wallet Cashin** — `{ transid, utilitycode, utilityref, amount, vendor, pin, msisdn? }`.
+  **`utilityref` = the receiver (payee) MSISDN**, NOT `msisdn` (which is the optional sender).
+  `pin` = the float-account PIN. `vendor` = your Selcom float/till id. Signed-Fields = all keys.
+- **Selcom Pesa** — `{ transid, utilityref, amount, vendor, pin, msisdn? }`; `utilityref` is a Selcom
+  Pesa account **or** mobile number. ⚠️ The reference contradicts itself: its parameter table lists a
+  static `utilitycode: SPSCASHIN`, but the worked curl sample carries no such field and its
+  Signed-Fields omits it. We follow the **wire sample**. If this rail 401s on first contact, that is
+  suspect #1. Namelookup: `GET /v1/selcompesa/namelookup?utilityref&transid`.
+- **Huduma Agent Cashout** — `{ transid, utilitycode: "HUDUMACI", utilityref, amount, vendor, pin, name? }`.
+  Debits the float into a **temporary wallet on Selcom's own platform**; the payee dials `*150*50#`
+  → Selcom → Huduma Cashout and collects **CASH** from any Selcom Huduma agent. No MNO, no national
+  switch. **A different product, not a drop-in substitute** — see the ladder note below.
+- **Qwiksend (bank)** — field names now **CONFIRMED** (was "UNCERTAIN"):
+  `{ transid, recipientFiCode, recipientAccount, recipientName, senderAccount, senderName, amount,
+  vendor, pin, msisdn, purpose, remarks? }`. Lookup `GET /v1/qwiksend/lookup?bank&account&transid`.
+  Bank shortcodes are tabulated in the reference (CRDBBANK, NMB, NBC, …). Not integrated: we capture
+  no bank details, and a bank transfer very likely rides TIPS anyway.
+
+**The fallback ladder** (`PAYOUT_LADDER`, `src/lib/server/payments.ts`) walks enabled rails in order
+and **advances ONLY on a definitive refusal** (401/403 or a hard-fail resultcode = refused at the
+door, nothing in flight). It **stops dead on AMBIGUOUS** — a timeout might have been taken, and
+trying the next rail there pays the player twice. Each attempt gets its own `transid`, and the rail
+is persisted on `Transaction.payoutRail` so every later status re-query goes to the endpoint that
+actually owns the payout. `HUDUMA_AGENT` is deliberately **not** in the automatic ladder: silently
+converting "money in my M-Pesa" into "travel to an agent" is a product change, not a fallback.
 
 ## 5. Channel codes
 Disbursement `utilitycode` (CONFIRMED unless noted):
@@ -88,6 +122,19 @@ Both money movements settle from a SIGNED status re-query, not from trusting the
   → envelope `resultcode`/`result` (`000`/SUCCESS = paid; `111`/`927`/`999` = pending; else fail).
 - Result codes (authoritative): `000`=SUCCESS · `111`,`927`=INPROGRESS · `999`=AMBIGUOUS
   (status unknown — wait & re-query; ⚠️ NEVER hard-fail) · all others = FAIL.
+- **Named FAIL codes** (from the reference's error table — these are the ones we have actually seen):
+  `010` = **"Invalid account or payment reference (utilityref)"** · `012` invalid amount ·
+  `014` amount too high · `015` amount too low · `403`/`4035` endpoint not enabled for the vendor.
+  ⚠️ `010` is a **bad-reference** error, NOT an outage — an outage is `999` "No reponse from upstream
+  system". On 2026-07-29 a payout to a valid Vodacom number was rejected `010` while Selcom
+  attributed the failure to a TIPS outage; the two are different faults and only one of them is
+  something waiting will fix.
+- Docs escalation for a transaction stuck INPROGRESS/AMBIGUOUS: re-query at 3-minute intervals for a
+  reasonable window, then contact Selcom (`support@selcom.net`). Their error-reporting guide asks for
+  **JSON request/response + the full endpoint URL**, and explicitly *not* source code.
+- ⚠️ **IP allowlist.** The credentials are pinned to three egress IPs (in the credentials email). A
+  call from anywhere else fails regardless of signature — which is why probes and payout tests run
+  inside the Railway container (`railway ssh …`), never from a laptop.
 - Cashin `utilitycode` codes are all **CONFIRMED** in the Wallet Cashin utilitycode table:
   `VMCASHIN`, `AMCASHIN`, `TPCASHIN` (Mixx by Yas), `EZCASHIN`, `HPCASHIN`, `TTCASHIN`, `CASHIN` (auto-route).
 

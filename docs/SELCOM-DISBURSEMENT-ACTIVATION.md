@@ -1,12 +1,48 @@
 # Selcom Disbursement (Payouts / Withdrawals) — Activation Runbook
 
-> **Status: Selcom disbursement API GRANTED (2026-07-27).** The request in
-> [`SELCOM-DISBURSEMENT-REQUEST.md`](SELCOM-DISBURSEMENT-REQUEST.md) is fulfilled. Per Selcom's
-> email (Masanja Paul, 2026-07-27): **`wallet-cashin` (mobile-money payout) AND `qwiksend` (bank
-> payout) endpoints are enabled, on the SAME API credentials used for collection.** **Payouts are
-> NOT live yet:** they still need the **float PIN** set in Railway, three small code phases, and one
-> real end-to-end test. This doc is the single source of truth for turning payouts on. No secret
-> values here — creds live in Railway env only, referenced by NAME.
+> ## ⛔ CORRECTED 2026-07-30 — READ THIS BEFORE THE REST OF THE FILE
+>
+> This document previously stated, on the strength of an email (Masanja Paul, 2026-07-27), that
+> **`wallet-cashin` and `qwiksend` were both enabled on the collection credentials.** **That was
+> wrong, and believing it cost a live evening of failed payouts.**
+>
+> What was actually true on 2026-07-29:
+> - The credentials package Selcom issued (`api@selcom.net`, 2026-07-17) is titled **"Your Selcom
+>   API Credentials for *Collections* (Customer to Business)"** and lists exactly four enabled
+>   endpoints: `/create-order-minimal`, `/order-status`, `/wallet-payment`, `/cancel-order`.
+>   **No disbursement endpoint at all.**
+> - Every `walletcashin/process` call returned `HTTP 403 · resultcode=403 · "API endpoint not
+>   enabled for the vendor (4035)"` — the gateway saying precisely that.
+> - Two real payouts (10,000 + 5,000 TZS) froze in PROCESSING with a player's money held.
+>
+> **Do not take a written assurance that an endpoint is enabled as fact.** Run the probe:
+> ```
+> railway ssh node scripts/selcom-probe.mjs
+> ```
+> It asks each rail's own status endpoint whether it is provisioned, moves no money, and answers in
+> seconds. `/admin/payments` shows the same verdicts on every load.
+>
+> **Verified state as of 2026-07-30 00:30 EAT** (from that probe, vendor `SW00212780`, production
+> `https://apigw.selcommobile.com/v1`):
+>
+> | Rail | Endpoint | State |
+> |---|---|---|
+> | Wallet Cashin | `/walletcashin/process` | ✅ **ENABLED** (Selcom switched it on during 2026-07-29 evening) |
+> | Qwiksend (bank) | `/qwiksend/process` | ✅ ENABLED — but not integrated; needs bank+account capture |
+> | Selcom Pesa | `/selcompesa/cashin` | ❌ `4035` not enabled — **ask Selcom** |
+> | Huduma Agent Cashout | `/hudumacashin/process` | ❌ `4035` not enabled — **ask Selcom** |
+>
+> 🔴 **AND THE ACTUAL BLOCKER NOBODY HAD CHECKED: the disbursement float reads `TZS 0.00`**
+> (`resultcode=000 SUCCESS`, so this is Selcom's own answer, not an error). Payouts are paid out of
+> that float. **At zero, no rail can pay anyone**, whatever else is enabled and whether or not TIPS
+> is up. Fund it first; re-run the probe to confirm.
+>
+> The float PIN gate described below is CLOSED — `PAYMENT_VENDOR_PIN` is set in Railway.
+
+> **Original status note (2026-07-27), retained for history — its central claim is false, see above.**
+> Per Selcom's email (Masanja Paul): `wallet-cashin` and `qwiksend` enabled on the same credentials
+> as collection. Payouts still needed the float PIN, three code phases, and one real end-to-end test.
+> No secret values here — creds live in Railway env only, referenced by NAME.
 
 ---
 
@@ -90,10 +126,15 @@ Confirm with Selcom / obtain:
 - Our **Railway egress IPs allow-listed for disbursement** too: `162.220.232.250`, `152.55.176.240`, `152.55.177.181`.
 - Any daily/transaction **disbursement limits** or float-account KYC/AML requirements.
 
-**CONFIRMED by Selcom (email 2026-07-27, Masanja Paul): the SAME API credentials used for collection
-are used for disbursement**, with both `wallet-cashin` and `qwiksend` enabled. So no separate creds —
-set **only `PAYMENT_VENDOR_PIN`**. (`selcomDisburseEnv()` + the `PAYMENT_DISBURSE_*` fallback rows
-below stay in for robustness but will be unused.)
+**Partly confirmed.** The SAME API credentials do serve disbursement — that part held up: once Selcom
+enabled `wallet-cashin` on 2026-07-29 it authenticated on the collection key/secret/vendor with no
+separate credentials, and only `PAYMENT_VENDOR_PIN` had to be added. (`selcomDisburseEnv()` + the
+`PAYMENT_DISBURSE_*` fallback rows below stay in for robustness but are unused.)
+
+⛔ **But "both `wallet-cashin` and `qwiksend` are enabled" was NOT true when it was written** — see
+the correction at the top of this file. `wallet-cashin` returned `4035 "API endpoint not enabled for
+the vendor"` for two more days, and `selcompesa`/`hudumacashin` still do. **Per-endpoint provisioning
+is a fact to be measured, not inherited from an email**: `scripts/selcom-probe.mjs`.
 
 > ### 🔧 Implementation progress (2026-07-27)
 > Verified against production env (read-only): all four deposit creds + `SELCOM_WEBHOOK_SECRET` +

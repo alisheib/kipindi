@@ -28,7 +28,7 @@ import { audit } from "./audit";
 import { randomId } from "./crypto";
 import { getPaymentProvider, getDemoAsyncEnabled, type PaymentProviderId } from "./payment-control";
 import { isLiveMoneyMode } from "./runtime-mode";
-import { selcomEnv, selcomDisburseEnv, selcomDeposit, selcomCardCheckout, selcomWithdraw, selcomVerifyOrder, selcomVerifyCashin, selcomCashinNameLookup, selcomFloatBalance, mnoToSelcomCashin, type SelcomBilling } from "./selcom";
+import { selcomEnv, selcomDisburseEnv, selcomDeposit, selcomCardCheckout, selcomPayout, selcomVerifyOrder, selcomVerifyPayout, selcomCashinNameLookup, selcomFloatBalance, selcomProbeRails, mnoToSelcomCashin, railOf, type SelcomBilling, type SelcomEnv, type PayoutRail, type RailProbe } from "./selcom";
 
 export type PaymentProvider = "MPESA" | "TIGO_PESA" | "AIRTEL_MONEY" | "HALO_PESA" | "MIXX" | "TTCL_PESA" | "CARD" | "BANK_TRANSFER" | "INTERNAL";
 
@@ -68,7 +68,21 @@ export type DepositResult =
  * Log-safe by construction (see describeSelcom): no credentials, payee masked.
  */
 export type WithdrawResult =
-  | { ok: true; providerRef: string; status: "CONFIRMED" | "PENDING" | "AML_REVIEW"; correlationId: string; detail?: string }
+  | {
+      ok: true;
+      providerRef: string;
+      status: "CONFIRMED" | "PENDING" | "AML_REVIEW";
+      correlationId: string;
+      detail?: string;
+      /**
+       * WHICH rail actually carried this payout. The caller MUST persist it on the
+       * Transaction: every rail's status endpoint only knows its own transids, so a
+       * re-query sent to the wrong one reads as FAILED and refunds a player whose
+       * money already left. Absent on the mock adapter and on AML_REVIEW (nothing has
+       * been dispatched yet), where `railOf(null)` correctly resolves to WALLET_CASHIN.
+       */
+      rail?: PayoutRail;
+    }
   | { ok: false; reason: "INSUFFICIENT_BALANCE" | "PROVIDER_DOWN" | "ACCOUNT_NOT_VERIFIED" | "DAILY_LIMIT" | "FRAUD"; correlationId: string; detail?: string };
 
 /** What the wrapper hands an adapter — the caller's request plus the correlation
@@ -81,6 +95,9 @@ export type DispatchOpts = {
   correlationId: string;
   /** CARD only — the hosted-checkout context the mobile-money rail has no use for. */
   card?: CardCheckoutContext;
+  /** Payee's registered name, when we know it. Huduma prints it on the agent's
+   *  screen so the right person collects the cash; other rails ignore it. */
+  payeeName?: string;
 };
 
 /** Everything the Selcom hosted card checkout needs that the wallet layer must
@@ -136,7 +153,7 @@ export async function dispatchDeposit(opts: { provider: PaymentProvider; amount:
  *  `grossAmount` (defaults to `amount`) is the full withdrawal value the AML gate
  *  is evaluated against — evaluating on `net` would let a gross withdrawal just
  *  over the threshold slip past the mandatory second-officer review. */
-export async function dispatchWithdrawal(opts: { provider: PaymentProvider; amount: number; grossAmount?: number; msisdn?: string; userId: string; reviewed?: boolean }): Promise<WithdrawResult> {
+export async function dispatchWithdrawal(opts: { provider: PaymentProvider; amount: number; grossAmount?: number; msisdn?: string; userId: string; reviewed?: boolean; payeeName?: string }): Promise<LadderResult> {
   const correlationId = `wdr_${randomId(10)}`;
   const amlBasis = opts.grossAmount ?? opts.amount;
   audit({
@@ -303,7 +320,7 @@ const selcomAdapter: PaymentAdapter = {
     if (!r.ok && r.reason !== "AMBIGUOUS") return { ok: false, reason: r.reason, correlationId, detail: r.detail };
     return { ok: true, status: "PENDING", providerRef: correlationId, correlationId };
   },
-  async withdraw({ provider, amount, msisdn, correlationId }) {
+  async withdraw({ provider, amount, msisdn, correlationId, payeeName }) {
     const env = selcomDisburseEnv();
     // Each refusal now says WHICH precondition failed. All three used to collapse
     // into an indistinguishable PROVIDER_DOWN, so "payouts are down" could mean a
@@ -312,17 +329,137 @@ const selcomAdapter: PaymentAdapter = {
     if (!env) return { ok: false, reason: "PROVIDER_DOWN", correlationId, detail: "selcom disburse env not configured (PAYMENT_API_URL/KEY/SECRET/VENDOR_ID)" };
     if (!env.pin) return { ok: false, reason: "PROVIDER_DOWN", correlationId, detail: "float PIN not set (PAYMENT_VENDOR_PIN) — wallet-cashin requires it" };
     if (!msisdn) return { ok: false, reason: "ACCOUNT_NOT_VERIFIED", correlationId, detail: "no payee msisdn on the account" };
-    const utilityCode = mnoToSelcomCashin(provider);
-    if (!utilityCode) return { ok: false, reason: "PROVIDER_DOWN", correlationId, detail: `no wallet-cashin utility code for provider ${provider}` };
-    const r = await selcomWithdraw(env, { transid: correlationId, amount, msisdn, utilityCode });
-    // A payout is reversed ONLY on a DEFINITIVE Selcom rejection (reason FAILED —
-    // the disbursement did not happen). AMBIGUOUS (timeout/network/HTTP error) may
-    // be in flight → return PENDING so the hold is KEPT and the walletcashin/query
-    // re-query (webhook/reconcile) confirms or reverses it. Never blind-reverse.
-    if (!r.ok && r.reason === "FAILED") return { ok: false, reason: "PROVIDER_DOWN", correlationId, detail: r.detail };
-    return { ok: true, status: "PENDING", providerRef: correlationId, correlationId, detail: r.detail };
+    return runPayoutLadder(env, { provider, amount, msisdn, correlationId, payeeName });
   },
 };
+
+// ── THE PAYOUT FALLBACK LADDER ──────────────────────────────────────────────────
+/**
+ * Rails tried automatically, in order, when a payout is refused.
+ *
+ * 🔴 WHY THIS ORDER, AND WHY HUDUMA IS NOT IN IT.
+ *
+ * Both rails here deliver to the SAME place the player asked for — a mobile wallet on
+ * their own number — so switching between them is invisible and harmless.
+ * `HUDUMA_AGENT` is deliberately excluded: it does not send money to a phone at all,
+ * it parks cash at a Selcom agent that the player has to physically travel to and
+ * collect with `*150*50#`. Silently converting "money in my M-Pesa" into "go find an
+ * agent" is not a fallback, it is a different product — and a player sitting waiting
+ * for an M-Pesa SMS that will never arrive is worse off than one who simply gets their
+ * balance back and retries. Huduma is fully implemented and probe-checked so an
+ * operator can dispatch a stuck payout through it deliberately; it just never happens
+ * behind the player's back. Add it here only alongside a consent step.
+ *
+ * WALLET_CASHIN leads despite riding TIPS because it is the only rail proven against
+ * the live gateway, and the one whose destination the player actually chose.
+ */
+export const PAYOUT_LADDER: readonly PayoutRail[] = ["WALLET_CASHIN", "SELCOM_PESA"] as const;
+
+/** One rung of the ladder, for the audit trail. */
+export type RailAttempt = { rail: PayoutRail; transid: string; outcome: "ACCEPTED" | "FAILED" | "AMBIGUOUS" | "SKIPPED"; detail: string };
+
+export type LadderResult = WithdrawResult & { attempts?: RailAttempt[] };
+
+/**
+ * Walk the ladder. **The money-safety rule is the whole point of this function:**
+ *
+ *   ACCEPTED (incl. 999/111/927) → STOP. The payout may be in flight; keep the hold.
+ *   AMBIGUOUS (timeout, network, any non-401/403 HTTP error) → **STOP.** We do not
+ *       know whether Selcom took the request. Trying the next rail here is precisely
+ *       how you pay a player twice. Keep the hold and let the per-rail re-query settle it.
+ *   FAILED (401/403, or 2xx with a hard-fail resultcode) → ADVANCE. "Refused at the
+ *       door" is the only state in which nothing can be in flight, which is what makes
+ *       advancing safe at all.
+ *   every rail exhausted → PROVIDER_DOWN, and the caller reverses the hold cleanly.
+ *
+ * Each attempt gets its OWN `transid`. Selcom treats `transid` as the idempotency key,
+ * so reusing one across two endpoints invites a collision on the one identifier we use
+ * to ask "did this pay?". `providerRef` ends up as the transid of the rung we stopped
+ * on — the only one that can still be in flight.
+ */
+async function runPayoutLadder(
+  env: NonNullable<ReturnType<typeof selcomDisburseEnv>>,
+  opts: { provider: PaymentProvider; amount: number; msisdn: string; correlationId: string; payeeName?: string },
+): Promise<LadderResult> {
+  const { provider, amount, msisdn, correlationId } = opts;
+  const attempts: RailAttempt[] = [];
+  const probes = getCachedRailProbes(env); // never blocks the money path — see below
+
+  for (const rail of PAYOUT_LADDER) {
+    // WALLET_CASHIN needs a per-MNO utility code; the others carry their own. A
+    // provider with no code (CARD/BANK_TRANSFER/INTERNAL) skips this rung rather
+    // than failing the whole payout — that is what having a ladder buys us.
+    const utilityCode = rail === "WALLET_CASHIN" ? mnoToSelcomCashin(provider) ?? undefined : undefined;
+    if (rail === "WALLET_CASHIN" && !utilityCode) {
+      attempts.push({ rail, transid: "-", outcome: "SKIPPED", detail: `no wallet-cashin utility code for provider ${provider}` });
+      continue;
+    }
+    // A rail Selcom has told us is not provisioned is skipped without a request.
+    // UNKNOWN is NOT skipped: a probe timeout must never disable a working rail —
+    // one wasted request is cheaper than a payout that never goes out.
+    if (probes?.[rail] === "NOT_ENABLED") {
+      attempts.push({ rail, transid: "-", outcome: "SKIPPED", detail: "probe: not enabled for this vendor (4035)" });
+      continue;
+    }
+
+    // Fresh transid per rung — see the doc comment. The first rung keeps the already
+    // minted+audited correlation id so single-rail payouts read exactly as before.
+    const transid = attempts.length === 0 ? correlationId : `wdr_${randomId(10)}`;
+    const r = await selcomPayout(env, rail, { transid, amount, msisdn, utilityCode, name: opts.payeeName });
+
+    if (r.ok) {
+      attempts.push({ rail, transid, outcome: "ACCEPTED", detail: r.detail });
+      return { ok: true, status: "PENDING", providerRef: transid, rail, correlationId, detail: r.detail, attempts };
+    }
+    if (r.reason === "AMBIGUOUS") {
+      // ⛔ STOP. Do not try the next rail. See the rule above.
+      attempts.push({ rail, transid, outcome: "AMBIGUOUS", detail: r.detail });
+      return { ok: true, status: "PENDING", providerRef: transid, rail, correlationId, detail: r.detail, attempts };
+    }
+    attempts.push({ rail, transid, outcome: "FAILED", detail: r.detail });
+    console.warn(`[payments] rail ${rail} refused (${transid}) — advancing. ${r.detail}`);
+  }
+
+  // Every rung refused definitively. Nothing is in flight, so the caller can safely
+  // return the player's money — which is a far better outcome than an eternal pending.
+  const summary = attempts.map((a) => `${a.rail}:${a.outcome}`).join(" → ") || "no eligible rail";
+  console.error(`[payments] payout ladder exhausted (${correlationId}) — ${summary}`);
+  return { ok: false, reason: "PROVIDER_DOWN", correlationId, detail: `all payout rails refused — ${summary}`, attempts };
+}
+
+// ── Rail capability cache ───────────────────────────────────────────────────────
+// Refreshed off the money path. `withdraw` reads whatever is cached and NEVER waits
+// for a probe: diagnostics must not add latency to, or fail, a payout. An empty cache
+// means "try everything", which is the safe direction to be wrong in.
+let railProbeCache: { at: number; verdicts: Record<PayoutRail, RailProbe["verdict"]> } | null = null;
+let railProbeInFlight = false;
+const RAIL_PROBE_TTL_MS = 10 * 60_000;
+
+function getCachedRailProbes(env: NonNullable<ReturnType<typeof selcomDisburseEnv>>): Record<PayoutRail, RailProbe["verdict"]> | null {
+  const stale = !railProbeCache || Date.now() - railProbeCache.at > RAIL_PROBE_TTL_MS;
+  if (stale && !railProbeInFlight) {
+    railProbeInFlight = true;
+    // Fire-and-forget: this payout uses the previous answer (or none); the next one
+    // gets the fresh one.
+    void refreshRailProbes(env).finally(() => { railProbeInFlight = false; });
+  }
+  return railProbeCache?.verdicts ?? null;
+}
+
+/** Probe every rail and cache the verdicts. Safe to call from admin on demand. */
+export async function refreshRailProbes(env?: SelcomEnv | null): Promise<RailProbe[]> {
+  const e = env ?? selcomDisburseEnv();
+  if (!e) return [];
+  const probes = await selcomProbeRails(e);
+  const verdicts = Object.fromEntries(probes.map((p) => [p.rail, p.verdict])) as Record<PayoutRail, RailProbe["verdict"]>;
+  railProbeCache = { at: Date.now(), verdicts };
+  return probes;
+}
+
+/** Last known rail verdicts without touching the network (null = never probed). */
+export function lastRailProbes(): { at: number; verdicts: Record<PayoutRail, RailProbe["verdict"]> } | null {
+  return railProbeCache;
+}
 
 // ── AUTHORITATIVE STATUS RE-QUERY (for the reconcile sweep) ────────────────────
 // Lets `wallet-service.reconcileStalePayments` resolve a stuck PROCESSING txn from
@@ -349,11 +486,14 @@ export async function verifyDepositStatus(providerRef: string): Promise<{ status
  * `detail` exists so a HUMAN can still tell them apart: on 2026-07-29 a stalled
  * payout and a gateway refusing our IP were indistinguishable for an hour.
  */
-export async function verifyWithdrawalStatus(providerRef: string): Promise<{ status: VerifyStatus; detail?: string }> {
+export async function verifyWithdrawalStatus(providerRef: string, payoutRail?: string | null): Promise<{ status: VerifyStatus; detail?: string }> {
   if ((await getPaymentProvider()) !== "selcom") return { status: "UNSUPPORTED", detail: "active provider is not selcom" };
   const env = selcomDisburseEnv();
   if (!env) return { status: "UNSUPPORTED", detail: "selcom disburse env not configured" };
-  const r = await selcomVerifyCashin(env, providerRef);
+  // 🔴 Ask the rail that actually carried the money. `railOf` defaults a missing rail
+  // to WALLET_CASHIN, which is true for every payout written before rails existed —
+  // asking the wrong endpoint here is a double payment, not a cosmetic error.
+  const r = await selcomVerifyPayout(env, railOf(payoutRail), providerRef);
   if (r.status === "CONFIRMED") return { status: "CONFIRMED", detail: r.detail };
   if (r.status === "FAILED") return { status: "FAILED", detail: r.detail };
   return { status: "PENDING", detail: r.detail };

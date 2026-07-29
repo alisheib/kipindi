@@ -14,7 +14,8 @@ import { audit } from "./audit";
 import { sendEmailToUser, depositConfirmedHtml, depositPendingHtml, depositFailedHtml, depositReversedHtml, withdrawalSentHtml, withdrawalUnderReviewHtml, amlRejectRefundHtml } from "./email";
 import { db, type StoredTxn } from "./store";
 import { randomId } from "./crypto";
-import { dispatchDeposit, dispatchWithdrawal, verifyDepositStatus, verifyWithdrawalStatus, type CardCheckoutContext, type PaymentProvider } from "./payments";
+import { dispatchDeposit, dispatchWithdrawal, verifyDepositStatus, verifyWithdrawalStatus, type CardCheckoutContext, type PaymentProvider, type LadderResult } from "./payments";
+import { payoutRailLabel, payoutRailNote } from "./selcom";
 import { isPaymentPaused } from "./payment-ops";
 import { isLiveMoneyMode } from "./runtime-mode";
 import { isMaintenanceMode, maintenanceMessage } from "./platform-config";
@@ -551,7 +552,7 @@ async function settleWithdrawalConfirmed(txnId: string): Promise<boolean> {
  * large (≥ TZS 1M) two-officer-approved withdrawal gets the same confirmation as
  * an ordinary one — previously the AML approve path released the funds silently.
  */
-export function notifyWithdrawalSent(txn: { id: string; userId: string; amount: number; fee: number; provider: string | null; msisdn?: string | null; providerRef?: string | null }): void {
+export function notifyWithdrawalSent(txn: { id: string; userId: string; amount: number; fee: number; provider: string | null; msisdn?: string | null; providerRef?: string | null; payoutRail?: string | null }): void {
   const gross = Math.abs(txn.amount);
   // Net of the 1% withdrawal fee — the only deduction. There is no withholding tax.
   const net = gross - (txn.fee ?? 0);
@@ -560,7 +561,18 @@ export function notifyWithdrawalSent(txn: { id: string; userId: string; amount: 
     to: email,
     subject: `Withdrawal sent · ${formatTzs(net)}`,
     // The player's MNO keys off the gateway reference; print both like deposits do.
-    html: withdrawalSentHtml({ amount: net, destination: friendlyProvider(txn.provider), destinationPhone: txn.msisdn ?? null, reference: txn.id, gatewayRef: txn.providerRef ?? null }),
+    // The rail is printed only when it is NOT the obvious one, and it brings its own
+    // instructions with it — a Huduma payout must never be described as "arriving on
+    // your phone", because it never will: the cash is at an agent.
+    html: withdrawalSentHtml({
+      amount: net,
+      destination: friendlyProvider(txn.provider),
+      destinationPhone: txn.msisdn ?? null,
+      reference: txn.id,
+      gatewayRef: txn.providerRef ?? null,
+      railLabel: payoutRailLabel(txn.payoutRail),
+      railNote: payoutRailNote(txn.payoutRail),
+    }),
     tag: "withdrawal",
   })).catch(() => {});
 }
@@ -586,6 +598,35 @@ export function notifyWithdrawalSent(txn: { id: string; userId: string; amount: 
  *  - AMBIGUOUS (maybe-in-flight) comes back as PENDING → the txn stays PROCESSING and is
  *    resolved by the signed re-query; it is never blind-reversed (that would double-pay).
  */
+/**
+ * Persist the payout ladder's attempt trail — one audit row per rail that was tried
+ * or deliberately skipped.
+ *
+ * 🔴 WHY AN AUDIT ROW AND NOT `providerStatus`. `providerStatus` holds ONE line and is
+ * overwritten by every status re-query, so by the time an operator looks at a stuck
+ * payout the dispatch story is long gone. On 2026-07-29 that is exactly what happened:
+ * the row said "still pending" and nothing anywhere recorded that Selcom had refused
+ * the product outright. With a ladder there is more to lose — "we paid you on Selcom
+ * Pesa because mobile money was refused" is a sentence the platform must be able to
+ * prove months later, to the player and to a regulator.
+ *
+ * Fire-and-forget by design: an audit write must never fail or delay a money movement.
+ * Each detail is already log-safe (no credentials, payee masked, truncated).
+ */
+function recordRailAttempts(txnId: string, userId: string, result: LadderResult): void {
+  if (!result.attempts?.length) return;
+  for (const a of result.attempts) {
+    audit({
+      category: "WALLET",
+      action: "withdraw.rail_attempt",
+      actorId: userId,
+      targetType: "Transaction",
+      targetId: txnId,
+      payload: { rail: a.rail, transid: a.transid, outcome: a.outcome, detail: a.detail.slice(0, 500) },
+    });
+  }
+}
+
 export async function dispatchApprovedWithdrawal(
   txnId: string,
 ): Promise<{ ok: true; status: "PROCESSING" | "CONFIRMED" } | { ok: false; error: string }> {
@@ -631,9 +672,20 @@ export async function dispatchApprovedWithdrawal(
     return { ok: false, error: "The payment provider did not accept the payout. It stays under review — retry once the rail is available, or return the funds." };
   }
 
-  // Record the REAL provider reference so the webhook + reconcile can correlate/settle it.
-  await db.txn.update(txnId, { providerRef: result.providerRef });
-  audit({ category: "COMPLIANCE", action: "withdraw.approved_dispatched", actorId: null, targetType: "Transaction", targetId: txnId, payload: { providerRef: result.providerRef, gross, net, status: result.status } });
+  // Record the REAL provider reference + the rail so the webhook + reconcile can
+  // correlate/settle it against the endpoint that actually holds it.
+  //
+  // `providerStatus` is persisted here too. It was not before: an approve-dispatch
+  // wrote only the ref, so a payout that went out through compliance review carried
+  // no record of what Selcom said — the exact blind spot the 2026-07-29 incident was
+  // made of, reproduced on the one path a human had already touched.
+  await db.txn.update(txnId, {
+    providerRef: result.providerRef,
+    ...(result.rail ? { payoutRail: result.rail } : {}),
+    ...(result.detail ? { providerStatus: result.detail.slice(0, 500) } : {}),
+  });
+  recordRailAttempts(txnId, claimed.userId, result);
+  audit({ category: "COMPLIANCE", action: "withdraw.approved_dispatched", actorId: null, targetType: "Transaction", targetId: txnId, payload: { providerRef: result.providerRef, rail: result.rail ?? null, gross, net, status: result.status } });
 
   if (result.status === "CONFIRMED") {
     // Synchronous provider (mock / demo) — settle now via the exactly-once path.
@@ -679,7 +731,7 @@ export async function settleWithdrawalFailed(txnId: string, reason: string): Pro
     sendEmailToUser(done.userId, (email) => ({
       to: email,
       subject: `Withdrawal returned · ${formatTzs(refunded)}`,
-      html: amlRejectRefundHtml({ amount: refunded, reason }),
+      html: amlRejectRefundHtml({ amount: refunded, reason, reference: done.id, gatewayRef: done.providerRef ?? null, railLabel: payoutRailLabel(done.payoutRail) }),
       tag: "withdrawal",
     })).catch(() => {});
   }
@@ -951,7 +1003,7 @@ export async function settleConfirmedWithdrawals(
   let confirmed = 0;
   for (const t of inFlight) {
     try {
-      const v = await verifyWithdrawalStatus(t.providerRef!);
+      const v = await verifyWithdrawalStatus(t.providerRef!, t.payoutRail);
       // Keep the LATEST provider answer on the row, every pass. A payout that stalls
       // for an hour should be able to tell an operator what it has been hearing that
       // whole time — the 2026-07-29 incident had no such trail, so "still in flight"
@@ -1034,7 +1086,10 @@ export async function reconcileStalePayments(olderThanMs = 30 * 60 * 1000): Prom
       }
     } else if (t.type === "WITHDRAWAL") {
       if (!ref) { leftPending++; audit({ category: "WALLET", action: "payments.reconcile_needs_review", actorId: null, targetType: "Transaction", targetId: t.id, payload: { reason: "stale withdrawal has no providerRef — not auto-reversed" } }); continue; }
-      const v = await verifyWithdrawalStatus(ref);
+      // 🔴 `t.payoutRail` is load-bearing here, not decoration. This is the ONLY path
+      // that can auto-reverse a payout, so querying the wrong rail's endpoint would
+      // read a stranger's envelope as FAILED and refund a player whose money is gone.
+      const v = await verifyWithdrawalStatus(ref, t.payoutRail);
       // Same trail as the fast lane: a payout stuck across many sweeps must record
       // what the gateway keeps telling us, not just that it is still stuck.
       if (v.detail && `${v.status}: ${v.detail}` !== t.providerStatus) {
@@ -1242,6 +1297,10 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
   // above — concurrent deposits/credits would be silently clobbered. Reversing
   // *this* withdrawal's hold delta is the only safe mutation.
   if (!result.ok) {
+    // Every rung that was tried, before the row is reversed and the evidence is
+    // gone. "All rails refused" is a one-line summary; the trail is what says which
+    // ones were skipped as unprovisioned and which actually answered.
+    recordRailAttempts(txnId, userId, result);
     // Record WHAT THE GATEWAY SAID before reversing, or the reason dies with the
     // request. `providerStatus` is written first so it survives even if the
     // settle path below throws.
@@ -1268,10 +1327,16 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
   // empty float, or rejected the utility code, because the envelope was discarded
   // at the adapter. "Accepted" is exactly the state that stalls, so the accepted
   // detail is the one most worth keeping.
+  // `payoutRail` rides alongside the ref because the two are only meaningful
+  // together: the ref identifies the payout, the rail identifies WHICH endpoint can
+  // be asked about it. Persist one without the other and every later re-query is a
+  // coin flip between the right answer and a refund on top of a completed payment.
   await db.txn.update(txnId, {
     providerRef: result.providerRef,
+    ...(result.rail ? { payoutRail: result.rail } : {}),
     ...(result.detail ? { providerStatus: result.detail.slice(0, 500) } : {}),
   });
+  recordRailAttempts(txnId, userId, result);
 
   if (result.status === "AML_REVIEW") {
     // Funds stay in `hold` pending manual review — no settle delta yet.
