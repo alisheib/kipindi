@@ -45,6 +45,11 @@ export type UpDownCardProps = {
   /** null ⇒ "—" + awaiting price. NEVER render 0 for an unknown price. */
   livePrice: number | null;
   openPrice: number | null;
+  /** Frozen winning boundaries (base ± margin, the PDF's Up/Down target prices). A side
+   *  must REACH its target to win: UP ≥ upTarget, DOWN ≤ downTarget; a smaller move voids
+   *  + refunds. Null on legacy rounds or before the open price is confirmed. */
+  upTarget?: number | null;
+  downTarget?: number | null;
   movePct: number | null;
   /** Absolute instant the round closes; the countdown derives from it client-side so
    *  every card agrees and no server timestamp goes stale in the HTML. */
@@ -131,7 +136,7 @@ export function AssetMark({ icon, ticker, size = 40 }: { icon: string; ticker: s
 export function UpDownCard(props: UpDownCardProps) {
   const {
     roundId, assetName, assetTicker, assetIcon, durationMinutes, decimals,
-    livePrice, openPrice, movePct, closesAtMs, volumeTzs, players, upPct,
+    livePrice, openPrice, upTarget, downTarget, movePct, closesAtMs, volumeTzs, players, upPct,
     estMultiplier, state, outcome, closePrice, voidReason,
     sourceName, sourceQuotedAt, className,
     marketId, isAuthed, minStake, maxStake, myUpStake = 0, myDownStake = 0,
@@ -261,6 +266,25 @@ export function UpDownCard(props: UpDownCardProps) {
           <span style={{ width: `${downPct}%`, background: "var(--no-500)" }} />
         </div>
       </div>
+
+      {/* ── Winning boundaries — the PDF's Up/Down target prices ─────────
+          The exact price a side must REACH to win: UP at or above upTarget, DOWN at or
+          below downTarget; a smaller move voids + refunds (the ± buffer around the base).
+          Frozen at open. Shown while the round can still be called — a settled/void card
+          shows its outcome instead, so this would only repeat stale boundaries. */}
+      {upTarget != null && downTarget != null && state !== "resolved" && state !== "void" && (
+        <div className="mt-2 rounded-lg px-2.5 py-1.5"
+             style={{ background: "var(--bg-inset)", border: "1px solid color-mix(in oklab, var(--border) 70%, transparent)" }}>
+          <div className="flex items-center justify-between font-mono text-[8px] font-semibold uppercase tracking-[0.12em] text-text-faint">
+            <span>{t.market.udWinTarget}</span>
+            {openPrice != null && <span className="tabular-nums">± {usd(upTarget - openPrice, decimals)}</span>}
+          </div>
+          <div className="mt-0.5 flex items-center justify-between gap-2 font-mono text-[12px] font-bold tabular-nums">
+            <span style={{ color: "var(--yes-300)" }}>{t.market.udUp} ≥ {usd(upTarget, decimals)}</span>
+            <span style={{ color: "var(--no-300)" }}>{t.market.udDown} ≤ {usd(downTarget, decimals)}</span>
+          </div>
+        </div>
+      )}
 
       {/* ── The one action / status block. Exactly one renders. ────────── */}
       <div style={{ marginTop: "auto", paddingTop: 12 }}>

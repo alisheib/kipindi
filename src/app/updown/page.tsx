@@ -185,6 +185,8 @@ export default async function UpDownPage({
                 decimals={activeAsset!.decimals}
                 livePrice={activeAsset!.livePrice}
                 openPrice={r.openPrice}
+                upTarget={r.upTarget}
+                downTarget={r.downTarget}
                 movePct={
                   r.openPrice != null && activeAsset!.livePrice != null && r.openPrice !== 0
                     ? ((activeAsset!.livePrice - r.openPrice) / r.openPrice) * 100
