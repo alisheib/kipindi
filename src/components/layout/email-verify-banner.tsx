@@ -20,17 +20,46 @@
  * would let a player permanently hide the reason their deposit will be refused.
  * It stays slim, and it is `role="status"`/`aria-live="polite"` rather than an
  * alert — it is a standing condition, not an emergency.
+ *
+ * COLLAPSIBLE ONCE SEEN (POLISH-BACKLOG §1, 2026-07-29). The full bar carries a
+ * sentence of explanation plus an action, on EVERY page, forever — which is the
+ * right weight the first time and nagging by the tenth. It can now be collapsed
+ * to a single slim line that still names the limitation and still carries the
+ * fix. What it can never do is disappear: collapsed is a smaller statement of
+ * the same standing condition, not a dismissal, so the paragraph above still
+ * holds. The choice is remembered per-browser in localStorage — deliberately not
+ * on the account, because it is a display preference, not account state, and the
+ * DEPOSIT GATE it describes is enforced server-side either way. A player who
+ * clears storage simply sees the full bar again, which is the safe direction to
+ * fail in.
  */
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { NoticeBar, NoticeBarAction } from "@/components/ui/notice-bar";
 import { useT } from "@/lib/i18n";
 import { resendEmailVerificationAction } from "@/app/profile/actions";
 import { verifyErrorMessage } from "@/lib/verify-error";
 
+const COLLAPSE_KEY = "50pick:email-banner-collapsed";
+
 export function EmailVerifyBanner({ email }: { email: string | null }) {
   const { t } = useT();
   const [pending, startTransition] = useTransition();
   const [result, setResult] = useState<{ tone: "ok" | "err"; message: string } | null>(null);
+  // Start EXPANDED and read the stored preference after mount. Reading
+  // localStorage during render would desync server and client HTML; starting
+  // expanded also means a storage read that throws (private mode, blocked
+  // storage) fails toward showing MORE of the warning, not less.
+  const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => {
+    try { setCollapsed(window.localStorage.getItem(COLLAPSE_KEY) === "1"); } catch { /* storage blocked */ }
+  }, []);
+  const toggle = () => {
+    setCollapsed((c) => {
+      const next = !c;
+      try { window.localStorage.setItem(COLLAPSE_KEY, next ? "1" : "0"); } catch { /* storage blocked */ }
+      return next;
+    });
+  };
 
   function resend() {
     setResult(null);
@@ -72,7 +101,19 @@ export function EmailVerifyBanner({ email }: { email: string | null }) {
         )
       }
     >
-      {email ? t.wallet.verifyBannerText : t.wallet.verifyBannerNoEmail}
+      {/* Collapsed keeps the SHORT form of the same statement — never nothing.
+          The toggle is a real button so it is reachable by keyboard and reads
+          its state to assistive tech. */}
+      <button
+        type="button"
+        onClick={toggle}
+        aria-expanded={!collapsed}
+        className="text-left underline-offset-2 hover:underline"
+      >
+        {collapsed
+          ? (email ? t.wallet.verifyBannerShort : t.wallet.verifyBannerNoEmailShort)
+          : (email ? t.wallet.verifyBannerText : t.wallet.verifyBannerNoEmail)}
+      </button>
       {result && (
         <span className={`ml-2 font-semibold ${result.tone === "ok" ? "text-yes-300" : "text-no-300"}`}>
           {result.message}

@@ -19,7 +19,12 @@ import { formatTzs, cn } from "@/lib/utils";
 import { getServerT, type Dict } from "@/lib/i18n-server";
 import Link from "next/link";
 
-export const metadata = { title: "Your activity" };
+// Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
+// "Your activity", which a Swahili player saw in their browser tab and history.
+export async function generateMetadata() {
+  const { t } = await getServerT();
+  return { title: t.activity.title };
+}
 export const dynamic = "force-dynamic";
 
 const PERIODS: ActivityPeriod[] = ["week", "month", "all"];

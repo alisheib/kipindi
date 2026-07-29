@@ -42,10 +42,18 @@ const ROOT = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "
 const SRC = join(ROOT, "src");
 const CONFIG = join(ROOT, "tailwind.config.ts");
 
-/** Utility prefixes that resolve against the `colors` theme map. */
+/** Utility prefixes that resolve against the `colors` theme map.
+ *
+ *  ⚠️ `shadow` is deliberately NOT here (removed 2026-07-29). Tailwind resolves
+ *  `shadow-*` against the **boxShadow** map, not `colors` — so checking it here
+ *  asked the wrong question and got the wrong answer both ways: `shadow-overlay`
+ *  "passed" only because `overlay` happened to collide with a key in the `bg`
+ *  colour family, while `shadow-overlay-up` and `shadow-glow-selected` were
+ *  reported dead despite being correctly bridged in boxShadow. Section 5 below
+ *  checks them against the map Tailwind actually uses. */
 const COLOR_PREFIXES = [
   "text", "bg", "border", "ring", "fill", "stroke", "from", "via", "to",
-  "divide", "outline", "decoration", "placeholder", "accent", "caret", "shadow",
+  "divide", "outline", "decoration", "placeholder", "accent", "caret",
 ];
 
 /**
@@ -103,9 +111,16 @@ for (const m of colorsBody.matchAll(famRe)) {
   for (const k of body.matchAll(/(?:^|[\s,{])["']?([A-Za-z0-9][A-Za-z0-9_]*)["']?\s*:/g)) keys.add(k[1]);
   if (keys.size) families.set(name, keys);
 }
-// Flat single-token entries at the top of the map (e.g. `panel: "var(--panel)"`).
-for (const m of colorsBody.matchAll(/(^|\n)\s{6,10}([a-zA-Z][a-zA-Z0-9]*)\s*:\s*["']/g)) {
-  if (!families.has(m[2])) families.set(m[2], new Set(["DEFAULT"]));
+// Flat single-token entries at the TOP level of the map (e.g. `panel: "var(--panel)"`).
+// The indent must be exactly 8 — a family sits at 8, its keys at 10. The old
+// `\s{6,10}` also swallowed the keys, so `bg: { overlay: … }` silently registered
+// a phantom top-level family called `overlay` (and 37 more like it). That inflated
+// the reported family count to 58 and, worse, made a genuinely dead `bg-overlay`
+// resolve against the phantom instead of failing. Verified 2026-07-29: tightening
+// this surfaces zero new dead classes today — it closes a false-pass, it does not
+// paper over one.
+for (const m of colorsBody.matchAll(/\n {8}([a-zA-Z][a-zA-Z0-9]*)\s*:\s*["']/g)) {
+  if (!families.has(m[1])) families.set(m[1], new Set(["DEFAULT"]));
 }
 
 check(
@@ -170,5 +185,53 @@ for (const [fam, key] of [
   check(`${fam}.${key} is bridged`, !!families.get(fam)?.has(key));
 }
 
-log(`\n${fail === 0 ? "PASS" : "FAIL"} — ${tsxFiles.length} tsx files, ${families.size} colour families`);
+// ── 5. `shadow-*` resolves against the boxShadow map ─────────────────────────
+// Added 2026-07-29 with the B10 freeze. The elevation ladder is now a design
+// primitive with named rungs (card / modal / overlay / overlay-up / card-top),
+// and a mistyped rung is exactly as invisible as a mistyped colour was: Tailwind
+// emits nothing, tsc cannot see it, the build does not warn, and the element
+// silently renders flat. Same law (B8/law 14), different map.
+const shadowStart = cfgRaw.indexOf("boxShadow:");
+const shadowBody = shadowStart < 0 ? "" : cfgRaw.slice(shadowStart, cfgRaw.indexOf("}", shadowStart));
+const shadowKeys = new Set<string>();
+for (const m of shadowBody.matchAll(/(?:^|[\s,{])["']?([A-Za-z0-9][A-Za-z0-9-]*)["']?\s*:/g)) {
+  if (m[1] !== "boxShadow") shadowKeys.add(m[1]);
+}
+check(
+  "parsed the boxShadow map from tailwind.config.ts",
+  shadowKeys.size >= 5,
+  `only found ${shadowKeys.size} keys — the parser is broken, not the config`,
+);
+
+// Tailwind's own built-in shadow scale resolves without appearing in our map.
+const BUILTIN_SHADOWS = new Set(["sm", "md", "lg", "xl", "2xl", "inner", "none", "DEFAULT"]);
+const deadShadows = new Map<string, { files: Set<string>; count: number }>();
+// Skips `shadow-[…]` arbitrary values (a bracket follows the dash) — those are
+// judged by test:design-frozen, which is the guard that wants them gone.
+const shadowRe = /\bshadow-(?!\[)([a-zA-Z][a-zA-Z0-9-]*)(?=[\s"'`\]/]|$)/g;
+for (const file of tsxFiles) {
+  const src = decomment(readFileSync(file, "utf8"));
+  for (const m of src.matchAll(shadowRe)) {
+    const key = m[1];
+    if (BUILTIN_SHADOWS.has(key) || shadowKeys.has(key)) continue;
+    const rec = deadShadows.get(m[0]) ?? { files: new Set<string>(), count: 0 };
+    rec.files.add(relative(ROOT, file));
+    rec.count++;
+    deadShadows.set(m[0], rec);
+  }
+}
+check(
+  "every shadow-* class resolves to a key in the boxShadow map",
+  deadShadows.size === 0,
+  deadShadows.size ? `${deadShadows.size} dead shadow class(es)` : "",
+);
+for (const [cls, rec] of deadShadows) log(`    ${cls.padEnd(26)} ${String(rec.count).padStart(4)}x  ${[...rec.files].slice(0, 3).join(", ")}`);
+
+// The named rungs the B10 freeze depends on. If a future edit drops one, this
+// fails immediately rather than waiting for a call site to notice.
+for (const key of ["card", "modal", "overlay", "overlay-up", "card-top", "e1", "e5"]) {
+  check(`boxShadow.${key} is bridged`, shadowKeys.has(key));
+}
+
+log(`\n${fail === 0 ? "PASS" : "FAIL"} — ${tsxFiles.length} tsx files, ${families.size} colour families, ${shadowKeys.size} shadow rungs`);
 process.exit(fail ? 1 : 0);

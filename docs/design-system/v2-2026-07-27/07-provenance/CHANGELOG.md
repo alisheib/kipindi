@@ -1,5 +1,58 @@
 # Changelog (reconstructed)
 
+## 2026-07-29 (repo · foundation) — the design system is FROZEN (v2 final)
+New law **B9/B10** (`06-patterns-and-rules/MERGE-DISCIPLINE.md`, RULES 15/16): one design
+system; new design merges *into* it, never beside it; every visual primitive is decided once
+and components only consume. What this pass actually found and closed:
+
+- **Seven drop-shadows for one job.** The Modal, avatar-menu, notifications-panel,
+  needle-drawer, date-select, nav-more and the market-card popover each typed their own
+  floating-surface shadow — several as neutral `rgba(0,0,0,…)`, which on an indigo canvas reads
+  grey and dead. That is why they never quite matched. Now **`--shadow-modal`** (centred dialog,
+  owns the screen), **`--shadow-overlay`** (menus/popovers — deliberately shallower: attached to
+  a trigger, not a scrim) and **`--shadow-overlay-up`** (bottom-docked sheet; a downward cast
+  throws the shadow off-screen). Plus `--shadow-card-top` (the 1px lit edge, previously retyped
+  at ~8 sites) and `--glow-selected` (was two hues, two intensities, one meaning).
+- **`--shadow-card` / `--shadow-royal` were never bridged.** They existed as CSS vars from the
+  start, so `shadow-card` was a dead class (B8) and every consumer wrote
+  `shadow-[var(--shadow-card)]` to get it at all. Bridged.
+- **The TippingBar ignored its own tokens.** `--bar-track`, `--bar-track-border` and
+  `--bar-needle` had been in `globals.css` for this component since the beginning, and
+  `brand.tsx` used **none** of them — it re-typed the identical values inline, across 21 style
+  objects plus a `<style>` tag carrying two `@keyframes` (a stylesheet inside a component, which
+  law 15 rule 3 forbids by name). The tokens were the dead half of a split truth: editing them
+  changed nothing on screen. The bar is now a `.tipbar-*` family, and its motion joins the one
+  language — `--m-pivot` at `--t-stage`, replacing a hand-typed `cubic-bezier(.34,1.56,.64,1)`
+  at 540ms, i.e. a curve the kit had already named and a duration off its scale.
+- **The last bespoke player popup.** market-card's "how it works" was a raw `createPortal` with
+  its own scrim, shadow, rise animation and hand-computed position — and therefore no focus trap,
+  no focus return, and none of the Android scroll/zoom lock every other dialog gets. It now goes
+  through `Modal`. *Visible change: it presents as the standard centred dialog rather than a
+  card-anchored bubble.* Its trigger's two `onMouseEnter`/`onMouseLeave` handlers, which re-typed
+  four colours in JS to fake `:hover`, are now `.mcardp-info`.
+- **Semantic radii** `rounded-card/control/chip/modal` → `var(--r-*)`. ⚠️ The numeric scale
+  (`rounded-md` 8px) still disagrees with `--r-md` (12px); reconciling it would shift every corner
+  in the product, so Ali deferred it. Frozen as legacy — **do not renumber it.**
+- **Three dead recipes deleted** from `state-tokens.css`: `.is-interactive`, `.spark-draw`,
+  `.btn-spin` (+ `--spin-duration` and their reduced-motion overrides). POLISH-BACKLOG §1.3 asked
+  for an audit of these as suspected duplicates of `micro-patterns.css`; that file is long gone,
+  but the audit found something worse — **zero consumers anywhere**, and `.is-interactive` was a
+  *third* motion vocabulary beside `--m-*`/`--t-*`. Dead CSS that looks canonical is exactly what
+  gets copied by accident.
+
+**New guard: `npm run test:design-frozen`** (in `predeploy`). Fails on any new raw colour, inline
+`boxShadow`/`border`/`borderRadius`, arbitrary `shadow-[…]`/`rounded-[…]`, or hand-rolled
+`createPortal`, outside a **ratchet allowlist that may only shrink** (45 files / 244 lines as
+measured today; brand marks are exempt by B1, Satori OG routes cannot read CSS vars at all). It
+also fails on a *stale* exemption, so cleaning a file forces the list to tighten. Verified to fail
+on a reintroduced violation and pass on the fix.
+Why the existing gates could not see this class of bug: `test:tokens` guards token *definitions*,
+not components that ignore them; `test:bridge` guards that a *class* resolves, and an inline style
+has no class; `tsc` and `build` see a valid string either way.
+`test:bridge` also gained a real fix — it was resolving `shadow-*` against the **colour** map
+instead of `boxShadow`, so `shadow-overlay` passed only by colliding with a key in the `bg` family
+while correctly-bridged rungs were reported dead.
+
 ## 2026-07-28 (repo · foundation) — Phase 3.4: the motion layer is ADOPTED, not just present
 Phase 3.2 landed `motion.css` and imported it. It had **zero consumers** — 29 occurrences of
 `.m-*` in `src/`, every one of them inside the definition file. The stylesheet shipped to every

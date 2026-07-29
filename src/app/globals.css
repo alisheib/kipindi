@@ -235,14 +235,20 @@
   /* Per the new design kit: deep midnight indigo canvas, slightly elevated
      cards, sunken hover-down. The hue is 268 (royal indigo) and the canvas
      lightness drops to ~15% so cards stack with depth. */
-  --bg:            oklch(15% 0.130 268);   /* canvas — deep midnight indigo */
-  --bg-elevated:   oklch(22% 0.140 268);   /* elevated card */
+  /* DEPTH (Step 5, 2026-07-29). The brief was "cards sit above the canvas".
+     The obvious move — lighten --bg-elevated — is the WRONG one here:
+     --text-faint on --bg-elevated is the tightest pair in the whole ramp at
+     4.74 against a 4.5 floor, so lightening the card spends the accessibility
+     budget to buy separation. Deepening the CANVAS buys the same separation and
+     *improves* every ratio on it instead. Same delta, opposite risk. */
+  --bg:            oklch(13.5% 0.130 268); /* canvas — deep midnight indigo (was 15%) */
+  --bg-elevated:   oklch(22% 0.140 268);   /* elevated card — deliberately UNCHANGED */
   --bg-overlay:    oklch(11% 0.110 268);   /* sunken / hover-down */
   --bg-royal-soft: oklch(30% 0.165 268);   /* highlighted surface (modal, hero) */
   --bg-inset:      oklch(11% 0.110 268);   /* sunken input / toggle track */
   --bg-elevated2:  oklch(26% 0.150 268);   /* second-elevation card */
   --panel:         oklch(20% 0.130 268);   /* nav / sidebar chrome */
-  --border:        oklch(34% 0.130 268);
+  --border:        oklch(36% 0.130 268);   /* crisper edge (was 34%) — Step 5 depth */
   --border-strong: oklch(44% 0.150 268);
   --border-royal:  oklch(56% 0.170 268);
   --border-gold:   oklch(78% 0.13 80);
@@ -254,7 +260,15 @@
   --text:          oklch(98% 0.012 268);
   --text-muted:    oklch(86% 0.040 268);
   --text-subtle:   oklch(70% 0.080 268);
-  --text-faint:    oklch(60% 0.090 268);
+  /* 60% → 62% on 2026-07-29, and it is an ACCESSIBILITY fix, not a design tweak.
+     `test:contrast` had been mirroring the token values by hand and its copy of
+     --bg-elevated said L=0.19 while this file said 0.22. Against the real
+     background, faint ink measured 4.50 — under the 4.5 AA floor — on every
+     elevated card in the product, while the gate printed a comfortable 4.74.
+     The gate now parses this file, so the number it prints is the number that
+     ships. 62% restores the margin the project believed it already had
+     (4.88 / 5.33 / 5.07). Do not darken this without re-running the audit. */
+  --text-faint:    oklch(62% 0.090 268);
   --dial-neutral:  oklch(56% 0.030 268);
   --live-400:      oklch(64% 0.20 25);
   --gilt:          oklch(86% 0.13 82);
@@ -349,10 +363,49 @@
   --shadow-3: 0 4px 14px oklch(14% 0.08 268 / 0.50);
   --shadow-4: 0 8px 28px -8px oklch(14% 0.08 268 / 0.55);
   --shadow-5: 0 14px 44px -12px oklch(14% 0.08 268 / 0.62);
+  /* ---------- The FLOATING-SURFACE rungs (DESIGN_AUTHORITY B10) ----------
+     Added 2026-07-29. The ladder above covers surfaces that sit ON the page.
+     Anything that floats ABOVE it — a dialog, a menu, a drawer, a popover —
+     used to type its own drop-shadow, so the product shipped SEVEN of them:
+     the Modal's `0 30px 80px oklch(5% .05 264 / .65)`, and six more in
+     avatar-menu / notifications-panel / needle-drawer / date-select /
+     nav-more / the market-card popover, each a slightly different hand-typed
+     rgba or oklch. Same visual job, seven answers, none of them a token — so
+     "make the popups consistent" meant editing seven files. Now it is two.
+
+     --shadow-modal   the centred dialog: the deepest cast, plus the 1px top
+                      inner highlight that gives the panel its lit edge.
+     --shadow-overlay every other floating surface (menus, drawers, popovers,
+                      calendars). Shallower than a modal ON PURPOSE — it is
+                      attached to a trigger, not a scrim, so it must not claim
+                      the same depth as a dialog that owns the whole screen.
+
+     Both keep the hue-268 royal cast of the ladder above rather than the
+     neutral rgba() the six bespoke versions drifted into — a black shadow on
+     an indigo canvas reads grey/dead, which is why they never quite matched. */
+  --shadow-modal:   0 30px 80px oklch(5% 0.05 268 / 0.65), inset 0 1px 0 oklch(100% 0 0 / 0.06);
+  --shadow-overlay: 0 24px 56px -16px oklch(5% 0.05 268 / 0.62), inset 0 1px 0 oklch(100% 0 0 / 0.06);
+  /* Same rung, cast UPWARD — for a surface docked to the BOTTOM edge (the needle
+     drawer, a bottom sheet). A downward cast on a bottom-docked panel throws its
+     shadow off-screen and the panel reads as pasted onto the viewport. Direction
+     is the only difference; keep the depth identical so the two read as one system. */
+  --shadow-overlay-up: 0 -24px 56px -16px oklch(5% 0.05 268 / 0.62), inset 0 1px 0 oklch(100% 0 0 / 0.06);
+  /* The card top-highlight — the 1px lit edge that makes an elevated surface
+     read as lit from above rather than as a flat rectangle. It was retyped
+     inline at ~8 sites (globals.css:984, .badge--unlocked, the buttons, the
+     Modal); this is its one definition site. Compose it, never retype it:
+       box-shadow: var(--shadow-card-top), var(--shadow-4); */
+  --shadow-card-top: inset 0 1px 0 oklch(98% 0.01 268 / 0.08);
   --glow-gold:    0 0 24px -4px color-mix(in oklab, var(--gold-500) 60%, transparent);
   --glow-blue:    0 0 24px -4px color-mix(in oklab, var(--teal-400) 60%, transparent);
   --glow-win:     0 0 32px -4px color-mix(in oklab, var(--yes-400) 60%, transparent);
   --glow-jackpot: 0 0 60px -8px color-mix(in oklab, var(--gold-400) 70%, transparent);
+  /* The "this one is selected" brand halo — the calendar's chosen day, the active
+     pager button. Was typed three ways in two files (0 0 12px oklch(55% .20 264 /
+     .45) and 0 0 8px oklch(63% .18 262 / .15)), i.e. two different hues and two
+     different intensities for one meaning. One rung, mixed off --brand-500 so it
+     tracks the brand automatically instead of pinning a raw hue. */
+  --glow-selected: 0 0 12px -1px color-mix(in oklab, var(--brand-500) 45%, transparent);
 
   --g-brand:    linear-gradient(135deg, var(--teal-700), var(--teal-500));
   --g-gold:     linear-gradient(180deg, var(--gold-300), var(--gold-600));
@@ -378,11 +431,27 @@
   --hero-no-accent:    var(--no-300);
   --hero-tag-yes:      var(--yes-300);
 
-  /* TippingBar — kit royal track + gilt needle */
+  /* TippingBar — kit royal track + gilt needle.
+     ⚠️ 2026-07-29: this family existed from the start and `brand.tsx` did not use
+     ANY of it — the component re-typed `oklch(50% 0.20 268)`, `oklch(58% 0.17 268)`
+     and `oklch(86% 0.13 82)` inline, byte-for-byte the values below. The tokens
+     were the dead half of a split truth: editing them changed nothing on screen,
+     which is the most dangerous kind of drift because the system LOOKS canonical.
+     The fills/glows below were the missing half; the bar now consumes all of it. */
   --bar-track:            oklch(50% 0.20 268);
   --bar-track-border:     oklch(58% 0.17 268);
   --bar-needle:           var(--gilt);
-  --bar-needle-glow:      color-mix(in oklab, var(--gilt) 40%, transparent);
+  --bar-needle-glow:      color-mix(in oklab, var(--gilt) 55%, transparent);
+  --bar-fill-yes:         linear-gradient(90deg, oklch(50% 0.14 152) 0%, oklch(58% 0.16 152) 100%);
+  --bar-fill-no:          linear-gradient(270deg, oklch(52% 0.16 22) 0%, oklch(60% 0.18 22) 100%);
+  --bar-glow-yes:         0 0 18px oklch(58% 0.16 152 / 0.35);
+  --bar-glow-no:          0 0 18px oklch(60% 0.18 22 / 0.35);
+  /* The resolved shimmer + the hover-recast gilt sweep. */
+  --bar-shimmer:          linear-gradient(90deg, transparent 0%, oklch(75% 0.13 85 / 0.5) 50%, transparent 100%);
+  --bar-sweep:            linear-gradient(90deg, transparent 0%, oklch(78% 0.13 80 / 0) 20%, oklch(78% 0.13 80 / 0.90) 50%, oklch(78% 0.13 80 / 0) 80%, transparent 100%);
+  /* Cold-start (Step 2): the neutral "awaiting first bet" track. A dashed rail,
+     no split, no needle — an empty market is not a balanced contest. */
+  --bar-empty-track:      repeating-linear-gradient(90deg, var(--border-strong) 0 8px, transparent 8px 15px);
   --bar-label-yes:        oklch(94% 0.10 152);
   --bar-label-yes-strong: var(--yes-200);
   --bar-label-no:         oklch(94% 0.08 22);
@@ -652,6 +721,22 @@ body {
 .chip-politics { background: var(--claret-soft); color: var(--claret-200); border-color: var(--claret-edge); }
 .chip-signal   { background: oklch(74% 0.11 195 / 0.20); color: var(--aqua-300); border-color: oklch(78% 0.10 195 / 0.5); }
 .chip-hot-rose { height: 23px; padding: 0 9px; font-size: 11px; background: oklch(50% 0.19 25 / 0.22); color: var(--no-300); border-color: oklch(58% 0.2 25 / 0.5); }
+/* NEW market badge (cold-start, 2026-07-29). Brand blue: it is CHROME — "this
+   just opened" — not a betting semantic and NEVER gold. 01-foundations/colour.md
+   calls out a gold "NEW" chip by name as a law break, because gold must mean
+   money you have earned the instant it is seen (RULES law 3).
+   Sits at a lighter weight than .chip-pending above so NEW and SOON stay
+   distinguishable on the same board; they can never appear on the same CARD,
+   since a fresh market short-circuits to NEW before SOON is considered. */
+.chip-new {
+  height: 23px; padding: 0 9px; font-size: 11px;
+  color: var(--brand-300);
+  background: oklch(63% 0.18 262 / 0.16);
+  border-color: oklch(63% 0.18 262 / 0.40);
+}
+/* Signal chips carry the card's one loud word, so they run bolder than a plain
+   chip. Was `style={{ fontWeight: 700 }}` inline on the market card. */
+.chip-strong { font-weight: 700; }
 
 /* ---------- LiveDot + animations ---------- */
 /* Bright red-orange pulsing dot. Uses opacity animation so it works
@@ -784,6 +869,137 @@ body {
   background-size: 220% 100%;
   animation: gold-shimmer 1.6s ease-in-out infinite;
   pointer-events: none;
+}
+
+/* ── TippingBar — the signature split rail + gilt needle (DESIGN_AUTHORITY B10) ──
+   Every rule here used to be an inline `style={{…}}` object inside brand.tsx —
+   21 of them, including the whole colour recipe, both glows, the needle, the
+   shimmer, the sweep and a `<style>` tag carrying two @keyframes. The component
+   even re-typed the --bar-* token VALUES by hand instead of reading the tokens
+   that were sitting in globals.css for it (see the family's note there).
+
+   The bar's height is a prop, so it arrives as ONE inline custom property,
+   --tb-h, and every derived measurement (the pill radius, the needle overhang)
+   is computed from it in CSS. That is the line this file draws: a value the
+   caller chooses at runtime comes in as a variable; a value the DESIGN chooses
+   lives here. `width`, `left` and `rotate` stay inline because they are the
+   live data — the crowd's actual split — not design. */
+.tipbar-rail {
+  position: relative;
+  height: var(--tb-h);
+  border-radius: calc(var(--tb-h) / 2);
+  background: var(--bar-track);
+  box-shadow: inset 0 0 0 1px var(--bar-track-border);
+  overflow: visible;
+}
+/* The recast is a hover GESTURE, not a link — keep the arrow so the bar never
+   advertises itself as clickable. Scoped to the recast variant on purpose: on a
+   market card the bar sits inside a <Link> with recastOnHover={false}, and there
+   the pointer cursor is correct and must be inherited. */
+.tipbar-recast { cursor: default; }
+.tipbar-fill { position: absolute; top: 0; bottom: 0; }
+/* The animated side fills. `transition` is applied only when the bar is
+   animating (.tipbar-anim), so a static placement in a 20-card grid does no
+   compositing work at all. --m-pivot is the kit's needle-and-dials-ONLY
+   overshoot; the bar had hand-typed cubic-bezier(.34,1.56,.64,1) at 540ms,
+   a curve the kit had already named and a duration off its scale. */
+.tipbar-anim .tipbar-fill,
+.tipbar-anim .tipbar-needle {
+  transition: width var(--t-stage) var(--m-pivot), left var(--t-stage) var(--m-pivot), transform var(--t-stage) var(--m-pivot);
+}
+.tipbar-yes {
+  left: 0;
+  background: var(--bar-fill-yes);
+  box-shadow: var(--bar-glow-yes);
+  border-radius: calc(var(--tb-h) / 2) 0 0 calc(var(--tb-h) / 2);
+}
+.tipbar-no {
+  right: 0;
+  background: var(--bar-fill-no);
+  box-shadow: var(--bar-glow-no);
+  border-radius: 0 calc(var(--tb-h) / 2) calc(var(--tb-h) / 2) 0;
+}
+/* When one side owns the whole rail it needs BOTH ends rounded, or the bar reads
+   as "all track + a needle jammed on the edge". Keyed off the TARGET, never the
+   animated value: mid-recast both halves pass through 50/50, and border-radius
+   is not in the transition list, so deriving it from the animated value made the
+   corners snap in and out — the "edges appear and fade incorrectly" glitch. */
+.tipbar-fill[data-full] { border-radius: calc(var(--tb-h) / 2); }
+.tipbar-needle {
+  position: absolute;
+  top: -6px;
+  bottom: -6px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--bar-needle);
+  box-shadow: 0 0 12px var(--bar-needle-glow);
+  transform-origin: 50% 100%;
+}
+.tipbar-shimmer {
+  position: absolute;
+  inset: 0;
+  border-radius: calc(var(--tb-h) / 2);
+  overflow: hidden;
+  pointer-events: none;
+}
+.tipbar-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--bar-shimmer);
+  animation: tb-shimmer var(--t-max) var(--m-glide) 1;
+}
+.tipbar-sweep { position: absolute; inset: 0; border-radius: calc(var(--tb-h) / 2); overflow: hidden; pointer-events: none; }
+.tipbar-sweep::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--bar-sweep);
+  background-size: 35% 100%;
+  background-repeat: no-repeat;
+  background-position: -35% 0;
+  mix-blend-mode: screen;
+  animation: tb-sweep var(--t-stage) var(--m-settle) both;
+}
+/* Cold-start: a neutral dashed rail. No split, no needle, no labels — an empty
+   market has no crowd price, and a centred 50/50 would be a fabricated one (A-5). */
+.tipbar-empty {
+  height: var(--tb-h);
+  border-radius: calc(var(--tb-h) / 2);
+  background: var(--bar-empty-track);
+  box-shadow: inset 0 0 0 1px var(--border);
+  opacity: 0.55;
+}
+.tipbar-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+}
+.tipbar-labels .tb-yes { color: var(--bar-label-yes); }
+.tipbar-labels .tb-no  { color: var(--bar-label-no); }
+.tipbar-labels .tb-yes strong { color: var(--bar-label-yes-strong); font-variant-numeric: tabular-nums; }
+.tipbar-labels .tb-no  strong { color: var(--bar-label-no-strong);  font-variant-numeric: tabular-nums; }
+.tipbar-labels strong { font-weight: 500; }
+.tipbar-labels strong[data-lead] { font-weight: 700; }
+/* Was 9px italic — illegible on mobile. 10.5px + 500 + 0.10em reads cleanly
+   without overpowering the YES/NO percentages either side of it. */
+.tipbar-lean {
+  color: var(--bar-label-tipping);
+  font-style: italic;
+  text-transform: uppercase;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.10em;
+  opacity: 0.85;
+}
+@keyframes tb-shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+@keyframes tb-sweep {
+  0%   { background-position: -35% 0; opacity: 0; }
+  15%  { opacity: 0.9; }
+  100% { background-position: 135% 0; opacity: 0; }
 }
 
 /* ---------- Input ---------- */
@@ -1884,6 +2100,45 @@ html.kp-reduce-motion *::after {
   gap: 14px;
   grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
 }
+/* FEATURED (2026-07-29) — the top market of a board leads, instead of every card
+   competing at one weight. It spans two columns from `md` up, so on a wide board
+   the eye has somewhere to land first and a short board still reads composed
+   rather than as leftovers. It is a STATE OF THE CARD (a `featured` prop), never
+   a second card component — B9.
+   Deliberately restrained: one extra column, a slightly stronger edge, and the
+   royal wash the hero already uses. No new glow vocabulary, no size change to
+   the type — a "featured" card that restyles itself would be a second design. */
+.mcardp--featured {
+  border-color: var(--border-royal);
+  background:
+    radial-gradient(120% 140% at 0% 0%, var(--bg-royal-soft) 0%, transparent 55%),
+    var(--bg-elevated);
+}
+@media (min-width: 768px) {
+  .market-grid > .mcardp--featured { grid-column: span 2; }
+  /* The launch-day case: ONE market matches the window. Spanning 2 of 3 columns
+     would leave a visible hole to its right — the same "lonely card" problem one
+     column narrower. A sole card takes the whole row instead, so the band reads
+     as a deliberate lead rather than as a grid with a gap in it. */
+  .market-grid > .mcardp--featured:only-child { grid-column: 1 / -1; }
+}
+/* The board's section headings — Featured / New markets / Recently resolved.
+   One rule, so the three sections cannot drift apart. */
+.board-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.board-section-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
 /* v2 Dark Glass — staggered card entrance on page load. Each child gets a
    rising fade-in with staggered delay, capped at 8 items (45ms each) so large
    grids never feel sluggish. Cards end at opacity:1 + transform:none as the
@@ -1921,7 +2176,10 @@ html.kp-reduce-motion *::after {
    sparkline, trader crest-stack) fit authentically. Title-left / YES%-right
    head keeps it landscape; fixed title reserve keeps bars aligned across cards. */
 .mcardp { position: relative; display: flex; flex-direction: column; gap: 10px; padding: 14px 15px 13px; border-radius: var(--r-lg); background: var(--bg-elevated);
-  border: 1px solid var(--border); box-shadow: 0 1px 2px oklch(8% 0.07 264 / 0.35); overflow: hidden; isolation: isolate;
+  /* Step 5 depth: the SHARED card rungs, composed — the 1px lit top edge over
+     the standard card cast. Was a bespoke `0 1px 2px oklch(8% 0.07 264 / 0.35)`
+     typed here, a fourth elevation value one component wide (B10). */
+  border: 1px solid var(--border); box-shadow: var(--shadow-card-top), var(--shadow-card); overflow: hidden; isolation: isolate;
   height: 100%; /* fill the stretched grid cell so every card is the same height */
   transition: transform .2s ease-out, border-color .2s ease-out, box-shadow .2s ease-out; cursor: pointer; }
 @media (hover: hover) {
@@ -1943,7 +2201,9 @@ html.kp-reduce-motion *::after {
 .mcardp .chip .live-dot { width: 5px; height: 5px; }
 /* Category glyph — BARE neutral glyph (no box), identical to the /live dense
    card's category treatment so the cards read as one system. Never gold. */
-.mcardp-catico { display:inline-flex; align-items:center; justify-content:center; color: var(--text-subtle); flex-shrink:0; }
+/* margin-left was an inline `style={{ marginLeft: 2 }}` — a 2px nudge that
+   separates the glyph from whichever signal chip precedes it. Kept exactly. */
+.mcardp-catico { display:inline-flex; align-items:center; justify-content:center; color: var(--text-subtle); flex-shrink:0; margin-left: 2px; }
 .mcardp-catico svg { width: 13px; height: 13px; }
 .mcardp-cat { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-subtle); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .mcardp-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; flex: 1 1 auto; }
@@ -1974,8 +2234,18 @@ html.kp-reduce-motion *::after {
 @media (prefers-reduced-motion: reduce) {
   .mcardp-spark-line { animation:none; stroke-dasharray:none; stroke-dashoffset:0; }
 }
-.mcardp-actions { display:grid; grid-template-columns:1fr 1fr; gap: 8px; margin: 13px 0 11px; }
-.mcardp-actions .btn { height: 36px; font-size: 13px; font-weight: 600; min-width: 0; padding: 0 10px; letter-spacing: 0.04em; border-radius: var(--r-md); transition: transform .12s ease-out, box-shadow .16s ease-out, filter .12s; }
+/* margin 13/11 → 11/9 absorbs the 36→40px button bump below, so card height is
+   unchanged and the live vs resolved branches stay in parity. */
+.mcardp-actions { display:grid; grid-template-columns:1fr 1fr; gap: 8px; margin: 11px 0 9px; }
+/* Resolved/closed cards run one full-width pill in the SAME vertical rhythm as
+   the live YES/NO row, so card heights match across a mixed grid. */
+.mcardp-actions--single { grid-template-columns: 1fr; }
+/* 36 → 40px (POLISH-BACKLOG §1.4). These are the product's most-tapped money
+   controls and they sat BELOW the 40px tap floor law 9 sets — on a card, on a
+   phone, for the two buttons that place a bet. --tap-min is that floor's one
+   definition site, so this reads it rather than restating 40. The kit floor at
+   --h-control-* is deliberately NOT touched: 148 call sites including admin. */
+.mcardp-actions .btn { height: var(--tap-min); font-size: 13px; font-weight: 600; min-width: 0; padding: 0 10px; letter-spacing: 0.04em; border-radius: var(--r-md); transition: transform .12s ease-out, box-shadow .16s ease-out, filter .12s; }
 .mcardp-actions .btn:active:not(:disabled) { transform: translateY(1px) scale(0.96); }
 /* Stats row — single line (no wrap), time + info pinned right. Kept on one line
    so the footer height is identical on every card (a previous double margin-auto
@@ -1985,8 +2255,47 @@ html.kp-reduce-motion *::after {
 .mcardp-meta .dot { width:3px;height:3px;border-radius:50%;background:var(--border-strong); flex-shrink:0; }
 .mcardp-meta .live { color: var(--yes-300); display:inline-flex; align-items:center; gap:5px; }
 .mcardp-meta-right { margin-left:auto; display:inline-flex; align-items:center; flex-shrink:0; }
+/* The "how it works" trigger. Was 8 inline style props plus two onMouseEnter/
+   onMouseLeave handlers that re-typed four colours in JS to fake :hover — a hover
+   state living in an event handler instead of a stylesheet (B10). 28px visible +
+   8px padding on content-box = the 44px touch target (WCAG 2.5.5). */
+.mcardp-info {
+  position: relative; z-index: 2;
+  display: inline-flex; align-items: center; justify-content: center;
+  box-sizing: content-box; width: 28px; height: 28px; padding: 8px;
+  border-radius: var(--r-md);
+  color: var(--text-subtle);
+  background: var(--bg-overlay);
+  border: 1px solid var(--border);
+  transition: color var(--dur-micro) var(--ease-micro), border-color var(--dur-micro) var(--ease-micro), background-color var(--dur-micro) var(--ease-micro);
+}
+.mcardp-info[data-open] { color: var(--brand-300); background: var(--brand-soft); border-color: var(--brand-500); }
+@media (hover: hover) {
+  .mcardp-info:not([data-open]):hover { color: var(--text); border-color: var(--brand-400); }
+}
 /* Details link — its own constant 1-line row so it never shifts card height. */
-.mcardp-details { display:inline-flex; align-items:center; justify-content:flex-end; gap:4px; font-family: var(--font-display); font-weight:600; font-size:11.5px; text-decoration:none; }
+.mcardp-details { display:inline-flex; align-items:center; justify-content:flex-end; gap:4px; font-family: var(--font-display); font-weight:600; font-size:11.5px; text-decoration:none; color: var(--accent-400); }
+.mcardp-timeleft { display:inline-flex; align-items:center; gap:6px; }
+
+/* ── Cold-start (2026-07-29) ────────────────────────────────────────────────
+   A LIVE market nobody has bet on yet. The card must not assert a 50% split, a
+   centred needle or a TIPPING badge — all three read as "contested" on a market
+   with no crowd at all, and a board of them looks dead rather than new. It shows
+   emptiness as an INVITATION, and never invents a price (RULES law 5).
+   These are classes, not inline styles, precisely because the delivered bundle
+   shipped them inline and law 15 names that as the failure mode by example. */
+.mcardp-pct--empty { color: var(--text-faint); font-size: 22px; }
+.mcardp-nobets {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-align: center;
+  color: var(--text-faint);
+  margin-top: 6px;
+}
+/* The invitation. Brand blue = chrome, deliberately NOT gold: gold means money
+   you have earned (RULES law 3), and nobody has earned anything here yet. */
+.mcardp-befirst { color: var(--brand-300); }
 @media (hover: hover) {
   .mcardp-details:hover { text-decoration: underline; }
 }

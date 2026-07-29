@@ -267,8 +267,46 @@ dead class is invisible to a value audit.
 
 ---
 
+## B9 — One design system. New design merges in; it never sits beside.
+
+Added 2026-07-29. Every design change lands in the **canonical home** for its kind and
+nowhere else: a *value* in `globals.css` (bridged in `tailwind.config.ts`), a *utility class*
+naming a key that exists (B8), a *new state* as a **prop on the existing component**, and the
+*written spec* in the matching `02-components/<name>/spec.md` + `07-provenance/CHANGELOG.md` —
+in the same change. Search before you add; no new `.css` file, ever.
+
+**Full law, with reasons and failure modes:**
+`docs/design-system/v2-2026-07-27/06-patterns-and-rules/MERGE-DISCIPLINE.md` (also RULES.md law 15).
+
+Why it exists: the product has been bitten three times by *parallel* design — the dead
+`micro-patterns.css` shadow kit, the superseded teal `design_handoff` kit, and the 1,325
+utility classes that resolved to nothing (B8). Each was a **second place a design truth could
+live**. A truth in two places drifts, and on a money product drift means the board and the
+detail page can disagree about someone's stake — which already happened (B6).
+
+## B10 — The system is COMPLETE and FROZEN. Edges, shadows, popups — decided once.
+
+Added 2026-07-29. Every visual primitive is decided once, in the system, and components only
+*consume* it: edges (`--border`, `-strong`, `-royal`, `-gold`, `-control`), the elevation ladder
+(`--shadow-1..5`, `--shadow-card`, `--shadow-card-top`, `--shadow-modal`, `--shadow-overlay`),
+the radius scale, the popup primitives (`Modal` / `ConfirmModal` / `OperationResultModal` /
+`Toast` / `Tooltip`), and motion/focus (one definition site per token — B5).
+
+You change a look by editing its **token or spec in the system**, and every consumer updates at
+once. You do **not** reach into a component for a border, a shadow, or a popup again. If a
+component needs a look the system lacks, **the system gains the token + spec** — not the
+component a one-off.
+
+Guarded by `npm run test:design-frozen` (static, ratchet — the allowlist may only shrink),
+alongside `test:tokens` and `test:bridge`.
+
+**Full law:** `06-patterns-and-rules/MERGE-DISCIPLINE.md` (also RULES.md law 16).
+
+---
+
 ## Related
 
 - Palette rationale & history: `docs/design-master-brief.md`
+- Merge discipline / frozen system (B9, B10): `docs/design-system/v2-2026-07-27/06-patterns-and-rules/MERGE-DISCIPLINE.md`
 - Superseded snapshot (do not use): `50PICK/design_handoff_prediction_market_kit/`
 - Brand identity assets: `public/brand/` (generated from `src/components/brand.tsx`)

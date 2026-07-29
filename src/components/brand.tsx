@@ -188,6 +188,8 @@ export function TippingBar({
   resolved = false,
   className,
   recastOnHover = true,
+  empty = false,
+  emptyLabel = "No bets yet",
 }: {
   yesPct?: number;
   height?: number;
@@ -200,6 +202,16 @@ export function TippingBar({
    *  sweeps across, leading side bolds. Disable on order books, depth
    *  charts, and any list of > 10 bars in view. */
   recastOnHover?: boolean;
+  /** No activity yet — render a neutral dashed track (no split, no needle,
+   *  no labels). An empty market has no crowd price, so a centred 50/50 would
+   *  be a fabricated one (RULES law 5). A STATE OF THIS BAR, not a second
+   *  component — DESIGN_AUTHORITY B9. */
+  empty?: boolean;
+  /** Accessible name for the empty rail. Pass the caller's localised string —
+   *  this component is locale-agnostic, so the English default is a fallback
+   *  for callers that have no `t` in scope, never a shipped English label on a
+   *  Swahili screen. */
+  emptyLabel?: string;
 }) {
   const target = Math.max(0, Math.min(100, yesPct));
   const [animYes, setAnimYes] = React.useState(target);
@@ -240,42 +252,35 @@ export function TippingBar({
   const inner = Math.max(6, Math.min(94, yes));
   const tiltLean = (inner - 50) / 44;
   const tilt = tiltLean * 14;
-  // Kit recast uses `--ease-arrive` (cubic-bezier(.34, 1.56, .64, 1)) at
-  // 540ms for the overshoot. Static placements keep the original glide.
-  const ease = animate
-    ? "width 540ms cubic-bezier(.34, 1.56, .64, 1), transform 540ms cubic-bezier(.34, 1.56, .64, 1), left 540ms cubic-bezier(.34, 1.56, .64, 1)"
-    : "none";
-  const r = height / 2;
-  // When one side is fully empty, the surviving side covers the whole
-  // rail and needs both ends rounded — not just the inside corner — so
-  // the bar never renders as "all track + a needle on the edge".
-  //
-  // Critically, base this decision on the TARGET (the real value), not
-  // the animated `yes` / `no`. During the hover-recast both halves are
-  // briefly mid-animation (e.g. 50/50) and the radii would otherwise
-  // jump from full-pill to corner-only and back. Border-radius isn't in
-  // the transition list, so it snaps — causing the visible "edges
-  // appear and fade incorrectly" glitch Ali reported. Anchoring radii
-  // to TARGET keeps them stable across the entire recast.
-  const yesRadii = target === 100
-    ? { borderRadius: r }
-    : { borderTopLeftRadius: r, borderBottomLeftRadius: r };
-  const noRadii  = target === 0
-    ? { borderRadius: r }
-    : { borderTopRightRadius: r, borderBottomRightRadius: r };
+  // The full-pill decision (one side owns the whole rail) is keyed off the
+  // TARGET, never the animated value — see the .tipbar-fill[data-full] note in
+  // globals.css for why. The radii themselves now live in CSS.
+  const yesFull = target === 100 || undefined;
+  const noFull = target === 0 || undefined;
+  // The ONE inline custom property: height is a caller prop, and every derived
+  // measurement (pill radius, needle overhang) is computed from it in CSS.
+  const railVars = { "--tb-h": `${height}px` } as React.CSSProperties;
+
+  // Cold-start: an honest neutral rail. Placed AFTER every hook above so hook
+  // order is stable regardless of this branch (rules-of-hooks safe).
+  if (empty) {
+    return (
+      <div className={cn("w-full", className)} style={railVars}>
+        <div
+          className="tipbar-empty"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={emptyLabel}
+        />
+      </div>
+    );
+  }
 
   return (
-    <div className={cn("w-full", className)}>
+    <div className={cn("w-full", className)} style={railVars}>
       <div
-        style={{
-          position: "relative",
-          height,
-          background: "oklch(50% 0.20 268)",
-          borderRadius: r,
-          overflow: "visible",
-          boxShadow: "inset 0 0 0 1px oklch(58% 0.17 268)",
-          cursor: recastOnHover ? "default" : undefined,
-        }}
+        className={cn("tipbar-rail", animate && "tipbar-anim", recastOnHover && "tipbar-recast")}
         onMouseEnter={handleEnter}
         role="progressbar"
         aria-valuenow={target}
@@ -283,148 +288,31 @@ export function TippingBar({
         aria-valuemax={100}
         aria-label={`YES probability ${target}%`}
       >
-        <div
-          style={{
-            position: "absolute", top: 0, bottom: 0, left: 0,
-            width: `${yes}%`,
-            background: "linear-gradient(90deg, oklch(50% 0.14 152) 0%, oklch(58% 0.16 152) 100%)",
-            ...yesRadii,
-            transition: ease,
-            boxShadow: "0 0 18px oklch(58% 0.16 152 / 0.35)",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute", top: 0, bottom: 0, right: 0,
-            width: `${no}%`,
-            background: "linear-gradient(270deg, oklch(52% 0.16 22) 0%, oklch(60% 0.18 22) 100%)",
-            ...noRadii,
-            transition: ease,
-            boxShadow: "0 0 18px oklch(60% 0.18 22 / 0.35)",
-          }}
-        />
+        <div className="tipbar-fill tipbar-yes" data-full={yesFull} style={{ width: `${yes}%` }} />
+        <div className="tipbar-fill tipbar-no" data-full={noFull} style={{ width: `${no}%` }} />
         {/* Tipping needle — gilt champagne, sits on the boundary, tilts with
             lean. At extremes the position is clamped to the inner 6..94
             range so the needle never clips the rounded corner. */}
         <div
-          style={{
-            position: "absolute",
-            left: `calc(${inner}% - 1.5px)`,
-            top: -6,
-            bottom: -6,
-            width: 3,
-            background: "oklch(86% 0.13 82)",
-            borderRadius: 2,
-            transformOrigin: "50% 100%",
-            transform: `rotate(${tilt}deg)`,
-            transition: ease,
-            boxShadow: "0 0 12px oklch(86% 0.13 82 / 0.55)",
-          }}
+          className="tipbar-needle"
+          style={{ left: `calc(${inner}% - 1.5px)`, transform: `rotate(${tilt}deg)` }}
         />
-        {resolved && (
-          <div style={{ position: "absolute", inset: 0, borderRadius: height / 2, overflow: "hidden", pointerEvents: "none" }}>
-            <div
-              style={{
-                position: "absolute",
-                inset: 0,
-                background: "linear-gradient(90deg, transparent 0%, oklch(75% 0.13 85 / 0.5) 50%, transparent 100%)",
-                animation: "tb-shimmer 1.6s ease-out",
-              }}
-            />
-          </div>
-        )}
-        {recastOnHover && (
-          <div
-            key={sweepKey}
-            aria-hidden
-            style={{
-              position: "absolute",
-              inset: 0,
-              borderRadius: r,
-              overflow: "hidden",
-              pointerEvents: "none",
-              opacity: sweepKey === 0 ? 0 : undefined,
-            }}
-          >
-            {sweepKey > 0 && (
-              <div
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  background:
-                    "linear-gradient(90deg, transparent 0%, oklch(78% 0.13 80 / 0) 20%, oklch(78% 0.13 80 / 0.90) 50%, oklch(78% 0.13 80 / 0) 80%, transparent 100%)",
-                  backgroundSize: "35% 100%",
-                  backgroundRepeat: "no-repeat",
-                  backgroundPosition: "-35% 0",
-                  animation: "tb-pbar-sweep 540ms cubic-bezier(.22, 1, .36, 1) both",
-                  mixBlendMode: "screen",
-                }}
-              />
-            )}
-          </div>
-        )}
+        {resolved && <div className="tipbar-shimmer" aria-hidden />}
+        {recastOnHover && sweepKey > 0 && <div key={sweepKey} className="tipbar-sweep" aria-hidden />}
       </div>
       {showLabels && (
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            marginTop: 8,
-            fontFamily: "JetBrains Mono, ui-monospace, monospace",
-            fontSize: 11,
-            letterSpacing: "0.05em",
-          }}
-        >
-          <span style={{ color: "var(--bar-label-yes)" }}>
-            YES{" "}
-            <strong
-              style={{
-                color: "var(--bar-label-yes-strong)",
-                fontWeight: target >= 50 ? 700 : 500,
-                fontVariantNumeric: "tabular-nums",
-              }}
-            >
-              {target}%
-            </strong>
+        <div className="tipbar-labels">
+          <span className="tb-yes">
+            YES <strong data-lead={target >= 50 || undefined}>{target}%</strong>
           </span>
-          <span
-            style={{
-              // Was 9 px italic — illegible on mobile. 10.5 px + 500
-              // weight + 0.10 em letter-spacing reads cleanly without
-              // overpowering the YES / NO percentages on either side.
-              color: "var(--bar-label-tipping)",
-              fontStyle: "italic",
-              textTransform: "uppercase",
-              fontSize: 10.5,
-              fontWeight: 500,
-              letterSpacing: "0.10em",
-              opacity: 0.85,
-            }}
-          >
+          <span className="tipbar-lean">
             {Math.abs(target - 50) < 3 ? "tipping" : target > 50 ? "leans yes" : "leans no"}
           </span>
-          <span style={{ color: "var(--bar-label-no)" }}>
-            <strong
-              style={{
-                color: "var(--bar-label-no-strong)",
-                fontWeight: target < 50 ? 700 : 500,
-                fontVariantNumeric: "tabular-nums",
-              }}
-            >
-              {100 - target}%
-            </strong>{" "}
-            NO
+          <span className="tb-no">
+            <strong data-lead={target < 50 || undefined}>{100 - target}%</strong> NO
           </span>
         </div>
       )}
-      <style>{`
-        @keyframes tb-shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
-        @keyframes tb-pbar-sweep {
-          0%   { background-position: -35% 0; opacity: 0; }
-          15%  { opacity: 0.9; }
-          100% { background-position: 135% 0; opacity: 0; }
-        }
-      `}</style>
     </div>
   );
 }

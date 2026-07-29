@@ -109,7 +109,7 @@ export function AvatarUploader({
         seed={seed}
         size={size}
         src={preview ?? undefined}
-        className="ring-2 ring-bg-elevated/80 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.6)]"
+        className="ring-2 ring-bg-elevated/80 shadow-e4"
       />
 
       <input

@@ -63,6 +63,29 @@ export function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: tz() });
 }
 
+/** "11 Jun, 14:30" — day + clock, NO year (POLISH-BACKLOG §1.2).
+ *
+ *  For the compact 11px lines that state a deadline: "selection closes …",
+ *  "results expected by …". Deliberately NOT `formatDateTime`, which adds the
+ *  year and overflows those lines.
+ *
+ *  The reason this exists at all: three player-facing surfaces were calling
+ *  `new Date(iso).toLocaleDateString("en-GB", {…})` INLINE with no `timeZone`,
+ *  so they rendered in whatever zone the server happens to run in — three hours
+ *  off EAT — while every helper in this file was already correct. A deadline
+ *  three hours wrong is a real problem on a product where betting closes at one.
+ *  Routing them through a named helper is what stops the next one drifting. */
+export function formatDayTime(iso: string): string {
+  return new Date(iso).toLocaleString("en-GB", {
+    day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: tz(),
+  });
+}
+
+/** "11 Jun" — day + month, no year, timezone-correct. */
+export function formatDayShort(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: tz() });
+}
+
 /** "14:30:05" — time-only for feeds / audit */
 export function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: tz() });

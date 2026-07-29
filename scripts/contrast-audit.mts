@@ -2,14 +2,44 @@
  * WCAG contrast audit (audit H10). Computes contrast ratios for the money-
  * critical token pairs directly from their OKLCH values (OKLCH → OKLab → linear
  * sRGB → WCAG relative luminance), so the launch gate "0 contrast failures" is
- * checkable without a browser. Values mirror src/app/globals.css — update both
- * together (a future step could parse the CSS; hard-coded here for a clear proof).
+ * checkable without a browser.
+ *
+ * ⚠️ 2026-07-29 — the token values are now PARSED FROM globals.css.
+ *
+ * They used to be hand-mirrored here, with a comment saying "update both
+ * together". They were not updated together, and could not have been reliably:
+ * a contrast gate whose inputs are typed by hand cannot see the change it exists
+ * to judge. Measured when this was found: the mirror said --bg-elevated was
+ * L=0.19 while globals.css said 0.22, and --panel 0.17 against a real 0.20. So
+ * every "PASS" on those surfaces was computed against a background the product
+ * does not have — and a token edit that genuinely broke AA would have gone on
+ * printing PASS, because nothing connected the two files.
+ *
+ * This is the same failure shape as B5 (a token silently redefined elsewhere)
+ * and B8 (a class that resolves to nothing): the check and the thing being
+ * checked lived in different places. Now there is one source.
  *
  * Run: npm run test:contrast
  */
+import { readFileSync } from "node:fs";
 
 type Oklch = { l: number; c: number; h: number }; // l 0..1, c, h degrees
 const ok = (l: number, c: number, h: number): Oklch => ({ l, c, h });
+
+const GLOBALS = new URL("../src/app/globals.css", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
+const CSS = readFileSync(GLOBALS, "utf8");
+
+/**
+ * Read `--name: oklch(L% C H)` out of globals.css. Percent L is normalised to
+ * 0..1. Throws rather than falling back: a silent default would recreate exactly
+ * the drift this parser was written to kill.
+ */
+function token(name: string): Oklch {
+  const re = new RegExp(`--${name}\\s*:\\s*oklch\\(\\s*([\\d.]+)%\\s+([\\d.]+)\\s+([\\d.]+)`);
+  const m = CSS.match(re);
+  if (!m) throw new Error(`contrast-audit: --${name} not found as a literal oklch() in globals.css`);
+  return ok(Number(m[1]) / 100, Number(m[2]), Number(m[3]));
+}
 
 // linear-sRGB channel from OKLCH (Björn Ottosson).
 function oklchToLinearSrgb({ l: L, c: C, h: H }: Oklch): [number, number, number] {
@@ -36,17 +66,17 @@ function contrast(fg: Oklch, bg: Oklch): number {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-// ── tokens (mirror globals.css) ──────────────────────────────────────────────
+// ── tokens — READ FROM globals.css, not mirrored ─────────────────────────────
 const T = {
   pearl50: ok(0.99, 0.006, 268),
-  bg: ok(0.15, 0.13, 268),
-  bgElevated: ok(0.19, 0.13, 268), // --bg-elevated (approx; deep royal)
+  bg: token("bg"),
+  bgElevated: token("bg-elevated"),
   btnNoBg: ok(0.56, 0.2, 25),
   btnYesBg: ok(0.53, 0.155, 150), // H10 fixed (was 0.57)
   danger500: ok(0.57, 0.22, 25), // H10 fixed (was 0.60)
-  border: ok(0.34, 0.13, 268),
-  borderStrong: ok(0.44, 0.15, 268),
-  borderControl: ok(0.52, 0.13, 268), // proposed --border-control
+  border: token("border"),
+  borderStrong: token("border-strong"),
+  borderControl: token("border-control"),
   text: ok(0.97, 0.01, 268), // --text (approx near-white)
   // ── The ink ramp (added 2026-07-28 with DESIGN_AUTHORITY B8) ──────────────
   // These three were defined in globals.css from the start but were never bridged
@@ -55,11 +85,11 @@ const T = {
   // Repairing the bridge makes them render for the first time, which is a real
   // darkening of the quiet end of the hierarchy. That has to be PROVEN against AA,
   // not assumed: RULES.md law 9 names faint body copy as a known failure mode.
-  textMuted: ok(0.86, 0.040, 268),  // --text-muted
-  textSubtle: ok(0.70, 0.080, 268), // --text-subtle
-  textFaint: ok(0.60, 0.090, 268),  // --text-faint
-  bgInset: ok(0.13, 0.12, 268),     // --bg-inset (sunken field wells)
-  panel: ok(0.17, 0.13, 268),       // --panel (sidebar / card surface)
+  textMuted: token("text-muted"),
+  textSubtle: token("text-subtle"),
+  textFaint: token("text-faint"),
+  bgInset: token("bg-inset"),
+  panel: token("panel"),
 };
 
 // `decorative: true` = WCAG 1.4.11 exempt (a divider that is NOT the sole means

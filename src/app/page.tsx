@@ -74,7 +74,15 @@ export default async function LandingPage() {
           alt=""
           aria-hidden="true"
           className="absolute inset-0 w-full h-full object-cover"
-          style={{ filter: "saturate(0.75) brightness(0.5)" }}
+          /* INTERIM, 2026-07-29 (design brief, HERO). The confetti/celebration
+             photo leans "casino win", against RULES law 7 (no manufactured
+             celebration, trustworthy first). The real fix is an authentic
+             editorial Tanzania album — Ali's call, and a commissioning decision
+             rather than a code one.
+             Until then the photo RECEDES so the typography carries the hero:
+             saturation 0.75 → 0.45 and brightness 0.5 → 0.30. No new asset, no
+             new vocabulary, and reversible by editing these two numbers. */
+          style={{ filter: "saturate(0.45) brightness(0.30)" }}
         />
 
         {/* Gradient overlay — left darker for text, right transparent for image */}

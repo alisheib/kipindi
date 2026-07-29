@@ -266,7 +266,7 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
           <button type="button" aria-label={t.common.close} onClick={() => setCalOpen(false)}
             className="fixed inset-0 bg-black/50 backdrop-blur-sm" />
           <div
-            className="relative w-[calc(100%-24px)] max-w-[320px] rounded-xl border border-border-strong bg-bg-elevated shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6)] overflow-hidden"
+            className="relative w-[calc(100%-24px)] max-w-[320px] rounded-modal border border-border-strong bg-bg-elevated shadow-overlay overflow-hidden"
             style={{ animation: "cd-rise 200ms var(--ease-arrive)", marginBottom: "env(safe-area-inset-bottom, 0px)" }}
           >
             <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
@@ -308,7 +308,7 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
                       className={cn(
                         "h-9 rounded-md font-mono text-[13px] tabular-nums transition-all",
                         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500",
-                        isSel ? "bg-brand-500 text-white font-bold shadow-[0_0_12px_oklch(55%_0.20_264_/_0.45)]"
+                        isSel ? "bg-brand-500 text-white font-bold shadow-glow-selected"
                           : cell.disabled ? "text-text-subtle/30 cursor-not-allowed"
                           : "text-text hover:bg-bg-overlay",
                         isToday && !isSel && "ring-1 ring-brand-500/50",
@@ -355,7 +355,7 @@ function YearGrid({ years, viewYear, selectedYear, onPick }: {
           className={cn(
             "h-8 rounded-md font-mono text-[13px] tabular-nums transition-all",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500",
-            y === viewYear ? "bg-brand-500 text-white font-bold shadow-[0_0_12px_oklch(55%_0.20_264_/_0.45)]"
+            y === viewYear ? "bg-brand-500 text-white font-bold shadow-glow-selected"
               : y === selectedYear ? "ring-1 ring-brand-500/50 text-brand-300"
               : "text-text hover:bg-bg-overlay",
           )}>

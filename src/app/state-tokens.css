@@ -5,13 +5,23 @@
   --state-focus-ring: 0 0 0 2px var(--bg-canvas, #0A0E33), 0 0 0 4px var(--brand-300, #6CA2FF);
   --state-active-scale: .98;
   --state-disabled-opacity: .45;
-  --spin-duration: .7s; /* kit-faithful — fixes gap-audit A-2 */
 }
-.is-interactive { transition: filter 120ms cubic-bezier(.2,.8,.2,1), transform 120ms cubic-bezier(.2,.8,.2,1); }
-.is-interactive:hover:not(:disabled)  { filter: var(--state-hover-filter); }
-.is-interactive:focus-visible         { outline: none; box-shadow: var(--state-focus-ring); }
-.is-interactive:active:not(:disabled) { transform: scale(var(--state-active-scale)); }
-.is-interactive:disabled              { opacity: var(--state-disabled-opacity); cursor: not-allowed; filter: none; }
+/* ⚠️ `.is-interactive` was DELETED 2026-07-29 (design freeze, B10).
+   POLISH-BACKLOG §1.3 asked for an audit of it as a suspected duplicate of the
+   micro-patterns.css copy. The duplicate is gone — that file was deleted in
+   d331cb2b — but the audit found something worse than a duplicate: the rule had
+   ZERO consumers. No .tsx, no .css, no spec referenced it, for the life of the
+   project. It was also a THIRD motion vocabulary, hand-typing
+   cubic-bezier(.2,.8,.2,1)/120ms beside the motion layer that B5 exists to make
+   singular.
+   Dead CSS that looks canonical is exactly what gets copied by accident — it is
+   how micro-patterns.css did its damage. The interaction-state VALUES above are
+   kept: they are referenced by the kit's spec Part D and cost nothing.
+   If a shared hover/active recipe is wanted again, it belongs in globals.css
+   beside .btn-x, composed from the motion-layer curves and tiers — not here.
+   (NB: the motion token families are deliberately NOT spelled out inside this
+   comment — writing them with a star-slash between the two names would close
+   the comment early. That trap has bitten this repo before.) */
 
 /* Countdown escalation — calm → urgent → critical (spec Part D.4) */
 .countdown         { color: var(--aqua-400, #36BABA); }
@@ -25,9 +35,10 @@
 .reward-burst__medal { animation: burst-medal-pop 280ms cubic-bezier(.2,1.4,.4,1) both; }
 .reward-burst__rays  { animation: burst-rays-in 420ms cubic-bezier(.2,.8,.2,1) .2s both; }
 
-/* Sparkline draw-in (spec A1) */
-.spark-draw { stroke-dasharray: 400; stroke-dashoffset: 400; animation: spark-in 480ms cubic-bezier(.4,0,.2,1) forwards; }
-@keyframes spark-in { to { stroke-dashoffset: 0 } }
+/* Sparkline draw-in (spec A1) — `.spark-draw` DELETED 2026-07-29 (B10): zero
+   consumers. The sparkline that actually ships is `.mcardp-spark-line` in
+   globals.css, which draws with the kit's `m-draw` keyframe. Two draw-in
+   recipes, one of them dead, is the split truth this freeze closes. */
 
 /* Leaderboard podium crown (spec A10) — settles with a 6° overshoot rotate */
 @keyframes podium-crown {
@@ -80,23 +91,22 @@
 }
 .dial-unlock-hint { animation: dial-unlock-nudge 0.5s ease-out 2; }
 
-/* Button inline spinner */
-.btn-spin { width: 14px; height: 14px; border-radius: 50%;
-  border: 2px solid color-mix(in oklab, currentColor 30%, transparent);
-  border-top-color: currentColor; animation: btn-spin var(--spin-duration) linear infinite; }
-@keyframes btn-spin { to { transform: rotate(360deg) } }
+/* Button inline spinner — `.btn-spin` DELETED 2026-07-29 (B10): zero consumers,
+   and its `--spin-duration` token went with it (that token had exactly one
+   reader, this rule). Buttons show pending state through their own `.btn`
+   rules in globals.css. */
 
 /* Every effect above has a static fallback */
 @media (prefers-reduced-motion: reduce) {
-  .is-interactive { transition: none }
   .countdown--urgent, .countdown--critical { animation: none }
   .reward-burst__medal, .reward-burst__rays { animation: none }
   .reward-burst__rays { opacity: .4 }
-  .spark-draw { animation: none; stroke-dasharray: none; stroke-dashoffset: 0 }
   .admin-bar-grow { animation: none }
   .podium-crown { animation: none }
   .closing-pill { animation: none } /* stays on the gold "urgent" end-state */
   .contest-fade { animation: none }
   .dial-unlock-hint { animation: none } /* the brand-styled button already stands out */
-  .btn-spin { animation-duration: 1.4s } /* keep meaning, halve intensity */
+  /* .is-interactive / .spark-draw / .btn-spin overrides removed with their rules
+     (2026-07-29). A reduced-motion override for a selector that no longer exists
+     is the same dead weight, one layer down. */
 }

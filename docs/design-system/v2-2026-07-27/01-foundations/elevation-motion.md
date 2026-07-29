@@ -1,10 +1,49 @@
 # Elevation, glass & motion
 
 ## Shadows (tokens, verbatim)
+
+**The ladder is FROZEN (DESIGN_AUTHORITY B10, 2026-07-29).** Every shadow in the
+product comes from a rung below. No component types its own `box-shadow`; guarded
+by `npm run test:design-frozen`.
+
+### Surfaces that sit ON the page
 - --shadow-card: 0 1px 2px oklch(6% 0.06 268 / 0.55), 0 10px 28px -10px oklch(4% 0.04 268 / 0.70) — default card
 - --shadow-royal: 0 14px 44px -14px oklch(4% 0.04 268 / 0.78) — framed page mocks, heavy panels
+- --shadow-card-top: inset 0 1px 0 oklch(98% 0.01 268 / 0.08) — the 1px lit top edge that makes an elevated surface read as lit from above. **Compose it, never retype it:** `box-shadow: var(--shadow-card-top), var(--shadow-4)`
 - Numbered scale --shadow-1…5 (see tokens.json) for legacy components
-- Glows: --glow-gold / --glow-blue / --glow-win / --glow-jackpot (color-mix recipes); button hover glows are per-variant box-shadows (see buttons spec)
+
+### Surfaces that FLOAT above the page (added 2026-07-29)
+Before this, seven surfaces each typed their own drop-shadow — the Modal, the
+avatar menu, the notifications panel, the needle drawer, the date picker, the
+nav-more menu and the market-card popover. Same visual job, seven answers, none
+of them a token, several of them neutral `rgba(0,0,0,…)` — which on an indigo
+canvas reads grey and dead, and is why they never quite matched.
+
+- --shadow-modal: 0 30px 80px oklch(5% 0.05 268 / 0.65), inset 0 1px 0 oklch(100% 0 0 / 0.06) — the centred dialog. Deepest cast; it owns the screen behind a scrim.
+- --shadow-overlay: 0 24px 56px -16px oklch(5% 0.05 268 / 0.62), + the same lit edge — menus, popovers, dropdowns, calendars. **Shallower than a modal on purpose:** it is attached to a trigger, not a scrim, so it must not claim a dialog's depth.
+- --shadow-overlay-up: the same rung cast UPWARD — for a surface docked to the bottom edge (the needle drawer). A downward cast there throws the shadow off-screen and the panel reads as pasted onto the viewport.
+
+Tailwind: `shadow-card` · `shadow-royal` · `shadow-modal` · `shadow-overlay` ·
+`shadow-overlay-up` · `shadow-card-top` · `shadow-e1…e5`.
+(`shadow-card`/`shadow-royal` had existed as CSS vars since the beginning but were
+never bridged, so the utilities were dead — a B8 trap; bridged 2026-07-29.)
+
+### Glows
+- --glow-gold / --glow-blue / --glow-win / --glow-jackpot (color-mix recipes)
+- --glow-selected: 0 0 12px -1px color-mix(in oklab, var(--brand-500) 45%, transparent) — "this one is selected" (calendar's chosen day, active pager button). Was typed two ways in two hues before 2026-07-29. Mixed off `--brand-500`, so it tracks the brand instead of pinning a raw hue.
+- Button hover glows are per-variant box-shadows (see buttons spec)
+
+## Radii — the semantic scale (added 2026-07-29)
+`rounded-card` (--r-lg) · `rounded-control` (--r-md) · `rounded-chip` (--r-pill) ·
+`rounded-modal` (--r-lg). These are the canonical radii for new design: they read
+at the call site and each resolves through the one definition site in globals.css.
+
+⚠️ **Known open gap, deliberately left open.** The numeric Tailwind scale
+(`rounded-xs…2xl` = 2/4/8/12/16/24px) does **not** match `--r-xs…--r-xl`
+(4/8/12/16/24px), so `rounded-md` renders 8px while `--r-md` is 12px. Bridging
+them would shift every corner in the product; Ali deferred it on 2026-07-29. The
+numeric scale is frozen as legacy — do not renumber it. See
+`docs/DESIGN-FINALIZATION-PROGRESS.md`.
 
 ## Glass
 .glass-panel (tokens.css) — the ledger/hero surface: translucent royal fill + blur + 1px border (exact recipe extracted verbatim in 02-components/stat-tiles/spec.md). Dialog scrims animate backdrop-filter blur(0→8px) via scrim-fade.
@@ -39,7 +78,8 @@
 | value-delta-fade / check-draw / check-pop / content-fade-in | value ticks, checkmarks, skeleton cross-fade | clamped |
 | badge-seal-rays / streak-tick / win-aura-breathe | badges & wins (breathe, never spin) | rays/halo animation:none at 0.4 opacity |
 | poll-flash | admin row ring after regen | clamped |
-| tb-shimmer (brand.jsx) | TippingBar resolved gold sweep, one-shot 1.6s | clamped |
+| tb-shimmer | TippingBar resolved gold sweep, one-shot --t-max. Moved out of a `<style>` tag inside brand.tsx into globals.css, 2026-07-29 | clamped |
+| tb-sweep | TippingBar hover-recast gilt sweep (was `tb-pbar-sweep`, also inline) | clamped |
 | ud-count-pulse (INVENTED 2026-07) | D1 final-30s digits opacity 1→0.55, 1s --ease-conduct | explicit animation:none |
 
 ## The two motion laws

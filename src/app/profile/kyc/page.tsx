@@ -17,7 +17,12 @@ import { RewardBurst } from "@/components/brand/reward-burst";
 import { SUPPORT_EMAIL } from "@/lib/support-config";
 import { getServerT, type Dict } from "@/lib/i18n-server";
 
-export const metadata = { title: "Verify identity" };
+// Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
+// "Verify identity", which a Swahili player saw in their browser tab and history.
+export async function generateMetadata() {
+  const { t } = await getServerT();
+  return { title: t.profile.verifyIdentity };
+}
 
 export default async function KycPage({ searchParams }: { searchParams?: Promise<{ welcome?: string; error?: string; nida?: string; submitted?: string; fullName?: string; dob?: string; email?: string; next?: string }> }) {
   const { t } = await getServerT();

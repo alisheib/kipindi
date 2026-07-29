@@ -20,7 +20,12 @@ import { FeedbackSettings } from "@/components/settings/feedback-settings";
 import { formatTzs } from "@/lib/utils";
 import { getServerT } from "@/lib/i18n-server";
 
-export const metadata = { title: "Responsible gambling" };
+// Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
+// "Responsible gambling", which a Swahili player saw in their browser tab and history.
+export async function generateMetadata() {
+  const { t } = await getServerT();
+  return { title: t.rg.playerProtection };
+}
 export const dynamic = "force-dynamic";
 
 export default async function ResponsibleGamblingPage({ searchParams }: { searchParams: Promise<{ error?: string; saved?: string }> }) {

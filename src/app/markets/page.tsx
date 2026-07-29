@@ -275,6 +275,37 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
 
   const resultCount = live.length + resolved.length;
 
+  // ── Board composition (2026-07-29) ───────────────────────────────────────
+  // The board defaults to when="today", so on a quiet day a 1280px screen could
+  // render ONE card beside a column of filters and an ocean of nothing —
+  // measured, not imagined: 40 markets live, 1 closing today.
+  //
+  // Two additions, both of which show REAL markets or nothing at all:
+  //
+  //  1. FEATURED — the first card of the live grid leads. Only when the grid is
+  //     genuinely short (<= 4) and we're not searching: on a full board every
+  //     card competing at one weight is correct, and a search result must stay
+  //     ranked by relevance, not by a treatment we chose.
+  //  2. NEW MARKETS — freshly-listed markets that the active time window
+  //     excludes. This is a SEPARATE, LABELLED section, never an injection into
+  //     the filtered grid: the grid keeps meaning exactly what the filter says.
+  //     Same `fresh` rule the card uses (volume 0 + predictors 0), so the board
+  //     and the card can never disagree about what "new" means — one rule, one
+  //     place. Suppressed while searching and when it would add nothing.
+  const shownIds = new Set(pagedLive.map((m) => m.id));
+  const featuredId = !searching && pagedLive.length > 0 && pagedLive.length <= 4 ? pagedLive[0].id : null;
+  const newMarkets = searching
+    ? []
+    : bettable
+        .filter((m) => !shownIds.has(m.id) && m.yesPool + m.noPool === 0 && m.predictorCount === 0)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        .slice(0, 6);
+  // One extra chart/comment lookup pass for the new-markets section, batched the
+  // same way as the main board (never map a per-card query across a list).
+  const newCharts = newMarkets.length
+    ? await getCardCharts(newMarkets.map((m) => m.id)).catch(() => new Map())
+    : new Map();
+
   // ── Sparse-board continuation nudge ──────────────────────────────────────
   // The board defaults to when="today"; on a quiet day that's a small, single
   // page while more markets settle further out. Rather than leave a fresh
@@ -344,6 +375,7 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
               move24h={cc.move24h}
               traders={traderMap.get(m.id)}
               comments={commentCounts.get(m.id) ?? 0}
+              featured={m.id === featuredId}
             />
           );
         })}
@@ -379,6 +411,47 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
             ))}
           </div>
         </div>
+      )}
+
+      {/* ── New markets ──
+          Freshly-listed markets the active time window leaves out. A SEPARATE,
+          LABELLED section — never an injection into the filtered grid above, so
+          that grid keeps meaning exactly what the filter says. Real markets or
+          this section does not render at all; there is no placeholder here. */}
+      {newMarkets.length > 0 && (
+        <section className="mt-10" aria-labelledby="new-markets-heading">
+          <div className="board-section-head">
+            <div>
+              <p className="board-section-eyebrow">{t.market.justListed}</p>
+              <h2 id="new-markets-heading" className="font-display text-[20px] font-semibold text-text">
+                {t.market.newMarkets}
+              </h2>
+            </div>
+            <a href="/markets?when=new" className="font-mono text-[11.5px] font-semibold text-brand-300 hover:text-text transition-colors whitespace-nowrap">
+              {t.market.seeAllNew}
+            </a>
+          </div>
+          <div className="market-grid">
+            {newMarkets.map((m) => (
+              <MarketCard
+                key={m.id}
+                id={m.id}
+                titleEn={m.titleEn}
+                titleSw={m.titleSw}
+                titleZh={m.titleZh}
+                category={m.category}
+                yesPct={impliedYesPct(m)}
+                volume={m.yesPool + m.noPool}
+                predictors={m.predictorCount}
+                timeLeft={isSelectionClosed(m) ? t.market.waitingForResults : timeLeftStr(m.resolutionAt)}
+                status="LIVE"
+                selectionClosed={isSelectionClosed(m)}
+                sourceUrl={m.sourceUrl}
+                spark={(newCharts.get(m.id) ?? { spark: [] }).spark}
+              />
+            ))}
+          </div>
+        </section>
       )}
 
       {resolved.length > 0 && (

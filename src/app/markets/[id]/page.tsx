@@ -26,7 +26,7 @@ import { ensureAffiliateAccount } from "@/lib/server/affiliate-service";
 import { listComments } from "@/lib/server/comments-store";
 import { CommentsThread } from "@/components/markets/comments-thread";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
-import { formatDateTime, formatTzsCompact, formatTzs, fill, pctNum } from "@/lib/utils";
+import { formatDateTime, formatDayTime, formatTzsCompact, formatTzs, fill, pctNum } from "@/lib/utils";
 import { appUrl } from "@/lib/app-url";
 import { getServerT } from "@/lib/i18n-server";
 import { pickLocalized } from "@/lib/localized";
@@ -194,6 +194,12 @@ export default async function MarketDetail({
   // so the page swaps it out for an "awaiting settlement" card.
   const closedByTime = isClosedByTime(m) && !isResolved;
   const selectionClosed = isSelectionClosed(m) && !isResolved;
+  // COLD-START — the same rule the board and the card use (volume 0 +
+  // predictors 0 on a live, still-open market), so the three surfaces can never
+  // disagree about whether a market has a crowd price. One rule, one meaning.
+  const freshMarket =
+    m.status === "LIVE" && !selectionClosed && !closedByTime && !isResolved &&
+    m.yesPool + m.noPool === 0 && m.predictorCount === 0;
 
   // ── C1a hero lifecycle state — open · closing · waiting · resolved ──
   // Server-computed (page is force-dynamic + RefreshPoller re-fetches every 15s,
@@ -331,18 +337,43 @@ export default async function MarketDetail({
           On mobile (flex-col): aside renders first (order-1) so the
           betting widget is above-the-fold, then content below (order-2).
           On desktop (lg:grid): left=content, right=sticky aside. ── */}
-      <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[1fr_360px] lg:items-start lg:gap-6">
+      {/* Desktop is an explicit 2-col x 2-row grid so the right column can carry a
+          SECOND block under the sticky bet widget (Step 4). The left column spans
+          both rows. Mobile is untouched: it stays a flex column and every child
+          keeps the order it had. */}
+      <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[1fr_360px] lg:grid-rows-[auto_auto] lg:items-start lg:gap-6">
 
         {/* ══ LEFT — market information & analysis ══
             order-2 on mobile (below the bet widget), order-1 on desktop (left col) */}
-        <section className="order-2 lg:order-1 min-w-0 space-y-5">
+        <section className="order-2 lg:order-1 lg:col-start-1 lg:row-start-1 lg:row-span-2 min-w-0 space-y-5">
 
-          {/* 1. Probability bar — current crowd signal */}
-          <TippingBar yesPct={yesPct} height={28} showLabels resolved={isResolved} />
+          {/* 1. Probability bar — current crowd signal, or an honest empty rail.
+              COLD-START (2026-07-29): with an empty pool `impliedYesPct()` returns
+              the DEFAULT 50, and this bar rendered it as a real, fully-coloured
+              50/50 split with a centred needle and the word "TIPPING" — on a
+              market with TZS 0 and zero predictors. Step 2 removed that lie from
+              the card; it was still here, on the page where a player is actually
+              about to stake. Same law (RULES 5), bigger surface. */}
+          <TippingBar
+            yesPct={yesPct}
+            height={28}
+            showLabels
+            resolved={isResolved}
+            empty={freshMarket}
+            emptyLabel={t.market.noBetsYet}
+          />
+          {freshMarket && (
+            <p className="-mt-3 text-center font-mono text-[11px] tracking-[0.06em] text-text-faint">
+              {t.market.noBetsYet} · {t.market.beFirst}
+            </p>
+          )}
 
           {/* 2. KPI strip — volume, participation, timing at a glance */}
           <div className="grid grid-cols-3 gap-3">
-            <KPI label={t.market.volume}     value={formatTzsCompact(m.yesPool + m.noPool)} icon={<I.chart s={14} />} />
+            {/* "TZS 0" is factually true, but on a fresh market it reads as
+                failure rather than as an opening. Same words the card uses, so
+                the two surfaces say the same thing about the same state. */}
+            <KPI label={t.market.volume}     value={freshMarket ? t.market.noPoolYet : formatTzsCompact(m.yesPool + m.noPool)} icon={<I.chart s={14} />} />
             <KPI label={t.market.predictors} value={String(m.predictorCount)}     icon={<I.users s={14} />} />
             <KPI label={t.market.resolves}   value={fmtTime(m.resolutionAt)} mono />
           </div>
@@ -486,7 +517,7 @@ export default async function MarketDetail({
         {/* ══ RIGHT ASIDE — betting widget ══
             order-1 on mobile (above-the-fold, first thing seen),
             order-2 + sticky on desktop (stays in view while scrolling) */}
-        <aside className="order-1 lg:order-2 space-y-3 lg:sticky lg:top-6">
+        <aside className="order-1 lg:order-2 lg:col-start-2 lg:row-start-1 space-y-3 lg:sticky lg:top-6">
           {!isResolved && m.status === "LIVE" && !closedByTime && !selectionClosed ? (
             session ? (
               <>
@@ -566,7 +597,7 @@ export default async function MarketDetail({
               <h3 className="mt-1.5 font-display text-[15px] font-bold text-text">{t.market.waitingForResultsAside}</h3>
               <p className="mt-3 text-[12px] text-text-muted leading-snug">
                 {t.market.newPredictionsNotAccepted}
-                {m.resolutionAt && ` ${t.market.resultsExpectedBy} ${new Date(m.resolutionAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}.`}
+                {m.resolutionAt && ` ${t.market.resultsExpectedBy} ${formatDayTime(m.resolutionAt)}.`}
               </p>
             </div>
           ) : closedByTime ? (
@@ -586,39 +617,54 @@ export default async function MarketDetail({
             </div>
           )}
         </aside>
-      </div>
+        {/* ══ RIGHT, SECOND BLOCK — related markets (Step 4) ══
+            Fills the column under the sticky bet widget, which was dead space
+            from `lg:` up while the left column ran on for another 1,500px.
 
-      {/* ── Similar markets — keep the session flowing into another bet ── */}
-      {similar.length > 0 && (
-        <section className="mt-8" aria-labelledby="similar-markets-heading">
-          <div className="mb-3 flex items-center gap-2">
-            <I.sparkle s={15} />
-            <h2 id="similar-markets-heading" className="font-display text-[16px] font-bold text-text">
-              {t.market.similarMarkets}
-            </h2>
-          </div>
-          <p className="mb-4 text-[12.5px] text-text-muted">{t.market.similarMarketsBody}</p>
-          <div className="market-grid">
-            {similar.map((s) => (
-              <MarketCard
-                key={s.id}
-                id={s.id}
-                titleEn={s.titleEn}
-                titleSw={s.titleSw}
-                titleZh={s.titleZh}
-                category={s.category}
-                yesPct={impliedYesPct(s)}
-                volume={s.yesPool + s.noPool}
-                predictors={s.predictorCount}
-                timeLeft={similarTimeLeft(s.resolutionAt, t)}
-                status="LIVE"
-                selectionClosed={isSelectionClosed(s)}
-                sourceUrl={s.sourceUrl}
-              />
-            ))}
-          </div>
-        </section>
-      )}
+            This is the SAME similar-markets rail that used to sit full-width
+            below both columns — MOVED, never duplicated. On mobile it keeps the
+            identical position it had (order-3: after the two columns, before
+            comments), so the phone layout is byte-for-byte what it was.
+
+            Only content that already rendered LAST on mobile can move into this
+            rail without reordering the phone. That is why the criterion, the
+            source and the KPI facts stay in the left column: relocating them
+            would have been exactly the mobile change this step forbids. */}
+        {similar.length > 0 && (
+          <section
+            className="order-3 lg:col-start-2 lg:row-start-2 min-w-0"
+            aria-labelledby="similar-markets-heading"
+          >
+            <div className="mb-3 flex items-center gap-2">
+              <I.sparkle s={15} />
+              <h2 id="similar-markets-heading" className="font-display text-[16px] font-bold text-text">
+                {t.market.similarMarkets}
+              </h2>
+            </div>
+            <p className="mb-4 text-[12.5px] text-text-muted">{t.market.similarMarketsBody}</p>
+            {/* One column inside the 360px rail; the shared grid everywhere else. */}
+            <div className="market-grid lg:!grid-cols-1">
+              {similar.map((s) => (
+                <MarketCard
+                  key={s.id}
+                  id={s.id}
+                  titleEn={s.titleEn}
+                  titleSw={s.titleSw}
+                  titleZh={s.titleZh}
+                  category={s.category}
+                  yesPct={impliedYesPct(s)}
+                  volume={s.yesPool + s.noPool}
+                  predictors={s.predictorCount}
+                  timeLeft={similarTimeLeft(s.resolutionAt, t)}
+                  status="LIVE"
+                  selectionClosed={isSelectionClosed(s)}
+                  sourceUrl={s.sourceUrl}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
 
       {/* ── Comments — full width, below both columns ── */}
       <CommentsThread

@@ -16,7 +16,12 @@ import { getMarket, impliedYesPct, isClosedByTime, isSelectionClosed } from "@/l
 import { getServerT } from "@/lib/i18n-server";
 import { formatDateTime } from "@/lib/utils";
 
-export const metadata = { title: "Watchlist" };
+// Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
+// "Watchlist", which a Swahili player saw in their browser tab and history.
+export async function generateMetadata() {
+  const { t } = await getServerT();
+  return { title: t.watchlist.title };
+}
 export const dynamic = "force-dynamic";
 
 export default async function WatchlistPage() {

@@ -148,8 +148,8 @@ export function Modal({
       />
       <div
         ref={panelRef}
-        className={`${sheet ? "m-sheet-in kp-modal-sheet" : "m-dialog-in"} relative w-full border border-border-strong bg-bg-elevated shadow-[0_30px_80px_oklch(5%_0.05_264_/_0.65),inset_0_1px_0_rgba(255,255,255,0.06)] p-5 lg:p-6 ${
-          sheet ? "rounded-t-xl sm:rounded-xl sm:my-auto" : "my-auto rounded-xl"
+        className={`${sheet ? "m-sheet-in kp-modal-sheet" : "m-dialog-in"} relative w-full border border-border-strong bg-bg-elevated shadow-modal p-5 lg:p-6 ${
+          sheet ? "rounded-t-modal sm:rounded-modal sm:my-auto" : "my-auto rounded-modal"
         } ${panelClassName}`}
         style={{ maxWidth }}
       >

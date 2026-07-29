@@ -6,7 +6,7 @@ import { PositionCard } from "@/components/markets/position-card";
 import { PnlSummaryStrip } from "@/components/positions/pnl-summary-strip";
 import { CountdownRing } from "@/components/positions/countdown-ring";
 import { SellButton } from "@/components/markets/sell-button";
-import { formatTzsCompact } from "@/lib/utils";
+import { formatTzsCompact, formatDayTime } from "@/lib/utils";
 import { listPositionsForUser, getMarket, cashOutValue, isSelectionClosed } from "@/lib/server/market-service";
 import { currentSession } from "@/lib/server/auth-service";
 import { ensureAffiliateAccount } from "@/lib/server/affiliate-service";
@@ -240,7 +240,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
                           <I.calendarClock s={11} />
                           {closed
                             ? t.positions.selectionClosed
-                            : `${t.positions.selectionCloses} ${new Date(cutoffIso).toLocaleDateString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`}
+                            : `${t.positions.selectionCloses} ${formatDayTime(cutoffIso)}`}
                         </p>
                       </div>
                     ) : null;

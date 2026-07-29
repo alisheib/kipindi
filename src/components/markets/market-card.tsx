@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createPortal } from "react-dom";
 import Link from "next/link";
 import { TippingBar } from "@/components/brand";
 import { I, categoryGlyph } from "@/components/ui/glyphs";
 import { Avatar } from "@/components/ui/avatar";
+import { Modal } from "@/components/ui/modal";
 import { cn, formatTzs } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { pickLocalized } from "@/lib/localized";
@@ -42,17 +42,44 @@ type Props = {
   selectionClosed?: boolean;
   /** Visible comment count (optional — shown in the meta row when > 0). */
   comments?: number;
+  /**
+   * COLD-START override. A LIVE market with no activity yet (volume 0,
+   * predictors 0) has NO real crowd price — its 50% is an artefact of the
+   * default, not a signal. When fresh, the card must NOT assert a 50% split,
+   * a centred needle, or a "TIPPING" badge: all three read as "contested" on a
+   * market nobody has touched, and a board full of them looks dead. Instead it
+   * shows a NEW badge, an em-dash, a neutral awaiting-first-bet bar, and an
+   * invitation — honest per RULES law 5 (real data or nothing).
+   *
+   * Optional: when omitted the card DERIVES it from volume/predictors, so the
+   * fix is correct at every call site, including the ones that don't know to
+   * pass it.
+   */
+  isNew?: boolean;
+  /**
+   * Lead card of a board. Spans two columns from `md` up and takes a slightly
+   * stronger edge + the royal wash, so a board has somewhere for the eye to
+   * land and a SHORT board still reads composed rather than as leftovers.
+   *
+   * A state of this card, never a second component (B9) — and deliberately
+   * restrained: no type-size change, no new glow. A "featured" card that
+   * restyled itself would be a second design to keep in sync forever.
+   */
+  featured?: boolean;
   className?: string;
 };
 
 function getSignalBadge(
-  status: Props["status"], yesPct: number, volume: number, predictors: number, timeLeft: string,
-  labels: { hot: string; soon: string; tipping: string },
-): { kind: "hot" | "soon" | "tipping"; label: string } | null {
+  status: Props["status"], yesPct: number, volume: number, predictors: number, timeLeft: string, fresh: boolean,
+  labels: { hot: string; soon: string; tipping: string; new: string },
+): { kind: "hot" | "soon" | "tipping" | "new"; label: string } | null {
   if (status !== "LIVE") return null;
+  // A brand-new market is NEW, never "tipping" — it isn't balanced, it's empty.
+  if (fresh) return { kind: "new", label: labels.new };
   if (volume >= 30_000 || predictors >= 40) return { kind: "hot", label: labels.hot };
   if (/^\d+m left$/.test(timeLeft) || /^\d+s left$/.test(timeLeft)) return { kind: "soon", label: labels.soon };
-  if (Math.abs(yesPct - 50) <= 3) return { kind: "tipping", label: labels.tipping };
+  // "Tipping" now REQUIRES real activity — an empty 50/50 is not a contest.
+  if ((volume > 0 || predictors > 0) && Math.abs(yesPct - 50) <= 3) return { kind: "tipping", label: labels.tipping };
   return null;
 }
 
@@ -117,103 +144,68 @@ function initialsFor(seed: string): string {
 }
 
 /** Small info icon that opens a brief "how betting works" popup.
- *  Portaled to body because the card has overflow:hidden (watermark bleed). */
+ *
+ *  DESIGN_AUTHORITY B10 (2026-07-29): this used to be a hand-rolled
+ *  `createPortal` + its own scrim + its own `0 16px 40px -8px oklch(…)`
+ *  drop-shadow + its own rise animation, hand-positioned off a
+ *  getBoundingClientRect. It was the last bespoke popup in a player surface —
+ *  and being bespoke, it had NO focus trap, NO focus return, and none of the
+ *  Android scroll/zoom lock the shared primitive gives every other dialog.
+ *
+ *  It now goes through <Modal>, so it inherits all of that plus the one
+ *  shadow/radius/motion vocabulary. The visible change: it presents as the
+ *  product's standard centred dialog instead of a card-anchored bubble. The
+ *  copy is unchanged. */
 function HowItWorks() {
   const { t } = useT();
   const [open, setOpen] = useState(false);
-  const btnRef = useRef<HTMLButtonElement>(null);
-  const [pos, setPos] = useState({ top: 0, right: 0 });
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
-
-  const toggle = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!open && btnRef.current) {
-      const r = btnRef.current.getBoundingClientRect();
-      setPos({ top: r.top - 8, right: window.innerWidth - r.right });
-    }
-    setOpen((v) => !v);
-  };
 
   return (
     <>
       <button
-        ref={btnRef}
         type="button"
         aria-label={t.common.howItWorks}
-        onClick={toggle}
-        className="inline-flex items-center justify-center rounded-md transition-all"
-        style={{
-          width: 28,
-          height: 28,
-          // 28px visible + padding gives a 44px touch target (WCAG 2.5.5)
-          padding: 8,
-          boxSizing: "content-box",
-          color: open ? "var(--brand-300)" : "var(--text-subtle)",
-          background: open ? "oklch(63% 0.18 262 / 0.18)" : "oklch(40% 0.08 264 / 0.25)",
-          border: `1px solid ${open ? "var(--brand-500)" : "var(--border)"}`,
-          position: "relative",
-          zIndex: 2,
-        }}
-        onMouseEnter={(e) => { if (!open) { e.currentTarget.style.color = "var(--text)"; e.currentTarget.style.borderColor = "var(--brand-400)"; e.currentTarget.style.background = "oklch(63% 0.18 262 / 0.12)"; } }}
-        onMouseLeave={(e) => { if (!open) { e.currentTarget.style.color = "var(--text-subtle)"; e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.background = "oklch(40% 0.08 264 / 0.25)"; } }}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(true); }}
+        className="mcardp-info"
+        data-open={open || undefined}
       >
         <I.info s={12} />
       </button>
-      {open && typeof document !== "undefined" && createPortal(
-        <>
-          <div className="fixed inset-0 z-[90]" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); }} />
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="fixed z-[91] w-[260px] rounded-xl border border-border-strong p-3.5"
-            style={{
-              bottom: `calc(100vh - ${pos.top}px)`,
-              right: pos.right,
-              background: "var(--bg-elevated2)",
-              boxShadow: "0 16px 40px -8px oklch(6% 0.08 264 / 0.7)",
-              animation: "orm-rise 160ms ease-out",
-            }}
-          >
-            <button
-              type="button"
-              aria-label={t.common.close}
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); }}
-              className="absolute right-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded-sm text-text-subtle hover:text-text transition-colors"
-            >
-              <I.x s={12} />
-            </button>
-            <p className="font-display text-[13px] font-bold text-text" style={{ marginBottom: 6 }}>{t.common.howItWorks}</p>
-            <p className="text-[11.5px] leading-[1.55] text-text-muted">
-              {t.common.howItWorksBody}
-            </p>
-            <p className="text-[10.5px] leading-[1.5] text-text-subtle italic" style={{ marginTop: 6 }}>
-              {t.common.howItWorksFine}
-            </p>
-          </div>
-        </>,
-        document.body,
-      )}
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        ariaLabel={t.common.howItWorks}
+        maxWidth={320}
+      >
+        <p className="mb-1.5 font-display text-[13px] font-bold text-text">{t.common.howItWorks}</p>
+        <p className="text-[11.5px] leading-[1.55] text-text-muted">
+          {t.common.howItWorksBody}
+        </p>
+        <p className="mt-1.5 text-[10.5px] leading-[1.5] text-text-subtle italic">
+          {t.common.howItWorksFine}
+        </p>
+      </Modal>
     </>
   );
 }
 
 export function MarketCard({
-  id, titleEn, titleSw, titleZh, category, yesPct, volume, predictors, timeLeft, status, resolvedOutcome, spark, move24h, traders, selectionClosed, comments, className,
+  id, titleEn, titleSw, titleZh, category, yesPct, volume, predictors, timeLeft, status, resolvedOutcome, spark, move24h, traders, selectionClosed, comments, isNew, featured, className,
 }: Props) {
   const router = useRouter();
   const { t, locale } = useT();
   const title = pickLocalized(locale, titleEn, titleSw, titleZh);
-  const signal = getSignalBadge(status, yesPct, volume, predictors, timeLeft, {
-    hot: t.common.hot, soon: t.common.soon, tipping: t.market.tipping,
-  });
   const live = status === "LIVE" && !selectionClosed;
   const isResolved = status === "RESOLVED";
+  // COLD-START: a LIVE, still-open market with genuinely no activity. Derived
+  // when the caller doesn't pass it, so the fix holds everywhere the card is
+  // used. We show emptiness; we never invent a price (RULES law 5).
+  const fresh = live && (isNew ?? (volume === 0 && predictors === 0));
+  const signal = getSignalBadge(status, yesPct, volume, predictors, timeLeft, fresh, {
+    hot: t.common.hot, soon: t.common.soon, tipping: t.market.tipping, new: t.common.newBadge,
+  });
   /** The settled side, or null when we genuinely don't know. Never inferred from
    *  yesPct — see the `resolvedOutcome` prop doc. When null we show "RESOLVED"
    *  with no side rather than risk stating the wrong one on a money surface. */
@@ -223,12 +215,22 @@ export function MarketCard({
     : resolvedOutcome === "VOID" ? t.market.statusVoid
     : null;
   // Real YES% history only, ≥4 points (else hide — A-5 no-fabrication rule).
-  const showSpark = Array.isArray(spark) && spark.length >= 4;
+  // A fresh market has no history, so never draw the spark on one.
+  const showSpark = !fresh && Array.isArray(spark) && spark.length >= 4;
   // Trader crest — avatars when we have seeds; the predictor-count row renders
   // on EVERY card (with or without avatars) so cards stay the same shape in a
   // grid. The count moves out of the meta row and into this row.
-  const hasTraders = Array.isArray(traders) && traders.length > 0;
+  const hasTraders = !fresh && Array.isArray(traders) && traders.length > 0;
   const CatIco = I[categoryGlyph(category)];
+  // Localised category label — a Swahili player must not read "SPORTS" over a
+  // "MICHEZO" filter chip (POLISH-BACKLOG §1.1, the most-seen untranslated token
+  // in the product). Built inline from the dictionary rather than via
+  // categoryLabel(), which has no "other" arm and renders blank for it.
+  const CAT_LABEL: Record<string, string> = {
+    SPORTS: t.market.catSports, MACRO: t.market.catMacro, WEATHER: t.market.catWeather,
+    CRYPTO: t.market.catCrypto, CULTURE: t.market.catCulture, TECH: t.market.catTech, OTHER: t.market.catOther,
+  };
+  const catLabel = CAT_LABEL[(category ?? "").toUpperCase()] ?? t.market.catOther;
   const go = (side: "YES" | "NO") => (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
     // Micro-interaction: brief press-pop on the button before navigating
@@ -268,14 +270,19 @@ export function MarketCard({
         {signal && (
           <span
             aria-label={signal.label}
-            className={cn("chip", signal.kind === "hot" && "chip-hot-rose", signal.kind === "soon" && "chip-pending", signal.kind === "tipping" && "chip-signal")}
-            style={{ fontWeight: 700 }}
+            className={cn(
+              "chip chip-strong",
+              signal.kind === "hot" && "chip-hot-rose",
+              signal.kind === "soon" && "chip-pending",
+              signal.kind === "tipping" && "chip-signal",
+              signal.kind === "new" && "chip-new",
+            )}
           >
             {signal.label}
           </span>
         )}
-        <span className="mcardp-catico" style={{ marginLeft: 2 }}><CatIco /></span>
-        <span className="mcardp-cat">{category}</span>
+        <span className="mcardp-catico"><CatIco /></span>
+        <span className="mcardp-cat">{catLabel}</span>
       </div>
 
       <div className="mcardp-head">
@@ -283,8 +290,16 @@ export function MarketCard({
           <h3 className="mcardp-q">{title}</h3>
         </div>
         <div className="mcardp-prob">
-          <div className="mcardp-pctcap">{isResolved ? t.market.result : t.common.yes}</div>
-          <div className="mcardp-pct">{isResolved ? (outcomeLabel ?? "—") : <>{yesPct}<span className="u">%</span></>}</div>
+          {fresh ? (
+            // No crowd price yet — an honest em-dash, never a fabricated 50%.
+            // No "YES" caption either: there is no figure for it to label.
+            <div className="mcardp-pct mcardp-pct--empty" aria-label={t.market.noBetsYet}>—</div>
+          ) : (
+            <>
+              <div className="mcardp-pctcap">{isResolved ? t.market.result : t.common.yes}</div>
+              <div className="mcardp-pct">{isResolved ? (outcomeLabel ?? "—") : <>{yesPct}<span className="u">%</span></>}</div>
+            </>
+          )}
         </div>
       </div>
 
@@ -292,40 +307,48 @@ export function MarketCard({
           bar sits at the same offset whether or not a 24h move exists. */}
       {live && (
         <div className="mcardp-moveline">
-          {move24h !== undefined && <MoveText move={move24h} label={t.market.twentyFourHourMove} />}
+          {!fresh && move24h !== undefined && <MoveText move={move24h} label={t.market.twentyFourHourMove} />}
         </div>
       )}
 
-      <TippingBar yesPct={yesPct} height={7} resolved={isResolved} showLabels={false} recastOnHover={false} />
+      <TippingBar yesPct={yesPct} height={7} resolved={isResolved} showLabels={false} recastOnHover={false} empty={fresh} emptyLabel={t.market.noBetsYet} />
+      {fresh && <div className="mcardp-nobets">{t.market.noBetsYet}</div>}
 
       {showSpark && <Spark data={spark!} />}
 
       {/* Trader row — rendered on every card (min-height fixed) so the grid stays
-          even. Avatars only when we have seeds; the count is always shown here. */}
+          even. A fresh market invites the first prediction instead of showing 0,
+          which reads as failure rather than opportunity. */}
       <div className="mcardp-traders">
-        {hasTraders && (
-          <span className="av-stack">
-            {traders!.slice(0, 3).map((uid) => (
-              <Avatar key={uid} size="xs" seed={uid} initials={initialsFor(uid)} />
-            ))}
-          </span>
+        {fresh ? (
+          <span className="t-txt mcardp-befirst">{t.market.beFirst}</span>
+        ) : (
+          <>
+            {hasTraders && (
+              <span className="av-stack">
+                {traders!.slice(0, 3).map((uid) => (
+                  <Avatar key={uid} size="xs" seed={uid} initials={initialsFor(uid)} />
+                ))}
+              </span>
+            )}
+            <span className="t-txt"><b>{predictors.toLocaleString()}</b> {t.market.predictorsCount}</span>
+          </>
         )}
-        <span className="t-txt"><b>{predictors.toLocaleString()}</b> {t.market.predictorsCount}</span>
       </div>
 
       {live ? (
         <div className="mcardp-actions">
           <button type="button" aria-label={t.market.backYesAria.replace("{pct}", String(yesPct))} onClick={go("YES")} className="btn btn-yes btn-md">
-            {t.common.yes} <span className="font-mono text-[11.5px] opacity-85">@ {yesPct}%</span>
+            {t.common.yes}{!fresh && <span className="font-mono text-[11.5px] opacity-85"> @ {yesPct}%</span>}
           </button>
           <button type="button" aria-label={t.market.backNoAria.replace("{pct}", String(100 - yesPct))} onClick={go("NO")} className="btn btn-no btn-md">
-            {t.common.no} <span className="font-mono text-[11.5px] opacity-85">@ {100 - yesPct}%</span>
+            {t.common.no}{!fresh && <span className="font-mono text-[11.5px] opacity-85"> @ {100 - yesPct}%</span>}
           </button>
         </div>
       ) : (
         // Single-column actions wrapper so the resolved status pill occupies the
         // exact same vertical rhythm as the live YES/NO row (card-height parity).
-        <div className="mcardp-actions" style={{ gridTemplateColumns: "1fr" }}>
+        <div className="mcardp-actions mcardp-actions--single">
           <div className="btn btn-ghost btn-md justify-center pointer-events-none opacity-85">
             <I.resolved s={15} /> {isResolved ? [t.market.statusResolved, outcomeLabel].filter(Boolean).join(" ") : t.market.statusClosed}
           </div>
@@ -333,7 +356,7 @@ export function MarketCard({
       )}
 
       <div className="mcardp-meta">
-        <span>{formatTzs(volume)}</span>
+        <span>{fresh ? t.market.noPoolYet : formatTzs(volume)}</span>
         {comments != null && comments > 0 && (
           <>
             <span className="dot" />
@@ -341,7 +364,7 @@ export function MarketCard({
           </>
         )}
         <span className="mcardp-meta-right">
-          <span className={live ? "live" : undefined} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <span className={cn("mcardp-timeleft", live && "live")}>
             {timeLeft}
             {live && <HowItWorks />}
           </span>
@@ -355,13 +378,12 @@ export function MarketCard({
           href={`/markets/${id}`}
           onClick={(e) => e.stopPropagation()}
           className="mcardp-details"
-          style={{ color: "var(--accent-400)" }}
         >
           {t.market.details}
           <I.chevronRight s={11} />
         </a>
       ) : (
-        <span className="mcardp-details" style={{ color: "var(--accent-400)" }} aria-hidden>
+        <span className="mcardp-details" aria-hidden>
           {t.market.details}
           <I.chevronRight s={11} />
         </span>
@@ -375,7 +397,7 @@ export function MarketCard({
   // Non-live: keep the whole card a link so results/history stay viewable.
   return live ? (
     <article
-      className={cn("mcardp group", className)}
+      className={cn("mcardp group", featured && "mcardp--featured", className)}
       style={{ cursor: "pointer" }}
       aria-label={title}
       role="link"
@@ -391,7 +413,7 @@ export function MarketCard({
       {body}
     </article>
   ) : (
-    <Link href={`/markets/${id}` as never} className={cn("mcardp group", className)}>
+    <Link href={`/markets/${id}` as never} className={cn("mcardp group", featured && "mcardp--featured", className)}>
       {body}
     </Link>
   );

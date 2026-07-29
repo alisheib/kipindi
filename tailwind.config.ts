@@ -170,6 +170,20 @@ const config: Config = {
         "11": "96px",
         "12": "128px",
       },
+      /* ⚠️ TWO SCALES LIVE HERE, and they disagree — read before editing.
+         `globals.css` defines --r-xs..--r-xl as 4/8/12/16/24px. The NUMERIC keys
+         below are 2/4/8/12/16/24 — so `rounded-md` renders 8px while `--r-md` is
+         12px: the same name, two values, platform-wide. Bridging the numeric keys
+         to the vars would shift EVERY rounded-* corner in the product up one step,
+         which is a real visual change; Ali deliberately deferred it on 2026-07-29
+         (see docs/DESIGN-FINALIZATION-PROGRESS.md, "the open gap").
+
+         So the numeric scale is FROZEN AS LEGACY — do not renumber it — and the
+         SEMANTIC keys below are the canonical path for new design (B9/B10). They
+         are the only radii that carry meaning, they read at the call site
+         (`rounded-modal` says what it is; `rounded-xl` says how round it is), and
+         each resolves through the ONE definition site in globals.css. New work
+         names the semantic key; a token edit then moves every consumer at once. */
       borderRadius: {
         xs: "2px",
         sm: "4px",
@@ -178,6 +192,11 @@ const config: Config = {
         xl: "16px",
         "2xl": "24px",
         pill: "999px",
+        // Semantic radii — the canonical scale (DESIGN_AUTHORITY B10).
+        card:    "var(--r-lg)",    // 16px — market cards, panels, elevated surfaces
+        control: "var(--r-md)",    // 12px — buttons, inputs, selects
+        chip:    "var(--r-pill)",  // chips, badges, pills
+        modal:   "var(--r-lg)",    // 16px — dialogs, sheets, menus, popovers
       },
       boxShadow: {
         e0: "none",
@@ -186,10 +205,22 @@ const config: Config = {
         e3: "var(--shadow-3)",
         e4: "var(--shadow-4)",
         e5: "var(--shadow-5)",
+        // The named rungs. `card`/`royal` existed in globals.css from the start
+        // but were never bridged — so `shadow-card` was a B8 dead class and every
+        // consumer had to write `shadow-[var(--shadow-card)]` to get it at all.
+        // `modal`/`overlay`/`card-top` are the 2026-07-29 floating-surface rungs
+        // that replaced seven hand-typed drop-shadows.
+        card:      "var(--shadow-card)",
+        royal:     "var(--shadow-royal)",
+        modal:     "var(--shadow-modal)",
+        overlay:   "var(--shadow-overlay)",
+        "overlay-up": "var(--shadow-overlay-up)",
+        "card-top": "var(--shadow-card-top)",
         "glow-gold": "var(--glow-gold)",
         "glow-blue": "var(--glow-blue)",
         "glow-win": "var(--glow-win)",
         "glow-jackpot": "var(--glow-jackpot)",
+        "glow-selected": "var(--glow-selected)",
       },
       backgroundImage: {
         "g-brand": "var(--g-brand)",

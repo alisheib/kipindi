@@ -389,6 +389,9 @@ export const dict = {
       unitDay: "day", unitHr: "hr", unitMin: "min",
       avatarAlt: "avatar", switchTo: "Switch to {lang}",
       newBadge: "New", exp: "exp", accepted: "Accepted", allTime: "all-time",
+      // Relative notification age (POLISH-BACKLOG §1.8). Unit suffixes, so they
+      // concatenate onto a number: `5m`, `3h`, `2d`.
+      relNow: "now", relMinutes: "m", relHours: "h", relDays: "d",
       // Date/time range filter (platform-wide)
       rangeWindow: "Window", rangeLastHour: "Last hour", range6h: "Last 6h", range24h: "Last 24h",
       rangeToday: "Today", rangeYesterday: "Yesterday", range7d: "7 days", range30d: "30 days",
@@ -528,9 +531,20 @@ export const dict = {
       contSeeAll: "See all open",
       waitingForResults: "Waiting for results",
       recentlyResolved: "Recently resolved",
+      // Board composition (2026-07-29) — the "New markets" section.
+      newMarkets: "New markets",
+      justListed: "Just listed",
+      seeAllNew: "See all new →",
       allResults: "All results →",
       resolvedOutcome: "Resolved",
       tipping: "tipping",
+      // Cold-start — a LIVE market with no bets yet. Kept short: these sit on a
+      // 360px card alongside SW/ZH, where ~35% expansion is the budget.
+      // (The NEW badge itself reuses common.newBadge — it already exists in all
+      // three locales with exactly this text; law 15, search before you add.)
+      noBetsYet: "No bets yet",
+      beFirst: "Be the first to predict",
+      noPoolYet: "No pool yet",
       closed: "closed",
       dLeft: "d left", hLeft: "h left", mLeft: "m left",
       similarMarkets: "Similar markets", similarMarketsBody: "Live now — place another prediction without going back.",
@@ -754,6 +768,9 @@ export const dict = {
       verifyBannerText: "Confirm your email to add money to your account. We sent you a link.",
       verifyBannerCta: "Resend link",
       verifyBannerNoEmail: "Add an email address to your account — you'll need one to add money.",
+      // Collapsed form of the same standing condition — short, never absent.
+      verifyBannerShort: "Email not confirmed — deposits locked.",
+      verifyBannerNoEmailShort: "No email on file — deposits locked.",
       verifyBannerNoEmailCta: "Add email",
       // Resend outcomes — the action returns CODES, these are the words.
       verifyErrNotSignedIn: "Please sign in again.",
@@ -1737,6 +1754,7 @@ export const dict = {
       unitDay: "siku", unitHr: "saa", unitMin: "dak",
       avatarAlt: "picha", switchTo: "Badilisha kwenda {lang}",
       newBadge: "Mpya", exp: "mwisho", accepted: "Imekubaliwa", allTime: "muda wote",
+      relNow: "sasa", relMinutes: "dk", relHours: "sa", relDays: "siku",
       // Date/time range filter (platform-wide)
       rangeWindow: "Dirisha", rangeLastHour: "Saa 1", range6h: "Saa 6", range24h: "Saa 24",
       rangeToday: "Leo", rangeYesterday: "Jana", range7d: "Siku 7", range30d: "Siku 30",
@@ -1873,9 +1891,15 @@ export const dict = {
       contSeeAll: "Angalia yaliyo wazi",
       waitingForResults: "Inasubiri matokeo",
       recentlyResolved: "Matokeo ya hivi karibuni",
+      newMarkets: "Masoko mapya",
+      justListed: "Yametoka sasa",
+      seeAllNew: "Ona mapya yote →",
       allResults: "Matokeo yote →",
       resolvedOutcome: "Imetatuliwa",
       tipping: "inasogea",
+      noBetsYet: "Bila dau bado",
+      beFirst: "Kuwa wa kwanza kutabiri",
+      noPoolYet: "Hakuna dau bado",
       closed: "imefungwa",
       dLeft: "siku zimebaki", hLeft: "masaa yaliyobaki", mLeft: "dakika zimebaki",
       similarMarkets: "Masoko yanayofanana", similarMarketsBody: "Hai sasa — weka utabiri mwingine bila kurudi nyuma.",
@@ -2091,6 +2115,8 @@ export const dict = {
       verifyBannerText: "Thibitisha barua pepe yako ili kuweka fedha kwenye akaunti. Tumekutumia kiungo.",
       verifyBannerCta: "Tuma kiungo tena",
       verifyBannerNoEmail: "Ongeza anwani ya barua pepe kwenye akaunti yako — utaihitaji ili kuweka fedha.",
+      verifyBannerShort: "Barua pepe haijathibitishwa — huwezi kuweka fedha.",
+      verifyBannerNoEmailShort: "Hakuna barua pepe — huwezi kuweka fedha.",
       verifyBannerNoEmailCta: "Ongeza barua pepe",
       verifyErrNotSignedIn: "Tafadhali ingia tena.",
       verifyErrUserNotFound: "Hatukupata akaunti yako. Wasiliana na usaidizi.",
@@ -3067,6 +3093,7 @@ export const dict = {
       unitDay: "天", unitHr: "时", unitMin: "分",
       avatarAlt: "头像", switchTo: "切换到 {lang}",
       newBadge: "新", exp: "到期", accepted: "已接受", allTime: "全部时间",
+      relNow: "刚刚", relMinutes: "分钟", relHours: "小时", relDays: "天",
       // Date/time range filter (platform-wide)
       rangeWindow: "时间窗", rangeLastHour: "1小时", range6h: "6小时", range24h: "24小时",
       rangeToday: "今天", rangeYesterday: "昨天", range7d: "7天", range30d: "30天",
@@ -3202,9 +3229,15 @@ export const dict = {
       contSeeAll: "查看全部开放",
       waitingForResults: "等待结果",
       recentlyResolved: "最近结算",
+      newMarkets: "新市场",
+      justListed: "刚上线",
+      seeAllNew: "查看全部新市场 →",
       allResults: "全部结果 →",
       resolvedOutcome: "已结算",
       tipping: "活跃",
+      noBetsYet: "暂无投注",
+      beFirst: "成为第一个预测者",
+      noPoolYet: "暂无奖池",
       closed: "已关闭",
       dLeft: "天后", hLeft: "小时后", mLeft: "分钟后",
       similarMarkets: "相似市场", similarMarketsBody: "正在进行——无需返回即可再下一注。",
@@ -3420,6 +3453,8 @@ export const dict = {
       verifyBannerText: "请确认您的邮箱后才能充值。我们已向您发送验证链接。",
       verifyBannerCta: "重新发送链接",
       verifyBannerNoEmail: "请为账户添加邮箱地址 — 充值时需要使用。",
+      verifyBannerShort: "邮箱未确认 — 暂无法充值。",
+      verifyBannerNoEmailShort: "未绑定邮箱 — 暂无法充值。",
       verifyBannerNoEmailCta: "添加邮箱",
       verifyErrNotSignedIn: "请重新登录。",
       verifyErrUserNotFound: "未找到您的账户，请联系客服。",

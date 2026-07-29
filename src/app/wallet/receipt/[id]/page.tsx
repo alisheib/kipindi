@@ -28,7 +28,12 @@ import type { StoredTxn } from "@/lib/server/store";
 import { getServerT } from "@/lib/i18n-server";
 import { formatTzs, formatDateTime } from "@/lib/utils";
 
-export const metadata = { title: "Receipt" };
+// Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
+// "Receipt", which a Swahili player saw in their browser tab and history.
+export async function generateMetadata() {
+  const { t } = await getServerT();
+  return { title: t.wallet.receiptEyebrow };
+}
 export const dynamic = "force-dynamic";
 
 /**

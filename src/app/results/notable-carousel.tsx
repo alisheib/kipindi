@@ -61,7 +61,7 @@ export function NotableCarousel({
         <div className="mb-2 flex items-center justify-end gap-2">
           <Arrow dir="prev" onClick={() => go(-1)} label={prevLabel} />
           <span className="font-mono text-[10.5px] tabular-nums text-text-subtle select-none">
-            {current + 1}<span className="text-text-tertiary"> / {n}</span>
+            {current + 1}<span className="text-text-faint"> / {n}</span>
           </span>
           <Arrow dir="next" onClick={() => go(1)} label={nextLabel} />
         </div>
