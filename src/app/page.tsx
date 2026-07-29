@@ -80,9 +80,9 @@ export default async function LandingPage() {
              editorial Tanzania album — Ali's call, and a commissioning decision
              rather than a code one.
              Until then the photo RECEDES so the typography carries the hero:
-             saturation 0.75 → 0.55 and brightness 0.5 → 0.38. No new asset, no
+             saturation 0.75 → 0.45 and brightness 0.5 → 0.30. No new asset, no
              new vocabulary, and reversible by editing these two numbers. */
-          style={{ filter: "saturate(0.55) brightness(0.38)" }}
+          style={{ filter: "saturate(0.45) brightness(0.30)" }}
         />
 
         {/* Gradient overlay — left darker for text, right transparent for image */}

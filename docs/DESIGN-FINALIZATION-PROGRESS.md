@@ -19,14 +19,45 @@ finished work nor assume unfinished work is finished.
 |---|---|---|
 | Baseline gates | ✅ green before any edit | — |
 | 0 · Merge-discipline law installed | ✅ done | `d691cc6` |
-| 1 · Canonicalize & FREEZE primitives | ✅ done | `c46e221` `fcab6ed` +1 |
-| 2 · Cold-start / low-liquidity states | ⬜ not started | — |
-| 3 · Board stays full | ⬜ not started | — |
-| 4 · Desktop right rail | ⬜ not started | — |
-| 5 · Depth (tokens only) | ⬜ not started | — |
-| 6 · Popup consistency | ⬜ not started | — |
-| 7 · Polish sweep + hero overlay | ⬜ not started | — |
-| Final `test:all` + screenshots | ⬜ not started | — |
+| 1 · Canonicalize & FREEZE primitives | ✅ done | `c46e221` `fcab6ed` `a1b73c8` |
+| 2 · Cold-start / low-liquidity states | ✅ done | `477dd63` + `57f19b4` (detail page) |
+| 3 · Board stays full | ✅ done | `47365b4` `9b785b6` |
+| 4 · Desktop right rail | ✅ done | `f93ca5a` |
+| 5 · Depth + contrast gate fixed | ✅ done | `90b6799` |
+| 6 · Popup consistency | ✅ done | `0a500ef` |
+| 7 · Polish sweep + hero overlay | ✅ done | `6dc66d9` |
+| Final `test:all` + screenshots | ✅ done | 102/104 — see below |
+
+**Branch `design-final` is pushed to origin. `main` is untouched — no deploy has been
+triggered. Ali reviews and merges.**
+
+### Final gate run
+
+`npm run test:all` → **102/104 green**. The two reds are `test:responsive` and
+`test:motion`, and both are **environmental, not regressions**:
+
+- Both drive a browser against `http://localhost:3000` — the long-running dev server in
+  the main worktree, which is in a stale Turbopack state (a 1210-second compile, serving
+  the pages-router `/_error` fallback, its cache still holding chunks for
+  `micro-patterns.css`, a file deleted on 2026-07-28). Every navigation times out.
+- **Proven rather than asserted:** re-run against a clean server built from this exact
+  commit, `test:motion` returns **43/43 ALL PASS**.
+- The fresh production build compiles and generates all 55 pages.
+
+To reproduce a clean run: `BASE=http://localhost:3011 node scripts/motion-adoption-verify.mjs`
+against a dev server started in a separate worktree (Next 16 refuses a second dev server in
+the same directory, which is why the stale one cannot simply be restarted alongside).
+
+### Verified in a real browser, not just in tests
+
+Driven at 360 / 768 / 1280 / 1920 × EN / SW / ZH against a seeded board:
+
+- A zero-activity market shows **NEW**, an em-dash, a neutral dashed rail, "Be the first
+  to predict", "No pool yet" — and **no** TIPPING, **no** `@ 50%`, **no** fake 50%
+  headline, **no** `TZS 0`. Asserted against the rendered DOM *and* computed styles, so a
+  class that resolved to nothing could not pass.
+- Category chips read `Crypto` / `Kripto` / `加密货币`.
+- Zero horizontal overflow at every width in every locale; zero console/page errors.
 
 ---
 
@@ -195,7 +226,34 @@ none of them is money the player has won.
 
 ## Flagged for Ali — action outside the code
 
-- **Set `TZ=Africa/Dar_es_Salaam` on Railway.** Step 7 item 2 (selection-close time is 3h wrong)
-  is only fully correct once that is set.
-- **The hero photo.** The interim overlay lands in this pass; the authentic editorial Tanzania
-  album is a commissioning decision.
+- **Set `TZ=Africa/Dar_es_Salaam` on Railway.** ⚠️ Note the nuance found while fixing Step 7
+  item 2: the app does **not** depend on the OS `TZ` for display. Every helper in
+  `lib/utils.ts` passes `timeZone: tz()`, which reads `getPlatformTimezone()` — admin-
+  configurable, defaulting to `Africa/Dar_es_Salaam`. The real bug was three surfaces
+  bypassing those helpers with inline `toLocaleDateString` calls, now fixed. Setting `TZ`
+  on Railway is still worth doing for logs and anything server-side that formats without
+  the helper, but it is **belt-and-braces, not the fix** — which is the opposite of what
+  POLISH-BACKLOG §1.2 implies.
+- **The hero photo.** The interim overlay lands in this pass (the photo recedes so the type
+  carries the hero); the authentic editorial Tanzania album is a commissioning decision.
+- **The gold "Submit proposal" button** — see "Found in passing" above.
+- **The numeric radius scale** — the open gap you chose to leave open.
+
+---
+
+## What a future session must not undo
+
+1. **`test:design-frozen`'s allowlist may only SHRINK.** Adding a file to it re-opens the
+   hole. If you need a new design value, put it in `globals.css`.
+2. **The numeric `borderRadius` scale in `tailwind.config.ts` is frozen as legacy** — do not
+   renumber it to match `--r-*` without Ali's sign-off and a full visual pass.
+3. **`--text-faint` must stay ≥ 62%** unless `test:contrast` is re-run and proves the floor.
+   It sits at 4.88 against 4.5 on elevated cards.
+4. **`contrast-audit.mts` parses `globals.css` — do not "simplify" it back to hardcoded
+   values.** That is precisely how a real AA failure hid behind a green gate.
+5. **`--dur-stage` stays 820ms** (pre-existing, documented in the CHANGELOG) — it drives a
+   1-second-tick progress arc, not a transition.
+6. **One `fresh` rule.** The board, the card and the detail page each derive cold-start from
+   `volume === 0 && predictors === 0` on a live, open market. If that rule changes, change
+   all three — a disagreement between card and detail about someone's money is exactly the
+   defect B6 was written after.
