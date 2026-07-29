@@ -683,10 +683,10 @@ function similarTimeLeft(iso: string, t: Awaited<ReturnType<typeof getServerT>>[
   const ms = Date.parse(iso) - Date.now();
   if (ms <= 0) return t.market.closed;
   const d = Math.floor(ms / (24 * 3600_000));
-  if (d > 0) return `${d}${t.market.dLeft}`;
+  if (d > 0) return fill(t.market.timeLeftD, { n: d });
   const h = Math.floor(ms / 3600_000);
-  if (h > 0) return `${h}${t.market.hLeft}`;
-  return `${Math.max(1, Math.floor(ms / 60_000))}${t.market.mLeft}`;
+  if (h > 0) return fill(t.market.timeLeftH, { n: h });
+  return fill(t.market.timeLeftM, { n: Math.max(1, Math.floor(ms / 60_000)) });
 }
 
 function KPI({ label, value, icon, mono }: { label: string; value: string; icon?: React.ReactNode; mono?: boolean }) {

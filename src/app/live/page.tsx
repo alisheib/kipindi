@@ -11,6 +11,7 @@
  * this page.
  */
 import Link from "next/link";
+import { fill } from "@/lib/utils";
 import { listMarkets, impliedYesPct, isClosedByTime, isSelectionClosed, traderSeedsByMarket } from "@/lib/server/market-service";
 import { PulseRing } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
@@ -43,11 +44,11 @@ export default async function LivePage() {
     const ms = Date.parse(iso) - Date.now();
     if (ms <= 0) return t.market.closed;
     const d = Math.floor(ms / (24 * 3600_000));
-    if (d > 0) return `${d}${t.market.dLeft}`;
+    if (d > 0) return fill(t.market.timeLeftD, { n: d });
     const h = Math.floor(ms / 3600_000);
-    if (h > 0) return `${h}${t.market.hLeft}`;
+    if (h > 0) return fill(t.market.timeLeftH, { n: h });
     const m = Math.floor(ms / 60_000);
-    return `${m}${t.market.mLeft}`;
+    return fill(t.market.timeLeftM, { n: m });
   }
 
   // Exclude markets whose resolution time has passed — they're closed/awaiting

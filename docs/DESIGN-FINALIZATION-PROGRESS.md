@@ -286,21 +286,33 @@ is a trap for whoever next edits that line. It now reads `btn-primary` and state
 the rule. Deposits, KYC approvals and submitted proposals are all "success" and
 none of them is money the player has won.
 
-## Found in passing — real defects, NOT fixed (outside this pass's scope)
+## Found in passing — ✅ both FIXED in the follow-up pass (2026-07-29)
 
-- **A gold "Submit proposal" button** — `src/app/proposals/new/create-form.tsx:162`
-  uses `<Button variant="gold">`. RULES law 3 allows gold on "the final money-commit
-  button"; submitting a proposal commits no money. It is plausibly a deliberate
-  product choice given the "Propose Markets & Get Paid" framing, so it is Ali's call,
-  not a silent recolour of a CTA. Seen 2026-07-29 during the Step 6 stripTone audit.
+- **The gold "Submit proposal" button — FIXED.** `proposals/new/create-form.tsx`
+  `variant="gold"` → `variant="primary"`. Law 3 permits gold on wins, payouts, settled
+  profit and the final **money-commit** button; submitting a proposal commits no money
+  and may be declined. Gold there spends the one colour that must mean "real money you
+  have earned" on an action that has earned nothing — the exact dilution the law exists
+  to prevent. The "Propose Markets & Get Paid" framing is about the eventual reward, not
+  about that tap.
 
-- **`23masaa yaliyobaki` — missing space in SW/ZH time-left.** `timeLeftStr()` in
-  `markets/page.tsx` builds `${h}${t.market.hLeft}`. English is correct because "h" is a
-  unit suffix ("23h left"); Swahili is not, because `hLeft` is a whole word
-  ("masaa yaliyobaki"). Same shape in `similarTimeLeft()` on the detail page. Visible on
-  every card in SW. It is a small fix but it touches shared dictionary values across
-  several call sites, so it is a localisation change, not a design one — flagging rather
-  than folding it in. Seen 2026-07-29 during Step 3 verification.
+- **`23masaa yaliyobaki` — FIXED.** The time-left strings were bare suffixes
+  concatenated as `${h}${t.market.hLeft}` at **12 call sites across 4 files**. That join
+  is right for English, where "h" is a unit *symbol* ("23h left"), and wrong for Swahili,
+  where the value is a whole *word*. Chinese correctly wants no space at all — which is
+  precisely why the join cannot live in the template.
+  `dLeft`/`hLeft`/`mLeft` are replaced by `timeLeftD`/`timeLeftH`/`timeLeftM`, which
+  carry `{n}` **inside** the string, so each locale owns its own spacing *and* word order
+  (`"{n}h left"` · `"masaa {n} yaliyobaki"` · `"{n}小时后"`). All 12 sites migrated to
+  `fill()`, and the old keys are **deleted** — so the broken shape cannot be brought back
+  by copy-paste.
+
+### Known, and deliberately NOT changed
+
+`timeLeftStr()` is duplicated across four route files with small behavioural differences
+(one clamps to a 1-minute floor, another returns a "closed" label). The **defect** — the
+locale join — is fixed at all 12 sites. Unifying the four copies is a refactor with real
+behavioural risk and no user-visible gain, so it is recorded here rather than done.
 
 ## Flagged for Ali — action outside the code
 
