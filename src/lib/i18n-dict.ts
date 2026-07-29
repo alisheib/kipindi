@@ -546,7 +546,13 @@ export const dict = {
       beFirst: "Be the first to predict",
       noPoolYet: "No pool yet",
       closed: "closed",
-      dLeft: "d left", hLeft: "h left", mLeft: "m left",
+      // Time-left. The NUMBER is inside the string so each locale owns its own
+      // spacing and word order. They used to be bare suffixes concatenated as
+      // `${h}${t.market.hLeft}`, which is right for English ("23h left", where h
+      // is a unit symbol) and wrong for Swahili, where the value is a whole word:
+      // it rendered "23masaa yaliyobaki" on every card. Chinese correctly takes no
+      // space at all — which is exactly why the join cannot live in the template.
+      timeLeftD: "{n}d left", timeLeftH: "{n}h left", timeLeftM: "{n}m left",
       similarMarkets: "Similar markets", similarMarketsBody: "Live now — place another prediction without going back.",
       twentyFourHourMove: "24h move",
       noLiveMatch: "No live markets match",
@@ -1901,7 +1907,7 @@ export const dict = {
       beFirst: "Kuwa wa kwanza kutabiri",
       noPoolYet: "Hakuna dau bado",
       closed: "imefungwa",
-      dLeft: "siku zimebaki", hLeft: "masaa yaliyobaki", mLeft: "dakika zimebaki",
+      timeLeftD: "siku {n} zimebaki", timeLeftH: "masaa {n} yaliyobaki", timeLeftM: "dakika {n} zimebaki",
       similarMarkets: "Masoko yanayofanana", similarMarketsBody: "Hai sasa — weka utabiri mwingine bila kurudi nyuma.",
       twentyFourHourMove: "Mwenendo wa saa 24",
       noLiveMatch: "Hakuna soko hai linalolingana",
@@ -3239,7 +3245,7 @@ export const dict = {
       beFirst: "成为第一个预测者",
       noPoolYet: "暂无奖池",
       closed: "已关闭",
-      dLeft: "天后", hLeft: "小时后", mLeft: "分钟后",
+      timeLeftD: "{n}天后", timeLeftH: "{n}小时后", timeLeftM: "{n}分钟后",
       similarMarkets: "相似市场", similarMarketsBody: "正在进行——无需返回即可再下一注。",
       twentyFourHourMove: "24小时变动",
       noLiveMatch: "没有匹配的直播市场",

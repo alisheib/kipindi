@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { fill } from "@/lib/utils";
 import Link from "next/link";
 import { SignalPip } from "@/components/brand";
 import { I, categoryGlyph } from "@/components/ui/glyphs";
@@ -256,11 +257,11 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
     const ms = Date.parse(iso) - Date.now();
     if (ms <= 0) return t.market.closed;
     const d = Math.floor(ms / (24 * 3600_000));
-    if (d > 0) return `${d}${t.market.dLeft}`;
+    if (d > 0) return fill(t.market.timeLeftD, { n: d });
     const h = Math.floor(ms / 3600_000);
-    if (h > 0) return `${h}${t.market.hLeft}`;
+    if (h > 0) return fill(t.market.timeLeftH, { n: h });
     const m = Math.floor(ms / 60_000);
-    return `${m}${t.market.mLeft}`;
+    return fill(t.market.timeLeftM, { n: m });
   }
 
   // Show a small resolved teaser — the full browsable archive lives at /results.

@@ -159,7 +159,15 @@ export function CreateProposalForm({ rateLimit, openCount }: { rateLimit: number
         )}
       </div>
 
-      <Button variant="gold" size="lg" fullWidth disabled={!valid} loading={pending} onClick={submit}>
+      {/* NOT gold (2026-07-29). RULES law 3 allows gold on wins, payouts, settled
+          profit and the final MONEY-COMMIT button. Submitting a proposal commits
+          no money — it asks an officer to review an idea, and it may be declined.
+          Gold here spends the one colour that must mean "this is real money you
+          have earned" on an action that has earned nothing yet, which is exactly
+          the dilution the law is written to prevent. Brand blue is the correct
+          tone for a primary submit. The "Propose Markets & Get Paid" framing is
+          about the eventual reward, not about this tap. */}
+      <Button variant="primary" size="lg" fullWidth disabled={!valid} loading={pending} onClick={submit}>
         {t.common.submitProposal}
       </Button>
       <p className="text-center text-[11px] leading-relaxed text-text-subtle">
