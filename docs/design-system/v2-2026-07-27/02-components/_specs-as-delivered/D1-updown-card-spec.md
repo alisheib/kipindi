@@ -34,11 +34,13 @@ Stats band (all four survive 360: countdown above counts as the fourth)
 
 Winning-targets band (the PDF's Up/Down target prices — added 2026-07-28)
 - shown **only** when `upTarget`/`downTarget` are known **and** state ∉ {resolved, void}; absent otherwise — we never render a boundary we don't have, and a settled card shows its outcome instead.
-- container: bg `--bg-inset`, border 1px `color-mix(--border 70%, transparent)`, radius `--r-md` — the countdown band's recipe; margin-top 8px.
-- header row: left label mono 8px/600 ls 0.12em uppercase `--text-faint` = "TARGET TO WIN" (`t.market.udWinTarget`, EN/SW/ZH), truncates; right `± $<buffer>` mono 8px tabular, shrink-0. Buffer = `upTarget − openPrice` = base × margin (the 0.5% "50pick factor"), mirroring the paper prototype's `4119.23 × 0.5% = 20.60 (±)`.
-- values: **`grid-cols-2`** (NOT justify-between — a fixed 50/50 split guarantees no horizontal overflow on a 6-figure asset), gap 8px, mono 12px/700 tabular, leading-tight; left `Up ≥ $<upTarget>` `--yes-300`, right (text-right) `Down ≤ $<downTarget>` `--no-300`. The `≥`/`≤` states the winning condition; direction is carried by colour + word (no inline arrow, so long prices never wrap the row).
+- header row (margin-top 10px): left label mono 8px/600 ls 0.12em uppercase `--text-faint` = "TARGET TO WIN" (`t.market.udWinTarget`, EN/SW/ZH), truncates; right `± $<buffer>` mono 8px tabular, shrink-0. Buffer = `upTarget − openPrice` = base × margin (the 0.5% "50pick factor"), mirroring the paper prototype's `4119.23 × 0.5% = 20.60 (±)`.
+- two tinted TILES, **`grid-cols-2`** gap 8px (a fixed 50/50 split — a 6-figure price stacks on its own line inside the tile, so the row can never overflow):
+  - UP tile (left): bg `color-mix(--yes-500 10%, transparent)`, border 1px `color-mix(--yes-500 24%, transparent)`, radius `--r-lg`, padding 6px 10px. Row 1 = ↗ (`I.trendingUp` s10) + "UP" mono 9px/700 caps ls 0.10em; row 2 = `≥ $<upTarget>` mono 12.5px/700 tabular, leading-tight. All ink `--yes-300`.
+  - DOWN tile (right): the mirror — right-aligned, `--no-500` tint / `--no-300` ink, ↘ (`I.trendingDown`), `≤ $<downTarget>`.
+  - the tiles deliberately echo the Up/Down bet buttons below (soft tint → solid fill = an intensity ladder from "the target" to "the action"), realising the paper prototype's boxed ↗ UP / ↘ Down targets with their arrows.
 - meaning: reach ≥ upTarget ⇒ UP wins, ≤ downTarget ⇒ DOWN wins, strictly between ⇒ VOID + full refund. Frozen at open (a later config/margin edit never moves a live round). Full math: `docs/UPDOWN-PRICING.md`.
-- responsive: verified by rendering the real board card at 360 / 768 / 1280 × EN/SW/ZH — overflow 0 at every width, incl. a 6-figure BTC stress case; band correctly absent on an awaiting-price round.
+- responsive: verified by rendering the real board card at 360 / 768 / 1280 × EN/SW/ZH — overflow 0 at every width, incl. a 6-figure BTC stress case (`≥ $104,756.68` on one line inside its tile); band correctly absent on an awaiting-price round.
 
 Stake row
 - 44px tall (≥40 tap target), bg `--bg-inset`, border 1px `--border`, radius `--r-md` (12px input radius), padding 0 12px 0 14px
@@ -119,4 +121,4 @@ Unknown-value rendering (real data or nothing)
 3. **Icon artwork** — mono "Au"/"Ag" glyph chips are placeholders; supply real asset marks and the recipe keeps only the tinted ring.
 4. **Resolved band and the player's own position** (won/lost/payout) is intentionally NOT on the board card — that belongs to D3/Bets. Confirm.
 5. **Stress title** ellipsises on one line; alternative is a 2-line clamp (+~18px card height, still baseline-aligned since footer is bottom-pinned). Preference?
-6. **Winning-targets band** (added 2026-07-28) realises the "50pick Dynamic Engine" PDF on the card — the two target prices a side must reach to win, matching the approved paper prototype. Open question: whether to add the ↗/↘ arrows inside the boxes (the sketch has them); currently omitted so 6-figure prices can't overflow at 360px, with the arrows kept on the Up/Down buttons below.
+6. **Winning-targets tiles** (added + refined 2026-07-28) realise the "50pick Dynamic Engine" PDF on the card — two colour-coded target tiles (`↗ UP ≥` / `↘ DOWN ↘ ≤`) that preview the bet buttons, matching the approved paper prototype **including its arrows**. Stacking the arrow+label over the price keeps a 6-figure asset on one line inside its 50%-width tile, so nothing overflows at 360px. (Resolves the earlier "arrows or not" question — arrows in, via the tile layout.)

@@ -270,20 +270,35 @@ export function UpDownCard(props: UpDownCardProps) {
       {/* ── Winning boundaries — the PDF's Up/Down target prices ─────────
           The exact price a side must REACH to win: UP at or above upTarget, DOWN at or
           below downTarget; a smaller move voids + refunds (the ± buffer around the base).
-          Frozen at open. Shown while the round can still be called — a settled/void card
-          shows its outcome instead, so this would only repeat stale boundaries. */}
+          Two tinted tiles echo the Up/Down bet buttons below — a quiet preview of the
+          choice — with the arrow + label stacked over the price so a 6-figure asset can
+          never overflow. Frozen at open; hidden once the round settles (it shows its
+          outcome instead) or before a price is confirmed (we never invent a boundary). */}
       {upTarget != null && downTarget != null && state !== "resolved" && state !== "void" && (
-        <div className="mt-2 rounded-lg px-2.5 py-1.5"
-             style={{ background: "var(--bg-inset)", border: "1px solid color-mix(in oklab, var(--border) 70%, transparent)" }}>
+        <div className="mt-2.5">
           <div className="flex items-center justify-between gap-2 font-mono text-[8px] font-semibold uppercase tracking-[0.12em] text-text-faint">
             <span className="truncate">{t.market.udWinTarget}</span>
             {openPrice != null && <span className="shrink-0 tabular-nums">± {usd(upTarget - openPrice, decimals)}</span>}
           </div>
-          {/* 50/50 grid, not justify-between: guarantees no horizontal overflow no matter
-              how long the price is (a 6-figure asset wraps inside its own half). */}
-          <div className="mt-0.5 grid grid-cols-2 gap-2 font-mono text-[12px] font-bold tabular-nums leading-tight">
-            <span className="min-w-0" style={{ color: "var(--yes-300)" }}>{t.market.udUp} ≥ {usd(upTarget, decimals)}</span>
-            <span className="min-w-0 text-right" style={{ color: "var(--no-300)" }}>{t.market.udDown} ≤ {usd(downTarget, decimals)}</span>
+          <div className="mt-1 grid grid-cols-2 gap-2">
+            <div className="min-w-0 rounded-lg px-2.5 py-1.5"
+                 style={{ background: "color-mix(in oklab, var(--yes-500) 10%, transparent)", border: "1px solid color-mix(in oklab, var(--yes-500) 24%, transparent)" }}>
+              <div className="flex items-center gap-1 font-mono text-[9px] font-bold uppercase tracking-[0.10em]" style={{ color: "var(--yes-300)" }}>
+                <I.trendingUp s={10} />{t.market.udUp}
+              </div>
+              <div className="mt-0.5 font-mono text-[12.5px] font-bold tabular-nums leading-tight" style={{ color: "var(--yes-300)" }}>
+                ≥ {usd(upTarget, decimals)}
+              </div>
+            </div>
+            <div className="min-w-0 rounded-lg px-2.5 py-1.5 text-right"
+                 style={{ background: "color-mix(in oklab, var(--no-500) 10%, transparent)", border: "1px solid color-mix(in oklab, var(--no-500) 24%, transparent)" }}>
+              <div className="flex items-center justify-end gap-1 font-mono text-[9px] font-bold uppercase tracking-[0.10em]" style={{ color: "var(--no-300)" }}>
+                {t.market.udDown}<I.trendingDown s={10} />
+              </div>
+              <div className="mt-0.5 font-mono text-[12.5px] font-bold tabular-nums leading-tight" style={{ color: "var(--no-300)" }}>
+                ≤ {usd(downTarget, decimals)}
+              </div>
+            </div>
           </div>
         </div>
       )}

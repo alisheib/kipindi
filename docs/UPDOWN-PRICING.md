@@ -89,10 +89,11 @@ stake-only chain edit never clears an existing override); the void-rate sample i
 The two frozen targets are surfaced on every player surface, matching the PDF's Up/Down target
 breakdown and the approved paper prototype:
 
-- **Board card** — a "Target to win" band under the pool split: `Up ≥ $<upTarget>` (emerald) /
-  `Down ≤ $<downTarget>` (rose) + the `± <buffer>` (base × margin). Hidden when the price/targets
-  aren't confirmed or the round is settled/void. Fixed 50/50 grid → no overflow at 360px, incl.
-  6-figure assets; verified across EN/SW/ZH. Spec:
+- **Board card** — a "Target to win" header (`± <buffer>` = base × margin) over **two colour-coded
+  tiles** that echo the Up/Down bet buttons: `↗ UP · ≥ $<upTarget>` (emerald) and `↘ DOWN · ≤ $<downTarget>`
+  (rose), matching the approved paper prototype including its arrows. Hidden when the price/targets aren't
+  confirmed or the round is settled/void. Fixed 50/50 grid with the price stacked under the label → no
+  overflow at 360px even for 6-figure assets; verified across EN/SW/ZH. Spec:
   `docs/design-system/v2-2026-07-27/02-components/_specs-as-delivered/D1-updown-card-spec.md`.
 - **Round detail** — the price hero draws the up/down boundary lines with their prices; the
   settlement proof states `≥ upTarget` / `≤ downTarget` beside the open/close.
