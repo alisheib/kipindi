@@ -96,21 +96,32 @@ export default async function AdminCompliancePage({
               </a>
             </div>
           </AdminCard>
+          {/* ⚠️ 2026-07-29 — this card used to render a hardcoded green ✓ reading
+              "Auto-snapshot on every mutation · HMAC-signed · last 12 retained ·
+              disk-backed". NONE of it was real, and none of it was read from
+              anything: there is no backup script in package.json, no code writes a
+              snapshot, and nothing reads STORE_BACKUP_DIR (it survives only as a
+              line in .gitignore). The card sat beside the audit-chain card, which
+              DOES read live state — so the fabricated tick borrowed its credibility.
+
+              That is RULES law 5 (real data or nothing) broken on the compliance
+              page: the one screen where an officer, or a regulator over their
+              shoulder, decides whether player balances and the settlement ledger
+              are recoverable. A fabricated 50% misleads a player about one market;
+              this misled the operator about whether the business can survive losing
+              its database.
+
+              It now states the truth. When a backup mechanism exists, this must read
+              its REAL last-run state — do not restore a static tick. */}
           <AdminCard title="Backup status" sw="Hali ya nakala">
             <div className="flex items-center gap-4">
-              <StatusPill status="ok" label="✓" />
+              <StatusPill status="fail" label="✗" />
               <div className="flex-1 min-w-0">
-                <p className="font-display font-bold text-body-sm text-text">Auto-snapshot on every mutation</p>
+                <p className="font-display font-bold text-body-sm text-text">No backup configured</p>
                 <p className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">
-                  HMAC-signed · last 12 retained · disk-backed
+                  no snapshot job · no verified restore · see docs/NEXT-PLAN.md
                 </p>
               </div>
-              <a
-                href="/admin/system"
-                className="font-mono text-micro tracking-[0.10em] uppercase px-2.5 h-7 inline-flex items-center rounded-md border border-border bg-bg-elevated text-royal-300"
-              >
-                history →
-              </a>
             </div>
           </AdminCard>
         </div>
