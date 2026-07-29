@@ -275,13 +275,15 @@ export function UpDownCard(props: UpDownCardProps) {
       {upTarget != null && downTarget != null && state !== "resolved" && state !== "void" && (
         <div className="mt-2 rounded-lg px-2.5 py-1.5"
              style={{ background: "var(--bg-inset)", border: "1px solid color-mix(in oklab, var(--border) 70%, transparent)" }}>
-          <div className="flex items-center justify-between font-mono text-[8px] font-semibold uppercase tracking-[0.12em] text-text-faint">
-            <span>{t.market.udWinTarget}</span>
-            {openPrice != null && <span className="tabular-nums">± {usd(upTarget - openPrice, decimals)}</span>}
+          <div className="flex items-center justify-between gap-2 font-mono text-[8px] font-semibold uppercase tracking-[0.12em] text-text-faint">
+            <span className="truncate">{t.market.udWinTarget}</span>
+            {openPrice != null && <span className="shrink-0 tabular-nums">± {usd(upTarget - openPrice, decimals)}</span>}
           </div>
-          <div className="mt-0.5 flex items-center justify-between gap-2 font-mono text-[12px] font-bold tabular-nums">
-            <span style={{ color: "var(--yes-300)" }}>{t.market.udUp} ≥ {usd(upTarget, decimals)}</span>
-            <span style={{ color: "var(--no-300)" }}>{t.market.udDown} ≤ {usd(downTarget, decimals)}</span>
+          {/* 50/50 grid, not justify-between: guarantees no horizontal overflow no matter
+              how long the price is (a 6-figure asset wraps inside its own half). */}
+          <div className="mt-0.5 grid grid-cols-2 gap-2 font-mono text-[12px] font-bold tabular-nums leading-tight">
+            <span className="min-w-0" style={{ color: "var(--yes-300)" }}>{t.market.udUp} ≥ {usd(upTarget, decimals)}</span>
+            <span className="min-w-0 text-right" style={{ color: "var(--no-300)" }}>{t.market.udDown} ≤ {usd(downTarget, decimals)}</span>
           </div>
         </div>
       )}
