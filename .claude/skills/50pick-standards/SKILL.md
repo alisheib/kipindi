@@ -169,12 +169,12 @@ deploy — never by hand.
 - `docs/perfection-plan.md` — the 0-issue plan, 9-role gate, phased method, matrices, risk register.
 - `docs/DESIGN_AUTHORITY.md` — design invariants (palette, YES/NO, theme, gold, a11y floor).
 - `docs/design-master-brief.md` — palette rationale / ground-truth sRGB.
-- `docs/FINAL-AUDIT-REMEDIATION.md` — the launch-gate remediation tracker (current stage).
+- `docs/perfection-plan.md` — the launch-gate remediation tracker (current stage).
 - `docs/DATA-LAYER.md` · `docs/FLOWS.md` — the data model + money/state flows.
 - `docs/AI-POLL-SOURCES.md` — AI poll generation is bound to the trusted-source registry
   (`getGeneratableCategories()`): the model can only generate categories/domains the operator
   has enabled, enforced before + during generation. Adding a source under the wrong category is
   the usual "why won't it generate/publish" trap.
-- `docs/ui-rollout-tracker.md` — UI-kit rollout status.
+- `docs/design-system/v2-2026-07-27/07-provenance/CHANGELOG.md` — UI-kit rollout status.
 - `.claude/skills/50pick-audit/SKILL.md` — safe DB/migration/Railway ops + money invariants + verify protocol.
 - `CLAUDE.md` — architecture overview + the ACTIVE-WORK banner.

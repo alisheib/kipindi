@@ -6,7 +6,7 @@
 | briefs/00-README-for-claude-design.md | Handoff instructions; the "golden rule": every value from globals.css |
 | briefs/01-RULES-and-invariants.md | Brand & UX invariants (basis of 06-patterns-and-rules) |
 | briefs/02-BRIEF-positions-pnl.md | Brief #1 — Positions P&L summary + performance |
-| briefs/UPDOWN-DESIGN-PROMPTS.md | Up & Down product brief + surfaces D1–D5 + acceptance criteria |
+| briefs/UPDOWN-SPEC.md | Up & Down product brief + surfaces D1–D5 + acceptance criteria |
 | kit-source/globals.css | THE token/stylesheet source of truth (archived unmodified; 01-foundations/tokens.css differs only by the documented font-import removal) |
 | kit-source/atoms.jsx | Kit atoms: Button, Chip, LiveDot, ProbabilityBar, ProgressBar, SteppedProgress, CircularProgress, Input, Avatar, TierBadge, Skeleton, Toast, Tooltip, Icon map |
 | kit-source/markets.jsx | MarketCard, BuyTray, PositionCard, ResolutionPanel, LeaderboardRow, EmptyState + line-art empties |

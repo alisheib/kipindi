@@ -47,4 +47,4 @@ Thank you.
   ship the three activation phases, and run one real ~1,000 TZS payout. See
   [`SELCOM-DISBURSEMENT-ACTIVATION.md`](SELCOM-DISBURSEMENT-ACTIVATION.md).
 - **CARD deposits** — since shipped (Selcom hosted Checkout page); this line's earlier "not built"
-  note is superseded (see `CLAUDE.md` / `SELCOM-COMPLETION-PROMPT.md`).
+  note is superseded (see `CLAUDE.md` / `SELCOM-API-DIGEST.md`).

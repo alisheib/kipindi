@@ -1,6 +1,6 @@
 # Open gaps — missing, inconsistent, or never specified
 
-> **Update 2026-07-28 (UI-consistency program — see [`docs/UI-CONSISTENCY-AUDIT.md`](../../../UI-CONSISTENCY-AUDIT.md)):**
+> **Update 2026-07-28 (UI-consistency program — see [`npm run test:ui-consistency`](../../../DESIGN_AUTHORITY.md)):**
 > items 4–7 below were "no design anywhere", but the primitives now **exist in code and are the
 > canonical, consistency-audited implementations** — treat the code as the spec until a formal
 > redline lands:

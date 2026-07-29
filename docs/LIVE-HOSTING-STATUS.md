@@ -25,7 +25,7 @@
 | R2 (KYC storage) | 🟢 **LIVE** | bucket `50pick-kyc`; 5 vars set in Railway; prod-env round-trip PASS |
 | Selcom payments (deposits) | 🟢 **LIVE code, OFF** | merged `main @213165c`; provider=mock default; deposit creds set + **GENUINELY validated** (corrected probe hits `/checkout/order-status` → HTTP 200 + envelope `404 order-not-found` = signature/creds/IP reached the real handler; a bad-auth request returns 401/403). Next: 1 real deposit test → flip provider→selcom |
 | Selcom payouts (withdrawals) | 🟢 **CODE LIVE (2026-07-27 @e046c51), 1 op-blocker** | All 3 phases built + tested (`test:all` 94/94) + **deployed** (Railway `b96f42f0` SUCCESS): `selcomDisburseEnv`+`CASHIN` routing · AML approve→dispatch · payee name-lookup + float-balance + money-grade emails · `BANK_TRANSFER` dropped. Provider already `selcom`. **Only blocker: set `PAYMENT_VENDOR_PIN` (float PIN — get from Selcom portal `61247989`) + fund the float.** Runbook: `docs/SELCOM-DISBURSEMENT-ACTIVATION.md` |
-| The go-live switch | ⚪ Not started | after the deposit test + certs: unset TEST_FUNDING, rebaseline, licence ref — **no settlement flag to flip** (settlement is per-market timer-driven; verify on `/admin/system`) — see `docs/GO-LIVE-CONTINUATION-PROMPT.md` §6 |
+| The go-live switch | ⚪ Not started | after the deposit test + certs: unset TEST_FUNDING, rebaseline, licence ref — **no settlement flag to flip** (settlement is per-market timer-driven; verify on `/admin/system`) — see `docs/GO-LIVE-RUNBOOK.md` §6 |
 
 ## ✅ DOMAIN CUTOVER — DONE (how it went, for the record)
 - tzNIC registry flipped to Cloudflare ~15:23 (Netpoa pushed it after ~3h + a support ticket).
@@ -81,7 +81,7 @@
   probe hit a non-existent `/order-status` path, so its 404 was transport-level (any unsigned
   request 404s too) and never actually exercised the signature. Fixed in @213165c.
 - **Full handoff (money model, creds/PINs, integration, pending, go-live switch, copy-paste
-  prompt): `docs/GO-LIVE-CONTINUATION-PROMPT.md`.** Signing digest: `docs/SELCOM-API-DIGEST.md`.
+  prompt): `docs/GO-LIVE-RUNBOOK.md`.** Signing digest: `docs/SELCOM-API-DIGEST.md`.
 - **Pending:** (1) one small real deposit test → flip deposits on; (2) **payouts** — Selcom
   disbursement API GRANTED 2026-07-27; set `PAYMENT_VENDOR_PIN` (or `PAYMENT_DISBURSE_*` if a
   separate account) + ship the activation phases in `docs/SELCOM-DISBURSEMENT-ACTIVATION.md`.

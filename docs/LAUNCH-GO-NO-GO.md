@@ -3,7 +3,7 @@
 > The single walk-down list to take 50pick live. GBT licence ✅ (2026-07-16),
 > payment keys expected 2026-07-17. Owners: 🤖 = code (me) · 👤 = Ali/ops.
 > Ordered so nothing runs before its prerequisite. Companion:
-> `GO-LIVE-READINESS.md`, `PAYMENT-INTEGRATION-CHECKLIST.md`.
+> `LAUNCH-GO-NO-GO.md`, `PAYMENT-INTEGRATION-CHECKLIST.md`.
 
 ## ✅ Already cleared
 - GBT licence (the hard legal gate).

@@ -4,7 +4,7 @@
 > adapter bodies is already built + tested. Realistic time to a working staging
 > round-trip: **under an hour.** Branch: `feat/payment-adapter` (the adapter
 > scaffold is already here — you fill two functions, wire creds, test, merge).
-> Companion: `GO-LIVE-READINESS.md` §2. Last updated 2026-07-24.
+> Companion: `LAUNCH-GO-NO-GO.md` §2. Last updated 2026-07-24.
 
 ## What's already done (do NOT rebuild)
 - **Adapter seam** — `src/lib/server/payments.ts` is now the env-switched adapter

@@ -1,5 +1,5 @@
 > **STATUS: aspirational planning doc** (not a verified list of current defects).
-> The authoritative launch-gate work is `docs/FINAL-AUDIT-REMEDIATION.md`.
+> The authoritative launch-gate work is `docs/perfection-plan.md`.
 
 # 50pick — Path to Perfect · 0-Issue Launch Plan
 
@@ -9,7 +9,7 @@
 > Every item is concrete, testable, and has an acceptance bar. Work top-to-bottom;
 > nothing ships past a phase until its **exit gate** is green and **all 9 roles accept**.
 >
-> Companion sources of truth: `docs/ui-rollout-tracker.md` (UI kit), `CLAUDE.md`
+> Companion sources of truth: `docs/design-system/v2-2026-07-27/07-provenance/CHANGELOG.md` (UI kit), `CLAUDE.md`
 > (architecture), the `ui-kit-rollout` / `dev-roles-standard` / `five-lens-mindset`
 > memories. This plan supersedes ad-hoc QA — it *is* the QA.
 

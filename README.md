@@ -8,7 +8,7 @@ Trilingual **EN + SW + ZH**. Mobile-first. Calm, premium, regulator-ready.
 
 ---
 
-> 🧭 **Engineers/agents:** start with the **`50pick-audit`** skill (`.claude/skills/50pick-audit/SKILL.md`) — the platform operational playbook. Active launch work: [`docs/FINAL-AUDIT-REMEDIATION.md`](docs/FINAL-AUDIT-REMEDIATION.md) · next session: [`docs/NEXT-SESSION.md`](docs/NEXT-SESSION.md).
+> 🧭 **Engineers/agents:** start with the **`50pick-audit`** skill (`.claude/skills/50pick-audit/SKILL.md`) — the platform operational playbook. Active launch work: [`docs/perfection-plan.md`](docs/perfection-plan.md) · next session: [`docs/NEXT-PLAN.md`](docs/NEXT-PLAN.md).
 
 ---
 

@@ -174,7 +174,7 @@ specific change. Be candid; we would rather redo a built thing now than ship it 
 > KYC-APPROVED; KYC progress rail + per-slot ID silhouettes; SoF per-source glyphs;
 > fairness provably-fair diagram; help per-FAQ glyphs; RG self-care art; legal per-doc
 > header icons. The rows below are the ORIGINAL brief and are kept for provenance —
-> **`docs/NEXT-SESSION.md` (2026-07-21 block) is the current truth** on what shipped,
+> **`docs/NEXT-PLAN.md` (2026-07-21 block) is the current truth** on what shipped,
 > what's deferred (money-data-gated: KPI money-tile sparks, wallet limit meters), and
 > what genuinely remains (wider dynamic OG). Prove a row against the code before acting.
 
@@ -225,7 +225,7 @@ specific change. Be candid; we would rather redo a built thing now than ship it 
 ### 5d. Admin console (restraint — internal tooling)
 
 > **Update 2026-07-20 (admin console detail pass):** several rows below are now DONE — see
-> `docs/NEXT-SESSION.md`. Closed: `ai-usage` daily-spend chart (`AdminAreaChart` from
+> `docs/NEXT-PLAN.md`. Closed: `ai-usage` daily-spend chart (`AdminAreaChart` from
 > `anthropic.daily`, shown only when the Cost API key is set); `moderation` KPI band; all 41
 > loaders are now real skeletons; every unbounded admin list is paginated; hand-rolled table
 > empties routed through the shared `EmptyState` via `AdminTableEmpty`. Still open: the
