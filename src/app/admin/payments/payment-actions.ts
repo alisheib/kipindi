@@ -162,6 +162,68 @@ export async function reconcileMatchAction(formData: FormData): Promise<Result> 
   return { ok: true };
 }
 
+/**
+ * RETURN A FROZEN PAYOUT — reverse a WITHDRAWAL stuck in PROCESSING and give the
+ * player their money back.
+ *
+ * 🔴 WHY THIS EXISTS. On 2026-07-29 Selcom refused every wallet-cashin call with
+ * `HTTP 403 · "API endpoint not enabled for the vendor (4035)"` — the disbursement
+ * product had never been switched on for the account. The dispatch path classified
+ * that HTTP error as AMBIGUOUS ("might be in flight — never blind-reverse"), which
+ * is the right instinct for a timeout but wrong for a permanent refusal: a 403
+ * never becomes terminal, so the stale sweep could not resolve it either. Two real
+ * payouts (10,000 + 5,000 TZS) sat frozen with the player's balance held, and there
+ * was NO operator action anywhere that could release them — `reconcileMatch` and
+ * `reconcileWriteOff` both require `status === "CONFIRMED"`. A licensed operator
+ * must always be able to give a player their own money back.
+ *
+ * MONEY-SAFETY — the machine check, not just the officer's word:
+ * before reversing we RE-QUERY the provider, and refuse outright if it reports
+ * CONFIRMED. Reversing a payout that actually settled would pay the player twice.
+ * A non-terminal answer (PENDING / UNSUPPORTED / a 403 we cannot get past) is what
+ * this action is FOR, so it proceeds there — that is a deliberate officer decision,
+ * carrying their id, their typed reason, and a watched COMPLIANCE audit entry.
+ *
+ * The reversal itself goes through `settleWithdrawalFailed`, the same idempotent
+ * path a genuine provider failure uses — so a race with the reconcile sweep or a
+ * late callback cannot refund twice.
+ */
+export async function reverseStuckPayoutAction(formData: FormData): Promise<Result> {
+  const g = await gate("reverseStuckPayout");
+  if ("error" in g) return { ok: false, error: g.error };
+  const txnId = String(formData.get("txnId") ?? "").trim();
+  const reason = String(formData.get("reason") ?? "").trim().slice(0, 200);
+  if (reason.length < 10) return { ok: false, error: "A reason of at least 10 characters is required — this returns real money." };
+
+  const t = await db.txn.findById(txnId);
+  if (!t) return { ok: false, error: "Transaction not found." };
+  if (t.type !== "WITHDRAWAL") return { ok: false, error: "Only a withdrawal can be reversed here." };
+  if (t.status !== "PROCESSING") return { ok: false, error: `This payout is ${t.status}, not PROCESSING — nothing to release.` };
+
+  // ── The machine check. An officer may be wrong; the provider is authoritative.
+  let providerSays = "not asked (no provider reference)";
+  if (t.providerRef) {
+    const { verifyWithdrawalStatus } = await import("@/lib/server/payments");
+    const v = await verifyWithdrawalStatus(t.providerRef);
+    providerSays = `${v.status}${v.detail ? `: ${v.detail}` : ""}`;
+    if (v.status === "CONFIRMED") {
+      audit({ category: "COMPLIANCE", action: "payments.payout_reverse_refused", actorId: g.userId, targetType: "Transaction", targetId: txnId,
+        payload: { reason, providerSays, note: "REFUSED — the provider reports this payout as COMPLETED; reversing would pay the player twice." } });
+      return { ok: false, error: "Refused: the provider reports this payout COMPLETED. Reversing it would pay twice." };
+    }
+  }
+
+  const { settleWithdrawalFailed } = await import("@/lib/server/wallet-service");
+  const done = await settleWithdrawalFailed(txnId, "officer-reversed-stuck-payout");
+  if (!done) return { ok: false, error: "Could not reverse — it may have just settled. Refresh and re-check." };
+
+  audit({ category: "COMPLIANCE", action: "payments.payout_reversed", actorId: g.userId, targetType: "Transaction", targetId: txnId,
+    payload: { reason, providerSays, amount: Math.abs(t.amount), providerRef: t.providerRef, userId: t.userId } });
+  revalidatePath("/admin/payments");
+  revalidatePath("/admin/transactions");
+  return { ok: true };
+}
+
 /** PSP reconciliation — WRITE OFF an unmatched item with no PSP correlation
  *  (e.g. a manual/internal movement), with a mandatory reason (A3). Records a
  *  sentinel ref so it clears drift + a watched COMPLIANCE audit. No money moves. */

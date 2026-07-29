@@ -96,7 +96,44 @@ ok("the fast payout lane refreshes providerStatus each pass",
 ok("the stale reconcile refreshes providerStatus each sweep",
   bodyOf(wallet, "export async function reconcileStalePayments").includes("providerStatus"));
 
-console.log("\n── 4 · No credential can leak through the new detail ───────────");
+console.log("\n── 4 · A refusal must not freeze a player's money ──────────────");
+
+// 2026-07-29: Selcom answered every wallet-cashin call with HTTP 403 "API endpoint
+// not enabled for the vendor (4035)". Classified as AMBIGUOUS, that parked two real
+// payouts in PROCESSING forever — a 403 never becomes terminal, so the stale sweep
+// could not resolve them either, and the player's money stayed held indefinitely.
+ok("a 401/403 on dispatch is DEFINITIVE, not ambiguous",
+  /res\.httpStatus === 401 \|\| res\.httpStatus === 403/.test(withdrawFn) &&
+  /httpStatus === 403[\s\S]{0,400}reason: "FAILED"/.test(withdrawFn),
+  "refused at the door ⇒ nothing dispatched ⇒ safe to return the money");
+ok("other HTTP errors stay AMBIGUOUS (a timeout may really be in flight)",
+  /reason: "AMBIGUOUS"/.test(withdrawFn),
+  "this must NOT generalise — reversing a live payout double-pays");
+ok("a PROVIDER_DOWN tells the player the rail is down, not that they failed",
+  /PROVIDER_DOWN[\s\S]{0,200}temporarily unavailable/.test(wallet));
+
+// And the escape hatch for payouts already frozen under the old behaviour.
+const actions = readFileSync(new URL("../src/app/admin/payments/payment-actions.ts", import.meta.url), "utf8");
+const reverseFn = actions.slice(actions.indexOf("export async function reverseStuckPayoutAction"));
+ok("an officer can release a frozen payout", reverseFn.length > 0);
+ok("it only touches a PROCESSING withdrawal",
+  /t\.type !== "WITHDRAWAL"/.test(reverseFn) && /t\.status !== "PROCESSING"/.test(reverseFn));
+// Anchored at BOTH ends — it must re-query, branch on CONFIRMED, and bail out. The
+// window only spans the audit call that sits between the branch and the return.
+ok("⛔ it RE-QUERIES the provider and REFUSES on CONFIRMED",
+  /verifyWithdrawalStatus[\s\S]{0,400}if \(v\.status === "CONFIRMED"\)[\s\S]{0,700}return \{ ok: false/.test(reverseFn),
+  "reversing a settled payout would pay the player twice");
+// …and the refusal must come BEFORE anything that could move money.
+ok("the CONFIRMED refusal precedes the reversal call",
+  reverseFn.indexOf('v.status === "CONFIRMED"') < reverseFn.indexOf("settleWithdrawalFailed"));
+ok("it demands a typed reason", /reason\.length < 10/.test(reverseFn));
+ok("it reverses through the idempotent shared path", reverseFn.includes("settleWithdrawalFailed"));
+ok("it records a watched COMPLIANCE audit entry",
+  /category: "COMPLIANCE"[\s\S]{0,120}payout_reversed/.test(reverseFn));
+ok("a refusal is audited too, not silently swallowed",
+  /payout_reverse_refused/.test(reverseFn));
+
+console.log("\n── 5 · No credential can leak through the new detail ───────────");
 
 // describeSelcom is the ONLY thing allowed to render a gateway reply, and it must
 // never widen to the request body (which carries the float PIN).
