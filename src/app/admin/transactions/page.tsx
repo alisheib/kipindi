@@ -259,11 +259,20 @@ export default async function AdminTransactionsPage({ searchParams }: { searchPa
                           internal transfer (stake, payout, bonus) never touched a
                           gateway, so it shows a plain dash — flagging it would be a
                           false alarm, and rose is reserved for YES/NO money meaning. */}
+                      {/* `providerStatus` is what the gateway said in its own words.
+                          It hangs off the reference because that is where an operator
+                          already looks when a movement is stuck, and it is a `title`
+                          rather than a column because it is a full sentence — the
+                          table must not grow a 400px cell for the 1% of rows that
+                          are being investigated. Before 2026-07-29 this was never
+                          recorded at all, and a stalled payout was unexplainable. */}
                       <td className="whitespace-nowrap font-mono text-xs">
                         {t.providerRef
-                          ? <span className="text-text-secondary">{t.providerRef}</span>
+                          ? <span className="text-text-secondary" title={t.providerStatus ?? undefined}>
+                              {t.providerRef}{t.providerStatus ? " ⓘ" : ""}
+                            </span>
                           : GATEWAY_TYPES.includes(t.type)
-                            ? <span className="text-[var(--gold-300)]" title="No gateway reference — this movement cannot be reconciled">missing</span>
+                            ? <span className="text-[var(--gold-300)]" title={t.providerStatus ?? "No gateway reference — this movement cannot be reconciled"}>missing</span>
                             : <span className="text-text-tertiary">—</span>}
                       </td>
                       <td className="whitespace-nowrap font-mono text-xs text-text-tertiary">{t.msisdn ?? "—"}</td>

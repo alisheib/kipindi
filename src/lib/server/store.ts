@@ -186,6 +186,19 @@ export type StoredTxn = {
   currency: "TZS";
   provider: "MPESA" | "TIGO_PESA" | "AIRTEL_MONEY" | "HALO_PESA" | "MIXX" | "TTCL_PESA" | "CARD" | "BANK_TRANSFER" | "INTERNAL" | null;
   providerRef: string | null;
+  /**
+   * What the payment gateway ACTUALLY said, in its own words — HTTP status,
+   * resultcode, result and message (see `describeSelcom`).
+   *
+   * 🔴 The Prisma column has existed since the schema was written and NO code path
+   * ever wrote it, so it was silently always null. On 2026-07-29 two real payouts
+   * stalled in PROCESSING and the platform could not say whether Selcom had queued
+   * them, refused them for an empty float, or rejected the utility code — the
+   * envelope was discarded at the adapter and this field, which exists precisely to
+   * hold it, was dead. It is written now on dispatch and refreshed on every status
+   * re-query. Log-safe by construction: no credentials, payee masked, truncated.
+   */
+  providerStatus?: string | null;
   msisdn: string | null;
   description: string | null;
   positionId: string | null;

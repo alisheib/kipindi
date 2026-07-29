@@ -210,6 +210,7 @@ function toStoredTxn(t: any): StoredTxn {
     currency: "TZS",
     provider: t.provider ?? null,
     providerRef: t.providerRef,
+    providerStatus: t.providerStatus ?? null,
     msisdn: t.msisdn,
     description: t.description,
     positionId: t.positionId,
