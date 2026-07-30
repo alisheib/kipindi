@@ -176,6 +176,50 @@ export async function updateChainAction(formData: FormData) {
   }
 }
 
+// ── Rounds (CONFIG tier — a void MOVES MONEY) ────────────────────────────────
+
+/**
+ * VOID a round and refund every stake in full.
+ *
+ * ⛔ CONFIG tier (`accounting`), NOT ops. Starting and pausing a chain is operational —
+ * it changes whether rounds are emitted. This REFUNDS REAL MONEY, so it sits with the
+ * money-grade roles; MODERATOR (who may pause a chain) must not be able to move a
+ * player's balance. `docs/UPDOWN-ARCHITECTURE.md` §10 listed this under MARKET_OPS; the
+ * doc was written before the action existed and is corrected alongside this.
+ *
+ * WHY IT EXISTS AT ALL: `voidRoundByOperator` was written, tested by nothing, and called
+ * by NOTHING — dead code with no route, no action and no button. So when production
+ * accumulated 1,398 rounds that could not resolve, there was no way for an operator to
+ * return the money either: Up & Down rounds are also filtered out of /admin/markets
+ * (`listMarkets()` defaults to `productLine: "MARKET"`), so the emergency-void control
+ * there could not see them. This is the escape hatch that was missing.
+ *
+ * The reason is REQUIRED and lands in the audit payload. A refund with no stated cause
+ * is not a decision anyone can defend later.
+ */
+export async function voidRoundAction(formData: FormData) {
+  const session = await ensureConfig();
+  const id = String(formData.get("id") ?? "").trim();
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (!id) return { ok: false as const, error: "Which round? No round id was supplied." };
+  if (reason.length < 8) {
+    return { ok: false as const, error: "Give a reason of at least 8 characters — it is written to the audit trail and is the only record of why this money moved." };
+  }
+  if (reason.length > 300) {
+    return { ok: false as const, error: "Keep the reason under 300 characters." };
+  }
+  try {
+    const { voidRoundByOperator } = await import("@/lib/server/updown-service");
+    const r = await voidRoundByOperator(id, session.userId, reason);
+    if (!r.ok) return { ok: false as const, error: r.error };
+    refresh();
+    revalidatePath("/admin/updown/rounds");
+    return { ok: true as const, settled: r.data.settled };
+  } catch (err) {
+    return { ok: false as const, error: safeError(err, "Void failed") };
+  }
+}
+
 // ── Thresholds (CONFIG tier — they govern what counts as a valid price) ──────
 
 export async function updateThresholdsAction(formData: FormData) {

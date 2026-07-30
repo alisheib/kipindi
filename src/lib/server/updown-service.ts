@@ -329,7 +329,18 @@ export async function closeRound(
   roundId: string,
   closeObservationId: string | null,
   closePrice: number | null,
-  voidReasonIfNoPrice: VoidReason = "source-failed",
+  /**
+   * Why this round voided, when the CALLER knows better than the arithmetic does.
+   *
+   * ⚠️ This used to be `voidReasonIfNoPrice = "source-failed"` and was consulted only
+   * when the outcome rule returned no reason of its own — which it always does for a
+   * missing price. So `voidRoundByOperator` passing "operator" had NO effect: an
+   * officer's deliberate void was recorded as a SOURCE failure, misattributing a human
+   * decision to the price feed in the audit trail and in the per-chain void-rate metric.
+   * An explicit reason now wins; absent one, the arithmetic's reason stands ("no-move"
+   * for an in-band close), falling back to "source-failed".
+   */
+  voidReasonOverride?: VoidReason,
 ): Promise<LifecycleResult<{ outcome: RoundOutcome; settled: boolean }>> {
   const round = await roundStore.get(roundId);
   if (!round) return { ok: false, error: "Round not found." };
@@ -345,7 +356,7 @@ export async function closeRound(
   const { outcome, voidReason } = useTargets
     ? decideOutcomeByTargets(closePrice, round.upTarget, round.downTarget)
     : decideOutcome(round.openPrice, closePrice, minMoveFor(asset));
-  const finalVoidReason = outcome === "VOID" ? (voidReason ?? voidReasonIfNoPrice) : null;
+  const finalVoidReason = outcome === "VOID" ? (voidReasonOverride ?? voidReason ?? "source-failed") : null;
   const side = outcomeToSide(outcome);
   const nowIso = new Date().toISOString();
 

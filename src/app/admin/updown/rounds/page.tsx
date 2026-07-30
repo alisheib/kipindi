@@ -5,6 +5,7 @@ import { listAssets, listChains } from "@/lib/server/updown-config";
 import { roundStore } from "@/lib/server/updown-dal";
 import { marketStore } from "@/lib/server/market-dal";
 import { formatTzs } from "@/lib/utils";
+import { VoidRoundButton } from "./round-actions";
 
 export const metadata = { title: "Admin · Up & Down · Rounds" };
 export const dynamic = "force-dynamic";
@@ -72,7 +73,7 @@ export default async function AdminUpDownRoundsPage() {
             </div>
           ) : (
             <ScrollX label="Up & Down rounds">
-              <table className="admin-tbl min-w-[880px]">
+              <table className="admin-tbl min-w-[980px]">
                 <thead>
                   <tr className="text-left font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle border-b border-border-subtle">
                     <th className="px-4 py-2.5 font-semibold">Round</th>
@@ -82,6 +83,7 @@ export default async function AdminUpDownRoundsPage() {
                     <th className="px-4 py-2.5 font-semibold text-right">Volume</th>
                     <th className="px-4 py-2.5 font-semibold text-right">Players</th>
                     <th className="px-4 py-2.5 font-semibold text-right">Settled</th>
+                    <th className="px-4 py-2.5 font-semibold text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -109,6 +111,21 @@ export default async function AdminUpDownRoundsPage() {
                         <td className="px-4 py-3 text-right font-mono text-[11.5px] tabular-nums text-text-muted">{formatTzs(volume)}</td>
                         <td className="px-4 py-3 text-right font-mono text-[11.5px] tabular-nums text-text-muted">{players}</td>
                         <td className="px-4 py-3 text-right font-mono text-[10.5px] text-text-subtle whitespace-nowrap">{r.settledAt ? fmt(r.settledAt) : "—"}</td>
+                        <td className="px-4 py-3 text-right whitespace-nowrap">
+                          {/* Only an UNSETTLED round can be voided — once the money has
+                              moved there is nothing to refund, and the service refuses
+                              anyway. Showing a dead button would be a lie. */}
+                          {r.settledAt ? (
+                            <span className="font-mono text-[10.5px] text-text-subtle">—</span>
+                          ) : (
+                            <VoidRoundButton
+                              roundId={r.id}
+                              label={`${asset?.key ?? "?"} ${durationMinutes}m #${r.roundNumber}`}
+                              volume={formatTzs(volume)}
+                              players={players}
+                            />
+                          )}
+                        </td>
                       </tr>
                     );
                   })}
@@ -119,8 +136,10 @@ export default async function AdminUpDownRoundsPage() {
         </AdminCard>
         <p className="text-[11.5px] leading-[1.55] text-text-subtle">
           Each round is a settled or in-flight price market. Open and close prices are read from the asset&rsquo;s approved
-          source at the round&rsquo;s grid boundaries; a round that could not confirm a price VOIDs and refunds every stake
-          in full. Full per-round proof (both source links + quoted times) is on each round&rsquo;s market page.
+          source at the round&rsquo;s grid boundaries; a boundary that will not confirm after its retry budget VOIDs its
+          rounds and refunds every stake in full, automatically. <strong>Void</strong> does that now, by hand, for a round
+          that cannot be settled honestly &mdash; the reason you give is written to the audit trail. Only an unsettled round
+          can be voided. Full per-round proof (both source links + quoted times) is on each round&rsquo;s market page.
         </p>
       </div>
     </>

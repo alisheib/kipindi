@@ -44,7 +44,7 @@ import {
   createAsset, setAssetEnabled, createChain, setChainState,
   __resetUpDownConfig, setUpDownConfig, getUpDownConfig,
 } from "../src/lib/server/updown-config.ts";
-import { openRound, resolveOverdueRounds, acquireObservation } from "../src/lib/server/updown-service.ts";
+import { openRound, resolveOverdueRounds, acquireObservation, voidRoundByOperator } from "../src/lib/server/updown-service.ts";
 import { marketStore } from "../src/lib/server/market-dal.ts";
 import { buyPosition, ratesFor } from "../src/lib/server/market-service.ts";
 import { poolFee } from "../src/lib/payout.ts";
@@ -332,6 +332,38 @@ console.log("\n── 7 · the retry ladder spaces attempts out (it used to be r
   // Validation, now that the field is load-bearing.
   ok("7.4 · a garbage backoff is refused", !(await setUpDownConfig({ retryBackoffSeconds: [] }, OFFICER)).ok);
   ok("7.5 · a negative backoff is refused", !(await setUpDownConfig({ retryBackoffSeconds: [-1] }, OFFICER)).ok);
+}
+
+// ── 7B · An operator void is recorded as an OPERATOR void ───────────────────
+console.log("\n── 7B · an officer's void is attributed to the officer, not the source ──");
+{
+  const before = await walletsTotal();
+  const round = await overdueRoundWithBets(c15.data.id, Date.now() + GRACE_MS, 2400.00, [
+    { userId: erin, side: "NO", stake: 12_000 },
+  ]);
+
+  const res = await voidRoundByOperator(round.id, OFFICER, "test: source known unreadable, refunding");
+  ok("7B.1 · the operator void succeeds", res.ok, res.ok ? "" : res.error);
+
+  const healed = (await roundStore.get(round.id))!;
+  ok("7B.2 · ⛔ the reason is 'operator', NOT 'source-failed'", healed.voidReason === "operator",
+     `${healed.voidReason} — recording a human decision as a source failure misattributes it in the audit trail and in the per-chain void-rate metric`);
+  ok("7B.3 · it still VOIDed and refunded in full",
+     healed.outcome === "VOID" && (await walletsTotal()) === before, `${before} → ${await walletsTotal()}`);
+  ok("7B.4 · a second operator void is refused once the money has moved",
+     !(await voidRoundByOperator(round.id, OFFICER, "again")).ok);
+
+  // The arithmetic's own reason must still survive when the caller states nothing.
+  const inBand = await overdueRoundWithBets(c15.data.id, Date.now() + GRACE_MS, 2400.00, []);
+  const obs = await observationStore.ensure(asset.id, inBand.boundaryAt);
+  await observationStore.confirm(obs.id, {
+    price: 2400.00, sourceUrl: asset.priceSourceUrl, sourceQuotedAt: inBand.boundaryAt,
+    evidence: "test fixture: close inside the margin band", confidence: 99, model: "test", rawHash: "test",
+  });
+  await resolveOverdueRounds({ maxRounds: 50, maxObservations: 8 });
+  ok("7B.5 · an in-band close is still 'no-move', not overridden by the fallback",
+     (await roundStore.get(inBand.id))!.voidReason === "no-move",
+     String((await roundStore.get(inBand.id))!.voidReason));
 }
 
 // ── 8 · Conservation across the whole run ───────────────────────────────────
