@@ -1,5 +1,9 @@
 STATUS: the next plan. Written 2026-07-29, immediately after the design system was
-frozen and shipped. **Nothing in here has been started.**
+frozen and shipped. **Revised 2026-07-31 against the live platform, not against memory.**
+
+**Items 1, 2 and 4 are DONE and live. Item 3 (withdrawals) is blocked at Selcom, and
+items 5–6 (scale, multi-container) are untouched.** What is left on 1 and 2 is not code —
+it is four operator actions listed under "Only Ali can do these", below.
 
 # 50pick — next plan: LAUNCH HARDENING
 
@@ -14,18 +18,30 @@ This file is the brief. Copy the block at the bottom into a fresh session.
 
 ---
 
-## Where we actually stand (verified 2026-07-29, not assumed)
+## Where we actually stand (re-verified 2026-07-31 against production, not assumed)
 
 | | State |
 |---|---|
-| Live | `www.50pick.tz`, Railway project `50pick` / `production`, deploy `SUCCESS` |
-| Money mode | **TEST** — deposits real via Selcom, withdrawals blocked |
-| Test suite | **104** `test:*` scripts; `test:all` 102/104 (2 are browser tests needing a live server) |
+| Live | `www.50pick.tz`, Railway `50pick` / `production`, running `be4a12be`; `/api/health` `ok:true` |
+| Money mode | **TEST** — deposits real via Selcom, **withdrawals cannot be paid** (Selcom-side) |
+| Test suite | **110** `test:*` scripts; `test:all` **110/110** with a dev server up on `:3000` |
 | Design | FROZEN + LIVE (B9/B10, `test:design-frozen`) |
-| Error tracking | ⚠️ **Durable, not alerting** — exceptions persist to the audit chain (scrubbed + deduped, `test:monitoring`); no `@sentry/*` installed, so nothing pages anyone |
-| Database backups | ⚠️ **Toolchain built, never run for real** — `db:backup`/`db:verify-backup`/`db:restore` + `test:backup`; needs scheduling, an off-box destination, and one real drill |
-| KYC storage | `@aws-sdk/client-s3` is installed; R2 needs bucket + env to be switched on |
+| Error tracking | ✅ code complete — durable + scrubbed + `@sentry/node` wired and proven (`test:alerting`). ⚠️ **`SENTRY_DSN` is NOT set in Railway (verified), so nobody is paged.** `/api/health` reports `monitoring.alerting:false` |
+| Database backups | ✅ toolchain complete and **drilled against production** (`test:backup`, 113 checks). ⚠️ **Nightly is not yet running:** no GitHub repo secrets, and `R2_BACKUP_BUCKET` does not exist |
+| KYC storage | ✅ live on R2 — `R2_BUCKET=50pick-kyc`, endpoint + keys set in Railway |
+| Admin 2FA | ❌ **OFF in production** — `DISABLE_ADMIN_TOTP` is set. Must be off before real-money launch; flipping it blind risks locking Ali out, so it needs an enrolment first |
 | Multi-container | ❌ unsafe — `admission.ts`, `rate-limit.ts` and the ticker keep state in module scope |
+
+### Only Ali can do these (nothing in the repo can advance them)
+
+| # | Action | Why it cannot be automated |
+|---|---|---|
+| A | **Tell Selcom to enable `SELCOM_PESA` + `HUDUMA_AGENT`** | Their switch. Unblocks paying customers; the ladder already tries both, so no code change |
+| B | **Set `SENTRY_DSN`** in Railway and redeploy | Needs a Sentry account — an external signup and a decision to send a licensed operator's data off-box |
+| C | **Add the GitHub repository secrets** (`BACKUP_SOURCE_DATABASE_URL`, `BACKUP_ENCRYPTION_KEY`, `AUDIT_CHAIN_SECRET`, `R2_ENDPOINT`, `R2_BACKUP_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`) | `gh` is not authenticated on this machine and no `GH_TOKEN` exists; git pushes go through Windows Credential Manager, which `gh` cannot read |
+| D | **Create the `50pick-backups` R2 bucket** | The R2 API token in Railway is bucket-scoped — `ListBuckets` returns `AccessDenied`, so it cannot create one. Cloudflare dashboard → R2 → Create bucket. Verify with `railway run node scripts/r2-provision-backup-bucket.mjs` |
+| E | **Decide the TZS 100,000 orphan wallet** — write the missing ledger entry, or reverse the credit | A money mutation on production with no established provenance |
+| F | **Rotate the Postgres password**, and the credentials exposed in chat | Rotating live DB creds mid-session takes the site down if mistimed |
 
 ### The four things that would hurt most, worst first
 
@@ -51,11 +67,17 @@ This file is the brief. Copy the block at the bottom into a fresh session.
    was flawless. Verification now compares restored-vs-**source**, and the source's health
    is reported separately — otherwise the nightly is red forever and people stop reading it.
 
-   ⏳ **Operator actions left:** add the repository secrets (the workflow fails its config
-   check until then, deliberately), and create an `R2_BACKUP_BUCKET` **separate** from the
-   KYC bucket. `BACKUP_ENCRYPTION_KEY` was generated locally into `.env.backup.local`
-   (gitignored) — **copy it into a password manager**; a key that lives only where the
-   database lives is not a key.
+   ⏳ **Operator actions left:** C and D in the table above.
+
+   🔴 **Correction, 2026-07-31.** This file previously said *"`BACKUP_ENCRYPTION_KEY` was
+   generated locally into `.env.backup.local` (gitignored) — copy it into a password
+   manager."* **That file does not exist**, in `C:\kipindi-main`, in the `kipindi-night`
+   worktree, or anywhere else searched. The key from the drill is **gone**. This costs
+   nothing today — the drill artifact was local and disposable, nothing has been uploaded
+   off-box, and no stored backup is stranded — but it would have been read as "the key is
+   safe on the laptop". **Generate a fresh 32-byte key at the moment you add the repository
+   secrets, and put it in a password manager in the same sitting.** Do not write it to a
+   file and intend to move it later; that is exactly what did not happen here.
 
    🔴 **A live money finding the drill surfaced, needing Ali:** one wallet holds
    **TZS 100,000 with no ledger entry, no `Transaction` and no audit row**, and the audit
@@ -101,13 +123,23 @@ This file is the brief. Copy the block at the bottom into a fresh session.
    ⚠️ **Still missing: ALERTING.** Nothing pages anyone; you must go and look. `monitoring.ts`
    is a ready seam — `npm i @sentry/node` + `SENTRY_DSN` activates the off-box mirror with no
    other code change. Sending a licensed operator's data off-box is Ali's call.
-3. **Withdrawals cannot be paid — and as of 2026-07-30 we know exactly why.** ~~Blocked on
-   the Selcom float PIN (`PAYMENT_VENDOR_PIN`).~~ The PIN is set. **The disbursement float
-   is EMPTY**, confirmed by Selcom's own `990 "Insufficient account balance"` on a real
-   dispatch. Deposits do NOT fund it: collections and the payout float are separate
-   balances at Selcom, and the float is prepaid. **Waiting on Selcom to say how to top it
-   up.** Players can put money **in** and not take it **out** — the single worst asymmetry
-   a gambling operator can ship, and a licence question, not just an ops one.
+3. 🔴 **Withdrawals cannot be paid. THE ONLY OPEN BLOCKER, and it is on Selcom's side.**
+   Players can put money **in** and not take it **out** — the single worst asymmetry a
+   gambling operator can ship, and a licence question, not just an ops one.
+
+   Everything on our side is ruled out with evidence: float funded, PIN set,
+   `WALLET_CASHIN` provisioned, payee number valid, `utilitycode` correct, signature
+   accepted. And a payout still returns `010 "Invalid mobile number or operator not
+   supported"` — while `namelookup` on the *same number, minutes apart* returns `000
+   SUCCESS` with the correct registered name. Their gateway contradicts itself; every
+   status query returns `999 "No reponse from upstream system"` **including for a transid
+   that does not exist**, which points at their upstream (TIPS) being down.
+
+   ▶ **The ask: enable `SELCOM_PESA` and `HUDUMA_AGENT`.** Both are Selcom-internal, do not
+   ride the broken upstream, and **the fallback ladder already tries them — no code change.**
+
+   ⛔ Do **not** "fix" this by editing `mnoToSelcomCashin`. The codes are proven correct.
+   ⛔ Two superseded diagnoses are fenced in the rails doc — do not re-derive them.
    Full state: [`SELCOM-PAYOUT-RAILS.md`](SELCOM-PAYOUT-RAILS.md) § Current state.
 4. ~~**`scripts/gift-admin-credit.ts` still exists.**~~ ✅ **DONE 2026-07-30.** Deleted, along
    with `docs/OPERATOR-CREDIT-TOOLS.md` (per that file's own removal checklist);
@@ -168,37 +200,63 @@ hardcoded the token values it was meant to check and hid a real AA failure, a br
 querying the wrong Tailwind map, and a component that re-typed its own tokens by hand. A
 green gate is evidence, not proof. Check the artifact the user actually receives.
 
-### Work in this order — worst risk first
+### ✅ Already done — do NOT rebuild these
 
-**1. Backups, and a PROVEN restore.** There is no backup script at all. Build
-`db:backup` / `db:verify` / `db:restore`, schedule it, and then **actually restore into a
-scratch database and diff it**. An unverified backup is not a backup. Player balances and
-the settlement ledger are the assets.
+Three of the original six items are closed and live. Rebuilding them is the most likely way
+to waste this pass, so they are named explicitly:
 
-**2. Error tracking — the durable half is DONE (2026-07-30); what remains is alerting.**
-Server exceptions now persist to the audit chain, PII-scrubbed and deduped, so they survive
-the log buffer. What is still missing is anything that *tells you* — install `@sentry/node`,
-set `SENTRY_DSN` (the seam in `monitoring.ts` needs no other change), and prove it by
-triggering a real error and watching it arrive. The scrubber already runs before anything is
-written, so the PII work is not repeated — but re-verify it before data leaves the box.
+1. **Backups + a proven restore — DONE 2026-07-30, drilled against production.** The
+   toolchain exists (`db:backup` / `db:verify-backup` / `db:restore` / `db:scratch`),
+   `test:backup` is 113 checks, and a real artifact was restored into a throwaway
+   PostgreSQL 18.3 and diffed. What is left is **operator setup only** (secrets + bucket).
+   Read [`BACKUP-RUNBOOK.md`](BACKUP-RUNBOOK.md) — especially the eight defects the drill
+   found that 59 green checks had not.
+2. **Error tracking — CODE COMPLETE 2026-07-30.** `@sentry/node` wired, scrubbing proven on
+   the wire by `test:alerting` (27 checks). Left: **Ali sets `SENTRY_DSN`.** Do not rebuild
+   the seam; do not add a second scrubber.
+3. **Balance-minting scripts — DELETED 2026-07-30.** Only `seed-test-float.mjs` remains and
+   it refuses in production (`test:float-guard`).
 
-**3.** ~~Remove or hard-gate `scripts/gift-admin-credit.ts`~~ ✅ **DONE 2026-07-30** — see the
-correction above. The only remaining balance-minting path is `seed-test-float.mjs`, which
-refuses in production and is guarded by `test:float-guard`. **Still outstanding: rotate the
-Postgres password**, and the credentials exposed in chat (API key, vendor PIN, Railway token).
+### The actual work, worst risk first
 
-**4. Withdrawals.** Confirm the `PAYMENT_VENDOR_PIN` blocker with Ali. Until it clears,
-make sure the product tells a player the truth about when they can take money out — an
-operator that accepts deposits while withdrawals are down must say so plainly.
+**1. Withdrawals — tell the player the truth while they are down.** The payout blocker is
+Selcom's (item 3 above) and no code fixes it. What *is* ours: an operator that accepts
+deposits while withdrawals cannot be paid **must say so plainly, in the product**, in all
+three languages. Check what the wallet and cash-out screens currently promise a player
+about timing, and make them honest. This is a licence exposure, not a nicety.
 
-**5. Scale ceilings, cheapest first.** The leaderboard N+1, `txn.listAll()`, the missing
+**2. Scale ceilings, cheapest first.** The leaderboard N+1, `txn.listAll()`, the missing
 composite indexes, then the SSE ceiling. Each has a measured threshold in
 `POLISH-BACKLOG.md` §3 — fix the ones that bite first, and **state the new ceiling you
 measured** rather than declaring it solved.
 
-**6. Multi-container readiness** — `admission.ts`, `rate-limit.ts`, the ticker's
+**3. Admin 2FA is OFF in production** (`DISABLE_ADMIN_TOTP` is set — verified 2026-07-31).
+It was disabled deliberately so a consultant could test, and must be on before real money.
+**Do not simply unset it** — confirm an admin has TOTP enrolled first, or the flip locks
+Ali out of his own console.
+
+**4. `docs/POLISH-BACKLOG.md` §2 FIX SOON** — the i18n and date-helper items. Small, real,
+and untouched.
+
+**5. Multi-container readiness** — `admission.ts`, `rate-limit.ts`, the ticker's
 `lastReconcileAt`. Only correct today because production runs one container. Decide with
 Ali whether this pass makes it safe or documents it as a hard constraint.
+
+### Also true, and worth knowing before you start
+
+- **`npm install` after pulling.** The hardening pass added `pg`, `@sentry/node` and
+  friends. `test:backup` and `test:alerting` fail with `TS2307: Cannot find module 'pg'`
+  on a stale `node_modules` — that is a missing install, not a broken suite.
+- **`test:responsive` and `test:motion` need a dev server on `:3000`.** Start `npm run dev`
+  first or they fail on navigation and look like real regressions.
+- **There is a second worktree**, `C:\kipindi-night` on `night/measure-search` at
+  `7d58354d`. That work is **merged and live**; the checkout is finished debris. It belongs
+  to another session — leave it alone unless Ali says otherwise.
+- **An unmerged branch is open:** `feat/updown-source-pinning-and-proposals`, 28 commits,
+  current with `main`. It fixes a real money bug (editing an Up & Down asset's source URL
+  silently switches the source under open rounds with stakes already placed) and adds AI
+  round proposals behind an officer queue. See [`NEXT-SESSION-UPDOWN-AI.md`](NEXT-SESSION-UPDOWN-AI.md).
+  **It is another lane's work — do not merge it without Ali.**
 
 ### Rules
 

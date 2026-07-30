@@ -182,10 +182,36 @@ container instead, which must be kept on production's major version.
 
 - **Repository secrets are not set yet**, so the nightly workflow will fail its
   configuration check until Ali adds them. That is deliberate — it fails before touching
-  production rather than after.
+  production rather than after. ⚠️ `gh` is **not authenticated** on this machine and there
+  is no `GH_TOKEN`; git pushes work only because Windows Credential Manager holds the
+  credential, which `gh` cannot read. Someone must run `gh auth login` before an agent can
+  set these.
 - **`R2_BACKUP_BUCKET` does not exist yet.** It must be a *separate* bucket from
   `50pick-kyc`: the running app can reach that one, and a backup should not share a blast
   radius with the documents inside it.
+
+  **Verified 2026-07-31 — and it cannot be created from here.** The R2 API token in Railway
+  is **bucket-scoped**: `ListBuckets` returns `AccessDenied`, and a bucket-scoped token
+  cannot `CreateBucket`. Create `50pick-backups` in the Cloudflare dashboard (R2 → Create
+  bucket), then confirm with:
+
+  ```
+  railway run node scripts/r2-provision-backup-bucket.mjs
+  ```
+
+  That script reports what exists, refuses outright if `R2_BACKUP_BUCKET` is pointed at the
+  KYC bucket, and takes `--create` if it is ever given a token that can.
+
+  ⚠️ **Separate bucket is not separate credentials.** Backups use the same R2 key the
+  running app holds for KYC, so one leaked key still reaches both. Narrowing it to a
+  backup-only token is a Cloudflare action and is still worth doing.
+- 🔴 **The drill's `BACKUP_ENCRYPTION_KEY` is gone.** `NEXT-PLAN.md` said it had been written
+  to `.env.backup.local`; that file does not exist in `C:\kipindi-main`, in the
+  `kipindi-night` worktree, or anywhere searched (2026-07-31). Nothing is stranded — the
+  drill artifact was local and disposable and nothing has been uploaded off-box — but
+  **generate a fresh 32-byte key at the moment you add the repository secrets, and put it in
+  a password manager in the same sitting.** Do not write it to a file intending to move it
+  later; that is precisely what did not happen.
 - **Only the backup toolchain is typechecked.** `tsconfig.backup.json` covers five files;
   the other ~60 `scripts/*.mts` suites use loose fixture types and are still transpiled
   without checking.
