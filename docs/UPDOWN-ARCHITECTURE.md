@@ -376,6 +376,7 @@ not two.
 | `test:updown-proposal` (80) | Nothing arms without an officer · an approval does not survive an edit · evidence does not follow a changed link · reject reasons are a closed set · **the source lock holds through the arm path, proven against a round holding real money** |
 | `test:admin-nav` (16) | ONE route resolver; every nav href round-trips |
 | `updown-admin-shots` · `updown-admin-e2e-shots` | 360/768/1280/1920, empty AND populated, driven through the real UI |
+| `test:responsive` | ⚠️ The Up & Down console was **never in this sweep** until 2026-07-30 — three routes, unaudited at every width since the product line was built. Now covered. Needs `next dev` (not `next start`): the audit seeds its admin session via `/api/dev-test/seed-admin`, which 404s outside development, and **`NODE_ENV` is inlined at build time** — so a `next start` run silently audits the SIGN-IN page and passes. |
 
 ---
 

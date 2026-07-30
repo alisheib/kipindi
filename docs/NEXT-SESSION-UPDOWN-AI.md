@@ -7,8 +7,14 @@
 > [`UPDOWN-ARCHITECTURE.md`](UPDOWN-ARCHITECTURE.md), [`UPDOWN-SPEC.md`](UPDOWN-SPEC.md) and
 > [`UPDOWN-PRICING.md`](UPDOWN-PRICING.md).
 
-**Branch:** `feat/updown-source-pinning-and-proposals` · 15 commits · 55 files ·
-+6,553 / −478 · **nothing pushed to `main`**, which is a live deploy.
+**Branch:** `feat/updown-source-pinning-and-proposals` — **pushed to `origin`**, so any machine
+can `git fetch && git checkout feat/updown-source-pinning-and-proposals`. **`main` is untouched**
+(every push to it is a live deploy); merging is Ali's call.
+
+> ⚠️ The two new migrations **have already been applied to the live database** (Ali's explicit
+> decision — it is their pre-launch DB and they start fresh at go-live). Both are purely
+> additive — two nullable columns and one new table — so `main`'s code keeps working unchanged
+> against it, and re-running them after a merge is a no-op (idempotent guards).
 
 **The original goal, in Ali's words:** the AI proposes the Up & Down round *with the link it
 used*, so when it resolves it goes back to that same source — *"if Claude knows where he got the
@@ -161,35 +167,52 @@ check found a defect **in the suite itself**: four assertions were
 than everything — so removing the APPROVED gate, and removing the AI pause switch, each left
 their assertion **green**. A `before()` helper now requires both needles.
 
-`npm run test:all` → **109/111**. `npx tsc --noEmit` clean. `npm run build` clean, with
-`/admin/updown/proposals` compiling as a route (which is also what would catch a `const` export
-in a `"use server"` file — `tsc` does not).
+`npm run test:all` → **111/111**. `npx tsc --noEmit` clean. `npm run build` clean, with
+`/admin/updown/proposals` compiling as a route (also the gate that catches a `const` export in a
+`"use server"` file — `tsc` does not).
 
-### ⬜ NOT DONE — the one gate still outstanding
+### Verified against the real database
 
-`test:responsive` and `test:motion` are **not run**. They are Playwright sweeps that need a
-running server, and the app **deliberately refuses to boot without `DATABASE_URL`** ("the
-in-memory store is a test-only fallback and must never serve production traffic"). This machine
-has no local Postgres, no Docker and no provisioning script, and the only running server belongs
-to a **concurrent session on a different branch** — auditing that would audit their code, not
-this. So this is environment-blocked, not a regression: the failure is a `page.goto` timeout,
-independent of the diff.
+`prisma migrate deploy` applied **both** new migrations cleanly on top of the existing 51. The
+captured columns, the `UpDownProposal` table and the `UpDownProposalState` enum all exist, and
+the backfill touched **exactly the 4 unsettled rounds and no settled ones** — the scoping the
+migration header promises. The console then rendered live data end to end: the propose form
+reads *"The AI may only read goldprice.org — the domain you approved for GOLD"*, straight from
+the asset row, with the real 0.50% margin and 90s window.
 
-⚠️ **What that means concretely: the new `/admin/updown/proposals` page has NOT been looked at,
-at any width.** `test:design-frozen`, `test:ui-consistency`, `test:bridge` and `test:measure` all
-pass on it — so its tokens, kit usage and classes are correct — but **a green suite is not a
-readable screen.** Its wide (8-column) table is wrapped in `ScrollX`, which is this repo's own
-answer to horizontal overflow, but that is reasoning, not evidence.
+### Visual audit — done, and it found two things
 
-**To close it:** with `DATABASE_URL` set and a server up,
-`BASE=http://localhost:<port> npm run test:responsive` and `… test:motion`, then **look at the
-screenshots** at 360 / 768 / 1280 / 1920.
+The whole Up & Down console **was never in the responsive sweep**: three routes, unaudited at
+every width since the product line was built. Added to `ADMIN` in `responsive-audit.mjs`.
+Now **120 passed, 0 failed** across all ten widths, no horizontal overflow.
 
-> Note: this branch's worktree now has its own real `node_modules` (~869 MB) instead of the
-> junction to `F:\kipindi-main`. **Turbopack refuses a junction pointing outside the project
-> root**, so a worktree cannot build against a shared install, and `--webpack` is not a fallback
-> (this codebase's `node:crypto` imports break it). Remove such a junction with cmd `rmdir` —
-> the link only. `rm -rf` would delete the other checkout's install.
+⚠️ **The first run passed for the wrong reason** — 120 green assertions against the *admin
+sign-in page*. The audit posts to `/api/dev-test/seed-admin` for a session, and that route 404s
+outside development, because **`NODE_ENV` is inlined at build time**: passing
+`NODE_ENV=development` to `next start` does nothing, the bundle still says production. It must
+be `next dev`. Caught by opening the screenshot, not by reading the number.
+
+⚠️ **And looking at 360px found a real defect the suite was right to pass:** three KPI `delta`
+strings were clipped mid-word. `AdminKpi` renders delta `whitespace-nowrap` with no truncate, so
+a long string is cut off *inside* the card — not a page overflow. Fixed in the strings, not in
+the shared frozen component. **Keep any new `delta` under ~12 characters.**
+
+> Note: this worktree now has its own real `node_modules` (~869 MB) instead of the junction to
+> `F:\kipindi-main`. **Turbopack refuses a junction pointing outside the project root**, so a
+> worktree cannot build against a shared install, and `--webpack` is not a fallback (this
+> codebase's `node:crypto` imports break under it). Remove such a junction with cmd `rmdir` —
+> the link only; `rm -rf` would delete the other checkout's install while it is in use.
+
+### Running the console locally
+
+```
+DATABASE_URL=<railway DATABASE_PUBLIC_URL> USE_PRISMA_DAL=true \
+  NODE_ENV=development DISABLE_ADMIN_TOTP=true npx next dev -p 3100
+curl -X POST http://localhost:3100/api/dev-test/seed-admin
+BASE=http://localhost:3100 SURFACE=admin \
+  ONLY=/admin/updown,/admin/updown/proposals,/admin/updown/rounds npm run test:responsive
+```
+`next dev`, not `next start` (see above). A different port if another session holds :3000.
 
 ---
 
