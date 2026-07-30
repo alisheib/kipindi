@@ -21,6 +21,7 @@ import { reconcileMarketSchedules } from "./market-scheduler";
 import { expireActiveGrants } from "./bonus-service";
 import { trialBalance } from "./ledger";
 import { audit } from "./audit";
+import { acquireLeadership, releaseLeadership } from "./leader";
 
 const TICK_MS = 60_000;       // run the lifecycle sweeps once a minute
 const FIRST_TICK_MS = 8_000;  // first pass shortly after boot (let the app settle)
@@ -47,6 +48,9 @@ let running = false;
 // every skip, log each one, and raise a WATCHED compliance alert once a single
 // overrun has swallowed OVERRUN_ALERT_SKIPS consecutive ticks.
 const OVERRUN_ALERT_SKIPS = 5; // 5 × TICK_MS (60s) ≈ payment reconcile stalled ~5 minutes
+/** The single lease name for the lifecycle chores. See `leader.ts`. */
+export const LIFECYCLE_TASK = "lifecycle";
+let notLeaderTicks = 0;        // consecutive ticks spent on standby, for the log only
 let skippedPasses = 0;         // consecutive, reset on every completed pass
 let skippedTotal = 0;          // lifetime, for the health probe
 let passStartedAt = 0;         // epoch ms of the in-flight pass, 0 when idle
@@ -254,6 +258,32 @@ export async function runLifecyclePass(): Promise<void> {
     }
     return;
   }
+
+  // ── ONE container runs these chores, not one per container ─────────────────
+  //
+  // 🔴 The guard above is a module-local boolean: correct for one process, meaningless
+  // across two. A second Railway replica would run payment reconcile, bonus expiry,
+  // schedule reconcile and the trial balance on its own timer, concurrently with the
+  // first — two containers re-querying the same in-flight payments and acting on the
+  // answers. Production runs one container today; nothing stopped it being scaled to two,
+  // and the failure would have been silent and intermittent.
+  //
+  // Fails CLOSED: if the lease cannot be read, this pass is skipped rather than run
+  // blind. A missed tick costs 60 seconds; a doubled payment reconcile costs money.
+  if (!(await acquireLeadership(LIFECYCLE_TASK))) {
+    notLeaderTicks += 1;
+    // Every tick would be noise on a standby container. Say it once a minute at first,
+    // then hourly — enough to prove the mechanism is working without flooding the log.
+    if (notLeaderTicks <= 3 || notLeaderTicks % 60 === 0) {
+      console.log(`[lifecycle] not the leader — chores skipped (${notLeaderTicks} ticks). Another instance holds the lease.`);
+    }
+    return;
+  }
+  if (notLeaderTicks > 0) {
+    console.log(`[lifecycle] took leadership after ${notLeaderTicks} standby tick(s).`);
+    notLeaderTicks = 0;
+  }
+
   running = true;
   passStartedAt = Date.now();
   try {
@@ -306,6 +336,17 @@ export function startLifecycleTicker(): void {
   // sweeps and trial-balance work that must NOT run four times a minute.
   depositTimer = setInterval(() => { void runDepositPoll(); }, DEPOSIT_POLL_MS);
   console.log(`[lifecycle] payment fast poll (deposits + payouts) — every ${DEPOSIT_POLL_MS / 1000}s`);
+
+  // Hand the lease back on a clean shutdown. Without this a redeploying container keeps
+  // it until it expires, so the replacement stands idle for up to LEASE_MS with payment
+  // reconcile not running — a self-inflicted stall on every deploy. Registered once, and
+  // `once` so repeated signals cannot stack listeners.
+  const handOver = (sig: string) => {
+    console.log(`[lifecycle] ${sig} — releasing the leader lease so the next instance can take over immediately.`);
+    void releaseLeadership(LIFECYCLE_TASK);
+  };
+  process.once("SIGTERM", () => handOver("SIGTERM"));
+  process.once("SIGINT", () => handOver("SIGINT"));
 }
 
 /** Poll in-flight deposits. Guarded against overlap: a slow provider must not
