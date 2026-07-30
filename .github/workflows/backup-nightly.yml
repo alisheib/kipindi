@@ -1,0 +1,116 @@
+name: Nightly backup
+
+# The backup toolchain existed for a day before this file did, and in that day it was
+# run entirely by hand. A backup nobody has scheduled is a backup that happens when
+# somebody remembers, which on the day it matters means "the last one was in July".
+#
+# This runs the whole drill from docs/BACKUP-RUNBOOK.md unattended:
+#   dump production → ship it off-box to R2 → restore it into a THROWAWAY Postgres →
+#   re-run 50pick's own trial balance and audit-chain verification on the restored copy →
+#   record the result for /admin/compliance.
+#
+# ⚠️ THE VERIFY STEP IS THE POINT. Taking a dump proves nothing; the compliance card is
+# only allowed to go green from `db:verify-backup`, and only after a real restore. If you
+# ever find yourself removing the verify step to make this job faster, remove the job.
+#
+# 03:15 EAT (00:15 UTC) — after midnight settlement, before Dar es Salaam wakes up.
+
+on:
+  schedule:
+    - cron: "15 0 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: backup-nightly
+  cancel-in-progress: false # never kill a running backup to start another
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      # The scratch cluster. `npm run db:scratch` fills this role on a laptop; in CI a
+      # service container is simpler and is thrown away with the runner. It must match
+      # production's major version — a restore is only evidence if it happens on the
+      # version that would actually be recovering.
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: pw
+          POSTGRES_DB: postgres
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      # The PUBLIC Postgres URL. Railway's DATABASE_URL is `postgres.railway.internal`,
+      # which resolves only inside Railway's private network — the runbook's original
+      # `railway run npm run db:backup` could never have worked from outside.
+      DATABASE_URL: ${{ secrets.BACKUP_SOURCE_DATABASE_URL }}
+      BACKUP_ENCRYPTION_KEY: ${{ secrets.BACKUP_ENCRYPTION_KEY }}
+      # Where health is written back to. Same database, named separately so it is a
+      # deliberate act rather than a side effect of whatever DATABASE_URL happens to be.
+      BACKUP_RECORD_DATABASE_URL: ${{ secrets.BACKUP_SOURCE_DATABASE_URL }}
+      # trialBalance()/verifyChainFull() run against the SOURCE to record its own health
+      # in the manifest; the chain check needs the real signing secret to verify hashes.
+      AUDIT_CHAIN_SECRET: ${{ secrets.AUDIT_CHAIN_SECRET }}
+      VERIFY_DATABASE_URL: postgresql://postgres:pw@localhost:5433/postgres
+      R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+      R2_BACKUP_BUCKET: ${{ secrets.R2_BACKUP_BUCKET }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      USE_PRISMA_DAL: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # Fail before touching production if the secrets are not all present. A run that
+      # dumps the database and then cannot seal or verify it is worse than no run: it
+      # leaves a plaintext copy on a public runner.
+      - name: Check configuration
+        run: |
+          missing=""
+          for v in DATABASE_URL BACKUP_ENCRYPTION_KEY AUDIT_CHAIN_SECRET R2_ENDPOINT R2_BACKUP_BUCKET R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY; do
+            [ -z "${!v}" ] && missing="$missing $v"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secrets:$missing"
+            exit 1
+          fi
+
+      - name: Take the backup
+        run: npm run db:backup
+
+      # Off-box BEFORE verification: if the verify step fails, the artifact still exists
+      # somewhere other than a runner that is about to be destroyed.
+      - name: Ship it off-box
+        id: upload
+        run: |
+          f=$(ls -1t backups/*.enc | head -1)
+          npm run db:backup-upload -- --file "$f" | tee upload.log
+          echo "dest=$(sed -n 's/.*::upload-result::\(.*\)/\1/p' upload.log | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.stdout.write(JSON.parse(s||"{}").destination||""))')" >> "$GITHUB_OUTPUT"
+
+      # 🔴 The step that makes it a backup. Restores into the throwaway Postgres above and
+      # re-runs the platform's own money and audit-chain checks on the RESTORED data.
+      - name: Verify by restoring, and record health
+        run: |
+          f=$(ls -1t backups/*.enc | head -1)
+          npm run db:verify-backup -- --file "$f" --record
+        env:
+          BACKUP_DESTINATION: ${{ steps.upload.outputs.dest }}
+
+      # Never upload the artifact as a GitHub artifact, even sealed: it would sit in the
+      # repo's artifact store under whatever retention the org has, reachable by anyone
+      # with read access to Actions. R2 is the destination on purpose.
+      - name: Guard — the dump must not leave as a CI artifact
+        if: always()
+        run: rm -f backups/*.enc

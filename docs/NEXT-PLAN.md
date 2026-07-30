@@ -29,23 +29,39 @@ This file is the brief. Copy the block at the bottom into a fresh session.
 
 ### The four things that would hurt most, worst first
 
-1. ✅ **Backups — TOOLCHAIN BUILT 2026-07-30.** `db:backup` / `db:verify-backup` /
-   `db:restore` all exist, guarded by `test:backup` (59 checks). The table set is
-   **derived from `Prisma.dmmf`**, never hand-listed — the sibling AWARKEH repo forgot a
-   model in its hand-kept list three times, and the last one meant `db:backup` had been
-   aborting on production for weeks unnoticed. Artifacts are AES-256-GCM sealed (a wrong
-   key *or* one flipped byte throws rather than returning garbage), carry a manifest of
-   row counts + money invariants + the audit head, and `backups/` is gitignored.
-   `db:restore` needs the target named by hand, a second confirmation for a production
-   host, `--drop-existing` for a populated target, and re-checks every row count and money
-   invariant after replaying — a replay that exits 0 having lost rows is silent data loss.
+1. ✅ **Backups — DONE 2026-07-30. THE DRILL HAS BEEN RUN AGAINST PRODUCTION.** A sealed
+   13 MB artifact was taken, shipped, restored into a throwaway PostgreSQL 18.3, checked
+   by 79 assertions, and `db:restore` was rehearsed to exit 0. `/admin/compliance` now
+   reads that run. Nightly at 00:15 UTC via `.github/workflows/backup-nightly.yml`.
 
-   ⏳ **What remains is operational, not code:** schedule it (cron/CI), give it an off-box
-   destination (R2 / encrypted CI artifact), set `BACKUP_PASSPHRASE` and
-   `VERIFY_DATABASE_URL`, and **run one real drill end to end** — `db:backup` then
-   `db:verify-backup --record` against production data. Until that drill runs, the
-   compliance card correctly says no backup has ever run. **A backup you have never
-   restored is not a backup; it is a file you feel good about.**
+   🔴 **The drill found EIGHT defects, and that is the finding.** The toolchain had been
+   green on 59 checks the whole time. Among them: `db:restore` summed a column that does
+   not exist and so **reported a successful recovery as a failure**; the seal key had two
+   different names, so the one tool needed during a recovery could not open what the other
+   two produce; **a unique index was missing from every artifact ever written** (an FK's
+   `conindid` made the index filter skip it) — row counts, money and the audit chain all
+   still matched, and the only symptom would have been a duplicate months later; the dump
+   read data and invariants on different connections, so a live platform made the manifest
+   contradict itself; and two of the files **could not be parsed** while
+   `npm run typecheck` reported success, because `.mts` is outside the root tsconfig.
+   Full list and what changed: [`BACKUP-RUNBOOK.md`](BACKUP-RUNBOOK.md).
+
+   ⚠️ **Source problems are not backup problems.** The first verification ended in "DO NOT
+   TRUST THIS BACKUP" over four failures that production reports identically. The artifact
+   was flawless. Verification now compares restored-vs-**source**, and the source's health
+   is reported separately — otherwise the nightly is red forever and people stop reading it.
+
+   ⏳ **Operator actions left:** add the repository secrets (the workflow fails its config
+   check until then, deliberately), and create an `R2_BACKUP_BUCKET` **separate** from the
+   KYC bucket. `BACKUP_ENCRYPTION_KEY` was generated locally into `.env.backup.local`
+   (gitignored) — **copy it into a password manager**; a key that lives only where the
+   database lives is not a key.
+
+   🔴 **A live money finding the drill surfaced, needing Ali:** one wallet holds
+   **TZS 100,000 with no ledger entry, no `Transaction` and no audit row**, and the audit
+   chain reports a broken link. Both are on production, both are on `/admin/compliance`
+   under the backup card, and neither is a backup problem. See the runbook's "Open
+   finding" section for what was and was not confirmed about its origin.
 
    ⚠️ Worse, until 2026-07-29 `/admin/compliance` rendered a **hardcoded green ✓**
    reading *"Auto-snapshot on every mutation · HMAC-signed · last 12 retained ·

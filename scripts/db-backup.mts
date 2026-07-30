@@ -46,7 +46,7 @@
  * it a backup, and it is the only thing that may record a healthy state for the
  * compliance card.
  */
-import { PrismaClient } from "@prisma/client";
+import pg from "pg";
 import { createHash } from "node:crypto";
 import { gzipSync } from "node:zlib";
 import { execFileSync } from "node:child_process";
@@ -54,14 +54,19 @@ import { mkdirSync, statSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import {
+  BACKUP_KEY_ENV,
   MANIFEST_MARKER,
   MANIFEST_VERSION,
+  NON_ASCII_FINGERPRINT_SQL,
   PRISMA_MIGRATIONS_DDL,
+  SHAPE_SQL,
   SERIAL_COLUMNS,
+  backupKey,
   ident,
   isLocalHost,
   lit,
   maskUrl,
+  orderUndeclared,
   sealBackup,
   sequenceResetSql,
   tableOrder,
@@ -81,30 +86,84 @@ async function main(): Promise<void> {
   if (!url) fail("DATABASE_URL is not set — nothing to back up.");
 
   const local = isLocalHost(url);
-  const passphrase = process.env.BACKUP_ENCRYPTION_KEY;
+  // One reader, one name, one length rule — shared with the verifier and the
+  // restorer so the key that seals an artifact is the key that opens it.
+  let passphrase: string | null = null;
+  try {
+    passphrase = backupKey();
+  } catch (e) {
+    fail((e as Error).message);
+  }
   // A local disposable database may be dumped in the clear (it holds fixtures).
   // Anything else holds real player PII and MUST be sealed — no flag overrides it.
   if (!local && !passphrase) {
     fail(
-      "BACKUP_ENCRYPTION_KEY is not set, and this is not a localhost database.\n" +
+      `${BACKUP_KEY_ENV} is not set, and this is not a localhost database.\n` +
         "   A 50pick dump contains every phone number, NIDA, KYC OCR string and email\n" +
         "   address on the platform. Refusing to write it in plaintext.\n" +
         "   Generate one:  node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\"",
     );
   }
-  if (passphrase && passphrase.length < 24) {
-    fail("BACKUP_ENCRYPTION_KEY is shorter than 24 characters — use a generated 32-byte key.");
-  }
 
   console.log(`Source:  ${maskUrl(url)}`);
-  const prisma = new PrismaClient({ datasources: { db: { url } }, log: ["error"] });
 
-  const [{ v: serverVersion }] = await prisma.$queryRawUnsafe<{ v: string }[]>("select version() as v");
+  // ── ONE CONNECTION, ONE SNAPSHOT ────────────────────────────────────────────
+  //
+  // 🔴 THE FIFTH THING THE FIRST REAL DRILL FOUND. Every read below used to be a separate
+  // `prisma.$queryRawUnsafe`, which means a separate pooled connection and a separate
+  // snapshot of a LIVE database. The dump therefore described a state that never existed:
+  // the first verification against real production data reported
+  //     FAIL entry count   17807 / 17830
+  //     FAIL head entryHash
+  //     FAIL max seq
+  // because 23 audit rows were written between dumping AuditLog and reading the audit
+  // head for the manifest. The artifact was fine; the manifest disagreed with itself, and
+  // the verifier is right to fail on that. Left alone, every nightly verification of a
+  // busy platform would flap, and the compliance card would swing amber for no reason —
+  // which is worse than a red one, because people learn to ignore it.
+  //
+  // REPEATABLE READ READ ONLY on a single pg connection gives every statement below the
+  // same snapshot, so the data and the invariants describe the same instant. `pg` rather
+  // than Prisma because a pooled client cannot promise one connection.
+  //
+  // The one read outside it is `prisma migrate diff`, which spawns its own process. A
+  // schema change landing mid-dump would still slip through; that is a migration deploy
+  // racing a backup, is far rarer than an audit row, and is caught by the verifier's
+  // structure check.
+  const db = new pg.Client({ connectionString: url });
+  db.on("error", (e) => console.error(`   note: source connection error: ${e.message}`));
+  await db.connect();
+  // `<T,>` with the trailing comma: in a .mts file a bare `<T>` on an arrow function is
+  // parsed as JSX and reserved (TS7060).
+  const q = async <T,>(sql: string, params: unknown[] = []): Promise<T> =>
+    (await db.query(sql, params)).rows as T;
+  await db.query("BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY");
+
+  const [{ v: serverVersion }] = await q<{ v: string }[]>("select version() as v");
   const server = serverVersion.split(" on ")[0];
   console.log(`Server:  ${server}`);
 
+  // Captured, not assumed: a restore into a database with a different encoding either
+  // dies mid-replay or silently mangles every non-Latin string. 50pick stores Chinese.
+  const [charset] = await q<
+    { encoding: string; collate: string; ctype: string }[]
+  >(`select pg_encoding_to_char(encoding) as encoding,
+            datcollate as collate, datctype as ctype
+       from pg_database where datname = current_database()`);
+  const [nonAsciiRow] = await q<{ rows: string; md5: string }[]>(
+    NON_ASCII_FINGERPRINT_SQL,
+  );
+  const encoding = {
+    ...charset,
+    nonAscii: { rows: Number(nonAsciiRow.rows), md5: nonAsciiRow.md5 },
+  };
+  console.log(
+    `Charset: ${encoding.encoding} · ${encoding.collate} · ` +
+      `${encoding.nonAscii.rows} multibyte titles fingerprinted`,
+  );
+
   // ── 1. The live table set must be fully covered by what we know how to dump ──
-  const liveRows = await prisma.$queryRawUnsafe<{ table_name: string }[]>(
+  const liveRows = await q<{ table_name: string }[]>(
     `select table_name from information_schema.tables
       where table_schema = 'public' and table_type = 'BASE TABLE'`,
   );
@@ -116,35 +175,79 @@ async function main(): Promise<void> {
   const unknown = liveTables.filter((t) => !covered.has(t));
   const absent = known.filter((t) => !liveTables.includes(t));
 
+  // ── Tables the DATABASE has and this branch's schema does not ───────────────
+  //
+  // This used to abort outright. It fired on the very first real drill: production
+  // carried `UpDownProposal` from a migration applied ahead of its code — which is this
+  // repo's normal deploy practice, not an accident — so a licensed real-money operator
+  // could not take a backup at all. The rule being protected was "never omit data
+  // silently", and refusing to dump a table you can read and enumerate does not serve
+  // it. They are dumped by introspection, counted in the manifest, and named loudly.
+  const undeclared: string[] = [];
   if (unknown.length) {
-    fail(
-      `ABORT — the database has ${unknown.length} table(s) this backup does not cover:\n` +
-        unknown.map((t) => `     - ${t}`).join("\n") +
-        `\n\n   These are tables Prisma's schema does not declare, so tableOrder() cannot see\n` +
-        `   them. Add the model to prisma/schema.prisma, or drop the table if it is dead.\n` +
-        `   Refusing to write a backup that silently omits data.`,
+    // Foreign keys among the live tables, from Postgres rather than from the schema —
+    // the schema cannot describe a table it does not know about.
+    const fkRows = await q<{ child: string; parent: string }[]>(
+      `select c.conrelid::regclass::text as child, c.confrelid::regclass::text as parent
+         from pg_constraint c
+         join pg_class ch on ch.oid = c.conrelid
+         join pg_namespace n on n.oid = ch.relnamespace
+        where c.contype = 'f' and n.nspname = 'public'`,
+    );
+    const strip = (s: string): string => s.replace(/^public\./, "").replace(/"/g, "");
+    const edges = fkRows.map((r) => ({ child: strip(r.child), parent: strip(r.parent) }));
+
+    // 🔴 THE ONE CASE THAT STILL CANNOT BE WRITTEN. A declared table whose FK points at
+    // an undeclared one must be inserted AFTER it, but declared tables are dumped first.
+    // No append order fixes that, so the model genuinely has to be declared.
+    const placed = orderUndeclared(unknown, edges);
+    if (placed.blocking) {
+      fail(
+        `ABORT — ${placed.blocking.length} declared table(s) hold a foreign key into a table this\n` +
+          `   branch's schema does not declare:\n` +
+          placed.blocking.map((e) => `     - ${e.child} → ${e.parent}`).join("\n") +
+          `\n\n   The parent has to be inserted first, and undeclared tables are dumped last, so\n` +
+          `   this dump would not replay. Add the model to prisma/schema.prisma (or check out\n` +
+          `   the branch that declares it) and re-run.`,
+      );
+    }
+    undeclared.push(...placed.order);
+
+    console.warn(
+      `\n   ⚠️  ${undeclared.length} table(s) exist in this DATABASE but not in this branch's\n` +
+        `      prisma/schema.prisma, so they are being backed up by INTROSPECTION:\n` +
+        undeclared.map((t) => `        - ${t}`).join("\n") +
+        `\n      This is what a migration applied ahead of its code looks like. Their rows ARE\n` +
+        `      in the dump and ARE checked on restore; they are listed in the manifest as\n` +
+        `      undeclaredTables. If that is unexpected, find out which migration added them\n` +
+        `      before trusting this artifact.\n`,
     );
   }
   if (absent.length) {
     console.warn(`   note: schema declares table(s) not present in this DB (skipped): ${absent.join(", ")}`);
   }
-  console.log(`Tables:  ${liveTables.length} live, all covered.\n`);
+  console.log(`Tables:  ${liveTables.length} live, all covered` +
+    `${undeclared.length ? ` (${undeclared.length} by introspection)` : ""}.\n`);
 
   // Every autoincrement column must be in SERIAL_COLUMNS or a restored database
   // hands out a colliding id on its first write. Cheap to check, fatal to miss.
-  const serials = await prisma.$queryRawUnsafe<{ table_name: string; column_name: string }[]>(
+  const serials = await q<{ table_name: string; column_name: string }[]>(
     `select table_name, column_name from information_schema.columns
       where table_schema = 'public' and is_identity = 'NO'
         and column_default like 'nextval%'`,
   );
   const declared = new Set(SERIAL_COLUMNS.map((s) => `${s.table}.${s.column}`));
-  const undeclared = serials
+  // Named for what it holds: undeclared SERIALS, not undeclared tables. The two used to
+  // share the name `undeclared` and esbuild refused the file outright — which `tsc
+  // --noEmit` did NOT catch, because tsconfig includes `scripts/**/*.ts` and these are
+  // `.mts` precisely to stay out of the Next build. See `test:script-types`.
+  const undeclaredSerials = serials
     .map((s) => `${s.table_name}.${s.column_name}`)
     .filter((k) => !declared.has(k) && !k.startsWith("_prisma_migrations."));
-  if (undeclared.length) {
+  if (undeclaredSerials.length) {
     fail(
-      `ABORT — ${undeclared.length} autoincrement column(s) are not in SERIAL_COLUMNS:\n` +
-        undeclared.map((k) => `     - ${k}`).join("\n") +
+      `ABORT — ${undeclaredSerials.length} autoincrement column(s) are not in SERIAL_COLUMNS:\n` +
+        undeclaredSerials.map((k) => `     - ${k}`).join("\n") +
         `\n\n   A restore would not advance their sequences, so the FIRST write after\n` +
         `   recovery would collide on the unique constraint. Add them to SERIAL_COLUMNS\n` +
         `   in src/lib/server/backup/core.ts.`,
@@ -157,7 +260,7 @@ async function main(): Promise<void> {
   // indexes from the search migration without the extension that defines
   // `gin_trgm_ops`. Dump them from `pg_extension` so the restore is self-contained.
   // `plpgsql` is installed in every database by default and is skipped.
-  const extRows = await prisma.$queryRawUnsafe<{ name: string; schema: string; version: string }[]>(
+  const extRows = await q<{ name: string; schema: string; version: string }[]>(
     `select e.extname as name, n.nspname as schema, e.extversion as version
        from pg_extension e join pg_namespace n on n.oid = e.extnamespace
       where e.extname <> 'plpgsql'
@@ -196,43 +299,169 @@ async function main(): Promise<void> {
   // is guaranteed re-executable — it is what `pg_dump` emits. Indexes that back a
   // constraint (every PRIMARY KEY) are excluded, because the constraint in the table
   // DDL already creates them.
-  const idxRows = await prisma.$queryRawUnsafe<{ name: string; def: string }[]>(
+  //
+  // 🔴 `contype in ('p','u','x')`, NOT "any constraint". `pg_constraint.conindid` is also
+  // set on FOREIGN KEYS, pointing at the index on the table they REFERENCE — so a filter
+  // of "backs any constraint" silently dropped `AffiliateAgent_userId_key` purely because
+  // `User.recruitedBy` points at it, and nothing else in the dump created it. That is why
+  // the first real restore died with "no unique constraint matching given keys for
+  // referenced table AffiliateAgent": not an ordering problem, a MISSING INDEX.
+  const idxRows = await q<{ name: string; def: string }[]>(
     `select i.indexname as name, i.indexdef as def
        from pg_indexes i
        join pg_class c on c.relname = i.indexname
        join pg_namespace n on n.oid = c.relnamespace and n.nspname = i.schemaname
       where i.schemaname = 'public'
-        and not exists (select 1 from pg_constraint con where con.conindid = c.oid)
+        and not exists (
+          select 1 from pg_constraint con
+           where con.conindid = c.oid and con.contype in ('p', 'u', 'x')
+        )
       order by i.indexname`,
   );
-  // Strip the diff's own index statements; everything else it emits (tables,
-  // columns, types, defaults, foreign keys, primary keys) is correct and kept.
-  const ddl = rawDdl.replace(/^-- CreateIndex\r?\n/gim, "").replace(/^CREATE\s+(?:UNIQUE\s+)?INDEX[\s\S]*?;[ \t]*\r?$/gim, "").replace(/\n{3,}/g, "\n\n").trim();
+  // ── 2d. Foreign keys move to the END, for the same reason pg_dump puts them there ──
+  //
+  // 🔴 THE FOURTH THING A REAL RESTORE FOUND, 2026-07-30:
+  //     ERROR: there is no unique constraint matching given keys for referenced table
+  //            "AffiliateAgent"
+  //
+  // Prisma renders `@unique` as a bare `CREATE UNIQUE INDEX`, NOT as a table constraint —
+  // 23 of this schema's 71 unique indexes back no constraint at all. The filter above
+  // excludes only indexes that DO back one, so those 23 were correctly taken from
+  // pg_indexes and written after the data... while the diff's `ALTER TABLE … ADD FOREIGN
+  // KEY` statements still ran early, in the schema section. A foreign key requires a
+  // unique index on its target AT CREATION TIME, so the replay died on the first FK
+  // pointing at an `@unique` column rather than a primary key.
+  //
+  // Emitting the FKs last fixes the ordering for every such column at once, is what
+  // `pg_dump` does, and makes the bulk insert cheaper because no constraint is checked
+  // per row. They come from `pg_constraint` rather than the diff, for the same reason the
+  // indexes do: it is Postgres's own rendering of what is actually there.
+  const fkRowsDdl = await q<{ tbl: string; name: string; def: string }[]>(
+    `select c.conrelid::regclass::text as tbl, c.conname as name, pg_get_constraintdef(c.oid) as def
+       from pg_constraint c
+       join pg_class ch on ch.oid = c.conrelid
+       join pg_namespace n on n.oid = ch.relnamespace
+      where c.contype = 'f' and n.nspname = 'public'
+      order by c.conname`,
+  );
+  const foreignKeySql = fkRowsDdl
+    .map((r) => `ALTER TABLE ${r.tbl} ADD CONSTRAINT ${ident(r.name)} ${r.def};`)
+    .join("\n");
+
+  // Strip the diff's index AND foreign-key statements; everything else it emits (tables,
+  // columns, types, defaults, primary keys, unique CONSTRAINTS) is correct and kept.
+  const ddl = rawDdl
+    .replace(/^-- CreateIndex\r?\n/gim, "")
+    .replace(/^CREATE\s+(?:UNIQUE\s+)?INDEX[\s\S]*?;[ \t]*\r?$/gim, "")
+    .replace(/^-- AddForeignKey\r?\n/gim, "")
+    .replace(/^ALTER TABLE[^;]*?ADD CONSTRAINT[^;]*?FOREIGN KEY[\s\S]*?;[ \t]*\r?$/gim, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
   const strippedCount = (rawDdl.match(/^CREATE\s+(?:UNIQUE\s+)?INDEX/gim) ?? []).length;
+  const strippedFks = (rawDdl.match(/^ALTER TABLE[^;]*?ADD CONSTRAINT[^;]*?FOREIGN KEY/gim) ?? []).length;
   const indexSql = idxRows.map((r) => `${r.def};`).join("\n");
-  console.log(`   ${ddl.split("\n").length} lines of DDL (dropped ${strippedCount} generated index statements)`);
-  console.log(`   ${idxRows.length} indexes taken from pg_indexes instead.\n`);
+  console.log(`   ${ddl.split("\n").length} lines of DDL (dropped ${strippedCount} index + ${strippedFks} foreign-key statements)`);
+  console.log(`   ${idxRows.length} indexes and ${fkRowsDdl.length} foreign keys taken from Postgres instead.\n`);
+
+  // ── 2e. Constraints the table DDL does NOT create ───────────────────────────
+  //
+  // 🔴 THE WORST THING THE FIRST REAL RESTORE FOUND, 2026-07-30, and the reason a drill
+  // is not paperwork. Prisma's `CREATE TABLE` emits ONLY the primary key inline; every
+  // `@unique` / `@@unique` arrives as a separate statement. The index section above takes
+  // indexes from `pg_indexes` but deliberately skips any that back a constraint — so of
+  // this database's 71 unique indexes, the 48 that back one were created by NEITHER path.
+  // They were silently absent from every artifact this tool has ever written.
+  //
+  // What that costs is not abstract. `Transaction @@unique([provider, providerRef])` is
+  // the constraint that makes crediting the same Selcom deposit twice impossible, and
+  // NIDA/phone/email uniqueness is what keeps one person to one account. A database
+  // restored without them comes back with every row count matching, every money invariant
+  // balancing, the audit chain intact — and no uniqueness guarantees at all. It would look
+  // like a clean recovery right up until the first duplicate.
+  //
+  // Deduped by NAME against the DDL, so whatever Prisma already emitted inline (the PKs)
+  // is not added twice, and anything it did not emit is.
+  const conRows = await q<
+    { tbl: string; name: string; def: string; type: string }[]
+  >(
+    `select c.conrelid::regclass::text as tbl, c.conname as name,
+            pg_get_constraintdef(c.oid) as def, c.contype::text as type
+       from pg_constraint c
+       join pg_class ch on ch.oid = c.conrelid
+       join pg_namespace n on n.oid = ch.relnamespace
+      where n.nspname = 'public' and c.contype in ('p', 'u', 'c', 'x')
+      order by case c.contype when 'p' then 0 when 'u' then 1 else 2 end, c.conname`,
+  );
+  // Deduped against BOTH sources of table DDL — `_prisma_migrations_pkey` is created by
+  // PRISMA_MIGRATIONS_DDL, not by the diff, and re-adding it would abort the replay.
+  const alreadyCreated = `${ddl}\n${PRISMA_MIGRATIONS_DDL}`;
+  const missingCons = conRows.filter((r) => !alreadyCreated.includes(`"${r.name}"`));
+  const constraintSql = missingCons.length
+    ? missingCons.map((r) => `ALTER TABLE ${r.tbl} ADD CONSTRAINT ${ident(r.name)} ${r.def};`).join("\n")
+    : "-- (the table DDL already creates every constraint)";
+  const missingUnique = missingCons.filter((r) => r.type === "u").length;
+  console.log(
+    `   ${conRows.length} constraints live · ${missingCons.length} not created by the table DDL ` +
+      `(${missingUnique} UNIQUE) — re-added explicitly.\n`,
+  );
+
+  // Belt and braces on the above: every uniqueness guarantee in the source must be
+  // reproduced by SOMETHING in this dump. A restore missing one is silent, and the damage
+  // shows up later as a duplicate that the database was supposed to make impossible.
+  const uniqueLive = await q<{ name: string }[]>(
+    `select cl.relname as name
+       from pg_index x
+       join pg_class cl on cl.oid = x.indexrelid
+       join pg_namespace n on n.oid = cl.relnamespace
+      where n.nspname = 'public' and x.indisunique`,
+  );
+  const reproduced = `${alreadyCreated}\n${indexSql}\n${constraintSql}`;
+  const lostUnique = uniqueLive.map((u) => u.name).filter((n) => !reproduced.includes(`"${n}"`));
+  if (lostUnique.length) {
+    fail(
+      `${lostUnique.length} unique index(es) exist in the database but appear nowhere in this dump:\n` +
+        lostUnique.map((n) => `     - ${n}`).join("\n") +
+        `\n\n   A database restored from it would accept duplicates the source refuses —\n` +
+        `   including, potentially, the same gateway payment credited twice.`,
+    );
+  }
+
+  // The diff and pg_constraint must agree about how many FKs exist. If the diff emitted
+  // some and we captured none, the replay would restore a database with NO referential
+  // integrity at all — and every row count would still match.
+  if (strippedFks > 0 && fkRowsDdl.length === 0) {
+    fail(
+      `The DDL declared ${strippedFks} foreign key(s) but pg_constraint returned none.\n` +
+        `   Restoring this dump would produce a database with no referential integrity.`,
+    );
+  }
+  if (/ADD CONSTRAINT[^;]*FOREIGN KEY/i.test(ddl)) {
+    fail("A foreign-key statement survived the strip and would run before the unique indexes it needs.");
+  }
 
   // ── 3. Data — every column cast to text, Postgres doing all the formatting ──
   const parts: string[] = [];
   const tables: Record<string, number> = {};
   let totalRows = 0;
 
-  for (const table of [...known, "_prisma_migrations"]) {
+  // Declared tables first (parents before children), then any undeclared ones, then
+  // Prisma's own bookkeeping. `_prisma_migrations` stays last: it has no foreign keys
+  // and putting it after the data keeps the restore's failure modes in one place.
+  for (const table of [...known, ...undeclared, "_prisma_migrations"]) {
     if (!liveTables.includes(table)) continue;
 
-    const cols = await prisma.$queryRawUnsafe<{ column_name: string }[]>(
+    const cols = await q<{ column_name: string }[]>(
       `select column_name from information_schema.columns
         where table_schema = 'public' and table_name = $1
         order by ordinal_position`,
-      table,
+      [table],
     );
     const colNames = cols.map((c) => c.column_name);
     const selectList = colNames.map((c) => `${ident(c)}::text as ${ident(c)}`).join(", ");
     // Stable row order so two dumps of the same database are byte-comparable.
     const orderBy = colNames.includes("id") ? ` order by ${ident("id")}` : "";
 
-    const rows = await prisma.$queryRawUnsafe<Record<string, string | null>[]>(
+    const rows = await q<Record<string, string | null>[]>(
       `select ${selectList} from ${ident("public")}.${ident(table)}${orderBy}`,
     );
     tables[table] = rows.length;
@@ -264,7 +493,7 @@ async function main(): Promise<void> {
   }
 
   // ── 4. Money invariants at capture time ─────────────────────────────────────
-  const [money] = await prisma.$queryRawUnsafe<
+  const [money] = await q<
     {
       balance: string; pending: string; hold: string; bonus: string;
       ledger_entries: string; ledger_net: string;
@@ -277,20 +506,64 @@ async function main(): Promise<void> {
        (select count(*) from "public"."LedgerEntry")::text                    as ledger_entries,
        coalesce((select sum("amount") from "public"."LedgerEntry"), 0)::text  as ledger_net`);
 
-  const [{ n: unbalanced }] = await prisma.$queryRawUnsafe<{ n: string }[]>(
+  const [{ n: unbalanced }] = await q<{ n: string }[]>(
     `select count(*)::text n from (
        select "groupId" from "public"."LedgerEntry"
        group by "groupId" having sum("amount") <> 0
      ) g`,
   );
 
-  const [audit] = await prisma.$queryRawUnsafe<{ n: string; head: string | null; maxseq: string | null }[]>(
+  const [audit] = await q<{ n: string; head: string | null; maxseq: string | null }[]>(
     `select (select count(*) from "public"."AuditLog")::text as n,
             (select "entryHash" from "public"."AuditLog" order by "seq" desc limit 1) as head,
             (select max("seq")::text from "public"."AuditLog") as maxseq`,
   );
 
-  await prisma.$disconnect();
+  // The structural shape of the SOURCE, measured with the same query the verifier will run
+  // against the restored copy.
+  const [shape] = await q<BackupManifest["shape"][]>(SHAPE_SQL);
+
+  // Read-only, so COMMIT and ROLLBACK are equivalent; COMMIT states the intent that
+  // everything above described one consistent instant.
+  await db.query("COMMIT");
+  await db.end();
+
+  // ── The SOURCE's own integrity verdict, from the platform's own functions ───
+  //
+  // Recorded so `db:verify-backup` can tell "this backup is broken" apart from "this
+  // backup is a faithful copy of a database that already had a problem". Without it, the
+  // first real verification blamed the artifact for a drifting wallet that exists in
+  // production. Deliberately the platform's OWN `trialBalance()` / `verifyChainFull()`,
+  // never a re-implementation: a gate that reimplements what it checks is how this repo
+  // shipped green ticks over broken things.
+  process.env.USE_PRISMA_DAL = "true";
+  const { trialBalance } = await import("../src/lib/server/ledger.ts");
+  const { verifyChainFull } = await import("../src/lib/server/audit.ts");
+  const tb = await trialBalance();
+  const chain = await verifyChainFull();
+  const sourceIntegrity = {
+    trialBalanceOk: tb.ok,
+    driftingWallets: tb.driftingWallets,
+    totalAbsDrift: tb.totalAbsDrift,
+    imbalancedGroups: tb.imbalancedGroups.length,
+    chainValid: chain.valid,
+    // `linkBroken` is optional on the result type (absent when there is nothing to
+    // check). Absent means "no break was found", which is what `false` records.
+    chainLinkBroken: chain.linkBroken ?? false,
+  };
+  if (!sourceIntegrity.trialBalanceOk || sourceIntegrity.chainLinkBroken) {
+    console.warn(
+      `\n   ⚠️  SOURCE INTEGRITY WARNING — this is a problem with the DATABASE, not with\n` +
+        `      this backup, which captured it faithfully:\n` +
+        (sourceIntegrity.trialBalanceOk
+          ? ""
+          : `        - trial balance FAILS: ${sourceIntegrity.driftingWallets} drifting wallet(s), ` +
+            `${sourceIntegrity.totalAbsDrift} TZS total drift\n`) +
+        (sourceIntegrity.chainLinkBroken ? `        - the audit chain has a BROKEN LINK\n` : "") +
+        `      Investigate on production. db:verify-backup will report the same and will NOT\n` +
+        `      blame the artifact for it.\n`,
+    );
+  }
 
   const takenAt = new Date().toISOString();
   const manifest: BackupManifest = {
@@ -299,8 +572,12 @@ async function main(): Promise<void> {
     server,
     source: maskUrl(url),
     schemaSha256: createHash("sha256").update(ddl).digest("hex"),
+    encoding,
+    shape,
+    sourceIntegrity,
     extensions: extRows,
     tables,
+    undeclaredTables: undeclared,
     money: {
       walletBalanceSum: money.balance,
       walletPendingSum: money.pending,
@@ -359,6 +636,18 @@ async function main(): Promise<void> {
     `-- prisma migrate diff, which emits GIN indexes with an ASC that Postgres rejects.`,
     `-- Built AFTER the data so the bulk insert does not pay index maintenance.`,
     indexSql,
+    ``,
+    `-- ============ CONSTRAINTS ============`,
+    `-- Every PRIMARY KEY / UNIQUE / CHECK the table DDL did not create. Prisma emits only`,
+    `-- the primary key inline, so without this the 48 unique indexes that back a UNIQUE`,
+    `-- constraint were in NO section of the dump and a restore quietly lost them.`,
+    constraintSql,
+    ``,
+    `-- ============ FOREIGN KEYS ============`,
+    `-- Last, after the indexes, because Prisma renders @unique as a bare UNIQUE INDEX`,
+    `-- rather than a constraint, and a foreign key onto such a column cannot be created`,
+    `-- until that index exists. This is also the order pg_dump uses.`,
+    foreignKeySql,
     ``,
     `-- ============ SEQUENCES ============`,
     `-- Without this the first audit write after a restore collides on AuditLog.seq.`,

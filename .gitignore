@@ -85,3 +85,8 @@ selcom-email-*.md
 # complete copy of every player balance, phone number, NIDA and KYC record on the
 # platform. They belong in the encrypted CI artifact / R2 bucket, not in git.
 backups/
+
+# The disposable Postgres cluster npm run db:scratch boots for db:verify-backup.
+# During a verification run it holds a FULLY RESTORED copy of the money database —
+# every balance, phone number, NIDA and KYC record — in plaintext on disk.
+.pgscratch/
