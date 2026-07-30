@@ -342,8 +342,13 @@ the platform can judge how close the reading actually is to the target instant.`
  */
 export function describeRefusal(reason: RefusalReason, detail: string): string {
   switch (reason) {
-    case "no-api-key": return "AI key not configured";
-    case "ai-paused": return "Resolution AI is paused";
+    // ⚠️ These two DISCARDED `detail` and returned a fixed string naming the AI. Once a
+    // price feed became a second read method, that fixed string actively lied: an
+    // unconfigured market-data provider was reported to the operator as "AI key not
+    // configured", pointing them at the wrong subsystem entirely. The detail is the only
+    // part that says which variable to set, so it wins whenever there is one.
+    case "no-api-key": return detail || "Price source key not configured";
+    case "ai-paused": return detail || "Resolution AI is paused";
     case "no-tool-call": return "Model returned no structured reading";
     case "unparseable-price": return `No usable price — ${detail}`;
     case "wrong-source": return `Wrong source — ${detail}`;

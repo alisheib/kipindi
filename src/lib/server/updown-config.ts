@@ -31,6 +31,7 @@ import { validateRateConfig } from "./market-config";
 import { assetStore, chainStore, roundStore, type StoredAsset, type StoredChain, type ChainState } from "./updown-dal";
 import type { RateConfig } from "./market-config";
 import type { MarketCategory } from "./market-service";
+import type { FeedProviderId } from "./updown-feed";
 
 // ---------------------------------------------------------------------------
 // Product-level configuration
@@ -47,10 +48,28 @@ export type Duration = (typeof ALLOWED_DURATIONS)[number];
 
 export type UpDownConfig = {
   /**
+   * HOW a boundary's price is obtained. One control, one place.
+   *
+   * ⛔ `"feed"` IS THE ONLY METHOD THAT CAN ACTUALLY WORK, and the default for that
+   * reason. `"ai"` — a model reading an approved web page — was the original design and
+   * is provably incapable of meeting `maxStalenessSeconds`: probing candidate pages
+   * through the real oracle prompt (`scripts/ops-updown-verify-source.mts`) returned
+   * either a price with NO timestamp or one 9 hours to 7.3 days old, whether read by
+   * `web_search` (crawl-index snippets) or `web_fetch` (cached pages, or client-side
+   * widgets with nothing to read). Production proved it: 1,398 rounds opened, ZERO
+   * readings confirmed, real player money stranded.
+   *
+   * `"ai"` is kept selectable because it is built, tested, and honest about refusing —
+   * but an operator choosing it should expect every round to void and refund.
+   */
+  observationMethod: "feed" | "ai";
+  /** Which market-data provider `"feed"` uses. `mock` refuses in production by construction. */
+  feedProvider: FeedProviderId;
+  /**
    * How far the source's OWN quoted timestamp may sit from the grid boundary before
-   * the reading is refused. This is the honesty control: an LLM web-search cannot
-   * report the price at an exact second, so we bound how stale a reading may be and
-   * show the source's time rather than pretending it is ours.
+   * the reading is refused. This is the honesty control: the source publishes when IT
+   * priced the asset, we bound how stale that may be, and every surface shows the
+   * source's time rather than pretending it is ours.
    */
   maxStalenessSeconds: number;
   /** Minimum AI confidence (0-100) to accept a price observation. */
@@ -83,6 +102,11 @@ export type UpDownConfig = {
 };
 
 export const DEFAULT_UPDOWN_CONFIG: UpDownConfig = {
+  // `feed` by default because it is the only method that can meet the staleness window —
+  // see the field comment. `mock` refuses in production by construction, so a fresh
+  // deployment cannot accidentally settle money on an invented price.
+  observationMethod: "feed",
+  feedProvider: "mock",
   maxStalenessSeconds: 90,
   confidenceThreshold: 85,
   maxObservationAttempts: 4,
@@ -165,6 +189,16 @@ export async function setUpDownConfig(
     const a = updates.maxObservationAttempts;
     if (!Number.isFinite(a) || a < 1 || a > 10) {
       return { ok: false, error: "Observation attempts must be 1-10." };
+    }
+  }
+  if (updates.observationMethod !== undefined) {
+    if (updates.observationMethod !== "feed" && updates.observationMethod !== "ai") {
+      return { ok: false, error: 'Observation method must be "feed" or "ai".' };
+    }
+  }
+  if (updates.feedProvider !== undefined) {
+    if (updates.feedProvider !== "mock" && updates.feedProvider !== "twelvedata") {
+      return { ok: false, error: 'Feed provider must be "mock" or "twelvedata".' };
     }
   }
   if (updates.retryBackoffSeconds !== undefined) {

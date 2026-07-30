@@ -21,12 +21,13 @@ import { audit } from "./audit";
 import { withLock } from "./locks";
 import { marketStore } from "./market-dal";
 import { createMarket, settleMarket } from "./market-service";
-import { getUpDownConfig, rateProfileFor, stakeBoundsFor, boundaryAfter, marginBpsForChain, computeTargets } from "./updown-config";
+import { getUpDownConfig, rateProfileFor, stakeBoundsFor, boundaryAfter, marginBpsForChain, computeTargets, type UpDownConfig } from "./updown-config";
 import {
   assetStore, chainStore, roundStore, observationStore,
   type StoredAsset, type StoredChain, type StoredRound, type RoundOutcome, type VoidReason,
 } from "./updown-dal";
-import { observePrice, describeRefusal } from "./updown-oracle";
+import { observePrice, describeRefusal, type OracleReading, type RefusalReason } from "./updown-oracle";
+import { feedFromId, quoteAsset, describeFeedRefusal } from "./updown-feed";
 
 export type LifecycleResult<T> = { ok: true; data: T } | { ok: false; error: string };
 
@@ -103,14 +104,80 @@ export function outcomeToSide(o: RoundOutcome): "YES" | "NO" | "VOID" {
 // ---------------------------------------------------------------------------
 
 /**
- * Get the CONFIRMED observation for (asset, boundary), running the oracle if needed.
+ * Obtain a reading for (asset, boundary) by whichever method the operator configured.
+ *
+ * ONE contract, two implementations — the same shape the AI oracle already returns, so
+ * every gate, every refusal path and the whole write-once ledger below are unchanged. A
+ * feed replaces HOW the number is obtained; it relaxes nothing.
+ *
+ * ⛔ `not-configured` and `mock-in-production` are mapped to `"no-api-key"` DELIBERATELY:
+ * that reason is inside the operator-state carve-out below, so a misconfigured feed leaves
+ * the boundary PENDING instead of burning the attempt budget and voiding live rounds for
+ * an ops mistake. A feed that cannot run is an operator problem, never a source failure.
+ */
+async function readPrice(
+  asset: StoredAsset,
+  boundaryAtIso: string,
+  cfg: UpDownConfig,
+): Promise<OracleReading> {
+  if (cfg.observationMethod === "ai") return observePrice(asset, boundaryAtIso);
+
+  const q = await quoteAsset(feedFromId(cfg.feedProvider), {
+    symbol: asset.symbol,
+    decimals: asset.decimals,
+    endpoint: asset.priceSourceUrl,
+    approvedDomain: asset.sourceDomain,
+  });
+
+  if (!q.ok) {
+    const reason: RefusalReason =
+      q.reason === "not-configured" || q.reason === "mock-in-production" ? "no-api-key"
+      : q.reason === "unparseable-price" ? "unparseable-price"
+      : q.reason === "no-timestamp" ? "stale"
+      : q.reason === "wrong-source" ? "wrong-source"
+      : "error";
+    return { ok: false, reason, detail: describeFeedRefusal(q.reason, q.detail) };
+  }
+
+  // The SAME staleness gate the AI path uses, against the PROVIDER'S own time — never ours.
+  const boundaryMs = Date.parse(boundaryAtIso);
+  const quotedMs = Date.parse(q.quotedAt);
+  if (!Number.isFinite(quotedMs)) {
+    return { ok: false, reason: "stale", detail: `provider timestamp "${q.quotedAt}" is unparseable` };
+  }
+  const skewSeconds = Math.round(Math.abs(quotedMs - boundaryMs) / 1000);
+  if (skewSeconds > cfg.maxStalenessSeconds) {
+    return {
+      ok: false,
+      reason: "stale",
+      detail: `quote is ${skewSeconds}s from the boundary (limit ${cfg.maxStalenessSeconds}s)`,
+    };
+  }
+
+  return {
+    ok: true,
+    price: q.price,
+    sourceUrl: q.sourceUrl,
+    sourceQuotedAt: new Date(quotedMs).toISOString(),
+    evidence: q.evidence,
+    // A feed does not guess, so there is no confidence to score. Recorded as 100 so the
+    // shared confidence floor is a no-op rather than a second thing to keep in sync.
+    confidence: 100,
+    model: `feed:${q.provider}`,
+    rawHash: q.rawHash,
+    skewSeconds,
+  };
+}
+
+/**
+ * Get the CONFIRMED observation for (asset, boundary), by the configured method.
  *
  * Idempotent and shared: the row is unique per boundary, so the 5-, 15- and 30-minute
- * chains meeting at 14:30 all land on the SAME row — one AI call serves them all, and
+ * chains meeting at 14:30 all land on the SAME row — one reading serves them all, and
  * round N's close is byte-identical to round N+1's open.
  *
- * Returns null when the boundary is not (yet) confirmed. The caller decides whether to
- * wait or to void; this function never invents a price.
+ * Returns a non-confirmed state when the boundary is not (yet) readable. The caller
+ * decides whether to wait or to void; this function never invents a price.
  */
 export async function acquireObservation(
   asset: StoredAsset,
@@ -152,7 +219,7 @@ export async function acquireObservation(
     }
   }
 
-  const reading = await observePrice(asset, boundaryAtIso);
+  const reading = await readPrice(asset, boundaryAtIso, cfg);
   if (!reading.ok) {
     const detail = describeRefusal(reading.reason, reading.detail);
     // A missing API key or a paused AI is an OPERATOR state, not a source failure —

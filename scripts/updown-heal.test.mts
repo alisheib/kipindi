@@ -291,20 +291,59 @@ console.log("\n── 5 · healing must not multiply the spend it heals ──")
 }
 
 // ── 6 · An OPERATOR-state refusal must NOT burn the attempt budget ───────────
-console.log("\n── 6 · a paused AI / missing key does not spend a round's retries ──");
+// Both read methods have an operator state, and BOTH must be carved out: a misconfigured
+// platform must never spend a round's retries and void it for an ops mistake.
+console.log("\n── 6 · an ops-state refusal does not spend a round's retries ──");
 {
-  const boundary = new Date(Date.now() + 10 * 60_000).toISOString();
-  const obs = await observationStore.ensure(asset.id, boundary);
-  ok("6.0 · fresh observation starts at zero attempts", obs.attempts === 0);
+  const restore = await getUpDownConfig();
 
-  // No ANTHROPIC_API_KEY ⇒ `observePrice` refuses "no-api-key" — an OPERATOR state.
-  const got = await acquireObservation(asset, boundary);
-  ok("6.1 · the reading is refused, not invented", got.state === "pending", got.state);
+  // 6a · FEED path: a real provider selected with no API key. `not-configured` maps onto
+  // the carve-out, which is the whole reason that mapping exists.
+  const setFeed = await setUpDownConfig({ observationMethod: "feed", feedProvider: "twelvedata" }, OFFICER);
+  if (!setFeed.ok) throw new Error(setFeed.error);
+  delete process.env.TWELVEDATA_API_KEY;
 
-  const after = (await observationStore.get(obs.id))!;
-  ok("6.2 · ⛔ the attempt budget was NOT spent on an operator state", after.attempts === 0,
-     `attempts=${after.attempts} — burning it here voids live rounds for an ops action, which is what the old code did`);
-  ok("6.3 · the observation is still PENDING, not FAILED", after.state === "PENDING", after.state);
+  const bFeed = new Date(Date.now() + 10 * 60_000).toISOString();
+  const oFeed = await observationStore.ensure(asset.id, bFeed);
+  ok("6.0 · fresh observation starts at zero attempts", oFeed.attempts === 0);
+
+  const gotFeed = await acquireObservation(asset, bFeed);
+  ok("6.1 · an unconfigured feed is refused, not invented around", gotFeed.state === "pending", gotFeed.state);
+  const afterFeed = (await observationStore.get(oFeed.id))!;
+  ok("6.2 · ⛔ FEED: the attempt budget was NOT spent on an operator state", afterFeed.attempts === 0,
+     `attempts=${afterFeed.attempts} — burning it here voids live rounds for an ops mistake`);
+  ok("6.3 · the observation is still PENDING, not FAILED", afterFeed.state === "PENDING", afterFeed.state);
+  ok("6.4 · …and the refusal names the missing variable",
+     "detail" in gotFeed && gotFeed.detail.includes("TWELVEDATA_API_KEY"),
+     "detail" in gotFeed ? gotFeed.detail : "(none)");
+
+  // 6b · AI path: no ANTHROPIC_API_KEY ⇒ `observePrice` refuses "no-api-key".
+  const setAi = await setUpDownConfig({ observationMethod: "ai" }, OFFICER);
+  if (!setAi.ok) throw new Error(setAi.error);
+
+  const bAi = new Date(Date.now() + 11 * 60_000).toISOString();
+  const oAi = await observationStore.ensure(asset.id, bAi);
+  await acquireObservation(asset, bAi);
+  const afterAi = (await observationStore.get(oAi.id))!;
+  ok("6.5 · ⛔ AI: the attempt budget was NOT spent on an operator state", afterAi.attempts === 0,
+     `attempts=${afterAi.attempts}`);
+
+  // 6c · A SOURCE failure, by contrast, MUST burn an attempt — otherwise a boundary that
+  // genuinely cannot be read never reaches FAILED and its rounds never refund.
+  const setBack = await setUpDownConfig({ observationMethod: "feed", feedProvider: "mock" }, OFFICER);
+  if (!setBack.ok) throw new Error(setBack.error);
+  const bStale = new Date(Date.now() + 12 * 60_000).toISOString(); // mock quotes NOW ⇒ stale
+  const oStale = await observationStore.ensure(asset.id, bStale);
+  const gotStale = await acquireObservation(asset, bStale);
+  ok("6.6 · a genuine source failure IS refused", gotStale.state === "pending", gotStale.state);
+  ok("6.7 · ⛔ …and DOES spend an attempt, or the round could never reach FAILED and refund",
+     (await observationStore.get(oStale.id))!.attempts === 1,
+     `attempts=${(await observationStore.get(oStale.id))!.attempts}`);
+
+  const back = await setUpDownConfig(
+    { observationMethod: restore.observationMethod, feedProvider: restore.feedProvider }, OFFICER,
+  );
+  if (!back.ok) throw new Error(back.error);
 }
 
 // ── 7 · The backoff is honoured ─────────────────────────────────────────────
