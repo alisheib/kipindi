@@ -102,9 +102,13 @@ export default async function UpDownProposalsPage() {
       <AdminPageHead title="Up & Down · AI proposals" sw="Mapendekezo ya AI" />
       <div className="px-4 lg:px-6 py-5 space-y-4">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <AdminKpi label="Awaiting you" sw="Yanakusubiri" value={String(reviewable)} delta={`${counts.PENDING_REVIEW} to review · ${counts.APPROVED} to arm`} spark={false} />
-          <AdminKpi label="Armed" sw="Zimeanzishwa" value={String(counts.ARMED)} delta="chains running from a proposal" spark={false} />
-          <AdminKpi label="Didn't pass" sw="Hayakupita" value={String(counts.FILTERED + counts.VALIDATION_FAILED)} delta="mostly unreadable sources" spark={false} />
+          {/* ⚠️ Keep every `delta` SHORT. AdminKpi renders it `whitespace-nowrap` with no
+              truncate, so at 360px a long string is clipped mid-word by the card. Found by
+              looking at the xs screenshot — the suite passed, because clipping inside the card
+              is not a page overflow. A green audit is not a readable screen. */}
+          <AdminKpi label="Awaiting you" sw="Yanakusubiri" value={String(reviewable)} delta={`${counts.PENDING_REVIEW} review · ${counts.APPROVED} arm`} spark={false} />
+          <AdminKpi label="Armed" sw="Zimeanzishwa" value={String(counts.ARMED)} delta="live chains" spark={false} />
+          <AdminKpi label="Didn't pass" sw="Hayakupita" value={String(counts.FILTERED + counts.VALIDATION_FAILED)} delta="unreadable" spark={false} />
           <AdminKpi label="AI spend" sw="Matumizi" value={formatUsd(spend)} delta={`${proposals.length} generation${proposals.length === 1 ? "" : "s"}`} spark={false} />
         </div>
 
