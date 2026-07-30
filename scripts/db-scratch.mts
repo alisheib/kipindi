@@ -23,15 +23,21 @@
  *
  * WHY THE 18.3 LINE. Production is PostgreSQL 18.3, and a restore is only evidence if
  * it happens on the version that would actually be recovering. `embedded-postgres` ships
- * the matching binaries per platform; it is a devDependency, is never imported by the
- * app, and touches nothing but `.pgscratch/`.
+ * the matching binaries per platform.
+ *
+ * ⚠️ WHY IT IS NOT IN package.json. Those binaries are **107 MB**, and the platform
+ * packages are optional deps selected by `os`/`cpu` — so listing it as a devDependency
+ * made Railway's Linux builder download `@embedded-postgres/linux-x64` into EVERY
+ * production build and image, to support a drill that only ever runs on a laptop. CI does
+ * not need it either: `.github/workflows/backup-nightly.yml` uses a `postgres:18` service
+ * container. So it is installed on demand, the specifier is computed so `tsc` does not
+ * need it present, and the message below tells you the exact command.
  *
  * Usage:
  *   npm run db:scratch                    # boot, print the export line, hold (Ctrl-C stops)
  *   npm run db:scratch -- --reset         # discard the old cluster and re-initialise
  *   npm run db:scratch -- --run <cmd...>  # boot, run cmd with VERIFY_DATABASE_URL set, stop
  */
-import EmbeddedPostgres from "embedded-postgres";
 import pgLib from "pg";
 import { execFileSync, spawn } from "node:child_process";
 import { existsSync, rmSync } from "node:fs";
@@ -99,6 +105,33 @@ function killOwnOrphans(): number {
 const runIdx = process.argv.indexOf("--run");
 const runCmd = runIdx === -1 ? [] : process.argv.slice(runIdx + 1);
 
+/**
+ * Load the binaries on demand. The specifier is computed so TypeScript does not need the
+ * package present to check this file — the same trick `monitoring.ts` uses for
+ * `@sentry/node`, and for the same reason: an optional 107 MB dependency must not be a
+ * build-time requirement.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function loadEmbeddedPostgres(): Promise<any> {
+  const spec = ["embedded", "postgres"].join("-");
+  try {
+    const mod = await import(/* @vite-ignore */ spec);
+    return (mod as { default: unknown }).default;
+  } catch {
+    console.error(
+      `\n!! The scratch cluster needs PostgreSQL binaries, which are NOT a dependency of\n` +
+        `   this repo — they are 107 MB and would be downloaded into every Railway build.\n\n` +
+        `   Install them once, locally:\n\n` +
+        `     npm i -D --no-save embedded-postgres@18.3.0-beta.17\n\n` +
+        `   (18.3 matches production. CI does not need this: the nightly workflow uses a\n` +
+        `   postgres:18 service container instead.)\n`,
+    );
+    process.exit(2);
+  }
+}
+
+const EmbeddedPostgres = await loadEmbeddedPostgres();
+
 const pg = new EmbeddedPostgres({
   databaseDir: DATA_DIR,
   port: PORT,
@@ -121,7 +154,7 @@ const pg = new EmbeddedPostgres({
   // verification run, and the default would accept connections from the LAN.
   postgresFlags: ["-c", "listen_addresses=127.0.0.1"],
   onLog: () => {},          // initdb/postgres chatter is noise unless it fails
-  onError: (e) => console.error(`   pg: ${e instanceof Error ? e.message : String(e)}`),
+  onError: (e: unknown) => console.error(`   pg: ${e instanceof Error ? e.message : String(e)}`),
 });
 
 /**
@@ -133,7 +166,7 @@ const pg = new EmbeddedPostgres({
  * depend on it.
  */
 async function stopCleanly(): Promise<void> {
-  await pg.stop().catch((e) => console.error(`   stop failed: ${e instanceof Error ? e.message : String(e)}`));
+  await pg.stop().catch((e: unknown) => console.error(`   stop failed: ${e instanceof Error ? e.message : String(e)}`));
   const left = killOwnOrphans();
   if (left) console.log(`   swept ${left} lingering postgres process(es).`);
 }
@@ -222,7 +255,7 @@ async function main(): Promise<void> {
     if (stopping) return;
     stopping = true;
     console.log("\nStopping...");
-    await pg.stop().catch((e) => console.error(`   stop failed: ${(e as Error).message}`));
+    await pg.stop().catch((e: unknown) => console.error(`   stop failed: ${(e as Error).message}`));
     process.exit(0);
   };
   process.on("SIGINT", () => void shutdown());

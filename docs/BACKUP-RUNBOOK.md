@@ -148,8 +148,21 @@ exit 0.
 
 ## The scratch cluster
 
-`npm run db:scratch` boots a real PostgreSQL **18.3** — production's version — from the
-`embedded-postgres` devDependency, on loopback only, into `.pgscratch/`.
+`npm run db:scratch` boots a real PostgreSQL **18.3** — production's version — on loopback
+only, into `.pgscratch/`.
+
+⚠️ **The binaries are NOT a dependency of this repo.** Install them once, locally:
+
+```sh
+npm i -D --no-save embedded-postgres@18.3.0-beta.17
+```
+
+They are **107 MB**, and the platform packages are optional deps chosen by `os`/`cpu`, so
+listing it in `package.json` made Railway's Linux builder pull
+`@embedded-postgres/linux-x64` into **every production build and image** — to support a
+drill that only ever runs on a laptop. `db:scratch` loads it through a computed specifier
+(so `tsc` does not need it either) and prints that exact command when it is missing.
+Guarded by `test:backup` §15b.
 
 - `npm run db:scratch` — boot and hold; prints the `VERIFY_DATABASE_URL` to export.
 - `npm run db:scratch -- --run <cmd…>` — boot, run with the URL injected, stop.

@@ -10,6 +10,7 @@ import { sms, smsHealthSnapshot } from "@/lib/server/sms";
 import { listMarkets } from "@/lib/server/market-service";
 import { auditRingSize } from "@/lib/server/audit";
 import { lifecycleTickerHealth } from "@/lib/server/lifecycle";
+import { isMonitoringEnabled } from "@/lib/server/monitoring";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -51,6 +52,16 @@ export async function GET() {
         // complained. A non-zero `skippedConsecutive` here means those chores are
         // NOT running right now. See lifecycle.ts → OVERRUN_ALERT_SKIPS.
         ticker: lifecycleTickerHealth(),
+        // Whether anything would TELL you about an error, as opposed to recording it.
+        // Server exceptions are durable on box either way (audit chain, scrubbed and
+        // deduped); `alerting: false` means nobody is paged and someone has to go and
+        // look. Reported here because "is alerting on?" was previously answerable only
+        // by reading Railway's variable list.
+        monitoring: {
+          durable: true,
+          alerting: isMonitoringEnabled(),
+          sink: isMonitoringEnabled() ? "audit-chain + sentry" : "audit-chain only",
+        },
       },
       {
         headers: {

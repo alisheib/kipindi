@@ -71,7 +71,28 @@ This file is the brief. Copy the block at the bottom into a fresh session.
    tick sat beside the audit-chain card, which reads live state, so it borrowed real
    credibility. Both now state the truth. **When you build backups, wire this card to the
    REAL last-run state — do not restore a static tick.**
-2. **Error tracking — HALF CLOSED 2026-07-30.** ✅ Production exceptions are now **durable**:
+2. ✅ **Error tracking — CODE COMPLETE 2026-07-30, one operator action left.**
+   `@sentry/node` is installed and the seam is **proven end to end**: `test:alerting`
+   (27 checks) points a real Sentry client at a throwaway HTTP server on `127.0.0.1`,
+   pushes a real error through the real `captureServerError`, and inspects the bytes that
+   arrive. **Ali sets `SENTRY_DSN` and redeploys — that is the whole remaining step.**
+
+   🔴 **That gate found a dormant data-protection bug.** `captureException` was handed the
+   **raw** error while only the audit sink ran `scrubForAudit`. The scrubber sat one line
+   above the call that ships data off-box and was not applied to it, so the *first alert
+   ever sent* would have carried a player's phone number out of Tanzania. Proven, not
+   argued: delete `beforeSend` and the gate catches a real `+255…`, a real email and a
+   real NIDA in the envelope on the wire. It was invisible only because no DSN was ever
+   set. Now every string in an event is scrubbed — messages, stack frames, breadcrumbs,
+   `extra`, framed local variables — cycle-safe, built on the same `scrubForAudit` the
+   audit sink uses so the two lists cannot drift.
+
+   **Durable ≠ alerting, and both `/api/health` and `/admin/compliance` now say which is
+   which.** Until the DSN is set the card reads "Durable — but nobody is paged".
+
+   Historical detail below.
+
+   ~~**HALF CLOSED.**~~ ✅ Production exceptions are **durable**:
    `onRequestError` → `captureServerError` writes a PII-scrubbed, deduped `SYSTEM /
    server.error` audit row (stack included, repeat-count carried) alongside the `[snag]`
    log. This mattered more than it sounds — chasing a payout failure ten minutes old that
