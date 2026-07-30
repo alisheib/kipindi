@@ -100,6 +100,7 @@
     "selcom:capture": "node scripts/selcom-capture.mjs",
     "test:monitoring": "tsx scripts/monitoring.test.mts",
     "test:alerting": "tsx scripts/alerting.test.mts",
+    "test:multi-container": "tsx scripts/multi-container.test.mts",
     "test:payout-observability": "tsx scripts/payout-observability.test.mts",
     "test:payout-rails": "tsx scripts/payout-rails.test.mts",
     "test:proposals": "tsx scripts/proposal-approval-bonus.test.mts",

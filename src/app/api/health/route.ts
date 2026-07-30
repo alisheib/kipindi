@@ -11,6 +11,7 @@ import { listMarkets } from "@/lib/server/market-service";
 import { auditRingSize } from "@/lib/server/audit";
 import { lifecycleTickerHealth } from "@/lib/server/lifecycle";
 import { isMonitoringEnabled } from "@/lib/server/monitoring";
+import { leadershipSnapshot } from "@/lib/server/leader";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -52,6 +53,11 @@ export async function GET() {
         // complained. A non-zero `skippedConsecutive` here means those chores are
         // NOT running right now. See lifecycle.ts → OVERRUN_ALERT_SKIPS.
         ticker: lifecycleTickerHealth(),
+        // Which instance is actually running the chores. With one container this always
+        // reads `isMe: true`; with two it is the only way to see that exactly one of them
+        // is sweeping, and which. `admission` stays per-container by design — see
+        // docs/POLISH-BACKLOG.md §3 for the pool arithmetic that implies.
+        leadership: leadershipSnapshot(),
         // Whether anything would TELL you about an error, as opposed to recording it.
         // Server exceptions are durable on box either way (audit chain, scrubbed and
         // deduped); `alerting: false` means nobody is paged and someone has to go and

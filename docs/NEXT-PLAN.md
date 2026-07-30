@@ -196,9 +196,26 @@ composite indexes, then the SSE ceiling. Each has a measured threshold in
 `POLISH-BACKLOG.md` §3 — fix the ones that bite first, and **state the new ceiling you
 measured** rather than declaring it solved.
 
-**6. Multi-container readiness** — `admission.ts`, `rate-limit.ts`, the ticker's
-`lastReconcileAt`. Only correct today because production runs one container. Decide with
-Ali whether this pass makes it safe or documents it as a hard constraint.
+**6. Multi-container readiness** — ✅ **the dangerous half is CLOSED (2026-07-30).** The
+lifecycle chores run behind a **leader lease** (`src/lib/server/leader.ts`): a short-lived
+`SystemConfig` row claimed and renewed inside a Postgres advisory lock, so the
+read-then-write is atomic across containers. Fails **closed** (an unreachable database
+returns `false` — driven, 2.1 s), hands the lease back on `SIGTERM`, and expires on its own
+if a container dies holding it. `/api/health` reports the holder.
+
+Proven by `scripts/load/s12-leader-contention.mts`: **two real OS processes** racing
+against real Postgres, 10/10, now in CI beside s10/s11. It cannot be proven in-process —
+`leader.ts` keeps its instance id in module scope, so two calls in one process always
+agree. Removing the advisory lock makes **both instances win**; that was run, and s12
+caught it.
+
+⚠️ Still per-container **by design**, each with a stated consequence in
+`POLISH-BACKLOG.md` §3: `admission.ts` (Redis must never touch the bet path ⇒ N containers
+need the DB pool sized N×; at pool 40 that is ~36 in-flight bets each), rate limits and SSE
+fan-out (cross-container code exists in `redis.ts` but is **inert** until Ali sets
+`REDIS_ENABLED=true` **and** `REDIS_URL` — until then two containers would each grant the
+full OTP/login budget, audit H2), and the deposit fast-poll (idempotent on purpose).
+Redis fail-open verified against a dead port: 2 ms, then 0 ms, never throws.
 
 ### Rules
 

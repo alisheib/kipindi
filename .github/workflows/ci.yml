@@ -85,3 +85,12 @@ jobs:
         run: npx tsx scripts/load/s11-audit-cross-instance.mts
         env:
           DATABASE_URL: ${{ env.CI_DB_URL }}
+
+      # Same class as s10/s11: cannot be proven in one process, because leader.ts keeps
+      # its instance id in module scope and two calls inside one Node process always
+      # agree. Two REAL OS processes race for the lifecycle lease; exactly one may win.
+      # Removing the advisory lock from the election makes both win — verified.
+      - name: Cross-instance leader election proof (s12)
+        run: npx tsx scripts/load/s12-leader-contention.mts
+        env:
+          DATABASE_URL: ${{ env.CI_DB_URL }}

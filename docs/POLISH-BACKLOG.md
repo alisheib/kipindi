@@ -155,9 +155,37 @@ Ranked. Localization first, per the standing priority that Swahili must be perfe
 - **Lifecycle ticker** — serial sweeps on a 60 s interval guarded by a process-local boolean,
   including a trial balance that walks **every** wallet. Past one pass > 60 s it silently
   starts skipping, and nothing alerts.
-- **Multi-container** — `admission.ts` (the DB-protection semaphore), `rate-limit.ts`, and the
-  ticker's `lastReconcileAt`/`lastPaymentSweepAt` are all module-local. Correct today only
-  because production runs ONE container.
+- **Multi-container** — ✅ **the dangerous half is closed (2026-07-30).** The lifecycle
+  chores (payment reconcile, bonus expiry, schedule reconcile, wallet↔ledger trial balance)
+  now run behind a **leader lease** (`src/lib/server/leader.ts`): a short-lived row in
+  `SystemConfig`, claimed and renewed inside a Postgres advisory lock so the
+  read-then-write is atomic across containers. Fails **closed** — an unreadable lease skips
+  the pass rather than sweeping blind. The lease is handed back on `SIGTERM`, so a deploy
+  does not stall the chores while it expires, and it expires on its own if a container
+  dies holding it. `/api/health` reports who holds it.
+
+  Proven by `scripts/load/s12-leader-contention.mts` — two **real OS processes** racing
+  against real Postgres, wired into CI beside the s10/s11 cross-instance proofs. It cannot
+  be proven in-process: `leader.ts` keeps its instance id in module scope, so two calls in
+  one Node process always agree. Removing the advisory lock from the election makes **both
+  instances win**; that was run, and s12 caught it.
+
+  ⚠️ **Still per-container, and on purpose:**
+  - **`admission.ts`** — its own invariant 4 forbids Redis or any network hop on the bet
+    path, because a stall there costs a player their bet. The consequence is arithmetic,
+    not a shrug: each container admits `pool − 4` bets in flight, so **N containers need
+    the DB pool sized N ×** what one needs. At the current pool of 40 that is ~36 in-flight
+    bets per container; two containers on the same database would need 80.
+  - **`rate-limit.ts` and SSE fan-out** — cross-container already, via the Redis layer in
+    `redis.ts`, but it is **inert** until BOTH `REDIS_ENABLED="true"` and `REDIS_URL` are
+    set. Neither is set in production today, so per-phone and per-IP limits are per
+    container: two containers would each grant the full budget, doubling every OTP, login
+    and register ceiling the compliance story claims (audit H2). Arming it is an operator
+    action; `/api/admin/admission` reports honestly whether it is armed.
+  - **The deposit fast-poll** (15 s) stays on every container deliberately. Its only
+    action is `creditConfirmedDeposits`, which can CONFIRM and never fail or reverse, and
+    the credit path is idempotent — so a second container costs a duplicate gateway query,
+    not a duplicate credit, and the player gets their money faster.
 - **Pending registrations** (`auth-service.ts:149`) — dropped on every deploy, so a player mid-OTP
   is told their session expired after already burning an SMS. Invisible: no funnel
   instrumentation and no error tracking.
