@@ -215,6 +215,14 @@ async function maybeReconcileSchedules(): Promise<void> {
   // moves on, so without this a boundary refused once was never retried, FAILED was
   // unreachable, and a round holding player money could neither resolve nor refund.
   // Separate try/catch — a failure here must never stop the timer healing above.
+  //
+  // ⚠️ THIS IS THE SLOWEST CHORE IN THE PASS, and since the overrun detector above landed it
+  // is also the most likely trigger of a `lifecycle.ticker_overrun` alert. Its cost is
+  // dominated by `maxObservations` (default 8): each observation is one network price read.
+  // With the FEED reader (~1s each) that sits comfortably inside TICK_MS. With the AI reader
+  // (tens of seconds each) eight reads can exceed the 60s tick and start swallowing ticks.
+  // Chasing an overrun alert? Look here first — and lower `maxObservations` rather than
+  // widening the tick. A slow heal is acceptable; a stalled payment reconcile is not.
   try {
     const { resolveOverdueRounds } = await import("./updown-service");
     const h = await resolveOverdueRounds();
