@@ -235,6 +235,27 @@ section. `/admin/updown` renders it read-only via `controlled-elsewhere.tsx`; on
 place. ⚠️ That toolkit chip reads **"off" when there is no `ANTHROPIC_API_KEY`**, which is a
 different thing from the generation switch being off — do not read one as the other.
 
+### ⚠️ Two suites are FLAKY under a full run — know this before chasing a ghost
+
+A full `npm run test:all` came back **111/113**, failing `test:trilingual` and `test:responsive`.
+Both pass on their own; neither is a regression. Do not spend an hour on them:
+
+- **`test:trilingual`** — 36/36 alone. Its generation section uses `MockClaudeProvider`, whose
+  `pickScenario()` is **weighted-random** (2% `error`, 1% `malformed`, …). A bad draw fails the
+  suite. Flaky by construction, pre-existing.
+- **`test:responsive`** — 120/0 alone on the Up & Down routes, twice; 3,788 passed in the full
+  sweep with 2 failures, one being
+  `/admin/updown/proposals@desktop — Execution context was destroyed, most likely because of a
+  navigation`. That is a **dev-server recompile race**, not a page defect.
+
+> 🎯 **The underlying tension, unresolved and worth fixing properly one day:** this sweep *needs*
+> `next dev`, because its admin session comes from `/api/dev-test/seed-admin`, which 404s outside
+> development — and `NODE_ENV` is inlined at build time, so `next start` cannot enable it. But
+> `next dev` compiles pages on demand, so a 60-route sweep reloads pages mid-assertion. The
+> honest fix is a build-time flag that exposes the seed route in a *production* build for test
+> hosts, so the audit can run against `next start`. Until then: **re-run a failing route on its
+> own before believing it.**
+
 ### Running the console locally
 
 ```
