@@ -28,6 +28,7 @@ import {
   selcomPayout,
   selcomVerifyPayout,
   selcomProbeRail,
+  isPayoutPath,
   type PayoutRail,
 } from "../src/lib/server/selcom.ts";
 import { PAYOUT_LADDER } from "../src/lib/server/payments.ts";
@@ -291,6 +292,26 @@ await withFetch(() => jsonResp("000"), async (calls) => {
     calls.every((u) => !u.includes("/process") && !u.includes("/cashin")),
     calls.join(" · "));
 });
+
+// ── §6 · The wire capture covers EVERY rail endpoint ─────────────────────────
+// Behavioural, not structural — this one can be driven, so it is.
+//
+// The first implementation substring-matched "cashin", which silently excluded
+// `/selcompesa/query`: no "cashin" in it. That is the precise endpoint the
+// double-pay regression in §3 is about, so a Selcom Pesa payout could have gone
+// wrong in the one way that costs real money with nothing in the capture to show
+// it. Deriving from PAYOUT_RAILS means a rail added later cannot be missed.
+console.log("\n── 6 · SELCOM_WIRE_LOG=payouts covers every rail endpoint ──");
+for (const [rail, spec] of Object.entries(PAYOUT_RAILS)) {
+  ok(`${rail}: process endpoint is captured`, isPayoutPath(spec.process), spec.process);
+  ok(`${rail}: query endpoint is captured`, isPayoutPath(spec.query), spec.query);
+}
+ok("the float read is captured (a dry float looks like a refusal)", isPayoutPath("/vendor/balance"));
+ok("qwiksend is captured ahead of being integrated", isPayoutPath("/qwiksend/process"));
+// …and the deposit half is NOT, or "payouts" would mean nothing.
+ok("deposit checkout is NOT captured in payouts mode", !isPayoutPath("/checkout/create-order-minimal"));
+ok("deposit wallet-payment is NOT captured in payouts mode", !isPayoutPath("/checkout/wallet-payment"));
+ok("deposit order-status is NOT captured in payouts mode", !isPayoutPath("/checkout/order-status"));
 
 console.log(`\n──────────────────────────────────────────────────────────────`);
 console.log(`  PAYOUT RAILS: ${pass} passed, ${fail} failed`);

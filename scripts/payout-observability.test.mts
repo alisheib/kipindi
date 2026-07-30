@@ -162,5 +162,66 @@ ok("describeSelcom renders only status/resultcode/result/message",
 ok("describeSelcom truncates the message", describeFn.includes("slice(0, 200)"));
 ok("persisted detail is length-capped", (wallet.match(/slice\(0,\s*500\)/g) ?? []).length >= 4);
 
+console.log("\n── 6 · The wire capture — headers, the half we never kept ──────");
+
+// 🔴 THE GAP THIS CLOSES. Selcom asked for "the request and the response, with
+// headers" and we had none — not because a log rotated, but because `selcomFetch`
+// read `res.status` and `res.json()` and never touched `res.headers`, on any version
+// of this file. The envelope was captured; the wire was not. These are structural
+// for the same reason as the rest of this suite: the behaviour needs a live gateway.
+const fetchFn = bodyOf(selcom, "async function selcomFetch");
+ok("selcomFetch was found", fetchFn.length > 0);
+ok("🔴 the RESPONSE HEADERS are read — the regression that left us unable to answer",
+  selcom.includes("outcome.res.headers.entries()"),
+  "res.headers was discarded at the socket on every previous version");
+ok("the raw body is kept as text, not only as parsed JSON",
+  fetchFn.includes("await res.text()") && fetchFn.includes("JSON.parse(rawBody)"),
+  "an empty 403 or an HTML error page IS the evidence, and res.json() throws it away");
+ok("the signing timestamp is captured so the Digest stays verifiable",
+  /const timestamp = eatTimestamp\(\)/.test(fetchFn) && fetchFn.includes("selcomSignedHeaders(body, env, timestamp)"),
+  "a Digest signs a timestamp — unstored, it can never be reconstructed");
+ok("the signing string is logged alongside the headers",
+  fetchFn.includes("selcomSigningString(body, timestamp)"));
+ok("a network failure is captured before it is rethrown",
+  /catch \(err\)[\s\S]{0,300}wireLog[\s\S]{0,200}throw err/.test(fetchFn),
+  "the AMBIGUOUS arm is the one that holds a player's money");
+
+// Money-safety: capture must be observation only. If the fetch contract changed,
+// every payout verdict downstream would shift with it.
+ok("selcomFetch still returns the same contract",
+  /return \{ ok: res\.ok, httpStatus: res\.status, json \}/.test(fetchFn),
+  "wire capture is observation — it must not alter a single verdict");
+
+// NOT bodyOf(): "function wireLog" prefix-matches `wireLogMode`, and bodyOf then
+// slices to the next top-level export — handing back the wrong function entirely
+// and failing against perfectly good code. Anchor on POSITION, not on a newline:
+// this repo checks out CRLF, so "function wireLog(\n" matches nothing at all and
+// indexOf returns -1, which slice() reads as an offset from the end. Search from
+// past redactPin, which is the declaration immediately before it.
+const wireFn = selcom.slice(
+  selcom.indexOf("function wireLog(", selcom.indexOf("function redactPin")),
+  selcom.indexOf("async function selcomFetch"),
+);
+ok("the wireLog body was located (guards the slice above)",
+  wireFn.length > 0 && wireFn.includes("SELCOM WIRE") && !wireFn.includes("function wireLogMode"));
+ok("⛔ the float PIN is redacted in the wire log, with no unmask flag",
+  selcom.includes("function redactPin") && wireFn.includes("redactPin") &&
+  !/unmask/i.test(wireFn),
+  "Railway log retention is not a place a float PIN can be withdrawn from");
+// Five sites, and the response half is not paranoia: a gateway that echoes the
+// offending request into its own error message is an ordinary pattern, and that
+// would land the float PIN in log retention by a route nobody was watching.
+ok("the PIN is redacted in the request URL, body and signing string",
+  wireFn.includes("redactPin(parts.url") && wireFn.includes("redactPin(parts.reqBody") &&
+  wireFn.includes("redactPin(parts.signing"));
+ok("…and on the way BACK — response headers and raw body",
+  wireFn.includes("redactPin(v, env.pin)") && wireFn.includes("redactPin(outcome.rawBody"));
+ok("capture is OFF unless explicitly switched on",
+  /function wireLogMode[\s\S]{0,400}return "off"/.test(selcom),
+  "it prints the Authorization header — it must never be the default");
+ok("the switch has a payouts-only setting",
+  selcom.includes('v === "payouts"') && selcom.includes("isPayoutPath"),
+  "a withdrawal test should not also dump every deposit");
+
 console.log(`\n${"─".repeat(64)}\n  PAYOUT OBSERVABILITY: ${pass} passed, ${fail} failed\n${"─".repeat(64)}`);
 process.exit(fail === 0 ? 0 : 1);
