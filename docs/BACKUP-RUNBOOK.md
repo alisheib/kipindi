@@ -180,15 +180,69 @@ container instead, which must be kept on production's major version.
 
 ## Still open
 
-- **Repository secrets are not set yet**, so the nightly workflow will fail its
-  configuration check until Ali adds them. That is deliberate — it fails before touching
-  production rather than after. ⚠️ `gh` is **not authenticated** on this machine and there
-  is no `GH_TOKEN`; git pushes work only because Windows Credential Manager holds the
-  credential, which `gh` cannot read. Someone must run `gh auth login` before an agent can
-  set these.
-- **`R2_BACKUP_BUCKET` does not exist yet.** It must be a *separate* bucket from
-  `50pick-kyc`: the running app can reach that one, and a backup should not share a blast
-  radius with the documents inside it.
+- ✅ **Repository secrets are SET — all seven, 2026-07-31**, verified with `gh secret list`
+  against `alisheib/kipindi`. The workflow's "Check configuration" step now passes.
+
+  🔴 **`BACKUP_SOURCE_DATABASE_URL` must be the PUBLIC url, and this is the trap.** Set from
+  Railway's `DATABASE_URL` the first run died instantly:
+
+  ```
+  BACKUP FAILED: Error: getaddrinfo ENOTFOUND postgres.railway.internal
+  ```
+
+  `postgres.railway.internal` resolves **only inside** Railway's private network. The
+  workflow runs on a GitHub runner, which is outside it. The right value is the Postgres
+  service's **`DATABASE_PUBLIC_URL`** (`turntable.proxy.rlwy.net:40357`) — a different
+  host *and* a different port, so copying the internal one and editing the hostname is not
+  enough.
+
+  Why this mattered more than a normal typo: on the schedule there is no human watching at
+  00:15 UTC. It would have failed in four seconds, every night, looking exactly like a
+  transient network blip in a log nobody reads. Check with:
+
+  ```
+  node scripts/../<scratch>/fix-backup-source-url.mjs   # reports host + reachability, no credentials
+  ```
+
+  ⚠️ The same trap applies to **anything** run outside Railway against this database —
+  `railway run` included, since that executes locally. Inside the container (`railway ssh`)
+  the internal host is correct and the public one is the wrong choice.
+- 🔴 **`R2_BACKUP_BUCKET` STILL DOES NOT EXIST, AND THE NIGHTLY REPORTED GREEN ANYWAY.**
+  This is the worst defect found so far, because it produced a *reassuring* result.
+
+  On 2026-07-31 a full `workflow_dispatch` run showed **every step ✓**, including "Ship it
+  off-box", and the verify step printed `VERIFIED — 79 checks passed`. All of that was true
+  except the shipping. A direct check against R2 returned:
+
+  ```
+  ❌ cannot list 50pick-backups: NoSuchBucket (404)
+  🔴 THE BUCKET DOES NOT EXIST. Nothing has ever been shipped off-box.
+  ```
+
+  **Cause: a missing `set -o pipefail`.** The step ran
+  `npm run db:backup-upload -- --file "$f" | tee upload.log`, and a bash pipeline exits with
+  the status of its **last** command — `tee` — which always succeeds. `bash -e` does not help;
+  the pipeline as a whole "succeeded". The upload threw `NoSuchBucket`, exited 1, and the step
+  went green. The tell was in the recorded result all along: `"destination":""`.
+
+  ✅ Fixed: the step now sets `set -euo pipefail` **and** fails explicitly if the destination
+  comes back empty, because "we have off-box backups" is the one claim that must not be wrong.
+  Verified by re-running with the bucket still absent and watching the job go **red**.
+
+  ▶ **Still outstanding, and now the only thing between us and a working nightly:** create the
+  bucket. Cloudflare → R2 → **Create bucket** → `50pick-backups`. It must be a *separate*
+  bucket from `50pick-kyc` — the running app can reach that one, and a backup should not share
+  a blast radius with the documents inside it. The Railway R2 token is bucket-scoped and
+  cannot create it (`ListBuckets` → `AccessDenied`).
+
+  Then prove it, rather than trusting a green tick:
+
+  ```
+  railway run node scripts/backup-verify-offbox.mjs
+  ```
+
+  It lists the bucket, shows each artifact's age and size, and fails if the bucket is missing,
+  empty, under 1 MB (a truncated upload — production dumps ~13 MB), or over 30 hours stale.
 
   **Verified 2026-07-31 — and it cannot be created from here.** The R2 API token in Railway
   is **bucket-scoped**: `ListBuckets` returns `AccessDenied`, and a bucket-scoped token
