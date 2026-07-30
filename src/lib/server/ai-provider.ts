@@ -110,11 +110,59 @@ export type IdeateResponse = {
 
 /* ─── Provider interface ─── */
 
+/**
+ * What the AI proposes for an Up & Down chain. `observedPrice` / `observedQuotedAt` are the
+ * quote it ACTUALLY read from `sourceUrl` — evidence that the page is readable, never a
+ * price any round settles on.
+ */
+export type UpDownProposalGeneration = {
+  sourceUrl: string;
+  framingEn: string;
+  framingSw: string;
+  framingZh: string;
+  reasoning: string;
+  marginBps: number;
+  confidence: number;
+  observedPrice: number | null;
+  observedQuotedAt: string | null;
+};
+
+export type ProposeUpDownRequest = {
+  assetKey: string;
+  assetSymbol: string;
+  category: string;
+  /** The ONE domain it may cite — enforced server-side by web_fetch's `allowed_domains`. */
+  approvedDomain: string;
+  currentSourceUrl: string;
+  durationMinutes: number;
+  decimals: number;
+  defaultMarginBps: number;
+  maxStalenessSeconds: number;
+  prompt?: string;
+};
+
+export type ProposeUpDownResponse = {
+  ok: boolean;
+  proposal?: UpDownProposalGeneration;
+  rawResponse?: string;
+  error?: string;
+  tokensUsed: number;
+  costUsd: number;
+  latencyMs: number;
+};
+
 export interface AIProvider {
   name: string;
   generate(req: GenerateRequest): Promise<AIProviderResponse>;
   /** Tier-1: cheap idea brainstorm (Haiku, no web search). */
   ideate(req: IdeateRequest): Promise<IdeateResponse>;
+  /**
+   * Propose an Up & Down chain, including the source page it verified it can read.
+   *
+   * OPTIONAL on the interface so adding it cannot break a provider that does not implement
+   * it — `generateProposal` checks for the method and refuses by name rather than crashing.
+   */
+  proposeUpDown?(req: ProposeUpDownRequest): Promise<ProposeUpDownResponse>;
 }
 
 /* ─── Mock data pools ─── */
@@ -302,6 +350,38 @@ function simulateCost(tokens: number): number {
 
 export class MockClaudeProvider implements AIProvider {
   name = "mock-claude-opus";
+
+  /**
+   * A mock proposal, deliberately WITHOUT readability evidence.
+   *
+   * `observedPrice`/`observedQuotedAt` are null because the mock did not fetch anything — and
+   * pretending otherwise would make the mock the one place in the codebase that fabricates a
+   * price with a timestamp. The consequence is visible and correct: a mock proposal lands in
+   * FILTERED with `source_unreadable`, so a developer sees the refusal path by default and has
+   * to supply real evidence (or a real key) to reach the arm path. The uncomfortable default
+   * is the honest one.
+   */
+  async proposeUpDown(req: ProposeUpDownRequest): Promise<ProposeUpDownResponse> {
+    await new Promise((r) => setTimeout(r, 5));
+    return {
+      ok: true,
+      proposal: {
+        sourceUrl: req.currentSourceUrl || `https://${req.approvedDomain}/`,
+        framingEn: `Will ${req.assetSymbol} rise or fall over the next ${req.durationMinutes} minutes?`,
+        framingSw: `Je ${req.assetSymbol} itapanda au itashuka katika dakika ${req.durationMinutes} zijazo?`,
+        framingZh: `${req.assetSymbol} 在接下来的 ${req.durationMinutes} 分钟内会上涨还是下跌？`,
+        reasoning: "Mock provider — no page was fetched, so no price or timestamp is reported. This proposal is expected to be filtered as unreadable.",
+        marginBps: req.defaultMarginBps,
+        confidence: 40,
+        observedPrice: null,
+        observedQuotedAt: null,
+      },
+      rawResponse: "[mock provider]",
+      tokensUsed: 120,
+      costUsd: 0.0004,
+      latencyMs: 20,
+    };
+  }
 
   async ideate(req: IdeateRequest): Promise<IdeateResponse> {
     const cats = req.categories.length ? req.categories : ["sports"];

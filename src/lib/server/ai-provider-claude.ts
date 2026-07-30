@@ -29,7 +29,7 @@
  * where the model answers in prose instead of calling the tool.
  */
 import Anthropic from "@anthropic-ai/sdk";
-import type { AIProvider, AIProviderResponse, AIPollGeneration, GenerateRequest, IdeateRequest, IdeateResponse, PollIdea, AllowedSource } from "./ai-provider";
+import type { AIProvider, AIProviderResponse, AIPollGeneration, GenerateRequest, IdeateRequest, IdeateResponse, PollIdea, AllowedSource, ProposeUpDownRequest, ProposeUpDownResponse, UpDownProposalGeneration } from "./ai-provider";
 import { getAIPollConfig } from "./ai-poll-config";
 import { ai } from "./ai-config";
 import { recordAiUsage, costOf } from "./ai-usage";
@@ -379,6 +379,173 @@ export class ClaudeProvider implements AIProvider {
       await recordAiUsage({ feature: "polls", model: IDEATION_MODEL, ok: false, latencyMs: Date.now() - start, errorType: (err as Error).message?.slice(0, 200), detail: "ideate" });
       return { ok: false, ideas: [], error: `Ideation error: ${(err as Error).message}`, tokensUsed: 0, costUsd: 0, latencyMs: Date.now() - start };
     }
+  }
+
+  /**
+   * Propose an Up & Down chain — and, critically, PROVE the proposed page is readable by
+   * fetching it and reporting the quote and timestamp actually found.
+   *
+   * ⚠️ THE HARD PART OF A PROPOSAL IS THE EVIDENCE, NOT THE FRAMING. Measured 2026-07-30:
+   * most price pages render their number in client-side JavaScript, so a fetch returns prose
+   * with no quote, or a cached figure hours old. So both evidence fields are REQUIRED and
+   * NULLABLE — the model must state what it found, and a null is a useful answer that gets
+   * the proposal refused rather than armed. An AI guessing a plausible number here would be
+   * the worst failure available in this subsystem, which is why that instruction is the
+   * loudest thing in the prompt.
+   *
+   * `allowed_domains` pins the fetch to the ONE approved domain: enforced by Anthropic's
+   * fetch service, not by asking the model nicely.
+   */
+  async proposeUpDown(req: ProposeUpDownRequest): Promise<ProposeUpDownResponse> {
+    const start = Date.now();
+    const { getConfiguredModel } = await import("./ai-config");
+    const activeModel = await getConfiguredModel();
+    const nowIso = new Date().toISOString();
+
+    const tool = {
+      name: "submit_updown_proposal",
+      description: "Submit an Up & Down chain proposal, with the source page you verified you can read a timestamped price from.",
+      input_schema: {
+        type: "object",
+        properties: {
+          sourceUrl: { type: "string", description: `The EXACT page URL you fetched, on ${req.approvedDomain}. Every round will capture this link and resolve against it.` },
+          observedPrice: { type: ["number", "null"], description: "The price you actually read on that page. NULL if the page showed no usable numeric price — never a guess, never a remembered figure." },
+          observedQuotedAt: { type: ["string", "null"], description: "The timestamp THE PAGE ITSELF published for that price, ISO-8601. NULL if the page showed none. Never substitute the current time." },
+          framingEn: { type: "string", description: "One short sentence a Tanzanian bettor reads: what they are predicting. No price figures." },
+          framingSw: { type: "string", description: "Swahili translation of framingEn." },
+          framingZh: { type: "string", description: "Chinese translation of framingEn." },
+          marginBps: { type: "number", description: `Winning-boundary margin in basis points (50 = 0.5%). Default ${req.defaultMarginBps}. Wider = more voids; narrower = decided by noise.` },
+          reasoning: { type: "string", description: "Why this duration and margin, and what you observed on the page — including if you could NOT read a price." },
+          confidence: { type: "number", description: "0-100: how confident you are that this page yields a fresh timestamped price at EVERY round boundary, not just once." },
+        },
+        // Both evidence fields are REQUIRED though nullable. An omitted field reads as "not
+        // applicable"; an explicit null is a statement that the page gave nothing — which is
+        // exactly the fact the officer needs.
+        required: ["sourceUrl", "observedPrice", "observedQuotedAt", "framingEn", "framingSw", "framingZh", "marginBps", "reasoning", "confidence"],
+      },
+    };
+
+    const system = `You propose price rounds for 50pick, a GBT-licensed Tanzanian pari-mutuel platform. Real money settles against what you report, so accuracy outranks helpfulness.
+
+CURRENT TIME: ${nowIso}
+
+THE ASSET: ${req.assetKey} (${req.assetSymbol}), quoted to ${req.decimals} decimals. Category: ${req.category}.
+THE ONLY DOMAIN YOU MAY CITE: ${req.approvedDomain}. The operator currently uses ${req.currentSourceUrl}.
+THE ROUND: ${req.durationMinutes} minutes. UP wins if the close reaches open + margin, DOWN if it reaches open − margin; anything between VOIDS and refunds every stake.
+
+YOUR JOB, in order:
+1. FETCH a page on ${req.approvedDomain} showing a live ${req.assetSymbol} price WITH the time that price was quoted. Try the operator's current page first, then others on that domain.
+2. REPORT WHAT YOU ACTUALLY SAW. This is the part that matters.
+3. Propose the framing and the margin.
+
+⛔ THE ONE RULE YOU MUST NOT BREAK: if the page shows no usable numeric price, or no timestamp for it, set observedPrice and/or observedQuotedAt to NULL and say so in reasoning. Do NOT infer a price from surrounding text. Do NOT use a price you remember from training. Do NOT substitute the current time for a missing timestamp. Do NOT turn a vague "earlier today" into an ISO timestamp.
+  A null is a USEFUL answer: it tells the operator this page cannot back a ${req.durationMinutes}-minute round, and the proposal is refused instead of armed. A fabricated number would put real money on a price nobody published. Many finance pages render their price in JavaScript and will give you nothing — that is expected, and reporting it honestly is the correct outcome.
+
+Rounds resolve on a ${req.maxStalenessSeconds}-second staleness window, so a page whose newest quote is already hours old cannot back this product. Say that plainly in reasoning and lower your confidence.
+
+The framing is for a bettor, not an analyst: one plain sentence, no price figures (they change every round), no hedging.`;
+
+    const userPrompt = req.prompt
+      ? `Propose a ${req.durationMinutes}-minute ${req.assetKey} chain. Operator guidance (takes priority): ${req.prompt}`
+      : `Propose a ${req.durationMinutes}-minute ${req.assetKey} chain. Fetch the page first, then report exactly what you found.`;
+
+    try {
+      const client = new Anthropic({ apiKey: this.apiKey });
+      const resp = await client.messages.create({
+        model: activeModel,
+        max_tokens: 2000,
+        system,
+        // web_fetch first: the job is to read ONE known domain, not to search the web.
+        tools: [
+          {
+            type: ai.webFetchTool.type,
+            name: ai.webFetchTool.name,
+            max_uses: 5,
+            allowed_domains: [req.approvedDomain],
+          },
+          tool,
+        ] as unknown as Anthropic.Messages.ToolUnion[],
+        // MUST be auto, never a forced tool — forcing is incompatible with server-side tools,
+        // and the model has to fetch before it can honestly submit. Same constraint the poll
+        // generator hit with web search (see `generate` above).
+        tool_choice: { type: "auto" },
+        messages: [{ role: "user", content: userPrompt }],
+      });
+
+      const latencyMs = Date.now() - start;
+      const usage = resp.usage as
+        | { input_tokens?: number; output_tokens?: number; server_tool_use?: { web_search_requests?: number; web_fetch_requests?: number } }
+        | undefined;
+      const inTok = usage?.input_tokens ?? 0;
+      const outTok = usage?.output_tokens ?? 0;
+      const fetches = usage?.server_tool_use?.web_fetch_requests ?? usage?.server_tool_use?.web_search_requests ?? 0;
+      const costUsd = costOf(activeModel, inTok, outTok, fetches);
+
+      // Metered under its OWN feature tag so Up & Down spend is separable from polls spend in
+      // the usage readout — different products, different budgets.
+      await recordAiUsage({
+        feature: "updown", model: activeModel, inputTokens: inTok, outputTokens: outTok,
+        webSearches: fetches, ok: true, latencyMs, detail: `propose · ${req.assetKey} ${req.durationMinutes}m`,
+      });
+
+      const content = resp.content as Array<{ type: string; name?: string; input?: unknown; text?: string }>;
+      const rawResponse = JSON.stringify(content, null, 2).slice(0, 8000);
+      const call = content.find((b) => b.type === "tool_use" && b.name === "submit_updown_proposal");
+
+      if (!call?.input || typeof call.input !== "object") {
+        // Text-JSON fallback, for the same reason the poll path has one: with server tools in
+        // play the model may answer in prose rather than calling the tool.
+        const text = content.filter((b) => b.type === "text").map((b) => b.text ?? "").join("\n");
+        const parsed = parseProposalFromText(text);
+        if (parsed) return { ok: true, proposal: parsed, rawResponse, tokensUsed: inTok + outTok, costUsd, latencyMs };
+        return {
+          ok: false,
+          error: "The AI did not submit a proposal — its reply is in the raw response.",
+          rawResponse, tokensUsed: inTok + outTok, costUsd, latencyMs,
+        };
+      }
+
+      return {
+        ok: true,
+        proposal: call.input as UpDownProposalGeneration,
+        rawResponse,
+        tokensUsed: inTok + outTok,
+        costUsd,
+        latencyMs,
+      };
+    } catch (err) {
+      const latencyMs = Date.now() - start;
+      await recordAiUsage({
+        feature: "updown", model: activeModel, ok: false, latencyMs,
+        errorType: (err as Error).message?.slice(0, 200), detail: `propose · ${req.assetKey}`,
+      });
+      return { ok: false, error: `Proposal error: ${(err as Error).message}`, tokensUsed: 0, costUsd: 0, latencyMs };
+    }
+  }
+}
+
+/** Last-resort parse for when the model answered in prose instead of calling the tool. */
+function parseProposalFromText(text: string): UpDownProposalGeneration | null {
+  const first = text.indexOf("{");
+  const last = text.lastIndexOf("}");
+  if (first < 0 || last <= first) return null;
+  try {
+    const o = JSON.parse(text.slice(first, last + 1)) as Record<string, unknown>;
+    if (typeof o.sourceUrl !== "string" || !o.sourceUrl) return null;
+    return {
+      sourceUrl: o.sourceUrl,
+      framingEn: String(o.framingEn ?? ""),
+      framingSw: String(o.framingSw ?? ""),
+      framingZh: String(o.framingZh ?? ""),
+      reasoning: String(o.reasoning ?? ""),
+      marginBps: Number(o.marginBps),
+      confidence: Number(o.confidence),
+      // A missing evidence field parses to NULL, never to a substituted value.
+      observedPrice: o.observedPrice == null ? null : Number(o.observedPrice),
+      observedQuotedAt: o.observedQuotedAt == null ? null : String(o.observedQuotedAt),
+    };
+  } catch {
+    return null;
   }
 }
 

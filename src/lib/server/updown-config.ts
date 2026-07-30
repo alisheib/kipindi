@@ -549,8 +549,14 @@ export type ChainInput = {
   marginBps?: number | null;
 };
 
-/** Shared validation for a margin override (bps). Null = inherit; else a whole 0-2000. */
-function checkMarginBps(m: number | null | undefined): string | null {
+/**
+ * Shared validation for a margin override (bps). Null = inherit; else a whole 0-2000.
+ *
+ * Exported so the AI proposal pipeline validates a proposed margin against the SAME rule
+ * the admin form uses. A second copy would drift, and the drift would surface only as a
+ * chain armed with a band the console itself would have refused.
+ */
+export function checkMarginBps(m: number | null | undefined): string | null {
   if (m == null) return null;
   if (!Number.isInteger(m) || m < 0 || m > 2000) {
     return "Margin must be a whole number of basis points, 0-2000 (0-20%). Leave blank to inherit the default (0.5%).";

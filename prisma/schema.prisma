@@ -813,6 +813,23 @@ enum AIPollState {
   PUBLISHED
 }
 
+/// The Up & Down proposal lifecycle. Mirrors AIPollState — same pipeline, same officer
+/// gate — with two DELIBERATE divergences:
+///
+///  · `EDITING` is dropped. It exists in AIPollState and is dead: no path enters it. A
+///    state no code can reach is a state the next reader has to disprove.
+///  · `PUBLISHED` becomes `ARMED`, because the terminal act here is not publishing a
+///    question — it is arming a chain that will emit real-money rounds on a timer.
+enum UpDownProposalState {
+  GENERATING
+  VALIDATION_FAILED
+  FILTERED
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  ARMED
+}
+
 enum CandidateState {
   EXTRACTED
   FILTERED_OUT
@@ -1289,6 +1306,7 @@ model UpDownAsset {
 
   chains       UpDownChain[]
   observations UpDownObservation[]
+  proposals    UpDownProposal[]
 
   @@index([enabled, sortOrder])
 }
@@ -1512,6 +1530,82 @@ model AIPoll {
   updatedAt            DateTime    @updatedAt
 
   @@index([state])
+}
+
+/// AN UP & DOWN CHAIN PROPOSED BY THE AI, PENDING AN OFFICER.
+///
+/// The same shape as `AIPoll` — one row per generation, carrying the request, the raw
+/// response, the quality verdict, the officer's decision and the spend — so the officer
+/// queue, the metering and the audit trail are the ones that already exist.
+///
+/// WHAT IT PROPOSES, and why that is narrow on purpose: an asset that is ALREADY
+/// registered, at one duration, with a margin, a framing, and **the exact page it
+/// verified it could read a timestamped price from**. It cannot invent an asset, and its
+/// link must pass the operator's trusted-source allowlist — so the AI chooses *within*
+/// the operator's approved world, never outside it.
+///
+/// `observedPrice` / `observedQuotedAt` are EVIDENCE, not inputs. They say "I fetched this
+/// page and this is the quote and timestamp I actually got" — which is what makes a
+/// proposal reviewable rather than a guess, given that most price pages render in
+/// JavaScript and yield nothing usable (see docs/UPDOWN-ARCHITECTURE.md §3).
+///
+/// ⛔ NEITHER NUMBER EVER OPENS A ROUND. An armed chain reads its own boundary through
+/// the observation ledger. Settling on a price captured at proposal time would settle on a
+/// figure minutes or hours old, chosen by the same party that proposed the market.
+model UpDownProposal {
+  id                String              @id @default(cuid())
+  state             UpDownProposalState @default(GENERATING)
+
+  /// The operator's request — kept so a regeneration can repeat it verbatim.
+  requestAssetId    String
+  requestPrompt     String              @db.Text
+
+  /// What the AI proposes. `sourceUrl`/`sourceDomain` are the load-bearing pair: on arming
+  /// they become the asset's source, and every round the chain then opens CAPTURES them
+  /// (UpDownRound.capturedSourceUrl) and resolves against that capture.
+  asset             UpDownAsset         @relation(fields: [requestAssetId], references: [id], onDelete: Cascade)
+  durationMinutes   Int                 @default(15)
+  marginBps         Int                 @default(50)
+  sourceUrl         String              @default("")
+  sourceDomain      String              @default("")
+  framingEn         String              @default("")
+  framingSw         String              @default("")
+  framingZh         String              @default("")
+  reasoning         String              @db.Text
+
+  /// Evidence the link is readable — NOT a price any round settles on. See the note above.
+  observedPrice     Decimal?            @db.Decimal(18, 8)
+  observedQuotedAt  DateTime?
+
+  generation        Json?
+  rawResponse       String?             @db.Text
+  filterReasons     Json                @default("[]")
+  qualityIndicators Json                @default("[]")
+  overallQuality    Int                 @default(0)
+  confidence        Int                 @default(0)
+
+  reviewedBy        String?
+  reviewedAt        DateTime?
+  reviewNote        String?
+  rejectReasons     Json                @default("[]")
+
+  /// The terminal act: which chain this armed, when, and by whom. Set together, only from
+  /// the APPROVED state, and only through the same createChain/setChainState the admin UI
+  /// uses — so arming cannot bypass a control the console enforces.
+  armedChainId      String?
+  armedAt           DateTime?
+  armedBy           String?
+
+  tokensUsed        Int                 @default(0)
+  costUsd           Decimal             @default(0) @db.Decimal(10, 6)
+  latencyMs         Int                 @default(0)
+  regenerationOf    String?
+  regenerationCount Int                 @default(0)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@index([state])
+  @@index([requestAssetId, createdAt])
 }
 
 // ============================================================================
