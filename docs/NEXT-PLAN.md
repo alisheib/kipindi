@@ -22,7 +22,7 @@ This file is the brief. Copy the block at the bottom into a fresh session.
 | Money mode | **TEST** — deposits real via Selcom, withdrawals blocked |
 | Test suite | **104** `test:*` scripts; `test:all` 102/104 (2 are browser tests needing a live server) |
 | Design | FROZEN + LIVE (B9/B10, `test:design-frozen`) |
-| Error tracking | ❌ **NONE INSTALLED** — no `@sentry/*` in `package.json` |
+| Error tracking | ⚠️ **Durable, not alerting** — exceptions persist to the audit chain (scrubbed + deduped, `test:monitoring`); no `@sentry/*` installed, so nothing pages anyone |
 | Database backups | ❌ **NO backup or restore script exists** in `scripts/` |
 | KYC storage | `@aws-sdk/client-s3` is installed; R2 needs bucket + env to be switched on |
 | Multi-container | ❌ unsafe — `admission.ts`, `rate-limit.ts` and the ticker keep state in module scope |
@@ -42,9 +42,15 @@ This file is the brief. Copy the block at the bottom into a fresh session.
    tick sat beside the audit-chain card, which reads live state, so it borrowed real
    credibility. Both now state the truth. **When you build backups, wire this card to the
    REAL last-run state — do not restore a static tick.**
-2. **No error tracking.** Nothing reports a production exception. The only reason we know
-   the site is healthy is that someone ran a script by hand. A silent 500 on the deposit
-   path could run for days.
+2. **Error tracking — HALF CLOSED 2026-07-30.** ✅ Production exceptions are now **durable**:
+   `onRequestError` → `captureServerError` writes a PII-scrubbed, deduped `SYSTEM /
+   server.error` audit row (stack included, repeat-count carried) alongside the `[snag]`
+   log. This mattered more than it sounds — chasing a payout failure ten minutes old that
+   day, Railway's log buffer had **already rolled past it**, so nothing survived to find.
+   Guarded by `test:monitoring` (23 checks, scrubber driven behaviourally).
+   ⚠️ **Still missing: ALERTING.** Nothing pages anyone; you must go and look. `monitoring.ts`
+   is a ready seam — `npm i @sentry/node` + `SENTRY_DSN` activates the off-box mirror with no
+   other code change. Sending a licensed operator's data off-box is Ali's call.
 3. **Withdrawals cannot be paid — and as of 2026-07-30 we know exactly why.** ~~Blocked on
    the Selcom float PIN (`PAYMENT_VENDOR_PIN`).~~ The PIN is set. **The disbursement float
    is EMPTY**, confirmed by Selcom's own `990 "Insufficient account balance"` on a real
@@ -72,8 +78,13 @@ Each is fine today and bites at a stated threshold — none is speculative:
   12+ call sites — while the adjacent `txn.search` does it correctly and its own comment
   says the table "must never be walked in memory".
 - **Multi-container is unsafe today.** Correct only because production runs ONE container.
-- **Lifecycle ticker:** serial sweeps on a 60s interval guarded by a process-local
-  boolean. Past one pass > 60s it silently starts skipping, and nothing alerts.
+- **Lifecycle ticker:** serial sweeps on a 60s interval guarded by a process-local boolean.
+  Past one pass > 60s it starts skipping. ✅ **No longer silent (2026-07-30):** each skip is
+  logged with how long the pass has held and which chores did not run, consecutive and
+  lifetime counts are kept, a COMPLIANCE audit fires after 5 consecutive skips (~5 min of
+  stalled payment reconcile), and `/api/health` reports `ticker`. Guarded by
+  `test:payout-observability` §7. The ceiling itself is unchanged — a pass still has to fit
+  in 60s; you will now simply know when it does not.
 
 ---
 
@@ -114,9 +125,12 @@ green gate is evidence, not proof. Check the artifact the user actually receives
 scratch database and diff it**. An unverified backup is not a backup. Player balances and
 the settlement ledger are the assets.
 
-**2. Error tracking.** Nothing reports a production exception today. Install it, wire the
-server + client + edge paths, scrub PII (phone, NIDA, email) before anything leaves the
-box, and prove it by triggering a real error and seeing it arrive.
+**2. Error tracking — the durable half is DONE (2026-07-30); what remains is alerting.**
+Server exceptions now persist to the audit chain, PII-scrubbed and deduped, so they survive
+the log buffer. What is still missing is anything that *tells you* — install `@sentry/node`,
+set `SENTRY_DSN` (the seam in `monitoring.ts` needs no other change), and prove it by
+triggering a real error and watching it arrive. The scrubber already runs before anything is
+written, so the PII work is not repeated — but re-verify it before data leaves the box.
 
 **3.** ~~Remove or hard-gate `scripts/gift-admin-credit.ts`~~ ✅ **DONE 2026-07-30** — see the
 correction above. The only remaining balance-minting path is `seed-test-float.mjs`, which
