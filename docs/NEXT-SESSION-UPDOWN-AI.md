@@ -11,6 +11,20 @@
 can `git fetch && git checkout feat/updown-source-pinning-and-proposals`. **`main` is untouched**
 (every push to it is a live deploy); merging is Ali's call.
 
+**Already merged UP TO DATE with `main`** (0 behind, 22 ahead) — `main` gained 10 commits from a
+concurrent session while this work was in flight (backups toolchain, ops visibility, payout docs,
+withdrawal cleanup). Merged here rather than left for later; git auto-merged the two overlapping
+files (`package.json`, `src/lib/server/lifecycle.ts`) with no conflicts and both sides survived.
+
+> ⚠️ **That merge created one coupling neither side could see alone.** Their change made a slow
+> lifecycle pass *visible* (skip counter + a `lifecycle.ticker_overrun` compliance alert after 5
+> swallowed ticks). Mine put `resolveOverdueRounds()` **inside** that pass — and it is the slowest
+> chore there, costing `maxObservations` (8) network price reads. With the **feed** reader (~1s
+> each) that fits the 60s tick; with the **AI** reader (tens of seconds each) it can exceed it and
+> fire their alert. Not a bug in either change. If you meet that alert: lower `maxObservations`,
+> don't widen the tick — a slow heal is acceptable, a stalled payment reconcile is not. Documented
+> at the call site.
+
 > ⚠️ The two new migrations **have already been applied to the live database** (Ali's explicit
 > decision — it is their pre-launch DB and they start fresh at go-live). Both are purely
 > additive — two nullable columns and one new table — so `main`'s code keeps working unchanged
