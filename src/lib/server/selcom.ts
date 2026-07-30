@@ -200,10 +200,99 @@ type SelcomEnvelope = {
   [k: string]: unknown;
 };
 
+/**
+ * FULL-WIRE CAPTURE — the request and response Selcom's support asks for.
+ *
+ * WHY THIS EXISTS. On 2026-07-30 Selcom asked us for "the request and the response,
+ * with headers" for the failed payouts, and we could not produce a single one. Not
+ * because a log had rotated — because no version of this code ever kept them.
+ * `selcomFetch` read `res.status` and `res.json()` and dropped `res.headers` on the
+ * floor, and the request headers were recomputed per call and discarded. The `Digest`
+ * cannot even be reconstructed after the fact: it signs a `Timestamp` we never stored.
+ * `describeSelcom()` gave us the envelope, which is the right default — but the
+ * envelope is not what a gateway's engineer needs to trace a call on their side.
+ *
+ * OFF BY DEFAULT, because this prints the `Authorization` header (base64 of the API
+ * key) and that should not sit in a log forever. Turn it on only for a diagnostic
+ * window, and turn it off after:
+ *
+ *   SELCOM_WIRE_LOG=payouts   payout rails only — what you want for a withdrawal test
+ *   SELCOM_WIRE_LOG=all       every Selcom call, deposits included
+ *   (unset | 0 | off)         nothing (default)
+ *
+ * ⛔ The float PIN is ALWAYS redacted, in the body and in the signing string, on
+ * every setting. There is no flag to unmask it here — it would end up in Railway's
+ * log retention. Use scripts/selcom-capture.mjs --unmask-pin for the one case that
+ * needs it (Selcom re-verifying a Digest), where the output goes to a file you control.
+ */
+function wireLogMode(): "off" | "payouts" | "all" {
+  const v = (process.env.SELCOM_WIRE_LOG || "").trim().toLowerCase();
+  if (v === "all" || v === "1" || v === "true") return "all";
+  if (v === "payouts") return "payouts";
+  return "off";
+}
+
+/**
+ * Payout endpoints — the money-OUT half, which is the half that has been failing.
+ *
+ * Derived from PAYOUT_RAILS rather than string-matched. A substring test looked
+ * obvious and was wrong: `/selcompesa/query` contains no "cashin", so a Selcom Pesa
+ * status re-query — the exact call whose endpoint the double-pay regression is
+ * about — would have been silently omitted from the capture. Reading the rail table
+ * means a rail added later cannot be forgotten here.
+ */
+export function isPayoutPath(path: string): boolean {
+  if (path.includes("/vendor/balance")) return true; // float read — same diagnosis
+  if (path.includes("/qwiksend/")) return true;      // documented, not yet integrated
+  return Object.values(PAYOUT_RAILS).some((r) => path.includes(r.process) || path.includes(r.query));
+}
+
+function redactPin(text: string, pin: string | undefined): string {
+  if (!pin || !text) return text;
+  return text.split(pin).join("<PIN-REDACTED>");
+}
+
+function wireLog(
+  env: SelcomEnv,
+  parts: { method: string; url: string; headers: Record<string, string>; reqBody?: string; signing: string },
+  outcome: { res?: Response; rawBody?: string; elapsedMs: number; error?: unknown },
+): void {
+  const mode = wireLogMode();
+  if (mode === "off") return;
+
+  const lines: string[] = [];
+  lines.push("───── SELCOM WIRE ─────────────────────────────────────────────────────");
+  lines.push(`>> ${parts.method} ${redactPin(parts.url, env.pin)}`);
+  for (const [k, v] of Object.entries(parts.headers)) lines.push(`>> ${k}: ${v}`);
+  if (parts.reqBody) lines.push(`>>\n>> ${redactPin(parts.reqBody, env.pin)}`);
+  lines.push(`>> [signing string] ${redactPin(parts.signing, env.pin)}`);
+
+  if (outcome.error) {
+    lines.push(`<< NETWORK ERROR after ${outcome.elapsedMs} ms: ${(outcome.error as Error)?.message ?? String(outcome.error)}`);
+  } else if (outcome.res) {
+    lines.push(`<< HTTP ${outcome.res.status} ${outcome.res.statusText}   (${outcome.elapsedMs} ms)`);
+    // The half nobody has ever seen. Selcom's own trace/correlation headers live
+    // here, and those are what their support can look up directly.
+    for (const [k, v] of outcome.res.headers.entries()) lines.push(`<< ${k}: ${redactPin(v, env.pin)}`);
+    // Redacted on the way back too: a gateway that echoes the offending request
+    // into its own error message is an ordinary pattern, and that would put the
+    // float PIN in the logs by a route nobody was watching.
+    lines.push(`<<\n<< ${redactPin(outcome.rawBody || "(empty body)", env.pin)}`);
+  }
+  lines.push("───────────────────────────────────────────────────────────────────────");
+  console.log(lines.join("\n"));
+}
+
 async function selcomFetch(env: SelcomEnv, method: "POST" | "GET", path: string, body: Record<string, string | number>): Promise<SelcomResponse> {
-  const headers = selcomSignedHeaders(body, env);
+  // Capture the timestamp we sign with, so the wire log can print the exact signing
+  // string. Without it the Digest is unverifiable after the fact — which is precisely
+  // the gap that left us unable to answer Selcom on 2026-07-29.
+  const timestamp = eatTimestamp();
+  const headers = selcomSignedHeaders(body, env, timestamp);
+  const capture = wireLogMode() === "all" || (wireLogMode() === "payouts" && isPayoutPath(path));
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), env.timeoutMs);
+  const startedAt = Date.now();
   try {
     let url = `${env.baseUrl}${path}`;
     const init: RequestInit = { method, headers, signal: controller.signal };
@@ -213,9 +302,29 @@ async function selcomFetch(env: SelcomEnv, method: "POST" | "GET", path: string,
     } else {
       init.body = JSON.stringify(body);
     }
-    const res = await fetch(url, init);
+    let res: Response;
+    try {
+      res = await fetch(url, init);
+    } catch (err) {
+      // A network failure is itself diagnostic — and it is the AMBIGUOUS arm, the one
+      // that holds a player's money. Log it before rethrowing so the caller's
+      // timeout/abort handling is completely unchanged.
+      if (capture) {
+        wireLog(env, { method, url, headers, reqBody: init.body as string | undefined, signing: selcomSigningString(body, timestamp) },
+          { elapsedMs: Date.now() - startedAt, error: err });
+      }
+      throw err;
+    }
+    // Read as TEXT, then parse. `res.json()` is text+parse anyway, so this is
+    // behaviour-identical — but it keeps the raw body, and a non-JSON reply (an HTML
+    // error page, an empty 403) is exactly the case where the raw body is the evidence.
+    const rawBody = await res.text();
     let json: SelcomEnvelope = {};
-    try { json = (await res.json()) as SelcomEnvelope; } catch { /* non-JSON body */ }
+    try { json = JSON.parse(rawBody) as SelcomEnvelope; } catch { /* non-JSON body */ }
+    if (capture) {
+      wireLog(env, { method, url, headers, reqBody: init.body as string | undefined, signing: selcomSigningString(body, timestamp) },
+        { res, rawBody, elapsedMs: Date.now() - startedAt });
+    }
     return { ok: res.ok, httpStatus: res.status, json };
   } finally {
     clearTimeout(timer);

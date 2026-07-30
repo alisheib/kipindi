@@ -94,6 +94,59 @@ Run it from inside the container — the credentials are pinned to three egress 
 laptop fails regardless of signature. It also re-queries the two payouts still frozen from the
 incident, and reads the float balance.
 
+## The wire capture — what we send and what we receive
+
+Selcom's support asked for "the request and the response, with headers." We could not produce one,
+and the reason is worth stating plainly: **no version of this code ever kept them.** `selcomFetch`
+read `res.status` and `res.json()` and never touched `res.headers`; request headers were recomputed
+per call and discarded; and the `Digest` cannot be rebuilt afterwards because it signs a `Timestamp`
+we never stored. `describeSelcom()` captured the *envelope* — HTTP status, resultcode, result,
+message — which is the right thing to persist on a money row. It is not what a gateway engineer
+needs to trace a call on their own side.
+
+Two tools now, for two different jobs.
+
+**1 · In the live payout path** — `SELCOM_WIRE_LOG`, off by default:
+
+| Value | Captures |
+|---|---|
+| unset / `0` / `off` | nothing (**default**) |
+| `payouts` | the payout rails + float read — what a withdrawal test wants |
+| `all` | every Selcom call, deposits included |
+
+Set it in Railway **before** the test payout, then unset it. It logs the request line, every request
+header, the body, the exact signing string, then `HTTP <status>`, **every response header**, and the
+raw body text. Response headers are the genuinely new half: Selcom's trace/correlation ids live
+there and their support can look those up directly.
+
+⛔ It is off by default because it prints `Authorization` (base64 of the API key), and a log is
+forever. **The float PIN is always redacted, on every setting, with no unmask flag** — Railway's log
+retention is not somewhere a PIN can be taken back out of.
+
+⚠️ `selcomFetch` now reads the body as **text and then parses**, rather than `res.json()`. That is
+behaviour-identical (`res.json()` is text+parse) but it keeps the raw body — and an empty `403` or an
+HTML error page is exactly the case where the raw body *is* the evidence. The return contract is
+unchanged and asserted so: capture is observation, and must never move a verdict.
+
+**2 · Standalone, on demand** — `scripts/selcom-capture.mjs`:
+
+```
+railway ssh node scripts/selcom-capture.mjs > capture.txt
+```
+
+Default run **moves no money**: signed status queries for the two frozen payouts, a control query,
+and the float read. The real `walletcashin/process` sits behind `--process
+--i-understand-this-may-pay-real-money`, because there is no test mode on that endpoint — if the
+float has been funded since the incident, that call pays out. `--unmask-pin` prints the PIN so Selcom
+can re-verify a Digest that signs it; that is an operator decision, and the output goes to a file you
+control rather than to log retention.
+
+**Is our request even correct?** Verified line by line before asking Selcom to look: the signer
+reproduces Selcom's own documented golden vector byte-for-byte (`test:selcom`), `utilityref` is the
+payee MSISDN normalised to `255XXXXXXXXX` (their commonest trap — it is *not* `msisdn`, the optional
+sender), body key order equals `Signed-Fields` order, and `amount` is whole TZS. The `010` is not
+ours.
+
 ## The trail
 
 `providerStatus` holds one line and is overwritten by every status re-query, so by the time anyone
@@ -112,7 +165,10 @@ out on *every* failed payout, previously carried no identifier at all.
   verdict taxonomy on all three rails, the ladder's shape, and the probe's verdicts.
 - `npm run test:payout-observability` — nothing is logged that shouldn't be (never the PIN, payee
   always masked), everything is captured that should be, and `selcomVerifyPayout` uses the rail's own
-  endpoint rather than a hardcoded one.
+  endpoint rather than a hardcoded one. §6 guards the wire capture: that `res.headers` is actually
+  read (the exact regression that left us unable to answer Selcom), that the raw body survives, that
+  the signing timestamp is kept so a Digest stays verifiable, that the PIN is redacted with no unmask
+  path, that capture is off by default — and that `selcomFetch`'s return contract is untouched.
 - `npm run test:payments`, `test:fast-payout`, `test:selcom` — the pre-existing money-safety suites,
   unchanged in intent.
 
