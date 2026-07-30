@@ -30,8 +30,14 @@
  *      void-everything hammer).
  *   4. Running the sweep twice settles exactly once.
  *   5. One reading per (asset, boundary) — healing must not multiply the spend it heals.
- *   6. An OPERATOR-state refusal (paused AI / no key) does NOT burn the attempt budget.
+ *   6. An OPERATOR-state refusal does NOT burn the attempt budget — on BOTH read methods —
+ *      while a genuine SOURCE failure does, or a boundary could never reach FAILED.
  *   7. The backoff is honoured, so a refund is spaced out rather than hammered.
+ *  7B. An officer's void is attributed to the OFFICER, not to the source.
+ *  7C. A round PINS its source at open and settles against THAT: the money row and the
+ *      price row name one page, the pin is not patchable, and a reading from a host the
+ *      round did not pin VOIDs + refunds even when its price would have WON.
+ *  7D. The asset's link cannot move while a round on it is unresolved.
  *   8. Money conserves across the whole run.
  */
 process.env.SESSION_SECRET ??= "test-only-session-secret-32chars-min-aaaa";
@@ -42,7 +48,7 @@ delete process.env.ANTHROPIC_API_KEY;
 import { assetStore, chainStore, roundStore, observationStore, __resetUpDownMemoryStores } from "../src/lib/server/updown-dal.ts";
 import {
   createAsset, setAssetEnabled, createChain, setChainState,
-  __resetUpDownConfig, setUpDownConfig, getUpDownConfig,
+  __resetUpDownConfig, setUpDownConfig, getUpDownConfig, updateAsset,
 } from "../src/lib/server/updown-config.ts";
 import { openRound, resolveOverdueRounds, acquireObservation, voidRoundByOperator, observationMatchesRound } from "../src/lib/server/updown-service.ts";
 import { marketStore } from "../src/lib/server/market-dal.ts";
@@ -460,6 +466,43 @@ console.log("\n── 7C · the round pins its source link at open and resolves 
      observationMatchesRound(null, "kitco.com").ok === true);
   ok("7C.10 · a subdomain of the pinned domain still matches",
      observationMatchesRound("https://www.kitco.com/price", "kitco.com").ok === true);
+}
+
+// ── 7D · The asset's source cannot move under an unresolved round ────────────
+console.log("\n── 7D · the source lock — an asset's link cannot move mid-round ──");
+{
+  await addSource({ domain: "tradingeconomics.com", label: "TE", category: "macro", rationale: "test", addedBy: "system" });
+
+  // A round that has NOT resolved. Its open and close would otherwise be read from
+  // different pages if the asset's link moved now.
+  const round = await openRoundWithBets(c15.data.id, Date.now() + GRACE_MS, 2400.00, []);
+  ok("7D.0 · the round is unresolved", (await roundStore.get(round.id))!.resolvedAt === null);
+
+  const blocked = await updateAsset(asset.id, { priceSourceUrl: "https://tradingeconomics.com/commodity/gold" }, OFFICER);
+  ok("7D.1 · ⛔ the source edit is REFUSED while a round is unresolved", !blocked.ok,
+     blocked.ok ? "IT CHANGED THE LINK UNDER A LIVE ROUND" : "");
+  ok("7D.2 · …and the refusal says how many rounds and how to proceed",
+     !blocked.ok && /round\(s\)/.test(blocked.error) && blocked.error.includes("Pause"),
+     blocked.ok ? "" : blocked.error);
+  ok("7D.3 · the asset's link is unchanged",
+     (await assetStore.get(asset.id))!.priceSourceUrl === asset.priceSourceUrl);
+
+  // A NON-source edit is still allowed — the lock is about the link, not the row.
+  const renamed = await updateAsset(asset.id, { nameSw: "Dhahabu Halisi" }, OFFICER);
+  ok("7D.4 · a non-source edit is still allowed while rounds are live", renamed.ok,
+     renamed.ok ? "" : renamed.error);
+
+  // Once every round has resolved, the link may move again.
+  await elapse(round.boundaryAt);
+  await exhaust(round.boundaryAt);
+  await resolveOverdueRounds({ maxRounds: 200, maxObservations: 8 });
+  ok("7D.5 · the round has now resolved", (await roundStore.get(round.id))!.resolvedAt != null);
+
+  const allowed = await updateAsset(asset.id, { priceSourceUrl: "https://tradingeconomics.com/commodity/gold" }, OFFICER);
+  ok("7D.6 · with nothing unresolved, the source edit is allowed", allowed.ok, allowed.ok ? "" : allowed.error);
+  ok("7D.7 · …and the NEXT round would capture the new link",
+     (await assetStore.get(asset.id))!.sourceDomain === "tradingeconomics.com",
+     (await assetStore.get(asset.id))!.sourceDomain);
 }
 
 // ── 8 · Conservation across the whole run ───────────────────────────────────
