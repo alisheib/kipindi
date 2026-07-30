@@ -236,5 +236,57 @@ ok("the switch has a payouts-only setting",
   selcom.includes('v === "payouts"') && selcom.includes("isPayoutPath"),
   "a withdrawal test should not also dump every deposit");
 
+console.log("\n── 7 · The ticker cannot stall settlement in silence ───────────");
+
+// 🔴 THE GAP THIS CLOSES. `runLifecyclePass` guards against overlapping passes with
+// a module-scope boolean — correct, because two concurrent passes double the gateway
+// calls and write duplicate audit rows (observed in production 2026-07-20). But the
+// guard was a bare `if (running) return;`: a pass slower than its 60s interval made
+// every later tick return with NO log, NO counter and NO alert. Payment reconcile and
+// the wallet↔ledger trial balance live in that pass, so settlement could simply stop
+// and the first anyone knew of it would be a player complaining.
+//
+// A skip is not a fault; a RUN of skips is. These assert the skip is observable.
+const lifecycle = read("lifecycle.ts");
+const health = readFileSync(new URL("../src/app/api/health/route.ts", import.meta.url), "utf8");
+
+ok("the overlap guard still exists (removing it is worse than the silence)",
+  /if \(running\)/.test(lifecycle),
+  "two concurrent passes double gateway calls and duplicate audit rows");
+ok("🔴 a skipped pass is LOGGED, not swallowed",
+  /skippedPasses \+= 1/.test(lifecycle) && /SKIPPED pass/.test(lifecycle));
+ok("the log names what did not run",
+  /Payment reconcile and trial\s*\n?\s*.*balance did not run/.test(lifecycle) ||
+  lifecycle.includes("did not run this tick"),
+  "'skipped' means nothing to an operator unless it says what stalled");
+ok("consecutive skips are counted separately from lifetime skips",
+  lifecycle.includes("skippedPasses") && lifecycle.includes("skippedTotal"),
+  "one slow pass is normal; a run of them is the signal");
+ok("a sustained overrun raises a COMPLIANCE audit",
+  /OVERRUN_ALERT_SKIPS/.test(lifecycle) &&
+  /category: "COMPLIANCE"[\s\S]{0,200}lifecycle\.ticker_overrun/.test(lifecycle),
+  "same category as the trial-balance drift alert — this is the alert saying that one is not running");
+ok("the alert fires once per episode, not once per tick",
+  /overrunAlerted = true/.test(lifecycle) && /!overrunAlerted/.test(lifecycle),
+  "an alert per tick is a pager loop, which trains people to ignore it");
+ok("a completed pass clears the overrun and re-arms the alert",
+  /skippedPasses = 0/.test(lifecycle) && /overrunAlerted = false/.test(lifecycle),
+  "otherwise the NEXT stall is never reported");
+// The naive form of this check — !/skippedTotal = 0/ — fails against correct code,
+// because the DECLARATION `let skippedTotal = 0` matches it. Exclude the declaration
+// with a lookbehind so this asserts what it means: no *reassignment* back to zero.
+ok("skippedTotal is declared",
+  /let skippedTotal = 0/.test(lifecycle));
+ok("lifetime skip count is never RESET (it is the only evidence of a past stall)",
+  !/(?<!let )skippedTotal = 0/.test(lifecycle));
+ok("the audit is best-effort and cannot become a second failure",
+  /void audit\(\{[\s\S]{0,600}\}\)\.catch\(\(\) => \{\}\)/.test(lifecycle),
+  "an alert that throws while reporting a stall is worse than no alert");
+ok("ticker health is exported for the probe",
+  /export function lifecycleTickerHealth/.test(lifecycle));
+ok("…and /api/health actually surfaces it",
+  health.includes("lifecycleTickerHealth") && /ticker:/.test(health),
+  "an exported health fn nobody calls is not observability");
+
 console.log(`\n${"─".repeat(64)}\n  PAYOUT OBSERVABILITY: ${pass} passed, ${fail} failed\n${"─".repeat(64)}`);
 process.exit(fail === 0 ? 0 : 1);

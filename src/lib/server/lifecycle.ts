@@ -35,6 +35,38 @@ let timer: ReturnType<typeof setInterval> | null = null;
 let depositTimer: ReturnType<typeof setInterval> | null = null;
 let running = false;
 
+// ── Overrun visibility (ops) ────────────────────────────────────────────────
+// The overlap guard below is correct — two concurrent passes double the gateway
+// calls and write duplicate audit rows (observed 2026-07-20). What it USED to do
+// wrong is stay silent: a pass slower than its interval made every later tick
+// return with no log, no counter and no alert, so payment reconcile could simply
+// stop happening and nobody would find out until a player complained.
+//
+// A skip is not itself a fault — one slow pass is normal. A RUN of skips means the
+// pass no longer fits its interval, which is the thing worth knowing. So: count
+// every skip, log each one, and raise a WATCHED compliance alert once a single
+// overrun has swallowed OVERRUN_ALERT_SKIPS consecutive ticks.
+const OVERRUN_ALERT_SKIPS = 5; // 5 × TICK_MS (60s) ≈ payment reconcile stalled ~5 minutes
+let skippedPasses = 0;         // consecutive, reset on every completed pass
+let skippedTotal = 0;          // lifetime, for the health probe
+let passStartedAt = 0;         // epoch ms of the in-flight pass, 0 when idle
+let overrunAlerted = false;    // one alert per overrun, not one per tick
+
+/** Ticker health — surfaced by /api/health so a stall is visible without log-diving. */
+export function lifecycleTickerHealth(): {
+  running: boolean;
+  runningForMs: number;
+  skippedConsecutive: number;
+  skippedTotal: number;
+} {
+  return {
+    running,
+    runningForMs: running && passStartedAt ? Date.now() - passStartedAt : 0,
+    skippedConsecutive: skippedPasses,
+    skippedTotal,
+  };
+}
+
 // ── Nightly wallet↔ledger trial balance (audit C3) ──────────────────────────
 // The books must be able to prove themselves. Once a day (and once after each
 // boot's grace window) reconcile every wallet against the double-entry ledger;
@@ -205,8 +237,44 @@ async function maybeReconcileSchedules(): Promise<void> {
  *  (bonus expiry, payment reconcile, trial balance) plus the schedule reconciler
  *  that heals any lost per-market timer. */
 export async function runLifecyclePass(): Promise<void> {
-  if (running) return; // never overlap passes
+  if (running) {
+    // Never overlap passes — but never do it silently either. See the header on
+    // OVERRUN_ALERT_SKIPS: the guard is right, the old silence was the bug.
+    skippedPasses += 1;
+    skippedTotal += 1;
+    const heldMs = passStartedAt ? Date.now() - passStartedAt : 0;
+    console.warn(
+      `[lifecycle] SKIPPED pass — previous still running for ${Math.round(heldMs / 1000)}s ` +
+        `(consecutive=${skippedPasses}, total=${skippedTotal}). Payment reconcile and trial ` +
+        `balance did not run this tick.`,
+    );
+    if (skippedPasses >= OVERRUN_ALERT_SKIPS && !overrunAlerted) {
+      overrunAlerted = true; // one alert per overrun episode, not one per tick
+      // Best-effort and deliberately last: an alert that throws must not become a
+      // second failure on top of the one it is reporting.
+      // COMPLIANCE, not SYSTEM — the same category the trial-balance drift alert
+      // uses, because this is the alert that says the trial balance ISN'T RUNNING.
+      // An officer watching one must see the other.
+      void audit({
+        category: "COMPLIANCE",
+        action: "lifecycle.ticker_overrun",
+        actorId: null,
+        targetType: null,
+        targetId: null,
+        payload: {
+          skippedConsecutive: skippedPasses,
+          skippedTotal,
+          inFlightSeconds: Math.round(heldMs / 1000),
+          intervalMs: TICK_MS,
+          stalled: ["payment reconcile", "wallet↔ledger trial balance", "bonus expiry", "schedule reconcile"],
+          note: "Lifecycle pass has overrun its interval. Settlement timeliness cannot be trusted until this clears.",
+        },
+      }).catch(() => {});
+    }
+    return;
+  }
   running = true;
+  passStartedAt = Date.now();
   try {
     // Heal any pending market that lost its per-market timer (idempotent — every
     // transition re-checks its stamp under the market lock, so racing a live timer
@@ -222,6 +290,15 @@ export async function runLifecyclePass(): Promise<void> {
     await maybePaymentSweeps().catch((e) => console.error("[lifecycle] payment sweeps:", e));
     await maybeReconcileLedger().catch((e) => console.error("[lifecycle] trial balance:", e));
   } finally {
+    // A completed pass ends the overrun: clear the consecutive count and re-arm the
+    // alert so the NEXT episode is reported too. `skippedTotal` is lifetime and is
+    // deliberately not reset — it is the only evidence a past stall ever happened.
+    if (skippedPasses > 0) {
+      console.log(`[lifecycle] pass completed — overrun cleared after ${skippedPasses} skipped tick(s)`);
+    }
+    skippedPasses = 0;
+    overrunAlerted = false;
+    passStartedAt = 0;
     running = false;
   }
 }

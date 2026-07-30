@@ -1,8 +1,48 @@
-# The `010` investigation — plans, concerns, and a correction I owe
+# The `010` investigation — ✅ CLOSED 2026-07-30
 
 Opened 2026-07-30 after the disbursement float was funded and a payout **still failed**.
-This file is the live working state. `SELCOM-PAYOUT-INCIDENT-2026-07-30.md` holds the
-history; this holds what we now think and what to do next.
+**Resolved the same day.** Kept as the reasoning trail — how the wrong answer was reached, and
+what disproved it — because the wrong answer was confident and cost a nearly-sent email.
+
+> ## ✅ THE ANSWER — read this, then skip to the reasoning only if you need it
+>
+> **The float was NOT the problem, and neither was the utilitycode.** `scripts/selcom-code-matrix.mjs`
+> (money-free — signed GETs to `/walletcashin/namelookup`) settled it:
+>
+> - `namelookup(VMCASHIN, 255757619808)` → `000 SUCCESS`, correct registered name
+> - `process(VMCASHIN, 255757619808)` → `010 "Invalid mobile number or operator not supported"`
+>
+> `VMCASHIN` and `CASHIN` both resolve; `AMCASHIN`/`TPCASHIN`/`EZCASHIN` all refuse — so operator
+> validation works and our codes are right. **Selcom's gateway contradicts itself.**
+>
+> **Likely root cause: their upstream (TIPS) is down.** Every status query returns
+> `999 "No reponse from upstream system"`, *including for a transid that does not exist*. Name
+> lookup stays inside Selcom so it works; process needs the upstream so it fails. One theory,
+> three symptoms: the `010`, the `999`, and the two payouts frozen since 2026-07-29.
+>
+> **The ask that unblocks paying customers:** enable `SELCOM_PESA` + `HUDUMA_AGENT` — Selcom-internal,
+> they bypass the broken upstream, and the ladder already tries them.
+>
+> ⛔ **Do not switch to `CASHIN`.** It resolves identically, which proves nothing: both codes reach
+> the same working lookup and neither reaches the broken upstream. Changing the map would be
+> changing a variable that isn't the fault.
+>
+> **Live state lives in [`SELCOM-PAYOUT-RAILS.md`](SELCOM-PAYOUT-RAILS.md) § Current state**, not here.
+
+---
+
+## The lesson worth keeping
+
+Two confident, wrong diagnoses in one day, each from real evidence:
+
+1. **"`010` is a mislabelled empty float"** — from two identical requests answering `010` then
+   `990`. Plausible, and it survived until the float was funded and `010` came back.
+2. **"So the utilitycode must be wrong"** — the obvious next inference, and also wrong.
+
+What broke the loop was **a money-free probe of a different endpoint**. The failing call couldn't
+tell us anything new, but an adjacent one could — and `namelookup` answered in seconds without
+spending a shilling or holding a player's money. When a live call keeps failing the same way,
+stop re-running it and find a cheap question that separates the hypotheses.
 
 ---
 
@@ -57,7 +97,12 @@ railway ssh node scripts/selcom-probe.mjs     # money-free; reads the float + ev
 
 ---
 
-## Plan
+## Plan — ⛔ SPENT, do not follow
+
+This was the fork before the answer was known. **It resolved to World B** (float funded, `010` is a
+real failure), and step 3's "try `CASHIN`" was then ruled out too: `CASHIN` resolves identically to
+`VMCASHIN`, so it proves nothing and changing the map would change a variable that is not the fault.
+Kept only to show how the question was framed.
 
 **1. Read the float.** Blocking. Everything below forks on it.
 
