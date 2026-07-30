@@ -8,6 +8,7 @@ import { I } from "@/components/ui/glyphs";
 import { db, type StoredTxn } from "@/lib/server/store";
 import { verifyChain, getAuditPage } from "@/lib/server/audit";
 import { loadBackupRun, backupHealth } from "@/lib/server/backup/state";
+import { isMonitoringEnabled } from "@/lib/server/monitoring";
 import { kycFunnel, rgRosterCounts } from "@/lib/server/analytics";
 import { detectHarmMarkersForAllUsers } from "@/lib/server/responsible-gambling";
 import { Chip } from "@/components/ui/chip";
@@ -40,6 +41,9 @@ export default async function AdminCompliancePage({
   // read itself errors we report "none" rather than assuming health — the whole
   // point of this card is that it never claims a backup it cannot evidence.
   const backup = backupHealth(await loadBackupRun().catch(() => null));
+  // Read live, never assumed: this is the difference between "an error is recorded" and
+  // "an error reaches a human", and only one of those is true today.
+  const alerting = isMonitoringEnabled();
   const kyc = await kycFunnel().catch(() => null);
   const rg = await rgRosterCounts().catch(() => null);
   let aml: StoredTxn[] = [];
@@ -172,6 +176,33 @@ export default async function AdminCompliancePage({
                       the backup itself is sound — this is a live data problem to investigate
                     </p>
                   </div>
+                ) : null}
+              </div>
+            </div>
+          </AdminCard>
+
+          {/* Error monitoring — DURABLE and ALERTING are different promises, and the
+              card says which one is actually kept. Server exceptions have persisted to
+              the audit chain (scrubbed, deduped) since 2026-07-30, so nothing is lost;
+              whether anyone is TOLD depends on a DSN only Ali can set. Stating "errors
+              are monitored" without that distinction is the same class of claim as the
+              hardcoded backup tick this page used to carry. */}
+          <AdminCard title="Error monitoring" sw="Ufuatiliaji wa hitilafu">
+            <div className="flex items-center gap-4">
+              <StatusPill status={alerting ? "ok" : "warn"} label={alerting ? "✓" : "!"} />
+              <div className="flex-1 min-w-0">
+                <p className="font-display font-bold text-body-sm text-text">
+                  {alerting ? "Durable and alerting" : "Durable — but nobody is paged"}
+                </p>
+                <p className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">
+                  {alerting
+                    ? "audit chain + external monitor · PII scrubbed before it leaves"
+                    : "audit chain only · set SENTRY_DSN to activate the off-box mirror"}
+                </p>
+                {!alerting ? (
+                  <p className="font-mono text-micro text-warn mt-1">
+                    every server error is recorded and survives a log roll — but you have to come and look
+                  </p>
                 ) : null}
               </div>
             </div>

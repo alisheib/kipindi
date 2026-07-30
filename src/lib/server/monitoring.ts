@@ -8,16 +8,54 @@
  * monitoring can NEVER throw into a request path (skill §0: never break the
  * request path; alarm, don't crash).
  *
- * To enable Sentry (Ali, once the DSN is issued):
- *   1. `npm i @sentry/node`
- *   2. set `SENTRY_DSN=…`  (+ optional `SENTRY_ENVIRONMENT`, `SENTRY_TRACES_SAMPLE_RATE`)
- *   3. redeploy — init + capture below activate automatically; nothing else to wire.
+ * ✅ 2026-07-30 — `@sentry/node` IS now installed and the seam is proven end to end:
+ * `test:alerting` points a real client at a throwaway HTTP server, pushes a real error
+ * through `captureServerError`, and inspects the bytes that arrive. **One step remains and
+ * it is Ali's**: set `SENTRY_DSN` (+ optional `SENTRY_ENVIRONMENT`,
+ * `SENTRY_TRACES_SAMPLE_RATE`, `SENTRY_MAX_BREADCRUMBS`) and redeploy. Until then nothing
+ * pages anyone — errors are durable on box, and silent.
+ *
+ * 🔴 AND THE THING THAT GATE FOUND. `captureException` was being handed the RAW error
+ * while only the audit sink ran `scrubForAudit` — so the first alert ever sent would have
+ * carried a player's phone number out of Tanzania. Removing `beforeSend` below and
+ * re-running `test:alerting` shows a real +255…, a real email and a real NIDA in the
+ * envelope on the wire. It was dormant only because no DSN was ever set.
  */
 
 type SentryLike = {
   init?: (opts: Record<string, unknown>) => void;
   captureException: (e: unknown, hint?: Record<string, unknown>) => void;
+  flush?: (timeout?: number) => Promise<boolean>;
 };
+
+/**
+ * Scrub every string in a Sentry event before it leaves the machine.
+ *
+ * 🔴 WHY THIS EXISTS. `captureException` was handed the RAW error while only the audit
+ * sink ran `scrubForAudit`. The scrubber sat one line away from the call that ships data
+ * to a third party and was not applied to it — so the moment a DSN was set, every MSISDN,
+ * email and NIDA that had found its way into an exception message or a stack frame would
+ * have been sent off-box, out of the country, by a licensed operator that has never asked
+ * a player for permission to do that. The on-box audit sink was scrubbed precisely because
+ * that data is sensitive; the sink that actually leaves the building was not.
+ *
+ * Walks the whole event rather than a list of known fields: `message`,
+ * `exception.values[].value`, breadcrumbs, `extra`, request data and framed local
+ * variables are all strings Sentry may carry, and an allowlist of "the ones we thought of"
+ * is how the next identifier gets through.
+ */
+export function scrubEvent<T>(value: T, seen = new WeakSet<object>()): T {
+  if (typeof value === "string") return scrubForAudit(value) as unknown as T;
+  if (value === null || typeof value !== "object") return value;
+  // Sentry events can contain cycles (a frame referencing its own scope); without this
+  // the scrubber would recurse until the stack gives out, inside an error handler.
+  if (seen.has(value as object)) return value;
+  seen.add(value as object);
+  if (Array.isArray(value)) return value.map((v) => scrubEvent(v, seen)) as unknown as T;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(value as Record<string, unknown>)) out[k] = scrubEvent(v, seen);
+  return out as T;
+}
 
 // undefined = not yet attempted; null = unavailable (no DSN, or package absent).
 let sentry: SentryLike | null | undefined;
@@ -37,6 +75,19 @@ async function getSentry(): Promise<SentryLike | null> {
       dsn,
       environment: process.env.SENTRY_ENVIRONMENT ?? process.env.NODE_ENV ?? "production",
       tracesSampleRate: Number(process.env.SENTRY_TRACES_SAMPLE_RATE ?? 0),
+      // 🔴 THE LAST THING THAT RUNS BEFORE PLAYER DATA LEAVES THE COUNTRY.
+      // Sentry's own `sendDefaultPii` default is false, which covers IPs and cookies —
+      // it does nothing about a phone number inside an exception message, which is
+      // exactly the shape 50pick's errors take ("no wallet for +2557…").
+      //
+      // Verified by removing this line and watching `test:alerting` catch a real
+      // +255757619808, a real email and a real NIDA in the bytes on the wire.
+      beforeSend: (event: unknown) => scrubEvent(event),
+      beforeSendTransaction: (event: unknown) => scrubEvent(event),
+      // Off by default: breadcrumbs collect request URLs and console output, and the
+      // console lines on this platform routinely carry MSISDNs. They are scrubbed by
+      // beforeSend too, but not collecting them is the stronger position.
+      maxBreadcrumbs: Number(process.env.SENTRY_MAX_BREADCRUMBS ?? 0),
     });
     sentry = mod;
     console.log("[monitoring] Sentry initialised.");
@@ -50,6 +101,23 @@ async function getSentry(): Promise<SentryLike | null> {
 /** Is an external monitor configured (a DSN is present)? */
 export function isMonitoringEnabled(): boolean {
   return !!process.env.SENTRY_DSN;
+}
+
+/**
+ * Push anything queued to the monitor and wait for it, up to `timeoutMs`.
+ *
+ * Sentry batches: in a short-lived process — a script, a cron job, or the gate that
+ * proves this seam works — the process can exit before the envelope is on the wire, which
+ * looks exactly like "monitoring is not wired up". Never called on a request path.
+ */
+export async function flushMonitoring(timeoutMs = 4000): Promise<boolean> {
+  const s = await getSentry();
+  if (!s?.flush) return false;
+  try {
+    return await s.flush(timeoutMs);
+  } catch {
+    return false;
+  }
 }
 
 // ── Durable, on-box error record (the part a rotating log cannot give us) ─────
