@@ -9,6 +9,69 @@
 
 ---
 
+> ## 🔴 RESOLVED — cause confirmed 2026-07-30 10:48 EAT. THE FLOAT IS EMPTY.
+>
+> **Read this first; everything below it is the earlier investigation, kept for the record.**
+>
+> A live payout test (Jay, two attempts) got Selcom to say it in plain words:
+>
+> ```
+> resultcode=990  result=FAIL
+> message=Insufficient account balance to complete transaction
+> transid=wdr_60674226420a68947cda   selcom-ref=1820851829   30 Jul 10:48:09 EAT
+> ```
+>
+> **And it proved the `010` was a red herring.** Two BYTE-IDENTICAL requests, three minutes
+> apart — same payee, amount, utilitycode, vendor — returned two different errors:
+>
+> | Time (EAT) | transid | Selcom ref | Answer |
+> |---|---|---|---|
+> | 10:45:28 | `wdr_80276dbc89e3b7fca535` | `S20656625527` | `010` "Invalid mobile number or operator not supported" |
+> | 10:48:09 | `wdr_60674226420a68947cda` | `1820851829` | `990` "Insufficient account balance" |
+>
+> The first failed without debiting anything, so the float was equally empty at 10:45. The
+> number is a valid Vodacom M-Pesa line and `VMCASHIN` is the right code. **Selcom reports a
+> dry float as a bad phone number.** That single misleading string is what sent 2026-07-29
+> chasing utility codes and MNO routing. Raised with Selcom; see §4.
+>
+> ### Deposits do not fund payouts — the point that was never written down
+>
+> Collections (money IN) and the disbursement float (money OUT) are **separate balances at
+> Selcom**, which is why the credentials were issued for "Collections (Customer to Business)"
+> and Wallet Cashin had to be provisioned separately. Player deposits accumulate on the
+> collections side and settle on Selcom's cycle; **they do not flow into the payout float.**
+> The float is prepaid and must be topped up. Nobody had asked how — the question was raised
+> on 2026-07-27 in `SELCOM-DISBURSEMENT-ACTIVATION.md` §Phase 0 and never answered.
+>
+> ### What the test proved about our own code — all of it held
+>
+> ```
+> payout ladder exhausted (wdr_80276…) — WALLET_CASHIN:FAILED → SELCOM_PESA:FAILED
+> payout ladder exhausted (wdr_6067…)  — WALLET_CASHIN:FAILED → SELCOM_PESA:SKIPPED
+> [email] "Withdrawal returned · TZS 5,000" → the player, twice
+> ```
+>
+> · `010` and `990` both read as DEFINITIVE → the ladder advanced. Correct: refused at the
+>   door, nothing in flight.
+> · Attempt 1 tried Selcom Pesa and got `4035`; attempt 2 **SKIPPED** it — the probe cache had
+>   learned it in between. The designed behaviour, observed live for the first time.
+> · Ladder exhausted → clean reversal → **the player's money came back, both times**, with an
+>   honest "Withdrawal returned" email. The same situation froze TZS 15,000 the day before
+>   with no way to release it.
+>
+> ### Still open
+>
+> 1. 🔴 **Fund the float.** Nothing pays out until this is done. Blocked on Selcom answering
+>    how to top it up (bank transfer? sweep from collections?).
+> 2. The two payouts from 2026-07-29 are **still `999`** — 17+ hours. Only Selcom can close
+>    them. Deliberately NOT reversed: `999` is not terminal and reversing could double-pay.
+> 3. `SELCOM_PESA` and `HUDUMA_AGENT` still `4035`.
+> 4. Withdrawals stay CLOSED to players. Not one payout has ever succeeded on this platform.
+>
+> Evidence: full request+response with headers, captured via `SELCOM_WIRE_LOG=payouts`
+> (see [`SELCOM-PAYOUT-RAILS.md`](SELCOM-PAYOUT-RAILS.md) § The wire capture). The capture
+> file itself is deliberately **not committed** — it contains the `Authorization` header.
+
 > ## Resolution status — updated 2026-07-30 00:30 EAT, after probing the live gateway
 >
 > The evidence pack below was written for Selcom and is unchanged. What we learned afterwards:

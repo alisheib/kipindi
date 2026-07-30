@@ -45,10 +45,14 @@ This file is the brief. Copy the block at the bottom into a fresh session.
 2. **No error tracking.** Nothing reports a production exception. The only reason we know
    the site is healthy is that someone ran a script by hand. A silent 500 on the deposit
    path could run for days.
-3. **Withdrawals cannot be paid.** Blocked on the Selcom float PIN
-   (`PAYMENT_VENDOR_PIN`). Players can put money **in** and not take it **out** — the
-   single worst asymmetry a gambling operator can ship, and a licence question, not just
-   an ops one.
+3. **Withdrawals cannot be paid — and as of 2026-07-30 we know exactly why.** ~~Blocked on
+   the Selcom float PIN (`PAYMENT_VENDOR_PIN`).~~ The PIN is set. **The disbursement float
+   is EMPTY**, confirmed by Selcom's own `990 "Insufficient account balance"` on a real
+   dispatch. Deposits do NOT fund it: collections and the payout float are separate
+   balances at Selcom, and the float is prepaid. **Waiting on Selcom to say how to top it
+   up.** Players can put money **in** and not take it **out** — the single worst asymmetry
+   a gambling operator can ship, and a licence question, not just an ops one.
+   Full state: [`SELCOM-PAYOUT-RAILS.md`](SELCOM-PAYOUT-RAILS.md) § Current state.
 4. **`scripts/gift-admin-credit.ts` still exists.** A tool that mints real balance, in the
    repo, at public launch. It must be gone or hard-gated before the doors open.
 

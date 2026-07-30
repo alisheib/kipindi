@@ -75,3 +75,8 @@ docs/shots-updown/
 docs/shots-final/
 docs/shots-resolver/
 docs/shots-motion/
+
+# Selcom wire captures — contain the Authorization header (base64 API key).
+# Evidence for a support ticket, never for git history.
+selcom-capture-*.txt
+selcom-email-*.md

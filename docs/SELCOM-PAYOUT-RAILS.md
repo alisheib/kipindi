@@ -172,11 +172,27 @@ out on *every* failed payout, previously carried no identifier at all.
 - `npm run test:payments`, `test:fast-payout`, `test:selcom` — the pre-existing money-safety suites,
   unchanged in intent.
 
-## Current state (2026-07-30)
+## Current state (2026-07-30, after a live payout test)
 
-- 🔴 **Float: `TZS 0.00`.** Nothing pays out until it is funded. This is the live blocker.
+- 🔴 **The float is EMPTY, and Selcom has now said so in its own words** — `990 "Insufficient
+  account balance to complete transaction"` on a real dispatch (`wdr_60674226420a68947cda`, their
+  ref `1820851829`, 10:48:09 EAT). Nothing pays out until it is funded. **This is the one blocker.**
+- ⚠️ **Deposits do NOT fund payouts.** Collections and the disbursement float are separate balances
+  at Selcom. Player deposits settle on the collections side and never flow into the payout float,
+  which is prepaid. How to top it up is still unanswered by Selcom — the question has been open
+  since 2026-07-27.
+- ⚠️ **`010 "Invalid mobile number"` is Selcom misreporting the empty float.** Two byte-identical
+  requests three minutes apart returned `010` then `990`; the first debited nothing, so the float
+  was equally empty at both. Do not chase utility codes or MNO routing on a `010` again — read the
+  float first. Raised with Selcom.
 - ✅ `WALLET_CASHIN` enabled. ❌ `SELCOM_PESA` and `HUDUMA_AGENT` both `4035` — **ask Selcom to enable
   them**; they are the rails that survive a TIPS outage.
-- Two payouts still unresolved at `999` since 17:04 EAT — only Selcom can close those.
-- Withdrawals should stay closed to players (per-MNO kill switch on `/admin/payments`) until one real
-  TZS 1,000 payout has been watched end-to-end.
+- Two payouts still unresolved at `999` since 2026-07-29 17:04 EAT — only Selcom can close those.
+  Deliberately not reversed: `999` is not terminal, and reversing one could double-pay.
+- ✅ **The ladder, the probe cache and the reversal path all held under real failure.** Both test
+  payouts ran `WALLET_CASHIN:FAILED → SELCOM_PESA:FAILED/SKIPPED → exhausted → clean reversal`, and
+  the player's money came back both times with an honest "Withdrawal returned" mail. The day before,
+  the same situation froze TZS 15,000 with no way to release it.
+- ⛔ Withdrawals stay **closed** to players (per-MNO kill switch on `/admin/payments`). **No payout
+  has ever succeeded on this platform.** Fund the float, watch one real TZS 1,000 payout land, then
+  reconsider.
