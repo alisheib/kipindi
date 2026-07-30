@@ -9,6 +9,7 @@ import { db } from "@/lib/server/store";
 import { sms, smsHealthSnapshot } from "@/lib/server/sms";
 import { listMarkets } from "@/lib/server/market-service";
 import { auditRingSize } from "@/lib/server/audit";
+import { lifecycleTickerHealth } from "@/lib/server/lifecycle";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -44,6 +45,12 @@ export async function GET() {
           provider: sms.name,
           successRate: smsHealth.successRate,
         },
+        // The lifecycle ticker owns payment reconcile and the wallet↔ledger trial
+        // balance. It skips a tick rather than overlap passes — correct, but it used
+        // to do so silently, so a stalled settlement was invisible until a player
+        // complained. A non-zero `skippedConsecutive` here means those chores are
+        // NOT running right now. See lifecycle.ts → OVERRUN_ALERT_SKIPS.
+        ticker: lifecycleTickerHealth(),
       },
       {
         headers: {
