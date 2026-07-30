@@ -56,6 +56,14 @@ almost never reach a boundary and would void perpetually.
 - **Thresholds → Round margin (%)** — the global `defaultMarginBps`, entered as a percentage (`0.5` = 50 bps).
   The help text states the win/void rule and that the margin is frozen at open, so a change here affects only
   **new** rounds — a live round keeps the boundaries it opened with.
+- **Price reading method** — which reader produces the price those boundaries are compared against: a
+  **market data feed** (default — `twelvedata` for real quotes, `mock` for simulated) or **AI page
+  reading**. The card states the consequence of the current selection *before* the save; choosing the
+  simulated feed is a type-to-arm confirmation (`SIMULATED`, the same gate the payment-provider switch
+  uses for `MOCK`); and a missing `TWELVEDATA_API_KEY` is named outright, because a selected-but-
+  unconfigured provider refuses every reading rather than quietly falling back to invented prices.
+  A change takes effect at the next grid boundary — **rounds already open keep the source they
+  captured**. `docs/UPDOWN-ARCHITECTURE.md` §3 has the measured reason the feed is the default.
 - **Add chain → Margin % (optional)** — the per-chain override; blank inherits the product default.
 - **Chains table → Margin column** — each chain's effective band (its override, else the default, tagged `·def`).
 - **Chains table → Void rate** — voids ÷ resolved over the last 50 rounds for that chain (amber at ≥ 40%). This

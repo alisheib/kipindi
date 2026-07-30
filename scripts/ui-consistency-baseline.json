@@ -1,7 +1,7 @@
 {
   "_note": "UI-consistency baseline: known drift counts per rule::file. Regenerate after a remediation phase with `npm run test:ui-consistency -- --update-baseline`. DONE when this is empty. See docs/UI-CONSISTENCY-AUDIT.md.",
   "_generated": "run with --update-baseline",
-  "_total": 55,
+  "_total": 52,
   "counts": {
     "btn-inline-height-override::src/app/admin/markets/page.tsx": 1,
     "btn-inline-height-override::src/components/rg/reality-check.tsx": 2,
@@ -15,7 +15,6 @@
     "raw-button-btn-class::src/app/admin/resolver-queue/page.tsx": 1,
     "raw-button-btn-class::src/app/admin/sources/source-controls.tsx": 1,
     "raw-button-btn-class::src/app/admin/transactions/page.tsx": 1,
-    "raw-button-btn-class::src/app/admin/updown/updown-controls.tsx": 3,
     "raw-button-btn-class::src/app/live/pulse-grid.tsx": 1,
     "raw-button-btn-class::src/app/profile/account/close-account-form.tsx": 1,
     "raw-button-btn-class::src/app/profile/invite/invite-client.tsx": 1,

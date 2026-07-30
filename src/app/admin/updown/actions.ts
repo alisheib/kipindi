@@ -222,6 +222,44 @@ export async function voidRoundAction(formData: FormData) {
 
 // ── Thresholds (CONFIG tier — they govern what counts as a valid price) ──────
 
+/**
+ * Which reader produces prices, and from which provider.
+ *
+ * CONFIG tier, and the most consequential switch on this page: it decides what number real
+ * money settles against. Mirrors `setPaymentProvider` — the operator may choose a simulated
+ * provider in a test money mode, but must type the word to do it, and the choice is visible
+ * on every surface afterwards. The code refuses a simulated feed in production regardless of
+ * what is selected here (`MockPriceFeed`), so this control cannot be the only thing standing
+ * between a mis-click and invented prices on a live round.
+ */
+export async function updateReadingMethodAction(formData: FormData) {
+  const session = await ensureConfig();
+  try {
+    const method = String(formData.get("observationMethod") ?? "").trim();
+    const provider = String(formData.get("feedProvider") ?? "").trim();
+    if (method !== "feed" && method !== "ai") {
+      return { ok: false as const, error: "Choose a reading method: market feed or AI." };
+    }
+    if (provider !== "mock" && provider !== "twelvedata") {
+      return { ok: false as const, error: "Choose a feed provider." };
+    }
+    // The typed confirmation is required only for the simulated provider, and only when it
+    // is the provider that would actually be used. Asking for it on every save trains the
+    // operator to type it without reading.
+    if (method === "feed" && provider === "mock") {
+      if (String(formData.get("confirm") ?? "").trim().toUpperCase() !== "SIMULATED") {
+        return { ok: false as const, error: 'Type SIMULATED to confirm a simulated price feed.' };
+      }
+    }
+    const r = await setUpDownConfig({ observationMethod: method, feedProvider: provider }, session.userId);
+    if (!r.ok) return { ok: false as const, error: r.error };
+    refresh();
+    return { ok: true as const, warn: r.warn };
+  } catch (err) {
+    return { ok: false as const, error: safeError(err, "Update reading method failed") };
+  }
+}
+
 export async function updateThresholdsAction(formData: FormData) {
   const session = await ensureConfig();
   try {
