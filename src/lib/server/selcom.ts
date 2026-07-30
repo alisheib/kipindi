@@ -27,7 +27,7 @@
  * (deposits settle from the signed order-status re-query, not the callback body)
  * is deliberately robust against the ones that touch the callback format.
  */
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac, timingSafeEqual, randomBytes } from "node:crypto";
 import type { PaymentProvider } from "./payments";
 
 // ── Credentials ───────────────────────────────────────────────────────────────
@@ -260,26 +260,34 @@ function wireLog(
   const mode = wireLogMode();
   if (mode === "off") return;
 
+  // ⚠️ EVERY LINE CARRIES THE SAME SHORT ID, and that is not decoration.
+  // The first live capture proved why: the 15s payout lane re-queries both stuck
+  // payouts at once, the log platform splits a multi-line console.log into separate
+  // entries, and the two captures interleaved — a response header landed in the
+  // middle of the other call's request headers. A scrambled capture is worse than
+  // none, because it invites the reader to draw conclusions from lines that were
+  // never part of the same exchange. `grep cap=<id>` reassembles one clean call.
+  const cap = randomBytes(3).toString("hex");
   const lines: string[] = [];
-  lines.push("───── SELCOM WIRE ─────────────────────────────────────────────────────");
-  lines.push(`>> ${parts.method} ${redactPin(parts.url, env.pin)}`);
-  for (const [k, v] of Object.entries(parts.headers)) lines.push(`>> ${k}: ${v}`);
-  if (parts.reqBody) lines.push(`>>\n>> ${redactPin(parts.reqBody, env.pin)}`);
-  lines.push(`>> [signing string] ${redactPin(parts.signing, env.pin)}`);
+  lines.push(`[cap=${cap}] ───── SELCOM WIRE ────────────────────────────────────────`);
+  lines.push(`[cap=${cap}] >> ${parts.method} ${redactPin(parts.url, env.pin)}`);
+  for (const [k, v] of Object.entries(parts.headers)) lines.push(`[cap=${cap}] >> ${k}: ${v}`);
+  if (parts.reqBody) lines.push(`[cap=${cap}] >> ${redactPin(parts.reqBody, env.pin)}`);
+  lines.push(`[cap=${cap}] >> [signing string] ${redactPin(parts.signing, env.pin)}`);
 
   if (outcome.error) {
-    lines.push(`<< NETWORK ERROR after ${outcome.elapsedMs} ms: ${(outcome.error as Error)?.message ?? String(outcome.error)}`);
+    lines.push(`[cap=${cap}] << NETWORK ERROR after ${outcome.elapsedMs} ms: ${(outcome.error as Error)?.message ?? String(outcome.error)}`);
   } else if (outcome.res) {
-    lines.push(`<< HTTP ${outcome.res.status} ${outcome.res.statusText}   (${outcome.elapsedMs} ms)`);
+    lines.push(`[cap=${cap}] << HTTP ${outcome.res.status} ${outcome.res.statusText}   (${outcome.elapsedMs} ms)`);
     // The half nobody has ever seen. Selcom's own trace/correlation headers live
     // here, and those are what their support can look up directly.
-    for (const [k, v] of outcome.res.headers.entries()) lines.push(`<< ${k}: ${redactPin(v, env.pin)}`);
+    for (const [k, v] of outcome.res.headers.entries()) lines.push(`[cap=${cap}] << ${k}: ${redactPin(v, env.pin)}`);
     // Redacted on the way back too: a gateway that echoes the offending request
     // into its own error message is an ordinary pattern, and that would put the
     // float PIN in the logs by a route nobody was watching.
-    lines.push(`<<\n<< ${redactPin(outcome.rawBody || "(empty body)", env.pin)}`);
+    lines.push(`[cap=${cap}] << ${redactPin(outcome.rawBody || "(empty body)", env.pin)}`);
   }
-  lines.push("───────────────────────────────────────────────────────────────────────");
+  lines.push(`[cap=${cap}] ──────────────────────────────────────────────────────────`);
   console.log(lines.join("\n"));
 }
 

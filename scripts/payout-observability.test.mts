@@ -216,6 +216,19 @@ ok("the PIN is redacted in the request URL, body and signing string",
   wireFn.includes("redactPin(parts.signing"));
 ok("…and on the way BACK — response headers and raw body",
   wireFn.includes("redactPin(v, env.pin)") && wireFn.includes("redactPin(outcome.rawBody"));
+// Found in the FIRST live capture, not in review: the 15s payout lane re-queries
+// both stuck payouts at once, the log platform splits a multi-line console.log,
+// and the two exchanges interleaved — a response header landed inside the other
+// call's request headers. A scrambled capture is worse than none: it invites
+// conclusions drawn from lines that were never one exchange.
+ok("every wire line carries a capture id so concurrent calls can be untangled",
+  wireFn.includes("randomBytes(3).toString(\"hex\")") &&
+  (wireFn.match(/\[cap=\$\{cap\}\]/g) ?? []).length >= 7,
+  "grep cap=<id> must reassemble exactly one call");
+ok("no wire line is emitted without the id prefix",
+  !/lines\.push\(`(?!\[cap=)/.test(wireFn),
+  "one unprefixed line is an orphan in the log");
+
 ok("capture is OFF unless explicitly switched on",
   /function wireLogMode[\s\S]{0,400}return "off"/.test(selcom),
   "it prints the Authorization header — it must never be the default");
