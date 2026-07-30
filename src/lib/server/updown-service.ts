@@ -134,13 +134,36 @@ export async function acquireObservation(
     return { state: "failed", id: obs.id, detail: `no confirmed reading after ${obs.attempts} attempts` };
   }
 
+  // ── THE BACKOFF, index-matched to the attempt just made ─────────────────────
+  // `retryBackoffSeconds` was declared, defaulted and read by NOTHING — the ladder was
+  // designed and never wired. Without it the heal sweep would re-call the model on every
+  // tick, which is both a cost leak and a good way to be rate-limited into voiding
+  // rounds that a slightly later read would have settled correctly.
+  if (obs.attempts > 0 && obs.lastAttemptAt) {
+    const ladder = cfg.retryBackoffSeconds;
+    const waitS = ladder[Math.min(obs.attempts - 1, ladder.length - 1)] ?? 0;
+    const readyAt = Date.parse(obs.lastAttemptAt) + waitS * 1000;
+    if (Number.isFinite(readyAt) && Date.now() < readyAt) {
+      return {
+        state: "pending",
+        id: obs.id,
+        detail: `waiting ${Math.ceil((readyAt - Date.now()) / 1000)}s before attempt ${obs.attempts + 1}`,
+      };
+    }
+  }
+
   const reading = await observePrice(asset, boundaryAtIso);
   if (!reading.ok) {
     const detail = describeRefusal(reading.reason, reading.detail);
-    await observationStore.recordAttempt(obs.id, detail);
     // A missing API key or a paused AI is an OPERATOR state, not a source failure —
     // burning the attempt budget on it would void rounds for an ops reason and refund
-    // players who were happily betting. Leave it pending; the next fire retries.
+    // players who were happily betting. Leave it pending; the next sweep retries.
+    //
+    // ⛔ This used to `recordAttempt` UNCONDITIONALLY, directly against the comment
+    // above it: pausing the AI for four fires walked the budget to zero and VOIDed live
+    // rounds for an operator action. The condition is the fix.
+    const operatorState = reading.reason === "ai-paused" || reading.reason === "no-api-key";
+    if (!operatorState) await observationStore.recordAttempt(obs.id, detail);
     return { state: "pending", id: obs.id, detail };
   }
 
@@ -456,8 +479,15 @@ export async function advanceChain(chainId: string): Promise<{
       const r = await closeRound(current.id, obs.id, null, "source-failed");
       if (r.ok) closed = r.data.outcome;
     }
-    // pending → leave it; the next fire (or the reconciler) retries. The round shows
-    // "Confirming price" and the chain still advances below.
+    // pending → leave it; `resolveOverdueRounds` on the lifecycle ticker retries this
+    // boundary and, once the attempt budget is spent, VOIDs the round with a full refund.
+    // The round shows "Confirming price" and the chain still advances below.
+    //
+    // ⚠️ This comment used to say "the next fire (or the reconciler) retries" — and
+    // NEITHER did. Step 4 below moves `nextBoundaryAt` on, so the next fire observes a
+    // DIFFERENT instant, and the reconciler only re-arms timers. That is how production
+    // accumulated 1,398 rounds stuck at one attempt with player money inside them. The
+    // retry now genuinely exists; do not remove it without removing this promise too.
   }
 
   // 3 · Open the round that STARTS here — independent of step 2.
@@ -476,4 +506,98 @@ export async function advanceChain(chainId: string): Promise<{
   await chainStore.patch(chain.id, { nextBoundaryAt: nextIso });
 
   return { observation: obs.state, closed, opened, detail: "detail" in obs ? obs.detail : undefined };
+}
+
+// ---------------------------------------------------------------------------
+// Healing overdue rounds — the refund guarantee, finally implemented
+// ---------------------------------------------------------------------------
+
+/**
+ * Drive every round whose boundary has PASSED but which never reached a verdict towards
+ * a terminal state: resolved against a confirmed reading, or VOIDed with every stake
+ * refunded in full once the attempt budget is spent.
+ *
+ * ⛔ THE GUARANTEE THIS IMPLEMENTS — it was documented everywhere and built nowhere.
+ * `docs/UPDOWN-ARCHITECTURE.md` §3, the oracle's own header, and the admin help text all
+ * promise: "a boundary that will not confirm VOIDS its rounds and refunds every stake in
+ * full." That never happened. `advanceChain` observes ONLY `chain.nextBoundaryAt` and
+ * then moves the pointer on (step 4 above), so a boundary refused once was never
+ * revisited — the comment there claiming "the next fire (or the reconciler) retries" was
+ * false, and the reconciler only re-arms timers. Every observation stayed PENDING at one
+ * attempt, `maxObservationAttempts` was unreachable, FAILED never occurred, and the
+ * rounds could neither resolve nor refund. Production reached 1,398 such rounds holding
+ * TZS 96,250 of real player money with no code path able to return it.
+ *
+ * DELIBERATELY INDEPENDENT OF CHAIN STATE. Money already staked must reach a terminal
+ * state even when the chain is PAUSED or STOPPED — which is exactly what an operator does
+ * the moment resolution starts misbehaving, i.e. precisely when this must still run.
+ *
+ * ONE READING PER BOUNDARY, still. Rounds are grouped by (asset, boundary) before any
+ * observation is acquired, so the 5/15/30-minute rounds meeting at 14:30 share one call
+ * exactly as they do on the live path. Healing must not multiply the spend it heals.
+ *
+ * Bounded per tick on BOTH axes — rounds touched and, separately, distinct boundaries
+ * observed — because the expensive axis is AI calls, not rows.
+ */
+export async function resolveOverdueRounds(opts?: {
+  maxRounds?: number;
+  maxObservations?: number;
+}): Promise<{ scanned: number; resolved: number; voided: number; pending: number; skipped: number }> {
+  const maxRounds = opts?.maxRounds ?? 200;
+  const maxObservations = opts?.maxObservations ?? 8;
+
+  const overdue = await roundStore.overdueUnresolved({ beforeIso: new Date().toISOString(), limit: maxRounds });
+  const out = { scanned: overdue.length, resolved: 0, voided: 0, pending: 0, skipped: 0 };
+  if (overdue.length === 0) return out;
+
+  // Resolve each round's asset once, via its chain.
+  const chainIds = [...new Set(overdue.map((r) => r.chainId))];
+  const chains = new Map<string, StoredChain>();
+  for (const id of chainIds) {
+    const c = await chainStore.get(id);
+    if (c) chains.set(id, c);
+  }
+  const assets = new Map<string, StoredAsset>();
+  for (const c of chains.values()) {
+    if (assets.has(c.assetId)) continue;
+    const a = await assetStore.get(c.assetId);
+    if (a) assets.set(c.assetId, a);
+  }
+
+  /** `assetId|boundaryAt` → the shared reading, acquired at most once per tick. */
+  type Acquired = Awaited<ReturnType<typeof acquireObservation>>;
+  const readings = new Map<string, Acquired>();
+  let observed = 0;
+
+  for (const round of overdue) {
+    const chain = chains.get(round.chainId);
+    const asset = chain ? assets.get(chain.assetId) : undefined;
+    if (!chain || !asset) { out.skipped++; continue; }
+
+    const key = `${asset.id}|${round.boundaryAt}`;
+    let obs = readings.get(key);
+    if (!obs) {
+      // Budget the AI axis, not the row axis: a tick that has already observed its quota
+      // leaves the rest for the next tick rather than half-healing under a cost spike.
+      if (observed >= maxObservations) { out.pending++; continue; }
+      observed++;
+      obs = await acquireObservation(asset, round.boundaryAt);
+      readings.set(key, obs);
+    }
+
+    if (obs.state === "confirmed") {
+      const r = await closeRound(round.id, obs.id, obs.price);
+      if (r.ok) { if (r.data.outcome === "VOID") out.voided++; else out.resolved++; }
+      else out.skipped++;
+    } else if (obs.state === "failed") {
+      // Terminal: no reading will ever exist for this boundary. VOID + full refund,
+      // through the same untouched settlement path every other outcome uses.
+      const r = await closeRound(round.id, obs.id, null, "source-failed");
+      if (r.ok) out.voided++; else out.skipped++;
+    } else {
+      out.pending++;
+    }
+  }
+
+  return out;
 }

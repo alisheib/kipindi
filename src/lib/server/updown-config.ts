@@ -167,6 +167,19 @@ export async function setUpDownConfig(
       return { ok: false, error: "Observation attempts must be 1-10." };
     }
   }
+  if (updates.retryBackoffSeconds !== undefined) {
+    // Validated because it is now LOAD-BEARING. This field sat here unread for the whole
+    // life of the feature — the retry ladder was designed and never wired — so nothing
+    // cared what it contained. `resolveOverdueRounds` reads it to space out attempts, and
+    // a garbage value there either hammers the model or stalls a refund indefinitely.
+    const b = updates.retryBackoffSeconds;
+    if (!Array.isArray(b) || b.length < 1 || b.length > 10) {
+      return { ok: false, error: "Retry backoff must be a list of 1-10 waits, in seconds." };
+    }
+    if (b.some((s) => !Number.isFinite(s) || s < 0 || s > 3600)) {
+      return { ok: false, error: "Each retry backoff must be 0-3600 seconds." };
+    }
+  }
   if (updates.defaultMinStake !== undefined || updates.defaultMaxStake !== undefined) {
     const lo = updates.defaultMinStake ?? cfgStore().defaultMinStake;
     const hi = updates.defaultMaxStake ?? cfgStore().defaultMaxStake;

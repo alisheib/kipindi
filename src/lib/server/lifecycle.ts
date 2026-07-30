@@ -176,6 +176,25 @@ async function maybeReconcileSchedules(): Promise<void> {
   } catch (e) {
     console.error("[lifecycle] Up & Down reconcile:", e);
   }
+
+  // ⛔ MONEY. Drive overdue Up & Down rounds to a terminal state — resolved, or VOIDed
+  // with every stake refunded once the attempt budget is spent. This is the *only* thing
+  // that walks the observation retry ladder: `advanceChain` observes one boundary and
+  // moves on, so without this a boundary refused once was never retried, FAILED was
+  // unreachable, and a round holding player money could neither resolve nor refund.
+  // Separate try/catch — a failure here must never stop the timer healing above.
+  try {
+    const { resolveOverdueRounds } = await import("./updown-service");
+    const h = await resolveOverdueRounds();
+    if (h.resolved > 0 || h.voided > 0 || h.skipped > 0) {
+      console.log(
+        `[lifecycle] Up & Down heal — scanned ${h.scanned}, resolved ${h.resolved}, voided+refunded ${h.voided}, ` +
+        `still pending ${h.pending}, skipped ${h.skipped}`,
+      );
+    }
+  } catch (e) {
+    console.error("[lifecycle] Up & Down heal:", e);
+  }
 }
 
 /** Run one lifecycle pass. Each chore is self-contained and best-effort; one

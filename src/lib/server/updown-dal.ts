@@ -233,6 +233,21 @@ export interface RoundStore {
   /** The round a chain is currently running, if any. */
   latestForChain(chainId: string): Promise<StoredRound | null>;
   list(opts?: { chainId?: string; limit?: number; unsettledOnly?: boolean }): Promise<StoredRound[]>;
+  /**
+   * Rounds whose boundary has PASSED but which never reached a verdict — the backlog the
+   * heal sweep works through, oldest first so nobody's money waits behind newer money.
+   *
+   * ⛔ WHY THIS EXISTS. `advanceChain` only ever observes `chain.nextBoundaryAt` and then
+   * moves that pointer on, so a boundary that refused once was never revisited: the
+   * observation stayed PENDING at 1 attempt, `maxObservationAttempts` was unreachable,
+   * FAILED never happened, and the round could neither resolve NOR refund. Production
+   * reached 1,398 such rounds holding real money. This query is deliberately independent
+   * of chain state — staked money must reach a terminal state even on a paused chain,
+   * which is precisely what an operator pauses when resolution misbehaves.
+   *
+   * Served by `@@index([boundaryAt])`.
+   */
+  overdueUnresolved(opts: { beforeIso: string; limit: number }): Promise<StoredRound[]>;
   create(r: StoredRound): Promise<void>;
   patch(id: string, fields: Partial<StoredRound>): Promise<void>;
 }
@@ -336,6 +351,12 @@ const memoryRounds: RoundStore = {
       .filter((r) => !opts?.unsettledOnly || !r.settledAt)
       .sort((a, b) => b.boundaryAt.localeCompare(a.boundaryAt));
     return opts?.limit != null ? rows.slice(0, opts.limit) : rows;
+  },
+  async overdueUnresolved({ beforeIso, limit }) {
+    return [...memRounds.values()]
+      .filter((r) => !r.resolvedAt && r.boundaryAt <= beforeIso)
+      .sort((a, b) => a.boundaryAt.localeCompare(b.boundaryAt)) // oldest first
+      .slice(0, limit);
   },
   async create(r) { memRounds.set(r.id, { ...r }); },
   async patch(id, fields) {
@@ -516,6 +537,14 @@ const prismaRounds: RoundStore = {
       },
       orderBy: { boundaryAt: "desc" },
       ...(opts?.limit != null ? { take: opts.limit } : {}),
+    });
+    return rows.map(toRound);
+  },
+  async overdueUnresolved({ beforeIso, limit }) {
+    const rows = await pc().upDownRound.findMany({
+      where: { resolvedAt: null, boundaryAt: { lte: new Date(beforeIso) } },
+      orderBy: { boundaryAt: "asc" }, // oldest first — nobody's money waits behind newer money
+      take: limit,
     });
     return rows.map(toRound);
   },

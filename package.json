@@ -52,6 +52,7 @@
     "test:updown-reporting": "tsx scripts/updown-reporting.test.mts",
     "test:updown-quickbet": "tsx scripts/updown-quickbet.test.mts",
     "test:updown-load": "tsx scripts/updown-load-quickbet.test.mts",
+    "test:updown-heal": "tsx scripts/updown-heal.test.mts",
     "test:date-range": "tsx scripts/date-range.test.mts",
     "test:markets": "tsx scripts/market-resolution-notify.test.mts",
     "test:selection-closed": "tsx scripts/selection-closed-notify.test.mts",
