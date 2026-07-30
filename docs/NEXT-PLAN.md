@@ -24,7 +24,7 @@ This file is the brief. Copy the block at the bottom into a fresh session.
 |---|---|
 | Live | `www.50pick.tz`, Railway `50pick` / `production`, running `be4a12be`; `/api/health` `ok:true` |
 | Money mode | **TEST** — deposits real via Selcom, **withdrawals cannot be paid** (Selcom-side) |
-| Test suite | **110** `test:*` scripts; `test:all` **110/110** with a dev server up on `:3000` |
+| Test suite | **110** `test:*` scripts. **108 verified green 2026-07-31**; `test:responsive` was **not** verified — see below |
 | Design | FROZEN + LIVE (B9/B10, `test:design-frozen`) |
 | Error tracking | ✅ code complete — durable + scrubbed + `@sentry/node` wired and proven (`test:alerting`). ⚠️ **`SENTRY_DSN` is NOT set in Railway (verified), so nobody is paged.** `/api/health` reports `monitoring.alerting:false` |
 | Database backups | ✅ toolchain complete and **drilled against production** (`test:backup`, 113 checks). ⚠️ **Nightly is not yet running:** no GitHub repo secrets, and `R2_BACKUP_BUCKET` does not exist |
@@ -247,8 +247,15 @@ Ali whether this pass makes it safe or documents it as a hard constraint.
 - **`npm install` after pulling.** The hardening pass added `pg`, `@sentry/node` and
   friends. `test:backup` and `test:alerting` fail with `TS2307: Cannot find module 'pg'`
   on a stale `node_modules` — that is a missing install, not a broken suite.
-- **`test:responsive` and `test:motion` need a dev server on `:3000`.** Start `npm run dev`
-  first or they fail on navigation and look like real regressions.
+- **`test:responsive` and `test:motion` need a server on `:3000`.** Without one they fail on
+  navigation and look like real regressions. `test:motion` re-ran green (43/43).
+  ⚠️ **`test:responsive` is the one suite NOT verified on 2026-07-31.** It is locales × routes
+  × breakpoints with a screenshot each — thousands of page loads. Against a Turbopack **dev**
+  server, which recompiles every route on first hit, it ran **40+ minutes without finishing**
+  and was abandoned. Run it against a production build (`npm run build` then `next start`),
+  budget real time, and do not read a slow run as a hang. The last recorded result was
+  5016 pass / 24 fail, and `POLISH-BACKLOG.md` §4 documents those 24 as Playwright
+  navigation races on admin routes, not product defects.
 - **There is a second worktree**, `C:\kipindi-night` on `night/measure-search` at
   `7d58354d`. That work is **merged and live**; the checkout is finished debris. It belongs
   to another session — leave it alone unless Ali says otherwise.
