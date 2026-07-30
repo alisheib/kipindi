@@ -27,7 +27,7 @@ This file is the brief. Copy the block at the bottom into a fresh session.
 | Test suite | **110** `test:*` scripts. **108 verified green 2026-07-31**; `test:responsive` was **not** verified — see below |
 | Design | FROZEN + LIVE (B9/B10, `test:design-frozen`) |
 | Error tracking | ✅ code complete — durable + scrubbed + `@sentry/node` wired and proven (`test:alerting`). ⚠️ **`SENTRY_DSN` is NOT set in Railway (verified), so nobody is paged.** `/api/health` reports `monitoring.alerting:false` |
-| Database backups | ✅ toolchain complete and **drilled against production** (`test:backup`, 113 checks). ⚠️ **Nightly is not yet running:** no GitHub repo secrets, and `R2_BACKUP_BUCKET` does not exist |
+| Database backups | ✅ toolchain complete, **drilled against production**, and the nightly now runs end-to-end on GitHub Actions (secrets set 2026-07-31; a real run restored production into a throwaway PG18 and passed 79 checks). 🔴 **Nothing is off-box yet — the `50pick-backups` bucket does not exist.** The job correctly fails red on it now; until 2026-07-31 it reported GREEN while shipping nothing, see [`BACKUP-RUNBOOK.md`](BACKUP-RUNBOOK.md) |
 | KYC storage | ✅ live on R2 — `R2_BUCKET=50pick-kyc`, endpoint + keys set in Railway |
 | Admin 2FA | ❌ **OFF in production** — `DISABLE_ADMIN_TOTP` is set. Must be off before real-money launch; flipping it blind risks locking Ali out, so it needs an enrolment first |
 | Multi-container | ❌ unsafe — `admission.ts`, `rate-limit.ts` and the ticker keep state in module scope |
@@ -38,8 +38,8 @@ This file is the brief. Copy the block at the bottom into a fresh session.
 |---|---|---|
 | A | **Tell Selcom to enable `SELCOM_PESA` + `HUDUMA_AGENT`** | Their switch. Unblocks paying customers; the ladder already tries both, so no code change |
 | B | **Set `SENTRY_DSN`** in Railway and redeploy | Needs a Sentry account — an external signup and a decision to send a licensed operator's data off-box |
-| C | **Add the GitHub repository secrets** (`BACKUP_SOURCE_DATABASE_URL`, `BACKUP_ENCRYPTION_KEY`, `AUDIT_CHAIN_SECRET`, `R2_ENDPOINT`, `R2_BACKUP_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`) | `gh` is not authenticated on this machine and no `GH_TOKEN` exists; git pushes go through Windows Credential Manager, which `gh` cannot read |
-| D | **Create the `50pick-backups` R2 bucket** | The R2 API token in Railway is bucket-scoped — `ListBuckets` returns `AccessDenied`, so it cannot create one. Cloudflare dashboard → R2 → Create bucket. Verify with `railway run node scripts/r2-provision-backup-bucket.mjs` |
+| C | ~~Add the GitHub repository secrets~~ | ✅ **DONE 2026-07-31.** All seven set and verified with `gh secret list`. Re-run with `railway run node scripts/backup-secrets.mjs`. ⚠️ **Ali must still move `BACKUP_ENCRYPTION_KEY` out of `.env.backup.local` into a password manager and delete the file** — it is the seal on every artifact the nightly writes |
+| D | 🔴 **Create the `50pick-backups` R2 bucket — THE ONLY THING LEFT before the nightly works** | The R2 API token in Railway is bucket-scoped — `ListBuckets` returns `AccessDenied`, so it cannot create one. Cloudflare dashboard → R2 → Create bucket. Then **prove it** with `railway run node scripts/backup-verify-offbox.mjs` — do not trust a green tick, see the runbook for why |
 | E | **Decide the TZS 100,000 orphan wallet** — write the missing ledger entry, or reverse the credit | A money mutation on production with no established provenance |
 | F | **Rotate the Postgres password**, and the credentials exposed in chat | Rotating live DB creds mid-session takes the site down if mistimed |
 
