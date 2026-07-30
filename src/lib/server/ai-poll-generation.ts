@@ -711,6 +711,20 @@ export async function generateAIPoll(opts: {
   /** Controlled mode: admin-provided title (AI won't generate one). */
   controlledTitle?: string;
 }): Promise<StoredAIPoll> {
+  // ⛔ THE PAUSE SWITCH — enforced HERE, not at the call sites.
+  //
+  // It used to live ONLY in `admin/ai-polls/actions.ts`, so `generateFromEventAction`
+  // (`admin/events/actions.ts`) generated polls with the operator's switch OFF. A gate on
+  // one of two doors is not a gate — and the AI-toolkit dropdown presents that switch as
+  // the single place generation is turned off, which was therefore untrue.
+  //
+  // Placed BEFORE the budget gate on purpose: a feature the operator has disabled should
+  // not consult the credit meter, let alone spend against it.
+  const { isPollGenEnabled } = await import("./ai-controls");
+  if (!(await isPollGenEnabled())) {
+    throw new Error("AI generation is disabled (AI toolkit). Turn it back on to generate.");
+  }
+
   // HARD BUDGET GATE — refuse BEFORE spending. The credit meter used to only
   // alert after the fact; the sole real cost cap was "a human clicks Generate",
   // which a calendar-driven generator (F8) removes. Now spend is enforced.

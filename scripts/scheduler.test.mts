@@ -46,6 +46,7 @@ import {
 } from "../src/lib/server/market-service.ts";
 import { setGlobalConfig } from "../src/lib/server/market-config.ts";
 import type { SentinelResult } from "../src/lib/server/market-sentinel.ts";
+import { sentinelSourceVerdict } from "../src/lib/server/market-sentinel.ts";
 
 let pass = 0, fail = 0;
 const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; console.log(`${c ? "PASS" : "FAIL"} ${l} ${x}`); };
@@ -78,11 +79,24 @@ async function mk(id: string, over: Partial<StoredMarket> = {}): Promise<StoredM
   return m;
 }
 
-/** A confident, locked-outcome AI assessment. */
+/**
+ * A confident, locked-outcome AI assessment.
+ *
+ * ⛔ `sourceUrl` MUST be on the market fixture's own approved host (`https://x`). Auto-seal
+ * now requires the AI to have cited the market's OWN approved source, because in auto mode
+ * there is no officer in the path and a wrong citation would seal a real-money outcome.
+ * This fixture used to cite `https://src` — a different host — so every §9 auto-seal
+ * assertion failed the moment that gate landed. Citing the approved source IS the realistic
+ * case; the mismatch is asserted separately in §9B.
+ */
 const confidentYes = (marketId: string, confidence = 97): SentinelResult => ({
   marketId, title: "t", determined: true, outcome: "YES", confidence,
   evidence: "Official source confirms the final result is locked.",
-  reasoning: "r", sourceUrl: "https://src", action: "assessed",
+  reasoning: "r", sourceUrl: "https://x/result", action: "assessed",
+});
+/** The same assessment, but citing a site the market never approved. */
+const confidentYesWrongSource = (marketId: string, confidence = 97): SentinelResult => ({
+  ...confidentYes(marketId, confidence), sourceUrl: "https://somewhere-else.example.com/x",
 });
 /** An honest "I could not determine it" assessment. */
 const undetermined = (marketId: string): SentinelResult => ({
@@ -271,23 +285,46 @@ const undetermined = (marketId: string): SentinelResult => ({
   const t = 90;
   const good = confidentYes("m");
   ok("7.1 human mode never auto-resolves, however confident",
-    decideAutoResolve({ assessment: good, mode: "human", threshold: t }).goAuto === false);
+    decideAutoResolve({ assessment: good, mode: "human", threshold: t, sourceMatches: true }).goAuto === false);
   ok("7.2 auto + confident + locked → auto",
-    decideAutoResolve({ assessment: good, mode: "auto", threshold: t }).goAuto === true);
+    decideAutoResolve({ assessment: good, mode: "auto", threshold: t, sourceMatches: true }).goAuto === true);
   ok("7.3 auto but BELOW the threshold → human fallback",
-    decideAutoResolve({ assessment: confidentYes("m", 89), mode: "auto", threshold: t }).goAuto === false);
+    decideAutoResolve({ assessment: confidentYes("m", 89), mode: "auto", threshold: t, sourceMatches: true }).goAuto === false);
   ok("7.4 exactly AT the threshold → auto",
-    decideAutoResolve({ assessment: confidentYes("m", 90), mode: "auto", threshold: t }).goAuto === true);
+    decideAutoResolve({ assessment: confidentYes("m", 90), mode: "auto", threshold: t, sourceMatches: true }).goAuto === true);
   ok("7.5 auto + determined but outcome UNKNOWN → human fallback",
-    decideAutoResolve({ assessment: { ...good, outcome: "UNKNOWN" }, mode: "auto", threshold: t }).goAuto === false);
+    decideAutoResolve({ assessment: { ...good, outcome: "UNKNOWN" }, mode: "auto", threshold: t, sourceMatches: true }).goAuto === false);
   ok("7.6 auto + high confidence but NOT determined → human fallback",
-    decideAutoResolve({ assessment: { ...good, determined: false }, mode: "auto", threshold: t }).goAuto === false);
+    decideAutoResolve({ assessment: { ...good, determined: false }, mode: "auto", threshold: t, sourceMatches: true }).goAuto === false);
   ok("7.7 auto + confident but no real evidence → human fallback (hallucination guard)",
-    decideAutoResolve({ assessment: { ...good, evidence: "n/a" }, mode: "auto", threshold: t }).goAuto === false);
+    decideAutoResolve({ assessment: { ...good, evidence: "n/a" }, mode: "auto", threshold: t, sourceMatches: true }).goAuto === false);
   ok("7.8 auto + AI errored → human fallback",
-    decideAutoResolve({ assessment: { ...good, action: "error", error: "no key" }, mode: "auto", threshold: t }).goAuto === false);
+    decideAutoResolve({ assessment: { ...good, action: "error", error: "no key" }, mode: "auto", threshold: t, sourceMatches: true }).goAuto === false);
   ok("7.9 auto + no assessment at all → human fallback",
-    decideAutoResolve({ assessment: null, mode: "auto", threshold: t }).goAuto === false);
+    decideAutoResolve({ assessment: null, mode: "auto", threshold: t, sourceMatches: true }).goAuto === false);
+
+  // ⛔ THE SOURCE CONDITION. The market's approved source was only ever a SUGGESTION in the
+  // sentinel's user prompt, and the URL the model returned was recorded and rendered as a
+  // clickable link but never verified. In human mode an officer opens it themselves; in
+  // AUTO mode nobody does — the assessment stamps RESOLVED and the settle timer pays.
+  ok("7.10 ⛔ auto + a citation from the WRONG source → human fallback, never auto-seal",
+    decideAutoResolve({ assessment: good, mode: "auto", threshold: t, sourceMatches: false }).goAuto === false);
+  ok("7.11 …and it is reported as NOT confident, so the early-recheck path refuses too",
+    decideAutoResolve({ assessment: good, mode: "auto", threshold: t, sourceMatches: false }).confident === false);
+  ok("7.12 the outcome is still surfaced to the officer — the read is information, not noise",
+    decideAutoResolve({ assessment: good, mode: "auto", threshold: t, sourceMatches: false }).haveOutcome === true);
+
+  // The derived verdict itself — one function, two consumers (this gate + the queue chip).
+  ok("7.13 verdict: the approved host matches",
+    sentinelSourceVerdict("https://x/result", "https://x") === "match");
+  ok("7.14 verdict: a SUBDOMAIN of the approved host matches",
+    sentinelSourceVerdict("https://www.kitco.com/p", "https://kitco.com") === "match");
+  ok("7.15 verdict: a different host is flagged, not silently accepted",
+    sentinelSourceVerdict("https://elsewhere.example.com/p", "https://kitco.com") === "different-domain");
+  ok("7.16 verdict: citing nothing is its own state",
+    sentinelSourceVerdict(null, "https://kitco.com") === "none-cited");
+  ok("7.17 verdict: a market with no approved source says so",
+    sentinelSourceVerdict("https://anything.example.com", null) === "no-approved-source");
 }
 
 // ─── 8. an EARLY re-check cannot close a market whose outcome is not locked ───

@@ -169,8 +169,10 @@ export function AiToolkit({ status }: { status: AiToolkitStatus }) {
               />
               <ToggleRow
                 icon={<I.sparkle s={14} />}
-                label="AI poll generation"
-                hint={pollGenEnabled ? "Admins can generate market ideas." : "Generator blocked."}
+                label="AI generation"
+                hint={pollGenEnabled
+                  ? "Admins can generate poll ideas and Up & Down round proposals."
+                  : "Both generators blocked."}
                 on={pollGenEnabled} disabled={pending} onClick={togglePollGen}
               />
             </div>
