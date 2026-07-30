@@ -200,6 +200,11 @@ export function AddAssetForm() {
         captures this exact link when it opens and resolves against the same link. Add it at{" "}
         <span className="font-mono text-[11px]">/admin/sources</span> first if it is not there yet.
       </p>
+      <p className="text-[11.5px] leading-[1.55] text-text-subtle max-w-[80ch]">
+        Because a round resolves against the link it captured, <strong>the source cannot be changed while any round on
+        the asset is still unresolved</strong>. To move it: pause the asset&rsquo;s chains, let the in-flight rounds
+        settle, then edit — the next round captures the new link.
+      </p>
       <div className="flex gap-2">
         <button type="submit" disabled={pending} className="btn btn-primary btn-md">
           {pending ? "Adding…" : "Add asset"}

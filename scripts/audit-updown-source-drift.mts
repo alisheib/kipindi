@@ -113,9 +113,21 @@ async function main() {
 
   // Only rounds whose money has NOT finished moving — those are the ones the migration
   // touches and the only ones still recoverable.
+  // ⚠️ EXPLICIT `select`, never `include`. This tool's whole job is to run BEFORE the
+  // source-capture migration is deployed, so the Prisma schema is AHEAD of the database it
+  // is pointed at. A wildcard select asks for `capturedSourceUrl` and dies with P2022 on
+  // exactly the database state it exists to diagnose. Name only pre-existing columns.
   const rounds = await prisma.upDownRound.findMany({
     where: { settledAt: null },
-    include: { chain: { include: { asset: true } } },
+    select: {
+      id: true, roundNumber: true, opensAt: true, boundaryAt: true,
+      chain: {
+        select: {
+          assetId: true, durationMinutes: true,
+          asset: { select: { key: true, sourceDomain: true, priceSourceUrl: true } },
+        },
+      },
+    },
     orderBy: { boundaryAt: "asc" },
   });
 

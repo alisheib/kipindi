@@ -150,6 +150,26 @@ From `Makret Generation Tips.txt`, and treated as a hard rule:
 The link must belong to a domain the operator has enabled in the existing trusted-source
 registry. There is no second allowlist.
 
+### How that rule is enforced (implemented 2026-07-30)
+
+For most of this subsystem's life the three bullets above were **aspiration, not
+behaviour**: `UpDownRound` had no source column at all, so resolution read whatever
+`UpDownAsset.priceSourceUrl` said *at boundary time* — a link an operator could edit after
+the round had opened and players had staked. Four surfaces, including the player-facing
+`resolutionCriterion`, already asserted the rule as fact. It is now real:
+
+| Stage | What happens |
+|---|---|
+| **Open** | `openRound` copies the asset's link and domain into the round's `capturedSourceUrl` / `capturedSourceDomain`, and every other write in that function — the market's `sourceUrl`, the player's `resolutionCriterion`, the audit payload — is built from those same two locals, so the round, the market, and the sentence the player read cannot disagree. |
+| **While open** | Both columns are **write-once** (absent from `ROUND_PATCHABLE`, so `roundStore.patch` throws), and `updateAsset` **refuses a source edit** while any round on that asset is unresolved. |
+| **Close** | `closeRound` checks each bounding reading's cited host against `round.capturedSourceDomain` — never the asset row — *before* the outcome arithmetic. A genuine contradiction → `VOID` with reason `source-mismatch` → **full refund**. |
+| **Legacy** | A round with no capture, or a reading that cited nothing, **skips** the check. A round we cannot verify is not a round we may void on suspicion; skips are audited so the true rate is visible before anyone tightens it. |
+
+Domains are compared, not exact URLs — a source legitimately serves the same quote from a
+sub-path, and an exact-URL match would void real rounds for no integrity gain.
+
+Guarded behaviourally by `test:updown-heal` §7C–§7D, structurally by `test:updown-source`.
+
 **Precision is bounded by the source.** Every surface shows the timestamp the source
 itself quoted, not our boundary time. We do not imply accuracy we do not have.
 
