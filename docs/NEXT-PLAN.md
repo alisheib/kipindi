@@ -23,16 +23,29 @@ This file is the brief. Copy the block at the bottom into a fresh session.
 | Test suite | **104** `test:*` scripts; `test:all` 102/104 (2 are browser tests needing a live server) |
 | Design | FROZEN + LIVE (B9/B10, `test:design-frozen`) |
 | Error tracking | ⚠️ **Durable, not alerting** — exceptions persist to the audit chain (scrubbed + deduped, `test:monitoring`); no `@sentry/*` installed, so nothing pages anyone |
-| Database backups | ❌ **NO backup or restore script exists** in `scripts/` |
+| Database backups | ⚠️ **Toolchain built, never run for real** — `db:backup`/`db:verify-backup`/`db:restore` + `test:backup`; needs scheduling, an off-box destination, and one real drill |
 | KYC storage | `@aws-sdk/client-s3` is installed; R2 needs bucket + env to be switched on |
 | Multi-container | ❌ unsafe — `admission.ts`, `rate-limit.ts` and the ticker keep state in module scope |
 
 ### The four things that would hurt most, worst first
 
-1. **No backups — and the admin console was claiming otherwise.** A licensed real-money
-   operator with player balances and a settlement ledger has **no `db:backup`, no
-   `db:restore`, no verified restore drill.** Everything else on this list is
-   recoverable. This is not.
+1. ✅ **Backups — TOOLCHAIN BUILT 2026-07-30.** `db:backup` / `db:verify-backup` /
+   `db:restore` all exist, guarded by `test:backup` (59 checks). The table set is
+   **derived from `Prisma.dmmf`**, never hand-listed — the sibling AWARKEH repo forgot a
+   model in its hand-kept list three times, and the last one meant `db:backup` had been
+   aborting on production for weeks unnoticed. Artifacts are AES-256-GCM sealed (a wrong
+   key *or* one flipped byte throws rather than returning garbage), carry a manifest of
+   row counts + money invariants + the audit head, and `backups/` is gitignored.
+   `db:restore` needs the target named by hand, a second confirmation for a production
+   host, `--drop-existing` for a populated target, and re-checks every row count and money
+   invariant after replaying — a replay that exits 0 having lost rows is silent data loss.
+
+   ⏳ **What remains is operational, not code:** schedule it (cron/CI), give it an off-box
+   destination (R2 / encrypted CI artifact), set `BACKUP_PASSPHRASE` and
+   `VERIFY_DATABASE_URL`, and **run one real drill end to end** — `db:backup` then
+   `db:verify-backup --record` against production data. Until that drill runs, the
+   compliance card correctly says no backup has ever run. **A backup you have never
+   restored is not a backup; it is a file you feel good about.**
 
    ⚠️ Worse, until 2026-07-29 `/admin/compliance` rendered a **hardcoded green ✓**
    reading *"Auto-snapshot on every mutation · HMAC-signed · last 12 retained ·
