@@ -1,0 +1,36 @@
+{
+  // Typecheck the BACKUP TOOLCHAIN, which the root tsconfig deliberately cannot see.
+  //
+  // 🔴 WHY THIS EXISTS. `scripts/*.mts` is `.mts` on purpose: the root config includes
+  // `scripts/**/*.ts`, so a `.ts` script would be typechecked as part of `next build` and
+  // its imports dragged into the Railway deploy. The cost of that choice was invisible
+  // until the first real drill (2026-07-30), when `db-backup.mts` had two `const
+  // undeclared` declarations in one function and `db-restore.mts` had a backtick inside a
+  // template literal — two files that could not even be PARSED — while `npm run
+  // typecheck` reported success and `test:backup` stayed green, because one does not
+  // include these files and the other reads them as text. Both broke at RUN time, which
+  // for a recovery script means: at the moment someone needed it.
+  //
+  // Scope is deliberately narrow. The other ~60 `scripts/*.mts` suites use loose fixture
+  // types and would need their own pass; that gap is stated in docs/BACKUP-RUNBOOK.md
+  // rather than silently widened here. These five files are the disaster-recovery path
+  // for a licensed real-money operator, and "it transpiles when you run it" is not the
+  // standard they should be held to.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "incremental": false,
+    // The scripts import `../src/lib/server/backup/core.ts` WITH its extension, which is
+    // how tsx resolves them at runtime. Without this, every such import is an error.
+    "allowImportingTsExtensions": true
+  },
+  "include": [
+    "scripts/db-backup.mts",
+    "scripts/db-verify-backup.mts",
+    "scripts/db-restore.mts",
+    "scripts/db-scratch.mts",
+    "scripts/backup.test.mts",
+    "src/lib/server/backup/**/*.ts"
+  ],
+  "exclude": ["node_modules", ".next"]
+}

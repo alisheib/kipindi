@@ -51,6 +51,18 @@ export type BackupRun = {
   sealed: boolean;
   /** Populated only on failure; rendered verbatim so nobody has to guess. */
   error?: string;
+  /**
+   * Problems found in the SOURCE database while verifying — a drifting wallet, a broken
+   * audit link — as opposed to problems with the backup.
+   *
+   * 🔴 These two must never be confused. The first real verification run reported four
+   * failures and concluded "DO NOT TRUST THIS BACKUP"; production reported the same four.
+   * The artifact was perfect. A backup that faithfully reproduces an unhealthy database
+   * is a GOOD backup and a BAD situation, and an operator has to be told which is which —
+   * so the run stays `verified: true` and the source's condition is carried here, where
+   * `/admin/compliance` renders it as its own warning.
+   */
+  sourceWarnings?: string[];
 };
 
 export type BackupHealth =

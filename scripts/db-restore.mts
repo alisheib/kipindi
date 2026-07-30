@@ -47,6 +47,8 @@ import { gunzipSync } from "node:zlib";
 import { createHash } from "node:crypto";
 import pg from "pg";
 import {
+  BACKUP_KEY_ENV,
+  backupKey,
   isSealed,
   openBackup,
   readManifest,
@@ -89,6 +91,11 @@ function describeManifest(m: BackupManifest): void {
   console.log(`   wallets      balance ${m.money.walletBalanceSum} · pending ${m.money.walletPendingSum} · hold ${m.money.walletHoldSum}`);
   console.log(`   ledger       ${m.money.ledgerEntries} entries · net ${m.money.ledgerNetSum} · unbalanced groups ${m.money.ledgerUnbalancedGroups}`);
   console.log(`   audit        ${m.audit.entries} entries · head ${m.audit.headEntryHash?.slice(0, 16) ?? "(none)"}…`);
+  // Read defensively: artifacts written before manifest v2 have no such field.
+  if (m.undeclaredTables?.length) {
+    console.log(`   undeclared   ${m.undeclaredTables.join(", ")}  (dumped by introspection —`);
+    console.log(`                the source database was ahead of the schema it was dumped with)`);
+  }
 
   // Age is stated loudly rather than blocked: only the operator knows whether an old
   // backup is the right one. Being told is the point.
@@ -108,17 +115,30 @@ async function main(): Promise<void> {
 
   // ── Open the artifact ────────────────────────────────────────────────────────
   console.log(`\nReading ${file}`);
-  let buf = readFileSync(file);
+  // Annotated, not inferred: readFileSync gives a Buffer<ArrayBuffer> and openBackup
+  // returns Buffer<ArrayBufferLike>, so the reassignment below does not typecheck against
+  // an inferred type. Only ever caught once tsconfig.backup.json started checking .mts.
+  let buf: Buffer = readFileSync(file);
 
   if (isSealed(buf)) {
-    const pass = process.env.BACKUP_PASSPHRASE;
-    if (!pass) die("!! Sealed backup but BACKUP_PASSPHRASE is not set.");
+    // The SAME name db:backup sealed it under and db:verify-backup opens it with.
+    // This read used to go straight to an env var called BACKUP_PASSPHRASE — a name
+    // neither of the other two scripts has ever written or read — so an operator set
+    // up to take and verify backups could not open one, and would find that out
+    // during a recovery. See `backupKey()` in backup/core.ts.
+    let pass: string | null = null;
+    try {
+      pass = backupKey();
+    } catch (e) {
+      die(`!! ${(e as Error).message}`);
+    }
+    if (!pass) die(`!! Sealed backup but ${BACKUP_KEY_ENV} is not set.`);
     try {
       buf = openBackup(buf, pass);
     } catch {
       // AES-GCM: a wrong key and a corrupted byte are indistinguishable, and both
       // mean the same thing operationally — this artifact cannot be trusted.
-      die("!! Could not open the backup. Wrong BACKUP_PASSPHRASE, or the file is corrupt.");
+      die(`!! Could not open the backup. Wrong ${BACKUP_KEY_ENV}, or the file is corrupt.`);
     }
   }
   const sql = (buf[0] === 0x1f && buf[1] === 0x8b ? gunzipSync(buf) : buf).toString("utf8");
@@ -216,7 +236,15 @@ async function main(): Promise<void> {
           coalesce((select sum("balance") from "public"."Wallet"), 0)::text as balance,
           coalesce((select sum("pending") from "public"."Wallet"), 0)::text as pending,
           coalesce((select sum("hold")    from "public"."Wallet"), 0)::text as hold,
-          coalesce((select sum("bonus")   from "public"."Wallet"), 0)::text as bonus,
+          -- 🔴 This summed a column named "bonus". There is no such column: it is
+          -- "bonusBalance" (prisma/schema.prisma). Postgres threw HERE, AFTER the replay
+          -- above had already COMMITTED, so db:restore reported "restore failed ...
+          -- nothing was committed" while every shilling was in fact back. A false
+          -- negative during a recovery, which is the one moment nobody can afford to
+          -- re-litigate what the tool is telling them. Never found because the script
+          -- had never been run against a real backup, and because test:backup asserted
+          -- the SQL's surrounding STRINGS rather than its column names.
+          coalesce((select sum("bonusBalance") from "public"."Wallet"), 0)::text as bonus,
           (select count(*)::text from "public"."LedgerEntry") as ledger_entries,
           coalesce((select sum("amount") from "public"."LedgerEntry"), 0)::text as ledger_net,
           coalesce((select count(*) from (

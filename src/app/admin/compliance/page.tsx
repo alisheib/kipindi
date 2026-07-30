@@ -152,6 +152,27 @@ export default async function AdminCompliancePage({
                     a dump nobody restored is not a backup — run db:verify-backup
                   </p>
                 ) : null}
+                {/* Problems in the DATABASE, not in the backup — kept visually distinct
+                    from a backup failure because the response is completely different.
+                    A verified backup of a drifting ledger is a good backup and a bad
+                    situation, and the first real drill found exactly that: TZS 100,000 in
+                    a wallet with no ledger entry behind it. Shown on every state, because
+                    the finding outlives whichever backup surfaced it. */}
+                {backup.kind !== "none" && backup.run.sourceWarnings?.length ? (
+                  <div className="mt-2 pt-2 border-t border-border-subtle">
+                    <p className="font-mono text-micro tracking-[0.10em] uppercase text-warn">
+                      Source database — found while verifying
+                    </p>
+                    <ul className="mt-1 space-y-0.5">
+                      {backup.run.sourceWarnings.map((w) => (
+                        <li key={w} className="font-mono text-micro text-warn break-words">· {w}</li>
+                      ))}
+                    </ul>
+                    <p className="font-mono text-micro text-text-tertiary mt-1">
+                      the backup itself is sound — this is a live data problem to investigate
+                    </p>
+                  </div>
+                ) : null}
               </div>
             </div>
           </AdminCard>

@@ -32,7 +32,9 @@ import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from "node:
 
 /* ── Manifest ────────────────────────────────────────────────────────────── */
 
-export const MANIFEST_VERSION = 1;
+/** 2 adds `undeclaredTables` (2026-07-30). Nothing rejects an older manifest — the
+ *  field is read defensively — but the artifact header should say which shape it is. */
+export const MANIFEST_VERSION = 2;
 /** The line prefix the manifest is written under, inside the SQL header. */
 export const MANIFEST_MARKER = "-- @manifest ";
 
@@ -45,6 +47,36 @@ export type BackupManifest = {
   /** sha256 of the DDL, so a restore can prove it rebuilt the same shape. */
   schemaSha256: string;
   /**
+   * The source database's character encoding and collation.
+   *
+   * 🔴 THE THIRD THING A REAL RESTORE FOUND, 2026-07-30. The first verification run died
+   * with `character with byte sequence 0xe8 0x87 0xb3 ... has no equivalent in encoding
+   * "WIN1252"` — that is 至, and 50pick is trilingual EN/SW/**ZH**, so Chinese text runs
+   * through market titles and translations everywhere. The scratch cluster had been
+   * initdb'd with the Windows default encoding, and a UTF-8 dump does not go into a
+   * WIN1252 database.
+   *
+   * It failed loudly here, which was luck: the target was empty. The reason this is in the
+   * manifest is the case where it would not be — a recovery target created with a default
+   * `CREATE DATABASE` on the wrong day, restoring most of the platform and mangling every
+   * non-Latin string in it. The encoding a backup needs is a property OF the backup, so
+   * `db:verify-backup` creates its throwaway with these values and `db:restore` refuses a
+   * target that does not match.
+   */
+  encoding: {
+    encoding: string;
+    collate: string;
+    ctype: string;
+    /**
+     * A fingerprint of the platform's actual non-ASCII text (1,464 of 1,467 market
+     * titles carry Chinese). Every other check in this toolchain is blind to mojibake:
+     * row counts still match, money is numeric, and the audit chain is ASCII hex — so a
+     * restore that silently mangled every Swahili and Chinese title would be reported as
+     * a complete success. This is the only assertion that can see it.
+     */
+    nonAscii: { rows: number; md5: string };
+  };
+  /**
    * Postgres extensions the schema depends on.
    *
    * 🔴 FOUND BY THE FIRST RESTORE DRILL, 2026-07-29. `prisma migrate diff` emits the
@@ -55,8 +87,48 @@ export type BackupManifest = {
    * reason a backup that has never been restored does not count as a backup.
    */
   extensions: Array<{ name: string; schema: string; version: string }>;
+  /**
+   * How many of each structural guarantee the SOURCE had, so the verifier can prove the
+   * restored database has them too.
+   *
+   * 🔴 WHY COUNTS AND NOT JUST "IT RESTORED". Until 2026-07-30 every dump was missing the
+   * 48 unique indexes that back a UNIQUE constraint, and nothing could tell: row counts
+   * matched, wallets balanced to the shilling, the audit chain verified end to end. The
+   * only visible symptom would have been a duplicate — a Selcom payment credited twice, a
+   * second account on one NIDA — long after the restore was declared a success. Structure
+   * is part of what a backup is FOR, so it is measured like the money is.
+   */
+  shape: {
+    tables: number;
+    indexes: number;
+    uniqueIndexes: number;
+    primaryKeys: number;
+    uniqueConstraints: number;
+    checkConstraints: number;
+    foreignKeys: number;
+  };
   /** Row count per table, keyed by table name. */
   tables: Record<string, number>;
+  /**
+   * Tables present in the DATABASE but not declared in the schema this dump was taken
+   * with, backed up by introspection instead.
+   *
+   * 🔴 FOUND BY THE FIRST REAL DRILL, 2026-07-30. `db:backup` ABORTED against production
+   * — correctly, by its own rule — because prod had `UpDownProposal`, applied by a
+   * migration run ahead of its code. That is not a mistake: pre-applying a migration via
+   * Railway before pushing is this repo's documented deploy practice, so "the database is
+   * ahead of this branch" is a ROUTINE state, and in it a licensed real-money operator
+   * had no way to take a backup at all. Refusing to write anything is the wrong answer to
+   * a table you can plainly see and read.
+   *
+   * The rule the abort protected was never "only dump declared tables" — it was **never
+   * omit data silently**. So undeclared tables are dumped from `information_schema` like
+   * any other, their row counts go into `tables` (so the verifier and the restorer check
+   * them with no special case), and they are named here and warned about loudly. Nothing
+   * omitted, nothing silent. The one case that still aborts is a DECLARED table holding a
+   * foreign key INTO an undeclared one, where no append order can satisfy the replay.
+   */
+  undeclaredTables: string[];
   /**
    * Money invariants AT CAPTURE TIME. The verifier recomputes each of these on the
    * restored database and fails on any difference. A backup whose wallet total does
@@ -72,6 +144,31 @@ export type BackupManifest = {
     ledgerNetSum: string;
     /** Ledger groups that do NOT sum to zero. Healthy ⇒ 0. */
     ledgerUnbalancedGroups: number;
+  };
+  /**
+   * The SOURCE's own integrity verdict at capture time, from the platform's own
+   * `trialBalance()` and `verifyChainFull()`.
+   *
+   * 🔴 WHY A BACKUP HAS TO RECORD THIS. The first real verification run ended with
+   * "DO NOT TRUST THIS BACKUP" over four failures — a drifting wallet and a broken audit
+   * link. Running the same two functions against production showed it reported EXACTLY
+   * the same four. The artifact was perfect; it had faithfully reproduced a source that
+   * was already unhealthy, and the verifier blamed the backup for what it found inside it.
+   *
+   * That is not a cosmetic mislabel. It would have made the nightly job red forever, kept
+   * `/admin/compliance` on "no verified backup" while a perfectly good one existed, and
+   * taught whoever reads it that the red is normal — the precise failure this whole
+   * toolchain was built to stop. So the comparison is restored-vs-SOURCE: a backup is good
+   * when it reproduces the source exactly, and the source's own problems are reported
+   * separately, as the operational finding they are.
+   */
+  sourceIntegrity: {
+    trialBalanceOk: boolean;
+    driftingWallets: number;
+    totalAbsDrift: number;
+    imbalancedGroups: number;
+    chainValid: boolean;
+    chainLinkBroken: boolean;
   };
   /** The audit chain's tail, so a restore can prove the chain came back whole. */
   audit: {
@@ -143,6 +240,98 @@ export function tableOrder(): string[] {
   // itself between two identical databases is impossible to diff.
   for (const m of [...models].sort((a, b) => a.name.localeCompare(b.name))) visit(m.name);
   return out;
+}
+
+/**
+ * The ONE query that fingerprints the platform's non-ASCII text, shared by the writer and
+ * the verifier so neither can drift into checking something the other does not.
+ *
+ * `octet_length <> char_length` is true exactly when a string contains a multibyte
+ * character — no regex escaping to get subtly wrong across two dialects. Ordered by id so
+ * the aggregate is deterministic, and md5'd so the manifest carries a constant rather
+ * than a copy of the data it is describing.
+ */
+/**
+ * The ONE query that measures a database's structure, run by the writer against the source
+ * and by the verifier against the restored copy. Shared so the two cannot drift into
+ * counting different things — which is how a comparison quietly becomes a tautology.
+ */
+export const SHAPE_SQL = `
+  select
+    (select count(*) from information_schema.tables
+      where table_schema = 'public' and table_type = 'BASE TABLE')::int as tables,
+    (select count(*) from pg_index x join pg_class c on c.oid = x.indexrelid
+       join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public')::int as indexes,
+    (select count(*) from pg_index x join pg_class c on c.oid = x.indexrelid
+       join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'public' and x.indisunique)::int as "uniqueIndexes",
+    (select count(*) from pg_constraint c join pg_class ch on ch.oid = c.conrelid
+       join pg_namespace n on n.oid = ch.relnamespace
+      where n.nspname = 'public' and c.contype = 'p')::int as "primaryKeys",
+    (select count(*) from pg_constraint c join pg_class ch on ch.oid = c.conrelid
+       join pg_namespace n on n.oid = ch.relnamespace
+      where n.nspname = 'public' and c.contype = 'u')::int as "uniqueConstraints",
+    (select count(*) from pg_constraint c join pg_class ch on ch.oid = c.conrelid
+       join pg_namespace n on n.oid = ch.relnamespace
+      where n.nspname = 'public' and c.contype = 'c')::int as "checkConstraints",
+    (select count(*) from pg_constraint c join pg_class ch on ch.oid = c.conrelid
+       join pg_namespace n on n.oid = ch.relnamespace
+      where n.nspname = 'public' and c.contype = 'f')::int as "foreignKeys"`;
+
+export const NON_ASCII_FINGERPRINT_SQL = `
+  select count(*)::text as rows,
+         md5(coalesce(string_agg("titleZh", '|' order by "id"), '')) as md5
+    from "public"."PredictionMarket"
+   where "titleZh" is not null
+     and octet_length("titleZh") <> char_length("titleZh")`;
+
+/** A foreign key, as Postgres reports it: `child` holds a column pointing at `parent`. */
+export type FkEdge = { child: string; parent: string };
+
+/**
+ * Where to dump tables the schema does not declare, or why they cannot be dumped.
+ *
+ * Declared tables are written first, in `tableOrder()`. Undeclared ones are appended,
+ * which is safe unless a DECLARED table holds a foreign key INTO an undeclared one — the
+ * parent would then be inserted after its child and the replay would fail. That case is
+ * reported instead of ordered, because no append position fixes it.
+ *
+ * Extracted from `db-backup.mts` so `test:backup` can drive it. The version of this logic
+ * that lived inline was a bare `if (unknown.length) fail(...)`, and it took a real drill
+ * against production to find out what that cost.
+ */
+export function orderUndeclared(
+  unknown: string[],
+  edges: readonly FkEdge[],
+): { order: string[]; blocking?: undefined } | { blocking: FkEdge[]; order?: undefined } {
+  const unknownSet = new Set(unknown);
+
+  const blocking = edges.filter((e) => !unknownSet.has(e.child) && unknownSet.has(e.parent));
+  if (blocking.length) return { blocking };
+
+  const parentsOf = new Map<string, Set<string>>(unknown.map((t) => [t, new Set<string>()]));
+  for (const e of edges) {
+    // A self-reference depends on itself; row order within a table is already fixed by
+    // the dump's own ORDER BY, so that edge is dropped exactly as tableOrder() drops it.
+    if (unknownSet.has(e.child) && unknownSet.has(e.parent) && e.child !== e.parent) {
+      parentsOf.get(e.child)!.add(e.parent);
+    }
+  }
+
+  const order: string[] = [];
+  const done = new Set<string>();
+  const onStack = new Set<string>();
+  const visit = (t: string): void => {
+    if (done.has(t) || onStack.has(t)) return; // a true cycle emits anyway; the restore judges
+    onStack.add(t);
+    for (const p of parentsOf.get(t) ?? []) visit(p);
+    onStack.delete(t);
+    done.add(t);
+    order.push(t);
+  };
+  // Sorted first so two dumps of the same database order themselves identically.
+  for (const t of [...unknown].sort()) visit(t);
+  return { order };
 }
 
 /* ── DDL fragments Prisma owns but no migration creates ──────────────────── */
@@ -223,6 +412,72 @@ export function isLocalHost(url: string): boolean {
  */
 export const SEAL_MAGIC = Buffer.from("50PICKBK", "ascii");
 const SEAL_VERSION = 1;
+
+/**
+ * The ONE name the seal key is read under, and the one place it is read.
+ *
+ * 🔴 WHY THIS IS A FUNCTION AND NOT THREE `process.env` READS. It was three, under
+ * TWO different names: `db-backup.mts` and `db-verify-backup.mts` read
+ * `BACKUP_ENCRYPTION_KEY`, while `db-restore.mts` read `BACKUP_PASSPHRASE` — and the
+ * runbook's drill exported the restore-only name. So an operator whose environment
+ * was set up to TAKE and VERIFY backups could not OPEN one, and would find that out
+ * on the day the database was gone. The length rule was duplicated too, and only in
+ * the writer, so a 4-character key was refused when sealing and accepted when
+ * opening.
+ *
+ * One control, one place: `test:backup` asserts this is the only reader of the env
+ * var and that the old name appears nowhere in the toolchain.
+ */
+export const BACKUP_KEY_ENV = "BACKUP_ENCRYPTION_KEY";
+
+/** Minimum length. A dump is every balance, phone number and NIDA on the platform;
+ *  a memorable passphrase is not an acceptable key for it. */
+export const BACKUP_KEY_MIN_LEN = 24;
+
+/**
+ * Where `db:verify-backup --record` writes backup health, or why it cannot.
+ *
+ * 🔴 WHY THIS IS A NAMED DECISION. It used to be an inline `??` that resolved to
+ * `undefined` and merely `console.warn`ed, so `--record` exited 0 having written
+ * nothing — the drill reported success while `/admin/compliance` still said no backup
+ * had ever run. A decision that can silently choose "do nothing" has to be drivable
+ * by a test; `test:backup` drives this one.
+ *
+ * `explicit` (`BACKUP_RECORD_DATABASE_URL`) wins. Otherwise the database the run
+ * STARTED against — the one the backup was taken from, and the one the compliance
+ * card reads. Never the scratch database, which is dropped seconds later.
+ */
+export function recordTargetFor(
+  explicit: string | undefined,
+  original: string | undefined,
+): { url: string } | { error: string } {
+  const url = explicit ?? original;
+  if (!url) {
+    return {
+      error:
+        "neither BACKUP_RECORD_DATABASE_URL nor DATABASE_URL was set, so there is no " +
+        "database to write backup health to",
+    };
+  }
+  return { url };
+}
+
+/**
+ * The seal key, or `null` when unset. Throws on a key too short to be one —
+ * refusing at BOTH ends, because a key accepted by the opener and rejected by the
+ * writer is how you discover the mismatch mid-incident.
+ */
+export function backupKey(): string | null {
+  const key = process.env[BACKUP_KEY_ENV];
+  if (!key) return null;
+  if (key.length < BACKUP_KEY_MIN_LEN) {
+    throw new Error(
+      `${BACKUP_KEY_ENV} is ${key.length} characters — at least ${BACKUP_KEY_MIN_LEN} are required.\n` +
+        `   Generate one:  node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`,
+    );
+  }
+  return key;
+}
 const SALT_LEN = 16;
 const IV_LEN = 12;
 const TAG_LEN = 16;
