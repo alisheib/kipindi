@@ -256,6 +256,8 @@ communication control, it is recorded in
 | Stake bounds per chain | Min/max stake for that asset+duration |
 | Rate profile | The fee the chain freezes onto its rounds |
 | Confirmation thresholds | Staleness window, confidence floor, retry attempts |
-| Re-observe / void a round | Operator recovery for a bad or stuck round |
+| **Price reading method** | Which reader produces the price money settles against — market feed (default) or AI page reading — and which feed provider. Takes effect at the next boundary; **rounds already open keep the source they captured**. Choosing the simulated feed is a type-to-arm confirmation. See [`UPDOWN-PRICING.md`](UPDOWN-PRICING.md). |
+| **Review an AI chain proposal** | Approve, edit or reject at `/admin/updown/proposals`; approving then **arming** starts the chain. §7a. |
+| Re-observe / void a round | Operator recovery for a bad or stuck round. ⚠️ A **void moves money** (it refunds every stake), so it is gated at the accounting tier, not market-ops. |
 
 Who may do what: [`UPDOWN-ARCHITECTURE.md`](UPDOWN-ARCHITECTURE.md) §10.
