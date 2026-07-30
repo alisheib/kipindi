@@ -175,7 +175,18 @@ export function toSelcomMsisdn(raw: string): string {
  *  universal `CASHIN` code instead: Selcom auto-routes it by MNP lookup on the payee number
  *  (docs — "All wallet cashin … automatically route the traffic based on MNP Lookup"), which
  *  is correct regardless of the exact per-MNO code. Pin them back to `HPCASHIN`/`TTCASHIN`
- *  only once Selcom confirms those codes. */
+ *  only once Selcom confirms those codes.
+ *
+ *  ✅ VERIFIED 2026-07-30 against the live gateway with `scripts/selcom-code-matrix.mjs`
+ *  (name lookup, no money): on a real Vodacom number `VMCASHIN` and `CASHIN` BOTH resolve
+ *  the correct registered payee name, while `AMCASHIN`/`TPCASHIN`/`EZCASHIN` all refuse.
+ *  So the operator codes here are right, Selcom does validate the operator on lookup, and
+ *  the universal-`CASHIN` fallback above is now evidence-backed rather than assumed.
+ *
+ *  ⚠️ That same run is why a wrong `utilitycode` is NOT the cause of the `010` failures:
+ *  `/walletcashin/namelookup` accepts the exact code + number that `/walletcashin/process`
+ *  rejects. Do not "fix" a payout outage by changing this map — see
+ *  docs/SELCOM-010-INVESTIGATION.md. */
 export function mnoToSelcomCashin(provider: PaymentProvider): string | null {
   switch (provider) {
     case "MPESA":        return "VMCASHIN"; // Vodacom M-Pesa (confirmed)
@@ -841,17 +852,6 @@ export async function selcomVerifyOrder(env: SelcomEnv, orderId: string): Promis
   // treated as non-terminal too: waiting is recoverable, a wrong FAILED is not.
   if (ps === "CANCELLED" || ps === "USERCANCELLED" || ps === "REJECTED") return { status: "FAILED", amount };
   return { status: null }; // PENDING · INPROGRESS · empty · anything unknown → re-query
-}
-
-/**
- * Authoritative status of a wallet-cashin (disbursement/payout), via the docs'
- * `GET /v1/walletcashin/query?transid=` (Signed-Fields: transid). This lets a
- * withdrawal settle from a SIGNED re-query rather than trusting the inbound
- * callback — the same money-safe posture as deposits. Returns null while the
- * payout is still in progress / ambiguous, so we simply query again later.
- */
-export async function selcomVerifyCashin(env: SelcomEnv, transid: string): Promise<{ status: "CONFIRMED" | "FAILED" | null; detail: string }> {
-  return selcomVerifyPayout(env, "WALLET_CASHIN", transid);
 }
 
 /**

@@ -53,8 +53,12 @@ This file is the brief. Copy the block at the bottom into a fresh session.
    up.** Players can put money **in** and not take it **out** — the single worst asymmetry
    a gambling operator can ship, and a licence question, not just an ops one.
    Full state: [`SELCOM-PAYOUT-RAILS.md`](SELCOM-PAYOUT-RAILS.md) § Current state.
-4. **`scripts/gift-admin-credit.ts` still exists.** A tool that mints real balance, in the
-   repo, at public launch. It must be gone or hard-gated before the doors open.
+4. ~~**`scripts/gift-admin-credit.ts` still exists.**~~ ✅ **DONE 2026-07-30.** Deleted, along
+   with `docs/OPERATOR-CREDIT-TOOLS.md` (per that file's own removal checklist);
+   `scripts/credit-user.ts` was already gone. Nothing in the repo can mint balance now
+   except `scripts/seed-test-float.mjs`, which **refuses outright when
+   `NODE_ENV=production`** and is guarded by `test:float-guard`. ⚠️ Step 4 of that
+   checklist — **rotate the Postgres password** — is still outstanding and is Ali's call.
 
 ### Known scale ceilings (measured, from `POLISH-BACKLOG.md` §3)
 
@@ -114,8 +118,10 @@ the settlement ledger are the assets.
 server + client + edge paths, scrub PII (phone, NIDA, email) before anything leaves the
 box, and prove it by triggering a real error and seeing it arrive.
 
-**3. Remove or hard-gate `scripts/gift-admin-credit.ts`** and anything else that can mint
-balance. Flag to Ali rather than silently deleting if it is load-bearing for TEST mode.
+**3.** ~~Remove or hard-gate `scripts/gift-admin-credit.ts`~~ ✅ **DONE 2026-07-30** — see the
+correction above. The only remaining balance-minting path is `seed-test-float.mjs`, which
+refuses in production and is guarded by `test:float-guard`. **Still outstanding: rotate the
+Postgres password**, and the credentials exposed in chat (API key, vendor PIN, Railway token).
 
 **4. Withdrawals.** Confirm the `PAYMENT_VENDOR_PIN` blocker with Ali. Until it clears,
 make sure the product tells a player the truth about when they can take money out — an
