@@ -44,7 +44,7 @@ import {
   createAsset, setAssetEnabled, createChain, setChainState,
   __resetUpDownConfig, setUpDownConfig, getUpDownConfig,
 } from "../src/lib/server/updown-config.ts";
-import { openRound, resolveOverdueRounds, acquireObservation, voidRoundByOperator } from "../src/lib/server/updown-service.ts";
+import { openRound, resolveOverdueRounds, acquireObservation, voidRoundByOperator, observationMatchesRound } from "../src/lib/server/updown-service.ts";
 import { marketStore } from "../src/lib/server/market-dal.ts";
 import { buyPosition, ratesFor } from "../src/lib/server/market-service.ts";
 import { poolFee } from "../src/lib/payout.ts";
@@ -403,6 +403,63 @@ console.log("\n── 7B · an officer's void is attributed to the officer, not 
   ok("7B.5 · an in-band close is still 'no-move', not overridden by the fallback",
      (await roundStore.get(inBand.id))!.voidReason === "no-move",
      String((await roundStore.get(inBand.id))!.voidReason));
+}
+
+// ── 7C · The round pins its source, and settles against THAT ────────────────
+console.log("\n── 7C · the round pins its source link at open and resolves against it ──");
+{
+  const before = await walletsTotal();
+  // Bet BEFORE the boundary elapses — selections shut AT the boundary, which is the
+  // product's own rule and not something a test may work around.
+  const round = await openRoundWithBets(c5.data.id, Date.now() + GRACE_MS, 2400.00, [
+    { userId: dave, side: "YES", stake: 5_000 },
+  ]);
+
+  ok("7C.1 · the round captured the asset's link at open",
+     round.capturedSourceUrl === asset.priceSourceUrl && round.capturedSourceDomain === asset.sourceDomain,
+     `${round.capturedSourceUrl} / ${round.capturedSourceDomain}`);
+
+  const market = (await marketStore.get(round.marketId))!;
+  ok("7C.2 · the money row names the SAME page as the price row",
+     market.sourceUrl === round.capturedSourceUrl, `${market.sourceUrl} vs ${round.capturedSourceUrl}`);
+  ok("7C.3 · the player-facing criterion names the captured domain",
+     market.resolutionCriterion.includes(round.capturedSourceDomain!), market.resolutionCriterion.slice(0, 90));
+
+  // ⛔ roundStore.patch must refuse the captured columns — that is what makes them
+  // write-once, and it is the same mechanism that already protects the frozen line.
+  let patchRefused = false;
+  try {
+    await roundStore.patch(round.id, { capturedSourceUrl: "https://evil.example.com/x" } as never);
+  } catch { patchRefused = true; }
+  ok("7C.4 · ⛔ the captured link is NOT patchable — a live round's source cannot move", patchRefused);
+
+  // A confirmed reading from a FOREIGN host must not settle this round.
+  await elapse(round.boundaryAt);
+  const obs = await observationStore.ensure(asset.id, round.boundaryAt);
+  await observationStore.confirm(obs.id, {
+    price: round.upTarget! + 50, // would have been a clear UP win
+    sourceUrl: "https://totally-different-site.example.com/gold",
+    sourceQuotedAt: round.boundaryAt,
+    evidence: "test fixture: a reading from a host this round never pinned",
+    confidence: 99, model: "test", rawHash: "test",
+  });
+
+  await resolveOverdueRounds({ maxRounds: 50, maxObservations: 8 });
+  const healed = (await roundStore.get(round.id))!;
+  ok("7C.5 · ⛔ a reading from the wrong host does NOT pay out, even though the price won",
+     healed.outcome === "VOID", `${healed.outcome} — settling here pays against a page the player never agreed to`);
+  ok("7C.6 · …and the reason names the mismatch, not the source", healed.voidReason === "source-mismatch",
+     String(healed.voidReason));
+  ok("7C.7 · …and every stake came back in full", (await walletsTotal()) === before + 0,
+     `${before} → ${await walletsTotal()}`);
+
+  // A LEGACY round (no capture) must be skipped, never voided on suspicion.
+  ok("7C.8 · a legacy round with no capture is SKIPPED by the check, not voided",
+     observationMatchesRound("https://anything.example.com/x", null).ok === true);
+  ok("7C.9 · a reading that cited nothing is also skipped",
+     observationMatchesRound(null, "kitco.com").ok === true);
+  ok("7C.10 · a subdomain of the pinned domain still matches",
+     observationMatchesRound("https://www.kitco.com/price", "kitco.com").ok === true);
 }
 
 // ── 8 · Conservation across the whole run ───────────────────────────────────

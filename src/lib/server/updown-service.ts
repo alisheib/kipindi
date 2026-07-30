@@ -27,7 +27,7 @@ import {
   type StoredAsset, type StoredChain, type StoredRound, type RoundOutcome, type VoidReason,
 } from "./updown-dal";
 import { observePrice, describeRefusal, type OracleReading, type RefusalReason } from "./updown-oracle";
-import { feedFromId, quoteAsset, describeFeedRefusal } from "./updown-feed";
+import { feedFromId, quoteAsset, describeFeedRefusal, hostMatchesDomain } from "./updown-feed";
 
 export type LifecycleResult<T> = { ok: true; data: T } | { ok: false; error: string };
 
@@ -92,6 +92,29 @@ export function decideOutcomeByTargets(
   if (closePrice >= upTarget) return { outcome: "UP", voidReason: null };
   if (closePrice <= downTarget) return { outcome: "DOWN", voidReason: null };
   return { outcome: "VOID", voidReason: "no-move" };
+}
+
+/**
+ * Does a confirmed reading's cited link sit on the domain THIS round pinned at open?
+ *
+ * Pure, and deliberately generous. Legacy passes: a round with no capture, or a reading
+ * that cited nothing, is a round we CANNOT check — and a round we cannot check is not a
+ * round we may void on suspicion. It fires only on a genuine contradiction, where the
+ * reading that bounded this round came from a host the round did not pin.
+ *
+ * Compares DOMAINS, not URLs: a source legitimately serves the same quote from a
+ * sub-path or query variant, and an exact-URL compare would void real rounds for no
+ * integrity gain. Domain identity is precisely what the trusted-source registry asserts.
+ */
+export function observationMatchesRound(
+  observationSourceUrl: string | null,
+  roundSourceDomain: string | null,
+): { ok: true; checked: boolean } | { ok: false; detail: string } {
+  if (!roundSourceDomain || !observationSourceUrl) return { ok: true, checked: false };
+  if (hostMatchesDomain(observationSourceUrl, roundSourceDomain)) return { ok: true, checked: true };
+  let host = observationSourceUrl;
+  try { host = new URL(observationSourceUrl).hostname; } catch { /* keep the raw string */ }
+  return { ok: false, detail: `reading cited "${host}", but this round pinned "${roundSourceDomain}" at open` };
 }
 
 /** UP→YES, DOWN→NO, VOID→VOID. The single mapping. */
@@ -287,6 +310,12 @@ export async function openRound(
   const asset = await assetStore.get(chain.assetId);
   if (!asset) return { ok: false, error: "Chain's asset no longer exists." };
 
+  // ── THE CAPTURE ────────────────────────────────────────────────────────────
+  // Read the asset's link ONCE, here, and use only these locals below. That is the whole
+  // point: the round records its page at open and never consults the asset row again.
+  const capturedSourceUrl = asset.priceSourceUrl;
+  const capturedSourceDomain = asset.sourceDomain;
+
   const openMs = Date.parse(openBoundaryIso);
   const closeMs = openMs + chain.durationMinutes * 60_000;
   const closeIso = new Date(closeMs).toISOString();
@@ -313,13 +342,13 @@ export async function openRound(
     titleSw: roundTitle(asset, chain.durationMinutes, "sw"),
     titleZh: roundTitle(asset, chain.durationMinutes, "zh"),
     category: (asset.category as never) ?? "macro",
-    sourceUrl: asset.priceSourceUrl,
+    sourceUrl: capturedSourceUrl,
     // Stated in the players' terms, and it is literally what settlement compares.
     resolutionCriterion: targets
-      ? `${asset.nameEn} (${asset.symbol}) price at ${closeIso}, read from ${asset.sourceDomain}. ` +
+      ? `${asset.nameEn} (${asset.symbol}) price at ${closeIso}, read from ${capturedSourceDomain}. ` +
         `Opening price ${openPrice}. UP if the price reaches ${targets.upTarget} (+${(marginBps / 100).toFixed(2)}%), ` +
         `DOWN if it reaches ${targets.downTarget} (−${(marginBps / 100).toFixed(2)}%), otherwise VOID and every stake is refunded.`
-      : `${asset.nameEn} (${asset.symbol}) price at ${closeIso}, read from ${asset.sourceDomain}, ` +
+      : `${asset.nameEn} (${asset.symbol}) price at ${closeIso}, read from ${capturedSourceDomain}, ` +
         `compared with the price at ${openBoundaryIso}. UP if higher by more than ` +
         `${minMoveFor(asset).toFixed(asset.decimals)}, DOWN if lower by more than that, otherwise VOID and every stake is refunded.`,
     resolutionAt: closeIso,
@@ -347,6 +376,8 @@ export async function openRound(
     marginBps,
     upTarget: targets?.upTarget ?? null,
     downTarget: targets?.downTarget ?? null,
+    capturedSourceUrl,
+    capturedSourceDomain,
     outcome: null,
     voidReason: null,
     resolvedAt: null,
@@ -372,6 +403,7 @@ export async function openRound(
       opensAt: openBoundaryIso, boundaryAt: closeIso,
       openPrice, openObservationId,
       marginBps, upTarget: targets?.upTarget ?? null, downTarget: targets?.downTarget ?? null,
+      capturedSourceUrl, capturedSourceDomain,
       rateProfile: profile, stakeBounds: bounds,
     },
   });
@@ -417,13 +449,45 @@ export async function closeRound(
   const asset = chain ? await assetStore.get(chain.assetId) : null;
   if (!chain || !asset) return { ok: false, error: "Round's chain or asset no longer exists." };
 
+  // ── THE SOURCE CHECK, before any verdict ───────────────────────────────────
+  // Both bounding readings must have come from the domain THIS round pinned at open. With
+  // the asset-source edit lock in place this should fire approximately never — which is
+  // exactly what is wanted from a defence-in-depth check. When it does fire, it means the
+  // link moved by a route the lock does not cover (a direct DB edit, a script, a new
+  // caller), and the honest response is to refuse to settle rather than pay out against a
+  // page the player never agreed to. Legacy rounds (no capture) and readings that cited
+  // nothing are skipped, not voided: a round we cannot check is not a round we may void on
+  // suspicion.
+  // The domain a settled round's receipt cites. The round's OWN pin, always — a receipt
+  // naming the asset's CURRENT link would describe a page nobody read. The fallback covers
+  // only rounds that settled before the capture column existed, where it is the sole
+  // surviving information.
+  const evidenceDomain = round.capturedSourceDomain ?? asset.sourceDomain;
+
+  let sourceMismatch: string | null = null;
+  {
+    const ids = [round.openObservationId, closeObservationId].filter((x): x is string => !!x);
+    for (const id of ids) {
+      const obs = await observationStore.get(id);
+      if (!obs || obs.state !== "CONFIRMED") continue;
+      const verdict = observationMatchesRound(obs.sourceUrl, round.capturedSourceDomain);
+      if (!verdict.ok) { sourceMismatch = verdict.detail; break; }
+    }
+  }
+
   // Use the round's FROZEN targets (the margin model). Legacy rounds opened before the
   // margin model have null targets and fall back to the openPrice ± minMove rule.
   const useTargets = round.upTarget != null && round.downTarget != null;
-  const { outcome, voidReason } = useTargets
+  const decided = useTargets
     ? decideOutcomeByTargets(closePrice, round.upTarget, round.downTarget)
     : decideOutcome(round.openPrice, closePrice, minMoveFor(asset));
-  const finalVoidReason = outcome === "VOID" ? (voidReasonOverride ?? voidReason ?? "source-failed") : null;
+  // A mismatch overrides the arithmetic outright: it does not matter what the prices say
+  // if one of them came from the wrong place.
+  const outcome: RoundOutcome = sourceMismatch ? "VOID" : decided.outcome;
+  const voidReason = sourceMismatch ? ("source-mismatch" as VoidReason) : decided.voidReason;
+  const finalVoidReason = outcome === "VOID"
+    ? (sourceMismatch ? "source-mismatch" : (voidReasonOverride ?? voidReason ?? "source-failed"))
+    : null;
   const side = outcomeToSide(outcome);
   const nowIso = new Date().toISOString();
 
@@ -441,10 +505,12 @@ export async function closeRound(
         side === "VOID"
           ? useTargets
             ? `Round voided (${finalVoidReason}): close ${closePrice} stayed inside the band [${round.downTarget}, ${round.upTarget}] (open ${round.openPrice} ± ${((round.marginBps ?? 0) / 100).toFixed(2)}%). Every stake is refunded in full.`
-            : `Round voided (${finalVoidReason}). Every stake is refunded in full.`
+            : sourceMismatch
+              ? `Round voided (source-mismatch): ${sourceMismatch}. Every stake is refunded in full.`
+              : `Round voided (${finalVoidReason}). Every stake is refunded in full.`
           : useTargets
-            ? `Close ${closePrice} ${outcome === "UP" ? `≥ up target ${round.upTarget}` : `≤ down target ${round.downTarget}`} (open ${round.openPrice} ± ${((round.marginBps ?? 0) / 100).toFixed(2)}%, ${asset.symbol}, ${asset.sourceDomain}).`
-            : `Open ${round.openPrice} → close ${closePrice} (${asset.symbol}, ${asset.sourceDomain}). Moved ${((closePrice ?? 0) - (round.openPrice ?? 0)).toFixed(asset.decimals)}.`,
+            ? `Close ${closePrice} ${outcome === "UP" ? `≥ up target ${round.upTarget}` : `≤ down target ${round.downTarget}`} (open ${round.openPrice} ± ${((round.marginBps ?? 0) / 100).toFixed(2)}%, ${asset.symbol}, ${evidenceDomain}).`
+            : `Open ${round.openPrice} → close ${closePrice} (${asset.symbol}, ${evidenceDomain}). Moved ${((closePrice ?? 0) - (round.openPrice ?? 0)).toFixed(asset.decimals)}.`,
       // Settlement is immediate for Up & Down — the window is zero-length, NOT skipped.
       // settleMarket still runs its standing-objection check below.
       objectionsClosedAt: nowIso,

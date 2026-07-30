@@ -1261,9 +1261,16 @@ model UpDownAsset {
   /// Kit icon recipe key ("gold" | "silver" | …). Not a URL — the mark is a kit asset.
   iconKey String
 
-  /// THE SOURCE LINK, captured per the management requirement: a round records the
-  /// link at generation and resolves against THAT SAME link. The host must also be
-  /// an enabled TrustedSource in `category` — one allowlist, not two.
+  /// THE SOURCE LINK a NEW round captures at open. The host must also be an enabled
+  /// TrustedSource in `category` — one allowlist, not two.
+  ///
+  /// ⚠️ THIS FIELD IS EDITABLE AND IS NOT WHAT ANY ROUND RESOLVES AGAINST. A round pins
+  /// its own copy in `UpDownRound.capturedSourceUrl` at open and resolves against that.
+  /// This comment used to claim the round "resolves against THAT SAME link" while
+  /// `UpDownRound` carried no source column at all and resolution read this row LIVE at
+  /// every boundary — so editing an asset silently re-pointed rounds that already held
+  /// player money, and the player-facing resolution criterion became untrue. Three other
+  /// surfaces repeated the same false claim. The capture is real now; keep it that way.
   priceSourceUrl String
   sourceDomain   String
   category       String @default("macro")
@@ -1362,10 +1369,27 @@ model UpDownRound {
   upTarget           Decimal? @db.Decimal(24, 8)
   downTarget         Decimal? @db.Decimal(24, 8)
 
+  /// THE SOURCE PINNED AT OPEN, alongside the line. The ASSET's link is editable; a
+  /// round's is not. Settlement, the domain check and the proof panel all read THESE,
+  /// never `UpDownAsset.priceSourceUrl`, so an operator editing an asset can never move
+  /// the page out from under money already staked.
+  ///
+  /// ⚠️ Named `captured*` deliberately. In `closeRound`, a field called `sourceDomain`
+  /// would sit one identifier away from `asset.sourceDomain`, and reading the wrong one
+  /// is the entire bug class this exists to close.
+  ///
+  /// Null only on rounds that had already SETTLED before 2026-07-30 — their money has
+  /// moved, and their proof panel renders from the observations, which carry their own
+  /// link. Every read path treats null as "legacy, skip the check", exactly as it does a
+  /// legacy margin: a round we cannot check is not a round we may void on suspicion.
+  capturedSourceUrl    String?
+  capturedSourceDomain String?
+
   outcome    UpDownRoundOutcome?
   /// Why a round VOIDed, when it did: "no-move" (inside minMove), "source-failed"
-  /// (no confirmed observation), or "operator". Players are refunded in full either
-  /// way; this is for the audit trail and the ops readout.
+  /// (no confirmed observation), "source-mismatch" (the reading that bounded it cited a
+  /// host this round did not pin at open), or "operator". Players are refunded in full
+  /// every way; this is for the audit trail and the ops readout.
   voidReason String?
 
   resolvedAt DateTime?

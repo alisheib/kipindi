@@ -93,8 +93,12 @@ function hashRaw(raw: string): string {
   return createHash("sha256").update(raw).digest("hex").slice(0, 16);
 }
 
-/** The endpoint's host must match the domain the operator approved for this asset. */
-function hostMatches(endpoint: string, approvedDomain: string): boolean {
+/**
+ * THE host rule. ONE copy, exported — the feed's endpoint check, the oracle's GATE 2 and
+ * the round's settlement check all call this. Two copies is two answers to one question,
+ * and the question decides whether real money settles.
+ */
+export function hostMatchesDomain(endpoint: string, approvedDomain: string): boolean {
   let host: string;
   try {
     host = normalizeDomain(new URL(endpoint).hostname);
@@ -283,7 +287,7 @@ export async function quoteAsset(
   feed: PriceFeed,
   req: FeedRequest & { approvedDomain: string },
 ): Promise<FeedQuote> {
-  if (!hostMatches(req.endpoint, req.approvedDomain)) {
+  if (!hostMatchesDomain(req.endpoint, req.approvedDomain)) {
     return {
       ok: false,
       reason: "wrong-source",
