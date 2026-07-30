@@ -217,6 +217,24 @@ the shared frozen component. **Keep any new `delta` under ~12 characters.**
 > codebase's `node:crypto` imports break under it). Remove such a junction with cmd `rmdir` —
 > the link only; `rm -rf` would delete the other checkout's install while it is in use.
 
+### Where everything lives in the admin nav
+
+Asked in-session, so recorded here — the two AI pipelines are in **different sidebar groups**
+because they are different games, and that is easy to trip over:
+
+| Sidebar group | Item | Route | For |
+|---|---|---|---|
+| **MARKETS** | **AI poll generation** | `/admin/ai-polls` | long-form **polls** |
+| | AI candidates · Player proposals · Curation queue · Resolver queue | | polls pipeline |
+| **UP & DOWN · JUU NA CHINI** | Overview | `/admin/updown` | assets · chains · **reading method** · thresholds |
+| | **AI proposals** | `/admin/updown/proposals` | **propose → review → approve → arm a chain** |
+| | Rounds | `/admin/updown/rounds` | round explorer + **operator void** |
+
+The **AI on/off switch for BOTH** is the *AI toolkit* dropdown in the **top bar** — not in either
+section. `/admin/updown` renders it read-only via `controlled-elsewhere.tsx`; one control, one
+place. ⚠️ That toolkit chip reads **"off" when there is no `ANTHROPIC_API_KEY`**, which is a
+different thing from the generation switch being off — do not read one as the other.
+
 ### Running the console locally
 
 ```

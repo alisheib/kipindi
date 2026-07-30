@@ -400,7 +400,7 @@ Reuses `src/lib/server/roles.ts` tiers — no new tier.
 | Assets, durations, stake bounds, rate profile, thresholds, reading method | `/admin/updown/*` — **never** mirrored into `/admin/config` |
 | The AI pause switch | The **AI-toolkit top-bar dropdown** (the one home for every AI switch), config key `ai.controls.pollGenEnabled`. `/admin/updown` renders it read-only via `controlled-elsewhere.tsx`. It now gates **both** generators — long-form polls and Up & Down proposals — and is enforced **inside** `generateAIPoll`, not only in the actions that call it |
 | Price source domains | The existing `/admin/sources` trusted-source registry — **no second allowlist** |
-| The host-match rule | `hostMatchesDomain` in `updown-feed.ts` — **one** definition, shared by the oracle's gate, the round check and the sentinel chip |
+| The host-match rule | `hostMatchesDomain` in `updown-feed.ts` — **one** definition, shared by the AI reader's gate 2, the feed's endpoint check, the round-level source check and the sentinel chip |
 | Resolution authorization | `resolution-policy.ts` (untouched by this feature) |
 
 > ⛔ A source link, once a round has captured it, has **no** home that can change it. The
