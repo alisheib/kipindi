@@ -443,15 +443,39 @@ voided market · `positions/page.tsx:50` N+1 · 🔴 **cash-out failure headline
 (`market-service.ts:1300,1363`) — the player sees a generic failure for distinct causes.
 **Exit** Cash-out exactly-once, failure causes distinguished and localised.
 
-### H6 · Resolution & settlement — `cert:h6` 🔴 **Wave 1**
-**Surfaces** `admin/resolver/[id]` `admin/resolver-queue` `admin/settlement` · **Existing** `test:settlement-gate` `test:outcome` `test:emergency`
-**Attack** 🔴 **"Solo resolve" lost its production hard-lock** (deliberately, 2026-07-12, so a
-consultant could test). It **must be OFF before real money (POCA §16)** and is currently enforced by
-*discipline, not code*. **Certification makes it code.** · settle twice · settle a void · settle with
-zero on one side · settle a one-participant market · reverse a wrong settlement — is it audited and
-does the money return exactly?
-**Exit** Solo-resolve hard-locked in production **by code**, double-settle impossible, reversal exact
-and audited.
+### H6 · Resolution & settlement — `cert:h6`
+**Surfaces** `admin/resolver/[id]` `admin/resolver-queue` `admin/settlement` · **Existing** `test:settlement-gate` `test:outcome` `test:emergency` `test:two-admin` `test:officer-conflict`
+
+> ⛔ **CORRECTION, 2026-07-31 — read before touching this.** This dossier originally said
+> *"solo-resolve lost its production hard-lock… certification makes it code."* **That was wrong,
+> and acting on it would have reversed a dated owner decision.**
+>
+> `COMPLIANCE-DECISIONS.md` §2026-07-24 ("Single-admin resolution by default; two-admin
+> authorization optional; officer-conflict block removed") records Ali's explicit decision that
+> single-admin resolution is the **permanent default in all money modes, with NO real-money
+> hard-lock**, and that the officer-conflict block is **deleted** from `resolveMarket` and
+> `emergencyVoidMarket`. It carries its own **⛔ guardrail**: *do not re-add an officer-conflict
+> block or a second place that edits the two-admin flag.* `test:two-admin` asserts
+> "simulated-LIVE **no hard-lock**" as a passing requirement — so adding one breaks a green suite
+> on purpose.
+>
+> The earlier note this dossier was built on (a hard-lock removed 2026-07-12 "so a consultant
+> could test") describes a **superseded** state. `resolution-policy.ts` supersedes and replaces
+> that override entirely.
+>
+> 🟡 **What is actually open is a QUESTION FOR ALI, not an engineering task:** POCA §16 describes a
+> two-officer rule, and this decision knowingly relaxes it. If he wants two-officer resolution
+> mandatory before real money, that is a **new owner decision** — it needs a new dated entry in
+> `COMPLIANCE-DECISIONS.md`, `test:two-admin` updated, and the ⛔ guardrail lifted. **No session
+> should implement it without that.**
+
+**Attack** Settle twice · settle a void · settle with zero on one side · settle a one-participant
+market · reverse a wrong settlement — is it audited and does the money return exactly? · resolve a
+market the officer holds a position in (permitted by the 2026-07-24 decision — confirm the audit
+records `resolutionAuth: "single-admin"` and the badge never claims a fabricated two-signature) ·
+flip `requireTwoOfficer` mid-ceremony, between stage-1 and stage-2.
+**Exit** Double-settle impossible, reversal exact and audited, the resolution badge never overstates
+how many officers signed, and the flag cannot be flipped to strand a half-finished ceremony.
 
 ### H7 · Sentinel & resolution policy — `cert:h7`
 **Owns** `market-sentinel` `resolution-policy` · **Existing** `test:sentinel-guards`
@@ -694,7 +718,7 @@ Not by size. By **what a failure costs**, and what unblocks other modules.
 | Wave | Modules | Why |
 |---|---|---|
 | ✅ **0** | dev-route guard · orphan tracker | **DONE 2026-07-31.** Until they existed, one new route minted money and 145 files claimed coverage that had expired |
-| 🟨 **1** | ✅ **F1 G8** (honest withdrawal messaging — DONE 2026-07-31) · **H6** (hard-lock solo-resolve) · **A6** (admin TOTP on) | Three **licence** exposures. None needs Selcom. All are ours, and all are small. **H6 and A6 remain — start there.** |
+| 🟨 **1** | ✅ **F1 G8** DONE 2026-07-31 · ⛔ **H6 — NOT an engineering task**, see its dossier: a hard-lock would reverse the owner decision of 2026-07-24 and break `test:two-admin`. Needs Ali's ruling, not code · 🔴 **A6** (admin TOTP on) **is the remaining Wave 1 item** | Licence exposures that need no Selcom. **Start with A6.** |
 | **2** | G1 G2 G3 G4 → E1 E2 E3 | The money core. G-domain resolves the orphan TZS 100,000 and the broken chain; E-domain guards them shut. **G3 needs Ali's fee ruling first** |
 | **3** | H4 H5 H1 H3 H7 H2 | Highest-traffic money paths. Adopts 9 orphaned stress suites incl. the 200-concurrent-bet proof |
 | **4** | K1 K2 K3 K4 · D1 D2 D3 D4 | Compliance and PII. **D4 has no gate at all today** |
@@ -804,7 +828,7 @@ Existing commands to use rather than reinvent: `npm run test:all` · `npm run qa
 | H3 Scheduling & ticker | `cert:h3` | ⬜ |
 | H4 Bet placement & admission | `cert:h4` | ⬜ 9 orphans to adopt |
 | H5 Positions & cash-out | `cert:h5` | ⬜ |
-| H6 Resolution & settlement | `cert:h6` | ⬜ **Wave 1** — solo-resolve unlocked |
+| H6 Resolution & settlement | `cert:h6` | ⬜ ⛔ **premise corrected 2026-07-31** — single-admin resolution is a dated owner decision with no hard-lock **by design**; a lock needs Ali's ruling, not code |
 | H7 Sentinel & policy | `cert:h7` | ⬜ |
 | I1 Poll generation | `cert:i1` | ⬜ |
 | I2 Trusted-source registry | `cert:i2` | ⬜ |

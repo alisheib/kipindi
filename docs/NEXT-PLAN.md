@@ -7,7 +7,54 @@ it is the operator actions listed under "Only Ali can do these", below.
 
 ---
 
-## ▶ PICK UP HERE — state at the close of 2026-07-31
+## ▶▶ PICK UP HERE — close of session 2026-07-31 (late)
+
+**The tree is clean and everything below is pushed. Nothing is half-finished.**
+
+**Read [`MODULE-CERTIFICATION-PROGRAM.md`](MODULE-CERTIFICATION-PROGRAM.md) first** — the platform
+is now divided into **52 modules across 12 domains**, each with a dossier, an attack list and a
+gate. That document commands the remaining work; this one holds launch-hardening state.
+
+### What this session shipped
+
+| | |
+|---|---|
+| Wave 0 · `test:cert-devroutes` | 110 assertions. Every exported handler under `api/dev-test/` and `api/dev/` must refuse in production **before its first `await`**. All 36 were guarded only by a convention repeated 35 times. Proven red. |
+| Wave 0 · `test:orphans` | **145 of 286** `scripts/` files are run by nothing. Now declared in `scripts/orphan-allowlist.json`; the gate refuses to re-seed. **145 → 0 is the program's progress metric.** |
+| Wave 1 · **F1 G8** `test:cert-f1` | 69 assertions. Players are now told, in en/sw/zh, that withdrawals cannot be paid — on withdraw **and** deposit (above the cashback promo). `unavailable` disables the form *and* the server action refuses. Officer control on `/admin/payments`. **The banner cannot be forced green:** `worstOf(declared, derived)`. |
+| `npm run test:docs` | Every link, `scripts/*` path and `npm run` reference in `docs/` must resolve. |
+| `docs/README.md` | New index — all 41 docs with an honest status (LAW / LIVE / RECORD / OPEN / DESIGN / HISTORICAL). |
+| Suite | **112/112 green** (`--skip responsive,motion`). `test:responsive` still unverified — see the trap list. |
+
+### 🔴 Start here, in this order
+
+1. **A6 — turn admin TOTP on.** `DISABLE_ADMIN_TOTP` is set in production, so admin 2FA is OFF.
+   The **only** remaining Wave 1 item. ⚠️ Confirm an admin is enrolled *first* or the flip locks Ali
+   out of his own console.
+2. **Wave 2 — the money core** (G1–G4, then E1–E3). This resolves the orphan TZS 100,000 wallet and
+   the broken audit-chain link. ⚠️ **G3 is blocked** until Ali rules on the fee basis
+   ([`FEE-MODEL-DECISION.md`](FEE-MODEL-DECISION.md), open since 2026-07-22).
+3. **F1's remaining gates** — G3 (double-pay adversarial) and G7 (rail-failure resilience). G8 is done.
+
+### ⛔ Do NOT do these — each would undo a deliberate decision
+
+- **Do not add a two-officer/solo-resolve hard-lock.** See the note under item 3 below and H6's
+  dossier. Superseded by the owner decision of 2026-07-24; `test:two-admin` asserts its absence.
+- **Do not certify J1 (Up & Down)** until Ali rules on `feat/updown-source-pinning-and-proposals`
+  (28 commits, unmerged). Certifying first would certify a live money bug.
+- **Do not reopen design.** Frozen. Write findings down instead.
+- **Do not re-seed `orphan-allowlist.json`.** It may only shrink.
+
+### Still only Ali can do these
+
+Create the `50pick-backups` R2 bucket (nothing is off-box yet) · move `BACKUP_ENCRYPTION_KEY` from
+`.env.backup.local` into a password manager · set `SENTRY_DSN` (nobody is paged) · rule on the fee
+basis · rule on the Up & Down branch · decide the orphan TZS 100,000 wallet · rotate the Postgres
+password and the credentials exposed in chat.
+
+---
+
+## ▶ Earlier that day — state at the close of 2026-07-31
 
 **Nothing is half-finished. No branch is mid-edit, no test is mid-run, the tree is clean
 and everything below is pushed.** Head `main` at the time of writing: the `test:docs` guard
@@ -271,6 +318,14 @@ measured** rather than declaring it solved.
 It was disabled deliberately so a consultant could test, and must be on before real money.
 **Do not simply unset it** — confirm an admin has TOTP enrolled first, or the flip locks
 Ali out of his own console.
+
+⛔ **Not on this list, and deliberately so: the two-officer resolution rule.** An earlier note
+claimed solo-resolve "lost its production hard-lock" and must be re-locked. That is
+**superseded** — `COMPLIANCE-DECISIONS.md` §2026-07-24 records Ali's decision that single-admin
+resolution is the permanent default in all money modes with **no** real-money hard-lock, the
+officer-conflict block is deleted, and `test:two-admin` asserts the absence of a lock as a
+passing requirement. Re-adding one reverses a dated owner decision. If Ali wants it mandatory
+before real money that is a **new** decision needing a new entry and a test change.
 
 **4. `docs/POLISH-BACKLOG.md` §2 FIX SOON** — the i18n and date-helper items. Small, real,
 and untouched.
