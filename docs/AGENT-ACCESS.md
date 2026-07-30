@@ -200,6 +200,35 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 
 ---
 
+## 3.5 · Who owns what — and the gap
+
+🔴 **Nothing in this repo records which account owns Cloudflare.** Searched 2026-07-31: the
+setup guide, the hosting status doc, every `CLOUDFLARE_*` reference, and the local `.env`
+(absent). All the docs ever say is *"Ali created Cloudflare account"* (2026-07-03).
+
+That matters more than it sounds. Behind that one login sit **`50pick.tz` DNS**, the **MX/SPF
+/DKIM records that keep `ali.sheib@50pick.tz` and Postmark working**, the **KYC bucket**, and
+soon the **backup bucket**. If Ali is unreachable, nobody can reach any of it — and a
+recovery that needs DNS is a recovery that stops.
+
+What *is* known, enough to confirm you are in the right account:
+
+| | |
+|---|---|
+| Cloudflare account ID | `e6e5f86245721a28fea6fe1170feba12` (visible in the dashboard URL) |
+| Assigned nameservers | `ollie.ns.cloudflare.com` / `yadiel.ns.cloudflare.com` |
+| Zone | `50pick.tz` — 31 records, 0 proxied, mail records carried over from Netpoa |
+| R2 buckets | `50pick-kyc` (WEUR) exists; `50pick-backups` **does not** |
+| Login email | ❌ **unknown — fill this in** |
+
+⚠️ Ali runs **at least two identities** across these projects (`ali.sheib@omega-financial-solutions.com`
+is the git identity; the AWARKEH Railway project sits under an Outlook account). Do not assume
+one; check the account ID.
+
+**To fill the gap:** record the owning login for Cloudflare, Railway, GitHub, Selcom and
+Postmark in the table above — **account and email only, never passwords**. A password manager
+holds the secrets; this file holds the map to them.
+
 ## 4 · Rules that survive this session
 
 1. **Never paste a secret into the chat.** Terminal, `railway variables --set`, or

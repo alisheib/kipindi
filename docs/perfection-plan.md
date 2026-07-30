@@ -1,5 +1,9 @@
 > **STATUS: aspirational planning doc** (not a verified list of current defects).
-> The authoritative launch-gate work is `docs/perfection-plan.md`.
+> The authoritative live plan is [`NEXT-PLAN.md`](NEXT-PLAN.md).
+>
+> ⚠️ This line used to read *"the authoritative launch-gate work is
+> `docs/perfection-plan.md`"* — pointing at **itself**. Fixed 2026-07-31. Read this file for
+> the role-gate *framework*; read `NEXT-PLAN.md` for what is actually open.
 
 # 50pick — Path to Perfect · 0-Issue Launch Plan
 

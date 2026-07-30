@@ -201,7 +201,7 @@ container instead, which must be kept on production's major version.
   transient network blip in a log nobody reads. Check with:
 
   ```
-  node scripts/../<scratch>/fix-backup-source-url.mjs   # reports host + reachability, no credentials
+  railway run node scripts/backup-secrets.mjs   # reports host + reachability, writes nothing
   ```
 
   ⚠️ The same trap applies to **anything** run outside Railway against this database —

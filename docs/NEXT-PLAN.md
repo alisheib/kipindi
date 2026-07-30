@@ -3,7 +3,38 @@ frozen and shipped. **Revised 2026-07-31 against the live platform, not against 
 
 **Items 1, 2 and 4 are DONE and live. Item 3 (withdrawals) is blocked at Selcom, and
 items 5–6 (scale, multi-container) are untouched.** What is left on 1 and 2 is not code —
-it is four operator actions listed under "Only Ali can do these", below.
+it is the operator actions listed under "Only Ali can do these", below.
+
+---
+
+## ▶ PICK UP HERE — state at the close of 2026-07-31
+
+**Nothing is half-finished. No branch is mid-edit, no test is mid-run, the tree is clean
+and everything below is pushed.** Head `main` at the time of writing: the `test:docs` guard
+commit.
+
+**What that session did, so you don't redo it:**
+
+| | |
+|---|---|
+| GitHub repo secrets | ✅ all seven set + verified (`gh secret list`). `railway run node scripts/backup-secrets.mjs` re-checks them |
+| Nightly backup | ✅ runs end-to-end on Actions. A real run dumped production (32,538 rows, 13.8 MB sealed), restored into a throwaway PG18 and passed **79 checks** |
+| 🔴 The bug it found | The workflow reported **every step green while NOTHING had ever gone off-box** — `\| tee` swallowed the upload's exit code. Fixed with `set -euo pipefail` + an explicit empty-destination failure, and **proven red**. Full account in [`BACKUP-RUNBOOK.md`](BACKUP-RUNBOOK.md) |
+| Selcom probe | ✅ fixed — it reported `USABLE RAILS: NONE` (i.e. "the vendor account is dead") whenever run via `railway run`. See [`SELCOM-PAYOUT-RAILS.md`](SELCOM-PAYOUT-RAILS.md) |
+| Payout state | ⚠️ **unchanged** — re-verified from production: float TZS 100,000, `SELCOM_PESA`/`HUDUMA_AGENT` still `4035`, TIPS still `999`, two payouts still stuck |
+| New guard | `npm run test:docs` — every link, `scripts/*` path and `npm run` reference in `docs/` must resolve. Broken on purpose and observed to go red |
+| Test suite | **111** `test:*` scripts. 108 verified green; `test:responsive` still unverified (see the trap list below) |
+
+**The ONE thing blocking backups, and it needs Ali, not code:** the `50pick-backups` R2
+bucket does not exist. Cloudflare → R2 → Create bucket. The Railway R2 token is
+bucket-scoped and cannot create it. Then prove it with
+`railway run node scripts/backup-verify-offbox.mjs` — **do not trust a green tick**, that is
+exactly what went wrong.
+
+**Also outstanding from that session, and easy to lose:** `BACKUP_ENCRYPTION_KEY` was
+generated into `.env.backup.local` (gitignored) and **must be moved into a password
+manager**. It is the seal on every artifact the nightly will write. The previous drill's key
+was written to that same path and lost.
 
 # 50pick — next plan: LAUNCH HARDENING
 
@@ -172,6 +203,9 @@ Each is fine today and bites at a stated threshold — none is speculative:
 
 ## What still governs (read before touching anything)
 
+- [`docs/README.md`](README.md) — **the index. 40 docs, each with an honest status: LAW, LIVE,
+  RECORD, OPEN, DESIGN or HISTORICAL.** Read it before opening anything else in `docs/`; from
+  the outside a snapshot of a Tuesday in May looks identical to a law
 - `CLAUDE.md` — how this repo works
 - `docs/DESIGN_AUTHORITY.md` — B1–B10, and "what the freeze pass found — do not undo"
 - `docs/design-system/v2-2026-07-27/06-patterns-and-rules/` — RULES.md (16 laws) +

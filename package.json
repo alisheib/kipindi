@@ -143,6 +143,7 @@
     "test:search": "tsx scripts/search-grammar.test.mts",
     "test:search-adoption": "tsx scripts/search-adoption.test.mts",
     "test:measure": "tsx scripts/measure-system.test.mts",
+    "test:docs": "node scripts/docs-links.mjs",
     "qa:contrast-rendered": "node scripts/contrast-rendered.mjs"
   },
   "dependencies": {
