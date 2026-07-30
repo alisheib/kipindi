@@ -213,6 +213,32 @@ The warning is recorded on the function itself.
 ride the broken upstream — and the ladder already tries them, so no code change is needed. This
 matters more than fixing the `010`.
 
+### ⛔ `railway run` LIES about Selcom. Use `railway ssh`.
+
+Re-verified 2026-07-31 — state unchanged (float TZS 100,000, `SELCOM_PESA`/`HUDUMA_AGENT`
+still `4035`, TIPS still `999`, both payouts still stuck). But the *first* attempt used
+`railway run`, and it reported:
+
+```
+USABLE RAILS: NONE — disbursement is not provisioned for this vendor
+```
+
+**That was false.** Selcom whitelists the **production container's** IP. `railway run`
+executes on the local machine with production's env vars injected, so every rail returns
+`403 … Source IP not whitelisted (4032)` — and the probe folded that into "NOT ENABLED".
+Read during an outage, it says *the vendor account is dead*, which would send someone to
+Selcom with the wrong emergency.
+
+✅ Fixed: `4032` is now its own `WRONG HOST` verdict, and when **every** rail returns it the
+probe prints `VERDICT UNKNOWN`, names the cause, gives the right command, and exits `3`
+rather than concluding. Verified both ways — the same `railway run` that lied now refuses,
+and the `railway ssh` answer is unchanged.
+
+```
+railway ssh "node scripts/selcom-probe.mjs"     # ✅ the only trustworthy invocation
+railway run node scripts/selcom-probe.mjs       # ❌ always 4032 — tells you nothing
+```
+
 ### ⛔ Corrections — claims that were wrong, kept so nobody re-derives them
 
 - ~~"The float is empty and that is the blocker."~~ The float was funded and `010` came back.

@@ -118,8 +118,24 @@ const PROBE_TRANSID = "50pick-probe-0001";
  * A 401/403 is the gateway refusing us at the door — that is the provisioning
  * signal. Everything else means the endpoint engaged with the request, which is
  * exactly what "enabled" means here, even when the answer is "no such transaction".
+ *
+ * 🔴 EXCEPT `4032 "Source IP not whitelisted"`. That is also a 403, but it says nothing
+ * whatever about provisioning — it says the request came from the wrong machine. Selcom
+ * whitelists the production container's IP, so `railway run` (which executes LOCALLY with
+ * production's env vars injected) gets 4032 on EVERY rail. Folding that into "NOT ENABLED"
+ * made this probe print "USABLE RAILS: NONE — disbursement is not provisioned for this
+ * vendor" while, from production, WALLET_CASHIN and QWIKSEND were both live and the float
+ * held TZS 100,000. Observed 2026-07-31. A payout outage would have been diagnosed as a
+ * dead vendor account.
+ *
+ * Use `railway ssh "node scripts/selcom-probe.mjs"`, never `railway run`.
  */
+function isWrongHost(r) {
+  return r.httpStatus === 403 && /not whitelisted|4032/i.test(String(r.json?.message ?? ""));
+}
+
 function verdictFor(r) {
+  if (isWrongHost(r)) return "WRONG HOST";
   if (r.httpStatus === 401 || r.httpStatus === 403) return "NOT ENABLED";
   return "ENABLED";
 }
@@ -185,7 +201,29 @@ async function main() {
   }
 
   const enabled = results.filter((r) => r.verdict === "ENABLED").map((r) => r.rail);
+  const wrongHost = results.filter((r) => r.verdict === "WRONG HOST");
   console.log("\n" + "=".repeat(78));
+
+  // Refuse to draw a provisioning conclusion from the wrong machine. Every rail refused
+  // on IP means we learned nothing about provisioning — saying "NONE" here would be a lie
+  // that reads exactly like a dead vendor account.
+  if (wrongHost.length === results.length && results.length > 0) {
+    console.log("VERDICT UNKNOWN — every rail refused this machine's IP (4032), not our account.");
+    console.log("");
+    console.log("  Selcom whitelists the PRODUCTION container's IP. `railway run` executes");
+    console.log("  locally with production's env vars, so it is always the wrong IP. Re-run as:");
+    console.log("");
+    console.log('      railway ssh "node scripts/selcom-probe.mjs"');
+    console.log("");
+    console.log("=".repeat(78));
+    process.exitCode = 3;
+    return;
+  }
+
+  if (wrongHost.length) {
+    console.log(`⚠️  ${wrongHost.length} rail(s) refused this machine's IP (4032) — their verdict is UNKNOWN,`);
+    console.log("   not \"not enabled\". Re-run via `railway ssh` for a trustworthy answer.");
+  }
   console.log(enabled.length ? `USABLE RAILS: ${enabled.join(", ")}` : "USABLE RAILS: NONE — disbursement is not provisioned for this vendor");
   console.log("=".repeat(78));
 }
