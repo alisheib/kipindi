@@ -27,6 +27,10 @@ type Props = {
   variant?: "gold" | "claret" | "primary" | "ghost";
   size?: "sm" | "md" | "lg" | "xl";
   className?: string;
+  /** Refuse the action outright, independently of the pending state — e.g. withdraw while
+   *  payouts cannot be paid. The atom had no way to express this, so callers that needed a
+   *  non-submittable form had to leave a live button beside a disabled fieldset. */
+  disabled?: boolean;
 };
 
 export function SubmitButton({
@@ -35,13 +39,14 @@ export function SubmitButton({
   variant = "primary",
   size = "lg",
   className = "",
+  disabled = false,
 }: Props) {
   const { pending } = useFormStatus();
   const { t } = useT();
   return (
     <button
       type="submit"
-      disabled={pending}
+      disabled={pending || disabled}
       aria-busy={pending}
       className={`btn btn-${variant} btn-${size} w-full inline-flex items-center justify-center gap-2 ${className}`}
     >

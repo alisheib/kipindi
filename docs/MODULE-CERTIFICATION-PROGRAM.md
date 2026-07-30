@@ -317,16 +317,42 @@ the real shape · a webhook arriving during a deploy.
 
 ### F1 · Payouts, rails & the ladder — `cert:f1` 🔴 **Wave 1**
 **Owns** `selcom` (980 L), the fallback ladder · **Existing** `test:selcom` `test:payout-rails` `test:fast-payout` `test:payout-alloc` `test:payout-observability`
-**Attack** 🔴 **Withdrawals cannot be paid — Selcom-side, not ours.** But **G8 is entirely ours:**
-the product must tell a player the truth, in 3 languages, about when they can take money out. An
-operator accepting deposits while payouts are down must say so plainly. **This is the most valuable
-work in this document that needs nobody's permission.** · re-attempt a `999` ambiguous payout on a
+### ✅ G8 (TRUTH) — DONE 2026-07-31, `npm run test:cert-f1` (69 assertions)
+
+Withdrawals cannot be paid (Selcom-side). Until this landed, the product **said nothing at all**:
+the withdraw form looked entirely normal, a player filled it in, submitted, and got a generic
+failure. Now:
+
+- **`src/lib/server/payout-status.ts`** — effective status is `worstOf(officer-declared,
+  derived-from-the-queue)`. 🔴 **An officer cannot declare "operational" while payouts are stuck.**
+  The flag may only ever make the picture WORSE. That asymmetry is the whole design: a banner an
+  officer could force green would be the same defect as `/admin/compliance`'s hardcoded backup
+  tick, pointed at players instead of auditors.
+- Derived from `txn.search` (indexed, filter in SQL, count from `total`) — **not** `txn.listAll`,
+  which the ceilings section below warns about and which this would have called on a player page
+  load. "Stuck" reuses `STUCK_PROCESSING_MS` from `txn-filters` rather than defining a second,
+  drifting threshold.
+- Notice on **withdraw AND deposit**, in en/sw/zh, non-dismissible, `role="alert"`. On deposit it
+  renders **above the cashback promo** — an incentive shown before a limitation reads as a lure.
+- `unavailable` disables the form **and** `withdrawAction` refuses server-side before touching the
+  wallet. A disabled form is a hint; the action is the control.
+- Officer control on `/admin/payments`, audited, showing declared vs derived and saying plainly
+  when reality has overruled the console.
+- Fixed on the way: two **hardcoded English** validation errors on the money path
+  (`actions.ts:53,57`) that a Swahili or Chinese player saw in English, and re-typed
+  `1000`/`5_000_000` literals now taken from the validators. `SubmitButton` gained the `disabled`
+  prop it lacked.
+- **Verified in a real browser**, all three locales, notice rendering, zero overflow, submit
+  disabled. ⚠️ Locale is the **`kp-locale` cookie**, not `?lang=` — the first attempt used the
+  query param and rendered English three times while reporting success.
+
+**Attack (still open for full certification)** · re-attempt a `999` ambiguous payout on a
 different rail and prove **one** payment, not two (a real double-pay bug was closed by rail-aware
 re-query — try to reopen it) · a refused payout must **return** the money, never freeze it ·
 ⛔ never "fix" an outage by editing `mnoToSelcomCashin`; the codes are proven correct ·
 ⛔ `railway ssh`, never `railway run` — see [`SELCOM-PAYOUT-RAILS.md`](SELCOM-PAYOUT-RAILS.md).
-**Exit** Honest player-facing messaging in 3 locales, double-pay un-reopenable, every failure path
-returns funds.
+**Exit** ~~Honest player-facing messaging in 3 locales~~ ✅, double-pay un-reopenable, every failure
+path returns funds.
 
 ### F2 · Cash-out & withdrawal locks — `cert:f2`
 **Surfaces** `wallet/withdraw` · **Existing** `test:cashout` `test:cashout-lock` `test:withdrawal`
@@ -667,8 +693,8 @@ Not by size. By **what a failure costs**, and what unblocks other modules.
 
 | Wave | Modules | Why |
 |---|---|---|
-| ✅ **0** | dev-route guard · orphan tracker | **DONE this pass.** Until they existed, one new route minted money and 145 files claimed coverage that had expired |
-| **1** | **F1** (honest withdrawal messaging) · **H6** (hard-lock solo-resolve) · **A6** (admin TOTP on) | Three **licence** exposures. None needs Selcom. All are ours, and all are small |
+| ✅ **0** | dev-route guard · orphan tracker | **DONE 2026-07-31.** Until they existed, one new route minted money and 145 files claimed coverage that had expired |
+| 🟨 **1** | ✅ **F1 G8** (honest withdrawal messaging — DONE 2026-07-31) · **H6** (hard-lock solo-resolve) · **A6** (admin TOTP on) | Three **licence** exposures. None needs Selcom. All are ours, and all are small. **H6 and A6 remain — start there.** |
 | **2** | G1 G2 G3 G4 → E1 E2 E3 | The money core. G-domain resolves the orphan TZS 100,000 and the broken chain; E-domain guards them shut. **G3 needs Ali's fee ruling first** |
 | **3** | H4 H5 H1 H3 H7 H2 | Highest-traffic money paths. Adopts 9 orphaned stress suites incl. the 200-concurrent-bet proof |
 | **4** | K1 K2 K3 K4 · D1 D2 D3 D4 | Compliance and PII. **D4 has no gate at all today** |
@@ -767,7 +793,7 @@ Existing commands to use rather than reinvent: `npm run test:all` · `npm run qa
 | E1 Wallet & balances | `cert:e1` | ⬜ orphan TZS 100,000 |
 | E2 Deposits | `cert:e2` | ⬜ |
 | E3 Payment webhooks | `cert:e3` | ⬜ |
-| F1 Payouts & rails | `cert:f1` | ⬜ **Wave 1** — messaging dishonest |
+| F1 Payouts & rails | `test:cert-f1` | 🟨 **G8 TRUTH DONE 2026-07-31** (69 assertions). Honest player messaging shipped in 3 locales + officer control. Remaining for full cert: G3 double-pay adversarial, G7 rail-failure resilience |
 | F2 Cash-out & locks | `cert:f2` | ⬜ |
 | G1 Ledger & double-entry | `cert:g1` | ⬜ |
 | G2 Trial balance | `cert:g2` | ⬜ `ok:false` on production |

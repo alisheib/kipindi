@@ -18,6 +18,7 @@ import { requireAdminTotp } from "@/lib/server/admin-guard";
 import { canAct } from "@/lib/server/rbac";
 import { setKillSwitch, type Mno, MNOS } from "@/lib/server/payment-ops";
 import { setPaymentControls, type ControlsUpdate, type PaymentProviderId } from "@/lib/server/payment-control";
+import { setPayoutStatus, PAYOUT_STATUSES, type PayoutStatus } from "@/lib/server/payout-status";
 import { selcomEnv, selcomPing } from "@/lib/server/selcom";
 import { deposit } from "@/lib/server/wallet-service";
 
@@ -71,6 +72,36 @@ export async function setPaymentControlsAction(formData: FormData): Promise<Resu
   const r = await setPaymentControls(updates, g.userId);
   if (!r.ok) return { ok: false, error: r.error };
   revalidatePath("/admin/payments");
+  return { ok: true };
+}
+
+/**
+ * Declare what we tell players about withdrawals.
+ *
+ * 🔴 This exists because an officer usually knows before the queue does. When Selcom's upstream
+ * went down on 2026-07-29, the first payout had to sit for 30 minutes before it counted as
+ * "stuck" and the derived signal caught up — and in that window the withdraw form still looked
+ * completely normal. This lets an officer say so immediately.
+ *
+ * It can only make the player-facing picture WORSE, never better: `getPayoutStatus()` takes
+ * `worstOf(declared, derived)`, so declaring "operational" over a stuck queue changes nothing.
+ * That asymmetry is deliberate and it is guarded by `test:cert-f1` — a banner an officer can
+ * force green is the same defect as the hardcoded backup tick, pointed at players.
+ */
+export async function setPayoutStatusAction(formData: FormData): Promise<Result> {
+  const g = await gate("setPayoutStatus");
+  if ("error" in g) return { ok: false, error: g.error };
+  const declared = String(formData.get("declared") ?? "") as PayoutStatus;
+  if (!PAYOUT_STATUSES.includes(declared)) return { ok: false, error: "Unknown payout status." };
+  // An empty note means "use the localised default" — a blank string would otherwise be shown
+  // to players in place of the real explanation.
+  const rawNote = formData.get("note");
+  const note = typeof rawNote === "string" ? rawNote : null;
+  const r = setPayoutStatus({ declared, note }, g.userId);
+  if (!r.ok) return { ok: false, error: r.error };
+  revalidatePath("/admin/payments");
+  revalidatePath("/wallet/withdraw");
+  revalidatePath("/wallet/deposit");
   return { ok: true };
 }
 

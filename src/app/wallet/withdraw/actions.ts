@@ -8,6 +8,9 @@ import { lookupPayeeName, type PaymentProvider } from "@/lib/server/payments";
 import { rateCheckAsync } from "@/lib/server/rate-limit";
 import { db } from "@/lib/server/store";
 import type { WithdrawInput } from "@/lib/server/validators";
+import { WITHDRAW_MIN_TZS, WITHDRAW_MAX_TZS } from "@/lib/server/validators";
+import { getPayoutStatus, payoutsAcceptingRequests } from "@/lib/server/payout-status";
+import { getServerT } from "@/lib/i18n-server";
 
 const WITHDRAW_PROVIDERS = new Set(["MPESA", "AIRTEL_MONEY", "HALO_PESA", "MIXX"]);
 
@@ -39,6 +42,17 @@ export async function withdrawAction(formData: FormData) {
   const session = await currentSession();
   if (!session) redirect("/auth/login");
 
+  const { t } = await getServerT();
+
+  // 🔴 THE ACTUAL GATE. The withdraw page disables its form when payouts cannot be paid, but a
+  // disabled form is a hint, not a control — this action is reachable by a direct POST. Accepting
+  // a request we cannot fulfil is worse than refusing it: it takes the money out of the player's
+  // available balance and looks like progress. Refuse here, in the player's own language.
+  const payouts = await getPayoutStatus();
+  if (!payoutsAcceptingRequests(payouts.status)) {
+    redirect(("/wallet/withdraw?error=" + encodeURIComponent(payouts.note ?? t.wallet.payoutsUnavailableBody)) as never);
+  }
+
   const amount = parseInt(String(formData.get("amount") ?? "0"), 10);
   // Pass the chosen destination through (don't coerce to MPESA). Step-up SMS
   // verification is gated on the licensed SMS provider; the withdrawal is
@@ -50,11 +64,16 @@ export async function withdrawAction(formData: FormData) {
   // have to re-enter provider + amount + phone on validation failure.
   const carryParams = `&provider=${encodeURIComponent(provider)}&amount=${amount}${msisdn ? `&msisdn=${encodeURIComponent(msisdn)}` : ""}`;
 
-  if (!Number.isFinite(amount) || amount < 1000 || amount > 5_000_000) redirect(("/wallet/withdraw?error=" + encodeURIComponent("Amount must be between TZS 1,000 and TZS 5,000,000.") + carryParams) as never);
+  // These two were hardcoded English on the money path — a Swahili- or Chinese-speaking player
+  // saw an English validation error. `amountHint` already states the same bounds in all three
+  // locales, so it is the honest thing to echo rather than a fourth phrasing of the same rule.
+  if (!Number.isFinite(amount) || amount < WITHDRAW_MIN_TZS || amount > WITHDRAW_MAX_TZS) {
+    redirect(("/wallet/withdraw?error=" + encodeURIComponent(t.wallet.amountHint) + carryParams) as never);
+  }
   // The payee mobile number is where the money is sent — required for every
   // (mobile-money) payout. A clean message here; the exact format is validated
   // by the WithdrawSchema (tzPhone) inside withdraw().
-  if (!msisdn) redirect(("/wallet/withdraw?error=" + encodeURIComponent("Enter the destination mobile number.") + carryParams) as never);
+  if (!msisdn) redirect(("/wallet/withdraw?error=" + encodeURIComponent(t.wallet.destinationPhone) + carryParams) as never);
   const idempotencyKey = formData.get("idempotencyKey") ? String(formData.get("idempotencyKey")) : undefined;
   const result = await withdraw(session.userId, {
     provider,

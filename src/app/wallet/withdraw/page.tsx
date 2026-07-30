@@ -23,6 +23,8 @@ import { db } from "@/lib/server/store";
 import { withdrawAction } from "./actions";
 import { getServerT } from "@/lib/i18n-server";
 import { ProviderRadioGrid } from "@/components/wallet/provider-radio-grid";
+import { getPayoutStatus, payoutsAcceptingRequests } from "@/lib/server/payout-status";
+import { PayoutStatusNotice } from "@/components/wallet/payout-status-notice";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -61,6 +63,13 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
   try { kyc = await db.kyc.findByUserId(session.userId); } catch { /* graceful */ }
   const kycApproved = kyc?.status === "APPROVED";
 
+  // Can we actually pay a withdrawal right now? Since 2026-07-29 the honest answer has been no,
+  // and until this landed the form said nothing at all. `unavailable` disables the form — taking
+  // a request we cannot fulfil is worse than refusing it, because it looks like progress.
+  const payouts = await getPayoutStatus();
+  const payoutsOpen = payoutsAcceptingRequests(payouts.status);
+  const canSubmit = kycApproved && payoutsOpen;
+
   return (
     <main className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-5">
       <BackLink fallbackHref="/wallet" label={t.wallet.title} />
@@ -96,6 +105,21 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
         </div>
       )}
 
+      {/* Above the KYC gate on purpose: "we cannot pay you" outranks "verify your ID first",
+          because verifying an ID to reach a form that cannot pay is wasted effort. */}
+      <PayoutStatusNotice
+        status={payouts.status}
+        note={payouts.note}
+        since={payouts.declaredAt ? fill(t.wallet.payoutsSince, { date: new Date(payouts.declaredAt).toLocaleDateString("en-GB") }) : null}
+        labels={{
+          delayedTitle: t.wallet.payoutsDelayedTitle,
+          delayedBody: t.wallet.payoutsDelayedBody,
+          unavailableTitle: t.wallet.payoutsUnavailableTitle,
+          unavailableBody: t.wallet.payoutsUnavailableBody,
+          depositWarning: t.wallet.payoutsUnavailableDepositWarning,
+        }}
+      />
+
       {!kycApproved && (
         <div className="flex items-start gap-3.5 rounded-xl border border-warning-border bg-warning-bg/30 p-4">
           <KycLock />
@@ -115,10 +139,10 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
 
       <form
         action={withdrawAction}
-        className={`rounded-xl glass-panel p-5 lg:p-6 space-y-5 ${kycApproved ? "" : "opacity-60"}`}
+        className={`rounded-xl glass-panel p-5 lg:p-6 space-y-5 ${canSubmit ? "" : "opacity-60"}`}
       >
         <IdempotencyKeyField />
-        <fieldset disabled={!kycApproved}>
+        <fieldset disabled={!canSubmit}>
           <FieldLegend as="legend" className="mb-2">
             {t.wallet.destination}
           </FieldLegend>
@@ -134,7 +158,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
           min={WITHDRAW_MIN_TZS}
           max={Math.min(WITHDRAW_MAX_TZS, wallet?.balance ?? 0)}
           defaultValue={prevAmount || undefined}
-          disabled={!kycApproved}
+          disabled={!canSubmit}
         />
 
         <KitField label={t.wallet.destinationPhone}>
@@ -148,7 +172,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
             required
             placeholder="712 345 678"
             defaultValue={prevMsisdn || undefined}
-            disabled={!kycApproved}
+            disabled={!canSubmit}
             prefix="+255"
             mono
           />
@@ -161,7 +185,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
           <NoticeRow icon={<I.alertCircle s={15} className="text-warning-fg" />} title={t.wallet.taxNotice} body={fill(t.wallet.taxBody, { pct: pctNum(wcfg.withdrawalFeeRate) })} />
         </div>
 
-        {kycApproved ? <WithdrawConfirm feeRate={wcfg.withdrawalFeeRate} /> : <SubmitButton label={t.common.confirm} pendingLabel={t.common.loading} />}
+        {canSubmit ? <WithdrawConfirm feeRate={wcfg.withdrawalFeeRate} /> : <SubmitButton label={t.common.confirm} pendingLabel={t.common.loading} disabled={!canSubmit} />}
       </form>
     </main>
   );
