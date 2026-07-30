@@ -2,8 +2,8 @@
 
 Written 2026-07-31. **Read this before opening anything else in here.**
 
-There are 40 documents. Some are law, some are a snapshot of a Tuesday in May, and from the
-outside they look identical. Getting that wrong is how a session spends a night rebuilding
+There are **41 files** in here — this index plus 40 documents. Some are law, some are a snapshot
+of a Tuesday in May, and from the outside they look identical. Getting that wrong is how a session spends a night rebuilding
 something that shipped a week ago — which has happened in this repo more than once. This
 file exists so the *next* session can tell them apart in thirty seconds.
 
@@ -28,6 +28,7 @@ reference in `docs/` must resolve on disk. Broken on purpose and observed to go 
 | Doc | | What it is |
 |---|---|---|
 | [`NEXT-PLAN.md`](NEXT-PLAN.md) | 🔵 LIVE | **The one live plan.** Opens with "PICK UP HERE" — the state at the close of the last session, what is done, and the single thing blocking backups. Start every session here. |
+| [`MODULE-CERTIFICATION-PROGRAM.md`](MODULE-CERTIFICATION-PROGRAM.md) | 🟢 LAW | **The program that finishes the platform.** 52 modules in 12 domains, each with a dossier, an attack list and a `cert:` gate; the eight gates that define "0 flaws"; the 12 laws; the orphan reckoning; a status board; and a copy-paste session prompt. Governs certification — `NEXT-PLAN.md` governs launch hardening. |
 | [`AGENT-ACCESS.md`](AGENT-ACCESS.md) | 🟢 LAW | How to grant an agent access, and the two kinds of block that look identical. Also records which accounts own Cloudflare/Railway — **and that the Cloudflare login is written down nowhere**. |
 | `../CLAUDE.md` | 🟢 LAW | How this repo works. |
 

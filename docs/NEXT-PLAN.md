@@ -203,9 +203,12 @@ Each is fine today and bites at a stated threshold — none is speculative:
 
 ## What still governs (read before touching anything)
 
-- [`docs/README.md`](README.md) — **the index. 40 docs, each with an honest status: LAW, LIVE,
+- [`docs/README.md`](README.md) — **the index. 41 docs, each with an honest status: LAW, LIVE,
   RECORD, OPEN, DESIGN or HISTORICAL.** Read it before opening anything else in `docs/`; from
   the outside a snapshot of a Tuesday in May looks identical to a law
+- [`docs/MODULE-CERTIFICATION-PROGRAM.md`](MODULE-CERTIFICATION-PROGRAM.md) — **52 modules, 8
+  gates, 0 certified.** The program that finishes the platform module by module. This file
+  (launch hardening) and that one (certification) are siblings; neither supersedes the other
 - `CLAUDE.md` — how this repo works
 - `docs/DESIGN_AUTHORITY.md` — B1–B10, and "what the freeze pass found — do not undo"
 - `docs/design-system/v2-2026-07-27/06-patterns-and-rules/` — RULES.md (16 laws) +
