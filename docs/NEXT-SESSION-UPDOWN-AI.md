@@ -161,6 +161,36 @@ check found a defect **in the suite itself**: four assertions were
 than everything — so removing the APPROVED gate, and removing the AI pause switch, each left
 their assertion **green**. A `before()` helper now requires both needles.
 
+`npm run test:all` → **109/111**. `npx tsc --noEmit` clean. `npm run build` clean, with
+`/admin/updown/proposals` compiling as a route (which is also what would catch a `const` export
+in a `"use server"` file — `tsc` does not).
+
+### ⬜ NOT DONE — the one gate still outstanding
+
+`test:responsive` and `test:motion` are **not run**. They are Playwright sweeps that need a
+running server, and the app **deliberately refuses to boot without `DATABASE_URL`** ("the
+in-memory store is a test-only fallback and must never serve production traffic"). This machine
+has no local Postgres, no Docker and no provisioning script, and the only running server belongs
+to a **concurrent session on a different branch** — auditing that would audit their code, not
+this. So this is environment-blocked, not a regression: the failure is a `page.goto` timeout,
+independent of the diff.
+
+⚠️ **What that means concretely: the new `/admin/updown/proposals` page has NOT been looked at,
+at any width.** `test:design-frozen`, `test:ui-consistency`, `test:bridge` and `test:measure` all
+pass on it — so its tokens, kit usage and classes are correct — but **a green suite is not a
+readable screen.** Its wide (8-column) table is wrapped in `ScrollX`, which is this repo's own
+answer to horizontal overflow, but that is reasoning, not evidence.
+
+**To close it:** with `DATABASE_URL` set and a server up,
+`BASE=http://localhost:<port> npm run test:responsive` and `… test:motion`, then **look at the
+screenshots** at 360 / 768 / 1280 / 1920.
+
+> Note: this branch's worktree now has its own real `node_modules` (~869 MB) instead of the
+> junction to `F:\kipindi-main`. **Turbopack refuses a junction pointing outside the project
+> root**, so a worktree cannot build against a shared install, and `--webpack` is not a fallback
+> (this codebase's `node:crypto` imports break it). Remove such a junction with cmd `rmdir` —
+> the link only. `rm -rf` would delete the other checkout's install.
+
 ---
 
 ## ▶ Where to pick up
