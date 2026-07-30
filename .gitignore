@@ -80,3 +80,8 @@ docs/shots-motion/
 # Evidence for a support ticket, never for git history.
 selcom-capture-*.txt
 selcom-email-*.md
+
+# Database backups (npm run db:backup). NEVER committed: even sealed, these are a
+# complete copy of every player balance, phone number, NIDA and KYC record on the
+# platform. They belong in the encrypted CI artifact / R2 bucket, not in git.
+backups/

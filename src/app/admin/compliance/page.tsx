@@ -7,6 +7,7 @@ import { AdminFunnelChart } from "@/components/admin/admin-charts";
 import { I } from "@/components/ui/glyphs";
 import { db, type StoredTxn } from "@/lib/server/store";
 import { verifyChain, getAuditPage } from "@/lib/server/audit";
+import { loadBackupRun, backupHealth } from "@/lib/server/backup/state";
 import { kycFunnel, rgRosterCounts } from "@/lib/server/analytics";
 import { detectHarmMarkersForAllUsers } from "@/lib/server/responsible-gambling";
 import { Chip } from "@/components/ui/chip";
@@ -35,6 +36,10 @@ export default async function AdminCompliancePage({
   const chain = verifyChain();
   // A-5: on a regulator-facing surface a failed read must NOT render a fabricated
   // all-zero funnel or a false "nobody self-excluded". null → explicit "couldn't load".
+  // Backup health, read from the row db:verify-backup writes. Fail CLOSED: if the
+  // read itself errors we report "none" rather than assuming health — the whole
+  // point of this card is that it never claims a backup it cannot evidence.
+  const backup = backupHealth(await loadBackupRun().catch(() => null));
   const kyc = await kycFunnel().catch(() => null);
   const rg = await rgRosterCounts().catch(() => null);
   let aml: StoredTxn[] = [];
@@ -111,16 +116,42 @@ export default async function AdminCompliancePage({
               this misled the operator about whether the business can survive losing
               its database.
 
-              It now states the truth. When a backup mechanism exists, this must read
-              its REAL last-run state — do not restore a static tick. */}
+              ✅ 2026-07-30 — it now reads the REAL last run, exactly as that warning
+              required. `backupHealth()` derives all five states from a row only
+              `db:verify-backup` writes, and only AFTER restoring the dump into a
+              scratch database and re-checking its money invariants. There is no
+              static fallback: if nothing has ever run, `kind` is "none" and the card
+              says so. An honest ✗ is a true statement; a green tick was not. */}
           <AdminCard title="Backup status" sw="Hali ya nakala">
             <div className="flex items-center gap-4">
-              <StatusPill status="fail" label="✗" />
+              <StatusPill
+                status={backup.kind === "ok" ? "ok" : backup.kind === "unverified" || backup.kind === "stale" ? "warn" : "fail"}
+                label={backup.kind === "ok" ? "✓" : backup.kind === "unverified" || backup.kind === "stale" ? "!" : "✗"}
+              />
               <div className="flex-1 min-w-0">
-                <p className="font-display font-bold text-body-sm text-text">No backup configured</p>
-                <p className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">
-                  no snapshot job · no verified restore · see docs/NEXT-PLAN.md
+                <p className="font-display font-bold text-body-sm text-text">
+                  {backup.kind === "none" && "No backup has ever run"}
+                  {backup.kind === "failed" && "Last backup FAILED"}
+                  {/* Named separately from failed on purpose: the dump exists, so the
+                      recovery story is "we have a file we have not proven", which is a
+                      different conversation from "we have nothing". */}
+                  {backup.kind === "unverified" && "Backup taken but NOT verified"}
+                  {backup.kind === "stale" && "Backup is stale"}
+                  {backup.kind === "ok" && "Backup verified"}
                 </p>
+                <p className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">
+                  {backup.kind === "none"
+                    ? "run npm run db:backup then db:verify-backup"
+                    : `${formatDateTime(backup.run.finishedAt)} · ${backup.run.rows.toLocaleString("en-US")} rows · ${(backup.run.sizeBytes / 1_048_576).toFixed(1)} MiB${backup.run.sealed ? " · sealed" : " · UNSEALED"}`}
+                </p>
+                {backup.kind === "failed" && backup.run.error ? (
+                  <p className="font-mono text-micro text-danger mt-1 break-words">{backup.run.error}</p>
+                ) : null}
+                {backup.kind === "unverified" ? (
+                  <p className="font-mono text-micro text-warn mt-1">
+                    a dump nobody restored is not a backup — run db:verify-backup
+                  </p>
+                ) : null}
               </div>
             </div>
           </AdminCard>
