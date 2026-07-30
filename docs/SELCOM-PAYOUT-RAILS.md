@@ -172,27 +172,71 @@ out on *every* failed payout, previously carried no identifier at all.
 - `npm run test:payments`, `test:fast-payout`, `test:selcom` — the pre-existing money-safety suites,
   unchanged in intent.
 
-## Current state (2026-07-30, after a live payout test)
+## Current state — 2026-07-30, end of day
 
-- 🔴 **The float is EMPTY, and Selcom has now said so in its own words** — `990 "Insufficient
-  account balance to complete transaction"` on a real dispatch (`wdr_60674226420a68947cda`, their
-  ref `1820851829`, 10:48:09 EAT). Nothing pays out until it is funded. **This is the one blocker.**
-- ⚠️ **Deposits do NOT fund payouts.** Collections and the disbursement float are separate balances
-  at Selcom. Player deposits settle on the collections side and never flow into the payout float,
-  which is prepaid. How to top it up is still unanswered by Selcom — the question has been open
-  since 2026-07-27.
-- ⚠️ **`010 "Invalid mobile number"` is Selcom misreporting the empty float.** Two byte-identical
-  requests three minutes apart returned `010` then `990`; the first debited nothing, so the float
-  was equally empty at both. Do not chase utility codes or MNO routing on a `010` again — read the
-  float first. Raised with Selcom.
-- ✅ `WALLET_CASHIN` enabled. ❌ `SELCOM_PESA` and `HUDUMA_AGENT` both `4035` — **ask Selcom to enable
-  them**; they are the rails that survive a TIPS outage.
-- Two payouts still unresolved at `999` since 2026-07-29 17:04 EAT — only Selcom can close those.
-  Deliberately not reversed: `999` is not terminal, and reversing one could double-pay.
-- ✅ **The ladder, the probe cache and the reversal path all held under real failure.** Both test
-  payouts ran `WALLET_CASHIN:FAILED → SELCOM_PESA:FAILED/SKIPPED → exhausted → clean reversal`, and
-  the player's money came back both times with an honest "Withdrawal returned" mail. The day before,
-  the same situation froze TZS 15,000 with no way to release it.
-- ⛔ Withdrawals stay **closed** to players (per-MNO kill switch on `/admin/payments`). **No payout
-  has ever succeeded on this platform.** Fund the float, watch one real TZS 1,000 payout land, then
-  reconsider.
+**This section is the single source of truth for payout state. Everything else in `docs/SELCOM-*`
+is history or evidence.**
+
+### 🔴 The blocker is on Selcom's side. Nothing in our code will fix it.
+
+Everything on our side is ruled out — with evidence, not assumption:
+
+| Checked | Result |
+|---|---|
+| Disbursement float | ✅ **TZS 100,000** (`resultcode 000 SUCCESS`) |
+| Float PIN | ✅ set |
+| `WALLET_CASHIN` provisioning | ✅ ENABLED (`QWIKSEND` too, not integrated) |
+| Payee number | ✅ **valid** — resolves with the correct registered name |
+| `utilitycode` | ✅ **correct** — `VMCASHIN` resolves; wrong operators properly refuse |
+| Signature | ✅ accepted on every call |
+
+And a payout still returns `010 "Invalid mobile number or operator not supported"`.
+
+### 🎯 Selcom's gateway contradicts itself — this is the ticket
+
+`scripts/selcom-code-matrix.mjs` (money-free) proved it. Same number, same code, minutes apart:
+
+- `namelookup(VMCASHIN, 255757619808)` → `000 SUCCESS` + correct name — transid `nlk_b0ee0e4e4b11179b`
+- `process(VMCASHIN, 255757619808)` → `010 FAIL` — transid `wdr_4b7ee5dd2616b62d6c38`
+
+**Likely root cause: their upstream (TIPS) is down.** Every status query returns
+`999 "No reponse from upstream system"` — *including for a transid that does not exist*.
+`namelookup` stays inside Selcom, so it works; `process` needs the upstream, so it fails. That one
+theory explains the `010`, the `999`, and the two payouts frozen since 2026-07-29.
+
+⛔ **Do NOT "fix" a payout outage by editing `mnoToSelcomCashin`.** The codes are proven correct.
+The warning is recorded on the function itself.
+
+### ▶ The ask that actually unblocks paying customers
+
+**Enable `SELCOM_PESA` and `HUDUMA_AGENT`** (both `4035`). They are Selcom-internal and do **not**
+ride the broken upstream — and the ladder already tries them, so no code change is needed. This
+matters more than fixing the `010`.
+
+### ⛔ Corrections — claims that were wrong, kept so nobody re-derives them
+
+- ~~"The float is empty and that is the blocker."~~ The float was funded and `010` came back.
+- ~~"`010` is Selcom mislabelling a dry float."~~ Disproven the same day. The `990` was simply the
+  float check firing first on one attempt; `010` was always the primary error.
+
+Still true and worth keeping: **deposits do not fund payouts** — collections and the disbursement
+float are separate balances at Selcom, and the float is prepaid.
+
+### Also open
+
+- Two payouts unresolved at `999` since 2026-07-29 17:04 EAT. **Only Selcom can close them.**
+  Deliberately not reversed — `999` is not terminal, and reversing one could double-pay.
+- ⛔ Withdrawals stay **closed** to players (per-MNO kill switch on `/admin/payments`).
+
+### ✅ What our side has proven
+
+The ladder, probe cache and reversal path held under real failure **three times** on 2026-07-30:
+`WALLET_CASHIN:FAILED → SELCOM_PESA:FAILED/SKIPPED → exhausted → clean reversal`, the player
+refunded each time with an honest "Withdrawal returned" mail, and
+`ledger trial balance OK — 41 wallets reconcile`. The day before, the identical situation froze
+TZS 15,000 with no way to release it.
+
+⚠️ **But the SUCCESS path has never executed.** ACCEPTED → CONFIRMED, hold release, the ledger
+credit and the "payout sent" email have never run against a real Selcom success, because there has
+never been one. **The first payout after activation is a TEST, not a launch** — watch one small one
+end to end before opening withdrawals to anyone.

@@ -32,12 +32,22 @@
 > | Selcom Pesa | `/selcompesa/cashin` | ❌ `4035` not enabled — **ask Selcom** |
 > | Huduma Agent Cashout | `/hudumacashin/process` | ❌ `4035` not enabled — **ask Selcom** |
 >
-> 🔴 **AND THE ACTUAL BLOCKER NOBODY HAD CHECKED: the disbursement float reads `TZS 0.00`**
-> (`resultcode=000 SUCCESS`, so this is Selcom's own answer, not an error). Payouts are paid out of
-> that float. **At zero, no rail can pay anyone**, whatever else is enabled and whether or not TIPS
-> is up. Fund it first; re-run the probe to confirm.
+> ~~🔴 **AND THE ACTUAL BLOCKER NOBODY HAD CHECKED: the disbursement float reads `TZS 0.00`.**~~
 >
-> The float PIN gate described below is CLOSED — `PAYMENT_VENDOR_PIN` is set in Railway.
+> ⛔ **SUPERSEDED later on 2026-07-30.** The float did read zero at 00:30, and funding it was a real
+> prerequisite — but it was **not** the cause of the failures. The float now holds **TZS 100,000**
+> (`resultcode 000 SUCCESS`) and `walletcashin/process` returns `010` regardless.
+>
+> **Both operational gates in this runbook are now CLOSED:** `PAYMENT_VENDOR_PIN` is set in Railway,
+> and the float is funded. Nothing in this file is blocking any more.
+>
+> 🔴 **The live blocker is Selcom-side.** Their own `namelookup` accepts the exact code and number
+> that `process` rejects, and every status query returns `999 "No reponse from upstream system"`.
+> **The ask that unblocks paying customers is enabling Selcom Pesa + Huduma Agent Cashout** — they
+> do not ride the broken upstream, and the ladder already tries them.
+>
+> ▶ Resolution: [`SELCOM-010-INVESTIGATION.md`](SELCOM-010-INVESTIGATION.md).
+> ▶ Live state: [`SELCOM-PAYOUT-RAILS.md`](SELCOM-PAYOUT-RAILS.md) § Current state.
 
 > **Original status note (2026-07-27), retained for history — its central claim is false, see above.**
 > Per Selcom's email (Masanja Paul): `wallet-cashin` and `qwiksend` enabled on the same credentials
