@@ -10,15 +10,20 @@ One fact, one home. Nothing below is restated in another doc; each links instead
 
 | Document | Owns | Does NOT contain |
 |---|---|---|
-| **`UPDOWN-ARCHITECTURE.md`** (this) | Data model · engines · money path · scale · file map | Status, dates, business rationale, UI redlines |
-| [`UPDOWN-SPEC.md`](UPDOWN-SPEC.md) | What the product IS — rules, workflows, states, copy rules | Table shapes, function names |
-| [`UPDOWN-SPEC.md`](UPDOWN-SPEC.md) | Status only — phase board, checklists, decision log, risk register, open questions, session log | Architecture or product rules (it links) |
-| [`UPDOWN-SPEC.md`](UPDOWN-SPEC.md) | The Claude Design brief + the design review record | Implementation detail |
+| **`UPDOWN-ARCHITECTURE.md`** (this) | Data model · engines · money path · scale · file map · test map | Status, dates, business rationale, UI redlines |
+| [`UPDOWN-SPEC.md`](UPDOWN-SPEC.md) | What the product IS — rules, workflows, states, the source requirement, the proposal flow, copy rules | Table shapes, function names |
+| [`UPDOWN-PRICING.md`](UPDOWN-PRICING.md) | The margin / winning-boundary model and its admin levers | The lifecycle, the data model |
 | [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) | Owner decisions that touch a **compliance control** | Anything not compliance-bearing |
+| [`NEXT-SESSION-UPDOWN-AI.md`](NEXT-SESSION-UPDOWN-AI.md) | Where the AI work stands and what is next | Anything the three docs above own (it links) |
 | `Up and Down/` (repo root) | The management team's original requirements, verbatim | — |
 
-**Design redlines and prop contracts live with the design handoff**
-(`Up Down Design System/handoff/D1-*.md`, `D2-*.md`), not here.
+⚠️ **Corrected 2026-07-30.** This table previously listed three separate rows all pointing at
+`UPDOWN-SPEC.md` — one claiming it owned a phase board / decision log / session log, another a
+Claude Design brief. It owns neither; those documents do not exist. It also pointed design
+redlines at `Up Down Design System/handoff/D1-*.md`, a directory that is not in this repo, and
+omitted `UPDOWN-PRICING.md` entirely. A stale pointer in the *ownership table* is worse than
+one in the body: it is the thing a new reader uses to decide where to write, so it manufactures
+duplicate homes for one fact.
 
 ---
 
@@ -74,12 +79,13 @@ grid:      …  14:25   14:30   14:35   14:40   14:45  …
 The reading at 14:30 is simultaneously the **close** of R41 and the **open** of R42 —
 and of any 15/30-min round crossing it. Two consequences, both load-bearing:
 
-1. **Cost.** One AI price check per asset per boundary serves up to six round edges.
-   2 assets × 288 boundaries = **576 checks/day**, no matter how many durations run —
-   instead of one per round.
+1. **Cost.** One price read per asset per boundary serves up to six round edges.
+   2 assets × 288 boundaries = **576 reads/day**, no matter how many durations run —
+   instead of one per round. (This matters for either reader: an AI call costs tokens, a
+   feed call costs quota.)
 2. **Correctness.** An observation is written once and read many times, so round N's
-   close **is** round N+1's open, to the digit. The resolution AI can never disagree
-   with itself between adjacent rounds because it is never asked twice.
+   close **is** round N+1's open, to the digit. The reader can never disagree with itself
+   between adjacent rounds because it is never asked twice.
 
 `@@unique([assetId, boundaryAt])` enforces both, at the database.
 
@@ -349,6 +355,9 @@ not two.
 | `src/instrumentation.ts` · `lifecycle.ts` | Boot hydrate + self-healing reconcile + `resolveOverdueRounds` | ✅ done |
 | `src/app/admin/updown/**` | Console: assets · chains · reader health · thresholds | ✅ done |
 | `src/app/admin/updown/rounds/**` | Round explorer + proof drawer + **operator void** | ✅ done |
+| `src/lib/server/updown-proposal.ts` | AI chain proposals: generate · validate · edit · approve/reject · **arm** (the only writer of `armedChainId`) | ✅ done |
+| `src/lib/server/ai-provider-claude.ts` | `proposeUpDown` — `web_fetch` pinned to the asset domain, evidence required-and-nullable | ✅ done |
+| `src/app/admin/updown/proposals/**` | The officer queue: propose · review/edit · approve · reject · arm | ✅ done |
 | `src/app/updown/**` · `src/components/updown/**` | Player board, round detail, cards, settlement proof | ✅ done |
 | `scripts/audit-updown-source-drift.mts` | Read-only: does any unsettled round's reading cite a host the asset no longer points at? | ops tool |
 | `scripts/ops-updown-pause-chains.mts` | Containment: pause chains through `setChainState`, dry-run by default | ops tool |
@@ -363,7 +372,8 @@ not two.
 | `test:updown-engine` (43) | UP=YES through settlement · voids refund in full · shared observations · exactly-once settlement · **money conservation, drift 0** |
 | `test:updown-heal` (60) | The **refund promise is real**: an exhausted boundary voids and refunds in full · a paused chain does not strand money · the sweep resolves as well as voids · idempotent · one reading per boundary · **ops states do not burn attempts, a source failure does** · backoff · capture/write-once/mismatch-void/legacy-skip · the source lock · conservation |
 | `test:updown-feed` (25) | The mock feed **refuses in production** · a missing key never falls back to it · the API key never reaches a stored field · staleness and shape gates |
-| `test:updown-source` (60) | **Structural**: no path may recompute a live round's line, move its link, or resolve against the asset row instead of the round's pin |
+| `test:updown-source` (79) | **Structural**: no path may recompute a live round's line, move its link, resolve against the asset row instead of the round's pin, or **arm a chain without an officer** |
+| `test:updown-proposal` (80) | Nothing arms without an officer · an approval does not survive an edit · evidence does not follow a changed link · reject reasons are a closed set · **the source lock holds through the arm path, proven against a round holding real money** |
 | `test:admin-nav` (16) | ONE route resolver; every nav href round-trips |
 | `updown-admin-shots` · `updown-admin-e2e-shots` | 360/768/1280/1920, empty AND populated, driven through the real UI |
 

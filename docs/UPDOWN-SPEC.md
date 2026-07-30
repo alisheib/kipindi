@@ -25,8 +25,11 @@ no deploy. BTC exists as an option and is **off** by default, per the management
 
 - **Frequency.** Long-form polls resolve in days. Up & Down resolves in minutes, which
   turns an occasional visit into a session.
-- **Continuity.** Chains regenerate themselves, so the product never runs dry and needs
-  no daily curation — unlike the AI poll pipeline, which needs an officer.
+- **Continuity.** Chains regenerate themselves, so the product never runs dry and needs no
+  *daily* curation — unlike the AI poll pipeline, where every question passes an officer.
+  ⚠️ Since 2026-07-30 the **chain itself** does come from an officer-reviewed AI proposal
+  (§7a): the officer decides once, per chain, and the chain then emits rounds on its own.
+  Rounds are unreviewed; the thing that emits them is not.
 - **A second revenue line** on infrastructure that already exists: the same wallet,
   ledger, settlement engine, audit chain and reports.
 
@@ -169,6 +172,30 @@ Domains are compared, not exact URLs — a source legitimately serves the same q
 sub-path, and an exact-URL match would void real rounds for no integrity gain.
 
 Guarded behaviourally by `test:updown-heal` §7C–§7D, structurally by `test:updown-source`.
+
+## 7a · Where a chain's source comes from — the AI proposal (2026-07-30)
+
+Ali's ask: *the AI proposes the round with the link it used, so when it resolves it goes back
+to that same source.* §7 is the "goes back to" half; this is the "proposes" half.
+
+`/admin/updown/proposals` is an officer queue in the shape of `/admin/ai-polls`. One proposal
+= one chain: an **already-registered** asset, at one grid duration, with a margin, a framing,
+and **the exact page the AI verified it could read a timestamped price from**.
+
+| Stage | What happens |
+|---|---|
+| **Propose** | `web_fetch` pinned by `allowed_domains` to the asset's ONE approved domain — enforced by Anthropic's fetch service, not by asking the model. It reports the price and quote-time it actually found. |
+| **Evidence** | `observedPrice` / `observedQuotedAt` are **required and nullable**. Null means "that page showed nothing usable", which is the *correct* answer for most price pages — and it makes the proposal unapprovable. **Neither number ever opens a round**; an armed chain reads its own boundary. |
+| **Review** | An officer may edit the link, duration, margin or framing. Every edit re-validates; changing the link **clears the evidence**, because the AI read the old page. An approval does not survive an edit that changes the terms. |
+| **Arm** | Points the asset at the approved link, creates/updates the chain, starts it — all through the **same service functions the console uses**, so every refusal there applies. In particular the §7 source lock: arming is refused while any round on that asset is unresolved. |
+
+⛔ **Nothing arms without an officer.** `armProposal` is the only writer of `armedChainId`,
+refuses any state but `APPROVED`, and is unreachable from any generation path. The AI pause
+switch is the **same** `ai.controls.pollGenEnabled` the poll generator obeys — one switch,
+both generators, no second key.
+
+Guarded by `test:updown-proposal` (80 behavioural, incl. a real round holding real money
+whose source a proposal cannot move) and `test:updown-source` §10 (structural).
 
 **Precision is bounded by the source.** Every surface shows the timestamp the source
 itself quoted, not our boundary time. We do not imply accuracy we do not have.

@@ -179,7 +179,7 @@ export default async function UpDownProposalsPage() {
                               href={p.sourceUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="font-mono text-[10.5px] break-all text-brand-fg hover:underline"
+                              className="font-mono text-[10.5px] break-all text-royal-300 hover:underline"
                             >
                               {p.sourceUrl}
                             </a>
