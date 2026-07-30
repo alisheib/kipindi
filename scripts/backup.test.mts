@@ -438,6 +438,28 @@ ok("backups go to their OWN bucket, not the KYC one",
 ok("⛔ the uploader does not record health", !/BACKUP_STATE_KEY|saveBackupRun/.test(uploader),
   "getting a file into a bucket is not evidence that it restores");
 
+console.log("\n── 15b · The drill must not weigh down production builds ────────");
+
+// ⚠️ Adding `embedded-postgres` as a devDependency put 107 MB of Postgres binaries into
+// every Railway build: the platform packages are optional deps picked by os/cpu, so the
+// Linux builder pulls @embedded-postgres/linux-x64 to support a drill that only ever runs
+// on a laptop. It is installed on demand instead, through a computed specifier so `tsc`
+// does not need it either, and CI uses a postgres:18 service container.
+const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as {
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+};
+const allDeps = { ...(pkg.dependencies ?? {}), ...(pkg.devDependencies ?? {}) };
+ok("⛔ embedded-postgres is NOT a dependency of this repo",
+  !("embedded-postgres" in allDeps) && !Object.keys(allDeps).some((d) => d.startsWith("@embedded-postgres/")),
+  "107 MB of Postgres binaries in every production image, for a laptop-only drill");
+const scratch = readFileSync(new URL("./db-scratch.mts", import.meta.url), "utf8");
+ok("db:scratch loads it lazily, through a computed specifier",
+  /\["embedded", "postgres"\]\.join\("-"\)/.test(scratch),
+  "a static import would make tsc require a package that is not installed");
+ok("…and tells you the exact install command when it is missing",
+  /npm i -D --no-save embedded-postgres@/.test(scratch));
+
 console.log("\n── 16 · Source problems are never blamed on the backup ─────────");
 
 // The first real verification ended in "DO NOT TRUST THIS BACKUP" over four failures.
