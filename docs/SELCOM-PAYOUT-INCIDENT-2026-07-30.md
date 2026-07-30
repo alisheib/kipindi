@@ -76,9 +76,11 @@
 >
 > The evidence pack below was written for Selcom and is unchanged. What we learned afterwards:
 >
-> 1. 🔴 **The disbursement float reads `TZS 0.00`** (`resultcode=000 SUCCESS` — Selcom's own answer,
->    not an error). Payouts are paid out of that float, so **at zero nothing can pay out on any rail,
->    whatever else is enabled.** Nobody had checked it. This is the first thing to fix.
+> 1. ~~🔴 **The disbursement float reads `TZS 0.00`.**~~ ⛔ **SUPERSEDED same day.** It did read zero
+>    at 00:30, and that was genuinely a second blocker — but it was **not** the cause of the `010`.
+>    The float was funded to **TZS 100,000** later on 2026-07-30 and `process` returned `010` again.
+>    See [`SELCOM-010-INVESTIGATION.md`](SELCOM-010-INVESTIGATION.md) for the resolution and
+>    [`SELCOM-PAYOUT-RAILS.md`](SELCOM-PAYOUT-RAILS.md) § Current state for live state.
 > 2. **Wallet Cashin is now ENABLED** — Selcom switched it on during the evening of 2026-07-29; it no
 >    longer returns `4035`. **Selcom Pesa and Huduma Agent Cashout are still `4035`**, and those are
 >    the two rails that do not depend on TIPS, so they are the ones worth asking for.
