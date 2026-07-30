@@ -31,6 +31,29 @@ export const ai = {
     name: "web_search" as const,
   },
 
+  /**
+   * Web FETCH tool — retrieves a named URL directly, rather than searching for it.
+   *
+   * ⛔ WHY THIS EXISTS, AND WHY THE ORACLE NEEDS IT (2026-07-30). Up & Down ran for six
+   * days and never confirmed a single price. The refusals were not the model failing —
+   * they were `web_search` doing what it does: returning CRAWL-INDEX SNIPPETS. Probing
+   * seven candidate gold pages through the real oracle prompt showed the pattern:
+   * kitco/investing returned a price with NO timestamp; tradingeconomics and Yahoo
+   * returned a price WITH a timestamp that was 37,575s and 44,736s old — 10 and 12 hours.
+   * A 90-second staleness window can never be met from a search index, on ANY page.
+   *
+   * `web_fetch` reads the live page instead, so the quote and its timestamp are current.
+   * `allowed_domains` is enforced SERVER-SIDE, which makes it a real containment boundary
+   * rather than the after-the-fact check GATE 2 performs on what the model claims it read.
+   *
+   * ⚠️ It only fetches URLs ALREADY PRESENT in the conversation — the oracle names the
+   * approved page in its user prompt, which satisfies that.
+   */
+  webFetchTool: {
+    type: "web_fetch_20260209" as const,
+    name: "web_fetch" as const,
+  },
+
   /** Token pricing in USD — used for cost tracking in the admin dashboard.
    *  Keep in sync with `model` above. */
   pricing: {

@@ -205,7 +205,10 @@ APPROVED DOMAIN (nothing else is acceptable): ${asset.sourceDomain}
 PRICE PRECISION: ${asset.decimals} decimal places
 TARGET INSTANT (UTC): ${boundaryAtIso}
 
-Search the approved page now, then call report_price exactly once. The reading should be as close to the target instant as the page allows — report the page's own timestamp so the platform can judge how close it actually is.`;
+FETCH the approved page directly with web_fetch — do not rely on search results. A search
+snippet is a copy of the page from hours ago, and a price that old cannot settle this round.
+Fetch the live page, then call report_price exactly once. Report the page's OWN timestamp so
+the platform can judge how close the reading actually is to the target instant.`;
 
   const started = Date.now();
   try {
@@ -215,7 +218,21 @@ Search the approved page now, then call report_price exactly once. The reading s
       system,
       tools: [
         PRICE_TOOL as unknown as Anthropic.Tool,
-        { type: ai.webSearchTool.type, name: ai.webSearchTool.name, max_uses: 4 } as unknown as Anthropic.Tool,
+        // ⛔ web_FETCH, and it is the one that matters. `web_search` returns crawl-index
+        // SNIPPETS: probing seven candidate gold pages through this exact prompt produced
+        // either a price with NO timestamp, or a price whose source time was 10-12 HOURS
+        // old. Against `maxStalenessSeconds` (90) that is unmeetable on ANY page — which
+        // is why production confirmed zero readings in six days and stranded real money.
+        // `web_fetch` reads the LIVE page, so the quote and its timestamp are current.
+        // `allowed_domains` is enforced SERVER-SIDE: a real containment boundary, where
+        // GATE 2 can only check what the model claims to have read after the fact.
+        {
+          type: ai.webFetchTool.type,
+          name: ai.webFetchTool.name,
+          max_uses: 4,
+          allowed_domains: [asset.sourceDomain],
+        } as unknown as Anthropic.Tool,
+        { type: ai.webSearchTool.type, name: ai.webSearchTool.name, max_uses: 2 } as unknown as Anthropic.Tool,
       ],
       tool_choice: { type: "auto" },
       messages: [{ role: "user", content: user }],
