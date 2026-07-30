@@ -76,8 +76,11 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
     // long-form-poll surfaces.
     group: { en: "Up & Down", sw: "Juu na Chini" },
     items: [
-      { href: "/admin/updown",         label: "Overview",  key: "updown", domain: "trading" },
-      { href: "/admin/updown/rounds",  label: "Rounds",    key: "updown-rounds", domain: "trading" },
+      { href: "/admin/updown",           label: "Overview",     key: "updown", domain: "trading" },
+      // "AI proposals", not "Proposals" — /admin/proposals is the PLAYER proposal queue, and
+      // two identically-labelled entries in one console is a support ticket waiting to happen.
+      { href: "/admin/updown/proposals", label: "AI proposals", key: "updown-proposals", domain: "trading" },
+      { href: "/admin/updown/rounds",    label: "Rounds",       key: "updown-rounds", domain: "trading" },
     ],
   },
   {
@@ -173,6 +176,10 @@ const ROUTE_KEYS: ReadonlyArray<readonly [prefix: string, key: string]> = [
   ["/admin/markets", "markets"],
   ["/admin/resolver-queue", "resolver"],
   ["/admin/resolver", "resolver"],
+  // ⚠️ ORDER IS LOAD-BEARING: the specific prefixes MUST precede the bare "/admin/updown",
+  // or every sub-route resolves to the Overview key and its nav entry never highlights.
+  // `assertNavKeysResolve()` (test:admin-nav) reports a reversed pair as unreachable.
+  ["/admin/updown/proposals", "updown-proposals"],
   ["/admin/updown/rounds", "updown-rounds"],
   ["/admin/updown", "updown"],
   ["/admin/affiliate", "affiliate"],

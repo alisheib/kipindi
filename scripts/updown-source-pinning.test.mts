@@ -48,6 +48,22 @@ function bodyOf(src: string, signature: string): string {
   return src.slice(start, next < 0 ? src.length : next);
 }
 
+/**
+ * "`a` appears before `b`" — and BOTH must actually appear.
+ *
+ * ⚠️ THE MUTATION CHECK CAUGHT THIS, WHICH IS THE ONLY REASON IT IS A FUNCTION. Four
+ * assertions in this file were written as `hay.indexOf(a) < hay.indexOf(b)`. Delete `a`
+ * entirely and `indexOf` returns **-1**, which is less than everything — so the assertion
+ * PASSES on code where the gate it guards has been removed outright. That is the worst
+ * possible failure for a structural test: green over the exact defect it exists to catch.
+ * Requiring both needles makes a deleted gate a failure instead of a pass.
+ */
+function before(hay: string, a: string, b: string): boolean {
+  const ia = hay.indexOf(a);
+  const ib = hay.indexOf(b);
+  return ia >= 0 && ib >= 0 && ia < ib;
+}
+
 // ── 1 · The round carries its own source ─────────────────────────────────────
 console.log("\n── 1 · the round carries its own source ────────────────────────");
 ok("UpDownRound declares BOTH captured columns",
@@ -144,7 +160,7 @@ ok("⛔ it refuses a source change while rounds are unresolved",
 ok("the refusal tells the operator the way out",
   /Pause this asset/.test(upd));
 ok("the guard runs BEFORE the write",
-  upd.indexOf("unresolvedRoundsForAsset") < upd.indexOf("assetStore.upsert"));
+  before(upd, "unresolvedRoundsForAsset", "assetStore.upsert"));
 
 // ── 5 · The feed cannot fabricate, and cannot leak its key ──────────────────
 console.log("\n── 5 · the feed refuses rather than inventing ──────────────────");
@@ -191,7 +207,7 @@ ok("generateAIPoll was found", gen.length > 0);
 ok("⛔ the pause switch is enforced inside the generator",
   /isPollGenEnabled\(\)/.test(gen), "a gate on one of two doors is not a gate");
 ok("…before the budget gate — a disabled feature must not consult the meter",
-  gen.indexOf("isPollGenEnabled") < gen.indexOf("assertAiBudget"));
+  before(gen, "isPollGenEnabled", "assertAiBudget"));
 ok("the event-calendar door refuses cleanly too",
   /isPollGenEnabled/.test(events));
 
@@ -215,10 +231,74 @@ ok("the verdict helper is derived, not a stored column",
 // ── 9 · Nav ordering (a reversed prefix is unreachable) ─────────────────────
 console.log("\n── 9 · admin nav prefixes stay reachable ───────────────────────");
 const iRounds = nav.indexOf('["/admin/updown/rounds"');
+const iProps  = nav.indexOf('["/admin/updown/proposals"');
 const iBase   = nav.indexOf('["/admin/updown"');
-ok("both updown route prefixes are registered", iRounds > 0 && iBase > 0);
-ok("⛔ the more specific prefix comes FIRST, or it is unreachable",
-  iRounds < iBase, "the shorter prefix matches first and would swallow it");
+ok("all three updown route prefixes are registered", iRounds > 0 && iProps > 0 && iBase > 0);
+ok("⛔ the more specific prefixes come FIRST, or they are unreachable",
+  iRounds < iBase && iProps < iBase, "the shorter prefix matches first and would swallow them");
+
+// ── 10 · ⛔ A proposal cannot skip the officer and arm itself ────────────────
+console.log("\n── 10 · the proposal officer gate ──────────────────────────────");
+const prop = readFileSync(new URL("../src/lib/server/updown-proposal.ts", import.meta.url), "utf8");
+
+const armBody = bodyOf(prop, "export async function armProposal(");
+ok("armProposal was located", armBody.length > 200, `${armBody.length} chars`);
+ok("⛔ armProposal refuses any state but APPROVED",
+  /if \(p\.state !== "APPROVED"\)/.test(armBody),
+  "without this a freshly-generated proposal could arm itself");
+ok("…and the refusal precedes every write",
+  before(armBody, 'p.state !== "APPROVED"', "updateAsset("),
+  "a gate after the write is not a gate");
+
+// The ONLY writer of armedChainId. A second writer means a chain could be attributed to a
+// proposal that never went through review.
+const armedWrites = (prop.match(/armedChainId = /g) ?? []).length;
+ok("⛔ exactly ONE assignment of armedChainId in the module", armedWrites === 1, `found ${armedWrites}`);
+
+// The generation path must not be able to reach the arm path, or the officer is decorative.
+const genBody = bodyOf(prop, "export async function generateProposal(");
+ok("generateProposal was located", genBody.length > 500, `${genBody.length} chars`);
+ok("⛔ generateProposal never calls armProposal", !/armProposal\(/.test(genBody));
+ok("⛔ …nor setChainState", !/setChainState\(/.test(genBody));
+ok("⛔ …nor createChain", !/createChain\(/.test(genBody));
+ok("⛔ …nor updateAsset — it cannot move a source either", !/updateAsset\(/.test(genBody));
+ok("…and it never writes an APPROVED or ARMED state",
+  !/state = "APPROVED"/.test(genBody) && !/state = "ARMED"/.test(genBody));
+
+// Arming through the SERVICE functions is what makes the source lock apply to it.
+ok("⛔ arming moves the source through updateAsset, not a store",
+  /updateAsset\(asset\.id, \{ priceSourceUrl: p\.sourceUrl \}/.test(armBody),
+  "a direct assetStore write would bypass the source lock entirely");
+ok("⛔ the arm path touches no store directly", !/assetStore|chainStore|roundStore/.test(armBody),
+  "every write must go through a service function that carries its refusals");
+ok("…and it re-validates at the moment of arming",
+  /validateProposal\(p\)/.test(armBody), "an approval minutes old may no longer be valid");
+
+// Approve must re-validate too: the UI hides the button, but the action is reachable.
+const apprBody = bodyOf(prop, "export async function approveProposal(");
+ok("approveProposal re-validates rather than trusting the stored state",
+  /validateProposal\(p\)/.test(apprBody) && /reasons\.length > 0/.test(apprBody));
+
+// The pause switch, inside the generator, before the budget gate.
+ok("⛔ generateProposal checks the AI pause switch", /isPollGenEnabled\(\)/.test(genBody));
+ok("…BEFORE consulting the credit meter",
+  before(genBody, "isPollGenEnabled()", "assertAiBudget("),
+  "a disabled feature should not spend against the meter");
+ok("…and it is the SAME switch the polls half uses (no second key)",
+  !/updownGenEnabled|proposalGenEnabled/.test(prop), "one AI switch on the platform, not two");
+
+// Reject reasons are a closed set, filtered server-side.
+const rejBody = bodyOf(prop, "export async function rejectProposal(");
+ok("⛔ reject filters the client's reasons against the closed set",
+  /PROPOSAL_REJECT_REASONS\.includes\(r\)/.test(rejBody),
+  "a free-text reason cannot be counted and still reaches reports");
+
+// Arming is a money action, so it is gated like one.
+const propActions = readFileSync(new URL("../src/app/admin/updown/proposals/actions.ts", import.meta.url), "utf8");
+const armAction = bodyOf(propActions, "export async function armProposalAction(");
+ok('⛔ armProposalAction is gated on "accounting", not "trading"',
+  /requireStaff\("accounting"\)/.test(armAction),
+  "arming starts a chain that emits real-money rounds");
 
 const line = "─".repeat(70);
 console.log(`\n${line}\n  UPDOWN SOURCE PINNING: ${pass} passed, ${fail} failed\n${line}`);
