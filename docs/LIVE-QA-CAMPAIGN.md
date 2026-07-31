@@ -183,15 +183,17 @@ All created through the real UI on production. Phone is the **9-digit local part
 
 | Persona | Phone (E.164) | User id | KYC | Intended use |
 |---|---|---|---|---|
-| `alpha` | `+255712000101` | `usr_1cf528b35ef795530aa1c63f` | `PENDING_REVIEW` (nida …9012) | main player — approve, bet, win, withdraw |
-| `bravo` | `+255712000102` | `usr_26313f74d8428e4e169603ca` | `PENDING_REVIEW` (nida …9013) | **reject** at review |
+| `alpha` | `+255712000101` | `usr_1cf528b35ef795530aa1c63f` | **`APPROVED`** 2026-07-31 13:58Z → `User.status = ACTIVE` | main player — bet, win, withdraw |
+| `bravo` | `+255712000102` | `usr_26313f74d8428e4e169603ca` | **`REJECTED`** 2026-07-31 14:11Z (`DETAILS_MISMATCH`) | rejected; nida …9013 now free |
 | `charlie` | `+255712000103` | `usr_8ed1b4ca3579490c94435188` | `PENDING_REVIEW` (nida …9014) | approve, then **revoke / ban** |
 | `delta` | `+255712000104` | `usr_429885ab43c0cb4ce134dd7e` | `PENDING_REVIEW` (nida …9015) | duplicate-NIDA probe; spare |
 
-All four sit at `User.status = PENDING_KYC` with balance 0 — **no officer has
-reviewed any of them yet.** That is exactly where the next session picks up.
-
-Passwords in `.env.qa.local`. Personas are added here as they are created.
+⚠️ **Only `alpha`'s password is in `.env.qa.local`** (`QA_ALPHA_PASSWORD`). `bravo`,
+`charlie` and `delta` were registered with a password that is in **neither** that file
+nor `p1-signup.mjs`'s default, so signing in as them fails with `wrong_credentials`.
+Drive them from the **saved Playwright sessions** in `<scratchpad>/live/state/<name>.json`
+instead — those still work. Set their passwords via the real reset flow if a fresh
+sign-in is ever needed.
 
 **Operator surfaces, surveyed live 2026-07-31** — 21 of 22 return 200 with no overflow at 1440px
 and a clean console: `/admin` · `players` · `markets` · `ai-polls` · `ai-usage` · `proposals` ·
@@ -206,7 +208,7 @@ and a clean console: `/admin` · `players` · `markets` · `ai-polls` · `ai-usa
 |---|---|---|
 | 0 | Worktree, harness, live DB access, baseline | ✅ done |
 | 1 | Auth: signup · email verify · login · forgot-password · 2FA · sessions | 🔄 signup · login · forgot-password · phone shapes · enumeration all ✅ **shipped + verified live**; email-verify, 2FA, sessions, rate-limits still open |
-| 2 | KYC: submit · import · approve · reject · revoke · ban · NIDA duplicate | 🔄 player-side ladder ✅ ×4 personas · duplicate-NIDA guard ✅ · **officer review not started** |
+| 2 | KYC: submit · import · approve · reject · revoke · ban · NIDA duplicate | 🔄 player ladder ✅ ×4 · duplicate-NIDA ✅ · **approve ✅ (alpha) · reject ✅ (bravo)** · revoke/ban ⏳ |
 | 3 | Money in: wallet · deposit · ledger · receipts | ⏳ |
 | 4 | Core play: markets · YES/NO · win + lose · resolution · payout | ⏳ |
 | 5 | Up & Down: rounds · quick-bet · pricing · void · history | ⏳ |
@@ -278,6 +280,20 @@ A-2 and A-3** — fix it at the same time.
 wrong passwords against one number is a weaker existence signal. It is rate-limited (per
 identifier *and* per IP) and audited, unlike the old one-request oracle. Left as-is deliberately;
 closing it costs the owner a usable "your account is locked" message.
+
+| **E-1** | HIGH | KYC reject · player + compliance | **A rejected player was shown a reason that contradicted itself, in English, in every language.** The officer picked *Details mismatch*; `/profile/kyc` read “**Reason: other.** Details do not match the submitted ID…”. Two defects stacked: (a) `rejectKycWorkstationAction` used the reason code only to pick an English sentence and never passed it on, so `reviewKyc` hard-coded `rejectReason: "OTHER"` — **every manual rejection 50pick has ever made is uncategorised**, and a rejection-reason report reads 100 % OTHER; (b) `humanizeRejectReason` keyed its label map on six names that are **not members** of the `KycRejectReason` enum (`NIDA_MISMATCH`, `PHOTO_UNREADABLE`, `WRONG_DOCUMENT`, `SELFIE_MISMATCH`, `EXPIRED_DOCUMENT`, `DUPLICATE_ACCOUNT` — only `UNDERAGE` was real), so every rejection fell through to `raw.replace(/_/g," ").toLowerCase()` and printed raw English enum text to SW and ZH players while **21 correct translations sat unreachable** in the dictionary. Hits the automatic NIDA rejections too — those have always written real enum members. | live rejection of `bravo` on prod; screenshot `p2-bravo-player-kyc-430`; DB `rejectReason='OTHER'` after the officer chose *Details mismatch* | ✅ fixed |
+
+**E-1 fix** — the rail's reason codes now carry the enum member
+(`document_unreadable→BLURRY_DOC`, `mismatch→DETAILS_MISMATCH`, `expired→EXPIRED_ID`;
+`suspected_fraud→OTHER` **deliberately** — never tell a suspected fraudster what we
+suspect), `reviewKyc` takes a typed `rejectCode` and audits it, `humanizeRejectReason`
+is keyed on the schema enum and returns `null` rather than raw text, `OTHER` prints no
+category at all (the officer's note is the message), and `rejectSanctioned` was added in
+all three locales with copy that never names a sanctions list. The two orphan dictionary
+keys were deleted — a dead translation key is indistinguishable from a live one, and that
+is exactly what hid (b). **Guard**: `npm run test:kyc-reject-reason` (47) — it reads the
+enum **out of `prisma/schema.prisma`**, so adding a member without a translation fails.
+Proven red first: 12 failures against the pre-fix tree.
 
 ### Open questions (raised, not yet concluded)
 

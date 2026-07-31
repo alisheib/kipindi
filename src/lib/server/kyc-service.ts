@@ -440,6 +440,11 @@ export async function reviewKyc(opts: {
   decision: "APPROVE" | "REJECT" | "REQUEST_INFO";
   reason?: string;
   note?: string;
+  /** REJECT only: the categorised `KycRejectReason`. Defaults to OTHER, which is
+   *  correct for a free-text rejection but was previously forced on EVERY manual
+   *  rejection — the officer picked "Details mismatch" and both the compliance
+   *  record and the player read "other". */
+  rejectCode?: "BLURRY_DOC" | "DETAILS_MISMATCH" | "EXPIRED_ID" | "UNDERAGE" | "SANCTIONED" | "DUPLICATE_IDENTITY" | "OTHER";
   /** REQUEST_INFO only: specific extra documents to request, each a non-empty
    *  description (e.g. "Clearer photo of ID back", "Proof of address"). The
    *  player gets an upload slot per item; the officer sees each with its
@@ -524,10 +529,14 @@ export async function reviewKyc(opts: {
 
     // REJECT — `reason` is the officer's free-text, player-facing message. It
     // belongs in rejectNote (free text); rejectReason is the KycRejectReason
-    // enum, so a manual rejection is categorised as OTHER. (Writing free text
-    // into the enum column threw in Postgres and lost the decision in prod.)
-    await db.kyc.upsert({ ...k, status: "REJECTED", rejectReason: "OTHER", rejectNote: opts.note?.trim() || reason, reviewerId: officerId, reviewedAt: now, updatedAt: now });
-    audit({ category: "KYC", action: "kyc.rejected", actorId: officerId, targetType: "User", targetId: userId, payload: { kycId: k.id, reason } });
+    // enum. (Writing free text into the enum column threw in Postgres and lost
+    // the decision in prod — hence the strict `rejectCode` union above.)
+    // `rejectCode` carries the officer's CHOSEN category; OTHER only when the
+    // caller genuinely has none. Hard-coding OTHER here made every rejection on
+    // production uncategorised and printed "Reason: other." to the player.
+    const rejectCode = opts.rejectCode ?? "OTHER";
+    await db.kyc.upsert({ ...k, status: "REJECTED", rejectReason: rejectCode, rejectNote: opts.note?.trim() || reason, reviewerId: officerId, reviewedAt: now, updatedAt: now });
+    audit({ category: "KYC", action: "kyc.rejected", actorId: officerId, targetType: "User", targetId: userId, payload: { kycId: k.id, reason, rejectCode } });
     notifyKyc(userId, "REJECTED").catch(() => {});
     sendEmailToUser(userId, (email) => ({
       to: email,

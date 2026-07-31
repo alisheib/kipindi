@@ -61,6 +61,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
   const rejected = kyc?.status === "REJECTED";
   const needsInfo = kyc?.status === "ADDITIONAL_INFO_REQUIRED";
   const extraRequests = kyc?.extraRequests ?? [];
+  const rejectLabel = humanizeRejectReason(kyc?.rejectReason ? String(kyc.rejectReason) : null, t);
 
   return (
     <main className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-5">
@@ -139,7 +140,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
             <div className="min-w-0">
               <p className="font-display text-[14px] font-bold text-no-300">{t.profile.rejected}</p>
               <p className="mt-1 text-[12.5px] text-text-muted leading-snug">
-                {kyc?.rejectReason ? <>{t.profile.kycRejectReason}: <span className="font-semibold text-text">{humanizeRejectReason(String(kyc.rejectReason), t)}</span>. </> : null}
+                {rejectLabel ? <>{t.profile.kycRejectReason}: <span className="font-semibold text-text">{rejectLabel}</span>. </> : null}
                 {kyc?.rejectNote ? `${kyc.rejectNote} ` : ""}
                 {t.profile.kycResubmitOrEmail}{" "}
                 <a href={`mailto:${SUPPORT_EMAIL()}?subject=KYC%20review`} className="text-brand-300 underline-offset-2 hover:underline">{SUPPORT_EMAIL()}</a>.
@@ -446,17 +447,34 @@ function ProgressRail({ nodes }: { nodes: { label: string; glyph: keyof typeof I
   );
 }
 
-function humanizeRejectReason(raw: string, t: Dict): string {
+/**
+ * Turn the stored `KycRejectReason` into the player's own language.
+ *
+ * 🔴 These keys MUST be the Postgres enum members (prisma/schema.prisma
+ * `enum KycRejectReason`) — nothing else ever reaches this function. The first
+ * version keyed on invented names (NIDA_MISMATCH, PHOTO_UNREADABLE,
+ * WRONG_DOCUMENT, SELFIE_MISMATCH, EXPIRED_DOCUMENT, DUPLICATE_ACCOUNT), only
+ * one of which (UNDERAGE) is a real member. Every rejected player therefore
+ * fell through to the raw-enum fallback and read English enum text — "details
+ * mismatch", "other" — in Swahili and Chinese too, while 21 correct
+ * translations sat unreachable in the dictionary. Found live 2026-07-31 on a
+ * production rejection; `npm run test:kyc-reject-reason` now pins every member.
+ *
+ * OTHER deliberately returns null: it carries no information a player can act
+ * on, and printing "Reason: other." ahead of the officer's own sentence reads
+ * as a contradiction. The officer's note is the message in that case.
+ */
+function humanizeRejectReason(raw: string | null, t: Dict): string | null {
+  if (!raw) return null;
   const labels: Record<string, string> = {
-    NIDA_MISMATCH: t.profile.rejectNidaMismatch,
-    PHOTO_UNREADABLE: t.profile.rejectBlurry,
-    WRONG_DOCUMENT: t.profile.rejectWrongType,
-    SELFIE_MISMATCH: t.profile.rejectSelfieMismatch,
-    EXPIRED_DOCUMENT: t.profile.rejectExpired,
-    DUPLICATE_ACCOUNT: t.profile.rejectDuplicate,
+    BLURRY_DOC: t.profile.rejectBlurry,
+    DETAILS_MISMATCH: t.profile.rejectNidaMismatch,
+    EXPIRED_ID: t.profile.rejectExpired,
     UNDERAGE: t.profile.rejectUnderage,
+    DUPLICATE_IDENTITY: t.profile.rejectDuplicate,
+    SANCTIONED: t.profile.rejectSanctioned,
   };
-  return labels[raw] ?? raw.replace(/_/g, " ").toLowerCase();
+  return labels[raw] ?? null;
 }
 
 // Delegates to the kit <Input>/<Field> atoms so this player-facing form matches

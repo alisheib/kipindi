@@ -147,6 +147,7 @@
     "test:measure": "tsx scripts/measure-system.test.mts",
     "test:docs": "node scripts/docs-links.mjs",
     "test:kyc-honesty": "tsx scripts/kyc-status-honesty.test.mts",
+    "test:kyc-reject-reason": "tsx scripts/kyc-reject-reason.test.mts",
     "test:login-enum": "tsx scripts/login-enumeration.test.mts",
     "test:phone-normalize": "tsx scripts/phone-normalize.test.mts",
     "test:cert-devroutes": "tsx scripts/dev-route-guard.test.mts",

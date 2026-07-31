@@ -21,13 +21,22 @@ import { reviewKyc } from "@/lib/server/kyc-service";
 import { kycRiskScore, getApprovalRecommendation, KYC_MAKER_CHECKER_THRESHOLD } from "@/lib/server/kyc-risk";
 
 type Result = { ok: true } | { ok: false; error: string };
+type RejectCode = NonNullable<Parameters<typeof reviewKyc>[0]["rejectCode"]>;
 
-const REJECT_REASONS: Record<string, string> = {
-  document_unreadable: "Document unreadable — please re-upload a clear photo.",
-  mismatch: "Details do not match the submitted ID.",
-  expired: "The identity document has expired.",
-  suspected_fraud: "The submission could not be verified.",
-  other: "",
+/** The rail's reason codes → the player-facing sentence AND the stored
+ *  `KycRejectReason`. The enum member is what compliance reporting counts and
+ *  what the player's own language is looked up from, so it must follow the
+ *  officer's choice — it used to be hard-coded OTHER for every rejection.
+ *
+ *  `suspected_fraud` maps to OTHER on purpose: the enum has no fraud member,
+ *  and a suspected fraudster must not be told what we suspect. Its sentence is
+ *  deliberately uninformative for the same reason. */
+const REJECT_REASONS: Record<string, { text: string; code: RejectCode }> = {
+  document_unreadable: { text: "Document unreadable — please re-upload a clear photo.", code: "BLURRY_DOC" },
+  mismatch: { text: "Details do not match the submitted ID.", code: "DETAILS_MISMATCH" },
+  expired: { text: "The identity document has expired.", code: "EXPIRED_ID" },
+  suspected_fraud: { text: "The submission could not be verified.", code: "OTHER" },
+  other: { text: "", code: "OTHER" },
 };
 
 async function gate(action: string): Promise<{ userId: string; sessionId: string } | { error: string }> {
@@ -90,11 +99,11 @@ export async function rejectKycWorkstationAction(formData: FormData): Promise<Re
   const userId = String(formData.get("userId") ?? "");
   const code = String(formData.get("reasonCode") ?? "");
   const note = String(formData.get("note") ?? "").trim();
-  const base = REJECT_REASONS[code];
-  if (base === undefined) return { ok: false, error: "Pick a rejection reason." };
-  const reason = (code === "other" ? note : `${base}${note ? ` ${note}` : ""}`).trim();
+  const picked = REJECT_REASONS[code];
+  if (picked === undefined) return { ok: false, error: "Pick a rejection reason." };
+  const reason = (code === "other" ? note : `${picked.text}${note ? ` ${note}` : ""}`).trim();
   if (reason.length < 5) return { ok: false, error: "Add a short explanation (5+ characters)." };
-  const r = await reviewKyc({ officerId: g.userId, userId, decision: "REJECT", reason });
+  const r = await reviewKyc({ officerId: g.userId, userId, decision: "REJECT", reason, rejectCode: picked.code });
   if (!r.ok) return { ok: false, error: r.error ?? "Could not reject." };
   revalidatePath(`/admin/kyc/${userId}`);
   return { ok: true };
