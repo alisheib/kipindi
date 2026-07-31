@@ -390,6 +390,35 @@ export function computeWithdrawalFee(amount: number, rate: number): number {
 }
 
 /**
+ * The smallest payout the GATEWAY will accept, in shillings.
+ *
+ * 🔴 Found live on 2026-07-31, and it had been unreachable until that day. Selcom's
+ * `/walletcashin/process` answers:
+ *
+ *     resultcode=013  "Payment amount must be greater than or equal to TZS 1,000."
+ *
+ * It is not in the credentials pack or the API digest — no payout had ever got far enough
+ * to meet it, because the rail itself was down. The first one that did was a TZS 1,000
+ * withdrawal, and it failed: our minimum was 1,000 GROSS, the fee took 15, and we asked
+ * Selcom to send 985.
+ */
+export const PROVIDER_MIN_PAYOUT_TZS = 1_000;
+
+/**
+ * The smallest GROSS withdrawal whose NET still clears `PROVIDER_MIN_PAYOUT_TZS`.
+ *
+ * ⚠️ Derived, never hardcoded — and that is the whole point. `withdrawalFeeRate` is
+ * admin-tunable at `/admin/config` (it is 1.5% in production today, not the 1% default),
+ * so a constant "minimum is 1,016" would silently break the day someone edits the fee, in
+ * exactly the way that is invisible until a player is refused. The gateway's floor is on
+ * the NET, so the check belongs on the NET.
+ */
+export function minWithdrawalForRate(rate: number): number {
+  const r = Math.min(Math.max(0, rate), 0.9); // a fee ≥ 100% has no solution; clamp rather than divide by ~0
+  return Math.ceil(PROVIDER_MIN_PAYOUT_TZS / (1 - r));
+}
+
+/**
  * Invariant 1, enforced. Throws rather than paying a winner less than he staked.
  *
  * Refusing to settle is the safe direction: the pool stays intact, the market

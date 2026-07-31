@@ -109,6 +109,14 @@ Collection channel names (`MPESA-TZ`, `AIRTELMONEY`, …) are a **different, UNC
 - **Our design:** treat the callback as a poke and settle deposits from the **signed order-status re-query** (built on the fully-verified outbound signer), not from the callback body — this is robust against the uncertain callback signature/timestamp format. Settlement stays exactly-once + amount-checked in `wallet-service.settlePaymentWebhook`.
 
 ## 7. Gotchas
+- 🔴 **`/walletcashin/process` has a MINIMUM of TZS 1,000, and it is on the NET amount you send —
+  NOT in any Selcom document we were given.** Below it: `HTTP 200 · resultcode=013 · result=FAIL ·
+  "Payment amount must be greater than or equal to TZS 1,000."` Found live 2026-07-31 with a real
+  player: our floor was 1,000 *gross*, the 1.5% withdrawal fee took 15, and we asked Selcom to send
+  985. **Any per-player minimum must therefore be derived from the live fee rate, not hardcoded** —
+  `minWithdrawalForRate()` in `src/lib/payout.ts`; the rate is admin-tunable, so a constant would
+  break silently the next time someone edits it. `013` is a *definitive* refusal, so the ladder
+  correctly advances and the withdrawal reverses cleanly.
 - **Amount = whole TZS integer** (NOT cents). Currency `"TZS"`.
 - **Phone = `255XXXXXXXXX`** (12 digits, no `+`, no leading `0`) for `buyer_phone`/`msisdn`/`utilityref`.
 - Idempotency key: checkout = `order_id`; cashin = `transid`.

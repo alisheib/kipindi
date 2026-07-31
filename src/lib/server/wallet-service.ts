@@ -27,7 +27,7 @@ import { withLock } from "./locks";
 import { emit } from "./event-bus";
 import { postLedgerEntries, depositEntries, rgSuspenseEntries, withdrawalEntries, internalCreditEntries, adjustmentEntries, withMoneyTx } from "./ledger";
 import { getEffectiveConfig } from "./market-config";
-import { computeWithdrawalFee } from "@/lib/payout";
+import { computeWithdrawalFee, minWithdrawalForRate, PROVIDER_MIN_PAYOUT_TZS } from "@/lib/payout";
 import type { z } from "zod";
 import type { ServiceResult } from "./auth-service";
 import { formatTzs } from "@/lib/utils";
@@ -1223,6 +1223,19 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
   const fee = computeWithdrawalFee(amount, wcfg.withdrawalFeeRate);
   const gatewayShare = Math.min(fee, Math.max(0, Math.round(amount * Math.max(0, wcfg.withdrawalGatewayShareRate))));
   const net = amount - fee;
+  // 🔴 THE GATEWAY FLOOR IS ON THE NET, SO THE CHECK IS ON THE NET (found live 2026-07-31).
+  // A TZS 1,000 withdrawal passed our gross minimum, lost 15 to the fee, and Selcom refused
+  // the 985 with `013 "Payment amount must be greater than or equal to TZS 1,000"`. Refusing
+  // here — before the hold is placed — is the honest direction: the player keeps a spendable
+  // balance instead of watching it vanish into a payout that cannot be delivered.
+  if (net < PROVIDER_MIN_PAYOUT_TZS) {
+    const minGross = minWithdrawalForRate(wcfg.withdrawalFeeRate);
+    return {
+      ok: false,
+      error: `The smallest amount we can send is TZS ${PROVIDER_MIN_PAYOUT_TZS.toLocaleString()} after the fee. Withdraw at least TZS ${minGross.toLocaleString()}.`,
+      code: "INVALID",
+    };
+  }
   const providerLabel = friendlyProvider(parse.data.provider);
   const txnId = `txn_${randomId(12)}`;
 

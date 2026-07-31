@@ -14,6 +14,7 @@ import { getEffectiveConfig } from "@/lib/server/market-config";
 import { WithdrawConfirm } from "./withdraw-confirm";
 import { IdempotencyKeyField } from "@/components/wallet/idempotency-key-field";
 import { WITHDRAW_MIN_TZS, WITHDRAW_MAX_TZS } from "@/lib/server/validators";
+import { minWithdrawalForRate } from "@/lib/payout";
 
 // Quick-amount chips for withdraw — AmountField hides any chip above the
 // account's withdrawable max (min(cap, balance)), so small balances show fewer.
@@ -158,7 +159,10 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
           label={t.wallet.amount}
           hint={t.wallet.amountHint}
           quickAmounts={WITHDRAW_QUICK}
-          min={WITHDRAW_MIN_TZS}
+          // Derived from the LIVE fee rate, not WITHDRAW_MIN_TZS: the gateway's floor is on
+          // what it receives (net), so a gross minimum of 1,000 offers an amount we cannot
+          // actually send. See minWithdrawalForRate.
+          min={Math.max(WITHDRAW_MIN_TZS, minWithdrawalForRate(wcfg.withdrawalFeeRate))}
           max={Math.min(WITHDRAW_MAX_TZS, wallet?.balance ?? 0)}
           defaultValue={prevAmount || undefined}
           disabled={!canSubmit}

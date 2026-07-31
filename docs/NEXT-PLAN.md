@@ -75,7 +75,12 @@ Re-measure any time with `railway ssh "node scripts/admin-2fa-readiness.mjs"`.
 
 ### Still only Ali can do these
 
-Create the `50pick-backups` R2 bucket (nothing is off-box yet) · move `BACKUP_ENCRYPTION_KEY` from
+~~Create the `50pick-backups` R2 bucket~~ ✅ **done 2026-07-31 — the bucket exists and TWO
+sealed artifacts are in it, one shipped by CI itself; the unattended nightly is proven.**
+~~decide the orphan TZS 100,000 wallet~~ ✅ **done — cleared, and `trialBalance()` now returns
+`ok:true` for the first time.** Remaining: add the **90-day lifecycle rule** on
+`50pick-backups` (dashboard-only; the nightly nags until it can confirm one) · narrow the R2
+token, which currently reaches ALL buckets · move `BACKUP_ENCRYPTION_KEY` from
 `.env.backup.local` into a password manager · set `SENTRY_DSN` (nobody is paged) · rule on the fee
 basis · rule on the Up & Down branch · decide the orphan TZS 100,000 wallet · rotate the Postgres
 password and the credentials exposed in chat.
@@ -96,7 +101,7 @@ commit.
 | Nightly backup | ✅ runs end-to-end on Actions. A real run dumped production (32,538 rows, 13.8 MB sealed), restored into a throwaway PG18 and passed **79 checks** |
 | 🔴 The bug it found | The workflow reported **every step green while NOTHING had ever gone off-box** — `\| tee` swallowed the upload's exit code. Fixed with `set -euo pipefail` + an explicit empty-destination failure, and **proven red**. Full account in [`BACKUP-RUNBOOK.md`](BACKUP-RUNBOOK.md) |
 | Selcom probe | ✅ fixed — it reported `USABLE RAILS: NONE` (i.e. "the vendor account is dead") whenever run via `railway run`. See [`SELCOM-PAYOUT-RAILS.md`](SELCOM-PAYOUT-RAILS.md) |
-| Payout state | ⚠️ **unchanged** — re-verified from production: float TZS 100,000, `SELCOM_PESA`/`HUDUMA_AGENT` still `4035`, TIPS still `999`, two payouts still stuck |
+| Payout state | ⚠️ **SUPERSEDED later on 2026-07-31 — Selcom fixed TIPS and payouts now pay.** Two settled end to end. What still holds from this row: float TZS 100,000, `SELCOM_PESA`/`HUDUMA_AGENT` still `4035`, and the two payouts from 07-29 still stuck at `999`. See [`SELCOM-PAYOUT-RAILS.md`](SELCOM-PAYOUT-RAILS.md) § Current state — 2026-07-31 |
 | New guard | `npm run test:docs` — every link, `scripts/*` path and `npm run` reference in `docs/` must resolve. Broken on purpose and observed to go red |
 | Test suite | **111** `test:*` scripts. 108 verified green; `test:responsive` still unverified (see the trap list below) |
 
@@ -129,7 +134,7 @@ This file is the brief. Copy the block at the bottom into a fresh session.
 | | State |
 |---|---|
 | Live | `www.50pick.tz`, Railway `50pick` / `production`, running `be4a12be`; `/api/health` `ok:true` |
-| Money mode | **TEST** — deposits real via Selcom, **withdrawals cannot be paid** (Selcom-side) |
+| Money mode | **TEST** — deposits real via Selcom. **Withdrawals PAY as of 2026-07-31** (2 real payouts settled) but the form is still shut to players: two payouts stuck at `999` since 07-29 keep `derivePayoutStatus` at `unavailable`. Only Selcom closing those reopens it. |
 | Test suite | **110** `test:*` scripts. **108 verified green 2026-07-31**; `test:responsive` was **not** verified — see below |
 | Design | FROZEN + LIVE (B9/B10, `test:design-frozen`) |
 | Error tracking | ✅ code complete — durable + scrubbed + `@sentry/node` wired and proven (`test:alerting`). ⚠️ **`SENTRY_DSN` is NOT set in Railway (verified), so nobody is paged.** `/api/health` reports `monitoring.alerting:false` |
@@ -238,9 +243,27 @@ This file is the brief. Copy the block at the bottom into a fresh session.
    ⚠️ **Still missing: ALERTING.** Nothing pages anyone; you must go and look. `monitoring.ts`
    is a ready seam — `npm i @sentry/node` + `SENTRY_DSN` activates the off-box mirror with no
    other code change. Sending a licensed operator's data off-box is Ali's call.
-3. 🔴 **Withdrawals cannot be paid. THE ONLY OPEN BLOCKER, and it is on Selcom's side.**
-   Players can put money **in** and not take it **out** — the single worst asymmetry a
-   gambling operator can ship, and a licence question, not just an ops one.
+3. ✅ **RESOLVED 2026-07-31 — Selcom fixed TIPS and withdrawals now pay.** Two real payouts
+   settled end to end (`wdr_95e5cddab0fbfcb3fdbf`, `wdr_009c1a7c3662aaabcf47`, TZS 1,970 each,
+   `resultcode 000`), the first successes in the platform's life. The success path —
+   confirm → hold release → ledger → notification → "Withdrawal sent" email — has now run.
+
+   🔴 **But withdrawals are still SHUT to players, and it is no longer Selcom's rail.** The two
+   payouts stranded at `999` since 07-29 (TZS 15,000 of a customer's money) are older than
+   `UNAVAILABLE_AFTER_HOURS`, so `derivePayoutStatus` reports `unavailable` and the form refuses
+   everyone. **Closing those two — either way — is what reopens withdrawals**; no code change
+   will, and an officer cannot override it (`worstOf(declared, derived)`, by design).
+   A scoped `PAYOUT_TEST_BYPASS_MSISDN` lets the owner-testers through meanwhile; **seal it**
+   with `railway variables --unset` once the two are closed.
+
+   🔴 **One bug was ours, and only a working rail could expose it:** Selcom refuses a NET below
+   TZS 1,000 (`resultcode 013`). Our minimum was 1,000 *gross*, so after the 1.5% fee we asked
+   for 985 — the smallest withdrawal we advertised was undeliverable. Fixed by checking the net
+   against `PROVIDER_MIN_PAYOUT_TZS`, with the form minimum **derived** from the live fee rate
+   (`minWithdrawalForRate`) rather than hardcoded, since the fee is admin-tunable.
+
+   Until then the asymmetry stood: players could put money **in** and not take it **out** — the
+   single worst thing a gambling operator can ship, and a licence question, not just an ops one.
 
    Everything on our side is ruled out with evidence: float funded, PIN set,
    `WALLET_CASHIN` provisioned, payee number valid, `utilitycode` correct, signature

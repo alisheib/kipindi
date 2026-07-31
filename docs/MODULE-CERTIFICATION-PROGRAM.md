@@ -381,7 +381,10 @@ the real shape · a webhook arriving during a deploy.
 **Owns** `selcom` (980 L), the fallback ladder · **Existing** `test:selcom` `test:payout-rails` `test:fast-payout` `test:payout-alloc` `test:payout-observability`
 ### ✅ G8 (TRUTH) — DONE 2026-07-31, `npm run test:cert-f1` (69 assertions)
 
-Withdrawals cannot be paid (Selcom-side). Until this landed, the product **said nothing at all**:
+Written while withdrawals could not be paid at all (Selcom's TIPS upstream was down 07-29 → 07-31).
+The rail pays again now, but the control stands and still fires: two payouts stranded at `999` keep
+the derived status `unavailable`, so players are told the truth rather than shown a form that
+cannot deliver. Until this landed, the product **said nothing at all**:
 the withdraw form looked entirely normal, a player filled it in, submitted, and got a generic
 failure. Now:
 

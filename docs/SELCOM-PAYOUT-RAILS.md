@@ -172,10 +172,73 @@ out on *every* failed payout, previously carried no identifier at all.
 - `npm run test:payments`, `test:fast-payout`, `test:selcom` — the pre-existing money-safety suites,
   unchanged in intent.
 
-## Current state — 2026-07-30, end of day
+## ✅ Current state — 2026-07-31: PAYOUTS WORK. Read this section, not the one below it.
 
 **This section is the single source of truth for payout state. Everything else in `docs/SELCOM-*`
-is history or evidence.**
+— including "Current state — 2026-07-30" immediately below — is now history.**
+
+Selcom fixed TIPS overnight and asked us to retry. **Two real payouts succeeded, end to end, for
+the first time in this platform's life:**
+
+| `transid` | Net | Selcom | Settled | Player email |
+|---|---|---|---|---|
+| `wdr_95e5cddab0fbfcb3fdbf` | TZS 1,970 | `000 SUCCESS · "Selcom Qwikpay"` | ✅ `fast-settled 1 of 1` | ✅ "Withdrawal sent" |
+| `wdr_009c1a7c3662aaabcf47` | TZS 1,970 | `000 SUCCESS · "Selcom Qwikpay"` | ✅ `fast-settled 1 of 1` | ✅ "Withdrawal sent" |
+
+The whole success path — dispatch → `ACCEPTED` → fast-poll confirm → hold release → ledger →
+notification → email — had **never once executed** before this. It now has, twice.
+
+### 🔴 Two things are still open, and the first one blocks every player
+
+**1. The two payouts from 2026-07-29 are STILL `999`.** `wdr_11d8552cb75b420d4bc3` (TZS 9,850) and
+`wdr_9d9e565e61ce8ec1c0d4` (TZS 4,925). Over 42 hours. Only Selcom can close them, and until they
+do we hold TZS 15,000 of a customer's money — deliberately **not** reversed, because reversing a
+payout that did complete pays twice.
+
+**⚠️ And they shut the door on everyone else.** `derivePayoutStatus` marks payouts `unavailable`
+once the oldest in-flight one passes `UNAVAILABLE_AFTER_HOURS = 6`. Those two are 42h old, so the
+withdraw form is refused for every player **even though the rail is healthy**. The gate is telling
+the truth about the queue and a lie about the rail, and it cannot be overridden by an officer —
+`getPayoutStatus` returns `worstOf(declared, derived)`, by design. **Closing those two is what
+reopens withdrawals**, not any code change.
+
+**2. `SELCOM_PESA` and `HUDUMA_AGENT` still answer `4035`** — seen again during the 07-31 test
+(`SPSCASHIN` → HTTP 403). Less urgent now that Wallet Cash-In works, but a second rail is what
+would keep us paying through the next TIPS outage.
+
+### ⏳ A scoped test bypass is LIVE in production — seal it when the two above are closed
+
+`isPayoutTestBypass()` in `payout-status.ts` lets numbers listed in **`PAYOUT_TEST_BYPASS_MSISDN`**
+past the shut gate. Currently `255757619808` (Jay, co-owner, testing with Ali). It exists because
+the gate is self-locking: we could not test the rail because a payout was stuck.
+
+It deliberately does **not** touch `getPayoutStatus`/`derivePayoutStatus`/`worstOf`, does **not**
+suppress the player-facing notice for the tester, and is **off when the variable is unset**. Every
+bypassed request logs `[payouts] ⚠️ TEST BYPASS ACTIVE`.
+
+```bash
+railway variables --unset "PAYOUT_TEST_BYPASS_MSISDN"   # seals it in seconds, no deploy
+```
+
+### 🔴 `resultcode 013` — the gateway floor is on the NET, and it is not in their docs
+
+```
+resultcode=013  "Payment amount must be greater than or equal to TZS 1,000."
+```
+
+Our minimum was **1,000 gross**; the 1.5% fee took 15; we asked Selcom to send **985**. So the
+smallest withdrawal 50pick offered was one it could never deliver — invisible until 07-31, because
+no payout had ever reached the business layer.
+
+Fixed by checking the **net**, in `wallet-service.withdraw`, before the hold is placed:
+`PROVIDER_MIN_PAYOUT_TZS` + `minWithdrawalForRate(rate)` in `src/lib/payout.ts`. ⚠️ **Derived from
+the live `withdrawalFeeRate`, never hardcoded** — the fee is admin-tunable at `/admin/config` (1.5%
+in production today, not the 1% default), so a constant minimum would break silently the next time
+someone edits it. The withdraw form's `min` is derived from the same helper.
+
+---
+
+## Current state — 2026-07-30, end of day (SUPERSEDED — history only)
 
 ### 🔴 The blocker is on Selcom's side. Nothing in our code will fix it.
 

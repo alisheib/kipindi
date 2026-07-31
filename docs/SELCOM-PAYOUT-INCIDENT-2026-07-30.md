@@ -9,9 +9,33 @@
 
 ---
 
-> ## 🔴 RESOLVED — cause confirmed 2026-07-30 10:48 EAT. THE FLOAT IS EMPTY.
+> # ✅ CLOSED — 2026-07-31. Selcom fixed TIPS. Payouts work.
 >
-> **Read this first; everything below it is the earlier investigation, kept for the record.**
+> **This whole document is now history.** Live state lives in
+> [`SELCOM-PAYOUT-RAILS.md` § Current state — 2026-07-31](SELCOM-PAYOUT-RAILS.md).
+>
+> Selcom confirmed a TIPS outage on 30 July and asked us to retry. Two payouts then succeeded
+> end to end — `wdr_95e5cddab0fbfcb3fdbf` and `wdr_009c1a7c3662aaabcf47`, TZS 1,970 each,
+> `resultcode 000 "Selcom Qwikpay"`, both fast-settled with the player emailed. The cause was
+> theirs throughout; **nothing in our code was ever wrong about routing.**
+>
+> **Two items from this incident are still open:** `wdr_11d8552cb75b420d4bc3` and
+> `wdr_9d9e565e61ce8ec1c0d4` remain `999` after 42+ hours (§2, failure mode 2), holding TZS
+> 15,000 of a customer's money and — because they are older than `UNAVAILABLE_AFTER_HOURS` —
+> keeping the withdraw form shut for every other player. Only Selcom can close them.
+>
+> ⚠️ **A correction worth keeping.** On the morning of 07-31 this investigation's control test
+> (a status query for a transid that has never existed, still answering `999` rather than
+> "not found") was read as proof TIPS was still down. It was not proof — `999` on an unknown
+> transid appears to be Selcom's normal answer. The *real* evidence was always the two genuine
+> payouts stuck at `999`. **Lead with those; the control test is support at best.**
+>
+> 🔴 **One bug WAS ours, and only a working rail could reveal it:** `resultcode 013`, the
+> gateway's TZS 1,000 floor on the NET. See `SELCOM-PAYOUT-RAILS.md` and `SELCOM-API-DIGEST.md`.
+
+> ## 🔴 Superseded — cause confirmed 2026-07-30 10:48 EAT. THE FLOAT IS EMPTY.
+>
+> **History. Everything below it is the earlier investigation, kept for the record.**
 >
 > A live payout test (Jay, two attempts) got Selcom to say it in plain words:
 >
