@@ -34,7 +34,7 @@
  */
 import Anthropic from "@anthropic-ai/sdk";
 import { ai } from "./ai-config";
-import { recordAiUsage } from "./ai-usage";
+import { assertAiBudget, recordAiUsage } from "./ai-usage";
 import { getAiOpsConfig } from "./ai-ops-config";
 import { getUpDownConfig } from "./updown-config";
 import { normalizeDomain } from "./source-registry";
@@ -68,6 +68,7 @@ export async function getOracleModel(): Promise<string> {
 export type RefusalReason =
   | "no-api-key"
   | "ai-paused"
+  | "budget-exhausted"
   | "no-tool-call"
   | "unparseable-price"
   | "wrong-source"
@@ -180,6 +181,26 @@ export async function observePrice(asset: StoredAsset, boundaryAtIso: string): P
 
   const anthropic = getClient();
   if (!anthropic) return refuse("no-api-key", "ANTHROPIC_API_KEY is not set");
+
+  // ── THE SPEND GATE ────────────────────────────────────────────────────────
+  // The operator's AI credit limit, enforced BEFORE the call — not merely alerted
+  // on afterwards. This was missing, and production paid for it: 656 oracle calls
+  // burned $59.37 and produced ZERO confirmed readings, including 256 calls / $21.35
+  // in a single day (2026-07-26) against a cycle limit of $20. `assertAiBudget` had
+  // existed since the events-calendar work but was wired into poll generation ONLY,
+  // so the platform's two biggest spenders — this oracle and the sentinel — ran
+  // uncapped. Same defect class as E-4: a control that exists and is not on the wire.
+  //
+  // Refusing is the SAFE direction and the one this module already takes everywhere
+  // else: a boundary that will not confirm VOIDS its rounds and refunds every stake
+  // in full. An exhausted budget must never become a settled bet on a guessed price.
+  const budget = await assertAiBudget("updown");
+  if (!budget.ok) {
+    return refuse(
+      "budget-exhausted",
+      `AI credit limit reached ($${budget.spentUsd.toFixed(2)} of $${budget.limitUsd.toFixed(2)} this cycle)`,
+    );
+  }
 
   const boundaryMs = Date.parse(boundaryAtIso);
   if (!Number.isFinite(boundaryMs)) return refuse("error", `Invalid boundary "${boundaryAtIso}"`);
@@ -327,6 +348,9 @@ export function describeRefusal(reason: RefusalReason, detail: string): string {
   switch (reason) {
     case "no-api-key": return "AI key not configured";
     case "ai-paused": return "Resolution AI is paused";
+    // Names the CAUSE and the number, because an operator seeing rounds void needs to
+    // know this is a spend ceiling they can raise — not a broken price source.
+    case "budget-exhausted": return `AI credit limit reached — ${detail}`;
     case "no-tool-call": return "Model returned no structured reading";
     case "unparseable-price": return `No usable price — ${detail}`;
     case "wrong-source": return `Wrong source — ${detail}`;

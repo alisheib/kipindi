@@ -33,7 +33,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { marketStore } from "./market-dal";
 import { ai } from "./ai-config";
-import { recordAiUsage } from "./ai-usage";
+import { assertAiBudget, recordAiUsage } from "./ai-usage";
 import { getAiOpsConfig } from "./ai-ops-config";
 import { getPlatformTimezone } from "./platform-config";
 import { loadConfig, saveConfig } from "./config-store";
@@ -245,6 +245,26 @@ export async function deepCheckMarket(market: MarketInput, sentinelModel?: strin
 
   const anthropic = getClient();
   if (!anthropic) return fail("No ANTHROPIC_API_KEY");
+
+  // ── THE SPEND GATE ────────────────────────────────────────────────────────
+  // The operator's AI credit limit, enforced BEFORE the call. The sentinel is the
+  // platform's single biggest AI spender — $68.36 over 2,962 calls, all of it
+  // uncapped, including 383 calls costing $15.38 in ONE HOUR (2026-06-26 13:00) and
+  // a 1,427-call burst over 13 hours once the provider account had run dry.
+  // `assertAiBudget` was wired into poll generation only; the sentinel and the
+  // Up & Down oracle never consulted it.
+  //
+  // Failing here is safe by construction: `deepCheckMarket` NEVER writes to a market
+  // and NEVER moves money — the caller decides. A blocked check leaves the market
+  // exactly as it was, open for a human officer, which is the same outcome as any
+  // other sentinel error. It is reported as an `error` action, not as "not settled",
+  // so nothing reads a spend ceiling as a verdict about the world.
+  const budget = await assertAiBudget("sentinel");
+  if (!budget.ok) {
+    return fail(
+      `AI credit limit reached ($${budget.spentUsd.toFixed(2)} of $${budget.limitUsd.toFixed(2)} this cycle)`,
+    );
+  }
 
   const now = new Date().toISOString();
   const criterion = market.resolutionCriterion?.trim() || "Not specified";

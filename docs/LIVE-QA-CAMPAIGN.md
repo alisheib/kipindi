@@ -166,8 +166,21 @@ which is the one thing blocking officer-side live verification (E-4).
 | `NODE_ENV` | `production` → **every `/api/dev-test/*` route 404s**. Live flows must go through real UI. |
 | `DISABLE_ADMIN_TOTP` | `true` on prod (admin 2FA off — pre-existing, tracked elsewhere) |
 | SMS provider | `console` — **deliberate**: the OTP path is parked until the SMS contract is signed. Registration and login are phone+password, so this is not a signup blocker. Re-check before enabling OTP. |
-| `TWELVEDATA_API_KEY` | **absent** on prod — the Up & Down source-pinning branch needs it (other session's work) |
-| Anthropic key | present (AI poll generation is live) |
+| `TWELVEDATA_API_KEY` | **absent on prod, and it blocks NOTHING that is deployed** — corrected 2026-08-01, see below |
+| Anthropic key | present, and **working**: a real poll call succeeded 2026-07-31 21:43Z. The 1,427 `credit balance is too low` failures in `AiUsageEvent` are a **13-hour window on 2026-06-25/26**, five weeks stale — do not read them as a current outage |
+| AI credit cap | `ai_credit_config` = **$20/cycle**, cycle started 2026-07-30 09:28Z. ⚠️ It was enforced on **poll generation only** until E-15 |
+
+### ✅ What the absent `TWELVEDATA_API_KEY` actually blocks — nothing deployed (2026-08-01)
+
+The §5 priority box carried this as a blocker on Ali's #1. **It is not one, and the framing was
+backwards.** `TWELVEDATA` appears **nowhere** in `main`'s `src/` or `scripts/` — only on the
+**unmerged** branch `origin/feat/updown-source-pinning-and-proposals` (`git log -S` confirms: the
+string was only ever added on that branch's four commits, and `git grep TWELVEDATA origin/main`
+returns nothing). What production actually runs is `src/lib/server/updown-oracle.ts` — an
+**Anthropic + web-search** oracle — and `ANTHROPIC_API_KEY` is present and working.
+
+So the key is not a prerequisite for the deployed engine. It is a prerequisite for the **fix** to
+E-16, which is a far more serious thing to know: the deployed engine does not work at all.
 
 ## 3. Traps this campaign has already paid for
 
@@ -217,7 +230,7 @@ All created through the real UI on production. Phone is the **9-digit local part
 | `alpha` | `+255712000101` | `usr_1cf528b35ef795530aa1c63f` | **`APPROVED`** 2026-07-31 13:58Z → `User.status = ACTIVE` · **email verified** 19:15Z (§6d) | main player — bet, win, withdraw. **Deposit gate now OPEN**; needs funds |
 | `bravo` | `+255712000102` | `usr_26313f74d8428e4e169603ca` | **`REJECTED`** 2026-07-31 14:11Z (`DETAILS_MISMATCH`) | rejected; nida …9013 now free |
 | `charlie` | `+255712000103` | `usr_8ed1b4ca3579490c94435188` | approved → **revoked** (`ADDITIONAL_INFO_REQUIRED`) → **`SUSPENDED`** | banned; sessions revoked; temp password issued |
-| `delta` | `+255712000104` | `usr_429885ab43c0cb4ce134dd7e` | **`REJECTED`** 2026-07-31 15:12Z (`DETAILS_MISMATCH`, `rejectNote = NULL`) | the E-1/E-6/E-2 workhorse. Restarted + resubmitted on prod, so its three documents are the **only** ones on the platform with correct `mimeType`/`sizeBytes` (`image/jpeg` / 57960). nida …9015 free again |
+| **`delta`** | `+255712000104` | `usr_429885ab43c0cb4ce134dd7e` | **`REJECTED`** 2026-07-31 15:12Z (`DETAILS_MISMATCH`, `rejectNote = NULL`) · **role `MODERATOR` 2026-08-01** | was the E-1/E-6/E-2 workhorse (its three documents are the **only** ones on the platform with correct `mimeType`/`sizeBytes` — `image/jpeg` / 57960). **Now ALSO the campaign's `trading` operator** — see the box below. `QA_TRADING_PASSWORD` in `.env.qa.local` |
 | `echo` | `+255712000105` | `usr_b8ed0aeacb1fc5d82f1b8d6a` | **`APPROVED`** 2026-07-31 18:57Z → `User.status = ACTIVE` · **email verified** 19:13Z | created for the **E-4 production proof** (the other four could not be approved: `alpha` already was, `bravo`/`delta` REJECTED, `charlie` SUSPENDED). nida …9016. `QA_ECHO_PASSWORD` in `.env.qa.local`. The **second** funded-player candidate for Phase 3 |
 | **`officer`** | `+255712000106` | `usr_2ff22430c89e4c560fac5334` | n/a — **role `COMPLIANCE`** | ⭐ the campaign's own **operator identity**. See the box below. `QA_OFFICER_PASSWORD` in `.env.qa.local` |
 
@@ -253,6 +266,46 @@ enforced, this account must enrol first.
 ⚠️ **It is a privileged account on a licensed live platform.** It is named unmistakably, and the
 header renders *QA COMPLIANCE OFFICER (TEST)* on every screen. **Revoke it when the campaign ends.**
 
+### ⭐ The QA TRADING officer (`MODERATOR`) — added 2026-08-01, and why it is a SECOND identity
+
+Every Up & Down and AI-poll surface is the **`trading`** domain, and `DEFAULT_GRANTS` gives
+`COMPLIANCE` **no `trading` grant at all** — so the compliance officer above simply cannot reach
+them. ⛔ **The wrong fix is to widen it**: that would destroy the first live exercise of the RBAC
+matrix, and E-12 was found precisely by respecting it. So trading authority went to a **separate**
+identity, exactly as the RBAC model intends. `MODERATOR` is the deliberately narrow role —
+`roles.ts` MONEY_ROLES / COMPLIANCE_ROLES / CONFIG_ROLES each say **"NEVER MODERATOR"**.
+
+**Why `delta` and not a fresh registration.** Production's `email.suppression` already holds **all
+six** `qa.*.50pick@gmail.com` addresses — i.e. every one of them **hard-bounced** (§6d). A seventh
+persona would mint a seventh bounce against a licensed platform's sender reputation for no benefit.
+`delta`'s KYC lane is closed, and `PENDING_KYC` does **not** block admin sign-in — only
+`SELF_EXCLUDED` / `SUSPENDED` / `CLOSED` do (`auth-service.ts:756-762`). Cost: zero mail, zero new
+accounts. Script `live/grant-trading.cjs`; reverse with `REVOKE=1`.
+
+Made the same way as the officer: **one** narrow `UPDATE` (`role → MODERATOR`, `displayName →
+'QA Trading Officer (test)'`, plus the role-change trail, `roleChangedBy = 'qa:live-experience'`),
+and ⛔ **no hand-written `AuditLog` row** — that table is HMAC-chained with a `@@unique([prevHash])`.
+Its password was re-minted into `.env.qa.local` (§1's scrypt recipe), never printed.
+
+**Production had ZERO `MODERATOR` accounts** (9 `ADMIN`, 1 `COMPLIANCE`, 1 `FINANCE`), so this is
+the **first live exercise of the RBAC trading grant** — and it held in both directions:
+
+| | Result |
+|---|---|
+| trading surfaces reachable (`updown`, `updown/rounds`, `ai-polls`, `candidates`, `markets`, `proposals`, `resolver-queue`, `sources`) | **8/8 render real content**, 0 horizontal overflow, 0 console errors |
+| privileged surfaces refused (`finance`, `compliance`, `audit`, `system`, `ai-usage`, `approvals`, `staff`, `roles`, `config`, `transactions`, `players`) | **11/11 blocked** — refusal panel present **and** the page's real data absent |
+| `RoleDomainGrant` overrides for `MODERATOR` | **none** → `DEFAULT_GRANTS` is what is live (`overview` view · `trading` view+act) |
+
+🔴 **TRAP PAID FOR HERE — the probe that cried RBAC bypass.** The first pass asserted
+`page.url() !== route` and reported **all eleven** privileged routes as *REACHED*, which reads as a
+critical RBAC hole on a live money platform. It is a **false alarm**: `admin/layout.tsx:196` does
+**not** redirect a blocked viewer — it swaps the subtree for `<AdminRestricted>` and returns a clean
+**200**, deliberately (`redirect()` mid-stream bounced the client and threw *"Rendered more hooks"*).
+So on a blocked page the URL is **identical** and the status is **200**, exactly as on an allowed one.
+The correct assertion is two-sided — refusal marker **present** *and* a page-specific data string
+**absent**, because a gate that shows a lock with the numbers still underneath is a leak. Same family
+as every §3 trap: **the harness lying, not the product.** `live/t2-rbac-content.cjs`.
+
 ⚠️ **Only `alpha`'s password is in `.env.qa.local`** (`QA_ALPHA_PASSWORD`). `bravo`,
 `charlie` and `delta` were registered with a password that is in **neither** that file
 nor `p1-signup.mjs`'s default, so signing in as them fails with `wrong_credentials`.
@@ -276,11 +329,11 @@ and a clean console: `/admin` · `players` · `markets` · `ai-polls` · `ai-usa
 | 2 | KYC: submit · import · approve · reject · revoke · ban · NIDA duplicate | ✅ **COMPLETE** — approve · reject · revoke · ban · NIDA freed, all driven on prod (§6c). E-1 verified in **EN + SW + ZH**; E-3, E-6, E-2, E-5, **E-4 + E-9** fixed **and live-verified**. Only `import` untested |
 | 3 | Money in: wallet · deposit · ledger · receipts | 🔄 **email gate CLEARED + deposit form reachable** (§6d). ⛔ **Blocked on Ali: a real deposit needs real money** — the play-money path is hard-disabled on prod |
 | 4 | Core play: markets · YES/NO · win + lose · resolution · payout | ⏳ |
-| 5 | Up & Down: rounds · quick-bet · pricing · void · history | ⏳ |
+| 5 | Up & Down: rounds · quick-bet · pricing · void · history | 🔴 **BLOCKED — E-16: it has never settled a round and cannot.** Round *generation* works (1,398 generated); *resolution* has 0 confirmed readings out of 1,400 and voids 100% |
 | 6 | Proposals: propose · approve · 4-state switch · bonus | ⏳ |
-| 7 | AI: poll generation · source registry · token enable/disable · usage | ⏳ |
+| 7 | AI: poll generation · source registry · token enable/disable · usage | 🔄 poll generation is **live and working** (447 calls, 175 `PUBLISHED` polls, newest 2026-07-31 21:43Z); **spend ceiling fixed + guarded (E-15)**; the Up & Down half does not exist on prod (**E-17**) |
 | 8 | Invites & referrals | ⏳ |
-| 9 | Admin & accountant: roles · RBAC · finance · reports · settlement · audit | ⏳ |
+| 9 | Admin & accountant: roles · RBAC · finance · reports · settlement · audit | 🔄 **RBAC proven live for `MODERATOR`, 8 allow / 11 deny** (§4) — first `MODERATOR` account production has ever had. Finance · reports · settlement · audit untouched |
 | 10 | Money out: withdrawal + the payout gate | ⏳ |
 | 11 | Visual sweep: 4 widths × EN/SW/ZH across 89 routes | ⏳ |
 | 12 | Adversarial: cheating, manipulation, abuse of every money path | ⏳ |
@@ -291,11 +344,18 @@ and a clean console: `/admin` · `players` · `markets` · `ai-polls` · `ai-usa
 Stated mid-session, so the phase numbers are now just labels. **Work these first**, and do not let the
 table's ordering pull the campaign back to `3 → 4 → 5 …`:
 
-1. **Up & Down: generation · playing · resolution — on our REAL AI tokens** (phase 5). Not mocked, not
-   a stub key. ⚠️ Blocker already on record: `TWELVEDATA_API_KEY` is **absent on prod** (§2), which the
-   source-pinning work needs — check what that costs before assuming rounds can resolve.
+1. **Up & Down: generation · playing · resolution — on our REAL AI tokens** (phase 5).
+   🔴 **ANSWERED 2026-08-01, and the answer is worse than the question assumed — see E-16.**
+   *Generation* works. *Resolution* has **never** worked: 0 confirmed readings in 1,400 attempts,
+   1,398/1,398 rounds VOID, $59.37 of real tokens spent proving it. The `TWELVEDATA_API_KEY` note
+   that used to sit here was **backwards** — the key blocks nothing deployed (§2); it is a
+   prerequisite for the *unmerged* branch that would **fix** E-16. So this item is not "test it",
+   it is **"the game cannot go live until E-16 is fixed"**, and the fix is a decision for Ali
+   (§6b step 3), not a QA task.
 2. **Polls: generation · playing · resolution · winning AND losing** (phases 7 + 4). A real win and a
    real loss settled end to end, with money moving, not just a market resolving.
+   ℹ️ **Generation is confirmed live and healthy** (§5 row 7). The *playing / winning / losing* half
+   is the part still blocked on a funded wallet.
 3. **Visuals** (phase 11) — "super important". The 4-width × 3-locale sweep, and *looking* at the
    images (§6b: E-2 and E-5 were both found by looking, and one E-5 pass nearly shipped a
    below-the-fold screenshot as proof).
@@ -726,10 +786,38 @@ confirm whatever you were hoping for.
    (`i18n-dict.ts:2196`) — one word, complete. A burst ray crosses the capital `I`. EN is
    `ID verified`, ZH is `已验证`; none of the three overflow.
 
+| **E-15** | **HIGH** | AI spend · money safety | **The AI credit ceiling was enforced on poll generation ONLY, so the platform's two biggest spenders ran uncapped.** `assertAiBudget` has refused over-limit calls since the F8 events-calendar work — and it was imported by `ai-poll-generation.ts` and **nothing else**. Measured on live production: `polls` 447 calls / **$80.72** (capped) · `sentinel` 2,962 calls / **$68.36** (uncapped) · `updown` 656 calls / **$59.37** (uncapped). **$127.73 of real money bypassed a $20 cycle limit.** The Up & Down oracle spent **256 calls / $21.35 on 2026-07-26 alone** — one day past the whole-cycle cap — and nothing refused a single call; the sentinel once made **383 calls costing $15.38 in one hour**, and 1,427 calls over 13 hours after the provider account had already run dry. Exactly E-4's defect class: a control that exists, reads as correct in review, and is absent at the point that needed it. | live `AiUsageEvent` aggregates (above); `grep assertAiBudget src/` → one production file | ✅ fixed |
+
+**E-15 fix** — `assertAiBudget` now gates **both** remaining spend paths, **before** the provider is
+dialled: `observePrice` (a new `budget-exhausted` `RefusalReason`) and `deepCheckMarket` (an `error`
+action). Refusing is the safe direction in both, and that is *why* those two shapes were chosen
+rather than a throw: the oracle's existing contract is that a boundary which will not confirm
+**voids its rounds and refunds every stake in full**, and `deepCheckMarket` never writes to a market
+or moves money, so a blocked check leaves it exactly as it was for a human officer. `outcome` stays
+`UNKNOWN` with `confidence 0` — **a spend ceiling is not evidence about the world**, and must never
+be recorded as one. `describeRefusal` names the credit limit and the two numbers, so an operator
+watching rounds void can tell a ceiling they can raise from a price source that is broken.
+
+**Guard**: `npm run test:ai-budget` (28). It **drives the real `observePrice` and `deepCheckMarket`**
+rather than asserting on source text — E-4 established that a missing gate is precisely what reads as
+present in review. The provider key is a deliberate dummy: both gates sit after the client is built
+and before any network call, so a blocked call must make **no request**, which is asserted by proving
+the feature's `AiUsage` call count **does not move**. Pre-fix, that count went `2 → 3` and the
+refusal reason came back `"error"` carrying a provider **401** — i.e. over budget, it really did dial
+out and pay. Proven red first: **5 failures** on the pre-fix tree, each naming the production
+symptom. The suite also models spend as **paths, not files** (polls is legitimately gated one layer
+above the module that meters, in `ai-poll-generation.ts`, and both provider entry points are reached
+from there alone), and carries a **drift detector** that fails if any new module starts metering AI
+spend without being declared with its gate — adversarially verified by adding an ungated spender,
+which it named by filename.
+
 ### Open findings — evidenced on production, NOT yet fixed
 
 | # | Sev | Area | Finding | Evidence |
 |---|---|---|---|---|
+| **E-16** | 🔴 **BLOCKER** | Up & Down · resolution | **Up & Down has NEVER settled a single round on production, and cannot.** The price oracle has produced **zero** confirmed readings in its entire history: `UpDownObservation` holds **1,397 `PENDING` + 3 `FAILED` = 0 `CONFIRMED`**, and every one of the **1,398** `UpDownRound` rows is **`VOID`** (1,395 `operator`, 3 `source-failed`). `PredictionMarket` agrees — **1,398 `UPDOWN` rows, every one `VOIDED`**, not one `RESOLVED`. The cause is in the stored `failReason`s and it is the same every time: **the two enabled assets' sources render their prices in JavaScript widgets that a web search cannot read.** Verbatim from live rows — *"the search engine returned only static/descriptive text from that page … no actual quoted numeric spot price and no timestamp"* (`goldprice.org`), and for `kitco.com` the crawl returns only *"Market Data and Widgets Technology provided by TradingView"* and *"Data Delayed by 10 minutes"*. So the design behaved **honestly** — it refused rather than guessing, and every stake was refunded, which is the correct and player-safe direction — but the game is **structurally unable to resolve**, and it burned **$59.37** of real tokens establishing that 656 times. ⚠️ Both chains are currently `PAUSED`/`STOPPED` and the newest boundary is 2026-07-30 09:40, so nothing is spending **right now**. | live: `UpDownObservation` state counts · `UpDownRound` outcome counts · the `failReason` text quoted above · `AiUsageEvent` feature=`updown` |
+| **E-17** | MEDIUM | Up & Down · AI generation | **The Up & Down AI-generation surface does not exist on production — and prod carries its orphaned table.** Ali's own observation (2026-08-01): *"in the nav bar the AI generation is not there, maybe we have to add it in admin for up down."* Confirmed live as the trading officer: the **Up & Down** nav group renders exactly two items, `Overview` and `Rounds`, while the **Markets** group has `AI poll generation` and `AI candidates`. There is no generation page, no route and no nav entry — `src/app/admin/updown/` holds only `page.tsx`, `rounds/`, `actions.ts` and `updown-controls.tsx`, and `actions.ts` exports asset/chain CRUD plus thresholds and **nothing that triggers a reading or a round**. Meanwhile **migration `20260730223000_updown_proposals` IS applied to the live DB** (2026-07-30 13:41Z) so the `UpDownProposal` table exists on production with **0 rows and no code referencing it** — `model UpDownProposal` is absent from `main`'s `prisma/schema.prisma` entirely. ⛔ Not a new discovery for the backup subsystem, which already documents it (`backup/core.ts:117`, `db-backup.mts:181`, `backup.test.mts:91` all name `UpDownProposal` as a table "applied ahead of its code") — but it *is* new as a **product** gap. Everything missing lives on the unmerged branch: `admin/updown/proposals/{page,actions,proposal-actions}.tsx`, `updown-proposal.ts` (849 lines), and the `AI proposals` nav entry. | live nav read from the DOM as `MODERATOR` (`live/t2-rbac-content.cjs`); live `_prisma_migrations`; `git diff main...origin/feat/updown-source-pinning-and-proposals` |
+| **E-14** | LOW | AI spend config | **`limitUsd = 0` is documented as "no cap" and is unreachable dead code.** `assertAiBudget` opens with `if (cfg.limitUsd <= 0) return { ok: true }; // 0 = no cap configured`, but `getCreditConfig` (`ai-usage.ts:133`) rewrites a stored `0` back to `DEFAULT_LIMIT_USD` **before that branch ever sees it** — so 0 silently means **$20**, not "uncapped", and the branch can never execute. Two further `limitUsd > 0` guards on `/admin/ai-usage` can likewise never be false. **Left as-is deliberately**: the admin control is `min="0.01"` (`credit-controls.tsx:38`), so nothing on the platform can store 0, and changing the semantics of an unreachable value on a live money platform is an unforced risk. ⚠️ The reason it is recorded rather than ignored: **`events-calendar.test.mts:146` asserts *"limit 0 = uncapped (does not brick generation)"* and passes VACUOUSLY** — its 1M-token burn is ~$3, comfortably under the coerced $20, so that assertion has never once exercised the claim it makes. `test:ai-budget` now pins what actually happens instead. | `ai-usage.ts:133` vs `:168`; `test:ai-budget` §4b |
 | **E-8** | LOW | KYC reject copy | **The `DETAILS_MISMATCH` label describes a comparison the product never makes.** The officer's rail calls it *Details mismatch* — meaning the details typed do not match the **document the player submitted**. The player is told, in all three languages, *“NIDA details don't match **our records**”* / *“Taarifa za NIDA hazilingani na rekodi zetu”* / *“NIDA 信息与我们的记录不符”*. We hold no NIDA record to compare against — `docs/NIDA-POLICY.md` and the D-2 fix are explicit that no request has ever reached the authority. Milder than D-2 (it says *our* records, not the authority's) but it is the same class: describing evidence we do not have. Suggested: name the submitted ID document instead. All three locales + `test:kyc-reject-reason`'s key list would need updating together. | live `e6-player-{sw,zh,en}.png`; `i18n-dict.ts:960/2306/3650` |
 | **E-10** | **HIGH** | one-account-per-email · RG | **The one-account-per-email control does not survive Gmail plus-addressing, and its own comment says why that matters.** `setUserEmail` (and `registerWithPassword`) compare `email.trim().toLowerCase()` against `db.user.findByEmail` — an **exact string** match. Gmail delivers `user+anything@gmail.com` *and* `u.s.e.r@gmail.com` to the same inbox, so one inbox can hold unlimited accounts that the platform counts as different people. The code comment states the control's purpose in terms that this defeats: *“a verified email now UNLOCKS DEPOSITING, so a shared address would let one inbox open unlimited depositing accounts, and per-account controls (**deposit caps, self-exclusion**) are only as strong as the one-person-one-account assumption underneath them.”* For a licensed operator, self-exclusion that a `+1` re-registers around is the serious end of this. **Proven on production:** `qa.alpha.50pick+officer@gmail.com` was accepted as a wholly separate account while `qa.alpha.50pick@gmail.com` already existed — no duplicate block, no `user.email.duplicate_blocked` audit row. ⏳ **NOT yet proven:** that the second account can actually deposit, and that it survives a self-exclusion on the first — both need Phase 3/12, and the finding should not be written up as self-exclusion bypass until they are. Note the comment also records that the DB `@unique` was deliberately deferred; a unique index would not have caught this either, since the strings genuinely differ. | live: officer persona registered on `+officer` sub-address of an existing account, `email-verification.ts:121-138` |
 | **E-11** | LOW | KYC workstation · officer copy | **The Decision panel attributes a compliance decision to a raw user id.** After approval it reads *“Identity approved by **usr_2ff22430c8…** · 31 Jul 2026, 21:57”*, although `displayName` is set and the page header renders *QA COMPLIANCE OFFICER (TEST)* on the same screen. The accountable officer's **name** is the point of the attribution on a record an inspector reads; a truncated cuid identifies nobody without a second lookup. Same family as E-2/E-9 — an officer-facing compliance surface stating less than it knows. | `shots/e4p-06-approved.png` |
@@ -768,12 +856,38 @@ the same way**, so both are now `emailVerifiedAt`-set.
 mail ever arrives. There is **no `EmailLog` model**, so delivery can only be confirmed from Postmark's
 own activity feed or Ali's inbox. `POSTMARK_API_KEY` *is* set on prod, so mail is really being sent.
 
-⚠️ **Postmark being live has a cost this campaign has been paying blind.** Every persona registration
+### 🔴 ANSWERED 2026-08-01 — the `qa.*.50pick@gmail.com` inboxes DO NOT EXIST
+
+**Ali did not need to answer this; production already had.** `SystemConfig.email.suppression` on the
+live DB reads:
+
+```
+["john@example.com", "vickyhabibalalji13@icloud.com",
+ "qa.alpha.50pick@gmail.com", "qa.bravo.50pick@gmail.com", "qa.delta.50pick@gmail.com",
+ "qa.charlie.50pick@gmail.com", "qa.echo.50pick@gmail.com", "qa.alpha.50pick+officer@gmail.com"]
+```
+
+All **six** campaign addresses are suppressed — i.e. every one of them **hard-bounced**. So the
+warning below was right, and the count is six, not five (the `+officer` sub-address bounced too,
+which also confirms `alpha`'s inbox never existed rather than merely rejecting mail).
+
+**Consequences, stated plainly.** (1) **Stop registering personas on `qa.*.50pick@gmail.com`** — each
+one is another bounce against a licensed platform's sender reputation. That is exactly why the new
+trading officer re-used `delta` instead of registering a seventh persona (§4). (2) Any campaign step
+that depends on **receiving** mail is untestable on these addresses, which is precisely why email
+verification had to be proven by **minting the genuine link** (§6d) rather than reading an inbox — a
+choice that now looks better-founded than when it was made. (3) If a future step genuinely needs a
+delivered mail, it needs **a real inbox from Ali**, not another invented address.
+
+⚠️ **Also on that list: `vickyhabibalalji13@icloud.com`, which is not ours.** A real customer's
+address is suppressed on production, so that person receives no platform mail at all. Not caused by
+this campaign, not investigated here — **flagged for Ali** as an ops item.
+
+⚠️ **Postmark being live has a cost this campaign was paying blind.** Every persona registration
 mails a real address, and a non-existent Gmail address **hard-bounces** — which suppresses the address
 and counts against sender reputation on a money platform. `alpha`…`echo` were registered on
-`qa.<name>.50pick@gmail.com`; **Ali should confirm those inboxes exist**, or that is up to five
-bounces. The officer persona used a `+officer` sub-address of the known-good `alpha` inbox to avoid
-adding another — which is exactly what exposed **E-10**.
+`qa.<name>.50pick@gmail.com`. The officer persona used a `+officer` sub-address of the *presumed*-good
+`alpha` inbox to avoid adding another — which is exactly what exposed **E-10**.
 
 **The deposit gate really did open.** As `alpha` on `/wallet` and `/wallet/deposit`: the
 *“Confirm your email — deposits locked”* banner is **gone**, the amount field renders, and **all five
@@ -866,6 +980,49 @@ workstation shows an SLA countdown, but nothing escalates when it runs out. Ali'
 
 ## 6b. NEXT SESSION — start here
 
+### 🔵 Laptop B, session 3 (2026-08-01) — Up & Down + AI, and what it found
+
+**Read this block first; it supersedes the session-2 notes below it.** Four things happened.
+
+**1 · The `trading` operator exists now.** `delta` → `MODERATOR`, verified live 8 allow / 11 deny
+(§4). Production had no `MODERATOR` at all before. ⛔ The compliance officer was **not** widened.
+
+**2 · E-15 shipped: the AI spend ceiling now applies to every spender.** $127.73 of real money had
+bypassed a $20 cap because `assertAiBudget` was wired into poll generation only. Guarded by
+`test:ai-budget` (28), red-proven, drift-detector adversarially verified.
+
+**3 · 🔴 E-16 — the headline, and it is a BLOCKER Ali must decide on.** Up & Down **has never settled
+a round on production and structurally cannot**: 0 confirmed price readings in 1,400 attempts,
+1,398/1,398 rounds VOID, because both enabled assets quote their prices in JavaScript widgets that a
+web search cannot read. The engine behaved *honestly* (refused, refunded every stake) — it simply
+cannot do its job. **Ali's three options, and none is a QA call:**
+  - **(a) Merge `origin/feat/updown-source-pinning-and-proposals`** — 7,437 insertions / 61 files,
+    another session's unreviewed work, which replaces the web-search oracle with a real
+    **TwelveData** price feed (*"the only method that can meet the time contract"*) **and** ships the
+    missing AI-generation UI of E-17. Needs `TWELVEDATA_API_KEY` set on Railway. ⛔ **Do not merge
+    7.4k lines of unreviewed code into a live money platform on a QA session's judgement** — this
+    wants Ali's decision and its own review pass.
+  - **(b) Re-point the two assets at a source a web search CAN actually read**, and prove one round
+    settles end to end. Cheapest path to a working game on today's code; it is a data change plus a
+    guard. ⚠️ Unproven — no candidate source has been tested yet, and it must be an **enabled
+    `TrustedSource`** as well as readable. **This is the obvious next experiment**, and it costs
+    ~$0.15–0.35 per probe against the $20 cycle cap.
+  - **(c) Leave Up & Down off.** Both chains are already `PAUSED`/`STOPPED`, so this is the current
+    de-facto state and nothing is spending. Honest, and it keeps the void-and-refund record clean.
+
+**4 · E-17 — Ali's nav observation was exactly right.** There is no AI-generation entry under
+Up & Down because there is no page: it lives only on the unmerged branch, while production carries
+the orphaned `UpDownProposal` **table** (migration applied 2026-07-30, 0 rows, no code). ⛔ Do **not**
+"just add the nav item" — it would point at a 404.
+
+**Also answered without needing Ali:** the `qa.*.50pick@gmail.com` inboxes **do not exist** (all six
+are on production's `email.suppression`, i.e. hard-bounced — §6d). And a **real customer's** address,
+`vickyhabibalalji13@icloud.com`, is suppressed on prod and receives no platform mail: an ops item for
+Ali, not ours.
+
+**Still owed by Ali, unchanged:** the Phase-3 money decision (real deposit / MSISDN / card — §6d), the
+E-3 backfill call, and E-7 / E-8.
+
 **Laptop B, session 2 (2026-07-31 21:39→22:1x EAT) closed E-4 on production.** No code changed —
 E-4/E-9 were already shipped; what was owed was the live proof, and it is now in §6 with the audit
 row, the adversarial refusal and the screenshots. Guards re-run: `--filter kyc` **8/8 green** incl.
@@ -882,7 +1039,9 @@ built. Branch `qa/live-experience` == `main`.
 **8/8 green** incl. typecheck): `test:kyc` · `test:kyc-honesty` (19) ·
 `test:kyc-reject-reason` (64) · `test:kyc-doc-metadata` (19) · `test:kyc-workstation-time` (16) ·
 **`test:kyc-approved-copy` (35)** · **`test:kyc-attestations` (39)**. Plus `test:phone-normalize` (17)
-and `test:login-enum` (11) from Phase 1.
+and `test:login-enum` (11) from Phase 1, and **`test:ai-budget` (28)** from session 3 (E-15) —
+`node scripts/test-all.mjs --filter ai --no-tsc` runs **13/13 green**, and
+`--filter updown,sentinel,events,resolver` **8/8 green** (the suites E-15's two edits could regress).
 
 ℹ️ **Pre-existing build noise, not ours and not a failure.** `npm run build` prints
 *“Ecmascript file had an error … `node:crypto` is not supported in the Edge Runtime”* twice, via
