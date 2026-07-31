@@ -28,9 +28,14 @@ gate. That document commands the remaining work; this one holds launch-hardening
 
 ### 🔴 Start here, in this order
 
-1. **A6 — turn admin TOTP on.** `DISABLE_ADMIN_TOTP` is set in production, so admin 2FA is OFF.
-   The **only** remaining Wave 1 item. ⚠️ Confirm an admin is enrolled *first* or the flip locks Ali
-   out of his own console.
+1. **A6 — finish turning admin TOTP on.** The honesty half is done (`test:cert-a6`, 16 assertions):
+   `/api/health` now reports `security.adminTotp`, and every production boot warns. **The flip
+   itself is Ali's**, and the order matters:
+   `railway ssh "node scripts/admin-2fa-readiness.mjs"` → enrol at `/admin/2fa/setup` while 2FA is
+   still off, storing backup codes off-machine → re-run the readiness check → only then
+   `railway variables --set DISABLE_ADMIN_TOTP=false` → confirm health says `"enforced"`.
+   ⚠️ `admin/layout.tsx` **forces** enrolment, so flipping with zero enrolled admins locks Ali out
+   with no admin able to readmit him.
 2. **Wave 2 — the money core** (G1–G4, then E1–E3). This resolves the orphan TZS 100,000 wallet and
    the broken audit-chain link. ⚠️ **G3 is blocked** until Ali rules on the fee basis
    ([`FEE-MODEL-DECISION.md`](FEE-MODEL-DECISION.md), open since 2026-07-22).

@@ -26,8 +26,25 @@ export type AdminTotpStatus = "ok" | "not-enrolled" | "unverified";
  * would corrupt the response) can map it to a 403. `requireAdminTotp` wraps this
  * for the Server-Action / page path where a redirect is the right UX.
  */
+/**
+ * Is admin 2FA actually being enforced right now?
+ *
+ * 🔴 The ONE place this question is answered, so `/api/health`, the boot checks and the guard
+ * cannot disagree. Until 2026-07-31 `DISABLE_ADMIN_TOTP=true` was set in production and **nothing
+ * anywhere said so** — not health, not the boot checks, not `/admin/system`. An admin console that
+ * is password-only while looking exactly like one that is not is the same defect as the compliance
+ * card that showed a hardcoded green tick for backups that did not exist.
+ *
+ * Deliberately a read, not an enforcement change: flipping the env var blind would lock the owner
+ * out of his own console if no admin has enrolled. Making the state visible is the safe half, and
+ * it is the half that was missing.
+ */
+export function isAdminTotpEnforced(): boolean {
+  return process.env.DISABLE_ADMIN_TOTP !== "true";
+}
+
 export async function checkAdminTotp(userId: string, sessionId: string): Promise<AdminTotpStatus> {
-  if (process.env.DISABLE_ADMIN_TOTP === "true") return "ok";
+  if (!isAdminTotpEnforced()) return "ok";
   if (!(await hasTotp(userId))) return "not-enrolled";
   const jar = await cookies();
   const raw = jar.get(TOTP_COOKIE_NAME)?.value;

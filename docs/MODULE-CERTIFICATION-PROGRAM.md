@@ -185,14 +185,52 @@ given how it is built. Add to them; do not stop at them.
 **Attack** Reuse a TOTP code inside its window · accept a code from the previous/next window beyond tolerance · reuse a backup code · use one after regeneration · enumerate codes · bypass 2FA by going straight to a post-auth route · is the secret encrypted at rest (`test:totp-enc` says yes — try to break it)?
 **Exit** Codes single-use, no post-auth route reachable without the second factor.
 
-### A6 · Admin TOTP & backup codes — `cert:a6` 🔴 **Wave 1**
+### A6 · Admin TOTP & backup codes — `test:cert-a6` 🟨 **Wave 1 — honesty half DONE**
 **Surfaces** `admin/2fa/setup` `admin/totp-verify` · **Owns** `totp` `totp-cookie` `admin-guard`
-**Attack** 🔴 **`DISABLE_ADMIN_TOTP` is SET in production — admin 2FA is OFF.** Certification ends
-with it ON. **Do not simply unset it:** prove an admin is enrolled first, or the flip locks Ali out
-of his own console. · reach an admin route with a valid session but no TOTP cookie · forge the TOTP
-cookie · downgrade to a staff role to skip it.
-**Exit** TOTP mandatory in production **enforced by code**, enrolment proven before the flip, no
-admin surface reachable without it.
+
+### ✅ HONESTY DONE 2026-07-31, `npm run test:cert-a6` (16 assertions)
+
+🔴 **`DISABLE_ADMIN_TOTP=true` is set in production — the admin console is PASSWORD-ONLY.** Every
+`/admin` surface, every money-ops action and every compliance override is reachable with a password
+alone, on a licensed real-money platform.
+
+That is a known accepted risk (set so a consultant could test). **What was not acceptable is that
+nothing said so** — not `/api/health`, not `boot-checks.ts`, not `/admin/system`. "Is admin 2FA on?"
+was answerable only by reading Railway's variable list, exactly as "is alerting on?" was before it
+was surfaced on health for this same reason. Now:
+
+- **`isAdminTotpEnforced()`** in `admin-guard.ts` is the single source of truth; the guard uses it
+  rather than a second env read.
+- **`/api/health`** reports `security.adminTotp: "enforced" | "DISABLED"`. The word, not a bare
+  `false` — a boolean false reads as "no problem" at a glance.
+- **`boot-checks.ts`** warns loudly on every production boot, and names the **lockout hazard**, not
+  just the risk. Fail-open, never throws (a boot `throw` caused the C7 outage).
+- ⛔ The gate **pins the bypass to a closed set of 4 call sites** and fails if a fifth appears —
+  proven by adding one and watching it go red. It also fails if one *disappears*, since a removed
+  gate means an unguarded `/admin` surface.
+
+**This suite deliberately does NOT assert that 2FA is ON.** That would fail on production today and
+would misrepresent Ali's choice. It asserts the platform *says which it is*.
+
+### 🔴 What remains, and why it is not code
+
+**`npm run ops:admin-2fa-readiness`** (run it as `railway ssh "node scripts/admin-2fa-readiness.mjs"`
+— read-only, moves nothing) counts how many **active ADMIN accounts actually have a TOTP secret**.
+
+`admin/layout.tsx` **forces** enrolment: an admin with no secret is redirected to `/admin/2fa/setup`.
+So unsetting the env var with **zero** enrolled admins risks locking Ali out of his own console on a
+live platform, with no admin able to readmit him. The order is fixed:
+
+1. While 2FA is still disabled, enrol at `/admin/2fa/setup` and store the backup codes **off-machine**
+2. Re-run the readiness script; confirm ≥1 enrolled ACTIVE admin
+3. `railway variables --set DISABLE_ADMIN_TOTP=false`, redeploy
+4. Confirm `/api/health` reports `security.adminTotp: "enforced"`
+
+**Attack (still open)** reach an admin route with a valid session but no TOTP cookie · forge the TOTP
+cookie · replay it across logins (it is bound to userId+sessionId — try anyway) · reuse a backup
+code, or use one after regeneration · downgrade to a staff role to skip the gate.
+**Exit** ~~State reported truthfully~~ ✅ · TOTP enforced in production after enrolment is proven ·
+no admin surface reachable without it.
 
 ## B · Authorization
 
@@ -744,7 +782,14 @@ same defect as the compliance card's hardcoded green tick, one directory over.
 
 Enforced by `npm run test:orphans`. Remove each adopted or deleted file from
 `scripts/orphan-allowlist.json` in the same commit. **The allowlist may only shrink, and its length
-is this program's progress metric: 145 → 0.**
+is this program's progress metric.**
+
+**145 → 140 as of 2026-07-31.** The first five adopted were ops tools already documented as commands
+while being run by nothing: `ops:backup-verify-offbox` · `ops:backup-secrets` ·
+`ops:r2-backup-bucket` · `ops:selcom-probe` · `ops:selcom-code-matrix`. Note the prefix — an ops tool
+that needs live credentials must **not** be a `test:*` script, or `test:all` would run it and fail.
+The guard caught `admin-2fa-readiness.mjs` on its very first run, on my own work, which is how it
+should behave.
 
 ---
 
@@ -802,7 +847,7 @@ Existing commands to use rather than reinvent: `npm run test:all` · `npm run qa
 | A3 Password recovery | `cert:a3` | ⬜ |
 | A4 OTP & SMS | `cert:a4` | ⬜ OTP hardcoded Swahili |
 | A5 Player 2FA | `cert:a5` | ⬜ |
-| A6 Admin TOTP | `cert:a6` | ⬜ **Wave 1** — TOTP OFF in production |
+| A6 Admin TOTP | `test:cert-a6` | 🟨 **honesty DONE 2026-07-31** (16 assertions) — health + boot now report the state. 🔴 Still OFF in production: run `ops:admin-2fa-readiness` and enrol an admin **before** flipping |
 | B1 Roles & domain grants | `cert:b1` | ⬜ |
 | B2 Staff management | `cert:b2` | ⬜ |
 | B3 Two-officer control | `cert:b3` | ⬜ |
