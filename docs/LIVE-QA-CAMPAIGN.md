@@ -517,9 +517,39 @@ plus malformed JSON, `null`, an array, and a padded payload. Proven red first: *
 against the pre-fix wiring, while the 29 pure-validator assertions still passed — i.e. the wiring
 assertions are what caught the defect.
 
-⏳ **Not yet live-verified**, and honestly so: confirming the audit row on production requires
-driving an approval as an **officer**, and `QA_ADMIN_PASSWORD` is absent on laptop B (§1). The code
-is shipped, guarded and built; the production audit-row check is the one step outstanding.
+**E-4 verified END-TO-END on a local in-memory boot** — because a guard and a green build could not
+answer the question that actually mattered. E-4 makes the server **refuse** an approval whose
+attestations are absent; if the FormData the real rail sends did not satisfy the validator, **every
+KYC approval on the live platform would be blocked**, and two real players are already queued (§6c
+ops note). Neither the unit guard nor `npm run build` proves the wire. So the whole flow was driven
+against `localhost:3400` (`DISABLE_ADMIN_TOTP=true`, mirroring prod's own setting): player seeded via
+`/api/dev-test/fresh-kyc-player` → **three real JPEGs minted in-browser** (the uploader runs a real
+canvas resize and the server sniffs magic bytes, so a hand-rolled buffer is rejected) → submitted →
+officer seeded via `/api/dev-test/seed-admin` → decision rail driven by hand:
+
+| Check | Result |
+|---|---|
+| Approve disabled with only **3** attestations ticked | **true** — the client gate still holds |
+| Approve enabled with all **4** | **true** |
+| approval **succeeded** — no `Blocked` toast, officer screen reads verified | **true** ← the regression that mattered |
+| `kyc.workstation.approved` present in the audit log | **true** |
+| its payload carries `name_matches` · `document_authentic` · `selfie_match` · `sanctions_clear` | **all four** |
+| audit **CHAIN INTEGRITY** after the new payload shape | **Valid** (HMAC-chained) — adding the field did not break chain verification |
+| E-9: dialog says “opens the withdrawal gate”, no longer “deposits, play and withdrawals” | **true / true** |
+| E-5 end-to-end: the player's burst renders and does **not** mention deposits | **true** |
+
+Evidence `shots/e4-local-{player-submitted,officer-armed,confirm-dialog,officer-after,audit,player-approved}.png`.
+
+⏳ **Still owed on production**: the same audit-row read against live, which needs **officer**
+access — `QA_ADMIN_PASSWORD` is absent on laptop B (§1). The mechanism is now proven on the wire, so
+this is confirmation rather than discovery, but it is not done until it is done.
+
+⚠️ **Trap paid for here, for the next session:** hard-killing `next dev` mid-write **corrupts the
+Turbopack cache** — the next boot says `✓ Ready` and then serves nothing, panicking with
+`Cache corruption detected: checksum mismatch in block … .sst`. It looks exactly like a hung
+compile. Fix: kill whatever still holds the port (stopping the shell does **not** kill the Next
+child — it survives and keeps the port, so a replacement server dies of `EADDRINUSE` and you end up
+testing the OLD process), then `Remove-Item -Recurse -Force .next` and restart.
 
 | **E-9** | MEDIUM | KYC workstation · officer copy | **The approve dialog told the accountable officer the wrong consequence.** The confirmation read “This marks the player's identity as verified and **unlocks full real-money deposits, play and withdrawals**” — wrong on two of the three, measured at the **enforcement layer** rather than the UI: deposits are gated on a confirmed email address (`wallet-service.ts:121`), and **play is not gated on identity at all** (`market-service.ts` contains no KYC reference in 2,986 lines). Only the withdrawal gate turns on this decision (`wallet-service.ts:1226`). The officer-facing twin of E-5, found while fixing E-4 — and in one respect worse, because misstating what a compliance action does, in the confirmation the accountable officer reads, is a defect in the record's provenance, not just in copy. | `kyc-decision-rail.tsx` approve `ConfirmDialog` body | ✅ fixed |
 
@@ -631,6 +661,8 @@ Two findings are evidenced and **open** (E-4, E-5), plus **E-7 and E-8, which ar
 6. ✅ **E-4 fixed** (attestations required server-side + recorded in the hash-chained audit) and
    ✅ **E-9 fixed** (the officer's approve dialog named the wrong consequence). Guards
    `test:kyc-attestations` (39) and `test:kyc-approved-copy` (35).
+   Both are **verified end-to-end on a local in-memory boot** (§6), including that approval still
+   SUCCEEDS — the regression that would otherwise have blocked every live KYC approval.
    **START HERE → drive one approval as an officer on production** and read the
    `kyc.workstation.approved` audit row back: it must now carry
    `attestations: {name_matches:"pass", document_authentic:"pass", selfie_match:"pass", sanctions_clear:"pass"}`
