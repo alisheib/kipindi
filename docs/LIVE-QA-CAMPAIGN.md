@@ -331,6 +331,20 @@ explicit, strongest first: **the inline bytes themselves** (measurable, so they 
 column) → **the carried sniffed facts** (the only evidence an `r2:<key>` can ever have) →
 `application/octet-stream` / `0`, the honest *we do not know*. The inline size formula also now
 subtracts base64 padding exactly as `validateDocImage` does — the two disagreed by 1–2 bytes.
+**E-3 verified on production** after deploy `2b563b81` (SUCCESS 17:56 EAT), by re-uploading real
+JPEGs as `delta` through the real `/profile/kyc` uploader and reading the live rows back:
+
+| | `mimeType` | `sizeBytes` | |
+|---|---|---|---|
+| all three, before | `application/octet-stream` | `0` | the production defect |
+| after re-uploading `NIDA_FRONT` | **`image/jpeg`** | **`51593`** | 76 077-byte JPEG, client-side resized |
+| after then re-uploading `NIDA_BACK` | `image/jpeg` | `51684` | and **`NIDA_FRONT` still reads `51593`** |
+
+That last line is the whole fix: before it, the second upload's delete-and-recreate re-derived
+the first document's facts from an `r2:` key and wrote it back as octet-stream/0. `SELFIE` was
+deliberately left untouched and is still `0` — which is the correct behaviour for a row nobody
+has re-uploaded, and the reason the backfill question below is real.
+
 ⏳ **The 19 existing rows stay wrong until re-uploaded — a backfill is Ali's call** (the bytes
 are in R2, so a backfill could HEAD each object rather than guess). **Guard**:
 `npm run test:kyc-doc-metadata` (19) — it drives the real `toStoredKyc → toKycDocumentRows`
