@@ -180,7 +180,19 @@ export async function submitNidaStep(userId: string, input: z.input<typeof KycNi
     audit({ category: "SECURITY", action: "kyc.nida.duplicate_blocked", actorId: userId, targetType: "User", targetId: userId, payload: { viaConstraint: true } });
     return { ok: false, error: "This National ID is already linked to another account. If this is a mistake, contact support.", code: "INVALID" };
   }
-  audit({ category: "KYC", action: "kyc.nida.verified", actorId: userId, targetType: "Kyc", targetId: k.id, payload: { matchScore: result.matchScore } });
+  // `nidaVerifiedAt` means "format accepted + unique", never "authority
+  // confirmed" (docs/NIDA-POLICY.md). The payload used to carry a fabricated
+  // matchScore of 0.97 straight into the audit chain; record the real basis.
+  audit({
+    category: "KYC",
+    action: "kyc.nida.accepted",
+    actorId: userId, targetType: "Kyc", targetId: k.id,
+    payload: {
+      authorityChecked: result.authorityChecked,
+      basis: result.authorityChecked ? "authority" : "format+uniqueness",
+      ...(result.matchScore === undefined ? {} : { matchScore: result.matchScore }),
+    },
+  });
   return { ok: true, data: { verified: true } };
 }
 

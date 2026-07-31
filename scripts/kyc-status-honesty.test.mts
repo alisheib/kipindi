@@ -79,5 +79,42 @@ for (const loc of ["en", "sw", "zh"] as const) {
   );
 }
 
+// ── 4. The audit chain must not claim an authority check that never ran ────
+// Driving KYC on production wrote these into the live audit chain:
+//     nida.verify.requested  {"nidaLast4":"9014"}
+//     nida.verify.success    {"matchScore":0.97}
+//     kyc.nida.verified      {"matchScore":0.97}
+// docs/NIDA-POLICY.md: the authority check is "deliberately absent … no request
+// has ever reached the National Identification Authority". So the hash-chained
+// record a GBT/TRA inspector reads asserted a 97%-confidence identity match that
+// nothing computed — and it returned gender "M" for every player alive.
+// 50pick never fabricates live data; if we cannot compute it we record nothing.
+{
+  delete process.env.NIDA_API_URL;
+  const { verifyNida } = await import("../src/lib/server/nida.ts");
+  const r = await verifyNida({
+    nida: "19950412123456789012",
+    fullName: "Honesty Probe",
+    dob: "1990-01-01",
+    userId: "usr_honesty_probe",
+  });
+  ok("verifyNida still accepts a well-formed NIDA", r.ok === true && "verified" in r && r.verified === true);
+  if (r.ok && "verified" in r && r.verified) {
+    ok("it does NOT claim an authority check happened", r.authorityChecked === false, String(r.authorityChecked));
+    ok("it invents no match score", r.matchScore === undefined, String(r.matchScore));
+    ok("it invents no gender", r.gender === undefined, String(r.gender));
+    ok("it echoes the player's own claim unchanged", r.fullName === "Honesty Probe" && r.dob === "1990-01-01");
+  }
+}
+
+// Source guard against someone re-introducing the literals. Comments are
+// stripped first — this file documents the old values on purpose, and scanning
+// raw text would fail on its own explanation.
+const NIDA_CODE = readFileSync(new URL("../src/lib/server/nida.ts", import.meta.url), "utf8")
+  .replace(/\/\*[\s\S]*?\*\//g, "")
+  .replace(/^\s*\/\/.*$/gm, "");
+ok("no hardcoded 0.97 match score in nida.ts code", !NIDA_CODE.includes("0.97"));
+ok('no hardcoded gender: "M" in nida.ts code', !/gender:\s*"M"/.test(NIDA_CODE));
+
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);
