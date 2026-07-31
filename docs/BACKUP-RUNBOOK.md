@@ -256,13 +256,40 @@ container instead, which must be kept on production's major version.
   That script reports what exists, refuses outright if `R2_BACKUP_BUCKET` is pointed at the
   KYC bucket, and takes `--create` if it is ever given a token that can.
 
-  ⚠️ **Separate bucket is not separate credentials.** Backups use the same R2 key the
-  running app holds for KYC, so one leaked key still reaches both. Narrowing it to a
-  backup-only token is a Cloudflare action and is still worth doing.
-- 🔴 **The drill's `BACKUP_ENCRYPTION_KEY` is gone.** `NEXT-PLAN.md` said it had been written
-  to `.env.backup.local`; that file does not exist in `C:\kipindi-main`, in the
-  `kipindi-night` worktree, or anywhere searched (2026-07-31). Nothing is stranded — the
-  drill artifact was local and disposable and nothing has been uploaded off-box — but
+  🔴 **AND CREATING THE BUCKET IS ONLY HALF — verified 2026-07-31.** The workflow
+  authenticates with `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` from the GitHub secrets,
+  and those are the **KYC-scoped** key. It cannot write to a bucket it was never granted,
+  so the very next nightly would fail on `AccessDenied` — a *different* error, after the
+  bucket finally exists, which reads like a new problem rather than the same one.
+
+  So the bucket needs its own token:
+
+  1. Cloudflare → R2 → **Create bucket** → `50pick-backups`
+  2. R2 → **API Tokens** → **Create API token** → **Object Read & Write**, scoped to
+     **`50pick-backups` only**
+  3. GitHub → `alisheib/kipindi` → Settings → Secrets and variables → Actions →
+     set `R2_BACKUP_BUCKET`, and **replace** `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY`
+     with the new pair
+
+  This is the security property, not a chore: a key that can reach the backups can delete
+  them, and the backups contain every KYC document on the platform. The app keeps a
+  KYC-only key; the workflow gets a backups-only key; neither can touch the other's data.
+
+  ⚠️ An **S3 access key cannot create a bucket** — that is an account-level action. Tried
+  on the live account (`e6e5f86…`): `CreateBucket` → `AccessDenied`, `ListBuckets` →
+  `AccessDenied`. `ops:r2-backup-bucket` now also accepts `CLOUDFLARE_API_TOKEN` and uses
+  Cloudflare's REST API, which *can*. A token of the wrong kind is rejected with the reason
+  printed (a `cfk_…` value tried on 2026-07-31 returned `401 Invalid API Token`).
+- ⚠️ **The drill's `BACKUP_ENCRYPTION_KEY` is on the OTHER machine, not lost** — corrected
+  2026-07-31. `.env.backup.local` (gitignored) exists in `F:\kipindi-main` on the
+  launch-hardening machine, alongside the sealed drill artifact it opens. The searches that
+  reported it missing looked in `C:\kipindi-main` and the `kipindi-night` worktree, which are
+  a different machine — so this was two lanes not seeing each other's disk, not a lost key.
+
+  It does not change the advice below, and the advice is still right: the repository secret
+  should be a **freshly generated** key rather than that one, because a key that only exists
+  on one laptop is not a key. Nothing is stranded either way — the drill artifact is local
+  and disposable and nothing has been uploaded off-box. So:
   **generate a fresh 32-byte key at the moment you add the repository secrets, and put it in
   a password manager in the same sitting.** Do not write it to a file intending to move it
   later; that is precisely what did not happen.

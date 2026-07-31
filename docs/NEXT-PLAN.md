@@ -337,10 +337,30 @@ deposits while withdrawals cannot be paid **must say so plainly, in the product*
 three languages. Check what the wallet and cash-out screens currently promise a player
 about timing, and make them honest. This is a licence exposure, not a nicety.
 
-**2. Scale ceilings, cheapest first.** The leaderboard N+1, `txn.listAll()`, the missing
-composite indexes, then the SSE ceiling. Each has a measured threshold in
-`POLISH-BACKLOG.md` §3 — fix the ones that bite first, and **state the new ceiling you
-measured** rather than declaring it solved.
+**2. Scale ceilings** — ✅ **the expensive ones are DONE and MEASURED (2026-07-31).** The
+backlog said they "bite at ~1k users"; that was reasoned, not measured. Seeded a disposable
+Postgres to 1,000 users × 100 transactions (`scripts/load/s13-scale-ceilings.mts`) and timed
+the real paths:
+
+| at 100k transactions | before | after |
+|---|---|---|
+| 30-day report window | 3,321 ms · **385 MB heap** | **303 ms** (54 ms with the new index) |
+| one player's transactions | 3,783 ms | **11 ms** |
+| build the leaderboard | ~2,236 ms, **pool exhausted mid-run** | **6 ms** |
+
+The heap figure was the real danger — a Railway container has 512 MB, so one report on a
+moderately busy platform was near the end of the process. The leaderboard was worse: a
+**public** page whose trigger is somebody sharing the link.
+
+Parity is guarded, not assumed — `npm run test:report-parity` (28 assertions) drives both
+implementations over a fixture with a row sitting exactly on each window bound, because GGR
+feeds the TRA and GBT levies and a moved boundary moves money between two filings.
+
+⏳ **Still open, stated rather than implied fixed:** `reports/catalogue.ts` (3 sites) and
+`insights.ts` still walk the whole table — they are all-time statutory aggregates, so the
+fix is a `GROUP BY` per report, not a smaller scan. And the **SSE ceiling (~125 concurrent
+clients)** is untouched, on a product whose pitch is live odds. Both in
+`POLISH-BACKLOG.md` §3.
 
 **3. Admin 2FA is OFF in production** (`DISABLE_ADMIN_TOTP` is set — verified 2026-07-31).
 It was disabled deliberately so a consultant could test, and must be on before real money.
