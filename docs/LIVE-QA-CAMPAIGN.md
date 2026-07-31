@@ -185,8 +185,8 @@ All created through the real UI on production. Phone is the **9-digit local part
 |---|---|---|---|---|
 | `alpha` | `+255712000101` | `usr_1cf528b35ef795530aa1c63f` | **`APPROVED`** 2026-07-31 13:58Z → `User.status = ACTIVE` | main player — bet, win, withdraw |
 | `bravo` | `+255712000102` | `usr_26313f74d8428e4e169603ca` | **`REJECTED`** 2026-07-31 14:11Z (`DETAILS_MISMATCH`) | rejected; nida …9013 now free |
-| `charlie` | `+255712000103` | `usr_8ed1b4ca3579490c94435188` | `PENDING_REVIEW` (nida …9014) | approve, then **revoke / ban** |
-| `delta` | `+255712000104` | `usr_429885ab43c0cb4ce134dd7e` | `PENDING_REVIEW` (nida …9015) | duplicate-NIDA probe; spare |
+| `charlie` | `+255712000103` | `usr_8ed1b4ca3579490c94435188` | approved → **revoked** (`ADDITIONAL_INFO_REQUIRED`) → **`SUSPENDED`** | banned; sessions revoked; temp password issued |
+| `delta` | `+255712000104` | `usr_429885ab43c0cb4ce134dd7e` | **`REJECTED`** 2026-07-31 14:26Z (`BLURRY_DOC`) | used to verify E-1 on prod; nida …9015 now free |
 
 ⚠️ **Only `alpha`'s password is in `.env.qa.local`** (`QA_ALPHA_PASSWORD`). `bravo`,
 `charlie` and `delta` were registered with a password that is in **neither** that file
@@ -208,7 +208,7 @@ and a clean console: `/admin` · `players` · `markets` · `ai-polls` · `ai-usa
 |---|---|---|
 | 0 | Worktree, harness, live DB access, baseline | ✅ done |
 | 1 | Auth: signup · email verify · login · forgot-password · 2FA · sessions | 🔄 signup · login · forgot-password · phone shapes · enumeration all ✅ **shipped + verified live**; email-verify, 2FA, sessions, rate-limits still open |
-| 2 | KYC: submit · import · approve · reject · revoke · ban · NIDA duplicate | 🔄 player ladder ✅ ×4 · duplicate-NIDA ✅ · **approve ✅ (alpha) · reject ✅ (bravo)** · revoke/ban ⏳ |
+| 2 | KYC: submit · import · approve · reject · revoke · ban · NIDA duplicate | ✅ **officer review DONE** — approve · reject · revoke · ban · NIDA freed, all driven on prod (§6c). Only `import` untested |
 | 3 | Money in: wallet · deposit · ledger · receipts | ⏳ |
 | 4 | Core play: markets · YES/NO · win + lose · resolution · payout | ⏳ |
 | 5 | Up & Down: rounds · quick-bet · pricing · void · history | ⏳ |
@@ -295,6 +295,53 @@ is exactly what hid (b). **Guard**: `npm run test:kyc-reject-reason` (47) — it
 enum **out of `prisma/schema.prisma`**, so adding a member without a translation fails.
 Proven red first: 12 failures against the pre-fix tree.
 
+**E-1 verified on production** after deploy `ac123a17` (SUCCESS 17:21 EAT): `delta` was
+rejected through `/admin/kyc/<id>` with *Document unreadable* and the row came back
+`rejectReason = 'BLURRY_DOC'` — the first categorised rejection 50pick has ever stored —
+while `bravo`'s older `OTHER` row now prints **no** category at all, just the officer's
+sentence. ⚠️ **Not yet proven live: the SW/ZH render.** Forcing the browser locale did not
+switch the page (the language toggle is not `User.locale` — see the open question below),
+so the translated labels are proven by `test:kyc-reject-reason` and by reading the
+dictionary, *not* by a screenshot of a Swahili player. **Do this first next session.**
+
+### Open findings — evidenced on production, NOT yet fixed
+
+| # | Sev | Area | Finding | Evidence |
+|---|---|---|---|---|
+| **E-2** | MEDIUM | KYC workstation | **One officer screen renders the same day in two timezones.** The decision card says *31 Jul 2026, 17:11* and the applicant panel *SUBMITTED 31 Jul 2026, 16:31* (both EAT), while the document strip directly between them says *uploaded 2026-07-31 13:31:33* — the raw UTC value, unlabelled and 3h earlier. DOB renders as the raw ISO string `1995-04-12T00:00:00.000Z`. An officer comparing upload time against submission time on a compliance record reads a 3-hour gap that does not exist. | `shots/p2-bravo-rejected.png` — all three on one screen |
+| **E-3** | MEDIUM | KYC documents | **Every KYC document on production is stored `sizeBytes = 0`, `mimeType = 'application/octet-stream'`,** while holding a real JPEG (measured: the admin route serves 759 bytes of `image/jpeg`). `attachDocument` carries the sniffed mime + decoded size, and `prisma-dal` writes them — but **`toStoredKyc` drops both fields on the way back out**, and `db.kyc.upsert` deletes and re-creates every document row on every write. So attaching document 2 zeroes document 1, and `submitForReview` zeroes the last one. The write path was fixed in `502160f`; the read path was not, which is why the fix's own comment ("all 7 on production, measured") still describes today's data. These columns feed compliance exports and retention tooling. | live rows for all 12 QA documents; `prisma-dal.ts:127-131` vs `:580` |
+| **E-4** | MEDIUM | KYC workstation | **The officer's four attestations are never recorded.** *Name matches the ID · Document appears authentic · Selfie matches the ID photo · Sanctions / PEP clear* must all be ticked to arm Approve, but they are client-side `useState` only: `approveKycWorkstationAction` never receives them and the audit payload carries just `{riskScore, makerChecker}`. The one thing an inspector would want — that a named officer positively attested the selfie matched — is discarded at the moment it is made. | `kyc-decision-rail.tsx:66` vs `kyc-actions.ts:62-85`; live audit row `kyc.workstation.approved` |
+| **E-5** | MEDIUM | approval burst | **The approval burst promises what the next banner refuses.** `/profile/kyc` shows the gold *ID verified* burst reading “**You can now deposit and withdraw freely**” — directly under a banner reading “Confirm your email to add money to your account”, and `/wallet/deposit` does block on exactly that. Withdrawals are additionally disabled platform-wide right now (“Withdrawals cannot be paid right now”). The player's proudest moment tells them something the product immediately contradicts twice. | `shots/p2-alpha-player-kyc-430.png`, `p2-alpha-wallet-deposit-430b.png` |
+
+## 6c. Verified working on production this session (not defects)
+
+- **Approve** → `KycSubmission.APPROVED` + `User.status PENDING_KYC→ACTIVE` + `displayName`
+  backfilled from the verified legal name + in-app notification in **all three locales** +
+  `kyc.approved` and `kyc.workstation.approved` audit rows. Approve is correctly inert until
+  all four attestations are ticked — force-clicking the disabled button opens nothing.
+- **Reject** requires a reason code (Confirm stays disabled without one), and the rejected
+  player is told honestly — red *Rejected* card, the reason, a *Try again* button. **D-1 stayed
+  fixed**: no success banner anywhere on a rejected account.
+- **Rejected NIDA is freed, approved NIDA is not.** Two-sided proof against the live index
+  inside a rolled-back transaction: inserting `bravo`'s rejected …9013 for a second account is
+  ALLOWED; inserting `alpha`'s approved …9012 is BLOCKED by
+  `KycSubmission_nidaNumber_active_key`. Exactly what `docs/NIDA-POLICY.md` specifies.
+- **Revoke** (force re-verify) → `ADDITIONAL_INFO_REQUIRED` + `kyc.force_reverify` +
+  "More information needed" notification. **Ban** (suspend) → `SUSPENDED`, **all sessions
+  revoked immediately** (0 live sessions; the banned persona's saved cookie bounced to
+  `/auth/login`), `player.suspended` audited with the prior status.
+- **A-3 held under a direct probe.** A stranger sending a wrong password to the banned
+  number, an active number and an unknown number gets byte-identical `error=wrong_credentials`
+  at 2630 / 2630 / 2627 ms. Only after the **correct** password does the banned player see
+  *"Account unavailable — contact support"*, which names no ban and no reason.
+- Officer-issued **temporary password** works end to end and is shown once with a Copy control.
+
+### Ops note, not a code defect
+
+Two **real** players have been sitting in the live KYC queue unreviewed: `usr_fbfea6024c…`
+(Dhiresh Prabhudas Kaba, submitted 28 Jul) and `usr_0990e27217…` (Ali Test 2, 15 Jun). The
+workstation shows an SLA countdown, but nothing escalates when it runs out. Ali's call.
+
 ### Open questions (raised, not yet concluded)
 
 - **Stored locale on signup.** A player who signs up while the site is in EN gets `locale = SW`
@@ -306,35 +353,50 @@ Proven red first: 12 failures against the pre-fix tree.
 ## 6b. NEXT SESSION — start here
 
 **Shipped and live so far:** `26a1471` (A-1/A-2/A-3) · `5e6babe` (tracker) · `c3aded6` (D-1) ·
-`647e266` (D-2). All four are merged to `main`, deployed SUCCESS on Railway, and re-verified
-against production — not just built. Branch `qa/live-experience` == `main`.
+`647e266` (D-2) · **`617fbfb` (E-1)**. All merged to `main`, deployed SUCCESS on Railway, and
+re-verified against production — not just built. Branch `qa/live-experience` == `main`.
 
-**Resume at Phase 2, officer review.** Four personas sit at `PENDING_REVIEW` waiting for a
-decision (§4). In order:
+**Phase 2 officer review is COMPLETE** (§6c). Approve, reject, revoke, ban, session
+revocation, the enumeration probe and the NIDA free/claimed pair were all driven against
+production. One fix shipped (E-1); four findings are evidenced and **open** (E-2…E-5).
 
-1. `/admin/approvals` as admin (`777777777`) — **approve `alpha`**, confirm `User.status`
-   flips to `ACTIVE`, the player sees the gold approval burst, and an email/notification fires.
-2. **Reject `bravo`** with a reason — check the player is told honestly (D1 already fixed a
-   "rejected player shown a success banner" bug; make sure it stayed fixed), and that the
-   rejected NIDA is freed for reuse per NIDA-POLICY.
-3. **Approve then revoke `charlie`**; then **ban** them. Confirm a banned player cannot sign in
-   and — since A-3 — that sign-in does not announce the ban to a stranger.
-4. Then Phase 3: credit the approved wallets (Ali has authorised crediting test users on live)
-   and move into betting.
+**Resume here, in this order:**
 
-**Two things to carry:**
+1. **Finish verifying E-1 in Swahili.** The fix is live and proven in EN; the SW/ZH render is
+   not. Find how the site actually switches language (it is **not** `User.locale` — the header
+   toggle is; delta is `locale = SW` and still rendered EN), then screenshot a rejected
+   player's `/profile/kyc` in SW and ZH. ⚠️ If the toggle turns out to ignore the stored
+   `locale` entirely, that is itself a finding — 41 of 43 live users are `SW`.
+2. **E-3 — the document-metadata read path.** Smallest, most contained of the open findings and
+   the same shape as the `write-only fields` trap: `toStoredKyc` (`prisma-dal.ts:127`) must
+   carry `mimeType` + `sizeBytes` back out, or the delete-and-recreate sync at `:580` wipes what
+   `attachDocument` just measured. Add them to the mapper, then **re-upload one document as a
+   live persona and re-measure the row** — the existing 12 rows will stay 0 until re-uploaded,
+   so a backfill decision belongs to Ali. Guard it, because the write half was already "fixed"
+   once and the read half made that fix invisible.
+3. **E-2, E-5, E-4** — in that order (E-2 is a formatter, E-5 is copy, E-4 needs a small schema
+   decision about where attestations live).
+4. **Then Phase 3, money in** — credit the approved wallets (Ali has authorised crediting test
+   users on live), then wallet · ledger · receipts. **`alpha` is the only ACTIVE persona**;
+   `bravo`/`delta` are REJECTED and `charlie` is SUSPENDED, so create a fresh persona or restore
+   one before you need a second funded player.
+
+**Four things to carry:**
 - ⚠️ Every `pg` read must `::text`-cast timestamps or use `live/harness.mjs` — otherwise every
   timestamp reads 3h early and looks like a server clock bug (§3).
-- ⚠️ Screenshot with the **viewport**, not `fullPage`: a fullPage capture puts the fixed header
-  in the middle of the document and looks exactly like a layout bug.
-
-**Then stop after this phase** and give Ali a fresh copy-paste prompt (§0.3) — officer review
-plus wallets is a full round on its own. Do not roll straight into betting.
+- ⚠️ Screenshot with the **viewport**, not `fullPage`, and then **actually look at the image**.
+  E-2, E-5 and the blank document viewer were all found by looking, not by asserting.
+- ⚠️ **The first-run primer mounts over `/wallet/deposit` and every other page**, not just the
+  identity form, and it throws React error #310 while it is up. Dismiss it after *every*
+  navigation, or you will screenshot a tutorial and file a phantom bug.
+- ⚠️ The login field is **`#identifier`**, not `#phone`. A saved session bounces `/auth/login`
+  to `/`, so check for a password field before filling one.
 
 **Open, not yet chased:** email verification (every persona is `emailVerifiedAt: null` and the
-deposit gate depends on it) · 2FA · session revocation · auth rate-limits under load · the
-first-run betting primer mounting over the identity form · `locale` defaulting to SW for a
-player who signed up in English.
+deposit gate depends on it — this now blocks Phase 3 deposits) · whether the KYC approval email
+actually reached Postmark (the in-app notification did; the email was fire-and-forget and not
+confirmed) · 2FA · auth rate-limits under load · `locale` defaulting to SW for a player who
+signed up in English · KYC **import** (the only Phase-2 sub-flow never exercised).
 
 ## 7. Reproducing the harness
 
