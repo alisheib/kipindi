@@ -626,6 +626,23 @@ export function resolveLoginIdentifier(
 const LOCKOUT_MAX_FAILS = 5;
 const LOCKOUT_DURATION_MS = 30 * 60 * 1000;   // 30-minute lockout per LCCP guidance
 
+/**
+ * Spend the same scrypt work a real password check would, and discard it.
+ *
+ * Sign-in must cost the same whether or not the identifier exists: returning
+ * early for an unknown number makes the response measurably faster, and a
+ * timing gap is an enumeration oracle just as much as a different error code.
+ * MODULE-CERTIFICATION-PROGRAM §A exits on "enumeration-neutral *proven by
+ * timing distribution*", so the neutral copy alone is not enough.
+ */
+async function burnPasswordVerify(password: string): Promise<void> {
+  // A fixed, meaningless salt/hash pair — the comparison always fails and the
+  // result is thrown away; only the elapsed work matters.
+  const DUMMY_SALT = "00000000000000000000000000000000";
+  const DUMMY_HASH = "0".repeat(128);
+  await verifyPassword(password, DUMMY_SALT, DUMMY_HASH).catch(() => false);
+}
+
 export async function loginWithPassword(input: PasswordLoginInput): Promise<ServiceResult<{ userId: string; role: string; twoFactorRequired?: boolean }>> {
   // Resolve the single identifier field to either an email or a phone lookup.
   const resolved = resolveLoginIdentifier(input.identifier);
@@ -654,21 +671,25 @@ export async function loginWithPassword(input: PasswordLoginInput): Promise<Serv
       action: isEmailLogin ? "auth.login.unknown_email" : "auth.login.unknown_phone",
       actorId: null, targetType: isEmailLogin ? "Email" : "Phone", targetId: auditKey, ip: meta.ip,
     });
+    // Enumeration-neutral: an unknown identifier must be indistinguishable from a
+    // real account with the wrong password — same code, same copy, same work.
+    // Sign-in used to answer `no_account` here while a real account answered
+    // `wrong_credentials`, so ONE unauthenticated request per number revealed
+    // whether that Tanzanian mobile had a gambling account. Forgot-password has
+    // always been careful about this ("always show sent"); sign-in was not.
+    await burnPasswordVerify(input.password);
     return {
       ok: false,
-      error: isEmailLogin
-        ? "No account with that email. Create one to get started."
-        : "No account with that phone. Create one to get started.",
-      code: "NOT_FOUND",
+      error: isEmailLogin ? "Wrong email or password." : "Wrong phone or password.",
+      code: "INVALID",
     };
   }
-  if (user.status === "SELF_EXCLUDED") {
-    audit({ category: "COMPLIANCE", action: "auth.blocked_self_excluded", actorId: user.id, targetType: "User", targetId: user.id });
-    return { ok: false, error: "Your account is in self-exclusion.", code: "SUSPENDED" };
-  }
-  if (user.status === "SUSPENDED" || user.status === "CLOSED") {
-    return { ok: false, error: "Account unavailable. Contact support.", code: "SUSPENDED" };
-  }
+  // Account-status gates (SELF_EXCLUDED / SUSPENDED / CLOSED) deliberately do
+  // NOT run here. They run after the password is verified — see the gate below
+  // — so sign-in cannot be used to discover an account's status, or its
+  // existence, without proving ownership first. No session is minted for a
+  // gated account either way; only the point at which we say so has moved.
+  //
   // Brute-force lockout — separate from rate limit. Rate limit blocks
   // ANY login from a phone/IP for a short window; lockout pins THIS
   // account closed for 30 min after 5 consecutive wrong passwords,
@@ -722,6 +743,22 @@ export async function loginWithPassword(input: PasswordLoginInput): Promise<Serv
       };
     }
     return { ok: false, error: isEmailLogin ? "Wrong email or password." : "Wrong phone or password.", code: "INVALID" };
+  }
+
+  // ── Account-status gates — deliberately AFTER the password is proven ──────
+  // These same three checks also run before the password is read (further up);
+  // running them here is what lets the earlier copy become enumeration-neutral,
+  // because only someone who has proven they own the account may learn that it
+  // is self-excluded, suspended or closed. Self-exclusion especially: it is a
+  // gambling-harm status, and answering it to an unauthenticated prober would
+  // leak that a given Tanzanian mobile belongs to someone who self-excluded.
+  // NOTE: no session is minted below this point for a gated account.
+  if (freshUser.status === "SELF_EXCLUDED") {
+    audit({ category: "COMPLIANCE", action: "auth.blocked_self_excluded", actorId: user.id, targetType: "User", targetId: user.id });
+    return { ok: false, error: "Your account is in self-exclusion.", code: "SUSPENDED" };
+  }
+  if (freshUser.status === "SUSPENDED" || freshUser.status === "CLOSED") {
+    return { ok: false, error: "Account unavailable. Contact support.", code: "SUSPENDED" };
   }
 
   // Successful login — clear the brute-force counter + lockout.

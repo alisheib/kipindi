@@ -179,15 +179,32 @@ for (const [label, input] of [
   // the point being it does NOT crash and does NOT sign anyone in.
   ok("sign-in by email finds the account and refuses without a valid password", !wrongPw.ok);
 
+  // ── REVERSED 2026-07-31 — these three asserted the OPPOSITE until today ────
+  // They pinned sign-in to answer NOT_FOUND ("No account with that phone. Create
+  // one to get started.") for an unknown identifier, while a real account with a
+  // wrong password answered "Wrong phone or password." That difference is an
+  // enumeration oracle: one unauthenticated request per number revealed whether
+  // that Tanzanian mobile had a gambling account. Found by probing the live site.
+  // MODULE-CERTIFICATION-PROGRAM §A exits the auth domain on "enumeration-neutral
+  // *proven by timing distribution*", and forgot-password had always been careful
+  // about exactly this ("always show sent") — sign-in was the outlier.
+  //
+  // The sign-up path is NOT lost: /auth/login renders a permanent "No account?
+  // Create account" link under the form (page.tsx:212) regardless of any error,
+  // so a player who mistypes their number keeps the same one-tap recovery.
+  // Full lock: scripts/login-enumeration.test.mts.
   const unknownEmail = await loginWithPassword({ identifier: "nobody.here@example.com", password: PW });
-  ok("unknown EMAIL → NOT_FOUND", !unknownEmail.ok && unknownEmail.code === "NOT_FOUND", !unknownEmail.ok ? String(unknownEmail.code) : "");
-  ok("unknown-email message names email and points at sign-up",
-    !unknownEmail.ok && /email/i.test(unknownEmail.error) && /create one/i.test(unknownEmail.error),
+  ok("unknown EMAIL is refused without revealing that it is unknown",
+    !unknownEmail.ok && unknownEmail.code !== "NOT_FOUND", !unknownEmail.ok ? String(unknownEmail.code) : "");
+  ok("unknown-email message does not point at sign-up",
+    !unknownEmail.ok && !/create one/i.test(unknownEmail.error),
     !unknownEmail.ok ? unknownEmail.error : "");
 
   const unknownPhone = await loginWithPassword({ identifier: "+255700000999", password: PW });
-  ok("unknown PHONE → NOT_FOUND", !unknownPhone.ok && unknownPhone.code === "NOT_FOUND");
-  ok("unknown-phone message names phone", !unknownPhone.ok && /phone/i.test(unknownPhone.error));
+  ok("unknown PHONE is refused without revealing that it is unknown",
+    !unknownPhone.ok && unknownPhone.code !== "NOT_FOUND");
+  ok("unknown-phone message is the generic wrong-credentials copy",
+    !unknownPhone.ok && /wrong phone or password/i.test(unknownPhone.error), !unknownPhone.ok ? unknownPhone.error : "");
 
   for (const bad of ["", "   ", "!!!!", "@", "hello"]) {
     const r = await loginWithPassword({ identifier: bad, password: PW });

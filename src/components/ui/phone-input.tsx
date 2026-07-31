@@ -14,13 +14,12 @@
 import * as React from "react";
 import { Input } from "./input";
 import { useT } from "@/lib/i18n";
+import { normalizeTzLocalDigits } from "@/lib/phone-normalize";
 
 type Props = Omit<React.InputHTMLAttributes<HTMLInputElement>, "type" | "onChange" | "size"> & {
   size?: "sm" | "md" | "lg";
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
 };
-
-const DIGITS_ONLY = /\D+/g;
 
 /**
  * Formats a 9-digit Tanzanian local number as "ABC DEF GHI" while
@@ -89,6 +88,10 @@ export function PhoneInput({ defaultValue, value, onChange, name, ...rest }: Pro
   );
 }
 
-function stripDigits(s: string): string {
-  return s.replace(DIGITS_ONLY, "").slice(0, 9);
-}
+/**
+ * Accept every shape the server's `tzPhone` accepts — `0…`, `255…`, `+255…` and
+ * the bare 9 digits. The rule lives in `@/lib/phone-normalize` so this widget,
+ * admin sign-in and any future caller cannot drift apart. See that file for the
+ * defect this fixed.
+ */
+const stripDigits = normalizeTzLocalDigits;
