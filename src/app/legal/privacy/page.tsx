@@ -57,7 +57,6 @@ const CONTENT: Record<Locale, React.ReactNode> = {
       <LegalSection n="4" title="Sharing">
         <p>We share data with:</p>
         <ul className="list-disc pl-5 space-y-1">
-          <li>NIDA (identity verification, mTLS)</li>
           <li>Mobile-money aggregator (Selcom or Azampay) for payment routing</li>
           <li>Source registry partners for resolution data</li>
           <li>Gaming Board of Tanzania, Tanzania Revenue Authority, FIU when legally compelled</li>
@@ -134,7 +133,6 @@ const CONTENT: Record<Locale, React.ReactNode> = {
       <LegalSection n="4" title="Kushiriki data">
         <p>Tunashiriki data na:</p>
         <ul className="list-disc pl-5 space-y-1">
-          <li>NIDA (uthibitisho wa utambulisho, mTLS)</li>
           <li>Mkusanyaji wa pesa za simu (Selcom au Azampay) kwa ajili ya uelekezaji wa malipo</li>
           <li>Washirika wa rejista za chanzo kwa ajili ya data ya ufungaji</li>
           <li>Bodi ya Michezo ya Kubahatisha Tanzania, Mamlaka ya Mapato Tanzania (Tanzania Revenue Authority), FIU pale tunapolazimishwa kisheria</li>
@@ -212,7 +210,6 @@ const CONTENT: Record<Locale, React.ReactNode> = {
       <LegalSection n="4" title="信息共享">
         <p>我们与以下各方共享数据：</p>
         <ul className="list-disc pl-5 space-y-1">
-          <li>NIDA（身份验证，mTLS）</li>
           <li>移动货币聚合方（Selcom 或 Azampay），用于支付路由</li>
           <li>来源登记合作方，用于结算数据</li>
           <li>在依法被强制要求时，向坦桑尼亚博彩委员会、Tanzania Revenue Authority、FIU 提供</li>

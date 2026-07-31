@@ -11,7 +11,7 @@ import { getKycStatus, startKyc } from "@/lib/server/kyc-service";
 import { DateSelect } from "@/components/ui/date-select";
 import { Input, Field as KitField } from "@/components/ui/input";
 import { SubmitButton } from "@/components/ui/submit-button";
-import { submitNidaAction, submitKycForReviewAction } from "./actions";
+import { submitNidaAction, submitKycForReviewAction, restartKycAction } from "./actions";
 import { KycDocUploader, KycExtraDocUploader } from "@/components/profile/kyc-doc-uploader";
 import { RewardBurst } from "@/components/brand/reward-burst";
 import { SUPPORT_EMAIL } from "@/lib/support-config";
@@ -29,9 +29,20 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/profile/kyc");
 
-  try { await startKyc(session.userId); } catch { /* graceful */ }
+  // READ BEFORE START. `startKyc()` RESETS a REJECTED submission — it nulls
+  // nidaNumber, nidaVerifiedAt, rejectReason, rejectNote and empties documents
+  // (kyc-service.ts:79-95). Calling it unconditionally here wiped the rejection
+  // one line before the read below, so `rejected` was ALWAYS false and the
+  // rejection panel further down was unreachable dead code: a player whose
+  // identity check failed saw a blank form and a green "NIDA number accepted"
+  // banner while their inbox held "Identity check needs attention".
+  // Auto-create only when there is genuinely nothing to read; restarting a
+  // rejected submission is an explicit player action (restartKycAction).
   let kyc: Awaited<ReturnType<typeof getKycStatus>> | null = null;
   try { kyc = await getKycStatus(session.userId); } catch { /* graceful */ }
+  if (!kyc || kyc.status === "NOT_STARTED") {
+    try { await startKyc(session.userId); kyc = await getKycStatus(session.userId); } catch { /* graceful */ }
+  }
   let user: Awaited<ReturnType<typeof db.user.findById>> | null = null;
   try { user = await db.user.findById(session.userId); } catch { /* graceful */ }
 
@@ -133,6 +144,11 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
                 {t.profile.kycResubmitOrEmail}{" "}
                 <a href={`mailto:${SUPPORT_EMAIL()}?subject=KYC%20review`} className="text-brand-300 underline-offset-2 hover:underline">{SUPPORT_EMAIL()}</a>.
               </p>
+              {/* Restarting CLEARS the submission, so it must be a deliberate tap,
+                  never a page load — see the read-before-start note above. */}
+              <form action={restartKycAction} className="mt-3">
+                <SubmitButton label={t.error.tryAgain} pendingLabel={t.common.loading} />
+              </form>
             </div>
           </div>
         </section>

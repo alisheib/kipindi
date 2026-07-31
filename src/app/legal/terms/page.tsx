@@ -46,8 +46,9 @@ const CONTENT: Record<Locale, React.ReactNode> = {
 
       <LegalSection n="3" title="Identity verification (KYC)">
         <p>
-          Before withdrawing winnings you must complete identity verification against the National Identification
-          Authority (NIDA). We may request additional documents (proof of address, source-of-funds declaration) if
+          Before withdrawing winnings you must complete identity verification: a valid NIDA number and
+          photographic ID reviewed by our compliance team. We may request additional documents
+          (proof of address, source-of-funds declaration) if
           your activity triggers anti-money-laundering thresholds.
         </p>
       </LegalSection>
@@ -162,8 +163,9 @@ const CONTENT: Record<Locale, React.ReactNode> = {
 
       <LegalSection n="3" title="Uthibitisho wa utambulisho (KYC)">
         <p>
-          Kabla ya kutoa fedha ulizoshinda, ni lazima ukamilishe uthibitisho wa utambulisho kupitia Mamlaka ya
-          Vitambulisho vya Taifa (NIDA). Tunaweza kuomba nyaraka za ziada (uthibitisho wa anwani, tamko la chanzo
+          Kabla ya kutoa fedha ulizoshinda, ni lazima ukamilishe uthibitisho wa utambulisho: namba halali ya NIDA
+          na kitambulisho chenye picha kinachokaguliwa na timu yetu ya uzingatiaji.
+          Tunaweza kuomba nyaraka za ziada (uthibitisho wa anwani, tamko la chanzo
           cha fedha) iwapo shughuli zako zitavuka viwango vya kuzuia uoshaji wa fedha.
         </p>
       </LegalSection>
@@ -275,7 +277,8 @@ const CONTENT: Record<Locale, React.ReactNode> = {
 
       <LegalSection n="3" title="身份验证（KYC）">
         <p>
-          在提取奖金之前，您必须通过国民身份管理局（NIDA）完成身份验证。如果您的活动触发反洗钱阈值，我们可能会要求
+          在提取奖金之前，您必须完成身份验证：提供有效的 NIDA 号码及带照片的身份证件，由我们的合规团队审核。
+          如果您的活动触发反洗钱阈值，我们可能会要求
           提供额外文件（地址证明、资金来源声明）。
         </p>
       </LegalSection>

@@ -29,8 +29,9 @@ const CONTENT: Record<Locale, React.ReactNode> = {
     <>
       <LegalSection n="1" title="Customer due diligence (CDD)">
         <p>
-          Identity is verified at registration via the National Identification Authority (NIDA) using
-          a 20-digit national ID number, supported by photographic ID and selfie. Withdrawals are
+          Identity is verified before withdrawal. We collect a 20-digit NIDA number, check its
+          format and that it is unique to a single account, and our compliance team reviews
+          photographic ID (front and back) together with a selfie. Withdrawals are
           blocked until KYC status is <span className="font-mono text-yes-300">APPROVED</span>.
           We capture: full name, date of birth, region, NIDA number, and photographic evidence.
         </p>
@@ -93,8 +94,9 @@ const CONTENT: Record<Locale, React.ReactNode> = {
     <>
       <LegalSection n="1" title="Uchunguzi wa kina wa mteja (CDD)">
         <p>
-          Utambulisho huthibitishwa wakati wa kusajili kupitia Mamlaka ya Vitambulisho vya Taifa (NIDA) kwa kutumia
-          namba ya kitambulisho cha taifa yenye tarakimu 20, ikiungwa mkono na kitambulisho chenye picha na selfie.
+          Utambulisho huthibitishwa kabla ya kutoa fedha. Tunakusanya namba ya NIDA yenye tarakimu 20, tunakagua
+          muundo wake na kwamba inatumika kwenye akaunti moja pekee, na timu yetu ya uzingatiaji hukagua
+          kitambulisho chenye picha (mbele na nyuma) pamoja na selfie.
           Utoaji wa fedha umezuiwa hadi hadhi ya KYC iwe <span className="font-mono text-yes-300">APPROVED</span>.
           Tunakusanya: jina kamili, tarehe ya kuzaliwa, mkoa, namba ya NIDA, na ushahidi wa picha.
         </p>
@@ -158,7 +160,8 @@ const CONTENT: Record<Locale, React.ReactNode> = {
     <>
       <LegalSection n="1" title="客户尽职调查（CDD）">
         <p>
-          身份在注册时通过国民身份管理局（NIDA）使用 20 位国民身份号码进行验证，并辅以带照片的身份证件和自拍照。
+          提现前须完成身份验证。我们采集 20 位 NIDA 号码，核对其格式并确认其仅绑定一个账户，
+          由我们的合规团队审核带照片的身份证件（正反面）及自拍照。
           在 KYC 状态变为 <span className="font-mono text-yes-300">APPROVED</span> 之前，提现将被阻止。
           我们采集：全名、出生日期、地区、NIDA 号码以及照片证据。
         </p>

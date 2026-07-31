@@ -517,7 +517,15 @@ export default async function MarketDetail({
         {/* ══ RIGHT ASIDE — betting widget ══
             order-1 on mobile (above-the-fold, first thing seen),
             order-2 + sticky on desktop (stays in view while scrolling) */}
-        <aside className="order-1 lg:order-2 lg:col-start-2 lg:row-start-1 space-y-3 lg:sticky lg:top-6">
+        {/* z-10: this panel STICKS while the similar-markets rail (row 2 of the SAME
+            column) scrolls up past it. With z-index:auto the rail's cards — later in
+            the DOM, and each its own stacking context via `.mcardp:hover{transform}`
+            — painted OVER the stuck panel and clipped the Sign up / Sign in buttons.
+            Reproduced on production at 1040–1200px wide: the band just above the `lg`
+            breakpoint where row 1 is still short enough for the panel to be pinned
+            while row 2 has already scrolled into it.
+            Stays well under the nav (z-40) and the Needle (z-45). */}
+        <aside className="order-1 lg:order-2 lg:col-start-2 lg:row-start-1 space-y-3 lg:sticky lg:top-6 lg:z-10">
           {!isResolved && m.status === "LIVE" && !closedByTime && !selectionClosed ? (
             session ? (
               <>

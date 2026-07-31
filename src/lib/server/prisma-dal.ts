@@ -564,16 +564,20 @@ export const prismaDb = {
       // "no documents to sync", not throw out of the KYC write path.
       if (k.documents?.length) {
         const docsData = k.documents.map((d) => {
-          // storageKey holds a base64 image data URL — record its real mime +
-          // byte size for the document record (cosmetic; serving reads the URL).
+          // Prefer the facts captured at upload. Deriving them from storageKey
+          // only works for INLINE documents — an `r2:<key>` never matches this
+          // regex, so every R2 row was written as 0 bytes of
+          // application/octet-stream while holding a real JPEG (all 7 on
+          // production, measured 2026-07-31). These columns feed compliance
+          // exports and retention tooling, so a wrong value is a wrong statement.
           const m = /^data:(image\/[a-z]+);base64,(.*)$/.exec(d.storageKey ?? "");
-          const sizeBytes = m ? Math.floor((m[2].length * 3) / 4) : 0;
+          const derivedBytes = m ? Math.floor((m[2].length * 3) / 4) : 0;
           return {
             submissionId: k.id,
             docType: d.docType as "NIDA" | "NIDA_FRONT" | "NIDA_BACK" | "PASSPORT" | "DRIVER_LICENSE" | "VOTER_CARD" | "SELFIE",
             storageKey: d.storageKey,
-            mimeType: m?.[1] ?? "application/octet-stream",
-            sizeBytes,
+            mimeType: d.mimeType ?? m?.[1] ?? "application/octet-stream",
+            sizeBytes: d.sizeBytes ?? derivedBytes,
             uploadedAt: new Date(d.uploadedAt),
           };
         });

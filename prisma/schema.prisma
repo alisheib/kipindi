@@ -336,6 +336,15 @@ model KycSubmission {
   @@index([userId, status])
   @@index([status, submittedAt])
   @@index([nidaNumber])
+  // ⚠️ ALSO ON THIS TABLE, but not expressible here: the PARTIAL unique index
+  // "KycSubmission_nidaNumber_active_key" ON ("nidaNumber")
+  //   WHERE "nidaNumber" IS NOT NULL AND status <> 'REJECTED'
+  // It enforces one-NIDA-one-account (docs/NIDA-POLICY.md) and must be partial,
+  // because a REJECTED submission deliberately frees the number. The Prisma DSL
+  // has no partial-unique syntax, so it is raw SQL in
+  // prisma/migrations/20260731120000_kyc_nida_active_unique. Do not "tidy" this
+  // away as drift — scripts/load/s14-kyc-nida-race.mts proves what happens
+  // without it (two accounts, one national ID).
 }
 
 model KycDocument {

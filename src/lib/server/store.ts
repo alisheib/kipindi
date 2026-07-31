@@ -66,7 +66,15 @@ export type StoredKyc = {
   nidaVerifiedAt: string | null;
   fullName: string | null;
   dob: string | null;
-  documents: { docType: string; storageKey: string; uploadedAt: string }[];
+  /** `mimeType`/`sizeBytes` are the VERIFIED facts about the bytes, captured at
+   *  upload (magic-byte sniffed — not the client's claim). They are carried here
+   *  because once a document moves to R2 the storageKey is `r2:<key>` and the
+   *  bytes can no longer be measured from it: the DAL used to regex the key as a
+   *  data URL and silently record `application/octet-stream` / `0` for EVERY R2
+   *  document — a false statement about identity evidence in a compliance table
+   *  (all 7 R2 rows on production, measured 2026-07-31, against real ~150–240 KB
+   *  JPEGs). Optional so older/partial records still load. */
+  documents: { docType: string; storageKey: string; uploadedAt: string; mimeType?: string; sizeBytes?: number }[];
   /** Extra documents an officer asked for during review (each with a written
    *  description the player and reviewer both see). Empty in the normal case;
    *  populated by a REQUEST_INFO decision. `storageKey` is null until the

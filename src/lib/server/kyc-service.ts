@@ -17,6 +17,7 @@ import { db } from "./store";
 import type { StoredUser, KycExtraRequest } from "./store";
 import { randomId } from "./crypto";
 import { putKycDocument } from "./storage";
+import { sniffBase64ImageMime } from "./image-signature";
 import { verifyNida } from "./nida";
 import { rateCheckAsync } from "./rate-limit";
 import { KycNidaSchema } from "./validators";
@@ -158,29 +159,77 @@ export async function submitNidaStep(userId: string, input: z.input<typeof KycNi
     return { ok: true, data: { verified: false, reason: result.reason } };
   }
 
-  await db.kyc.upsert({
-    ...k,
-    nidaNumber: parse.data.nida,
-    nidaVerifiedAt: new Date().toISOString(),
-    fullName: result.fullName,
-    dob: result.dob,
-    updatedAt: new Date().toISOString(),
-  });
+  try {
+    await db.kyc.upsert({
+      ...k,
+      nidaNumber: parse.data.nida,
+      nidaVerifiedAt: new Date().toISOString(),
+      fullName: result.fullName,
+      dob: result.dob,
+      updatedAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    // The check above is the FAST PATH; the partial unique index
+    // "KycSubmission_nidaNumber_active_key" is the ENFORCEMENT. Two users
+    // submitting the same NIDA in the same instant both clear the read (proven
+    // by scripts/load/s14-kyc-nida-race.mts) — the loser lands here. Present it
+    // as the same refusal a sequential duplicate gets, so a race is
+    // indistinguishable from an ordinary duplicate to the player, and audited
+    // the same way for AML.
+    if (!isNidaUniqueViolation(err)) throw err;
+    audit({ category: "SECURITY", action: "kyc.nida.duplicate_blocked", actorId: userId, targetType: "User", targetId: userId, payload: { viaConstraint: true } });
+    return { ok: false, error: "This National ID is already linked to another account. If this is a mistake, contact support.", code: "INVALID" };
+  }
   audit({ category: "KYC", action: "kyc.nida.verified", actorId: userId, targetType: "Kyc", targetId: k.id, payload: { matchScore: result.matchScore } });
   return { ok: true, data: { verified: true } };
+}
+
+/** Name of the partial unique index that enforces one-NIDA-one-account.
+ *  Declared in prisma/migrations/20260731120000_kyc_nida_active_unique. */
+export const NIDA_UNIQUE_INDEX = "KycSubmission_nidaNumber_active_key";
+
+/**
+ * Did this write lose the one-NIDA-one-account race?
+ *
+ * Matches Prisma's P2002 (unique constraint) and, defensively, the raw Postgres
+ * 23505 / index name — a PARTIAL unique index is created by raw SQL rather than
+ * the Prisma DSL, so the driver does not always attach `meta.target`.
+ */
+export function isNidaUniqueViolation(err: unknown): boolean {
+  const e = err as { code?: string; message?: string; meta?: { target?: unknown } };
+  const msg = String(e?.message ?? "");
+  if (msg.includes(NIDA_UNIQUE_INDEX)) return true;
+  if (e?.code === "23505") return true;
+  if (e?.code !== "P2002") return false;
+  // P2002 on this table can only be the NIDA index — `id` is a cuid we generate
+  // and `userId` is not unique — but check the target when we are given one.
+  const t = e.meta?.target;
+  const asText = Array.isArray(t) ? t.join(",") : String(t ?? "");
+  return asText === "" || /nida/i.test(asText) || asText.includes(NIDA_UNIQUE_INDEX);
 }
 
 /** Max decoded size of a document image, and the accepted data-URL shape. */
 export const MAX_DOC_BYTES = 3 * 1024 * 1024; // 3 MB decoded — legible ID photos, bounded
 const DOC_DATAURL_RE = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/;
 /** Validate an uploaded document image data URL. Returns decoded byte size. */
-export function validateDocImage(s: string): { ok: true; bytes: number } | { ok: false; error: string } {
-  if (!s || !DOC_DATAURL_RE.test(s)) return { ok: false, error: "Document must be a JPG, PNG, or WebP image." };
+export function validateDocImage(s: string): { ok: true; bytes: number; mimeType: string } | { ok: false; error: string } {
+  const declared = DOC_DATAURL_RE.exec(s ?? "");
+  if (!s || !declared) return { ok: false, error: "Document must be a JPG, PNG, or WebP image." };
   const b64 = s.slice(s.indexOf(",") + 1);
   const bytes = Math.floor((b64.length * 3) / 4) - (b64.endsWith("==") ? 2 : b64.endsWith("=") ? 1 : 0);
   if (bytes <= 0) return { ok: false, error: "Empty image." };
   if (bytes > MAX_DOC_BYTES) return { ok: false, error: "Image too large. Use a photo under 3 MB." };
-  return { ok: true, bytes };
+  // 🔴 The mime above is whatever the CLIENT wrote in the data URL. Identify the
+  // format from the BYTES and require it to agree — otherwise a renamed .exe, a
+  // zip, or an SVG carrying <script> is stored as a citizen's identity document
+  // and an officer approves against something that is not an image at all.
+  const actual = sniffBase64ImageMime(b64);
+  if (!actual) return { ok: false, error: "That file isn't a JPG, PNG, or WebP image." };
+  if (actual !== `image/${declared[1]}`) {
+    return { ok: false, error: "That file isn't a JPG, PNG, or WebP image." };
+  }
+  // `actual` — sniffed from the bytes — not `declared`, which the client wrote.
+  return { ok: true, bytes, mimeType: actual };
 }
 
 export async function attachDocument(userId: string, docType: "NIDA_FRONT" | "NIDA_BACK" | "SELFIE", storageKey: string): Promise<ServiceResult> {
@@ -196,7 +245,10 @@ export async function attachDocument(userId: string, docType: "NIDA_FRONT" | "NI
   // H8: persist via the storage seam — INLINE (data URL) today, Cloudflare R2 the
   // moment it's configured, with no change to this call site.
   const storedKey = await putKycDocument(storageKey, `${userId}/${docType}`);
-  const docs = [...k.documents.filter((d: { docType: string }) => d.docType !== docType), { docType, storageKey: storedKey, uploadedAt: new Date().toISOString() }];
+  // Carry the VERIFIED mime + size forward: once this is an `r2:<key>` the bytes
+  // can no longer be measured from the stored value, and guessing produced
+  // "0 bytes, application/octet-stream" for every R2 document.
+  const docs = [...k.documents.filter((d: { docType: string }) => d.docType !== docType), { docType, storageKey: storedKey, uploadedAt: new Date().toISOString(), mimeType: valid.mimeType, sizeBytes: valid.bytes }];
   await db.kyc.upsert({ ...k, documents: docs, updatedAt: new Date().toISOString() });
   // Note: never log the image bytes themselves in the audit payload.
   audit({ category: "KYC", action: "kyc.document.uploaded", actorId: userId, targetType: "Kyc", targetId: k.id, payload: { docType, bytes: valid.bytes } });

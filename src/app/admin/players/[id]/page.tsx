@@ -204,7 +204,12 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
                     </Chip>
                   </a>
                 )}
-                {kyc?.nidaVerifiedAt && canSeePII && <Chip size="sm" variant="neutral"><I.check s={10} className="inline -mt-0.5 mr-0.5" />NIDA verified</Chip>}
+                {/* NIDA-POLICY.md: format + uniqueness only, NO authority check —
+                    nida.ts is a mock and no request has ever reached the National
+                    Identification Authority. "NIDA verified" told an officer a
+                    government had confirmed this identity, which would invite them
+                    to release a withdrawal on evidence that does not exist. */}
+                {kyc?.nidaVerifiedAt && canSeePII && <Chip size="sm" variant="neutral"><I.check s={10} className="inline -mt-0.5 mr-0.5" />NIDA format OK</Chip>}
                 {rg?.dailyDepositLimit && (
                   <Chip size="sm" variant="warning">limit {formatTzsCompact(rg.dailyDepositLimit).replace("TZS ", "")}/day</Chip>
                 )}
@@ -447,7 +452,9 @@ function KycTab({ kyc, userEmail, userId, makerCheckerRequired, canActSupport, c
         <Item label="NIDA number" value={<span className="font-mono">{kyc.nidaNumber ? `${kyc.nidaNumber.slice(0, 4)}…${kyc.nidaNumber.slice(-4)}` : "—"}</span>} />
         <Item label="Full name" value={kyc.fullName ?? "—"} />
         <Item label="DOB" value={kyc.dob ?? "—"} />
-        <Item label="NIDA verified at" value={kyc.nidaVerifiedAt ? new Date(kyc.nidaVerifiedAt).toLocaleString("en-GB") : "—"} />
+        {/* "verified at" read as a government-confirmation timestamp. It is the
+            moment the FORMAT was accepted and the number found unique. */}
+        <Item label="NIDA format accepted at" value={kyc.nidaVerifiedAt ? new Date(kyc.nidaVerifiedAt).toLocaleString("en-GB") : "—"} />
         <Item label="Documents" value={kyc.documents.length > 0 ? kyc.documents.map((d: { docType: string }) => d.docType).join(", ") : "none"} />
         <Item label="Submitted" value={kyc.submittedAt ? new Date(kyc.submittedAt).toLocaleString("en-GB") : "—"} />
         {decided && <Item label="Reviewed by" value={<span className="font-mono">{kyc.reviewerId ? `${kyc.reviewerId.slice(0, 14)}…` : "—"}{kyc.reviewedAt ? ` · ${new Date(kyc.reviewedAt).toLocaleString("en-GB")}` : ""}</span>} />}

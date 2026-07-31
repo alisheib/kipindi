@@ -3,7 +3,25 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
-import { submitNidaStep, attachDocument, attachExtraDocument, submitForReview } from "@/lib/server/kyc-service";
+import { startKyc, submitNidaStep, attachDocument, attachExtraDocument, submitForReview } from "@/lib/server/kyc-service";
+
+/**
+ * Player explicitly restarts a REJECTED submission.
+ *
+ * `startKyc()` CLEARS the record (nidaNumber, documents, rejectReason, rejectNote
+ * — see kyc-service.ts:79-95). That is correct for a deliberate "start again", and
+ * wrong for a page load: until 2026-07-31 `page.tsx` called it on every render,
+ * which wiped the rejection one line before the page read it, so the rejection
+ * panel was unreachable and the player never learned why they were turned down.
+ * Restarting is now an action the player takes, not a side effect of looking.
+ */
+export async function restartKycAction() {
+  const session = await currentSession();
+  if (!session) redirect("/auth/login");
+  await startKyc(session.userId);
+  revalidatePath("/profile/kyc");
+  redirect("/profile/kyc");
+}
 
 export async function submitNidaAction(formData: FormData) {
   const session = await currentSession();
@@ -30,6 +48,14 @@ export async function submitNidaAction(formData: FormData) {
     const carry = `&nida=${encodeURIComponent(nida)}&fullName=${encodeURIComponent(fullName)}&dob=${encodeURIComponent(dob)}${emailStr ? `&email=${encodeURIComponent(emailStr)}` : ""}`;
     redirect(`/profile/kyc?error=${encodeURIComponent(result.error)}${carry}`);
   }
+  // A NIDA that FAILS the identity check (mismatch / sanctioned / underage /
+  // not-found) still returns ok:true — `ok` reports that the step ran, not that
+  // the player passed. submitNidaStep has already set the submission to REJECTED
+  // and emailed "Identity check needs attention". Redirecting to ?nida=verified
+  // greeted that player with "NIDA number accepted — now attach your documents",
+  // i.e. the screen contradicted the email. Fall through to the page, which now
+  // renders the rejection panel with the reason.
+  if (result.data?.verified === false) redirect("/profile/kyc");
   redirect("/profile/kyc?nida=verified");
 }
 

@@ -31,6 +31,33 @@ export function kycStorageMode(): "r2" | "inline" {
   return process.env.KYC_STORAGE === "r2" && !!process.env.R2_BUCKET ? "r2" : "inline";
 }
 
+/**
+ * 🔴 Refuse to DEGRADE silently.
+ *
+ * `kycStorageMode()` answers "inline" whenever R2 is not fully configured — correct
+ * as a default, dangerous as a fallback. If an operator has set `KYC_STORAGE=r2`
+ * they have stated an intent; resolving that to "inline" because `R2_BUCKET` is
+ * missing writes base64 ID photographs into Postgres with no throw, no log and no
+ * alert. Not hypothetical: rolling the R2 token once broke KYC storage on
+ * production and nothing reported it.
+ *
+ * So an UNCONFIGURED intent is an error, not a fallback. Failing the upload keeps
+ * the photograph out of the primary database and out of every nightly backup; the
+ * player retries, and the operator sees a real error instead of silence.
+ *
+ * Only fires when the intent is explicit — no `KYC_STORAGE` at all is a legitimate
+ * inline deployment and stays silent.
+ */
+export function assertStorageModeIntended(): void {
+  if (process.env.KYC_STORAGE === "r2" && !process.env.R2_BUCKET) {
+    throw new Error(
+      "KYC_STORAGE=r2 but R2_BUCKET is not set. Refusing to fall back to writing " +
+      "base64 identity documents into Postgres. Set R2_BUCKET (and the R2_* " +
+      "credentials), or unset KYC_STORAGE to choose inline storage deliberately.",
+    );
+  }
+}
+
 function extFor(mime: string): string {
   return mime === "image/png" ? "png" : mime === "image/webp" ? "webp" : "jpg";
 }
@@ -41,6 +68,7 @@ function extFor(mime: string): string {
  * `r2:<key>` reference. `keyHint` (e.g. `userId/NIDA_FRONT`) namespaces the object.
  */
 export async function putKycDocument(dataUrl: string, keyHint: string): Promise<string> {
+  assertStorageModeIntended();
   if (kycStorageMode() === "inline") return dataUrl;
   const m = DATAURL_RE.exec(dataUrl);
   if (!m) throw new Error("putKycDocument: value is not a supported image data URL");

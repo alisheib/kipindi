@@ -29,9 +29,23 @@ const clearLogs = () => { logs = []; };
 const stubTo = (frag: string) => logs.filter((l) => l.includes("[email-stub]") && l.includes(frag));
 const latestKycNote = async (uid: string) => (await listForUser(uid, 50)).find((n) => n.kind === "KYC")?.titleEn ?? "";
 
-// Valid small image data URL + an oversized one.
-const VALID_IMG = "data:image/jpeg;base64," + Buffer.from("a".repeat(2048)).toString("base64");
-const HUGE_IMG = "data:image/jpeg;base64," + "A".repeat(4_200_004); // ~3.15 MB decoded > 3 MB cap
+// ⚠️ These fixtures used to be `Buffer.from("a".repeat(2048))` — the letter 'a',
+// 2048 times, labelled image/jpeg. So "validate: valid jpeg accepted" was passing
+// on bytes that are not a JPEG, and this suite could never have noticed that the
+// upload path did no magic-byte checking at all. A fixture that lies makes the
+// assertion above it meaningless. Real JPEG SOI + JFIF APP0 header now.
+const JPEG_HEADER = Buffer.from([
+  0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46,
+  0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00,
+]);
+const jpegOf = (padBytes: number) =>
+  "data:image/jpeg;base64," + Buffer.concat([JPEG_HEADER, Buffer.alloc(padBytes, 0x61)]).toString("base64");
+
+const VALID_IMG = jpegOf(2048);
+const HUGE_IMG = jpegOf(3 * 1024 * 1024 + 16); // > the 3 MB decoded cap — refused on SIZE, not signature
+/** A real Windows PE header wearing an image/jpeg label. */
+const EXE_AS_JPG = "data:image/jpeg;base64," +
+  Buffer.concat([Buffer.from("MZ\x90\x00\x03\x00\x00\x00", "binary"), Buffer.alloc(512, 0x41)]).toString("base64");
 
 async function mkPlayer(id: string, email: string | null = null) {
   await db.user.create({
@@ -72,6 +86,13 @@ ok("validate: wrong mime (gif) rejected", !validateDocImage("data:image/gif;base
 ok("validate: pdf rejected", !validateDocImage("data:application/pdf;base64,AAAA").ok);
 ok("validate: oversized rejected", !validateDocImage(HUGE_IMG).ok);
 ok("validate: valid jpeg accepted", validateDocImage(VALID_IMG).ok);
+// 🔴 Magic bytes: the mime in a data URL is written by the CLIENT. Before
+// 2026-07-31 a renamed .exe, a zip and an SVG carrying <script> were all stored
+// as identity documents. An officer cannot approve against a file that is not an image.
+ok("🔴 validate: .exe renamed .jpg refused on its BYTES", !validateDocImage(EXE_AS_JPG).ok);
+const valid = validateDocImage(VALID_IMG);
+ok("validate: reports the SNIFFED mime, not the declared one",
+  valid.ok && valid.mimeType === "image/jpeg");
 
 // ─── 2. NIDA reject paths (each a distinct user; NIDA tail drives the mock) ───
 await mkPlayer("usr_nida_san");

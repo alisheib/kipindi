@@ -21,30 +21,55 @@ reviewed by a human compliance officer, not from a government API.
 | Authority (NIDA API) check | `src/lib/server/nida.ts` | ❌ **deliberately absent.** That file is a deterministic mock; no request has ever reached the National Identification Authority. `nidaVerifiedAt` therefore means "format accepted", NOT "government confirmed". |
 | Document review by a human | `/admin/kyc/[id]` | ✅ this is the real identity control |
 
-## ⚠️ Known gap in the uniqueness control (not yet closed)
+## ✅ The uniqueness gap — PROVEN, then CLOSED (2026-07-31)
 
-The duplicate check is **application-level read-then-write with no lock**:
-`findActiveByNida` runs, and only then is the row written. Two *different* users
-submitting the **same** NIDA at the same instant can both pass — `kyc-service` takes
-`kyc:${userId}`, which serialises one user against themselves, not two users against
-each other. The schema has `@@index([nidaNumber])`, **not** a unique constraint.
+The duplicate check was **application-level read-then-write with no lock**:
+`findActiveByNida` ran, and only then was the row written. `withLock` guards
+`reviewKyc`/`forceReverifyKyc` but not this path, and it is keyed `kyc:${userId}` —
+which serialises one user against themselves, never two users against each other.
 
-Closing it is a one-line migration, but it must not be applied blind — if production
-already holds a duplicate, the index creation fails and the deploy stops:
+**This was not left as a theory.** `npm run load:nida-race` spawns two OS processes
+(each its own `PrismaClient` + pool = a Railway container) submitting the *same*
+national ID for two *different* users, aligned to one wall-clock instant:
 
-```sql
--- Check FIRST (must return zero rows):
-SELECT "nidaNumber", count(*) FROM "Kyc"
- WHERE "nidaNumber" IS NOT NULL AND status <> 'REJECTED'
- GROUP BY "nidaNumber" HAVING count(*) > 1;
-
--- Then, and only then:
-CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS "Kyc_nidaNumber_active_key"
-    ON "Kyc" ("nidaNumber") WHERE "nidaNumber" IS NOT NULL AND status <> 'REJECTED';
+```
+worker A: {"accepted":true,"verified":true}
+worker B: {"accepted":true,"verified":true}
+active submissions holding this NIDA : 2   (must be exactly 1)
 ```
 
-Until that index exists, uniqueness holds under normal use and can be defeated only
-by a deliberately-timed concurrent submission.
+Two accounts, one national ID. Since there is no authority check, uniqueness is the
+*entire* control — so this defeated the identity policy by timing alone.
+
+**Closed by a PARTIAL unique index** (partial because a REJECTED submission
+deliberately frees the number):
+
+```sql
+CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS "KycSubmission_nidaNumber_active_key"
+    ON "KycSubmission" ("nidaNumber")
+    WHERE "nidaNumber" IS NOT NULL AND status <> 'REJECTED';
+```
+
+⚠️ **The table is `KycSubmission`.** An earlier revision of this document said `"Kyc"`,
+which is the *app-layer* name (`db.kyc.*`); no table called `Kyc` has ever existed, so
+that SQL would have failed on its first line. Check for duplicates first — index
+creation fails if any exist (production: **16 active NIDA rows, 0 duplicates**,
+verified 2026-07-31):
+
+```sql
+SELECT "nidaNumber", count(*) FROM "KycSubmission"
+ WHERE "nidaNumber" IS NOT NULL AND status <> 'REJECTED'
+ GROUP BY "nidaNumber" HAVING count(*) > 1;
+```
+
+The index is the **enforcement**; the read-check remains the fast path. The losing
+writer is caught by `isNidaUniqueViolation()` in `kyc-service.ts` and gets the same
+refusal and the same `kyc.nida.duplicate_blocked` audit row as an ordinary duplicate,
+so a race is indistinguishable from a sequential duplicate to the player and to AML.
+Re-running the proof after the index: **worker B refused, 1 holder. PASS.**
+
+Guarded by `npm run test:cert-d1`, which fails if the migration, the index name or
+the violation handler is removed.
 
 ## What we say to people — INTERNAL vs PLAYER-FACING
 

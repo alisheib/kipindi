@@ -54,7 +54,11 @@ export function AdminMobileNavTrigger({ groups, badges, activeKey }: { groups: R
             aria-label="Admin navigation"
             className="fixed left-0 top-0 z-popover h-[100dvh] w-[280px] max-w-[80vw] bg-bg-elevated border-r border-border-divider shadow-e5 flex flex-col m-in overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]"
           >
-            <div className="flex items-center justify-between px-3 py-3 border-b border-border-divider sticky top-0 bg-bg-elevated">
+            {/* z-10: a sticky header must outrank the content scrolling beneath it.
+                Its opaque background hides plain content, but any later sibling that
+                makes its own stacking context would paint straight over it — the same
+                defect fixed on /markets/[id]. Scoped inside this z-popover drawer. */}
+            <div className="z-10 flex items-center justify-between px-3 py-3 border-b border-border-divider sticky top-0 bg-bg-elevated">
               <Link href="/admin" onClick={() => setOpen(false)} className="flex items-center gap-2">
                 <FiftyMark size={18} simplified aria-hidden />
                 <span className="font-display font-bold text-body-sm text-text">50pick · admin</span>
