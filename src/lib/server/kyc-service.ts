@@ -145,15 +145,21 @@ export async function submitNidaStep(userId: string, input: z.input<typeof KycNi
     // player-readable detail in rejectNote.
     const NIDA_ENUM = { MISMATCH: "DETAILS_MISMATCH", EXPIRED: "EXPIRED_ID", NOT_FOUND: "OTHER", UNDERAGE: "UNDERAGE", SANCTIONED: "SANCTIONED" } as const;
     const NIDA_TEXT = { MISMATCH: "Your details didn't match the National ID record.", EXPIRED: "The National ID on file has expired.", NOT_FOUND: "We couldn't find this National ID.", UNDERAGE: "You must be 18 or older to use 50pick.", SANCTIONED: "We're unable to verify this identity." } as const;
-    const rejectNote = NIDA_TEXT[result.reason];
-    await db.kyc.upsert({ ...k, status: "REJECTED", rejectReason: NIDA_ENUM[result.reason], rejectNote, updatedAt: new Date().toISOString() });
+    const enumMember = NIDA_ENUM[result.reason];
+    // ⚠️ These sentences are ENGLISH. `/profile/kyc` renders the enum member in
+    // the player's own language, so storing one alongside a categorised
+    // rejection prints the same reason twice — once translated, once in ours
+    // (§6 E-6). Keep it only for OTHER, which shows no category at all. The
+    // EMAIL still carries it: email templates have no dictionary.
+    const rejectNote = enumMember === "OTHER" ? NIDA_TEXT[result.reason] : null;
+    await db.kyc.upsert({ ...k, status: "REJECTED", rejectReason: enumMember, rejectNote, updatedAt: new Date().toISOString() });
     audit({ category: "KYC", action: "kyc.nida.rejected", actorId: userId, targetType: "Kyc", targetId: k.id, payload: { reason: result.reason } });
     // In-app + email notice (best-effort).
     notifyKyc(userId, "REJECTED").catch(() => {});
     sendEmailToUser(userId, (email) => ({
       to: email,
       subject: "Identity check needs attention",
-      html: kycRejectedHtml({ reason: rejectNote }),
+      html: kycRejectedHtml({ reason: NIDA_TEXT[result.reason] }),
       tag: "kyc-rejected",
     }));
     return { ok: true, data: { verified: false, reason: result.reason } };
@@ -434,6 +440,27 @@ export async function forceReverifyKyc(officerId: string, userId: string, reason
   });
 }
 
+/**
+ * English one-liners per `KycRejectReason`, for the surfaces that have no
+ * dictionary — today, the rejection email.
+ *
+ * ⛔ NOT for `/profile/kyc`. That page renders the enum member through
+ * `humanizeRejectReason` in the player's own language; putting one of these in
+ * front of it prints the reason twice, the second time in English, to the 44 of
+ * 46 live users who are Swahili (§6 E-6).
+ *
+ * `SANCTIONED` says nothing about a list, deliberately — same rule as E-1.
+ */
+const REJECT_EMAIL_TEXT: Record<string, string> = {
+  BLURRY_DOC: "The identity document photo was too blurry or dark to read.",
+  DETAILS_MISMATCH: "The details entered do not match the identity document.",
+  EXPIRED_ID: "The identity document has expired.",
+  UNDERAGE: "You must be 18 or older to use 50pick.",
+  DUPLICATE_IDENTITY: "This identity is already registered to another account.",
+  SANCTIONED: "We're unable to verify this identity.",
+  OTHER: "Please check your documents and submit again.",
+};
+
 export async function reviewKyc(opts: {
   officerId: string;
   userId: string;
@@ -459,7 +486,16 @@ export async function reviewKyc(opts: {
   }
   const reason = (opts.reason ?? "").trim();
   // Both REJECT and REQUEST_INFO put text in front of the player — require it.
-  if (decision === "REJECT" && reason.length < 5) {
+  //
+  // A CATEGORISED rejection is the exception: `humanizeRejectReason` renders the
+  // enum member as a translated sentence on /profile/kyc, so the player is told
+  // why in their own language with no free text at all. OTHER renders nothing,
+  // so an uncategorised rejection still has to carry words or the player is told
+  // they were rejected and nothing else. This rule pre-dates categorised
+  // rejections, which is why it forced the officer's screen to prepend an
+  // English sentence to every reason (§6 E-6).
+  const categorised = (opts.rejectCode ?? "OTHER") !== "OTHER";
+  if (decision === "REJECT" && !categorised && reason.length < 5) {
     return { ok: false, error: "A rejection reason (at least 5 characters) is required.", code: "INVALID" };
   }
   if (decision === "REQUEST_INFO" && reason.length < 5) {
@@ -535,13 +571,20 @@ export async function reviewKyc(opts: {
     // caller genuinely has none. Hard-coding OTHER here made every rejection on
     // production uncategorised and printed "Reason: other." to the player.
     const rejectCode = opts.rejectCode ?? "OTHER";
-    await db.kyc.upsert({ ...k, status: "REJECTED", rejectReason: rejectCode, rejectNote: opts.note?.trim() || reason, reviewerId: officerId, reviewedAt: now, updatedAt: now });
-    audit({ category: "KYC", action: "kyc.rejected", actorId: officerId, targetType: "User", targetId: userId, payload: { kycId: k.id, reason, rejectCode } });
+    // Empty, not "": a categorised rejection needs no free text, and the column
+    // is nullable. Anything stored here is shown to the player VERBATIM, in
+    // whatever language it was written — which is why nothing English is put
+    // here on behalf of the officer (§6 E-6).
+    const officerNote = (opts.note?.trim() || reason) || null;
+    await db.kyc.upsert({ ...k, status: "REJECTED", rejectReason: rejectCode, rejectNote: officerNote, reviewerId: officerId, reviewedAt: now, updatedAt: now });
+    audit({ category: "KYC", action: "kyc.rejected", actorId: officerId, targetType: "User", targetId: userId, payload: { kycId: k.id, reason: officerNote, rejectCode } });
     notifyKyc(userId, "REJECTED").catch(() => {});
     sendEmailToUser(userId, (email) => ({
       to: email,
       subject: "Identity check needs attention",
-      html: kycRejectedHtml({ reason, reference: k.id }),
+      // The email has no dictionary, so it falls back to an English rendering of
+      // the category rather than going out with a blank reason line.
+      html: kycRejectedHtml({ reason: officerNote ?? REJECT_EMAIL_TEXT[rejectCode], reference: k.id }),
       tag: "kyc-rejected",
     }));
     return { ok: true as const };

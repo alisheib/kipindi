@@ -351,7 +351,25 @@ are in R2, so a backfill could HEAD each object rather than guess). **Guard**:
 round trip, not either half alone. Proven red first: reverting *only* the read half fails 5
 assertions with exactly the production symptom (`application/octet-stream` / `0`).
 
-| **E-6** | MEDIUM | KYC reject · player | **The rejection reason is printed twice — once in the player's language, once in English.** Found while verifying E-1 in SW/ZH. `REJECT_REASONS` in `kyc-actions.ts:34-40` maps each rail code to a hard-coded **English sentence**, which is prepended to the officer's note and stored as `rejectNote`. Now that E-1 makes the category translate, a Swahili player reads *“Sababu: **Picha ya kitambulisho ina ukungu au ni nyeusi sana**. Document unreadable — please re-upload a clear photo.”* — the same sentence twice, the second one ours, in a language 44 of 46 live users have not chosen. | `shots/e1card-delta-sw-360.png`, `e1card-delta-zh-1280.png` | ⏳ open |
+| **E-6** | MEDIUM | KYC reject · player | **The rejection reason is printed twice — once in the player's language, once in English.** Found while verifying E-1 in SW/ZH. `REJECT_REASONS` mapped each rail code to a hard-coded **English sentence**, prepended to the officer's note and stored as `rejectNote`. Once E-1 made the category translate, a Swahili player read *“Sababu: **Picha ya kitambulisho ina ukungu au ni nyeusi sana**. Document unreadable — please re-upload a clear photo.”* — the same sentence twice, the second one ours, in a language 44 of 46 live users have not chosen. The **automatic NIDA** rejections did it too (`NIDA_TEXT` beside `DETAILS_MISMATCH`/`EXPIRED_ID`/`UNDERAGE`/`SANCTIONED`, all of which have translated labels). | `shots/e1card-delta-sw-360.png`, `e1card-delta-zh-1280.png` | ✅ fixed |
+
+**E-6 fix** — one rule, applied on both rejection paths: **`rejectNote` carries the officer's own
+words and nothing else**, because whatever is stored there is shown to the player verbatim, in
+whatever language it was written. Our English sentence survives only for `OTHER`, which renders
+no category at all and would otherwise tell a player they were rejected and nothing more.
+Two consequences had to be handled rather than worked around:
+
+- The `reason.length < 5` rule in `reviewKyc` **pre-dates categorised rejections** and is what
+  forced the English sentence to exist. It now applies only when the rejection is uncategorised
+  — a categorised one already says why, in the player's language. The officer's screen keeps the
+  same requirement for `OTHER`, so no rejection can reach a player with nothing to read.
+- The **rejection email has no dictionary**, so blanking `rejectNote` would have sent an email
+  with an empty reason line. `REJECT_EMAIL_TEXT` gives every enum member an English fallback the
+  email uses when the officer wrote no note. `SANCTIONED` still names no list (the E-1 rule).
+
+`rejectNote` is now written `null`, not `""`. **Guard**: `test:kyc-reject-reason` grows 47 → 64,
+including one assertion per rail code that its English sentence is empty. Proven red first: 16
+failures against the pre-fix tree.
 
 ### Open findings — evidenced on production, NOT yet fixed
 
@@ -406,8 +424,8 @@ re-verified against production — not just built. Branch `qa/live-experience` =
 
 **Phase 2 officer review is COMPLETE** (§6c). Approve, reject, revoke, ban, session
 revocation, the enumeration probe and the NIDA free/claimed pair were all driven against
-production. Two fixes shipped (E-1, E-3); E-1 is now verified in **EN, SW and ZH**. Five
-findings are evidenced and **open** (E-2, E-4, E-5, E-6, E-7).
+production. Four fixes shipped and live-verified (E-1, E-3, E-6 — E-1 now in **EN, SW and ZH**).
+Three findings are evidenced and **open** (E-2, E-4, E-5), plus **E-7, which is Ali's call**.
 
 **Resume here, in this order:**
 
@@ -415,12 +433,16 @@ findings are evidenced and **open** (E-2, E-4, E-5, E-6, E-7).
    twice, the second time in English) and confirmed **E-7** (`User.locale` renders nothing).
 2. ✅ **E-3 fixed and live** — the round trip is guarded by `test:kyc-doc-metadata`.
    ⏳ **Still owed: Ali's decision on backfilling the 19 existing R2 rows.**
-3. **E-6, then E-2, E-5, E-4.** E-6 is a two-line change in `REJECT_REASONS` (stop prepending
-   the English sentence for codes whose enum member is now translated — but KEEP it for
-   `suspected_fraud`, which maps to `OTHER` and therefore prints no category at all, and relax
-   the `reason.length < 5` check so a code-only rejection is still allowed). E-2 is a formatter,
-   E-5 is copy, E-4 needs a small schema decision about where attestations live.
-4. **Then Phase 3, money in** — credit the approved wallets (Ali has authorised crediting test
+3. ✅ **E-6 fixed and live** — guarded by the grown `test:kyc-reject-reason` (64).
+4. **E-2, then E-5, then E-4.** E-2 is a formatter, E-5 is copy, E-4 needs a small schema
+   decision about where attestations live.
+5. **⛔ E-7 is Ali's, not the next session's.** It is a product decision, not a bug fix: should
+   a brand-new Tanzanian visitor land in **Swahili** (matching the column, and 44 of 46 live
+   users) or in **English** (today's cookie default)? Everything else follows from that answer —
+   whether `kp-locale` seeds from `User.locale` on sign-in, whether the toggle writes it back,
+   and whether `/profile` should show the badge at all. **Do not guess it**; changing the default
+   language of a live money product on a QA session's judgement is exactly the wrong call.
+6. **Then Phase 3, money in** — credit the approved wallets (Ali has authorised crediting test
    users on live), then wallet · ledger · receipts. **`alpha` is the only ACTIVE persona**;
    `bravo`/`delta` are REJECTED and `charlie` is SUSPENDED, so create a fresh persona or restore
    one before you need a second funded player.

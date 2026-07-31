@@ -23,18 +23,29 @@ import { kycRiskScore, getApprovalRecommendation, KYC_MAKER_CHECKER_THRESHOLD } 
 type Result = { ok: true } | { ok: false; error: string };
 type RejectCode = NonNullable<Parameters<typeof reviewKyc>[0]["rejectCode"]>;
 
-/** The rail's reason codes → the player-facing sentence AND the stored
- *  `KycRejectReason`. The enum member is what compliance reporting counts and
- *  what the player's own language is looked up from, so it must follow the
- *  officer's choice — it used to be hard-coded OTHER for every rejection.
+/** The rail's reason codes → the stored `KycRejectReason`, and a fallback
+ *  sentence for the codes that have no category to show.
+ *
+ *  The enum member is what compliance reporting counts and what the player's own
+ *  language is looked up from, so it must follow the officer's choice — it used
+ *  to be hard-coded OTHER for every rejection.
+ *
+ *  ⚠️ `text` is used ONLY when the member is `OTHER`. `humanizeRejectReason`
+ *  prints nothing for OTHER, so without a sentence the player would be told they
+ *  were rejected and nothing else. For every other member the player already
+ *  reads a translated category, and prepending this English sentence printed the
+ *  reason TWICE — once in Swahili, once in ours: "Sababu: Picha ya kitambulisho
+ *  ina ukungu au ni nyeusi sana. Document unreadable — please re-upload a clear
+ *  photo." 44 of 46 live users are Swahili (campaign §6 E-6). The officer's own
+ *  note still goes through verbatim; it is theirs to write, in any language.
  *
  *  `suspected_fraud` maps to OTHER on purpose: the enum has no fraud member,
  *  and a suspected fraudster must not be told what we suspect. Its sentence is
  *  deliberately uninformative for the same reason. */
 const REJECT_REASONS: Record<string, { text: string; code: RejectCode }> = {
-  document_unreadable: { text: "Document unreadable — please re-upload a clear photo.", code: "BLURRY_DOC" },
-  mismatch: { text: "Details do not match the submitted ID.", code: "DETAILS_MISMATCH" },
-  expired: { text: "The identity document has expired.", code: "EXPIRED_ID" },
+  document_unreadable: { text: "", code: "BLURRY_DOC" },
+  mismatch: { text: "", code: "DETAILS_MISMATCH" },
+  expired: { text: "", code: "EXPIRED_ID" },
   suspected_fraud: { text: "The submission could not be verified.", code: "OTHER" },
   other: { text: "", code: "OTHER" },
 };
@@ -101,8 +112,17 @@ export async function rejectKycWorkstationAction(formData: FormData): Promise<Re
   const note = String(formData.get("note") ?? "").trim();
   const picked = REJECT_REASONS[code];
   if (picked === undefined) return { ok: false, error: "Pick a rejection reason." };
-  const reason = (code === "other" ? note : `${picked.text}${note ? ` ${note}` : ""}`).trim();
-  if (reason.length < 5) return { ok: false, error: "Add a short explanation (5+ characters)." };
+  // `picked.text` is empty for every code that maps to a translated enum member
+  // — the player reads the category in their OWN language, so prepending our
+  // English sentence printed the reason twice (§6 E-6). It is non-empty only for
+  // OTHER, which shows no category at all.
+  const reason = `${picked.text}${picked.text && note ? " " : ""}${note}`.trim();
+  // A rejection must leave the player something they can read. A categorised
+  // one already does, in their language, so the officer's note is optional
+  // there; an OTHER rejection has nothing else, so it still needs words.
+  if (picked.code === "OTHER" && reason.length < 5) {
+    return { ok: false, error: "Add a short explanation (5+ characters)." };
+  }
   const r = await reviewKyc({ officerId: g.userId, userId, decision: "REJECT", reason, rejectCode: picked.code });
   if (!r.ok) return { ok: false, error: r.error ?? "Could not reject." };
   revalidatePath(`/admin/kyc/${userId}`);

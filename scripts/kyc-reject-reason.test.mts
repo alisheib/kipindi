@@ -113,7 +113,7 @@ ok(
 );
 ok(
   "the audit payload records the category that was stored",
-  /payload: \{ kycId: k\.id, reason, rejectCode \}/.test(SERVICE),
+  /payload: \{ kycId: k\.id, reason: officerNote, rejectCode \}/.test(SERVICE),
 );
 
 // ── 6. Every officer reason code maps to a REAL enum member ───────────────
@@ -127,6 +127,57 @@ ok(
   "suspected_fraud stays OTHER — never tell a suspected fraudster what we suspect",
   /suspected_fraud: \{[^}]*code: "OTHER"/.test(codeBlock),
 );
+
+// ── 7. § E-6 · the reason is NOT also written in English ──────────────────
+// Once §2 makes the category translate, a hard-coded English sentence stored
+// alongside it means the player reads the reason twice — the second time in a
+// language 44 of 46 live users have not chosen. Observed on production:
+//   "Sababu: Picha ya kitambulisho ina ukungu au ni nyeusi sana.
+//    Document unreadable — please re-upload a clear photo."
+// The officer's own note is exempt: it is theirs, in whatever language they
+// wrote it. This is about text OUR code puts in the player's mouth.
+section7();
+function section7() {
+  const entries = [...codeBlock.matchAll(/(\w+): \{ text: "([^"]*)", code: "([A-Z_]+)" \}/g)]
+    .map((m) => ({ rail: m[1], text: m[2], code: m[3] }));
+  ok("every rail code parses as { text, code }", entries.length === codes.length,
+    `${entries.length} parsed vs ${codes.length} codes`);
+  for (const e of entries) {
+    if (e.code === "OTHER") {
+      // OTHER renders NO category, so it is the one case that needs a sentence.
+      continue;
+    }
+    ok(`${e.rail} (${e.code}) carries no English sentence — the category speaks`,
+      e.text === "",
+      `would print "${e.text}" under the translated label`);
+  }
+  ok("a categorised rejection no longer demands free text",
+    /const categorised = \(opts\.rejectCode \?\? "OTHER"\) !== "OTHER"/.test(SERVICE) &&
+    /decision === "REJECT" && !categorised && reason\.length < 5/.test(SERVICE),
+    "the 5-char rule pre-dates categorised rejections; leaving it forces an English sentence back in");
+  ok("an UNCATEGORISED rejection still has to carry words",
+    /picked\.code === "OTHER" && reason\.length < 5/.test(ACTIONS),
+    "OTHER prints no category, so with no note the player is told only that they were rejected");
+  ok("rejectNote is stored NULL rather than an empty string",
+    /const officerNote = \(opts\.note\?\.trim\(\) \|\| reason\) \|\| null/.test(SERVICE));
+
+  // The automatic NIDA path writes real enum members too, and had the same
+  // English sentence stored beside them.
+  ok("the automatic NIDA rejection only stores its English text for OTHER",
+    /const rejectNote = enumMember === "OTHER" \? NIDA_TEXT\[result\.reason\] : null/.test(SERVICE),
+    "MISMATCH/EXPIRED/UNDERAGE/SANCTIONED all have translated labels");
+
+  // The email is the one surface with no dictionary — it must still say why.
+  ok("the rejection email falls back to an English category, never a blank line",
+    /REJECT_EMAIL_TEXT/.test(SERVICE) &&
+    /kycRejectedHtml\(\{ reason: officerNote \?\? REJECT_EMAIL_TEXT\[rejectCode\]/.test(SERVICE));
+  const emailBlock = /const REJECT_EMAIL_TEXT[\s\S]*?\n\};/.exec(SERVICE)?.[0] ?? "";
+  for (const m of MEMBERS) {
+    ok(`REJECT_EMAIL_TEXT covers ${m}`, new RegExp(`\\b${m}:`).test(emailBlock));
+  }
+  ok("the sanctions email copy still names no list",
+    !/sanction|watchlist|PEP/i.test(/SANCTIONED: "([^"]*)"/.exec(emailBlock)?.[1] ?? ""));
+}
 
 console.log(`\n${fail === 0 ? "ALL PASSED" : "FAILURES"} — ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);
