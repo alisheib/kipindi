@@ -82,10 +82,14 @@ sealed artifacts are in it, one shipped by CI itself; the unattended nightly is 
 all objects, Enabled** (the nightly still prints `RETENTION UNVERIFIED` because the token
 cannot read bucket config; that is accurate, not a bug — see the runbook).
 
-**Still outstanding:** narrow the R2 token, which currently reaches ALL buckets · move
-~~move `BACKUP_ENCRYPTION_KEY` into a password manager~~ ✅ **partly done — rotated 2026-07-31 and now readable on Railway; a password-manager copy is still worth adding.** The previous key existed ONLY as a GitHub secret, which cannot be read back, so every nightly artifact was undecryptable by anyone · set `SENTRY_DSN`
-(nobody is paged) · rule on the fee basis · rule on the Up & Down branch · rotate the Postgres
-password and the credentials exposed in chat.
+~~`BACKUP_ENCRYPTION_KEY` into a password manager~~ ✅ **rotated 2026-07-31 and now readable
+on Railway** — the previous one existed ONLY as a GitHub secret, which cannot be read back,
+so every nightly artifact was undecryptable by anyone. A password-manager copy is still
+worth adding. ~~set `SENTRY_DSN`~~ ✅ **alerting is LIVE** — see item B below.
+
+**Still outstanding:** narrow the R2 token, which currently reaches ALL buckets · rule on the
+fee basis · rule on the Up & Down branch · turn on admin 2FA (readiness check FIRST) · rotate
+the Postgres password and the credentials exposed in chat.
 
 ---
 
@@ -150,7 +154,7 @@ This file is the brief. Copy the block at the bottom into a fresh session.
 | # | Action | Why it cannot be automated |
 |---|---|---|
 | A | **Tell Selcom to enable `SELCOM_PESA` + `HUDUMA_AGENT`** | Their switch. Unblocks paying customers; the ladder already tries both, so no code change |
-| B | **Set `SENTRY_DSN`** in Railway and redeploy | Needs a Sentry account — an external signup and a decision to send a licensed operator's data off-box |
+| B | ~~Set `SENTRY_DSN`~~ | ✅ **DONE 2026-07-31 — alerting is LIVE.** Org `50pick`, project `50pick-server`, **EU region** (`de.sentry.io`). `/api/health` reports `alerting: true`. Proven by pushing a labelled error through the real path and **reading it back out of Sentry**: the stored issue title is `payout failed for <msisdn> (<email>) nida=<digits>` — scrubbed in Sentry's own record, not just in what we sent. Repeat with `npm run ops:sentry-smoke` |
 | C | ~~Add the GitHub repository secrets~~ | ✅ **DONE 2026-07-31.** All seven set. 🔴 **`BACKUP_ENCRYPTION_KEY` was ROTATED later that day**: the previous one existed ONLY as a GitHub secret, which cannot be read back by anyone — so every nightly artifact was **undecryptable**, while restoring, verifying and recording `verified: true`. It is now on **Railway** (readable), in GitHub, and in `.env.backup.local`, and the newest artifact was opened with it to prove it. A password-manager copy is still worth adding. See the runbook's key section |
 | D | ~~Create the `50pick-backups` R2 bucket~~ | ✅ **DONE 2026-07-31.** Bucket created (WEUR, Standard, private), R2 credentials updated on Railway **and** in the GitHub secrets, and run `30615505120` shipped its own 13.18 MB artifact. Verified by listing the bucket, not by the tick. ⚠️ **Rolling the old token broke KYC storage on production** until Railway was updated — see the runbook; never roll the token in use |
 | D2 | **Narrow the R2 token to `50pick-backups` only** | The current token reaches ALL buckets (chosen for speed), so one leaked key reaches both the KYC documents and the backups containing them. A Cloudflare action + updating two GitHub secrets |

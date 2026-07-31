@@ -8,7 +8,19 @@
  * monitoring can NEVER throw into a request path (skill §0: never break the
  * request path; alarm, don't crash).
  *
- * ✅ 2026-07-30 — `@sentry/node` IS now installed and the seam is proven end to end:
+ * ✅ 2026-07-31 — **LIVE.** `SENTRY_DSN` is set on Railway (org `50pick`, project
+ * `50pick-server`, **EU region** `de.sentry.io`), `/api/health` reports
+ * `alerting: true`, and a labelled test error was pushed through this exact path and then
+ * **read back out of Sentry** to see what it stored:
+ *
+ *     Error: 50PICK ALERTING SMOKE TEST — payout failed for <msisdn> (<email>) nida=<digits>
+ *
+ * That is Sentry's own issue title. The scrubbing is visible in the record Sentry keeps,
+ * not merely in what we believed we sent — 5,892 bytes stored, none of the three planted
+ * identifiers present. Repeat any time with `npm run ops:sentry-smoke` (and `--verify`,
+ * which needs a Sentry user auth token).
+ *
+ * ✅ 2026-07-30 — `@sentry/node` installed and the seam proven offline:
  * `test:alerting` points a real client at a throwaway HTTP server, pushes a real error
  * through `captureServerError`, and inspects the bytes that arrive. **One step remains and
  * it is Ali's**: set `SENTRY_DSN` (+ optional `SENTRY_ENVIRONMENT`,
