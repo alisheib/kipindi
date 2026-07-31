@@ -331,7 +331,7 @@ and a clean console: `/admin` · `players` · `markets` · `ai-polls` · `ai-usa
 | 4 | Core play: markets · YES/NO · win + lose · resolution · payout | ⏳ |
 | 5 | Up & Down: rounds · quick-bet · pricing · void · history | 🔴 **BLOCKED — E-16: it has never settled a round and cannot.** Round *generation* works (1,398 generated); *resolution* has 0 confirmed readings out of 1,400 and voids 100% |
 | 6 | Proposals: propose · approve · 4-state switch · bonus | ⏳ |
-| 7 | AI: poll generation · source registry · token enable/disable · usage | 🔄 poll generation is **live and working** (447 calls, 175 `PUBLISHED` polls, newest 2026-07-31 21:43Z); **spend ceiling fixed + guarded (E-15)**; the Up & Down half does not exist on prod (**E-17**) |
+| 7 | AI: poll generation · source registry · token enable/disable · usage | ✅ **generate → review → publish → live market DRIVEN ON PROD, 15/15, on real tokens** (§6e). **Spend ceiling fixed + live-verified (E-15).** Remaining: poll **resolution** with money, and the Up & Down half, which does not exist on prod (**E-17**) |
 | 8 | Invites & referrals | ⏳ |
 | 9 | Admin & accountant: roles · RBAC · finance · reports · settlement · audit | 🔄 **RBAC proven live for `MODERATOR`, 8 allow / 11 deny** (§4) — first `MODERATOR` account production has ever had. Finance · reports · settlement · audit untouched |
 | 10 | Money out: withdrawal + the payout gate | ⏳ |
@@ -978,6 +978,44 @@ What Ali needs to decide for the money leg — ledger, receipts, caps, bets and 
 - **(c) Authorise a CARD deposit** through Selcom's hosted checkout with a real card.
 ⚠️ Also note that **withdrawals are still unavailable** (3 payouts stuck since 2026-07-29, §6 E-5),
 so money-in will be testable before money-out regardless.
+
+## 6e. AI polls — generate → review → publish → LIVE MARKET, driven on production (2026-08-01)
+
+Ali's priority **#2**, generation half: **15/15 PASS on real Anthropic tokens**, driven entirely as the
+**QA TRADING officer (`MODERATOR`)** — not an Owner bypass, so this also exercises the real RBAC path.
+Every `ai-polls` action is `requireStaff("trading", …)`, which the officer legitimately satisfies.
+⭐ Note the contrast with **E-18**: this surface gets the three-layer gate right; the resolver queue does not.
+
+**Generation** (`live/p7-polls.cjs`) — the real *Generate poll* control, on prod:
+
+| | |
+|---|---|
+| wall-clock | **28s** (4-layer pipeline, **3 web searches**) |
+| poll | `aipoll_7d7a3f7f09b52ea2ad586407` → `PENDING_REVIEW` |
+| title | *Will Arsenal keep a clean sheet vs Coventry City in the 2026/27 Premier League opener (August 21)?* |
+| quality · confidence | **95** · 82 · `filterReasons []` · `rejectReasons []` |
+| real spend | **$0.2015**, 52,731 tokens, `AiUsageEvent` 447 → **448** |
+
+**Review → publish** (`live/p7b-publish.cjs`) — and the assertions are on the **live DB**, not the toast:
+
+| Check | Result |
+|---|---|
+| poll → `PUBLISHED` with `publishedMarketId` + `publishedCandidateId` | ✅ `mkt_d70ee2f6f2777f74e901` |
+| `reviewedBy` is the **trading officer**, not a system marker | ✅ `usr_429885ab43c0cb4ce134dd7e` |
+| market `LIVE` · `productLine MARKET` (not `UPDOWN`) | ✅ / ✅ |
+| **fees FROZEN at publish** (`feeSnapshot` present) | ✅ — an unfrozen market could re-price a placed stake later |
+| titles in **all three locales** | ✅ incl. `zh` *阿森纳能否…零封（2026年8月21日）？* — no null-`zh` English fallback (the E-1 class) |
+| resolution criterion present · `resolutionAt` in the future | ✅ / ✅ `2026-08-21 22:30` |
+| pools start empty (`yesPool`/`noPool` = 0) | ✅ |
+| **source host is an ENABLED `TrustedSource`** | ✅ `premierleague.com` (`sports`, enabled) — the anti-fabrication gate F8 found imported-and-never-called |
+| public `/markets/<id>` renders | ✅ **200**, title present, **0 horizontal overflow** |
+| audit trail | ✅ `generate_started → pending_review → approved → market.created → published`, **all five** attributed to the officer |
+
+The single console error is the known headless `navigator.vibrate` artifact (§6), not a defect.
+
+⏳ **Not yet done on this lane:** poll **resolution with money** — a real win *and* a real loss settling to
+a wallet. That needs a funded wallet (see the money box in §6b) and a market whose `resolutionAt` has
+passed; the one published here resolves 2026-08-21, so resolution testing should use an existing market.
 
 ## 6c. Verified working on production this session (not defects)
 
