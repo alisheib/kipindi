@@ -191,6 +191,13 @@ which is the one thing blocking officer-side live verification (E-4).
   reported **two broken links on a perfectly intact chain** — i.e. a false "the compliance audit chain
   is broken" blocker on a licensed money platform. Alias to a *different* name (`seq_text`) and order
   by the real column. Same family as the `pg` −3h trap: the harness lying, not the product.
+- 🔴 **Chrome's `innerText` applies `text-transform`, so asserting on a dictionary string fails
+  against CSS-uppercased UI.** The verify-email eyebrow is `uppercase`, so the DOM reads
+  `EMAIL CONFIRMED` while `i18n-dict.ts` says `Email confirmed`. A case-sensitive `includes()`
+  reported **all seven** legs of the email-verify suite as failures against a page that was rendering
+  perfectly — and the only reason it was not written up as a broken flow is that the **DB was read in
+  the same loop** and said otherwise. Lowercase both sides, and always pair a DOM assertion with the
+  state it claims to reflect.
 - ⚠️ Three worktrees share one `.git`, one `node_modules` and one database. `F:\kipindi-main`
   holds the Railway link. Ports 3000/3009/3010/3011/3200 belong to other sessions — stay off them.
 - ⚠️ **A KYC `Confirm` click can land before the button finishes arming.** The uploader refreshes the
@@ -207,11 +214,11 @@ All created through the real UI on production. Phone is the **9-digit local part
 
 | Persona | Phone (E.164) | User id | KYC | Intended use |
 |---|---|---|---|---|
-| `alpha` | `+255712000101` | `usr_1cf528b35ef795530aa1c63f` | **`APPROVED`** 2026-07-31 13:58Z → `User.status = ACTIVE` | main player — bet, win, withdraw |
+| `alpha` | `+255712000101` | `usr_1cf528b35ef795530aa1c63f` | **`APPROVED`** 2026-07-31 13:58Z → `User.status = ACTIVE` · **email verified** 19:15Z (§6d) | main player — bet, win, withdraw. **Deposit gate now OPEN**; needs funds |
 | `bravo` | `+255712000102` | `usr_26313f74d8428e4e169603ca` | **`REJECTED`** 2026-07-31 14:11Z (`DETAILS_MISMATCH`) | rejected; nida …9013 now free |
 | `charlie` | `+255712000103` | `usr_8ed1b4ca3579490c94435188` | approved → **revoked** (`ADDITIONAL_INFO_REQUIRED`) → **`SUSPENDED`** | banned; sessions revoked; temp password issued |
 | `delta` | `+255712000104` | `usr_429885ab43c0cb4ce134dd7e` | **`REJECTED`** 2026-07-31 15:12Z (`DETAILS_MISMATCH`, `rejectNote = NULL`) | the E-1/E-6/E-2 workhorse. Restarted + resubmitted on prod, so its three documents are the **only** ones on the platform with correct `mimeType`/`sizeBytes` (`image/jpeg` / 57960). nida …9015 free again |
-| `echo` | `+255712000105` | `usr_b8ed0aeacb1fc5d82f1b8d6a` | **`APPROVED`** 2026-07-31 18:57Z → `User.status = ACTIVE` | created for the **E-4 production proof** (the other four could not be approved: `alpha` already was, `bravo`/`delta` REJECTED, `charlie` SUSPENDED). nida …9016. `QA_ECHO_PASSWORD` in `.env.qa.local`. The **second** funded-player candidate for Phase 3 |
+| `echo` | `+255712000105` | `usr_b8ed0aeacb1fc5d82f1b8d6a` | **`APPROVED`** 2026-07-31 18:57Z → `User.status = ACTIVE` · **email verified** 19:13Z | created for the **E-4 production proof** (the other four could not be approved: `alpha` already was, `bravo`/`delta` REJECTED, `charlie` SUSPENDED). nida …9016. `QA_ECHO_PASSWORD` in `.env.qa.local`. The **second** funded-player candidate for Phase 3 |
 | **`officer`** | `+255712000106` | `usr_2ff22430c89e4c560fac5334` | n/a — **role `COMPLIANCE`** | ⭐ the campaign's own **operator identity**. See the box below. `QA_OFFICER_PASSWORD` in `.env.qa.local` |
 
 ### ⭐ The QA compliance officer — read this before doing any operator-side work
@@ -265,9 +272,9 @@ and a clean console: `/admin` · `players` · `markets` · `ai-polls` · `ai-usa
 | # | Phase | State |
 |---|---|---|
 | 0 | Worktree, harness, live DB access, baseline | ✅ done |
-| 1 | Auth: signup · email verify · login · forgot-password · 2FA · sessions | 🔄 signup · login · forgot-password · phone shapes · enumeration all ✅ **shipped + verified live**; email-verify, 2FA, sessions, rate-limits still open |
+| 1 | Auth: signup · email verify · login · forgot-password · 2FA · sessions | 🔄 signup · login · forgot-password · phone shapes · enumeration ✅ **shipped + verified live**; **email-verify ✅ DONE 7/7 on prod** (§6d — delivery excepted); 2FA, sessions, rate-limits still open |
 | 2 | KYC: submit · import · approve · reject · revoke · ban · NIDA duplicate | ✅ **COMPLETE** — approve · reject · revoke · ban · NIDA freed, all driven on prod (§6c). E-1 verified in **EN + SW + ZH**; E-3, E-6, E-2, E-5, **E-4 + E-9** fixed **and live-verified**. Only `import` untested |
-| 3 | Money in: wallet · deposit · ledger · receipts | ⏳ |
+| 3 | Money in: wallet · deposit · ledger · receipts | 🔄 **email gate CLEARED + deposit form reachable** (§6d). ⛔ **Blocked on Ali: a real deposit needs real money** — the play-money path is hard-disabled on prod |
 | 4 | Core play: markets · YES/NO · win + lose · resolution · payout | ⏳ |
 | 5 | Up & Down: rounds · quick-bet · pricing · void · history | ⏳ |
 | 6 | Proposals: propose · approve · 4-state switch · bonus | ⏳ |
@@ -730,6 +737,76 @@ confirm whatever you were hoping for.
 | **E-13** | LOW | KYC copy | **“3/3 document attached”** — `docsCount`/3 is glued to a **singular** toast string (`page.tsx:352`: `{docsCount}/3 {t.toast.documentAttached.toLowerCase()}`). It also `.toLowerCase()`s a *translated* string, which is meaningless-to-wrong for ZH and fragile for SW. Needs a count-aware key per locale rather than a lowercased toast. | `shots/p2-echo-docs.png` |
 | **E-7** | MEDIUM | i18n · profile | **`User.locale` is stored, shown to the player, and never used to render anything — and the player cannot change it.** Signup hard-codes `locale: "SW"` (`auth-service.ts:268,463`) and the column defaults to `SW`, so **44 of 46 live users are `SW`**. But the rendered language is the `kp-locale` cookie alone, which falls back to **`en`** when absent — so a brand-new Tanzanian visitor gets English while their row says Swahili. `/profile` then badges that row directly (`profile/page.tsx:132`, `user.locale === "SW" ? "Kiswahili" : "English"`), i.e. it tells a player reading English that their language is Kiswahili — **and prints "English" for a `ZH` user**. `profile/actions.ts:29` accepts `EN`/`SW` only (no `ZH`), and **no component in the app ever submits a `locale` field**, so nothing a player does can ever correct it. The column does drive real output: web-push (`notification-service.ts:136`) and OTP SMS (`sms.ts:156`) — both would go out in Swahili to a player using the site in English. | live: `delta` is `locale = SW` and rendered EN until the cookie was set; `select locale, count(*)` → SW 44 / EN 2 | ⏳ open |
 
+## 6d. Email verification — DONE on production, 7/7 (2026-07-31 22:15 EAT)
+
+Ali's choice (§6b): **mint the genuine link and click it**, not write the column. The token is a
+stateless HMAC with no DB row (`signSession`, `crypto.ts:139-144`) over
+`{purpose:"email-verify", userId, email, exp}`, so `live/mint-verify.cjs` — run **through
+`railway run -s 50pick`** so `SESSION_SECRET` is injected and never touches a file or this transcript
+— produces a URL byte-identical to what Postmark would have carried.
+
+**Every refusal was driven FIRST, while the address was still unverified.** A refusal tested after
+confirmation proves nothing, because `already` would mask it. And after each click the **DB was
+re-read**: a page saying *invalid* is not evidence that nothing was written.
+
+| Variant | What it forges | Rendered | `emailVerifiedAt` after |
+|---|---|---|---|
+| `tampered` | payload intact, **last MAC char flipped** | *Link invalid or expired* | still `null` |
+| `expired` | `exp` 1h in the **past** (24h TTL) | *Link invalid or expired* | still `null` |
+| `wrongPurpose` | valid MAC, `purpose: "password-reset"` | *Link invalid or expired* | still `null` |
+| `unknownUser` | valid MAC, a `userId` that does not exist | *Link invalid or expired* | still `null` |
+| `mismatch` | valid MAC for a **different address** (the stale-link branch) | *Link out of date* | still `null` |
+| **`valid`** | the genuine link | ***Email confirmed*** | **set** `19:15:30Z` |
+| `replay` | the **same** genuine link, clicked again | *Already confirmed* | unchanged — idempotent |
+
+Each click ran in a **fresh browser context**, exactly like a link opened from a mail client.
+`user.email.verified` (COMPLIANCE) audited. Evidence `shots/p3a-verify-*.png`, and
+`shots/p3-verify-valid.png` for the confirmed page itself. Run against `alpha`; **`echo` was verified
+the same way**, so both are now `emailVerifiedAt`-set.
+
+⚠️ **Not covered, and must not be assumed: Postmark DELIVERY.** This proves the endpoint, not that a
+mail ever arrives. There is **no `EmailLog` model**, so delivery can only be confirmed from Postmark's
+own activity feed or Ali's inbox. `POSTMARK_API_KEY` *is* set on prod, so mail is really being sent.
+
+⚠️ **Postmark being live has a cost this campaign has been paying blind.** Every persona registration
+mails a real address, and a non-existent Gmail address **hard-bounces** — which suppresses the address
+and counts against sender reputation on a money platform. `alpha`…`echo` were registered on
+`qa.<name>.50pick@gmail.com`; **Ali should confirm those inboxes exist**, or that is up to five
+bounces. The officer persona used a `+officer` sub-address of the known-good `alpha` inbox to avoid
+adding another — which is exactly what exposed **E-10**.
+
+**The deposit gate really did open.** As `alpha` on `/wallet` and `/wallet/deposit`: the
+*“Confirm your email — deposits locked”* banner is **gone**, the amount field renders, and **all five
+providers are enabled** (`MPESA`, `AIRTEL_MONEY`, `HALO_PESA`, `MIXX`, `CARD`), 0 horizontal overflow.
+`shots/p3-gate-_wallet.png`, `p3-gate-_wallet_deposit.png`. (The `navigator.vibrate` console errors
+are the known headless artifact, §6.) ⚠️ Honest limit: this proves the **page** gate. The **service**
+gate (`wallet-service.ts:121`) reads the same column but stays unexercised until a deposit is actually
+submitted — see the blocker below.
+
+### ⛔ Phase 3 is now blocked on Ali — real money, and there is no way around it
+
+**The play-money path cannot exist on production, by deliberate design.** `wallet-service.ts:88`:
+`adminTestAllowed = process.env.NODE_ENV !== "production" && adminTestEnv !== "false"`, with the
+comment *“Hard rule: the uncapped, gate-skipping admin test-deposit path can NEVER be active in
+production — not even if `ADMIN_TEST_DEPOSITS="true"` leaks into the prod env.”* That is correct
+security design and **must not be weakened for QA convenience**. So on prod, funding a wallet means a
+real Selcom order.
+
+⛔ **And the wrong way to unblock it is to insert a `Transaction`/ledger row by hand.** The money path
+runs in one collapsed transaction with invariants that a hand-written row silently breaks
+(`docs/` bet-concurrency rules). Live data is disposable; **live money integrity is not**.
+
+What Ali needs to decide — nothing else in Phase 3 (ledger, receipts, caps, and everything downstream
+in his priority list: bets, poll wins/losses, Up & Down) can start without funds:
+- **(a) Push one small real deposit** (e.g. TZS 1,000–5,000) from a real mobile-money handset to
+  `alpha`. Tests the genuine rail end to end. Needs a real MSISDN — the personas' numbers
+  (`+255712000101`…) are **not real handsets**, so a push to them goes nowhere.
+- **(b) Name a real MSISDN** Ali controls that a persona may be re-pointed at, so the QA session can
+  drive the initiation and he only approves the USSD prompt.
+- **(c) Authorise a CARD deposit** through Selcom's hosted checkout with a real card.
+⚠️ Also note that **withdrawals are still unavailable** (3 payouts stuck since 2026-07-29, §6 E-5),
+so money-in will be testable before money-out regardless.
+
 ## 6c. Verified working on production this session (not defects)
 
 - **Approve** → `KycSubmission.APPROVED` + `User.status PENDING_KYC→ACTIVE` + `displayName`
@@ -826,27 +903,21 @@ Two findings are evidenced and **open** (E-4, E-5), plus **E-7 and E-8, which ar
    whether `kp-locale` seeds from `User.locale` on sign-in, whether the toggle writes it back,
    and whether `/profile` should show the badge at all. **Do not guess it**; changing the default
    language of a live money product on a QA session's judgement is exactly the wrong call.
-7. **⏭️ START HERE — Phase 3, money in. The blocking decision is ANSWERED, so this is effort now.**
-   The deposit gate is **email verification**, enforced in the service (`wallet-service.ts:121`, not
-   just the page), and every persona is `emailVerifiedAt: null`.
-   **Ali chose (2026-07-31): mint the real confirmation link and click it — do NOT set the column.**
-   That is possible without his inbox because the token is a **stateless HMAC** (`signSession`,
-   `crypto.ts:139`) over `{purpose:"email-verify", userId, email, exp}` — no DB row — and
-   `SESSION_SECRET` is present on prod (64 chars). So build the byte-identical URL
-   `buildEmailVerifyUrl()` would have emailed (`email-verification.ts:43`) and open it in a real
-   browser. ⚠️ Use the **`www.`** host: `NEXT_PUBLIC_APP_URL = https://www.50pick.tz`.
-   That covers the MAC check, `exp`, the wrong-`purpose` refusal, the **stale-address `mismatch`**
-   branch, `already` idempotency, the `emailVerifiedAt` write, the `user.email.verified` audit row and
-   the deposit banner clearing. **What it does NOT cover: Postmark delivery.** Book that honestly as
-   still-untested — there is **no `EmailLog` model**, so delivery can only be confirmed from
-   Postmark's own activity feed or Ali's inbox. `POSTMARK_API_KEY` *is* set on prod.
-   Two ACTIVE personas are now available to fund: **`alpha`** and **`echo`**.
-   ⚠️ **Postmark is live, so every persona registration mails a real address.** Non-existent
-   Gmail addresses hard-bounce and count against sender reputation on a money platform. `echo` was
-   registered on `qa.echo.50pick@gmail.com` before this was noticed — **Ali should confirm that
-   address (and `bravo`/`charlie`/`delta`'s) actually exists**, or those are four bounces. The officer
-   persona deliberately used a `+officer` sub-address of the known-good `alpha` inbox instead — which
-   is what exposed **E-10**.
+7. ✅ **Email verification DONE on production, 7/7** (§6d) — every forgery branch refused with the
+   column re-read each time, then the genuine link confirmed and the replay proved idempotent.
+   **`alpha` and `echo` are both `emailVerifiedAt`-set**, and the deposit form is reachable with all
+   five providers enabled. Postmark **delivery** is the one part still unproven — booked, not assumed.
+
+8. **⏭️ START HERE — Phase 3 money-in is BLOCKED ON ALI, and the block is real money, not effort.**
+   Read the boxed blocker at the end of §6d before doing anything. In short: the uncapped
+   admin/play-money deposit path **cannot be active on production by deliberate design**
+   (`wallet-service.ts:88`), and that must not be weakened for QA convenience; and a hand-written
+   `Transaction` row would break the collapsed-transaction money invariants. So funding `alpha`
+   requires one of Ali's three options in §6d (a real mobile-money push, a real MSISDN to re-point a
+   persona at, or a CARD deposit). **Everything in his priority list below depends on this** — bets,
+   poll wins *and* losses, and Up & Down all need a funded wallet.
+   ⚠️ Ali also owes a yes/no on whether the `qa.<name>.50pick@gmail.com` inboxes actually exist
+   (§6d) — if they do not, this campaign has generated up to five Postmark hard bounces.
    ⚠️ Note also that **withdrawals are genuinely unavailable** right now (3 payouts stuck since
    2026-07-29), so Phase 10 money-out cannot be tested end to end until Selcom closes them — the
    `PAYOUT_TEST_BYPASS_MSISDN` escape hatch exists for exactly one controlled test
@@ -878,11 +949,12 @@ deliberately left alone.
 - ⚠️ The login field is **`#identifier`**, not `#phone`. A saved session bounces `/auth/login`
   to `/`, so check for a password field before filling one.
 
-**Open, not yet chased:** email verification (every persona is `emailVerifiedAt: null` and the
-deposit gate depends on it — this now blocks Phase 3 deposits) · whether the KYC approval email
-actually reached Postmark (the in-app notification did; the email was fire-and-forget and not
-confirmed) · 2FA · auth rate-limits under load · `locale` defaulting to SW for a player who
-signed up in English · KYC **import** (the only Phase-2 sub-flow never exercised).
+**Open, not yet chased:** ~~email verification~~ **DONE, §6d** · **Postmark DELIVERY** — nothing on
+the platform proves a mail ever arrives (no `EmailLog` model), and this now covers both the KYC
+approval mail and the confirmation link · 2FA · auth rate-limits under load · `locale` defaulting to
+SW for a player who signed up in English (E-7) · KYC **import** (the only Phase-2 sub-flow never
+exercised) · the **service-level** deposit gate, which stays unexercised until a real deposit is
+submitted (§6d).
 
 ## 7. Reproducing the harness
 
