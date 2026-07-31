@@ -150,6 +150,7 @@
     "test:kyc-reject-reason": "tsx scripts/kyc-reject-reason.test.mts",
     "test:kyc-doc-metadata": "tsx scripts/kyc-doc-metadata.test.mts",
     "test:kyc-workstation-time": "tsx scripts/kyc-workstation-time.test.mts",
+    "test:kyc-approved-copy": "tsx scripts/kyc-approved-copy.test.mts",
     "test:login-enum": "tsx scripts/login-enumeration.test.mts",
     "test:phone-normalize": "tsx scripts/phone-normalize.test.mts",
     "test:cert-devroutes": "tsx scripts/dev-route-guard.test.mts",

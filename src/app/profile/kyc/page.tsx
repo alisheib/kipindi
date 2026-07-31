@@ -15,6 +15,7 @@ import { submitNidaAction, submitKycForReviewAction, restartKycAction } from "./
 import { KycDocUploader, KycExtraDocUploader } from "@/components/profile/kyc-doc-uploader";
 import { RewardBurst } from "@/components/brand/reward-burst";
 import { SUPPORT_EMAIL } from "@/lib/support-config";
+import { getPayoutStatus, payoutsAcceptingRequests } from "@/lib/server/payout-status";
 import { getServerT, type Dict } from "@/lib/i18n-server";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
@@ -62,6 +63,21 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
   const needsInfo = kyc?.status === "ADDITIONAL_INFO_REQUIRED";
   const extraRequests = kyc?.extraRequests ?? [];
   const rejectLabel = humanizeRejectReason(kyc?.rejectReason ? String(kyc.rejectReason) : null, t);
+
+  // E-5. The approval burst used to read "You can now deposit and withdraw freely", which was
+  // wrong twice over. Deposits are NOT gated on KYC at all — the ladder is
+  // browse free → verify email to deposit → KYC to withdraw (wallet/deposit/page.tsx:125) — so
+  // approval never unlocked depositing, and the burst rendered directly beneath the very banner
+  // telling the player to confirm their email before adding money. And withdrawals carry a
+  // SECOND gate: when the payout provider cannot pay, /wallet/withdraw refuses the request
+  // outright. Promising both, at the player's proudest moment, was contradicted twice within one
+  // screen. So state only what approval actually unlocked, and ask the live gate rather than
+  // assuming it. Default to `operational` on failure, matching derivePayoutStatus's own fallback
+  // (payout-status.ts:120) — an unreachable DB is not evidence that payouts are down.
+  let payoutsAccepting = true;
+  try {
+    payoutsAccepting = payoutsAcceptingRequests((await getPayoutStatus()).status);
+  } catch { /* graceful — see above */ }
 
   return (
     <main className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-5">
@@ -359,7 +375,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
         <section className="rounded-xl border border-gold-700/60 bg-bg-elevated p-5 lg:p-6 text-center">
           <RewardBurst glyph="shieldcheck" caption={t.profile.idVerified} />
           <p className="mt-3 text-[13px] text-text-muted leading-snug max-w-[400px] mx-auto">
-            {t.profile.kycApprovedBody}
+            {payoutsAccepting ? t.profile.kycApprovedBody : t.profile.kycApprovedPayoutsPaused}
           </p>
           {/* Return to the gated action the user came from (IA review R6). */}
           {nextHref && (

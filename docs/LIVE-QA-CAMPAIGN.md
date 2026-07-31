@@ -1,6 +1,17 @@
 # Live QA campaign — every player & operator flow, driven against production
 
 **Started** 2026-07-31 · **Branch** `qa/live-experience` (worktree `F:\kipindi-liveqa`, off `origin/main` @`3f24a30`)
+
+> 💻 **TWO MACHINES NOW RUN THIS CAMPAIGN — check which one you are on before trusting a path.**
+> The `F:\…` paths throughout this file are **laptop A**. Laptop B (added 2026-07-31, the one that
+> picked up at E-5) has **no `F:` drive at all**: the checkout is **`C:\kipindi-main`** with
+> `qa/live-experience` checked out *directly* — there is no `kipindi-liveqa` worktree here, and
+> `git worktree list` proves it (`C:/kipindi-main`, `C:/kipindi-night` only). So on laptop B the
+> §0.2 warning inverts: **`git checkout main` is unnecessary, not forbidden** — push by refspec
+> exactly as documented and it stays a fast-forward. What does NOT travel between machines:
+> **`.env.qa.local`** (gitignored, so the QA passwords are absent on B) and the **saved Playwright
+> sessions** in laptop A's scratchpad. Everything else regenerates — see §1. Run `npm install`
+> after pulling; a 41-commit pull moved dependencies.
 **Target** `https://50pick.tz` — the LIVE money app. There is no staging.
 **Mandate (Ali, 2026-07-31):** test every flow live as admin · player · accountant · compliance ·
 QA · forms engineer · and an adversarial player actively trying to cheat. Full rights over the
@@ -208,7 +219,7 @@ and a clean console: `/admin` · `players` · `markets` · `ai-polls` · `ai-usa
 |---|---|---|
 | 0 | Worktree, harness, live DB access, baseline | ✅ done |
 | 1 | Auth: signup · email verify · login · forgot-password · 2FA · sessions | 🔄 signup · login · forgot-password · phone shapes · enumeration all ✅ **shipped + verified live**; email-verify, 2FA, sessions, rate-limits still open |
-| 2 | KYC: submit · import · approve · reject · revoke · ban · NIDA duplicate | ✅ **officer review DONE** — approve · reject · revoke · ban · NIDA freed, all driven on prod (§6c). E-1 now verified in **EN + SW + ZH**; E-3 fixed. Only `import` untested |
+| 2 | KYC: submit · import · approve · reject · revoke · ban · NIDA duplicate | ✅ **officer review DONE** — approve · reject · revoke · ban · NIDA freed, all driven on prod (§6c). E-1 verified in **EN + SW + ZH**; E-3, E-6, E-2, **E-5** fixed. Only `import` untested; **E-4** open |
 | 3 | Money in: wallet · deposit · ledger · receipts | ⏳ |
 | 4 | Core play: markets · YES/NO · win + lose · resolution · payout | ⏳ |
 | 5 | Up & Down: rounds · quick-bet · pricing · void · history | ⏳ |
@@ -421,6 +432,26 @@ width.
 That is the **reports** subsystem, whose window bounds feed the TRA/GBT levies and are pinned by
 `test:report-parity`. Changing what a report prints is a separate, evidenced piece of work.
 
+| **E-5** | MEDIUM | approval burst | **The approval burst promised what the next banner refused.** `/profile/kyc` showed the gold *ID verified* burst reading “**You can now deposit and withdraw freely**”, and it was wrong twice on the one screen a player is proudest of. (a) **Deposits were never gated on KYC at all** — the product's own ladder is *browse free → verify email to deposit → KYC to withdraw* (`wallet/deposit/page.tsx`, the EMAIL GATE block), so approval unlocked no part of depositing, and the burst rendered **directly beneath** the banner telling the player to confirm their email before adding money; `/wallet/deposit` then blocks on exactly that. (b) **Withdrawals carry a second gate** — when the payout provider cannot pay, `payoutsAcceptingRequests` is false and `/wallet/withdraw` refuses the request outright, which is the live state of the platform today. Same family as D-1/D-2 (telling a player something about their own verification the product does not support), and no money or audit record moved — but it lands on the celebration screen, which is where a player decides whether to trust us. | `shots/p2-alpha-player-kyc-430.png`, `p2-alpha-wallet-deposit-430b.png` | ✅ fixed |
+
+**E-5 fix** — the burst now states only what approval **actually** unlocked, and it **asks the
+live gate instead of assuming it**. `kycApprovedBody` became “Your identity is verified. You can
+now request withdrawals to your mobile money account” (no deposit promise, and “freely” is gone —
+nothing here is free of gates), and a new `kycApprovedPayoutsPaused` renders instead when
+`payoutsAcceptingRequests` is false, saying withdrawals are paused **and that the balance is safe
+and unchanged** — “we cannot pay you” alone reads as “your money is gone”. All three locales moved
+together, as with E-1. A failed gate read defaults to **accepting**, matching
+`derivePayoutStatus`'s own `catch` (`payout-status.ts:120`): an unreachable DB is not evidence
+that payouts are down, and claiming an unsubstantiated pause is the same defect pointing the other
+way. The existing email banner is untouched — with the deposit promise gone, it no longer
+contradicts anything. **Guard**: `npm run test:kyc-approved-copy` (30). It gives each locale its
+**own** forbidden term (`deposit` / `kuweka` / `充值`), because this bug survived review precisely
+by being in a language the reviewer did not read; it pins `payoutsAcceptingRequests`' meaning
+(`delayed` still accepts — a slow payout is not a refused one, so the burst must not claim a
+pause); and it pins **the ladder the copy rests on**, so gating deposits on KYC later cannot
+silently make this copy wrong again. Proven red first: **7 failures** against the pre-fix tree,
+including all three locales.
+
 ### Open findings — evidenced on production, NOT yet fixed
 
 | # | Sev | Area | Finding | Evidence |
@@ -428,7 +459,6 @@ That is the **reports** subsystem, whose window bounds feed the TRA/GBT levies a
 | **E-8** | LOW | KYC reject copy | **The `DETAILS_MISMATCH` label describes a comparison the product never makes.** The officer's rail calls it *Details mismatch* — meaning the details typed do not match the **document the player submitted**. The player is told, in all three languages, *“NIDA details don't match **our records**”* / *“Taarifa za NIDA hazilingani na rekodi zetu”* / *“NIDA 信息与我们的记录不符”*. We hold no NIDA record to compare against — `docs/NIDA-POLICY.md` and the D-2 fix are explicit that no request has ever reached the authority. Milder than D-2 (it says *our* records, not the authority's) but it is the same class: describing evidence we do not have. Suggested: name the submitted ID document instead. All three locales + `test:kyc-reject-reason`'s key list would need updating together. | live `e6-player-{sw,zh,en}.png`; `i18n-dict.ts:960/2306/3650` |
 | **E-4** | MEDIUM | KYC workstation | **The officer's four attestations are never recorded.** *Name matches the ID · Document appears authentic · Selfie matches the ID photo · Sanctions / PEP clear* must all be ticked to arm Approve, but they are client-side `useState` only: `approveKycWorkstationAction` never receives them and the audit payload carries just `{riskScore, makerChecker}`. The one thing an inspector would want — that a named officer positively attested the selfie matched — is discarded at the moment it is made. | `kyc-decision-rail.tsx:66` vs `kyc-actions.ts:62-85`; live audit row `kyc.workstation.approved` |
 | **E-7** | MEDIUM | i18n · profile | **`User.locale` is stored, shown to the player, and never used to render anything — and the player cannot change it.** Signup hard-codes `locale: "SW"` (`auth-service.ts:268,463`) and the column defaults to `SW`, so **44 of 46 live users are `SW`**. But the rendered language is the `kp-locale` cookie alone, which falls back to **`en`** when absent — so a brand-new Tanzanian visitor gets English while their row says Swahili. `/profile` then badges that row directly (`profile/page.tsx:132`, `user.locale === "SW" ? "Kiswahili" : "English"`), i.e. it tells a player reading English that their language is Kiswahili — **and prints "English" for a `ZH` user**. `profile/actions.ts:29` accepts `EN`/`SW` only (no `ZH`), and **no component in the app ever submits a `locale` field**, so nothing a player does can ever correct it. The column does drive real output: web-push (`notification-service.ts:136`) and OTP SMS (`sms.ts:156`) — both would go out in Swahili to a player using the site in English. | live: `delta` is `locale = SW` and rendered EN until the cookie was set; `select locale, count(*)` → SW 44 / EN 2 | ⏳ open |
-| **E-5** | MEDIUM | approval burst | **The approval burst promises what the next banner refuses.** `/profile/kyc` shows the gold *ID verified* burst reading “**You can now deposit and withdraw freely**” — directly under a banner reading “Confirm your email to add money to your account”, and `/wallet/deposit` does block on exactly that. Withdrawals are additionally disabled platform-wide right now (“Withdrawals cannot be paid right now”). The player's proudest moment tells them something the product immediately contradicts twice. | `shots/p2-alpha-player-kyc-430.png`, `p2-alpha-wallet-deposit-430b.png` |
 
 ## 6c. Verified working on production this session (not defects)
 
@@ -473,13 +503,15 @@ workstation shows an SLA countdown, but nothing escalates when it runs out. Ali'
 
 **Shipped and live so far:** `26a1471` (A-1/A-2/A-3) · `5e6babe` (tracker) · `c3aded6` (D-1) ·
 `647e266` (D-2) · `617fbfb` (E-1) · **`dd25a22` (E-3)** · `b27b66b` (E-3 live proof) ·
-**`0820558` (E-6)** · **`800aa06` (E-2)**. All merged to `main`, deployed SUCCESS on Railway, and
-re-verified against production — not just built. Branch `qa/live-experience` == `main`.
+**`0820558` (E-6)** · **`800aa06` (E-2)** · `f11722b` (E-2 live proof) · **E-5 (this session)**.
+All merged to `main`, deployed SUCCESS on Railway, and re-verified against production — not just
+built. Branch `qa/live-experience` == `main`.
 
 **Guards this campaign now owns** (all auto-discovered by `node scripts/test-all.mjs --filter kyc`,
-5/5 green): `test:kyc` · `test:kyc-honesty` (19) · `test:kyc-reject-reason` (64) ·
-`test:kyc-doc-metadata` (19) · `test:kyc-workstation-time` (16). Plus `test:phone-normalize` (17)
-and `test:login-enum` (11) from Phase 1.
+**7/7 green** incl. typecheck): `test:kyc` · `test:kyc-honesty` (19) ·
+`test:kyc-reject-reason` (64) · `test:kyc-doc-metadata` (19) · `test:kyc-workstation-time` (16) ·
+**`test:kyc-approved-copy` (30)**. Plus `test:phone-normalize` (17) and `test:login-enum` (11)
+from Phase 1.
 
 **Phase 2 officer review is COMPLETE** (§6c). Approve, reject, revoke, ban, session
 revocation, the enumeration probe and the NIDA free/claimed pair were all driven against
@@ -494,12 +526,9 @@ Two findings are evidenced and **open** (E-4, E-5), plus **E-7 and E-8, which ar
    ⏳ **Still owed: Ali's decision on backfilling the 19 existing R2 rows.**
 3. ✅ **E-6 fixed and live** — guarded by the grown `test:kyc-reject-reason` (64).
 4. ✅ **E-2 fixed and live** — guarded by `test:kyc-workstation-time` (16).
-5. **START HERE → E-5, then E-4.** **E-5** is copy: the gold *ID verified* burst on
-   `/profile/kyc` reads “You can now deposit and withdraw freely” directly under a banner
-   saying the player must confirm their email before adding money — and `/wallet/deposit`
-   does block on exactly that, while withdrawals are disabled platform-wide. Make the burst
-   state what is actually unlocked; the SW/ZH copy has to move with it (all three locales,
-   like E-1). **E-4** needs a small schema decision: the officer's four attestations
+5. ✅ **E-5 fixed** — the burst states only what approval unlocked and reads the live payout gate;
+   guarded by `test:kyc-approved-copy` (30). **START HERE → E-4.**
+   **E-4** needs a small schema decision: the officer's four attestations
    (name matches · document authentic · selfie matches · sanctions/PEP clear) are
    client-side `useState` and are discarded at the moment they are made — decide where they
    live (audit payload is the cheap answer; a column is the defensible one) before writing code.
