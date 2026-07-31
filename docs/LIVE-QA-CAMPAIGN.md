@@ -208,7 +208,7 @@ and a clean console: `/admin` · `players` · `markets` · `ai-polls` · `ai-usa
 |---|---|---|
 | 0 | Worktree, harness, live DB access, baseline | ✅ done |
 | 1 | Auth: signup · email verify · login · forgot-password · 2FA · sessions | 🔄 signup · login · forgot-password · phone shapes · enumeration all ✅ **shipped + verified live**; email-verify, 2FA, sessions, rate-limits still open |
-| 2 | KYC: submit · import · approve · reject · revoke · ban · NIDA duplicate | ✅ **officer review DONE** — approve · reject · revoke · ban · NIDA freed, all driven on prod (§6c). Only `import` untested |
+| 2 | KYC: submit · import · approve · reject · revoke · ban · NIDA duplicate | ✅ **officer review DONE** — approve · reject · revoke · ban · NIDA freed, all driven on prod (§6c). E-1 now verified in **EN + SW + ZH**; E-3 fixed. Only `import` untested |
 | 3 | Money in: wallet · deposit · ledger · receipts | ⏳ |
 | 4 | Core play: markets · YES/NO · win + lose · resolution · payout | ⏳ |
 | 5 | Up & Down: rounds · quick-bet · pricing · void · history | ⏳ |
@@ -299,18 +299,53 @@ Proven red first: 12 failures against the pre-fix tree.
 rejected through `/admin/kyc/<id>` with *Document unreadable* and the row came back
 `rejectReason = 'BLURRY_DOC'` — the first categorised rejection 50pick has ever stored —
 while `bravo`'s older `OTHER` row now prints **no** category at all, just the officer's
-sentence. ⚠️ **Not yet proven live: the SW/ZH render.** Forcing the browser locale did not
-switch the page (the language toggle is not `User.locale` — see the open question below),
-so the translated labels are proven by `test:kyc-reject-reason` and by reading the
-dictionary, *not* by a screenshot of a Swahili player. **Do this first next session.**
+sentence.
+
+**E-1 verified in SW and ZH on production, 2026-07-31 17:45 EAT.** `delta`'s `/profile/kyc`
+renders the categorised reason in the player's own language at all four widths:
+
+| Locale | Rendered |
+|---|---|
+| `sw` | *Sababu: **Picha ya kitambulisho ina ukungu au ni nyeusi sana**.* |
+| `zh` | *原因: **证件照片过于模糊或太暗**.* |
+
+Evidence `shots/e1card-delta-{sw,zh}-{360,768,1280,1920}.png`, `html lang` confirmed `sw`/`zh`,
+0 horizontal overflow at every width. **How the locale is actually selected** (this is what
+blocked the previous session — record it, it is not obvious):
+
+> The UI language is the **`kp-locale` cookie**, values `en` | `sw` | `zh`, written client-side
+> by the header toggle (`src/lib/i18n.tsx:83-95` — React state + `localStorage["kp-locale"]` +
+> the cookie + `router.refresh()`; no server action, no DB write). Every server render reads it
+> from the cookie jar (`src/lib/i18n-server.ts:16-21`, `src/app/layout.tsx:96-105`). There is
+> **no `?lang=`, no `/[locale]/` segment, no `NEXT_LOCALE`, and no `Accept-Language`** anywhere
+> except `not-found.tsx`. Any unrecognised value silently renders English.
+> In Playwright: `ctx.addCookies([{ name: "kp-locale", value: "sw", url: BASE }])` **and**
+> `localStorage["kp-locale"]`, because the provider adopts localStorage on mount.
+
+| **E-3** | MEDIUM | KYC documents | **Every KYC document stored in R2 records `sizeBytes = 0`, `mimeType = 'application/octet-stream'`** while holding a real JPEG. `attachDocument` measures the truth (`validateDocImage` sniffs the mime from the **magic bytes** and decodes the byte count) and `db.kyc.upsert` writes it — but **`toStoredKyc` dropped both columns on the way back out**, and the upsert syncs documents by **deleting and re-creating every row** from the StoredKyc it is handed, re-deriving the two facts from the `storageKey`. That regex only matches an inline `data:` URL, so every `r2:<key>` was rewritten as octet-stream/0. The very next write after an upload — attaching document 2, or `submitForReview` — erased document 1's measurement. The write half was fixed in `502160f`; **the read half is what made that fix invisible**, which is why its own comment still described live data. These columns are what a compliance export and the retention tooling state about a citizen's identity evidence. | live `KycDocument` table: **19/19** R2 rows octet-stream/0, **24/24** legacy inline rows correct — the split is the bug | ✅ fixed |
+
+**E-3 fix** — `toStoredKyc` carries `mimeType`/`sizeBytes` back out, and the row builder is
+extracted as the exported, tested `toKycDocumentRows()` so the upsert can no longer
+re-implement the derivation (that drift is how this happened). Evidence precedence is now
+explicit, strongest first: **the inline bytes themselves** (measurable, so they beat any stored
+column) → **the carried sniffed facts** (the only evidence an `r2:<key>` can ever have) →
+`application/octet-stream` / `0`, the honest *we do not know*. The inline size formula also now
+subtracts base64 padding exactly as `validateDocImage` does — the two disagreed by 1–2 bytes.
+⏳ **The 19 existing rows stay wrong until re-uploaded — a backfill is Ali's call** (the bytes
+are in R2, so a backfill could HEAD each object rather than guess). **Guard**:
+`npm run test:kyc-doc-metadata` (19) — it drives the real `toStoredKyc → toKycDocumentRows`
+round trip, not either half alone. Proven red first: reverting *only* the read half fails 5
+assertions with exactly the production symptom (`application/octet-stream` / `0`).
+
+| **E-6** | MEDIUM | KYC reject · player | **The rejection reason is printed twice — once in the player's language, once in English.** Found while verifying E-1 in SW/ZH. `REJECT_REASONS` in `kyc-actions.ts:34-40` maps each rail code to a hard-coded **English sentence**, which is prepended to the officer's note and stored as `rejectNote`. Now that E-1 makes the category translate, a Swahili player reads *“Sababu: **Picha ya kitambulisho ina ukungu au ni nyeusi sana**. Document unreadable — please re-upload a clear photo.”* — the same sentence twice, the second one ours, in a language 44 of 46 live users have not chosen. | `shots/e1card-delta-sw-360.png`, `e1card-delta-zh-1280.png` | ⏳ open |
 
 ### Open findings — evidenced on production, NOT yet fixed
 
 | # | Sev | Area | Finding | Evidence |
 |---|---|---|---|---|
 | **E-2** | MEDIUM | KYC workstation | **One officer screen renders the same day in two timezones.** The decision card says *31 Jul 2026, 17:11* and the applicant panel *SUBMITTED 31 Jul 2026, 16:31* (both EAT), while the document strip directly between them says *uploaded 2026-07-31 13:31:33* — the raw UTC value, unlabelled and 3h earlier. DOB renders as the raw ISO string `1995-04-12T00:00:00.000Z`. An officer comparing upload time against submission time on a compliance record reads a 3-hour gap that does not exist. | `shots/p2-bravo-rejected.png` — all three on one screen |
-| **E-3** | MEDIUM | KYC documents | **Every KYC document on production is stored `sizeBytes = 0`, `mimeType = 'application/octet-stream'`,** while holding a real JPEG (measured: the admin route serves 759 bytes of `image/jpeg`). `attachDocument` carries the sniffed mime + decoded size, and `prisma-dal` writes them — but **`toStoredKyc` drops both fields on the way back out**, and `db.kyc.upsert` deletes and re-creates every document row on every write. So attaching document 2 zeroes document 1, and `submitForReview` zeroes the last one. The write path was fixed in `502160f`; the read path was not, which is why the fix's own comment ("all 7 on production, measured") still describes today's data. These columns feed compliance exports and retention tooling. | live rows for all 12 QA documents; `prisma-dal.ts:127-131` vs `:580` |
 | **E-4** | MEDIUM | KYC workstation | **The officer's four attestations are never recorded.** *Name matches the ID · Document appears authentic · Selfie matches the ID photo · Sanctions / PEP clear* must all be ticked to arm Approve, but they are client-side `useState` only: `approveKycWorkstationAction` never receives them and the audit payload carries just `{riskScore, makerChecker}`. The one thing an inspector would want — that a named officer positively attested the selfie matched — is discarded at the moment it is made. | `kyc-decision-rail.tsx:66` vs `kyc-actions.ts:62-85`; live audit row `kyc.workstation.approved` |
+| **E-7** | MEDIUM | i18n · profile | **`User.locale` is stored, shown to the player, and never used to render anything — and the player cannot change it.** Signup hard-codes `locale: "SW"` (`auth-service.ts:268,463`) and the column defaults to `SW`, so **44 of 46 live users are `SW`**. But the rendered language is the `kp-locale` cookie alone, which falls back to **`en`** when absent — so a brand-new Tanzanian visitor gets English while their row says Swahili. `/profile` then badges that row directly (`profile/page.tsx:132`, `user.locale === "SW" ? "Kiswahili" : "English"`), i.e. it tells a player reading English that their language is Kiswahili — **and prints "English" for a `ZH` user**. `profile/actions.ts:29` accepts `EN`/`SW` only (no `ZH`), and **no component in the app ever submits a `locale` field**, so nothing a player does can ever correct it. The column does drive real output: web-push (`notification-service.ts:136`) and OTP SMS (`sms.ts:156`) — both would go out in Swahili to a player using the site in English. | live: `delta` is `locale = SW` and rendered EN until the cookie was set; `select locale, count(*)` → SW 44 / EN 2 | ⏳ open |
 | **E-5** | MEDIUM | approval burst | **The approval burst promises what the next banner refuses.** `/profile/kyc` shows the gold *ID verified* burst reading “**You can now deposit and withdraw freely**” — directly under a banner reading “Confirm your email to add money to your account”, and `/wallet/deposit` does block on exactly that. Withdrawals are additionally disabled platform-wide right now (“Withdrawals cannot be paid right now”). The player's proudest moment tells them something the product immediately contradicts twice. | `shots/p2-alpha-player-kyc-430.png`, `p2-alpha-wallet-deposit-430b.png` |
 
 ## 6c. Verified working on production this session (not defects)
@@ -344,9 +379,8 @@ workstation shows an SLA countdown, but nothing escalates when it runs out. Ali'
 
 ### Open questions (raised, not yet concluded)
 
-- **Stored locale on signup.** A player who signs up while the site is in EN gets `locale = SW`
-  (the schema default; 41 of 43 live users are SW, 2 EN). Confirm whether the UI then flips
-  language under them after signup.
+- ~~**Stored locale on signup.**~~ **Concluded — it is E-7.** The UI never flips: `User.locale`
+  is not read by any rendering path. Rendering is the `kp-locale` cookie only.
 - **DOB is stored as midnight EAT** (`1995-04-12` → `1995-04-11T21:00:00Z`). Correct, but any
   surface that renders the raw UTC date will show the previous day. Check the KYC/admin views.
 
@@ -358,30 +392,29 @@ re-verified against production — not just built. Branch `qa/live-experience` =
 
 **Phase 2 officer review is COMPLETE** (§6c). Approve, reject, revoke, ban, session
 revocation, the enumeration probe and the NIDA free/claimed pair were all driven against
-production. One fix shipped (E-1); four findings are evidenced and **open** (E-2…E-5).
+production. Two fixes shipped (E-1, E-3); E-1 is now verified in **EN, SW and ZH**. Five
+findings are evidenced and **open** (E-2, E-4, E-5, E-6, E-7).
 
 **Resume here, in this order:**
 
-1. **Finish verifying E-1 in Swahili.** The fix is live and proven in EN; the SW/ZH render is
-   not. Find how the site actually switches language (it is **not** `User.locale` — the header
-   toggle is; delta is `locale = SW` and still rendered EN), then screenshot a rejected
-   player's `/profile/kyc` in SW and ZH. ⚠️ If the toggle turns out to ignore the stored
-   `locale` entirely, that is itself a finding — 41 of 43 live users are `SW`.
-2. **E-3 — the document-metadata read path.** Smallest, most contained of the open findings and
-   the same shape as the `write-only fields` trap: `toStoredKyc` (`prisma-dal.ts:127`) must
-   carry `mimeType` + `sizeBytes` back out, or the delete-and-recreate sync at `:580` wipes what
-   `attachDocument` just measured. Add them to the mapper, then **re-upload one document as a
-   live persona and re-measure the row** — the existing 12 rows will stay 0 until re-uploaded,
-   so a backfill decision belongs to Ali. Guard it, because the write half was already "fixed"
-   once and the read half made that fix invisible.
-3. **E-2, E-5, E-4** — in that order (E-2 is a formatter, E-5 is copy, E-4 needs a small schema
-   decision about where attestations live).
+1. ✅ **E-1 verified in SW and ZH** — done, see §6. It turned up **E-6** (the reason is printed
+   twice, the second time in English) and confirmed **E-7** (`User.locale` renders nothing).
+2. ✅ **E-3 fixed and live** — the round trip is guarded by `test:kyc-doc-metadata`.
+   ⏳ **Still owed: Ali's decision on backfilling the 19 existing R2 rows.**
+3. **E-6, then E-2, E-5, E-4.** E-6 is a two-line change in `REJECT_REASONS` (stop prepending
+   the English sentence for codes whose enum member is now translated — but KEEP it for
+   `suspected_fraud`, which maps to `OTHER` and therefore prints no category at all, and relax
+   the `reason.length < 5` check so a code-only rejection is still allowed). E-2 is a formatter,
+   E-5 is copy, E-4 needs a small schema decision about where attestations live.
 4. **Then Phase 3, money in** — credit the approved wallets (Ali has authorised crediting test
    users on live), then wallet · ledger · receipts. **`alpha` is the only ACTIVE persona**;
    `bravo`/`delta` are REJECTED and `charlie` is SUSPENDED, so create a fresh persona or restore
    one before you need a second funded player.
 
-**Four things to carry:**
+**Five things to carry:**
+- ⚠️ **The UI language is the `kp-locale` cookie** (`en`|`sw`|`zh`), NOT `User.locale`, NOT
+  `?lang=`, NOT `Accept-Language`. Set the cookie *and* `localStorage["kp-locale"]`; an
+  unrecognised value silently renders English. See the E-1 SW/ZH block in §6.
 - ⚠️ Every `pg` read must `::text`-cast timestamps or use `live/harness.mjs` — otherwise every
   timestamp reads 3h early and looks like a server clock bug (§3).
 - ⚠️ Screenshot with the **viewport**, not `fullPage`, and then **actually look at the image**.

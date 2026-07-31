@@ -113,7 +113,7 @@ function toStoredUser(u: any): StoredUser {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function toStoredKyc(row: any): StoredKyc {
+export function toStoredKyc(row: any): StoredKyc {
   return {
     id: row.id,
     userId: row.userId,
@@ -124,11 +124,25 @@ function toStoredKyc(row: any): StoredKyc {
     nidaVerifiedAt: iso(row.nidaVerifiedAt),
     fullName: row.fullName,
     dob: iso(row.dob),
-    documents: (row.documents ?? []).map((d: { docType: string; storageKey: string; uploadedAt: Date }) => ({
-      docType: d.docType,
-      storageKey: d.storageKey,
-      uploadedAt: iso(d.uploadedAt)!,
-    })),
+    // 🔴 `mimeType`/`sizeBytes` MUST be carried back out. `db.kyc.upsert` syncs
+    // documents by deleting and re-creating every row from the StoredKyc it is
+    // handed, and every caller builds that StoredKyc by reading here first. Drop
+    // the two columns on the way out and the next write re-derives them from the
+    // storageKey — which only parses as a data URL, so every `r2:<key>` was
+    // rewritten as `application/octet-stream` / `0`. attachDocument measured the
+    // real bytes; submitForReview then erased the measurement. Measured on
+    // production 2026-07-31: all 19 R2 rows 0 bytes while holding real JPEGs,
+    // every legacy inline row correct. The write half was fixed in 502160f — this
+    // read half is what made that fix invisible. Campaign §6 E-3.
+    documents: (row.documents ?? []).map(
+      (d: { docType: string; storageKey: string; uploadedAt: Date; mimeType?: string | null; sizeBytes?: number | null }) => ({
+        docType: d.docType,
+        storageKey: d.storageKey,
+        uploadedAt: iso(d.uploadedAt)!,
+        ...(d.mimeType ? { mimeType: d.mimeType } : {}),
+        ...(typeof d.sizeBytes === "number" ? { sizeBytes: d.sizeBytes } : {}),
+      }),
+    ),
     reviewerId: row.reviewerId,
     reviewedAt: iso(row.reviewedAt),
     submittedAt: iso(row.submittedAt),
@@ -136,6 +150,46 @@ function toStoredKyc(row: any): StoredKyc {
     createdAt: iso(row.createdAt)!,
     updatedAt: iso(row.updatedAt)!,
   };
+}
+
+/** Document type codes accepted by the `KycDocType` Prisma enum. */
+type KycDocTypeName = "NIDA" | "NIDA_FRONT" | "NIDA_BACK" | "PASSPORT" | "DRIVER_LICENSE" | "VOTER_CARD" | "SELFIE";
+
+/**
+ * Build the `KycDocument` rows for a submission.
+ *
+ * Extracted from `db.kyc.upsert` so the read→write round trip can be tested
+ * directly: `toStoredKyc` feeds this, and this feeds the table those rows came
+ * from, so any field either half drops shows up as a lossy round trip rather
+ * than as silently wrong data in a compliance export.
+ *
+ * Precedence for the two byte-facts, strongest evidence first:
+ *   1. the storageKey itself, when it is an inline data URL — the bytes ARE
+ *      right there, so measuring beats any stored column;
+ *   2. `mimeType`/`sizeBytes` carried on the StoredKyc — magic-byte sniffed by
+ *      `validateDocImage` at upload. This is the ONLY evidence for an
+ *      `r2:<key>`, whose bytes live in a bucket and cannot be measured here;
+ *   3. `application/octet-stream` / `0` — the honest "we do not know".
+ */
+export function toKycDocumentRows(
+  submissionId: string,
+  documents: StoredKyc["documents"],
+): { submissionId: string; docType: KycDocTypeName; storageKey: string; mimeType: string; sizeBytes: number; uploadedAt: Date }[] {
+  return documents.map((d) => {
+    const m = /^data:(image\/[a-z]+);base64,(.*)$/.exec(d.storageKey ?? "");
+    const b64 = m?.[2] ?? "";
+    const derivedBytes = m
+      ? Math.floor((b64.length * 3) / 4) - (b64.endsWith("==") ? 2 : b64.endsWith("=") ? 1 : 0)
+      : 0;
+    return {
+      submissionId,
+      docType: d.docType as KycDocTypeName,
+      storageKey: d.storageKey,
+      mimeType: m?.[1] ?? d.mimeType ?? "application/octet-stream",
+      sizeBytes: m ? derivedBytes : d.sizeBytes ?? 0,
+      uploadedAt: new Date(d.uploadedAt),
+    };
+  });
 }
 
 const OTP_SEP = "|";
@@ -563,24 +617,7 @@ export const prismaDb = {
       // (an older/partial record, or a caller that omitted it) must degrade to
       // "no documents to sync", not throw out of the KYC write path.
       if (k.documents?.length) {
-        const docsData = k.documents.map((d) => {
-          // Prefer the facts captured at upload. Deriving them from storageKey
-          // only works for INLINE documents — an `r2:<key>` never matches this
-          // regex, so every R2 row was written as 0 bytes of
-          // application/octet-stream while holding a real JPEG (all 7 on
-          // production, measured 2026-07-31). These columns feed compliance
-          // exports and retention tooling, so a wrong value is a wrong statement.
-          const m = /^data:(image\/[a-z]+);base64,(.*)$/.exec(d.storageKey ?? "");
-          const derivedBytes = m ? Math.floor((m[2].length * 3) / 4) : 0;
-          return {
-            submissionId: k.id,
-            docType: d.docType as "NIDA" | "NIDA_FRONT" | "NIDA_BACK" | "PASSPORT" | "DRIVER_LICENSE" | "VOTER_CARD" | "SELFIE",
-            storageKey: d.storageKey,
-            mimeType: d.mimeType ?? m?.[1] ?? "application/octet-stream",
-            sizeBytes: d.sizeBytes ?? derivedBytes,
-            uploadedAt: new Date(d.uploadedAt),
-          };
-        });
+        const docsData = toKycDocumentRows(k.id, k.documents);
         // Atomic delete + re-create so a mid-sync failure can't leave the
         // submission with zero documents (the in-memory store is atomic here).
         await pc().$transaction([
