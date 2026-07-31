@@ -9,7 +9,7 @@ import { rateCheckAsync } from "@/lib/server/rate-limit";
 import { db } from "@/lib/server/store";
 import type { WithdrawInput } from "@/lib/server/validators";
 import { WITHDRAW_MIN_TZS, WITHDRAW_MAX_TZS } from "@/lib/server/validators";
-import { getPayoutStatus, payoutsAcceptingRequests } from "@/lib/server/payout-status";
+import { getPayoutStatus, payoutsAcceptingRequests, isPayoutTestBypass } from "@/lib/server/payout-status";
 import { getServerT } from "@/lib/i18n-server";
 
 const WITHDRAW_PROVIDERS = new Set(["MPESA", "AIRTEL_MONEY", "HALO_PESA", "MIXX"]);
@@ -49,8 +49,20 @@ export async function withdrawAction(formData: FormData) {
   // a request we cannot fulfil is worse than refusing it: it takes the money out of the player's
   // available balance and looks like progress. Refuse here, in the player's own language.
   const payouts = await getPayoutStatus();
-  if (!payoutsAcceptingRequests(payouts.status)) {
+  // ⏳ TEMPORARY (2026-07-31): a named tester may proceed past a shut gate so we can prove
+  // whether Selcom's rail pays at all. Off unless PAYOUT_TEST_BYPASS_MSISDN names them.
+  const testBypass = isPayoutTestBypass(session.phoneE164);
+  if (!payoutsAcceptingRequests(payouts.status) && !testBypass) {
     redirect(("/wallet/withdraw?error=" + encodeURIComponent(payouts.note ?? t.wallet.payoutsUnavailableBody)) as never);
+  }
+  if (testBypass && !payoutsAcceptingRequests(payouts.status)) {
+    // Loud on purpose. A bypassed money control that leaves no trace is how a temporary
+    // measure becomes permanent — this line is what makes it obvious it is still on.
+    console.warn(
+      `[payouts] ⚠️ TEST BYPASS ACTIVE — ${session.phoneE164} allowed past a "${payouts.status}" gate ` +
+      `(${payouts.stuckCount} stuck, oldest ${payouts.oldestStuckHours?.toFixed(1) ?? "?"}h). ` +
+      `Clear PAYOUT_TEST_BYPASS_MSISDN to seal it.`,
+    );
   }
 
   const amount = parseInt(String(formData.get("amount") ?? "0"), 10);
