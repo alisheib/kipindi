@@ -359,21 +359,24 @@ fallback when `POSTMARK_API_KEY` is unset (same pattern as SMS).
 
 ### Emails sent automatically
 
-| Email | Trigger | Tag |
-|---|---|---|
-| Welcome | Registration | `welcome` |
-| Login notification | Password login | `login` |
-| Deposit confirmed | Deposit succeeds | `deposit` |
-| Withdrawal sent | Withdrawal completes | `withdrawal` |
-| Withdrawal under review | AML hold | `withdrawal-review` |
-| Bet placed | Position opened | `bet-placed` |
-| Win notification | Market resolves in favour | `win` |
-| Loss notification | Market resolves against | `loss` |
-| Cash-out receipt | Position sold | `cashout` |
+⚠️ **Corrected 2026-07-31.** This section used to list nine emails and say the
+rest were *"built but wired on demand as those features go live"*. **All 47 are
+wired and sending** — verified by driving every one of them — and one of the
+templates it named (`session revoked`) does not exist. A nine-row table on a
+47-template system is how a reader concludes the other 38 are inert.
 
-Additional templates (password reset, KYC, self-exclusion, cool-off,
-AML reject, referral reward, session revoked) are built but wired on
-demand as those features go live.
+**The inventory is now code, not prose:
+[`src/lib/server/comms-registry.ts`](src/lib/server/comms-registry.ts)** — every
+template, its trigger module, its audience, its chrome and whether it is on a
+money path. `npm run test:cert-c1` renders all 47 and fails if the registry and
+the code disagree, so the list cannot go stale again.
+
+| | |
+|---|---|
+| Templates | **47**, all wired to a real send call |
+| Language | **EN + SW in ONE message**, locale-independent. There is **no Chinese in any email** and no per-locale variant — a deliberate, recorded position, not an oversight |
+| Chrome | gold = earned money / earned status only; royal for everything else, enforced by the gate |
+| Failure | `sendEmail` never throws. `SendResult.reason` distinguishes `sent` · `stub` · `no-address` · `suppressed` · `failed` — a caller that PROMISES the player an email must read it |
 
 ### Pre-KYC email binding
 
@@ -735,21 +738,31 @@ Ali checks the live site, not local — unpushed work is invisible to him.
 
 ## Where progress is tracked (canonical)
 
-The platform is **feature-complete and hardening for launch**. Progress and
-handoff live in a small set of living docs — read these, in order:
+⚠️ **Rewritten 2026-07-31 — five of the paths this section listed no longer
+exist**, including `docs/SESSION_STATUS.md`, which it named as the read-FIRST
+document. So did `PHASE_E_AUDIT_*`, `ADMIN_VIEW_AUDIT_*`, `PLAYER_VIEW_AUDIT_*`
+and `ARCHITECTURE_AUDIT_*`. A pointer to a deleted file is worse than no pointer:
+it costs a session the time to discover the absence. Verified by listing, and the
+survivors below were verified the same way.
 
-1. **`docs/SESSION_STATUS.md`** — read-first current state, launch blockers, gotchas.
-2. **`docs/NEXT-PLAN.md`** — the canonical next-session handoff (paths map + open work).
-3. **`docs/perfection-plan.md`** — the 0-issue launch plan (phases A–G; the master QA plan).
-4. **`docs/design-system/v2-2026-07-27/07-provenance/CHANGELOG.md`** — per-batch work log (newest at the top of the Batch log).
+The platform is **feature-complete and hardening for launch**. Read in order:
 
-Session protocol: `git pull` → `npx prisma generate` → `tsc` + `npm run test:all`
-(45/45) → read SESSION_STATUS → work one item → test + live-drive → **commit AND
-push** (Railway auto-deploys; Ali reviews live). Update the living docs before you end.
+1. **[`docs/README.md`](docs/README.md)** — the doc index. Every doc with an
+   honest status (LAW / LIVE / RECORD / OPEN / DESIGN / HISTORICAL). Read it
+   before opening anything else in `docs/`.
+2. **[`docs/NEXT-PLAN.md`](docs/NEXT-PLAN.md)** — current state; opens with
+   "PICK UP HERE".
+3. **[`docs/MODULE-CERTIFICATION-PROGRAM.md`](docs/MODULE-CERTIFICATION-PROGRAM.md)** —
+   52 modules, 8 gates, the 12 laws, the status board. This commands the work.
+4. **[`docs/perfection-plan.md`](docs/perfection-plan.md)** — the 0-issue launch plan.
 
-Point-in-time audits (kept for record): `docs/PHASE_E_AUDIT_*`, `ADMIN_VIEW_AUDIT_*`,
-`PLAYER_VIEW_AUDIT_*`, `ARCHITECTURE_AUDIT_*`, `FLOWS.md`. Design source
-of truth: `docs/design-master-brief.md` + `docs/DESIGN_AUTHORITY.md` (invariants B1–B4).
-Active launch work: `docs/perfection-plan.md` (+ `docs/NEXT-PLAN.md`).
-(Superseded/historical design docs — consistency-audit, kit-gap-audit, visual-assets-brief,
-glyph-reference — were removed in the 2026-07-15 finalization; see `F:/50pick-design-archive/` + git history.)
+Session protocol: `git fetch` → `npm install` → `npx prisma generate` →
+`npm run test:all` (**117** `test:*` scripts; `test:responsive` and `test:motion`
+need a server on `:3000`) → work one item → test + live-drive → **commit AND
+push** (Railway auto-deploys; Ali reviews live). Update the doc that owns the
+subject in the same commit — no new tracker files.
+
+Design source of truth: [`src/app/globals.css`](src/app/globals.css) →
+[`docs/design-master-brief.md`](docs/design-master-brief.md) →
+[`docs/DESIGN_AUTHORITY.md`](docs/DESIGN_AUTHORITY.md). ⛔ Design is FROZEN
+behind `npm run test:design-frozen`.

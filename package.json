@@ -158,7 +158,8 @@
     "ops:selcom-probe": "node scripts/selcom-probe.mjs",
     "ops:selcom-code-matrix": "node scripts/selcom-code-matrix.mjs",
     "test:orphans": "node scripts/orphan-scripts.mjs",
-    "qa:contrast-rendered": "node scripts/contrast-rendered.mjs"
+    "qa:contrast-rendered": "node scripts/contrast-rendered.mjs",
+    "test:cert-c1": "tsx scripts/comms-email-truth.test.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",
