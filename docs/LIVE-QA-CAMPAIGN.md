@@ -186,7 +186,7 @@ All created through the real UI on production. Phone is the **9-digit local part
 | `alpha` | `+255712000101` | `usr_1cf528b35ef795530aa1c63f` | **`APPROVED`** 2026-07-31 13:58Z → `User.status = ACTIVE` | main player — bet, win, withdraw |
 | `bravo` | `+255712000102` | `usr_26313f74d8428e4e169603ca` | **`REJECTED`** 2026-07-31 14:11Z (`DETAILS_MISMATCH`) | rejected; nida …9013 now free |
 | `charlie` | `+255712000103` | `usr_8ed1b4ca3579490c94435188` | approved → **revoked** (`ADDITIONAL_INFO_REQUIRED`) → **`SUSPENDED`** | banned; sessions revoked; temp password issued |
-| `delta` | `+255712000104` | `usr_429885ab43c0cb4ce134dd7e` | **`REJECTED`** 2026-07-31 14:26Z (`BLURRY_DOC`) | used to verify E-1 on prod; nida …9015 now free |
+| `delta` | `+255712000104` | `usr_429885ab43c0cb4ce134dd7e` | **`REJECTED`** 2026-07-31 15:12Z (`DETAILS_MISMATCH`, `rejectNote = NULL`) | the E-1/E-6/E-2 workhorse. Restarted + resubmitted on prod, so its three documents are the **only** ones on the platform with correct `mimeType`/`sizeBytes` (`image/jpeg` / 57960). nida …9015 free again |
 
 ⚠️ **Only `alpha`'s password is in `.env.qa.local`** (`QA_ALPHA_PASSWORD`). `bravo`,
 `charlie` and `delta` were registered with a password that is in **neither** that file
@@ -400,7 +400,21 @@ appears. A raw UTC string is not banned outright — `/admin/insights` prints on
 formatted local times. **Guard**: `npm run test:kyc-workstation-time` (16) — it asserts the
 source pattern is gone *and* drives the helpers on the exact instant from the screenshot
 (`13:31:33Z` must render `16:31`), plus that a midnight DOB stays on its own day. Proven red
-first: 6 failures against the pre-fix tree.
+first: 7 failures against the pre-fix tree.
+
+**E-2 verified on production** after deploy `df131ed4` (SUCCESS 18:16 EAT), on the same officer
+screen that produced the finding:
+
+| | Before (`shots/e6-officer-no-note.png`) | After (`shots/e2-officer-768.png`) |
+|---|---|---|
+| document strip | `uploaded 2026-07-31 15:10:01` | **`uploaded 31 Jul 2026, 18:10`** |
+| applicant · SUBMITTED | `31 Jul 2026, 18:10` | `31 Jul 2026, 18:10` (unchanged) |
+| applicant · DOB | `1995-04-12T00:00:00.000Z` | **`12 Apr 1995`** |
+
+The two timestamps now read the same instant in the same zone, side by side — that 3-hour gap
+was the whole finding. A DOM scan for `\d{4}-\d{2}-\d{2}T\d{2}:\d{2}` returns **nothing** on the
+page. Audited at **360 / 768 / 1280 / 1920**: 0 horizontal overflow and 0 console errors at every
+width.
 
 ⚠️ **Not fixed, deliberately, and the next session should not "tidy" it**: the same unlabelled
 `slice().replace("T"," ")` pattern also appears in `src/lib/server/reports/catalogue.ts:497-522`.
@@ -459,8 +473,13 @@ workstation shows an SLA countdown, but nothing escalates when it runs out. Ali'
 
 **Shipped and live so far:** `26a1471` (A-1/A-2/A-3) · `5e6babe` (tracker) · `c3aded6` (D-1) ·
 `647e266` (D-2) · `617fbfb` (E-1) · **`dd25a22` (E-3)** · `b27b66b` (E-3 live proof) ·
-**`0820558` (E-6)**. All merged to `main`, deployed SUCCESS on Railway, and re-verified against
-production — not just built. Branch `qa/live-experience` == `main`.
+**`0820558` (E-6)** · **`800aa06` (E-2)**. All merged to `main`, deployed SUCCESS on Railway, and
+re-verified against production — not just built. Branch `qa/live-experience` == `main`.
+
+**Guards this campaign now owns** (all auto-discovered by `node scripts/test-all.mjs --filter kyc`,
+5/5 green): `test:kyc` · `test:kyc-honesty` (19) · `test:kyc-reject-reason` (64) ·
+`test:kyc-doc-metadata` (19) · `test:kyc-workstation-time` (16). Plus `test:phone-normalize` (17)
+and `test:login-enum` (11) from Phase 1.
 
 **Phase 2 officer review is COMPLETE** (§6c). Approve, reject, revoke, ban, session
 revocation, the enumeration probe and the NIDA free/claimed pair were all driven against
