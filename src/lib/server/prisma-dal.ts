@@ -840,6 +840,62 @@ export const prismaDb = {
       const rows = await pc().transaction.findMany();
       return rows.map(toStoredTxn);
     },
+    /**
+     * Every transaction in `[fromMs, toMs)`, filtered in SQL.
+     *
+     * 🔴 WHY THIS EXISTS. `listAll()` pulls the entire transactions table into memory and
+     * 13 call sites then filtered it by date in JavaScript. Measured on a seeded database
+     * of 1,000 users × 100 transactions (`scripts/load/s13-scale-ceilings.mts`):
+     *
+     *     listAll() + filter in JS   3,176 ms   333 MB heap
+     *     the same window in SQL        48 ms   ~0
+     *
+     * 66× slower, and the 333 MB is the part that actually ends the process — a Railway
+     * container has 512 MB. The adjacent `search()` has always done it correctly and its
+     * own comment says this table "must never be walked in memory"; the reporting paths
+     * simply never used it.
+     *
+     * Bounds match `within()` in report-money.ts exactly — `>= from`, `< to` — because
+     * these replace that filter and an off-by-one at a month boundary moves money between
+     * two statutory reports.
+     */
+    listInRange: async (fromMs: number, toMs: number): Promise<StoredTxn[]> => {
+      const rows = await pc().transaction.findMany({
+        where: { createdAt: { gte: new Date(fromMs), lt: new Date(toMs) } },
+        orderBy: { createdAt: "asc" },
+      });
+      return rows.map(toStoredTxn);
+    },
+    /**
+     * All-time stakes and payouts per user, aggregated in the database, top `limit` by
+     * margin. Replaces a whole-table walk that grouped in JavaScript.
+     *
+     * Genuinely all-time — there is no window to push down — so the answer is a GROUP BY
+     * rather than a smaller scan. `limit` is what keeps it bounded.
+     */
+    topContributors: async (limit: number): Promise<Array<{ userId: string; stakes: number; payouts: number }>> => {
+      const rows = await pc().$queryRawUnsafe<
+        Array<{ userId: string; stakes: string; payouts: string }>
+      >(
+        `select "userId",
+                coalesce(sum(case when "type" = 'BET_PLACED' then abs("amount") else 0 end), 0)::text as "stakes",
+                coalesce(sum(case when "type" in ('BET_PAYOUT', 'CASHOUT') then abs("amount") else 0 end), 0)::text as "payouts"
+           from "public"."Transaction"
+          where "status" = 'CONFIRMED'
+            and "type" in ('BET_PLACED', 'BET_PAYOUT', 'CASHOUT')
+          group by "userId"
+          order by (coalesce(sum(case when "type" = 'BET_PLACED' then abs("amount") else 0 end), 0)
+                  - coalesce(sum(case when "type" in ('BET_PAYOUT', 'CASHOUT') then abs("amount") else 0 end), 0)) desc
+          limit $1`,
+        limit,
+      );
+      return rows.map((r) => ({ userId: r.userId, stakes: Number(r.stakes), payouts: Number(r.payouts) }));
+    },
+    /** Every transaction for ONE user. Was `listAll().filter(t => t.userId === id)`. */
+    listForUser: async (userId: string): Promise<StoredTxn[]> => {
+      const rows = await pc().transaction.findMany({ where: { userId }, orderBy: { createdAt: "asc" } });
+      return rows.map(toStoredTxn);
+    },
     /** Filtered + paginated transaction search for the compliance browser.
      *  Filtering/sorting/pagination are pushed into SQL — this table is the
      *  largest on a money platform and must never be walked in memory. The

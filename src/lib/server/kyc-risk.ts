@@ -24,7 +24,9 @@ export async function kycRiskScore(userId: string): Promise<KycRisk> {
   const factors: RiskFactor[] = [];
   const now = Date.now();
   const user = await db.user.findById(userId);
-  const txns = (await db.txn.listAll()).filter((t) => t.userId === userId);
+  // One user is a WHERE clause. This pulled every transaction on the platform into memory
+  // to look at one player, on a page an officer opens per player.
+  const txns = await db.txn.listForUser(userId);
   const confirmed = txns.filter((t) => t.status === "CONFIRMED");
 
   // 1 · Large withdrawals over the AML reporting threshold.

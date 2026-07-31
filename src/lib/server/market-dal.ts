@@ -192,6 +192,27 @@ export interface PositionStore {
    * loading — and then discarding — thousands of round positions.
    */
   listForUser(userId: string, limit?: number, productLine?: ProductLineFilter): Promise<StoredPosition[]>;
+  /**
+   * The public leaderboard, aggregated in the database.
+   *
+   * 🔴 WHY THIS EXISTS. `/leaderboard` loaded EVERY user with no `where` or `take`, then
+   * fired one positions query per user "in parallel" — a comment in the page claimed
+   * "N+1 → 1", but making an N+1 parallel does not remove it, it just points all of it at
+   * the connection pool at once. Measured on 1,000 users
+   * (`scripts/load/s13-scale-ceilings.mts`): ~2,270 ms, and the run **exhausted the pool**
+   * and started failing mid-sweep. On a PUBLIC page, on a product whose pitch is live
+   * odds, where the trigger is somebody sharing the link.
+   *
+   * One GROUP BY instead. Only settled positions count, ordered by ROI, limited — the
+   * same rows the page rendered, chosen by the database rather than by loading the
+   * platform into memory and sorting it there.
+   */
+  leaderboard(limit: number): Promise<Array<{
+    userId: string;
+    resolved: number;
+    staked: number;
+    paidOut: number;
+  }>>;
   listForMarket(marketId: string): Promise<StoredPosition[]>;
   // tx: see MarketStore.get — the idempotency probe runs inside the bet's
   // transaction so it costs no extra pool connection.
@@ -255,11 +276,32 @@ const memoryPositions: PositionStore = {
   async listForMarket(marketId) {
     return Array.from(positions.values()).filter((p) => p.marketId === marketId);
   },
+  async leaderboard(limit) {
+    // Same shape as the SQL below, so the page renders identical rows either way.
+    const acc = new Map<string, { resolved: number; staked: number; paidOut: number }>();
+    for (const p of positions.values()) {
+      if (p.status === "OPEN") continue;
+      const e = acc.get(p.userId) ?? { resolved: 0, staked: 0, paidOut: 0 };
+      e.resolved += 1;
+      e.staked += p.stake;
+      e.paidOut += p.finalPayout ?? 0;
+      acc.set(p.userId, e);
+    }
+    return Array.from(acc, ([userId, v]) => ({ userId, ...v }))
+      .sort((a, b) => roiOf(b) - roiOf(a))
+      .slice(0, limit);
+  },
   async findByIdempotencyKey(key, _tx) {
     for (const p of positions.values()) if (p.idempotencyKey === key) return p;
     return null;
   },
 };
+
+/** ROI as the leaderboard defines it, in ONE place so the two stores and the page
+ *  cannot drift into ranking by three slightly different numbers. */
+export function roiOf(r: { staked: number; paidOut: number }): number {
+  return r.staked > 0 ? ((r.paidOut - r.staked) / r.staked) * 100 : 0;
+}
 
 // ---------------------------------------------------------------------------
 // Prisma implementations
@@ -485,6 +527,32 @@ const prismaPositions: PositionStore = {
       take: limit,
     });
     return rows.map(toStoredPosition);
+  },
+  async leaderboard(limit) {
+    // ONE aggregate. Raw SQL rather than Prisma groupBy because the ORDER BY is a
+    // computed ratio (ROI), not a column, and `nullif` keeps a zero-stake row from
+    // dividing by zero instead of excluding it.
+    const rows = await pc().$queryRawUnsafe<
+      Array<{ userId: string; resolved: bigint; staked: string; paidOut: string }>
+    >(
+      `select "userId",
+              count(*)                                   as "resolved",
+              coalesce(sum("stake"), 0)::text            as "staked",
+              coalesce(sum("finalPayout"), 0)::text      as "paidOut"
+         from "public"."Position"
+        where "status" <> 'OPEN'
+        group by "userId"
+        order by (coalesce(sum("finalPayout"), 0) - coalesce(sum("stake"), 0))
+                 / nullif(sum("stake"), 0) desc nulls last
+        limit $1`,
+      limit,
+    );
+    return rows.map((r) => ({
+      userId: r.userId,
+      resolved: Number(r.resolved),
+      staked: Number(r.staked),
+      paidOut: Number(r.paidOut),
+    }));
   },
   async listForMarket(marketId) {
     const rows = await pc().position.findMany({ where: { marketId } });

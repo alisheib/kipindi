@@ -10,6 +10,7 @@ import { db } from "@/lib/server/store";
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { listPositionsForUser } from "@/lib/server/market-service";
+import { positionStore, roiOf } from "@/lib/server/market-dal";
 import { VolumeSparkline } from "@/components/markets/price-chart";
 import { Tooltip } from "@/components/ui/tooltip";
 import { PageHeader } from "@/components/ui/page-header";
@@ -70,26 +71,41 @@ function seededWalk(seed: string, length: number, max = 100_000): number[] {
   return out;
 }
 
-async function buildLeaderboard() {
-  let users: Awaited<ReturnType<typeof db.user.list>> = [];
-  try { users = await db.user.list(); } catch { return []; }
+/** How many rows the board shows. The aggregate is LIMITed to this, so the cost of the
+ *  page no longer depends on how many players the platform has. */
+const BOARD_SIZE = 50;
 
-  // Fetch all users' positions in parallel instead of sequentially (N+1 → 1)
-  const positionResults = await Promise.all(
-    users.map((u) => listPositionsForUser(u.id, 5_000).catch(() => [])),
+async function buildLeaderboard() {
+  // 🔴 This used to load EVERY user with no `where` or `take`, then fire one positions
+  // query per user. The old comment said "N+1 → 1"; running them in parallel does not
+  // remove an N+1, it aims all of it at the connection pool at once. Measured at 1,000
+  // users (scripts/load/s13-scale-ceilings.mts): ~2,270 ms, and it EXHAUSTED THE POOL
+  // mid-run — on a public page whose trigger is somebody sharing the link.
+  //
+  // Now: one GROUP BY, ordered and limited by the database.
+  let ranked: Awaited<ReturnType<typeof positionStore.leaderboard>> = [];
+  try { ranked = await positionStore.leaderboard(BOARD_SIZE); } catch { return []; }
+  if (ranked.length === 0) return [];
+
+  // Only the rows actually being rendered need a name and a streak, so this is bounded
+  // by BOARD_SIZE — 50 — no matter how large the platform grows.
+  const detail = await Promise.all(
+    ranked.map(async (r) => ({
+      user: await db.user.findById(r.userId).catch(() => null),
+      positions: await listPositionsForUser(r.userId, 200).catch(() => []),
+    })),
   );
 
   const out: Row[] = [];
-  for (let i = 0; i < users.length; i++) {
-    const u = users[i];
-    const positions = positionResults[i].filter((p) => p.status !== "OPEN");
-    if (positions.length === 0) continue;
-    const staked = positions.reduce((s, p) => s + p.stake, 0);
-    const paidOut = positions.reduce((s, p) => s + (p.finalPayout ?? 0), 0);
-    const roi = staked > 0 ? ((paidOut - staked) / staked) * 100 : 0;
-    const resolved = positions.length;
+  for (let i = 0; i < ranked.length; i++) {
+    const r = ranked[i];
+    const u = detail[i].user;
+    if (!u) continue; // a deleted user cannot be ranked
+    const roi = roiOf(r);
+    // Streak = consecutive wins from the most recent settled position. Unchanged
+    // semantics; it just reads a bounded slice instead of every position ever placed.
     let streak = 0;
-    for (const p of positions) {
+    for (const p of detail[i].positions.filter((p) => p.status !== "OPEN")) {
       if (p.status === "WIN") streak++;
       else break;
     }
@@ -97,11 +113,11 @@ async function buildLeaderboard() {
     out.push({
       userId: u.id,
       handle,
-      resolved,
-      staked,
-      paidOut,
+      resolved: r.resolved,
+      staked: r.staked,
+      paidOut: r.paidOut,
       roi,
-      tier: tierFor(roi, resolved),
+      tier: tierFor(roi, r.resolved),
       streak,
       // Never-fabricate: real players get NO synthesized activity series. We
       // don't yet snapshot per-day staking, so the sparkline is omitted for real
@@ -109,7 +125,7 @@ async function buildLeaderboard() {
       spark: [],
     });
   }
-  return out.sort((a, b) => b.roi - a.roi).slice(0, 50);
+  return out;
 }
 
 /** Demo-mode filler — synthesizes a believable leaderboard so the UI is
