@@ -89,9 +89,19 @@ proxy (`turntable.proxy.rlwy.net:40357`) and writes it to a file — **it never 
 
 ## 4. Test personas (created on LIVE)
 
-| Persona | Phone (E.164) | Role | Purpose | State |
+All created through the real UI on production. Phone is the **9-digit local part**
+(`712000101`); passwords in `.env.qa.local`. NIDA numbers are sequential from
+`19950412123456789012` so a duplicate is easy to construct on purpose.
+
+| Persona | Phone (E.164) | User id | KYC | Intended use |
 |---|---|---|---|---|
-| `alpha` | `+255712000101` | PLAYER | main player — wins, withdraws | created, `PENDING_KYC`, balance 0 |
+| `alpha` | `+255712000101` | `usr_1cf528b35ef795530aa1c63f` | `PENDING_REVIEW` (nida …9012) | main player — approve, bet, win, withdraw |
+| `bravo` | `+255712000102` | `usr_26313f74d8428e4e169603ca` | `PENDING_REVIEW` (nida …9013) | **reject** at review |
+| `charlie` | `+255712000103` | `usr_8ed1b4ca3579490c94435188` | `PENDING_REVIEW` (nida …9014) | approve, then **revoke / ban** |
+| `delta` | `+255712000104` | `usr_429885ab43c0cb4ce134dd7e` | `PENDING_REVIEW` (nida …9015) | duplicate-NIDA probe; spare |
+
+All four sit at `User.status = PENDING_KYC` with balance 0 — **no officer has
+reviewed any of them yet.** That is exactly where the next session picks up.
 
 Passwords in `.env.qa.local`. Personas are added here as they are created.
 
@@ -108,7 +118,7 @@ and a clean console: `/admin` · `players` · `markets` · `ai-polls` · `ai-usa
 |---|---|---|
 | 0 | Worktree, harness, live DB access, baseline | ✅ done |
 | 1 | Auth: signup · email verify · login · forgot-password · 2FA · sessions | 🔄 signup · login · forgot-password · phone shapes · enumeration all ✅ **shipped + verified live**; email-verify, 2FA, sessions, rate-limits still open |
-| 2 | KYC: submit · import · approve · reject · revoke · ban · NIDA duplicate | ⏳ |
+| 2 | KYC: submit · import · approve · reject · revoke · ban · NIDA duplicate | 🔄 player-side ladder ✅ ×4 personas · duplicate-NIDA guard ✅ · **officer review not started** |
 | 3 | Money in: wallet · deposit · ledger · receipts | ⏳ |
 | 4 | Core play: markets · YES/NO · win + lose · resolution · payout | ⏳ |
 | 5 | Up & Down: rounds · quick-bet · pricing · void · history | ⏳ |
@@ -146,6 +156,27 @@ survivable) · **LOW** (polish). Every entry needs evidence — a screenshot, a 
 sign-in cannot drift), `burnPasswordVerify()` + post-verification status gates in
 `auth-service.ts`. **Guards**: `npm run test:phone-normalize` (17) · `npm run test:login-enum` (11).
 
+| **D-1** | HIGH | `/profile/kyc` | **The card badged an unverified player "ID verified"** — green ticked pill, in EN/SW/ZH, bound to `nidaDone && !submitted`: a 20-digit number typed, zero documents uploaded, nothing submitted, no officer involved. | live walk-through; `page.tsx:301` | ✅ fixed → "NIDA saved" |
+| **D-2** | HIGH | audit chain | **A 97% NIDA identity match was recorded that nothing computed.** Live KYC wrote `nida.verify.requested` → `nida.verify.success {"matchScore":0.97}` → `kyc.nida.verified {"matchScore":0.97}` into the hash-chained compliance record, and `verifyNida` returned `gender:"M"` for every player. `docs/NIDA-POLICY.md`: the authority check is "deliberately absent … no request has ever reached" NIDA. | live `AuditLog` rows 13:32; `nida.ts:53` | ✅ fixed |
+
+D-1/D-2 both violate the same standing rule — **never fabricate live data; if we cannot
+compute it we show and record nothing** — on the two surfaces where it matters most: what the
+player is told about their own verification, and what a GBT/TRA inspector reads. Neither
+touched money and nothing fabricated was persisted to the KYC row (name/DOB are the player's
+own input echoed back), so the blast radius was presentation + audit, not balances.
+
+**Fixes** — `t.profile.nidaSaved` in all three locales; `nida.ts` now audits
+`nida.check.requested` / `nida.check.format_accepted` / `kyc.nida.accepted` carrying
+`authorityChecked:false` and `basis:"format+uniqueness"`, and synthesises no score or gender.
+The `NIDA_API_URL` switch is kept, so wiring a real endpoint restores the `verify.*` naming by
+itself. **Guard**: `npm run test:kyc-honesty` (19).
+
+**Verified working, not defects** — the duplicate-NIDA control genuinely holds: reusing
+`alpha`'s number on `delta` left `nidaNumber` null and audited `kyc.nida.duplicate_blocked`
+with the conflicting user id. Forgot-password is correctly enumeration-neutral and its reset
+token is a stateless HMAC bound to the email *and* a password-hash fingerprint, so it is
+single-use with a 1h TTL. The approval reward-burst and stepper are properly `APPROVED`-gated.
+
 ⚠️ **A-2/A-3 reversed an existing tested behaviour — Ali should know.** Three assertions in
 `scripts/auth-email-signin.test.mts` pinned the *enumerating* answer as correct, and the parked
 OTP path in `auth-service.ts:~93` still carries the opposite rationale in a comment
@@ -167,6 +198,36 @@ closing it costs the owner a usable "your account is locked" message.
   language under them after signup.
 - **DOB is stored as midnight EAT** (`1995-04-12` → `1995-04-11T21:00:00Z`). Correct, but any
   surface that renders the raw UTC date will show the previous day. Check the KYC/admin views.
+
+## 6b. NEXT SESSION — start here
+
+**Shipped and live so far:** `26a1471` (A-1/A-2/A-3) · `5e6babe` (tracker) · `c3aded6` (D-1) ·
+`647e266` (D-2). All four are merged to `main`, deployed SUCCESS on Railway, and re-verified
+against production — not just built. Branch `qa/live-experience` == `main`.
+
+**Resume at Phase 2, officer review.** Four personas sit at `PENDING_REVIEW` waiting for a
+decision (§4). In order:
+
+1. `/admin/approvals` as admin (`777777777`) — **approve `alpha`**, confirm `User.status`
+   flips to `ACTIVE`, the player sees the gold approval burst, and an email/notification fires.
+2. **Reject `bravo`** with a reason — check the player is told honestly (D1 already fixed a
+   "rejected player shown a success banner" bug; make sure it stayed fixed), and that the
+   rejected NIDA is freed for reuse per NIDA-POLICY.
+3. **Approve then revoke `charlie`**; then **ban** them. Confirm a banned player cannot sign in
+   and — since A-3 — that sign-in does not announce the ban to a stranger.
+4. Then Phase 3: credit the approved wallets (Ali has authorised crediting test users on live)
+   and move into betting.
+
+**Two things to carry:**
+- ⚠️ Every `pg` read must `::text`-cast timestamps or use `live/harness.mjs` — otherwise every
+  timestamp reads 3h early and looks like a server clock bug (§3).
+- ⚠️ Screenshot with the **viewport**, not `fullPage`: a fullPage capture puts the fixed header
+  in the middle of the document and looks exactly like a layout bug.
+
+**Open, not yet chased:** email verification (every persona is `emailVerifiedAt: null` and the
+deposit gate depends on it) · 2FA · session revocation · auth rate-limits under load · the
+first-run betting primer mounting over the identity form · `locale` defaulting to SW for a
+player who signed up in English.
 
 ## 7. Reproducing the harness
 
