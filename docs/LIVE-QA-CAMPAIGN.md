@@ -7,8 +7,96 @@ QA · forms engineer · and an adversarial player actively trying to cheat. Full
 live DB, Railway, and the deploy pipeline. Live data is disposable. Fix what breaks and ship it.
 
 > This document is the **handoff**. A session that picks this up should be able to continue from
-> §5 without re-deriving anything. Keep it current as the work moves — a tracker that lags the
-> work is worse than none.
+> §5 without re-deriving anything.
+
+---
+
+## 0. STANDING RULES — every session, no exceptions
+
+Ali's instruction, restated 2026-07-31. These are not suggestions and they are not "when
+convenient". Break either one and the next session inherits work it cannot see.
+
+### 0.1 Update the docs as part of the work, never after it
+**This file is updated in the SAME commit as the change it describes.** A finding is not
+recorded when you remember to write it up — it is recorded when you fix it. Every entry needs
+**evidence**: a screenshot path, a DB row, an audit action, a log line. "Looks fine" is not
+evidence, and a green test suite is not evidence that a screen is readable.
+
+Update, at minimum: §4 personas (state changes as you approve/reject/ban), §5 phase table,
+§6 findings with severity + evidence + fixed/open, §6b where the next session resumes. If the
+change touches something outside this campaign, update **that** doc too — the trap lists in
+`docs/TRAPS.md`-style files and `.claude/skills/50pick-standards/SKILL.md` are load-bearing.
+
+⛔ **A tracker that lags the work is worse than none**, because the next session trusts it.
+
+### 0.2 Push after every fix — the branch is the only thing that is real
+```bash
+cd F:\kipindi-liveqa
+git branch --show-current            # MUST print qa/live-experience before you commit
+npx tsc --noEmit && npm run build    # the build IS the deploy gate
+npm run test:<the guard you just wrote>
+git add -A && git commit -F <msg>
+git push origin qa/live-experience              # 1. the branch, so nothing is ever lost
+git push origin qa/live-experience:main         # 2. main — THIS DEPLOYS LIVE
+```
+Then **verify it actually shipped**, because a clean build is not evidence a commit is serving:
+```bash
+cd F:\kipindi-main && railway deployment list   # wait for SUCCESS, not BUILDING
+```
+…and re-run the check that found the bug **against production**. Every fix in §6 was confirmed
+this way; do the same or the entry does not get a ✅.
+
+⚠️ Never `git checkout main` — it is checked out in `F:\kipindi-main` and git will refuse.
+Push by refspec (`qa/live-experience:main`) instead; it is a fast-forward as long as you merged
+`origin/main` first. ⛔ Never touch the `kipindi-kyc` or `kipindi-updown` worktrees.
+
+**Do not batch.** One fix, one guard, one commit, one push, one live verification — then the
+next. Ali reads progress from the pushed history, and a second laptop may pick this up at any
+moment.
+
+### 0.3 Know when to STOP and hand off
+Ali's rule: **do not overwork a single session.** A long session degrades — it starts trusting
+its own earlier assumptions instead of re-checking them, and that is exactly how a false finding
+gets shipped. Stop at a clean seam and ask Ali for a fresh session.
+
+**Stop when ANY of these is true:**
+- A **phase in §5 is complete**, or **2–4 findings** have been shipped and live-verified.
+- The context is getting long — roughly, you are re-reading things you already established.
+- You are about to start a phase that is clearly its own body of work (the 89-route × 4-width ×
+  3-locale visual sweep, the adversarial money pass, scale testing).
+- You are **blocked** on something only Ali can decide or authorise.
+
+**Never stop when:**
+- ⛔ anything is uncommitted or unpushed · ⛔ `main` is mid-deploy or the deploy FAILED ·
+- ⛔ a fix is half-applied (a control removed but its replacement not yet added — see the
+  A-3 sequencing note in §6) · ⛔ the docs do not yet match the code.
+
+**How to hand off.** Do all four, in order:
+1. Push everything (§0.2) and confirm the Railway deploy reached SUCCESS.
+2. Update §4 / §5 / §6 / §6b so they describe reality, including anything you were *mid-way*
+   through and what you had ruled out.
+3. Give Ali a short, honest summary: what was found, what shipped, what is still open, and any
+   decision you made that reversed existing behaviour.
+4. **Give Ali a copy-paste prompt for the next session**, in a fenced block, naming the branch,
+   this doc, the exact resume point, and the standing mandate. Template:
+
+```
+Continue the 50pick live QA campaign. Read docs/LIVE-QA-CAMPAIGN.md first —
+§0 is the standing rules, §6b says exactly where to resume. Work in
+F:\kipindi-liveqa on branch qa/live-experience. Passwords are in .env.qa.local.
+
+Resume at: <THE EXACT NEXT STEP>
+
+Same mandate: test every flow against live production as admin, player,
+accountant, compliance, QA and an adversarial player trying to cheat. Full
+rights over the live DB, Railway and the deploy pipeline; live data is
+disposable. Fix what breaks, guard it with a test, update the docs in the same
+commit, push to main, and verify on production — a green build is not evidence.
+Push after every fix. Stop and ask me for a new prompt when a phase is done.
+```
+
+Ali would rather have **four honest sessions than one exhausted one**. Handing off early with
+everything pushed is always the right call.
 
 ---
 
@@ -223,6 +311,9 @@ decision (§4). In order:
   timestamp reads 3h early and looks like a server clock bug (§3).
 - ⚠️ Screenshot with the **viewport**, not `fullPage`: a fullPage capture puts the fixed header
   in the middle of the document and looks exactly like a layout bug.
+
+**Then stop after this phase** and give Ali a fresh copy-paste prompt (§0.3) — officer review
+plus wallets is a full round on its own. Do not roll straight into betting.
 
 **Open, not yet chased:** email verification (every persona is `emailVerifiedAt: null` and the
 deposit gate depends on it) · 2FA · session revocation · auth rate-limits under load · the
