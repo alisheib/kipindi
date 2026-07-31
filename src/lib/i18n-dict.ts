@@ -840,6 +840,12 @@ export const dict = {
       predictor: "Predictor",
       balance: "Balance", openCount: "Open", settledCount: "Settled",
       idVerified: "ID verified", inReview: "In review", rejected: "Rejected",
+      // Truthful label for the step-2 card. `nidaVerifiedAt` means "20-digit
+      // format accepted and unique" and NOTHING more — docs/NIDA-POLICY.md is the
+      // owner decision: "no authority check", identity assurance comes from the
+      // documents a human officer reviews. The card used to badge this state
+      // "ID verified", telling an unverified player they were verified.
+      nidaSaved: "NIDA saved",
       verifyIdentity: "Verify your identity",
       verifyBody: "We verify your identity before withdrawal. Takes about 2 minutes.",
       nida: "NIDA", nationalId: "National ID number",
@@ -2185,6 +2191,7 @@ export const dict = {
       predictor: "Mtabiri",
       balance: "Salio", openCount: "Hai", settledCount: "Imekamilika",
       idVerified: "Imethibitishwa", inReview: "Inakaguliwa", rejected: "Imekataliwa",
+      nidaSaved: "NIDA imehifadhiwa",
       verifyIdentity: "Thibitisha kitambulisho",
       verifyBody: "Tunathibitisha utambulisho wako kabla ya kutoa pesa. Inachukua dakika 2.",
       nida: "NIDA", nationalId: "Nambari ya kitambulisho",
@@ -3529,6 +3536,7 @@ export const dict = {
       predictor: "预测者",
       balance: "余额", openCount: "进行中", settledCount: "已结算",
       idVerified: "已验证", inReview: "审核中", rejected: "已拒绝",
+      nidaSaved: "NIDA 已保存",
       verifyIdentity: "验证您的身份",
       verifyBody: "我们在提现前验证您的身份。大约需要2分钟。",
       nida: "NIDA", nationalId: "国民身份证号",

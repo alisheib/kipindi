@@ -298,9 +298,20 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
       {nidaDone && !submitted && (
         <section className="rounded-xl glass-panel p-5 lg:p-6 space-y-3">
           <div className="flex items-center gap-2">
+            {/* This badge marks STEP 1 being done, not identity being verified.
+                It renders on `nidaDone && !submitted` — a 20-digit NIDA that
+                passed the format + uniqueness check — before a single document
+                is uploaded and long before an officer looks at anything. It used
+                to read "ID verified" (SW "Imethibitishwa", ZH "已验证"), which
+                told an unverified player they were verified on the one surface
+                that must never overstate. docs/NIDA-POLICY.md, the owner
+                decision: `nidaVerifiedAt` means "format accepted", there is no
+                authority check, and "if any surface contradicts it, that surface
+                is wrong". Same string is still correct in the stepper above,
+                where it is gated on `kyc?.status === "APPROVED"`. */}
             <span className="inline-flex items-center gap-1 rounded-pill border border-yes-700 bg-yes-500/10 px-2.5 py-0.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.1em] text-yes-300">
               <I.check s={11} />
-              {t.profile.idVerified}
+              {t.profile.nidaSaved}
             </span>
           </div>
           <div className="flex items-center gap-2">
