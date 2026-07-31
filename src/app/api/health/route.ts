@@ -13,6 +13,7 @@ import { lifecycleTickerHealth } from "@/lib/server/lifecycle";
 import { isMonitoringEnabled } from "@/lib/server/monitoring";
 import { leadershipSnapshot } from "@/lib/server/leader";
 import { isAdminTotpEnforced } from "@/lib/server/admin-guard";
+import { emailHealth } from "@/lib/server/email";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -77,6 +78,14 @@ export async function GET() {
         security: {
           adminTotp: isAdminTotpEnforced() ? "enforced" : "DISABLED",
         },
+        // 🔴 Is transactional email actually being delivered? Every send on this
+        // platform is fire-and-forget from a money or auth path, and the failure
+        // path was one `console.error` — so a Postmark key that died would have
+        // stopped every deposit receipt, withdrawal confirmation, KYC decision
+        // and verification link with NOTHING to see. In the sibling AWARKEH repo
+        // exactly that happened and went unnoticed. `status` is a word, not a
+        // boolean, for the same reason `adminTotp` is.
+        email: emailHealth(),
       },
       {
         headers: {

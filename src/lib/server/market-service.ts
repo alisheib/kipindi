@@ -1811,7 +1811,9 @@ export async function cashOutPosition(
     // clamp bites (ownPool < gross), which is exactly the case the clamp exists
     // for; telling a player he received a number we did not credit him is the last
     // thing we should do in that state.
-    notifyCashout(userId, { amount: paid, marketTitle: m.titleEn, marketId: m.id, inGracePeriod, positionId });
+    // The free-exit window comes from THIS poll's frozen snapshot — the receipt
+    // must state the rule we actually applied, not a constant.
+    notifyCashout(userId, { amount: paid, marketTitle: m.titleEn, marketId: m.id, inGracePeriod, positionId, freeExitGraceMinutes: ratesFor(m).freeExitGraceMinutes });
     sendEmailToUser(userId, (email) => ({
       to: email,
       subject: `Position sold · ${formatTzs(paid)}`,

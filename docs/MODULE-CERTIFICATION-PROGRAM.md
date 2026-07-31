@@ -334,22 +334,102 @@ URL that gets logged.
 **Exit** ~~Every template rendered and read, no injection~~ ✅ · send failure observable and
 survivable · proven against a real delivery.
 
-### C2 · Email verification & suppression — `cert:c2`
+### C2 · Email verification, suppression & delivery resilience — `test:cert-c2` 🟨 **G7 DONE**
 **Surfaces** `auth/verify-email` · **Owns** `email-verification` `email-suppression` + `webhooks/postmark`
 **Existing** `test:auth-email-integrity` `test:webhook-sec` (partial)
+
+### ✅ RESILIENCE DONE 2026-07-31, `npm run test:cert-c2` (41 assertions)
+
+🔴 **`email.ts` had NO timeout anywhere**, and `password-reset.ts` and
+`email-verification.ts` **await** the send inside a request — a hung Postmark socket hung a
+player's password reset. 🔴 **And the entire failure signal was one `console.error`**, on a
+platform that has already watched Railway's log buffer roll past a payout failure ten minutes
+old, and in a codebase family where the sibling repo's email key died **silently**. Every send
+here is fire-and-forget from a money or auth path, so a provider answering 401 to all of them
+would have stopped every deposit receipt, withdrawal confirmation, KYC decision and verification
+link — on a completely green platform.
+
+- **Bounded**: `EMAIL_SEND_TIMEOUT_MS` (10 s). Proven against a socket that accepts and never answers.
+- **Counted**: consecutive failures, lifetime totals, last reason — pinned on `globalThis`,
+  because Next.js gives route handlers a different module instance and a module-scope counter
+  would never accumulate.
+- **Loud**: `/api/health` reports `email.status` as `ok` / `DEGRADED` / `DOWN` — the word, not a
+  boolean, for the same reason `security.adminTotp` reports `"DISABLED"`. At
+  `EMAIL_DOWN_AFTER_FAILURES` (5) consecutive failures a **COMPLIANCE audit row**
+  (`email.provider_down`) is written — durable, survives log rotation, **once per outage** and
+  re-armed by a success.
+- 🔴 **A 2xx is not evidence of delivery.** The gate found that a server answering
+  `200 text/html` (captive portal, misconfigured proxy, gateway error page) sailed through as
+  `sent` with an undefined message id. Postmark's acceptance IS the `MessageID`; a response
+  without one is now a failure.
+- A **bad address is not a broken rail**: `suppressed` and `no-address` are deliberately NOT
+  counted against provider health, or one hard-bounced player would mask a real outage.
+
+⚠️ **The suite drives a REAL HTTP server**, with the real Postmark SDK pointed at it via a
+test-only host override that refuses in production. Its first draft invented an env var the SDK
+does not read, so every "failure" it observed was a genuine request to `api.postmarkapp.com`
+being rejected — **green-ish while testing something else entirely.** Caught only by reading the
+error text: the 401 message was Postmark's, not the test server's.
+
+**8 broken-on-purpose cases, all observed red** (timeout removed · failures uncounted · outage
+unaudited · alert spamming per-email · recovery never re-arming · the 2xx-no-MessageID hole ·
+a bad address blamed on the rail · the host override removed).
+
+**Attack (still open)** 🔴 **Forge a bounce for a victim's address** — can an attacker suppress
+someone else's mail, silently blocking their OTP and locking them out? · unsigned or replayed
+webhook · verification link reuse, expiry, cross-account · does suppression surface to the player?
+⚠️ `no-address` still returns `ok: true` while `suppressed` returns `ok: false`; both are
+non-deliveries and they should agree. Left alone deliberately — `test:email-stress` asserts the
+current shape and two callers branch on it, so it is a behaviour change needing its own pass.
 **Attack** 🔴 **Forge a bounce for a victim's address** — can an attacker suppress someone else's
 mail, silently blocking their OTP and locking them out? · unsigned or replayed webhook · verification
 link reuse, expiry, cross-account · does suppression surface to the player or fail silently?
 **Exit** Webhook signature enforced, suppression un-weaponisable, suppressed state visible.
 
-### C3 · Notifications, devices & push — `cert:c3`
-**Surfaces** `profile/notifications`, the bell · **Owns** `notification-service` (921 L) `push-service` (`Device`, `PushSubscription`)
+### C3 · Notifications, devices & push — `test:cert-c3` 🟨 **trilingual + dedupe DONE**
+**Surfaces** `profile/notifications`, the bell · **Owns** `notification-service` `push-service` `comms-registry`
 **Existing** `test:push` `test:deposit-notifications`
-**Attack** Receive another player's notification · subscribe to someone else's stream · a
-notification for a voided market · ordering under a settlement burst · 🔴 **relative timestamps in
-the bell are English-only** (G5) · PII in a push payload (it leaves the box) · a stale
-`PushSubscription` after device loss.
-**Exit** No cross-player leak, no PII in push, timestamps localised.
+
+### ✅ DONE 2026-07-31, `npm run test:cert-c3` (853 assertions)
+
+**Measured on production first** (1,673 rows) — see the table in [`NEXT-PLAN.md`](NEXT-PLAN.md).
+
+- 🔴 **94% of notifications had no Chinese** (1,573 of 1,673), and the cause was exact: of **36**
+  emitters, **3** set `titleZh`/`bodyZh`. Swahili was complete, so this was a ZH gap specifically.
+  The bell falls back to English **without saying so**, so a Chinese reader was shown English
+  presented as their translation. **All 36 emitters now carry all three languages**, and the gate
+  DRIVES each one and reads the row it produced — it does not read the source.
+- 🔴 **28 byte-identical notifications inside 60 s on production** (deep-link included): WIN ×3,
+  BET_PLACED ×4, DEPOSIT ×20, WITHDRAW ×1 — including *"You won TZS 23,349"* twice **84 ms
+  apart** and a TZS 5,000 refund notice twice 1.25 s apart. `notify()` had no idempotency key.
+  **The proof of cause:** `notifySelectionClosedForMarket` is the ONE path with a guard (it
+  stamps `selectionClosedNotifiedAt` inside `withLock`) and SELECTION_CLOSED appears **nowhere**
+  in that set. Now deduped on the rendered message + deep link within 90 s, **failing open** (a
+  missing notification is worse than a duplicate) and audited as `notification.deduped`. The gate
+  proves both halves: a repeat is suppressed, and **two real deposits of the same amount are
+  both delivered** — dedupe that eats a real message is worse than the duplicates.
+- 🔴 **`sentAt` was NULL on all 1,673** — no code path wrote it. Now stamped at insert.
+  `failedAt`/`failureReason` remain unwritten *and that is now recorded as the honest position*:
+  the only thing that can fail for an IN_APP row is the DB write, which cannot record its own
+  failure in the same table. See `comms-registry.ts`.
+- 🔴 **`notifyCashout` hardcoded "5-min grace window" / "dakika 5"** — the identical defect
+  `notifyBetPlaced` was fixed for one function above, left behind in the message confirming that
+  money moved. It now takes the poll's own frozen `freeExitGraceMinutes`; the gate drives it with
+  a **3**-minute poll so a hardcoded 5 cannot pass.
+- **Emoji removed** from two officer notification titles and two email subjects (CLAUDE.md rule).
+- **SSE payload** carried English to every client (`event-bus.ts`); it now carries all three
+  locales. Invisible today because the bell uses it only as a refresh trigger — but it is the
+  shape any future consumer reaches for first.
+
+**9 broken-on-purpose cases, all observed red.** ⚠️ One anchored on `\n` silently did not run:
+`notification-service.ts` is CRLF while `comms-registry.ts` (Write-tool authored) is LF.
+
+**Attack (still open)** Receive another player's notification · subscribe to someone else's
+stream · a notification for a voided market · **PII in a push payload** (it leaves the box) · a
+stale `PushSubscription` after device loss · 🔴 **relative timestamps in the bell** — the unit
+strings are dictionary values now, but the *format* is still English word order.
+**Exit** ~~Trilingual and complete~~ ✅ · ~~no duplicate money notifications~~ ✅ ·
+no cross-player leak, no PII in push.
 
 ### C4 · Realtime SSE & ticker — `cert:c4`
 **Owns** `event-bus` `ticker-feed` · **Existing** `test:events`
@@ -962,8 +1042,8 @@ Existing commands to use rather than reinvent: `npm run test:all` · `npm run qa
 | B2 Staff management | `cert:b2` | ⬜ |
 | B3 Two-officer control | `cert:b3` | ⬜ |
 | C1 Email delivery | `test:cert-c1` | 🟨 **template truth DONE 2026-07-31** (843 assertions). All 47 rendered + read; an unescaped `heading()`/`ctaButton` took a player-controlled name into the inbox as live markup, and 3 mails — incl. self-exclusion and every failed payout — showed the player raw HTML. Remaining: send-failure resilience (no timeout; a dead key is silent) |
-| C2 Email verification & suppression | `cert:c2` | ⬜ |
-| C3 Notifications & push | `cert:c3` | ⬜ |
+| C2 Email verification & suppression | `test:cert-c2` | 🟨 **resilience DONE 2026-07-31** (41 assertions, real HTTP server). No timeout existed and a dead key was one `console.error`; now bounded, counted, on `/api/health`, and audited once per outage. Remaining: forged-bounce attack, webhook replay |
+| C3 Notifications & push | `test:cert-c3` | 🟨 **trilingual + dedupe DONE 2026-07-31** (853 assertions). 94% of rows had no Chinese (3 of 36 emitters set it); 28 byte-identical money notifications shipped inside 60s; `sentAt` was never written. All closed. Remaining: PII in push, cross-player leak |
 | C4 Realtime SSE & ticker | `cert:c4` | ⬜ ceiling ~125 unmeasured |
 | D1 KYC submissions | `cert:d1` | ⬜ NIDA is a mock |
 | D2 KYC documents | `cert:d2` | ⬜ **24 of 31 inline = 11 MB of ID photos in the DB, ~83% of every backup** (measured 2026-07-31) |

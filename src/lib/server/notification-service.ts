@@ -29,6 +29,25 @@ export type NotifyInput = Omit<StoredNotification, "id" | "userId" | "readAt" | 
   userId: string;
 };
 
+/**
+ * How long two byte-identical notifications to the same player are treated as
+ * the same event rather than two.
+ *
+ * 🔴 MEASURED, not guessed. On production 2026-07-31, **28 notifications were
+ * byte-identical to the one before them — deep-link included — inside 60
+ * seconds**: WIN ×3, BET_PLACED ×4, DEPOSIT ×20, WITHDRAW ×1. Among them
+ * *"You won TZS 23,349"* twice **84 ms apart**, and a TZS 5,000 refund notice
+ * twice 1.25 s apart. A player told twice that they won can reasonably believe
+ * they won twice.
+ *
+ * The contrast that proves the cause: `notifySelectionClosedForMarket` is the
+ * ONE path with an idempotency guard (it stamps `selectionClosedNotifiedAt`
+ * inside `withLock`) — and SELECTION_CLOSED does not appear once in that set.
+ * Every path without a guard produced duplicates. The window covers all 28
+ * observed gaps (max 45.5 s) with margin.
+ */
+const DEDUPE_WINDOW_MS = 90_000;
+
 export async function notify(input: NotifyInput): Promise<StoredNotification | null> {
   // Best-effort by contract: notifications are paired with money/auth/compliance
   // flows that have ALREADY committed under a lock. A DB hiccup writing the inbox
@@ -36,6 +55,35 @@ export async function notify(input: NotifyInput): Promise<StoredNotification | n
   // awaiting. So we swallow + log here, immunising every caller (current and
   // future) instead of relying on each call site to remember `.catch()`.
   try {
+    // ── DEDUPE ────────────────────────────────────────────────────────────────
+    // Suppress a repeat of the SAME message to the SAME player inside the window.
+    // Identity is the rendered message plus its deep link, so two genuinely
+    // different events can never collide: every money emitter now carries a
+    // unique reference (position id, or the receipt href). Fail OPEN — if the
+    // lookup errors we deliver, because a missing notification is worse than a
+    // duplicate one.
+    try {
+      const dup = await db.notification.findRecentDuplicate({
+        userId: input.userId,
+        kind: input.kind,
+        titleEn: input.titleEn,
+        bodyEn: input.bodyEn,
+        href: input.href ?? null,
+        sinceMs: DEDUPE_WINDOW_MS,
+      });
+      if (dup) {
+        audit({
+          category: "SYSTEM",
+          action: "notification.deduped",
+          actorId: null,
+          targetType: "Notification",
+          targetId: dup.id,
+          payload: { userId: input.userId, kind: input.kind },
+        });
+        return dup;
+      }
+    } catch { /* fail open — deliver rather than drop */ }
+
     const n: StoredNotification = {
       id: `ntf_${randomId(10)}`,
       userId: input.userId,
@@ -60,10 +108,22 @@ export async function notify(input: NotifyInput): Promise<StoredNotification | n
       targetId: n.id,
       payload: { userId: n.userId, kind: n.kind },
     });
-    // SSE: push to connected client so the bell updates instantly
+    // SSE: nudge the connected client so the bell updates instantly.
+    //
+    // ⚠️ This used to carry `title: n.titleEn, body: n.bodyEn` — English, to
+    // every client, on a trilingual product. It carries all three now, so a
+    // consumer picks the reader's locale instead of inheriting ours. The bell
+    // itself only uses this as a REFRESH trigger and re-fetches the row, which
+    // is why the English payload was invisible; anything that starts rendering
+    // it (a toast, a service-worker banner) would have shipped the bug.
     emit("notification:new", {
       userId: n.userId,
-      notification: { id: n.id, title: n.titleEn, body: n.bodyEn },
+      notification: {
+        id: n.id, kind: n.kind, href: n.href,
+        title: n.titleEn, body: n.bodyEn,
+        titleSw: n.titleSw, bodySw: n.bodySw,
+        titleZh: n.titleZh ?? null, bodyZh: n.bodyZh ?? null,
+      },
     });
     // Web push (F4) — fan out to the user's subscribed devices in their own
     // locale. Fire-and-forget: sendPushToUser never throws, self-suppresses for
@@ -140,13 +200,18 @@ export function notifyBetPlaced(userId: string, opts: {
   const bodySw = paid > 0
     ? `${opts.marketTitle.slice(0, 50)} · toka bila gharama ndani ya dakika ${mins}, baadaye ada ya ${pct}% itatumika.${ref}`
     : `${opts.marketTitle.slice(0, 50)} · toka bila gharama ndani ya dakika ${mins}, kisha linafungwa hadi malipo.${ref}`;
+  const bodyZh = paid > 0
+    ? `${opts.marketTitle.slice(0, 50)} · ${mins} 分钟内可免费退出，之后按 ${pct}% 收取手续费。${ref}`
+    : `${opts.marketTitle.slice(0, 50)} · ${mins} 分钟内可免费退出，之后将锁定至结算。${ref}`;
   return notify({
     userId,
     kind: "BET_PLACED",
     titleEn: `Bet placed · ${opts.side} ${formatTzs(opts.stake)}`,
     titleSw: `Dau limewekwa · ${opts.side} ${formatTzs(opts.stake)}`,
+    titleZh: `已下注 · ${opts.side} ${formatTzs(opts.stake)}`,
     bodyEn,
     bodySw,
+    bodyZh,
     href: `/markets/${opts.marketId}`,
   });
 }
@@ -157,8 +222,10 @@ export function notifyWin(userId: string, amount: number, label: string, href = 
     kind: "WIN",
     titleEn: `You won ${formatTzs(amount)}`,
     titleSw: `Umeshinda ${formatTzs(amount)}`,
+    titleZh: `您赢得 ${formatTzs(amount)}`,
     bodyEn: `${label} paid out. Tap to view.`,
     bodySw: `${label} kimelipa. Bonyeza kuona.`,
+    bodyZh: `${label} 已赔付。点击查看。`,
     href,
   });
 }
@@ -172,10 +239,15 @@ export function notifyLoss(userId: string, opts: { stake: number; marketTitle: s
   return notify({
     userId,
     kind: "LOSS",
+    // Direct in all three languages. A softened Chinese line would be the same
+    // LCCP harm-prevention failure as a softened English one — the loss and the
+    // amount are named outright, everywhere.
     titleEn: `Bet lost · ${formatTzs(opts.stake)}`,
     titleSw: `Dau limepotea · ${formatTzs(opts.stake)}`,
+    titleZh: `投注失败 · ${formatTzs(opts.stake)}`,
     bodyEn: `${opts.marketTitle.slice(0, 70)} · your side didn't win.${ref}`,
     bodySw: `Upande wako haukushinda.${ref}`,
+    bodyZh: `${opts.marketTitle.slice(0, 50)} · 您所选的一方未获胜。${ref}`,
     href: `/markets/${opts.marketId}`,
   });
 }
@@ -244,14 +316,19 @@ export function notifySelectionClosed(userId: string, opts: {
   const bodySw = both
     ? `Kuweka dau kumefungwa. YES ikishinda utapata ${formatTzs(opts.payoutIfYes)}; NO ikishinda utapata ${formatTzs(opts.payoutIfNo)}.`
     : `Kuweka dau kumefungwa. ${side} ikishinda utapata ${formatTzs(only)}.`;
+  const bodyZh = both
+    ? `${opts.marketTitle.slice(0, 50)} · 投注已截止。若 YES 获胜您将获得 ${formatTzs(opts.payoutIfYes)}；若 NO 获胜您将获得 ${formatTzs(opts.payoutIfNo)}。`
+    : `${opts.marketTitle.slice(0, 50)} · 投注已截止。若 ${side} 获胜您将获得 ${formatTzs(only)}。`;
 
   return notify({
     userId,
     kind: "SELECTION_CLOSED",
     titleEn: both ? "Betting closed — your payouts are set" : `Betting closed — you receive ${formatTzs(only)} if you're right`,
     titleSw: both ? "Dau limefungwa — malipo yako yamewekwa" : `Dau limefungwa — utapata ${formatTzs(only)} ukiwa sahihi`,
+    titleZh: both ? "投注已截止 — 您的赔付已确定" : `投注已截止 — 若判断正确您将获得 ${formatTzs(only)}`,
     bodyEn,
     bodySw,
+    bodyZh,
     href: `/markets/${opts.marketId}`,
   });
 }
@@ -365,8 +442,10 @@ export function notifyWithdraw(
       kind: "WITHDRAW",
       titleEn: `Withdrawal sent · ${formatTzs(net)}`,
       titleSw: `Pesa imetumwa · ${formatTzs(net)}`,
+      titleZh: `提现已发出 · ${formatTzs(net)}`,
       bodyEn: `${opts.provider} should land in moments.`,
       bodySw: `${opts.provider} itafika sasa hivi.`,
+      bodyZh: `${opts.provider} 稍后即可到账。`,
       href: "/wallet",
     });
   }
@@ -376,8 +455,10 @@ export function notifyWithdraw(
       kind: "WITHDRAW",
       titleEn: `Withdrawal under review · ${formatTzs(opts.amount)}`,
       titleSw: `Inakaguliwa · ${formatTzs(opts.amount)}`,
+      titleZh: `提现审核中 · ${formatTzs(opts.amount)}`,
       bodyEn: "Compliance review takes up to 24h.",
       bodySw: "Ukaguzi unachukua hadi saa 24.",
+      bodyZh: "合规审核最长需要 24 小时。",
       href: "/wallet",
     });
   }
@@ -387,8 +468,10 @@ export function notifyWithdraw(
       kind: "WITHDRAW",
       titleEn: `Withdrawal failed · ${formatTzs(opts.amount)}`,
       titleSw: `Kutoa pesa kumeshindikana · ${formatTzs(opts.amount)}`,
+      titleZh: `提现失败 · ${formatTzs(opts.amount)}`,
       bodyEn: opts.reason ? `Funds returned. ${opts.reason}` : "Funds returned to your balance.",
       bodySw: "Pesa imerudishwa kwenye salio lako.",
+      bodyZh: opts.reason ? `款项已退回您的余额。${opts.reason}` : "款项已退回您的余额。",
       href: "/wallet",
     });
   }
@@ -397,8 +480,10 @@ export function notifyWithdraw(
     kind: "WITHDRAW",
     titleEn: `Withdrawal in flight · ${formatTzs(opts.amount)}`,
     titleSw: `Inatuma · ${formatTzs(opts.amount)}`,
+    titleZh: `提现处理中 · ${formatTzs(opts.amount)}`,
     bodyEn: `${opts.provider} processing.`,
     bodySw: `${opts.provider} inaendelea.`,
+    bodyZh: `${opts.provider} 正在处理。`,
     href: "/wallet",
   });
 }
@@ -412,8 +497,10 @@ export function notifyReferralJoined(referrerUserId: string, opts: { recruitMask
     kind: "AFFILIATE",
     titleEn: "Your friend just joined",
     titleSw: "Rafiki yako amejisajili",
+    titleZh: "您的朋友已加入",
     bodyEn: `${opts.recruitMasked} signed up with your link.`,
     bodySw: `${opts.recruitMasked} amejisajili kupitia kiungo chako.`,
+    bodyZh: `${opts.recruitMasked} 已通过您的链接注册。`,
     href: "/profile/invite",
   });
 }
@@ -433,13 +520,23 @@ export function notifyReferralReward(userId: string, opts: { type: "COMMISSION" 
     opts.type === "COMMISSION" ? "Commission from a friend's activity. Tap to view."
     : opts.type === "PRIZE"    ? "A friend hit a milestone. Tap to view."
     :                            "Credited to your wallet. Tap to view.";
+  const titleZh =
+    opts.type === "COMMISSION" ? `您从推荐中获得 ${amount}`
+    : opts.type === "PRIZE"    ? `里程碑奖励 · ${amount}`
+    :                            `推荐奖金 · ${amount}`;
+  const bodyZh =
+    opts.type === "COMMISSION" ? "来自好友活动的佣金。点击查看。"
+    : opts.type === "PRIZE"    ? "一位好友达成里程碑。点击查看。"
+    :                            "已存入您的钱包。点击查看。";
   return notify({
     userId,
     kind: "AFFILIATE",
     titleEn,
     titleSw,
+    titleZh,
     bodyEn,
     bodySw: "Imewekwa kwenye pochi yako. Bonyeza kuona.",
+    bodyZh,
     href: "/profile/invite",
   });
 }
@@ -456,8 +553,10 @@ export function notifyBonusCredited(userId: string, opts: { amountTzs: number; w
       kind: "BONUS",
       titleEn: `Bonus queued · ${amount}`,
       titleSw: `Bonasi imepangwa · ${amount}`,
+      titleZh: `奖金已排队 · ${amount}`,
       bodyEn: `Your current bonus must be completed first. This ${amount} bonus will activate automatically when ready.`,
       bodySw: `Bonasi yako ya sasa lazima ikamilishwe kwanza. Bonasi ya ${amount} itaamilishwa moja kwa moja.`,
+      bodyZh: `需先完成当前奖金。这笔 ${amount} 奖金将在条件满足后自动激活。`,
       href: "/wallet",
     });
   }
@@ -466,8 +565,10 @@ export function notifyBonusCredited(userId: string, opts: { amountTzs: number; w
     kind: "BONUS",
     titleEn: `Bonus credited · ${amount}`,
     titleSw: `Bonasi imewekwa · ${amount}`,
+    titleZh: `奖金已到账 · ${amount}`,
     bodyEn: `Play ${target} to unlock it as withdrawable cash. Tap to view.`,
     bodySw: `Cheza ${target} ili kuibadilisha kuwa pesa unayoweza kutoa. Bonyeza kuona.`,
+    bodyZh: `完成 ${target} 的投注即可解锁为可提现现金。点击查看。`,
     href: "/wallet",
   });
 }
@@ -480,8 +581,10 @@ export function notifyBonusFulfilled(userId: string, opts: { amountTzs: number }
     kind: "BONUS",
     titleEn: `Bonus unlocked · ${amount} is now withdrawable!`,
     titleSw: `Bonasi imefunguliwa · ${amount} sasa unaweza kuitoa!`,
+    titleZh: `奖金已解锁 · ${amount} 现在可以提现！`,
     bodyEn: "Your bonus is now real cash in your main wallet. Tap to view.",
     bodySw: "Bonasi yako sasa ni pesa halisi kwenye pochi yako kuu. Bonyeza kuona.",
+    bodyZh: "您的奖金已成为主钱包中的真实现金。点击查看。",
     href: "/wallet",
   });
 }
@@ -494,8 +597,10 @@ export function notifyBonusExpired(userId: string, opts: { amountTzs: number }) 
     kind: "BONUS",
     titleEn: `Bonus expired · ${amount}`,
     titleSw: `Bonasi imeisha muda · ${amount}`,
+    titleZh: `奖金已过期 · ${amount}`,
     bodyEn: "An unfinished bonus reached its expiry date and was removed.",
     bodySw: "Bonasi ambayo haikukamilika imefikia tarehe ya mwisho na imeondolewa.",
+    bodyZh: "一笔未完成的奖金已到期并被移除。",
     href: "/wallet",
   });
 }
@@ -507,8 +612,10 @@ export function notifyProposalUnderReview(userId: string, opts: { titleEn: strin
     userId, kind: "PROPOSAL",
     titleEn: "Your proposal is under review",
     titleSw: "Pendekezo lako linakaguliwa",
+    titleZh: "您的提案正在审核中",
     bodyEn: `"${opts.titleEn.slice(0, 60)}" — the 50pick team is reviewing it. We'll notify you ASAP.`,
     bodySw: "Timu ya 50pick inalikagua. Tutakujulisha haraka iwezekanavyo.",
+    bodyZh: `"${opts.titleEn.slice(0, 60)}" — 50pick 团队正在审核。我们会尽快通知您。`,
     href: "/proposals",
   });
 }
@@ -525,8 +632,10 @@ export async function notifyAdminObjectionFiled(objectionId: string, marketTitle
       userId: o.id, kind: "OBJECTION",
       titleEn: "Objection filed · settlement frozen",
       titleSw: "Pingamizi limewasilishwa · malipo yamesimamishwa",
+      titleZh: "已提出异议 · 结算已冻结",
       bodyEn: `A player disputes the result of "${marketTitle.slice(0, 55)}". No money moves until you rule.`,
       bodySw: `Mchezaji anapinga matokeo ya soko hili. Hakuna malipo hadi utakapoamua.`,
+      bodyZh: `有玩家对 "${marketTitle.slice(0, 55)}" 的结果提出异议。在您裁定前不会有任何资金变动。`,
       href: "/admin/objections",
     });
   }
@@ -538,12 +647,16 @@ export function notifyObjectionDecided(userId: string, opts: { upheld: boolean; 
     userId, kind: "OBJECTION",
     titleEn: opts.upheld ? "Your objection was upheld" : "Your objection was reviewed",
     titleSw: opts.upheld ? "Pingamizi lako limekubaliwa" : "Pingamizi lako limekaguliwa",
+    titleZh: opts.upheld ? "您的异议已获支持" : "您的异议已审核",
     bodyEn: opts.upheld
       ? `An officer agreed with you and corrected the result before any payout. ${opts.note.slice(0, 120)}`
       : `An officer reviewed your objection and the result stands. ${opts.note.slice(0, 120)}`,
     bodySw: opts.upheld
       ? "Afisa amekubaliana nawe na amerekebisha matokeo kabla ya malipo yoyote."
       : "Afisa amekagua pingamizi lako na matokeo yamebaki vilevile.",
+    bodyZh: opts.upheld
+      ? `审核人员认同您的意见，并已在赔付前更正结果。${opts.note.slice(0, 120)}`
+      : `审核人员已审核您的异议，原结果维持不变。${opts.note.slice(0, 120)}`,
     href: `/markets/${opts.marketId}`,
   });
 }
@@ -555,8 +668,10 @@ export function notifyAdminProposalReview(adminUserId: string, opts: { proposerL
     userId: adminUserId, kind: "PROPOSAL",
     titleEn: "New proposal to review",
     titleSw: "Pendekezo jipya la kukagua",
+    titleZh: "有新提案待审核",
     bodyEn: `${opts.proposerLabel} proposed "${opts.titleEn.slice(0, 60)}" — tap to review.`,
     bodySw: `${opts.proposerLabel} amependekeza soko jipya — bonyeza kukagua.`,
+    bodyZh: `${opts.proposerLabel} 提交了 "${opts.titleEn.slice(0, 60)}" — 点击审核。`,
     href: "/admin/proposals",
   });
 }
@@ -571,8 +686,10 @@ export function notifyProposalApproved(userId: string, opts: { titleEn: string; 
         userId, kind: "PROPOSAL",
         titleEn: `Proposal approved · bonus ${amount} reserved`,
         titleSw: `Pendekezo limekubaliwa · bonasi ${amount} imehifadhiwa`,
+        titleZh: `提案已通过 · 已预留 ${amount} 奖金`,
         bodyEn: `"${opts.titleEn.slice(0, 55)}" was approved. Your ${amount} bonus activates automatically once your current bonus completes.`,
         bodySw: `Pendekezo lako limekubaliwa. Bonasi ya ${amount} itaanza mara bonasi yako ya sasa itakapokamilika.`,
+        bodyZh: `"${opts.titleEn.slice(0, 55)}" 已通过审核。您的 ${amount} 奖金将在当前奖金完成后自动激活。`,
         href: "/wallet",
       });
     }
@@ -580,8 +697,10 @@ export function notifyProposalApproved(userId: string, opts: { titleEn: string; 
       userId, kind: "PROPOSAL",
       titleEn: `Proposal approved · bonus ${amount} credited`,
       titleSw: `Pendekezo limekubaliwa · bonasi ${amount}`,
+      titleZh: `提案已通过 · ${amount} 奖金已到账`,
       bodyEn: `"${opts.titleEn.slice(0, 55)}" was approved. ${amount} is in your bonus wallet.`,
       bodySw: `Pendekezo lako limekubaliwa. ${amount} ipo kwenye pochi yako ya bonasi.`,
+      bodyZh: `"${opts.titleEn.slice(0, 55)}" 已通过审核。${amount} 已存入您的奖金钱包。`,
       href: "/wallet",
     });
   }
@@ -589,8 +708,10 @@ export function notifyProposalApproved(userId: string, opts: { titleEn: string; 
     userId, kind: "PROPOSAL",
     titleEn: "Your proposal was approved",
     titleSw: "Pendekezo lako limekubaliwa",
+    titleZh: "您的提案已通过",
     bodyEn: `"${opts.titleEn.slice(0, 60)}" was approved by the 50pick team.`,
     bodySw: "Pendekezo lako limekubaliwa na timu ya 50pick.",
+    bodyZh: `"${opts.titleEn.slice(0, 60)}" 已获 50pick 团队通过。`,
     href: "/proposals",
   });
 }
@@ -600,8 +721,10 @@ export function notifyProposalListed(userId: string, opts: { titleEn: string; ma
     userId, kind: "PROPOSAL",
     titleEn: "Your proposal is now live",
     titleSw: "Pendekezo lako sasa ni soko",
+    titleZh: "您的提案已上线",
     bodyEn: `"${opts.titleEn.slice(0, 60)}" is a market now — share it.`,
     bodySw: "Sasa ni soko — lishiriki.",
+    bodyZh: `"${opts.titleEn.slice(0, 60)}" 现已成为市场 — 分享出去吧。`,
     href: `/markets/${opts.marketId}`,
   });
 }
@@ -611,8 +734,10 @@ export function notifyProposalChanges(userId: string, opts: { titleEn: string; n
     userId, kind: "PROPOSAL",
     titleEn: "Changes requested on your proposal",
     titleSw: "Mabadiliko yanahitajika",
+    titleZh: "您的提案需要修改",
     bodyEn: opts.note ? `Officer note: ${opts.note.slice(0, 80)}` : `"${opts.titleEn.slice(0, 60)}" needs a tweak before listing.`,
     bodySw: "Rekebisha kabla ya kuorodheshwa.",
+    bodyZh: opts.note ? `审核意见：${opts.note.slice(0, 80)}` : `"${opts.titleEn.slice(0, 60)}" 上架前需要做一处调整。`,
     href: "/proposals",
   });
 }
@@ -622,8 +747,10 @@ export function notifyProposalDeclined(userId: string, opts: { titleEn: string; 
     userId, kind: "PROPOSAL",
     titleEn: "Your proposal was declined",
     titleSw: "Pendekezo limekataliwa",
+    titleZh: "您的提案未被采纳",
     bodyEn: `"${opts.titleEn.slice(0, 50)}" — reason: ${opts.reason}.`,
     bodySw: `Sababu: ${opts.reason}.`,
+    bodyZh: `"${opts.titleEn.slice(0, 50)}" — 原因：${opts.reason}。`,
     href: "/proposals",
   });
 }
@@ -635,8 +762,10 @@ export function notifyRefund(userId: string, opts: { stake: number; marketTitle:
     kind: "DEPOSIT",
     titleEn: `Refund · ${formatTzs(opts.stake)} returned`,
     titleSw: `Kurudishiwa · ${formatTzs(opts.stake)}`,
+    titleZh: `退款 · 已退回 ${formatTzs(opts.stake)}`,
     bodyEn: `${opts.marketTitle.slice(0, 70)} was voided. Your stake has been returned.`,
     bodySw: `Soko limebatilishwa. Dau lako limerudishwa.`,
+    bodyZh: `${opts.marketTitle.slice(0, 50)} 已作废。您的本金已全额退回。`,
     href: `/markets/${opts.marketId}`,
   });
 }
@@ -649,8 +778,10 @@ export function notifyMarketCancelled(userId: string, opts: { stake: number; mar
     kind: "DEPOSIT", // money returned to the wallet
     titleEn: `Market cancelled · ${formatTzs(opts.stake)} refunded`,
     titleSw: `Soko limefutwa · ${formatTzs(opts.stake)} imerejeshwa`,
+    titleZh: `市场已取消 · 已退款 ${formatTzs(opts.stake)}`,
     bodyEn: `"${opts.marketTitle.slice(0, 60)}" was cancelled: ${opts.reason.slice(0, 120)}. Your full stake has been returned to your wallet.`,
     bodySw: `Soko limefutwa. Dau lako lote limerejeshwa kwenye pochi yako.`,
+    bodyZh: `"${opts.marketTitle.slice(0, 60)}" 已取消：${opts.reason.slice(0, 120)}。您的本金已全额退回钱包。`,
     href: "/wallet",
   });
 }
@@ -662,26 +793,46 @@ export function notifyAdminMarketCancelled(adminUserId: string, opts: { title: s
     kind: "SECURITY",
     titleEn: `Market cancelled · ${opts.refundedCount} refunded`,
     titleSw: `Soko limefutwa · ${opts.refundedCount} wamerejeshewa`,
+    titleZh: `市场已取消 · ${opts.refundedCount} 人已退款`,
     bodyEn: `"${opts.title.slice(0, 60)}" was emergency-voided — ${formatTzs(opts.refundedTzs)} refunded to ${opts.refundedCount} ${opts.refundedCount === 1 ? "player" : "players"}. Reason: ${opts.reason.slice(0, 100)}`,
     bodySw: `Soko limefutwa kwa dharura. ${formatTzs(opts.refundedTzs)} imerejeshwa.`,
+    bodyZh: `"${opts.title.slice(0, 60)}" 已紧急作废 — 已向 ${opts.refundedCount} 位玩家退款 ${formatTzs(opts.refundedTzs)}。原因：${opts.reason.slice(0, 100)}`,
     href: "/admin/markets",
   });
 }
 
-/** Cashout receipt — when a player sells a position early. */
-export function notifyCashout(userId: string, opts: { amount: number; marketTitle: string; marketId: string; inGracePeriod?: boolean; positionId?: string }) {
+/**
+ * Cash-out receipt — when a player sells a position early.
+ *
+ * 🔴 `freeExitGraceMinutes` is a PARAMETER, not the literal 5 this copy used to
+ * carry ("sold within the 5-min grace window" / "ndani ya dakika 5"). It is the
+ * identical defect `notifyBetPlaced` was fixed for one function above, left
+ * behind in the message that confirms the money moved: the window is per-poll
+ * and admin-tunable, so the moment anyone changed it this receipt stated a rule
+ * the platform was not applying. The caller passes the poll's own frozen rate.
+ */
+export function notifyCashout(userId: string, opts: {
+  amount: number; marketTitle: string; marketId: string; inGracePeriod?: boolean; positionId?: string;
+  /** The poll's OWN frozen free-exit window. Never hardcode it here. */
+  freeExitGraceMinutes: number;
+}) {
   const ref = opts.positionId ? ` · ${opts.positionId}` : "";
+  const mins = opts.freeExitGraceMinutes;
   return notify({
     userId,
     kind: "WIN",
     titleEn: `${opts.inGracePeriod ? "Free exit" : "Cashed out"} · ${formatTzs(opts.amount)}`,
     titleSw: `${opts.inGracePeriod ? "Toka bila gharama" : "Umetoa"} · ${formatTzs(opts.amount)}`,
+    titleZh: `${opts.inGracePeriod ? "免费退出" : "已套现"} · ${formatTzs(opts.amount)}`,
     bodyEn: opts.inGracePeriod
-      ? `Full stake returned — sold within the 5-min grace window, no fee.${ref}`
+      ? `Full stake returned — sold within the ${mins}-min grace window, no fee.${ref}`
       : `Early exit from ${opts.marketTitle.slice(0, 60)}. Funds in wallet.${ref}`,
     bodySw: opts.inGracePeriod
-      ? `Pesa yote imerudishwa — umetoka ndani ya dakika 5.${ref}`
+      ? `Pesa yote imerudishwa — umetoka ndani ya dakika ${mins}.${ref}`
       : `Umetoka mapema. Pesa imo kwenye pochi yako.${ref}`,
+    bodyZh: opts.inGracePeriod
+      ? `本金已全额退回 — 在 ${mins} 分钟免费窗口内卖出，不收取手续费。${ref}`
+      : `已从 ${opts.marketTitle.slice(0, 50)} 提前退出。款项已存入钱包。${ref}`,
     href: `/markets/${opts.marketId}`,
   });
 }
@@ -694,8 +845,10 @@ export function notifyOneSidedRefund(userId: string, opts: { stake: number; mark
     kind: "WIN",
     titleEn: `Full refund · ${formatTzs(opts.stake)}`,
     titleSw: `Pesa imerudishwa · ${formatTzs(opts.stake)}`,
+    titleZh: `全额退款 · ${formatTzs(opts.stake)}`,
     bodyEn: `${opts.marketTitle.slice(0, 60)} — all bets were on one side. Full stake returned, no fee.${ref}`,
     bodySw: `Dau lako lote limerudishwa bila gharama — wote walibetia upande mmoja.${ref}`,
+    bodyZh: `${opts.marketTitle.slice(0, 50)} — 所有投注都在同一方。本金全额退回，不收取手续费。${ref}`,
     href: `/markets/${opts.marketId}`,
   });
 }
@@ -711,8 +864,10 @@ export function notifyAdminKycReview(adminUserId: string, opts: { playerLabel: s
     kind: "KYC",
     titleEn: "New KYC to review",
     titleSw: "KYC mpya ya kukagua",
+    titleZh: "有新的身份审核",
     bodyEn: `${opts.playerLabel} submitted identity documents — tap to review.`,
     bodySw: `${opts.playerLabel} amewasilisha nyaraka — bonyeza kukagua.`,
+    bodyZh: `${opts.playerLabel} 已提交身份证件 — 点击审核。`,
     href: `/admin/players/${opts.userId}?tab=kyc`,
   });
 }
@@ -728,8 +883,10 @@ export function notifyAdminMarketResolution(adminUserId: string, opts: { title: 
     kind: "PROPOSAL", // closest existing admin/ops kind; routed to the resolver queue
     titleEn: "Market awaiting resolution",
     titleSw: "Soko linasubiri uamuzi",
+    titleZh: "市场等待裁定",
     bodyEn: `"${opts.title.slice(0, 70)}" has closed — resolve the outcome.`,
     bodySw: `"${opts.title.slice(0, 50)}" limefungwa — tatua matokeo.`,
+    bodyZh: `"${opts.title.slice(0, 50)}" 已关闭 — 请裁定结果。`,
     href: "/admin/resolver-queue",
   });
 }
@@ -741,8 +898,10 @@ export function notifyKyc(userId: string, status: "APPROVED" | "REJECTED" | "PEN
       kind: "KYC",
       titleEn: "More information needed",
       titleSw: "Tunahitaji maelezo zaidi",
+      titleZh: "需要更多信息",
       bodyEn: "Open verification to update your documents and resubmit.",
       bodySw: "Fungua uthibitishaji urekebishe nyaraka zako.",
+      bodyZh: "请打开身份验证页面，更新证件后重新提交。",
       href: "/profile/kyc",
     });
   }
@@ -752,8 +911,10 @@ export function notifyKyc(userId: string, status: "APPROVED" | "REJECTED" | "PEN
       kind: "KYC",
       titleEn: "Identity verified",
       titleSw: "Kitambulisho kimethibitishwa",
+      titleZh: "身份已验证",
       bodyEn: "You can now withdraw winnings.",
       bodySw: "Sasa unaweza kutoa pesa zako.",
+      bodyZh: "您现在可以提现奖金了。",
       href: "/wallet",
     });
   }
@@ -763,8 +924,10 @@ export function notifyKyc(userId: string, status: "APPROVED" | "REJECTED" | "PEN
       kind: "KYC",
       titleEn: "Identity needs review",
       titleSw: "Kitambulisho kinahitaji ukaguzi",
+      titleZh: "身份需要复核",
       bodyEn: "Please re-submit. Support can help.",
       bodySw: "Tafadhali tuma tena.",
+      bodyZh: "请重新提交。如需协助请联系客服。",
       href: "/profile/kyc",
     });
   }
@@ -773,8 +936,10 @@ export function notifyKyc(userId: string, status: "APPROVED" | "REJECTED" | "PEN
     kind: "KYC",
     titleEn: "Identity submitted",
     titleSw: "Kitambulisho kimewasilishwa",
+    titleZh: "身份信息已提交",
     bodyEn: "Compliance review takes 24h.",
     bodySw: "Ukaguzi unachukua saa 24.",
+    bodyZh: "合规审核需要 24 小时。",
     href: "/profile/kyc",
   });
 }
@@ -787,8 +952,10 @@ export function notifyPasswordChanged(userId: string) {
     kind: "SECURITY",
     titleEn: "Your password was changed",
     titleSw: "Nenosiri lako limebadilishwa",
+    titleZh: "您的密码已更改",
     bodyEn: "If this wasn't you, reset it now and contact support.",
     bodySw: "Kama si wewe, libadilishe sasa na uwasiliane na msaada.",
+    bodyZh: "如果这不是您本人操作，请立即重置密码并联系客服。",
     href: "/profile/account",
   });
 }
@@ -801,8 +968,10 @@ export function notifySelfExclusion(userId: string, opts: { until: string }) {
     kind: "RG",
     titleEn: "Self-exclusion active",
     titleSw: "Kujizuia kumeanza",
+    titleZh: "自我限制已生效",
     bodyEn: `Your account is closed to betting and deposits until ${opts.until.slice(0, 10)}.`,
     bodySw: `Akaunti yako imefungwa kuweka dau na amana hadi ${opts.until.slice(0, 10)}.`,
+    bodyZh: `您的账户已停止投注与充值，直至 ${opts.until.slice(0, 10)}。`,
     href: "/profile/responsible-gambling",
   });
 }
@@ -813,8 +982,10 @@ export function notifyCoolOff(userId: string, opts: { until: string }) {
     kind: "RG",
     titleEn: "Cool-off break active",
     titleSw: "Mapumziko yameanza",
+    titleZh: "冷静期已开始",
     bodyEn: `Betting and deposits are paused until ${opts.until.slice(0, 10)}.`,
     bodySw: `Kuweka dau na amana kumesimamishwa hadi ${opts.until.slice(0, 10)}.`,
+    bodyZh: `投注与充值已暂停，直至 ${opts.until.slice(0, 10)}。`,
     href: "/profile/responsible-gambling",
   });
 }
@@ -833,8 +1004,10 @@ export async function notifyAdminsAmlReview(opts: { txnKind: "WITHDRAWAL" | "DEP
       kind: "SECURITY",
       titleEn: `AML review: ${label} ${formatTzs(opts.amountTzs)}`,
       titleSw: `Ukaguzi wa AML · ${formatTzs(opts.amountTzs)}`,
+      titleZh: `反洗钱审核 · ${formatTzs(opts.amountTzs)}`,
       bodyEn: `A ${label} of ${formatTzs(opts.amountTzs)} is awaiting AML clearance — open the queue.`,
       bodySw: "Muamala unasubiri ukaguzi wa AML — fungua foleni.",
+      bodyZh: `一笔 ${formatTzs(opts.amountTzs)} 的交易正在等待反洗钱审核 — 请打开队列。`,
       href: "/admin/aml",
     }).catch(() => {});
   }
@@ -872,10 +1045,15 @@ export async function notifyAdminsSentinelDown(opts: { reason: string; errorCoun
     await notify({
       userId: o.id,
       kind: "SECURITY",
-      titleEn: `⚠️ Market Sentinel is failing (${opts.reason})`,
-      titleSw: `⚠️ Mlinzi wa Soko umeshindwa (${opts.reason})`,
+      // No emoji in UI copy (CLAUDE.md design rule) — the bell already carries a
+      // SECURITY tint and icon, so the warning glyph was decoration that broke a
+      // stated rule on the one surface an officer scans under pressure.
+      titleEn: `Market Sentinel is failing (${opts.reason})`,
+      titleSw: `Mlinzi wa Soko umeshindwa (${opts.reason})`,
+      titleZh: `市场哨兵运行失败（${opts.reason}）`,
       bodyEn: `The live auto-close AI could not check ${opts.errorCount} market(s) on its last sweep — live markets may be unprotected. Most likely: Anthropic billing/API key. Check now.`,
       bodySw: `AI ya kufunga soko imeshindwa kukagua masoko ${opts.errorCount}. Angalia malipo/API key ya Anthropic mara moja.`,
+      bodyZh: `自动关闭 AI 在上一次巡检中未能检查 ${opts.errorCount} 个市场 — 进行中的市场可能失去保护。最可能的原因：Anthropic 账单或 API 密钥。请立即检查。`,
       href: "/admin/system",
     }).catch(() => {});
   }
@@ -891,7 +1069,7 @@ export async function notifyAdminsSentinelDown(opts: { reason: string; errorCoun
     for (const to of emails) {
       sendEmail({
         to,
-        subject: `⚠️ Market Sentinel failing — ${opts.reason}`,
+        subject: `Market Sentinel failing — ${opts.reason}`,
         html,
         tag: "sentinel-health",
         trackLinks: false,
@@ -909,9 +1087,10 @@ export async function notifyAdminsAiCreditLimit(opts: { level: "warn" | "limit";
   const spent = `$${opts.spentUsd.toFixed(2)}`;
   const limit = `$${opts.limitUsd.toFixed(2)}`;
   const reached = opts.level === "limit";
+  // No emoji in UI copy (CLAUDE.md design rule) — see notifyAdminsSentinelDown.
   const titleEn = reached
-    ? `🛑 AI spend reached the ${limit} limit`
-    : `⚠️ AI spend nearing the ${limit} limit (${spent})`;
+    ? `AI spend reached the ${limit} limit`
+    : `AI spend nearing the ${limit} limit (${spent})`;
   const bodyEn = reached
     ? `AI usage has reached your ${limit} budget for this cycle (spent ${spent}). Top up Anthropic credit and reset the cycle on the AI usage page, or the AI features will stop.`
     : `AI usage is at ${spent} of your ${limit} budget this cycle. Plan a top-up soon — you'll get one more alert if it hits the limit.`;
@@ -920,11 +1099,15 @@ export async function notifyAdminsAiCreditLimit(opts: { level: "warn" | "limit";
       userId: o.id,
       kind: "SECURITY",
       titleEn,
-      titleSw: reached ? `🛑 Matumizi ya AI yamefikia kikomo cha ${limit}` : `⚠️ Matumizi ya AI yanakaribia kikomo cha ${limit} (${spent})`,
+      titleSw: reached ? `Matumizi ya AI yamefikia kikomo cha ${limit}` : `Matumizi ya AI yanakaribia kikomo cha ${limit} (${spent})`,
+      titleZh: reached ? `AI 支出已达到 ${limit} 上限` : `AI 支出接近 ${limit} 上限（${spent}）`,
       bodyEn,
       bodySw: reached
         ? `Matumizi ya AI yamefikia bajeti ya ${limit} (umetumia ${spent}). Ongeza salio la Anthropic na uweke upya mzunguko kwenye ukurasa wa matumizi ya AI.`
         : `Matumizi ya AI yako ${spent} kati ya ${limit}. Panga kuongeza salio hivi karibuni.`,
+      bodyZh: reached
+        ? `本周期 AI 使用已达到 ${limit} 预算（已花费 ${spent}）。请为 Anthropic 充值，并在 AI 用量页面重置周期，否则 AI 功能将停止。`
+        : `本周期 AI 使用已达 ${limit} 中的 ${spent}。请尽快计划充值。`,
       href: "/admin/ai-usage",
     }).catch(() => {});
   }
@@ -940,7 +1123,7 @@ export async function notifyAdminsAiCreditLimit(opts: { level: "warn" | "limit";
     for (const to of emails) {
       sendEmail({
         to,
-        subject: reached ? `🛑 50pick AI spend reached ${limit}` : `⚠️ 50pick AI spend nearing ${limit} (${spent})`,
+        subject: reached ? `50pick AI spend reached ${limit}` : `50pick AI spend nearing ${limit} (${spent})`,
         html,
         tag: "ai-credit-limit",
         trackLinks: false,
@@ -958,8 +1141,10 @@ export function notifySof(userId: string, status: "ACCEPTED" | "REJECTED" | "MOR
       kind: "KYC",
       titleEn: "Source of funds approved",
       titleSw: "Asili ya pesa imethibitishwa",
+      titleZh: "资金来源已通过",
       bodyEn: "Your declaration was accepted — you can deposit as normal.",
       bodySw: "Tamko lako limekubaliwa — unaweza kuweka pesa kama kawaida.",
+      bodyZh: "您的声明已被接受 — 您可以正常充值。",
       href: "/wallet",
     });
   }
@@ -969,8 +1154,10 @@ export function notifySof(userId: string, status: "ACCEPTED" | "REJECTED" | "MOR
       kind: "KYC",
       titleEn: "More info needed for source of funds",
       titleSw: "Taarifa zaidi zinahitajika",
+      titleZh: "资金来源需要补充信息",
       bodyEn: "Our compliance team needs a bit more information about your source of funds. Please check your email and update your declaration.",
       bodySw: "Timu yetu inahitaji maelezo zaidi kuhusu chanzo chako cha fedha. Tafadhali angalia barua pepe yako na usasishe tamko lako.",
+      bodyZh: "我们的合规团队需要更多关于您资金来源的信息。请查收邮件并更新您的声明。",
       href: "/profile/source-of-funds",
     });
   }
@@ -979,8 +1166,10 @@ export function notifySof(userId: string, status: "ACCEPTED" | "REJECTED" | "MOR
     kind: "KYC",
     titleEn: "Source of funds needs review",
     titleSw: "Asili ya pesa inahitaji ukaguzi",
+    titleZh: "资金来源需要复核",
     bodyEn: "Please update your source-of-funds declaration and resubmit.",
     bodySw: "Tafadhali sasisha tamko la asili ya pesa na uwasilishe tena.",
+    bodyZh: "请更新您的资金来源声明并重新提交。",
     href: "/profile/source-of-funds",
   });
 }

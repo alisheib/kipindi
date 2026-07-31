@@ -818,6 +818,21 @@ const memoryDb = {
   },
   notification: {
     create: (n: StoredNotification) => { store.notifications.set(n.id, n); return n; },
+    /** Mirror of the Prisma DAL's dedupe lookup — the two must not diverge, or
+     *  the behaviour tests prove in memory is not the behaviour production has. */
+    findRecentDuplicate: (q: {
+      userId: string; kind: string; titleEn: string; bodyEn: string; href: string | null; sinceMs: number;
+    }): StoredNotification | null => {
+      const cutoff = Date.now() - q.sinceMs;
+      const hits = Array.from(store.notifications.values()).filter((n) =>
+        n.userId === q.userId && n.kind === q.kind &&
+        n.titleEn === q.titleEn && n.bodyEn === q.bodyEn &&
+        (n.href ?? null) === q.href &&
+        Date.parse(n.createdAt) >= cutoff);
+      if (!hits.length) return null;
+      hits.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      return hits[0];
+    },
     findByUser: (userId: string, limit = 50) =>
       Array.from(store.notifications.values())
         .filter((n) => n.userId === userId && !n.dismissedAt)

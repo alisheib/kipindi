@@ -21,11 +21,21 @@
  * advertises PUSH/SMS/EMAIL delivery it cannot perform — recorded in the C1/C3
  * dossiers of `docs/MODULE-CERTIFICATION-PROGRAM.md`.
  *
- * Two more columns are dead alongside it, measured the same day:
- *   · `sentAt` / `failedAt` / `failureReason` — written by NOTHING, 0 of 1,673
- *   · `priority` — `NORMAL` on all 1,673; the other three enum members are unused
+ * Three more columns were dead alongside it, measured the same day, and here is
+ * where each one stands after this pass:
+ *   · `sentAt` — was 0 of 1,673. **NOW WRITTEN.** For an IN_APP notification,
+ *     delivery IS the row becoming visible in the bell, so the timestamp is
+ *     knowable exactly at insert. "Was it delivered?" now has an answer.
+ *   · `failedAt` / `failureReason` — still unwritten, and honestly so: the only
+ *     thing that can fail for an IN_APP row is the DB write itself, and a failed
+ *     write cannot record its own failure in the same table. ⚠️ They are NOT a
+ *     record of email or push outcomes; email health lives on `/api/health`
+ *     (`emailHealth()`) and in the audit chain (`email.provider_down`).
+ *   · `priority` — `NORMAL` on all 1,673; the other three enum members unused.
  *   · `event` — the DAL writes `event: n.kind`, so it is a duplicate of `kind`,
- *     not the dotted `bet.won` / `kyc.approved` the schema comment promises
+ *     not the dotted `bet.won` / `kyc.approved` the schema comment promises.
+ *     ⛔ Correcting the schema comment needs the KYC lane's sign-off — that file
+ *     is theirs this round. Flagged, not taken.
  *
  * So the honest shape of the matrix is:
  *

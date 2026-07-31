@@ -34,7 +34,22 @@ import { getRedis, getRedisSubscriber, setRedisSubscribed, withRedis } from "./r
 export type SseEventMap = {
   "market:odds":       { marketId: string; yesPct: number };
   "wallet:balance":    { userId: string; balance: number };
-  "notification:new":  { userId: string; notification: { id: string; title: string; body: string } };
+  // ⚠️ Carries ALL THREE locales. It used to be `{ id, title, body }` filled
+  // with the English fields and pushed to every client on a trilingual product.
+  // Today the bell treats this purely as a refresh trigger and re-reads the row,
+  // so the English text was never rendered — but the payload is the shape any
+  // future consumer (a toast, a service-worker banner) would reach for first,
+  // and it would have inherited the bug. `title`/`body` stay English so existing
+  // consumers keep working; the locale fields are additive.
+  "notification:new":  {
+    userId: string;
+    notification: {
+      id: string; kind: string; href: string | null;
+      title: string; body: string;
+      titleSw: string; bodySw: string;
+      titleZh: string | null; bodyZh: string | null;
+    };
+  };
   "market:resolve":    { marketId: string; outcome: "YES" | "NO" | "VOID" };
 };
 

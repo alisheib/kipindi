@@ -35,6 +35,17 @@ function client(): ServerClient | null {
   if (_client) return _client;
   const key = process.env.POSTMARK_API_KEY;
   if (!key) return null;
+  // TEST-ONLY host override, so `test:cert-c2` can point the REAL SDK at a
+  // throwaway HTTP server and inspect what actually goes over the wire — the
+  // same seam `test:alerting` uses for Sentry. A stubbed transport would only
+  // prove our code calls our code; a dead key, a 500 and a hung socket exist on
+  // the wire or nowhere. REFUSES in production, so a live instance can never be
+  // redirected away from Postmark by an env var.
+  const host = process.env.NODE_ENV !== "production" ? process.env.POSTMARK_API_HOST : undefined;
+  if (host) {
+    _client = new ServerClient(key, { useHttps: false, requestHost: host });
+    return _client;
+  }
   _client = new ServerClient(key);
   return _client;
 }
@@ -101,6 +112,122 @@ export type SendResult = {
   reason: "sent" | "stub" | "no-address" | "suppressed" | "failed";
 };
 
+/**
+ * DELIVERY HEALTH — so a dead provider cannot be a silent one.
+ *
+ * 🔴 The failure path used to be a single `console.error` and nothing else. On a
+ * platform whose Railway log buffer has already been observed to roll past a
+ * payout failure **within ten minutes**, that is not a record — and in the
+ * sibling AWARKEH repo the transactional-email key died and nobody noticed at
+ * all. Every send here is fire-and-forget from a money or auth path, so a
+ * provider returning 401 on all of them changes nothing a human can see.
+ *
+ * Now: consecutive failures are counted, the state is on `/api/health`, and
+ * crossing the threshold writes a COMPLIANCE audit row — which is durable,
+ * survives log rotation and is already what `/admin/compliance` reads.
+ *
+ * ⚠️ Pinned on `globalThis`: Next.js hands route handlers a different module
+ * instance, so module-scope state is per-route and a counter kept there would
+ * silently never accumulate. That trap is recorded in the multi-container work.
+ */
+type EmailHealth = {
+  consecutiveFailures: number;
+  totalFailures: number;
+  totalSent: number;
+  lastFailureAt: string | null;
+  lastFailureReason: string | null;
+  alertedAt: string | null;
+};
+declare global {
+  // eslint-disable-next-line no-var
+  var __50PICK_EMAIL_HEALTH: EmailHealth | undefined;
+}
+function health(): EmailHealth {
+  globalThis.__50PICK_EMAIL_HEALTH ??= {
+    consecutiveFailures: 0, totalFailures: 0, totalSent: 0,
+    lastFailureAt: null, lastFailureReason: null, alertedAt: null,
+  };
+  return globalThis.__50PICK_EMAIL_HEALTH;
+}
+
+/** Consecutive provider failures before we treat the rail as DOWN and audit it. */
+export const EMAIL_DOWN_AFTER_FAILURES = 5;
+
+/** How long a single provider call may take before we give up on it. */
+export const EMAIL_SEND_TIMEOUT_MS = 10_000;
+
+/** Health snapshot for `/api/health`. `status` is the word, not a bare boolean —
+ *  a `false` reads as "no problem" at a glance (the same reason
+ *  `security.adminTotp` reports "DISABLED" rather than `false`). */
+export function emailHealth(): {
+  provider: "postmark" | "stub";
+  status: "ok" | "DEGRADED" | "DOWN";
+  consecutiveFailures: number;
+  totalSent: number;
+  totalFailures: number;
+  lastFailureAt: string | null;
+  lastFailureReason: string | null;
+} {
+  const h = health();
+  const provider = process.env.POSTMARK_API_KEY ? "postmark" as const : "stub" as const;
+  const status = h.consecutiveFailures >= EMAIL_DOWN_AFTER_FAILURES ? "DOWN" as const
+    : h.consecutiveFailures > 0 ? "DEGRADED" as const
+    : "ok" as const;
+  return {
+    provider, status,
+    consecutiveFailures: h.consecutiveFailures,
+    totalSent: h.totalSent,
+    totalFailures: h.totalFailures,
+    lastFailureAt: h.lastFailureAt,
+    lastFailureReason: h.lastFailureReason,
+  };
+}
+
+/** Test seam — reset the counters between cases. Never called by product code. */
+export function resetEmailHealth(): void {
+  globalThis.__50PICK_EMAIL_HEALTH = undefined;
+}
+
+function recordSuccess(): void {
+  const h = health();
+  h.totalSent++;
+  h.consecutiveFailures = 0;
+  h.alertedAt = null; // re-arm, so a second outage alerts again
+}
+
+function recordFailure(reason: string, tag?: string): void {
+  const h = health();
+  h.totalFailures++;
+  h.consecutiveFailures++;
+  h.lastFailureAt = new Date().toISOString();
+  h.lastFailureReason = reason.slice(0, 300);
+  // Cross the threshold once per outage, not once per email — an alert that
+  // fires on every send during an outage is an alert people mute.
+  if (h.consecutiveFailures >= EMAIL_DOWN_AFTER_FAILURES && !h.alertedAt) {
+    h.alertedAt = h.lastFailureAt;
+    // Lazy import: audit.ts must not be pulled into email.ts's static graph.
+    void (async () => {
+      try {
+        const { audit } = await import("./audit");
+        await audit({
+          category: "COMPLIANCE",
+          action: "email.provider_down",
+          actorId: null,
+          targetType: "System",
+          targetId: "email",
+          payload: {
+            consecutiveFailures: h.consecutiveFailures,
+            reason: h.lastFailureReason,
+            tag: tag ?? null,
+            note: `${EMAIL_DOWN_AFTER_FAILURES} consecutive transactional email failures — deposits, withdrawals, KYC decisions and verification links are not reaching players.`,
+          },
+        });
+      } catch { /* the alert must never break the send path */ }
+    })();
+    console.error(`[email] PROVIDER DOWN — ${h.consecutiveFailures} consecutive failures (last: ${h.lastFailureReason})`);
+  }
+}
+
 export async function sendEmail({ to, subject, html, tag, trackLinks = true }: SendInput): Promise<SendResult> {
   // Capture BEFORE the skip/suppression returns below, so a test can assert on
   // mail addressed to a stub/suppressed address too.
@@ -128,24 +255,59 @@ export async function sendEmail({ to, subject, html, tag, trackLinks = true }: S
   }
 
   try {
-    const res = await pm.sendEmail({
-      From: FROM,
-      To: to,
-      ReplyTo: REPLY_TO,
-      Subject: subject,
-      HtmlBody: html,
-      TextBody: stripHtml(html),
-      Tag: tag,
-      TrackOpens: true,
-      TrackLinks: trackLinks ? LinkTrackingOptions.HtmlOnly : LinkTrackingOptions.None,
-      MessageStream: "outbound",
-    });
+    // 🔴 BOUNDED. There was no timeout anywhere in this file, and
+    // `password-reset.ts` and `email-verification.ts` AWAIT this inside a
+    // request — so a Postmark socket that hangs hung a player's password reset
+    // for as long as the platform's own request timeout allowed. The send is a
+    // courtesy on every other path and a promise on those two; neither is worth
+    // a stalled request.
+    const res = await withTimeout(
+      pm.sendEmail({
+        From: FROM,
+        To: to,
+        ReplyTo: REPLY_TO,
+        Subject: subject,
+        HtmlBody: html,
+        TextBody: stripHtml(html),
+        Tag: tag,
+        TrackOpens: true,
+        TrackLinks: trackLinks ? LinkTrackingOptions.HtmlOnly : LinkTrackingOptions.None,
+        MessageStream: "outbound",
+      }),
+      EMAIL_SEND_TIMEOUT_MS,
+    );
+    // 🔴 A 2xx is not evidence of delivery. Found by `test:cert-c2`: a server
+    // answering `200 text/html` (a captive portal, a misconfigured proxy, an
+    // API gateway serving its own error page) sailed through as `sent` with an
+    // undefined message id. Postmark's own acceptance IS the MessageID, so a
+    // response without one is a non-delivery we cannot evidence — and an
+    // un-evidenced delivery recorded as a delivery is the exact defect class
+    // this whole pass exists to remove.
+    if (!res?.MessageID) throw new Error("provider returned 2xx with no MessageID");
+    recordSuccess();
     return { ok: true, messageId: res.MessageID, reason: "sent" };
   } catch (err) {
     const e = err as Error & { statusCode?: number; errorCode?: number };
-    console.error(`[email] Send failed: ${e.message} (to=${to}, statusCode=${e.statusCode ?? "?"}, errorCode=${e.errorCode ?? "?"})`);
+    const detail = `${e.message} (statusCode=${e.statusCode ?? "?"}, errorCode=${e.errorCode ?? "?"})`;
+    console.error(`[email] Send failed: ${detail} (to=${to})`);
+    // A non-2xx, a timeout and a dead key all arrive here. They are all
+    // "we did not deliver", and they all count toward the outage threshold.
+    recordFailure(detail, tag);
     return { ok: false, reason: "failed" };
   }
+}
+
+/** Reject after `ms`. The underlying request is left to settle on its own — the
+ *  Postmark client owns no abort signal, and we care about bounding OUR wait,
+ *  not about cancelling theirs. */
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  return Promise.race([
+    p.finally(() => clearTimeout(timer)),
+    new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`email send timed out after ${ms}ms`)), ms);
+    }),
+  ]);
 }
 
 // ─── Brand Kit v2 "Needle" — email design tokens ────────────────────────
