@@ -816,7 +816,47 @@ which it named by filename.
 | # | Sev | Area | Finding | Evidence |
 |---|---|---|---|---|
 | **E-16** | 🔴 **BLOCKER** | Up & Down · resolution | **Up & Down has NEVER settled a single round on production, and cannot.** The price oracle has produced **zero** confirmed readings in its entire history: `UpDownObservation` holds **1,397 `PENDING` + 3 `FAILED` = 0 `CONFIRMED`**, and every one of the **1,398** `UpDownRound` rows is **`VOID`** (1,395 `operator`, 3 `source-failed`). `PredictionMarket` agrees — **1,398 `UPDOWN` rows, every one `VOIDED`**, not one `RESOLVED`. The cause is in the stored `failReason`s and it is the same every time: **the two enabled assets' sources render their prices in JavaScript widgets that a web search cannot read.** Verbatim from live rows — *"the search engine returned only static/descriptive text from that page … no actual quoted numeric spot price and no timestamp"* (`goldprice.org`), and for `kitco.com` the crawl returns only *"Market Data and Widgets Technology provided by TradingView"* and *"Data Delayed by 10 minutes"*. So the design behaved **honestly** — it refused rather than guessing, and every stake was refunded, which is the correct and player-safe direction — but the game is **structurally unable to resolve**, and it burned **$59.37** of real tokens establishing that 656 times. ⚠️ Both chains are currently `PAUSED`/`STOPPED` and the newest boundary is 2026-07-30 09:40, so nothing is spending **right now**. | live: `UpDownObservation` state counts · `UpDownRound` outcome counts · the `failReason` text quoted above · `AiUsageEvent` feature=`updown` |
+
+**E-16 — WHICH GATE actually refuses, classified over all 1,400 live observations.** This is the part
+that decides the fix, and it is not what the first look suggested:
+
+| Refusals | Gate | Meaning |
+|---|---|---|
+| 519 | *(not a gate)* `Resolution AI is paused` | an operator had paused it |
+| **450** | **GATE 1 `unparseable-price`** | **the page could not be READ at all** |
+| **427** | **GATE 3/4 `stale`** | **a price WAS read — the SOURCE'S OWN TIMESTAMP was outside the 90s window** |
+| 3 | ladder exhausted (4 attempts) | → `FAILED` → round VOID |
+| 1 | provider `529 overload` | transient |
+
+`price` is non-null on **0** rows and `sourceQuotedAt` on **0** rows, because a refused reading persists
+only its `failReason` — so the classification above is the only record of what happened, and it says
+there are **two independent causes, not one**:
+
+1. **Readability** (450). The approved pages serve their price from a JS/TradingView widget.
+2. **The time contract** (427) — **and this one cannot be fixed by changing sources.** Live
+   `SystemConfig.updown.config` sets `maxStalenessSeconds: 90`, and a web search returns a *crawled*
+   page, not a live tick. 427 times the model read a real price and was refused because the page's own
+   published time was more than 90s from the boundary. Note also that the retry ladder
+   (`retryBackoffSeconds: [15, 45, 120]`, `maxObservationAttempts: 4`) puts attempt 4 at ~T+180s, so by
+   then a **fresh** quote is *necessarily* >90s from the boundary — later attempts can only succeed
+   with an older quote. The ladder partly works against the gate it is retrying for.
+
+**Tested, not assumed: the obvious fix does not work.** `coingecko.com` is the strongest candidate
+source on the platform — it is already an **enabled `TrustedSource`**, and the AI-poll pipeline
+resolves BTC/ETH markets against it successfully. Probed on real tokens through the **real
+`observePrice`** (`scripts/ops-updown-probe-source.mts`, ~$0.09–0.35/probe, no DB writes): **REFUSED,
+`unparseable-price`** — *"neither snippet contained the explicit, directly quoted BTC/USD spot…"*; the
+crawl returned the all-time high and a percentage, not the current price. So re-pointing assets is
+**not** a viable fix, which is exactly what the unmerged branch concluded when it titled its commit
+*"a real price feed — the only method that can meet the time contract"*.
+
+> 🔑 **The engine is not buggy — it is being asked to do something a web search cannot do.** Every
+> refusal was the *correct* call: it refunded every stake rather than settling real money on a guessed
+> or stale price. That is the design working. What is broken is the **premise** that an LLM web search
+> can source a price to a 90-second contract. `updown-oracle.ts`'s own header says so in its first
+> paragraph. Fixing E-16 means changing the price *source*, not the engine.
 | **E-17** | MEDIUM | Up & Down · AI generation | **The Up & Down AI-generation surface does not exist on production — and prod carries its orphaned table.** Ali's own observation (2026-08-01): *"in the nav bar the AI generation is not there, maybe we have to add it in admin for up down."* Confirmed live as the trading officer: the **Up & Down** nav group renders exactly two items, `Overview` and `Rounds`, while the **Markets** group has `AI poll generation` and `AI candidates`. There is no generation page, no route and no nav entry — `src/app/admin/updown/` holds only `page.tsx`, `rounds/`, `actions.ts` and `updown-controls.tsx`, and `actions.ts` exports asset/chain CRUD plus thresholds and **nothing that triggers a reading or a round**. Meanwhile **migration `20260730223000_updown_proposals` IS applied to the live DB** (2026-07-30 13:41Z) so the `UpDownProposal` table exists on production with **0 rows and no code referencing it** — `model UpDownProposal` is absent from `main`'s `prisma/schema.prisma` entirely. ⛔ Not a new discovery for the backup subsystem, which already documents it (`backup/core.ts:117`, `db-backup.mts:181`, `backup.test.mts:91` all name `UpDownProposal` as a table "applied ahead of its code") — but it *is* new as a **product** gap. Everything missing lives on the unmerged branch: `admin/updown/proposals/{page,actions,proposal-actions}.tsx`, `updown-proposal.ts` (849 lines), and the `AI proposals` nav entry. | live nav read from the DOM as `MODERATOR` (`live/t2-rbac-content.cjs`); live `_prisma_migrations`; `git diff main...origin/feat/updown-source-pinning-and-proposals` |
+| **E-18** | MEDIUM | RBAC · resolver queue · audit hygiene | **Every interactive control on `/admin/resolver-queue` is gated tighter than the page, so no granted role can use any of them — and an innocent click writes a SECURITY privilege-escalation row.** The route is the **`trading`** domain, so a `MODERATOR` sees the queue *and* its buttons; but `recheckMarketNowAction` and the two-officer toggle both require `ADMIN \|\| canAct(role,"compliance")` (`resolution-mode-action.ts:31`, `resolution-policy-action.ts:27`), and `ResolveControls` → `resolveMarketAction` requires `requireAdminOrThrow`. `DEFAULT_GRANTS` makes those sets **disjoint**: `MODERATOR` has `trading` but no `compliance` (sees, cannot act); `COMPLIANCE` has no `trading` at all (can act, cannot even reach the page). **So on production only the 9 `ADMIN` accounts can operate the resolver queue — no granted role can.** Worse for the audit trail: clicking a button the UI offered writes `privilege_escalation_blocked` at **`SECURITY`** severity, i.e. a legitimate operator's ordinary click is recorded as an attempted privilege escalation in the log a compliance officer reads. ⚠️ **This is a known-and-already-solved class that the resolver queue was missed on**: `admin/objections/page.tsx:36` computes `canDecide` and renders a "compliance-only" state precisely so *"a MODERATOR sees a clear compliance-only state instead of decision buttons that bounce them"* — its comment describes this bug. `admin-nav-groups.ts:134` also states the three-layer gate **"MUST agree with the route + action gates (same domains)"**; here it does not. Fails safe (nothing executed), hence MEDIUM not HIGH. **Suggested fix** (deliberately not applied this session — see §6b): mirror the objections precedent, computing the capability in `resolver-queue/page.tsx` and rendering an explanatory state instead of unusable controls. | **live `AuditLog`**: `2026-07-31 23:11:58Z · SECURITY · privilege_escalation_blocked · actor usr_429885ab43c0cb4ce134dd7e · target recheckMarketNow · {"role":"MODERATOR","domain":"compliance"}` — the only such row production has ever had, generated by clicking the real button as the QA trading officer |
 | **E-14** | LOW | AI spend config | **`limitUsd = 0` is documented as "no cap" and is unreachable dead code.** `assertAiBudget` opens with `if (cfg.limitUsd <= 0) return { ok: true }; // 0 = no cap configured`, but `getCreditConfig` (`ai-usage.ts:133`) rewrites a stored `0` back to `DEFAULT_LIMIT_USD` **before that branch ever sees it** — so 0 silently means **$20**, not "uncapped", and the branch can never execute. Two further `limitUsd > 0` guards on `/admin/ai-usage` can likewise never be false. **Left as-is deliberately**: the admin control is `min="0.01"` (`credit-controls.tsx:38`), so nothing on the platform can store 0, and changing the semantics of an unreachable value on a live money platform is an unforced risk. ⚠️ The reason it is recorded rather than ignored: **`events-calendar.test.mts:146` asserts *"limit 0 = uncapped (does not brick generation)"* and passes VACUOUSLY** — its 1M-token burn is ~$3, comfortably under the coerced $20, so that assertion has never once exercised the claim it makes. `test:ai-budget` now pins what actually happens instead. | `ai-usage.ts:133` vs `:168`; `test:ai-budget` §4b |
 | **E-8** | LOW | KYC reject copy | **The `DETAILS_MISMATCH` label describes a comparison the product never makes.** The officer's rail calls it *Details mismatch* — meaning the details typed do not match the **document the player submitted**. The player is told, in all three languages, *“NIDA details don't match **our records**”* / *“Taarifa za NIDA hazilingani na rekodi zetu”* / *“NIDA 信息与我们的记录不符”*. We hold no NIDA record to compare against — `docs/NIDA-POLICY.md` and the D-2 fix are explicit that no request has ever reached the authority. Milder than D-2 (it says *our* records, not the authority's) but it is the same class: describing evidence we do not have. Suggested: name the submitted ID document instead. All three locales + `test:kyc-reject-reason`'s key list would need updating together. | live `e6-player-{sw,zh,en}.png`; `i18n-dict.ts:960/2306/3650` |
 | **E-10** | **HIGH** | one-account-per-email · RG | **The one-account-per-email control does not survive Gmail plus-addressing, and its own comment says why that matters.** `setUserEmail` (and `registerWithPassword`) compare `email.trim().toLowerCase()` against `db.user.findByEmail` — an **exact string** match. Gmail delivers `user+anything@gmail.com` *and* `u.s.e.r@gmail.com` to the same inbox, so one inbox can hold unlimited accounts that the platform counts as different people. The code comment states the control's purpose in terms that this defeats: *“a verified email now UNLOCKS DEPOSITING, so a shared address would let one inbox open unlimited depositing accounts, and per-account controls (**deposit caps, self-exclusion**) are only as strong as the one-person-one-account assumption underneath them.”* For a licensed operator, self-exclusion that a `+1` re-registers around is the serious end of this. **Proven on production:** `qa.alpha.50pick+officer@gmail.com` was accepted as a wholly separate account while `qa.alpha.50pick@gmail.com` already existed — no duplicate block, no `user.email.duplicate_blocked` audit row. ⏳ **NOT yet proven:** that the second account can actually deposit, and that it survives a self-exclusion on the first — both need Phase 3/12, and the finding should not be written up as self-exclusion bypass until they are. Note the comment also records that the DB `@unique` was deliberately deferred; a unique index would not have caught this either, since the strings genuinely differ. | live: officer persona registered on `+officer` sub-address of an existing account, `email-verification.ts:121-138` |
@@ -1020,8 +1060,65 @@ are on production's `email.suppression`, i.e. hard-bounced — §6d). And a **re
 `vickyhabibalalji13@icloud.com`, is suppressed on prod and receives no platform mail: an ops item for
 Ali, not ours.
 
-**Still owed by Ali, unchanged:** the Phase-3 money decision (real deposit / MSISDN / card — §6d), the
-E-3 backfill call, and E-7 / E-8.
+**5 · E-15 live-verification status — honest, and partly BOOKED not claimed.**
+Deploy `82137e64` SUCCESS 2026-08-01 02:04 EAT.
+- ✅ **The refusal direction is proven** by `test:ai-budget` driving the real `observePrice` and
+  `deepCheckMarket` — including that a blocked call writes **no** `AiUsage` row, i.e. never reaches the
+  provider. Red-proven: pre-fix the count went `2 → 3` and the refusal came back `"error"` carrying a
+  provider **401**.
+- ⏳ **The refusal was NOT driven on production.** Doing so means lowering the live spend ceiling below
+  current spend (there is no other way to make a genuine over-budget call without burning $16.55 of
+  Ali's credit to get there), and the tooling **correctly refused to mutate live `SystemConfig`**. Not
+  worked around. `live/e15-prod.cjs` is written and ready if Ali wants it run with that permission.
+- ⏳ **The pass-through direction was also not provable on production**, for an unrelated reason that
+  turned out to be a finding: the only operator-triggerable sentinel call is *"Re-check this market
+  now"*, and **E-18** means no granted role can execute it — the attempt produced a
+  `privilege_escalation_blocked` row instead of an AI call. Proving it needs Ali's `ADMIN` login.
+  ⚠️ **Read that carefully: "no new AiUsage row" in that run was E-18, NOT evidence that E-15 froze the
+  AI.** The first reading of it looked exactly like a production regression. The pass-through direction
+  *is* covered by the unit drive (under budget, both functions proceed to a real provider call).
+
+### 📌 Ali's directive, 2026-08-01 — and what it actually requires
+
+> *"we have to add in the navigation bar admin menu the AI generation for up and down now. And
+> dedicate some AI tokens usage, it's ok to test really the whole flow of controlling AI polls and up
+> and downs and user experience and resolution logic and generation logic perfectly, literally players
+> will be a lot on them. Then how money resolves to user wallet."*
+
+⛔ **The nav item cannot simply be added — it would ship a 404.** There is no Up & Down AI-generation
+page on `main` (E-17). Everything needed lives on `origin/feat/updown-source-pinning-and-proposals`,
+and the dependency graph is **not** cherry-pickable: `updown-proposal.ts` imports `hostMatchesDomain`
+from that branch's `updown-feed.ts` (the TwelveData module), and the page needs branch-side additions
+to `updown-config.ts` and `ai-provider.ts`. Porting a slice means re-deriving another session's 7,437-line
+design under time pressure on a live money platform.
+
+✅ **But merging the branch properly is far more tractable than its size suggests — measured, not
+guessed:** 28 commits ahead / 60 behind, merge base 2026-07-30, and `git merge-tree` reports **exactly
+ONE conflict: `package.json`** (the `test:*` script list — trivial, and `test:ai-budget` sits in it).
+`prisma/schema.prisma`, `lifecycle.ts` and `market-service.ts` all **auto-merge**. The `UpDownProposal`
+table is **already on production**, so that migration carries no new risk.
+
+**That one merge delivers everything Ali asked for**, which is why it is the recommendation rather
+than a workaround: the *AI proposals* nav entry, the generation UI and engine, **and** the real price
+feed that is the only thing that can fix **E-16**. It also independently corroborates E-15 — that
+branch's `updown-proposal.ts` already calls `assertAiBudget` itself.
+
+🔑 **One thing is needed from Ali and cannot be worked around: a `TWELVEDATA_API_KEY`** on the Railway
+`50pick` service. Without it the merge still ships the nav entry and the generation UI, but
+**resolution stays broken** — the branch is explicitly built to refuse *by name* when the key is
+absent rather than invent a price, which is the right behaviour and also means the game still cannot
+settle. So: **key first, then merge, then the end-to-end flow Ali wants tested.**
+
+⚠️ **And a sequencing point worth stating plainly:** *"test resolution logic perfectly"* cannot be
+done on today's code. Up & Down resolution does not work and has never worked (E-16) — driving it now
+would only re-document that. **Poll** generation and resolution *are* testable today and are the right
+place to spend tokens meanwhile. *"How money resolves to the user wallet"* additionally needs a funded
+wallet, which is still the Phase-3 blocker below.
+
+**Still owed by Ali:** ① a **`TWELVEDATA_API_KEY`** + the go-ahead to merge that branch (the unblock
+for everything Up & Down); ② the Phase-3 money decision (real deposit / MSISDN / card — §6d); ③ the
+E-3 backfill call; ④ E-7 / E-8. **Not owed any more:** the QA-inbox question — production answered it
+(§6d).
 
 **Laptop B, session 2 (2026-07-31 21:39→22:1x EAT) closed E-4 on production.** No code changed —
 E-4/E-9 were already shipped; what was owed was the live proof, and it is now in §6 with the audit
