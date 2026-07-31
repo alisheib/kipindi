@@ -1,11 +1,22 @@
 /**
- * Player notifications — in-app inbox.
+ * Player notifications — the in-app inbox (the bell).
  *
- * In production this is paired with FCM (Android push) + APN (iOS push) + SMS
- * via the same aggregator that delivers OTPs. The in-app store is the canonical
- * record; channel delivery is best-effort.
+ * ⚠️ Corrected 2026-07-31 against the running platform. This header used to say
+ * the copy lives in `lib/notification-templates.ts` and is "bilingual EN + SW".
+ * **That file has never existed** — every message is built inline below — and
+ * "bilingual" is the wrong target on a trilingual product. It also claimed FCM /
+ * APN / SMS fan-out: there is no FCM, no APN and no SMS here (SMS is OTP-only,
+ * in `sms.ts`). Web push via `push-service` is the one real extra channel.
  *
- * Templates live in `lib/notification-templates.ts` and are bilingual EN + SW.
+ * What is actually true:
+ *  · Each row carries all three locales — `titleEn/Sw/Zh`, `bodyEn/Sw/Zh`. The
+ *    bell picks by locale and falls back to English, so a missing `*Zh` shows a
+ *    Chinese reader English WITHOUT saying so. Completeness is therefore a
+ *    correctness property, not a nicety — guarded by `npm run test:cert-c3`.
+ *  · The inventory of every emitter lives in `comms-registry.ts`; adding one
+ *    without registering it fails that gate.
+ *  · `db.notification.create` is the only writer and it writes `channel: IN_APP`.
+ *    This table is the inbox, not a unified delivery log — see the registry.
  */
 import { audit } from "./audit";
 import { db } from "./store";

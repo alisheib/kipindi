@@ -282,12 +282,57 @@ holds the role?
 
 ## C · Communications
 
-### C1 · Email delivery & templates — `cert:c1`
-**Owns** `email` (1,286 L) `email-map` `EMAIL-SIGNATURES` · **Existing** `test:auth-email` `test:email-stress`
-**Attack** **Render and read every template in all 3 locales** — subject, preheader, links, images
-(signature images are hosted on the domain; do they load from a mail client?) · a token in a URL that
-gets logged · HTML injection via a player-supplied name · what happens when Postmark is down mid-send?
-**Exit** Every template proven against a real delivery in 3 locales, no injection, send failure handled.
+### C1 · Email delivery & templates — `test:cert-c1` 🟨 **Wave 5 — template truth DONE**
+**Owns** `email` (1,371 L) `email-map` `comms-registry` · **Existing** `test:auth-email` `test:email-stress`
+
+### ✅ TEMPLATE TRUTH DONE 2026-07-31, `npm run test:cert-c1` (843 assertions)
+
+**The inventory is now code:
+[`src/lib/server/comms-registry.ts`](../src/lib/server/comms-registry.ts)** — all 47 templates with
+trigger module, audience, chrome and money-path flag. The gate renders **every one, twice** (benign
+and hostile input) and reads the bytes. Before it, **five** templates had ever been rendered by a
+test, and that test asserted only that they did not *throw*.
+
+🔴 **Two defects were living inside that green tick, and neither is findable by reading code:**
+
+1. **`heading()` did not escape**, and four templates interpolate a **player-controlled display
+   name** into it (`welcomeHtml`, `kycApprovedHtml`, `loginNotificationHtml`, `accountClosedHtml`).
+   `email-stress` fed `welcomeHtml({ name: "<script>alert(1)</script>" })` **and passed** — the
+   payload reached the recipient's inbox as live markup. `ctaButton` was the same, in **two**
+   positions (`href`, `label`); `selectionClosedHtml` and `proposalListedHtml` build the href from
+   an id, so a value carrying a quote closed the attribute.
+2. **Three templates wrote raw HTML into `subtitle()`, which escapes** — so the player *read the
+   markup*. On `selfExclusionHtml` and `coolOffHtml`, the two most compliance-sensitive mails the
+   platform sends, and on `amlRejectRefundHtml`, the mail every **failed payout** triggers:
+   `…contact &lt;a href=&quot;mailto:support@50pick.tz&quot;…&gt;`.
+
+**What the gate holds:** registry ↔ code (nothing unregistered, nothing phantom, all 47 rendered) ·
+every template inside a real send call, resolving one variable hop · no escaped-tag leakage · no
+injection through any string position · no `undefined`/`NaN`/`[object Object]`/`{placeholder}` ·
+complete HTML document with the 18+/GBT footer and helpline · every link absolute · readable
+plain-text degradation · no emoji · **gold discipline** (gold only on earned money/status; loss,
+failure, reversal and review may never be gold) · money copy (loss named outright with the amount
+and no euphemism; "no money was taken" on a failed deposit; no deposit CTA on a reversal; the
+returned-withdrawal mail carries our ref, the gateway ref and the rail).
+
+⛔ **No fixture is cast.** Every builder is invoked with literal arguments TypeScript checks against
+the real parameter type — an `as never` fixture compiles forever while the shape drifts.
+
+**16 broken-on-purpose cases, all observed red**, then restored. One of them earned its keep:
+un-escaping the CTA *label* stayed **green**, because no template passes caller data into a label
+today — an assertion that cannot fail is not a guard. The helper contract is now pinned directly.
+
+⚠️ **Anchor on position, never on `\n`** — this repo is CRLF, and two red-proof cases silently did
+not run until they were re-anchored.
+
+**Still open for full certification** · Postmark down mid-send (**no timeout anywhere in
+`email.ts`**, and `password-reset` / `email-verification` **await** the send inside a request) · a
+dead key must be **loud**: today a failure is one `console.error` that Railway's log buffer rolls
+past, exactly as a payout failure once did · `no-address` still returns `ok: true`, so a
+non-delivery reads as a delivery · signature images loading from a real mail client · a token in a
+URL that gets logged.
+**Exit** ~~Every template rendered and read, no injection~~ ✅ · send failure observable and
+survivable · proven against a real delivery.
 
 ### C2 · Email verification & suppression — `cert:c2`
 **Surfaces** `auth/verify-email` · **Owns** `email-verification` `email-suppression` + `webhooks/postmark`
@@ -916,7 +961,7 @@ Existing commands to use rather than reinvent: `npm run test:all` · `npm run qa
 | B1 Roles & domain grants | `cert:b1` | ⬜ |
 | B2 Staff management | `cert:b2` | ⬜ |
 | B3 Two-officer control | `cert:b3` | ⬜ |
-| C1 Email delivery | `cert:c1` | ⬜ |
+| C1 Email delivery | `test:cert-c1` | 🟨 **template truth DONE 2026-07-31** (843 assertions). All 47 rendered + read; an unescaped `heading()`/`ctaButton` took a player-controlled name into the inbox as live markup, and 3 mails — incl. self-exclusion and every failed payout — showed the player raw HTML. Remaining: send-failure resilience (no timeout; a dead key is silent) |
 | C2 Email verification & suppression | `cert:c2` | ⬜ |
 | C3 Notifications & push | `cert:c3` | ⬜ |
 | C4 Realtime SSE & ticker | `cert:c4` | ⬜ ceiling ~125 unmeasured |

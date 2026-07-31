@@ -14,6 +14,45 @@ looks like it contradicts another, prefer the one with the later date and check
 
 ---
 
+## ▶ Domain C — communications (in progress, 2026-07-31)
+
+A parallel lane is certifying **C · Communications** (email + notifications). It owns
+`email.ts`, `comms-registry.ts`, `notification-service.ts`, the bell and the channels; it does
+**not** touch `kyc-*`, `nida`, `storage.ts` or `prisma/schema.prisma`, which belong to the KYC lane
+running at the same time.
+
+**Measured on production 2026-07-31 — verify, don't trust:**
+
+| | |
+|---|---|
+| Notifications | **1,673 — every one `channel: IN_APP`.** `prisma-dal` writes that literal and nothing else writes the table, so PUSH/SMS/EMAIL are unreachable enum members |
+| `sentAt` / `failedAt` / `failureReason` | **0 of 1,673.** Written by no code path anywhere in the repo |
+| `priority` | `NORMAL` on all 1,673; the other three members unused |
+| `event` | a **duplicate of `kind`** — the DAL writes `event: n.kind`, not the `bet.won` the schema comment promises |
+| Chinese | **1,573 of 1,673 have none.** Root cause located: of **36** emitters, only **3** set `titleZh`/`bodyZh`. Swahili is complete |
+| Users | 42 · locales **40 SW, 2 EN, 0 ZH** · 28 have an email, 20 verified |
+| Duplicates | **28 byte-identical notifications (deep-link included) inside 60 s** — WIN ×3, BET_PLACED ×4, DEPOSIT ×20, WITHDRAW ×1. `notify()` has no idempotency key |
+| Ordering | **0 violations.** No LOSS ever preceded its market's close notice. But **15 of 47** losses went to players who never received a close notice for that market at all |
+
+🔴 **The one emitter with an idempotency guard has zero duplicates.**
+`notifySelectionClosedForMarket` stamps `selectionClosedNotifiedAt` inside `withLock` — and
+SELECTION_CLOSED does not appear once in the duplicate set. Every path without such a guard has
+produced duplicates, including *"You won TZS 23,349"* twice **84 ms apart** and a TZS 5,000 refund
+notice twice 1.25 s apart. That contrast is the argument for the fix.
+
+**Shipped so far:** `npm run test:cert-c1` (843 assertions) — see the C1 dossier in
+[`MODULE-CERTIFICATION-PROGRAM.md`](MODULE-CERTIFICATION-PROGRAM.md). The inventory is code now
+([`src/lib/server/comms-registry.ts`](../src/lib/server/comms-registry.ts)), and two defects that
+five green suites had been sitting on top of are fixed: an unescaped `heading()`/`ctaButton` that
+carried a **player-controlled display name into the inbox as live markup**, and three emails —
+including self-exclusion and the mail every **failed payout** sends — that showed the player raw
+HTML tags as text.
+
+⚠️ **`email.ts` has no timeout anywhere**, and `password-reset` / `email-verification` **await** the
+send inside a request. A hung Postmark hangs those requests. A dead key is one `console.error`.
+
+---
+
 ## ▶▶ PICK UP HERE — close of session 2026-07-31 (late)
 
 **The tree is clean and everything below is pushed. Nothing is half-finished.**

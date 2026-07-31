@@ -269,13 +269,26 @@ function wrap(body: string, opts: { accent?: "gold" | "royal" } = {}): string {
  *  emails (gold-discipline). Gold = GILT_DARK; neutral = TEXT_SUBTLE. */
 function eyebrow(en: string, sw?: string, gold = false): string {
   const color = gold ? GILT_DARK : TEXT_SUBTLE;
-  let html = `<p style="margin:0 0 6px;font-family:'JetBrains Mono','Courier New',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.16em;font-weight:700;color:${color}">${en}</p>`;
-  if (sw) html += `<p style="margin:0 0 2px;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;font-style:italic;color:${TEXT_FAINT}">${sw}</p>`;
+  let html = `<p style="margin:0 0 6px;font-family:'JetBrains Mono','Courier New',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.16em;font-weight:700;color:${color}">${esc(en)}</p>`;
+  if (sw) html += `<p style="margin:0 0 2px;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;font-style:italic;color:${TEXT_FAINT}">${esc(sw)}</p>`;
   return html;
 }
 
+/**
+ * Headline. **Escaped**, like every other text helper here.
+ *
+ * 🔴 It was not, and several templates interpolate a PLAYER-CONTROLLED
+ * `displayName` straight into it — `welcomeHtml`, `kycApprovedHtml`,
+ * `loginNotificationHtml`, `accountClosedHtml`. A display name of
+ * `<img src=x onerror=…>` reached the recipient's inbox as live markup.
+ * `email-stress` fed exactly that payload into `welcomeHtml` and asserted only
+ * that it did not THROW, so the gate was green over the hole.
+ *
+ * No template passes intentional markup here — verified across all 47 — so
+ * escaping is safe by construction. Structural emphasis belongs in `detailRows`.
+ */
 function heading(text: string, color?: string): string {
-  return `<h1 style="margin:0 0 12px;font-family:'Sora','Segoe UI',Helvetica,Arial,sans-serif;font-size:24px;font-weight:700;color:${color ?? TEXT};line-height:1.15;letter-spacing:-0.02em">${text}</h1>`;
+  return `<h1 style="margin:0 0 12px;font-family:'Sora','Segoe UI',Helvetica,Arial,sans-serif;font-size:24px;font-weight:700;color:${color ?? TEXT};line-height:1.15;letter-spacing:-0.02em">${esc(text)}</h1>`;
 }
 
 /** Escape HTML entities — prevents XSS when interpolating user-supplied text
@@ -290,6 +303,20 @@ function subtitle(text: string): string {
 
 function subtitleSw(text: string): string {
   return `<p style="margin:-10px 0 16px;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;font-style:italic;color:${TEXT_SUBTLE};line-height:1.5">${esc(text)}</p>`;
+}
+
+/**
+ * A sentence followed by the support mailto link.
+ *
+ * `subtitle()` escapes — correctly — so a template that wrote its own `<a>` into
+ * it shipped the raw markup to the player as visible text. `amlRejectRefundHtml`
+ * did exactly that, on the mail sent for EVERY failed payout: the player read
+ * `&lt;a href="mailto:…"&gt;`. The link is constant chrome, so it is built here
+ * where nothing caller-supplied is interpolated, and the caller's sentence is
+ * still escaped.
+ */
+function supportLine(text: string): string {
+  return `<p style="margin:0 0 16px;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:13px;color:${TEXT_MUTED};line-height:1.55">${esc(text)} <a href="mailto:${REPLY_TO}" style="color:${BRAND_LINK};text-decoration:none">${REPLY_TO}</a></p>`;
 }
 
 function detailRows(rows: { label: string; value: string; tone?: "good" | "bad" }[]): string {
@@ -313,7 +340,14 @@ function link(pathOrUrl: string): string {
 /** CTA pill. `primary` (royal) is the default — gold is reserved for direct
  *  money actions inside earned-money emails (claim bonus, view winnings). */
 function ctaButton(hrefOrPath: string, label: string, variant: "gold" | "primary" = "primary"): string {
-  const href = link(hrefOrPath);
+  // 🔴 `href` and `label` were interpolated RAW into an attribute and an element.
+  // Several callers build the path from an id — `ctaButton(`/markets/${marketId}`)`
+  // in `selectionClosedHtml` and `proposalListedHtml` — so a value carrying a
+  // double quote closed the attribute and everything after it became markup.
+  // Escaping is correct in both positions: `&amp;` in an href is decoded back to
+  // `&` by every client, so query strings still work.
+  const href = esc(link(hrefOrPath));
+  const safeLabel = esc(label);
   const gold = variant === "gold";
   const bg = gold ? GILT_MID : ROYAL;
   const txt = gold ? "#0c0e28" : "#ffffff";
@@ -322,9 +356,9 @@ function ctaButton(hrefOrPath: string, label: string, variant: "gold" | "primary
   // Desktop: centered inline pill. Mobile (.sp-cta): full-width block so a long
   // bilingual label can never overflow the card. mso block keeps Outlook happy.
   return `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-top:24px"><tr><td align="center">
-    <!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="${href}" style="height:48px;v-text-anchor:middle;width:300px" arcsize="50%" fillcolor="${bg}"><w:anchorlock/><center style="color:${txt};font-family:Segoe UI,sans-serif;font-size:14px;font-weight:700">${label}</center></v:roundrect><![endif]-->
+    <!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="${href}" style="height:48px;v-text-anchor:middle;width:300px" arcsize="50%" fillcolor="${bg}"><w:anchorlock/><center style="color:${txt};font-family:Segoe UI,sans-serif;font-size:14px;font-weight:700">${safeLabel}</center></v:roundrect><![endif]-->
     <!--[if !mso]><!-->
-    <a href="${href}" class="sp-cta" style="display:inline-block;padding:15px 36px;background:${bg};color:${txt};font-family:'Sora','Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;border-radius:999px;text-decoration:none;letter-spacing:-0.01em;border-top:1px solid ${bTop};border-bottom:2px solid ${bBot};text-align:center">${label}</a>
+    <a href="${href}" class="sp-cta" style="display:inline-block;padding:15px 36px;background:${bg};color:${txt};font-family:'Sora','Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;border-radius:999px;text-decoration:none;letter-spacing:-0.01em;border-top:1px solid ${bTop};border-bottom:2px solid ${bBot};text-align:center">${safeLabel}</a>
     <!--<![endif]-->
   </td></tr></table>`;
 }
@@ -987,7 +1021,7 @@ export function selfExclusionHtml({ period, endDate }: { period: string; endDate
   return wrap(`
     ${eyebrow("Self-exclusion active", "Jizuie")}
     ${heading("Self-exclusion confirmed")}
-    ${subtitle(`You've locked your account for <strong>${period}</strong>. Betting, deposits, and login are disabled until <strong>${endDate}</strong>. This cannot be reversed.`)}
+    ${subtitle(`You've locked your account for ${period}. Betting, deposits, and login are disabled until ${endDate}. This cannot be reversed.`)}
     ${subtitleSw(`Akaunti yako imefungwa hadi ${endDate}. Hii haiwezi kubatilishwa.`)}
     ${detailRows([
       { label: "Period", value: period },
@@ -1001,7 +1035,7 @@ export function coolOffHtml({ duration, endDate }: { duration: string; endDate: 
   return wrap(`
     ${eyebrow("Break active", "Pumzika")}
     ${heading("Break confirmed")}
-    ${subtitle(`Login and betting are paused for <strong>${duration}</strong>. You'll be able to sign in again after <strong>${endDate}</strong>.`)}
+    ${subtitle(`Login and betting are paused for ${duration}. You'll be able to sign in again after ${endDate}.`)}
     ${detailRows([
       { label: "Duration", value: duration },
       { label: "Resumes", value: endDate },
@@ -1029,7 +1063,7 @@ export function amlRejectRefundHtml({ amount, reason, reference, gatewayRef, rai
       // neither did support.
       ...(reference ? withdrawRefRows(reference, gatewayRef, railLabel) : []),
     ])}
-    ${subtitle(`If you have questions, contact <a href="mailto:${REPLY_TO}" style="color:${BRAND_LINK};text-decoration:none">${REPLY_TO}</a>`)}
+    ${supportLine("If you have questions, contact")}
   `);
 }
 
