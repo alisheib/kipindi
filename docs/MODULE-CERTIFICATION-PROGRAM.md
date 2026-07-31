@@ -325,14 +325,26 @@ today — an assertion that cannot fail is not a guard. The helper contract is n
 ⚠️ **Anchor on position, never on `\n`** — this repo is CRLF, and two red-proof cases silently did
 not run until they were re-anchored.
 
-**Still open for full certification** · Postmark down mid-send (**no timeout anywhere in
-`email.ts`**, and `password-reset` / `email-verification` **await** the send inside a request) · a
-dead key must be **loud**: today a failure is one `console.error` that Railway's log buffer rolls
-past, exactly as a payout failure once did · `no-address` still returns `ok: true`, so a
-non-delivery reads as a delivery · signature images loading from a real mail client · a token in a
-URL that gets logged.
-**Exit** ~~Every template rendered and read, no injection~~ ✅ · send failure observable and
-survivable · proven against a real delivery.
+### ✅ G2 VISUAL DONE 2026-07-31, `npm run qa:cert-c1` (1,519 assertions)
+
+Every template rendered in Chromium at **360 / 768 / 1280 / 1920** and asserted on the rendered
+page: zero horizontal overflow · the card paints and fits the viewport · the headline paints · the
+brand mark is present · no detail row overflows its cell · **the CTA is a real tap target (≥ 44 px)
+and inside the viewport**. Screenshots land in `.qa-shots/emails/` and were **looked at** — the
+self-exclusion and failed-payout mails were inspected specifically, because those are the two the
+escaped-tag defect disfigured, and both now read as clean prose with a real styled support link.
+
+⚠️ `page.evaluate` probes are passed as **strings**, not functions: `tsx`/esbuild compiles arrow
+functions with a `keepNames` helper referencing `__name`, which does not exist in the page — the
+first draft died on its first probe.
+
+**Still open for full certification** · signature images loading from a real mail CLIENT (they load
+over the network in Chromium, which is not the same test) · a token in a URL that gets logged ·
+⚠️ **`no-address` still returns `ok: true` while `suppressed` returns `ok: false`** — both are
+non-deliveries and should agree. Deliberately not changed: `test:email-stress` asserts the current
+shape and two callers branch on it, so it is a behaviour change that needs its own pass.
+**Exit** ~~Every template rendered and read, no injection~~ ✅ · ~~send failure observable and
+survivable~~ ✅ (see C2) · ~~visual at every breakpoint~~ ✅ · proven against a REAL delivery.
 
 ### C2 · Email verification, suppression & delivery resilience — `test:cert-c2` 🟨 **G7 DONE**
 **Surfaces** `auth/verify-email` · **Owns** `email-verification` `email-suppression` + `webhooks/postmark`
@@ -424,12 +436,32 @@ link reuse, expiry, cross-account · does suppression surface to the player or f
 **9 broken-on-purpose cases, all observed red.** ⚠️ One anchored on `\n` silently did not run:
 `notification-service.ts` is CRLF while `comms-registry.ts` (Write-tool authored) is LF.
 
+### 🔴 G2 VISUAL — WRITTEN BUT NOT RUN. `npm run qa:cert-c3` needs a server.
+
+The harness exists and is complete (empty / one item / many items / long body / unread badge, at
+360 / 768 / 1280 / 1920 × en/sw/zh, driven as a real player through `/auth/demo` and real bets).
+**It has never been executed, so nothing here claims the bell was looked at.** Two things block it,
+and both are worth knowing:
+
+1. **A production build refuses to boot without a database** — `store.ts` throws *"FATAL:
+   DATABASE_URL is required. The in-memory store is a test-only fallback and must never serve
+   production traffic"*. That is a **good** guard, and it means the standing "shoot against
+   `build && start`, never dev" rule needs `npm run db:scratch` (a 107 MB on-demand
+   `embedded-postgres`) before the bell can be driven that way.
+2. **`next dev` refuses a second server for the same directory**, and one has been running against
+   this checkout since **2026-07-29 15:40 (PID 22004)** while not answering on `:3000`. It is not
+   this session's, so it was left alone rather than killed.
+
+▶ **To finish it:** free `:3000` (or run `db:scratch` and start the built server against it), then
+`npm run qa:cert-c3`. ⚠️ Locale is the **`kp-locale` cookie**, not `?lang=` — the F1 pass rendered
+English three times while reporting success.
+
 **Attack (still open)** Receive another player's notification · subscribe to someone else's
 stream · a notification for a voided market · **PII in a push payload** (it leaves the box) · a
 stale `PushSubscription` after device loss · 🔴 **relative timestamps in the bell** — the unit
 strings are dictionary values now, but the *format* is still English word order.
 **Exit** ~~Trilingual and complete~~ ✅ · ~~no duplicate money notifications~~ ✅ ·
-no cross-player leak, no PII in push.
+**the bell looked at, at every breakpoint** · no cross-player leak, no PII in push.
 
 ### C4 · Realtime SSE & ticker — `cert:c4`
 **Owns** `event-bus` `ticker-feed` · **Existing** `test:events`

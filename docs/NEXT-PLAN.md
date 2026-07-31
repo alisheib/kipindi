@@ -47,6 +47,15 @@ notice twice 1.25 s apart. That contrast is the argument for the fix.
 | `test:cert-c1` email truth | 850 | 16 |
 | `test:cert-c2` delivery resilience | 41 | 8 |
 | `test:cert-c3` notification truth | 853 | 9 |
+| `qa:cert-c1` email visual (4 widths) | 1,519 | — browser gate, outside `test:all` |
+| `qa:cert-c3` bell visual | 🔴 **written, never run** — see below | |
+
+🔴 **The one thing this pass did NOT do: look at the bell.** `qa:cert-c3` is written and complete
+(empty / 1 item / many / long body / unread badge × 360·768·1280·1920 × en·sw·zh) but has **never
+been executed**, so no claim is made about it. A production build refuses to boot without a
+database (`store.ts` throws by design), and `next dev` refuses a second server for this directory
+while a **hung one from 2026-07-29 (PID 22004)** holds the lock without answering on `:3000` — not
+this session's process, so it was left alone. Free `:3000`, then `npm run qa:cert-c3`.
 
 **Fixed:** the ZH gap (all 36 emitters now trilingual) · duplicate money notifications (deduped on
 message + deep link, failing open, audited) · `sentAt` now written · `notifyCashout`'s hardcoded
