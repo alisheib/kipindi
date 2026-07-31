@@ -62,8 +62,6 @@
     "i18n-coverage-test.mjs",
     "i18n-toggle-e2e.mjs",
     "inspect-sources.mjs",
-    "kyc-admin-mobile-e2e.mjs",
-    "kyc-fullflow-e2e.mjs",
     "light-theme-audit.mjs",
     "live-e2e.mjs",
     "live-full-flow.mts",

@@ -32,6 +32,21 @@ import type { z } from "zod";
 import type { ServiceResult } from "./auth-service";
 import { formatTzs } from "@/lib/utils";
 
+/**
+ * Source-of-Funds thresholds (AML Act 2006 + LCCP SR 9.2). An accepted SoF
+ * declaration is required when a single deposit reaches SINGLE, or when the
+ * rolling 30-day cumulative (including the deposit being attempted) reaches
+ * ROLLING_30D.
+ *
+ * Module-scope and EXPORTED so the certification gate asserts the same constants
+ * the deposit path enforces, rather than re-typing the numbers — a second copy is
+ * a second thing to forget. Changing these still needs a deploy; they are not
+ * operator-tunable, which is a deliberate note in docs/NEXT-PLAN.md, not an
+ * oversight.
+ */
+export const SOF_SINGLE_TXN_TZS = 1_000_000;
+export const SOF_ROLLING_30D_TZS = 5_000_000;
+
 /** Deposit — debits external (mobile money), credits wallet on success. */
 export async function deposit(
   userId: string,
@@ -135,8 +150,6 @@ export async function deposit(
   // sumDepositsSince(..., includePending=true) counts the just-reserved PROCESSING
   // rows so the next deposit sees the earlier ones. The ~1.5s provider dispatch is
   // deliberately kept OUT of the lock (below) — a network call must never hold it.
-  const SOF_SINGLE_TXN_TZS = 1_000_000;
-  const SOF_ROLLING_30D_TZS = 5_000_000;
   const thirtyDaysAgo = Date.now() - 30 * 24 * 3600_000;
 
   type Reservation =

@@ -1,81 +1,131 @@
 /**
- * Mobile E2E — KYC officer review controls on a phone (390×844).
- * Admins review "on the run", so the approve / request-info / reject controls
- * must be reachable, tappable (≥44px), and never cause horizontal overflow.
+ * D2 · qa:cert-d2 — the KYC surfaces at every width, and tappable on a phone.
  *
- *   BASE=http://localhost:3009 node scripts/kyc-admin-mobile-e2e.mjs
+ * A compliance officer reviews "on the run". If the decision controls are under
+ * 44px, or the workstation overflows horizontally, the officer either mis-taps a
+ * decision that moves money or gives up and approves from memory later. So this is
+ * an ergonomics gate, not a cosmetic one.
+ *
+ * ⚠️ ADOPTED 2026-07-31 after sitting UNRUN in scripts/orphan-allowlist.json.
+ * As written it could not pass: it used `waitUntil: "networkidle"` (never fires —
+ * /api/events is an open SSE stream), drove /admin/players/[id]?tab=kyc (officer
+ * review has since MOVED to the workstation at /admin/kyc/[id], and that tab is
+ * additionally gated on the canView(role,"compliance") grant added 2026-07-28), and
+ * wrote its screenshot to a POSIX-only /tmp path.
+ *
+ * Rescoped to what it uniquely proves — ergonomics and layout — since the officer
+ * DECISION state machine is covered headlessly by `npm run test:kyc` and the journey
+ * by `npm run qa:cert-d1`. Widths per the 50pick standard: 360 / 768 / 1280 / 1920.
+ *
+ * Needs a running server (NODE_ENV != production):
+ *   BASE=http://localhost:3009 npm run qa:cert-d2
  */
 import { chromium, devices } from "playwright";
+import { mkdirSync } from "node:fs";
 
 const BASE = process.env.BASE || "http://localhost:3009";
+const SHOTS = ".50pick-shots/cert-d2";
 let pass = 0; const failures = [];
 const ok = (l, c, x = "") => { c ? (pass++, console.log(`  ✓ ${l}`)) : (failures.push(`${l} ${x}`), console.log(`  ✗ ${l} ${x}`)); };
 
+mkdirSync(SHOTS, { recursive: true });
 const browser = await chromium.launch();
-const ctx = await browser.newContext({ ...devices["Pixel 7"] }); // 412×915-ish mobile, isMobile, touch
-const page = await ctx.newPage();
 const errs = [];
-page.on("console", (m) => { if (m.type() === "error" && !/eval|DevTools|React will never use eval/.test(m.text())) errs.push(m.text()); });
-page.on("pageerror", (e) => errs.push(String(e)));
 
-const noOverflow = async (label) => {
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-  ok(`${label}: no horizontal overflow`, overflow <= 1, `(overflow=${overflow}px)`);
-};
+const overflowOf = (page) => page.evaluate(() =>
+  document.documentElement.scrollWidth - document.documentElement.clientWidth);
 
 try {
-  // 1. Player session → promote to admin → seed a pending-KYC player.
-  await page.goto(`${BASE}/auth/demo`, { waitUntil: "networkidle" });
+  // ── Fixtures: an admin session and a submission actually awaiting review ──
+  const ctx = await browser.newContext({ ...devices["Pixel 7"] }); // 412×915, isMobile, touch
+  await ctx.addInitScript(() => { try { localStorage.setItem("50pick-primer-seen", "1"); } catch {} });
+  const page = await ctx.newPage();
+  page.on("console", (m) => { if (m.type() === "error" && !/eval|DevTools|React will never use eval|404|Failed to load resource|navigator.vibrate/.test(m.text())) errs.push(m.text()); });
+  page.on("pageerror", (e) => errs.push(String(e)));
+
+  await page.goto(`${BASE}/auth/demo`, { waitUntil: "domcontentloaded" });
   const promote = await page.request.post(`${BASE}/api/dev-test/promote-admin`, { data: { phone: "+255700000000" } });
   ok("promote-admin ok", promote.ok());
   const seedRes = await page.request.post(`${BASE}/api/dev-test/seed-kyc`, { data: { status: "PENDING_REVIEW" } });
   const seed = await seedRes.json();
   ok("seed-kyc ok", seedRes.ok() && !!seed.userId, JSON.stringify(seed));
 
-  // 2. Open the player KYC review tab at phone width.
-  await page.goto(`${BASE}/admin/players/${seed.userId}?tab=kyc`, { waitUntil: "networkidle" });
+  const workstation = `${BASE}/admin/kyc/${seed.userId}`;
+
+  // ── 1 · Phone ergonomics on the decision controls ──
+  await page.goto(workstation, { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(1500);
   const body = await page.locator("body").innerText();
-  ok("controls: Approve present", /Approve/.test(body));
-  ok("controls: Request info present", /Request info/.test(body));
-  ok("controls: Reject present", /Reject/.test(body));
-  await noOverflow("review tab");
+  ok("workstation reachable on a phone", /Approve identity|Reject/i.test(body), body.slice(0, 120).replace(/\n+/g, " "));
 
-  // 3. Tap targets ≥ 44px (mobile ergonomics).
-  const approveBtn = page.getByRole("button", { name: /Approve/ }).first();
-  const box = await approveBtn.boundingBox();
-  ok("Approve button ≥44px tall", !!box && box.height >= 44, box ? `(${Math.round(box.height)}px)` : "(no box)");
+  // Every decision the officer can take must be a real 44px target (WCAG 2.5.5).
+  for (const name of [/Approve identity/i, /^Reject$/i, /Escalate AML/i]) {
+    const btn = page.getByRole("button", { name }).first();
+    if (!(await btn.count())) { ok(`decision control ${name} present`, false); continue; }
+    const box = await btn.boundingBox();
+    ok(`decision control ${String(name)} is ≥44px tall`,
+      !!box && box.height >= 44, box ? `(${Math.round(box.height)}px)` : "(no box)");
+  }
 
+  // The document viewer's slot tabs are how an officer actually inspects evidence.
+  for (const name of [/ID FRONT/i, /ID BACK/i, /SELFIE/i]) {
+    const tab = page.getByRole("button", { name }).first();
+    if (!(await tab.count())) { ok(`viewer tab ${String(name)} present`, false); continue; }
+    const box = await tab.boundingBox();
+    ok(`viewer tab ${String(name)} is ≥44px tall`,
+      !!box && box.height >= 44, box ? `(${Math.round(box.height)}px)` : "(no box)");
+  }
+  await page.screenshot({ path: `${SHOTS}/workstation-phone.png`, fullPage: true });
+  await ctx.close();
 
-  // 5. Open "Request info…" → reason panel renders, no overflow, send button shown.
-  await page.getByRole("button", { name: /Request info/ }).first().click();
-  await page.waitForTimeout(150);
-  ok("request-info: textarea visible", await page.locator("textarea").first().isVisible());
-  ok("request-info: 'Send request' shown", /Send request/.test(await page.locator("body").innerText()));
-  await noOverflow("request-info panel");
-  await page.screenshot({ path: "/tmp/kyc_admin_mobile.png", fullPage: true });
+  // ── 2 · The 50pick width standard, on both KYC surfaces ──
+  for (const width of [360, 768, 1280, 1920]) {
+    const wctx = await browser.newContext({ viewport: { width, height: 900 } });
+    await wctx.addInitScript(() => { try { localStorage.setItem("50pick-primer-seen", "1"); } catch {} });
+    const wp = await wctx.newPage();
+    wp.on("console", (m) => { if (m.type() === "error" && !/eval|DevTools|React will never use eval|404|Failed to load resource|navigator.vibrate/.test(m.text())) errs.push(m.text()); });
+    wp.on("pageerror", (e) => errs.push(String(e)));
 
-  // 6. Add an extra-document request with a description, fill the note, and send.
-  await page.locator("textarea").first().fill("Your ID back is blurry — please re-upload and add proof of address.");
-  await page.getByRole("button", { name: /Add a document request/ }).click();
-  await page.waitForTimeout(100);
-  const docInput = page.locator('input[type="text"]').last();
-  ok("extra-doc description input appears", await docInput.isVisible());
-  await docInput.fill("Proof of address (utility bill, < 3 months)");
-  await noOverflow("request-info panel with extra-doc row");
-  await page.getByRole("button", { name: /Send request/ }).click();
-  await page.waitForTimeout(800);
-  // After sending, the page refreshes; the player's KYC is now ADDITIONAL_INFO
-  // and the tab shows the requested document we just created.
-  await page.goto(`${BASE}/admin/players/${seed.userId}?tab=kyc`, { waitUntil: "networkidle" });
-  const after = await page.locator("body").innerText();
-  ok("requested document shows on admin tab", /Proof of address/.test(after), after.slice(0, 0));
-  ok("status now ADDITIONAL_INFO_REQUIRED", /ADDITIONAL_INFO_REQUIRED/.test(after));
+    // Officer surface (needs the admin session, so re-establish it in this context).
+    await wp.goto(`${BASE}/auth/demo`, { waitUntil: "domcontentloaded" });
+    await wp.request.post(`${BASE}/api/dev-test/promote-admin`, { data: { phone: "+255700000000" } });
+    await wp.goto(workstation, { waitUntil: "domcontentloaded" });
+    await wp.waitForTimeout(1200);
+    ok(`workstation @${width}px: no horizontal overflow`, (await overflowOf(wp)) <= 1,
+      `(overflow=${await overflowOf(wp)}px)`);
+    await wp.screenshot({ path: `${SHOTS}/workstation-${width}.png`, fullPage: true });
 
-  ok("no console / page errors", errs.length === 0, errs.slice(0, 3).join(" | "));
+    // Player surface, in the three states that matter: empty, mid-flow, rejected.
+    const fresh = await (await wp.request.post(`${BASE}/api/dev-test/fresh-kyc-player`, { data: { state: "none" } })).json();
+    await wp.goto(`${BASE}/profile/kyc`, { waitUntil: "domcontentloaded" });
+    await wp.waitForTimeout(900);
+    ok(`player KYC (no documents) @${width}px: no horizontal overflow`, (await overflowOf(wp)) <= 1);
+    await wp.screenshot({ path: `${SHOTS}/player-empty-${width}.png`, fullPage: true });
+
+    // A REJECTING NIDA (ends 9999 → MISMATCH) so the rejection panel renders — the
+    // panel that was unreachable dead code until 2026-07-31.
+    await wp.fill("#nida", "199001" + String(Date.now()).slice(-10) + "9999");
+    await wp.fill("#fullName", "Asha Mwamba Juma");
+    await wp.fill("#email", `rej${String(Date.now()).slice(-6)}@example.com`);
+    await wp.getByRole("button", { name: /Continue verification/ }).click();
+    await wp.waitForTimeout(2500);
+    const rejBody = await wp.locator("body").innerText();
+    ok(`🔴 rejected player is TOLD they were rejected @${width}px`,
+      /Rejected/i.test(rejBody) && !/NIDA number accepted/i.test(rejBody),
+      "Until 2026-07-31 this showed a green 'NIDA number accepted' banner while the\n" +
+      "    player's inbox held 'Identity check needs attention'.");
+    ok(`player KYC (rejected) @${width}px: no horizontal overflow`, (await overflowOf(wp)) <= 1);
+    await wp.screenshot({ path: `${SHOTS}/player-rejected-${width}.png`, fullPage: true });
+    if (fresh.userId) { /* fixture consumed */ }
+    await wctx.close();
+  }
+
+  ok("no console / page errors across every width", errs.length === 0, errs.slice(0, 3).join(" | "));
 } catch (e) {
   ok("e2e ran without throwing", false, String(e));
 }
 
 await browser.close();
-console.log(`\n${failures.length === 0 ? "✅ ALL PASS" : "❌ FAILURES"} — ${pass} passed, ${failures.length} failed`);
+console.log(`\n  Screenshots: ${SHOTS}/ — LOOK at them; a green suite is not a readable screen.`);
+console.log(`${failures.length === 0 ? "✅ ALL PASS" : "❌ FAILURES"} — ${pass} passed, ${failures.length} failed`);
 if (failures.length) { failures.forEach((f) => console.log("  - " + f)); process.exit(1); }

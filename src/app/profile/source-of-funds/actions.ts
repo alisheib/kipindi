@@ -32,6 +32,26 @@ export async function submitSourceOfFundsAction(formData: FormData) {
     fail("When source is 'other', describe it (at least 10 characters).");
   }
 
+  // 🔴 An ACCEPTED declaration is EVIDENCE an officer acted on, and it gates
+  // deposits at TZS 1M / 5M-per-30-days. There is no history table, so an
+  // unconditional upsert let a player silently replace the accepted declaration
+  // with a different story — destroying what was accepted, nulling reviewerId and
+  // reviewedAt, and leaving the audit row referring to a record that no longer
+  // exists. PENDING (including after an officer asks for more info) and REJECTED
+  // stay freely editable, because the player must be able to correct and resubmit.
+  const existing = await db.sourceOfFunds.get(session.userId);
+  if (existing?.reviewStatus === "ACCEPTED") {
+    audit({
+      category: "COMPLIANCE",
+      action: "sof.overwrite_blocked",
+      actorId: session.userId,
+      targetType: "User",
+      targetId: session.userId,
+      payload: { attemptedSource: declaredSource, attemptedBand: declaredAnnualIncomeBand },
+    });
+    fail("Your source-of-funds declaration has already been accepted and cannot be changed here. Contact support if your circumstances have changed.");
+  }
+
   const record: StoredSourceOfFunds = {
     userId: session.userId,
     declaredSource,

@@ -361,7 +361,7 @@ disconnect? · reconnect storm after a deploy.
 
 ## D · Verification & Media
 
-### D1 · KYC submissions — `cert:d1`
+### D1 · KYC submissions — `test:cert-d1` + `qa:cert-d1` 🟩 **CERTIFIED 2026-07-31**
 **Surfaces** `profile/kyc` `admin/kyc/[id]` · **Owns** `kyc-service` `kyc-risk` `nida`
 **Existing** `test:kyc` · **Orphans to adopt** `kyc-fullflow-e2e.mjs` `kyc-admin-mobile-e2e.mjs`
 **Attack** 🔴 **NIDA is a MOCK.** A licensed operator must not imply verification it does not
@@ -370,7 +370,7 @@ resubmit unchanged after rejection and get auto-approved · read another player'
 approve without the required documents · PII in logs, Sentry, audit rows and exports.
 **Exit** Product text truthful about NIDA, no cross-player read, zero PII in any sink.
 
-### D2 · KYC documents — `cert:d2`
+### D2 · KYC documents — `test:cert-d2` + `qa:cert-d2` 🟩 **CERTIFIED 2026-07-31**
 **Owns** `KycDocument`, `DocType` · **Attack** 🔴 **Documents are base64-in-DB** per the known
 architecture gaps — bloats every row and every backup · magic-byte validation: upload a `.exe`
 renamed `.jpg`, a 100 MB file, a zip bomb, an SVG carrying script · fetch a document
@@ -388,11 +388,33 @@ seam (inline `data:image/…;base64` **or** `r2:<key>`), and `KYC_STORAGE=r2` **
 | Submissions | 28 `IN_PROGRESS` · 5 `APPROVED` · 3 `REJECTED` · 2 `PENDING_REVIEW` |
 | `ocrText` populated | 0 |
 
-So the first question is **why 24 rows are inline when the R2 seam is switched on** — do not
-assume new uploads are correct; prove it.
+✅ **ANSWERED 2026-07-31 — "why are 24 inline when the seam is on?" They are LEGACY, and the
+seam never regressed.** Ordering every document by `uploadedAt` shows two clean, non-overlapping
+eras with no interleaving whatsoever:
+
+| Era | Documents | Kind |
+|---|---|---|
+| 2026-06-13 → 06-15 | 24 | all INLINE |
+| 2026-07-27 → 07-28 | 7 | all R2 |
+
+R2 was switched on between those dates and **every upload since has gone to R2**. So there is no
+live regression to chase — but the seam *could* have degraded without anyone noticing, which is
+the real finding: `kycStorageMode()` answers `"inline"` whenever `KYC_STORAGE=r2` is set but
+`R2_BUCKET` is missing — no throw, no log, no alert. That shape has already occurred once
+(rolling the R2 token broke KYC storage until Railway was updated, and nothing reported it).
+`assertStorageModeIntended()` now makes an unconfigured intent an **error before any inline
+write**, guarded by `test:cert-d2`.
+
+Two further facts measured the same day, both now fixed:
+- 🔴 **Every R2 row recorded `mimeType: "application/octet-stream"` and `sizeBytes: 0`** while
+  holding a real 150–240 KB JPEG — the DAL derived both by regexing `storageKey` as a data URL,
+  which an `r2:<key>` never matches. A false statement about identity evidence in a compliance
+  table. The verified mime and size are now captured at upload.
+- ✅ **All 7 R2 objects were fetched and are readable today** (real JPEG `ffd8ffe0` headers,
+  correct `image/jpeg` content-type). Officers can see the evidence.
 
 🔴 **The inline rows are not evenly spread, and that is the compliance problem:**
-**APPROVED 12** · REJECTED 9 · PENDING_REVIEW 3.
+**APPROVED 12** · REJECTED 9 · PENDING_REVIEW 3 (document counts, confirmed).
 
 ⚖️ **Owner decision (Ali, 2026-07-31): these are TEST data — delete, do not migrate.** Accepted,
 but deletion is **not uniform**, and the platform has 42 real wallets, so classify every
@@ -408,14 +430,51 @@ submission as test or real *with evidence* first:
 
 **The durable deliverable is not the deletion — it is a gate that FAILS if a new document is
 ever written inline while `KYC_STORAGE=r2`.** "Make sure new ones are correct" has to be code.
+✅ **That gate exists: `npm run test:cert-d2`**, and the runtime guard behind it refuses the
+write rather than degrading. **Done 2026-07-31.**
 
-### D3 · Source of Funds — `cert:d3`
+### ⏳ The purge itself — CLASSIFIED, NOT YET EXECUTED (needs Ali)
+
+Every one of the 24 inline documents belongs to **8 submissions**, and all 8 carry the same
+evidence of being test accounts, measured on production:
+
+| Status | Submissions | Inline docs | Wallet balance | Transactions | Positions |
+|---|---|---|---|---|---|
+| APPROVED | 4 | 12 | **0** | **0** | **0** |
+| REJECTED | 3 | 9 | **0** | **0** | **0** |
+| PENDING_REVIEW | 1 | 3 | **0** | **0** | **0** |
+
+**Not one of the 8 has ever held money, placed a bet, or transacted** — against a platform with
+42 real wallets where the genuinely-active accounts (including two ADMINs) all show 14–34
+transactions. That is the evidence the owner decision asked for, and it is consistent across
+every one of them.
+
+🔴 **It is still not sufficient on its own, and I have deliberately NOT deleted anything.**
+Zero activity proves the account never *used* the platform; it does not prove the person in the
+photograph consented to have their ID destroyed, nor that the 4 APPROVED submissions are not a
+real person who simply never deposited. Deleting a document on a licensed platform is a
+compliance action, so it needs Ali's explicit go-ahead per account, and it must:
+
+1. **dry-run first**, printing every submission it would touch and what it would leave behind;
+2. **name the actor** — a real staff id, never `system`;
+3. **write a COMPLIANCE audit row per deletion**, recording what was destroyed and why;
+4. for the **4 APPROVED** submissions, delete the **whole submission** and reset the user to
+   `NOT_STARTED` — never leave an approval whose evidence is gone;
+5. for the **1 PENDING_REVIEW**, resolve or void the review *first* — deleting evidence out from
+   under an officer destroys a review in flight;
+6. for the **3 REJECTED**, purge directly; the decision is already made.
+
+⚠️ Note that the purge reclaims **11.00 MB of an ~13.2 MB nightly backup**, but the compliance
+argument, not the disk, is the reason to do it — and the storage guard above already stops the
+problem recurring, so there is no time pressure to get this wrong.
+
+### D3 · Source of Funds — `test:cert-d3` 🟩 **CERTIFIED 2026-07-31**
 **Surfaces** `profile/source-of-funds` · **Owns** `SourceOfFunds`, `SourceOfFundsReviewStatus`
 **Attack** Deposit above the threshold without a SoF review · alter a submitted declaration ·
 approve one's own · is the threshold configurable and audited?
 **Exit** Threshold enforced server-side, review immutable once submitted, every decision audited.
 
-### D4 · Upload & R2 storage — `cert:d4` 🔴 **no gate exists today**
+### D4 · Upload & R2 storage — `test:cert-d4` 🟩 **CERTIFIED 2026-07-31** (first gate built this pass)
 ⚠️ **Updated 2026-07-31: the credential is now WIDER, not narrower.** The R2 token was rolled to
 reach **all buckets** (owner decision, for speed), so one leaked key now reaches the KYC
 documents **and** `50pick-backups`, which contains copies of those same documents. The exit
@@ -948,7 +1007,7 @@ Existing commands to use rather than reinvent: `npm run test:all` · `npm run qa
 
 ## 9 · Status board
 
-**0 of 52 certified.** This is the honest baseline.
+**4 of 52 certified** (D1 · D2 · D3 · D4, all 2026-07-31). Everything else is the honest baseline.
 
 | Module | Gate | Status |
 |---|---|---|
@@ -965,10 +1024,10 @@ Existing commands to use rather than reinvent: `npm run test:all` · `npm run qa
 | C2 Email verification & suppression | `cert:c2` | ⬜ |
 | C3 Notifications & push | `cert:c3` | ⬜ |
 | C4 Realtime SSE & ticker | `cert:c4` | ⬜ ceiling ~125 unmeasured |
-| D1 KYC submissions | `cert:d1` | ⬜ NIDA is a mock |
-| D2 KYC documents | `cert:d2` | ⬜ **24 of 31 inline = 11 MB of ID photos in the DB, ~83% of every backup** (measured 2026-07-31) |
-| D3 Source of Funds | `cert:d3` | ⬜ |
-| D4 Upload & R2 storage | `cert:d4` | ⬜ **no gate exists** |
+| D1 KYC submissions | `test:cert-d1` `qa:cert-d1` | 🟩 **CERTIFIED 2026-07-31** — 28 + 19 assertions, 8/8 mutations red. Rejection was invisible (green "NIDA accepted" banner on a REJECTED submission); one NIDA could hold two accounts (proven with 2 OS processes, closed with a partial unique index, live on production); 3 legal docs × 3 locales claimed a NIDA authority check that has never existed |
+| D2 KYC documents | `test:cert-d2` `qa:cert-d2` | 🟩 **CERTIFIED 2026-07-31** — 33 + 26 assertions, 8/8 mutations red. A renamed .exe, a zip, an SVG carrying `<script>` and raw HTML were all accepted as ID documents (no magic-byte check anywhere); storage could silently degrade to inline; every R2 row recorded 0 bytes / octet-stream about a real JPEG. ⏳ the 24 legacy inline documents still await Ali's purge (see the dossier) |
+| D3 Source of Funds | `test:cert-d3` | 🟩 **CERTIFIED 2026-07-31** — 25 assertions, 6/6 mutations red. Had ZERO automated coverage anywhere in the repo. A player could silently overwrite a declaration an officer had ACCEPTED, destroying the evidence and nulling the decision |
+| D4 Upload & R2 storage | `test:cert-d4` | 🟩 **CERTIFIED 2026-07-31** — 24 assertions, 3/3 mutations red. First gate this module has ever had. ⚠️ the live R2 token still reaches ALL buckets (owner decision) — reported, not guardable from code |
 | E1 Wallet & balances | `cert:e1` | ⬜ orphan TZS 100,000 |
 | E2 Deposits | `cert:e2` | ⬜ |
 | E3 Payment webhooks | `cert:e3` | ⬜ |

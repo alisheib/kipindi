@@ -148,7 +148,14 @@ export function KycDecisionRail({
               <button
                 type="button"
                 disabled={!(canApproveDirect || canApproveAsChecker)}
-                className="btn btn-primary btn-md w-full disabled:opacity-40"
+                /* btn-lg (46px), not btn-md (38px): these three controls decide a
+                   person's identity and open the withdrawal gate, and officers review
+                   on a phone. 38px is under the 44px WCAG 2.5.5 floor that the
+                   certification programme's G6 requires — measured at 38px on a
+                   Pixel 7 by qa:cert-d2. The global --h-control-md is itself below
+                   the floor ("Phase 3 → 44", globals.css), but raising the token
+                   changes every button on the platform; that belongs to L6. */
+                className="btn btn-primary btn-lg w-full disabled:opacity-40"
               >
                 <I.shieldcheck s={14} /> {makerCheckerRequired ? "Approve (second officer)" : "Approve identity"}
               </button>
@@ -163,10 +170,10 @@ export function KycDecisionRail({
 
         {!rejectOpen ? (
           <div className="grid grid-cols-2 gap-2">
-            <button type="button" onClick={() => setRejectOpen(true)} className="btn btn-md w-full" style={{ background: "var(--claret-soft)", color: "var(--claret-200)", border: "1px solid var(--claret-edge)" }}>
+            <button type="button" onClick={() => setRejectOpen(true)} className="btn btn-lg w-full" style={{ background: "var(--claret-soft)", color: "var(--claret-200)", border: "1px solid var(--claret-edge)" }}>
               <I.x s={13} /> Reject
             </button>
-            <button type="button" onClick={() => run(escalateKycToAmlAction, "Escalated to AML", { note }, "warning")} className="btn btn-ghost btn-md w-full">
+            <button type="button" onClick={() => run(escalateKycToAmlAction, "Escalated to AML", { note }, "warning")} className="btn btn-ghost btn-lg w-full">
               <I.alertCircle s={13} /> Escalate AML
             </button>
           </div>
