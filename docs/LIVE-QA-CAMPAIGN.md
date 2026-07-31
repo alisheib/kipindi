@@ -120,8 +120,10 @@ strings**, plus the exact commands that mint them in under a minute. Nothing bel
 
 | What | Identity (public) | Where the secret is |
 |---|---|---|
-| **Operator console** | `https://50pick.tz/auth/admin`, phone **`777777777`** (E.164 `+255777777777`, `usr_1b3e6fd5048b1d873e931715`, `alisheib07@gmail.com`) | `.env.qa.local` → `QA_ADMIN_PASSWORD`; also Ali |
+| ⭐ **QA compliance officer** | `https://50pick.tz/auth/admin`, phone **`712000106`** (`usr_2ff22430c89e4c560fac5334`) — **use this for all operator work**, see §4 | `.env.qa.local` → `QA_OFFICER_PASSWORD` |
+| Ali's own operator console | `https://50pick.tz/auth/admin`, phone **`777777777`** (E.164 `+255777777777`, `usr_1b3e6fd5048b1d873e931715`, `alisheib07@gmail.com`) | `QA_ADMIN_PASSWORD` — **not held on laptop B, and no longer needed** (§4) |
 | **QA player `alpha`** | phone **`712000101`**, `qa.alpha.50pick@gmail.com` | `.env.qa.local` → `QA_ALPHA_PASSWORD` |
+| **QA player `echo`** | phone **`712000105`**, `qa.echo.50pick@gmail.com` | `.env.qa.local` → `QA_ECHO_PASSWORD` |
 | **Live DB** | Railway project `50pick` → service `Postgres`; public proxy **`turntable.proxy.rlwy.net:40357`**, user `postgres`, db `railway` | minted by `mkenv.cjs`, below |
 | Selcom · Postmark · R2 · backup seal key | — | Railway → `50pick` service only |
 
@@ -182,8 +184,20 @@ which is the one thing blocking officer-side live verification (E-4).
   fill the three `aria-label` segments `Day` / `Month` / `Year` instead.
 - ⚠️ **Kit `Checkbox` inputs are visually hidden** — Playwright `check()` fails actionability;
   use `check({ force: true })` and assert `isChecked()` afterwards.
+- 🔴 **`select seq::text as seq … order by seq desc` sorts by the TEXT alias, not the bigint.**
+  Postgres resolves a bare `ORDER BY` name to an **output column** first, so aliasing a cast back onto
+  the original name silently makes the sort lexicographic: `9999 > 9990 > 999 > 9899`. Reading the
+  audit tail that way returned 12 **non-consecutive** rows, and the `prevHash → entryHash` check then
+  reported **two broken links on a perfectly intact chain** — i.e. a false "the compliance audit chain
+  is broken" blocker on a licensed money platform. Alias to a *different* name (`seq_text`) and order
+  by the real column. Same family as the `pg` −3h trap: the harness lying, not the product.
 - ⚠️ Three worktrees share one `.git`, one `node_modules` and one database. `F:\kipindi-main`
   holds the Railway link. Ports 3000/3009/3010/3011/3200 belong to other sessions — stay off them.
+- ⚠️ **A KYC `Confirm` click can land before the button finishes arming.** The uploader refreshes the
+  route to recount documents, and the submit control swaps from a disabled stub to the live
+  `SubmitButton`. Clicking the instant `3/3` appears hits the old node and does nothing — `echo` sat
+  in `IN_PROGRESS` with three documents and no error anywhere. Re-read the button after the count
+  settles, and **confirm `submittedAt` in the DB** rather than trusting the click.
 
 ## 4. Test personas (created on LIVE)
 
@@ -197,6 +211,40 @@ All created through the real UI on production. Phone is the **9-digit local part
 | `bravo` | `+255712000102` | `usr_26313f74d8428e4e169603ca` | **`REJECTED`** 2026-07-31 14:11Z (`DETAILS_MISMATCH`) | rejected; nida …9013 now free |
 | `charlie` | `+255712000103` | `usr_8ed1b4ca3579490c94435188` | approved → **revoked** (`ADDITIONAL_INFO_REQUIRED`) → **`SUSPENDED`** | banned; sessions revoked; temp password issued |
 | `delta` | `+255712000104` | `usr_429885ab43c0cb4ce134dd7e` | **`REJECTED`** 2026-07-31 15:12Z (`DETAILS_MISMATCH`, `rejectNote = NULL`) | the E-1/E-6/E-2 workhorse. Restarted + resubmitted on prod, so its three documents are the **only** ones on the platform with correct `mimeType`/`sizeBytes` (`image/jpeg` / 57960). nida …9015 free again |
+| `echo` | `+255712000105` | `usr_b8ed0aeacb1fc5d82f1b8d6a` | **`APPROVED`** 2026-07-31 18:57Z → `User.status = ACTIVE` | created for the **E-4 production proof** (the other four could not be approved: `alpha` already was, `bravo`/`delta` REJECTED, `charlie` SUSPENDED). nida …9016. `QA_ECHO_PASSWORD` in `.env.qa.local`. The **second** funded-player candidate for Phase 3 |
+| **`officer`** | `+255712000106` | `usr_2ff22430c89e4c560fac5334` | n/a — **role `COMPLIANCE`** | ⭐ the campaign's own **operator identity**. See the box below. `QA_OFFICER_PASSWORD` in `.env.qa.local` |
+
+### ⭐ The QA compliance officer — read this before doing any operator-side work
+
+**Ali's decision, 2026-07-31: drive officer flows as a dedicated QA officer, NOT as Ali's admin
+login.** The reasoning is worth keeping, because it is the same reasoning E-4 is about.
+`kyc.workstation.approved` is append-only and **hash-chained**, and `privacy.ts:89` blocks DSAR
+erasure to preserve the **7-year AML window** — so the row outlives the request by design. Approving
+as Ali's account would have permanently recorded **him** attesting that a QA persona's selfie matched
+a citizen's ID, on a submission he never opened. Proving a finding about *the integrity of who
+attested what* with a false attribution would be self-defeating. `QA_ADMIN_PASSWORD` is therefore
+**no longer needed** for officer work, and was never obtained on laptop B.
+
+How it was made, exactly — so it can be reproduced or reversed:
+1. Registered through the **real `/auth/register` UI**, so every column is written by the product's
+   own code path. ⛔ Not a hand-rolled `INSERT`.
+2. **One** narrow `UPDATE`: `role → COMPLIANCE`, `displayName → 'QA Compliance Officer (test)'`,
+   plus the schema's role-change trail. `roleChangedBy` is the marker **`qa:live-experience`**, not a
+   user id — no admin performed this, and claiming one did is the exact defect class this campaign
+   keeps finding. Script `live/grant-officer.cjs`; reverse with `REVOKE=1`.
+3. ⛔ **No `AuditLog` row was hand-written.** That table is HMAC-chained with a `@@unique([prevHash])`;
+   a hand-rolled insert would break or fork chain verification. The grant is recorded here instead.
+
+Two things this bought beyond E-4: production had **no `COMPLIANCE`-role account at all** (9 `ADMIN`
++ 1 `FINANCE`), so this is the **first live exercise of the RBAC compliance grant** — and it held
+exactly as `DEFAULT_GRANTS` specifies (`compliance` view+act; `accounting`/`support` view-only;
+**no `ops`**, so `/admin/system` is correctly out of reach). `RoleDomainGrant` has **no** override
+rows for `COMPLIANCE`, so the seed matrix is what is live. Login works because
+`DISABLE_ADMIN_TOTP=true` makes `requireAdminTotp` a no-op (`admin-guard.ts:47`); if 2FA is ever
+enforced, this account must enrol first.
+
+⚠️ **It is a privileged account on a licensed live platform.** It is named unmistakably, and the
+header renders *QA COMPLIANCE OFFICER (TEST)* on every screen. **Revoke it when the campaign ends.**
 
 ⚠️ **Only `alpha`'s password is in `.env.qa.local`** (`QA_ALPHA_PASSWORD`). `bravo`,
 `charlie` and `delta` were registered with a password that is in **neither** that file
@@ -218,7 +266,7 @@ and a clean console: `/admin` · `players` · `markets` · `ai-polls` · `ai-usa
 |---|---|---|
 | 0 | Worktree, harness, live DB access, baseline | ✅ done |
 | 1 | Auth: signup · email verify · login · forgot-password · 2FA · sessions | 🔄 signup · login · forgot-password · phone shapes · enumeration all ✅ **shipped + verified live**; email-verify, 2FA, sessions, rate-limits still open |
-| 2 | KYC: submit · import · approve · reject · revoke · ban · NIDA duplicate | ✅ **officer review DONE** — approve · reject · revoke · ban · NIDA freed, all driven on prod (§6c). E-1 verified in **EN + SW + ZH**; E-3, E-6, E-2, **E-5** fixed. Only `import` untested; **E-4** open |
+| 2 | KYC: submit · import · approve · reject · revoke · ban · NIDA duplicate | ✅ **COMPLETE** — approve · reject · revoke · ban · NIDA freed, all driven on prod (§6c). E-1 verified in **EN + SW + ZH**; E-3, E-6, E-2, E-5, **E-4 + E-9** fixed **and live-verified**. Only `import` untested |
 | 3 | Money in: wallet · deposit · ledger · receipts | ⏳ |
 | 4 | Core play: markets · YES/NO · win + lose · resolution · payout | ⏳ |
 | 5 | Up & Down: rounds · quick-bet · pricing · void · history | ⏳ |
@@ -230,6 +278,28 @@ and a clean console: `/admin` · `players` · `markets` · `ai-polls` · `ai-usa
 | 11 | Visual sweep: 4 widths × EN/SW/ZH across 89 routes | ⏳ |
 | 12 | Adversarial: cheating, manipulation, abuse of every money path | ⏳ |
 | 13 | Scale readiness for 10,000s of users | ⏳ |
+
+### ⚠️ The numbered order above is NOT the priority order — Ali's is (2026-07-31)
+
+Stated mid-session, so the phase numbers are now just labels. **Work these first**, and do not let the
+table's ordering pull the campaign back to `3 → 4 → 5 …`:
+
+1. **Up & Down: generation · playing · resolution — on our REAL AI tokens** (phase 5). Not mocked, not
+   a stub key. ⚠️ Blocker already on record: `TWELVEDATA_API_KEY` is **absent on prod** (§2), which the
+   source-pinning work needs — check what that costs before assuming rounds can resolve.
+2. **Polls: generation · playing · resolution · winning AND losing** (phases 7 + 4). A real win and a
+   real loss settled end to end, with money moving, not just a market resolving.
+3. **Visuals** (phase 11) — "super important". The 4-width × 3-locale sweep, and *looking* at the
+   images (§6b: E-2 and E-5 were both found by looking, and one E-5 pass nearly shipped a
+   below-the-fold screenshot as proof).
+4. **The backup system, LIVE-tested** — "very important". Not "the config says backups are on":
+   restore something. ⚠️ Start from the fact that `admin-guard.ts:33-40` records a precedent — a
+   compliance card once *“showed a hardcoded green tick for backups that did not exist.”* Treat any
+   green backup indicator as unproven until a restore has been driven. The seal key lives in Railway
+   on the `50pick` service (§1).
+
+**Everything in 1 and 2 needs money in a wallet, so Phase 3 stays the immediate next step** — it is
+the prerequisite, not a detour.
 
 ## 6. Findings
 
@@ -540,9 +610,60 @@ officer seeded via `/api/dev-test/seed-admin` → decision rail driven by hand:
 
 Evidence `shots/e4-local-{player-submitted,officer-armed,confirm-dialog,officer-after,audit,player-approved}.png`.
 
-⏳ **Still owed on production**: the same audit-row read against live, which needs **officer**
-access — `QA_ADMIN_PASSWORD` is absent on laptop B (§1). The mechanism is now proven on the wire, so
-this is confirmation rather than discovery, but it is not done until it is done.
+**✅ E-4 VERIFIED ON PRODUCTION, 2026-07-31 21:57 EAT — including the half that mattered.**
+Driven against `https://50pick.tz` on deploy `a924bde9` as the new **QA compliance officer** (§4), on
+a purpose-made applicant `echo` (§4) staged through the real player UI. `live/e4-prod.cjs`.
+
+The local run had already proved the happy path. What it could **not** prove is that the *live* server
+— the one serving real money — refuses an approval whose attestations are absent. That is E-4(b), the
+serious half, and a client-side gate is precisely what looks correct in review and is absent on the
+wire. So it was attacked directly:
+
+> **The adversarial probe.** `run()` (`kyc-decision-rail.tsx:77`) builds a `new FormData()` and
+> `set`s `attestations`. So `FormData.prototype.set` was patched **in the page** to drop that one
+> field, reproducing the exact pre-fix wire while every client-side control still reads as satisfied.
+> Then Approve → confirm.
+
+| # | Check on production | Result |
+|---|---|---|
+| 1 | Approve inert with **3 of 4** attestations ticked | **disabled** — client gate holds |
+| 1 | Approve armed with all **4** | **enabled** |
+| 2 | `attestations` confirmed dropped on the wire | `["attestations"]` |
+| 2 | **the live server REFUSED** | **“Blocked · The verification attestations are missing.”** |
+| 2 | `echo` still awaiting review afterwards | **yes** — nothing was approved |
+| 2 | E-9 dialog copy: “opens the withdrawal gate” / no “deposits, play and withdrawals” | **true / true** |
+| 3 | a real approval then **succeeded** | **yes**, no Blocked toast ← the regression that would have frozen every live KYC approval |
+| 3 | `KycSubmission → APPROVED`, `User.status → ACTIVE`, `displayName` backfilled | all three |
+| — | horizontal overflow · console errors, at 1440 | **0 · 0** |
+
+**The audit row, read straight off the live money DB** (`live/e4-audit-read.cjs`):
+
+```
+2026-07-31 18:57:01Z  SECURITY    kyc.approve.attestations_missing
+   {"reason": "The verification attestations are missing."}          ← the refused probe
+2026-07-31 18:57:10Z  COMPLIANCE  kyc.workstation.approved
+   {"riskScore": 10, "makerChecker": false,
+    "attestations": {"name_matches":"pass","document_authentic":"pass",
+                     "selfie_match":"pass","sanctions_clear":"pass"}}
+```
+
+All three rows are attributed to `usr_2ff22430c8…`, the officer who actually decided. Unexpected keys
+in the attestation object: **none**. For contrast, **the only two `kyc.workstation.approved` rows
+production had before today read exactly `{"riskScore": 10, "makerChecker": false}`** — that is the
+E-4 defect, captured on live. This is the first approval 50pick has ever recorded with the officer's
+attestations attached.
+
+📸 `shots/e4p-05-server-refused.png` is the one to look at: **all four checks render `PASS`, Approve
+is armed and blue, and the server still says Blocked.** That single frame is E-4(b). The same frame
+re-confirms **E-2** (`uploaded 31 Jul 2026, 21:45` beside `SUBMITTED 31 Jul 2026, 21:47` — one zone,
+formatted, DOB `12 Apr 1995`) and **D-2** (`no authority check by design`). Also
+`e4p-{01,02,03,04,06}-*.png`.
+
+**Chain integrity after the new payload shape:** the `prevHash → entryHash` links over the tail are
+**all valid** (newest `seq` 19420). ⚠️ Read that claim with the §3 `ORDER BY`-alias trap in mind — the
+first attempt reported *two broken links* and was **my SQL, not the product**. The product's own
+authoritative `verifyChainFull()` is on `/admin/system`, which is the **`ops`** domain and therefore
+correctly unreachable for a COMPLIANCE officer — so it is **booked, not claimed** (see E-12).
 
 ⚠️ **Trap paid for here, for the next session:** hard-killing `next dev` mid-write **corrupts the
 Turbopack cache** — the next boot says `✓ Ready` and then serves nothing, panicking with
@@ -603,6 +724,10 @@ confirm whatever you were hoping for.
 | # | Sev | Area | Finding | Evidence |
 |---|---|---|---|---|
 | **E-8** | LOW | KYC reject copy | **The `DETAILS_MISMATCH` label describes a comparison the product never makes.** The officer's rail calls it *Details mismatch* — meaning the details typed do not match the **document the player submitted**. The player is told, in all three languages, *“NIDA details don't match **our records**”* / *“Taarifa za NIDA hazilingani na rekodi zetu”* / *“NIDA 信息与我们的记录不符”*. We hold no NIDA record to compare against — `docs/NIDA-POLICY.md` and the D-2 fix are explicit that no request has ever reached the authority. Milder than D-2 (it says *our* records, not the authority's) but it is the same class: describing evidence we do not have. Suggested: name the submitted ID document instead. All three locales + `test:kyc-reject-reason`'s key list would need updating together. | live `e6-player-{sw,zh,en}.png`; `i18n-dict.ts:960/2306/3650` |
+| **E-10** | **HIGH** | one-account-per-email · RG | **The one-account-per-email control does not survive Gmail plus-addressing, and its own comment says why that matters.** `setUserEmail` (and `registerWithPassword`) compare `email.trim().toLowerCase()` against `db.user.findByEmail` — an **exact string** match. Gmail delivers `user+anything@gmail.com` *and* `u.s.e.r@gmail.com` to the same inbox, so one inbox can hold unlimited accounts that the platform counts as different people. The code comment states the control's purpose in terms that this defeats: *“a verified email now UNLOCKS DEPOSITING, so a shared address would let one inbox open unlimited depositing accounts, and per-account controls (**deposit caps, self-exclusion**) are only as strong as the one-person-one-account assumption underneath them.”* For a licensed operator, self-exclusion that a `+1` re-registers around is the serious end of this. **Proven on production:** `qa.alpha.50pick+officer@gmail.com` was accepted as a wholly separate account while `qa.alpha.50pick@gmail.com` already existed — no duplicate block, no `user.email.duplicate_blocked` audit row. ⏳ **NOT yet proven:** that the second account can actually deposit, and that it survives a self-exclusion on the first — both need Phase 3/12, and the finding should not be written up as self-exclusion bypass until they are. Note the comment also records that the DB `@unique` was deliberately deferred; a unique index would not have caught this either, since the strings genuinely differ. | live: officer persona registered on `+officer` sub-address of an existing account, `email-verification.ts:121-138` |
+| **E-11** | LOW | KYC workstation · officer copy | **The Decision panel attributes a compliance decision to a raw user id.** After approval it reads *“Identity approved by **usr_2ff22430c8…** · 31 Jul 2026, 21:57”*, although `displayName` is set and the page header renders *QA COMPLIANCE OFFICER (TEST)* on the same screen. The accountable officer's **name** is the point of the attribution on a record an inspector reads; a truncated cuid identifies nobody without a second lookup. Same family as E-2/E-9 — an officer-facing compliance surface stating less than it knows. | `shots/e4p-06-approved.png` |
+| **E-12** | LOW | RBAC · audit | **The audit-chain verifier is out of reach of the roles whose job is the audit trail.** `verifyChainFull()` — the authoritative tamper check — is exposed only on `/admin/system`, which `ROUTE_DOMAINS` tags **`ops`**. `DEFAULT_GRANTS` gives neither `COMPLIANCE` nor `AUDITOR` any `ops` grant, so both can read `/admin/audit` (compliance) yet **cannot verify that what they are reading is intact**. Confirmed live: the QA COMPLIANCE officer's nav has no System section. Not a security hole — the restriction fails safe — but it means chain verification is Owner-only in practice, and an auditor's assurance rests on asking the Owner. | live nav as `COMPLIANCE`; `roles.ts:260`, `admin/system/actions.ts:7` |
+| **E-13** | LOW | KYC copy | **“3/3 document attached”** — `docsCount`/3 is glued to a **singular** toast string (`page.tsx:352`: `{docsCount}/3 {t.toast.documentAttached.toLowerCase()}`). It also `.toLowerCase()`s a *translated* string, which is meaningless-to-wrong for ZH and fragile for SW. Needs a count-aware key per locale rather than a lowercased toast. | `shots/p2-echo-docs.png` |
 | **E-7** | MEDIUM | i18n · profile | **`User.locale` is stored, shown to the player, and never used to render anything — and the player cannot change it.** Signup hard-codes `locale: "SW"` (`auth-service.ts:268,463`) and the column defaults to `SW`, so **44 of 46 live users are `SW`**. But the rendered language is the `kp-locale` cookie alone, which falls back to **`en`** when absent — so a brand-new Tanzanian visitor gets English while their row says Swahili. `/profile` then badges that row directly (`profile/page.tsx:132`, `user.locale === "SW" ? "Kiswahili" : "English"`), i.e. it tells a player reading English that their language is Kiswahili — **and prints "English" for a `ZH` user**. `profile/actions.ts:29` accepts `EN`/`SW` only (no `ZH`), and **no component in the app ever submits a `locale` field**, so nothing a player does can ever correct it. The column does drive real output: web-push (`notification-service.ts:136`) and OTP SMS (`sms.ts:156`) — both would go out in Swahili to a player using the site in English. | live: `delta` is `locale = SW` and rendered EN until the cookie was set; `select locale, count(*)` → SW 44 / EN 2 | ⏳ open |
 
 ## 6c. Verified working on production this session (not defects)
@@ -646,6 +771,12 @@ workstation shows an SLA countdown, but nothing escalates when it runs out. Ali'
 
 ## 6b. NEXT SESSION — start here
 
+**Laptop B, session 2 (2026-07-31 21:39→22:1x EAT) closed E-4 on production.** No code changed —
+E-4/E-9 were already shipped; what was owed was the live proof, and it is now in §6 with the audit
+row, the adversarial refusal and the screenshots. Guards re-run: `--filter kyc` **8/8 green** incl.
+typecheck. Four new findings were opened in the same run (**E-10 HIGH**, E-11, E-12, E-13) and two
+harness traps were paid for and written into §3.
+
 **Shipped and live so far:** `26a1471` (A-1/A-2/A-3) · `5e6babe` (tracker) · `c3aded6` (D-1) ·
 `647e266` (D-2) · `617fbfb` (E-1) · **`dd25a22` (E-3)** · `b27b66b` (E-3 live proof) ·
 **`0820558` (E-6)** · **`800aa06` (E-2)** · `f11722b` (E-2 live proof) · **E-5 (this session)**.
@@ -680,22 +811,13 @@ Two findings are evidenced and **open** (E-4, E-5), plus **E-7 and E-8, which ar
 4. ✅ **E-2 fixed and live** — guarded by `test:kyc-workstation-time` (16).
 5. ✅ **E-5 fixed AND live-verified** in 12 combinations (§6) — the burst states only what approval
    unlocked and reads the live payout gate; guarded by `test:kyc-approved-copy` (30).
-6. ✅ **E-4 fixed** (attestations required server-side + recorded in the hash-chained audit) and
-   ✅ **E-9 fixed** (the officer's approve dialog named the wrong consequence). Guards
-   `test:kyc-attestations` (39) and `test:kyc-approved-copy` (35).
-   Both are **verified end-to-end on a local in-memory boot** (§6), including that approval still
-   SUCCEEDS — the regression that would otherwise have blocked every live KYC approval.
-   **START HERE → drive one approval as an officer on production** and read the
-   `kyc.workstation.approved` audit row back: it must now carry
-   `attestations: {name_matches:"pass", document_authentic:"pass", selfie_match:"pass", sanctions_clear:"pass"}`
-   beside `riskScore`/`makerChecker`. That needs **`QA_ADMIN_PASSWORD`, which is absent on laptop B**
-   (§1) — ask Ali for it. ⛔ Do **not** re-set the ADMIN account's password to work around this; it
-   is Ali's own operator login. A fresh persona is needed to approve, since `alpha` is already
-   APPROVED and `bravo`/`delta` are REJECTED, `charlie` SUSPENDED.
-   **E-4** needs a small schema decision: the officer's four attestations
-   (name matches · document authentic · selfie matches · sanctions/PEP clear) are
-   client-side `useState` and are discarded at the moment they are made — decide where they
-   live (audit payload is the cheap answer; a column is the defensible one) before writing code.
+6. ✅ **E-4 and E-9 fixed AND VERIFIED ON PRODUCTION** (§6) — the audit row now carries all four
+   attestations, and the **live server refuses an approval with them stripped off the wire**
+   (adversarial probe, `shots/e4p-05-server-refused.png`). Guards `test:kyc-attestations` (39) and
+   `test:kyc-approved-copy` (35). **Phase 2 is closed** apart from `import`.
+   Two things this produced that outlive it: the **QA compliance officer** (§4 — use it for all
+   operator work; `QA_ADMIN_PASSWORD` is no longer needed) and persona **`echo`**, now `ACTIVE` and
+   the second funded-player candidate.
 6. **⛔ E-7 and E-8 are Ali's, not the next session's.** E-8 is a small copy change in three
    locales — safe to do, but it changes what a rejected player is told, so it wants Ali's eye
    on the wording first. E-7 is a product decision, not a bug fix: should
@@ -704,23 +826,35 @@ Two findings are evidenced and **open** (E-4, E-5), plus **E-7 and E-8, which ar
    whether `kp-locale` seeds from `User.locale` on sign-in, whether the toggle writes it back,
    and whether `/profile` should show the badge at all. **Do not guess it**; changing the default
    language of a live money product on a QA session's judgement is exactly the wrong call.
-7. **Then Phase 3, money in — but read this first, it is BLOCKED on a decision, not on effort.**
-   The deposit gate is **email verification**, enforced in the service
-   (`wallet-service.ts:121`, not just the page), and **every persona is `emailVerifiedAt: null`**.
-   So no persona can deposit, and Phase 3 cannot start until one of these happens:
-   - **(a) Ali opens the inbox.** The personas use real Gmail addresses
-     (`qa.alpha.50pick@gmail.com`) that only Ali can read. Clicking the real link tests the real
-     flow — and email verification is itself an untested flow, so this is the option that buys
-     coverage rather than skipping it.
-   - **(b) Ali authorises setting `emailVerifiedAt` directly** on the QA personas in the live DB.
-     Cheap, unblocks deposits immediately — but it **skips** the email-verify flow instead of
-     testing it, so that flow must then be booked as still-untested rather than quietly assumed.
-   Whichever is chosen, `alpha` is the only **ACTIVE** persona (`bravo`/`delta` REJECTED,
-   `charlie` SUSPENDED), so a second funded player needs a fresh persona.
+7. **⏭️ START HERE — Phase 3, money in. The blocking decision is ANSWERED, so this is effort now.**
+   The deposit gate is **email verification**, enforced in the service (`wallet-service.ts:121`, not
+   just the page), and every persona is `emailVerifiedAt: null`.
+   **Ali chose (2026-07-31): mint the real confirmation link and click it — do NOT set the column.**
+   That is possible without his inbox because the token is a **stateless HMAC** (`signSession`,
+   `crypto.ts:139`) over `{purpose:"email-verify", userId, email, exp}` — no DB row — and
+   `SESSION_SECRET` is present on prod (64 chars). So build the byte-identical URL
+   `buildEmailVerifyUrl()` would have emailed (`email-verification.ts:43`) and open it in a real
+   browser. ⚠️ Use the **`www.`** host: `NEXT_PUBLIC_APP_URL = https://www.50pick.tz`.
+   That covers the MAC check, `exp`, the wrong-`purpose` refusal, the **stale-address `mismatch`**
+   branch, `already` idempotency, the `emailVerifiedAt` write, the `user.email.verified` audit row and
+   the deposit banner clearing. **What it does NOT cover: Postmark delivery.** Book that honestly as
+   still-untested — there is **no `EmailLog` model**, so delivery can only be confirmed from
+   Postmark's own activity feed or Ali's inbox. `POSTMARK_API_KEY` *is* set on prod.
+   Two ACTIVE personas are now available to fund: **`alpha`** and **`echo`**.
+   ⚠️ **Postmark is live, so every persona registration mails a real address.** Non-existent
+   Gmail addresses hard-bounce and count against sender reputation on a money platform. `echo` was
+   registered on `qa.echo.50pick@gmail.com` before this was noticed — **Ali should confirm that
+   address (and `bravo`/`charlie`/`delta`'s) actually exists**, or those are four bounces. The officer
+   persona deliberately used a `+officer` sub-address of the known-good `alpha` inbox instead — which
+   is what exposed **E-10**.
    ⚠️ Note also that **withdrawals are genuinely unavailable** right now (3 payouts stuck since
    2026-07-29), so Phase 10 money-out cannot be tested end to end until Selcom closes them — the
    `PAYOUT_TEST_BYPASS_MSISDN` escape hatch exists for exactly one controlled test
    (`payout-status.ts:170`) and is unset by default.
+
+8. **Then Ali's priority order, not the phase numbers** — Up & Down on real AI tokens → polls with a
+   real win *and* a real loss → visuals → a live backup **restore**. See the priority box in §5; it
+   carries the blockers already known for each.
 
 ### What this session did NOT touch
 
