@@ -371,11 +371,47 @@ Two consequences had to be handled rather than worked around:
 including one assertion per rail code that its English sentence is empty. Proven red first: 16
 failures against the pre-fix tree.
 
+**E-6 verified on production** after deploy `ef507b41` (SUCCESS 18:06 EAT), by driving the whole
+cycle: `delta` restarted KYC → refilled NIDA → uploaded three documents → submitted; the officer
+then rejected with *Details mismatch* and **an empty note**, which the pre-fix server would have
+refused. Row: `rejectReason = 'DETAILS_MISMATCH'`, **`rejectNote = NULL`**. What the player reads:
+
+| Locale | Rendered |
+|---|---|
+| `sw` | *Sababu: **Taarifa za NIDA hazilingani na rekodi zetu**. Tafadhali ingiza tena maelezo yako…* |
+| `zh` | *原因: **NIDA 信息与我们的记录不符**. 请在下方重新输入您的信息并重新提交…* |
+| `en` | *Reason: **NIDA details don't match our records**. Please re-enter your details below…* |
+
+Not one word of stray English in the Swahili or Chinese render. Evidence `shots/e6-player-{sw,zh,en}.png`,
+`e6-officer-no-note.png`.
+
+🎯 **That run also re-proved E-3 the hard way.** A complete fresh submission — three uploads
+*then* `submitForReview`, the exact sequence that used to zero everything — left all three rows
+`image/jpeg` / `57960`. **This is the first KYC submission 50pick has ever stored with correct
+document metadata.**
+
+| **E-2** | MEDIUM | KYC workstation | **One officer screen renders the same day in two timezones.** The decision card says *31 Jul 2026, 17:11* and the applicant panel *SUBMITTED 31 Jul 2026, 16:31* (both EAT), while the document strip directly between them says *uploaded 2026-07-31 13:31:33* — the raw UTC value, unlabelled and 3h earlier. DOB renders as the raw ISO string `1995-04-12T00:00:00.000Z`. An officer comparing upload time against submission time on a compliance record reads a 3-hour gap that does not exist. | `shots/p2-bravo-rejected.png` — all three on one screen | ✅ fixed |
+
+**E-2 fix** — the document strip was `uploadedAt.slice(0, 19).replace("T", " ")`: the raw ISO
+value with its `Z` cut off, so it neither *said* UTC nor *was* local. It now uses the same
+`formatDateTime` as the two panels around it, and DOB uses `formatDate` in both places it
+appears. A raw UTC string is not banned outright — `/admin/insights` prints one and writes
+“UTC” next to it, which is honest; what is banned is an **unlabelled** one sitting beside
+formatted local times. **Guard**: `npm run test:kyc-workstation-time` (16) — it asserts the
+source pattern is gone *and* drives the helpers on the exact instant from the screenshot
+(`13:31:33Z` must render `16:31`), plus that a midnight DOB stays on its own day. Proven red
+first: 6 failures against the pre-fix tree.
+
+⚠️ **Not fixed, deliberately, and the next session should not "tidy" it**: the same unlabelled
+`slice().replace("T"," ")` pattern also appears in `src/lib/server/reports/catalogue.ts:497-522`.
+That is the **reports** subsystem, whose window bounds feed the TRA/GBT levies and are pinned by
+`test:report-parity`. Changing what a report prints is a separate, evidenced piece of work.
+
 ### Open findings — evidenced on production, NOT yet fixed
 
 | # | Sev | Area | Finding | Evidence |
 |---|---|---|---|---|
-| **E-2** | MEDIUM | KYC workstation | **One officer screen renders the same day in two timezones.** The decision card says *31 Jul 2026, 17:11* and the applicant panel *SUBMITTED 31 Jul 2026, 16:31* (both EAT), while the document strip directly between them says *uploaded 2026-07-31 13:31:33* — the raw UTC value, unlabelled and 3h earlier. DOB renders as the raw ISO string `1995-04-12T00:00:00.000Z`. An officer comparing upload time against submission time on a compliance record reads a 3-hour gap that does not exist. | `shots/p2-bravo-rejected.png` — all three on one screen |
+| **E-8** | LOW | KYC reject copy | **The `DETAILS_MISMATCH` label describes a comparison the product never makes.** The officer's rail calls it *Details mismatch* — meaning the details typed do not match the **document the player submitted**. The player is told, in all three languages, *“NIDA details don't match **our records**”* / *“Taarifa za NIDA hazilingani na rekodi zetu”* / *“NIDA 信息与我们的记录不符”*. We hold no NIDA record to compare against — `docs/NIDA-POLICY.md` and the D-2 fix are explicit that no request has ever reached the authority. Milder than D-2 (it says *our* records, not the authority's) but it is the same class: describing evidence we do not have. Suggested: name the submitted ID document instead. All three locales + `test:kyc-reject-reason`'s key list would need updating together. | live `e6-player-{sw,zh,en}.png`; `i18n-dict.ts:960/2306/3650` |
 | **E-4** | MEDIUM | KYC workstation | **The officer's four attestations are never recorded.** *Name matches the ID · Document appears authentic · Selfie matches the ID photo · Sanctions / PEP clear* must all be ticked to arm Approve, but they are client-side `useState` only: `approveKycWorkstationAction` never receives them and the audit payload carries just `{riskScore, makerChecker}`. The one thing an inspector would want — that a named officer positively attested the selfie matched — is discarded at the moment it is made. | `kyc-decision-rail.tsx:66` vs `kyc-actions.ts:62-85`; live audit row `kyc.workstation.approved` |
 | **E-7** | MEDIUM | i18n · profile | **`User.locale` is stored, shown to the player, and never used to render anything — and the player cannot change it.** Signup hard-codes `locale: "SW"` (`auth-service.ts:268,463`) and the column defaults to `SW`, so **44 of 46 live users are `SW`**. But the rendered language is the `kp-locale` cookie alone, which falls back to **`en`** when absent — so a brand-new Tanzanian visitor gets English while their row says Swahili. `/profile` then badges that row directly (`profile/page.tsx:132`, `user.locale === "SW" ? "Kiswahili" : "English"`), i.e. it tells a player reading English that their language is Kiswahili — **and prints "English" for a `ZH` user**. `profile/actions.ts:29` accepts `EN`/`SW` only (no `ZH`), and **no component in the app ever submits a `locale` field**, so nothing a player does can ever correct it. The column does drive real output: web-push (`notification-service.ts:136`) and OTP SMS (`sms.ts:156`) — both would go out in Swahili to a player using the site in English. | live: `delta` is `locale = SW` and rendered EN until the cookie was set; `select locale, count(*)` → SW 44 / EN 2 | ⏳ open |
 | **E-5** | MEDIUM | approval burst | **The approval burst promises what the next banner refuses.** `/profile/kyc` shows the gold *ID verified* burst reading “**You can now deposit and withdraw freely**” — directly under a banner reading “Confirm your email to add money to your account”, and `/wallet/deposit` does block on exactly that. Withdrawals are additionally disabled platform-wide right now (“Withdrawals cannot be paid right now”). The player's proudest moment tells them something the product immediately contradicts twice. | `shots/p2-alpha-player-kyc-430.png`, `p2-alpha-wallet-deposit-430b.png` |
@@ -413,19 +449,23 @@ workstation shows an SLA countdown, but nothing escalates when it runs out. Ali'
 
 - ~~**Stored locale on signup.**~~ **Concluded — it is E-7.** The UI never flips: `User.locale`
   is not read by any rendering path. Rendering is the `kp-locale` cookie only.
-- **DOB is stored as midnight EAT** (`1995-04-12` → `1995-04-11T21:00:00Z`). Correct, but any
-  surface that renders the raw UTC date will show the previous day. Check the KYC/admin views.
+- ~~**DOB is stored as midnight EAT** (`1995-04-12` → `1995-04-11T21:00:00Z`).~~ **Wrong —
+  corrected 2026-07-31.** Measured with `::text` on the live rows: DOB is stored as
+  `1995-04-12 00:00:00`, i.e. midnight **UTC**, for every submission. So formatting it in the
+  platform zone (+3) keeps it on the right day, and the E-2 fix is safe. The earlier note was
+  the `pg` −3h trap (§3) reading back through an un-cast client.
 
 ## 6b. NEXT SESSION — start here
 
 **Shipped and live so far:** `26a1471` (A-1/A-2/A-3) · `5e6babe` (tracker) · `c3aded6` (D-1) ·
-`647e266` (D-2) · **`617fbfb` (E-1)**. All merged to `main`, deployed SUCCESS on Railway, and
-re-verified against production — not just built. Branch `qa/live-experience` == `main`.
+`647e266` (D-2) · `617fbfb` (E-1) · **`dd25a22` (E-3)** · `b27b66b` (E-3 live proof) ·
+**`0820558` (E-6)**. All merged to `main`, deployed SUCCESS on Railway, and re-verified against
+production — not just built. Branch `qa/live-experience` == `main`.
 
 **Phase 2 officer review is COMPLETE** (§6c). Approve, reject, revoke, ban, session
 revocation, the enumeration probe and the NIDA free/claimed pair were all driven against
-production. Four fixes shipped and live-verified (E-1, E-3, E-6 — E-1 now in **EN, SW and ZH**).
-Three findings are evidenced and **open** (E-2, E-4, E-5), plus **E-7, which is Ali's call**.
+production. Four fixes shipped and live-verified (E-1 in **EN, SW and ZH**, E-3, E-6, E-2).
+Two findings are evidenced and **open** (E-4, E-5), plus **E-7 and E-8, which are Ali's calls**.
 
 **Resume here, in this order:**
 
@@ -434,9 +474,19 @@ Three findings are evidenced and **open** (E-2, E-4, E-5), plus **E-7, which is 
 2. ✅ **E-3 fixed and live** — the round trip is guarded by `test:kyc-doc-metadata`.
    ⏳ **Still owed: Ali's decision on backfilling the 19 existing R2 rows.**
 3. ✅ **E-6 fixed and live** — guarded by the grown `test:kyc-reject-reason` (64).
-4. **E-2, then E-5, then E-4.** E-2 is a formatter, E-5 is copy, E-4 needs a small schema
-   decision about where attestations live.
-5. **⛔ E-7 is Ali's, not the next session's.** It is a product decision, not a bug fix: should
+4. ✅ **E-2 fixed and live** — guarded by `test:kyc-workstation-time` (16).
+5. **START HERE → E-5, then E-4.** **E-5** is copy: the gold *ID verified* burst on
+   `/profile/kyc` reads “You can now deposit and withdraw freely” directly under a banner
+   saying the player must confirm their email before adding money — and `/wallet/deposit`
+   does block on exactly that, while withdrawals are disabled platform-wide. Make the burst
+   state what is actually unlocked; the SW/ZH copy has to move with it (all three locales,
+   like E-1). **E-4** needs a small schema decision: the officer's four attestations
+   (name matches · document authentic · selfie matches · sanctions/PEP clear) are
+   client-side `useState` and are discarded at the moment they are made — decide where they
+   live (audit payload is the cheap answer; a column is the defensible one) before writing code.
+6. **⛔ E-7 and E-8 are Ali's, not the next session's.** E-8 is a small copy change in three
+   locales — safe to do, but it changes what a rejected player is told, so it wants Ali's eye
+   on the wording first. E-7 is a product decision, not a bug fix: should
    a brand-new Tanzanian visitor land in **Swahili** (matching the column, and 44 of 46 live
    users) or in **English** (today's cookie default)? Everything else follows from that answer —
    whether `kp-locale` seeds from `User.locale` on sign-in, whether the toggle writes it back,

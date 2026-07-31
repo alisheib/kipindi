@@ -9,7 +9,7 @@ import { db } from "@/lib/server/store";
 import { listPendingKyc } from "@/lib/server/kyc-service";
 import { kycRiskScore, getApprovalRecommendation, KYC_MAKER_CHECKER_THRESHOLD } from "@/lib/server/kyc-risk";
 import { currentSession } from "@/lib/server/auth-service";
-import { formatDateTime } from "@/lib/utils";
+import { formatDate, formatDateTime } from "@/lib/utils";
 import { KycDocViewer } from "./kyc-doc-viewer";
 import { KycDecisionRail } from "./kyc-decision-rail";
 
@@ -64,7 +64,7 @@ export default async function KycWorkstationPage({ params }: { params: Promise<{
     // It now states exactly what was actually checked, and the officer's decision
     // rests on the DOCUMENTS — which is what already happens in practice.
     { label: "NIDA number", state: (kyc.nidaNumber ? "pass" : "pending") as "pass" | "fail" | "pending", detail: kyc.nidaNumber ? "format valid · unique to this account (no authority check by design)" : "not recorded" },
-    { label: "18 or older", state: (age18 === null ? "pending" : age18 ? "pass" : "fail") as "pass" | "fail" | "pending", detail: kyc.dob ? `DOB ${kyc.dob}` : "no DOB" },
+    { label: "18 or older", state: (age18 === null ? "pending" : age18 ? "pass" : "fail") as "pass" | "fail" | "pending", detail: kyc.dob ? `DOB ${formatDate(kyc.dob)}` : "no DOB" },
     { label: "All documents present", state: (allDocs ? "pass" : "fail") as "pass" | "fail" | "pending", detail: `${present.size}/3 uploaded` },
     { label: "Source-of-funds on file", state: (sof ? "pass" : "pending") as "pass" | "fail" | "pending", detail: sof ? sof.reviewStatus : "not required / absent" },
   ];
@@ -110,7 +110,11 @@ export default async function KycWorkstationPage({ params }: { params: Promise<{
               <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-[12.5px]">
                 <Field label="Full name" value={kyc.fullName ?? "—"} />
                 <Field label="NIDA" value={<span className="font-mono">{kyc.nidaNumber ? `${kyc.nidaNumber.slice(0, 4)}…${kyc.nidaNumber.slice(-4)}` : "—"}</span>} />
-                <Field label="DOB" value={<span className="font-mono">{kyc.dob ?? "—"}</span>} />
+                {/* Was the raw ISO string — "1995-04-12T00:00:00.000Z" — on a card
+                    whose other dates are formatted (§6 E-2). formatDate renders in
+                    the platform zone, which is also what keeps a DOB stored at
+                    midnight from reading as the previous day. */}
+                <Field label="DOB" value={<span className="font-mono">{kyc.dob ? formatDate(kyc.dob) : "—"}</span>} />
                 <Field label="Region" value={user?.region ?? "—"} />
                 <Field label="Submitted" value={<span className="font-mono">{kyc.submittedAt ? formatDateTime(kyc.submittedAt) : "—"}</span>} />
                 <Field label="Phone" value={<span className="font-mono">{user ? `${user.phoneE164.slice(0, 4)}••••${user.phoneE164.slice(-2)}` : "—"}</span>} />

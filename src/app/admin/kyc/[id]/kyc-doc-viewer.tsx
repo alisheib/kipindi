@@ -8,6 +8,7 @@
  */
 import { useState } from "react";
 import { I } from "@/components/ui/glyphs";
+import { formatDateTime } from "@/lib/utils";
 
 type Slot = { type: "NIDA_FRONT" | "NIDA_BACK" | "SELFIE"; label: string; uploadedAt: string | null };
 
@@ -92,7 +93,12 @@ export function KycDocViewer({ userId, slots }: { userId: string; slots: Slot[] 
       {/* Meta strip — real metadata; liveness/EXIF honestly marked unavailable. */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[10.5px] text-text-tertiary">
         <span>{current?.label}</span>
-        <span>· {present ? `uploaded ${current?.uploadedAt?.slice(0, 19).replace("T", " ")}` : "no file"}</span>
+        {/* 🔴 Was `uploadedAt.slice(0,19).replace("T"," ")` — the raw UTC value with
+            the Z stripped off, printed BETWEEN two panels that render EAT via
+            formatDateTime. An officer comparing an upload time against the
+            submission time on the same screen read a 3-hour gap that does not
+            exist (campaign §6 E-2). One screen, one zone. */}
+        <span>· {present && current?.uploadedAt ? `uploaded ${formatDateTime(current.uploadedAt)}` : "no file"}</span>
         <span className="text-text-subtle">· liveness/EXIF: not captured at upload</span>
         {present && (
           <a href={src} target="_blank" rel="noopener noreferrer" className="ml-auto inline-flex items-center gap-1 text-royal-300 hover:underline">
