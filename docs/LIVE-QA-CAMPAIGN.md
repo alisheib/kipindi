@@ -561,6 +561,28 @@ the deposit *service* checking `emailVerifiedAt`, the withdraw *service* checkin
 reference at all. If play or deposits ever become identity-gated, every “what approval unlocks”
 string on the platform fails a test instead of quietly becoming a lie.
 
+**Post-deploy smoke on production as `alpha`** (after the E-4/E-9 deploy `fafef331`, SUCCESS 19:48
+EAT): `/` · `/markets` · `/profile` · `/profile/kyc` · `/wallet` · `/wallet/deposit` ·
+`/wallet/withdraw` · `/updown` · `/results` · `/positions` · `/watchlist` — **11/11 → 200, 0
+horizontal overflow, 0 console errors.** So the compliance change did not regress the player
+surfaces. Two things that looked like findings in that run and were not:
+
+- **`/history` 404 is not a broken link — there is no such route.** The nav's *History* label points
+  at **`/positions`** (`top-app-bar.tsx:72`). The 404 was invented by the smoke script, not by the
+  product.
+- **`navigator.vibrate` console errors are a headless artifact** — “Blocked call to
+  navigator.vibrate because user hasn't tapped on the frame”. Chromium refuses haptics without a
+  real gesture. They appeared in one run and not the next; they are not a defect.
+
+⚠️ **And one lesson about the harness, not the product.** That smoke's E-5 line printed
+*“paused branch present: **false**”* on one run, which read like a regression. It was **vacuous**:
+the script asserted the paused copy was *absent* without first proving the burst was *on the page*,
+so an unrelated navigation hiccup produced a false alarm. A targeted recheck — assert the burst
+**exists**, then read its own `innerText`, three consecutive fresh sessions — returned the correct
+paused sentence **3/3**, with the live gate unchanged (still 3 in-flight withdrawals since
+2026-07-29). **Assert existence before asserting absence**, or a missing element will happily
+confirm whatever you were hoping for.
+
 ### 🚫 Two things that look like defects on this screen and are NOT — do not file them
 
 1. **The teal disc bleeding off the right edge of every screenshot is The Needle.** `#needle` is
@@ -682,10 +704,31 @@ Two findings are evidenced and **open** (E-4, E-5), plus **E-7 and E-8, which ar
    whether `kp-locale` seeds from `User.locale` on sign-in, whether the toggle writes it back,
    and whether `/profile` should show the badge at all. **Do not guess it**; changing the default
    language of a live money product on a QA session's judgement is exactly the wrong call.
-6. **Then Phase 3, money in** — credit the approved wallets (Ali has authorised crediting test
-   users on live), then wallet · ledger · receipts. **`alpha` is the only ACTIVE persona**;
-   `bravo`/`delta` are REJECTED and `charlie` is SUSPENDED, so create a fresh persona or restore
-   one before you need a second funded player.
+7. **Then Phase 3, money in — but read this first, it is BLOCKED on a decision, not on effort.**
+   The deposit gate is **email verification**, enforced in the service
+   (`wallet-service.ts:121`, not just the page), and **every persona is `emailVerifiedAt: null`**.
+   So no persona can deposit, and Phase 3 cannot start until one of these happens:
+   - **(a) Ali opens the inbox.** The personas use real Gmail addresses
+     (`qa.alpha.50pick@gmail.com`) that only Ali can read. Clicking the real link tests the real
+     flow — and email verification is itself an untested flow, so this is the option that buys
+     coverage rather than skipping it.
+   - **(b) Ali authorises setting `emailVerifiedAt` directly** on the QA personas in the live DB.
+     Cheap, unblocks deposits immediately — but it **skips** the email-verify flow instead of
+     testing it, so that flow must then be booked as still-untested rather than quietly assumed.
+   Whichever is chosen, `alpha` is the only **ACTIVE** persona (`bravo`/`delta` REJECTED,
+   `charlie` SUSPENDED), so a second funded player needs a fresh persona.
+   ⚠️ Note also that **withdrawals are genuinely unavailable** right now (3 payouts stuck since
+   2026-07-29), so Phase 10 money-out cannot be tested end to end until Selcom closes them — the
+   `PAYOUT_TEST_BYPASS_MSISDN` escape hatch exists for exactly one controlled test
+   (`payout-status.ts:170`) and is unset by default.
+
+### What this session did NOT touch
+
+Said plainly so the next one does not assume coverage it did not get: **Phases 3–13 are untouched**
+(money in, core play, Up & Down, proposals, AI, invites, admin/accountant, money out, the 89-route ×
+4-width × 3-locale visual sweep, the adversarial money pass, scale). Phase 2's **`import`** sub-flow
+is still the one KYC path never exercised. `E-7` and `E-8` remain **Ali's calls** and were
+deliberately left alone.
 
 **Five things to carry:**
 - ⚠️ **The UI language is the `kp-locale` cookie** (`en`|`sw`|`zh`), NOT `User.locale`, NOT
