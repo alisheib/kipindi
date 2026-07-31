@@ -123,6 +123,20 @@ jobs:
         env:
           BACKUP_DESTINATION: ${{ steps.upload.outputs.dest }}
 
+      # 🔴 LOOK AT THE BUCKET, not at the steps above. On 2026-07-31 every step of this job
+      # was green while NOTHING had ever left the runner — `| tee` swallowed a NoSuchBucket
+      # and the pipeline reported tee's exit status. This lists R2 independently and fails
+      # on an empty bucket, a truncated artifact, or one over 30h old.
+      #
+      # It also reports RETENTION, and nags while it cannot confirm one. Each artifact is a
+      # full copy of every balance, phone number, NIDA and KYC record on the platform, so a
+      # bucket with no expiry rule accumulates all of that forever — invisibly, because
+      # nothing fails and nothing warns. `continue-on-error` because an unset lifecycle rule
+      # is a real finding but must not fail a backup that otherwise worked.
+      - name: Confirm the artifact is really in the bucket
+        continue-on-error: true
+        run: node scripts/backup-verify-offbox.mjs
+
       # Never upload the artifact as a GitHub artifact, even sealed: it would sit in the
       # repo's artifact store under whatever retention the org has, reachable by anyone
       # with read access to Actions. R2 is the destination on purpose.

@@ -93,7 +93,32 @@ exactly; whether the source is healthy is a different question with a different 
 Left unfixed, the nightly job would have been red forever and the compliance card would
 never have shown a verified backup — which teaches people to ignore both.
 
-### 🔴 Open finding from the first drill (production, not the backup)
+### ✅ Resolved — the finding the first drill surfaced (2026-07-31)
+
+The orphaned **TZS 100,000** is cleared and **`trialBalance()` returns `ok: true` for the
+first time** — 0 drifting wallets, 0 drift, global ledger sum 0, no imbalanced group.
+
+🔴 **The order matters, and getting it wrong cost a round trip.** `adminAdjustBalance` moves
+the wallet **and** the ledger together — that is what makes it money-safe, and it is exactly
+why it cannot close a wallet↔ledger *mismatch*. Debiting the unledgered 100,000 left the
+wallet at 0 and the player's ledger at −100,000: identical drift, opposite sign. The fix is
+two steps, in this order:
+
+1. **backfill** the ledger entry that was never written (ledger-only, balanced group), so the
+   ledger states what the wallet actually holds;
+2. **debit** through `adminAdjustBalance`, which moves both to zero together.
+
+`scripts/ops-clear-unledgered-credit.mjs` does exactly that, refuses without `--actor`, is a
+dry run until `--confirm`, and refuses to debit a wallet whose money has been used. Both
+postings are in the audit chain, so the correction is as traceable as the money was not.
+
+⚠️ **The audit-chain break is deliberately NOT "fixed".** It is a tamper-evident hash chain;
+rewriting entries so it verifies is precisely what the chain exists to detect. A clean chain
+that was edited is worth less than a broken one that is honest. All 1,032 checked entries
+also predate the current signing key, so a key rotation is the likelier cause than tampering
+— that needs investigating, not repairing.
+
+### 🔴 Historical — the finding as first reported
 
 - **One wallet holds TZS 100,000 with no ledger entry, no `Transaction` row and no audit
   row behind it.** `trialBalance()` reports `ok: false`, 1 drifting wallet, 100,000 drift;

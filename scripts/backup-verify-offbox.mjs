@@ -48,6 +48,57 @@ for (const o of objs.slice(0, 15)) {
   console.log(`  ${new Date(o.LastModified).toISOString()}  ${fmt(o.Size).padStart(10)}  ${o.Key}`);
 }
 
+// ── Retention: is anything ever deleted? ─────────────────────────────────────
+//
+// 🔴 WHY THIS IS CHECKED HERE, on every run. Each artifact is a FULL copy of every
+// balance, phone number, NIDA and KYC record on the platform. Without an expiry rule the
+// bucket accumulates all of it forever, and "we keep every player's identity documents
+// indefinitely, in duplicate" is a data-protection problem rather than a storage bill.
+// It is also invisible: nothing fails, nothing warns, the bucket just grows.
+//
+// Checked rather than assumed because the rule is set in the Cloudflare dashboard — an
+// R2 token with Object Read & Write cannot write bucket configuration (verified
+// 2026-07-31: PutBucketLifecycleConfiguration → AccessDenied), so it can be removed or
+// never created without anything in this repo noticing.
+try {
+  const { GetBucketLifecycleConfigurationCommand } = await import("@aws-sdk/client-s3");
+  const lc = await client.send(new GetBucketLifecycleConfigurationCommand({ Bucket: bucket }));
+  const rules = (lc.Rules ?? []).filter((r) => r.Status === "Enabled");
+  const expiry = rules.find((r) => r.Expiration?.Days);
+  if (expiry) {
+    console.log(`\nretention: objects expire after ${expiry.Expiration.Days} days (rule "${expiry.ID}").`);
+  } else {
+    console.error(
+      "\n⚠️  NO EXPIRY RULE — backups accumulate FOREVER.\n" +
+        "   Every artifact holds every KYC record on the platform, so this is a data-protection\n" +
+        "   exposure that grows daily. Cloudflare → R2 → " + bucket + " → Settings →\n" +
+        "   Object Lifecycle Rules → expire after 90 days.",
+    );
+    process.exitCode = 6;
+  }
+} catch (e) {
+  if (e.name === "NoSuchLifecycleConfiguration" || e.$metadata?.httpStatusCode === 404) {
+    console.error(
+      "\n⚠️  NO EXPIRY RULE — backups accumulate FOREVER.\n" +
+        "   Every artifact holds every KYC record on the platform. Cloudflare → R2 → " + bucket +
+        " → Settings → Object Lifecycle Rules → expire after 90 days.",
+    );
+    process.exitCode = 6;
+  } else {
+    // Do NOT report "no rule" when the answer is "this token may not ask" — that would be a
+    // false alarm, and a check that cries wolf gets ignored exactly like a green tick.
+    // But do NOT go quiet either: "unverified" is not "fine", and the whole reason this
+    // check exists is that an unbounded pile of KYC copies is invisible until someone looks.
+    console.error(
+      `\n⚠️  RETENTION UNVERIFIED (${e.name}) — this token cannot read bucket configuration,\n` +
+        `   so nothing here can confirm the backups are EVER deleted. Each one holds every KYC\n` +
+        `   record on the platform. Either confirm the rule by hand at Cloudflare → R2 →\n` +
+        `   ${bucket} → Settings → Object Lifecycle Rules (expire after 90 days), or widen the\n` +
+        `   token so this check can answer for itself.`,
+    );
+  }
+}
+
 const newest = objs[0];
 const ageH = (Date.now() - new Date(newest.LastModified)) / 3_600_000;
 console.log(`\nnewest is ${ageH.toFixed(1)}h old.`);
