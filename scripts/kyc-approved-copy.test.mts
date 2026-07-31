@@ -43,6 +43,9 @@ const section = (s: string) => console.log(`\n── ${s} ${"─".repeat(Math.ma
 const read = (p: string) => readFileSync(new URL(p, import.meta.url), "utf8");
 const KYC_PAGE_RAW = read("../src/app/profile/kyc/page.tsx");
 const DEPOSIT_RAW = read("../src/app/wallet/deposit/page.tsx");
+const WALLET = read("../src/lib/server/wallet-service.ts");     // the enforcement, not the page
+const MARKET = read("../src/lib/server/market-service.ts");
+const RAIL_S = read("../src/app/admin/kyc/[id]/kyc-decision-rail.tsx");
 const stripComments = (s: string) =>
   s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
 const KYC_PAGE = stripComments(KYC_PAGE_RAW);
@@ -143,6 +146,25 @@ ok("…and it renders the email gate instead of the form", /!emailVerified \?[\s
 ok("the deposit page does NOT gate on KYC approval",
   !/kycApproved/.test(DEPOSIT),
   "if this fires, KYC now unlocks deposits too and the burst may understate what was unlocked");
+
+// The page is presentation; the SERVICE is enforcement. Pin the real thing, because
+// that is what makes the claim true or false.
+ok("🔴 the deposit SERVICE enforces email verification, not KYC",
+  /if \(!depositor\?\.emailVerifiedAt\)/.test(WALLET));
+ok("🔴 the withdraw SERVICE is what enforces KYC APPROVED",
+  /kyc\?\.status !== "APPROVED"/.test(WALLET) && /withdraw\.kyc_blocked/.test(WALLET));
+ok("play is not gated on identity at all",
+  !/kyc/i.test(MARKET),
+  "market-service carries no KYC reference; if it gains one, every 'what approval unlocks' string moves");
+
+// ── 7 · The officer is told the same truth as the player (E-9) ──────────────
+section("7 · the officer's confirm dialog");
+
+ok("🔴 the approve dialog no longer claims it unlocks deposits or play",
+  !/unlocks full real-money deposits, play and withdrawals/.test(RAIL_S),
+  "the officer-facing twin of E-5 — misstating a compliance action to the accountable officer");
+ok("…and it names the withdrawal gate as what the decision opens",
+  /opens the <strong>withdrawal<\/strong> gate/.test(RAIL_S));
 
 // ── 6 · The gate's meaning, straight from the source ───────────────────────
 // The whole conditional hangs on what `unavailable` means. Pin it.

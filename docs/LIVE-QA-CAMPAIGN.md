@@ -484,6 +484,53 @@ screenshot photographed the page header while the text assertion — which read 
 passed. The images only became proof once the element was scrolled into view and captured on its
 own. Assert on the DOM, but photograph the thing you are claiming.
 
+| **E-4** | MEDIUM→**HIGH** | KYC workstation | **The officer's four attestations were never recorded — and never required.** *Name matches the ID · Document appears authentic · Selfie matches the ID photo · Sanctions / PEP clear* armed the Approve button from client-side `useState` and were then discarded. Two defects wearing one coat, and the second is the serious one the original write-up missed: **(a) NOT RECORDED** — the audit payload carried only `{riskScore, makerChecker}`, so the one thing an inspector would ask for (that a *named officer* positively attested the selfie matched a citizen's ID) existed nowhere afterwards; **(b) NOT ENFORCED** — the gate was client-side *only*. `approveKycWorkstationAction` took a `userId` and approved, so an approval that **opens the withdrawal rail** could be made with **no attestations at all**. The checklist was decorative from the server's point of view. | `kyc-decision-rail.tsx` (`judg` useState, `run(approveKycWorkstationAction, …)` with no extras) vs `kyc-actions.ts`; live audit row `kyc.workstation.approved` | ✅ fixed |
+
+**E-4 fix — and the schema decision the handoff asked for.** The four attestations now travel with
+the decision, are **required server-side**, and land in the **hash-chained audit payload**.
+
+> **Audit payload, not a column — and this is the *defensible* answer, not the cheap one.** The
+> handoff assumed a column would be more defensible. Measured, it is the opposite: a column on
+> `KycSubmission` is **mutable**, and an attestation that can be silently edited later is weaker
+> evidence, not stronger. The audit log is append-only and **hash-chained** (`AUDIT_CHAIN_SECRET`),
+> and it is **retained** — `privacy.ts:89` blocks DSAR erasure precisely to preserve the **7-year
+> AML window**, so these rows outlive the request by design. The attestation therefore lands in the
+> same tamper-evident record, at the same instant, attributed to the same officer, as the decision
+> it justifies. No migration was run against the live money DB to achieve it.
+
+Mechanics: a new shared `src/lib/kyc-attestations.ts` holds the four keys **once** and is imported
+by *both* the client rail and the server action, so collected-keys and required-keys cannot drift —
+that drift is exactly what hid E-1(b). `parseAttestations` is deliberately strict: every one of the
+four must be present and exactly `pass` (`fail` and `pending` are both refusals, and a **missing key
+is not an implied yes**), and **unknown keys are refused rather than ignored**, so a forged payload
+cannot pad itself. The refusal names the outstanding check, so the button reads as un-armed rather
+than broken. **The maker attests too** — `recommendKycApprovalAction` requires and records the same
+evidence, because a recommendation is what the second officer relies on; without it the
+maker-checker gate would rest on an unrecorded claim. A missing attestation on an approve is either
+a client bug or a bypass attempt, so it is audited as **SECURITY**
+(`kyc.approve.attestations_missing`), not returned as a silent validation error.
+
+**Guard**: `npm run test:kyc-attestations` (39). It drives the real `parseAttestations` rather than
+asserting on source text — *a client-side gate is precisely what looks correct in review and is
+absent on the wire* — and it checks each of the four keys individually for missing/`fail`/`pending`,
+plus malformed JSON, `null`, an array, and a padded payload. Proven red first: **10 failures**
+against the pre-fix wiring, while the 29 pure-validator assertions still passed — i.e. the wiring
+assertions are what caught the defect.
+
+⏳ **Not yet live-verified**, and honestly so: confirming the audit row on production requires
+driving an approval as an **officer**, and `QA_ADMIN_PASSWORD` is absent on laptop B (§1). The code
+is shipped, guarded and built; the production audit-row check is the one step outstanding.
+
+| **E-9** | MEDIUM | KYC workstation · officer copy | **The approve dialog told the accountable officer the wrong consequence.** The confirmation read “This marks the player's identity as verified and **unlocks full real-money deposits, play and withdrawals**” — wrong on two of the three, measured at the **enforcement layer** rather than the UI: deposits are gated on a confirmed email address (`wallet-service.ts:121`), and **play is not gated on identity at all** (`market-service.ts` contains no KYC reference in 2,986 lines). Only the withdrawal gate turns on this decision (`wallet-service.ts:1226`). The officer-facing twin of E-5, found while fixing E-4 — and in one respect worse, because misstating what a compliance action does, in the confirmation the accountable officer reads, is a defect in the record's provenance, not just in copy. | `kyc-decision-rail.tsx` approve `ConfirmDialog` body | ✅ fixed |
+
+**E-9 fix** — the dialog now says the decision opens the **withdrawal** gate, and states plainly
+that deposits are gated on a confirmed email and play is not gated on identity. **Guard**:
+`test:kyc-approved-copy` grows 30 → 35 and now pins the **enforcement**, not the presentation —
+the deposit *service* checking `emailVerifiedAt`, the withdraw *service* checking
+`status !== "APPROVED"` plus its `withdraw.kyc_blocked` audit, and `market-service` carrying no KYC
+reference at all. If play or deposits ever become identity-gated, every “what approval unlocks”
+string on the platform fails a test instead of quietly becoming a lie.
+
 ### 🚫 Two things that look like defects on this screen and are NOT — do not file them
 
 1. **The teal disc bleeding off the right edge of every screenshot is The Needle.** `#needle` is
@@ -504,7 +551,6 @@ own. Assert on the DOM, but photograph the thing you are claiming.
 | # | Sev | Area | Finding | Evidence |
 |---|---|---|---|---|
 | **E-8** | LOW | KYC reject copy | **The `DETAILS_MISMATCH` label describes a comparison the product never makes.** The officer's rail calls it *Details mismatch* — meaning the details typed do not match the **document the player submitted**. The player is told, in all three languages, *“NIDA details don't match **our records**”* / *“Taarifa za NIDA hazilingani na rekodi zetu”* / *“NIDA 信息与我们的记录不符”*. We hold no NIDA record to compare against — `docs/NIDA-POLICY.md` and the D-2 fix are explicit that no request has ever reached the authority. Milder than D-2 (it says *our* records, not the authority's) but it is the same class: describing evidence we do not have. Suggested: name the submitted ID document instead. All three locales + `test:kyc-reject-reason`'s key list would need updating together. | live `e6-player-{sw,zh,en}.png`; `i18n-dict.ts:960/2306/3650` |
-| **E-4** | MEDIUM | KYC workstation | **The officer's four attestations are never recorded.** *Name matches the ID · Document appears authentic · Selfie matches the ID photo · Sanctions / PEP clear* must all be ticked to arm Approve, but they are client-side `useState` only: `approveKycWorkstationAction` never receives them and the audit payload carries just `{riskScore, makerChecker}`. The one thing an inspector would want — that a named officer positively attested the selfie matched — is discarded at the moment it is made. | `kyc-decision-rail.tsx:66` vs `kyc-actions.ts:62-85`; live audit row `kyc.workstation.approved` |
 | **E-7** | MEDIUM | i18n · profile | **`User.locale` is stored, shown to the player, and never used to render anything — and the player cannot change it.** Signup hard-codes `locale: "SW"` (`auth-service.ts:268,463`) and the column defaults to `SW`, so **44 of 46 live users are `SW`**. But the rendered language is the `kp-locale` cookie alone, which falls back to **`en`** when absent — so a brand-new Tanzanian visitor gets English while their row says Swahili. `/profile` then badges that row directly (`profile/page.tsx:132`, `user.locale === "SW" ? "Kiswahili" : "English"`), i.e. it tells a player reading English that their language is Kiswahili — **and prints "English" for a `ZH` user**. `profile/actions.ts:29` accepts `EN`/`SW` only (no `ZH`), and **no component in the app ever submits a `locale` field**, so nothing a player does can ever correct it. The column does drive real output: web-push (`notification-service.ts:136`) and OTP SMS (`sms.ts:156`) — both would go out in Swahili to a player using the site in English. | live: `delta` is `locale = SW` and rendered EN until the cookie was set; `select locale, count(*)` → SW 44 / EN 2 | ⏳ open |
 
 ## 6c. Verified working on production this session (not defects)
@@ -555,10 +601,17 @@ All merged to `main`, deployed SUCCESS on Railway, and re-verified against produ
 built. Branch `qa/live-experience` == `main`.
 
 **Guards this campaign now owns** (all auto-discovered by `node scripts/test-all.mjs --filter kyc`,
-**7/7 green** incl. typecheck): `test:kyc` · `test:kyc-honesty` (19) ·
+**8/8 green** incl. typecheck): `test:kyc` · `test:kyc-honesty` (19) ·
 `test:kyc-reject-reason` (64) · `test:kyc-doc-metadata` (19) · `test:kyc-workstation-time` (16) ·
-**`test:kyc-approved-copy` (30)**. Plus `test:phone-normalize` (17) and `test:login-enum` (11)
-from Phase 1.
+**`test:kyc-approved-copy` (35)** · **`test:kyc-attestations` (39)**. Plus `test:phone-normalize` (17)
+and `test:login-enum` (11) from Phase 1.
+
+ℹ️ **Pre-existing build noise, not ours and not a failure.** `npm run build` prints
+*“Ecmascript file had an error … `node:crypto` is not supported in the Edge Runtime”* twice, via
+`lock-key.ts` ← `audit.ts` ← `instrumentation.ts`, and the trace also shows `audit.ts` reaching the
+**Client Component Browser** graph. The build still **exits 0**, and `audit.ts:41` already carries a
+comment acknowledging that reachability (it imports `./lock-key`, not `./locks`, for exactly this
+reason). Recorded so nobody attributes it to a KYC change; a proper look belongs to its own lane.
 
 **Phase 2 officer review is COMPLETE** (§6c). Approve, reject, revoke, ban, session
 revocation, the enumeration probe and the NIDA free/claimed pair were all driven against
@@ -575,10 +628,16 @@ Two findings are evidenced and **open** (E-4, E-5), plus **E-7 and E-8, which ar
 4. ✅ **E-2 fixed and live** — guarded by `test:kyc-workstation-time` (16).
 5. ✅ **E-5 fixed AND live-verified** in 12 combinations (§6) — the burst states only what approval
    unlocked and reads the live payout gate; guarded by `test:kyc-approved-copy` (30).
-   **START HERE → E-4.** ⚠️ Its live half needs **officer** access, and `QA_ADMIN_PASSWORD` is
-   absent on laptop B (§1) — implement + guard first, then get the admin password from Ali to
-   drive the approval on production. Do **not** re-set the ADMIN account's password to work around
-   this.
+6. ✅ **E-4 fixed** (attestations required server-side + recorded in the hash-chained audit) and
+   ✅ **E-9 fixed** (the officer's approve dialog named the wrong consequence). Guards
+   `test:kyc-attestations` (39) and `test:kyc-approved-copy` (35).
+   **START HERE → drive one approval as an officer on production** and read the
+   `kyc.workstation.approved` audit row back: it must now carry
+   `attestations: {name_matches:"pass", document_authentic:"pass", selfie_match:"pass", sanctions_clear:"pass"}`
+   beside `riskScore`/`makerChecker`. That needs **`QA_ADMIN_PASSWORD`, which is absent on laptop B**
+   (§1) — ask Ali for it. ⛔ Do **not** re-set the ADMIN account's password to work around this; it
+   is Ali's own operator login. A fresh persona is needed to approve, since `alpha` is already
+   APPROVED and `bravo`/`delta` are REJECTED, `charlie` SUSPENDED.
    **E-4** needs a small schema decision: the officer's four attestations
    (name matches · document authentic · selfie matches · sanctions/PEP clear) are
    client-side `useState` and are discarded at the moment they are made — decide where they

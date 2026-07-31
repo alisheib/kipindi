@@ -19,6 +19,7 @@ import { twoOfficerGate } from "@/lib/server/two-officer";
 import { canAct } from "@/lib/server/rbac";
 import { reviewKyc } from "@/lib/server/kyc-service";
 import { kycRiskScore, getApprovalRecommendation, KYC_MAKER_CHECKER_THRESHOLD } from "@/lib/server/kyc-risk";
+import { parseAttestations } from "@/lib/kyc-attestations";
 
 type Result = { ok: true } | { ok: false; error: string };
 type RejectCode = NonNullable<Parameters<typeof reviewKyc>[0]["rejectCode"]>;
@@ -72,7 +73,15 @@ export async function recommendKycApprovalAction(formData: FormData): Promise<Re
   if (!kyc || (kyc.status !== "PENDING_REVIEW" && kyc.status !== "ADDITIONAL_INFO_REQUIRED")) {
     return { ok: false, error: "Only a submission awaiting review can be recommended." };
   }
-  audit({ category: "COMPLIANCE", action: "kyc.approve.recommended", actorId: g.userId, targetType: "User", targetId: userId, payload: { kycId: kyc.id } });
+  // E-4: the MAKER attests too. The rail arms "Recommend approval" on the same four
+  // checks, and a recommendation is what a second officer relies on — so it must
+  // carry the same evidence, or the maker-checker gate rests on an unrecorded claim.
+  const attest = parseAttestations(formData.get("attestations"));
+  if (!attest.ok) {
+    audit({ category: "SECURITY", action: "kyc.approve.attestations_missing", actorId: g.userId, targetType: "User", targetId: userId, payload: { reason: attest.error, step: "recommend" } });
+    return { ok: false, error: attest.error };
+  }
+  audit({ category: "COMPLIANCE", action: "kyc.approve.recommended", actorId: g.userId, targetType: "User", targetId: userId, payload: { kycId: kyc.id, attestations: attest.attested } });
   revalidatePath(`/admin/kyc/${userId}`);
   return { ok: true };
 }
@@ -83,6 +92,17 @@ export async function approveKycWorkstationAction(formData: FormData): Promise<R
   if ("error" in g) return { ok: false, error: g.error };
   const userId = String(formData.get("userId") ?? "");
   if (!userId) return { ok: false, error: "Missing user." };
+
+  // E-4. The four officer attestations are REQUIRED here, not merely collected.
+  // They used to gate the Approve button client-side only, so this action would
+  // approve an identity — opening the withdrawal rail — on a request carrying
+  // nothing but a userId. A missing attestation on an approve is either a client
+  // bug or a bypass attempt, so it is a SECURITY audit event, not a silent 400.
+  const attest = parseAttestations(formData.get("attestations"));
+  if (!attest.ok) {
+    audit({ category: "SECURITY", action: "kyc.approve.attestations_missing", actorId: g.userId, targetType: "User", targetId: userId, payload: { reason: attest.error } });
+    return { ok: false, error: attest.error };
+  }
 
   const risk = await kycRiskScore(userId);
   if (risk.score >= KYC_MAKER_CHECKER_THRESHOLD) {
@@ -98,7 +118,7 @@ export async function approveKycWorkstationAction(formData: FormData): Promise<R
   }
   const r = await reviewKyc({ officerId: g.userId, userId, decision: "APPROVE" });
   if (!r.ok) return { ok: false, error: r.error ?? "Could not approve." };
-  audit({ category: "COMPLIANCE", action: "kyc.workstation.approved", actorId: g.userId, targetType: "User", targetId: userId, payload: { riskScore: risk.score, makerChecker: risk.score >= KYC_MAKER_CHECKER_THRESHOLD } });
+  audit({ category: "COMPLIANCE", action: "kyc.workstation.approved", actorId: g.userId, targetType: "User", targetId: userId, payload: { riskScore: risk.score, makerChecker: risk.score >= KYC_MAKER_CHECKER_THRESHOLD, attestations: attest.attested } });
   revalidatePath(`/admin/kyc/${userId}`);
   return { ok: true };
 }

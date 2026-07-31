@@ -16,6 +16,7 @@ import { BrandSpinner } from "@/components/brand";
 import { AttestationRail } from "@/components/admin/attestation-rail";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { CEREMONY } from "@/lib/admin-status-lexicon";
+import { KYC_ATTESTATIONS } from "@/lib/kyc-attestations";
 import {
   approveKycWorkstationAction,
   rejectKycWorkstationAction,
@@ -26,12 +27,9 @@ import {
 type TriState = "pass" | "fail" | "pending";
 type AutoCheck = { label: string; state: TriState; detail: string };
 
-const JUDGMENT_CHECKS = [
-  { key: "name_matches", label: "Name matches the ID" },
-  { key: "document_authentic", label: "Document appears authentic" },
-  { key: "selfie_match", label: "Selfie matches the ID photo" },
-  { key: "sanctions_clear", label: "Sanctions / PEP clear" },
-];
+/* E-4: the four attestations now come from ONE shared definition that the server
+   action also imports, so the collected keys and the required keys cannot drift. */
+const JUDGMENT_CHECKS = KYC_ATTESTATIONS;
 
 const REJECT_OPTIONS = [
   { value: "document_unreadable", label: "Document unreadable" },
@@ -139,7 +137,7 @@ export function KycDecisionRail({
       {/* Actions */}
       <div className="space-y-2">
         {canRecommend ? (
-          <button type="button" onClick={() => run(recommendKycApprovalAction, "Approval recommended", undefined, "warning")} className="btn btn-primary btn-md w-full">
+          <button type="button" onClick={() => run(recommendKycApprovalAction, "Approval recommended", { attestations: JSON.stringify(judg) }, "warning")} className="btn btn-primary btn-md w-full">
             <I.shieldcheck s={14} /> Recommend approval
           </button>
         ) : (
@@ -161,10 +159,21 @@ export function KycDecisionRail({
               </button>
             }
             title="Approve identity · Idhinisha kitambulisho"
-            body={<>This marks the player&apos;s identity as <strong>verified</strong> and unlocks full real-money deposits, play and withdrawals. Confirm the checklist reflects the documents you actually reviewed.</>}
+            /* E-9 (officer-facing twin of E-5). This used to read "unlocks full
+               real-money deposits, play and withdrawals" — wrong on two of the three,
+               measured at the ENFORCEMENT layer, not the UI: deposits are gated on a
+               confirmed email address (`wallet-service.ts:121`), and play is not gated
+               on identity at all (`market-service.ts` contains no KYC reference in
+               2,986 lines). Only the withdrawal gate turns on this decision
+               (`wallet-service.ts:1226`). Misstating the consequence of a compliance
+               action, in the confirmation the accountable officer reads, is worse than
+               the same error shown to a player. */
+            body={<>This marks the player&apos;s identity as <strong>verified</strong> and opens the <strong>withdrawal</strong> gate — that is what this decision unlocks. Deposits are gated on a confirmed email address, not on this; play is not gated on identity. Confirm the checklist reflects the documents you actually reviewed.</>}
             confirmLabel="Yes, approve identity"
             tone="brand"
-            onConfirm={() => run(approveKycWorkstationAction, "Identity approved")}
+            /* E-4: the attestations travel WITH the decision. They used to arm this
+               button and then die in the browser. */
+            onConfirm={() => run(approveKycWorkstationAction, "Identity approved", { attestations: JSON.stringify(judg) })}
           />
         )}
 
