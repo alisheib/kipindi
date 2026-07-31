@@ -26,7 +26,8 @@ const prisma = new PrismaClient();
 try {
   const staff = await prisma.user.findMany({
     where: { role: { in: STAFF } },
-    select: { id: true, role: true, phone: true, status: true },
+    // The column is `phoneE164`, not `phone` — the DAL exposes `phone`, the schema does not.
+    select: { id: true, role: true, phoneE164: true, status: true },
   });
 
   // TotpSecret is keyed by userId; presence = enrolled.
@@ -45,7 +46,7 @@ try {
   console.log(`  Staff accounts: ${staff.length}`);
   for (const u of staff) {
     const has = enrolled.has(u.id);
-    console.log(`    ${has ? "✅ enrolled  " : "❌ NOT enrolled"}  ${String(u.role).padEnd(11)} ${mask(u.phone)}  ${u.status}`);
+    console.log(`    ${has ? "✅ enrolled  " : "❌ NOT enrolled"}  ${String(u.role).padEnd(11)} ${mask(u.phoneE164)}  ${u.status}`);
   }
 
   const admins = staff.filter((u) => u.role === "ADMIN" && u.status === "ACTIVE");
