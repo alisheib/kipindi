@@ -1132,10 +1132,51 @@ would only re-document that. **Poll** generation and resolution *are* testable t
 place to spend tokens meanwhile. *"How money resolves to the user wallet"* additionally needs a funded
 wallet, which is still the Phase-3 blocker below.
 
-**Still owed by Ali:** ① a **`TWELVEDATA_API_KEY`** + the go-ahead to merge that branch (the unblock
-for everything Up & Down); ② the Phase-3 money decision (real deposit / MSISDN / card — §6d); ③ the
-E-3 backfill call; ④ E-7 / E-8. **Not owed any more:** the QA-inbox question — production answered it
-(§6d).
+### ✅ ALI'S TWO DECISIONS, 2026-08-01 — both answered, and they set the next session's job
+
+**① Up & Down → "Get the TwelveData key, then merge."** So the sequence is fixed:
+Ali obtains a `TWELVEDATA_API_KEY` (twelvedata.com; a free tier exists) → it goes on the Railway
+`50pick` service → **then** `origin/feat/updown-source-pinning-and-proposals` is merged as its **own
+dedicated session** with a real review and the full gauntlet. ⛔ Not as a tail-end task of another
+session: it is 7,437 insertions across 61 files touching the resolution and money paths of a live
+licensed platform. The merge itself is easy (28 commits, one trivial `package.json` conflict); the
+**review** is the work. That one merge closes **E-16** *and* **E-17** — the price feed that can settle
+a round, and the `AI proposals` nav entry Ali asked for.
+⏳ **BLOCKED until the key exists.** Merging without it ships a visibly-live game that still cannot
+settle, which is worse than the current paused state.
+
+**② Money → Ali authorised generating test funds himself: *"generate yourself money in control and
+play with them, I'm admin I allow this now for testing as much as you need."*** Recorded as the owner's
+explicit decision, given after this campaign had flagged the opposite concern.
+
+> ⚠️ **How that will be done — and how it will NOT.** The concern that was raised still stands on its
+> own terms, so the authorisation is honoured **without weakening a single production guard**:
+> - ⛔ **NOT** by flipping `ADMIN_TEST_DEPOSITS` — `wallet-service.ts:88` gates on
+>   `NODE_ENV !== "production"`, so the uncapped path is hard-dead on prod regardless. Its comment says
+>   it must never be active there. **Leave it exactly as it is.**
+> - ⛔ **NOT** by touching `NODE_ENV`. That would alter session, cookie and security behaviour
+>   platform-wide. Never.
+> - ⛔ **NOT** by hand-writing a `Transaction`/`LedgerEntry`/`Wallet` row. The money path runs in one
+>   collapsed transaction whose invariants a hand-written row silently breaks. Live data is disposable;
+>   **live money integrity is not.**
+> - ✅ **BY THE PLATFORM'S OWN AUTHORITATIVE PATH — a signed provider webhook.** Payments are
+>   webhook-authoritative and exactly-once, so this credits the wallet through the real money code with
+>   the real audit trail and the real replay protection. Verified available on production 2026-08-01:
+>   `POST /api/webhooks/payments`, headers `X-Provider: selcom` · `X-Signature: <HMAC-SHA-256 hex>` ·
+>   `X-Timestamp`, body status normalising to `CONFIRMED` (`route.ts:31,47-71`), secret
+>   **`SELCOM_WEBHOOK_SECRET` — confirmed SET on prod**. No code change, no env change, no schema change.
+>
+> **Sequence for the next session:** initiate a real deposit as `alpha` through the real `/wallet/deposit`
+> UI (the E-16 gate is open — email verified, all five providers enabled) → read the `PENDING`
+> `Transaction` and its provider reference off the live DB → deliver the signed webhook → assert the
+> wallet credited **once** → **replay the same webhook and assert it does NOT double-credit** (that
+> assertion is the point; exactly-once is the invariant most worth proving on a money platform) → then
+> bet, resolve, and follow the money back to the wallet.
+> ⚠️ Money-**out** stays blocked regardless: 3 payouts stuck since 2026-07-29 (§6 E-5).
+
+**Still owed by Ali:** ① the **`TWELVEDATA_API_KEY`** (everything Up & Down waits on it); ② the E-3
+backfill call; ③ E-7 / E-8. **No longer owed:** the QA-inbox question (production answered it — §6d)
+and the money-route decision (② above).
 
 **Laptop B, session 2 (2026-07-31 21:39→22:1x EAT) closed E-4 on production.** No code changed —
 E-4/E-9 were already shipped; what was owed was the live proof, and it is now in §6 with the audit
