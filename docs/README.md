@@ -1,0 +1,121 @@
+# `docs/` — the index, with an honest status on every file
+
+Written 2026-07-31. **Read this before opening anything else in here.**
+
+There are **42 files** in here — this index plus 41 documents. Some are law, some are a snapshot
+of a Tuesday in May, and from the outside they look identical. Getting that wrong is how a session spends a night rebuilding
+something that shipped a week ago — which has happened in this repo more than once. This
+file exists so the *next* session can tell them apart in thirty seconds.
+
+**Guarded by `npm run test:docs`** — every relative link, `scripts/*` path and `npm run`
+reference in `docs/` must resolve on disk. Broken on purpose and observed to go red.
+
+## Status key
+
+| | |
+|---|---|
+| 🟢 **LAW** | Authoritative. Cited by code or by a gate. Changing it changes what is correct. |
+| 🔵 **LIVE** | Current working state. Expected to be edited as work proceeds. |
+| ⚪ **RECORD** | A closed decision or a finished event. Do not "update" it; write a new one. |
+| 🟡 **OPEN** | A question awaiting Ali. Nothing is blocked on code. |
+| 🟠 **DESIGN** | Specified, not built. No code exists. |
+| ⚫ **HISTORICAL** | A snapshot of a past moment. Trust the date, not the content. |
+
+---
+
+## Start here
+
+| Doc | | What it is |
+|---|---|---|
+| [`NEXT-PLAN.md`](NEXT-PLAN.md) | 🔵 LIVE | **The one live plan.** Opens with "PICK UP HERE" — the state at the close of the last session, what is done, and the single thing blocking backups. Start every session here. |
+| [`MODULE-CERTIFICATION-PROGRAM.md`](MODULE-CERTIFICATION-PROGRAM.md) | 🟢 LAW | **The program that finishes the platform.** 52 modules in 12 domains, each with a dossier, an attack list and a `cert:` gate; the eight gates that define "0 flaws"; the 12 laws; the orphan reckoning; a status board; and a copy-paste session prompt. Governs certification — `NEXT-PLAN.md` governs launch hardening. |
+| [`AGENT-ACCESS.md`](AGENT-ACCESS.md) | 🟢 LAW | How to grant an agent access, and the two kinds of block that look identical. Also records which accounts own Cloudflare/Railway — **and that the Cloudflare login is written down nowhere**. |
+| [`SETUP.md`](SETUP.md) | 🟢 LAW | **Getting 50pick running on a machine that has never seen it.** Prerequisites, install, booting with no database, `railway run` vs `railway ssh`, and a symptom→cause table for the traps that waste an afternoon. |
+| `../CLAUDE.md` | 🟢 LAW | How this repo works — the **mechanics**. ⚠️ Its first ~140 lines are an accumulated status log and parts are stale; for *current state* use `NEXT-PLAN.md`. Now opens with a START HERE pointer. |
+
+## Design — frozen, do not reopen
+
+| Doc | | |
+|---|---|---|
+| [`DESIGN_AUTHORITY.md`](DESIGN_AUTHORITY.md) | 🟢 LAW | B1–B10 invariants + "what the freeze pass found — do not undo". Enforced by `test:design-frozen`. |
+| [`design-master-brief.md`](design-master-brief.md) | 🟢 LAW | Palette + composition source of truth; live tokens match to ~0.3%. |
+| [`POLISH-BACKLOG.md`](POLISH-BACKLOG.md) | 🔵 LIVE | §1 and §4 done; **§2 FIX SOON and §3 LATER are open**. §3 carries the measured scale ceilings. |
+
+⚠️ The old `design_handoff` kit is **deleted and forbidden** — following it reverts the brand
+to teal and resurrects the killed light theme.
+
+## Money, payments, payouts
+
+| Doc | | |
+|---|---|---|
+| [`SELCOM-PAYOUT-RAILS.md`](SELCOM-PAYOUT-RAILS.md) | 🟢 LAW | **The single source of truth for payout state.** Everything else in `SELCOM-*` is history or evidence. Contains the `railway run` vs `railway ssh` trap and two fenced wrong diagnoses. |
+| [`SELCOM-DISBURSEMENT-ACTIVATION.md`](SELCOM-DISBURSEMENT-ACTIVATION.md) | 🔵 LIVE | Activation runbook. Carries a "CORRECTED 2026-07-30" banner — read that first. |
+| [`SELCOM-API-DIGEST.md`](SELCOM-API-DIGEST.md) | 🟢 LAW | Real-money signing reference for the adapter. |
+| [`SELCOM-010-INVESTIGATION.md`](SELCOM-010-INVESTIGATION.md) | ⚪ RECORD | ✅ Closed. Kept deliberately as the reasoning trail — the wrong answer was confident. |
+| [`SELCOM-PAYOUT-INCIDENT-2026-07-30.md`](SELCOM-PAYOUT-INCIDENT-2026-07-30.md) | ⚪ RECORD | The incident itself. |
+| [`SELCOM-DISBURSEMENT-REQUEST.md`](SELCOM-DISBURSEMENT-REQUEST.md) | ⚪ RECORD | ✅ Granted 2026-07-27. |
+| [`PAYMENT-INTEGRATION-CHECKLIST.md`](PAYMENT-INTEGRATION-CHECKLIST.md) | 🔵 LIVE | Run the day new API keys land. |
+| [`FEE-MODEL-DECISION-2026-07-14.md`](FEE-MODEL-DECISION-2026-07-14.md) | ⚪ RECORD | **SHIPPED.** Fixed the bug where a winner was paid less than they staked. |
+| [`FEE-MODEL-DECISION.md`](FEE-MODEL-DECISION.md) | 🟡 **OPEN** | 🔴 **Confusing name — this is the NEWER file (2026-07-22).** A different question: Jay's flat 13%-of-losing-pool proposal vs the live `min(10% of pool, ⅓ of smaller pool)`. **Awaiting Ali's ruling. No code has changed.** Do not mistake it for superseded. |
+| [`F6-LIQUIDITY-DESIGN.md`](F6-LIQUIDITY-DESIGN.md) | 🟠 DESIGN | Seeded liquidity. **No code written.** |
+| [`bonus-wallet-plan.md`](bonus-wallet-plan.md) | ⚪ RECORD | Shipped 2026-06-26. |
+| [`proposals.md`](proposals.md) | 🟢 LAW | Player market proposals → instant approval bonus. Supersedes the old prize model. |
+
+## Backups, ops, infrastructure
+
+| Doc | | |
+|---|---|---|
+| [`BACKUP-RUNBOOK.md`](BACKUP-RUNBOOK.md) | 🟢 LAW | The four commands, the drill, **the eight defects a green suite missed**, and the `\| tee` bug that made the nightly report success while shipping nothing. Read before touching backups. |
+| [`LIVE-HOSTING-STATUS.md`](LIVE-HOSTING-STATUS.md) | 🔵 LIVE | Living snapshot of go-live hosting. Cloudflare zone, DNS, R2. |
+| [`GO-LIVE-RUNBOOK.md`](GO-LIVE-RUNBOOK.md) | ⚪ RECORD | How 50pick.tz *was* taken live (2026-07-17). |
+| [`LAUNCH-GO-NO-GO.md`](LAUNCH-GO-NO-GO.md) | 🔵 LIVE | The env/infra walk-down before real money. |
+| [`CLOUDFLARE-SETUP-GUIDE.md`](CLOUDFLARE-SETUP-GUIDE.md) | ⚪ RECORD | Mostly done. ⚠️ Keep the mail-records section — it is what stops `ali.sheib@50pick.tz` breaking. |
+| [`DATA-LAYER.md`](DATA-LAYER.md) | 🟢 LAW | Read before touching any persistence. |
+| [`FLOWS.md`](FLOWS.md) | 🟢 LAW | Every redirect, gate and recovery path, with file references. |
+| [`EMAIL-SIGNATURES.md`](EMAIL-SIGNATURES.md) | ⚪ RECORD | Signature images hosted on the domain. |
+| [`PARALLEL-SESSION-COORDINATION.md`](PARALLEL-SESSION-COORDINATION.md) | ⚫ HISTORICAL | ⚠️ Written for a specific Session M / Session E split whose A2–A5 scope is **finished**. The *hazard* it describes is still real — parallel lanes still run here, and an unmerged 28-commit branch is open — but the role assignments no longer apply. Use a git worktree per lane. |
+
+## Compliance and certification
+
+| Doc | | |
+|---|---|---|
+| [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) | 🟢 LAW | Owner-authorised decisions touching a compliance control. Append, never rewrite. |
+| [`NIDA-POLICY.md`](NIDA-POLICY.md) | 🟢 LAW | Owner decision 2026-07-19. Authoritative over any contradicting doc. |
+| [`gli-remediation-plan.md`](gli-remediation-plan.md) | 🟢 LAW | Canonical GLI spec of record, ticket-level acceptance criteria. |
+| [`gli-remediation-tracker.md`](gli-remediation-tracker.md) | 🔵 LIVE | The done / not-done companion to the plan above. |
+| [`REGULATOR_STRESS_REPORT.md`](REGULATOR_STRESS_REPORT.md) | ⚫ HISTORICAL | 2026-05-26 — **the oldest doc here.** Opens with "DO NOT SHOW THIS TO A REGULATOR AS-IS". Predates the licence, the fee-model fix, the design freeze and every payment change. Re-run before citing it. |
+
+## Up & Down
+
+| Doc | | |
+|---|---|---|
+| [`UPDOWN-SPEC.md`](UPDOWN-SPEC.md) | 🟢 LAW | Owns **WHAT** it is — rules, workflows, states. |
+| [`UPDOWN-ARCHITECTURE.md`](UPDOWN-ARCHITECTURE.md) | 🟢 LAW | Owns **HOW** it is built — data model, engines, money path. |
+| [`UPDOWN-PRICING.md`](UPDOWN-PRICING.md) | 🟢 LAW | The margin / winning-boundary math. Money-critical. |
+| [`NEXT-SESSION-UPDOWN-AI.md`](NEXT-SESSION-UPDOWN-AI.md) | 🔵 LIVE | 🔴 Describes work that exists on the **unmerged** branch `feat/updown-source-pinning-and-proposals` (28 commits, current with `main`). It fixes a real money bug: editing an asset's source URL silently switches the source under open rounds with stakes placed. **Another lane's work — do not merge without Ali.** |
+
+## AI
+
+| Doc | | |
+|---|---|---|
+| [`AI-POLL-SOURCES.md`](AI-POLL-SOURCES.md) | 🟢 LAW | The AI generator is bound to the trusted-source registry. One rule, and it is enforced. |
+
+## Planning and backlog — read the status line, not the title
+
+| Doc | | |
+|---|---|---|
+| [`perfection-plan.md`](perfection-plan.md) | 🟠 DESIGN | The 9 role-gate *framework*. ⚠️ **Aspirational, not a defect list** — and until 2026-07-31 its own header cited itself as the authority. For what is actually open, use `NEXT-PLAN.md`. |
+| [`feature-backlog.md`](feature-backlog.md) | ⚫ HISTORICAL | Wishlist. **Not committed requirements.** |
+| [`LOAD_DAY1_FINDINGS.md`](LOAD_DAY1_FINDINGS.md) | ⚫ HISTORICAL | First-ever Postgres load run. Superseded by the measured ceilings in `POLISH-BACKLOG.md` §3. |
+
+---
+
+## Rules for this directory
+
+1. **One live plan.** `NEXT-PLAN.md`. Do not create `NEXT-SESSION-*.md`, `SESSION_STATUS.md`
+   or a new tracker — a previous cleanup deleted 28 such files for exactly this reason.
+2. **Same change updates code AND docs.** Update the doc that already owns the subject.
+3. **Never silently "update" a ⚪ RECORD.** Its value is being a true account of a moment.
+   Write a correction beneath it, fenced, so nobody re-derives the wrong answer.
+4. **Add every new doc to this index, with a status.** An unindexed doc is one nobody trusts.
+5. **`npm run test:docs` before you claim the docs are clean.**

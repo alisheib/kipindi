@@ -8,6 +8,26 @@
 > Read this first. It tells you what's true about the codebase right now,
 > and where to look before editing anything.
 
+---
+
+## ▶ START HERE — new machine, new session, or new person
+
+| Go to | For |
+|---|---|
+| [`docs/SETUP.md`](docs/SETUP.md) | **Getting this running on a machine that has never seen it.** Prerequisites, install, how to boot with no database, and the eight symptoms that waste an afternoon. |
+| [`docs/README.md`](docs/README.md) | **The doc index** — 42 docs, each with a status. From the outside a snapshot of a Tuesday in May looks identical to a law. |
+| [`docs/NEXT-PLAN.md`](docs/NEXT-PLAN.md) | **Current state.** Opens with "PICK UP HERE": what shipped last session, what to start on, what not to touch. |
+| [`docs/MODULE-CERTIFICATION-PROGRAM.md`](docs/MODULE-CERTIFICATION-PROGRAM.md) | **The programme that finishes the platform** — 52 modules, 8 gates, the 12 laws, the status board. |
+
+⚠️ **About the rest of this file.** The block below (and much of the first ~140 lines) is an
+accumulated status log written over months. It is excellent on **how things work** and unreliable
+on **what is currently true** — e.g. it still says the payment-aggregator API keys are the one
+remaining unblock, which was resolved long ago. **For current state trust `NEXT-PLAN.md`; for
+mechanics trust this file.** When the two disagree, `NEXT-PLAN.md` wins and this file should be
+corrected.
+
+---
+
 > ⏳ **ACTIVE WORK — pre-real-money launch.** The **Final Audit is COMPLETE** (all
 > 11 Criticals + Highs + Mediums, record: [`docs/perfection-plan.md`](docs/perfection-plan.md))
 > **and the §9 enhancement batch is DONE + LIVE.** Money-ops (A1–A5, M2 exact payouts,

@@ -12,6 +12,7 @@ import { auditRingSize } from "@/lib/server/audit";
 import { lifecycleTickerHealth } from "@/lib/server/lifecycle";
 import { isMonitoringEnabled } from "@/lib/server/monitoring";
 import { leadershipSnapshot } from "@/lib/server/leader";
+import { isAdminTotpEnforced } from "@/lib/server/admin-guard";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -67,6 +68,14 @@ export async function GET() {
           durable: true,
           alerting: isMonitoringEnabled(),
           sink: isMonitoringEnabled() ? "audit-chain + sentry" : "audit-chain only",
+        },
+        // 🔴 Is the admin console actually behind 2FA? `DISABLE_ADMIN_TOTP=true` has been set on
+        // production and NOTHING reported it — not here, not the boot checks, not /admin/system —
+        // so "is admin 2FA on?" was answerable only by reading Railway's variable list, which is
+        // exactly how the alerting question used to be answered before it was surfaced above.
+        // Reported for the same reason: a password-only admin console must not be a silent state.
+        security: {
+          adminTotp: isAdminTotpEnforced() ? "enforced" : "DISABLED",
         },
       },
       {

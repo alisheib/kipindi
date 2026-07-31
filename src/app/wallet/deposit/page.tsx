@@ -19,6 +19,8 @@ import { IdempotencyKeyField } from "@/components/wallet/idempotency-key-field";
 import { ProviderRadioGrid } from "@/components/wallet/provider-radio-grid";
 import { CardBillingFields } from "@/components/wallet/card-billing-fields";
 import { EmailVerifyGate } from "@/components/wallet/email-verify-gate";
+import { getPayoutStatus } from "@/lib/server/payout-status";
+import { PayoutStatusNotice } from "@/components/wallet/payout-status-notice";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Deposit", which a Swahili player saw in their browser tab and history.
@@ -46,6 +48,9 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/wallet/deposit");
   const { t } = await getServerT();
+
+  // A player about to put money IN has the most right to know we cannot get it out.
+  const payouts = await getPayoutStatus();
 
   const sp = await searchParams;
   const errorMsg = sp.error ? decodeURIComponent(sp.error) : null;
@@ -97,6 +102,22 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
           </div>
         </div>
       )}
+
+      {/* 🔴 Deliberately ABOVE the cashback promo. If we cannot pay withdrawals, a player has to
+          learn that BEFORE we offer them a bonus for putting money in — showing the incentive
+          first and the limitation later is the shape of a scam, whatever the intent. */}
+      <PayoutStatusNotice
+        status={payouts.status}
+        variant="deposit"
+        note={payouts.note}
+        labels={{
+          delayedTitle: t.wallet.payoutsDelayedTitle,
+          delayedBody: t.wallet.payoutsDelayedBody,
+          unavailableTitle: t.wallet.payoutsUnavailableTitle,
+          unavailableBody: t.wallet.payoutsUnavailableBody,
+          depositWarning: t.wallet.payoutsUnavailableDepositWarning,
+        }}
+      />
 
       {showCashback && <CashbackPromo percent={bonusCfg.cashbackPercentage} mode={bonusCfg.cashbackMode} compact cta={false} />}
 

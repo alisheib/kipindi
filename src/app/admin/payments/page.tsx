@@ -18,6 +18,8 @@ import { RetryControls } from "./retry-controls";
 import { ReconcileControls } from "./reconcile-controls";
 import { BulkRetryControls } from "./bulk-retry-controls";
 import { StuckPayoutControls } from "./stuck-payout-controls";
+import { PayoutStatusControl } from "./payout-status-control";
+import { getPayoutStatus } from "@/lib/server/payout-status";
 import { db } from "@/lib/server/store";
 
 export const metadata = { title: "Admin · Payments ops" };
@@ -37,10 +39,11 @@ export default async function PaymentsOpsPage({ searchParams }: { searchParams: 
   // vendor. It moves NO money (a signed status query for a transid that does not
   // exist) and it is the thing that answers, in seconds, the question that cost an
   // entire evening on 2026-07-29: is the rail down, or was it never switched on?
-  const [health, kill, recon, queue, controls, floatBal, railProbes] = await Promise.all([
+  const [health, kill, recon, queue, controls, floatBal, railProbes, payouts] = await Promise.all([
     allMnoHealth(), getKillSwitches(), reconcile(), retryQueue(), getPaymentControls(),
     getFloatBalance().catch(() => null),
     refreshRailProbes().catch(() => []),
+    getPayoutStatus(),
   ]);
   // Warn below one max-withdrawal of headroom — a dry float fails every payout.
   const FLOAT_LOW_TZS = 1_000_000;
@@ -71,6 +74,20 @@ export default async function PaymentsOpsPage({ searchParams }: { searchParams: 
         {/* Operations control-plane — mode indicator + runtime payment toggles. */}
         <AdminCard title="Operations control-plane" sw="Udhibiti wa uendeshaji">
           <ControlPlane controls={controls} />
+        </AdminCard>
+
+        {/* F1 — what players are told about withdrawals. First card after the control-plane
+            because while payouts cannot be paid it is the most consequential thing on the page. */}
+        <AdminCard title="What players are told about withdrawals" sw="Wanachoambiwa wachezaji kuhusu kutoa pesa">
+          <PayoutStatusControl
+            declared={payouts.declared}
+            derived={payouts.derived}
+            effective={payouts.status}
+            note={payouts.note}
+            stuckCount={payouts.stuckCount}
+            oldestStuckHours={payouts.oldestStuckHours}
+            derivedOverrodeDeclared={payouts.derivedOverrodeDeclared}
+          />
         </AdminCard>
 
         {/* Disbursement float — payouts debit this Selcom float account; a dry float

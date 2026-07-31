@@ -92,17 +92,32 @@ jobs:
 
       # Off-box BEFORE verification: if the verify step fails, the artifact still exists
       # somewhere other than a runner that is about to be destroyed.
+      # 🔴 `set -o pipefail` IS LOAD-BEARING. Without it `npm run … | tee` reports the exit
+      # status of `tee`, which always succeeds — so on 2026-07-31 the upload died on
+      # `NoSuchBucket` (the bucket had never been created) and this step went GREEN. The whole
+      # job was green while NOTHING had ever gone off-box. `bash -e` does not catch it: the
+      # pipeline as a whole "succeeded". Never remove pipefail, and never pipe without it.
       - name: Ship it off-box
         id: upload
         run: |
+          set -euo pipefail
           f=$(ls -1t backups/*.enc | head -1)
           npm run db:backup-upload -- --file "$f" | tee upload.log
-          echo "dest=$(sed -n 's/.*::upload-result::\(.*\)/\1/p' upload.log | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.stdout.write(JSON.parse(s||"{}").destination||""))')" >> "$GITHUB_OUTPUT"
+          dest=$(sed -n 's/.*::upload-result::\(.*\)/\1/p' upload.log | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.stdout.write(JSON.parse(s||"{}").destination||""))')
+          # Belt and braces: an empty destination means no artifact left this runner, whatever
+          # the exit codes said. "We have off-box backups" is the one claim we cannot get wrong.
+          if [ -z "$dest" ]; then
+            echo "::error::Upload reported no destination — nothing went off-box. Refusing to pass."
+            exit 1
+          fi
+          echo "dest=$dest" >> "$GITHUB_OUTPUT"
+          echo "shipped to $dest"
 
       # 🔴 The step that makes it a backup. Restores into the throwaway Postgres above and
       # re-runs the platform's own money and audit-chain checks on the RESTORED data.
       - name: Verify by restoring, and record health
         run: |
+          set -euo pipefail
           f=$(ls -1t backups/*.enc | head -1)
           npm run db:verify-backup -- --file "$f" --record
         env:

@@ -17,6 +17,7 @@
  * 2026-07-24). There is no stale override flag left to warn about.
  */
 import { assertPaymentModeSane } from "./payment-control";
+import { isAdminTotpEnforced } from "./admin-guard";
 
 /** The exact env names read by api/webhooks/payments/route.ts (KNOWN_PROVIDERS). */
 const WEBHOOK_SECRET_ENVS = ["SELCOM_WEBHOOK_SECRET", "AZAMPAY_WEBHOOK_SECRET", "MIXX_WEBHOOK_SECRET"] as const;
@@ -26,6 +27,22 @@ export async function runBootChecks(): Promise<void> {
   await assertPaymentModeSane();
 
   if (process.env.NODE_ENV === "production") {
+    // 🔴 Admin 2FA off in production. This was TRUE on production from before 2026-07-31 and
+    // absolutely nothing said so — not this file, not /api/health, not /admin/system. A
+    // password-only admin console on a licensed real-money platform is a finding in its own right;
+    // one that LOOKS like a 2FA-protected console is worse. Fail-open (log, never throw): the
+    // runtime guard already decides access, and a boot `throw` caused the C7 outage.
+    if (!isAdminTotpEnforced()) {
+      console.error(
+        "[security] WARNING: DISABLE_ADMIN_TOTP=true in PRODUCTION — the admin console is " +
+          "PASSWORD-ONLY. Every /admin surface, every money-ops action and every compliance " +
+          "override is reachable with a password alone. This was set deliberately so a consultant " +
+          "could test; it MUST be unset before real money. ⚠️ Before unsetting it, confirm at least " +
+          "one ADMIN has TOTP enrolled — otherwise the flip locks the owner out of his own console " +
+          "(the layout forces enrolment, so a locked-out admin cannot reach the setup page either).",
+      );
+    }
+
     const missing = WEBHOOK_SECRET_ENVS.filter((name) => !process.env[name]);
     if (missing.length) {
       console.error(
