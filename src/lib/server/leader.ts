@@ -40,7 +40,18 @@ import { randomBytes } from "node:crypto";
  * and two leaders that believe they are the same leader is the exact failure being
  * prevented.
  */
-export const INSTANCE_ID = `${process.env.RAILWAY_REPLICA_ID ?? "local"}-${randomBytes(6).toString("hex")}`;
+declare global {
+  // eslint-disable-next-line no-var
+  var __50PICK_INSTANCE_ID: string | undefined;
+}
+// ⚠️ Also pinned on globalThis. Next.js can instantiate this module more than once inside
+// ONE container (route handlers and instrumentation.ts do not share a graph). With a
+// per-module id, those instances would contend for the lease as though they were separate
+// machines — the lease would flap between two halves of the same process, and each
+// handover costs a tick of payment reconcile. One container must be one identity.
+export const INSTANCE_ID: string =
+  globalThis.__50PICK_INSTANCE_ID ??
+  (globalThis.__50PICK_INSTANCE_ID = `${process.env.RAILWAY_REPLICA_ID ?? "local"}-${randomBytes(6).toString("hex")}`);
 
 /**
  * How long a claim is good for. Three ticks: long enough that one slow pass does not hand
@@ -53,8 +64,22 @@ export type Lease = { holder: string; expiresAt: number; renewedAt: number };
 
 const keyFor = (task: string): string => `__LEADER_${task}__`;
 
-/** Last known lease per task, for `/api/health`. Never used to make a decision. */
-const observed = new Map<string, { holder: string; expiresAt: number; isMe: boolean }>();
+/**
+ * Last known lease per task, for `/api/health`. Never used to make a decision.
+ *
+ * 🔴 PINNED ON globalThis, and that is not decoration. The first deploy of this module
+ * reported `"leadership": {}` on a live container whose ticker was demonstrably running:
+ * Next.js gives the route handler a different module instance from `instrumentation.ts`,
+ * so the route was reading its own empty Map. `rate-limit.ts` pins its buckets the same
+ * way for the same reason. A diagnostic that always reads empty is exactly the silent
+ * state this field was added to remove.
+ */
+declare global {
+  // eslint-disable-next-line no-var
+  var __50PICK_LEADER_OBSERVED: Map<string, { holder: string; expiresAt: number; isMe: boolean }> | undefined;
+}
+const observed: Map<string, { holder: string; expiresAt: number; isMe: boolean }> =
+  globalThis.__50PICK_LEADER_OBSERVED ?? (globalThis.__50PICK_LEADER_OBSERVED = new Map());
 
 /**
  * Try to become (or stay) the leader for `task`.

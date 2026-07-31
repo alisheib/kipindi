@@ -77,6 +77,21 @@ ok("the lease is handed back on shutdown",
   /releaseLeadership\(LIFECYCLE_TASK\)/.test(lifecycle) && /SIGTERM/.test(lifecycle),
   "otherwise every deploy stalls the chores for up to LEASE_MS while the lease expires");
 
+console.log("\n── 3b · One CONTAINER is one identity, not one module ───────────");
+
+// 🔴 Found on the live site: `/api/health` reported `"leadership": {}` while the ticker
+// was demonstrably running. Next.js gives a route handler a different module instance from
+// instrumentation.ts, so the route read its own empty Map. The same flaw on INSTANCE_ID is
+// worse than cosmetic — two module instances inside ONE container would contend for the
+// lease as if they were separate machines, flapping it and costing a reconcile tick each
+// time. `rate-limit.ts` pins its buckets on globalThis for exactly this reason.
+ok("the observed-lease map is pinned on globalThis",
+  /globalThis\.__50PICK_LEADER_OBSERVED/.test(leader),
+  "a diagnostic that always reads empty is the silent state it was added to remove");
+ok("🔴 INSTANCE_ID is pinned on globalThis",
+  /globalThis\.__50PICK_INSTANCE_ID/.test(leader),
+  "one container must be one identity, or it competes with itself for its own lease");
+
 console.log("\n── 4 · Redis stays OFF the bet path, and fails open ─────────────");
 
 ok("admission.ts does not import redis", !/from "\.\/redis"/.test(admission),
