@@ -332,6 +332,38 @@ renamed `.jpg`, a 100 MB file, a zip bomb, an SVG carrying script · fetch a doc
 unauthenticated · does a document survive account deletion (K4 conflict)?
 **Exit** Magic-byte + size validation, no unauthenticated fetch, deletion policy consistent with K4.
 
+**📏 MEASURED ON PRODUCTION 2026-07-31 — "base64-in-DB" understates it.** `storageKey` is a
+seam (inline `data:image/…;base64` **or** `r2:<key>`), and `KYC_STORAGE=r2` **is** set — yet:
+
+| | |
+|---|---|
+| Documents | **31** — only **7 in R2**, **24 still inline** |
+| ID photographs living inside Postgres | **11.00 MB** |
+| Nightly backup | ~13.2 MB ⇒ **~83% of every backup is player identity images** |
+| Submissions | 28 `IN_PROGRESS` · 5 `APPROVED` · 3 `REJECTED` · 2 `PENDING_REVIEW` |
+| `ocrText` populated | 0 |
+
+So the first question is **why 24 rows are inline when the R2 seam is switched on** — do not
+assume new uploads are correct; prove it.
+
+🔴 **The inline rows are not evenly spread, and that is the compliance problem:**
+**APPROVED 12** · REJECTED 9 · PENDING_REVIEW 3.
+
+⚖️ **Owner decision (Ali, 2026-07-31): these are TEST data — delete, do not migrate.** Accepted,
+but deletion is **not uniform**, and the platform has 42 real wallets, so classify every
+submission as test or real *with evidence* first:
+
+- **REJECTED (9)** — decision made; safe to purge.
+- **PENDING_REVIEW (3)** — an officer still has to review these; deleting the evidence destroys
+  a review in flight. Resolve or void the submission first.
+- **APPROVED (12)** — 🔴 deleting these leaves an **approved identity check with no evidence
+  behind it**, which is worse than either keeping or removing them cleanly. If the account is
+  genuinely a test account, delete the **whole submission** and reset the user to
+  `NOT_STARTED`. Never leave an approval whose documents are gone.
+
+**The durable deliverable is not the deletion — it is a gate that FAILS if a new document is
+ever written inline while `KYC_STORAGE=r2`.** "Make sure new ones are correct" has to be code.
+
 ### D3 · Source of Funds — `cert:d3`
 **Surfaces** `profile/source-of-funds` · **Owns** `SourceOfFunds`, `SourceOfFundsReviewStatus`
 **Attack** Deposit above the threshold without a SoF review · alter a submitted declaration ·
@@ -339,6 +371,12 @@ approve one's own · is the threshold configurable and audited?
 **Exit** Threshold enforced server-side, review immutable once submitted, every decision audited.
 
 ### D4 · Upload & R2 storage — `cert:d4` 🔴 **no gate exists today**
+⚠️ **Updated 2026-07-31: the credential is now WIDER, not narrower.** The R2 token was rolled to
+reach **all buckets** (owner decision, for speed), so one leaked key now reaches the KYC
+documents **and** `50pick-backups`, which contains copies of those same documents. The exit
+criterion below is therefore more important than when it was written, not less.
+⚠️ Rolling that token also **broke KYC storage on production** until Railway was updated —
+nothing reported it. If a token is ever replaced, update Railway in the same sitting.
 **Surfaces** `api/admin/kyc-doc` · **Owns** `storage` (R2 `50pick-kyc`, WEUR)
 **Attack** Content-type confusion · path traversal in an object key · overwrite another object ·
 unbounded size · is any object reachable by unauthenticated URL? · 🔴 **the running app holds the R2
@@ -883,7 +921,7 @@ Existing commands to use rather than reinvent: `npm run test:all` · `npm run qa
 | C3 Notifications & push | `cert:c3` | ⬜ |
 | C4 Realtime SSE & ticker | `cert:c4` | ⬜ ceiling ~125 unmeasured |
 | D1 KYC submissions | `cert:d1` | ⬜ NIDA is a mock |
-| D2 KYC documents | `cert:d2` | ⬜ base64-in-DB |
+| D2 KYC documents | `cert:d2` | ⬜ **24 of 31 inline = 11 MB of ID photos in the DB, ~83% of every backup** (measured 2026-07-31) |
 | D3 Source of Funds | `cert:d3` | ⬜ |
 | D4 Upload & R2 storage | `cert:d4` | ⬜ **no gate exists** |
 | E1 Wallet & balances | `cert:e1` | ⬜ orphan TZS 100,000 |

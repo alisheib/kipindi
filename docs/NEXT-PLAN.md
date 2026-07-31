@@ -41,6 +41,28 @@ traps that waste an afternoon. Then [`README.md`](README.md), the doc index.
 | Orphans | **145 → 140.** Five ops tools adopted under `ops:` (never `test:` — they need live credentials). |
 | Suite | **113/113 green** (`--skip responsive,motion`). `test:responsive` still unverified — see the trap list. |
 
+### ▶▶ NEXT SESSION: certify domain D — KYC (Ali, 2026-07-31)
+
+The launch-hardening lane is **closed**: backups, alerting, multi-container and the scale
+ceilings are all live and proven. The next pass is **identity verification**, run as
+**domain D (D1–D4)** of [`MODULE-CERTIFICATION-PROGRAM.md`](MODULE-CERTIFICATION-PROGRAM.md) —
+that document commands it; do not invent a parallel structure.
+
+**Measured on production 2026-07-31, so nobody rediscovers it:** 31 KYC documents, only 7 in
+R2, **24 still inline base64 = 11.00 MB of ID photographs inside Postgres** — roughly **83% of
+every 13.2 MB nightly backup is player identity images**, even though `KYC_STORAGE=r2` is set.
+Submissions: 28 `IN_PROGRESS` · 5 `APPROVED` · 3 `REJECTED` · 2 `PENDING_REVIEW`.
+
+⚖️ **Owner decision: the inline documents are TEST data — delete, do not migrate.** But
+**12 of them sit under APPROVED submissions**, and deleting those would leave an approved
+identity check with no evidence behind it. Classify test vs real with evidence first, and for a
+test account delete the whole submission rather than orphaning the approval. Full rules and the
+per-status split are in D2's dossier.
+
+**Do not rebuild what exists:** `test:kyc` already runs four suites (117 assertions, all
+in-memory) and two E2E scripts sit unrun in the orphan allowlist. Read all six first.
+⚠️ Gates are named `test:cert-*` in practice, not `cert:*` as the programme doc says.
+
 ### 🔴 Start here, in this order
 
 1. **A6 — finish turning admin TOTP on.** The honesty half is done (`test:cert-a6`, 16 assertions):
