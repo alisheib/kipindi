@@ -88,8 +88,14 @@ so every nightly artifact was undecryptable by anyone. A password-manager copy i
 worth adding. ~~set `SENTRY_DSN`~~ ✅ **alerting is LIVE** — see item B below.
 
 **Still outstanding:** narrow the R2 token, which currently reaches ALL buckets · rule on the
-fee basis · rule on the Up & Down branch · turn on admin 2FA (readiness check FIRST) · rotate
-the Postgres password and the credentials exposed in chat.
+fee basis · rule on the Up & Down branch · turn on admin 2FA (readiness check FIRST).
+
+⚖️ **Owner decision, Ali, 2026-07-31: credential rotation is NOT being done.** The R2 keys,
+the Sentry auth token and the Postgres password have all passed through session chat and
+are knowingly being kept. Recorded so it reads as a decision rather than an oversight —
+**do not re-raise it as an open item.** If that changes, rotate Railway and GitHub in the
+SAME sitting: rolling the R2 token without updating Railway broke KYC storage on production
+earlier that day.
 
 ---
 
