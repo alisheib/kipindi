@@ -1,9 +1,16 @@
 STATUS: the next plan. Written 2026-07-29, immediately after the design system was
 frozen and shipped. **Revised 2026-07-31 against the live platform, not against memory.**
 
-**Items 1, 2 and 4 are DONE and live. Item 3 (withdrawals) is blocked at Selcom, and
-items 5–6 (scale, multi-container) are untouched.** What is left on 1 and 2 is not code —
-it is the operator actions listed under "Only Ali can do these", below.
+**Items 1, 2 and 4 are DONE and live. Item 3 (withdrawals) is blocked at Selcom.
+Multi-container is DONE and merged (2026-07-31); scale ceilings are the one code item
+left.** What is left on 1 and 2 is not code — it is the operator actions listed under
+"Only Ali can do these", below.
+
+⚠️ **Two lanes ran in parallel on 2026-07-30/31** and both have now landed on `main`
+(merge `491318a`): the launch-hardening lane (backups → alerting → multi-container) from
+`F:\kipindi-main`, and the certification/readiness lane above. If a claim in this file
+looks like it contradicts another, prefer the one with the later date and check
+`git log --oneline` before rebuilding anything.
 
 ---
 
@@ -23,6 +30,7 @@ traps that waste an afternoon. Then [`README.md`](README.md), the doc index.
 
 | | |
 |---|---|
+| **Merged: the launch-hardening lane** | Backups (8 defects the first real drill found), alerting (`@sentry/node` + the off-box PII scrub), and the **multi-container leader lease** — proven with two real OS processes racing on real Postgres, `s12` now in CI beside s10/s11. See items 1, 2 and 5 below. Suite **114/116** after the merge. |
 | Wave 0 · `test:cert-devroutes` | 110 assertions. Every exported handler under `api/dev-test/` and `api/dev/` must refuse in production **before its first `await`**. All 36 were guarded only by a convention repeated 35 times. Proven red. |
 | Wave 0 · `test:orphans` | **145 of 286** `scripts/` files are run by nothing. Now declared in `scripts/orphan-allowlist.json`; the gate refuses to re-seed. **145 → 0 is the program's progress metric.** |
 | Wave 1 · **F1 G8** `test:cert-f1` | 69 assertions. Players are now told, in en/sw/zh, that withdrawals cannot be paid — on withdraw **and** deposit (above the cashback promo). `unavailable` disables the form *and* the server action refuses. Officer control on `/admin/payments`. **The banner cannot be forced green:** `worstOf(declared, derived)`. |
