@@ -207,8 +207,31 @@ container instead, which must be kept on production's major version.
   ⚠️ The same trap applies to **anything** run outside Railway against this database —
   `railway run` included, since that executes locally. Inside the container (`railway ssh`)
   the internal host is correct and the public one is the wrong choice.
-- 🔴 **`R2_BACKUP_BUCKET` STILL DOES NOT EXIST, AND THE NIGHTLY REPORTED GREEN ANYWAY.**
-  This is the worst defect found so far, because it produced a *reassuring* result.
+- ✅ **OFF-BOX IS REAL, 2026-07-31 08:06 UTC.** `50pick-backups` exists (WEUR, Standard,
+  private) and a **13.16 MB sealed artifact of production is in it** —
+  `2026-07-31/50pick-full-2026-07-30T15-43-27-112Z.sql.gz.enc`. Confirmed by
+  `node scripts/backup-verify-offbox.mjs`, which lists the bucket independently, not by the
+  uploader's own claim — because the uploader's own claim is exactly what lied below.
+
+  🔴 **THE TRAP THAT CAME WITH IT: rolling an R2 token silently breaks the running app.**
+  The account had ONE token (`50pick-kyc-rw`). Rolling it to widen its scope invalidated the
+  old secret — and Railway was still holding it, so **KYC document upload and viewing were
+  broken on production the moment the roll completed**, with nothing reporting it: no boot
+  check, no health field, no alert. Nothing surfaces a dead storage credential until a
+  player tries to upload an ID.
+
+  Fixed within minutes by updating `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` on the
+  Railway service. **If you ever roll or replace an R2 token, update Railway in the SAME
+  sitting** — and prefer creating a second token over rolling the one in use, which is what
+  the separation below was for.
+
+  ⚠️ **The current token reaches ALL buckets** (Ali's call, 2026-07-31, for simplicity). So
+  the blast-radius separation argued for below is **not** in place today: one leaked key
+  reaches both the KYC documents and the backups that contain them. Narrowing the workflow
+  to a `50pick-backups`-only token remains the right end state.
+
+- 🔴 **[HISTORICAL — fixed] `R2_BACKUP_BUCKET` DID NOT EXIST, AND THE NIGHTLY REPORTED GREEN.**
+  This was the worst defect found so far, because it produced a *reassuring* result.
 
   On 2026-07-31 a full `workflow_dispatch` run showed **every step ✓**, including "Ship it
   off-box", and the verify step printed `VERIFIED — 79 checks passed`. All of that was true
@@ -255,6 +278,14 @@ container instead, which must be kept on production's major version.
 
   That script reports what exists, refuses outright if `R2_BACKUP_BUCKET` is pointed at the
   KYC bucket, and takes `--create` if it is ever given a token that can.
+
+  ▶▶ **ONE STEP LEFT for the unattended nightly:** the three GitHub repository secrets.
+  The bucket exists and a manual upload from this machine succeeded, but the scheduled job
+  authenticates from GitHub, not from Railway. Set at
+  `alisheib/kipindi` → Settings → Secrets and variables → Actions:
+  `R2_BACKUP_BUCKET=50pick-backups`, and `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` to the
+  token that can reach that bucket. Until then the nightly still cannot ship, and it will
+  now say so loudly instead of going green.
 
   🔴 **AND CREATING THE BUCKET IS ONLY HALF — verified 2026-07-31.** The workflow
   authenticates with `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` from the GitHub secrets,
