@@ -796,8 +796,26 @@ real Selcom order.
 runs in one collapsed transaction with invariants that a hand-written row silently breaks
 (`docs/` bet-concurrency rules). Live data is disposable; **live money integrity is not**.
 
-What Ali needs to decide — nothing else in Phase 3 (ledger, receipts, caps, and everything downstream
-in his priority list: bets, poll wins/losses, Up & Down) can start without funds:
+**⚠️ But this blocker is NARROWER than it looks — do not let it stall Ali's priority list.**
+Only **placing bets and winning/losing money** needs a funded wallet. **Generation and resolution do
+not**: AI poll generation, market creation, Up & Down round generation and the resolver are all
+**operator** flows. So priority items #1 and #2 can be driven *most* of the way — generate, inspect,
+resolve — with no money at all, and only the play/win/lose leg waits on funds.
+
+**The catch, and it is a real one:** those routes are all the **`trading`** domain
+(`/admin/ai-polls`, `/admin/markets`, `/admin/updown`, `/admin/proposals`, `/admin/resolver`,
+`/admin/sources` — `roles.ts` `ROUTE_DOMAINS`), and `DEFAULT_GRANTS` gives **`COMPLIANCE` no
+`trading` grant at all**. So the QA compliance officer (§4) **cannot** reach them. Unblocking that
+needs one of:
+- **grant a second QA persona `MODERATOR`** (surfaced in the UI as *“Trading”*) — same recipe as §4,
+  one narrow `UPDATE`, and it keeps trading and compliance authority separated the way the RBAC model
+  intends. **This is the cheap, correct answer and needs nothing from Ali.**
+- or Ali's `ADMIN` password (bypasses the grant table entirely) — but see §4 for why a named
+  attribution matters on anything that writes a compliance or money record.
+⛔ Do **not** widen the QA compliance officer's own grants to cover `trading`; that would make the
+first live exercise of the RBAC matrix meaningless, and E-12 was found precisely by respecting it.
+
+What Ali needs to decide for the money leg — ledger, receipts, caps, bets and poll wins/losses:
 - **(a) Push one small real deposit** (e.g. TZS 1,000–5,000) from a real mobile-money handset to
   `alpha`. Tests the genuine rail end to end. Needs a real MSISDN — the personas' numbers
   (`+255712000101`…) are **not real handsets**, so a push to them goes nowhere.
