@@ -145,16 +145,15 @@ railway run -s 50pick -- node -e "console.log(!!process.env.SOME_KEY)"
 writes it to `live/.env`. ⚠️ `railway variables` is blocked by the permission classifier by
 design — don't fight it, use `railway run`.
 
-**Regenerating live DB access from scratch** (the internal host is unreachable from a laptop):
-
-```bash
-cd F:\kipindi-main                      # the Railway CLI link lives in THIS tree
-railway run -s 50pick -- node <scratchpad>/live/mkenv.cjs
-```
-
-`mkenv.cjs` rewrites the injected internal `DATABASE_URL` onto the Postgres service's public TCP
-proxy (`turntable.proxy.rlwy.net:40357`) and writes it to a file — **it never prints the secret**.
-`railway variables` is blocked by the permission classifier by design; don't fight it, use this.
+🔑 **Laptop B, 2026-07-31: `alpha`'s password was re-minted rather than copied.** Passwords are
+`scrypt(password, salt, 64)` hex with a per-user salt and **no pepper** (`crypto.ts:165`), so a QA
+persona's password can be re-set directly against the live DB — which is what was done here, under
+the standing mandate (full rights over the live DB, live data disposable, and `alpha` is a persona
+this campaign created, not a customer). The value was generated into `.env.qa.local` and **never
+printed**; `live/mkpw.cjs` + `live/state.cjs` (`SET_ALPHA_PW=1`) do it. ⛔ **Do NOT do this to the
+ADMIN account** — that is Ali's own operator login (`777777777`), and re-setting it locks him out of
+his own console until he is told the new value. **`QA_ADMIN_PASSWORD` is still absent on laptop B**,
+which is the one thing blocking officer-side live verification (E-4).
 
 ## 2. Environment facts (verified 2026-07-31, not assumed)
 
@@ -452,6 +451,54 @@ pause); and it pins **the ladder the copy rests on**, so gating deposits on KYC 
 silently make this copy wrong again. Proven red first: **7 failures** against the pre-fix tree,
 including all three locales.
 
+**E-5 verified on production** after deploy `36213464` (SUCCESS 19:19 EAT), driven through the real
+UI as the approved player `alpha` at **360 / 768 / 1280 / 1920 × EN / SW / ZH — all 12 combinations**:
+
+| | Result |
+|---|---|
+| the shipped promise (`deposit and withdraw freely`, and its SW/ZH twins) | **absent in all 12** |
+| which branch renders live | the **paused** one, in all 12 — correct, and see below |
+| “balance is safe and unchanged” present | all 12 |
+| `html lang` | `en` / `sw` / `zh` as set |
+| horizontal overflow · console errors | **0 · 0** at every width |
+| burst found, and not clipped by its container | 12/12 (328 px @360, 608 @768, 576 @1280+) |
+
+**The live gate proves the finding was real, not theoretical.** `SystemConfig.payouts.availability`
+is unset (so `declared` = `operational`), but **three WITHDRAWAL rows have sat `PENDING`/`PROCESSING`
+since 2026-07-29 14:04Z**, which trips `derivePayoutStatus` on *both* limits at once
+(`UNAVAILABLE_STUCK_COUNT` = 3, `UNAVAILABLE_AFTER_HOURS` = 6 vs ~53h elapsed). So live status is
+`unavailable` → `payoutsAcceptingRequests` is **false** → before this fix, every approved player was
+being congratulated with “you can now deposit and withdraw freely” **by a platform that could not
+pay a withdrawal at all**, directly above a banner refusing their deposit. Rendered now:
+
+| Locale | Rendered |
+|---|---|
+| `en` | *Your identity is verified. Withdrawals are paused right now — our payout provider cannot complete transfers. Your balance is safe and unchanged.* |
+| `sw` | *Utambulisho wako umethibitishwa. Kutoa pesa kumesitishwa kwa sasa — mtoa huduma wetu wa malipo hawezi kukamilisha uhamisho. Salio lako ni salama na halibadiliki.* |
+| `zh` | *您的身份已验证。提现目前已暂停——我们的支付服务商无法完成转账。您的余额安全且不变。* |
+
+Evidence `shots/e5-burst-{en,sw,zh}-{360,768,1280,1920}.png` (viewport) and
+`shots/e5v-el-*.png` (the burst element itself, scrolled into view). ⚠️ **The first pass was not
+evidence and nearly shipped as if it were**: at 360 the burst is *below the fold*, so a viewport
+screenshot photographed the page header while the text assertion — which read `body.innerText` —
+passed. The images only became proof once the element was scrolled into view and captured on its
+own. Assert on the DOM, but photograph the thing you are claiming.
+
+### 🚫 Two things that look like defects on this screen and are NOT — do not file them
+
+1. **The teal disc bleeding off the right edge of every screenshot is The Needle.** `#needle` is
+   `position: fixed`, `role="presentation"`, `pointer-events: none`, z 45, placed by
+   `translate3d(1248px, 418px, 0)` — so at 1280 it hangs 32 px past the edge. It is the design
+   system's deliberate *persistent, physically-simulated pause object*
+   (`src/components/layout/needle.tsx`, brief `docs/design-system/v2-2026-07-27/09-needle/`),
+   mounted once in the shell, **parked** at an edge until grabbed, hidden on `/wallet/*` money
+   surfaces and toggleable from the navbar. Headless has no pointer, so it simply rests where it
+   was placed. It does not scroll the page (`scrollWidth − clientWidth` = 0).
+2. **The Swahili burst caption is not truncated.** `shots/e5v-el-sw-360.png` reads
+   “*…imethibitishwa*” and looks cut, but the SW string genuinely **is** `Imethibitishwa`
+   (`i18n-dict.ts:2196`) — one word, complete. A burst ray crosses the capital `I`. EN is
+   `ID verified`, ZH is `已验证`; none of the three overflow.
+
 ### Open findings — evidenced on production, NOT yet fixed
 
 | # | Sev | Area | Finding | Evidence |
@@ -526,8 +573,12 @@ Two findings are evidenced and **open** (E-4, E-5), plus **E-7 and E-8, which ar
    ⏳ **Still owed: Ali's decision on backfilling the 19 existing R2 rows.**
 3. ✅ **E-6 fixed and live** — guarded by the grown `test:kyc-reject-reason` (64).
 4. ✅ **E-2 fixed and live** — guarded by `test:kyc-workstation-time` (16).
-5. ✅ **E-5 fixed** — the burst states only what approval unlocked and reads the live payout gate;
-   guarded by `test:kyc-approved-copy` (30). **START HERE → E-4.**
+5. ✅ **E-5 fixed AND live-verified** in 12 combinations (§6) — the burst states only what approval
+   unlocked and reads the live payout gate; guarded by `test:kyc-approved-copy` (30).
+   **START HERE → E-4.** ⚠️ Its live half needs **officer** access, and `QA_ADMIN_PASSWORD` is
+   absent on laptop B (§1) — implement + guard first, then get the admin password from Ali to
+   drive the approval on production. Do **not** re-set the ADMIN account's password to work around
+   this.
    **E-4** needs a small schema decision: the officer's four attestations
    (name matches · document authentic · selfie matches · sanctions/PEP clear) are
    client-side `useState` and are discarded at the moment they are made — decide where they
