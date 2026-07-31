@@ -50,6 +50,14 @@ gate. That document commands the remaining work; this one holds launch-hardening
 - **Do not reopen design.** Frozen. Write findings down instead.
 - **Do not re-seed `orphan-allowlist.json`.** It may only shrink.
 
+### 🔴 New finding, measured on production 2026-07-31
+
+**Nine active ADMIN accounts** (plus one FINANCE), of which **only 2 have TOTP enrolled**. Every one
+of the nine can resolve markets single-handed, adjust balances and run money-ops. **Review the nine
+with Ali and demote whoever does not need ADMIN** — the cheapest security work available, and it
+shrinks the blast radius of the 2FA gap instead of only reporting it. Tracked in B2's dossier.
+Re-measure any time with `railway ssh "node scripts/admin-2fa-readiness.mjs"`.
+
 ### Still only Ali can do these
 
 Create the `50pick-backups` R2 bucket (nothing is off-box yet) · move `BACKUP_ENCRYPTION_KEY` from

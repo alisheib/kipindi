@@ -217,9 +217,23 @@ would misrepresent Ali's choice. It asserts the platform *says which it is*.
 **`npm run ops:admin-2fa-readiness`** (run it as `railway ssh "node scripts/admin-2fa-readiness.mjs"`
 — read-only, moves nothing) counts how many **active ADMIN accounts actually have a TOTP secret**.
 
+**Answer from production, 2026-07-31:** `DISABLE_ADMIN_TOTP = true` · **10 staff accounts** ·
+**9 active ADMIN + 1 FINANCE** · **2 of the 9 admins are enrolled.**
+
+✅ **So the flip is safe** — two admins can already get in. The other seven are *not* locked out
+either: `admin/layout.tsx` redirects an unenrolled admin to `/admin/2fa/setup`, so flipping the var
+turns into a **forced-enrolment event** for them rather than a lockout. That is the intended
+behaviour; it just needs to be an expected one, not a surprise.
+
+🔴 **A separate finding this surfaced — for B2, not A6: NINE active ADMIN accounts on a licensed
+real-money platform.** Every one of them can resolve markets single-handed (see H6's dossier), adjust
+balances and operate money-ops. Nobody asked for that number; it accumulated. **Ali should review
+whether all nine still need ADMIN, and demote the ones that do not** — the cheapest security work
+available here, and it shrinks the blast radius of the 2FA gap rather than only reporting it.
+
 `admin/layout.tsx` **forces** enrolment: an admin with no secret is redirected to `/admin/2fa/setup`.
-So unsetting the env var with **zero** enrolled admins risks locking Ali out of his own console on a
-live platform, with no admin able to readmit him. The order is fixed:
+So unsetting the env var with **zero** enrolled admins would risk locking Ali out of his own console
+on a live platform, with no admin able to readmit him. The order is fixed:
 
 1. While 2FA is still disabled, enrol at `/admin/2fa/setup` and store the backup codes **off-machine**
 2. Re-run the readiness script; confirm ≥1 enrolled ACTIVE admin
@@ -245,9 +259,19 @@ enforces server-side, not just hidden in nav (`test:admin-nav` covers nav — na
 ### B2 · Staff management — `cert:b2`
 **Surfaces** `admin/staff` `admin/staff/[id]` · **Owns** `staff-roles` `actor-label`
 **Existing** `test:staff-role`
+
+🔴 **Measured on production 2026-07-31: NINE active ADMIN accounts** (plus one FINANCE). Every one
+can resolve markets single-handed, adjust balances and operate money-ops. That number was not chosen;
+it accumulated. **First action for this module: review all nine with Ali and demote the ones that do
+not need ADMIN.** It is the cheapest security work on the whole board and it shrinks the blast radius
+of every other admin-side gap. Re-measure with `railway ssh "node scripts/admin-2fa-readiness.mjs"`,
+which lists staff roles and enrolment together.
+
 **Attack** Self-promotion · promote above own level · delete the last admin · edit own permissions ·
-is every staff mutation audited with a real actor (not "system")?
-**Exit** No self-escalation, last-admin protected, every mutation attributable.
+is every staff mutation audited with a real actor (not "system")? · does demoting an admin revoke
+their live session immediately, or does a stale session keep admin powers?
+**Exit** No self-escalation, last-admin protected, every mutation attributable, demotion effective
+immediately, and the ADMIN count reviewed and justified.
 
 ### B3 · Two-officer control — `cert:b3`
 **Owns** `two-officer` · **Existing** `test:two-admin` `test:officer-conflict`
