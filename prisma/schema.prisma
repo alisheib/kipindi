@@ -449,6 +449,12 @@ model Transaction {
   @@index([userId, createdAt])
   @@index([walletId, createdAt])
   @@index([type, status])
+  /// Reporting reads this table by TIME with no user or wallet in the predicate —
+  /// `moneyForWindow`, `dailyPnl`, `dailyKpiSeries`, the GBT monthly pack. The existing
+  /// composite indexes all lead with `userId`/`walletId`, so none of them served it and
+  /// every report was a sequential scan. Measured at 100,000 rows
+  /// (scripts/load/s13-scale-ceilings.mts): a 30-day window went 1,889 ms → 54 ms.
+  @@index([createdAt])
   @@index([providerRef])
 }
 

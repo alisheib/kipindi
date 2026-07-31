@@ -134,15 +134,47 @@ Ranked. Localization first, per the standing priority that Swahili must be perfe
 
 ## 3 · LATER — scale, with the threshold at which each bites
 
-- **Leaderboard** (`src/app/leaderboard/page.tsx:75-80`) — `db.user.list()` with no `where`/`take`,
-  then one positions query per user, uncached, on a **public** page. The comment claims
-  "N+1 → 1"; it made the N+1 *parallel*, which is harder on the connection pool than serial.
-  Bites at **~1k users**, and whoever shares the leaderboard link is the trigger.
-- **`db.txn.listAll()`** (`prisma-dal.ts:835`) — `findMany()` with no filter or limit, called
-  from 12+ sites that then filter by date **in JavaScript** (`analytics.ts:39,199,357`,
-  `report-money.ts:131,143,167,205`, `reports/catalogue.ts:198,418,735`, `insights.ts:89`,
-  `kyc-risk.ts:27`). The adjacent `txn.search` does it correctly and its own comment says this
-  table "must never be walked in memory". Same shape on `db.wallet.listAll()`. **~1k users.**
+- ✅ **Leaderboard — FIXED 2026-07-31, measured.** Was `db.user.list()` with no `where`/`take`,
+  then one positions query per user on a **public** page. The old comment claimed "N+1 → 1";
+  making an N+1 *parallel* does not remove it, it aims all of it at the connection pool at
+  once. Now one `GROUP BY` (`positionStore.leaderboard(50)`), ordered and limited by the
+  database, with per-row detail fetched only for the 50 rows actually rendered.
+
+  | at 1,000 users | before | after |
+  |---|---|---|
+  | build the board | ~2,236 ms, **and it exhausted the connection pool mid-run** | **6 ms** |
+
+  Cost is now bounded by the board size, not by how many players exist.
+
+- ✅ **`db.txn.listAll()` on windowed paths — FIXED 2026-07-31, measured.** Was `findMany()`
+  with no filter, from 13 sites that then filtered by date **in JavaScript**. Now
+  `db.txn.listInRange(from, to)` / `listForUser(id)` / `topContributors(n)`, which push the
+  predicate into SQL — the same thing the adjacent `txn.search` has always done, whose own
+  comment says this table "must never be walked in memory".
+
+  | at 1,000 users × 100 txns (100k rows) | before | after |
+  |---|---|---|
+  | 30-day report window | 3,321 ms · **385 MB heap** | **303 ms**, and **54 ms** with the index below |
+  | one player's transactions (KYC risk) | 3,783 ms | **11 ms** |
+
+  The heap number is the one that mattered: a Railway container has 512 MB, so a single
+  report on a moderately busy platform was close to ending the process.
+
+  Measured by `scripts/load/s13-scale-ceilings.mts`; parity of every reported figure —
+  including the `>= start` / `< end` boundary instants, which decide which month a
+  transaction is taxed in — is guarded by `npm run test:report-parity` (28 assertions).
+
+  ⚠️ Remaining walk: `reports/catalogue.ts` (3 sites) and `insights.ts` still call
+  `listAll()`. They are all-time statutory aggregates rather than windowed reads, so the
+  fix is a `GROUP BY` per report rather than a smaller scan — same shape as
+  `topContributors`, not yet done. `db.wallet.listAll()` (3 sites) is unchanged and bounded
+  by the number of players, not by history.
+
+- ✅ **`Transaction[createdAt]` index — added 2026-07-31.** Every existing composite index on
+  that table leads with `userId` or `walletId`, so none of them could serve a
+  reporting query that filters by time alone, and every report was a sequential scan.
+  Measured at 100k rows: a 30-day window went **1,889 ms → 54 ms**. Plain `CREATE INDEX`;
+  production holds 283 rows, so it applies in milliseconds via `prisma migrate deploy`.
 - **Board N+1** — `markets/page.tsx` (`countComments` per card) and `positions/page.tsx:50`
   (serial market fetch, then `cashOutValue` per open position). Bounded by page size today.
   *(The `getCardChart` half of this was fixed in `6b1975b` via `getCardCharts`.)*

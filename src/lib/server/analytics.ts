@@ -37,11 +37,10 @@ function windowBounds(w: Window): { start: number; end: number } {
 
 async function txnsInPeriod(w: Window) {
   const { start, end } = windowBounds(w);
-  // Single-pass over all transactions — O(T) instead of O(U × T/U).
-  return (await db.txn.listAll()).filter((t) => {
-    const ts = new Date(t.createdAt).getTime();
-    return ts >= start && ts < end;
-  });
+  // The window is a WHERE clause, not a JS filter. Walking the whole table cost 3,176 ms
+  // and 333 MB of heap at 1,000 users × 100 transactions; the same window in SQL is 48 ms
+  // (scripts/load/s13-scale-ceilings.mts). Identical bounds: >= start, < end.
+  return db.txn.listInRange(start, end);
 }
 
 /**
@@ -265,22 +264,16 @@ export async function userStatusCounts() {
  *  is NOT labelled NGR in the UI); read it as "gross margin contribution".
  *  Single-pass over all transactions, grouped by userId. */
 export async function topNgrContributors(n = 10) {
-  const map = new Map<string, { stakes: number; payouts: number }>();
-  for (const t of await db.txn.listAll()) {
-    if (t.status !== "CONFIRMED") continue;
-    const isStake = t.type === "BET_PLACED";
-    const isPayout = t.type === "BET_PAYOUT" || t.type === "CASHOUT";
-    if (!isStake && !isPayout) continue;
-    const e = map.get(t.userId) ?? { stakes: 0, payouts: 0 };
-    if (isStake) e.stakes += Math.abs(t.amount);
-    else e.payouts += Math.abs(t.amount);
-    map.set(t.userId, e);
-  }
-  const out: Array<{ userId: string; lifetimeStakes: number; lifetimePayouts: number; ngr: number }> = [];
-  for (const [userId, e] of map) {
-    out.push({ userId, lifetimeStakes: e.stakes, lifetimePayouts: e.payouts, ngr: e.stakes - e.payouts });
-  }
-  return out.sort((a, b) => b.ngr - a.ngr).slice(0, n);
+  // Genuinely all-time — there is no window to push down — so it is a GROUP BY rather
+  // than a smaller scan, and `n` is what bounds it. Previously this walked the whole
+  // transactions table into memory to produce ten rows.
+  const rows = await db.txn.topContributors(n);
+  return rows.map((r) => ({
+    userId: r.userId,
+    lifetimeStakes: r.stakes,
+    lifetimePayouts: r.payouts,
+    ngr: r.stakes - r.payouts,
+  }));
 }
 
 /** Operator margin = hold % over the period. Delegates to the CANONICAL
@@ -431,9 +424,12 @@ export async function detectSuspiciousBets(opts: { multiple?: number; velocityTh
   const recentCutoff = now - 7 * 24 * 3600_000;
   const baselineCutoff = now - 30 * 24 * 3600_000;
 
-  // Single-pass: group confirmed BET_PLACED txns by userId.
+  // Windowed at the BASELINE cutoff, not the whole table: every use of `userTxns` below
+  // filters to >= baselineCutoff (the 30-day median), >= recentCutoff (7d) or the last
+  // 24h, so a row older than 30 days could never affect a flag. Loading all of history to
+  // then discard it was 3,321 ms and 385 MB at 100,000 rows.
   const byUser = new Map<string, StoredTxn[]>();
-  for (const t of await db.txn.listAll()) {
+  for (const t of await db.txn.listInRange(baselineCutoff, now + 1)) {
     if (t.type !== "BET_PLACED" || t.status !== "CONFIRMED") continue;
     const arr = byUser.get(t.userId) ?? [];
     arr.push(t);

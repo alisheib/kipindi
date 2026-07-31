@@ -1,0 +1,13 @@
+-- Reporting reads "Transaction" by TIME with no user or wallet in the predicate
+-- (moneyForWindow, dailyPnl, dailyKpiSeries, the GBT monthly pack). Every existing
+-- composite index on this table leads with "userId" or "walletId", so none of them
+-- could serve those queries and each report was a sequential scan.
+--
+-- Measured at 100,000 rows (scripts/load/s13-scale-ceilings.mts): a 30-day window
+-- went 1,889 ms -> 54 ms.
+--
+-- Plain CREATE INDEX, not CONCURRENTLY: production holds 283 rows, so this takes
+-- milliseconds and the brief ACCESS EXCLUSIVE lock is irrelevant. If this table is
+-- ever large when a similar index is added, use CONCURRENTLY and apply it by hand --
+-- Prisma wraps migrations in a transaction, and CONCURRENTLY cannot run inside one.
+CREATE INDEX "Transaction_createdAt_idx" ON "public"."Transaction"("createdAt");

@@ -696,6 +696,34 @@ const memoryDb = {
     listByStatus: (status: StoredTxn["status"]) => Array.from(store.txns.values()).filter((t) => t.status === status),
     /** All transactions — analytics only. Avoids the user-by-user N+1 walk. */
     listAll: (): StoredTxn[] => Array.from(store.txns.values()),
+    /** In-memory twin of the Prisma DAL's SQL range query. Same bounds — `>= from`,
+     *  `< to` — so a report cannot produce different totals depending on which store it
+     *  ran against. */
+    listInRange: (fromMs: number, toMs: number): StoredTxn[] =>
+      Array.from(store.txns.values()).filter((t) => {
+        const at = Date.parse(t.createdAt);
+        return at >= fromMs && at < toMs;
+      }),
+    listForUser: (userId: string): StoredTxn[] =>
+      Array.from(store.txns.values()).filter((t) => t.userId === userId),
+    /** In-memory twin of the SQL GROUP BY. Same ordering rule — margin descending — so
+     *  the admin page ranks identically whichever store it ran against. */
+    topContributors: (limit: number): Array<{ userId: string; stakes: number; payouts: number }> => {
+      const acc = new Map<string, { stakes: number; payouts: number }>();
+      for (const t of store.txns.values()) {
+        if (t.status !== "CONFIRMED") continue;
+        const isStake = t.type === "BET_PLACED";
+        const isPayout = t.type === "BET_PAYOUT" || t.type === "CASHOUT";
+        if (!isStake && !isPayout) continue;
+        const e = acc.get(t.userId) ?? { stakes: 0, payouts: 0 };
+        if (isStake) e.stakes += Math.abs(t.amount);
+        else e.payouts += Math.abs(t.amount);
+        acc.set(t.userId, e);
+      }
+      return Array.from(acc, ([userId, v]) => ({ userId, ...v }))
+        .sort((a, b) => (b.stakes - b.payouts) - (a.stakes - a.payouts))
+        .slice(0, limit);
+    },
     /** Filtered + paginated transaction search for the compliance browser.
      *  Summary totals cover the WHOLE filtered set, not the returned page —
      *  an operator reconciling against a gateway statement needs the full figure.

@@ -157,8 +157,10 @@ function summarise(txns: StoredTxn[]): MoneySummary {
  *  (via `analytics.grossGamingRevenue`/`netGamingRevenue`, which now delegate
  *  here). One definition of GGR/NGR everywhere. */
 export async function moneyForWindow(start: number, end: number): Promise<MoneySummary> {
-  const all = await db.txn.listAll();
-  return summarise(all.filter((t) => within(t, start, end)));
+  // SQL, not `listAll().filter(within)`. Measured at 1,000 users × 100 transactions:
+  // 3,176 ms and 333 MB of heap became 48 ms and ~0 (s13-scale-ceilings.mts). `listInRange`
+  // uses the SAME bounds as `within` — >= start, < end — so the totals are unchanged.
+  return summarise(await db.txn.listInRange(start, end));
 }
 
 /** Period summary + the equal-length prior window (for the compare toggle). */
@@ -169,12 +171,13 @@ export async function reportSummary(period: Window, now = Date.now()): Promise<{
 }> {
   const bounds = boundsOf(period, now);
   const prior = priorBounds(bounds);
-  const all = await db.txn.listAll();
-  return {
-    bounds,
-    current: summarise(all.filter((t) => within(t, bounds.start, bounds.end))),
-    prior: summarise(all.filter((t) => within(t, prior.start, prior.end))),
-  };
+  // Two windows, two queries — still far cheaper than one whole-table walk, and the two
+  // are adjacent so the index serves both.
+  const [cur, prev] = await Promise.all([
+    db.txn.listInRange(bounds.start, bounds.end),
+    db.txn.listInRange(prior.start, prior.end),
+  ]);
+  return { bounds, current: summarise(cur), prior: summarise(prev) };
 }
 
 // ── Per-game money split (Up & Down vs long-form polls) ──────────────────────
@@ -215,14 +218,15 @@ function emptyGame(game: GameLine): GameMoney {
  * The viewer of a report needs money split by GAME. Builds the positionId→productLine
  * map once (join over the position + market stores) and buckets the window's bet txns.
  *
- * SCALE NOTE: like `summarise`/`moneyForWindow` this walks the in-memory stores; at
- * real volume the whole reporting layer wants a SQL GROUP BY (positionId join). That is
- * a platform-wide reporting optimisation, tracked separately — this stays consistent
- * with the existing all-time-scan pattern rather than introducing a lone exception.
+ * SCALE NOTE (updated 2026-07-31): the transaction side no longer walks the whole table —
+ * it asks SQL for the window, like every other function here. The `positionId → productLine`
+ * join is still built in memory from the position and market stores; that is the remaining
+ * cost and it is bounded by markets, not by transaction history. A full SQL GROUP BY over
+ * the join is still the eventual answer for the whole reporting layer.
  */
 export async function moneyByGame(start: number, end: number): Promise<{ market: GameMoney; updown: GameMoney }> {
   const [allTxn, positions, markets] = await Promise.all([
-    db.txn.listAll(),
+    db.txn.listInRange(start, end),
     positionStore.values(),
     marketStore.values(),
   ]);
@@ -274,8 +278,9 @@ export type DailyPnlRow = {
  *  "today" collapses to a single row; longer periods give the daily P&L grid. */
 export async function dailyPnl(period: Window, now = Date.now()): Promise<{ rows: DailyPnlRow[]; totals: DailyPnlRow }> {
   const { start, end } = boundsOf(period, now);
-  const all = await db.txn.listAll();
-  const inWindow = all.filter((t) => within(t, start, end));
+  // The window comes from SQL now; `within` kept only where a per-DAY slice is taken
+  // below. Same bounds, so every figure is unchanged — measured 66x faster, 333 MB less.
+  const inWindow = await db.txn.listInRange(start, end);
   const firstDay = startOfEatDay(start);
   const rows: DailyPnlRow[] = [];
   for (let day = firstDay; day < end; day += DAY_MS) {
@@ -306,8 +311,9 @@ export type KpiTrends = { ggr: number[]; ngr: number[]; active: number[] };
  */
 export async function dailyKpiSeries(period: Window = "7d", now = Date.now()): Promise<KpiTrends> {
   const { start, end } = boundsOf(period, now);
-  const all = await db.txn.listAll();
-  const inWindow = all.filter((t) => within(t, start, end));
+  // The window comes from SQL now; `within` kept only where a per-DAY slice is taken
+  // below. Same bounds, so every figure is unchanged — measured 66x faster, 333 MB less.
+  const inWindow = await db.txn.listInRange(start, end);
   const firstDay = startOfEatDay(start);
   const ggr: number[] = [], ngr: number[] = [], active: number[] = [];
   for (let day = firstDay; day < end; day += DAY_MS) {
@@ -348,7 +354,9 @@ export async function categoryBreakdown(period: Window, now = Date.now()): Promi
     for (const p of await listPositionsForMarket(m.id)) posCat.set(p.id, m.category);
   }
   const acc = new Map<MarketCategory, { stakes: number; payouts: number }>();
-  for (const t of await db.txn.listAll()) {
+  // The window is the WHERE clause now; the per-row `within` below is therefore
+  // redundant but harmless, and kept so the bounds stay stated at the point of use.
+  for (const t of await db.txn.listInRange(start, end)) {
     if (t.status !== "CONFIRMED" || !t.positionId) continue;
     const isStake = t.type === "BET_PLACED";
     // A refund is payout-like for GGR: it returns a stake we keep nothing from.
