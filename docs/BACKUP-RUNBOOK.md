@@ -1,6 +1,8 @@
 # Backups — what exists, what it proved, and how to run it
 
-Built 2026-07-30. **The drill has now been run against production.** A sealed 13 MB
+Built 2026-07-30. **The drill has been run against production, and since 2026-07-31 the
+NIGHTLY runs it unattended: dump → off-box to R2 → restore into a throwaway Postgres →
+record health.** Proven by the artifact in the bucket, not by the workflow going green. A sealed 13 MB
 artifact was taken, shipped, restored into a throwaway PostgreSQL 18.3 cluster, checked
 against 79 assertions, and `db:restore` was rehearsed end to end. `/admin/compliance`
 reads that run.
@@ -279,13 +281,19 @@ container instead, which must be kept on production's major version.
   That script reports what exists, refuses outright if `R2_BACKUP_BUCKET` is pointed at the
   KYC bucket, and takes `--create` if it is ever given a token that can.
 
-  ▶▶ **ONE STEP LEFT for the unattended nightly:** the three GitHub repository secrets.
-  The bucket exists and a manual upload from this machine succeeded, but the scheduled job
-  authenticates from GitHub, not from Railway. Set at
-  `alisheib/kipindi` → Settings → Secrets and variables → Actions:
-  `R2_BACKUP_BUCKET=50pick-backups`, and `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` to the
-  token that can reach that bucket. Until then the nightly still cannot ship, and it will
-  now say so loudly instead of going green.
+  ✅ **THE UNATTENDED NIGHTLY WORKS — run `30615505120`, 2026-07-31 08:13 UTC.** All seven
+  repository secrets are set; a `workflow_dispatch` run took a fresh dump of production,
+  shipped it off-box, restored it into a throwaway PostgreSQL 18, and recorded health.
+  **Verified by looking at the bucket, not at the tick** — it now holds two objects, and the
+  second is the workflow's own:
+
+  ```
+  2026-07-31T08:13:47Z   13.18 MB   .../50pick-full-2026-07-31T08-13-44-316Z.sql.gz.enc   ← CI
+  2026-07-31T08:06:58Z   13.16 MB   .../50pick-full-2026-07-30T15-43-27-112Z.sql.gz.enc   ← manual
+  ```
+
+  And `__BACKUP_LAST_RUN__` on production records `verified: true`, 32,750 rows, with a real
+  `destination` — the field that was an empty string the last time this "passed".
 
   🔴 **AND CREATING THE BUCKET IS ONLY HALF — verified 2026-07-31.** The workflow
   authenticates with `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` from the GitHub secrets,

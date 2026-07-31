@@ -145,7 +145,9 @@ This file is the brief. Copy the block at the bottom into a fresh session.
 | A | **Tell Selcom to enable `SELCOM_PESA` + `HUDUMA_AGENT`** | Their switch. Unblocks paying customers; the ladder already tries both, so no code change |
 | B | **Set `SENTRY_DSN`** in Railway and redeploy | Needs a Sentry account — an external signup and a decision to send a licensed operator's data off-box |
 | C | ~~Add the GitHub repository secrets~~ | ✅ **DONE 2026-07-31.** All seven set and verified with `gh secret list`. Re-run with `railway run node scripts/backup-secrets.mjs`. ⚠️ **Ali must still move `BACKUP_ENCRYPTION_KEY` out of `.env.backup.local` into a password manager and delete the file** — it is the seal on every artifact the nightly writes |
-| D | 🔴 **Create the `50pick-backups` R2 bucket — THE ONLY THING LEFT before the nightly works** | The R2 API token in Railway is bucket-scoped — `ListBuckets` returns `AccessDenied`, so it cannot create one. Cloudflare dashboard → R2 → Create bucket. Then **prove it** with `railway run node scripts/backup-verify-offbox.mjs` — do not trust a green tick, see the runbook for why |
+| D | ~~Create the `50pick-backups` R2 bucket~~ | ✅ **DONE 2026-07-31.** Bucket created (WEUR, Standard, private), R2 credentials updated on Railway **and** in the GitHub secrets, and run `30615505120` shipped its own 13.18 MB artifact. Verified by listing the bucket, not by the tick. ⚠️ **Rolling the old token broke KYC storage on production** until Railway was updated — see the runbook; never roll the token in use |
+| D2 | **Narrow the R2 token to `50pick-backups` only** | The current token reaches ALL buckets (chosen for speed), so one leaked key reaches both the KYC documents and the backups containing them. A Cloudflare action + updating two GitHub secrets |
+| D3 | **Add an Object Lifecycle Rule** on `50pick-backups` (expire after ~90 days) | Otherwise every KYC record on the platform accumulates in that bucket forever — a data-protection problem, not a storage-cost one |
 | E | **Decide the TZS 100,000 orphan wallet** — write the missing ledger entry, or reverse the credit | A money mutation on production with no established provenance |
 | F | **Rotate the Postgres password**, and the credentials exposed in chat | Rotating live DB creds mid-session takes the site down if mistimed |
 
@@ -155,6 +157,13 @@ This file is the brief. Copy the block at the bottom into a fresh session.
    13 MB artifact was taken, shipped, restored into a throwaway PostgreSQL 18.3, checked
    by 79 assertions, and `db:restore` was rehearsed to exit 0. `/admin/compliance` now
    reads that run. Nightly at 00:15 UTC via `.github/workflows/backup-nightly.yml`.
+
+   ✅ **AND THE UNATTENDED NIGHTLY NOW WORKS — 2026-07-31, run `30615505120`.** All seven
+   repository secrets set, `50pick-backups` created, and a dispatched run dumped
+   production, shipped it off-box, restored it into a throwaway PostgreSQL 18 and recorded
+   `verified: true` with a real `destination`. The bucket holds two objects and the newer
+   one is CI's. Confirmed by listing the bucket — the previous "all steps ✓" was a job in
+   which nothing had ever left the runner.
 
    🔴 **The drill found EIGHT defects, and that is the finding.** The toolchain had been
    green on 59 checks the whole time. Among them: `db:restore` summed a column that does
