@@ -103,27 +103,40 @@ traps that waste an afternoon. Then [`README.md`](README.md), the doc index.
 | Orphans | **145 → 140.** Five ops tools adopted under `ops:` (never `test:` — they need live credentials). |
 | Suite | **113/113 green** (`--skip responsive,motion`). `test:responsive` still unverified — see the trap list. |
 
-### ▶▶ NEXT SESSION: certify domain D — KYC (Ali, 2026-07-31)
+### ✅ DONE — domain D (KYC) certified and live, 2026-07-31
 
-The launch-hardening lane is **closed**: backups, alerting, multi-container and the scale
-ceilings are all live and proven. The next pass is **identity verification**, run as
-**domain D (D1–D4)** of [`MODULE-CERTIFICATION-PROGRAM.md`](MODULE-CERTIFICATION-PROGRAM.md) —
-that document commands it; do not invent a parallel structure.
+**D1 · D2 · D3 · D4 are certified.** 4 headless gates + 2 browser gates + 2 concurrency proofs,
+every negative assertion broken on purpose and observed red. Shipped in three pushes, all three
+deploys verified on production. Full record in
+[`MODULE-CERTIFICATION-PROGRAM.md`](MODULE-CERTIFICATION-PROGRAM.md) §4 and §9 — **that document
+owns the detail; do not duplicate it here.**
 
-**Measured on production 2026-07-31, so nobody rediscovers it:** 31 KYC documents, only 7 in
-R2, **24 still inline base64 = 11.00 MB of ID photographs inside Postgres** — roughly **83% of
-every 13.2 MB nightly backup is player identity images**, even though `KYC_STORAGE=r2` is set.
-Submissions: 28 `IN_PROGRESS` · 5 `APPROVED` · 3 `REJECTED` · 2 `PENDING_REVIEW`.
+| | |
+|---|---|
+| Gates | `test:cert-d1` (40) `test:cert-d2` (33) `test:cert-d3` (25) `test:cert-d4` (24) · `qa:cert-d1` (19) `qa:cert-d2` (26) |
+| Proofs | `load:nida-race` (two OS processes) · `load:kyc-race` (real Postgres, 11 assertions) |
+| Orphans | both KYC E2Es **adopted**, allowlist 140 → 138 |
+| Suite | **122/122 green**, tsc clean |
 
-⚖️ **Owner decision: the inline documents are TEST data — delete, do not migrate.** But
-**12 of them sit under APPROVED submissions**, and deleting those would leave an approved
-identity check with no evidence behind it. Classify test vs real with evidence first, and for a
-test account delete the whole submission rather than orphaning the approval. Full rules and the
-per-status split are in D2's dossier.
+**What was found, in one line each:** a player whose NIDA check FAILED was shown a green *"NIDA
+number accepted"* banner while their inbox held *"Identity check needs attention"* · one NIDA
+could hold two accounts (closed with a partial unique index, now live on production) · a renamed
+`.exe`, an SVG carrying `<script>`, a zip and raw HTML were all accepted as ID documents · three
+legal documents in three locales claimed a NIDA authority check that has never existed · a player
+could silently overwrite a Source-of-Funds declaration an officer had ACCEPTED · the
+Approve/Reject/Escalate controls were 38px on a phone.
 
-**Do not rebuild what exists:** `test:kyc` already runs four suites (117 assertions, all
-in-memory) and two E2E scripts sit unrun in the orphan allowlist. Read all six first.
-⚠️ Gates are named `test:cert-*` in practice, not `cert:*` as the programme doc says.
+⚠️ **Correction to what this file previously said.** The 24 inline documents are **NOT** evidence
+that the R2 seam is misbehaving "even though `KYC_STORAGE=r2` is set". Ordering every document by
+`uploadedAt` shows two clean, non-overlapping eras — all 24 inline uploaded 06-13→06-15, all 7 R2
+uploaded 07-27→07-28, **zero interleaving**. They are LEGACY, from before R2 was switched on, and
+every upload since has been correct. The real risk was that the seam *could* degrade silently;
+`assertStorageModeIntended()` now makes that an error before any inline write.
+
+⏳ **Still open, and both are yours:** the purge of those 24 legacy documents (all 8 owning
+submissions show zero balance / zero transactions / zero positions — the evidence the owner
+decision asked for — but that does not establish consent to destroy someone's ID; a six-step
+procedure is in D2's dossier), and **item D2 below — narrowing the R2 token**.
 
 ### 🔴 Start here, in this order
 
