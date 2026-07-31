@@ -15,6 +15,10 @@ it is the operator actions listed under "Only Ali can do these", below.
 is now divided into **52 modules across 12 domains**, each with a dossier, an attack list and a
 gate. That document commands the remaining work; this one holds launch-hardening state.
 
+**On a machine that has never seen this repo? → [`SETUP.md`](SETUP.md)** — prerequisites, how to
+boot with no database at all, `railway run` vs `railway ssh`, and a symptom→cause table for the
+traps that waste an afternoon. Then [`README.md`](README.md), the doc index.
+
 ### What this session shipped
 
 | | |
@@ -24,7 +28,10 @@ gate. That document commands the remaining work; this one holds launch-hardening
 | Wave 1 · **F1 G8** `test:cert-f1` | 69 assertions. Players are now told, in en/sw/zh, that withdrawals cannot be paid — on withdraw **and** deposit (above the cashback promo). `unavailable` disables the form *and* the server action refuses. Officer control on `/admin/payments`. **The banner cannot be forced green:** `worstOf(declared, derived)`. |
 | `npm run test:docs` | Every link, `scripts/*` path and `npm run` reference in `docs/` must resolve. |
 | `docs/README.md` | New index — all 41 docs with an honest status (LAW / LIVE / RECORD / OPEN / DESIGN / HISTORICAL). |
-| Suite | **112/112 green** (`--skip responsive,motion`). `test:responsive` still unverified — see the trap list. |
+| Wave 1 · **A6 honesty** `test:cert-a6` | 16 assertions. Admin 2FA is OFF in production and **nothing said so** — now `/api/health` reports `security.adminTotp` (live-verified `"DISABLED"`) and every boot warns, naming the lockout hazard. Pins the bypass to a closed set of 4 doors. |
+| `docs/SETUP.md` | New-machine setup, and `CLAUDE.md` now opens with a START HERE pointer. |
+| Orphans | **145 → 140.** Five ops tools adopted under `ops:` (never `test:` — they need live credentials). |
+| Suite | **113/113 green** (`--skip responsive,motion`). `test:responsive` still unverified — see the trap list. |
 
 ### 🔴 Start here, in this order
 
