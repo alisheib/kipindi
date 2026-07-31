@@ -16,6 +16,39 @@ reads that run.
 
 ---
 
+## 🔑 Where the seal key lives — read this before an incident, not during one
+
+`BACKUP_ENCRYPTION_KEY` is the only thing that opens any artifact. **Rotated 2026-07-31**,
+and it is now in three places:
+
+| Where | Readable? | Why there |
+|---|---|---|
+| **Railway** → `50pick` service → `BACKUP_ENCRYPTION_KEY` | ✅ yes | The one place an operator can go and look |
+| **GitHub** repo secret `BACKUP_ENCRYPTION_KEY` | ❌ **write-only** | What the nightly seals with |
+| `.env.backup.local` on the hardening machine | ✅ yes | gitignored working copy |
+
+🔴 **WHY IT WAS ROTATED, and it is the sharpest lesson in this file.** The nightly had been
+sealing every artifact with a key that existed **only as a GitHub secret** — and GitHub
+secrets cannot be read back, by anyone, ever. Proven rather than assumed: the local key was
+tried against the CI artifact and failed with `unable to authenticate data`. So every backup
+the schedule produced was **undecryptable by any human**. It restored, it verified, it
+recorded `verified: true` — and nobody could have opened it. **A backup you cannot decrypt
+is not a backup, and this one passed every check we had.**
+
+The fix: generate a key, put it somewhere retrievable *first*, then set it everywhere and
+re-run. Verified by fetching the newest artifact from R2 and opening it with the stored key
+— 13.19 MB, 32,768 rows, `sourceIntegrity.trialBalanceOk: true`.
+
+⚠️ **Two artifacts in the bucket predate the rotation and CANNOT be opened** —
+`…T08-13-44-316Z` (the orphaned CI key) and `…2026-07-30T15-43-27-112Z` (the old local key).
+Both are superseded by the newest, which is a complete backup of the same database taken
+later, and the 90-day rule removes them. **Do not reach for either during a recovery.**
+
+⚠️ **The tradeoff of keeping it on Railway, stated plainly:** that environment also holds the
+R2 credentials, so anything that reads it gets both the key and the bucket. The alternative
+was a key on one laptop, where losing the laptop loses every backup. Put a copy in a password
+manager too — that is the version with no single point of failure.
+
 ## The four commands
 
 | Command | Does | Safe? |
