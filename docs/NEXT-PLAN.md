@@ -40,7 +40,30 @@ SELECTION_CLOSED does not appear once in the duplicate set. Every path without s
 produced duplicates, including *"You won TZS 23,349"* twice **84 ms apart** and a TZS 5,000 refund
 notice twice 1.25 s apart. That contrast is the argument for the fix.
 
-**Shipped so far:** `npm run test:cert-c1` (843 assertions) — see the C1 dossier in
+**All three gates are live and every one was proven red before it was trusted:**
+
+| Gate | Assertions | Red proofs |
+|---|---|---|
+| `test:cert-c1` email truth | 850 | 16 |
+| `test:cert-c2` delivery resilience | 41 | 8 |
+| `test:cert-c3` notification truth | 853 | 9 |
+| `qa:cert-c1` email visual (4 widths) | 1,519 | — browser gate, outside `test:all` |
+| `qa:cert-c3` bell visual | 🔴 **written, never run** — see below | |
+
+🔴 **The one thing this pass did NOT do: look at the bell.** `qa:cert-c3` is written and complete
+(empty / 1 item / many / long body / unread badge × 360·768·1280·1920 × en·sw·zh) but has **never
+been executed**, so no claim is made about it. A production build refuses to boot without a
+database (`store.ts` throws by design), and `next dev` refuses a second server for this directory
+while a **hung one from 2026-07-29 (PID 22004)** holds the lock without answering on `:3000` — not
+this session's process, so it was left alone. Free `:3000`, then `npm run qa:cert-c3`.
+
+**Fixed:** the ZH gap (all 36 emitters now trilingual) · duplicate money notifications (deduped on
+message + deep link, failing open, audited) · `sentAt` now written · `notifyCashout`'s hardcoded
+"5-min grace window" · emoji in officer copy · the English-only SSE payload · a 10 s send timeout
+where there was none · a dead provider now reports `DOWN` on `/api/health` and writes a COMPLIANCE
+audit row once per outage · a `200` with no `MessageID` no longer counts as delivered.
+
+**Original C1 note:** `npm run test:cert-c1` (843 assertions) — see the C1 dossier in
 [`MODULE-CERTIFICATION-PROGRAM.md`](MODULE-CERTIFICATION-PROGRAM.md). The inventory is code now
 ([`src/lib/server/comms-registry.ts`](../src/lib/server/comms-registry.ts)), and two defects that
 five green suites had been sitting on top of are fixed: an unescaped `heading()`/`ctaButton` that

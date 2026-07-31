@@ -1079,10 +1079,14 @@ export const prismaDb = {
   // ── NOTIFICATION ──────────────────────────────────────────────────────────
   notification: {
     create: async (n: StoredNotification): Promise<StoredNotification> => {
+      const created = new Date(n.createdAt);
       const row = await pc().notification.create({
         data: {
           id: n.id,
           userId: n.userId,
+          // The ONLY channel this table has ever carried. `NotificationChannel`
+          // declares four; PUSH/SMS/EMAIL have no writer and 0 rows. This table
+          // is the in-app inbox — see `comms-registry.ts` for the whole picture.
           channel: "IN_APP",
           event: n.kind,
           kind: n.kind,
@@ -1093,12 +1097,40 @@ export const prismaDb = {
           bodyEn: n.bodyEn,
           bodySw: n.bodySw,
           bodyZh: n.bodyZh ?? null,
+          // 🔴 `sentAt` was NULL on all 1,673 production rows because nothing in
+          // the repo ever wrote it — "was it delivered?" was unanswerable from
+          // the data. For an IN_APP notification, delivery IS the row becoming
+          // visible in the bell, so the timestamp is knowable exactly here. A
+          // column nobody fills is a promise, not a record.
+          sentAt: created,
           readAt: n.readAt ? new Date(n.readAt) : null,
           dismissedAt: n.dismissedAt ? new Date(n.dismissedAt) : null,
-          createdAt: new Date(n.createdAt),
+          createdAt: created,
         },
       });
       return toStoredNotification(row);
+    },
+    /**
+     * The most recent byte-identical notification for this player inside the
+     * window, or null. Identity includes `href`, so two genuinely different
+     * events (two deposits, two positions) never collide — see DEDUPE_WINDOW_MS
+     * in notification-service for the production measurement behind this.
+     */
+    findRecentDuplicate: async (q: {
+      userId: string; kind: string; titleEn: string; bodyEn: string; href: string | null; sinceMs: number;
+    }): Promise<StoredNotification | null> => {
+      const row = await pc().notification.findFirst({
+        where: {
+          userId: q.userId,
+          kind: q.kind,
+          titleEn: q.titleEn,
+          bodyEn: q.bodyEn,
+          href: q.href,
+          createdAt: { gte: new Date(Date.now() - q.sinceMs) },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+      return row ? toStoredNotification(row) : null;
     },
     findByUser: async (userId: string, limit = 50): Promise<StoredNotification[]> => {
       const rows = await pc().notification.findMany({

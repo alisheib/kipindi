@@ -166,7 +166,11 @@
     "ops:selcom-code-matrix": "node scripts/selcom-code-matrix.mjs",
     "test:orphans": "node scripts/orphan-scripts.mjs",
     "qa:contrast-rendered": "node scripts/contrast-rendered.mjs",
-    "test:cert-c1": "tsx scripts/comms-email-truth.test.mts"
+    "test:cert-c1": "tsx scripts/comms-email-truth.test.mts",
+    "test:cert-c3": "tsx scripts/comms-notification-truth.test.mts",
+    "test:cert-c2": "tsx scripts/comms-delivery-resilience.test.mts",
+    "qa:cert-c1": "tsx scripts/comms-email-shots.mts",
+    "qa:cert-c3": "tsx scripts/comms-bell-shots.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",
