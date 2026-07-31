@@ -156,6 +156,7 @@
     "qa:cert-d1": "node scripts/kyc-fullflow-e2e.mjs",
     "qa:cert-d2": "node scripts/kyc-admin-mobile-e2e.mjs",
     "load:nida-race": "tsx scripts/load/s14-kyc-nida-race.mts",
+    "load:kyc-race": "tsx scripts/load/s15-kyc-decision-race.mts",
     "ops:admin-2fa-readiness": "node scripts/admin-2fa-readiness.mjs",
     "ops:backup-verify-offbox": "node scripts/backup-verify-offbox.mjs",
     "ops:backup-secrets": "node scripts/backup-secrets.mjs",

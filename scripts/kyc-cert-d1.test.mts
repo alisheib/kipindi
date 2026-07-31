@@ -179,6 +179,82 @@ ok("🔴 a FAILED identity check does not redirect to the success banner",
 ok("restartKycAction is defined and clears through the service, not by hand",
   /export async function restartKycAction/.test(actions) && /startKyc\(/.test(actions));
 
+// ── 5 · Every transition fires ITS OWN event ─────────────────────────────────────────────────
+section("5 · each transition emits the right event, and only it");
+
+/**
+ * ⚠️ SCOPE. Whether a message renders, is trilingual, and is actually delivered is
+ * module C's certification (comms-registry.ts, test:cert-c1..c3) — and its own audit
+ * found that `sentAt` is NULL on all 1,673 notification rows, so "the email was sent"
+ * is NOT provable from the database today. What D1 owns, and pins here, is that the
+ * KYC STATE MACHINE calls the right thing at the right transition: a swap or a
+ * deletion is a silent failure that no rendering test can catch.
+ */
+/**
+ * ⚠️ Scope every check to the FUNCTION it belongs to. A file-wide `includes` is
+ * not a control: `kycApprovedHtml` also appears on the import line, so swapping
+ * the approve branch to send the REJECTED email left the gate green — caught by
+ * mutating the source. Slice the body, then assert inside it.
+ */
+const fnBody = (name: string): string => {
+  const i = svcCode.indexOf(`export async function ${name}(`);
+  if (i < 0) return "";
+  const next = svcCode.slice(i + 1).search(/\nexport (async )?function /);
+  return next < 0 ? svcCode.slice(i) : svcCode.slice(i, i + 1 + next);
+};
+/** A decision branch inside reviewKyc, sliced from its guard to the next one. */
+const branch = (from: string, to: string): string => {
+  const body = fnBody("reviewKyc");
+  const i = body.indexOf(from);
+  if (i < 0) return "";
+  const j = body.indexOf(to, i + from.length);
+  return j < 0 ? body.slice(i) : body.slice(i, j);
+};
+
+for (const [label, fn, template] of [
+  ["NIDA check fails → REJECTED", "submitNidaStep", "kycRejectedHtml"],
+  ["player submits → PENDING_REVIEW", "submitForReview", "kycSubmittedHtml"],
+  ["officer forces re-verify", "forceReverifyKyc", "kycMoreInfoHtml"],
+] as const) {
+  const body = fnBody(fn);
+  ok(`${label} sends ${template} (from inside ${fn})`,
+    body.length > 0 && body.includes(template),
+    "The transition or its message has been renamed, removed, or swapped.");
+}
+for (const [label, from, to, template] of [
+  ["officer approves → APPROVED", 'decision === "APPROVE"', 'decision === "REQUEST_INFO"', "kycApprovedHtml"],
+  ["officer asks for more info", 'decision === "REQUEST_INFO"', "// REJECT", "kycMoreInfoHtml"],
+] as const) {
+  const b = branch(from, to);
+  ok(`${label} sends ${template} (from inside its own branch)`,
+    b.length > 0 && b.includes(template),
+    "Each branch must send ITS message — a swap here tells a rejected player they\n" +
+    "       passed, or an approved player that they failed.");
+}
+ok("the REJECT branch sends kycRejectedHtml",
+  branch("// REJECT", "\n}").includes("kycRejectedHtml") ||
+  fnBody("reviewKyc").slice(fnBody("reviewKyc").lastIndexOf('status: "REJECTED"')).includes("kycRejectedHtml"));
+
+ok("officers are alerted when a submission arrives for review",
+  fnBody("submitForReview").includes("notifyAdminKycReview("));
+ok("🔴 a double-submit does NOT re-notify",
+  /if \(k\.status === "PENDING_REVIEW" \|\| k\.status === "APPROVED"\) \{[\s\S]{0,60}return \{ ok: true \}/
+    .test(fnBody("submitForReview")),
+  "Re-emailing the player and every officer on a retry trains officers to ignore the\n" +
+  "       queue. The guard must sit inside submitForReview, BEFORE the transition.");
+ok("every decision is audited",
+  ["kyc.approved", "kyc.rejected", "kyc.more_info_requested"].every((a) => fnBody("reviewKyc").includes(a)) &&
+  fnBody("submitForReview").includes("kyc.submitted"));
+ok("🔴 an officer cannot decide their own submission",
+  /officerId === userId/.test(fnBody("reviewKyc")) && fnBody("reviewKyc").includes("kyc.review.self_blocked"));
+ok("🔴 the officer decision is serialised per subject",
+  fnBody("reviewKyc").includes("withLock(`kyc:${userId}`"),
+  "Proven under real Postgres by `npm run load:kyc-race`: two officers deciding the\n" +
+  "       same submission at the same instant, exactly one decision lands and the loser is\n" +
+  "       told it was already decided.");
+ok("…and so is a forced re-verify",
+  fnBody("forceReverifyKyc").includes("withLock(`kyc:${userId}`"));
+
 console.log("");
 console.log("─".repeat(64));
 console.log(`  D1 · KYC SUBMISSIONS: ${pass} passed, ${fail} failed`);

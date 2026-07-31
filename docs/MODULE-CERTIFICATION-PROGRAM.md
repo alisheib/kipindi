@@ -475,7 +475,20 @@ disconnect? · reconnect storm after a deploy.
 
 ### D1 · KYC submissions — `test:cert-d1` + `qa:cert-d1` 🟩 **CERTIFIED 2026-07-31**
 **Surfaces** `profile/kyc` `admin/kyc/[id]` · **Owns** `kyc-service` `kyc-risk` `nida`
-**Existing** `test:kyc` · **Orphans to adopt** `kyc-fullflow-e2e.mjs` `kyc-admin-mobile-e2e.mjs`
+**Existing** `test:kyc` · ✅ **Both orphans ADOPTED** as `qa:cert-d1` / `qa:cert-d2` (allowlist 140 → 138)
+
+> **Concurrency, measured — `npm run load:kyc-race` (real Postgres, 11 assertions).**
+> `kyc-flow-stress` runs entirely against an in-memory Map, where `withLock` degrades
+> to a per-process mutex, so two properties had never actually been exercised:
+> **two officers deciding the same submission at the same instant** (exactly one
+> decision lands, the loser is told it was already decided, and the player is not
+> double-notified), and **a player resubmitting mid-approval** — including from
+> `ADDITIONAL_INFO_REQUIRED`, the state where `submitForReview` genuinely writes
+> rather than short-circuiting on its idempotency guard.
+> **Both hold. No defect found** — `reviewKyc` re-reads inside the advisory lock and
+> refuses any status that is not awaiting review, and that is sufficient. Stable over
+> three consecutive runs. Recorded because a property nobody has measured is not a
+> property anybody knows.
 **Attack** 🔴 **NIDA is a MOCK.** A licensed operator must not imply verification it does not
 perform — the product text and `NIDA-POLICY.md` must agree with the code (G8 at its sharpest) ·
 resubmit unchanged after rejection and get auto-approved · read another player's submission by ID ·
