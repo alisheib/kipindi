@@ -1060,23 +1060,40 @@ are on production's `email.suppression`, i.e. hard-bounced — §6d). And a **re
 `vickyhabibalalji13@icloud.com`, is suppressed on prod and receives no platform mail: an ops item for
 Ali, not ours.
 
-**5 · E-15 live-verification status — honest, and partly BOOKED not claimed.**
-Deploy `82137e64` SUCCESS 2026-08-01 02:04 EAT.
-- ✅ **The refusal direction is proven** by `test:ai-budget` driving the real `observePrice` and
-  `deepCheckMarket` — including that a blocked call writes **no** `AiUsage` row, i.e. never reaches the
-  provider. Red-proven: pre-fix the count went `2 → 3` and the refusal came back `"error"` carrying a
-  provider **401**.
-- ⏳ **The refusal was NOT driven on production.** Doing so means lowering the live spend ceiling below
-  current spend (there is no other way to make a genuine over-budget call without burning $16.55 of
-  Ali's credit to get there), and the tooling **correctly refused to mutate live `SystemConfig`**. Not
-  worked around. `live/e15-prod.cjs` is written and ready if Ali wants it run with that permission.
-- ⏳ **The pass-through direction was also not provable on production**, for an unrelated reason that
-  turned out to be a finding: the only operator-triggerable sentinel call is *"Re-check this market
-  now"*, and **E-18** means no granted role can execute it — the attempt produced a
-  `privilege_escalation_blocked` row instead of an AI call. Proving it needs Ali's `ADMIN` login.
-  ⚠️ **Read that carefully: "no new AiUsage row" in that run was E-18, NOT evidence that E-15 froze the
-  AI.** The first reading of it looked exactly like a production regression. The pass-through direction
-  *is* covered by the unit drive (under budget, both functions proceed to a real provider call).
+**5 · ✅ E-15 VERIFIED ON PRODUCTION, both directions.** Deploy `82137e64` SUCCESS 2026-08-01 02:04 EAT.
+
+**(a) ALLOW, against production's real config** (`scripts/ops-ai-budget-live-check.mts`, read-only):
+`getCreditConfig()` returns the live `limitUsd $20` / `cycleStartIso 2026-07-30T09:28:26Z`, and
+`assertAiBudget("updown")` correctly **allows** at $3.45 of $20.
+
+**(b) REFUSE, against production's real config** — the half that could not be reached any other way,
+so Ali authorised it explicitly (*"full rights on everything in the project"*, 2026-08-01). The live
+ceiling was lowered below current spend, the **real `observePrice`** was driven against the live DB,
+and the original config restored in a `finally`:
+
+| Check | Result |
+|---|---|
+| oracle refused for budget on **live** config | **true** |
+| reason | **`budget-exhausted`** |
+| detail — real production spend, read live | **`AI credit limit reached ($3.45 of $0.50 this cycle)`** |
+| `AiUsageEvent` rows before → after | **4074 → 4074** — the provider was **never dialled** |
+| `ai_credit_config` restored byte-identical | **true** |
+
+That third row is the whole point: over budget, **nothing was spent**, because the gate fires ahead of
+the network. Pre-fix, the same drive spent a call and came back with a provider `401`.
+
+⚠️ **One honest caveat, and it is the harness not the product.** `ai.call_blocked.budget_exhausted`
+did **not** persist during that run — the log printed *"[audit] persist failed (entry kept in ring
+only)"*, because the one-shot script called `$disconnect()` in its `finally` before `audit()`'s
+fire-and-forget write had flushed. `audit()` is used identically platform-wide and the server process
+never tears its connection down mid-request, so this says nothing about production; but **the audit row
+itself is therefore booked, not proven.** Do not upgrade that claim without seeing the row.
+
+⚠️ **Also: an earlier attempt to prove this through the ADMIN UI produced a false alarm worth keeping.**
+Driving *"Re-check this market now"* as the trading officer showed `AiUsageEvent 4074 → 4074` and no
+credit-limit message — which reads exactly like "E-15 froze the live AI subsystem". It was **E-18**:
+the action refused the MODERATOR before any AI call. **"Nothing was spent" proved E-18, not E-15.**
+Assert *why* nothing happened, not just that nothing happened.
 
 ### 📌 Ali's directive, 2026-08-01 — and what it actually requires
 
