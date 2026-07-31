@@ -257,6 +257,29 @@ container instead, which must be kept on production's major version.
   reaches both the KYC documents and the backups that contain them. Narrowing the workflow
   to a `50pick-backups`-only token remains the right end state.
 
+  ✅ **RETENTION IS SET — 90 days, confirmed in the dashboard 2026-07-31.** Two enabled rules
+  on `50pick-backups`:
+
+  | Rule | Prefix | Action |
+  |---|---|---|
+  | `expire-backups-90d` | all objects | Delete objects after 90 days |
+  | Default Multipart Abort Rule | all objects | Abort uploads after 7 days |
+
+  Without it every artifact — each a full copy of every balance, phone number, NIDA and KYC
+  record on the platform — would accumulate forever, invisibly, because nothing fails.
+
+  ⚠️ **The nightly will still print `RETENTION UNVERIFIED`, and that is correct, not a bug.**
+  The workflow's token has Object Read & Write and cannot read bucket *configuration*
+  (`GetBucketLifecycleConfiguration` → `AccessDenied`), so the check can only say "I cannot
+  confirm" — never "it is fine". No flag was added to declare it verified and silence the
+  warning: a switch that turns a real check into a green tick is the exact failure this
+  runbook exists to document. To make it go quiet, widen the token to Admin Read & Write and
+  update the two GitHub secrets; until then, this table is the record.
+
+  ⚠️ Setting it needed the dashboard. Both `PutBucketLifecycleConfiguration` (S3, Object R/W
+  token) and the Cloudflare REST lifecycle endpoint (with the R2 token's `cfat_…` value)
+  returned `AccessDenied` / `401`.
+
 - 🔴 **[HISTORICAL — fixed] `R2_BACKUP_BUCKET` DID NOT EXIST, AND THE NIGHTLY REPORTED GREEN.**
   This was the worst defect found so far, because it produced a *reassuring* result.
 

@@ -78,11 +78,13 @@ Re-measure any time with `railway ssh "node scripts/admin-2fa-readiness.mjs"`.
 ~~Create the `50pick-backups` R2 bucket~~ ✅ **done 2026-07-31 — the bucket exists and TWO
 sealed artifacts are in it, one shipped by CI itself; the unattended nightly is proven.**
 ~~decide the orphan TZS 100,000 wallet~~ ✅ **done — cleared, and `trialBalance()` now returns
-`ok:true` for the first time.** Remaining: add the **90-day lifecycle rule** on
-`50pick-backups` (dashboard-only; the nightly nags until it can confirm one) · narrow the R2
-token, which currently reaches ALL buckets · move `BACKUP_ENCRYPTION_KEY` from
-`.env.backup.local` into a password manager · set `SENTRY_DSN` (nobody is paged) · rule on the fee
-basis · rule on the Up & Down branch · decide the orphan TZS 100,000 wallet · rotate the Postgres
+`ok:true` for the first time.** ~~90-day lifecycle rule~~ ✅ **done — `expire-backups-90d`,
+all objects, Enabled** (the nightly still prints `RETENTION UNVERIFIED` because the token
+cannot read bucket config; that is accurate, not a bug — see the runbook).
+
+**Still outstanding:** narrow the R2 token, which currently reaches ALL buckets · move
+`BACKUP_ENCRYPTION_KEY` from `.env.backup.local` into a password manager · set `SENTRY_DSN`
+(nobody is paged) · rule on the fee basis · rule on the Up & Down branch · rotate the Postgres
 password and the credentials exposed in chat.
 
 ---
@@ -105,7 +107,7 @@ commit.
 | New guard | `npm run test:docs` — every link, `scripts/*` path and `npm run` reference in `docs/` must resolve. Broken on purpose and observed to go red |
 | Test suite | **111** `test:*` scripts. 108 verified green; `test:responsive` still unverified (see the trap list below) |
 
-**The ONE thing blocking backups, and it needs Ali, not code:** the `50pick-backups` R2
+**~~The ONE thing blocking backups~~ — RESOLVED 2026-07-31.** The bucket exists, two sealed artifacts are in it (one shipped by CI), and a 90-day expiry rule is set. Historical text follows: the `50pick-backups` R2
 bucket does not exist. Cloudflare → R2 → Create bucket. The Railway R2 token is
 bucket-scoped and cannot create it. Then prove it with
 `railway run node scripts/backup-verify-offbox.mjs` — **do not trust a green tick**, that is
