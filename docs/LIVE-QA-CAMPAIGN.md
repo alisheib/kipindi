@@ -1395,6 +1395,100 @@ workstation shows an SLA countdown, but nothing escalates when it runs out. Ali'
 
 ## 6b. NEXT SESSION — start here
 
+### 🔵 Laptop B, session 4 (2026-08-01, the long one) — READ THIS FIRST
+
+It supersedes every block below it. **`TWELVEDATA_API_KEY` was still not supplied**, so the
+Up & Down merge did not happen; the money lane was run instead, and it went further than
+planned and found a blocker.
+
+**Shipped and live-verified this session** — five commits, each pushed to `main`, deployed to
+SUCCESS and re-checked against production:
+
+| | |
+|---|---|
+| `d6bf90e9` | **E-18 + E-19 + E-20** — one defect class on three surfaces. New `control-gates.ts` mechanism, `ControlLocked` component, guard `test:control-gates` (**90**) |
+| `4d151f2e` | E-18/19/20 **verified on production**, 18/18, with **no new `privilege_escalation_blocked` row** (2 → 2) |
+| `450b1155` | **Phase 3 money-in** — `alpha` + `echo` funded 50,000 each; 9 webhook forgeries refused; exactly-once proven over 3 deliveries |
+| `eb5ad9ad` | **E-22** — the stale "manual settlement is the ONLY thing that pays" comment |
+| `7a7324f8` | **Phase 4** — a real WIN (37,400) and a real LOSS settled to real wallets, with a control market |
+| `e1d8092f` | **E-24 / E-23** — the Up & Down blocker, plus the 30-route visual sweep |
+
+**Phases 3 and 4 are now ✅ DONE on production.** Money in, bets, resolution, the objection
+window, settlement, and the money landing in the wallet — all driven live, all evidenced.
+
+### ⏭️ START HERE — fix E-24, and use the stranded money as the acceptance test
+
+🔴 **E-24 is a launch blocker for Up & Down and it is the next session's whole job.** Read the
+E-24 and E-23 rows in §6, then §6i. In one line: **a stake can enter an Up & Down round and
+have no path out** — the retry ladder is dead config, the round is orphaned at the next
+boundary, the market sweep excludes Up & Down, stopping the chain does not void it, and the
+operator's remedy has no UI.
+
+**There is a live reproduction waiting for you on production.** Do not clear it:
+
+```
+round   udr_be906db2d1107ab313c1  (#155, closed 2026-08-01 10:25Z, outcome NULL)
+round   udr_2a7abd34f020e46e17d9  (#156, closed 10:40Z, outcome NULL)
+stake   pos_9446740440b0c9988c79  alpha · YES · TZS 500 · still OPEN
+wallet  alpha 61,900 — the 500 is still missing
+```
+
+**The acceptance test is: the fix releases that 500 back to `alpha` on production, and the
+audit row says who or what did it.** A guard that passes while the money is still stranded is
+not a fix.
+
+**The shape of the fix** (design considered, deliberately not started — it is a money path and
+wanted a fresh session):
+1. **Self-heal, the real fix.** Something must sweep rounds that closed and never resolved,
+   re-call `acquireObservation` for their own boundary — which is what actually advances
+   `attempts` — and close them `source-failed` once `attempts >= maxObservationAttempts`.
+   It must run **independently of chain state**, because a STOPPED chain's orphans strand too.
+   The chain reconciler in `updown-scheduler.ts` is the natural home; it already runs
+   periodically and already exists to heal.
+2. **Make `retryBackoffSeconds` honest** — either drive it or delete it. Right now it is a
+   configured safety mechanism that does nothing, which is worse than not having it.
+3. **Wire `voidRoundByOperator`** (E-23) into `/admin/updown/rounds/` — an officer needs a
+   lever for a round the engine cannot finish. Note the domain: rounds are `trading`, so mind
+   E-18's lesson and give the page the capability flag rather than a button that bounces.
+4. **Guard it** the way `test:control-gates` was guarded: drive the real functions, and prove
+   the suite RED against today's tree first.
+
+⚠️ **Sequencing note:** E-24 is independent of E-16 and of the TwelveData key. Fixing E-24 does
+**not** make Up & Down playable (E-16 still means no round can ever pick a winner) — it makes it
+**safe to fail**. Both must be closed before the game goes live, and E-24 is the one that can
+actually cost a player money.
+
+### Then, in order
+
+5. **E-21 — the Selcom generic-webhook bypass. ⛔ Do this LAST**, and only once no further QA
+   funding is needed: closing it removes the only way this campaign can fund a wallet. The fix
+   is to drop `selcom` from `KNOWN_PROVIDERS` so Selcom can only settle through the
+   authoritative re-query, plus a `test:webhook-sec` case pinning it.
+6. **Check the control market**, `mkt_4969c3dd29fde8742618`. It was resolved YES and left with
+   its real 24-hour objection window, and should settle **unaided at 2026-08-02 09:54Z**,
+   paying `alpha` 5,000 + 4,350. That is the second, unaided proof of the settle timer —
+   **verify it, do not clear it.**
+7. **The interaction sweep Ali asked for and this session only started**: hovers, dropdowns,
+   popovers, modals, focus states, keyboard paths, and **The Needle** — every interactive
+   state, EN/SW/ZH, 4 widths. §6j covered *pages* (60 loads, 0 overflow, 0 console errors) but
+   not *states*. Use `live/v0-links.mjs` to enumerate real routes — ⛔ **never guess a route**,
+   it has produced a phantom 404 three times now.
+8. **The adversarial money pass** (phase 12) — untouched. The webhook half was done (§6g); the
+   betting/settlement half was not: bet after close, double-spend a balance, self-deal both
+   sides, tamper with a stake in flight, replay a bet's idempotency key.
+9. **The dead-weight lane Ali asked for** — things that are stale or actively misleading.
+   Collected so far, none yet actioned: two **duplicate GOLD assets** pointing at two different
+   unreadable sources (`XAU`/`kitco.com` disabled, `GOLD`/`goldprice.org` enabled) plus two
+   permanently `STOPPED` chains; `wunderground.com` and `african-markets.com` each registered
+   under **two** categories; **`en.wikipedia.org` trusted as a `sports` settlement authority**
+   (user-editable — questionable for real money); `goldprice.org` / `kitco.com` /
+   `tradingview.com` enabled as sources that E-16 proved a web search **cannot read**;
+   `retryBackoffSeconds` (E-24 ①); the orphan `UpDownProposal` table (E-17); E-14's unreachable
+   `limitUsd = 0` branch and the vacuous assertion in `events-calendar.test.mts:146`.
+10. **Still owed by Ali:** the **`TWELVEDATA_API_KEY`** (E-16 / E-17 / the branch merge), the
+    E-3 backfill call, and E-7 / E-8. **New for Ali:** the Up & Down quick-bet spends real money
+    on a **single tap with no confirmation** (§6i) — a product decision, not a bug.
+
 ### 🔵 Laptop B, session 3 (2026-08-01) — Up & Down + AI, and what it found
 
 **Read this block first; it supersedes the session-2 notes below it.** Four things happened.
