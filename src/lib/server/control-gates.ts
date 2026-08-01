@@ -63,13 +63,38 @@ export const CONTROL_DOMAIN = {
    *  it: "it moves money / closes a live pool — not a moderator job". Third instance
    *  of E-18, found by this file's own guard rather than by a click on production. */
   emergencyVoidMarket: "compliance",
-  /** `/admin/updown/rounds` · "Void & refund this round" — the operator's remedy for a
-   *  round the engine could not finish (E-23). `compliance`, NOT `trading`, even though
-   *  it lives on a trading page: it is the Up & Down twin of `emergencyVoidMarket` —
-   *  it closes a live pool and hands every open stake back — and the two must not
-   *  disagree about who may do the same thing to the same kind of row. Declared here
-   *  BEFORE the control shipped, which is E-18's lesson applied rather than repeated. */
-  voidUpDownRound: "compliance",
+  /**
+   * `/admin/updown/rounds` · "Void & refund this round" — the operator's remedy for a
+   * round the engine could not finish (E-23).
+   *
+   * ⚠️ `trading`, AND THIS WAS GOT WRONG ONCE — the correction is the interesting part.
+   * It first shipped as `compliance`, by analogy with `emergencyVoidMarket` below. That
+   * analogy is wrong, and production said so within the hour: `/admin/updown/rounds` is
+   * a `trading` route, `DEFAULT_GRANTS` makes trading and compliance DISJOINT, so the
+   * QA compliance officer opening the page got *"Your role cannot view this page"* while
+   * the trading officer who could see it got only a lock. **Net effect: the remedy was
+   * usable by the 9 ADMIN accounts and nobody else** — which is E-23 restated, not fixed.
+   *
+   * Why `trading` is also right on the merits, not just convenient:
+   *   · `docs/UPDOWN-ARCHITECTURE.md` §10 already assigned "void a round" to
+   *     MARKET_OPS_ROLES (ADMIN/COMPLIANCE/MODERATOR) before any of this. That was the
+   *     subsystem's own documented decision and it was correct.
+   *   · `emergencyVoidMarket` cancels a HEALTHY live market — a discretionary act that
+   *     destroys a working product. This releases a round the engine has ALREADY failed
+   *     to finish, and the outcome is fixed: every player gets their own stake back. A
+   *     recovery lever is not a money-movement decision.
+   *   · The officer who watches Up & Down rounds is the trading officer. A stuck round
+   *     is an operations problem, and it is the one they will see first.
+   * Residual risk, stated rather than hidden: a trading officer could void a round that
+   * was about to pay a winner. It is bounded — only an UNSETTLED round qualifies, and
+   * the self-healer now terminates every round within ~390s — and every use is audited
+   * to the officer by name with a reason they had to type.
+   *
+   * Still declared here rather than hard-coded, because the Owner can create a role at
+   * `/admin/roles` with `trading` VIEW but no ACT; that role must see the locked state,
+   * not a button that bounces. Same reason `resolveMarket` is declared.
+   */
+  voidUpDownRound: "trading",
 } as const satisfies Record<string, AdminDomain>;
 
 export type ControlId = keyof typeof CONTROL_DOMAIN;

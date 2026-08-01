@@ -490,10 +490,15 @@ let strandedMarketId = "";
      /VoidRoundControl/.test(read("src/app/admin/updown/rounds/page.tsx")), "not rendered");
   // E-18's lesson: the page must be able to ask the same question the action asks, or
   // a legitimate click is filed as an attempted privilege escalation.
+  // ⚠️ `trading`, and the domain is pinned here on purpose. It shipped as `compliance`
+  // for one deploy and production proved that unusable — /admin/updown/rounds is a
+  // `trading` route, so the compliance officer could not open the page at all and the
+  // remedy became Owner-only, i.e. E-23 restated. `test:control-gates` §2 carries the
+  // role-by-role decision; this line stops the domain drifting back silently.
   ok("10.7 · the action reads its domain from CONTROL_DOMAIN, not a literal",
      /CONTROL_DOMAIN\.voidUpDownRound/.test(actions) &&
-     /voidUpDownRound:\s*"compliance"/.test(read("src/lib/server/control-gates.ts")),
-     "hard-coded domain");
+     /voidUpDownRound:\s*"trading"/.test(read("src/lib/server/control-gates.ts")),
+     "hard-coded or wrong domain");
   ok("10.8 · …and the page renders a locked state rather than a button that bounces",
      /ControlLocked/.test(read("src/app/admin/updown/rounds/page.tsx")) &&
      /canUseControl\(session\?\.role, "voidUpDownRound"\)/.test(read("src/app/admin/updown/rounds/page.tsx")),

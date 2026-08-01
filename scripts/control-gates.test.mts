@@ -81,20 +81,37 @@ __resetGrantsForTest();
 {
   const EXPECT: Record<string, Partial<Record<ControlId, boolean>>> = {
     // Owner bypasses the grant table entirely and can never be locked out.
-    ADMIN:      { recheckMarketNow: true,  setTwoAdminAuth: true,  resolveMarket: true,  aiToolkit: true,  emergencyVoidMarket: true },
+    ADMIN:      { recheckMarketNow: true,  setTwoAdminAuth: true,  resolveMarket: true,  aiToolkit: true,  emergencyVoidMarket: true,  voidUpDownRound: true },
     // ⭐ E-18 in one line: trading yes, compliance no. Sees the queue, cannot re-check;
     //    sees the markets table, cannot work its kill switch.
-    MODERATOR:  { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: true,  aiToolkit: false, emergencyVoidMarket: false },
+    // ⚠️ `voidUpDownRound: true` is a DELIBERATE, EVIDENCED decision, not a default —
+    //    see the block on it in control-gates.ts. It shipped as `compliance` first and
+    //    production proved that unusable: /admin/updown/rounds is a `trading` route, so
+    //    a compliance officer could not even open the page, and the remedy ended up
+    //    Owner-only. Flipping this line back to `false` is how you re-break E-23.
+    MODERATOR:  { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: true,  aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: true },
     // ⭐ The other half: can act, cannot even reach the trading page that hosts it.
-    COMPLIANCE: { recheckMarketNow: true,  setTwoAdminAuth: true,  resolveMarket: false, aiToolkit: true,  emergencyVoidMarket: true },
-    FINANCE:    { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false },
-    GROWTH:     { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false },
-    SUPPORT:    { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false },
+    //    …and that is exactly why `voidUpDownRound` is FALSE here: a control a role can
+    //    work but never reach is not a control. The round explorer stays trading-owned.
+    COMPLIANCE: { recheckMarketNow: true,  setTwoAdminAuth: true,  resolveMarket: false, aiToolkit: true,  emergencyVoidMarket: true,  voidUpDownRound: false },
+    FINANCE:    { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: false },
+    GROWTH:     { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: false },
+    SUPPORT:    { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: false },
     // Read-only everywhere, including the domains it can view.
-    AUDITOR:    { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false },
-    PLAYER:     { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false },
-    AGENT:      { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false },
+    AUDITOR:    { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: false },
+    PLAYER:     { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: false },
+    AGENT:      { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: false },
   };
+
+  // ⛔ NOT vacuous by omission. `Partial<Record<…>>` lets a new control be added and
+  // silently go untested for every role — which is how a gate reads as covered and is
+  // not. Every control must appear in every row.
+  {
+    const ids = Object.keys(CONTROL_DOMAIN) as ControlId[];
+    const gaps = Object.entries(EXPECT).flatMap(([role, row]) =>
+      ids.filter((id) => !(id in row)).map((id) => `${role}.${id}`));
+    ok("2 · every control is asserted for every role (no silent gaps)", gaps.length === 0, gaps.join(", "));
+  }
 
   for (const [role, row] of Object.entries(EXPECT)) {
     for (const [id, want] of Object.entries(row) as [ControlId, boolean][]) {

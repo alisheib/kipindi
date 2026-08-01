@@ -324,20 +324,29 @@ Reuses `src/lib/server/roles.ts` tiers — no new tier.
 | View the Up & Down console | `ADMIN_CONSOLE_ROLES` |
 | Asset registry + rate profile + thresholds | `CONFIG_ROLES` (never MODERATOR — it changes economics) |
 | Start / pause / stop a chain | `MARKET_OPS_ROLES` |
-| **Void & refund a round** | **`compliance`**, via `CONTROL_DOMAIN.voidUpDownRound` — see below |
+| **Void & refund a round** | **`trading`**, via `CONTROL_DOMAIN.voidUpDownRound` — see below |
 | Force-settle | `MONEY_ROLES` |
 
-⚠️ **The round void is `compliance`, NOT the `MARKET_OPS_ROLES` tier the rest of this
-table uses, and the difference is deliberate.** Stopping a chain changes whether rounds
-are *emitted*; voiding a round *hands real money back*. It is the Up & Down twin of
-`/admin/markets`' emergency void, which E-20 already settled as `compliance` ("it moves
-money / closes a live pool — not a moderator job"), and the two must not disagree about
-who may do the same thing to the same kind of row.
+⚠️ **The round void is `trading` — and it shipped once as `compliance`, which production
+proved unusable within the hour.** Worth recording, because the mistake is a tempting one:
+voiding a round refunds real money, so by analogy with `/admin/markets`' emergency void
+(settled as `compliance` by finding E-20) it looked like a compliance decision.
 
-Its domain lives in `src/lib/server/control-gates.ts`, **once**, so the page can ask the
-same question the action will ask. A `MODERATOR` on `/admin/updown/rounds` therefore sees
-a read-only `🔒 VOID & REFUND · COMPLIANCE ONLY` state rather than a button that bounces —
-E-18's lesson, applied here before the control shipped rather than after.
+The analogy is wrong. `emergencyVoidMarket` cancels a **healthy live market** — a
+discretionary act that destroys a working product. This releases a round the engine has
+**already failed to finish**, and its outcome is fixed: every player gets their own stake
+back. A recovery lever is not a money-movement decision, the officer who watches rounds is
+the trading officer, and this table already said `MARKET_OPS_ROLES` before any of it.
+
+And the practical proof: `/admin/updown/rounds` is a `trading` route while `DEFAULT_GRANTS`
+makes trading and compliance **disjoint**, so as `compliance` the control was reachable by
+the **9 ADMIN accounts and nobody else** — E-23 restated rather than fixed. The compliance
+officer opening the page got *"Your role cannot view this page."*
+
+Its domain lives in `src/lib/server/control-gates.ts`, **once**, so the page asks exactly
+the question the action will ask (E-18). The locked state still matters: the Owner can
+create a role at `/admin/roles` with `trading` VIEW but no ACT, and that role must see
+`🔒 VOID & REFUND · TRADING ONLY`, not a button that bounces.
 
 ## 11 · One control, one place
 
