@@ -378,7 +378,7 @@ and a clean console: `/admin` · `players` · `markets` · `ai-polls` · `ai-usa
 | 2 | KYC: submit · import · approve · reject · revoke · ban · NIDA duplicate | ✅ **COMPLETE** — approve · reject · revoke · ban · NIDA freed, all driven on prod (§6c). E-1 verified in **EN + SW + ZH**; E-3, E-6, E-2, E-5, **E-4 + E-9** fixed **and live-verified**. Only `import` untested |
 | 3 | Money in: wallet · deposit · ledger · receipts | ✅ **UNBLOCKED + DONE (§6g)** — `alpha` and `echo` funded 50,000 each through the real money path; 9 webhook forgeries refused, exactly-once proven over 3 deliveries, ledger balanced |
 | 4 | Core play: markets · YES/NO · win + lose · resolution · payout | ✅ **DONE on production (§6h)** — create → bet both sides → resolve → objection window → settle. A real WIN (37,400 paid) and a real LOSS, ledger sums to 0, with a CONTROL market proving the objection window is what gates payment |
-| 5 | Up & Down: rounds · quick-bet · pricing · void · history | 🔄 **E-16's FIX IS MERGED, NOT YET SWITCHED ON.** The TwelveData feed reader landed 2026-08-01 (§6b session 6), but `feedProvider` still defaults to `mock`, which refuses in production — so prod voids+refunds safely and is not yet playable. Flipping it to `twelvedata` is an operator action and is step ① of the next session. ✅ **E-24 + E-23 FIXED (§6k)**, and the merge strengthened it: the branch's ops-state carve-out + our deadline together close a hole neither had alone. ✅ Refund contract proven (35 positions, 96,250 staked = 96,250 returned); ✅ quick-bet proven live |
+| 5 | Up & Down: rounds · quick-bet · pricing · void · history | 🔄 **E-25 FIXED (§6l): the merged feed could never have confirmed a price** — it dated quotes from the `1day` OHLC bar instead of `last_quote_at`, making the 90 s staleness gate unsatisfiable on every asset forever. Probed live: **2/2 symbols now WOULD CONFIRM at 39 s skew**. **E-26**: the two ops scripts named as the way to verify this cannot see the feed at all → shipped `ops:updown-probe-feed`. ⚠️ `SPX` is **not on the live TwelveData plan** (HTTP 404, Grow tier), so `SNP500` cannot be fed. Older state: **E-16's FIX IS MERGED, NOT YET SWITCHED ON.** The TwelveData feed reader landed 2026-08-01 (§6b session 6), but `feedProvider` still defaults to `mock`, which refuses in production — so prod voids+refunds safely and is not yet playable. Flipping it to `twelvedata` is an operator action and is step ① of the next session. ✅ **E-24 + E-23 FIXED (§6k)**, and the merge strengthened it: the branch's ops-state carve-out + our deadline together close a hole neither had alone. ✅ Refund contract proven (35 positions, 96,250 staked = 96,250 returned); ✅ quick-bet proven live |
 | 6 | Proposals: propose · approve · 4-state switch · bonus | ⏳ |
 | 7 | AI: poll generation · source registry · token enable/disable · usage | ✅ **generate → review → publish → live market DRIVEN ON PROD, 15/15, on real tokens** (§6e). **Spend ceiling fixed + live-verified (E-15).** ✅ **E-17 CLOSED 2026-08-01** — the *AI proposals* nav entry and its page are merged and pinned by `test:admin-nav` §7. Remaining: poll **resolution** with money, and driving the Up & Down proposal queue on prod |
 | 8 | Invites & referrals | ⏳ |
@@ -917,6 +917,9 @@ crawl returned the all-time high and a percentage, not the current price. So re-
 | **E-13** | LOW | KYC copy | **“3/3 document attached”** — `docsCount`/3 is glued to a **singular** toast string (`page.tsx:352`: `{docsCount}/3 {t.toast.documentAttached.toLowerCase()}`). It also `.toLowerCase()`s a *translated* string, which is meaningless-to-wrong for ZH and fragile for SW. Needs a count-aware key per locale rather than a lowercased toast. | `shots/p2-echo-docs.png` |
 | **E-7** | MEDIUM | i18n · profile | **`User.locale` is stored, shown to the player, and never used to render anything — and the player cannot change it.** Signup hard-codes `locale: "SW"` (`auth-service.ts:268,463`) and the column defaults to `SW`, so **44 of 46 live users are `SW`**. But the rendered language is the `kp-locale` cookie alone, which falls back to **`en`** when absent — so a brand-new Tanzanian visitor gets English while their row says Swahili. `/profile` then badges that row directly (`profile/page.tsx:132`, `user.locale === "SW" ? "Kiswahili" : "English"`), i.e. it tells a player reading English that their language is Kiswahili — **and prints "English" for a `ZH` user**. `profile/actions.ts:29` accepts `EN`/`SW` only (no `ZH`), and **no component in the app ever submits a `locale` field**, so nothing a player does can ever correct it. The column does drive real output: web-push (`notification-service.ts:136`) and OTP SMS (`sms.ts:156`) — both would go out in Swahili to a player using the site in English. | live: `delta` is `locale = SW` and rendered EN until the cookie was set; `select locale, count(*)` → SW 44 / EN 2 | ⏳ open |
 
+| **E-25** | 🔴 **BLOCKER** → ✅ **FIXED** | Up & Down · price feed | **The TwelveData feed reads the wrong timestamp field, so it can never confirm a price — E-16 reproduced inside the module written to fix E-16.** `TwelveDataFeed.quote()` dated every quote from `parsed.timestamp`. On `/quote` that is the **OHLC bar's** time, and with no `interval` parameter the provider defaults to **`1day`** — so it is *the start of today*. `maxStalenessSeconds` is **90**, which makes the staleness gate **structurally unsatisfiable on every asset at every hour**. Measured on production against the real key: `timestamp` advanced **0 s across 76 s** and sat **20.4 h** (BTC/USD) / **23.4 h** (XAU/USD) from the boundary, while `last_quote_at` sat **29–45 s** behind wall-clock, advanced 60 s per minute, and its `close` genuinely moved (BTC 62591.99 → 62635.67). Fixed to read `last_quote_at`, falling back to `timestamp` only when absent. ⚠️ **It would have been invisible**: the round history fills with `source-failed` VOIDs identical to E-16's, and the natural reading — *"metals are shut, try Monday"* — is wrong; BTC/USD trades 24/7 and failed the same way. | probe output before/after; `test:updown-feed` §9 proven red on the shipped line (9.1 *"IT READ THE BAR TIME"*, 9.2 skew **73560 s**) |
+| **E-26** | MEDIUM | Up & Down · ops tooling | **The two ops scripts that the handoff named as the way to verify the feed cannot see the feed at all.** `ops:updown-probe-source` and `ops:updown-verify-source` both drive `observePrice` — the **AI oracle**. Neither mentions `TWELVEDATA`, `feedProvider` or `updown-feed`; both spend Anthropic tokens and read web pages. Since `observationMethod` now defaults to **`feed`**, they answer a confident question about a subsystem that is no longer on the money path, and they cannot answer the only question an operator has before flipping the provider live: *is the key set, does it work, is the quote fresh enough?* This is how E-25 stayed invisible. Fixed by shipping **`ops:updown-probe-feed`**, which drives `quoteAsset` + `judgeFeedStaleness` — the exact two functions `readPrice` calls — so what it reports is what the engine would do. | `grep -l "updown-feed\|TWELVEDATA\|feedProvider" scripts/ops-*.mts` → **no matches** before this session |
+
 ## 6f. E-18 fixed — and the class was three surfaces, not one (2026-08-01)
 
 **One defect class: a page offers a control its own viewer's role can never work.** The
@@ -1425,6 +1428,82 @@ What IS proven: the page renders at **360 / 768 / 1280 / 1920** with **0 horizon
 overflow and 0 console errors** for the role that owns it, the RBAC gate fires correctly on
 production (that is how the domain bug was found), and `canUseControl` is driven for real
 across 9 roles × 6 controls. Evidence `shots/e23-{officer,trading}-{360,768,1280,1920}.png`.
+
+## 6l. E-25 — the feed could never have worked, and it would have looked like E-16 (2026-08-01)
+
+Step ① of session 6 was supposed to be a one-line operator action: flip `feedProvider`
+`mock → twelvedata`. Probing the provider **before** flipping it found that the flip would
+have changed nothing a player could see.
+
+**What the shipped code read, and what it should have read.** `/quote` returns two times:
+
+| Field | What it is | Measured on production, 2026-08-01 20:27–20:29Z |
+|---|---|---|
+| `timestamp` | the **OHLC bar**. No `interval` parameter → the provider defaults to **`1day`** | advanced **0 s across 76 s**; **20.4 h** stale (BTC/USD), **23.4 h** (XAU/USD) |
+| `last_quote_at` | when the **price** was last quoted | **29–45 s** behind wall-clock, advancing 60 s/min, `close` genuinely moving |
+
+`maxStalenessSeconds` is **90**. Reading `timestamp` therefore makes the gate
+**structurally unsatisfiable** — not "usually fails", *cannot ever pass*, on any asset, at
+any hour. Every boundary refuses, every round voids and refunds. Which is E-16's outcome
+exactly, produced by the module written to fix E-16.
+
+⭐ **Why this is the dangerous kind of bug: the failure is indistinguishable from the
+correct behaviour.** The round history fills with `source-failed` VOIDs that look precisely
+like the ones E-16 left behind, the engine keeps refunding honestly, and the console keeps
+reporting the refusal truthfully. The obvious diagnosis — *it is Saturday, metals are shut,
+try Monday* — is **wrong**, and would have cost a week: **BTC/USD trades 24/7 and failed
+identically**, which is the observation that broke it open. A 24/7 asset quoting exactly
+`00:00:00Z` is not a trading calendar, it is a daily bar.
+
+**The fix is one field**, with the fallback kept (`last_quote_at ?? timestamp`): a bar time
+is a worse answer than a quote time but is still the *provider's* own time, which is the
+contract. Neither present is still a refusal.
+
+⚠️ **Deliberately NOT gated on `is_market_open`**, though the provider returns it. A shut
+market stops advancing `last_quote_at`, so the staleness rule already refuses it honestly
+and for the right reason; a second gate would be a second answer to one question. If a
+provider ever re-stamps a *frozen* price with a fresh time, `minMoveTicks` voids and refunds
+the round — that failure is safe, and it is why that rule exists. **Not yet observed**: both
+assets were genuinely moving when measured, so the re-stamping case is untested.
+
+### E-26 — and the reason it was nearly missed: the ops tools point at the wrong subsystem
+
+The handoff named `ops:updown-probe-source` / `ops:updown-verify-source` as the way to
+confirm the key is read. **Neither can see the feed.** Both drive `observePrice`, the AI
+oracle; `grep -l "updown-feed\|TWELVEDATA\|feedProvider" scripts/ops-*.mts` matched nothing.
+They spend Anthropic tokens to measure a subsystem that is no longer on the money path.
+
+Shipped **`ops:updown-probe-feed`** — it drives `quoteAsset` + `judgeFeedStaleness`, the same
+two functions `readPrice` calls, so it certifies against the rule the engine applies. It
+writes nothing (`DATABASE_URL` deleted before any import), costs **one provider credit per
+symbol and zero tokens**, and reports the skew in seconds:
+
+```
+railway run -s 50pick -- npx tsx scripts/ops-updown-probe-feed.mts --symbols XAU/USD,BTC/USD
+  ✅ XAU/USD — WOULD CONFIRM   price 4042.67   skew 39s   (limit 90s)
+  ✅ BTC/USD — WOULD CONFIRM   price 62618     skew 39s   (limit 90s)
+  2/2 symbol(s) would confirm a reading at this boundary.
+```
+
+⛔ **`judgeFeedStaleness` is now the ONE staleness rule** — extracted from `readPrice` rather
+than copied into the probe. An ops tool that computes staleness *itself* can green-light a
+source the engine then refuses on every boundary. `test:updown-feed` §10 pins that both read
+it and neither re-derives the skew.
+
+**Guards** — `test:updown-feed` **21 → 33**. §9 is built from the real production response
+shape, and was proven red against the line that actually shipped: `9.1 IT READ THE BAR TIME
+— every round would void (E-25)`, `9.2 skew 73560s`.
+
+📌 **Two things learned that are worth carrying, beyond this bug:**
+1. **`SPX` is not available on the live plan.** `HTTP 404 — "This symbol is available
+   starting with the Grow or Venture plan"`. So the `SNP500` asset **cannot be fed by
+   TwelveData at all** on Basic 8; only `XAU/USD` (and crypto) can. That is a product/billing
+   decision for Ali, not a code fix.
+2. **The retry ladder works *against* a fresh-quote feed.** `retryBackoffSeconds: [15,45,120]`
+   puts attempt 4 at ~T+180 s, and a *fresh* quote is then necessarily >90 s from the
+   boundary. With a feed, a retry only helps if the **provider** was down; if the first
+   attempt is late, later ones are strictly worse. Same observation §6's E-16 analysis made
+   about the AI path — it survived the method change. Not fixed; recorded.
 
 ## 6d. Email verification — DONE on production, 7/7 (2026-07-31 22:15 EAT)
 

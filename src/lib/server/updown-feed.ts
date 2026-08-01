@@ -211,9 +211,35 @@ export class TwelveDataFeed implements PriceFeed {
       return { ok: false, reason: "unparseable-price", detail: `close="${String(parsed.close)}" is not a positive finite number` };
     }
 
-    // `timestamp` is UNIX seconds of the provider's own quote. Without it we refuse —
-    // the whole reason this module exists is that we can finally date a price.
-    const ts = Number(parsed.timestamp);
+    // ⛔ `last_quote_at`, NOT `timestamp`. Read the campaign finding E-25 before "simplifying"
+    // this back — it cost the platform a second, identical outage.
+    //
+    // `/quote` returns TWO times and they are not interchangeable:
+    //
+    //   timestamp      the OHLC BAR this quote belongs to. With no `interval` parameter the
+    //                  provider defaults to `1day`, so it is the START OF TODAY — measured on
+    //                  production 2026-08-01: it advanced 0s across 76s and sat 20.4h (BTC)
+    //                  and 23.4h (XAU) from the boundary.
+    //   last_quote_at  when the price itself was last quoted — measured at 29-45s behind
+    //                  wall-clock, advancing 60s per minute, with `close` genuinely moving.
+    //
+    // `maxStalenessSeconds` is 90. So reading `timestamp` makes the staleness gate
+    // STRUCTURALLY UNSATISFIABLE: every boundary refuses, every round voids and refunds,
+    // on every asset, at every hour — which is E-16 exactly, reproduced inside the module
+    // written to fix E-16. It is invisible in the round history, because a wall of
+    // `source-failed` VOIDs looks like a shut market rather than a wrong field.
+    //
+    // The fallback to `timestamp` is kept for a provider response that omits `last_quote_at`:
+    // a bar time is a worse answer than a quote time, but it is still the PROVIDER'S own
+    // time, which is the contract. Neither present is still a refusal — a price we cannot
+    // date is a price we cannot honestly settle on.
+    //
+    // ⚠️ Deliberately NOT gated on `is_market_open`. A shut market stops advancing
+    // `last_quote_at`, so the staleness rule already refuses it, honestly and for the right
+    // reason — and a second gate would be a second answer to one question. If a provider
+    // ever re-stamps a FROZEN price with a fresh time, the `minMoveTicks` no-move rule voids
+    // and refunds the round; that failure is safe, and it is why that rule exists.
+    const ts = Number(parsed.last_quote_at ?? parsed.timestamp);
     if (!Number.isFinite(ts) || ts <= 0) {
       return { ok: false, reason: "no-timestamp", detail: "provider returned no usable timestamp for this quote" };
     }
@@ -276,6 +302,42 @@ export function describeFeedRefusal(reason: FeedRefusal, detail: string): string
     case "wrong-source": return `Wrong source — ${detail}`;
     case "error": return `Feed error — ${detail}`;
   }
+}
+
+/**
+ * THE staleness rule for the feed path. ONE copy, exported.
+ *
+ * ⛔ WHY THIS IS A FUNCTION AND NOT FOUR LINES INLINE. This is the gate the whole module
+ * exists for: the AI oracle was replaced precisely because it could not date a price, so
+ * "how far from the boundary is this quote, and is that too far" is the question that
+ * decides whether real money settles. `readPrice` asks it on the money path and
+ * `ops:updown-probe-feed` asks it on the ops path — and an ops tool that answers a
+ * *slightly different* question than the engine is worse than no ops tool at all, because
+ * it certifies a source the engine will then refuse (or, far worse, the reverse).
+ *
+ * Same reasoning as `hostMatchesDomain` above: two copies is two answers to one question.
+ */
+export function judgeFeedStaleness(
+  quotedAt: string,
+  boundaryAtIso: string,
+  maxStalenessSeconds: number,
+):
+  | { ok: true; quotedAtIso: string; skewSeconds: number }
+  | { ok: false; reason: "stale"; detail: string; skewSeconds: number | null } {
+  const quotedMs = Date.parse(quotedAt);
+  if (!Number.isFinite(quotedMs)) {
+    return { ok: false, reason: "stale", detail: `provider timestamp "${quotedAt}" is unparseable`, skewSeconds: null };
+  }
+  const skewSeconds = Math.round(Math.abs(quotedMs - Date.parse(boundaryAtIso)) / 1000);
+  if (skewSeconds > maxStalenessSeconds) {
+    return {
+      ok: false,
+      reason: "stale",
+      detail: `quote is ${skewSeconds}s from the boundary (limit ${maxStalenessSeconds}s)`,
+      skewSeconds,
+    };
+  }
+  return { ok: true, quotedAtIso: new Date(quotedMs).toISOString(), skewSeconds };
 }
 
 /**

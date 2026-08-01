@@ -30,7 +30,7 @@ import {
   type StoredAsset, type StoredChain, type StoredRound, type RoundOutcome, type VoidReason,
 } from "./updown-dal";
 import { observePrice, describeRefusal, type OracleReading, type RefusalReason } from "./updown-oracle";
-import { feedFromId, quoteAsset, describeFeedRefusal, hostMatchesDomain } from "./updown-feed";
+import { feedFromId, quoteAsset, describeFeedRefusal, hostMatchesDomain, judgeFeedStaleness } from "./updown-feed";
 
 export type LifecycleResult<T> = { ok: true; data: T } | { ok: false; error: string };
 
@@ -173,25 +173,19 @@ async function readPrice(
   }
 
   // The SAME staleness gate the AI path uses, against the PROVIDER'S own time — never ours.
-  const boundaryMs = Date.parse(boundaryAtIso);
-  const quotedMs = Date.parse(q.quotedAt);
-  if (!Number.isFinite(quotedMs)) {
-    return { ok: false, reason: "stale", detail: `provider timestamp "${q.quotedAt}" is unparseable` };
-  }
-  const skewSeconds = Math.round(Math.abs(quotedMs - boundaryMs) / 1000);
-  if (skewSeconds > cfg.maxStalenessSeconds) {
-    return {
-      ok: false,
-      reason: "stale",
-      detail: `quote is ${skewSeconds}s from the boundary (limit ${cfg.maxStalenessSeconds}s)`,
-    };
-  }
+  // ⛔ Delegated to `judgeFeedStaleness` rather than written out here, so the ops probe
+  // (`ops:updown-probe-feed`) certifies a source against the SAME rule the money path
+  // applies. A probe that says "readable" where the engine says "stale" is worse than no
+  // probe: it is a green light for a source that will void every round it touches.
+  const judged = judgeFeedStaleness(q.quotedAt, boundaryAtIso, cfg.maxStalenessSeconds);
+  if (!judged.ok) return { ok: false, reason: judged.reason, detail: judged.detail };
+  const { skewSeconds } = judged;
 
   return {
     ok: true,
     price: q.price,
     sourceUrl: q.sourceUrl,
-    sourceQuotedAt: new Date(quotedMs).toISOString(),
+    sourceQuotedAt: judged.quotedAtIso,
     evidence: q.evidence,
     // A feed does not guess, so there is no confidence to score. Recorded as 100 so the
     // shared confidence floor is a no-op rather than a second thing to keep in sync.

@@ -178,6 +178,7 @@
     "ops:sentry-smoke": "node scripts/ops-sentry-smoke.mjs",
     "ops:selcom-probe": "node scripts/selcom-probe.mjs",
     "ops:selcom-code-matrix": "node scripts/selcom-code-matrix.mjs",
+    "ops:updown-probe-feed": "tsx scripts/ops-updown-probe-feed.mts",
     "ops:updown-probe-source": "tsx scripts/ops-updown-probe-source.mts",
     "ops:updown-verify-source": "tsx scripts/ops-updown-verify-source.mts",
     "ops:updown-source-drift": "tsx scripts/audit-updown-source-drift.mts",

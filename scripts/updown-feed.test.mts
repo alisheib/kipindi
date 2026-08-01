@@ -21,9 +21,10 @@
  */
 process.env.SESSION_SECRET ??= "test-only-session-secret-32chars-min-aaaa";
 
+import { readFileSync } from "node:fs";
 import {
   MockPriceFeed, TwelveDataFeed, UnconfiguredFeed,
-  feedFromId, quoteAsset, describeFeedRefusal,
+  feedFromId, quoteAsset, describeFeedRefusal, judgeFeedStaleness,
   type FeedRequest,
 } from "../src/lib/server/updown-feed.ts";
 
@@ -181,6 +182,81 @@ console.log("\n── 8 · an operator can read every refusal ──");
   ok("8.1 · every reason produces distinct, non-empty text",
      texts.every((t) => t.length > 10) && new Set(texts).size === reasons.length);
   ok("8.2 · none of them says just 'failed'", !texts.some((t) => /^\s*failed/i.test(t)));
+}
+
+// ── 9 · ⛔ E-25 · the QUOTE's time, not the BAR's time ───────────────────────
+/**
+ * The regression that made the feed useless the day it shipped, and looked exactly like
+ * a shut market. `/quote` returns `timestamp` (the OHLC bar — with no `interval` the
+ * provider defaults to `1day`, so: the start of today) AND `last_quote_at` (when the price
+ * was actually quoted). Reading the former against a 90s staleness limit refuses EVERY
+ * boundary on EVERY asset FOREVER — E-16 again, inside the module written to fix E-16.
+ *
+ * The numbers below are the real ones measured on production 2026-08-01, so this suite
+ * fails against the shape that actually shipped rather than an invented one.
+ */
+console.log("\n── 9 · E-25 · the QUOTE's own time, never the daily BAR's ──");
+{
+  const barTs = 1785542400;  // 2026-08-01T00:00:00Z — the 1day bar, 20.4h before the quote
+  const quoteTs = 1785615960; // 2026-08-01T20:26:00Z — when the price was really quoted
+  const body = JSON.stringify({
+    symbol: "BTC/USD", datetime: "2026-08-01", timestamp: barTs, last_quote_at: quoteTs,
+    close: "62601.98", is_market_open: true,
+  });
+
+  const restore = stubFetch(200, body);
+  const q = await new TwelveDataFeed(KEY).quote(REQ);
+  restore();
+
+  ok("9.1 · ⛔ quotedAt is `last_quote_at`, NOT the daily bar's `timestamp`",
+     q.ok && q.quotedAt === new Date(quoteTs * 1000).toISOString(),
+     q.ok ? (q.quotedAt === new Date(barTs * 1000).toISOString()
+       ? "IT READ THE BAR TIME — every round would void (E-25)" : q.quotedAt) : q.detail);
+
+  // The property that actually matters, stated as the operator experiences it.
+  const boundary = new Date(quoteTs * 1000).toISOString();
+  ok("9.2 · ⛔ a real production response CONFIRMS at its own boundary",
+     q.ok && judgeFeedStaleness(q.quotedAt, boundary, 90).ok,
+     q.ok ? `skew ${judgeFeedStaleness(q.quotedAt, boundary, 90).skewSeconds}s` : "");
+
+  // Pin the failure directly, so the guard states the bug and not just the fix.
+  ok("9.3 · ⛔ the bar timestamp would have been 20.4h stale — unsatisfiable, always",
+     !judgeFeedStaleness(new Date(barTs * 1000).toISOString(), boundary, 90).ok);
+
+  // A provider that omits the quote time still gets dated — a bar time is a worse
+  // answer than a quote time, but it is still the PROVIDER'S own time.
+  const r2 = stubFetch(200, JSON.stringify({ close: "2431.07", timestamp: barTs }));
+  const fallback = await new TwelveDataFeed(KEY).quote(REQ);
+  r2();
+  ok("9.4 · with no `last_quote_at`, it falls back to `timestamp` rather than refusing",
+     fallback.ok && fallback.quotedAt === new Date(barTs * 1000).toISOString());
+}
+
+// ── 10 · ⛔ ONE staleness rule — the ops probe must certify what the engine applies ──
+/**
+ * `ops:updown-probe-feed` exists to answer "can this source settle a round?" before an
+ * operator flips the provider on a live money platform. If it computes staleness itself,
+ * it can green-light a source the engine then refuses on every boundary — or, worse,
+ * refuse one the engine would accept, sending the operator to fix a system that is fine.
+ * So there is exactly ONE implementation and both call it.
+ */
+console.log("\n── 10 · one staleness rule, read by both the money path and the ops probe ──");
+{
+  const src = (p: string) => readFileSync(new URL(p, import.meta.url), "utf8")
+    // Strip comments FIRST. `test:updown-heal` 10.4 was tripped by a comment that
+    // correctly EXPLAINED the rule it was checking for, which teaches the next session to
+    // delete the explanation. Never let prose fail a structural guard.
+    .replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+
+  const service = src("../src/lib/server/updown-service.ts");
+  const probe = src("./ops-updown-probe-feed.mts");
+
+  ok("10.1 · the money path calls judgeFeedStaleness", service.includes("judgeFeedStaleness("));
+  ok("10.2 · the ops probe calls the SAME function", probe.includes("judgeFeedStaleness("));
+  ok("10.3 · ⛔ neither re-derives the skew itself",
+     !/Math\.round\(Math\.abs\([^)]*Date\.parse/.test(service) && !/maxStalenessSeconds\s*\)?\s*\{/.test(probe));
+  ok("10.4 · the probe drives the real quote path, not a hand-rolled fetch",
+     probe.includes("quoteAsset(") && !/await fetch\(/.test(probe));
 }
 
 const line = "─".repeat(66);
