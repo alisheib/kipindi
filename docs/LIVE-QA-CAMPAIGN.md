@@ -939,6 +939,44 @@ That last row is the point: the suite refuses the lazy fix as loudly as the bug.
 control's domain is now a decision that must be made **explicitly, in the test**, on a
 licensed money platform.
 
+### ✅ VERIFIED ON PRODUCTION, 2026-08-01 12:1x EAT — 18/18
+
+Deploy `b98c4af9` SUCCESS 12:03 EAT. Driven against `https://50pick.tz` as the **QA TRADING
+officer (`MODERATOR`)** — the exact identity that generated the original finding.
+`live/e18-prod.mjs`. The proof is deliberately **three**-sided, because "the button is gone"
+on its own would also be true of a fix that broke the page:
+
+| | Check on production | Result |
+|---|---|---|
+| **gone** | Re-check button · two-admin toggle · Emergency void control | **0 of each** |
+| **explained** | each replaced by a read-only `🔒 … · COMPLIANCE ONLY` state | **3/3** |
+| **not over-reached** | *Resolve YES / NO / VOID* still offered (MODERATOR genuinely has `trading` act) | **still there** ← the correction to the original finding, held live |
+| **not over-reached** | the resolution **ceremony** still gives a MODERATOR its seal controls | **yes** |
+| **still usable** | resolver-queue still shows `1 pending`; markets still lists real titles; the two-admin **mode** is still readable | **yes** |
+| **E-19** | AI toolkit opens, all four labels readable, **0 operable toggles**, and it says why | **4/4** |
+| ⭐ | **`AuditLog` gained NO new `privilege_escalation_blocked` row across the entire run** | **2 → 2** |
+| — | horizontal overflow · console errors at 1440 | **0 · 0** |
+
+That last row is the finding closing. Production's only two such rows remain the ones this
+campaign generated *before* the fix; the same officer walking the same screens now writes
+none. 📸 `shots/e18-rq-moderator.png` — the header reads *🔒 SINGLE-ADMIN · COMPLIANCE ONLY*
+while **Resolve YES/NO/Void are still live and blue** underneath, which is the whole
+correction in one frame. Also `e18-aitoolkit-moderator.png` (the panel as a status board:
+OFF/ON pills plus *"Status only — switching an AI feature is a compliance decision"*) and
+`e18-markets-moderator.png`.
+
+⚠️ **Harness traps paid for here, both worth keeping:**
+- **The two login forms name their field differently.** `/auth/login` (player) is
+  `#identifier`; `/auth/admin` is **`#phone`**. §3's "the login field is `#identifier`, not
+  `#phone`" is about the *player* form only — applied to the admin form it hangs 30s on a
+  locator that will never exist.
+- **`/admin/markets` page 1 contains no LIVE market**, because production carries 1,398
+  VOIDED Up & Down markets (E-16) that crowd the default sort. The E-20 assertion first
+  came back FAIL against a perfectly correct page — every action cell was `—` because no
+  row qualified for the control at all. Filter to `?status=LIVE`. Same family as every §3
+  trap: **the harness lying, not the product**, and it would have been written up as
+  "the fix did not ship" by a session that trusted one assertion.
+
 ## 6d. Email verification — DONE on production, 7/7 (2026-07-31 22:15 EAT)
 
 Ali's choice (§6b): **mint the genuine link and click it**, not write the column. The token is a
