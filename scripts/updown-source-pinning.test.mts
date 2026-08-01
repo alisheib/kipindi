@@ -21,6 +21,7 @@
  *     reason, so every slice asserts it was FOUND before anything asserts on its contents.
  */
 import { readFileSync } from "node:fs";
+import { CONTROL_DOMAIN } from "../src/lib/server/control-gates.ts";
 
 let pass = 0, fail = 0;
 function ok(label: string, cond: boolean, extra?: string) {
@@ -315,9 +316,22 @@ ok("⛔ reject filters the client's reasons against the closed set",
 // Arming is a money action, so it is gated like one.
 const propActions = readFileSync(new URL("../src/app/admin/updown/proposals/actions.ts", import.meta.url), "utf8");
 const armAction = bodyOf(propActions, "export async function armProposalAction(");
+/**
+ * ⛔ Assert the PROPERTY, not the spelling.
+ *
+ * This read `/requireStaff\("accounting"\)/` — the literal. E-27 then moved the domain
+ * into `CONTROL_DOMAIN.armProposal` (so the PAGE can ask the same question before it
+ * renders an armed button a MODERATOR can only bounce off), and this guard went red
+ * against a tree where the gate was **unchanged and strictly better documented**.
+ *
+ * A guard that fails when a correct refactor keeps its property teaches the next session
+ * to revert the refactor. So: check that the action gates on the control, and that the
+ * control's registered domain IS `accounting`. Both halves matter — the first alone would
+ * pass if the control were silently re-registered as `trading`.
+ */
 ok('⛔ armProposalAction is gated on "accounting", not "trading"',
-  /requireStaff\("accounting"\)/.test(armAction),
-  "arming starts a chain that emits real-money rounds");
+  /requireStaff\(\s*CONTROL_DOMAIN\.armProposal\b/.test(armAction) && CONTROL_DOMAIN.armProposal === "accounting",
+  `arming starts a chain that emits real-money rounds (registered domain: ${CONTROL_DOMAIN.armProposal})`);
 
 const line = "─".repeat(70);
 console.log(`\n${line}\n  UPDOWN SOURCE PINNING: ${pass} passed, ${fail} failed\n${line}`);

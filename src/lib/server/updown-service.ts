@@ -566,10 +566,7 @@ export async function closeRound(
       openObservationId: round.openObservationId, closeObservationId,
       outcome, side, voidReason: finalVoidReason,
       yesPool: applied.yesPool, noPool: applied.noPool, players: applied.predictorCount,
-      note:
-        "Resolved against two immutable price observations bounded to the same grid instants the round " +
-        "was opened and closed on. Settlement is immediate (owner decision 2026-07-24); the standing-objection " +
-        "freeze, the winner floor and exact conservation are unchanged.",
+      note: settlementNote(outcome, finalVoidReason, round.openObservationId, closeObservationId),
     },
   });
 
@@ -583,6 +580,87 @@ export async function closeRound(
     console.warn(`[updown] round ${roundId} resolved but not settled: ${s.code} ${s.error}`);
   }
   return { ok: true, data: { outcome, settled: s.ok } };
+}
+
+/**
+ * What the COMPLIANCE record SAYS happened — matched to what actually happened.
+ *
+ * ⛔ E-29. This was a single fixed string, written on every terminal round:
+ *
+ *     "Resolved against two immutable price observations bounded to the same grid
+ *      instants the round was opened and closed on…"
+ *
+ * Measured on production 2026-08-01: **1,397 of 1,397** rows carrying that sentence have
+ * `openObservationId: null` AND `closeObservationId: null`, and **every one is a VOID**
+ * (1,392 `operator`, 5 `source-failed`). Not one round in the platform's history has ever
+ * resolved against two observations — so the note has been false 100% of the times it has
+ * been written, and it is *most* false exactly where it matters: a `source-failed` void
+ * means no reading could be confirmed, and the note claims two were.
+ *
+ * This is the defect class this platform keeps finding (D-2, E-2, E-6, E-8, E-9): **a
+ * compliance-facing record describing evidence we do not have.** It is worse here than on
+ * a screen, because `AuditLog` is append-only, HMAC-chained and kept for the 7-year AML
+ * window — a false sentence written into it cannot be corrected, only out-lived.
+ *
+ * ⚠️ THE 1,397 EXISTING ROWS CANNOT BE FIXED. They are chained; rewriting one forks
+ * verification. The fix is forward-only, and `docs/LIVE-QA-CAMPAIGN.md` §6n records that
+ * plainly so nobody reading the historical rows is misled by them.
+ *
+ * The note must be derivable from the row's own fields, so it can never again drift from
+ * them — every branch below is decided by `outcome`/`voidReason`/the observation ids that
+ * sit in the same payload.
+ */
+export function settlementNote(
+  outcome: RoundOutcome,
+  voidReason: string | null,
+  openObservationId: string | null,
+  closeObservationId: string | null,
+): string {
+  const TERMS =
+    " Settlement is immediate (owner decision 2026-07-24); the standing-objection freeze, " +
+    "the winner floor and exact conservation are unchanged.";
+
+  if (outcome !== "VOID") {
+    // The only branch entitled to the original sentence — and it now states the condition
+    // it asserts rather than assuming it.
+    return (
+      "Resolved against two immutable price observations bounded to the same grid instants " +
+      "the round was opened and closed on." + TERMS
+    );
+  }
+
+  const refunded = " Every stake is refunded in full.";
+  switch (voidReason) {
+    case "no-move":
+      return (
+        "VOID — both boundary prices were confirmed and the move did not clear the round's " +
+        "frozen margin, so there is no winning side." + refunded + TERMS
+      );
+    case "source-failed":
+      return (
+        "VOID — no confirmed price reading could be obtained for this round's boundary " +
+        "within the allowed attempts, so there is no basis on which to decide it. No price " +
+        "was observed and none is claimed." + refunded + TERMS
+      );
+    case "source-mismatch":
+      return (
+        "VOID — the reading that bounded this round cited a source this round did not pin " +
+        "when it opened, so it is not evidence about these terms." + refunded + TERMS
+      );
+    case "operator":
+      return (
+        "VOID — closed by an operator before settlement, not by a price reading. The " +
+        "accompanying `updown.round.void_operator` entry names the officer and carries the " +
+        "reason they typed." + refunded + TERMS
+      );
+    default:
+      // An unrecognised reason must not silently inherit a confident sentence.
+      return (
+        `VOID — ${voidReason ? `reason "${voidReason}"` : "no reason was recorded"}. ` +
+        `Observations at close: open=${openObservationId ?? "none"}, ` +
+        `close=${closeObservationId ?? "none"}.` + refunded + TERMS
+      );
+  }
 }
 
 /**

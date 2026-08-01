@@ -378,7 +378,7 @@ and a clean console: `/admin` · `players` · `markets` · `ai-polls` · `ai-usa
 | 2 | KYC: submit · import · approve · reject · revoke · ban · NIDA duplicate | ✅ **COMPLETE** — approve · reject · revoke · ban · NIDA freed, all driven on prod (§6c). E-1 verified in **EN + SW + ZH**; E-3, E-6, E-2, E-5, **E-4 + E-9** fixed **and live-verified**. Only `import` untested |
 | 3 | Money in: wallet · deposit · ledger · receipts | ✅ **UNBLOCKED + DONE (§6g)** — `alpha` and `echo` funded 50,000 each through the real money path; 9 webhook forgeries refused, exactly-once proven over 3 deliveries, ledger balanced |
 | 4 | Core play: markets · YES/NO · win + lose · resolution · payout | ✅ **DONE on production (§6h)** — create → bet both sides → resolve → objection window → settle. A real WIN (37,400 paid) and a real LOSS, ledger sums to 0, with a CONTROL market proving the objection window is what gates payment |
-| 5 | Up & Down: rounds · quick-bet · pricing · void · history | 🔄 **E-25 FIXED (§6l): the merged feed could never have confirmed a price** — it dated quotes from the `1day` OHLC bar instead of `last_quote_at`, making the 90 s staleness gate unsatisfiable on every asset forever. Probed live: **2/2 symbols now WOULD CONFIRM at 39 s skew**. **E-26**: the two ops scripts named as the way to verify this cannot see the feed at all → shipped `ops:updown-probe-feed`. ⚠️ `SPX` is **not on the live TwelveData plan** (HTTP 404, Grow tier), so `SNP500` cannot be fed. Older state: **E-16's FIX IS MERGED, NOT YET SWITCHED ON.** The TwelveData feed reader landed 2026-08-01 (§6b session 6), but `feedProvider` still defaults to `mock`, which refuses in production — so prod voids+refunds safely and is not yet playable. Flipping it to `twelvedata` is an operator action and is step ① of the next session. ✅ **E-24 + E-23 FIXED (§6k)**, and the merge strengthened it: the branch's ops-state carve-out + our deadline together close a hole neither had alone. ✅ Refund contract proven (35 positions, 96,250 staked = 96,250 returned); ✅ quick-bet proven live |
+| 5 | Up & Down: rounds · quick-bet · pricing · void · history | 🔄 **E-25 FIXED (§6l): the merged feed could never have confirmed a price** — it dated quotes from the `1day` OHLC bar instead of `last_quote_at`, making the 90 s staleness gate unsatisfiable on every asset forever. Probed live: **2/2 symbols now WOULD CONFIRM at 39 s skew**. **E-26**: the two ops scripts named as the way to verify this cannot see the feed at all → shipped `ops:updown-probe-feed`. ⚠️ `SPX` is **not on the live TwelveData plan** (HTTP 404, Grow tier), so `SNP500` cannot be fed. Older state: **E-16's FIX IS MERGED, NOT YET SWITCHED ON.** The TwelveData feed reader landed 2026-08-01 (§6b session 6), but `feedProvider` still defaults to `mock`, which refuses in production — so prod voids+refunds safely and is not yet playable. Flipping it to `twelvedata` is an operator action and is step ① of the next session. ✅ **E-23 fully CLOSED 2026-08-01 (§6n)** — the enabled *Void & refund* control photographed at 360/768/1280/1920 on production **and used through the product for the first time** (round `udr_b8e1562e2f619954353a` → `operator` void, audited to the officer by name, 24/24). Using it exposed **E-29**: the settlement note claimed two price observations on **1,397 of 1,397** rows that had none. ✅ **E-24 + E-23 FIXED (§6k)**, and the merge strengthened it: the branch's ops-state carve-out + our deadline together close a hole neither had alone. ✅ Refund contract proven (35 positions, 96,250 staked = 96,250 returned); ✅ quick-bet proven live |
 | 6 | Proposals: propose · approve · 4-state switch · bonus | ⏳ |
 | 7 | AI: poll generation · source registry · token enable/disable · usage | ✅ **generate → review → publish → live market DRIVEN ON PROD, 15/15, on real tokens** (§6e). **Spend ceiling fixed + live-verified (E-15).** ✅ **E-17 CLOSED 2026-08-01** — the *AI proposals* nav entry and its page are merged and pinned by `test:admin-nav` §7. Remaining: poll **resolution** with money, and driving the Up & Down proposal queue on prod |
 | 8 | Invites & referrals | ⏳ |
@@ -922,6 +922,8 @@ crawl returned the all-time high and a percentage, not the current price. So re-
 
 | **E-27** | **HIGH** → ✅ **FIXED** | RBAC · Up & Down config · proposals | **`/admin/updown` is a `trading` route that offers a MODERATOR five armed `accounting` controls, and the price feed can therefore be switched on by nobody but the Owner.** `+ Add asset`, edit asset, enable/disable asset, **the reading-method switch** and `Save thresholds` all call `ensure("accounting")` while the route is `trading`; `DEFAULT_GRANTS` makes the two **disjoint**. Driven on production as the QA trading officer: the page renders in full (0 overflow, 0 console errors), the provider dropdown opens, `Save reading method` **arms and enables** — and the click is **refused**, `updown.config` unchanged, **with no visible refusal anywhere on the page**. It wrote a `SECURITY` `privilege_escalation_blocked` row. **This is why step ① of the session brief is impossible as written.** Two more surfaces carry the same class: `armProposal` (`accounting`) on `/admin/updown/proposals`, and `saveProposalsConfig` (`accounting`) + `approveProposal` (`growth`) on `/admin/proposals`. ⛔ **Not fixed by widening** — `UPDOWN-ARCHITECTURE.md` §10 assigns the reading method to CONFIG_ROLES, *"never MODERATOR — it changes economics"*. Fixed the E-18 way: declared in `CONTROL_DOMAIN`, pages render `ControlLocked`. ⚠️ **The gap the fix makes visible rather than closes** is in §6m and is Ali's call. | live `AuditLog` `2026-08-01 20:44:55Z · SECURITY · privilege_escalation_blocked · actor usr_429885ab43c0cb4ce134dd7e · target accounting · {"role":"MODERATOR","action":null,"domain":"accounting"}`; `shots/e27-*.png` |
 | **E-28** | **HIGH** → ✅ **FIXED** | guard integrity | **The drift detector built to catch E-18 was blind to the idiom the codebase had migrated to, and certified four offenders as clean.** `control-gates.test.mts` §5 was written against E-18's shape — a hand-rolled `privilege_escalation_blocked` audit beside an inline `canAct(role,"literal")`. The codebase then moved to `requireStaff(domain)`, which does **both inside the shared guard**, so every migrated file went invisible **three ways**: ① the scan **skipped any file not containing the string `privilege_escalation_blocked`** — which a `requireStaff` caller never does — before reading a single domain; ② the regex matched only `canAct(x,"lit")`, never `requireStaff("lit")` and never a local alias like `ensureConfig = () => ensure("accounting")`, which is exactly how `admin/updown/actions.ts` named its domain; ③ `declares` was **file-level**, so one declared control (`voidUpDownRound`) exempted the five undeclared ones beside it. ⭐ **A guard that goes green on the very class it exists to catch is worse than no guard**, because the next session trusts it. Repaired to read the domain however it is spelled, to require a **per-control** declaration, and to distinguish **enforcement** (`requireStaff`/audit — must be hideable) from **rendering** (`canAct` alone — that *is* the E-18 fix, and flagging it would punish doing the right thing). | the four offenders it passed; `test:control-gates` **101 → 209**, proven red by restoring the pre-fix idiom on one control |
+
+| **E-29** | **HIGH** → ✅ **FIXED (forward-only)** | compliance · audit trail | **Every Up & Down settlement wrote a COMPLIANCE audit note claiming evidence that did not exist — and on production it has been false 1,397 times out of 1,397.** `closeRound` stamped a single **fixed** string on every terminal round: *"Resolved against two immutable price observations bounded to the same grid instants the round was opened and closed on."* Measured live: of the 1,397 `updown.round.voided`/`.resolved` rows carrying that sentence, **1,397 have `openObservationId: null` AND `closeObservationId: null`**, and **every one is a VOID** (1,392 `operator`, 5 `source-failed`). Not one round in the platform's history has ever resolved against two observations. It is *most* false exactly where it matters most: a `source-failed` void means **no reading could be confirmed**, and the note asserts two were. Same class as D-2/E-2/E-6/E-8/E-9 — **a compliance record describing evidence we do not have** — but worse, because `AuditLog` is append-only, HMAC-chained and kept for the **7-year AML window**. Fixed by `settlementNote()`, which derives the sentence from the row's own `outcome`/`voidReason`/observation ids, with a distinct honest branch per void reason and an honest fallback for an unknown one. ⚠️ **The 1,397 existing rows CANNOT be corrected** — rewriting a chained row forks verification. The fix is forward-only; see §6n. | live `select count(*) … where payload->>'note' like 'Resolved against two immutable%'` → **1397 total / 1397 voids / 1397 with no observations**; the row this session generated: `udr_b8e1562e2f619954353a`, `voidReason: operator`, both observation ids `null`, note claiming two |
 
 ## 6f. E-18 fixed — and the class was three surfaces, not one (2026-08-01)
 
@@ -1507,6 +1509,53 @@ shape, and was proven red against the line that actually shipped: `9.1 IT READ T
    boundary. With a feed, a retry only helps if the **provider** was down; if the first
    attempt is late, later ones are strictly worse. Same observation §6's E-16 analysis made
    about the AI path — it survived the method change. Not fixed; recorded.
+
+## 6n. E-23 CLOSED — the enabled remedy, photographed AND used on production (2026-08-01)
+
+§6k's *"What is NOT yet proven"* is now proven, and the way in is worth recording because
+the previous session ruled it out for the wrong reason.
+
+**It never needed the price feed.** §6k abandoned this because there was nothing left to
+void. But an *unsettled round* only needs a chain **started**, and starting a chain is
+`trading` — which the QA trading officer holds. With `feedProvider: mock`, the round opens,
+refuses its reading as an operator state, and voids+refunds safely inside
+`abandonAfterSeconds`. The 15 minutes before that is exactly when the remedy is live.
+
+Driven end to end, 21:09–21:12Z:
+
+| | |
+|---|---|
+| chain started through the real console | `GOLD 15m` → `RUNNING`, next boundary 21:10:00Z (matched on the **prefix** per §6k, since two other rows also read "…Gold") |
+| round opened | `udr_b8e1562e2f619954353a` · #157 · `LIVE` · 21:10 → 21:25 |
+| **the ENABLED control, photographed** | **360 / 768 / 1280 / 1920** — present and enabled at all four, **0 horizontal overflow, 0 console errors** each. `shots/e23-enabled-trading-{360,768,1280,1920}.png` |
+| **the remedy USED, through the product** | round → `VOID`, `voidReason: "operator"`, `resolvedAt 21:11:54` |
+| audited | `ADMIN · updown.round.void_operator · actor usr_429885ab43c0cb4ce134dd7e · reason "QA live-experience campaign: proving the E-23 operator remedy on production."` |
+| chains restored | all four back to `STOPPED`/`PAUSED`, exactly as found |
+
+⭐ **This is the first time the operator remedy has ever been exercised through the product
+on production.** E-23's original finding was that the 1,395 historical `operator` voids must
+have come from a hand-run script, because no route, action or button existed. There is now a
+row in the live audit trail that a *person* produced, from a *page*, with a reason they
+typed. **24/24.**
+
+### 🔴 …and using it is what exposed E-29
+
+Reading back the audit row it wrote — which is the only reason it was found — the paired
+`COMPLIANCE` entry said:
+
+> *"Resolved against two immutable price observations bounded to the same grid instants the
+> round was opened and closed on."*
+
+on a round with `openObservationId: null`, `closeObservationId: null`, `openPrice: null`,
+`closePrice: null`, voided by an operator. **It was a fixed string on every settlement.**
+
+⛔ **The 1,397 existing rows cannot be corrected.** `AuditLog` is HMAC-chained with
+`@@unique([prevHash])`; rewriting one forks verification, and the campaign's own §4 rule
+forbids hand-writing that table. So the historical record permanently contains 1,397
+sentences asserting price observations that were never taken. **Anyone auditing Up & Down
+rounds dated before 2026-08-01 must read the note as boilerplate, not as evidence** — the
+`voidReason` and the null observation ids in the same payload are the truthful fields, and
+they were always correct. Only the prose lied.
 
 ## 6m. E-27 / E-28 — ⛔ ONE DECISION FOR ALI, and why step ① is blocked (2026-08-01)
 

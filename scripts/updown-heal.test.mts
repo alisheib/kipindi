@@ -56,6 +56,7 @@ import {
 } from "../src/lib/server/updown-config.ts";
 import {
   openRound, closeRound, advanceChain, healStuckRounds, voidRoundByOperator, acquireObservation,
+  settlementNote,
 } from "../src/lib/server/updown-service.ts";
 import { marketStore } from "../src/lib/server/market-dal.ts";
 import { buyPosition, listPositionsForMarket } from "../src/lib/server/market-service.ts";
@@ -646,6 +647,57 @@ console.log("\n── 12 · the ladder gate, tested where it actually lives ─�
      !(await setUpDownConfig({ retryBackoffSeconds: [0] }, OFFICER)).ok);
   ok("12.9 · a rung beyond the ceiling is refused — it would push the deadline out of minutes",
      !(await setUpDownConfig({ retryBackoffSeconds: [3600] }, OFFICER)).ok);
+}
+
+// ── 13 · ⛔ E-29 · the compliance note must describe what ACTUALLY happened ──
+/**
+ * The note on every `updown.round.voided` / `.resolved` row was a single fixed string
+ * asserting "two immutable price observations". Measured on production 2026-08-01:
+ * **1,397 of 1,397** rows carrying it have NEITHER observation, and every one is a VOID
+ * (1,392 `operator`, 5 `source-failed`). `AuditLog` is append-only and HMAC-chained on a
+ * 7-year AML retention, so a false sentence there cannot be corrected — only stopped.
+ */
+console.log("\n── 13 · E-29 · the settlement note states only what is true ──");
+{
+  const claimsObs = (n: string) => /two immutable price observations/.test(n);
+
+  ok("13.1 · a real resolution DOES claim two observations",
+     claimsObs(settlementNote("UP", null, "obs_a", "obs_b")));
+
+  // The four void paths. None may claim evidence that does not exist.
+  for (const [reason, must] of [
+    ["source-failed", /no confirmed price reading/i],
+    ["operator", /closed by an operator/i],
+    ["no-move", /did not clear the round's frozen margin/i],
+    ["source-mismatch", /did not pin/i],
+  ] as const) {
+    const n = settlementNote("VOID", reason, null, null);
+    ok(`13.2 · VOID/${reason} · ⛔ claims NO observations it does not have`, !claimsObs(n), n.slice(0, 66));
+    ok(`13.2 · VOID/${reason} · says what actually happened`, must.test(n), n.slice(0, 66));
+    ok(`13.2 · VOID/${reason} · still promises the refund`, /refunded in full/.test(n));
+  }
+
+  // The exact live row that exposed it: operator void, both observation ids null.
+  const live = settlementNote("VOID", "operator", null, null);
+  ok("13.3 · ⭐ the production row that exposed E-29 now reads truthfully",
+     !claimsObs(live) && /names the officer/.test(live), live.slice(0, 80));
+
+  // An unrecognised reason must degrade to honesty, not to a confident sentence.
+  const unknown = settlementNote("VOID", "something-new", null, null);
+  ok("13.4 · an UNKNOWN void reason does not inherit a confident claim",
+     !claimsObs(unknown) && /something-new/.test(unknown), unknown.slice(0, 72));
+  ok("13.5 · a void with no reason at all says so rather than guessing",
+     /no reason was recorded/.test(settlementNote("VOID", null, null, null)));
+
+  // ⛔ Structural: exactly ONE place may compose this note. A second copy is a second set
+  // of claims, and the whole finding is that the claim drifted from the facts.
+  const svc = readFileSync(join(ROOT, "src/lib/server/updown-service.ts"), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  ok("13.6 · the audit payload calls settlementNote() rather than inlining prose",
+     /note:\s*settlementNote\(/.test(svc));
+  ok("13.7 · ⛔ the claim sentence appears exactly once in the service",
+     (svc.match(/two immutable price observations/g) ?? []).length === 1,
+     String((svc.match(/two immutable price observations/g) ?? []).length));
 }
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);
