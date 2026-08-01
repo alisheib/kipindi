@@ -241,6 +241,14 @@ E-16, which is a far more serious thing to know: the deployed engine does not wo
   perfectly — and the only reason it was not written up as a broken flow is that the **DB was read in
   the same loop** and said otherwise. Lowercase both sides, and always pair a DOM assertion with the
   state it claims to reflect.
+- 🔴 **A Railway deploy reaching SUCCESS does NOT mean the lifecycle ticker is running your
+  code.** The deploy is rolling: the retiring container keeps the leadership lease
+  (`leader.ts`, `LEASE_MS = 3 min`) until it expires, so the new one logs *"not the leader
+  — chores skipped"* for ~4 ticks first. A ticker-driven verification run before that reads
+  as **total failure** — the E-24 acceptance test came back **1 passed / 16 failed** on a
+  deploy that was entirely correct. Always `railway logs -s 50pick | grep "took leadership"`
+  before believing a ticker result. Same family as every trap here: **the harness lying,
+  not the product.**
 - ⚠️ Three worktrees share one `.git`, one `node_modules` and one database. `F:\kipindi-main`
   holds the Railway link. Ports 3000/3009/3010/3011/3200 belong to other sessions — stay off them.
 - ⚠️ **A KYC `Confirm` click can land before the button finishes arming.** The uploader refreshes the
@@ -1316,9 +1324,98 @@ exactly the defect it exists to catch. It now strips comment lines first.
 boundary whose **attempt budget was already spent** — a decision already made, with the
 player held an extra rung's worth of time for it. A spent budget now skips the backoff.
 
-### ✅ VERIFIED ON PRODUCTION — the stranded TZS 500 released
+### ✅ VERIFIED ON PRODUCTION, 2026-08-01 15:10 EAT — 20/20, and the money moved
 
-*(filled in by the live-verification commit that follows this one — see §6b)*
+Deploy `ed4d3db9` SUCCESS 15:05 EAT. `live/e24-verify.mjs`, read-only against the live
+money DB. **The acceptance test Ali set was not the guard and not the deploy — it was
+`alpha`'s TZS 500 coming back — and it did, unattended, by the platform's own ticker.**
+
+```
+[updown-heal] 3 scanned — 0 resolved, 2 voided+refunded, 1 settled, 0 waiting, 0 failed
+```
+
+| | Check on production | Result |
+|---|---|---|
+| ⭐⭐ | **`alpha`'s wallet** 61,900 → | **62,400.00** |
+| ⭐ | `pos_9446740440b0c9988c79` | `OPEN` → **`VOID`**, `finalPayout 500.00` = stake — **refunded, not paid out** |
+| | round #155 `udr_be906db2d1107ab313c1` | `VOID` · `source-failed` · resolved **and** settled 12:10:51Z |
+| | round #156 `udr_2a7abd34f020e46e17d9` | also terminal — the empty orphan behind it |
+| | **E-24(b)** round #124 `udr_605421d1d100258231a0` | the decided-but-unpaid row — **settled**, by `system_updown_healer` |
+| | no price was invented | `closePrice` **null** on both |
+| ⭐ | rounds anywhere with a passed boundary and no verdict | **0** (was 2) |
+| ⭐ | rounds decided-but-unpaid | **0** (was 1) |
+| ⭐ | **every Up & Down stake ever placed** | **96,750 staked = 96,750 returned**, 0 still OPEN (was 96,750 vs 96,250 with one OPEN) |
+
+**The audit row, straight off the live DB** — this is the "who released this money"
+answer that a compliance officer can reach without asking an engineer:
+
+```
+2026-08-01 12:10:52.153  COMPLIANCE  updown.round.voided   system_updown         udr_be906db2d1107ab313c1
+2026-08-01 12:10:52.192  WALLET      market.settled        system_updown         mkt_4f790d3479c172a0e9ed
+2026-08-01 12:10:52.202  COMPLIANCE  updown.round.healed   system_updown_healer  udr_be906db2d1107ab313c1
+   { "action": "voided", "detail": "no confirmed reading 6352s after the boundary",
+     "settled": true, "closePrice": null, "roundNumber": 155, "lateBySeconds": 6352 }
+```
+
+⚠️ **A trap worth keeping, because it looked exactly like the fix not working.** The
+first verification run came back **1 passed / 16 failed** on a deploy that had reached
+SUCCESS. Nothing was wrong: Railway does a **rolling** deploy, and the retiring container
+still held the lifecycle **leadership lease** (`leader.ts`, `LEASE_MS = 3 min`). The new
+container logged *"not the leader — chores skipped"* for four ticks and then *"took
+leadership"*, and the heal fired on the next pass. **Any ticker-driven verification needs
+`LEASE_MS + TICK` (~4 min) after SUCCESS before it means anything** — check
+`railway logs | grep "took leadership"` first, not the deploy status.
+
+### 🔴 E-23's first fix was WRONG, and a screenshot caught it — corrected same session
+
+`voidUpDownRound` shipped as **`compliance`**, by analogy with `emergencyVoidMarket`
+(E-20). Photographing the page at four widths as the QA compliance officer produced this
+instead of a control: **“Your role cannot view this page.”**
+
+`/admin/updown/rounds` is a **`trading`** route, and `DEFAULT_GRANTS` makes trading and
+compliance **disjoint** — the same disjointness E-18 is about. So the officer who could
+*act* could not *reach the page*, and the officer who could reach it saw only a lock:
+**the remedy was usable by the 9 ADMIN accounts and nobody else.** That is E-23 restated,
+not fixed — the finding was *"the operator has no lever"*, and a lever only the Owner can
+pull closes it on paper.
+
+The analogy was wrong on the merits too, and the platform had already said so:
+`UPDOWN-ARCHITECTURE.md` §10 assigned *"void a round"* to `MARKET_OPS_ROLES` before any of
+this. `emergencyVoidMarket` cancels a **healthy live market** — discretionary, destroys a
+working product. This releases a round the engine has **already failed to finish**, and its
+outcome is fixed: every player gets their own stake back. Corrected to **`trading`**
+(`a911bb0a`), with the residual risk stated rather than hidden: a trading officer could void
+a round about to pay a winner — bounded to **unsettled** rounds, on a platform where the
+healer now closes every round within ~390 s, and audited to the officer by name with a
+reason they had to type.
+
+`test:control-gates` **90 → 101**: the decision is written out for all 9 roles, so flipping
+`MODERATOR` back to `false` is a deliberate, tested act. It also gained a check it needed
+independently — `EXPECT` is a `Partial<Record<…>>`, so a newly-added control could be
+omitted from **every** row and go silently untested. Adversarially verified: dropping one
+cell fails by name (`FINANCE.voidUpDownRound`).
+
+> 🔑 **This is the fourth time this campaign has been saved by looking at an image rather
+> than reading an assertion** (E-2, E-5, the blank document viewer, now this). The suite was
+> green, the deploy was green, and the feature was unusable.
+
+### ⏳ What is NOT yet proven, said plainly
+
+**The *enabled* Void & refund control has not been photographed on production**, because
+after the heal there is **nothing left to void** — every round is settled, so the Remedy
+column correctly reads `—` for every row. Proving the enabled branch live needs a round
+genuinely in flight, i.e. a chain started and left running for a boundary. That was
+attempted and abandoned deliberately: the GOLD chain is 15-minute, and the console's chain
+rows are **ambiguous** — the disabled duplicate `XAU` asset is also named *"Gold"*, so two
+of the three `Start` buttons read `XAU 5m Gold` / `XAU 15m Gold` (live evidence for the
+dead-weight item in §6b ⑨, now with an operator-confusion cost attached).
+
+What IS proven: the page renders at **360 / 768 / 1280 / 1920** with **0 horizontal
+overflow and 0 console errors** for the role that owns it, the RBAC gate fires correctly on
+production (that is how the domain bug was found), and `canUseControl` is driven for real
+across 9 roles × 6 controls. Evidence `shots/e23-{officer,trading}-{360,768,1280,1920}.png`.
+
+## 6d. Email verification — DONE on production, 7/7 (2026-07-31 22:15 EAT)
 
 ## 6d. Email verification — DONE on production, 7/7 (2026-07-31 22:15 EAT)
 
@@ -1513,7 +1610,95 @@ workstation shows an SLA countdown, but nothing escalates when it runs out. Ali'
 
 ## 6b. NEXT SESSION — start here
 
-### 🔵 Laptop B, session 4 (2026-08-01, the long one) — READ THIS FIRST
+### 🟢 Laptop B, session 5 (2026-08-01) — E-24 CLOSED. READ THIS FIRST; it supersedes everything below.
+
+**Shipped, deployed and live-verified this session:**
+
+| | |
+|---|---|
+| `4a556ef2` | **E-24 + E-23** — the self-healer, the honest retry ladder, the operator's void lever, guard `test:updown-heal` (**79**), proven RED four ways |
+| `a911bb0a` | **E-23 correction** — the control's domain was `compliance` and that made it Owner-only; now `trading`. `test:control-gates` **90 → 101** |
+| `<this>` | **The production proof** — §6k, 20/20, `alpha`'s stranded TZS 500 released by the platform itself |
+
+🔑 **`TWELVEDATA_API_KEY` IS NOW SET ON RAILWAY** (Ali supplied it, plan *Basic 8*, 800
+credits/day). See §1. It changes nothing that is running — **0 credits will be consumed
+until the branch merges**, because `TWELVEDATA` appears nowhere in `main`'s source. Ali
+asked why usage was 0; that is the answer, and it is expected.
+
+**Ali's instruction, 2026-08-01, verbatim — this sets the next sessions' agenda:**
+
+> *"the platform should be perfect and live stress tested from generation to resolution
+> to anywhere everywhere please for everything. users are expected this week for
+> marketing agencies free trials."*
+
+⚠️ **The honest constraint to give him, up front: “generation → resolution” CANNOT be
+tested for Up & Down on today's code.** E-16 means the deployed oracle has never confirmed
+a single price in 1,400 attempts and structurally cannot. Testing it now would only
+re-document that. Polls *have* been driven generation → publish → live market → a real win
+**and** a real loss with money moving (§6e, §6h). So the order below is not a preference,
+it is the dependency graph.
+
+### ⏭️ START HERE — ① the branch merge. It is now unblocked and it is the critical path.
+
+**`origin/feat/updown-source-pinning-and-proposals` — its own dedicated session, with a
+real review and the full gauntlet.** Ali's decision ① (2026-08-01) was *"get the TwelveData
+key, then merge"*; the key now exists, so the block is gone.
+
+That one merge closes **E-16** (a real price feed, the only thing that can meet the 90-second
+time contract) **and E-17** (the missing *AI proposals* nav entry Ali asked for). Measured,
+not guessed: **28 commits ahead / 60 behind, exactly ONE conflict — `package.json`** (the
+`test:*` list; note it must now also carry `test:updown-heal`). `prisma/schema.prisma`,
+`lifecycle.ts` and `market-service.ts` auto-merge. The `UpDownProposal` table is already on
+production, so its migration carries no new risk.
+
+⛔ **The merge is easy; the REVIEW is the work** — 7,437 insertions across 61 files touching
+the resolution and money paths of a live licensed platform. Do not tail-end it onto another
+session. ⚠️ It touches `updown-config.ts` and `updown-service.ts`, which this session just
+changed — **re-run `npm run test:updown-heal` after merging** and check the branch has not
+re-introduced a second reader of `retryBackoffSeconds`.
+
+**Then, and only then, ② the Up & Down live stress test Ali asked for:** start a chain on
+real TwelveData, watch a round open → confirm a price → **resolve with a real winner and a
+real loser** → money in the wallet. That is the run that has never happened.
+
+### Then, in order
+
+3. **Verify the control market `mkt_4969c3dd29fde8742618` settles unaided at
+   2026-08-02 09:54Z**, paying `alpha` 5,000 + 4,350. Second, unaided proof of the settle
+   timer — **verify it, do not clear it.** (Could not be done in session 5: the date had
+   not arrived.)
+4. **Photograph the ENABLED *Void & refund* control on production** — the one piece of E-23
+   left unproven (§6k). Needs a round genuinely in flight: start the **GOLD 15m** chain,
+   catch the round inside its 15-minute window, then stop the chain and watch the healer
+   close it. ⚠️ The console's chain rows are ambiguous — the *disabled* duplicate `XAU`
+   asset is ALSO named "Gold", so two of three `Start` buttons read `XAU … Gold`. Match on
+   the row prefix **`GOLD 15m`**, not on the word "gold".
+5. **The interaction-state sweep** — hovers, dropdowns, popovers, modals, focus states,
+   keyboard paths, and **The Needle**; EN/SW/ZH × 4 widths. §6j covered *pages* (60 loads,
+   0 overflow, 0 console errors) but not *states*. Ali has now said **twice** that visuals
+   are very important, and this campaign has been saved by looking at an image four times.
+   Use `live/v0-links.mjs` to enumerate real routes — ⛔ **never guess a route.**
+6. **The adversarial money pass** (phase 12). The webhook half is done (§6g); the
+   betting/settlement half is not: bet after close, double-spend a balance, self-deal both
+   sides, tamper with a stake in flight, replay a bet's idempotency key.
+   ℹ️ One leg is already answered: **betting on a round whose boundary has passed is
+   correctly refused** — `market-service.ts:591` and again under the lock at `:705`.
+7. **E-21 — the Selcom generic-webhook bypass. ⛔ STILL LAST.** Closing it removes the only
+   way this campaign can fund a wallet, so it must come after all money-dependent testing.
+8. **The dead-weight lane.** Unchanged from session 4, plus one item now carrying live
+   evidence: the **duplicate GOLD assets** actively confuse the operator console (item 4
+   above). Also: two permanently `STOPPED` chains, `wunderground.com` and
+   `african-markets.com` double-registered, **`en.wikipedia.org` trusted as a `sports`
+   settlement authority** (user-editable — questionable for real money),
+   `goldprice.org`/`kitco.com`/`tradingview.com` enabled as sources E-16 proved unreadable,
+   the orphan `UpDownProposal` table (E-17), E-14's unreachable `limitUsd = 0` branch and
+   the vacuous assertion in `events-calendar.test.mts:146`.
+9. **Still owed by Ali:** the E-3 backfill call, and **E-7 / E-8** (both product/copy
+   decisions, not bugs — do not guess them). **No longer owed:** the TwelveData key ✅.
+   **New for Ali:** the Up & Down quick-bet spends real money on a **single tap with no
+   confirmation** (§6i) — a product decision.
+
+### 🔵 Laptop B, session 4 (2026-08-01, the long one)
 
 It supersedes every block below it. **`TWELVEDATA_API_KEY` was still not supplied**, so the
 Up & Down merge did not happen; the money lane was run instead, and it went further than
