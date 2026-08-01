@@ -214,6 +214,20 @@ async function maybeReconcileSchedules(): Promise<void> {
   }
 }
 
+/**
+ * Up & Down orphan healer (finding E-24 — a stake could enter a round and have NO
+ * path out). Dynamically imported for the same reason the chain reconcile above is:
+ * the Up & Down subsystem must not be pulled into this module's static graph.
+ *
+ * ⚠️ This is a MONEY path, not a tidy-up. What it releases is a real player's stake,
+ * so it is on the once-a-minute pass rather than the 5-minute sweep. See
+ * `healStuckRounds` in updown-service.ts for the invariant it enforces.
+ */
+async function healUpDownRounds(): Promise<void> {
+  const { healStuckRounds } = await import("./updown-service");
+  await healStuckRounds();
+}
+
 /** Run one lifecycle pass. Each chore is self-contained and best-effort; one
  *  failing must never stop the others or throw out of the tick.
  *
@@ -291,6 +305,16 @@ export async function runLifecyclePass(): Promise<void> {
     // transition re-checks its stamp under the market lock, so racing a live timer
     // can never double-notify or double-pay).
     await maybeReconcileSchedules().catch((e) => console.error("[lifecycle] schedule reconcile:", e));
+
+    // ── Up & Down: release any stake stuck in a round with no path out (E-24) ──
+    // EVERY tick, not the 5-minute reconcile cadence, and deliberately NOT folded
+    // into it: the retry ladder it drives is measured in seconds (15/45/120), and a
+    // 5-minute sweep would silently coarsen it. The healer is cheap when there is
+    // nothing to do — one indexed read that returns no rows — and it only ever calls
+    // the paid price oracle when a specific round's backoff is genuinely due.
+    // Its own catch, because a stranded player's money must not depend on bonus
+    // expiry or the payment sweep having succeeded first.
+    await healUpDownRounds().catch((e) => console.error("[lifecycle] Up & Down round heal:", e));
 
     await expireActiveGrants().catch((e) => console.error("[lifecycle] bonus expiry:", e));
     // NOTE: the deposit fast-credit lane is deliberately NOT called here. It has its

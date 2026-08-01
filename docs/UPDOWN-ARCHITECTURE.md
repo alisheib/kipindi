@@ -153,6 +153,44 @@ A dedicated `updown-scheduler.ts` mirrors the proven shape of `market-scheduler.
 N+1 opens for betting while round N is still confirming. That is what makes "don't
 rush the AI" compatible with a continuous product.
 
+### 5b · The self-healer — why a stalled round is not a stranded one
+
+🔴 **Read this before touching anything above.** The independence of steps 3 and 4 has
+a cost that went unpaid until 2026-08-01: `advanceChain` closes only the round
+`chain.currentRoundId` still points at, and **step 4 has already moved that pointer**.
+So a round left pending in step 3 was *orphaned at the very next boundary and never
+looked at again*. On production a player's TZS 500 sat in one such round with **no way
+out at all** — the retry ladder was dead config, the market settle sweep excludes this
+product by design, stopping the chain does not void its rounds, and the operator's
+remedy had no UI. Finding **E-24**, campaign doc `docs/LIVE-QA-CAMPAIGN.md`.
+
+`healStuckRounds()` (updown-service.ts) runs on the **once-a-minute** lifecycle pass and
+enforces one invariant:
+
+> ⭐ Every round reaches a terminal state — resolved, or voided with every stake
+> refunded in full — within `abandonAfterSeconds` of its own boundary, whatever the
+> oracle, the AI budget, the chain's state or the timers do. **Defaults: 390 seconds.**
+
+| | |
+|---|---|
+| **Inside the window** | It runs the retry ladder that had never run: `retryDelaySeconds(cfg, attempts)` gates each re-attempt, and `acquireObservation` is what advances `attempts` toward `maxObservationAttempts`. A spent budget skips the backoff — there is nothing left to wait for. |
+| **Past the deadline** | It closes the round **without asking the oracle**. A reading for a boundary that old could not satisfy `maxStalenessSeconds` even if it arrived, so dialling a paid provider would burn real money to learn nothing — and it is what makes sweeping a backlog cost **$0**. |
+| **Also** | Rounds that reached a verdict but never settled (a process that died between the two stamps) are re-settled; `settleMarket` is idempotent and resumable. |
+| **Audit** | `updown.round.healed`, actor **`system_updown_healer`** — deliberately distinct from `system_updown`, so an operator can tell a round the engine closed on time from one the safety net had to rescue. |
+
+Three design choices are load-bearing and must not be "tidied":
+
+1. **It ignores chain state.** A STOPPED chain's orphans are the likeliest kind —
+   stopping the chain is exactly what an operator does when the game misbehaves.
+2. **It is not gated on `UPDOWN_SCHEDULER`.** Its own switch is `UPDOWN_HEALER`.
+   Switching the game off must never switch off the thing that returns money already
+   staked in it.
+3. **It never invents a price and never picks a winner.** Unconfirmed ⇒ VOID ⇒ refund
+   in full, through the same `settleMarket` path as every other void.
+
+Guarded by `npm run test:updown-heal` (79), which reproduces the production incident
+end to end rather than asserting on source text.
+
 ### Grid derivation
 
 Boundaries are `gridAnchorAt + k × durationMinutes` — **derived, never accumulated**.
@@ -261,7 +299,8 @@ not two.
 | `src/app/admin/updown/**` | Console: assets · chains · oracle health · thresholds | ✅ done |
 | `src/app/updown/**` | Player board + round detail | ⬜ Phase 4 |
 | `src/components/updown/**` | `UpDownCard`, `PriceTape`, `RoundStrip`, `SettlementProof` | ⬜ Phase 4 |
-| `src/app/admin/updown/rounds` | Round explorer + proof drawer | ⬜ Phase 5 |
+| `src/app/admin/updown/rounds` | Round explorer · **overdue KPI · Void & refund (E-23)** | ✅ done |
+| `src/lib/server/control-gates.ts` | `voidUpDownRound → compliance`, read by both page and action | ✅ done |
 
 ### Tests guarding this subsystem
 
@@ -270,6 +309,7 @@ not two.
 | `test:product-line` (30) | Money reads see both products; player boards see long-form only. **Verified to fail when a call site regresses.** |
 | `test:updown-config` (62) | Grid derived-not-accumulated · source gate · winner floor · **observations write-once** |
 | `test:updown-engine` (43) | UP=YES through settlement · voids refund in full · shared observations · exactly-once settlement · **money conservation, drift 0** |
+| `test:updown-heal` (79) | **E-24/E-23.** Reproduces the production incident — real bet, real orphaning, chain STOPPED — and proves the stake comes back. Ladder honoured · deadline costs no AI spend · idempotent · conserves money · the operator remedy is wired. Proven RED four ways (chain-state filter, no deadline, dead ladder, unwired from the ticker). |
 | `test:admin-nav` (16) | ONE route resolver; every nav href round-trips |
 | `updown-admin-shots` · `updown-admin-e2e-shots` | 360/768/1280/1920, empty AND populated, driven through the real UI |
 
@@ -284,8 +324,20 @@ Reuses `src/lib/server/roles.ts` tiers — no new tier.
 | View the Up & Down console | `ADMIN_CONSOLE_ROLES` |
 | Asset registry + rate profile + thresholds | `CONFIG_ROLES` (never MODERATOR — it changes economics) |
 | Start / pause / stop a chain | `MARKET_OPS_ROLES` |
-| Re-observe · void a round | `MARKET_OPS_ROLES` |
+| **Void & refund a round** | **`compliance`**, via `CONTROL_DOMAIN.voidUpDownRound` — see below |
 | Force-settle | `MONEY_ROLES` |
+
+⚠️ **The round void is `compliance`, NOT the `MARKET_OPS_ROLES` tier the rest of this
+table uses, and the difference is deliberate.** Stopping a chain changes whether rounds
+are *emitted*; voiding a round *hands real money back*. It is the Up & Down twin of
+`/admin/markets`' emergency void, which E-20 already settled as `compliance` ("it moves
+money / closes a live pool — not a moderator job"), and the two must not disagree about
+who may do the same thing to the same kind of row.
+
+Its domain lives in `src/lib/server/control-gates.ts`, **once**, so the page can ask the
+same question the action will ask. A `MODERATOR` on `/admin/updown/rounds` therefore sees
+a read-only `🔒 VOID & REFUND · COMPLIANCE ONLY` state rather than a button that bounces —
+E-18's lesson, applied here before the control shipped rather than after.
 
 ## 11 · One control, one place
 

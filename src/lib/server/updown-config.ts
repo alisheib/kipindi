@@ -57,7 +57,16 @@ export type UpDownConfig = {
   confidenceThreshold: number;
   /** Attempts before a boundary is declared FAILED and its rounds VOID + refund. */
   maxObservationAttempts: number;
-  /** Backoff between attempts, in seconds, index-matched to the attempt number. */
+  /**
+   * Backoff between attempts, in seconds, index-matched to the attempt number:
+   * `retryBackoffSeconds[0]` is the wait before attempt 2, `[1]` before attempt 3,
+   * and so on. Shorter than `maxObservationAttempts - 1`? The last value repeats.
+   *
+   * ⚠️ READ BY `retryDelaySeconds()` BELOW, AND BY NOTHING ELSE. Until 2026-08-01
+   * this field was read by NOTHING — the ladder the whole design rests on had never
+   * run, so a boundary that refused once was never asked again and its round stayed
+   * open forever (finding E-24). If you add a second reader, delete one of them.
+   */
   retryBackoffSeconds: number[];
   /** Default stake bounds when a chain does not override them. */
   defaultMinStake: number;
@@ -167,6 +176,19 @@ export async function setUpDownConfig(
       return { ok: false, error: "Observation attempts must be 1-10." };
     }
   }
+  if (updates.retryBackoffSeconds !== undefined) {
+    // Validated for the first time in E-24, because for the first time it is READ.
+    // A 0 or negative rung would make the healer re-dial the paid oracle on every
+    // lifecycle tick; a huge one would push `abandonAfterSeconds` out past the point
+    // where a stake is stuck for an hour. Both are money problems, not typos.
+    const b = updates.retryBackoffSeconds;
+    if (!Array.isArray(b) || b.length === 0 || b.length > 10) {
+      return { ok: false, error: "Retry backoff must be a list of 1-10 waits, in seconds." };
+    }
+    if (b.some((s) => !Number.isFinite(s) || s < 5 || s > 600)) {
+      return { ok: false, error: "Each retry backoff must be 5-600 seconds. Below 5s the paid price oracle would be re-dialled on every tick." };
+    }
+  }
   if (updates.defaultMinStake !== undefined || updates.defaultMaxStake !== undefined) {
     const lo = updates.defaultMinStake ?? cfgStore().defaultMinStake;
     const hi = updates.defaultMaxStake ?? cfgStore().defaultMaxStake;
@@ -202,6 +224,67 @@ export async function setUpDownConfig(
     payload: { before, after: cfgStore(), changes: updates, warn: warn ?? null },
   });
   return { ok: true, config: { ...cfgStore() }, warn };
+}
+
+// ---------------------------------------------------------------------------
+// The retry ladder — pure, and the deadline that makes a stake's exit certain
+// ---------------------------------------------------------------------------
+//
+// FINDING E-24 (live QA, 2026-08-01). A player's TZS 500 entered round #155 on
+// production and had NO path out: the ladder below was dead config, `advanceChain`
+// orphans a pending round at the very next boundary, the market settle sweep
+// deliberately excludes Up & Down, stopping the chain does not void its rounds, and
+// the operator's remedy had no UI. Five independent mechanisms, all absent.
+//
+// What follows is the arithmetic behind the one invariant that makes that
+// impossible: EVERY ROUND REACHES A TERMINAL STATE WITHIN `abandonAfterSeconds` OF
+// ITS OWN BOUNDARY, whatever the oracle, the AI budget, or the chain's state does.
+// `healStuckRounds()` in updown-service.ts is what enforces it.
+
+/** One extra lifecycle tick (60s) on either side of the ladder, so the ladder always
+ *  gets to finish on its own terms and the deadline stays a BACKSTOP, not the primary
+ *  mechanism. See `abandonAfterSeconds`. */
+export const ABANDON_GRACE_SECONDS = 120;
+
+/**
+ * How long to wait before attempt number `attemptsSoFar + 1`.
+ *
+ * `attemptsSoFar = 0` → 0: the first reading is taken AT the boundary, by the
+ * scheduler, with no delay. After that the ladder applies, and a ladder shorter than
+ * the attempt budget repeats its last rung rather than collapsing to zero — a config
+ * that runs out of rungs must not turn into "retry as fast as the ticker runs".
+ */
+export function retryDelaySeconds(cfg: UpDownConfig, attemptsSoFar: number): number {
+  if (attemptsSoFar <= 0) return 0;
+  const ladder = cfg.retryBackoffSeconds;
+  if (!Array.isArray(ladder) || ladder.length === 0) return 0;
+  const v = ladder[Math.min(attemptsSoFar, ladder.length) - 1];
+  return Number.isFinite(v) && v > 0 ? v : 0;
+}
+
+/** Total wall-clock the ladder covers: the sum of every rung it will actually climb,
+ *  given the attempt budget. Defaults ([15,45,120], 4 attempts) → 180s. */
+export function ladderSpanSeconds(cfg: UpDownConfig): number {
+  let total = 0;
+  for (let n = 1; n < cfg.maxObservationAttempts; n++) total += retryDelaySeconds(cfg, n);
+  return total;
+}
+
+/**
+ * THE DEADLINE. Past this many seconds after its boundary, a round is closed and every
+ * stake refunded in full — without asking the oracle again, because by then no reading
+ * could be accepted even if one arrived.
+ *
+ * DERIVED, not a magic number, and each term is load-bearing:
+ *   ladderSpan          — the ladder must be allowed to finish first;
+ *   maxStalenessSeconds — the widest gap from the boundary a reading may EVER have,
+ *                         so beyond it a fresh quote is necessarily too stale to use;
+ *   ABANDON_GRACE       — two lifecycle ticks, so a missed tick does not race the ladder.
+ * Defaults: 180 + 90 + 120 = 390s. A stake is therefore never stuck for more than
+ * ~6½ minutes past its round's boundary, on any code path.
+ */
+export function abandonAfterSeconds(cfg: UpDownConfig): number {
+  return ladderSpanSeconds(cfg) + cfg.maxStalenessSeconds + ABANDON_GRACE_SECONDS;
 }
 
 // ---------------------------------------------------------------------------

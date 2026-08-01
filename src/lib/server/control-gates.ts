@@ -63,6 +63,13 @@ export const CONTROL_DOMAIN = {
    *  it: "it moves money / closes a live pool — not a moderator job". Third instance
    *  of E-18, found by this file's own guard rather than by a click on production. */
   emergencyVoidMarket: "compliance",
+  /** `/admin/updown/rounds` · "Void & refund this round" — the operator's remedy for a
+   *  round the engine could not finish (E-23). `compliance`, NOT `trading`, even though
+   *  it lives on a trading page: it is the Up & Down twin of `emergencyVoidMarket` —
+   *  it closes a live pool and hands every open stake back — and the two must not
+   *  disagree about who may do the same thing to the same kind of row. Declared here
+   *  BEFORE the control shipped, which is E-18's lesson applied rather than repeated. */
+  voidUpDownRound: "compliance",
 } as const satisfies Record<string, AdminDomain>;
 
 export type ControlId = keyof typeof CONTROL_DOMAIN;

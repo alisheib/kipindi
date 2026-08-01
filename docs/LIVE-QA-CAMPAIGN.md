@@ -121,11 +121,36 @@ strings**, plus the exact commands that mint them in under a minute. Nothing bel
 | What | Identity (public) | Where the secret is |
 |---|---|---|
 | ⭐ **QA compliance officer** | `https://50pick.tz/auth/admin`, phone **`712000106`** (`usr_2ff22430c89e4c560fac5334`) — **use this for all operator work**, see §4 | `.env.qa.local` → `QA_OFFICER_PASSWORD` |
+| ⭐ **QA trading officer** | `https://50pick.tz/auth/admin`, phone **`712000104`** (`usr_429885ab43c0cb4ce134dd7e`, role `MODERATOR`) — trading surfaces, see §4 | `.env.qa.local` → `QA_TRADING_PASSWORD` |
 | Ali's own operator console | `https://50pick.tz/auth/admin`, phone **`777777777`** (E.164 `+255777777777`, `usr_1b3e6fd5048b1d873e931715`, `alisheib07@gmail.com`) | `QA_ADMIN_PASSWORD` — **not held on laptop B, and no longer needed** (§4) |
 | **QA player `alpha`** | phone **`712000101`**, `qa.alpha.50pick@gmail.com` | `.env.qa.local` → `QA_ALPHA_PASSWORD` |
 | **QA player `echo`** | phone **`712000105`**, `qa.echo.50pick@gmail.com` | `.env.qa.local` → `QA_ECHO_PASSWORD` |
 | **Live DB** | Railway project `50pick` → service `Postgres`; public proxy **`turntable.proxy.rlwy.net:40357`**, user `postgres`, db `railway` | minted by `mkenv.cjs`, below |
-| Selcom · Postmark · R2 · backup seal key | — | Railway → `50pick` service only |
+| Selcom · Postmark · R2 · backup seal key · **`TWELVEDATA_API_KEY`** | — | Railway → `50pick` service only |
+
+### 🔑 Where every credential lives — the answer to "so another session knows directly"
+
+Ali's instruction, 2026-08-01: *"all credentials saved in a shared place so other sessions
+directly know."* Here is the complete map. There are exactly **two** stores, and between
+them a fresh session on any machine can reach everything in under a minute:
+
+| Store | Holds | How a session reads it | Travels between laptops? |
+|---|---|---|---|
+| **Railway `50pick` service env** | every *platform* secret: `DATABASE_URL`, `SESSION_SECRET`, `AUDIT_CHAIN_SECRET`, `SELCOM_*`, `POSTMARK_*`, R2, the backup seal key, `ANTHROPIC_API_KEY`, **`TWELVEDATA_API_KEY`** | `railway run -s 50pick -- node -e "console.log(!!process.env.NAME)"` — and `railway run` injects them into any script, so **a secret never has to be written to a file or a transcript** | ✅ yes — it is the shared store |
+| **`C:\kipindi-main\.env.qa.local`** | ONLY the four QA-persona passwords (`QA_ALPHA_PASSWORD`, `QA_ECHO_PASSWORD`, `QA_OFFICER_PASSWORD`, `QA_TRADING_PASSWORD`) | `harness.mjs`'s `qaEnv(name)` reads it directly | ❌ **no** — gitignored (`.gitignore:9`); copy this one 4-line file to a new machine, or re-mint with `live/mkpw.cjs` (§1) |
+
+⛔ **And the one rule that does not bend: no secret VALUE is ever written into this repo.**
+It is pushed to `github.com/alisheib/kipindi`, and a leaked key in git history is permanent
+— you cannot un-push it, only rotate the key. That is why the table above gives the
+*location and the command*, never the string. Everything a session needs is reachable
+from it without asking Ali.
+
+**`TWELVEDATA_API_KEY` — supplied by Ali and SET on Railway, 2026-08-01.** Plan **Basic 8**:
+800 API credits/day, 8/minute, 1 WebSocket connection. Verified present on the `50pick`
+service (32 chars) via `railway run`; set with `skip_deploys`, so it entered the running
+container on the next deploy (the E-24 deploy below). ⚠️ Nothing on `main` reads it yet —
+see §2 and the E-16 note; it is the prerequisite for the **unmerged** branch, not for
+anything deployed.
 
 **`.env.qa.local`** lives in the worktree root and is gitignored (`.gitignore:9`), so it does NOT
 travel with a clone. On a new laptop, either copy that one small file across, or ask Ali for the
@@ -166,11 +191,16 @@ which is the one thing blocking officer-side live verification (E-4).
 | `NODE_ENV` | `production` → **every `/api/dev-test/*` route 404s**. Live flows must go through real UI. |
 | `DISABLE_ADMIN_TOTP` | `true` on prod (admin 2FA off — pre-existing, tracked elsewhere) |
 | SMS provider | `console` — **deliberate**: the OTP path is parked until the SMS contract is signed. Registration and login are phone+password, so this is not a signup blocker. Re-check before enabling OTP. |
-| `TWELVEDATA_API_KEY` | **absent on prod, and it blocks NOTHING that is deployed** — corrected 2026-08-01, see below |
+| `TWELVEDATA_API_KEY` | ✅ **SET on prod 2026-08-01** (Ali supplied it; plan Basic 8 — 800 credits/day). Still blocks NOTHING that is deployed, and unblocks nothing by itself — it is the prerequisite for the **unmerged** branch that fixes E-16. See below |
 | Anthropic key | present, and **working**: a real poll call succeeded 2026-07-31 21:43Z. The 1,427 `credit balance is too low` failures in `AiUsageEvent` are a **13-hour window on 2026-06-25/26**, five weeks stale — do not read them as a current outage |
 | AI credit cap | `ai_credit_config` = **$20/cycle**, cycle started 2026-07-30 09:28Z. ⚠️ It was enforced on **poll generation only** until E-15 |
 
-### ✅ What the absent `TWELVEDATA_API_KEY` actually blocks — nothing deployed (2026-08-01)
+### ✅ What the `TWELVEDATA_API_KEY` actually blocks — nothing deployed (2026-08-01)
+
+> 🔑 **UPDATE, later the same day: Ali supplied the key and it is now SET on Railway** (§1).
+> Everything below stays true — **setting it changed nothing that is running**, because no
+> deployed code reads it. What it does is remove the one dependency the E-16/E-17 branch
+> merge was waiting on. That merge is still its own dedicated session (§6b).
 
 The §5 priority box carried this as a blocker on Ali's #1. **It is not one, and the framing was
 backwards.** `TWELVEDATA` appears **nowhere** in `main`'s `src/` or `scripts/` — only on the
@@ -329,7 +359,7 @@ and a clean console: `/admin` · `players` · `markets` · `ai-polls` · `ai-usa
 | 2 | KYC: submit · import · approve · reject · revoke · ban · NIDA duplicate | ✅ **COMPLETE** — approve · reject · revoke · ban · NIDA freed, all driven on prod (§6c). E-1 verified in **EN + SW + ZH**; E-3, E-6, E-2, E-5, **E-4 + E-9** fixed **and live-verified**. Only `import` untested |
 | 3 | Money in: wallet · deposit · ledger · receipts | ✅ **UNBLOCKED + DONE (§6g)** — `alpha` and `echo` funded 50,000 each through the real money path; 9 webhook forgeries refused, exactly-once proven over 3 deliveries, ledger balanced |
 | 4 | Core play: markets · YES/NO · win + lose · resolution · payout | ✅ **DONE on production (§6h)** — create → bet both sides → resolve → objection window → settle. A real WIN (37,400 paid) and a real LOSS, ledger sums to 0, with a CONTROL market proving the objection window is what gates payment |
-| 5 | Up & Down: rounds · quick-bet · pricing · void · history | 🔴 **TWO BLOCKERS.** E-16: it has never settled a round and cannot (0 confirmed readings in 1,400). 🔴 **E-24 (new, worse): a stake can enter a round with NO path out** — the retry ladder is dead config, the round is orphaned at the next boundary, the market sweep excludes Up & Down, stopping the chain does not void, and the operator remedy is unreachable (E-23). ✅ Refund contract itself proven (35 positions, 96,250 staked = 96,250 returned); ✅ quick-bet proven live |
+| 5 | Up & Down: rounds · quick-bet · pricing · void · history | 🔴 **ONE BLOCKER LEFT — E-16**: it has never settled a round and cannot (0 confirmed readings in 1,400); needs the branch merge, now unblocked by the TwelveData key. ✅ **E-24 + E-23 FIXED (§6k)** — every round now terminates within 390s of its boundary whatever happens, and the operator has a lever. ✅ Refund contract proven (35 positions, 96,250 staked = 96,250 returned); ✅ quick-bet proven live |
 | 6 | Proposals: propose · approve · 4-state switch · bonus | ⏳ |
 | 7 | AI: poll generation · source registry · token enable/disable · usage | ✅ **generate → review → publish → live market DRIVEN ON PROD, 15/15, on real tokens** (§6e). **Spend ceiling fixed + live-verified (E-15).** Remaining: poll **resolution** with money, and the Up & Down half, which does not exist on prod (**E-17**) |
 | 8 | Invites & referrals | ⏳ |
@@ -857,8 +887,8 @@ crawl returned the all-time high and a percentage, not the current price. So re-
 > paragraph. Fixing E-16 means changing the price *source*, not the engine.
 | **E-17** | MEDIUM | Up & Down · AI generation | **The Up & Down AI-generation surface does not exist on production — and prod carries its orphaned table.** Ali's own observation (2026-08-01): *"in the nav bar the AI generation is not there, maybe we have to add it in admin for up down."* Confirmed live as the trading officer: the **Up & Down** nav group renders exactly two items, `Overview` and `Rounds`, while the **Markets** group has `AI poll generation` and `AI candidates`. There is no generation page, no route and no nav entry — `src/app/admin/updown/` holds only `page.tsx`, `rounds/`, `actions.ts` and `updown-controls.tsx`, and `actions.ts` exports asset/chain CRUD plus thresholds and **nothing that triggers a reading or a round**. Meanwhile **migration `20260730223000_updown_proposals` IS applied to the live DB** (2026-07-30 13:41Z) so the `UpDownProposal` table exists on production with **0 rows and no code referencing it** — `model UpDownProposal` is absent from `main`'s `prisma/schema.prisma` entirely. ⛔ Not a new discovery for the backup subsystem, which already documents it (`backup/core.ts:117`, `db-backup.mts:181`, `backup.test.mts:91` all name `UpDownProposal` as a table "applied ahead of its code") — but it *is* new as a **product** gap. Everything missing lives on the unmerged branch: `admin/updown/proposals/{page,actions,proposal-actions}.tsx`, `updown-proposal.ts` (849 lines), and the `AI proposals` nav entry. | live nav read from the DOM as `MODERATOR` (`live/t2-rbac-content.cjs`); live `_prisma_migrations`; `git diff main...origin/feat/updown-source-pinning-and-proposals` |
 | ~~**E-18**~~ | MEDIUM | RBAC · resolver queue · audit hygiene | **✅ FIXED 2026-08-01 — and it was three surfaces, not one. See the block below §6f.** Original finding text kept for the record: | **Every interactive control on `/admin/resolver-queue` is gated tighter than the page, so no granted role can use any of them — and an innocent click writes a SECURITY privilege-escalation row.** The route is the **`trading`** domain, so a `MODERATOR` sees the queue *and* its buttons; but `recheckMarketNowAction` and the two-officer toggle both require `ADMIN \|\| canAct(role,"compliance")` (`resolution-mode-action.ts:31`, `resolution-policy-action.ts:27`), and `ResolveControls` → `resolveMarketAction` requires `requireAdminOrThrow`. `DEFAULT_GRANTS` makes those sets **disjoint**: `MODERATOR` has `trading` but no `compliance` (sees, cannot act); `COMPLIANCE` has no `trading` at all (can act, cannot even reach the page). **So on production only the 9 `ADMIN` accounts can operate the resolver queue — no granted role can.** Worse for the audit trail: clicking a button the UI offered writes `privilege_escalation_blocked` at **`SECURITY`** severity, i.e. a legitimate operator's ordinary click is recorded as an attempted privilege escalation in the log a compliance officer reads. ⚠️ **This is a known-and-already-solved class that the resolver queue was missed on**: `admin/objections/page.tsx:36` computes `canDecide` and renders a "compliance-only" state precisely so *"a MODERATOR sees a clear compliance-only state instead of decision buttons that bounce them"* — its comment describes this bug. `admin-nav-groups.ts:134` also states the three-layer gate **"MUST agree with the route + action gates (same domains)"**; here it does not. Fails safe (nothing executed), hence MEDIUM not HIGH. **Suggested fix** (deliberately not applied this session — see §6b): mirror the objections precedent, computing the capability in `resolver-queue/page.tsx` and rendering an explanatory state instead of unusable controls. | **live `AuditLog`**: `2026-07-31 23:11:58Z · SECURITY · privilege_escalation_blocked · actor usr_429885ab43c0cb4ce134dd7e · target recheckMarketNow · {"role":"MODERATOR","domain":"compliance"}` — the only such row production has ever had, generated by clicking the real button as the QA trading officer |
-| **E-24** | 🔴 **BLOCKER** | Up & Down · money safety | **A player's stake can enter an Up & Down round and have NO path out — not by the engine, not by a sweep, not by an operator.** Proven live on production 2026-08-01 with real money: `alpha` quick-bet **TZS 500** on round **#155**; the round closed at 10:25Z; it is still `outcome=null, voidReason=null, resolvedAt=null`, the position is still **`OPEN`**, and the money is still gone from the wallet. **Five independent things have to fail for this, and all five do:** ① **`retryBackoffSeconds: [15,45,120]` is DEAD CONFIG** — `grep -rn retryBackoffSeconds src/` returns *only* its own type declaration and default in `updown-config.ts`. **Nothing reads it.** The ladder the whole design rests on has never existed. ② **The "next fire retries" comment is wrong.** `advanceChain` closes a round only when `current.boundaryAt === boundaryIso`, and `current` is `chain.currentRoundId` — which `openRound` has *already reassigned to the newly-opened round* (`updown-service.ts:269`). So the pending round is **orphaned at the very next boundary** and never looked at again. Confirmed: at 10:25 the chain moved to #156 and #155 was abandoned mid-flight. ③ **The market settle sweep cannot catch it** — Up & Down is *deliberately* excluded (`marketStore.pending()` defaults to `"MARKET"`, and the scheduler header says "Do not unify these schedulers"). The second safety net is switched off by design. ④ **STOPPING the chain does not void its open rounds.** Driven live: the GOLD chain was stopped through the real admin confirm dialog and rounds #155/#156 stayed unresolved and unrefunded. ⑤ **The only remedy is unreachable — see E-23.** ⚠️ **This is not theoretical and it has happened before**: production holds **1,397 `PENDING` observations at `attempts=1`** and only **3** that ever reached `FAILED`, while **1,395** rounds carry `voidReason='operator'` — i.e. essentially every round in the platform's history had to be voided by hand, because the engine never voids them itself. The reason no player has been hurt yet is that Up & Down has never been left running with real stakes for long. ⛔ **Up & Down must not go live until this is fixed, independently of E-16.** E-16 says the game cannot decide a winner but refunds honestly; **E-24 says it does not even refund — it just stops.** | live: round `udr_be906db2d1107ab313c1` (#155) and `udr_2a7abd34f020e46e17d9` (#156) both unresolved; `pos_9446740440b0c9988c79` still `OPEN` at 500.00; `alpha` balance 61,900; both boundary observations `PENDING attempts=1`; `grep -rn retryBackoffSeconds src/` |
-| **E-23** | **HIGH** | Up & Down · operator remedy | **The operator's only tool for a stuck round is unreachable from the product.** `voidRoundByOperator` (`updown-service.ts:405`) exists, takes an officer id and a reason, audits `updown.round.void_operator`, and closes the round so every stake refunds — and **`grep -rn voidRoundByOperator src/` finds exactly one hit: its own definition.** No server action, no button, no route. `src/app/admin/updown/actions.ts` exports asset and chain CRUD plus thresholds and **nothing round-level**, and `/admin/updown/rounds/` is a read-only page with no actions at all. So when E-24 strands a round, **no one on the platform can release the money through the UI** — the 1,395 historical `operator` voids must have come from a hand-run script, not the product. Fails "safe" only in the sense that nothing wrong is written; the money simply stays frozen. | `grep -rn voidRoundByOperator src/` → 1 hit; `ls src/app/admin/updown/rounds/` → `page.tsx`, `loading.tsx` only |
+| **E-24** | 🔴 **BLOCKER** → ✅ **FIXED** | Up & Down · money safety | **A player's stake can enter an Up & Down round and have NO path out — not by the engine, not by a sweep, not by an operator.** Proven live on production 2026-08-01 with real money: `alpha` quick-bet **TZS 500** on round **#155**; the round closed at 10:25Z; it is still `outcome=null, voidReason=null, resolvedAt=null`, the position is still **`OPEN`**, and the money is still gone from the wallet. **Five independent things have to fail for this, and all five do:** ① **`retryBackoffSeconds: [15,45,120]` is DEAD CONFIG** — `grep -rn retryBackoffSeconds src/` returns *only* its own type declaration and default in `updown-config.ts`. **Nothing reads it.** The ladder the whole design rests on has never existed. ② **The "next fire retries" comment is wrong.** `advanceChain` closes a round only when `current.boundaryAt === boundaryIso`, and `current` is `chain.currentRoundId` — which `openRound` has *already reassigned to the newly-opened round* (`updown-service.ts:269`). So the pending round is **orphaned at the very next boundary** and never looked at again. Confirmed: at 10:25 the chain moved to #156 and #155 was abandoned mid-flight. ③ **The market settle sweep cannot catch it** — Up & Down is *deliberately* excluded (`marketStore.pending()` defaults to `"MARKET"`, and the scheduler header says "Do not unify these schedulers"). The second safety net is switched off by design. ④ **STOPPING the chain does not void its open rounds.** Driven live: the GOLD chain was stopped through the real admin confirm dialog and rounds #155/#156 stayed unresolved and unrefunded. ⑤ **The only remedy is unreachable — see E-23.** ⚠️ **This is not theoretical and it has happened before**: production holds **1,397 `PENDING` observations at `attempts=1`** and only **3** that ever reached `FAILED`, while **1,395** rounds carry `voidReason='operator'` — i.e. essentially every round in the platform's history had to be voided by hand, because the engine never voids them itself. The reason no player has been hurt yet is that Up & Down has never been left running with real stakes for long. ⛔ **Up & Down must not go live until this is fixed, independently of E-16.** E-16 says the game cannot decide a winner but refunds honestly; **E-24 says it does not even refund — it just stops.** | live: round `udr_be906db2d1107ab313c1` (#155) and `udr_2a7abd34f020e46e17d9` (#156) both unresolved; `pos_9446740440b0c9988c79` still `OPEN` at 500.00; `alpha` balance 61,900; both boundary observations `PENDING attempts=1`; `grep -rn retryBackoffSeconds src/` |
+| **E-23** | **HIGH** → ✅ **FIXED** | Up & Down · operator remedy | **The operator's only tool for a stuck round is unreachable from the product.** `voidRoundByOperator` (`updown-service.ts:405`) exists, takes an officer id and a reason, audits `updown.round.void_operator`, and closes the round so every stake refunds — and **`grep -rn voidRoundByOperator src/` finds exactly one hit: its own definition.** No server action, no button, no route. `src/app/admin/updown/actions.ts` exports asset and chain CRUD plus thresholds and **nothing round-level**, and `/admin/updown/rounds/` is a read-only page with no actions at all. So when E-24 strands a round, **no one on the platform can release the money through the UI** — the 1,395 historical `operator` voids must have come from a hand-run script, not the product. Fails "safe" only in the sense that nothing wrong is written; the money simply stays frozen. | `grep -rn voidRoundByOperator src/` → 1 hit; `ls src/app/admin/updown/rounds/` → `page.tsx`, `loading.tsx` only |
 | **E-21** | MEDIUM | payments · webhook | **The Selcom deposit path has a second door that skips the authoritative re-query the file's own header promises.** `route.ts`'s header states, of Selcom deposits: *"settled from an AUTHORITATIVE, signed order-status re-query (**we never credit on the callback body alone**)"* — and the dedicated `handleSelcomCallback` does exactly that, ignoring the callback's claimed status and re-asking Selcom. But that handler is only reached when the request carries `Authorization: SELCOM …`. **`selcom` is ALSO listed in `KNOWN_PROVIDERS` for the GENERIC path** (`route.ts:41`), which verifies an HMAC and then settles **straight from the body's `status` and `amount`** — no re-query. So a request with `X-Provider: selcom` credits a wallet on the callback body alone, which is the precise thing the design says it never does. **This is a leftover, not a decision**: `git log -S` puts the generic map entry in the `678960c1` baseline and the dedicated authoritative handler in the much later `2aeeb3bc` Selcom adapter — the second door was never closed behind it. Genuine Selcom traffic never sends `X-Provider`, so nothing legitimate uses it. **Exposure**: it costs a leaked `SELCOM_WEBHOOK_SECRET`, and the re-query exists precisely so that a leaked webhook secret *still* cannot mint money — so this is a live defense-in-depth hole, not a remote exploit. `settlePaymentWebhook`'s M4 check caps the damage at the initiated amount (proven, §6g row 8), and `test:webhook-sec` does not mention `selcom` at all. ⚠️ **This is also the door §6g used to fund the QA wallets**, which is disclosed here deliberately rather than left implicit. **Fix**: drop `selcom` from `KNOWN_PROVIDERS` so Selcom can only settle through the re-query, and add a `test:webhook-sec` case pinning that. ⛔ **Sequencing: fix it LAST** — closing it removes the only way this campaign can fund a wallet, so it must come after the money-dependent testing is finished. | `route.ts:41` + `:52` vs the file header; `git log -S'selcom:  "SELCOM_WEBHOOK_SECRET"'`; the funded wallets in §6g |
 | **E-14** | LOW | AI spend config | **`limitUsd = 0` is documented as "no cap" and is unreachable dead code.** `assertAiBudget` opens with `if (cfg.limitUsd <= 0) return { ok: true }; // 0 = no cap configured`, but `getCreditConfig` (`ai-usage.ts:133`) rewrites a stored `0` back to `DEFAULT_LIMIT_USD` **before that branch ever sees it** — so 0 silently means **$20**, not "uncapped", and the branch can never execute. Two further `limitUsd > 0` guards on `/admin/ai-usage` can likewise never be false. **Left as-is deliberately**: the admin control is `min="0.01"` (`credit-controls.tsx:38`), so nothing on the platform can store 0, and changing the semantics of an unreachable value on a live money platform is an unforced risk. ⚠️ The reason it is recorded rather than ignored: **`events-calendar.test.mts:146` asserts *"limit 0 = uncapped (does not brick generation)"* and passes VACUOUSLY** — its 1M-token burn is ~$3, comfortably under the coerced $20, so that assertion has never once exercised the claim it makes. `test:ai-budget` now pins what actually happens instead. | `ai-usage.ts:133` vs `:168`; `test:ai-budget` §4b |
 | **E-8** | LOW | KYC reject copy | **The `DETAILS_MISMATCH` label describes a comparison the product never makes.** The officer's rail calls it *Details mismatch* — meaning the details typed do not match the **document the player submitted**. The player is told, in all three languages, *“NIDA details don't match **our records**”* / *“Taarifa za NIDA hazilingani na rekodi zetu”* / *“NIDA 信息与我们的记录不符”*. We hold no NIDA record to compare against — `docs/NIDA-POLICY.md` and the D-2 fix are explicit that no request has ever reached the authority. Milder than D-2 (it says *our* records, not the authority's) but it is the same class: describing evidence we do not have. Suggested: name the submitted ID document instead. All three locales + `test:kyc-reject-reason`'s key list would need updating together. | live `e6-player-{sw,zh,en}.png`; `i18n-dict.ts:960/2306/3650` |
@@ -1201,6 +1231,94 @@ rendered real content.** Routes covered: `/` `/markets` `/updown` `/updown/histo
 - A `broken` detector matching `/500/` flagged **seven healthy pages**, because "S&P 500",
   "TZS 500" and the 500 stake chip are ordinary content. Match on `application error` /
   `something went wrong`, never a bare number.
+
+## 6k. E-24 + E-23 FIXED — a stake now always has a way out (2026-08-01)
+
+**The invariant that did not exist, stated so it can be tested rather than believed:**
+
+> ⭐ Every Up & Down round reaches a terminal state — resolved, or **voided with every
+> stake refunded in full** — within `abandonAfterSeconds` of its own boundary, whatever
+> the oracle, the AI budget, the chain's state or the timers do. **Defaults: 390 s.**
+
+E-24 needed five independent mechanisms to be absent, and all five were. The fix
+restores each one, and adds the deadline that makes the guarantee unconditional:
+
+| E-24 | What was wrong | What now happens |
+|---|---|---|
+| ① | `retryBackoffSeconds` was **dead config** — `grep -rn` found only its own declaration | `retryDelaySeconds(cfg, attempts)` reads it, the healer gates every re-attempt on it, and `setUpDownConfig` **validates** it for the first time (a 0 s rung would re-dial a paid oracle every tick; a huge one would strand a stake for hours) |
+| ② | `advanceChain` orphans a pending round at the next boundary, because `openRound` has already moved `chain.currentRoundId` off it | `healStuckRounds()` sweeps by **`resolvedAt IS NULL AND boundaryAt <= now`**, so the pointer is irrelevant |
+| ③ | The market settle sweep excludes Up & Down by design | A **second net for this product only** — the two schedulers stay separate, as their headers insist |
+| ④ | Stopping the chain does not void its open rounds | The healer **ignores chain state entirely**, and is on its own switch (`UPDOWN_HEALER`), *not* `UPDOWN_SCHEDULER` — switching the game off must never switch off the thing that returns money already staked in it |
+| ⑤ | `voidRoundByOperator` had no UI, no action, no route | **E-23** — wired, below |
+
+**Where it runs, and why there.** On the **once-a-minute** lifecycle pass, not the
+5-minute reconcile cadence: the ladder it drives is measured in seconds (15/45/120) and
+a 5-minute sweep would silently coarsen it. It is cheap when idle — one indexed read
+that returns no rows.
+
+**Two decisions worth keeping:**
+
+- 💰 **Past the deadline it closes the round WITHOUT asking the oracle.** A reading for
+  a boundary that old could not satisfy `maxStalenessSeconds` even if it arrived, so
+  dialling a paid provider would burn real money to learn nothing. It is also what makes
+  a backlog free: production's 1,398 historical rounds cost **$0** to sweep. The guard
+  proves it by asserting `attempts` **does not move**.
+- 🧾 **A distinct audit actor.** `updown.round.healed` is written by
+  **`system_updown_healer`**, not `system_updown`, so the compliance record distinguishes
+  a round the engine closed on time from one the safety net had to rescue. An operator
+  watching that actor appear is watching E-24's failure mode recur.
+
+**E-24(b), found while fixing it and in scope because it is the same disease:** a round
+that reached a verdict but whose **settlement** never completed (a process dying between
+the two stamps) strands money just as effectively, and is invisible to a sweep that only
+looks for unresolved rounds. The healer re-settles those too; `settleMarket` is idempotent
+and resumable, so re-asking is always safe. Production had one such row
+(`udr_605421d1d100258231a0`, 0 pools — no money at risk, but the shape was live).
+
+**E-23 — the remedy is now reachable.** `voidRoundAction` +
+`/admin/updown/rounds` → *Void & refund*, with a required ≥5-character officer reason
+recorded verbatim (the E-6 rule: our words never masquerade as the officer's). The page
+also gains an **Overdue** KPI and an explanatory card, because "one stuck round" is
+invisible in a list of sixty and it is the one number on that page meaning money is not
+moving.
+
+⛔ **Its domain is `compliance`, NOT the `trading` its route uses** — declared in
+`CONTROL_DOMAIN` *before* the control shipped. It is the Up & Down twin of
+`emergencyVoidMarket`, which E-20 already settled as compliance ("it moves money /
+closes a live pool — not a moderator job"), and the two must not disagree about who may
+do the same thing to the same kind of row. A `MODERATOR` therefore sees
+`🔒 VOID & REFUND · COMPLIANCE ONLY`, not a button that bounces — **E-18's lesson applied
+on the first try rather than after a production click.**
+
+**Guard**: `npm run test:updown-heal` (**79**). §2 does not assert on source text — it
+**reproduces the production incident**: real chain, real stake through `buyPosition`, real
+orphaning through `advanceChain`, chain stopped through the real `setChainState`, then the
+wallet is read afterwards. The oracle is never stubbed away: with no `ANTHROPIC_API_KEY`
+the real `observePrice` refuses `no-api-key` before any network call, so the ladder runs
+for real, for free, with genuine attempt accounting. The only thing faked is the **clock**,
+and it is *injected* (`healStuckRounds({ now })`), not patched.
+
+**Proven RED four ways**, each naming the production symptom:
+
+| Reverted to | Guard says |
+|---|---|
+| the healer skips chains that are not `RUNNING` (failure mode ④) | **28 failures** — incl. `2.17 THE ACCEPTANCE TEST — got 99500` and `7.1 wallets — 199500 vs 200000` |
+| no deadline; only the ladder can ever close a round | **20 failures** — `2.15 the stake is no longer OPEN — OPEN`, `2.18 market is VOIDED — LIVE` |
+| `retryDelaySeconds` returns 0 (dead config again) | **9 failures** — incl. `4.1 the backoff is respected` |
+| the healer exists but the ticker does not call it | **1 failure** — `10.2 …on the once-a-minute pass` |
+
+⚠️ **That last row is a trap paid for.** The first version of the wiring detector stayed
+**GREEN** when the call was commented out, because `// await healUpDownRounds()` still
+contains the string it was matching. A wiring detector that a comment satisfies is
+exactly the defect it exists to catch. It now strips comment lines first.
+
+⚠️ **The guard also changed the fix.** §4 caught the healer waiting out a backoff on a
+boundary whose **attempt budget was already spent** — a decision already made, with the
+player held an extra rung's worth of time for it. A spent budget now skips the backoff.
+
+### ✅ VERIFIED ON PRODUCTION — the stranded TZS 500 released
+
+*(filled in by the live-verification commit that follows this one — see §6b)*
 
 ## 6d. Email verification — DONE on production, 7/7 (2026-07-31 22:15 EAT)
 

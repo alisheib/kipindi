@@ -233,6 +233,20 @@ export interface RoundStore {
   /** The round a chain is currently running, if any. */
   latestForChain(chainId: string): Promise<StoredRound | null>;
   list(opts?: { chainId?: string; limit?: number; unsettledOnly?: boolean }): Promise<StoredRound[]>;
+  /**
+   * Rounds whose boundary has PASSED and which have still not been resolved, oldest
+   * first. The self-healer's read (E-24).
+   *
+   * ⛔ DELIBERATELY NOT FILTERED BY CHAIN STATE. That is the whole point: an orphan
+   * on a STOPPED chain strands its player's money exactly as one on a RUNNING chain
+   * does, and stopping a chain is precisely what an operator does when the game
+   * misbehaves. Filtering here would re-open E-24 through the door it came in.
+   */
+  unresolvedBefore(boundaryBeforeIso: string, limit: number): Promise<StoredRound[]>;
+  /** Rounds that reached a verdict but whose money never moved — settlement failed,
+   *  or the process died between stamping the round and stamping settlement. The
+   *  second stranding shape, and the same money problem as the first. */
+  resolvedUnsettled(limit: number): Promise<StoredRound[]>;
   create(r: StoredRound): Promise<void>;
   patch(id: string, fields: Partial<StoredRound>): Promise<void>;
 }
@@ -336,6 +350,18 @@ const memoryRounds: RoundStore = {
       .filter((r) => !opts?.unsettledOnly || !r.settledAt)
       .sort((a, b) => b.boundaryAt.localeCompare(a.boundaryAt));
     return opts?.limit != null ? rows.slice(0, opts.limit) : rows;
+  },
+  async unresolvedBefore(boundaryBeforeIso, limit) {
+    return [...memRounds.values()]
+      .filter((r) => !r.resolvedAt && r.boundaryAt <= boundaryBeforeIso)
+      .sort((a, b) => a.boundaryAt.localeCompare(b.boundaryAt))
+      .slice(0, limit);
+  },
+  async resolvedUnsettled(limit) {
+    return [...memRounds.values()]
+      .filter((r) => !!r.resolvedAt && !r.settledAt)
+      .sort((a, b) => (a.resolvedAt ?? "").localeCompare(b.resolvedAt ?? ""))
+      .slice(0, limit);
   },
   async create(r) { memRounds.set(r.id, { ...r }); },
   async patch(id, fields) {
@@ -516,6 +542,24 @@ const prismaRounds: RoundStore = {
       },
       orderBy: { boundaryAt: "desc" },
       ...(opts?.limit != null ? { take: opts.limit } : {}),
+    });
+    return rows.map(toRound);
+  },
+  async unresolvedBefore(boundaryBeforeIso, limit) {
+    // Served by @@index([boundaryAt]); `take` bounds the healer's batch so one pass
+    // can never turn into a scan of the whole round history.
+    const rows = await pc().upDownRound.findMany({
+      where: { resolvedAt: null, boundaryAt: { lte: new Date(boundaryBeforeIso) } },
+      orderBy: { boundaryAt: "asc" },
+      take: limit,
+    });
+    return rows.map(toRound);
+  },
+  async resolvedUnsettled(limit) {
+    const rows = await pc().upDownRound.findMany({
+      where: { NOT: { resolvedAt: null }, settledAt: null },
+      orderBy: { resolvedAt: "asc" },
+      take: limit,
     });
     return rows.map(toRound);
   },

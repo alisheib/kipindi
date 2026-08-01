@@ -7,12 +7,14 @@ import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { type AdminDomain } from "@/lib/server/roles";
 import { requireStaff } from "@/lib/server/rbac-guard";
+import { CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import {
   createAsset, updateAsset, setAssetEnabled,
   createChain, updateChain, setChainState,
   setUpDownConfig,
   ALLOWED_DURATIONS, type Duration,
 } from "@/lib/server/updown-config";
+import { voidRoundByOperator } from "@/lib/server/updown-service";
 import type { ChainState } from "@/lib/server/updown-dal";
 import type { MarketCategory } from "@/lib/server/market-service";
 
@@ -173,6 +175,45 @@ export async function updateChainAction(formData: FormData) {
     return { ok: true as const };
   } catch (err) {
     return { ok: false as const, error: safeError(err, "Update chain failed") };
+  }
+}
+
+// ── Rounds (MONEY tier — this one hands real stakes back) ────────────────────
+
+/**
+ * Void a round and refund every stake in full — the operator's remedy for a round the
+ * engine could not finish.
+ *
+ * FINDING E-23. `voidRoundByOperator` has existed since the subsystem shipped, audits
+ * properly and refunds through the normal settlement path — and `grep -rn` found
+ * exactly ONE reference to it: its own definition. No action, no button, no route. So
+ * when E-24 stranded a stake, nobody on the platform could release it through the
+ * product; the 1,395 historical `operator` voids must have come from a hand-run
+ * script. A remedy that only exists in a script is not a remedy an operator has.
+ *
+ * ⛔ THE DOMAIN IS `compliance`, NOT `trading` — the tier this file's own header
+ * describes for chain start/stop does not apply. Stopping a chain changes whether
+ * rounds are emitted; this hands money back. It is read from CONTROL_DOMAIN so the
+ * rounds page can ask the identical question before it renders anything (E-18).
+ */
+export async function voidRoundAction(formData: FormData) {
+  const session = await requireStaff(CONTROL_DOMAIN.voidUpDownRound, "voidUpDownRound");
+  const id = String(formData.get("id") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim();
+  // An officer-entered reason is required and is NOT decorated by us: whatever is
+  // stored here is what the compliance record says about why a player's stake was
+  // handed back (the E-6 rule — our words never masquerade as the officer's).
+  if (reason.length < 5) {
+    return { ok: false as const, error: "Give a reason of at least 5 characters — it is recorded on the compliance trail." };
+  }
+  try {
+    const r = await voidRoundByOperator(id, session.userId, reason);
+    if (!r.ok) return { ok: false as const, error: r.error };
+    revalidatePath("/admin/updown/rounds");
+    revalidatePath("/admin/updown");
+    return { ok: true as const, settled: r.data.settled };
+  } catch (err) {
+    return { ok: false as const, error: safeError(err, "Void round failed") };
   }
 }
 
