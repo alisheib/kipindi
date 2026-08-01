@@ -24,9 +24,21 @@ async function requireMoneyOfficer() {
 /**
  * MANUAL SETTLEMENT — an officer pays out one market, by hand.
  *
- * Automatic payout is paused until the payment aggregator is integrated (see
- * lifecycle.ts), so this action is currently the ONLY thing that moves a resolved
- * market's money. It deliberately calls settleMarket WITHOUT `force`: every guard
+ * ⚠️ This comment used to say "Automatic payout is paused until the payment
+ * aggregator is integrated, so this action is currently the ONLY thing that moves a
+ * resolved market's money." That is NO LONGER TRUE and was stale enough to mislead:
+ * `market-scheduler.ts` arms a per-market `settle` deadline at `objectionsClosedAt`
+ * and calls `settleMarket(id, { actorId: "system" })` when it fires, backing off and
+ * retrying on TOO_EARLY / OBJECTION_OPEN, with `reconcileMarketSchedules()` healing
+ * any lost timer every ~5 minutes. Verified on production 2026-08-01: a resolved QA
+ * market paid its winner with `actorId: "system"` and no officer involved.
+ *
+ * So this button is the MANUAL PATH ALONGSIDE the automatic one — the human standing
+ * in when an operator does not want to wait for the timer — not the only way money
+ * moves. Believing otherwise would lead an operator to think payouts stall without
+ * them, and an engineer to think the scheduler is dead code.
+ *
+ * It deliberately calls settleMarket WITHOUT `force`: every guard
  * still applies and is re-checked under the market lock, so an officer cannot
  * - pay a market whose objection window is still open,
  * - pay a market with an objection standing against it, or
