@@ -246,9 +246,20 @@ E-16, which is a far more serious thing to know: the deployed engine does not wo
   (`leader.ts`, `LEASE_MS = 3 min`) until it expires, so the new one logs *"not the leader
   — chores skipped"* for ~4 ticks first. A ticker-driven verification run before that reads
   as **total failure** — the E-24 acceptance test came back **1 passed / 16 failed** on a
-  deploy that was entirely correct. Always `railway logs -s 50pick | grep "took leadership"`
-  before believing a ticker result. Same family as every trap here: **the harness lying,
+  deploy that was entirely correct. Same family as every trap here: **the harness lying,
   not the product.**
+
+  > ✅ **BETTER METHOD, found 2026-08-01 — ask the app, don't grep the logs.**
+  > `curl -s https://50pick.tz/api/health | grep -o '"leadership":{[^}]*}[^}]*}'` returns
+  > exactly what you need, including **how long you must wait**:
+  > `{"lifecycle":{"holder":"0056914e-b55","isMe":false,"expiresInSec":46}}` → not yet;
+  > `{"lifecycle":{"holder":"this instance","isMe":true,"expiresInSec":180}}` → go.
+  > ⛔ The old `railway logs | grep "took leadership"` recipe **does not work reliably**:
+  > that CLI returns a bounded snapshot that does not advance while you poll it, so a
+  > 9-minute wait showed only *"not the leader — chores skipped (2 ticks)"* and never the
+  > handover, on a deploy that had in fact already taken the lease. The log line is a
+  > side-effect; `isMe` is the state itself. Poll on **elapsed wall-clock**, not a fixed
+  > iteration count — 20 `curl`s cost 14 seconds, which is not a wait at all.
 - ⚠️ Three worktrees share one `.git`, one `node_modules` and one database. `F:\kipindi-main`
   holds the Railway link. Ports 3000/3009/3010/3011/3200 belong to other sessions — stay off them.
 - ⚠️ **A KYC `Confirm` click can land before the button finishes arming.** The uploader refreshes the
@@ -1669,11 +1680,17 @@ first. `test:updown-source`'s "the backoff ladder is actually read" had the same
 now asserts the *call* (`retryDelaySeconds(cfg,`). ⛔ A structural guard that a correct
 explanation can turn red teaches the next session to delete the explanation.
 
+**✅ LIVE-VERIFIED.** Deploy `a1fc655e` reached SUCCESS 23:06 EAT, `prisma migrate deploy`
+reported **"No pending migrations to apply"** — both of the branch's migrations were
+already on production, so the schema carried no new risk exactly as predicted — and the
+new container **took the lifecycle lease** (`/api/health` → `"isMe":true`), so the merged
+healer is the code actually ticking on prod. §3 gained a better way to check that.
+
 **Shipped this session:**
 
 | | |
 |---|---|
-| `<this>` | The merge: 28 commits, 10 conflicts resolved, one healer, one ladder, one reader |
+| `fcbd9585` | The merge: 28 commits, 10 conflicts resolved, one healer, one ladder, one reader |
 | | `test:updown-heal` **79 → 97** (new §11 ops-state carve-out + §12 the gate where it now lives) |
 | | `test:updown-source` **79 → 81**, repointed off the deleted sweep onto `healStuckRounds` |
 | | `test:admin-nav` **16 → 20** — Ali's nav request, below |
