@@ -327,8 +327,8 @@ and a clean console: `/admin` · `players` · `markets` · `ai-polls` · `ai-usa
 | 0 | Worktree, harness, live DB access, baseline | ✅ done |
 | 1 | Auth: signup · email verify · login · forgot-password · 2FA · sessions | 🔄 signup · login · forgot-password · phone shapes · enumeration ✅ **shipped + verified live**; **email-verify ✅ DONE 7/7 on prod** (§6d — delivery excepted); 2FA, sessions, rate-limits still open |
 | 2 | KYC: submit · import · approve · reject · revoke · ban · NIDA duplicate | ✅ **COMPLETE** — approve · reject · revoke · ban · NIDA freed, all driven on prod (§6c). E-1 verified in **EN + SW + ZH**; E-3, E-6, E-2, E-5, **E-4 + E-9** fixed **and live-verified**. Only `import` untested |
-| 3 | Money in: wallet · deposit · ledger · receipts | 🔄 **email gate CLEARED + deposit form reachable** (§6d). ⛔ **Blocked on Ali: a real deposit needs real money** — the play-money path is hard-disabled on prod |
-| 4 | Core play: markets · YES/NO · win + lose · resolution · payout | ⏳ |
+| 3 | Money in: wallet · deposit · ledger · receipts | ✅ **UNBLOCKED + DONE (§6g)** — `alpha` and `echo` funded 50,000 each through the real money path; 9 webhook forgeries refused, exactly-once proven over 3 deliveries, ledger balanced |
+| 4 | Core play: markets · YES/NO · win + lose · resolution · payout | ✅ **DONE on production (§6h)** — create → bet both sides → resolve → objection window → settle. A real WIN (37,400 paid) and a real LOSS, ledger sums to 0, with a CONTROL market proving the objection window is what gates payment |
 | 5 | Up & Down: rounds · quick-bet · pricing · void · history | 🔴 **BLOCKED — E-16: it has never settled a round and cannot.** Round *generation* works (1,398 generated); *resolution* has 0 confirmed readings out of 1,400 and voids 100% |
 | 6 | Proposals: propose · approve · 4-state switch · bonus | ⏳ |
 | 7 | AI: poll generation · source registry · token enable/disable · usage | ✅ **generate → review → publish → live market DRIVEN ON PROD, 15/15, on real tokens** (§6e). **Spend ceiling fixed + live-verified (E-15).** Remaining: poll **resolution** with money, and the Up & Down half, which does not exist on prod (**E-17**) |
@@ -1042,6 +1042,99 @@ platform credits `txn.amount` and nothing else, refuses the mismatch outright, a
   the E-14 note and the vacuous E-5 recheck: *an assertion that cannot fail is worse than no
   assertion*, because it is counted as evidence. Both are fixed in `m2-suite.cjs` with the
   reasoning inline.
+
+## 6h. PHASE 4 — a real WIN and a real LOSS settled to real wallets on production (2026-08-01)
+
+**Ali's priority #2 is closed for polls/markets.** The full chain was driven end to end on
+`https://50pick.tz`: create → bet both sides → resolve → objection window → settle → money in
+the wallet, with every step through the real UI and every assertion against the live DB.
+
+| | Market #1 — the drill | Market #2 — the CONTROL |
+|---|---|---|
+| id | `mkt_13a8ac2b5a40d8ede682` | `mkt_4969c3dd29fde8742618` |
+| stakes | `alpha` YES 20,000 · `echo` NO 20,000 | `alpha` YES 5,000 · `echo` NO 5,000 |
+| resolved | **YES**, by the QA trading officer | **YES**, same officer |
+| objection window | **advanced past** | **left intact (real 24h)** |
+| settled | ✅ `09:58:33Z` by **`system`** | ⛔ **not settled** |
+
+### Why there is a control market
+
+The clock on #1 was advanced so settlement could be observed the same session. On its own that
+would prove nothing — the redeploy that made the platform notice could just as easily have been
+the cause. So **#2 is identical in every respect except the clock**: same officer, same verdict,
+same code path, present through the same boot. **#1 paid and #2 did not**, which isolates the
+objection window as the thing that gates payment. ⚠️ #2 is deliberately left running; it should
+settle on its own at **2026-08-02 09:54Z** with no intervention, which is a second, unaided proof
+of the timer — **check it, do not clear it**.
+
+⚠️ **Exactly what was and was not touched by the fast-forward** (`live/p4d-fastforward.mjs`,
+which refuses to run if any non-QA player holds a position or any objection is open): one column,
+`objectionsClosedAt`, on one market whose only two participants are personas this campaign
+created. **No `Wallet`, `Transaction`, `LedgerEntry` or `Position` row was written by hand** —
+`settleMarket()` did all of its own arithmetic under its own lock, as `actorId: "system"`. The
+alternative, lowering the **global** `objectionWindowHours` at `/admin/config`, would have
+switched a player-protection control off platform-wide to suit a test. (Recorded because it is
+useful: lowering that global could not retroactively release already-resolved markets anyway —
+`settleMarket` reads `objectionsClosedAt` off the row, stamped at resolve time.)
+
+### The two negatives that matter as much as the payout
+
+| Assertion | Result |
+|---|---|
+| **resolution moves NO money** — `settledAt` null, both balances unchanged, both positions still OPEN after the verdict | ✅ on **both** markets |
+| **a market with an open objection window does not pay**, even across a restart | ✅ market #2 |
+
+### The money, read off the live DB
+
+```
+loser-share · commission 13% of the LOSING pool
+  losing pool 20,000 → commission 2,600 → distributable 17,400
+  winner payout = own stake 20,000 + 17,400 = 37,400
+```
+
+| | Before | After |
+|---|---|---|
+| `alpha` (**won**) | 25,000 | **62,400** — `BET_PAYOUT 37,400`, `balanceAfter 62,400` |
+| `echo` (**lost**) | 25,000 | **25,000** — the stake is taken and nothing more |
+
+The settlement ledger is the part worth reading, because it shows the levies are taken **out of
+the operator's commission, not out of the player**:
+
+| account | entry | amount |
+|---|---|---|
+| `PLAYER:alpha` | `PAYOUT_CREDIT` | **+37,400** |
+| `POOL:<market>` | `PAYOUT_CREDIT` | −40,000 |
+| `HOUSE:COMMISSION` | `SETTLEMENT_COMMISSION` | +2,600 |
+| `HOUSE:COMMISSION` | `SETTLEMENT_TRA_LEVY` | −260 |
+| `HOUSE:TRA_LEVY` | `SETTLEMENT_TRA_LEVY` | +260 |
+| `HOUSE:COMMISSION` | `SETTLEMENT_GBT_LEVY` | −130 |
+| `HOUSE:GBT_LEVY` | `SETTLEMENT_GBT_LEVY` | +130 |
+
+**The whole market's ledger sums to exactly 0** — nothing created, nothing lost. Net to the
+house 2,210; TRA 260 (10% of commission); GBT 130 (5%). Audit trail:
+`market.created` → `market.adjudicated` *(officer)* → `market.resolved` → `market.settled`
+*(both `system`)*.
+
+⚠️ **A market can be sealed BEFORE its stated resolve time while it is still LIVE.** #1 was
+resolved at 09:49 against a 09:54 resolve time and the queue offered the buttons. This is
+**intended** — the queue exists partly so an officer can act "when a result lands early", and the
+objection catalogue carries `RESOLVED_EARLY` as a player remedy — but it is worth knowing that
+nothing stops a verdict landing while betting is still open.
+
+### Harness contract for the betting dial — read before automating a bet
+
+Four selector traps cost a run each, and all four are the harness lying, not the product:
+
+1. **The side control's accessible name is `Back YES at 50%`**, an `aria-label` that overrides the
+   visible "YES @ 50%". `getByRole("button", {name: /^YES/})` matches **nothing**.
+2. **The dial panel does not exist until a side is picked** — stake input and CTA are absent on a
+   fresh page, so they must be found in that order.
+3. **The CTA is `Place YES TZS 20,000`**, and it opens a modal whose CTA is **`Confirm · TZS
+   20,000`** — that modal button is the only thing that calls `buyPositionAction`.
+4. **`.first()` matters**: the page renders related markets, each with its own `Back YES at …`.
+   Also `input[type=text]` selects **nothing** anywhere in the kit — the Input atom renders no
+   literal `type` attribute, and a field survey that reports `"type":"text"` is reading the DOM
+   *property*, which defaults to "text". Same trap in the market wizard.
 
 ## 6d. Email verification — DONE on production, 7/7 (2026-07-31 22:15 EAT)
 
