@@ -81,7 +81,7 @@ __resetGrantsForTest();
 {
   const EXPECT: Record<string, Partial<Record<ControlId, boolean>>> = {
     // Owner bypasses the grant table entirely and can never be locked out.
-    ADMIN:      { recheckMarketNow: true,  setTwoAdminAuth: true,  resolveMarket: true,  aiToolkit: true,  emergencyVoidMarket: true,  voidUpDownRound: true },
+    ADMIN:      { recheckMarketNow: true,  setTwoAdminAuth: true,  resolveMarket: true,  aiToolkit: true,  emergencyVoidMarket: true,  voidUpDownRound: true , createAsset: true, updateAsset: true, toggleAsset: true, updateReadingMethod: true, updateThresholds: true, armProposal: true, saveProposalsConfig: true, approveProposal: true},
     // ⭐ E-18 in one line: trading yes, compliance no. Sees the queue, cannot re-check;
     //    sees the markets table, cannot work its kill switch.
     // ⚠️ `voidUpDownRound: true` is a DELIBERATE, EVIDENCED decision, not a default —
@@ -89,18 +89,18 @@ __resetGrantsForTest();
     //    production proved that unusable: /admin/updown/rounds is a `trading` route, so
     //    a compliance officer could not even open the page, and the remedy ended up
     //    Owner-only. Flipping this line back to `false` is how you re-break E-23.
-    MODERATOR:  { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: true,  aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: true },
+    MODERATOR:  { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: true,  aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: true , createAsset: false, updateAsset: false, toggleAsset: false, updateReadingMethod: false, updateThresholds: false, armProposal: false, saveProposalsConfig: false, approveProposal: false},
     // ⭐ The other half: can act, cannot even reach the trading page that hosts it.
     //    …and that is exactly why `voidUpDownRound` is FALSE here: a control a role can
     //    work but never reach is not a control. The round explorer stays trading-owned.
-    COMPLIANCE: { recheckMarketNow: true,  setTwoAdminAuth: true,  resolveMarket: false, aiToolkit: true,  emergencyVoidMarket: true,  voidUpDownRound: false },
-    FINANCE:    { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: false },
-    GROWTH:     { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: false },
-    SUPPORT:    { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: false },
+    COMPLIANCE: { recheckMarketNow: true,  setTwoAdminAuth: true,  resolveMarket: false, aiToolkit: true,  emergencyVoidMarket: true,  voidUpDownRound: false , createAsset: false, updateAsset: false, toggleAsset: false, updateReadingMethod: false, updateThresholds: false, armProposal: false, saveProposalsConfig: false, approveProposal: false},
+    FINANCE:    { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: false , createAsset: true, updateAsset: true, toggleAsset: true, updateReadingMethod: true, updateThresholds: true, armProposal: true, saveProposalsConfig: true, approveProposal: false},
+    GROWTH:     { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: false , createAsset: false, updateAsset: false, toggleAsset: false, updateReadingMethod: false, updateThresholds: false, armProposal: false, saveProposalsConfig: false, approveProposal: true},
+    SUPPORT:    { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: false , createAsset: false, updateAsset: false, toggleAsset: false, updateReadingMethod: false, updateThresholds: false, armProposal: false, saveProposalsConfig: false, approveProposal: false},
     // Read-only everywhere, including the domains it can view.
-    AUDITOR:    { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: false },
-    PLAYER:     { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: false },
-    AGENT:      { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: false },
+    AUDITOR:    { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: false , createAsset: false, updateAsset: false, toggleAsset: false, updateReadingMethod: false, updateThresholds: false, armProposal: false, saveProposalsConfig: false, approveProposal: false},
+    PLAYER:     { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: false , createAsset: false, updateAsset: false, toggleAsset: false, updateReadingMethod: false, updateThresholds: false, armProposal: false, saveProposalsConfig: false, approveProposal: false},
+    AGENT:      { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: false , createAsset: false, updateAsset: false, toggleAsset: false, updateReadingMethod: false, updateThresholds: false, armProposal: false, saveProposalsConfig: false, approveProposal: false},
   };
 
   // ⛔ NOT vacuous by omission. `Partial<Record<…>>` lets a new control be added and
@@ -138,6 +138,15 @@ __resetGrantsForTest();
     resolveMarket: "src/app/markets/actions.ts",
     aiToolkit: "src/app/admin/_actions/ai-toolkit.ts",
     emergencyVoidMarket: "src/app/markets/actions.ts",
+    // E-27 · the Up & Down CONFIG tier + the two proposal surfaces.
+    createAsset: "src/app/admin/updown/actions.ts",
+    updateAsset: "src/app/admin/updown/actions.ts",
+    toggleAsset: "src/app/admin/updown/actions.ts",
+    updateReadingMethod: "src/app/admin/updown/actions.ts",
+    updateThresholds: "src/app/admin/updown/actions.ts",
+    armProposal: "src/app/admin/updown/proposals/actions.ts",
+    saveProposalsConfig: "src/app/admin/proposals/actions.ts",
+    approveProposal: "src/app/admin/proposals/actions.ts",
   };
   for (const [id, file] of Object.entries(SITES) as [ControlId, string][]) {
     ok(`3 · ${id} · enforcement site exists`, existsSync(join(ROOT, file)), file);
@@ -244,23 +253,91 @@ __resetGrantsForTest();
   // drift site.
   const EXEMPT = new Set(["src/lib/server/rbac-guard.ts"]);
 
+  /**
+   * ⛔ E-28 · THIS DETECTOR WAS BLIND, AND IT CERTIFIED FOUR OFFENDERS AS CLEAN.
+   *
+   * It was written against the idiom E-18 was found in — a hand-rolled
+   * `privilege_escalation_blocked` audit next to an inline `canAct(role, "literal")`. The
+   * codebase then migrated to `requireStaff(domain)`, which does both of those things
+   * INSIDE the shared guard. Every migrated file therefore became invisible, three ways
+   * over, and the guard kept passing:
+   *
+   *   1. it required the string `privilege_escalation_blocked` **in the file** — a
+   *      `requireStaff` caller never contains it, so those files were skipped at the
+   *      first filter, before any domain was even read;
+   *   2. its regex only matched `canAct(x, "lit")` — never `requireStaff("lit")`, and
+   *      never a local alias like `ensureConfig = () => ensure("accounting")`, which is
+   *      exactly how `admin/updown/actions.ts` named its domain;
+   *   3. `declares` was FILE-level, so one declared control (`voidUpDownRound`) exempted
+   *      every other control in the same file — and that file had five more.
+   *
+   * Found live: `/admin/updown` is `trading` and offered a MODERATOR five armed
+   * `accounting` controls (E-27), proven on production by clicking one. A guard that goes
+   * green on the very class it exists to catch is worse than no guard, because the next
+   * session trusts it.
+   *
+   * So the detector now reads the domain however it is written, and requires a PER-CONTROL
+   * declaration rather than a per-file one.
+   */
+  const DOMAIN_SET = new Set<string>(ADMIN_DOMAINS as readonly string[]);
+
+  /**
+   * ⛔ STRIP COMMENTS FIRST. Not tidiness — the house rule, already paid for once:
+   * `test:updown-heal` 10.4 went red against a correct tree because a comment *explaining*
+   * the rule matched the pattern checking for it. The same thing happened here the moment
+   * this detector learned the alias form — `control-gates.ts`'s own prose (`canAct(role,
+   * "trading")`, `ensure("accounting")`) reported the registry as its own offender.
+   * A guard a correct explanation can turn red teaches the next session to delete the
+   * explanation, which is the opposite of what this file is for.
+   */
+  const strip = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+
+  /** Every domain literal a file gates on, however the call is spelled. */
+  function literalDomains(raw: string): string[] {
+    const src = strip(raw);
+    const out = [
+      ...[...src.matchAll(/canAct\([^,]+,\s*"([a-z]+)"\)/g)].map((m) => m[1]),
+      ...[...src.matchAll(/requireStaff\(\s*"([a-z]+)"/g)].map((m) => m[1]),
+    ];
+    // …and the alias form: any single-string-argument call whose argument IS a domain
+    // name, in a file that gates at all. `ensure("accounting")` is the case that mattered.
+    if (/requireStaff|canAct/.test(src)) {
+      out.push(...[...src.matchAll(/\b[A-Za-z_$][\w$]*\(\s*"([a-z]+)"\s*[),]/g)].map((m) => m[1]));
+    }
+    return out.filter((d) => DOMAIN_SET.has(d));
+  }
+
   const offenders: string[] = [];
   let scanned = 0;
   for (const file of [...walk("src/app"), ...walk("src/lib/server")]) {
     if (EXEMPT.has(file)) continue;
-    const src = read(file);
-    if (!src.includes("privilege_escalation_blocked")) continue;
-    const literals = [...src.matchAll(/canAct\([^,]+,\s*"([a-z]+)"\)/g)].map((m) => m[1]);
-    if (literals.length === 0) continue; // uses CONTROL_DOMAIN, requireStaff, or a tier
+    // An HTTP handler has no rendered control to hide, so "declare it so the page can
+    // hide it" is not a thing that can be done. Its gate is the enforcement, full stop.
+    if (file.startsWith("src/app/api/")) continue;
+    const src = strip(read(file));
+
+    // ⭐ ENFORCEMENT vs RENDERING — the distinction the whole check turns on.
+    // A file that calls `requireStaff` or writes the SECURITY row ENFORCES: it can refuse
+    // a click, so a control it guards must be hideable. A file that only calls `canAct` is
+    // ASKING — `admin/players/[id]/page.tsx` computes capSupport/capMoney/capCompliance to
+    // decide what to render, which IS the E-18 fix. Flagging it would demand a declaration
+    // for doing the right thing, and the fix would be to stop asking.
+    const enforces = /privilege_escalation_blocked|requireStaff\(/.test(src);
+    if (!enforces) continue;
+    const literals = literalDomains(src);
+    if (literals.length === 0) continue; // fully CONTROL_DOMAIN-driven, or a tier
     scanned++;
-    const declares = src.includes("CONTROL_DOMAIN");
     const route = routeOf(file);
     for (const lit of new Set(literals)) {
+      // PER-CONTROL, not per-file: a file may legitimately declare one control and still
+      // hard-code a second. Only a declaration whose DOMAIN matches this literal counts.
+      const declaresThis = [...src.matchAll(/CONTROL_DOMAIN\.([A-Za-z0-9_]+)/g)]
+        .some((m) => (CONTROL_DOMAIN as Record<string, string>)[m[1]] === lit);
       if (route === null) {
         // No route ⇒ the control can render anywhere (shell header, shared service),
         // so nothing can infer its domain. It MUST be declared.
-        if (!declares) offenders.push(`${file}: gates on "${lit}" but has no route to infer it from, and does not declare a control`);
-      } else if (domainForPath(route) !== lit && !declares) {
+        if (!declaresThis) offenders.push(`${file}: gates on "${lit}" but has no route to infer it from, and declares no control with that domain`);
+      } else if (domainForPath(route) !== lit && !declaresThis) {
         offenders.push(`${file}: route ${route} is "${domainForPath(route)}" but the action demands "${lit}" — declare it in CONTROL_DOMAIN so the page can hide the control`);
       }
     }
@@ -268,6 +345,17 @@ __resetGrantsForTest();
   ok("5 · no admin action gates on a domain its own page cannot see",
      offenders.length === 0, offenders.join(" | "));
   ok("5 · the detector actually scanned files (not vacuous)", scanned > 0, `${scanned} literal-gated files`);
+
+  // ⛔ The detector must SEE the modern idiom. Without this, a future refactor that
+  // renames the guard silently restores E-28 and every check above passes vacuously.
+  ok("5 · the detector recognises requireStaff(\"domain\")",
+     literalDomains('const s = await requireStaff("accounting");').includes("accounting"));
+  ok("5 · the detector recognises a local alias — ensure(\"domain\")",
+     literalDomains('async function ensure(d){return requireStaff(d)}\nconst x = ensure("accounting");').includes("accounting"));
+  ok("5 · the detector recognises the legacy canAct(role, \"domain\")",
+     literalDomains('if (!canAct(role, "compliance")) throw 0;').includes("compliance"));
+  ok("5 · a file that gates only through CONTROL_DOMAIN yields no literal",
+     literalDomains('const s = await requireStaff(CONTROL_DOMAIN.armProposal, "armProposal");').length === 0);
 }
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);

@@ -21,6 +21,7 @@
 import { revalidatePath } from "next/cache";
 import { safeError } from "@/lib/server/safe-error";
 import { requireStaff } from "@/lib/server/rbac-guard";
+import { CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import {
   generateProposal, editProposal, approveProposal, rejectProposal, armProposal, deleteProposal,
   PROPOSAL_REJECT_REASONS, type ProposalRejectReason,
@@ -129,9 +130,17 @@ export async function rejectProposalAction(formData: FormData) {
   }
 }
 
-/** ⚠️ `accounting`, not `trading` — arming starts a chain that moves real money. */
+/**
+ * ⚠️ `accounting`, not `trading` — arming starts a chain that moves real money.
+ *
+ * ⛔ E-27: the domain now comes from `CONTROL_DOMAIN` so the PAGE can ask the same
+ * question before it renders the button. `/admin/updown/proposals` is a `trading` route,
+ * and `DEFAULT_GRANTS` makes trading and accounting disjoint, so before this a MODERATOR
+ * saw an armed "Arm" button that could only bounce — and the SECURITY row it wrote did
+ * not even name the control, because the second argument was omitted.
+ */
 export async function armProposalAction(formData: FormData) {
-  const session = await requireStaff("accounting");
+  const session = await requireStaff(CONTROL_DOMAIN.armProposal, "armProposal");
   try {
     const id = String(formData.get("id") ?? "").trim();
     if (!id) return { ok: false as const, error: "Missing proposal." };

@@ -10,6 +10,9 @@ import { resolveRange } from "@/lib/server/date-range";
 import { DateTimeRangeFilter } from "@/components/ui/datetime-range-filter";
 import { featureCostWindows } from "@/lib/server/ai-usage";
 import { AddAssetForm, AddChainForm, ToggleAsset, ChainStateControls, ThresholdsForm, ReadingMethodForm } from "./updown-controls";
+import { currentSession } from "@/lib/server/auth-service";
+import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
+import { ControlLocked } from "@/components/admin/control-locked";
 
 export const metadata = { title: "Admin · Up & Down" };
 export const dynamic = "force-dynamic";
@@ -76,12 +79,20 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
   const pnl = byGame.updown;
   const usd = (n: number) => `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+  /**
+   * ⛔ E-27. This page is `trading`; its CONFIG controls demand `accounting`, and
+   * `DEFAULT_GRANTS` makes the two DISJOINT. So ask the SAME question the action will ask
+   * and render a locked state instead of a control that can only bounce — the E-18 rule.
+   * All five share one domain, so one question answers for all of them.
+   */
+  const canConfig = await canUseControl((await currentSession())?.role, "updateReadingMethod");
+
   return (
     <>
       <AdminPageHead
         title="Up & Down"
         sw="Juu na Chini"
-        actions={<AddAssetForm />}
+        actions={canConfig ? <AddAssetForm /> : <ControlLocked what="Add asset" need={CONTROL_DOMAIN.createAsset} />}
       />
 
       <div className="px-4 lg:px-6 py-5 space-y-4">
@@ -168,7 +179,9 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex justify-end">
-                            <ToggleAsset id={a.id} enabled={a.enabled} label={a.key} />
+                            {canConfig
+                              ? <ToggleAsset id={a.id} enabled={a.enabled} label={a.key} />
+                              : <ControlLocked what={a.enabled ? "Enabled" : "Disabled"} need={CONTROL_DOMAIN.toggleAsset} />}
                           </div>
                         </td>
                       </tr>
@@ -278,6 +291,9 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
 
         {/* ── Reading method ─────────────────────────────────────────────── */}
         <AdminCard title="Price reading method" sw="Njia ya kusoma bei">
+          {!canConfig ? (
+            <ControlLocked what="Change the price reading method" need={CONTROL_DOMAIN.updateReadingMethod} block />
+          ) : (
           <ReadingMethodForm
             observationMethod={cfg.observationMethod}
             feedProvider={cfg.feedProvider}
@@ -286,6 +302,7 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
             twelveDataKeyPresent={Boolean(process.env.TWELVEDATA_API_KEY)}
             maxStalenessSeconds={cfg.maxStalenessSeconds}
           />
+          )}
         </AdminCard>
 
         {/* ── Reading health ─────────────────────────────────────────────── */}
@@ -339,14 +356,18 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
 
         {/* ── Thresholds ─────────────────────────────────────────────────── */}
         <AdminCard title="Thresholds" sw="Vigezo">
-          <ThresholdsForm
-            maxStalenessSeconds={cfg.maxStalenessSeconds}
-            confidenceThreshold={cfg.confidenceThreshold}
-            maxObservationAttempts={cfg.maxObservationAttempts}
-            defaultMinStake={cfg.defaultMinStake}
-            defaultMaxStake={cfg.defaultMaxStake}
-            defaultMarginBps={cfg.defaultMarginBps}
-          />
+          {!canConfig ? (
+            <ControlLocked what="Change the thresholds" need={CONTROL_DOMAIN.updateThresholds} block />
+          ) : (
+            <ThresholdsForm
+              maxStalenessSeconds={cfg.maxStalenessSeconds}
+              confidenceThreshold={cfg.confidenceThreshold}
+              maxObservationAttempts={cfg.maxObservationAttempts}
+              defaultMinStake={cfg.defaultMinStake}
+              defaultMaxStake={cfg.defaultMaxStake}
+              defaultMarginBps={cfg.defaultMarginBps}
+            />
+          )}
         </AdminCard>
       </div>
     </>

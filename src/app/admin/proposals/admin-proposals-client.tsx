@@ -16,6 +16,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SELECTION } from "@/lib/admin-status-lexicon";
 import { ActionOverlay, useActionOverlay } from "@/components/admin/action-overlay";
 import { RefreshButton } from "@/components/admin/refresh-button";
+import { ControlLocked } from "@/components/admin/control-locked";
 import { StatusBadge } from "@/components/proposals/status-badge";
 import { CategoryIcon, CATEGORY_LABEL } from "@/components/proposals/category-icon";
 import type { ProposalsConfig, ProposalsState } from "@/lib/server/proposals-config";
@@ -165,7 +166,23 @@ function SortBtn({ field, label, current, dir, onSort }: { field: QSort; label: 
   );
 }
 
-export function AdminProposalsClient({ config, queue }: { config: ProposalsConfig; queue: AdminQueueRow[] }) {
+/**
+ * ⛔ E-27. `/admin/proposals` is a `trading` route, but two of its controls demand other
+ * domains — `saveProposalsConfig` is `accounting` (prize economics) and `approveProposal`
+ * is `growth` (it credits a real bonus). `DEFAULT_GRANTS` makes all three disjoint, so a
+ * MODERATOR could see both controls armed and neither could ever work. The page is told
+ * the answer by its server component and renders a locked state instead.
+ */
+export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove, needSaveConfig, needApprove }: {
+  config: ProposalsConfig;
+  queue: AdminQueueRow[];
+  canSaveConfig: boolean;
+  canApprove: boolean;
+  /** `CONTROL_DOMAIN[...]`, passed in — a CLIENT component importing `control-gates`
+   *  would drag `rbac` (and prisma + node:crypto) into the browser bundle. */
+  needSaveConfig: string;
+  needApprove: string;
+}) {
   const router = useRouter();
   const { toast } = useToast();
   const { t } = useT();
@@ -522,6 +539,9 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
             ) : !declining ? (
               <div className="space-y-2.5">
                 <div className="flex flex-wrap gap-2">
+                  {/* ⛔ E-27: approving credits a real bonus, so the action is `growth`
+                      while this page is `trading`. Ask, don't offer-and-bounce. */}
+                  {canApprove ? (
                   <ConfirmDialog
                     tone="warning"
                     title="Approve & pay bonus · Kubali"
@@ -530,6 +550,9 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
                     onConfirm={approve}
                     trigger={<Button variant="primary" size="md" loading={pending} leading={<I.checkCircle size={15} />}>Approve &amp; pay bonus · Kubali</Button>}
                   />
+                  ) : (
+                    <ControlLocked what="Approve &amp; pay bonus" need={needApprove} />
+                  )}
                   <Button variant="ghost" size="md" leading={<I.edit s={15} />} onClick={openEdit}>Edit</Button>
                   <Button variant="ghost" size="md" loading={pending} leading={<I.fileText s={15} />} onClick={sendBack}>Request changes</Button>
                   <Button variant="ghost" size="md" leading={<I.xCircle size={15} />} onClick={() => setDeclining(true)} className="!text-claret-300">Decline</Button>
@@ -572,7 +595,9 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
           </div>
           <div className="flex shrink-0 items-center justify-between gap-3 sm:justify-end">
             <span className="font-mono text-[11px] uppercase tracking-[0.1em]" style={{ color: meta.fg }}>{meta.label}</span>
-            <Button variant="primary" size="sm" leading={<I.check s={14} />} loading={pending} onClick={saveConfig}>Save</Button>
+            {canSaveConfig
+              ? <Button variant="primary" size="sm" leading={<I.check s={14} />} loading={pending} onClick={saveConfig}>Save</Button>
+              : <ControlLocked what="Save prize config" need={needSaveConfig} />}
           </div>
         </div>
 

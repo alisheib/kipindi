@@ -920,6 +920,9 @@ crawl returned the all-time high and a percentage, not the current price. So re-
 | **E-25** | 🔴 **BLOCKER** → ✅ **FIXED** | Up & Down · price feed | **The TwelveData feed reads the wrong timestamp field, so it can never confirm a price — E-16 reproduced inside the module written to fix E-16.** `TwelveDataFeed.quote()` dated every quote from `parsed.timestamp`. On `/quote` that is the **OHLC bar's** time, and with no `interval` parameter the provider defaults to **`1day`** — so it is *the start of today*. `maxStalenessSeconds` is **90**, which makes the staleness gate **structurally unsatisfiable on every asset at every hour**. Measured on production against the real key: `timestamp` advanced **0 s across 76 s** and sat **20.4 h** (BTC/USD) / **23.4 h** (XAU/USD) from the boundary, while `last_quote_at` sat **29–45 s** behind wall-clock, advanced 60 s per minute, and its `close` genuinely moved (BTC 62591.99 → 62635.67). Fixed to read `last_quote_at`, falling back to `timestamp` only when absent. ⚠️ **It would have been invisible**: the round history fills with `source-failed` VOIDs identical to E-16's, and the natural reading — *"metals are shut, try Monday"* — is wrong; BTC/USD trades 24/7 and failed the same way. | probe output before/after; `test:updown-feed` §9 proven red on the shipped line (9.1 *"IT READ THE BAR TIME"*, 9.2 skew **73560 s**) |
 | **E-26** | MEDIUM | Up & Down · ops tooling | **The two ops scripts that the handoff named as the way to verify the feed cannot see the feed at all.** `ops:updown-probe-source` and `ops:updown-verify-source` both drive `observePrice` — the **AI oracle**. Neither mentions `TWELVEDATA`, `feedProvider` or `updown-feed`; both spend Anthropic tokens and read web pages. Since `observationMethod` now defaults to **`feed`**, they answer a confident question about a subsystem that is no longer on the money path, and they cannot answer the only question an operator has before flipping the provider live: *is the key set, does it work, is the quote fresh enough?* This is how E-25 stayed invisible. Fixed by shipping **`ops:updown-probe-feed`**, which drives `quoteAsset` + `judgeFeedStaleness` — the exact two functions `readPrice` calls — so what it reports is what the engine would do. | `grep -l "updown-feed\|TWELVEDATA\|feedProvider" scripts/ops-*.mts` → **no matches** before this session |
 
+| **E-27** | **HIGH** → ✅ **FIXED** | RBAC · Up & Down config · proposals | **`/admin/updown` is a `trading` route that offers a MODERATOR five armed `accounting` controls, and the price feed can therefore be switched on by nobody but the Owner.** `+ Add asset`, edit asset, enable/disable asset, **the reading-method switch** and `Save thresholds` all call `ensure("accounting")` while the route is `trading`; `DEFAULT_GRANTS` makes the two **disjoint**. Driven on production as the QA trading officer: the page renders in full (0 overflow, 0 console errors), the provider dropdown opens, `Save reading method` **arms and enables** — and the click is **refused**, `updown.config` unchanged, **with no visible refusal anywhere on the page**. It wrote a `SECURITY` `privilege_escalation_blocked` row. **This is why step ① of the session brief is impossible as written.** Two more surfaces carry the same class: `armProposal` (`accounting`) on `/admin/updown/proposals`, and `saveProposalsConfig` (`accounting`) + `approveProposal` (`growth`) on `/admin/proposals`. ⛔ **Not fixed by widening** — `UPDOWN-ARCHITECTURE.md` §10 assigns the reading method to CONFIG_ROLES, *"never MODERATOR — it changes economics"*. Fixed the E-18 way: declared in `CONTROL_DOMAIN`, pages render `ControlLocked`. ⚠️ **The gap the fix makes visible rather than closes** is in §6m and is Ali's call. | live `AuditLog` `2026-08-01 20:44:55Z · SECURITY · privilege_escalation_blocked · actor usr_429885ab43c0cb4ce134dd7e · target accounting · {"role":"MODERATOR","action":null,"domain":"accounting"}`; `shots/e27-*.png` |
+| **E-28** | **HIGH** → ✅ **FIXED** | guard integrity | **The drift detector built to catch E-18 was blind to the idiom the codebase had migrated to, and certified four offenders as clean.** `control-gates.test.mts` §5 was written against E-18's shape — a hand-rolled `privilege_escalation_blocked` audit beside an inline `canAct(role,"literal")`. The codebase then moved to `requireStaff(domain)`, which does **both inside the shared guard**, so every migrated file went invisible **three ways**: ① the scan **skipped any file not containing the string `privilege_escalation_blocked`** — which a `requireStaff` caller never does — before reading a single domain; ② the regex matched only `canAct(x,"lit")`, never `requireStaff("lit")` and never a local alias like `ensureConfig = () => ensure("accounting")`, which is exactly how `admin/updown/actions.ts` named its domain; ③ `declares` was **file-level**, so one declared control (`voidUpDownRound`) exempted the five undeclared ones beside it. ⭐ **A guard that goes green on the very class it exists to catch is worse than no guard**, because the next session trusts it. Repaired to read the domain however it is spelled, to require a **per-control** declaration, and to distinguish **enforcement** (`requireStaff`/audit — must be hideable) from **rendering** (`canAct` alone — that *is* the E-18 fix, and flagging it would punish doing the right thing). | the four offenders it passed; `test:control-gates` **101 → 209**, proven red by restoring the pre-fix idiom on one control |
+
 ## 6f. E-18 fixed — and the class was three surfaces, not one (2026-08-01)
 
 **One defect class: a page offers a control its own viewer's role can never work.** The
@@ -1504,6 +1507,76 @@ shape, and was proven red against the line that actually shipped: `9.1 IT READ T
    boundary. With a feed, a retry only helps if the **provider** was down; if the first
    attempt is late, later ones are strictly worse. Same observation §6's E-16 analysis made
    about the AI path — it survived the method change. Not fixed; recorded.
+
+## 6m. E-27 / E-28 — ⛔ ONE DECISION FOR ALI, and why step ① is blocked (2026-08-01)
+
+### The blocker, in one line
+
+**Nobody but the Owner can turn the price feed on.** Not the QA trading officer, not the QA
+compliance officer, not a FINANCE account. The session brief says *"flip `feedProvider` …
+as the TRADING officer"*; that is not possible, and it is not an oversight — it is what
+three separate, deliberate decisions add up to.
+
+| | |
+|---|---|
+| `/admin/updown` route domain | **`trading`** (`roles.ts:247`) |
+| `updateReadingMethodAction` demands | **`accounting`** (`UPDOWN-ARCHITECTURE.md` §10: *"never MODERATOR — it changes economics"*) |
+| `DEFAULT_GRANTS.COMPLIANCE.accounting` | `canView: true`, **`canAct: false`** |
+| `DEFAULT_GRANTS.FINANCE` | `accounting` act ✅ — but **no `trading` view**, so it cannot open the page |
+
+⭐ **So the intersection of "can act on accounting" and "can view a trading page" is
+`{ADMIN}` — and that is not what any of the documentation says.** Both
+`UPDOWN-ARCHITECTURE.md` §10 and `admin/updown/actions.ts`'s own header describe this tier
+as **CONFIG_ROLES = ADMIN/COMPLIANCE**. That was true of the *legacy* tier; the migration to
+`requireStaff("accounting")` silently re-cut it to `{ADMIN, FINANCE}`, and the route gate
+then cut FINANCE out too. **Three documents and the runtime disagree, and the runtime wins.**
+
+> 🔑 This is the same shape as E-23, one layer up. E-23 was *"the remedy is usable by the 9
+> ADMIN accounts and nobody else"*. This is *"the switch that makes the game playable is
+> usable by the 9 ADMIN accounts and nobody else"* — and unlike E-23 the domain assignment
+> is **documented and defensible**, so the campaign must not simply overturn it.
+
+### ⛔ What was deliberately NOT done
+
+- **Not widened.** Giving `MODERATOR` accounting, or `COMPLIANCE` accounting *act*, would
+  re-grant authority across **every** accounting action on the platform (finance, config,
+  payouts) to make one dropdown work. §4's rule stands: *"the wrong fix is to widen it"*.
+- **Not re-domained to `trading`.** §10 says this changes economics and it is right —
+  `minMoveTicks` decides void-vs-outcome, the rate profile is the fee a round freezes, and
+  the reading method chooses what settles real money.
+- **Not written straight into `SystemConfig` from the DB.** The mandate grants that, but it
+  would skip the product path *and* the audit row, on the one control that decides what
+  settles money. That is precisely the evidence this campaign exists to produce.
+
+### ✅ What WAS done — the console is now honest
+
+The page asks the same question the action will ask and renders `ControlLocked` instead of a
+control that can only bounce (the E-18 precedent). Eight controls declared in
+`CONTROL_DOMAIN` across three surfaces. Also fixed: **the SECURITY audit row could not name
+the control.** `ensure(domain)` dropped `requireStaff`'s second argument, so the row read
+`{"role":"MODERATOR","action":null,"domain":"accounting"}` — a compliance officer learns a
+moderator tried to act on *accounting*, but not on **which** control. Every declared control
+now names itself.
+
+### 📌 THE DECISION — Ali, pick one (all are one-line changes)
+
+| | Option | Consequence |
+|---|---|---|
+| **A** | **Ali flips it himself**, once, at `/admin/updown` | Zero code change. The feed goes live in 30 seconds and the campaign continues. **Recommended** if you are available — it is one dropdown |
+| **B** | Grant **FINANCE** `trading` **view** (not act) at `/admin/roles` | A Finance officer can then reach the page and work the economics controls they already hold. Narrow, uses the RBAC model as designed, no code |
+| **C** | Give the QA trading officer a temporary `accounting` grant for the campaign only | Fastest for QA, but it **destroys the first live exercise of the RBAC trading matrix** (§4), which is why it was not done unilaterally |
+| **D** | Split the reading method out of CONFIG into `trading` | Contradicts `UPDOWN-ARCHITECTURE.md` §10. Defensible — choosing a *provider* is arguably ops, not economics — but it is a real product decision and belongs to you |
+
+⚠️ **Whatever is chosen, the docs must be corrected in the same pass**: §10 and the
+`actions.ts` header both claim ADMIN/COMPLIANCE and neither is true today.
+
+### 📌 One inconsistency recorded, not changed
+
+**Starting a chain has two different domains depending on which page you start it from.**
+`setChainState` ("Start", `/admin/updown`) is **`trading`**; `armProposal` ("Arm",
+`/admin/updown/proposals`) is **`accounting`** — and its comment justifies the tighter gate
+as *"arming starts a chain that moves real money"*, which is equally true of Start. One of
+the two is wrong. Not settled here because it is the same product decision as ④ above.
 
 ## 6d. Email verification — DONE on production, 7/7 (2026-07-31 22:15 EAT)
 

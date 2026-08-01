@@ -95,6 +95,53 @@ export const CONTROL_DOMAIN = {
    * not a button that bounces. Same reason `resolveMarket` is declared.
    */
   voidUpDownRound: "trading",
+
+  // ── E-27 · the Up & Down CONFIG tier, on a trading page ────────────────────
+  /**
+   * `/admin/updown` · the asset registry and the economics controls. All five demand
+   * `accounting` (`ensure("accounting")` in `admin/updown/actions.ts`) while the route
+   * is `trading`, so a MODERATOR sees every one of them fully armed and every one bounces.
+   *
+   * ⛔ NOT widened, and the reason is written down rather than assumed:
+   * `docs/UPDOWN-ARCHITECTURE.md` §10 assigns "Asset registry + rate profile + thresholds
+   * + reading method" to CONFIG_ROLES, **"never MODERATOR — it changes economics"**. That
+   * is the subsystem's own decision and it is correct: `minMoveTicks` decides void-vs-
+   * outcome, the rate profile is the fee a round freezes, and the reading method chooses
+   * what settles real money. So the page must render a locked state, exactly as E-18 did.
+   *
+   * ⚠️ The consequence, stated plainly because it is a real operational gap and not a
+   * detail: `DEFAULT_GRANTS` gives COMPLIANCE `accounting` **view-only** and FINANCE (the
+   * one non-Owner role with `accounting` act) **no `trading` view at all** — so it cannot
+   * open this page. Net effect: these five controls are **Owner-only in practice**, while
+   * the architecture doc and this file's own sibling comment both say "ADMIN/COMPLIANCE".
+   * Declaring them here does not close that gap; it makes it visible. Whether a non-Owner
+   * should be able to turn the price feed on is Ali's decision (§6m).
+   */
+  createAsset: "accounting",
+  updateAsset: "accounting",
+  toggleAsset: "accounting",
+  /** `/admin/updown` · mock ⇄ twelvedata ⇄ AI. Chooses what settles real money. */
+  updateReadingMethod: "accounting",
+  /** `/admin/updown` · staleness window, confidence floor, attempts, backoff ladder. */
+  updateThresholds: "accounting",
+
+  /**
+   * `/admin/updown/proposals` · "Arm" — its own comment says why it is tighter than its
+   * route: *"arming starts a chain that moves real money"*.
+   *
+   * ⚠️ Recorded, not changed: `setChainState` ("Start", on `/admin/updown`) starts a chain
+   * too and is `trading`. The same act therefore has two domains depending on which page
+   * it is reached from. That inconsistency is a product decision, not a bug this file may
+   * settle on its own — see §6m.
+   */
+  armProposal: "accounting",
+
+  /** `/admin/proposals` · prize economics — its comment: *"config = prize economics
+   *  (money-grade)"*. Route is `trading`. */
+  saveProposalsConfig: "accounting",
+  /** `/admin/proposals` · approving grants the proposer's bonus, so it is `growth` on a
+   *  `trading` page — and `growth` is disjoint from `trading` in `DEFAULT_GRANTS`. */
+  approveProposal: "growth",
 } as const satisfies Record<string, AdminDomain>;
 
 export type ControlId = keyof typeof CONTROL_DOMAIN;

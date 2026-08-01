@@ -12,6 +12,9 @@ import {
 } from "@/lib/server/updown-proposal";
 import { isPollGenEnabled } from "@/lib/server/ai-controls";
 import { ProposeForm, ReviewActions, ArmAction, DeleteProposalAction, EvidencePanel } from "./proposal-actions";
+import { currentSession } from "@/lib/server/auth-service";
+import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
+import { ControlLocked } from "@/components/admin/control-locked";
 
 export const metadata = { title: "Admin · Up & Down · AI proposals" };
 export const dynamic = "force-dynamic";
@@ -91,6 +94,11 @@ export default async function UpDownProposalsPage() {
     getUpDownConfig(),
     isPollGenEnabled().catch(() => true),
   ]);
+
+  // ⛔ E-27. Arming is `accounting`; this route is `trading`, and DEFAULT_GRANTS makes
+  // them disjoint — so the page must ask before it renders an armed button that can only
+  // bounce and write a SECURITY row for an ordinary click.
+  const canArm = await canUseControl((await currentSession())?.role, "armProposal");
 
   const enabledAssets = assets.filter((a) => a.enabled);
   const assetByKey = new Map(assets.map((a) => [a.id, a]));
@@ -239,7 +247,12 @@ export default async function UpDownProposalsPage() {
                                 blockingReasons={p.filterReasons.map((r) => REASON_LABEL[r] ?? r)}
                               />
                             )}
-                            {p.state === "APPROVED" && (
+                            {/* ⛔ E-27: `armProposal` is `accounting` on a `trading`
+                                page, so ask the same question the action will ask. */}
+                            {p.state === "APPROVED" && !canArm && (
+                              <ControlLocked what="Arm" need={CONTROL_DOMAIN.armProposal} />
+                            )}
+                            {p.state === "APPROVED" && canArm && (
                               <ArmAction
                                 id={p.id}
                                 assetKey={asset?.key ?? "?"}

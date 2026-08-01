@@ -7,7 +7,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { type AdminDomain } from "@/lib/server/roles";
 import { requireStaff } from "@/lib/server/rbac-guard";
-import { CONTROL_DOMAIN } from "@/lib/server/control-gates";
+import { CONTROL_DOMAIN, type ControlId } from "@/lib/server/control-gates";
 import {
   createAsset, updateAsset, setAssetEnabled,
   createChain, updateChain, setChainState,
@@ -33,11 +33,31 @@ import type { MarketCategory } from "@/lib/server/market-service";
 // money-grade → `accounting`; chain start / pause / stop is operational → `trading`.
 // requireStaff enforces the role's canAct for the domain (Owner/ADMIN bypass), audits
 // a blocked attempt, then step-up 2FA. Mirrors the old CONFIG vs MARKET_OPS split.
-async function ensure(domain: AdminDomain) {
-  return requireStaff(domain);
+/**
+ * ⛔ E-27. Every CONFIG-tier control on this page names itself, and takes its domain from
+ * `CONTROL_DOMAIN` rather than a literal here. Two things were wrong before, and they are
+ * different problems with the same cause — the domain living in this file only:
+ *
+ *  1. **The page could not ask the question the action would ask.** `/admin/updown` is a
+ *     `trading` route, so a MODERATOR saw "+ Add asset", the reading-method switch and
+ *     "Save thresholds" fully armed, and every one of them bounced. Proven on production
+ *     2026-08-01 as the QA trading officer: the control armed, `Save reading method`
+ *     enabled, the click refused, `updown.config` unchanged — **with no visible refusal**.
+ *  2. **The audit trail could not name the control.** `ensure(domain)` dropped
+ *     `requireStaff`'s second argument, so the SECURITY row read
+ *     `{"role":"MODERATOR","action":null,"domain":"accounting"}` — a compliance officer
+ *     reading the log learns that a moderator tried to act on *accounting*, but not on
+ *     WHICH control. The pre-migration path recorded `targetId: recheckMarketNow`; moving
+ *     to `requireStaff` silently lost that.
+ *
+ * The domain assignment itself is UNCHANGED and deliberately so — `docs/UPDOWN-
+ * ARCHITECTURE.md` §10 says CONFIG_ROLES, "never MODERATOR — it changes economics".
+ */
+async function ensure(domain: AdminDomain, control?: ControlId) {
+  return requireStaff(domain, control);
 }
 
-const ensureConfig = () => ensure("accounting");
+/** Chain start / pause / stop — operational, and genuinely this route's own domain. */
 const ensureOps = () => ensure("trading");
 
 const refresh = () => revalidatePath("/admin/updown");
@@ -52,7 +72,7 @@ const num = (fd: FormData, k: string): number | undefined => {
 // ── Assets (CONFIG tier — the source real money resolves against) ────────────
 
 export async function createAssetAction(formData: FormData) {
-  const session = await ensureConfig();
+  const session = await ensure(CONTROL_DOMAIN.createAsset, "createAsset");
   try {
     const r = await createAsset({
       key: String(formData.get("key") ?? ""),
@@ -76,7 +96,7 @@ export async function createAssetAction(formData: FormData) {
 }
 
 export async function updateAssetAction(formData: FormData) {
-  const session = await ensureConfig();
+  const session = await ensure(CONTROL_DOMAIN.updateAsset, "updateAsset");
   const id = String(formData.get("id") ?? "");
   try {
     const r = await updateAsset(id, {
@@ -96,7 +116,7 @@ export async function updateAssetAction(formData: FormData) {
 }
 
 export async function toggleAssetAction(formData: FormData) {
-  const session = await ensureConfig();
+  const session = await ensure(CONTROL_DOMAIN.toggleAsset, "toggleAsset");
   const id = String(formData.get("id") ?? "");
   const enabled = String(formData.get("enabled") ?? "false") === "true";
   try {
@@ -245,7 +265,7 @@ export async function voidRoundAction(formData: FormData) {
  * between a mis-click and invented prices on a live round.
  */
 export async function updateReadingMethodAction(formData: FormData) {
-  const session = await ensureConfig();
+  const session = await ensure(CONTROL_DOMAIN.updateReadingMethod, "updateReadingMethod");
   try {
     const method = String(formData.get("observationMethod") ?? "").trim();
     const provider = String(formData.get("feedProvider") ?? "").trim();
@@ -273,7 +293,7 @@ export async function updateReadingMethodAction(formData: FormData) {
 }
 
 export async function updateThresholdsAction(formData: FormData) {
-  const session = await ensureConfig();
+  const session = await ensure(CONTROL_DOMAIN.updateThresholds, "updateThresholds");
   try {
     const marginPct = num(formData, "defaultMarginPct");
     const r = await setUpDownConfig({

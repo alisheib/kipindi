@@ -4,6 +4,8 @@ import { getProposalsConfig, type ProposalsState } from "@/lib/server/proposals-
 import { getAdminProposalStats, getAdminQueue } from "@/lib/server/proposals-service";
 import { formatTzs, formatNumber } from "@/lib/utils";
 import { AdminProposalsClient } from "./admin-proposals-client";
+import { currentSession } from "@/lib/server/auth-service";
+import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
 
 export const metadata = { title: "Proposals · Admin" };
 export const dynamic = "force-dynamic";
@@ -26,6 +28,15 @@ export default async function AdminProposalsPage() {
   const stats = await getAdminProposalStats();
   const queue = await getAdminQueue("all");
 
+  // ⛔ E-27. Two controls on this `trading` page demand other domains — prize config is
+  // `accounting`, approving is `growth` (it credits a real bonus). Ask the same question
+  // the actions will ask, rather than offering controls that can only bounce.
+  const role = (await currentSession())?.role;
+  const [canSaveConfig, canApprove] = await Promise.all([
+    canUseControl(role, "saveProposalsConfig"),
+    canUseControl(role, "approveProposal"),
+  ]);
+
   return (
     <>
       <AdminPageHead
@@ -44,7 +55,14 @@ export default async function AdminProposalsPage() {
         </div>
 
         {/* Interactive queue + review + config editor */}
-        <AdminProposalsClient config={config} queue={queue} />
+        <AdminProposalsClient
+          config={config}
+          queue={queue}
+          canSaveConfig={canSaveConfig}
+          canApprove={canApprove}
+          needSaveConfig={CONTROL_DOMAIN.saveProposalsConfig}
+          needApprove={CONTROL_DOMAIN.approveProposal}
+        />
       </div>
     </>
   );
