@@ -1822,6 +1822,62 @@ workstation shows an SLA countdown, but nothing escalates when it runs out. Ali'
 
 ## 6b. NEXT SESSION — start here
 
+### 🔴 Laptop B, session 7 (2026-08-01, late) — THE FEED IS FIXED BUT NOT ON. Read this first; it supersedes everything below.
+
+**The one-line summary: the feed could never have worked, and now it can — but only Ali can
+switch it on.** Five findings shipped, all live-verified; E-23 fully closed.
+
+| | Shipped, deployed, verified on production |
+|---|---|
+| `261dc921` | **E-25 + E-26** — the TwelveData reader dated quotes from the **`1day` OHLC bar** instead of `last_quote_at`, making the 90 s staleness gate **unsatisfiable on every asset forever**. Plus `ops:updown-probe-feed`, because neither named ops script can see the feed at all |
+| `a20c1970` | **E-27 + E-28** — `/admin/updown` offered a MODERATOR five armed `accounting` controls that could only bounce; and the drift detector built to catch exactly that had gone **blind** to the `requireStaff` idiom and certified four offenders as clean |
+| `32dea4f1` | **E-23 CLOSED + E-29** — the enabled *Void & refund* control photographed at four widths **and used** on production; reading back its audit row exposed a settlement note that claimed price observations on **1,397 of 1,397** rows that had none |
+
+Guards: `test:updown-feed` **21 → 33** · `test:control-gates` **101 → 209** ·
+`test:updown-heal` **97 → 115**. Every one proven red against the real defect.
+Live suites: E-27 **25/25**, E-23 **24/24**, E-29 **9/9**.
+
+⛔ **STOPPED HERE BECAUSE THE NEXT STEP IS ALI'S, NOT A SESSION'S.** See §6m: the
+intersection of "can act on `accounting`" and "can view a `trading` page" is **`{ADMIN}`**,
+so **nobody but the Owner can flip `feedProvider`**. Widening it would destroy the first
+live exercise of the RBAC matrix (§4); writing it straight into `SystemConfig` would skip
+the product path and the audit row on the one control that decides what settles money.
+Four costed options are in §6m — **A (Ali flips it himself, 30 seconds) is recommended.**
+
+⏭️ **RESUME AT — in this order:**
+
+① **Ali's answer to §6m.** Everything below ② is blocked on it.
+② **THE RUN THAT HAS STILL NEVER HAPPENED**: with the feed on, drive a round
+   **open → a price CONFIRMS → resolves with a real winner AND a real loser → money lands
+   in a wallet**, and watch TwelveData usage move off 0/800. The feed is now *proven
+   capable* — `ops:updown-probe-feed` returned **2/2 WOULD CONFIRM at 39 s skew** on real
+   production credentials — but no round has ever confirmed a price.
+   ⚠️ **Use `XAU/USD`, not `SNP500`.** `SPX` is **404 on the live plan** (*"available
+   starting with the Grow or Venture plan"*), so the S&P asset cannot be fed at all.
+   ⚠️ The asset must also be re-pointed at `https://api.twelvedata.com/quote` with
+   `sourceDomain: twelvedata.com`, and **`twelvedata.com` is NOT yet an enabled
+   `TrustedSource`** — add it at `/admin/sources` first. Both are `accounting`, i.e. the
+   same gate as ①.
+③ **The control market `mkt_4969c3dd29fde8742618`** — ⏳ **NOT DUE YET, do not read this as
+   a failure.** Its objection window closes **2026-08-02 09:54:13Z**, which was still
+   **12 h 22 m** away at the end of this session. State verified correct and unaided so
+   far: `RESOLVED`/`YES`, `settledAt: null`, both positions `OPEN`. After 09:54Z it must
+   settle **by itself** and pay `alpha` 5,000 + 4,350. **Verify it; do not clear it.**
+④ **The interaction-state visual sweep — NOT STARTED.** Hovers, dropdowns, modals, focus,
+   keyboard, The Needle; EN/SW/ZH × 4 widths, including `/admin/updown/proposals`, which
+   has still never been width-audited. ⚠️ `test:responsive` needs `next dev` running and
+   outlives a 10-minute tool timeout — run it detached; it and `test:trilingual` are flaky
+   under a full run, so re-run a failure alone before believing it.
+
+📌 **Two product decisions recorded this session that are NOT bugs and need Ali, not code:**
+the chain-start domain is inconsistent (`trading` from Overview, `accounting` from the
+proposal queue — §6m), and the retry ladder works *against* a fresh-quote feed (attempt 4
+at ~T+180 s is necessarily >90 s from the boundary — §6l).
+
+🔒 **Left exactly as found**: all four chains `STOPPED`/`PAUSED`, **zero stranded money**
+(both rounds this session opened carried 0 predictors and both settled), `feedProvider`
+still `mock`.
+
 ### 🟢 Laptop B, session 6 (2026-08-01) — THE BRANCH IS MERGED. Read this first.
 
 `origin/feat/updown-source-pinning-and-proposals` is merged into `qa/live-experience` and
