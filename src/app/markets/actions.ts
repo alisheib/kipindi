@@ -9,6 +9,7 @@ import { isSourceTrusted, seedDefaultSources } from "@/lib/server/source-registr
 import { db, type ObjectionReason } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
 import { canAct } from "@/lib/server/rbac";
+import { CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import { requireAdminTotp } from "@/lib/server/admin-guard";
 
 /**
@@ -49,16 +50,20 @@ export async function mintWinShareTokenAction(positionId: string): Promise<{ ok:
  *  market. Regulator: GBT / LCCP "least-privilege" + ISO 27001 A.9. */
 // RBAC: market write actions are `trading` — canAct consults the role's grant
 // (Owner/ADMIN bypasses). Resolution is separately two-officer-gated in market-service.
+// E-18: the domain comes from control-gates.ts, the ONE place the resolver-queue page
+// also reads to decide whether to render Resolve YES/NO/VOID at all. Note the name is
+// historical — this guard admits any role with `trading` ACT, not only ADMIN.
 async function requireAdminOrThrow(userId: string, action: string) {
+  const domain = CONTROL_DOMAIN.resolveMarket;
   const user = await db.user.findById(userId);
-  if (!user || !(user.role === "ADMIN" || (await canAct(user.role, "trading")))) {
+  if (!user || !(user.role === "ADMIN" || (await canAct(user.role, domain)))) {
     audit({
       category: "SECURITY",
       action: "privilege_escalation_blocked",
       actorId: userId,
       targetType: "Action",
       targetId: action,
-      payload: { role: user?.role ?? "unknown" },
+      payload: { role: user?.role ?? "unknown", domain },
     });
     throw new Error("Forbidden: admin role required.");
   }
@@ -154,14 +159,17 @@ export async function emergencyVoidMarketAction(formData: FormData) {
   const session = await currentSession();
   if (!session) redirect("/auth/login");
   const user = await db.user.findById(session.userId);
-  if (!user || !(user.role === "ADMIN" || (await canAct(user.role, "compliance")))) {
+  // E-18: `/admin/markets` is `trading`, this action is `compliance` — one definition
+  // (control-gates.ts) so the page can hide the control instead of offering a kill
+  // switch that refuses and logs the click as a privilege escalation.
+  if (!user || !(user.role === "ADMIN" || (await canAct(user.role, CONTROL_DOMAIN.emergencyVoidMarket)))) {
     audit({
       category: "SECURITY",
       action: "privilege_escalation_blocked",
       actorId: session.userId,
       targetType: "Action",
       targetId: "emergencyVoidMarketAction",
-      payload: { role: user?.role ?? "unknown" },
+      payload: { role: user?.role ?? "unknown", domain: CONTROL_DOMAIN.emergencyVoidMarket },
     });
     return { ok: false as const, error: "Forbidden: ADMIN or COMPLIANCE role required.", code: "INVALID" as const };
   }

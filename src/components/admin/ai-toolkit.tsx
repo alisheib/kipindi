@@ -10,6 +10,15 @@
  * Kit only: <Toggle>, <ConfirmModal>, <I> glyphs, glass-panel popover. Enabling
  * auto-resolve overrides the two-officer rule, so it is the one switch gated behind a
  * claret confirm; the rest apply directly (reversible, not money-moving).
+ *
+ * ⚠️ `canAct` (finding E-19) — this dropdown lives in the admin SHELL HEADER, so it
+ * renders on EVERY admin page for every role that can open the console, while all four
+ * of its actions require `compliance`. A MODERATOR therefore saw four switches that
+ * refused, and each refused click wrote a SECURITY `privilege_escalation_blocked` row.
+ * The switches stay compliance-only (AI spend + resolution policy; roles.ts CONFIG_ROLES
+ * says "NEVER MODERATOR") — but the panel now renders READ-ONLY for anyone who cannot
+ * work it, because knowing whether AI resolution is paused is exactly what a trading
+ * officer needs. See lib/server/control-gates.ts.
  */
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
@@ -26,7 +35,7 @@ import {
   setAutoResolveAction,
 } from "@/app/admin/_actions/ai-toolkit";
 
-export function AiToolkit({ status }: { status: AiToolkitStatus }) {
+export function AiToolkit({ status, canAct = true }: { status: AiToolkitStatus; canAct?: boolean }) {
   const [open, setOpen] = useState(false);
   const [confirmAuto, setConfirmAuto] = useState(false);
   const [pending, start] = useTransition();
@@ -146,13 +155,13 @@ export function AiToolkit({ status }: { status: AiToolkitStatus }) {
                 icon={<I.bot s={14} />}
                 label="Help chatbot"
                 hint={chatbotEnabled ? "Player help assistant is live." : "Chat widget hidden; no AI calls."}
-                on={chatbotEnabled} disabled={pending} onClick={toggleChatbot}
+                on={chatbotEnabled} disabled={pending} onClick={toggleChatbot} readOnly={!canAct}
               />
               <ToggleRow
                 icon={<I.shieldcheck s={14} />}
                 label="AI market resolution"
                 hint={resolutionActive ? "AI checks each market at its resolve date." : "Paused — markets go to the human ceremony."}
-                on={resolutionActive} disabled={pending} onClick={toggleResolution}
+                on={resolutionActive} disabled={pending} onClick={toggleResolution} readOnly={!canAct}
               />
               <ToggleRow
                 icon={<I.bolt s={14} />}
@@ -166,13 +175,25 @@ export function AiToolkit({ status }: { status: AiToolkitStatus }) {
                 disabled={pending || !resolutionActive}
                 onClick={toggleAuto}
                 warn={autoResolve && resolutionActive}
+                readOnly={!canAct}
               />
               <ToggleRow
                 icon={<I.sparkle s={14} />}
                 label="AI poll generation"
                 hint={pollGenEnabled ? "Admins can generate market ideas." : "Generator blocked."}
-                on={pollGenEnabled} disabled={pending} onClick={togglePollGen}
+                on={pollGenEnabled} disabled={pending} onClick={togglePollGen} readOnly={!canAct}
               />
+              {/* E-19: say WHY the switches are inert, so the panel reads as a status
+                  board rather than a broken console. */}
+              {!canAct && (
+                <p className="flex items-start gap-1.5 pt-0.5 text-[10.5px] leading-snug text-text-subtle">
+                  <I.lock s={11} aria-hidden className="mt-[1px] shrink-0" />
+                  <span>
+                    Status only — switching an AI feature is a <strong className="text-text-tertiary">compliance</strong> decision.
+                    Ask an Admin or Compliance officer.
+                  </span>
+                </p>
+              )}
             </div>
           )}
 
@@ -216,9 +237,11 @@ export function AiToolkit({ status }: { status: AiToolkitStatus }) {
 }
 
 function ToggleRow({
-  icon, label, hint, on, disabled, onClick, warn,
+  icon, label, hint, on, disabled, onClick, warn, readOnly,
 }: {
   icon: React.ReactNode; label: string; hint: string; on: boolean; disabled?: boolean; onClick: () => void; warn?: boolean;
+  /** E-19: the viewer may SEE this switch but not work it — render its state, not a control. */
+  readOnly?: boolean;
 }) {
   return (
     <div className="flex items-center justify-between gap-3 rounded-md border border-border-subtle bg-bg-inset px-3 py-2">
@@ -228,7 +251,20 @@ function ToggleRow({
         </p>
         <p className="mt-0.5 text-[10.5px] text-text-tertiary leading-snug">{hint}</p>
       </div>
-      <Toggle on={on} disabled={disabled} onClick={onClick} aria-label={`${label}: ${on ? "on" : "off"}`} />
+      {readOnly ? (
+        // A STATE, not a disabled control: a greyed-out toggle reads as "temporarily
+        // unavailable, try again", which is not what is happening.
+        <span
+          aria-label={`${label}: ${on ? "on" : "off"} (read-only)`}
+          className={`shrink-0 rounded-md border px-1.5 py-0.5 font-mono text-[9.5px] uppercase tracking-[0.12em] ${
+            on ? "border-border-strong bg-bg-elevated text-text-secondary" : "border-border bg-bg-overlay text-text-subtle"
+          }`}
+        >
+          {on ? "On" : "Off"}
+        </span>
+      ) : (
+        <Toggle on={on} disabled={disabled} onClick={onClick} aria-label={`${label}: ${on ? "on" : "off"}`} />
+      )}
     </div>
   );
 }

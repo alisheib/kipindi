@@ -22,17 +22,24 @@ import { audit } from "@/lib/server/audit";
 import { safeError } from "@/lib/server/safe-error";
 import { requireAdminTotp } from "@/lib/server/admin-guard";
 import { canAct } from "@/lib/server/rbac";
+import { CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import { moneyMode } from "@/lib/server/runtime-mode";
+
+// E-19: this toolkit renders in the admin SHELL HEADER — on every admin page, for every
+// role that can open the console — so its domain can never be inferred from a route.
+// One definition, shared with the shell, which reads it to decide whether to render
+// switches or a read-only status board. See lib/server/control-gates.ts.
+const DOMAIN = CONTROL_DOMAIN.aiToolkit;
 
 async function gate(action: string): Promise<{ ok: true; userId: string } | { ok: false; error: string }> {
   const session = await currentSession();
   if (!session) redirect("/auth/admin");
   const user = await db.user.findById(session.userId);
-  if (!user || !(user.role === "ADMIN" || (await canAct(user.role, "compliance")))) {
+  if (!user || !(user.role === "ADMIN" || (await canAct(user.role, DOMAIN)))) {
     audit({
       category: "SECURITY", action: "privilege_escalation_blocked",
       actorId: session.userId, targetType: "Action", targetId: action,
-      payload: { role: user?.role ?? "unknown", domain: "compliance" },
+      payload: { role: user?.role ?? "unknown", domain: DOMAIN },
     });
     return { ok: false, error: "Forbidden: compliance access is required (AI controls include the auto-resolve governance switch)." };
   }

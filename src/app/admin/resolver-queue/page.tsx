@@ -14,6 +14,9 @@ import { ResolveControls } from "./resolve-controls";
 import { TwoAdminToggle } from "./two-admin-toggle";
 import { RecheckButton } from "./recheck-button";
 import { getRequireTwoOfficerResolution } from "@/lib/server/resolution-policy";
+import { currentSession } from "@/lib/server/auth-service";
+import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
+import { ControlLocked } from "@/components/admin/control-locked";
 import { formatDateTime } from "@/lib/utils";
 import { CEREMONY, SELECTION } from "@/lib/admin-status-lexicon";
 
@@ -80,6 +83,18 @@ export default async function ResolverQueuePage({
   // Two-admin authorization: OFF (default) = single admin resolves in one action;
   // ON = two-officer ceremony. This is the ONE place it is controlled.
   const requireTwoOfficer = await getRequireTwoOfficerResolution().catch(() => false);
+
+  // E-18: this page is the `trading` domain, but two of its three controls demand
+  // `compliance` — disjoint sets under DEFAULT_GRANTS. Ask the SAME question the
+  // actions will ask (one definition, control-gates.ts) and render a read-only state
+  // instead of a control that refuses and logs the click as a SECURITY event.
+  // Mirrors admin/objections' `canDecide`.
+  const session = await currentSession();
+  const [canRecheck, canSetPolicy, canResolve] = await Promise.all([
+    canUseControl(session?.role, "recheckMarketNow"),
+    canUseControl(session?.role, "setTwoAdminAuth"),
+    canUseControl(session?.role, "resolveMarket"),
+  ]);
   // NOTE: the AI resolution pause + auto-resolve toggles live ONLY in the admin
   // top-bar "AI toolkit" dropdown (one place, no redundancy). This page owns the
   // two-admin authorization toggle + the per-market re-check.
@@ -97,7 +112,17 @@ export default async function ResolverQueuePage({
         sw="Foleni ya utatuzi"
         actions={
           <div className="flex items-center gap-2.5 flex-wrap">
-            <TwoAdminToggle enabled={requireTwoOfficer} />
+            {canSetPolicy ? (
+              <TwoAdminToggle enabled={requireTwoOfficer} />
+            ) : (
+              // Still shows WHICH mode is live — a trading officer needs to know
+              // whether a resolution will take one officer or two — but does not
+              // offer the switch, which is a compliance decision (POCA §16).
+              <ControlLocked
+                what={requireTwoOfficer ? "Two-admin auth" : "Single-admin"}
+                need={CONTROL_DOMAIN.setTwoAdminAuth}
+              />
+            )}
             <div className="flex items-center gap-2.5 font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle">
               <span>{pending.length} pending</span>
               {overdueCount > 0 && <><span className="text-border">·</span><span className="text-claret-300">{overdueCount} overdue</span></>}
@@ -288,9 +313,17 @@ export default async function ResolverQueuePage({
                   )}
 
                   <div className="p-4 space-y-3">
-                    <ResolveControls marketId={m.id} stage={stage1 ? "stage2" : "stage1"} stagedOutcome={m.resolvedOutcome} twoAdmin={requireTwoOfficer} />
+                    {canResolve ? (
+                      <ResolveControls marketId={m.id} stage={stage1 ? "stage2" : "stage1"} stagedOutcome={m.resolvedOutcome} twoAdmin={requireTwoOfficer} />
+                    ) : (
+                      <ControlLocked what="Resolve YES / NO / VOID" need={CONTROL_DOMAIN.resolveMarket} block />
+                    )}
                     {/* Per-market AI re-check (replaces the old global sentinel sweep). */}
-                    <RecheckButton marketId={m.id} />
+                    {canRecheck ? (
+                      <RecheckButton marketId={m.id} />
+                    ) : (
+                      <ControlLocked what="Re-check this market now" need={CONTROL_DOMAIN.recheckMarketNow} block />
+                    )}
                     {/* Full evidence-first ceremony (evidence excerpt + typed-SEAL). */}
                     <Link
                       href={`/admin/resolver/${m.id}` as never}

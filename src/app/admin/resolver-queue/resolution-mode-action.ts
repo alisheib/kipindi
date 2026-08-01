@@ -23,16 +23,22 @@ import { audit } from "@/lib/server/audit";
 import { safeError } from "@/lib/server/safe-error";
 import { requireAdminTotp } from "@/lib/server/admin-guard";
 import { canAct } from "@/lib/server/rbac";
+import { CONTROL_DOMAIN } from "@/lib/server/control-gates";
+
+// E-18: the domain is NOT hard-coded here. This page is `trading` while this action
+// is `compliance`, so the queue must be able to ask the very same question before it
+// renders the button — one definition, in control-gates.ts.
+const DOMAIN = CONTROL_DOMAIN.recheckMarketNow;
 
 async function gate(action: string): Promise<{ ok: true; userId: string } | { ok: false; error: string }> {
   const session = await currentSession();
   if (!session) redirect("/auth/admin");
   const user = await db.user.findById(session.userId);
-  if (!user || !(user.role === "ADMIN" || (await canAct(user.role, "compliance")))) {
+  if (!user || !(user.role === "ADMIN" || (await canAct(user.role, DOMAIN)))) {
     audit({
       category: "SECURITY", action: "privilege_escalation_blocked",
       actorId: session.userId, targetType: "Action", targetId: action,
-      payload: { role: user?.role ?? "unknown", domain: "compliance" },
+      payload: { role: user?.role ?? "unknown", domain: DOMAIN },
     });
     return { ok: false, error: "Forbidden: compliance access is required." };
   }

@@ -47,6 +47,7 @@
     "test:product-line": "tsx scripts/product-line.test.mts",
     "test:updown-config": "tsx scripts/updown-config.test.mts",
     "test:admin-nav": "tsx scripts/admin-nav.test.mts",
+    "test:control-gates": "tsx scripts/control-gates.test.mts",
     "test:updown-engine": "tsx scripts/updown-engine.test.mts",
     "test:updown-adversarial": "tsx scripts/updown-adversarial.test.mts",
     "test:updown-reporting": "tsx scripts/updown-reporting.test.mts",

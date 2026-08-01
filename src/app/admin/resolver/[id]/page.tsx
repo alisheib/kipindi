@@ -11,6 +11,8 @@ import { getRequireTwoOfficerResolution } from "@/lib/server/resolution-policy";
 import { getAuditPage } from "@/lib/server/audit";
 import { officerLabel } from "@/lib/server/actor-label";
 import { currentSession } from "@/lib/server/auth-service";
+import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
+import { ControlLocked } from "@/components/admin/control-locked";
 import { formatDateTime, formatTzs } from "@/lib/utils";
 import { CEREMONY, SELECTION, bi } from "@/lib/admin-status-lexicon";
 import { ResolutionCeremony } from "./resolution-ceremony";
@@ -45,6 +47,8 @@ export default async function ResolutionCeremonyPage({ params }: { params: Promi
   // officer, so a same-officer countersign is blocked.
   const requireTwoOfficer = await getRequireTwoOfficerResolution().catch(() => false);
   const isSelfCountersign = requireTwoOfficer && stage === "stage2" && !!currentOfficerId && currentOfficerId === stage1By;
+  // E-18: ask the same question `resolveMarketAction` will ask, before offering the seal.
+  const canResolve = await canUseControl(session?.role, "resolveMarket");
 
   const [officerA, officerB] = await Promise.all([officerLabel(stage1By), officerLabel(stage2By)]);
 
@@ -249,7 +253,7 @@ export default async function ResolutionCeremonyPage({ params }: { params: Promi
                     </p>
                   </div>
                 </div>
-              ) : (
+              ) : canResolve ? (
                 <ResolutionCeremony
                   marketId={m.id}
                   stage={stage}
@@ -257,6 +261,12 @@ export default async function ResolutionCeremonyPage({ params }: { params: Promi
                   isSelfCountersign={isSelfCountersign}
                   twoAdmin={requireTwoOfficer}
                 />
+              ) : (
+                // E-18, same class as the resolver queue: this page is `trading` VIEW,
+                // but sealing needs `trading` ACT. A viewer with view-only (the Owner
+                // can create one live at /admin/roles) reads the evidence without
+                // being offered a typed-SEAL that would refuse.
+                <ControlLocked what="Seal this verdict" need={CONTROL_DOMAIN.resolveMarket} block />
               )}
             </AdminCard>
 

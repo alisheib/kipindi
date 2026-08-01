@@ -14,6 +14,9 @@ import { formatTzs, formatDateTime } from "@/lib/utils";
 import { SELECTION } from "@/lib/admin-status-lexicon";
 import { MarketStatusBadge } from "@/components/admin/status-badge";
 import { EmergencyVoidControl } from "./emergency-void-control";
+import { currentSession } from "@/lib/server/auth-service";
+import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
+import { ControlLocked } from "@/components/admin/control-locked";
 
 export const metadata = { title: "Admin · Markets curation" };
 export const dynamic = "force-dynamic";
@@ -38,6 +41,10 @@ export default async function AdminMarketsPage({
   searchParams: Promise<{ q?: string; status?: string; category?: string; page?: string; sort?: string; dir?: string }>;
 }) {
   const sp = await searchParams;
+  // E-18: this page is `trading`, but the emergency-void kill switch is `compliance`.
+  // Ask the same question the action will ask before offering it.
+  const session = await currentSession();
+  const canEmergencyVoid = await canUseControl(session?.role, "emergencyVoidMarket");
   const query = (sp.q ?? "").trim().toLowerCase();
   // Validate against closed sets so a typo'd ?status=LIV doesn't silently
   // erase the table — fall back to "no filter" instead.
@@ -214,7 +221,11 @@ export default async function AdminMarketsPage({
                       </td>
                       <td>
                         {(m.status === "LIVE" || m.status === "CLOSED") ? (
-                          <EmergencyVoidControl marketId={m.id} title={m.titleEn} />
+                          canEmergencyVoid ? (
+                            <EmergencyVoidControl marketId={m.id} title={m.titleEn} />
+                          ) : (
+                            <ControlLocked what="Emergency void" need={CONTROL_DOMAIN.emergencyVoidMarket} />
+                          )
                         ) : (
                           <span className="font-mono text-[10.5px] text-text-tertiary">—</span>
                         )}

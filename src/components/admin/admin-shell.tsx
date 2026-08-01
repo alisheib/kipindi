@@ -13,6 +13,7 @@ import { AdminSidebarNav } from "./admin-sidebar-nav";
 import { RefreshButton } from "./refresh-button";
 import { AiToolkit } from "./ai-toolkit";
 import { getAiToolkitStatus } from "@/lib/server/ai-controls";
+import { canUseControl } from "@/lib/server/control-gates";
 import { filterNavGroups } from "./admin-nav-groups";
 import { roleLabel, type AdminDomain } from "@/lib/server/roles";
 import { AdminSpark } from "./admin-charts";
@@ -146,7 +147,14 @@ export async function AdminTopBar({ crumbs, session, activeKey, viewDomains, isO
             market resolution, auto-resolve, poll generation). Replaces the old
             per-feature toggles + the removed sentinel countdown, so no AI control
             lives in two places. */}
-        <AiToolkit status={await getAiToolkitStatus()} />
+        {/* E-19: the switches are `compliance`; this bar renders for every console
+            role. Ask the same question the actions will ask, so a role that cannot
+            work them gets a read-only status board instead of four switches that
+            refuse (and log the click as a SECURITY event). */}
+        <AiToolkit
+          status={await getAiToolkitStatus()}
+          canAct={await canUseControl(session.role, "aiToolkit")}
+        />
         {/* No notification bell here — the platform's main bell (in AppShell's
             top bar) is the single notification surface for everyone, admins
             included. New-KYC alerts arrive there as in-app notifications. */}
