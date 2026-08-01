@@ -112,12 +112,19 @@ export async function AdminTopBar({ crumbs, session, activeKey, viewDomains, isO
       <div className="mx-auto w-full max-w-console h-full flex items-center justify-between px-4 lg:px-6 gap-3">
       <div className="flex items-center gap-2 min-w-0">
         <AdminMobileNavTrigger groups={groups} badges={badges} activeKey={activeKey} />
+      {/* ⛔ E-30, second surface, SAME root cause as the AdminKpi delta below: a flex item
+          defaults to `min-width: auto`, which refuses to shrink below its content. The
+          `nav` already carried `min-w-0 overflow-hidden` and each crumb already carried
+          `truncate` — but the per-crumb WRAPPER in between had neither, so it would not
+          shrink and `truncate` could never engage. Measured at 768: "Admin / Up & Down /
+          Proposals" ran 34px past the nav, in all three locales.
+          `shrink-0` on the separator keeps "/" from being the thing that collapses. */}
       <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-body-sm text-text-tertiary min-w-0 overflow-hidden">
         {crumbs.map((c, i) => {
           const isLast = i === crumbs.length - 1;
           return (
-            <span key={i} className="flex items-center gap-2">
-              {i > 0 && <span className="text-text-tertiary opacity-50">/</span>}
+            <span key={i} className="flex items-center gap-2 min-w-0">
+              {i > 0 && <span className="text-text-tertiary opacity-50 shrink-0">/</span>}
               <span className={isLast ? "font-semibold text-text truncate" : "truncate"}>{c}</span>
             </span>
           );
@@ -289,7 +296,23 @@ export function AdminKpi({
         <div className="text-text-tertiary italic leading-tight" style={{ fontSize: 10.5 }}>{sw}</div>
       )}
       {(spark || delta) && (
-        <div className="mt-auto flex items-end gap-2">
+        /**
+         * ⛔ E-30 · `min-w-0` IS LOad-BEARING HERE. A flex item's default `min-width:auto`
+         * refuses to shrink below its content, so `whitespace-nowrap` on the delta made the
+         * row wider than the card and the text was clipped mid-word by the card's own edge.
+         *
+         * The previous mitigation was a COMMENT asking every caller to "keep every delta
+         * SHORT" — and the very line that carried that comment was clipped anyway
+         * (`0 review · 0 arm`, 21px over at 360px, in all three locales; the author had
+         * already shortened "armed" to "arm" and it was still too long). A convention that
+         * its own author cannot satisfy while writing it down is not a mitigation.
+         *
+         * Measured, not assumed: it did not show up as page overflow, because clipping
+         * INSIDE a card never reaches `document.scrollWidth`. Only a per-element scan or a
+         * human looking at the screenshot finds it. So the component truncates instead —
+         * `title` keeps the full string reachable on hover and to a screen reader.
+         */
+        <div className="mt-auto flex items-end gap-2 min-w-0">
           {/* A8 spark slot — royal mini-series, aqua reserved for live feeds. */}
           {series && series.length >= 2 && (
             <div className="flex-1 min-w-0 self-center">
@@ -298,8 +321,10 @@ export function AdminKpi({
           )}
           {delta && (
             <span
+              title={delta}
               className={[
                 "font-mono text-micro px-2 py-0.5 rounded-sm whitespace-nowrap ml-auto",
+                "min-w-0 max-w-full overflow-hidden text-ellipsis",
                 deltaDir === "up"
                   ? "bg-brand-500/15 text-brand-300"
                   : "bg-bg-sunken text-text-tertiary",
