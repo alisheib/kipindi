@@ -54,7 +54,6 @@
     "final-visual-sweep.mjs",
     "flow-architecture-e2e.mjs",
     "full-flow-audit.mjs",
-    "generate-pdfs.mjs",
     "glitch-hunter.mjs",
     "golden-path-test.mjs",
     "haptics-e2e.mjs",

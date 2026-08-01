@@ -28,9 +28,13 @@ import { randomId } from "./crypto";
 import { loadConfig, saveConfig } from "./config-store";
 import { isSourceTrusted, normalizeDomain } from "./source-registry";
 import { validateRateConfig } from "./market-config";
+// The money lives on the market row, never in the Up & Down tables — the source lock needs
+// it to tell an operator what is actually riding on the rounds it is refusing to strand.
+import { marketStore } from "./market-dal";
 import { assetStore, chainStore, roundStore, type StoredAsset, type StoredChain, type ChainState } from "./updown-dal";
 import type { RateConfig } from "./market-config";
 import type { MarketCategory } from "./market-service";
+import type { FeedProviderId } from "./updown-feed";
 
 // ---------------------------------------------------------------------------
 // Product-level configuration
@@ -47,10 +51,28 @@ export type Duration = (typeof ALLOWED_DURATIONS)[number];
 
 export type UpDownConfig = {
   /**
+   * HOW a boundary's price is obtained. One control, one place.
+   *
+   * ⛔ `"feed"` IS THE ONLY METHOD THAT CAN ACTUALLY WORK, and the default for that
+   * reason. `"ai"` — a model reading an approved web page — was the original design and
+   * is provably incapable of meeting `maxStalenessSeconds`: probing candidate pages
+   * through the real oracle prompt (`scripts/ops-updown-verify-source.mts`) returned
+   * either a price with NO timestamp or one 9 hours to 7.3 days old, whether read by
+   * `web_search` (crawl-index snippets) or `web_fetch` (cached pages, or client-side
+   * widgets with nothing to read). Production proved it: 1,398 rounds opened, ZERO
+   * readings confirmed, real player money stranded.
+   *
+   * `"ai"` is kept selectable because it is built, tested, and honest about refusing —
+   * but an operator choosing it should expect every round to void and refund.
+   */
+  observationMethod: "feed" | "ai";
+  /** Which market-data provider `"feed"` uses. `mock` refuses in production by construction. */
+  feedProvider: FeedProviderId;
+  /**
    * How far the source's OWN quoted timestamp may sit from the grid boundary before
-   * the reading is refused. This is the honesty control: an LLM web-search cannot
-   * report the price at an exact second, so we bound how stale a reading may be and
-   * show the source's time rather than pretending it is ours.
+   * the reading is refused. This is the honesty control: the source publishes when IT
+   * priced the asset, we bound how stale that may be, and every surface shows the
+   * source's time rather than pretending it is ours.
    */
   maxStalenessSeconds: number;
   /** Minimum AI confidence (0-100) to accept a price observation. */
@@ -92,6 +114,11 @@ export type UpDownConfig = {
 };
 
 export const DEFAULT_UPDOWN_CONFIG: UpDownConfig = {
+  // `feed` by default because it is the only method that can meet the staleness window —
+  // see the field comment. `mock` refuses in production by construction, so a fresh
+  // deployment cannot accidentally settle money on an invented price.
+  observationMethod: "feed",
+  feedProvider: "mock",
   maxStalenessSeconds: 90,
   confidenceThreshold: 85,
   maxObservationAttempts: 4,
@@ -176,17 +203,34 @@ export async function setUpDownConfig(
       return { ok: false, error: "Observation attempts must be 1-10." };
     }
   }
+  if (updates.observationMethod !== undefined) {
+    if (updates.observationMethod !== "feed" && updates.observationMethod !== "ai") {
+      return { ok: false, error: 'Observation method must be "feed" or "ai".' };
+    }
+  }
+  if (updates.feedProvider !== undefined) {
+    if (updates.feedProvider !== "mock" && updates.feedProvider !== "twelvedata") {
+      return { ok: false, error: 'Feed provider must be "mock" or "twelvedata".' };
+    }
+  }
   if (updates.retryBackoffSeconds !== undefined) {
-    // Validated for the first time in E-24, because for the first time it is READ.
-    // A 0 or negative rung would make the healer re-dial the paid oracle on every
+    // Validated for the first time in E-24, because for the first time it is READ —
+    // by `retryDelaySeconds()` below, and by nothing else.
+    // A 0 or negative rung would make the ladder re-dial the paid price source on every
     // lifecycle tick; a huge one would push `abandonAfterSeconds` out past the point
     // where a stake is stuck for an hour. Both are money problems, not typos.
+    //
+    // ℹ️ MERGE NOTE (2026-08-01). The feed branch validated this same field at 0-3600.
+    // The tighter 5-600 window is kept deliberately and it matters MORE now, not less:
+    // with `observationMethod: "feed"` the thing being re-dialled is TwelveData, a
+    // metered plan (800 credits/day), so a 0s rung is a quota burn, and the upper bound
+    // is what keeps the derived `abandonAfterSeconds` deadline inside minutes.
     const b = updates.retryBackoffSeconds;
     if (!Array.isArray(b) || b.length === 0 || b.length > 10) {
       return { ok: false, error: "Retry backoff must be a list of 1-10 waits, in seconds." };
     }
     if (b.some((s) => !Number.isFinite(s) || s < 5 || s > 600)) {
-      return { ok: false, error: "Each retry backoff must be 5-600 seconds. Below 5s the paid price oracle would be re-dialled on every tick." };
+      return { ok: false, error: "Each retry backoff must be 5-600 seconds. Below 5s the paid price source would be re-dialled on every tick." };
     }
   }
   if (updates.defaultMinStake !== undefined || updates.defaultMaxStake !== undefined) {
@@ -429,6 +473,30 @@ export async function createAsset(input: AssetInput, officerId: string): Promise
   return { ok: true, data: row };
 }
 
+/**
+ * Rounds on this asset whose verdict has NOT been reached, and what is riding on them.
+ *
+ * Reuses what already exists — `chainStore.list({ assetId })`, `roundStore.list({ chainId,
+ * unsettledOnly })` and `marketStore.get` for the money, because the money lives on the
+ * market row and never in these tables. No new DAL method, no new index. It runs only on a
+ * source edit, never on the hot path.
+ */
+async function unresolvedRoundsForAsset(assetId: string): Promise<{
+  rounds: number; players: number; stakedTzs: number; chains: number; runningChains: number;
+}> {
+  const chains = await chainStore.list({ assetId });
+  let rounds = 0, players = 0, stakedTzs = 0;
+  for (const c of chains) {
+    for (const r of await roundStore.list({ chainId: c.id, unsettledOnly: true, limit: 500 })) {
+      if (r.resolvedAt) continue; // a verdict is reached; its money is on its way out
+      rounds++;
+      const m = await marketStore.get(r.marketId);
+      if (m) { players += Number(m.predictorCount ?? 0); stakedTzs += Number(m.yesPool ?? 0) + Number(m.noPool ?? 0); }
+    }
+  }
+  return { rounds, players, stakedTzs, chains: chains.length, runningChains: chains.filter((c) => c.state === "RUNNING").length };
+}
+
 export async function updateAsset(id: string, input: Partial<AssetInput>, officerId: string): Promise<ServiceResult<StoredAsset>> {
   const cur = await assetStore.get(id);
   if (!cur) return { ok: false, error: "Asset not found." };
@@ -447,6 +515,42 @@ export async function updateAsset(id: string, input: Partial<AssetInput>, office
   };
   const v = await validateAsset(merged);
   if (!v.ok) return { ok: false, error: v.error };
+
+  // ── THE SOURCE LOCK ────────────────────────────────────────────────────────
+  // A round FREEZES its source link at open and resolves against THAT link. So the
+  // asset's link may not move while a round that captured it is still unresolved — or the
+  // asset row and the money's own record disagree, and there is no true sentence an
+  // operator can say about which page decided the round.
+  //
+  // Scoped to UNRESOLVED rather than only to rounds holding money (Ali, 2026-07-30): a
+  // round with no bets still spans two boundaries, and an edit landing mid-round would
+  // leave its open read from one page and its close from another. Nobody loses money in
+  // that case, but the published proof panel becomes incoherent. Widening costs nothing
+  // operationally — pausing the chain is the documented first rung of the rollback ladder
+  // and is what an operator does anyway.
+  //
+  // It lives in the SERVICE, not the action, for the same reason `setAssetEnabled`'s
+  // running-chain refusal does: `updown-adversarial.test.mts` exists on the premise that
+  // the UI hiding a control is not a control, and the service must refuse the crafted POST.
+  const sourceChanged =
+    merged.priceSourceUrl.trim() !== cur.priceSourceUrl || v.domain !== cur.sourceDomain;
+  if (sourceChanged) {
+    const live = await unresolvedRoundsForAsset(id);
+    if (live.rounds > 0) {
+      const money = live.stakedTzs > 0
+        ? ` ${live.players} player(s) hold TZS ${live.stakedTzs.toLocaleString()} on them.`
+        : " No stakes are on them yet, but their open and close would be read from different pages.";
+      return {
+        ok: false,
+        error:
+          `Cannot change the price source: ${live.rounds} round(s) on ${cur.key} have not resolved yet.${money} ` +
+          `A round resolves against the link it captured when it opened, so the link cannot move underneath it. ` +
+          `Pause this asset's ${live.runningChains} running chain(s) at /admin/updown, let the in-flight rounds ` +
+          `settle, then change the link — the next round captures the new one.`,
+      };
+    }
+  }
+
   // The key is the identity reports group by, so a rename must not collide.
   const newKey = merged.key.trim().toUpperCase();
   if (newKey !== cur.key) {
@@ -522,8 +626,14 @@ export type ChainInput = {
   marginBps?: number | null;
 };
 
-/** Shared validation for a margin override (bps). Null = inherit; else a whole 0-2000. */
-function checkMarginBps(m: number | null | undefined): string | null {
+/**
+ * Shared validation for a margin override (bps). Null = inherit; else a whole 0-2000.
+ *
+ * Exported so the AI proposal pipeline validates a proposed margin against the SAME rule
+ * the admin form uses. A second copy would drift, and the drift would surface only as a
+ * chain armed with a band the console itself would have refused.
+ */
+export function checkMarginBps(m: number | null | undefined): string | null {
   if (m == null) return null;
   if (!Number.isInteger(m) || m < 0 || m > 2000) {
     return "Margin must be a whole number of basis points, 0-2000 (0-20%). Leave blank to inherit the default (0.5%).";

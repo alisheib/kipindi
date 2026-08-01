@@ -367,9 +367,9 @@ and a clean console: `/admin` · `players` · `markets` · `ai-polls` · `ai-usa
 | 2 | KYC: submit · import · approve · reject · revoke · ban · NIDA duplicate | ✅ **COMPLETE** — approve · reject · revoke · ban · NIDA freed, all driven on prod (§6c). E-1 verified in **EN + SW + ZH**; E-3, E-6, E-2, E-5, **E-4 + E-9** fixed **and live-verified**. Only `import` untested |
 | 3 | Money in: wallet · deposit · ledger · receipts | ✅ **UNBLOCKED + DONE (§6g)** — `alpha` and `echo` funded 50,000 each through the real money path; 9 webhook forgeries refused, exactly-once proven over 3 deliveries, ledger balanced |
 | 4 | Core play: markets · YES/NO · win + lose · resolution · payout | ✅ **DONE on production (§6h)** — create → bet both sides → resolve → objection window → settle. A real WIN (37,400 paid) and a real LOSS, ledger sums to 0, with a CONTROL market proving the objection window is what gates payment |
-| 5 | Up & Down: rounds · quick-bet · pricing · void · history | 🔴 **ONE BLOCKER LEFT — E-16**: it has never settled a round and cannot (0 confirmed readings in 1,400); needs the branch merge, now unblocked by the TwelveData key. ✅ **E-24 + E-23 FIXED (§6k)** — every round now terminates within 390s of its boundary whatever happens, and the operator has a lever. ✅ Refund contract proven (35 positions, 96,250 staked = 96,250 returned); ✅ quick-bet proven live |
+| 5 | Up & Down: rounds · quick-bet · pricing · void · history | 🔄 **E-16's FIX IS MERGED, NOT YET SWITCHED ON.** The TwelveData feed reader landed 2026-08-01 (§6b session 6), but `feedProvider` still defaults to `mock`, which refuses in production — so prod voids+refunds safely and is not yet playable. Flipping it to `twelvedata` is an operator action and is step ① of the next session. ✅ **E-24 + E-23 FIXED (§6k)**, and the merge strengthened it: the branch's ops-state carve-out + our deadline together close a hole neither had alone. ✅ Refund contract proven (35 positions, 96,250 staked = 96,250 returned); ✅ quick-bet proven live |
 | 6 | Proposals: propose · approve · 4-state switch · bonus | ⏳ |
-| 7 | AI: poll generation · source registry · token enable/disable · usage | ✅ **generate → review → publish → live market DRIVEN ON PROD, 15/15, on real tokens** (§6e). **Spend ceiling fixed + live-verified (E-15).** Remaining: poll **resolution** with money, and the Up & Down half, which does not exist on prod (**E-17**) |
+| 7 | AI: poll generation · source registry · token enable/disable · usage | ✅ **generate → review → publish → live market DRIVEN ON PROD, 15/15, on real tokens** (§6e). **Spend ceiling fixed + live-verified (E-15).** ✅ **E-17 CLOSED 2026-08-01** — the *AI proposals* nav entry and its page are merged and pinned by `test:admin-nav` §7. Remaining: poll **resolution** with money, and driving the Up & Down proposal queue on prod |
 | 8 | Invites & referrals | ⏳ |
 | 9 | Admin & accountant: roles · RBAC · finance · reports · settlement · audit | 🔄 **RBAC proven live for `MODERATOR`, 8 allow / 11 deny** (§4) — first `MODERATOR` account production has ever had. Finance · reports · settlement · audit untouched |
 | 10 | Money out: withdrawal + the payout gate | ⏳ |
@@ -1609,6 +1609,102 @@ workstation shows an SLA countdown, but nothing escalates when it runs out. Ali'
   the `pg` −3h trap (§3) reading back through an un-cast client.
 
 ## 6b. NEXT SESSION — start here
+
+### 🟢 Laptop B, session 6 (2026-08-01) — THE BRANCH IS MERGED. Read this first.
+
+`origin/feat/updown-source-pinning-and-proposals` is merged into `qa/live-experience` and
+pushed. **E-17 is CLOSED** (the *AI proposals* nav entry Ali asked for exists, and so does
+its page). **E-16's fix is now on the branch** — the TwelveData feed reader — but see the
+⚠️ below: it is not yet *switched on*, and that is a deliberate one-line operator action,
+not an oversight.
+
+🔴 **The merge was NOT "one trivial conflict" as §6b/session-5 predicted — it was TEN**,
+and the prediction was not wrong so much as *stale*: it was measured before session 5's
+E-24 work landed, and session 5 changed precisely the files this branch rewrites. Worse,
+**the dangerous part auto-merged silently**. Both branches had independently discovered
+E-24 and independently built a healer, and because the two functions never touched the
+same lines, git combined them happily:
+
+| | What the automatic merge produced |
+|---|---|
+| `lifecycle.ts` | **TWO heal sweeps** running over the same rows every minute |
+| `updown-service.ts` | `healStuckRounds` **and** `resolveOverdueRounds`, both live |
+| `updown-config.ts` | two validators for `retryBackoffSeconds` (5–600 vs 0–3600) |
+| the ladder | gated in **two** places — the healer *and* `acquireObservation` |
+| `package.json` | `test:updown-heal` declared **twice** |
+
+⭐ **The keeper is `healStuckRounds`, and the reason is worth carrying forward**, because
+it is the one thing neither branch had alone. The feed branch's sweep terminated a round
+only by spending the attempt budget — but its own (correct, and kept) carve-out does not
+count `no-api-key`/`ai-paused` against that budget, **so with a misconfigured feed the
+budget never spends and the round waits forever. That is E-24 again, through a new door.**
+`abandonAfterSeconds` is what closes it regardless. Conversely, without the branch's
+carve-out, pausing the AI for four ticks voids live rounds for an ops action.
+**Carve-out without deadline strands money; deadline without carve-out voids live rounds
+for a typo.** Both are now in, and `test:updown-heal` §11.4 pins the combination.
+
+What was taken from the branch and what was kept, decided one by one — not "ours"/"theirs":
+
+| Conflict | Resolution |
+|---|---|
+| the healer | **ours** — deadline, E-24(b) decided-but-unpaid, audit actor, kill switch, already-adjudicated path |
+| `acquireObservation` backoff + ops carve-out | **theirs** — one gate, every caller, genuinely better |
+| `retryBackoffSeconds` bounds | **ours (5–600)** — and it matters *more* now: what gets re-dialled is a metered feed |
+| `voidRoundAction` domain | **ours (`trading`)** — theirs used `accounting`; production already disproved that, and `test:control-gates` pins it |
+| `voidRoundAction` input validation | **theirs** — missing-id refusal + 300-char cap |
+| `ai-toolkit` generation switch | **theirs' label** (it governs both generators now) **+ ours' `readOnly={!canAct}`** — E-18 is not optional |
+| `describeRefusal`, `market-sentinel` imports | **both** — orthogonal |
+
+**Regression caught by the guards, not by review** — worth recording as the merge's own
+trap: routing the ladder through `acquireObservation` broke the healer's **injected
+clock**. The gate read wall-clock time while the healer believed it was minutes later, so
+the rung never elapsed and the ladder looked dead again. `test:updown-heal` §4 went red
+(4.3–4.6). Fixed by threading `now` into `acquireObservation`; §12.5 now pins it.
+
+**Two guards were themselves defective and were repaired, not silenced.** Both passed on a
+*comment* rather than on code: `test:updown-heal` 10.4 (the "exactly one reader of
+`retryBackoffSeconds`" check) went red against a tree where the ladder genuinely had one
+reader — what tripped it was a comment explaining that very rule. It now strips comments
+first. `test:updown-source`'s "the backoff ladder is actually read" had the same hole and
+now asserts the *call* (`retryDelaySeconds(cfg,`). ⛔ A structural guard that a correct
+explanation can turn red teaches the next session to delete the explanation.
+
+**Shipped this session:**
+
+| | |
+|---|---|
+| `<this>` | The merge: 28 commits, 10 conflicts resolved, one healer, one ladder, one reader |
+| | `test:updown-heal` **79 → 97** (new §11 ops-state carve-out + §12 the gate where it now lives) |
+| | `test:updown-source` **79 → 81**, repointed off the deleted sweep onto `healStuckRounds` |
+| | `test:admin-nav` **16 → 20** — Ali's nav request, below |
+
+**Ali's nav request, 2026-08-01** (*"make sure every page you work on has a route in admin
+navigation if needed — a consultant is reporting missing pages on admin nav"*): audited
+and **the answer is good news — there are no orphaned admin pages.** 47 pages, 38 nav
+entries; all 9 unlisted are `[id]` detail routes or sub-routes reached by a control
+(`markets/new`, `totp-verify`). **Zero nav entries would 404.** The real gap was that
+*nothing tested this direction* — `test:admin-nav` only ran nav→route, which is the
+direction that produces a visible 404. Route→nav fails **silently**, which is exactly how
+E-17 happened. New check 7 demands a *decision* per page (nav entry, or a recorded reason),
+and pins E-17 by name. Proven red with a throwaway page.
+
+⚠️ **THE ONE THING THAT IS NOT DONE, and it is deliberate: the feed is merged but not
+switched on.** `DEFAULT_UPDOWN_CONFIG` is now `observationMethod: "feed"`,
+`feedProvider: "mock"` — and **mock refuses in production by construction**. So on prod
+right now Up & Down will refuse every reading as an operator state, wait out the 390s
+deadline, and VOID + refund in full. That is *safe* and it is *correct*, but it is not
+playable. **Switching `feedProvider` to `twelvedata` is the first step of the live drive**,
+and it is an operator action in the console, not a deploy.
+
+⏭️ **RESUME AT:** ① flip `feedProvider → twelvedata` and confirm `TWELVEDATA_API_KEY` is
+read (`npm run ops:updown-probe-source` / `ops:updown-verify-source` — both newly wired,
+they were orphaned scripts the branch shipped unreferenced). ② Start a chain and drive a
+round **open → price CONFIRMS → resolves with a real winner and a real loser → money in
+the wallet**. That run has still never happened. ③ Verify the control market
+`mkt_4969c3dd29fde8742618` settled unaided at 2026-08-02 09:54Z. ④ The interaction-state
+visual sweep — ⚠️ `test:responsive` needs `next dev` running and takes longer than a
+10-minute tool timeout; run it detached, and note the branch's own record that it and
+`test:trilingual` are **flaky under a full run** (`docs/NEXT-SESSION-UPDOWN-AI.md`).
 
 ### 🟢 Laptop B, session 5 (2026-08-01) — E-24 CLOSED. READ THIS FIRST; it supersedes everything below.
 

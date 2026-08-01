@@ -31,6 +31,37 @@ is the **one** mapping the AI-poll path uses for *both* the trusted-source gate
 publishes as. (`infrastructure` folds to `macro`; everything else that is a real
 `MarketCategory` passes through unchanged.)
 
+## The RESOLUTION half of the same rule (added 2026-07-30)
+
+Generation was gated on the allowlist from the start. **Resolution was not** — and resolution
+is the end where money moves. `market-sentinel.ts` put the approved source in the *user* prompt
+as soft advice ("resolve against this if given"), and the URL the AI came back with was passed
+through with **no host check and no `isSourceTrusted`**, stored as `sentinelSourceUrl`, and
+shown to the officer as a plain clickable link with nothing saying whether it was the approved
+source. With `resolutionMode: "auto"` there is no officer in the path at all — the sentinel's
+assessment stamps `RESOLVED` and the settle timer pays out after the objection window.
+
+It is now gated, and deliberately **differently on the two paths**:
+
+| Path | Behaviour | Why |
+|---|---|---|
+| **AUTO** | **Hard refusal.** `decideAutoResolve` takes a `sourceMatches` argument folded into `confident`, so a read from an unapproved host is not confident and the market goes to the two-officer ceremony instead of paying. | No human is in the path. Failing closed sends it exactly where it went the day before auto was switched on. |
+| **HUMAN** | **Visible flag, never a refusal** — a chip beside the cited link in the resolver queue and the resolver detail page (`SentinelSourceChip`). | The officer is about to open that link themselves. Hiding a read from the wrong site is precisely what would let them seal on it unaware. |
+
+The verdict is **derived at render time** (`sentinelSourceVerdict`), never stored, so it cannot
+go stale against an edited market. The prompt was strengthened too: the approved-source
+instruction moved out of the user prompt into the numbered **system** rules, mirroring the Up &
+Down price reader's gate 2 — moving the base rate beats catching failures after the fact.
+
+The host comparison is `hostMatchesDomain` from `updown-feed.ts` — **one** definition of "is
+this host on that domain" on the platform, shared by this gate, the price-reader gates and the
+round-level source check. Guarded by `test:scheduler` §7.10–§7.17 and `test:updown-source` §8.
+
+> Related: the same session closed a **pause-switch bypass**. `isPollGenEnabled()` was checked
+> only in `admin/ai-polls/actions.ts`, so `generateFromEventAction` generated polls with the
+> operator's switch OFF. The check now lives inside `generateAIPoll` itself, before the budget
+> gate. That one switch also gates Up & Down proposals — one switch, both generators.
+
 ## Operator: how to make a category / domain generatable
 
 Everything is managed at **Admin → Sources & categories** (`/admin/sources`).

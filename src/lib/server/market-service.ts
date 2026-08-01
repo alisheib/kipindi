@@ -43,6 +43,9 @@ import { formatTzs } from "@/lib/utils";
 // itself imports only the StoredMarket TYPE from here. The AI check is invoked
 // via a dynamic import inside resolveDueMarket.
 import type { SentinelResult } from "./market-sentinel";
+// Pure helper, no cycle: market-sentinel imports only the StoredMarket *type* from here.
+import { sentinelSourceVerdict } from "./market-sentinel";
+import { isSourceTrusted } from "./source-registry";
 
 // OPERATOR_MARGIN (a dead 0.09 constant with no call sites) is gone. So is
 // CASHOUT_SLIPPAGE. Rates live in RateConfig and, for a poll that exists, in its
@@ -1246,20 +1249,42 @@ const RESOLVE_CLAIM_TTL_MS = 10 * 60_000;
  *   - mode is "auto" (operator opted in, globally or per-market);
  *   - the AI produced a concrete YES/NO (never UNKNOWN);
  *   - it says the outcome is determined (irreversibly locked);
- *   - confidence ≥ the threshold; and
- *   - it carried real evidence (guards a hallucinated "determined" with no source).
+ *   - confidence ≥ the threshold;
+ *   - it carried real evidence (guards a hallucinated "determined" with no source); and
+ *   - it cited the market's OWN approved source (see `sourceMatches`).
  */
 export function decideAutoResolve(args: {
   assessment: SentinelResult | null;
   mode: "human" | "auto";
   threshold: number;
+  /**
+   * Did the AI cite the market's OWN approved source?
+   *
+   * ⛔ WHY THIS IS A CONDITION AND NOT A HINT. The market's source was only ever a
+   * SUGGESTION in the sentinel's user prompt ("resolve against this if given"), and the
+   * URL the model returned was recorded and rendered as a clickable link but NEVER
+   * verified — no host check, no `isSourceTrusted`. In `human` mode an officer opens the
+   * link themselves, so that was survivable. In `auto` mode there is NO officer in the
+   * path: the assessment stamps RESOLVED and the settle timer pays. A wrong or invented
+   * citation was the only thing standing between the model and a sealed real-money
+   * outcome.
+   *
+   * Computed by the CALLER (it needs the market row) so this stays pure and exhaustively
+   * unit-testable — and folded into `confident` rather than only into `goAuto`, so the
+   * early-recheck path treats a mismatched read as not-confident too.
+   *
+   * Failing closed costs a delay, not a wrong answer: the market goes to the two-officer
+   * ceremony, which is exactly where it went the day before auto-resolve was switched on.
+   */
+  sourceMatches: boolean;
 }): { goAuto: boolean; haveOutcome: boolean; confident: boolean } {
-  const { assessment: a, mode, threshold } = args;
+  const { assessment: a, mode, threshold, sourceMatches } = args;
   const haveOutcome = !!a && a.action === "assessed" && (a.outcome === "YES" || a.outcome === "NO");
   const confident =
     haveOutcome && !!a && a.determined &&
     a.confidence >= threshold &&
-    !!a.evidence && a.evidence.trim().length >= 10;
+    !!a.evidence && a.evidence.trim().length >= 10 &&
+    sourceMatches;
   return { goAuto: mode === "auto" && confident, haveOutcome, confident };
 }
 
@@ -1349,7 +1374,18 @@ export async function resolveDueMarket(
   const cfg = await getEffectiveConfig(marketId); // per-market override honoured
   const threshold = cfg.resolveConfidenceThreshold;
   const a = assessment;
-  const { goAuto, haveOutcome, confident } = decideAutoResolve({ assessment: a, mode, threshold });
+  // ⛔ Did the AI cite THIS market's approved source? In auto mode there is no officer in
+  // the path, so a wrong citation would otherwise seal a real-money outcome. Derived, never
+  // stored, so it cannot go stale against an edited market. A market with no approved
+  // source falls back to the platform's own definition of an acceptable citation — the
+  // trusted-source registry — and fails closed if that cannot vouch for it either.
+  const sourceVerdict = sentinelSourceVerdict(a?.sourceUrl, claim.market.sourceUrl);
+  const sourceMatches =
+    sourceVerdict === "match" ||
+    (sourceVerdict === "no-approved-source" && !!a?.sourceUrl &&
+      (await isSourceTrusted(a.sourceUrl, resolvePublishCategory(claim.market.category))).ok);
+
+  const { goAuto, haveOutcome, confident } = decideAutoResolve({ assessment: a, mode, threshold, sourceMatches });
 
   const sentinelFields = haveOutcome && a
     ? {

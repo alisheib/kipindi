@@ -1,7 +1,8 @@
 {
   "_note": "UI-consistency baseline: known drift counts per rule::file. Regenerate after a remediation phase with `npm run test:ui-consistency -- --update-baseline`. DONE when this is empty. See docs/UI-CONSISTENCY-AUDIT.md.",
   "_generated": "run with --update-baseline",
-  "_total": 55,
+  "_note_2026_08_01": "ADDED: raw-button-btn-class::src/app/admin/updown/rounds/void-round-control.tsx = 1. Reason, because a baseline entry without one is just a silenced test: this control is a DELIBERATE mirror of admin/markets/emergency-void-control.tsx — the same act (close a live pool, hand every stake back) on the same kind of row, so it wears the same clothes. That sibling carries the identical pattern at 2 findings (line 12), and `btn btn-claret btn-lg` is how all 50 of this rule's accepted instances render a destructive confirm. Converting THIS one file to the kit primitive would make the platform's two destructive-confirm dialogs look different from each other, which is worse for the consistency this rule exists to protect. It goes when the rule's other 50 do, in one remediation pass, not piecemeal.",
+  "_total": 53,
   "counts": {
     "btn-inline-height-override::src/app/admin/markets/page.tsx": 1,
     "btn-inline-height-override::src/components/rg/reality-check.tsx": 2,
@@ -15,7 +16,7 @@
     "raw-button-btn-class::src/app/admin/resolver-queue/page.tsx": 1,
     "raw-button-btn-class::src/app/admin/sources/source-controls.tsx": 1,
     "raw-button-btn-class::src/app/admin/transactions/page.tsx": 1,
-    "raw-button-btn-class::src/app/admin/updown/updown-controls.tsx": 3,
+    "raw-button-btn-class::src/app/admin/updown/rounds/void-round-control.tsx": 1,
     "raw-button-btn-class::src/app/live/pulse-grid.tsx": 1,
     "raw-button-btn-class::src/app/profile/account/close-account-form.tsx": 1,
     "raw-button-btn-class::src/app/profile/invite/invite-client.tsx": 1,

@@ -9,7 +9,7 @@ import { moneyByGame } from "@/lib/server/report-money";
 import { resolveRange } from "@/lib/server/date-range";
 import { DateTimeRangeFilter } from "@/components/ui/datetime-range-filter";
 import { featureCostWindows } from "@/lib/server/ai-usage";
-import { AddAssetForm, AddChainForm, ToggleAsset, ChainStateControls, ThresholdsForm } from "./updown-controls";
+import { AddAssetForm, AddChainForm, ToggleAsset, ChainStateControls, ThresholdsForm, ReadingMethodForm } from "./updown-controls";
 
 export const metadata = { title: "Admin · Up & Down" };
 export const dynamic = "force-dynamic";
@@ -276,8 +276,20 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
           )}
         </AdminCard>
 
-        {/* ── Oracle health ──────────────────────────────────────────────── */}
-        <AdminCard title="Price oracle" sw="Chanzo cha bei">
+        {/* ── Reading method ─────────────────────────────────────────────── */}
+        <AdminCard title="Price reading method" sw="Njia ya kusoma bei">
+          <ReadingMethodForm
+            observationMethod={cfg.observationMethod}
+            feedProvider={cfg.feedProvider}
+            // Presence only — the key itself never leaves the server, and the operator only
+            // needs to know whether the selected provider can actually quote.
+            twelveDataKeyPresent={Boolean(process.env.TWELVEDATA_API_KEY)}
+            maxStalenessSeconds={cfg.maxStalenessSeconds}
+          />
+        </AdminCard>
+
+        {/* ── Reading health ─────────────────────────────────────────────── */}
+        <AdminCard title="Price readings" sw="Bei zilizosomwa">
           {oracle.length === 0 ? (
             <p className="text-[12px] text-text-tertiary">Enable an asset to see its price readings here.</p>
           ) : (

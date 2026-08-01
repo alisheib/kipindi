@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { SentinelSourceChip } from "@/components/admin/sentinel-source-chip";
+import { sentinelSourceVerdict } from "@/lib/server/market-sentinel";
 import { parseQuery, matchesQuery, fieldNames, MARKET_SEARCH } from "@/lib/search";
 import { AdminPageHead, AdminCard, AdminLoadError } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
@@ -243,9 +245,20 @@ export default async function ResolverQueuePage({
                           <p className="mt-1 text-[12px] text-text-secondary leading-snug">{m.sentinelEvidence}</p>
                         )}
                         {m.sentinelSourceUrl && (
-                          <a href={m.sentinelSourceUrl} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-1 font-mono text-[11px] text-royal-300 hover:text-royal-200">
-                            AI source <I.ext size={10} />
-                          </a>
+                          <div className="mt-1 flex flex-wrap items-center gap-2">
+                            <a href={m.sentinelSourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-mono text-[11px] text-royal-300 hover:text-royal-200">
+                              AI source <I.ext size={10} />
+                            </a>
+                            {/* Whether the AI read the market's OWN approved source. Derived, never
+                                stored, so it cannot go stale against an edited market. In human mode
+                                this is INFORMATION, never a suppression: the officer is about to open
+                                that link themselves, and hiding a read from the wrong site is exactly
+                                what would let them seal on it unaware. */}
+                            <SentinelSourceChip
+                              verdict={sentinelSourceVerdict(m.sentinelSourceUrl, m.sourceUrl)}
+                              approved={m.sourceUrl}
+                            />
+                          </div>
                         )}
                         {m.sentinelReasoning && (
                           <details className="mt-2">

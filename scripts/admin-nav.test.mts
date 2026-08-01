@@ -103,6 +103,71 @@ const ok = (label: string, cond: boolean, extra = "") => {
   ok("6 · both keys are owned by nav items", navKeys().has("updown") && navKeys().has("updown-rounds"));
 }
 
+// ── 7 · EVERY admin page is reachable — the direction nothing checked ───────
+//
+// 🔴 WHY THIS EXISTS (Ali, 2026-08-01): *"make sure every page you work on has a route in
+// admin navigation if needed — a consultant is reporting missing pages on admin nav."*
+//
+// Checks 2 and 3 above run nav → route: every nav item points at something real. That is
+// the direction that produces a visible 404, so it is the one that got written. The
+// opposite direction fails SILENTLY: a page ships, no nav item ever points at it, and it
+// is invisible to every operator who does not know its URL. E-17 was exactly this — the
+// Up & Down AI-generation page existed only on a branch, with no nav entry, and the gap
+// was found by a person looking at a menu rather than by any test.
+//
+// A page may legitimately have no nav item — detail routes are reached by clicking a row,
+// not from a menu. So this does not demand a nav entry; it demands a DECISION, recorded
+// here. An unlisted page is a page nobody chose to hide.
+{
+  const REACHED_WITHOUT_NAV: Record<string, string> = {
+    // Detail routes — opened by clicking a row in their parent list. A menu entry
+    // pointing at "some player" is meaningless.
+    "/admin/ai-polls/[id]": "poll detail — from the /admin/ai-polls list",
+    "/admin/invites/[id]": "invite detail — from the /admin/invites list",
+    "/admin/kyc/[id]": "the KYC workstation — from /admin/approvals (there is no /admin/kyc list page)",
+    "/admin/markets/[id]": "market detail — from the /admin/markets list",
+    "/admin/players/[id]": "player detail — from the /admin/players list",
+    "/admin/resolver/[id]": "resolution ceremony — from /admin/resolver-queue",
+    "/admin/staff/[id]": "staff member detail — from the /admin/staff list",
+    // Functional sub-routes, reached by a control rather than a menu.
+    "/admin/markets/new": "the 'New market' button on /admin/markets",
+    "/admin/totp-verify": "the 2FA step-up interstitial — redirected to by requireAdminTotp, never navigated to",
+  };
+
+  function adminPages(dir = "src/app/admin"): string[] {
+    const out: string[] = [];
+    const abs = join(ROOT, dir);
+    if (!existsSync(abs)) return out;
+    for (const name of readdirSync(abs)) {
+      const rel = join(dir, name);
+      if (statSync(join(ROOT, rel)).isDirectory()) out.push(...adminPages(rel));
+      else if (name === "page.tsx") out.push(rel.replace(/\\/g, "/").replace(/^src\/app/, "").replace(/\/page\.tsx$/, "") || "/admin");
+    }
+    return out;
+  }
+
+  const hrefs = new Set(NAV_GROUPS.flatMap((g) => g.items.map((i) => i.href)));
+  const pages = adminPages();
+  ok("7 · the crawler actually found the admin pages", pages.length >= 40, `${pages.length} found`);
+
+  const unreachable = pages.filter((p) => !hrefs.has(p) && !(p in REACHED_WITHOUT_NAV));
+  ok("7 · ⭐ every admin page is in the nav, or is declared reachable another way",
+     unreachable.length === 0,
+     unreachable.length
+       ? `no way in: ${unreachable.join(", ")} — add a NAV_GROUPS entry, or record how it is reached in REACHED_WITHOUT_NAV`
+       : "");
+
+  // The allowlist must not outlive the pages it excuses, or it silently starts excusing
+  // nothing while looking like it still guards something.
+  const stale = Object.keys(REACHED_WITHOUT_NAV).filter((p) => !pages.includes(p));
+  ok("7 · …and nothing is excused that no longer exists", stale.length === 0, stale.join(", "));
+
+  // E-17, pinned: the entry Ali asked for by name, and the page behind it.
+  ok("7 · ⭐ E-17 — the Up & Down 'AI proposals' nav entry exists AND its page does",
+     hrefs.has("/admin/updown/proposals") && pages.includes("/admin/updown/proposals"),
+     "this is the gap Ali spotted in the menu; the merge is what closes it");
+}
+
 console.log(`\nadmin-nav: ${pass} passed, ${fail} failed`);
 if (fail > 0) {
   console.error("\n✗ ADMIN NAV GUARD FAILED.\n" +

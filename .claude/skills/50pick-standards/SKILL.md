@@ -154,6 +154,45 @@ stranding a card deposit on a railway.app host.
 Migrations: additive where possible, tested on the local PG first, prod gets them via the
 deploy — never by hand.
 
+## 8b. Working alongside a PARALLEL session (added 2026-07-30)
+
+Two Claude sessions now work this repo at once. They cannot see each other, so every rule below
+exists because the collision is **silent** — you find out by losing work, not by an error.
+
+**Layout — one clone, two working trees:**
+
+| Tree | Note |
+|---|---|
+| `F:\kipindi-main` | holds the `railway` CLI link — run `railway …` from here |
+| `F:\kipindi-updown` | a `git worktree`: its own branch, its own `.next` |
+
+- ⛔ **Never `git checkout` in the other session's tree.** They share ONE `.git`, so switching a
+  branch there yanks files out from under a session mid-edit. Run `git branch --show-current`
+  before every commit; `git worktree list` shows who is where.
+- ⛔ **Never push `main` to "help".** Every push to `main` is a live deploy (§8). Push your own
+  branch — merging is Ali's call.
+- ⚠️ **`main` moves under you.** The other session merges to `main` regularly. `git fetch` and
+  check `git rev-list --left-right --count origin/main...HEAD` before assuming anything. Merge
+  `main` into your branch **while you still have the context**, not at hand-off, and read the
+  overlap first: `comm -12` the two `--name-only` lists against the merge base.
+- ⚠️ **A merge can create a coupling neither side can see alone.** Real case, this date: one
+  session made a slow lifecycle pass *visible* (an overrun alert); the other put a slow chore
+  *inside* that pass. Neither is a bug; together they need a note. After merging a shared file,
+  ask what the two changes do to **each other** — not just whether git resolved the text.
+
+**Shared resources — the three that actually bite:**
+- **Ports.** :3000 is usually taken. Check with
+  `netstat -ano | grep LISTENING | grep :3000`, use another port, and kill **only your own PID**
+  (`Get-CimInstance Win32_Process -Filter "ProcessId=N"` prints the command line — it tells you
+  whose it is).
+- **`node_modules`.** A worktree may be a *junction* to the other tree's install. **Turbopack
+  refuses a junction pointing outside the project root**, so `next build` fails there — and
+  `--webpack` is not a fallback (this codebase's `node:crypto` imports break under it). Do a real
+  `npm ci` in the worktree, and remove the junction with **cmd `rmdir`** (the link only).
+  ⛔ `rm -rf node_modules` would delete the OTHER session's install while it is in use.
+- **The database.** One instance. A test run that seeds is visible to the other session's app —
+  say what you are about to write before you write it.
+
 ## 9. Known gotchas (carry forward — from perfection-plan §6)
 - **Dev in-memory store is SYNC** — `db.user.*` etc. return values (not Promises) in-memory
   while tsc sees the async Prisma types. Wrap `await Promise.resolve(db.x()).catch(...)` or it

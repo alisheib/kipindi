@@ -44,7 +44,18 @@ export async function isChatbotEnabled(): Promise<boolean> {
   return store.chatbotEnabled;
 }
 
-/** Is AI poll generation enabled? (Default true.) */
+/**
+ * Is AI GENERATION enabled? (Default true.)
+ *
+ * ⚠️ Gates BOTH generators — long-form poll ideas and Up & Down round proposals (Ali,
+ * 2026-07-30: one switch, one meaning). The function name and the persisted config key
+ * stay `pollGenEnabled` deliberately: renaming a persisted key is a migration for no
+ * benefit. The toolkit row is labelled "AI generation" to match what it actually controls.
+ *
+ * ⛔ Enforced inside `generateAIPoll` itself, not only at the call sites. It used to live
+ * only in `admin/ai-polls/actions.ts`, so the event-calendar door generated polls with this
+ * switch OFF — a gate on one of two doors is not a gate.
+ */
 export async function isPollGenEnabled(): Promise<boolean> {
   await ensureHydrated();
   return store.pollGenEnabled;

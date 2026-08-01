@@ -33,6 +33,9 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { marketStore } from "./market-dal";
 import { ai } from "./ai-config";
+// ONE host rule on the platform — the same function the price feed and the Up & Down
+// settlement check use. Two copies is two answers to one question.
+import { hostMatchesDomain } from "./updown-feed";
 import { assertAiBudget, recordAiUsage } from "./ai-usage";
 import { getAiOpsConfig } from "./ai-ops-config";
 import { getPlatformTimezone } from "./platform-config";
@@ -276,7 +279,9 @@ CURRENT DATE/TIME: ${now} (platform timezone: ${getPlatformTimezone()})
 YOUR JOB
 Decide whether this market's outcome is already IRREVERSIBLY SETTLED ("locked") by real-world events — i.e. nothing that can still happen could change the YES/NO result. The platform closes a market to new bets only when it is locked. A human officer still does the final payout; you never pay out.
 
-YOU MUST USE WEB SEARCH — never answer from memory. The deciding event may have happened minutes ago. Search for the latest score/result/data; prefer the official source if one is given. Search more than once, from different angles, if the first result is unclear or incomplete.
+YOU MUST USE WEB SEARCH — never answer from memory. The deciding event may have happened minutes ago. Search for the latest score/result/data. Search more than once, from different angles, if the first result is unclear or incomplete.
+
+YOU MUST RESOLVE AGAINST THE MARKET'S OWN APPROVED SOURCE when one is given below, and report the URL you actually read in sourceUrl. If that source does not settle the question, say so and report determined=false rather than substituting a different site, however reputable. A citation from anywhere else CANNOT seal this market automatically — an officer will have to check it by hand — so substituting one wastes the check rather than helping.
 
 HOW TO JUDGE — follow these steps exactly:
 1. Parse the EXACT condition and its comparison operator, literally. A difference of one unit decides the winner:
@@ -371,6 +376,36 @@ Search the web for the latest data, work through the steps, then call report_out
     });
     return fail((err as Error).message);
   }
+}
+
+/**
+ * Is this assessment's citation the market's OWN approved source?
+ *
+ * DERIVED at read time — deliberately NOT a stored column. A derived value cannot go stale
+ * against an edited market and needs no migration. One function, two consumers: the
+ * `sourceMatches` argument to `decideAutoResolve` (a HARD condition there, because auto
+ * mode has no officer in the path) and the chip beside the cited link in the resolver queue
+ * (information there, never a suppression — in human mode the officer is about to open that
+ * link themselves, and hiding the AI's read would delete what they want to see).
+ *
+ *   match               cited the market's approved host, or a subdomain of it
+ *   different-domain    cited something else — verify before sealing
+ *   none-cited          returned no URL at all
+ *   no-approved-source  the market has no approved source to compare against
+ */
+export function sentinelSourceVerdict(
+  sentinelSourceUrl: string | null | undefined,
+  marketSourceUrl: string | null | undefined,
+): "match" | "different-domain" | "none-cited" | "no-approved-source" {
+  if (!marketSourceUrl) return "no-approved-source";
+  if (!sentinelSourceUrl) return "none-cited";
+  let approvedHost: string;
+  try {
+    approvedHost = new URL(marketSourceUrl).hostname;
+  } catch {
+    return "no-approved-source";
+  }
+  return hostMatchesDomain(sentinelSourceUrl, approvedHost) ? "match" : "different-domain";
 }
 
 /**

@@ -23,13 +23,14 @@ import { marketStore } from "./market-dal";
 import { createMarket, settleMarket } from "./market-service";
 import {
   getUpDownConfig, rateProfileFor, stakeBoundsFor, boundaryAfter, marginBpsForChain, computeTargets,
-  retryDelaySeconds, abandonAfterSeconds,
+  retryDelaySeconds, abandonAfterSeconds, type UpDownConfig,
 } from "./updown-config";
 import {
   assetStore, chainStore, roundStore, observationStore,
   type StoredAsset, type StoredChain, type StoredRound, type RoundOutcome, type VoidReason,
 } from "./updown-dal";
-import { observePrice, describeRefusal } from "./updown-oracle";
+import { observePrice, describeRefusal, type OracleReading, type RefusalReason } from "./updown-oracle";
+import { feedFromId, quoteAsset, describeFeedRefusal, hostMatchesDomain } from "./updown-feed";
 
 export type LifecycleResult<T> = { ok: true; data: T } | { ok: false; error: string };
 
@@ -96,6 +97,29 @@ export function decideOutcomeByTargets(
   return { outcome: "VOID", voidReason: "no-move" };
 }
 
+/**
+ * Does a confirmed reading's cited link sit on the domain THIS round pinned at open?
+ *
+ * Pure, and deliberately generous. Legacy passes: a round with no capture, or a reading
+ * that cited nothing, is a round we CANNOT check — and a round we cannot check is not a
+ * round we may void on suspicion. It fires only on a genuine contradiction, where the
+ * reading that bounded this round came from a host the round did not pin.
+ *
+ * Compares DOMAINS, not URLs: a source legitimately serves the same quote from a
+ * sub-path or query variant, and an exact-URL compare would void real rounds for no
+ * integrity gain. Domain identity is precisely what the trusted-source registry asserts.
+ */
+export function observationMatchesRound(
+  observationSourceUrl: string | null,
+  roundSourceDomain: string | null,
+): { ok: true; checked: boolean } | { ok: false; detail: string } {
+  if (!roundSourceDomain || !observationSourceUrl) return { ok: true, checked: false };
+  if (hostMatchesDomain(observationSourceUrl, roundSourceDomain)) return { ok: true, checked: true };
+  let host = observationSourceUrl;
+  try { host = new URL(observationSourceUrl).hostname; } catch { /* keep the raw string */ }
+  return { ok: false, detail: `reading cited "${host}", but this round pinned "${roundSourceDomain}" at open` };
+}
+
 /** UP→YES, DOWN→NO, VOID→VOID. The single mapping. */
 export function outcomeToSide(o: RoundOutcome): "YES" | "NO" | "VOID" {
   return o === "UP" ? "YES" : o === "DOWN" ? "NO" : "VOID";
@@ -113,18 +137,92 @@ export function sideToOutcome(s: "YES" | "NO" | "VOID"): RoundOutcome {
 // ---------------------------------------------------------------------------
 
 /**
- * Get the CONFIRMED observation for (asset, boundary), running the oracle if needed.
+ * Obtain a reading for (asset, boundary) by whichever method the operator configured.
+ *
+ * ONE contract, two implementations — the same shape the AI oracle already returns, so
+ * every gate, every refusal path and the whole write-once ledger below are unchanged. A
+ * feed replaces HOW the number is obtained; it relaxes nothing.
+ *
+ * ⛔ `not-configured` and `mock-in-production` are mapped to `"no-api-key"` DELIBERATELY:
+ * that reason is inside the operator-state carve-out below, so a misconfigured feed leaves
+ * the boundary PENDING instead of burning the attempt budget and voiding live rounds for
+ * an ops mistake. A feed that cannot run is an operator problem, never a source failure.
+ */
+async function readPrice(
+  asset: StoredAsset,
+  boundaryAtIso: string,
+  cfg: UpDownConfig,
+): Promise<OracleReading> {
+  if (cfg.observationMethod === "ai") return observePrice(asset, boundaryAtIso);
+
+  const q = await quoteAsset(feedFromId(cfg.feedProvider), {
+    symbol: asset.symbol,
+    decimals: asset.decimals,
+    endpoint: asset.priceSourceUrl,
+    approvedDomain: asset.sourceDomain,
+  });
+
+  if (!q.ok) {
+    const reason: RefusalReason =
+      q.reason === "not-configured" || q.reason === "mock-in-production" ? "no-api-key"
+      : q.reason === "unparseable-price" ? "unparseable-price"
+      : q.reason === "no-timestamp" ? "stale"
+      : q.reason === "wrong-source" ? "wrong-source"
+      : "error";
+    return { ok: false, reason, detail: describeFeedRefusal(q.reason, q.detail) };
+  }
+
+  // The SAME staleness gate the AI path uses, against the PROVIDER'S own time — never ours.
+  const boundaryMs = Date.parse(boundaryAtIso);
+  const quotedMs = Date.parse(q.quotedAt);
+  if (!Number.isFinite(quotedMs)) {
+    return { ok: false, reason: "stale", detail: `provider timestamp "${q.quotedAt}" is unparseable` };
+  }
+  const skewSeconds = Math.round(Math.abs(quotedMs - boundaryMs) / 1000);
+  if (skewSeconds > cfg.maxStalenessSeconds) {
+    return {
+      ok: false,
+      reason: "stale",
+      detail: `quote is ${skewSeconds}s from the boundary (limit ${cfg.maxStalenessSeconds}s)`,
+    };
+  }
+
+  return {
+    ok: true,
+    price: q.price,
+    sourceUrl: q.sourceUrl,
+    sourceQuotedAt: new Date(quotedMs).toISOString(),
+    evidence: q.evidence,
+    // A feed does not guess, so there is no confidence to score. Recorded as 100 so the
+    // shared confidence floor is a no-op rather than a second thing to keep in sync.
+    confidence: 100,
+    model: `feed:${q.provider}`,
+    rawHash: q.rawHash,
+    skewSeconds,
+  };
+}
+
+/**
+ * Get the CONFIRMED observation for (asset, boundary), by the configured method.
  *
  * Idempotent and shared: the row is unique per boundary, so the 5-, 15- and 30-minute
- * chains meeting at 14:30 all land on the SAME row — one AI call serves them all, and
+ * chains meeting at 14:30 all land on the SAME row — one reading serves them all, and
  * round N's close is byte-identical to round N+1's open.
  *
- * Returns null when the boundary is not (yet) confirmed. The caller decides whether to
- * wait or to void; this function never invents a price.
+ * Returns a non-confirmed state when the boundary is not (yet) readable. The caller
+ * decides whether to wait or to void; this function never invents a price.
+ *
+ * `now` exists ONLY so the backoff gate below can be driven on a simulated clock. The
+ * healer already takes an injectable `now` and must be able to hand its own clock to the
+ * one place the ladder is enforced — otherwise the gate silently reads wall-clock time
+ * while the caller believes it is 4 minutes later, the rung never elapses, and the ladder
+ * looks dead again. That is exactly what the merge produced before this parameter existed,
+ * and `test:updown-heal` §4 caught it. Production always passes nothing.
  */
 export async function acquireObservation(
   asset: StoredAsset,
   boundaryAtIso: string,
+  now: number = Date.now(),
 ): Promise<{ state: "confirmed"; price: number; id: string } | { state: "pending" | "failed"; id: string; detail: string }> {
   const cfg = await getUpDownConfig();
   const obs = await observationStore.ensure(asset.id, boundaryAtIso);
@@ -144,13 +242,44 @@ export async function acquireObservation(
     return { state: "failed", id: obs.id, detail: `no confirmed reading after ${obs.attempts} attempts` };
   }
 
-  const reading = await observePrice(asset, boundaryAtIso);
+  // ── THE BACKOFF, index-matched to the attempt just made ─────────────────────
+  // `retryBackoffSeconds` was declared, defaulted and read by NOTHING — the ladder was
+  // designed and never wired. Without it the heal sweep would re-call the price source on
+  // every tick, which is both a cost leak (TwelveData is metered) and a good way to be
+  // rate-limited into voiding rounds that a slightly later read would have settled.
+  //
+  // ⛔ ONE READER, AND THIS IS IT. The ladder is climbed HERE, in the single function every
+  // caller goes through — the scheduler's `advanceChain` and the healer alike — rather than
+  // in each caller. `retryDelaySeconds()` in updown-config.ts is the only thing in `src/`
+  // that reads the backoff array; `abandonAfterSeconds()` derives the healer's deadline
+  // from that same function, so the deadline can never drift out of step with the ladder it
+  // is supposed to outlast. If you add a second reader, delete one of them.
+  //
+  // ℹ️ MERGE NOTE (2026-08-01). Both the E-24 fix and the feed branch wired this ladder, in
+  // different places — the healer and here. This is the single surviving implementation.
+  if (obs.lastAttemptAt) {
+    const readyAt = Date.parse(obs.lastAttemptAt) + retryDelaySeconds(cfg, obs.attempts) * 1000;
+    if (Number.isFinite(readyAt) && now < readyAt) {
+      return {
+        state: "pending",
+        id: obs.id,
+        detail: `waiting ${Math.ceil((readyAt - now) / 1000)}s before attempt ${obs.attempts + 1}`,
+      };
+    }
+  }
+
+  const reading = await readPrice(asset, boundaryAtIso, cfg);
   if (!reading.ok) {
     const detail = describeRefusal(reading.reason, reading.detail);
-    await observationStore.recordAttempt(obs.id, detail);
     // A missing API key or a paused AI is an OPERATOR state, not a source failure —
     // burning the attempt budget on it would void rounds for an ops reason and refund
-    // players who were happily betting. Leave it pending; the next fire retries.
+    // players who were happily betting. Leave it pending; the next sweep retries.
+    //
+    // ⛔ This used to `recordAttempt` UNCONDITIONALLY, directly against the comment
+    // above it: pausing the AI for four fires walked the budget to zero and VOIDed live
+    // rounds for an operator action. The condition is the fix.
+    const operatorState = reading.reason === "ai-paused" || reading.reason === "no-api-key";
+    if (!operatorState) await observationStore.recordAttempt(obs.id, detail);
     return { state: "pending", id: obs.id, detail };
   }
 
@@ -207,6 +336,12 @@ export async function openRound(
   const asset = await assetStore.get(chain.assetId);
   if (!asset) return { ok: false, error: "Chain's asset no longer exists." };
 
+  // ── THE CAPTURE ────────────────────────────────────────────────────────────
+  // Read the asset's link ONCE, here, and use only these locals below. That is the whole
+  // point: the round records its page at open and never consults the asset row again.
+  const capturedSourceUrl = asset.priceSourceUrl;
+  const capturedSourceDomain = asset.sourceDomain;
+
   const openMs = Date.parse(openBoundaryIso);
   const closeMs = openMs + chain.durationMinutes * 60_000;
   const closeIso = new Date(closeMs).toISOString();
@@ -233,13 +368,13 @@ export async function openRound(
     titleSw: roundTitle(asset, chain.durationMinutes, "sw"),
     titleZh: roundTitle(asset, chain.durationMinutes, "zh"),
     category: (asset.category as never) ?? "macro",
-    sourceUrl: asset.priceSourceUrl,
+    sourceUrl: capturedSourceUrl,
     // Stated in the players' terms, and it is literally what settlement compares.
     resolutionCriterion: targets
-      ? `${asset.nameEn} (${asset.symbol}) price at ${closeIso}, read from ${asset.sourceDomain}. ` +
+      ? `${asset.nameEn} (${asset.symbol}) price at ${closeIso}, read from ${capturedSourceDomain}. ` +
         `Opening price ${openPrice}. UP if the price reaches ${targets.upTarget} (+${(marginBps / 100).toFixed(2)}%), ` +
         `DOWN if it reaches ${targets.downTarget} (−${(marginBps / 100).toFixed(2)}%), otherwise VOID and every stake is refunded.`
-      : `${asset.nameEn} (${asset.symbol}) price at ${closeIso}, read from ${asset.sourceDomain}, ` +
+      : `${asset.nameEn} (${asset.symbol}) price at ${closeIso}, read from ${capturedSourceDomain}, ` +
         `compared with the price at ${openBoundaryIso}. UP if higher by more than ` +
         `${minMoveFor(asset).toFixed(asset.decimals)}, DOWN if lower by more than that, otherwise VOID and every stake is refunded.`,
     resolutionAt: closeIso,
@@ -267,6 +402,8 @@ export async function openRound(
     marginBps,
     upTarget: targets?.upTarget ?? null,
     downTarget: targets?.downTarget ?? null,
+    capturedSourceUrl,
+    capturedSourceDomain,
     outcome: null,
     voidReason: null,
     resolvedAt: null,
@@ -292,6 +429,7 @@ export async function openRound(
       opensAt: openBoundaryIso, boundaryAt: closeIso,
       openPrice, openObservationId,
       marginBps, upTarget: targets?.upTarget ?? null, downTarget: targets?.downTarget ?? null,
+      capturedSourceUrl, capturedSourceDomain,
       rateProfile: profile, stakeBounds: bounds,
     },
   });
@@ -316,7 +454,18 @@ export async function closeRound(
   roundId: string,
   closeObservationId: string | null,
   closePrice: number | null,
-  voidReasonIfNoPrice: VoidReason = "source-failed",
+  /**
+   * Why this round voided, when the CALLER knows better than the arithmetic does.
+   *
+   * ⚠️ This used to be `voidReasonIfNoPrice = "source-failed"` and was consulted only
+   * when the outcome rule returned no reason of its own — which it always does for a
+   * missing price. So `voidRoundByOperator` passing "operator" had NO effect: an
+   * officer's deliberate void was recorded as a SOURCE failure, misattributing a human
+   * decision to the price feed in the audit trail and in the per-chain void-rate metric.
+   * An explicit reason now wins; absent one, the arithmetic's reason stands ("no-move"
+   * for an in-band close), falling back to "source-failed".
+   */
+  voidReasonOverride?: VoidReason,
 ): Promise<LifecycleResult<{ outcome: RoundOutcome; settled: boolean }>> {
   const round = await roundStore.get(roundId);
   if (!round) return { ok: false, error: "Round not found." };
@@ -326,13 +475,45 @@ export async function closeRound(
   const asset = chain ? await assetStore.get(chain.assetId) : null;
   if (!chain || !asset) return { ok: false, error: "Round's chain or asset no longer exists." };
 
+  // ── THE SOURCE CHECK, before any verdict ───────────────────────────────────
+  // Both bounding readings must have come from the domain THIS round pinned at open. With
+  // the asset-source edit lock in place this should fire approximately never — which is
+  // exactly what is wanted from a defence-in-depth check. When it does fire, it means the
+  // link moved by a route the lock does not cover (a direct DB edit, a script, a new
+  // caller), and the honest response is to refuse to settle rather than pay out against a
+  // page the player never agreed to. Legacy rounds (no capture) and readings that cited
+  // nothing are skipped, not voided: a round we cannot check is not a round we may void on
+  // suspicion.
+  // The domain a settled round's receipt cites. The round's OWN pin, always — a receipt
+  // naming the asset's CURRENT link would describe a page nobody read. The fallback covers
+  // only rounds that settled before the capture column existed, where it is the sole
+  // surviving information.
+  const evidenceDomain = round.capturedSourceDomain ?? asset.sourceDomain;
+
+  let sourceMismatch: string | null = null;
+  {
+    const ids = [round.openObservationId, closeObservationId].filter((x): x is string => !!x);
+    for (const id of ids) {
+      const obs = await observationStore.get(id);
+      if (!obs || obs.state !== "CONFIRMED") continue;
+      const verdict = observationMatchesRound(obs.sourceUrl, round.capturedSourceDomain);
+      if (!verdict.ok) { sourceMismatch = verdict.detail; break; }
+    }
+  }
+
   // Use the round's FROZEN targets (the margin model). Legacy rounds opened before the
   // margin model have null targets and fall back to the openPrice ± minMove rule.
   const useTargets = round.upTarget != null && round.downTarget != null;
-  const { outcome, voidReason } = useTargets
+  const decided = useTargets
     ? decideOutcomeByTargets(closePrice, round.upTarget, round.downTarget)
     : decideOutcome(round.openPrice, closePrice, minMoveFor(asset));
-  const finalVoidReason = outcome === "VOID" ? (voidReason ?? voidReasonIfNoPrice) : null;
+  // A mismatch overrides the arithmetic outright: it does not matter what the prices say
+  // if one of them came from the wrong place.
+  const outcome: RoundOutcome = sourceMismatch ? "VOID" : decided.outcome;
+  const voidReason = sourceMismatch ? ("source-mismatch" as VoidReason) : decided.voidReason;
+  const finalVoidReason = outcome === "VOID"
+    ? (sourceMismatch ? "source-mismatch" : (voidReasonOverride ?? voidReason ?? "source-failed"))
+    : null;
   const side = outcomeToSide(outcome);
   const nowIso = new Date().toISOString();
 
@@ -350,10 +531,12 @@ export async function closeRound(
         side === "VOID"
           ? useTargets
             ? `Round voided (${finalVoidReason}): close ${closePrice} stayed inside the band [${round.downTarget}, ${round.upTarget}] (open ${round.openPrice} ± ${((round.marginBps ?? 0) / 100).toFixed(2)}%). Every stake is refunded in full.`
-            : `Round voided (${finalVoidReason}). Every stake is refunded in full.`
+            : sourceMismatch
+              ? `Round voided (source-mismatch): ${sourceMismatch}. Every stake is refunded in full.`
+              : `Round voided (${finalVoidReason}). Every stake is refunded in full.`
           : useTargets
-            ? `Close ${closePrice} ${outcome === "UP" ? `≥ up target ${round.upTarget}` : `≤ down target ${round.downTarget}`} (open ${round.openPrice} ± ${((round.marginBps ?? 0) / 100).toFixed(2)}%, ${asset.symbol}, ${asset.sourceDomain}).`
-            : `Open ${round.openPrice} → close ${closePrice} (${asset.symbol}, ${asset.sourceDomain}). Moved ${((closePrice ?? 0) - (round.openPrice ?? 0)).toFixed(asset.decimals)}.`,
+            ? `Close ${closePrice} ${outcome === "UP" ? `≥ up target ${round.upTarget}` : `≤ down target ${round.downTarget}`} (open ${round.openPrice} ± ${((round.marginBps ?? 0) / 100).toFixed(2)}%, ${asset.symbol}, ${evidenceDomain}).`
+            : `Open ${round.openPrice} → close ${closePrice} (${asset.symbol}, ${evidenceDomain}). Moved ${((closePrice ?? 0) - (round.openPrice ?? 0)).toFixed(asset.decimals)}.`,
       // Settlement is immediate for Up & Down — the window is zero-length, NOT skipped.
       // settleMarket still runs its standing-objection check below.
       objectionsClosedAt: nowIso,
@@ -611,20 +794,23 @@ async function healOneRound(
     return (await finishRound(round, observation.id, null, "source-failed", observation.failReason ?? "boundary failed", now)) ? "voided" : "failed";
   }
 
-  const attempts = observation?.attempts ?? 0;
-  const lastAttemptMs = observation?.lastAttemptAt ? Date.parse(observation.lastAttemptAt) : Date.parse(round.boundaryAt);
-  const dueAt = lastAttemptMs + retryDelaySeconds(cfg, attempts) * 1000;
-  // A boundary whose attempt budget is already spent has nothing left to wait FOR —
-  // the next `acquireObservation` will declare it FAILED whatever the clock says. So
-  // the backoff is skipped there, and the player is not held an extra rung's worth of
-  // time for a decision that has already been made. (Found by the guard: without this
-  // the ladder reached its budget and then sat waiting instead of closing.)
-  const budgetSpent = attempts >= cfg.maxObservationAttempts;
-  if (!budgetSpent && attempts > 0 && now < dueAt) return "waiting"; // the backoff, finally honoured
-
-  // This is what actually advances `attempts`, and therefore what eventually reaches
-  // `maxObservationAttempts` and fails the boundary. Nothing else in the system does.
-  const acquired = await acquireObservation(asset, round.boundaryAt);
+  // ── THE LADDER, climbed by the ONE thing that climbs it ────────────────────
+  // The backoff and the attempt-budget check both live inside `acquireObservation`, which
+  // returns `pending` while a rung is still running and `failed` the moment the budget is
+  // spent — so this call is safe to make on every tick and needs no clock arithmetic here.
+  //
+  // ℹ️ MERGE NOTE (2026-08-01). The E-24 fix originally gated the backoff HERE, and the
+  // feed branch gated it inside `acquireObservation`. Keeping both would have made the
+  // player wait two rungs per attempt and split one rule across two files. The gate now
+  // lives in `acquireObservation` only — see the ONE READER note there. The `budgetSpent`
+  // refinement this block used to carry is preserved by construction: `acquireObservation`
+  // checks `attempts >= maxObservationAttempts` BEFORE it checks the backoff, so a spent
+  // budget still closes immediately instead of waiting out one more rung.
+  //
+  // This call is also what actually advances `attempts`, and therefore what eventually
+  // reaches `maxObservationAttempts` and fails the boundary. Nothing else in the system does.
+  // `now` is handed down so the gate judges the same instant this sweep does.
+  const acquired = await acquireObservation(asset, round.boundaryAt, now);
   if (acquired.state === "confirmed") {
     return (await finishRound(round, acquired.id, acquired.price, "source-failed", "confirmed on a ladder retry", now)) ? "resolved" : "failed";
   }
@@ -751,8 +937,15 @@ export async function advanceChain(chainId: string): Promise<{
       const r = await closeRound(current.id, obs.id, null, "source-failed");
       if (r.ok) closed = r.data.outcome;
     }
-    // pending → leave it; the next fire (or the reconciler) retries. The round shows
-    // "Confirming price" and the chain still advances below.
+    // pending → leave it; `resolveOverdueRounds` on the lifecycle ticker retries this
+    // boundary and, once the attempt budget is spent, VOIDs the round with a full refund.
+    // The round shows "Confirming price" and the chain still advances below.
+    //
+    // ⚠️ This comment used to say "the next fire (or the reconciler) retries" — and
+    // NEITHER did. Step 4 below moves `nextBoundaryAt` on, so the next fire observes a
+    // DIFFERENT instant, and the reconciler only re-arms timers. That is how production
+    // accumulated 1,398 rounds stuck at one attempt with player money inside them. The
+    // retry now genuinely exists; do not remove it without removing this promise too.
   }
 
   // 3 · Open the round that STARTS here — independent of step 2.
@@ -772,3 +965,38 @@ export async function advanceChain(chainId: string): Promise<{
 
   return { observation: obs.state, closed, opened, detail: "detail" in obs ? obs.detail : undefined };
 }
+
+// ---------------------------------------------------------------------------
+// ℹ️ MERGE NOTE (2026-08-01) — there was a SECOND heal sweep here, and it is gone
+// ---------------------------------------------------------------------------
+//
+// `feat/updown-source-pinning-and-proposals` independently discovered the same defect
+// the live QA campaign logged as E-24, and shipped its own fix: `resolveOverdueRounds()`,
+// called from the lifecycle ticker. Merging both left the ticker running TWO sweeps over
+// the same rows every minute — which the automatic merge did silently, because the two
+// functions never touched the same lines.
+//
+// `healStuckRounds()` above is the one that survives. It is not a preference; it strictly
+// dominates, and each of these was a real gap in the other:
+//
+//   • THE DEADLINE. `resolveOverdueRounds` terminated a round only by spending the attempt
+//     budget. But its own (correct, and kept) carve-out does not count `no-api-key` or
+//     `ai-paused` against that budget — so with an unconfigured feed the budget NEVER
+//     spends and the round waits forever. That is E-24 again, through a new door.
+//     `abandonAfterSeconds` closes the round regardless, and without paying for a reading
+//     that could no longer satisfy the staleness contract anyway.
+//   • THE SECOND STRANDING SHAPE. A round can reach a verdict and still never pay
+//     (E-24(b): settlement failed, or the process died between the two writes).
+//     `resolveOverdueRounds` had no path for it; `resolvedUnsettled` does.
+//   • THE AUDIT TRAIL. Money moves with no human involved, so `updown.round.healed` under
+//     the distinct `system_updown_healer` actor is what makes "who released this"
+//     answerable from the compliance record alone.
+//   • THE ALREADY-ADJUDICATED PATH, and a kill switch separate from `UPDOWN_SCHEDULER`.
+//
+// What was KEPT from that branch, because it is genuinely better, lives in
+// `acquireObservation`: the backoff gate (one reader, shared by every caller) and the
+// operator-state carve-out. The two fixes are complementary — the carve-out stops an ops
+// mistake from voiding live rounds, and the deadline stops that same carve-out from
+// stranding them. Neither branch alone had both.
+//
+// ⛔ Do not re-add a second sweep. `healStuckRounds` is called from `lifecycle.ts`, once.

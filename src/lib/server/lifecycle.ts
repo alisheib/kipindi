@@ -212,6 +212,12 @@ async function maybeReconcileSchedules(): Promise<void> {
   } catch (e) {
     console.error("[lifecycle] Up & Down reconcile:", e);
   }
+
+  // ℹ️ MERGE NOTE (2026-08-01). A SECOND Up & Down heal sweep (`resolveOverdueRounds`) was
+  // called from here by `feat/updown-source-pinning-and-proposals`, which had independently
+  // found E-24. The automatic merge kept both, so the ticker briefly ran two sweeps over the
+  // same rows every minute. There is now exactly one — `healUpDownRounds()` below, driven
+  // from `runLifecyclePass`. See the merge note in updown-service.ts for why that one won.
 }
 
 /**
@@ -222,6 +228,14 @@ async function maybeReconcileSchedules(): Promise<void> {
  * ⚠️ This is a MONEY path, not a tidy-up. What it releases is a real player's stake,
  * so it is on the once-a-minute pass rather than the 5-minute sweep. See
  * `healStuckRounds` in updown-service.ts for the invariant it enforces.
+ *
+ * ⚠️ THIS IS THE SLOWEST CHORE IN THE PASS, and the most likely trigger of a
+ * `lifecycle.ticker_overrun` alert. Its cost is dominated by how many distinct boundaries
+ * one batch observes — each observation is one network price read. With the FEED reader
+ * (~1s each) that sits comfortably inside TICK_MS; with the AI reader (tens of seconds
+ * each) a full batch can exceed the 60s tick and start swallowing ticks. Chasing an
+ * overrun alert? Look here first — and lower `HEAL_BATCH` rather than widening the tick.
+ * A slow heal is acceptable; a stalled payment reconcile is not.
  */
 async function healUpDownRounds(): Promise<void> {
   const { healStuckRounds } = await import("./updown-service");

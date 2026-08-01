@@ -22,14 +22,16 @@
 import { useTransition, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDeferredToast } from "@/components/ui/toast";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Toggle } from "@/components/ui/toggle";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ConfirmModal } from "@/components/ui/modal";
 import {
   createAssetAction, toggleAssetAction,
   createChainAction, setChainStateAction,
-  updateThresholdsAction,
+  updateThresholdsAction, updateReadingMethodAction,
 } from "./actions";
 
 const DURATIONS = [5, 15, 30] as const;
@@ -110,14 +112,14 @@ export function ChainStateControls({
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       {state !== "RUNNING" && (
-        <button type="button" onClick={() => go("RUNNING")} disabled={pending} className="btn btn-primary btn-sm">
-          {pending ? "…" : state === "PAUSED" ? "Resume" : "Start"}
-        </button>
+        <Button type="button" onClick={() => go("RUNNING")} loading={pending} variant="primary" size="sm">
+          {state === "PAUSED" ? "Resume" : "Start"}
+        </Button>
       )}
       {state === "RUNNING" && (
-        <button type="button" onClick={() => go("PAUSED")} disabled={pending} className="btn btn-ghost btn-sm">
-          {pending ? "…" : "Pause"}
-        </button>
+        <Button type="button" onClick={() => go("PAUSED")} loading={pending} variant="ghost" size="sm">
+          Pause
+        </Button>
       )}
       {state !== "STOPPED" && (
         <ConfirmDialog
@@ -168,9 +170,9 @@ export function AddAssetForm() {
 
   if (!open) {
     return (
-      <button type="button" onClick={() => setOpen(true)} className="btn btn-primary btn-md">
+      <Button type="button" onClick={() => setOpen(true)} variant="primary" size="md">
         + Add asset
-      </button>
+      </Button>
     );
   }
 
@@ -200,11 +202,16 @@ export function AddAssetForm() {
         captures this exact link when it opens and resolves against the same link. Add it at{" "}
         <span className="font-mono text-[11px]">/admin/sources</span> first if it is not there yet.
       </p>
+      <p className="text-[11.5px] leading-[1.55] text-text-subtle max-w-[80ch]">
+        Because a round resolves against the link it captured, <strong>the source cannot be changed while any round on
+        the asset is still unresolved</strong>. To move it: pause the asset&rsquo;s chains, let the in-flight rounds
+        settle, then edit — the next round captures the new link.
+      </p>
       <div className="flex gap-2">
-        <button type="submit" disabled={pending} className="btn btn-primary btn-md">
+        <Button type="submit" loading={pending} variant="primary" size="md">
           {pending ? "Adding…" : "Add asset"}
-        </button>
-        <button type="button" onClick={() => setOpen(false)} className="btn btn-ghost btn-md">Cancel</button>
+        </Button>
+        <Button type="button" onClick={() => setOpen(false)} variant="ghost" size="md">Cancel</Button>
       </div>
     </form>
   );
@@ -245,9 +252,9 @@ export function AddChainForm({ assets }: { assets: Array<{ id: string; key: stri
 
   if (!open) {
     return (
-      <button type="button" onClick={() => setOpen(true)} className="btn btn-primary btn-md">
+      <Button type="button" onClick={() => setOpen(true)} variant="primary" size="md">
         + Add chain
-      </button>
+      </Button>
     );
   }
 
@@ -271,11 +278,197 @@ export function AddChainForm({ assets }: { assets: Array<{ id: string; key: stri
         Margin is the ± winning band for this chain — blank inherits the product default (0.5%). Frozen onto each round at open.
       </p>
       <div className="flex gap-2">
-        <button type="submit" disabled={pending} className="btn btn-primary btn-md">
+        <Button type="submit" loading={pending} variant="primary" size="md">
           {pending ? "Adding…" : "Add chain"}
-        </button>
-        <button type="button" onClick={() => setOpen(false)} className="btn btn-ghost btn-md">Cancel</button>
+        </Button>
+        <Button type="button" onClick={() => setOpen(false)} variant="ghost" size="md">Cancel</Button>
       </div>
+    </form>
+  );
+}
+
+// ── Reading method — which reader produces the price money settles against ───
+
+/**
+ * The most consequential control on this page, so it is the most explicit one.
+ *
+ * Three UX obligations, all deliberate:
+ *  1. **The consequence is shown before the save, not after.** The panel below the selects
+ *     restates, in plain words, what the current selection means for a live round — because
+ *     "feed / mock" tells an operator nothing about whether prices are real.
+ *  2. **Choosing the simulated feed is a typed confirmation**, matching the payment-provider
+ *     switch. Not a second gate for its own sake: the code refuses a simulated feed in
+ *     production outright, and this stops a mis-click putting invented prices on a TEST-mode
+ *     round that real staff are reading.
+ *  3. **The AI method carries its measured warning inline.** It is not a hypothetical
+ *     downside — it is why the feed is the default.
+ */
+export function ReadingMethodForm({
+  observationMethod, feedProvider, twelveDataKeyPresent, maxStalenessSeconds,
+}: {
+  observationMethod: "feed" | "ai";
+  feedProvider: "mock" | "twelvedata";
+  twelveDataKeyPresent: boolean;
+  maxStalenessSeconds: number;
+}) {
+  const [pending, start] = useTransition();
+  const router = useRouter();
+  const { deferToast, toast } = useDeferredToast(pending);
+  const [method, setMethod] = useState<"feed" | "ai">(observationMethod);
+  const [provider, setProvider] = useState<"mock" | "twelvedata">(feedProvider);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const dirty = method !== observationMethod || provider !== feedProvider;
+  const simulated = method === "feed" && provider === "mock";
+  const keyMissing = method === "feed" && provider === "twelvedata" && !twelveDataKeyPresent;
+
+  const save = () => {
+    const fd = new FormData();
+    fd.set("observationMethod", method);
+    fd.set("feedProvider", provider);
+    // The server demands this word independently; the modal's type-to-arm gate is the UX,
+    // not the authority. A crafted POST without it is refused there.
+    if (simulated) fd.set("confirm", "SIMULATED");
+    start(async () => {
+      const r = await updateReadingMethodAction(fd);
+      setConfirmOpen(false);
+      if (!r.ok) {
+        toast({ title: "Could not change the reading method", description: r.error, variant: "danger" });
+        return;
+      }
+      router.refresh();
+      deferToast({
+        title: "Reading method saved",
+        description: r.warn ?? (simulated
+          ? "Prices are SIMULATED — new rounds will not settle against a real market."
+          : "Takes effect at the next grid boundary. Rounds already open keep their captured source."),
+        variant: r.warn || simulated ? "warning" : "success",
+      });
+    });
+  };
+
+  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (simulated) { setConfirmOpen(true); return; }
+    save();
+  };
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Field label="Reading method">
+          <Select
+            value={method}
+            onChange={(v) => setMethod(v as "feed" | "ai")}
+            ariaLabel="Price reading method"
+            size="sm"
+            options={[
+              { value: "feed", label: "Market data feed (recommended)" },
+              { value: "ai", label: "AI reads the source page" },
+            ]}
+          />
+        </Field>
+        <Field label="Feed provider">
+          <Select
+            value={provider}
+            onChange={(v) => setProvider(v as "mock" | "twelvedata")}
+            ariaLabel="Feed provider"
+            size="sm"
+            options={[
+              { value: "twelvedata", label: "Twelve Data — real quotes" },
+              { value: "mock", label: "Simulated — invented prices" },
+            ]}
+          />
+        </Field>
+      </div>
+
+      {/* ── What the current selection MEANS, stated before the save, not after.
+             "feed / mock" tells an operator nothing about whether prices are real. ── */}
+      <div
+        className={
+          "rounded-lg border p-3 text-[11.5px] leading-[1.55] max-w-[80ch] " +
+          (simulated || keyMissing || method === "ai"
+            ? "border-warning-border bg-warning-bg text-warning-fg"
+            : "border-border bg-[var(--bg-inset)] text-text-subtle")
+        }
+      >
+        {method === "ai" ? (
+          <>
+            <strong>AI page reading refuses almost every short round.</strong> Measured, not
+            theoretical: across seven approved gold and index pages the AI returned no quoted
+            timestamp at all, or a quote 9–12 hours old — one was 7.3 days old — because those
+            pages render their price in JavaScript the fetch tool does not execute. At{" "}
+            {maxStalenessSeconds}s staleness every 5- and 15-minute round will refuse, retry, then{" "}
+            <strong>void and refund in full</strong>. Use it only for an asset no feed carries, and
+            only with a staleness window that suits it.
+          </>
+        ) : simulated ? (
+          <>
+            <strong>Prices would be invented, not observed.</strong> A simulated feed is for local
+            development and test money mode. It is <strong>refused outright in production</strong> —
+            a live round fails its reading, then voids and refunds rather than settle on a made-up
+            number.
+          </>
+        ) : keyMissing ? (
+          <>
+            <strong>TWELVEDATA_API_KEY is not set</strong>, so this provider cannot quote — and it
+            will <strong>not</strong> fall back to simulated prices. Every reading refuses by name
+            and rounds void and refund in full until the key is added to the Railway service
+            variables.
+          </>
+        ) : (
+          <>
+            Real quotes, each carrying the provider&rsquo;s own timestamp, with the endpoint checked
+            against the asset&rsquo;s approved domain and refused if further than{" "}
+            {maxStalenessSeconds}s from the round boundary. This is the production setting.
+          </>
+        )}
+      </div>
+
+      <p className="text-[11.5px] leading-[1.55] text-text-subtle max-w-[80ch]">
+        A change takes effect at the <strong>next grid boundary</strong>. Rounds already open keep
+        the source link they captured and resolve against it — changing the reader never changes the
+        terms of a round players have already staked on.
+      </p>
+
+      <div className="flex items-center gap-2">
+        <Button type="submit" loading={pending} disabled={!dirty} variant="primary" size="md">
+          {dirty ? "Save reading method" : "Saved"}
+        </Button>
+        {dirty && !pending && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="md"
+            onClick={() => { setMethod(observationMethod); setProvider(feedProvider); }}
+          >
+            Discard
+          </Button>
+        )}
+      </div>
+
+      {/* Kit type-to-arm gate — the same one the payment provider switch uses for MOCK. */}
+      <ConfirmModal
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={save}
+        title="Switch to simulated prices?"
+        tone="claret"
+        tier="hard"
+        typedWord="SIMULATED"
+        confirmLabel="Use simulated prices"
+        body={
+          <>
+            <p>
+              Every new round would open and close on an <strong>invented</strong> price. This is
+              for development and test money mode only — production refuses it outright.
+            </p>
+            <p className="mt-2">
+              Rounds already open are unaffected: they keep the source they captured.
+            </p>
+          </>
+        }
+      />
     </form>
   );
 }
@@ -340,9 +533,9 @@ export function ThresholdsForm({
         before a reading is refused. A refused reading is retried; a boundary that never confirms voids its rounds and
         refunds every stake in full — we never settle on a guessed price.
       </p>
-      <button type="submit" disabled={pending} className="btn btn-primary btn-md">
+      <Button type="submit" loading={pending} variant="primary" size="md">
         {pending ? "Saving…" : "Save thresholds"}
-      </button>
+      </Button>
     </form>
   );
 }

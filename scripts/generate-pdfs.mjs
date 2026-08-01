@@ -14,11 +14,13 @@ import { dirname, resolve } from "node:path";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, "..");
 
+// ⚠️ Corrected 2026-07-30. This list named four HTML files — brief-operator, brief-technical,
+// manual-player, manual-admin — that were ALL deleted by the "production-clean repo" sweep
+// (e3d754e). The script therefore threw on its first target and rendered nothing. Only list
+// inputs that exist: a generator pointing at deleted files is worse than no generator, because
+// it looks like those documents are still being produced.
 const TARGETS = [
-  { in: "docs/brief-operator.html",  out: "docs/50pick-operator-briefing.pdf" },
-  { in: "docs/brief-technical.html", out: "docs/50pick-technical-brief.pdf"  },
-  { in: "docs/manual-player.html",   out: "docs/50pick-player-user-manual.pdf"  },
-  { in: "docs/manual-admin.html",    out: "docs/50pick-admin-user-manual.pdf"   },
+  { in: "docs/updown-operator-guide.html", out: "docs/50pick-updown-operator-guide.pdf" },
 ];
 
 const browser = await chromium.launch();

@@ -85,6 +85,11 @@ const PLAYER = [
 const ADMIN = [
   "/admin", "/admin/live", "/admin/markets", "/admin/resolver-queue",
   "/admin/ai-polls", "/admin/candidates", "/admin/proposals", "/admin/sources",
+  // ⚠️ Up & Down's console was NEVER in this sweep — an entire second product line, three
+  // routes, unaudited at every width since it was built. Added 2026-07-30. These are exactly
+  // the pages an overflow bug hides on: /admin/updown carries the assets + chains tables, and
+  // /admin/updown/proposals is the widest table in admin at 8 columns.
+  "/admin/updown", "/admin/updown/proposals", "/admin/updown/rounds",
   "/admin/config", "/admin/finance", "/admin/payments", "/admin/transactions", "/admin/reports",
   "/admin/players", "/admin/players/cohorts", "/admin/affiliate",
   "/admin/bonuses", "/admin/invites", "/admin/compliance", "/admin/moderation",

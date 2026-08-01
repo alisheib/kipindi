@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>50pick · Up &amp; Down — Operator Guide</title>
+<style>
+  /* Self-contained: no web fonts, no network. A PDF must render identically offline. */
+  @page { size: A4; margin: 14mm 13mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", Arial, Helvetica, sans-serif;
+    font-size: 10.5pt; line-height: 1.5; color: #14203a; margin: 0;
+  }
+  h1 { font-size: 23pt; margin: 0 0 1.5mm; letter-spacing: -0.5pt; }
+  h2 {
+    font-size: 13.5pt; margin: 8mm 0 3mm; padding-bottom: 1.5mm;
+    border-bottom: 1.2pt solid #1e3a8a; color: #1e3a8a; page-break-after: avoid;
+  }
+  h3 { font-size: 11pt; margin: 5mm 0 1.5mm; page-break-after: avoid; }
+  p { margin: 0 0 2.5mm; }
+  ul, ol { margin: 0 0 3mm; padding-left: 6mm; }
+  li { margin-bottom: 1.3mm; }
+  .sub { color: #566; font-size: 10pt; margin-bottom: 5mm; }
+  code {
+    font-family: "Consolas", "Courier New", monospace; font-size: 9.2pt;
+    background: #eef2fb; padding: 0.3mm 1.2mm; border-radius: 1mm;
+  }
+  table { width: 100%; border-collapse: collapse; margin: 0 0 4mm; page-break-inside: avoid; }
+  th, td { text-align: left; vertical-align: top; padding: 2mm 2.5mm; border-bottom: 0.5pt solid #ccd5e6; }
+  th { background: #eef2fb; font-size: 9.5pt; text-transform: uppercase; letter-spacing: 0.4pt; color: #1e3a8a; }
+  td { font-size: 10pt; }
+  .box {
+    border: 0.8pt solid #1e3a8a; background: #f5f8ff;
+    padding: 3mm 3.5mm; margin: 0 0 4mm; border-radius: 1.5mm; page-break-inside: avoid;
+  }
+  .warn { border-color: #a2600a; background: #fdf6e9; }
+  .stop { border-color: #9b1c2e; background: #fdf0f1; }
+  .box p:last-child { margin-bottom: 0; }
+  .pill {
+    display: inline-block; background: #1e3a8a; color: #fff; font-size: 8.5pt;
+    padding: 0.4mm 2mm; border-radius: 3mm; margin-right: 1.5mm;
+  }
+  figure { margin: 0 0 4mm; page-break-inside: avoid; }
+  figure img {
+    width: 100%; display: block; border: 0.6pt solid #b9c4da; border-radius: 1.5mm;
+  }
+  figcaption { font-size: 9pt; color: #566; margin-top: 1.5mm; line-height: 1.4; }
+  figcaption b { color: #1e3a8a; }
+  .split { display: flex; gap: 4mm; page-break-inside: avoid; margin-bottom: 4mm; }
+  .split .narrow { flex: 0 0 34mm; }
+  .split .narrow img { width: 100%; border: 0.6pt solid #b9c4da; border-radius: 1.5mm; display: block; }
+  .split .text { flex: 1; }
+  .flow { display: flex; gap: 2mm; margin: 0 0 4mm; page-break-inside: avoid; }
+  .flow div {
+    flex: 1; border: 0.6pt solid #ccd5e6; border-radius: 1.5mm;
+    padding: 2.5mm; font-size: 9.2pt; background: #fbfcff;
+  }
+  .flow b { display: block; color: #1e3a8a; font-size: 9.5pt; margin-bottom: 1mm; }
+  footer { margin-top: 7mm; padding-top: 2mm; border-top: 0.5pt solid #ccd5e6; font-size: 9pt; color: #667; }
+  .pb { page-break-before: always; }
+</style>
+</head>
+<body>
+
+<h1>Up &amp; Down — Operator Guide</h1>
+<p class="sub">For 50pick staff who run the Up &amp; Down game. No technical knowledge needed.
+Every picture is the real screen.</p>
+
+<h2>1 · What the game is</h2>
+
+<p>A player bets whether a price — gold, silver, an index — will go <b>UP</b> or <b>DOWN</b> over
+a short window: 5, 15 or 30 minutes. One window is a <b>round</b>.</p>
+
+<div class="flow">
+  <div><b>1. Round opens</b>We read the price from an approved website and save it, with the link.</div>
+  <div><b>2. Players bet</b>They pick UP or DOWN before the round closes.</div>
+  <div><b>3. Round closes</b>We read the price again — from the same link.</div>
+  <div><b>4. We pay</b>UP wins, DOWN wins, or nobody wins and everyone is refunded.</div>
+</div>
+
+<p>The price must move more than a small amount — the <b>margin</b>, normally 0.50% — for a side
+to win. If it moves less, the round is <b>VOID</b> and <b>every player gets their full stake
+back</b>. Nobody loses money on a round that barely moved.</p>
+
+<div class="box">
+<p><span class="pill">KEY IDEA</span> <b>A round is settled against the exact web page it was
+opened on.</b> We save the link when the round opens and go back to that same link when it
+closes. If the price cannot be confirmed, the round voids and refunds — <b>we never guess a
+price</b>.</p>
+</div>
+
+<h2>2 · Finding it in the admin</h2>
+
+<div class="split">
+  <div class="narrow"><img src="guide-img/nav.png" alt="Admin sidebar"></div>
+  <div class="text">
+    <p>Up &amp; Down is a <b>separate game</b> from normal polls, so it has its own section at the
+    bottom of the sidebar: <b>UP &amp; DOWN · JUU NA CHINI</b>.</p>
+    <p>It has three screens:</p>
+    <ul>
+      <li><b>Overview</b> — what you trade and the timers that produce rounds.</li>
+      <li><b>AI proposals</b> — ask the AI to suggest a new market, then approve it.</li>
+      <li><b>Rounds</b> — every round that has run, and where you cancel a stuck one.</li>
+    </ul>
+    <p>⚠️ You will <b>not</b> find Up &amp; Down rounds under <i>Markets → Curation queue</i>.
+    That section is for long-form polls only.</p>
+  </div>
+</div>
+
+<h2>3 · Overview — what you trade</h2>
+
+<figure>
+  <img src="guide-img/overview.png" alt="Up &amp; Down Overview screen">
+  <figcaption>
+    <b>Top row:</b> how many assets are switched on, how many timers (<b>chains</b>) are running,
+    the fee on a balanced 10,000 pool, and the <b>staleness window</b> — how fresh a price must be
+    before we accept it. <b>Middle:</b> the money for this game only, over the period you pick.
+    <b>Bottom:</b> your assets, each with the website its price comes from.
+    Here <b>Running chains is 0</b> — no rounds are being produced right now.
+  </figcaption>
+</figure>
+
+<h2 class="pb">4 · Starting a new market</h2>
+
+<h3>Option A — Let the AI propose it (easiest)</h3>
+
+<figure>
+  <img src="guide-img/proposals.png" alt="AI proposals screen">
+  <figcaption>
+    Pick the asset and the round length, then press <b>Ask the AI to propose</b>. The AI opens the
+    approved website and reports the price and time <b>it actually found there</b>. Note the line
+    under the form: it names the one website the AI is allowed to read for this asset — it cannot
+    go anywhere else.
+  </figcaption>
+</figure>
+
+<ol>
+  <li>Go to <b>Up &amp; Down → AI proposals</b>.</li>
+  <li>Choose the asset and round length. Press <b>Ask the AI to propose</b>.</li>
+  <li>Look at the <b>“What it found there”</b> column.
+    <ul>
+      <li>A <b>price and a time</b> → good, the page can be used.</li>
+      <li>A <b>dash</b> (<code>—</code>) → the AI could not read a price there. <b>This is normal</b>
+          and the check doing its job. Try a different page or asset.</li>
+    </ul>
+  </li>
+  <li>Press <b>Review</b>. Change the link, round length, margin or wording if you want. Then
+      <b>Approve</b>.</li>
+  <li>Press <b>Arm</b> and type <code>ARM</code> to confirm. The market starts at the next boundary.</li>
+</ol>
+
+<h3>Option B — Set it up yourself</h3>
+<ol>
+  <li><b>Overview → + Add asset</b>: name, symbol, and the web page the price comes from. That
+      website must already be approved under <b>Sources &amp; categories</b>.</li>
+  <li>Switch the asset <b>on</b> (the toggle on the right of its row).</li>
+  <li><b>Add chain</b>: choose the asset and 5, 15 or 30 minutes.</li>
+  <li>Press <b>Start</b>.</li>
+</ol>
+
+<h2>5 · Rounds — checking the game is healthy</h2>
+
+<figure>
+  <img src="guide-img/rounds.png" alt="Rounds screen">
+  <figcaption>
+    Every round: when it opened and closed, the outcome, how much was staked, how many players,
+    and when it settled. In this picture every round shows <b>VOID</b> and <b>TZS 0</b> — that is
+    a game that is <b>not working</b>: no price could be read, so every stake was refunded. A
+    healthy day shows a mix of <b>UP</b> and <b>DOWN</b> with real volume.
+  </figcaption>
+</figure>
+
+<h3>Your daily check — five minutes</h3>
+<ol>
+  <li><b>Rounds</b> — are recent rounds settling UP/DOWN, not a long run of VOID?</li>
+  <li><b>Overview → price readings</b> — each asset should show a recent price and a recent time.
+      A dash means we cannot read it.</li>
+  <li><b>Chains are running</b>, not paused — unless you paused them on purpose.</li>
+  <li><b>Void rate</b> on each chain. Amber at 40% or more means that market needs attention.</li>
+  <li><b>Money</b> — staked and paid out look sensible for the day.</li>
+</ol>
+
+<div class="box warn">
+<p><span class="pill">REMEMBER</span> A void is not a loss. Every player gets their full stake back
+and we take no fee. A high void rate is a <b>quality</b> problem, not a money problem — but it
+makes the game boring, so fix it.</p>
+</div>
+
+<h2 class="pb">6 · When something looks wrong</h2>
+
+<table>
+  <tr><th style="width:30%">What you see</th><th style="width:32%">What it means</th><th>What to do</th></tr>
+  <tr>
+    <td>Price shows <code>—</code>; rounds keep voiding</td>
+    <td>We cannot read the price from that website.</td>
+    <td>Pause the chain. Tell the technical team. Players are safe — they are being refunded.</td>
+  </tr>
+  <tr>
+    <td>“Confirming price” for a long time</td>
+    <td>We are retrying the reading. By design.</td>
+    <td>Wait. If it never confirms, the round voids and refunds by itself.</td>
+  </tr>
+  <tr>
+    <td>A round is stuck holding player money</td>
+    <td>Something went wrong for that round.</td>
+    <td><b>Rounds → Void</b>. Give a clear reason. Every stake is refunded in full.</td>
+  </tr>
+  <tr>
+    <td>Too many VOID results</td>
+    <td>The margin is too wide for how much that price moves.</td>
+    <td>Lower the margin on that chain (e.g. 0.50% → 0.30%). Only affects new rounds.</td>
+  </tr>
+  <tr>
+    <td>You cannot change an asset's web page</td>
+    <td>Rounds are still open on the old page.</td>
+    <td>Correct behaviour — those players were told the old page. Pause, let them finish, then change it.</td>
+  </tr>
+  <tr>
+    <td>Top bar shows <b>AI OFF</b></td>
+    <td>Usually the AI key is missing — <b>not</b> that someone switched it off.</td>
+    <td>Tell the technical team. You can still review and start proposals already in the list.</td>
+  </tr>
+</table>
+
+<h2>7 · Five rules — never break these</h2>
+
+<div class="box stop">
+<p><b>1. Never change where a price comes from while a round is open.</b> Those players were told
+one source and the round must finish on it. The system will stop you — do not look for a way
+around it.</p>
+<p><b>2. Never approve a proposal with no price shown.</b> A dash means the AI could not read that
+page. Starting it anyway means rounds that cannot settle.</p>
+<p><b>3. Never use the “Simulated” price feed on real money.</b> It invents prices. It is for
+testing only, and it asks you to type <code>SIMULATED</code> to confirm — that prompt is your
+warning to stop.</p>
+<p><b>4. Never announce a price we have not confirmed.</b> If a screen shows a dash, that is the
+honest answer. Do not fill it in from another website.</p>
+<p><b>5. Always give a real reason when you void a round.</b> It is a permanent record and the
+company may have to explain it.</p>
+</div>
+
+<h2>8 · Words you will see</h2>
+
+<table>
+  <tr><th style="width:24%">Word</th><th>Meaning</th></tr>
+  <tr><td><b>Asset</b></td><td>A thing with a price — Gold, Silver, S&amp;P 500.</td></tr>
+  <tr><td><b>Chain</b></td><td>One asset at one round length. “Gold 15m” is one chain. A chain produces rounds automatically.</td></tr>
+  <tr><td><b>Round</b></td><td>One 5, 15 or 30-minute window that players bet on.</td></tr>
+  <tr><td><b>Margin</b></td><td>How far the price must move for a side to win. Normally 0.50%.</td></tr>
+  <tr><td><b>VOID</b></td><td>No winner. Every stake refunded in full, no fee taken.</td></tr>
+  <tr><td><b>Boundary</b></td><td>The clock moment a round opens and the next begins — :00, :15, :30, :45.</td></tr>
+  <tr><td><b>Staleness window</b></td><td>How old a price may be and still be accepted. Normally 90 seconds.</td></tr>
+  <tr><td><b>Proposal</b></td><td>An AI suggestion for a new market. It does nothing until a person approves and arms it.</td></tr>
+  <tr><td><b>Arm</b></td><td>Turning an approved proposal into a live, running market.</td></tr>
+</table>
+
+<div class="box">
+<p><span class="pill">IF IN DOUBT</span> <b>Pause the chain.</b> Pausing stops new rounds and lets
+open ones finish normally — no player is left holding a bet. It is always safe, it never needs
+technical help, and it is undone in one click.</p>
+</div>
+
+<footer>
+50pick · Up &amp; Down Operator Guide · Internal use only.
+Technical detail lives in <code>docs/UPDOWN-SPEC.md</code> and
+<code>docs/UPDOWN-ARCHITECTURE.md</code> — you do not need them to run the game.
+</footer>
+
+</body>
+</html>

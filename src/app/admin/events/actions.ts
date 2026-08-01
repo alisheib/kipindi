@@ -54,6 +54,16 @@ export async function generateFromEventAction(formData: FormData) {
   if (!event) return { ok: false as const, error: "Event not found." };
   if (event.generatedAt) return { ok: false as const, error: "A poll has already been drafted for this event." };
 
+  // ⛔ THE AI-TOOLKIT PAUSE SWITCH — and THIS DOOR WAS THE BYPASS. The check lived only in
+  // `admin/ai-polls/actions.ts`, so an operator who had turned AI generation off could
+  // still draft a poll from the event calendar. `generateAIPoll` now enforces it itself
+  // (that is the authority), but it throws; this early return gives the same clean refusal
+  // the ai-polls page shows.
+  const { isPollGenEnabled } = await import("@/lib/server/ai-controls");
+  if (!(await isPollGenEnabled())) {
+    return { ok: false as const, error: "AI generation is disabled (AI toolkit)." };
+  }
+
   // Resolve AFTER the event concludes. We don't know its duration, so give it a
   // 3h buffer — the officer can edit the exact resolution time before publishing.
   const EVENT_BUFFER_MS = 3 * 3600_000;

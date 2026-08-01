@@ -153,8 +153,12 @@ export default async function AdminUpDownRoundsPage() {
                         <td className="px-4 py-3 text-right font-mono text-[10.5px] text-text-subtle whitespace-nowrap">{r.settledAt ? fmt(r.settledAt) : "—"}</td>
                         <td className="px-4 py-3 text-right whitespace-nowrap">
                           {/* The lever exists ONLY where it can do something: an unsettled
-                              round. Offering it on a settled one would be a button that
-                              always refuses — the very defect E-18 is about. */}
+                              round. Once the money has moved there is nothing to refund and
+                              the service refuses anyway, so offering it on a settled round
+                              would be a button that always refuses — the very defect E-18
+                              is about. A viewer who may not act gets a locked state, not a
+                              live-looking control that files their click as an attempted
+                              privilege escalation. */}
                           {r.settledAt ? (
                             <span className="font-mono text-[10.5px] text-text-subtle">—</span>
                           ) : canVoidRound ? (
@@ -181,7 +185,8 @@ export default async function AdminUpDownRoundsPage() {
           source at the round&rsquo;s grid boundaries; a round that could not confirm a price VOIDs and refunds every stake
           in full. Full per-round proof (both source links + quoted times) is on each round&rsquo;s market page.
           Every round reaches a verdict — or a full refund — within {Math.round(overdueMs / 1000)}s of its boundary,
-          automatically; <em>Void &amp; refund</em> is the manual remedy for when it has not.
+          automatically; <em>Void &amp; refund</em> is the manual remedy for when it has not. Only an unsettled round can
+          be voided, and the reason you give is written to the audit trail.
         </p>
       </div>
     </>

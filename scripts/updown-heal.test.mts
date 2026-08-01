@@ -32,9 +32,17 @@
  * THE ONLY THING FAKED IS THE CLOCK, and it is injected (`healStuckRounds({ now })`)
  * rather than patched — no row is edited behind a service's back, no lock is bypassed.
  *
- * THE ORACLE IS NEVER STUBBED AWAY. With no ANTHROPIC_API_KEY the REAL `observePrice`
- * refuses `no-api-key` before any network call, so the ladder runs for real, for free,
- * and its attempt accounting is genuine rather than simulated.
+ * THE PRICE READER IS NEVER STUBBED AWAY, and after the 2026-08-01 feed merge it is worth
+ * being precise about WHICH refusal drives the ladder here, because the two are no longer
+ * interchangeable. The default reader is now the FEED (`observationMethod: "feed"`,
+ * `feedProvider: "mock"`). The mock quotes the present instant, so against these future
+ * boundaries it is refused as `stale` — a genuine SOURCE failure, which correctly spends an
+ * attempt. That is what lets §4 climb a real ladder locally, for free.
+ *
+ * ⛔ It is deliberately NOT the `no-api-key` path. That one is an OPERATOR state and is now
+ * carved out of the attempt budget (§11) — a suite resting on it would have a ladder that
+ * never climbs, and would prove nothing at all. §11 tests that carve-out head-on, including
+ * the one combination neither source branch had: the carve-out plus §3's deadline.
  */
 process.env.SESSION_SECRET ??= "test-only-session-secret-32chars-min-aaaa";
 delete process.env.ANTHROPIC_API_KEY; // the oracle must refuse locally, never dial out
@@ -47,7 +55,7 @@ import {
   DEFAULT_UPDOWN_CONFIG,
 } from "../src/lib/server/updown-config.ts";
 import {
-  openRound, closeRound, advanceChain, healStuckRounds, voidRoundByOperator,
+  openRound, closeRound, advanceChain, healStuckRounds, voidRoundByOperator, acquireObservation,
 } from "../src/lib/server/updown-service.ts";
 import { marketStore } from "../src/lib/server/market-dal.ts";
 import { buyPosition, listPositionsForMarket } from "../src/lib/server/market-service.ts";
@@ -477,8 +485,16 @@ let strandedMarketId = "";
      "no accessor reads it");
   // Two readers is how a ladder ends up half-honoured, which is a subtler version of
   // not honoured at all.
+  //
+  // ⚠️ COMMENTS ARE STRIPPED FIRST, and that is not a convenience. This assertion fired on
+  // the 2026-08-01 feed-branch merge against a tree where the ladder genuinely had exactly
+  // one reader — what tripped it was a COMMENT in updown-service.ts explaining that very
+  // rule, quoting the field it names. A structural guard that a correct explanation can
+  // turn red teaches the next session to delete the explanation, which is the opposite of
+  // what this guard is for. It must measure code, so it reads code.
+  const stripComments = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
   const readers = ["src/lib/server/updown-config.ts", "src/lib/server/updown-service.ts", "src/lib/server/updown-scheduler.ts"]
-    .filter((f) => /cfg\.retryBackoffSeconds|config\.retryBackoffSeconds/.test(read(f)));
+    .filter((f) => /cfg\.retryBackoffSeconds|config\.retryBackoffSeconds/.test(stripComments(read(f))));
   ok("10.4 · …and by exactly one module, so the ladder cannot be half-honoured", readers.length === 1, readers.join(","));
 
   // E-23: the remedy must be reachable from the product, not only from a script.
@@ -503,6 +519,133 @@ let strandedMarketId = "";
      /ControlLocked/.test(read("src/app/admin/updown/rounds/page.tsx")) &&
      /canUseControl\(session\?\.role, "voidUpDownRound"\)/.test(read("src/app/admin/updown/rounds/page.tsx")),
      "no locked state");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 11 · AN OPERATOR STATE MUST NOT SPEND A ROUND'S RETRIES
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// ℹ️ MERGED IN 2026-08-01 from `feat/updown-source-pinning-and-proposals`, whose own
+// heal sweep was dropped in favour of `healStuckRounds` — but whose carve-out inside
+// `acquireObservation` was kept, because it fixes a real defect this suite did not cover.
+//
+// THE DEFECT: `acquireObservation` recorded an attempt on EVERY refusal, including
+// refusals that are an operator's own doing — no API key, AI paused, a feed provider
+// selected with no credentials. Four lifecycle fires with the AI paused therefore walked
+// the attempt budget to zero and VOIDED live rounds for an ops mistake, refunding players
+// who were happily betting. The carve-out is the fix.
+//
+// ⭐ AND WHY THE TWO FIXES NEED EACH OTHER — the thing neither branch had alone. The
+// carve-out means a misconfigured platform never spends the budget, so on that branch a
+// round with a bad key would have waited FOREVER: E-24 again, through a new door. What
+// stops it is §3's deadline — `abandonAfterSeconds` closes the round regardless of the
+// budget. Carve-out without deadline strands money; deadline without carve-out voids live
+// rounds for a typo. §11.4 pins the combination, which is the real merge outcome.
+console.log("\n── 11 · an ops-state refusal does not spend a round's retries ──");
+{
+  const restore = await getUpDownConfig();
+
+  // 11a · The FEED path: a real provider selected with no API key. `not-configured` is
+  // mapped onto the carve-out, which is the whole reason that mapping exists.
+  const savedKey = process.env.TWELVEDATA_API_KEY;
+  delete process.env.TWELVEDATA_API_KEY;
+  const setFeed = await setUpDownConfig({ observationMethod: "feed", feedProvider: "twelvedata" }, OFFICER);
+  ok("11.1 · the feed reader can be selected at all", setFeed.ok, setFeed.ok ? "" : setFeed.error);
+
+  const bFeed = B(200);
+  const oFeed = await observationStore.ensure(asset.id, bFeed);
+  const gotFeed = await acquireObservation(asset, bFeed);
+  ok("11.2 · an unconfigured feed is REFUSED, never invented around", gotFeed.state === "pending", gotFeed.state);
+  const afterFeed = (await observationStore.get(oFeed.id))!;
+  ok("11.3 · ⛔ FEED: the attempt budget was NOT spent on an operator state",
+     afterFeed.attempts === 0 && afterFeed.state === "PENDING",
+     `attempts=${afterFeed.attempts} state=${afterFeed.state} — burning it here voids live rounds for an ops mistake`);
+
+  // 11.4 · …and the deadline is what stops that carve-out from stranding the money.
+  // Same misconfiguration, a round with a real stake, clock pushed past the deadline.
+  {
+    const opened = await openRound(chain, B(201), null, null);
+    if (!opened.ok) throw new Error(opened.error);
+    const round = (await roundStore.get(opened.data.id))!;
+    const bought = await buyPosition(alpha, { marketId: round.marketId, side: "YES", stake: 500 });
+    ok("11.4a · a real stake entered the round", bought.ok, bought.ok ? "" : String(bought.error));
+    const staked = await balanceOf(alpha);
+
+    const t = Date.parse(round.boundaryAt) + (abandonAfterSeconds(restore) + 30) * SEC;
+    await healStuckRounds({ now: t });
+    const healed = (await roundStore.get(round.id))!;
+    const obs = await observationStore.find(asset.id, round.boundaryAt);
+    ok("11.4b · ⭐ the budget was never spent — the carve-out held throughout",
+       (obs?.attempts ?? 0) === 0, `attempts=${obs?.attempts}`);
+    ok("11.4c · ⭐ …and the round STILL terminated, on the deadline rather than the budget",
+       healed.outcome === "VOID" && !!healed.resolvedAt, `${healed.outcome} resolved=${healed.resolvedAt}`);
+    ok("11.4d · ⛔ the stake came back in full — an ops mistake costs a round, never a player",
+       (await balanceOf(alpha)) === staked + 500, `${staked} → ${await balanceOf(alpha)} (staked 500)`);
+  }
+
+  // 11b · A GENUINE source failure, by contrast, MUST burn an attempt — otherwise a
+  // boundary that truly cannot be read never reaches FAILED and its rounds never refund.
+  // The mock feed quotes NOW, so against a future boundary it is refused as `stale`.
+  const setMock = await setUpDownConfig({ feedProvider: "mock" }, OFFICER);
+  if (!setMock.ok) throw new Error(setMock.error);
+  const bStale = B(210);
+  const oStale = await observationStore.ensure(asset.id, bStale);
+  const gotStale = await acquireObservation(asset, bStale);
+  ok("11.5 · a genuine source failure is refused", gotStale.state === "pending", gotStale.state);
+  ok("11.6 · ⛔ …and DOES spend an attempt, or a dead boundary could never reach FAILED and refund",
+     (await observationStore.get(oStale.id))!.attempts === 1,
+     `attempts=${(await observationStore.get(oStale.id))!.attempts}`);
+
+  if (savedKey !== undefined) process.env.TWELVEDATA_API_KEY = savedKey;
+  const back = await setUpDownConfig(
+    { observationMethod: restore.observationMethod, feedProvider: restore.feedProvider }, OFFICER);
+  if (!back.ok) throw new Error(back.error);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 12 · THE BACKOFF GATE LIVES IN `acquireObservation`, AND IS CLOCK-INJECTABLE
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// §4 proves the ladder through the healer. This proves the gate itself, at the one place
+// it now lives — because the merge moved it there, and a gate nobody tests directly is how
+// the ladder came to be dead config in the first place.
+console.log("\n── 12 · the ladder gate, tested where it actually lives ──");
+{
+  const restore = await getUpDownConfig();
+  const set = await setUpDownConfig({ retryBackoffSeconds: [600] }, OFFICER);
+  ok("12.1 · a long rung is accepted (600s is the documented ceiling)", set.ok, set.ok ? "" : set.error);
+
+  const boundary = B(220);
+  const obs = await observationStore.ensure(asset.id, boundary);
+  await observationStore.recordAttempt(obs.id, "test: one failed attempt just now");
+  const attemptsBefore = (await observationStore.get(obs.id))!.attempts;
+  const lastAt = Date.parse((await observationStore.get(obs.id))!.lastAttemptAt!);
+
+  const waiting = await acquireObservation(asset, boundary, lastAt + 60 * SEC);
+  ok("12.2 · a boundary inside its backoff window is left alone", waiting.state === "pending", waiting.state);
+  ok("12.3 · …and reports the WAIT, not a source failure — an operator must not read a rung as a broken feed",
+     "detail" in waiting && /waiting \d+s/.test(waiting.detail), "detail" in waiting ? waiting.detail : "(none)");
+  ok("12.4 · no attempt is consumed while waiting",
+     (await observationStore.get(obs.id))!.attempts === attemptsBefore);
+
+  // ⭐ The clock is INJECTED. Before this parameter existed the gate read wall-clock time
+  // while the healer believed it was minutes later, so the rung never elapsed and the
+  // ladder looked dead — the exact regression the merge introduced and §4 caught.
+  const climbed = await acquireObservation(asset, boundary, lastAt + 601 * SEC);
+  ok("12.5 · ⭐ past the rung the gate opens and the ladder CLIMBS",
+     (await observationStore.get(obs.id))!.attempts === attemptsBefore + 1,
+     `attempts=${(await observationStore.get(obs.id))!.attempts} state=${climbed.state}`);
+
+  const back = await setUpDownConfig({ retryBackoffSeconds: restore.retryBackoffSeconds }, OFFICER);
+  if (!back.ok) throw new Error(back.error);
+
+  // Validation, now that the field is load-bearing and metered money is behind it.
+  ok("12.6 · an empty ladder is refused", !(await setUpDownConfig({ retryBackoffSeconds: [] }, OFFICER)).ok);
+  ok("12.7 · a negative rung is refused", !(await setUpDownConfig({ retryBackoffSeconds: [-1] }, OFFICER)).ok);
+  ok("12.8 · ⛔ a 0s rung is refused — it would re-dial a METERED price feed on every tick",
+     !(await setUpDownConfig({ retryBackoffSeconds: [0] }, OFFICER)).ok);
+  ok("12.9 · a rung beyond the ceiling is refused — it would push the deadline out of minutes",
+     !(await setUpDownConfig({ retryBackoffSeconds: [3600] }, OFFICER)).ok);
 }
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);

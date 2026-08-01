@@ -179,8 +179,16 @@ export function AiToolkit({ status, canAct = true }: { status: AiToolkitStatus; 
               />
               <ToggleRow
                 icon={<I.sparkle s={14} />}
-                label="AI poll generation"
-                hint={pollGenEnabled ? "Admins can generate market ideas." : "Generator blocked."}
+                label="AI generation"
+                hint={pollGenEnabled
+                  ? "Admins can generate poll ideas and Up & Down round proposals."
+                  : "Both generators blocked."}
+                // ℹ️ MERGE NOTE (2026-08-01). The label and hint come from the feed branch
+                // — this one switch now governs BOTH generators, so "AI poll generation"
+                // under-described what it turns off. `readOnly={!canAct}` is E-18 and is
+                // NOT optional: that branch predates it, and without it a viewer who
+                // cannot act still gets a live-looking switch. Every other row here
+                // carries it; a single row missing it is the whole E-18 defect.
                 on={pollGenEnabled} disabled={pending} onClick={togglePollGen} readOnly={!canAct}
               />
               {/* E-19: say WHY the switches are inert, so the panel reads as a status

@@ -61,6 +61,29 @@ s = await getAiToolkitStatus();
 ok("5.1 no key → hasKey false", s.hasKey === false);
 ok("5.2 no key → resolution not active", s.resolutionActive === false);
 
+// 6. ⛔ THE SWITCH IS ENFORCED BY THE GENERATOR ITSELF, not only by the admin page.
+//
+// This is the assertion whose absence allowed the bypass: `isPollGenEnabled()` was checked
+// only in `admin/ai-polls/actions.ts`, so `generateFromEventAction` — the event-calendar
+// door — generated polls with the operator's switch OFF. A gate on one of two doors is not
+// a gate, and the toolkit presents this switch as the single place generation is turned off.
+{
+  process.env.ANTHROPIC_API_KEY = "test-key";
+  const { generateAIPoll } = await import("../src/lib/server/ai-poll-generation.ts");
+
+  await setPollGenEnabled(false, "officer");
+  let refused = false, message = "";
+  try {
+    await generateAIPoll({ category: "macro", prompt: "should never run", actorId: "officer" });
+  } catch (e) { refused = true; message = (e as Error).message; }
+  ok("6.1 ⛔ generateAIPoll REFUSES while AI generation is paused", refused,
+     refused ? "" : "IT GENERATED A POLL WITH THE SWITCH OFF");
+  ok("6.2 …and names the control that turned it off", /toolkit/i.test(message), message);
+
+  await setPollGenEnabled(true, "officer");
+  ok("6.3 the switch is back on", (await isPollGenEnabled()) === true);
+}
+
 // Restore.
 await setResolutionAiPaused(false, "officer");
 await setGlobalConfig({ resolutionMode: "human" }, "officer");

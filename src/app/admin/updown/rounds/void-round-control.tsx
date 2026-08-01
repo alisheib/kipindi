@@ -11,9 +11,18 @@
  *
  * Modelled on `admin/markets/emergency-void-control.tsx` on purpose — it is the same
  * act on the same kind of row (close a live pool, hand every stake back), so it wears
- * the same clothes and demands the same `compliance` authority. A reason of ≥5
- * characters is REQUIRED and is recorded verbatim; whatever is typed here is what the
- * compliance record says about why a player's money was returned.
+ * the same clothes. That deliberate mirroring is also why this file carries a documented
+ * entry in `scripts/ui-consistency-baseline.json` rather than being converted to the kit
+ * button on its own: the two destructive-confirm dialogs must not diverge.
+ *
+ * ⛔ The authority is `trading`, NOT `compliance` — read from
+ * `CONTROL_DOMAIN.voidUpDownRound` so this component, the page and the server action all
+ * ask one question. It shipped as `compliance` for one deploy and production proved that
+ * unusable: /admin/updown/rounds is a `trading` route, so the compliance officer could not
+ * open the page at all and the remedy became Owner-only — E-23 restated.
+ *
+ * A reason of ≥5 characters is REQUIRED and is recorded verbatim; whatever is typed here
+ * is what the compliance record says about why a player's money was returned.
  */
 
 import { useRef, useState, useTransition } from "react";

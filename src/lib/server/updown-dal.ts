@@ -31,7 +31,7 @@ export type ObservationState = "PENDING" | "CONFIRMED" | "FAILED";
 
 /** Why a round returned every stake instead of paying a winner. Recorded for the
  *  audit trail and the ops readout; the player is refunded in full either way. */
-export type VoidReason = "no-move" | "source-failed" | "operator";
+export type VoidReason = "no-move" | "source-failed" | "source-mismatch" | "operator";
 
 export type StoredAsset = {
   id: string;
@@ -93,6 +93,10 @@ export type StoredRound = {
   marginBps: number | null;
   upTarget: number | null;
   downTarget: number | null;
+  /** The source PINNED at open. Settlement reads THIS, never the asset row. Null on
+   *  rounds that had already settled before the capture existed (legacy -> skip). */
+  capturedSourceUrl: string | null;
+  capturedSourceDomain: string | null;
   outcome: RoundOutcome | null;
   voidReason: VoidReason | null;
   resolvedAt: string | null;
@@ -165,6 +169,8 @@ function toRound(r: any): StoredRound {
     closeObservationId: r.closeObservationId ?? null,
     openPrice: num(r.openPrice), closePrice: num(r.closePrice),
     marginBps: r.marginBps ?? null, upTarget: num(r.upTarget), downTarget: num(r.downTarget),
+    capturedSourceUrl: r.capturedSourceUrl ?? null,
+    capturedSourceDomain: r.capturedSourceDomain ?? null,
     outcome: (r.outcome as RoundOutcome | null) ?? null,
     voidReason: (r.voidReason as VoidReason | null) ?? null,
     resolvedAt: iso(r.resolvedAt), settledAt: iso(r.settledAt),
@@ -235,12 +241,25 @@ export interface RoundStore {
   list(opts?: { chainId?: string; limit?: number; unsettledOnly?: boolean }): Promise<StoredRound[]>;
   /**
    * Rounds whose boundary has PASSED and which have still not been resolved, oldest
-   * first. The self-healer's read (E-24).
+   * first, so nobody's money waits behind newer money. The self-healer's read (E-24).
+   *
+   * ⛔ WHY THIS EXISTS. `advanceChain` only ever observes `chain.nextBoundaryAt` and then
+   * moves that pointer on, so a boundary that refused once was never revisited: the
+   * observation stayed PENDING at 1 attempt, `maxObservationAttempts` was unreachable,
+   * FAILED never happened, and the round could neither resolve NOR refund. Production
+   * reached 1,398 such rounds holding real money.
    *
    * ⛔ DELIBERATELY NOT FILTERED BY CHAIN STATE. That is the whole point: an orphan
    * on a STOPPED chain strands its player's money exactly as one on a RUNNING chain
    * does, and stopping a chain is precisely what an operator does when the game
    * misbehaves. Filtering here would re-open E-24 through the door it came in.
+   *
+   * Served by `@@index([boundaryAt])`.
+   *
+   * ℹ️ MERGE NOTE (2026-08-01). `feat/updown-source-pinning-and-proposals` shipped this
+   * same query as `overdueUnresolved({ beforeIso, limit })` for its own heal sweep. One
+   * query, one name: that branch's sweep was dropped in favour of `healStuckRounds`,
+   * which is live-proven and additionally covers the decided-but-unpaid shape below.
    */
   unresolvedBefore(boundaryBeforeIso: string, limit: number): Promise<StoredRound[]>;
   /** Rounds that reached a verdict but whose money never moved — settlement failed,
@@ -354,7 +373,7 @@ const memoryRounds: RoundStore = {
   async unresolvedBefore(boundaryBeforeIso, limit) {
     return [...memRounds.values()]
       .filter((r) => !r.resolvedAt && r.boundaryAt <= boundaryBeforeIso)
-      .sort((a, b) => a.boundaryAt.localeCompare(b.boundaryAt))
+      .sort((a, b) => a.boundaryAt.localeCompare(b.boundaryAt)) // oldest first
       .slice(0, limit);
   },
   async resolvedUnsettled(limit) {
@@ -365,6 +384,15 @@ const memoryRounds: RoundStore = {
   },
   async create(r) { memRounds.set(r.id, { ...r }); },
   async patch(id, fields) {
+    // ⛔ THE SAME ALLOWLIST THE PRISMA STORE ENFORCES. This used to spread `fields`
+    // blindly, so the create-only columns — the frozen line (`marginBps`, `upTarget`,
+    // `downTarget`) and the pinned source — were write-once in production and freely
+    // writable in every test. A fake that is more permissive than the real thing means a
+    // green suite proves nothing about the guarantee it was written to protect; the whole
+    // value of this in-memory pair is that passing here means the same as passing there.
+    for (const k of Object.keys(fields)) {
+      if (!ROUND_PATCHABLE[k]) throw new Error(`roundStore.patch: '${k}' is not a patchable column`);
+    }
     const cur = memRounds.get(id);
     if (cur) memRounds.set(id, { ...cur, ...fields, updatedAt: new Date().toISOString() });
   },
@@ -550,7 +578,7 @@ const prismaRounds: RoundStore = {
     // can never turn into a scan of the whole round history.
     const rows = await pc().upDownRound.findMany({
       where: { resolvedAt: null, boundaryAt: { lte: new Date(boundaryBeforeIso) } },
-      orderBy: { boundaryAt: "asc" },
+      orderBy: { boundaryAt: "asc" }, // oldest first — nobody's money waits behind newer money
       take: limit,
     });
     return rows.map(toRound);
@@ -571,6 +599,7 @@ const prismaRounds: RoundStore = {
         openObservationId: r.openObservationId, closeObservationId: r.closeObservationId,
         openPrice: r.openPrice, closePrice: r.closePrice,
         marginBps: r.marginBps, upTarget: r.upTarget, downTarget: r.downTarget,
+        capturedSourceUrl: r.capturedSourceUrl, capturedSourceDomain: r.capturedSourceDomain,
         outcome: r.outcome, voidReason: r.voidReason,
         resolvedAt: dt(r.resolvedAt), settledAt: dt(r.settledAt),
         createdAt: new Date(r.createdAt),

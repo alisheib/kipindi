@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import { SentinelSourceChip } from "@/components/admin/sentinel-source-chip";
+import { sentinelSourceVerdict } from "@/lib/server/market-sentinel";
 import Link from "next/link";
 import type { Route } from "next";
 import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
@@ -158,9 +160,17 @@ export default async function ResolutionCeremonyPage({ params }: { params: Promi
                 </p>
                 {m.sentinelEvidence && <p className="mt-1 text-[12px] leading-snug text-text-secondary">{m.sentinelEvidence}</p>}
                 {m.sentinelSourceUrl && (
-                  <a href={m.sentinelSourceUrl} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-1 font-mono text-[11px] text-royal-300 hover:text-royal-200">
-                    AI source <I.externalLink s={10} />
-                  </a>
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                    <a href={m.sentinelSourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-mono text-[11px] text-royal-300 hover:text-royal-200">
+                      AI source <I.externalLink s={10} />
+                    </a>
+                    {/* Did the AI read THIS market's approved source? Information for the
+                        officer who is about to open it — never a suppression. */}
+                    <SentinelSourceChip
+                      verdict={sentinelSourceVerdict(m.sentinelSourceUrl, m.sourceUrl)}
+                      approved={m.sourceUrl}
+                    />
+                  </div>
                 )}
               </AdminCard>
             )}
