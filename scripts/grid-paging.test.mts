@@ -176,7 +176,6 @@ const UNPAGED_DEBT: Record<string, string> = {
   "src/app/admin/finance/page.tsx": "two grids: poll fees capped at 50, trial-balance drift at 20. Both grow with every settled market",
   "src/app/admin/live/page.tsx": "BET and WALLET audit feeds, read at 30 and rendered at 10. Grows with every bet placed",
   "src/app/admin/updown/proposals/page.tsx": "AI proposal queue capped at 12. Grows with every generation run",
-  "src/app/profile/account/page.tsx": "the PLAYER's own activity list, capped at 30 — a player cannot see their own older activity at all",
 };
 
 function pagesWithTables(dir: string, out: string[] = []): string[] {
@@ -208,6 +207,23 @@ const paidOff = Object.keys(UNPAGED_DEBT).filter((k) => !pages.includes(k) || ha
 ok("2.3b · a backlog grid that now pages has been removed from UNPAGED_DEBT",
    paidOff.length === 0, paidOff.join(", "));
 console.log(`     ⏳ G-1 backlog remaining: ${Object.keys(UNPAGED_DEBT).length} grid(s)`);
+
+// The player-facing grid, pinned by name: it is the only one in this sweep that a
+// CUSTOMER meets, and its bug was the worst shape — the category filter ran INSIDE the
+// truncation, so filtering could not reach what the cap had already discarded.
+const acctSrc = readFileSync(join(ROOT, "src/app/profile/account/page.tsx"), "utf8")
+  .replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+ok("2.7 · a player can page their own activity, at the shared player page size",
+   /<Pagination/.test(acctSrc) && /PLAYER_PER_PAGE/.test(acctSrc));
+ok("2.8 · ⛔ their history is no longer fetched pre-truncated at 50",
+   !/getOwnActivity\([^)]*,\s*50\s*\)/.test(acctSrc) && !/activity\.slice\(0,\s*30\)/.test(acctSrc));
+// ⚠️ The first version of 2.9 compared two indexOf() positions and passed against the
+// OLD code as well — vacuous, exactly like 1.3's first draft. What actually needs
+// pinning is the ORDER of the two operations: the page slice must be taken from the
+// FILTERED set. Slice first and filter second and a category search would only ever
+// look at the 12 rows on screen.
+ok("2.9 · ⛔ the page slice is taken from the FILTERED history, not the other way round",
+   /const activityPage = activity\.slice\(/.test(acctSrc) && /parsePage\(sp\.page, activity\.length/.test(acctSrc));
 
 // The specific regression: the rounds page must never go back to a hard slice.
 // ⚠️ Comments are stripped FIRST. Without that, 2.4 failed on the fix itself — the new

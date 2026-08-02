@@ -7,6 +7,7 @@ import { PageHero } from "@/components/ui/page-hero";
 import { BrandTopo } from "@/components/brand-topo";
 import { Chip } from "@/components/ui/chip";
 import { ScrollX } from "@/components/ui/scroll-x";
+import { Pagination, PLAYER_PER_PAGE, parsePage, buildBaseHref } from "@/components/ui/pagination";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { getOwnActivity } from "@/lib/server/user-service";
@@ -27,7 +28,14 @@ export async function generateMetadata() {
 }
 export const dynamic = "force-dynamic";
 
-export default async function AccountPage({ searchParams }: { searchParams?: Promise<{ error?: string; act?: string }> }) {
+/**
+ * How much of their own history a player may read. The activity feed is an in-memory
+ * audit ring, so this is a slice of an array, not a query — the old value of 50 was not
+ * buying anything (G-1).
+ */
+const OWN_ACTIVITY_MAX = 100_000;
+
+export default async function AccountPage({ searchParams }: { searchParams?: Promise<{ error?: string; act?: string; page?: string }> }) {
   const { t } = await getServerT();
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/profile/account");
@@ -35,11 +43,25 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
   let user: Awaited<ReturnType<typeof db.user.findById>> | null = null;
   try { user = await db.user.findById(session.userId); } catch { /* graceful */ }
   let allActivity: ReturnType<typeof getOwnActivity> = [];
-  try { allActivity = getOwnActivity(session.userId, 50); } catch { /* graceful */ }
+  // ⛔ WAS `50`, RENDERED `.slice(0, 30)`, WITH NO PAGER (campaign finding G-1).
+  // A player could not see their own activity past the newest 30 rows by any means —
+  // and the category chips below filtered INSIDE that truncated window, so a player with
+  // 200 wallet events who tapped "WALLET" saw however few of them happened to fall in
+  // the newest 50. The count was not shown either, so nothing on the page suggested the
+  // rest existed. This is the player-facing half of Ali's no-grid-without-paging rule,
+  // and it is the one a customer meets rather than an operator.
+  try { allActivity = getOwnActivity(session.userId, OWN_ACTIVITY_MAX); } catch { /* graceful */ }
   const sp = (await searchParams) ?? {};
   const actFilter = sp.act ?? "all";
   const activityCategories = [...new Set(allActivity.map((e) => e.category))].sort();
+  // Filter across the WHOLE history, then page the result — the other order is the bug.
   const activity = actFilter === "all" ? allActivity : allActivity.filter((e) => e.category === actFilter);
+  const actPage = parsePage(sp.page, activity.length, PLAYER_PER_PAGE);
+  const activityPage = activity.slice((actPage - 1) * PLAYER_PER_PAGE, actPage * PLAYER_PER_PAGE);
+  // `act` is carried so turning a page keeps the chosen category, and the page param is
+  // dropped so changing category returns to page 1 rather than to a page that may not
+  // exist in the new set.
+  const actBaseHref = buildBaseHref("/profile/account", { act: actFilter === "all" ? undefined : actFilter });
 
   const statusTone =
     user?.status === "ACTIVE" ? "yes"
@@ -141,7 +163,7 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
               </tr>
             </thead>
             <tbody>
-              {activity.slice(0, 30).map((e) => (
+              {activityPage.map((e) => (
                 <tr key={e.id} className="border-b border-border last:border-b-0 hover:bg-bg-overlay/40 transition-colors">
                   <td className="px-3 py-2 font-mono tabular-nums whitespace-nowrap text-text-muted">
                     {formatDateTime(e.createdAt)}
@@ -165,6 +187,17 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
             </tbody>
           </table>
         </ScrollX>
+        {/* The shared platform pager, at the player page size — so a player can reach
+            every entry the audit ring still holds, not just the newest handful. */}
+        <Pagination
+          total={activity.length}
+          page={actPage}
+          perPage={PLAYER_PER_PAGE}
+          baseHref={actBaseHref}
+          ofLabel={t.common.of}
+          prevLabel={t.common.previousPage}
+          nextLabel={t.common.nextPage}
+        />
       </section>
 
       {/* DATA EXPORT — GDPR Art 15 / PDPA */}
