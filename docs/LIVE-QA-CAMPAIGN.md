@@ -604,7 +604,7 @@ stand between it and a launch that would be safe to defend to a regulator.
 | 8 | Invites & referrals | 🔄 **The whole `growth` domain is now REACHABLE and audited for the first time (2026-08-02, §4).** `/admin/invites` is `growth`, which **no QA persona held** — so a compliance officer was refused there, correctly, and four pages had never been seen signed in as a role that can view them. New **QA GROWTH officer** (`bravo` → `GROWTH`; production had **zero** GROWTH accounts). `invites` · `affiliate` · `bonuses` · `players/cohorts` all render across 4 widths × 3 locales, **104/104**, and 8/8 privileged surfaces refuse. Auditing them surfaced **G-4** and **G-5**. ⏳ Still to drive: creating a campaign, redeeming an invite end-to-end, and the referral bonus actually paying |
 | 9 | Admin & accountant: roles · RBAC · finance · reports · settlement · audit | 🔄 **RBAC proven live for `MODERATOR`, 8 allow / 11 deny** (§4) — first `MODERATOR` account production has ever had. Finance · reports · settlement · audit untouched |
 | 10 | Money out: withdrawal + the payout gate | ⏳ |
-| 11 | Visual sweep: 4 widths × EN/SW/ZH across 89 routes | 🔄 **The ADMIN half is done: 26 routes × 4 widths on production, 825/832** (`live/admin-sweep.mjs`), each route driven as the role that owns it. It found five defects, **four of them in SHARED components** so one fix each helped every page: **G-2** (pager controls 40×80 on all 25 paginated screens), **G-4** (breadcrumb 0px + nav trigger 18px on every admin page at 360), **G-5** (`AdminCard`'s heading at width 0), **G-6** (two page-level clips fixed, three named with measurements). ⭐ The scan itself was rebuilt twice — it now measures the **actual glyph run with a Range**, not `scrollWidth`, after chart labels reported +286px while rendering one character in a 44px box. ⏳ Remaining: the **player** routes (G-3 is the shared player shell), SW/ZH across all admin routes (spot-checked, not exhaustive), and interaction states |
+| 11 | Visual sweep: 4 widths × EN/SW/ZH across 89 routes | 🔄 **The ADMIN half is DONE and CLEAN: 26 routes × 4 widths on production, 832/832** (session 9; was 825/832), plus the first-ever **interaction** sweep — 1,919 tab stops, 845 controls focus-checked (**0 ringless**), 0 keyboard traps, 22 dropdowns and 18 popovers driven (`live/admin-sweep.mjs`), each route driven as the role that owns it. It found five defects, **four of them in SHARED components** so one fix each helped every page: **G-2** (pager controls 40×80 on all 25 paginated screens), **G-4** (breadcrumb 0px + nav trigger 18px on every admin page at 360), **G-5** (`AdminCard`'s heading at width 0), **G-6** (two page-level clips fixed, three named with measurements). ⭐ The scan itself was rebuilt twice — it now measures the **actual glyph run with a Range**, not `scrollWidth`, after chart labels reported +286px while rendering one character in a 44px box. ⏳ Remaining: the **player** routes (G-3 is the shared player shell) and SW/ZH across all admin routes (spot-checked, not exhaustive). **Interaction states are no longer remaining — see §6o** |
 | 12 | Adversarial: cheating, manipulation, abuse of every money path | ⏳ |
 | 13 | Scale readiness for 10,000s of users | ⏳ |
 
@@ -2170,6 +2170,106 @@ workstation shows an SLA countdown, but nothing escalates when it runs out. Ali'
   the `pg` −3h trap (§3) reading back through an un-cast client.
 
 ## 6b. NEXT SESSION — start here
+
+### 🟢 Laptop B, session 9 (2026-08-02) — THE ADMIN CONSOLE NOW SWEEPS 832/832, AND INTERACTION WAS TESTED FOR THE FIRST TIME. Read this first; it supersedes everything below.
+
+**Session shape.** Ali ran **two sessions in parallel** and split the lanes mid-session:
+this one was scoped to **ADMIN ONLY** (`src/app/admin/**`, `src/components/admin/**`), with
+the player side owned by the other. The lane rules he set — officer/trading/growth personas
+only, never `alpha`/`echo` (login rate-limits, H-1), and **no writes to live money state** —
+were kept: **this session moved zero money, placed no bet, started no chain, settled no
+market, and changed no config.**
+
+| | Shipped, deployed, verified on production |
+|---|---|
+| `311d69c1` | **G-6 CLOSED** — the last three clips. ⭐ One is **shared across all 47 admin pages**: `AdminCard`'s **action** side is `shrink-0` with `min-width:auto`, so it lays out at max-content and hangs off the card once it wraps (measured **287px inside a 278px card**). ⭐ And *Resolve YES* was filed as cosmetic and **is not** — it is the control that seals a market and pays real money |
+| `8975ad48` | **G-8** — `Select`'s **"open above" has never opened above**. Found only by *driving* the console; no screenshot can contain it, because the panel is not on screen until you click |
+
+**Live results on production, all re-measured after each deploy:**
+
+| | |
+|---|---|
+| **Full admin sweep** | ⭐ **832/832** — 26 routes × 4 widths, **clean**, up from **825/832** |
+| **G-6 re-measure** | **36/36** cells clean, EN + SW + ZH × 4 widths (was 9/12 in EN alone) |
+| **Focus rings** | **845/845** controls show a visible focus change — **zero ringless** |
+| **Keyboard** | **1,919 tab stops** walked, **zero traps** on any of 26 routes |
+| **Dropdowns** | **22 panels** opened/measured/escaped — Escape 22/22, focus-return 22/22, `aria-expanded` truthful 22/22 |
+| **Popovers** | AI toolkit **18/18** across 6 routes × 3 widths — fits, closes, no overflow |
+
+⚠️ **THREE harness lies were caught this session, and every one of them would have produced
+a false report.** This keeps happening and it is the single most valuable habit here:
+1. `page.evaluate(PROBE)` with a **string** evaluates to a *function object* and never calls
+   it — **4 of 5 interaction detectors were dead on arrival** and the whole console would
+   have been reported clean. Caught only because `live/ix-selftest.mjs` demands each
+   detector fire against an **injected** defect before any real run.
+2. The **focus detector v1** flagged `/admin/transactions`' search input. That is **working
+   code** — `SearchBox` puts the input inside `.input-group` and the kit rings the **wrapper**
+   via `:focus-within`. v2 asks whether anything changes *anywhere in the chain*.
+3. The sweep's **`b.length > 600`** content check reported **four correct pages as broken**.
+   `/admin/objections` at 360 is **362 chars** and reads *"no objections · no player has
+   disputed a verdict"* — exactly right. Length punishes the quiet correct case and would
+   *pass* 600 chars of error text. It now asserts the page renders **its own landmark**.
+
+⚠️ **Fifth occurrence of the JSX-comment trap, plus its second order.** The braced form went
+into a **ternary branch** (an expression slot holding exactly one thing) and broke the parse;
+then writing the braced form *inside a plain block comment* to document it **ended the
+comment early** and broke it again. `tsc` caught both. **Keep the build as the gate.**
+
+🔑 **Ali supplied the ADMIN password** (§1). It closes the gap §6m named — the intersection
+of "can act on `accounting`" and "can view a `trading` page" is `{ADMIN}` and nothing else.
+Two rules now sit in §1: **never re-mint it**, and **never use it for routine work**, because
+ADMIN bypasses every domain check and a sweep run as ADMIN measures nothing about RBAC.
+
+⏭️ **RESUME AT — in this order:**
+
+① 🔴 **THE FEED, and THE RUN THAT HAS NEVER HAPPENED.** Unchanged and still the #1 blocker,
+   but **the provider half is now PROVEN GOOD** (§4b BLOCKER 2, read the update box):
+   `ops:updown-probe-feed` against the **real production key** returned **3/3 WOULD CONFIRM** —
+   XAU/USD 4042.75, BTC/USD 63501.99, ETH/USD 1875.88, all **55s skew** against the 90s limit,
+   **including XAU on a Sunday**, which was the live risk. Still to do, and all three are
+   operator steps, not code: `feedProvider` is absent from `updown.config` (→ `mock`),
+   **`twelvedata.com` is not a `TrustedSource`**, and no asset points at the quote endpoint.
+   The live `GOLD` asset (`uda_bc4e810207063428`, `minMoveTicks` **15**) points at
+   `goldprice.org`. ⚠️ **Watch for the frozen-market case**: all three symbols returned the
+   *same* `last_quote_at` to the second, so if a shut market is re-stamped with a fresh time
+   the round confirms both boundaries at the **same price** and `minMoveTicks` voids it as a
+   no-move — safe, refunds, and looks exactly like the feed not working. **Read the open and
+   close prices, not just the outcome.**
+② ⏳ **The control market `mkt_4969c3dd29fde8742618`** — still **not due** when this session
+   worked on it. `objectionsClosedAt` is `2026-08-02 09:54:13.801Z`; at 08:49Z it was **65
+   minutes away**, state verified correct and unaided (`RESOLVED`/`YES`, `settledAt: null`,
+   both positions `OPEN`). 📌 **Check the WALLET DELTA, not the position row.** `live/control-
+   watch.mjs` does exactly this and prints the verdict: alpha's winning YES carries
+   `potentialPayout` **5,000** (its own stake) while echo's losing NO carries **9,350**.
+   **alpha +9,350 = correct. alpha +5,000 = a money bug** — settlement paid the stored row and
+   underpaid the winner by 4,350. That outranks everything else in this list.
+③ **G-7 — the shared `Chip`** (§6). Measured, evidenced, **deliberately not fixed**:
+   `chip.tsx:93` is `whitespace-nowrap` with a **fixed height**, so ANY long label bleeds past
+   its container silently, platform-wide. The remedy is small — `height` → `minHeight` is a
+   **no-op for every one-line chip that exists today** — but `components/ui` was shared with a
+   live player-side run. Do it when the lanes are not split.
+④ **A QA FINANCE / accountant persona does not exist**, and Ali asked for the full operator
+   matrix ("as players, as QA, as admins, as accountant, as all"). Production has **no**
+   FINANCE account. `charlie` (`712000103`) is the obvious spare but is **`SUSPENDED`**, which
+   is a deliberate QA state — don't clobber it. Register a fresh account through the real UI
+   and promote it with one narrow `UPDATE`, exactly as session 8 did for GROWTH. It is the
+   only way to live-test §6m's claim that FINANCE holds `accounting` act but **cannot view**
+   the `trading` route that carries the control.
+⑤ **The player side** — the other lane. G-3 (player top-nav overflow) and every player
+   button/route/locale. ⚠️ **Re-measure player `Select` call sites** after G-8: the fix is in
+   `components/ui/select.tsx`, which both lanes share.
+
+📌 **Two classes recorded as NOT-defects, so nobody "fixes" them.** `BELOW-44PX` (314 hits)
+is **known, dated** debt the design system states in writing — `--h-control-md: 38px; /* Phase
+3 → 44 */`. And ⭐ **the `h-10 w-10` question is settled and is NOT G-2 again**: `h-10` really
+is **80px**, and `refresh-button.tsx` carries `h-10 w-10 … !h-7 !w-7`, so it renders 40×40 —
+the render is right, the class list merely reads as a contradiction. `OFFSCREEN-STOP` (32) is
+mostly elements inside `ScrollX`; the interaction walk still lacks the by-design exclusions
+`clippedElements()` already carries, so **that class means nothing until it does**.
+
+🔒 **Left exactly as found:** all four chains `STOPPED`/`PAUSED`, `feedProvider` still `mock`,
+`twelvedata.com` still not a `TrustedSource`, **zero money moved**, control market untouched,
+`charlie` still `SUSPENDED`, no role changed.
 
 ### 🟢 Laptop B, session 8 (2026-08-02) — G-1 IS DONE, and the visual sweep found five shared defects. Read this first; it supersedes everything below.
 
