@@ -1243,7 +1243,183 @@ would have. The build stays the gate.
 | **E-34** | LOW · **OPEN, measured** | RBAC · shared refusal panel · honesty | **The refusal shown on every blocked admin page names the wrong role, to everyone.** `components/admin/admin-restricted.tsx:39` hard-codes *"**Moderators** are excluded by policy"* regardless of who is reading, so a FINANCE, COMPLIANCE or GROWTH officer is told about a role they are not — and told nothing about why **they** are excluded. It also cites `roles.ts`, a source file no operator can open. Same family as D-2/E-2/E-8/E-29: **a surface stating something it does not know.** Not a security gap — the data really is withheld (9/9, §6s) — but it is on **all 47 admin pages** and it is the sentence an operator reads when they hit a wall. Fix: state the domain the viewer lacks, drop the moderator clause and the file reference. | read live as the QA FINANCE officer on `/admin/{updown,markets,ai-polls,compliance,approvals}`; `shots/s10-finance-deny-*.png` |
 | **E-35** | LOW · **OPEN, measured** | i18n · shared refusal panel | **The refusal panel is hard-coded English on a platform that enforces trilingual parity.** The card title is bilingual (`title="Restricted" sw="Imezuiliwa"`) and **the explanation underneath it is English only** — no `useT`, no dictionary key. A Swahili-only operator gets the lock and a sentence they may not read. ⚠️ **`test:i18n` cannot catch it**, because the string never enters the dictionary — which is exactly what the standing *"never hardcode user-facing strings"* rule exists to prevent, and it means parity being green says nothing here. Same component and same one-line region as E-34, so both should be fixed together (en/sw/zh keys + the reworded sentence). | `admin-restricted.tsx:36-41`; the live panel rendered in full above in §6s |
 | **E-36** | 🔴 **HIGH** → ✅ **FIXED 2026-08-02 (§6u)** | Up & Down · money path · trading calendar | **The platform would settle real money on a tape the named market did not produce.** There was no trading-calendar gate anywhere: `grep -rn "is_market_open\|marketHours\|tradingCalendar"` over `src/` returned exactly **one** hit — a comment in `updown-feed.ts:237` explaining why none was needed. Both of its premises are **false against the provider in production**, measured: ① *"a shut market stops advancing `last_quote_at`"* — XAU/USD and EUR/USD returned `last_quote_at` = **2026-08-02T12:11:00Z on a Sunday**, advancing every minute, with `is_market_open: **true**`; ② *"if a provider re-stamps a FROZEN price with a fresh time, `minMoveTicks` voids it as a no-move — that failure is safe"* — the weekend quotes **move**. The provider returns **1,440 one-minute bars per weekend day** for two markets shut from Friday ~21:00 UTC to Sunday ~22:00, with `high > low` and **zero gaps**. Run through the REAL `computeTargets` on the live GOLD row ($0.15 tick floor): **83 of 288 Saturday 5-minute windows (28.8%) clear the floor and would have RESOLVED**, the first by **+$1.26**; across all shut windows, 20-22% on gold and **90-95% on EUR/USD**. Every one pays a real winner against a real loser. **Strictly worse than voiding — a void refunds; this pays.** ⚠️ It also inverts §4b's stated assumption: session 10 believed a shut market would void as a no-move. It would not. ⚠️ And it corrupted the E-32 study before it was caught — gold's median 5-minute move read **0.004%** with weekend bars in and **0.043%** without, a 10× error that was about to be quoted as a recommendation. **Fixed** with `market-calendar.ts` (pure, no I/O): the money path refuses to READ a price and the emitter refuses to OPEN a round while the market is shut, and `/admin/updown` gained a **Market** column that says `closed · opens HH:MM UTC`. | `ops:updown-margin-study` shut-window resolve rates; `scratchpad/find-sat-window.mjs` → 83/288; `npm run test:market-calendar` **26/26** proven **RED (10 failures)**; `test:updown-engine` §12 integration **4/4** |
+| **E-37** | 🔴 **HIGH · OPEN, measured** | Up & Down · notifications · compliance claim | **A player who wins, loses or is refunded on an Up & Down round is told nothing, by any channel — and the replacement that was supposed to cover it does not exist.** The round that paid `echo` **TZS 8,700** on 2026-08-02 13:20 produced **0 notifications** to either player; the platform has sent **0** digest-style notifications ever, and has **no VOID/REFUND notification event at all**, so all **1,402** voided rounds refunded silently. ⚠️ Verified two ways because the first was potentially blind: a payload `LIKE '%marketId%'` search (self-tested against a known-positive WIN row) **and** a query by `userId` + time window. Both agree; 216 WIN/LOSS notifications exist platform-wide, so the query is not blind. **This is half of a dated owner decision, not an oversight**: `perEventNotificationsSuppressed()` suppresses per-round messages for `UPDOWN` on Ali's explicit 2026-07-24 call (`COMPLIANCE-DECISIONS.md §3` — *forty emails an hour is unusable*), and the money record is correctly NOT suppressed. ⛔ **But the daily digest that was to replace it was never built — the only two occurrences of "daily digest" in `src/` are the two comments promising it.** The loss case carries an explicit regulatory claim (*"it moves it into the daily digest, which still states each loss plainly (LCCP harm-prevention)"*) about a system that does not exist. The in-app half IS built and works (`/updown/history`). Scope to close: a scheduled per-player aggregation, one notification + one email per day, idempotent, en/sw/zh, guard — losses stated plainly. | `live/s11-stop-and-notif.mjs` (0 to the winner, 216 control, 0 digests); `grep -rn "daily digest" src/` → 2 hits, both comments; `market-service.ts:472` |
+| **E-38** | MEDIUM → ✅ **FIXED 2026-08-02** | admin · resolver queue · money alarm | **The overdue badge never scaled its unit, so the longer real money waited the less urgent it looked.** `timeUntil()`'s overdue branch rendered `${minutes}m overdue` with NO rollover, while the not-yet-due branch of the same function rolled m → h → d correctly. Measured live: a market **16 hours** overdue, holding **TZS 59,450 of real player money** across 8 positions from 4 different players, announced itself as **"966M OVERDUE"** — and "M" means MILLIONS everywhere else in this console (`formatTzs`, `admin-charts`, the conviction dial), so on a money screen it reads as an amount. The one direction that mattered was the one direction that did not scale. ⭐ Also added, because it was the actual missing signal: a **`TZS … held`** pill on each queued market, read off the pools the row already carries — *"8 predictors"* says how many are waiting, not that 59,450 of their money is. Same shape as §0.1b's rounds-page lesson: a queue that hides the amount at stake gets triaged in the wrong order. | `shots/s11--admin-resolver-queue-1440.png` (the live "966M OVERDUE" badge); `npm run test:overdue-format` **9/9**, proven **RED (6 failures)** on the old single-unit body |
 | **G-7** | MEDIUM → ✅ **FIXED (2026-08-02, session 10)** | visuals · shared `Chip` | **Any `Chip` with a long label bleeds silently past its container, platform-wide.** `components/ui/chip.tsx` was `whitespace-nowrap` with a **fixed `height`** (18/21/25px per size). Both are correct for a short status pill and both are wrong for a phrase: the chip could neither wrap nor grow, so it was simply drawn outside its column with no ellipsis — and with nothing for a document-level check to notice. ✅ Fixed in the shared component: `height` → `minHeight` with `height: auto`, `whiteSpace: normal`, `max-w-full`, and the `/admin/reports` call-site opt-out **deleted** because the component now does it. ⭐ **The interesting part is how it had to be proven, because a survey CANNOT catch this and did not.** `live/s10-g7-probe.mjs` measured **84 live chips across 7 routes × 4 widths and found ZERO bleeding** — session 9 had patched the one known offender *at its call site*, so the shared component stayed broken for the next long label while everything measured clean. A latent defect has nothing to measure until someone ships the label that trips it. So the RED was produced by taking a **real chip off a real production page** and giving it a real call site's label at the real column width (`live/s10-g7-inject.mjs`, `/admin/aml` @360): **206×18 inside a 198px container — 8px outside it**, `white-space:nowrap · height:18px · max-width:none`. Re-run after the fix on production: **fits, wraps, grows.** ⚠️ **The `minHeight` swap must stay a no-op for one-line chips**, and that is now arithmetic rather than a hope — `test:chip-contract` §3 computes `fontSize × lineHeight + 2 × paddingBlock` for all six sizes and fails if any exceeds its `minHeight`, i.e. if a future edit would make **every chip on the platform** grow. | `live/s10-g7-inject.mjs` on production, before **206×18 in 198px, +8px** / after **fits**; `live/s10-g7-{before,after}.json` — 84 chips, height histogram `{18: 84}` unchanged; `npm run test:chip-contract` **14/14**, proven **RED** against the pre-fix component (10 failures) |
+
+## 6v. ⭐ ALI'S QUESTIONS ANSWERED FROM PRODUCTION — the game plays, and the margin decision is proven with real money (2026-08-02, session 11)
+
+Ali asked three things mid-session, in his words: *"are games completely made and resolved and
+played normally? that's critical — visually and notifications and technically"*, *"check live
+redirect as user after bets — is it properly redirecting, quality, visuals?"*, and *"withdrawals
+cannot be paid right now… this worked already, why still saying we can't withdraw?"*
+
+Each is answered below from a live measurement, not from the code reading.
+
+### ✅ UP & DOWN PLAYS AND RESOLVES NORMALLY — at the margin Ali decided, with real money
+
+A BTC 5-minute chain was started as the trading officer, two players bet opposite sides through
+the real player UI, and the round settled itself. **This is the first round the platform has ever
+settled at a deliberately-chosen margin** — session 10's five rounds ran at `marginPct = 0`, a QA
+workaround for the E-32 defect.
+
+```
+round      udr_0c015a854aa105600373   margin 2 bps  ← E-32's ladder, INHERITED not overridden
+window     2026-08-02 13:15:00Z → 13:20:00Z
+open       63114.00      band [63101.38 , 63126.62]   = ±$12.62, exactly 2 bps
+close      63058.00      move −56.00 (−0.089%)
+outcome    DOWN          resolved 13:20:00.347 · settled 13:20:00.441  (441 ms after its boundary)
+```
+
+| | |
+|---|---|
+| `echo` (DOWN) | **WIN** · stake 5,000 → payout **8,700** · wallet 28,700 → 23,700 → **32,400** |
+| `alpha` (UP) | **LOSS** · stake 5,000 → payout **0** · wallet 60,750 → **55,750** |
+| ledger | `BET_PLACED −10,000` · `BET_PAYOUT +8,700` → house keeps **1,300**, the capped 13% |
+| ⭐ at the OLD default | 0.50% needed **±$315.57**. It moved $56. **It would have VOIDED.** |
+
+**10/10 on `s11-settle-verify.mjs`**, including that the band is 2 bps of the open price to the
+cent, that the two prices differ (not the frozen-market case), that the winner is the side the
+price actually moved to, and that the loser was paid exactly 0.
+
+### ✅ THE POST-BET FLOW IS GOOD — and the first measurement of it was WRONG
+
+Ali's redirect question, driven at 360 and 1440 on production, twice — because the first run
+reported a serious defect that turned out to be the harness.
+
+**What a player actually gets** (`shots/s11-postbet-modal-360.png`): a toast — *"Bet placed · NO
+TZS 1,000 / Payout calculated at resolution"* — **and** a `role="dialog"` confirmation carrying a
+green crest, **BET PLACED**, `NO · TZS 1,000`, the market title, **TICKET `pos_fdb3c466…`**,
+**STAKE TZS 1,000**, **PAYOUT At resolution**, *Keep predicting* (primary) and *View positions*
+(secondary). **The player is NOT navigated away from the market they bet on.** 0 clipped
+elements at 360 / 768 / 1440, 0 document overflow, 0 console errors, wallet debited to the
+shilling on every attempt.
+
+🔻 **THE FIRST RUN LIED, and it lied in the alarming direction.** It reported *"after the bet the
+player is redirected to `/markets` and told nothing"* — 2 failures on a page that is fine. Cause:
+it called the shared `dismissPrimer(page)` helper **immediately after confirming**, and that
+helper clicks anything matching Skip / Got it / Close / Maybe later. **It dismissed the very
+confirmation it then went looking for**, and the dismissal navigated. It then read the body 4s
+later, by which time a toast would have expired anyway. The corrected run touches nothing between
+the click and the read. ⚠️ Same family as session 10's four harness lies, and the same rule
+closes it: **measure the moment you care about, at that moment, and do not touch the page in
+between.**
+
+### 🚫 Two things on this screen that look like defects and are NOT — do not "fix" them
+
+- **Escape on the confirmation takes the player to the board.** Deliberate, and the code says so:
+  `onClose` on success does `router.push(boardHref)`, with `autoCloseMs: 5000`, on the stated
+  rationale *"a player who reads the confirmation and does nothing is carried onward to the board
+  too — matching the platform's 5s success-dismiss standard (CLAUDE.md) and the keep-the-session-
+  flowing intent"*. *View positions* is the secondary action for the other case.
+  📌 **One judgement call worth Ali's eye, not a bug:** Escape universally means *"dismiss this,
+  leave me where I am"*, so using it as *"carry me onward"* conflates dismiss with navigate. The
+  primary button and the 5s auto-close are unambiguous; only the Escape/backdrop gesture is
+  arguable. **One line to change if Ali wants it; deliberately not changed unilaterally.**
+- **`/admin/resolver` 404s.** Correct — `src/app/admin/resolver/` contains only `[id]`, a detail
+  route. The queue is **`/admin/resolver-queue`**. This was a guessed route in the harness, and
+  the standing rule ("never guess a route") exists for exactly this.
+
+### 🔴 THE WITHDRAWAL BANNER IS TELLING THE TRUTH — and it is three of Ali's own test payouts
+
+*"This worked already, why still saying we can't withdraw?"* Both halves are right: withdrawals
+**do** work, and the banner **should** be up.
+
+**Nobody declared an outage.** There is no `payouts.availability` row in `SystemConfig` at all, so
+`declared` is the default `operational`. The banner comes from `derived`, computed live from the
+withdrawal queue on every page load, and the player sees `worstOf(declared, derived)`.
+
+```
+3 withdrawals still in PROCESSING, ALL on ONE account (+255757619808, role ADMIN):
+  txn_8ad70b44…  −10,000   2026-07-29 14:04Z   95.1h old
+  txn_5bacbcbb…   −5,000   2026-07-29 14:52Z   94.3h old
+  txn_5fb63ccd…   −2,000   2026-07-31 08:07Z   53.0h old
+rule: unavailable when stuckCount ≥ 3 OR oldest ≥ 6h — BOTH are met, and the oldest is 16× over
+```
+
+And withdrawals really are working: the four most recent attempts before those all reached
+`CONFIRMED` **within ~30 seconds** (08:04, 08:06, 13:55, 13:57 on 31 Jul). It is only the three
+stragglers holding the banner on.
+
+⭐ **Why they are stuck, verbatim from the gateway**, recorded on the rows themselves:
+
+```
+providerStatus: PENDING: HTTP 200 · resultcode=999 · result=AMBIGUOUS
+                · message=No reponse from upstream system
+```
+
+Selcom itself does not know whether the money left. So the reconciler refuses to reverse them —
+**correctly, and by explicit design**: `reconcileStalePayments` re-queries each one on its own
+rail (1,315 sweeps run, the most recent 4 minutes ago), confirms on `CONFIRMED`, reverses on
+`FAILED`, and on `PENDING`/`UNSUPPORTED` leaves it alone and writes a
+`payments.reconcile_needs_review` audit row. The code's own comment: *"reversing on that refunds a
+payout that may already be on its way to the customer's handset — paying twice."* The third one
+(2,000) has **no `providerRef` at all**, so it never reached the gateway.
+
+**So this is operational, not code, and the remedy exists in the console**: `/admin/payments`
+carries stuck-payout controls that reverse a stuck payout through the audited
+`officer-reversed-stuck-payout` path. Resolve those three either way and **the banner clears
+itself with no deploy**. ⛔ Deliberately not done here: two of the three are `AMBIGUOUS` at the
+gateway, so reversing them could double-pay. That is Ali's call with Selcom's answer in hand, and
+it is his own account's TZS 17,000.
+
+### 🔴 A REAL ONE, and it is real players' money: 59,450 TZS has waited 16 hours to be resolved
+
+Found while checking whether any stake was stranded before starting anything.
+
+```
+8 OPEN positions · TZS 59,450 · FOUR DISTINCT NON-QA PLAYERS
+market: "Will EWURA's August 2026 petrol retail cap for Dar es Salaam fall below TZS 3,900/litre?"
+status CLOSED · resolutionAt 2026-08-01 21:00Z · 16h ago · objectionsClosedAt null
+```
+
+**Not a code defect** — the market closed correctly and waits for an operator, and the resolver
+queue does surface it with the crowd split, 8 predictors and Resolve YES / NO / Void controls. It
+is a **resolution backlog**, and it is the honest answer to *"are games resolved normally?"* for
+the long-form product: **resolution is manual, and it is currently 16 hours behind with real
+customers' money inside it.** ⛔ Not resolved here on purpose: it turns on what EWURA actually
+published, and getting that wrong pays the wrong side with other people's money.
+
+Auditing that queue produced **E-38**, which is fixed and shipped.
+
+### 🔴 E-37 — Up & Down tells the player NOTHING, because the digest half of Ali's own decision was never built
+
+The round above paid `echo` **TZS 8,700**. Checked twice, by two independent methods:
+
+```
+notifications to the winner from 2 min before settlement onward:  0
+control — WIN/LOSS notifications that DO exist platform-wide:   216   ← the query is not blind
+digest-style notifications ever sent:                              0
+distinct VOID/REFUND notification events on the platform:       NONE
+```
+
+⚠️ **The second method matters.** The first pass keyed on `payload::text LIKE '%marketId%'` and
+returned 0 — which would have been worthless if payloads never carry a market id. Self-tested
+against a known-positive WIN row (they do, via `href`), then re-asked a way that cannot be blind:
+by `userId` and time window. Both agree.
+
+**This is not an oversight — it is half of a dated owner decision.**
+`perEventNotificationsSuppressed()` suppresses per-round win/loss/bet-placed notifications and
+emails for `UPDOWN`, on Ali's explicit 2026-07-24 decision (`COMPLIANCE-DECISIONS.md §3`): *a
+player running twenty rounds an hour would otherwise receive forty emails*. Sound reasoning, and
+the money record is correctly **not** suppressed — transaction, ledger and audit rows are written
+per round exactly as before.
+
+⛔ **But the replacement does not exist.** The only two occurrences of "daily digest" in the entire
+`src/` tree are **the two comments promising it**. So:
+
+- a player who **wins** on Up & Down is told nothing, by any channel;
+- a player who **loses** is told nothing — and the code comment claims *"it moves it into the
+  daily digest, which still states each loss plainly (LCCP harm-prevention)"*, which is a
+  **compliance claim about a system that does not exist**;
+- all **1,402** voided rounds refunded players silently; there is no VOID/REFUND notification
+  event on the platform at all.
+
+The in-app half of the decision IS built and works (`/updown/history` shows the result and both
+prices — §6q). What is missing is any push at all, which is precisely what matters for the player
+who bet and closed the tab. **Filed OPEN with a scope**: a scheduled per-player aggregation, one
+notification + one email per day, idempotent, trilingual, plus a guard — and the loss lines stated
+plainly, because that is the half carrying the regulatory claim.
 
 ## 6u. ⭐ E-36 — the platform had no trading calendar, and a shut market would have PAID (2026-08-02, session 11)
 

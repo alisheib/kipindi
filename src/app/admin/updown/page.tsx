@@ -318,7 +318,9 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
                               <span className="text-warning-fg" title={"detail" in s ? s.detail : undefined}>
                                 closed
                                 <span className="text-text-faint">
-                                  {" "}· opens {fmtTime(s.nextOpen)}
+                                  {/* HH:MM, not HH:MM:SS — a market opens on the hour, and the
+                                      seconds are noise next to a boundary time that needs them. */}
+                                  {" "}· opens {fmtTime(s.nextOpen).replace(/:00 UTC$/, " UTC")}
                                 </span>
                               </span>
                             );

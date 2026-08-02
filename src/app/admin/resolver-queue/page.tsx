@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { I } from "@/components/ui/glyphs";
 import { Select } from "@/components/ui/select";
 import { listMarkets, impliedYesPct, type MarketCategory } from "@/lib/server/market-service";
+import { formatTzs } from "@/lib/utils";
 import { ProbabilityBar } from "@/components/markets/probability-bar";
 import { CircularProgress } from "@/components/markets/circular-progress";
 import { ResolveControls } from "./resolve-controls";
@@ -36,9 +37,30 @@ const WINDOW_OPTIONS = [
 
 const CATEGORY_OPTIONS: readonly MarketCategory[] = ["sports", "macro", "weather", "crypto", "culture", "tech", "other"];
 
+/**
+ * A duration in the largest sensible unit — minutes, then hours, then days.
+ *
+ * ⚠️ E-38. The overdue branch used to be `${minutes}m overdue`, with NO rollover, while the
+ * not-yet-due branch rolled m → h → d correctly. So a market 16 hours late rendered
+ * **"966m overdue"**, which the admin CSS uppercases to **"966M OVERDUE"** — on a badge whose
+ * whole job is to convey urgency about real money being held, and in a console where "M"
+ * means millions everywhere else (`formatTzs`, `admin-charts`, the conviction dial). Measured
+ * on production 2026-08-02: TZS 59,450 of REAL player money on 8 positions, 16h overdue,
+ * announced as "966M". The one direction that matters — already late — was the one direction
+ * that did not scale its unit.
+ */
+export function humanDuration(ms: number): string {
+  const m = Math.floor(ms / 60_000);
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return h === 0 ? `${m}m` : `${h}h`;
+  const d = Math.floor(h / 24);
+  return d < 7 ? `${d}d` : `${Math.floor(d / 7)}w`;
+}
+
 function timeUntil(iso: string): { label: string; tone: "default" | "soon" | "overdue" } {
   const ms = Date.parse(iso) - Date.now();
-  if (ms <= 0) return { label: `${Math.abs(Math.floor(ms / 60_000))}m overdue`, tone: "overdue" };
+  if (ms <= 0) return { label: `${humanDuration(Math.abs(ms))} overdue`, tone: "overdue" };
   const m = Math.floor(ms / 60_000);
   if (m < 60) return { label: `${m}m`, tone: "soon" };
   const h = Math.floor(m / 60);
@@ -229,6 +251,21 @@ export default async function ResolverQueuePage({
                         <I.users size={10} />
                         {m.predictorCount} {m.predictorCount === 1 ? "predictor" : "predictors"}
                       </Link>
+                      {/* ⭐ E-38 · THE MONEY HELD, which is the actual urgency signal and was
+                          absent. "8 predictors" says how many people are waiting; it does not
+                          say that TZS 59,450 of their money is held while this sits unresolved.
+                          §0.1b's lesson on the rounds page was the same shape: a queue that
+                          hides the amount at stake gets triaged in the wrong order. Read off
+                          the pools the market already carries — no extra query. */}
+                      {m.yesPool + m.noPool > 0 && (
+                        <span
+                          className="inline-flex items-center gap-1 rounded-md border border-border bg-bg-overlay px-2 py-0.5 font-mono text-[10.5px] font-semibold text-text-muted whitespace-nowrap"
+                          title="Player money held on this market until it resolves"
+                        >
+                          <I.wallet size={10} />
+                          {formatTzs(m.yesPool + m.noPool)} held
+                        </span>
+                      )}
                     </div>
                   </div>
 
