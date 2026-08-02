@@ -1217,6 +1217,38 @@ would have. The build stays the gate.
 | **E-33** | MEDIUM · **OPEN — a compliance decision, not a wiring job** | privacy · DSAR register | **Nothing on the platform can put a request INTO the DSAR register, so `/admin/privacy` will read *"No data-subject access requests are on file"* forever.** Found by the E-31 sweep: `fileDsarAction` is an orphan, and `fileDsarRequest` (`privacy.ts:56`) has **exactly one caller — that orphan**. The page's *other* two actions are wired and work (`buildDsarBundleAction` for the walk-in/on-behalf export, `fulfillDsarAction` for fulfilling a queued one), so **a player can still GET their data** — this is not a data-rights outage. What cannot be recorded is that they **asked**, and that is the half a regulator examines, because the statutory response clock runs from the request. ⛔ **Deliberately not wired in the session that found it**: who may file a DSAR on a player's behalf, and on what authentication, is a compliance decision (the page's own copy requires *"phone OTP at the front-desk"* for the export path) — inventing that policy in a QA session would be the wrong kind of fix. Pinned in `KNOWN_ORPHANS` with its reason so it cannot be forgotten. | `grep -rn fileDsarRequest src/` → 2 hits, both in the orphan's own call chain; `npm run test:orphan-actions` §1/§2 |
 | **G-7** | MEDIUM → ✅ **FIXED (2026-08-02, session 10)** | visuals · shared `Chip` | **Any `Chip` with a long label bleeds silently past its container, platform-wide.** `components/ui/chip.tsx` was `whitespace-nowrap` with a **fixed `height`** (18/21/25px per size). Both are correct for a short status pill and both are wrong for a phrase: the chip could neither wrap nor grow, so it was simply drawn outside its column with no ellipsis — and with nothing for a document-level check to notice. ✅ Fixed in the shared component: `height` → `minHeight` with `height: auto`, `whiteSpace: normal`, `max-w-full`, and the `/admin/reports` call-site opt-out **deleted** because the component now does it. ⭐ **The interesting part is how it had to be proven, because a survey CANNOT catch this and did not.** `live/s10-g7-probe.mjs` measured **84 live chips across 7 routes × 4 widths and found ZERO bleeding** — session 9 had patched the one known offender *at its call site*, so the shared component stayed broken for the next long label while everything measured clean. A latent defect has nothing to measure until someone ships the label that trips it. So the RED was produced by taking a **real chip off a real production page** and giving it a real call site's label at the real column width (`live/s10-g7-inject.mjs`, `/admin/aml` @360): **206×18 inside a 198px container — 8px outside it**, `white-space:nowrap · height:18px · max-width:none`. Re-run after the fix on production: **fits, wraps, grows.** ⚠️ **The `minHeight` swap must stay a no-op for one-line chips**, and that is now arithmetic rather than a hope — `test:chip-contract` §3 computes `fontSize × lineHeight + 2 × paddingBlock` for all six sizes and fails if any exceeds its `minHeight`, i.e. if a future edit would make **every chip on the platform** grow. | `live/s10-g7-inject.mjs` on production, before **206×18 in 198px, +8px** / after **fits**; `live/s10-g7-{before,after}.json` — 84 chips, height histogram `{18: 84}` unchanged; `npm run test:chip-contract` **14/14**, proven **RED** against the pre-fix component (10 failures) |
 
+## 6r. The PLAYER side after G-7 / G-8 / G-9 — 32/32 on production, and two detectors that were lying (2026-08-02, session 10)
+
+Sessions 8–9 changed three shared kit files — `chip.tsx`, `select.tsx`, `toggle.tsx` +
+`globals.css` — while scoped to the **admin** lane. These are the player-side measurements
+that were owed. All on production, `echo`'s real session.
+
+| | Result |
+|---|---|
+| **G-9 · `Toggle` hover** | **8/8** — every player `Toggle` shows a visible hover change, and **zero move layout** (`/profile/responsible-gambling`, 360 + 1280) |
+| **G-8 · `Select`** | **16/16** — opens, stays inside the viewport, `aria-expanded` truthful, Escape closes, focus returns to the trigger |
+| **G-8 · the open-above path, actually run** | **8/8** at 1280×620 and 360×640 — panels opened **ABOVE**, fully on screen, not covering their trigger |
+| **G-7 · `Chip`** | **84 chips × 7 routes × 4 widths, 0 bleeding, height histogram `{18: 84}` before AND after** — the "no-op for one-line chips" claim, measured rather than asserted |
+
+⚠️ **THREE DETECTORS LIED THIS SESSION, and each would have produced a confident wrong
+answer. This keeps happening and catching it is the most valuable habit in this campaign.**
+
+1. **An assertion that cannot fail is not evidence.** The first player interaction sweep
+   returned **24/24** and **proved nothing about G-8**: at 1400px tall there is always room
+   below, so *"the panel is inside the viewport"* was true without the open-above branch
+   ever executing. G-8 is *"open above has never opened above"* — it needs a **short**
+   viewport with the trigger near the bottom. Same shape as session 9's four dead detectors.
+2. **A detector that recognises its subject by the symptom is blind to the cure.** The G-7
+   probe found chips by `white-space: nowrap` — one of the two properties under test — so
+   the instant the fix landed it reported *"no live chip found to measure"* rather than
+   *"fixed"*. Now identified structurally (inline-flex + pill radius + uppercase + an inline
+   min-height).
+3. **Two rectangles from two moments are not a comparison.** The G-8 probe sampled the
+   trigger **before** the click and the panel **after**, and reported a panel covering its
+   own trigger at 360×640. Clicking a control pinned to the bottom edge **scrolls the page**,
+   so the overlap was arithmetic on stale numbers — the trigger had moved from 544..640 to
+   272..368. Measured in one snapshot: **no defect.** Same family as every §3 trap.
+
 ## 6q. ⭐ THE RUN THAT HAD NEVER HAPPENED — Up & Down settled a real winner and a real loser on production (2026-08-02, session 10)
 
 **BLOCKER 2 is closed.** Every one of the platform's first **1,402** rounds was `VOID` and not one
@@ -2419,8 +2451,9 @@ Player sweep after the fix: **8/8 clean**.
    split: `chip.tsx:93` is `whitespace-nowrap` with a **fixed height**, so ANY long label bleeds
    past its container platform-wide. Remedy is `height` → `minHeight` (a no-op for every
    one-line chip today) + `max-w-full`.
-④ **Re-measure PLAYER-side `Select` and `Toggle` call sites** — G-8/G-9 changed
-   `components/ui/select.tsx`, `toggle.tsx` and `globals.css`, which both lanes share.
+④ ✅ ~~Re-measure player `Select`/`Toggle`.~~ **DONE — see §6r. 32/32 on production, and the
+   G-8 open-above path was genuinely exercised** (the first attempt passed 24/24 without ever
+   running it).
 ⑤ **A QA FINANCE / accountant persona still does not exist** and production has none. Register
    through the real UI + one narrow `UPDATE`, as session 8 did for GROWTH. ⛔ `charlie`
    (`712000103`) is `SUSPENDED` on purpose — don't clobber it.
