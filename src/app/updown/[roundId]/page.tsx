@@ -20,6 +20,7 @@ import { notFound } from "next/navigation";
 import { BackLink } from "@/components/ui/back-link";
 import { getRoundDetail } from "@/lib/server/updown-board";
 import { currentSession } from "@/lib/server/auth-service";
+import { isStaffRole } from "@/lib/server/roles";
 import { getServerT } from "@/lib/i18n-server";
 import { pickLocalized } from "@/lib/localized";
 import { formatTzs } from "@/lib/utils";
@@ -65,6 +66,8 @@ export default async function UpDownRoundPage({
   const lockedSide: "UP" | "DOWN" | null = sp?.side === "UP" || sp?.side === "DOWN" ? sp.side : null;
   const { t, locale } = await getServerT();
   const session = await currentSession();
+  // Who is looking? The raw provider blob below is an officer tool, not player copy.
+  const viewerIsStaff = isStaffRole(session?.role ?? "");
   const detail = await getRoundDetail(roundId, session?.userId).catch(() => null);
   if (!detail) notFound();
 
@@ -305,9 +308,22 @@ export default async function UpDownRoundPage({
               </div>
             </div>
 
-            {evidence && (
+            {/* ⛔ STAFF ONLY (Ali, 2026-08-03). This is the provider's RAW response —
+                symbol, exchange, OHLC, previous close, 52-week range, the lot. It is the
+                right thing for an officer adjudicating an objection and the wrong thing on
+                a player's screen: it is verbatim vendor data a player can lift off the
+                platform, and it tells them nothing the panel above has not already said in
+                plain language (both prices, both quote times, the band, the rule).
+                ⚠️ Gated SERVER-SIDE, so it never enters a player's HTML at all — hiding it
+                with CSS would still ship the payload to the browser and "view source" is
+                not a permission boundary. The player keeps the whole auditable record;
+                only the raw vendor blob is withheld. */}
+            {evidence && viewerIsStaff && (
               <div className="mt-3.5">
-                <p className={`${eyebrow} mb-[7px]`}>{t.market.udEvidenceExcerpt}</p>
+                <p className={`${eyebrow} mb-[7px]`}>
+                  {t.market.udEvidenceExcerpt}
+                  <span className="ml-2 normal-case tracking-normal text-text-faint">· staff only</span>
+                </p>
                 <pre className="m-0 font-mono text-[10.5px] text-text-muted" style={{ ...inset, borderLeft: "2px solid color-mix(in oklab, var(--gilt) 55%, transparent)", borderRadius: "var(--r-sm)", padding: "11px 13px", lineHeight: 1.65, whiteSpace: "pre-wrap", overflowWrap: "break-word" }}>{evidence}</pre>
               </div>
             )}

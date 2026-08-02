@@ -206,7 +206,8 @@
     "test:chip-contract": "tsx scripts/chip-contract.test.mts",
     "test:prisma-delegate": "tsx scripts/prisma-delegate.test.mts",
     "test:updown-symbols": "tsx scripts/updown-symbol-catalogue.test.mts",
-    "runbook:updown": "node docs/runbooks/mkpdf.mjs updown-runbook.html 50pick-updown-runbook.pdf"
+    "runbook:updown": "node docs/runbooks/mkpdf.mjs updown-runbook.html 50pick-updown-runbook.pdf",
+    "test:proof-privacy": "tsx scripts/proof-evidence-privacy.test.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",
