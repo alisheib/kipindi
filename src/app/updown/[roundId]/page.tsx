@@ -291,7 +291,16 @@ export default async function UpDownRoundPage({
                     </>
                   )}
                   <dt className="text-text-faint">{t.market.udRule}</dt>
-                  <dd className="m-0 text-text-muted">{t.market.udRuleText}</dd>
+                  {/* E-39 — the rule is per-round, so the sentence must be too. A banded round
+                      (every round priced by the E-32 ladder) voids on any close INSIDE the band,
+                      not only on a price that did not move; stating the latter under a $12.62
+                      band misdescribes settlement on the card a player takes to an objection.
+                      The legacy sentence is kept because at margin 0 it is the correct one. */}
+                  <dd className="m-0 text-text-muted">
+                    {round.upTarget != null && round.downTarget != null
+                      ? t.market.udRuleTextBanded
+                      : t.market.udRuleText}
+                  </dd>
                 </dl>
               </div>
             </div>

@@ -1245,7 +1245,71 @@ would have. The build stays the gate.
 | **E-36** | 🔴 **HIGH** → ✅ **FIXED 2026-08-02 (§6u)** | Up & Down · money path · trading calendar | **The platform would settle real money on a tape the named market did not produce.** There was no trading-calendar gate anywhere: `grep -rn "is_market_open\|marketHours\|tradingCalendar"` over `src/` returned exactly **one** hit — a comment in `updown-feed.ts:237` explaining why none was needed. Both of its premises are **false against the provider in production**, measured: ① *"a shut market stops advancing `last_quote_at`"* — XAU/USD and EUR/USD returned `last_quote_at` = **2026-08-02T12:11:00Z on a Sunday**, advancing every minute, with `is_market_open: **true**`; ② *"if a provider re-stamps a FROZEN price with a fresh time, `minMoveTicks` voids it as a no-move — that failure is safe"* — the weekend quotes **move**. The provider returns **1,440 one-minute bars per weekend day** for two markets shut from Friday ~21:00 UTC to Sunday ~22:00, with `high > low` and **zero gaps**. Run through the REAL `computeTargets` on the live GOLD row ($0.15 tick floor): **83 of 288 Saturday 5-minute windows (28.8%) clear the floor and would have RESOLVED**, the first by **+$1.26**; across all shut windows, 20-22% on gold and **90-95% on EUR/USD**. Every one pays a real winner against a real loser. **Strictly worse than voiding — a void refunds; this pays.** ⚠️ It also inverts §4b's stated assumption: session 10 believed a shut market would void as a no-move. It would not. ⚠️ And it corrupted the E-32 study before it was caught — gold's median 5-minute move read **0.004%** with weekend bars in and **0.043%** without, a 10× error that was about to be quoted as a recommendation. **Fixed** with `market-calendar.ts` (pure, no I/O): the money path refuses to READ a price and the emitter refuses to OPEN a round while the market is shut, and `/admin/updown` gained a **Market** column that says `closed · opens HH:MM UTC`. | `ops:updown-margin-study` shut-window resolve rates; `scratchpad/find-sat-window.mjs` → 83/288; `npm run test:market-calendar` **26/26** proven **RED (10 failures)**; `test:updown-engine` §12 integration **4/4** |
 | **E-37** | 🔴 **HIGH · OPEN, measured** | Up & Down · notifications · compliance claim | **A player who wins, loses or is refunded on an Up & Down round is told nothing, by any channel — and the replacement that was supposed to cover it does not exist.** The round that paid `echo` **TZS 8,700** on 2026-08-02 13:20 produced **0 notifications** to either player; the platform has sent **0** digest-style notifications ever, and has **no VOID/REFUND notification event at all**, so all **1,402** voided rounds refunded silently. ⚠️ Verified two ways because the first was potentially blind: a payload `LIKE '%marketId%'` search (self-tested against a known-positive WIN row) **and** a query by `userId` + time window. Both agree; 216 WIN/LOSS notifications exist platform-wide, so the query is not blind. **This is half of a dated owner decision, not an oversight**: `perEventNotificationsSuppressed()` suppresses per-round messages for `UPDOWN` on Ali's explicit 2026-07-24 call (`COMPLIANCE-DECISIONS.md §3` — *forty emails an hour is unusable*), and the money record is correctly NOT suppressed. ⛔ **But the daily digest that was to replace it was never built — the only two occurrences of "daily digest" in `src/` are the two comments promising it.** The loss case carries an explicit regulatory claim (*"it moves it into the daily digest, which still states each loss plainly (LCCP harm-prevention)"*) about a system that does not exist. The in-app half IS built and works (`/updown/history`). Scope to close: a scheduled per-player aggregation, one notification + one email per day, idempotent, en/sw/zh, guard — losses stated plainly. | `live/s11-stop-and-notif.mjs` (0 to the winner, 216 control, 0 digests); `grep -rn "daily digest" src/` → 2 hits, both comments; `market-service.ts:472` |
 | **E-38** | MEDIUM → ✅ **FIXED 2026-08-02** | admin · resolver queue · money alarm | **The overdue badge never scaled its unit, so the longer real money waited the less urgent it looked.** `timeUntil()`'s overdue branch rendered `${minutes}m overdue` with NO rollover, while the not-yet-due branch of the same function rolled m → h → d correctly. Measured live: a market **16 hours** overdue, holding **TZS 59,450 of real player money** across 8 positions from 4 different players, announced itself as **"966M OVERDUE"** — and "M" means MILLIONS everywhere else in this console (`formatTzs`, `admin-charts`, the conviction dial), so on a money screen it reads as an amount. The one direction that mattered was the one direction that did not scale. ⭐ Also added, because it was the actual missing signal: a **`TZS … held`** pill on each queued market, read off the pools the row already carries — *"8 predictors"* says how many are waiting, not that 59,450 of their money is. Same shape as §0.1b's rounds-page lesson: a queue that hides the amount at stake gets triaged in the wrong order. | `shots/s11--admin-resolver-queue-1440.png` (the live "966M OVERDUE" badge); `npm run test:overdue-format` **9/9**, proven **RED (6 failures)** on the old single-unit body |
+| **E-39** | 🔴 **HIGH** → ✅ **FIXED 2026-08-02 (session 12)** | Up & Down · player money copy · SHARED, all 3 locales | **The card headed "SETTLEMENT PROOF · AUDITABLE RECORD" stated a margin-ZERO settlement rule directly underneath the round's real band.** `udRuleText` was a hard-coded constant rendered unconditionally (`updown/[roundId]/page.tsx:294`): *"Up if the close is above the open · Down if below · **Void if it does not move**"* — plus `Batili ikiwa haijasogea` / `无变动则作废`. Since E-32 every round is priced by the ladder, so a 5-min BTC round moving **$5** sits inside a **$12.62** band and voids. The page therefore told a player that voiding requires no movement, one row below `Up ≥ $63,126.62 / Down ≤ $63,101.38`, on the artefact they would take to an objection. ⚠️ **The defect is that a constant cannot describe a per-round rule** — not the wording. ⭐ The platform already had the correct sentence: `updown-service.ts:550` records *"stayed inside the band … refunded in full"* for operators. Fixed with `udRuleTextBanded` (en/sw/zh) selected from the round's own targets; the legacy line **kept** because at margin 0 it is accurate. | live production card for `udr_0c015a854aa105600373` read as `echo` (`live/s12-reshoot14.mjs`) — band and rule contradicting each other on one screen; `npm run test:rule-honesty` **28/28**, proven **RED (6 failures)**, and re-proven **RED (2 failures) with the corrected dictionary already in place** |
 | **G-7** | MEDIUM → ✅ **FIXED (2026-08-02, session 10)** | visuals · shared `Chip` | **Any `Chip` with a long label bleeds silently past its container, platform-wide.** `components/ui/chip.tsx` was `whitespace-nowrap` with a **fixed `height`** (18/21/25px per size). Both are correct for a short status pill and both are wrong for a phrase: the chip could neither wrap nor grow, so it was simply drawn outside its column with no ellipsis — and with nothing for a document-level check to notice. ✅ Fixed in the shared component: `height` → `minHeight` with `height: auto`, `whiteSpace: normal`, `max-w-full`, and the `/admin/reports` call-site opt-out **deleted** because the component now does it. ⭐ **The interesting part is how it had to be proven, because a survey CANNOT catch this and did not.** `live/s10-g7-probe.mjs` measured **84 live chips across 7 routes × 4 widths and found ZERO bleeding** — session 9 had patched the one known offender *at its call site*, so the shared component stayed broken for the next long label while everything measured clean. A latent defect has nothing to measure until someone ships the label that trips it. So the RED was produced by taking a **real chip off a real production page** and giving it a real call site's label at the real column width (`live/s10-g7-inject.mjs`, `/admin/aml` @360): **206×18 inside a 198px container — 8px outside it**, `white-space:nowrap · height:18px · max-width:none`. Re-run after the fix on production: **fits, wraps, grows.** ⚠️ **The `minHeight` swap must stay a no-op for one-line chips**, and that is now arithmetic rather than a hope — `test:chip-contract` §3 computes `fontSize × lineHeight + 2 × paddingBlock` for all six sizes and fails if any exceeds its `minHeight`, i.e. if a future edit would make **every chip on the platform** grow. | `live/s10-g7-inject.mjs` on production, before **206×18 in 198px, +8px** / after **fits**; `live/s10-g7-{before,after}.json` — 84 chips, height histogram `{18: 84}` unchanged; `npm run test:chip-contract` **14/14**, proven **RED** against the pre-fix component (10 failures) |
+
+## 6w. ⭐ E-39 — the settlement-proof card stated a margin-ZERO rule underneath a real band (2026-08-02, session 12)
+
+**Found by validating the runbook, not by looking for it.** Ali asked for the Up & Down runbook
+to be checked ("*validate if the runbook is correct, latest screenshots, make it perfect and
+functional*"). Re-shooting the settled-round screenshot from the worked example surfaced this on
+the live page.
+
+### What was wrong
+
+`/updown/[roundId]` carries the panel headed **SETTLEMENT PROOF · AUDITABLE RECORD**. It prints
+both prices, both sources, both quote times, both observation times, the move, the percent, and
+the band. Then, one row below the band, a line labelled **Rule**:
+
+```
+Up      ≥ $63,126.62
+Down    ≤ $63,101.38
+Rule    Up if the close is above the open · Down if below · Void if it does not move
+```
+
+The Rule line was a **hard-coded constant in all three locales** (`i18n-dict.ts` `udRuleText`,
+rendered unconditionally at `page.tsx:294`). It describes the rule at **margin zero**. It is not
+the rule the platform applies: since E-32 every round is priced by the measured ladder, so a
+5-minute BTC round that moves **$5** lands inside a **$12.62** band and **voids**.
+
+⚠️ **The defect is not the wording — it is that a constant cannot describe a rule that varies per
+round.** The panel is the artefact a player takes to an objection. A player whose round voided on
+a real move reads *"void if it does not move"*, sees a price that plainly moved, and concludes the
+platform took their round. That is a misstatement of a money rule on the one surface that calls
+itself auditable.
+
+⭐ **The platform already knew the right sentence.** `updown-service.ts:550` writes the internal
+resolution note as *"close … stayed inside the band [down, up] … Every stake is refunded in
+full."* The correct rule was being recorded for operators and the wrong one shown to the player.
+
+### The fix
+
+A second key, `udRuleTextBanded`, in en/sw/zh — *"Up if the close is at or above the Up target ·
+Down if at or below the Down target · Void anywhere between, with every stake returned in full"*
+— selected by the round's own `upTarget`/`downTarget`. ⚠️ The legacy sentence is **kept**, because
+for a genuinely unbanded round (margin 0, and the older rounds) it is the accurate one; deleting
+it would have traded one wrong sentence for another.
+
+### The guard, the RED, and the self-test
+
+`npm run test:rule-honesty` — **28/28**, proven **RED with 6 failures** first. Three layers:
+
+- **A · behaviour, proven not asserted.** For every rung of the shipped ladder it constructs a
+  close that moved by *half the band* and drives the real `decideOutcomeByTargets`: all six rungs
+  return **VOID** on a price that moved. That is what makes the old sentence false, established
+  against the resolver itself rather than by reading it. Plus the three band edges (`≥`/`≤` are
+  exact, one cent inside voids).
+- **B · copy.** The banded sentence must name both targets **in that locale's own words** for them
+  (`udUp`/`udDown` — the same words printed on the rows above, so sentence and numbers agree on
+  screen), must differ from the legacy constant, and must not contain that locale's no-move claim
+  (`does not move` / `haijasogea` / `无变动`). Trilingual parity enforced separately.
+- **C · wiring.** The page must **choose**. A page rendering one constant is the original defect
+  however good the constant is.
+
+⭐ **The C window was widened once during authoring, so it was re-proven rather than trusted.**
+Reverting `page.tsx` to the defect **while leaving the corrected dictionary strings in place**
+still fails 2/28 — i.e. the guard catches the case that actually recurs, a copy fix that never
+gets wired up. A detector loosened without a self-test is §6q's lesson.
 
 ## 6v. ⭐ ALI'S QUESTIONS ANSWERED FROM PRODUCTION — the game plays, and the margin decision is proven with real money (2026-08-02, session 11)
 

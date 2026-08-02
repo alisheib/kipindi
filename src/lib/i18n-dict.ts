@@ -677,7 +677,13 @@ export const dict = {
       udConfirm: "Confirm", udYourResult: "Your result", udPaidOut: "Paid out", udOpenInPositions: "Open in Positions",
       udRoundLabel: "Round", udAuditableRecord: "auditable record", udOutcome: "Outcome", udObserved: "Observed",
       udMove: "Move", udPercent: "Percent", udRule: "Rule",
+      // Two sentences, because the rule genuinely differs per round. `udRuleText` is the
+      // margin-ZERO rule and is only correct when the round has no band; `udRuleTextBanded`
+      // is what every round priced by the ladder actually follows. Showing the first one to a
+      // banded round told the player voiding requires no movement, directly under a $12.62
+      // band — see E-39 and scripts/updown-rule-honesty.test.mts.
       udRuleText: "Up if the close is above the open · Down if below · Void if it does not move",
+      udRuleTextBanded: "Up if the close is at or above the Up target · Down if at or below the Down target · Void anywhere between, with every stake returned in full",
       udEvidenceExcerpt: "Evidence excerpt",
       udProofClosingNote: "Both prices are read from the named source at the round boundary. If a read cannot be confirmed the round is voided and every stake is returned in full — nothing is estimated after the fact.",
       details: "Details", result: "Result",
@@ -2045,6 +2051,7 @@ export const dict = {
       udRoundLabel: "Raundi", udAuditableRecord: "rekodi inayokaguliwa", udOutcome: "Matokeo", udObserved: "Ilionekana",
       udMove: "Mwendo", udPercent: "Asilimia", udRule: "Kanuni",
       udRuleText: "Juu ikiwa bei ya kufunga iko juu ya ufunguzi · Chini ikiwa iko chini · Batili ikiwa haijasogea",
+      udRuleTextBanded: "Juu ikiwa bei ya kufunga iko kwenye au juu ya lengo la Juu · Chini ikiwa iko kwenye au chini ya lengo la Chini · Batili ikiwa iko katikati, na kila dau hurejeshwa kikamilifu",
       udEvidenceExcerpt: "Dondoo la ushahidi",
       udProofClosingNote: "Bei zote mbili husomwa kutoka chanzo kilichotajwa kwenye mpaka wa raundi. Ikiwa usomaji hauwezi kuthibitishwa, raundi hubatilishwa na kila dau hurejeshwa kikamilifu — hakuna kinachokadiriwa baadaye.",
       details: "Maelezo", result: "Tokeo",
@@ -3389,6 +3396,7 @@ export const dict = {
       udRoundLabel: "轮次", udAuditableRecord: "可审计记录", udOutcome: "结果", udObserved: "观测",
       udMove: "变动", udPercent: "百分比", udRule: "规则",
       udRuleText: "收盘高于开盘为涨 · 低于为跌 · 无变动则作废",
+      udRuleTextBanded: "收盘价达到或高于涨目标为涨 · 达到或低于跌目标为跌 · 位于两者之间则作废，全额退还所有下注",
       udEvidenceExcerpt: "证据摘录",
       udProofClosingNote: "两个价格均在轮次边界从指定来源读取。若无法确认读数，则本轮作废并全额退还所有下注——事后绝不估算。",
       statusPending: "待处理", statusClosed: "已关闭",
