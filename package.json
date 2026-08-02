@@ -197,7 +197,8 @@
     "test:updown-proposal": "tsx scripts/updown-proposal.test.mts",
     "test:updown-e2e-flow": "tsx scripts/updown-e2e-flow.test.mts",
     "test:grid-paging": "tsx scripts/grid-paging.test.mts",
-    "test:orphan-actions": "tsx scripts/orphan-actions.test.mts"
+    "test:orphan-actions": "tsx scripts/orphan-actions.test.mts",
+    "test:chip-contract": "tsx scripts/chip-contract.test.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

@@ -86,26 +86,54 @@ export function Chip({
   selected?: boolean;
   dot?: boolean;
 }) {
-  const sz = isStatus(variant) ? sizeStyles[size].status : sizeStyles[size].base;
+  const { height, ...szRest } = isStatus(variant) ? sizeStyles[size].status : sizeStyles[size].base;
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-pill font-bold whitespace-nowrap border uppercase",
+        // ⛔ G-7 — `max-w-full` is load-bearing, not decoration. Without it the chip lays
+        //    out at max-content and is simply drawn OUTSIDE its column.
+        "inline-flex items-center gap-1 rounded-pill font-bold border uppercase max-w-full",
         selected && "ring-1 ring-[var(--brand-400)] ring-offset-1 ring-offset-bg-elevated",
         className,
       )}
       style={{
-        ...sz,
+        ...szRest,
+        // ⭐ G-7 (live QA campaign, measured on production 2026-08-02).
+        //
+        // This used to be a fixed `height` plus `whitespace-nowrap`. Both are right for a
+        // short status pill and both are wrong for a phrase: the chip could neither wrap
+        // nor grow, so a long label was drawn outside its container with NO ellipsis and
+        // no overflow anywhere for a document-level check to notice.
+        //
+        // Reproduced on live production by giving a REAL chip a real call site's label:
+        // "Sportradar + GBT integrity unit" rendered **206x18 inside a 198px column — 8px
+        // outside it**. A survey could not have found it: session 9 had already patched
+        // the one known offender AT ITS CALL SITE, so all 84 live chips measured clean
+        // while the shared component stayed broken for the next long label.
+        //
+        // `minHeight` + `height: auto` is a NO-OP for every one-line chip — a one-line
+        // chip's content box is shorter than the min, so it renders at exactly the same
+        // height it always did (verified: all 84 measured chips unchanged at 18px). What
+        // changes is only the case that was previously broken: the label now wraps and
+        // the pill grows to fit it.
+        //
+        // ⚠️ `lineHeight` must leave 1 for the one-line case or every existing chip
+        // shifts; the padding below only applies once the text actually wraps, which is
+        // why it is expressed as `paddingBlock` rather than a taller box.
+        minHeight: height,
+        height: "auto",
+        paddingBlock: 2,
+        whiteSpace: "normal",
         fontFamily: "var(--font-body)",
         fontWeight: 700,
         letterSpacing: "0.06em",
-        lineHeight: 1,
+        lineHeight: 1.15,
         ...variantStyle[variant],
         ...style,
       }}
       {...rest}
     >
-      {dot && <span className="live-dot" style={{ width: 6, height: 6 }} />}
+      {dot && <span className="live-dot shrink-0" style={{ width: 6, height: 6 }} />}
       {children}
     </span>
   );
