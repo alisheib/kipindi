@@ -40,6 +40,28 @@ change touches something outside this campaign, update **that** doc too — the 
 
 ⛔ **A tracker that lags the work is worse than none**, because the next session trusts it.
 
+### 0.1b ⭐ Ali's standing rules on VISUALS (restated 2026-08-01, session 7)
+
+> *"visuals are very important and consistency as well"*
+> *"we should do as well as we go, visual tests for consistency in paging and filtering for
+> all grids we have — we cannot [have] any grid in admin or anywhere without them"*
+
+Three rules follow, and they apply to **every** session from here:
+
+1. **Fix the shared component, not the page.** E-30's clipping was fixed in `AdminKpi` and
+   the breadcrumb, so all 47 admin pages benefited from one change. A per-page patch of a
+   shared-component bug is how inconsistency is manufactured.
+2. **⛔ NO GRID WITHOUT PAGING AND FILTERING — admin or player.** See **G-1** in §6. The
+   platform already has the right primitives (`AdminPagination`, used by **24** pages;
+   `SortTh`; `DateTimeRangeFilter`), so this is about **consistency**, not invention.
+3. **A document-level overflow check is NOT a visual test.** E-30 proved it: text clipped
+   *inside* a card never reaches `document.scrollWidth`, so the standing "0 horizontal
+   overflow" bar was honestly reporting 0 over unreadable text. Every visual sweep needs a
+   **per-element** scan **and** a human looking at the image. ⚠️ And the per-element scan
+   must skip what is wide **by design** — `text-overflow: ellipsis` elements (the hidden
+   tail *is* the "…"), `sr-only` skip links, and the `LiveTicker` marquee — or it reports
+   correct code as broken and the "fix" is to undo the fix.
+
 ### 0.2 Push after every fix — the branch is the only thing that is real
 ```bash
 cd F:\kipindi-liveqa
@@ -927,6 +949,8 @@ crawl returned the all-time high and a percentage, not the current price. So re-
 
 | **E-30** | MEDIUM → ✅ **FIXED** | visuals · admin shell | **Text clipped mid-word inside its own card, on production, in all three locales — with every existing check green.** `/admin/updown/proposals` @360 rendered `▲ 0 review · 0 arm` **21 px past its tile**, and the breadcrumb `Admin / Up & Down / Proposals` ran **34 px past its nav** @768 on every admin page. ⭐ **Nothing caught it because clipping inside a card never reaches `document.scrollWidth`** — the campaign's standing "0 horizontal overflow" bar is a DOCUMENT measure and was honestly reporting 0 while the text was unreadable. One root cause, a CSS default rather than a typo: **a flex item's `min-width` defaults to `auto`**, so `whitespace-nowrap` (the KPI delta) and `truncate` (the crumb) did nothing without `min-w-0` on the chain — `truncate` on a child whose parent cannot shrink is decoration. ⛔ **The existing mitigation was a comment** — *"Keep every `delta` SHORT… clipped mid-word"* — and **the very line carrying it was clipped anyway**, its author having already shortened "armed" to "arm". A convention its own author cannot satisfy while writing it down is not a mitigation; fixed in the shared `AdminKpi`/breadcrumb so every admin page benefits, with `title` keeping the full value reachable. | `v2-proposals-{en,sw,zh}-{360,768}.png`; per-element scan **54/60 → 60/60**; `test:admin-clip` (new, 12) proven red by reverting both fixes (5 fail) |
 | **H-1** | — | harness | **A 12-cell sweep silently stopped being signed in and audited the LOGIN PAGE, reporting 41/48 PASS on pages it never loaded.** Production rate-limits repeated logins — correctly — and the sweep called `signIn` per cell. The weak assertion (`length > 200 && no refusal text`) passed on the login page. Fixed two ways: the harness signs in **once** and reuses `storageState` (`ctxAs`), and every cell now asserts a **page-specific** marker plus "not bounced to the login". ⚠️ Also excluded two by-design-wide elements the per-element scan flagged: the `sr-only` skip link and the `LiveTicker` marquee. Same family as every §3 trap — **the harness lying, not the product**. | first run 41/48 with most cells on `/auth/admin`; after the fix, 54/60 with 6 real, reproducible failures |
+
+| **G-1** | **OPEN** | grids · paging · filtering | **⭐ ALI'S DIRECTIVE, 2026-08-01 (§0.1b): no grid, admin or player, may ship without paging and filtering — and the real defect is not "missing", it is SILENT TRUNCATION.** Inventoried across the app: **24 pages already use the shared `AdminPagination`**, so the pattern and the primitives exist and this is a **consistency** job, not a build. **12 grids have no pagination primitive at all** — and several of them **cap their rows anyway and say nothing**, which is worse than no cap because the operator believes they are seeing everything: `/admin/updown/rounds` renders **30**, `/admin/live` **30**, `/admin/retention` **100**, `/admin/sources` **10**, `/admin/staff` **4**, `/admin/updown/proposals` **12**, `/profile/account` **30**. Full list of the twelve: `admin/{finance,insights,live,retention,sources,staff,staff/[id],system,updown,updown/proposals,updown/rounds}`, `profile/account`. **Not started** — it is its own body of work (§0.3). ⚠️ Per-grid the first question is *can this row set grow unboundedly?* — a 4-row staff table needs a filter far less than a rounds table that grows every 15 minutes. Do not blanket-add a pager to a fixed 3-row config table. | `grep` inventory over every `page.tsx` containing `<table>`; the row caps quoted above are the literal `limit:`/`slice(0,N)` values in each page |
 
 ## 6f. E-18 fixed — and the class was three surfaces, not one (2026-08-01)
 
@@ -1835,6 +1859,7 @@ switch it on.** Five findings shipped, all live-verified; E-23 fully closed.
 | `261dc921` | **E-25 + E-26** — the TwelveData reader dated quotes from the **`1day` OHLC bar** instead of `last_quote_at`, making the 90 s staleness gate **unsatisfiable on every asset forever**. Plus `ops:updown-probe-feed`, because neither named ops script can see the feed at all |
 | `a20c1970` | **E-27 + E-28** — `/admin/updown` offered a MODERATOR five armed `accounting` controls that could only bounce; and the drift detector built to catch exactly that had gone **blind** to the `requireStaff` idiom and certified four offenders as clean |
 | `32dea4f1` | **E-23 CLOSED + E-29** — the enabled *Void & refund* control photographed at four widths **and used** on production; reading back its audit row exposed a settlement note that claimed price observations on **1,397 of 1,397** rows that had none |
+| `6041b90e` + follow-up | **E-30 + H-1** — the first width audit of `/admin/updown/proposals` (**60/60** on production after the fix). Text was clipped mid-word *inside* its card in all three locales while every check stayed green, because clipping inside a card never reaches `document.scrollWidth`. Fixed in the shared `AdminKpi`/breadcrumb. **H-1**: the sweep itself had been auditing the LOGIN PAGE for most cells — production rate-limits repeated logins, and the assertion was weak enough to pass on it |
 
 Guards: `test:updown-feed` **21 → 33** · `test:control-gates` **101 → 209** ·
 `test:updown-heal` **97 → 115**. Every one proven red against the real defect.
@@ -1866,11 +1891,19 @@ Four costed options are in §6m — **A (Ali flips it himself, 30 seconds) is re
    **12 h 22 m** away at the end of this session. State verified correct and unaided so
    far: `RESOLVED`/`YES`, `settledAt: null`, both positions `OPEN`. After 09:54Z it must
    settle **by itself** and pay `alpha` 5,000 + 4,350. **Verify it; do not clear it.**
-④ **The interaction-state visual sweep — NOT STARTED.** Hovers, dropdowns, modals, focus,
-   keyboard, The Needle; EN/SW/ZH × 4 widths, including `/admin/updown/proposals`, which
-   has still never been width-audited. ⚠️ `test:responsive` needs `next dev` running and
-   outlives a 10-minute tool timeout — run it detached; it and `test:trilingual` are flaky
-   under a full run, so re-run a failure alone before believing it.
+④ **⭐ G-1 — paging + filtering on every grid (§0.1b, Ali's directive).** The inventory is
+   done and is in §6 · G-1: **24 pages already use `AdminPagination`; 12 have none, and
+   seven of those silently cap their rows.** Start with the silent truncators, worst first
+   (`/admin/updown/rounds` grows every 15 minutes and shows 30). Ask per grid whether the
+   row set can grow unboundedly — do not blanket-add a pager to a fixed 3-row config table.
+⑤ **The rest of the interaction-state visual sweep.** ✅ `/admin/updown/proposals` is now
+   width-audited — **60/60 on production**, 4 widths × 3 locales, and it found E-30. Still
+   to do: **hovers, dropdowns, modals, focus rings, keyboard, The Needle**, across the
+   other surfaces. ⚠️ Reuse `ctxAs()` — signing in per cell gets rate-limited and the
+   sweep then silently audits the LOGIN PAGE (H-1). ⚠️ `test:responsive` needs `next dev`
+   running and outlives a 10-minute tool timeout — run it detached; it and
+   `test:trilingual` are flaky under a full run, so re-run a failure alone before believing
+   it.
 
 📌 **Two product decisions recorded this session that are NOT bugs and need Ali, not code:**
 the chain-start domain is inconsistent (`trading` from Overview, `accounting` from the
