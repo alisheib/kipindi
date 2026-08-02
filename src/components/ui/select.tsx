@@ -48,7 +48,12 @@ export function Select({
   const [mounted, setMounted] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
+  /** ⛔ G-8. `bottom` is what makes "open above" actually open above — see `openDropdown`.
+   *  Exactly one of `top` / `bottom` is ever set, and `maxHeight` is the space that is
+   *  really available rather than a fixed 240. */
+  const [pos, setPos] = useState<{
+    top?: number; bottom?: number; left: number; width: number; maxHeight: number;
+  }>({ top: 0, left: 0, width: 0, maxHeight: 240 });
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -59,17 +64,51 @@ export function Select({
     triggerRef.current?.focus();
   }, [controlled, onChange]);
 
+  /**
+   * ⛔ G-8 (2026-08-02) — THE "OPEN ABOVE" BRANCH NEVER OPENED ABOVE.
+   *
+   * It set `top: r.top - 4` on a `position: fixed` panel. A fixed box grows DOWNWARD
+   * from its `top`, so that moved the panel up by the trigger's own height and 4px, and
+   * not one pixel further — the panel still ran off the bottom of the screen. Measured
+   * on production at 360, where the decision to flip up was CORRECT every time:
+   *
+   *   /admin/players  · All statuses    trigger bottom 837, below 63px  → panel 785→1025, 125px lost
+   *   /admin/events   · sports          trigger bottom 868, below 32px  → panel 768→1008, 108px lost
+   *   /admin/markets  · All categories  trigger bottom 739, below 161px → panel 687→ 927,  27px lost
+   *
+   * And because the panel is `position: fixed`, the lost part is not merely below the
+   * fold — **no amount of scrolling reaches it**. On a phone the lower options of a
+   * filter simply do not exist. The bug is invisible to every static sweep, because a
+   * screenshot of a page at rest never has the panel open.
+   *
+   * Three things are fixed together, because each alone still leaves a broken case:
+   *   · anchor by `bottom` when opening up, so "above" means above;
+   *   · size `maxHeight` to the space that actually exists rather than a flat 240, so a
+   *     trigger with 90px of room shows a 90px panel that scrolls, not a 240px panel
+   *     that overflows;
+   *   · clamp `left`/`width` into the viewport, so a right-edge trigger cannot push the
+   *     panel off the side — the same defect on the other axis, not yet observed but
+   *     reachable by the identical route.
+   */
   const openDropdown = () => {
     if (!triggerRef.current) return;
     const r = triggerRef.current.getBoundingClientRect();
-    const below = window.innerHeight - r.bottom;
-    const above = r.top;
-    // Position below if space, otherwise above
-    if (below >= 200 || below >= above) {
-      setPos({ top: r.bottom + 4, left: r.left, width: r.width });
-    } else {
-      setPos({ top: r.top - 4, left: r.left, width: r.width });
-    }
+    const GAP = 4;      // breathing room between trigger and panel
+    const EDGE = 8;     // never let the panel touch the viewport edge
+    const MAX = 240;    // the design cap; available space may be less
+
+    const below = window.innerHeight - r.bottom - GAP - EDGE;
+    const above = r.top - GAP - EDGE;
+    // Prefer down. Flip up only when down cannot show as much as up can.
+    const up = below < Math.min(MAX, above);
+    const maxHeight = Math.max(96, Math.min(MAX, up ? above : below));
+
+    const width = Math.min(r.width, window.innerWidth - EDGE * 2);
+    const left = Math.max(EDGE, Math.min(r.left, window.innerWidth - width - EDGE));
+
+    setPos(up
+      ? { bottom: window.innerHeight - r.top + GAP, left, width, maxHeight }
+      : { top: r.bottom + GAP, left, width, maxHeight });
     setFocusIdx(options.findIndex((o) => o.value === selected));
     setOpen(true);
   };
@@ -161,10 +200,13 @@ export function Select({
           role="listbox"
           className="m-float-in fixed z-[130] rounded-control border border-border-strong bg-bg-elevated shadow-overlay overflow-y-auto overscroll-contain"
           style={{
-            top: pos.top,
+            /* G-8: exactly one of these is set. `bottom` is the "open above" case, and
+               it is what makes the panel grow upward from the trigger instead of
+               downward off the screen. */
+            ...(pos.bottom != null ? { bottom: pos.bottom } : { top: pos.top }),
             left: pos.left,
             width: pos.width,
-            maxHeight: 240,
+            maxHeight: pos.maxHeight,
           }}
         >
           {options.map((o, i) => (

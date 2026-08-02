@@ -1190,6 +1190,90 @@ would have. The build stays the gate.
 
 | **G-7** | MEDIUM · **OPEN, measured, deliberately not fixed here** | visuals · shared `Chip` | **Any `Chip` with a long label bleeds silently past its container, platform-wide.** `components/ui/chip.tsx:93` is `whitespace-nowrap` and `sizeStyles` sets a **fixed `height`** (18/21/25px). Both are correct for a short status pill and both are wrong for a phrase: the chip cannot wrap and cannot grow, so it is simply drawn outside its column with no ellipsis. The shared remedy is small — `height` → `minHeight` (identical rendering for every one-line chip that exists today) plus `max-w-full` and wrapping when the label cannot fit. ⛔ **Not applied in session 9 on purpose:** `components/ui` is shared with the player surfaces a second session was measuring live at that moment, and moving that ground mid-run turns its measurements into false bug reports. `/admin/reports` opts out at the call site instead. | `live/g6-anatomy.mjs` on production: chip **206px** in a **198px** flex column, `ws=nowrap min=auto` |
 
+## 6o. THE ADMIN INTERACTION SWEEP — the first one ever run (2026-08-02, session 9)
+
+Every sweep before this measured the console **at rest**. Everything such a sweep can find
+is something you could also see in a screenshot. This one drives the console the way an
+operator does — keyboard, focus, dropdowns — and it found one defect that **no screenshot
+could ever contain, because the element is not on screen until you click**.
+
+**Scale.** 26 admin routes. **1,919 tab stops walked**; **845 controls focused** and their
+computed style diffed focused-vs-unfocused; **22 dropdown panels** opened, measured and
+escaped. All on production, each route as the role that owns it.
+
+### ✅ What is genuinely clean — and this is a real result, not an absence of testing
+
+| Check | Result |
+|---|---|
+| **Focus rings** | **845/845 controls** show a visible focus change. **Zero ringless.** |
+| **Keyboard traps** | **None** on any of the 26 routes. Tab always escapes. |
+| **`Escape` closes a dropdown** | 22/22 |
+| **Focus returns to the trigger after `Escape`** | 22/22 |
+| **`aria-expanded` reflects the real state** | 22/22 |
+| **Dropdown panels with options** | 22/22 non-empty |
+
+### 🔴 G-8 — "open above" has never opened above (SHARED, `components/ui/select.tsx`)
+
+`Select` portals its listbox to `<body>` as `position: fixed` and computes the coordinate
+itself. `openDropdown()` decides between down and up — and on all three failing cases it
+**decided correctly**. The up branch is what is broken: it set `top: r.top - 4`, and a fixed
+box grows **downward** from its `top`. So "open above" moved the panel up by the trigger's own
+height plus 4px and not one pixel more.
+
+```
+/admin/players  · All statuses    below 63px  → panel 785 → 1025   125px lost
+/admin/events   · sports          below 32px  → panel 768 → 1008   108px lost
+/admin/markets  · All categories  below 161px → panel 687 →  927    27px lost   (viewport 900)
+```
+
+⛔ **And because the panel is `position: fixed`, the lost part is not below the fold — no
+amount of scrolling reaches it.** On a phone, the lower options of those filters *do not
+exist*. `/admin/players`' status filter is how an officer finds a `SELF_EXCLUDED` or `BANNED`
+account.
+
+**Fixed three ways at once**, because each alone still leaves a broken case: anchor by
+`bottom` when opening up so that "above" means above; size `maxHeight` to the space that
+actually exists instead of a flat 240 (a trigger with 90px of room now shows a 90px panel
+that scrolls, not a 240px panel that overflows); and clamp `left`/`width` into the viewport,
+which is the same defect on the other axis, reachable by the identical route.
+
+⚠️ **Cross-lane touch, declared.** `components/ui/select.tsx` is outside the admin lane this
+session was scoped to, and a second session was measuring player surfaces live at the time.
+It was changed anyway because it is a **shared control that does not work on a phone** and
+§0.1b rule 1 says fix the shared component. The change can only make a panel *more* visible;
+it cannot introduce a clip. Player-side `Select` call sites should be re-measured.
+
+### 📌 Two classes deliberately NOT filed as defects — read before "fixing" them
+
+1. **`BELOW-44PX`, 314 hits.** The design system already says so, in writing:
+   `--h-control-md: 38px; /* .btn-md · Phase 3 → 44 (aligns with --h-input) */`. This is
+   **known, dated, deliberate** debt with a planned migration, not a discovery. Shapes seen:
+   `h=40` (the shared Refresh + AI-toolkit buttons), `h=30/32/38` (`btn-sm`/`btn-xs`/`btn-md`),
+   `h=35` (date-preset pills). ⚠️ ⭐ **The `h-10 w-10` question is settled and is NOT G-2
+   again**: `h-10` really is **80px** on this config, and `refresh-button.tsx` carries
+   `h-10 w-10 … !h-7 !w-7`, so it renders 40×40. The render is right; the class list now
+   reads as a contradiction and is how the next reader gets misled. Worth tidying, not a bug.
+2. **`OFFSCREEN-STOP`, 32 hits.** Nearly all are inside `ScrollX` containers — `/admin/sources`
+   reported `x=-80` on a domain link *inside a horizontally scrollable table*, which is the
+   design. The interaction walk lacks the by-design exclusions `clippedElements()` carries.
+   **The walk needs those exclusions before this class means anything.**
+
+⚠️ **The focus detector had to be corrected before it could be believed, and the correction
+is the lesson.** v1 asked "does THIS element's style change on focus" and flagged the
+`/admin/transactions` search input. That is **working code**: `SearchBox` renders the input
+inside `.input-group`, and the kit puts the ring on the **wrapper** via `:focus-within`. A
+ring one level up is still a ring an operator sees. v2 asks the question a human asks —
+does anything change *anywhere in the chain* — and the answer across 845 controls is yes,
+every time. ⭐ **A detector that reports working code as broken is worse than no detector**,
+because the "fix" is to undo the fix (§0.1b rule 3).
+
+⚠️ **And the detectors were proven able to fail first** (`live/ix-selftest.mjs`), which caught
+the harness dead on arrival: `page.evaluate(PROBE)` with a **string** evaluates it to a
+function object and never calls it, so 4 of 5 detectors silently returned nothing and the
+whole console would have been reported clean. Same family as every §3 trap — **the harness
+lying, not the product** — and the only reason it was caught is that the self-test demanded
+each detector fire against an injected defect before any real run.
+
 ## 6f. E-18 fixed — and the class was three surfaces, not one (2026-08-01)
 
 **One defect class: a page offers a control its own viewer's role can never work.** The
