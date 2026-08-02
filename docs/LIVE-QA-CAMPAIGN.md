@@ -228,6 +228,46 @@ ADMIN account** — that is Ali's own operator login (`777777777`), and re-setti
 his own console until he is told the new value. **`QA_ADMIN_PASSWORD` is still absent on laptop B**,
 which is the one thing blocking officer-side live verification (E-4).
 
+### 🚀 A FRESH MACHINE — from `git clone` to a live production test, in five minutes
+
+Ali, 2026-08-03: *"make sure everything is well documented, all credentials, pushed, so on
+another PC we just pull and proceed."* This is that list. Nothing here needs Ali except the
+one file in step 3.
+
+```bash
+git clone https://github.com/alisheib/kipindi && cd kipindi
+git checkout qa/live-experience
+npm install                       # `postinstall` runs `prisma generate` — needed for the guards
+npx playwright install chromium   # the live drivers drive a real browser
+railway login && railway link     # pick: 50pick · production
+```
+
+3. **Copy `.env.qa.local` into the repo root** — it is gitignored (`.gitignore:9`) and is the
+   ONLY thing that does not travel. Seven lines, one per persona (§1 table above). If it is
+   lost, every QA persona except ADMIN can be re-minted with `live/mkpw.cjs`;
+   ⛔ **`QA_ADMIN_PASSWORD` is Ali's own console login and must NEVER be re-minted.**
+
+4. **Prove the link works** before trusting anything:
+```bash
+railway status                                   # 50pick · production
+railway run -s 50pick -- node scripts/live/q.cjs /tmp/x.sql   # any read-only .sql file
+```
+
+5. **Run a live driver.** They all take `SHOT_DIR` and write screenshots there:
+```bash
+SHOT_DIR=./shots node scripts/live-updown-revalidate.mjs   # the whole Up & Down lane
+SHOT_DIR=./shots node scripts/live-reflection.mjs          # player + accounting reflection
+SHOT_DIR=./shots node scripts/live-asset-form.mjs          # the guided Add-asset form
+SHOT_DIR=./shots node scripts/live-ai-progress.mjs         # progress bar, mid-generation
+SHOT_DIR=./shots node scripts/live-polls.mjs --skip-generate
+SHOT_DIR=./shots node scripts/live-player-winlose.mjs      # ⚠️ SPENDS REAL MONEY
+```
+
+⚠️ **Two things that will waste your first hour if you skip them.** The Railway link lives in
+the repo tree, so **every `railway` command must run from the repo root** (`No linked project
+found` otherwise). And `scripts/live/harness.mjs` already encodes every selector trap this
+campaign has paid for — read its header before writing a new driver, do not start from scratch.
+
 ## 2. Environment facts (verified 2026-07-31, not assumed)
 
 | Fact | Value |
@@ -3084,10 +3124,26 @@ alternative — HTML price pages — is exactly what E-16/E-25 proved unreadable
 decision, not a patch**; the recommendation is to let the AI propose only the framing, duration and
 margin and take the price from the feed, because the price was never its job.
 
+⭐ **LATER THE SAME SESSION — four more things Ali asked for, all shipped and live-verified.**
+
+| | Shipped + verified on production |
+|---|---|
+| **evidence excerpt is STAFF ONLY** | Ali: *"we don't want players copying such things from the platform."* The raw provider blob (symbol, exchange, OHLC, previous close, 52-week range) is now gated on a **server-resolved** role, so it never enters a player's HTML — hiding it with CSS would still ship the payload, and "view source" is not a permission boundary. The player keeps the entire auditable record: both prices, both source links, the source's own quote time and ours, the band, the rule, the closing note. Guard `test:proof-privacy` **12/12**, RED-proven. **Verified from BOTH sides live**: player sees no excerpt *and* no `last_quote_at` / `fifty_two_week` anywhere in the page source; staff sees it, labelled *staff only* |
+| **one progress treatment** | Ali: *"pick the best feature and make it visually consistent."* Polls blurred the page behind a dialog; Up & Down showed an inline bar and left the page clickable through a 30-second paid call. The scrim, blur, card chrome and animation now live in **one** `AiOverlayShell` used by **all three** generators (single poll, poll batch, Up & Down). Measured live: the scrim and card class strings are **byte-identical** on both consoles. The bar gained a **determinate** mode because the batch genuinely knows *"poll 3 of 8"* — same chrome, honest in both modes |
+| **"didn't pass checks" now explains itself** | 13 of 13 proposals had failed and **not one ever read a price**, yet the queue said the same four words every time for two different reasons — one of which an officer cannot fix. Every reason now carries a **what-to-do** line: `source_unreadable` says plainly it is expected and not their fault (E-47) and points at the Add-asset form; `duplicate_chain` says there is nothing to fix and where to edit the existing chain |
+| **full revalidation** | `scripts/live-updown-revalidate.mjs` — generation, resolution, playing, clarity and privacy in one run. **21/23**, and both "failures" were the harness: one picked a settled round **nobody had bet on** (no bets ⇒ no ledger rows ⇒ correct), the other demanded an open *and* a shut market on screen at once — which failed at **22:07 UTC Sunday because the metals week had just reopened at 22:00, exactly on schedule.** Both assertions now test the property, not the hour |
+
+⭐ **AND THE CALENDAR WAS CONFIRMED BY THE CLOCK.** Gold read `closed · opens 22:00 UTC` all
+evening and flipped to `open` at 22:00 UTC Sunday — the prediction and the product agreed to the
+minute. Metals/FX run **Sunday 22:00 → Friday 21:00 UTC** (Monday 01:00 → Saturday 00:00 EAT),
+continuously, with **no daily close**.
+
 ⏭️ **RESUME AT:** ① **E-37 + E-43 together** (the digest, and the inverted suppression — one
 decision). ② **E-47**, Ali's call above. ③ **E-45**, backfill a late-confirmed observation into the
 round that opened on it — it fixes SOL *and* recovers the ~19% of BTC readings that miss their
 boundary. ④ **E-33** DSAR. ⑤ **E-34/E-35** the refusal panel. ⑥ **G-3** the player visual sweep.
+⑦ **Sorting** on the proposals grid — it pages and filters (state + asset chips), but has no
+`SortTh`, and Ali asked for paging *and* filtering *and* sorting on every grid.
 
 🔒 **Left as found**, except: two assets' worth of AI proposals were generated (~$0.30), the
 guided-form deploy, and the progress-bar deploy. **No chain state, margin, role or config changed.**
