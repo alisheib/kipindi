@@ -9,7 +9,7 @@ import { FiftyMark } from "@/components/brand";
 type NavItem = { href: string; label: string; key: string; badge?: string };
 type NavGroup = { group: { en: string; sw: string }; items: ReadonlyArray<NavItem> };
 
-export function AdminMobileNavTrigger({ groups, badges, activeKey }: { groups: ReadonlyArray<NavGroup>; badges: Record<string, string | undefined>; activeKey: string }) {
+export function AdminMobileNavTrigger({ groups, badges, activeKey, roleLabel }: { groups: ReadonlyArray<NavGroup>; badges: Record<string, string | undefined>; activeKey: string; roleLabel?: string }) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -73,6 +73,19 @@ export function AdminMobileNavTrigger({ groups, badges, activeKey }: { groups: R
                 <I.x s={16} />
               </button>
             </div>
+            {/* G-4: WHICH ROLE AM I OPERATING AS. The top bar's role chip is hidden below
+                `sm` so it cannot crush the nav trigger — but that chip is a safety
+                affordance on a licensed platform, not decoration, so it moves here rather
+                than disappearing. ⚠️ The first draft of the G-4 fix simply hid the chip
+                and left a comment claiming the drawer already showed the role. It did
+                not. Checking turned a false comment into this element. */}
+            {roleLabel && (
+              <div className="px-3 pt-3 sm:hidden">
+                <span className="font-mono text-micro tracking-[0.14em] uppercase px-2.5 h-7 inline-flex items-center rounded-md border border-border bg-bg-inset text-text-secondary">
+                  {roleLabel}
+                </span>
+              </div>
+            )}
             <nav className="flex-1 px-3 py-3 flex flex-col gap-1">
               {groups.map((g) => (
                 <div key={g.group.en}>

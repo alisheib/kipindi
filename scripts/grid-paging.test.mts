@@ -292,5 +292,38 @@ ok("3.4 · and its width floor matches, so a page button is not a portrait pill"
 ok("3.5 · the trap is written down where the next editor will read it",
    /80px|spacing scale/i.test(pagerSrc));
 
+// ─────────────────────────────────────────────────────────────────────────────
+// §4 · G-4 — the admin top bar must not crush its own navigation on a phone.
+//
+// 🔴 THE FINDING (G-4, 2026-08-02, found by measuring the box model at 360). The right
+// action cluster is `shrink-0` and measures **302px**. On a 360 viewport that left the
+// breadcrumb side **2px**, so: the breadcrumb rendered at a width of exactly **0**, and
+// the mobile-nav trigger — the ONLY way into the admin menu on a phone — was squeezed
+// from its 44px tap target to **18px**. On every admin page.
+//
+// ⛔ WHY NO EXISTING CHECK SAW IT: a 0px-wide `nav` reports no overflow, `truncate` on
+// the crumbs was working exactly as written, and the bar still looked plausible in a
+// screenshot. Only `getBoundingClientRect()` on the actual boxes disagreed.
+// ─────────────────────────────────────────────────────────────────────────────
+console.log("\n§4 · the admin top bar keeps its nav trigger and role visible on a phone");
+
+const shellSrc = readFileSync(join(ROOT, "src/components/admin/admin-shell.tsx"), "utf8");
+const shellCode = shellSrc.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+const mobileSrc = readFileSync(join(ROOT, "src/components/admin/admin-mobile-nav.tsx"), "utf8");
+
+ok("4.1 · ⛔ the mobile nav trigger is shrink-0 — the tap target is never what gives",
+   /shrink-0"?>\s*<AdminMobileNavTrigger/s.test(shellCode.replace(/\s+/g, " ").replace(/" >/g, '">')) ||
+   /<div className="shrink-0">\s*<AdminMobileNavTrigger/.test(shellCode));
+ok("4.2 · the breadcrumb is hidden below md rather than collapsing to 0px",
+   /aria-label="Breadcrumb" className="hidden md:flex/.test(shellCode));
+ok("4.3 · the role chip yields the width below sm", /hidden sm:inline-flex[^"]*uppercase/.test(shellCode));
+// ⛔ …but it must not simply VANISH. "Which role am I operating as" is a safety
+// affordance on a licensed platform. The first draft of this fix hid the chip and left a
+// comment claiming the drawer already showed the role — it did not. Pin the replacement.
+ok("4.4 · ⭐ and the role is re-rendered in the mobile drawer, not dropped",
+   /roleLabel=\{roleLabel\(session\.role\)\}/.test(shellCode) && /roleLabel &&/.test(mobileSrc));
+ok("4.5 · the AdminKpi VALUE truncates — E-30 fixed the delta and left this assumed safe",
+   /tabular-nums leading-none truncate/.test(shellCode) && /title=\{typeof value === "string"/.test(shellCode));
+
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

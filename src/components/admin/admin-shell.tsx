@@ -110,8 +110,22 @@ export async function AdminTopBar({ crumbs, session, activeKey, viewDomains, isO
           at the centred column's edge — a visible misalignment above 1600px. Same
           pattern the player top bar already uses. */}
       <div className="mx-auto w-full max-w-console h-full flex items-center justify-between px-4 lg:px-6 gap-3">
+      {/* ⛔ G-4 (2026-08-02). At 360 the RIGHT cluster below is `shrink-0` and measures
+          302px, so this side was handed **2px**: the breadcrumb collapsed to a width of
+          exactly **0** and the mobile-nav trigger — the only way into the admin menu on a
+          phone — was crushed from its 44px tap target to **18px**. On every admin page.
+          Nothing caught it because a 0px-wide `nav` reports no overflow and the shell
+          still *looked* plausible in a screenshot; it took measuring the box model.
+          Three parts to the fix, here and on the cluster below:
+            · the trigger is `shrink-0`, so the tap target is never the thing that gives;
+            · the breadcrumb is `hidden md:flex` — at 360 it was already invisible, and
+              saying so explicitly stops it competing for space it never wins. The page
+              title in `AdminPageHead` directly below carries the location on a phone;
+            · the role chip below hides under `sm`, which is what frees the width. */}
       <div className="flex items-center gap-2 min-w-0">
-        <AdminMobileNavTrigger groups={groups} badges={badges} activeKey={activeKey} />
+        <div className="shrink-0">
+          <AdminMobileNavTrigger groups={groups} badges={badges} activeKey={activeKey} roleLabel={roleLabel(session.role)} />
+        </div>
       {/* ⛔ E-30, second surface, SAME root cause as the AdminKpi delta below: a flex item
           defaults to `min-width: auto`, which refuses to shrink below its content. The
           `nav` already carried `min-w-0 overflow-hidden` and each crumb already carried
@@ -119,7 +133,7 @@ export async function AdminTopBar({ crumbs, session, activeKey, viewDomains, isO
           shrink and `truncate` could never engage. Measured at 768: "Admin / Up & Down /
           Proposals" ran 34px past the nav, in all three locales.
           `shrink-0` on the separator keeps "/" from being the thing that collapses. */}
-      <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-body-sm text-text-tertiary min-w-0 overflow-hidden">
+      <nav aria-label="Breadcrumb" className="hidden md:flex items-center gap-2 text-body-sm text-text-tertiary min-w-0 overflow-hidden">
         {crumbs.map((c, i) => {
           const isLast = i === crumbs.length - 1;
           return (
@@ -173,9 +187,14 @@ export async function AdminTopBar({ crumbs, session, activeKey, viewDomains, isO
             (Owner / Compliance / Trading / Finance / Growth / Auditor / Support).
             Replaces the old always-"ACTIVE" label; the aqua-dot officer pill beside
             it already carries the live/active signal. */}
+        {/* G-4: `hidden sm:inline-flex`. This chip is what tipped the bar over 360 and
+            crushed the nav trigger. It is NOT lost on a phone — it is re-rendered inside
+            the mobile nav drawer (`AdminMobileNavTrigger`, `roleLabel` prop), because
+            "which role am I operating as" is a safety affordance on a licensed platform,
+            not decoration. */}
         <span
           title={`You are signed in as ${roleLabel(session.role)}`}
-          className="font-mono text-micro tracking-[0.14em] uppercase px-2.5 h-7 inline-flex items-center rounded-md border border-border bg-bg-inset text-text-secondary"
+          className="hidden sm:inline-flex font-mono text-micro tracking-[0.14em] uppercase px-2.5 h-7 items-center rounded-md border border-border bg-bg-inset text-text-secondary"
         >
           {roleLabel(session.role)}
         </span>
@@ -286,9 +305,18 @@ export function AdminKpi({
           </span>
         )}
       </div>
+      {/* ⛔ G-4, and it is E-30's lesson one slot over. E-30 fixed the DELTA row and left
+          the VALUE assumed safe because a value is "usually a number". It is not always:
+          `/admin/affiliate`'s *Top referrer* tile puts a raw handle here, and
+          `@jaykishan_kaba_adm` ran **34px past its card** at sw@1280 — clipped mid-word,
+          reporting zero page overflow, exactly as E-30 described.
+          `truncate` + `title` gives the tail an affordance and keeps the full string
+          reachable on hover; the per-element scan correctly ignores `text-overflow:
+          ellipsis`, because the "…" IS the disclosure. */}
       <div
-        className={["font-mono font-bold tabular-nums leading-none", valueToneCls].join(" ")}
+        className={["font-mono font-bold tabular-nums leading-none truncate", valueToneCls].join(" ")}
         style={{ fontSize: 22, letterSpacing: "-0.02em" }}
+        title={typeof value === "string" ? value : undefined}
       >
         {value}
       </div>

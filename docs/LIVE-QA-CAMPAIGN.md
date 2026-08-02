@@ -151,6 +151,7 @@ strings**, plus the exact commands that mint them in under a minute. Nothing bel
 |---|---|---|
 | ⭐ **QA compliance officer** | `https://50pick.tz/auth/admin`, phone **`712000106`** (`usr_2ff22430c89e4c560fac5334`) — **use this for all operator work**, see §4 | `.env.qa.local` → `QA_OFFICER_PASSWORD` |
 | ⭐ **QA trading officer** | `https://50pick.tz/auth/admin`, phone **`712000104`** (`usr_429885ab43c0cb4ce134dd7e`, role `MODERATOR`) — trading surfaces, see §4 | `.env.qa.local` → `QA_TRADING_PASSWORD` |
+| ⭐ **QA growth officer** | `https://50pick.tz/auth/admin`, phone **`712000102`** (`usr_26313f74d8428e4e169603ca`, role `GROWTH`) — invites / affiliate / bonuses / cohorts, see §4 | `.env.qa.local` → `QA_GROWTH_PASSWORD` |
 | Ali's own operator console | `https://50pick.tz/auth/admin`, phone **`777777777`** (E.164 `+255777777777`, `usr_1b3e6fd5048b1d873e931715`, `alisheib07@gmail.com`) | `QA_ADMIN_PASSWORD` — **not held on laptop B, and no longer needed** (§4) |
 | **QA player `alpha`** | phone **`712000101`**, `qa.alpha.50pick@gmail.com` | `.env.qa.local` → `QA_ALPHA_PASSWORD` |
 | **QA player `echo`** | phone **`712000105`**, `qa.echo.50pick@gmail.com` | `.env.qa.local` → `QA_ECHO_PASSWORD` |
@@ -411,6 +412,50 @@ and a clean console: `/admin` · `players` · `markets` · `ai-polls` · `ai-usa
 `invites` · `audit` · `compliance` · `payments` · `self-exclusions` · `sources` · `system`.
 `/admin/kyc` is **not a page** — KYC review is part of **`/admin/approvals`**
 (`admin-nav-groups.ts:190` maps the two). Don't file that 404 as a bug.
+
+
+### ⭐ The QA GROWTH officer (`GROWTH`) — added 2026-08-02, and the gap it closed
+
+Ali asked for **invites** to be tested. `/admin/invites` is the **`growth`** domain
+(`roles.ts:235`) — and so are `/admin/affiliate`, `/admin/bonuses` and
+`/admin/players/cohorts`. `DEFAULT_GRANTS` gives `growth` to **no QA persona**: COMPLIANCE
+holds compliance/accounting/support, MODERATOR holds trading. So the compliance officer
+opening `/admin/invites` is **refused, correctly** — and **four admin pages had never been
+audited signed in as a role that can see them.**
+
+⛔ **The wrong fix is to widen COMPLIANCE.** Same reasoning as the trading officer: it would
+destroy the live RBAC exercise §4 exists to run. A third identity instead.
+
+🔴 **A trap paid for on the way in.** The first audit windowed its refusal check to the
+first 400 characters of the body, and `/admin/invites` — which refuses COMPLIANCE at *every*
+width — **passed at 3 of 4 cells**, because the wide-viewport sidebar pushed the word
+"restricted" past the window. Only the 360 cell, where the nav collapses, revealed it.
+Same family as **H-1**: the harness lying, not the product. The refusal check now scans the
+whole body.
+
+Made exactly like the other two: **`bravo`** (`+255712000102`, `usr_26313f74d8428e4e169603ca`)
+promoted by **one** narrow `UPDATE` — `role → GROWTH`, `displayName → 'QA Growth Officer
+(test)'`, `roleChangedBy = 'qa:live-experience'` (the marker, **not** a user id — no admin
+performed this). Password re-minted into `.env.qa.local` as **`QA_GROWTH_PASSWORD`**, never
+printed. ⛔ No hand-written `AuditLog` row — that table is HMAC-chained with
+`@@unique([prevHash])`. Script `live/grant-growth.mjs`; reverse with `REVOKE=1`.
+`bravo` was already `PENDING_KYC`, which does **not** block admin sign-in.
+
+**Production had ZERO `GROWTH` accounts** (9 `ADMIN`, 1 `COMPLIANCE`, 1 `MODERATOR`,
+1 `FINANCE`), so this is the **first live exercise of the growth grant** — and it held in
+both directions, with **no `RoleDomainGrant` overrides**, i.e. the seed matrix is what is live:
+
+| | Result on production |
+|---|---|
+| growth surfaces reachable (`invites`, `affiliate`, `bonuses`, `players/cohorts`) × 4 widths × 3 locales | **render, 0 document overflow, 0 console errors** — and they surfaced **G-4** |
+| privileged surfaces refused (`finance`, `compliance`, `audit`, `system`, `staff`, `transactions`, `updown`, `settlement`) | **8/8 refused** |
+
+⚠️ **It is a privileged account on a licensed live platform**, named unmistakably
+(*QA GROWTH OFFICER (TEST)*). **Revoke it when the campaign ends**, with the other two.
+
+📌 **Still uncovered: `support`.** `/admin/players` and its neighbours are the `support`
+domain; COMPLIANCE holds it **view-only**, so read paths are audited but no QA identity can
+*act* there. A `SUPPORT` persona is the same one-line promotion if that lane is needed.
 
 ## 5. Progress — phase by phase
 
@@ -976,6 +1021,7 @@ crawl returned the all-time high and a percentage, not the current price. So re-
 | **G-1c/d/e** | **HIGH** → ✅ **FIXED — the G-1 backlog is now EMPTY** | grids · paging · filtering | **The last three grids, closed rather than deferred (Ali, 2026-08-02: *"dont try to do anything later, everything will be deleted and started from scratch"*).** ⭐ **G-1c `/admin/updown/proposals`** — the officer queue for arming real chains was **completely unbounded**: no cap, no pager, every proposal ever generated rendered as a row carrying an evidence panel and up to three armed controls, so the handful actually in `PENDING_REVIEW` sank further down the page with every generation run. ⚠️ **The earlier inventory recorded this grid as "capped at 12" — that was a misread of `p.reviewedBy.slice(0, 12)`, a STRING slice.** Unbounded is a different problem from truncated and it needed the filter more, not less. Now pages, and filters by **state** (with per-state counts on the chips) and by asset; AI **spend stays lifetime**, because a budget figure that moved when you turned a page would be worthless. ⭐ **G-1d `/admin/live`** — judged **correctly unpaged** and moved to `FIXED_GRIDS`: its table is live matches in progress (bounded by reality) and both audit feeds already link to `/admin/audit?category=…`, which is fully paged. **The real defect was narrower**: the bet feed read **30** and rendered **10**, discarding two thirds of what it fetched under a title that — unlike its wallet sibling's honest *"last 30"* — never said so. Now reads what it renders, and both titles state the number. ⭐ **G-1e `/admin/finance`** — ⚠️ **the inventory was WRONG that these "silently cap"**: both grids already disclosed their caps in prose. The trial-balance drift table is **left as-is by design** — `ledger.ts` sorts it worst-first (`drift.sort(rowAbs desc)`), so *"the 20 largest of N"* is literally true and a triage list is the right shape. Only the settlement-fee grid gained a pager, on its own `feepage` param so it cannot move the other lists on that screen. | `npm run test:grid-paging` **34/34**, `UNPAGED_DEBT` **{}** · 2.10–2.13 proven **RED** against all three originals (5 failures) · 37 page.tsx files scanned |
 | **G-2** | MEDIUM → ✅ **FIXED** | visuals · shared pager · every paginated screen | **The shared pager rendered every page control as a 40×80 PORTRAIT pill, on all 25 paginated screens, because `h-10` is not 40px in this project.** `tailwind.config.ts` overrides the spacing scale — the key `10` is **80px** here — so `h-10 min-w-[40px]`, which plainly intends a ~40px square, came out twice as tall as it reads: taller than the 44px filter chips directly above it, and on a phone tall enough to push the next-page chevron onto a row of its own, where it looks like a broken layout rather than a wrapped one. ⭐ **Found only by measuring the live DOM while photographing the G-1 pager** — `getBoundingClientRect()` said `40x80` where the class list says 40×40. ⛔ **Nothing could have caught this by reading the source**: the class list is correct to anyone who knows Tailwind and not this config, and `min-w-[40px]` sitting beside it reads as confirmation. A previous session had already been bitten by the identical trap in `notifications-panel.tsx` and left a comment there, which is how the cause was recognised in one step instead of ten. **Fixed in the shared component** (§0.1b rule 1) — `h-[44px] min-w-[44px]`, written literally, at the campaign's WCAG 2.5.5 AAA tap-target floor, plus `justify-center sm:justify-end` so a wrapped row reads as intentional. | `npm run test:grid-paging` §3, **5 assertions, proven RED against the old pager (4/4 fail)**. Live DOM measurement before: `40x80`; after: `44x44`. Screenshots `live/shots/g1-pager-{1280,360,last}.png` |
 | **G-3** | MEDIUM · **OPEN — not started, evidenced only** | visuals · shared PLAYER shell · i18n | **The player top-nav's inner container overflows its own box, and how badly depends on the LANGUAGE.** Measured on production at `/profile/account` (but it is the shared shell, so it is every player page): `div.mx-auto` inside `header.sticky` reports `scrollWidth − clientWidth` of — **en**: 0 @1280, 0 @1440, **31px** @1680, **31px** @1920 · **sw**: **28px** @1280, **28px** @1440, **198px** @1680, **198px** @1920 · **zh**: 0 at every width. Swahili link labels are the longest (`Jedwali la Washindi`, `Kupendekeza`), Chinese the shortest, which is exactly the ordering you would predict — this is an i18n layout defect, not a random one. Visible in the photographs as a nav flush to both edges with its right-hand cluster having eaten its own padding, and the notification badge touching the viewport edge at sw@1280. A second, smaller one sits in the same cluster: the wallet-balance chip's wrapper is **+4px** over at 768 and 1280 in **all three** locales. ⚠️ **What is NOT claimed**: the sw@1920 screenshot appears to be missing the `TZS 62,400` chip that sw@1280 shows, which would mean a player loses sight of their balance — but **two attempts to detect that chip in the DOM found nothing at any width, including one where the screenshot plainly shows it**, so the detector is wrong and the claim is unproven. Settle that before fixing anything. ⛔ Deliberately **not started**: it is the shared shell on every player page, across 3 locales × 4 widths, and §0.3 says that is its own session. | `live/navprobe.mjs` (12-cell measurement table above) · photographs `live/shots/nav-{sw-1280,sw-1920,en-1920}.png` · surfaced by `clippedElements()` during the G-1b audit, 12/12 cells |
+| **G-4** | **HIGH** → ✅ **FIXED** | visuals · shared ADMIN shell · mobile | **On a phone, every admin page crushed its own navigation.** The top bar's right action cluster is `shrink-0` and measures **302px**; on a 360 viewport that left the other side **2px**, so the breadcrumb rendered at a width of exactly **0** and the mobile-nav trigger — the only way into the admin menu on a phone — was squeezed from its 44px tap target to **18px**. On all 47 admin pages. ⛔ **Nothing could have caught this by looking**: a 0px-wide `nav` reports no overflow, `truncate` on the crumbs was working exactly as written, and the bar still looked plausible in a screenshot. It took `getBoundingClientRect()` on the actual boxes. Fixed in the shared shell: the trigger is `shrink-0` so the tap target is never what gives; the breadcrumb is `hidden md:flex` (it was already invisible at 360 — saying so stops it competing for space it never wins, and `AdminPageHead` directly below carries the location); the role chip hides under `sm`, which is what frees the width. ⭐ **And the role is re-rendered inside the mobile drawer rather than dropped** — *which role am I operating as* is a safety affordance on a licensed platform. ⚠️ **The first draft of this fix simply hid the chip and left a comment claiming the drawer already showed the role. It did not.** Checking the claim instead of shipping it turned a false comment into a real element — the E-29 defect class, caught in my own edit. **Also fixed in the same shared component**: `AdminKpi`'s **value** slot now truncates. E-30 fixed the *delta* row and left the value assumed safe because "a value is usually a number" — `/admin/affiliate`'s *Top referrer* tile puts a raw handle there, and `@jaykishan_kaba_adm` ran **34px past its card** at sw@1280. | `npm run test:grid-paging` §4, **5 assertions, all 5 proven RED against the old shell** · box-model measurement at 360: trigger `18px`, breadcrumb `0px`, right cluster `302px` on a `320px` content box · `live/crumb.mjs` |
 
 ## 6f. E-18 fixed — and the class was three surfaces, not one (2026-08-01)
 
