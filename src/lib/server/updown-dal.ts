@@ -105,6 +105,25 @@ export type StoredRound = {
   updatedAt: string;
 };
 
+/**
+ * The filter `roundStore.list` and `roundStore.count` BOTH take, so the rows on screen
+ * and the total in the pager are always answers to the same question (G-1).
+ *
+ * `chainIds` exists because the operator filters by ASSET, and an asset owns one chain
+ * per cadence — XAU already has a 5m and a 15m. Filtering by a single `chainId` would
+ * silently show one cadence and call it the asset.
+ */
+export type RoundQuery = {
+  chainId?: string;
+  /** Any of these chains. Ignored when empty — an empty asset filter matches nothing,
+   *  which is a different (and correct) answer the caller must ask for explicitly. */
+  chainIds?: string[];
+  /** `"PENDING"` means no verdict yet (`outcome IS NULL`), which is not a RoundOutcome
+   *  value but IS the state an operator most needs to filter for. */
+  outcome?: RoundOutcome | "PENDING";
+  unsettledOnly?: boolean;
+};
+
 export type StoredObservation = {
   id: string;
   assetId: string;
@@ -238,7 +257,20 @@ export interface RoundStore {
   getByMarketId(marketId: string): Promise<StoredRound | null>;
   /** The round a chain is currently running, if any. */
   latestForChain(chainId: string): Promise<StoredRound | null>;
-  list(opts?: { chainId?: string; limit?: number; unsettledOnly?: boolean }): Promise<StoredRound[]>;
+  list(opts?: RoundQuery & { limit?: number; offset?: number }): Promise<StoredRound[]>;
+  /**
+   * How many rounds match `opts` — the SAME filter `list` applies, so a pager built
+   * from it can never disagree with the page it labels.
+   *
+   * ⛔ WHY THIS EXISTS (campaign finding G-1, 2026-08-02). `/admin/updown/rounds` read
+   * 30 rounds per chain, merged them, kept the newest 60 and titled the card
+   * "Rounds · 60". Production held **1,402**. The operator's audit view of the game was
+   * hiding 96% of it and nothing on the page said so — which is worse than an empty
+   * page, because an empty page prompts a question and a full-looking one does not.
+   * Counting in the database rather than by `rows.length` is what makes the honest
+   * total cheap enough to always show.
+   */
+  count(opts?: RoundQuery): Promise<number>;
   /**
    * Rounds whose boundary has PASSED and which have still not been resolved, oldest
    * first, so nobody's money waits behind newer money. The self-healer's read (E-24).
@@ -355,6 +387,21 @@ const memoryChains: ChainStore = {
   async delete(id) { memChains.delete(id); },
 };
 
+/**
+ * ONE predicate behind the in-memory `list` and `count`, mirroring the ONE `where`
+ * the Prisma pair share. Two hand-written filters is how a pager starts disagreeing
+ * with the rows it is paging (G-1).
+ */
+function matchRounds(opts?: RoundQuery): StoredRound[] {
+  return [...memRounds.values()].filter((r) => {
+    if (opts?.chainId && r.chainId !== opts.chainId) return false;
+    if (opts?.chainIds && !opts.chainIds.includes(r.chainId)) return false;
+    if (opts?.outcome === "PENDING" ? r.outcome !== null : opts?.outcome && r.outcome !== opts.outcome) return false;
+    if (opts?.unsettledOnly && r.settledAt) return false;
+    return true;
+  });
+}
+
 const memoryRounds: RoundStore = {
   async get(id) { return memRounds.get(id) ?? null; },
   async getByMarketId(marketId) { return [...memRounds.values()].find((r) => r.marketId === marketId) ?? null; },
@@ -364,12 +411,11 @@ const memoryRounds: RoundStore = {
       .sort((a, b) => b.roundNumber - a.roundNumber)[0] ?? null;
   },
   async list(opts) {
-    const rows = [...memRounds.values()]
-      .filter((r) => !opts?.chainId || r.chainId === opts.chainId)
-      .filter((r) => !opts?.unsettledOnly || !r.settledAt)
-      .sort((a, b) => b.boundaryAt.localeCompare(a.boundaryAt));
-    return opts?.limit != null ? rows.slice(0, opts.limit) : rows;
+    const rows = matchRounds(opts).sort((a, b) => b.boundaryAt.localeCompare(a.boundaryAt));
+    const from = opts?.offset ?? 0;
+    return opts?.limit != null ? rows.slice(from, from + opts.limit) : rows.slice(from);
   },
+  async count(opts) { return matchRounds(opts).length; },
   async unresolvedBefore(boundaryBeforeIso, limit) {
     return [...memRounds.values()]
       .filter((r) => !r.resolvedAt && r.boundaryAt <= boundaryBeforeIso)
@@ -552,6 +598,17 @@ const ROUND_PATCHABLE: Record<string, (v: unknown) => unknown> = {
   settledAt: (v) => dt(v as string),
 };
 
+/** The single `where` `list` and `count` share — see `matchRounds` for why it is one
+ *  function and not two lookalike object literals (G-1). */
+function roundWhere(opts?: RoundQuery): Prisma.UpDownRoundWhereInput {
+  return {
+    ...(opts?.chainId ? { chainId: opts.chainId } : {}),
+    ...(opts?.chainIds ? { chainId: { in: opts.chainIds } } : {}),
+    ...(opts?.outcome ? { outcome: opts.outcome === "PENDING" ? null : opts.outcome } : {}),
+    ...(opts?.unsettledOnly ? { settledAt: null } : {}),
+  };
+}
+
 const prismaRounds: RoundStore = {
   async get(id) { const r = await pc().upDownRound.findUnique({ where: { id } }); return r ? toRound(r) : null; },
   async getByMarketId(marketId) {
@@ -564,15 +621,14 @@ const prismaRounds: RoundStore = {
   },
   async list(opts) {
     const rows = await pc().upDownRound.findMany({
-      where: {
-        ...(opts?.chainId ? { chainId: opts.chainId } : {}),
-        ...(opts?.unsettledOnly ? { settledAt: null } : {}),
-      },
+      where: roundWhere(opts),
       orderBy: { boundaryAt: "desc" },
       ...(opts?.limit != null ? { take: opts.limit } : {}),
+      ...(opts?.offset ? { skip: opts.offset } : {}),
     });
     return rows.map(toRound);
   },
+  async count(opts) { return pc().upDownRound.count({ where: roundWhere(opts) }); },
   async unresolvedBefore(boundaryBeforeIso, limit) {
     // Served by @@index([boundaryAt]); `take` bounds the healer's batch so one pass
     // can never turn into a scan of the whole round history.

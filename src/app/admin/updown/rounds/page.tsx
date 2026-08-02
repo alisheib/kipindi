@@ -1,8 +1,11 @@
+import Link from "next/link";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
+import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
+import { Chip } from "@/components/ui/chip";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { listAssets, listChains, getUpDownConfig, abandonAfterSeconds } from "@/lib/server/updown-config";
-import { roundStore } from "@/lib/server/updown-dal";
+import { roundStore, type RoundQuery } from "@/lib/server/updown-dal";
 import { marketStore } from "@/lib/server/market-dal";
 import { currentSession } from "@/lib/server/auth-service";
 import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
@@ -19,12 +22,34 @@ const fmt = (iso: string | null) => {
   return Number.isFinite(d.getTime()) ? d.toISOString().slice(5, 16).replace("T", " ") + "Z" : "—";
 };
 
+/** The outcome filter's closed set — validated, so `?outcome=BOGUS` cannot render an
+ *  empty table the operator reads as "no rounds". */
+const OUTCOMES = ["UP", "DOWN", "VOID", "PENDING"] as const;
+
+/** How many overdue rounds the whole-set sweep will look at. The healer's own batch is
+ *  bounded the same way; past this the KPI reads "200+", which is the honest answer and
+ *  is anyway a five-alarm number. */
+const OVERDUE_SCAN_CAP = 200;
+
 /**
- * Round explorer for the sealed Up & Down section — every recent round across all
- * chains, with its price story (open → close), outcome, and the money on it. This is
- * the operator's audit view of the game: what resolved, how it moved, what it earned.
+ * Round explorer for the sealed Up & Down section — every round across all chains, with
+ * its price story (open → close), outcome, and the money on it. This is the operator's
+ * audit view of the game: what resolved, how it moved, what it earned.
+ *
+ * ⛔ IT USED TO SHOW SIXTY OF THEM AND SAY NOTHING (campaign finding G-1, 2026-08-02).
+ * The read was `limit: 30` per chain, merged, `.slice(0, 60)`, and the card title was
+ * `Rounds · 60`. Production held **1,402**, so 96% of the operator's audit view was
+ * missing and there was no control anywhere on the page that could reach it. A grid that
+ * silently truncates is worse than one that is empty: the empty one prompts a question.
+ * Now the row set is paged in the DATABASE (`roundStore.list` + `count` share one
+ * `where`), and the totals below describe every matching round, not the visible slice.
  */
-export default async function AdminUpDownRoundsPage() {
+export default async function AdminUpDownRoundsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ asset?: string; outcome?: string; page?: string }>;
+}) {
+  const sp = await searchParams;
   const [assets, chains] = await Promise.all([listAssets().catch(() => []), listChains().catch(() => [])]);
   const assetById = new Map(assets.map((a) => [a.id, a]));
   const chainById = new Map(chains.map((c) => [c.id, c]));
@@ -42,9 +67,36 @@ export default async function AdminUpDownRoundsPage() {
   const cfg = await getUpDownConfig().catch(() => null);
   const overdueMs = (cfg ? abandonAfterSeconds(cfg) : 390) * 1000;
 
-  // Most recent rounds across ALL chains (≤6 chains → a handful of bounded queries).
-  const perChain = await Promise.all(chains.map((c) => roundStore.list({ chainId: c.id, limit: 30 }).catch(() => [])));
-  const rounds = perChain.flat().sort((a, b) => b.boundaryAt.localeCompare(a.boundaryAt)).slice(0, 60);
+  // ── the filter, validated against closed sets ──────────────────────────────
+  // An asset owns one chain per cadence (XAU already has 5m and 15m), so filtering by
+  // asset means filtering by that asset's chain IDs — a single `chainId` would show one
+  // cadence and label it the asset.
+  const assetKey = assets.some((a) => a.key === sp.asset) ? sp.asset : undefined;
+  const outcome = (OUTCOMES as readonly string[]).includes(sp.outcome ?? "")
+    ? (sp.outcome as RoundQuery["outcome"])
+    : undefined;
+  const badFilter = (!!sp.asset && !assetKey) || (!!sp.outcome && !outcome);
+  const filterAsset = assetKey ? assets.find((a) => a.key === assetKey) : undefined;
+  const query: RoundQuery = {
+    ...(filterAsset ? { chainIds: chains.filter((c) => c.assetId === filterAsset.id).map((c) => c.id) } : {}),
+    ...(outcome ? { outcome } : {}),
+  };
+
+  // ── the page slice, counted in the database ────────────────────────────────
+  // `total` answers the same `where` as `list`, so the pager can never claim a page the
+  // table cannot fill. The four totals beside it are whole-set too: a "Voided" figure
+  // that only counted the visible page would move every time the operator turned it.
+  const [total, unsettled, voided, pending] = await Promise.all([
+    roundStore.count(query).catch(() => 0),
+    roundStore.count({ ...query, unsettledOnly: true }).catch(() => 0),
+    roundStore.count({ ...query, outcome: "VOID" }).catch(() => 0),
+    roundStore.count({ ...query, outcome: "PENDING" }).catch(() => 0),
+  ]);
+  const page = parsePage(sp.page, total);
+  const rounds = await roundStore
+    .list({ ...query, limit: PER_PAGE, offset: (page - 1) * PER_PAGE })
+    .catch(() => []);
+  const baseHref = buildBaseHref("/admin/updown/rounds", { asset: assetKey, outcome });
 
   const enriched = await Promise.all(
     rounds.map(async (r) => {
@@ -62,15 +114,38 @@ export default async function AdminUpDownRoundsPage() {
     }),
   );
 
-  const settled = enriched.filter((e) => e.r.settledAt).length;
-  const voided = enriched.filter((e) => e.r.outcome === "VOID").length;
-  const totalVol = enriched.reduce((s, e) => s + e.volume, 0);
+  const settled = total - unsettled;
+  const pageVol = enriched.reduce((s, e) => s + e.volume, 0);
+
   // A round past the healer's deadline and still unresolved is the E-24 symptom
-  // recurring. It gets its own KPI because "one stuck round" is invisible in a list
-  // of sixty, and it is the one number on this page that means money is not moving.
+  // recurring, and it is the one number on this page that means money is not moving.
+  //
+  // ⛔ THIS MUST BE READ ACROSS THE WHOLE SET, NOT THE PAGE. Paging the table (G-1) would
+  // otherwise have made the money signal WORSE than the truncation it fixed: the oldest
+  // stuck round sorts last, so an operator standing on page 1 of 71 would be told
+  // "Overdue: 0" while a stranded stake sat on page 71. `unresolvedBefore` is the same
+  // read the self-healer performs, so the console and the engine agree by construction.
   const now = Date.now();
-  const stuck = enriched.filter((e) => !e.r.resolvedAt && now - Date.parse(e.r.boundaryAt) >= overdueMs);
-  const stuckMoney = stuck.reduce((s, e) => s + e.volume, 0);
+  const overdueRounds = await roundStore
+    .unresolvedBefore(new Date(now - overdueMs).toISOString(), OVERDUE_SCAN_CAP)
+    .catch(() => []);
+  // The asset filter narrows the alarm to what the operator is looking at; the count
+  // still ignores which PAGE they are on.
+  const stuckAll = query.chainIds ? overdueRounds.filter((r) => query.chainIds!.includes(r.chainId)) : overdueRounds;
+  const stuckLabel = stuckAll.length >= OVERDUE_SCAN_CAP ? `${OVERDUE_SCAN_CAP}+` : String(stuckAll.length);
+  // ⚠️ The COUNT is the alarm and it is unbounded; the MONEY beside it is bounded on
+  // purpose. Each figure costs one market read, and firing 200 of them in parallel would
+  // make this page slowest at the exact moment it matters most — when the healer has
+  // stopped and an operator is trying to see how much is stranded. So sum at most
+  // MONEY_SCAN and say "at least" when there are more, rather than quoting a total that
+  // is really a sample.
+  const MONEY_SCAN = 25;
+  const stuckMoney = (
+    await Promise.all(
+      stuckAll.slice(0, MONEY_SCAN).map((r) => marketStore.get(r.marketId).then((m) => (m ? m.yesPool + m.noPool : 0)).catch(() => 0)),
+    )
+  ).reduce((s, v) => s + v, 0);
+  const stuckMoneyLabel = `${stuckAll.length > MONEY_SCAN ? "at least " : ""}${formatTzs(stuckMoney)}`;
 
   const usd = (n: number, d: number) => (n == null ? "—" : `$${n.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d })}`);
 
@@ -78,37 +153,86 @@ export default async function AdminUpDownRoundsPage() {
     <>
       <AdminPageHead title="Up & Down · Rounds" sw="Raundi za Juu na Chini" />
       <div className="px-4 lg:px-6 py-5 space-y-4">
+        {/* Every figure here counts the whole FILTERED set, not the visible page — the
+            one exception names itself ("on this page"), because turnover needs a market
+            row per round and reading 1,402 of them to fill a tile is not a trade worth
+            making. */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <AdminKpi label="Settled" sw="Zimekamilika" value={String(settled)} delta={`of ${enriched.length} shown`} spark={false} />
-          <AdminKpi label="Turnover shown" sw="Mzunguko" value={formatTzs(totalVol)} spark={false} />
-          <AdminKpi label="Voided" sw="Batili" value={String(voided)} delta={voided > 0 ? "refunded in full" : "none"} spark={false} />
+          <AdminKpi label="Settled" sw="Zimekamilika" value={settled.toLocaleString()} delta={`of ${total.toLocaleString()} total`} spark={false} />
+          <AdminKpi label="Turnover on this page" sw="Mzunguko (ukurasa huu)" value={formatTzs(pageVol)} spark={false} />
+          <AdminKpi label="Voided" sw="Batili" value={voided.toLocaleString()} delta={voided > 0 ? "refunded in full" : "none"} spark={false} />
           <AdminKpi
             label="Overdue"
             sw="Zimechelewa"
-            value={String(stuck.length)}
-            delta={stuck.length > 0 ? `${formatTzs(stuckMoney)} not moving` : "none — all closed on time"}
+            value={stuckLabel}
+            delta={stuckAll.length > 0 ? `${stuckMoneyLabel} not moving` : "none — all closed on time"}
             spark={false}
           />
         </div>
 
-        {stuck.length > 0 && (
+        {stuckAll.length > 0 && (
           <AdminCard title="Rounds past their deadline" sw="Raundi zilizochelewa" padding="p-4">
             <p className="text-[12.5px] leading-[1.6] text-text-muted">
-              {stuck.length === 1 ? "One round has" : `${stuck.length} rounds have`} passed their price boundary
+              {stuckAll.length === 1 ? "One round has" : `${stuckLabel} rounds have`} passed their price boundary
               by more than {Math.round(overdueMs / 1000)}s without reaching a verdict, holding{" "}
-              <strong className="text-text">{formatTzs(stuckMoney)}</strong> of player stakes. The platform closes
+              <strong className="text-text">{stuckMoneyLabel}</strong> of player stakes. The platform closes
               and refunds these automatically within that window, so seeing one here means the automatic recovery
-              is not running — check the lifecycle ticker before voiding by hand.
+              is not running — check the lifecycle ticker before voiding by hand.{" "}
+              <Link href="/admin/updown/rounds?outcome=PENDING" className="text-yes-300 hover:text-yes-200">
+                Show every round still without a verdict ({pending.toLocaleString()})
+              </Link>.
             </p>
           </AdminCard>
         )}
 
-        <AdminCard title={`Rounds · ${enriched.length}`} sw="Raundi" padding="p-0">
+        {/* Filters. Same idiom as the audit log: a Chip inside a Link, with a 44px-tall
+            hit area (WCAG 2.5.5 AAA) around a chip that keeps its own size. */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Link href={buildBaseHref("/admin/updown/rounds", { outcome })} className="inline-flex items-center min-h-[44px] transition-opacity hover:opacity-80">
+            <Chip size="lg" variant={!assetKey ? "brand" : "neutral"} selected={!assetKey}>All assets</Chip>
+          </Link>
+          {assets.map((a) => (
+            <Link
+              key={a.key}
+              href={buildBaseHref("/admin/updown/rounds", { asset: a.key, outcome })}
+              className="inline-flex items-center min-h-[44px] transition-opacity hover:opacity-80"
+            >
+              <Chip size="lg" variant={assetKey === a.key ? "brand" : "neutral"} selected={assetKey === a.key}>{a.key}</Chip>
+            </Link>
+          ))}
+          <span className="mx-2 h-5 w-px bg-border-subtle" aria-hidden />
+          <Link href={buildBaseHref("/admin/updown/rounds", { asset: assetKey })} className="inline-flex items-center min-h-[44px] transition-opacity hover:opacity-80">
+            <Chip size="lg" variant={!outcome ? "brand" : "neutral"} selected={!outcome}>Any outcome</Chip>
+          </Link>
+          {OUTCOMES.map((o) => (
+            <Link
+              key={o}
+              href={buildBaseHref("/admin/updown/rounds", { asset: assetKey, outcome: o })}
+              className="inline-flex items-center min-h-[44px] transition-opacity hover:opacity-80"
+            >
+              <Chip size="lg" variant={outcome === o ? "brand" : "neutral"} selected={outcome === o}>{o}</Chip>
+            </Link>
+          ))}
+          <span className="ml-auto font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle">
+            {total.toLocaleString()} rounds
+          </span>
+        </div>
+        {badFilter && (
+          <p className="font-mono text-[11px] text-warning-fg bg-warning-bg/15 border border-warning-border rounded-md px-3 py-2">
+            Unknown asset or outcome &mdash; showing every round. Pick one from the chips above.
+          </p>
+        )}
+
+        <AdminCard title={`Rounds · ${total.toLocaleString()}`} sw="Raundi" padding="p-0">
           {enriched.length === 0 ? (
             <div className="p-4">
               <EmptyState
-                title="No rounds yet"
-                body="Rounds appear here once a chain is running. Start one from the Overview."
+                title={total === 0 && !assetKey && !outcome ? "No rounds yet" : "No rounds match this filter"}
+                body={
+                  total === 0 && !assetKey && !outcome
+                    ? "Rounds appear here once a chain is running. Start one from the Overview."
+                    : "Clear the asset or outcome chips above to see every round."
+                }
               />
             </div>
           ) : (
@@ -179,6 +303,7 @@ export default async function AdminUpDownRoundsPage() {
               </table>
             </ScrollX>
           )}
+          <AdminPagination total={total} page={page} baseHref={baseHref} />
         </AdminCard>
         <p className="text-[11.5px] leading-[1.55] text-text-subtle">
           Each round is a settled or in-flight price market. Open and close prices are read from the asset&rsquo;s approved
