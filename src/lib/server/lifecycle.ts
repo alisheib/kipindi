@@ -269,8 +269,16 @@ async function maybeSendUpDownDigest(): Promise<void> {
   lastDigestAt = now;
   const { runUpDownDailyDigest } = await import("./updown-digest");
   const r = await runUpDownDailyDigest();
-  if (r.sent > 0) {
-    console.log(`[lifecycle] Up & Down digest — sent ${r.sent} for ${r.dayKey} (${r.alreadySent} already had it)`);
+  // ⚠️ Log the ALREADY-SENT case too, not just the send. This first logged only when
+  // `sent > 0`, which meant a correctly-idempotent pass printed nothing — and "no log
+  // line" is then indistinguishable from "the sweep stopped running". The whole point
+  // of the idempotency is that this runs ~96 times a day and sends once; that has to be
+  // visible. Silent only when nobody played that day, which is genuinely nothing to say.
+  if (r.sent > 0 || r.alreadySent > 0) {
+    console.log(
+      `[lifecycle] Up & Down digest ${r.dayKey} — sent ${r.sent}, ` +
+      `${r.alreadySent} already had it (${r.candidates} played that day)`,
+    );
   }
 }
 

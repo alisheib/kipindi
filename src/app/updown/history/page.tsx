@@ -51,16 +51,23 @@ export default async function UpDownHistoryPage({ searchParams }: {
   // EAT days; this page must cut on the identical boundary or the two disagree for
   // the three hours either side of midnight. `test:updown-digest` asserts that this
   // file imports the shared helper rather than growing its own copy.
-  const dayParam = (await searchParams)?.day ?? null;
-  const dayWindow = dayParam ? eatDayWindow(dayParam) : null;
-  const dayLabel = dayWindow && dayParam ? formatEatDay(dayParam, t.common.monthsShort, locale) : null;
+  // 🔴 ONE VALIDATED VALUE DRIVES ALL THREE USES — the filter, the chip and the empty
+  // state. The first version validated for the chip but filtered on the RAW param, so
+  // `?day=lol` matched no round, hid every card, and then — because the chip only
+  // renders for a VALID day — showed "no rounds" with no indication of what had been
+  // filtered and no control to clear it. A dead end reached by one typo. Caught by
+  // `live-updown-digest.mjs` against production, not by reasoning about it.
+  const rawDay = (await searchParams)?.day ?? null;
+  const dayWindow = rawDay ? eatDayWindow(rawDay) : null;
+  const dayKey = dayWindow ? rawDay : null;   // null ⇒ no filter, no chip, no empty state
+  const dayLabel = dayKey ? formatEatDay(dayKey, t.common.monthsShort, locale) : null;
 
   const allRows = await getMyUpDownHistory(session.userId, 400).catch(() => []);
   // Filter on `settledAt` when the round has settled, and on `placedAt` while it
   // has not — the digest bins by settlement, and a still-open round has no
   // settlement to bin by but is still part of the day the player was playing.
-  const rows = dayParam
-    ? allRows.filter((r) => isInEatDay(r.settledAt ?? r.placedAt, dayParam))
+  const rows = dayKey
+    ? allRows.filter((r) => isInEatDay(r.settledAt ?? r.placedAt, dayKey))
     : allRows;
 
   // GROUP BY ROUND. Up & Down is a fast game — placing many bets on one 5-minute round is
@@ -105,10 +112,13 @@ export default async function UpDownHistoryPage({ searchParams }: {
       {/* The active day filter, and the way back out of it. A filter with no
           visible state and no clear control is how a player concludes their
           history has vanished. */}
-      {dayWindow && (
+      {dayKey && (
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-faint">{t.market.udShowingDay}</span>
-          <span className="chip chip-live">{dayLabel}</span>
+          {/* `chip-pending` (brand blue), NOT `chip-live` — the first version used the
+              live treatment, and a red pulsing chip on a static date filter reads as
+              "something is happening right now" on a page of finished rounds. */}
+          <span className="chip chip-pending">{dayLabel}</span>
           <Link href="/updown/history" className="btn btn-ghost btn-sm">{t.market.udAllDays}</Link>
         </div>
       )}
@@ -116,10 +126,10 @@ export default async function UpDownHistoryPage({ searchParams }: {
       {rows.length === 0 ? (
         <div className="mt-6">
           <EmptyState
-            title={dayWindow ? t.market.udNoRoundsThatDay : t.market.udNoHistory}
-            body={dayWindow ? t.market.udHistoryBody : t.market.udNoHistoryBody}
+            title={dayKey ? t.market.udNoRoundsThatDay : t.market.udNoHistory}
+            body={dayKey ? t.market.udHistoryBody : t.market.udNoHistoryBody}
             action={
-              dayWindow
+              dayKey
                 ? <Link href="/updown/history" className="btn btn-primary btn-md">{t.market.udAllDays}</Link>
                 : <Link href="/updown" className="btn btn-primary btn-md">{t.market.udTitle}</Link>
             }

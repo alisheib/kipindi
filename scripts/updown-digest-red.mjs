@@ -62,8 +62,18 @@ const MUTATIONS = [
   {
     name: "page-reimplements-the-offset (the two disagree around midnight)",
     file: "src/app/updown/history/page.tsx",
-    from: `    ? allRows.filter((r) => isInEatDay(r.settledAt ?? r.placedAt, dayParam))`,
-    to: `    ? allRows.filter((r) => { const EAT = 3 * 60 * 60 * 1000; void EAT; return isInEatDay(r.settledAt ?? r.placedAt, dayParam); })`,
+    from: `    ? allRows.filter((r) => isInEatDay(r.settledAt ?? r.placedAt, dayKey))`,
+    to: `    ? allRows.filter((r) => { const EAT = 3 * 60 * 60 * 1000; void EAT; return isInEatDay(r.settledAt ?? r.placedAt, dayKey); })`,
+  },
+  {
+    // 🔴 The bug the LIVE run caught and no unit test would have: filtering on the raw
+    // query param instead of the validated one. `?day=lol` then hides every card while
+    // the chip — which keys off the validated value — does not render, so the player
+    // gets an empty page with nothing explaining it and no way back.
+    name: "raw-param-filter (?day=lol empties the page with no way out)",
+    file: "src/app/updown/history/page.tsx",
+    from: `  const dayKey = dayWindow ? rawDay : null;`,
+    to: `  const dayKey = rawDay;`,
   },
 ];
 

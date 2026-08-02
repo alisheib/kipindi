@@ -282,6 +282,16 @@ ok("…and filters with the SHARED predicate, not a copy of the offset",
 ok("…and has not re-derived the EAT offset locally",
   !/3 \* 60 \* 60 \* 1000/.test(histPage), "the page grew its own timezone maths again");
 ok("…and offers a way back to every day", /udAllDays/.test(histPage));
+// 🔴 CAUGHT ON PRODUCTION by `live-updown-digest.mjs`, not by reasoning here. The page
+// validated the param for the CHIP but filtered on the RAW one, so `?day=lol` matched
+// no round, hid every card, and — because the chip only renders for a valid day —
+// showed "no rounds" with nothing saying what had been filtered and no way to clear it.
+// One typo, one dead end. The filter, the chip and the empty state must all key off the
+// SAME validated value.
+ok("one validated day drives the filter, the chip AND the empty state",
+  /const dayKey = dayWindow \? rawDay : null/.test(histPage) &&
+  !/isInEatDay\([^)]*rawDay\)/.test(histPage),
+  "the page filters on the raw query param again — `?day=lol` will empty the page");
 
 console.log(`\nupdown-digest (E-37 + E-43): ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);
