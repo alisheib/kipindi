@@ -569,6 +569,11 @@ player accounts already exist, so the cleanup has to be surgical, not a truncate
   over 3 deliveries; ledger balances (§6g).
 - **Core play** — create → bet both sides → resolve → objection window → settle, with a real
   **WIN (37,400 paid)** and a real **LOSS**, ledger summing to zero (§6h).
+- ⭐ **Settlement is autonomous and arithmetically correct** — proven 2026-08-02 on the control
+  market (§6p): it settled **unaided 49ms after its own `objectionsClosedAt`**, paid the winner
+  **9,350** read off the wallet, charged the loser exactly the `commissionRate` **0.13** the
+  market froze at creation, and left nothing open. The suspected "winner is paid their stored
+  `potentialPayout` and underpaid" **money bug does not exist**.
 - **Bet concurrency** — 200 concurrent bets on one market, 0 TZS leaked.
 - **Every stake has a way out** — the E-24 self-healer, live-proven; 1,402 voided rounds all
   refunded in full.
@@ -1189,6 +1194,55 @@ document it **ended the comment early** and broke it again. `tsc` caught both; n
 would have. The build stays the gate.
 
 | **G-7** | MEDIUM · **OPEN, measured, deliberately not fixed here** | visuals · shared `Chip` | **Any `Chip` with a long label bleeds silently past its container, platform-wide.** `components/ui/chip.tsx:93` is `whitespace-nowrap` and `sizeStyles` sets a **fixed `height`** (18/21/25px). Both are correct for a short status pill and both are wrong for a phrase: the chip cannot wrap and cannot grow, so it is simply drawn outside its column with no ellipsis. The shared remedy is small — `height` → `minHeight` (identical rendering for every one-line chip that exists today) plus `max-w-full` and wrapping when the label cannot fit. ⛔ **Not applied in session 9 on purpose:** `components/ui` is shared with the player surfaces a second session was measuring live at that moment, and moving that ground mid-run turns its measurements into false bug reports. `/admin/reports` opts out at the call site instead. | `live/g6-anatomy.mjs` on production: chip **206px** in a **198px** flex column, `ws=nowrap min=auto` |
+
+## 6p. ✅ THE CONTROL MARKET SETTLED ITSELF, CORRECTLY, AND THE SUSPECTED MONEY BUG DOES NOT EXIST (2026-08-02)
+
+This was the highest-severity open question in the campaign — *"if settlement pays the stored
+`potentialPayout`, the winner is underpaid"* — carried forward unresolved through two sessions
+because the market was never actually due. It is now answered, from production, by the **wallet
+delta**.
+
+**It settled unaided, 49 milliseconds after its own deadline.** `objectionsClosedAt` was
+`2026-08-02 09:54:13.801Z`; `settledAt` is `2026-08-02 09:54:13.85Z`. No operator touched it,
+no script nudged it — the lifecycle ticker did it on time, to the millisecond.
+
+```
+alpha (WON, YES)   wallet 60,400 → 69,750    delta +9,350   ✅
+echo  (LOST, NO)   wallet 25,000 → 25,000    delta      0   ✅
+```
+
+### ⭐ Why this was worth measuring, and what the answer actually is
+
+The fear was well-founded on its face, because the two rows really do disagree:
+
+| | stake | `potentialPayout` (frozen at placement) | `finalPayout` (written at settlement) | status |
+|---|---|---|---|---|
+| alpha · **YES** | 5,000 | **5,000** | **9,350** | `WIN` |
+| echo · **NO** | 5,000 | **9,350** | **0** | `LOSS` |
+
+**`potentialPayout` is a frozen display estimate and it does NOT drive settlement.** Each row
+was stamped against the pool as it stood at that moment — alpha bet first into an empty book,
+so its estimate was its own stake back; echo bet second into a 5,000 book, so its estimate was
+the full prize. Settlement ignores both and computes `finalPayout` from the **real pool at
+settlement time**. 📌 **So the two numbers being different is correct, not a bug** — do not
+"reconcile" them.
+
+**And the money reconciles to the last shilling, against the fee frozen on the market:**
+
+```
+pool                    5,000 + 5,000            = 10,000
+commission  0.13 × 5,000 (the loser's stake)     =    650   ← feeSnapshot.commissionRate
+winner      5,000 own stake + (5,000 − 650)      =  9,350   ← finalPayout, and the wallet delta
+```
+
+One `BET_PAYOUT` row, `9,350.00`, `balanceAfter 69,750.00` — which is exactly `60,400 + 9,350`.
+Both positions carry `settledAt`; YES → `WIN`, NO → `LOSS`. **Nothing was left open, nothing
+double-paid, and the loser was charged exactly the commission the market froze at creation.**
+
+⚠️ **This is why the instruction was "check the wallet delta, not the position row".** Reading
+`potentialPayout` alone would have produced a **false money-bug report on a licensed platform**
+— the single most damaging kind of false finding this campaign could file. Evidence:
+`live/control-watch.mjs`, which prints the verdict rather than leaving it to be eyeballed.
 
 ## 6o. THE ADMIN INTERACTION SWEEP — the first one ever run (2026-08-02, session 9)
 
@@ -2267,14 +2321,15 @@ ADMIN bypasses every domain check and a sweep run as ADMIN measures nothing abou
    the round confirms both boundaries at the **same price** and `minMoveTicks` voids it as a
    no-move — safe, refunds, and looks exactly like the feed not working. **Read the open and
    close prices, not just the outcome.**
-② ⏳ **The control market `mkt_4969c3dd29fde8742618`** — still **not due** when this session
-   worked on it. `objectionsClosedAt` is `2026-08-02 09:54:13.801Z`; at 08:49Z it was **65
-   minutes away**, state verified correct and unaided (`RESOLVED`/`YES`, `settledAt: null`,
-   both positions `OPEN`). 📌 **Check the WALLET DELTA, not the position row.** `live/control-
-   watch.mjs` does exactly this and prints the verdict: alpha's winning YES carries
-   `potentialPayout` **5,000** (its own stake) while echo's losing NO carries **9,350**.
-   **alpha +9,350 = correct. alpha +5,000 = a money bug** — settlement paid the stored row and
-   underpaid the winner by 4,350. That outranks everything else in this list.
+② ✅ **The control market `mkt_4969c3dd29fde8742618` — ANSWERED, and the suspected money
+   bug DOES NOT EXIST.** See §6p. It settled **unaided, 49ms after its own deadline**
+   (`objectionsClosedAt` 09:54:13.801Z → `settledAt` 09:54:13.85Z) and **alpha received
+   exactly +9,350**, read off the wallet. `potentialPayout` is a **frozen display estimate**
+   that does not drive settlement — `finalPayout` is computed from the real pool at settlement
+   time — so the two rows disagreeing is **CORRECT**. 📌 **Do not "reconcile" them.**
+   The money ties to the shilling against the frozen `commissionRate` 0.13, and one
+   `BET_PAYOUT` row carries it. **Nothing left to do here.**
+
 ③ **G-7 — the shared `Chip`** (§6). Measured, evidenced, **deliberately not fixed**:
    `chip.tsx:93` is `whitespace-nowrap` with a **fixed height**, so ANY long label bleeds past
    its container silently, platform-wide. The remedy is small — `height` → `minHeight` is a
