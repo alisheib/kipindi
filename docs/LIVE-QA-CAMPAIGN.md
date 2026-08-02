@@ -1243,6 +1243,36 @@ It was changed anyway because it is a **shared control that does not work on a p
 §0.1b rule 1 says fix the shared component. The change can only make a panel *more* visible;
 it cannot introduce a clip. Player-side `Select` call sites should be re-measured.
 
+### 🟡 G-9 — the kit Switch had no hover state, on the master money levers (SHARED, fixed)
+
+**374 controls hovered across 18 admin routes. Zero move layout** — the kit's hover law
+(`transform` + `box-shadow`, never margin/padding/border-width) holds platform-wide, which
+is a real result. **72 gave no hover feedback at all**, and once grouped they are three
+things, only one of which is a defect:
+
+| Pattern | Count | Verdict |
+|---|---|---|
+| the **currently-active** sidebar nav item (`/admin/finance` → "Finance", …) | ~18 | ✅ correct — you are already there, the active style owns it |
+| the `50pick · admin` wordmark link in the header | ~18 | 🟢 cosmetic, left alone |
+| the **`AI toolkit`** button | ~18 | 🟡 its `hover:border-brand-500/60` is only on the healthy branch; production is `3/4` → `anyPaused` → the warning branch, **which has no hover class**. Recorded, not changed |
+| ⭐ **`Toggle` — the kit Switch** | 5+ | 🔴 **no hover state at all** — `active:` and `focus-visible:` only |
+
+`Toggle` renders `/admin/affiliate`'s **"Program master switch"**, "Commission enabled",
+"Bonus / discount enabled", "Prize enabled" and `/admin/bonuses`' **"Bonus program master
+switch"** — the levers that decide whether those programmes run. A consequential control
+that does not answer the pointer reads as inert.
+
+⭐ **Why the fix is a CSS class and not a Tailwind `hover:`** — this is the reusable lesson.
+`Toggle` sets `background` and `border` through an inline `style` object, and **inline style
+beats every class**, so a `hover:bg-*` / `hover:border-*` on this component would have been
+**silently dead** — it would have looked fixed in the diff and changed nothing on screen.
+The hover therefore uses `filter` + `box-shadow`, the properties the inline style does *not*
+set. Both were also chosen because **neither can move layout**, which is the invariant the
+hover sweep asserts for every control on the page.
+
+⚠️ Second declared cross-lane touch (`components/ui/toggle.tsx` + `globals.css`), same
+reasoning as G-8 and same caveat: `Toggle` appears on player surfaces too.
+
 ### 📌 Two classes deliberately NOT filed as defects — read before "fixing" them
 
 1. **`BELOW-44PX`, 314 hits.** The design system already says so, in writing:

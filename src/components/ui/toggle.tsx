@@ -28,7 +28,17 @@ export function Toggle({
       aria-label={ariaLabel}
       disabled={disabled}
       onClick={onClick}
-      className="relative shrink-0 rounded-pill focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-500)] focus-visible:ring-offset-2 focus-visible:ring-offset-bg-elevated active:scale-[0.97]"
+      /* ⛔ G-9 (2026-08-02). This control had `active:` and `focus-visible:` states and NO
+         hover state at all — measured live across 374 admin controls, and the switches it
+         renders include `/admin/affiliate`'s "Program master switch" and `/admin/bonuses`'
+         "Bonus program master switch", i.e. the levers that decide whether those programmes
+         run. A consequential control that does not answer the pointer reads as inert.
+         The hover lives in `globals.css` as `.toggle-switch`, NOT here, because this
+         component sets `background` and `border` via inline `style` and inline style beats
+         any class — so the hover has to use properties the inline style does not set.
+         `filter` + `box-shadow` are exactly that, and neither can move layout, which the
+         hover sweep asserts for every control on the page. */
+      className="toggle-switch relative shrink-0 rounded-pill focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-500)] focus-visible:ring-offset-2 focus-visible:ring-offset-bg-elevated active:scale-[0.97]"
       style={{
         width: 44,
         height: 26,

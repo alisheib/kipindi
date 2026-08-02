@@ -1022,6 +1022,24 @@ body {
   border-color: var(--brand-500);
   box-shadow: 0 0 0 3px oklch(63% 0.18 262 / 0.25);
 }
+
+/* ⛔ G-9 (2026-08-02) — the kit Switch answered `:active` and `:focus-visible` and had NO
+   hover state, measured live on 374 admin controls. It renders the affiliate and bonus
+   MASTER SWITCHES, so "is the pointer actually on it" matters.
+
+   Why the rule is here and not on the component: `Toggle` sets `background` and `border`
+   through an inline `style` object, and inline style beats every class — a Tailwind
+   `hover:` on those two properties is silently dead. `filter` and `box-shadow` are the
+   properties the inline style does NOT set, so they are the ones that can work.
+
+   ⚠️ Both were also chosen because neither can move layout: `filter` does not reflow, and
+   a `box-shadow` ring is painted outside the border box. The hover sweep asserts zero
+   layout shift for every control on the page, and this rule has to keep that true. */
+.toggle-switch { transition: filter var(--dur-micro) var(--ease-micro), box-shadow var(--dur-micro) var(--ease-micro); }
+.toggle-switch:hover:not(:disabled) {
+  filter: brightness(1.14);
+  box-shadow: 0 0 0 3px oklch(63% 0.18 262 / 0.16);
+}
 .input.input-mono { font-family: var(--font-mono); }
 
 .input-group {
