@@ -323,7 +323,17 @@ export function AdminKpi({
             <span
               title={delta}
               className={[
-                "font-mono text-micro px-2 py-0.5 rounded-sm whitespace-nowrap ml-auto",
+                "font-mono text-micro px-2 py-0.5 rounded-sm ml-auto",
+                // At the narrowest width the delta WRAPS rather than truncating: the grid
+                // is 2-up at 360 and a tile is ~145px, which is too little for several
+                // honest labels ("0 generations" was ellipsised by the truncate-only fix,
+                // having previously just fitted). Wrapping costs a line of height that the
+                // grid row equalises anyway, and loses nothing. Above `sm` there is room,
+                // so it stays on one line.
+                "whitespace-normal sm:whitespace-nowrap",
+                // The backstop for the one-line case, and the reason `min-w-0` is here:
+                // a flex item defaults to `min-width:auto` and will not shrink below its
+                // content, so without it neither the wrap nor the ellipsis can engage.
                 "min-w-0 max-w-full overflow-hidden text-ellipsis",
                 deltaDir === "up"
                   ? "bg-brand-500/15 text-brand-300"

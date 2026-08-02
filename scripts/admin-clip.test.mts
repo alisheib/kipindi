@@ -53,9 +53,13 @@ function classesNear(src: string, anchor: string, window = 400): string {
 // ── 1 · The KPI delta must be safe for ANY caller ────────────────────────────
 console.log("\n── 1 · AdminKpi's delta cannot be clipped by a long string ──");
 {
-  const deltaSpan = classesNear(shell, "{deltaDir === \"up\" ? \"▲\"", -0) ||
-                    classesNear(shell, "delta && (", 700);
-  ok("1.0 · the delta span was found (not a vacuous pass)", deltaSpan.length > 0);
+  // ⚠️ Window generously. The first version read 700 chars from `delta && (` and went red
+  // when the fix's own explanatory comment pushed the class list past the end — a guard
+  // that fails because the code gained a comment teaches the next session to delete it.
+  const deltaSpan = classesNear(shell, "delta && (", 2000);
+  ok("1.0 · the delta span was found (not a vacuous pass)",
+     deltaSpan.length > 0 && deltaSpan.includes("deltaDir === \"up\""),
+     "the window must actually reach the span's classes");
   ok("1.1 · ⛔ the delta truncates rather than overflowing its card",
      /overflow-hidden/.test(deltaSpan) && /text-ellipsis/.test(deltaSpan), deltaSpan.slice(0, 80));
   ok("1.2 · ⛔ …and it can actually shrink (min-w-0 defeats flex min-width:auto)",
