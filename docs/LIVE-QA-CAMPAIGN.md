@@ -486,7 +486,7 @@ going to say money-out had never worked, and the database said otherwise.
 |---|---|
 | **Admins monitoring + generating** | 🟢 **Yes, now** — with one fix first (2FA, below) |
 | **Prediction markets (polls) for real players** | 🟡 **Nearly** — blocked only on withdrawals + test-data cleanup |
-| **Up & Down for real players** | 🔴 **No.** It has never once worked |
+| **Up & Down for real players** | 🟡 **It works now** (§6q — a real winner, a real loser, money paid) — but blocked on the **margin** decision, E-32 |
 
 ### 🔴 BLOCKER 1 — withdrawals succeed one time in four, and three are stuck right now
 
@@ -507,7 +507,24 @@ float and the rail configuration, **not code**.
 **The gate:** a run of consecutive successful withdrawals to real numbers, with zero left in
 `PROCESSING`, and the three above resolved either way.
 
-### 🔴 BLOCKER 2 — Up & Down has never confirmed a single price
+### ✅ BLOCKER 2 — CLOSED 2026-08-02 (session 10). Up & Down has now confirmed prices, resolved, and paid.
+
+> ⭐ **THE GATE IS MET.** Round `udr_94864f4b0a6b03306fc1` opened at 63268.00, closed at
+> 63162.01 — **two different confirmed prices from the real provider** — resolved **DOWN**,
+> and paid **TZS 8,700** into `echo`'s wallet **437 ms** after its own boundary, against
+> `alpha`'s real loss. The ledger nets to the commission and ties to the shilling. Round #2
+> repeated it. **Full account, evidence and the three operator steps: §6q.**
+>
+> 🔴 **What replaces it as the Up & Down blocker is E-32, and it is a PRICING decision, not a
+> bug:** at the product default margin of **0.5%**, both of these rounds would have **VOIDED**
+> despite real moves, because 0.5% of BTC is a **$316 move inside five minutes**. A chain left
+> on the default voids nearly every round *while the feed works perfectly* — indistinguishable
+> from E-16. Ali must set a margin per duration/asset class before the game opens to players.
+>
+> 🔒 The BTC chain is **STOPPED**; `feedProvider` is left at `twelvedata` (the proven-good
+> state). Nothing is emitting rounds.
+
+The original finding, kept for the record:
 
 ```
 UpDownRound outcome:  VOID = 1402      (UP = 0, DOWN = 0)
@@ -518,7 +535,7 @@ engine is behaving safely, but the game does not exist yet. §6m step ① is the
 it is thirty seconds of Ali's time.
 
 **The gate:** one round that opens → confirms a real price → resolves with a real winner AND
-a real loser → money lands in a wallet. That run has still never happened.
+a real loser → money lands in a wallet. ✅ **MET 2026-08-02 10:25:00.437Z — see §6q.**
 
 > ⭐ **UPDATE 2026-08-02 (session 9) — the provider side of this blocker is now PROVEN GOOD,
 > and it is worth separating the two halves.** The feed was probed against the **real
@@ -586,8 +603,10 @@ player accounts already exist, so the cleanup has to be surgical, not a truncate
 
 1. Turn admin 2FA **on**. → admins can then work the console safely, today.
 2. Fix withdrawals until they are boring. → prediction markets can then open to real players.
-3. Flip the feed (§6m ①) and get **the run that has never happened**. → only then is Up & Down
-   a game you can advertise.
+3. ✅ ~~Flip the feed and get the run that has never happened.~~ **DONE 2026-08-02, §6q.**
+   👉 Replaced by: **answer E-32 — what margin, per duration and asset class?** 0.5% cannot
+   resolve a 5-minute crypto round; 0 lets a one-cent flicker decide real money. Until this is
+   set deliberately, Up & Down is proven but not launchable.
 4. Clear the TZS 9,000,000 of QA money so the finance screens tell the truth.
 
 ⛔ **Do not open Up & Down to players before step 3 succeeds**, and do not open *anything* to
@@ -603,7 +622,7 @@ stand between it and a launch that would be safe to defend to a regulator.
 | 2 | KYC: submit · import · approve · reject · revoke · ban · NIDA duplicate | ✅ **COMPLETE** — approve · reject · revoke · ban · NIDA freed, all driven on prod (§6c). E-1 verified in **EN + SW + ZH**; E-3, E-6, E-2, E-5, **E-4 + E-9** fixed **and live-verified**. Only `import` untested |
 | 3 | Money in: wallet · deposit · ledger · receipts | ✅ **UNBLOCKED + DONE (§6g)** — `alpha` and `echo` funded 50,000 each through the real money path; 9 webhook forgeries refused, exactly-once proven over 3 deliveries, ledger balanced |
 | 4 | Core play: markets · YES/NO · win + lose · resolution · payout | ✅ **DONE on production (§6h)** — create → bet both sides → resolve → objection window → settle. A real WIN (37,400 paid) and a real LOSS, ledger sums to 0, with a CONTROL market proving the objection window is what gates payment |
-| 5 | Up & Down: rounds · quick-bet · pricing · void · history | 🔄 **E-25 FIXED (§6l): the merged feed could never have confirmed a price** — it dated quotes from the `1day` OHLC bar instead of `last_quote_at`, making the 90 s staleness gate unsatisfiable on every asset forever. Probed live: **2/2 symbols now WOULD CONFIRM at 39 s skew**. **E-26**: the two ops scripts named as the way to verify this cannot see the feed at all → shipped `ops:updown-probe-feed`. ⚠️ `SPX` is **not on the live TwelveData plan** (HTTP 404, Grow tier), so `SNP500` cannot be fed. Older state: **E-16's FIX IS MERGED, NOT YET SWITCHED ON.** The TwelveData feed reader landed 2026-08-01 (§6b session 6), but `feedProvider` still defaults to `mock`, which refuses in production — so prod voids+refunds safely and is not yet playable. Flipping it to `twelvedata` is an operator action and is step ① of the next session. ✅ **E-23 fully CLOSED 2026-08-01 (§6n)** — the enabled *Void & refund* control photographed at 360/768/1280/1920 on production **and used through the product for the first time** (round `udr_b8e1562e2f619954353a` → `operator` void, audited to the officer by name, 24/24). Using it exposed **E-29**: the settlement note claimed two price observations on **1,397 of 1,397** rows that had none. ✅ **E-24 + E-23 FIXED (§6k)**, and the merge strengthened it: the branch's ops-state carve-out + our deadline together close a hole neither had alone. ✅ Refund contract proven (35 positions, 96,250 staked = 96,250 returned); ✅ quick-bet proven live |
+| 5 | Up & Down: rounds · quick-bet · pricing · void · history | ✅ **THE GAME WORKS — proven end to end on production 2026-08-02 (§6q).** The feed was turned on through the real product path (3 operator steps, each as the narrowest identity that holds the authority), and round `udr_94864f4b0a6b03306fc1` confirmed **two different real prices** (63268.00 → 63162.01), resolved **DOWN**, and paid **TZS 8,700** to a real wallet **437 ms** after its boundary against a real loss — ledger netting exactly the 1,300 commission, tying to the shilling. Round #2 repeated it. **1,402 → 1,404 rounds, and the last two are the platform's first non-VOID outcomes ever.** 🔴 **What now blocks launch is E-32, a PRICING decision**: at the default 0.5% margin both of those rounds would have voided despite real moves. 🔴 Also found: **E-31** — `updateAssetAction`/`updateChainAction` have no callers, so an asset's price source and a chain's margin cannot be edited through the product at all. Older state: **E-25 FIXED (§6l): the merged feed could never have confirmed a price** — it dated quotes from the `1day` OHLC bar instead of `last_quote_at`, making the 90 s staleness gate unsatisfiable on every asset forever. Probed live: **2/2 symbols now WOULD CONFIRM at 39 s skew**. **E-26**: the two ops scripts named as the way to verify this cannot see the feed at all → shipped `ops:updown-probe-feed`. ⚠️ `SPX` is **not on the live TwelveData plan** (HTTP 404, Grow tier), so `SNP500` cannot be fed. Older state: **E-16's FIX IS MERGED, NOT YET SWITCHED ON.** The TwelveData feed reader landed 2026-08-01 (§6b session 6), but `feedProvider` still defaults to `mock`, which refuses in production — so prod voids+refunds safely and is not yet playable. Flipping it to `twelvedata` is an operator action and is step ① of the next session. ✅ **E-23 fully CLOSED 2026-08-01 (§6n)** — the enabled *Void & refund* control photographed at 360/768/1280/1920 on production **and used through the product for the first time** (round `udr_b8e1562e2f619954353a` → `operator` void, audited to the officer by name, 24/24). Using it exposed **E-29**: the settlement note claimed two price observations on **1,397 of 1,397** rows that had none. ✅ **E-24 + E-23 FIXED (§6k)**, and the merge strengthened it: the branch's ops-state carve-out + our deadline together close a hole neither had alone. ✅ Refund contract proven (35 positions, 96,250 staked = 96,250 returned); ✅ quick-bet proven live |
 | 6 | Proposals: propose · approve · 4-state switch · bonus | ⏳ |
 | 7 | AI: poll generation · source registry · token enable/disable · usage | ✅ **generate → review → publish → live market DRIVEN ON PROD, 15/15, on real tokens** (§6e). **Spend ceiling fixed + live-verified (E-15).** ✅ **E-17 CLOSED 2026-08-01** — the *AI proposals* nav entry and its page are merged and pinned by `test:admin-nav` §7. Remaining: poll **resolution** with money, and driving the Up & Down proposal queue on prod |
 | 8 | Invites & referrals | 🔄 **The whole `growth` domain is now REACHABLE and audited for the first time (2026-08-02, §4).** `/admin/invites` is `growth`, which **no QA persona held** — so a compliance officer was refused there, correctly, and four pages had never been seen signed in as a role that can view them. New **QA GROWTH officer** (`bravo` → `GROWTH`; production had **zero** GROWTH accounts). `invites` · `affiliate` · `bonuses` · `players/cohorts` all render across 4 widths × 3 locales, **104/104**, and 8/8 privileged surfaces refuse. Auditing them surfaced **G-4** and **G-5**. ⏳ Still to drive: creating a campaign, redeeming an invite end-to-end, and the referral bonus actually paying |
@@ -1193,7 +1212,93 @@ thing — and broke the parse. Then writing the braced form *inside a plain bloc
 document it **ended the comment early** and broke it again. `tsc` caught both; no regex guard
 would have. The build stays the gate.
 
+| **E-32** | 🔴 **BLOCKER · OPEN — Ali's decision, not a code fix** | Up & Down · pricing | **At the product default margin, a short round cannot resolve — and the failure is indistinguishable from a broken feed.** `updown.config.defaultMarginBps` is **50 = 0.5%**; `computeTargets` freezes UP at `base+0.5%` and DOWN at `base−0.5%` and VOIDs everything between. On BTC at ~63,250 that requires a **±$316 move inside five minutes**. Measured against §6q's own two rounds — real prices, no extra spend: #1 moved **−105.99 (0.168%)** and #2 **−30.01 (0.047%)**, and **BOTH would have VOIDED at 0.5%** while resolving cleanly at margin 0. So a chain left on the default fills its history with `no-move` VOIDs *while the feed is working perfectly*, which is precisely the picture E-16 and E-25 produced when it was not — and the natural reading ("the feed is broken again") would be wrong. ⛔ **Not a defect to fix unilaterally:** 0.5% is Ali's deliberate "50pick factor" and is reasonable for a 30-minute metals round; it is the *one setting for every duration and asset class* that is wrong. Needs a per-duration (and probably per-asset-class) default. ⚠️ Compounded by **E-31**: `updateChainAction` has no caller, so a chain's margin **cannot be changed after creation** through the product — the only lever is to delete and recreate the chain. | live rounds `udr_94864f4b0a6b03306fc1` / `udr_c168ce28d8ea69ab6ceb`, both prices read off `UpDownObservation`; band arithmetic in `live/s10-verify-run.mjs` |
+| **E-31** | **HIGH** → ✅ **FIXED** | admin console · orphaned actions | **Two gated, audited Up & Down server actions have ZERO callers — E-23's exact shape, and one of them sits on the critical path of the campaign's #1 blocker.** `grep -rn` over `src/` finds only their own definitions: **`updateAssetAction`** (edit an asset's symbol, names, decimals, `minMoveTicks` and **price source**) and **`updateChainAction`** (a chain's stake bounds and **margin**). Both are `accounting`/`trading`-gated, both audit properly, and neither is reachable from any page. Consequences, both hit live this session: ① **an operator cannot repoint an asset's price source at all** — the session brief's step ② ("point the live GOLD asset at the quote endpoint") is *not an operator action*; GOLD is stuck on `goldprice.org`, an HTML page the feed reader can never quote, and the only way to move it would be a hand-written DB row on the control that decides what settles real money. The run in §6q therefore had to go through `createAssetAction`, which IS wired. ② **a chain's margin cannot be changed after creation**, which is what makes E-32 a delete-and-recreate rather than an edit. ⭐ Same class as E-23 (*"a remedy that only exists in a script is not a remedy an operator has"*) — and E-23's lesson was supposed to be generalised. It was not, so the guard now is. | `grep -rn "updateAssetAction\|updateChainAction" src/` → 1 hit each (own definition), vs 2 for all seven sibling actions; `npm run test:orphan-actions` proven **RED** on the unfixed tree |
 | **G-7** | MEDIUM · **OPEN, measured, deliberately not fixed here** | visuals · shared `Chip` | **Any `Chip` with a long label bleeds silently past its container, platform-wide.** `components/ui/chip.tsx:93` is `whitespace-nowrap` and `sizeStyles` sets a **fixed `height`** (18/21/25px). Both are correct for a short status pill and both are wrong for a phrase: the chip cannot wrap and cannot grow, so it is simply drawn outside its column with no ellipsis. The shared remedy is small — `height` → `minHeight` (identical rendering for every one-line chip that exists today) plus `max-w-full` and wrapping when the label cannot fit. ⛔ **Not applied in session 9 on purpose:** `components/ui` is shared with the player surfaces a second session was measuring live at that moment, and moving that ground mid-run turns its measurements into false bug reports. `/admin/reports` opts out at the call site instead. | `live/g6-anatomy.mjs` on production: chip **206px** in a **198px** flex column, `ws=nowrap min=auto` |
+
+## 6q. ⭐ THE RUN THAT HAD NEVER HAPPENED — Up & Down settled a real winner and a real loser on production (2026-08-02, session 10)
+
+**BLOCKER 2 is closed.** Every one of the platform's first **1,402** rounds was `VOID` and not one
+had ever confirmed a price. Round **#1** of the new BTC chain confirmed two, resolved `DOWN`, and
+paid **TZS 8,700** into a real wallet **437 ms** after its own boundary, unaided.
+
+```
+round      udr_94864f4b0a6b03306fc1   market mkt_ceccc1cb16b45cfd3202
+window     2026-08-02 10:20:00Z → 10:25:00Z
+open       63268.00   obs CONFIRMED, provider quotedAt 10:19:00Z, rawHash e02b25220e2dbdea
+close      63162.01   obs CONFIRMED, provider quotedAt 10:24:00Z, rawHash 6a6243e054db2486
+move       −105.99    ← TWO DIFFERENT PRICES: not the frozen-market case
+outcome    DOWN       resolvedAt 10:25:00.272Z · settledAt 10:25:00.437Z
+```
+
+| | |
+|---|---|
+| `echo` (DOWN) | **WIN** · stake 5,000 → payout **8,700** · wallet 25,000 → 20,000 → **28,700** |
+| `alpha` (UP) | **LOSS** · stake 5,000 → payout **0** · wallet 69,750 → **64,750** |
+| ledger | `BET_PLACED −5,000` ×2 · `BET_PAYOUT +8,700` — net **−1,300**, exactly the commission |
+| the fee it froze | `capped-commission` · rate **0.13** · ceiling ⅓ → `min(10,000×0.13, 5,000×0.3333)` = **1,300** |
+| arithmetic | expected to winners **8,700** · actually paid **8,700** — ✅ ties to the shilling |
+
+⭐ **The §4b frozen-market warning was real and was avoided, not got away with.** Today is a
+**Sunday**: probed live, XAU/USD returned 4042.66 with a *freshly stamped minute timestamp* —
+a shut market quoting its frozen close, which would have confirmed **both** boundaries at the
+same price and voided as a no-move, refunding safely and looking exactly like a broken feed.
+That is why the run was driven on a **crypto** asset. BTC/USD trades 24/7 and moved $249 between
+two probes. **The open and close prices were read, not just the outcome flag** — they differ,
+and the player is shown both.
+
+**Repeatable, not a one-off.** Round **#2** (10:25→10:30) also confirmed two readings and
+resolved `DOWN` on a real −30.01 move. Three consecutive boundaries confirmed at `attempts=0`.
+
+**Player-facing evidence** (`live/shots/s10-updown-history-1440.png`): `/updown/history` renders
+**DOWN WINS**, `$63,268.00 → $63,162.01`, *NET RETURN +TZS 3,700*, win rate 100% — the two
+prices are on the player's own screen, which is what makes the result checkable by the person
+whose money it was.
+
+### The three operator steps, and who could actually do each
+
+All three went through the **real product path**, each as the narrowest identity that holds the
+authority — never as ADMIN where a lesser role would do (§1 rule 2), so every result stays a
+real measurement of the RBAC matrix rather than an Owner bypass.
+
+| # | Step | Route | Domain | Driven as | Audit actor |
+|---|---|---|---|---|---|
+| ① | `twelvedata.com` added + enabled as a `TrustedSource`, in **`crypto` AND `macro`** | `/admin/sources` | `trading` | **QA trading officer** | `usr_429885ab…` |
+| ② | BTC/USD asset created at `https://api.twelvedata.com/quote`, then enabled | `/admin/updown` | `accounting` | **ADMIN** (§6m: the intersection is `{ADMIN}`) | `usr_1b3e6fd5…` |
+| ③ | `observationMethod=feed` + `feedProvider=twelvedata` | `/admin/updown` | `accounting` | **ADMIN** | `usr_1b3e6fd5…` |
+| ④ | BTC 5-min chain created + started | `/admin/updown` | `trading` | **QA trading officer** | `usr_429885ab…` |
+
+⚠️ **`isSourceTrusted` matches on `(domain, category)`, so the allowlist is PER CATEGORY.** One
+`twelvedata.com` row does not cover both a `crypto` and a `macro` asset; two were added.
+
+### 🔴 The margin default cannot resolve a 5-minute round — and it would look like a broken feed
+
+`updown.config.defaultMarginBps` is **50 = 0.5%**, and `computeTargets` freezes UP at
+`base + 0.5%`, DOWN at `base − 0.5%`, VOID between. On BTC at ~63,250 that demands a **±$316
+move inside five minutes**. Measured against this run's own prices, no extra round needed:
+
+| Round | move | at margin **0** (this chain) | at the **product default** 0.5% |
+|---|---|---|---|
+| #1 | −105.99 (0.168%) | **DOWN** — paid a winner | band [62,951.66 , 63,584.34] → **VOID (no-move)** |
+| #2 | −30.01 (0.047%) | **DOWN** | **VOID (no-move)** |
+
+So a chain left on the product default would void nearly every round *while the feed was working
+perfectly*, and the round history would be indistinguishable from E-16/E-25. **This is a pricing
+decision for Ali, not a bug** — 0.5% is the deliberate "50pick factor" and is sane for a 30-minute
+metals round; it is not sane for a 5-minute crypto one. Filed as **E-32**.
+
+⚠️ **The proof chain therefore runs at `marginPct = 0`**, which is the documented fallback
+(*"0 disables the %-band and reverts to the source's min-move rule"*, → a $0.01 threshold on
+`minMoveTicks=1`/`decimals=2`). That is a QA setting, **not** a recommendation: at 0 any one-cent
+flicker decides real money.
+
+### 🔒 Left exactly as found — read this before assuming the game is on
+
+The BTC chain was **STOPPED** at the end of the session and every other chain is untouched.
+`feedProvider` is left at **`twelvedata`** and the BTC asset **enabled**, because that is the
+proven-good state and reverting it would discard the only working configuration the platform
+has ever had. **Nothing is emitting rounds.** Turning the game on for real players is Ali's
+call and needs E-32 answered first.
 
 ## 6p. ✅ THE CONTROL MARKET SETTLED ITSELF, CORRECTLY, AND THE SUSPECTED MONEY BUG DOES NOT EXIST (2026-08-02)
 
@@ -2254,6 +2359,72 @@ workstation shows an SLA countdown, but nothing escalates when it runs out. Ali'
   the `pg` −3h trap (§3) reading back through an un-cast client.
 
 ## 6b. NEXT SESSION — start here
+
+### 🟢 Laptop B, session 10 (2026-08-02) — ⭐ THE RUN HAPPENED. UP & DOWN PAID A REAL WINNER. Read this first; it supersedes everything below.
+
+**The campaign's #1 blocker since 2026-08-01 is CLOSED.** All 1,402 rounds in the platform's
+history were `VOID` and not one had ever confirmed a price. Two now have. Full account: **§6q**.
+
+```
+udr_94864f4b0a6b03306fc1   63268.00 → 63162.01   move −105.99   DOWN
+  echo  DOWN  stake 5,000 → WIN  8,700    wallet 25,000 → 28,700
+  alpha UP    stake 5,000 → LOSS 0        wallet 69,750 → 64,750
+  ledger nets −1,300 = the commission, to the shilling · settled 437ms after its own boundary
+```
+
+⭐ **The §4b frozen-market trap was real and was AVOIDED, not survived.** It is a **Sunday**;
+XAU/USD probed at 4042.66 with a freshly-stamped minute timestamp — a shut market quoting its
+frozen close. Both boundaries would have confirmed the *same* price and voided as a no-move,
+refunding safely and looking exactly like a broken feed. The run was therefore driven on a
+**new BTC/USD crypto asset** (24/7, moved $249 between two probes). **The open and close prices
+were read, not the outcome flag** — they differ, and the player is shown both.
+
+| | Shipped, deployed, verified on production |
+|---|---|
+| *(operator config, no code)* | ① `twelvedata.com` trusted in **`crypto` AND `macro`** as the trading officer · ② BTC asset at `api.twelvedata.com/quote` + enabled as ADMIN · ③ `feed`+`twelvedata` as ADMIN · ④ BTC 5-min chain created + started as the trading officer |
+| **E-31** | Two gated, audited actions with **ZERO callers** — `updateAssetAction`, `updateChainAction`. E-23's exact shape, on the critical path |
+
+⚠️ **THE HARNESS LIED AGAIN, and this time in the safe-looking direction.** `clippedElements()`
+reported **7 of 8** player cells dirty. Both classes were false: **(a)** `#needle` reports +25px
+with *every child fully inside* — an element whose children all fit cannot be clipping one, so
+"nothing sticks out" must mean "not a clip"; the old decoration test only skipped the case where
+something *did* stick out, so the empty case fell through. **(b)** the header wallet row's
+"Hide balances" button overhangs its flex row by 4px inside a container with `overflow: visible`
+— measured, it ends at **x=1109 in a body that clips at 1440**, i.e. **331px of clearance**.
+An overhang is not a clip; E-30 was about text *cut off*, which needs a clipping ancestor.
+Both fixed, and then — the part that matters — **`s10-clip-selftest.mjs` proves the loosened
+detector still CATCHES an injected E-30-shape clip and still IGNORES a non-clipping overhang.**
+⛔ Loosening a detector without a self-test is how a sweep starts certifying a broken platform.
+Player sweep after the fix: **8/8 clean**.
+
+⏭️ **RESUME AT — in this order:**
+
+① 🔴 **E-32 — ALI'S DECISION, and it is what now blocks the launch of Up & Down.**
+   `defaultMarginBps` is **50 = 0.5%** for every duration and asset class. On BTC that is a
+   **±$316 move inside 5 minutes**. Both §6q rounds — real moves of 0.168% and 0.047% — would
+   have **VOIDED** at the default while resolving cleanly at margin 0. A chain on the default
+   voids nearly every round *while the feed works perfectly*, which reads exactly like E-16.
+   Needs a **per-duration / per-asset-class** margin. ⚠️ The proof chain runs at `marginPct=0`,
+   which is a QA setting and NOT a recommendation — at 0 a one-cent flicker decides real money.
+② **Verify E-31's fix on production** if it is not already, then use it to repoint the **GOLD**
+   asset off `goldprice.org` (an HTML page the feed can never quote) onto the quote endpoint,
+   and re-run the GOLD chain **in market hours** — metals were shut all of this session, so
+   the only asset class ever proven end-to-end is crypto.
+③ **G-7 — the shared `Chip`** (§6). Unchanged and still deliberately deferred if the lanes are
+   split: `chip.tsx:93` is `whitespace-nowrap` with a **fixed height**, so ANY long label bleeds
+   past its container platform-wide. Remedy is `height` → `minHeight` (a no-op for every
+   one-line chip today) + `max-w-full`.
+④ **Re-measure PLAYER-side `Select` and `Toggle` call sites** — G-8/G-9 changed
+   `components/ui/select.tsx`, `toggle.tsx` and `globals.css`, which both lanes share.
+⑤ **A QA FINANCE / accountant persona still does not exist** and production has none. Register
+   through the real UI + one narrow `UPDATE`, as session 8 did for GROWTH. ⛔ `charlie`
+   (`712000103`) is `SUSPENDED` on purpose — don't clobber it.
+
+🔒 **Left exactly as found, with two deliberate exceptions.** The BTC chain is **STOPPED** and
+every other chain is untouched; **nothing is emitting rounds**. The two exceptions are kept on
+purpose because they are the only working configuration the platform has ever had:
+`feedProvider` stays **`twelvedata`** and the **BTC asset stays enabled**. `charlie` still
+`SUSPENDED`, no role changed, no other money moved.
 
 ### 🟢 Laptop B, session 9 (2026-08-02) — THE ADMIN CONSOLE NOW SWEEPS 832/832, AND INTERACTION WAS TESTED FOR THE FIRST TIME. Read this first; it supersedes everything below.
 
