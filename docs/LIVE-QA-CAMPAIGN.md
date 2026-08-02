@@ -457,6 +457,96 @@ both directions, with **no `RoleDomainGrant` overrides**, i.e. the seed matrix i
 domain; COMPLIANCE holds it **view-only**, so read paths are audited but no QA identity can
 *act* there. A `SUPPORT` persona is the same one-line promotion if that lane is needed.
 
+## 4b. ⭐ "IS IT SAFE TO START PLAYING?" — Ali's question, answered from production (2026-08-02)
+
+Ali asked directly: *"when can i say it is safe to start playing? in all our games, and for
+admins to start monitoring and generating."* This section is the answer, read off the live
+database on 2026-08-02, and it is the section to re-check before any launch decision.
+**Every number below is a query, not a recollection** — the first draft of this answer was
+going to say money-out had never worked, and the database said otherwise.
+
+### The short answer
+
+| | Verdict |
+|---|---|
+| **Admins monitoring + generating** | 🟢 **Yes, now** — with one fix first (2FA, below) |
+| **Prediction markets (polls) for real players** | 🟡 **Nearly** — blocked only on withdrawals + test-data cleanup |
+| **Up & Down for real players** | 🔴 **No.** It has never once worked |
+
+### 🔴 BLOCKER 1 — withdrawals succeed one time in four, and three are stuck right now
+
+```
+WITHDRAWAL  CONFIRMED    n=4    TZS   8,000
+WITHDRAWAL  FAILED       n=9    TZS  41,000
+WITHDRAWAL  PROCESSING   n=3    TZS  17,000   ← stuck since 2026-07-29
+```
+Three payouts have sat in `PROCESSING` for days: `txn_8ad70b44…` (10,000, 29 Jul),
+`txn_5bacbcbb…` (5,000, 29 Jul), `txn_5fb63ccd…` (2,000, 31 Jul).
+
+⛔ **This is the one that decides the question.** Taking deposits you cannot reliably pay
+back is not a bug, it is a licensing and trust failure — and money-in works *far* better than
+money-out (44 deposits confirmed against 18 failed). The gap between those two rates is the
+risk. See `docs/SELCOM-PAYOUT-RAILS.md`; the known operational causes are the disbursement
+float and the rail configuration, **not code**.
+
+**The gate:** a run of consecutive successful withdrawals to real numbers, with zero left in
+`PROCESSING`, and the three above resolved either way.
+
+### 🔴 BLOCKER 2 — Up & Down has never confirmed a single price
+
+```
+UpDownRound outcome:  VOID = 1402      (UP = 0, DOWN = 0)
+```
+**Every round in the platform's history has voided and refunded.** Not one has ever produced
+a winner. That is `feedProvider: "mock"`, which correctly refuses in production — so the
+engine is behaving safely, but the game does not exist yet. §6m step ① is the unblock, and
+it is thirty seconds of Ali's time.
+
+**The gate:** one round that opens → confirms a real price → resolves with a real winner AND
+a real loser → money lands in a wallet. That run has still never happened.
+
+### 🔴 BLOCKER 3 — admin 2FA is OFF, with 9 ADMIN accounts
+
+`/api/health` reports `"adminTotp":"DISABLED"` (`DISABLE_ADMIN_TOTP=true`). Nine accounts hold
+full owner authority over real money on a licensed platform, protected by a password alone.
+This is cheap to fix and should be fixed before admins are told to work in the console daily.
+
+### 🟡 BLOCKER 4 — the finance numbers are mostly test money
+
+```
+player wallet liability  TZS 9,144,464
+ADJUSTMENT_CREDIT         TZS 9,000,000   ← QA funding, injected, not deposited
+```
+**98% of the platform's apparent liability is QA money.** Until it is cleared, every finance
+figure an admin "monitors" is fiction, and GGR/NGR/liability cannot be trusted. 32 non-QA
+player accounts already exist, so the cleanup has to be surgical, not a truncate.
+
+### 🟢 What IS proven, and can be relied on
+
+- **Money in** — 44 real deposits confirmed; 9 webhook forgeries refused; exactly-once proven
+  over 3 deliveries; ledger balances (§6g).
+- **Core play** — create → bet both sides → resolve → objection window → settle, with a real
+  **WIN (37,400 paid)** and a real **LOSS**, ledger summing to zero (§6h).
+- **Bet concurrency** — 200 concurrent bets on one market, 0 TZS leaked.
+- **Every stake has a way out** — the E-24 self-healer, live-proven; 1,402 voided rounds all
+  refunded in full.
+- **AI poll generation** — generate → review → publish → live market, 15/15 on real tokens.
+- **KYC**, **email verification**, **RBAC** for COMPLIANCE / MODERATOR / GROWTH — all driven
+  live, all held in both directions.
+- **The admin console itself** — 26 routes × 4 widths, **825/832** on production (§6b s8).
+
+### So, in order
+
+1. Turn admin 2FA **on**. → admins can then work the console safely, today.
+2. Fix withdrawals until they are boring. → prediction markets can then open to real players.
+3. Flip the feed (§6m ①) and get **the run that has never happened**. → only then is Up & Down
+   a game you can advertise.
+4. Clear the TZS 9,000,000 of QA money so the finance screens tell the truth.
+
+⛔ **Do not open Up & Down to players before step 3 succeeds**, and do not open *anything* to
+players before step 2. Everything else on the platform is in good shape; these four are what
+stand between it and a launch that would be safe to defend to a regulator.
+
 ## 5. Progress — phase by phase
 
 | # | Phase | State |
@@ -1970,7 +2060,11 @@ GROWTH accounts, so this is the **first live exercise of that grant**, and it he
 ⏭️ **RESUME AT — in this order:**
 
 ① **Ali's answer to §6m** — the feed, and THE RUN THAT HAS NEVER HAPPENED. Unchanged, still
-   blocking, still one dropdown.
+   blocking, still one dropdown. ⭐ **See §4b** — Ali asked point-blank whether it is safe to
+   start playing, and that section is the answer, read off production: withdrawals succeed
+   **one time in four with three stuck**, Up & Down has **never** confirmed a price (1,402
+   rounds, all VOID), admin 2FA is **off** across 9 owner accounts, and **98% of the
+   platform's apparent liability is QA money**. Those four are the launch gate.
 ② **G-3 — the player top-nav overflows, worst in Swahili** (198px @≥1680; en 31px; zh 0).
    Measured, **not started**; it is the shared *player* shell, the counterpart to the admin
    shell fixed this session. ⚠️ Read the G-3 row's warning first: the "wallet balance
