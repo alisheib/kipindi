@@ -2916,6 +2916,88 @@ workstation shows an SLA countdown, but nothing escalates when it runs out. Ali'
 
 ## 6b. NEXT SESSION — start here
 
+### 🟢 Laptop B, session 11 (2026-08-02) — ⭐ E-32 DECIDED + SHIPPED, E-36 FOUND + FIXED, AND THE GAME PROVEN AT THE DECIDED MARGIN. Read this first; it supersedes everything below.
+
+**Up & Down is now priced deliberately, will not settle on a shut market, and has settled real
+money at the margin Ali chose.** Full accounts: **§6t** (E-32), **§6u** (E-36), **§6v** (Ali's
+three mid-session questions).
+
+```
+udr_0c015a854aa105600373   margin 2 bps ← THE LADDER, inherited
+63114.00 → 63058.00   move −56.00 (−0.089%)   DOWN   settled 441ms after its boundary
+echo DOWN 5,000 → WIN 8,700 · alpha UP 5,000 → LOSS 0 · house keeps 1,300 (capped 13%)
+⭐ at the old 0.50% default this needed ±$315.57. It moved $56. It would have VOIDED.
+```
+
+| | Shipped, deployed, verified on production |
+|---|---|
+| **E-32** | Ali's call — *"balanced", ~1 in 3 voids*. `defaultMarginBps` 50 = 0.5% for every duration and asset class voids **96–100% of rounds at EVERY duration the platform offers**, measured over ~4,000 real provider windows. The median move scales as **√duration**, so 0.5% is a **~23-hour** margin. Replaced by a measured **`marginSchedule`** — 2 bps at 5 min, 3 at 15, 5 at 30, 7 at 60, 14 at 4h, 30 at 1d — resolved per asset class and duration; the flat default demoted to a fallback past the top rung. New ops tool `ops:updown-margin-study`. Guard `test:margin-schedule` **33/33**, RED with 15 failures first. **Live-verified 18/18**: all five chains now priced by the ladder, the BTC override cleared through the Edit form's blank-means-inherit path, audited to the trading officer |
+| **E-36** | 🔴 **There was no trading calendar at all**, and both premises of the comment explaining why one wasn't needed are false against this provider: `last_quote_at` advances every minute for XAU/USD and EUR/USD **on a Sunday**, `is_market_open` says `true`, and weekend quotes **move**. Through the real `computeTargets`, **83 of 288 Saturday 5-minute gold windows (28.8%) would have RESOLVED** — 20–22% on gold, **90–95% on EUR/USD** — paying real money on a tape the named market never produced. **Worse than voiding: a void refunds, this pays.** Fixed with `market-calendar.ts`: the money path refuses to READ and the emitter refuses to OPEN while a market is shut, and `/admin/updown` gained a **Market** column reading `closed · opens 22:00 UTC`. Guard `test:market-calendar` **26/26**, RED with 10 failures first, plus `test:updown-engine` §12 for the integration |
+| **E-38** | The resolver queue's overdue badge never scaled its unit, so **the longer real money waited the less urgent it looked**: a market 16h overdue holding **TZS 59,450 of REAL player money** announced itself as **"966M OVERDUE"**, and "M" means millions everywhere else in this console. Fixed with a shared `humanDuration`, plus the signal that was actually missing — a **`TZS … held`** pill per queued market. Guard `test:overdue-format` **9/9**, RED with 6 first |
+| **runbook** | ⭐ **`docs/runbooks/50pick-updown-runbook.pdf`** — 9 pages, Ali's request, for his admin testers, owners and players. Generating · resolving against Twelve Data · playing · and Part 4, an ordered "every round is voiding" checklist ending in *"only then suspect the feed"*. Every screenshot from live production, element-scoped, captured as the role that owns each surface. Source HTML + assets + rebuild note committed alongside |
+
+⚠️ **THE HARNESS LIED TWICE MORE, and one of them nearly shipped as a defect report.**
+**(a)** The post-bet flow was reported as *"the player is redirected to `/markets` and told
+nothing"* — a serious-sounding trust defect on a page that is fine. The run called the shared
+`dismissPrimer(page)` **immediately after confirming**, and that helper clicks Skip / Got it /
+Close / Maybe later: **it dismissed the very confirmation it then went looking for**, and the
+dismissal navigated. **(b)** A margin-verification run reported 4 failures because
+`table.admin-tbl tbody tr` matched the **assets** table as well as the chains table. Both are the
+session-10 lesson again: measure the moment you care about, touch nothing in between, and scope
+the selector.
+
+🔻 **AND A CONCLUSION WAS WITHDRAWN, which is the part worth carrying.** E-36's first reading was
+that the weekend bars are *fabricated* — "synthetic jitter around a pinned anchor". Tested: over a
+day the anchor drifts $32, and the sharper continuity test (does `open[i]` ≈ `close[i-1]`?) **does
+not separate weekend from weekday** (median seam/range 0.43 Sat vs 0.31 Fri on XAU, 0.33 on both
+for EUR/USD, 0.000 on both for BTC). Whether those prints are interpolated cannot be settled from
+here — and the finding never needed it. **The overclaim was the more dramatic version and it is
+exactly what would have got the real finding dismissed.**
+
+⏭️ **RESUME AT — in this order:**
+
+① 🔴 **E-37 — Up & Down tells the player NOTHING, and it is half of Ali's own dated decision.**
+   The round that paid 8,700 produced **0 notifications** (verified two ways; 216 WIN/LOSS exist
+   platform-wide so the query is not blind). `perEventNotificationsSuppressed()` suppresses
+   per-round messages for `UPDOWN` on Ali's explicit 2026-07-24 call — sound, and the money record
+   is correctly untouched — **but the daily digest that was to replace it was never built.** The
+   only two occurrences of *"daily digest"* in `src/` are the two comments promising it, and the
+   loss case carries an explicit LCCP harm-prevention claim about a system that does not exist.
+   Scope: a scheduled per-player aggregation, one notification + one email per day, idempotent,
+   en/sw/zh, guard, losses stated plainly.
+② **E-33 — the DSAR register. ⭐ ALI HAS DECIDED IT (2026-08-02): BOTH doors, with the channel
+   recorded.** Player self-files from their own privacy page (own session + password re-entry),
+   AND a COMPLIANCE officer may file on a player's behalf but must record **how the request
+   arrived** (email / WhatsApp / phone / in person / letter) and **how identity was verified**.
+   Both start the clock at the date **received**, not the date typed. `fileDsarRequest` exists and
+   has one caller — an orphan; this is now a wiring job with a decided policy, not a decision.
+③ **E-34 + E-35 — the SHARED refusal panel** on all 47 admin pages. Hard-codes *"Moderators are
+   excluded by policy"* to every role and is English-only on a trilingual platform.
+   `admin-restricted.tsx:36-41`. Needs en/sw/zh keys plus a reworded sentence naming the domain
+   the viewer actually lacks. Small, shared, measured, still open.
+④ **The player-side visual sweep (G-3, the shared player shell)** — still the largest untouched
+   lane. Note session 11 measured **0 clipped elements and 0 document overflow on
+   `/markets/[id]`, `/positions` and `/updown` at 360 / 768 / 1440**, so the lane starts from a
+   clean baseline rather than an unknown one.
+⑤ **Two OPERATIONAL items only Ali can close** (§6v) — neither is code:
+   · **the withdrawal banner is telling the truth.** Three payouts sit in `PROCESSING`, all on ONE
+     account (+255757619808, ADMIN): 10,000 (95h), 5,000 (94h), 2,000 (53h). The rule trips at
+     3 stuck OR oldest ≥ 6h; both are met. Selcom itself says `resultcode=999 · AMBIGUOUS · no
+     response from upstream`, so the reconciler correctly refuses to reverse. `/admin/payments`
+     has stuck-payout controls; resolving those three **clears the banner with no deploy**. ⛔ Two
+     are AMBIGUOUS, so reversing could double-pay — Ali's call, his own account, TZS 17,000.
+   · **TZS 59,450 of REAL player money** (8 positions, 4 non-QA players) has waited **16 hours** on
+     a market past its resolution time (EWURA petrol cap). The resolver queue surfaces it with
+     controls. It turns on what EWURA published — not a QA call.
+
+🔒 **Left exactly as found.** BTC chain **STOPPED** (through its ConfirmDialog — clicking `Stop`
+alone only opens the dialog and leaves it RUNNING, which the first attempt did and reported as
+success), **0 chains running platform-wide, 0 OPEN positions on any Up & Down round**. `GOLD` still
+repointed to the quote endpoint, `feedProvider` still `twelvedata`, the BTC margin override
+**cleared** so it inherits the ladder. **No money minted** — `alpha` and `echo` already had enough,
+and injecting more would have worsened §4b BLOCKER 4. ⚠️ `test:cert-d2` fails on the unmodified
+tree too (a pre-existing KYC-document DAL case, verified by stashing) — not from this session.
+
 ### 🟢 Laptop B, session 10 (2026-08-02) — ⭐ THE RUN HAPPENED. UP & DOWN PAID A REAL WINNER. Read this first; it supersedes everything below.
 
 **The campaign's #1 blocker since 2026-08-01 is CLOSED.** All 1,402 rounds in the platform's
