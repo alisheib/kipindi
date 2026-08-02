@@ -469,10 +469,10 @@ domain; COMPLIANCE holds it **view-only**, so read paths are audited but no QA i
 | 5 | Up & Down: rounds · quick-bet · pricing · void · history | 🔄 **E-25 FIXED (§6l): the merged feed could never have confirmed a price** — it dated quotes from the `1day` OHLC bar instead of `last_quote_at`, making the 90 s staleness gate unsatisfiable on every asset forever. Probed live: **2/2 symbols now WOULD CONFIRM at 39 s skew**. **E-26**: the two ops scripts named as the way to verify this cannot see the feed at all → shipped `ops:updown-probe-feed`. ⚠️ `SPX` is **not on the live TwelveData plan** (HTTP 404, Grow tier), so `SNP500` cannot be fed. Older state: **E-16's FIX IS MERGED, NOT YET SWITCHED ON.** The TwelveData feed reader landed 2026-08-01 (§6b session 6), but `feedProvider` still defaults to `mock`, which refuses in production — so prod voids+refunds safely and is not yet playable. Flipping it to `twelvedata` is an operator action and is step ① of the next session. ✅ **E-23 fully CLOSED 2026-08-01 (§6n)** — the enabled *Void & refund* control photographed at 360/768/1280/1920 on production **and used through the product for the first time** (round `udr_b8e1562e2f619954353a` → `operator` void, audited to the officer by name, 24/24). Using it exposed **E-29**: the settlement note claimed two price observations on **1,397 of 1,397** rows that had none. ✅ **E-24 + E-23 FIXED (§6k)**, and the merge strengthened it: the branch's ops-state carve-out + our deadline together close a hole neither had alone. ✅ Refund contract proven (35 positions, 96,250 staked = 96,250 returned); ✅ quick-bet proven live |
 | 6 | Proposals: propose · approve · 4-state switch · bonus | ⏳ |
 | 7 | AI: poll generation · source registry · token enable/disable · usage | ✅ **generate → review → publish → live market DRIVEN ON PROD, 15/15, on real tokens** (§6e). **Spend ceiling fixed + live-verified (E-15).** ✅ **E-17 CLOSED 2026-08-01** — the *AI proposals* nav entry and its page are merged and pinned by `test:admin-nav` §7. Remaining: poll **resolution** with money, and driving the Up & Down proposal queue on prod |
-| 8 | Invites & referrals | ⏳ |
+| 8 | Invites & referrals | 🔄 **The whole `growth` domain is now REACHABLE and audited for the first time (2026-08-02, §4).** `/admin/invites` is `growth`, which **no QA persona held** — so a compliance officer was refused there, correctly, and four pages had never been seen signed in as a role that can view them. New **QA GROWTH officer** (`bravo` → `GROWTH`; production had **zero** GROWTH accounts). `invites` · `affiliate` · `bonuses` · `players/cohorts` all render across 4 widths × 3 locales, **104/104**, and 8/8 privileged surfaces refuse. Auditing them surfaced **G-4** and **G-5**. ⏳ Still to drive: creating a campaign, redeeming an invite end-to-end, and the referral bonus actually paying |
 | 9 | Admin & accountant: roles · RBAC · finance · reports · settlement · audit | 🔄 **RBAC proven live for `MODERATOR`, 8 allow / 11 deny** (§4) — first `MODERATOR` account production has ever had. Finance · reports · settlement · audit untouched |
 | 10 | Money out: withdrawal + the payout gate | ⏳ |
-| 11 | Visual sweep: 4 widths × EN/SW/ZH across 89 routes | ⏳ |
+| 11 | Visual sweep: 4 widths × EN/SW/ZH across 89 routes | 🔄 **The ADMIN half is done: 26 routes × 4 widths on production, 825/832** (`live/admin-sweep.mjs`), each route driven as the role that owns it. It found five defects, **four of them in SHARED components** so one fix each helped every page: **G-2** (pager controls 40×80 on all 25 paginated screens), **G-4** (breadcrumb 0px + nav trigger 18px on every admin page at 360), **G-5** (`AdminCard`'s heading at width 0), **G-6** (two page-level clips fixed, three named with measurements). ⭐ The scan itself was rebuilt twice — it now measures the **actual glyph run with a Range**, not `scrollWidth`, after chart labels reported +286px while rendering one character in a 44px box. ⏳ Remaining: the **player** routes (G-3 is the shared player shell), SW/ZH across all admin routes (spot-checked, not exhaustive), and interaction states |
 | 12 | Adversarial: cheating, manipulation, abuse of every money path | ⏳ |
 | 13 | Scale readiness for 10,000s of users | ⏳ |
 
@@ -1922,69 +1922,92 @@ workstation shows an SLA countdown, but nothing escalates when it runs out. Ali'
 
 ## 6b. NEXT SESSION — start here
 
-### 🟢 Laptop B, session 8 (2026-08-02, early) — G-1 STARTED, 3 grids closed. Read this first; it supersedes everything below.
+### 🟢 Laptop B, session 8 (2026-08-02) — G-1 IS DONE, and the visual sweep found five shared defects. Read this first; it supersedes everything below.
 
-**The feed is still OFF, and that was verified rather than assumed.** The session brief left the
-feed-status line unfilled, so it was read off production directly: `updown.config` has **no
-`feedProvider` key** (→ defaults to `mock`), and **`twelvedata.com` is not in `TrustedSource` at
-all**. None of §6m's three steps has been done, so step ① is unchanged and still Ali's.
+**Ali's instruction mid-session, and it shaped everything after it:** *"we need all live
+testing visual and everything for all admin components, especially related to games,
+proposals, invites etc… dont try to do anything later, everything will be deleted and
+started from scratch."* So nothing was deferred: the G-1 backlog was driven to **zero**, and
+every defect the sweep surfaced was either fixed or written down with its measurement.
+
+**The feed is still OFF — verified, not assumed.** The brief's feed-status line was left
+unfilled, so it was read off production: `updown.config` carries **no `feedProvider` key**
+(→ `mock`), and **`twelvedata.com` is not in `TrustedSource` at all**. None of §6m's three
+steps has been taken. **Step ① is still Ali's, and it is still 30 seconds.**
 
 | | Shipped, deployed, verified on production |
 |---|---|
-| `fdcf626a` | **G-1a** — `/admin/updown/rounds` showed **60 of 1,402** and titled the card `Rounds · 60`. `roundStore` gained `count()` + `offset` off ONE shared `where`; the page gained the pager, asset/outcome filters and whole-set KPIs. ⭐ Paging it nearly broke the **Overdue money alarm** — it counted loaded rows, so page 1 of 71 would have read `0` with a stranded stake on page 71. Now reads the whole set via `unresolvedBefore`, the healer's own query |
-| `40da31f6` | **G-2** — the **shared pager rendered every page control as a 40×80 portrait pill on all 25 paginated screens.** `tailwind.config.ts` redefines the spacing scale: `10` is **80px** here. Found by measuring the live DOM, not by reading it. Fixed in the shared component: `h-[44px] min-w-[44px]` |
-| `c8faa0a2` | **G-1b** — **a player could not read their own history past 30 rows**, and the category chips filtered *inside* the truncation, so a search could not reach what the cap had discarded. Now the shared `Pagination` at `PLAYER_PER_PAGE`, filtering the whole history then paging |
+| `fdcf626a` | **G-1a** `/admin/updown/rounds` showed **60 of 1,402**. DB-side paging (`roundStore.count` + `offset` off one shared `where`), asset/outcome filters, whole-set KPIs. ⭐ Paging it nearly broke the **Overdue money alarm** — it counted loaded rows, so page 1 of 71 would read `0` with a stranded stake on page 71 |
+| `40da31f6` | **G-2** the shared pager rendered every page control as a **40×80 portrait pill on all 25 paginated screens**. `tailwind.config.ts` makes the scale key `10` = **80px** |
+| `c8faa0a2` | **G-1b** a **player** could not read their own history past 30 rows, and the category chips filtered *inside* the truncation |
+| `8565a452` | **G-1c/d/e** the last three grids. The proposal queue was **completely unbounded** (the "capped at 12" in the old inventory was a misread of a *string* slice); `/admin/live` judged correctly unpaged and its bet feed made honest; `/admin/finance` paged |
+| `4ab6e06c` | **G-4** on a phone, **every admin page crushed its own navigation**: the breadcrumb laid out at **0px** and the nav trigger at **18px**, because the right cluster is `shrink-0` at 302px on a 320px content box |
+| `281eee9e` | **G-2, third site** — the admin hamburger was an **80×80** button (`h-10 w-10` again) |
+| `6e8ec023` | **G-5** `AdminCard`'s own heading rendered at **width 0** on `/admin/finance`. ⭐ **`min-w-0` is not a fix, it is only a promise not to overflow** — an element allowed to shrink without limit reports zero overflow while rendering nothing |
+| `97bb4a9e` | **G-6** two page-level clips fixed (`/admin/compliance` overflowed its card by 12px at **every** width; `/admin/payments`' `OPERATIONAL` cut by 16px on the control that declares whether withdrawals work) |
 
-Guard: **`npm run test:grid-paging` 30/30, new** — §1 drives the real store (paging is a
-partition: no gap, no duplicate), §2 scans every `page.tsx` with a `<table>`, §3 pins the
-scale-token trap. Every section proven **RED** against the real defect first.
-Live: **G-1a 89/89** · **G-1b 57/69** — and all 12 failures are the shared shell (G-3), not the
-page. `test:i18n` 1594×3, `test:updown-heal` 115, `test:updown-engine` 86, `test:orphans` green.
+**Guards.** New suite **`npm run test:grid-paging`, 41/41** — §1 drives the real store and
+proves paging is a partition (no gap, no duplicate); §2 scans all 37 `page.tsx` files with a
+`<table>`; §3 pins the scale-token trap; §4 pins the admin shell. **Every section was proven
+RED against the real defect before being trusted.**
 
-⭐ **The ratchet is the durable part.** `UNPAGED_DEBT` in the guard fails if a grid is **added**
-to it and fails again if an entry is **not deleted** once its page pages. So the backlog can only
-shrink, and a fix is not finished until its line is gone. **4 → 3 remaining.**
+⭐ **The ratchet is the durable part.** `UNPAGED_DEBT` is now `{}`, and the suite fails if a
+grid is **added** to it *and* fails if an entry is not **deleted** once its page pages. Seven
+grids are declared deliberately unpaged in `FIXED_GRIDS`, each with a written reason —
+`admin/staff` is the interesting one: paging a privilege list is how a forgotten admin hides
+on page 2.
+
+**Live results on production.** `/admin/updown/rounds` **89/89** · `/profile/account` **57/69**
+(all 12 failures were the shared player shell, i.e. G-3) · growth domain **104/104** ·
+**the full admin sweep: 26 routes × 4 widths = 825/832**, up from 815 before the shared fixes.
+
+⭐ **A new persona: the QA GROWTH officer** (§4). `/admin/invites` — which Ali named — is the
+`growth` domain, and **no QA persona held it**, so four admin pages had never been audited by
+a role that can see them. `bravo` → `GROWTH` by one narrow `UPDATE`. Production had **zero**
+GROWTH accounts, so this is the **first live exercise of that grant**, and it held both ways:
+4 surfaces render, **8/8 privileged surfaces refuse**, no `RoleDomainGrant` overrides.
 
 ⏭️ **RESUME AT — in this order:**
 
-① **Ali's answer to §6m** — still the blocker for the feed and for THE RUN THAT HAS NEVER
-   HAPPENED. Nothing about it changed this session. **Option A is 30 seconds of his time.**
-② **Finish G-1 — 3 grids left**, all confirmed growing, all listed in `UNPAGED_DEBT`:
-   `admin/finance` (poll fees @50, drift @20), `admin/live` (BET/WALLET feeds read 30, render
-   10), `admin/updown/proposals` (@12). Delete each line from `UNPAGED_DEBT` as you fix it —
-   the guard enforces that. ⚠️ **Re-check every total on a grid you page** (the Overdue lesson):
-   a figure computed from loaded rows silently becomes a lie the moment there is a page 2.
-③ **G-3 — the player top-nav overflows, worst in Swahili** (198px @≥1680; en 31px; zh 0).
-   Evidenced and measured, **not started** — shared shell × 3 locales × 4 widths is its own
-   session. Read the ⚠️ in the G-3 row first: the "wallet balance disappears" reading is
-   **unproven** and the detector used was wrong.
-④ **The control market `mkt_4969c3dd29fde8742618`** — ⏳ still **NOT DUE**, and the brief was
-   ahead of the clock. `objectionsClosedAt` is `2026-08-02 09:54:13.801Z`; at 00:24Z it was
-   **9h 29m away**. State verified correct and unaided: `RESOLVED`/`YES`, `settledAt: null`,
-   both positions `OPEN`. After 09:54Z it must settle **by itself**. 📌 One thing to watch when
-   it does: `alpha`'s winning YES position carries `potentialPayout` **5,000** (its stake) while
-   the losing NO carries **9,350**, because each was frozen at placement time. The doc expects
-   alpha to receive **9,350**. If settlement pays the stored `potentialPayout` instead of
-   recomputing from the final pools, the winner is underpaid — **verify the wallet delta, not
-   the position row.**
-⑤ **The rest of the interaction-state sweep** — hovers, dropdowns, modals, focus rings,
-   keyboard, The Needle. `/admin/updown/proposals` (60/60) and now `/admin/updown/rounds`
-   (89/89) and `/profile/account` (57/69) are done.
+① **Ali's answer to §6m** — the feed, and THE RUN THAT HAS NEVER HAPPENED. Unchanged, still
+   blocking, still one dropdown.
+② **G-3 — the player top-nav overflows, worst in Swahili** (198px @≥1680; en 31px; zh 0).
+   Measured, **not started**; it is the shared *player* shell, the counterpart to the admin
+   shell fixed this session. ⚠️ Read the G-3 row's warning first: the "wallet balance
+   disappears" reading is **unproven** and the detector used for it was wrong.
+③ **G-6's three remaining clips**, each already measured so no rediscovery is needed:
+   `/admin/resolver-queue` (+23px, *Resolve YES* +6px), `/admin/finance` header (+9px),
+   `/admin/reports` (+8px). All 360-only, all cosmetic.
+④ **The control market `mkt_4969c3dd29fde8742618`** — ⏳ **still not due when this session
+   ended.** `objectionsClosedAt` is `2026-08-02 09:54:13.801Z`; the brief assumed it had
+   passed and at 00:24Z it was **9h 29m away**. State verified correct and unaided:
+   `RESOLVED`/`YES`, `settledAt: null`, both positions `OPEN`. 📌 **When it settles, check the
+   WALLET DELTA, not the position row**: `alpha`'s winning YES carries `potentialPayout`
+   **5,000** (its own stake) while the losing NO carries **9,350**, because each was frozen at
+   placement. The doc expects alpha to receive **9,350**. If settlement pays the stored
+   `potentialPayout` the winner is underpaid.
+⑤ **The interaction-state sweep** — hovers, dropdowns, modals, focus rings, keyboard, The
+   Needle. Static width auditing is now done for 26 admin routes + 2 player pages.
 
-🔧 **The harness gained three things worth reusing** (`<scratchpad>/live/harness.mjs`):
-`bodyText(page)` (lowercased — the `innerText`/`text-transform` trap recurred and cost 5 false
-failures), `clippedElements(page)` (the per-element scan **with** the by-design exclusions, incl.
-attributing overflow to `position:absolute`/`aria-hidden` children so decoration is not reported
-as clipping), and the note that a marquee must be skipped by **descendant** too, not just ancestor.
+🔧 **The harness is materially better and should be reused** (`<scratchpad>/live/harness.mjs`):
+`bodyText(page)` (lowercased — the `innerText`/`text-transform` trap **recurred** and cost 5
+false failures), `clippedElements(page)` (per-element scan that now measures the **actual glyph
+run with a Range** instead of `scrollWidth`, after bar-chart labels reported +286px while
+rendering the character "7" in a 44px box), and the `growth` persona.
 
-⚠️ **Three vacuous assertions were caught and rewritten this session** — a first draft that
-seeded 25 rounds against a 30-row cap, a `2.9` that compared two `indexOf()` positions, and an
-`A5` that required page-2 timestamps to be unique when minute-precision ones legitimately repeat.
-All three PASSED against the bug they were written to catch. **Run every new assertion against
-the unfixed code before believing it.**
+⚠️ **Assertions that PASSED against the bug they were written to catch — five this session.**
+A first draft seeded 25 rounds against a 30-row cap; `2.9` compared two `indexOf()` positions;
+`A5` demanded unique minute-precision timestamps; a refusal check windowed to 400 chars let
+`/admin/invites` pass at 3 of 4 widths while refusing at all of them; and `/admin/calendar`
+"failed" four cells because **the route was guessed** — it is `/admin/events` (§3 already says
+do not guess routes). **Run every new assertion against the unfixed code before believing it.**
+
+⚠️ **Four times** a `{/* … */}` comment landed inside a JSX expression container and broke the
+parse. `tsc` caught it every time; **the regex guards never did** — they read text, the
+typecheck reads code. Keep the build as the gate.
 
 🔒 **Left exactly as found**: all four chains `STOPPED`/`PAUSED`, `feedProvider` still `mock`,
-`twelvedata.com` still not a `TrustedSource`, zero money moved, control market untouched.
+`twelvedata.com` still not a `TrustedSource`, **zero money moved**, control market untouched.
 
 ### 🔴 Laptop B, session 7 (2026-08-01, late) — THE FEED IS FIXED BUT NOT ON. Read this first; it supersedes everything below.
 
