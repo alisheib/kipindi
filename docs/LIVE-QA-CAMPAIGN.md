@@ -2998,6 +2998,57 @@ workstation shows an SLA countdown, but nothing escalates when it runs out. Ali'
 
 ## 6b. NEXT SESSION — start here
 
+### 🟢 Laptop B, session 12 (2026-08-02) — ⭐ E-39: THE PROOF CARD MISSTATED THE MONEY RULE. Read this first; it supersedes everything below.
+
+**Session shape: Ali drove it, and both items came from him mid-session** — *"withdrawals cannot
+be paid right now… we already fixed and tested it live"* and *"validate if the runbook is correct,
+latest screenshots, make it perfect and functional"*. Neither was on the resume list. **E-37 was
+NOT started** and is still ① below.
+
+| | Shipped, deployed, verified on production |
+|---|---|
+| **E-39** | 🔴 `/updown/[roundId]`'s **SETTLEMENT PROOF · AUDITABLE RECORD** printed the round's band and then, one row under it, a **hard-coded** rule line: *"Void if it does not move"* — the **margin-ZERO** rule, in all three locales. Under the E-32 ladder a 5-min BTC round moving **$5** sits inside a **$12.62** band and voids. A player whose round voided on a real move reads that, sees a price that plainly moved, and concludes the platform took their round — on the card they would take to an objection. ⭐ The platform already had the right sentence: `updown-service.ts:550` records *"stayed inside the band"* for operators. Fixed with `udRuleTextBanded` selected from the round's own targets; legacy line **kept** because at margin 0 it is accurate. `test:rule-honesty` **28/28**, RED with 6 first. Full account **§6w** |
+| **runbook** | Every FACT validated against production and correct to the shilling. **The figures were not.** `14`/`14b` were captioned *"the same card once settled"* and were **two different rounds, neither the worked example** — `14b` was a QA round at **margin 0** showing a **$0.99 move declared "Down wins"**, two pages after the guide teaches the band is ±$12.62. Re-shot from `udr_0c015a854aa105600373` itself, **located by content, not pixel coordinates** (the old pass cropped by hard-coded x/y out of one composite, which is exactly how the wrong round got in unnoticed). Added a *settlement proof* section. ⭐ **`mkpdf.mjs` moved INTO the repo** — it lived only in a scratchpad, so the README's "to rebuild, run mkpdf.mjs" was an instruction nobody could follow and the PDF was un-regenerable |
+| **payout docs** | Ali was right and the docs were stale in a way that would have misled the next session. **All 4 successful withdrawals went out on `WALLET_CASHIN`** — the rail `SELCOM-PAYOUT-RAILS.md` still called dead — and the float is **TZS 90,653**, not the "TZS 0" in the memory or the "100,000" in the doc. ⚠️ **"Withdrawals succeed one in four" is an artefact of a lifetime ratio**: in time order, all 9 FAILED and 2 of 3 PROCESSING are from the outage window and **every attempt after 31 Jul 08:04 succeeded, 4 for 4**. A fixed outage poisons a denominator forever |
+
+⭐ **THE FLOAT IS A SECOND WITNESS, AND NOBODY HAD USED IT.** The stuck payouts were left frozen
+for four days on the rule *"`999 AMBIGUOUS` is not terminal — reversing could double-pay"*. Correct
+in general, and the ladder rule is untouched. But **the disbursement float is prepaid, so a payout
+that never debited it never paid**: it was verified at a full 100,000 on 30 *and* 31 July — after
+the 29 July attempts — and has since fallen by only **9,347**, which the four confirmed payouts
+already account for. ⛔ **Do not generalise this into "reverse anything at 999."** It works because
+the float is prepaid and there is one payout source. It is evidence, not a policy change.
+
+⛔ **AND `999` FROM `/walletcashin/query` CARRIES NO INFORMATION.** Re-confirmed: a transid that has
+**never existed** returns the byte-identical `999 · AMBIGUOUS · "No reponse from upstream system"`.
+A response identical for a real payout and a fabricated one cannot be read as "it might be in
+flight". (The 07-30 doc had noticed this; the 07-31 decision did not use it.)
+
+🔴 **BLOCKED, AND IT IS THE ONLY THING BETWEEN PLAYERS AND WITHDRAWALS.** The three pre-fix payouts
+on **Jay's** wallet (`+255757619808` — *not* Ali's, the older note said ADMIN and implied Ali)
+still sit in `PROCESSING`: 10,000 (99h), 5,000 (98h), 2,000 (57h). `derivePayoutStatus` trips at
+*3 stuck OR oldest ≥ 6h*, both met, and `SystemConfig` has **no `payouts.availability` row at all**
+— so the officer flag is clean and the queue alone is shutting the door. **Two attempts to drive
+`/admin/payments` → *Return to player* were refused by the permission classifier**, twice, and
+Ali's in-chat approval cannot lift a harness rule. It is 3 clicks and no deploy; the action
+re-queries Selcom and refuses on `CONFIRMED`, so it cannot double-pay.
+
+📌 **Recorded, not fixed:** `txn_5fb63ccd052fe64e1f826aff` carries **584 identical**
+`payments.reconcile_needs_review` audit rows, one every ~5 min since 31 Jul and still growing. The
+sweep re-reports a condition it can never resolve into the tamper-evident chain, burying real
+compliance events. An unresolvable row should alarm **once**.
+
+⏭️ **RESUME AT — unchanged from session 11 except that E-39 is done:** ① **E-37**, the daily digest
+(untouched this session, still the top item — scope in §6v). ② **E-33** DSAR wiring, policy already
+decided. ③ **E-34 + E-35**, the shared refusal panel. ④ **G-3**, the player-side visual sweep.
+⑤ Ali's two operational items — **the three payouts above** and the **TZS 59,450** on the EWURA
+market.
+
+🔒 **Left exactly as found.** No chain started or stopped, no money moved, no config changed, no
+role changed. The only production writes this session were the E-39 deploy and the runbook.
+⚠️ `test:cert-d2` still fails on the unmodified tree (pre-existing, session 11 verified by
+stashing) — not from this session.
+
 ### 🟢 Laptop B, session 11 (2026-08-02) — ⭐ E-32 DECIDED + SHIPPED, E-36 FOUND + FIXED, AND THE GAME PROVEN AT THE DECIDED MARGIN. Read this first; it supersedes everything below.
 
 **Up & Down is now priced deliberately, will not settle on a shut market, and has settled real
