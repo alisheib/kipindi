@@ -217,11 +217,20 @@ places the bet and takes the money — that is the design for a five-minute roun
 chip before tapping.</div>
 <p>Betting closes <em>at</em> the boundary, because the bet is on the price at that instant.</p>
 
-<figure class="narrow"><img src="updown-assets/14-settled-round.png"></figure>
-<figure class="narrow"><img src="updown-assets/14b-settled-outcome.png"><figcaption>The same card once settled:
-the verdict, <strong>both prices</strong> — open → close — and the source line naming
-<code>api.twelvedata.com</code> and the time it quoted. This is what makes the result checkable by
-the person whose money it was.</figcaption></figure>
+<figure class="narrow"><img src="updown-assets/14-settled-round.png"><figcaption><strong>The same round as the
+picture above, once settled.</strong> Both prices — open $63,114.00 → close $63,058.00 — the band it had to
+clear, how far it actually moved, and the source line naming <code>api.twelvedata.com</code> and the time it
+quoted. This is what makes the result checkable by the person whose money it was.</figcaption></figure>
+
+<h3>The settlement proof</h3>
+<p>Every settled round carries an <strong>auditable record</strong> below the card: each price with its own
+source, the time the provider quoted it and the time we observed it, the outcome, and an excerpt of the raw
+provider response. A tester should not take our word for a result — this is the panel that lets them check
+it.</p>
+
+<figure class="narrow"><img src="updown-assets/14b-settled-outcome.png"><figcaption>The outcome tile from that
+record. Note the <strong>Rule</strong> line: a round is decided against the <em>targets</em>, not against the
+opening price. A close between them is a void, however far the price moved.</figcaption></figure>
 
 <figure class="narrow"><img src="updown-assets/11-player-board.png"><figcaption>What a player sees when the chain
 is <strong>not started</strong>. If a tester reports “the game is empty”, this is it — check the
