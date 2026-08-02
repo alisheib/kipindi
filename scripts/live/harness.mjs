@@ -125,8 +125,16 @@ export async function login(page, who) {
     (isStaff) => {
       const t = document.body.innerText.toLowerCase();
       if (/invalid|incorrect|too many attempts|locked/.test(t)) return "bad";
+      // 🔴 THE SIGNAL MUST NOT EXIST IN THE FAILURE STATE. This once tested
+      // `/overview|muhtasari|admin/` for staff — and "admin" appears in the words
+      // "Admin sign in", the heading of the page you are on when login FAILS. So a
+      // failed sign-in was scored as a success, and a later run then asserted six
+      // things about the finance console against a screenshot of the LOGIN FORM and
+      // reported them all green. Anchor on the authenticated shell, and explicitly
+      // exclude the sign-in page.
+      if (/admin sign in|kuingia kwa wafanyakazi|i'm a player, not staff/.test(t)) return false;
       return isStaff
-        ? /overview|muhtasari|admin/.test(t) && !/sign in to the console/.test(t)
+        ? /back to app|muhtasari|staff · confidential/.test(t)
         : /wallet|pochi|deposit/.test(t) && !/\bsign up\b/.test(t);
     },
     staff,
