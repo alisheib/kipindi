@@ -152,6 +152,7 @@ strings**, plus the exact commands that mint them in under a minute. Nothing bel
 | ⭐ **QA compliance officer** | `https://50pick.tz/auth/admin`, phone **`712000106`** (`usr_2ff22430c89e4c560fac5334`) — **use this for all operator work**, see §4 | `.env.qa.local` → `QA_OFFICER_PASSWORD` |
 | ⭐ **QA trading officer** | `https://50pick.tz/auth/admin`, phone **`712000104`** (`usr_429885ab43c0cb4ce134dd7e`, role `MODERATOR`) — trading surfaces, see §4 | `.env.qa.local` → `QA_TRADING_PASSWORD` |
 | ⭐ **QA growth officer** | `https://50pick.tz/auth/admin`, phone **`712000102`** (`usr_26313f74d8428e4e169603ca`, role `GROWTH`) — invites / affiliate / bonuses / cohorts, see §4 | `.env.qa.local` → `QA_GROWTH_PASSWORD` |
+| ⭐ **QA finance officer** | `https://50pick.tz/auth/admin`, phone **`712000107`** (`usr_d7e6a41e4a0e9bda9e89db2a`, role `FINANCE`) — the accountant identity; `accounting` act, and deliberately **no `trading` view**, see §6s | `.env.qa.local` → `QA_FINANCE_PASSWORD` |
 | ⭐ **Ali's own operator console (ADMIN)** | `https://50pick.tz/auth/admin`, phone **`777777777`** (E.164 `+255777777777`, `usr_1b3e6fd5048b1d873e931715`, `alisheib07@gmail.com`) | `.env.qa.local` → `QA_ADMIN_PASSWORD` — ✅ **Ali supplied it 2026-08-02 (session 9); laptop B now holds it.** See the two rules below |
 | **QA player `alpha`** | phone **`712000101`**, `qa.alpha.50pick@gmail.com` | `.env.qa.local` → `QA_ALPHA_PASSWORD` |
 | **QA player `echo`** | phone **`712000105`**, `qa.echo.50pick@gmail.com` | `.env.qa.local` → `QA_ECHO_PASSWORD` |
@@ -182,7 +183,7 @@ them a fresh session on any machine can reach everything in under a minute:
 | Store | Holds | How a session reads it | Travels between laptops? |
 |---|---|---|---|
 | **Railway `50pick` service env** | every *platform* secret: `DATABASE_URL`, `SESSION_SECRET`, `AUDIT_CHAIN_SECRET`, `SELCOM_*`, `POSTMARK_*`, R2, the backup seal key, `ANTHROPIC_API_KEY`, **`TWELVEDATA_API_KEY`** | `railway run -s 50pick -- node -e "console.log(!!process.env.NAME)"` — and `railway run` injects them into any script, so **a secret never has to be written to a file or a transcript** | ✅ yes — it is the shared store |
-| **`C:\kipindi-main\.env.qa.local`** | ONLY the four QA-persona passwords (`QA_ALPHA_PASSWORD`, `QA_ECHO_PASSWORD`, `QA_OFFICER_PASSWORD`, `QA_TRADING_PASSWORD`) | `harness.mjs`'s `qaEnv(name)` reads it directly | ❌ **no** — gitignored (`.gitignore:9`); copy this one 4-line file to a new machine, or re-mint with `live/mkpw.cjs` (§1) |
+| **`C:\kipindi-main\.env.qa.local`** | ONLY the QA-persona passwords — `QA_ALPHA_PASSWORD`, `QA_ECHO_PASSWORD`, `QA_OFFICER_PASSWORD`, `QA_TRADING_PASSWORD`, `QA_GROWTH_PASSWORD`, **`QA_FINANCE_PASSWORD`**, and `QA_ADMIN_PASSWORD` (⛔ Ali's own — never re-mint) | `harness.mjs`'s `qaEnv(name)` reads it directly | ❌ **no** — gitignored (`.gitignore:9`); copy this one 4-line file to a new machine, or re-mint with `live/mkpw.cjs` (§1) |
 
 ⛔ **And the one rule that does not bend: no secret VALUE is ever written into this repo.**
 It is pushed to `github.com/alisheib/kipindi`, and a leaked key in git history is permanent
@@ -341,6 +342,7 @@ All created through the real UI on production. Phone is the **9-digit local part
 | **`delta`** | `+255712000104` | `usr_429885ab43c0cb4ce134dd7e` | **`REJECTED`** 2026-07-31 15:12Z (`DETAILS_MISMATCH`, `rejectNote = NULL`) · **role `MODERATOR` 2026-08-01** | was the E-1/E-6/E-2 workhorse (its three documents are the **only** ones on the platform with correct `mimeType`/`sizeBytes` — `image/jpeg` / 57960). **Now ALSO the campaign's `trading` operator** — see the box below. `QA_TRADING_PASSWORD` in `.env.qa.local` |
 | `echo` | `+255712000105` | `usr_b8ed0aeacb1fc5d82f1b8d6a` | **`APPROVED`** 2026-07-31 18:57Z → `User.status = ACTIVE` · **email verified** 19:13Z | created for the **E-4 production proof** (the other four could not be approved: `alpha` already was, `bravo`/`delta` REJECTED, `charlie` SUSPENDED). nida …9016. `QA_ECHO_PASSWORD` in `.env.qa.local`. The **second** funded-player candidate for Phase 3 |
 | **`officer`** | `+255712000106` | `usr_2ff22430c89e4c560fac5334` | n/a — **role `COMPLIANCE`** | ⭐ the campaign's own **operator identity**. See the box below. `QA_OFFICER_PASSWORD` in `.env.qa.local` |
+| **`foxtrot`** | `+255712000107` | `usr_d7e6a41e4a0e9bda9e89db2a` | `PENDING_KYC` — **role `FINANCE`** 2026-08-02 | ⭐ the **accountant** identity, added session 10 (§6s). Registered through the real UI + one narrow `UPDATE`. It is what settled §6m: FINANCE holds `accounting` **act** and genuinely **cannot view** `/admin/updown`, so the feed switch really is `{ADMIN}`-only. **15/15** — 5 surfaces reachable, 9 refused with the data absent. `QA_FINANCE_PASSWORD` in `.env.qa.local` |
 
 ### ⭐ The QA compliance officer — read this before doing any operator-side work
 
@@ -626,7 +628,7 @@ stand between it and a launch that would be safe to defend to a regulator.
 | 6 | Proposals: propose · approve · 4-state switch · bonus | ⏳ |
 | 7 | AI: poll generation · source registry · token enable/disable · usage | ✅ **generate → review → publish → live market DRIVEN ON PROD, 15/15, on real tokens** (§6e). **Spend ceiling fixed + live-verified (E-15).** ✅ **E-17 CLOSED 2026-08-01** — the *AI proposals* nav entry and its page are merged and pinned by `test:admin-nav` §7. Remaining: poll **resolution** with money, and driving the Up & Down proposal queue on prod |
 | 8 | Invites & referrals | 🔄 **The whole `growth` domain is now REACHABLE and audited for the first time (2026-08-02, §4).** `/admin/invites` is `growth`, which **no QA persona held** — so a compliance officer was refused there, correctly, and four pages had never been seen signed in as a role that can view them. New **QA GROWTH officer** (`bravo` → `GROWTH`; production had **zero** GROWTH accounts). `invites` · `affiliate` · `bonuses` · `players/cohorts` all render across 4 widths × 3 locales, **104/104**, and 8/8 privileged surfaces refuse. Auditing them surfaced **G-4** and **G-5**. ⏳ Still to drive: creating a campaign, redeeming an invite end-to-end, and the referral bonus actually paying |
-| 9 | Admin & accountant: roles · RBAC · finance · reports · settlement · audit | 🔄 **RBAC proven live for `MODERATOR`, 8 allow / 11 deny** (§4) — first `MODERATOR` account production has ever had. Finance · reports · settlement · audit untouched |
+| 9 | Admin & accountant: roles · RBAC · finance · reports · settlement · audit | 🔄 **RBAC now proven live for FOUR roles.** `MODERATOR` 8 allow / 11 deny (§4); `GROWTH` 104/104 + 8/8 deny (§4); ⭐ **`FINANCE` 15/15 (§6s, session 10) — the accountant identity the matrix was missing**, and it is what settled §6m: FINANCE holds `accounting` **act** and genuinely **cannot view** `/admin/updown`, so the feed switch really is `{ADMIN}`-only. `/admin/finance`, `transactions`, `settlement`, `reports` render real content as the role that owns them; 9 privileged surfaces refuse with the lock **and** the data absent. 🔴 Auditing it found **E-34/E-35** in the SHARED refusal panel (wrong role named to everyone; English-only on a trilingual platform). ⏳ Still untouched: the audit trail as an auditor, and reports content |
 | 10 | Money out: withdrawal + the payout gate | ⏳ |
 | 11 | Visual sweep: 4 widths × EN/SW/ZH across 89 routes | 🔄 **The ADMIN half is DONE and CLEAN: 26 routes × 4 widths on production, 832/832** (session 9; was 825/832), plus the first-ever **interaction** sweep — 1,919 tab stops, 845 controls focus-checked (**0 ringless**), 0 keyboard traps, 22 dropdowns and 18 popovers driven (`live/admin-sweep.mjs`), each route driven as the role that owns it. It found five defects, **four of them in SHARED components** so one fix each helped every page: **G-2** (pager controls 40×80 on all 25 paginated screens), **G-4** (breadcrumb 0px + nav trigger 18px on every admin page at 360), **G-5** (`AdminCard`'s heading at width 0), **G-6** (two page-level clips fixed, three named with measurements). ⭐ The scan itself was rebuilt twice — it now measures the **actual glyph run with a Range**, not `scrollWidth`, after chart labels reported +286px while rendering one character in a 44px box. ⏳ Remaining: the **player** routes only (G-3 is the shared player shell). **Interaction states are no longer remaining — see §6o** — and **SW/ZH is no longer spot-checked either: 26 routes x 2 widths x SW+ZH on production, 104/104 clean** (`live/admin-locales.mjs`). Swahili is the longest of the three languages and is where G-3 measured 198px on the player shell, so "it fits in English" had already been shown to prove nothing |
 | 12 | Adversarial: cheating, manipulation, abuse of every money path | ⏳ |
@@ -1215,7 +1217,74 @@ would have. The build stays the gate.
 | **E-32** | 🔴 **BLOCKER · OPEN — Ali's decision, not a code fix** | Up & Down · pricing | **At the product default margin, a short round cannot resolve — and the failure is indistinguishable from a broken feed.** `updown.config.defaultMarginBps` is **50 = 0.5%**; `computeTargets` freezes UP at `base+0.5%` and DOWN at `base−0.5%` and VOIDs everything between. On BTC at ~63,250 that requires a **±$316 move inside five minutes**. Measured against §6q's own two rounds — real prices, no extra spend: #1 moved **−105.99 (0.168%)** and #2 **−30.01 (0.047%)**, and **BOTH would have VOIDED at 0.5%** while resolving cleanly at margin 0. So a chain left on the default fills its history with `no-move` VOIDs *while the feed is working perfectly*, which is precisely the picture E-16 and E-25 produced when it was not — and the natural reading ("the feed is broken again") would be wrong. ⛔ **Not a defect to fix unilaterally:** 0.5% is Ali's deliberate "50pick factor" and is reasonable for a 30-minute metals round; it is the *one setting for every duration and asset class* that is wrong. Needs a per-duration (and probably per-asset-class) default. ⚠️ Compounded by **E-31**: `updateChainAction` has no caller, so a chain's margin **cannot be changed after creation** through the product — the only lever is to delete and recreate the chain. | live rounds `udr_94864f4b0a6b03306fc1` / `udr_c168ce28d8ea69ab6ceb`, both prices read off `UpDownObservation`; band arithmetic in `live/s10-verify-run.mjs` |
 | **E-31** | **HIGH** → ✅ **FIXED** | admin console · orphaned actions | **Two gated, audited Up & Down server actions have ZERO callers — E-23's exact shape, and one of them sits on the critical path of the campaign's #1 blocker.** `grep -rn` over `src/` finds only their own definitions: **`updateAssetAction`** (edit an asset's symbol, names, decimals, `minMoveTicks` and **price source**) and **`updateChainAction`** (a chain's stake bounds and **margin**). Both are `accounting`/`trading`-gated, both audit properly, and neither is reachable from any page. Consequences, both hit live this session: ① **an operator cannot repoint an asset's price source at all** — the session brief's step ② ("point the live GOLD asset at the quote endpoint") is *not an operator action*; GOLD is stuck on `goldprice.org`, an HTML page the feed reader can never quote, and the only way to move it would be a hand-written DB row on the control that decides what settles real money. The run in §6q therefore had to go through `createAssetAction`, which IS wired. ② **a chain's margin cannot be changed after creation**, which is what makes E-32 a delete-and-recreate rather than an edit. ⭐ Same class as E-23 (*"a remedy that only exists in a script is not a remedy an operator has"*) — and E-23's lesson was supposed to be generalised. It was not, so the guard now is. **Fixed** by wiring both into `/admin/updown` as per-row `Edit` disclosures (`EditAssetForm`, `EditChainForm`), each asking the E-18 question — the page asks what the action will ask (`canUseControl`) and renders `ControlLocked` rather than a control that bounces. Guarded by **`npm run test:orphan-actions`**, which scans **every** admin actions file rather than pinning these two, because pinning E-23's one symbol is exactly why it recurred. ✅ **VERIFIED ON PRODUCTION 2026-08-02 10:47 UTC by USING both controls for the two things that were impossible before them:** the live **GOLD** asset was repointed `goldprice.org` → `api.twelvedata.com/quote` (**the session brief's step ②**, which turned out not to be an operator action at all), and the BTC chain's **margin was changed after creation** 0 → 5 bps. Both DB rows re-read, both audited to the actor (`updown.asset.updated` / `updown.chain.updated`, `usr_1b3e6fd5…`), 9 Edit controls serving, 0 console errors. | `grep -rn "updateAssetAction\|updateChainAction" src/` → 1 hit each (own definition), vs 2 for all seven sibling actions; `npm run test:orphan-actions` **11/11**, proven **RED** on the unfixed tree (5 failures, incl. both §3 assertions) |
 | **E-33** | MEDIUM · **OPEN — a compliance decision, not a wiring job** | privacy · DSAR register | **Nothing on the platform can put a request INTO the DSAR register, so `/admin/privacy` will read *"No data-subject access requests are on file"* forever.** Found by the E-31 sweep: `fileDsarAction` is an orphan, and `fileDsarRequest` (`privacy.ts:56`) has **exactly one caller — that orphan**. The page's *other* two actions are wired and work (`buildDsarBundleAction` for the walk-in/on-behalf export, `fulfillDsarAction` for fulfilling a queued one), so **a player can still GET their data** — this is not a data-rights outage. What cannot be recorded is that they **asked**, and that is the half a regulator examines, because the statutory response clock runs from the request. ⛔ **Deliberately not wired in the session that found it**: who may file a DSAR on a player's behalf, and on what authentication, is a compliance decision (the page's own copy requires *"phone OTP at the front-desk"* for the export path) — inventing that policy in a QA session would be the wrong kind of fix. Pinned in `KNOWN_ORPHANS` with its reason so it cannot be forgotten. | `grep -rn fileDsarRequest src/` → 2 hits, both in the orphan's own call chain; `npm run test:orphan-actions` §1/§2 |
+| **E-34** | LOW · **OPEN, measured** | RBAC · shared refusal panel · honesty | **The refusal shown on every blocked admin page names the wrong role, to everyone.** `components/admin/admin-restricted.tsx:39` hard-codes *"**Moderators** are excluded by policy"* regardless of who is reading, so a FINANCE, COMPLIANCE or GROWTH officer is told about a role they are not — and told nothing about why **they** are excluded. It also cites `roles.ts`, a source file no operator can open. Same family as D-2/E-2/E-8/E-29: **a surface stating something it does not know.** Not a security gap — the data really is withheld (9/9, §6s) — but it is on **all 47 admin pages** and it is the sentence an operator reads when they hit a wall. Fix: state the domain the viewer lacks, drop the moderator clause and the file reference. | read live as the QA FINANCE officer on `/admin/{updown,markets,ai-polls,compliance,approvals}`; `shots/s10-finance-deny-*.png` |
+| **E-35** | LOW · **OPEN, measured** | i18n · shared refusal panel | **The refusal panel is hard-coded English on a platform that enforces trilingual parity.** The card title is bilingual (`title="Restricted" sw="Imezuiliwa"`) and **the explanation underneath it is English only** — no `useT`, no dictionary key. A Swahili-only operator gets the lock and a sentence they may not read. ⚠️ **`test:i18n` cannot catch it**, because the string never enters the dictionary — which is exactly what the standing *"never hardcode user-facing strings"* rule exists to prevent, and it means parity being green says nothing here. Same component and same one-line region as E-34, so both should be fixed together (en/sw/zh keys + the reworded sentence). | `admin-restricted.tsx:36-41`; the live panel rendered in full above in §6s |
 | **G-7** | MEDIUM → ✅ **FIXED (2026-08-02, session 10)** | visuals · shared `Chip` | **Any `Chip` with a long label bleeds silently past its container, platform-wide.** `components/ui/chip.tsx` was `whitespace-nowrap` with a **fixed `height`** (18/21/25px per size). Both are correct for a short status pill and both are wrong for a phrase: the chip could neither wrap nor grow, so it was simply drawn outside its column with no ellipsis — and with nothing for a document-level check to notice. ✅ Fixed in the shared component: `height` → `minHeight` with `height: auto`, `whiteSpace: normal`, `max-w-full`, and the `/admin/reports` call-site opt-out **deleted** because the component now does it. ⭐ **The interesting part is how it had to be proven, because a survey CANNOT catch this and did not.** `live/s10-g7-probe.mjs` measured **84 live chips across 7 routes × 4 widths and found ZERO bleeding** — session 9 had patched the one known offender *at its call site*, so the shared component stayed broken for the next long label while everything measured clean. A latent defect has nothing to measure until someone ships the label that trips it. So the RED was produced by taking a **real chip off a real production page** and giving it a real call site's label at the real column width (`live/s10-g7-inject.mjs`, `/admin/aml` @360): **206×18 inside a 198px container — 8px outside it**, `white-space:nowrap · height:18px · max-width:none`. Re-run after the fix on production: **fits, wraps, grows.** ⚠️ **The `minHeight` swap must stay a no-op for one-line chips**, and that is now arithmetic rather than a hope — `test:chip-contract` §3 computes `fontSize × lineHeight + 2 × paddingBlock` for all six sizes and fails if any exceeds its `minHeight`, i.e. if a future edit would make **every chip on the platform** grow. | `live/s10-g7-inject.mjs` on production, before **206×18 in 198px, +8px** / after **fits**; `live/s10-g7-{before,after}.json` — 84 chips, height histogram `{18: 84}` unchanged; `npm run test:chip-contract` **14/14**, proven **RED** against the pre-fix component (10 failures) |
+
+## 6s. The QA FINANCE officer — §6m's claim tested, and two defects in the shared refusal panel (2026-08-02, session 10)
+
+**The campaign's fifth operator identity, and the one that settles the feed-blocker argument.**
+`foxtrot` · `+255712000107` · `usr_d7e6a41e4a0e9bda9e89db2a` · role **`FINANCE`** ·
+`QA_FINANCE_PASSWORD` in `.env.qa.local`. Made exactly as the compliance/trading/growth
+officers were: **registered through the real `/auth/register` UI**, then **one narrow
+`UPDATE`** (`role`, `displayName`, and the schema's role-change trail with
+`roleChangedBy = 'qa:live-experience'` — a marker, **not** a user id, because no admin
+performed it). ⛔ No `AuditLog` row hand-written; that table is HMAC-chained.
+`RoleDomainGrant` has **no** overrides for `FINANCE`, so `DEFAULT_GRANTS` is what is live.
+
+⚠️ **Cost, disclosed rather than glossed:** registration requires an email
+(`register/page.tsx:223` — it carries the verification link), and §6d established that no
+`qa.*.50pick@gmail.com` inbox exists, so this minted **one more hard bounce** against a
+licensed platform's sender reputation. Session 8 avoided that by re-roling `bravo`; there
+was no spare persona left (`alpha`/`echo` are the funded players, `charlie` is deliberately
+`SUSPENDED`, `bravo`/`delta`/`officer` already carry roles).
+
+📌 **Correction to §4/§1:** production did **not** have zero FINANCE accounts — it had
+**one**, and still does (now two). What it had was **no FINANCE account this campaign holds
+a password for**, so the `accounting` grant had never once been exercised live. Live staff
+roles now: **ADMIN 9 · FINANCE 2 · COMPLIANCE 1 · MODERATOR 1 · GROWTH 1**.
+
+### ✅ §6m's claim is CORRECT, and now measured rather than reasoned — 15/15
+
+| | Result |
+|---|---|
+| `accounting` / `support` surfaces reachable — `/admin`, `finance`, `transactions`, `settlement`, `reports` | **5/5 render real content** |
+| privileged surfaces refused — `updown`, `updown/rounds`, `markets`, `ai-polls`, `sources`, `compliance`, `approvals`, `system`, `invites` | **9/9 blocked**, lock present **and** the page's own data absent (0 tables, 0 rows, 0 figures in `main` minus chrome) |
+| ⭐ **the claim itself** | **`FINANCE` cannot VIEW `/admin/updown`** — so the one non-Owner role holding `accounting` **act** genuinely cannot reach the feed switch it is authorised to change. §6m's *"the intersection is `{ADMIN}`"* stands |
+
+🔴 **THE HARNESS LIED A FOURTH TIME, and this one nearly became an RBAC-leak report on a
+licensed money platform.** The deny assertion is two-sided by design (§4) — refusal marker
+present **and** page data absent — but the data markers chosen were `"rounds"`, `"markets"`,
+`"poll"`, `"regulator"`, `"kyc"`, and **the admin shell renders the full nav on every page**,
+including refused ones. So five of nine refusals were reported as *"LEAK — still rendered
+under the lock"* against pages that were refusing perfectly. Re-measured against `main` with
+`nav`/`header`/`aside`/`footer` removed: **240 characters, 0 tables, 0 rows, 0 numbers** —
+nothing but the lock panel. ⚠️ This is the §4 trap wearing a new hat: v1 cried RBAC bypass
+off the **URL**, v2 cried data leak off the **chrome**. Assert against the main region with
+the shell stripped, never the whole body.
+
+### 🔴 Two defects the refusal panel itself carries — SHARED, on every refused admin page
+
+Reading the panel as a Finance officer is what exposed them. Both are in
+`components/admin/admin-restricted.tsx`, i.e. **every refusal on all 47 admin pages**:
+
+- **E-34 · it names the wrong role, to everyone.** The body hard-codes *"**Moderators** are
+  excluded by policy"* regardless of who is reading. A FINANCE officer, a COMPLIANCE officer
+  and a GROWTH officer are each told about a role they are not, and are told nothing about
+  why **they** are excluded. Same family as D-2/E-2/E-8/E-29 — **a surface stating something
+  it does not know.** It also cites `roles.ts`, a source file no operator can open.
+- **E-35 · it is hard-coded English on a platform that enforces trilingual parity.** The card
+  title is bilingual (`title="Restricted" sw="Imezuiliwa"`) and the *explanation underneath it
+  is English only* — no `useT`, no dictionary key. A Swahili-only operator gets the lock and
+  an English sentence. `test:i18n` cannot see it because the string never enters the
+  dictionary, which is precisely what `reference_kipindi_i18n`'s "never hardcode user-facing
+  strings" rule exists to prevent.
+
+⛔ **Deliberately NOT fixed in this session** (§0.3). The refusal itself is **functionally
+correct** — the data is withheld, 9/9 — so this is copy, not a security gap. Fixing it
+properly means new dictionary keys in **en/sw/zh** plus a reworded sentence, and this session
+had already shipped four changes with live verification. Recorded with its evidence so the
+next session starts from a measurement rather than a memory.
 
 ## 6r. The PLAYER side after G-7 / G-8 / G-9 — 32/32 on production, and two detectors that were lying (2026-08-02, session 10)
 
@@ -2416,6 +2485,9 @@ were read, not the outcome flag** — they differ, and the player is shown both.
 |---|---|
 | *(operator config, no code)* | ① `twelvedata.com` trusted in **`crypto` AND `macro`** as the trading officer · ② BTC asset at `api.twelvedata.com/quote` + enabled as ADMIN · ③ `feed`+`twelvedata` as ADMIN · ④ BTC 5-min chain created + started as the trading officer |
 | **E-31** | Two gated, audited actions with **ZERO callers** — `updateAssetAction`, `updateChainAction`. E-23's exact shape, on the critical path. Wired as per-row `Edit` forms on `/admin/updown`, gated the E-18 way. New guard **`test:orphan-actions`** scans **every** admin actions file (110 actions, 30 files) — proven RED first — because pinning E-23's one symbol is why it recurred |
+| **G-7** | The shared `Chip` could not survive a label longer than its container — `nowrap` + a **fixed height**, so a long label was drawn OUTSIDE its column with no ellipsis. Fixed in the component (`minHeight` + wrap + `max-w-full`), call-site opt-out deleted, `test:chip-contract` proven RED first. ⭐ **A survey could not have caught it and did not** — 84 live chips measured clean because session 9 had patched the one offender *at its call site* |
+| **`foxtrot`** | The **QA FINANCE officer** — the accountant identity the matrix was missing (§6s). **15/15**, and it settled §6m: FINANCE holds `accounting` **act** and genuinely **cannot view** `/admin/updown`, so the feed switch really is `{ADMIN}`-only |
+| **E-34 / E-35** | Found by reading the refusal panel as that officer: it hard-codes *"Moderators are excluded by policy"* to **every** role, and its explanation is **English-only** on a trilingual platform. SHARED, all 47 admin pages. Recorded, not fixed — the refusal is functionally correct |
 | **E-33** | Found by that sweep: **the DSAR register cannot be populated at all.** `fileDsarRequest` has exactly one caller — an orphaned action — so `/admin/privacy` reads *"No requests on file"* permanently. Players can still GET their data (the export path is wired); what cannot be recorded is that they **asked**, which is where the statutory clock starts. Left OPEN on purpose: who may file on a player's behalf is a compliance decision, not a wiring job |
 
 ⚠️ **THE HARNESS LIED AGAIN, and this time in the safe-looking direction.** `clippedElements()`
@@ -2454,9 +2526,14 @@ Player sweep after the fix: **8/8 clean**.
 ④ ✅ ~~Re-measure player `Select`/`Toggle`.~~ **DONE — see §6r. 32/32 on production, and the
    G-8 open-above path was genuinely exercised** (the first attempt passed 24/24 without ever
    running it).
-⑤ **A QA FINANCE / accountant persona still does not exist** and production has none. Register
-   through the real UI + one narrow `UPDATE`, as session 8 did for GROWTH. ⛔ `charlie`
-   (`712000103`) is `SUSPENDED` on purpose — don't clobber it.
+⑤ ✅ ~~A QA FINANCE / accountant persona.~~ **DONE — `foxtrot`, §6s. 15/15, and it settled
+   §6m's claim: FINANCE genuinely cannot view `/admin/updown`, so the feed switch really is
+   `{ADMIN}`-only.** 👉 It left **E-34** and **E-35** behind, both in the SHARED refusal panel
+   on all 47 admin pages: it hard-codes *"Moderators are excluded by policy"* to **every**
+   role, and its explanation is **English-only** on a platform that enforces trilingual
+   parity. Small, shared, and deliberately not fixed at the end of a long session — the
+   refusal itself is functionally correct (9/9 withheld their data), so this is copy, not a
+   security gap. Fixing it needs en/sw/zh keys plus a reworded sentence.
 
 🔒 **Left exactly as found, with the deliberate exceptions listed.** **All five chains are
 `STOPPED`/`PAUSED` — nothing is emitting rounds**, and no player money sits in an unresolved
