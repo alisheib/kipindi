@@ -974,6 +974,7 @@ crawl returned the all-time high and a percentage, not the current price. So re-
 | **G-1** | **HIGH** → 🟡 **PARTLY FIXED** (worst grid closed; 4 remain, ratcheted) | grids · paging · filtering | **⭐ ALI'S DIRECTIVE, 2026-08-01 (§0.1b): no grid, admin or player, may ship without paging and filtering — and the real defect is not "missing", it is SILENT TRUNCATION.** Inventory: **25 pages already use the shared `AdminPagination`**, so this is a **consistency** job, not a build. **12 grids had no pager**, and seven of those **capped their rows and said nothing** — worse than an empty grid, because an empty one prompts a question and a full-looking one does not. 🔴 **The worst was measured on production, not estimated: `/admin/updown/rounds` read `limit: 30` per chain, merged, kept 60, and titled the card `Rounds · 60` while the live table held `1,402`. 96% of the operator's audit view of the game was missing and no control on the page could reach it.** ✅ **FIXED 2026-08-02**: `roundStore` gained `count()` + `offset`, both driven off ONE shared `where`/predicate (`roundWhere`/`matchRounds`) so the pager can never label a set it is not showing; the page gained `AdminPagination`, asset + outcome chip filters, an honest empty state, and whole-set KPIs. ⭐ **Paging it also nearly broke a money signal, which is the finding inside the finding**: the *Overdue* tile counted only loaded rows, so page 1 of 71 would have read `Overdue: 0` with a stranded stake on page 71 — strictly worse than the truncation being fixed. It now reads the whole set through `unresolvedBefore`, the **same** query the E-24 self-healer runs, so console and engine agree by construction. ⏳ **Four grids remain and are now ratcheted, not remembered**: `admin/finance`, `admin/live`, `admin/updown/proposals`, `profile/account` — pinned in `UNPAGED_DEBT` in the guard, which fails if anything is ADDED and fails again if an entry is not DELETED once its page pages. Seven more are declared **deliberately unpaged** with a written reason (`FIXED_GRIDS`) — `admin/staff` is the interesting one: paging a privilege list is how a forgotten admin hides on page 2. | `npm run test:grid-paging` **22/22** — proven RED against the pre-fix page (4 failures incl. 2.6, the money signal). Live count `SELECT count(*) FROM "UpDownRound"` = **1402** vs 60 rendered. Screenshots: `live/shots/g1-rounds-*.png` |
 | **G-1b** | **HIGH** → ✅ **FIXED** | grids · paging · PLAYER-facing | **A player could not read their own account history past the newest 30 rows, by any means — and the category filter searched only inside the truncation.** `/profile/account` fetched `getOwnActivity(userId, 50)` and rendered `.slice(0, 30)` with no pager, so 20 of the 50 fetched rows were unreachable and everything older than 50 was never fetched. ⛔ **The worse half is the filter**: the category chips filter the already-truncated window, so a player with 200 `WALLET` events who tapped **WALLET** saw only those few that happened to fall in the newest 50 — a search that silently cannot reach what the cap discarded. This is the one grid in the G-1 sweep a **customer** meets rather than an operator, and the activity feed is an in-memory audit ring, so the cap was not buying anything: it is a slice of an array, not a query. ✅ Fixed with the shared `Pagination` at `PLAYER_PER_PAGE` (12) and localised labels, filtering across the whole history and paging the result — the other order is the bug. The events count beside the heading is now the true total instead of ≤50. | `npm run test:grid-paging` 2.7/2.8/2.9, **all three proven RED against the old page**. ⚠️ 2.9's first draft compared two `indexOf()` positions and passed against the old code too — rewritten to pin the ORDER of filter-then-slice, which is the invariant that matters |
 | **G-2** | MEDIUM → ✅ **FIXED** | visuals · shared pager · every paginated screen | **The shared pager rendered every page control as a 40×80 PORTRAIT pill, on all 25 paginated screens, because `h-10` is not 40px in this project.** `tailwind.config.ts` overrides the spacing scale — the key `10` is **80px** here — so `h-10 min-w-[40px]`, which plainly intends a ~40px square, came out twice as tall as it reads: taller than the 44px filter chips directly above it, and on a phone tall enough to push the next-page chevron onto a row of its own, where it looks like a broken layout rather than a wrapped one. ⭐ **Found only by measuring the live DOM while photographing the G-1 pager** — `getBoundingClientRect()` said `40x80` where the class list says 40×40. ⛔ **Nothing could have caught this by reading the source**: the class list is correct to anyone who knows Tailwind and not this config, and `min-w-[40px]` sitting beside it reads as confirmation. A previous session had already been bitten by the identical trap in `notifications-panel.tsx` and left a comment there, which is how the cause was recognised in one step instead of ten. **Fixed in the shared component** (§0.1b rule 1) — `h-[44px] min-w-[44px]`, written literally, at the campaign's WCAG 2.5.5 AAA tap-target floor, plus `justify-center sm:justify-end` so a wrapped row reads as intentional. | `npm run test:grid-paging` §3, **5 assertions, proven RED against the old pager (4/4 fail)**. Live DOM measurement before: `40x80`; after: `44x44`. Screenshots `live/shots/g1-pager-{1280,360,last}.png` |
+| **G-3** | MEDIUM · **OPEN — not started, evidenced only** | visuals · shared PLAYER shell · i18n | **The player top-nav's inner container overflows its own box, and how badly depends on the LANGUAGE.** Measured on production at `/profile/account` (but it is the shared shell, so it is every player page): `div.mx-auto` inside `header.sticky` reports `scrollWidth − clientWidth` of — **en**: 0 @1280, 0 @1440, **31px** @1680, **31px** @1920 · **sw**: **28px** @1280, **28px** @1440, **198px** @1680, **198px** @1920 · **zh**: 0 at every width. Swahili link labels are the longest (`Jedwali la Washindi`, `Kupendekeza`), Chinese the shortest, which is exactly the ordering you would predict — this is an i18n layout defect, not a random one. Visible in the photographs as a nav flush to both edges with its right-hand cluster having eaten its own padding, and the notification badge touching the viewport edge at sw@1280. A second, smaller one sits in the same cluster: the wallet-balance chip's wrapper is **+4px** over at 768 and 1280 in **all three** locales. ⚠️ **What is NOT claimed**: the sw@1920 screenshot appears to be missing the `TZS 62,400` chip that sw@1280 shows, which would mean a player loses sight of their balance — but **two attempts to detect that chip in the DOM found nothing at any width, including one where the screenshot plainly shows it**, so the detector is wrong and the claim is unproven. Settle that before fixing anything. ⛔ Deliberately **not started**: it is the shared shell on every player page, across 3 locales × 4 widths, and §0.3 says that is its own session. | `live/navprobe.mjs` (12-cell measurement table above) · photographs `live/shots/nav-{sw-1280,sw-1920,en-1920}.png` · surfaced by `clippedElements()` during the G-1b audit, 12/12 cells |
 
 ## 6f. E-18 fixed — and the class was three surfaces, not one (2026-08-01)
 
@@ -1871,6 +1872,70 @@ workstation shows an SLA countdown, but nothing escalates when it runs out. Ali'
   the `pg` −3h trap (§3) reading back through an un-cast client.
 
 ## 6b. NEXT SESSION — start here
+
+### 🟢 Laptop B, session 8 (2026-08-02, early) — G-1 STARTED, 3 grids closed. Read this first; it supersedes everything below.
+
+**The feed is still OFF, and that was verified rather than assumed.** The session brief left the
+feed-status line unfilled, so it was read off production directly: `updown.config` has **no
+`feedProvider` key** (→ defaults to `mock`), and **`twelvedata.com` is not in `TrustedSource` at
+all**. None of §6m's three steps has been done, so step ① is unchanged and still Ali's.
+
+| | Shipped, deployed, verified on production |
+|---|---|
+| `fdcf626a` | **G-1a** — `/admin/updown/rounds` showed **60 of 1,402** and titled the card `Rounds · 60`. `roundStore` gained `count()` + `offset` off ONE shared `where`; the page gained the pager, asset/outcome filters and whole-set KPIs. ⭐ Paging it nearly broke the **Overdue money alarm** — it counted loaded rows, so page 1 of 71 would have read `0` with a stranded stake on page 71. Now reads the whole set via `unresolvedBefore`, the healer's own query |
+| `40da31f6` | **G-2** — the **shared pager rendered every page control as a 40×80 portrait pill on all 25 paginated screens.** `tailwind.config.ts` redefines the spacing scale: `10` is **80px** here. Found by measuring the live DOM, not by reading it. Fixed in the shared component: `h-[44px] min-w-[44px]` |
+| `c8faa0a2` | **G-1b** — **a player could not read their own history past 30 rows**, and the category chips filtered *inside* the truncation, so a search could not reach what the cap had discarded. Now the shared `Pagination` at `PLAYER_PER_PAGE`, filtering the whole history then paging |
+
+Guard: **`npm run test:grid-paging` 30/30, new** — §1 drives the real store (paging is a
+partition: no gap, no duplicate), §2 scans every `page.tsx` with a `<table>`, §3 pins the
+scale-token trap. Every section proven **RED** against the real defect first.
+Live: **G-1a 89/89** · **G-1b 57/69** — and all 12 failures are the shared shell (G-3), not the
+page. `test:i18n` 1594×3, `test:updown-heal` 115, `test:updown-engine` 86, `test:orphans` green.
+
+⭐ **The ratchet is the durable part.** `UNPAGED_DEBT` in the guard fails if a grid is **added**
+to it and fails again if an entry is **not deleted** once its page pages. So the backlog can only
+shrink, and a fix is not finished until its line is gone. **4 → 3 remaining.**
+
+⏭️ **RESUME AT — in this order:**
+
+① **Ali's answer to §6m** — still the blocker for the feed and for THE RUN THAT HAS NEVER
+   HAPPENED. Nothing about it changed this session. **Option A is 30 seconds of his time.**
+② **Finish G-1 — 3 grids left**, all confirmed growing, all listed in `UNPAGED_DEBT`:
+   `admin/finance` (poll fees @50, drift @20), `admin/live` (BET/WALLET feeds read 30, render
+   10), `admin/updown/proposals` (@12). Delete each line from `UNPAGED_DEBT` as you fix it —
+   the guard enforces that. ⚠️ **Re-check every total on a grid you page** (the Overdue lesson):
+   a figure computed from loaded rows silently becomes a lie the moment there is a page 2.
+③ **G-3 — the player top-nav overflows, worst in Swahili** (198px @≥1680; en 31px; zh 0).
+   Evidenced and measured, **not started** — shared shell × 3 locales × 4 widths is its own
+   session. Read the ⚠️ in the G-3 row first: the "wallet balance disappears" reading is
+   **unproven** and the detector used was wrong.
+④ **The control market `mkt_4969c3dd29fde8742618`** — ⏳ still **NOT DUE**, and the brief was
+   ahead of the clock. `objectionsClosedAt` is `2026-08-02 09:54:13.801Z`; at 00:24Z it was
+   **9h 29m away**. State verified correct and unaided: `RESOLVED`/`YES`, `settledAt: null`,
+   both positions `OPEN`. After 09:54Z it must settle **by itself**. 📌 One thing to watch when
+   it does: `alpha`'s winning YES position carries `potentialPayout` **5,000** (its stake) while
+   the losing NO carries **9,350**, because each was frozen at placement time. The doc expects
+   alpha to receive **9,350**. If settlement pays the stored `potentialPayout` instead of
+   recomputing from the final pools, the winner is underpaid — **verify the wallet delta, not
+   the position row.**
+⑤ **The rest of the interaction-state sweep** — hovers, dropdowns, modals, focus rings,
+   keyboard, The Needle. `/admin/updown/proposals` (60/60) and now `/admin/updown/rounds`
+   (89/89) and `/profile/account` (57/69) are done.
+
+🔧 **The harness gained three things worth reusing** (`<scratchpad>/live/harness.mjs`):
+`bodyText(page)` (lowercased — the `innerText`/`text-transform` trap recurred and cost 5 false
+failures), `clippedElements(page)` (the per-element scan **with** the by-design exclusions, incl.
+attributing overflow to `position:absolute`/`aria-hidden` children so decoration is not reported
+as clipping), and the note that a marquee must be skipped by **descendant** too, not just ancestor.
+
+⚠️ **Three vacuous assertions were caught and rewritten this session** — a first draft that
+seeded 25 rounds against a 30-row cap, a `2.9` that compared two `indexOf()` positions, and an
+`A5` that required page-2 timestamps to be unique when minute-precision ones legitimately repeat.
+All three PASSED against the bug they were written to catch. **Run every new assertion against
+the unfixed code before believing it.**
+
+🔒 **Left exactly as found**: all four chains `STOPPED`/`PAUSED`, `feedProvider` still `mock`,
+`twelvedata.com` still not a `TrustedSource`, zero money moved, control market untouched.
 
 ### 🔴 Laptop B, session 7 (2026-08-01, late) — THE FEED IS FIXED BUT NOT ON. Read this first; it supersedes everything below.
 
