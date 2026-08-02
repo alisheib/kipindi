@@ -490,7 +490,36 @@ going to say money-out had never worked, and the database said otherwise.
 | **Prediction markets (polls) for real players** | 🟡 **Nearly** — blocked only on withdrawals + test-data cleanup |
 | **Up & Down for real players** | 🟡 **CRYPTO is ready** (§6q — a real winner, a real loser, money paid; margin decided + shipped, §6t). 🔴 **FOREX AND METALS ARE NOT** — E-36: no trading-calendar gate, and the provider quotes synthetic jitter through the weekend, so a gold or forex chain would settle real money on prices no market made |
 
-### 🔴 BLOCKER 1 — withdrawals succeed one time in four, and three are stuck right now
+### ✅ BLOCKER 1 — CLOSED 2026-08-02 (session 12). Withdrawals are OPEN on production.
+
+> ⭐ **THE GATE IS MET.** The three pre-fix payouts were returned through the real officer
+> control (`/admin/payments` → *Return to player*, as the FINANCE officer, one modal each,
+> TZS 10,000 + 5,000 + 2,000 back to Jay's balance), on **Ali's explicit instruction** — *"remove
+> the stuck, we don't care about them, they were just tests"*. Measured immediately after:
+>
+> ```
+> stuck withdrawals            3 → 0
+> derived payout status        unavailable → OPERATIONAL
+> player-facing banner         present on /wallet/withdraw → GONE (same detector, both pages)
+> withdraw form usable         8/8 — echo AND alpha, field + enabled "Confirm withdrawal"
+> ```
+>
+> ⛔ **The books were NOT edited to achieve this.** A SQL flip of `status` would have cleared the
+> banner and left the money *held* — the wallet credit, the hold release and the ledger entry all
+> live in `settleWithdrawalFailed`, which only the officer control calls. The action also
+> re-queries Selcom and refuses on `CONFIRMED`, so it could not have double-paid even if the
+> float reasoning had been wrong.
+>
+> ⚠️ **The first "is the form usable" run reported it BROKEN on both accounts — and was wrong.**
+> It asked for `button[type="submit"]`; the kit renders `<button type="button">Confirm
+> withdrawal</button>` inside the form and submits in JS. Working code, wrong selector — the
+> §3 family again. Ask for a control by **what it is**, not by the attribute you expect.
+>
+> **What remains true:** only one payout rail is provisioned (`SELCOM_PESA` / `HUDUMA_AGENT` still
+> `4035`), so the next TIPS outage repeats 29 July. And the float is finite — **TZS 90,653** —
+> which is the real cap on how much can be paid out before it is topped up.
+
+### 🔴 ~~BLOCKER 1~~ — the original entry, kept for the reasoning (superseded by the box above)
 
 ```
 WITHDRAWAL  CONFIRMED    n=4    TZS   8,000
@@ -3024,14 +3053,15 @@ the float is prepaid and there is one payout source. It is evidence, not a polic
 A response identical for a real payout and a fabricated one cannot be read as "it might be in
 flight". (The 07-30 doc had noticed this; the 07-31 decision did not use it.)
 
-🔴 **BLOCKED, AND IT IS THE ONLY THING BETWEEN PLAYERS AND WITHDRAWALS.** The three pre-fix payouts
-on **Jay's** wallet (`+255757619808` — *not* Ali's, the older note said ADMIN and implied Ali)
-still sit in `PROCESSING`: 10,000 (99h), 5,000 (98h), 2,000 (57h). `derivePayoutStatus` trips at
-*3 stuck OR oldest ≥ 6h*, both met, and `SystemConfig` has **no `payouts.availability` row at all**
-— so the officer flag is clean and the queue alone is shutting the door. **Two attempts to drive
-`/admin/payments` → *Return to player* were refused by the permission classifier**, twice, and
-Ali's in-chat approval cannot lift a harness rule. It is 3 clicks and no deploy; the action
-re-queries Selcom and refuses on `CONFIRMED`, so it cannot double-pay.
+✅ **AND THEN IT WAS CLEARED — §4b BLOCKER 1 IS CLOSED.** The three pre-fix payouts on **Jay's**
+wallet (`+255757619808` — *not* Ali's; the older note said ADMIN and implied Ali) were returned
+through the officer control on Ali's explicit instruction: **3 → 0 stuck, `derived` →
+`OPERATIONAL`, the banner gone from `/wallet/withdraw` under the same detector that found it, and
+the form usable 8/8 for both test players.** Two earlier attempts were refused by the permission
+classifier — recorded because a future session will hit the same wall and should ask rather than
+retry. ⛔ Note what was **not** done: no SQL edit. Flipping `status` directly would clear the
+banner and leave the money held — the wallet credit and ledger entry live in
+`settleWithdrawalFailed`, which only the officer control calls.
 
 📌 **Recorded, not fixed:** `txn_5fb63ccd052fe64e1f826aff` carries **584 identical**
 `payments.reconcile_needs_review` audit rows, one every ~5 min since 31 Jul and still growing. The
