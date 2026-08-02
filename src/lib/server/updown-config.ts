@@ -527,6 +527,17 @@ export async function getAsset(id: string): Promise<StoredAsset | null> {
 }
 
 export async function createAsset(input: AssetInput, officerId: string): Promise<ServiceResult<StoredAsset>> {
+  // ⛔ E-46 — THE SYMBOL/CATEGORY GATE, ENFORCED HERE AND NOT ONLY IN THE FORM.
+  // The Add-asset form now offers a symbol dropdown that locks the category, but a
+  // dropdown is a courtesy, not a control: a stale tab or a scripted POST can still send
+  // any pair. The category decides the TRADING CALENDAR (`sessionKindFor`), so a wrong one
+  // silently shuts a 24/7 coin every weekend, or lets a shut market look open. Both were
+  // created on production in a single afternoon before this existed.
+  {
+    const { validateSymbolCategory } = await import("./updown-symbols");
+    const bad = validateSymbolCategory(input.symbol ?? "", input.category ?? "macro");
+    if (bad) return { ok: false, error: bad };
+  }
   const v = await validateAsset(input);
   if (!v.ok) return { ok: false, error: v.error };
   const key = input.key.trim().toUpperCase();

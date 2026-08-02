@@ -204,7 +204,8 @@
     "test:grid-paging": "tsx scripts/grid-paging.test.mts",
     "test:orphan-actions": "tsx scripts/orphan-actions.test.mts",
     "test:chip-contract": "tsx scripts/chip-contract.test.mts",
-    "test:prisma-delegate": "tsx scripts/prisma-delegate.test.mts"
+    "test:prisma-delegate": "tsx scripts/prisma-delegate.test.mts",
+    "test:updown-symbols": "tsx scripts/updown-symbol-catalogue.test.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

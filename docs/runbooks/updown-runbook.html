@@ -88,16 +88,57 @@ category you will use, or the chain refuses to start.</div>
 <div class="step">
 <h3>Step 2 · Add the asset <span class="who">Owner</span></h3>
 <div class="path">Sidebar → Up &amp; Down → <strong>Overview</strong> → “+ Add asset” (top right)</div>
+<p><strong>You now make only two choices.</strong> Pick an <strong>asset class</strong>, then a
+<strong>symbol</strong>. Everything the symbol determines — category, names in all three languages,
+icon, decimals, minimum move and the price-source URL — is filled in and <strong>locked</strong>,
+and shown to you in a “set by the symbol” panel so you can check it.</p>
 <table>
-  <tr><th style="width:30%">Field</th><th>What to put</th></tr>
-  <tr><td>Symbol</td><td>Twelve Data’s own symbol, e.g. <code>BTC/USD</code>, <code>XAU/USD</code></td></tr>
-  <tr><td>Price source URL</td><td><code>https://api.twelvedata.com/quote</code></td></tr>
-  <tr><td>Category</td><td><code>crypto</code> for coins, <code>macro</code> for metals / FX / indices</td></tr>
-  <tr><td>Decimals</td><td>Price precision. <code>2</code> for BTC and gold</td></tr>
-  <tr><td>Min move ticks</td><td>The smallest move that counts, in ticks. <code>1</code> tick at 2
-      decimals = $0.01. Gold is set to <code>15</code> = a $0.15 floor</td></tr>
+  <tr><th style="width:30%">Choice</th><th>What it means</th></tr>
+  <tr><td>Asset class</td><td>Crypto · Metals · Foreign exchange · Indices. This filters the symbol list.</td></tr>
+  <tr><td>Symbol</td><td>Twelve Data’s own symbol, e.g. <code>BTC/USD</code>, <code>XAU/USD</code>.
+      Only symbols the platform can actually quote are offered.</td></tr>
+  <tr><td>Key</td><td>Yours, and never renamed afterwards. Pre-filled with a sensible suggestion.</td></tr>
+</table>
+<div class="note stop"><strong>The category is no longer yours to choose, and that is deliberate.</strong>
+It selects the <em>trading calendar</em>: <code>crypto</code> is 24/7, everything else follows the
+FX/metals week. On 2&nbsp;August 2026 a coin was added as <code>macro</code> and the console then showed
+it “closed · opens 22:00 UTC” every weekend, for no reason. On the same afternoon an asset was added
+with the symbol <code>ETH</code> instead of <code>ETH/USD</code>, pointed at a page the feed cannot
+read — it voided <strong>27 of 27</strong> rounds. Neither was rejected at the time. Both are now
+impossible to create, in the form <em>and</em> on the server.</div>
+
+<h4>Before you enable it: press “Check the live feed”</h4>
+<p>The form asks the real provider, through the same two functions that settle money, and tells you
+one of four things:</p>
+<table>
+  <tr><th style="width:30%">Verdict</th><th>What to do</th></tr>
+  <tr><td><strong>Would confirm</strong></td><td>Good. It shows the price, the provider’s own quote
+      time and the skew in seconds. Enable it.</td></tr>
+  <tr><td><strong>Readable but too slow</strong></td><td><strong>Do not arm it.</strong> The quote is
+      older than the staleness window, so a round cannot confirm its opening price and
+      <em>every round will void and refund</em> while looking perfectly healthy. This is exactly what
+      <code>SOL/USD</code> did — 100% void, 8 of 8 — because its quote lags about 132&nbsp;s against a
+      90&nbsp;s window.</td></tr>
+  <tr><td><strong>Market is shut</strong></td><td>Come back when it reopens. A quote read while the
+      market is closed proves nothing. The panel tells you the reopening time.</td></tr>
+  <tr><td><strong>Cannot be quoted</strong></td><td>The provider does not carry this symbol on the
+      current plan. Pick another.</td></tr>
 </table>
 <p>Then switch the asset to <strong>Enabled</strong>. A disabled asset cannot emit rounds.</p>
+
+<h4>When each asset can actually run</h4>
+<table>
+  <tr><th style="width:30%">Asset class</th><th>Trading window</th></tr>
+  <tr><td>Crypto</td><td>24/7, weekends included. No closed window at all.</td></tr>
+  <tr><td>Metals &amp; FX</td><td>Opens <strong>Sunday 22:00 UTC</strong> (Monday 01:00 EAT), closes
+      <strong>Friday 21:00 UTC</strong> (Saturday 00:00 EAT). Shut all Saturday. It runs
+      <em>continuously</em> in between — there is no daily close.</td></tr>
+</table>
+<div class="note">While a market is shut the platform <strong>refuses to open or read a round</strong>,
+so you will see no results at all until it reopens. That is deliberate: the provider keeps quoting a
+shut market with a fresh-looking timestamp, and settling real money on a weekend gold print would pay
+out on a price no market ever made. The Overview’s <strong>Market</strong> column says
+<code>closed · opens 22:00 UTC</code> whenever this applies.</div>
 <figure><img src="updown-assets/04-assets.png"><figcaption>The Assets card. Source domain and precision are shown
 per asset, and the “0/1” column is how many of its chains are running.</figcaption></figure>
 </div>

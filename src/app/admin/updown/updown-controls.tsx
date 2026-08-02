@@ -338,11 +338,79 @@ export function ChainStateControls({
 
 // ── Add asset ────────────────────────────────────────────────────────────────
 
-export function AddAssetForm() {
+/**
+ * ADD ASSET — guided, so the three configurations that broke production cannot be typed.
+ *
+ * ⛔ WHAT THIS REPLACED, and why (findings E-45 / E-46). The old form took the SYMBOL as
+ * free text, the CATEGORY as an unrelated dropdown, and the SOURCE URL as free text. In
+ * one afternoon on production that produced `ETH` (not `ETH/USD`) pointed at coingecko —
+ * 100% void, 27 of 27 rounds — and `BNB` filed as `macro`, so the FX/metals calendar shut
+ * a 24/7 coin every weekend. Neither was rejected, and neither was visible until rounds
+ * had already run and voided.
+ *
+ * Now: pick an asset class, then a symbol. Everything the symbol determines — category,
+ * names, icon, decimals, source URL — is FILLED AND LOCKED from the catalogue, and the
+ * form runs the real feed probe before you can add it. The category field is deliberately
+ * NOT editable: it selects the trading calendar, so it is a property of the instrument.
+ *
+ * ⚠️ The server enforces the same rule in `createAsset` via `validateSymbolCategory`.
+ * This form is the courtesy; that is the control.
+ */
+type SymbolOption = {
+  symbol: string; suggestedKey: string; nameEn: string; nameSw: string; nameZh: string;
+  category: string; iconKey: string; decimals: number; minMoveTicks: number;
+  group: string; unsupported?: string;
+};
+type SymbolCheck = {
+  verdict?: "would-confirm" | "stale" | "market-closed" | "unreadable" | "error";
+  supported?: boolean; reason?: string; hours?: string; marketOpen?: boolean;
+  opensAt?: string | null; closureDetail?: string | null;
+  price?: number; quotedAt?: string; skewSec?: number | null;
+  maxStalenessSeconds?: number; detail?: string; error?: string;
+};
+
+export function AddAssetForm({ catalogue }: { catalogue: SymbolOption[] }) {
   const [pending, start] = useTransition();
   const router = useRouter();
   const { deferToast, toast } = useDeferredToast(pending);
   const [open, setOpen] = useState(false);
+
+  const groups = [...new Set(catalogue.map((s) => s.group))];
+  const [group, setGroup] = useState(groups[0] ?? "Crypto");
+  const inGroup = catalogue.filter((s) => s.group === group);
+  const [symbol, setSymbol] = useState(inGroup[0]?.symbol ?? "");
+  const spec = catalogue.find((s) => s.symbol === symbol);
+  const [key, setKey] = useState(spec?.suggestedKey ?? "");
+  const [check, setCheck] = useState<SymbolCheck | null>(null);
+  const [checking, setChecking] = useState(false);
+
+  // Changing the asset class re-points the symbol, which re-points everything else.
+  // Without this the form can sit on a symbol that is not in the visible group — the
+  // cascading-dropdown bug that makes a "guided" form worse than a free-text one.
+  const pickGroup = (g: string) => {
+    setGroup(g);
+    const first = catalogue.find((s) => s.group === g);
+    setSymbol(first?.symbol ?? "");
+    setKey(first?.suggestedKey ?? "");
+    setCheck(null);
+  };
+  const pickSymbol = (s: string) => {
+    setSymbol(s);
+    setKey(catalogue.find((x) => x.symbol === s)?.suggestedKey ?? "");
+    setCheck(null);
+  };
+
+  /** Ask the REAL feed, through the same functions the money path uses. */
+  const runCheck = async () => {
+    if (!symbol) return;
+    setChecking(true);
+    try {
+      const res = await fetch(`/api/admin/updown/symbol-check?symbol=${encodeURIComponent(symbol)}`);
+      setCheck(await res.json());
+    } catch (e) {
+      setCheck({ verdict: "error", detail: String(e).slice(0, 160) });
+    } finally { setChecking(false); }
+  };
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -372,24 +440,128 @@ export function AddAssetForm() {
   return (
     <form onSubmit={onSubmit} className="rounded-lg border border-border bg-bg-elevated p-4 space-y-3">
       <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle">Add tradable asset</p>
+
+      {/* ── The two choices an operator actually makes ── */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <Field label="Key (never renamed)"><Input name="key" required placeholder="XAU" size="sm" /></Field>
-        <Field label="Symbol"><Input name="symbol" required placeholder="XAU/USD" size="sm" /></Field>
-        <Field label="Icon">
-          <Select name="iconKey" defaultValue="gold" options={ICONS.map((i) => ({ value: i, label: i }))} />
+        <Field label="Asset class">
+          <Select
+            value={group} onChange={pickGroup} size="sm" ariaLabel="Asset class"
+            options={groups.map((g) => ({ value: g, label: g }))}
+          />
         </Field>
-        <Field label="Name (EN)"><Input name="nameEn" required placeholder="Gold" size="sm" /></Field>
-        <Field label="Name (SW)"><Input name="nameSw" required placeholder="Dhahabu" size="sm" /></Field>
-        <Field label="Name (ZH) — optional"><Input name="nameZh" placeholder="黄金" size="sm" /></Field>
-        <Field label="Category">
-          <Select name="category" defaultValue="macro" options={CATEGORIES.map((c) => ({ value: c, label: c }))} />
+        <Field label="Symbol">
+          <Select
+            value={symbol} onChange={pickSymbol} size="sm" ariaLabel="Symbol to quote"
+            options={inGroup.map((s) => ({
+              value: s.symbol,
+              label: s.unsupported ? `${s.symbol} · ${s.nameEn} — unavailable` : `${s.symbol} · ${s.nameEn}`,
+            }))}
+          />
         </Field>
-        <Field label="Decimals"><Input name="decimals" type="number" defaultValue="2" min="0" max="8" size="sm" /></Field>
-        <Field label="Min move (ticks)"><Input name="minMoveTicks" type="number" defaultValue="1" min="1" size="sm" /></Field>
-        <Field label="Price source URL" className="sm:col-span-2 lg:col-span-3">
-          <Input name="priceSourceUrl" required placeholder="https://www.kitco.com/price/precious-metals" size="sm" />
+        <Field label="Key (yours, never renamed)">
+          <Input name="key" required value={key} onChange={(e) => setKey(e.currentTarget.value.toUpperCase())} size="sm" />
         </Field>
       </div>
+
+      {/* Everything the SYMBOL determines. Shown so it is auditable, posted as hidden
+          fields so it cannot be edited into disagreement with the symbol. */}
+      {spec && (
+        <>
+          <input type="hidden" name="symbol" value={spec.symbol} />
+          <input type="hidden" name="category" value={spec.category} />
+          <input type="hidden" name="iconKey" value={spec.iconKey} />
+          <input type="hidden" name="nameEn" value={spec.nameEn} />
+          <input type="hidden" name="nameSw" value={spec.nameSw} />
+          <input type="hidden" name="nameZh" value={spec.nameZh} />
+          <input type="hidden" name="decimals" value={spec.decimals} />
+          <input type="hidden" name="minMoveTicks" value={spec.minMoveTicks} />
+          <input type="hidden" name="priceSourceUrl" value="https://api.twelvedata.com/quote" />
+
+          <div className="rounded-lg border border-border bg-bg p-3">
+            <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-2">
+              Set by the symbol — not editable
+            </p>
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11.5px] sm:grid-cols-3">
+              <div><dt className="text-text-subtle">Category</dt><dd className="font-mono">{spec.category}</dd></div>
+              <div><dt className="text-text-subtle">Name</dt><dd>{spec.nameEn} · {spec.nameSw} · {spec.nameZh}</dd></div>
+              <div><dt className="text-text-subtle">Decimals</dt><dd className="font-mono">{spec.decimals}</dd></div>
+              <div><dt className="text-text-subtle">Min move</dt><dd className="font-mono">{spec.minMoveTicks} tick</dd></div>
+              <div className="col-span-2"><dt className="text-text-subtle">Price source</dt>
+                <dd className="font-mono text-[10.5px] break-all">https://api.twelvedata.com/quote</dd></div>
+            </dl>
+            <p className="mt-2 text-[11px] leading-[1.55] text-text-subtle max-w-[80ch]">
+              <strong>The category decides the trading calendar</strong>, so it belongs to the instrument, not to
+              you — <span className="font-mono text-[10.5px]">crypto</span> is 24/7, everything else follows the
+              FX/metals week. A coin filed as <span className="font-mono text-[10.5px]">macro</span> is shut every
+              weekend for no reason, which is exactly what happened to BNB.
+            </p>
+          </div>
+
+          {spec.unsupported && (
+            <div className="rounded-lg border border-danger-border bg-danger-bg p-3 text-[12px] leading-[1.55] text-danger-fg">
+              <strong>{spec.symbol} cannot be used.</strong> {spec.unsupported}
+            </div>
+          )}
+
+          {/* ── Trading hours, stated before anything is created ── */}
+          <div className="rounded-lg border border-border bg-bg p-3 text-[11.5px] leading-[1.6] text-text-subtle max-w-[85ch]">
+            <strong className="text-text">When this asset can settle rounds.</strong>{" "}
+            {spec.category === "crypto"
+              ? `${spec.symbol} trades 24/7 — rounds can run at any hour, weekends included.`
+              : `${spec.symbol} follows the FX/metals week: it opens Sunday 22:00 UTC (Monday 01:00 EAT) and closes Friday 21:00 UTC (Saturday 00:00 EAT), and is shut all Saturday. While it is shut the platform refuses to open or read a round, so you will see NO RESULTS AT ALL until it reopens — that is deliberate, not a fault.`}
+          </div>
+
+          {/* ── THE PRE-FLIGHT. E-45: this is the check nothing in the console could do. ── */}
+          <div className="rounded-lg border border-border bg-bg p-3 space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button type="button" onClick={runCheck} loading={checking} variant="secondary" size="sm">
+                {checking ? "Checking the live feed…" : "Check the live feed"}
+              </Button>
+              <span className="text-[11px] text-text-subtle">
+                Asks the real provider, through the same functions that settle money.
+              </span>
+            </div>
+
+            {check?.verdict === "would-confirm" && (
+              <p className="text-[12px] leading-[1.55] text-success-fg">
+                <strong>Would confirm.</strong> {spec.symbol} quoted{" "}
+                <span className="font-mono">{check.price}</span> at{" "}
+                <span className="font-mono">{check.quotedAt?.slice(11, 19)}Z</span> — skew{" "}
+                <strong>{check.skewSec}s</strong> against the {check.maxStalenessSeconds}s window.
+                This asset can settle rounds now.
+              </p>
+            )}
+            {check?.verdict === "stale" && (
+              <p className="text-[12px] leading-[1.55] text-danger-fg">
+                <strong>Readable, but too slow — do not arm this.</strong> The provider&rsquo;s quote for{" "}
+                {spec.symbol} is <strong>{check.skewSec}s</strong> old against a{" "}
+                {check.maxStalenessSeconds}s window, so a round cannot confirm its opening price and{" "}
+                <strong>every round will void and refund</strong> while looking perfectly healthy. This is
+                exactly what SOL did — 100% void, 8 of 8. Either the plan needs a faster feed for this
+                symbol, or the staleness window has to change (platform-wide), or pick another symbol.
+              </p>
+            )}
+            {check?.verdict === "market-closed" && (
+              <p className="text-[12px] leading-[1.55] text-warning-fg">
+                <strong>The market is shut right now, so the feed cannot be judged.</strong>{" "}
+                {check.closureDetail ?? ""} It reopens{" "}
+                <span className="font-mono">{check.opensAt?.slice(0, 16).replace("T", " ")}Z</span>. Come back
+                then and check again — a quote read while the market is shut proves nothing.
+              </p>
+            )}
+            {(check?.verdict === "unreadable" || check?.verdict === "error") && (
+              <p className="text-[12px] leading-[1.55] text-danger-fg">
+                <strong>The provider could not quote {spec.symbol}.</strong> {check.detail ?? check.error ?? ""}{" "}
+                An asset the feed cannot read voids every round — this is what ETH on coingecko did, 27 of 27.
+              </p>
+            )}
+            {check?.supported === false && (
+              <p className="text-[12px] leading-[1.55] text-danger-fg"><strong>Unavailable.</strong> {check.reason}</p>
+            )}
+          </div>
+        </>
+      )}
+
       <p className="text-[11.5px] leading-[1.55] text-text-subtle max-w-[80ch]">
         The source domain must already be an <strong>enabled trusted source</strong> in the matching category — a round
         captures this exact link when it opens and resolves against the same link. Add it at{" "}

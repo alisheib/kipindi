@@ -2,6 +2,9 @@ import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-she
 import { EmptyState } from "@/components/ui/empty-state";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { listAssets, listChains, getUpDownConfig, ALLOWED_DURATIONS, resolveScheduledMarginBps } from "@/lib/server/updown-config";
+// E-46: the Add-asset form is driven by the catalogue, so a symbol/category pair that
+// cannot work is not offerable. The server enforces the same rule in `createAsset`.
+import { SYMBOL_CATALOGUE } from "@/lib/server/updown-symbols";
 // E-36 — a shut market must be VISIBLY shut. A wall of VOIDs looks identical whether the
 // market is closed or the feed is broken, and that ambiguity is what E-16/E-25/E-32 all cost.
 import { marketSessionAt, nextOpenAfter } from "@/lib/server/market-calendar";
@@ -127,7 +130,7 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
       <AdminPageHead
         title="Up & Down"
         sw="Juu na Chini"
-        actions={canConfig ? <AddAssetForm /> : <ControlLocked what="Add asset" need={CONTROL_DOMAIN.createAsset} />}
+        actions={canConfig ? <AddAssetForm catalogue={[...SYMBOL_CATALOGUE]} /> : <ControlLocked what="Add asset" need={CONTROL_DOMAIN.createAsset} />}
       />
 
       <div className="px-4 lg:px-6 py-5 space-y-4">
