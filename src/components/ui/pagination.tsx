@@ -70,7 +70,18 @@ export function Pagination({
     pages.push(totalPages);
   }
 
-  const btnBase = "inline-flex items-center justify-center h-10 min-w-[40px] px-2 rounded-md font-mono text-[11px] tracking-[0.10em] transition-all duration-150";
+  // ⚠️ 44px WRITTEN LITERALLY, NOT `h-10` (campaign finding G-2, 2026-08-02).
+  // This project overrides Tailwind's spacing scale in `tailwind.config.ts`, where the
+  // key `10` is **80px** — not the 40px it means everywhere else. So `h-10 min-w-[40px]`
+  // rendered every page control on all 25 paginated screens as a 40×80 PORTRAIT pill:
+  // twice the height it was written to be, taller than the 44px filter chips directly
+  // above it, and on a phone tall enough to push the next-page chevron onto its own row.
+  // Nothing caught it because the class list reads correct to anyone who knows Tailwind
+  // and not this config — the same trap already paid for in `notifications-panel.tsx`.
+  // ⛔ Do not "tidy" these back into scale tokens without checking that table.
+  // 44px is also the campaign's tap-target floor (WCAG 2.5.5 AAA), so the literal value
+  // is the one the design rule actually names.
+  const btnBase = "inline-flex items-center justify-center h-[44px] min-w-[44px] px-2 rounded-md font-mono text-[11px] tracking-[0.10em] transition-all duration-150";
   const btnActive = "border border-brand-500 bg-brand-500/15 text-brand-300 font-bold shadow-glow-selected";
   const btnInactive = "border border-border bg-bg-elevated text-text-muted hover:border-border-strong hover:text-text hover:bg-bg-overlay/30";
   const btnDisabled = "border border-border bg-bg-elevated text-text-subtle/40 pointer-events-none";
@@ -95,7 +106,11 @@ export function Pagination({
       <p className="font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle">
         {((safePage - 1) * perPage + 1).toLocaleString()}–{Math.min(safePage * perPage, total).toLocaleString()} {ofLabel} {total.toLocaleString()}
       </p>
-      <div className="flex flex-wrap items-center justify-end gap-1">
+      {/* Centred while wrapped, right-aligned once it fits on one line. At 360 seven
+          44px controls need two rows, and `justify-end` left the overflowing chevron
+          hanging alone against the right edge, which reads as a broken layout rather
+          than a wrapped one. */}
+      <div className="flex flex-wrap items-center justify-center sm:justify-end gap-1">
         <Control to={safePage - 1} disabled={!hasPrev} cls={`${btnBase} ${hasPrev ? btnInactive : btnDisabled}`} aria={prevLabel}>
           <I.chevronLeft s={14} />
         </Control>

@@ -224,5 +224,42 @@ ok("2.5 · its card title and pager both quote the whole-set total, not the page
 ok("2.6 · ⛔ the Overdue alarm is computed across the whole set, not the visible page",
    /unresolvedBefore\(/.test(roundsSrc) && !/stuck\s*=\s*enriched\.filter/.test(roundsSrc));
 
+// ─────────────────────────────────────────────────────────────────────────────
+// §3 · G-2 — the shared pager's controls are the size they LOOK like in the source.
+//
+// 🔴 THE FINDING (G-2, 2026-08-02, found while photographing the G-1 pager on
+// production). `tailwind.config.ts` overrides the spacing scale: the key `10` is **80px**
+// here, not the 40px it means in every other Tailwind project. The shared pager was
+// written `h-10 min-w-[40px]` — plainly intending a ~40px square — and rendered a 40×80
+// PORTRAIT pill on all 25 paginated screens, taller than the 44px filter chips directly
+// above it and, on a phone, tall enough to push the next-page chevron onto its own row.
+//
+// ⛔ THE REASON NOTHING CAUGHT IT: the class list reads correct to anyone who knows
+// Tailwind and not this config, and `min-w-[40px]` beside it looks like confirmation.
+// Only a measurement in a real browser disagrees — which is why the campaign's own
+// evidence bar is a screenshot, not a class name.
+// ─────────────────────────────────────────────────────────────────────────────
+console.log("\n§3 · scale-token trap — controls sized in the scale mean what they look like");
+
+const SCALE = JSON.parse(
+  (readFileSync(join(ROOT, "tailwind.config.ts"), "utf8").match(/spacing:\s*\{([^}]*)\}/s)?.[1] ?? "")
+    .replace(/(\w[\w.]*)\s*:/g, '"$1":').replace(/,\s*$/, "").replace(/^/, "{").replace(/$/, "}"),
+);
+ok("3.1 · the scale really is non-standard, so this section has something to guard",
+   SCALE["10"] === "80px", `10 → ${SCALE["10"]}`);
+
+const pagerSrc = readFileSync(join(ROOT, "src/components/ui/pagination.tsx"), "utf8");
+const pagerCode = pagerSrc.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+ok("3.2 · ⛔ the pager control does not size itself with a scale token",
+   !/\bh-(?:8|9|10|11|12)\b/.test(pagerCode), pagerCode.match(/\bh-\d+\b/)?.[0] ?? "");
+ok("3.3 · it states its height literally, at or above the 44px tap-target floor",
+   /h-\[(\d+)px\]/.test(pagerCode) && Number(pagerCode.match(/h-\[(\d+)px\]/)![1]) >= 44,
+   pagerCode.match(/h-\[\d+px\]/)?.[0] ?? "none");
+ok("3.4 · and its width floor matches, so a page button is not a portrait pill",
+   /min-w-\[(\d+)px\]/.test(pagerCode) && Number(pagerCode.match(/min-w-\[(\d+)px\]/)![1]) >= 44,
+   pagerCode.match(/min-w-\[\d+px\]/)?.[0] ?? "none");
+ok("3.5 · the trap is written down where the next editor will read it",
+   /80px|spacing scale/i.test(pagerSrc));
+
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

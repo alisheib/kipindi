@@ -200,7 +200,10 @@ export default async function AdminUpDownRoundsPage({
               <Chip size="lg" variant={assetKey === a.key ? "brand" : "neutral"} selected={assetKey === a.key}>{a.key}</Chip>
             </Link>
           ))}
-          <span className="mx-2 h-5 w-px bg-border-subtle" aria-hidden />
+          {/* Separates the asset chips from the outcome chips. Hidden below `sm`, where
+              the row wraps and a divider that has lost the thing on its left just reads
+              as a stray mark at the start of a line. */}
+          <span className="hidden sm:block mx-2 h-5 w-px bg-border-subtle" aria-hidden />
           <Link href={buildBaseHref("/admin/updown/rounds", { asset: assetKey })} className="inline-flex items-center min-h-[44px] transition-opacity hover:opacity-80">
             <Chip size="lg" variant={!outcome ? "brand" : "neutral"} selected={!outcome}>Any outcome</Chip>
           </Link>
