@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useDeferredToast } from "@/components/ui/toast";
+import { AiProgress, type AiPhase } from "@/components/ui/ai-progress";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -96,6 +97,8 @@ const PHASE_LABELS: Record<GenPhase, string> = {
   done: "",
 };
 
+/** The shared-component view of the same phases — derived below so the labels and the
+ *  percentages cannot drift apart into two lists that disagree. */
 const PHASE_PROGRESS: Record<GenPhase, number> = {
   idle: 0,
   calling: 25,
@@ -103,6 +106,10 @@ const PHASE_PROGRESS: Record<GenPhase, number> = {
   filtering: 80,
   done: 100,
 };
+
+const POLL_PHASES: AiPhase[] = (["calling", "validating", "filtering"] as const).map((k) => ({
+  key: k, label: PHASE_LABELS[k], pct: PHASE_PROGRESS[k],
+}));
 
 export function GenerateForm({ generatable }: { generatable: string[] }) {
   const [pending, start] = useTransition();
@@ -427,24 +434,16 @@ export function GenerateForm({ generatable }: { generatable: string[] }) {
                   <span className="inline-block h-5 w-5 rounded-full border-2 border-brand-300 border-t-transparent animate-spin shrink-0" />
                   <p className="font-display text-[15px] font-semibold text-text">Generating poll</p>
                 </div>
-                {/* Progress bar */}
-                <div className="space-y-2">
-                  <div className="h-2 w-full rounded-pill bg-bg-overlay overflow-hidden">
-                    <div
-                      className="h-full rounded-pill transition-all duration-700 ease-out"
-                      style={{
-                        width: `${PHASE_PROGRESS[phase]}%`,
-                        background: "linear-gradient(90deg, var(--brand-500), var(--brand-400))",
-                      }}
-                    />
-                  </div>
-                  <p className="font-mono text-[11px] text-text-subtle tabular-nums">
-                    {PHASE_LABELS[phase]}
-                  </p>
-                </div>
-                <p className="text-[11px] text-text-subtle leading-relaxed">
-                  The AI generates a poll, then it passes through validation, duplicate detection, and quality scoring.
-                </p>
+                {/* ⛔ SHARED, not local. This bar used to be ~14 lines of markup here, and
+                    Up & Down proposal generation — a 30-second call — had nothing but a
+                    spinning button. Copying it there would have manufactured two lookalike
+                    implementations; the campaign's standing rule is to fix the shared
+                    component (§0.1b). Both consoles now render `AiProgress`. */}
+                <AiProgress
+                  phases={POLL_PHASES}
+                  active={phase}   /* already narrowed to a running phase in this branch */
+                  note="The AI generates a poll, then it passes through validation, duplicate detection, and quality scoring."
+                />
               </div>
             ) : result ? (
               /* ── Result ── */

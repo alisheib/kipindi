@@ -17,6 +17,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useDeferredToast } from "@/components/ui/toast";
+import { AiProgress, useAiPhases, type AiPhase } from "@/components/ui/ai-progress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -109,6 +110,21 @@ export function ProposeForm({
   const [duration, setDuration] = useState("15");
   const [prompt, setPrompt] = useState("");
 
+  /**
+   * Progress, because this call takes ~30 SECONDS of real provider time and the officer
+   * previously had only a spinning button. Same shared component the AI poll console uses
+   * — the phases below describe THIS pipeline (fetch the approved page → read a price →
+   * run the source/duration/margin checks), and they advance on timers, so the bar stops
+   * at the last stage and waits rather than creeping to 99% and lying. Ali, 2026-08-03.
+   */
+  const PHASES: AiPhase[] = [
+    { key: "calling",    label: "Asking the AI to open the approved source…",        pct: 20 },
+    { key: "reading",    label: "Reading the live price and its quote time…",        pct: 50, afterMs: 4000 },
+    { key: "checking",   label: "Checking the source, duration and margin…",         pct: 78, afterMs: 9000 },
+    { key: "finishing",  label: "Scoring the proposal and filing it for review…",    pct: 92, afterMs: 9000 },
+  ];
+  const gen = useAiPhases(PHASES);
+
   const chosen = assets.find((a) => a.id === assetId);
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -121,8 +137,10 @@ export function ProposeForm({
     fd.set("assetId", assetId);
     fd.set("durationMinutes", duration);
     if (prompt.trim()) fd.set("prompt", prompt.trim());
+    gen.start();
     start(async () => {
       const r = await generateProposalAction(fd);
+      gen.finish();
       if (!r.ok) {
         toast({ title: "Could not generate a proposal", description: r.error, variant: "danger" });
         return;
@@ -188,6 +206,24 @@ export function ProposeForm({
       <Button type="submit" loading={pending} disabled={!aiEnabled || assets.length === 0} variant="primary" size="md">
         {aiEnabled ? "Ask the AI to propose" : "AI generation is off"}
       </Button>
+
+      {/* The officer's window into a 30-second call. Renders nothing when idle. */}
+      <AiProgress
+        phases={PHASES}
+        active={gen.active}
+        elapsed={gen.elapsed}
+        note="The AI opens the asset's approved domain, reports the price and quote time it actually finds, and the proposal is then checked against the source allowlist, the 5-minute grid and the margin range. A page with no readable price is held back rather than armed."
+      />
+
+      {/* A generation that reached the last phase and is still going is not stuck — say so,
+          rather than leaving the officer to guess at a bar that has stopped moving. */}
+      {gen.active === "finishing" && gen.elapsed > 45 && (
+        <p className="text-[11px] leading-[1.55] text-warning-fg max-w-[80ch]">
+          Still working after {gen.elapsed}s. Web-search grounding can take a while on a slow
+          source page — it will finish or fail on its own, and either way the result lands in
+          the queue below. Nothing is lost if you navigate away.
+        </p>
+      )}
     </form>
   );
 }
