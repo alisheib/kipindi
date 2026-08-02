@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useDeferredToast } from "@/components/ui/toast";
-import { AiProgress, type AiPhase } from "@/components/ui/ai-progress";
+import { AiProgress, AiOverlayShell, type AiPhase } from "@/components/ui/ai-progress";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -425,8 +425,7 @@ export function GenerateForm({ generatable }: { generatable: string[] }) {
 
       {/* Generation overlay — fixed scrim blocks the entire page while running */}
       {active && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={(e) => e.stopPropagation()}>
-          <div className="m-dialog-in w-[90vw] max-w-[420px] rounded-xl border border-border bg-bg-elevated p-5 shadow-e4" onClick={(e) => e.stopPropagation()}>
+        <AiOverlayShell>
             {phase !== "done" ? (
               /* ── In-progress ── */
               <div className="space-y-4">
@@ -502,8 +501,7 @@ export function GenerateForm({ generatable }: { generatable: string[] }) {
                 </div>
               </div>
             ) : null}
-          </div>
-        </div>
+        </AiOverlayShell>
       )}
     </div>
   );
@@ -636,28 +634,20 @@ export function BatchGenerateForm({ maxBatch, remaining, generatable }: { maxBat
 
       {/* Simulated per-poll progress overlay */}
       {active && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={(e) => e.stopPropagation()}>
-          <div className="m-dialog-in w-[90vw] max-w-[440px] rounded-xl border border-border bg-bg-elevated p-5 shadow-e4" onClick={(e) => e.stopPropagation()}>
+        <AiOverlayShell>
             {phase === "running" ? (
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
                   <span className="inline-block h-5 w-5 rounded-full border-2 border-brand-300 border-t-transparent animate-spin shrink-0" />
                   <p className="font-display text-[15px] font-semibold text-text">Generating {total} poll{total !== 1 ? "s" : ""}</p>
                 </div>
-                <div className="space-y-2">
-                  <div className="h-2 w-full rounded-pill bg-bg-overlay overflow-hidden">
-                    <div
-                      className="h-full rounded-pill transition-all duration-300 ease-out"
-                      style={{ width: `${pct}%`, background: "linear-gradient(90deg, var(--brand-500), var(--brand-400))" }}
-                    />
-                  </div>
-                  <p className="font-mono text-[11px] text-text-subtle tabular-nums">
-                    {pct < 28 ? "Brainstorming ideas across categories…" : `Refining poll ${currentPoll} of ${total}`} · {Math.round(pct)}%
-                  </p>
-                </div>
-                <p className="text-[11px] text-text-subtle leading-relaxed">
-                  Two-tier: a cheap pass brainstorms ideas and filters duplicates / out-of-window dates for free, then the full Sonnet + web-search pipeline runs only on the keepers.
-                </p>
+                {/* Determinate: the batch really does know "poll 3 of 8". Same shared
+                    bar as the single generator and Up & Down — one chrome everywhere. */}
+                <AiProgress
+                  pct={pct}
+                  label={`${pct < 28 ? "Brainstorming ideas across categories…" : `Refining poll ${currentPoll} of ${total}`} · ${Math.round(pct)}%`}
+                  note="Two-tier: a cheap pass brainstorms ideas and filters duplicates / out-of-window dates for free, then the full Sonnet + web-search pipeline runs only on the keepers."
+                />
               </div>
             ) : (
               <div className="space-y-4">
@@ -675,8 +665,7 @@ export function BatchGenerateForm({ maxBatch, remaining, generatable }: { maxBat
                 <button type="button" onClick={dismiss} className="btn btn-ghost btn-sm rounded-pill w-full">Dismiss</button>
               </div>
             )}
-          </div>
-        </div>
+        </AiOverlayShell>
       )}
     </div>
   );

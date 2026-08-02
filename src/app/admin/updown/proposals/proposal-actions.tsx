@@ -17,7 +17,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useDeferredToast } from "@/components/ui/toast";
-import { AiProgress, useAiPhases, type AiPhase } from "@/components/ui/ai-progress";
+import { AiProgress, AiOverlayShell, useAiPhases, type AiPhase } from "@/components/ui/ai-progress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -207,22 +207,36 @@ export function ProposeForm({
         {aiEnabled ? "Ask the AI to propose" : "AI generation is off"}
       </Button>
 
-      {/* The officer's window into a 30-second call. Renders nothing when idle. */}
-      <AiProgress
-        phases={PHASES}
-        active={gen.active}
-        elapsed={gen.elapsed}
-        note="The AI opens the asset's approved domain, reports the price and quote time it actually finds, and the proposal is then checked against the source allowlist, the 5-minute grid and the margin range. A page with no readable price is held back rather than armed."
-      />
-
-      {/* A generation that reached the last phase and is still going is not stuck — say so,
-          rather than leaving the officer to guess at a bar that has stopped moving. */}
-      {gen.active === "finishing" && gen.elapsed > 45 && (
-        <p className="text-[11px] leading-[1.55] text-warning-fg max-w-[80ch]">
-          Still working after {gen.elapsed}s. Web-search grounding can take a while on a slow
-          source page — it will finish or fail on its own, and either way the result lands in
-          the queue below. Nothing is lost if you navigate away.
-        </p>
+      {/* ⛔ THE SAME BLOCKING OVERLAY THE POLL CONSOLE USES — one shell, one scrim, one
+          blur, one card (Ali, 2026-08-03: pick the best and make it consistent). It is not
+          decoration: it stops an officer double-firing a paid 30-second generation or
+          navigating away mid-call. */}
+      {gen.running && (
+        <AiOverlayShell>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <span className="inline-block h-5 w-5 rounded-full border-2 border-brand-300 border-t-transparent animate-spin shrink-0" />
+              <p className="font-display text-[15px] font-semibold text-text">
+                Asking the AI to propose a chain
+              </p>
+            </div>
+            <AiProgress
+              phases={PHASES}
+              active={gen.active}
+              elapsed={gen.elapsed}
+              note="The AI opens the asset's approved domain, reports the price and quote time it actually finds, and the proposal is then checked against the source allowlist, the 5-minute grid and the margin range. A page with no readable price is held back rather than armed."
+            />
+            {/* A generation still going at the last phase is not stuck — say so, rather
+                than leaving the officer staring at a bar that has stopped moving. */}
+            {gen.active === "finishing" && gen.elapsed > 45 && (
+              <p className="text-[11px] leading-[1.55] text-warning-fg">
+                Still working after {gen.elapsed}s. Web-search grounding can be slow on an
+                awkward page — it will finish or fail on its own, and either way the result
+                lands in the queue. Nothing is lost.
+              </p>
+            )}
+          </div>
+        </AiOverlayShell>
       )}
     </form>
   );

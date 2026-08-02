@@ -71,20 +71,62 @@ export function useAiPhases(phases: AiPhase[]) {
   return { active, elapsed, start, finish, running: active !== null };
 }
 
+/**
+ * THE BLOCKING SHELL — one scrim, one card, both consoles.
+ *
+ * Ali, 2026-08-03: *"when we blur everything in one screen while doing progress we should
+ * in another and the same in the opposite — pick the best feature and make it visually
+ * consistent."* The AI poll console blurred the page behind a centred dialog; Up & Down
+ * showed a bar inline and left the whole page clickable during a 30-second call. The
+ * overlay is the better of the two and not only visually: it is what stops an officer
+ * double-firing a paid generation or navigating away mid-action.
+ *
+ * ⛔ The scrim, the blur, the card chrome and the entrance animation live HERE and nowhere
+ * else. Two copies of these class lists is exactly how the two consoles drifted apart in
+ * the first place.
+ */
+export function AiOverlayShell({ children }: { children: React.ReactNode }) {
+  const stop = (e: React.MouseEvent) => e.stopPropagation();
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+      onClick={stop}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        className="m-dialog-in w-[90vw] max-w-[420px] rounded-xl border border-border bg-bg-elevated p-5 shadow-e4"
+        onClick={stop}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
 export function AiProgress({
-  phases, active, elapsed, note,
+  phases, active, elapsed, note, pct: pctOverride, label: labelOverride,
 }: {
-  phases: AiPhase[];
+  phases?: AiPhase[];
   /** Active phase key, or null when idle. */
-  active: string | null;
+  active?: string | null;
   /** Seconds since start — shown because a 30s wait with no clock reads as a hang. */
   elapsed?: number;
   /** One line under the bar explaining the pipeline. */
   note?: string;
+  /**
+   * DETERMINATE mode. The batch generator genuinely knows how far through it is
+   * ("poll 3 of 8"), which the phase machine cannot express — so it passes a real
+   * percentage and its own label instead. Same bar, same chrome, honest either way.
+   */
+  pct?: number;
+  label?: string;
 }) {
-  if (!active) return null;
-  const current = phases.find((p) => p.key === active) ?? phases[0];
-  const pct = current?.pct ?? 0;
+  const determinate = pctOverride !== undefined;
+  if (!determinate && !active) return null;
+  const current = determinate ? null : (phases ?? []).find((p) => p.key === active) ?? (phases ?? [])[0];
+  const pct = determinate ? Math.max(0, Math.min(100, pctOverride)) : (current?.pct ?? 0);
+  const label = determinate ? (labelOverride ?? "") : (current?.label ?? "");
 
   return (
     <div className="space-y-2" role="status" aria-live="polite">
@@ -95,7 +137,7 @@ export function AiProgress({
         />
       </div>
       <div className="flex items-baseline justify-between gap-3">
-        <p className="font-mono text-[11px] text-text-subtle tabular-nums">{current?.label ?? ""}</p>
+        <p className="font-mono text-[11px] text-text-subtle tabular-nums">{label}</p>
         {elapsed !== undefined && (
           <p className="font-mono text-[11px] text-text-subtle tabular-nums shrink-0">
             {elapsed}s

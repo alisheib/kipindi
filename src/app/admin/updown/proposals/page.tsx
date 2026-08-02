@@ -66,6 +66,35 @@ const REASON_LABEL: Record<string, string> = {
   officer_judgement: "Officer judgement",
 };
 
+/**
+ * WHAT TO DO ABOUT IT — Ali, 2026-08-03: *"what do all those 'didn't pass checks' mean?"*
+ *
+ * The label above names the fault; it does not tell an officer whether they caused it,
+ * whether it will recur, or whether there is anything to do. On production **13 of 13**
+ * proposals failed and **not one ever read a price**, so "didn't pass checks" was the only
+ * thing the console had ever said — 13 times, for two quite different reasons, one of
+ * which is unfixable by the officer.
+ */
+const REASON_ADVICE: Record<string, string> = {
+  source_unreadable:
+    "Expected, and not your fault: the approved source is api.twelvedata.com, a key-protected " +
+    "API. The AI has no key (and must not have one), so it can never read a price there. " +
+    "Use the Add-asset form instead — it reads the real feed for you.",
+  duplicate_chain:
+    "Nothing to fix — you already run this asset at this duration. Edit the existing chain " +
+    "on the Overview page rather than arming a second one.",
+  source_not_trusted:
+    "Add the domain under Sources & categories, in this asset's own category, then regenerate.",
+  duration_not_allowed: "Regenerate with 5, 15 or 30 minutes.",
+  margin_out_of_range: "Edit the margin before approving; the ladder value is pre-filled.",
+  framing_unclear: "Edit the framing — all three languages must be present.",
+  asset_disabled: "Enable the asset on the Overview page first.",
+  provider_error:
+    "The AI call itself failed — usually a timeout or a credit limit. Check Admin → AI usage; " +
+    "no proposal was produced and nothing is stuck.",
+  officer_judgement: "",
+};
+
 function Indicators({ p }: { p: StoredProposal }) {
   if (p.qualityIndicators.length === 0) {
     return <span className="text-[11px] text-text-subtle">—</span>;
@@ -297,6 +326,9 @@ export default async function UpDownProposalsPage({
                               {reasons.map((r) => (
                                 <li key={r} className="text-[10.5px] leading-snug text-hot-rose-300">
                                   · {REASON_LABEL[r] ?? r}
+                                  {REASON_ADVICE[r] && (
+                                    <span className="mt-0.5 block text-text-subtle">{REASON_ADVICE[r]}</span>
+                                  )}
                                 </li>
                               ))}
                             </ul>
