@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>50pick · Up &amp; Down — Operator &amp; Player Runbook</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm 14mm; }
+  * { box-sizing: border-box; }
+  body { font: 10.5pt/1.5 "Segoe UI", Helvetica, Arial, sans-serif; color: #14161c; margin: 0; }
+  h1 { font-size: 22pt; margin: 0 0 2mm; letter-spacing: -.4pt; }
+  h2 { font-size: 13pt; margin: 9mm 0 3mm; padding-bottom: 1.5mm;
+       border-bottom: 1.5pt solid #14161c; page-break-after: avoid; }
+  h3 { font-size: 11pt; margin: 6mm 0 2mm; page-break-after: avoid; }
+  p, li { margin: 0 0 2.5mm; }
+  ul, ol { margin: 0 0 3mm; padding-left: 6mm; }
+  li { margin-bottom: 1.5mm; }
+  code { font: 9.5pt/1.4 Consolas, monospace; background: #f1f2f5; padding: .3mm 1mm; border-radius: 1mm; }
+  .sub { color: #5b6070; font-size: 10pt; margin: 0 0 6mm; }
+  .step { page-break-inside: avoid; margin: 0 0 6mm; }
+  .who { display: inline-block; font: 8.5pt/1 Consolas, monospace; text-transform: uppercase;
+         letter-spacing: .5pt; background: #14161c; color: #fff; padding: 1mm 2mm; border-radius: 1mm;
+         vertical-align: 1.2mm; margin-left: 2mm; }
+  .path { font: 9.5pt/1.4 Consolas, monospace; background: #eef0f4; border-left: 2.5pt solid #14161c;
+          padding: 2mm 3mm; margin: 0 0 3mm; }
+  figure { margin: 3mm 0 4mm; page-break-inside: avoid; }
+  figure img { display: block; max-width: 100%; border: .5pt solid #c8ccd6; }
+  figcaption { font-size: 8.5pt; color: #5b6070; margin-top: 1.5mm; }
+  .narrow img { max-width: 78mm; }
+  .mid img { max-width: 120mm; }
+  table { width: 100%; border-collapse: collapse; margin: 0 0 4mm; font-size: 9.5pt; }
+  th, td { border: .5pt solid #c8ccd6; padding: 1.5mm 2mm; text-align: left; vertical-align: top; }
+  th { background: #eef0f4; font-weight: 600; }
+  .note { border: .5pt solid #c8ccd6; border-left: 2.5pt solid #b8860b; background: #fdfaf2;
+          padding: 2.5mm 3mm; margin: 0 0 4mm; page-break-inside: avoid; }
+  .stop { border-left-color: #a8202a; background: #fdf4f4; }
+  .ok   { border-left-color: #1c7a45; background: #f3faf5; }
+  .lead { font-size: 11pt; }
+  .brk { page-break-before: always; }
+  .foot { margin-top: 8mm; padding-top: 2mm; border-top: .5pt solid #c8ccd6;
+          font-size: 8.5pt; color: #5b6070; }
+</style>
+
+<h1>Up &amp; Down — Operator &amp; Player Runbook</h1>
+<p class="sub">50pick · <code>50pick.tz</code> · how a round is generated, how it is resolved against
+Twelve Data, and how a player plays it. Every screenshot in this document is from the live platform.</p>
+
+<p class="lead">Up &amp; Down asks one question: <strong>will the price be higher or lower when the
+clock runs out?</strong> A <em>chain</em> is one asset at one duration. Once started it emits a round
+at every clock boundary, back to back, with no further operator action. Nobody types a price and
+nobody decides an outcome — the price comes from Twelve Data and the outcome is arithmetic.</p>
+
+<h2>Who can do what</h2>
+<table>
+  <tr><th style="width:38%">Action</th><th style="width:24%">Role needed</th><th>Where</th></tr>
+  <tr><td>Approve a price source domain</td><td>Trading</td><td>Sources &amp; categories</td></tr>
+  <tr><td>Add / edit / enable an asset</td><td>Owner (Admin)</td><td>Up &amp; Down → Overview</td></tr>
+  <tr><td>Choose the price reading method</td><td>Owner (Admin)</td><td>Up &amp; Down → Overview</td></tr>
+  <tr><td>Change the thresholds</td><td>Owner (Admin)</td><td>Up &amp; Down → Overview</td></tr>
+  <tr><td>Create / edit / start / stop a chain</td><td>Trading</td><td>Up &amp; Down → Overview</td></tr>
+  <tr><td>Watch rounds resolve</td><td>Trading</td><td>Up &amp; Down → Rounds</td></tr>
+  <tr><td>Place a bet</td><td>Any signed-in player</td><td><code>/updown</code></td></tr>
+</table>
+<div class="note">The four Owner rows are Owner-only <em>in practice</em>: the roles that hold
+<code>accounting</code> authority cannot open the page those controls live on. Everything else is
+done as a Trading officer. Never use the Owner login for work a Trading officer can do — if you do,
+you stop finding out whether your own permissions work.</div>
+
+<h2>The navigation</h2>
+<figure class="narrow">
+  <img src="updown-assets/01-nav.png">
+  <figcaption>The admin sidebar. Everything in this runbook is under <strong>Sources &amp;
+  categories</strong> and the <strong>Up &amp; Down</strong> group (Overview, Rounds).</figcaption>
+</figure>
+
+<h2 class="brk">Part 1 · Generating rounds</h2>
+<p>Five steps, in this order. Steps 1–3 are once per asset. Steps 4–5 are what you repeat.</p>
+
+<div class="step">
+<h3>Step 1 · Approve the price source domain <span class="who">Trading</span></h3>
+<div class="path">Sidebar → <strong>Sources &amp; categories</strong></div>
+<p>Add <code>twelvedata.com</code> and enable it. An asset can only point at a domain that is an
+enabled trusted source, and this is checked three times: when the asset is added, when it is
+enabled, and again every time a chain starts.</p>
+<div class="note">The allowlist is <strong>per category</strong>. One <code>twelvedata.com</code> row
+does not cover both a <code>crypto</code> asset and a <code>macro</code> one — add it under each
+category you will use, or the chain refuses to start.</div>
+<figure><img src="updown-assets/02-sources.png"><figcaption>Sources &amp; categories.</figcaption></figure>
+</div>
+
+<div class="step">
+<h3>Step 2 · Add the asset <span class="who">Owner</span></h3>
+<div class="path">Sidebar → Up &amp; Down → <strong>Overview</strong> → “+ Add asset” (top right)</div>
+<table>
+  <tr><th style="width:30%">Field</th><th>What to put</th></tr>
+  <tr><td>Symbol</td><td>Twelve Data’s own symbol, e.g. <code>BTC/USD</code>, <code>XAU/USD</code></td></tr>
+  <tr><td>Price source URL</td><td><code>https://api.twelvedata.com/quote</code></td></tr>
+  <tr><td>Category</td><td><code>crypto</code> for coins, <code>macro</code> for metals / FX / indices</td></tr>
+  <tr><td>Decimals</td><td>Price precision. <code>2</code> for BTC and gold</td></tr>
+  <tr><td>Min move ticks</td><td>The smallest move that counts, in ticks. <code>1</code> tick at 2
+      decimals = $0.01. Gold is set to <code>15</code> = a $0.15 floor</td></tr>
+</table>
+<p>Then switch the asset to <strong>Enabled</strong>. A disabled asset cannot emit rounds.</p>
+<figure><img src="updown-assets/04-assets.png"><figcaption>The Assets card. Source domain and precision are shown
+per asset, and the “0/1” column is how many of its chains are running.</figcaption></figure>
+</div>
+
+<div class="step">
+<h3>Step 3 · Set the reading method <span class="who">Owner</span></h3>
+<div class="path">Up &amp; Down → Overview → <strong>Price reading method</strong></div>
+<p>Set method <code>feed</code> and provider <code>twelvedata</code>.</p>
+<div class="note stop">The other provider, <code>mock</code>, is a simulator. It <strong>refuses by
+construction in production</strong> — it will never settle a real round. If every round is voiding,
+check this card first.</div>
+<figure><img src="updown-assets/06-reading-method.png"><figcaption>Price reading method.</figcaption></figure>
+</div>
+
+<div class="step">
+<h3>Step 4 · Create the chain <span class="who">Trading</span></h3>
+<div class="path">Up &amp; Down → Overview → <strong>Chains</strong> card → “+ Add chain”</div>
+<ul>
+  <li><strong>Asset</strong> and <strong>Duration</strong> — 5, 15 or 30 minutes.</li>
+  <li><strong>Margin %</strong> — leave <em>blank</em>. Blank inherits the measured value for that
+      asset class and duration, and the placeholder shows you what that is.</li>
+  <li><strong>Min / max stake</strong> — blank inherits the platform defaults.</li>
+</ul>
+<p>A new chain starts <strong>stopped</strong>. Creating it emits nothing.</p>
+<figure class="mid"><img src="updown-assets/08-add-chain.png"><figcaption>Add chain. The margin placeholder tracks
+the asset and duration you pick.</figcaption></figure>
+</div>
+
+<div class="step">
+<h3>Step 5 · Start it <span class="who">Trading</span></h3>
+<div class="path">Chains card → the chain’s row → <strong>Start</strong></div>
+<p>The row then shows <strong>RUNNING</strong> and a <strong>Next boundary</strong> time. From that
+moment rounds appear on their own.</p>
+<figure><img src="updown-assets/05-chains.png"><figcaption>The Chains card. <strong>Market</strong> says whether
+that asset’s market is trading right now; <strong>Margin</strong> is the band actually in force
+(<code>·sched</code> means inherited); <strong>Void rate</strong> is how often its recent rounds
+refunded — the feedback on whether the margin suits the asset.</figcaption></figure>
+<p><strong>Pause</strong> stops new rounds and keeps the chain’s clock. <strong>Stop</strong> stops
+new rounds entirely. Both let rounds already open finish and settle normally — no player is ever
+left holding an unsettled stake.</p>
+</div>
+
+<h2 class="brk">Part 2 · How resolution works</h2>
+<p>This is the part to understand before testing, because a round that refunds is not a round that
+failed.</p>
+
+<h3>One price per boundary, shared</h3>
+<p>At every clock boundary the engine reads the price <strong>once</strong> for that asset and that
+instant, from <code>api.twelvedata.com/quote</code>. That single reading is written to a
+write-once ledger and shared by every round edge on that instant. So:</p>
+<ul>
+  <li>Round N’s <strong>close</strong> is literally round N+1’s <strong>open</strong> — the same
+      number, to the digit. Adjacent rounds cannot disagree.</li>
+  <li>A reading, once confirmed, cannot be overwritten by a retry or a second server.</li>
+</ul>
+
+<h3>The freshness rule</h3>
+<p>Twelve Data reports <em>when it last quoted the price</em>. If that time is more than
+<strong>90 seconds</strong> from the round boundary, the reading is <strong>refused</strong> — we
+never settle on a price we cannot date to the moment the round ended. A refused boundary is retried
+on a backoff ladder; if it never confirms, the round <strong>voids and every stake is refunded in
+full</strong>.</p>
+
+<h3>The winning band (the margin)</h3>
+<p>At open, the round freezes two targets: <code>open + margin</code> and
+<code>open − margin</code>, where margin is a percentage of the opening price. At close:</p>
+<table>
+  <tr><th style="width:34%">Close price</th><th>Outcome</th></tr>
+  <tr><td>at or above the UP target</td><td><strong>UP</strong> — Up backers win</td></tr>
+  <tr><td>at or below the DOWN target</td><td><strong>DOWN</strong> — Down backers win</td></tr>
+  <tr><td>anywhere between</td><td><strong>VOID</strong> — every stake refunded in full, no fee</td></tr>
+</table>
+<p>The band is frozen at open, so changing the margin later only affects future rounds. A bet
+already taken can never be re-priced.</p>
+<div class="note">The margin is the one setting that decides whether the game feels alive. Too wide
+and almost every round refunds; too narrow and a one-cent flicker decides real money. The defaults
+were measured against roughly a thousand real windows per duration and land at about one round in
+three refunding: <strong>0.02% at 5 minutes, 0.03% at 15, 0.05% at 30</strong>. Leave the field
+blank unless you are deliberately tuning one asset.</div>
+
+<h3>Market hours</h3>
+<p>Crypto trades 24/7. Metals, FX and indices do not: their week runs <strong>Sunday 22:00 UTC to
+Friday 21:00 UTC</strong>. Outside that window no round opens and none settles, and the Chains card
+says <code>closed · opens 22:00 UTC</code>. This is deliberate — a data provider will still answer
+at the weekend, and settling real money on a market that is shut is not something the platform will
+do.</p>
+
+<h3>What a round pays</h3>
+<p>Winners split the pool after the platform’s commission — <strong>13% of the pool, capped at a
+third of the smaller side</strong>. On a balanced TZS 10,000 pool that is TZS 1,300. Frozen onto
+each round at creation. The <code>× 1.4 est.</code> on the buttons is an <em>estimate</em>, never
+fixed odds, and the card says so.</p>
+
+<h3>Watching it happen</h3>
+<div class="path">Sidebar → Up &amp; Down → <strong>Rounds</strong></div>
+<figure><img src="updown-assets/10-rounds.png"><figcaption>Every round, its open and close prices, its band, its
+outcome and when it settled.</figcaption></figure>
+
+<h2 class="brk">Part 3 · Playing</h2>
+<div class="path">Top navigation → <strong>Up &amp; Down</strong> (<code>/updown</code>)</div>
+
+<figure class="mid"><img src="updown-assets/15-pickers.png"><figcaption>Pick the asset, then the duration. The
+strip underneath shows the last few outcomes, oldest to newest.</figcaption></figure>
+
+<figure class="narrow"><img src="updown-assets/13-live-round.png"><figcaption>A live round. Read it top to bottom:
+the countdown; the pool and how many players; the Up/Down split; <strong>Target to win</strong> —
+the two frozen prices and the ± band; your own position if you have one; the stake chips; the two
+bet buttons. The footer names the source, the time it quoted, and the opening
+price.</figcaption></figure>
+
+<ol>
+  <li>Pick a stake — a chip, or <strong>Custom</strong>.</li>
+  <li>Tap <strong>Up</strong> or <strong>Down</strong>.</li>
+</ol>
+<div class="note stop">There is <strong>no confirmation step</strong> on this game. The first tap
+places the bet and takes the money — that is the design for a five-minute round. Check the stake
+chip before tapping.</div>
+<p>Betting closes <em>at</em> the boundary, because the bet is on the price at that instant.</p>
+
+<figure class="narrow"><img src="updown-assets/14-settled-round.png"></figure>
+<figure class="narrow"><img src="updown-assets/14b-settled-outcome.png"><figcaption>The same card once settled:
+the verdict, <strong>both prices</strong> — open → close — and the source line naming
+<code>api.twelvedata.com</code> and the time it quoted. This is what makes the result checkable by
+the person whose money it was.</figcaption></figure>
+
+<figure class="narrow"><img src="updown-assets/11-player-board.png"><figcaption>What a player sees when the chain
+is <strong>not started</strong>. If a tester reports “the game is empty”, this is it — check the
+chain’s state, not the feed.</figcaption></figure>
+
+<div class="path">Top navigation → <strong>History</strong> (<code>/updown/history</code>)</div>
+<figure class="narrow"><img src="updown-assets/12-player-history.png"><figcaption>Every round the player has
+taken, with the prices and the net return.</figcaption></figure>
+
+<div class="note">Up &amp; Down does <strong>not</strong> send a notification for each win or loss —
+a player running twelve rounds an hour would get twelve messages. The result is on the round card
+and in History. Money movements are always recorded in the wallet and on the statement.</div>
+
+<h2 class="brk">Part 4 · Testing it, and reading a failure correctly</h2>
+
+<h3>A test that proves the game works</h3>
+<ol>
+  <li>As Trading, start a <strong>5-minute crypto</strong> chain (crypto so market hours cannot
+      confuse the result).</li>
+  <li>As <strong>two different players</strong>, back opposite sides of the same round.</li>
+  <li>Wait for the boundary. Do nothing else — settlement is automatic.</li>
+  <li>Check, in this order:
+    <ul>
+      <li>the round has an <strong>open price and a close price, and they differ</strong>;</li>
+      <li>the outcome matches the direction those two prices moved;</li>
+      <li>the winner’s wallet went up and the loser’s stayed down;</li>
+      <li>stake in − paid out = the commission.</li>
+    </ul>
+  </li>
+</ol>
+<div class="note ok">Read the <strong>prices</strong>, never just the outcome flag. Two identical
+prices with a VOID means the feed gave the same number twice; two different prices with a VOID means
+the move was inside the band. Those look identical in an outcome column and mean completely
+different things.</div>
+
+<h3>Every round is voiding — what to check, in order</h3>
+<ol>
+  <li><strong>Is the chain running?</strong> Chains card → State.</li>
+  <li><strong>Is the market open?</strong> Chains card → Market. A shut metals market opens nothing.</li>
+  <li><strong>Is the provider <code>twelvedata</code>, not <code>mock</code>?</strong> Price reading
+      method card.</li>
+  <li><strong>Is the margin far too wide?</strong> Chains card → Void rate. A high void rate with
+      healthy prices means the band, not the feed.</li>
+  <li><strong>Is the domain approved for that asset’s category?</strong> Sources &amp; categories.</li>
+  <li><strong>Only then suspect the feed.</strong> Round detail shows the refusal reason in words.</li>
+</ol>
+<p>The refusal reasons say different things and send you to different places: <em>market closed</em>
+is the calendar; <em>stale</em> means a price arrived but too far from the boundary; <em>no-move</em>
+means the price moved less than the band; <em>unparseable</em> or <em>wrong source</em> means the
+asset is pointing somewhere it should not be.</p>
+
+<h3>What a void is not</h3>
+<p>A void is not a loss and not an error. Every stake comes back in full and no commission is taken.
+It is the platform declining to decide, which is the correct behaviour whenever the price cannot be
+established or the move was too small to call.</p>
+
+<div class="foot">
+  Prepared for operator and player testing on <code>50pick.tz</code>. Screenshots captured from the
+  live platform, 2026-08-02. Round <code>udr_0c015a854aa105600373</code> is the worked example:
+  opened 63,114.00, closed 63,058.00, band ±$12.62, resolved DOWN, settled 441 ms after its own
+  boundary, paid TZS 8,700 to the Down backer against the Up backer’s loss, commission TZS 1,300.
+</div>
