@@ -253,8 +253,27 @@ function toPrisma(p: StoredProposal): any {
   };
 }
 
+/**
+ * The `UpDownProposal` delegate.
+ *
+ * 🔴 `prisma` IS A FUNCTION (`prisma.ts` exports `prisma(): PrismaClient | null`), not a
+ * client. This read used to be `(prisma as any).upDownProposal` — a property of the
+ * FUNCTION OBJECT, which is `undefined` — so every call became
+ * `undefined.upsert(...)` → *"Cannot read properties of undefined (reading 'upsert')"*.
+ * The whole module was dead on production from the day it shipped: generation threw
+ * before writing its first row, and `listProposals`/`countProposalsByState` are called
+ * behind `.catch(() => [])` on the queue page, so the reads failed **silently** and the
+ * page rendered "No proposals yet" — indistinguishable from an unused feature. Found only
+ * when Jaykishan Kaba pressed the button on 2026-08-02 (campaign finding E-40).
+ *
+ * ⛔ The `as any` is what let this through: `prisma` genuinely has no `upDownProposal`
+ * property, and the cast erased the one check that would have failed the build. Cast the
+ * RESULT of the call, never the function. Guarded by `npm run test:prisma-delegate`.
+ */
 function pc(): any {
-  return (prisma as any).upDownProposal;
+  const c = prisma();
+  if (!c) throw new Error("Up & Down proposals need a database (DATABASE_URL is unset).");
+  return (c as unknown as Record<string, any>).upDownProposal;
 }
 
 const prismaStore: ProposalStore = {
