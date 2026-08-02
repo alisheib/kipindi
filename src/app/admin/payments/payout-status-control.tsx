@@ -95,7 +95,12 @@ export function PayoutStatusControl({
         <Row term="Oldest stuck" desc={oldestStuckHours == null ? "—" : `${oldestStuckHours.toFixed(1)} h`} />
       </dl>
 
-      <div className="grid grid-cols-3 gap-1.5">
+      {/* ⛔ G-6. `grid-cols-3` at 360 gives each cell ~63px of text room, and the labels
+          are single unbreakable words at 10px uppercase with 0.1em tracking —
+          "OPERATIONAL" needs ~79px, so it was clipped by 16px with no ellipsis, on the
+          control that declares whether withdrawals are working. A word cannot wrap, so
+          the column has to widen: one per row below `sm`. */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
         {OPTIONS.map((o) => (
           <button
             key={o.id}

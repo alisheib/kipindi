@@ -329,9 +329,14 @@ export default async function AdminCompliancePage({
           </AdminCard>
 
           <AdminCard title="Regulator report exports" sw="Ripoti za udhibiti">
+            {/* ⛔ G-6. Each row carried `-mx-2 px-2` to bleed its hover strip 12px past
+                the card on each side, and nothing absorbed it — so this list overflowed
+                its card by 12px at EVERY width, not just on a phone. The highlight now
+                aligns to the card's content box: a 12px difference in where a background
+                starts, and no difference at all to the reader. */}
             <div className="space-y-1">
               {REPORTS.map((r) => (
-                <a key={r.id} href={`/admin/reports#${r.id}`} className="flex items-center gap-3 py-2 border-b border-border-subtle last:border-b-0 hover:bg-bg-overlay -mx-2 px-2 rounded transition-colors">
+                <a key={r.id} href={`/admin/reports#${r.id}`} className="flex items-center gap-3 py-2 border-b border-border-subtle last:border-b-0 hover:bg-bg-overlay px-2 rounded transition-colors">
                   <span className={[
                     "h-7 w-7 rounded-md inline-flex items-center justify-center font-mono text-micro shrink-0",
                     r.tone === "warning" ? "bg-warning/15 text-warning" :
