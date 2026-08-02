@@ -24,7 +24,7 @@ import { assetStore, chainStore, roundStore, observationStore, __resetUpDownMemo
 import {
   createAsset, setAssetEnabled, createChain, setChainState,
   boundaryAfter, cleanGridAnchor, __resetUpDownConfig,
-  stakeBoundsForUpDownMarket, setUpDownConfig,
+  stakeBoundsForUpDownMarket, setUpDownConfig, getUpDownConfig,
 } from "../src/lib/server/updown-config.ts";
 import {
   decideOutcome, decideOutcomeByTargets, outcomeToSide, minMoveFor, roundTitle,
@@ -509,7 +509,15 @@ let round1Id = "";
   if (!spxC.ok) throw new Error(spxC.error);
   await setChainState(spxC.data.id, "RUNNING", OFFICER);
   const spxChain = (await chainStore.get(spxC.data.id))!;
-  ok("10.0 · a fresh chain inherits the 0.5% default margin (no override stored)", spxChain.marginBps === null);
+  // ⚠️ E-32. This section's subject is the PDF pricing example (base 4120, 0.5% → up 4140.6,
+  // down 4099.4) and the arithmetic around it — NOT whatever the product default happens to
+  // be. Since the margin ladder shipped, a 5-minute round inherits 0.02%, so a section that
+  // silently leaned on 0.5% was testing the default, not the maths. The ladder is therefore
+  // pinned to 50 bps for this block and restored at the end of it: the chain still stores NO
+  // override, so the INHERITANCE path is what gets exercised, which is the point of 10.0.
+  const spxLadderRestore = (await getUpDownConfig()).marginSchedule;
+  await setUpDownConfig({ marginSchedule: [{ category: "*", maxDurationMinutes: 5, bps: 50 }] }, OFFICER);
+  ok("10.0 · a fresh chain stores no override and inherits the ladder", spxChain.marginBps === null);
 
   const dan = await fundedUser("ud_dan", 500_000);
   const eve = await fundedUser("ud_eve", 500_000);
@@ -601,17 +609,24 @@ let round1Id = "";
   const drift = (spxEnd + openPools + house) - spxStart;
   ok("10.7 · ★★ MONEY CONSERVATION under the margin model — payout, refund, open pool, or fee",
      Math.abs(drift) <= 2, `drift ${drift} TZS (players ${spxEnd} + pools ${openPools} + house ${house})`);
+  await setUpDownConfig({ marginSchedule: spxLadderRestore }, OFFICER);
 }
 
 // ── 11 · ⛔ FROZEN: a mid-round margin change cannot move a LIVE round's boundaries ──
 {
+  // ⚠️ E-32, as in §10: pin the ladder so this block tests FREEZING rather than the current
+  // default. And the widening below must now change the LADDER — after E-32,
+  // `defaultMarginBps` is not what a 5-minute round reads, so widening it would leave this
+  // case passing while proving nothing about a config change it no longer responds to.
+  const frozenLadderRestore = (await getUpDownConfig()).marginSchedule;
+  await setUpDownConfig({ marginSchedule: [{ category: "*", maxDurationMinutes: 5, bps: 50 }] }, OFFICER);
   const rf = await openRound(chain, B(40), await stubObservation(B(40), 2400.00), 2400.00);
   if (!rf.ok) throw new Error(rf.error);
   const frozen = (await roundStore.get(rf.data.id))!;
   ok("11.1 · the round froze up 2412 / down 2388 at open (Gold 2400, 0.5%)",
      frozen.upTarget === 2412 && frozen.downTarget === 2388, `up=${frozen.upTarget} down=${frozen.downTarget}`);
-  // The operator now WIDENS the default margin to 5% (a fresh round would use up 2520).
-  await setUpDownConfig({ defaultMarginBps: 500 }, OFFICER);
+  // The operator now WIDENS the margin a fresh round would take, to 5% (up 2520).
+  await setUpDownConfig({ marginSchedule: [{ category: "*", maxDurationMinutes: 5, bps: 500 }] }, OFFICER);
   const stillFrozen = (await roundStore.get(rf.data.id))!;
   ok("11.2 · ⛔ after a config change to 5%, the LIVE round's targets are UNCHANGED (frozen at open)",
      stillFrozen.upTarget === 2412 && stillFrozen.downTarget === 2388, `up=${stillFrozen.upTarget}`);
@@ -619,7 +634,7 @@ let round1Id = "";
   const cf = await closeRound(rf.data.id, await stubObservation(B(41), 2415.00), 2415.00);
   ok("11.3 · ⛔ it resolves by its FROZEN band → UP — a config edit can never re-price a bet already taken",
      cf.ok && cf.data.outcome === "UP", cf.ok ? cf.data.outcome : cf.error);
-  await setUpDownConfig({ defaultMarginBps: 50 }, OFFICER); // restore
+  await setUpDownConfig({ marginSchedule: frozenLadderRestore }, OFFICER); // restore
 }
 
 console.log(`\nupdown-engine: ${pass} passed, ${fail} failed`);

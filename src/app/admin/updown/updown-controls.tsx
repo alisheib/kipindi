@@ -189,11 +189,16 @@ export function EditAssetForm({
  * omitting it would make "clear this override" unexpressible.
  */
 export function EditChainForm({
-  id, label, minStake, maxStake, marginBps, defaultMarginBps,
+  id, label, minStake, maxStake, marginBps, inheritMarginBps,
 }: {
   id: string; label: string;
   minStake: number | null; maxStake: number | null;
-  marginBps: number | null; defaultMarginBps: number;
+  marginBps: number | null;
+  /** What a BLANK margin box inherits for this chain — the E-32 ladder rung for its asset
+   *  class and duration, else the flat product default. ⚠️ Not `cfg.defaultMarginBps`: on
+   *  every chain the platform actually runs those two now differ (0.02-0.05% vs 0.50%), and
+   *  a placeholder showing the wrong one tells an operator the band is 25x what it is. */
+  inheritMarginBps: number;
 }) {
   const [pending, start] = useTransition();
   const router = useRouter();
@@ -236,7 +241,7 @@ export function EditChainForm({
           <Input
             name="marginPct" type="number" step="0.01" min="0" max="20" size="sm"
             defaultValue={marginBps != null ? (marginBps / 100).toFixed(2) : ""}
-            placeholder={`inherit (${(defaultMarginBps / 100).toFixed(2)})`}
+            placeholder={`inherit (${(inheritMarginBps / 100).toFixed(2)})`}
           />
         </Field>
         <Field label="Min stake (blank = inherit)">
@@ -250,8 +255,10 @@ export function EditChainForm({
         The margin is the winning band: <strong>UP at open + margin, DOWN at open − margin</strong>, and
         anything between VOIDs and refunds every stake. A band wider than the asset typically moves in one
         round voids nearly every round <em>even when the price feed is working perfectly</em> — measured on
-        production, 0.50% needs a ±$316 move on BTC inside five minutes. <strong>0</strong> falls back to the
-        source&rsquo;s minimum move, which lets a single tick decide real money. Changes affect FUTURE rounds only.
+        production, 0.50% needs a ±$316 move on BTC inside five minutes and voided 5 real rounds out of 5.
+        Leaving this blank inherits the measured ladder for this asset class and duration (E-32), which is what
+        the placeholder shows. <strong>0</strong> falls back to the source&rsquo;s minimum move, which lets a
+        single tick decide real money. Changes affect FUTURE rounds only.
       </p>
       <div className="flex gap-2">
         <Button type="submit" loading={pending} variant="primary" size="md">
@@ -405,11 +412,36 @@ export function AddAssetForm() {
 
 // ── Add chain ────────────────────────────────────────────────────────────────
 
-export function AddChainForm({ assets }: { assets: Array<{ id: string; key: string; nameEn: string }> }) {
+export function AddChainForm({
+  assets, marginSchedule, defaultMarginBps,
+}: {
+  assets: Array<{ id: string; key: string; nameEn: string; category: string }>;
+  /** The E-32 ladder, so the margin placeholder shows what THIS asset class and duration
+   *  will actually inherit. It was a hard-coded "inherit (0.5)" before, which is now wrong
+   *  for every combination the form can produce — and a chain created at 0.5% voids
+   *  essentially every round it ever emits. */
+  marginSchedule: Array<{ category: string; maxDurationMinutes: number; bps: number }>;
+  defaultMarginBps: number;
+}) {
   const [pending, start] = useTransition();
   const router = useRouter();
   const { deferToast, toast } = useDeferredToast(pending);
   const [open, setOpen] = useState(false);
+  // Mirrors what the picker currently shows, so the placeholder tracks the selection.
+  const [assetId, setAssetId] = useState(assets[0]?.id ?? "");
+  const [dur, setDur] = useState("5");
+
+  /** The same resolution the server does (`resolveScheduledMarginBps`): exact category
+   *  before `"*"`, then the tightest window that still covers this duration. */
+  const inherited = (() => {
+    const cat = assets.find((a) => a.id === assetId)?.category ?? "";
+    const minutes = Number(dur) || 0;
+    const m = marginSchedule
+      .filter((r) => (r.category === cat || r.category === "*") && minutes <= r.maxDurationMinutes)
+      .sort((a, b) => (a.category === "*" ? 1 : 0) - (b.category === "*" ? 1 : 0) ||
+        a.maxDurationMinutes - b.maxDurationMinutes)[0];
+    return m?.bps ?? defaultMarginBps;
+  })();
 
   if (assets.length === 0) {
     return (
@@ -449,14 +481,17 @@ export function AddChainForm({ assets }: { assets: Array<{ id: string; key: stri
       <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle">Add chain</p>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <Field label="Asset">
-          <Select name="assetId" defaultValue={assets[0].id}
+          <Select name="assetId" value={assetId} onChange={setAssetId}
             options={assets.map((a) => ({ value: a.id, label: `${a.key} · ${a.nameEn}` }))} />
         </Field>
         <Field label="Duration">
-          <Select name="durationMinutes" defaultValue="5"
+          <Select name="durationMinutes" value={dur} onChange={setDur}
             options={DURATIONS.map((d) => ({ value: String(d), label: `${d} min` }))} />
         </Field>
-        <Field label="Margin % (optional)"><Input name="marginPct" type="number" step="0.01" min="0" max="20" placeholder="inherit (0.5)" size="sm" /></Field>
+        <Field label="Margin % (optional)">
+          <Input name="marginPct" type="number" step="0.01" min="0" max="20"
+            placeholder={`inherit (${(inherited / 100).toFixed(2)})`} size="sm" />
+        </Field>
         <Field label="Min stake (optional)"><Input name="minStake" type="number" placeholder="inherit" size="sm" /></Field>
         <Field label="Max stake (optional)"><Input name="maxStake" type="number" placeholder="inherit" size="sm" /></Field>
       </div>
@@ -688,7 +723,7 @@ export function ThresholdsForm({
   return (
     <form onSubmit={onSubmit} className="space-y-3">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <Field label="Round margin (%)">
+        <Field label="Fallback margin (%)">
           <Input name="defaultMarginPct" type="number" step="0.01" min="0" max="20" defaultValue={(defaultMarginBps / 100).toFixed(2)} size="sm" />
         </Field>
         <Field label="Staleness (s)">
@@ -708,11 +743,15 @@ export function ThresholdsForm({
         </Field>
       </div>
       <p className="text-[11.5px] leading-[1.55] text-text-subtle max-w-[80ch]">
-        <strong>Round margin</strong>{" "}is the ± band around each round&rsquo;s opening price. UP wins if the price
+        <strong>The margin</strong>{" "}is the ± band around each round&rsquo;s opening price. UP wins if the price
         reaches <em>open + margin</em>, DOWN if it reaches <em>open − margin</em>; a smaller move voids the round and
-        refunds every stake in full. Default <strong>0.5%</strong> (the 50pick factor) — lower it for fast or quiet
-        rounds to reduce voids. It is frozen onto each round at open, so a change here affects only <strong>new</strong>{" "}
-        rounds; set it per chain to tune a single asset or duration.
+        refunds every stake in full. ⚠️ The box above is the <strong>fallback only</strong>: every duration this
+        platform actually runs is priced by the measured ladder (E-32) — <strong>0.02%</strong> at 5 min,
+        <strong>0.03%</strong> at 15, <strong>0.05%</strong> at 30 — and the fallback applies solely to a window
+        longer than the ladder&rsquo;s top rung. Measured on real provider data, 0.5% voids 96&ndash;100% of rounds at
+        every duration offered here; it is roughly right for a <em>one-day</em> round, because the typical move grows
+        with the square root of the window. The margin is frozen onto each round at open, so a change affects only{" "}
+        <strong>new</strong> rounds; override it per chain with <em>Edit</em> to tune a single asset or duration.
       </p>
       <p className="text-[11.5px] leading-[1.55] text-text-subtle max-w-[80ch]">
         <strong>Staleness</strong>{" "}is how far the source&rsquo;s own quoted time may sit from the round boundary

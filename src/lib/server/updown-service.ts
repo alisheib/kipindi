@@ -351,7 +351,7 @@ export async function openRound(
   // The frozen winning boundaries: base ± (base × marginBps/10000). Null if the boundary
   // wasn't confirmed at open (no openPrice) — such a round falls back at close and voids.
   const cfg = await getUpDownConfig();
-  const marginBps = marginBpsForChain(chain, cfg);
+  const marginBps = marginBpsForChain(chain, cfg, asset);
   const targets = openPrice != null ? computeTargets(openPrice, marginBps, asset) : null;
 
   // The money row. `rateOverrides` is how the chain's frozen fee profile

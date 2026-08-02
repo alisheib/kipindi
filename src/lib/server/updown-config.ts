@@ -111,6 +111,61 @@ export type UpDownConfig = {
    * affects FUTURE rounds). 0 disables the %-band and reverts to the source's min-move rule.
    */
   defaultMarginBps: number;
+  /**
+   * ⭐ THE MARGIN LADDER — finding **E-32**, decided by Ali 2026-08-02 ("balanced").
+   *
+   * `defaultMarginBps` above is ONE number for every duration and every asset class, and
+   * that is measurably unworkable. Measured on real 1-minute bars from the live provider
+   * (`npm run ops:updown-margin-study`, ~1,000 windows per row, weekend synthetic bars
+   * excluded — see E-36), **0.50% voids 96-100% of rounds at every duration this platform
+   * offers**:
+   *
+   * ```
+   *              median move   void @0.50%   void @ the value chosen below
+   *   BTC   5m       0.031%        99.7%          37.6%  (2 bps)
+   *   BTC  15m       0.058%        98.5%          29.1%  (3 bps)
+   *   BTC  30m       0.087%        96.4%          27.1%  (5 bps)
+   *   XAU   5m       0.043%       100.0%          27.7%  (2 bps)
+   *   XAU  15m       0.069%       100.0%          24.8%  (3 bps)
+   *   XAU  30m       0.115%        97.1%          23.5%  (5 bps)
+   * ```
+   *
+   * A chain left on 0.50% voids nearly every round **while the feed works perfectly**, and
+   * the round history is then indistinguishable from findings E-16 / E-25 — the two outages
+   * that made every round VOID for the platform's first 1,402. That is the worst failure
+   * mode available: safe, silent, and it looks exactly like the bug that was just fixed.
+   *
+   * Why 0.50% is not simply "a bit wide": the median move scales as **√duration** (measured
+   * 0.031 / 0.058 / 0.087 / 0.120% at 5/15/30/60 min — a √t fit to within 8%). Solving for
+   * 0.50% gives a window of roughly **23 hours**. 0.50% is a sane margin for a DAILY round.
+   * It is ~16× too wide for an hour and ~100× too wide for five minutes.
+   *
+   * ⚠️ Rounded rules, and why they are not tidier. `category` is the asset's own category, so
+   * the per-asset-class axis Ali asked for is expressible — but the two classes actually live
+   * (`crypto`, `macro`) measured within 0.01% of each other at equal duration, so populating
+   * them with duplicate ladders would only invite silent drift. Duration is the axis that
+   * matters; the ladder is therefore `"*"`. **The exception is already measured**: EUR/USD
+   * (also `macro`) has a median 5-minute move of **0.012%**, a THIRD of gold's, so a forex
+   * asset needs ~1 bps and must get either its own rule here or a per-chain override — the
+   * `macro` ladder would void ~70% of its 5-minute rounds.
+   *
+   * Resolution order, most specific first: the chain's own `marginBps` → the narrowest
+   * matching rule here → `defaultMarginBps`. Frozen onto each round at open, as before.
+   */
+  marginSchedule: MarginRule[];
+};
+
+/**
+ * One rung of the margin ladder. Matches a round when its asset's category matches
+ * `category` (or `category` is `"*"`) and its duration is ≤ `maxDurationMinutes`.
+ */
+export type MarginRule = {
+  /** An asset category (`crypto`, `macro`, …), or `"*"` for any. */
+  category: string;
+  /** Applies to rounds of at most this many minutes. */
+  maxDurationMinutes: number;
+  /** The winning-boundary margin, in basis points. */
+  bps: number;
 };
 
 export const DEFAULT_UPDOWN_CONFIG: UpDownConfig = {
@@ -134,7 +189,22 @@ export const DEFAULT_UPDOWN_CONFIG: UpDownConfig = {
     estimatedWinningsRate: 0.4,
     showEstimatedWinnings: true,
   },
-  defaultMarginBps: 50, // 0.5% — the "50pick" pricing-model default (base ± 0.5% boundaries).
+  // Kept as the LAST resort only — a duration longer than the ladder's top rung. Every
+  // round the platform actually runs is priced by `marginSchedule` (E-32), and 0.50% is
+  // roughly right for the ~23-hour window it now only ever applies to.
+  defaultMarginBps: 50,
+  // The measured ladder — ~25-40% void, Ali's "balanced" call (E-32). Each rung is the
+  // margin whose measured void rate on real bars is nearest that band; the table of
+  // measurements is in the `marginSchedule` doc comment above. Ordered narrowest-window
+  // first for readability only; resolution picks the narrowest MATCHING rung regardless.
+  marginSchedule: [
+    { category: "*", maxDurationMinutes: 5, bps: 2 },
+    { category: "*", maxDurationMinutes: 15, bps: 3 },
+    { category: "*", maxDurationMinutes: 30, bps: 5 },
+    { category: "*", maxDurationMinutes: 60, bps: 7 },
+    { category: "*", maxDurationMinutes: 240, bps: 14 },
+    { category: "*", maxDurationMinutes: 1440, bps: 30 },
+  ],
 };
 
 declare global {
@@ -245,6 +315,27 @@ export async function setUpDownConfig(
     // round would almost never reach a boundary and would void perpetually.
     if (!Number.isInteger(m) || m < 0 || m > 2000) {
       return { ok: false, error: "Round margin must be a whole number of basis points, 0-2000 (0-20%). 50 = 0.5%." };
+    }
+  }
+  if (updates.marginSchedule !== undefined) {
+    // Validated for the same reason `retryBackoffSeconds` is: this list decides what a
+    // winning boundary IS, so a malformed rung is a money problem, not a typo. An empty
+    // list is allowed and means "fall back to defaultMarginBps for everything" — which is
+    // the pre-E-32 behaviour, and an operator must be able to get back to it.
+    const s = updates.marginSchedule;
+    if (!Array.isArray(s) || s.length > 40) {
+      return { ok: false, error: "Margin schedule must be a list of at most 40 rules." };
+    }
+    for (const r of s) {
+      if (!r || typeof r.category !== "string" || !r.category) {
+        return { ok: false, error: 'Each margin rule needs a category (an asset category, or "*" for any).' };
+      }
+      if (!Number.isInteger(r.maxDurationMinutes) || r.maxDurationMinutes < 1 || r.maxDurationMinutes > 20_160) {
+        return { ok: false, error: "Each margin rule's maximum duration must be a whole number of minutes, 1-20160 (14 days)." };
+      }
+      if (!Number.isInteger(r.bps) || r.bps < 0 || r.bps > 2000) {
+        return { ok: false, error: "Each margin rule's margin must be a whole number of basis points, 0-2000 (0-20%)." };
+      }
     }
   }
 
@@ -825,9 +916,50 @@ export async function rateProfileFor(chain: StoredChain): Promise<Partial<RateCo
   return (chain.rateProfile as Partial<RateConfig> | null) ?? cfg.defaultRateProfile;
 }
 
-/** The winning-boundary margin (bps) a chain applies — its own override, else the default. */
-export function marginBpsForChain(chain: StoredChain, cfg: UpDownConfig): number {
-  return chain.marginBps ?? cfg.defaultMarginBps;
+/**
+ * The scheduled margin for a (category, duration) — the E-32 ladder, resolved most-specific
+ * first: a rule naming this exact category beats a `"*"` rule, and among equally specific
+ * rules the NARROWEST window that still covers this duration wins. Returns null when no rung
+ * covers it, so the caller falls back to `defaultMarginBps` rather than guessing.
+ *
+ * ⚠️ "Narrowest matching" is what makes the ladder a ladder. A 5-minute round matches the
+ * 5, 15, 30, 60, 240 and 1440-minute rungs; picking any but the tightest would price a
+ * 5-minute round like a daily one, which is E-32 all over again.
+ */
+export function resolveScheduledMarginBps(
+  cfg: UpDownConfig,
+  category: string,
+  durationMinutes: number,
+): number | null {
+  const matches = (cfg.marginSchedule ?? []).filter(
+    (r) => (r.category === category || r.category === "*") && durationMinutes <= r.maxDurationMinutes,
+  );
+  if (matches.length === 0) return null;
+  matches.sort((a, b) =>
+    // exact category first, then the tightest window
+    (a.category === "*" ? 1 : 0) - (b.category === "*" ? 1 : 0) ||
+    a.maxDurationMinutes - b.maxDurationMinutes);
+  return matches[0]!.bps;
+}
+
+/**
+ * The winning-boundary margin (bps) a chain applies — its own override, else the E-32 ladder
+ * for its asset class and duration, else the product default.
+ *
+ * ⚠️ `asset` IS REQUIRED, and that is deliberate rather than convenient. Before E-32 this
+ * took `(chain, cfg)` and returned one number for everything, which is precisely the defect:
+ * a margin that cannot see how long the round is, or what it is on, cannot be right for both
+ * a 5-minute crypto round and a daily metals one. Making the asset a parameter means a caller
+ * cannot accidentally price a round without knowing what it is pricing.
+ */
+export function marginBpsForChain(
+  chain: StoredChain,
+  cfg: UpDownConfig,
+  asset: { category: string },
+): number {
+  return chain.marginBps
+    ?? resolveScheduledMarginBps(cfg, asset.category, chain.durationMinutes)
+    ?? cfg.defaultMarginBps;
 }
 
 /**

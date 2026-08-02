@@ -1,7 +1,7 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ScrollX } from "@/components/ui/scroll-x";
-import { listAssets, listChains, getUpDownConfig, ALLOWED_DURATIONS } from "@/lib/server/updown-config";
+import { listAssets, listChains, getUpDownConfig, ALLOWED_DURATIONS, resolveScheduledMarginBps } from "@/lib/server/updown-config";
 import { observationStore, roundStore } from "@/lib/server/updown-dal";
 import { poolFee } from "@/lib/payout";
 import { formatTzs } from "@/lib/utils";
@@ -70,6 +70,21 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
       }),
     ),
   );
+
+  // ── E-32 · the margin a chain is ACTUALLY priced at ────────────────────────
+  // Three helpers rather than one expression, because the grid needs two different
+  // answers and conflating them is how the old cell came to lie. `scheduledFor` is
+  // "what the ladder says for this class+duration" (null if no rung covers it);
+  // `inheritedMarginBps` is what an EMPTY override box would inherit, and it is what the
+  // Edit form's placeholder must show; `effectiveMarginBps` is what the engine will freeze.
+  const scheduledFor = (c: { assetId: string; durationMinutes: number }) => {
+    const a = assetById.get(c.assetId);
+    return a ? resolveScheduledMarginBps(cfg, a.category, c.durationMinutes) : null;
+  };
+  const inheritedMarginBps = (c: { assetId: string; durationMinutes: number }) =>
+    scheduledFor(c) ?? cfg.defaultMarginBps;
+  const effectiveMarginBps = (c: { assetId: string; durationMinutes: number; marginBps: number | null }) =>
+    c.marginBps ?? inheritedMarginBps(c);
 
   const feePreview = poolFee(FEE_PREVIEW_POOL / 2, FEE_PREVIEW_POOL / 2, cfg.defaultRateProfile, "YES");
 
@@ -220,7 +235,13 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
           title={`Chains · ${running.length} running`}
           sw="Minyororo"
           padding="p-0"
-          action={<AddChainForm assets={assets.filter((a) => a.enabled).map((a) => ({ id: a.id, key: a.key, nameEn: a.nameEn }))} />}
+          action={
+            <AddChainForm
+              assets={assets.filter((a) => a.enabled).map((a) => ({ id: a.id, key: a.key, nameEn: a.nameEn, category: a.category }))}
+              marginSchedule={cfg.marginSchedule}
+              defaultMarginBps={cfg.defaultMarginBps}
+            />
+          }
         >
           {chains.length === 0 ? (
             <div className="p-4">
@@ -268,11 +289,18 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
                           {fmtTime(c.nextBoundaryAt)}
                         </td>
                         <td className="px-4 py-3 text-right font-mono text-[11.5px] whitespace-nowrap">
-                          {/* Effective winning band: this chain's override, else the product default. */}
+                          {/* Effective winning band: this chain's override, else the E-32
+                              ladder for its class and duration, else the flat default.
+                              ⚠️ It MUST be the effective number. Before E-32 this cell read
+                              `c.marginBps ?? cfg.defaultMarginBps` and would now print 0.50%
+                              over a chain the engine actually prices at 0.02% — an operator
+                              reading a margin the money path does not use. */}
                           <span className={c.marginBps != null ? "text-text-muted" : "text-text-subtle"}>
-                            {((c.marginBps ?? cfg.defaultMarginBps) / 100).toFixed(2)}%
+                            {(effectiveMarginBps(c) / 100).toFixed(2)}%
                           </span>
-                          {c.marginBps == null && <span className="text-text-faint"> ·def</span>}
+                          {c.marginBps == null && (
+                            <span className="text-text-faint"> ·{scheduledFor(c) != null ? "sched" : "def"}</span>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-right font-mono text-[11.5px] whitespace-nowrap">
                           {(() => {
@@ -301,7 +329,7 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
                             <EditChainForm
                               id={c.id} label={label}
                               minStake={c.minStake} maxStake={c.maxStake}
-                              marginBps={c.marginBps} defaultMarginBps={cfg.defaultMarginBps}
+                              marginBps={c.marginBps} inheritMarginBps={inheritedMarginBps(c)}
                             />
                             <ChainStateControls id={c.id} state={c.state} label={label} />
                           </div>

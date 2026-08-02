@@ -35,9 +35,24 @@ import { isSourceTrusted, normalizeDomain } from "./source-registry";
 import type { MarketCategory } from "./market-service";
 import {
   getAsset, listChains, createChain, updateChain, setChainState, updateAsset,
-  getUpDownConfig, checkMarginBps, ALLOWED_DURATIONS, type Duration,
+  getUpDownConfig, checkMarginBps, ALLOWED_DURATIONS, resolveScheduledMarginBps,
+  type Duration, type UpDownConfig,
 } from "./updown-config";
 import { hostMatchesDomain } from "./updown-feed";
+
+/**
+ * The margin a NEW proposal should carry — the E-32 ladder for this asset's class and the
+ * requested duration, falling back to the flat product default only for a duration no rung
+ * covers. Local because a proposal has an asset and a duration in hand but no chain yet, so
+ * it cannot use `marginBpsForChain`.
+ */
+function scheduledMarginFor(
+  cfg: UpDownConfig,
+  asset: { category: string },
+  durationMinutes: number,
+): number {
+  return resolveScheduledMarginBps(cfg, asset.category, durationMinutes) ?? cfg.defaultMarginBps;
+}
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -463,7 +478,10 @@ export async function generateProposal(opts: {
     requestAssetId: asset.id,
     requestPrompt: opts.prompt ?? "",
     durationMinutes: opts.durationMinutes,
-    marginBps: cfg.defaultMarginBps,
+    // E-32 — the scheduled margin for THIS asset class and duration, never the flat
+    // product default. A proposal that arrives pre-filled with 0.50% is a proposal an
+    // officer approves into a chain that voids every round.
+    marginBps: scheduledMarginFor(cfg, asset, opts.durationMinutes),
     sourceUrl: "",
     sourceDomain: "",
     framingEn: "",
@@ -524,7 +542,9 @@ export async function generateProposal(opts: {
       currentSourceUrl: asset.priceSourceUrl,
       durationMinutes: opts.durationMinutes,
       decimals: asset.decimals,
-      defaultMarginBps: cfg.defaultMarginBps,
+      // What the AI is told to treat as the house default — the scheduled value, so its
+      // own suggestion is anchored to something that can actually resolve (E-32).
+      defaultMarginBps: scheduledMarginFor(cfg, asset, opts.durationMinutes),
       maxStalenessSeconds: cfg.maxStalenessSeconds,
       prompt: opts.prompt,
     });
@@ -568,7 +588,7 @@ export async function generateProposal(opts: {
   p.reasoning = String(g.reasoning ?? "").trim().slice(0, 4000);
   p.confidence = Number.isFinite(g.confidence) ? Math.max(0, Math.min(100, Math.round(g.confidence))) : 0;
   const proposedMargin = Number(g.marginBps);
-  p.marginBps = Number.isInteger(proposedMargin) ? proposedMargin : cfg.defaultMarginBps;
+  p.marginBps = Number.isInteger(proposedMargin) ? proposedMargin : scheduledMarginFor(cfg, asset, opts.durationMinutes);
   const price = Number(g.observedPrice);
   p.observedPrice = Number.isFinite(price) && price > 0 ? price : null;
   const quoted = g.observedQuotedAt ? new Date(String(g.observedQuotedAt)) : null;

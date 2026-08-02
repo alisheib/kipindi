@@ -488,7 +488,7 @@ going to say money-out had never worked, and the database said otherwise.
 |---|---|
 | **Admins monitoring + generating** | 🟢 **Yes, now** — with one fix first (2FA, below) |
 | **Prediction markets (polls) for real players** | 🟡 **Nearly** — blocked only on withdrawals + test-data cleanup |
-| **Up & Down for real players** | 🟡 **It works now** (§6q — a real winner, a real loser, money paid) — but blocked on the **margin** decision, E-32 |
+| **Up & Down for real players** | 🟡 **CRYPTO is ready** (§6q — a real winner, a real loser, money paid; margin decided + shipped, §6t). 🔴 **FOREX AND METALS ARE NOT** — E-36: no trading-calendar gate, and the provider quotes synthetic jitter through the weekend, so a gold or forex chain would settle real money on prices no market made |
 
 ### 🔴 BLOCKER 1 — withdrawals succeed one time in four, and three are stuck right now
 
@@ -608,9 +608,15 @@ player accounts already exist, so the cleanup has to be surgical, not a truncate
 1. Turn admin 2FA **on**. → admins can then work the console safely, today.
 2. Fix withdrawals until they are boring. → prediction markets can then open to real players.
 3. ✅ ~~Flip the feed and get the run that has never happened.~~ **DONE 2026-08-02, §6q.**
-   👉 Replaced by: **answer E-32 — what margin, per duration and asset class?** 0.5% cannot
-   resolve a 5-minute crypto round; 0 lets a one-cent flicker decide real money. Until this is
-   set deliberately, Up & Down is proven but not launchable.
+   ✅ ~~Answer E-32 — what margin, per duration and asset class?~~ **DECIDED BY ALI + SHIPPED
+   2026-08-02, §6t** — "balanced", ~1 in 3 voids: a measured ladder, 2 bps at 5 min rising to
+   30 bps at a day, after ~4,000 real windows showed 0.5% voids 96-100% of rounds at *every*
+   duration the platform offers.
+   👉 Replaced by: **E-36 — the trading-calendar gate.** Crypto is genuinely launchable. Metals
+   and forex are NOT: nothing stops a chain running while the market is shut, and the provider
+   answers with synthetic jitter rather than a frozen price, so 20-95% of those rounds would
+   RESOLVE on a price no market made. That is worse than voiding, and it is the last thing
+   between Up & Down and a launch defensible to a regulator.
 4. Clear the TZS 9,000,000 of QA money so the finance screens tell the truth.
 
 ⛔ **Do not open Up & Down to players before step 3 succeeds**, and do not open *anything* to
@@ -1216,12 +1222,120 @@ thing — and broke the parse. Then writing the braced form *inside a plain bloc
 document it **ended the comment early** and broke it again. `tsc` caught both; no regex guard
 would have. The build stays the gate.
 
-| **E-32** | 🔴 **BLOCKER · OPEN — Ali's decision, not a code fix** | Up & Down · pricing | **At the product default margin, a short round cannot resolve — and the failure is indistinguishable from a broken feed.** `updown.config.defaultMarginBps` is **50 = 0.5%**; `computeTargets` freezes UP at `base+0.5%` and DOWN at `base−0.5%` and VOIDs everything between. On BTC at ~63,250 that requires a **±$316 move inside five minutes**. Measured against §6q's own two rounds — real prices, no extra spend: #1 moved **−105.99 (0.168%)** and #2 **−30.01 (0.047%)**, and **BOTH would have VOIDED at 0.5%** while resolving cleanly at margin 0. So a chain left on the default fills its history with `no-move` VOIDs *while the feed is working perfectly*, which is precisely the picture E-16 and E-25 produced when it was not — and the natural reading ("the feed is broken again") would be wrong. ⛔ **Not a defect to fix unilaterally:** 0.5% is Ali's deliberate "50pick factor" and is reasonable for a 30-minute metals round; it is the *one setting for every duration and asset class* that is wrong. Needs a per-duration (and probably per-asset-class) default. ⚠️ Compounded by **E-31**: `updateChainAction` has no caller, so a chain's margin **cannot be changed after creation** through the product — the only lever is to delete and recreate the chain. | live rounds `udr_94864f4b0a6b03306fc1` / `udr_c168ce28d8ea69ab6ceb`, both prices read off `UpDownObservation`; band arithmetic in `live/s10-verify-run.mjs` |
+| **E-32** | 🔴 **BLOCKER** → ✅ **DECIDED BY ALI + FIXED 2026-08-02 (§6t)** | Up & Down · pricing | **At the product default margin, no round this platform can emit is able to resolve — and the failure is indistinguishable from a broken feed.** `updown.config.defaultMarginBps` was **50 = 0.5%** for every duration and every asset class; `computeTargets` freezes UP at `base+0.5%`, DOWN at `base−0.5%`, and VOIDs everything between. On BTC at ~63,250 that demands a **±$316 move inside five minutes**. Measured against §6q's own five real rounds — no extra spend — **5 of 5 would have VOIDED** while resolving cleanly at margin 0. Then measured properly against **~1,000 real windows per duration** from the live provider (`npm run ops:updown-margin-study`): **0.5% voids 96–100% of rounds at EVERY duration the platform offers.** ⭐ The reason it is not merely "a bit wide": the median move scales as **√duration** (0.031 / 0.058 / 0.087 / 0.120% at 5 / 15 / 30 / 60 min, a √t fit to within 8%), so 0.5% corresponds to a **~23-hour** window. It is a *daily* margin — ~16× too wide for an hour and ~100× too wide for five minutes. **Ali's call, 2026-08-02: "balanced", ~1 in 3 voids.** Fixed by replacing the single number with a measured **margin ladder** (`marginSchedule`) resolved per asset class and duration: **2 bps at 5 min · 3 at 15 · 5 at 30 · 7 at 60 · 14 at 4h · 30 at 1d**, with the flat `defaultMarginBps` demoted to a fallback for windows past the top rung. | measured: `ops:updown-margin-study` (BTC/XAU/EUR/ETH, session-filtered); guard `npm run test:margin-schedule` **33/33**, proven **RED (15 failures)** by emptying the ladder; live chains re-priced through the E-31 Edit control |
 | **E-31** | **HIGH** → ✅ **FIXED** | admin console · orphaned actions | **Two gated, audited Up & Down server actions have ZERO callers — E-23's exact shape, and one of them sits on the critical path of the campaign's #1 blocker.** `grep -rn` over `src/` finds only their own definitions: **`updateAssetAction`** (edit an asset's symbol, names, decimals, `minMoveTicks` and **price source**) and **`updateChainAction`** (a chain's stake bounds and **margin**). Both are `accounting`/`trading`-gated, both audit properly, and neither is reachable from any page. Consequences, both hit live this session: ① **an operator cannot repoint an asset's price source at all** — the session brief's step ② ("point the live GOLD asset at the quote endpoint") is *not an operator action*; GOLD is stuck on `goldprice.org`, an HTML page the feed reader can never quote, and the only way to move it would be a hand-written DB row on the control that decides what settles real money. The run in §6q therefore had to go through `createAssetAction`, which IS wired. ② **a chain's margin cannot be changed after creation**, which is what makes E-32 a delete-and-recreate rather than an edit. ⭐ Same class as E-23 (*"a remedy that only exists in a script is not a remedy an operator has"*) — and E-23's lesson was supposed to be generalised. It was not, so the guard now is. **Fixed** by wiring both into `/admin/updown` as per-row `Edit` disclosures (`EditAssetForm`, `EditChainForm`), each asking the E-18 question — the page asks what the action will ask (`canUseControl`) and renders `ControlLocked` rather than a control that bounces. Guarded by **`npm run test:orphan-actions`**, which scans **every** admin actions file rather than pinning these two, because pinning E-23's one symbol is exactly why it recurred. ✅ **VERIFIED ON PRODUCTION 2026-08-02 10:47 UTC by USING both controls for the two things that were impossible before them:** the live **GOLD** asset was repointed `goldprice.org` → `api.twelvedata.com/quote` (**the session brief's step ②**, which turned out not to be an operator action at all), and the BTC chain's **margin was changed after creation** 0 → 5 bps. Both DB rows re-read, both audited to the actor (`updown.asset.updated` / `updown.chain.updated`, `usr_1b3e6fd5…`), 9 Edit controls serving, 0 console errors. | `grep -rn "updateAssetAction\|updateChainAction" src/` → 1 hit each (own definition), vs 2 for all seven sibling actions; `npm run test:orphan-actions` **11/11**, proven **RED** on the unfixed tree (5 failures, incl. both §3 assertions) |
 | **E-33** | MEDIUM · **OPEN — a compliance decision, not a wiring job** | privacy · DSAR register | **Nothing on the platform can put a request INTO the DSAR register, so `/admin/privacy` will read *"No data-subject access requests are on file"* forever.** Found by the E-31 sweep: `fileDsarAction` is an orphan, and `fileDsarRequest` (`privacy.ts:56`) has **exactly one caller — that orphan**. The page's *other* two actions are wired and work (`buildDsarBundleAction` for the walk-in/on-behalf export, `fulfillDsarAction` for fulfilling a queued one), so **a player can still GET their data** — this is not a data-rights outage. What cannot be recorded is that they **asked**, and that is the half a regulator examines, because the statutory response clock runs from the request. ⛔ **Deliberately not wired in the session that found it**: who may file a DSAR on a player's behalf, and on what authentication, is a compliance decision (the page's own copy requires *"phone OTP at the front-desk"* for the export path) — inventing that policy in a QA session would be the wrong kind of fix. Pinned in `KNOWN_ORPHANS` with its reason so it cannot be forgotten. | `grep -rn fileDsarRequest src/` → 2 hits, both in the orphan's own call chain; `npm run test:orphan-actions` §1/§2 |
 | **E-34** | LOW · **OPEN, measured** | RBAC · shared refusal panel · honesty | **The refusal shown on every blocked admin page names the wrong role, to everyone.** `components/admin/admin-restricted.tsx:39` hard-codes *"**Moderators** are excluded by policy"* regardless of who is reading, so a FINANCE, COMPLIANCE or GROWTH officer is told about a role they are not — and told nothing about why **they** are excluded. It also cites `roles.ts`, a source file no operator can open. Same family as D-2/E-2/E-8/E-29: **a surface stating something it does not know.** Not a security gap — the data really is withheld (9/9, §6s) — but it is on **all 47 admin pages** and it is the sentence an operator reads when they hit a wall. Fix: state the domain the viewer lacks, drop the moderator clause and the file reference. | read live as the QA FINANCE officer on `/admin/{updown,markets,ai-polls,compliance,approvals}`; `shots/s10-finance-deny-*.png` |
 | **E-35** | LOW · **OPEN, measured** | i18n · shared refusal panel | **The refusal panel is hard-coded English on a platform that enforces trilingual parity.** The card title is bilingual (`title="Restricted" sw="Imezuiliwa"`) and **the explanation underneath it is English only** — no `useT`, no dictionary key. A Swahili-only operator gets the lock and a sentence they may not read. ⚠️ **`test:i18n` cannot catch it**, because the string never enters the dictionary — which is exactly what the standing *"never hardcode user-facing strings"* rule exists to prevent, and it means parity being green says nothing here. Same component and same one-line region as E-34, so both should be fixed together (en/sw/zh keys + the reworded sentence). | `admin-restricted.tsx:36-41`; the live panel rendered in full above in §6s |
+| **E-36** | 🔴 **HIGH · OPEN, measured** | Up & Down · money path · trading calendar | **The platform will settle real money on prices no market made.** There is no trading-calendar gate anywhere: `grep -rn "is_market_open\|marketHours\|tradingCalendar"` over `src/` returns exactly **one** hit, and it is a comment in `updown-feed.ts:237` explaining why no gate is needed. Both of that comment's premises are **false against the provider actually in production**, measured today: ① *"a shut market stops advancing `last_quote_at`"* — XAU/USD and EUR/USD returned `last_quote_at` = **2026-08-02T12:11:00Z on a Sunday**, advancing every minute, with `is_market_open: true`; ② *"if a provider re-stamps a FROZEN price with a fresh time, the `minMoveTicks` no-move rule voids and refunds — that failure is safe"* — **the price is not frozen, it jitters.** TwelveData returns **1,440 one-minute bars on a Saturday** for two markets that are shut all Saturday, with `high > low` and **zero gaps**; inspected minute by minute, each bar pins its **open** to the same value (4042.684 on gold, every single minute) while the close wanders ±0.1 — synthetic noise around a frozen anchor. Friday's bars behave correctly (each open ≈ the previous close). Consequence, computed through the REAL `computeTargets`: over the shut windows, **20–22% of gold rounds and 90–95% of EUR/USD 5-minute rounds would RESOLVE**, paying a real winner against a real loser on a price that was never traded. ⚠️ **Worse than voiding, and it inverts §4b's assumption**: session 10 avoided this by choosing crypto and believed a shut market would void as a no-move. It would not. ⚠️ **It also corrupted the E-32 measurement** before it was caught: gold's median 5-minute move read **0.004%** with weekend bars included and **0.043%** without — a 10× error that would have been quoted as a recommendation. | `scratchpad/bars-diag2.mjs` (Sat vs Fri path, per-minute step in bps: SAT median 0.256 vs FRI 1.613 on XAU); `ops:updown-margin-study` prints the shut-window resolve rate per duration; `grep` result above |
 | **G-7** | MEDIUM → ✅ **FIXED (2026-08-02, session 10)** | visuals · shared `Chip` | **Any `Chip` with a long label bleeds silently past its container, platform-wide.** `components/ui/chip.tsx` was `whitespace-nowrap` with a **fixed `height`** (18/21/25px per size). Both are correct for a short status pill and both are wrong for a phrase: the chip could neither wrap nor grow, so it was simply drawn outside its column with no ellipsis — and with nothing for a document-level check to notice. ✅ Fixed in the shared component: `height` → `minHeight` with `height: auto`, `whiteSpace: normal`, `max-w-full`, and the `/admin/reports` call-site opt-out **deleted** because the component now does it. ⭐ **The interesting part is how it had to be proven, because a survey CANNOT catch this and did not.** `live/s10-g7-probe.mjs` measured **84 live chips across 7 routes × 4 widths and found ZERO bleeding** — session 9 had patched the one known offender *at its call site*, so the shared component stayed broken for the next long label while everything measured clean. A latent defect has nothing to measure until someone ships the label that trips it. So the RED was produced by taking a **real chip off a real production page** and giving it a real call site's label at the real column width (`live/s10-g7-inject.mjs`, `/admin/aml` @360): **206×18 inside a 198px container — 8px outside it**, `white-space:nowrap · height:18px · max-width:none`. Re-run after the fix on production: **fits, wraps, grows.** ⚠️ **The `minHeight` swap must stay a no-op for one-line chips**, and that is now arithmetic rather than a hope — `test:chip-contract` §3 computes `fontSize × lineHeight + 2 × paddingBlock` for all six sizes and fails if any exceeds its `minHeight`, i.e. if a future edit would make **every chip on the platform** grow. | `live/s10-g7-inject.mjs` on production, before **206×18 in 198px, +8px** / after **fits**; `live/s10-g7-{before,after}.json` — 84 chips, height histogram `{18: 84}` unchanged; `npm run test:chip-contract` **14/14**, proven **RED** against the pre-fix component (10 failures) |
+
+## 6t. ⭐ E-32 ANSWERED — the margin, measured against ~4,000 real windows, and why 0.50% is a DAILY number (2026-08-02, session 11)
+
+**Ali's decision, asked and answered:** *balanced — about one round in three refunds.* This section
+is the measurement it was made on, so the next person can re-derive it rather than trust it.
+
+### The question was not "what margin" — it was "how often should a round refund"
+
+A margin is not a fairness dial. It is the width of the VOID band, and the only thing an operator can
+really choose is the **void rate**, because the margin that produces it is a property of the market:
+
+- too **wide** → the game barely ever resolves. Every stake refunds, no commission is ever earned, and
+  the player's history is a wall of VOID — which is exactly what E-16 and E-25 produced when the feed
+  was genuinely broken. **A safe, silent failure that looks like the bug that was just fixed.**
+- too **narrow** → sub-tick noise decides real money, and the "prediction" is a coin flip.
+
+### The measurement
+
+New ops tool, `npm run ops:updown-margin-study` (writes nothing, 1 provider credit per symbol). It
+pulls real 1-minute bars from the SAME provider the money path reads, slices them into non-overlapping
+windows on the grid the engine actually uses, and computes the void rate **through the real
+`computeTargets`** — including its `minMoveTicks` floor — rather than re-deriving the arithmetic.
+
+```
+asset  dur  median   p90     | void rate at margin
+                            | 0bps   1     2     3     4     5     7    10    50(default)
+BTC/USD   5m 0.031% 0.125% |   0.7  20.7  37.6  48.6  58.3  65.8  76.9  84.7  99.7
+BTC/USD  15m 0.058% 0.191% |     0    12  21.3  29.1  37.2  43.8  57.1    70  98.5
+BTC/USD  30m 0.087% 0.296% |     0   4.2  11.4  19.3  25.3  27.1    41  56.6  96.4
+XAU/USD   5m 0.043% 0.137% |     7    17  27.7  37.6  46.6  56.8  69.2    82   100
+XAU/USD  15m 0.069% 0.217% |   5.1  10.9  18.2  24.8  32.1  39.4  50.4  63.5   100
+XAU/USD  30m 0.115% 0.335% |   2.9   7.4  11.8  14.7  19.1  23.5  32.4  44.1  97.1
+```
+
+**Read the last column.** At the product default, **96–100% of rounds void at every duration the
+platform offers.** Not "sometimes"; essentially always.
+
+### ⭐ Why 0.50% is not "a bit wide" — it is a DAILY margin
+
+The median move scales as **√duration**, and the fit is tight: measured 0.031 / 0.058 / 0.087 / 0.120%
+at 5 / 15 / 30 / 60 minutes on BTC, against a √t prediction to within 8%. Solving that relation for a
+0.50% median move gives a window of roughly **23 hours**.
+
+So 0.50% is a defensible margin **for a one-day round**. It is ~16× too wide for an hour and ~100× too
+wide for five minutes. The original "50pick factor" was not wrong so much as **applied to the wrong
+duration**, and one number could never have been right for both.
+
+### The ladder that shipped
+
+`marginSchedule` — resolved per **asset class** and **duration**, most specific first: the chain's own
+override → the narrowest matching rung → the flat `defaultMarginBps`.
+
+| duration ≤ | margin | measured void rate (BTC / XAU) |
+|---|---|---|
+| 5 min | **2 bps** (0.02%) | 37.6% / 27.7% |
+| 15 min | **3 bps** | 29.1% / 24.8% |
+| 30 min | **5 bps** | 27.1% / 23.5% |
+| 60 min | **7 bps** | ~30% (extrapolated from the 60m row) |
+| 4 hours | **14 bps** | √t-scaled, unmeasured |
+| 1 day | **30 bps** | √t-scaled, unmeasured |
+
+⚠️ **The asset-class axis exists but is deliberately unpopulated, and that is a finding not an
+omission.** The two classes actually live — `crypto` and `macro` — measured within 0.01% of each other
+at equal duration, so duplicating the ladder per class would only invite silent drift. **Duration is
+the axis that matters.** The exception is already measured: **EUR/USD** (also `macro`) has a median
+5-minute move of **0.012%**, a third of gold's, so a forex asset needs ~1 bps and must get its own rung
+or a per-chain override — the shared ladder would void ~70% of its 5-minute rounds.
+
+⚠️ **`marginBps` is an integer, and at five minutes the entire usable range is 0–5 bps.** That is tight
+enough that forex cannot really be priced at 5 minutes at all with integer basis points. Recorded here
+rather than "fixed", because changing the unit is a schema change and no forex asset is live.
+
+### What else had to move, and why each one mattered
+
+- **`marginBpsForChain` now REQUIRES the asset.** Its old signature was `(chain, cfg)` — a function
+  that cannot see how long the round is, or what it is on, cannot price both a 5-minute crypto round
+  and a daily metals one. Making the asset a parameter means a caller cannot price a round without
+  knowing what it is pricing.
+- **The chains grid was about to lie.** Its Margin cell read `c.marginBps ?? cfg.defaultMarginBps`,
+  which after the ladder would print **0.50% over a chain the engine prices at 0.02%**. Now shows the
+  effective value, tagged `·sched` or `·def` so an operator can see where it came from.
+- **Both margin inputs' placeholders were hard-coded `inherit (0.5)`.** The Add-chain form now
+  resolves the ladder live from the asset + duration currently picked, and the Edit form shows what
+  *that* chain would inherit. A placeholder naming a band 25× the real one is how an operator arrives
+  at the wrong margin deliberately.
+- **AI proposals were pre-filling 0.50%.** A proposal an officer approves becomes a chain, so the
+  generator now anchors on the scheduled value for the class and duration it is proposing.
+- **The Thresholds field is relabelled "Fallback margin"** and says so, because it is no longer the
+  margin for anything the platform can currently run.
+- **Two existing engine cases were leaning on the default to test arithmetic** (the PDF example
+  4120 → 4140.6/4099.4, and the frozen-at-open property). They now pin the ladder for their own block:
+  a test that gets its constants from a product default is testing the default, not the maths — which
+  is part of why E-32 stayed invisible. §11's "operator widens the margin" step also had to change
+  what it widens, or it would have kept passing while proving nothing.
+
+### The guard, and the RED it was proven against
+
+`npm run test:margin-schedule` — **33/33**. Proven **RED with 15 failures** by emptying the ladder,
+which is the supported way to express the pre-E-32 world (`marginSchedule: []` → every duration falls
+back to one flat number). Its central case is not synthetic: it **replays the five real production
+rounds from §6q** through the real `computeTargets` and asserts both the count and the **direction** —
+0 of 5 resolve at 0.50%, 4 of 5 at the ladder's 5-minute rung, each the right way.
+
+⚠️ One assertion in it had to be hardened before it was trustworthy: `computeTargets(open, null, …)`
+quietly yields a 0 margin (`null/10000 === 0`, floored at one tick), so a **missing** rung would have
+made the replay report 5/5 resolved and read like a pass on a broken ladder. Case 5.0 now asserts the
+rung exists before anything uses it.
 
 ## 6s. The QA FINANCE officer — §6m's claim tested, and two defects in the shared refusal panel (2026-08-02, session 10)
 

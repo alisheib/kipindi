@@ -389,12 +389,15 @@ let goldId = "";
   ok("8.5 · a sub-tick margin is FLOORED to the source's minimum move (0.01)",
      tiny.margin === 0.01 && tiny.upTarget === 1.01 && tiny.downTarget === 0.99, `margin ${tiny.margin}`);
 
-  // marginBpsForChain — a chain's own override wins; else the product default.
+  // marginBpsForChain — a chain's own override wins; else the E-32 ladder for its class
+  // and duration; else the flat product default. The `null override` case therefore uses a
+  // duration past the top rung, because every duration the platform can actually run is
+  // now priced by the ladder — see scripts/updown-margin-schedule.test.mts.
   const cfg = await getUpDownConfig();
   ok("8.6 · a chain with no override inherits the product default margin (50)",
-     marginBpsForChain({ marginBps: null } as never, cfg) === 50);
+     marginBpsForChain({ marginBps: null, durationMinutes: 99_999 } as never, cfg, { category: "crypto" }) === 50);
   ok("8.7 · a chain override wins over the default",
-     marginBpsForChain({ marginBps: 20 } as never, cfg) === 20);
+     marginBpsForChain({ marginBps: 20, durationMinutes: 5 } as never, cfg, { category: "crypto" }) === 20);
 
   // Config validation — whole bps, 0-2000 (0-20%); 0 disables the %-band.
   ok("8.8 · a margin above 2000 bps (20%) is refused",
@@ -419,7 +422,7 @@ let goldId = "";
        (await updateChain(chains[0].id, { marginBps: 25 }, OFFICER)).ok);
     const after = (await chainStore.get(chains[0].id))!;
     ok("8.15 · …stored on the chain (25), and marginBpsForChain returns it over the default",
-       after.marginBps === 25 && marginBpsForChain(after, await getUpDownConfig()) === 25, `stored ${after.marginBps}`);
+       after.marginBps === 25 && marginBpsForChain(after, await getUpDownConfig(), { category: "macro" }) === 25, `stored ${after.marginBps}`);
   }
 }
 
