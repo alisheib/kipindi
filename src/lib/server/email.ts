@@ -892,6 +892,48 @@ export function winNotificationHtml({ reference, payout, stake, marketTitle, set
   `);
 }
 
+/**
+ * THE UP & DOWN DAILY DIGEST (E-37) — one email for a whole day of rounds.
+ *
+ * ⚠️ ROYAL CHROME, NOT GOLD, even on a winning day. The gold-discipline law
+ * reserves gold for earned money and earned status; a digest is a statement of
+ * account that may report a loss, and a losing day arriving in the same gold
+ * envelope as a payout is the kind of small dishonesty a licence review notices.
+ * Registered as `chrome: royal` in `comms-registry` and asserted there.
+ *
+ * ⚠️ LCCP: the loss row is always present when there were losses, carries its own
+ * figure, and is toned `bad`. It is never folded into the net line — a player must
+ * not have to subtract two numbers to find out that they lost.
+ */
+export function updownDigestHtml({ dayLabel, rounds, wins, losses, refunds, wonPayout, lostStake, refundedStake, staked, returned, net }: {
+  dayLabel: string; rounds: number; wins: number; losses: number; refunds: number;
+  wonPayout: number; lostStake: number; refundedStake: number;
+  staked: number; returned: number; net: number;
+}): string {
+  const headline =
+    net > 0 ? `You are up ${formatTzs(net)}`
+    : net < 0 ? `You lost ${formatTzs(net < 0 ? -net : net)}`
+    : `${formatTzs(refundedStake)} refunded`;
+  return wrap(`
+    ${eyebrow("Up & Down · daily summary", "Muhtasari wa siku")}
+    ${heading(headline)}
+    ${subtitle(`${dayLabel} · ${rounds} ${rounds === 1 ? "round" : "rounds"}`)}
+    ${detailRows([
+      ...(wins > 0 ? [{ label: `Won (${wins})`, value: formatTzs(wonPayout), tone: "good" as const }] : []),
+      ...(losses > 0 ? [{ label: `Lost (${losses})`, value: formatTzs(lostStake), tone: "bad" as const }] : []),
+      ...(refunds > 0 ? [{ label: `Refunded (${refunds})`, value: formatTzs(refundedStake) }] : []),
+      { label: "Total staked", value: formatTzs(staked) },
+      { label: "Total returned", value: formatTzs(returned) },
+      { label: "Net", value: net === 0 ? formatTzs(0) : `${net > 0 ? "+" : "−"}${formatTzs(Math.abs(net))}`, tone: net > 0 ? "good" : net < 0 ? "bad" : undefined },
+    ])}
+    ${subtitle("You get one of these a day instead of a message for every round — the full record of each round is always on your history page.")}
+    ${subtitleSw("Unapata muhtasari mmoja kwa siku badala ya ujumbe kwa kila raundi.")}
+    ${losses > 0 ? subtitle("Most people play for fun. If it stops feeling fun, take a break.") : ""}
+    ${refNote()}
+    ${ctaButton("/updown/history", "See every round · Ona raundi zote")}
+  `);
+}
+
 export function lossNotificationHtml({ reference, stake, marketTitle, settledAt }: {
   reference: string; stake: number; marketTitle: string; settledAt?: string;
 }): string {

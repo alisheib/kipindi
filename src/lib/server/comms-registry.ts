@@ -88,6 +88,9 @@ export const EMAIL_TEMPLATES: readonly EmailSpec[] = [
   { template: "lossNotificationHtml",      trigger: "src/lib/server/market-service.ts",    audience: "player",  chrome: "royal", money: true },
   { template: "cashOutReceiptHtml",        trigger: "src/lib/server/market-service.ts",    audience: "player",  chrome: "royal", money: true },
   { template: "oneSidedRefundHtml",        trigger: "src/lib/server/market-service.ts",    audience: "player",  chrome: "royal", money: true },
+  // Up & Down's ONE player-facing message (E-37). Royal even on a winning day —
+  // see the gold-discipline note on the template itself.
+  { template: "updownDigestHtml",          trigger: "src/lib/server/updown-digest.ts",     audience: "player",  chrome: "royal", money: true },
   { template: "marketCancelledRefundHtml", trigger: "src/lib/server/market-service.ts",    audience: "player",  chrome: "royal", money: true },
   { template: "marketCancelledAdminHtml",  trigger: "src/lib/server/market-service.ts",    audience: "officer", chrome: "royal", money: true },
   { template: "marketResolutionAdminHtml", trigger: "src/lib/server/market-service.ts",    audience: "officer", chrome: "royal", money: false },
@@ -176,7 +179,10 @@ export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
 
 /** Kinds that carry, promise or account for money. Their copy is compliance copy. */
 export const MONEY_KINDS: readonly NotificationKind[] = [
-  "WIN", "LOSS", "BET_PLACED", "SELECTION_CLOSED", "DEPOSIT", "WITHDRAW", "BONUS", "AFFILIATE",
+  // ROUND_RESULT is the Up & Down daily digest, and it is the ONLY message a
+  // player receives about a day of real settled rounds — so it accounts for money
+  // by definition and its copy is compliance copy.
+  "WIN", "LOSS", "BET_PLACED", "SELECTION_CLOSED", "ROUND_RESULT", "DEPOSIT", "WITHDRAW", "BONUS", "AFFILIATE",
 ];
 
 /**
@@ -196,6 +202,9 @@ export const NOTIFICATION_EMITTERS: readonly EmitterSpec[] = [
   { fn: "notifyCashout",               kind: "WIN",               audience: "player" },
   { fn: "notifyOneSidedRefund",        kind: "WIN",               audience: "player" },
   { fn: "notifyRefund",                kind: "DEPOSIT",           audience: "player" },
+  // The Up & Down daily digest (E-37). `ROUND_RESULT` was declared here, given a
+  // bell icon and a tint, and left with no emitter until this shipped.
+  { fn: "notifyUpDownDigest",          kind: "ROUND_RESULT",      audience: "player" },
   { fn: "notifyMarketCancelled",       kind: "DEPOSIT",           audience: "player" },
   { fn: "notifyDeposit",               kind: "DEPOSIT",           audience: "player" },
   { fn: "notifyWithdraw",              kind: "WITHDRAW",          audience: "player" },

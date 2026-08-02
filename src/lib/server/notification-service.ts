@@ -253,6 +253,39 @@ export function notifyLoss(userId: string, opts: { stake: number; marketTitle: s
 }
 
 /**
+ * THE UP & DOWN DAILY DIGEST — one message covering a whole day of rounds (E-37).
+ *
+ * The other half of the 2026-07-24 owner decision: per-round win/loss messages are
+ * suppressed for Up & Down and replaced by this. Until it existed, a player who won
+ * on Up & Down was told nothing at all — measured 0 of 13 on production.
+ *
+ * ⚠️ The copy is composed in `updown-digest.ts` and passed in whole, which is the
+ * opposite of every other emitter here and is deliberate: this message is an
+ * aggregate whose sentences depend on which outcomes actually occurred, and
+ * rebuilding that logic inside the notifier would put the LCCP loss wording in two
+ * places. `digestCopy()` is exported and asserted directly by `test:updown-digest`.
+ * All three languages are still REQUIRED here — the caller cannot opt out.
+ *
+ * `kind: ROUND_RESULT` — declared in `comms-registry` since the bell was written,
+ * with an icon and a tint, and until now it had no emitter at all.
+ */
+export function notifyUpDownDigest(userId: string, opts: {
+  dayKey: string;
+  titleEn: string; titleSw: string; titleZh: string;
+  bodyEn: string; bodySw: string; bodyZh: string;
+}) {
+  return notify({
+    userId,
+    kind: "ROUND_RESULT",
+    titleEn: opts.titleEn, titleSw: opts.titleSw, titleZh: opts.titleZh,
+    bodyEn: opts.bodyEn, bodySw: opts.bodySw, bodyZh: opts.bodyZh,
+    // ⛔ The day is IN the link, and that is what makes the daily send idempotent
+    // (`db.notification.existsWithHref`). Do not "tidy" this to `/updown/history`.
+    href: `/updown/history?day=${opts.dayKey}`,
+  });
+}
+
+/**
  * F3 — a WATCHED market closes within the hour.
  *
  * RG WORDING RULE: this is a factual, time-based notice about something the player

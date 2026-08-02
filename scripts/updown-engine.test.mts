@@ -47,6 +47,9 @@ await addSource({ domain: "kitco.com", label: "Kitco", category: "macro", ration
 // The 24/7 fixture's source, and the shut-market fixture's (§12) — both categories needed,
 // because `isSourceTrusted` matches on (domain, category).
 await addSource({ domain: "kitco.com", label: "Kitco", category: "crypto", rationale: "test fixture", addedBy: "system" });
+// The 24/7 fixture's real source. Mirrors production, where `twelvedata.com` is the
+// trusted crypto domain and every live BTC round has resolved against it.
+await addSource({ domain: "api.twelvedata.com", label: "Twelve Data", category: "crypto", rationale: "test fixture", addedBy: "system" });
 
 // ── Players with real wallets (same shape the other money tests use) ─────────
 const nowIso = () => new Date().toISOString();
@@ -85,9 +88,17 @@ const START_TOTAL = await walletsTotal();
 // A crypto asset is calendar-independent, which is what a test about grid maths, conservation
 // and write-once observations actually wants. The calendar itself is proven by
 // `npm run test:market-calendar`, and §12 below pins the integration case.
+//
+// 🔴 …AND IT USED TO SAY THAT WHILE CREATING `XAU/USD` WITH `category: "crypto"` — a gold
+// symbol wearing a crypto calendar, which is precisely the misconfiguration E-46 was filed
+// about (BNB and ETH, created the same way, produced nothing for days). Session 14 added the
+// server-side `validateSymbolCategory` that makes that impossible, and this fixture has failed
+// on every tree since: `XAU/USD must be category "macro", not "crypto"`. The intent above was
+// always right and the symbol was always wrong — so the symbol is now an actual 24/7 asset from
+// the catalogue rather than a metal relabelled as one.
 const a = await createAsset({
-  key: "XAU", symbol: "XAU/USD", nameEn: "Gold", nameSw: "Dhahabu", iconKey: "gold",
-  priceSourceUrl: "https://www.kitco.com/price/precious-metals", category: "crypto",
+  key: "BTC", symbol: "BTC/USD", nameEn: "Bitcoin", nameSw: "Bitcoin", iconKey: "crypto",
+  priceSourceUrl: "https://api.twelvedata.com/quote", category: "crypto",
   decimals: 2, minMoveTicks: 1,
 }, OFFICER);
 if (!a.ok) throw new Error(a.error);
@@ -113,8 +124,11 @@ const chain = (await chainStore.get(c.data.id))!;
   ok("1.7 · a missing OPEN price voids too", decideOutcome(null, 2400, mm).outcome === "VOID");
   ok("1.8 · UP maps to YES and DOWN to NO — the single mapping",
      outcomeToSide("UP") === "YES" && outcomeToSide("DOWN") === "NO" && outcomeToSide("VOID") === "VOID");
+  // Asserted against the asset's OWN name, not a hardcoded "Gold" — the fixture's asset
+  // changed once (see the E-46 note above) and a literal here failed for the one reason a
+  // test never should: the thing it names was renamed.
   ok("1.9 · the round title names the product, not the repo",
-     roundTitle(asset, 5).includes("Gold Up or Down") && !roundTitle(asset, 5).toLowerCase().includes("kipindi"),
+     roundTitle(asset, 5).includes(`${asset.nameEn} Up or Down`) && !roundTitle(asset, 5).toLowerCase().includes("kipindi"),
      roundTitle(asset, 5));
   // The platform is trilingual and enforces parity — an untranslated round would fall
   // back to English for SW/ZH players.
@@ -511,9 +525,16 @@ let round1Id = "";
 {
   // `crypto` for the calendar reason in the header note — this section is about the margin
   // model, not about equity trading hours.
+  //
+  // 🔴 This fixture was `SPX`, and the catalogue now refuses it outright with a reason worth
+  // reading: SPX is not on the Twelve Data plan AND it trades a cash session the platform's
+  // calendar does not model, so `macro` would call it open all week. Nothing in this section
+  // depends on the asset's identity — only on its decimals, tick floor and price level — so it
+  // is a 24/7 catalogue asset now. The prices below are unchanged, which is the point: the
+  // margin arithmetic is about the numbers, not the ticker.
   const spx = await createAsset({
-    key: "SPX", symbol: "SPX", nameEn: "S&P 500", nameSw: "S&P 500", nameZh: "标普500", iconKey: "chart",
-    priceSourceUrl: "https://www.kitco.com/price/precious-metals", category: "crypto",
+    key: "ETH", symbol: "ETH/USD", nameEn: "Ethereum", nameSw: "Ethereum", nameZh: "以太坊", iconKey: "crypto",
+    priceSourceUrl: "https://api.twelvedata.com/quote", category: "crypto",
     decimals: 2, minMoveTicks: 1,
   }, OFFICER);
   if (!spx.ok) throw new Error(spx.error);

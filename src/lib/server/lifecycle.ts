@@ -9,6 +9,7 @@
  *   • reconcile the scheduler — re-arm any pending market that lost its timer
  *     (~5-min cadence; the ONLY market work left, and purely self-healing);
  *   • expire stale bonus grants;
+ *   • send the Up & Down daily digest (~15-min cadence, idempotent per player-day);
  *   • reconcile stuck payments + notify still-pending deposits (~5-min);
  *   • run the nightly wallet↔ledger trial balance (daily).
  * A separate, faster timer fast-credits in-flight deposits every 15s.
@@ -242,6 +243,37 @@ async function healUpDownRounds(): Promise<void> {
   await healStuckRounds();
 }
 
+// ── Up & Down daily digest (finding E-37 / E-43) ────────────────────────────
+//
+// The other half of Ali's 2026-07-24 decision. Per-round win/loss messages are
+// suppressed for Up & Down and replaced by ONE message a day — and until this was
+// wired, only the suppression existed: 0 of 13 winning and 0 of 11 losing Up &
+// Down positions on production had ever produced a notification, while 56 of 56
+// refunds had. See `updown-digest.ts` for the full measurement.
+//
+// 15-minute cadence, not once at a fixed hour, and that is the robustness: the
+// digest targets the last CLOSED East Africa day, so every day gets ~96 delivery
+// attempts spread over 24 hours and a container has to be down for a whole day to
+// miss one. It is idempotent per (player, day) — the day is in the deep link and
+// the send checks for it — so the repeats cost nothing.
+//
+// On a day nobody played it is ONE indexed aggregate that returns no rows. It is
+// deliberately NOT on the every-minute pass: it sends email, and the every-minute
+// pass is where the payment reconcile lives (see the overrun note at the top).
+const DIGEST_EVERY_MS = 15 * 60 * 1000;
+let lastDigestAt = 0;
+
+async function maybeSendUpDownDigest(): Promise<void> {
+  const now = Date.now();
+  if (now - lastDigestAt < DIGEST_EVERY_MS) return;
+  lastDigestAt = now;
+  const { runUpDownDailyDigest } = await import("./updown-digest");
+  const r = await runUpDownDailyDigest();
+  if (r.sent > 0) {
+    console.log(`[lifecycle] Up & Down digest — sent ${r.sent} for ${r.dayKey} (${r.alreadySent} already had it)`);
+  }
+}
+
 /** Run one lifecycle pass. Each chore is self-contained and best-effort; one
  *  failing must never stop the others or throw out of the tick.
  *
@@ -329,6 +361,10 @@ export async function runLifecyclePass(): Promise<void> {
     // Its own catch, because a stranded player's money must not depend on bonus
     // expiry or the payment sweep having succeeded first.
     await healUpDownRounds().catch((e) => console.error("[lifecycle] Up & Down round heal:", e));
+
+    // Its own catch: a player's daily statement of account must not be lost
+    // because the bonus sweep or the payment reconcile threw first.
+    await maybeSendUpDownDigest().catch((e) => console.error("[lifecycle] Up & Down digest:", e));
 
     await expireActiveGrants().catch((e) => console.error("[lifecycle] bonus expiry:", e));
     // NOTE: the deposit fast-credit lane is deliberately NOT called here. It has its

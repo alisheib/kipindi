@@ -464,6 +464,18 @@ async function armMarketTimer(id: string): Promise<void> {
  * result on the round card plus a daily digest (owner decision 2026-07-24,
  * docs/COMPLIANCE-DECISIONS.md).
  *
+ * ✅ THE DIGEST NOW EXISTS: `updown-digest.ts`, on the lifecycle ticker. Until
+ * 2026-08-03 it did not, and this predicate was therefore deleting the message
+ * rather than moving it — 0 of 13 winning and 0 of 11 losing Up & Down positions
+ * on production had ever produced a notification (E-37).
+ *
+ * ⛔ EVERY per-round player message for Up & Down must be behind this predicate,
+ * not just the ones that were behind it first. Refunds were not (E-43), so the
+ * ONE outcome a player was ever told about was the one where their money came
+ * back unchanged. If you add a new per-round message, gate it here and add the
+ * corresponding line to the digest — a message that is suppressed and not
+ * digested is a message that was deleted.
+ *
  * ⛔ THIS SUPPRESSES COMMUNICATION ONLY. The transaction, the ledger entry and the
  * audit-chain row are written for EVERY round exactly as before — never gate a money
  * record on this predicate. If you find yourself wrapping an `audit()` or a wallet
@@ -2155,13 +2167,22 @@ export async function settleMarket(
       });
       pendingWagerReversals.push({ userId: p.userId, stake: p.stake });
       if (bonusPart > 0) pendingBonusRefunds.push({ userId: p.userId, amount: bonusPart });
-      notifyOneSidedRefund(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id, positionId: p.id });
-      sendEmailToUser(p.userId, (email) => ({
-        to: email,
-        subject: `Full refund · ${formatTzs(p.stake)} returned`,
-        html: oneSidedRefundHtml({ reference: p.id, stake: p.stake, marketTitle: m.titleEn, settledAt }),
-        tag: "one-sided-refund",
-      })).catch(() => {});
+      // E-43. The refund half of the SAME 2026-07-24 decision that already
+      // suppresses wins and losses for Up & Down. Leaving it ungated made the
+      // policy inverted rather than incomplete: measured on production
+      // 2026-08-02, 0 of 13 winning and 0 of 11 losing Up & Down positions were
+      // ever notified, while 56 of 56 refunded ones were — so the only outcome a
+      // player heard about was the one where their money came back unchanged.
+      // The digest states refunds with their own count and figure.
+      if (!perEventNotificationsSuppressed(m)) {
+        notifyOneSidedRefund(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id, positionId: p.id });
+        sendEmailToUser(p.userId, (email) => ({
+          to: email,
+          subject: `Full refund · ${formatTzs(p.stake)} returned`,
+          html: oneSidedRefundHtml({ reference: p.id, stake: p.stake, marketTitle: m.titleEn, settledAt }),
+          tag: "one-sided-refund",
+        })).catch(() => {});
+      }
     }
     audit({
       category: "ADMIN",
@@ -2235,7 +2256,10 @@ export async function settleMarket(
       });
       pendingWagerReversals.push({ userId: p.userId, stake: p.stake });
       if (bonusPart > 0) pendingBonusRefunds.push({ userId: p.userId, amount: bonusPart });
-      notifyRefund(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id });
+      // E-43 — see the one-sided branch above. Same decision, same predicate.
+      if (!perEventNotificationsSuppressed(m)) {
+        notifyRefund(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id });
+      }
     }
   } else {
     // Whole-pool pari-mutuel distribution, with the capped fee.
@@ -2323,7 +2347,10 @@ export async function settleMarket(
         // Loss receipt. ⚠️ Losses stay DIRECT and non-euphemistic wherever they are
         // shown — suppressing the per-round message for Up & Down does not soften it,
         // it moves it into the daily digest, which still states each loss plainly
-        // (LCCP harm-prevention).
+        // (LCCP harm-prevention). ✅ That digest is `updown-digest.ts` and the claim
+        // is now true; it was a promise about nothing until 2026-08-03 (E-37). Its
+        // loss clause carries its own count and its own figure and is never folded
+        // into the net — asserted by `npm run test:updown-digest`.
         if (!perEventNotificationsSuppressed(m)) {
           notifyLoss(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id, positionId: p.id });
           sendEmailToUser(p.userId, (email) => ({

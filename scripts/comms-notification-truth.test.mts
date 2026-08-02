@@ -77,6 +77,9 @@ const EMITTED: { fn: string; row: StoredNotification | null }[] = [
   { fn: "notifyCashout",             row: await N.notifyCashout(U, { amount: 9_500, marketTitle: "Will it rain in Dar today?", marketId: "mkt_3", inGracePeriod: true, positionId: "pos_4", freeExitGraceMinutes: 5 }) },
   { fn: "notifyOneSidedRefund",      row: await N.notifyOneSidedRefund(U, { stake: 10_000, marketTitle: "One-sided poll", marketId: "mkt_4", positionId: "pos_5" }) },
   { fn: "notifyRefund",              row: await N.notifyRefund(U, { stake: 10_000, marketTitle: "Voided poll", marketId: "mkt_5" }) },
+  // The Up & Down daily digest (E-37). Driven on a LOSING day: that is the branch
+  // that carries the LCCP claim, and the one that was promised and never built.
+  { fn: "notifyUpDownDigest",        row: await N.notifyUpDownDigest(U, { dayKey: "2026-08-02", titleEn: "Up & Down · you lost TZS 11,300", titleSw: "Up & Down · umepoteza TZS 11,300", titleZh: "涨跌 · 亏损 TZS 11,300", bodyEn: "2 Aug: 4 rounds — won 1 (TZS 8,700 paid), lost 3 (TZS 15,000). Staked TZS 20,000, returned TZS 8,700.", bodySw: "2 Ago: raundi 4 — umeshinda 1 (TZS 8,700 imelipwa), umepoteza 3 (TZS 15,000). Umeweka TZS 20,000, umerudishiwa TZS 8,700.", bodyZh: "2026年8月2日：共 4 轮 — 赢 1 轮（赔付 TZS 8,700）、输 3 轮（TZS 15,000）。投注 TZS 20,000，收回 TZS 8,700。" }) },
   { fn: "notifyMarketCancelled",     row: await N.notifyMarketCancelled(U, { stake: 10_000, marketTitle: "Cancelled poll", marketId: "mkt_6", reason: "Source retracted the result" }) },
   { fn: "notifyDeposit",             row: await N.notifyDeposit(U, { status: "CONFIRMED", amount: 50_000, provider: "Selcom", txnId: "txn_1" }) },
   { fn: "notifyWithdraw",            row: await N.notifyWithdraw(U, { status: "CONFIRMED", amount: 20_000, net: 19_700, provider: "M-Pesa" }) },

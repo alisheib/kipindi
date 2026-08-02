@@ -833,6 +833,10 @@ const memoryDb = {
       hits.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
       return hits[0];
     },
+    /** Mirror of the Prisma DAL's once-per-period check — see its header for why
+     *  this is unbounded in time and `findRecentDuplicate` is not. */
+    existsWithHref: (userId: string, href: string): boolean =>
+      Array.from(store.notifications.values()).some((n) => n.userId === userId && n.href === href),
     findByUser: (userId: string, limit = 50) =>
       Array.from(store.notifications.values())
         .filter((n) => n.userId === userId && !n.dismissedAt)

@@ -217,7 +217,61 @@ export interface PositionStore {
   // tx: see MarketStore.get — the idempotency probe runs inside the bet's
   // transaction so it costs no extra pool connection.
   findByIdempotencyKey(key: string, tx?: Prisma.TransactionClient | null): Promise<StoredPosition | null>;
+  /**
+   * Per-player settled totals for ONE product line inside a half-open window
+   * `[fromIso, toIso)`. The aggregation the Up & Down **daily digest** is built
+   * from (E-37) — one row per player who had a round settle that day.
+   *
+   * ⚠️ AGGREGATED IN THE DATABASE, deliberately, and for the reason spelled out
+   * on `leaderboard()` above: the digest runs over EVERY player who played that
+   * day, and loading a day of rounds into the app to count them in JS is the
+   * same N+1 shape that exhausted the pool on `/leaderboard`. A busy day is
+   * thousands of rounds and a handful of players; this returns the handful.
+   *
+   * ⛔ The window is on `settledAt`, NOT on the round's boundary — and that is
+   * what makes the digest exactly-once. `settledAt` is stamped `new Date()` at
+   * the moment settlement commits (`market-service.ts`, never backdated), so
+   * once an EAT day is over nothing can appear inside it retroactively. A round
+   * healed hours late lands in the digest for the day it actually settled: late,
+   * but stated, and counted exactly once.
+   *
+   * Only terminal, money-moved states count. Measured on production 2026-08-02:
+   * Up & Down positions have only ever held `WIN`, `LOSS`, `VOID` — there is no
+   * cash-out on a 5-minute round — so those three are the complete set, not a
+   * guess.
+   */
+  dailyTotalsByUser(q: {
+    fromIso: string;
+    toIso: string;
+    productLine: "MARKET" | "UPDOWN";
+  }): Promise<DailySettledTotals[]>;
 }
+
+/**
+ * One player's settled day, as the digest states it.
+ *
+ * `returned` is what actually reached the wallet across all three outcomes —
+ * winnings, plus refunded stakes. `staked − returned` is therefore the day's net
+ * in the player's own terms, and the digest prints it that way round: a losing
+ * day reads as a loss, plainly.
+ */
+export type DailySettledTotals = {
+  userId: string;
+  rounds: number;
+  wins: number;
+  losses: number;
+  refunds: number;
+  /** Total staked across every settled round in the window. */
+  staked: number;
+  /** Total returned to the wallet: winnings + refunds. Losses return 0. */
+  returned: number;
+  /** Payout on WIN rounds only — the number a winner wants to see. */
+  wonPayout: number;
+  /** Stake on LOSS rounds only — the number LCCP requires stated plainly. */
+  lostStake: number;
+  /** Stake returned on VOID rounds only. */
+  refundedStake: number;
+};
 
 // ---------------------------------------------------------------------------
 // Memory implementations (current behavior, sync but wrapped in Promise)
@@ -295,7 +349,34 @@ const memoryPositions: PositionStore = {
     for (const p of positions.values()) if (p.idempotencyKey === key) return p;
     return null;
   },
+  async dailyTotalsByUser({ fromIso, toIso, productLine }) {
+    // Same shape as the SQL below, so the digest a behaviour test observes in
+    // memory is the digest production sends. The two must not drift.
+    const acc = new Map<string, DailySettledTotals>();
+    for (const p of positions.values()) {
+      if (!DIGESTED_STATUSES.includes(p.status as (typeof DIGESTED_STATUSES)[number])) continue;
+      if (!p.settledAt || p.settledAt < fromIso || p.settledAt >= toIso) continue;
+      if ((markets.get(p.marketId)?.productLine ?? "MARKET") !== productLine) continue;
+      const e = acc.get(p.userId) ?? {
+        userId: p.userId, rounds: 0, wins: 0, losses: 0, refunds: 0,
+        staked: 0, returned: 0, wonPayout: 0, lostStake: 0, refundedStake: 0,
+      };
+      e.rounds += 1;
+      e.staked += p.stake;
+      e.returned += p.finalPayout ?? 0;
+      if (p.status === "WIN") { e.wins += 1; e.wonPayout += p.finalPayout ?? 0; }
+      else if (p.status === "LOSS") { e.losses += 1; e.lostStake += p.stake; }
+      else { e.refunds += 1; e.refundedStake += p.finalPayout ?? 0; }
+      acc.set(p.userId, e);
+    }
+    return Array.from(acc.values()).sort((a, b) => b.rounds - a.rounds);
+  },
 };
+
+/** The only three states an Up & Down position has ever reached — measured on
+ *  production 2026-08-02, not assumed. Shared by both stores so the memory
+ *  mirror and the SQL cannot disagree about what "settled" means. */
+const DIGESTED_STATUSES = ["WIN", "LOSS", "VOID"] as const;
 
 /** ROI as the leaderboard defines it, in ONE place so the two stores and the page
  *  cannot drift into ranking by three slightly different numbers. */
@@ -561,6 +642,53 @@ const prismaPositions: PositionStore = {
   async findByIdempotencyKey(key, tx) {
     const r = await (tx ?? pc()).position.findUnique({ where: { idempotencyKey: key } });
     return r ? toStoredPosition(r) : null;
+  },
+  async dailyTotalsByUser({ fromIso, toIso, productLine }) {
+    // ONE aggregate, like `leaderboard()`. Raw SQL rather than Prisma `groupBy`
+    // because the counts are conditional (`filter (where …)`) — groupBy would
+    // need one row per (user, status) and a fold in JS, which is the same answer
+    // for three times the rows and a second place for the two stores to drift.
+    //
+    // ⚠️ `settledAt` is `timestamp WITHOUT time zone` holding UTC (verified on
+    // production 2026-08-02, and the DB's own TimeZone is Etc/UTC). So the bounds
+    // are cast `::timestamp` — passing a JS `Date` would let node-postgres
+    // serialise it in the CONTAINER's zone, which is the §3 trap that has already
+    // shifted this campaign's readings by three hours. An ISO-8601 string cast
+    // here is unambiguous: Postgres drops the `Z` and compares UTC to UTC.
+    //
+    // ⚠️ Sums are cast `::text` and parsed in JS: `stake`/`finalPayout` are
+    // `Decimal(18,2)`, and letting the driver hand back a Decimal object turns
+    // `a + b` into string concatenation somewhere downstream.
+    const rows = await pc().$queryRawUnsafe<Array<{
+      userId: string; rounds: number; wins: number; losses: number; refunds: number;
+      staked: string; returned: string; wonPayout: string; lostStake: string; refundedStake: string;
+    }>>(
+      `select p."userId",
+              count(*)::int                                                                    as "rounds",
+              (count(*) filter (where p."status" = 'WIN'))::int                                as "wins",
+              (count(*) filter (where p."status" = 'LOSS'))::int                               as "losses",
+              (count(*) filter (where p."status" = 'VOID'))::int                               as "refunds",
+              coalesce(sum(p."stake"), 0)::text                                                as "staked",
+              coalesce(sum(p."finalPayout"), 0)::text                                          as "returned",
+              coalesce(sum(p."finalPayout") filter (where p."status" = 'WIN'), 0)::text        as "wonPayout",
+              coalesce(sum(p."stake") filter (where p."status" = 'LOSS'), 0)::text             as "lostStake",
+              coalesce(sum(p."finalPayout") filter (where p."status" = 'VOID'), 0)::text       as "refundedStake"
+         from "public"."Position" p
+         join "public"."PredictionMarket" m on m."id" = p."marketId"
+        where m."productLine"::text = $3
+          and p."status" in ('WIN', 'LOSS', 'VOID')
+          and p."settledAt" >= $1::timestamp
+          and p."settledAt" <  $2::timestamp
+        group by p."userId"
+        order by count(*) desc`,
+      fromIso, toIso, productLine,
+    );
+    return rows.map((r) => ({
+      userId: r.userId,
+      rounds: Number(r.rounds), wins: Number(r.wins), losses: Number(r.losses), refunds: Number(r.refunds),
+      staked: Number(r.staked), returned: Number(r.returned),
+      wonPayout: Number(r.wonPayout), lostStake: Number(r.lostStake), refundedStake: Number(r.refundedStake),
+    }));
   },
 };
 

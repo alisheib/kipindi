@@ -84,6 +84,16 @@ per round exactly as today. Only the player-facing *notification* is aggregated.
 notifications remain direct and non-euphemistic within the digest (LCCP harm-prevention
 — see the loss-notification rule in `CLAUDE.md`).
 
+✅ **IMPLEMENTED 2026-08-03** — `src/lib/server/updown-digest.ts`, on the lifecycle ticker.
+Until then only the *suppression* half existed, and the digest sentence above was a claim about
+a system that did not exist: measured on production, **0 of 13 winning and 0 of 11 losing** Up &
+Down positions had ever produced a notification. Worse, `perEventNotificationsSuppressed` was
+never applied to the refund emitters, so **56 of 56 refunds did** — the policy kept the one
+outcome where nothing happened to the player's money and deleted the two that moved it. Both
+halves are now closed; the digest states wins, losses **and** refunds, each with its own count
+and its own figure, and the loss clause is never folded into a net number. Guarded by
+`npm run test:updown-digest` (72 assertions, proven RED against six reintroduced defects).
+
 ### 4. Resolution stays on the AI sentinel
 
 No external price-feed contract. The cost/latency/determinism trade-off was presented

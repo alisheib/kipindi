@@ -1169,6 +1169,28 @@ export const prismaDb = {
       });
       return row ? toStoredNotification(row) : null;
     },
+    /**
+     * Has this player EVER been sent a notification at this exact deep link?
+     *
+     * ⚠️ Deliberately unbounded in time, which is the whole difference between
+     * this and `findRecentDuplicate` above. That one asks "is this a double-fire
+     * of the same event 90 seconds ago"; this one asks "has this once-per-period
+     * message already gone out" — and the answer must not become `false` again
+     * simply because time passed. The Up & Down daily digest (E-37) keys on
+     * `/updown/history?day=YYYY-MM-DD`, so the day is IN the href and a container
+     * restart, a redeploy or a healed late settlement can re-run the sweep as
+     * often as it likes without a player being told about their day twice.
+     *
+     * ⛔ Do not "optimise" this into the dedupe window. A 90-second window on a
+     * daily message is not idempotency, it is a race that usually wins.
+     */
+    existsWithHref: async (userId: string, href: string): Promise<boolean> => {
+      const row = await pc().notification.findFirst({
+        where: { userId, href },
+        select: { id: true },
+      });
+      return !!row;
+    },
     findByUser: async (userId: string, limit = 50): Promise<StoredNotification[]> => {
       const rows = await pc().notification.findMany({
         where: { userId, dismissedAt: null },

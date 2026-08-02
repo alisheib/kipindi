@@ -15,6 +15,7 @@ import { I } from "@/components/ui/glyphs";
 import { currentSession } from "@/lib/server/auth-service";
 import { getMyUpDownHistory, type MyRoundRow } from "@/lib/server/updown-board";
 import { getServerT } from "@/lib/i18n-server";
+import { eatDayWindow, isInEatDay, formatEatDay } from "@/lib/eat-day";
 import { pickLocalized } from "@/lib/localized";
 import { formatTzs, formatTzsSigned } from "@/lib/utils";
 
@@ -31,12 +32,36 @@ const fmtDate = (iso: string) => {
 };
 const usd = (n: number | null, d: number) => (n == null ? "—" : `$${n.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d })}`);
 
-export default async function UpDownHistoryPage() {
+export default async function UpDownHistoryPage({ searchParams }: {
+  searchParams?: Promise<{ day?: string }>;
+}) {
   const { t, locale } = await getServerT();
   const session = await currentSession();
   if (!session) redirect(`/auth/login?next=${encodeURIComponent("/updown/history")}`);
 
-  const rows = await getMyUpDownHistory(session.userId, 400).catch(() => []);
+  // ── The digest's deep link (`?day=YYYY-MM-DD`), one EAT calendar day ──────
+  //
+  // ⚠️ This must actually filter. `updown-digest.ts` sends every player a link to
+  // the day it is telling them about, and a link that says "your 2 Aug" and lands
+  // on an unfiltered list of 400 rounds is a small lie inside the one message the
+  // player receives about real money. It also gives this grid the filtering that
+  // §0.1b rule 2 requires of every grid, player side included.
+  //
+  // ⛔ The day arithmetic is IMPORTED, not re-derived. The digest bins rounds into
+  // EAT days; this page must cut on the identical boundary or the two disagree for
+  // the three hours either side of midnight. `test:updown-digest` asserts that this
+  // file imports the shared helper rather than growing its own copy.
+  const dayParam = (await searchParams)?.day ?? null;
+  const dayWindow = dayParam ? eatDayWindow(dayParam) : null;
+  const dayLabel = dayWindow && dayParam ? formatEatDay(dayParam, t.common.monthsShort, locale) : null;
+
+  const allRows = await getMyUpDownHistory(session.userId, 400).catch(() => []);
+  // Filter on `settledAt` when the round has settled, and on `placedAt` while it
+  // has not — the digest bins by settlement, and a still-open round has no
+  // settlement to bin by but is still part of the day the player was playing.
+  const rows = dayParam
+    ? allRows.filter((r) => isInEatDay(r.settledAt ?? r.placedAt, dayParam))
+    : allRows;
 
   // GROUP BY ROUND. Up & Down is a fast game — placing many bets on one 5-minute round is
   // normal, so a per-position list reads as a redundant cluster and miscounts "rounds".
@@ -77,12 +102,27 @@ export default async function UpDownHistoryPage() {
         <PageHeader eyebrow={t.market.udTitle} title={t.market.udHistoryTitle} subtitle={t.market.udHistoryBody} />
       </div>
 
+      {/* The active day filter, and the way back out of it. A filter with no
+          visible state and no clear control is how a player concludes their
+          history has vanished. */}
+      {dayWindow && (
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-faint">{t.market.udShowingDay}</span>
+          <span className="chip chip-live">{dayLabel}</span>
+          <Link href="/updown/history" className="btn btn-ghost btn-sm">{t.market.udAllDays}</Link>
+        </div>
+      )}
+
       {rows.length === 0 ? (
         <div className="mt-6">
           <EmptyState
-            title={t.market.udNoHistory}
-            body={t.market.udNoHistoryBody}
-            action={<Link href="/updown" className="btn btn-primary btn-md">{t.market.udTitle}</Link>}
+            title={dayWindow ? t.market.udNoRoundsThatDay : t.market.udNoHistory}
+            body={dayWindow ? t.market.udHistoryBody : t.market.udNoHistoryBody}
+            action={
+              dayWindow
+                ? <Link href="/updown/history" className="btn btn-primary btn-md">{t.market.udAllDays}</Link>
+                : <Link href="/updown" className="btn btn-primary btn-md">{t.market.udTitle}</Link>
+            }
           />
         </div>
       ) : (

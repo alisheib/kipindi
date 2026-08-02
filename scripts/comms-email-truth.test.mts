@@ -1,7 +1,7 @@
 /**
  * C1 · EMAIL TRUTH — what actually lands in the player's inbox.
  *
- * ⚠️ WHY THIS EXISTS. 50pick ships 47 transactional templates and, until this
+ * ⚠️ WHY THIS EXISTS. 50pick ships 48 transactional templates and, until this
  * suite, exactly FIVE of them had ever been rendered by a test — and that test
  * only asserted they did not THROW. It even fed
  * `welcomeHtml({ name: "<script>alert(1)</script>" })` and passed, because
@@ -20,7 +20,7 @@
  *
  * Neither is findable by reading the code — both were found by rendering the
  * template and looking at the bytes. So that is what this file does: it renders
- * ALL 47, twice (benign input and hostile input), and reads the output.
+ * ALL 48, twice (benign input and hostile input), and reads the output.
  *
  * ⛔ NO FIXTURE IS CAST. Every builder below is invoked with literal arguments
  * that TypeScript checks against the real parameter type. An `as never` fixture
@@ -62,7 +62,7 @@ const SAFE = "Manchester United to win the derby";
 type Rendered = { template: string; benign: string; hostile: string };
 
 /**
- * All 47, built from their real types.
+ * All 48, built from their real types.
  *
  * `benign` proves the template reads correctly; `hostile` proves every
  * caller-supplied string reaches the page escaped. Where a builder takes several
@@ -109,6 +109,11 @@ const RENDERS: Rendered[] = [
   { template: "oneSidedRefundHtml",
     benign:  E.oneSidedRefundHtml({ reference: "pos_a1", stake: 10_000, marketTitle: SAFE, settledAt: "2026-07-31T09:00:00.000Z" }),
     hostile: E.oneSidedRefundHtml({ reference: HOSTILE, stake: 1, marketTitle: HOSTILE, settledAt: HOSTILE }) },
+  // The Up & Down daily digest (E-37) — the ONE message a round player receives.
+  // Driven on a LOSING day on purpose: that is the branch carrying the LCCP claim.
+  { template: "updownDigestHtml",
+    benign:  E.updownDigestHtml({ dayLabel: "2 Aug", rounds: 4, wins: 1, losses: 3, refunds: 0, wonPayout: 8_700, lostStake: 15_000, refundedStake: 0, staked: 20_000, returned: 8_700, net: -11_300 }),
+    hostile: E.updownDigestHtml({ dayLabel: HOSTILE, rounds: 1, wins: 0, losses: 0, refunds: 1, wonPayout: 0, lostStake: 0, refundedStake: 1, staked: 1, returned: 1, net: 0 }) },
   { template: "marketCancelledRefundHtml",
     benign:  E.marketCancelledRefundHtml({ title: SAFE, reason: "Source retracted the result", amount: 10_000, reference: "pos_a1" }),
     hostile: E.marketCancelledRefundHtml({ title: HOSTILE, reason: HOSTILE, amount: 1, reference: HOSTILE }) },
@@ -231,7 +236,7 @@ ok("no template is registered twice",
 ok("every template is rendered by this suite",
   exported.every((n) => RENDERS.some((r) => r.template === n)),
   `never rendered: ${exported.filter((n) => !RENDERS.some((r) => r.template === n)).join(", ") || "-"}`);
-ok(`the inventory is 47 templates (found ${exported.length})`, exported.length === 47);
+ok(`the inventory is 48 templates (found ${exported.length})`, exported.length === 48);
 
 // ── 2 · Every template has a real sender ───────────────────────────────────────
 section("2 · wiring — a template with no sender is a template nobody gets");
