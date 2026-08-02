@@ -9,7 +9,12 @@ import { moneyByGame } from "@/lib/server/report-money";
 import { resolveRange } from "@/lib/server/date-range";
 import { DateTimeRangeFilter } from "@/components/ui/datetime-range-filter";
 import { featureCostWindows } from "@/lib/server/ai-usage";
-import { AddAssetForm, AddChainForm, ToggleAsset, ChainStateControls, ThresholdsForm, ReadingMethodForm } from "./updown-controls";
+import {
+  AddAssetForm, AddChainForm, ToggleAsset, ChainStateControls, ThresholdsForm, ReadingMethodForm,
+  // E-31 — both of these had ZERO callers until 2026-08-02, so the price source real money
+  // settles against, and a chain's winning margin, were not editable through the product.
+  EditAssetForm, EditChainForm,
+} from "./updown-controls";
 import { currentSession } from "@/lib/server/auth-service";
 import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import { ControlLocked } from "@/components/admin/control-locked";
@@ -178,7 +183,19 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
                           {live}/{mine.length}
                         </td>
                         <td className="px-4 py-3">
-                          <div className="flex justify-end">
+                          {/* E-31 · the edit form is the only way to repoint an asset's price
+                              source. Same `accounting` gate as its siblings, asked the E-18 way
+                              (the page asks what the action will ask) rather than shipping a
+                              control that bounces. */}
+                          <div className="flex flex-wrap items-center justify-end gap-2">
+                            {canConfig
+                              ? <EditAssetForm
+                                  id={a.id} label={a.key} symbol={a.symbol}
+                                  nameEn={a.nameEn} nameSw={a.nameSw}
+                                  priceSourceUrl={a.priceSourceUrl}
+                                  decimals={a.decimals} minMoveTicks={a.minMoveTicks}
+                                />
+                              : <ControlLocked what="Edit asset" need={CONTROL_DOMAIN.updateAsset} />}
                             {canConfig
                               ? <ToggleAsset id={a.id} enabled={a.enabled} label={a.key} />
                               : <ControlLocked what={a.enabled ? "Enabled" : "Disabled"} need={CONTROL_DOMAIN.toggleAsset} />}
@@ -276,7 +293,16 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
                             : "inherit"}
                         </td>
                         <td className="px-4 py-3">
-                          <div className="flex justify-end">
+                          {/* E-31 · editing a chain is `trading`, the same domain as start/pause/
+                              stop and as this route — so it needs no separate capability check.
+                              It is the ONLY way to change a chain's margin after creation, which
+                              is what E-32 needs (see EditChainForm's header). */}
+                          <div className="flex flex-wrap items-center justify-end gap-2">
+                            <EditChainForm
+                              id={c.id} label={label}
+                              minStake={c.minStake} maxStake={c.maxStake}
+                              marginBps={c.marginBps} defaultMarginBps={cfg.defaultMarginBps}
+                            />
                             <ChainStateControls id={c.id} state={c.state} label={label} />
                           </div>
                         </td>

@@ -29,8 +29,8 @@ import { Toggle } from "@/components/ui/toggle";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ConfirmModal } from "@/components/ui/modal";
 import {
-  createAssetAction, toggleAssetAction,
-  createChainAction, setChainStateAction,
+  createAssetAction, toggleAssetAction, updateAssetAction,
+  createChainAction, setChainStateAction, updateChainAction,
   updateThresholdsAction, updateReadingMethodAction,
 } from "./actions";
 
@@ -75,6 +75,192 @@ export function ToggleAsset({ id, enabled, label }: { id: string; enabled: boole
     });
   };
   return <Toggle on={enabled} onClick={onClick} disabled={pending} aria-label={`Toggle ${label} enabled`} />;
+}
+
+// ── Asset EDIT — finding E-31 ────────────────────────────────────────────────
+
+/**
+ * Edit an existing asset: its symbol, names, precision and — the one that matters —
+ * its PRICE SOURCE.
+ *
+ * 🔴 WHY THIS EXISTS (E-31, live QA campaign 2026-08-02). `updateAssetAction` was
+ * written, gated on `accounting`, and audited — and `grep -rn` found exactly one
+ * reference to it: its own definition. No form, no button, no route. So the link that
+ * real money settles against **could not be changed through the product at all**.
+ * That is E-23's shape exactly ("a remedy that only exists in a script is not a remedy
+ * an operator has"), and it bit on the critical path: driving the price feed live, the
+ * GOLD asset could not be moved off `goldprice.org` — an HTML page the feed reader can
+ * never quote — and the only alternative would have been hand-writing the live database
+ * on the control that decides what settles real money.
+ *
+ * ⚠️ THE SOURCE LOCK IS THE SERVICE'S JOB, NOT THIS FORM'S. `updateAsset` refuses while
+ * any round on the asset is unresolved, because a round resolves against the link it
+ * captured at open; the refusal names the rounds and the money riding on them, and it is
+ * shown VERBATIM. Do not pre-empt it here — a client-side guess at that state would be a
+ * second source of truth about money.
+ */
+export function EditAssetForm({
+  id, symbol, nameEn, nameSw, priceSourceUrl, decimals, minMoveTicks, label,
+}: {
+  id: string; symbol: string; nameEn: string; nameSw: string;
+  priceSourceUrl: string; decimals: number; minMoveTicks: number; label: string;
+}) {
+  const [pending, start] = useTransition();
+  const router = useRouter();
+  const { deferToast, toast } = useDeferredToast(pending);
+  const [open, setOpen] = useState(false);
+
+  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    fd.set("id", id);
+    start(async () => {
+      const r = await updateAssetAction(fd);
+      if (!r.ok) {
+        toast({ title: `Couldn't update ${label}`, description: r.error, variant: "danger" });
+        return;
+      }
+      setOpen(false);
+      router.refresh();
+      deferToast({
+        title: `${label} updated`,
+        description: "Rounds already open keep the source they captured; the next round captures the new one.",
+        variant: "success",
+      });
+    });
+  };
+
+  if (!open) {
+    return (
+      <Button type="button" onClick={() => setOpen(true)} variant="ghost" size="sm">
+        Edit
+      </Button>
+    );
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="rounded-lg border border-border bg-bg-elevated p-4 space-y-3 text-left">
+      <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle">Edit {label}</p>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Field label="Symbol"><Input name="symbol" defaultValue={symbol} size="sm" /></Field>
+        <Field label="Name (EN)"><Input name="nameEn" defaultValue={nameEn} size="sm" /></Field>
+        <Field label="Name (SW)"><Input name="nameSw" defaultValue={nameSw} size="sm" /></Field>
+        <Field label="Decimals"><Input name="decimals" type="number" defaultValue={String(decimals)} min="0" max="8" size="sm" /></Field>
+        <Field label="Min move (ticks)"><Input name="minMoveTicks" type="number" defaultValue={String(minMoveTicks)} min="1" size="sm" /></Field>
+        <Field label="Price source URL" className="sm:col-span-2">
+          <Input name="priceSourceUrl" defaultValue={priceSourceUrl} size="sm" />
+        </Field>
+      </div>
+      <p className="text-[11.5px] leading-[1.55] text-text-subtle max-w-[80ch]">
+        The host must be an <strong>enabled trusted source in this asset&rsquo;s own category</strong> —
+        the allowlist is per category, so one domain approved for <span className="font-mono text-[11px]">macro</span>{" "}
+        does not cover a <span className="font-mono text-[11px]">crypto</span> asset. The source cannot be
+        changed while any round on this asset is still unresolved; pause its chains and let them settle first.
+      </p>
+      <div className="flex gap-2">
+        <Button type="submit" loading={pending} variant="primary" size="md">
+          {pending ? "Saving…" : "Save asset"}
+        </Button>
+        <Button type="button" onClick={() => setOpen(false)} variant="ghost" size="md">Cancel</Button>
+      </div>
+    </form>
+  );
+}
+
+// ── Chain EDIT — finding E-31, and the half that blocks E-32 ─────────────────
+
+/**
+ * Edit a chain's stake bounds and its winning MARGIN.
+ *
+ * 🔴 The same orphan as `EditAssetForm` above, and this is the half that turned a
+ * one-field change into a delete-and-recreate. `updateChainAction` existed with zero
+ * callers, so a chain's margin was fixed **at creation, forever**.
+ *
+ * ⚠️ WHY THAT MATTERS RIGHT NOW (E-32). `defaultMarginBps` is 50 = 0.5% for every
+ * duration and asset class. On BTC at ~63,250 that demands a ±$316 move inside five
+ * minutes: measured on production, two real rounds that moved 0.168% and 0.047% both
+ * resolved cleanly at margin 0 and would BOTH have voided at the default — i.e. a chain
+ * on the default fills its history with `no-move` voids while the feed works perfectly,
+ * which is indistinguishable from E-16. Tuning that per chain is the remedy, and until
+ * this form existed there was no way to apply it.
+ *
+ * ⚠️ `marginPct` is sent even when blank, deliberately. `updateChainAction` only touches
+ * the margin when the field is PRESENT (blank-but-present = inherit the default), so
+ * omitting it would make "clear this override" unexpressible.
+ */
+export function EditChainForm({
+  id, label, minStake, maxStake, marginBps, defaultMarginBps,
+}: {
+  id: string; label: string;
+  minStake: number | null; maxStake: number | null;
+  marginBps: number | null; defaultMarginBps: number;
+}) {
+  const [pending, start] = useTransition();
+  const router = useRouter();
+  const { deferToast, toast } = useDeferredToast(pending);
+  const [open, setOpen] = useState(false);
+
+  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    fd.set("id", id);
+    start(async () => {
+      const r = await updateChainAction(fd);
+      if (!r.ok) {
+        toast({ title: `Couldn't update ${label}`, description: r.error, variant: "danger" });
+        return;
+      }
+      setOpen(false);
+      router.refresh();
+      deferToast({
+        title: `${label} updated`,
+        description: "Rounds already open keep the margin and bounds they froze at open.",
+        variant: "success",
+      });
+    });
+  };
+
+  if (!open) {
+    return (
+      <Button type="button" onClick={() => setOpen(true)} variant="ghost" size="sm">
+        Edit
+      </Button>
+    );
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="rounded-lg border border-border bg-bg-elevated p-4 space-y-3 text-left">
+      <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle">Edit {label}</p>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <Field label="Margin % (blank = inherit)">
+          <Input
+            name="marginPct" type="number" step="0.01" min="0" max="20" size="sm"
+            defaultValue={marginBps != null ? (marginBps / 100).toFixed(2) : ""}
+            placeholder={`inherit (${(defaultMarginBps / 100).toFixed(2)})`}
+          />
+        </Field>
+        <Field label="Min stake (blank = inherit)">
+          <Input name="minStake" type="number" size="sm" defaultValue={minStake != null ? String(minStake) : ""} placeholder="inherit" />
+        </Field>
+        <Field label="Max stake (blank = inherit)">
+          <Input name="maxStake" type="number" size="sm" defaultValue={maxStake != null ? String(maxStake) : ""} placeholder="inherit" />
+        </Field>
+      </div>
+      <p className="text-[11.5px] leading-[1.55] text-text-subtle max-w-[80ch]">
+        The margin is the winning band: <strong>UP at open + margin, DOWN at open − margin</strong>, and
+        anything between VOIDs and refunds every stake. A band wider than the asset typically moves in one
+        round voids nearly every round <em>even when the price feed is working perfectly</em> — measured on
+        production, 0.50% needs a ±$316 move on BTC inside five minutes. <strong>0</strong> falls back to the
+        source&rsquo;s minimum move, which lets a single tick decide real money. Changes affect FUTURE rounds only.
+      </p>
+      <div className="flex gap-2">
+        <Button type="submit" loading={pending} variant="primary" size="md">
+          {pending ? "Saving…" : "Save chain"}
+        </Button>
+        <Button type="button" onClick={() => setOpen(false)} variant="ghost" size="md">Cancel</Button>
+      </div>
+    </form>
+  );
 }
 
 // ── Chain run / pause / stop ─────────────────────────────────────────────────
