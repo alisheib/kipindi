@@ -509,6 +509,24 @@ float and the rail configuration, **not code**.
 **The gate:** a run of consecutive successful withdrawals to real numbers, with zero left in
 `PROCESSING`, and the three above resolved either way.
 
+> ⭐ **RE-MEASURED 2026-08-02 (session 12), and the picture is much better than "one in four".**
+> Ali reported still seeing *"Withdrawals cannot be paid right now"* and said the rail was fixed.
+> **He was right, and the ratio above is an artefact of reading lifetime totals.** Ordered by
+> time, all 9 `FAILED` and 2 of the 3 `PROCESSING` are **from the outage window (29–31 Jul
+> 08:00)**; every attempt *after* 08:04 on 31 July succeeded — **4 for 4**, on `WALLET_CASHIN`,
+> the very rail the docs still called dead. TIPS recovered and nothing recorded it. ⚠️ **Read
+> withdrawals in time order, never as a lifetime ratio** — a fixed outage keeps poisoning the
+> denominator forever.
+>
+> **What holds the banner up is those 3 pre-fix rows and nothing else.** `derivePayoutStatus`
+> trips at *3 stuck OR oldest ≥ 6h* and both are met; the officer flag is untouched
+> (`operational`, no `SystemConfig` row). **They can be closed by us** — the prepaid float never
+> moved, which proves they never paid (arithmetic in `SELCOM-PAYOUT-RAILS.md`) — via
+> `/admin/payments` → *Return to player*. The banner then clears itself with **no deploy**.
+> ⛔ Do NOT "fix" this by weakening the banner: it is derived-from-reality by design, and an
+> operator that takes money in while it cannot pay out has to say so. The row is the bug, not
+> the thermometer.
+
 ### ✅ BLOCKER 2 — CLOSED 2026-08-02 (session 10). Up & Down has now confirmed prices, resolved, and paid.
 
 > ⭐ **THE GATE IS MET.** Round `udr_94864f4b0a6b03306fc1` opened at 63268.00, closed at

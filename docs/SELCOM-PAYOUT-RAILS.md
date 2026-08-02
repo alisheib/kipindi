@@ -172,10 +172,67 @@ out on *every* failed payout, previously carried no identifier at all.
 - `npm run test:payments`, `test:fast-payout`, `test:selcom` — the pre-existing money-safety suites,
   unchanged in intent.
 
-## ✅ Current state — 2026-07-31: PAYOUTS WORK. Read this section, not the one below it.
+## ✅ Current state — 2026-08-02: PAYOUTS WORK, and the three stuck rows CAN be closed by us
 
-**This section is the single source of truth for payout state. Everything else in `docs/SELCOM-*`
-— including "Current state — 2026-07-30" immediately below — is now history.**
+**This section supersedes every other state block in `docs/SELCOM-*`, including the 07-31 one
+directly below it.** Measured from production the same day, not inherited.
+
+| Checked 2026-08-02 17:05 EAT | Value |
+|---|---|
+| Withdrawals CONFIRMED, lifetime | **4** — all on `WALLET_CASHIN`, all 2026-07-31 (08:04, 08:06, 13:55, 13:57) |
+| Disbursement float | **TZS 90,653** — ⚠️ the "float is TZS 0" note that circulated is **stale**, and so is "TZS 100,000" |
+| `WALLET_CASHIN` / TIPS | ✅ **healthy** — it is the rail all four successes went out on |
+| Stuck in `PROCESSING` | **3**, all on Jay's account (`+255757619808`): 10,000 (99h), 5,000 (98h), 2,000 (57h) |
+| Player-facing status | **`unavailable`** — derived, not declared. `SystemConfig` has no `payouts.availability` row at all, so the officer flag is clean `operational` and the queue alone is shutting the door |
+
+### ⭐ The three stuck payouts never paid, and the float is the witness that proves it
+
+The 07-31 note below says *"Only Selcom can close them"* and reasons that reversing an `AMBIGUOUS`
+payout could double-pay. The instinct is right and the ladder rule stays. **But there is a second,
+independent source of truth this platform never consulted: the disbursement float is prepaid, so a
+payout that never debited it never paid.** Run the arithmetic:
+
+- The float was verified at a full **TZS 100,000 on both 30 and 31 July** — *after* the 10,000 and
+  5,000 were attempted on 29 July. Either the float was dry when they were attempted (it was) or it
+  was full afterwards (it was). **Both branches mean the same thing: they did not pay.**
+- Since then the float has fallen by **9,347**. The four confirmed payouts are 4 × 1,970 net =
+  7,880, plus Selcom's per-disbursement fee. A *fifth* payout would need ≥ 9,850 net on its own.
+  **It is not there.**
+- The 2,000 from 07-31 08:07 has **no `providerRef` and no `withdraw.pending` audit row** — only
+  `withdraw.initiated`. Selcom never accepted a dispatch, so there is nothing in flight to collide
+  with.
+
+⚠️ **Do not generalise this into "reverse anything that says 999".** The float check is what makes
+these three safe, and it works because the float is prepaid and this platform has one payout
+source. It is evidence, not a policy change — `runPayoutLadder`'s `AMBIGUOUS → STOP` rule is
+untouched and must stay.
+
+⛔ **And `999 AMBIGUOUS` from `/walletcashin/query` carries no information at all.** Re-confirmed
+2026-08-02: a probe transid **that has never existed** returns the byte-identical
+`999 · AMBIGUOUS · "No reponse from upstream system"`. A response that is the same for a real
+payout and a fabricated one cannot be read as "it might be in flight".
+
+**How to close them** — `/admin/payments` → each frozen payout → **Return to player** → a reason of
+≥10 chars. `reverseStuckPayoutAction` re-queries the provider first and refuses outright if it
+reports `CONFIRMED`, so the control cannot double-pay even if the reasoning above were wrong. When
+the third clears, `derivePayoutStatus` drops below both thresholds and **the player-facing banner
+clears itself with no deploy.**
+
+### 🔴 One real defect this surfaced — the reconciler floods the audit chain
+
+`txn_5fb63ccd052fe64e1f826aff` (the 2,000 with no `providerRef`) carries **584 audit rows**, all
+identical: `payments.reconcile_needs_review · "stale withdrawal has no providerRef — not
+auto-reversed"`, one every ~5 minutes since 07-31 08:41 and still going. The sweep re-reports a
+condition it can never resolve, into the tamper-evident compliance chain, forever. Not filed as a
+blocker — but a single unresolvable row should raise its alarm **once**, not 584 times, and real
+compliance events are being buried under it.
+
+---
+
+## ✅ Current state — 2026-07-31: PAYOUTS WORK (superseded by the block above; kept for the detail)
+
+**This section was the single source of truth for payout state until 2026-08-02. Everything else in
+`docs/SELCOM-*` — including "Current state — 2026-07-30" immediately below — is history.**
 
 Selcom fixed TIPS overnight and asked us to retry. **Two real payouts succeeded, end to end, for
 the first time in this platform's life:**
@@ -191,9 +248,14 @@ notification → email — had **never once executed** before this. It now has, 
 ### 🔴 Two things are still open, and the first one blocks every player
 
 **1. The two payouts from 2026-07-29 are STILL `999`.** `wdr_11d8552cb75b420d4bc3` (TZS 9,850) and
-`wdr_9d9e565e61ce8ec1c0d4` (TZS 4,925). Over 42 hours. Only Selcom can close them, and until they
+`wdr_9d9e565e61ce8ec1c0d4` (TZS 4,925). Over 42 hours. ~~Only Selcom can close them~~, and until they
 do we hold TZS 15,000 of a customer's money — deliberately **not** reversed, because reversing a
 payout that did complete pays twice.
+
+> 🔻 **CORRECTED 2026-08-02 — "only Selcom can close them" was wrong.** The float is prepaid and
+> proves they never paid (see the block above), and `/admin/payments` → *Return to player* has been
+> able to close them since the control shipped. The caution about double-paying an `AMBIGUOUS`
+> payout remains correct in general; it just was not the last word here.
 
 **⚠️ And they shut the door on everyone else.** `derivePayoutStatus` marks payouts `unavailable`
 once the oldest in-flight one passes `UNAVAILABLE_AFTER_HOURS = 6`. Those two are 42h old, so the
