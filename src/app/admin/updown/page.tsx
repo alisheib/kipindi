@@ -2,6 +2,9 @@ import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-she
 import { EmptyState } from "@/components/ui/empty-state";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { listAssets, listChains, getUpDownConfig, ALLOWED_DURATIONS, resolveScheduledMarginBps } from "@/lib/server/updown-config";
+// E-36 — a shut market must be VISIBLY shut. A wall of VOIDs looks identical whether the
+// market is closed or the feed is broken, and that ambiguity is what E-16/E-25/E-32 all cost.
+import { marketSessionAt, nextOpenAfter } from "@/lib/server/market-calendar";
 import { observationStore, roundStore } from "@/lib/server/updown-dal";
 import { poolFee } from "@/lib/payout";
 import { formatTzs } from "@/lib/utils";
@@ -85,6 +88,18 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
     scheduledFor(c) ?? cfg.defaultMarginBps;
   const effectiveMarginBps = (c: { assetId: string; durationMinutes: number; marginBps: number | null }) =>
     c.marginBps ?? inheritedMarginBps(c);
+
+  // ── E-36 · is this chain's market trading RIGHT NOW? ───────────────────────
+  // Read at render time, from the same pure function the money path uses — never a second
+  // copy of the calendar, or the console and the engine could disagree about whether a
+  // chain can run, which is the worst possible thing for an operator to be unsure of.
+  const nowIso = new Date().toISOString();
+  const sessionOf = (c: { assetId: string }) => {
+    const a = assetById.get(c.assetId);
+    if (!a) return null;
+    const v = marketSessionAt(a.category, nowIso);
+    return { ...v, nextOpen: v.open ? null : nextOpenAfter(a.category, nowIso) };
+  };
 
   const feePreview = poolFee(FEE_PREVIEW_POOL / 2, FEE_PREVIEW_POOL / 2, cfg.defaultRateProfile, "YES");
 
@@ -252,12 +267,15 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
             </div>
           ) : (
             <ScrollX label="Up & Down chains">
-              <table className="admin-tbl min-w-[820px]">
+              {/* 7 columns since E-36 added Market — the min-width rises with it, or the new cell
+                    squeezes the others inside the ScrollX rather than widening it (the E-30 class). */}
+              <table className="admin-tbl min-w-[960px]">
                 <thead>
                   <tr className="text-left font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle border-b border-border-subtle">
                     <th className="px-4 py-2.5 font-semibold">Chain</th>
                     <th className="px-4 py-2.5 font-semibold">State</th>
                     <th className="px-4 py-2.5 font-semibold">Next boundary</th>
+                    <th className="px-4 py-2.5 font-semibold">Market</th>
                     <th className="px-4 py-2.5 font-semibold text-right">Margin</th>
                     <th className="px-4 py-2.5 font-semibold text-right">Void rate</th>
                     <th className="px-4 py-2.5 font-semibold text-right">Stake bounds</th>
@@ -287,6 +305,24 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
                         </td>
                         <td className="px-4 py-3 font-mono text-[11.5px] text-text-muted whitespace-nowrap">
                           {fmtTime(c.nextBoundaryAt)}
+                        </td>
+                        {/* E-36 · the market's own calendar, not the chain's state. A RUNNING
+                            chain on a shut market opens nothing and settles nothing — and
+                            without this cell that reads as a broken feed. */}
+                        <td className="px-4 py-3 font-mono text-[11.5px] whitespace-nowrap">
+                          {(() => {
+                            const s = sessionOf(c);
+                            if (!s) return <span className="text-text-faint">—</span>;
+                            if (s.open) return <span className="text-text-muted">open</span>;
+                            return (
+                              <span className="text-warning-fg" title={"detail" in s ? s.detail : undefined}>
+                                closed
+                                <span className="text-text-faint">
+                                  {" "}· opens {fmtTime(s.nextOpen)}
+                                </span>
+                              </span>
+                            );
+                          })()}
                         </td>
                         <td className="px-4 py-3 text-right font-mono text-[11.5px] whitespace-nowrap">
                           {/* Effective winning band: this chain's override, else the E-32

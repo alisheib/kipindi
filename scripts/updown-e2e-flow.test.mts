@@ -51,6 +51,9 @@ __resetUpDownMemoryStores();
 __resetUpDownConfig();
 await seedDefaultSources();
 await addSource({ domain: "twelvedata.com", label: "Twelve Data", category: "macro", rationale: "market data feed", addedBy: "system" });
+// E-36 — a 24/7 category, so this suite does not pass on weekdays and fail at weekends.
+// `isSourceTrusted` matches on (domain, category), so the same domain needs both rows.
+await addSource({ domain: "twelvedata.com", label: "Twelve Data", category: "crypto", rationale: "market data feed", addedBy: "system" });
 
 // The operator's real choice, made through the real setter.
 const cfgSet = await setUpDownConfig({ observationMethod: "feed", feedProvider: "twelvedata" }, OFFICER);
@@ -94,7 +97,7 @@ const balanceOf = async (id: string) => (await db.wallet.findByUserId(id))?.bala
 // ── Setup: one asset, one chain, through the real service functions ─────────
 const asset = await createAsset({
   key: "XAU", symbol: "XAU/USD", nameEn: "Gold", nameSw: "Dhahabu", iconKey: "gold",
-  priceSourceUrl: ENDPOINT, category: "macro", decimals: 2, minMoveTicks: 1,
+  priceSourceUrl: ENDPOINT, category: "crypto", decimals: 2, minMoveTicks: 1,
 }, OFFICER);
 if (!asset.ok) throw new Error(asset.error);
 const en = await setAssetEnabled(asset.data.id, true, OFFICER);

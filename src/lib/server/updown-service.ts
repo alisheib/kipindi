@@ -31,6 +31,8 @@ import {
 } from "./updown-dal";
 import { observePrice, describeRefusal, type OracleReading, type RefusalReason } from "./updown-oracle";
 import { feedFromId, quoteAsset, describeFeedRefusal, hostMatchesDomain, judgeFeedStaleness } from "./updown-feed";
+// E-36 — the trading calendar. A shut market must never settle real money.
+import { marketSessionAt, describeClosure } from "./market-calendar";
 
 export type LifecycleResult<T> = { ok: true; data: T } | { ok: false; error: string };
 
@@ -153,6 +155,27 @@ async function readPrice(
   boundaryAtIso: string,
   cfg: UpDownConfig,
 ): Promise<OracleReading> {
+  // ── E-36 · IS THIS MARKET EVEN TRADING? ────────────────────────────────────
+  // FIRST, before either method and before a single provider credit is spent.
+  //
+  // ⛔ THIS CANNOT BE LEFT TO THE STALENESS GATE, and believing it could is what E-36 is.
+  // The documented reasoning was that a shut market stops advancing its quote time, so
+  // staleness refuses it — and failing that, `minMoveTicks` voids it as a no-move. Measured
+  // against the live provider on Sunday 2026-08-02, BOTH are false: `last_quote_at` advanced
+  // every minute for XAU/USD and EUR/USD, `is_market_open` said `true`, and the weekend
+  // 1-minute bars carry real intrabar range — synthetic jitter around a pinned anchor rather
+  // than a frozen price. 20-95% of shut-market rounds would therefore have RESOLVED, paying
+  // real money on a price no market made. See `market-calendar.ts` for the measurement.
+  //
+  // Mapped to `no-api-key` so it lands inside the operator-state carve-out below: a closed
+  // market must NOT burn the attempt budget (there is nothing to retry into, and each
+  // attempt costs a metered provider credit). The round then stays PENDING and is voided +
+  // refunded by the E-24 self-healer's deadline — the platform's existing safe failure.
+  const session = marketSessionAt(asset.category, boundaryAtIso);
+  if (!session.open) {
+    return { ok: false, reason: "no-api-key", detail: describeClosure(session) };
+  }
+
   if (cfg.observationMethod === "ai") return observePrice(asset, boundaryAtIso);
 
   const q = await quoteAsset(feedFromId(cfg.feedProvider), {
@@ -1021,9 +1044,23 @@ export async function advanceChain(chainId: string): Promise<{
   }
 
   // 3 · Open the round that STARTS here — independent of step 2.
+  //
+  // ⛔ E-36 · DO NOT OPEN A ROUND INTO A CLOSED MARKET. `readPrice` already refuses to
+  // settle one (that is the money guarantee), but a round opened anyway would take real
+  // stakes, show a live countdown, and then void — every round, all weekend. Refusing to
+  // open it is the difference between "the game is closed right now" and "the game is
+  // broken", and those two look identical in a round history full of VOIDs, which is the
+  // whole lesson of E-16/E-25/E-32. Nothing is stranded: no round means no stake.
   let opened = false;
   const latest = await roundStore.latestForChain(chain.id);
   const alreadyOpen = latest && latest.opensAt === boundaryIso;
+  const openSession = marketSessionAt(asset.category, boundaryIso);
+  if (!openSession.open) {
+    return {
+      observation: obs.state, closed, opened: false,
+      detail: describeClosure(openSession),
+    };
+  }
   if (!alreadyOpen) {
     const openPrice = obs.state === "confirmed" ? obs.price : null;
     const openObsId = obs.state === "confirmed" ? obs.id : null;

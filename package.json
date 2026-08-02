@@ -182,6 +182,7 @@
     "ops:updown-probe-feed": "tsx scripts/ops-updown-probe-feed.mts",
     "ops:updown-margin-study": "tsx scripts/ops-updown-margin-study.mts",
     "test:margin-schedule": "tsx scripts/updown-margin-schedule.test.mts",
+    "test:market-calendar": "tsx scripts/market-calendar.test.mts",
     "ops:updown-probe-source": "tsx scripts/ops-updown-probe-source.mts",
     "ops:updown-verify-source": "tsx scripts/ops-updown-verify-source.mts",
     "ops:updown-source-drift": "tsx scripts/audit-updown-source-drift.mts",

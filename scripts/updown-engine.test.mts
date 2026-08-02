@@ -44,6 +44,9 @@ __resetUpDownMemoryStores();
 __resetUpDownConfig();
 await seedDefaultSources();
 await addSource({ domain: "kitco.com", label: "Kitco", category: "macro", rationale: "spot metals", addedBy: "system" });
+// The 24/7 fixture's source, and the shut-market fixture's (§12) — both categories needed,
+// because `isSourceTrusted` matches on (domain, category).
+await addSource({ domain: "kitco.com", label: "Kitco", category: "crypto", rationale: "test fixture", addedBy: "system" });
 
 // ── Players with real wallets (same shape the other money tests use) ─────────
 const nowIso = () => new Date().toISOString();
@@ -73,9 +76,18 @@ const walletsTotal = async () =>
 const START_TOTAL = await walletsTotal();
 
 // ── Asset + chain ────────────────────────────────────────────────────────────
+// ⚠️ E-36 · THE FIXTURE IS A 24/7 ASSET ON PURPOSE, and this is not cosmetic. The money path
+// now refuses to open or settle a round while the asset's market is shut (`market-calendar.ts`),
+// because the provider quotes metals and FX right through the weekend and 20-95% of those
+// rounds would otherwise RESOLVE on a tape the named market never produced. This suite anchors
+// its grid to `Date.now()`, so a `macro` fixture made every case here pass Monday-Friday and
+// FAIL at the weekend — a suite whose verdict depends on the day it runs is a suite that lies.
+// A crypto asset is calendar-independent, which is what a test about grid maths, conservation
+// and write-once observations actually wants. The calendar itself is proven by
+// `npm run test:market-calendar`, and §12 below pins the integration case.
 const a = await createAsset({
   key: "XAU", symbol: "XAU/USD", nameEn: "Gold", nameSw: "Dhahabu", iconKey: "gold",
-  priceSourceUrl: "https://www.kitco.com/price/precious-metals", category: "macro",
+  priceSourceUrl: "https://www.kitco.com/price/precious-metals", category: "crypto",
   decimals: 2, minMoveTicks: 1,
 }, OFFICER);
 if (!a.ok) throw new Error(a.error);
@@ -497,9 +509,11 @@ let round1Id = "";
 
 // ── 10 · ★ THE MARGIN MODEL end-to-end — the PDF's base ± 0.5% boundaries ─────
 {
+  // `crypto` for the calendar reason in the header note — this section is about the margin
+  // model, not about equity trading hours.
   const spx = await createAsset({
     key: "SPX", symbol: "SPX", nameEn: "S&P 500", nameSw: "S&P 500", nameZh: "标普500", iconKey: "chart",
-    priceSourceUrl: "https://www.kitco.com/price/precious-metals", category: "macro",
+    priceSourceUrl: "https://www.kitco.com/price/precious-metals", category: "crypto",
     decimals: 2, minMoveTicks: 1,
   }, OFFICER);
   if (!spx.ok) throw new Error(spx.error);
@@ -635,6 +649,52 @@ let round1Id = "";
   ok("11.3 · ⛔ it resolves by its FROZEN band → UP — a config edit can never re-price a bet already taken",
      cf.ok && cf.data.outcome === "UP", cf.ok ? cf.data.outcome : cf.error);
   await setUpDownConfig({ marginSchedule: frozenLadderRestore }, OFFICER); // restore
+}
+
+// ── 12 · ⛔ E-36 · THE EMITTER REFUSES A SHUT MARKET (integration) ───────────
+// `market-calendar.test.mts` proves the calendar in isolation. This proves the money path
+// CONSULTS it — the distinction that matters, and the one a pure unit test cannot make: a
+// perfect calendar nothing calls is worth nothing. That is E-23's lesson, and E-31's.
+//
+// Deterministic by construction: the boundary is pinned to a known Saturday, so this case
+// says the same thing whatever day the suite runs.
+{
+  const SATURDAY = "2026-08-01T12:00:00.000Z";
+  const mAsset = await createAsset({
+    key: "GOLDCAL", symbol: "XAU/USD", nameEn: "Gold cal", nameSw: "Dhahabu cal", iconKey: "gold",
+    priceSourceUrl: "https://www.kitco.com/price/precious-metals", category: "macro",
+    decimals: 2, minMoveTicks: 15,
+  }, OFFICER);
+  if (!mAsset.ok) throw new Error(mAsset.error);
+  await setAssetEnabled(mAsset.data.id, true, OFFICER);
+  const gold = (await assetStore.get(mAsset.data.id))!;
+  const gc = await createChain({ assetId: gold.id, durationMinutes: 5 }, OFFICER);
+  if (!gc.ok) throw new Error(gc.error);
+  await setChainState(gc.data.id, "RUNNING", OFFICER);
+  // Anchor the grid ON the Saturday boundary, so `advanceChain` reaches for exactly it.
+  await chainStore.patch(gc.data.id, { gridAnchorAt: SATURDAY, nextBoundaryAt: SATURDAY });
+
+  const before = (await roundStore.list({ chainId: gc.data.id })).length;
+  const tick = await advanceChain(gc.data.id);
+  const after = (await roundStore.list({ chainId: gc.data.id })).length;
+
+  ok("12.1 · ⛔ no round is opened into a closed market", tick.opened === false && after === before,
+     `opened=${tick.opened} rounds ${before}→${after}`);
+  ok("12.2 · and the reason names the CALENDAR, not a missing price",
+     /market closed/i.test(tick.detail ?? "") && /saturday/i.test(tick.detail ?? ""),
+     tick.detail ?? "(no detail)");
+  ok("12.3 · no observation was confirmed for that boundary either",
+     tick.observation !== "confirmed", String(tick.observation));
+
+  // …and the SAME chain on a weekday boundary DOES open. Without this, 12.1 would also pass
+  // against a chain that is simply broken.
+  const WEDNESDAY = "2026-08-05T12:00:00.000Z";
+  await chainStore.patch(gc.data.id, { gridAnchorAt: WEDNESDAY, nextBoundaryAt: WEDNESDAY });
+  const tick2 = await advanceChain(gc.data.id);
+  const after2 = (await roundStore.list({ chainId: gc.data.id })).length;
+  ok("12.4 · ★ the same chain DOES open on a weekday boundary — the gate is the calendar, not a break",
+     tick2.opened === true && after2 === before + 1,
+     `opened=${tick2.opened} rounds ${before}→${after2} detail=${tick2.detail}`);
 }
 
 console.log(`\nupdown-engine: ${pass} passed, ${fail} failed`);

@@ -78,6 +78,9 @@ __resetUpDownMemoryStores();
 __resetUpDownConfig();
 await seedDefaultSources();
 await addSource({ domain: "kitco.com", label: "Kitco", category: "macro", rationale: "spot metals", addedBy: "system" });
+// E-36 — the fixture below is a 24/7 category so this suite is calendar-independent;
+// `isSourceTrusted` matches on (domain, category), so the same domain needs both rows.
+await addSource({ domain: "kitco.com", label: "Kitco", category: "crypto", rationale: "test fixture", addedBy: "system" });
 
 const nowIso = () => new Date().toISOString();
 let seq = 0;
@@ -105,7 +108,14 @@ const START_TOTAL = (await balanceOf(alpha)) + (await balanceOf(bravo));
 // ── Asset + a 5-minute chain, through the real registry ──────────────────────
 const a = await createAsset({
   key: "XAU", symbol: "XAU/USD", nameEn: "Gold", nameSw: "Dhahabu", iconKey: "gold",
-  priceSourceUrl: "https://www.kitco.com/price/precious-metals", category: "macro",
+  // ⚠️ E-36 · `crypto`, i.e. a 24/7 market, ON PURPOSE. This suite is about the RETRY
+  // LADDER, and the money path now refuses to read a price while the asset's market is
+  // shut — as an operator-state refusal, which deliberately does NOT burn an attempt.
+  // With a `macro` fixture and a grid anchored to `Date.now()`, every ladder case here
+  // passed Monday-Friday and failed at the weekend. A suite whose verdict depends on the
+  // day it runs is a suite that lies. The calendar has its own proof:
+  // `npm run test:market-calendar`, plus §12 of `test:updown-engine` for the integration.
+  priceSourceUrl: "https://www.kitco.com/price/precious-metals", category: "crypto",
   decimals: 2, minMoveTicks: 1,
 }, OFFICER);
 if (!a.ok) throw new Error(a.error);

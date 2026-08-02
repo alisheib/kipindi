@@ -632,7 +632,7 @@ stand between it and a launch that would be safe to defend to a regulator.
 | 2 | KYC: submit · import · approve · reject · revoke · ban · NIDA duplicate | ✅ **COMPLETE** — approve · reject · revoke · ban · NIDA freed, all driven on prod (§6c). E-1 verified in **EN + SW + ZH**; E-3, E-6, E-2, E-5, **E-4 + E-9** fixed **and live-verified**. Only `import` untested |
 | 3 | Money in: wallet · deposit · ledger · receipts | ✅ **UNBLOCKED + DONE (§6g)** — `alpha` and `echo` funded 50,000 each through the real money path; 9 webhook forgeries refused, exactly-once proven over 3 deliveries, ledger balanced |
 | 4 | Core play: markets · YES/NO · win + lose · resolution · payout | ✅ **DONE on production (§6h)** — create → bet both sides → resolve → objection window → settle. A real WIN (37,400 paid) and a real LOSS, ledger sums to 0, with a CONTROL market proving the objection window is what gates payment |
-| 5 | Up & Down: rounds · quick-bet · pricing · void · history | ✅ **THE GAME WORKS — proven end to end on production 2026-08-02 (§6q).** The feed was turned on through the real product path (3 operator steps, each as the narrowest identity that holds the authority), and round `udr_94864f4b0a6b03306fc1` confirmed **two different real prices** (63268.00 → 63162.01), resolved **DOWN**, and paid **TZS 8,700** to a real wallet **437 ms** after its boundary against a real loss — ledger netting exactly the 1,300 commission, tying to the shilling. Round #2 repeated it. **1,402 → 1,404 rounds, and the last two are the platform's first non-VOID outcomes ever.** 🔴 **What now blocks launch is E-32, a PRICING decision**: at the default 0.5% margin both of those rounds would have voided despite real moves. 🔴 Also found: **E-31** — `updateAssetAction`/`updateChainAction` have no callers, so an asset's price source and a chain's margin cannot be edited through the product at all. Older state: **E-25 FIXED (§6l): the merged feed could never have confirmed a price** — it dated quotes from the `1day` OHLC bar instead of `last_quote_at`, making the 90 s staleness gate unsatisfiable on every asset forever. Probed live: **2/2 symbols now WOULD CONFIRM at 39 s skew**. **E-26**: the two ops scripts named as the way to verify this cannot see the feed at all → shipped `ops:updown-probe-feed`. ⚠️ `SPX` is **not on the live TwelveData plan** (HTTP 404, Grow tier), so `SNP500` cannot be fed. Older state: **E-16's FIX IS MERGED, NOT YET SWITCHED ON.** The TwelveData feed reader landed 2026-08-01 (§6b session 6), but `feedProvider` still defaults to `mock`, which refuses in production — so prod voids+refunds safely and is not yet playable. Flipping it to `twelvedata` is an operator action and is step ① of the next session. ✅ **E-23 fully CLOSED 2026-08-01 (§6n)** — the enabled *Void & refund* control photographed at 360/768/1280/1920 on production **and used through the product for the first time** (round `udr_b8e1562e2f619954353a` → `operator` void, audited to the officer by name, 24/24). Using it exposed **E-29**: the settlement note claimed two price observations on **1,397 of 1,397** rows that had none. ✅ **E-24 + E-23 FIXED (§6k)**, and the merge strengthened it: the branch's ops-state carve-out + our deadline together close a hole neither had alone. ✅ Refund contract proven (35 positions, 96,250 staked = 96,250 returned); ✅ quick-bet proven live |
+| 5 | Up & Down: rounds · quick-bet · pricing · void · history | ⭐ **PRICING IS NOW DECIDED AND THE CALENDAR HOLE IS CLOSED (2026-08-02, session 11).** **E-32 answered by Ali** ("balanced", ~1 in 3 voids) and shipped as a measured **margin ladder** — 2 bps at 5 min, 3 at 15, 5 at 30, rising to 30 at a day — after ~4,000 real provider windows showed the old flat **0.5% voids 96-100% of rounds at EVERY duration the platform offers**; the median move scales as √time, so 0.5% is a **~23-hour** margin (§6t). **E-36 found and fixed**: there was no trading calendar at all, and both documented safety nets fail against this provider — 20-22% of shut-market gold windows and **90-95% of EUR/USD** would have **RESOLVED**, paying real money on a tape the named market never produced (§6u). Guards `test:margin-schedule` **33/33** and `test:market-calendar` **26/26**, each proven RED first. ✅ **THE GAME WORKS — proven end to end on production 2026-08-02 (§6q).** The feed was turned on through the real product path (3 operator steps, each as the narrowest identity that holds the authority), and round `udr_94864f4b0a6b03306fc1` confirmed **two different real prices** (63268.00 → 63162.01), resolved **DOWN**, and paid **TZS 8,700** to a real wallet **437 ms** after its boundary against a real loss — ledger netting exactly the 1,300 commission, tying to the shilling. Round #2 repeated it. **1,402 → 1,404 rounds, and the last two are the platform's first non-VOID outcomes ever.** 🔴 **What now blocks launch is E-32, a PRICING decision**: at the default 0.5% margin both of those rounds would have voided despite real moves. 🔴 Also found: **E-31** — `updateAssetAction`/`updateChainAction` have no callers, so an asset's price source and a chain's margin cannot be edited through the product at all. Older state: **E-25 FIXED (§6l): the merged feed could never have confirmed a price** — it dated quotes from the `1day` OHLC bar instead of `last_quote_at`, making the 90 s staleness gate unsatisfiable on every asset forever. Probed live: **2/2 symbols now WOULD CONFIRM at 39 s skew**. **E-26**: the two ops scripts named as the way to verify this cannot see the feed at all → shipped `ops:updown-probe-feed`. ⚠️ `SPX` is **not on the live TwelveData plan** (HTTP 404, Grow tier), so `SNP500` cannot be fed. Older state: **E-16's FIX IS MERGED, NOT YET SWITCHED ON.** The TwelveData feed reader landed 2026-08-01 (§6b session 6), but `feedProvider` still defaults to `mock`, which refuses in production — so prod voids+refunds safely and is not yet playable. Flipping it to `twelvedata` is an operator action and is step ① of the next session. ✅ **E-23 fully CLOSED 2026-08-01 (§6n)** — the enabled *Void & refund* control photographed at 360/768/1280/1920 on production **and used through the product for the first time** (round `udr_b8e1562e2f619954353a` → `operator` void, audited to the officer by name, 24/24). Using it exposed **E-29**: the settlement note claimed two price observations on **1,397 of 1,397** rows that had none. ✅ **E-24 + E-23 FIXED (§6k)**, and the merge strengthened it: the branch's ops-state carve-out + our deadline together close a hole neither had alone. ✅ Refund contract proven (35 positions, 96,250 staked = 96,250 returned); ✅ quick-bet proven live |
 | 6 | Proposals: propose · approve · 4-state switch · bonus | ⏳ |
 | 7 | AI: poll generation · source registry · token enable/disable · usage | ✅ **generate → review → publish → live market DRIVEN ON PROD, 15/15, on real tokens** (§6e). **Spend ceiling fixed + live-verified (E-15).** ✅ **E-17 CLOSED 2026-08-01** — the *AI proposals* nav entry and its page are merged and pinned by `test:admin-nav` §7. Remaining: poll **resolution** with money, and driving the Up & Down proposal queue on prod |
 | 8 | Invites & referrals | 🔄 **The whole `growth` domain is now REACHABLE and audited for the first time (2026-08-02, §4).** `/admin/invites` is `growth`, which **no QA persona held** — so a compliance officer was refused there, correctly, and four pages had never been seen signed in as a role that can view them. New **QA GROWTH officer** (`bravo` → `GROWTH`; production had **zero** GROWTH accounts). `invites` · `affiliate` · `bonuses` · `players/cohorts` all render across 4 widths × 3 locales, **104/104**, and 8/8 privileged surfaces refuse. Auditing them surfaced **G-4** and **G-5**. ⏳ Still to drive: creating a campaign, redeeming an invite end-to-end, and the referral bonus actually paying |
@@ -1120,6 +1120,21 @@ which it named by filename.
 |---|---|---|---|---|
 | **E-16** | 🔴 **BLOCKER** | Up & Down · resolution | **Up & Down has NEVER settled a single round on production, and cannot.** The price oracle has produced **zero** confirmed readings in its entire history: `UpDownObservation` holds **1,397 `PENDING` + 3 `FAILED` = 0 `CONFIRMED`**, and every one of the **1,398** `UpDownRound` rows is **`VOID`** (1,395 `operator`, 3 `source-failed`). `PredictionMarket` agrees — **1,398 `UPDOWN` rows, every one `VOIDED`**, not one `RESOLVED`. The cause is in the stored `failReason`s and it is the same every time: **the two enabled assets' sources render their prices in JavaScript widgets that a web search cannot read.** Verbatim from live rows — *"the search engine returned only static/descriptive text from that page … no actual quoted numeric spot price and no timestamp"* (`goldprice.org`), and for `kitco.com` the crawl returns only *"Market Data and Widgets Technology provided by TradingView"* and *"Data Delayed by 10 minutes"*. So the design behaved **honestly** — it refused rather than guessing, and every stake was refunded, which is the correct and player-safe direction — but the game is **structurally unable to resolve**, and it burned **$59.37** of real tokens establishing that 656 times. ⚠️ Both chains are currently `PAUSED`/`STOPPED` and the newest boundary is 2026-07-30 09:40, so nothing is spending **right now**. | live: `UpDownObservation` state counts · `UpDownRound` outcome counts · the `failReason` text quoted above · `AiUsageEvent` feature=`updown` |
 
+> ⚠️ **E-36 — one claim was made, tested, and WITHDRAWN. Read this before repeating it.** The
+> first reading of the weekend data called those bars *"synthetic jitter around a pinned
+> anchor"*: over a 15-minute stretch every gold bar opened within a cent of 4042.684 while the
+> close wandered. **Over the whole day the anchor drifts $32, so the description is wrong.** The
+> sharper test — is the tape continuous, i.e. does `open[i]` ≈ `close[i-1]`? — **also fails to
+> separate weekend from weekday**: median seam/range is **0.43 Sat vs 0.31 Fri** on XAU/USD and
+> **0.33 on both** for EUR/USD, while BTC/USD (genuinely 24/7) sits at **0.000 on both**. So a
+> broken seam is normal for an *aggregated* FX/metals feed, not a weekend artifact, and whether
+> those prints are interpolated or thin quotes from a venue that really is open **cannot be
+> settled from here**. It does not need to be: spot XAU/USD is shut, its weekend tape is a
+> different regime entirely (median per-minute move **0.256 bps Sat vs 1.613 bps Fri**, six
+> times quieter), no player can verify it, and the platform would have settled licensed
+> real-money rounds on it. **The defect stands without the overclaim — and shipping the
+> overclaim would have been the thing that got the finding dismissed.**
+
 **E-16 — WHICH GATE actually refuses, classified over all 1,400 live observations.** This is the part
 that decides the fix, and it is not what the first look suggested:
 
@@ -1227,8 +1242,138 @@ would have. The build stays the gate.
 | **E-33** | MEDIUM · **OPEN — a compliance decision, not a wiring job** | privacy · DSAR register | **Nothing on the platform can put a request INTO the DSAR register, so `/admin/privacy` will read *"No data-subject access requests are on file"* forever.** Found by the E-31 sweep: `fileDsarAction` is an orphan, and `fileDsarRequest` (`privacy.ts:56`) has **exactly one caller — that orphan**. The page's *other* two actions are wired and work (`buildDsarBundleAction` for the walk-in/on-behalf export, `fulfillDsarAction` for fulfilling a queued one), so **a player can still GET their data** — this is not a data-rights outage. What cannot be recorded is that they **asked**, and that is the half a regulator examines, because the statutory response clock runs from the request. ⛔ **Deliberately not wired in the session that found it**: who may file a DSAR on a player's behalf, and on what authentication, is a compliance decision (the page's own copy requires *"phone OTP at the front-desk"* for the export path) — inventing that policy in a QA session would be the wrong kind of fix. Pinned in `KNOWN_ORPHANS` with its reason so it cannot be forgotten. | `grep -rn fileDsarRequest src/` → 2 hits, both in the orphan's own call chain; `npm run test:orphan-actions` §1/§2 |
 | **E-34** | LOW · **OPEN, measured** | RBAC · shared refusal panel · honesty | **The refusal shown on every blocked admin page names the wrong role, to everyone.** `components/admin/admin-restricted.tsx:39` hard-codes *"**Moderators** are excluded by policy"* regardless of who is reading, so a FINANCE, COMPLIANCE or GROWTH officer is told about a role they are not — and told nothing about why **they** are excluded. It also cites `roles.ts`, a source file no operator can open. Same family as D-2/E-2/E-8/E-29: **a surface stating something it does not know.** Not a security gap — the data really is withheld (9/9, §6s) — but it is on **all 47 admin pages** and it is the sentence an operator reads when they hit a wall. Fix: state the domain the viewer lacks, drop the moderator clause and the file reference. | read live as the QA FINANCE officer on `/admin/{updown,markets,ai-polls,compliance,approvals}`; `shots/s10-finance-deny-*.png` |
 | **E-35** | LOW · **OPEN, measured** | i18n · shared refusal panel | **The refusal panel is hard-coded English on a platform that enforces trilingual parity.** The card title is bilingual (`title="Restricted" sw="Imezuiliwa"`) and **the explanation underneath it is English only** — no `useT`, no dictionary key. A Swahili-only operator gets the lock and a sentence they may not read. ⚠️ **`test:i18n` cannot catch it**, because the string never enters the dictionary — which is exactly what the standing *"never hardcode user-facing strings"* rule exists to prevent, and it means parity being green says nothing here. Same component and same one-line region as E-34, so both should be fixed together (en/sw/zh keys + the reworded sentence). | `admin-restricted.tsx:36-41`; the live panel rendered in full above in §6s |
-| **E-36** | 🔴 **HIGH · OPEN, measured** | Up & Down · money path · trading calendar | **The platform will settle real money on prices no market made.** There is no trading-calendar gate anywhere: `grep -rn "is_market_open\|marketHours\|tradingCalendar"` over `src/` returns exactly **one** hit, and it is a comment in `updown-feed.ts:237` explaining why no gate is needed. Both of that comment's premises are **false against the provider actually in production**, measured today: ① *"a shut market stops advancing `last_quote_at`"* — XAU/USD and EUR/USD returned `last_quote_at` = **2026-08-02T12:11:00Z on a Sunday**, advancing every minute, with `is_market_open: true`; ② *"if a provider re-stamps a FROZEN price with a fresh time, the `minMoveTicks` no-move rule voids and refunds — that failure is safe"* — **the price is not frozen, it jitters.** TwelveData returns **1,440 one-minute bars on a Saturday** for two markets that are shut all Saturday, with `high > low` and **zero gaps**; inspected minute by minute, each bar pins its **open** to the same value (4042.684 on gold, every single minute) while the close wanders ±0.1 — synthetic noise around a frozen anchor. Friday's bars behave correctly (each open ≈ the previous close). Consequence, computed through the REAL `computeTargets`: over the shut windows, **20–22% of gold rounds and 90–95% of EUR/USD 5-minute rounds would RESOLVE**, paying a real winner against a real loser on a price that was never traded. ⚠️ **Worse than voiding, and it inverts §4b's assumption**: session 10 avoided this by choosing crypto and believed a shut market would void as a no-move. It would not. ⚠️ **It also corrupted the E-32 measurement** before it was caught: gold's median 5-minute move read **0.004%** with weekend bars included and **0.043%** without — a 10× error that would have been quoted as a recommendation. | `scratchpad/bars-diag2.mjs` (Sat vs Fri path, per-minute step in bps: SAT median 0.256 vs FRI 1.613 on XAU); `ops:updown-margin-study` prints the shut-window resolve rate per duration; `grep` result above |
+| **E-36** | 🔴 **HIGH** → ✅ **FIXED 2026-08-02 (§6u)** | Up & Down · money path · trading calendar | **The platform would settle real money on a tape the named market did not produce.** There was no trading-calendar gate anywhere: `grep -rn "is_market_open\|marketHours\|tradingCalendar"` over `src/` returned exactly **one** hit — a comment in `updown-feed.ts:237` explaining why none was needed. Both of its premises are **false against the provider in production**, measured: ① *"a shut market stops advancing `last_quote_at`"* — XAU/USD and EUR/USD returned `last_quote_at` = **2026-08-02T12:11:00Z on a Sunday**, advancing every minute, with `is_market_open: **true**`; ② *"if a provider re-stamps a FROZEN price with a fresh time, `minMoveTicks` voids it as a no-move — that failure is safe"* — the weekend quotes **move**. The provider returns **1,440 one-minute bars per weekend day** for two markets shut from Friday ~21:00 UTC to Sunday ~22:00, with `high > low` and **zero gaps**. Run through the REAL `computeTargets` on the live GOLD row ($0.15 tick floor): **83 of 288 Saturday 5-minute windows (28.8%) clear the floor and would have RESOLVED**, the first by **+$1.26**; across all shut windows, 20-22% on gold and **90-95% on EUR/USD**. Every one pays a real winner against a real loser. **Strictly worse than voiding — a void refunds; this pays.** ⚠️ It also inverts §4b's stated assumption: session 10 believed a shut market would void as a no-move. It would not. ⚠️ And it corrupted the E-32 study before it was caught — gold's median 5-minute move read **0.004%** with weekend bars in and **0.043%** without, a 10× error that was about to be quoted as a recommendation. **Fixed** with `market-calendar.ts` (pure, no I/O): the money path refuses to READ a price and the emitter refuses to OPEN a round while the market is shut, and `/admin/updown` gained a **Market** column that says `closed · opens HH:MM UTC`. | `ops:updown-margin-study` shut-window resolve rates; `scratchpad/find-sat-window.mjs` → 83/288; `npm run test:market-calendar` **26/26** proven **RED (10 failures)**; `test:updown-engine` §12 integration **4/4** |
 | **G-7** | MEDIUM → ✅ **FIXED (2026-08-02, session 10)** | visuals · shared `Chip` | **Any `Chip` with a long label bleeds silently past its container, platform-wide.** `components/ui/chip.tsx` was `whitespace-nowrap` with a **fixed `height`** (18/21/25px per size). Both are correct for a short status pill and both are wrong for a phrase: the chip could neither wrap nor grow, so it was simply drawn outside its column with no ellipsis — and with nothing for a document-level check to notice. ✅ Fixed in the shared component: `height` → `minHeight` with `height: auto`, `whiteSpace: normal`, `max-w-full`, and the `/admin/reports` call-site opt-out **deleted** because the component now does it. ⭐ **The interesting part is how it had to be proven, because a survey CANNOT catch this and did not.** `live/s10-g7-probe.mjs` measured **84 live chips across 7 routes × 4 widths and found ZERO bleeding** — session 9 had patched the one known offender *at its call site*, so the shared component stayed broken for the next long label while everything measured clean. A latent defect has nothing to measure until someone ships the label that trips it. So the RED was produced by taking a **real chip off a real production page** and giving it a real call site's label at the real column width (`live/s10-g7-inject.mjs`, `/admin/aml` @360): **206×18 inside a 198px container — 8px outside it**, `white-space:nowrap · height:18px · max-width:none`. Re-run after the fix on production: **fits, wraps, grows.** ⚠️ **The `minHeight` swap must stay a no-op for one-line chips**, and that is now arithmetic rather than a hope — `test:chip-contract` §3 computes `fontSize × lineHeight + 2 × paddingBlock` for all six sizes and fails if any exceeds its `minHeight`, i.e. if a future edit would make **every chip on the platform** grow. | `live/s10-g7-inject.mjs` on production, before **206×18 in 198px, +8px** / after **fits**; `live/s10-g7-{before,after}.json` — 84 chips, height histogram `{18: 84}` unchanged; `npm run test:chip-contract` **14/14**, proven **RED** against the pre-fix component (10 failures) |
+
+## 6u. ⭐ E-36 — the platform had no trading calendar, and a shut market would have PAID (2026-08-02, session 11)
+
+Found while measuring E-32, which is the only reason it was found at all: the study's own gold
+numbers looked impossibly quiet, and chasing that is what surfaced this.
+
+### What was wrong
+
+`grep -rn "is_market_open\|marketHours\|tradingCalendar" src/` returned **one** hit — a comment
+in `updown-feed.ts:237` explaining why no calendar was needed:
+
+> *"Deliberately NOT gated on `is_market_open`. A shut market stops advancing `last_quote_at`, so
+> the staleness rule already refuses it… If a provider ever re-stamps a FROZEN price with a fresh
+> time, the `minMoveTicks` no-move rule voids and refunds the round; that failure is safe."*
+
+Careful reasoning, two safety nets, and **both premises are false against the provider actually
+in production.** Measured, not argued:
+
+```
+XAU/USD  /quote   last_quote_at = 2026-08-02T12:11:00Z  (a SUNDAY)   is_market_open = true
+EUR/USD  /quote   last_quote_at = 2026-08-02T12:11:00Z              is_market_open = true
+/time_series 1min → 1,440 bars on SATURDAY for both, high > low, ZERO gaps
+```
+
+Spot metals and FX are shut from Friday ~21:00 UTC to Sunday ~22:00. The provider answers anyway,
+the quote time advances every minute — so **the 90-second staleness gate is satisfied** — and the
+prices **move**, so **there is no no-move to void**. Both nets miss.
+
+### What that costs, through the real arithmetic
+
+Not estimated — computed with `computeTargets`, on the live GOLD row (decimals 2, `minMoveTicks`
+15, i.e. a **$0.15 floor**, which is the net premise ② relied on):
+
+| | |
+|---|---|
+| Saturday 5-minute gold windows that clear the $0.15 floor | **83 of 288 — 28.8%** |
+| the first of them | **+$1.26**, a clean UP |
+| resolve rate across all shut windows, gold | **20–22%** |
+| resolve rate across all shut windows, EUR/USD (0.1-pip floor) | **90–95%** |
+
+Every one of those **pays a real winner against a real loser**. That is strictly worse than
+voiding: a void refunds, this pays — on a price the market the product *names* did not make, at a
+time no player can check it.
+
+⚠️ **It inverts what §4b said.** Session 10 chose crypto because it believed a shut gold market
+would re-stamp a frozen close and void as a no-move. That belief was the reason gold felt safe to
+defer. It was wrong in the dangerous direction.
+
+⚠️ **And it had already corrupted the E-32 measurement.** With weekend bars included, gold's
+median 5-minute move read **0.004%**; with them excluded, **0.043%**. A **10× error**, in the
+numbers that were about to be handed over as a pricing recommendation. The only reason it was
+caught is that 0.004% did not look like gold.
+
+### 🔻 One claim was made, tested, and WITHDRAWN
+
+The first reading was that these are *fabricated* bars — *"synthetic jitter around a pinned
+anchor"*, because over a 15-minute stretch every gold bar opened within a cent of 4042.684 while
+the close wandered. **Over the whole day the anchor drifts $32.** The description is wrong.
+
+The sharper test was: is the tape continuous — does `open[i]` ≈ `close[i-1]`, as real 1-minute
+data does? Measured as seam ÷ bar range:
+
+```
+XAU/USD   SAT median 0.431   FRI median 0.314
+EUR/USD   SAT median 0.333   FRI median 0.333
+BTC/USD   SAT median 0.000   FRI median 0.000      ← genuinely 24/7, genuinely continuous
+```
+
+**It does not separate weekend from weekday.** A broken seam is normal for an *aggregated*
+FX/metals feed and tells us nothing about the calendar. So whether those prints are interpolated,
+or thin quotes from some venue that really is open, **cannot be settled from here** — and the
+finding never needed it. What is proven is enough: the named market is shut, its weekend tape is
+a different regime (median per-minute move **0.256 bps Sat vs 1.613 bps Fri** — six times
+quieter), and the platform would have settled licensed real-money rounds on it.
+
+⭐ **This is the part worth carrying forward.** The overclaim was the more dramatic finding and it
+would have been the thing that got the real one dismissed. Four harness lies were caught in
+session 10; this is the same discipline pointed at a *conclusion* rather than at a detector.
+
+### The fix
+
+`src/lib/server/market-calendar.ts` — pure, no I/O, the same shape as `computeTargets` and for
+the same reason: it decides whether real money may be settled.
+
+1. **`readPrice` refuses first**, before either observation method and before a single provider
+   credit is spent. Mapped into the existing operator-state carve-out, so a closed market does
+   **not** burn the attempt budget — there is nothing to retry into, and each attempt is a
+   metered credit. The round then voids and refunds via the E-24 healer's deadline: the
+   platform's existing safe failure, reused rather than reinvented.
+2. **`advanceChain` refuses to OPEN a round** into a closed market. `readPrice` alone would have
+   left rounds taking real stakes behind a live countdown, then voiding — every round, all
+   weekend. No round means no stake to strand.
+3. **`/admin/updown` gained a `Market` column** reading `open`, or `closed · opens 22:00 UTC`.
+   E-16, E-25 and E-32 all cost the same thing — a wall of VOIDs that looks identical whatever
+   caused it. An operator must be able to tell "closed right now" from "broken".
+
+⚠️ **Two limits, stated rather than papered over.** **Holidays are not modelled** — Good Friday
+closes these markets on a weekday and the calendar will call them open; what protects a round
+then is the staleness gate on a genuinely frozen quote, which is the case the weekend was
+measured to break, not one that has itself been measured. And **a cash equity index needs its own
+session kind**: `S&P500` trades ~13:30–20:00 UTC but is filed under the same `macro` category as
+gold, so it would inherit the FX week. `SNP500` cannot be fed at all today (`SPX` is not on the
+live plan, E-25), so no index round can reach the gate — and there is a guard case pinning that
+shortfall so a future index feed cannot quietly inherit the wrong hours.
+
+### The guard, the RED, and the four suites this broke on purpose
+
+`npm run test:market-calendar` — **26/26**, proven **RED with 10 failures** by making
+`marketSessionAt` return `{open:true}` unconditionally, which is exactly the pre-E-36 platform.
+Its central case replays **real Saturday gold bars chosen because they clear the tick floor** and
+asserts the window RESOLVES — reproducing the defect — then asserts the calendar refuses that
+boundary, and that the same instant on a crypto asset is still open.
+
+⚠️ **Its first draft contained the trap this campaign keeps paying for.** The reproduction case
+asserted `Math.abs(close - open) > 0` — which cannot fail — over a window the tick floor would
+have voided anyway. It took going back to the provider to find a window that genuinely resolves
+(83 of 288 do) before the case meant anything. A second version then failed on a band reading
+±0.15357 instead of ±0.15, because the fixture carried raw 5-decimal provider prices while the
+money path stores them rounded: **a fixture not in the form the engine stores is testing a case
+the engine never sees.**
+
+⚠️ **`test:updown-engine`, `test:updown-heal` and `test:updown-e2e-flow` all went red, and that
+was the gate working.** Their fixtures were `macro` assets on grids anchored to `Date.now()` — so
+every case in them **passed Monday–Friday and failed at the weekend**. A suite whose verdict
+depends on the day it runs is a suite that lies, so those fixtures are now 24/7 (`crypto`)
+categories, with the reason written at each one. The calendar keeps its own proof, and
+**`test:updown-engine` §12 pins the integration**: a `macro` chain anchored on a known Saturday
+opens nothing and reports *"Market closed — 2026-08-01 12:00Z is Saturday"*, while **the same
+chain on a Wednesday boundary opens normally** — without that last case, §12 would also pass
+against a chain that was simply broken.
 
 ## 6t. ⭐ E-32 ANSWERED — the margin, measured against ~4,000 real windows, and why 0.50% is a DAILY number (2026-08-02, session 11)
 
