@@ -396,9 +396,24 @@ export default async function AdminReportsPage({
                     <p className="text-[11px] text-text-tertiary italic mt-0.5">{t.sw}</p>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
+                    {/* ⛔ G-6 (2026-08-02). `target` is a DESTINATION, not a status —
+                        "Sportradar + GBT integrity unit" is 206px of glyphs, and at 360
+                        the column is 198px. The row already wraps; what could not wrap
+                        was the chip itself, because `Chip` is `white-space: nowrap` with
+                        a FIXED height (18/21/25px per size), both correct for a short
+                        status pill and both wrong for a phrase. So this call site opts
+                        out of exactly those two: the label wraps and the pill grows to
+                        fit, which is a no-op at every width where it already fitted.
+                        ⚠️ The general defect is in `Chip` — ANY long label bleeds past
+                        its container silently, platform-wide. Recorded as G-7 in §6 with
+                        its measurement, and deliberately NOT fixed here: `components/ui`
+                        is shared with the player surfaces a second session is measuring
+                        live right now. */}
                     <Chip
                       size="sm"
                       variant={t.severity === "critical" ? "danger" : t.severity === "high" ? "warning" : "neutral"}
+                      className="max-w-full"
+                      style={{ whiteSpace: "normal", height: "auto", minHeight: 18, paddingTop: 3, paddingBottom: 3, lineHeight: 1.25 }}
                     >
                       {t.target}
                     </Chip>

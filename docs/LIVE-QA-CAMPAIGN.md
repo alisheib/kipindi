@@ -152,11 +152,26 @@ strings**, plus the exact commands that mint them in under a minute. Nothing bel
 | ⭐ **QA compliance officer** | `https://50pick.tz/auth/admin`, phone **`712000106`** (`usr_2ff22430c89e4c560fac5334`) — **use this for all operator work**, see §4 | `.env.qa.local` → `QA_OFFICER_PASSWORD` |
 | ⭐ **QA trading officer** | `https://50pick.tz/auth/admin`, phone **`712000104`** (`usr_429885ab43c0cb4ce134dd7e`, role `MODERATOR`) — trading surfaces, see §4 | `.env.qa.local` → `QA_TRADING_PASSWORD` |
 | ⭐ **QA growth officer** | `https://50pick.tz/auth/admin`, phone **`712000102`** (`usr_26313f74d8428e4e169603ca`, role `GROWTH`) — invites / affiliate / bonuses / cohorts, see §4 | `.env.qa.local` → `QA_GROWTH_PASSWORD` |
-| Ali's own operator console | `https://50pick.tz/auth/admin`, phone **`777777777`** (E.164 `+255777777777`, `usr_1b3e6fd5048b1d873e931715`, `alisheib07@gmail.com`) | `QA_ADMIN_PASSWORD` — **not held on laptop B, and no longer needed** (§4) |
+| ⭐ **Ali's own operator console (ADMIN)** | `https://50pick.tz/auth/admin`, phone **`777777777`** (E.164 `+255777777777`, `usr_1b3e6fd5048b1d873e931715`, `alisheib07@gmail.com`) | `.env.qa.local` → `QA_ADMIN_PASSWORD` — ✅ **Ali supplied it 2026-08-02 (session 9); laptop B now holds it.** See the two rules below |
 | **QA player `alpha`** | phone **`712000101`**, `qa.alpha.50pick@gmail.com` | `.env.qa.local` → `QA_ALPHA_PASSWORD` |
 | **QA player `echo`** | phone **`712000105`**, `qa.echo.50pick@gmail.com` | `.env.qa.local` → `QA_ECHO_PASSWORD` |
 | **Live DB** | Railway project `50pick` → service `Postgres`; public proxy **`turntable.proxy.rlwy.net:40357`**, user `postgres`, db `railway` | minted by `mkenv.cjs`, below |
 | Selcom · Postmark · R2 · backup seal key · **`TWELVEDATA_API_KEY`** | — | Railway → `50pick` service only |
+
+### ⭐ The ADMIN login — supplied 2026-08-02, and the two rules that come with it
+
+Ali handed laptop B his own operator password mid-session 9. It closes the gap §6m named:
+**the intersection of "can act on `accounting`" and "can view a `trading` page" is `{ADMIN}`**,
+so the feed switch — the campaign's #1 blocker — is reachable by this identity and no other.
+It is in `.env.qa.local` as `QA_ADMIN_PASSWORD` (gitignored, `.gitignore:9`) and the harness
+exposes it as the `admin` persona.
+
+1. ⛔ **NEVER re-mint it.** §1's re-mint recipe applies to QA personas *this campaign created*.
+   This is Ali's real console login; re-setting it locks him out of his own platform.
+2. ⛔ **Use `officer` / `trading` / `growth` for all routine operator work.** ADMIN bypasses
+   every domain check (`requireStaff` has an Owner bypass), so a sweep run as ADMIN measures
+   nothing about RBAC. Reach for it *only* for an action that is genuinely ADMIN-only, and say
+   in the finding that it was.
 
 ### 🔑 Where every credential lives — the answer to "so another session knows directly"
 
@@ -504,6 +519,33 @@ it is thirty seconds of Ali's time.
 
 **The gate:** one round that opens → confirms a real price → resolves with a real winner AND
 a real loser → money lands in a wallet. That run has still never happened.
+
+> ⭐ **UPDATE 2026-08-02 (session 9) — the provider side of this blocker is now PROVEN GOOD,
+> and it is worth separating the two halves.** The feed was probed against the **real
+> production `TWELVEDATA_API_KEY`**, through the same two functions the money path calls
+> (`quoteAsset` + `judgeFeedStaleness`), writing nothing:
+>
+> ```
+> railway run -s 50pick -- npx tsx scripts/ops-updown-probe-feed.mts --symbols XAU/USD,BTC/USD,ETH/USD
+>   ✅ XAU/USD  4042.75   skew 55s (limit 90)   WOULD CONFIRM
+>   ✅ BTC/USD  63501.99  skew 55s              WOULD CONFIRM
+>   ✅ ETH/USD  1875.88   skew 55s              WOULD CONFIRM
+>   3/3 symbol(s) would confirm a reading at this boundary.
+> ```
+>
+> So the key works, the provider answers, and the staleness gate is satisfiable **today** —
+> including for **XAU/USD on a Sunday**, which was the live risk. What is still missing is
+> only the three operator steps in §6m: `feedProvider` is still absent from `updown.config`
+> (→ `mock`), `twelvedata.com` is still **not** a `TrustedSource`, and no asset points at the
+> quote endpoint. ⚠️ **The gate is unchanged** — a probe is not a round. "Would confirm" is
+> not "confirmed, resolved, and paid a winner", and only the run itself closes BLOCKER 2.
+>
+> ⚠️ **One risk this probe cannot settle, and the next session must watch for.** All three
+> symbols returned the *same* `last_quote_at` to the second. If a shut market has its frozen
+> price re-stamped with a fresh time, the round confirms both boundaries at the *same* price
+> and `minMoveTicks` (15 on the live `GOLD` asset) voids it as a no-move. That failure is
+> safe and it refunds — but it looks exactly like the feed not working. Read the open and
+> close prices, not just the outcome.
 
 ### 🔴 BLOCKER 3 — admin 2FA is OFF, with 9 ADMIN accounts
 
@@ -1113,7 +1155,40 @@ crawl returned the all-time high and a percentage, not the current price. So re-
 | **G-3** | MEDIUM · **OPEN — not started, evidenced only** | visuals · shared PLAYER shell · i18n | **The player top-nav's inner container overflows its own box, and how badly depends on the LANGUAGE.** Measured on production at `/profile/account` (but it is the shared shell, so it is every player page): `div.mx-auto` inside `header.sticky` reports `scrollWidth − clientWidth` of — **en**: 0 @1280, 0 @1440, **31px** @1680, **31px** @1920 · **sw**: **28px** @1280, **28px** @1440, **198px** @1680, **198px** @1920 · **zh**: 0 at every width. Swahili link labels are the longest (`Jedwali la Washindi`, `Kupendekeza`), Chinese the shortest, which is exactly the ordering you would predict — this is an i18n layout defect, not a random one. Visible in the photographs as a nav flush to both edges with its right-hand cluster having eaten its own padding, and the notification badge touching the viewport edge at sw@1280. A second, smaller one sits in the same cluster: the wallet-balance chip's wrapper is **+4px** over at 768 and 1280 in **all three** locales. ⚠️ **What is NOT claimed**: the sw@1920 screenshot appears to be missing the `TZS 62,400` chip that sw@1280 shows, which would mean a player loses sight of their balance — but **two attempts to detect that chip in the DOM found nothing at any width, including one where the screenshot plainly shows it**, so the detector is wrong and the claim is unproven. Settle that before fixing anything. ⛔ Deliberately **not started**: it is the shared shell on every player page, across 3 locales × 4 widths, and §0.3 says that is its own session. | `live/navprobe.mjs` (12-cell measurement table above) · photographs `live/shots/nav-{sw-1280,sw-1920,en-1920}.png` · surfaced by `clippedElements()` during the G-1b audit, 12/12 cells |
 | **G-4** | **HIGH** → ✅ **FIXED** | visuals · shared ADMIN shell · mobile | **On a phone, every admin page crushed its own navigation.** The top bar's right action cluster is `shrink-0` and measures **302px**; on a 360 viewport that left the other side **2px**, so the breadcrumb rendered at a width of exactly **0** and the mobile-nav trigger — the only way into the admin menu on a phone — was squeezed from its 44px tap target to **18px**. On all 47 admin pages. ⛔ **Nothing could have caught this by looking**: a 0px-wide `nav` reports no overflow, `truncate` on the crumbs was working exactly as written, and the bar still looked plausible in a screenshot. It took `getBoundingClientRect()` on the actual boxes. Fixed in the shared shell: the trigger is `shrink-0` so the tap target is never what gives; the breadcrumb is `hidden md:flex` (it was already invisible at 360 — saying so stops it competing for space it never wins, and `AdminPageHead` directly below carries the location); the role chip hides under `sm`, which is what frees the width. ⭐ **And the role is re-rendered inside the mobile drawer rather than dropped** — *which role am I operating as* is a safety affordance on a licensed platform. ⚠️ **The first draft of this fix simply hid the chip and left a comment claiming the drawer already showed the role. It did not.** Checking the claim instead of shipping it turned a false comment into a real element — the E-29 defect class, caught in my own edit. **Also fixed in the same shared component**: `AdminKpi`'s **value** slot now truncates. E-30 fixed the *delta* row and left the value assumed safe because "a value is usually a number" — `/admin/affiliate`'s *Top referrer* tile puts a raw handle there, and `@jaykishan_kaba_adm` ran **34px past its card** at sw@1280. | `npm run test:grid-paging` §4, **5 assertions, all 5 proven RED against the old shell** · box-model measurement at 360: trigger `18px`, breadcrumb `0px`, right cluster `302px` on a `320px` content box · `live/crumb.mjs` |
 | **G-5** | **HIGH** → ✅ **FIXED** | visuals · shared `AdminCard` · mobile | **A card's own heading was laid out at a width of exactly ZERO — on `/admin/finance`, at 360.** `AdminCard`'s header is `justify-between` with a `shrink-0` action and a `min-w-0` title, so the title absorbs the entire shortfall: *"Settlement fees by poll"* rendered at **0px** (the heading simply absent), and `/admin/sources`' *"Categories · global toggle"* got **46px for 74px** of text. Six admin pages showed it at 360 in the full sweep. ⭐ **The lesson worth keeping: `min-w-0` is not a fix, it is only a promise not to OVERFLOW.** An element allowed to shrink without limit reports **zero overflow while rendering nothing** — so every "0 horizontal overflow" check on this page was honestly green over a missing heading, the same way E-30's checks were green over clipped text. Fixed in the shared component: the header row **wraps**, and the title keeps `basis-[14rem] grow` so a wide action drops to its own line instead of eating the heading; `min-w-0` stays as the last-resort guard against an unbreakable string. | `npm run test:grid-paging` 4.7 · box-model measurement at 360 before: title `w=0 scrollWidth=74`, header row `sw=303 cw=278`; `/admin/sources` title `w=46 sw=74` · found by the 26-route × 4-width admin sweep (`live/admin-sweep.mjs`) |
-| **G-6** | MEDIUM → 🟡 **2 FIXED, 3 OPEN with exact evidence** | visuals · admin pages · mobile | **What the 26-route × 4-width admin sweep found once the shared defects (G-4, G-5) were out of the way — five page-level clips, each measured, none shared.** ✅ **FIXED · `/admin/compliance`** — the regulator-report list overflowed its card by **12px at EVERY width**, not just on a phone: each row carried `-mx-2 px-2` to bleed its hover strip 12px past the card on both sides and nothing absorbed it. The highlight now aligns to the card's content box — a 12px difference in where a background starts, and none at all to the reader. ✅ **FIXED · `/admin/payments`** — `grid-cols-3` gives each cell ~63px of text room at 360, and the labels are **single unbreakable words** at 10px uppercase with 0.1em tracking: `OPERATIONAL` needs ~79px and was cut by **16px with no ellipsis**, on the control that declares whether withdrawals are working. A word cannot wrap, so the column widens: one per row below `sm`. ⏳ **OPEN, all at 360 only, all cosmetic, each with its measurement**: `/admin/resolver-queue` `div.flex-1 +25px` and its *Resolve YES* button `+6px`; `/admin/finance` header row `+9px` (residual after G-5 — the title is no longer 0px); `/admin/reports` `div.flex +8px` on the *Sportradar + GBT integrity unit* row. | `live/admin-sweep.mjs` — **820/832** at the end of the session (from 815 before the shared fixes). Full per-element measurements in the run log; screenshots `live/shots/sweep-*.png` |
+| **G-6** | MEDIUM → ✅ **ALL 5 FIXED (2026-08-02, session 9)** | visuals · admin pages · mobile | **What the 26-route × 4-width admin sweep found once the shared defects (G-4, G-5) were out of the way — five page-level clips, each measured, none shared.** ✅ **FIXED · `/admin/compliance`** — the regulator-report list overflowed its card by **12px at EVERY width**, not just on a phone: each row carried `-mx-2 px-2` to bleed its hover strip 12px past the card on both sides and nothing absorbed it. The highlight now aligns to the card's content box — a 12px difference in where a background starts, and none at all to the reader. ✅ **FIXED · `/admin/payments`** — `grid-cols-3` gives each cell ~63px of text room at 360, and the labels are **single unbreakable words** at 10px uppercase with 0.1em tracking: `OPERATIONAL` needs ~79px and was cut by **16px with no ellipsis**, on the control that declares whether withdrawals are working. A word cannot wrap, so the column widens: one per row below `sm`. ⏳ **OPEN, all at 360 only, all cosmetic, each with its measurement**: `/admin/resolver-queue` `div.flex-1 +25px` and its *Resolve YES* button `+6px`; `/admin/finance` header row `+9px` (residual after G-5 — the title is no longer 0px); `/admin/reports` `div.flex +8px` on the *Sportradar + GBT integrity unit* row. | `live/admin-sweep.mjs` — **820/832** at the end of the session (from 815 before the shared fixes). Full per-element measurements in the run log; screenshots `live/shots/sweep-*.png` |
+
+**G-6 · the last three, CLOSED 2026-08-02 (session 9) — and one of them was not cosmetic.**
+Each was re-measured on production before the fix (`live/g6-probe.mjs --tag before`) and the
+element anatomy dumped (`live/g6-anatomy.mjs`), because reasoning about the box model is how
+you fix the wrong element. What the DOM actually said:
+
+| Surface @360 | Element | Measured | Cause |
+|---|---|---|---|
+| `/admin/resolver-queue` | `div.flex.items-baseline.gap-2` | client **194**, scroll **218**, +24px | The three items are 95 + 44 + 55 = **exactly 194**. It is the two 12px `gap-2` gutters — *nothing else* — that overflow, and `nowrap` drew the Source link outside the card |
+| `/admin/resolver-queue` | `button.btn` *Resolve YES* ×2 | client **83**, scroll **89**, +6px | `grid-cols-3` at 278px → 83px cells; `.btn` is `white-space: nowrap` by design and the label needs 89 |
+| `/admin/finance` | `div.shrink-0` (AdminCard **action**) | **287px inside a 278px card**, +9px | ⭐ **shared** |
+| `/admin/reports` | `Chip` *Sportradar + GBT integrity unit* | **206px** in a 198px column | `Chip` is `nowrap` with a **fixed height** — right for a status pill, wrong for a phrase |
+
+⭐ **The finance one is the other half of G-5, and it is shared across all 47 admin pages.**
+G-5 made the `AdminCard` header wrap and gave the title a `basis`, so the title can no longer
+be crushed to 0. But the **action** side is `shrink-0` with `min-width:auto` — so it lays out
+at its **max-content** width and refuses to give any back. Once it wraps onto its own line it
+simply hangs off the card. `max-w-full` caps it at the line it is on and its text then wraps,
+while `shrink-0` still does the job it was added for: refusing to be squashed *while alongside
+the title*. **One line, every AdminCard with a wide action.**
+
+⚠️ **The `Resolve YES` clip was filed as cosmetic and is not.** It is the control that seals a
+market and pays real money; an officer reading **"Resolve YE"** on a phone is one glance from
+the wrong verdict. Fixed with the same remedy as `/admin/payments` (one per row below `sm`) so
+the platform has **one** answer to this shape rather than two.
+
+⚠️ **Fifth occurrence of the JSX-comment trap, plus the second-order version of it.** The
+braced comment form went into a **ternary branch** — an expression slot that holds exactly one
+thing — and broke the parse. Then writing the braced form *inside a plain block comment* to
+document it **ended the comment early** and broke it again. `tsc` caught both; no regex guard
+would have. The build stays the gate.
+
+| **G-7** | MEDIUM · **OPEN, measured, deliberately not fixed here** | visuals · shared `Chip` | **Any `Chip` with a long label bleeds silently past its container, platform-wide.** `components/ui/chip.tsx:93` is `whitespace-nowrap` and `sizeStyles` sets a **fixed `height`** (18/21/25px). Both are correct for a short status pill and both are wrong for a phrase: the chip cannot wrap and cannot grow, so it is simply drawn outside its column with no ellipsis. The shared remedy is small — `height` → `minHeight` (identical rendering for every one-line chip that exists today) plus `max-w-full` and wrapping when the label cannot fit. ⛔ **Not applied in session 9 on purpose:** `components/ui` is shared with the player surfaces a second session was measuring live at that moment, and moving that ground mid-run turns its measurements into false bug reports. `/admin/reports` opts out at the call site instead. | `live/g6-anatomy.mjs` on production: chip **206px** in a **198px** flex column, `ws=nowrap min=auto` |
 
 ## 6f. E-18 fixed — and the class was three surfaces, not one (2026-08-01)
 

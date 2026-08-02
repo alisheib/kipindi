@@ -434,7 +434,18 @@ export function AdminCard({
               <p className="text-caption text-text-tertiary italic leading-tight mt-0.5">{sw}</p>
             )}
           </div>
-          {action && <div className="shrink-0">{action}</div>}
+          {/* ⛔ G-6 (2026-08-02) — the OTHER half of G-5, and it took a second live
+              measurement to see. G-5 made this row wrap and gave the title a basis, so
+              the title can no longer be crushed to 0. But the ACTION side is `shrink-0`
+              with `min-width:auto`, which means it lays out at its MAX-content width and
+              refuses to give any of it back — so once it wraps onto its own line it
+              simply hangs off the card. Measured on production at 360: `/admin/finance`'s
+              fee summary took **287px inside a 278px card**, +9px into the gutter.
+              `max-w-full` caps it at the line it is on, and its text then wraps — while
+              `shrink-0` still does the job it was added for, which is refusing to be
+              squashed while it is ALONGSIDE the title. Shared: every AdminCard with a
+              wide action, on all 47 admin pages. */}
+          {action && <div className="shrink-0 max-w-full">{action}</div>}
         </div>
       )}
       {children}

@@ -112,7 +112,20 @@ export function ResolveControls({ marketId, stage, stagedOutcome, twoAdmin = fal
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-3 gap-2">
+        /* ⛔ G-6 (2026-08-02) — the /admin/payments fix again, on the control that
+           SETTLES REAL MONEY. `grid-cols-3` at 360 gives each cell 83px; `.btn` is
+           `white-space: nowrap` by design, and "Resolve YES" needs 89px, so the label
+           was cut by 6px. A button whose label is clipped on the settlement surface is
+           not cosmetic in the way the other two are — an officer reading "Resolve YE"
+           is one glance away from the wrong verdict. Same remedy as `payments`, so the
+           platform has ONE answer to this shape: one per row below `sm`, which also
+           gives each a full-width tap target on the phone.
+           ⚠️ This is a PLAIN block comment, not a braced JSX one. It sits inside a
+           ternary branch — an EXPRESSION slot, which holds exactly one thing — and the
+           braced form made it two and broke the parse. FIFTH occurrence in two sessions
+           (§6b), and the second-order trap right behind it: writing the braced form
+           inside a block comment to explain it ends the comment early. */
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           <button type="button" onClick={() => submit("YES")} disabled={pending} className="btn btn-yes btn-md w-full">
             Resolve YES
           </button>

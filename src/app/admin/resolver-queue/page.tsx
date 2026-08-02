@@ -192,7 +192,14 @@ export default async function ResolverQueuePage({
                       label="crowd"
                     />
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-baseline gap-2">
+                      {/* ⛔ G-6 (2026-08-02). Measured at 360 on production: the three
+                          items are 95 + 44 + 55 = 194px and the box is exactly 194px —
+                          it is the two 12px `gap-2` gutters, and nothing else, that
+                          overflow it by 24px. `nowrap` meant the Source link was simply
+                          drawn outside the card. Wrapping costs nothing at any width
+                          where it fits, and `ml-auto` keeps Source right-aligned on
+                          whichever line it lands on. */}
+                      <div className="flex flex-wrap items-baseline gap-2">
                         <Chip size="sm" variant={
                           t.tone === "overdue" ? "danger"
                           : t.tone === "soon" ? "warning"
