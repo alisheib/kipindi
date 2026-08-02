@@ -514,8 +514,10 @@ float and the rail configuration, **not code**.
 > ⭐ **THE GATE IS MET.** Round `udr_94864f4b0a6b03306fc1` opened at 63268.00, closed at
 > 63162.01 — **two different confirmed prices from the real provider** — resolved **DOWN**,
 > and paid **TZS 8,700** into `echo`'s wallet **437 ms** after its own boundary, against
-> `alpha`'s real loss. The ledger nets to the commission and ties to the shilling. Round #2
-> repeated it. **Full account, evidence and the three operator steps: §6q.**
+> `alpha`'s real loss. The ledger nets to the commission and ties to the shilling. Five
+> rounds ran in total, **six consecutive boundaries confirmed with zero refusals**, and
+> **both directions are proven**: the platform-wide tally is now `VOID 1402 · DOWN 3 · UP 2`,
+> from `UP = 0, DOWN = 0`. **Full account, evidence and the three operator steps: §6q.**
 >
 > 🔴 **What replaces it as the Up & Down blocker is E-32, and it is a PRICING decision, not a
 > bug:** at the product default margin of **0.5%**, both of these rounds would have **VOIDED**
@@ -1349,8 +1351,20 @@ That is why the run was driven on a **crypto** asset. BTC/USD trades 24/7 and mo
 two probes. **The open and close prices were read, not just the outcome flag** — they differ,
 and the player is shown both.
 
-**Repeatable, not a one-off.** Round **#2** (10:25→10:30) also confirmed two readings and
-resolved `DOWN` on a real −30.01 move. Three consecutive boundaries confirmed at `attempts=0`.
+**Repeatable, and BOTH DIRECTIONS are proven.** The chain ran five rounds before it was
+stopped — **six consecutive boundaries confirmed at `attempts=0`, zero refusals**:
+
+| # | window | open → close | move | outcome |
+|---|---|---|---|---|
+| 1 | 10:20→10:25 | 63268.00 → 63162.01 | −105.99 (**−0.168%**) | **DOWN** — the paid round |
+| 2 | 10:25→10:30 | 63162.01 → 63132.00 | −30.01 (−0.048%) | DOWN |
+| 3 | 10:30→10:35 | 63132.00 → 63187.99 | +55.99 (+0.089%) | **UP** |
+| 4 | 10:35→10:40 | 63187.99 → 63206.87 | +18.88 (+0.030%) | **UP** |
+| 5 | 10:40→10:45 | 63206.87 → 63205.88 | −0.99 (−0.002%) | DOWN |
+
+**Platform-wide outcome tally is now `VOID 1402 · DOWN 3 · UP 2`** — from *"1,402 VOID, and
+UP = 0, DOWN = 0"*. ⭐ **And read the move column against E-32**: the largest of the five is
+**0.168%**, and the product default demands **0.50%**. All five would have voided.
 
 **Player-facing evidence** (`live/shots/s10-updown-history-1440.png`): `/updown/history` renders
 **DOWN WINS**, `$63,268.00 → $63,162.01`, *NET RETURN +TZS 3,700*, win rate 100% — the two
@@ -1381,11 +1395,16 @@ move inside five minutes**. Measured against this run's own prices, no extra rou
 
 | Round | move | at margin **0** (this chain) | at the **product default** 0.5% |
 |---|---|---|---|
-| #1 | −105.99 (0.168%) | **DOWN** — paid a winner | band [62,951.66 , 63,584.34] → **VOID (no-move)** |
-| #2 | −30.01 (0.047%) | **DOWN** | **VOID (no-move)** |
+| #1 | −0.168% | **DOWN** — paid a winner | band [62,951.66 , 63,584.34] → **VOID (no-move)** |
+| #2 | −0.048% | **DOWN** | **VOID** |
+| #3 | +0.089% | **UP** | **VOID** |
+| #4 | +0.030% | **UP** | **VOID** |
+| #5 | −0.002% | **DOWN** | **VOID** |
 
-So a chain left on the product default would void nearly every round *while the feed was working
-perfectly*, and the round history would be indistinguishable from E-16/E-25. **This is a pricing
+**5 of 5 would have voided.** The biggest real move in the sample is **0.168%** — a third of
+what the default demands. So a chain left on the product default voids nearly every round
+*while the feed is working perfectly*, and the round history is indistinguishable from
+E-16/E-25. **This is a pricing
 decision for Ali, not a bug** — 0.5% is the deliberate "50pick factor" and is sane for a 30-minute
 metals round; it is not sane for a 5-minute crypto one. Filed as **E-32**.
 
