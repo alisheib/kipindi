@@ -324,6 +324,14 @@ ok("4.4 · ⭐ and the role is re-rendered in the mobile drawer, not dropped",
    /roleLabel=\{roleLabel\(session\.role\)\}/.test(shellCode) && /roleLabel &&/.test(mobileSrc));
 ok("4.5 · the AdminKpi VALUE truncates — E-30 fixed the delta and left this assumed safe",
    /tabular-nums leading-none truncate/.test(shellCode) && /title=\{typeof value === "string"/.test(shellCode));
+// G-2's scale trap again, and this is where it cost the most: `h-10 w-10` is 80×80 here,
+// which made the hamburger the biggest single consumer of a 320px bar.
+// ⚠️ Comments stripped first — the THIRD time in this suite that a scan matched the fix's
+// own explanation of the bug (see 2.4). A structural check must read code, not prose.
+const mobileCode = mobileSrc.replace(/\{\s*\/\*[\s\S]*?\*\/\s*\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+ok("4.6 · ⛔ the mobile nav controls are sized literally, not with the 80px scale token",
+   !/\bh-10 w-10\b/.test(mobileCode) && (mobileCode.match(/h-\[44px\] w-\[44px\]/g) ?? []).length >= 2,
+   mobileCode.match(/\bh-\d+ w-\d+\b/)?.[0] ?? "");
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

@@ -36,13 +36,17 @@ export function AdminMobileNavTrigger({ groups, badges, activeKey, roleLabel }: 
 
   return (
     <>
+      {/* ⚠️ 44px LITERAL, never a scale token — G-2's trap, and this button is where it
+          cost the most. This project's spacing scale makes `10` **80px**, so `h-10 w-10`
+          was an 80x80 control: double its intended size, and the single biggest consumer
+          of a top bar that had only 320px to give (G-4). 44px is the tap-target floor. */}
       <button
         ref={triggerRef}
         type="button"
         aria-label="Open admin navigation"
         aria-expanded={open ? "true" : "false"}
         onClick={() => setOpen(true)}
-        className="lg:hidden inline-flex h-10 w-10 items-center justify-center rounded-md text-text-secondary hover:bg-bg-overlay"
+        className="lg:hidden inline-flex h-[44px] w-[44px] items-center justify-center rounded-md text-text-secondary hover:bg-bg-overlay"
       >
         <I.menu s={18} />
       </button>
@@ -68,7 +72,7 @@ export function AdminMobileNavTrigger({ groups, badges, activeKey, roleLabel }: 
                 type="button"
                 aria-label="Close admin navigation"
                 onClick={() => setOpen(false)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-md text-text-tertiary hover:bg-bg-overlay"
+                className="inline-flex h-[44px] w-[44px] items-center justify-center rounded-md text-text-tertiary hover:bg-bg-overlay"
               >
                 <I.x s={16} />
               </button>
