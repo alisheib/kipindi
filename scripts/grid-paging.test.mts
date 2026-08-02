@@ -329,6 +329,9 @@ ok("4.5 · the AdminKpi VALUE truncates — E-30 fixed the delta and left this a
 // ⚠️ Comments stripped first — the THIRD time in this suite that a scan matched the fix's
 // own explanation of the bug (see 2.4). A structural check must read code, not prose.
 const mobileCode = mobileSrc.replace(/\{\s*\/\*[\s\S]*?\*\/\s*\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+// G-5 — the same starvation shape one component over.
+ok("4.7 · ⛔ the AdminCard header wraps rather than starving its own title to 0px",
+   /flex flex-wrap items-start justify-between gap-3/.test(shellCode) && /min-w-0 basis-\[14rem\] grow/.test(shellCode));
 ok("4.6 · ⛔ the mobile nav controls are sized literally, not with the 80px scale token",
    !/\bh-10 w-10\b/.test(mobileCode) && (mobileCode.match(/h-\[44px\] w-\[44px\]/g) ?? []).length >= 2,
    mobileCode.match(/\bh-\d+ w-\d+\b/)?.[0] ?? "");

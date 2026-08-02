@@ -415,9 +415,20 @@ export function AdminCard({
   const isFlush = padding === "p-0";
   return (
     <div {...rest} className={["rounded-lg glass-panel", padding, className ?? ""].join(" ")}>
+      {/* ⛔ G-5 (2026-08-02) — the G-4 shape again, in the card header. The action side
+            is `shrink-0` and the title side was `min-w-0`, so on a narrow screen the title
+            absorbed ALL the shortfall: measured at 360, `/admin/finance`'s "Settlement fees
+            by poll" was laid out at a width of **exactly 0** — the card's own heading, gone
+            — and `/admin/sources`' "Categories · global toggle" got 46px for 74px of text.
+            ⚠️ `min-w-0` alone is not a fix, it is only a promise not to OVERFLOW: an
+            element allowed to shrink without limit reports zero overflow while rendering
+            nothing. Six admin pages showed this at 360 in the full sweep.
+            So: the row WRAPS, and the title keeps a basis wide enough that a wide action
+            drops to its own line instead of eating the heading. `min-w-0` stays as the
+            last-resort guard against a genuinely unbreakable string. */}
       {(title || action) && (
-        <div className={`flex items-start justify-between gap-3 ${isFlush ? "px-4 pt-4 pb-3" : "mb-3"}`}>
-          <div className="min-w-0">
+                <div className={`flex flex-wrap items-start justify-between gap-3 ${isFlush ? "px-4 pt-4 pb-3" : "mb-3"}`}>
+          <div className="min-w-0 basis-[14rem] grow">
             {title && <p className="font-display font-semibold text-body-sm text-text leading-tight">{title}</p>}
             {sw && (
               <p className="text-caption text-text-tertiary italic leading-tight mt-0.5">{sw}</p>
