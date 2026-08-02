@@ -159,6 +159,7 @@ const FIXED_GRIDS: Record<string, string> = {
   "src/app/admin/system/page.tsx": "fixed service/health rows plus a bounded cache-bucket sample, both defined in code",
   "src/app/admin/updown/page.tsx": "one row per chain. Chains are created by an operator one at a time and every one must be visible to be controlled",
   "src/app/admin/sources/page.tsx": "the trusted-source allowlist. It grows only when a compliance officer adds a domain, and the whole allowlist must be readable in one view to be auditable",
+  "src/app/admin/live/page.tsx": "its table is live matches in progress — bounded by reality, not by a limit. Its two audit feeds are deliberately a newest-few glance, and each already links to /admin/audit?category=…, which IS fully paged and filterable. A second pager here would duplicate that surface on a page an operator refreshes constantly",
 };
 
 /**
@@ -172,11 +173,7 @@ const FIXED_GRIDS: Record<string, string> = {
  * ⛔ This is NOT a place to park a new grid. A grid that ships unpaged after 2026-08-02
  * belongs in neither map — it belongs paged.
  */
-const UNPAGED_DEBT: Record<string, string> = {
-  "src/app/admin/finance/page.tsx": "two grids: poll fees capped at 50, trial-balance drift at 20. Both grow with every settled market",
-  "src/app/admin/live/page.tsx": "BET and WALLET audit feeds, read at 30 and rendered at 10. Grows with every bet placed",
-  "src/app/admin/updown/proposals/page.tsx": "AI proposal queue capped at 12. Grows with every generation run",
-};
+const UNPAGED_DEBT: Record<string, string> = {};
 
 function pagesWithTables(dir: string, out: string[] = []): string[] {
   for (const e of readdirSync(dir)) {
@@ -206,7 +203,25 @@ ok("2.3 · the fixed-grid allowlist has no stale entries", stale.length === 0, s
 const paidOff = Object.keys(UNPAGED_DEBT).filter((k) => !pages.includes(k) || hasPager(k));
 ok("2.3b · a backlog grid that now pages has been removed from UNPAGED_DEBT",
    paidOff.length === 0, paidOff.join(", "));
-console.log(`     ⏳ G-1 backlog remaining: ${Object.keys(UNPAGED_DEBT).length} grid(s)`);
+console.log(`     ${Object.keys(UNPAGED_DEBT).length === 0 ? "✅ G-1 backlog is EMPTY" : `⏳ G-1 backlog remaining: ${Object.keys(UNPAGED_DEBT).length} grid(s)`}`);
+
+// ── the three grids closed in the second half of session 8 ───────────────────
+const proposalsSrc = readFileSync(join(ROOT, "src/app/admin/updown/proposals/page.tsx"), "utf8")
+  .replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+ok("2.10 · the AI proposal queue pages and filters by state",
+   /<AdminPagination/.test(proposalsSrc) && /const STATES =/.test(proposalsSrc) && /stateFilter/.test(proposalsSrc));
+ok("2.11 · ⛔ its AI-spend total stays LIFETIME, not per-page — a budget that moved when you turned a page would be worthless",
+   /allProposals\.reduce\(\(s, p\) => s \+ p\.costUsd/.test(proposalsSrc) && !/\bconst spend = proposals\.reduce/.test(proposalsSrc));
+
+const financeSrc = readFileSync(join(ROOT, "src/app/admin/finance/page.tsx"), "utf8")
+  .replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+ok("2.12 · the settlement-fee grid pages, on its own param so it cannot move the other lists",
+   /<AdminPagination/.test(financeSrc) && /param="feepage"/.test(financeSrc) && !/rows\.slice\(0,\s*50\)/.test(financeSrc));
+
+const liveSrc = readFileSync(join(ROOT, "src/app/admin/live/page.tsx"), "utf8")
+  .replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+ok("2.13 · the live bet feed reads exactly what it renders, and its title says how many",
+   !/betEvents\.slice\(0,\s*10\)/.test(liveSrc) && /limit: BET_FEED/.test(liveSrc) && /last \$\{BET_FEED\}/.test(liveSrc));
 
 // The player-facing grid, pinned by name: it is the only one in this sweep that a
 // CUSTOMER meets, and its bug was the worst shape — the category filter ran INSIDE the

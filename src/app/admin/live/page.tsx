@@ -36,9 +36,22 @@ export default async function AdminLivePage() {
   const trends = await dailyKpiSeries("7d").catch(() => ({ ggr: [], ngr: [], active: [] }));
   const spark = (s: number[]) => (s.some((v) => v !== 0) ? s : undefined);
 
-  // Recent BET events
-  const betEvents = getAuditPage({ category: "BET", limit: 30 });
-  const walletEvents = getAuditPage({ category: "WALLET", limit: 30 });
+  // Recent BET / WALLET events.
+  //
+  // ⚠️ THESE TWO FEEDS ARE DELIBERATELY NOT PAGED, and that is a judgement, not an
+  // oversight (campaign finding G-1d, and the "ask per grid" half of §0.1b rule 2). This
+  // is a live-ops dashboard: the value of a feed here is the newest handful at a glance,
+  // and each card already carries an `all →` link to `/admin/audit?category=…`, which IS
+  // fully paged, filterable and sortable. Adding a second pager here would duplicate that
+  // surface and slow the page an operator refreshes constantly.
+  //
+  // ⛔ WHAT *WAS* WRONG: the bet feed read **30** and rendered `.slice(0, 10)`, so it
+  // threw away two thirds of what it fetched, under a title that — unlike its wallet
+  // sibling's honest "last 30" — never said it was showing ten. Read what you render.
+  const BET_FEED = 10;
+  const WALLET_FEED = 30;
+  const betEvents = getAuditPage({ category: "BET", limit: BET_FEED });
+  const walletEvents = getAuditPage({ category: "WALLET", limit: WALLET_FEED });
 
   return (
     <>
@@ -120,11 +133,11 @@ export default async function AdminLivePage() {
           <AdminCard title="24-hour money flow · TZS net per hour" sw="Mtiririko">
             <AdminAreaChart series={flow} xLabels={flow.map((p) => p.label)} height={240} fillVar="var(--royal)" strokeVar="var(--royal)" />
           </AdminCard>
-          <AdminCard title="Live bet feed" sw="Madau ya moja kwa moja" action={<a href="/admin/audit?category=BET" className="font-mono text-micro tracking-[0.10em] uppercase text-royal-300">all →</a>}>
+          <AdminCard title={`Live bet feed · last ${BET_FEED}`} sw="Madau ya moja kwa moja" action={<a href="/admin/audit?category=BET" className="font-mono text-micro tracking-[0.10em] uppercase text-royal-300">all →</a>}>
             <div className="max-h-[300px] overflow-y-auto">
               {betEvents.length === 0 ? (
                 <p className="text-caption text-text-tertiary py-3 text-center">No bet activity.</p>
-              ) : betEvents.slice(0, 10).map((e) => (
+              ) : betEvents.map((e) => (
                 <FeedRow
                   key={e.id}
                   ts={formatTime(e.createdAt)}
@@ -138,7 +151,7 @@ export default async function AdminLivePage() {
         </div>
 
         {/* Wallet activity */}
-        <AdminCard title="Wallet activity · last 30" sw="Shughuli za pochi" action={<a href="/admin/audit?category=WALLET" className="font-mono text-micro tracking-[0.10em] uppercase text-royal-300">all →</a>}>
+        <AdminCard title={`Wallet activity · last ${WALLET_FEED}`} sw="Shughuli za pochi" action={<a href="/admin/audit?category=WALLET" className="font-mono text-micro tracking-[0.10em] uppercase text-royal-300">all →</a>}>
           <div className="max-h-[300px] overflow-y-auto">
             {walletEvents.length === 0 ? (
               <p className="text-caption text-text-tertiary py-3 text-center">No wallet activity.</p>

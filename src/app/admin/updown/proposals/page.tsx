@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Route } from "next";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
+import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { Chip } from "@/components/ui/chip";
@@ -84,8 +85,17 @@ function Indicators({ p }: { p: StoredProposal }) {
   );
 }
 
-export default async function UpDownProposalsPage() {
-  const [assets, proposals, counts, cfg, aiOn] = await Promise.all([
+/** The proposal states an officer can filter to. Closed set, so `?state=BOGUS` explains
+ *  itself rather than rendering an empty queue the officer reads as "nothing to do". */
+const STATES = ["PENDING_REVIEW", "APPROVED", "ARMED", "REJECTED", "FILTERED", "VALIDATION_FAILED", "GENERATING"] as const;
+
+export default async function UpDownProposalsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ state?: string; asset?: string; page?: string }>;
+}) {
+  const sp = await searchParams;
+  const [assets, allProposals, counts, cfg, aiOn] = await Promise.all([
     listAssets().catch(() => []),
     listProposals().catch(() => []),
     countProposalsByState().catch(() => ({
@@ -102,7 +112,31 @@ export default async function UpDownProposalsPage() {
 
   const enabledAssets = assets.filter((a) => a.enabled);
   const assetByKey = new Map(assets.map((a) => [a.id, a]));
-  const spend = proposals.reduce((s, p) => s + p.costUsd, 0);
+
+  // ⛔ THIS QUEUE HAD NO CAP AND NO PAGER (campaign finding G-1c). Not truncated — simply
+  // unbounded: every proposal ever generated rendered as a row, and each row carries an
+  // evidence panel and up to three armed controls. It grows with every generation run, and
+  // the officer's actual job is the handful in PENDING_REVIEW — which sat further down the
+  // page with every run. ⚠️ The earlier G-1 inventory recorded this grid as "capped at 12";
+  // that was a misread of `p.reviewedBy.slice(0, 12)`, a STRING slice. Unbounded is a
+  // different problem from truncated and it needed the filter more, not less.
+  const stateFilter = (STATES as readonly string[]).includes(sp.state ?? "")
+    ? (sp.state as UpDownProposalState)
+    : undefined;
+  const assetKey = assets.some((a) => a.key === sp.asset) ? sp.asset : undefined;
+  const badFilter = (!!sp.state && !stateFilter) || (!!sp.asset && !assetKey);
+  const filterAssetId = assetKey ? assets.find((a) => a.key === assetKey)?.id : undefined;
+
+  const filtered = allProposals.filter(
+    (p) => (!stateFilter || p.state === stateFilter) && (!filterAssetId || p.requestAssetId === filterAssetId),
+  );
+  const page = parsePage(sp.page, filtered.length);
+  const proposals = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+  const baseHref = buildBaseHref("/admin/updown/proposals", { state: stateFilter, asset: assetKey });
+
+  // Spend is the LIFETIME total across every proposal — it is a budget figure, and a
+  // budget that changed when you filtered or turned a page would be worthless.
+  const spend = allProposals.reduce((s, p) => s + p.costUsd, 0);
   const reviewable = counts.PENDING_REVIEW + counts.APPROVED;
 
   return (
@@ -117,7 +151,7 @@ export default async function UpDownProposalsPage() {
           <AdminKpi label="Awaiting you" sw="Yanakusubiri" value={String(reviewable)} delta={`${counts.PENDING_REVIEW} review · ${counts.APPROVED} arm`} spark={false} />
           <AdminKpi label="Armed" sw="Zimeanzishwa" value={String(counts.ARMED)} delta="live chains" spark={false} />
           <AdminKpi label="Didn't pass" sw="Hayakupita" value={String(counts.FILTERED + counts.VALIDATION_FAILED)} delta="unreadable" spark={false} />
-          <AdminKpi label="AI spend" sw="Matumizi" value={formatUsd(spend)} delta={`${proposals.length} generation${proposals.length === 1 ? "" : "s"}`} spark={false} />
+          <AdminKpi label="AI spend" sw="Matumizi" value={formatUsd(spend)} delta={`${allProposals.length} generation${allProposals.length === 1 ? "" : "s"}`} spark={false} />
         </div>
 
         {/* ── The AI switch lives in ONE place; this page reports it, never mirrors it. ── */}
@@ -147,13 +181,62 @@ export default async function UpDownProposalsPage() {
           )}
         </AdminCard>
 
-        <AdminCard title={`Queue · ${proposals.length}`} sw="Foleni" padding="p-0">
+        {/* Filters. The officer's job is PENDING_REVIEW; everything else is history, and
+            before this the two were one undifferentiated list that only grew. Same chip
+            idiom as the audit log and the rounds explorer — one filter language. */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Link href={buildBaseHref("/admin/updown/proposals", { asset: assetKey }) as Route} className="inline-flex items-center min-h-[44px] transition-opacity hover:opacity-80">
+            <Chip size="lg" variant={!stateFilter ? "brand" : "neutral"} selected={!stateFilter}>All states</Chip>
+          </Link>
+          {STATES.map((s) => (
+            <Link
+              key={s}
+              href={buildBaseHref("/admin/updown/proposals", { state: s, asset: assetKey }) as Route}
+              className="inline-flex items-center min-h-[44px] transition-opacity hover:opacity-80"
+            >
+              <Chip size="lg" variant={stateFilter === s ? "brand" : "neutral"} selected={stateFilter === s}>
+                {s.replace(/_/g, " ").toLowerCase()} {counts[s] ?? 0}
+              </Chip>
+            </Link>
+          ))}
+          {assets.length > 1 && (
+            <>
+              <span className="hidden sm:block mx-2 h-5 w-px bg-border-subtle" aria-hidden />
+              <Link href={buildBaseHref("/admin/updown/proposals", { state: stateFilter }) as Route} className="inline-flex items-center min-h-[44px] transition-opacity hover:opacity-80">
+                <Chip size="lg" variant={!assetKey ? "brand" : "neutral"} selected={!assetKey}>All assets</Chip>
+              </Link>
+              {assets.map((a) => (
+                <Link
+                  key={a.key}
+                  href={buildBaseHref("/admin/updown/proposals", { state: stateFilter, asset: a.key }) as Route}
+                  className="inline-flex items-center min-h-[44px] transition-opacity hover:opacity-80"
+                >
+                  <Chip size="lg" variant={assetKey === a.key ? "brand" : "neutral"} selected={assetKey === a.key}>{a.key}</Chip>
+                </Link>
+              ))}
+            </>
+          )}
+          <span className="ml-auto font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle">
+            {filtered.length.toLocaleString()} of {allProposals.length.toLocaleString()}
+          </span>
+        </div>
+        {badFilter && (
+          <p className="font-mono text-[11px] text-warning-fg bg-warning-bg/15 border border-warning-border rounded-md px-3 py-2">
+            Unknown state or asset &mdash; showing the whole queue. Pick one from the chips above.
+          </p>
+        )}
+
+        <AdminCard title={`Queue · ${filtered.length.toLocaleString()}`} sw="Foleni" padding="p-0">
           {proposals.length === 0 ? (
             <div className="p-6">
               <EmptyState
                 kind="default"
-                title="No proposals yet"
-                body="Ask the AI to propose a chain above. It will fetch the asset's approved source, report the price and timestamp it actually found there, and land here for your review — it cannot start a chain by itself."
+                title={allProposals.length === 0 ? "No proposals yet" : "No proposals match this filter"}
+                body={
+                  allProposals.length === 0
+                    ? "Ask the AI to propose a chain above. It will fetch the asset's approved source, report the price and timestamp it actually found there, and land here for your review — it cannot start a chain by itself."
+                    : "Clear the state or asset chips above to see the whole queue."
+                }
               />
             </div>
           ) : (
@@ -278,6 +361,7 @@ export default async function UpDownProposalsPage() {
               </table>
             </ScrollX>
           )}
+          <AdminPagination total={filtered.length} page={page} baseHref={baseHref} />
         </AdminCard>
 
         <AdminCard title="How this works" sw="Inavyofanya kazi">

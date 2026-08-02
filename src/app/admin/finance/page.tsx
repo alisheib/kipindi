@@ -1,6 +1,7 @@
 import { AdminPageHead, AdminKpi, AdminCard } from "@/components/admin/admin-shell";
 import { AdminAreaChart, AdminStackedBars, AdminBarList } from "@/components/admin/admin-charts";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
+import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import {
   depositsTotal,
   withdrawalsTotal,
@@ -45,7 +46,7 @@ const HOUSE_ACCOUNT_NOTE: Record<string, string> = {
 export const metadata = { title: "Admin · Finance" };
 export const dynamic = "force-dynamic";
 
-export default async function AdminFinancePage({ searchParams }: { searchParams: Promise<{ range?: string; from?: string; to?: string }> }) {
+export default async function AdminFinancePage({ searchParams }: { searchParams: Promise<{ range?: string; from?: string; to?: string; feepage?: string }> }) {
   // Money data is MONEY_ROLES only — NEVER MODERATOR (roles.ts). The admin layout
   // only gates ADMIN_CONSOLE_ROLES (which DOES include MODERATOR), so without this
   // a moderator could read owner-grade GGR/NGR and the top-contributor list.
@@ -98,6 +99,11 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
   // Per-poll settlement commission WITH the fee model each poll used — so an
   // accountant can reconcile which model applied to which poll over the period.
   const pollFees = await settlementFeesByPoll(period).catch(() => null);
+  // Paging for the settlement-fee grid (G-1e). `feepage`, not `page`, because this screen
+  // hosts several lists and one shared param would move all of them at once.
+  const feePage = parsePage(sp.feepage, pollFees?.rows.length ?? 0);
+  const feeRows = (pollFees?.rows ?? []).slice((feePage - 1) * PER_PAGE, feePage * PER_PAGE);
+  const feeBaseHref = buildBaseHref("/admin/finance", { range: sp.range, from: sp.from, to: sp.to }, "feepage");
   const feeModelLabel = rates?.feeModel === "loser-share" ? "loser-share (new polls)" : "capped-fee (new polls)";
   const taxAccrued = rates && ggr !== null
     ? Math.round(Math.max(0, ggr) * (rates.traTaxOnCommissionRate + rates.gbtLevyOnCommissionRate))
@@ -214,7 +220,7 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
                     </tr>
                   </thead>
                   <tbody>
-                    {pollFees.rows.slice(0, 50).map((r) => (
+                    {feeRows.map((r) => (
                       <tr key={r.marketId}>
                         <td className="text-left max-w-[280px] truncate" title={r.title}>{r.title}</td>
                         <td className="text-left whitespace-nowrap">{new Date(r.settledAt).toISOString().slice(0, 10)}</td>
@@ -236,10 +242,19 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
                   </tbody>
                 </table>
               </ScrollX>
+              {/* ⛔ WAS `.slice(0, 50)` with a note admitting the cap (campaign finding
+                  G-1e). The note was honest — unlike the rounds console, this page never
+                  pretended — but an accountant reconciling a period cannot act on a number
+                  they are told about and cannot reach. The date-range filter above already
+                  narrows the period; this pages what the period contains. `feepage` rather
+                  than `page` so it cannot collide with another list on this screen. */}
+              <AdminPagination
+                total={pollFees.rows.length}
+                page={feePage}
+                baseHref={feeBaseHref}
+                param="feepage"
+              />
               <p className="mt-2 text-[11px] text-text-subtle">
-                {pollFees.rows.length > 50
-                  ? `Showing the 50 most recent of ${pollFees.rows.length} settled polls this period. `
-                  : ""}
                 Total commission this period: TZS {formatTzs(pollFees.totalFee)}.
               </p>
             </>
