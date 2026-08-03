@@ -185,6 +185,23 @@ them a fresh session on any machine can reach everything in under a minute:
 | **Railway `50pick` service env** | every *platform* secret: `DATABASE_URL`, `SESSION_SECRET`, `AUDIT_CHAIN_SECRET`, `SELCOM_*`, `POSTMARK_*`, R2, the backup seal key, `ANTHROPIC_API_KEY`, **`TWELVEDATA_API_KEY`** | `railway run -s 50pick -- node -e "console.log(!!process.env.NAME)"` — and `railway run` injects them into any script, so **a secret never has to be written to a file or a transcript** | ✅ yes — it is the shared store |
 | **`C:\kipindi-main\.env.qa.local`** | ONLY the QA-persona passwords — `QA_ALPHA_PASSWORD`, `QA_ECHO_PASSWORD`, `QA_OFFICER_PASSWORD`, `QA_TRADING_PASSWORD`, `QA_GROWTH_PASSWORD`, **`QA_FINANCE_PASSWORD`**, and `QA_ADMIN_PASSWORD` (⛔ Ali's own — never re-mint) | `harness.mjs`'s `qaEnv(name)` reads it directly | ❌ **no** — gitignored (`.gitignore:9`); copy this one 4-line file to a new machine, or re-mint with `live/mkpw.cjs` (§1) |
 
+🔴 **A RE-MINT ON ONE LAPTOP LOCKS THE OTHER ONE OUT — measured 2026-08-03 13:30 UTC.**
+Session 18 re-minted the QA persona passwords against production from **laptop A**, which was
+correct and necessary (that laptop could not sign in at all). But `.env.qa.local` is gitignored, so
+**laptop B's copy — dated 2026-08-02 14:14 — is now stale and every persona login there fails.**
+Symptom, from `scripts/live-settlement-check.mjs` on laptop B: `login failed for trading (TRADING
+officer)` followed by the signed-OUT home page text, which reads exactly like a broken login page
+and is not one. Confirmed as a credential mismatch and not a lockout or a role problem:
+`+255712000104` shows `failedLoginCount 1`, `lockedUntil NULL`, and
+**`lastLoginAt 2026-08-03 12:49:23` — laptop A signed in successfully 46 minutes earlier.**
+
+⛔ **DO NOT RE-MINT TO FIX THIS.** A second re-mint just moves the lockout to the other laptop, and
+the two machines would take turns breaking each other for the rest of the campaign. **Copy
+`.env.qa.local` from the laptop that last re-minted.** ⚠️ And whoever re-mints again: say so in §6b
+with the instant, because the other machine has no way to detect it except by failing to log in.
+📌 One failed attempt is harmless — the lockout threshold is well above 1 — but do not retry in a
+loop while diagnosing, or you will lock a persona the other session is using.
+
 ⛔ **And the one rule that does not bend: no secret VALUE is ever written into this repo.**
 It is pushed to `github.com/alisheib/kipindi`, and a leaked key in git history is permanent
 — you cannot un-push it, only rotate the key. That is why the table above gives the
