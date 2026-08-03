@@ -42,6 +42,26 @@ export const PERSONA = {
   admin:    { phone: "777777777", secret: "QA_ADMIN_PASSWORD",    label: "ADMIN (Ali)" },
 };
 
+/**
+ * A QA-fleet player, by its two-digit index. `fleet:07` → `+255799000007`.
+ *
+ * The secret is ONE shared value for the whole fleet, read from `QA_FLEET_PASSWORD` in
+ * `.env.qa.local` (falling back to the script's own default) — these are disposable
+ * accounts created and destroyed inside a single run, so per-account secrets would be
+ * ceremony without safety.
+ */
+export function fleetPersona(nn) {
+  const n = String(nn).padStart(2, "0");
+  let secret;
+  try { secret = qaEnv("QA_FLEET_PASSWORD"); } catch { secret = "qa-fleet-2026-08-03-Xk7"; }
+  // ⚠️ NINE digits. The block is `+2557990000` + NN, so the local part is `7990000` + NN.
+  // Writing `799000${n}` yields EIGHT digits, which the form accepts and the server
+  // rejects — indistinguishable from a wrong password, and it cost a diagnosis once.
+  const phone = `7990000${n}`;
+  if (phone.length !== 9) throw new Error(`fleet phone must be 9 digits, got "${phone}"`);
+  return { phone, secretValue: secret, label: `QA Fleet ${n}` };
+}
+
 export function qaEnv(name) {
   const txt = readFileSync(new URL("../../.env.qa.local", import.meta.url), "utf8");
   const m = txt.match(new RegExp(`^${name}\\s*=\\s*(.+)$`, "m"));
@@ -85,7 +105,13 @@ export async function browser() {
  * both render the same PhoneInput, so the selector rule is identical.
  */
 export async function login(page, who) {
-  const p = PERSONA[who];
+  // `who` is a PERSONA key, OR `fleet:NN` for a QA-fleet player (see
+  // `scripts/ops-qa-fleet.mts`). The fleet is 30 tagged accounts on a reserved phone
+  // block sharing one secret — enumerating them in PERSONA would be 30 lines of
+  // near-identical noise that drifts the moment the fleet is resized.
+  const p = typeof who === "string" && who.startsWith("fleet:")
+    ? fleetPersona(who.slice(6))
+    : PERSONA[who];
   if (!p) throw new Error(`unknown persona ${who}`);
   const staff = ["officer", "trading", "growth", "finance", "admin"].includes(who);
   // 🔴 `networkidle`, NOT `domcontentloaded`. PhoneInput is a React component that mirrors
@@ -112,7 +138,8 @@ export async function login(page, who) {
       `input[name=${mirror}]="${synced}". The page was filled before React hydrated.`,
     );
   }
-  await page.fill('input[type="password"]', qaEnv(p.secret));
+  // Personas name an env key (`p.secret`); fleet players carry the value directly.
+  await page.fill('input[type="password"]', p.secretValue ?? qaEnv(p.secret));
   await clickByName(page, /sign in|log in|ingia/i);
 
   // 🔴 WAIT FOR A POSITIVE SIGNAL, never for the absence of a negative one.
