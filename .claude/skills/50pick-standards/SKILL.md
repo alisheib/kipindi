@@ -109,6 +109,35 @@ Full detail: **`references/testing-and-verify.md`.**
 - **Money-invariant bar** for every money path: conservation (in = out + house) · no negative
   balance · idempotent · audit-entry-exists · holds under concurrency.
 
+### ⛔ 5b. ASSERT THE VALUE, NOT THE SYMBOL (added 2026-08-03, session 18)
+"Assert the call site, not the symbol" was already law here and it was **not enough**. In one
+day, four checks passed while the thing they named was broken — each asserting something
+*adjacent* to the truth:
+- a guard proved `outcome` was computed once, early, and passed to both consumers — all true
+  while the variable silently dropped `VOID` (**E-56**);
+- a guard counted `pushOnly(` occurrences; prefixing one with `void 0 &&` killed a loss
+  notification while leaving every character of the name in place (**E-57**);
+- a live check asked the **page** for `[role="switch"]` and matched a control in the chrome
+  while the panel it was testing plainly read *"Push isn't available on this deployment yet."*;
+- a deploy-wait loop grepped `railway logs` for `"Ready in"` and matched the **previous** boot.
+
+**The rules that generalise:**
+1. Count calls in **statement position** (`/^\s*fn\(/m`), never mentions — and assert
+   `mentions === statements`, so a short-circuited call is a failure.
+2. Assert what a variable **carries** (the literal `=== "VOID"` inside its declaration), not
+   that it is passed.
+3. Where a component renders **different controls per state**, the control's *presence* is the
+   state. Read the element and its `aria-checked`; never parse prose. `/on\b/` matches
+   "turn this **off** any time".
+4. **Scope every selector to the thing under test** — the row, the card, the panel, the dialog.
+   A page-wide match cannot tell *"my control"* from *"a control"*. This also cost a near-miss
+   on a money write: a void driver's page-wide confirm matched **"Resolve YES"** on the card
+   behind the modal, and only the product's scrim stopped it.
+5. **Refuse to continue when the premise is absent.** No control → throw, don't click into
+   nothing and report green.
+6. Every one of these was caught by **looking at a screenshot**, never by a suite. A green
+   suite is a pre-flight check, not evidence.
+
 ## 6. Money & compliance invariants (never break)
 Authoritative detail: `50pick-audit` skill §6 + `docs/DATA-LAYER.md` + `docs/FLOWS.md`.
 - **Lock order is wallet → market.** Refund/bonus/referral helpers take the wallet lock and run
