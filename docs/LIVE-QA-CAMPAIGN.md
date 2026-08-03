@@ -1351,6 +1351,74 @@ would have. The build stays the gate.
 | **E-39** | 🔴 **HIGH** → ✅ **FIXED 2026-08-02 (session 12)** | Up & Down · player money copy · SHARED, all 3 locales | **The card headed "SETTLEMENT PROOF · AUDITABLE RECORD" stated a margin-ZERO settlement rule directly underneath the round's real band.** `udRuleText` was a hard-coded constant rendered unconditionally (`updown/[roundId]/page.tsx:294`): *"Up if the close is above the open · Down if below · **Void if it does not move**"* — plus `Batili ikiwa haijasogea` / `无变动则作废`. Since E-32 every round is priced by the ladder, so a 5-min BTC round moving **$5** sits inside a **$12.62** band and voids. The page therefore told a player that voiding requires no movement, one row below `Up ≥ $63,126.62 / Down ≤ $63,101.38`, on the artefact they would take to an objection. ⚠️ **The defect is that a constant cannot describe a per-round rule** — not the wording. ⭐ The platform already had the correct sentence: `updown-service.ts:550` records *"stayed inside the band … refunded in full"* for operators. Fixed with `udRuleTextBanded` (en/sw/zh) selected from the round's own targets; the legacy line **kept** because at margin 0 it is accurate. | live production card for `udr_0c015a854aa105600373` read as `echo` (`live/s12-reshoot14.mjs`) — band and rule contradicting each other on one screen; `npm run test:rule-honesty` **28/28**, proven **RED (6 failures)**, and re-proven **RED (2 failures) with the corrected dictionary already in place** |
 | **G-7** | MEDIUM → ✅ **FIXED (2026-08-02, session 10)** | visuals · shared `Chip` | **Any `Chip` with a long label bleeds silently past its container, platform-wide.** `components/ui/chip.tsx` was `whitespace-nowrap` with a **fixed `height`** (18/21/25px per size). Both are correct for a short status pill and both are wrong for a phrase: the chip could neither wrap nor grow, so it was simply drawn outside its column with no ellipsis — and with nothing for a document-level check to notice. ✅ Fixed in the shared component: `height` → `minHeight` with `height: auto`, `whiteSpace: normal`, `max-w-full`, and the `/admin/reports` call-site opt-out **deleted** because the component now does it. ⭐ **The interesting part is how it had to be proven, because a survey CANNOT catch this and did not.** `live/s10-g7-probe.mjs` measured **84 live chips across 7 routes × 4 widths and found ZERO bleeding** — session 9 had patched the one known offender *at its call site*, so the shared component stayed broken for the next long label while everything measured clean. A latent defect has nothing to measure until someone ships the label that trips it. So the RED was produced by taking a **real chip off a real production page** and giving it a real call site's label at the real column width (`live/s10-g7-inject.mjs`, `/admin/aml` @360): **206×18 inside a 198px container — 8px outside it**, `white-space:nowrap · height:18px · max-width:none`. Re-run after the fix on production: **fits, wraps, grows.** ⚠️ **The `minHeight` swap must stay a no-op for one-line chips**, and that is now arithmetic rather than a hope — `test:chip-contract` §3 computes `fontSize × lineHeight + 2 × paddingBlock` for all six sizes and fails if any exceeds its `minHeight`, i.e. if a future edit would make **every chip on the platform** grow. | `live/s10-g7-inject.mjs` on production, before **206×18 in 198px, +8px** / after **fits**; `live/s10-g7-{before,after}.json` — 84 chips, height histogram `{18: 84}` unchanged; `npm run test:chip-contract` **14/14**, proven **RED** against the pre-fix component (10 failures) |
 
+## 6y. ⭐ A REAL MARKET, CREATED AND RESOLVED ON PRODUCTION — and the near-miss that matters more (2026-08-03, session 15)
+
+Ali asked for it twice: *"live test no matter how much time — market generate, later will resolve,
+check status."* One was driven the whole way.
+
+```
+mkt_54f75a1959cdee5f1ed8
+"Will Bitcoin trade above US$63,000 at 03:00 EAT on 3 August 2026?"
+crypto · source api.twelvedata.com/quote · created 23:27:48 UTC · resolves 00:00:00 UTC
+alpha YES 2,000   echo NO 2,000   pool 4,000
+reading at the criterion's own instant:  63,570.00  quoted 2026-08-03T00:00:00.000Z  skew 19s
+SEALED YES · objection window closes 4 Aug 03:08 EAT · settlement armed for then
+```
+
+### Three things the platform got RIGHT, each caught by trying to do it wrong
+
+1. **The source allowlist is per CATEGORY, and it refused.** The market was submitted with the
+   correct source URL and the form's default category, and the platform rejected it outright:
+   *"No enabled trusted source for **sports** matching api.twelvedata.com."* The domain is approved
+   under `crypto`. Photographed and now Figure 4 of the markets runbook.
+2. **The resolution ceremony is not one button.** Pick the outcome, paste the **evidence excerpt**,
+   type **`SEAL`**, then seal. The AI sentinel offered an independent **YES at 88%** citing Bybit,
+   CoinGecko, Yahoo and CoinDesk — and the page labelled its own recommendation
+   **"NOT THE APPROVED SOURCE"** in red, because none of those is the domain this market declared.
+   The two agreed; the verdict was recorded against the approved one.
+3. **Sealing is not paying, and the database proves it.** Immediately after sealing:
+   `RESOLVED · YES · settledAt = null`, both positions still `OPEN`, both wallets unchanged. The
+   24-hour objection window is real and enforced.
+
+### 🔴 THE NEAR-MISS — read this before automating anything on the resolver queue
+
+The first resolve attempt scoped a card **inside `/admin/resolver-queue`** by climbing three DOM
+ancestors from a text match, clicked *Resolve YES*, and hit a `ConfirmModal` reading *"Settle YES
+now? · Yes, settle yes / Not yet · Bado"* — **which names no market at all.** The click regex matched
+neither button, a `.catch()` swallowed it, and the run looked like it had worked. The database said
+otherwise: still `CLOSED`, both positions still `OPEN`.
+
+⛔ **That same queue was holding a market with TZS 59,450 of REAL player money on it.** An
+ancestor-climbing locator that picks the wrong card, plus a confirmation dialog that does not say
+what it is about, is one mis-scope away from sealing a stranger's verdict on somebody else's money.
+The fix is to resolve from **`/admin/resolver/<marketId>`**, where the id is in the URL and there is
+nothing to mis-scope — and to assert the market's own title on the page **before** clicking anything.
+
+📌 **A product note, filed rather than fixed:** that dialog should name the market. It is the last
+thing standing between an officer and an irreversible verdict, and it currently says only "Settle YES
+now?".
+
+### The five harness lies, and the one rule that caught all of them
+
+**(1)** `waitForURL(/\/admin\/markets/)` matched **`/admin/markets/new`**, the page it was already
+on — it returned instantly and the screenshot caught *"Publishing…"* on a market that had in fact
+been created. **(2)** The bet run ignored §6h's own **betting-dial contract** and placed **nothing**
+while reporting that a side had been clicked. **(3)** `networkidle` never fires on `/markets/[id]`
+(open event stream) — a healthy page timed out. **(4)** The resolver near-miss above. **(5)**
+`` new RegExp(`^${outcome}`) `` inside a **template literal** embeds a literal BACKSPACE (U+0008)
+rather than a word boundary; it matched nothing, and Playwright printed it as `/^YES/i` because a
+backspace is invisible. Three guesses were spent on that control before
+`scripts/live-probe-resolver.mjs` simply asked the DOM — the answer was `"YES NDIO"`, which plain
+`^YES` had matched all along.
+
+⭐ **Every one was caught by the same rule: pair the DOM claim with the database.** The toast said
+*"Verdict sealed"*. Only the wallet could say whether anybody had been paid — and nobody had.
+
+🧰 **New in the repo:** `scripts/live-market-lifecycle.mjs` (create · bet · resolve, every trap above
+written at the line that hits it), `scripts/live-probe-resolver.mjs` (asks the live ceremony page what
+its controls are called), `scripts/live-markets-guide-shots.mjs` + `…-shots2.mjs` (the runbook
+figures, each shot as the role that owns the surface).
+
 ## 6x. ⭐ E-37 + E-43 — the digest Ali decided on in July, and the suppression that was inverted (2026-08-03, session 15)
 
 They were filed as two findings and they are one decision, so they were fixed in one pass.
@@ -1414,6 +1482,21 @@ drives the shared predicate with both boundary instants instead. ⚠️ The harn
 itself, in the safe-looking direction: the working tree is CRLF and its anchors were LF, so the
 two multi-line mutations reported *"the source moved"* rather than failing — a false all-clear
 from the tool whose entire job is to prove the guard can fail.
+
+### ⏳ What is NOT yet proven, said plainly
+
+**E-43's suppression has not been observed on a live Up & Down refund**, and it cannot be until a
+chain runs again: every chain is STOPPED, so no round has voided since the deploy and the absence of
+a refund notification would prove nothing. What IS proven: the guard scans every `notify*` call site
+in `market-service.ts` and fails if one is ungated (RED-proven by reintroducing E-43 exactly as it
+shipped), and the **control** was driven live — a long-form poll created this session still sent
+per-event `BET_PLACED` to both players, so the gate did not over-suppress the other product line.
+⚠️ Whoever next starts a chain: the first void is the confirmation. Check that it produces **no**
+per-round notification and that the round appears in the next morning's digest instead.
+
+**The digest email was dispatched, not confirmed delivered.** The log line was captured for both
+real addresses; the two QA addresses (`qa.alpha@…`, `qa.echo@…`) are on the platform's own
+bounce-suppression list, so their copies were correctly **not** sent. Nobody has read Jay's inbox.
 
 ### 🔴 A red suite was found on the branch and fixed — it was NOT from this session
 
@@ -3170,6 +3253,73 @@ workstation shows an SLA countdown, but nothing escalates when it runs out. Ali'
   the `pg` −3h trap (§3) reading back through an un-cast client.
 
 ## 6b. NEXT SESSION — start here
+
+### 🟢 Laptop B, session 15 (2026-08-03) — ⭐ THE DIGEST EXISTS AND HAS SENT. Read this first; it supersedes everything below.
+
+**E-37 and E-43 are CLOSED, together, because they were always one decision.** Full account: **§6x**.
+
+```
+BEFORE (production, measured, not assumed)          AFTER (production, 2026-08-03 02:05 EAT)
+Up & Down positions that WON  13 → notified  0      4 digests sent, one per player who played
+Up & Down positions that LOST 11 → notified  0      Jay: "you lost TZS 5,960 · 32 rounds —
+Up & Down positions REFUNDED  56 → notified 56       won 10 (TZS 40,040 paid), lost 8 (TZS 22,500),
+control: 221 WIN/LOSS notifications exist            refunded 14 (TZS 8,000)"
+```
+
+| | Shipped, deployed, live-verified on production |
+|---|---|
+| **E-37 · the digest** | `updown-digest.ts` — one notification + one email per player per **East Africa** day, on the lifecycle ticker every 15 min, targeting the last CLOSED day. **Derived** from the `Position` rows settlement already wrote (no digest table, so it cannot disagree with the ledger), **idempotent** with the day in the deep link, and binned on `settledAt`, which is never backdated, so a day's bin is final. **Live: 4 sent, every figure cross-checks against the aggregate measured before the deploy.** Idempotence proven live too — the next two passes logged `sent 0, 4 already had it` |
+| **E-43 · the inversion** | Both refund emitters now sit behind `perEventNotificationsSuppressed`, with the orphan-repair caller named as an explicit exemption. ⭐ **And the control was driven**: a long-form poll created for this session still sent per-event `BET_PLACED` to both players, so the gate did not over-suppress |
+| **the link is not a lie** | `/updown/history` honours `?day=`, with the day as a chip and a way back. New shared `src/lib/eat-day.ts` — the first draft had the EAT arithmetic in the digest *and* the page "in the same shape so a reader can see they agree", which is agreement by inspection |
+| **guard** | `test:updown-digest` **73 assertions**, and `scripts/updown-digest-red.mjs` proves **7/7** by reintroducing each real defect in the real source |
+| **a red suite fixed** | `test:updown-engine` had failed on **every** tree since session 14 (verified by stashing): E-46's validator correctly rejects the suite's own `XAU/USD`-as-`crypto` fixture. **90/90** now |
+| **⭐ markets runbook** | Ali's request. `docs/runbooks/50pick-markets-runbook.pdf` — where a market comes from (4 doors), the money settings frozen at creation, resolving, settlement, what to do when it goes wrong, the player's view, and a worked example driven end to end on production. Every figure shot **as the role that owns the surface** |
+
+🔴 **THE LIVE RUN FOUND THREE THINGS THE UNIT TESTS COULD NOT, AND ONE OF THEM WAS MINE.**
+**(1)** `?day=lol` emptied the history page with no way out — the page validated the param for the
+chip but filtered on the RAW one, so one typo hid every card and the clear control did not render.
+**(2)** The day chip used the LIVE (red, pulsing) treatment on a static date filter. **(3)** The
+digest logged only when it *sent*, so a correctly-idempotent pass printed nothing — indistinguishable
+from the sweep having stopped, on a job designed to run 96 times a day and send once. All three fixed
+and shipped.
+
+⚠️ **AND THE RED HARNESS CAUGHT THE GUARD OUT — which is the only reason to run one.** §7 first
+asserted that the history page's *source* contained `dayWindow` and `filter(`; the mutation broke the
+filtering while leaving both words in place and the suite stayed **green at 72/72**. A pattern that
+matches the text *around* a defect is not a test *of* it. It now drives the shared predicate. The
+harness also lied in the safe direction: the tree is CRLF and its anchors were LF, so the two
+multi-line mutations reported *"the source moved"* instead of failing.
+
+🔴 **TZS 77,950 OF REAL PLAYER MONEY IS OVERDUE, AND IT IS GETTING WORSE — ALI'S CALL, NOT QA'S.**
+Both are factual questions about the real world:
+· **TZS 59,450**, 8 positions, 4 players — *EWURA's August petrol cap for Dar* — now **27 hours**
+  overdue (it was 16h when session 11 filed it).
+· **TZS 18,500**, 4 positions, 4 players — *measurable rainfall in Dar on 1–2 August* — **3 hours**
+  overdue.
+⚠️ The first query written for this reported a comfortable **TZS 0**, because it filtered
+`status = 'LIVE'` and a market past its betting deadline is `CLOSED`. The screenshot disagreed with
+the query and the screenshot was right.
+
+📌 **Recorded, not chased:** the refusal panel (**E-34/E-35**) was photographed live and both defects
+are visible in one image — it tells a MODERATOR *"Moderators are excluded by policy"* and explains
+Objections as *"regulator-grade financial data"*, the same sentence it gives every refused page, in
+English only, and it cites `roles.ts` to an operator.
+
+⏭️ **RESUME AT:** ① **check `mkt_54f75a1959cdee5f1ed8` settled** after 4 Aug 03:08 EAT — alpha should
+receive **TZS 3,480**, echo 0, and **both must be notified** (the other half of E-43's control).
+② **E-47**, Ali's call: should the AI propose only framing/duration/margin and take the price from
+the feed? ③ **E-45**, backfill a late-confirmed observation into the round that opened on it — fixes
+SOL, recovers ~19% of BTC readings. ④ **E-33** DSAR wiring (policy already decided). ⑤ **E-34 +
+E-35**, the shared refusal panel — now photographed live, so the RED is already in hand.
+⑥ **G-3**, the player visual sweep. ⑦ **`SortTh` on the proposals grid.** ⑧ **E-41 / E-42 / E-44.**
+
+🔒 **Left as found, with these deliberate exceptions** — all inside the live mandate:
+`mkt_54f75a1959cdee5f1ed8` is on the board, **RESOLVED YES, awaiting its objection window**. ⛔ Do
+not delete it: it is the markets runbook's worked example and its settlement is the next check.
+**TZS 4,000 of QA money** is staked on it (alpha 2,000 YES / echo 2,000 NO). Four digest
+notifications were written and two digest emails dispatched. **No chain started or stopped, no
+margin, no role, no config changed.**
+
 
 ### 🟢 Laptop B, session 14 (2026-08-03) — ⭐ THE CONSOLE NOW PREVENTS THE MISTAKES JAY MADE, AND AI GENERATION HAS PROGRESS BARS. Read this first; it supersedes everything below.
 

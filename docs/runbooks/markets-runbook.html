@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>50pick · Markets — Admin Runbook</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm 14mm; }
+  * { box-sizing: border-box; }
+  body { font: 10.5pt/1.5 "Segoe UI", Helvetica, Arial, sans-serif; color: #14161c; margin: 0; }
+  h1 { font-size: 22pt; margin: 0 0 2mm; letter-spacing: -.4pt; }
+  h2 { font-size: 13pt; margin: 9mm 0 3mm; padding-bottom: 1.5mm;
+       border-bottom: 1.5pt solid #14161c; page-break-after: avoid; }
+  h3 { font-size: 11pt; margin: 6mm 0 2mm; page-break-after: avoid; }
+  h4 { font-size: 10pt; margin: 4mm 0 1.5mm; page-break-after: avoid; }
+  p, li { margin: 0 0 2.5mm; }
+  ul, ol { margin: 0 0 3mm; padding-left: 6mm; }
+  li { margin-bottom: 1.5mm; }
+  code { font: 9.5pt/1.4 Consolas, monospace; background: #f1f2f5; padding: .3mm 1mm; border-radius: 1mm; }
+  .sub { color: #5b6070; font-size: 10pt; margin: 0 0 6mm; }
+  .step { page-break-inside: avoid; margin: 0 0 6mm; }
+  .who { display: inline-block; font: 8.5pt/1 Consolas, monospace; text-transform: uppercase;
+         letter-spacing: .5pt; background: #14161c; color: #fff; padding: 1mm 2mm; border-radius: 1mm;
+         vertical-align: 1.2mm; margin-left: 2mm; }
+  .path { font: 9.5pt/1.4 Consolas, monospace; background: #eef0f4; border-left: 2.5pt solid #14161c;
+          padding: 2mm 3mm; margin: 0 0 3mm; }
+  figure { margin: 3mm 0 4mm; page-break-inside: avoid; }
+  figure img { display: block; max-width: 100%; border: .5pt solid #c8ccd6; }
+  figcaption { font-size: 8.5pt; color: #5b6070; margin-top: 1.5mm; }
+  .narrow img { max-width: 78mm; }
+  .mid img { max-width: 120mm; }
+  table { width: 100%; border-collapse: collapse; margin: 0 0 4mm; font-size: 9.5pt; }
+  th, td { border: .5pt solid #c8ccd6; padding: 1.5mm 2mm; text-align: left; vertical-align: top; }
+  th { background: #eef0f4; font-weight: 600; }
+  .note { border: .5pt solid #c8ccd6; border-left: 2.5pt solid #b8860b; background: #fdfaf2;
+          padding: 2.5mm 3mm; margin: 0 0 4mm; page-break-inside: avoid; }
+  .stop { border-left-color: #a8202a; background: #fdf4f4; }
+  .ok   { border-left-color: #1c7a45; background: #f3faf5; }
+  .lead { font-size: 11pt; }
+  .brk { page-break-before: always; }
+  .foot { margin-top: 8mm; padding-top: 2mm; border-top: .5pt solid #c8ccd6;
+          font-size: 8.5pt; color: #5b6070; }
+  .money { font: 9.5pt/1.5 Consolas, monospace; background: #f7f8fa; border: .5pt solid #c8ccd6;
+           padding: 2.5mm 3mm; margin: 0 0 4mm; white-space: pre; page-break-inside: avoid; }
+</style>
+
+<h1>Markets — Admin Runbook</h1>
+<p class="sub">50pick · <code>50pick.tz</code> · where a market comes from, how it is resolved,
+how the money moves, and what the player sees. Every screenshot and every figure in this document
+was taken from the live platform, as the role named in its caption.</p>
+
+<p class="lead">A <strong>market</strong> is one YES/NO question with a public source, a written
+criterion and a deadline. Players back a side; the two stakes form one pool; when the question is
+answered an officer seals the verdict and the pool pays the winning side. Nobody sets odds — the
+price you see is the crowd's own money, and the payout is arithmetic on the pool.</p>
+
+<div class="note ok"><strong>This is the companion to the Up &amp; Down runbook, not a replacement.</strong>
+Up &amp; Down is the fast game: a chain emits price rounds automatically and settles itself against
+a feed. <em>Markets</em> are the long-form game: a human writes the question and a human seals the
+answer. They share the same wallet, the same ledger and the same settlement code — and they are
+deliberately separate portfolios for the player.</div>
+
+<h2>Who can do what</h2>
+<p>50pick separates <strong>seeing</strong> a page from <strong>using</strong> a control on it. Both
+are enforced on the server, so a screen that hides a button is not the security boundary — it is the
+courtesy. The table is the live mapping, read from <code>roles.ts</code> and
+<code>control-gates.ts</code>.</p>
+<table>
+  <tr><th style="width:40%">Action</th><th style="width:22%">Needs</th><th>Where</th></tr>
+  <tr><td>Create / edit a market</td><td>Trading</td><td>Curation queue → New market</td></tr>
+  <tr><td>Generate an AI poll · review · publish</td><td>Trading</td><td>AI poll generation</td></tr>
+  <tr><td>Approve or decline a player proposal</td><td><strong>Growth</strong></td><td>Player proposals</td></tr>
+  <tr><td>Edit the proposal prize economics</td><td><strong>Accounting</strong></td><td>Player proposals</td></tr>
+  <tr><td>Approve a source domain</td><td>Trading</td><td>Sources &amp; categories</td></tr>
+  <tr><td>Resolve YES / NO / VOID</td><td>Trading</td><td>Resolver queue</td></tr>
+  <tr><td>“Re-check this market now” (one paid AI call)</td><td><strong>Compliance</strong></td><td>Resolver queue</td></tr>
+  <tr><td>Turn two-admin authorization on or off</td><td><strong>Compliance</strong></td><td>Resolver queue header</td></tr>
+  <tr><td>Emergency-void a LIVE market</td><td><strong>Compliance</strong></td><td>Curation queue</td></tr>
+  <tr><td>Settle a resolved market by hand</td><td>Accounting</td><td>Settlement</td></tr>
+  <tr><td>Rule on an objection</td><td>Compliance</td><td>Objections</td></tr>
+</table>
+<div class="note"><strong>Four of those are deliberately tighter than the page that hosts them.</strong>
+Resolving is trading work, but <em>relaxing the two-admin rule</em> and <em>pulling a live market</em>
+move money or change a control, so they are compliance. Approving a proposal pays the proposer a
+bonus, so it is growth. If a control is visible but locked, that is the system telling you the truth:
+you can see this page, you may not fire this lever.</div>
+
+<figure class="narrow">
+  <img src="markets-assets/m01-nav.png">
+  <figcaption>The sidebar as the <strong>trading officer</strong>. Everything in Parts 1–3 lives
+  under <strong>Markets · Masoko</strong>. Note what is absent: no Settlement, no Objections. That is
+  the role working, not a fault.</figcaption>
+</figure>
+
+<h2 class="brk">Part 1 · Where a market comes from</h2>
+<p>There are <strong>four</strong> doors, and they all end in the same place — a row in the curation
+queue. Only the first is fully manual.</p>
+<table>
+  <tr><th style="width:26%">Door</th><th>What it is</th></tr>
+  <tr><td><strong>New market</strong></td><td>You write the question. Four steps, below.</td></tr>
+  <tr><td><strong>AI poll generation</strong></td><td>The AI drafts a question with a source and a
+      criterion; an officer reviews it and publishes. It never goes live unreviewed.</td></tr>
+  <tr><td><strong>Player proposals</strong></td><td>A player suggests a market. Approving one pays
+      them a bonus, which is why approval is a <em>growth</em> control.</td></tr>
+  <tr><td><strong>AI candidates</strong></td><td>Ideas harvested from the event calendar, waiting to
+      be promoted into drafts.</td></tr>
+</table>
+
+<figure><img src="markets-assets/m02-markets.png"><figcaption>Curation queue,
+<strong>trading officer</strong>, live. The four counters are the whole book at a glance: LIVE 19 ·
+awaiting resolution 2 · resolved 46 · total pool TZS 14,976,410 across 75 markets.</figcaption></figure>
+
+<h3>Writing one by hand — four steps</h3>
+<div class="path">Sidebar → <strong>Curation queue</strong> → “New market” (top right)</div>
+
+<div class="step">
+<h4>Step 1 · The question <span class="who">Trading</span></h4>
+<p>Title in English, and optionally Swahili and Chinese. Then the <strong>category</strong>.</p>
+<div class="note stop"><strong>The category is not a label — it decides which sources you are allowed
+to cite.</strong> The trusted-source allowlist is <em>per category</em>. Writing this runbook, a real
+market was created with the correct source URL and the default category, and the platform refused it
+outright (figure below). That refusal is the guard working: it is the same rule that stops a market
+resolving against a page nobody approved.</div>
+<figure class="mid"><img src="markets-assets/m16-source-refused.png"><figcaption>The real refusal,
+captured live: <em>“Source not approved · No enabled trusted source for <strong>sports</strong>
+matching api.twelvedata.com.”</em> The domain was approved — under <code>crypto</code>, not
+<code>sports</code>.</figcaption></figure>
+</div>
+
+<div class="step">
+<h4>Step 2 · The source and the deadline <span class="who">Trading</span></h4>
+<p>A public URL that both officers and players will resolve against, and the resolution timestamp.</p>
+<div class="note"><strong>The timestamp is entered in East Africa time and stored in UTC.</strong>
+The platform's timezone is <code>Africa/Dar_es_Salaam</code>. Type the time you mean locally;
+<code>03:00</code> on the form became <code>00:00 UTC</code> in the database, verified on the market
+created for this guide.</div>
+</div>
+
+<div class="step">
+<h4>Step 3 · The criterion <span class="who">Trading</span></h4>
+<p>At least 30 characters, and this is the text a resolver and a player are both held to. Write it so
+that two people reading it separately reach the same verdict.</p>
+<div class="note"><strong>Name the void condition too.</strong> A criterion that only says when YES
+and NO happen leaves the third case — the source went down, the figure was never published — to
+whoever finds it later. The worked example at the end of this guide states its own void condition in
+one sentence.</div>
+</div>
+
+<div class="step">
+<h4>Step 4 · Review, then publish <span class="who">Trading</span></h4>
+<p>Everything on one card before it goes live. The banner above it states the fee model that will be
+<strong>frozen into this market at creation</strong> and cannot change afterwards, even if the
+platform's rates change tomorrow.</p>
+<figure><img src="markets-assets/m03-market-new.png"><figcaption>Step 1 of 4. The frozen fee model is
+stated at the top of every step, not buried in settings.</figcaption></figure>
+</div>
+
+<h2 class="brk">Part 2 · The money, before anyone touches it</h2>
+<p>These are the platform's live settings. They are frozen into each market when it is created.</p>
+<table>
+  <tr><th style="width:38%">Setting</th><th style="width:20%">Live value</th><th>What it means</th></tr>
+  <tr><td>Fee model</td><td><code>loser-share</code></td><td>The fee comes out of the losing pool. Winners are never charged.</td></tr>
+  <tr><td>Commission</td><td><strong>13%</strong></td><td>Of the pool — but capped, see below.</td></tr>
+  <tr><td>Fee ceiling</td><td><strong>33.3%</strong></td><td>Of the <em>smaller</em> side. The fee is the LOWER of the two.</td></tr>
+  <tr><td>Minimum stake</td><td>TZS 500</td><td>Per bet.</td></tr>
+  <tr><td>Maximum stake</td><td>TZS 1,000,000</td><td>Per bet.</td></tr>
+  <tr><td>Free exit</td><td>5 minutes</td><td>Cash out free within 5 minutes of placing.</td></tr>
+  <tr><td>Cash-out fee</td><td>0%</td><td>After the free window.</td></tr>
+  <tr><td>Two-admin authorization</td><td><strong>off</strong></td><td>One officer resolves in one action.</td></tr>
+</table>
+<div class="note"><strong>Why the cap exists.</strong> On a lopsided market 13% of the whole pool can
+exceed the entire losing side — the platform would be taking money that only the winners put in.
+<code>fee = min(13% × pool, 33.3% × smaller side)</code> makes that impossible. On a one-sided market
+there is no losing side at all, so the fee is nothing and every stake is refunded in full.</div>
+
+<h2>Part 3 · Resolving</h2>
+<div class="path">Sidebar → <strong>Resolver queue</strong></div>
+<p>A market appears here when its resolution time passes. Read the card top to bottom: how late it
+is, how much player money it is holding, which way the crowd went, and then the three verdicts.</p>
+
+<figure><img src="markets-assets/m04-resolver-queue.png"><figcaption>Resolver queue,
+<strong>trading officer</strong>, live. Two markets overdue, holding <strong>TZS 59,450</strong> and
+<strong>TZS 18,500</strong> of real player money. The header states the standing policy —
+<em>single-admin · one action seals it</em>.</figcaption></figure>
+
+<h3>Reading the card</h3>
+<table>
+  <tr><th style="width:30%">What you see</th><th>What it means</th></tr>
+  <tr><td><code>1D OVERDUE</code></td><td>How long past its resolution time. It scales its own unit —
+      minutes, hours, days, weeks. <strong>The longer it waits the bigger the number gets, not
+      smaller.</strong></td></tr>
+  <tr><td><code>TZS 59,450 held</code></td><td>Real player money frozen in this pool until you act.
+      This is the number that should decide what you pick up first.</td></tr>
+  <tr><td>The crowd dial + bar</td><td>How the money is split. It is information, <strong>not
+      evidence</strong> — resolve against the source, never against the crowd.</td></tr>
+  <tr><td><code>Source ↗</code></td><td>The URL this market must be resolved from.</td></tr>
+</table>
+
+<h3>The three verdicts</h3>
+<table>
+  <tr><th style="width:22%">Verdict</th><th>What happens to the money</th></tr>
+  <tr><td><strong>Resolve YES / NO</strong></td><td>The winning side splits the whole pool less the
+      capped fee. Losing stakes are gone.</td></tr>
+  <tr><td><strong>Void</strong></td><td><em>Every</em> stake is refunded in full, both sides, no fee.
+      Use it when the question cannot be answered from its own source.</td></tr>
+</table>
+<div class="note stop"><strong>Resolving is not paying.</strong> Sealing a verdict adjudicates the
+market; the pool stays whole and every position stays open until settlement runs. That gap is
+deliberate — it is the window in which an upheld objection can still change the outcome. Once
+settlement runs, the money is in players' wallets and cannot be clawed back.</div>
+
+<h3>Two controls that are not yours <span class="who">Compliance</span></h3>
+<p><strong>“Re-check this market now”</strong> spends one paid AI call and can seal a verdict, so it
+stays a compliance decision even though it sits on a trading page. <strong>Two-admin
+authorization</strong> is the toggle that restores the classic two-officer ceremony; relaxing it is a
+compliance control by design. Both appear locked to a trading officer rather than hidden — you can
+see that they exist and who to ask.</p>
+
+<figure class="mid"><img src="markets-assets/m11-refused.png"><figcaption>What a refusal looks like:
+the <strong>trading officer</strong> opening Objections. Trading and compliance are disjoint by
+default, so the page is withheld with a reason. If you see this, you are not broken — you are the
+wrong officer for this page.</figcaption></figure>
+
+<h2 class="brk">Part 4 · Settlement — how the money actually leaves the pool</h2>
+<div class="path">Sidebar → <strong>Settlement</strong> <span class="who">Accounting</span></div>
+<p>Settlement is normally <strong>automatic</strong>: when a verdict is sealed, that market gets its
+own timer set to the close of its objection window and pays itself then, provided no objection
+stands. This page is the human fallback — settle by hand, or see what an objection is freezing.</p>
+
+<figure><img src="markets-assets/m09-settlement.png"><figcaption>Settlement, <strong>finance
+officer</strong>, live. Nothing awaiting settlement, and <strong>19 timers armed</strong> — every
+resolved market is either already paid or has its own clock running.</figcaption></figure>
+
+<table>
+  <tr><th style="width:30%">Counter</th><th>What it means</th></tr>
+  <tr><td>Ready to settle</td><td>Verdict sealed, objection window closed, waiting to pay.</td></tr>
+  <tr><td>Awaiting window</td><td>Sealed, but the objection window is still open.</td></tr>
+  <tr><td>Frozen by objection</td><td>Someone has objected. It will not pay until that is ruled on.</td></tr>
+  <tr><td>Timers armed</td><td>Markets that will settle themselves, and when the next one fires.</td></tr>
+</table>
+<div class="note stop"><strong>Settling is irreversible.</strong> Rule on every objection first. Once
+the money is in players' wallets it cannot be recovered.</div>
+
+<h3>Who can see this page, and who can run it</h3>
+<p>Compliance officers can <em>view</em> settlement — they hold accounting view — but running a
+settlement needs accounting <em>act</em>, which only finance and the owner hold. Seeing the page is
+not being able to fire it.</p>
+<figure><img src="markets-assets/m15-settlement-as-compliance.png"><figcaption>The same page as the
+<strong>compliance officer</strong>: fully visible, because compliance holds accounting
+<em>view</em>.</figcaption></figure>
+
+<h2>Part 5 · When something is wrong</h2>
+<table>
+  <tr><th style="width:26%">Situation</th><th>What to do</th></tr>
+  <tr><td>The source never published the figure</td><td><strong>Void.</strong> Everyone gets their
+      stake back. This is the honest answer, not a failure.</td></tr>
+  <tr><td>A LIVE market is wrong or unsafe</td><td><strong>Emergency void</strong> from the curation
+      queue <span class="who">Compliance</span>. It pulls the market and refunds every open stake.</td></tr>
+  <tr><td>A player disputes a verdict</td><td>It appears in <strong>Objections</strong>
+      <span class="who">Compliance</span> and freezes settlement until ruled on.</td></tr>
+  <tr><td>A market is overdue and holding money</td><td>Work the resolver queue by the
+      <code>TZS … held</code> pill, biggest first. Overdue money is the only truly urgent thing in
+      this console.</td></tr>
+  <tr><td>Everything looks fine but nothing resolves</td><td>Check the <strong>AI sentinel</strong> —
+      it auto-resolves settled markets on a schedule and can be paused. A paused sentinel means every
+      market waits for a human.</td></tr>
+</table>
+<figure><img src="markets-assets/m10-objections.png"><figcaption>Objections, <strong>compliance
+officer</strong>, live.</figcaption></figure>
+
+<h2 class="brk">Part 6 · What the player sees</h2>
+<p>Everything above produces exactly three things for the player: a market they can back, a position
+they can watch, and a message when it is over.</p>
+<figure><img src="markets-assets/m12-player-board.png"><figcaption>The board.</figcaption></figure>
+<figure><img src="markets-assets/m13-player-positions.png"><figcaption>Their positions.</figcaption></figure>
+
+<div class="note"><strong>Long-form markets message the player at every step</strong> — bet placed,
+betting closed with the exact payout if they are right, and the win or loss when it settles.
+<strong>Up &amp; Down does not, and that is deliberate:</strong> a player running twenty 5-minute
+rounds an hour would get forty emails. Those rounds are collected into <strong>one daily digest</strong>
+instead — one message a day stating the wins, the losses and the refunds separately, with their own
+figures. If a player asks why they got nothing after an Up &amp; Down round, that is the answer, and
+the digest arrives the next morning.</div>
+
+<figure><img src="markets-assets/m18-digest-bell.png"><figcaption>The Up &amp; Down daily digest in a
+real player's bell, live: <em>“Up &amp; Down · you lost TZS 6,300 — 2 Aug: 3 rounds, won 1 (TZS 8,700
+paid), lost 2 (TZS 10,000). Staked TZS 15,000, returned TZS 8,700.”</em> The loss is stated with its
+own count and its own figure, never folded into a net.</figcaption></figure>
+<figure><img src="markets-assets/m17-digest-history.png"><figcaption>…and the page it links to,
+filtered to that one day. The digest and the history agree to the shilling — that is the point of
+sending the day in the link.</figcaption></figure>
+
+<h2 class="brk">Part 7 · A market, start to finish — the worked example</h2>
+<p>Every figure below is from one real market created on production while writing this runbook.</p>
+<div class="money">market      mkt_54f75a1959cdee5f1ed8
+question    Will Bitcoin trade above US$63,000 at 03:00 EAT on 3 August 2026?
+category    crypto          source   api.twelvedata.com/quote
+created     2026-08-02 23:27:48 UTC        resolves  2026-08-03 00:00:00 UTC
+bets        alpha  YES  TZS 2,000          echo  NO  TZS 2,000
+pool        TZS 4,000</div>
+
+<h3>Creating it — and being refused</h3>
+<p>The first attempt was rejected outright, and correctly: the source domain was approved under
+<code>crypto</code> while the form still carried the default category <code>sports</code>. That is
+the figure in Part 1. Fixing the category published it in one click.</p>
+
+<h3>Resolving it</h3>
+<p>At the instant the criterion names — <strong>00:00:00 UTC on 3 August 2026</strong> — the platform's
+own reader was pointed at the market's own declared source:</p>
+<div class="money">BTC/USD   63,570.00     provider-quoted  2026-08-03T00:00:00.000Z
+                        skew 19s (limit 90s)   →  strictly above 63,000  →  YES</div>
+<p>The ceremony page also carried an <strong>independent</strong> opinion: the AI sentinel returned
+<strong>YES at 88% confidence</strong>, citing Bybit $63,381, CoinGecko $63,254.75, Yahoo $63,043.63
+and CoinDesk $63,454.69 — and the platform labelled that recommendation
+<strong>“NOT THE APPROVED SOURCE”</strong> in red, because none of those four is the domain this
+market declared. The two agreed, and the verdict was recorded against the approved one.</p>
+
+<figure><img src="markets-assets/m19-ceremony.png"><figcaption>The resolution ceremony,
+<strong>trading officer</strong>, live. Pick the outcome, paste the evidence, type
+<code>SEAL</code>, seal. The AI's recommendation is offered and flagged, never applied.</figcaption></figure>
+
+<div class="note stop"><strong>Sealing is not paying, and the worked example proves it.</strong>
+Immediately after sealing, the database read: market <code>RESOLVED</code>, outcome <code>YES</code>,
+<strong><code>settledAt</code> still null</strong>, and <strong>both positions still
+<code>OPEN</code></strong> with both wallets unchanged. The page said the same thing — <em>objection
+window 23h, closes 4 Aug 2026 03:08, payouts are provisional until the 24-hour window elapses</em>.
+Do not read “verdict sealed” as “the players were paid”; check the wallet, not the toast.</div>
+
+<figure><img src="markets-assets/m20-sealed.png"><figcaption>Sealed. Resolving officer named and
+attested, the objection window counting down, and the audit entry
+<code>market.resolve_trigger.human</code>.</figcaption></figure>
+
+<div class="money">immediately after sealing, read from the live database:
+  market     RESOLVED · YES · settledAt = null
+  alpha  YES 2,000 → OPEN, payout null, wallet 57,450 (unchanged)
+  echo   NO  2,000 → OPEN, payout null, wallet 25,400 (unchanged)
+  objection window closes 4 Aug 2026 03:08 EAT — payout is armed for then</div>
+<p>When that window closes with nothing standing, the market settles itself: the YES side takes the
+TZS 4,000 pool less the capped fee, and the NO stake is gone. On this pool the fee is
+<code>min(13% × 4,000, 33.3% × 2,000)</code> = <strong>TZS 520</strong>, so alpha receives
+<strong>TZS 3,480</strong>.</p>
+
+<h2>Part 8 · The checklist</h2>
+<ol>
+  <li><strong>Before creating:</strong> is the source domain approved <em>under this market's
+      category</em>? Is the criterion one two people would read the same way? Does it say what
+      happens if the source is silent?</li>
+  <li><strong>Every session:</strong> open the resolver queue and sort your attention by
+      <code>TZS … held</code>, not by how old the card looks.</li>
+  <li><strong>Before resolving:</strong> open the source link. Resolve from it, never from the crowd
+      bar.</li>
+  <li><strong>Before settling:</strong> is anything frozen by an objection? Settling is
+      irreversible.</li>
+  <li><strong>If nothing is resolving at all:</strong> check the sentinel is not paused before
+      suspecting the markets.</li>
+</ol>
+
+<p class="foot">50pick · Markets admin runbook. Generated from live production. Companion volume:
+<em>Up &amp; Down — Operator &amp; Player Runbook</em>. Rebuild with
+<code>npm run runbook:markets</code>; re-shoot the figures with
+<code>SHOT_DIR=docs/runbooks/markets-assets node scripts/live-markets-guide-shots.mjs</code>.</p>

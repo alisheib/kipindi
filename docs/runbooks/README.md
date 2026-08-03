@@ -9,7 +9,40 @@ screenshot is from live production, captured 2026-08-02.
 Written for Ali's admin testers, owners and players (his request, 2026-08-02). Deliberately
 lean — no internals, no code, no commentary a tester does not need.
 
-### Rebuilding it
+
+## `50pick-markets-runbook.pdf` — Markets, for admins
+
+The companion volume, added 2026-08-03 at Ali's request: *"give me a finalised PDF… another one
+from it with new screenshots to guide admins with more info on markets."* Where a market comes
+from (four doors), the money settings frozen into it at creation, resolving, settlement, what to
+do when something is wrong, what the player sees, and a worked example driven end to end on
+production while the guide was being written.
+
+Source is `markets-runbook.html` plus `markets-assets/*.png`. Rebuild from the repo root:
+
+```bash
+npm run runbook:markets
+```
+
+Re-shoot the figures with:
+
+```bash
+SHOT_DIR=docs/runbooks/markets-assets node scripts/live-markets-guide-shots.mjs
+SHOT_DIR=docs/runbooks/markets-assets node scripts/live-markets-guide-shots2.mjs
+```
+
+⚠️ **Every figure is shot as the role that owns the surface**, never as the Owner. A runbook shot
+entirely as ADMIN shows controls its reader will not have, and teaches them the product is broken
+when a promised button is missing. The role is named in every caption, and the shot script asserts
+the refusal figure is *actually* a refusal — the first pass captured `/admin/settlement` as the
+compliance officer expecting one, and compliance is not refused there (it holds accounting VIEW).
+The figure was real; the caption would have been a lie.
+
+⚠️ **`mkpdf.mjs` derives the page footer from the document's own `<title>`.** It used to hardcode
+"50pick · Up & Down runbook", which would have printed the wrong book's name on every page of this
+one.
+
+## Rebuilding the Up & Down runbook
 
 Source is `updown-runbook.html` plus `updown-assets/*.png`. The screenshots were captured from
 production by `live/s11-guide-shots.mjs` + `s11-guide-shots2.mjs` (element-scoped, as the role

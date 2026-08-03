@@ -43,6 +43,9 @@ if (missing.length) {
   process.exit(1);
 }
 
+const footerTitle = (html.match(/<title>([^<]+)<\/title>/i)?.[1] ?? "50pick runbook")
+  .replace(/&/g, "&amp;");
+
 const br = await chromium.launch();
 const page = await br.newPage();
 await page.setContent(html, { waitUntil: "load" });
@@ -56,9 +59,12 @@ await page.pdf({
   printBackground: true,
   displayHeaderFooter: true,
   headerTemplate: "<div></div>",
+  // ⚠️ The footer is derived from the document's own <title>, not hardcoded. It used to
+  // read "50pick · Up & Down runbook" unconditionally, so the moment a SECOND runbook was
+  // rendered with this script every page of it carried the wrong book's name.
   footerTemplate:
     '<div style="width:100%;font:8pt Segoe UI,sans-serif;color:#8a90a0;padding:0 15mm;' +
-    'display:flex;justify-content:space-between"><span>50pick · Up &amp; Down runbook</span>' +
+    `display:flex;justify-content:space-between"><span>${footerTitle}</span>` +
     '<span class="pageNumber"></span></div>',
   margin: { top: "16mm", bottom: "14mm", left: "15mm", right: "15mm" },
 });

@@ -208,6 +208,7 @@
     "test:prisma-delegate": "tsx scripts/prisma-delegate.test.mts",
     "test:updown-symbols": "tsx scripts/updown-symbol-catalogue.test.mts",
     "runbook:updown": "node docs/runbooks/mkpdf.mjs updown-runbook.html 50pick-updown-runbook.pdf",
+    "runbook:markets": "node docs/runbooks/mkpdf.mjs markets-runbook.html 50pick-markets-runbook.pdf",
     "test:proof-privacy": "tsx scripts/proof-evidence-privacy.test.mts"
   },
   "dependencies": {
