@@ -89,7 +89,14 @@ try {
   //     You can turn this off any time." A page-wide word match cannot report a state.
   // `PushSettings` renders a kit <Toggle> ONLY when the state is on|off; every other state
   // renders a static span reading N/A. So the PRESENCE of the toggle is the state.
-  const optIn = page.locator('[role="switch"], button[aria-label="Push notifications"]');
+  // ⛔ AND SCOPE IT TO THE PANEL. The first version of this asked the PAGE for
+  // `[role="switch"], button[aria-label="Push notifications"]` and passed on a deployment
+  // where the panel plainly read "Push isn't available on this deployment yet" — it had
+  // matched a control elsewhere in the chrome. A page-wide selector cannot tell "the
+  // control I am testing" from "a control that exists", which is the same mistake as a
+  // page-wide regex reading another row's money, and it is the fourth instance today.
+  const panel = page.locator("section").filter({ hasText: /push notifications/i }).last();
+  const optIn = panel.locator('[role="switch"], button[aria-label="Push notifications"]');
   const offered = (await optIn.count()) > 0;
   ok("the opt-in control is rendered (state is on|off, not unconfigured/blocked/unsupported)",
      offered,
