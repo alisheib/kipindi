@@ -30,6 +30,8 @@ import { useT } from "@/lib/i18n";
 import { useUpDownQuickBet, usePlacePulse } from "./use-quick-bet";
 import { UpDownStakeControls } from "./updown-stake-controls";
 import { useCountdown, mmss } from "./round-countdown";
+import { SOURCE_CLASS_KEY } from "@/lib/updown-source-label";
+import type { PublicSourceClass } from "@/lib/server/updown-symbols";
 
 export type UpDownCardState = "open" | "closing" | "confirming" | "resolved" | "void";
 
@@ -64,7 +66,16 @@ export type UpDownCardProps = {
   outcome?: "UP" | "DOWN" | null;
   closePrice?: number | null;
   voidReason?: "no-move" | "source-failed" | "operator" | null;
-  sourceName: string;
+  /**
+   * E-53 · the KIND of market this price is read from — NOT the data vendor.
+   *
+   * ⛔ This is deliberately a `PublicSourceClass` and not a string. It used to be
+   * `sourceName: string` and the board handed it `asset.sourceDomain`, so every card on
+   * production read "Source: api.twelvedata.com". A typed union makes passing a domain a
+   * COMPILE ERROR rather than a thing someone has to remember not to do — the same reason
+   * `payoutViewFor` takes an outcome instead of a boolean (E-56).
+   */
+  sourceClass: PublicSourceClass;
   /** ISO — the time THE SOURCE quoted, not our boundary. */
   sourceQuotedAt: string | null;
   className?: string;
@@ -138,7 +149,7 @@ export function UpDownCard(props: UpDownCardProps) {
     roundId, assetName, assetTicker, assetIcon, durationMinutes, decimals,
     livePrice, openPrice, upTarget, downTarget, movePct, closesAtMs, volumeTzs, players, upPct,
     estMultiplier, state, outcome, closePrice, voidReason,
-    sourceName, sourceQuotedAt, className,
+    sourceClass, sourceQuotedAt, className,
     marketId, isAuthed, minStake, maxStake, myUpStake = 0, myDownStake = 0,
   } = props;
   const { t } = useT();
@@ -370,7 +381,7 @@ export function UpDownCard(props: UpDownCardProps) {
       <div className="mt-3 flex items-center justify-between gap-2 pt-2.5 font-mono text-[9.5px] text-text-faint"
            style={{ borderTop: "1px solid color-mix(in oklab, var(--border) 55%, transparent)" }}>
         <span className="truncate">
-          {t.market.udSource}: {sourceName}{quoted ? ` · ${t.market.udQuoted} ${quoted}` : ""}
+          {t.market[SOURCE_CLASS_KEY[sourceClass]]}{quoted ? ` · ${t.market.udQuoted} ${quoted}` : ""}
         </span>
         {openPrice != null && (
           <span className="shrink-0 tabular-nums">{t.market.udOpenPrice} {usd(openPrice, decimals)}</span>

@@ -201,7 +201,7 @@ export default async function UpDownPage({
                 outcome={r.outcome === "VOID" ? null : r.outcome}
                 closePrice={r.closePrice}
                 voidReason={r.voidReason as never}
-                sourceName={activeAsset!.sourceDomain}
+                sourceClass={activeAsset!.sourceClass}
                 sourceQuotedAt={activeAsset!.sourceQuotedAt}
                 marketId={r.marketId}
                 isAuthed={isAuthed}

@@ -118,6 +118,41 @@ export function findSymbol(symbol: string): SymbolSpec | undefined {
   return SYMBOL_CATALOGUE.find((x) => x.symbol.toUpperCase() === s);
 }
 
+/**
+ * WHAT A PLAYER MAY BE TOLD ABOUT WHERE A PRICE CAME FROM (E-53, Ali's decision).
+ *
+ * Player surfaces named the data vendor — "Source: api.twelvedata.com" — on the board
+ * card, the round header and the settlement-proof panel, the last of which also LINKED
+ * to the endpoint. Which vendor 50pick buys market data from is an operational detail
+ * of ours, and the standing rule is that player surfaces never narrate internal ops.
+ *
+ * So the player is told the KIND of market the price is read from, and nothing about
+ * who sells it. That keeps the proof panel meaningful — a price with a stated origin
+ * and two timestamps — without turning it into an advert for a supplier.
+ *
+ * ⛔ THE CLASS IS RESOLVED ON THE SERVER AND THE DOMAIN IS NEVER SENT. Translating a
+ * vendor string in the browser would still ship the vendor in the RSC payload, where
+ * View Source finds it — that is concealment, not removal.
+ *
+ * ⚠️ Long-form markets are DELIBERATELY NOT covered by this. They cite EWURA, TMA and
+ * other public authorities, and those must stay named and linked: they are how a player
+ * checks a settlement against the body that published the number.
+ */
+export type PublicSourceClass = "crypto" | "stock" | "metals" | "fx" | "generic";
+
+export function publicSourceClassFor(asset: { symbol: string; category?: string | null }): PublicSourceClass {
+  switch (findSymbol(asset.symbol)?.group) {
+    case "Crypto": return "crypto";
+    case "Metals": return "metals";
+    case "Foreign exchange": return "fx";
+    case "Indices": return "stock";
+    default:
+      // Uncatalogued (a legacy row predating E-46). Say the least that is still true
+      // rather than guess a market kind from a string we do not recognise.
+      return asset.category === "crypto" ? "crypto" : "generic";
+  }
+}
+
 /** The groups, in display order, each with its symbols. Drives the cascading dropdowns. */
 export function symbolGroups(): Array<{ group: SymbolSpec["group"]; symbols: readonly SymbolSpec[] }> {
   const order: SymbolSpec["group"][] = ["Crypto", "Metals", "Foreign exchange", "Indices"];

@@ -186,6 +186,7 @@
     "test:updown-digest": "tsx scripts/updown-digest.test.mts",
     "test:updown-push": "tsx scripts/updown-push.test.mts",
     "test:aipoll-reap": "tsx scripts/aipoll-reap.test.mts",
+    "test:updown-source-class": "tsx scripts/updown-source-class.test.mts",
     "test:settlement-expectation": "tsx scripts/settlement-expectation.test.mts",
     "test:feed-https": "tsx scripts/feed-https.test.mts",
     "test:proposal-evidence-age": "tsx scripts/proposal-evidence-age.test.mts",

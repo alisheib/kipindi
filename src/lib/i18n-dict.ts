@@ -652,6 +652,10 @@ export const dict = {
       udAwaitingRead: "Awaiting price",
       udEstimateNote: "× figures are pool estimates, not fixed odds — your final payout depends on how the pools close.",
       udSource: "Source", udQuoted: "quoted",
+      // E-53 · the KIND of market a price is read from. Never the data vendor.
+      udSourceCrypto: "Live crypto market", udSourceStock: "Live stock market",
+      udSourceMetals: "Live metals market", udSourceFx: "Live currency market",
+      udSourceGeneric: "Live market data",
       udLastRounds: "Last rounds", udOldestNewest: "oldest → newest",
       udNoRounds: "No rounds open right now",
       udNoRoundsBody: "This chain is paused. Rounds restart automatically when it resumes — try another duration.",
@@ -2029,6 +2033,10 @@ export const dict = {
       udAwaitingRead: "Inasubiri bei",
       udEstimateNote: "Vipimo vya × ni makadirio ya bwawa, si odds zisizobadilika — malipo yako hutegemea jinsi mabwawa yatakavyofungwa.",
       udSource: "Chanzo", udQuoted: "imenukuliwa",
+      // E-53 · aina ya soko, si muuzaji wa data.
+      udSourceCrypto: "Soko la sarafu-fiche la moja kwa moja", udSourceStock: "Soko la hisa la moja kwa moja",
+      udSourceMetals: "Soko la madini la moja kwa moja", udSourceFx: "Soko la fedha za kigeni la moja kwa moja",
+      udSourceGeneric: "Data ya soko ya moja kwa moja",
       udLastRounds: "Raundi za mwisho", udOldestNewest: "za zamani → mpya",
       udNoRounds: "Hakuna raundi zilizo wazi sasa",
       udNoRoundsBody: "Mnyororo huu umesimamishwa. Raundi zitaanza tena zenyewe — jaribu muda mwingine.",
@@ -3377,6 +3385,10 @@ export const dict = {
       udAwaitingRead: "等待价格",
       udEstimateNote: "× 倍数为奖池估算，并非固定赔率——最终派彩取决于奖池的最终分布。",
       udSource: "来源", udQuoted: "报价时间",
+      // E-53 · 只说市场类别，不透露数据供应商。
+      udSourceCrypto: "加密货币实时行情", udSourceStock: "股票市场实时行情",
+      udSourceMetals: "贵金属实时行情", udSourceFx: "外汇市场实时行情",
+      udSourceGeneric: "实时市场行情",
       udLastRounds: "最近几轮", udOldestNewest: "由旧至新",
       udNoRounds: "目前没有进行中的回合",
       udNoRoundsBody: "该链已暂停。恢复后回合会自动重新开始——可以试试其他时长。",

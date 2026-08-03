@@ -28,6 +28,7 @@ import { RoundCountdownPod } from "@/components/updown/round-countdown";
 import { PriceHero } from "@/components/updown/price-hero";
 import { RoundStakePanel } from "@/components/updown/round-stake-panel";
 import { AssetMark } from "@/components/updown/updown-card";
+import { SOURCE_CLASS_KEY } from "@/lib/updown-source-label";
 
 export const dynamic = "force-dynamic";
 
@@ -81,10 +82,10 @@ export default async function UpDownRoundPage({
   // Hero price: the current live read while open, the round's own close once decided.
   const heroLive = decided ? round.closePrice : asset.livePrice;
   const move = heroLive != null && round.openPrice != null ? heroLive - round.openPrice : null;
+  // E-53 · the KIND of market, never the vendor. The class arrives already resolved from
+  // the server (`publicSourceClassFor`), so the domain is not in this payload to leak.
   const source =
-    asset.sourceDomain
-      ? `${t.market.udSource}: ${asset.sourceDomain}${asset.sourceQuotedAt ? ` · ${t.market.udQuoted} ${fmtEAT(asset.sourceQuotedAt)}` : ""}`
-      : null;
+    `${t.market[SOURCE_CLASS_KEY[asset.sourceClass]]}${asset.sourceQuotedAt ? ` · ${t.market.udQuoted} ${fmtEAT(asset.sourceQuotedAt)}` : ""}`;
 
   // Pool split TZS — consistent with the bar (same upPct) and summing to the real volume.
   const upPct = Math.round(round.upPct);
@@ -256,16 +257,20 @@ export default async function UpDownRoundPage({
             <div className="gilt-rule" style={{ margin: "10px 0 14px" }} />
 
             <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
+              {/* E-53 · the endpoint is gone from BOTH readings. It named the vendor and,
+                  being a query URL carrying our metered key's own host, invited a click to
+                  a page a player cannot read anyway. What makes this a proof is the price
+                  and the two timestamps — quoted by the source, observed by us. */}
               {([
-                [t.market.udOpenPrice, proof.openPrice, proof.openSourceUrl, proof.openQuotedAt, proof.openObservedAt],
-                [t.market.udClosePrice, proof.closePrice, proof.closeSourceUrl, proof.closeQuotedAt, proof.closeObservedAt],
-              ] as const).map(([label, price, url, quotedAt, observedAt]) => (
+                [t.market.udOpenPrice, proof.openPrice, proof.openQuotedAt, proof.openObservedAt],
+                [t.market.udClosePrice, proof.closePrice, proof.closeQuotedAt, proof.closeObservedAt],
+              ] as const).map(([label, price, quotedAt, observedAt]) => (
                 <div key={label} style={{ ...inset, padding: "12px 14px 13px" }}>
                   <p className={eyebrow}>{label}</p>
                   <p className="mt-[7px] m-0 font-mono text-[19px] font-bold leading-none tabular-nums text-text">{usd(price, dec)}</p>
                   <dl className="mt-[11px] grid grid-cols-[auto_1fr] gap-x-2.5 gap-y-[5px] font-mono text-[10.5px]">
                     <dt className="text-text-faint">{t.market.udSource}</dt>
-                    <dd className="m-0">{url ? <a href={url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--aqua-300)" }}>{asset.sourceDomain || t.market.udSource} ↗</a> : <span className="text-text-muted">{asset.sourceDomain || "—"}</span>}</dd>
+                    <dd className="m-0 text-text-muted">{t.market[SOURCE_CLASS_KEY[asset.sourceClass]]}</dd>
                     <dt className="text-text-faint">{t.market.udQuoted}</dt>
                     <dd className="m-0 tabular-nums text-text-muted">{fmtEAT(quotedAt) ?? "—"}</dd>
                     <dt className="text-text-faint">{t.market.udObserved}</dt>

@@ -12,6 +12,10 @@
 import { assetStore, chainStore, roundStore, observationStore, type StoredAsset, type StoredChain, type StoredRound } from "./updown-dal";
 import { marketStore } from "./market-dal";
 import { getUpDownConfig, stakeBoundsFor } from "./updown-config";
+// E-53 · the player is told the KIND of market, never who sells us the data. Resolved
+// HERE, on the server, because translating a vendor string in the browser still ships the
+// vendor in the RSC payload where View Source finds it.
+import { publicSourceClassFor, type PublicSourceClass } from "./updown-symbols";
 import { ratesFor, listPositionsForUser } from "./market-service";
 import { impliedYesPct } from "./market-service";
 
@@ -23,7 +27,8 @@ export type BoardAsset = {
   nameZh: string | null;
   iconKey: string;
   decimals: number;
-  sourceDomain: string;
+  /** E-53 · the KIND of market, never the data vendor. See `publicSourceClassFor`. */
+  sourceClass: PublicSourceClass;
   /** Most recent CONFIRMED price, or null. Never a pending/failed reading. */
   livePrice: number | null;
   /** The timestamp the SOURCE published for that price. */
@@ -161,7 +166,7 @@ export async function getBoard(opts?: { assetKey?: string; durationMinutes?: num
       const live = await latestConfirmed(a.id);
       return {
         id: a.id, key: a.key, nameEn: a.nameEn, nameSw: a.nameSw, nameZh: a.nameZh,
-        iconKey: a.iconKey, decimals: a.decimals, sourceDomain: a.sourceDomain,
+        iconKey: a.iconKey, decimals: a.decimals, sourceClass: publicSourceClassFor(a),
         livePrice: live?.price ?? null,
         sourceQuotedAt: live?.quotedAt ?? null,
         durations: allChains
@@ -361,8 +366,13 @@ export async function getRoundDetail(roundId: string, userId?: string): Promise<
   myPosition: { side: "UP" | "DOWN"; stake: number; payout: number | null; result: "WIN" | "LOSS" | "VOID" | null } | null;
   proof: {
     openPrice: number | null; closePrice: number | null;
-    openSourceUrl: string | null; openQuotedAt: string | null; openObservedAt: string | null;
-    closeSourceUrl: string | null; closeQuotedAt: string | null; closeObservedAt: string | null;
+    // E-53 · NEITHER endpoint is sent. The half-applied version of this change dropped
+    // `openSourceUrl` and kept `closeSourceUrl`, which would have leaked the vendor from
+    // the close reading while the open reading looked cleaned — worse than not starting,
+    // because it reads as done. What makes this a proof is the price and the two
+    // timestamps; the supplier is ours.
+    openQuotedAt: string | null; openObservedAt: string | null;
+    closeQuotedAt: string | null; closeObservedAt: string | null;
     openEvidence: string | null; closeEvidence: string | null;
   } | null;
   minStake: number; maxStake: number;
@@ -401,7 +411,7 @@ export async function getRoundDetail(roundId: string, userId?: string): Promise<
     round: board,
     asset: {
       id: a.id, key: a.key, nameEn: a.nameEn, nameSw: a.nameSw, nameZh: a.nameZh,
-      iconKey: a.iconKey, decimals: a.decimals, sourceDomain: a.sourceDomain,
+      iconKey: a.iconKey, decimals: a.decimals, sourceClass: publicSourceClassFor(a),
       livePrice: live?.price ?? null, sourceQuotedAt: live?.quotedAt ?? null,
       durations: [chain.durationMinutes],
     },
@@ -413,8 +423,11 @@ export async function getRoundDetail(roundId: string, userId?: string): Promise<
     proof: r.resolvedAt
       ? {
           openPrice: r.openPrice, closePrice: r.closePrice,
-          openSourceUrl: openObs?.sourceUrl ?? null, openQuotedAt: openObs?.sourceQuotedAt ?? null, openObservedAt: openObs?.confirmedAt ?? null,
-          closeSourceUrl: closeObs?.sourceUrl ?? null, closeQuotedAt: closeObs?.sourceQuotedAt ?? null, closeObservedAt: closeObs?.confirmedAt ?? null,
+          // E-53 · the endpoint is NOT sent. It named the vendor and, being a query
+          // URL, invited a click to a page the player cannot read anyway. The price
+          // and both timestamps are what make this a proof; the supplier is ours.
+          openQuotedAt: openObs?.sourceQuotedAt ?? null, openObservedAt: openObs?.confirmedAt ?? null,
+          closeQuotedAt: closeObs?.sourceQuotedAt ?? null, closeObservedAt: closeObs?.confirmedAt ?? null,
           openEvidence: openObs?.evidence ?? null, closeEvidence: closeObs?.evidence ?? null,
         }
       : null,
