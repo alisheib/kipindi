@@ -154,21 +154,36 @@ stranding a card deposit on a railway.app host.
 Migrations: additive where possible, tested on the local PG first, prod gets them via the
 deploy — never by hand.
 
-## 8b. Working alongside a PARALLEL session (added 2026-07-30)
+## 8b. Working alongside a PARALLEL session (added 2026-07-30, rewritten 2026-08-03)
 
-Two Claude sessions now work this repo at once. They cannot see each other, so every rule below
+Two Claude sessions work this repo at once. They cannot see each other, so every rule below
 exists because the collision is **silent** — you find out by losing work, not by an error.
 
-**Layout — one clone, two working trees:**
+**Layout — TWO MACHINES sharing only `origin` (corrected 2026-08-03):**
 
-| Tree | Note |
+| Machine | Note |
 |---|---|
-| `F:\kipindi-main` | holds the `railway` CLI link — run `railway …` from here |
-| `F:\kipindi-updown` | a `git worktree`: its own branch, its own `.next` |
+| **laptop A** — `F:\kipindi-main` | the `F:\…` paths throughout `docs/LIVE-QA-CAMPAIGN.md`. Holds the `railway` CLI link — run `railway …` from here. **A single tree**: the `kipindi-kyc` / `kipindi-liveqa` / `kipindi-updown` worktrees were merged and removed |
+| **laptop B** — added 2026-07-31 | its own clone. Ran campaign sessions 8–16 alone |
 
-- ⛔ **Never `git checkout` in the other session's tree.** They share ONE `.git`, so switching a
-  branch there yanks files out from under a session mid-edit. Run `git branch --show-current`
-  before every commit; `git worktree list` shows who is where.
+⛔ **THE OLD "one clone, two worktrees" MODEL IS GONE.** It described laptop A before 2026-08-03.
+`git worktree list` now shows one tree, and the `rmdir`-the-junction and shared-`node_modules`
+advice below applies only if someone deliberately re-creates a worktree.
+
+⭐ **HOW TO TELL WHETHER THE OTHER SESSION IS STILL RUNNING — get this wrong and you collide.**
+A finished session leaves a `§6b` handoff block in `docs/LIVE-QA-CAMPAIGN.md`. **Commits with no
+handoff block mean a session is IN FLIGHT.** Before assuming the tree is yours:
+
+    git fetch --all --prune
+    git log --since="today" --format="%ci %h %s" origin/main   # recent pushes?
+    grep -n "session " docs/LIVE-QA-CAMPAIGN.md | head          # newest handoff = last one CLOSED
+
+On 2026-08-03 laptop A opened while laptop B was mid-session — B had pushed 7 minutes earlier and
+shipped two more findings during the cleanup. The tell was a commit newer than the newest handoff.
+
+- ⛔ **Never `git checkout` in another tree you did not create.** Worktrees share ONE `.git`, so
+  switching a branch there yanks files out from under a session mid-edit. Run
+  `git branch --show-current` before every commit; `git worktree list` shows who is where.
 - ⛔ **Never push `main` to "help".** Every push to `main` is a live deploy (§8). Push your own
   branch — merging is Ali's call.
 - ⚠️ **`main` moves under you.** The other session merges to `main` regularly. `git fetch` and

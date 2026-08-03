@@ -9,7 +9,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Chip } from "@/components/ui/chip";
 import { Stat } from "@/components/ui/stat";
 import { Callout } from "@/components/ui/callout";
-import { poolFee } from "@/lib/payout";
+import { poolFee, payoutViewFor } from "@/lib/payout";
 import { ratesFor } from "@/lib/server/market-service";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { Select } from "@/components/ui/select";
@@ -104,11 +104,16 @@ export default async function MarketPredictorsPage({
     return true;
   });
 
+  // The outcome, if there is one. Needed BEFORE the sort: once a market has
+  // resolved, a losing position is worth 0, and the column must sort by the
+  // figure it actually shows (E-49).
+  const resolvedSide = m.resolvedOutcome === "YES" || m.resolvedOutcome === "NO" ? m.resolvedOutcome : undefined;
+
   // Sort
   const { sort, dir } = parseSort(sp, ["stake", "payout", "placed", "side", "status"] as const, "placed", "desc");
   const sorted = applySort(filtered, sort, dir, {
     stake:   (p) => p.stake,
-    payout:  (p) => p.finalPayout ?? p.potentialPayout,
+    payout:  (p) => payoutViewFor(p, resolvedSide).amount ?? 0,
     placed:  (p) => p.placedAt,
     side:    (p) => p.side,
     status:  (p) => p.status,
@@ -134,7 +139,6 @@ export default async function MarketPredictorsPage({
   // actually settle at — not whatever is currently set in admin config.
   const marketRates = ratesFor(m);
   const isLoserShare = marketRates.feeModel === "loser-share";
-  const resolvedSide = m.resolvedOutcome === "YES" || m.resolvedOutcome === "NO" ? m.resolvedOutcome : undefined;
   // capped-commission is outcome-neutral (one fee). loser-share depends on the
   // winner, so show BOTH scenarios (and, once resolved, the fee actually charged).
   const marketFee = poolFee(m.yesPool, m.noPool, marketRates, resolvedSide);
@@ -351,9 +355,7 @@ export default async function MarketPredictorsPage({
                   const label = u ? displayLabel(u) : p.userId;
                   const initials = u ? displayInitials(u) : "?";
                   const isAutoHandle = !((u?.displayName ?? "").trim().length > 0);
-                  const payoutVal = p.status === "OPEN"
-                    ? p.potentialPayout
-                    : (p.finalPayout ?? null);
+                  const payout = payoutViewFor(p, resolvedSide);
                   return (
                     <tr key={p.id}>
                       <td className="font-mono text-[10px] tracking-[0.04em] text-text-muted tabular-nums whitespace-nowrap">{p.id}</td>
@@ -376,11 +378,17 @@ export default async function MarketPredictorsPage({
                         {formatTzs(p.stake)}
                       </td>
                       <td className="text-right font-mono tabular-nums whitespace-nowrap">
-                        {payoutVal !== null ? (
-                          <span className={p.status === "OPEN" ? "text-text-muted" : p.status === "WIN" ? "text-yes-300" : "text-text-muted"}>
-                            {formatTzs(payoutVal)}
+                        {payout.kind === "unknown" ? "—" : (
+                          <span className={payout.kind === "final" && p.status === "WIN" ? "text-yes-300" : "text-text-muted"}>
+                            {formatTzs(payout.amount ?? 0)}
+                            {/* Until settlement the winning side's figure is still a
+                                projection, and the losing side's is already nothing.
+                                Say which, rather than let both read as "Payout". */}
+                            {resolvedSide !== undefined && payout.kind === "projected" && (
+                              <span className="ml-1.5 text-micro font-sans text-text-tertiary">projected</span>
+                            )}
                           </span>
-                        ) : "—"}
+                        )}
                       </td>
                       <td>
                         <Chip size="sm" variant={STATUS_VARIANT[p.status] ?? "neutral"}>
