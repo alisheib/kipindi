@@ -331,6 +331,7 @@ export default async function UpDownProposalsPage({
                           <EvidencePanel
                             observedPrice={p.observedPrice}
                             observedQuotedAt={p.observedQuotedAt}
+                            readAt={p.createdAt}
                             decimals={asset?.decimals ?? 2}
                             maxStalenessSeconds={cfg.maxStalenessSeconds}
                           />

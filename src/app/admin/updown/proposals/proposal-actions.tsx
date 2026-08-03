@@ -61,10 +61,14 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
  * dressed as current (rule A-5).
  */
 export function EvidencePanel({
-  observedPrice, observedQuotedAt, decimals, maxStalenessSeconds,
+  observedPrice, observedQuotedAt, readAt, decimals, maxStalenessSeconds,
 }: {
   observedPrice: number | null;
   observedQuotedAt: string | null;
+  /** When the PLATFORM took this reading — the proposal's `createdAt`. E-52: the skew that
+   *  matters is quote-time vs read-time, and it is FROZEN. Measuring against `Date.now()`
+   *  turned every healthy proposal amber 91 seconds after it was generated. */
+  readAt: string;
   decimals: number;
   maxStalenessSeconds: number;
 }) {
@@ -76,15 +80,34 @@ export function EvidencePanel({
       </div>
     );
   }
-  const ageSec = Math.round((Date.now() - new Date(observedQuotedAt).getTime()) / 1000);
+  // ⛔ E-52 · AGAINST `readAt`, NEVER `Date.now()`.
+  //
+  // This was `Date.now() - observedQuotedAt`, under the label "before we read it". Those are
+  // two different quantities: the first is how long ago the quote was published relative to
+  // NOW, the second is the skew at the moment of the read. So the number grew as the row aged,
+  // and because `stale` compares it to the 90-second round window, **every** proposal turned
+  // amber 91 seconds after it was generated and stayed that way forever — with
+  // "⚠ older than the 90s round window" on evidence that had been 33 seconds old when taken.
+  //
+  // Caught on the first row E-47b ever produced, where the cell said "quoted 14m before we
+  // read it ⚠ older than the 90s round window" while the checks column beside it said
+  // "Read a live quote, 33s old" — the stored indicator, computed correctly at generation.
+  // Two ages for one reading, contradicting each other on one row.
+  //
+  // ⚠️ It matters more now than it did: until E-47b nothing reached the queue approvable, so
+  // nobody was discouraged from approving. A permanent false staleness alarm on every healthy
+  // proposal is exactly how an officer learns to distrust a working signal.
+  const skewSec = Math.round((new Date(readAt).getTime() - new Date(observedQuotedAt).getTime()) / 1000);
+  const ageSec = Math.max(0, skewSec);
   const stale = ageSec > maxStalenessSeconds;
+  const human = (s: number) => (s < 120 ? `${s}s` : s < 7200 ? `${Math.round(s / 60)}m` : `${Math.round(s / 3600)}h`);
   return (
     <div className="text-[10.5px] leading-snug">
       <span className="font-mono text-[13px] font-bold tabular-nums text-text">
         ${observedPrice.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}
       </span>
       <div className={stale ? "text-warning-fg" : "text-text-subtle"}>
-        quoted {ageSec < 120 ? `${ageSec}s` : ageSec < 7200 ? `${Math.round(ageSec / 60)}m` : `${Math.round(ageSec / 3600)}h`} before we read it
+        quoted {human(ageSec)} before we read it
       </div>
       {stale && (
         <div className="text-warning-fg">⚠ older than the {maxStalenessSeconds}s round window</div>

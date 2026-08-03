@@ -417,7 +417,14 @@ export async function validateProposal(p: StoredProposal): Promise<{
     reasons.push("source_unreadable");
     indicators.push({ label: "The platform read no price from this asset's feed", score: 0, status: "bad" });
   } else {
-    const age = Math.abs(Date.now() - new Date(p.observedQuotedAt).getTime()) / 1000;
+    // ⛔ E-52 · AGAINST `p.createdAt` — WHEN THE READING WAS TAKEN — NOT `Date.now()`.
+    // The skew between the quote's own time and the moment we read it is FIXED once taken.
+    // Measured against the current clock it grows with the row, so re-validating a proposal
+    // (which `editProposal` and `approveProposal` both do) minutes later would report a
+    // perfectly fresh reading as stale — and the label says "old when READ". The panel in
+    // `proposal-actions.tsx` measures the identical quantity; both now derive it from
+    // `createdAt`, so they agree by CONSTRUCTION rather than by inspection.
+    const age = Math.abs(new Date(p.createdAt).getTime() - new Date(p.observedQuotedAt).getTime()) / 1000;
     if (!Number.isFinite(age)) {
       reasons.push("source_unreadable");
       indicators.push({ label: "Quote timestamp unusable", score: 0, status: "bad" });
