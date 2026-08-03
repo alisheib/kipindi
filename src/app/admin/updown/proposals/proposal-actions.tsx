@@ -295,7 +295,6 @@ export function ReviewActions({
   // Local edit state, seeded from the proposal. Dirty tracking so Save is meaningful.
   const [dur, setDur] = useState(String(durationMinutes));
   const [pct, setPct] = useState((marginBps / 100).toFixed(2));
-  const [url, setUrl] = useState(sourceUrl);
   const [en, setEn] = useState(framingEn);
   const [sw, setSw] = useState(framingSw);
   const [zh, setZh] = useState(framingZh);
@@ -304,15 +303,16 @@ export function ReviewActions({
 
   const dirty =
     dur !== String(durationMinutes) || pct !== (marginBps / 100).toFixed(2) ||
-    url !== sourceUrl || en !== framingEn || sw !== framingSw || zh !== framingZh;
+    en !== framingEn || sw !== framingSw || zh !== framingZh;
 
   // Client-side validation, so an obvious mistake is caught before a round trip. The server
   // re-checks everything — this is courtesy, never the gate.
   const pctNum = Number(pct);
-  const urlValid = url.trim() === "" || /^https?:\/\/.+\..+/.test(url.trim());
+  // E-50 · no source validation here any more, because the source is no longer editable
+  // here. It is validated where it is SET — the asset form, against the trusted-source
+  // allowlist, on add, on enable, and again on every chain start.
   const localError =
-    !urlValid ? "The source must be a full http(s) link."
-    : !Number.isFinite(pctNum) || pctNum < 0 || pctNum > 20 ? "Margin must be between 0 and 20%."
+    !Number.isFinite(pctNum) || pctNum < 0 || pctNum > 20 ? "Margin must be between 0 and 20%."
     : en.trim() === "" ? "English framing cannot be empty."
     : sw.trim() === "" ? "Swahili framing cannot be empty."
     : null;
@@ -323,7 +323,6 @@ export function ReviewActions({
     fd.set("id", id);
     fd.set("durationMinutes", dur);
     fd.set("marginPct", pct);
-    fd.set("sourceUrl", url.trim());
     fd.set("framingEn", en.trim());
     fd.set("framingSw", sw.trim());
     fd.set("framingZh", zh.trim());
@@ -332,11 +331,11 @@ export function ReviewActions({
       if (!r.ok) { toast({ title: "Could not save", description: r.error, variant: "danger" }); return; }
       setOpen(false);
       router.refresh();
+      // E-50 · the "the link changed…" branch is gone with the field. It could only ever
+      // fire AFTER the officer had already made the change it was warning them off.
       deferToast({
         title: "Proposal updated",
-        description: r.warn ?? (url.trim() !== sourceUrl
-          ? "The link changed, so the price the platform read from the asset's own source no longer applies — and it cannot be re-read for a link the asset does not point at. Move the source on the Overview page, then regenerate."
-          : undefined),
+        description: r.warn,
         variant: r.warn ? "warning" : "success",
       });
     });
@@ -416,11 +415,23 @@ export function ReviewActions({
             </div>
           )}
 
+          {/* E-50 · READ-ONLY. Editing this was a guaranteed dead end and the form knew it:
+              it let the officer type a new link, saved it, and only THEN explained that the
+              price could not be re-read for a link the asset does not point at, so the
+              proposal would never arm. An input whose every successful use ends in a
+              warning is not a control, it is a trap.
+              ⛔ The source is a property of the ASSET, not of a proposal, and E-46 already
+              made the asset form the single guarded door — it re-validates against the
+              trusted-source allowlist on add, on enable and on every chain start. Offering
+              a second, unguarded way to set the same value is exactly the "one control, one
+              place" rule this platform is built on. So: show it, name where it lives. */}
           <Field
             label="Source link"
-            hint="Every round on this chain captures this link at open and resolves against the captured copy. ⚠️ Changing it clears the price — the platform read that from the asset's own source, and it cannot re-read for a different link, so the proposal will no longer arm. Move the source on the Overview page instead, then regenerate."
+            hint="Set on the asset, not here — every round on this chain captures the asset's link at open and resolves against that captured copy. Change it under Up & Down → Overview → Edit asset, where it is re-checked against the trusted-source allowlist, then regenerate this proposal."
           >
-            <Input value={url} onChange={(e) => setUrl(e.currentTarget.value)} size="sm" placeholder="https://…" />
+            <p className="m-0 break-all rounded-md border border-border bg-bg-inset px-2.5 py-2 font-mono text-[11px] text-text-muted">
+              {sourceUrl || "—"}
+            </p>
           </Field>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
