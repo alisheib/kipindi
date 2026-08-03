@@ -3606,13 +3606,43 @@ moved TZS 59,450 the wrong way. **Scope the confirm to the dialog, not to the pa
 It refuses anything that is not role `PLAYER` inside `+2557990000NN`, and re-checks that
 every ledger group still sums to zero afterwards.
 
-⏭️ **RESUME AT:** ① **check the money that is already in flight** — the 77,950 refunds
+⭐ **THE BULK RUN WAS RUN, AND THE FULL FLOW IS CLOSED.** Generation → officer review
+(approve **and** reject) → publish → the fleet plays **both sides** → resolve → settle →
+wallets correct, all on production and every step paired against the database:
+`batch(3)` ideated 10 → 1 auto-`FILTERED` (`resolution_too_far`) → 2 `PENDING_REVIEW`
+(q94, q93) → **2 APPROVED + 1 deliberately REJECTED** → **2 LIVE markets**
+(`mkt_e7336efe…` weather, `mkt_21b71666…` macro; both froze `loser-share`, both
+selection-lead times match the per-category config exactly). Then a real **WIN of TZS 1,740
+and a real LOSS** on Bitcoin 5-min rounds — pool 2,000, capped-commission fee **260**,
+netPool **1,740**, winner takes `1,000/1,000 × 1,740`. All four wallets reconcile to the
+shilling. ⚠️ **And both players had ZERO notifications** — the winner was paid and told
+nothing. That is `perEventNotificationsSuppressed` by design, and exactly the gap **E-57**
+closes; it needs one opt-in **on a real phone**.
+
+🔴 **FOUR SELECTOR ATTEMPTS DIED ON THE QUICK-BET CARD AND THE PRODUCT WAS RIGHT EVERY
+TIME** — all four are recorded in `live-bulk-play.mjs`: **(1)** the DOM contract in
+`live-player-winlose.mjs` is **STALE** (it documents `TZS 1,000` chips and
+`Up — Bitcoin · TZS 5,000`; the card renders `500 1K 2.5K 5K Custom` and `Up × 1.4 est.`)
+— *a contract in a comment is a memory*; **(2)** `getByRole` matches the **accessible
+name**, which an `aria-label` overrides; **(3)** matching the `×` (U+00D7) returns zero
+elements — **ASCII only in selectors**; **(4)** `filter({hasText})` tests **textContent**,
+which includes screen-reader-only spans, so `/^Up\s/` matched nothing. Discriminate on
+CONTENT, never on an anchor or a position.
+
+⛔ **THE FLEET IS PARTLY STILL THERE, DELIBERATELY.** 6 of 10 were destroyed; **4 remain**
+(`+255799000001`–`04`, ~TZS 799k) because `Position_userId_fkey` is **RESTRICT, not
+CASCADE** — the schema refuses to let money history vanish with an account, and it was
+right to stop it. Forcing it would strand the pool/house half of each settlement ledger
+group and **unbalance the books**. `destroy` now deletes only untouched accounts and
+**reports** the rest by name. Ali's call: leave them as QA identities, or archive.
+
+⏭️ **RESUME AT:** ① **the money already in flight** — the **TZS 77,950** refunds
 (~11:37 EAT 4 Aug) and `mkt_54f75a1959cdee5f1ed8`, which settles 4 Aug 00:08:09 UTC
 (03:08 EAT) where alpha should receive **TZS 3,740** (⛔ never hardcode it — derive it, E-48).
-② **the bulk run**, which is built for but not yet run: generation across all 7 categories →
-publish → the fleet plays both sides → resolve YES/NO/VOID → settle → Up & Down across asset
-classes. ③ **G-3** player visual sweep at 4 widths. ④ **destroy the fleet.** ⑤ **E-53** source
-class, ⑥ **E-50**, ⑦ **E-45**, ⑧ **E-33**, ⑨ **E-34/E-35**.
+② **push on a real device** — `pushManager.subscribe()` cannot complete in automated
+Chromium; open `/profile/notifications`, flip the toggle, then confirm a `PushSubscription`
+row and send one. ③ **E-53** source class, ④ **E-50**, ⑤ **E-45**, ⑥ **E-33**,
+⑦ **E-34/E-35**, ⑧ `SortTh` on proposals, ⑨ **E-41/E-42/E-44**.
 
 ⛔ **OPEN, AND ALI'S ALONE:**
 **E-58** — four chains void essentially every round and two are **RUNNING**: XAU 5m is
