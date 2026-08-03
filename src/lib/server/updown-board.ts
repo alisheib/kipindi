@@ -169,8 +169,22 @@ export async function getBoard(opts?: { assetKey?: string; durationMinutes?: num
         iconKey: a.iconKey, decimals: a.decimals, sourceClass: publicSourceClassFor(a),
         livePrice: live?.price ?? null,
         sourceQuotedAt: live?.quotedAt ?? null,
+        // ⛔ E-67 · A DURATION IS OFFERED BECAUSE THE CHAIN EXISTS, NOT BECAUSE IT IS RUNNING.
+        //
+        // This filtered on `state !== "STOPPED"`. That was fine while a STOPPED chain meant a
+        // dead market — but Ali removed automatic emission (*"my admins will enter and generate
+        // every 5 min"*), so EVERY chain is now STOPPED and rounds are made by hand. The filter
+        // therefore returned an EMPTY duration list, `activeDuration` fell to null, and the
+        // board returned no rounds at all: the duration chips vanished from the page and a real
+        // live round (`udr_17e07a91ecf526c2ae17`, open 63,716.56, targets set) was invisible.
+        //
+        // The asset list is already restricted to ENABLED assets, so a disabled asset's chains
+        // never reach here. What remains is the honest statement: these are the round lengths
+        // this market offers. If none is open the board says so, in the (now accurate) empty
+        // state — which is a different and better answer than pretending the market is gone.
+        // ⚠️ Retiring a chain for good is E-59's archive, not a side effect of Stop.
         durations: allChains
-          .filter((c) => c.assetId === a.id && c.state !== "STOPPED")
+          .filter((c) => c.assetId === a.id)
           .map((c) => c.durationMinutes)
           .sort((x, y) => x - y),
       };

@@ -314,7 +314,15 @@ export function ChainStateControls({
    * priceless round anyway and voided it (E-63); here the operator is simply told, and no round
    * exists to mislead a player.
    */
+  // Which action is in flight. `pending` is shared by every control in this row (one
+  // `useTransition`), so on its own it cannot say WHICH button to label. Generating takes
+  // several seconds of real provider time — the price is read before the round is written —
+  // and a spinner with an unchanged label leaves the operator guessing whether the click
+  // landed. That is the same complaint E-64 is about, one surface up.
+  const [busy, setBusy] = useState<null | "generate">(null);
+
   const generate = () => {
+    setBusy("generate");
     start(async () => {
       try {
         const fd = new FormData();
@@ -334,15 +342,22 @@ export function ChainStateControls({
         });
       } catch {
         toast({ title: "Couldn't generate a round", variant: "danger" });
+      } finally {
+        // On every path — a refusal and a throw both end the spinner, or the button would sit
+        // labelled "Reading price…" over a request that already failed.
+        setBusy(null);
       }
     });
   };
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      {/* First, because it is now the action an operator comes to this page to perform. */}
-      <Button type="button" onClick={generate} loading={pending} variant="primary" size="sm">
-        Generate round
+      {/* First, because it is now the action an operator comes to this page to perform.
+          `loading` disables the button, sets aria-busy and swaps in the kit spinner, so a
+          double-click cannot open two rounds; the label says which of the two slow steps is
+          running, because "did my click register?" is exactly the doubt E-64 was filed about. */}
+      <Button type="button" onClick={generate} loading={pending && busy === "generate"} variant="primary" size="sm">
+        {pending && busy === "generate" ? "Reading price…" : "Generate round"}
       </Button>
       {state !== "RUNNING" && (
         <Button type="button" onClick={() => go("RUNNING")} loading={pending} variant="ghost" size="sm">
