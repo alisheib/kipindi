@@ -54,13 +54,18 @@ try {
   await clickByName(page, /generate batch/i);
   console.log(`  batch of ${BATCH} started — this takes minutes, not seconds`);
 
-  // ⚠️ WAIT FOR A POSITIVE SIGNAL. `networkidle` never fires here (open event stream), and
-  // the counters stream in. Poll the TOTAL until it stops moving for two consecutive reads.
+  // 🔴 ⛔ NEVER RELOAD WHILE THE ACTION IS IN FLIGHT. This loop used to call
+  // `page.reload()` every 10 seconds to read the counters — which **aborts the server
+  // action**. The batch died wherever it had reached, left one orphaned `GENERATING` row,
+  // and I filed "bulk generation has never worked" as a HIGH finding and pushed it. It
+  // works: the same button, untouched, ideated 10 and produced 2 approvable polls.
+  // ⭐ A PROGRESS POLL THAT NAVIGATES IS NOT AN OBSERVER, IT IS A PARTICIPANT.
+  // So: wait on the SAME page and let the UI update itself. If a future version needs the
+  // server's view mid-run, read it from the DATABASE in a separate process — never by
+  // re-entering the page that owns the request.
   let stable = 0, last = before.total;
   for (let i = 0; i < 60 && stable < 3; i++) {
     await page.waitForTimeout(10_000);
-    await page.reload({ waitUntil: "domcontentloaded" }).catch(() => {});
-    await page.waitForFunction(() => /ai poll generation/i.test(document.body.innerText), null, { timeout: 45_000 }).catch(() => {});
     const t = await bodyText(page);
     const now = (t.match(/(\d+)\s+polls/) ?? [])[1];
     const generating = (t.match(/generating\s+(\d+)/) ?? [])[1] ?? "?";
