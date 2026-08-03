@@ -161,8 +161,28 @@ async function destroy(confirmed: boolean) {
     for (const r of notPlayers) console.error(`  ${r.phoneE164} role=${r.role}`);
     process.exit(1);
   }
-  const ids = fleet.rows.map((r) => r.id);
-  if (!ids.length) { console.log("no fleet to destroy"); return; }
+  // ⛔ A PLAYER WHO HAS EVER BET IS NOT DELETABLE, AND THAT IS CORRECT.
+  // `Position_userId_fkey` is RESTRICT, not CASCADE — the schema refuses to let money
+  // history vanish with an account. Forcing it would also UNBALANCE THE LEDGER: a
+  // settlement group has a player half (`PLAYER:{id}`) and a pool/house half, and deleting
+  // only the rows carrying this userId leaves the other half stranded. The fleet's own
+  // funding groups are safe to remove because BOTH their halves carry the userId; product
+  // settlements are not. So: delete the untouched accounts, and REPORT the rest rather
+  // than mutilate the books to hit a tidy number. Same lesson as E-59 — archive, not delete.
+  const withPositions = await c.query(
+    `select distinct p."userId" from "Position" p where p."userId" = any($1)`,
+    [fleet.rows.map((r) => r.id)],
+  );
+  const held = new Set(withPositions.rows.map((r) => r.userId));
+  const ids = fleet.rows.filter((r) => !held.has(r.id)).map((r) => r.id);
+
+  if (held.size) {
+    console.log(`\n⛔ KEEPING ${held.size} fleet player(s) that hold positions — deleting them would`);
+    console.log(`   strand the pool/house half of their settlement ledger groups.`);
+    for (const r of fleet.rows.filter((x) => held.has(x.id))) console.log(`   · ${r.phoneE164}`);
+    console.log(`   Their money history is real and balanced; leave it or archive it.\n`);
+  }
+  if (!ids.length) { console.log("nothing deletable"); return; }
 
   const counts: Record<string, number> = {};
   for (const [label, sql] of [
