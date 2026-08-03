@@ -107,7 +107,14 @@ const START_TOTAL = (await balanceOf(alpha)) + (await balanceOf(bravo));
 
 // ── Asset + a 5-minute chain, through the real registry ──────────────────────
 const a = await createAsset({
-  key: "XAU", symbol: "XAU/USD", nameEn: "Gold", nameSw: "Dhahabu", iconKey: "gold",
+  // ⛔ A REAL CRYPTO SYMBOL, NOT GOLD WEARING A CRYPTO CALENDAR. This read
+  // `symbol: "XAU/USD"` with `category: "crypto"`, and E-46's server-side
+  // `validateSymbolCategory` — added in session 14 to stop exactly that misconfiguration —
+  // has refused it ever since, so this whole suite has been RED on every tree since then and
+  // nobody noticed. **THIRD SUITE KILLED BY THIS FIXTURE PATTERN** (`test:updown-engine`,
+  // session 15; `test:updown-proposal`, session 16). The comment below explains why a 24/7
+  // market is needed and it was always right — the SYMBOL was always wrong. BTC/USD is both.
+  key: "BTCHEAL", symbol: "BTC/USD", nameEn: "Bitcoin", nameSw: "Bitcoin", iconKey: "crypto",
   // ⚠️ E-36 · `crypto`, i.e. a 24/7 market, ON PURPOSE. This suite is about the RETRY
   // LADDER, and the money path now refuses to read a price while the asset's market is
   // shut — as an operator-state refusal, which deliberately does NOT burn an attempt.
@@ -709,6 +716,47 @@ console.log("\n── 13 · E-29 · the settlement note states only what is true
      (svc.match(/two immutable price observations/g) ?? []).length === 1,
      String((svc.match(/two immutable price observations/g) ?? []).length));
 }
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// E-68 · THE VOID REASON MUST COME FROM THE PRICES, NOT FROM THE CALLER
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// Every `finishRound` call passed `"source-failed"` unconditionally — including the two that
+// hold a REAL CONFIRMED PRICE. `closeRound` treats an explicit reason as authoritative (it must,
+// so an officer's "operator" void is not relabelled), so a good close that simply landed BETWEEN
+// the targets was stamped `source-failed` instead of `no-move`.
+//
+// Measured on production: udr_cd386bbaeaf63be696f5 open 63,719.98 close 63,722.47 inside the
+// band 63,707.24–63,732.72, stored `source-failed`. The player was told "The closing price could
+// not be confirmed" about a price sitting in the same row — a false statement about their own
+// money, and it also made the void-rate column an operator reads as "the feed is broken" lie.
+{
+  const { decideOutcomeByTargets } = await import("../src/lib/server/updown-service.ts");
+
+  // The two real rounds, by their real numbers.
+  const a = decideOutcomeByTargets(63722.47, 63732.72, 63707.24);
+  ok("E-68 · an in-band close is no-move, not source-failed",
+     a.outcome === "VOID" && a.voidReason === "no-move", `${a.outcome}/${a.voidReason}`);
+  const b = decideOutcomeByTargets(63710.73, 63729.30, 63703.82);
+  ok("E-68 · …and so is the second one", b.outcome === "VOID" && b.voidReason === "no-move");
+
+  // A genuinely absent price is still a source failure — the override must survive for it.
+  const c = decideOutcomeByTargets(null, 63729.30, 63703.82);
+  ok("E-68 · a missing close price IS source-failed", c.voidReason === "source-failed");
+
+  // ⭐ THE FIX ITSELF: `finishRound` may only force a reason when there is no price.
+  const { readFileSync } = await import("node:fs");
+  const src = readFileSync(new URL("../src/lib/server/updown-service.ts", import.meta.url), "utf8");
+  const fn = src.match(/async function finishRound\([\s\S]*?\n\}/)?.[0] ?? "";
+  ok("E-68 · finishRound was found", fn.length > 0);
+  ok("E-68 · ⛔ the override is conditional on there being no price",
+     /const reason = closePrice == null \? voidReason : undefined;/.test(fn),
+     "an unconditional reason relabels every priced void as a feed failure");
+  ok("E-68 · …and closeRound is called with that conditional reason",
+     /closeRound\(round\.id, closeObservationId, closePrice, reason\)/.test(fn));
+}
+
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);
