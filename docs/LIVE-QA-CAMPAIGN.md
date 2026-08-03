@@ -3557,6 +3557,73 @@ workstation shows an SLA countdown, but nothing escalates when it runs out. Ali'
 
 ## 6b. NEXT SESSION — start here
 
+### 🔴 Laptop A, session 18 (2026-08-03) — ⭐ THE FIRST SESSION THAT COULD ACTUALLY DRIVE PRODUCTION FROM THIS MACHINE, AND IT PAID FOR ITSELF IN THE FIRST HOUR. Read this first; it supersedes everything below.
+
+**Laptop A could not sign in to anything.** Not a permissions problem — three separate
+pieces of infrastructure, each individually fatal: `.env.qa.local` is gitignored so it never
+travelled with the repo (no persona could log in **at all**); the Railway CLI was
+authenticated as **`awarkehmobiles@outlook.com`**, the *other* project's account (no DB
+pairing); and `scripts/live/q.cjs` hardcoded `C:/kipindi-main/node_modules/pg`, one machine's
+checkout path, so the query runner threw `MODULE_NOT_FOUND` here. That is the mechanical
+reason session 17 "touched no production state" — and why 130 commits of live-QA tooling had
+never been run from this laptop. All three fixed; the QA persona passwords were **re-minted
+against production** on Ali's decision, through the app's own scrypt path.
+
+| | Shipped, deployed, live-verified on production |
+|---|---|
+| **E-49 · closed** | The same row, before and after the deploy: echo's losing `NO` went from `PAYOUT TZS 3,740` — the winner's own figure — to `TZS 0`; alpha's `YES` now reads `TZS 3,740 projected`. ⚠️ Assertions here must be **row-scoped**: the winner's row still says 3,740, so a page-wide `!includes("3,740")` fails a *correct* fix |
+| **E-54 / E-55 · TZS 77,950 of REAL player money released** | Both long-overdue markets **VOIDED** on Ali's decision — 12 positions, **6 real players**, refunds landing at the close of the 24h objection window (~11:37 EAT 4 Aug). ⭐ **Neither was operator neglect.** The EWURA poll was created to resolve **five days before the notice it resolves on can be published** (verified: `ewura.go.tz` still lists July 2026 as the latest). The rainfall poll named **AccuWeather station 317663, which cannot be read at all** — and the two readable substitutes gave **opposite answers** on a 0.1 mm threshold |
+| **E-56 · found by LOOKING, minutes after E-49 deployed** | The E-49 fix covered two of the three terminal outcomes. On a market this session had just voided, all four rows still quoted payouts — **16,745 offered to a player receiving a 5,000 refund**. Twelve positions across both markets. `payoutViewFor` now takes `Side \| "VOID"` and returns a `refund` kind priced at the stake |
+| **E-57 · Up & Down push, built + guarded** | Ali's clients asked for it. The mechanism already existed and is genuinely first-party — **Web Push over VAPID**, no Firebase/OneSignal/SDK/fee. 🔴 **Production had 47 env vars and not one VAPID key**, so *not a single push had ever been delivered*. Keys generated and set this session (51 vars now). All **five** outcomes push — bet, win, loss, refund, one-sided refund — bets coalescing under one key, each outcome keyed per round |
+| **The QA fleet** | 30 tagged players, **TZS 15,000,000**, every credit a **balanced double entry** (`SYSTEM:ADJUSTMENT` → `PLAYER`). ⛔ `seed-test-float.mjs` refuses on production by design and that rail was **not** routed around |
+
+🔴 **A GUARD ON THIS CAMPAIGN'S OWN MONEY SENTENCE HAD BEEN RED ON `main`, AND NOBODY SAW IT.**
+Session 17's handoff rephrased `receive **TZS 3,740**` as `**receive TZS 3,740**` — the bold
+marker moved one word left — which silently disarmed `test:settlement-expectation` §5, the
+guard that exists *precisely* to stop this campaign handing a wrong money figure forward.
+It parses the figure out of the resume line and checks it against `settledPayoutFor()`.
+Restored, 31/31. ⚠️ **Keep the phrasing `receive **TZS …**` if you edit §6b.**
+
+⭐⭐ **THE LESSON OF THIS SESSION, AND IT LANDED THREE TIMES IN ONE DAY: ASSERT THE VALUE,
+NOT THE SYMBOL.** "Assert the call site, not the symbol" was already law here — and it was
+not enough.
+**(1)** E-56's guard checked that `outcome` was computed once, early, and handed to both
+consumers. All of that stayed true while the variable silently dropped `VOID`. Mutating the
+call site back to the shipped bug left the suite **green**.
+**(2)** E-57's guard counted `pushOnly(` occurrences. Prefixing one with `void 0 &&` kills
+the LOSS push while leaving every character of the name in place — **E-43's exact shape**,
+undetected. It now counts calls in **statement position**.
+**(3)** My own void driver scoped the *Void* button to its card and then asked the **page**
+for the confirm button — which matched **"Resolve YES"** on the card behind the modal. Only
+the product's scrim stopped it; without that it would have resolved the EWURA market YES and
+moved TZS 59,450 the wrong way. **Scope the confirm to the dialog, not to the page.**
+
+⛔ **THE FLEET IS STILL LIVE ON PRODUCTION WITH TZS 15,000,000. DESTROY IT:**
+`railway run --service 50pick -- npx tsx scripts/ops-qa-fleet.mts destroy --yes`.
+It refuses anything that is not role `PLAYER` inside `+2557990000NN`, and re-checks that
+every ledger group still sums to zero afterwards.
+
+⏭️ **RESUME AT:** ① **check the money that is already in flight** — the 77,950 refunds
+(~11:37 EAT 4 Aug) and `mkt_54f75a1959cdee5f1ed8`, which settles 4 Aug 00:08:09 UTC
+(03:08 EAT) where alpha should receive **TZS 3,740** (⛔ never hardcode it — derive it, E-48).
+② **the bulk run**, which is built for but not yet run: generation across all 7 categories →
+publish → the fleet plays both sides → resolve YES/NO/VOID → settle → Up & Down across asset
+classes. ③ **G-3** player visual sweep at 4 widths. ④ **destroy the fleet.** ⑤ **E-53** source
+class, ⑥ **E-50**, ⑦ **E-45**, ⑧ **E-33**, ⑨ **E-34/E-35**.
+
+⛔ **OPEN, AND ALI'S ALONE:**
+**E-58** — four chains void essentially every round and two are **RUNNING**: XAU 5m is
+**1,175 VOID of 1,176** with **TZS 257,000** staked by 7 players; GOLD 15m 160/160. One global
+margin (`0.02%` at 5m) is ±$12.51 on BTC, which a 5-minute candle clears, and ±$0.81 on gold,
+which it usually does not. Nobody loses — but on XAU 5m **one round in 1,176 has ever paid**.
+**E-59** — nothing in the platform can delete a chain or an asset (9 actions in
+`admin/updown/actions.ts`, none of them a delete). A literal delete cascades chain → round →
+market → **position**, so the safe shape is archive/retire, with true delete only where a
+chain has never run a round. Two data defects argue it is needed: `GOLD` and `XAU` are the
+**same instrument** as two assets, and `SNP500` is sourced from **`kitco.com`**.
+📌 Minor, player-facing: the storefront footer reads `License: TZ-GBT-2026-XXXX` — a
+**placeholder in regulatory text on production**.
+
 ### 🟠 Laptop A, session 17 (2026-08-03) — ⚠️ A SHORT SESSION: THE CAMPAIGN MOVED TO TWO LAPTOPS AND NOBODY HAD SAID SO. Read this first; it supersedes everything below.
 
 **Laptop A had not moved since 31 July.** Sessions 8–16 all ran on **laptop B** and pushed to

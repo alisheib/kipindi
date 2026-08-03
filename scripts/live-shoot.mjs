@@ -21,6 +21,15 @@ if (!persona || !path || !name) {
 }
 
 const { b, ctx } = await browser();
+
+// ⚠️ HEADLESS CHROMIUM DENIES `Notification.permission` BY DEFAULT, and the push opt-in
+// reads it. Without this grant the panel renders "notifications are blocked in your browser
+// settings" — a HARNESS state photographed as a product state, and it would be filed as a
+// broken feature. Opt in with GRANT_NOTIFICATIONS=1 when shooting that surface.
+if (process.env.GRANT_NOTIFICATIONS === "1") {
+  await ctx.grantPermissions(["notifications"], { origin: BASE });
+}
+
 const page = await ctx.newPage();
 
 try {

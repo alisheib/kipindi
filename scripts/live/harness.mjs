@@ -94,9 +94,21 @@ export function recorder(title) {
   };
 }
 
-export async function browser() {
-  const b = await chromium.launch();
-  const ctx = await b.newContext({ viewport: { width: 1440, height: 1000 } });
+/**
+ * `opts.permissions` grants browser permissions for BASE's origin.
+ * `opts.headless: false` opens a real window.
+ *
+ * ⚠️ NOTIFICATIONS CANNOT BE GRANTED HEADLESS. Measured, not assumed: in headless
+ * Chromium `Notification.permission` stays `"denied"` even after `grantPermissions`,
+ * while `PushManager` and `serviceWorker` are both present. The push opt-in reads that
+ * property, so headless renders "notifications are blocked in your browser settings" —
+ * a HARNESS state that photographs exactly like a broken feature. The same probe in
+ * headed mode returns `"granted"`. Anything that tests the push opt-in must run headed.
+ */
+export async function browser(opts = {}) {
+  const b = await chromium.launch({ headless: opts.headless !== false, args: ["--no-sandbox"] });
+  const ctx = await b.newContext({ viewport: opts.viewport ?? { width: 1440, height: 1000 } });
+  if (opts.permissions?.length) await ctx.grantPermissions(opts.permissions, { origin: BASE });
   return { b, ctx };
 }
 
