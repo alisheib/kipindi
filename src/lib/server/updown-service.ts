@@ -22,7 +22,7 @@ import { withLock } from "./locks";
 import { marketStore } from "./market-dal";
 import { createMarket, settleMarket } from "./market-service";
 import {
-  getUpDownConfig, rateProfileFor, stakeBoundsFor, boundaryAfter, boundaryAtOrBefore, marginBpsForChain, computeTargets,
+  getUpDownConfig, rateProfileFor, stakeBoundsFor, boundaryAfter, marginBpsForChain, computeTargets,
   retryDelaySeconds, abandonAfterSeconds, type UpDownConfig,
 } from "./updown-config";
 import {
@@ -293,11 +293,26 @@ export async function generateRoundNow(
     };
   }
 
-  // The boundary this round OPENS on: the chain's own grid mark at or before now.
-  const anchorMs = Date.parse(chain.gridAnchorAt);
-  const boundaryIso = new Date(
-    boundaryAtOrBefore(anchorMs, chain.durationMinutes, Date.now()),
-  ).toISOString();
+  // ⛔ THE ROUND OPENS **NOW**, NOT ON THE GRID — and that is a deliberate reversal.
+  //
+  // The first version used `boundaryAtOrBefore`, the chain's own grid mark at or before now,
+  // because the grid is what lets a 10-, 15- and 30-minute round share one paid observation.
+  // Driven on production it refused: generating at 21:22 asks for the **21:20** price, which is
+  // already 120s old against a 90s staleness limit —
+  //   "Reading too far from the boundary — quote is 120s from the boundary (limit 90s)"
+  // so the button would only have worked in the first 90 SECONDS after each grid mark and
+  // refused for the other three and a half minutes. An operator clicking "Generate round" at an
+  // arbitrary moment is the entire point of E-67; a control that works one minute in four is not
+  // a control.
+  //
+  // Grid sharing was an optimisation for chains emitting on a timer, all landing on the same
+  // instants. Manual rounds do not coincide, so there is nothing to share and nothing is lost:
+  // this round takes its own open read now and its own close read at its own boundary — exactly
+  // the two reads it would have cost anyway. ⚠️ It does mean a manual round is NOT grid-aligned;
+  // that is fine for the round itself, and `advanceChain` is not involved because the chain is
+  // STOPPED. Seconds and milliseconds are zeroed so the boundary is a clean instant to display.
+  const openMs = Math.floor(Date.now() / 1000) * 1000;
+  const boundaryIso = new Date(openMs).toISOString();
 
   // 2 · E-36 — never open into a shut market.
   const session = marketSessionAt(asset.category, boundaryIso);
