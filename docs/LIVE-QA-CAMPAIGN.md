@@ -3631,6 +3631,53 @@ workstation shows an SLA countdown, but nothing escalates when it runs out. Ali'
 
 ## 6b. NEXT SESSION — start here
 
+### 🟢 Laptop B, session 20 (2026-08-03, 13:20–16:30 UTC) — ⭐ THE TRACKER WAS CONTRADICTING ITSELF IN FIVE PLACES. No production state touched. Read this first; it supersedes everything below.
+
+**A catch-up session, not a build session.** It pulled sessions 17–19, verified the state, and fixed
+what it found wrong in the record rather than in the product.
+
+| | |
+|---|---|
+| **the register is self-consistent again, and enforced** | Four ids carried two rows each saying opposite things, because sessions added a resolution row instead of updating the row that filed it. ⛔ **The worst: session 19 WITHDREW E-58 as a misdiagnosis, and the original row still read `🔴 HIGH — ⛔ ALI'S CALL, NOT BUILT`** — a row inviting the OWNER to decide a money question about a finding its own author had retracted. **E-53** said *"NOT YET BUILT"* about a shipped, live-verified feature; **E-46** and **E-50** each sat `OPEN` after being fixed. ⭐ **E-37 was worse and no guard can catch it**: one internally-consistent row that simply stayed `🔴 HIGH · OPEN, measured` for two sessions after the digest shipped and sent four real digests. Rule now in **§0.1a**, guard `test:tracker-hygiene` **14/14**, **RED 5/5** |
+| **the two-laptop credential trap, written down** | Session 18's re-mint was correct and necessary — but `.env.qa.local` is gitignored, so **laptop B's copy went stale and every persona login there fails**, presenting as a broken login page. Confirmed a credential mismatch, not a lockout: `+255712000104` showed `failedLoginCount 1`, `lockedUntil NULL`, `lastLoginAt 12:49:23` (laptop A, 46 min earlier). ⛔ **Do not re-mint to fix it** — that just moves the lockout to the other laptop and the two take turns breaking each other. Copy the file |
+| **branch/main drift repaired** | Sessions 17–19 pushed to `main` directly, leaving `qa/live-experience` **24 commits behind** — so §0.2's *"the branch is the only thing that is real"* had quietly stopped being true. Fast-forwarded; all three refs now equal |
+
+🔴 **I BROKE TWO GUARDS THREE TIMES WHILE WRITING THE RULE THAT PREVENTS THIS, AND THAT IS THE
+TAKEAWAY.** Both `test:settlement-expectation` §5 and `test:tracker-hygiene` §2 found the handoff by
+the bare words `RESUME AT:`; §0.1a *describes* that check and sits in §0, **before** §6b, so it
+became the first match. One guard failed on a correct document; the other **stayed green while its
+check count silently fell from 14 to 8**. Re-anchoring on the literal marker broke them again in the
+same edit, because the note explaining the fix quoted the marker. Then the RED mutation broke a third
+time and honestly reported itself a MISS. ⭐ **Anchor on STRUCTURE, not wording** (`/^⏭️ \*\*RESUME
+AT:/m` — prose can contain any string but cannot begin a line with it), **and a mutation must locate
+its target exactly as the guard does.** Both rules are in §0.1a.
+
+🔴 **AND MY FIRST RED HARNESS LIED IN THE FAMILIAR SHAPE.** A throwaway shell loop printed **"✓ RED"
+for three mutations the guard silently passed**, because it only checked that the FILE HAD CHANGED.
+The guard genuinely had a bug — `RESOLVED` matched `BUILT` inside **`NOT BUILT`**, so the most
+dangerous row in the register classified as *resolved*. A harness must require the suite to **exit
+non-zero AND report ≥1 failure**; both RED files do now. 📌 A third check was written and **deleted
+rather than shipped**: it demanded every row carry a classifiable status and failed on **23 correct
+rows**, because the older half of the register puts only a severity there. I invented a convention
+and then tested the document against it.
+
+📌 **Verified, not changed:** all three money deadlines armed and holding (below) · `main` deployed
+**SUCCESS** · **E-63 still bleeding** — SOL 24 rounds in 2h, **22 `source-failed`, 0 decisive,
+`openPrice` NULL on all 24**; ETH now healthy at 0/24, BTC 3/24, XAU 4/24. ⭐ **No SOL positions
+exist in 48h**, so no money is riding on the unwinnable chain — but it is `RUNNING` and on the board.
+**Worth stopping SOL's chain until E-63 is fixed; that is an operator call.**
+
+⏭️ **RESUME AT:** ① **`mkt_54f75a1959cdee5f1ed8` settles 2026-08-04 00:08:09 UTC** — alpha should
+receive **TZS 3,740** ⛔ derived from the market's own frozen `feeSnapshot`, never typed in (E-48);
+run `node scripts/live-settlement-check.mjs mkt_54f75a1959cdee5f1ed8` and pair it with the DB.
+⚠️ **On laptop B, copy `.env.qa.local` from laptop A first or every persona login fails.**
+② **the TZS 77,950 refunds land 2026-08-04 ~08:37 UTC** — `mkt_9a131d19337d5c09b7a7` (59,450, 8
+positions) and `mkt_8c885478d7361c79bdf3` (18,500, 4): every position `VOID` with
+`finalPayout = stake`, 6 wallets up by exactly that, players notified. ③ **E-63** — the round-open
+capture path, and why BTC survives at 3.4% while SOL fails at 99%. ④ **push on a REAL PHONE**.
+⑤ **E-45** observation backfill · ⑥ **E-33** DSAR · ⑦ **E-34/E-35** refusal panel · ⑧ `SortTh` on
+proposals · ⑨ **E-41/E-42/E-44** · ⑩ **G-3** player sweep.
+
 ### 🟢 Laptop A, session 19 (2026-08-03) — ⭐ E-53 AND E-50 CLOSED, BOTH LIVE-VERIFIED. Read this first; it supersedes everything below.
 
 ⚠️ **FIRST, A CORRECTION TO SESSION 18'S OWN HANDOFF.** It said the two money checks would
