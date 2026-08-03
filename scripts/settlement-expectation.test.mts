@@ -180,8 +180,17 @@ const YES_POOL = 2000, NO_POOL = 2000, ALPHA_STAKE = 2000;
 {
   const camp = readFileSync(new URL("../docs/LIVE-QA-CAMPAIGN.md", import.meta.url), "utf8");
   // Scoped to the resume instruction, which is the line a next session acts on.
-  const resume = camp.match(/RESUME AT:[\s\S]{0,600}/)?.[0] ?? "";
-  ok("§5 §6b's resume line exists", resume.length > 0);
+  // ⚠️ ANCHOR ON A STRUCTURAL PROPERTY: the handoff marker STARTS A LINE (`^…` with `m`).
+  // This was `/RESUME AT:[\s\S]{0,600}/`, and the moment §0.1a began *describing* the
+  // tracker-hygiene rule — mentioning "RESUME AT:" in prose, in §0, which precedes §6b — that
+  // became the FIRST match and §5 silently measured the wrong 600 characters, failing on a
+  // CORRECT handoff. Anchoring on the literal marker text was not enough either: the note
+  // explaining the fix quotes the marker in backticks and broke it again in the same edit.
+  // Prose can contain any string; only a real handoff begins a line with it.
+  // `test:tracker-hygiene` §2 had the identical bug from the identical copy-paste.
+  const resume = camp.match(/^⏭️ \*\*RESUME AT:[\s\S]{0,600}/m)?.[0] ?? "";
+  ok("§5 §6b's resume line exists", resume.length > 0,
+    "no '⏭️ **RESUME AT:' marker — has the handoff format changed?");
   // ⚠️ NOT `!resume.includes("3,480")`. The corrected line names 3,480 deliberately, to say
   // it was wrong and why — banning the characters would force that warning out and score the
   // silence as a pass. Parse the figure the line actually tells the next session to EXPECT.

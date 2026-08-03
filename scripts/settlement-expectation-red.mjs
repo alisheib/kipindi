@@ -43,8 +43,23 @@ const MUTATIONS = [
     name: "handoff-wrong-payout",
     what: "§6b tells the next session to expect 3,480 — the false-defect trap",
     file: CAMPAIGN,
-    find: "receive **TZS 3,740**",
-    replace: "receive **TZS 3,480**",
+    // ⚠️ SCOPED TO THE CURRENT HANDOFF, not to the first match in the file. A plain
+    // `"receive **TZS 3,740**"` → `3,480` replacement stopped proving anything the moment the
+    // document gained OTHER copies of that phrase: the first literal occurrence is now inside a
+    // *narrative* paragraph explaining how this very guard was once disarmed, which §5 does not
+    // read — so the mutation edited text nobody checks and the harness honestly reported a MISS.
+    // ⛔ Note also the live resume block wraps the phrase ACROSS A LINE BREAK ("receive\n**TZS
+    // 3,740**"), which is why §5 matches with `\s*` and why a single-space literal missed it.
+    // ⭐ THE MUTATION MUST LOCATE THE TARGET EXACTLY AS THE GUARD DOES, or it proves nothing
+    // about the guard. §5 anchors LINE-INITIALLY (`/^⏭️ \*\*RESUME AT:/m`); a plain `indexOf`
+    // on the same marker text finds the copy quoted inside §0.1a's prose first and mutates a
+    // paragraph §5 never reads — which is precisely how this mutation reported a MISS twice.
+    rewrite: (doc) => {
+      const m = /^⏭️ \*\*RESUME AT:/m.exec(doc);
+      if (!m) return doc;
+      const at = m.index;
+      return doc.slice(0, at) + doc.slice(at).replace("**TZS 3,740**", "**TZS 3,480**");
+    },
   },
   {
     name: "model-unnamed",
@@ -131,14 +146,17 @@ const broken = [];
 
 for (const m of MUTATIONS) {
   const original = readFileSync(m.file, "utf8");
-  if (!original.includes(m.find)) {
+  // A mutation is either a literal find/replace or a `rewrite(doc)` for cases that must be
+  // scoped (see `handoff-wrong-payout`). Either way the file MUST actually change.
+  const mutated = m.rewrite ? m.rewrite(original) : original.replace(m.find, m.replace);
+  if (mutated === original) {
     // ⛔ NOT a skip. An anchor that no longer matches means this harness is no longer
     // testing anything, and that is exactly how session 15 got a false all-clear.
-    broken.push(`${m.name} — ANCHOR NOT FOUND, this mutation tested nothing: ${m.find}`);
-    console.log(`  ⛔ ${m.name.padEnd(26)} anchor not found — harness broken, not a pass`);
+    broken.push(`${m.name} — NOTHING CHANGED, this mutation tested nothing${m.find ? `: ${m.find}` : ""}`);
+    console.log(`  ⛔ ${m.name.padEnd(26)} nothing changed — harness broken, not a pass`);
     continue;
   }
-  writeFileSync(m.file, original.replace(m.find, m.replace));
+  writeFileSync(m.file, mutated);
   let r;
   try {
     r = runGuard();
