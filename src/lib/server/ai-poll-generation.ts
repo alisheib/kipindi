@@ -1161,6 +1161,63 @@ export async function generateAIPollBatch(opts: {
   return { generated, summary };
 }
 
+/**
+ * E-60 · REAP GENERATIONS THAT DIED MID-FLIGHT.
+ *
+ * A generation writes its row as `GENERATING` and moves it on when the provider answers.
+ * If the process never gets that far — the request was aborted, the connection dropped, the
+ * container restarted, an operator navigated away — **nothing ever moves the row again**.
+ * There was no timeout, no failure state and no reaper, so on production SEVEN rows sat in
+ * `GENERATING`, the oldest for 878 hours (36 days, since 27 June), every one with
+ * `costUsd = 0` because the attempt died before it ever billed.
+ *
+ * ⭐ THE REAL COST IS NOT THE ROWS, IT IS THAT THE CONSOLE CANNOT TELL LIVE FROM DEAD.
+ * `/admin/ai-polls` renders a corpse exactly like a job in flight — "generating … in-flight"
+ * — so the operator's own count is permanently inflated and a genuinely stuck run today is
+ * indistinguishable from one that died five weeks ago.
+ *
+ * ⛔ THE CUTOFF IS DELIBERATELY GENEROUS. A healthy single generation completes in ~25–90s
+ * (measured on production: `generate_started` 10:13:23 → `pending_review` 10:13:47). Ten
+ * minutes is an order of magnitude beyond that, so this can only ever catch something that
+ * is genuinely dead — reaping a live generation would be a far worse defect than the one it
+ * fixes.
+ *
+ * Terminal state is `VALIDATION_FAILED`, which the console already surfaces as "didn't
+ * pass", rather than a new state nothing renders.
+ */
+export const STUCK_GENERATION_MINUTES = 10;
+
+export async function reapStuckGenerations(now = Date.now()): Promise<number> {
+  const cutoff = now - STUCK_GENERATION_MINUTES * 60_000;
+  let reaped = 0;
+  try {
+    for (const p of await store.values()) {
+      if (p.state !== "GENERATING") continue;
+      if (Date.parse(p.createdAt) > cutoff) continue;     // still plausibly alive
+      // ⛔ THE REASON GOES IN THE AUDIT ROW, NOT IN `rejectReasons`.
+      // `rejectReasons` is a typed `FilterReason` union with its own label map per locale.
+      // Inventing a member for it is exactly how E-1 shipped: a reason key with no
+      // translation renders raw enum text to a Swahili or Chinese reader. The audit entry
+      // below carries the explanation, and the console already renders this state
+      // truthfully as "didn't pass".
+      await store.set({ ...p, state: "VALIDATION_FAILED" });
+      audit({
+        category: "SYSTEM",
+        action: "aipoll.generation_reaped",
+        actorId: null,
+        targetType: "AIPoll",
+        targetId: p.id,
+        payload: { category: p.category, ageMinutes: Math.round((now - Date.parse(p.createdAt)) / 60_000) },
+      });
+      reaped++;
+    }
+  } catch (e) {
+    console.error("[aipoll] reap:", (e as Error)?.message ?? e);
+  }
+  if (reaped) console.log(`[aipoll] reaped ${reaped} abandoned generation(s)`);
+  return reaped;
+}
+
 /** Progress toward today's poll target — drives the admin KPI + "batch to
  *  target" button. "Today" is UTC-day based on createdAt. */
 export async function aiPollDailyProgress(): Promise<{

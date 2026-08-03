@@ -23,6 +23,7 @@ import { expireActiveGrants } from "./bonus-service";
 import { trialBalance } from "./ledger";
 import { audit } from "./audit";
 import { acquireLeadership, releaseLeadership } from "./leader";
+import { reapStuckGenerations } from "./ai-poll-generation";
 
 const TICK_MS = 60_000;       // run the lifecycle sweeps once a minute
 const FIRST_TICK_MS = 8_000;  // first pass shortly after boot (let the app settle)
@@ -373,6 +374,13 @@ export async function runLifecyclePass(): Promise<void> {
     // Its own catch: a player's daily statement of account must not be lost
     // because the bonus sweep or the payment reconcile threw first.
     await maybeSendUpDownDigest().catch((e) => console.error("[lifecycle] Up & Down digest:", e));
+
+    // ── E-60: retire generations that died mid-flight ──────────────────────────
+    // An aborted request leaves its AIPoll row GENERATING forever — nothing else ever
+    // moves it. Seven had accumulated on production, the oldest for 36 days, and the
+    // console renders a corpse identically to a job in flight. Its own catch: an
+    // operator's view of the generation queue must not depend on the bonus sweep.
+    await reapStuckGenerations().catch((e) => console.error("[lifecycle] aipoll reap:", e));
 
     await expireActiveGrants().catch((e) => console.error("[lifecycle] bonus expiry:", e));
     // NOTE: the deposit fast-credit lane is deliberately NOT called here. It has its
