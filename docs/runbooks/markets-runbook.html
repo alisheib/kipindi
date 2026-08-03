@@ -39,6 +39,9 @@
           font-size: 8.5pt; color: #5b6070; }
   .money { font: 9.5pt/1.5 Consolas, monospace; background: #f7f8fa; border: .5pt solid #c8ccd6;
            padding: 2.5mm 3mm; margin: 0 0 4mm; white-space: pre; page-break-inside: avoid; }
+  /* The two fee models side by side, inside a .note. Tighter than a body table. */
+  .models { margin: 2mm 0 1.5mm; }
+  .models td, .models th { font-size: 8.5pt; }
 </style>
 
 <h1>Markets — Admin Runbook</h1>
@@ -333,9 +336,48 @@ attested, the objection window counting down, and the audit entry
   echo   NO  2,000 → OPEN, payout null, wallet 25,400 (unchanged)
   objection window closes 4 Aug 2026 03:08 EAT — payout is armed for then</div>
 <p>When that window closes with nothing standing, the market settles itself: the YES side takes the
-TZS 4,000 pool less the capped fee, and the NO stake is gone. On this pool the fee is
-<code>min(13% × 4,000, 33.3% × 2,000)</code> = <strong>TZS 520</strong>, so alpha receives
-<strong>TZS 3,480</strong>.</p>
+TZS 4,000 pool less the fee, and the NO stake is gone. This market is frozen at the
+<strong>loser-share</strong> fee model, so the fee is a slice of <em>the losing side only</em> —
+<code>(3% platform + 10% operator) × the NO pool</code> = <code>13% × 2,000</code> =
+<strong>TZS 260</strong>. That leaves a net pool of TZS 3,740, and alpha — the only YES predictor —
+receives all of it: <strong>TZS 3,740</strong>, a profit of TZS 1,740 on a TZS 2,000 stake.</p>
+
+<div class="note stop"><strong>⛔ Never assume which fee model a market settles at — read it off that
+market's own page.</strong> There are two, they produce different money on the same pools, and
+<em>both are live right now</em>. Counted on production on 3 August 2026, of the <strong>19</strong>
+long-form polls currently open, <strong>7</strong> settle at <code>loser-share</code> and
+<strong>12</strong> at <code>capped-commission</code> — so the model this worked example uses is the
+<em>minority</em> case, and guessing gets the majority of the board wrong.
+
+<table class="models">
+<tr><th>Model</th><th>The fee</th><th>On this 2,000 v 2,000 pool</th><th>Alpha receives</th></tr>
+<tr><td><code>loser-share</code><br>frozen 23 Jul 2026 onward</td>
+    <td><code>(3% + 10%) × the LOSING pool</code><br>depends on <em>who won</em></td>
+    <td>13% × 2,000 = <strong>TZS 260</strong></td><td><strong>TZS 3,740</strong></td></tr>
+<tr><td><code>capped-commission</code><br>the older model, still settling</td>
+    <td><code>min(13% × the whole pool,<br>33.3% × the smaller side)</code><br>outcome-neutral</td>
+    <td>min(520, 666) = <strong>TZS 520</strong></td><td><strong>TZS 3,480</strong></td></tr>
+</table>
+
+The two maths <em>never</em> mix: each market settles at the model frozen into its own
+<code>feeSnapshot</code> when it was created, whatever admin config says today. An earlier draft of
+this page applied the <code>capped-commission</code> formula to this <code>loser-share</code> market
+and understated alpha's payout by TZS 260. The market page shown next names the model outright —
+that page is the authority, not this one.
+<code>npm run test:settlement-expectation</code> now holds this worked example to what the settlement
+code actually computes, so the two can no longer drift apart.</div>
+
+<figure><img src="markets-assets/m21-fee-model.png" alt="The market's own admin page showing the
+loser-share fee model, the 13% rate, the TZS 260 fee under either outcome, and the predictor grid."
+><figcaption>Where the money rule is stated, as the
+<strong>trading officer</strong>: the market's own page names the model
+(<em>“LOSER-SHARE — the fee is a slice of the losing side”</em>), gives the rate, and prices
+<em>both</em> outcomes — <code>FEE IF YES WINS TZS 260</code> · <code>FEE IF NO WINS TZS 260</code> —
+because under this model the fee depends on who lost. The predictor grid below it carries each
+position's payout. ⚠️ While a market is RESOLVED but not yet settled, that column shows each side's
+<em>“if my side wins”</em> figure, so the losing row still reads TZS 3,740; the outcome in the header
+(<code>→ YES</code>) is what decides. Settlement replaces it with the amount actually
+paid.</figcaption></figure>
 
 <h2>Part 8 · The checklist</h2>
 <ol>

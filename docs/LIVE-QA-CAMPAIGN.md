@@ -1213,10 +1213,11 @@ which it named by filename.
 | # | Sev | Area | Finding | Evidence |
 |---|---|---|---|---|
 | **E-40** | ✅ **FIXED 2026-08-02** | Up & Down · AI proposals | **"Ask the AI to propose" has never worked, and the page hid it as an empty queue.** `updown-proposal.ts:257` read `(prisma as any).upDownProposal` — but `prisma` is a **function** (`prisma(): PrismaClient \| null`), so that is a property of the *function object* and is `undefined`. Every write became `undefined.upsert(...)`. Reported by **Jaykishan Kaba** (ADMIN, `usr_53406f2f9f793abe1fd0e8af`) on production 2026-08-02 ~15:1x; the server log says it verbatim: `[action] Could not generate a proposal: Cannot read properties of undefined (reading 'upsert')`. ⛔ **The `as any` is what shipped it** — `prisma` really has no such property, and the cast erased the only check that would have failed the build. ⚠️ **And it was invisible**: the queue page calls `listProposals().catch(() => [])` and `countProposalsByState().catch(...)`, so the reads failed silently and it rendered *"No proposals yet"* — identical to an unused feature. Fixed to call `prisma()`; guard `test:prisma-delegate` **14/14**, proven RED first (it names the file and the property). ✅ **LIVE-VERIFIED ON PRODUCTION 2026-08-02 15:38–15:41Z, 8/8** — the real button pressed on `50pick.tz` as the **QA trading officer** (`712000104`, the narrowest identity holding `trading`; NOT as ADMIN, whose owner bypass would prove nothing), via `scripts/live-e40-proposal.mjs`. Two proposals generated, each with a complete audit chain. | live logs (verbatim above) · `UpDownProposal` **0 rows in the platform's entire history** · **0** `updown_proposal.*` audit rows ever, against **709** `aipoll.generate_started` · all four early gates measured OPEN on prod (`pollGenEnabled: true`, spend ≈ $14.41 of $20, 3 enabled assets) · **after**: `udprop_898xb9l3fx6b` (seq 21108 `generate_started` → 21109 `filtered`, 20,166 tok, $0.1034) and `udprop_erz3dvc7e9rz` (seq 21124 → 21125, $0.1606), both actor `usr_429885ab43c0cb4ce134dd7e` |
+| **E-48** | 🔴 **HIGH** → ✅ **FIXED 2026-08-03 (§6z)** | docs · operator runbook · settlement maths | **The markets runbook taught operators to compute a settlement fee with the WRONG model, and §6b told the next session to expect the wrong payout — on a real market holding real money.** The worked example for `mkt_54f75a1959cdee5f1ed8` (2,000 YES v 2,000 NO) stated the fee as `min(13% × 4,000, 33.3% × 2,000)` = **TZS 520**, so *"alpha receives **TZS 3,480**"*. That is the **`capped-commission`** formula. The market is frozen at **`loser-share`**, where the fee is `(platformFeeRate + operatorFeeRate) × the LOSING pool` = 13% × 2,000 = **TZS 260** — so the real payout is **TZS 3,740**. The runbook understated a real player's payout by TZS 260 and showed its arithmetic, which is what makes it convincing. ⭐ **THE PRODUCT WAS RIGHT THE WHOLE TIME AND SAYS SO EXPLICITLY** — the trading officer's own market page renders *"LOSER-SHARE — the fee is a slice of the losing side"*, `LOSER-SHARE RATE 13.0% of whichever side loses`, `FEE IF YES WINS TZS 260`, `FEE IF NO WINS TZS 260`, and `TZS 3,740` in the predictor grid. Only the documents were wrong. 🔴 **The consequence was not a misprint: §6b instructed this session to check that alpha "should receive TZS 3,480", so a CORRECT settlement would have failed the check and been filed as a money defect** — the campaign's most expensive recurring failure, and the sixth instance of harness-lies-product-is-right after §6y's five. ⚠️ **And the first version of the correction was itself false**: it asserted *"every live market today is `loser-share`"*. Measured on production, of the **19** LIVE long-form polls **12 settle at `capped-commission`** and only **7** at `loser-share` — the fixed runbook would have misrouted the majority of the board. It now says *never assume, read it off the market's own page*, with both models' fees and payouts in a comparison table, and a new figure (`m21-fee-model.png`, shot as the TRADING officer) showing where that is stated. | live `/admin/markets/mkt_54f75a1959cdee5f1ed8` as trading officer → `TZS 260` · `TZS 3,740` (`shots/settlement-mkt_54f75a1959cdee5f1ed8.png`); production `feeSnapshot` census → LIVE MARKET: 12 capped-commission / 7 loser-share; `npm run test:settlement-expectation` **31/31**, proven **RED 8/8** by `scripts/settlement-expectation-red.mjs` |
 | **E-47** | 🔴 **OPEN** | Up & Down · AI proposals | **"Ask the AI to propose" now runs (E-40) — and it cannot succeed, by construction, for any feed-backed asset.** Measured on production after 12 generations: **0 PENDING_REVIEW, 0 that ever read a price, 10 FILTERED, $2.68 spent.** The design says the AI *may only read the asset's approved domain*, which is correct and load-bearing. But every live asset's approved domain is now **`api.twelvedata.com`** — a **key-protected JSON API**. The AI has no key and must not be given one, so it either cites the bare endpoint or invents **`apikey=demo`** (6 of the 12 proposals do exactly that), and the endpoint returns nothing usable. Every proposal therefore comes back `source_unreadable`. ⚠️ **And the alternative is already known-broken**: the feature was designed for HTML price pages (kitco, goldprice.org), which is precisely what **E-16/E-25** proved unreadable — those pages render prices in JavaScript a fetch does not run. So the feature cannot succeed with *either* kind of source in the current configuration, while charging ~$0.16 a click. ⛔ Not a code defect to patch blindly — it needs a product decision from Ali: **(a)** retire the proposal queue for feed-backed assets and keep the guided Add-asset form (which now does the same job deterministically, and for free); **(b)** let the AI propose only the *framing, duration and margin* and take the price from the feed rather than asking it to read one; or **(c)** give it a readable public source per asset. ⭐ **(b) is the one worth building** — the AI is genuinely good at the framing, and the price was never its job. | `UpDownProposal` on production: 12 rows, `read_a_price = 0`, `approvable = 0`, `demo_key = 6`, `$2.68` · screenshot `P2-progress-mid.png` shows the queue, every row *"NO PRICE WAS ACTUALLY READ FROM THE LINK"* |
 | **E-46** | ✅ **FIXED 2026-08-03** | Up & Down · asset setup | ⭐ **THE ADD-ASSET FORM CAN NO LONGER PRODUCE A BROKEN ASSET.** Ali's instruction: *"dropdowns for everything… so admins cannot make mistakes."* The form took the **symbol** as free text, the **category** as an unrelated dropdown and the **source URL** as free text — three fields that must agree, with nothing making them agree. Now: pick an **asset class**, then a **symbol**, and everything the symbol determines (category, en/sw/zh names, icon, decimals, min-move, source URL) is filled and **locked**, shown in a "set by the symbol" panel. New `updown-symbols.ts` is the catalogue; **the server enforces the same rule** in `createAsset` via `validateSymbolCategory`, because a dropdown is a courtesy and a stale tab or scripted POST is not. The form also states the **trading window** for the chosen symbol before anything is created, and runs a **live pre-flight** (`/api/admin/updown/symbol-check`) through the same `quoteAsset` + `judgeFeedStaleness` the money path uses — four verdicts: *would confirm · readable but too slow · market is shut · cannot be quoted*. `SPX` is listed but **disabled with its reason** rather than hidden. Guard `test:updown-symbols` **87/87**, proven RED by reintroducing **both real production mistakes** (6 failures, each naming the mistake). Runbook Step 2 rewritten + PDF regenerated. | `updown-symbols.ts` · `updown-config.ts createAsset` · `api/admin/updown/symbol-check` · `updown-controls.tsx AddAssetForm` |
 | **E-45** | 🔴 **OPEN** | Up & Down · feed | **An asset can be enabled, "open", correctly sourced and correctly priced — and still void 100% of its rounds forever, because the PROVIDER'S QUOTE CADENCE FOR THAT SYMBOL is slower than the 90s staleness window.** Found on **SOL**, which Jay armed 2026-08-02: chain RUNNING, market `open`, margin `0.02% ·sched`, source the approved `api.twelvedata.com` — and **void rate 100% (8/8)**. Measured live through the money path's own functions: `SOL/USD — READABLE but STALE, skew 132s (limit 90s)`, against `BTC/USD 12s` and `XAU/USD 12s` at the same instant. The mechanism is `updown-service.ts:1065` — `const openPrice = obs.state === "confirmed" ? obs.price : null` — so a round OPENS with whatever the observation is **at that instant**; SOL's can't confirm yet, the round stores `openPrice = NULL` and **no targets**, and at close it has nothing to compare against and voids. ⛔ **The retry ladder DOES confirm the observation seconds later — and it is never backfilled into the round that opened on it.** Proof: every SOL round carries a `closePrice` and a NULL `openPrice`, *including round #2, whose opening boundary (20:30) confirmed at 73.57*. ⚠️ This is indistinguishable from E-16 to an operator, which is the exact failure the runbook's Part 4 checklist exists for — and nothing in the console shows per-symbol quote freshness, so there is no way to see it from the product. **Pre-flight `npm run ops:updown-probe-feed --symbols <SYM>` before arming any new asset.** | live probe (3 symbols, one instant) · `UpDownObservation` for SOL: 7/9 CONFIRMED, every one carrying *"quote is 120–240s from the boundary (limit 90s)"* · all 8 SOL rounds `openPrice = NULL, closePrice` present · `updown-service.ts:1065` + the comment at :375 |
-| **E-46** | 🟡 **OPEN** | Up & Down · asset setup | **Nothing validates a new asset at creation, and the category silently drives the TRADING CALENDAR.** Two of the assets Jay created are misconfigured in ways the product accepted without a word: **(a) `BNB` was created with `category = macro`** — but BNB is a 24/7 crypto, and `sessionKindFor(category)` therefore applies the FX/metals week to it, so the console shows **`closed · opens 22:00 UTC` for a coin that never closes**; **(b) `ETH` was created with symbol `ETH`** (not `ETH/USD`) **on `coingecko.com`**, which the TwelveData reader cannot quote — **void rate 100%, 27/27**. Also **two gold assets exist for the same instrument** (`XAU` enabled + `GOLD` disabled, both `XAU/USD`, three chains between them), so an operator can enable one and watch the other. ⛔ The category is not cosmetic — it decides whether the money path will read a price at all. | `/admin/updown` overview rows (captured) · `UpDownAsset` config for BNB/ETH/XAU/GOLD · `market-calendar.ts:80` `sessionKindFor` |
+| **E-46** *(original filing — ✅ closed by the E-46 row above; kept for its RED measurement)* | ✅ **FIXED 2026-08-03** | Up & Down · asset setup | **Nothing validates a new asset at creation, and the category silently drives the TRADING CALENDAR.** Two of the assets Jay created are misconfigured in ways the product accepted without a word: **(a) `BNB` was created with `category = macro`** — but BNB is a 24/7 crypto, and `sessionKindFor(category)` therefore applies the FX/metals week to it, so the console shows **`closed · opens 22:00 UTC` for a coin that never closes**; **(b) `ETH` was created with symbol `ETH`** (not `ETH/USD`) **on `coingecko.com`**, which the TwelveData reader cannot quote — **void rate 100%, 27/27**. Also **two gold assets exist for the same instrument** (`XAU` enabled + `GOLD` disabled, both `XAU/USD`, three chains between them), so an operator can enable one and watch the other. ⛔ The category is not cosmetic — it decides whether the money path will read a price at all. | `/admin/updown` overview rows (captured) · `UpDownAsset` config for BNB/ETH/XAU/GOLD · `market-calendar.ts:80` `sessionKindFor` |
 | **E-44** | 🟡 **OPEN** | Up & Down · settlement proof | **The round card shows two different "quoted" times for the same close price, and one of them is not the round's.** On a **RESOLVED** round the `SETTLEMENT PROOF · AUDITABLE RECORD` panel is correct to the minute — OPEN `$63,282.52` quoted **20:29:00 EAT**, CLOSE `$63,296.03` quoted **20:34:00 EAT**, which is exactly what the two `UpDownObservation` rows hold (`17:29:00` / `17:34:00` UTC). But the price chart directly above it captions the same close *"Source: api.twelvedata.com · **quoted 20:49:00 EAT**"* — a time matching **neither** observation and falling **~14 minutes after the round settled**, consistent with a live read at page load rather than the round's frozen reading. ⚠️ Same family as **E-39**: the settlement is correct and the authoritative panel is correct, but this is the card a player takes to an **objection**, and it invites the question "why did you read the price 14 minutes after my round ended?". ⛔ Not yet traced to a line — filed with the measurement, not a mechanism, because E-36's withdrawn overclaim is what happens when the dramatic reading gets written up before it is proven. | screenshot `B-proof-card.png` · `UpDownObservation.sourceQuotedAt` = `17:29:00` and `17:34:00` UTC for boundaries `17:30`/`17:35` · card panel agrees, chart caption does not |
 | **E-43** | ✅ **FIXED 2026-08-03** | Up & Down · notifications | **The suppression was INVERTED: the only outcome a player was ever told about was the one where nothing happened to their money.** `perEventNotificationsSuppressed` was applied to bet-placed, WIN and LOSS but **not** to `notifyOneSidedRefund` (2158) or `notifyRefund` (2238) — so a win was silent, a loss was silent, and a refund fired every time. ⭐ **Re-measured 2026-08-03 anchored on the POSITION rather than the href, and the true shape is sharper than the number first filed:** **0 of 13** winning and **0 of 11** losing Up & Down positions have EVER produced a notification, against **56 of 56** refunded ones — 100% vs 0%. (The original "70 refunds" came from an href scan, which **cannot ever find a win**: `notifyWin` deep-links to `/positions`, which carries no market id. The four notifications that did land inside a win/loss settlement window turned out to be the same refund for a *different* round, eight minutes later.) Fixed by gating both refund emitters on the same predicate and moving refunds into the digest, which states them with their own count and figure. Guard `test:updown-digest` §5 scans **every** `notify*` call site in `market-service.ts` and requires the gate, with the single orphan-repair caller named as an explicit exemption. | position-anchored counts above · `market-service.ts` 875/2158/2238/2311/2327 · control: **221** WIN/LOSS notifications exist platform-wide, so the query is not blind |
 | **E-42** | 🟡 **OPEN** | AI polls · console | **Six AI poll generations are stuck in `GENERATING` forever, and nothing will ever clear them.** Ages on production run from **32 hours to 36 days** (`2026-06-27`, `2026-07-09` ×2, `2026-07-24`, `2026-08-01`), every one with `costUsd = 0.000000` and `tokensUsed = 0` — so the provider call never started or never returned, and the row was left mid-flight. There is no reaper: the lifecycle ticker heals Up & Down rounds but nothing ages out an `AIPoll`. The console prints them as live work (`GENERATING 6`, "⚑ 6 generating"), so an officer cannot tell a genuinely running generation from a corpse — and if generation starts failing tomorrow the new failures land in the same bucket, indistinguishable. ⚠️ Same shape as E-40: the row is written *before* the provider call, so any throw in between strands it. | `AIPoll` state counts on production · the six rows with age + `$0.00` + 0 tokens · a successful generation for contrast: `aipoll_babedcf4b496f2e261e3e8dc` reached `PENDING_REVIEW` in **26s** at $0.2011 / 52,262 tokens |
@@ -1350,6 +1351,122 @@ would have. The build stays the gate.
 | **E-38** | MEDIUM → ✅ **FIXED 2026-08-02** | admin · resolver queue · money alarm | **The overdue badge never scaled its unit, so the longer real money waited the less urgent it looked.** `timeUntil()`'s overdue branch rendered `${minutes}m overdue` with NO rollover, while the not-yet-due branch of the same function rolled m → h → d correctly. Measured live: a market **16 hours** overdue, holding **TZS 59,450 of real player money** across 8 positions from 4 different players, announced itself as **"966M OVERDUE"** — and "M" means MILLIONS everywhere else in this console (`formatTzs`, `admin-charts`, the conviction dial), so on a money screen it reads as an amount. The one direction that mattered was the one direction that did not scale. ⭐ Also added, because it was the actual missing signal: a **`TZS … held`** pill on each queued market, read off the pools the row already carries — *"8 predictors"* says how many are waiting, not that 59,450 of their money is. Same shape as §0.1b's rounds-page lesson: a queue that hides the amount at stake gets triaged in the wrong order. | `shots/s11--admin-resolver-queue-1440.png` (the live "966M OVERDUE" badge); `npm run test:overdue-format` **9/9**, proven **RED (6 failures)** on the old single-unit body |
 | **E-39** | 🔴 **HIGH** → ✅ **FIXED 2026-08-02 (session 12)** | Up & Down · player money copy · SHARED, all 3 locales | **The card headed "SETTLEMENT PROOF · AUDITABLE RECORD" stated a margin-ZERO settlement rule directly underneath the round's real band.** `udRuleText` was a hard-coded constant rendered unconditionally (`updown/[roundId]/page.tsx:294`): *"Up if the close is above the open · Down if below · **Void if it does not move**"* — plus `Batili ikiwa haijasogea` / `无变动则作废`. Since E-32 every round is priced by the ladder, so a 5-min BTC round moving **$5** sits inside a **$12.62** band and voids. The page therefore told a player that voiding requires no movement, one row below `Up ≥ $63,126.62 / Down ≤ $63,101.38`, on the artefact they would take to an objection. ⚠️ **The defect is that a constant cannot describe a per-round rule** — not the wording. ⭐ The platform already had the correct sentence: `updown-service.ts:550` records *"stayed inside the band … refunded in full"* for operators. Fixed with `udRuleTextBanded` (en/sw/zh) selected from the round's own targets; the legacy line **kept** because at margin 0 it is accurate. | live production card for `udr_0c015a854aa105600373` read as `echo` (`live/s12-reshoot14.mjs`) — band and rule contradicting each other on one screen; `npm run test:rule-honesty` **28/28**, proven **RED (6 failures)**, and re-proven **RED (2 failures) with the corrected dictionary already in place** |
 | **G-7** | MEDIUM → ✅ **FIXED (2026-08-02, session 10)** | visuals · shared `Chip` | **Any `Chip` with a long label bleeds silently past its container, platform-wide.** `components/ui/chip.tsx` was `whitespace-nowrap` with a **fixed `height`** (18/21/25px per size). Both are correct for a short status pill and both are wrong for a phrase: the chip could neither wrap nor grow, so it was simply drawn outside its column with no ellipsis — and with nothing for a document-level check to notice. ✅ Fixed in the shared component: `height` → `minHeight` with `height: auto`, `whiteSpace: normal`, `max-w-full`, and the `/admin/reports` call-site opt-out **deleted** because the component now does it. ⭐ **The interesting part is how it had to be proven, because a survey CANNOT catch this and did not.** `live/s10-g7-probe.mjs` measured **84 live chips across 7 routes × 4 widths and found ZERO bleeding** — session 9 had patched the one known offender *at its call site*, so the shared component stayed broken for the next long label while everything measured clean. A latent defect has nothing to measure until someone ships the label that trips it. So the RED was produced by taking a **real chip off a real production page** and giving it a real call site's label at the real column width (`live/s10-g7-inject.mjs`, `/admin/aml` @360): **206×18 inside a 198px container — 8px outside it**, `white-space:nowrap · height:18px · max-width:none`. Re-run after the fix on production: **fits, wraps, grows.** ⚠️ **The `minHeight` swap must stay a no-op for one-line chips**, and that is now arithmetic rather than a hope — `test:chip-contract` §3 computes `fontSize × lineHeight + 2 × paddingBlock` for all six sizes and fails if any exceeds its `minHeight`, i.e. if a future edit would make **every chip on the platform** grow. | `live/s10-g7-inject.mjs` on production, before **206×18 in 198px, +8px** / after **fits**; `live/s10-g7-{before,after}.json` — 84 chips, height histogram `{18: 84}` unchanged; `npm run test:chip-contract` **14/14**, proven **RED** against the pre-fix component (10 failures) |
+
+## 6z. ⭐ E-48 — the runbook taught the wrong settlement maths, and the handoff would have failed a correct payout (2026-08-03, session 16)
+
+Session 16 opened on §6b's step ①: *check `mkt_54f75a1959cdee5f1ed8` settled after 4 Aug 03:08 EAT —
+alpha should receive **TZS 3,480***. The window had **18h 35m** left to run, so the settlement itself
+could not be checked. What could be checked was the **expectation**, and it was wrong.
+
+### The market is holding exactly as §6y left it — read off production first
+
+```
+mkt_54f75a1959cdee5f1ed8    RESOLVED · YES · settledAt = NULL
+objectionsClosedAt  2026-08-04 00:08:09.434 UTC   = 4 Aug 03:08 EAT      db now 2026-08-03 05:32 UTC
+alpha  pos_0791335a…  YES 2,000  OPEN  finalPayout NULL   wallet 57,450   WIN/LOSS notifs lifetime 2
+echo   pos_52a36301…  NO  2,000  OPEN  finalPayout NULL   wallet 25,400   WIN/LOSS notifs lifetime 2
+objections on this market … 0        ⇒ nothing will refuse the settle fire
+```
+
+That baseline is recorded here **on purpose**: tomorrow's check is a comparison against measured
+numbers, not against a memory. Expected at 00:08:09 UTC — alpha `WIN` `finalPayout 3,740`
+wallet **60,930**, echo `LOSS` `finalPayout 0` wallet **25,400 unchanged**, and **both** lifetime
+WIN/LOSS counts 2 → 3.
+
+### ⏳ Why the payout is armed, and not merely hoped for
+
+Three separate things had to be true, and each was checked rather than assumed:
+
+1. **The scheduler fires for THIS market.** Not inferred from the design comment — its own
+   `resolve` deadline already fired in production, 33 seconds after `resolutionAt`
+   (`resolutionNotifiedAt = 2026-08-03 00:00:33.675` against `resolutionAt = 00:00:00`).
+2. **A redeploy cannot lose it.** `nextDeadlineFor()` emits a `settle` deadline for
+   `(RESOLVED | VOIDED) && !settledAt && objectionsClosedAt`, and the **Prisma** `pending()` —
+   the one that actually runs on production, not the in-memory twin — selects
+   `OR [ status LIVE, status IN (RESOLVED,VOIDED) AND settledAt NULL ]`. So boot hydration
+   re-arms it. ⚠️ Worth checking precisely because the in-memory store agreeing proves nothing
+   about production.
+3. **Both players will be told.** `perEventNotificationsSuppressed()` is
+   `productLine === "UPDOWN"`, and this market is `MARKET` — so `notifyWin` (alpha) and
+   `notifyLoss` (echo) both fire. **This is the other half of E-43's control**, statically
+   established now and observable tomorrow.
+
+### 🔴 THE FINDING — the expected figure was computed with the wrong fee model
+
+`min(13% × 4,000, 33.3% × 2,000)` = 520 is **`capped-commission`**. This market's frozen
+`feeSnapshot` says **`loser-share`**, where the fee is a slice of the **losing pool only**:
+
+```
+loser-share        (3% platform + 10% operator) × the LOSING pool = 13% × 2,000 =  260  → alpha 3,740
+capped-commission  min(13% × 4,000, 33.3% × 2,000) = min(520, 666) =              520  → alpha 3,480
+                                                                    difference     260
+```
+
+Driven through the real `poolFee()` / `settledPayoutFor()` with the real snapshot, not by hand.
+⭐ **The live product had it right all along, and states it outright.** The trading officer's own
+`/admin/markets/<id>` renders *"LOSER-SHARE — the fee is a slice of the losing side · We take 13% of
+whichever side loses: TZS 260 if YES wins, TZS 260 if NO wins"*, and prints **TZS 3,740** in the
+predictor grid. **Only the documents were wrong** — the runbook Ali commissioned, and §6b's
+instruction to this session.
+
+⛔ **And that instruction was the real hazard.** Had this session asserted 3,480 tomorrow, a
+**correct** settlement would have failed and been filed as a money defect against a product that was
+right. That is §6y's pattern for the sixth time in two sessions. The rule that caught it is the same
+one: *the figure in the document is a claim, so check it against the thing that computes it.*
+
+### ⚠️ The first fix was itself false, and production said so
+
+The correction initially read *"Every live market today is `loser-share`"*. A `feeSnapshot` census on
+production:
+
+```
+LIVE, productLine = MARKET     loser-share  7      capped-commission 12   ← the majority
+CLOSED, productLine = MARKET   loser-share  1      capped-commission  1
+```
+
+**12 of the 19 open long-form polls settle at `capped-commission`.** A runbook asserting uniformity
+would have sent an officer to the wrong maths on most of the board — the same error one layer up.
+The shipped caution says **never assume, read it off that market's own page**, puts both models'
+fees and payouts in a comparison table, and adds **`m21-fee-model.png`** (shot as the TRADING
+officer, per the runbook's own standard) showing where the platform states it.
+
+### The guard, and the RED it was proven against
+
+`npm run test:settlement-expectation` — **31 assertions**. §4 parses the figure out of the runbook's
+**claim sentence** and compares it to what `settledPayoutFor()` returns; §5 does the same to §6b's
+resume line. `node scripts/settlement-expectation-red.mjs` reintroduces eight real defects one at a
+time in the real source:
+
+```
+✓ RED  runbook-wrong-payout          1 failed   (E-48 exactly as it shipped)
+✓ RED  handoff-wrong-payout          1 failed   (the false-defect trap)
+✓ RED  model-unnamed                 1 failed
+✓ RED  caution-gone                  1 failed
+✓ RED  caution-claims-uniformity     4 failed   (the false first fix)
+✓ RED  caution-drops-the-comparison  2 failed
+✓ RED  code-charges-whole-pool       THREW: WINNER FLOOR BREACHED … Refusing to settle
+✓ RED  no-mix-broken                 1 failed   (pre-23-July money reprices)
+8/8 · tree restored, guard GREEN
+```
+
+⭐ **`code-charges-whole-pool` is the one that matters**: it mutates the **code**, and §4 fails
+because the runbook's figure no longer matches what the code computes. That is what makes this a
+test *of* the coupling rather than a pattern match on a number. It also surfaced a genuine
+reassurance — charging loser-share on the whole pool does not merely mis-pay, it **breaches the
+winner floor** and `assertWinnerFloor` refuses to settle.
+
+📌 **Three smaller things fixed in the same pass, each of which had already produced a wrong result:**
+· `bodyText()` was read after `load` on `/admin/markets/[id]`, which suspends and renders a
+dial-shaped spinner — the first run got the **empty string** and scored a green product as **four
+money defects**. It now waits for a positive signal. · The RED harness's `caution-gone` anchor
+included a trailing `.` that the rewrite removed; because a missed anchor is a **hard failure** here
+and not a skip, it announced itself instead of silently testing nothing (§6x's CRLF lesson, applied).
+· A `.note.stop` extraction took the **first** of five such boxes in the runbook and reported this
+section missing — it now selects the box by what it says.
+
+📌 **Tracker hygiene:** **E-46 was filed twice**, once `🟡 OPEN` and once `✅ FIXED`, so a session
+reading top-down could have acted on the stale row. The original filing is now marked closed and
+kept for its RED measurement.
 
 ## 6y. ⭐ A REAL MARKET, CREATED AND RESOLVED ON PRODUCTION — and the near-miss that matters more (2026-08-03, session 15)
 
@@ -3306,7 +3423,10 @@ Objections as *"regulator-grade financial data"*, the same sentence it gives eve
 English only, and it cites `roles.ts` to an operator.
 
 ⏭️ **RESUME AT:** ① **check `mkt_54f75a1959cdee5f1ed8` settled** after 4 Aug 03:08 EAT — alpha should
-receive **TZS 3,480**, echo 0, and **both must be notified** (the other half of E-43's control).
+receive **TZS 3,740** (fee 260 = 13% of the *losing* pool; the **3,480** this line used to say was
+the capped-commission figure and would have failed a correct payout — **E-48**), echo 0, and
+**both must be notified** (the other half of E-43's control). Run
+`node scripts/live-settlement-check.mjs mkt_54f75a1959cdee5f1ed8`.
 ② **E-47**, Ali's call: should the AI propose only framing/duration/margin and take the price from
 the feed? ③ **E-45**, backfill a late-confirmed observation into the round that opened on it — fixes
 SOL, recovers ~19% of BTC readings. ④ **E-33** DSAR wiring (policy already decided). ⑤ **E-34 +
