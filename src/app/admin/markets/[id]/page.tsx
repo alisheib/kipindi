@@ -107,13 +107,22 @@ export default async function MarketPredictorsPage({
   // The outcome, if there is one. Needed BEFORE the sort: once a market has
   // resolved, a losing position is worth 0, and the column must sort by the
   // figure it actually shows (E-49).
-  const resolvedSide = m.resolvedOutcome === "YES" || m.resolvedOutcome === "NO" ? m.resolvedOutcome : undefined;
+  // ⛔ VOID BELONGS IN HERE (E-56). This line read `=== "YES" || === "NO"`, so a VOIDED
+  // market produced `undefined` — indistinguishable from a market still trading — and
+  // every row kept quoting its win payout while the pool was being refunded.
+  const outcome = m.resolvedOutcome === "YES" || m.resolvedOutcome === "NO" || m.resolvedOutcome === "VOID"
+    ? m.resolvedOutcome
+    : undefined;
+  // ⚠️ The FEE needs the winning side, and a void has none. `poolFee` prices loser-share
+  // off whichever side lost, so "VOID" must not reach it — these are two different
+  // questions and collapsing them into one variable is what made E-56 possible.
+  const resolvedSide = outcome === "VOID" ? undefined : outcome;
 
   // Sort
   const { sort, dir } = parseSort(sp, ["stake", "payout", "placed", "side", "status"] as const, "placed", "desc");
   const sorted = applySort(filtered, sort, dir, {
     stake:   (p) => p.stake,
-    payout:  (p) => payoutViewFor(p, resolvedSide).amount ?? 0,
+    payout:  (p) => payoutViewFor(p, outcome).amount ?? 0,
     placed:  (p) => p.placedAt,
     side:    (p) => p.side,
     status:  (p) => p.status,
@@ -355,7 +364,7 @@ export default async function MarketPredictorsPage({
                   const label = u ? displayLabel(u) : p.userId;
                   const initials = u ? displayInitials(u) : "?";
                   const isAutoHandle = !((u?.displayName ?? "").trim().length > 0);
-                  const payout = payoutViewFor(p, resolvedSide);
+                  const payout = payoutViewFor(p, outcome);
                   return (
                     <tr key={p.id}>
                       <td className="font-mono text-[10px] tracking-[0.04em] text-text-muted tabular-nums whitespace-nowrap">{p.id}</td>
@@ -382,10 +391,14 @@ export default async function MarketPredictorsPage({
                           <span className={payout.kind === "final" && p.status === "WIN" ? "text-yes-300" : "text-text-muted"}>
                             {formatTzs(payout.amount ?? 0)}
                             {/* Until settlement the winning side's figure is still a
-                                projection, and the losing side's is already nothing.
-                                Say which, rather than let both read as "Payout". */}
-                            {resolvedSide !== undefined && payout.kind === "projected" && (
+                                projection, the losing side's is already nothing, and on a
+                                void every side is getting its stake back. Say which, rather
+                                than let three different meanings all read as "Payout". */}
+                            {outcome !== undefined && payout.kind === "projected" && (
                               <span className="ml-1.5 text-micro font-sans text-text-tertiary">projected</span>
+                            )}
+                            {payout.kind === "refund" && (
+                              <span className="ml-1.5 text-micro font-sans text-text-tertiary">refund</span>
                             )}
                           </span>
                         )}

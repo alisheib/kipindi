@@ -37,8 +37,8 @@ function ok(name: string, cond: boolean, detail = "") {
 const PAGE = readFileSync(new URL("../src/app/admin/markets/[id]/page.tsx", import.meta.url), "utf8");
 
 // The two real rows on mkt_54f75a1959cdee5f1ed8: 2,000 YES (alpha) v 2,000 NO (echo).
-const ALPHA = { status: "OPEN", side: "YES" as const, potentialPayout: 3_740, finalPayout: null };
-const ECHO  = { status: "OPEN", side: "NO"  as const, potentialPayout: 3_740, finalPayout: null };
+const ALPHA = { status: "OPEN", side: "YES" as const, stake: 2_000, potentialPayout: 3_740, finalPayout: null };
+const ECHO  = { status: "OPEN", side: "NO"  as const, stake: 2_000, potentialPayout: 3_740, finalPayout: null };
 
 // ── §1 · while the market is still trading, both sides are honest projections ───
 {
@@ -90,11 +90,34 @@ const ECHO  = { status: "OPEN", side: "NO"  as const, potentialPayout: 3_740, fi
 
   // The sort accessor must price rows the way the cell renders them.
   ok("§4 the SORT accessor goes through it",
-     /payout:\s*\(p\)\s*=>\s*payoutViewFor\(p, resolvedSide\)/.test(PAGE));
+     /payout:\s*\(p\)\s*=>\s*payoutViewFor\(p, outcome\)/.test(PAGE));
 
   // The cell must too.
   ok("§4 the CELL goes through it",
-     /const payout = payoutViewFor\(p, resolvedSide\)/.test(PAGE));
+     /const payout = payoutViewFor\(p, outcome\)/.test(PAGE));
+
+  // ⭐ E-56: BOTH consumers must be handed the variable that carries VOID. Passing
+  // `resolvedSide` here type-checks, renders, and silently drops the void case — which is
+  // exactly how twelve real positions came to quote a payout while being refunded.
+  ok("§4 ⭐ neither consumer is passed the VOID-stripped variable",
+     !/payoutViewFor\(p, resolvedSide\)/.test(PAGE));
+  // …and `resolvedSide` must stay VOID-free, because `poolFee` prices loser-share off the
+  // losing side and a void has none.
+  ok("§4 resolvedSide is derived by stripping VOID, not by re-testing the outcome",
+     /const resolvedSide = outcome === "VOID" \? undefined : outcome/.test(PAGE));
+
+  // ⭐⭐ THE ASSERTION THIS SUITE WAS MISSING, AND THE REASON E-56 SHIPPED.
+  // Every check above tests the PLUMBING — that `outcome` is computed once, early, and
+  // handed to both consumers. All of it stayed true while `outcome` was defined as
+  // `YES || NO` and silently dropped the void. The RED harness proved it: mutating the
+  // call site back to the code that actually shipped left this suite GREEN.
+  // So assert what the variable CARRIES, not merely that it is passed.
+  const decl = PAGE.slice(PAGE.indexOf("const outcome ="), PAGE.indexOf("const resolvedSide ="));
+  ok("§4 ⭐ the outcome variable actually tests for VOID", /m\.resolvedOutcome === "VOID"/.test(decl),
+     `declaration does not mention VOID: ${decl.slice(0, 160)}`);
+  for (const side of ["YES", "NO"] as const) {
+    ok(`§4 …and still tests for ${side}`, new RegExp(`m\\.resolvedOutcome === "${side}"`).test(decl));
+  }
 
   // ⭐ The counterfactual expression itself must be GONE from both. This is the assertion
   // that fails on a revert, and it names the exact shape rather than a word near it.
@@ -103,16 +126,51 @@ const ECHO  = { status: "OPEN", side: "NO"  as const, potentialPayout: 3_740, fi
   ok("§4 ⭐ the old sort expression finalPayout ?? potentialPayout is gone",
      !/p\.finalPayout \?\? p\.potentialPayout/.test(PAGE));
 
-  // resolvedSide must be computed BEFORE the sort, or the accessor reads a TDZ binding.
-  const iResolved = PAGE.indexOf("const resolvedSide =");
+  // `outcome` must be computed BEFORE the sort, or the accessor reads a TDZ binding.
+  const iResolved = PAGE.indexOf("const outcome =");
   const iSort = PAGE.indexOf("const sorted = applySort");
-  ok("§4 resolvedSide is declared before the sort uses it", iResolved > 0 && iResolved < iSort,
-     `resolvedSide@${iResolved} sort@${iSort}`);
-  ok("§4 …and is declared exactly once", PAGE.split("const resolvedSide =").length - 1 === 1,
-     `found ${PAGE.split("const resolvedSide =").length - 1}`);
+  ok("§4 outcome is declared before the sort uses it", iResolved > 0 && iResolved < iSort,
+     `outcome@${iResolved} sort@${iSort}`);
+  ok("§4 …and is declared exactly once", PAGE.split("const outcome =").length - 1 === 1,
+     `found ${PAGE.split("const outcome =").length - 1}`);
 
   // The winner's pre-settlement figure must be marked, or it reads as money already paid.
   ok("§4 the projected figure is labelled on a resolved market", /projected/.test(PAGE));
+  // …and a refund must say so, or it reads as winnings (E-56).
+  ok("§4 the refunded figure is labelled on a voided market", /"refund"/.test(PAGE) && /refund<\/span>/.test(PAGE));
+}
+
+// ── §6 · ⛔ E-56 · A VOIDED MARKET PAYS THE STAKE BACK, AND SAYS SO ─────────────
+//
+// Found by LOOKING at a production screenshot minutes after the E-49 fix deployed:
+// `mkt_8c885478d7361c79bdf3`, header `VOIDED · → VOID`, and all four rows still quoting
+// 4,628 / 6,611 / 16,745 / 6,611 under "PAYOUT" while every one of them was being refunded
+// its stake. The E-49 fix handled two of the three terminal outcomes; VOID fell through the
+// `undefined` branch, indistinguishable from a market still trading.
+{
+  const rows = [
+    { ...ALPHA, stake: 5_000, potentialPayout: 16_745 },
+    { ...ECHO,  stake: 3_500, potentialPayout: 4_628 },
+  ];
+
+  for (const r of rows) {
+    const v = payoutViewFor(r, "VOID");
+    ok(`§6 a voided ${r.side} row is priced at its STAKE (${r.stake}), not its win figure`,
+       v.amount === r.stake, `got ${v.amount} for a ${r.stake} stake`);
+    ok(`§6 …and it is not still quoting ${r.potentialPayout}`, v.amount !== r.potentialPayout);
+    ok(`§6 …and it is labelled a refund, not a projection`, v.kind === "refund", `kind=${v.kind}`);
+  }
+
+  // ⭐ THE ASYMMETRY THAT MADE THE BUG. Both sides of a void are treated identically —
+  // there is no winner to be right about — whereas a YES/NO outcome splits them.
+  const yesV = payoutViewFor({ ...ALPHA, stake: 5_000 }, "VOID");
+  const noV  = payoutViewFor({ ...ECHO,  stake: 5_000 }, "VOID");
+  ok("§6 a void treats both sides the same", yesV.kind === noV.kind && yesV.amount === noV.amount);
+  ok("§6 …while YES/NO does not", payoutViewFor(ALPHA, "YES").kind !== payoutViewFor(ECHO, "YES").kind);
+
+  // A void that has already settled shows the real figure, like any settled row.
+  const settled = payoutViewFor({ ...ECHO, status: "VOID", stake: 3_500, finalPayout: 3_500 }, "VOID");
+  ok("§6 a SETTLED voided row shows the recorded figure", settled.kind === "final" && settled.amount === 3_500);
 }
 
 // ── §5 · the figure is the one settlement will actually pay ────────────────────

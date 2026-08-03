@@ -564,6 +564,8 @@ export type PayoutViewKind =
   | "projected"
   /** The market has resolved against this side. It receives nothing. */
   | "none"
+  /** The market VOIDED. `amount` is the stake, coming back in full. */
+  | "refund"
   /** Settled, but no figure was recorded — show nothing rather than guess. */
   | "unknown";
 
@@ -573,9 +575,21 @@ export interface PayoutView {
   amount: number | null;
 }
 
+/**
+ * The market's terminal answer, as this view needs it. `undefined` = still undecided.
+ *
+ * ⛔ VOID IS AN OUTCOME. E-56: the first cut of this took `Side | undefined`, so a
+ * VOIDED market had no way to say so and fell through the `undefined` branch as
+ * "still projected". On production that put a payout on all twelve positions of two
+ * markets that had just been voided — one row quoting TZS 16,745 to a player who was
+ * being refunded a 5,000 stake. The E-49 fix covered two of the three terminal states
+ * and the third was the one live on the page.
+ */
+export type PayoutOutcome = Side | "VOID";
+
 export function payoutViewFor(
-  position: { status: string; side: Side; potentialPayout: number; finalPayout?: number | null },
-  resolvedSide: Side | undefined,
+  position: { status: string; side: Side; stake: number; potentialPayout: number; finalPayout?: number | null },
+  outcome: PayoutOutcome | undefined,
 ): PayoutView {
   if (position.status !== "OPEN") {
     return position.finalPayout == null
@@ -583,8 +597,11 @@ export function payoutViewFor(
       : { kind: "final", amount: position.finalPayout };
   }
   // Still OPEN. Only an outcome can turn a projection into a counterfactual.
-  if (resolvedSide === undefined) return { kind: "projected", amount: position.potentialPayout };
-  return position.side === resolvedSide
+  if (outcome === undefined) return { kind: "projected", amount: position.potentialPayout };
+  // A void pays every side the same thing: the stake, whole. Neither a projection
+  // (nothing is being predicted any more) nor nothing (the money is coming back).
+  if (outcome === "VOID") return { kind: "refund", amount: position.stake };
+  return position.side === outcome
     ? { kind: "projected", amount: position.potentialPayout }
     : { kind: "none", amount: 0 };
 }

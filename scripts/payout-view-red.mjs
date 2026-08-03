@@ -28,25 +28,47 @@ const MUTATIONS = [
     name: "cell-shows-counterfactual",
     why: "the cell prices every OPEN row at payoutIfWin, so the loser reads the winner's figure",
     file: PAGE,
-    from: "const payout = payoutViewFor(p, resolvedSide);",
+    from: "const payout = payoutViewFor(p, outcome);",
     to: 'const payout = p.status === "OPEN" ? { kind: "projected", amount: p.potentialPayout } : { kind: "final", amount: p.finalPayout ?? 0 };',
   },
   {
     name: "sort-uses-old-expression",
     why: "the sort accessor drifts back to its own copy of the expression",
     file: PAGE,
-    from: "payout:  (p) => payoutViewFor(p, resolvedSide).amount ?? 0,",
+    from: "payout:  (p) => payoutViewFor(p, outcome).amount ?? 0,",
     to: "payout:  (p) => p.finalPayout ?? p.potentialPayout,",
   },
   {
     name: "helper-ignores-the-outcome",
     why: "payoutViewFor stops distinguishing the losing side once the market resolves",
     file: LIB,
-    from: `  if (resolvedSide === undefined) return { kind: "projected", amount: position.potentialPayout };
-  return position.side === resolvedSide
+    from: `  if (outcome === undefined) return { kind: "projected", amount: position.potentialPayout };
+  // A void pays every side the same thing: the stake, whole. Neither a projection
+  // (nothing is being predicted any more) nor nothing (the money is coming back).
+  if (outcome === "VOID") return { kind: "refund", amount: position.stake };
+  return position.side === outcome
     ? { kind: "projected", amount: position.potentialPayout }
     : { kind: "none", amount: 0 };`,
     to: `  return { kind: "projected", amount: position.potentialPayout };`,
+  },
+  {
+    // ⭐ E-56, THE CODE THAT ACTUALLY SHIPPED. This is not a hypothetical mutation: it is
+    // verbatim the line the E-49 fix went live with, and it put a payout figure on twelve
+    // real positions across two markets that had just been voided.
+    name: "call-site-drops-VOID",
+    why: "the page treats only YES/NO as an outcome, so a VOIDED market reads as still trading",
+    file: PAGE,
+    from: `  const outcome = m.resolvedOutcome === "YES" || m.resolvedOutcome === "NO" || m.resolvedOutcome === "VOID"
+    ? m.resolvedOutcome
+    : undefined;`,
+    to: `  const outcome = m.resolvedOutcome === "YES" || m.resolvedOutcome === "NO" ? m.resolvedOutcome : undefined;`,
+  },
+  {
+    name: "helper-treats-a-void-as-a-projection",
+    why: "payoutViewFor stops refunding the stake on a void and quotes the win figure again",
+    file: LIB,
+    from: `  if (outcome === "VOID") return { kind: "refund", amount: position.stake };`,
+    to: `  if (outcome === "VOID") return { kind: "projected", amount: position.potentialPayout };`,
   },
 ];
 
