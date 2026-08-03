@@ -12,7 +12,13 @@
  * query itself rather than trusting the driver.
  */
 const { readFileSync } = require("node:fs");
-const { Client } = require("C:/kipindi-main/node_modules/pg");
+// ⚠️ Resolve `pg` the ordinary way — from THIS file's directory upward. This line used to
+// hardcode `C:/kipindi-main/node_modules/pg`, which is one machine's checkout path, so the
+// runner threw MODULE_NOT_FOUND on the other laptop (the repo lives at `F:\kipindi-main`
+// there) and the DB half of every live claim was simply unavailable. A campaign whose first
+// rule is "pair the DOM against the database" cannot have its database reader pinned to one
+// machine. Plain `require` walks up to the repo's own node_modules on either.
+const { Client } = require("pg");
 
 const file = process.argv[2];
 if (!file) { console.error("usage: node scripts/live/q.cjs <sql-file>"); process.exit(2); }
