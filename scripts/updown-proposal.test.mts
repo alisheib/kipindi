@@ -12,18 +12,29 @@
  *   2. an APPROVAL SURVIVING AN EDIT that changes the terms it was granted for;
  *   3. arming on a link that is NOT on the operator's allowlist, or whose stated domain is
  *      not the link's own host — which would make every reading look like a mismatch;
- *   4. arming on a page NO PRICE WAS EVER READ FROM, which is the single most likely real
- *      failure: most price pages render in JavaScript and yield nothing (measured);
+ *   4. arming on a source NO PRICE CAN BE READ FROM, which is the single most likely real
+ *      failure — and it is now measured against the PLATFORM'S OWN feed read rather than
+ *      against what the AI claimed to have seen (E-47b, below);
  *   5. an arm path that writes chains or assets DIRECTLY, bypassing the source lock and the
  *      other refusals the console depends on;
  *   6. generating while the operator has AI switched off, or spending past the budget.
  *
  * §7 is the one that matters most for money: arming through the REAL service functions means
  * the source lock applies, so a proposal cannot move a source out from under a live round.
+ *
+ * ── ⭐ E-47b RESHAPED §1, AND THE RESHAPE IS THE POINT (Ali's decision, 2026-08-03) ────────
+ * This suite used to assert that a proposal lands FILTERED because no price was read. That was
+ * true of the real provider too — 12 production generations, 0 that ever read a price, $2.68
+ * spent — because the approved domain is a keyed JSON API the AI cannot read and the HTML
+ * alternative renders in JavaScript (E-16/E-25). The AI no longer reads prices: the platform
+ * does, through the money path's own `readPrice()`. So §1 now asserts the opposite — a working
+ * asset reaches PENDING_REVIEW directly — and §1b asserts the property that makes the change
+ * worth having: an unreadable source is refused BEFORE any credit is spent, for $0.00.
  */
 process.env.SESSION_SECRET ??= "test-only-session-secret-32chars-min-aaaa";
-// No key ⇒ getAIProvider() returns the MOCK provider, whose proposal deliberately carries NO
-// readability evidence. That is the honest default and §4 depends on it.
+// No key ⇒ getAIProvider() returns the MOCK provider, which supplies framing only — the price
+// on every proposal below comes from the mock PRICE FEED (config default `feedProvider: "mock"`,
+// which refuses outright in production and is deterministic here).
 delete process.env.ANTHROPIC_API_KEY;
 
 import { __resetUpDownMemoryStores, roundStore } from "../src/lib/server/updown-dal.ts";
@@ -41,6 +52,7 @@ import { openRound } from "../src/lib/server/updown-service.ts";
 import { marketStore } from "../src/lib/server/market-dal.ts";
 import { buyPosition } from "../src/lib/server/market-service.ts";
 import { addSource, seedDefaultSources } from "../src/lib/server/source-registry.ts";
+import { findSymbol, QUOTE_ENDPOINT, QUOTE_DOMAIN } from "../src/lib/server/updown-symbols.ts";
 import { setPollGenEnabled } from "../src/lib/server/ai-controls.ts";
 import { db } from "../src/lib/server/store.ts";
 
@@ -56,6 +68,11 @@ __resetProposalsForTest();
 await seedDefaultSources();
 await addSource({ domain: "kitco.com", label: "Kitco", category: "macro", rationale: "spot metals", addedBy: "system" });
 await addSource({ domain: "goldprice.org", label: "GoldPrice", category: "macro", rationale: "spot gold", addedBy: "system" });
+// E-47b — the fixtures are crypto now (see FIXTURE_SYMBOLS), and the platform reads their
+// price from the real quote endpoint, so that host has to be trusted IN THAT CATEGORY. This is
+// the production shape: every live asset is `api.twelvedata.com/quote`. `coingecko.com` is
+// already a seeded crypto source and is what §4/§7 move TO, so a link change stays trusted.
+await addSource({ domain: QUOTE_DOMAIN, label: "Twelve Data", category: "crypto", rationale: "metered quote API — the live price feed", addedBy: "system" });
 
 let seq = 0;
 async function fundedUser(id: string, balance: number): Promise<string> {
@@ -74,10 +91,45 @@ async function fundedUser(id: string, balance: number): Promise<string> {
   return id;
 }
 
-async function makeAsset(key: string, url: string): Promise<string> {
+/**
+ * The symbols the fixtures use, cycled so each test still gets its OWN asset row.
+ *
+ * ⚠️ CRYPTO, AND THAT IS NOT A PREFERENCE. Two separate traps make it the only safe choice:
+ *
+ *  1 · E-46's `validateSymbolCategory` is a SERVER-SIDE gate on every asset write, so an
+ *      invented symbol is refused outright. This suite used to build `${key}/USD` out of
+ *      three-letter labels — `PLT/USD`, `CPR/USD`, `OIL/USD`, none of them catalogued — and
+ *      had therefore been RED on every tree since session 14, dying at §3. (The same defect
+ *      class session 15 found in `test:updown-engine`.) Everything now comes from
+ *      `findSymbol()`, so the fixture cannot disagree with the platform again.
+ *  2 · E-47b made `generateProposal` read a real price, which runs E-36's TRADING CALENDAR
+ *      gate. A `macro` asset is SHUT from Fri 21:00 to Sun 22:00 UTC, so macro fixtures would
+ *      make this suite pass on a Tuesday and fail on a Saturday. Crypto is 24/7.
+ *
+ * The KEY stays per-test and unique (it is ours, and only the key must be unique); the SYMBOL
+ * repeats once the six run out, which is fine — two assets may track one instrument.
+ */
+const FIXTURE_SYMBOLS = ["BTC/USD", "ETH/USD", "SOL/USD", "XRP/USD", "BNB/USD", "LTC/USD"] as const;
+let symbolIdx = 0;
+
+/**
+ * A DIFFERENT page that is still trusted in the fixtures' category — what §4 and §7 move to.
+ * ⚠️ It has to be trusted, or those sections would fail on `source_not_trusted` and stop
+ * testing the thing they are named after. `coingecko.com` is a seeded crypto source.
+ * ⛔ It is also, deliberately, a page the Twelve Data reader could NOT quote in production —
+ * which is exactly why moving a source must clear the reading (E-46's `ETH`-on-coingecko).
+ */
+const COINGECKO_PAGE = "https://www.coingecko.com/en/coins/bitcoin";
+
+async function makeAsset(key: string): Promise<string> {
+  const spec = findSymbol(FIXTURE_SYMBOLS[symbolIdx++ % FIXTURE_SYMBOLS.length]);
+  if (!spec) throw new Error("fixture symbol is not in the catalogue");
   const a = await createAsset({
-    key, symbol: `${key}/USD`, nameEn: key, nameSw: key, iconKey: "gold",
-    priceSourceUrl: url, category: "macro", decimals: 2, minMoveTicks: 1,
+    key, symbol: spec.symbol, nameEn: spec.nameEn, nameSw: spec.nameSw, iconKey: spec.iconKey,
+    // The endpoint every real asset uses. `category`/`decimals` come from the catalogue too,
+    // because those three are the fields that must agree (E-46).
+    priceSourceUrl: QUOTE_ENDPOINT, category: spec.category,
+    decimals: spec.decimals, minMoveTicks: spec.minMoveTicks,
   }, OFFICER);
   if (!a.ok) throw new Error(`createAsset ${key}: ${a.error}`);
   const en = await setAssetEnabled(a.data.id, true, OFFICER);
@@ -85,19 +137,28 @@ async function makeAsset(key: string, url: string): Promise<string> {
   return a.data.id;
 }
 
-/** A proposal with full, valid evidence — the state the AI reaches on a page that works. */
-async function readableProposal(assetId: string, url: string, duration: 5 | 15 | 30 = 15): Promise<StoredProposal> {
+/**
+ * A proposal in the reviewable state.
+ *
+ * ⭐ E-47b: with no `urlOverride` this is just `generateProposal` — the PLATFORM reads the
+ * price from the asset's feed, so a working asset reaches PENDING_REVIEW directly. Under the
+ * old model the mock AI reported no evidence and the suite had to inject some.
+ *
+ * `urlOverride` is the officer-moves-the-link case §7 needs. Editing the link deliberately
+ * clears the reading (§4 — it belonged to the old link), and nothing can re-take one for a
+ * link that is not the asset's own, so the evidence is written directly here. ⚠️ That is not
+ * merely a test shortcut: it is **E-50**, a real dead end on the live console — an officer can
+ * edit the source, which permanently blocks arming, with no way back but regenerating.
+ */
+async function readableProposal(assetId: string, urlOverride?: string, duration: 5 | 15 | 30 = 15): Promise<StoredProposal> {
   const g = await generateProposal({ assetId, durationMinutes: duration, actorId: OFFICER });
   if (!g.ok) throw new Error(`generate: ${g.error}`);
-  // The mock provider reports NO evidence (honestly — it fetched nothing). Supply it through
-  // the real edit path so the proposal reaches a reviewable state the way an officer would.
-  const e = await editProposal(g.data.id, { sourceUrl: url }, OFFICER);
+  if (!urlOverride) return g.data;
+
+  const e = await editProposal(g.data.id, { sourceUrl: urlOverride }, OFFICER);
   if (!e.ok) throw new Error(`edit: ${e.error}`);
   const p = await getProposal(g.data.id);
   if (!p) throw new Error("proposal vanished");
-  // Evidence is what the PROVIDER reports; there is no officer-facing field for it, by design
-  // (an officer must not be able to type in a price nobody read). The suite writes it directly
-  // to reach the state a working page produces — this is the one place that is legitimate.
   p.observedPrice = 2650.4;
   p.observedQuotedAt = new Date().toISOString();
   const re = await editProposal(p.id, {}, OFFICER);   // re-validate through the real path
@@ -105,30 +166,71 @@ async function readableProposal(assetId: string, url: string, duration: 5 | 15 |
   return re.data;
 }
 
-// ── 1 · The mock provider is honest: no fetch ⇒ no evidence ⇒ FILTERED ───────
-console.log("\n── 1 · a proposal with no readability evidence cannot be reviewed ──");
+// ── 1 · E-47b · THE PLATFORM READS THE PRICE, AND AN UNREADABLE FEED IS FREE ──
+console.log("\n── 1 · the price comes from the feed, not from the AI ──");
 {
-  const assetId = await makeAsset("XAU", "https://www.kitco.com/price/precious-metals");
+  // ⭐ THIS SECTION IS THE INVERSE OF WHAT IT USED TO ASSERT, and the inversion IS the fix.
+  // It used to prove that the mock AI honestly reported no price, so every proposal landed
+  // FILTERED as `source_unreadable` — which was true of the REAL provider too: 12 production
+  // generations, 0 that ever read a price, $2.68 spent. A queue where nothing can ever be
+  // approved is not a gate, it is a dead end. Ali chose option (b) on 2026-08-03: the AI
+  // proposes framing and margin, the PLATFORM reads the price through the money path.
+  const assetId = await makeAsset("BTCP");
   const g = await generateProposal({ assetId, durationMinutes: 15, actorId: OFFICER });
   ok("generation succeeds", g.ok, g.ok ? "" : g.error);
   if (g.ok) {
-    ok("⛔ it lands in FILTERED, not PENDING_REVIEW", g.data.state === "FILTERED", `got ${g.data.state}`);
-    ok("…because no price was read from the page", g.data.filterReasons.includes("source_unreadable"),
-      `reasons: ${g.data.filterReasons.join(",")}`);
-    ok("the mock reported NULL rather than inventing a price", g.data.observedPrice === null);
-    ok("…and NULL rather than substituting the current time", g.data.observedQuotedAt === null);
-    ok("the officer sees WHY, as indicators", g.data.qualityIndicators.some((i) => i.status === "bad"));
-    ok("spend was metered even though the proposal is unusable", g.data.costUsd > 0,
-      "a refused generation still cost money and must appear in the readout");
+    ok("⭐ it reaches PENDING_REVIEW straight from generation", g.data.state === "PENDING_REVIEW",
+      `got ${g.data.state} — reasons: ${g.data.filterReasons.join(",")}`);
+    ok("…with a price the PLATFORM read", g.data.observedPrice !== null && g.data.observedPrice > 0,
+      `observedPrice ${g.data.observedPrice}`);
+    ok("…and the feed's own quote time", !!g.data.observedQuotedAt);
+    ok("the source is the ASSET'S approved source, not one the AI chose",
+      g.data.sourceUrl === QUOTE_ENDPOINT, `got ${g.data.sourceUrl}`);
+    ok("…and its domain matches", g.data.sourceDomain === QUOTE_DOMAIN, `got ${g.data.sourceDomain}`);
+    ok("the AI still supplies the framing", g.data.framingEn.length > 0 && g.data.framingSw.length > 0);
+    ok("…and a margin, defaulted to the E-32 schedule", g.data.marginBps > 0);
+    ok("the officer sees the reading as a good indicator",
+      g.data.qualityIndicators.some((i) => i.status === "good" && /live quote/i.test(i.label)),
+      g.data.qualityIndicators.map((i) => `${i.status}:${i.label}`).join(" | "));
   }
+}
+
+// ── 1b · ⛔ An unreadable source costs NOTHING, because the AI is never called ──
+console.log("\n── 1b · a broken source is refused before a credit is spent ──");
+{
+  __resetProposalsForTest();
+  const assetId = await makeAsset("BROKE");
+  // Select a real provider with no key. `feedFromId` deliberately does NOT downgrade to the
+  // mock — inventing a price on a money path is the worst thing it could do — so it refuses.
+  await setUpDownConfig({ feedProvider: "twelvedata" }, OFFICER);
+  const g = await generateProposal({ assetId, durationMinutes: 15, actorId: OFFICER });
+  ok("⛔ generation is REFUSED, not filtered-after-the-fact", !g.ok, g.ok ? "it succeeded" : "");
+  if (!g.ok) {
+    ok("…and it says no credit was spent", /no ai credit was spent/i.test(g.error), g.error);
+    ok("…and names the source as the thing to fix", /source/i.test(g.error), g.error);
+  }
+  // The row still exists so the attempt is visible in the queue — refused, not vanished.
+  const rows = await listProposals({ assetId });
+  ok("the attempt is recorded", rows.length === 1, `${rows.length} rows`);
+  if (rows[0]) {
+    ok("…as FILTERED", rows[0].state === "FILTERED", rows[0].state);
+    ok("…for source_unreadable", rows[0].filterReasons.includes("source_unreadable"),
+      rows[0].filterReasons.join(","));
+    ok("⭐⭐ …and it cost ZERO — the old path spent ~$0.16 to learn this",
+      rows[0].costUsd === 0 && rows[0].tokensUsed === 0,
+      `costUsd ${rows[0].costUsd}, tokens ${rows[0].tokensUsed}`);
+    ok("…and the reasoning explains it in the feed's own words",
+      /could not|refused|not configured/i.test(rows[0].reasoning), rows[0].reasoning.slice(0, 120));
+  }
+  await setUpDownConfig({ feedProvider: "mock" }, OFFICER);   // restore for the rest of the suite
 }
 
 // ── 2 · The officer gate: only APPROVED may arm ──────────────────────────────
 console.log("\n── 2 · ⛔ nothing arms without an officer ──");
 {
   __resetProposalsForTest();
-  const assetId = await makeAsset("XAG", "https://www.kitco.com/price/precious-metals/silver");
-  const p = await readableProposal(assetId, "https://www.kitco.com/price/precious-metals/silver");
+  const assetId = await makeAsset("XAG");
+  const p = await readableProposal(assetId);
   ok("a readable proposal reaches PENDING_REVIEW", p.state === "PENDING_REVIEW", `got ${p.state}`);
 
   const armedTooEarly = await armProposal(p.id, { officerId: OFFICER });
@@ -167,8 +269,8 @@ console.log("\n── 2 · ⛔ nothing arms without an officer ──");
 console.log("\n── 3 · an approval is for SPECIFIC terms ──");
 {
   __resetProposalsForTest();
-  const assetId = await makeAsset("PLT", "https://www.kitco.com/price/precious-metals/platinum");
-  const p = await readableProposal(assetId, "https://www.kitco.com/price/precious-metals/platinum");
+  const assetId = await makeAsset("PLT");
+  const p = await readableProposal(assetId);
   await approveProposal(p.id, { officerId: OFFICER });
 
   // Edit the link to something NOT on the allowlist. The approval must not carry over.
@@ -190,12 +292,12 @@ console.log("\n── 3 · an approval is for SPECIFIC terms ──");
 console.log("\n── 4 · evidence belongs to the link it was read from ──");
 {
   __resetProposalsForTest();
-  const assetId = await makeAsset("CPR", "https://www.kitco.com/price/base-metals/copper");
-  const p = await readableProposal(assetId, "https://www.kitco.com/price/base-metals/copper");
+  const assetId = await makeAsset("CPR");
+  const p = await readableProposal(assetId);
   ok("evidence is present before the edit", p.observedPrice !== null && p.observedQuotedAt !== null);
 
   // Move to a DIFFERENT trusted page. The AI read the old one; the evidence does not transfer.
-  const moved = await editProposal(p.id, { sourceUrl: "https://goldprice.org/live-gold-price.html" }, OFFICER);
+  const moved = await editProposal(p.id, { sourceUrl: COINGECKO_PAGE }, OFFICER);
   ok("the edit is accepted", moved.ok, moved.ok ? "" : moved.error);
   ok("⛔ the observed price is CLEARED", moved.ok && moved.data.observedPrice === null,
     "carrying it over would show a reassuring number belonging to a different URL");
@@ -211,9 +313,17 @@ console.log("\n── 4 · evidence belongs to the link it was read from ──"
 console.log("\n── 5 · approve re-validates (a crafted POST does not win) ──");
 {
   __resetProposalsForTest();
-  const assetId = await makeAsset("OIL", "https://www.kitco.com/price/energy");
+  const assetId = await makeAsset("OIL");
   const g = await generateProposal({ assetId, durationMinutes: 5, actorId: OFFICER });
-  ok("the proposal is FILTERED (no evidence, from the mock)", g.ok && g.data.state === "FILTERED");
+  ok("generation succeeds", g.ok, g.ok ? "" : g.error);
+  // ⚠️ E-47b: this section used to get its failing proposal for free, because the mock AI read
+  // no price and EVERY proposal landed FILTERED. The platform reads the price now, so a healthy
+  // asset is PENDING_REVIEW — a failing one has to be MADE. Moving the link to a page the
+  // reading does not belong to is the officer-reachable way to do that (§4's property), and it
+  // keeps the failure a REAL one rather than a hand-set state.
+  const broken = await editProposal(g.ok ? g.data.id : "x", { sourceUrl: COINGECKO_PAGE }, OFFICER);
+  ok("the proposal is FILTERED once its link no longer matches its reading",
+    broken.ok && broken.data.state === "FILTERED", broken.ok ? broken.data.state : broken.error);
   // The UI does not offer Approve here — but the action is reachable directly.
   const forced = await approveProposal(g.ok ? g.data.id : "x", { officerId: OFFICER });
   ok("⛔ approving a FILTERED proposal is REFUSED by the SERVICE", !forced.ok);
@@ -224,8 +334,8 @@ console.log("\n── 5 · approve re-validates (a crafted POST does not win) �
 console.log("\n── 6 · a rejection must be countable ──");
 {
   __resetProposalsForTest();
-  const assetId = await makeAsset("PAL", "https://www.kitco.com/price/precious-metals/palladium");
-  const p = await readableProposal(assetId, "https://www.kitco.com/price/precious-metals/palladium");
+  const assetId = await makeAsset("PAL");
+  const p = await readableProposal(assetId);
 
   const empty = await rejectProposal(p.id, { officerId: OFFICER, reasons: [] });
   ok("⛔ rejecting with no reason is refused", !empty.ok);
@@ -248,7 +358,7 @@ console.log("\n── 6 · a rejection must be countable ──");
 console.log("\n── 7 · a proposal cannot move a source out from under a live round ──");
 {
   __resetProposalsForTest();
-  const assetId = await makeAsset("GLD", "https://www.kitco.com/price/precious-metals/gold");
+  const assetId = await makeAsset("GLD");
   const chain = await createChain({ assetId, durationMinutes: 15 }, OFFICER);
   if (!chain.ok) throw new Error(chain.error);
   const run = await setChainState(chain.data.id, "RUNNING", OFFICER);
@@ -269,9 +379,9 @@ console.log("\n── 7 · a proposal cannot move a source out from under a live
   ok("the round holds real money", staked >= 5_000, `pool ${staked}`);
 
   // Now propose the SAME asset on a DIFFERENT trusted page and try to arm it.
-  const p = await readableProposal(assetId, "https://goldprice.org/live-gold-price.html", 30);
+  const p = await readableProposal(assetId, COINGECKO_PAGE, 30);
   ok("the proposal is reviewable", p.state === "PENDING_REVIEW", p.state);
-  ok("…and it does propose a different link", p.sourceUrl !== "https://www.kitco.com/price/precious-metals/gold");
+  ok("…and it does propose a different link", p.sourceUrl !== QUOTE_ENDPOINT);
   const ap = await approveProposal(p.id, { officerId: OFFICER });
   ok("an officer approves it", ap.ok, ap.ok ? "" : ap.error);
 
@@ -283,11 +393,11 @@ console.log("\n── 7 · a proposal cannot move a source out from under a live
     ok("…and the way out (pause, let them settle, then edit)", /pause|settle/i.test(armed.error), armed.error);
   }
   const assetAfter = await getAsset(assetId);
-  ok("⛔ the asset's link did NOT move", assetAfter?.priceSourceUrl === "https://www.kitco.com/price/precious-metals/gold",
+  ok("⛔ the asset's link did NOT move", assetAfter?.priceSourceUrl === QUOTE_ENDPOINT,
     `now ${assetAfter?.priceSourceUrl}`);
   const rd = await roundStore.get(roundId);
   ok("⛔ and the live round's captured link is untouched",
-    rd?.capturedSourceUrl === "https://www.kitco.com/price/precious-metals/gold", `captured ${rd?.capturedSourceUrl}`);
+    rd?.capturedSourceUrl === QUOTE_ENDPOINT, `captured ${rd?.capturedSourceUrl}`);
   ok("the proposal stays APPROVED (refused, not consumed)", (await getProposal(p.id))?.state === "APPROVED");
 }
 
@@ -295,7 +405,7 @@ console.log("\n── 7 · a proposal cannot move a source out from under a live
 console.log("\n── 8 · one AI switch gates both generators ──");
 {
   __resetProposalsForTest();
-  const assetId = await makeAsset("TIN", "https://www.kitco.com/price/base-metals/tin");
+  const assetId = await makeAsset("TIN");
   await setPollGenEnabled(false, OFFICER);
   const off = await generateProposal({ assetId, durationMinutes: 15, actorId: OFFICER });
   ok("⛔ generation is refused while AI is paused", !off.ok);
@@ -309,7 +419,7 @@ console.log("\n── 8 · one AI switch gates both generators ──");
   ok("switching it back on restores generation", back.ok, back.ok ? "" : back.error);
 
   // A disabled asset cannot be proposed for: it cannot emit rounds.
-  const dis = await makeAsset("ZNC", "https://www.kitco.com/price/base-metals/zinc");
+  const dis = await makeAsset("ZNC");
   await setAssetEnabled(dis, false, OFFICER);
   const disabled = await generateProposal({ assetId: dis, durationMinutes: 15, actorId: OFFICER });
   ok("⛔ a disabled asset is refused before spending", !disabled.ok);
@@ -323,7 +433,7 @@ console.log("\n── 8 · one AI switch gates both generators ──");
 console.log("\n── 9 · an officer sees all the problems at once ──");
 {
   __resetProposalsForTest();
-  const assetId = await makeAsset("NCK", "https://www.kitco.com/price/base-metals/nickel");
+  const assetId = await makeAsset("NCK");
   const g = await generateProposal({ assetId, durationMinutes: 15, actorId: OFFICER });
   if (!g.ok) throw new Error(g.error);
   const p = (await getProposal(g.data.id))!;
@@ -341,8 +451,8 @@ console.log("\n── 9 · an officer sees all the problems at once ──");
   // A link whose stated domain is NOT its own host — this would make every reading look
   // like a source mismatch and void real rounds.
   const q = (await getProposal(g.data.id))!;
-  q.sourceUrl = "https://www.kitco.com/price/precious-metals";
-  q.sourceDomain = "goldprice.org";
+  q.sourceUrl = QUOTE_ENDPOINT;
+  q.sourceDomain = "coingecko.com";   // trusted in crypto, but NOT this link's host
   q.observedPrice = 2600;
   q.observedQuotedAt = new Date().toISOString();
   const mism = await validateProposal(q);
@@ -355,12 +465,12 @@ console.log("\n── 10 · staleness is a warning at proposal time, a refusal a
 {
   __resetProposalsForTest();
   await setUpDownConfig({ maxStalenessSeconds: 90 }, OFFICER);
-  const assetId = await makeAsset("LED", "https://www.kitco.com/price/base-metals/lead");
+  const assetId = await makeAsset("LED");
   const g = await generateProposal({ assetId, durationMinutes: 15, actorId: OFFICER });
   if (!g.ok) throw new Error(g.error);
   const p = (await getProposal(g.data.id))!;
-  p.sourceUrl = "https://www.kitco.com/price/base-metals/lead";
-  p.sourceDomain = "kitco.com";
+  p.sourceUrl = QUOTE_ENDPOINT;
+  p.sourceDomain = QUOTE_DOMAIN;
   p.framingEn = "Will lead rise?"; p.framingSw = "Je risasi itapanda?";
   p.observedPrice = 2000;
   p.observedQuotedAt = new Date(Date.now() - 6 * 3_600_000).toISOString();  // 6 hours stale
@@ -377,8 +487,8 @@ console.log("\n── 10 · staleness is a warning at proposal time, a refusal a
 console.log("\n── 11 · the record of why a live chain exists cannot be deleted ──");
 {
   __resetProposalsForTest();
-  const assetId = await makeAsset("URN", "https://www.kitco.com/price/energy/uranium");
-  const p = await readableProposal(assetId, "https://www.kitco.com/price/energy/uranium", 30);
+  const assetId = await makeAsset("URN");
+  const p = await readableProposal(assetId, undefined, 30);
   await approveProposal(p.id, { officerId: OFFICER });
   const armed = await armProposal(p.id, { officerId: OFFICER });
   ok("it armed", armed.ok, armed.ok ? "" : armed.error);

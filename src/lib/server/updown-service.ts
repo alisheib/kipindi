@@ -149,8 +149,16 @@ export function sideToOutcome(s: "YES" | "NO" | "VOID"): RoundOutcome {
  * that reason is inside the operator-state carve-out below, so a misconfigured feed leaves
  * the boundary PENDING instead of burning the attempt budget and voiding live rounds for
  * an ops mistake. A feed that cannot run is an operator problem, never a source failure.
+ *
+ * ⭐ EXPORTED for `updown-proposal.ts` (E-47b, Ali's decision 2026-08-03). The AI proposal
+ * path needs a reading to prove an asset's source works before an officer arms a chain on it,
+ * and it must be THE SAME reading a round will take — the calendar gate, the approved-domain
+ * check and the staleness rule included. A proposal validated against a second, gentler read
+ * would green-light a source that then voids every round it touches, which is exactly the
+ * failure `judgeFeedStaleness` was centralised to prevent. Pass `new Date().toISOString()` as
+ * the boundary to mean "now".
  */
-async function readPrice(
+export async function readPrice(
   asset: StoredAsset,
   boundaryAtIso: string,
   cfg: UpDownConfig,

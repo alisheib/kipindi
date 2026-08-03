@@ -111,27 +111,37 @@ export type IdeateResponse = {
 /* ─── Provider interface ─── */
 
 /**
- * What the AI proposes for an Up & Down chain. `observedPrice` / `observedQuotedAt` are the
- * quote it ACTUALLY read from `sourceUrl` — evidence that the page is readable, never a
- * price any round settles on.
+ * What the AI proposes for an Up & Down chain — the FRAMING and the PRICING, and nothing else.
+ *
+ * ⛔ E-47 (Ali's decision, 2026-08-03, option b). This type used to also carry `sourceUrl`,
+ * `observedPrice` and `observedQuotedAt`: the AI was asked to go and read a price off the
+ * asset's approved domain, as evidence the page was readable. Measured on production over 12
+ * generations, that could never work and never had — **0 approvable, 0 that ever read a price,
+ * $2.68 spent.** Every live asset's approved domain is `api.twelvedata.com`, a KEY-PROTECTED
+ * JSON API; the AI has no key and must never be given one, so it cited the bare endpoint or
+ * invented `apikey=demo` (6 of the 12 did exactly that) and got nothing back. The alternative
+ * the feature was designed for — HTML price pages — is what E-16/E-25 already proved
+ * unreadable, because those pages render their price in JavaScript a fetch never runs.
+ *
+ * So the price is no longer the AI's job. **The platform reads it, through the same
+ * `readPrice()` the money path uses**, and passes the observation IN (see
+ * `ProposeUpDownRequest.observed*`). The AI does the part it is genuinely good at: how the
+ * round is phrased to a bettor, and how wide the band should be.
  */
 export type UpDownProposalGeneration = {
-  sourceUrl: string;
   framingEn: string;
   framingSw: string;
   framingZh: string;
   reasoning: string;
   marginBps: number;
   confidence: number;
-  observedPrice: number | null;
-  observedQuotedAt: string | null;
 };
 
 export type ProposeUpDownRequest = {
   assetKey: string;
   assetSymbol: string;
   category: string;
-  /** The ONE domain it may cite — enforced server-side by web_fetch's `allowed_domains`. */
+  /** The ONE domain this asset resolves against. Stated to the AI as context, never fetched. */
   approvedDomain: string;
   currentSourceUrl: string;
   durationMinutes: number;
@@ -139,6 +149,16 @@ export type ProposeUpDownRequest = {
   defaultMarginBps: number;
   maxStalenessSeconds: number;
   prompt?: string;
+  /**
+   * The reading the PLATFORM took from the feed moments before this call, via the same
+   * `readPrice()` a round settles on (E-47b). Given to the AI so its margin recommendation
+   * and its reasoning are anchored to a real, current number rather than a remembered one.
+   * ⛔ It is context, not a thing to echo back — the round captures the platform's reading,
+   * never the model's. Always present: `generateProposal` refuses to spend a credit at all
+   * when the feed cannot be read, so there is no "unreadable" case left to represent here.
+   */
+  observedPrice: number;
+  observedQuotedAt: string;
 };
 
 export type ProposeUpDownResponse = {
@@ -366,15 +386,18 @@ export class MockClaudeProvider implements AIProvider {
     return {
       ok: true,
       proposal: {
-        sourceUrl: req.currentSourceUrl || `https://${req.approvedDomain}/`,
         framingEn: `Will ${req.assetSymbol} rise or fall over the next ${req.durationMinutes} minutes?`,
         framingSw: `Je ${req.assetSymbol} itapanda au itashuka katika dakika ${req.durationMinutes} zijazo?`,
         framingZh: `${req.assetSymbol} 在接下来的 ${req.durationMinutes} 分钟内会上涨还是下跌？`,
-        reasoning: "Mock provider — no page was fetched, so no price or timestamp is reported. This proposal is expected to be filtered as unreadable.",
+        // E-47b: the mock no longer pretends to have failed to read a page — it is not asked
+        // to read one. It echoes the reading the PLATFORM handed it, so a local run produces
+        // an APPROVABLE proposal and the review flow can actually be exercised offline.
+        reasoning: `Mock provider — framing only. The platform read ${req.assetSymbol} at ` +
+          `${req.observedPrice} (quoted ${req.observedQuotedAt}) from ${req.approvedDomain}, ` +
+          `and this proposal is priced at the scheduled ${req.defaultMarginBps}bps for a ` +
+          `${req.durationMinutes}-minute round.`,
         marginBps: req.defaultMarginBps,
         confidence: 40,
-        observedPrice: null,
-        observedQuotedAt: null,
       },
       rawResponse: "[mock provider]",
       tokensUsed: 120,

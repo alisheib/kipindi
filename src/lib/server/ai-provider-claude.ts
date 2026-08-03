@@ -402,26 +402,26 @@ export class ClaudeProvider implements AIProvider {
     const activeModel = await getConfiguredModel();
     const nowIso = new Date().toISOString();
 
+    // E-47b (Ali, 2026-08-03): the AI is no longer asked for a URL or a price. It was asked
+    // for both, for 12 production generations, and returned a usable price ZERO times — the
+    // approved domain is a keyed JSON API it cannot read, and the HTML pages this was designed
+    // for render in JavaScript (E-16/E-25). The platform now reads the price itself through the
+    // money path's own `readPrice()` and hands it in below. What is left is the part the model
+    // is actually good at: the framing, and how wide the band should be.
     const tool = {
       name: "submit_updown_proposal",
-      description: "Submit an Up & Down chain proposal, with the source page you verified you can read a timestamped price from.",
+      description: "Submit an Up & Down chain proposal: how the round is phrased to a bettor, and how wide its winning band should be.",
       input_schema: {
         type: "object",
         properties: {
-          sourceUrl: { type: "string", description: `The EXACT page URL you fetched, on ${req.approvedDomain}. Every round will capture this link and resolve against it.` },
-          observedPrice: { type: ["number", "null"], description: "The price you actually read on that page. NULL if the page showed no usable numeric price — never a guess, never a remembered figure." },
-          observedQuotedAt: { type: ["string", "null"], description: "The timestamp THE PAGE ITSELF published for that price, ISO-8601. NULL if the page showed none. Never substitute the current time." },
           framingEn: { type: "string", description: "One short sentence a Tanzanian bettor reads: what they are predicting. No price figures." },
           framingSw: { type: "string", description: "Swahili translation of framingEn." },
           framingZh: { type: "string", description: "Chinese translation of framingEn." },
-          marginBps: { type: "number", description: `Winning-boundary margin in basis points (50 = 0.5%). Default ${req.defaultMarginBps}. Wider = more voids; narrower = decided by noise.` },
-          reasoning: { type: "string", description: "Why this duration and margin, and what you observed on the page — including if you could NOT read a price." },
-          confidence: { type: "number", description: "0-100: how confident you are that this page yields a fresh timestamped price at EVERY round boundary, not just once." },
+          marginBps: { type: "number", description: `Winning-boundary margin in basis points (50 = 0.5%). The scheduled house value for this asset class and duration is ${req.defaultMarginBps}. Wider = more voids; narrower = decided by noise.` },
+          reasoning: { type: "string", description: "Why this margin for this duration and this asset, given the reading you were shown. Say plainly if you think the scheduled margin is wrong and which way." },
+          confidence: { type: "number", description: "0-100: how confident you are that this margin decides a meaningful share of rounds without being decided by noise." },
         },
-        // Both evidence fields are REQUIRED though nullable. An omitted field reads as "not
-        // applicable"; an explicit null is a statement that the page gave nothing — which is
-        // exactly the fact the officer needs.
-        required: ["sourceUrl", "observedPrice", "observedQuotedAt", "framingEn", "framingSw", "framingZh", "marginBps", "reasoning", "confidence"],
+        required: ["framingEn", "framingSw", "framingZh", "marginBps", "reasoning", "confidence"],
       },
     };
 
@@ -430,24 +430,24 @@ export class ClaudeProvider implements AIProvider {
 CURRENT TIME: ${nowIso}
 
 THE ASSET: ${req.assetKey} (${req.assetSymbol}), quoted to ${req.decimals} decimals. Category: ${req.category}.
-THE ONLY DOMAIN YOU MAY CITE: ${req.approvedDomain}. The operator currently uses ${req.currentSourceUrl}.
 THE ROUND: ${req.durationMinutes} minutes. UP wins if the close reaches open + margin, DOWN if it reaches open − margin; anything between VOIDS and refunds every stake.
 
-YOUR JOB, in order:
-1. FETCH a page on ${req.approvedDomain} showing a live ${req.assetSymbol} price WITH the time that price was quoted. Try the operator's current page first, then others on that domain.
-2. REPORT WHAT YOU ACTUALLY SAW. This is the part that matters.
-3. Propose the framing and the margin.
+THE PRICE IS NOT YOUR JOB, AND YOU MUST NOT TRY TO READ ONE.
+The platform has already read ${req.assetSymbol} from its own metered feed on ${req.approvedDomain}, through the exact same code path a round settles on:
 
-⛔ THE ONE RULE YOU MUST NOT BREAK: if the page shows no usable numeric price, or no timestamp for it, set observedPrice and/or observedQuotedAt to NULL and say so in reasoning. Do NOT infer a price from surrounding text. Do NOT use a price you remember from training. Do NOT substitute the current time for a missing timestamp. Do NOT turn a vague "earlier today" into an ISO timestamp.
-  A null is a USEFUL answer: it tells the operator this page cannot back a ${req.durationMinutes}-minute round, and the proposal is refused instead of armed. A fabricated number would put real money on a price nobody published. Many finance pages render their price in JavaScript and will give you nothing — that is expected, and reporting it honestly is the correct outcome.
+    ${req.assetSymbol} = ${req.observedPrice}   quoted ${req.observedQuotedAt}
 
-Rounds resolve on a ${req.maxStalenessSeconds}-second staleness window, so a page whose newest quote is already hours old cannot back this product. Say that plainly in reasoning and lower your confidence.
+That reading is the evidence this chain is backed by a working source, and every round will take its own reading the same way. You have no key for that feed, you must never be given one, and you have no tool to fetch with here. Do not cite a URL, do not report a price, and do not use a price you remember from training — the number above is the only one that is real.
 
-The framing is for a bettor, not an analyst: one plain sentence, no price figures (they change every round), no hedging.`;
+YOUR JOB:
+1. THE FRAMING — one plain sentence a Tanzanian bettor reads, in English, Swahili and Chinese: what they are predicting. For a bettor, not an analyst. No price figures (they change every round), no hedging.
+2. THE MARGIN — how wide the winning band should be for a ${req.durationMinutes}-minute round on this asset.
+
+ON THE MARGIN, which is the part that decides whether this product works at all. The scheduled house value is ${req.defaultMarginBps}bps. Too WIDE and almost every round drifts inside the band and VOIDS, so nobody wins anything and the game feels broken. Too NARROW and the outcome is decided by quote noise rather than by a real move, which is worse — it pays real money on a coin flip dressed as a prediction. Reason from how far ${req.assetSymbol} actually travels in ${req.durationMinutes} minutes, and if you think ${req.defaultMarginBps}bps is wrong, say so and say which way. Rounds resolve on a ${req.maxStalenessSeconds}-second staleness window.`;
 
     const userPrompt = req.prompt
-      ? `Propose a ${req.durationMinutes}-minute ${req.assetKey} chain. Operator guidance (takes priority): ${req.prompt}`
-      : `Propose a ${req.durationMinutes}-minute ${req.assetKey} chain. Fetch the page first, then report exactly what you found.`;
+      ? `Propose the framing and margin for a ${req.durationMinutes}-minute ${req.assetKey} chain. Operator guidance (takes priority): ${req.prompt}`
+      : `Propose the framing and margin for a ${req.durationMinutes}-minute ${req.assetKey} chain.`;
 
     try {
       const client = new Anthropic({ apiKey: this.apiKey });
@@ -455,20 +455,18 @@ The framing is for a bettor, not an analyst: one plain sentence, no price figure
         model: activeModel,
         max_tokens: 2000,
         system,
-        // web_fetch first: the job is to read ONE known domain, not to search the web.
-        tools: [
-          {
-            type: ai.webFetchTool.type,
-            name: ai.webFetchTool.name,
-            max_uses: 5,
-            allowed_domains: [req.approvedDomain],
-          },
-          tool,
-        ] as unknown as Anthropic.Messages.ToolUnion[],
-        // MUST be auto, never a forced tool — forcing is incompatible with server-side tools,
-        // and the model has to fetch before it can honestly submit. Same constraint the poll
-        // generator hit with web search (see `generate` above).
-        tool_choice: { type: "auto" },
+        // ⛔ E-47b — NO `web_fetch`. It used to be armed with `allowed_domains: [approvedDomain]`
+        // so the model could read a price. It never once succeeded (the domain is a keyed JSON
+        // API), and leaving the tool in place is an active hazard: given a fetch tool and a
+        // price-shaped job, the model reaches for `apikey=demo` — 6 of the 12 production
+        // generations did. Removing it makes the instruction "the price is not your job"
+        // structurally true rather than a request. It also removes the per-fetch charge and the
+        // 5-fetch latency from every generation.
+        tools: [tool] as unknown as Anthropic.Messages.ToolUnion[],
+        // With no server-side tool in play this CAN now be forced, and should be: the model has
+        // nothing to do before submitting, so a prose reply is pure waste. The text fallback
+        // below is kept anyway — `tool_choice` is a strong preference, not a guarantee.
+        tool_choice: { type: "tool", name: "submit_updown_proposal" },
         messages: [{ role: "user", content: userPrompt }],
       });
 
@@ -531,18 +529,24 @@ function parseProposalFromText(text: string): UpDownProposalGeneration | null {
   if (first < 0 || last <= first) return null;
   try {
     const o = JSON.parse(text.slice(first, last + 1)) as Record<string, unknown>;
-    if (typeof o.sourceUrl !== "string" || !o.sourceUrl) return null;
+    // E-47b: the gate is the FRAMING, not a `sourceUrl` — the AI is no longer asked for a
+    // link, so requiring one here would reject every well-formed prose reply. English framing
+    // is the one field with no server-side fallback (the margin has the scheduled value, the
+    // source comes from the asset), so a reply without it is not a proposal.
+    const framingEn = String(o.framingEn ?? "").trim();
+    if (!framingEn) return null;
+    // ⛔ Any `sourceUrl` / `observedPrice` / `observedQuotedAt` in a prose reply is IGNORED, not
+    // parsed. The model has no feed key and no fetch tool, so such a figure can only be
+    // remembered or invented — and the caller overwrites all three from the asset and the
+    // platform's own reading regardless. Dropping them here means it cannot even be logged as
+    // though it were evidence.
     return {
-      sourceUrl: o.sourceUrl,
-      framingEn: String(o.framingEn ?? ""),
+      framingEn,
       framingSw: String(o.framingSw ?? ""),
       framingZh: String(o.framingZh ?? ""),
       reasoning: String(o.reasoning ?? ""),
       marginBps: Number(o.marginBps),
       confidence: Number(o.confidence),
-      // A missing evidence field parses to NULL, never to a substituted value.
-      observedPrice: o.observedPrice == null ? null : Number(o.observedPrice),
-      observedQuotedAt: o.observedQuotedAt == null ? null : String(o.observedQuotedAt),
     };
   } catch {
     return null;

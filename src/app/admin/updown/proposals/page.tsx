@@ -56,7 +56,7 @@ const STATE_LABEL: Record<UpDownProposalState, string> = {
 /** Plain-English reason text. The enum value is for counting; this is for reading. */
 const REASON_LABEL: Record<string, string> = {
   source_not_trusted: "Source not on the approved allowlist",
-  source_unreadable: "No price could be read from the page",
+  source_unreadable: "The platform could not read a price from this asset's feed",
   duration_not_allowed: "Duration is not on the 5-minute grid",
   margin_out_of_range: "Margin outside 0–20%",
   duplicate_chain: "A chain is already running for this asset and duration",
@@ -74,12 +74,20 @@ const REASON_LABEL: Record<string, string> = {
  * proposals failed and **not one ever read a price**, so "didn't pass checks" was the only
  * thing the console had ever said — 13 times, for two quite different reasons, one of
  * which is unfixable by the officer.
+ *
+ * ⭐ E-47b (Ali, 2026-08-03) changed what `source_unreadable` MEANS, so its advice had to
+ * change with it. It used to say "expected, and not your fault — the AI has no key for
+ * api.twelvedata.com, so it can never read a price there; use the Add-asset form instead."
+ * That was honest about a dead end. The platform reads the price itself now, so the reason no
+ * longer describes the AI failing — it describes THE ASSET'S OWN FEED failing, which is real,
+ * actionable, and would void every round of a chain armed on it.
  */
 const REASON_ADVICE: Record<string, string> = {
   source_unreadable:
-    "Expected, and not your fault: the approved source is api.twelvedata.com, a key-protected " +
-    "API. The AI has no key (and must not have one), so it can never read a price there. " +
-    "Use the Add-asset form instead — it reads the real feed for you.",
+    "The platform read this asset's own price feed — the same way a live round does — and got " +
+    "nothing back. That is worth knowing: a chain armed on it would void and refund every " +
+    "round. Check the asset's symbol and source under Up & Down → Overview, use Check symbol " +
+    "to see what the feed answers, then regenerate. No AI credit was spent on this attempt.",
   duplicate_chain:
     "Nothing to fix — you already run this asset at this duration. Edit the existing chain " +
     "on the Overview page rather than arming a second one.",
@@ -263,7 +271,7 @@ export default async function UpDownProposalsPage({
                 title={allProposals.length === 0 ? "No proposals yet" : "No proposals match this filter"}
                 body={
                   allProposals.length === 0
-                    ? "Ask the AI to propose a chain above. It will fetch the asset's approved source, report the price and timestamp it actually found there, and land here for your review — it cannot start a chain by itself."
+                    ? "Ask the AI to propose a chain above. The platform reads the asset's price from its own feed first — the same way a live round does — and the AI proposes the framing and the margin against that reading. It lands here for your review; it cannot start a chain by itself."
                     : "Clear the state or asset chips above to see the whole queue."
                 }
               />
@@ -276,8 +284,11 @@ export default async function UpDownProposalsPage({
                     <th>Asset</th>
                     <th>Round</th>
                     <th>Margin</th>
-                    <th>Source the AI read</th>
-                    <th>What it found there</th>
+                    {/* E-47b — the AI reads nothing. Both columns describe the PLATFORM'S read
+                        of the asset's own feed; naming the wrong actor on a money-adjacent
+                        column is how an officer comes to trust the wrong evidence. */}
+                    <th>Source the platform read</th>
+                    <th>What the feed returned</th>
                     <th>Checks</th>
                     <th>State</th>
                     <th className="text-right">Actions</th>
@@ -413,8 +424,11 @@ export default async function UpDownProposalsPage({
             </p>
             <p>
               <strong>3 · You review, and may edit anything.</strong> The AI&rsquo;s suggestion is a
-              draft. Change the link, the duration, the margin or the framing — every edit is
-              re-checked, and changing the link clears the evidence, because the AI read the old page.
+              draft. Change the duration, the margin or the framing — every edit is re-checked.
+              ⚠️ Changing the <em>link</em> clears the price, because the reading was taken from the
+              asset&rsquo;s own source and no longer belongs to the new one — and nothing can take a
+              fresh reading for a link the asset does not point at, so the proposal cannot then be
+              armed. To move an asset&rsquo;s source, do it on the Overview page and regenerate.
             </p>
             <p>
               <strong>4 · Arming starts a real chain.</strong> It points the asset at the approved link,

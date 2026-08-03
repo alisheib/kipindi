@@ -308,7 +308,7 @@ export function ReviewActions({
       deferToast({
         title: "Proposal updated",
         description: r.warn ?? (url.trim() !== sourceUrl
-          ? "The link changed, so the price the AI read no longer applies — regenerate or check the new page yourself."
+          ? "The link changed, so the price the platform read from the asset's own source no longer applies — and it cannot be re-read for a link the asset does not point at. Move the source on the Overview page, then regenerate."
           : undefined),
         variant: r.warn ? "warning" : "success",
       });
@@ -391,7 +391,7 @@ export function ReviewActions({
 
           <Field
             label="Source link"
-            hint="Every round on this chain captures this link at open and resolves against the captured copy. Changing it clears the price the AI read, because it read the old page."
+            hint="Every round on this chain captures this link at open and resolves against the captured copy. ⚠️ Changing it clears the price — the platform read that from the asset's own source, and it cannot re-read for a different link, so the proposal will no longer arm. Move the source on the Overview page instead, then regenerate."
           >
             <Input value={url} onChange={(e) => setUrl(e.currentTarget.value)} size="sm" placeholder="https://…" />
           </Field>
@@ -617,7 +617,7 @@ export function DeleteProposalAction({ id, state }: { id: string; state: string 
         confirmLabel="Delete"
         body={
           <p>
-            It is removed from the queue along with its record of what the AI read. Nothing that is
+            It is removed from the queue along with its record of what the feed returned. Nothing that is
             live is affected — a {state.toLowerCase().replace("_", " ")} proposal has never opened a
             round.
           </p>

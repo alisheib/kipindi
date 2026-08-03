@@ -39,6 +39,7 @@ import {
   type Duration, type UpDownConfig,
 } from "./updown-config";
 import { hostMatchesDomain } from "./updown-feed";
+import type { StoredAsset } from "./updown-dal";
 
 /**
  * The margin a NEW proposal should carry — the E-32 ladder for this asset's class and the
@@ -405,12 +406,16 @@ export async function validateProposal(p: StoredProposal): Promise<{
     }
   }
 
-  // Readability is the whole reason this pipeline exists: most price pages render in
-  // JavaScript and yield nothing usable. A proposal with no observed quote is a guess.
+  // Readability: a chain must not be armed on a source nothing can read at a boundary.
+  // ⭐ E-47b — the reading being judged here is now the PLATFORM'S, taken through the money
+  // path's `readPrice()` before any AI credit was spent, not something the model claimed to
+  // have seen. So this assertion changed meaning: it used to ask "did the AI manage to read
+  // the page" (answer: never, 0 of 12) and now asks "does this asset's own feed answer right
+  // now". Same field, same rule, a source of truth that can actually satisfy it.
   const cfg = await getUpDownConfig();
   if (p.observedPrice == null || !p.observedQuotedAt) {
     reasons.push("source_unreadable");
-    indicators.push({ label: "No price was actually read from the link", score: 0, status: "bad" });
+    indicators.push({ label: "The platform read no price from this asset's feed", score: 0, status: "bad" });
   } else {
     const age = Math.abs(Date.now() - new Date(p.observedQuotedAt).getTime()) / 1000;
     if (!Number.isFinite(age)) {
@@ -454,44 +459,21 @@ function scoreOf(indicators: QualityIndicator[]): number {
 
 // ── Generate ────────────────────────────────────────────────────────────────
 
-export async function generateProposal(opts: {
-  assetId: string;
-  durationMinutes: Duration;
-  prompt?: string;
-  actorId: string;
-  regenerationOf?: string;
-}): Promise<ServiceResult<StoredProposal>> {
-  // ⛔ THE PAUSE SWITCH — the same one the poll generator obeys, checked here rather than
-  // only in the action, because a gate on one of two doors is not a gate. Before the budget
-  // gate: a feature the operator has switched off should not consult the credit meter.
-  const { isPollGenEnabled } = await import("./ai-controls");
-  if (!(await isPollGenEnabled())) {
-    return { ok: false, error: "AI generation is disabled (AI toolkit). Turn it back on to propose." };
-  }
-
-  const budget = await assertAiBudget("updown");
-  if (!budget.ok) {
-    return {
-      ok: false,
-      error: `AI credit limit reached ($${budget.spentUsd.toFixed(2)} of $${budget.limitUsd.toFixed(2)} this cycle). ` +
-        `Raise the limit or start a new cycle under Admin → AI usage.`,
-    };
-  }
-
-  const asset = await getAsset(opts.assetId);
-  if (!asset) return { ok: false, error: "Asset not found. Register it under Admin → Up & Down first." };
-  if (!asset.enabled) {
-    return { ok: false, error: `${asset.key} is disabled. Enable it before proposing a chain — a disabled asset cannot emit rounds.` };
-  }
-  if (!ALLOWED_DURATIONS.includes(opts.durationMinutes)) {
-    return { ok: false, error: `Duration must be one of ${ALLOWED_DURATIONS.join(", ")} minutes.` };
-  }
-
-  const cfg = await getUpDownConfig();
-  const parent = opts.regenerationOf ? await store.get(opts.regenerationOf) : null;
-  const now = new Date().toISOString();
-
-  const p: StoredProposal = {
+/**
+ * A proposal row with everything at its zero value — the ONE place the shape is written.
+ *
+ * Extracted for E-47b, which added a second birth site: a proposal that is FILTERED before
+ * any AI credit is spent, because the platform could not read the asset's price. Two inline
+ * literals of a 30-field row is how one of them quietly stops matching the type.
+ */
+function blankProposal(
+  asset: StoredAsset,
+  opts: { assetId: string; durationMinutes: Duration; prompt?: string; regenerationOf?: string },
+  cfg: UpDownConfig,
+  parent: StoredProposal | null,
+  now: string,
+): StoredProposal {
+  return {
     id: `udprop_${randomId(12)}`,
     state: "GENERATING",
     requestAssetId: asset.id,
@@ -530,6 +512,93 @@ export async function generateProposal(opts: {
     createdAt: now,
     updatedAt: now,
   };
+}
+
+export async function generateProposal(opts: {
+  assetId: string;
+  durationMinutes: Duration;
+  prompt?: string;
+  actorId: string;
+  regenerationOf?: string;
+}): Promise<ServiceResult<StoredProposal>> {
+  // ⛔ THE PAUSE SWITCH — the same one the poll generator obeys, checked here rather than
+  // only in the action, because a gate on one of two doors is not a gate. Before the budget
+  // gate: a feature the operator has switched off should not consult the credit meter.
+  const { isPollGenEnabled } = await import("./ai-controls");
+  if (!(await isPollGenEnabled())) {
+    return { ok: false, error: "AI generation is disabled (AI toolkit). Turn it back on to propose." };
+  }
+
+  const budget = await assertAiBudget("updown");
+  if (!budget.ok) {
+    return {
+      ok: false,
+      error: `AI credit limit reached ($${budget.spentUsd.toFixed(2)} of $${budget.limitUsd.toFixed(2)} this cycle). ` +
+        `Raise the limit or start a new cycle under Admin → AI usage.`,
+    };
+  }
+
+  const asset = await getAsset(opts.assetId);
+  if (!asset) return { ok: false, error: "Asset not found. Register it under Admin → Up & Down first." };
+  if (!asset.enabled) {
+    return { ok: false, error: `${asset.key} is disabled. Enable it before proposing a chain — a disabled asset cannot emit rounds.` };
+  }
+  if (!ALLOWED_DURATIONS.includes(opts.durationMinutes)) {
+    return { ok: false, error: `Duration must be one of ${ALLOWED_DURATIONS.join(", ")} minutes.` };
+  }
+
+  const cfg = await getUpDownConfig();
+  const parent = opts.regenerationOf ? await store.get(opts.regenerationOf) : null;
+  const now = new Date().toISOString();
+
+  // ── E-47b · READ THE PRICE FIRST, WITH THE PLATFORM'S OWN FEED ──────────────
+  //
+  // Ali's decision, 2026-08-03, option (b). Reading a price was the AI's job and it could
+  // never do it: 12 production generations, 0 that ever read one, $2.68 spent. The approved
+  // domain is a keyed JSON API the model has no key for; the HTML pages this was designed
+  // around render their price in JavaScript (E-16/E-25). So the platform reads it, via the
+  // money path's own `readPrice` — same calendar gate, same approved domain, same staleness
+  // rule a round settles under.
+  //
+  // ⭐ AND IT HAPPENS BEFORE THE AI CALL, WHICH IS THE POINT. Under the old order the credit
+  // was spent and only then did validation discover the source was unreadable, so every
+  // generation on a broken asset cost ~$0.16 to produce a FILTERED row. Now an unreadable
+  // source costs nothing and says why in the feed's own words.
+  const { readPrice } = await import("./updown-service");
+  const reading = await readPrice(asset, now, cfg);
+  if (!reading.ok) {
+    const p: StoredProposal = { ...blankProposal(asset, opts, cfg, parent, now), state: "FILTERED" };
+    p.filterReasons = ["source_unreadable"];
+    p.qualityIndicators = [{
+      label: `The platform could not read a price for ${asset.key}: ${reading.detail ?? reading.reason}`,
+      score: 0, status: "bad",
+    }];
+    p.reasoning =
+      `No AI credit was spent. The platform read ${asset.symbol} from ${asset.sourceDomain} ` +
+      `using the same code path a round settles on, and it refused: ${reading.reason}` +
+      `${reading.detail ? ` — ${reading.detail}` : ""}. Fix the source before proposing a chain ` +
+      `on this asset; an armed chain would void every round.`;
+    await store.set(p);
+    audit({
+      category: "ADMIN", action: "updown_proposal.filtered", actorId: opts.actorId,
+      targetType: "UpDownProposal", targetId: p.id,
+      payload: { assetKey: asset.key, reason: "source_unreadable", feedReason: reading.reason, detail: reading.detail, aiSpendUsd: 0 },
+    });
+    return {
+      ok: false,
+      error: `${asset.key}'s price source cannot be read right now (${reading.reason}` +
+        `${reading.detail ? `: ${reading.detail}` : ""}). No AI credit was spent. ` +
+        `Check the asset's source under Admin → Up & Down before proposing.`,
+    };
+  }
+
+  const p: StoredProposal = blankProposal(asset, opts, cfg, parent, now);
+  // E-47b: the platform's reading is stamped on at birth, so it is on the row even if the AI
+  // call below fails outright — the officer still learns the source is good.
+  p.sourceUrl = asset.priceSourceUrl;
+  p.sourceDomain = asset.sourceDomain;
+  p.observedPrice = reading.price;
+  p.observedQuotedAt = reading.sourceQuotedAt;
   await store.set(p);
 
   audit({
@@ -566,6 +635,11 @@ export async function generateProposal(opts: {
       defaultMarginBps: scheduledMarginFor(cfg, asset, opts.durationMinutes),
       maxStalenessSeconds: cfg.maxStalenessSeconds,
       prompt: opts.prompt,
+      // E-47b — the platform's OWN reading, handed in as context so the margin reasoning is
+      // anchored to a real current number. Non-null by construction: the unreadable case
+      // returned above without reaching this call.
+      observedPrice: reading.price,
+      observedQuotedAt: reading.sourceQuotedAt,
     });
   } catch (err) {
     p.state = "VALIDATION_FAILED";
@@ -599,8 +673,15 @@ export async function generateProposal(opts: {
 
   const g = resp.proposal;
   p.generation = g;
-  p.sourceUrl = String(g.sourceUrl ?? "").trim();
-  p.sourceDomain = p.sourceUrl ? normalizeDomain(p.sourceUrl) : "";
+  // ⛔ E-47b — THE SOURCE AND THE PRICE COME FROM THE PLATFORM, NOT FROM THE MODEL.
+  // These four fields used to be read off `g`, which is how a chain could be armed against a
+  // link the AI had chosen and a price nobody published. The asset already carries the source
+  // an officer approved, and `reading` above is the platform's own quote through the money
+  // path. The AI contributes the framing and the margin — everything below this line.
+  p.sourceUrl = asset.priceSourceUrl;
+  p.sourceDomain = asset.sourceDomain;
+  p.observedPrice = reading.price;
+  p.observedQuotedAt = reading.sourceQuotedAt;
   p.framingEn = String(g.framingEn ?? "").trim().slice(0, 300);
   p.framingSw = String(g.framingSw ?? "").trim().slice(0, 300);
   p.framingZh = String(g.framingZh ?? "").trim().slice(0, 300);
@@ -608,10 +689,6 @@ export async function generateProposal(opts: {
   p.confidence = Number.isFinite(g.confidence) ? Math.max(0, Math.min(100, Math.round(g.confidence))) : 0;
   const proposedMargin = Number(g.marginBps);
   p.marginBps = Number.isInteger(proposedMargin) ? proposedMargin : scheduledMarginFor(cfg, asset, opts.durationMinutes);
-  const price = Number(g.observedPrice);
-  p.observedPrice = Number.isFinite(price) && price > 0 ? price : null;
-  const quoted = g.observedQuotedAt ? new Date(String(g.observedQuotedAt)) : null;
-  p.observedQuotedAt = quoted && Number.isFinite(quoted.getTime()) ? quoted.toISOString() : null;
 
   const { reasons, indicators } = await validateProposal(p);
   p.qualityIndicators = indicators;
