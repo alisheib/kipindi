@@ -3551,6 +3551,56 @@ workstation shows an SLA countdown, but nothing escalates when it runs out. Ali'
 
 ## 6b. NEXT SESSION — start here
 
+### 🟠 Laptop A, session 17 (2026-08-03) — ⚠️ A SHORT SESSION: THE CAMPAIGN MOVED TO TWO LAPTOPS AND NOBODY HAD SAID SO. Read this first; it supersedes everything below.
+
+**Laptop A had not moved since 31 July.** Sessions 8–16 all ran on **laptop B** and pushed to
+`main` — **130 commits, +26,100 lines, 226 files** — while laptop A sat 130 behind believing it
+was current. This session synced it, cleaned it up, shipped **E-49**, and recorded **E-53**.
+
+⭐ **HOW TO TELL A RUNNING SESSION FROM A FINISHED ONE — this cost the first half of this session.**
+Laptop B was **still working** when laptop A opened: it had committed 7 minutes earlier and went
+on to ship E-51 and E-52 during the cleanup. Its `§6b` handoff did not exist yet. **Commits without
+a handoff block = a session in flight**, and the two laptops cannot see each other. Check
+`git log --since` and the newest `§6b` heading *before* assuming the tree is yours. ⛔ The old
+"two worktrees, one `.git`" model in `50pick-standards` §8b **no longer describes reality** and has
+been corrected in this commit: the parallelism is two machines sharing only `origin`.
+
+| | |
+|---|---|
+| **E-49 · FIXED, ⏳ not live-verified** | On a RESOLVED market the LOSING row showed the winner's payout under a column headed "Payout" — `p.status === "OPEN" ? p.potentialPayout : …`, and every position is still `OPEN` between sealing and settlement. **The sort accessor held its own separately-written copy of the same expression**, which is how a column and its own ordering can disagree. Both now derive from one exported `payoutViewFor()` in `src/lib/payout.ts`: a resolved market prices the losing side `{kind:"none", amount:0}` and marks the winner's figure `projected`. `test:payout-view` **24/24**, **RED 3/3** |
+| **E-53 · Ali decided, NOT built** | Player surfaces name the data vendor. Full entry in the findings table — the decision, the server-side constraint, and why long-form markets are excluded |
+| **laptop A is usable again** | `npm install` + `prisma generate`, `tsc` clean, 4 worktrees → 1, 23 local branches → 1, 14 remote → 7, 23 orphaned processes stopped (:3000 had been held since 29 July) |
+
+⭐ **SESSION 16'S GUARDS WERE RE-RUN ON LAPTOP A RATHER THAN TRUSTED, AND THAT IS NOW A HABIT WORTH
+KEEPING.** All six green here (`settlement-expectation` 31 · `feed-https` 16 ·
+`proposal-evidence-age` 16 · `updown-proposal` 91 · `updown-engine` 90 · `updown-digest` 73). It
+matters because **two of those suites had been silently RED on every tree for multiple sessions**
+and nobody noticed until someone ran them somewhere else.
+
+⚠️ **AND THE RED HARNESS WAS WRITTEN AGAINST THE CRLF TRAP ON PURPOSE.** Three sessions running
+have been fooled by an LF anchor that silently fails to match a CRLF tree: the mutation never
+applies, the suite passes, and the harness reports *"defect not caught"* as if the guard were weak.
+`payout-view-red.mjs` matches both line endings **and re-reads the file to confirm the anchor is
+GONE from disk** before believing any result; a mutation that did not apply is a HARNESS ERROR, not
+a green.
+
+📌 **E-53 was half-built and then DELIBERATELY REVERTED rather than left half-applied** — the
+classifier and the session end arrived mid-change. The patch (`publicSourceClassFor()` classifier,
+EN/SW/ZH copy, `updown-board.ts` payload) is in laptop A's scratchpad as
+`e53-source-hiding-WIP.patch`. A broken tree is worse than an unstarted one.
+
+⏭️ **RESUME AT:** ① **`mkt_54f75a1959cdee5f1ed8` settles 4 Aug 00:08:09 UTC (03:08 EAT)** — see
+session 16 below for the full baseline; alpha should **receive TZS 3,740**. ⭐ **And shoot E-49 on
+production BEFORE that moment** — the defect only exists while the market is RESOLVED-awaiting-
+settlement, so its window closes when the round pays. ② **merge `fix/e49-payout-view`** once shot.
+③ **E-53**, the build. ④ **E-50** proposal link read-only. ⑤ **E-45** backfill. ⑥ **E-33** DSAR.
+⑦ **E-34 + E-35** refusal panel. ⑧ **G-3** player sweep. ⑨ `SortTh` on proposals. ⑩ **E-41/42/44.**
+
+🔒 **Left as found:** **no production state was touched at all this session** — no market, no
+chain, no config, no role, no money, and nothing driven live. `main` is untouched; E-49 sits on
+`fix/e49-payout-view` because every push to `main` is a live deploy and this session was not
+verifying live.
+
 ### 🟢 Laptop B, session 16 (2026-08-03) — ⭐ THE AI PROPOSAL QUEUE PRODUCED ITS FIRST APPROVABLE ROW, AND TWO DOCUMENTS WERE LYING ABOUT REAL MONEY. Read this first; it supersedes everything below.
 
 **Four findings shipped and live-verified; two more found and filed.** Full accounts: **§6aa**
