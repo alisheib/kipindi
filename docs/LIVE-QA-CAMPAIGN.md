@@ -1514,6 +1514,23 @@ the credential stopped crossing the network in the clear on the very next read.*
 The reading exists and is good; it simply confirmed *after* the round had already opened without it.
 **That is precisely the backfill E-45 describes**, now with a live row to test against.
 
+### ✅ E-52 CONFIRMED ON PRODUCTION — the same row, before and after
+
+The one live proposal, photographed twice, ~25 minutes apart:
+
+```
+before   $62,702.00   quoted 14m before we read it        ⚠ older than the 90s round window   (amber)
+after    $62,702.00   quoted 18s before we read it                                            (plain)
+```
+
+Zero occurrences of *"older than the 90s round window"* on the page. ⚠️ **One honest nuance:** the
+checks column still reads *"Read a live quote, **33s** old"* against the panel's **18s**. That is
+not a new disagreement — it is the row's **stored** indicator, written before the server-side half
+of this fix deployed, and stored indicator text is not rewritten retroactively. The 15-second gap is
+the duration of the AI call: the old server code measured from `Date.now()` at validation (after the
+call), the new code measures from `createdAt` (before it). **New proposals compute both from
+`createdAt` and will agree exactly** — which is the "by construction" property the guard asserts.
+
 ## 6z. ⭐ E-48 — the runbook taught the wrong settlement maths, and the handoff would have failed a correct payout (2026-08-03, session 16)
 
 Session 16 opened on §6b's step ①: *check `mkt_54f75a1959cdee5f1ed8` settled after 4 Aug 03:08 EAT —
