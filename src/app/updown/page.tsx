@@ -169,7 +169,16 @@ export default async function UpDownPage({
 
       {/* ── The grid. 1 / 2 / 3 columns — and STAYS 3 at 1920. ───────────── */}
       <div className="mt-4">
-        {chainPaused || rounds.length === 0 ? (
+        {/* ⛔ E-67 · THE GATE IS "ARE THERE ROUNDS", NOT "IS THE CHAIN RUNNING".
+            This read `chainPaused || rounds.length === 0`, which was survivable only while a
+            chain being STOPPED implied no rounds existed. Since Ali stopped automatic emission
+            (*"my admins will enter and generate every 5 min"*) EVERY chain is STOPPED and rounds
+            are created by hand — so that condition hid a real, live, playable round behind
+            "No rounds open right now". Measured: `udr_cd386bbaeaf63be696f5`, open price
+            63,719.98, targets set, live until 21:15 UTC, and completely invisible to players.
+            A chain's state says whether MORE rounds will appear; it says nothing about whether
+            the one on the board can be played. */}
+        {rounds.length === 0 ? (
           <EmptyState title={t.market.udNoRounds} body={t.market.udNoRoundsBody} />
         ) : (
           <div className="grid items-stretch gap-4"
