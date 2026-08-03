@@ -14,7 +14,7 @@ import {
   setUpDownConfig,
   ALLOWED_DURATIONS, type Duration,
 } from "@/lib/server/updown-config";
-import { voidRoundByOperator } from "@/lib/server/updown-service";
+import { voidRoundByOperator, generateRoundNow } from "@/lib/server/updown-service";
 import type { ChainState } from "@/lib/server/updown-dal";
 import type { MarketCategory } from "@/lib/server/market-service";
 
@@ -227,6 +227,42 @@ export async function updateChainAction(formData: FormData) {
  * so the gate below stands. What was taken from that branch is its stricter INPUT
  * validation (an explicit missing-id refusal and an upper bound on the reason).
  */
+/**
+ * ⭐ E-67 · GENERATE ONE ROUND. The control that replaced automatic emission.
+ *
+ * Ali, 2026-08-03: *"nothing should be by 50pick automatic — my admins will enter and generate
+ * every 5 min… because sometimes we might not generate, other times we would."* All chains are
+ * STOPPED; this is now the only way a round comes into existence.
+ *
+ * ⛔ NO CONFIRMATION TEXT IS DEMANDED, unlike `voidRoundAction`. Voiding hands a stake back and
+ * is irreversible, so it makes an officer type a reason. Generating a round takes no money, is
+ * undone by voiding the round it created, and is expected to happen every few minutes — a
+ * confirmation dialog on a routine act trains people to click through dialogs.
+ *
+ * The refusals all live in `generateRoundNow` and are returned VERBATIM: an operator needs to
+ * know it was the calendar, or a live round, or an unreadable price — "generate failed" would
+ * throw away the only useful part.
+ */
+export async function generateRoundAction(formData: FormData) {
+  const session = await requireStaff(CONTROL_DOMAIN.generateUpDownRound, "generateUpDownRound");
+  const chainId = String(formData.get("chainId") ?? "").trim();
+  if (!chainId) return { ok: false as const, error: "Which chain? No chain id was supplied." };
+  try {
+    const r = await generateRoundNow(chainId, session.userId);
+    if (!r.ok) return { ok: false as const, error: r.error };
+    revalidatePath("/admin/updown");
+    revalidatePath("/admin/updown/rounds");
+    return {
+      ok: true as const,
+      roundId: r.data.id,
+      openPrice: r.data.openPrice,
+      closesAt: r.data.closesAt,
+    };
+  } catch (err) {
+    return { ok: false as const, error: safeError(err, "Generate round failed") };
+  }
+}
+
 export async function voidRoundAction(formData: FormData) {
   const session = await requireStaff(CONTROL_DOMAIN.voidUpDownRound, "voidUpDownRound");
   const id = String(formData.get("id") ?? "").trim();

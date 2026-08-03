@@ -96,6 +96,20 @@ export const CONTROL_DOMAIN = {
    */
   voidUpDownRound: "trading",
 
+  /**
+   * ⭐ E-67 · `/admin/updown` · **Generate round** — the control that replaced automatic
+   * emission. Ali, 2026-08-03: *"nothing should be by 50pick automatic — my admins will enter
+   * and generate every 5 min."* Every chain is STOPPED; a round now exists only because an
+   * operator pressed this.
+   *
+   * `trading`, matching `voidUpDownRound` and the route itself — NOT `accounting`. Creating a
+   * round is a trading act: it opens a book, it does not change the economics (the margin, the
+   * rates and the stake bounds are all frozen from the chain and the asset). Putting it behind
+   * `accounting` would reproduce E-27 exactly — a control a MODERATOR can see fully armed on a
+   * page they own, which bounces on every click.
+   */
+  generateUpDownRound: "trading",
+
   // ── E-27 · the Up & Down CONFIG tier, on a trading page ────────────────────
   /**
    * `/admin/updown` · the asset registry and the economics controls. All five demand

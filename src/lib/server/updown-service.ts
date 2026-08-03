@@ -22,7 +22,7 @@ import { withLock } from "./locks";
 import { marketStore } from "./market-dal";
 import { createMarket, settleMarket } from "./market-service";
 import {
-  getUpDownConfig, rateProfileFor, stakeBoundsFor, boundaryAfter, marginBpsForChain, computeTargets,
+  getUpDownConfig, rateProfileFor, stakeBoundsFor, boundaryAfter, boundaryAtOrBefore, marginBpsForChain, computeTargets,
   retryDelaySeconds, abandonAfterSeconds, type UpDownConfig,
 } from "./updown-config";
 import {
@@ -244,6 +244,97 @@ export async function readPrice(
  * looks dead again. That is exactly what the merge produced before this parameter existed,
  * and `test:updown-heal` §4 caught it. Production always passes nothing.
  */
+/**
+ * ⭐ E-67 · CREATE ONE ROUND, BECAUSE AN ADMIN ASKED FOR IT.
+ *
+ * Ali, 2026-08-03: *"nothing should be by 50pick automatic — my admins will enter and generate
+ * every 5 min… because sometimes we might not generate, other times we would."* A RUNNING chain
+ * emits on a timer with nobody involved (48 rounds/hour across four chains, measured). All
+ * chains are STOPPED; this is how a round comes into existence now.
+ *
+ * ⛔ IT REFUSES RATHER THAN OPENING A ROUND THAT CANNOT WORK, and that is the whole difference
+ * between this and the automatic path. `advanceChain` opens the round whatever the observation
+ * says, leaving `openPrice = null` when the reading has not confirmed — which is **E-63**, and
+ * on SOL it voided 22 of 24 rounds. An operator pressing a button gets a straight answer
+ * instead: either a round with a real open price and real targets, or a refusal naming the
+ * reason in the feed's own words. Nothing half-open, nothing doomed, no stake taken on terms
+ * that do not exist.
+ *
+ * The checks, in the order an operator would ask them:
+ *  1 · the chain and its asset still exist, and the asset is ENABLED;
+ *  2 · the market is OPEN right now (E-36's trading calendar — a round opened into a shut
+ *      market takes stakes all weekend and then voids);
+ *  3 · no round is already live on this chain (one round per chain at a time);
+ *  4 · the price READS — checked before anything is written.
+ *
+ * ⚠️ The boundary is taken from the chain's own grid (`boundaryAtOrBefore`), never from
+ * "now": the grid is what lets a 10-, 15- or 30-minute round share the 5-minute observation,
+ * and a round opened off-grid would need its own paid read at both ends.
+ */
+export async function generateRoundNow(
+  chainId: string,
+  officerId: string,
+): Promise<LifecycleResult<StoredRound>> {
+  const chain = await chainStore.get(chainId);
+  if (!chain) return { ok: false, error: "Chain not found." };
+  const asset = await assetStore.get(chain.assetId);
+  if (!asset) return { ok: false, error: "The chain's asset no longer exists." };
+  if (!asset.enabled) {
+    return { ok: false, error: `${asset.key} is disabled. Enable it before generating a round.` };
+  }
+
+  // 3 · one live round per chain — generating a second would split the liquidity and give
+  //     two rounds the same boundary.
+  const latest = await roundStore.latestForChain(chain.id);
+  if (latest && !latest.resolvedAt) {
+    return {
+      ok: false,
+      error: `A round is already live on ${asset.key} ${chain.durationMinutes}m (closes ${latest.closesAt}). Wait for it to settle, or void it first.`,
+    };
+  }
+
+  // The boundary this round OPENS on: the chain's own grid mark at or before now.
+  const anchorMs = Date.parse(chain.gridAnchorAt);
+  const boundaryIso = new Date(
+    boundaryAtOrBefore(anchorMs, chain.durationMinutes, Date.now()),
+  ).toISOString();
+
+  // 2 · E-36 — never open into a shut market.
+  const session = marketSessionAt(asset.category, boundaryIso);
+  if (!session.open) return { ok: false, error: describeClosure(session) };
+
+  // 4 · ⛔ THE PRICE, BEFORE ANYTHING IS WRITTEN. `acquireObservation` runs the calendar gate,
+  //     the approved-domain check and the staleness rule — the same ones settlement applies.
+  const obs = await acquireObservation(asset, boundaryIso);
+  if (obs.state !== "confirmed") {
+    return {
+      ok: false,
+      error:
+        `Could not read a price for ${asset.key} at ${boundaryIso} — ${obs.detail}. ` +
+        `No round was created. A round opened without an open price cannot resolve: it would ` +
+        `take stakes, show a countdown, and then void and refund every one.`,
+    };
+  }
+
+  const opened = await openRound(chain, boundaryIso, obs.id, obs.price);
+  if (!opened.ok) return opened;
+
+  audit({
+    category: "ADMIN",
+    action: "updown.round.generated",
+    actorId: officerId,
+    targetType: "UpDownRound",
+    targetId: opened.data.id,
+    payload: {
+      assetKey: asset.key, chainId: chain.id, durationMinutes: chain.durationMinutes,
+      boundaryAt: boundaryIso, openPrice: obs.price, observationId: obs.id,
+      upTarget: opened.data.upTarget, downTarget: opened.data.downTarget,
+      marginBps: opened.data.marginBps, manual: true,
+    },
+  });
+  return opened;
+}
+
 export async function acquireObservation(
   asset: StoredAsset,
   boundaryAtIso: string,

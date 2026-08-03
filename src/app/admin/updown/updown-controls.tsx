@@ -30,7 +30,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ConfirmModal } from "@/components/ui/modal";
 import {
   createAssetAction, toggleAssetAction, updateAssetAction,
-  createChainAction, setChainStateAction, updateChainAction,
+  createChainAction, setChainStateAction, updateChainAction, generateRoundAction,
   updateThresholdsAction, updateReadingMethodAction,
 } from "./actions";
 
@@ -302,10 +302,50 @@ export function ChainStateControls({
     });
   };
 
+  /**
+   * ⭐ E-67 · GENERATE ROUND — the control that replaced automatic emission.
+   *
+   * Ali, 2026-08-03: *"my admins will enter and generate every 5 min… sometimes we might not
+   * generate, other times we would."* Every chain is STOPPED, so this is how a round is born.
+   *
+   * ⛔ The refusal is shown VERBATIM and it is the useful half. `generateRoundNow` refuses when
+   * the market is shut, when a round is already live, or — the one that matters — when the
+   * price cannot be READ, and it says which. Under the automatic path that last case opened a
+   * priceless round anyway and voided it (E-63); here the operator is simply told, and no round
+   * exists to mislead a player.
+   */
+  const generate = () => {
+    start(async () => {
+      try {
+        const fd = new FormData();
+        fd.set("chainId", id);
+        const r = await generateRoundAction(fd);
+        if (!r.ok) {
+          toast({ title: `No round created for ${label}`, description: r.error, variant: "danger" });
+          return;
+        }
+        router.refresh();
+        deferToast({
+          title: `${label} — round open`,
+          description: r.openPrice != null
+            ? `Opened at ${r.openPrice}. Closes ${new Date(r.closesAt).toLocaleTimeString()}.`
+            : undefined,
+          variant: "success",
+        });
+      } catch {
+        toast({ title: "Couldn't generate a round", variant: "danger" });
+      }
+    });
+  };
+
   return (
     <div className="flex flex-wrap items-center gap-1.5">
+      {/* First, because it is now the action an operator comes to this page to perform. */}
+      <Button type="button" onClick={generate} loading={pending} variant="primary" size="sm">
+        Generate round
+      </Button>
       {state !== "RUNNING" && (
-        <Button type="button" onClick={() => go("RUNNING")} loading={pending} variant="primary" size="sm">
+        <Button type="button" onClick={() => go("RUNNING")} loading={pending} variant="ghost" size="sm">
           {state === "PAUSED" ? "Resume" : "Start"}
         </Button>
       )}

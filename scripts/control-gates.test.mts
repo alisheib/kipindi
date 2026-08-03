@@ -81,7 +81,7 @@ __resetGrantsForTest();
 {
   const EXPECT: Record<string, Partial<Record<ControlId, boolean>>> = {
     // Owner bypasses the grant table entirely and can never be locked out.
-    ADMIN:      { recheckMarketNow: true,  setTwoAdminAuth: true,  resolveMarket: true,  aiToolkit: true,  emergencyVoidMarket: true,  voidUpDownRound: true , createAsset: true, updateAsset: true, toggleAsset: true, updateReadingMethod: true, updateThresholds: true, armProposal: true, saveProposalsConfig: true, approveProposal: true},
+    ADMIN:      { recheckMarketNow: true,  setTwoAdminAuth: true,  resolveMarket: true,  aiToolkit: true,  emergencyVoidMarket: true,  voidUpDownRound: true , generateUpDownRound: true , createAsset: true, updateAsset: true, toggleAsset: true, updateReadingMethod: true, updateThresholds: true, armProposal: true, saveProposalsConfig: true, approveProposal: true},
     // ⭐ E-18 in one line: trading yes, compliance no. Sees the queue, cannot re-check;
     //    sees the markets table, cannot work its kill switch.
     // ⚠️ `voidUpDownRound: true` is a DELIBERATE, EVIDENCED decision, not a default —
@@ -89,18 +89,26 @@ __resetGrantsForTest();
     //    production proved that unusable: /admin/updown/rounds is a `trading` route, so
     //    a compliance officer could not even open the page, and the remedy ended up
     //    Owner-only. Flipping this line back to `false` is how you re-break E-23.
-    MODERATOR:  { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: true,  aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: true , createAsset: false, updateAsset: false, toggleAsset: false, updateReadingMethod: false, updateThresholds: false, armProposal: false, saveProposalsConfig: false, approveProposal: false},
+    // ⭐ `generateUpDownRound: true` MIRRORS IT, for the same reason and by the same evidence
+    //    (E-67, 2026-08-03). Since every chain was STOPPED on Ali's decision — *"nothing should
+    //    be by 50pick automatic, my admins will enter and generate every 5 min"* — this control
+    //    is the ONLY way a round comes into existence. `/admin/updown` is a `trading` route, so
+    //    gating it any narrower would hand the whole game to the Owner alone: the operators who
+    //    run the board every five minutes are exactly this role. It creates no money movement —
+    //    the margin, rates and stake bounds are frozen on the chain and the asset — and it is
+    //    undone by voiding the round it made, which this same role can already do.
+    MODERATOR:  { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: true,  aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: true , generateUpDownRound: true , createAsset: false, updateAsset: false, toggleAsset: false, updateReadingMethod: false, updateThresholds: false, armProposal: false, saveProposalsConfig: false, approveProposal: false},
     // ⭐ The other half: can act, cannot even reach the trading page that hosts it.
     //    …and that is exactly why `voidUpDownRound` is FALSE here: a control a role can
     //    work but never reach is not a control. The round explorer stays trading-owned.
-    COMPLIANCE: { recheckMarketNow: true,  setTwoAdminAuth: true,  resolveMarket: false, aiToolkit: true,  emergencyVoidMarket: true,  voidUpDownRound: false , createAsset: false, updateAsset: false, toggleAsset: false, updateReadingMethod: false, updateThresholds: false, armProposal: false, saveProposalsConfig: false, approveProposal: false},
-    FINANCE:    { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: false , createAsset: true, updateAsset: true, toggleAsset: true, updateReadingMethod: true, updateThresholds: true, armProposal: true, saveProposalsConfig: true, approveProposal: false},
-    GROWTH:     { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: false , createAsset: false, updateAsset: false, toggleAsset: false, updateReadingMethod: false, updateThresholds: false, armProposal: false, saveProposalsConfig: false, approveProposal: true},
-    SUPPORT:    { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: false , createAsset: false, updateAsset: false, toggleAsset: false, updateReadingMethod: false, updateThresholds: false, armProposal: false, saveProposalsConfig: false, approveProposal: false},
+    COMPLIANCE: { recheckMarketNow: true,  setTwoAdminAuth: true,  resolveMarket: false, aiToolkit: true,  emergencyVoidMarket: true,  voidUpDownRound: false , generateUpDownRound: false , createAsset: false, updateAsset: false, toggleAsset: false, updateReadingMethod: false, updateThresholds: false, armProposal: false, saveProposalsConfig: false, approveProposal: false},
+    FINANCE:    { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: false , generateUpDownRound: false , createAsset: true, updateAsset: true, toggleAsset: true, updateReadingMethod: true, updateThresholds: true, armProposal: true, saveProposalsConfig: true, approveProposal: false},
+    GROWTH:     { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: false , generateUpDownRound: false , createAsset: false, updateAsset: false, toggleAsset: false, updateReadingMethod: false, updateThresholds: false, armProposal: false, saveProposalsConfig: false, approveProposal: true},
+    SUPPORT:    { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: false , generateUpDownRound: false , createAsset: false, updateAsset: false, toggleAsset: false, updateReadingMethod: false, updateThresholds: false, armProposal: false, saveProposalsConfig: false, approveProposal: false},
     // Read-only everywhere, including the domains it can view.
-    AUDITOR:    { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: false , createAsset: false, updateAsset: false, toggleAsset: false, updateReadingMethod: false, updateThresholds: false, armProposal: false, saveProposalsConfig: false, approveProposal: false},
-    PLAYER:     { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: false , createAsset: false, updateAsset: false, toggleAsset: false, updateReadingMethod: false, updateThresholds: false, armProposal: false, saveProposalsConfig: false, approveProposal: false},
-    AGENT:      { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: false , createAsset: false, updateAsset: false, toggleAsset: false, updateReadingMethod: false, updateThresholds: false, armProposal: false, saveProposalsConfig: false, approveProposal: false},
+    AUDITOR:    { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: false , generateUpDownRound: false , createAsset: false, updateAsset: false, toggleAsset: false, updateReadingMethod: false, updateThresholds: false, armProposal: false, saveProposalsConfig: false, approveProposal: false},
+    PLAYER:     { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: false , generateUpDownRound: false , createAsset: false, updateAsset: false, toggleAsset: false, updateReadingMethod: false, updateThresholds: false, armProposal: false, saveProposalsConfig: false, approveProposal: false},
+    AGENT:      { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: false , generateUpDownRound: false , createAsset: false, updateAsset: false, toggleAsset: false, updateReadingMethod: false, updateThresholds: false, armProposal: false, saveProposalsConfig: false, approveProposal: false},
   };
 
   // ⛔ NOT vacuous by omission. `Partial<Record<…>>` lets a new control be added and
