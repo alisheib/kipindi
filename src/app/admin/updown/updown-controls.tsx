@@ -33,8 +33,11 @@ import {
   createChainAction, setChainStateAction, updateChainAction, generateRoundAction,
   updateThresholdsAction, updateReadingMethodAction,
 } from "./actions";
+import { ALLOWED_DURATIONS } from "@/lib/updown-durations";
 
-const DURATIONS = [5, 15, 30] as const;
+// ⛔ E-62 · ONE SOURCE FOR THE DURATIONS — see `src/lib/updown-durations.ts`. This was a
+// hand-copied `[5, 15, 30]`; a duration added server-side would have been unreachable here.
+const DURATIONS = ALLOWED_DURATIONS;
 const ICONS = ["gold", "silver", "platinum", "copper", "oil", "fx", "crypto"] as const;
 const CATEGORIES = ["macro", "crypto", "other"] as const;
 

@@ -46,8 +46,10 @@ const UPDOWN_CONFIG_KEY = "updown.config";
  *  with its own timer and its own liquidity, and the 5-minute grid is what lets a
  *  15- and 30-minute round share observations with the 5-minute ones. A 7-minute
  *  duration would not land on the grid and would break that sharing. */
-export const ALLOWED_DURATIONS = [5, 15, 30] as const;
-export type Duration = (typeof ALLOWED_DURATIONS)[number];
+export { ALLOWED_DURATIONS, OBSERVATION_GRID_MINUTES, landsOnGrid } from "@/lib/updown-durations";
+export type { Duration } from "@/lib/updown-durations";
+import { ALLOWED_DURATIONS } from "@/lib/updown-durations";
+import type { Duration } from "@/lib/updown-durations";
 
 export type UpDownConfig = {
   /**

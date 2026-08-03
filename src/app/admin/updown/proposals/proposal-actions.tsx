@@ -28,8 +28,11 @@ import {
   generateProposalAction, editProposalAction, approveProposalAction,
   rejectProposalAction, armProposalAction, deleteProposalAction,
 } from "./actions";
+import { ALLOWED_DURATIONS } from "@/lib/updown-durations";
 
-const DURATIONS = [5, 15, 30] as const;
+// ⛔ E-62 · ONE SOURCE FOR THE DURATIONS — see `src/lib/updown-durations.ts`. This was a
+// hand-copied `[5, 15, 30]`; a duration added server-side would have been unreachable here.
+const DURATIONS = ALLOWED_DURATIONS;
 
 /** The closed reject set, with officer-facing labels. Values must match the server's enum. */
 const REJECT_OPTIONS: Array<{ value: string; label: string }> = [

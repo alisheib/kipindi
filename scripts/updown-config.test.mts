@@ -358,8 +358,15 @@ let goldId = "";
   const toUntrusted = await updateAsset(goldId, { priceSourceUrl: "https://untrusted.example.com/x" }, OFFICER);
   ok("7.5 · an asset cannot be edited onto an untrusted source", !toUntrusted.ok);
 
-  ok("7.6 · ALLOWED_DURATIONS is exactly 5/15/30",
-     JSON.stringify([...ALLOWED_DURATIONS]) === JSON.stringify([5, 15, 30]));
+  // E-62 · 10 and 60 added 2026-08-04 on Ali's request. Both divide the 5-minute observation
+  // grid exactly, so both reuse the reading that boundary already produces — no extra provider
+  // call. ⛔ 3 is deliberately absent: it does NOT divide the grid and would need its own paid
+  // read at most boundaries (~480/day/asset against a ~800/day plan). The RULE, and the reason
+  // 3 is excluded, are asserted in `npm run test:updown-durations`; this pins the list itself so
+  // a change here has to be deliberate.
+  ok("7.6 · ALLOWED_DURATIONS is exactly 5/10/15/30/60",
+     JSON.stringify([...ALLOWED_DURATIONS]) === JSON.stringify([5, 10, 15, 30, 60]),
+     JSON.stringify([...ALLOWED_DURATIONS]));
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
