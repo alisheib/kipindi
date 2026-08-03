@@ -126,3 +126,17 @@ console.log(`\n  Board: https://www.50pick.tz/updown`);
 console.log(`  The price will read "—  awaiting read" until ANTHROPIC_API_KEY is set — the`);
 console.log(`  oracle refuses to invent one. The countdown and the whole card are live.`);
 console.log(`\n  To stop:  railway run npx tsx scripts/ops-updown-seed-one.mts -- --stop`);
+
+// ⛔ E-66 · FLUSH THE AUDIT QUEUE BEFORE THIS PROCESS ENDS.
+//
+// The money-path services audit FIRE-AND-FORGET: `audit()` chains its write onto a serialised
+// global queue (the HMAC chain must be written in prevHash order) and nobody awaits it. A
+// long-lived web process always drains that queue; a script does not. Measured on production:
+// `ops-stop-updown-chains.mts` stopped FOUR chains and exactly ONE
+// `updown.chain.stopped` row reached the database. The state changes were all correct — three
+// of their audit entries simply never existed, and they cannot be added afterwards because an
+// `AuditLog` row is HMAC-linked and forging one is forbidden.
+//
+// ⚠️ On a script that MOVES MONEY this is the record a regulator asks for.
+const { auditFlush } = await import("../src/lib/server/audit.ts");
+await auditFlush();

@@ -105,3 +105,17 @@ for (const c of running) {
 
 console.log(`\n${paused}/${running.length} chain(s) paused. No new rounds will open.`);
 console.log("In-flight rounds are untouched and still resolvable or voidable.");
+
+// ⛔ E-66 · FLUSH THE AUDIT QUEUE BEFORE THIS PROCESS ENDS.
+//
+// The money-path services audit FIRE-AND-FORGET: `audit()` chains its write onto a serialised
+// global queue (the HMAC chain must be written in prevHash order) and nobody awaits it. A
+// long-lived web process always drains that queue; a script does not. Measured on production:
+// `ops-stop-updown-chains.mts` stopped FOUR chains and exactly ONE
+// `updown.chain.stopped` row reached the database. The state changes were all correct — three
+// of their audit entries simply never existed, and they cannot be added afterwards because an
+// `AuditLog` row is HMAC-linked and forging one is forbidden.
+//
+// ⚠️ On a script that MOVES MONEY this is the record a regulator asks for.
+const { auditFlush } = await import("../src/lib/server/audit.ts");
+await auditFlush();

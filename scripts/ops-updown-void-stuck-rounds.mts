@@ -169,6 +169,21 @@ for (const t of targets) {
   if (voided % 200 === 0 && voided > 0) console.log(`    … ${voided}/${targets.length}`);
 }
 
+// ⛔ E-66 · FLUSH THE AUDIT QUEUE BEFORE THIS PROCESS ENDS — AND THIS IS THE SCRIPT THAT
+// MATTERS MOST, because the loop above REFUNDS REAL MONEY.
+//
+// The money-path services audit FIRE-AND-FORGET: `audit()` chains its write onto a serialised
+// global queue (the HMAC chain must be written in prevHash order) and nobody awaits it. A
+// long-lived web process always drains that queue; a script does not. Measured on production:
+// `ops-stop-updown-chains.mts` stopped FOUR chains and exactly ONE `updown.chain.stopped` row
+// reached the database. The state changes were all correct — three of their audit entries
+// simply never existed, and they cannot be added afterwards, because an `AuditLog` row is
+// HMAC-linked and forging one is forbidden here.
+//
+// ⚠️ A refund whose audit entry never lands is precisely the record a regulator asks for.
+const { auditFlush } = await import("../src/lib/server/audit.ts");
+await auditFlush();
+
 console.log(`\n${line}`);
 console.log(`  voided ${voided} · failed ${failed} · TZS ${refunded.toLocaleString()} refunded in full`);
 console.log(line);
