@@ -1213,6 +1213,7 @@ which it named by filename.
 | # | Sev | Area | Finding | Evidence |
 |---|---|---|---|---|
 | **E-40** | ✅ **FIXED 2026-08-02** | Up & Down · AI proposals | **"Ask the AI to propose" has never worked, and the page hid it as an empty queue.** `updown-proposal.ts:257` read `(prisma as any).upDownProposal` — but `prisma` is a **function** (`prisma(): PrismaClient \| null`), so that is a property of the *function object* and is `undefined`. Every write became `undefined.upsert(...)`. Reported by **Jaykishan Kaba** (ADMIN, `usr_53406f2f9f793abe1fd0e8af`) on production 2026-08-02 ~15:1x; the server log says it verbatim: `[action] Could not generate a proposal: Cannot read properties of undefined (reading 'upsert')`. ⛔ **The `as any` is what shipped it** — `prisma` really has no such property, and the cast erased the only check that would have failed the build. ⚠️ **And it was invisible**: the queue page calls `listProposals().catch(() => [])` and `countProposalsByState().catch(...)`, so the reads failed silently and it rendered *"No proposals yet"* — identical to an unused feature. Fixed to call `prisma()`; guard `test:prisma-delegate` **14/14**, proven RED first (it names the file and the property). ✅ **LIVE-VERIFIED ON PRODUCTION 2026-08-02 15:38–15:41Z, 8/8** — the real button pressed on `50pick.tz` as the **QA trading officer** (`712000104`, the narrowest identity holding `trading`; NOT as ADMIN, whose owner bypass would prove nothing), via `scripts/live-e40-proposal.mjs`. Two proposals generated, each with a complete audit chain. | live logs (verbatim above) · `UpDownProposal` **0 rows in the platform's entire history** · **0** `updown_proposal.*` audit rows ever, against **709** `aipoll.generate_started` · all four early gates measured OPEN on prod (`pollGenEnabled: true`, spend ≈ $14.41 of $20, 3 enabled assets) · **after**: `udprop_898xb9l3fx6b` (seq 21108 `generate_started` → 21109 `filtered`, 20,166 tok, $0.1034) and `udprop_erz3dvc7e9rz` (seq 21124 → 21125, $0.1606), both actor `usr_429885ab43c0cb4ce134dd7e` |
+| **E-51** | 🔴 **HIGH · security** → ✅ **FIXED 2026-08-03 (§6aa)** | Up & Down · price feed · credential exposure | **The metered provider API key was being sent in cleartext, on the money path, on a chain that was running.** `TwelveDataFeed.quote` puts the credential in the URL — `url.searchParams.set("apikey", this.apiKey)` — so over `http://` the whole request crosses the network in the clear. Measured on production: **`SOL` and `XAU` were both configured with `http://api.twelvedata.com/quote`, and SOL's 5-minute chain was `RUNNING` on one of them** with an unresolved round. Nothing had ever refused it, because `validateAsset` resolved the domain with `normalizeDomain(new URL(url).hostname)` — which **discards the scheme** before the allowlist check, so an http URL passed every gate the platform had. The key is paid, metered, and settlement depends on it: draining its quota means rounds cannot read a price, which voids them and refunds real players, so this is a denial-of-service on settlement and not only a leak. A redirect to https is no defence — the plaintext request has already gone. ⭐ **THE FIX IS SPLIT, AND THE SPLIT IS THE INTERESTING PART.** The first instinct was to refuse non-https in `quoteAsset`, and that was **wrong**: SOL's chain was live, so a read-time refusal would have voided and refunded real rounds because of an operator's typo — inverting the very rule the `no-api-key` carve-out exists to enforce (*a misconfigured feed is an operator problem, never a reason to move a player's money*). So `quoteAsset` **upgrades** `http:` → `https:` — the credential is protected on the next read, with zero money impact — and `validateAsset` **refuses** http outright, because at the form it costs nobody a round. ⚠️ An https endpoint is passed through byte-identical, not round-tripped through `new URL().toString()`, which would append a trailing slash and make every round's captured source look moved. | production `UpDownAsset`: SOL + XAU on `http://`, `UpDownChain udc_1f5976298e6e31c5` (SOL 5m) **RUNNING**, 1 unresolved round · `npm run test:feed-https` **16/16**, proven **RED 3/3** (no-upgrade → `fetched http://…`; refuse-instead-of-upgrade → 3 failed; form-stops-refusing → 3 failed) |
 | **E-50** | 🟡 **OPEN — found while shipping E-47b, pre-dates it** | admin · Up & Down proposals · a control that guarantees a dead end | **Editing a proposal's source link permanently prevents it from ever arming, and the console invites you to do it.** `editProposal` clears `observedPrice`/`observedQuotedAt` when the link changes — correctly, the reading belonged to the old link — but **nothing in the codebase can ever repopulate them for that proposal.** Before E-47b only `generateProposal` wrote them (from the AI); after E-47b only `generateProposal` writes them (from the asset's feed, and it reads the ASSET's source, not the proposal's). So the sequence *edit the link → validate → `source_unreadable` → cannot approve → cannot arm* is a closed trap with no exit but regenerating, and the proposal card offers the link as an editable field with a Save button. ⚠️ **This is why `readableProposal()` in the guard writes the evidence directly** — that is the one thing an officer cannot do, and the suite needs the state to exercise §7's source lock. Two ways out, both real: **(a)** re-read from the proposal's own link when it is edited (needs a proposal-scoped reader — `readPrice` is asset-scoped and would refuse a foreign host with `wrong-source`), or **(b)** make the link read-only on the proposal and move source changes to the asset form, where the source lock and the Check-symbol probe already live. ⭐ **(b) is the smaller and more honest fix** — the source is an ASSET property, and E-46 already made the asset form the guarded door for it. For now the console **says** the trap exists, in the step-3 explainer, the field hint and the save toast. | `editProposal` clears both fields; `grep -n "observedPrice = " src/lib/server/updown-proposal.ts` → only `generateProposal` assigns them · `npm run test:updown-proposal` §4 asserts the clear-and-refuse half |
 | **E-48** | 🔴 **HIGH** → ✅ **FIXED 2026-08-03 (§6z)** | docs · operator runbook · settlement maths | **The markets runbook taught operators to compute a settlement fee with the WRONG model, and §6b told the next session to expect the wrong payout — on a real market holding real money.** The worked example for `mkt_54f75a1959cdee5f1ed8` (2,000 YES v 2,000 NO) stated the fee as `min(13% × 4,000, 33.3% × 2,000)` = **TZS 520**, so *"alpha receives **TZS 3,480**"*. That is the **`capped-commission`** formula. The market is frozen at **`loser-share`**, where the fee is `(platformFeeRate + operatorFeeRate) × the LOSING pool` = 13% × 2,000 = **TZS 260** — so the real payout is **TZS 3,740**. The runbook understated a real player's payout by TZS 260 and showed its arithmetic, which is what makes it convincing. ⭐ **THE PRODUCT WAS RIGHT THE WHOLE TIME AND SAYS SO EXPLICITLY** — the trading officer's own market page renders *"LOSER-SHARE — the fee is a slice of the losing side"*, `LOSER-SHARE RATE 13.0% of whichever side loses`, `FEE IF YES WINS TZS 260`, `FEE IF NO WINS TZS 260`, and `TZS 3,740` in the predictor grid. Only the documents were wrong. 🔴 **The consequence was not a misprint: §6b instructed this session to check that alpha "should receive TZS 3,480", so a CORRECT settlement would have failed the check and been filed as a money defect** — the campaign's most expensive recurring failure, and the sixth instance of harness-lies-product-is-right after §6y's five. ⚠️ **And the first version of the correction was itself false**: it asserted *"every live market today is `loser-share`"*. Measured on production, of the **19** LIVE long-form polls **12 settle at `capped-commission`** and only **7** at `loser-share` — the fixed runbook would have misrouted the majority of the board. It now says *never assume, read it off the market's own page*, with both models' fees and payouts in a comparison table, and a new figure (`m21-fee-model.png`, shot as the TRADING officer) showing where that is stated. | live `/admin/markets/mkt_54f75a1959cdee5f1ed8` as trading officer → `TZS 260` · `TZS 3,740` (`shots/settlement-mkt_54f75a1959cdee5f1ed8.png`); production `feeSnapshot` census → LIVE MARKET: 12 capped-commission / 7 loser-share; `npm run test:settlement-expectation` **31/31**, proven **RED 8/8** by `scripts/settlement-expectation-red.mjs` |
 | **E-47** | 🔴 **HIGH** → ✅ **ALI DECIDED (option b) + SHIPPED 2026-08-03 (§6aa)** | Up & Down · AI proposals | **"Ask the AI to propose" now runs (E-40) — and it cannot succeed, by construction, for any feed-backed asset.** Measured on production after 12 generations: **0 PENDING_REVIEW, 0 that ever read a price, 10 FILTERED, $2.68 spent.** The design says the AI *may only read the asset's approved domain*, which is correct and load-bearing. But every live asset's approved domain is now **`api.twelvedata.com`** — a **key-protected JSON API**. The AI has no key and must not be given one, so it either cites the bare endpoint or invents **`apikey=demo`** (6 of the 12 proposals do exactly that), and the endpoint returns nothing usable. Every proposal therefore comes back `source_unreadable`. ⚠️ **And the alternative is already known-broken**: the feature was designed for HTML price pages (kitco, goldprice.org), which is precisely what **E-16/E-25** proved unreadable — those pages render prices in JavaScript a fetch does not run. So the feature cannot succeed with *either* kind of source in the current configuration, while charging ~$0.16 a click. ⛔ Not a code defect to patch blindly — it needs a product decision from Ali: **(a)** retire the proposal queue for feed-backed assets and keep the guided Add-asset form (which now does the same job deterministically, and for free); **(b)** let the AI propose only the *framing, duration and margin* and take the price from the feed rather than asking it to read one; or **(c)** give it a readable public source per asset. ⭐ **(b) is the one worth building** — the AI is genuinely good at the framing, and the price was never its job. ✅ **ALI CHOSE (b) ON 2026-08-03 AND IT IS SHIPPED.** The platform now reads the price itself via the money path's own `readPrice()` — same calendar gate, same approved domain, same staleness rule a round settles under — and hands that reading to the AI as context. The AI's tool schema no longer has `sourceUrl` / `observedPrice` / `observedQuotedAt` at all, and **`web_fetch` is gone**, so "the price is not your job" is structural rather than a request (given a fetch tool and a price-shaped job the model reaches for `apikey=demo`; 6 of 12 did). ⭐ **And the read happens BEFORE the AI call**, so an unreadable source now costs **$0.00** instead of ~$0.16 — the old order spent the credit and only then discovered the source was dead. Five console strings that claimed the AI had fetched the price were corrected in the same commit. | `UpDownProposal` on production: 12 rows, `read_a_price = 0`, `approvable = 0`, `demo_key = 6`, `$2.68` · screenshot `P2-progress-mid.png` shows the queue, every row *"NO PRICE WAS ACTUALLY READ FROM THE LINK"* |
@@ -1415,12 +1416,77 @@ source is the **asset's** and not one the AI chose, and that the reading is the 
 3/3 · tree restored, guard GREEN
 ```
 
+### ✅ DRIVEN LIVE ON PRODUCTION — the first approvable proposal the platform has ever produced
+
+`node scripts/live-proposal-check.mjs BTC`, as the **TRADING** officer, real Claude call, real
+Twelve Data read. The row, off the live DB:
+
+```
+udprop_ji8x1io97056   BTC/USD · 15m
+state          PENDING_REVIEW          ← 0 of 12 before this change
+observedPrice  62702.00                ← the PLATFORM'S read, not a claim
+filterReasons  []
+costUsd        $0.012207               was $0.131998   ·  10.8× cheaper
+tokensUsed     1,997                   was    25,650   ·  12.8× fewer
+```
+
+⭐ **And the margin reasoning is the argument for keeping the AI in this loop at all.** Unprompted,
+it rejected the scheduled value with arithmetic: *"3bps on BTC at ~$62,702 equals roughly $18.81.
+BTC/USD routinely oscillates $20–$60 within a single minute just from bid/ask spread noise… at 3bps
+the vast majority of rounds would land inside the band, resulting in near-universal voids — the game
+feels broken because nobody ever wins. A more workable margin for 15-minute BTC rounds is around
+20bps (~$125)."* That is the E-32 ladder being independently second-guessed, in the one place a
+human reviewer would want a second opinion. 📌 **Not acted on** — the margin schedule is Ali's dated
+decision and this is a recommendation on one row, not a study.
+
+### 🔴 THE LIVE RUN CAUGHT TWO THINGS THE SUITE COULD NOT, AND ONE OF THEM WAS MINE
+
+**(1) I shipped a false money statement, and the screenshot caught it.** The new advice for
+`source_unreadable` ended *"No AI credit was spent on this attempt."* True of every attempt after
+E-47b — and **false of the twelve rows already in the queue, which cost ~$0.13 each.** A static
+`REASON_ADVICE` string is rendered against historical rows too, so the console was telling an
+officer that $2.68 of spend had been free, on a spend readout. The cost sentence now reads
+`p.costUsd` off the row and says *"This attempt cost $0.1320 — it predates the change that checks
+the feed before calling the AI"* where it applies. ⚠️ **Nothing but looking at the image would have
+found this**: every guard was green, and the false sentence was new copy about old data.
+
+**(2) Harness lie #7 — and the pattern is identical to §6y's first one.** The run reported
+`feed_refused` and **3 FAILED** on a generation that had in fact reached `PENDING_REVIEW` with a
+real price. The wait scanned the whole page for `/No AI credit was spent/` — which is the advice
+text on the twelve *historical* rows — so it matched on its **first poll, before the generation had
+even finished**, and the screenshot it saved was of the still-open *"Asking the AI to propose a
+chain"* overlay. A page-wide regex cannot distinguish *"my row says X"* from *"some row says X"*, so
+it must not be asked to. The checker now waits for the **overlay to close** (the one signal that
+belongs to this generation) and defers the verdict to the database. ⚠️ Also: `getByLabel(...).
+locator("option")` returned **empty** and reported *"BTC is available to propose on — options: "* as
+a failure on a page offering seven assets — `components/ui/select.tsx` is the kit dropdown, a
+`role="combobox"` over `role="option"` **buttons**, not a native `<select>`.
+
+**(3) …and a third, from the RED harness itself.** `RED 1` for E-51 — removing the https upgrade —
+reported the guard **GREEN at 16/16**, i.e. "the defect is not caught". It was a lie: the ad-hoc
+`perl -0pi` mutation used `\n` against a **CRLF** file, so it never applied and the guard was
+testing unmutated source. Re-run with a single-line CRLF-tolerant anchor it goes red immediately
+(`fetched http://api.twelvedata.com/quote`). **This is the third session in a row bitten by CRLF in
+a RED harness.** The two committed harnesses (`settlement-expectation-red.mjs`,
+`updown-proposal-red.mjs`) treat a missed anchor as a HARD FAILURE for exactly this reason; a
+throwaway `perl` one-liner has no such protection, so it must verify the anchor is gone before
+trusting the result.
+
 📌 **E-50 was found while doing this and is filed, not fixed** — editing a proposal's link clears
 the reading and **nothing can ever put one back**, so the console offers an editable field whose
 only outcome is a proposal that can never arm. It pre-dates E-47b (the same trap existed when the
 AI supplied the evidence). The console now states the trap in three places; the fix is a separate
 decision, and the smaller option is to make the link read-only and move source changes to the
 asset form, where E-46 already put the guarded door.
+
+### E-51 rode with this commit, because the live run is what surfaced it
+
+Choosing an asset to generate against meant reading the production `UpDownAsset` rows, which is how
+**two enabled assets on `http://api.twelvedata.com/quote`** came to light — with the API key
+travelling as a query parameter, in cleartext, on the money path, on a chain that was **RUNNING**.
+Full account in the findings table. The half worth repeating here: **the obvious fix was the wrong
+one.** Refusing http at read time would have voided and refunded SOL's live rounds over an
+operator's typo. `quoteAsset` upgrades; only the form refuses.
 
 ## 6z. ⭐ E-48 — the runbook taught the wrong settlement maths, and the handoff would have failed a correct payout (2026-08-03, session 16)
 

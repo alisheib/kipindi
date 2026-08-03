@@ -503,7 +503,25 @@ async function validateAsset(input: AssetInput): Promise<{ ok: true; domain: str
   // THE SOURCE GATE. One allowlist on the platform, not two.
   let domain: string;
   try {
-    domain = normalizeDomain(new URL(input.priceSourceUrl).hostname);
+    const u = new URL(input.priceSourceUrl);
+    // ⛔ E-51 · HTTPS ONLY. The provider API key is sent as a QUERY PARAMETER
+    // (`TwelveDataFeed.quote`), so a plaintext request would put a paid, metered credential
+    // that settlement depends on onto the wire in the clear. Refused HERE, at the form, and
+    // only here: `quoteAsset` silently UPGRADES an existing http endpoint instead of refusing
+    // it, because refusing at read time would void and refund live rounds for a config typo.
+    // ⚠️ Nothing caught this before, because `normalizeDomain(hostname)` throws the scheme away
+    // before the allowlist check — so `http://api.twelvedata.com/quote` passed every gate, and
+    // two production assets (SOL, XAU) were saved that way with SOL's chain running.
+    if (u.protocol !== "https:" && u.hostname !== "localhost" && u.hostname !== "127.0.0.1") {
+      return {
+        ok: false,
+        error:
+          `Price source must use https:// — "${u.protocol}//" would send the provider API key ` +
+          `in cleartext, because it travels as a query parameter. Use ` +
+          `https://${u.hostname}${u.pathname}.`,
+      };
+    }
+    domain = normalizeDomain(u.hostname);
   } catch {
     return { ok: false, error: "Price source must be a valid URL." };
   }

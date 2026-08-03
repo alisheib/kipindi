@@ -83,11 +83,16 @@ const REASON_LABEL: Record<string, string> = {
  * actionable, and would void every round of a chain armed on it.
  */
 const REASON_ADVICE: Record<string, string> = {
+  // ⚠️ NO CLAIM ABOUT COST BELONGS IN THIS STRING. The first version of it ended "No AI credit
+  // was spent on this attempt" — true of every attempt made AFTER E-47b, and FALSE of the 12
+  // rows already in the queue, which cost ~$0.13 each. A static advice line is rendered against
+  // historical rows too, so anything row-specific has to be read off the row. The cost sentence
+  // is now rendered from `p.costUsd` at the call site.
   source_unreadable:
     "The platform read this asset's own price feed — the same way a live round does — and got " +
     "nothing back. That is worth knowing: a chain armed on it would void and refund every " +
     "round. Check the asset's symbol and source under Up & Down → Overview, use Check symbol " +
-    "to see what the feed answers, then regenerate. No AI credit was spent on this attempt.",
+    "to see what the feed answers, then regenerate.",
   duplicate_chain:
     "Nothing to fix — you already run this asset at this duration. Edit the existing chain " +
     "on the Overview page rather than arming a second one.",
@@ -339,6 +344,18 @@ export default async function UpDownProposalsPage({
                                   · {REASON_LABEL[r] ?? r}
                                   {REASON_ADVICE[r] && (
                                     <span className="mt-0.5 block text-text-subtle">{REASON_ADVICE[r]}</span>
+                                  )}
+                                  {/* Read the cost off THE ROW. Since E-47b the feed is checked
+                                      before the AI is called, so a new unreadable-source refusal
+                                      is free — but the rows generated before it each cost ~$0.13,
+                                      and telling an officer those were free would be a false
+                                      money statement on a spend readout. */}
+                                  {r === "source_unreadable" && (
+                                    <span className="mt-0.5 block text-text-subtle">
+                                      {p.costUsd > 0
+                                        ? `This attempt cost $${p.costUsd.toFixed(4)} — it predates the change that checks the feed before calling the AI.`
+                                        : "No AI credit was spent on this attempt — the feed is checked first."}
+                                    </span>
                                   )}
                                 </li>
                               ))}

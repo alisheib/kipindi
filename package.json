@@ -185,6 +185,7 @@
     "test:rule-honesty": "tsx scripts/updown-rule-honesty.test.mts",
     "test:updown-digest": "tsx scripts/updown-digest.test.mts",
     "test:settlement-expectation": "tsx scripts/settlement-expectation.test.mts",
+    "test:feed-https": "tsx scripts/feed-https.test.mts",
     "test:market-calendar": "tsx scripts/market-calendar.test.mts",
     "test:overdue-format": "tsx scripts/overdue-format.test.mts",
     "ops:updown-probe-source": "tsx scripts/ops-updown-probe-source.mts",

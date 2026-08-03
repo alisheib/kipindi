@@ -356,5 +356,38 @@ export async function quoteAsset(
       detail: `endpoint "${req.endpoint}" is not on the approved domain "${req.approvedDomain}"`,
     };
   }
-  return feed.quote(req);
+  // ⛔ E-51 · NEVER SEND THE API KEY IN CLEARTEXT — AND NEVER VOID A ROUND OVER IT.
+  //
+  // `TwelveDataFeed.quote` does `url.searchParams.set("apikey", …)`, so the credential is IN
+  // THE URL. Over `http://` that URL crosses the network in the clear, where any on-path
+  // observer can lift a paid, metered key the money path depends on to settle rounds. Draining
+  // its quota is a denial of service on settlement, and every round that then fails to read
+  // voids and refunds. A redirect to https is no help: the plaintext request has already gone.
+  //
+  // Nothing upstream caught this. `validateAsset` only does `new URL(...)`, which accepts any
+  // scheme, and `normalizeDomain(hostname)` STRIPS the scheme before the allowlist check — so
+  // `http://api.twelvedata.com/quote` passed every gate. **Two production assets were
+  // configured exactly that way, and SOL's 5-minute chain was RUNNING on one of them.**
+  //
+  // ⚠️ WHICH IS WHY THIS UPGRADES RATHER THAN REFUSES. Refusing was the first instinct and it
+  // was wrong: it would have made every SOL round fail to read, void, and refund real players
+  // for an operator's typo. That inverts the rule the `no-api-key` carve-out exists to enforce
+  // — a misconfigured feed is an operator problem, never a reason to move a player's money.
+  // Upgrading protects the credential immediately with no money impact, and the fetched URL is
+  // recorded as the https one, which is what was actually requested. Refusing `http` belongs at
+  // the FORM (`validateAsset`), where it costs nobody a round.
+  //
+  // `localhost` keeps http so a dev harness can point at a stub.
+  let upgraded = req.endpoint;
+  try {
+    const u = new URL(req.endpoint);
+    const localDev = u.hostname === "localhost" || u.hostname === "127.0.0.1";
+    if (u.protocol === "http:" && !localDev) {
+      u.protocol = "https:";
+      upgraded = u.toString();
+    }
+  } catch {
+    return { ok: false, reason: "wrong-source", detail: `endpoint "${req.endpoint}" is not a valid URL` };
+  }
+  return feed.quote(upgraded === req.endpoint ? req : { ...req, endpoint: upgraded });
 }

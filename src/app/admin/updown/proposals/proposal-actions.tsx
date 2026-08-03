@@ -195,10 +195,14 @@ export function ProposeForm({
 
       {chosen && (
         <p className="text-[11.5px] leading-[1.55] text-text-subtle max-w-[80ch]">
-          The AI may only read <span className="font-mono text-[11px]">{chosen.sourceDomain}</span> — the domain
-          you approved for {chosen.key}. It will report the price and quote time it actually finds there;
-          a page with no readable price is held back rather than armed. Margin defaults to{" "}
-          <strong>{(defaultMarginBps / 100).toFixed(2)}%</strong> and the round window is{" "}
+          {/* E-47b — the AI does not read anything. It used to say "the AI may only read
+              {chosen.sourceDomain} … it will report the price and quote time it actually finds
+              there", which described 12 production generations that read nothing at all. */}
+          The platform reads {chosen.key} from{" "}
+          <span className="font-mono text-[11px]">{chosen.sourceDomain}</span> first — its own feed, the
+          same way a live round does — and the AI then proposes the framing and the margin against that
+          reading. If the feed cannot be read, you are told before any AI credit is spent. Margin
+          defaults to <strong>{(defaultMarginBps / 100).toFixed(2)}%</strong> and the round window is{" "}
           <strong>{maxStalenessSeconds}s</strong> — you can change both before approving.
         </p>
       )}
