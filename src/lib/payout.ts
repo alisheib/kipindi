@@ -541,6 +541,55 @@ export function payoutFor(
 }
 
 /**
+ * What the "Payout" column may honestly show for ONE position (E-49).
+ *
+ * While a market is still trading every OPEN position is a genuine two-sided
+ * bet, so `payoutIfWin` is a fair projection. The moment the market has an
+ * outcome that stops being true: the losing side will receive nothing, and
+ * rendering its `payoutIfWin` under a column headed "Payout" quotes money it
+ * can never receive — the SAME figure the actual winner's row shows. Between
+ * sealing and settlement every position is still `OPEN`, so that window is
+ * exactly when an officer is asked to scan this column.
+ *
+ * Settled positions carry the real figure and need no qualifier.
+ *
+ * ⛔ One definition, consumed by BOTH the cell and the sort accessor. Those
+ * were two copies of the same expression, which is how a column and its own
+ * sort order are able to disagree.
+ */
+export type PayoutViewKind =
+  /** Settled. `amount` is what was actually paid. */
+  | "final"
+  /** Not settled yet. `amount` is what this side would receive if it wins. */
+  | "projected"
+  /** The market has resolved against this side. It receives nothing. */
+  | "none"
+  /** Settled, but no figure was recorded — show nothing rather than guess. */
+  | "unknown";
+
+export interface PayoutView {
+  kind: PayoutViewKind;
+  /** `null` only when `kind` is `"unknown"`. */
+  amount: number | null;
+}
+
+export function payoutViewFor(
+  position: { status: string; side: Side; potentialPayout: number; finalPayout?: number | null },
+  resolvedSide: Side | undefined,
+): PayoutView {
+  if (position.status !== "OPEN") {
+    return position.finalPayout == null
+      ? { kind: "unknown", amount: null }
+      : { kind: "final", amount: position.finalPayout };
+  }
+  // Still OPEN. Only an outcome can turn a projection into a counterfactual.
+  if (resolvedSide === undefined) return { kind: "projected", amount: position.potentialPayout };
+  return position.side === resolvedSide
+    ? { kind: "projected", amount: position.potentialPayout }
+    : { kind: "none", amount: 0 };
+}
+
+/**
  * Categorise the payout/stake ratio for the inline notice.
  *
  * There is no `negative` any more — the honest message on a lopsided poll is
