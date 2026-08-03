@@ -184,6 +184,7 @@
     "test:margin-schedule": "tsx scripts/updown-margin-schedule.test.mts",
     "test:rule-honesty": "tsx scripts/updown-rule-honesty.test.mts",
     "test:updown-digest": "tsx scripts/updown-digest.test.mts",
+    "test:updown-push": "tsx scripts/updown-push.test.mts",
     "test:settlement-expectation": "tsx scripts/settlement-expectation.test.mts",
     "test:feed-https": "tsx scripts/feed-https.test.mts",
     "test:proposal-evidence-age": "tsx scripts/proposal-evidence-age.test.mts",

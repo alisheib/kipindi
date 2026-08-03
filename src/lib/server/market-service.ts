@@ -32,7 +32,7 @@ import { payoutFor, settledPayoutFor, allocateWinnerPayouts, poolFee, levySplit,
 import { getRequireTwoOfficerResolution } from "./resolution-policy";
 import { isMaintenanceMode, maintenanceMessage } from "./platform-config";
 import { recordSnapshot } from "./market-history";
-import { notifyBetPlaced, notifyWin, notifyLoss, notifyRefund, notifyCashout, notifyAdminMarketResolution, notifyMarketCancelled, notifyAdminMarketCancelled, notifyOneSidedRefund, notifySelectionClosed } from "./notification-service";
+import { notifyBetPlaced, notifyWin, notifyLoss, notifyRefund, notifyCashout, notifyAdminMarketResolution, notifyMarketCancelled, notifyAdminMarketCancelled, notifyOneSidedRefund, notifySelectionClosed, pushOnly } from "./notification-service";
 import { sendEmailToUser, betPlacedHtml, winNotificationHtml, lossNotificationHtml, cashOutReceiptHtml, oneSidedRefundHtml, marketResolutionAdminHtml, marketCancelledRefundHtml, marketCancelledAdminHtml, bonusFulfilledHtml, selectionClosedHtml } from "./email";
 import { onRecruitBet, onRecruitSettlement } from "./affiliate-service";
 import { postLedgerEntries, stakeEntries, settlementPayoutEntries, refundEntries, cashoutEntries, withMoneyTx } from "./ledger";
@@ -485,6 +485,22 @@ export function perEventNotificationsSuppressed(m: Pick<StoredMarket, "productLi
   return m.productLine === "UPDOWN";
 }
 
+/**
+ * Web Push collapse keys for Up & Down (E-57).
+ *
+ * ⛔ These are NOT cosmetic. A `tag` tells the device to REPLACE any notification already
+ * showing under the same key, and that replacement is the entire reason per-event push is
+ * safe on a product where a player can run twenty rounds an hour. Change these and you
+ * change how loud the product is.
+ *
+ * · BET — one key for every stake, so the newest bet notice replaces the last. A stake
+ *   notice is only interesting until the next one.
+ * · RESULT — keyed PER ROUND, so outcomes never overwrite each other. This is money
+ *   moving; a win must not be silently replaced by a later loss, nor by a new bet.
+ */
+export const UPDOWN_PUSH_TAG_BET = "updown-bet";
+export const updownResultPushTag = (marketId: string) => `updown-result-${marketId}`;
+
 /** Fire-and-forget: cancel this market's scheduler timer (settled / voided / deleted). */
 async function disarmMarketTimer(id: string): Promise<void> {
   try {
@@ -912,6 +928,26 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
       }),
       tag: "bet-placed",
     })).catch(() => {});
+    } else {
+      // E-57 · Up & Down PUSHES even though it does not write an inbox row. The player
+      // asked for a live signal on their phone; what the digest prevents is forty rows
+      // to dismiss, not knowing that a bet landed. The `tag` is scoped to the CHAIN, so
+      // the next round REPLACES this notification instead of stacking beside it.
+      pushOnly(userId, {
+        titleEn: `Bet placed · ${opts.side} ${formatTzs(opts.stake)}`,
+        titleSw: `Dau limewekwa · ${opts.side} ${formatTzs(opts.stake)}`,
+        titleZh: `已下注 · ${opts.side} ${formatTzs(opts.stake)}`,
+        bodyEn: `${market.titleEn.slice(0, 60)} — you're in this round.`,
+        bodySw: `${market.titleSw.slice(0, 60)} — uko kwenye raundi hii.`,
+        bodyZh: `${(market.titleZh ?? market.titleEn).slice(0, 40)} — 您已参与本回合。`,
+        url: "/updown",
+        // ⭐ BETS COALESCE WITH EACH OTHER; OUTCOMES DO NOT. A stake notice is only
+        // interesting until the next one, so every bet shares one tag and the newest
+        // replaces the last — that is what stops twenty rounds an hour becoming twenty
+        // notifications. An OUTCOME is money moving, so it gets a tag of its own
+        // (below) and can never be overwritten by a later bet or by the other result.
+        tag: UPDOWN_PUSH_TAG_BET,
+      });
     }
   }
 
@@ -2182,6 +2218,22 @@ export async function settleMarket(
           html: oneSidedRefundHtml({ reference: p.id, stake: p.stake, marketTitle: m.titleEn, settledAt }),
           tag: "one-sided-refund",
         })).catch(() => {});
+      } else {
+        // E-57 · ⛔ THE REFUND PUSHES TOO, AND THIS BRANCH IS THE WHOLE POINT OF E-43.
+        // Pushing wins and losses while staying silent on refunds would rebuild the
+        // exact inversion E-43 fixed — only now in the push channel, where the player
+        // notices. Every terminal outcome of an Up & Down round reaches the device, or
+        // none of them do.
+        pushOnly(p.userId, {
+          titleEn: `Refunded · ${formatTzs(p.stake)}`,
+          titleSw: `Umerudishiwa · ${formatTzs(p.stake)}`,
+          titleZh: `已退款 · ${formatTzs(p.stake)}`,
+          bodyEn: `${m.titleEn.slice(0, 60)} — only one side had bets, so your stake came back in full.`,
+          bodySw: `${m.titleSw.slice(0, 60)} — upande mmoja tu ulikuwa na dau, hivyo dau lako limerudi lote.`,
+          bodyZh: `${(m.titleZh ?? m.titleEn).slice(0, 40)} — 仅一方有投注，您的本金已全额退回。`,
+          url: "/updown",
+          tag: updownResultPushTag(m.id),
+        });
       }
     }
     audit({
@@ -2257,8 +2309,21 @@ export async function settleMarket(
       pendingWagerReversals.push({ userId: p.userId, stake: p.stake });
       if (bonusPart > 0) pendingBonusRefunds.push({ userId: p.userId, amount: bonusPart });
       // E-43 — see the one-sided branch above. Same decision, same predicate.
+      // E-57 — and the same push, for the same reason: every terminal outcome reaches
+      // the device or none does.
       if (!perEventNotificationsSuppressed(m)) {
         notifyRefund(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id });
+      } else {
+        pushOnly(p.userId, {
+          titleEn: `Refunded · ${formatTzs(p.stake)}`,
+          titleSw: `Umerudishiwa · ${formatTzs(p.stake)}`,
+          titleZh: `已退款 · ${formatTzs(p.stake)}`,
+          bodyEn: `${m.titleEn.slice(0, 60)} — the round was voided and your stake came back in full.`,
+          bodySw: `${m.titleSw.slice(0, 60)} — raundi ilibatilishwa na dau lako limerudi lote.`,
+          bodyZh: `${(m.titleZh ?? m.titleEn).slice(0, 40)} — 本回合已作废，您的本金已全额退回。`,
+          url: "/updown",
+          tag: updownResultPushTag(m.id),
+        });
       }
     }
   } else {
@@ -2340,6 +2405,19 @@ export async function settleMarket(
             html: winNotificationHtml({ reference: p.id, payout, stake: p.stake, marketTitle: m.titleEn, settledAt }),
             tag: "win",
           })).catch(() => {});
+        } else {
+          // E-57 · the win still PUSHES. The digest is the readable account; a push is
+          // how the player learns their money moved while it is still happening.
+          pushOnly(p.userId, {
+            titleEn: `You won ${formatTzs(payout)}`,
+            titleSw: `Umeshinda ${formatTzs(payout)}`,
+            titleZh: `您赢得 ${formatTzs(payout)}`,
+            bodyEn: `${m.titleEn.slice(0, 60)} — paid to your wallet.`,
+            bodySw: `${m.titleSw.slice(0, 60)} — imelipwa kwenye pochi yako.`,
+            bodyZh: `${(m.titleZh ?? m.titleEn).slice(0, 40)} — 已支付至您的钱包。`,
+            url: "/updown",
+            tag: updownResultPushTag(m.id),
+          });
         }
       } else {
         p.status = "LOSS"; p.finalPayout = 0; p.settledAt = settledAt;
@@ -2359,6 +2437,21 @@ export async function settleMarket(
             html: lossNotificationHtml({ reference: p.id, stake: p.stake, marketTitle: m.titleEn, settledAt }),
             tag: "loss",
           })).catch(() => {});
+        } else {
+          // E-57 · the loss pushes too, and it stays DIRECT. ⛔ A push that announced
+          // only wins would be the E-43 failure wearing a new channel — the player would
+          // hear from us exactly when the news was good. The stake is named outright, in
+          // all three languages, exactly as `notifyLoss` does (LCCP harm-prevention).
+          pushOnly(p.userId, {
+            titleEn: `Bet lost · ${formatTzs(p.stake)}`,
+            titleSw: `Dau limepotea · ${formatTzs(p.stake)}`,
+            titleZh: `投注失败 · ${formatTzs(p.stake)}`,
+            bodyEn: `${m.titleEn.slice(0, 60)} — your side didn't win.`,
+            bodySw: `${m.titleSw.slice(0, 60)} — upande wako haukushinda.`,
+            bodyZh: `${(m.titleZh ?? m.titleEn).slice(0, 40)} — 您所选的一方未获胜。`,
+            url: "/updown",
+            tag: updownResultPushTag(m.id),
+          });
         }
       }
 

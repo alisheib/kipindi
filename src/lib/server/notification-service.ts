@@ -181,6 +181,51 @@ export async function dismissAll(userId: string) {
  * the market detail (where their conviction-dial state lives) so the
  * inbox click takes them back to the same market.
  */
+/**
+ * PUSH WITHOUT AN INBOX ROW — the Up & Down channel (E-57).
+ *
+ * Every other message on this platform is an inbox row that also happens to push, because
+ * `notify()` fans out to `sendPushToUser` after it writes. Up & Down cannot use that path:
+ * `perEventNotificationsSuppressed()` deliberately silences its per-event messages, and the
+ * reason is written into `market-service.ts` — *"forty inbox entries an hour is noise, not
+ * information"*. Suppressing the row also suppressed the push, so a player betting on Up &
+ * Down heard nothing at all until the digest.
+ *
+ * ⭐ THE TWO CHANNELS ARE NOT THE SAME QUESTION, AND THIS IS WHY THEY GET TWO PREDICATES.
+ * An inbox accumulates: forty rows is forty things to dismiss. A push COALESCES — the Web
+ * Push `tag` makes a new notification REPLACE the previous one on the device, so forty
+ * rounds produce one live notification per chain showing the latest state. Collapsing two
+ * different questions into one predicate is exactly what produced E-56 earlier today.
+ *
+ * ⛔ Everything protective still applies, because this goes through the SAME
+ * `sendPushToUser`: a self-excluded or cooling-off player is suppressed and audited (push
+ * is outbound engagement — LCCP SR 3.4), a missing VAPID key is a silent no-op, and dead
+ * endpoints are pruned. It never throws, so no money path can be affected by it.
+ *
+ * The message is NOT recorded anywhere, by design: the money record (txn, ledger, audit)
+ * is already written by the caller, and the digest remains the readable account.
+ */
+export function pushOnly(userId: string, copy: {
+  titleEn: string; titleSw: string; titleZh: string;
+  bodyEn: string; bodySw: string; bodyZh: string;
+  url?: string;
+  /** Collapse key. Same tag → the device REPLACES rather than stacks. */
+  tag: string;
+}): void {
+  void (async () => {
+    try {
+      const { sendPushToUser } = await import("./push-service");
+      const user = await db.user.findById(userId);
+      // ⚠️ Resolve the reader's locale, never ours. The SSE payload above carries all
+      // three languages for exactly this reason; a push carries one, so it must pick.
+      const loc = (user?.locale ?? "EN").toUpperCase();
+      const title = loc === "SW" ? copy.titleSw : loc === "ZH" ? copy.titleZh : copy.titleEn;
+      const body  = loc === "SW" ? copy.bodySw  : loc === "ZH" ? copy.bodyZh  : copy.bodyEn;
+      await sendPushToUser(userId, { title, body, url: copy.url ?? "/updown", tag: copy.tag });
+    } catch { /* a courtesy channel must never surface */ }
+  })();
+}
+
 export function notifyBetPlaced(userId: string, opts: {
   side: "YES" | "NO"; stake: number; payoutIfWin: number; marketTitle: string; marketId: string; positionId?: string;
   /** The poll's OWN rates. Hardcoding these numbers is how the copy came to lie. */
