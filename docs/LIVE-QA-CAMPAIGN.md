@@ -3721,6 +3721,87 @@ a player or re-enter the URL. Corroborated by this session seeing `/admin/updown
 SIGNED-OUT player shell to a freshly signed-in ADMIN. A player stranded on a money surface with no
 navigation has no wallet, no history and no way back.
 
+### ⭐ ALI'S STANDING ORDER, 2026-08-04 — and the exact work it requires
+
+> *"until all done perfectly, 0 flaws, nothing buggy, nothing weird, nothing unclear, nothing
+> weak, everything production level and tested, and 3-minute Up & Downs are working cleanly."*
+
+The remaining work, in the order it must be done, with the reasoning already derived so the next
+session executes rather than re-investigates. **Nothing below is speculative — each has evidence
+in its own finding row.**
+
+**① E-69 · SEAL THE CLOSE. Nothing else matters first, because until it lands a player can lose
+a round to a close nobody performed.** The open is already sealed: `generateRoundNow` refuses to
+create a round it cannot price. The close makes no such promise. Three parts:
+· **(a)** Close on the boundary independently of leadership churn. `LEASE_MS` is **3 minutes**, so
+every deploy costs up to 3 minutes of chores — on a 5-minute round that is most of its life, and
+it is exactly what killed `udr_01e034350b3c5d648ac3` (closed 21:42:26, resolved 21:51:14, 529s
+late, `closePrice NULL`). **Measure first:** how many rounds have closed late this week, and by
+how much. Do not guess at the fix before that number exists.
+· **(b)** When a close observation confirms LATE, re-derive the verdict from the round's stored
+targets — the exact mirror of E-63's `backfillOpenPrice`, and the same four money rules apply
+(never overwrite, never touch a resolved round, targets from the round's own frozen `marginBps`,
+match the boundary exactly).
+· **(c)** A round past its close with no verdict must SAY SO on the card. Silence there is what
+makes a player feel the game is broken.
+
+**② E-70 · the lost navbar.** Reproduce as ADMIN → `/markets`, then diff the served HTML against
+the same route as a player. Corroborating evidence already in hand: `/admin/updown` served the
+**signed-out player shell** to a freshly signed-in ADMIN. ⛔ A player stranded on a money surface
+with no navigation has no wallet, no history and no way back.
+
+**③ The written fixes — E-64, E-65, E-63.** 38 assertions, **8/8 proven RED**, held OFF-REPO at
+`…/scratchpad/backup/mywork/session21-updown-clarity.patch` because another session was using this
+checkout at the time. Reapply, re-run the RED harness, ship. They are the bet-confirmation toast,
+the one-sided-refund explanation, and the open-price backfill.
+
+**④ DURATIONS — and the arithmetic is already done, so do not re-derive it.**
+Ali asked for **3, 30 and 60**. E-62's original analysis was wrong in a way that cost the whole
+request: it answered *"30 exists, 10 never did"* and stopped, **never noticing that 10, 30 and 60
+are all clean multiples of the 5-minute observation grid and therefore FREE** — they share the
+reading that boundary already produces.
+
+```
+duration   divides the 5-min grid?   extra provider reads
+  10  ✅  yes                        none        ← add now, free
+  30  ✅  yes (already allowed)      none
+  60  ✅  yes                        none        ← add now, free
+   3  ⛔  NO                         ~480/day/asset
+```
+
+· **10 and 60: add immediately.** One list, `ALLOWED_DURATIONS`. ⚠️ **Both admin consoles
+hand-copy that array** (`updown-controls.tsx`, `proposals/proposal-actions.tsx`) — a server-side
+addition alone leaves the new option unreachable, which is a server accepting what no screen can
+ask for. Put the list in a dependency-free module both can import (`updown-config.ts` pulls in
+Prisma, so a client component cannot import it).
+· **3: MEASURE BEFORE BUILDING.** A 3-minute chain fires **20 boundaries/hour against a 5-minute
+chain's 12**, and 3 coincides with 5 only every 15 minutes, so most of its reads are unshared.
+The plan is **Twelve Data Basic 8 (~800 calls/day)** and four assets already consume ~288/day
+each on the 5-minute grid. **Get the real consumption off production first.** Then choose:
+move the grid to **1 minute** (every allowed duration then divides it, at the cost of many more
+observation instants), or accept unshared reads for that chain and price them. ⛔ It is a cost
+decision, not a constant to edit. ⚠️ The E-58 blocker cited in E-62 was **WITHDRAWN** in session
+19 as a misdiagnosis — it blocks nothing.
+· ⚠️ **Whatever is added, set the margin deliberately.** Production has **no `marginSchedule`** and
+`defaultMarginBps = 50` (**0.5%**), while the live chains run a **2 bps** override. A new chain
+takes the ladder's next-widest rung and, with no schedule, falls back to 0.5% — a ±$319 band on a
+10-minute BTC round, wide enough to void nearly everything. That is E-32 all over again.
+
+**⑤ E-59 · asset & chain ARCHIVE — never delete.** `Chain → Round → Market → Position` cascades,
+so a literal delete erases settled rounds, real positions and the money history behind them, and
+the ledger rows referencing them are soft refs left pointing at nothing. Archive = hidden
+everywhere, cannot start, history intact. ⚠️ `assetStore.delete` and `chainStore.delete` exist in
+the DAL **with no caller** — do not wire them up.
+
+**⑥ The visual seal**, at four widths, every screen shot and LOOKED AT. ⭐ Three of E-67's four
+bugs were invisible to tests and obvious in a screenshot; assume the same here.
+
+📌 **And the orphaned `/admin/ai-usage` work** — `ai-usage-filters.tsx` (147 lines) and
+`dev-test/seed-ai-usage/` exist and compile, but `page.tsx` references neither, so the feature is
+unwired. Its integration was lost to a `git stash` on a shared checkout and is recoverable from
+`…/scratchpad/backup/page.tsx.CONFLICTED`. Finish it or discard it deliberately — do not leave it
+drifting. ⛔ **Never `git stash` or `git clean -fd` a checkout another session is using.**
+
 ⏭️ **RESUME AT:** ⓪ **THE MONEY ALREADY IN FLIGHT, which no code change touches.**
 `mkt_54f75a1959cdee5f1ed8` settles **2026-08-04 00:08:09 UTC** — alpha should receive
 **TZS 3,740** ⛔ derived from the market's own frozen `feeSnapshot`, never typed in (E-48) — echo
