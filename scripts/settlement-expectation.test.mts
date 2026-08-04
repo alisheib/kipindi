@@ -212,7 +212,14 @@ const YES_POOL = 2000, NO_POOL = 2000, ALPHA_STAKE = 2000;
   // absence is allowed ONLY when the handoff positively declares the position
   // instead. Silence satisfies neither branch, so the check can still fail —
   // a vague or empty handoff is exactly what it is here to catch.
-  const declares = /money in flight|no money in flight|nothing in flight|stranded/i.test(resume);
+  // ⚠️ Pin the PROPERTY — "the handoff states where the money stands" — not one
+  // session's phrasing. This alternation is the accepted vocabulary and it is
+  // deliberately broad: a handoff may report money *in flight*, *stranded*,
+  // *frozen*, or explicitly *none*. It failed once already on a correct handoff
+  // that said "freezing TZS 59,450" simply because that verb was missing here,
+  // which is the same vocabulary-pinning mistake three earlier guards made.
+  // What it must NOT accept is silence, and it does not.
+  const declares = /money in flight|nothing in flight|stranded|frozen|freezing|unsettled|no money (is )?(in flight|outstanding)/i.test(resume);
   ok("§5 §6b states the money position — an expected payout, or an explicit declaration",
     expected != null || declares,
     "the handoff names neither a 'receive **TZS …**' figure nor the money position");
