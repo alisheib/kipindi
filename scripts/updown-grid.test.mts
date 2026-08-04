@@ -89,8 +89,14 @@ const serviceCode = service
 ok("§4 ⛔ the seconds-preserving expression is GONE from the money path",
   !/Math\.floor\(Date\.now\(\) \/ 1000\) \* 1000/.test(serviceCode),
   "that expression is verbatim what shipped and what produced 21:27:37");
+// ⚠️ MATCHES THE IMPORT'S PROPERTY, NOT ITS EXACT SHAPE. This required the literal
+// `import { minuteFloor } from "@/lib/updown-durations"` — so adding a SECOND name to the same
+// import (`selectionClosesAt`, for the betting window) broke it, on code that is more correct
+// than before: the shared module is being used MORE, which is what the guard wants. A guard
+// that fails when a shared import grows teaches the next session to add a second import line,
+// or worse to re-implement. The property is "minuteFloor comes from the shared module".
 ok("§4 the shared rule is imported, not re-implemented",
-  /import \{ minuteFloor \} from "@\/lib\/updown-durations"/.test(service));
+  /import \{[^}]*\bminuteFloor\b[^}]*\} from "@\/lib\/updown-durations"/.test(service));
 
 // §4b · and the module it lives in must stay import-free, or a client console cannot read it
 // (the reason ALLOWED_DURATIONS was moved there: both admin consoles had hand-copied it).

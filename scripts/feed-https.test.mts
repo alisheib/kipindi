@@ -106,7 +106,7 @@ const REQ = { symbol: "BTC/USD", decimals: 2, approvedDomain: "api.twelvedata.co
 
   const base = {
     symbol: "BTC/USD", nameEn: "Bitcoin", nameSw: "Bitcoin", iconKey: "crypto",
-    category: "crypto" as const, decimals: 2, minMoveTicks: 1,
+    category: "crypto" as const, decimals: 2, minMoveTicks: 2,
   };
   const bad = await createAsset({ ...base, key: "HTTPBAD", priceSourceUrl: "http://api.twelvedata.com/quote" }, "usr_officer");
   ok("§2 ⛔ an http price source is REFUSED at creation", !bad.ok, bad.ok ? "IT WAS ACCEPTED" : "");

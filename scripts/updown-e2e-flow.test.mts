@@ -95,9 +95,14 @@ async function fundedUser(id: string, balance: number): Promise<string> {
 const balanceOf = async (id: string) => (await db.wallet.findByUserId(id))?.balance ?? 0;
 
 // ── Setup: one asset, one chain, through the real service functions ─────────
+// ⛔ A REAL CRYPTO SYMBOL, NOT GOLD WEARING A CRYPTO CALENDAR — the FOURTH suite killed by
+// this exact fixture pattern. It read `symbol: "XAU/USD"` with `category: "crypto"`, which
+// E-46's server-side `validateSymbolCategory` has refused since session 14, so this suite has
+// been RED on every tree since. A 24/7 market is genuinely what the flow needs (otherwise the
+// verdict depends on the day it runs) — the SYMBOL was always the wrong half. BTC/USD is both.
 const asset = await createAsset({
-  key: "XAU", symbol: "XAU/USD", nameEn: "Gold", nameSw: "Dhahabu", iconKey: "gold",
-  priceSourceUrl: ENDPOINT, category: "crypto", decimals: 2, minMoveTicks: 1,
+  key: "BTCE2E", symbol: "BTC/USD", nameEn: "Bitcoin", nameSw: "Bitcoin", iconKey: "crypto",
+  priceSourceUrl: ENDPOINT, category: "crypto", decimals: 2, minMoveTicks: 2,
 }, OFFICER);
 if (!asset.ok) throw new Error(asset.error);
 const en = await setAssetEnabled(asset.data.id, true, OFFICER);

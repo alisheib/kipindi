@@ -65,6 +65,31 @@ export type SymbolSpec = {
    * in the list?" is a worse question than seeing it greyed out with the answer.
    */
   unsupported?: string;
+  /**
+   * The shortest round this symbol may run, when the SYMBOL — not the platform — is the limit.
+   *
+   * ⛔ GOLD IS THE REASON (Ali's decision, 2026-08-04, on the §6ad seam measurement).
+   * A bar labelled T−1 closes at the instant the bar labelled T opens, so those two numbers
+   * describe the same moment and should agree. Measured live on five consecutive seams:
+   *
+   *     BTC/USD   −$0.01 on 4 of 5 seams        ~1/2000th of a median 5-minute move
+   *     XAU/USD   $0.29 – $0.87 on ALL 5 seams  comparable to a WHOLE 5-minute move (0.023%)
+   *
+   * Shadow mode found the same thing from the other direction: `/quote` fell outside the same
+   * minute's bar range on **6 of 30** XAU samples (by $0.055–$0.201), while **75 of 75** crypto
+   * samples agreed.
+   *
+   * ⭐ **So gold at 3–5 minutes is decided by which representation the feed returned, not by
+   * the market** — and no `minMoveTicks` fixes it: below the noise the feed decides, above it
+   * (~$1.00) almost every short round refunds. At 15m+ gold's median move (0.036%) is several
+   * times the seam noise, and the game is real again.
+   *
+   * ⚠️ Deliberately NOT `unsupported`. Gold works; it works at longer durations. Hiding it
+   * would raise the question this field exists to answer.
+   */
+  minDurationMinutes?: number;
+  /** Why the minimum exists, in the operator's terms. Shown beside the greyed options. */
+  minDurationWhy?: string;
 };
 
 /**
@@ -75,37 +100,60 @@ export type SymbolSpec = {
 export const SYMBOL_CATALOGUE: readonly SymbolSpec[] = [
   // ── Crypto · 24/7, never closed ───────────────────────────────────────────
   { symbol: "BTC/USD", suggestedKey: "BTC", nameEn: "Bitcoin",  nameSw: "Bitcoin",  nameZh: "比特币",
-    category: "crypto", iconKey: "crypto", decimals: 2, minMoveTicks: 1, group: "Crypto" },
+    category: "crypto", iconKey: "crypto", decimals: 2, minMoveTicks: 2, group: "Crypto" },
   { symbol: "ETH/USD", suggestedKey: "ETH", nameEn: "Ethereum", nameSw: "Ethereum", nameZh: "以太坊",
-    category: "crypto", iconKey: "crypto", decimals: 2, minMoveTicks: 1, group: "Crypto" },
+    category: "crypto", iconKey: "crypto", decimals: 2, minMoveTicks: 2, group: "Crypto" },
   { symbol: "SOL/USD", suggestedKey: "SOL", nameEn: "Solana",   nameSw: "Solana",   nameZh: "索拉纳",
-    category: "crypto", iconKey: "crypto", decimals: 2, minMoveTicks: 1, group: "Crypto" },
+    category: "crypto", iconKey: "crypto", decimals: 2, minMoveTicks: 2, group: "Crypto" },
   { symbol: "XRP/USD", suggestedKey: "XRP", nameEn: "XRP",      nameSw: "XRP",      nameZh: "瑞波币",
-    category: "crypto", iconKey: "crypto", decimals: 4, minMoveTicks: 1, group: "Crypto" },
+    category: "crypto", iconKey: "crypto", decimals: 4, minMoveTicks: 2, group: "Crypto" },
   { symbol: "BNB/USD", suggestedKey: "BNB", nameEn: "BNB",      nameSw: "BNB",      nameZh: "币安币",
-    category: "crypto", iconKey: "crypto", decimals: 2, minMoveTicks: 1, group: "Crypto" },
+    category: "crypto", iconKey: "crypto", decimals: 2, minMoveTicks: 2, group: "Crypto" },
   { symbol: "LTC/USD", suggestedKey: "LTC", nameEn: "Litecoin", nameSw: "Litecoin", nameZh: "莱特币",
-    category: "crypto", iconKey: "crypto", decimals: 2, minMoveTicks: 1, group: "Crypto" },
+    category: "crypto", iconKey: "crypto", decimals: 2, minMoveTicks: 2, group: "Crypto" },
 
   // ── Metals · the FX/metals week (Sun 22:00 → Fri 21:00 UTC) ───────────────
+  //
+  // ⛔ 40 TICKS ($0.40) AND 15 MINUTES MINIMUM ON GOLD. Both are measured, not chosen — the
+  // feed disagrees with itself by up to $0.20 at a single instant and by $0.29–$0.87 across a
+  // bar seam, so a smaller band or a shorter round is decided by the data's representation
+  // rather than by the market. See `minDurationMinutes` above.
   { symbol: "XAU/USD", suggestedKey: "XAU", nameEn: "Gold",      nameSw: "Dhahabu", nameZh: "黄金",
-    category: "macro", iconKey: "gold", decimals: 2, minMoveTicks: 1, group: "Metals" },
+    category: "macro", iconKey: "gold", decimals: 2, minMoveTicks: 40, group: "Metals",
+    minDurationMinutes: 15,
+    minDurationWhy:
+      "Gold's own price feed disagrees with itself by up to $0.87 at a single instant — about " +
+      "the size of a whole 5-minute gold move. Over 15 minutes or more the market moves several " +
+      "times further than that, so the result reflects gold rather than the data feed." },
+  // Silver and platinum are the same market and the same week. They are NOT given a measured
+  // minimum, because nobody has measured their seams — and inventing one from gold's would be
+  // exactly the guess this file exists to prevent. Measure before shortening them.
   { symbol: "XAG/USD", suggestedKey: "XAG", nameEn: "Silver",    nameSw: "Fedha",   nameZh: "白银",
-    category: "macro", iconKey: "silver", decimals: 3, minMoveTicks: 1, group: "Metals" },
+    category: "macro", iconKey: "silver", decimals: 3, minMoveTicks: 20, group: "Metals",
+    minDurationMinutes: 15,
+    minDurationWhy:
+      "Silver trades the same market as gold, whose feed disagrees with itself by about a whole " +
+      "5-minute move. Silver's own seams have not been measured, so it follows gold's limit " +
+      "until they are." },
   { symbol: "XPT/USD", suggestedKey: "XPT", nameEn: "Platinum",  nameSw: "Platini", nameZh: "铂金",
-    category: "macro", iconKey: "platinum", decimals: 2, minMoveTicks: 1, group: "Metals" },
+    category: "macro", iconKey: "platinum", decimals: 2, minMoveTicks: 40, group: "Metals",
+    minDurationMinutes: 15,
+    minDurationWhy:
+      "Platinum trades the same market as gold, whose feed disagrees with itself by about a " +
+      "whole 5-minute move. Platinum's own seams have not been measured, so it follows gold's " +
+      "limit until they are." },
 
   // ── FX · the same week as metals ──────────────────────────────────────────
   { symbol: "EUR/USD", suggestedKey: "EURUSD", nameEn: "Euro / US Dollar", nameSw: "Euro / Dola", nameZh: "欧元/美元",
-    category: "macro", iconKey: "fx", decimals: 5, minMoveTicks: 1, group: "Foreign exchange" },
+    category: "macro", iconKey: "fx", decimals: 5, minMoveTicks: 2, group: "Foreign exchange" },
   { symbol: "GBP/USD", suggestedKey: "GBPUSD", nameEn: "Pound / US Dollar", nameSw: "Pauni / Dola", nameZh: "英镑/美元",
-    category: "macro", iconKey: "fx", decimals: 5, minMoveTicks: 1, group: "Foreign exchange" },
+    category: "macro", iconKey: "fx", decimals: 5, minMoveTicks: 2, group: "Foreign exchange" },
   { symbol: "USD/JPY", suggestedKey: "USDJPY", nameEn: "US Dollar / Yen", nameSw: "Dola / Yen", nameZh: "美元/日元",
-    category: "macro", iconKey: "fx", decimals: 3, minMoveTicks: 1, group: "Foreign exchange" },
+    category: "macro", iconKey: "fx", decimals: 3, minMoveTicks: 2, group: "Foreign exchange" },
 
   // ── Indices · listed so the absence is EXPLAINED, not mysterious ──────────
   { symbol: "SPX", suggestedKey: "SNP500", nameEn: "S&P 500", nameSw: "S&P 500", nameZh: "标普500",
-    category: "macro", iconKey: "fx", decimals: 2, minMoveTicks: 1, group: "Indices",
+    category: "macro", iconKey: "fx", decimals: 2, minMoveTicks: 2, group: "Indices",
     unsupported:
       "Not on the current Twelve Data plan — the quote endpoint returns HTTP 404 for SPX (needs the Grow tier). " +
       "It also trades a cash session (~13:30–20:00 UTC), which the platform's calendar does not model: `macro` " +
@@ -182,6 +230,90 @@ export function validateSymbolCategory(symbol: string, category: string): string
       `shuts it every weekend for no reason (finding E-46: BNB).`;
   }
   return null;
+}
+
+// ---------------------------------------------------------------------------
+// READINESS — ① ready · ② warning · ③ unusable, with the reason in the operator's terms
+// ---------------------------------------------------------------------------
+
+/**
+ * ⛔ ONE FUNCTION, READ BY THE FORM **AND** BY THE SERVER GATE.
+ *
+ * Ali: *"I don't know how knowledgeable my admins are in typing asset names"* — so nothing
+ * that decides whether a price arrives may be typed, and every option must carry a numbered
+ * signal saying whether it will work. But a dropdown is a courtesy, not a control: a stale
+ * page, a scripted POST or a second tab can still submit anything. If the greying and the
+ * refusal come from two different pieces of code they will disagree, and the disagreement will
+ * be discovered by a round that took real stakes.
+ *
+ * The numbers are deliberately numerals, not colours — they survive a monochrome screen, a
+ * screenshot in a WhatsApp thread, and an operator who is colour-blind.
+ */
+export type ReadinessLevel = 1 | 2 | 3;
+
+export type Readiness = {
+  /** ① usable · ② usable with a caveat worth reading · ③ not usable, and why. */
+  level: ReadinessLevel;
+  /** The reason, in the operator's own terms. Empty only for a plain ①. */
+  reason: string;
+};
+
+/**
+ * Can this symbol run at this duration, and how confidently?
+ *
+ * `durationMinutes` omitted asks about the SYMBOL alone — which is what the asset form needs
+ * before any chain exists.
+ */
+export function symbolReadiness(spec: SymbolSpec | undefined, durationMinutes?: number): Readiness {
+  if (!spec) {
+    return {
+      level: 3,
+      reason:
+        "Not a symbol this platform can quote. A symbol the price feed does not carry produces " +
+        "rounds that void and refund forever (E-46: \"ETH\" was accepted instead of \"ETH/USD\" " +
+        "and voided 27 of 27 rounds).",
+    };
+  }
+  // ③ beats everything: the platform genuinely cannot feed it.
+  if (spec.unsupported) return { level: 3, reason: spec.unsupported };
+
+  // ③ for this DURATION specifically — the symbol is fine, this length of round is not.
+  if (durationMinutes != null && spec.minDurationMinutes != null && durationMinutes < spec.minDurationMinutes) {
+    return {
+      level: 3,
+      reason:
+        spec.minDurationWhy ??
+        `${spec.symbol} needs rounds of at least ${spec.minDurationMinutes} minutes.`,
+    };
+  }
+
+  // ② a real caveat that does not stop the round happening. A shut market is the common one:
+  // the asset works, it simply produces nothing until the week reopens, and an operator who
+  // does not know that reads the silence as a broken feed (E-36).
+  if (sessionKindFor(spec.category) !== "always") {
+    return {
+      level: 2,
+      reason:
+        `${spec.symbol} is shut at weekends (Friday 21:00 → Sunday 22:00 UTC). While it is shut ` +
+        `the platform refuses to open or settle a round, so you will see no results at all — ` +
+        `that is deliberate, not a fault.`,
+    };
+  }
+  return { level: 1, reason: "" };
+}
+
+/** `①` / `②` / `③` — the glyph the console renders beside an option. */
+export function readinessMark(level: ReadinessLevel): string {
+  return level === 1 ? "①" : level === 2 ? "②" : "③";
+}
+
+/**
+ * ⛔ THE SERVER-SIDE DURATION GATE, and the counterpart to `validateSymbolCategory`.
+ * Returns null when the pairing is acceptable, or the sentence to show the operator.
+ */
+export function validateSymbolDuration(symbol: string, durationMinutes: number): string | null {
+  const r = symbolReadiness(findSymbol(symbol), durationMinutes);
+  return r.level === 3 ? r.reason : null;
 }
 
 /** Human sentence describing when this symbol can settle rounds. Shown on the form. */

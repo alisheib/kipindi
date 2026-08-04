@@ -81,7 +81,7 @@ if (!gold) {
     nameEn: "Gold", nameSw: "Dhahabu", nameZh: "黄金",
     iconKey: "gold",
     priceSourceUrl: "https://www.kitco.com/price/precious-metals",
-    category: "macro", decimals: 2, minMoveTicks: 1, sortOrder: 0,
+    category: "macro", decimals: 2, minMoveTicks: 2, sortOrder: 0,
   }, ACTOR);
   if (!r.ok) { console.error(`✗ create asset: ${r.error}`); process.exit(1); }
   gold = r.data;

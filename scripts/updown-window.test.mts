@@ -141,7 +141,7 @@ const echo = await fundedUser("win_echo", 100_000);
 const a = await createAsset({
   key: "BTCWIN", symbol: "BTC/USD", nameEn: "Bitcoin", nameSw: "Bitcoin", iconKey: "crypto",
   priceSourceUrl: "https://api.twelvedata.com/time_series", category: "crypto",
-  decimals: 2, minMoveTicks: 1,
+  decimals: 2, minMoveTicks: 2,
 }, OFFICER);
 if (!a.ok) throw new Error(a.error);
 await setAssetEnabled(a.data.id, true, OFFICER);

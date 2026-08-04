@@ -9,24 +9,32 @@
  * would have left both consoles still offering the old three: a server accepting a value no
  * screen can ask for. This module has NO imports on purpose, so every layer shares one list.
  *
- * ── THE GRID RULE, WHICH DECIDES WHAT MAY BE ADDED ──────────────────────────────────────────
- * Every duration must be a whole multiple of `OBSERVATION_GRID_MINUTES` (5). That is what lets a
- * 10-, 15-, 30- or 60-minute round reuse the price observation the 5-minute grid already
- * produces at its boundary: **one paid provider read serves every chain whose boundary lands
- * there.** A duration off the grid needs its own read at most of its boundaries.
+ * ── THE LATTICE RULE, WHICH DECIDES WHAT MAY BE ADDED ───────────────────────────────────────
+ * A duration is allowed if it **divides 1440**, the number of minutes in a day. Its boundaries
+ * then land on a lattice anchored at midnight UTC, which is stable across days and which every
+ * other allowed duration also lands on — so one paid provider read still serves every chain
+ * whose boundary meets there.
  *
  * ⭐ **10 and 60 added 2026-08-04** on Ali's request ("3 and 30 and 60 also should be options").
- * Both divide 5 exactly, so both are FREE — no new boundaries, no extra provider calls. The
- * earlier analysis (E-62) answered *"30 already exists and 10 never did"* and stopped there,
+ * The earlier analysis (E-62) answered *"30 already exists and 10 never did"* and stopped there,
  * never noticing that the values it was dismissing were the ones with no obstacle at all.
  *
- * ⛔ **3 IS NOT HERE, AND MUST NOT BE ADDED AS A ONE-LINE EDIT.** 3 and 5 coincide only every
- * 15 minutes, so a 3-minute chain needs its own paid read at most boundaries and fires **20 an
- * hour against a 5-minute chain's 12** — roughly **480 extra reads/day/asset** against a Twelve
- * Data Basic-8 plan of ~800/day, on which four assets already consume ~288/day each. Adding it
- * means either moving the grid to 1 minute (every allowed duration then divides it, at the cost
- * of many more observation instants) or accepting and pricing unshared reads. **Measure the real
- * consumption on production first.** It is a cost decision, not a constant. See E-62.
+ * ⭐ **AND 3 IS NOW HERE — the rule that excluded it stopped being true.**
+ * This header used to say, in capitals, that 3 must never be added as a one-line edit, because
+ * 3 does not divide 5: a 3-minute chain would need its own paid read at most boundaries and
+ * fire 20 an hour against a 5-minute chain's 12 — ~480 extra reads/day/asset against a ~800/day
+ * plan. **That arithmetic was right and its premise is now false.** It assumed chains EMIT ON A
+ * TIMER, all landing on shared instants. Ali made generation manual (E-67), and
+ * `generateRoundNow` deliberately opens on `minuteFloor(now)` rather than on any grid — because
+ * opening on the grid asked for a price up to 120s old and the button worked one minute in
+ * four. **Manual rounds do not coincide, so nothing was being shared and nothing was being
+ * saved.** The 5-minute rule was costing the product its shortest, most repeatable duration to
+ * protect an optimisation that no longer runs.
+ *
+ * ⚠️ **If chains are ever put back on timers, re-do that measurement before assuming it is
+ * still free.** On the epoch lattice a 3-minute chain shares :00/:15/:30/:45 with the 15-minute
+ * one, so the sharing is better than it was — but the read count per asset per day is a
+ * provider-plan question, and it is answered by measuring, not by this comment.
  *
  * ⚠️ A NEW CHAIN'S MARGIN IS NOT AUTOMATIC, and this is how E-32 happened.
  * `resolveScheduledMarginBps` picks the NARROWEST rung with `duration <= maxDurationMinutes`, so
@@ -37,20 +45,71 @@
  * deliberately when creating a chain; never accept the prefill blind.
  */
 
-/** The observation grid, in minutes. Every allowed duration must be a multiple of this. */
+/**
+ * The observation grid, in minutes.
+ *
+ * ⚠️ KEPT AT 5 FOR THE CHAIN ANCHOR, but it is no longer the rule that decides which durations
+ * are allowed — see `landsOnGrid` below. It remains what a RUNNING chain anchors its emissions
+ * to, which is the only thing it was ever load-bearing for.
+ */
 export const OBSERVATION_GRID_MINUTES = 5;
 
+/**
+ * ⭐ THE EPOCH LATTICE — the rule that replaced "must be a multiple of 5" (2026-08-04).
+ *
+ * ⛔ WHY THE OLD RULE HAD TO GO. It existed to make observation SHARING work: a 10-, 15- or
+ * 30-minute round reuses the price the 5-minute grid already produces at its boundary, so one
+ * paid provider read serves every chain crossing that instant. 3 does not divide 5, so it was
+ * excluded — correctly, under that rule.
+ *
+ * ⚠️ BUT THE RULE'S OWN PREMISE STOPPED HOLDING when Ali made generation MANUAL. A round now
+ * exists because an operator pressed Generate, and `generateRoundNow` deliberately opens on
+ * `minuteFloor(now)` rather than on the chain's grid — because opening on the grid asked for a
+ * price up to 120s old and the button only worked one minute in four. **Manual rounds do not
+ * coincide, so there is nothing to share and nothing was being saved.** The 5-minute rule was
+ * costing the product its shortest duration to protect an optimisation that no longer runs.
+ *
+ * ⭐ THE REPLACEMENT IS STRICTLY BETTER, and it is what §6ad item 8 asks for: a duration is
+ * allowed if it **divides 1440** — the number of minutes in a day. Every such duration's
+ * boundaries land on a lattice anchored at midnight UTC, so ALL of them still share instants
+ * with each other (3 and 15 meet every 15 minutes; 5 and 15 every 15; 30 and 60 every hour),
+ * and the lattice is stable across days rather than drifting with a per-chain anchor.
+ *
+ * ⛔ AND IT IS NOT A LOOSENING. 1440 has divisors like 7 and 9 that would be poor round
+ * lengths, so `ALLOWED_DURATIONS` remains an explicit list — the lattice rule is the INVARIANT
+ * every entry must satisfy, not a substitute for choosing them.
+ */
+export const MINUTES_PER_DAY = 1440;
+
 /** The durations a chain may run. Each is a separate chain with its own timer and liquidity. */
-export const ALLOWED_DURATIONS = [5, 10, 15, 30, 60] as const;
+export const ALLOWED_DURATIONS = [3, 5, 10, 15, 30, 60] as const;
 
 export type Duration = (typeof ALLOWED_DURATIONS)[number];
 
 /**
- * Does this duration land on the observation grid? Exported so the RULE is testable and so a
- * future addition is checked rather than assumed — which is the whole point of E-62's analysis.
+ * Does this duration land on the epoch lattice — i.e. does it divide the day evenly?
+ *
+ * Exported so the RULE is testable and so a future addition is checked rather than assumed,
+ * which is the whole point of E-62's analysis. A duration that does not divide 1440 produces
+ * boundaries that drift across midnight, so two consecutive days would use different instants
+ * and no two chains could ever share a reading.
  */
 export function landsOnGrid(minutes: number): boolean {
-  return Number.isInteger(minutes) && minutes > 0 && minutes % OBSERVATION_GRID_MINUTES === 0;
+  return Number.isInteger(minutes) && minutes > 0 && MINUTES_PER_DAY % minutes === 0;
+}
+
+/**
+ * The boundary lattice for a duration: the instants at which its rounds begin and end, anchored
+ * to midnight UTC rather than to a per-chain anchor.
+ *
+ * ⭐ This is what makes durations share instants again WITHOUT the 5-minute rule. A 3-minute
+ * and a 15-minute round both land on :00, :15, :30, :45 — so when chains emit on a timer again,
+ * one read still serves both.
+ */
+export function latticeBoundaryAtOrBefore(atMs: number, durationMinutes: number): number {
+  const step = durationMinutes * MINUTE_MS;
+  if (step <= 0) throw new Error("latticeBoundaryAtOrBefore: duration must be positive");
+  return Math.floor(atMs / step) * step;
 }
 
 // ---------------------------------------------------------------------------

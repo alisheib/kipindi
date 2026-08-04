@@ -58,13 +58,13 @@ const iso = (n: number) => new Date(Date.UTC(2026, 0, 1, 0, n)).toISOString();
 await assetStore.upsert({
   id: "ast_a", key: "AAA", symbol: "A/USD", nameEn: "A", nameSw: "A", nameZh: null, iconKey: "gold",
   priceSourceUrl: "https://kitco.com/a", sourceDomain: "kitco.com", category: "macro",
-  decimals: 2, minMoveTicks: 1, enabled: true, sortOrder: 0,
+  decimals: 2, minMoveTicks: 2, enabled: true, sortOrder: 0,
   createdBy: "test", createdAt: iso(0), updatedAt: iso(0),
 } as never);
 await assetStore.upsert({
   id: "ast_b", key: "BBB", symbol: "B/USD", nameEn: "B", nameSw: "B", nameZh: null, iconKey: "silver",
   priceSourceUrl: "https://kitco.com/b", sourceDomain: "kitco.com", category: "macro",
-  decimals: 2, minMoveTicks: 1, enabled: true, sortOrder: 1,
+  decimals: 2, minMoveTicks: 2, enabled: true, sortOrder: 1,
   createdBy: "test", createdAt: iso(0), updatedAt: iso(0),
 } as never);
 for (const [id, assetId, dur] of [["chn_a5", "ast_a", 5], ["chn_a15", "ast_a", 15], ["chn_b15", "ast_b", 15]] as const) {

@@ -75,7 +75,11 @@ const setOff = await setPlatformConfig({ maintenanceMode: false, maintenanceNote
 ok("setPlatformConfig OFF ok", setOff.ok);
 ok("isMaintenanceMode() reflects OFF", (await isMaintenanceMode()) === false);
 {
-  const r = await buyPosition("mm_u", { marketId: market.id, side: "NO", stake: 5_000 });
+  // ⚠️ `YES`, matching the opening bet at the top of this suite. It read `NO`, incidentally —
+  // this section is about MAINTENANCE being reversible, not about sides — and since 2026-08-04
+  // one account may hold only one side of a round, so the flip made the assertion fail for a
+  // reason that has nothing to do with maintenance mode. Same side, same question, honest pass.
+  const r = await buyPosition("mm_u", { marketId: market.id, side: "YES", stake: 5_000 });
   ok("OFF again: bet places", r.ok, r.ok ? "" : (r as { error?: string }).error);
 }
 

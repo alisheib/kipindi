@@ -99,7 +99,7 @@ const START_TOTAL = await walletsTotal();
 const a = await createAsset({
   key: "BTC", symbol: "BTC/USD", nameEn: "Bitcoin", nameSw: "Bitcoin", iconKey: "crypto",
   priceSourceUrl: "https://api.twelvedata.com/quote", category: "crypto",
-  decimals: 2, minMoveTicks: 1,
+  decimals: 2, minMoveTicks: 2,
 }, OFFICER);
 if (!a.ok) throw new Error(a.error);
 await setAssetEnabled(a.data.id, true, OFFICER);
@@ -113,7 +113,10 @@ const chain = (await chainStore.get(c.data.id))!;
 // ── 1 · The outcome rule (pure) ──────────────────────────────────────────────
 {
   const mm = minMoveFor(asset);
-  ok("1.1 · minMove is one tick at the asset's precision", mm === 0.01, String(mm));
+  // ⚠️ 0.02, not 0.01 — `MIN_MOVE_TICKS_FLOOR` is 2 since 2026-08-04. At one tick the winning
+  // band is the same size as the price's own rounding error, so the round could be decided by
+  // `toFixed` rather than by the market (§6ad scenario 1; `test:updown-margin` holds the rule).
+  ok("1.1 · minMove is the asset's tick floor at its precision", mm === 0.02, String(mm));
   ok("1.2 · a clear rise is UP", decideOutcome(2400, 2401, mm).outcome === "UP");
   ok("1.3 · a clear fall is DOWN", decideOutcome(2400, 2399, mm).outcome === "DOWN");
   ok("1.4 · a move UNDER minMove voids (never decided by noise)",
@@ -404,27 +407,38 @@ let round1Id = "";
   ok("8b.8 · ★ and costs the players nothing net — wallets return to pre-round",
      (await walletsTotal()) === beforeQ, `${beforeQ} → ${await walletsTotal()}`);
 
-  // Round R — HEDGE: one player backs BOTH sides of the SAME round. The two
-  // positions settle independently; the winner pays, the loser loses, and the net
-  // wallet movement is exactly the winning payout (both stakes already left).
+  // Round R — THE HEDGE IS NOW REFUSED (Ali's decision, 2026-08-04).
+  //
+  // ⚠️ THIS SECTION TESTED THE OPPOSITE, AND IT WAS CORRECT WHEN WRITTEN: one player backing
+  // both sides, settling per-position, the winner paying and the loser losing. The MECHANICS it
+  // proved are unchanged and still matter — what changed is that a single account may no longer
+  // reach that state, because in a pari-mutuel pool holding both sides risks only the fee and is
+  // therefore near-zero-risk volume (leaderboards and bonus wagering both count volume).
+  //
+  // ⭐ So the scenario is re-framed rather than deleted: the hedge is REFUSED, and the very same
+  // per-position settlement is proven across TWO players — which is the shape the product
+  // actually runs, and the one the live drive exercises.
   const or = await stubObservation(B(24), 2400.00);
   const rr = await openRound(chain, B(24), or, 2400.00);
   if (!rr.ok) throw new Error(rr.error);
   const mr = (await marketStore.get(rr.data.marketId))!;
   const beforeR = (await db.wallet.findByUserId(alice))!.balance;
-  await buyPosition(alice, { marketId: mr.id, side: "YES", stake: 15_000, idempotencyKey: "hedge-yes" });
-  await buyPosition(alice, { marketId: mr.id, side: "NO", stake: 15_000, idempotencyKey: "hedge-no" });
-  await buyPosition(bob, { marketId: mr.id, side: "YES", stake: 10_000 });
+  const legOne = await buyPosition(alice, { marketId: mr.id, side: "YES", stake: 15_000, idempotencyKey: "hedge-yes" });
+  const legTwo = await buyPosition(alice, { marketId: mr.id, side: "NO", stake: 15_000, idempotencyKey: "hedge-no" });
+  await buyPosition(bob, { marketId: mr.id, side: "NO", stake: 10_000 });
   const afterStakes = (await db.wallet.findByUserId(alice))!.balance;
-  ok("8b.9 · a hedged player is charged BOTH stakes", beforeR - afterStakes === 30_000, `Δ${beforeR - afterStakes}`);
+  ok("8b.9 · ⭐ the SECOND side is refused — one account, one side per round",
+     legOne.ok && !legTwo.ok, `first=${legOne.ok} second=${legTwo.ok}`);
+  ok("8b.9b · and only the FIRST stake left the wallet — a refusal moves no money",
+     beforeR - afterStakes === 15_000, `Δ${beforeR - afterStakes}`);
   await closeRound(rr.data.id, await stubObservation(B(25), 2415.00), 2415.00);
   const pr = await listPositionsForMarket(mr.id);
   const aliceYes = pr.find((p) => p.userId === alice && p.side === "YES")!;
-  const aliceNo = pr.find((p) => p.userId === alice && p.side === "NO")!;
-  ok("8b.10 · ⛔ the hedge settles per-position — YES wins, NO loses (not netted into one)",
-     aliceYes.status === "WIN" && aliceNo.status === "LOSS", `yes=${aliceYes.status} no=${aliceNo.status}`);
+  const bobNo = pr.find((p) => p.userId === bob && p.side === "NO")!;
+  ok("8b.10 · ⛔ positions still settle INDEPENDENTLY — the winner wins, the loser loses",
+     aliceYes.status === "WIN" && bobNo.status === "LOSS", `alice=${aliceYes.status} bob=${bobNo.status}`);
   const afterSettle = (await db.wallet.findByUserId(alice))!.balance;
-  ok("8b.11 · the hedged player's net wallet move == the winning payout only",
+  ok("8b.11 · the winner's wallet moves by exactly the payout",
      afterSettle - afterStakes === (aliceYes.finalPayout ?? 0), `Δ${afterSettle - afterStakes} vs payout ${aliceYes.finalPayout}`);
 }
 
@@ -535,7 +549,7 @@ let round1Id = "";
   const spx = await createAsset({
     key: "ETH", symbol: "ETH/USD", nameEn: "Ethereum", nameSw: "Ethereum", nameZh: "以太坊", iconKey: "crypto",
     priceSourceUrl: "https://api.twelvedata.com/quote", category: "crypto",
-    decimals: 2, minMoveTicks: 1,
+    decimals: 2, minMoveTicks: 2,
   }, OFFICER);
   if (!spx.ok) throw new Error(spx.error);
   await setAssetEnabled(spx.data.id, true, OFFICER);
@@ -689,7 +703,11 @@ let round1Id = "";
   if (!mAsset.ok) throw new Error(mAsset.error);
   await setAssetEnabled(mAsset.data.id, true, OFFICER);
   const gold = (await assetStore.get(mAsset.data.id))!;
-  const gc = await createChain({ assetId: gold.id, durationMinutes: 5 }, OFFICER);
+  // ⚠️ 15 MINUTES, NOT 5. Gold is 15m+ only since 2026-08-04 — its own feed disagrees with
+  // itself by up to $0.87 at a single instant, about a whole 5-minute gold move. This section
+  // is about the E-36 CALENDAR (a shut Saturday market opens nothing), and gold is exactly the
+  // right asset for that; only the length had to move to one gold can actually run.
+  const gc = await createChain({ assetId: gold.id, durationMinutes: 15 }, OFFICER);
   if (!gc.ok) throw new Error(gc.error);
   await setChainState(gc.data.id, "RUNNING", OFFICER);
   // Anchor the grid ON the Saturday boundary, so `advanceChain` reaches for exactly it.

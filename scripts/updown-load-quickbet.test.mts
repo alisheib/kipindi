@@ -37,6 +37,10 @@ const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; console.log
 if (!ON_PG) { __resetUpDownMemoryStores(); __resetUpDownConfig(); }
 await seedDefaultSources();
 try { await addSource({ domain: "kitco.com", label: "Kitco", category: "macro", rationale: "spot", addedBy: "system" }); } catch { /* already seeded on PG */ }
+// ⚠️ The fixture below is a 24/7 CRYPTO asset (gold is 15m+ only since 2026-08-04, and
+// these suites are not about gold). `isSourceTrusted` matches on (domain, category), so the
+// same domain needs a crypto row as well — exactly what `updown-heal` already does.
+try { await addSource({ domain: "kitco.com", label: "Kitco", category: "crypto", rationale: "test fixture", addedBy: "system" }); } catch { /* already present */ }
 
 const stamp = Date.now();
 let seq = 0;
@@ -53,7 +57,7 @@ async function funded(id: string, bal: number): Promise<string> {
 }
 
 // ── One open round, and a board of players ───────────────────────────────────
-const asset = await createAsset({ key: `XAU${stamp % 10000}`, symbol: "XAU/USD", nameEn: "Gold", nameSw: "Dhahabu", nameZh: "黄金", iconKey: "gold", priceSourceUrl: "https://www.kitco.com/price/precious-metals", category: "macro", decimals: 2, minMoveTicks: 1 }, "off");
+const asset = await createAsset({ key: `XAU${stamp % 10000}`, symbol: "BTC/USD", nameEn: "Bitcoin", nameSw: "Bitcoin", nameZh: "比特币", iconKey: "crypto", priceSourceUrl: "https://www.kitco.com/price/precious-metals", category: "crypto", decimals: 2, minMoveTicks: 2 }, "off");
 if (!asset.ok) throw new Error(asset.error);
 await setAssetEnabled(asset.data.id, true, "off");
 const chainR = await createChain({ assetId: asset.data.id, durationMinutes: 5, minStake: 100, maxStake: 100_000 }, "off");
@@ -80,11 +84,22 @@ const startTotal = (await Promise.all(players.map(async (p) => (await db.wallet.
 
 // ── Storm 1 · distinct taps — a whole board hammering ONE round at once ───────
 {
+  // ⚠️ THE SIDE IS PER-PLAYER, NOT PER-TAP (changed 2026-08-04).
+  //
+  // This read `side: k % 2 === 0 ? "YES" : "NO"`, so each player alternated sides across their
+  // own three taps. Since Ali's one-account-one-side rule that makes a THIRD of the storm a
+  // legitimate refusal — the suite reported 80/120 placed and a pool short by 40,000, which
+  // reads exactly like a lost-stake concurrency bug and is nothing of the kind.
+  //
+  // ⭐ Splitting by PLAYER index keeps everything this suite actually measures: the same 120
+  // concurrent taps, the same contention on one round, and both sides genuinely represented in
+  // the pool — which a per-tap split was only incidentally providing.
   const jobs: Promise<{ ok: boolean }>[] = [];
-  for (const p of players) {
+  for (const [pi, p] of players.entries()) {
+    const side = pi % 2 === 0 ? "YES" : "NO";
     for (let k = 0; k < TAPS_EACH; k++) {
       jobs.push(
-        buyPosition(p, { marketId, side: k % 2 === 0 ? "YES" : "NO", stake: STAKE, idempotencyKey: `${p}-tap-${k}` })
+        buyPosition(p, { marketId, side, stake: STAKE, idempotencyKey: `${p}-tap-${k}` })
           .then((res) => ({ ok: res.ok }))
           .catch(() => ({ ok: false })), // a THROW is the failure — a contended ok:false is fine
       );

@@ -121,7 +121,7 @@ function syntheticAsset(url: string): StoredAsset {
     id: "verify_probe", key: "PROBE", symbol: spec.symbol,
     nameEn: spec.name, nameSw: spec.name, nameZh: null, iconKey: "gold",
     priceSourceUrl: url, sourceDomain: normalizeDomain(new URL(url).hostname),
-    category, decimals: spec.decimals, minMoveTicks: 1,
+    category, decimals: spec.decimals, minMoveTicks: 2,
     enabled: false, sortOrder: 0, createdBy: "ops_verify",
     createdAt: now, updatedAt: now,
   };

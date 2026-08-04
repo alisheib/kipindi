@@ -869,8 +869,23 @@ export async function createChain(input: ChainInput, officerId: string): Promise
   const asset = await assetStore.get(input.assetId);
   if (!asset) return { ok: false, error: "Asset not found." };
   if (!ALLOWED_DURATIONS.includes(input.durationMinutes)) {
-    return { ok: false, error: `Duration must be one of ${ALLOWED_DURATIONS.join(", ")} minutes — other values would not land on the 5-minute grid, which is what lets rounds share price observations.` };
+    return {
+      ok: false,
+      error:
+        `Duration must be one of ${ALLOWED_DURATIONS.join(", ")} minutes. Each of these divides ` +
+        `the day evenly, so its boundaries land on a lattice anchored at midnight UTC — which is ` +
+        `what lets rounds of different lengths share one price reading.`,
+    };
   }
+  // ⛔ THE SERVER-SIDE DURATION GATE. A dropdown is a courtesy, not a control: a stale page, a
+  // scripted POST or a second tab can still submit anything. This is the same function the form
+  // greys options with, so the console and the money path can never disagree about whether a
+  // pairing is allowed — and gold at 5 minutes is refused here even if the option is clicked.
+  // ⚠️ Dynamic import for the same reason `validateSymbolCategory` uses one below: the symbol
+  // catalogue reaches `market-calendar`, and a static cycle here breaks the config module.
+  const { validateSymbolDuration } = await import("./updown-symbols");
+  const durationErr = validateSymbolDuration(asset.symbol, input.durationMinutes);
+  if (durationErr) return { ok: false, error: durationErr };
   const existing = (await chainStore.list({ assetId: input.assetId })).find((c) => c.durationMinutes === input.durationMinutes);
   if (existing) return { ok: false, error: `${asset.key} already has a ${input.durationMinutes}-minute chain.` };
 

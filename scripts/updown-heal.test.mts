@@ -123,7 +123,7 @@ const a = await createAsset({
   // day it runs is a suite that lies. The calendar has its own proof:
   // `npm run test:market-calendar`, plus §12 of `test:updown-engine` for the integration.
   priceSourceUrl: "https://www.kitco.com/price/precious-metals", category: "crypto",
-  decimals: 2, minMoveTicks: 1,
+  decimals: 2, minMoveTicks: 2,
 }, OFFICER);
 if (!a.ok) throw new Error(a.error);
 await setAssetEnabled(a.data.id, true, OFFICER);

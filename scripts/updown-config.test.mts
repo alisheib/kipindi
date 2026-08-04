@@ -163,16 +163,21 @@ let goldId = "";
   ok("3.1 · an asset with an approved source can be enabled", en.ok);
 
   const chainBad = await createChain({ assetId: goldId, durationMinutes: 7 as never }, OFFICER);
-  ok("3.2 · a duration off the 5-minute grid is refused", !chainBad.ok,
+  ok("3.2 · a duration off the epoch lattice is refused — 7 does not divide the day", !chainBad.ok,
      chainBad.ok ? "" : chainBad.error.slice(0, 70));
 
-  const c5 = await createChain({ assetId: goldId, durationMinutes: 5 }, OFFICER);
-  ok("3.3 · a 5-minute chain is created", c5.ok, c5.ok ? "" : c5.error);
+  // ⚠️ 15 MINUTES, NOT 5 — the fixture is GOLD, and gold is 15m+ only since 2026-08-04.
+  // Its own feed disagrees with itself by up to $0.87 at one instant, about a whole 5-minute
+  // gold move, so a shorter round is decided by the data rather than the market. The fixture
+  // moves to a length gold can actually run; the rule is not relaxed to suit the test.
+  //  is the dedicated guard for that rule.
+  const c5 = await createChain({ assetId: goldId, durationMinutes: 15 }, OFFICER);
+  ok("3.3 · a 15-minute chain is created", c5.ok, c5.ok ? "" : c5.error);
   ok("3.4 · a new chain starts STOPPED — creating it must not start emitting rounds",
      c5.ok && c5.data.state === "STOPPED");
   ok("3.5 · a stopped chain has no next boundary", c5.ok && c5.data.nextBoundaryAt === null);
 
-  const dupChain = await createChain({ assetId: goldId, durationMinutes: 5 }, OFFICER);
+  const dupChain = await createChain({ assetId: goldId, durationMinutes: 15 }, OFFICER);
   ok("3.6 · a duplicate (asset, duration) chain is refused", !dupChain.ok);
 
   if (c5.ok) {
@@ -371,12 +376,15 @@ let goldId = "";
 
   // E-62 · 10 and 60 added 2026-08-04 on Ali's request. Both divide the 5-minute observation
   // grid exactly, so both reuse the reading that boundary already produces — no extra provider
-  // call. ⛔ 3 is deliberately absent: it does NOT divide the grid and would need its own paid
-  // read at most boundaries (~480/day/asset against a ~800/day plan). The RULE, and the reason
-  // 3 is excluded, are asserted in `npm run test:updown-durations`; this pins the list itself so
-  // a change here has to be deliberate.
-  ok("7.6 · ALLOWED_DURATIONS is exactly 5/10/15/30/60",
-     JSON.stringify([...ALLOWED_DURATIONS]) === JSON.stringify([5, 10, 15, 30, 60]),
+  // call. ⭐ 3 IS NOW PRESENT (2026-08-04). It was excluded because it does not divide the
+  // 5-minute observation grid — true, and load-bearing while chains emitted on timers onto
+  // shared instants. Ali made generation manual, `generateRoundNow` opens on `minuteFloor(now)`
+  // rather than on any grid, and manual rounds do not coincide — so nothing was being shared
+  // and the exclusion was costing the product its shortest duration for no saving. The rule is
+  // now the EPOCH LATTICE (a duration must divide 1440); `npm run test:updown-durations` holds
+  // it. This pins the list itself so a change here still has to be deliberate.
+  ok("7.6 · ALLOWED_DURATIONS is exactly 3/5/10/15/30/60",
+     JSON.stringify([...ALLOWED_DURATIONS]) === JSON.stringify([3, 5, 10, 15, 30, 60]),
      JSON.stringify([...ALLOWED_DURATIONS]));
 }
 

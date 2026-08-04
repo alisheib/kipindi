@@ -3640,6 +3640,123 @@ workstation shows an SLA countdown, but nothing escalates when it runs out. Ali'
   platform zone (+3) keeps it on the right day, and the E-2 fix is safe. The earlier note was
   the `pg` −3h trap (§3) reading back through an un-cast client.
 
+## 6ah. ⭐ 3-MINUTE ROUNDS, THE EPOCH LATTICE, AND GOLD AT 15m+ (2026-08-04, session 23)
+
+> Executes §6ad phase 3 and Ali's gold decision. §6ad is settled; nothing here re-opens it.
+
+### ⭐ 3-minute rounds exist — because the rule that excluded them stopped being true
+
+`updown-durations.ts` said, in capitals, that **3 must never be added as a one-line edit**: 3 does
+not divide the 5-minute observation grid, so a 3-minute chain would need its own paid read at most
+boundaries and fire 20 an hour against a 5-minute chain's 12 — ~480 extra reads/day/asset against
+a ~800/day plan.
+
+⛔ **That arithmetic was right and its premise is now false.** It assumed chains EMIT ON A TIMER,
+all landing on shared instants. Ali made generation manual (E-67), and `generateRoundNow`
+deliberately opens on `minuteFloor(now)` rather than on any grid — because opening on the grid
+asked for a price up to 120s old and the button worked one minute in four. **Manual rounds do not
+coincide, so nothing was being shared and nothing was being saved.** The 5-minute rule was costing
+the product its shortest, most repeatable duration to protect an optimisation that no longer runs.
+
+**The replacement rule: a duration is allowed if it divides 1440** — the minutes in a day. Its
+boundaries then land on a lattice anchored at **midnight UTC**, stable across days, and every
+other allowed duration lands on it too. ⭐ **The sharing is better than before**: 3 and 15 meet
+every quarter hour, and all six meet at the hour — which the 5-minute grid could never give them.
+
+⛔ **Not a loosening.** 1440 has divisors like 7 and 9 that would be poor round lengths, so
+`ALLOWED_DURATIONS` stays an explicit list; the lattice is the INVARIANT every entry must satisfy.
+⚠️ **If chains ever go back on timers, re-measure the read cost before assuming it is still free.**
+
+`ALLOWED_DURATIONS` is now **3 · 5 · 10 · 15 · 30 · 60**.
+
+### ⛔ GOLD IS 15 MINUTES AND ABOVE — Ali's call, and it reverses §6ad decision 3
+
+Decision 3 was *"gold's `minMoveTicks` comes down from 15 ($0.15)"*. Three independent
+measurements say the opposite:
+
+| Evidence | Gold | Crypto |
+|---|---|---|
+| **bar seam** (T−1 close vs T open, same instant) | **$0.29 – $0.87** on 5 of 5 | $0.01 on 4 of 5 |
+| **shadow mode** (`/quote` vs the same minute's bar) | outside range on **6 of 30**, by $0.055–$0.201 | **75 of 75** agree |
+| **the live floor** (E-73) | **$0.01** — 29–87× below that noise | — |
+
+⭐ **So gold at 3–5 minutes is decided by which representation the feed returned, not by the
+market**, and no `minMoveTicks` fixes it: below the noise the feed decides; above it (~$1.00)
+almost every short gold round refunds. At 15m+ gold's median move (0.036%) is several times the
+seam noise and the game is real again.
+
+⚠️ **Deliberately NOT `unsupported`.** Gold works — at the right length. Hiding it would raise
+the question the reason exists to answer. Silver and platinum follow gold's limit and **say so**,
+because their own seams have never been measured and inventing a number from gold's would be the
+guess the symbol catalogue exists to prevent.
+
+### The numbered readiness signal — ONE function, read by the form AND the server
+
+`symbolReadiness(spec, durationMinutes)` returns **① ready · ② warning · ③ unusable** with the
+reason in the operator's terms. ⛔ **The same function backs the server gate**
+(`validateSymbolDuration`, wired into `createChain`), so the greying and the refusal can never
+disagree — a disagreement would be discovered by a round that had already taken stakes.
+
+⭐ The marks are **numerals, not colours**: they survive a monochrome screen, a screenshot in a
+WhatsApp thread, and a colour-blind operator. And **no ② or ③ anywhere in the catalogue is
+silent** — §2.7 walks every symbol × duration and fails if any carries a level without a reason.
+
+**Guards**: `test:updown-readiness` (**24**) and `test:updown-durations` (**27**), proven
+**RED 7/7** by `scripts/updown-readiness-red.mjs`.
+
+### 🔴 MY OWN REGRESSION LOOP WAS A CHECK THAT LIES — and it hid six red suites
+
+Between phases I ran a per-suite loop that grepped the output for `N passed, M failed`. **A suite
+that CRASHES prints no summary line at all**, so the grep found nothing and my loop reported it
+**green**. Six suites were failing that way while I read a clean board. `npm run test:all` caught
+it because it checks **exit codes**.
+
+⛔ **Judge a process by its exit code, never by scraping its output for a failure string** — the
+absence of a failure message is not the presence of success. Same family as `| tee` swallowing a
+`NoSuchBucket`, and as a `Select-String` for "error" reporting a passing build as failed.
+
+### ⚠️ AND A BLANKET SEARCH-AND-REPLACE CORRUPTED THE GUARDS THAT TEST THE THING IT REPLACED
+
+Raising every fixture off `minMoveTicks: 1` with one regex also rewrote the **deliberate** 1-tick
+cases *inside* `test:updown-margin` and its RED harness — the very assertions whose job is to
+prove a 1-tick band is refused. §2.2 was left reading *"a 1-tick band…"* while passing 2, and the
+harness's `create-default-back-to-1` mutation no longer mutated anything.
+
+⛔ **A mechanical fix applied to a guard usually breaks what the guard is for.** Restored from
+git and re-applied by hand. ⚠️ The pure `computeTargets` fixtures keep 1 tick legitimately — the
+floor is enforced at `validateAsset`, not inside the pure arithmetic.
+
+### ⚠️ Three more guards pinned an implementation SHAPE rather than a property
+
+| Guard | Pinned | Broke because | Now pins |
+|---|---|---|---|
+| `test:updown-source` | the literal `if (!operatorState) await recordAttempt` | the decision moved into one shared pure function | the delegation |
+| `test:updown-grid` §4 | `import { minuteFloor } from …` exactly | a SECOND name joined the same import | that `minuteFloor` comes from the shared module |
+| `test:updown-config` §2.1 | *"an untrusted domain is refused"* | the ticks check runs first, so it refused for an unrelated reason | (fixture fixed — it now tests domains) |
+
+⛔ **A guard that fails when code is factored properly teaches the next session to inline rather
+than to share.** Each was re-pointed at the property and re-proven RED against the real defect.
+
+### 🧹 `test:orphans` was already red before this session, and is green now
+
+39 undeclared orphans, including **session 22's own RED harnesses**. All 15 `*-red.mjs` are now
+wired as `npm run red:<name>`, plus **`npm run red:all`** so a session can prove every guard red
+in one command. The 26 manual live/ops drive tools are declared with reasons — they sign in as
+real personas and can move real money, so they must never run unattended.
+
+⚠️ **`test:cert-d2`, `test:responsive` and `test:motion` remain red and are NOT from this
+session.** cert-d2 is a KYC/`prisma-dal` assertion this session never touched; responsive and
+motion need a local server (`ECONNREFUSED :3000`). Recorded rather than silently absorbed.
+
+### 🔴 A FOURTH SUITE KILLED BY THE SAME FIXTURE PATTERN
+
+`test:updown-e2e-flow` created `XAU/USD` with `category: "crypto"` — gold wearing a crypto
+calendar, which E-46's `validateSymbolCategory` has refused since session 14. **It has been RED on
+every tree since, and nobody noticed**, exactly as `test:updown-heal`, `test:updown-engine` and
+`test:updown-proposal` were before it. Fixed the same way: a real 24/7 coin, which is what the
+suite always needed. Four suites, one pattern — **check the SYMBOL when a fixture wants a 24/7
+market.**
+
 ## 6ag. ⭐ THE MARGIN IS NOW THE TICK FLOOR — and the band can no longer be rounding noise (2026-08-04, session 23)
 
 > Executes §6ad phase 2 and Ali's decision 1. §6ad is settled; nothing here re-opens it.
@@ -4155,7 +4272,7 @@ so a tick-floor margin on crypto measures the market, not the feed.
 ⛔ **`feedProvider` is still `twelvedata`. No money has touched the new reader yet** — the switch
 is gated on the shadow run's median delta (§6ae) and lands with phase 1e.
 
-#### ⏭️ **RESUME AT:** ① **Phase 3 — durations 3/5/10/15/30/60 on the epoch lattice, gold 15m+ only.** Phases 1c/1d/1e/2 are DONE (§6ae, §6af, §6ag). `openRound` writes `selectionClosedAt: null`; set it to the last **20% of the round, floored at 30s**, config-driven. ⭐ The server enforcement is already free — `buyPosition` (`market-service.ts:621`) refuses `isSelectionClosed`. The card needs a **LOCKED** state whose countdown **RE-LABELS itself** and whose message carries its reason, and the lock turns `× 1.4 est.` into an exact payout. Ali's call 2026-08-04: **one account may NOT hold both sides of a round** — enforce in `buyPosition`, RED-first. Then **② Phase 2** tick-floor margin + `minMoveTicks ≥ 2` (see **E-73**) · **③ Phase 3** durations 3/5/10/15/30/60 on the epoch lattice, **gold 15m+ only** (Ali's call, 2026-08-04) · **④ Phase 4** the fully-controlled admin · **⑤ Phase 6** void honesty · **⑥ Phase 7** E-70, E-59, accountant/reports, the 4-width sweep, and consolidating the Up & Down docs to one truth.
+#### ⏭️ **RESUME AT:** ① **Phase 4 — the fully controlled admin.** Phases 1c/1d/1e/2/3 are DONE (§6ae, §6af, §6ag, §6ah). `openRound` writes `selectionClosedAt: null`; set it to the last **20% of the round, floored at 30s**, config-driven. ⭐ The server enforcement is already free — `buyPosition` (`market-service.ts:621`) refuses `isSelectionClosed`. The card needs a **LOCKED** state whose countdown **RE-LABELS itself** and whose message carries its reason, and the lock turns `× 1.4 est.` into an exact payout. Ali's call 2026-08-04: **one account may NOT hold both sides of a round** — enforce in `buyPosition`, RED-first. Then **② Phase 2** tick-floor margin + `minMoveTicks ≥ 2` (see **E-73**) · **③ Phase 3** durations 3/5/10/15/30/60 on the epoch lattice, **gold 15m+ only** (Ali's call, 2026-08-04) · **④ Phase 4** the fully-controlled admin · **⑤ Phase 6** void honesty · **⑥ Phase 7** E-70, E-59, accountant/reports, the 4-width sweep, and consolidating the Up & Down docs to one truth.
 
 ### 🟢 Laptop A, session 22 (2026-08-04) — THE SETTLEMENT REBUILD IS UNDER WAY AND HALF SHIPPED. Read §6ad first; it carries every decision and the measured evidence.
 

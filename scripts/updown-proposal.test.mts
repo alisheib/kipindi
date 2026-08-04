@@ -188,7 +188,14 @@ console.log("\n── 1 · the price comes from the feed, not from the AI ──
       g.data.sourceUrl === QUOTE_ENDPOINT, `got ${g.data.sourceUrl}`);
     ok("…and its domain matches", g.data.sourceDomain === QUOTE_DOMAIN, `got ${g.data.sourceDomain}`);
     ok("the AI still supplies the framing", g.data.framingEn.length > 0 && g.data.framingSw.length > 0);
-    ok("…and a margin, defaulted to the E-32 schedule", g.data.marginBps > 0);
+    // ⭐ ZERO SINCE 2026-08-04 — and zero is a VALUE here, not a missing field. The margin is
+    // the TICK FLOOR now (Ali's decision, §6ad item 4), so a proposal that inherits the product
+    // default correctly carries 0 bps and `computeTargets` floors the band at one tick. The old
+    // `> 0` assertion encoded the E-32 ladder, which this decision retires.
+    // ⚠️ Asserted as `=== 0`, not `>= 0`: the latter would pass on `undefined` coerced through a
+    // comparison and would stop testing anything at all.
+    ok("…and a margin — 0 bps, i.e. the tick floor, inherited from the product default",
+      g.data.marginBps === 0, String(g.data.marginBps));
     ok("the officer sees the reading as a good indicator",
       g.data.qualityIndicators.some((i) => i.status === "good" && /live quote/i.test(i.label)),
       g.data.qualityIndicators.map((i) => `${i.status}:${i.label}`).join(" | "));

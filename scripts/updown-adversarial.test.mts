@@ -28,6 +28,10 @@ __resetUpDownMemoryStores();
 __resetUpDownConfig();
 await seedDefaultSources();
 await addSource({ domain: "kitco.com", label: "Kitco", category: "macro", rationale: "spot", addedBy: "system" });
+// ⚠️ The fixture below is a 24/7 CRYPTO asset (gold is 15m+ only since 2026-08-04, and
+// these suites are not about gold). `isSourceTrusted` matches on (domain, category), so the
+// same domain needs a crypto row as well — exactly what `updown-heal` already does.
+try { await addSource({ domain: "kitco.com", label: "Kitco", category: "crypto", rationale: "test fixture", addedBy: "system" }); } catch { /* already present */ }
 
 let seq = 0;
 async function funded(id: string, bal: number): Promise<string> {
@@ -43,7 +47,7 @@ async function funded(id: string, bal: number): Promise<string> {
 }
 const mallory = await funded("adv_mallory", 1_000_000);
 
-const asset = await createAsset({ key: "XAU", symbol: "XAU/USD", nameEn: "Gold", nameSw: "Dhahabu", nameZh: "黄金", iconKey: "gold", priceSourceUrl: "https://www.kitco.com/price/precious-metals", category: "macro", decimals: 2, minMoveTicks: 1 }, OFFICER);
+const asset = await createAsset({ key: "XAU", symbol: "BTC/USD", nameEn: "Bitcoin", nameSw: "Bitcoin", nameZh: "比特币", iconKey: "crypto", priceSourceUrl: "https://www.kitco.com/price/precious-metals", category: "crypto", decimals: 2, minMoveTicks: 2 }, OFFICER);
 if (!asset.ok) throw new Error(asset.error);
 await setAssetEnabled(asset.data.id, true, OFFICER);
 const chainR = await createChain({ assetId: asset.data.id, durationMinutes: 5 }, OFFICER);
