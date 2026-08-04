@@ -141,6 +141,25 @@ const ALL: RefundReason[] = ["no-move", "source-failed", "source-mismatch", "ope
   ok("4.5 · ⭐ the card branches on whether THIS viewer was refunded, not on `state === void`",
      /\) : refundReason \?/.test(card));
   ok("4.6 · …and so does the round page", /\) : refundReason \?/.test(page));
+
+  // ⛔ REACHABILITY, NOT EXISTENCE — AND THE DIFFERENCE COST A LIVE DEFECT.
+  //
+  // 🔴 Found by driving production, not by this suite. The round page's chain is
+  //   `isOpen ? … : decided && myPosition && result ? … : locked ? … : refundReason ? …`
+  // so a player who HELD A POSITION on a decided round matched the RESULT panel first and
+  // never reached the refund explanation — the one player the sentence was written for.
+  // Round `udr_06c8b7b8128a6de53c64` (2026-08-04): resolved UP, echo alone on DOWN, stake 500
+  // returned in full, GGR 0, and the page said nothing about why. **E-65 surviving its own fix,
+  // one branch further down.**
+  //
+  // §4.6 asserted the branch EXISTS. It does, and it was unreachable. So this asserts the
+  // reason is ALSO consulted inside the result panel, which is where a refunded player lands.
+  // ⚠️ Matches the WHOLE file rather than a byte window around `udYourResult`. The first version
+  // sliced 2,200 characters after that key and missed the assertion by a few lines — a guard
+  // that depends on how much prose sits between two statements is a guard that will drift.
+  ok("4.9 · ⭐ the RESULT panel itself carries the refund reason — a branch that exists but cannot be reached is not a fix",
+     /\{refundReason && \(/.test(page) && /REFUND_REASON_KEY\[refundReason\]/.test(page),
+     "a refunded player matches `decided && myPosition && result` FIRST and never reaches the branch below");
   ok("4.7 · the card is fed the viewer's refunded stake", /myRefundedStake/.test(card));
   // ⚠️ PINS THE COMPUTATION, NOT THE FIELD NAME. The first version grepped for
   // `myRefundedStake` in the board — which survives happily even if the value is never

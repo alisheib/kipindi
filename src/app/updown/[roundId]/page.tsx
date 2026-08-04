@@ -260,6 +260,21 @@ export default async function UpDownRoundPage({
                     <p className="mt-1 m-0 font-mono text-[12px] tabular-nums text-text-muted">{myPosition.side === "UP" ? t.market.udUp : t.market.udDown} · {formatTzs(myPosition.stake)}</p>
                   </div>
                 </div>
+                {/* ⭐ E-65 · THE REFUND REASON BELONGS *HERE*, INSIDE THE RESULT PANEL.
+                    🔴 FOUND BY DRIVING IT ON PRODUCTION, not by any suite. The refund branch
+                    below is unreachable for the one player it was written for: this
+                    `decided && myPosition && result` case matches FIRST, so a player who was
+                    actually refunded saw the result panel and never the explanation.
+                    Round `udr_06c8b7b8128a6de53c64` on 2026-08-04 is exactly it — resolved UP,
+                    echo alone on DOWN, stake 500 returned in full, GGR 0, and the page said
+                    nothing about why. That is E-65 surviving its own fix, one branch further
+                    down. ⚠️ The guard asserted the branch EXISTED; it did not assert it was
+                    REACHABLE, and those are different claims. */}
+                {refundReason && (
+                  <p className="mt-3 m-0 text-[12.5px] leading-[1.55] text-text-muted">
+                    {(t.market as Record<string, string>)[REFUND_REASON_KEY[refundReason]]}
+                  </p>
+                )}
                 <Link href="/positions" className="btn btn-ghost btn-sm mt-3.5 w-full justify-center">{t.market.udOpenInPositions}</Link>
               </section>
             ) : locked ? (

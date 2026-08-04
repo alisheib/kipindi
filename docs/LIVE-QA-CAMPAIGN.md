@@ -3739,6 +3739,20 @@ feed failure outranks a low pay rate, so SOL and BTC 15m never look the same aga
   tap lands on whichever card is first. Same family as **E-70**. Betting from the board's LIVE
   card (`article:has-text("betting closes in")`) is reliable and is a real player path.
 
+### 🔴 AND THE DRIVE FOUND E-65 SURVIVING ITS OWN FIX, ONE BRANCH FURTHER DOWN
+
+The accountant read handed it over: round  resolved **UP** with echo
+alone on DOWN — staked 500, **paid back 500, GGR 0**. A round that DECIDED and refunded for want
+of a counterparty: E-65 exactly, live, on production.
+
+⛔ **And the page still said nothing about why.** The round detail chain reads
+, so a player
+who HELD A POSITION matched the RESULT panel first and never reached the explanation — **the one
+player the sentence was written for.**
+
+⚠️ **The guard asserted the branch EXISTED. It did, and it was unreachable.** Those are different
+claims, and only driving it on production told them apart. §4.9 now pins that the result panel
+itself carries the reason, proven RED by shadowing it again.
 ### ⏳ NOT YET PROVEN LIVE — stated plainly rather than implied
 
 - **A LATE close settling instead of voiding.** Proven exhaustively in `test:updown-late-close`

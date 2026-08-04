@@ -74,6 +74,14 @@ const MUTATIONS = [
     to: `      udRefundUnmatched: "The price did not move far enough either way, so the round could not be called. Your stake is back in full.",`,
   },
   {
+    // 🔴 THE LIVE DEFECT, restored: the result panel shadows the refund branch, so the one
+    // player who WAS refunded never sees why. Found on production, not by this suite.
+    name: "result-panel-shadows-the-reason — the refunded player never reaches the explanation",
+    file: PAGE,
+    from: `                {refundReason && (`,
+    to: `                {false && (`,
+  },
+  {
     // The board stops reporting the refund, so the card can never reach the unmatched branch.
     name: "board-stops-reporting-the-refund — the decided-but-refunded case becomes invisible",
     file: BOARD,
