@@ -166,7 +166,11 @@ export function EditAssetForm({
         <Field label="Name (EN)"><Input name="nameEn" defaultValue={nameEn} size="sm" /></Field>
         <Field label="Name (SW)"><Input name="nameSw" defaultValue={nameSw} size="sm" /></Field>
         <Field label="Decimals"><Input name="decimals" type="number" defaultValue={String(decimals)} min="0" max="8" size="sm" /></Field>
-        <Field label="Min move (ticks)"><Input name="minMoveTicks" type="number" defaultValue={String(minMoveTicks)} min="1" size="sm" /></Field>
+        {/* ⛔ `min="2"`, NOT 1. The server floor is `MIN_MOVE_TICKS_FLOOR = 2`, so a form that
+            accepts 1 offers a value that is refused on submit — the operator types a number,
+            presses save and is told no, with no way to know that in advance. A control must not
+            offer what the thing behind it will reject. */}
+        <Field label="Min move (ticks)"><Input name="minMoveTicks" type="number" defaultValue={String(minMoveTicks)} min="2" size="sm" /></Field>
         <Field label="Price source URL" className="sm:col-span-2">
           <Input name="priceSourceUrl" defaultValue={priceSourceUrl} size="sm" />
         </Field>
@@ -224,6 +228,12 @@ export function EditChainForm({
   const router = useRouter();
   const { deferToast, toast } = useDeferredToast(pending);
   const [open, setOpen] = useState(false);
+  // ⚠️ Still named `marginPct` and still carrying a PERCENTAGE, because `updateChainAction`
+  // reads that field and nothing else. Renaming it to `marginBpsChoice` to match the add form
+  // would have submitted a field the action ignores — the dropdown would have LOOKED like it
+  // worked and the margin would silently never have changed. Same control, same shape, same
+  // wire name: the SHAPE was what was wrong, not the name.
+  const [marginPct, setMarginPct] = useState(marginBps != null ? (marginBps / 100).toFixed(2) : "");
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -257,11 +267,23 @@ export function EditChainForm({
     <form onSubmit={onSubmit} className="rounded-lg border border-border bg-bg-elevated p-4 space-y-3 text-left">
       <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle">Edit {label}</p>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <Field label="Margin % (blank = inherit)">
-          <Input
-            name="marginPct" type="number" step="0.01" min="0" max="20" size="sm"
-            defaultValue={marginBps != null ? (marginBps / 100).toFixed(2) : ""}
-            placeholder={`inherit (${(inheritMarginBps / 100).toFixed(2)})`}
+        {/* ⛔ THE SAME DROPDOWN AS THE ADD FORM. This was a typed percentage while the add form
+            next to it was already a dropdown — one control in two shapes, which is the drift
+            "one control, one place" exists to stop. An operator who cannot type a bad band into
+            a NEW chain could still type it into an existing one, which is the more dangerous of
+            the two because that chain already has players on it. */}
+        <Field label="Winning band">
+          <Select
+            name="marginPct"
+            value={marginPct}
+            onChange={setMarginPct}
+            options={[
+              { value: "", label: `Inherit · ${inheritMarginBps === 0 ? "smallest possible step" : `${(inheritMarginBps / 100).toFixed(2)}%`}`,
+                hint: "Follows the product setting, so changing that setting once changes every chain that inherits it." },
+              ...MARGIN_CHOICES.map((m) => ({
+                value: (m.bps / 100).toFixed(2), label: m.label, hint: m.hint,
+              })),
+            ]}
           />
         </Field>
         <Field label="Min stake (blank = inherit)">
@@ -271,14 +293,20 @@ export function EditChainForm({
           <Input name="maxStake" type="number" size="sm" defaultValue={maxStake != null ? String(maxStake) : ""} placeholder="inherit" />
         </Field>
       </div>
+      {/* ⛔ THIS PARAGRAPH WARNED AGAINST THE CURRENT DESIGN. It said 0 "lets a single tick
+          decide real money" — written when an asset could carry `minMoveTicks: 1`. It cannot
+          any more (`MIN_MOVE_TICKS_FLOOR = 2`, and gold carries 40 measured ticks), 0 is the
+          live default, and the smallest band is the deliberate choice that took the pay rate
+          from 63% to ~99%. Help text that argues against the recommended option is worse than
+          none: it teaches the operator to pick the one that refunds every round. */}
       <p className="text-[11.5px] leading-[1.55] text-text-subtle max-w-[80ch]">
-        The margin is the winning band: <strong>UP at open + margin, DOWN at open − margin</strong>, and
-        anything between VOIDs and refunds every stake. A band wider than the asset typically moves in one
-        round voids nearly every round <em>even when the price feed is working perfectly</em> — measured on
-        production, 0.50% needs a ±$316 move on BTC inside five minutes and voided 5 real rounds out of 5.
-        Leaving this blank inherits the measured ladder for this asset class and duration (E-32), which is what
-        the placeholder shows. <strong>0</strong> falls back to the source&rsquo;s minimum move, which lets a
-        single tick decide real money. Changes affect FUTURE rounds only.
+        The band is the winning distance: <strong>UP at open + band, DOWN at open − band</strong>, and a close
+        anywhere between the two refunds every stake and earns no fee. A band wider than the asset actually
+        moves in one round refunds nearly every round <em>even when the price feed is working perfectly</em> —
+        measured on production, 0.50% needs a ±$316 move on BTC inside five minutes and refunded 5 rounds out
+        of 5. <strong>The smallest possible step is the recommendation</strong>: it is the asset&rsquo;s own
+        minimum move, which is 2 ticks on BTC and 40 on gold — never one, so no round can be decided by
+        rounding. Changes affect FUTURE rounds only; rounds already open keep what they froze at open.
       </p>
       <div className="flex gap-2">
         <Button type="submit" loading={pending} variant="primary" size="md">
@@ -850,8 +878,15 @@ export function AddChainForm({
         <Field label="Min stake (optional)"><Input name="minStake" type="number" placeholder="inherit" size="sm" /></Field>
         <Field label="Max stake (optional)"><Input name="maxStake" type="number" placeholder="inherit" size="sm" /></Field>
       </div>
+      {/* ⛔ NEVER PRINT A CONFIGURED NUMBER AS A LITERAL. This line said "blank inherits the
+          product default (0.5%)" — a hardcoded string, while the live `defaultMarginBps` is 0,
+          the tick floor. So the form told the operator the band was 0.5% when it was $0.02 on
+          BTC: a 25-fold error, in the sentence whose whole job is to explain the field. The
+          figure now comes from the same value the server resolves with. */}
       <p className="font-mono text-[9.5px] leading-[1.5] text-text-faint">
-        Margin is the ± winning band for this chain — blank inherits the product default (0.5%). Frozen onto each round at open.
+        The winning band is ± this much from the opening price, frozen onto each round at open.
+        This chain inherits <strong>{inherited === 0 ? "the smallest possible step" : `${(inherited / 100).toFixed(2)}%`}</strong> if
+        you leave it on the recommended choice. Anything between the two targets refunds every stake.
       </p>
       <div className="flex gap-2">
         <Button type="submit" loading={pending} variant="primary" size="md">

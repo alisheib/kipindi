@@ -38,7 +38,18 @@ import { FEED_PROVIDERS } from "../src/lib/updown-providers.ts";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
 /** ⛔ Comments stripped BEFORE any assertion — see the header. */
-const code = (p: string) => read(p).split("\n").filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join("\n");
+// ⚠️ THE STRIPPER HAD A HOLE, and §6 found it immediately. It filtered lines beginning `//`,
+// `*` or `/*` — which misses a **JSX** comment, because those begin `{/*`. So every `{/* … */}`
+// block in a `.tsx` file was being read as live code, and an assertion that a defect's string is
+// absent would match the comment describing the fix. Exactly the false result the header warns
+// about, in the tool meant to prevent it.
+//
+// ⛔ Block comments are now removed as BLOCKS, wherever they start. `//` stays LINE-based on
+// purpose: stripping it inline would cut every `https://` URL in the file in half.
+const code = (p: string) =>
+  read(p)
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .split("\n").filter((l) => !/^\s*\/\//.test(l)).join("\n");
 
 let pass = 0, fail = 0;
 const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; console.log(`${c ? "PASS" : "FAIL"} ${l}${x ? ` — ${x}` : ""}`); };
@@ -154,6 +165,58 @@ const SELECT = "src/components/ui/select.tsx";
   // out why for themselves.
   ok("5.3 · ⭐ switching asset moves the selection off a now-unusable duration",
      /const firstUsable = durationOptions\.find\(\(o\) => !o\.disabled\)/.test(controls));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 6 · A CONTROL MAY NOT PRINT A CONFIGURED NUMBER AS A LITERAL,
+//     NOR OFFER A VALUE THE SERVER REFUSES
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// 🔴 BOTH OF THESE WERE LIVE ON THE CONSOLE, in the sentences whose entire job is to stop an
+// operator making a mistake:
+//
+//  · The add-chain help text read `blank inherits the product default (0.5%)` — a hardcoded
+//    string, while the live `defaultMarginBps` is **0**, the tick floor. The form told the
+//    operator the band was 0.5% when it was **$0.02** on BTC. A 25-fold error.
+//  · The chain-EDIT form still took a TYPED percentage while the add form beside it was already
+//    a dropdown — one control in two shapes. An operator who could not type a ruinous band into
+//    a NEW chain could still type it into an existing one, which is the more dangerous of the
+//    two, because that chain already has players on it.
+//  · `Min move (ticks)` carried `min="1"` while the server floor is 2, so the form offered a
+//    value that is refused on submit.
+//
+// ⛔ THE PROPERTY IS "NO SECOND SOURCE OF TRUTH IN THE COPY", not any particular wording. A
+// figure the operator acts on must come from the value the server resolves with, or the two
+// drift and the screen lies with total confidence.
+{
+  const controls = code(CONTROLS);
+
+  ok("6.1 · ⭐ the add-chain band note derives its figure from `inherited`, never a literal %",
+     /inherited === 0 \? "the smallest possible step" : `\$\{\(inherited \/ 100\)\.toFixed\(2\)\}%`/.test(controls),
+     controls.match(/product default \([\d.]+%\)/)?.[0] ?? "");
+  ok("6.2 · …and no admin copy hardcodes a margin percentage at all",
+     !/(default|inherits?)[^.\n]{0,40}\(0\.5%\)/i.test(controls));
+
+  // The edit form must be the SAME shape as the add form — a Select over MARGIN_CHOICES.
+  const editsWithSelect = /name="marginPct"\s+value=\{marginPct\}\s+onChange=\{setMarginPct\}/.test(controls)
+    && /\.\.\.MARGIN_CHOICES\.map\(\(m\) => \(\{\s*value: \(m\.bps \/ 100\)\.toFixed\(2\)/.test(controls);
+  ok("6.3 · ⭐ the chain-EDIT band is the SAME dropdown as the add form, not a typed number",
+     editsWithSelect);
+  // ⚠️ And it must still be a LIVE control. A Select with a no-op onChange renders, greys
+  // nothing, and silently refuses to change — which looks identical to a working dropdown.
+  ok("6.4 · …and it is wired to state, so it can actually be changed",
+     /const \[marginPct, setMarginPct\] = useState\(/.test(controls));
+  ok("6.5 · …and still submits the field `updateChainAction` reads, so the save lands",
+     /name="marginPct"/.test(controls) && !/name="marginBpsChoice"[\s\S]{0,200}marginPct/.test(controls));
+  // A typed percentage box must not survive anywhere.
+  ok("6.6 · ⛔ no free-text margin input remains on any chain form",
+     !/<Input[^>]*name="marginPct"/.test(controls));
+
+  ok("6.7 · ⭐ the ticks input floor equals the server floor (2), so it cannot offer a refused value",
+     /name="minMoveTicks"[^>]*min="2"/.test(controls),
+     controls.match(/name="minMoveTicks"[^>]*min="\d+"/)?.[0] ?? "");
+  ok("6.8 · ⛔ and the help text does not argue against the recommended option",
+     !/single tick decide real money/.test(controls));
 }
 
 console.log(`\n${fail === 0 ? "✅" : "🔴"} updown-admin-options: ${pass} passed, ${fail} failed`);
