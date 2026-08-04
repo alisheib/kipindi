@@ -128,7 +128,17 @@ const claimsOpen = (s: string) => !RESOLVED.test(s) && UNRESOLVED.test(s);
   // SECOND time within the same edit. Prose can mention any string; only a real handoff begins a
   // line with it. `^…` + `m` is therefore the only stable anchor.
   // §6b is newest-first, so the first line-initial match is the current handoff.
-  const resume = DOC.match(/^⏭️ \*\*RESUME AT:[\s\S]{0,900}/m)?.[0] ?? "";
+  //
+  // 🔴 …AND THE ANCHOR STILL DRIFTED, because "starts a line" was too narrow. From session 23
+  // the handoff began being written as a HEADING — `#### ⏭️ **RESUME AT:` — which this pattern
+  // cannot match. So the first line-initial match silently became a SUPERSEDED handoff from an
+  // earlier session, and both this check and `test:settlement-expectation` §5 spent two sessions
+  // validating a block nobody was going to read. Proven, not inferred: with `E-999` injected
+  // into the CURRENT handoff, this suite reported 12 passed / 0 failed.
+  // ⭐ The lesson refines the one above it. "Anchor on structure" is right, but the anchor has to
+  // admit every form the structure legitimately takes — a handoff marker is the same marker
+  // whether or not it is also a heading. Optional `#`s, and prose still cannot match it.
+  const resume = DOC.match(/^#{0,4} ?⏭️ \*\*RESUME AT:[\s\S]{0,900}/m)?.[0] ?? "";
   ok("§2 the current handoff has a RESUME AT list", resume.length > 0,
     "no '⏭️ **RESUME AT:' marker — has the handoff format changed?");
   const referenced = [...new Set((resume.match(/\b[EGAH]-\d+\b/g) ?? []))];

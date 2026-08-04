@@ -188,15 +188,34 @@ const YES_POOL = 2000, NO_POOL = 2000, ALPHA_STAKE = 2000;
   // explaining the fix quotes the marker in backticks and broke it again in the same edit.
   // Prose can contain any string; only a real handoff begins a line with it.
   // `test:tracker-hygiene` §2 had the identical bug from the identical copy-paste.
-  const resume = camp.match(/^⏭️ \*\*RESUME AT:[\s\S]{0,600}/m)?.[0] ?? "";
+  //
+  // 🔴 AND SO DID THE FIX — the identical copy-paste propagated the NEXT bug too. From session
+  // 23 the handoff is written as a HEADING (`#### ⏭️ **RESUME AT:`), which "starts a line"
+  // does not match, so both guards silently fell through to a SUPERSEDED handoff from an
+  // earlier session and validated that instead. Optional `#`s admit every form the marker
+  // legitimately takes; prose still cannot match it. See the fuller note in tracker-hygiene §2.
+  const resume = camp.match(/^#{0,4} ?⏭️ \*\*RESUME AT:[\s\S]{0,600}/m)?.[0] ?? "";
   ok("§5 §6b's resume line exists", resume.length > 0,
     "no '⏭️ **RESUME AT:' marker — has the handoff format changed?");
   // ⚠️ NOT `!resume.includes("3,480")`. The corrected line names 3,480 deliberately, to say
   // it was wrong and why — banning the characters would force that warning out and score the
   // silence as a pass. Parse the figure the line actually tells the next session to EXPECT.
   const expected = resume.match(/receive\s*\*\*TZS\s*([\d,]+)\*\*/);
-  ok("§5 §6b states a figure to expect", expected != null,
-    "no 'receive **TZS …**' expectation found in the resume instruction");
+  // ⚠️ The handoff must state the MONEY POSITION either way — but demanding a
+  // `receive **TZS …**` figure UNCONDITIONALLY was wrong, and it only became
+  // visible once the anchor above was fixed and this check started reading the
+  // real handoff. That form is tied to one specific stranded market (alpha's
+  // payout, the constants below); when no market is mid-settlement there is no
+  // such figure, and requiring one would force a session to INVENT a number to
+  // get to green — the precise failure A-5 (no fabrication) exists to prevent.
+  // ⭐ So: an arithmetic claim is CHECKED against the settlement code, and its
+  // absence is allowed ONLY when the handoff positively declares the position
+  // instead. Silence satisfies neither branch, so the check can still fail —
+  // a vague or empty handoff is exactly what it is here to catch.
+  const declares = /money in flight|no money in flight|nothing in flight|stranded/i.test(resume);
+  ok("§5 §6b states the money position — an expected payout, or an explicit declaration",
+    expected != null || declares,
+    "the handoff names neither a 'receive **TZS …**' figure nor the money position");
   if (expected) {
     eq("§5 §6b's expected payout equals what the settlement code computes",
       Number(expected[1].replace(/,/g, "")),
