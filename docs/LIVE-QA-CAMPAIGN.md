@@ -3640,6 +3640,114 @@ workstation shows an SLA countdown, but nothing escalates when it runs out. Ali'
   platform zone (+3) keeps it on the right day, and the E-2 fix is safe. The earlier note was
   the `pg` −3h trap (§3) reading back through an un-cast client.
 
+## 6ak. ⭐ DRIVEN ON PRODUCTION WITH REAL MONEY — the rebuild settles, and the money agrees to the shilling (2026-08-04, session 23)
+
+> Not described. Driven on 50pick.tz. Every screenshot is `locator.screenshot()`, never `fullPage`.
+
+### ⛔ THE SWITCH IS THROWN. Settlement now reads DATED BARS at the tick floor.
+
+`feedProvider: twelvedata` → **`twelvedata-bars`**, `defaultMarginBps: 50` → **0**, `marginSchedule` → `[]`.
+
+🔴 **AND THE PERSISTED CONFIG WAS OVERRIDING THE CODE, WHICH IS THE TRAP WORTH KEEPING.**
+Shipping `defaultMarginBps: 0` in `DEFAULT_UPDOWN_CONFIG` changed **nothing** on production: the
+stored `50` still priced every chain, and the console proved it — every row read `0.50% ·def`.
+⚠️ **A code default is not a live setting.** Re-read the store after any change to one.
+
+⚠️ **It had to be an ops script, not a click, and that is already on the record.**
+`/admin/updown`'s VIEW gate is `trading` while the reading-method and threshold controls demand
+`accounting` — so the TRADING officer sees them locked and the FINANCE officer **cannot open the
+page at all** (driven live: *"Your role cannot view this page"*). `control-gates.ts` states it
+verbatim — *"these five controls are Owner-only in practice"* — and §6m holds it as Ali's
+decision. `QA_ADMIN_PASSWORD` is not on this laptop, so `ops-updown-switch-reader.mts` performs
+the switch through `setUpDownConfig`, the same service the console calls, with a named actor.
+⭐ It is also the **rollback lever**: `--provider twelvedata` returns settlement to the quote
+reader in one audited edit, no deploy.
+
+### 🎉 THE FIRST ROUND EVER SETTLED FROM A DATED BAR — and it was a 3-MINUTE round
+
+| | `udr_31bd2d13356bf4943c72` | E-69's round, for contrast |
+|---|---|---|
+| duration | **3 minutes** | 5 minutes |
+| boundary | `11:33:00` — minute-aligned | `21:37:26` — **unnamable in bar data** |
+| bets close | **`11:35:24`** (36s = 20%) | **`null`** |
+| band | **±$0.01** (tick floor, 0 bps) | ±$12.73 (2 bps) |
+| result | **RESOLVED · DOWN · close 63,752.00** | VOID `source-failed`, `closePrice NULL` |
+
+### ⭐ REAL MONEY, BOTH SIDES, PAIRED THREE WAYS — `udr_0bbcff58e90980282e2b`
+
+Two different accounts, opposite sides of one round, staked from the real player UI:
+
+```
+open 63,840.52  →  close 63,948.00   (real Twelve Data 1-minute bar)
+UP target 63,840.53  →  close ≥ target  →  UP WINS
+
+alpha  YES/UP    stake 500 → payout 870 · WIN     wallet 61,190 − 500 + 870 = 61,560 ✓
+echo   NO/DOWN   stake 500 → payout   0 · LOSS    wallet 24,900                      ✓
+pool 1,000 − 13% commission (130) = 870 to the winner · GGR 130                       ✓
+```
+
+⭐ **The wallet, the position and the round row agree to the shilling.**
+
+### What the player actually sees — read off the live board
+
+- *"Will the price be higher or lower when the clock runs out?"* — the Phase 2 re-wording, live
+- duration tabs **`3 min · 5 min · 15 min`**
+- **`BETTING CLOSES IN 01:36`** — E-72's window, with its new label
+- **`HIGHER OR LOWER THAN $63,840.52  ± $0.01`** — the tick-floor band, on the card
+- `UP ≥ $63,840.53` / `DOWN ≤ $63,840.51`
+- pool moving `VOL TZS 500 · 1 player · 100% Down` → `VOL TZS 1,000 · 2 players · Up 50% / 50% Down`
+- a settled card reading **`Down wins  $63,750.00 → $63,722.07`**
+
+### ✅ The 6333ef0e chain-health console, LOOKED AT for the first time
+
+| chain | reads | colour |
+|---|---|---|
+| BTC 5m | `75%  267/357 paid · 76 no-move · 14 source-failed` | normal |
+| BTC 15m | `56%  10/18 paid · 8 no-move` | **amber — low payout** |
+| SOL 5m | `0%  0/290 paid · 290 source-failed` | **rose — feed failing** |
+| XAU 5m | `43%  86/200 paid · 41 no-move · 10 source-failed · 63 operator` | rose |
+
+⭐ **The operator voids are kept apart from the product failures** — the E-58 fix, visible. And a
+feed failure outranks a low pay rate, so SOL and BTC 15m never look the same again.
+
+### ⚠️ FOUR OF MY OWN DRIVE CHECKS LIED, AND THE PATTERN IS ONE PATTERN
+
+1. 🔴 **An assertion matched page CHROME.** *"a REAL stake is on the round"* tested
+   `/you're in|stake/` — words present whether or not a bet landed — and reported **PASS for both
+   players while the pool was TZS 0**. It reads the POOL now: the money is the evidence.
+2. 🔴 **A selector found nothing and the run called it success.** The button is `Up × 1.4 est.`;
+   the anchor was `/^up$/i`. `.count()` was 0, the click was skipped, and nothing said so. A
+   selector that matches nothing must **throw**, not shrug.
+3. 🔴 **A screenshot captured the wrong table.** `table` picked the ASSETS grid because the page
+   renders it first, so the chain-health evidence was a picture of something else.
+4. 🔴 **A `railway run` ops script read DEFAULTS and called them production.** The injected
+   `DATABASE_URL` names `postgres.railway.internal`, unreachable from a laptop; `loadConfig`
+   catches its own error and returns null. The script printed a confident
+   *"BEFORE — feedProvider mock"* that was **pure fiction**, and `--apply` would have written
+   defaults over the live settlement config. It now proves the connection **before** reading.
+
+⛔ All four are the same fault: **the check completed without touching the thing it named.**
+
+### ⚠️ Two operational facts the next session needs
+
+- 🔴 **The player passwords had drifted** — `alpha` and `echo` both failed with
+  `failedLoginCount: 1` and no lockout, i.e. wrong secret, while `trading` still worked.
+  Re-minted and `.env.qa.local` updated. ⚠️ **`ops-remint-qa-passwords.mts alpha echo` IGNORES
+  its arguments and re-mints ALL SIX** — §1 tells the next session it can be scoped, and it
+  cannot. Every persona secret on the other laptop is now stale.
+- ⚠️ **A round page reached straight after generation sometimes renders the BOARD**, so a scripted
+  tap lands on whichever card is first. Same family as **E-70**. Betting from the board's LIVE
+  card (`article:has-text("betting closes in")`) is reliable and is a real player path.
+
+### ⏳ NOT YET PROVEN LIVE — stated plainly rather than implied
+
+- **A LATE close settling instead of voiding.** Proven exhaustively in `test:updown-late-close`
+  §3 (529s late, settles DOWN with a real price, RED 7/7) but **not yet forced on production** —
+  it needs the close to be missed, which the scheduler now reliably prevents.
+- **The refund reasons on the live surfaces in EN/SW/ZH.** Guarded by `test:updown-void-copy` (32,
+  RED 8/8); no live round refunded during the drive, because at the tick floor they decide.
+- **The accountant/reports view of these rounds**, and the 4-width × 3-locale sweep (Phase 7).
+
 ## 6aj. ⭐ E-65 CLOSED — a refund now states its real reason, on every surface, in three languages (2026-08-04, session 23)
 
 > Executes §6ad phase 6 and items 10 / E-56. §6ad is settled; nothing here re-opens it.
@@ -4411,7 +4519,7 @@ so a tick-floor margin on crypto measures the market, not the feed.
 ⛔ **`feedProvider` is still `twelvedata`. No money has touched the new reader yet** — the switch
 is gated on the shadow run's median delta (§6ae) and lands with phase 1e.
 
-#### ⏭️ **RESUME AT:** ① **Phase 7 — E-70, E-59, the accountant/reports pass, the 4-width sweep, and consolidating the Up & Down docs.** Phases 1c/1d/1e/2/3/4/6 are DONE (§6ae, §6af, §6ag, §6ah, §6ai, §6aj). `openRound` writes `selectionClosedAt: null`; set it to the last **20% of the round, floored at 30s**, config-driven. ⭐ The server enforcement is already free — `buyPosition` (`market-service.ts:621`) refuses `isSelectionClosed`. The card needs a **LOCKED** state whose countdown **RE-LABELS itself** and whose message carries its reason, and the lock turns `× 1.4 est.` into an exact payout. Ali's call 2026-08-04: **one account may NOT hold both sides of a round** — enforce in `buyPosition`, RED-first. Then **② Phase 2** tick-floor margin + `minMoveTicks ≥ 2` (see **E-73**) · **③ Phase 3** durations 3/5/10/15/30/60 on the epoch lattice, **gold 15m+ only** (Ali's call, 2026-08-04) · **④ Phase 4** the fully-controlled admin · **⑤ Phase 6** void honesty · **⑥ Phase 7** E-70, E-59, accountant/reports, the 4-width sweep, and consolidating the Up & Down docs to one truth.
+#### ⏭️ **RESUME AT:** ① **Phase 7 — E-70, E-59, the accountant/reports pass, the 4-width sweep, and consolidating the Up & Down docs. Then the two live proofs §6ak lists as NOT YET DONE: a forced LATE close, and the refund copy on a live refunded round.** Phases 1c/1d/1e/2/3/4/6 are DONE (§6ae, §6af, §6ag, §6ah, §6ai, §6aj). `openRound` writes `selectionClosedAt: null`; set it to the last **20% of the round, floored at 30s**, config-driven. ⭐ The server enforcement is already free — `buyPosition` (`market-service.ts:621`) refuses `isSelectionClosed`. The card needs a **LOCKED** state whose countdown **RE-LABELS itself** and whose message carries its reason, and the lock turns `× 1.4 est.` into an exact payout. Ali's call 2026-08-04: **one account may NOT hold both sides of a round** — enforce in `buyPosition`, RED-first. Then **② Phase 2** tick-floor margin + `minMoveTicks ≥ 2` (see **E-73**) · **③ Phase 3** durations 3/5/10/15/30/60 on the epoch lattice, **gold 15m+ only** (Ali's call, 2026-08-04) · **④ Phase 4** the fully-controlled admin · **⑤ Phase 6** void honesty · **⑥ Phase 7** E-70, E-59, accountant/reports, the 4-width sweep, and consolidating the Up & Down docs to one truth.
 
 ### 🟢 Laptop A, session 22 (2026-08-04) — THE SETTLEMENT REBUILD IS UNDER WAY AND HALF SHIPPED. Read §6ad first; it carries every decision and the measured evidence.
 
