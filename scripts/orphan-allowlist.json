@@ -113,6 +113,7 @@
     "ops-qa-fleet.mts",
     "ops-remint-qa-passwords.mts",
     "ops-set-payment-provider.mjs",
+    "ops-updown-probe-sol.mts",
     "ops-updown-reset-games.mts",
     "ops-updown-seed-one.mts",
     "overlay-responsiveness-test.mjs",
@@ -204,6 +205,7 @@
     "live-updown-bar-money-drive.mjs": "Manual LIVE-PRODUCTION drive: stakes REAL money on both sides of one round and pairs the wallet, position and round row after it settles from a DATED BAR. Spends real provider credits. Never in CI.",
     "ops-updown-reset-games.mts": "Manual PRODUCTION ops: clears every Up & Down chain, round and observation so operators start from the rewritten guide. Refuses if any round is unresolved or any position is OPEN — there is no --force. Never in CI.",
     "capture-guide-shots-live.mjs": "Manual: re-shoots the operator-guide screenshots FROM PRODUCTION as the trading officer (element shots only) and creates one real BTC 5m chain. Run before generate-pdfs.mjs. Never in CI.",
-    "live-updown-operator-readiness.mjs": "Manual PRODUCTION drive: walks the operator guide's own walkthrough — trading officer presses Generate, then a player opens /updown with NO query string, then two players take opposite sides. Real money and real provider credits. Never in CI."
+    "live-updown-operator-readiness.mjs": "Manual PRODUCTION drive: walks the operator guide's own walkthrough — trading officer presses Generate, then a player opens /updown with NO query string, then two players take opposite sides. Real money and real provider credits. Never in CI.",
+    "ops-updown-probe-sol.mts": "Manual PRODUCTION probe: measures whether a symbol's 1-minute bar appears soon enough to settle, by polling the just-completed minute. Spends real provider credits. Never in CI."
   }
 }

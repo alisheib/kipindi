@@ -95,10 +95,10 @@ behaviour, not a fault.
 <em>Crypto — BTC, ETH, SOL — trades 24 hours a day, 7 days a week, including public holidays.</em></div>
 
 <div><b>Gold cannot run shorter than 15 minutes.</b> The duration list greys 3, 5 and 10 minutes for
-gold and states the reason. Gold’s price feed can disagree with itself by up to <b>$0.87</b> at a
-single instant — more than gold typically moves in five minutes — so a short gold round would be
-decided by which reading arrived rather than by the market.
-<em>Crypto may run any length: 3, 5, 10, 15, 30 or 60 minutes.</em></div>
+gold and states the reason. Gold’s price feed can disagree with itself by up to <b>$0.20</b> about a
+single instant, and by up to <b>$0.87</b> across a minute boundary — comparable to what gold moves in
+five minutes — so a short gold round would be decided by which reading arrived rather than by the
+market. <em>Crypto may run any length: 3, 5, 10, 15, 30 or 60 minutes.</em></div>
 
 <div><b>Betting closes before the round ends.</b> The final <b>20%</b> of every round accepts no
 bets, never less than 30 seconds. A 5-minute round closes betting with <b>60 seconds</b> remaining.
@@ -108,7 +108,8 @@ card explains this, and the countdown relabels itself from “betting closes in�
 
 <div><b>The winning band is the smallest possible step, not a percentage.</b> The recommended
 setting, <b>Smallest possible</b>, uses the asset’s own minimum move: <b>$0.02</b> on Bitcoin,
-<b>$0.40</b> on gold. Roughly <b>99 rounds in 100</b> then pay a winner.
+<b>$0.40</b> on gold — a fraction of what these prices normally move, so <b>nearly every round
+produces a winner</b>. Under the previous 0.50% setting only <b>63%</b> of rounds ever paid anyone.
 <em>At 0.50% Bitcoin must move ±$316 within five minutes; in testing that refunded every round. A
 refunded round earns no commission, so a wide band does not increase revenue — it removes it.</em></div>
 
@@ -173,9 +174,11 @@ and why a disputed result can be shown to the player exactly as it was decided.<
   </tr>
   <tr>
     <td><b>A whole window costs one credit</b><br><span style="color:#5a6577">1–5,000 minutes, one charge</span></td>
-    <td>Six round lengths on a single asset require roughly <b>672 separate readings per day</b>
-    against a plan of about 800 — unworkable one at a time. Requesting a window instead reduces that
-    to <b>24–96</b>. This is what makes 3-minute rounds viable at all.</td>
+    <td>Requesting a window of minutes costs the same as requesting one. Six round lengths on a single
+    asset need roughly <b>672 separate readings a day</b>; fetched as windows that becomes
+    <b>24–96</b>. Our plan (<b>Grow</b>) allows <b>377 credits per minute</b>, so cost is not a
+    constraint on how many chains you run — but fewer, larger requests are faster and leave more
+    headroom for retries.</td>
   </tr>
   <tr>
     <td><b>Real-time crypto, currencies and metals</b></td>
@@ -186,11 +189,13 @@ and why a disputed result can be shown to the player exactly as it was decided.<
 </table>
 
 <div class="box warn">
-<p><span class="pill a">TIMING</span> A minute’s record is published a few seconds <b>after</b> that
-minute ends — about <b>10 seconds</b> for Bitcoin, Ethereum and gold, and about <b>60 seconds</b> for
-Solana. This is why <b>Generate round</b> takes its opening price from the last <i>completed</i>
-minute, and why the platform waits up to two minutes before treating a record as missing. Nothing is
-required of you; it is simply why generation can take a few seconds to answer.</p>
+<p><span class="pill a">TIMING</span> A minute’s record is published a <b>few seconds after</b> that
+minute ends — measured between <b>1 and 10 seconds</b> across every asset we run. This is why
+<b>Generate round</b> takes its opening price from the last <i>completed</i> minute, and why the
+platform allows up to two minutes before treating a record as missing. That allowance is deliberately
+generous rather than tuned to the fastest measurement: waiting costs nothing, whereas treating a
+record as missing refunds a live round. Nothing is required of you; it is simply why generation can
+take a few seconds to answer.</p>
 </div>
 
 <h2 class="pb">3 · The assets, and what is distinct about each</h2>
@@ -229,13 +234,16 @@ required of you; it is simply why generation can take a few seconds to answer.</
     prices — which is why weekend gold is refused outright rather than trusted.</td>
   </tr>
   <tr>
-    <td><b>SOL</b><br>Solana<br><span class="pill r">NOT YET</span></td>
-    <td class="n">±$0.02<br>2 ticks</td>
-    <td>—</td>
-    <td>24 / 7</td>
-    <td><b>Do not offer Solana to players yet.</b> Its price records arrive around 60 seconds late
-    rather than 10. The current reader is expected to handle that, but it has not yet been confirmed
-    with money on a round. Staff testing first.</td>
+    <td><b>SOL</b><br>Solana<br><span class="pill a">CARE</span></td>
+    <td class="n"><b>±$0.02</b><br>2 ticks</td>
+    <td>5 · 10 · 15<br>30 · 60</td>
+    <td><b>24 / 7</b></td>
+    <td>Usable, and it has paid a real winner. But note the arithmetic: Solana trades near
+    <b>$74</b>, so the same $0.02 band is a far larger share of the price than it is on Bitcoin —
+    Solana must move about <b>0.03%</b> to decide a round where Bitcoin needs almost nothing.
+    <b>It will refund more often than Bitcoin on a quiet five minutes</b>, and its band cannot be
+    made smaller because two ticks is the floor. <b>Avoid 3-minute Solana rounds</b> for that
+    reason; 5 minutes and above is fine.</td>
   </tr>
   <tr>
     <td><b>BNB</b><br><span class="pill r">OFF</span></td>
@@ -458,10 +466,10 @@ undo. These are all the reasons, in the order you will meet them.</p>
   <tr><th style="width:26%">What you see</th><th style="width:34%">Why</th><th>What to do</th></tr>
   <tr>
     <td><b>Could not read a price</b>, immediately after a minute turns</td>
-    <td>A minute’s record is published a few seconds <i>after</i> that minute ends — about 10 seconds
-    for Bitcoin, Ethereum and gold, 60 for Solana. Press Generate at :05 past the minute and the
-    record you need does not exist yet; at :40 it does. The platform looks back up to three completed
-    minutes before giving up.</td>
+    <td>A minute’s record is published a few seconds <i>after</i> that minute ends — measured at 1 to
+    10 seconds. Press Generate in the first seconds of a new minute and the record you need may not
+    exist yet; a moment later it does. The platform looks back up to three completed minutes before
+    giving up.</td>
     <td><b>Wait fifteen seconds and press again.</b> This is the most common refusal and it is not a
     fault.</td>
   </tr>
@@ -483,9 +491,10 @@ undo. These are all the reasons, in the order you will meet them.</p>
   </tr>
   <tr>
     <td><b>Could not read a price</b>, repeatedly, on every asset</td>
-    <td>The provider is unreachable, the daily credit allowance is exhausted, or the price key is
-    missing.</td>
-    <td>Report it. Do not keep pressing — each attempt spends a credit.</td>
+    <td>The provider is unreachable or the price key is missing. Credit exhaustion is unlikely on our
+    plan, but a burst of rapid retries can hit the per-minute limit.</td>
+    <td>Report it. Wait rather than pressing repeatedly — rapid retries make a rate limit more likely,
+    not less.</td>
   </tr>
   <tr>
     <td>A round already exists for that boundary</td>
@@ -564,7 +573,7 @@ undo. These are all the reasons, in the order you will meet them.</p>
     <td><b>Winning band</b></td><td><code>Smallest possible</code></td>
     <td>How far the price must move for a side to win. <b>Keep the recommendation.</b> The remaining
     options exist for a long round on a slow asset:
-    <br>· <b>Smallest possible</b> — the asset’s minimum move; about 99 rounds in 100 pay.
+    <br>· <b>Smallest possible</b> — the asset’s minimum move; nearly every round pays.
     <br>· <b>Narrow · 0.02%</b> — roughly 1 round in 3 refunds.
     <br>· <b>Wide · 0.05%</b> — most rounds refund.
     <br>· <b>Very wide · 0.50%</b> — almost every short round refunds and earns nothing.</td>
@@ -691,8 +700,10 @@ produces none.</b></p>
   <li>Press <b>Generate round</b> and wait for the round to appear. If it refuses with <i>could not
       read a price</i>, wait fifteen seconds and press again — you were inside the few seconds before
       the minute’s record was published.</li>
-  <li>Open <b>50pick.tz/updown</b> as a player. Your round is on the <b>5 min</b> tab; the board opens
-      on 3 min by default, so a 5-minute round is not missing — the tab is wrong.</li>
+  <li>Open <b>50pick.tz/updown</b> as a player. The board opens on an asset that <i>has</i> a chain,
+      at that asset’s <b>shortest</b> chain length — so with one BTC 5m chain you land straight on it.
+      If you have built several chains and do not see the one you want, check the asset and length
+      tabs before assuming the round is missing.</li>
   <li>Place a small bet on <b>UP</b> and watch <b>VOL</b> increase. From a second account bet
       <b>DOWN</b>; both sides are required or the round refunds.</li>
   <li>With 60 seconds remaining, watch the buttons disable, the wording change from <i>betting closes

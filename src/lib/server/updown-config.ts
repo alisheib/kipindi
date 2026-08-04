@@ -87,18 +87,26 @@ export type UpDownConfig = {
    * How long after a boundary a DATED feed's "no bar for that minute" means *not yet*
    * rather than *never*, and therefore costs no attempt.
    *
-   * ⚠️ MEASURED, NOT CHOSEN — AND THE FIRST MEASUREMENT WAS INCOMPLETE.
+   * ⚠️ MEASURED, NOT CHOSEN — AND MEASURED THREE TIMES, BECAUSE THE FIRST TWO WERE WRONG.
    *
-   * Polled on 2026-08-04: BTC/USD, ETH/USD and XAU/USD publish bar T at **+10s**, and the
-   * first version of this value was 30s on that basis. **SOL/USD publishes at +60s** — six
-   * times slower — which the shadow sampler surfaced as a 50% `no-bar` rate that looked, for
-   * a while, like SOL simply having no bars. It does: a contiguous 5-hour pull returned
-   * **300/300 minutes present, 0 missing**. SOL's bars are LATE, not absent.
+   * 1. **30s**, on BTC/USD, ETH/USD and XAU/USD publishing bar T at **+10s**. Too tight.
+   * 2. **120s**, after SOL/USD appeared to publish at **+60s** — which the shadow sampler
+   *    surfaced as a 50% `no-bar` rate that looked, for a while, like SOL having no bars at
+   *    all. It does have them: a contiguous 5-hour pull returned **300/300 minutes present**.
+   * 3. ⛔ **Re-measured 2026-08-04 with `ops-updown-probe-sol.mts`, polling the just-completed
+   *    minute every 10s: SOL/USD appeared at +1s, identically to BTC/USD.** The +60s figure
+   *    does not reproduce. It was almost certainly an artefact of the QUOTE reader's staleness
+   *    judgement — `last_quote_at` is a minute label **rounded up** (E-74), so a fresh quote can
+   *    read as a full minute stale — rather than a property of the bar feed at all.
    *
-   * ⛔ So the grace is sized against the SLOWEST symbol offered, not the fastest — 120s is the
-   * measured +60s with 2× headroom. A grace tuned to BTC would have charged SOL an attempt at
-   * every boundary and walked its budget to zero, which is how SOL came to be **290 of 290
-   * rounds source-failed** in the first place (E-63).
+   * ⭐ **The value STAYS at 120s regardless**, and that is the point of a grace: it costs
+   * nothing when bars are prompt, and the one thing it must never do is charge an attempt for a
+   * bar that is merely *not yet*. Spending an attempt VOIDs live rounds. Sizing this to the
+   * fastest measurement would re-create exactly the failure it exists to prevent — which is how
+   * SOL came to be **290 of 290 rounds source-failed** under the quote reader (E-63).
+   *
+   * ⛔ **DO NOT tighten this on the strength of one clean poll.** A number that was wrong twice
+   * in one day is a number to leave generous.
    *
    * ⚠️ Still comfortably inside the abandon deadline (390s), so a bar that genuinely never
    * publishes still reaches a terminal state on time — it simply voids on the deadline rather
@@ -222,8 +230,9 @@ export const DEFAULT_UPDOWN_CONFIG: UpDownConfig = {
   maxStalenessSeconds: 90,
   confidenceThreshold: 85,
   maxObservationAttempts: 4,
-  // Sized against the SLOWEST symbol: SOL publishes bar T at +60s, the rest at +10s. 2×
-  // headroom on the worst, not 3× on the best. See the field comment.
+  // Deliberately generous, not tuned: measured at +10s, then +60s, then +1s across one day.
+  // A grace costs nothing when bars are prompt, and spending an attempt VOIDs live rounds.
+  // ⛔ Do not tighten. See the field comment for all three measurements.
   barPublicationGraceSeconds: 120,
   // 24h — longer than any outage this platform has had, shorter than the provider's history.
   maxSettleLookbackSeconds: 86_400,

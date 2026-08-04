@@ -257,10 +257,16 @@ export class MockBarFeed implements PriceFeed {
 // ---------------------------------------------------------------------------
 
 /**
- * Twelve Data `/quote`, chosen because its free tier (800 requests/day) comfortably covers
- * this product's actual shape: ONE call per asset per boundary — 2 assets x 288 five-minute
- * boundaries = 576 calls/day, and that number does not grow with the number of durations,
- * because the observation ledger shares one reading across every chain crossing the instant.
+ * Twelve Data `/quote`. Its shape suits this product: ONE call per asset per boundary — 2 assets
+ * x 288 five-minute boundaries = 576 calls/day, and that number does not grow with the number of
+ * durations, because the observation ledger shares one reading across every chain crossing the
+ * instant.
+ *
+ * ⚠️ CORRECTED 2026-08-04. This said "chosen because its FREE TIER (800 requests/day) comfortably
+ * covers" it. Read from `/api_usage` on the live key: the plan is **`grow`**, limit **377 credits
+ * per MINUTE** — a different unit and roughly two orders of magnitude more headroom. The 576/day
+ * arithmetic stands; the constraint it was justified against does not exist. ⛔ Do not reason
+ * about credit budgets from this comment — call `/api_usage` and read the plan.
  *
  * `/quote` is used rather than `/price` for one reason that is the whole point of this
  * module: `/price` returns a bare number with no time, and a price we cannot date is a

@@ -25,6 +25,12 @@ import { mkdirSync } from "node:fs";
 import { BASE, login, bodyText, browser } from "./live/harness.mjs";
 
 const MINUTES = Number(process.env.MINUTES ?? 5);
+const ASSET = process.env.ASSET ?? 'BTC';
+// ⛔ Default landing (no query string) is the DEFAULT run and is the whole point of step 2. When
+// proving a second asset, pass BOARD='?asset=SOL&d=5' — the default correctly lands on whichever
+// playable asset sorts first, which is not the one under test, and asserting otherwise would be
+// a check that fails on correct behaviour.
+const BOARD = process.env.BOARD ?? '';
 const OUT = ".qa-artifacts/readiness";
 mkdirSync(OUT, { recursive: true });
 const log = (...a) => console.log(...a);
@@ -46,8 +52,8 @@ async function snap(page, sel, name) {
     await login(page, "trading");
     await page.goto(`${BASE}/admin/updown`, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(4500);
-    const row = page.locator("tr").filter({ hasText: new RegExp(`BTC\\s*${MINUTES}m`, "i") }).first();
-    ok("1.1 · the BTC chain the operator would use is on the console", await row.count() > 0);
+    const row = page.locator("tr").filter({ hasText: new RegExp(`${ASSET}\\s*${MINUTES}m`, "i") }).first();
+    ok(`1.1 · the ${ASSET} chain the operator would use is on the console`, await row.count() > 0);
     // ⭐ The band the guide tells them to expect. If this cell ever prints a bare 0.00% again,
     // the guide is wrong on the page it spends most words on.
     const rowText = (await row.innerText()).replace(/\s+/g, " ");
@@ -71,7 +77,7 @@ async function snap(page, sel, name) {
   const page = await ctx.newPage();
   try {
     await login(page, "alpha");
-    await page.goto(`${BASE}/updown`, { waitUntil: "domcontentloaded" });
+    await page.goto(`${BASE}/updown${BOARD}`, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(5000);
     const t = await bodyText(page);
     // ⛔ Assert the CARD, not the page. The page always has chrome saying "up & down".
@@ -80,7 +86,7 @@ async function snap(page, sel, name) {
     ok("2.1 · ⭐ a player with NO query string sees a live round", n > 0,
        n === 0 ? `board says: ${(t.match(/no (games|rounds)[^.]{0,60}/i) ?? ["(nothing about empty)"])[0]}` : `${n} live card(s)`);
     ok("2.2 · …and it is the asset+duration the operator actually built",
-       n > 0 && /btc|bitcoin/i.test(await live.first().innerText()),
+       n > 0 && new RegExp(ASSET, "i").test(await live.first().innerText()),
        n > 0 ? (await live.first().innerText()).replace(/\s+/g, " ").slice(0, 60) : "");
     await snap(page, "main", "2-player-default");
   } catch (e) { ok("2.x · player landing threw", false, e.message.slice(0, 110)); }
@@ -94,7 +100,7 @@ for (const [who, side] of [["alpha", "UP"], ["echo", "DOWN"]]) {
   const page = await ctx.newPage();
   try {
     await login(page, who);
-    await page.goto(`${BASE}/updown`, { waitUntil: "domcontentloaded" });
+    await page.goto(`${BASE}/updown${BOARD}`, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(4500);
     const live = page.locator("article").filter({ hasText: /betting closes in/i }).first();
     if (!(await live.count())) throw new Error("no live card on the default board");
