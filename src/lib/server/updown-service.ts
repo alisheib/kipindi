@@ -192,6 +192,10 @@ export async function readPrice(
     decimals: asset.decimals,
     endpoint: asset.priceSourceUrl,
     approvedDomain: asset.sourceDomain,
+    // The instant this reading is FOR. A quote feed ignores it — it can only ever answer
+    // "the price now", which is precisely the inability E-69 is made of. A dated feed uses it
+    // to ask for one named bar, and that is what makes being late harmless.
+    at: boundaryAtIso,
   });
 
   if (!q.ok) {
@@ -200,6 +204,12 @@ export async function readPrice(
       : q.reason === "unparseable-price" ? "unparseable-price"
       : q.reason === "no-timestamp" ? "stale"
       : q.reason === "wrong-source" ? "wrong-source"
+      // ⛔ `no-bar` and `implausible-bar` BURN THE ATTEMPT BUDGET, deliberately. They are
+      // statements about the world — the provider published nothing for that minute, or what
+      // it published cannot be trusted — and retrying will not change either. They must NOT
+      // land in the operator-state carve-out beside `no-api-key`, or the round would wait
+      // forever for a reading that is never coming instead of voiding and refunding on time.
+      : q.reason === "no-bar" || q.reason === "implausible-bar" ? "unparseable-price"
       : "error";
     return { ok: false, reason, detail: describeFeedRefusal(q.reason, q.detail) };
   }

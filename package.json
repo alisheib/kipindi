@@ -192,6 +192,7 @@
     "test:updown-durations": "tsx scripts/updown-durations.test.mts",
     "test:updown-chain-stats": "tsx scripts/updown-chain-stats.test.mts",
     "test:updown-grid": "tsx scripts/updown-grid.test.mts",
+    "test:updown-bars": "tsx scripts/updown-bars.test.mts",
     "test:ops-audit-flush": "tsx scripts/ops-audit-flush.test.mts",
     "test:tracker-hygiene": "tsx scripts/tracker-hygiene.test.mts",
     "test:proposal-evidence-age": "tsx scripts/proposal-evidence-age.test.mts",

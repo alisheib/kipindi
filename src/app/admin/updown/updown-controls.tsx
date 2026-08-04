@@ -34,6 +34,10 @@ import {
   updateThresholdsAction, updateReadingMethodAction,
 } from "./actions";
 import { ALLOWED_DURATIONS } from "@/lib/updown-durations";
+// ⛔ Same rule as the durations above: the reading-method dropdown is rendered from the shared
+// provider list, never a literal array in this file. A hand-copied list is how a server comes
+// to accept a value no screen can ask for.
+import { FEED_PROVIDERS, findProvider, type FeedProviderId } from "@/lib/updown-providers";
 
 // ⛔ E-62 · ONE SOURCE FOR THE DURATIONS — see `src/lib/updown-durations.ts`. This was a
 // hand-copied `[5, 15, 30]`; a duration added server-side would have been unreachable here.
@@ -758,7 +762,7 @@ export function ReadingMethodForm({
   observationMethod, feedProvider, twelveDataKeyPresent, maxStalenessSeconds,
 }: {
   observationMethod: "feed" | "ai";
-  feedProvider: "mock" | "twelvedata";
+  feedProvider: FeedProviderId;
   twelveDataKeyPresent: boolean;
   maxStalenessSeconds: number;
 }) {
@@ -766,12 +770,16 @@ export function ReadingMethodForm({
   const router = useRouter();
   const { deferToast, toast } = useDeferredToast(pending);
   const [method, setMethod] = useState<"feed" | "ai">(observationMethod);
-  const [provider, setProvider] = useState<"mock" | "twelvedata">(feedProvider);
+  const [provider, setProvider] = useState<FeedProviderId>(feedProvider);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
+  const spec = findProvider(provider);
   const dirty = method !== observationMethod || provider !== feedProvider;
-  const simulated = method === "feed" && provider === "mock";
-  const keyMissing = method === "feed" && provider === "twelvedata" && !twelveDataKeyPresent;
+  // ⚠️ Derived from the shared spec, not from an id comparison. A new simulated or
+  // key-requiring provider then arrives with its warnings already wired, instead of silently
+  // bypassing the type-to-arm gate because nobody remembered to extend a literal check.
+  const simulated = method === "feed" && Boolean(spec?.simulated);
+  const keyMissing = method === "feed" && Boolean(spec?.needsKey) && !twelveDataKeyPresent;
 
   const save = () => {
     const fd = new FormData();
@@ -820,15 +828,16 @@ export function ReadingMethodForm({
           />
         </Field>
         <Field label="Feed provider">
+          {/* ⛔ RENDERED FROM THE SHARED LIST, never a hand-written array. This dropdown used
+              to carry its own `["twelvedata", "mock"]`, so a provider added server-side was
+              accepted by the action and offered by no screen — the same defect that made both
+              consoles hold their own copy of the durations. One list, one answer. */}
           <Select
             value={provider}
-            onChange={(v) => setProvider(v as "mock" | "twelvedata")}
+            onChange={(v) => setProvider(v as FeedProviderId)}
             ariaLabel="Feed provider"
             size="sm"
-            options={[
-              { value: "twelvedata", label: "Twelve Data — real quotes" },
-              { value: "mock", label: "Simulated — invented prices" },
-            ]}
+            options={FEED_PROVIDERS.map((p) => ({ value: p.id, label: p.label }))}
           />
         </Field>
       </div>

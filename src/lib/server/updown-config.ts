@@ -35,6 +35,7 @@ import { assetStore, chainStore, roundStore, type StoredAsset, type StoredChain,
 import type { RateConfig } from "./market-config";
 import type { MarketCategory } from "./market-service";
 import type { FeedProviderId } from "./updown-feed";
+import { FEED_PROVIDERS, isFeedProviderId } from "@/lib/updown-providers";
 
 // ---------------------------------------------------------------------------
 // Product-level configuration
@@ -281,8 +282,11 @@ export async function setUpDownConfig(
     }
   }
   if (updates.feedProvider !== undefined) {
-    if (updates.feedProvider !== "mock" && updates.feedProvider !== "twelvedata") {
-      return { ok: false, error: 'Feed provider must be "mock" or "twelvedata".' };
+    // ⛔ THIS VALIDATOR IS THE ROLLBACK LEVER, and it reads the SHARED list rather than its own
+    // copy. A provider that exists in the type but not in the list cannot be selected — and,
+    // far worse, cannot be switched BACK off without a deploy. One list, one answer.
+    if (!isFeedProviderId(updates.feedProvider)) {
+      return { ok: false, error: `Feed provider must be one of: ${FEED_PROVIDERS.map((p) => p.id).join(", ")}.` };
     }
   }
   if (updates.retryBackoffSeconds !== undefined) {

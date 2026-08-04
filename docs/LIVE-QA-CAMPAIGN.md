@@ -3709,6 +3709,111 @@ which the page's own comment explaining the fix now contains. Same trap the two 
 ⭐ **The curve is brutally steep.** Between 0% and 0.01% the void rate leaps from ~1% to ~20%.
 **There is no setting that gives both a visible winning band and a ~95% pay rate.**
 
+### ⭐ THE COMPLETE AGREED RECORD — 2026-08-04, session 22
+
+> Everything below is settled. Execute it; do not re-open it. Items marked ⏳ are the ones
+> still owed to Ali and they are listed separately at the end so they cannot hide among the rest.
+
+| # | Agreed | Why, in one line |
+|---|---|---|
+| 1 | **Settle from a dated 1-minute bar**, not `/quote` | A quote only answers "now", so a missed instant voids forever — E-69/E-63/E-68 are all that one choice |
+| 2 | **`price at T = the open of the bar labelled T`** | Measured immutable from +5s; the rule is named explicitly, never inferred |
+| 3 | ⛔ **`timezone=UTC` on every call** | E-71 — gold is 600 minutes out without it |
+| 4 | **Margin = the tick floor** (~99% of rounds pay) | The curve is too steep for a middle: 0.01% already refunds 1 in 5 |
+| 5 | **Bets close before the round ends** — the last **20%**, floored at 30s, config-driven | E-72. A fixed 30s is only 3% of a 15-minute round and leaves the hole open there |
+| 6 | **Keep the live price visible** | Hiding it protects nobody — BTC is quoted publicly. It costs the game its feel and buys no safety |
+| 7 | 🔴 **Bad-print guard before settling** | Single source + a one-cent margin = one bad tick decides a round. The old wide band was absorbing data noise and nobody had named that |
+| 8 | **Durations 3 · 5 · 10 · 15 · 30 · 60** | All divide 1440; batching makes them free |
+| 9 | **Minute-aligned boundaries** ✅ shipped `e85a7a71` | There is no bar labelled `21:27:37` |
+| 10 | **Void = refund + stated on every surface**, never rendered as UP/DOWN | E-65 / E-56 / E-64 |
+| 11 | **AI proposes markets. AI never touches a settlement price.** | 1,398 rounds, zero confirmed readings, real money stranded |
+| 12 | **A fully controlled admin** — every pricing-relevant field a dropdown, nothing typed, each option carrying a numbered red/amber/green readiness signal | Ali: *"I don't know how knowledgeable my admins are in typing asset names"* |
+| 13 | **Only symbols on our Twelve Data plan may be chosen** | Level A = crypto + forex + US equities real-time; everything else EOD, indices absent |
+| 14 | **Decisive rate + void split by reason** ✅ shipped `6333ef0e` | E-58's root cause: one blended number hid three opposite problems |
+
+### ⭐ THE FINAL DESIGN — settled 2026-08-04. Build this; do not redesign it.
+
+Ali: *"take my ideas as opinions, but perfect them and settle the final design."* This is that
+settlement, for both the player and the admin.
+
+#### The round has FOUR player-visible states, not three
+
+| State | Player can | The card says |
+|---|---|---|
+| **OPEN** | bet | *"Betting closes in 0:36"* |
+| **🔒 LOCKED** | watch only | *"Bets closed · result in 0:36 · you win 1,870 if UP"* |
+| **SETTLING** | — | *"Reading the closing price…"* (measured: 5–15s) |
+| **RESULT** | — | won · lost · **refunded, with the reason** |
+
+⛔ **The countdown must RE-LABEL itself at the lock, not merely keep ticking.** There are now two
+deadlines and one set of digits: `0:36` means *"36s left to bet"* before the lock and *"36s until
+you find out"* after it. That single ambiguity would produce more complaints than the rest of the
+rebuild combined.
+
+⛔ **The lock message must carry its REASON.** *"Closed"* reads as *the app was too slow and cheated
+me*. *"Bets closed at 07:21:24 — results are locked so nobody can bet on a known outcome"* reads as
+fair. Identical event, opposite feeling, and it is the most load-bearing sentence in the feature.
+
+⭐ **The lock is what lets us stop estimating.** Once betting closes the pool is frozen, so the
+payout is exact: `× 1.4 est.` becomes **"you win 1,870"**. That deletes an estimate from a screen
+about someone's money — the shape of half the findings in this campaign.
+
+⛔ **The lock is a SERVER fact.** `selectionClosedAt` on the row, enforced in `buyPosition`. A
+disabled button is decoration; a device clock 40 seconds fast must not be able to place a bet the
+server should refuse. And the countdown must be anchored to a **server** instant, not `Date.now()`
+on the handset, or two players see two different clocks.
+
+**The window:** the last **20% of the round, floored at 30s**, config-driven. ⚠️ A fixed 30s is only
+3% of a 15-minute round and leaves the hole wide open there.
+
+#### 🔴 SURPRISING SCENARIOS — found by walking it through, each needs a decision
+
+1. ⛔ **Rounding is the same size as the margin.** With `decimals: 2` and `minMoveTicks: 1` the tick
+   is **0.01** while `toFixed(2)` rounding error is up to **0.005** — the band is only 2× the noise
+   it is measured against. **At the tick floor, `minMoveTicks` must be ≥ 2**, or a round is decided
+   by rounding. ⚠️ Also measured: XAU/USD returns **5 decimals** where the asset stores 2.
+2. **Can a player bet BOTH sides?** In a pari-mutuel pool that is a hedge that costs only the fee —
+   a way to farm volume with near-zero risk. Must be checked in `buyPosition` and decided.
+3. **A locked round with an empty pool.** It will still settle and still render a result nobody
+   won. Decide whether such a round is shown at all, or quietly retired.
+4. **Two cards for one chain.** Re-scoping "one live round" to *accepting bets* means a settling
+   round and a new open round coexist. The board shows up to three cards — it must not show the
+   same chain twice without distinguishing them.
+5. **close == open exactly** at the tick floor → neither target reached → `no-move` void. Rare but
+   real, and the copy must be honest about it rather than calling it a source failure.
+6. **A deploy during a LOCKED round is now harmless** — no bets can be lost and a late close costs
+   nothing. That is the rebuild working, and it is worth stating in the runbook.
+7. **The provider publishes bars for a shut market** (E-36: 1,440 gold bars on a Saturday). The
+   calendar gate runs FIRST, before any fetch, and becomes *more* load-bearing under bar
+   settlement, not less — there is no staleness rule left to catch a frozen holiday.
+
+#### The admin side — a fully controlled environment
+
+⛔ **Nothing that decides whether a price arrives may be typed.** Asset, duration, provider and
+margin are all dropdowns rendered from ONE shared list each (`updown-symbols.ts`,
+`updown-durations.ts`, `updown-providers.ts`) — never a literal array in a component, which is how
+a server came to accept a duration no screen could ask for. Every option carries a **numbered
+readiness signal** (① ready · ② warning · ③ unusable) with the reason in the operator's own terms,
+and an unusable option is shown **greyed with its reason**, never hidden — *"why isn't gold in the
+list?"* is a worse question than seeing why.
+
+### ⏳ STILL OWED TO ALI — raise, never decide
+
+- **Gold at 3–5 minutes.** The seam measurement **reversed** the original decision to lower
+  `XAU minMoveTicks`: $0.15 is already *below* the provider's own price ambiguity ($0.29–$0.87).
+  Lowering it means gold is decided by feed representation, raising it voids more.
+  **Recommendation: offer gold at 15m and above only.** Not acted on.
+- **Liquidity.** Pari-mutuel needs both sides. At launch volumes many rounds will be one-sided →
+  everyone refunded at 0% fee → no revenue, and a "winner" handed their stake back (E-65).
+  Making rounds decide 99% of the time does not help if only one side bet.
+- **Speed and responsible gambling.** A 3-minute round that almost always resolves is the fastest,
+  most repeatable product on the platform. `responsible-gambling.ts` limits exist but were sized
+  for a slower, mostly-voiding game. Worth re-reading against a 3-minute one before it goes wide —
+  a licensing question as much as a product one.
+- **3-minute rounds vs manual generation.** An operator pressing Generate every 3 minutes forever,
+  with no alarm if they stop. Either the close gets fast enough that this never bites, or short
+  durations need the automatic chains that were deliberately stopped.
+
 ### ⭐ Ali's three decisions, 2026-08-04
 
 1. **Margin = the tick floor.** ~99% of rounds pay a winner (today ~63%). ⛔ Consequence accepted:

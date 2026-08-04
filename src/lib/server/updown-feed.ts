@@ -50,6 +50,34 @@ export type FeedRefusal =
   | "unparseable-price"
   | "no-timestamp"
   | "wrong-source"
+  /**
+   * The provider published NO bar for the exact instant asked about.
+   *
+   * ⛔ A HARD REFUSAL, NEVER A SUBSTITUTION. Not the nearest bar, not the previous close,
+   * never interpolated. A round whose boundary minute has no price VOIDs and refunds — that
+   * is an honest ending. Quietly settling it on a neighbouring minute is not.
+   *
+   * ⚠️ It also replaces a protection the rebuild removes. A frozen holiday quote used to be
+   * caught by `maxStalenessSeconds` (the price stopped advancing, so the reading was refused).
+   * A dated bar has no staleness to fail: the bar for a holiday minute either exists or does
+   * not. This reason is what catches the "does not".
+   */
+  | "no-bar"
+  /**
+   * A bar exists, but its price disagrees with the minutes either side of it by more than a
+   * market could plausibly move — i.e. a bad print.
+   *
+   * ⛔ WHY THIS EXISTS AND WHY IT IS NEW (2026-08-04). The margin band was doing a job nobody
+   * had named: it ABSORBED provider noise. At ±0.02% a $2 bad tick on BTC changed nothing,
+   * because the round still resolved on the real move. Ali's decision to run the margin at the
+   * TICK FLOOR removes that cushion entirely — a $2 error is now two hundred times the winning
+   * margin, so a single bad print flips the outcome and pays the wrong side.
+   *
+   * ⚠️ And a reproducible settlement makes a wrong one WORSE, not better: the proof panel will
+   * confidently show the bad number, and it will still be there when anyone re-checks.
+   * Refusing costs one refund. Paying the wrong player costs trust and cannot be undone.
+   */
+  | "implausible-bar"
   | "error";
 
 export type FeedQuote =
@@ -77,6 +105,14 @@ export type FeedRequest = {
   decimals: number;
   /** The approved endpoint. Its host must be an enabled TrustedSource — one allowlist. */
   endpoint: string;
+  /**
+   * The INSTANT this reading is for, ISO, minute-aligned.
+   *
+   * Optional and ignored by the quote-based feeds, which can only ever answer "the price
+   * now" — that inability is the whole reason E-69 exists. A dated feed uses it to ask for
+   * one specific bar, which is what makes a late close harmless.
+   */
+  at?: string;
 };
 
 export interface PriceFeed {
@@ -86,7 +122,13 @@ export interface PriceFeed {
   quote(req: FeedRequest): Promise<FeedQuote>;
 }
 
-export type FeedProviderId = "mock" | "twelvedata";
+// ⛔ ONE LIST, in a module with no imports so the console can read it too. The reading-method
+// form used to hand-copy this union, which meant a provider added here was accepted by the
+// server action and offered by no screen — the same defect that made both admin consoles carry
+// their own `[5, 15, 30]`. See `src/lib/updown-providers.ts`.
+export type { FeedProviderId } from "@/lib/updown-providers";
+export { FEED_PROVIDERS, findProvider, isFeedProviderId } from "@/lib/updown-providers";
+import type { FeedProviderId } from "@/lib/updown-providers";
 
 /** Stable hash of the provider's raw response (audit evidence, not security). */
 function hashRaw(raw: string): string {
@@ -257,6 +299,178 @@ export class TwelveDataFeed implements PriceFeed {
 }
 
 // ---------------------------------------------------------------------------
+// Twelve Data — DATED BARS. The reader that makes a late close harmless.
+// ---------------------------------------------------------------------------
+
+/**
+ * `time_series?interval=1min` — the price at a NAMED INSTANT, not "the price now".
+ *
+ * ── WHY THIS EXISTS (E-69, and E-63/E-68 which are the same defect) ──────────
+ * `/quote` can only answer *"what is the price NOW"*. Miss the instant and the number is gone
+ * forever, so the round voids. Measured on production: a round opened at a validated 63,672.01,
+ * resolved **529 seconds late** with `closePrice NULL`, and voided — while the log repeated
+ * *"not the leader — chores skipped"*. **The source never failed. Nobody performed the close.**
+ *
+ * A dated bar returns the same number whether asked at the boundary or six hours later.
+ * Measured against this account 2026-08-04 (`ops-updown-probe-bars.mts`): the bar labelled T
+ * exists **5 seconds** after T and its `open` did not change across seven polls out to +180s.
+ *
+ * ── THE RULE, NAMED RATHER THAN INFERRED ────────────────────────────────────
+ *   **price at instant T = the `open` of the 1-minute bar labelled T.**
+ *
+ * ⛔ It has to be stated, not derived from whichever number is handy, because the two candidate
+ * answers are NOT the same. The bar labelled T−1 closes at the instant the bar labelled T opens,
+ * so those should agree — measured, they differ by **$0.01 on BTC** (negligible) but by
+ * **$0.29–$0.87 on XAU/USD**, which is the size of a whole five-minute gold move.
+ *
+ * ── WHAT DELIBERATELY DOES NOT CHANGE ───────────────────────────────────────
+ * `acquireObservation`'s contract, the write-once `@@unique([assetId, boundaryAt])` ledger, the
+ * trusted-source allowlist and `computeTargets` are all untouched. This class replaces HOW a
+ * number is obtained and relaxes nothing.
+ */
+export class TwelveDataBarFeed implements PriceFeed {
+  readonly id = "twelvedata-bars" as const;
+  readonly label = "Twelve Data (1-minute bars)";
+
+  /**
+   * How far a bar's open may sit from the previous minute's close before we refuse it.
+   *
+   * ⛔ 2% IS DELIBERATELY GENEROUS AND THAT IS THE POINT. This catches GROSS errors — a decimal
+   * shift, a zero, a cached quote for the wrong instrument — which is what provider faults
+   * actually look like. It must never fire on real volatility: BTC's *median* one-minute move
+   * is ~0.014% and its worst measured 3-minute move was 0.651%, so 2% is over 100× the median
+   * and still 3× the worst observed. A tighter bound would start refusing real markets, and a
+   * feed that refuses real moves voids rounds for no integrity gain (E-25's exact shape).
+   */
+  private static readonly MAX_JUMP_PCT = 2;
+
+  constructor(private readonly apiKey: string) {}
+
+  async quote(req: FeedRequest): Promise<FeedQuote> {
+    if (!req.at) {
+      return { ok: false, reason: "error", detail: "the dated feed needs the instant it is quoting for" };
+    }
+    const atMs = Date.parse(req.at);
+    if (!Number.isFinite(atMs)) {
+      return { ok: false, reason: "error", detail: `not a readable instant: "${req.at}"` };
+    }
+    // The provider labels a 1-minute bar "YYYY-MM-DD HH:MM:SS" in the requested zone.
+    const label = new Date(atMs).toISOString().slice(0, 16).replace("T", " ");
+
+    const url = new URL(req.endpoint);
+    url.searchParams.set("symbol", req.symbol);
+    url.searchParams.set("interval", "1min");
+    // A small window: the bar itself plus the neighbours the plausibility check needs.
+    url.searchParams.set("outputsize", "8");
+    // ⛔ E-71 · `timezone` DEFAULTS TO `Exchange`, NOT UTC, and the difference is silent.
+    // Measured on a paired call at one instant: XAU/USD returns `07:29:00` with this parameter
+    // and `17:29:00` without — exactly 600 minutes apart. BTC/ETH/SOL are identical either way,
+    // so the defect is invisible on crypto and only bites metals and FX. Without this line the
+    // gold rounds would settle on a bar ten hours from the one the player was shown.
+    url.searchParams.set("timezone", "UTC");
+    url.searchParams.set("apikey", this.apiKey);
+
+    let res: Response;
+    let body: string;
+    try {
+      res = await fetch(url, { headers: { accept: "application/json" }, cache: "no-store" });
+      body = await res.text();
+    } catch (err) {
+      return { ok: false, reason: "error", detail: (err as Error).message?.slice(0, 200) ?? "fetch failed" };
+    }
+    if (!res.ok) {
+      return { ok: false, reason: "http-error", detail: `HTTP ${res.status} — ${body.slice(0, 200)}` };
+    }
+
+    let parsed: { status?: string; message?: string; code?: number; values?: Array<Record<string, string>> };
+    try {
+      parsed = JSON.parse(body);
+    } catch {
+      return { ok: false, reason: "unparseable-price", detail: `response was not JSON — ${body.slice(0, 200)}` };
+    }
+    // The provider signals its own errors in-band with HTTP 200.
+    if ((typeof parsed.code === "number" && parsed.code >= 400) || parsed.status === "error") {
+      return { ok: false, reason: "http-error", detail: `provider error ${parsed.code ?? ""} — ${String(parsed.message ?? "").slice(0, 200)}` };
+    }
+    if (!Array.isArray(parsed.values) || parsed.values.length === 0) {
+      return { ok: false, reason: "no-bar", detail: `the provider returned no bars for ${req.symbol}` };
+    }
+
+    // ⛔ Provider order is NEWEST-FIRST (`order` defaults to `desc`). Getting this backwards
+    // silently inverts every open and close, which would not change a void rate — |move| is
+    // symmetric — but WOULD invert every UP/DOWN verdict. Sorted, never assumed.
+    const bars = parsed.values
+      .map((v) => ({
+        datetime: String(v.datetime ?? ""),
+        open: Number(v.open), high: Number(v.high), low: Number(v.low), close: Number(v.close),
+      }))
+      .filter((b) => b.datetime && Number.isFinite(b.open) && Number.isFinite(b.close))
+      .sort((a, b) => Date.parse(`${a.datetime.replace(" ", "T")}Z`) - Date.parse(`${b.datetime.replace(" ", "T")}Z`));
+
+    const idx = bars.findIndex((b) => b.datetime.startsWith(label));
+    // ⛔ EXACT MATCH ONLY. Never the nearest bar, never the previous close, never interpolated.
+    if (idx < 0) {
+      return {
+        ok: false,
+        reason: "no-bar",
+        detail:
+          `the provider published no ${req.symbol} bar for ${label} UTC` +
+          (bars.length ? ` (it returned ${bars[0]!.datetime} … ${bars[bars.length - 1]!.datetime})` : ""),
+      };
+    }
+    const bar = bars[idx]!;
+
+    // ── The bad-print guard ──────────────────────────────────────────────────
+    if (!(bar.open > 0)) {
+      return { ok: false, reason: "unparseable-price", detail: `open="${bar.open}" is not a positive number` };
+    }
+    // Internal consistency: an open outside its own bar's range is not a price, it is a fault.
+    if (Number.isFinite(bar.high) && Number.isFinite(bar.low) && (bar.high < bar.low || bar.open > bar.high || bar.open < bar.low)) {
+      return {
+        ok: false, reason: "implausible-bar",
+        detail: `the bar contradicts itself — open ${bar.open} outside low ${bar.low} … high ${bar.high}`,
+      };
+    }
+    // Continuity: a gross jump from the previous minute is a bad print, not a market.
+    const prev = idx > 0 ? bars[idx - 1] : null;
+    if (prev && prev.close > 0) {
+      const jumpPct = Math.abs((bar.open - prev.close) / prev.close) * 100;
+      if (jumpPct > TwelveDataBarFeed.MAX_JUMP_PCT) {
+        return {
+          ok: false, reason: "implausible-bar",
+          detail:
+            `${bar.open} is ${jumpPct.toFixed(2)}% from the previous minute's close (${prev.close}), ` +
+            `beyond the ${TwelveDataBarFeed.MAX_JUMP_PCT}% sanity bound — refusing rather than settling on a suspect print`,
+        };
+      }
+    }
+
+    // ── The evidence ─────────────────────────────────────────────────────────
+    // ⛔ HASH THE MATCHED BAR, NOT THE RESPONSE BODY. A hash over eight bars is a hash of
+    // whatever else happened to be in that response — it changes with the request window, so it
+    // is NOT reproducible, which makes it worse evidence than the quote path it replaces. A
+    // canonical single-bar record is re-derivable by anyone with the same symbol and instant.
+    const canonical = JSON.stringify({
+      symbol: req.symbol, interval: "1min", timezone: "UTC",
+      datetime: bar.datetime, open: bar.open, high: bar.high, low: bar.low, close: bar.close,
+    });
+
+    return {
+      ok: true,
+      price: Number(bar.open.toFixed(req.decimals)),
+      // ⭐ The bar's own label IS the boundary, so `judgeFeedStaleness` becomes a free
+      // correctness assertion: a skew of anything but zero means the reader returned a bar it
+      // was not asked for. Keeping that gate costs nothing and catches the silent-wrong-bar class.
+      quotedAt: new Date(Date.parse(`${bar.datetime.replace(" ", "T")}Z`)).toISOString(),
+      sourceUrl: `${url.origin}${url.pathname}?symbol=${encodeURIComponent(req.symbol)}&interval=1min`, // key NEVER stored
+      evidence: canonical,
+      rawHash: hashRaw(canonical),
+      provider: this.id,
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Selection
 // ---------------------------------------------------------------------------
 
@@ -274,6 +488,13 @@ export function feedFromId(id: FeedProviderId): PriceFeed {
     // worst thing this file could do. It refuses instead.
     if (!key) return new UnconfiguredFeed("twelvedata", "TWELVEDATA_API_KEY is not set");
     return new TwelveDataFeed(key);
+  }
+  if (id === "twelvedata-bars") {
+    const key = process.env.TWELVEDATA_API_KEY ?? "";
+    // Same refusal, same reason: a real provider with no key must never fall back to invented
+    // prices on a money path.
+    if (!key) return new UnconfiguredFeed("twelvedata-bars", "TWELVEDATA_API_KEY is not set");
+    return new TwelveDataBarFeed(key);
   }
   return new MockPriceFeed();
 }
@@ -300,6 +521,8 @@ export function describeFeedRefusal(reason: FeedRefusal, detail: string): string
     case "unparseable-price": return `No usable price — ${detail}`;
     case "no-timestamp": return `Quote had no timestamp — ${detail}`;
     case "wrong-source": return `Wrong source — ${detail}`;
+    case "no-bar": return `No price published for that minute — ${detail}`;
+    case "implausible-bar": return `Price refused as a suspect print — ${detail}`;
     case "error": return `Feed error — ${detail}`;
   }
 }
