@@ -552,6 +552,16 @@ const memoryDb = {
       for (const u of store.users.values()) if ((u.email ?? "").trim().toLowerCase() === norm) return u;
       return null;
     },
+    /** EVERY account on an address, oldest first. Mirrors the Prisma DAL — see the
+     *  long note there: `email` is not unique, so sign-in must disambiguate. */
+    findAllByEmail: (email: string, cap = 5): StoredUser[] => {
+      const norm = email.trim().toLowerCase();
+      if (!norm) return [];
+      return Array.from(store.users.values())
+        .filter((u) => (u.email ?? "").trim().toLowerCase() === norm)
+        .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)))
+        .slice(0, cap);
+    },
     update: (id: string, patch: Partial<StoredUser>) => {
       const u = store.users.get(id);
       if (!u) return null;

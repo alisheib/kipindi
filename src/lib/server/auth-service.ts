@@ -9,7 +9,7 @@
  */
 import { headers } from "next/headers";
 import { audit } from "./audit";
-import { db } from "./store";
+import { db, type StoredUser } from "./store";
 import { generateOtp, hashOtp, hashPassword, randomId, verifyOtp, verifyPassword } from "./crypto";
 import { rateCheckAsync } from "./rate-limit";
 import { sms, otpMessage } from "./sms";
@@ -643,6 +643,63 @@ async function burnPasswordVerify(password: string): Promise<void> {
   await verifyPassword(password, DUMMY_SALT, DUMMY_HASH).catch(() => false);
 }
 
+/** How many accounts on one address sign-in will consider. See below. */
+const EMAIL_CANDIDATE_CAP = 5;
+
+/**
+ * Resolve an email to THE account the person means — not merely to *an* account.
+ *
+ * 🔴 This exists because the owner could not sign in (production, 2026-08-04).
+ * `User.email` has no unique index — only `phoneE164` does — and the
+ * one-account-per-email rule is enforced in app code that post-dates existing
+ * rows. Production holds FOUR accounts on one address. Sign-in used a bare
+ * `findByEmail` (`findFirst`, no `orderBy`), so it silently resolved to whichever
+ * row Postgres returned first — the OLDEST, a `PENDING_KYC` PLAYER — and checked
+ * the owner's ADMIN password against that account's hash. Correct password,
+ * wrong row, "Wrong email or password", every time.
+ *
+ * Ordering the query would NOT have fixed it: that just picks a different
+ * arbitrary row. On a shared address the only thing that identifies WHICH
+ * account the person means is the password they typed, so that is what selects
+ * it. A caller still has to prove ownership — this narrows the candidate set, it
+ * never authenticates anyone.
+ *
+ * Deliberate properties:
+ *  · **One account → completely unchanged.** No extra password work, and the
+ *    caller's existing wrong-password/lockout accounting is untouched. This is
+ *    every real sign-in; the multi-account branch is a repair path.
+ *  · **No match on a shared address → nobody is penalised.** Returning null puts
+ *    the caller on its unknown-identifier branch, which is enumeration-neutral
+ *    and increments no counter. That is a deliberate improvement: previously a
+ *    stranger's typo — or the owner's own correct password — drove the lockout
+ *    counter of an account nobody was trying to reach. The owner had already
+ *    pushed an innocent row to 3 of the 5 failures that lock it for 30 minutes.
+ *    Brute force is still bounded: the per-identifier and per-IP rate limits ran
+ *    before this, and they key on the address.
+ *  · **Capped.** This is an unauthenticated endpoint and each candidate costs a
+ *    scrypt verify, so the set is bounded rather than unbounded by data.
+ */
+async function resolveEmailAccount(email: string, password: string): Promise<StoredUser | null> {
+  const candidates = await db.user.findAllByEmail(email, EMAIL_CANDIDATE_CAP);
+  if (candidates.length <= 1) return candidates[0] ?? null;
+
+  // Shared address: the password decides. Audited, because duplicate addresses
+  // are a data defect an operator should be able to see rather than infer.
+  audit({
+    category: "SECURITY",
+    action: "auth.login.email_ambiguous",
+    actorId: null,
+    targetType: "Email",
+    targetId: maskEmailForAudit(email),
+    payload: { candidates: candidates.length },
+  });
+  for (const c of candidates) {
+    if (!c.passwordHash || !c.passwordSalt) continue;
+    if (await verifyPassword(password, c.passwordSalt, c.passwordHash)) return c;
+  }
+  return null;
+}
+
 export async function loginWithPassword(input: PasswordLoginInput): Promise<ServiceResult<{ userId: string; role: string; twoFactorRequired?: boolean }>> {
   // Resolve the single identifier field to either an email or a phone lookup.
   const resolved = resolveLoginIdentifier(input.identifier);
@@ -664,7 +721,7 @@ export async function loginWithPassword(input: PasswordLoginInput): Promise<Serv
     }
   }
 
-  const user = isEmailLogin ? await db.user.findByEmail(lookupKey) : await db.user.findByPhone(lookupKey);
+  const user = isEmailLogin ? await resolveEmailAccount(lookupKey, input.password) : await db.user.findByPhone(lookupKey);
   if (!user) {
     audit({
       category: "SECURITY",

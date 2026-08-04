@@ -517,6 +517,27 @@ export const prismaDb = {
       const u = await pc().user.findFirst({ where: { email: { equals: norm, mode: "insensitive" } } });
       return u ? toStoredUser(u) : null;
     },
+    /**
+     * EVERY account on an address, oldest first — because `findByEmail` above
+     * cannot tell "the account" from "an account".
+     *
+     * `email` has no unique index (see the note above), so an address CAN hold
+     * several accounts, and production does: four on one address. A caller that
+     * needs to identify a specific user — sign-in — must see the whole set and
+     * disambiguate deliberately, not accept whichever row the heap offered.
+     * Ordered so the set is stable between calls; capped because the only
+     * caller runs on an unauthenticated endpoint and does password work per row.
+     */
+    findAllByEmail: async (email: string, cap = 5): Promise<StoredUser[]> => {
+      const norm = email.trim().toLowerCase();
+      if (!norm) return [];
+      const rows = await pc().user.findMany({
+        where: { email: { equals: norm, mode: "insensitive" } },
+        orderBy: { createdAt: "asc" },
+        take: cap,
+      });
+      return rows.map(toStoredUser);
+    },
     create: async (u: StoredUser): Promise<StoredUser> => {
       const row = await pc().user.create({
         data: {
