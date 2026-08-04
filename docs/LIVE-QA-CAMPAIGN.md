@@ -3640,6 +3640,70 @@ workstation shows an SLA countdown, but nothing escalates when it runs out. Ali'
   platform zone (+3) keeps it on the right day, and the E-2 fix is safe. The earlier note was
   the `pg` −3h trap (§3) reading back through an un-cast client.
 
+## 6ao. 🔴 SOL WAS NEVER THE PROBLEM — and four more guide claims were asserted, not verified (2026-08-04, session 23)
+
+> Ali: *"but SOL is there for Twelve Data no? check please why can we do SOL?"* — and then
+> *"make sure nothing else is misleading like this."* Both were right.
+
+### ① The SOL warning rested on two numbers that no longer hold
+
+The operator guide marked SOL **NOT YET**, on two grounds. Neither survived measurement:
+
+| the claim | the reality |
+|---|---|
+| *"its bars arrive ~60s late"* | **+1s — identical to BTC/USD.** `ops-updown-probe-sol.mts` polls the just-completed minute every 10s against the live key. The +60s figure **does not reproduce**. |
+| *"290 of 290 rounds source-failed"* | True, and measured **entirely under the QUOTE reader**, which refuses a reading older than `maxStalenessSeconds` (90s). |
+
+⛔ **THE SECOND IS THE REAL LESSON.** A dated bar does not ask *how fresh* a price is, it asks
+*whether the bar labelled T exists*. So a record produced by the staleness rule predicts **nothing**
+about a reader that has no staleness rule. Quoting it as a reason to distrust the instrument was the
+same error as trusting a code default for a live setting (§6al ①) — **history under a retired
+mechanism is not evidence about the mechanism that replaced it.**
+
+⭐ The likely origin of the phantom +60s: **E-74** — `last_quote_at` is a minute label **rounded up**,
+so a quote taken at T+8s reports T+60s and reads as a full minute stale.
+
+✅ **PROVEN WITH REAL MONEY.** SOL 5m `udr_0e0717144d181790ecce`, generated through the console as the
+trading officer: **73.83 → 73.87 → UP**, both observations `feed:twelvedata-bars` CONFIRMED, alpha's
+500 paid **870**, wallet 61,430 − 500 + 870 = **61,800**. **SOL's first winner in 291 rounds.**
+
+⚠️ **The caveat that IS real, and it is a different one:** at ~\$74 a \$0.02 band is **~0.03%** of the
+price, against ~0.00003% on BTC — so SOL genuinely refunds more often, and its band **cannot be
+reduced** because 2 ticks is the floor. The guide now says CARE, *"avoid 3-minute SOL"*, and explains
+the arithmetic instead of repeating a stale delay figure.
+
+⛔ **`barPublicationGraceSeconds` STAYS at 120s** and now records all three measurements (+10s, +60s,
++1s). A grace costs nothing when bars are prompt; spending an attempt **VOIDs live rounds**. **A
+number that was wrong twice in one day is a number to leave generous.**
+
+### ② 🔴 THE CREDIT BUDGET WAS WRONG BY TWO ORDERS OF MAGNITUDE
+
+The guide told operators the plan allowed *"about 800 [readings per day]"* and warned that *"each
+attempt spends a credit"*. That figure came from a **source comment describing the FREE tier**.
+
+Read from `/api_usage` on the live key: plan **`grow`**, limit **377 credits per MINUTE**. A
+different unit and roughly a hundredfold more headroom. Cost is **not** a constraint on how many
+chains an operator runs, and the warning was needlessly alarming. ⛔ **Never reason about credit
+budgets from a comment — call `/api_usage`.** Corrected in both the guide and `updown-feed.ts`.
+
+### ③ Three more claims that were asserted rather than verified
+
+- **Gold's feed disagreement** was stated on page one as *"\$0.87 at a single instant"*. \$0.87 is the
+  figure **across a minute boundary**; at one instant it is **\$0.20**. The asset table had it right
+  and the rules page did not — the two contradicted each other in the same document.
+- ***"Roughly 99 rounds in 100 pay"*** was a **design projection presented as a measurement**.
+  Replaced with what is defensible: nearly every round produces a winner, against the **measured
+  63%** under the old 0.50% setting.
+- **The walkthrough** said *"the board opens on 3 min by default, so a 5-minute round is not
+  missing"*. Wrong twice: the board opens on the asset's **shortest chain**, not on 3 minutes — and
+  as of §6an it also **skips assets with no chains**, so the sentence described behaviour that no
+  longer existed on either axis.
+
+⭐ **THE PATTERN ACROSS ALL FIVE.** Every one was a figure carried forward from an earlier
+measurement, a code comment, or a design intention — never re-read at the moment it was written down.
+The guide is the highest-leverage place for that to happen, because an operator has no way to check
+it. **Before a number reaches a document an operator will act on, read it from the live system.**
+
 ## 6an. ⭐ HANDED TO THE OPERATORS — a clean board, a rewritten guide, and four defects the guide itself found (2026-08-04, session 23)
 
 > Ali's instruction: *"generate a new one with all new instructions and warnings and guidance… then
@@ -4859,7 +4923,7 @@ has touched the new reader yet"*. The switch landed and **real money has settled
 at both ends** — round `udr_a1adea90027e90fe2283`, §6am ①. See §6al for the three defects the switch
 exposed, and note §6al corrects §6ak.
 
-#### ⏭️ **RESUME AT:** ⛔ **THE BOARD IS CLEAR AND THE OPERATORS HAVE THE GUIDE** (§6an) — `docs/50pick-updown-operator-guide.pdf`, 15 pages, rebuilt from the live config. Rebuild it with `node scripts/capture-guide-shots-live.mjs` then `node scripts/generate-pdfs.mjs`, and **verify it by rasterising the pages, never by trusting the render** — the two defects it exposed were both found by looking at a picture. ① **BUILD: the house seeds the thin side of a one-sided round.** Ali chose this on 2026-08-04 over accepting one-sided refunds, having been shown that it makes the platform take market risk. **NOT started**, and it is the largest open item: it needs a float source, a per-round and per-day exposure cap, seeding at the **LOCK** (not at open, or it can be gamed), house positions kept out of player metrics and leaderboards, and the accountant able to see house P&L apart from commission. ⚠️ A `house.pool.state` key already exists in `SystemConfig` — read it before designing a second float. ⛔ Money-critical; start it fresh. ② A forced **LATE close** on production with QA money — Ali chose this explicitly and it is the one part of the rebuild never driven end to end. ③ The **ten hydrate-once config caches** — no TTL, no cross-process invalidation, including the `payment-ops` kill-switches and the trusted-source allowlist (§6al ①). ④ **SOL has still never paid a winner** (0 of 290). Its bars run ~60s late and the 120s grace should now cover it, but that has not been proved with money on a round; the guide marks it NOT YET and it must stay off for players until a staff round settles on it. ⑤ The result chip reading **VOID on a RESOLVED round** (§6ak). ⑥ ⚠️ **The asset catalogue is still a trap, documented rather than fixed**: two rows both named **Gold** (`GOLD` off, `XAU` on) and `SNP500` pointing at kitco.com. Retiring a row touches reports keyed off `key`, so the guide names them instead — if you retire them, migrate the reports in the same change. ⑦ Accountant/reports pass over the new rounds · **E-70** (nav lost admin→player) · **E-59** (no delete in the console — the reset is an ops script on purpose) · the 4-width × EN/SW/ZH sweep. ⚠️ **RG stays exactly as it is — Ali's decision 2026-08-04. Do not re-open it.** ⚠️ **`market.config.minStake` is 500 on production** while [[stake-bounds-1k-1m]] says 1,000 — the live override was never re-saved. The guide documents **500**, the live value. Ali's call which is right.
+#### ⏭️ **RESUME AT:** ⛔ **THE BOARD IS CLEAR AND THE OPERATORS HAVE THE GUIDE** (§6an) — `docs/50pick-updown-operator-guide.pdf`, 15 pages, rebuilt from the live config. Rebuild it with `node scripts/capture-guide-shots-live.mjs` then `node scripts/generate-pdfs.mjs`, and **verify it by rasterising the pages, never by trusting the render** — the two defects it exposed were both found by looking at a picture. ① **BUILD: the house seeds the thin side of a one-sided round.** Ali chose this on 2026-08-04 over accepting one-sided refunds, having been shown that it makes the platform take market risk. **NOT started**, and it is the largest open item: it needs a float source, a per-round and per-day exposure cap, seeding at the **LOCK** (not at open, or it can be gamed), house positions kept out of player metrics and leaderboards, and the accountant able to see house P&L apart from commission. ⚠️ A `house.pool.state` key already exists in `SystemConfig` — read it before designing a second float. ⛔ Money-critical; start it fresh. ② A forced **LATE close** on production with QA money — Ali chose this explicitly and it is the one part of the rebuild never driven end to end. ③ The **ten hydrate-once config caches** — no TTL, no cross-process invalidation, including the `payment-ops` kill-switches and the trusted-source allowlist (§6al ①). ④ ✅ **SOL is PROVEN and my warning about it was wrong** — see §6ao. Its bar appears at **+1s**, the "+60s" never reproduced, and the 290-of-290 record was a QUOTE-reader artefact. Paid a real winner — `udr_0e0717144d181790ecce`, 73.83 → 73.87 → UP. ⚠️ Its real caveat is arithmetic: at ~$74 a $0.02 band is ~0.03% of the price, so it refunds more than BTC and 3-minute SOL should be avoided. ⑤ The result chip reading **VOID on a RESOLVED round** (§6ak). ⑥ ⚠️ **The asset catalogue is still a trap, documented rather than fixed**: two rows both named **Gold** (`GOLD` off, `XAU` on) and `SNP500` pointing at kitco.com. Retiring a row touches reports keyed off `key`, so the guide names them instead — if you retire them, migrate the reports in the same change. ⑦ Accountant/reports pass over the new rounds · **E-70** (nav lost admin→player) · **E-59** (no delete in the console — the reset is an ops script on purpose) · the 4-width × EN/SW/ZH sweep. ⚠️ **RG stays exactly as it is — Ali's decision 2026-08-04. Do not re-open it.** ⚠️ **`market.config.minStake` is 500 on production** while [[stake-bounds-1k-1m]] says 1,000 — the live override was never re-saved. The guide documents **500**, the live value. Ali's call which is right.
 
 ### 🟢 Laptop A, session 22 (2026-08-04) — THE SETTLEMENT REBUILD IS UNDER WAY AND HALF SHIPPED. Read §6ad first; it carries every decision and the measured evidence.
 
