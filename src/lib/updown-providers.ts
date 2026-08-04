@@ -16,7 +16,7 @@
  * selected — which also means it cannot be switched away from.
  */
 
-export type FeedProviderId = "mock" | "twelvedata" | "twelvedata-bars";
+export type FeedProviderId = "mock" | "mock-bars" | "twelvedata" | "twelvedata-bars";
 
 export type FeedProviderSpec = {
   id: FeedProviderId;
@@ -65,6 +65,15 @@ export const FEED_PROVIDERS: readonly FeedProviderSpec[] = [
     blurb:
       "Invents a price. Refused outright in production — it must never settle real money.",
     simulated: true,
+  },
+  {
+    id: "mock-bars",
+    label: "Simulated · dated (development only)",
+    blurb:
+      "Invents a price for the round's exact minute, so a late close still settles. Refused " +
+      "outright in production — it must never settle real money.",
+    simulated: true,
+    dated: true,
   },
 ];
 

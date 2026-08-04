@@ -75,6 +75,26 @@ export type RefusalReason =
   | "stale"
   | "low-confidence"
   | "no-evidence"
+  /**
+   * A DATED feed was asked for a bar that the provider has not published YET.
+   *
+   * ⛔ WHY THIS IS ITS OWN REASON AND NOT `unparseable-price` (2026-08-04, phase 1d).
+   * Measured on the live provider across all four production symbols: the bar labelled T
+   * **first appears at +10s** and never earlier. The retry ladder's first attempt is taken
+   * AT the boundary (`retryBackoffSeconds[0]` is 0), so under the bar reader attempt 1 is
+   * GUARANTEED to find no bar — and `no-bar` deliberately burns the attempt budget, because
+   * for a bar that will never exist retrying is pointless.
+   *
+   * Blend the two and every round starts one attempt down for a bar that was merely four
+   * seconds away. Spend the budget and the boundary is declared FAILED, which VOIDS and
+   * refunds a round whose price was published perfectly well ten seconds later. That is
+   * E-69's own shape — a round voided while the source never failed — reintroduced by the
+   * fix for it.
+   *
+   * So: within `barPublicationGraceSeconds` of the boundary this means *not yet* and costs
+   * no attempt; after it, it means *never* and burns one like any other source failure.
+   */
+  | "bar-not-published"
   | "error";
 
 export type OracleReading =
@@ -379,6 +399,10 @@ export function describeRefusal(reason: RefusalReason, detail: string): string {
     case "stale": return `Reading too far from the boundary — ${detail}`;
     case "low-confidence": return `Below the confidence floor — ${detail}`;
     case "no-evidence": return "No verbatim evidence returned";
+    // Says NOT YET, not "broken" — an operator seeing this in the first seconds after a
+    // boundary is looking at the provider's normal publication delay, and telling them the
+    // price source failed would send them to investigate an outage that is not happening.
+    case "bar-not-published": return `Price for that minute not published yet — ${detail}`;
     case "error": return `Oracle error — ${detail}`;
   }
 }

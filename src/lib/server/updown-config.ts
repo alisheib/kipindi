@@ -28,6 +28,7 @@ import { randomId } from "./crypto";
 import { loadConfig, saveConfig } from "./config-store";
 import { isSourceTrusted, normalizeDomain } from "./source-registry";
 import { validateRateConfig } from "./market-config";
+import type { RefusalReason } from "./updown-oracle";
 // The money lives on the market row, never in the Up & Down tables — the source lock needs
 // it to tell an operator what is actually riding on the rounds it is refusing to strand.
 import { marketStore } from "./market-dal";
@@ -82,6 +83,34 @@ export type UpDownConfig = {
   confidenceThreshold: number;
   /** Attempts before a boundary is declared FAILED and its rounds VOID + refund. */
   maxObservationAttempts: number;
+  /**
+   * How long after a boundary a DATED feed's "no bar for that minute" means *not yet*
+   * rather than *never*, and therefore costs no attempt.
+   *
+   * ⚠️ MEASURED, NOT CHOSEN. Polled every few seconds across 125s on BTC/ETH/SOL/XAU
+   * (2026-08-04): the bar labelled T first appeared at **+10s on every symbol** and its
+   * `open` never changed afterwards. 30s is that measurement with 3× headroom. It is
+   * deliberately far below the ladder's span (180s), so a bar that genuinely never
+   * publishes still fails the boundary on time instead of waiting out the deadline.
+   *
+   * ⛔ Applies to DATED feeds only. A quote feed cannot return this reason at all.
+   */
+  barPublicationGraceSeconds: number;
+  /**
+   * How far back a DATED feed may still be asked to settle a round, in seconds.
+   *
+   * ⛔ THIS IS WHAT MAKES A LATE CLOSE HARMLESS, AND IT IS THE POINT OF THE REBUILD.
+   * A quote can only answer "now", so a round whose close was missed had no price and had
+   * to void — E-69 (529s late, `closePrice NULL`, source never failed), E-63, E-68. A dated
+   * bar returns the same number six hours later, so the honest response to a late close is
+   * to READ IT, not to refund a round the market decided perfectly clearly.
+   *
+   * The bound exists so "late" cannot become "unbounded": beyond it the round voids and
+   * refunds, which keeps the standing invariant that every stake reaches a terminal state.
+   * 24h is comfortably longer than any outage this platform has had and comfortably shorter
+   * than the provider's own 1-minute history.
+   */
+  maxSettleLookbackSeconds: number;
   /**
    * Backoff between attempts, in seconds, index-matched to the attempt number:
    * `retryBackoffSeconds[0]` is the wait before attempt 2, `[1]` before attempt 3,
@@ -180,6 +209,10 @@ export const DEFAULT_UPDOWN_CONFIG: UpDownConfig = {
   maxStalenessSeconds: 90,
   confidenceThreshold: 85,
   maxObservationAttempts: 4,
+  // Measured at +10s on all four production symbols; 3× headroom. See the field comment.
+  barPublicationGraceSeconds: 30,
+  // 24h — longer than any outage this platform has had, shorter than the provider's history.
+  maxSettleLookbackSeconds: 86_400,
   retryBackoffSeconds: [15, 45, 120],
   defaultMinStake: 1_000,
   defaultMaxStake: 1_000_000,
@@ -1017,6 +1050,81 @@ export function computeTargets(
     upTarget: Number((openPrice + margin).toFixed(asset.decimals)),
     downTarget: Number((openPrice - margin).toFixed(asset.decimals)),
   };
+}
+
+// ---------------------------------------------------------------------------
+// THE LATE CLOSE — two decisions, pure, so the money rule can be proven exhaustively
+// ---------------------------------------------------------------------------
+
+/**
+ * Does this refusal cost an attempt?
+ *
+ * ⛔ THE ATTEMPT BUDGET IS A MONEY CONTROL, NOT A COUNTER. Spending it declares the boundary
+ * FAILED, which VOIDs every round on it and refunds every stake. So the only question that
+ * matters is: *would asking again plausibly get a different answer?*
+ *
+ *   · `no-api-key` / `ai-paused`  an OPERATOR state. Nothing to retry into, and burning the
+ *                                 budget would void live rounds for an ops mistake. Carved out
+ *                                 already — this function does not change that, it names it.
+ *   · `bar-not-published`         *not yet*, inside the measured publication delay. Asking
+ *                                 again in 15 seconds genuinely does get a different answer.
+ *   · everything else             a statement about the world. Retrying will not change it,
+ *                                 so it must burn the budget or the round waits forever for a
+ *                                 reading that is never coming.
+ *
+ * `elapsedSeconds` is measured from the ROUND'S BOUNDARY, never from wall-clock, so a heal
+ * sweep running on an injected clock judges the same instant it claims to.
+ */
+export function refusalCostsAnAttempt(
+  reason: RefusalReason,
+  elapsedSeconds: number,
+  cfg: Pick<UpDownConfig, "barPublicationGraceSeconds">,
+): boolean {
+  // The pre-existing carve-out, stated here rather than duplicated at the call site.
+  if (reason === "no-api-key" || reason === "ai-paused") return false;
+  if (reason === "bar-not-published") {
+    // Inside the grace it means NOT YET. Outside it, the provider has had ample time and
+    // still published nothing — that is a real failure and must terminate the boundary.
+    return elapsedSeconds > cfg.barPublicationGraceSeconds;
+  }
+  return true;
+}
+
+/** Why a past-deadline round may or may not be re-read. Each maps to distinct operator copy. */
+export type LateCloseDecision =
+  | { reread: true }
+  | { reread: false; why: "feed-cannot-answer-about-the-past" | "beyond-the-lookback" };
+
+/**
+ * Past the abandon deadline — should the round be re-read, or voided?
+ *
+ * ⛔ THIS INVERTS A RULE THAT WAS CORRECT AND STOPPED BEING SO. The healer voided a
+ * past-deadline round **without re-reading**, and the justification was sound for a quote
+ * feed: *"any reading now would exceed the staleness contract"*. A quote answers "the price
+ * NOW", so a reading taken an hour late describes an hour-late instant and can never settle
+ * the boundary honestly. Not re-dialling also saved real money — re-reading production's
+ * 1,398 historical orphans would have cost hundreds of dollars to learn nothing.
+ *
+ * ⭐ A DATED FEED MAKES THAT PREMISE FALSE. `time_series` returns the bar labelled T whether
+ * asked at T+5s or T+6h, and its `open` was measured immutable from first publication. The
+ * staleness contract is satisfied *by construction* — the bar's own label IS the boundary —
+ * so the reading a late close gets is byte-identical to the one an on-time close would have
+ * got. Refusing it refunds a round the market decided perfectly clearly, which is E-69.
+ *
+ * The decision is therefore a property of the FEED, not of the healer, and it is read from
+ * the provider's own `dated` flag rather than hardcoded — so adding a dated provider cannot
+ * leave this rule behind.
+ */
+export function lateCloseDecision(
+  provider: { dated?: boolean } | undefined,
+  elapsedSeconds: number,
+  cfg: Pick<UpDownConfig, "maxSettleLookbackSeconds">,
+): LateCloseDecision {
+  // ⚠️ An unknown provider is treated as NOT dated. Defaulting the other way would have an
+  // unrecognised id silently unlock a re-read path its feed cannot honour.
+  if (!provider?.dated) return { reread: false, why: "feed-cannot-answer-about-the-past" };
+  if (elapsedSeconds > cfg.maxSettleLookbackSeconds) return { reread: false, why: "beyond-the-lookback" };
+  return { reread: true };
 }
 
 /** Test helper — drop the hydrated config cache so a case starts from defaults. */

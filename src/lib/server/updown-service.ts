@@ -23,8 +23,10 @@ import { marketStore } from "./market-dal";
 import { createMarket, settleMarket } from "./market-service";
 import {
   getUpDownConfig, rateProfileFor, stakeBoundsFor, boundaryAfter, marginBpsForChain, computeTargets,
-  retryDelaySeconds, abandonAfterSeconds, type UpDownConfig,
+  retryDelaySeconds, abandonAfterSeconds, refusalCostsAnAttempt, lateCloseDecision,
+  type UpDownConfig,
 } from "./updown-config";
+import { findProvider } from "@/lib/updown-providers";
 import {
   assetStore, chainStore, roundStore, observationStore,
   type StoredAsset, type StoredChain, type StoredRound, type RoundOutcome, type VoidReason,
@@ -204,12 +206,21 @@ export async function readPrice(
       : q.reason === "unparseable-price" ? "unparseable-price"
       : q.reason === "no-timestamp" ? "stale"
       : q.reason === "wrong-source" ? "wrong-source"
-      // ⛔ `no-bar` and `implausible-bar` BURN THE ATTEMPT BUDGET, deliberately. They are
-      // statements about the world — the provider published nothing for that minute, or what
-      // it published cannot be trusted — and retrying will not change either. They must NOT
-      // land in the operator-state carve-out beside `no-api-key`, or the round would wait
-      // forever for a reading that is never coming instead of voiding and refunding on time.
-      : q.reason === "no-bar" || q.reason === "implausible-bar" ? "unparseable-price"
+      // ⛔ `implausible-bar` BURNS THE ATTEMPT BUDGET, deliberately. It is a statement about
+      // the world — what the provider published cannot be trusted — and retrying will not
+      // change it. It must NOT land in the operator-state carve-out beside `no-api-key`, or
+      // the round would wait forever for a reading that is never coming instead of voiding
+      // and refunding on time.
+      : q.reason === "implausible-bar" ? "unparseable-price"
+      // ⚠️ `no-bar` IS DIFFERENT, AND CONFLATING THE TWO REINTRODUCES E-69.
+      // Measured on all four production symbols: the bar labelled T first appears at **+10s**
+      // and the ladder's first attempt is taken AT the boundary — so under the bar reader
+      // attempt 1 ALWAYS finds no bar. Charging that to the budget starts every round a
+      // life down for a bar that was four seconds away, and spending the budget declares the
+      // boundary FAILED, voiding a round whose price published perfectly well. It is passed
+      // through as its own reason and `refusalCostsAnAttempt` decides, from the elapsed time,
+      // whether this one means *not yet* or *never*.
+      : q.reason === "no-bar" ? "bar-not-published"
       : "error";
     return { ok: false, reason, detail: describeFeedRefusal(q.reason, q.detail) };
   }
@@ -392,6 +403,16 @@ export async function acquireObservation(
   asset: StoredAsset,
   boundaryAtIso: string,
   now: number = Date.now(),
+  /**
+   * `pastDeadline` — the ONE final read a dated feed is allowed after the abandon deadline.
+   *
+   * It skips the backoff (the deadline has elapsed; there is nothing left to wait for) and
+   * the attempt budget (which exists to ration reads that CANNOT succeed — a dated read can).
+   * ⛔ It does NOT skip the FAILED terminal state: the observation ledger is write-once per
+   * `@@unique([assetId, boundaryAt])` so that round N's close is byte-identical to round
+   * N+1's open, and no late-settlement convenience is worth relaxing that.
+   */
+  opts?: { pastDeadline?: boolean },
 ): Promise<{ state: "confirmed"; price: number; id: string } | { state: "pending" | "failed"; id: string; detail: string }> {
   const cfg = await getUpDownConfig();
   const obs = await observationStore.ensure(asset.id, boundaryAtIso);
@@ -406,7 +427,12 @@ export async function acquireObservation(
   // Budget exhausted → terminal. Every round bounded by this boundary now VOIDs and
   // refunds in full, which is the safe direction: refusing costs a round, guessing
   // costs a player their money.
-  if (obs.attempts >= cfg.maxObservationAttempts) {
+  //
+  // ⚠️ The past-deadline read is exempt, and the exemption is narrow on purpose: it performs
+  // ONE read that the budget was never rationing. The budget counts attempts a QUOTE feed
+  // made against a moving target; a dated bar either exists or does not, and asking once more
+  // is the difference between settling E-69's round correctly and refunding it for nothing.
+  if (obs.attempts >= cfg.maxObservationAttempts && !opts?.pastDeadline) {
     await observationStore.fail(obs.id, `no confirmed reading after ${obs.attempts} attempts`);
     return { state: "failed", id: obs.id, detail: `no confirmed reading after ${obs.attempts} attempts` };
   }
@@ -426,7 +452,7 @@ export async function acquireObservation(
   //
   // ℹ️ MERGE NOTE (2026-08-01). Both the E-24 fix and the feed branch wired this ladder, in
   // different places — the healer and here. This is the single surviving implementation.
-  if (obs.lastAttemptAt) {
+  if (obs.lastAttemptAt && !opts?.pastDeadline) {
     const readyAt = Date.parse(obs.lastAttemptAt) + retryDelaySeconds(cfg, obs.attempts) * 1000;
     if (Number.isFinite(readyAt) && now < readyAt) {
       return {
@@ -440,15 +466,21 @@ export async function acquireObservation(
   const reading = await readPrice(asset, boundaryAtIso, cfg);
   if (!reading.ok) {
     const detail = describeRefusal(reading.reason, reading.detail);
-    // A missing API key or a paused AI is an OPERATOR state, not a source failure —
-    // burning the attempt budget on it would void rounds for an ops reason and refund
-    // players who were happily betting. Leave it pending; the next sweep retries.
+    // ⛔ WHETHER A REFUSAL COSTS AN ATTEMPT IS A MONEY DECISION, and it lives in ONE pure
+    // function so it can be proven exhaustively and cannot drift from the healer's copy.
+    // Spending the budget declares the boundary FAILED, which VOIDs every round on it and
+    // refunds every stake — so the rule is "would asking again plausibly get a different
+    // answer?", not "did something go wrong?".
     //
-    // ⛔ This used to `recordAttempt` UNCONDITIONALLY, directly against the comment
-    // above it: pausing the AI for four fires walked the budget to zero and VOIDed live
-    // rounds for an operator action. The condition is the fix.
-    const operatorState = reading.reason === "ai-paused" || reading.reason === "no-api-key";
-    if (!operatorState) await observationStore.recordAttempt(obs.id, detail);
+    // ⛔ This used to `recordAttempt` UNCONDITIONALLY, directly against the comment beside
+    // it: pausing the AI for four fires walked the budget to zero and VOIDed live rounds for
+    // an operator action. The carve-out was the fix, and it now also covers a dated feed's
+    // bar that has simply not published yet — measured at +10s, against a first attempt
+    // taken at +0s.
+    const elapsedSeconds = Math.round((now - Date.parse(boundaryAtIso)) / 1000);
+    if (refusalCostsAnAttempt(reading.reason, elapsedSeconds, cfg)) {
+      await observationStore.recordAttempt(obs.id, detail);
+    }
     return { state: "pending", id: obs.id, detail };
   }
 
@@ -1015,8 +1047,44 @@ async function healOneRound(
   const elapsedSec = Math.round((now - Date.parse(round.boundaryAt)) / 1000);
   const observation = await observationStore.find(asset.id, round.boundaryAt);
 
-  // ── PAST THE DEADLINE: close it, and do NOT pay for another reading ────────
+  // ── PAST THE DEADLINE ──────────────────────────────────────────────────────
   if (now - Date.parse(round.boundaryAt) >= deadlineMs) {
+    // ⭐ THE LATE CLOSE, AND IT IS THE WHOLE POINT OF THE SETTLEMENT REBUILD.
+    //
+    // This branch used to void WITHOUT RE-READING, on a premise that was true and has
+    // stopped being so: *"any reading now would exceed the staleness contract"*. That holds
+    // for a quote feed — a quote answers "the price NOW", so a reading taken 529 seconds
+    // late describes a 529-seconds-late instant and cannot honestly settle the boundary.
+    // It is exactly why E-69's round resolved with `closePrice NULL` while the source never
+    // failed: nothing was wrong except that nobody performed the close in time.
+    //
+    // A DATED feed answers about a NAMED INSTANT, so the reading a late close gets is
+    // byte-identical to the one an on-time close would have got, and the staleness gate is
+    // satisfied by construction (the bar's own label IS the boundary). Voiding here would
+    // refund a round the market decided perfectly clearly.
+    //
+    // ⛔ The decision is read from the PROVIDER'S OWN `dated` flag via `lateCloseDecision`,
+    // never hardcoded, so a future dated provider cannot be left behind by this rule. And it
+    // is BOUNDED — beyond `maxSettleLookbackSeconds` the round still voids and refunds, so
+    // the standing invariant that every stake reaches a terminal state is untouched.
+    const decision = lateCloseDecision(findProvider(cfg.feedProvider), elapsedSec, cfg);
+    if (decision.reread && (!observation || observation.state === "PENDING")) {
+      // `pastDeadline` skips the backoff (the deadline has already elapsed — there is
+      // nothing left to wait for) and the attempt budget (which rations reads that CANNOT
+      // succeed; this one can). It cannot revive a FAILED observation: the ledger is
+      // write-once per (assetId, boundaryAt) and that guarantee is not being relaxed.
+      const late = await acquireObservation(asset, round.boundaryAt, now, { pastDeadline: true });
+      if (late.state === "confirmed") {
+        auditHealed(round, "resolved", {
+          detail: `settled from a dated reading ${elapsedSec}s after the boundary — a late close is no longer a void`,
+          lateBySeconds: elapsedSec, observationId: late.id, price: late.price,
+        });
+        return (await finishRound(round, late.id, late.price, "source-failed", `dated reading applied ${elapsedSec}s late`, now)) ? "resolved" : "failed";
+      }
+      // Fall through and void — but with the reason the reader actually gave, not a
+      // manufactured one. `no-bar` past the grace, an implausible print, or a shut market
+      // are all honest endings; "we did not bother to look" is not.
+    }
     if (observation && observation.state === "PENDING") {
       // Record WHY on the observation too, so the price story and the money story
       // agree. `fail` is conditional on PENDING, so a late confirmation still wins.

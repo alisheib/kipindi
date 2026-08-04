@@ -196,6 +196,62 @@ export class MockPriceFeed implements PriceFeed {
   }
 }
 
+/**
+ * A deterministic fake DATED quote — the mock's counterpart for the bar path.
+ *
+ * ⛔ WHY IT EXISTS. `MockPriceFeed` answers with the CURRENT instant, which is what makes it
+ * useful: against a future or past boundary it is refused as `stale`, and that genuine source
+ * refusal is what lets `test:updown-heal` climb a real retry ladder locally, for free. The
+ * late-close path needs the exact opposite — a feed that answers about a NAMED INSTANT — and
+ * changing the mock to provide it would silently pull the ladder out from under that suite.
+ *
+ * So this is a second provider rather than a flag. It quotes `req.at` back as the quoted time,
+ * which is precisely what a dated feed does: the bar's own label IS the boundary, so the
+ * staleness gate becomes a free correctness assertion rather than a hurdle.
+ *
+ * Refuses in production for the same reason and by the same construction as `MockPriceFeed` —
+ * a fabricated price is far worse than a missing one, because it would SETTLE money.
+ */
+export class MockBarFeed implements PriceFeed {
+  readonly id = "mock-bars" as const;
+  readonly label = "Simulated · dated (dev only)";
+
+  async quote(req: FeedRequest): Promise<FeedQuote> {
+    if (process.env.NODE_ENV === "production") {
+      return {
+        ok: false,
+        reason: "mock-in-production",
+        detail:
+          "The simulated feed invents a price and must never settle real money. Configure a real market-data provider.",
+      };
+    }
+    if (!req.at) {
+      return { ok: false, reason: "error", detail: "the dated feed needs the instant it is quoting for" };
+    }
+    const atMs = Date.parse(req.at);
+    if (!Number.isFinite(atMs)) {
+      return { ok: false, reason: "error", detail: `not a readable instant: "${req.at}"` };
+    }
+    // Stable per (symbol, instant) — the property that matters. Asking twice about the same
+    // boundary must give the same number, or the "a late close settles identically" guarantee
+    // is not being tested at all, it is merely being asserted.
+    let h = 0;
+    for (const ch of `${req.symbol}@${atMs}`) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    const price = 1000 + (h % 400_000) / 100;
+    const raw = JSON.stringify({ symbol: req.symbol, at: new Date(atMs).toISOString(), open: price, simulated: true });
+    return {
+      ok: true,
+      price: Number(price.toFixed(req.decimals)),
+      // ⭐ The instant asked about IS the quoted time — the defining property of a dated feed.
+      quotedAt: new Date(atMs).toISOString(),
+      sourceUrl: req.endpoint,
+      evidence: `SIMULATED DATED BAR (dev only) — ${raw}`,
+      rawHash: hashRaw(raw),
+      provider: this.id,
+    };
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Twelve Data — the real provider
 // ---------------------------------------------------------------------------
@@ -496,6 +552,7 @@ export function feedFromId(id: FeedProviderId): PriceFeed {
     if (!key) return new UnconfiguredFeed("twelvedata-bars", "TWELVEDATA_API_KEY is not set");
     return new TwelveDataBarFeed(key);
   }
+  if (id === "mock-bars") return new MockBarFeed();
   return new MockPriceFeed();
 }
 

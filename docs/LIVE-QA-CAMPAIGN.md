@@ -1278,10 +1278,12 @@ which it named by filename.
 
 | # | Sev | Area | Finding | Evidence |
 |---|---|---|---|---|
+| **E-74** | 🔴 **HIGH — found + measured 2026-08-04 (session 23), NOT fixed** | Up & Down · price feed · staleness gate | **`/quote``s own timestamp is a minute LABEL rounded UP, and it currently names a minute that has not happened yet.** The staleness gate (`judgeFeedStaleness`) judges a reading by `last_quote_at`, and E-25 recorded that field as *"29-45s behind wall-clock, advancing 60s per minute"*. Measured on a raw `/quote` for BTC/USD called at **T+8s** (2026-08-04): `last_quote_at` came back as **T+60s — 52 seconds IN THE FUTURE**, i.e. the next whole minute. So the provider rounds the field UP to a minute boundary rather than reporting the instant it priced the asset. ⭐ **Consequence: `/quote` cannot date a price to better than a minute**, every boundary read reports a ~60s skew against a 90s limit, and the gate passes for the wrong reason — it is measuring a rounding artefact, not staleness. ⛔ **It is also an independent argument for the rebuild**, reached from a different direction than E-69: the quote reader cannot say WHEN its price was true, so it can never honestly settle a named instant. The bar reader has no such problem — the bar`s own label IS the boundary, which turns the same gate into a free correctness assertion. **Not fixed because the bar switch supersedes it**; if the quote reader is ever re-selected this must be revisited. | raw `/quote` BTC/USD called 2026-08-04T08:46:08Z (T=08:46:00): `last_quote_at=1785833220` → `2026-08-04T08:47:00Z` = **T+60s**, wall clock T+8s · `timestamp=1785801600` → `2026-08-04T00:00:00Z` = T−31,560s (the 1-day bar, E-25) |
+| **E-73** | 🔴 **HIGH — found on production 2026-08-04 (session 23), NOT fixed** | Up & Down · asset registry · **money: gold settled on a floor 29–87× below the feed`s own noise** | **There are TWO gold assets on the same symbol, and the ENABLED one runs the floor everybody believed was retired.** Read directly off production: `GOLD` (XAU/USD, macro) is **disabled** with `minMoveTicks: 15` (/usr/bin/bash.15) and 158 rounds, last 2026-08-01; `XAU` (XAU/USD, macro) is **ENABLED** with `minMoveTicks: 1` (/usr/bin/bash.01) and **1,291 rounds**, last 2026-08-03. ⛔ **So every live gold round settled against a /usr/bin/bash.01 floor**, not the /usr/bin/bash.15 §6ad reasoned about — and §6ad decision 3 (*"gold`s minMoveTicks comes down from 15"*) was aimed at the asset nobody is using. It had already been done, on the asset that matters, and it did not help: XAU still voids `no-move` 41 times in the 137-round window. ⭐ **The seam measurement makes this much worse than a config mismatch.** Gold`s bar-seam disagreement is **/usr/bin/bash.29–/usr/bin/bash.87**, so a /usr/bin/bash.01 floor is **29–87 ticks below the provider`s own price ambiguity at a single instant** — a short gold round is decided by which representation the feed returned, not by the market. It is the direct evidence for Ali`s call to offer gold at **15m and above only**, and for the `minMoveTicks ≥ 2` rule. ⚠️ Two enabled assets could also be pointed at one symbol and run two chains on it; nothing refuses that today. | production 2026-08-04: `GOLD enabled=false ticks=15 → 158 rounds`, `XAU enabled=true ticks=1 → 1,291 rounds, 41 no-move` · seam: XAU/USD disagrees $0.29–$0.87 on 5 of 5 seams (§6ad) · weekend arm: 1,440 XAU bars on Sat 2026-08-01 with a **$0.02** open range — 2× the $0.01 band, so a weekend gold round could RESOLVE |
 | **E-72** | 🔴 **HIGH — found 2026-08-04 (session 22), NOT fixed · LIVE MONEY EXPOSURE** | player · Up & Down · bet acceptance · fairness | **Bets are accepted right up to the closing second, so a player can stake when the outcome is already known.** `openRound` writes `selectionClosedAt: null` (`updown-service.ts:514`) and `isSelectionClosed` (`market-service.ts:332-336`) falls back to `resolutionAt`, which for an Up & Down round **is the close instant**. The board shows the live price and both frozen targets, so at 21:26:59 on a round closing 21:27:00 a player can see the price is already past a target and stake with ~1 second of risk. ⚠️ **The code comment is NOT wrong** — it says *"Selections close AT the boundary"* and that is exactly what happens; this is a design choice nobody had examined, not a contradiction. ⛔ **It gets much worse under the settlement rebuild**: taking the open from a completed 1-minute bar puts the open 60–120s in the past, which on a 3-minute round is up to two-thirds already played. **Ali's decision 2026-08-04: close bets BEFORE the round ends** — an explicit `selectionClosedAt` (≈30s before a 3-minute round, 60s before a 5-minute one). `market-service.ts` already supports the field and `computeSelectionClosedAt` exists for the poll product; Up & Down simply never set it. ⛔ Ship this WITH the open-from-bar change, never after it. | `updown-service.ts:514` (`selectionClosedAt: null`) · `market-service.ts:334` (`m.selectionClosedAt ? … : Date.parse(m.resolutionAt)`) · `openRound` sets `resolutionAt: closeIso` |
 | **E-71** | 🔴 **HIGH — found + measured 2026-08-04 (session 22), NOT fixed** | Up & Down · price feed · **would settle money on the wrong minute** | **`time_series` labels XAU/USD bars in a NON-UTC zone by default, and our bar reader assumes UTC.** `time_series`'s `timezone` parameter defaults to **`Exchange`**, not UTC (provider docs). `fetchBars` (`ops-updown-margin-study.mts:158`) parses `datetime` as `Date.parse(\`${v.datetime.replace(" ","T")}Z\`)` — i.e. it **appends "Z" and calls it UTC**. Measured with a paired call, same instant: **XAU/USD `timezone=UTC` → `2026-08-04 07:29:00`, default → `2026-08-04 17:29:00` — exactly 600 minutes apart.** BTC, ETH and SOL returned identical values both ways, so the defect is invisible on crypto and only bites metals/FX. ⭐ **The live money path is NOT currently affected** — settlement reads `/quote`, whose `last_quote_at` is a unix timestamp and therefore zone-free. What IS affected today is the **margin study**, which means its gold market-shut warnings are computed on timestamps shifted 10 hours and cannot be trusted. ⛔ **And it would have been a money bug the moment the time-series reader shipped**, settling every gold round on a bar ten hours away. **Fix: pass `timezone=UTC` explicitly on every `time_series` call**, and guard it — a reader that omits it must fail the suite. ⚠️ This is why the first thing the rebuild does is measure rather than build. | `scripts/ops-updown-probe-bars.mts` §A, run against the production key 2026-08-04: `XAU/USD utc=2026-08-04 07:29:00 default=2026-08-04 17:29:00 🔴 DIFFER by -600 min`; BTC/ETH/SOL `✅ same` · provider docs: *"timezone … Default: Exchange"* |
 | **E-70** | 🔴 **HIGH — reported by Ali 2026-08-04, NOT yet reproduced** | player · navigation · session | **Ali: *"when I move from admin to game to markets there is no navbar, it's lost until I login as player or retry the URL as player."*** Moving from an ADMIN surface to a PLAYER surface leaves the page without its navigation — recoverable only by signing in as a player or re-entering the URL. ⚠️ Almost certainly the same root as the session-21 observation that `/admin/updown` returned the **signed-out player shell** immediately after a successful ADMIN sign-in: a staff session does not satisfy the player shell's expectations, so the layout renders its logged-out branch. ⛔ **A player who lands with no navigation is stranded on a money surface** — no wallet, no history, no way back. Reproduce as ADMIN → `/markets`, then compare the served HTML with the same route as a player. | Ali, live, 2026-08-04 · corroborating: `/admin/updown` served the signed-out shell to a freshly signed-in ADMIN (session 21) |
-| **E-69** | 🔴 **HIGH — found 2026-08-04 (session 21), NOT fixed** | Up & Down · round close · **the seal Ali asked for** | **A round can be created against a validated, priced source and still die without a close price — because nothing guarantees it is CLOSED at its own boundary.** Ali, on being shown a `source-failed` void: *"logically how can we not have a price if since creation the source is there, validated, it has a price? No way a possibly voiding game would be created. I want perfect sealing."* He is right, and the evidence agrees: `udr_01e034350b3c5d648ac3` opened at **63,672.01** with targets set from a live read, closed at **21:42:26**, and was not resolved until **21:51:14 — 529 seconds late**, with `closePrice = null`. ⭐ **The source never failed.** During that whole window the lifecycle log read *"not the leader — chores skipped. Another instance holds the lease."* — the leadership lease was churning across a run of deploys, so no instance ran the close. By the time the E-24 healer took it, asking the provider for a nine-minute-old boundary is refused as stale **by design**, and it deliberately does not pay for a reading past the deadline. So the round voided for want of a close nobody performed. ⛔ **The open is sealed and the close is not:** `generateRoundNow` refuses to create a round it cannot price (E-67), but nothing makes the same promise at the other end. **Scope of the seal:** close on the boundary independently of leadership churn; if the close read is late but the observation later confirms, re-derive the verdict from the stored targets rather than leaving `source-failed` (the mirror of E-63's backfill); and never leave a round unresolved past its own close without saying so on the card. ⚠️ Related and worth measuring first: `LEASE_MS` is 3 minutes, so any deploy costs up to three minutes of chores — on a 5-minute round that is most of its life. | production: round opened 21:37:26 priced 63,672.01, closed 21:42:26, resolved 21:51:14 `source-failed` with `closePrice NULL` · `railway logs`: repeated *"not the leader — chores skipped"* across the interval · `/api/health` → `"isMe":false,"expiresInSec":95` |
+| **E-69** | ✅ **FIXED + guarded 2026-08-04 (session 23) — the close is sealed. Original filing below; the measurement that chose the fix is why it is kept.** | Up & Down · round close · **the seal Ali asked for** | **A round can be created against a validated, priced source and still die without a close price — because nothing guarantees it is CLOSED at its own boundary.** Ali, on being shown a `source-failed` void: *"logically how can we not have a price if since creation the source is there, validated, it has a price? No way a possibly voiding game would be created. I want perfect sealing."* He is right, and the evidence agrees: `udr_01e034350b3c5d648ac3` opened at **63,672.01** with targets set from a live read, closed at **21:42:26**, and was not resolved until **21:51:14 — 529 seconds late**, with `closePrice = null`. ⭐ **The source never failed.** During that whole window the lifecycle log read *"not the leader — chores skipped. Another instance holds the lease."* — the leadership lease was churning across a run of deploys, so no instance ran the close. By the time the E-24 healer took it, asking the provider for a nine-minute-old boundary is refused as stale **by design**, and it deliberately does not pay for a reading past the deadline. So the round voided for want of a close nobody performed. ⛔ **The open is sealed and the close is not:** `generateRoundNow` refuses to create a round it cannot price (E-67), but nothing makes the same promise at the other end. **Scope of the seal:** close on the boundary independently of leadership churn; if the close read is late but the observation later confirms, re-derive the verdict from the stored targets rather than leaving `source-failed` (the mirror of E-63's backfill); and never leave a round unresolved past its own close without saying so on the card. ⚠️ Related and worth measuring first: `LEASE_MS` is 3 minutes, so any deploy costs up to three minutes of chores — on a 5-minute round that is most of its life. | production: round opened 21:37:26 priced 63,672.01, closed 21:42:26, resolved 21:51:14 `source-failed` with `closePrice NULL` · `railway logs`: repeated *"not the leader — chores skipped"* across the interval · `/api/health` → `"isMe":false,"expiresInSec":95` |
 | **E-68** | 🔴 **HIGH → ✅ FIXED 2026-08-04 (session 21). THE CLOSE-SIDE TWIN OF E-63, AND THE REASON NOBODY CAN WIN.** | Up & Down · round close · **player money + false statement** | **A round closes as `source-failed` ~25 seconds after its boundary even when BOTH prices are present and the verdict is plainly `no-move` — and the player is then told something untrue about their own money.** Measured on two rounds generated by hand this session: `udr_cd386bbaeaf63be696f5` open **63,719.98** close **63,722.47**, targets `63,707.24 … 63,732.72`; `udr_17e07a91ecf526c2ae17` open **63,716.56** close **63,710.73**, targets `63,703.82 … 63,729.30`. **Both closes sit strictly BETWEEN the targets**, so `decideOutcomeByTargets` gives `VOID / no-move` — the price did not move far enough. Both are stored `voidReason = "source-failed"`, and the board therefore prints *"The closing price could not be confirmed. Every stake is returned in full."* ⛔ **The closing price WAS confirmed — it is in the row.** That is a false money statement of exactly the E-39 / E-65 kind, on the screen a player checks after their stake comes back. ⭐ **Mechanism, and it is E-63 seen at the other end:** at the close boundary `acquireObservation` has not confirmed yet, so `advanceChain` calls `closeRound(id, obs.id, null, "source-failed")` — reason stamped from the *observation's* state, not from the *prices*. The retry ladder confirms moments later and the close price lands on the row, but nothing ever revisits the verdict or the reason. `resolvedAt` is only ~25s after `closesAt`, far too soon for the E-24 healer, so this is the scheduler's own close path. ⚠️ **Consequence: on a manual round a player cannot win** — not because they predicted wrongly, but because the round is stamped failed before its own evidence arrives. Fix is the mirror of E-63's backfill: on a late-confirming close observation, re-derive the verdict from the stored targets and correct the reason — or do not stamp a reason until the observation is terminal. | production rows above, read directly · `updown-service.ts` close path passes the literal `"source-failed"` · player card text on `/updown` (`shots/E67/E67-final.png`) |
 | **E-67** | 🔵 **OWNER DECISION — Ali 2026-08-03, ACTED ON IMMEDIATELY** | Up & Down · round creation · product model | **Ali: *"nothing should be by 50pick automatic — my admins will enter and generate every 5 min… because sometimes we might not generate, other times we would."*** A RUNNING chain emits a round on a timer with no human involved: measured on production, **48 rounds in one hour across four chains** (BTC/ETH/SOL/XAU, all 5m). That is the design working as built, and it is not the product Ali wants. ✅ **All four chains STOPPED 2026-08-03 20:34 UTC** through `setChainState` — the same call the console's Stop button makes, so every refusal and the audit applied. Checked before acting: all four in-flight rounds held **TZS 0** with **0 players**, and **0 unresolved rounds anywhere hold money**, so nothing was interrupted or stranded. Read back from the database: **9 chains, all STOPPED, 0 RUNNING.** ⏭️ **What must follow, and the platform is round-less until it does:** an admin **"Generate round"** control, so a round exists only because an operator created it. ⚠️ The chain scheduler must KEEP running regardless — it is also what settles and heals open rounds; only the *emit* becomes manual. | `scripts/ops-stop-updown-chains.mts` (dry-run then `--apply`) · production read-back: `state=STOPPED × 9`, `RUNNING = 0`, `unresolved rounds holding money = 0` |
 | **E-66** | 🔴 **HIGH · compliance** → ✅ **FIXED 2026-08-04 (session 21)** — `auditFlush()` added to all five mutating ops scripts, and `npm run test:ops-audit-flush` (9 assertions, proven RED on the refund script) now fails any future `ops-*` script that changes audited state without flushing. ⛔ The three entries already lost stay lost. | ops scripts · audit chain · **money-affecting** | **An ops script that changes money-path state and then exits loses its audit rows — silently.** `setChainState` (and every money-path service) calls `audit({...})` **without awaiting it**; `audit()` chains the write onto a serialised global queue (`__50PICK_AUDIT_QUEUE`) because the HMAC chain must be written in `prevHash` order. A long-lived web process always drains that queue. **A script does not:** `process.exit()` kills it mid-drain. ⭐ **Found by checking my own work** — `ops-stop-updown-chains.mts` stopped **four** chains and the database recorded exactly **one** `updown.chain.stopped` row. The state change was correct and complete; three of its four audit entries never existed. ⛔ **They cannot be added afterwards** — hand-writing an `AuditLog` row is forbidden here precisely because the chain is HMAC-linked, and re-running the stop is a no-op (`setChainState` returns early when the state already matches). The gap is permanent and is recorded here rather than papered over. ⚠️ **SEVEN ops scripts share the hazard**, including **`ops-updown-void-stuck-rounds.mts`, which REFUNDS REAL MONEY** — a refund whose audit entry never lands is exactly the record a regulator asks for. Also `ops-updown-pause-chains.mts`, `-seed-one`, `-margin-study`, `-probe-feed`, `-probe-source`, `-verify-source`. **Fix:** `await auditFlush()` before exit — the platform already exports it for this — plus a guard so a new ops script cannot ship without it. | production: 4 × `setChainState(STOPPED)` → `SELECT … WHERE actorId='usr_ops_stop_updown'` returns **1 row** · `audit.ts:426` returns a promise nobody awaits; `auditFlush()` at `audit.ts:466` |
@@ -3638,6 +3640,104 @@ workstation shows an SLA countdown, but nothing escalates when it runs out. Ali'
   platform zone (+3) keeps it on the right day, and the E-2 fix is safe. The earlier note was
   the `pg` −3h trap (§3) reading back through an un-cast client.
 
+## 6ae. ⭐ THE LATE CLOSE IS SEALED — E-69 fixed, and two things the measuring found (2026-08-04, session 23)
+
+> Executes §6ad phases 1c and 1d. §6ad is settled; nothing here re-opens it.
+
+### ✅ E-69 IS FIXED — a round 529 seconds late now SETTLES instead of refunding
+
+The healer's past-deadline branch voided a round **without re-reading it**
+(`updown-service.ts`), on a premise that was correct and had stopped being so:
+*"any reading now would exceed the staleness contract"*. That is true of a quote — it answers
+"the price NOW", so a reading taken 529s late describes a 529-seconds-late instant. It is false
+of a **dated** bar, which returns the same number six hours later.
+
+The branch now consults `lateCloseDecision(provider, elapsedSec, cfg)` and re-reads when the
+provider is dated, **bounded** by `maxSettleLookbackSeconds` (24h) so a stake still always
+reaches a terminal state. ⛔ The decision is read from the **provider's own `dated` flag**, never
+hardcoded, so a future dated provider cannot be left behind by this rule.
+
+⭐ **The quote path is deliberately unchanged**, and §4 of the guard pins it: a quote feed still
+does not re-dial past the deadline, still voids, and its `attempts` still do not move. A "fix"
+that simply always re-reads fails the suite — it would cost real money across a backlog to learn
+what the staleness contract already says.
+
+### 🔴 AND A SECOND DEFECT, WHICH THE FIRST ONE WOULD HAVE HIDDEN
+
+The retry ladder's **first attempt is taken AT the boundary** (`retryBackoffSeconds[0]` is 0),
+and the bar labelled T **does not exist until +10s** — measured on all four production symbols,
+polled every few seconds across 125s, `open` never changing afterwards. `no-bar` deliberately
+burns the attempt budget, so under the bar reader **every round would have started one life down
+for a bar that was four seconds away** — and a spent budget declares the boundary FAILED, which
+VOIDs and refunds a round whose price published perfectly well ten seconds later.
+
+**That is E-69's own shape, reintroduced by the fix for E-69.** `no-bar` is now its own refusal
+(`bar-not-published`) and `refusalCostsAnAttempt` decides from the elapsed time whether it means
+*not yet* (inside `barPublicationGraceSeconds`, 30s — 3× the measured delay) or *never*.
+
+**Guard**: `npm run test:updown-late-close` (**38**), proven **RED 7/7** by
+`scripts/updown-late-close-red.mjs` — `void-without-reading` (the shipped branch, verbatim) ·
+`always-reread` · `unbounded-lookback` · `no-bar-burns-the-budget` · `no-bar-never-burns` ·
+`revive-a-failed-observation` · `provider-loses-its-dated-flag`.
+
+### ⚠️ THREE TRAPS PAID FOR IN MY OWN HARNESS, NONE IN THE PRODUCT — and one is the campaign's oldest
+
+- 🔴 **CRLF, FOR THE FIFTH TIME — and this time it is fixed generally rather than by hand.**
+  `updown-service.ts` and `updown-dal.ts` are **CRLF**; `updown-config.ts` and
+  `updown-providers.ts` are **LF**. Single-line anchors matched everywhere, so the failure looked
+  random rather than systematic — only the multi-line anchor reported ANCHOR NOT FOUND, which
+  reads as a broken harness on a perfectly good guard. The harness now re-expresses every anchor
+  in **whatever the target file actually uses**, so no future anchor can be bitten.
+- 🔴 **The RED harness scored every mutation against the HEALER'S OWN LOG LINE.** It matched
+  `/(\d+) failed/`, and `[updown-heal] … 0 waiting, 0 failed` is printed on every sweep, long
+  before the suite's summary. So all 7 mutations were scored `0 failed` while the suite was
+  genuinely red, and a working guard was reported as **0/7 caught**. It anchors on
+  `late-close: N passed, N failed` now — a line only this suite can print. ⛔ **Exactly §0.1a's
+  rule, in a new place: never locate a result by words the run's own output will also contain.**
+- ⚠️ **A THROWN assertion never reaches the summary, so the harness cannot score it.** §3.8 did
+  `(await observationStore.get(r.closeObservationId!))!` — which is `null` precisely when the
+  defect is present, so the suite crashed and the mutation that matters most was reported as a
+  MISS. An assertion must fail *informatively*; only the harness decides what a failure means.
+- ⚠️ **`revive-a-failed-observation` cannot be made red by any SINGLE edit, and that is a
+  finding, not a contrivance.** Three independent layers enforce the write-once ledger — the
+  healer's `state === "PENDING"` gate, `acquireObservation`'s FAILED early-return, and the DAL's
+  claim-the-row `confirm`. Mutating any one leaves the suite correctly green. The mutation
+  removes all three, which is what deliberately adding late revival would actually take.
+
+### 📐 PHASE 1c — SHADOW MODE, and what it is honestly able to measure
+
+`scripts/ops-updown-shadow.mts` (`npm run ops:updown-shadow`) reads **both** feeds at the same
+boundary and records the delta to `.qa-artifacts/updown-shadow.jsonl`. It branches nothing.
+
+⛔ **A raw `quote − barOpen` delta is useless undecomposed**, because it blends two things that
+call for opposite responses: **timing** (the quote describes an instant ~40-60s before the
+boundary — the OLD reader being wrong, which the rebuild is correcting) and **disagreement** (the
+two endpoints publishing different numbers for the same instant — which would be a reason to stop
+before switching). The sampler separates them by testing whether the quote's price falls inside
+the range of the bar covering the minute it was actually taken in.
+
+⚠️ **Each reader is asked at the moment it would really have been asked**: `/quote` at the
+boundary (that is when production calls it), the bar at **+12s** (it does not exist before +10s).
+Asking the quote later would charge the old reader for drift it never actually suffered.
+
+### 🔴 THE WEEKEND ARM — the calendar gate is now the ONLY thing standing there
+
+⛔ **A paired weekend delta is impossible by construction, not by choice** — `/quote` only ever
+answers "now", so it cannot be replayed to last Saturday. Saying so is better than sampling
+something else and calling it a weekend. What *can* be replayed is the half that matters, and it
+is worse than E-36 recorded:
+
+| Shut day | XAU/USD 1-min bars published | open range |
+|---|---|---|
+| **Sat 2026-08-01** | **1,440** | **$0.02** |
+| **Sun 2026-08-02** | **1,440** | $34.96 *(gold reopens Sunday evening)* |
+
+⭐ **Saturday's $0.02 range is TWICE the $0.01 tick band that E-73 shows the live gold asset
+runs.** So under a tick-floor margin a weekend gold round would not merely void — **it could
+RESOLVE**, paying real money on synthetic jitter around a pinned anchor. Under bar settlement
+there is no staleness rule left to catch a frozen holiday, so the E-36 calendar gate is the sole
+defence and it must keep running BEFORE any fetch — which is where `readPrice` already puts it.
+
 ## 6ad. ⭐ THE UP & DOWN SETTLEMENT REBUILD — Ali's decisions and the measurements behind them (2026-08-04, session 22)
 
 > ⛔ **These are DECISIONS, already taken. Do not re-open them; execute them.** Everything below
@@ -3876,6 +3976,18 @@ so a tick-floor margin on crypto measures the market, not the feed.
 
 ## 6b. NEXT SESSION — start here
 
+### 🟢 Laptop A, session 23 (2026-08-04) — THE LATE CLOSE IS SEALED. Read `## 6ae` then `## 6ad`.
+
+| Commit | What | Guard |
+|---|---|---|
+| _this one_ | **E-69 FIXED — a round 529s late SETTLES instead of refunding.** `lateCloseDecision` re-reads past the deadline when the provider is `dated`, bounded by `maxSettleLookbackSeconds` (24h). The quote path is unchanged and pinned. Plus the defect this uncovered: `no-bar` at the boundary no longer burns the attempt budget (bar T publishes at **+10s**; attempt 1 is taken at **+0s**) | `test:updown-late-close` **38**, RED **7/7** |
+| _this one_ | **Phase 1c shadow sampler** — `ops:updown-shadow`, both readers at one boundary, delta recorded ONLY, decomposed into timing vs genuine disagreement | read-only sampler |
+
+⛔ **`feedProvider` is still `twelvedata`. No money has touched the new reader yet** — the switch
+is gated on the shadow run's median delta (§6ae) and lands with phase 1e.
+
+#### ⏭️ **RESUME AT:** ① **Phase 1e — the betting window (E-72) AND open-from-bar, TOGETHER, never separately.** `openRound` writes `selectionClosedAt: null`; set it to the last **20% of the round, floored at 30s**, config-driven. ⭐ The server enforcement is already free — `buyPosition` (`market-service.ts:621`) refuses `isSelectionClosed`. The card needs a **LOCKED** state whose countdown **RE-LABELS itself** and whose message carries its reason, and the lock turns `× 1.4 est.` into an exact payout. Ali's call 2026-08-04: **one account may NOT hold both sides of a round** — enforce in `buyPosition`, RED-first. Then **② Phase 2** tick-floor margin + `minMoveTicks ≥ 2` (see **E-73**) · **③ Phase 3** durations 3/5/10/15/30/60 on the epoch lattice, **gold 15m+ only** (Ali's call, 2026-08-04) · **④ Phase 4** the fully-controlled admin · **⑤ Phase 6** void honesty · **⑥ Phase 7** E-70, E-59, accountant/reports, the 4-width sweep, and consolidating the Up & Down docs to one truth.
+
 ### 🟢 Laptop A, session 22 (2026-08-04) — THE SETTLEMENT REBUILD IS UNDER WAY AND HALF SHIPPED. Read §6ad first; it carries every decision and the measured evidence.
 
 **Read `## 6ad` above before anything else.** It holds the complete agreed record (14 items), the
@@ -3894,7 +4006,7 @@ Ali. Nothing below repeats it.
 ⛔ **`feedProvider` is still `twelvedata`. No money has touched the new reader.** Switching it is an
 audited config edit with no deploy — that is the rollback lever, and it is why this was safe to ship.
 
-#### ⏭️ **RESUME AT:** ① **Phase 1c — SHADOW.** Read both `/quote` and the bar for each boundary and record the delta in the audit payload ONLY; do not branch settlement on it. ≥100 boundaries across all assets spanning a weekend. ⚠️ **This is the step that will be under pressure to skip and it is the cheapest insurance in the plan** — if the median delta is a material fraction of the band, that is a finding to resolve BEFORE the switch, not after.
+#### ✅ **DONE (session 23):** ① **Phase 1c — SHADOW.** Read both `/quote` and the bar for each boundary and record the delta in the audit payload ONLY; do not branch settlement on it. ≥100 boundaries across all assets spanning a weekend. ⚠️ **This is the step that will be under pressure to skip and it is the cheapest insurance in the plan** — if the median delta is a material fraction of the band, that is a finding to resolve BEFORE the switch, not after.
 
 Then, in order: **② Phase 1d** seal the close — the healer's past-deadline branch currently voids
 *without re-reading* (`updown-service.ts:980-995`), justified by a staleness premise that becomes

@@ -181,6 +181,8 @@
     "ops:selcom-code-matrix": "node scripts/selcom-code-matrix.mjs",
     "ops:updown-probe-feed": "tsx scripts/ops-updown-probe-feed.mts",
     "ops:updown-margin-study": "tsx scripts/ops-updown-margin-study.mts",
+    "ops:updown-shadow": "tsx scripts/ops-updown-shadow.mts",
+    "test:updown-late-close": "tsx scripts/updown-late-close.test.mts",
     "test:margin-schedule": "tsx scripts/updown-margin-schedule.test.mts",
     "test:rule-honesty": "tsx scripts/updown-rule-honesty.test.mts",
     "test:updown-digest": "tsx scripts/updown-digest.test.mts",
