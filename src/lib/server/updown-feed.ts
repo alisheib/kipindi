@@ -413,7 +413,25 @@ export class TwelveDataBarFeed implements PriceFeed {
     // The provider labels a 1-minute bar "YYYY-MM-DD HH:MM:SS" in the requested zone.
     const label = new Date(atMs).toISOString().slice(0, 16).replace("T", " ");
 
+    // ⛔ THE FEED OWNS ITS API PATH; THE ASSET OWNS THE TRUSTED HOST.
+    //
+    // 🔴 FOUND ON PRODUCTION, 2026-08-04, minutes after the reader was switched. Every asset
+    // stores `https://api.twelvedata.com/quote` — correct for the quote reader, and meaningless
+    // to this one, which needs `/time_series`. So the moment the reading method was switched,
+    // EVERY asset stopped pricing: `/quote?interval=1min` returns no `values` array, the read
+    // refused as `no-bar`, and `generateRoundNow` (correctly) declined to open a round it could
+    // not price. Up & Down produced nothing at all until this line existed.
+    //
+    // ⚠️ The coupling was the defect, not the URL. A GLOBAL reading method and a PER-ASSET
+    // endpoint that must agree, with nothing enforcing the agreement, means one config edit can
+    // silently disable every asset. Forcing the path here dissolves it: the operator's approved
+    // DOMAIN is still what `hostMatchesDomain` gates — and the domain is the security boundary —
+    // while the path is provider-API detail this class knows better than a stored row does.
+    //
+    // ⭐ It also means the reader can be switched back and forth freely, which is the whole
+    // point of keeping the quote feed as the rollback lever.
     const url = new URL(req.endpoint);
+    url.pathname = "/time_series";
     url.searchParams.set("symbol", req.symbol);
     url.searchParams.set("interval", "1min");
     // A small window: the bar itself plus the neighbours the plausibility check needs.

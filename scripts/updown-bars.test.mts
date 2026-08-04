@@ -162,5 +162,44 @@ const undated = await quoteAsset(feed, { ...REQ });
 ok("§5c ⛔ the dated reader refuses when given no instant", !undated.ok,
   undated.ok ? "it quoted something without being told which minute" : "");
 
+// ═══════════════════════════════════════════════════════════════════════════
+// §9 · THE FEED OWNS ITS API PATH — the asset owns only the trusted HOST
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// 🔴 FOUND ON PRODUCTION, 2026-08-04, minutes after the reader was switched. Every live asset
+// stores `https://api.twelvedata.com/quote` — correct for the quote reader, meaningless to this
+// one. So switching the reading method silently disabled EVERY asset: `/quote?interval=1min`
+// returns no `values` array, the read refused as `no-bar`, and `generateRoundNow` correctly
+// declined to open a round it could not price. Up & Down produced nothing at all.
+//
+// ⚠️ THE COUPLING WAS THE DEFECT, NOT THE URL. A global reading method plus a per-asset endpoint
+// that must agree, with nothing enforcing the agreement, means one config edit disables the
+// product. The host stays the operator's approved domain — that is the security boundary and
+// `quoteAsset` still gates it (§5b above) — while the PATH belongs to the feed.
+{
+  let asked = "";
+  globalThis.fetch = (async (u: URL | string) => {
+    asked = String(u);
+    return {
+      ok: true, status: 200,
+      text: async () => JSON.stringify({ values: [bar("2026-08-04 12:00:00", 100, 101)] }),
+    };
+  }) as unknown as typeof fetch;
+
+  // The asset's STORED endpoint is the quote path — exactly what production carries.
+  const stored = await quoteAsset(new TwelveDataBarFeed(KEY), {
+    ...REQ, endpoint: "https://api.twelvedata.com/quote", at: "2026-08-04T12:00:00.000Z",
+  });
+  ok("§9.1 ⭐ a bar reads even when the asset stores the QUOTE path — switching the reader cannot disable an asset",
+     stored.ok, stored.ok ? "" : `refused: ${stored.reason} ${stored.detail}`);
+  ok("§9.2 ⭐ …because the feed asked for /time_series regardless of what was stored",
+     /\/time_series\?/.test(asked), asked.replace(/apikey=[^&]*/, "apikey=***").slice(0, 120));
+  ok("§9.3 the host is still the operator's approved domain — the security boundary is untouched",
+     asked.startsWith("https://api.twelvedata.com/"), asked.slice(0, 60));
+  ok("§9.4 and the recorded evidence URL names the endpoint REALLY fetched, not the stored one",
+     stored.ok && /\/time_series\?/.test(stored.sourceUrl) && !/apikey/.test(stored.sourceUrl),
+     stored.ok ? stored.sourceUrl : "");
+}
+
 console.log(`\nUP & DOWN BARS — ${pass} passed, ${fails.length} failed`);
 if (fails.length) { for (const f of fails) console.log(`  ✗ ${f}`); process.exit(1); }

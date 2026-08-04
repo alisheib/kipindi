@@ -17,6 +17,14 @@ const FEED = new URL("../src/lib/server/updown-feed.ts", import.meta.url);
 
 const MUTATIONS = [
   {
+    // 🔴 THE PRODUCTION DEFECT, restored. Trusting the asset's STORED path is what silently
+    // disabled every asset the moment the reading method was switched: production stores
+    // `/quote`, this reader needs `/time_series`, and nothing enforced the agreement.
+    name: "trust-the-stored-path — switching the reader disables every asset again",
+    from: `    url.pathname = "/time_series";\n`,
+    to: ``,
+  },
+  {
     name: "settle-on-the-CLOSE-instead-of-the-open — the price from the wrong end of the minute",
     from: `      price: Number(bar.open.toFixed(req.decimals)),`,
     to: `      price: Number(bar.close.toFixed(req.decimals)),`,
