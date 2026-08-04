@@ -5,265 +5,730 @@
 <title>50pick · Up &amp; Down — Operator Guide</title>
 <style>
   /* Self-contained: no web fonts, no network. A PDF must render identically offline. */
-  @page { size: A4; margin: 14mm 13mm; }
+  @page { size: A4; margin: 13mm 12mm; }
   * { box-sizing: border-box; }
   body {
     font-family: "Segoe UI", Arial, Helvetica, sans-serif;
-    font-size: 10.5pt; line-height: 1.5; color: #14203a; margin: 0;
+    font-size: 10pt; line-height: 1.45; color: #14203a; margin: 0;
   }
-  h1 { font-size: 23pt; margin: 0 0 1.5mm; letter-spacing: -0.5pt; }
+  h1 { font-size: 22pt; margin: 0 0 1.5mm; letter-spacing: -0.5pt; }
   h2 {
-    font-size: 13.5pt; margin: 8mm 0 3mm; padding-bottom: 1.5mm;
+    font-size: 13pt; margin: 7mm 0 2.5mm; padding-bottom: 1.5mm;
     border-bottom: 1.2pt solid #1e3a8a; color: #1e3a8a; page-break-after: avoid;
   }
-  h3 { font-size: 11pt; margin: 5mm 0 1.5mm; page-break-after: avoid; }
-  p { margin: 0 0 2.5mm; }
-  ul, ol { margin: 0 0 3mm; padding-left: 6mm; }
-  li { margin-bottom: 1.3mm; }
-  .sub { color: #566; font-size: 10pt; margin-bottom: 5mm; }
+  h3 { font-size: 10.5pt; margin: 4.5mm 0 1.5mm; page-break-after: avoid; color: #1e3a8a; }
+  h4 { font-size: 10pt; margin: 3.5mm 0 1mm; page-break-after: avoid; }
+  p { margin: 0 0 2.2mm; }
+  ul, ol { margin: 0 0 2.5mm; padding-left: 5.5mm; }
+  li { margin-bottom: 1.1mm; }
+  .sub { color: #566; font-size: 9.5pt; margin-bottom: 4mm; }
   code {
-    font-family: "Consolas", "Courier New", monospace; font-size: 9.2pt;
-    background: #eef2fb; padding: 0.3mm 1.2mm; border-radius: 1mm;
+    font-family: "Consolas", "Courier New", monospace; font-size: 8.8pt;
+    background: #eef2fb; padding: 0.3mm 1.1mm; border-radius: 1mm;
   }
-  table { width: 100%; border-collapse: collapse; margin: 0 0 4mm; page-break-inside: avoid; }
-  th, td { text-align: left; vertical-align: top; padding: 2mm 2.5mm; border-bottom: 0.5pt solid #ccd5e6; }
-  th { background: #eef2fb; font-size: 9.5pt; text-transform: uppercase; letter-spacing: 0.4pt; color: #1e3a8a; }
-  td { font-size: 10pt; }
+  table { width: 100%; border-collapse: collapse; margin: 0 0 3.5mm; page-break-inside: avoid; }
+  th, td { text-align: left; vertical-align: top; padding: 1.7mm 2.2mm; border-bottom: 0.5pt solid #ccd5e6; }
+  th { background: #eef2fb; font-size: 8.8pt; text-transform: uppercase; letter-spacing: 0.35pt; color: #1e3a8a; }
+  td { font-size: 9.3pt; }
+  td.n, th.n { text-align: right; font-family: "Consolas", monospace; }
   .box {
     border: 0.8pt solid #1e3a8a; background: #f5f8ff;
-    padding: 3mm 3.5mm; margin: 0 0 4mm; border-radius: 1.5mm; page-break-inside: avoid;
+    padding: 2.6mm 3mm; margin: 0 0 3.5mm; border-radius: 1.5mm; page-break-inside: avoid;
   }
   .warn { border-color: #a2600a; background: #fdf6e9; }
   .stop { border-color: #9b1c2e; background: #fdf0f1; }
+  .good { border-color: #146c43; background: #eef8f2; }
   .box p:last-child { margin-bottom: 0; }
   .pill {
-    display: inline-block; background: #1e3a8a; color: #fff; font-size: 8.5pt;
-    padding: 0.4mm 2mm; border-radius: 3mm; margin-right: 1.5mm;
+    display: inline-block; background: #1e3a8a; color: #fff; font-size: 8pt;
+    padding: 0.3mm 1.8mm; border-radius: 3mm; margin-right: 1.2mm; vertical-align: 1.5px;
   }
-  figure { margin: 0 0 4mm; page-break-inside: avoid; }
-  figure img {
-    width: 100%; display: block; border: 0.6pt solid #b9c4da; border-radius: 1.5mm;
-  }
-  figcaption { font-size: 9pt; color: #566; margin-top: 1.5mm; line-height: 1.4; }
+  .pill.r { background: #9b1c2e; } .pill.a { background: #a2600a; } .pill.g { background: #146c43; }
+  figure { margin: 0 0 3.5mm; page-break-inside: avoid; }
+  figure img { width: 100%; display: block; border: 0.6pt solid #b9c4da; border-radius: 1.5mm; }
+  figcaption { font-size: 8.6pt; color: #566; margin-top: 1.3mm; line-height: 1.38; }
   figcaption b { color: #1e3a8a; }
-  .split { display: flex; gap: 4mm; page-break-inside: avoid; margin-bottom: 4mm; }
+  .split { display: flex; gap: 4mm; page-break-inside: avoid; margin-bottom: 3.5mm; }
   .split .narrow { flex: 0 0 34mm; }
   .split .narrow img { width: 100%; border: 0.6pt solid #b9c4da; border-radius: 1.5mm; display: block; }
   .split .text { flex: 1; }
-  .flow { display: flex; gap: 2mm; margin: 0 0 4mm; page-break-inside: avoid; }
+  .flow { display: flex; gap: 1.8mm; margin: 0 0 3.5mm; page-break-inside: avoid; }
   .flow div {
     flex: 1; border: 0.6pt solid #ccd5e6; border-radius: 1.5mm;
-    padding: 2.5mm; font-size: 9.2pt; background: #fbfcff;
+    padding: 2.2mm; font-size: 8.7pt; background: #fbfcff;
   }
-  .flow b { display: block; color: #1e3a8a; font-size: 9.5pt; margin-bottom: 1mm; }
-  footer { margin-top: 7mm; padding-top: 2mm; border-top: 0.5pt solid #ccd5e6; font-size: 9pt; color: #667; }
+  .flow b { display: block; color: #1e3a8a; font-size: 9pt; margin-bottom: 0.8mm; }
+  .f {
+    font-family: "Consolas", "Courier New", monospace; font-size: 9pt;
+    background: #f3f6fd; border-left: 2.2pt solid #1e3a8a; padding: 2.2mm 3mm;
+    margin: 0 0 2.5mm; border-radius: 0 1.5mm 1.5mm 0; white-space: pre-wrap; line-height: 1.5;
+  }
+  .eg { background: #eef8f2; border-left-color: #146c43; }
+  footer { margin-top: 6mm; padding-top: 2mm; border-top: 0.5pt solid #ccd5e6; font-size: 8.6pt; color: #667; }
   .pb { page-break-before: always; }
+  .rules { counter-reset: r; }
+  .rules > div {
+    position: relative; padding: 2.2mm 3mm 2.2mm 9mm; margin-bottom: 2mm;
+    border: 0.6pt solid #ccd5e6; border-radius: 1.5mm; background: #fbfcff;
+    page-break-inside: avoid; font-size: 9.4pt;
+  }
+  .rules > div::before {
+    counter-increment: r; content: counter(r);
+    position: absolute; left: 2.6mm; top: 2.2mm;
+    font-family: "Consolas", monospace; font-weight: bold; font-size: 11pt; color: #1e3a8a;
+  }
+  .rules b { color: #14203a; }
+  .rules em { color: #566; font-style: normal; display: block; margin-top: 0.7mm; font-size: 8.8pt; }
 </style>
 </head>
 <body>
 
 <h1>Up &amp; Down — Operator Guide</h1>
 <p class="sub">For 50pick staff who run the Up &amp; Down game. No technical knowledge needed.
-Every picture is the real screen.</p>
+Every picture is the real production screen, photographed on <b>4 August 2026</b>.
+⛔ This replaces every earlier version — the rules below are new and the old guide contradicts them.</p>
 
-<h2>1 · What the game is</h2>
+<h2 style="margin-top:3mm">THE RULES WE SET TODAY — read this page before you touch anything</h2>
 
-<p>A player bets whether a price — gold, silver, an index — will go <b>UP</b> or <b>DOWN</b> over
-a short window: 5, 15 or 30 minutes. One window is a <b>round</b>.</p>
+<div class="rules">
+<div><b>Gold only trades on certain days.</b> Gold (and any currency pair) is <b>shut every
+weekend</b>: it opens <b>Monday 01:00 EAT</b> and closes <b>Saturday 00:00 EAT</b>.
+The platform refuses to open or settle a gold round while the market is shut — you will see
+<i>“market shut”</i> on the chain, and that is correct, not a fault.
+<em>Crypto (BTC, ETH, SOL) trades 24 hours, 7 days, including weekends and public holidays.</em></div>
+
+<div><b>Gold cannot run shorter than 15 minutes.</b> The dropdown greys 3, 5 and 10 minutes for
+gold and tells you why. Gold’s own price feed disagrees with itself by up to <b>$0.87</b> at a
+single instant, which is more than gold typically moves in five minutes — a short gold round
+would be decided by which reading arrived, not by the market.
+<em>Crypto can run every length: 3, 5, 10, 15, 30, 60 minutes.</em></div>
+
+<div><b>Betting stops before the round ends.</b> The last <b>20%</b> of every round takes no bets
+(never less than 30 seconds). A 5-minute round shuts betting with <b>60 seconds</b> left.
+<em>Why: near the close the result is almost already known. Without this, someone watching the
+price could bet on an outcome they can see coming, and take money off the players who bet
+honestly at the start. The player’s card says so plainly, and the countdown changes from
+“betting closes in” to “result in”.</em></div>
+
+<div><b>The winning band is the smallest possible step — not a percentage.</b> The recommended
+setting is <b>“Smallest possible”</b>, which uses the asset’s own minimum move: <b>$0.02</b> on
+Bitcoin, <b>$0.40</b> on gold. About <b>99 rounds in 100</b> then pay a winner.
+<em>Why: we measured it. At 0.50% (the old default) BTC had to move ±$316 inside five minutes —
+it refunded 5 real rounds out of 5. A wide band does not make more money; it makes
+<b>no</b> money, because a refunded round earns no fee.</em></div>
+
+<div><b>One account may only take one side of a round.</b> A player cannot bet UP and DOWN on the
+same round. <em>Why: betting both sides is not a bet — it is a way to move money around while
+paying only the fee, and on a lopsided pool it can even be profitable regardless of the result.</em></div>
+
+<div><b>A round that closes late still settles — it no longer refunds.</b> Prices are now read
+from a <b>dated one-minute bar</b>, so the price at 13:52 is still the price at 13:52 an hour
+later. If a close is delayed we go back and read the right minute, up to <b>24 hours</b>.
+<em>Before today a late close refunded everyone even though nothing had failed.</em></div>
+
+<div><b>Every refund tells the player its real reason.</b> Six different reasons, each in English,
+Swahili and Chinese, on the card, the round page, the settlement proof, the push and the inbox.
+<em>Never say “the price did not move” about a refund that happened for another reason — that
+sentence used to appear on a refund caused by nobody taking the other side.</em></div>
+
+<div><b>Rounds are produced by hand.</b> You press <b>Generate round</b>. Nothing runs
+automatically. <em>Why: while we are learning the product, an operator watching is worth more than
+a timer nobody is watching. Do not start a chain and walk away.</em></div>
+
+<div><b>If only one side bets, everybody is refunded.</b> A round needs UP <i>and</i> DOWN money to
+have a winner. A one-sided round refunds every stake and earns nothing.
+<em>This is the one thing that will disappoint players in a quiet hour. Prefer few chains with
+players on them over many empty ones.</em></div>
+</div>
+
+<div class="box stop">
+<p><span class="pill r">DO NOT</span> <b>Do not run gold below 15 minutes. Do not widen the band to
+“look serious”. Do not add a chain nobody is playing.</b> Those three are the only ways an
+operator can lose money on this game today, and all three feel harmless.</p>
+</div>
+
+<h2 class="pb">1 · What the game is</h2>
+
+<p>A player bets whether a price — Bitcoin, Ethereum, gold — will be <b>higher (UP)</b> or
+<b>lower (DOWN)</b> at the end of a short window. One window is a <b>round</b>.</p>
 
 <div class="flow">
-  <div><b>1. Round opens</b>We read the price from an approved website and save it, with the link.</div>
-  <div><b>2. Players bet</b>They pick UP or DOWN before the round closes.</div>
-  <div><b>3. Round closes</b>We read the price again — from the same link.</div>
-  <div><b>4. We pay</b>UP wins, DOWN wins, or nobody wins and everyone is refunded.</div>
+  <div><b>1. Round opens</b>We read the price from the last finished minute and freeze it. That is the <b>opening price</b>.</div>
+  <div><b>2. Players bet</b>UP or DOWN, until betting shuts in the last 20%.</div>
+  <div><b>3. Round closes</b>We read the price for the closing minute — the exact same way.</div>
+  <div><b>4. We pay</b>UP wins, DOWN wins, or nobody wins and everyone gets their stake back.</div>
 </div>
-
-<p>The price must move more than a small amount — the <b>margin</b>, normally 0.50% — for a side
-to win. If it moves less, the round is <b>VOID</b> and <b>every player gets their full stake
-back</b>. Nobody loses money on a round that barely moved.</p>
 
 <div class="box">
-<p><span class="pill">KEY IDEA</span> <b>A round is settled against the exact web page it was
-opened on.</b> We save the link when the round opens and go back to that same link when it
-closes. If the price cannot be confirmed, the round voids and refunds — <b>we never guess a
-price</b>.</p>
+<p><span class="pill">THE ONE IDEA TO UNDERSTAND</span> <b>We settle against a dated one-minute
+bar, not “the price now”.</b> Every minute of the day has a permanent record: its opening price.
+“The price at 13:52” means “the opening price of the bar labelled 13:52”. That number never
+changes, so we can always go back and check it — which is why a delayed round can still be
+settled honestly instead of refunded, and why nobody can argue about which price we used.</p>
 </div>
 
-<h2>2 · Finding it in the admin</h2>
+<h2>2 · How Twelve Data works in our favour</h2>
+
+<p>Twelve Data is the company that sells us prices. Three things about it are genuinely to our
+advantage, and they are the reason the game is built the way it is.</p>
+
+<table>
+  <tr><th style="width:30%">What it gives us</th><th>Why that is in our favour</th></tr>
+  <tr>
+    <td><b>The past is readable</b><br><span style="color:#566">a dated bar, not a live tick</span></td>
+    <td>A live price can only answer <i>“what is it now”</i>. Miss the instant and the number is gone
+    forever — so a delay had to refund. A dated bar is the <b>same number six hours later</b>, so a
+    late close settles correctly. It also means a player who disputes a result can be shown the
+    exact minute we used.</td>
+  </tr>
+  <tr>
+    <td><b>A whole window costs one credit</b><br><span style="color:#566">1–5000 minutes, same price</span></td>
+    <td>One request can fetch a thousand minutes for the price of one. Six round lengths on one
+    asset need about <b>672 separate price readings a day</b> against a plan of roughly 800 — which
+    would be impossible one at a time. Fetching a window instead collapses that to <b>24–96</b>.
+    <b>This is what makes 3-minute rounds affordable at all.</b></td>
+  </tr>
+  <tr>
+    <td><b>Real-time crypto, forex and US shares</b></td>
+    <td>Our plan gives live prices for crypto, currencies and metals. That covers every asset we
+    want. ⛔ It does <b>not</b> cover stock indices (the S&amp;P 500 returns nothing), and shares
+    outside the USA are <b>end-of-day only</b> — a once-a-day price cannot settle a 5-minute round,
+    so no non-US share may ever be an Up &amp; Down asset.</td>
+  </tr>
+</table>
+
+<div class="box warn">
+<p><span class="pill a">MEASURED, NOT ASSUMED</span> A minute’s bar is published a few seconds
+<b>after</b> that minute ends — about <b>10 seconds</b> for BTC, ETH and gold, and about
+<b>60 seconds</b> for Solana. That is why <b>Generate round</b> takes the opening price from the
+<i>last finished</i> minute, and why the platform waits up to two minutes for a bar before it
+treats it as missing. You do not have to do anything about this; it is why generation sometimes
+takes a few seconds to answer.</p>
+</div>
+
+<h2>3 · What is unique about each asset</h2>
+
+<p>These are not preferences. Each number was measured against real provider data, and it is why
+each asset is configured differently.</p>
+
+<table>
+  <tr>
+    <th style="width:13%">Asset</th><th class="n" style="width:9%">Band</th>
+    <th style="width:14%">Lengths</th><th style="width:16%">Trading hours</th><th>What is unique about it — and what it means for you</th>
+  </tr>
+  <tr>
+    <td><b>BTC</b><br>Bitcoin<br><span class="pill g">READY</span></td>
+    <td class="n"><b>±$0.02</b><br>2 ticks</td>
+    <td>3 · 5 · 10<br>15 · 30 · 60</td>
+    <td><b>24 / 7</b><br>every day</td>
+    <td>Moves whole dollars in three minutes, so almost every round has a clear winner. The two
+    price readers <b>agreed 75 times out of 75</b> when we tested them, so its band only has to
+    clear rounding. <b>Start here.</b> Best asset for a 3-minute round.</td>
+  </tr>
+  <tr>
+    <td><b>ETH</b><br>Ethereum<br><span class="pill g">READY</span></td>
+    <td class="n"><b>±$0.02</b><br>2 ticks</td>
+    <td>3 · 5 · 10<br>15 · 30 · 60</td>
+    <td><b>24 / 7</b><br>every day</td>
+    <td>Behaves like Bitcoin but at a lower price, so the same $0.02 band is a slightly larger share
+    of the price — marginally more likely to refund on a very quiet 3-minute window. Safe at 5
+    minutes and above.</td>
+  </tr>
+  <tr>
+    <td><b>XAU</b><br>Gold<br><span class="pill a">CARE</span></td>
+    <td class="n"><b>±$0.40</b><br>40 ticks</td>
+    <td><b>15 · 30 · 60<br>only</b></td>
+    <td><b>Mon 01:00 EAT<br>→ Sat 00:00 EAT</b></td>
+    <td>⛔ The one asset that needs real care. Its own feed disagrees with itself by up to
+    <b>$0.20</b> at a single instant and <b>$0.29–$0.87</b> across a minute boundary — so its band
+    is <b>twenty times</b> BTC’s. It is also the only asset that <b>shuts</b>, and on a Saturday the
+    provider still publishes flat filler prices with a <b>$0.02</b> range, which is why we refuse
+    weekend gold outright rather than trusting the feed.</td>
+  </tr>
+  <tr>
+    <td><b>SOL</b><br>Solana<br><span class="pill r">NOT YET</span></td>
+    <td class="n">±$0.02<br>2 ticks</td>
+    <td>—</td>
+    <td>24 / 7</td>
+    <td>🔴 <b>Do not run SOL for players yet.</b> 290 rounds ran on it historically and
+    <b>not one ever paid a winner</b>. Its bars arrive about <b>60 seconds</b> late rather than 10,
+    which the new reader should now handle — but that has not been proved with money on it. It must
+    be tested by staff first.</td>
+  </tr>
+  <tr>
+    <td><b>BNB</b><br><span class="pill r">OFF</span></td>
+    <td class="n">±$0.02</td><td>—</td><td>24 / 7</td>
+    <td>Switched off. Priced as a “macro” asset by mistake once, which applied gold’s weekend
+    shutdown to a coin that trades every day. Leave it off.</td>
+  </tr>
+  <tr>
+    <td><b>SNP500</b><br>S&amp;P 500<br><span class="pill r">CANNOT WORK</span></td>
+    <td class="n">±$0.15</td><td>—</td><td>—</td>
+    <td>⛔ <b>Never enable this.</b> Stock indices are not on our price plan at all, and its stored
+    source is a web page rather than the price feed. Every round would refund. It is kept only so
+    nobody re-creates it.</td>
+  </tr>
+  <tr>
+    <td><b>GOLD</b><br>(duplicate)<br><span class="pill r">OFF</span></td>
+    <td class="n">±$0.40</td><td>15 · 30 · 60</td>
+    <td>Mon–Sat</td>
+    <td>⚠️ A <b>second gold row</b>, switched off. Two rows in the list both say “Gold”. <b>Use
+    <code>XAU</code>, the one that is enabled.</b> Do not switch this one on as well, or your
+    reports will split gold across two names.</td>
+  </tr>
+</table>
+
+<div class="box">
+<p><span class="pill">HOW MUCH IS “A CHANGE”?</span> <b>Any movement of one band or more decides
+the round.</b> On Bitcoin that is <b>2 cents</b> — a normal 3-minute Bitcoin move is
+<b>hundreds of times</b> that, which is why ~99% of rounds pay. On gold it is <b>40 cents</b>,
+because gold’s own feed is uncertain by up to 20 cents and we must clear that twice over. A
+smaller band on gold would hand rounds to whichever reading arrived first.</p>
+</div>
+
+<h2 class="pb">4 · The formulas — exactly how a round resolves, and why</h2>
+
+<p>Nothing here is approximate. These are the actual calculations, and every number in the worked
+examples is from a <b>real production round settled on 4 August 2026</b>.</p>
+
+<h3>4.1 · The two targets, frozen when the round opens</h3>
+
+<div class="f">tick   = 0.01                          (the asset's smallest price step, 2 decimals)
+band   = the LARGER of:  open x margin%     ... the percentage, if you set one
+                         minMoveTicks x tick ... the asset's minimum move
+
+UP target   = opening price + band
+DOWN target = opening price - band</div>
+
+<p>With the recommended <b>Smallest possible</b> setting the percentage is 0, so the band is
+<i>always</i> the asset’s minimum move. Both targets are <b>written onto the round at open</b> and
+never recalculated — so changing a setting later cannot alter a round players already bet on.</p>
+
+<div class="f eg"><b>Worked example — the real round <code>udr_a1adea90...</code>, BTC 5m</b>
+opening price  63,856.00
+band           2 ticks x 0.01 = 0.02
+UP target      63,856.02      DOWN target  63,855.98</div>
+
+<h3>4.2 · The outcome</h3>
+
+<div class="f">closing price &gt;= UP target      -&gt;  UP wins
+closing price &lt;= DOWN target    -&gt;  DOWN wins
+anything in between            -&gt;  VOID: every stake refunded in full, no fee taken</div>
+
+<div class="f eg"><b>Same round</b>
+closing price  63,832.00   which is &lt;= 63,855.98   ->  DOWN WINS</div>
+
+<h3>4.3 · The money</h3>
+
+<p>Up &amp; Down is a <b>pool</b> game. Everyone’s stake goes into one pot; the winning side shares
+the pot in proportion to what each of them staked. We take a commission of <b>13%</b>, but never
+more than <b>one third of the smaller side</b>.</p>
+
+<div class="f">pool        = UP money + DOWN money
+smaller     = whichever side has less money on it
+commission  = 13% x pool
+ceiling     = 33.33% x smaller
+fee         = the SMALLER of commission and ceiling
+net pool    = pool - fee
+
+one winner's payout = round( their stake / winning side's total x net pool )</div>
+
+<div class="box good">
+<p><span class="pill g">WHY THE CEILING EXISTS</span> <b>It guarantees a winner can never receive
+less than they staked.</b> Because the fee can never exceed a third of the smaller side, the net
+pool is always at least as large as the winning side — so every winner gets back <i>at least</i>
+their stake. The platform <b>refuses to settle</b> a round where that is not true, rather than pay
+a “winner” less than they put in. You will never have to explain that to a player, because it
+cannot happen.</p>
+</div>
+
+<div class="f eg"><b>Worked example A — a balanced round (the real one)</b>
+UP 500 + DOWN 500     pool 1,000   smaller 500
+commission  13% x 1,000 = 130
+ceiling     33.33% x 500 = 166.67
+fee         min(130, 166.67) = 130          net pool 870
+DOWN won. One winner staked 500 of the 500 on DOWN:
+payout = 500/500 x 870 = 870        the platform keeps 130
+
+<b>Worked example B — a lopsided round, showing the ceiling bite</b>
+UP 900 + DOWN 100     pool 1,000   smaller 100
+commission  13% x 1,000 = 130
+ceiling     33.33% x 100 = 33.33
+fee         min(130, 33.33) = 33.33  CAPPED    net pool 966.67
+If DOWN wins, its single 100 backer receives 966 - nearly ten times the stake.
+If UP wins, the 900 receives 966. Either way, above the stake.</div>
+
+<h3>4.4 · When betting shuts</h3>
+
+<div class="f">lead = the LARGER of ( 20% of the round , 30 seconds )
+betting shuts at = closing time - lead</div>
+
+<table>
+  <tr><th>Round length</th><th class="n">3 min</th><th class="n">5 min</th><th class="n">10 min</th><th class="n">15 min</th><th class="n">30 min</th><th class="n">60 min</th></tr>
+  <tr><td>Betting shuts with … left</td><td class="n">36s</td><td class="n">60s</td><td class="n">2m</td><td class="n">3m</td><td class="n">6m</td><td class="n">12m</td></tr>
+</table>
+
+<p>At that moment the player’s buttons grey out, the card explains why, and the estimate
+<i>“× 1.4 est.”</i> is replaced by an <b>exact figure</b> — because once the pool is frozen we know
+precisely what each side would receive.</p>
+
+<h3>4.5 · Which round lengths are allowed, and why only those six</h3>
+
+<div class="f">a length is allowed only if it divides evenly into 1440 (the minutes in a day)
+3 · 5 · 10 · 15 · 30 · 60   ->  allowed
+4 · 7 · 45                  ->  refused</div>
+
+<p>A length that divides the day makes every round start on a clean clock mark, the same marks
+every day. It also means several lengths share boundaries, so one price reading serves many
+rounds — the credit saving described in section 2.</p>
+
+<h3>4.6 · If a price cannot be read</h3>
+
+<div class="f">a "not published yet" answer within 120 seconds  ->  free, we simply retry
+retries at 15s, 45s, then 120s, up to 4 real attempts
+still nothing after 390 seconds                  ->  VOID, everyone refunded
+a delayed close, up to 24 hours later            ->  we read the correct minute and SETTLE</div>
+
+<p>You do not manage any of this. It is here so that when you see <i>“confirming price”</i> for a
+minute or two, you know it is the system retrying on purpose and not something you should touch.</p>
+
+<h2 class="pb">5 · Finding it, and who is allowed to do what</h2>
 
 <div class="split">
   <div class="narrow"><img src="guide-img/nav.png" alt="Admin sidebar"></div>
   <div class="text">
-    <p>Up &amp; Down is a <b>separate game</b> from normal polls, so it has its own section at the
-    bottom of the sidebar: <b>UP &amp; DOWN · JUU NA CHINI</b>.</p>
-    <p>It has three screens:</p>
-    <ul>
-      <li><b>Overview</b> — what you trade and the timers that produce rounds.</li>
-      <li><b>AI proposals</b> — ask the AI to suggest a new market, then approve it.</li>
-      <li><b>Rounds</b> — every round that has run, and where you cancel a stuck one.</li>
-    </ul>
-    <p>⚠️ You will <b>not</b> find Up &amp; Down rounds under <i>Markets → Curation queue</i>.
-    That section is for long-form polls only.</p>
+    <p>Up &amp; Down is a <b>separate game</b> from the normal polls, with its own section near the
+    bottom of the sidebar: <b>UP &amp; DOWN · JUU NA CHINI</b>. It has three screens —
+    <b>Overview</b> (what you trade and the chains that produce rounds), <b>AI proposals</b>, and
+    <b>Rounds</b> (every round that has run).</p>
+    <p>⚠️ You will <b>not</b> find Up &amp; Down rounds under <i>Markets → Curation queue</i>. That
+    section is long-form polls only.</p>
+    <table style="margin-top:2mm">
+      <tr><th>Your role</th><th>You can</th></tr>
+      <tr><td><b>Trading officer</b></td><td>Add, edit, start, stop and <b>Generate</b> chains. Void a stuck round.</td></tr>
+      <tr><td><b>Accounting / Owner</b></td><td>Everything above, plus <b>add and edit assets</b> and change the product settings.</td></tr>
+    </table>
+    <p style="margin-top:1.5mm"><b>If a button reads 🔒 <i>ACCOUNTING ONLY</i>, that is by design.</b>
+    Assets decide where real money’s price comes from, so they are deliberately not a trading-desk
+    control. Ask the owner — do not look for a way around it.</p>
   </div>
 </div>
 
-<h2>3 · Overview — what you trade</h2>
+<h2>6 · The Overview screen</h2>
 
 <figure>
-  <img src="guide-img/overview.png" alt="Up &amp; Down Overview screen">
+  <img src="guide-img/overview-empty.png" alt="Up &amp; Down overview">
   <figcaption>
-    <b>Top row:</b> how many assets are switched on, how many timers (<b>chains</b>) are running,
-    the fee on a balanced 10,000 pool, and the <b>staleness window</b> — how fresh a price must be
-    before we accept it. <b>Middle:</b> the money for this game only, over the period you pick.
-    <b>Bottom:</b> your assets, each with the website its price comes from.
-    Here <b>Running chains is 0</b> — no rounds are being produced right now.
+    <b>Top row:</b> how many assets are on, how many chains are running, the fee on a balanced
+    TZS 10,000 pool, and the <b>staleness window</b> (how fresh a price must be — 90 seconds).
+    <b>Middle:</b> the money for this game only, over the period you choose.
+    <b>Bottom:</b> your assets and your chains. This is the real screen on the day the board was
+    cleared for training — <b>0 chains</b>, which is exactly what you should see before you create
+    the first one.
   </figcaption>
 </figure>
 
-<h2 class="pb">4 · Starting a new market</h2>
-
-<h3>Option A — Let the AI propose it (easiest)</h3>
-
 <figure>
-  <img src="guide-img/proposals.png" alt="AI proposals screen">
+  <img src="guide-img/assets.png" alt="The asset table">
   <figcaption>
-    Pick the asset and the round length, then press <b>Ask the AI to propose</b>. The AI opens the
-    approved website and reports the price and time <b>it actually found there</b>. Note the line
-    under the form: it names the one website the AI is allowed to read for this asset — it cannot
-    go anywhere else.
+    Every asset, with <b>PRECISION</b> showing the band: <code>2 dp · min 40</code> means prices
+    carry 2 decimals and gold’s minimum move is 40 of them — <b>±$0.40</b>. Note
+    <b>two rows called “Gold”</b>: use <code>XAU</code>, the enabled one. Every control here reads
+    <b>🔒 ACCOUNTING ONLY</b> for a trading officer, which is correct.
   </figcaption>
 </figure>
+
+<h2>7 · Every field, with an example of what to put in it</h2>
+
+<h3>7.1 · Add chain — the form you will use most</h3>
+
+<figure>
+  <img src="guide-img/form-add-chain.png" alt="Add chain form">
+  <figcaption>The real form. <b>①</b> beside an option means ready; <b>②</b> means usable with a
+  warning; <b>③</b> means unusable and is greyed out <i>with the reason shown</i> — never hidden,
+  so you can always see why gold has no 5-minute option.</figcaption>
+</figure>
+
+<table>
+  <tr><th style="width:17%">Field</th><th style="width:15%">Put this</th><th>What it means, and what happens if you get it wrong</th></tr>
+  <tr>
+    <td><b>Asset</b></td><td><code>① BTC · Bitcoin</code></td>
+    <td>Which price the round follows. A dropdown, never typed. <b>③</b> options cannot be chosen at
+    all. <i>Start with BTC.</i></td>
+  </tr>
+  <tr>
+    <td><b>Duration</b></td><td><code>① 5 min</code></td>
+    <td>How long a round lasts. Only the six allowed lengths appear. Changing the asset re-checks
+    this list — pick gold and the short options grey out immediately, with the reason.
+    <i>5 minutes is the best length to learn on: long enough to place bets, short enough to see a
+    result while you are watching.</i></td>
+  </tr>
+  <tr>
+    <td><b>Winning band</b></td><td><code>Smallest possible (recommended)</code></td>
+    <td>How far the price must move for a side to win. <b>Leave it on the recommendation.</b> The
+    other options exist for a long round on a slow asset:
+    <br>· <b>Smallest possible</b> — the asset’s minimum move. ~99 in 100 rounds pay.
+    <br>· <b>Narrow · 0.02%</b> — about 1 round in 3 refunds.
+    <br>· <b>Wide · 0.05%</b> — most rounds refund.
+    <br>· <b>Very wide · 0.50%</b> — almost every short round refunds and earns nothing.</td>
+  </tr>
+  <tr>
+    <td><b>Min stake</b></td><td><i>leave blank</i></td>
+    <td>Blank inherits the product setting, currently <b>TZS 500</b>. Only set it to raise the floor
+    on one chain.</td>
+  </tr>
+  <tr>
+    <td><b>Max stake</b></td><td><i>leave blank</i></td>
+    <td>Blank inherits <b>TZS 1,000,000</b>. Lower it on a new chain if you want to limit exposure
+    while it is unproven.</td>
+  </tr>
+</table>
+
+<div class="box warn">
+<p><span class="pill a">WHAT ABOUT 0.15%?</span> There is no 0.15% option, and that is deliberate.
+On Bitcoin at $63,856, a 0.15% band is <b>±$95.78</b> — Bitcoin must travel almost a hundred
+dollars inside the round for anyone to win. In five minutes it usually does not, so nearly every
+round would refund and earn <b>nothing</b>. The dropdown offers only values that mean something:
+the minimum move, 0.02%, 0.05%, and 0.50% kept as a clearly-labelled warning of what too wide
+looks like. <b>A wider band does not make a bigger margin — it makes no margin at all.</b></p>
+</div>
+
+<h3>7.2 · The chain row, and the Generate button</h3>
+
+<figure>
+  <img src="guide-img/chains.png" alt="A chain row">
+  <figcaption>
+    <b>STATE</b> stopped or running · <b>NEXT BOUNDARY</b> when the next round would open ·
+    <b>MARKET</b> whether the asset is trading right now (gold reads <i>shut</i> at the weekend) ·
+    <b>MARGIN</b> the winning band — <code>±0.02 ·min move</code> is the recommended setting, and it
+    means 2 cents, <b>not</b> “no band” · <b>PAID A WINNER · 7D</b> the honest health figure:
+    what share of the last week’s rounds actually paid somebody. <b>—</b> means no rounds yet.
+  </figcaption>
+</figure>
+
+<table>
+  <tr><th style="width:18%">Control</th><th>What it does · when to use it</th></tr>
+  <tr><td><b>Generate round</b></td>
+      <td>Creates <b>one</b> round, right now, and opens it for betting. <b>This is your main
+      button.</b> It reads the opening price from the last finished minute; if it cannot read a
+      price it refuses and creates nothing — no round, no stakes, nothing to unwind.</td></tr>
+  <tr><td><b>Start</b> / <b>Stop</b></td>
+      <td>Arms the chain to produce rounds on the clock. <b>Leave chains stopped for now</b> and use
+      Generate. Stop lets open rounds finish normally — no player is left holding a bet.</td></tr>
+  <tr><td><b>Edit</b></td>
+      <td>Changes the band and the stake bounds. <b>Future rounds only</b>; rounds already open keep
+      what they froze at open.</td></tr>
+</table>
+
+<div class="split">
+  <div class="narrow" style="flex:0 0 52mm"><img src="guide-img/form-edit-chain.png" alt="Edit chain form"></div>
+  <div class="text">
+    <p><b>The Edit panel</b> (it opens inside the chain’s own row, so it is narrow and the fields
+    stack). The band is the <b>same dropdown</b> as the Add form — you cannot type a number here
+    either, and for the same reason.</p>
+    <p><b>Inherit</b> follows the product setting, so changing that one setting changes every chain
+    that inherits it. The other three choices override this chain alone.</p>
+    <p>⚠️ <b>Changes affect future rounds only.</b> A round already open keeps the band it froze at
+    open — otherwise the rule a player bet under could be changed after they had bet.</p>
+  </div>
+</div>
+
+<h3 class="pb">7.3 · Product settings — Owner / Accounting only</h3>
+
+<p>You will rarely change these. They are documented so that if you are asked to read one out, you
+know what it is. <b>The live value is shown in bold.</b></p>
+
+<table>
+  <tr><th style="width:20%">Setting</th><th style="width:12%">Live value</th><th>What it does — and the consequence of changing it</th></tr>
+  <tr><td><b>Reading method</b></td><td><b>Feed</b></td>
+      <td>How a price is obtained. <b>Feed</b> is the price provider. <i>Simulated</i> invents prices
+      and must never touch real money — it makes you type <code>SIMULATED</code> to confirm, and that
+      prompt is your signal to stop.</td></tr>
+  <tr><td><b>Feed provider</b></td><td><b>Twelve Data — dated bars</b></td>
+      <td>⛔ <b>The most consequential control on the page.</b> “Dated bars” is what makes a late
+      close settle instead of refund. The older “live quote” option is kept only as an emergency
+      fallback. Do not change it without the owner.</td></tr>
+  <tr><td><b>Fallback margin</b></td><td><b>0.00%</b></td>
+      <td>What a chain inherits when its band is left on Inherit. 0.00% means <b>the asset’s minimum
+      move</b> — not “no band”. Raising it widens the band on <i>every</i> inheriting chain at once.</td></tr>
+  <tr><td><b>Staleness</b></td><td><b>90 s</b></td>
+      <td>How old a price may be and still be accepted. Lower is stricter; too low and honest
+      readings get refused and rounds refund.</td></tr>
+  <tr><td><b>Confidence floor</b></td><td><b>85</b></td>
+      <td>How sure a reading must be before we settle money on it. Leave it.</td></tr>
+  <tr><td><b>Max attempts</b></td><td><b>4</b></td>
+      <td>How many real attempts to read a price before the round refunds. A “not published yet”
+      answer inside 120 seconds does not count against this.</td></tr>
+  <tr><td><b>Default min / max stake</b></td><td><b>500</b> / <b>1,000,000</b></td>
+      <td>The bounds every chain inherits, in TZS.</td></tr>
+</table>
+
+<h3>7.4 · Add asset — Owner / Accounting only</h3>
+
+<table>
+  <tr><th style="width:17%">Field</th><th style="width:18%">Example</th><th>What it means</th></tr>
+  <tr><td><b>Asset class</b></td><td><code>crypto</code></td>
+      <td>⛔ <b>Decides the trading calendar.</b> <code>crypto</code> = 24/7; anything else follows
+      the gold/currency week and shuts at weekends. Getting this wrong once shut a coin that trades
+      every day. It is locked to the symbol for exactly that reason.</td></tr>
+  <tr><td><b>Symbol</b></td><td><code>① BTC/USD</code></td>
+      <td>A dropdown of only the symbols our price plan actually carries. Typing a symbol the feed
+      does not have produced 27 refunded rounds out of 27 once — hence the list.</td></tr>
+  <tr><td><b>Key</b></td><td><code>BTC</code></td>
+      <td>Your short name. <b>Never renamed</b> — every report groups by it.</td></tr>
+  <tr><td><b>Name EN / SW</b></td><td><code>Bitcoin</code> / <code>Bitcoin</code></td>
+      <td>What players see, in English and Swahili.</td></tr>
+  <tr><td><b>Decimals</b></td><td><code>2</code></td>
+      <td>How many decimal places the price carries. Sets the size of one tick.</td></tr>
+  <tr><td><b>Min move (ticks)</b></td><td><code>2</code> · gold <code>40</code></td>
+      <td>The band, in ticks. <b>The form will not accept 1</b>: a one-tick band is the same size as
+      the rounding error on the price, so the round would be decided by rounding rather than by the
+      market. The number to use is measured per asset — see section 3.</td></tr>
+  <tr><td><b>Price source URL</b></td><td><code>https://api.twelvedata.com/quote</code></td>
+      <td>The approved provider address. Must be <code>https://</code> and its host must already be
+      approved under <i>Sources &amp; categories</i>. The exact path does not matter — the reader
+      supplies its own.</td></tr>
+</table>
+
+<h2>8 · Your first live round — the ten-minute walkthrough</h2>
 
 <ol>
-  <li>Go to <b>Up &amp; Down → AI proposals</b>.</li>
-  <li>Choose the asset and round length. Press <b>Ask the AI to propose</b>.</li>
-  <li>Look at the <b>“What it found there”</b> column.
-    <ul>
-      <li>A <b>price and a time</b> → good, the page can be used.</li>
-      <li>A <b>dash</b> (<code>—</code>) → the AI could not read a price there. <b>This is normal</b>
-          and the check doing its job. Try a different page or asset.</li>
-    </ul>
-  </li>
-  <li>Press <b>Review</b>. Change the link, round length, margin or wording if you want. Then
-      <b>Approve</b>.</li>
-  <li>Press <b>Arm</b> and type <code>ARM</code> to confirm. The market starts at the next boundary.</li>
+  <li><b>Up &amp; Down → Overview.</b> Confirm BTC is enabled and reads <code>2 dp · min 2</code>.</li>
+  <li><b>+ Add chain</b> → Asset <code>① BTC · Bitcoin</code> → Duration <code>① 5 min</code> →
+      Winning band <code>Smallest possible</code> → stakes blank → <b>Add chain</b>. It appears
+      <b>STOPPED</b>. That is correct.</li>
+  <li>Check <b>MARKET</b> reads <i>open</i> and <b>MARGIN</b> reads <code>±0.02 ·min move</code>.</li>
+  <li>Press <b>Generate round</b>. Wait for the row to show a round. <i>If it refuses with “could
+      not read a price”, wait fifteen seconds and press it again</i> — you were inside the few
+      seconds before the minute’s bar was published.</li>
+  <li>Open <b>50pick.tz/updown</b> in another tab as a player. Your round is on the <b>5 min</b>
+      tab — the board opens on 3 min by default, so a 5-minute round is <i>not</i> missing, you are
+      on the wrong tab.</li>
+  <li>Place a small bet on <b>UP</b>. Watch <b>VOL</b> grow. From a second account bet <b>DOWN</b> —
+      you need both sides or the round refunds.</li>
+  <li>With 60 seconds left, watch the buttons grey out, the wording change from
+      <i>“betting closes in”</i> to <i>“result in”</i>, and the estimate become an exact figure.</li>
+  <li>At the close the card shows the result. Check <b>Rounds</b>: the outcome, the stake, the
+      players and the settlement time.</li>
+  <li>Check the winner’s wallet went up by the amount the card promised. <b>It will agree to the
+      shilling.</b></li>
 </ol>
 
-<h3>Option B — Set it up yourself</h3>
+<div class="box good">
+<p><span class="pill g">THIS EXACT WALKTHROUGH WAS DONE ON PRODUCTION</span> BTC 5-minute round,
+real money on both sides, opening 63,856.00 → closing 63,832.00 → <b>DOWN</b>. The UP stake of 500
+paid 0; the DOWN stake of 500 paid <b>870</b>; the winner’s wallet went from 24,400 to
+<b>25,270</b>. Pool 1,000, fee 130. Every figure matched.</p>
+</div>
+
+<h2 class="pb">9 · Refunds — the six reasons, and what to tell a player</h2>
+
+<p>A refund is <b>not</b> a loss and <b>not</b> an error. The player gets their whole stake back and
+we take no fee. But a player who is refunded always wants to know why, and the reason is on their
+screen already — in English, Swahili or Chinese, whichever they use. <b>Read it before answering.</b></p>
+
+<table>
+  <tr><th style="width:20%">Reason shown</th><th style="width:36%">What actually happened</th><th>What you say</th></tr>
+  <tr><td><b>Price did not move enough</b><br><code>no-move</code></td>
+      <td>The close landed between the two targets. Rare on the recommended band.</td>
+      <td>“The price finished inside the band, so neither side won. Your full stake is back.”</td></tr>
+  <tr><td><b>Nobody took the other side</b><br><code>unmatched</code></td>
+      <td>Only UP or only DOWN had money. There was no pool to pay from.</td>
+      <td>“Nobody bet against you, so there was nothing to win and nothing to lose. Your stake is
+      back in full.” ⛔ <b>Never call this “the price did not move”</b> — it used to say that, and
+      it was wrong.</td></tr>
+  <tr><td><b>We could not read the price</b><br><code>source-failed</code></td>
+      <td>The provider did not answer in time. Our problem, not theirs.</td>
+      <td>“We could not confirm the closing price, so we refunded everyone rather than guess.”</td></tr>
+  <tr><td><b>Market was shut</b><br><code>market-closed</code></td>
+      <td>A gold round hit the weekend.</td>
+      <td>“Gold does not trade at weekends, so the round could not be settled and everyone was
+      refunded.”</td></tr>
+  <tr><td><b>Cancelled by us</b><br><code>operator</code></td>
+      <td>Staff voided it deliberately. The reason you typed is on the record permanently.</td>
+      <td>Whatever the truth is. Always give a real reason when you void.</td></tr>
+  <tr><td><b>Round expired</b><br><code>abandoned</code></td>
+      <td>No price could be read within the deadline at all.</td>
+      <td>“We ran out of time to confirm a price, so every stake was returned.”</td></tr>
+</table>
+
+<div class="box stop">
+<p><span class="pill r">NEVER</span> <b>Never announce a price we have not confirmed.</b> If a screen
+shows a dash, that <i>is</i> the honest answer. Do not fill it in from another website — the round
+did not settle on that website and the player was never told it would.</p>
+</div>
+
+<h2>10 · Your daily check — five minutes</h2>
+
 <ol>
-  <li><b>Overview → + Add asset</b>: name, symbol, and the web page the price comes from. That
-      website must already be approved under <b>Sources &amp; categories</b>.</li>
-  <li>Switch the asset <b>on</b> (the toggle on the right of its row).</li>
-  <li><b>Add chain</b>: choose the asset and 5, 15 or 30 minutes.</li>
-  <li>Press <b>Start</b>.</li>
-</ol>
-
-<h2>5 · Rounds — checking the game is healthy</h2>
-
-<figure>
-  <img src="guide-img/rounds.png" alt="Rounds screen">
-  <figcaption>
-    Every round: when it opened and closed, the outcome, how much was staked, how many players,
-    and when it settled. In this picture every round shows <b>VOID</b> and <b>TZS 0</b> — that is
-    a game that is <b>not working</b>: no price could be read, so every stake was refunded. A
-    healthy day shows a mix of <b>UP</b> and <b>DOWN</b> with real volume.
-  </figcaption>
-</figure>
-
-<h3>Your daily check — five minutes</h3>
-<ol>
-  <li><b>Rounds</b> — are recent rounds settling UP/DOWN, not a long run of VOID?</li>
-  <li><b>Overview → price readings</b> — each asset should show a recent price and a recent time.
-      A dash means we cannot read it.</li>
-  <li><b>Chains are running</b>, not paused — unless you paused them on purpose.</li>
-  <li><b>Void rate</b> on each chain. Amber at 40% or more means that market needs attention.</li>
+  <li><b>Rounds</b> — are recent rounds resolving UP/DOWN rather than a run of refunds?</li>
+  <li><b>PAID A WINNER · 7D</b> on each chain. On the recommended band this should be high. A low
+      figure with reason <code>source-failed</code> is <b>our</b> problem — tell the technical team.
+      A low figure with <code>no-move</code> means the band is too wide for that asset and length.</li>
+  <li><b>MARKET</b> column — gold reads <i>shut</i> at the weekend. Expected, not a fault.</li>
+  <li><b>Both sides betting?</b> A chain whose rounds keep refunding as <code>unmatched</code> has no
+      audience. Stop it and put the players on one busier chain instead.</li>
   <li><b>Money</b> — staked and paid out look sensible for the day.</li>
 </ol>
 
-<div class="box warn">
-<p><span class="pill">REMEMBER</span> A void is not a loss. Every player gets their full stake back
-and we take no fee. A high void rate is a <b>quality</b> problem, not a money problem — but it
-makes the game boring, so fix it.</p>
-</div>
-
-<h2 class="pb">6 · When something looks wrong</h2>
+<h2>11 · When something looks wrong</h2>
 
 <table>
-  <tr><th style="width:30%">What you see</th><th style="width:32%">What it means</th><th>What to do</th></tr>
-  <tr>
-    <td>Price shows <code>—</code>; rounds keep voiding</td>
-    <td>We cannot read the price from that website.</td>
-    <td>Pause the chain. Tell the technical team. Players are safe — they are being refunded.</td>
-  </tr>
-  <tr>
-    <td>“Confirming price” for a long time</td>
-    <td>We are retrying the reading. By design.</td>
-    <td>Wait. If it never confirms, the round voids and refunds by itself.</td>
-  </tr>
-  <tr>
-    <td>A round is stuck holding player money</td>
-    <td>Something went wrong for that round.</td>
-    <td><b>Rounds → Void</b>. Give a clear reason. Every stake is refunded in full.</td>
-  </tr>
-  <tr>
-    <td>Too many VOID results</td>
-    <td>The margin is too wide for how much that price moves.</td>
-    <td>Lower the margin on that chain (e.g. 0.50% → 0.30%). Only affects new rounds.</td>
-  </tr>
-  <tr>
-    <td>You cannot change an asset's web page</td>
-    <td>Rounds are still open on the old page.</td>
-    <td>Correct behaviour — those players were told the old page. Pause, let them finish, then change it.</td>
-  </tr>
-  <tr>
-    <td>Top bar shows <b>AI OFF</b></td>
-    <td>Usually the AI key is missing — <b>not</b> that someone switched it off.</td>
-    <td>Tell the technical team. You can still review and start proposals already in the list.</td>
-  </tr>
+  <tr><th style="width:27%">What you see</th><th style="width:30%">What it means</th><th>What to do</th></tr>
+  <tr><td>Generate says <b>“could not read a price”</b></td>
+      <td>You pressed it in the few seconds before the minute’s bar was published. <b>Nothing was
+      created.</b></td>
+      <td>Wait fifteen seconds and press it again. If it fails three times, tell the technical team.</td></tr>
+  <tr><td>Gold chain reads <b>market shut</b></td>
+      <td>It is between Saturday 00:00 and Monday 01:00 EAT.</td>
+      <td>Nothing. Correct behaviour. Run crypto over the weekend.</td></tr>
+  <tr><td>Rounds keep refunding <b>unmatched</b></td>
+      <td>Only one side is betting.</td>
+      <td>Fewer chains, more players per chain. This is a <b>liquidity</b> problem, not a fault.</td></tr>
+  <tr><td>Rounds keep refunding <b>no-move</b></td>
+      <td>The band is too wide for that asset over that length.</td>
+      <td><b>Edit</b> the chain → band → <code>Smallest possible</code>. Future rounds only.</td></tr>
+  <tr><td><b>“Confirming price”</b> for a minute or two</td>
+      <td>The retry ladder, working as designed.</td>
+      <td>Wait. If it never confirms, the round refunds by itself.</td></tr>
+  <tr><td>A round is stuck holding money</td>
+      <td>Something went wrong for that one round.</td>
+      <td><b>Rounds → Void</b>, with a real reason. Every stake is refunded in full.</td></tr>
+  <tr><td>You cannot change an asset’s price source</td>
+      <td>A round that captured the old source is still unresolved.</td>
+      <td>Correct behaviour — those players were told the old source. Let them finish first.</td></tr>
+  <tr><td>A button reads <b>🔒 ACCOUNTING ONLY</b></td>
+      <td>Your role cannot use that control.</td>
+      <td>Ask the owner. Do not look for a way around it.</td></tr>
 </table>
 
-<h2>7 · Five rules — never break these</h2>
-
-<div class="box stop">
-<p><b>1. Never change where a price comes from while a round is open.</b> Those players were told
-one source and the round must finish on it. The system will stop you — do not look for a way
-around it.</p>
-<p><b>2. Never approve a proposal with no price shown.</b> A dash means the AI could not read that
-page. Starting it anyway means rounds that cannot settle.</p>
-<p><b>3. Never use the “Simulated” price feed on real money.</b> It invents prices. It is for
-testing only, and it asks you to type <code>SIMULATED</code> to confirm — that prompt is your
-warning to stop.</p>
-<p><b>4. Never announce a price we have not confirmed.</b> If a screen shows a dash, that is the
-honest answer. Do not fill it in from another website.</p>
-<p><b>5. Always give a real reason when you void a round.</b> It is a permanent record and the
-company may have to explain it.</p>
-</div>
-
-<h2>8 · Words you will see</h2>
+<h2>12 · Words you will see</h2>
 
 <table>
-  <tr><th style="width:24%">Word</th><th>Meaning</th></tr>
-  <tr><td><b>Asset</b></td><td>A thing with a price — Gold, Silver, S&amp;P 500.</td></tr>
-  <tr><td><b>Chain</b></td><td>One asset at one round length. “Gold 15m” is one chain. A chain produces rounds automatically.</td></tr>
-  <tr><td><b>Round</b></td><td>One 5, 15 or 30-minute window that players bet on.</td></tr>
-  <tr><td><b>Margin</b></td><td>How far the price must move for a side to win. Normally 0.50%.</td></tr>
+  <tr><th style="width:22%">Word</th><th>Meaning</th></tr>
+  <tr><td><b>Asset</b></td><td>A thing with a price — Bitcoin, Ethereum, gold.</td></tr>
+  <tr><td><b>Chain</b></td><td>One asset at one length. “BTC 5m” is one chain. It is what produces rounds.</td></tr>
+  <tr><td><b>Round</b></td><td>One window players bet on.</td></tr>
+  <tr><td><b>Band</b> / margin</td><td>How far the price must move for a side to win. <code>±0.02</code> on BTC.</td></tr>
+  <tr><td><b>Tick</b></td><td>The smallest step a price can take. At 2 decimals, one tick is 0.01.</td></tr>
+  <tr><td><b>Boundary</b></td><td>The clock mark where one round ends and the next begins.</td></tr>
+  <tr><td><b>Bar</b></td><td>One minute’s permanent price record. What we settle against.</td></tr>
   <tr><td><b>VOID</b></td><td>No winner. Every stake refunded in full, no fee taken.</td></tr>
-  <tr><td><b>Boundary</b></td><td>The clock moment a round opens and the next begins — :00, :15, :30, :45.</td></tr>
-  <tr><td><b>Staleness window</b></td><td>How old a price may be and still be accepted. Normally 90 seconds.</td></tr>
-  <tr><td><b>Proposal</b></td><td>An AI suggestion for a new market. It does nothing until a person approves and arms it.</td></tr>
-  <tr><td><b>Arm</b></td><td>Turning an approved proposal into a live, running market.</td></tr>
+  <tr><td><b>Pool</b></td><td>All the money staked on a round.</td></tr>
+  <tr><td><b>GGR</b></td><td>What the platform keeps: staked minus paid out.</td></tr>
+  <tr><td><b>Staleness window</b></td><td>How old a price may be and still be accepted. 90 seconds.</td></tr>
 </table>
 
 <div class="box">
-<p><span class="pill">IF IN DOUBT</span> <b>Pause the chain.</b> Pausing stops new rounds and lets
+<p><span class="pill">IF IN DOUBT</span> <b>Stop the chain.</b> Stopping prevents new rounds and lets
 open ones finish normally — no player is left holding a bet. It is always safe, it never needs
 technical help, and it is undone in one click.</p>
 </div>
 
 <footer>
-50pick · Up &amp; Down Operator Guide · Internal use only.
-Technical detail lives in <code>docs/UPDOWN-SPEC.md</code> and
-<code>docs/UPDOWN-ARCHITECTURE.md</code> — you do not need them to run the game.
+50pick · Up &amp; Down Operator Guide · Internal use only · Written 4 August 2026, against the live
+production configuration of that date. Every figure was read off production, not estimated.
+Technical detail lives in <code>docs/UPDOWN-SPEC.md</code> — you do not need it to run the game.
 </footer>
 
 </body>

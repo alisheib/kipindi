@@ -266,7 +266,13 @@ export function EditChainForm({
   return (
     <form onSubmit={onSubmit} className="rounded-lg border border-border bg-bg-elevated p-4 space-y-3 text-left">
       <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle">Edit {label}</p>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      {/* ⛔ NO VIEWPORT BREAKPOINT HERE. This panel renders inside the LAST TABLE CELL of a chain
+          row — about 390px wide — but `sm:grid-cols-3` responds to the 1440px VIEWPORT, not to the
+          space the panel actually has. So it laid three columns into 390px and the band dropdown
+          rendered as "Sma…": the operator could not read which band was selected on the one
+          control that decides what winning means. Found by LOOKING at the screenshot taken for the
+          operator guide, not by any check. Stacked, because stacked is what fits. */}
+      <div className="grid grid-cols-1 gap-3">
         {/* ⛔ THE SAME DROPDOWN AS THE ADD FORM. This was a typed percentage while the add form
             next to it was already a dropdown — one control in two shapes, which is the drift
             "one control, one place" exists to stop. An operator who cannot type a bad band into
