@@ -3741,12 +3741,12 @@ feed failure outranks a low pay rate, so SOL and BTC 15m never look the same aga
 
 ### 🔴 AND THE DRIVE FOUND E-65 SURVIVING ITS OWN FIX, ONE BRANCH FURTHER DOWN
 
-The accountant read handed it over: round  resolved **UP** with echo
+The accountant read handed it over: round `udr_06c8b7b8128a6de53c64` resolved **UP** with echo
 alone on DOWN — staked 500, **paid back 500, GGR 0**. A round that DECIDED and refunded for want
 of a counterparty: E-65 exactly, live, on production.
 
 ⛔ **And the page still said nothing about why.** The round detail chain reads
-, so a player
+`isOpen ? … : decided && myPosition && result ? … : locked ? … : refundReason ? …`, so a player
 who HELD A POSITION matched the RESULT panel first and never reached the explanation — **the one
 player the sentence was written for.**
 
