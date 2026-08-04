@@ -3876,6 +3876,52 @@ so a tick-floor margin on crypto measures the market, not the feed.
 
 ## 6b. NEXT SESSION — start here
 
+### 🟢 Laptop A, session 22 (2026-08-04) — THE SETTLEMENT REBUILD IS UNDER WAY AND HALF SHIPPED. Read §6ad first; it carries every decision and the measured evidence.
+
+**Read `## 6ad` above before anything else.** It holds the complete agreed record (14 items), the
+settled final design for player and admin, seven surprising scenarios, and what is still owed to
+Ali. Nothing below repeats it.
+
+#### Shipped and live this session
+
+| Commit | What | Guard |
+|---|---|---|
+| `8ba0f62c` | **The gate**: `ops-updown-probe-bars.mts` proves a dated bar is buildable — bar T exists at **+5s** and its `open` never changed to +180s | read-only probe |
+| `6333ef0e` | **Chain health stops lying**: decisive rate + voids split by reason + a 7-day window. A feed failure now outranks a low pay rate | `test:updown-chain-stats` 28, RED 6/6 |
+| `e85a7a71` | **Minute-aligned boundaries.** Every boundary this platform ever made carried seconds (`21:27:37`) and **no bar is labelled that** | `test:updown-grid` 17, RED 4/4 |
+| `fd59e645` | **`TwelveDataBarFeed`**, behind the existing `PriceFeed`, **switched OFF**. `timezone=UTC`, exact-bar-only, `no-bar` refusal, bad-print guard, per-bar evidence. Plus `FEED_PROVIDERS` as one shared list | `test:updown-bars` 22, RED 7/7 |
+
+⛔ **`feedProvider` is still `twelvedata`. No money has touched the new reader.** Switching it is an
+audited config edit with no deploy — that is the rollback lever, and it is why this was safe to ship.
+
+#### ⏭️ **RESUME AT:** ① **Phase 1c — SHADOW.** Read both `/quote` and the bar for each boundary and record the delta in the audit payload ONLY; do not branch settlement on it. ≥100 boundaries across all assets spanning a weekend. ⚠️ **This is the step that will be under pressure to skip and it is the cheapest insurance in the plan** — if the median delta is a material fraction of the band, that is a finding to resolve BEFORE the switch, not after.
+
+Then, in order: **② Phase 1d** seal the close — the healer's past-deadline branch currently voids
+*without re-reading* (`updown-service.ts:980-995`), justified by a staleness premise that becomes
+false; invert it to settle-from-bar with a bounded lookback. **③ Phase 1e** the betting window
+(**E-72**) and the open-from-a-bar, **together, never separately** — shipping the open move without
+the window makes the live last-look hole worse while looking like a fairness improvement.
+**④ Phase 2** tick-floor margin + per-asset recommendation in the form. **⑤ Phase 3** durations
+3/5/10/15/30/60 on the epoch lattice. **⑥ Phase 4** the fully-controlled admin. **⑦ Phase 6** void
+honesty on every player surface. **⑧ Phase 7** E-70, E-59, the accountant/reports pass, 4-width sweep.
+
+#### ⚠️ Traps this session paid for — all in my own checks, none in the product
+
+- **A guard that greps for a defect's code will match the comment explaining its fix.** Hit
+  **twice in one session** (`voids / resolved`, then `Math.floor(Date.now() / 1000) * 1000`), and it
+  is the same shape as the two tracker-hygiene guards that matched their own prose. **Strip comments
+  before asserting a defect is gone; anchor on statements, not phrases.**
+- **CRLF, for the fourth time.** Two mutations reported ANCHOR NOT FOUND because `updown-feed.ts` is
+  CRLF and the anchors were `\n`. The harness told the truth only because it checks its own anchors
+  before believing a green — keep that check in every new harness.
+- **A `LEFT JOIN` counted a chain with zero rounds as one unresolved round**, which read as stranded
+  money until checked directly. There is none.
+- **A `Select-String` filter for "error" reported a passing build as failed**, and a `2>&1` on a
+  native command returns non-zero on success. Verify a build with `$LASTEXITCODE`, not by grepping.
+- **PowerShell splats a comma-separated argument into separate arguments** — quote every list.
+
+
+
 ### 🟢 Laptop B, session 21 (2026-08-03 17:00 → 2026-08-04 02:00 UTC) — ⛔ UP & DOWN IS NOW OPERATOR-DRIVEN. Read this first; it supersedes everything below.
 
 ## 🚩 START HERE IF YOU ARE ON A DIFFERENT MACHINE
