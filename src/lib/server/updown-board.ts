@@ -267,7 +267,24 @@ export async function getBoard(opts?: { assetKey?: string; durationMinutes?: num
     }),
   );
 
-  const activeAsset = (opts?.assetKey ? assets.find((a) => a.key === opts.assetKey) : undefined) ?? assets[0] ?? null;
+  // ⛔ DEFAULT TO AN ASSET THAT ACTUALLY HAS A CHAIN, NOT MERELY THE FIRST ONE.
+  //
+  // 🔴 `assets[0]` was the default, and an enabled asset with NO chains yields `durations: []`,
+  // which falls to `activeDuration: null` and returns `chainPaused: true` with an empty board.
+  // So a player landing on `/updown` could be shown "no games" while a round was live on the very
+  // next asset — and the operator guide actively invites this: it tells the operator to choose
+  // whichever asset they like, and four assets are enabled while typically one carries a chain.
+  //
+  // ⚠️ It only worked at all because BTC happened to sort first AND happened to be the asset the
+  // chain was built on. Build the first chain on gold instead and the board goes dark. That is
+  // luck, not behaviour.
+  //
+  // An EXPLICIT `?asset=` still wins — including onto an asset with no chains, because a player
+  // who asked for gold should be told gold is idle, not silently redirected somewhere else.
+  const firstPlayable = assets.find((a) => a.durations.length > 0);
+  const activeAsset =
+    (opts?.assetKey ? assets.find((a) => a.key === opts.assetKey) : undefined)
+    ?? firstPlayable ?? assets[0] ?? null;
   if (!activeAsset) return { assets, activeAsset: null, activeDuration: null, rounds: [], recent: [], chainPaused: false, stakeBounds: defaultBounds };
 
   const activeDuration =

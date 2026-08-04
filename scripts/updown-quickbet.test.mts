@@ -212,6 +212,52 @@ async function mine(userId: string | undefined): Promise<{ up: number; down: num
   ok("27 · a closed round refuses a late tap", !late.ok, late.ok ? "accepted a bet on a closed round!" : late.error);
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 28 · THE DEFAULT LANDING — a player with NO query string must reach a PLAYABLE asset
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// 🔴 `getBoard()` defaulted to `assets[0]`. An enabled asset with NO chains yields
+// `durations: []`, which falls to `activeDuration: null` and returns `chainPaused: true` with an
+// empty board. So a player landing on `/updown` could be told "no games" while a round was LIVE
+// on the very next asset.
+//
+// ⛔ THE OPERATOR GUIDE ACTIVELY INVITES THIS. It tells the operator to pick whichever asset they
+// like, and production has four assets enabled while typically ONE carries a chain. It worked only
+// because BTC happened to sort first AND happened to be the asset the chain was built on — build
+// the first chain on gold instead and the board goes dark. That is luck, not behaviour.
+{
+  // A second enabled asset with NO chains, planted BEFORE the playable one in sort order, which
+  // is exactly the shape production is one operator decision away from.
+  const idle = await createAsset({
+    key: "IDLE", symbol: "ETH/USD", nameEn: "Ethereum", nameSw: "Ethereum", nameZh: "以太坊",
+    iconKey: "crypto", priceSourceUrl: "https://www.kitco.com/price/precious-metals",
+    category: "crypto", decimals: 2, minMoveTicks: 2, sortOrder: -10,
+  }, "off");
+  if (!idle.ok) {
+    ok("28.1 · (setup) an idle enabled asset was created", false, idle.error);
+  } else {
+    await setAssetEnabled(idle.data.id, true, "off");
+
+    const board = await getBoard({ userId: alice });
+    ok("28.1 · ⭐ with no query string the board lands on an asset that HAS a chain",
+       board.activeAsset?.key === "XAU",
+       `landed on ${board.activeAsset?.key ?? "(none)"} · durations ${JSON.stringify(board.activeAsset?.durations ?? [])}`);
+    ok("28.2 · …so a duration resolves and the board is not reported paused",
+       board.activeDuration === 5 && board.chainPaused === false,
+       `duration ${board.activeDuration} · paused ${board.chainPaused}`);
+    // ⛔ An EXPLICIT ask still wins, even onto an idle asset: a player who asked for gold must be
+    // told gold is idle, not silently moved somewhere else.
+    const asked = await getBoard({ assetKey: "IDLE", userId: alice });
+    ok("28.3 · ⛔ an EXPLICIT ?asset= still wins, even onto an idle asset",
+       asked.activeAsset?.key === "IDLE" && asked.activeDuration === null,
+       `landed on ${asked.activeAsset?.key} · duration ${asked.activeDuration}`);
+    // And the idle asset stays VISIBLE in the switcher — hiding it would answer
+    // "why isn't gold in the list?" with silence.
+    ok("28.4 · …and the idle asset is still listed, not hidden",
+       board.assets.some((a) => a.key === "IDLE"));
+  }
+}
+
 console.log(`\nupdown-quickbet: ${pass} passed, ${fail} failed`);
 if (fail > 0) { console.error("\n✗ QUICK-BET BROKEN — the one-tap card would mischarge or misreport the player's position.\n"); process.exit(1); }
 console.log("updown-quickbet: OK — one tap places once, duplicates pay once, distinct taps stack, 'you're in' is per-viewer, bad taps refused");
