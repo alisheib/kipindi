@@ -13,7 +13,23 @@ import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 
-type Option = { value: string; label: string };
+type Option = {
+  value: string;
+  label: string;
+  /**
+   * Shown, but not choosable.
+   *
+   * ⛔ GREYED WITH ITS REASON, NEVER HIDDEN (Ali, 2026-08-04). *"Why isn't gold in the list?"*
+   * is a worse question for an operator than seeing gold greyed with the answer beside it — a
+   * missing option looks like a bug in the console, while a disabled one with a reason looks
+   * like the platform knowing something. It is also how the Up & Down symbol catalogue already
+   * explains SPX ("not on the current Twelve Data plan").
+   */
+  disabled?: boolean;
+  /** The reason, in the reader's own terms. Rendered beneath the label, wrapped not truncated —
+   *  a reason that is cut off at the panel edge has not been given. */
+  hint?: string;
+};
 
 type Props = {
   name?: string;
@@ -126,13 +142,28 @@ export function Select({
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") { setOpen(false); triggerRef.current?.focus(); }
-      if (e.key === "ArrowDown") { e.preventDefault(); setFocusIdx((i) => Math.min(options.length - 1, i + 1)); }
-      if (e.key === "ArrowUp") { e.preventDefault(); setFocusIdx((i) => Math.max(0, i - 1)); }
-      if (e.key === "Enter") { e.preventDefault(); if (focusIdx >= 0) pick(options[focusIdx].value); }
+      // ⛔ ARROW KEYS SKIP DISABLED OPTIONS. Landing focus on something Enter refuses to select
+      // is a dead end that reads as a broken dropdown — and it is only reachable by keyboard, so
+      // it would never appear in a screenshot sweep. `step` walks past them in either direction
+      // and stays put rather than wrapping when there is nothing selectable left.
+      const step = (from: number, dir: 1 | -1) => {
+        for (let i = from + dir; i >= 0 && i < options.length; i += dir) {
+          if (!options[i]!.disabled) return i;
+        }
+        return from;
+      };
+      if (e.key === "ArrowDown") { e.preventDefault(); setFocusIdx((i) => step(i, 1)); }
+      if (e.key === "ArrowUp") { e.preventDefault(); setFocusIdx((i) => (i <= 0 ? i : step(i, -1))); }
+      if (e.key === "Enter") {
+        e.preventDefault();
+        if (focusIdx >= 0 && !options[focusIdx]?.disabled) pick(options[focusIdx]!.value);
+      }
       // Type-to-search: jump to first option starting with typed char
       if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
         const char = e.key.toLowerCase();
-        const idx = options.findIndex((o) => o.label.toLowerCase().startsWith(char));
+        // Skips disabled ones for the same reason the arrows do — typing "g" and landing on a
+        // gold option Enter will not take is the same dead end by another route.
+        const idx = options.findIndex((o) => !o.disabled && o.label.toLowerCase().startsWith(char));
         if (idx >= 0) setFocusIdx(idx);
       }
     };
@@ -215,18 +246,35 @@ export function Select({
               type="button"
               role="option"
               aria-selected={o.value === selected}
-              onClick={() => pick(o.value)}
-              onMouseEnter={() => setFocusIdx(i)}
+              // ⛔ `aria-disabled`, NOT the `disabled` attribute. A `disabled` button is removed
+              // from the accessibility tree entirely, so a screen-reader user would not hear the
+              // option OR its reason — which is precisely the "why isn't it in the list?"
+              // confusion this feature exists to prevent, reproduced for the people who can
+              // least afford it. `aria-disabled` keeps it announced and unselectable.
+              aria-disabled={o.disabled || undefined}
+              onClick={() => { if (!o.disabled) pick(o.value); }}
+              onMouseEnter={() => { if (!o.disabled) setFocusIdx(i); }}
               className={cn(
-                "w-full px-3 py-2.5 text-left font-mono text-[14px] transition-colors truncate flex items-center justify-between gap-2",
+                "w-full px-3 py-2.5 text-left font-mono text-[14px] transition-colors flex items-start justify-between gap-2",
                 "first:rounded-t-lg last:rounded-b-lg",
-                i === focusIdx ? "bg-bg-overlay text-text" : "text-text-muted",
-                o.value === selected && "text-brand-300 font-semibold",
+                o.disabled
+                  ? "cursor-not-allowed text-text-faint"
+                  : i === focusIdx ? "bg-bg-overlay text-text" : "text-text-muted",
+                !o.disabled && o.value === selected && "text-brand-300 font-semibold",
               )}
             >
-              <span className="truncate">{o.label}</span>
-              {o.value === selected && (
-                <svg viewBox="0 0 24 24" width={14} height={14} fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="M20 6 9 17l-5-5" /></svg>
+              <span className="min-w-0 flex-1">
+                <span className={cn("block", !o.hint && "truncate")}>{o.label}</span>
+                {/* ⚠️ WRAPPED, NOT TRUNCATED. A reason cut off at the panel edge has not been
+                    given, and the operator is left exactly where they started. */}
+                {o.hint && (
+                  <span className="mt-0.5 block whitespace-normal text-[11px] leading-[1.45] text-text-faint">
+                    {o.hint}
+                  </span>
+                )}
+              </span>
+              {!o.disabled && o.value === selected && (
+                <svg viewBox="0 0 24 24" width={14} height={14} fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="mt-1 shrink-0"><path d="M20 6 9 17l-5-5" /></svg>
               )}
             </button>
           ))}

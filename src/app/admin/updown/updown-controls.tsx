@@ -19,7 +19,7 @@
  *    generic "failed" would throw away the only useful part.
  */
 
-import { useTransition, useState } from "react";
+import { useTransition, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useDeferredToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,19 @@ import { ALLOWED_DURATIONS } from "@/lib/updown-durations";
 // provider list, never a literal array in this file. A hand-copied list is how a server comes
 // to accept a value no screen can ask for.
 import { FEED_PROVIDERS, findProvider, type FeedProviderId } from "@/lib/updown-providers";
+/**
+ * ⛔ THE READINESS ARRIVES AS PROPS, COMPUTED ON THE SERVER — it is NOT imported here.
+ *
+ * `symbolReadiness` lives in `lib/server/updown-symbols.ts`, which reaches the market calendar
+ * and the whole symbol catalogue. Importing it from a `"use client"` file would pull all of that
+ * into the browser bundle — the exact failure `updown-durations.ts` and `updown-providers.ts`
+ * were created as no-imports modules to avoid.
+ *
+ * ⭐ And it keeps the guarantee that matters: the level and reason shown here are produced by
+ * the SAME function `createChain` refuses with, so the greyed option and the server's refusal
+ * are one answer rather than two that can drift.
+ */
+export type DurationReadiness = { minutes: number; level: 1 | 2 | 3; mark: string; reason: string };
 
 // ⛔ E-62 · ONE SOURCE FOR THE DURATIONS — see `src/lib/updown-durations.ts`. This was a
 // hand-copied `[5, 15, 30]`; a duration added server-side would have been unreachable here.
@@ -646,10 +659,44 @@ export function AddAssetForm({ catalogue }: { catalogue: SymbolOption[] }) {
 
 // ── Add chain ────────────────────────────────────────────────────────────────
 
+/**
+ * The winning bands an operator may choose, each stating its CONSEQUENCE.
+ *
+ * ⛔ A LIST, NOT A NUMBER FIELD (Ali's decision, 2026-08-04). The margin decides what winning
+ * IS, and a free field let an operator type a band that voids every round the chain will ever
+ * emit — which is E-32, the finding this console already carries scar tissue from: 0.5% on a
+ * 5-minute BTC round is a ±$316 move, so the chain fills its history with `no-move` VOIDs while
+ * the price feed works perfectly. Indistinguishable, from the outside, from an outage.
+ *
+ * ⭐ The default is the TICK FLOOR (0 bps), and the labels say what each choice does to the pay
+ * rate rather than naming a percentage — because "0.02%" tells an operator nothing about whether
+ * players get paid, and the measured void rate tells them everything.
+ *
+ * ⚠️ The percentages are from the 5,000-bar-per-asset study (§6ad); they are measured on BTC at
+ * 5 minutes and are indicative for other assets, which is why each hint says "about".
+ */
+const MARGIN_CHOICES: ReadonlyArray<{ bps: number; label: string; hint: string }> = [
+  { bps: 0, label: "Smallest possible (recommended)",
+    hint: "The price only has to move one step either way. About 99 in 100 rounds pay a winner." },
+  { bps: 2, label: "Narrow · 0.02%",
+    hint: "About 1 round in 3 refunds instead of paying — the price has to travel further than a typical 5-minute move." },
+  { bps: 5, label: "Wide · 0.05%",
+    hint: "Most rounds refund. Only for a long round, or an asset that moves far in the time." },
+  { bps: 50, label: "Very wide · 0.50%",
+    hint: "Almost every short round refunds and earns no fee. This was the old default and it is why E-32 was filed." },
+];
+
 export function AddChainForm({
-  assets, marginSchedule, defaultMarginBps,
+  assets, readinessByAsset, marginSchedule, defaultMarginBps,
 }: {
-  assets: Array<{ id: string; key: string; nameEn: string; category: string }>;
+  /**
+   * ⭐ `symbol` is required, not decorative: the duration dropdown's readiness is a property of
+   * the SYMBOL, not of the asset row. Gold at 5 minutes is refused because XAU/USD's own feed
+   * disagrees with itself by up to $0.87 at one instant — a fact about the instrument.
+   */
+  assets: Array<{ id: string; key: string; nameEn: string; category: string; symbol: string }>;
+  /** Per asset id → what each duration's readiness is, computed on the server. */
+  readinessByAsset: Record<string, DurationReadiness[]>;
   /** The E-32 ladder, so the margin placeholder shows what THIS asset class and duration
    *  will actually inherit. It was a hard-coded "inherit (0.5)" before, which is now wrong
    *  for every combination the form can produce — and a chain created at 0.5% voids
@@ -664,6 +711,29 @@ export function AddChainForm({
   // Mirrors what the picker currently shows, so the placeholder tracks the selection.
   const [assetId, setAssetId] = useState(assets[0]?.id ?? "");
   const [dur, setDur] = useState("5");
+  const [marginChoice, setMarginChoice] = useState("0");
+
+  // ⭐ THE READINESS OF EACH DURATION, FOR THE ASSET CURRENTLY PICKED. Recomputed on every
+  // asset change, because it is a property of the SYMBOL: switching from Bitcoin to Gold must
+  // grey 3/5/10 immediately, with gold's own measured reason attached.
+  const durationOptions = (readinessByAsset[assetId] ?? []).map((r) => ({
+    value: String(r.minutes),
+    label: `${r.mark} ${r.minutes} min`,
+    disabled: r.level === 3,
+    hint: r.reason || undefined,
+  }));
+
+  // ⚠️ If the picked asset cannot run the currently-selected duration, move the selection to
+  // the first one it CAN. Otherwise the form sits on a greyed option and the operator has to
+  // work out for themselves that the disabled row is the one that will be submitted.
+  useEffect(() => {
+    const current = durationOptions.find((o) => o.value === dur);
+    if (current?.disabled) {
+      const firstUsable = durationOptions.find((o) => !o.disabled);
+      if (firstUsable) setDur(firstUsable.value);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assetId]);
 
   /** The same resolution the server does (`resolveScheduledMarginBps`): exact category
    *  before `"*"`, then the tightest window that still covers this duration. */
@@ -718,13 +788,26 @@ export function AddChainForm({
           <Select name="assetId" value={assetId} onChange={setAssetId}
             options={assets.map((a) => ({ value: a.id, label: `${a.key} · ${a.nameEn}` }))} />
         </Field>
+        {/* ⭐ EVERY OPTION CARRIES A NUMBERED READINESS SIGNAL, and an unusable one is GREYED
+            WITH ITS REASON rather than hidden. Ali: "I don't know how knowledgeable my admins
+            are in typing asset names" — and which durations an asset can honestly run is a far
+            harder question than a symbol. ⛔ The levels come from `symbolReadiness`, the SAME
+            function `createChain` refuses with, so the console and the money path cannot
+            disagree about what is allowed. */}
         <Field label="Duration">
-          <Select name="durationMinutes" value={dur} onChange={setDur}
-            options={DURATIONS.map((d) => ({ value: String(d), label: `${d} min` }))} />
+          <Select name="durationMinutes" value={dur} onChange={setDur} options={durationOptions} />
         </Field>
-        <Field label="Margin % (optional)">
-          <Input name="marginPct" type="number" step="0.01" min="0" max="20"
-            placeholder={`inherit (${(inherited / 100).toFixed(2)})`} size="sm" />
+        {/* ⛔ A DROPDOWN, NOT A TYPED PERCENTAGE. This was a free number field, which let an
+            operator type a band that voids every round the chain ever emits — E-32 exactly, and
+            the reason that finding exists. The options are the few values that mean something,
+            each stating its consequence. */}
+        <Field label="Winning band">
+          <Select name="marginBpsChoice" value={marginChoice} onChange={setMarginChoice}
+            options={MARGIN_CHOICES.map((m) => ({
+              value: String(m.bps),
+              label: m.label,
+              hint: m.hint,
+            }))} />
         </Field>
         <Field label="Min stake (optional)"><Input name="minStake" type="number" placeholder="inherit" size="sm" /></Field>
         <Field label="Max stake (optional)"><Input name="maxStake" type="number" placeholder="inherit" size="sm" /></Field>

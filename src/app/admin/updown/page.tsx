@@ -4,7 +4,7 @@ import { ScrollX } from "@/components/ui/scroll-x";
 import { listAssets, listChains, getUpDownConfig, ALLOWED_DURATIONS, resolveScheduledMarginBps } from "@/lib/server/updown-config";
 // E-46: the Add-asset form is driven by the catalogue, so a symbol/category pair that
 // cannot work is not offerable. The server enforces the same rule in `createAsset`.
-import { SYMBOL_CATALOGUE } from "@/lib/server/updown-symbols";
+import { SYMBOL_CATALOGUE, symbolReadiness, readinessMark, findSymbol } from "@/lib/server/updown-symbols";
 // E-36 — a shut market must be VISIBLY shut. A wall of VOIDs looks identical whether the
 // market is closed or the feed is broken, and that ambiguity is what E-16/E-25/E-32 all cost.
 import { marketSessionAt, nextOpenAfter } from "@/lib/server/market-calendar";
@@ -275,7 +275,20 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
           padding="p-0"
           action={
             <AddChainForm
-              assets={assets.filter((a) => a.enabled).map((a) => ({ id: a.id, key: a.key, nameEn: a.nameEn, category: a.category }))}
+              assets={assets.filter((a) => a.enabled).map((a) => ({ id: a.id, key: a.key, nameEn: a.nameEn, category: a.category, symbol: a.symbol }))}
+              // ⭐ Computed HERE, on the server, with the SAME `symbolReadiness` that
+              // `createChain` refuses with — so a greyed option and a server refusal are one
+              // answer. Computing it in the client component would drag the whole symbol
+              // catalogue and the market calendar into the browser bundle.
+              readinessByAsset={Object.fromEntries(
+                assets.filter((a) => a.enabled).map((a) => [
+                  a.id,
+                  ALLOWED_DURATIONS.map((d) => {
+                    const r = symbolReadiness(findSymbol(a.symbol), d);
+                    return { minutes: d, level: r.level, mark: readinessMark(r.level), reason: r.reason };
+                  }),
+                ]),
+              )}
               marginSchedule={cfg.marginSchedule}
               defaultMarginBps={cfg.defaultMarginBps}
             />

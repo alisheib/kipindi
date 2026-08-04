@@ -3640,6 +3640,78 @@ workstation shows an SLA countdown, but nothing escalates when it runs out. Ali'
   platform zone (+3) keeps it on the right day, and the E-2 fix is safe. The earlier note was
   the `pg` −3h trap (§3) reading back through an un-cast client.
 
+## 6ai. ⭐ THE FULLY CONTROLLED ADMIN — nothing that decides whether a price arrives is typed (2026-08-04, session 23)
+
+> Executes §6ad phase 4 and item 12. §6ad is settled; nothing here re-opens it.
+
+Ali: *"I don't know how knowledgeable my admins are in typing asset names."*
+
+### Every pricing-relevant field is a dropdown, from ONE shared list each
+
+| Field | Source of truth | Was |
+|---|---|---|
+| Asset | `updown-symbols.ts` catalogue | already a dropdown (E-46) |
+| Duration | `updown-durations.ts` | a dropdown, but with no per-asset readiness |
+| Provider | `updown-providers.ts` | already a dropdown |
+| **Winning band** | `MARGIN_CHOICES` | 🔴 **a free number field** |
+
+🔴 **The margin was typed, and that is E-32's own door.** A free percentage field let an operator
+enter a band that voids every round the chain will ever emit — 0.5% on a 5-minute BTC round is a
+±$316 move, so the chain fills with `no-move` VOIDs while the feed works perfectly, which is
+indistinguishable from an outage. It is now four options, each stating its **consequence** rather
+than a number: *"About 99 in 100 rounds pay a winner"* beats *"0.02%"*, because the percentage
+tells an operator nothing about whether players get paid.
+
+### ⭐ Numbered readiness — ① ready · ② warning · ③ unusable
+
+Every duration option carries its mark and, when it is not ①, **its reason**. An unusable option
+is **greyed with the reason, never hidden** — *"why isn't gold in the list?"* is a worse question
+than seeing gold greyed with the answer beside it. Switching the asset from Bitcoin to Gold greys
+3/5/10 immediately and moves the selection to the first duration gold can actually run.
+
+⛔ **THE GREYING AND THE REFUSAL ARE THE SAME FUNCTION.** `symbolReadiness` backs both the
+dropdown and `createChain`'s server gate, and §4.1 of the guard walks **every symbol × every
+duration** proving the two never disagree. A dropdown is a courtesy — a stale page, a scripted
+POST or a second tab can still submit anything — and if the console and the money path had
+separate copies of the rule, the drift would be found by a round that had already taken stakes.
+
+### The kit gained a disabled option, because that is where it belongs
+
+Per §0.1b rule 1 — *fix the shared component, not the page* — `Select` now supports
+`disabled` + `hint`, so every dropdown on the platform can explain itself. Four things had to be
+right together, and each alone still leaves a broken case:
+
+- ⛔ **`aria-disabled`, never the `disabled` attribute.** A `disabled` button leaves the
+  accessibility tree entirely, so a screen-reader user would hear neither the option **nor its
+  reason** — the exact confusion this feature exists to prevent, reproduced for the people who
+  can least afford it.
+- ⛔ **Arrow keys skip disabled options.** Focus landing on something Enter refuses to take is a
+  dead end that reads as a broken dropdown — and it is **only reachable by keyboard**, so no
+  screenshot sweep would ever show it. Type-to-search skips them for the same reason.
+- ⚠️ **The reason WRAPS rather than truncating.** A reason cut off at the panel edge has not been
+  given, and the operator is left exactly where they started.
+
+### ⚠️ And the readiness is computed on the SERVER, not imported into the console
+
+The first version imported `symbolReadiness` straight into `updown-controls.tsx` — a
+`"use client"` file. It typechecked and it built, and it would have pulled the whole symbol
+catalogue and the market calendar into the browser bundle: **precisely the failure
+`updown-durations.ts` and `updown-providers.ts` exist as no-imports modules to avoid.** The page
+computes a per-asset readiness map and passes it down, so the client keeps the guarantee (one
+function, one answer) without the payload.
+
+**Guard**: `npm run test:updown-admin-options` (**25**), proven **RED 9/9** by
+`scripts/updown-admin-options-red.mjs` — `hide-instead-of-grey` (the tidy-looking mutation that
+recreates Ali's question) · `greyed-with-no-reason` · `margin-back-to-a-typed-field` ·
+`console-imports-the-server-module` · `disabled-option-becomes-clickable` ·
+`arrows-park-on-a-disabled-option` · `disabled-attribute-instead-of-aria` ·
+`console-and-server-drift` · `page-stops-computing-readiness`.
+
+⚠️ **A mutation must remove the BEHAVIOUR, not rename the evidence.** The margin mutation first
+renamed `MARGIN_CHOICES` to `MARGIN_CHOICES_RENAMED` — which the guard's substring match still
+found, so the file changed and nothing was falsified. It now swaps the `Select` back for the
+`Input` that actually shipped.
+
 ## 6ah. ⭐ 3-MINUTE ROUNDS, THE EPOCH LATTICE, AND GOLD AT 15m+ (2026-08-04, session 23)
 
 > Executes §6ad phase 3 and Ali's gold decision. §6ad is settled; nothing here re-opens it.
@@ -4272,7 +4344,7 @@ so a tick-floor margin on crypto measures the market, not the feed.
 ⛔ **`feedProvider` is still `twelvedata`. No money has touched the new reader yet** — the switch
 is gated on the shadow run's median delta (§6ae) and lands with phase 1e.
 
-#### ⏭️ **RESUME AT:** ① **Phase 4 — the fully controlled admin.** Phases 1c/1d/1e/2/3 are DONE (§6ae, §6af, §6ag, §6ah). `openRound` writes `selectionClosedAt: null`; set it to the last **20% of the round, floored at 30s**, config-driven. ⭐ The server enforcement is already free — `buyPosition` (`market-service.ts:621`) refuses `isSelectionClosed`. The card needs a **LOCKED** state whose countdown **RE-LABELS itself** and whose message carries its reason, and the lock turns `× 1.4 est.` into an exact payout. Ali's call 2026-08-04: **one account may NOT hold both sides of a round** — enforce in `buyPosition`, RED-first. Then **② Phase 2** tick-floor margin + `minMoveTicks ≥ 2` (see **E-73**) · **③ Phase 3** durations 3/5/10/15/30/60 on the epoch lattice, **gold 15m+ only** (Ali's call, 2026-08-04) · **④ Phase 4** the fully-controlled admin · **⑤ Phase 6** void honesty · **⑥ Phase 7** E-70, E-59, accountant/reports, the 4-width sweep, and consolidating the Up & Down docs to one truth.
+#### ⏭️ **RESUME AT:** ① **Phase 6 — void honesty on every player surface (E-65, E-64, E-56).** Phases 1c/1d/1e/2/3/4 are DONE (§6ae, §6af, §6ag, §6ah, §6ai). `openRound` writes `selectionClosedAt: null`; set it to the last **20% of the round, floored at 30s**, config-driven. ⭐ The server enforcement is already free — `buyPosition` (`market-service.ts:621`) refuses `isSelectionClosed`. The card needs a **LOCKED** state whose countdown **RE-LABELS itself** and whose message carries its reason, and the lock turns `× 1.4 est.` into an exact payout. Ali's call 2026-08-04: **one account may NOT hold both sides of a round** — enforce in `buyPosition`, RED-first. Then **② Phase 2** tick-floor margin + `minMoveTicks ≥ 2` (see **E-73**) · **③ Phase 3** durations 3/5/10/15/30/60 on the epoch lattice, **gold 15m+ only** (Ali's call, 2026-08-04) · **④ Phase 4** the fully-controlled admin · **⑤ Phase 6** void honesty · **⑥ Phase 7** E-70, E-59, accountant/reports, the 4-width sweep, and consolidating the Up & Down docs to one truth.
 
 ### 🟢 Laptop A, session 22 (2026-08-04) — THE SETTLEMENT REBUILD IS UNDER WAY AND HALF SHIPPED. Read §6ad first; it carries every decision and the measured evidence.
 

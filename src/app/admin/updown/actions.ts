@@ -141,14 +141,22 @@ export async function createChainAction(formData: FormData) {
     return { ok: false as const, error: `Duration must be one of ${ALLOWED_DURATIONS.join(", ")} minutes.` };
   }
   try {
+    // ⭐ THE BAND ARRIVES AS BASIS POINTS FROM A DROPDOWN, not as a typed percentage.
+    // ⚠️ `marginPct` is still accepted so an older open tab, or the chain-EDIT form, keeps
+    // working — dropping it would make a stale page silently create a chain at the default
+    // rather than at the band the operator picked. New submissions send `marginBpsChoice`.
+    const bpsChoice = num(formData, "marginBpsChoice");
     const marginPct = num(formData, "marginPct");
+    const marginBps = bpsChoice != null ? Math.round(bpsChoice)
+      : marginPct != null ? Math.round(marginPct * 100)
+      : null;
     const r = await createChain({
       assetId,
       durationMinutes: duration as Duration,
       minStake: num(formData, "minStake") ?? null,
       maxStake: num(formData, "maxStake") ?? null,
-      // % in the UI → basis points. Blank = inherit the product default.
-      marginBps: marginPct != null ? Math.round(marginPct * 100) : null,
+      // Blank = inherit the product default (which is now the tick floor).
+      marginBps,
     }, session.userId);
     if (!r.ok) return { ok: false as const, error: r.error };
     refresh();
