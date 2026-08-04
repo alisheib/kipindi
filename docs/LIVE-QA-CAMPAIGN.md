@@ -3638,7 +3638,70 @@ workstation shows an SLA countdown, but nothing escalates when it runs out. Ali'
 
 ## 6b. NEXT SESSION — start here
 
-### 🔴 Laptop B, session 21 (2026-08-03, 17:00–21:00 UTC) — ⛔ UP & DOWN NO LONGER GENERATES ROUNDS BY ITSELF. THE PLATFORM IS ROUND-LESS UNTIL AN ADMIN CONTROL EXISTS. Read this first; it supersedes everything below.
+### 🟢 Laptop B, session 21 (2026-08-03 17:00 → 2026-08-04 02:00 UTC) — ⛔ UP & DOWN IS NOW OPERATOR-DRIVEN. Read this first; it supersedes everything below.
+
+## 🚩 START HERE IF YOU ARE ON A DIFFERENT MACHINE
+
+**Five minutes of setup, and skipping any of it wastes an hour.** Session 18 lost most of a
+session to exactly this.
+
+1. **`git clone` + `npm install`.** Branch `qa/live-experience`; it and `main` are identical
+   (`30267c9f`). Push to BOTH — `main` **deploys live**.
+2. ⛔ **`.env.qa.local` DOES NOT TRAVEL — it is gitignored, and without it you cannot sign in
+   as anybody.** Copy the file from a machine that has it. Do NOT re-mint to "fix" it: a
+   re-mint invalidates the other machine and the two then take turns locking each other out
+   (§1). If you must, `npx tsx scripts/ops-remint-qa-passwords.mts alpha echo` re-mints only
+   those two — ⛔ never `QA_ADMIN_PASSWORD`, which is Ali's own console login.
+3. **Railway CLI:** `railway login` (must be **alisheib07@gmail.com**, NOT the awarkeh
+   account) then `railway link` to **50pick**. ⚠️ The link is resolved by the CURRENT
+   DIRECTORY — a stray `cd` makes `railway status` report "No linked project found" on a
+   perfectly linked repo.
+4. **Reading production:**
+   `railway run -s 50pick -- node scripts/live/q.cjs <file.sql>` — SQL from a FILE, never
+   inline. ⚠️ For a Prisma-based `.mts` ops script you must rewrite the DB host first (the
+   service's `DATABASE_URL` names `postgres.railway.internal`, unreachable from a laptop);
+   copy the two lines at the top of `scripts/ops-stop-updown-chains.mts`.
+5. **A Railway SUCCESS does not mean your code is running.** The lifecycle leader holds a
+   **3-minute lease**, so chores are skipped until it transfers. Check
+   `curl -s https://50pick.tz/api/health | grep -o '"leadership":{[^}]*}[^}]*}'` and wait for
+   `"isMe":true`. This is not cosmetic — it is the direct cause of **E-69**.
+
+## What changed on production this session
+
+⛔ **THE PRODUCT MODEL CHANGED.** Ali: *"nothing should be by 50pick automatic — my admins
+will enter and generate every 5 min… sometimes we might not generate, other times we would."*
+**All 9 chains are STOPPED and nothing emits rounds on a timer any more.** A round exists only
+because an operator pressed **Generate round** on `/admin/updown`. Verified before acting: every
+in-flight round held **TZS 0**, and **no unresolved round anywhere holds money**.
+
+| | Shipped, deployed, live-verified |
+|---|---|
+| **E-67 · Generate round** | Gated `trading` (`test:control-gates` **219**). ⭐ It **refuses rather than creating a round it cannot price** — the opposite of the automatic path, which opened priceless rounds and voided them. Driven live: `udr_01e034350b3c5d648ac3`, open **63,672.01**, targets set, visible and playable. The button disables and reads *"Reading price…"* while the provider read runs. |
+| **E-68 · a false money statement** | A close that landed BETWEEN the targets — a plain `no-move` — was stamped `source-failed`, so the player was told *"The closing price could not be confirmed"* about a price sitting in the same row. Every `finishRound` call forced that reason, including the two holding a real price. Now conditional on there being no price. |
+| **E-66 · lost audit rows** | ✅ Closed. `audit()` is fire-and-forget onto a serialised HMAC queue; `process.exit()` kills it mid-drain. My own 4 chain stops wrote **1** row. All 5 mutating ops scripts flush now, guarded by `test:ops-audit-flush` (**RED-proven on the refund script**). ⛔ The 3 lost entries stay lost — an `AuditLog` row is HMAC-linked and forging one is forbidden. |
+| **E-62 · durations** | **10, 30 and 60 are live.** All three divide the 5-minute grid so they reuse the reading it already produces — **zero extra provider cost**. One shared list (`src/lib/updown-durations.ts`, no imports) now read by the server AND both consoles, which had each hand-copied `[5,15,30]`. `test:updown-durations` **21**, RED-proven 3 ways. |
+| **a suite raised from the dead** | `test:updown-heal` — the suite guarding E-68 — had been RED on **every tree since session 14** (E-46's validator refusing its own `XAU/USD`-as-crypto fixture). **Third suite killed by that pattern.** 121/121. |
+
+⚠️ **3-MINUTE ROUNDS ARE DELIBERATELY NOT ADDED, and that is not an oversight.** 3 does not
+divide the 5-minute grid, so a 3-minute chain needs its own paid read at most boundaries and
+fires **20/hour against a 5-minute chain's 12** — about **480 extra reads/day/asset** against a
+Twelve Data Basic-8 plan of ~800/day on which four assets already consume ~288/day each.
+Shipping it as a one-line edit would exhaust the quota and void every round, which is precisely
+the "voiding game" Ali forbade. **Measure real consumption on production, then choose:** move the
+grid to 1 minute, or price the unshared reads. `test:updown-durations` FAILS if 3 is added
+silently.
+
+🔴 **THE ONE THING THAT STILL BLOCKS A PLAYER WINNING — E-69.** The open is sealed; the close is
+not. `udr_01e034350b3c5d648ac3` opened at 63,672.01 against a validated source and voided with
+**no close price**, because nothing closed it at its boundary: it resolved **529 seconds late**
+while the log repeated *"not the leader — chores skipped"*. The source never failed. **Fix this
+before anything else.**
+
+📌 **Left running, deliberately:** nothing. Up & Down is **idle rather than quietly voiding** —
+no chain emits, so no round can void unattended. That is the safe state until E-69 lands.
+📌 **`wip/ai-usage-filters`** holds another session's unwired `/admin/ai-usage` work, pushed so
+it survives; it existed only in one laptop's working tree. **It is NOT wired up** — finish it or
+delete the branch.
 
 ⛔ **THE ONE THING THAT CHANGED ON PRODUCTION, AND IT IS A PRODUCT DECISION, NOT A FIX.**
 Ali: *"nothing should be by 50pick automatic — my admins will enter and generate every 5 min…
