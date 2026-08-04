@@ -202,6 +202,9 @@ export default async function UpDownPage({
                     : null
                 }
                 closesAtMs={Date.parse(r.closesAt)}
+                selectionClosesAtMs={r.selectionClosedAt ? Date.parse(r.selectionClosedAt) : null}
+                serverNowMs={r.serverNowMs}
+                myExactPayout={r.myExactPayout}
                 volumeTzs={r.volumeTzs}
                 players={r.players}
                 upPct={r.upPct}

@@ -77,6 +77,14 @@ export default async function UpDownRoundPage({
   const dec = asset.decimals;
   const ticker = asset.key.toUpperCase();
   const isOpen = round.state === "open";
+  // E-72 · LOCKED — the round is still running, the pool is frozen, the player watches.
+  // ⛔ The detail page must lock at the SAME instant the card does, or a player who taps
+  // through from a locked card lands on a page still offering the buttons — and the server
+  // then refuses the bet. That gap is worse than no lock at all.
+  const locked = round.state === "locked";
+  const lockClock = round.selectionClosedAt
+    ? new Date(round.selectionClosedAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+    : null;
   const decided = round.state === "resolved" || round.state === "void";
 
   // Hero price: the current live read while open, the round's own close once decided.
@@ -95,10 +103,17 @@ export default async function UpDownRoundPage({
 
   const statusWord =
     round.state === "open" ? t.market.statusLive
-      : round.state === "confirming" ? t.market.udConfirmingPrice
+      : round.state === "locked" ? t.market.udLockedTitle
+      : round.state === "confirming" ? t.market.udSettlingTitle
         : round.state === "void" ? t.market.statusVoid
           : t.market.statusResolved;
-  const countLabel = isOpen ? t.market.udClosesIn : round.state === "confirming" ? t.market.udAwaitingResult : t.market.udRoundSettled;
+  // ⛔ RE-LABELLED AT THE LOCK. A reading of 0:36 means "36s left to bet" before it and
+  // "36s until you find out" after — one set of digits, two deadlines, and the caption is
+  // the only thing that distinguishes them.
+  const countLabel = isOpen ? t.market.udBetsCloseIn
+    : locked ? t.market.udResultIn
+    : round.state === "confirming" ? t.market.udAwaitingResult
+    : t.market.udRoundSettled;
 
   // Result panel data (resolved rounds the viewer actually played).
   const result = myPosition?.result ?? null;
@@ -140,7 +155,12 @@ export default async function UpDownRoundPage({
               </p>
             </div>
           </div>
-          <RoundCountdownPod closesAtMs={Date.parse(round.closesAt)} isOpen={isOpen} label={countLabel} />
+          <RoundCountdownPod
+            closesAtMs={isOpen && round.selectionClosedAt ? Date.parse(round.selectionClosedAt) : Date.parse(round.closesAt)}
+            isOpen={isOpen || locked}
+            serverNowMs={round.serverNowMs}
+            label={countLabel}
+          />
         </header>
 
         {/* ── Grid: price hero (left) · pool + stake/result (right) ───────── */}
@@ -231,9 +251,28 @@ export default async function UpDownRoundPage({
                 </div>
                 <Link href="/positions" className="btn btn-ghost btn-sm mt-3.5 w-full justify-center">{t.market.udOpenInPositions}</Link>
               </section>
+            ) : locked ? (
+              // ── 🔒 LOCKED ────────────────────────────────────────────────
+              // ⛔ The message carries its REASON. "Closed" reads as the app being too slow;
+              // naming the instant and the fairness rule reads as fair. Same event, opposite
+              // feeling, and it is the most load-bearing sentence in the feature.
+              <section aria-label={t.market.udLockedTitle} style={{ ...inset, padding: 16 }}>
+                <span className="chip chip-pending">🔒 {t.market.udLockedTitle}</span>
+                <p className="mt-2.5 m-0 text-[12.5px] leading-[1.55] text-text-muted">
+                  {t.market.udLockedWhy.replace("{time}", lockClock ?? "—")}
+                </p>
+                {/* ⭐ No estimate here — the pool is frozen, so this is the real number. */}
+                {round.myExactPayout != null && (round.myUpStake > 0 || round.myDownStake > 0) && (
+                  <p className="mt-3 m-0 font-mono text-[15px] font-bold tabular-nums"
+                     style={{ color: round.myUpStake > 0 ? "var(--yes-300)" : "var(--no-300)" }}>
+                    {t.market.udYouWin} {formatTzs(round.myExactPayout)}{" "}
+                    {round.myUpStake > 0 ? t.market.udIfUp : t.market.udIfDown}
+                  </p>
+                )}
+              </section>
             ) : round.state === "confirming" ? (
               <section style={{ ...inset, padding: 16 }}>
-                <span className="chip chip-pending">{t.market.udConfirmingPrice}</span>
+                <span className="chip chip-pending">{t.market.udSettlingTitle}</span>
                 <p className="mt-2 text-[12.5px] leading-[1.55] text-text-muted">{t.market.udConfirmingBody}</p>
               </section>
             ) : round.state === "void" ? (

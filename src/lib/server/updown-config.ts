@@ -87,11 +87,24 @@ export type UpDownConfig = {
    * How long after a boundary a DATED feed's "no bar for that minute" means *not yet*
    * rather than *never*, and therefore costs no attempt.
    *
-   * ⚠️ MEASURED, NOT CHOSEN. Polled every few seconds across 125s on BTC/ETH/SOL/XAU
-   * (2026-08-04): the bar labelled T first appeared at **+10s on every symbol** and its
-   * `open` never changed afterwards. 30s is that measurement with 3× headroom. It is
-   * deliberately far below the ladder's span (180s), so a bar that genuinely never
-   * publishes still fails the boundary on time instead of waiting out the deadline.
+   * ⚠️ MEASURED, NOT CHOSEN — AND THE FIRST MEASUREMENT WAS INCOMPLETE.
+   *
+   * Polled on 2026-08-04: BTC/USD, ETH/USD and XAU/USD publish bar T at **+10s**, and the
+   * first version of this value was 30s on that basis. **SOL/USD publishes at +60s** — six
+   * times slower — which the shadow sampler surfaced as a 50% `no-bar` rate that looked, for
+   * a while, like SOL simply having no bars. It does: a contiguous 5-hour pull returned
+   * **300/300 minutes present, 0 missing**. SOL's bars are LATE, not absent.
+   *
+   * ⛔ So the grace is sized against the SLOWEST symbol offered, not the fastest — 120s is the
+   * measured +60s with 2× headroom. A grace tuned to BTC would have charged SOL an attempt at
+   * every boundary and walked its budget to zero, which is how SOL came to be **290 of 290
+   * rounds source-failed** in the first place (E-63).
+   *
+   * ⚠️ Still comfortably inside the abandon deadline (390s), so a bar that genuinely never
+   * publishes still reaches a terminal state on time — it simply voids on the deadline rather
+   * than on a spent budget, which is the more honest of the two endings anyway.
+   * ⭐ Re-measure this when a new symbol is offered. It is a property of the PROVIDER'S
+   * coverage of that instrument, not a constant.
    *
    * ⛔ Applies to DATED feeds only. A quote feed cannot return this reason at all.
    */
@@ -209,8 +222,9 @@ export const DEFAULT_UPDOWN_CONFIG: UpDownConfig = {
   maxStalenessSeconds: 90,
   confidenceThreshold: 85,
   maxObservationAttempts: 4,
-  // Measured at +10s on all four production symbols; 3× headroom. See the field comment.
-  barPublicationGraceSeconds: 30,
+  // Sized against the SLOWEST symbol: SOL publishes bar T at +60s, the rest at +10s. 2×
+  // headroom on the worst, not 3× on the best. See the field comment.
+  barPublicationGraceSeconds: 120,
   // 24h — longer than any outage this platform has had, shorter than the provider's history.
   maxSettleLookbackSeconds: 86_400,
   retryBackoffSeconds: [15, 45, 120],

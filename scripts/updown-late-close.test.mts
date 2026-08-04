@@ -22,11 +22,22 @@
  *
  * ── THE SECOND DEFECT, WHICH THE FIRST ONE HIDES ─────────────────────────────
  * The retry ladder's first attempt is taken AT the boundary (`retryBackoffSeconds[0]` is 0),
- * and the bar labelled T does not exist until **+10s** — measured on all four production
- * symbols, polled across 125s, `open` never changing afterwards. `no-bar` deliberately burns
- * the attempt budget, so under the bar reader **every round would start one life down for a
- * bar that was four seconds away**, and a spent budget declares the boundary FAILED — voiding
- * a round whose price published perfectly well. E-69's own shape, reintroduced by its fix.
+ * and the bar labelled T does not exist yet. `no-bar` deliberately burns the attempt budget,
+ * so under the bar reader **every round would start one life down for a bar that had not
+ * published yet** — and a spent budget declares the boundary FAILED, voiding a round whose
+ * price published perfectly well moments later. E-69's own shape, reintroduced by its own fix.
+ *
+ * ⚠️ AND THE PUBLICATION DELAY IS PER-SYMBOL, WHICH THE FIRST MEASUREMENT MISSED.
+ * BTC/USD, ETH/USD and XAU/USD publish bar T at **+10s**; **SOL/USD takes +60s** — six times
+ * longer. The first version of this suite asserted a 30s grace, measured on three symbols and
+ * generalised to four. A grace tuned to the fastest symbol charges the slowest one an attempt
+ * at every single boundary and walks its budget to zero, which is exactly how SOL came to be
+ * **290 of 290 rounds source-failed** (E-63). The grace is sized against the SLOWEST symbol
+ * offered, and §1.10 pins the number so a future symbol cannot quietly inherit a bad one.
+ *
+ * ⭐ It also is NOT that SOL lacks bars — a contiguous 5-hour pull returned **300/300 minutes
+ * present, 0 missing**, on every symbol. SOL's bars are LATE, not absent, and those two call
+ * for opposite responses: one is a grace, the other would be a reason not to offer the asset.
  *
  * §1 and §3 pin both halves. The RED harness (`updown-late-close-red.mjs`) proves each one
  * catches the defect it names by putting the defect back.
@@ -59,16 +70,16 @@ await addSource({ domain: "api.twelvedata.com", label: "Twelve Data", category: 
 // 1 · THE PUBLICATION GRACE — pure, so the money rule is exhaustible
 // ═══════════════════════════════════════════════════════════════════════════
 {
-  const cfg = { barPublicationGraceSeconds: 30 };
+  const cfg = { barPublicationGraceSeconds: 120 };
 
   ok("1.1 · ⭐ a bar that has not published YET costs no attempt, inside the grace",
      refusalCostsAnAttempt("bar-not-published", 5, cfg) === false);
   ok("1.2 · ⭐ …and that holds at the exact instant of the first attempt (+0s), which is when the ladder always asks",
      refusalCostsAnAttempt("bar-not-published", 0, cfg) === false);
   ok("1.3 · at the grace boundary it is still 'not yet' — the bound is exclusive",
-     refusalCostsAnAttempt("bar-not-published", 30, cfg) === false);
+     refusalCostsAnAttempt("bar-not-published", 120, cfg) === false);
   ok("1.4 · ⭐ past the grace it means NEVER and DOES burn — or the round waits forever for a reading that is not coming",
-     refusalCostsAnAttempt("bar-not-published", 31, cfg) === true);
+     refusalCostsAnAttempt("bar-not-published", 121, cfg) === true);
   ok("1.5 · a suspect print always burns — retrying cannot make a bad tick good",
      refusalCostsAnAttempt("unparseable-price", 5, cfg) === true);
   ok("1.6 · a stale reading always burns", refusalCostsAnAttempt("stale", 5, cfg) === true);
@@ -79,8 +90,11 @@ await addSource({ domain: "api.twelvedata.com", label: "Twelve Data", category: 
   // above while ignoring an operator who tightened it.
   ok("1.9 · the grace is read from CONFIG, not hardcoded",
      refusalCostsAnAttempt("bar-not-published", 20, { barPublicationGraceSeconds: 10 }) === true);
-  ok("1.10 · the shipped default is 30s — 3x the measured +10s publication delay",
-     DEFAULT_UPDOWN_CONFIG.barPublicationGraceSeconds === 30, String(DEFAULT_UPDOWN_CONFIG.barPublicationGraceSeconds));
+  // ⛔ 120, NOT 30. Sized against the SLOWEST symbol (SOL publishes bar T at +60s; BTC, ETH
+  // and XAU at +10s). The first version of this suite asserted 30 — measured on three symbols
+  // and generalised to four, which would have charged SOL an attempt at every boundary.
+  ok("1.10 · the shipped default is 120s — 2x the measured +60s worst-case publication delay",
+     DEFAULT_UPDOWN_CONFIG.barPublicationGraceSeconds === 120, String(DEFAULT_UPDOWN_CONFIG.barPublicationGraceSeconds));
   // The grace must stay well inside the ladder, or a bar that genuinely never publishes
   // would ride out the deadline instead of failing the boundary on time.
   ok("1.11 · the grace is far shorter than the ladder it sits inside",

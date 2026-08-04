@@ -127,12 +127,27 @@ async function mine(userId: string | undefined): Promise<{ up: number; down: num
   ok("8 · 'you're in' sums every distinct UP tap", m.up === 10_000, `up ${m.up}`);
 }
 
-// ── 4 · hedge — betting DOWN too shows on both sides ─────────────────────────
+// ── 4 · ONE ACCOUNT, ONE SIDE — the hedge is refused (Ali's decision, 2026-08-04) ──
+//
+// ⚠️ THIS SECTION ASSERTED THE OPPOSITE UNTIL 2026-08-04, AND THE OLD ASSERTION WAS NOT WRONG
+// AT THE TIME. It pinned that the "you're in" chip sums each side independently — which it
+// still does. What changed is a PRODUCT RULE, not an implementation: in a pari-mutuel pool,
+// holding both sides is a hedge that risks only the fee, so one leg always wins and the stake
+// comes back less commission. That is near-zero-risk volume on a platform whose leaderboards
+// and bonus wagering both count volume. `buyPosition` now refuses it, and
+// `test:updown-window` §6 is the dedicated guard.
+//
+// ⭐ What is re-pinned HERE is that the refusal is CLEAN: the first side is untouched, no
+// money moves, and the chip still reads the truth afterwards. A refusal that corrupted the
+// position it declined would be worse than the hedge it prevented.
 {
+  const before = (await db.wallet.findByUserId(alice))!.balance;
   const res = await buyPosition(alice, { marketId, side: "NO", stake: 4_000, idempotencyKey: "qb-a-down" });
-  ok("9 · a DOWN tap places", res.ok, res.ok ? "" : res.error);
+  ok("9 · ⭐ a DOWN tap is REFUSED for an account already holding UP", !res.ok, res.ok ? "the hedge landed" : res.error);
   const m = await mine(alice);
-  ok("10 · the card shows BOTH sides after a hedge", m.up === 10_000 && m.down === 4_000, `up ${m.up} down ${m.down}`);
+  const after = (await db.wallet.findByUserId(alice))!.balance;
+  ok("10 · ⭐ and the refusal moves NO money and leaves the UP side intact",
+     m.up === 10_000 && m.down === 0 && after === before, `up ${m.up} down ${m.down} balance ${before}→${after}`);
 }
 
 // ── 5 · 'you're in' is PER-VIEWER — never leaks between players ───────────────
@@ -141,7 +156,7 @@ async function mine(userId: string | undefined): Promise<{ up: number; down: num
   const mb = await mine(bob);
   const ma = await mine(alice);
   ok("11 · Bob sees only Bob's stake", mb.up === 0 && mb.down === 7_000, `bob up ${mb.up} down ${mb.down}`);
-  ok("12 · Alice is unchanged by Bob's bet", ma.up === 10_000 && ma.down === 4_000, `alice up ${ma.up} down ${ma.down}`);
+  ok("12 · Alice is unchanged by Bob's bet", ma.up === 10_000 && ma.down === 0, `alice up ${ma.up} down ${ma.down}`);
   const anon = await mine(undefined);
   ok("13 · a signed-out board shows no 'you're in'", anon.up === 0 && anon.down === 0, `anon up ${anon.up} down ${anon.down}`);
 }

@@ -214,6 +214,16 @@ export interface PositionStore {
     paidOut: number;
   }>>;
   listForMarket(marketId: string): Promise<StoredPosition[]>;
+  /**
+   * One player's positions on one market.
+   *
+   * ⛔ NOT `listForMarket(...).filter(...)`. The one-side-per-round rule reads this INSIDE the
+   * wallet lock on the money path, and on a busy market that would pull every player's
+   * positions across the wire to answer a question about one of them — a per-bet cost that
+   * grows with the market's popularity. `tx` so it joins the bet's own transaction rather
+   * than taking a second pool connection, exactly like the idempotency probe above.
+   */
+  listForUserAndMarket(userId: string, marketId: string, tx?: Prisma.TransactionClient | null): Promise<StoredPosition[]>;
   // tx: see MarketStore.get — the idempotency probe runs inside the bet's
   // transaction so it costs no extra pool connection.
   findByIdempotencyKey(key: string, tx?: Prisma.TransactionClient | null): Promise<StoredPosition | null>;
@@ -329,6 +339,9 @@ const memoryPositions: PositionStore = {
   },
   async listForMarket(marketId) {
     return Array.from(positions.values()).filter((p) => p.marketId === marketId);
+  },
+  async listForUserAndMarket(userId, marketId) {
+    return Array.from(positions.values()).filter((p) => p.userId === userId && p.marketId === marketId);
   },
   async leaderboard(limit) {
     // Same shape as the SQL below, so the page renders identical rows either way.
@@ -637,6 +650,11 @@ const prismaPositions: PositionStore = {
   },
   async listForMarket(marketId) {
     const rows = await pc().position.findMany({ where: { marketId } });
+    return rows.map(toStoredPosition);
+  },
+  async listForUserAndMarket(userId, marketId, tx) {
+    // Served by @@index([userId, marketId]) — see the schema note beside it.
+    const rows = await (tx ?? pc()).position.findMany({ where: { userId, marketId } });
     return rows.map(toStoredPosition);
   },
   async findByIdempotencyKey(key, tx) {

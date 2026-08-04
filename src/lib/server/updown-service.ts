@@ -31,7 +31,7 @@ import {
   assetStore, chainStore, roundStore, observationStore,
   type StoredAsset, type StoredChain, type StoredRound, type RoundOutcome, type VoidReason,
 } from "./updown-dal";
-import { minuteFloor } from "@/lib/updown-durations";
+import { minuteFloor, selectionClosesAt } from "@/lib/updown-durations";
 import { observePrice, describeRefusal, type OracleReading, type RefusalReason } from "./updown-oracle";
 import { feedFromId, quoteAsset, describeFeedRefusal, hostMatchesDomain, judgeFeedStaleness } from "./updown-feed";
 // E-36 — the trading calendar. A shut market must never settle real money.
@@ -579,9 +579,20 @@ export async function openRound(
         `compared with the price at ${openBoundaryIso}. UP if higher by more than ` +
         `${minMoveFor(asset).toFixed(asset.decimals)}, DOWN if lower by more than that, otherwise VOID and every stake is refunded.`,
     resolutionAt: closeIso,
-    // Selections close AT the boundary: the bet is on the price at that instant, so a
-    // later entry would be betting on a move that has already happened.
-    selectionClosedAt: null,
+    // ⭐ E-72 · BETS CLOSE BEFORE THE ROUND DOES — the last 20%, floored at 30s.
+    //
+    // ⚠️ THIS LINE USED TO BE `selectionClosedAt: null`, and the comment beside it was NOT
+    // wrong — it read *"Selections close AT the boundary: the bet is on the price at that
+    // instant, so a later entry would be betting on a move that has already happened."* That
+    // is exactly what happened, and it was a design choice nobody had examined rather than a
+    // contradiction. What it missed is the move that has already happened WITHIN the round:
+    // the board shows the live price and both frozen targets, so a player could watch the
+    // price cross a target and stake with about a second of risk.
+    //
+    // ⛔ The lead is a PROPORTION, not a constant, and shared with both consoles and the card
+    // via `updown-durations.ts` — a fixed 30s is a sixth of a 3-minute round but 3% of a
+    // 15-minute one and 0.8% of an hour, so it would leave every long duration open.
+    selectionClosedAt: selectionClosesAt(closeIso, chain.durationMinutes),
     proposedBy: "system_updown",
     productLine: "UPDOWN",
     rateOverrides: profile,

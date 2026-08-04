@@ -92,3 +92,64 @@ export function isMinuteAligned(iso: string): boolean {
   const ms = Date.parse(iso);
   return Number.isFinite(ms) && ms % MINUTE_MS === 0;
 }
+
+// ---------------------------------------------------------------------------
+// THE BETTING WINDOW — E-72. Bets close BEFORE the round does.
+// ---------------------------------------------------------------------------
+//
+// ⛔ WHY (Ali's decision, 2026-08-04). Bets were accepted right up to the closing second:
+// `openRound` wrote `selectionClosedAt: null`, and `isSelectionClosed` then falls back to
+// `resolutionAt` — which for an Up & Down round IS the close instant. The board shows the live
+// price and both frozen targets, so at 21:26:59 on a round closing 21:27:00 a player could see
+// the price was already past a target and stake with about one second of risk.
+//
+// ⛔ AND THE SETTLEMENT REBUILD MAKES IT MUCH WORSE, which is why the two ship together.
+// Taking the open from a completed 1-minute bar puts the open 60-120s in the past. On a
+// 3-minute round that is up to two-thirds of the round already played — visible to anyone,
+// bettable by anyone. Shipping open-from-bar WITHOUT this window would widen the hole while
+// looking like a fairness improvement.
+//
+// ⚠️ A FIXED 30s IS NOT ENOUGH, and that is the whole reason this is a proportion. 30s is a
+// sixth of a 3-minute round but only 3% of a 15-minute one, and 0.8% of an hour — so a fixed
+// lead leaves the long durations wide open. The window is the last 20% of the round, floored
+// at 30s so the shortest rounds still lock long enough to matter.
+
+/** The share of a round, at the end, during which bets are closed. */
+export const SELECTION_CLOSE_FRACTION = 0.2;
+/** The floor, in seconds — a 3-minute round's 20% is 36s; nothing may lock for less than this. */
+export const SELECTION_CLOSE_MIN_SECONDS = 30;
+
+/**
+ * How many seconds before a round's close bets stop being accepted.
+ *
+ * Pure, and exported so the server, the card and the round page share ONE answer. Three copies
+ * of a rule that decides whether a bet is legal is exactly the drift E-49/E-56 were about, and
+ * the `[5, 15, 30]` duplication is the same failure in this very feature.
+ */
+export function selectionCloseLeadSeconds(
+  durationMinutes: number,
+  opts?: { fraction?: number; minSeconds?: number },
+): number {
+  const fraction = opts?.fraction ?? SELECTION_CLOSE_FRACTION;
+  const minSeconds = opts?.minSeconds ?? SELECTION_CLOSE_MIN_SECONDS;
+  const total = Math.max(0, durationMinutes) * 60;
+  // ⛔ NEVER LONGER THAN THE ROUND. A misconfigured fraction must not produce a round that is
+  // shut before it opens — that would take no bets at all and look like an outage.
+  return Math.min(total, Math.max(minSeconds, Math.round(total * fraction)));
+}
+
+/**
+ * The instant bets stop being accepted, given the round's close.
+ *
+ * ⚠️ Returns null when the lead would swallow the whole round, so a caller writes `null` rather
+ * than an instant at or before the open — `createMarket` drops a `selectionClosedAt` already in
+ * the past, and a round born locked is worse than one that never locks.
+ */
+export function selectionClosesAt(closeIso: string, durationMinutes: number): string | null {
+  const closeMs = Date.parse(closeIso);
+  if (!Number.isFinite(closeMs)) return null;
+  const lead = selectionCloseLeadSeconds(durationMinutes);
+  const openMs = closeMs - durationMinutes * 60_000;
+  const at = closeMs - lead * 1000;
+  return at > openMs ? new Date(at).toISOString() : null;
+}

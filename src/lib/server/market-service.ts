@@ -663,6 +663,36 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
     const wallet = await db.wallet.findByUserId(userId, lockTx);
     if (!wallet || wallet.status !== "ACTIVE") return { ok: false as const, error: "Wallet unavailable.", code: "NOT_FOUND" as const };
 
+    // ── ONE ACCOUNT, ONE SIDE (Ali's decision, 2026-08-04) ────────────────────
+    //
+    // ⛔ IN A PARI-MUTUEL POOL, HOLDING BOTH SIDES IS A HEDGE THAT RISKS ONLY THE FEE.
+    // Stake 1,000 UP and 1,000 DOWN and one leg always wins: whichever way the round goes the
+    // stake comes back less the commission on the losing leg. That is near-zero-risk volume,
+    // and this platform pays attention to volume — leaderboards and bonus wagering both count
+    // it — so an account could farm both without ever taking a market view.
+    //
+    // ⚠️ INSIDE THE WALLET LOCK, DELIBERATELY. `withLock("wallet:${userId}")` serialises one
+    // account's bets, so two taps on opposite sides arriving together are ordered rather than
+    // both reading a clean slate. Outside the lock this check would pass twice and the hedge
+    // would land anyway — the same race that let two concurrent bets each clear a loss cap
+    // only one should (audit C4).
+    //
+    // ⭐ Two DIFFERENT accounts on opposite sides is normal play and is untouched — that is
+    // what a pari-mutuel market is for, and it is exactly what the live drive exercises.
+    const mine = await positionStore.listForUserAndMarket(userId, opts.marketId, lockTx);
+    const opposite = mine.find((p) => p.status === "OPEN" && p.side !== opts.side);
+    if (opposite) {
+      return {
+        ok: false as const,
+        // Says WHICH side they already hold, because "pick one side" without naming the one
+        // they are on reads as a bug to someone who has forgotten they bet.
+        error:
+          `You already backed ${opposite.side === "YES" ? "UP" : "DOWN"} on this round — one side per round. ` +
+          `· Tayari umeweka dau ${opposite.side === "YES" ? "JUU" : "CHINI"} kwenye raundi hii — upande mmoja kwa kila raundi.`,
+        code: "INVALID" as const,
+      };
+    }
+
     // Daily loss-limit gate (RG / GLI-19), re-read INSIDE the lock so a concurrent
     // bet that already committed its stake is counted (audit C4). Before any debit,
     // so a rejected bet never moves money.

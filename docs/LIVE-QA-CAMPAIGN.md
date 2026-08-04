@@ -1280,7 +1280,7 @@ which it named by filename.
 |---|---|---|---|---|
 | **E-74** | 🔴 **HIGH — found + measured 2026-08-04 (session 23), NOT fixed** | Up & Down · price feed · staleness gate | **`/quote``s own timestamp is a minute LABEL rounded UP, and it currently names a minute that has not happened yet.** The staleness gate (`judgeFeedStaleness`) judges a reading by `last_quote_at`, and E-25 recorded that field as *"29-45s behind wall-clock, advancing 60s per minute"*. Measured on a raw `/quote` for BTC/USD called at **T+8s** (2026-08-04): `last_quote_at` came back as **T+60s — 52 seconds IN THE FUTURE**, i.e. the next whole minute. So the provider rounds the field UP to a minute boundary rather than reporting the instant it priced the asset. ⭐ **Consequence: `/quote` cannot date a price to better than a minute**, every boundary read reports a ~60s skew against a 90s limit, and the gate passes for the wrong reason — it is measuring a rounding artefact, not staleness. ⛔ **It is also an independent argument for the rebuild**, reached from a different direction than E-69: the quote reader cannot say WHEN its price was true, so it can never honestly settle a named instant. The bar reader has no such problem — the bar`s own label IS the boundary, which turns the same gate into a free correctness assertion. **Not fixed because the bar switch supersedes it**; if the quote reader is ever re-selected this must be revisited. | raw `/quote` BTC/USD called 2026-08-04T08:46:08Z (T=08:46:00): `last_quote_at=1785833220` → `2026-08-04T08:47:00Z` = **T+60s**, wall clock T+8s · `timestamp=1785801600` → `2026-08-04T00:00:00Z` = T−31,560s (the 1-day bar, E-25) |
 | **E-73** | 🔴 **HIGH — found on production 2026-08-04 (session 23), NOT fixed** | Up & Down · asset registry · **money: gold settled on a floor 29–87× below the feed`s own noise** | **There are TWO gold assets on the same symbol, and the ENABLED one runs the floor everybody believed was retired.** Read directly off production: `GOLD` (XAU/USD, macro) is **disabled** with `minMoveTicks: 15` (/usr/bin/bash.15) and 158 rounds, last 2026-08-01; `XAU` (XAU/USD, macro) is **ENABLED** with `minMoveTicks: 1` (/usr/bin/bash.01) and **1,291 rounds**, last 2026-08-03. ⛔ **So every live gold round settled against a /usr/bin/bash.01 floor**, not the /usr/bin/bash.15 §6ad reasoned about — and §6ad decision 3 (*"gold`s minMoveTicks comes down from 15"*) was aimed at the asset nobody is using. It had already been done, on the asset that matters, and it did not help: XAU still voids `no-move` 41 times in the 137-round window. ⭐ **The seam measurement makes this much worse than a config mismatch.** Gold`s bar-seam disagreement is **/usr/bin/bash.29–/usr/bin/bash.87**, so a /usr/bin/bash.01 floor is **29–87 ticks below the provider`s own price ambiguity at a single instant** — a short gold round is decided by which representation the feed returned, not by the market. It is the direct evidence for Ali`s call to offer gold at **15m and above only**, and for the `minMoveTicks ≥ 2` rule. ⚠️ Two enabled assets could also be pointed at one symbol and run two chains on it; nothing refuses that today. | production 2026-08-04: `GOLD enabled=false ticks=15 → 158 rounds`, `XAU enabled=true ticks=1 → 1,291 rounds, 41 no-move` · seam: XAU/USD disagrees $0.29–$0.87 on 5 of 5 seams (§6ad) · weekend arm: 1,440 XAU bars on Sat 2026-08-01 with a **$0.02** open range — 2× the $0.01 band, so a weekend gold round could RESOLVE |
-| **E-72** | 🔴 **HIGH — found 2026-08-04 (session 22), NOT fixed · LIVE MONEY EXPOSURE** | player · Up & Down · bet acceptance · fairness | **Bets are accepted right up to the closing second, so a player can stake when the outcome is already known.** `openRound` writes `selectionClosedAt: null` (`updown-service.ts:514`) and `isSelectionClosed` (`market-service.ts:332-336`) falls back to `resolutionAt`, which for an Up & Down round **is the close instant**. The board shows the live price and both frozen targets, so at 21:26:59 on a round closing 21:27:00 a player can see the price is already past a target and stake with ~1 second of risk. ⚠️ **The code comment is NOT wrong** — it says *"Selections close AT the boundary"* and that is exactly what happens; this is a design choice nobody had examined, not a contradiction. ⛔ **It gets much worse under the settlement rebuild**: taking the open from a completed 1-minute bar puts the open 60–120s in the past, which on a 3-minute round is up to two-thirds already played. **Ali's decision 2026-08-04: close bets BEFORE the round ends** — an explicit `selectionClosedAt` (≈30s before a 3-minute round, 60s before a 5-minute one). `market-service.ts` already supports the field and `computeSelectionClosedAt` exists for the poll product; Up & Down simply never set it. ⛔ Ship this WITH the open-from-bar change, never after it. | `updown-service.ts:514` (`selectionClosedAt: null`) · `market-service.ts:334` (`m.selectionClosedAt ? … : Date.parse(m.resolutionAt)`) · `openRound` sets `resolutionAt: closeIso` |
+| **E-72** | ✅ **FIXED + guarded 2026-08-04 (session 23) — the last 20% of every round is now locked, server-enforced. Original filing kept below: it carries the reasoning that chose a proportion over a fixed 30s.** | player · Up & Down · bet acceptance · fairness | **Bets are accepted right up to the closing second, so a player can stake when the outcome is already known.** `openRound` writes `selectionClosedAt: null` (`updown-service.ts:514`) and `isSelectionClosed` (`market-service.ts:332-336`) falls back to `resolutionAt`, which for an Up & Down round **is the close instant**. The board shows the live price and both frozen targets, so at 21:26:59 on a round closing 21:27:00 a player can see the price is already past a target and stake with ~1 second of risk. ⚠️ **The code comment is NOT wrong** — it says *"Selections close AT the boundary"* and that is exactly what happens; this is a design choice nobody had examined, not a contradiction. ⛔ **It gets much worse under the settlement rebuild**: taking the open from a completed 1-minute bar puts the open 60–120s in the past, which on a 3-minute round is up to two-thirds already played. **Ali's decision 2026-08-04: close bets BEFORE the round ends** — an explicit `selectionClosedAt` (≈30s before a 3-minute round, 60s before a 5-minute one). `market-service.ts` already supports the field and `computeSelectionClosedAt` exists for the poll product; Up & Down simply never set it. ⛔ Ship this WITH the open-from-bar change, never after it. | `updown-service.ts:514` (`selectionClosedAt: null`) · `market-service.ts:334` (`m.selectionClosedAt ? … : Date.parse(m.resolutionAt)`) · `openRound` sets `resolutionAt: closeIso` |
 | **E-71** | 🔴 **HIGH — found + measured 2026-08-04 (session 22), NOT fixed** | Up & Down · price feed · **would settle money on the wrong minute** | **`time_series` labels XAU/USD bars in a NON-UTC zone by default, and our bar reader assumes UTC.** `time_series`'s `timezone` parameter defaults to **`Exchange`**, not UTC (provider docs). `fetchBars` (`ops-updown-margin-study.mts:158`) parses `datetime` as `Date.parse(\`${v.datetime.replace(" ","T")}Z\`)` — i.e. it **appends "Z" and calls it UTC**. Measured with a paired call, same instant: **XAU/USD `timezone=UTC` → `2026-08-04 07:29:00`, default → `2026-08-04 17:29:00` — exactly 600 minutes apart.** BTC, ETH and SOL returned identical values both ways, so the defect is invisible on crypto and only bites metals/FX. ⭐ **The live money path is NOT currently affected** — settlement reads `/quote`, whose `last_quote_at` is a unix timestamp and therefore zone-free. What IS affected today is the **margin study**, which means its gold market-shut warnings are computed on timestamps shifted 10 hours and cannot be trusted. ⛔ **And it would have been a money bug the moment the time-series reader shipped**, settling every gold round on a bar ten hours away. **Fix: pass `timezone=UTC` explicitly on every `time_series` call**, and guard it — a reader that omits it must fail the suite. ⚠️ This is why the first thing the rebuild does is measure rather than build. | `scripts/ops-updown-probe-bars.mts` §A, run against the production key 2026-08-04: `XAU/USD utc=2026-08-04 07:29:00 default=2026-08-04 17:29:00 🔴 DIFFER by -600 min`; BTC/ETH/SOL `✅ same` · provider docs: *"timezone … Default: Exchange"* |
 | **E-70** | 🔴 **HIGH — reported by Ali 2026-08-04, NOT yet reproduced** | player · navigation · session | **Ali: *"when I move from admin to game to markets there is no navbar, it's lost until I login as player or retry the URL as player."*** Moving from an ADMIN surface to a PLAYER surface leaves the page without its navigation — recoverable only by signing in as a player or re-entering the URL. ⚠️ Almost certainly the same root as the session-21 observation that `/admin/updown` returned the **signed-out player shell** immediately after a successful ADMIN sign-in: a staff session does not satisfy the player shell's expectations, so the layout renders its logged-out branch. ⛔ **A player who lands with no navigation is stranded on a money surface** — no wallet, no history, no way back. Reproduce as ADMIN → `/markets`, then compare the served HTML with the same route as a player. | Ali, live, 2026-08-04 · corroborating: `/admin/updown` served the signed-out shell to a freshly signed-in ADMIN (session 21) |
 | **E-69** | ✅ **FIXED + guarded 2026-08-04 (session 23) — the close is sealed. Original filing below; the measurement that chose the fix is why it is kept.** | Up & Down · round close · **the seal Ali asked for** | **A round can be created against a validated, priced source and still die without a close price — because nothing guarantees it is CLOSED at its own boundary.** Ali, on being shown a `source-failed` void: *"logically how can we not have a price if since creation the source is there, validated, it has a price? No way a possibly voiding game would be created. I want perfect sealing."* He is right, and the evidence agrees: `udr_01e034350b3c5d648ac3` opened at **63,672.01** with targets set from a live read, closed at **21:42:26**, and was not resolved until **21:51:14 — 529 seconds late**, with `closePrice = null`. ⭐ **The source never failed.** During that whole window the lifecycle log read *"not the leader — chores skipped. Another instance holds the lease."* — the leadership lease was churning across a run of deploys, so no instance ran the close. By the time the E-24 healer took it, asking the provider for a nine-minute-old boundary is refused as stale **by design**, and it deliberately does not pay for a reading past the deadline. So the round voided for want of a close nobody performed. ⛔ **The open is sealed and the close is not:** `generateRoundNow` refuses to create a round it cannot price (E-67), but nothing makes the same promise at the other end. **Scope of the seal:** close on the boundary independently of leadership churn; if the close read is late but the observation later confirms, re-derive the verdict from the stored targets rather than leaving `source-failed` (the mirror of E-63's backfill); and never leave a round unresolved past its own close without saying so on the card. ⚠️ Related and worth measuring first: `LEASE_MS` is 3 minutes, so any deploy costs up to three minutes of chores — on a 5-minute round that is most of its life. | production: round opened 21:37:26 priced 63,672.01, closed 21:42:26, resolved 21:51:14 `source-failed` with `closePrice NULL` · `railway logs`: repeated *"not the leader — chores skipped"* across the interval · `/api/health` → `"isMe":false,"expiresInSec":95` |
@@ -3640,6 +3640,84 @@ workstation shows an SLA countdown, but nothing escalates when it runs out. Ali'
   platform zone (+3) keeps it on the right day, and the E-2 fix is safe. The earlier note was
   the `pg` −3h trap (§3) reading back through an un-cast client.
 
+## 6af. ⭐ E-72 CLOSED — bets now stop before the round does, and one account gets one side (2026-08-04, session 23)
+
+> Executes §6ad phase 1e. §6ad is settled; nothing here re-opens it.
+
+### The window, and why it is a PROPORTION rather than 30 seconds
+
+Bets were accepted to the closing second. `openRound` wrote `selectionClosedAt: null`, and
+`isSelectionClosed` falls back to `resolutionAt` — which for an Up & Down round **is** the close
+instant. The board shows the live price and both frozen targets, so a player could watch the
+price cross a target and stake with about a second of risk.
+
+⛔ **A fixed 30s lead does not fix it.** 30s is a sixth of a 3-minute round, **3% of a 15-minute
+one and 0.8% of an hour** — so it would look like a fairness fix while leaving every long
+duration open. The window is **the last 20% of the round, floored at 30s**:
+
+| Duration | 3m | 5m | 10m | 15m | 30m | 60m |
+|---|---|---|---|---|---|---|
+| **locked for** | 36s | 60s | 120s | 180s | 360s | 720s |
+
+⭐ **The server enforcement was already there and free**: `buyPosition` refuses
+`isSelectionClosed` with `SELECTION_CLOSED`. What was missing was the round ever *setting* the
+field. ⛔ Every assertion in the guard goes through `buyPosition`, never through a disabled
+button — a device clock 40 seconds fast must not be able to place a bet the server should refuse.
+
+### The four player states, and the one sentence that carries the feature
+
+| State | Player can | The card says |
+|---|---|---|
+| OPEN | bet | *"Betting closes in 0:36"* |
+| 🔒 **LOCKED** | watch | *"Bets closed at 07:21:24 — the result is locked so nobody can bet on an outcome they can already see"* |
+| SETTLING | — | *"Reading the closing price…"* |
+| RESULT | — | won · lost · refunded, with the reason |
+
+⛔ **The countdown RE-LABELS itself at the lock.** `0:36` means *"36s left to bet"* before it and
+*"36s until you find out"* after — one set of digits, two deadlines, and the caption is the only
+thing distinguishing them. A player watching a live-looking clock over dead buttons concludes the
+app stole their chance.
+
+⛔ **The lock message carries its REASON.** *"Closed"* reads as *the app was too slow and cheated
+me*; naming the instant and the fairness rule reads as fair. Identical event, opposite feeling.
+
+⭐ **The lock deletes an estimate from a money screen.** Once bets close the pool is frozen, so
+`× 1.4 est.` becomes **"You win 1,870 if UP"** — a real number. ⛔ **Computed on the SERVER**
+through the same `projectedPayout` settlement pays out with. The first version of that line
+derived it client-side from the pool split, which ignores the round's frozen fee snapshot
+entirely — a confident wrong figure on a money surface, strictly worse than the honest estimate
+it replaced.
+
+⛔ **The countdown is anchored to the SERVER's clock.** `useCountdown` read `Date.now()` — the
+device clock — so a handset 40s fast showed a different round to the player beside it, and could
+show time remaining on a round whose bets the server had already refused.
+
+⚠️ **A LEGACY round (no lock instant) stays OPEN**, deliberately. `buyPosition` genuinely still
+accepts bets on it, and a card rendering it locked would be lying about a bet the server would
+take.
+
+### ⭐ ONE ACCOUNT, ONE SIDE — Ali's decision, 2026-08-04
+
+§6ad scenario 2 asked it and left it open: *"Can a player bet BOTH sides?"* In a pari-mutuel pool
+that is a hedge risking **only the fee** — one leg always wins, so the stake returns less
+commission. Near-zero-risk volume, on a platform whose **leaderboards and bonus wagering both
+count volume**. `buyPosition` now refuses the opposite side, **inside the wallet lock** so two
+taps arriving together are ordered rather than both reading a clean slate.
+
+⭐ **Two things deliberately still work**: topping up the SAME side (this is a hedge rule, not a
+stake cap), and two DIFFERENT accounts taking opposite sides — that is what a pari-mutuel market
+*is*, and it is exactly what the live drive exercises.
+
+⚠️ **`test:updown-quickbet` §4 asserted the OPPOSITE and had to be inverted.** The old assertion
+was not wrong when written — it pinned that the "you're in" chip sums each side independently,
+which it still does. A **product rule** changed, not an implementation. The section now re-pins
+that the refusal is *clean*: no money moves and the first side is untouched.
+
+**Guards**: `npm run test:updown-window` (**36**), proven **RED 7/7** by
+`scripts/updown-window-red.mjs` — `selectionClosedAt-null` (the shipped line, verbatim) ·
+`fixed-30s-lead` · `lead-longer-than-the-round` · `no-locked-state` · `legacy-round-shown-locked`
+· `hedge-allowed` · `same-side-blocked`.
+
 ## 6ae. ⭐ THE LATE CLOSE IS SEALED — E-69 fixed, and two things the measuring found (2026-08-04, session 23)
 
 > Executes §6ad phases 1c and 1d. §6ad is settled; nothing here re-opens it.
@@ -3986,7 +4064,7 @@ so a tick-floor margin on crypto measures the market, not the feed.
 ⛔ **`feedProvider` is still `twelvedata`. No money has touched the new reader yet** — the switch
 is gated on the shadow run's median delta (§6ae) and lands with phase 1e.
 
-#### ⏭️ **RESUME AT:** ① **Phase 1e — the betting window (E-72) AND open-from-bar, TOGETHER, never separately.** `openRound` writes `selectionClosedAt: null`; set it to the last **20% of the round, floored at 30s**, config-driven. ⭐ The server enforcement is already free — `buyPosition` (`market-service.ts:621`) refuses `isSelectionClosed`. The card needs a **LOCKED** state whose countdown **RE-LABELS itself** and whose message carries its reason, and the lock turns `× 1.4 est.` into an exact payout. Ali's call 2026-08-04: **one account may NOT hold both sides of a round** — enforce in `buyPosition`, RED-first. Then **② Phase 2** tick-floor margin + `minMoveTicks ≥ 2` (see **E-73**) · **③ Phase 3** durations 3/5/10/15/30/60 on the epoch lattice, **gold 15m+ only** (Ali's call, 2026-08-04) · **④ Phase 4** the fully-controlled admin · **⑤ Phase 6** void honesty · **⑥ Phase 7** E-70, E-59, accountant/reports, the 4-width sweep, and consolidating the Up & Down docs to one truth.
+#### ⏭️ **RESUME AT:** ① **Phase 2 — tick-floor margin.** E-72 and the late close are DONE (§6af, §6ae). `openRound` writes `selectionClosedAt: null`; set it to the last **20% of the round, floored at 30s**, config-driven. ⭐ The server enforcement is already free — `buyPosition` (`market-service.ts:621`) refuses `isSelectionClosed`. The card needs a **LOCKED** state whose countdown **RE-LABELS itself** and whose message carries its reason, and the lock turns `× 1.4 est.` into an exact payout. Ali's call 2026-08-04: **one account may NOT hold both sides of a round** — enforce in `buyPosition`, RED-first. Then **② Phase 2** tick-floor margin + `minMoveTicks ≥ 2` (see **E-73**) · **③ Phase 3** durations 3/5/10/15/30/60 on the epoch lattice, **gold 15m+ only** (Ali's call, 2026-08-04) · **④ Phase 4** the fully-controlled admin · **⑤ Phase 6** void honesty · **⑥ Phase 7** E-70, E-59, accountant/reports, the 4-width sweep, and consolidating the Up & Down docs to one truth.
 
 ### 🟢 Laptop A, session 22 (2026-08-04) — THE SETTLEMENT REBUILD IS UNDER WAY AND HALF SHIPPED. Read §6ad first; it carries every decision and the measured evidence.
 

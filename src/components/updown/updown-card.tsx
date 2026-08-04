@@ -33,7 +33,7 @@ import { useCountdown, mmss } from "./round-countdown";
 import { SOURCE_CLASS_KEY } from "@/lib/updown-source-label";
 import type { PublicSourceClass } from "@/lib/server/updown-symbols";
 
-export type UpDownCardState = "open" | "closing" | "confirming" | "resolved" | "void";
+export type UpDownCardState = "open" | "locked" | "closing" | "confirming" | "resolved" | "void";
 
 export type UpDownCardProps = {
   roundId: string;
@@ -56,6 +56,28 @@ export type UpDownCardProps = {
   /** Absolute instant the round closes; the countdown derives from it client-side so
    *  every card agrees and no server timestamp goes stale in the HTML. */
   closesAtMs: number;
+  /**
+   * E-72 · the instant bets stop being accepted — the last 20% of the round, floored at 30s.
+   * Null on legacy rounds opened before the window existed, which stay bettable to the close.
+   *
+   * ⛔ THE SERVER'S VALUE, NOT ARITHMETIC DONE HERE. `buyPosition` enforces exactly this field
+   * through `isSelectionClosed`, so re-deriving it from the duration would give the card a
+   * second answer to "when do bets close" — and a screen that disagrees with the money path
+   * about a deadline is how a player comes to believe they were cheated.
+   */
+  selectionClosesAtMs?: number | null;
+  /** The server's clock at render, so the countdown is anchored to IT and not to the handset.
+   *  A device 40s fast otherwise shows a different round to the player beside it. */
+  serverNowMs?: number;
+  /**
+   * What this viewer takes home if their side wins — EXACT, not estimated, and only present
+   * once the round is locked and the pool can no longer move.
+   *
+   * ⛔ Computed by the server through the SAME `projectedPayout` that settlement pays out
+   * with, because it depends on the round's frozen fee snapshot. Deriving it on the client
+   * from the pool split would print a confident wrong number on a money screen.
+   */
+  myExactPayout?: number | null;
   volumeTzs: number;
   players: number;
   /** 0..100. Down is derived — one number, one source. */
@@ -150,11 +172,24 @@ export function UpDownCard(props: UpDownCardProps) {
     livePrice, openPrice, upTarget, downTarget, movePct, closesAtMs, volumeTzs, players, upPct,
     estMultiplier, state, outcome, closePrice, voidReason,
     sourceClass, sourceQuotedAt, className,
+    selectionClosesAtMs, serverNowMs, myExactPayout,
     marketId, isAuthed, minStake, maxStake, myUpStake = 0, myDownStake = 0,
   } = props;
   const { t } = useT();
   const router = useRouter();
-  const secondsLeft = useCountdown(closesAtMs);
+
+  // ── TWO DEADLINES, ONE SET OF DIGITS (E-72) ───────────────────────────────
+  //
+  // ⛔ THE COUNTDOWN MUST RE-LABEL ITSELF AT THE LOCK, not merely keep ticking. Before the
+  // lock `0:36` means *"36 seconds left to bet"*; after it, the same digits mean *"36 seconds
+  // until you find out"*. Left unlabelled that single ambiguity would produce more complaints
+  // than the rest of this rebuild put together — a player watching the number run down while
+  // the buttons are dead concludes the app stole their chance, not that the round is fair.
+  //
+  // So the countdown TARGETS the nearer deadline and the caption names which one it is.
+  const locked = state === "locked";
+  const countdownTarget = locked || selectionClosesAtMs == null ? closesAtMs : selectionClosesAtMs;
+  const secondsLeft = useCountdown(countdownTarget, serverNowMs);
 
   // `secondsLeft === null` is the pre-hydration tick. Treat it as "not yet expired" so
   // the server renders the same action row the client will, and only the digits differ
@@ -162,6 +197,23 @@ export function UpDownCard(props: UpDownCardProps) {
   const running = secondsLeft == null || secondsLeft > 0;
   const bettable = state === "open" && running;
   const urgent = bettable && secondsLeft != null && secondsLeft <= 30;
+  // The exact time the lock happened (or will), for the reason line. Local-time formatting is
+  // deliberate — the player's own clock is what they will compare it against.
+  const lockClock = selectionClosesAtMs != null
+    ? new Date(selectionClosesAtMs).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+    : null;
+  // ⭐ THE LOCK IS WHAT LETS US STOP ESTIMATING. Once betting closes the pool is frozen, so a
+  // payout stops being a projection and becomes arithmetic — `× 1.4 est.` can become a real
+  // number. That deletes an estimate from a screen about someone's money, which is the shape
+  // of half the findings in this campaign.
+  //
+  // ⛔ AND IT IS COMPUTED ON THE SERVER, NOT HERE. The first version of this line derived it
+  // from `upPct` and the estimate multiplier, which ignores the round's FROZEN FEE SNAPSHOT
+  // entirely — so it would have printed a confident, wrong figure on a money surface, which is
+  // strictly worse than the honest estimate it replaced. `myExactPayout` comes from the same
+  // `projectedPayout` the money path pays out with. One rule, one answer.
+  const mySide: "UP" | "DOWN" | null = myUpStake > 0 ? "UP" : myDownStake > 0 ? "DOWN" : null;
+  const exactWin = locked ? myExactPayout ?? null : null;
   const downPct = Math.max(0, 100 - upPct);
   const dir = movePct == null ? null : movePct > 0 ? "up" : movePct < 0 ? "down" : "flat";
   const priceColor = dir === "up" ? "var(--yes-300)" : dir === "down" ? "var(--no-300)" : "var(--text-muted)";
@@ -245,9 +297,14 @@ export function UpDownCard(props: UpDownCardProps) {
       {/* ── Countdown (mandatory: TIMER) ───────────────────────────────── */}
       <div className="mt-3 rounded-xl px-3 py-2.5"
            style={{ background: "var(--bg-inset)", border: "1px solid color-mix(in oklab, var(--border) 70%, transparent)" }}>
+        {/* ⛔ THE CAPTION IS THE FIX, NOT THE DIGITS. Same `0:36` means two different things
+            either side of the lock, so the label must say which — "Betting closes in" before,
+            "Result in" after. Without it the player reads a live-looking clock over dead
+            buttons and concludes the app cheated them. */}
         <div className="font-mono text-[8.5px] font-semibold uppercase tracking-[0.12em] text-text-faint">
           {state === "resolved" || state === "void" ? t.market.udRoundSettled
-            : running ? t.market.udClosesIn : t.market.udSelectionsClosed}
+            : locked ? t.market.udResultIn
+            : running ? t.market.udBetsCloseIn : t.market.udSelectionsClosed}
         </div>
         <div className={cn("font-mono font-bold tabular-nums leading-none", urgent && "ud-count-pulse")}
              style={{ fontSize: 28, letterSpacing: "0.05em", color: urgent ? "var(--no-300)" : running ? "var(--text)" : "var(--text-subtle)" }}>
@@ -342,10 +399,33 @@ export function UpDownCard(props: UpDownCardProps) {
               )}
             </>
           )
+        ) : locked ? (
+          // ── 🔒 LOCKED — watching, not betting ─────────────────────────────
+          //
+          // ⛔ THE MESSAGE CARRIES ITS REASON, and this is the most load-bearing sentence in
+          // the feature. "Closed" reads as *the app was too slow and cheated me*. "Bets closed
+          // at 07:21:24 — the result is locked so nobody can bet on an outcome they can already
+          // see" reads as fair. Identical event, opposite feeling.
+          //
+          // Deliberately NOT an alarm tone: the round is running normally and the player has
+          // done nothing wrong. Same calm chrome as `confirming`.
+          <div className="rounded-xl p-3.5" style={{ background: "color-mix(in oklab, var(--bg-inset) 70%, transparent)", border: "1px solid var(--border)" }}>
+            <span className="chip chip-pending">🔒 {t.market.udLockedTitle}</span>
+            <p className="mt-2 text-[11.5px] leading-[1.5] text-text-muted">
+              {lockClock ? t.market.udLockedWhy.replace("{time}", lockClock) : t.market.udLockedWhy.replace("{time}", "—")}
+            </p>
+            {/* ⭐ The estimate is GONE here — the pool is frozen, so this is the real figure. */}
+            {exactWin != null && mySide && (
+              <p className="mt-2 font-mono text-[12.5px] font-bold tabular-nums"
+                 style={{ color: mySide === "UP" ? "var(--yes-300)" : "var(--no-300)" }}>
+                {t.market.udYouWin} {formatTzs(exactWin)} {mySide === "UP" ? t.market.udIfUp : t.market.udIfDown}
+              </p>
+            )}
+          </div>
         ) : state === "confirming" ? (
           // CALM. No red, no spinner, and above all no number we do not have.
           <div className="rounded-xl p-3.5" style={{ background: "color-mix(in oklab, var(--bg-inset) 70%, transparent)", border: "1px solid var(--border)" }}>
-            <span className="chip chip-pending">{t.market.udConfirmingPrice}</span>
+            <span className="chip chip-pending">{t.market.udSettlingTitle}</span>
             <p className="mt-2 text-[11.5px] leading-[1.5] text-text-muted">{t.market.udConfirmingBody}</p>
           </div>
         ) : state === "void" ? (

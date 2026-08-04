@@ -16,7 +16,7 @@ import { getUpDownConfig, stakeBoundsFor } from "./updown-config";
 // HERE, on the server, because translating a vendor string in the browser still ships the
 // vendor in the RSC payload where View Source finds it.
 import { publicSourceClassFor, type PublicSourceClass } from "./updown-symbols";
-import { ratesFor, listPositionsForUser } from "./market-service";
+import { ratesFor, listPositionsForUser, projectedPayout } from "./market-service";
 import { impliedYesPct } from "./market-service";
 
 export type BoardAsset = {
@@ -58,7 +58,27 @@ export type BoardRound = {
   /** Display-only estimate from the round's OWN frozen snapshot, or null if the poll
    *  did not freeze one — never a default invented at render time. */
   estMultiplier: number | null;
-  state: "open" | "closing" | "confirming" | "resolved" | "void";
+  state: "open" | "locked" | "closing" | "confirming" | "resolved" | "void";
+  /**
+   * E-72 · when bets stopped (or stop) being accepted — the last 20% of the round, floored
+   * at 30s. Null only on legacy rounds opened before the window existed.
+   *
+   * ⛔ THE SERVER'S INSTANT, NOT THE CARD'S ARITHMETIC. `buyPosition` enforces this exact
+   * value through `isSelectionClosed`, so the card must render the same number rather than
+   * re-deriving one — a disabled button is decoration, and two computations of one deadline
+   * is how a screen comes to disagree with the money path.
+   */
+  selectionClosedAt: string | null;
+  /**
+   * The server's own clock at render, so the countdown is anchored to IT rather than to the
+   * viewer's handset.
+   *
+   * ⚠️ `useCountdown` reads `Date.now()`, which is the DEVICE clock. A phone running 40
+   * seconds fast shows a different countdown to the player beside it, and on a 3-minute round
+   * that is a fifth of the game. The card applies (serverNow − clientNow) as an offset so
+   * every player sees one clock — the one the server will actually settle against.
+   */
+  serverNowMs: number;
   settled: boolean;
   /** The signed-in viewer's OWN open stake on each side of this round, in TZS (0 when
    *  none, or when signed out). Powers the "you're in" indicator + quick-bet state on
@@ -66,15 +86,42 @@ export type BoardRound = {
    *  state — so it survives a refresh. */
   myUpStake: number;
   myDownStake: number;
+  /**
+   * What this viewer takes home if their side wins — EXACT, and only once the round is LOCKED.
+   *
+   * ⛔ Null while the round is open, deliberately: the pool is still moving, so any figure
+   * would be a projection dressed as a fact. Once bets close the pool is frozen and this is
+   * arithmetic — which is what lets the card drop `× 1.4 est.` for a real number.
+   * ⛔ Computed through the SAME `projectedPayout` settlement pays out with, because it depends
+   * on the round's frozen fee snapshot. The client cannot derive it from the pool split.
+   */
+  myExactPayout: number | null;
 };
 
-/** The player-visible state of a round. Derived, so board and detail always agree. */
-export function roundState(r: StoredRound, closesAtMs: number, now = Date.now()): BoardRound["state"] {
+/**
+ * The player-visible state of a round. Derived, so board and detail always agree.
+ *
+ * ⭐ FOUR LIVE STATES, NOT THREE (E-72). `locked` sits between "you may bet" and "we are
+ * reading the price": the round is still running and the player can watch it, but the pool is
+ * frozen. It is a distinct state because the player can do a distinct thing in it — nothing —
+ * and because the pool being frozen is what lets the card stop estimating the payout.
+ */
+export function roundState(
+  r: StoredRound,
+  closesAtMs: number,
+  now = Date.now(),
+  selectionClosedAt?: string | null,
+): BoardRound["state"] {
   if (r.outcome === "VOID") return "void";
   if (r.outcome === "UP" || r.outcome === "DOWN") return "resolved";
   // Past its boundary with no outcome yet ⇒ we are waiting on the source. That is the
   // "Confirming price" state — deliberate, not an error.
   if (closesAtMs <= now) return "confirming";
+  // ⚠️ A legacy round (opened before the betting window existed) has no `selectionClosedAt`
+  // and stays `open` to its boundary — which is what it genuinely does, since `buyPosition`
+  // falls back to `resolutionAt` for it. Rendering it as locked would be the card lying about
+  // a bet the server would still accept.
+  if (selectionClosedAt && Date.parse(selectionClosedAt) <= now) return "locked";
   return "open";
 }
 
@@ -87,6 +134,10 @@ async function toBoardRound(
   if (!m) return null;
   const rates = ratesFor(m);
   const closesAtMs = Date.parse(r.closesAt);
+  const state = roundState(r, closesAtMs, Date.now(), m.selectionClosedAt);
+  const myUpStake = mine?.up ?? 0;
+  const myDownStake = mine?.down ?? 0;
+  const myStake = myUpStake + myDownStake;
   return {
     roundId: r.id,
     marketId: r.marketId,
@@ -107,10 +158,22 @@ async function toBoardRound(
     // Only if the poll actually froze one. `showEstimatedWinnings` false ⇒ null ⇒ the
     // card hides the "× …" entirely rather than printing "× 0".
     estMultiplier: rates.showEstimatedWinnings ? 1 + rates.estimatedWinningsRate : null,
-    state: roundState(r, closesAtMs),
+    // ⛔ The MARKET'S `selectionClosedAt`, because that is the exact field `isSelectionClosed`
+    // enforces in `buyPosition`. Re-deriving it here from the duration would produce a second
+    // answer to "when do bets close", and the two would drift the first time the fraction is
+    // tuned — the `[5, 15, 30]` failure, applied to a deadline that decides whether a bet is legal.
+    selectionClosedAt: m.selectionClosedAt,
+    serverNowMs: Date.now(),
+    state,
     settled: !!r.settledAt,
     myUpStake: mine?.up ?? 0,
     myDownStake: mine?.down ?? 0,
+    // Only for a LOCKED round the viewer actually holds — see the field comment. `projectedPayout`
+    // is the money path's own function, so this figure and the settled one cannot disagree.
+    myExactPayout:
+      state === "locked" && myStake > 0
+        ? await projectedPayout(m, myUpStake > 0 ? "YES" : "NO", myStake)
+        : null,
   };
 }
 

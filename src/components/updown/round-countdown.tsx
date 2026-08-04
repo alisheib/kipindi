@@ -15,14 +15,26 @@ import { useEffect, useState } from "react";
  * Lives here rather than inside the card so the card and the round detail page share
  * ONE implementation — two countdowns drifting apart by a second reads as broken.
  */
-export function useCountdown(targetMs: number): number | null {
+export function useCountdown(targetMs: number, serverNowMs?: number): number | null {
   const [left, setLeft] = useState<number | null>(null);
   useEffect(() => {
-    const compute = () => Math.max(0, Math.floor((targetMs - Date.now()) / 1000));
+    // ⛔ ANCHOR TO THE SERVER'S CLOCK WHEN WE HAVE IT (E-72).
+    //
+    // `Date.now()` is the DEVICE clock, and a handset running 40 seconds fast showed a
+    // different countdown to the player standing beside it — on a 3-minute round that is a
+    // fifth of the game, and it decides whether the Up/Down buttons look live. Worse, the
+    // server settles against ITS clock, so a fast device would show time remaining on a round
+    // whose bets `buyPosition` has already refused: the screen and the money path disagreeing
+    // about the only deadline that matters.
+    //
+    // The offset is captured ONCE, on mount, against the instant the server rendered — not
+    // re-measured per tick, which would make the digits jitter by the network latency.
+    const offset = serverNowMs != null ? serverNowMs - Date.now() : 0;
+    const compute = () => Math.max(0, Math.floor((targetMs - (Date.now() + offset)) / 1000));
     setLeft(compute());
     const id = setInterval(() => setLeft(compute()), 1000);
     return () => clearInterval(id);
-  }, [targetMs]);
+  }, [targetMs, serverNowMs]);
   return left;
 }
 
@@ -37,8 +49,8 @@ export function mmss(s: number | null): string {
  * live and pulse rose in the final 30s (reduced-motion turns the pulse off); once closed
  * it shows a static 00:00 in `--text-subtle`. Same shared hook as everywhere else.
  */
-export function RoundCountdownPod({ closesAtMs, isOpen, label }: { closesAtMs: number; isOpen: boolean; label: string }) {
-  const left = useCountdown(closesAtMs);
+export function RoundCountdownPod({ closesAtMs, isOpen, label, serverNowMs }: { closesAtMs: number; isOpen: boolean; label: string; serverNowMs?: number }) {
+  const left = useCountdown(closesAtMs, serverNowMs);
   const running = isOpen && (left == null || left > 0);
   const urgent = isOpen && left != null && left > 0 && left <= 30;
   return (
