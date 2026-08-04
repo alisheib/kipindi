@@ -152,5 +152,59 @@ for (const cat of ["crypto", "macro"]) {
      `$${(xau.minMoveTicks * Math.pow(10, -xau.decimals)).toFixed(2)} vs $0.20 measured`);
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 5 · A CAUTION IS NOT A BAN — SOLANA BELOW 5 MINUTES
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// 🔴 THE CONSOLE RECOMMENDED EXACTLY WHAT THE OPERATOR GUIDE SAYS TO AVOID.
+// Driven on production 2026-08-04: the Add-chain form offered `① 3 min` for Solana —
+// mark ①, no caveat, indistinguishable from Bitcoin — while the guide classifies SOL as
+// CARE and says "Avoid 3-minute Solana rounds". A control that recommends what the
+// contract warns against is the same class of defect as one that offers what the server
+// refuses; the operator is given no way to know.
+//
+// ⭐ The arithmetic is the reason, and it is why this is ② and NOT ③. Solana trades near
+// $74, so the two-tick floor ($0.02) is ~0.03% of the price — where the same $0.02 on
+// Bitcoin at ~$64,000 is ~0.00003%. SOL must therefore travel a thousand times further,
+// *proportionally*, to decide a round, and a quiet three minutes refunds. But it WORKS:
+// §6ao proved it and it paid a real winner (`udr_0e0717…`, 73.83 → 73.87 → UP), and the
+// guide's DO-NOT box lists only three things — gold under 15m, widening the band, empty
+// chains. Short Solana is not one of them. So it must stay SELECTABLE and merely say why.
+//
+// ⛔ Pin the PROPERTY, not the sentence: level 2, still choosable, reason mentions the
+// arithmetic. A guard on exact wording would break the next time the copy is edited.
+{
+  const sol = findSymbol("SOL/USD")!;
+  const btc = findSymbol("BTC/USD")!;
+
+  const at3 = symbolReadiness(sol, 3);
+  ok("5.1 · ⭐ Solana at 3 minutes is a CAUTION, not a plain ready",
+     at3.level === 2, `level ${at3.level} (${readinessMark(at3.level)})`);
+  ok("5.2 · …and it is NOT banned — a caution must stay selectable",
+     at3.level !== 3, `level ${at3.level} would grey the option out`);
+  ok("5.3 · …and it says WHY, in the operator's terms",
+     at3.reason.length > 40 && /0\.0\d%|share of the price|proportion|refund/i.test(at3.reason),
+     JSON.stringify(at3.reason).slice(0, 120));
+
+  // The server gate must agree with the dropdown: a caution does NOT refuse.
+  ok("5.4 · ⛔ the SERVER still accepts a 3-minute Solana chain (a caution is advice)",
+     validateSymbolDuration("SOL/USD", 3) === null,
+     String(validateSymbolDuration("SOL/USD", 3)));
+
+  // 5 minutes and above is where the guide says it is fine — no caution there.
+  for (const d of [5, 10, 15, 30, 60]) {
+    ok(`5.5 · Solana at ${d} minutes is plain ready`,
+       symbolReadiness(sol, d).level === 1, `level ${symbolReadiness(sol, d).level}`);
+  }
+
+  // ⛔ AND THE CAUTION MUST NOT LEAK ONTO BITCOIN. This is the check that would catch a
+  // "fix" that simply cautions every short round — which would be noise, and noise is how
+  // a real warning stops being read.
+  ok("5.6 · ⭐ Bitcoin at 3 minutes is UNAFFECTED — the guide says begin here",
+     symbolReadiness(btc, 3).level === 1, `level ${symbolReadiness(btc, 3).level}`);
+  ok("5.7 · …and Ethereum at 3 minutes too",
+     symbolReadiness(findSymbol("ETH/USD")!, 3).level === 1);
+}
+
 console.log(`\n${fail === 0 ? "✅" : "🔴"} updown-readiness: ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

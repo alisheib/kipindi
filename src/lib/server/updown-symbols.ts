@@ -90,10 +90,29 @@ export type SymbolSpec = {
   minDurationMinutes?: number;
   /** Why the minimum exists, in the operator's terms. Shown beside the greyed options. */
   minDurationWhy?: string;
+  /**
+   * Below this many minutes the symbol is a ② — usable, but with a caveat worth reading.
+   *
+   * ⚠️ Deliberately SEPARATE from `minDurationMinutes`, because the two say different things
+   * and the difference is the whole point. `minDurationMinutes` GREYS the option out: the
+   * round would be decided by the data rather than the market, so it must not be offered.
+   * This one leaves the option SELECTABLE and explains the trade-off — the round works, it
+   * simply refunds more often than the operator may expect.
+   *
+   * 🔴 It exists because the console recommended what the operator guide says to avoid: the
+   * Add-chain form offered `① 3 min` for Solana, mark ① and no caveat, identical to Bitcoin.
+   */
+  cautionBelowMinutes?: number;
+  /** Why the caution exists. Shown beside the option, which stays choosable. */
+  cautionWhy?: string;
 };
 
 /**
- * ⚠️ Every entry here was chosen because Twelve Data quotes it on the live plan (Basic 8)
+ * ⚠️ Every entry here was chosen because Twelve Data quotes it on the live plan (**Grow**,
+ * 377 credits/min — read from the provider 2026-08-04: `api_usage` returns
+ * `{"plan_category":"grow","plan_limit":377}`. This comment said "Basic 8" for months; the
+ * plan had been upgraded and nobody corrected it, which is exactly the stale claim a future
+ * session acts on. Re-read it rather than trusting this line.)
  * — except the ones explicitly marked `unsupported`. The freshness of each still varies
  * per symbol and is NOT knowable from this file; run the probe.
  */
@@ -103,8 +122,22 @@ export const SYMBOL_CATALOGUE: readonly SymbolSpec[] = [
     category: "crypto", iconKey: "crypto", decimals: 2, minMoveTicks: 2, group: "Crypto" },
   { symbol: "ETH/USD", suggestedKey: "ETH", nameEn: "Ethereum", nameSw: "Ethereum", nameZh: "以太坊",
     category: "crypto", iconKey: "crypto", decimals: 2, minMoveTicks: 2, group: "Crypto" },
+  // ⚠️ SOLANA IS FINE — AND ITS BAND IS A DIFFERENT ANIMAL AT ITS PRICE. Two ticks is the
+  // floor everywhere, but $0.02 means something different at $74 than it does at $64,000:
+  // ~0.03% of the price against ~0.00003%. Solana must therefore move a thousand times
+  // further in PROPORTION to decide a round, so a quiet three minutes refunds where Bitcoin
+  // would not. It is a caution and not a ban: §6ao proved SOL and it paid a real winner
+  // (udr_0e0717…, 73.83 → 73.87 → UP), and its band cannot be narrowed because two ticks is
+  // already the floor. 5 minutes and above is unremarkable.
   { symbol: "SOL/USD", suggestedKey: "SOL", nameEn: "Solana",   nameSw: "Solana",   nameZh: "索拉纳",
-    category: "crypto", iconKey: "crypto", decimals: 2, minMoveTicks: 2, group: "Crypto" },
+    category: "crypto", iconKey: "crypto", decimals: 2, minMoveTicks: 2, group: "Crypto",
+    cautionBelowMinutes: 5,
+    cautionWhy:
+      "Solana trades near $74, so its smallest band ($0.02) is about 0.03% of the price — on " +
+      "Bitcoin the same $0.02 is a few hundred-thousandths of a percent. Over three minutes " +
+      "Solana often does not travel that far, so short rounds refund noticeably more often " +
+      "than Bitcoin's. The band cannot be made smaller: two ticks is already the floor. " +
+      "Five minutes and above behaves normally." },
   { symbol: "XRP/USD", suggestedKey: "XRP", nameEn: "XRP",      nameSw: "XRP",      nameZh: "瑞波币",
     category: "crypto", iconKey: "crypto", decimals: 4, minMoveTicks: 2, group: "Crypto" },
   { symbol: "BNB/USD", suggestedKey: "BNB", nameEn: "BNB",      nameSw: "BNB",      nameZh: "币安币",
@@ -287,18 +320,38 @@ export function symbolReadiness(spec: SymbolSpec | undefined, durationMinutes?: 
     };
   }
 
-  // ② a real caveat that does not stop the round happening. A shut market is the common one:
-  // the asset works, it simply produces nothing until the week reopens, and an operator who
-  // does not know that reads the silence as a broken feed (E-36).
+  // ② a real caveat that does not stop the round happening. There are two, and BOTH can
+  // apply to one option, so they are collected rather than returned from the first match —
+  // returning early would silently drop whichever caveat lost the race, and an operator
+  // would be told about the weekend while never hearing that the round refunds often.
+  const caveats: string[] = [];
+
+  // A shut market is the common one: the asset works, it simply produces nothing until the
+  // week reopens, and an operator who does not know that reads the silence as a broken
+  // feed (E-36).
   if (sessionKindFor(spec.category) !== "always") {
-    return {
-      level: 2,
-      reason:
-        `${spec.symbol} is shut at weekends (Friday 21:00 → Sunday 22:00 UTC). While it is shut ` +
-        `the platform refuses to open or settle a round, so you will see no results at all — ` +
-        `that is deliberate, not a fault.`,
-    };
+    caveats.push(
+      `${spec.symbol} is shut at weekends (Friday 21:00 → Sunday 22:00 UTC). While it is shut ` +
+      `the platform refuses to open or settle a round, so you will see no results at all — ` +
+      `that is deliberate, not a fault.`,
+    );
   }
+
+  // …and this LENGTH of round on this symbol is workable but worth a second thought. Unlike
+  // `minDurationMinutes` above, the option stays selectable — this is advice, not a gate, so
+  // `validateSymbolDuration` deliberately does not refuse it.
+  if (
+    durationMinutes != null &&
+    spec.cautionBelowMinutes != null &&
+    durationMinutes < spec.cautionBelowMinutes
+  ) {
+    caveats.push(
+      spec.cautionWhy ??
+      `${spec.symbol} is workable below ${spec.cautionBelowMinutes} minutes but refunds more often.`,
+    );
+  }
+
+  if (caveats.length > 0) return { level: 2, reason: caveats.join(" ") };
   return { level: 1, reason: "" };
 }
 
