@@ -408,10 +408,21 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
                               `c.marginBps ?? cfg.defaultMarginBps` and would now print 0.50%
                               over a chain the engine actually prices at 0.02% — an operator
                               reading a margin the money path does not use. */}
+                          {/* ⛔ "0.00%" IS NOT THE BAND — IT IS THE PERCENTAGE, AND AT ZERO THE
+                              BAND IS THE ASSET'S OWN MINIMUM MOVE. An operator reading `0.00%`
+                              reasonably concludes there is no band at all and that any movement
+                              wins; the truth is $0.02 on BTC and $0.40 on gold. Print the actual
+                              distance whenever the percentage rounds to nothing, or this cell is
+                              the same lie the add-chain form was just fixed for. */}
                           <span className={c.marginBps != null ? "text-text-muted" : "text-text-subtle"}>
-                            {(effectiveMarginBps(c) / 100).toFixed(2)}%
+                            {effectiveMarginBps(c) === 0
+                              ? `±${((a?.minMoveTicks ?? 2) * Math.pow(10, -(a?.decimals ?? 2))).toFixed(a?.decimals ?? 2)}`
+                              : `${(effectiveMarginBps(c) / 100).toFixed(2)}%`}
                           </span>
-                          {c.marginBps == null && (
+                          {effectiveMarginBps(c) === 0 && (
+                            <span className="text-text-faint"> ·min move</span>
+                          )}
+                          {c.marginBps == null && effectiveMarginBps(c) !== 0 && (
                             <span className="text-text-faint"> ·{scheduledFor(c) != null ? "sched" : "def"}</span>
                           )}
                         </td>

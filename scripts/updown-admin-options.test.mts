@@ -217,6 +217,18 @@ const SELECT = "src/components/ui/select.tsx";
      controls.match(/name="minMoveTicks"[^>]*min="\d+"/)?.[0] ?? "");
   ok("6.8 · ⛔ and the help text does not argue against the recommended option",
      !/single tick decide real money/.test(controls));
+
+  // ⛔ "0.00%" IS NOT THE BAND. The chains grid printed the PERCENTAGE, and at the tick floor
+  // that percentage is zero while the band is the asset's own minimum move — $0.02 on BTC,
+  // $0.40 on gold. An operator reading `0.00%` concludes there is no band and that any movement
+  // wins. Same defect as the add-chain copy, one table away, and it is the number an operator
+  // reads most often.
+  const pageSrc = code(PAGE);
+  ok("6.9 · ⭐ the chains grid prints the real distance when the percentage rounds to nothing",
+     /effectiveMarginBps\(c\) === 0\s*\n?\s*\? `±\$\{\(\(a\?\.minMoveTicks/.test(pageSrc),
+     pageSrc.match(/\(effectiveMarginBps\(c\) \/ 100\)\.toFixed\(2\)\}%/) ? "still prints a bare %" : "");
+  ok("6.10 · …and says WHICH quantity it is, so ±0.02 is not read as a percentage",
+     /·min move/.test(pageSrc));
 }
 
 console.log(`\n${fail === 0 ? "✅" : "🔴"} updown-admin-options: ${pass} passed, ${fail} failed`);
