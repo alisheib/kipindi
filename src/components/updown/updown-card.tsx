@@ -31,6 +31,7 @@ import { useUpDownQuickBet, usePlacePulse } from "./use-quick-bet";
 import { UpDownStakeControls } from "./updown-stake-controls";
 import { useCountdown, mmss } from "./round-countdown";
 import { SOURCE_CLASS_KEY } from "@/lib/updown-source-label";
+import { roundPhase } from "@/lib/updown-card-phase";
 // ⛔ ONE RULE FOR "why did this stake come back", shared with the round page, the settlement
 // proof, the push and the inbox. Five copies is five chances to disagree about someone money.
 import { refundReasonFor, REFUND_REASON_KEY } from "@/lib/updown-refund-reason";
@@ -198,7 +199,27 @@ export function UpDownCard(props: UpDownCardProps) {
   // the buttons are dead concludes the app stole their chance, not that the round is fair.
   //
   // So the countdown TARGETS the nearer deadline and the caption names which one it is.
-  const locked = state === "locked";
+  // 🔴 `state` IS A SERVER-RENDERED PROP, AND THE LOCK HAPPENS WHILE THE PAGE IS OPEN.
+  // It is computed once, during the render, so a player who loaded the board DURING betting
+  // holds `state: "open"` for as long as they sit there. When the lock passed, `locked` stayed
+  // false, the countdown to `selectionClosesAtMs` hit zero, and the caption fell through to the
+  // "Selections closed" branch — a DEAD 00:00 clock for the entire result phase. Measured on
+  // production 2026-08-04: 25 consecutive samples across a whole 1-minute phase, never once
+  // reading "Result in". That is exactly the failure the comment above warns about, and the
+  // whole point of Ali's change was to make this phase visible and counted.
+  //
+  // ⭐ So the lock is derived from the INSTANTS, which the card already has and which do not go
+  // stale, with the server's own verdict still winning when it says locked. The clock is
+  // anchored to `serverNowMs` (never the device clock — see `useCountdown`), so a player whose
+  // laptop is 93 seconds slow still sees the same phase the server is in.
+  // `useCountdown` ticks off the SERVER-anchored clock, so this advances through the lock
+  // without a refetch and without trusting the device clock. `roundPhase` is pure and lives in
+  // `@/lib/updown-card-phase` so the rule is testable — see updown-window §7.
+  const secondsToClose = useCountdown(closesAtMs, serverNowMs);
+  const nowMs = secondsToClose == null ? (serverNowMs ?? closesAtMs) : closesAtMs - secondsToClose * 1000;
+  const { locked, bettable: phaseBettable } = roundPhase({
+    state, selectionClosesAtMs: selectionClosesAtMs ?? null, closesAtMs, nowMs,
+  });
   const countdownTarget = locked || selectionClosesAtMs == null ? closesAtMs : selectionClosesAtMs;
   const secondsLeft = useCountdown(countdownTarget, serverNowMs);
 
@@ -206,7 +227,10 @@ export function UpDownCard(props: UpDownCardProps) {
   // the server renders the same action row the client will, and only the digits differ
   // (they read `--:--`, which is identical on both sides).
   const running = secondsLeft == null || secondsLeft > 0;
-  const bettable = state === "open" && running;
+  // ⛔ `phaseBettable` already excludes the result phase — see the note in `roundPhase`. The
+  // pre-hydration tick (`secondsLeft == null`) still has to render the same action row the
+  // client will, or the server and client markup disagree.
+  const bettable = phaseBettable && running;
   const urgent = bettable && secondsLeft != null && secondsLeft <= 30;
   // The exact time the lock happened (or will), for the reason line. Local-time formatting is
   // deliberate — the player's own clock is what they will compare it against.

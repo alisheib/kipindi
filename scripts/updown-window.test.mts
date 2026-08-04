@@ -34,6 +34,7 @@ import {
 } from "../src/lib/server/updown-config.ts";
 import { openRound, acquireObservation } from "../src/lib/server/updown-service.ts";
 import { roundState } from "../src/lib/server/updown-board.ts";
+import { roundPhase } from "../src/lib/updown-card-phase.ts";
 import { buyPosition, isSelectionClosed } from "../src/lib/server/market-service.ts";
 import { marketStore } from "../src/lib/server/market-dal.ts";
 import { seedDefaultSources, addSource } from "../src/lib/server/source-registry.ts";
@@ -254,6 +255,51 @@ async function freshRound() {
   const other = await buyPosition(echo, { marketId: round.marketId, side: "NO", stake: 1_000 });
   ok("6.6 · ⭐ a DIFFERENT account takes the other side freely — that is the market working",
      other.ok, other.ok ? "" : other.error);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 7 · THE RESULT PHASE MUST BE VISIBLE — and it was not
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// 🔴 The card decided "am I locked?" from `state`, a prop rendered ONCE on the server. A player
+// who opened the board during betting kept `state: "open"` for as long as they sat there, so
+// when the lock passed nothing re-evaluated: the countdown hit zero and the caption fell through
+// to "Selections closed" over a dead 00:00 for the whole phase. 25 consecutive production
+// samples across a full 1-minute phase, not one reading "Result in".
+//
+// ⛔ The second assertion is the one that matters for money: the buttons must NOT come back.
+// Re-targeting the countdown at the close makes the clock "run" again, so a naive open+running
+// test reads as bettable for the entire result phase — a control offering what the server refuses.
+{
+  const OPEN = Date.parse("2026-08-04T12:00:00.000Z");
+  const LOCK = OPEN + 3 * 60_000;      // 3 minutes of betting
+  const CLOSE = OPEN + 4 * 60_000;     // + a 1-minute result phase
+  const at = (ms: number) => roundPhase({ state: "open", selectionClosesAtMs: LOCK, closesAtMs: CLOSE, nowMs: ms });
+
+  ok("7.1 · during betting the round is not locked, and is bettable",
+     !at(OPEN + 60_000).locked && at(OPEN + 60_000).bettable);
+
+  ok("7.2 · ⭐ the instant the lock passes the round reads LOCKED — even though the server prop still says 'open'",
+     at(LOCK).locked, "this is the stale-prop defect: it stayed 'open' and showed a dead 00:00");
+  ok("7.3 · …and stays locked right through the result phase",
+     at(LOCK + 1_000).locked && at(CLOSE - 1_000).locked);
+  ok("7.4 · ⛔ …and the buttons do NOT come back during it",
+     !at(LOCK).bettable && !at(LOCK + 30_000).bettable && !at(CLOSE - 1_000).bettable,
+     "a control offering what buyPosition refuses");
+
+  ok("7.5 · at the close it is no longer 'result in' — the countdown has genuinely run out",
+     !at(CLOSE).locked && !at(CLOSE + 30_000).locked);
+
+  ok("7.6 · a settled round is never 'locked', whatever the clock says",
+     !roundPhase({ state: "resolved", selectionClosesAtMs: LOCK, closesAtMs: CLOSE, nowMs: LOCK + 1_000 }).locked &&
+     !roundPhase({ state: "void", selectionClosesAtMs: LOCK, closesAtMs: CLOSE, nowMs: LOCK + 1_000 }).locked);
+
+  ok("7.7 · the SERVER's verdict still wins when it says locked",
+     roundPhase({ state: "locked", selectionClosesAtMs: null, closesAtMs: CLOSE, nowMs: OPEN }).locked);
+
+  ok("7.8 · a legacy round with no lock instant is bettable to its close, not locked early",
+     roundPhase({ state: "open", selectionClosesAtMs: null, closesAtMs: CLOSE, nowMs: CLOSE - 1_000 }).bettable &&
+     !roundPhase({ state: "open", selectionClosesAtMs: null, closesAtMs: CLOSE, nowMs: CLOSE - 1_000 }).locked);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
