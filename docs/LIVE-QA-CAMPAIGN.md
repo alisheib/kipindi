@@ -3753,13 +3753,28 @@ player the sentence was written for.**
 ⚠️ **The guard asserted the branch EXISTED. It did, and it was unreachable.** Those are different
 claims, and only driving it on production told them apart. §4.9 now pins that the result panel
 itself carries the reason, proven RED by shadowing it again.
+### ✅ AND THEN PROVEN LIVE, IN ALL THREE LANGUAGES, ON THAT SAME REFUNDED ROUND
+
+After the fix deployed, echo was asked what happened to their money on
+`udr_06c8b7b8128a6de53c64` — the round that resolved UP and refunded them:
+
+| | |
+|---|---|
+| **EN** | *Nobody backed the other side, so there was nothing to win and nothing to lose. Your stake is back in full.* |
+| **SW** | *Hakuna aliyeweka dau upande mwingine, hivyo hakukuwa na cha kushinda wala kupoteza. Dau lako limerudi kikamilifu.* |
+| **ZH** | *没有人投注另一方，因此既无可赢也无可输。您的投注已全额退回。* |
+
+⚠️ **One residual, seen only by LOOKING at the panel:** the status chip still reads
+**BATILI · IMERUDISHWA (VOID · REFUNDED)** on a round that RESOLVED **UP**. `resultLabel` falls
+back to `udVoided` for any non-WIN/LOSS result, so the chip repeats the old conflation that the
+sentence beneath it now corrects. The substance is fixed and the label is not — worth an entry
+rather than a claim of completeness.
 ### ⏳ NOT YET PROVEN LIVE — stated plainly rather than implied
 
 - **A LATE close settling instead of voiding.** Proven exhaustively in `test:updown-late-close`
   §3 (529s late, settles DOWN with a real price, RED 7/7) but **not yet forced on production** —
   it needs the close to be missed, which the scheduler now reliably prevents.
-- **The refund reasons on the live surfaces in EN/SW/ZH.** Guarded by `test:updown-void-copy` (32,
-  RED 8/8); no live round refunded during the drive, because at the tick floor they decide.
+- ~~The refund reasons on the live surfaces in EN/SW/ZH.~~ ✅ **DONE** — see the section above.
 - **The accountant/reports view of these rounds**, and the 4-width × 3-locale sweep (Phase 7).
 
 ## 6aj. ⭐ E-65 CLOSED — a refund now states its real reason, on every surface, in three languages (2026-08-04, session 23)
@@ -4533,7 +4548,7 @@ so a tick-floor margin on crypto measures the market, not the feed.
 ⛔ **`feedProvider` is still `twelvedata`. No money has touched the new reader yet** — the switch
 is gated on the shadow run's median delta (§6ae) and lands with phase 1e.
 
-#### ⏭️ **RESUME AT:** ① **Phase 7 — E-70, E-59, the accountant/reports pass, the 4-width sweep, and consolidating the Up & Down docs. Then the two live proofs §6ak lists as NOT YET DONE: a forced LATE close, and the refund copy on a live refunded round.** Phases 1c/1d/1e/2/3/4/6 are DONE (§6ae, §6af, §6ag, §6ah, §6ai, §6aj). `openRound` writes `selectionClosedAt: null`; set it to the last **20% of the round, floored at 30s**, config-driven. ⭐ The server enforcement is already free — `buyPosition` (`market-service.ts:621`) refuses `isSelectionClosed`. The card needs a **LOCKED** state whose countdown **RE-LABELS itself** and whose message carries its reason, and the lock turns `× 1.4 est.` into an exact payout. Ali's call 2026-08-04: **one account may NOT hold both sides of a round** — enforce in `buyPosition`, RED-first. Then **② Phase 2** tick-floor margin + `minMoveTicks ≥ 2` (see **E-73**) · **③ Phase 3** durations 3/5/10/15/30/60 on the epoch lattice, **gold 15m+ only** (Ali's call, 2026-08-04) · **④ Phase 4** the fully-controlled admin · **⑤ Phase 6** void honesty · **⑥ Phase 7** E-70, E-59, accountant/reports, the 4-width sweep, and consolidating the Up & Down docs to one truth.
+#### ⏭️ **RESUME AT:** ① **Phase 7 and the two live proofs §6ak still lists as outstanding.** Phases 1c/1d/1e/2/3/4/6 are DONE and LIVE (§6ae–§6ak), settlement runs on DATED BARS at the tick floor, and the whole flow was driven with real money — a 3-minute round settled from a bar, both sides staked, wallet/position/round paired to the shilling, and E-65 proven fixed on a real refunded round in EN/SW/ZH. What is left: **a forced LATE close on production** (exhaustive in the late-close guard §3 at 529s, RED 7/7, but never forced live — it needs settlement deliberately missed, which risks real money); the **result chip that still reads VOID on a round that RESOLVED** (§6ak); the **accountant/reports pass**; **E-70** and **E-59**; the **4-width × EN/SW/ZH sweep**; and **consolidating the three Up & Down docs (SPEC, ARCHITECTURE, PRICING) to one truth** — their duration and margin claims are now stale.
 
 ### 🟢 Laptop A, session 22 (2026-08-04) — THE SETTLEMENT REBUILD IS UNDER WAY AND HALF SHIPPED. Read §6ad first; it carries every decision and the measured evidence.
 
