@@ -31,7 +31,7 @@ import {
   assetStore, chainStore, roundStore, observationStore,
   type StoredAsset, type StoredChain, type StoredRound, type RoundOutcome, type VoidReason,
 } from "./updown-dal";
-import { minuteFloor, selectionClosesAt, MINUTE_MS } from "@/lib/updown-durations";
+import { minuteFloor, selectionClosesAt, roundSpanMinutes, MINUTE_MS } from "@/lib/updown-durations";
 import { observePrice, describeRefusal, type OracleReading, type RefusalReason } from "./updown-oracle";
 import { feedFromId, quoteAsset, describeFeedRefusal, hostMatchesDomain, judgeFeedStaleness } from "./updown-feed";
 // E-36 — the trading calendar. A shut market must never settle real money.
@@ -577,7 +577,12 @@ export async function openRound(
   const capturedSourceDomain = asset.sourceDomain;
 
   const openMs = Date.parse(openBoundaryIso);
-  const closeMs = openMs + chain.durationMinutes * 60_000;
+  // ⭐ THE SPAN, NOT THE DURATION (Ali, 2026-08-04). `durationMinutes` is now purely "how long
+  // you may bet"; the round runs that long PLUS a result phase in which the closing price is
+  // read. So a "3 min" round takes bets for a full 3 minutes and closes at 4. Using
+  // `durationMinutes` here would put the close back on top of the lock and re-create exactly
+  // the shortfall this change removed.
+  const closeMs = openMs + roundSpanMinutes(chain.durationMinutes) * 60_000;
   const closeIso = new Date(closeMs).toISOString();
 
   const last = await roundStore.latestForChain(chain.id);

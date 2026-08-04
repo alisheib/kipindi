@@ -16,6 +16,7 @@
 import {
   ALLOWED_DURATIONS, OBSERVATION_GRID_MINUTES, landsOnGrid,
   MINUTES_PER_DAY, latticeBoundaryAtOrBefore,
+  resultPhaseMinutes, roundSpanMinutes, selectionClosesAt, selectionCloseLeadSeconds,
 } from "../src/lib/updown-durations";
 import { readFileSync } from "node:fs";
 
@@ -89,6 +90,57 @@ ok("§2 the list is sorted and unique",
       "a hand-copied array makes a new duration unreachable from the console");
     ok(`§3 …and imports it`, /from "@\/lib\/updown-durations"/.test(s));
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §4 · THE RESULT PHASE IS ADDED, NOT CARVED OUT — Ali's decision 2026-08-04
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// ⭐ "3 min" must mean THREE MINUTES OF BETTING. The settlement lead used to be taken out of
+// the advertised time — a 3-minute round stopped accepting bets after 2m24s — so the player
+// got less game than the name promised. The lead is now appended as its own visible phase.
+//
+// ⛔ These assert the PROPERTY, not the six numbers: betting == the advertised duration, the
+// span is longer than the duration, the close stays on a whole minute, and the span still
+// divides the day. A table of expected values would pass while the rule underneath rotted.
+{
+  for (const d of ALLOWED_DURATIONS) {
+    const phase = resultPhaseMinutes(d);
+    const span = roundSpanMinutes(d);
+
+    ok(`§4 ${d}m · the result phase is at least a whole minute`, phase >= 1, `phase=${phase}`);
+    ok(`§4 ${d}m · …and a WHOLE number of minutes (the close must land on a 1-minute bar)`,
+       Number.isInteger(phase), `phase=${phase}`);
+    ok(`§4 ${d}m · …and it covers the lock the fairness rule asks for`,
+       phase * 60 >= selectionCloseLeadSeconds(d),
+       `phase=${phase * 60}s < lead=${selectionCloseLeadSeconds(d)}s`);
+    ok(`§4 ${d}m · the span ADDS the phase rather than carving it out`,
+       span === d + phase && span > d, `span=${span} duration=${d}`);
+    ok(`§4 ${d}m · ⭐ the span still divides the day, so rounds keep clean clock marks`,
+       MINUTES_PER_DAY % span === 0, `1440 % ${span} = ${MINUTES_PER_DAY % span}`);
+
+    // The load-bearing one: betting lasts the WHOLE advertised duration.
+    const open = Date.parse("2026-08-04T12:00:00.000Z");
+    const closeIso = new Date(open + span * 60_000).toISOString();
+    const lockIso = selectionClosesAt(closeIso, d);
+    ok(`§4 ${d}m · ⛔ betting is open for the FULL advertised ${d} minutes`,
+       lockIso != null && Date.parse(lockIso) - open === d * 60_000,
+       lockIso ? `${(Date.parse(lockIso) - open) / 60_000}min of betting` : "no lock");
+    ok(`§4 ${d}m · …and the lock is exactly one result-phase before the close`,
+       lockIso != null && Date.parse(closeIso) - Date.parse(lockIso) === phase * 60_000);
+    ok(`§4 ${d}m · …and the lock lands on a whole minute`,
+       lockIso != null && Date.parse(lockIso) % 60_000 === 0, String(lockIso));
+  }
+
+  // ⛔ THE REGRESSION THIS EXISTS TO CATCH: reverting `selectionClosesAt` to subtract
+  // `selectionCloseLeadSeconds` from the close would restore the old behaviour while every
+  // other number on the page still looked right. Pin it on the 3-minute case, where the old
+  // rule gave 2m24s of betting and the new one gives the full 3m.
+  const open = Date.parse("2026-08-04T12:00:00.000Z");
+  const close3 = new Date(open + roundSpanMinutes(3) * 60_000).toISOString();
+  const lock3 = selectionClosesAt(close3, 3)!;
+  ok("§4 ⭐ a 3-minute round gives 180s of betting, not the old 144s",
+     (Date.parse(lock3) - open) / 1000 === 180, `${(Date.parse(lock3) - open) / 1000}s`);
 }
 
 console.log(`\nE-62 · durations — ${pass} passed, ${fails.length} failed\n`);

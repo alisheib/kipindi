@@ -50,7 +50,7 @@ const UPDOWN_CONFIG_KEY = "updown.config";
  *  duration would not land on the grid and would break that sharing. */
 export { ALLOWED_DURATIONS, OBSERVATION_GRID_MINUTES, landsOnGrid } from "@/lib/updown-durations";
 export type { Duration } from "@/lib/updown-durations";
-import { ALLOWED_DURATIONS } from "@/lib/updown-durations";
+import { ALLOWED_DURATIONS, roundSpanMinutes } from "@/lib/updown-durations";
 import type { Duration } from "@/lib/updown-durations";
 
 export type UpDownConfig = {
@@ -515,8 +515,16 @@ export function abandonAfterSeconds(cfg: UpDownConfig): number {
  * which is what lets a 5-, 15- and 30-minute chain agree on the instants they share.
  */
 export function boundaryAfter(anchorMs: number, durationMinutes: number, fromMs: number): number {
-  const step = durationMinutes * 60_000;
-  if (step <= 0) throw new Error("boundaryAfter: duration must be positive");
+  // ⭐ THE STEP IS THE ROUND'S SPAN, NOT ITS BETTING WINDOW (Ali, 2026-08-04). A round now runs
+  // `durationMinutes` of betting PLUS a result phase, so consecutive rounds are `span` apart.
+  // Stepping by `durationMinutes` here would overlap each round with the previous one's result
+  // phase and hand two live rounds to the same chain.
+  // ⛔ VALIDATE THE DURATION, NOT THE DERIVED STEP. `roundSpanMinutes` adds a result phase of at
+  // least one minute, so a zero or negative duration would produce a POSITIVE step and this
+  // guard would wave it through — a chain with a nonsense duration would then quietly emit
+  // rounds every minute instead of throwing. Caught by 1.9 in updown-config.test.mts.
+  if (!(durationMinutes > 0)) throw new Error("boundaryAfter: duration must be positive");
+  const step = roundSpanMinutes(durationMinutes) * 60_000;
   // Math.floor (not trunc) so a `fromMs` BEFORE the anchor still lands correctly on
   // a negative k rather than skipping forward a whole step.
   const k = Math.floor((fromMs - anchorMs) / step) + 1;
@@ -525,8 +533,8 @@ export function boundaryAfter(anchorMs: number, durationMinutes: number, fromMs:
 
 /** The grid boundary at or before `atMs` — i.e. the start of the round covering it. */
 export function boundaryAtOrBefore(anchorMs: number, durationMinutes: number, atMs: number): number {
-  const step = durationMinutes * 60_000;
-  if (step <= 0) throw new Error("boundaryAtOrBefore: duration must be positive");
+  if (!(durationMinutes > 0)) throw new Error("boundaryAtOrBefore: duration must be positive");
+  const step = roundSpanMinutes(durationMinutes) * 60_000;   // the SPAN — see boundaryAfter
   return anchorMs + Math.floor((atMs - anchorMs) / step) * step;
 }
 

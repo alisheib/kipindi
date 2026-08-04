@@ -100,11 +100,15 @@ single instant, and by up to <b>$0.87</b> across a minute boundary — comparabl
 five minutes — so a short gold round would be decided by which reading arrived rather than by the
 market. <em>Crypto may run any length: 3, 5, 10, 15, 30 or 60 minutes.</em></div>
 
-<div><b>Betting closes before the round ends.</b> The final <b>20%</b> of every round accepts no
-bets, never less than 30 seconds. A 5-minute round closes betting with <b>60 seconds</b> remaining.
-<em>Near the close the result is largely known. Without this window, a player watching the price
-could bet on an outcome already visible and take money from those who bet at the start. The player’s
-card explains this, and the countdown relabels itself from “betting closes in” to “result in”.</em></div>
+<div><b>The round length IS the betting time, and the result phase is added after it.</b>
+A <b>5-minute</b> round takes bets for a full five minutes, then runs a <b>1-minute result
+phase</b> in which the closing price is read — six minutes in total. Nothing is taken off the
+advertised time.
+<em>Near the close the result is largely known, so bets must stop before the closing price is
+read: without that, a player watching the price could bet on an outcome already visible and take
+money from those who bet at the start. The player’s card shows both parts — the countdown
+relabels itself from “betting closes in” to “result in” and keeps counting through the result
+phase.</em></div>
 
 <div><b>The winning band is the smallest possible step, not a percentage.</b> The recommended
 setting, <b>Smallest possible</b>, uses the asset’s own minimum move: <b>$0.02</b> on Bitcoin,
@@ -148,9 +152,10 @@ three appear harmless.</p>
 
 <div class="flow">
   <div><b>1 · Round opens</b>The price of the last completed minute is read and frozen as the opening price.</div>
-  <div><b>2 · Players bet</b>UP or DOWN, until betting closes in the final 20%.</div>
-  <div><b>3 · Round closes</b>The price for the closing minute is read the same way.</div>
-  <div><b>4 · Settlement</b>UP wins, DOWN wins, or nobody wins and every stake is returned.</div>
+  <div><b>2 · Players bet</b>UP or DOWN, for the whole advertised length — a “5 min” round takes bets for five minutes.</div>
+  <div><b>3 · Result phase</b>Betting stops and the countdown runs on under “result in” while the closing minute arrives.</div>
+  <div><b>4 · Round closes</b>The price for the closing minute is read the same way.</div>
+  <div><b>5 · Settlement</b>UP wins, DOWN wins, or nobody wins and every stake is returned.</div>
 </div>
 
 <div class="box">
@@ -347,29 +352,57 @@ fee          min(130, 33.33) = 33.33  CAPPED  net pool 966.67
 If DOWN wins, its single 100 backer receives 966 - nearly ten times the stake.
 If UP wins, the 900 receives 966. Either way, above the stake.</div>
 
-<h3>4.4 · When betting closes</h3>
+<h3>4.4 · The two parts of a round</h3>
 
-<div class="f">lead = the LARGER of ( 20% of the round , 30 seconds )
-betting closes at = closing time - lead</div>
+<div class="f">betting runs for the FULL advertised length
+result phase   = 20% of the length, rounded UP to a whole minute, at least 1 minute
+whole round    = length + result phase</div>
 
 <table>
   <tr><th>Round length</th><th class="n">3 min</th><th class="n">5 min</th><th class="n">10 min</th><th class="n">15 min</th><th class="n">30 min</th><th class="n">60 min</th></tr>
-  <tr><td>Betting closes with … remaining</td><td class="n">36s</td><td class="n">60s</td><td class="n">2m</td><td class="n">3m</td><td class="n">6m</td><td class="n">12m</td></tr>
+  <tr><td>Bets accepted for</td><td class="n">3m</td><td class="n">5m</td><td class="n">10m</td><td class="n">15m</td><td class="n">30m</td><td class="n">60m</td></tr>
+  <tr><td>Then the result phase</td><td class="n">1m</td><td class="n">1m</td><td class="n">2m</td><td class="n">3m</td><td class="n">6m</td><td class="n">12m</td></tr>
+  <tr><td>Open to close</td><td class="n">4m</td><td class="n">6m</td><td class="n">12m</td><td class="n">18m</td><td class="n">36m</td><td class="n">72m</td></tr>
+  <tr><td>Rounds per day</td><td class="n">360</td><td class="n">240</td><td class="n">120</td><td class="n">80</td><td class="n">40</td><td class="n">20</td></tr>
 </table>
 
-<p>At that moment the player’s buttons are disabled, the card states why, and the estimate
+<p><b>Why the result phase is a whole number of minutes.</b> The closing price comes from a dated
+<i>one-minute</i> record, so a round has to close on a minute mark — there is no record labelled
+17:33:36. Rounding the phase up to the minute is what makes the round settleable, not a tidiness
+choice. It also keeps every span dividing evenly into the 1,440 minutes of a day (4, 6, 12, 18, 36
+and 72 all do), so rounds still start on the same clean clock marks each day and several lengths
+still share boundaries — the saving described in section 2 is unaffected.</p>
+
+<p>When betting closes the player’s buttons are disabled, the card states why, and the estimate
 <i>“× 1.4 est.”</i> becomes an <b>exact figure</b> — once the pool is frozen, each side’s payout is
-known precisely.</p>
+known precisely. The countdown then runs again through the result phase under <i>“result in”</i>,
+so the player is never left watching a clock at zero.</p>
+
+<div class="note"><b>WHAT CHANGED, AND WHY</b> Until 2026-08-04 the lead was taken
+<i>out</i> of the advertised time: a “3 min” round ran three minutes end to end and stopped taking
+bets after 2m24s, so a player got less game than the name promised. Ali’s decision was to add the
+time rather than remove it. The fairness rule is unchanged — nobody can bet in the final stretch
+before the closing price is read — but the advertised length is now honest. One consequence worth
+knowing: rounds are longer, so a chain produces fewer of them per day (a 3-minute chain now runs
+360 rounds rather than 480). Every length except 3 minutes gives players <i>more</i> total betting
+time per day; 3-minute chains give about 6% less, because their 36-second lead has to round up to
+a full minute.</div>
 
 <h3>4.5 · Permitted round lengths</h3>
 
-<div class="f">a length is permitted only if it divides evenly into 1440, the minutes in a day
-3 · 5 · 10 · 15 · 30 · 60   ->  permitted
+<div class="f">a length is permitted only if its WHOLE ROUND divides evenly into 1440, the minutes in a day
+3 · 5 · 10 · 15 · 30 · 60   ->  permitted  (whole rounds of 4 · 6 · 12 · 18 · 36 · 72)
 4 · 7 · 45                  ->  refused</div>
 
-<p>A length that divides the day starts every round on a clean clock mark, the same marks each day.
-Several lengths then share boundaries, so one price reading serves many rounds — the saving
-described in section 2, and section 5 shows a real provider response.</p>
+<p>A round that divides the day starts on a clean clock mark, the same marks each day. Several
+lengths then share boundaries, so one price reading serves many rounds — the saving described in
+section 2, and section 5 shows a real provider response.</p>
+
+<p><b>It is the whole round that has to divide the day, not the betting window</b> — since
+2026-08-04 the two are different numbers. All six still qualify: 4, 6, 12, 18, 36 and 72 divide
+1,440 exactly (360, 240, 120, 80, 40 and 20 rounds a day). The sharing survives too: a 5-minute
+round’s 6-minute span and a 15-minute round’s 18-minute span both divide a 30-minute round’s
+36-minute span, so those three chains still meet on the same instants.</p>
 
 <h3>4.6 · If a price cannot be read</h3>
 
@@ -709,8 +742,9 @@ produces none.</b></p>
       tabs before assuming the round is missing.</li>
   <li>Place a small bet on <b>UP</b> and watch <b>VOL</b> increase. From a second account bet
       <b>DOWN</b>; both sides are required or the round refunds.</li>
-  <li>With 60 seconds remaining, watch the buttons disable, the wording change from <i>betting closes
-      in</i> to <i>result in</i>, and the estimate become an exact figure.</li>
+  <li>When the five minutes of betting are up, watch the buttons disable, the wording change from
+      <i>betting closes in</i> to <i>result in</i>, and the estimate become an exact figure. The
+      countdown then runs a further <b>1 minute</b> — the result phase — before the round closes.</li>
   <li>At the close the card shows the result. In <b>Rounds</b>, check the outcome, the stake, the
       number of players and the settlement time.</li>
   <li>Confirm the winner’s wallet increased by the amount the card promised. It will agree exactly.</li>

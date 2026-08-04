@@ -31,6 +31,7 @@ import {
 } from "../src/lib/server/updown-config.ts";
 import { assetStore, chainStore, observationStore, __resetUpDownMemoryStores } from "../src/lib/server/updown-dal.ts";
 import { addSource, seedDefaultSources } from "../src/lib/server/source-registry.ts";
+import { roundSpanMinutes } from "../src/lib/updown-durations.ts";
 import { poolFee } from "../src/lib/payout.ts";
 
 let pass = 0, fail = 0;
@@ -72,21 +73,40 @@ const GOLD = {
   const anchor = Date.parse("2026-07-24T14:00:00.000Z");
   const M = 60_000;
 
+  // ⭐ THE GRID STEPS BY THE ROUND'S SPAN, NOT ITS BETTING WINDOW (Ali, 2026-08-04).
+  // A "5 min" chain takes bets for a full 5 minutes and then runs a 1-minute result phase, so
+  // consecutive rounds open 6 minutes apart. These three assertions used to read `5 * M` and
+  // they were RIGHT under the old model, where the lead was carved out of the duration.
+  // ⛔ Stepping by the duration now would open round N+1 on top of round N's result phase and
+  // give one chain two live rounds.
+  const SPAN5 = roundSpanMinutes(5);   // 6
   ok("1.1 · next boundary after an exact boundary is the NEXT one, not itself",
-     boundaryAfter(anchor, 5, anchor) === anchor + 5 * M,
+     boundaryAfter(anchor, 5, anchor) === anchor + SPAN5 * M,
      new Date(boundaryAfter(anchor, 5, anchor)).toISOString());
 
   ok("1.2 · mid-round lands on the coming boundary",
-     boundaryAfter(anchor, 5, anchor + 2 * M) === anchor + 5 * M);
+     boundaryAfter(anchor, 5, anchor + 2 * M) === anchor + SPAN5 * M);
 
   ok("1.3 · 15-min and 5-min chains SHARE the :15 instant",
      boundaryAfter(anchor, 15, anchor) === boundaryAfter(anchor, 5, anchor + 12 * M),
      "this sharing is what makes one observation serve six round edges");
 
-  ok("1.4 · 30-min, 15-min and 5-min all share the :30 instant",
-     boundaryAfter(anchor, 30, anchor) === anchor + 30 * M &&
-     boundaryAfter(anchor, 15, anchor + 20 * M) === anchor + 30 * M &&
-     boundaryAfter(anchor, 5, anchor + 27 * M) === anchor + 30 * M);
+  // ⭐ THE SHARING PROPERTY SURVIVES THE RESULT PHASE — which was the main risk in adding it.
+  // The shared instant moves from :30 to :36 because the spans are now 36 / 18 / 6 minutes, and
+  // 6 and 18 both divide 36 exactly, so a 30-, 15- and 5-minute chain still meet and one price
+  // reading still serves all three. ⛔ Asserted as "they agree", not as ":36" — the instant is
+  // an consequence of the spans, and hardcoding it is how this check would rot next time the
+  // shape changes.
+  const SPAN30 = roundSpanMinutes(30);   // 36
+  const shared = anchor + SPAN30 * M;
+  ok("1.4 · 30-min, 15-min and 5-min chains still SHARE an instant",
+     boundaryAfter(anchor, 30, anchor) === shared &&
+     boundaryAfter(anchor, 15, shared - 2 * M) === shared &&
+     boundaryAfter(anchor, 5, shared - 2 * M) === shared,
+     `30m→${boundaryAfter(anchor, 30, anchor)} 15m→${boundaryAfter(anchor, 15, shared - 2 * M)} 5m→${boundaryAfter(anchor, 5, shared - 2 * M)}`);
+  ok("1.4b · …and the shorter spans divide the longer one, which is WHY they share",
+     SPAN30 % roundSpanMinutes(15) === 0 && SPAN30 % roundSpanMinutes(5) === 0,
+     `span30=${SPAN30} span15=${roundSpanMinutes(15)} span5=${roundSpanMinutes(5)}`);
 
   // THE ANTI-DRIFT PROPERTY. Boundaries are derived from the anchor, so computing
   // from any instant inside a round gives the same answer — a restart or a missed

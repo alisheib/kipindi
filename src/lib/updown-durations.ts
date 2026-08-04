@@ -179,6 +179,50 @@ export const SELECTION_CLOSE_FRACTION = 0.2;
 export const SELECTION_CLOSE_MIN_SECONDS = 30;
 
 /**
+ * ⭐ THE RESULT PHASE — Ali's decision, 2026-08-04.
+ *
+ * The lock above is right, but it used to be taken OUT of the advertised time: a "3 min" round
+ * ran three minutes end to end and stopped taking bets after 2m24s, so the player got 2:24 of
+ * betting on a game called three minutes. Ali: *"instead of making the game time less, why not
+ * the same time we are taking off, add it — so 3 min is really 3 mins, then we make a state for
+ * the result to come out in the extra time, and give it a timer."*
+ *
+ * So the lead is now ADDED AFTER the betting window rather than carved out of it:
+ *
+ *     |<──────── durationMinutes: BETTING ────────>|<─ result phase ─>|
+ *     open                              selection close            close
+ *
+ * The advertised duration is exactly the betting time, and the result phase is a visible,
+ * separately-counted state that ends when the closing price is read.
+ *
+ * ⛔ WHY THE LEAD IS ROUNDED UP TO WHOLE MINUTES. The close price comes from a DATED ONE-MINUTE
+ * bar, so a close at 3m36s could not be read at all — there is no bar labelled 17:33:36. Rounding
+ * the lead up to the minute keeps every close on a minute mark, and it is not a rounding
+ * convenience: it is what makes the round settleable.
+ *
+ * ⭐ AND THE LATTICE SURVIVES, which is not obvious and is the reason this shape was chosen.
+ * §4.5's rule is that a round must divide 1440 so every round starts on the same clean clock
+ * marks each day. The SPANS now do:
+ *     3+1=4 (360/day) · 5+1=6 (240) · 10+2=12 (120) · 15+3=18 (80) · 30+6=36 (40) · 60+12=72 (20)
+ * Every one divides 1440 exactly, so rounds still tile the day and several lengths still share
+ * boundaries — the price-reading saving in §2 is untouched.
+ */
+export function resultPhaseMinutes(durationMinutes: number): number {
+  const leadSeconds = selectionCloseLeadSeconds(durationMinutes);
+  return Math.max(1, Math.ceil(leadSeconds / 60));
+}
+
+/**
+ * The round's whole span, open → close: the betting window PLUS the result phase.
+ *
+ * ⚠️ This — not `durationMinutes` — is the distance from a round's open to its close, and it is
+ * what the chain's grid steps by. `durationMinutes` is now purely "how long you may bet".
+ */
+export function roundSpanMinutes(durationMinutes: number): number {
+  return Math.max(0, durationMinutes) + resultPhaseMinutes(durationMinutes);
+}
+
+/**
  * How many seconds before a round's close bets stop being accepted.
  *
  * Pure, and exported so the server, the card and the round page share ONE answer. Three copies
@@ -207,8 +251,12 @@ export function selectionCloseLeadSeconds(
 export function selectionClosesAt(closeIso: string, durationMinutes: number): string | null {
   const closeMs = Date.parse(closeIso);
   if (!Number.isFinite(closeMs)) return null;
-  const lead = selectionCloseLeadSeconds(durationMinutes);
-  const openMs = closeMs - durationMinutes * 60_000;
-  const at = closeMs - lead * 1000;
+  // ⭐ The lock is the close minus the RESULT PHASE, which lands it exactly `durationMinutes`
+  // after the open — the whole advertised duration is bettable. It is NOT
+  // `selectionCloseLeadSeconds` any more: that value is the INPUT to the result phase, and
+  // using it here would re-carve the lead out of the betting window, restoring the very
+  // behaviour Ali asked to remove while every other number still looked right.
+  const at = closeMs - resultPhaseMinutes(durationMinutes) * 60_000;
+  const openMs = closeMs - roundSpanMinutes(durationMinutes) * 60_000;
   return at > openMs ? new Date(at).toISOString() : null;
 }
