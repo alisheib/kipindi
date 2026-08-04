@@ -12,14 +12,28 @@
 
 ## 1 · What it is
 
-A player bets whether the price of a commodity will be **higher or lower than it is
-right now**, when a countdown reaching **5, 15 or 30 minutes** hits zero. Rounds run
-back-to-back in continuous **chains** — one ends, the next is already open.
+A player bets whether a price will be **higher or lower than the opening price**, when a countdown
+reaching **3, 5, 10, 15, 30 or 60 minutes** hits zero. A length is permitted only if it divides
+evenly into 1440 — the minutes in a day — so every round starts on the same clock marks daily.
 
-Launch assets: **Gold and Silver** (Ali, 2026-07-24). The asset list is an operator
-registry — assets are added, renamed, enabled and disabled from the admin panel with
-no deploy. BTC exists as an option and is **off** by default, per the management note:
-*"we will use gold, silver etc., not BTC — make admin flexible."*
+⛔ **CORRECTED 2026-08-04.** This paragraph read *"higher or lower than it is right now"* at
+*"5, 15 or 30 minutes"*. Both halves are now wrong:
+
+- **Six lengths, not three** — `ALLOWED_DURATIONS = [3, 5, 10, 15, 30, 60]` on the epoch lattice.
+  ⚠️ **Gold is restricted to 15m and above** (`minDurationMinutes`), because XAU/USD's own feed
+  disagrees with itself by up to $0.87 at a single instant.
+- **Against the OPENING PRICE, not "right now"** — the open is the `open` of the last *completed*
+  one-minute bar, which places it 60–120s in the past. That is exactly why the betting window (the
+  final 20%, floored at 30s) had to ship in the same change: without it a player could bet against a
+  price they can already watch moving.
+
+⚠️ **Chains no longer run back-to-back by default. They are MANUAL** — an operator presses
+**Generate round** (Ali's decision, 2026-08-04). The scheduler and Start/Stop still exist; nothing
+produces rounds unattended.
+
+Live assets: **BTC** and **ETH** ready · **XAU** (gold) ready at 15m+ · **SOL** enabled but never
+proven to pay · **BNB**, **SNP500** and a duplicate **GOLD** row disabled. The asset list is an
+operator registry — added, renamed, enabled and disabled from the admin panel with no deploy.
 
 ### Business value
 

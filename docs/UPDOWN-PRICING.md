@@ -2,16 +2,43 @@
 
 > The math behind how an Up & Down round is won, and where every piece lives. Money-critical
 > — read this before touching `decideOutcome*`, `computeTargets`, or the round's price fields.
-> Shipped 2026-07-28 (the "50pick Dynamic Engine" pricing model). Prior behaviour (a sub-tick
-> dead-band only) is preserved for any round opened before this and for `marginBps = 0`.
+>
+> **Authoritative for:** the band arithmetic and the money split. For the *reader* and the round
+> lifecycle see `UPDOWN-ARCHITECTURE.md`; for the player-facing rules see `UPDOWN-SPEC.md`; for the
+> operator-facing version of all of it see `50pick-updown-operator-guide.pdf`.
+
+## ⛔ CORRECTED 2026-08-04 — THE DEFAULT IS THE TICK FLOOR, NOT 0.5%
+
+This document described `defaultMarginBps = 50` (**0.5%**) as the model. **That is no longer true
+and was measured to be wrong.** The live value is **`defaultMarginBps: 0`**, and `marginSchedule`
+is **empty** — so the band is *always* the asset's own minimum move unless a chain overrides it.
+
+| | then | **now (live)** |
+|---|---|---|
+| `defaultMarginBps` | 50 (0.5%) | **0** |
+| effective band, BTC | ±$316 on a $63,000 price | **±$0.02** (2 ticks) |
+| effective band, gold | ±$16.50 | **±$0.40** (40 ticks) |
+| rounds that paid a winner | **63%** measured | **~99%** designed |
+| `minMoveTicks` floor | none — assets sat at **1** | **`MIN_MOVE_TICKS_FLOOR = 2`** |
+
+⭐ **Why**: at 0.5% Bitcoin had to travel **±$316 inside five minutes** and refunded 5 real
+production rounds out of 5. A refunded round earns **no fee**, so a wide band does not raise the
+margin — it removes it. Ali's decision, 2026-08-04, on the measurement. ⛔ Do not re-open it.
+
+⛔ **And a one-tick band is now refused.** At `decimals: 2` a single tick is 0.01 while `toFixed(2)`
+rounding error reaches 0.005 on *each* of the two prices that decide the round — the band would be
+no larger than the noise it measures. `recommendMinMoveTicks` derives the per-asset number from
+measured feed disagreement (gold: its own feed differs by up to **$0.20** at one instant and
+**$0.29–$0.87** across a bar seam, hence 40 ticks).
 
 ## The model in one paragraph
 
-At a round's **open**, the asset's live spot price is frozen as the **base** (`openPrice`, from a
-confirmed observation). We compute a **margin = base × marginBps / 10000** (default `marginBps = 50`
-= **0.5%**, the "50pick" factor), and set two **winning boundaries**, frozen onto the round:
-**upTarget = base + margin**, **downTarget = base − margin**. At **close**, the settlement price
-(`closePrice`, spot at the boundary) is compared against those frozen targets:
+At a round's **open**, the price is frozen as the **base** (`openPrice`, from a confirmed
+observation — under the dated-bar reader, the `open` of the last *finished* minute). We compute a
+**margin = base × marginBps / 10000**, **floored at `minMoveTicks × 10^-decimals`**, and set two
+**winning boundaries**, frozen onto the round: **upTarget = base + margin**,
+**downTarget = base − margin**. At **close**, the settlement price (`closePrice`, the `open` of the
+bar labelled with the boundary) is compared against those frozen targets:
 
 ```
 close ≥ upTarget          → UP   (YES pays)
@@ -20,8 +47,10 @@ downTarget < close < upTarget → VOID ("no-move") — every stake refunded in f
 close or targets missing  → VOID ("source-failed")
 ```
 
-The PDF example: base **4120**, 0.5% → margin **20.6**, up **4140.6**, down **4099.4**. A close of
-4145 is UP; 4095 is DOWN; 4110 (moved < 20.6) VOIDs and refunds.
+Worked example at the **live** setting — BTC, `marginBps: 0`, `decimals: 2`, `minMoveTicks: 2`:
+base **63,856.00** → percentage gives 0, floor gives **0.02** → up **63,856.02**, down **63,855.98**.
+A close of 63,832.00 is DOWN. (The original 0.5% illustration — base 4120 → margin 20.6 — still shows
+the arithmetic when a percentage *is* set, but it is no longer any chain's configuration.)
 
 This is a **generalisation of the pre-existing behaviour**, not a new money path: the engine already
 VOIDed+refunded when the move was inside a sub-tick dead-band (`minMove`). We replaced that absolute
@@ -32,14 +61,18 @@ dead-band with a **percentage margin** and now expose the two target prices.
 The targets are *winning boundaries* — you must reach one to win. A move smaller than the margin
 means neither side clearly won, so the round VOIDs and **refunds every stake in full** (no fee). This
 matches the PDF ("upper/lower winning boundary") and the engine's existing `no-move ⇒ VOID` rule.
-⚠️ **Economic consequence:** a 0.5% band voids far more rounds than the old 1-tick band, especially on
-short/low-volatility rounds — and a void earns the house nothing. The levers to manage that are the
-per-chain margin override and the void-rate readout (below).
+⚠️ **Economic consequence, and this is why the default is now 0.** A percentage band voids far more
+rounds than the tick floor, especially on short/low-volatility rounds — and a void earns the house
+nothing. Measured on production: at 0.50% the pay rate was **63%**; at the tick floor it is designed
+for **~99%**. The levers remain the per-chain override and the `PAID A WINNER · 7d` readout, but the
+default is no longer something to tune down from — it is already at the floor.
 
 ## The numbers are DATA — editable, with a per-chain override
 
-- **Global default**: `UpDownConfig.defaultMarginBps` (default **50** = 0.5%), edited at `/admin/updown`
-  (the Thresholds form). `0` disables the %-band and reverts to the source's minimum-move rule.
+- **Global default**: `UpDownConfig.defaultMarginBps`, edited at `/admin/updown` (the Thresholds
+  form). **Live value: `0`** — the %-band is off and the asset's minimum-move rule decides, which is
+  the intended configuration. ⛔ `marginSchedule` is **empty**, so the per-class "E-32 ladder" this
+  document once described has no rungs: a blank chain override inherits `0` and nothing else.
 - **Per-chain override**: `UpDownChain.marginBps` (`null` = inherit the default). Edited per
   asset×duration, so a fast 5-min chain can run a tighter margin than a 30-min one.
 - **Frozen per round**: the margin + both targets are stamped onto the `UpDownRound` at open. **A later
