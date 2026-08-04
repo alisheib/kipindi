@@ -3640,6 +3640,142 @@ workstation shows an SLA countdown, but nothing escalates when it runs out. Ali'
   platform zone (+3) keeps it on the right day, and the E-2 fix is safe. The earlier note was
   the `pg` −3h trap (§3) reading back through an un-cast client.
 
+## 6an. ⭐ HANDED TO THE OPERATORS — a clean board, a rewritten guide, and four defects the guide itself found (2026-08-04, session 23)
+
+> Ali's instruction: *"generate a new one with all new instructions and warnings and guidance… then
+> delete all current games for my admins to start reading your new doc and putting live real ones to
+> see how they actually work"*, and *"all fields in the admin generating and resolution should be
+> known in pdf with examples so my admins won't be lost, and they should know formulas how it
+> resolves and why"*.
+
+### ① The board was cleared — 2,515 rounds — and money was never at risk
+
+`scripts/ops-updown-reset-games.mts`. Deleted: **10 chains · 2,515 rounds · 2,515 markets · 2,524
+observations**. Kept: all **7 assets**, because they carry the measured per-instrument band and the
+operator's approved source host — the one part of the old configuration that is right.
+
+⛔ **MONEY IS NEVER DELETED.** A stake in an unresolved round is a liability, not a row: deleting it
+destroys the player's claim silently and leaves the wallet short. The script **refuses outright** if
+any round is unresolved or any position is `OPEN`, and names them. **There is no `--force`.** The
+interlock was clear on this run.
+
+⭐ **Observations are deleted too, deliberately.** They are the write-once price ledger keyed by
+`(assetId, boundaryAt)`, so a stale one would be **reused** by a future round on the same boundary —
+which is how a brand-new chain could settle against a price read by the retired reader.
+
+🔴 **AND THE FIRST RUN FOUND TWO DEFECTS IN ITSELF.** `category` is required on `audit()` and was
+missing, so **the deletion landed with no audit row** — a destructive production action with no
+trail. And the script still printed ✅, because it verified the **deletion** and never the audit.
+*"Did it happen"* and *"can we say who did it"* are two questions and it asked only one. Both fixed
+(flush now precedes the read-back, which counts the audit row and fails without it); the missing row
+was written immediately afterwards with the true counts and a note saying so.
+
+### ② 🔴 THE ADMIN FORM TOLD THE OPERATOR THE BAND WAS 0.5% WHEN IT WAS $0.02
+
+Four defects, all in the sentences whose entire job is to prevent an operator mistake:
+
+| | what it said | the truth |
+|---|---|---|
+| add-chain help text | *"blank inherits the product default **(0.5%)**"* — a **hardcoded string** | `defaultMarginBps` is **0**; the band is **$0.02** on BTC. A **25-fold** error |
+| chains grid | `MARGIN **0.00%**` | the band is the asset's minimum move — **±$0.02**, not "no band" |
+| chain-EDIT form | a **typed** percentage | the add form beside it was already a dropdown |
+| `Min move (ticks)` | `min="1"` | the server floor is **2**, so the form offered a refused value |
+
+⛔ **The guarded property is "no second source of truth in the copy"**, not any wording. A figure the
+operator acts on must come from the value the server resolves with. `0.00%` now renders as
+`±0.02 ·min move`; the edit control is the same dropdown; the ticks floor matches the server's.
+
+⚠️ **And the edit form's help paragraph argued AGAINST the recommendation** — it warned that 0 *"lets
+a single tick decide real money"*, written when an asset could carry `minMoveTicks: 1`. It cannot any
+more, 0 is the live default, and the smallest band is the choice that took the pay rate 63% → ~99%.
+**Help text that argues against the recommended option teaches the operator to pick the setting that
+refunds every round.**
+
+⚠️ **A near-miss caught before commit:** renaming the edit field to `marginBpsChoice` to match the add
+form would have submitted a field `updateChainAction` **ignores** — the dropdown would have LOOKED
+like it worked and the margin would silently never have changed. The **shape** was wrong, not the
+wire name.
+
+### ③ 🔴 THE GUARD'S OWN COMMENT STRIPPER HAD A HOLE, and §6 found it on its first run
+
+`test:updown-admin-options` filtered lines beginning `//`, `*` or `/*` — which **misses a JSX
+comment, because those begin `{/*`**. Every `{/* … */}` block in a `.tsx` file was read as live code,
+so an assertion that a defect's string is **absent** matched the comment describing the fix. Exactly
+the false result the file's own header warns about, **in the tool meant to prevent it**. Block
+comments are now removed as blocks; `//` stays line-based, because stripping it inline would cut
+every `https://` URL in half. See [[checks-that-lie]].
+
+### ④ 🔴 THE EDIT PANEL'S BAND READ "Sma…" — found by LOOKING, by nothing else
+
+The chain-Edit panel renders inside the **last table cell of a chain row** (~390px), but used
+`sm:grid-cols-3` — and a Tailwind breakpoint responds to the **1440px viewport**, not to the space
+the panel actually has. It laid three columns into 390px and the band dropdown rendered as
+**`Sma…`**: the operator could not read which band was selected, **on the one control that decides
+what winning means**. Stacked now.
+
+⛔ **No check would have caught this.** It was found in a screenshot taken *for the guide* — the shot
+existed to document the panel, and documenting it is what revealed it. Same lesson as the storefront
+header: **a class name is not a behaviour, and a form that renders is not a form that reads.**
+
+### ⑤ The guide — `docs/updown-operator-guide.html` → `docs/50pick-updown-operator-guide.pdf`
+
+The old one was **actively wrong in eight places** and would have taught the opposite of the product:
+*"5, 15 or 30 minutes"*, *"margin normally 0.50%"*, *"settled against the exact web page it was
+opened on"*, no betting window, no lock, no gold calendar, no one-account-one-side — and its `rounds`
+screenshot was a column of **VOID at TZS 0** offered as what to expect.
+
+Rewritten from the **live** configuration. **15 pages.** Contains: the nine operating rules with
+their *why* on page one · every field on every form with a sample value and the consequence of
+getting it wrong · **the actual formulas** (targets and tick floor, the outcome test, the pool maths
+with the fee ceiling and **why the ceiling exists** — a winner can never receive less than their
+stake and the platform refuses to settle rather than breach it, the betting-window lead per length,
+the 1440-divisor rule, the retry ladder) · what is distinct about **each asset** with its measured
+band and trading hours · **how Twelve Data works in our favour** · why there is no 0.15% option · the
+four causes of "nobody won" · **why Generate refuses right now** · the six refund reasons with the
+sentence to say to a player.
+
+⭐ **THE MOST PERSUASIVE PAGE IS REAL PROVIDER DATA**, fetched live for the guide — four consecutive
+gold minutes on **Saturday 1 August**:
+
+```
+12:01 open 4042.68240   12:02 open 4042.68589   12:03 open 4042.68428   12:04 open 4042.68445
+total movement over four minutes: 0.0035        gold's band: 0.40  —  114x larger
+```
+
+Every gold round over that period refunds. **And the provider answered `"status": "ok"` with prices
+that look entirely normal** — nothing in the response says the market is closed. That is the whole
+argument for the calendar gate, in the operators' hands, in numbers.
+
+⛔ **Screenshots are shot FROM PRODUCTION** as the trading officer, element shots only —
+`scripts/capture-guide-shots-live.mjs` replaces the dev-server capture, whose pictures showed a
+configuration that no longer exists.
+
+### ⑥ The two reference docs had drifted into stating the opposite of the live config
+
+- **`UPDOWN-PRICING.md`** described `defaultMarginBps = 50` (0.5%) as *the model*. Corrected with a
+  then-vs-live table, the worked example at the live setting, and the fact that `marginSchedule` is
+  **empty** so the "E-32 ladder" it described has **no rungs**.
+- **`UPDOWN-SPEC.md`** said a player bets against the price *"right now"* at *"5, 15 or 30 minutes"*.
+  Both false: six lengths on the epoch lattice with gold at 15m+, and the bet is against the
+  **opening** price from the last *completed* minute — which is precisely why the betting window had
+  to ship in the same change. Also records that chains are **manual** now.
+- Each doc now carries an **"authoritative for"** header so the three stop overlapping.
+
+### ✅ And the two live-asset repairs that unblocked all of it
+
+`SOL` 1 → **2** ticks · `XAU` 1 → **40** ticks (**±$0.40** on the *enabled* gold row), by repairing
+their stored `http://` scheme in the same call — see §6am for why those two rows could not be edited
+at all.
+
+⚠️ **The catalogue is still a trap and it is documented rather than fixed:** two rows both named
+**Gold** (`GOLD` disabled at 40 ticks, `XAU` enabled at 40 ticks) and `SNP500` pointing at
+**kitco.com** rather than the price feed. The guide names all three explicitly — *use `XAU`; never
+enable `SNP500`* — because retiring an asset row is a schema-touching change with reports keyed off
+`key`, and mislabelling it in a manual is the cheaper mitigation today.
+
+**Guards**: `test:updown-config` §2.10–2.13 (**81**) RED **3/3** · `test:updown-admin-options` §6
+(**35**) RED **3/3**, then **1/1** for the margin cell.
+
 ## 6am. ✅ THE MONEY PAIRS ON THE DATED READER — and the two assets that could not be edited at all (2026-08-04, session 23)
 
 ### ① Real money, both sides, one round, settled from a dated bar at BOTH ends
@@ -4718,10 +4854,12 @@ so a tick-floor margin on crypto measures the market, not the feed.
 | _this one_ | **E-69 FIXED — a round 529s late SETTLES instead of refunding.** `lateCloseDecision` re-reads past the deadline when the provider is `dated`, bounded by `maxSettleLookbackSeconds` (24h). The quote path is unchanged and pinned. Plus the defect this uncovered: `no-bar` at the boundary no longer burns the attempt budget (bar T publishes at **+10s**; attempt 1 is taken at **+0s**) | `test:updown-late-close` **38**, RED **7/7** |
 | _this one_ | **Phase 1c shadow sampler** — `ops:updown-shadow`, both readers at one boundary, delta recorded ONLY, decomposed into timing vs genuine disagreement | read-only sampler |
 
-⛔ **`feedProvider` is still `twelvedata`. No money has touched the new reader yet** — the switch
-is gated on the shadow run's median delta (§6ae) and lands with phase 1e.
+⛔ **SUPERSEDED — do not act on this line.** It read *"`feedProvider` is still `twelvedata`, no money
+has touched the new reader yet"*. The switch landed and **real money has settled on the dated reader
+at both ends** — round `udr_a1adea90027e90fe2283`, §6am ①. See §6al for the three defects the switch
+exposed, and note §6al corrects §6ak.
 
-#### ⏭️ **RESUME AT:** ① **BUILD: the house seeds the thin side of a one-sided round.** Ali chose this on 2026-08-04 over accepting one-sided refunds, having been shown that it makes the platform take market risk. It is a real feature and it is **NOT started**: it needs a float source, a per-round and per-day exposure cap, seeding at the **LOCK** (not at open, or it can be gamed), house positions kept out of player metrics and leaderboards, and the accountant able to see house P&L apart from commission. ⛔ Money-critical — start it fresh. ② **`SOL` and `XAU` are stuck at 1 tick and cannot be edited at all**: their stored `priceSourceUrl` is `http://`, and `validateAsset` rightly refuses to re-save a row that would keep an API key in cleartext — fix the URL to `https://` in the same call (§6al). ③ **The ten hydrate-once config caches** — no TTL, no cross-process invalidation, including the `payment-ops` kill-switches and the trusted-source allowlist (§6al ①). ④ A forced **LATE close** on production. ⑤ The result chip reading **VOID on a RESOLVED round** (§6ak). ⑥ Accountant/reports pass · **E-70** · **E-59** · the 4-width × EN/SW/ZH sweep · consolidating the three Up & Down docs to one truth. ⚠️ **RG stays exactly as it is — Ali's decision 2026-08-04. Do not re-open it.**
+#### ⏭️ **RESUME AT:** ⛔ **THE BOARD IS CLEAR AND THE OPERATORS HAVE THE GUIDE** (§6an) — `docs/50pick-updown-operator-guide.pdf`, 15 pages, rebuilt from the live config. Rebuild it with `node scripts/capture-guide-shots-live.mjs` then `node scripts/generate-pdfs.mjs`, and **verify it by rasterising the pages, never by trusting the render** — the two defects it exposed were both found by looking at a picture. ① **BUILD: the house seeds the thin side of a one-sided round.** Ali chose this on 2026-08-04 over accepting one-sided refunds, having been shown that it makes the platform take market risk. **NOT started**, and it is the largest open item: it needs a float source, a per-round and per-day exposure cap, seeding at the **LOCK** (not at open, or it can be gamed), house positions kept out of player metrics and leaderboards, and the accountant able to see house P&L apart from commission. ⚠️ A `house.pool.state` key already exists in `SystemConfig` — read it before designing a second float. ⛔ Money-critical; start it fresh. ② A forced **LATE close** on production with QA money — Ali chose this explicitly and it is the one part of the rebuild never driven end to end. ③ The **ten hydrate-once config caches** — no TTL, no cross-process invalidation, including the `payment-ops` kill-switches and the trusted-source allowlist (§6al ①). ④ **SOL has still never paid a winner** (0 of 290). Its bars run ~60s late and the 120s grace should now cover it, but that has not been proved with money on a round; the guide marks it NOT YET and it must stay off for players until a staff round settles on it. ⑤ The result chip reading **VOID on a RESOLVED round** (§6ak). ⑥ ⚠️ **The asset catalogue is still a trap, documented rather than fixed**: two rows both named **Gold** (`GOLD` off, `XAU` on) and `SNP500` pointing at kitco.com. Retiring a row touches reports keyed off `key`, so the guide names them instead — if you retire them, migrate the reports in the same change. ⑦ Accountant/reports pass over the new rounds · **E-70** (nav lost admin→player) · **E-59** (no delete in the console — the reset is an ops script on purpose) · the 4-width × EN/SW/ZH sweep. ⚠️ **RG stays exactly as it is — Ali's decision 2026-08-04. Do not re-open it.** ⚠️ **`market.config.minStake` is 500 on production** while [[stake-bounds-1k-1m]] says 1,000 — the live override was never re-saved. The guide documents **500**, the live value. Ali's call which is right.
 
 ### 🟢 Laptop A, session 22 (2026-08-04) — THE SETTLEMENT REBUILD IS UNDER WAY AND HALF SHIPPED. Read §6ad first; it carries every decision and the measured evidence.
 
@@ -4738,8 +4876,10 @@ Ali. Nothing below repeats it.
 | `e85a7a71` | **Minute-aligned boundaries.** Every boundary this platform ever made carried seconds (`21:27:37`) and **no bar is labelled that** | `test:updown-grid` 17, RED 4/4 |
 | `fd59e645` | **`TwelveDataBarFeed`**, behind the existing `PriceFeed`, **switched OFF**. `timezone=UTC`, exact-bar-only, `no-bar` refusal, bad-print guard, per-bar evidence. Plus `FEED_PROVIDERS` as one shared list | `test:updown-bars` 22, RED 7/7 |
 
-⛔ **`feedProvider` is still `twelvedata`. No money has touched the new reader.** Switching it is an
-audited config edit with no deploy — that is the rollback lever, and it is why this was safe to ship.
+⛔ **SUPERSEDED — the live value is `twelvedata-bars`** and real money has settled on it (§6am ①).
+The quote reader is retained purely as the rollback lever, which is why shipping it dark was safe.
+⚠️ Switching it is an audited config edit with no deploy — but read §6al ① first: the cache hydrates
+once per process, so a switch thrown OUTSIDE the server does not reach it until the next deploy.
 
 #### ✅ **DONE (session 23):** ① **Phase 1c — SHADOW.** Read both `/quote` and the bar for each boundary and record the delta in the audit payload ONLY; do not branch settlement on it. ≥100 boundaries across all assets spanning a weekend. ⚠️ **This is the step that will be under pressure to skip and it is the cheapest insurance in the plan** — if the median delta is a material fraction of the band, that is a finding to resolve BEFORE the switch, not after.
 
