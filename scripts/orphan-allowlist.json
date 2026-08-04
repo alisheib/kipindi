@@ -111,6 +111,7 @@
     "ops-qa-fleet.mts",
     "ops-remint-qa-passwords.mts",
     "ops-set-payment-provider.mjs",
+    "ops-updown-reset-games.mts",
     "ops-updown-seed-one.mts",
     "overlay-responsiveness-test.mjs",
     "payments-control-shots.mjs",
@@ -198,6 +199,7 @@
     "ops-remint-qa-passwords.mts": "Manual OPS tool, run deliberately by an operator through . ops-qa-fleet and ops-remint-qa-passwords MUTATE production accounts; ops-generate-round creates a real round. None may run unattended.",
     "live-updown-rebuild-drive.mjs": "Manual LIVE-PRODUCTION drive for the Up & Down settlement rebuild. Signs in as real personas, generates real rounds and spends real Twelve Data credits. Run by hand during a QA session, never in CI.",
     "live-updown-money-pair.mjs": "Manual LIVE-PRODUCTION drive: stakes REAL money on both sides of one round so the wallet, the position and the round row can be paired after it settles. Never in CI.",
-    "live-updown-bar-money-drive.mjs": "Manual LIVE-PRODUCTION drive: stakes REAL money on both sides of one round and pairs the wallet, position and round row after it settles from a DATED BAR. Spends real provider credits. Never in CI."
+    "live-updown-bar-money-drive.mjs": "Manual LIVE-PRODUCTION drive: stakes REAL money on both sides of one round and pairs the wallet, position and round row after it settles from a DATED BAR. Spends real provider credits. Never in CI.",
+    "ops-updown-reset-games.mts": "Manual PRODUCTION ops: clears every Up & Down chain, round and observation so operators start from the rewritten guide. Refuses if any round is unresolved or any position is OPEN — there is no --force. Never in CI."
   }
 }
