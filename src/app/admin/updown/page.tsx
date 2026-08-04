@@ -150,7 +150,25 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
       <AdminPageHead
         title="Up & Down"
         sw="Juu na Chini"
-        actions={canConfig ? <AddAssetForm catalogue={[...SYMBOL_CATALOGUE]} /> : <ControlLocked what="Add asset" need={CONTROL_DOMAIN.createAsset} />}
+        actions={canConfig ? (
+          // ⭐ Each catalogued symbol carries its ①②③ and its reason, computed on the server
+          // by the SAME function `createAsset`/`createChain` refuse with — so the picker cannot
+          // offer something the server will reject, and cannot grey something it would accept.
+          <AddAssetForm
+            catalogue={SYMBOL_CATALOGUE.map((s) => {
+              const r = symbolReadiness(s);
+              return {
+                ...s,
+                mark: readinessMark(r.level),
+                readinessLevel: r.level,
+                readinessReason: [
+                  s.minDurationMinutes ? `Runs at ${s.minDurationMinutes} minutes or longer only.` : "",
+                  r.reason,
+                ].filter(Boolean).join(" "),
+              };
+            })}
+          />
+        ) : <ControlLocked what="Add asset" need={CONTROL_DOMAIN.createAsset} />}
       />
 
       <div className="px-4 lg:px-6 py-5 space-y-4">
@@ -288,6 +306,27 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
                     return { minutes: d, level: r.level, mark: readinessMark(r.level), reason: r.reason };
                   }),
                 ]),
+              )}
+              // ⭐ The SYMBOL's own readiness, so the asset dropdown warns at the moment of the
+              // choice. ⛔ An asset is greyed only when it is unusable at EVERY duration — gold
+              // is limited, not unusable, so it stays selectable and says what the limit is.
+              assetReadiness={Object.fromEntries(
+                assets.filter((a) => a.enabled).map((a) => {
+                  const spec = findSymbol(a.symbol);
+                  const own = symbolReadiness(spec);
+                  const usable = ALLOWED_DURATIONS.filter((d) => symbolReadiness(spec, d).level !== 3);
+                  const level = usable.length === 0 ? 3 : own.level;
+                  const limit = spec?.minDurationMinutes
+                    ? `${a.key} runs at ${spec.minDurationMinutes} minutes or longer only — ${spec.minDurationWhy ?? ""}`.trim()
+                    : "";
+                  return [a.id, {
+                    mark: readinessMark(level),
+                    level,
+                    // The limit is the more actionable sentence when there is one; the weekend
+                    // caveat is appended so neither is lost.
+                    reason: [limit, own.reason].filter(Boolean).join(" "),
+                  }];
+                }),
               )}
               marginSchedule={cfg.marginSchedule}
               defaultMarginBps={cfg.defaultMarginBps}

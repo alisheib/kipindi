@@ -435,6 +435,19 @@ type SymbolOption = {
   symbol: string; suggestedKey: string; nameEn: string; nameSw: string; nameZh: string;
   category: string; iconKey: string; decimals: number; minMoveTicks: number;
   group: string; unsupported?: string;
+  /**
+   * ⭐ THE SAME ①②③ SIGNAL THE DURATION LIST CARRIES, on the symbol itself.
+   *
+   * ⛔ An operator picking an asset should not have to open a SECOND dropdown to discover the
+   * first one was a bad idea. Driven live 2026-08-04: the asset list showed "XAU · Gold" with
+   * no mark at all, and only the duration list revealed that gold cannot run below 15 minutes.
+   * The warning belongs at the moment of the choice, not one step after it.
+   */
+  mark?: string;
+  readinessLevel?: 1 | 2 | 3;
+  readinessReason?: string;
+  /** Shortest round this symbol may run, when the symbol itself is the limit. */
+  minDurationMinutes?: number;
 };
 type SymbolCheck = {
   verdict?: "would-confirm" | "stale" | "market-closed" | "unreadable" | "error";
@@ -527,9 +540,15 @@ export function AddAssetForm({ catalogue }: { catalogue: SymbolOption[] }) {
         <Field label="Symbol">
           <Select
             value={symbol} onChange={pickSymbol} size="sm" ariaLabel="Symbol to quote"
+            // ⭐ The mark and the reason travel WITH the option, and a symbol the platform
+            // cannot feed is greyed rather than merely labelled "unavailable" — a label an
+            // operator can still select is not a control.
             options={inGroup.map((s) => ({
               value: s.symbol,
-              label: s.unsupported ? `${s.symbol} · ${s.nameEn} — unavailable` : `${s.symbol} · ${s.nameEn}`,
+              label: `${s.mark ?? ""} ${s.symbol} · ${s.nameEn}`.trim(),
+              disabled: s.readinessLevel === 3,
+              hint: s.readinessReason ||
+                (s.minDurationMinutes ? `Rounds of ${s.minDurationMinutes} minutes or longer only.` : undefined),
             }))}
           />
         </Field>
@@ -687,7 +706,7 @@ const MARGIN_CHOICES: ReadonlyArray<{ bps: number; label: string; hint: string }
 ];
 
 export function AddChainForm({
-  assets, readinessByAsset, marginSchedule, defaultMarginBps,
+  assets, readinessByAsset, assetReadiness, marginSchedule, defaultMarginBps,
 }: {
   /**
    * ⭐ `symbol` is required, not decorative: the duration dropdown's readiness is a property of
@@ -697,6 +716,9 @@ export function AddChainForm({
   assets: Array<{ id: string; key: string; nameEn: string; category: string; symbol: string }>;
   /** Per asset id → what each duration's readiness is, computed on the server. */
   readinessByAsset: Record<string, DurationReadiness[]>;
+  /** Per asset id → the SYMBOL's own readiness, so the asset dropdown warns at the moment of
+   *  the choice rather than one dropdown later. */
+  assetReadiness?: Record<string, { mark: string; level: 1 | 2 | 3; reason: string }>;
   /** The E-32 ladder, so the margin placeholder shows what THIS asset class and duration
    *  will actually inherit. It was a hard-coded "inherit (0.5)" before, which is now wrong
    *  for every combination the form can produce — and a chain created at 0.5% voids
@@ -784,9 +806,25 @@ export function AddChainForm({
     <form onSubmit={onSubmit} className="rounded-lg border border-border bg-bg-elevated p-4 space-y-3">
       <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle">Add chain</p>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        {/* ⭐ THE ASSET CARRIES ITS OWN SIGNAL TOO, and this was the gap.
+            Driven live: the asset list read plainly "XAU · Gold", and ONLY the duration list
+            revealed that gold cannot run below 15 minutes. An operator should not have to open
+            a second dropdown to learn the first choice was a bad one — the warning belongs at
+            the moment of the choice. The mark here is the SYMBOL's readiness (weekend market,
+            unsupported by the plan), and the hint names any minimum round length. */}
         <Field label="Asset">
           <Select name="assetId" value={assetId} onChange={setAssetId}
-            options={assets.map((a) => ({ value: a.id, label: `${a.key} · ${a.nameEn}` }))} />
+            options={assets.map((a) => {
+              const r = assetReadiness?.[a.id];
+              return {
+                value: a.id,
+                label: `${r?.mark ?? ""} ${a.key} · ${a.nameEn}`.trim(),
+                // ⛔ An asset unusable at EVERY duration is greyed; one that is merely limited
+                // stays selectable and says what the limit is.
+                disabled: r?.level === 3,
+                hint: r?.reason || undefined,
+              };
+            })} />
         </Field>
         {/* ⭐ EVERY OPTION CARRIES A NUMBERED READINESS SIGNAL, and an unusable one is GREYED
             WITH ITS REASON rather than hidden. Ali: "I don't know how knowledgeable my admins
