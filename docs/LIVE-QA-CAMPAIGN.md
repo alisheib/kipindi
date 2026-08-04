@@ -3675,6 +3675,28 @@ failure is precisely the E-58 mistake. **Split by reason or the metric lies.**
 🔴 **Every chain has `marginBps = NULL`** — not one override exists on production. They all inherit
 the ladder. The docs claiming "the live chains run a 2 bps override" are wrong: they *inherit* it.
 
+### ✅ SHIPPED — the console now tells an operator which of the three it is
+
+`summariseRounds` / `chainHealth` (`src/lib/server/updown-chain-stats.ts`) replace the inline
+reducer. The chain grid's headline is now **"Paid a winner · 7d"** — *how often this chain actually
+pays somebody*, a number the product did not have anywhere — with the voids broken out beneath it
+by reason, and the window moved from **50 rounds** to **7 days** (`boundaryFrom` on `RoundQuery`,
+one predicate behind both `list` and `count`).
+
+⛔ **A feed failure outranks a low pay rate, always.** A chain paying 30% because the band is wide
+is a pricing conversation; a chain paying 30% because we cannot read a price is an **outage**, and
+the two will never render the same again. An unrecognised `voidReason` surfaces as *unexplained*
+rather than being folded into `no-move` — a silent bucket is how **E-1** hid for a month.
+
+**Guard**: `npm run test:updown-chain-stats` (**28**), proven **RED 6/6** by
+`scripts/updown-chain-stats-red.mjs` — `blend-the-reasons` (verbatim the shipped defect) ·
+`operator-counts-as-a-feed-failure` (E-58 rebuilt) · `unknown-folded-into-no-move` ·
+`low-payout-outranks-the-outage` · `count-window-not-time-window` · `rates-report-zero-instead-of-null`.
+⚠️ **The guard's first version failed on a correct file**: it matched the words *`voids / resolved`*,
+which the page's own comment explaining the fix now contains. Same trap the two tracker guards hit —
+**never locate code by a phrase its own documentation will one day quote.** It anchors on
+`const voids =` now, a statement a comment can mention but cannot be.
+
 ### The margin curve, measured on 5,000 real 1-minute bars per asset
 
 | Chain | median move | @0.00% | @0.01% | @0.02% *(live today)* |

@@ -122,6 +122,18 @@ export type RoundQuery = {
    *  value but IS the state an operator most needs to filter for. */
   outcome?: RoundOutcome | "PENDING";
   unsettledOnly?: boolean;
+  /**
+   * Only rounds whose boundary is at or after this instant (ISO).
+   *
+   * ⛔ WHY THIS EXISTS (campaign finding E-58's root cause, 2026-08-04). The console's
+   * void rate sampled "the last 50 rounds by boundary", which is a COUNT window, not a
+   * TIME window — so a busy 5-minute chain's 50 rounds span ~4 hours while a stopped
+   * chain's span weeks, and the two percentages were never comparable. Worse, a bulk
+   * remediation (1,154 `operator` voids in July) sat inside some samples and not others,
+   * which is exactly how a healthy margin was misdiagnosed as voiding every round.
+   * A time bound is what makes two chains answer the same question.
+   */
+  boundaryFrom?: string;
 };
 
 export type StoredObservation = {
@@ -398,6 +410,7 @@ function matchRounds(opts?: RoundQuery): StoredRound[] {
     if (opts?.chainIds && !opts.chainIds.includes(r.chainId)) return false;
     if (opts?.outcome === "PENDING" ? r.outcome !== null : opts?.outcome && r.outcome !== opts.outcome) return false;
     if (opts?.unsettledOnly && r.settledAt) return false;
+    if (opts?.boundaryFrom && Date.parse(r.boundaryAt) < Date.parse(opts.boundaryFrom)) return false;
     return true;
   });
 }
@@ -606,6 +619,7 @@ function roundWhere(opts?: RoundQuery): Prisma.UpDownRoundWhereInput {
     ...(opts?.chainIds ? { chainId: { in: opts.chainIds } } : {}),
     ...(opts?.outcome ? { outcome: opts.outcome === "PENDING" ? null : opts.outcome } : {}),
     ...(opts?.unsettledOnly ? { settledAt: null } : {}),
+    ...(opts?.boundaryFrom ? { boundaryAt: { gte: new Date(opts.boundaryFrom) } } : {}),
   };
 }
 

@@ -9,6 +9,7 @@ import { SYMBOL_CATALOGUE } from "@/lib/server/updown-symbols";
 // market is closed or the feed is broken, and that ambiguity is what E-16/E-25/E-32 all cost.
 import { marketSessionAt, nextOpenAfter } from "@/lib/server/market-calendar";
 import { observationStore, roundStore } from "@/lib/server/updown-dal";
+import { summariseRounds, chainHealth } from "@/lib/server/updown-chain-stats";
 import { poolFee } from "@/lib/payout";
 import { formatTzs } from "@/lib/utils";
 import { moneyByGame } from "@/lib/server/report-money";
@@ -61,18 +62,37 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
     return { asset: a, last: recent[0] ?? null };
   }));
 
-  // Per-chain void rate — how often a chain's recently-resolved rounds refunded (the
-  // price moved less than the margin). Read-only sample of the last rounds; a chain with
-  // no resolved rounds shows "—". This is the lever's feedback: a high void rate means the
-  // margin is too wide for that asset/duration. Chains are few, so N+1 reads are fine here.
-  const VOID_SAMPLE = 50;
+  // ── Per-chain health: the DECISIVE rate, and the voids split BY REASON ─────
+  //
+  // ⛔ WHY THIS IS NOT ONE PERCENTAGE (campaign finding E-58, 2026-08-04). This cell used
+  // to read `voids / resolved` over "the last 50 rounds", discarding `voidReason` entirely.
+  // Two completely different failures therefore rendered as the same amber number:
+  //
+  //   `source-failed`  WE could not read a price. That is OUR bug, and on production SOL
+  //                    was 290 of 290 rounds — a chain that has never once paid anyone.
+  //   `no-move`        The price genuinely did not travel far enough. That is the MARGIN,
+  //                    an operator lever, and it is working as designed.
+  //   `operator`       A human voided it. On production 1,154 of XAU's voids are a single
+  //                    July remediation — counting those as product failure is exactly how
+  //                    a healthy margin got misdiagnosed as "voids every round it runs".
+  //
+  // An operator shown one blended number cannot tell "the feed is broken" from "the band is
+  // wide" from "we refunded a batch last month", and those need opposite responses.
+  //
+  // ⚠️ AND THE WINDOW IS NOW TIME-BASED, NOT COUNT-BASED. 50 rounds on a busy 5-minute chain
+  // is ~4 hours; on a stopped chain it can be weeks. Two chains were never answering the
+  // same question. `boundaryFrom` makes them comparable.
+  const STATS_WINDOW_DAYS = 7;
+  const STATS_CAP = 600; // bounds one chain's read; `truncated` says so rather than lying
+  const statsFrom = new Date(Date.now() - STATS_WINDOW_DAYS * 86_400_000).toISOString();
   const chainStats = new Map(
     await Promise.all(
       chains.map(async (c) => {
-        const rounds = await roundStore.list({ chainId: c.id, limit: VOID_SAMPLE }).catch(() => []);
-        const resolved = rounds.filter((r) => r.outcome != null);
-        const voids = resolved.filter((r) => r.outcome === "VOID").length;
-        return [c.id, { resolved: resolved.length, voids, rate: resolved.length ? voids / resolved.length : null }] as const;
+        const rounds = await roundStore
+          .list({ chainId: c.id, boundaryFrom: statsFrom, limit: STATS_CAP })
+          .catch(() => []);
+        // ONE reducer, in a tested module — not a second copy of the rule living in JSX.
+        return [c.id, { ...summariseRounds(rounds), truncated: rounds.length >= STATS_CAP }] as const;
       }),
     ),
   );
@@ -280,7 +300,7 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
                     <th className="px-4 py-2.5 font-semibold">Next boundary</th>
                     <th className="px-4 py-2.5 font-semibold">Market</th>
                     <th className="px-4 py-2.5 font-semibold text-right">Margin</th>
-                    <th className="px-4 py-2.5 font-semibold text-right">Void rate</th>
+                    <th className="px-4 py-2.5 font-semibold text-right">Paid a winner · 7d</th>
                     <th className="px-4 py-2.5 font-semibold text-right">Stake bounds</th>
                     <th className="px-4 py-2.5 font-semibold text-right">Controls</th>
                   </tr>
@@ -347,11 +367,35 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
                           {(() => {
                             const s = chainStats.get(c.id);
                             if (!s || s.resolved === 0) return <span className="text-text-faint">—</span>;
-                            const pct = s.rate! * 100;
+                            const decisivePct = s.decisiveRate! * 100;
+                            // Headline = how often this chain actually PAYS somebody — the number
+                            // an operator is really asking about, which the product never had.
+                            // A FEED failure outranks a low pay rate: one is an outage, the other
+                            // a pricing conversation, and they must never look the same again.
+                            const health = chainHealth(s);
+                            const ink =
+                              health === "feed-failing" ? "text-hot-rose-300"
+                                : health === "low-payout" ? "text-warning-fg"
+                                : "text-text-muted";
+                            const parts = [
+                              s.noMove > 0 ? `${s.noMove} no-move` : null,
+                              s.sourceFailed > 0 ? `${s.sourceFailed} source-failed` : null,
+                              s.sourceMismatch > 0 ? `${s.sourceMismatch} source-mismatch` : null,
+                              s.operator > 0 ? `${s.operator} operator` : null,
+                              s.unknownVoid > 0 ? `${s.unknownVoid} unexplained` : null,
+                            ].filter(Boolean);
                             return (
                               <>
-                                <span className={pct >= 40 ? "text-warning-fg" : "text-text-muted"}>{pct.toFixed(0)}%</span>
-                                <span className="text-text-faint"> {s.voids}/{s.resolved}</span>
+                                <span className={ink}>{decisivePct.toFixed(0)}%</span>
+                                <span className="text-text-faint"> {s.decisive}/{s.resolved} paid</span>
+                                {parts.length > 0 && (
+                                  <div className="text-text-faint text-[10.5px] leading-tight">
+                                    {parts.join(" · ")}
+                                  </div>
+                                )}
+                                {s.truncated && (
+                                  <div className="text-text-faint text-[10px]">sample capped</div>
+                                )}
                               </>
                             );
                           })()}
