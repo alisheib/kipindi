@@ -43,11 +43,36 @@ Reproduce it on production first, then find the true cause. Do **not** guess and
 it by resetting my password — a password reset would hide the defect, and if the cause is
 normalisation then every user who types their number that way is affected too.
 
-Hypotheses worth testing, none assumed: the phone may need to normalise `777777777` →
-`+255777777777` and may not; login may be keyed on phone while I am registering with email, or the
-reverse; the account may be locked by `failedLoginCount`/`lockedUntil`; the role may lack a session
-path; the email may be unverified and blocking; or the account may simply not exist with those
-details. **Read the row on production before changing any code.**
+### The production rows were already read — start from this, do not re-derive it
+
+Seven accounts match. **The obvious hypotheses are already dead**, so do not spend time on them:
+
+| id | phone | email | role | status | pw | last login |
+|---|---|---|---|---|---|---|
+| `usr_1b3e6fd5…` | **+255777777777** | alisheib07@gmail.com | **ADMIN** | ACTIVE | has hash | **2026-08-04 12:21** |
+| `usr_9c28af1f…` | +255712654165 | alisheib07@gmail.com | PLAYER | PENDING_KYC | has hash | 2026-06-15 |
+| `usr_fd9b2188…` | +255777771234 | alisheib07@gmail.com | PLAYER | PENDING_KYC | has hash | 2026-06-23 |
+| `usr_3dc0267d…` | +255777777728 | alisheib07@gmail.com | PLAYER | PENDING_KYC | has hash | 2026-06-27 |
+| `usr_62ab9c9c…` | +255777777723 | — | PLAYER | ACTIVE | has hash | 2026-06-13 |
+
+⛔ **The account is NOT missing, NOT locked, NOT unverified, and has a password.** `failedLoginCount`
+is 0 and `lockedUntil` is null. It is `ACTIVE`, `ADMIN`, email verified, and it **signed in
+successfully on 2026-08-04 at 12:21**. The phone **is** stored normalised as `+255777777777`.
+
+⭐ **The strongest remaining hypothesis: FOUR accounts share the email `alisheib07@gmail.com`.**
+If any login, lookup, reset or "sign in with email" path resolves a user **by email**, it is
+ambiguous by construction — it may return the wrong row (a `PENDING_KYC` PLAYER rather than the
+ADMIN), or throw on a multiple-rows result, or match on a unique index that no longer holds.
+**Check whether `email` is unique on `User`, and check every code path that looks a user up by
+email.** Also worth testing: whether the login form accepts `777777777` unprefixed and normalises
+it the same way registration did, and whether an ADMIN is required to pass TOTP that I am not
+being prompted for.
+
+Reproduce it in a real browser first and **capture the exact error I see**, then fix the cause.
+Do **not** "fix" it by resetting my password or deleting the duplicate rows before you understand
+them — a reset hides the defect, and if the cause is email ambiguity then other users are affected
+too. If duplicates must be merged, that is a money-and-identity change: check for wallets, KYC
+records and positions on each row first.
 
 Prove the fix by **signing in as me, on 50pick.tz, in a real browser** — not by a passing test.
 
