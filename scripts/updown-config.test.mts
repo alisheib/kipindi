@@ -47,10 +47,21 @@ __resetUpDownConfig();
 await seedDefaultSources();
 await addSource({ domain: "kitco.com", label: "Kitco", category: "macro", rationale: "Spot metals", addedBy: "system" });
 
+// ⛔ `minMoveTicks: 2`, NOT 1 — and the reason is a lesson, not a version bump.
+//
+// When `MIN_MOVE_TICKS_FLOOR` was raised to 2 (§6ad scenario 1: at one tick the winning band
+// is the same size as the price's own rounding error), this fixture stopped being creatable.
+// The suite then failed at §2.3 — but §2.1, *"an UNTRUSTED domain is refused"*, went on
+// PASSING while refusing for the wrong reason entirely: the ticks check runs before the source
+// gate, so the assertion was satisfied by an error that had nothing to do with domains.
+//
+// ⚠️ **A check that passes without testing what it names.** It would have gone on reporting a
+// working source allowlist even if the allowlist were deleted. Asked "would this still pass if
+// the feature were absent?", the answer was yes.
 const GOLD = {
   key: "XAU", symbol: "XAU/USD", nameEn: "Gold", nameSw: "Dhahabu", iconKey: "gold",
   priceSourceUrl: "https://www.kitco.com/price/precious-metals", category: "macro" as const,
-  decimals: 2, minMoveTicks: 1,
+  decimals: 2, minMoveTicks: 2,
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -375,8 +386,15 @@ let goldId = "";
 
 {
   __resetUpDownConfig();
-  ok("8.1 · the default margin is 50 bps = 0.5% (the '50pick' factor)",
-     DEFAULT_UPDOWN_CONFIG.defaultMarginBps === 50 && (await getUpDownConfig()).defaultMarginBps === 50);
+  // ⛔ ZERO SINCE 2026-08-04 — the margin is the TICK FLOOR (Ali's decision, §6ad item 4).
+  //
+  // This asserted 50 bps, the "50pick factor" the product was named for. It was measured
+  // honestly and it is retired: the void curve is too steep for a middle (0.01% already
+  // refunds 1 in 5), and a refunded round pays 0% fee and hands a "winner" their stake back
+  // (E-65). `computeTargets`' tick floor — 8.5 below — becomes the load-bearing rule.
+  ok("8.1 · ⭐ the default margin is ZERO bps — the band is now the TICK FLOOR, not a percentage",
+     DEFAULT_UPDOWN_CONFIG.defaultMarginBps === 0 && (await getUpDownConfig()).defaultMarginBps === 0,
+     String(DEFAULT_UPDOWN_CONFIG.defaultMarginBps));
 
   // ⛔ computeTargets IS the PDF: base 4120, 0.5% → margin 20.6, up 4140.6, down 4099.4.
   const t = computeTargets(4120, 50, { decimals: 2, minMoveTicks: 1 });
@@ -401,8 +419,8 @@ let goldId = "";
   // duration past the top rung, because every duration the platform can actually run is
   // now priced by the ladder — see scripts/updown-margin-schedule.test.mts.
   const cfg = await getUpDownConfig();
-  ok("8.6 · a chain with no override inherits the product default margin (50)",
-     marginBpsForChain({ marginBps: null, durationMinutes: 99_999 } as never, cfg, { category: "crypto" }) === 50);
+  ok("8.6 · a chain with no override inherits the product default margin (now 0 = the tick floor)",
+     marginBpsForChain({ marginBps: null, durationMinutes: 99_999 } as never, cfg, { category: "crypto" }) === 0);
   ok("8.7 · a chain override wins over the default",
      marginBpsForChain({ marginBps: 20, durationMinutes: 5 } as never, cfg, { category: "crypto" }) === 20);
 

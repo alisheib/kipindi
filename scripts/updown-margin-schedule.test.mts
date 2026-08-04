@@ -44,8 +44,27 @@ const OFFICER = "usr_officer_test";
 __resetUpDownConfig();
 
 // ── 1 · the ladder resolves to the TIGHTEST matching rung ────────────────────
+//
+// ⛔ AGAINST AN EXPLICIT FIXTURE, NOT THE SHIPPED CONFIG (changed 2026-08-04). The shipped
+// schedule is now EMPTY — the tick floor is the rule — but the ladder MACHINERY is still live
+// code, because an operator can still configure a schedule per category and duration. Testing
+// resolution logic against whatever happens to be shipped conflates two questions: *"does the
+// resolver work"* and *"what did we decide to ship"*. §4 and §6 answer the second; this
+// answers the first, and keeps answering it whatever the shipped default becomes.
+const LADDER_FIXTURE = {
+  marginSchedule: [
+    { category: "*", maxDurationMinutes: 5, bps: 2 },
+    { category: "*", maxDurationMinutes: 15, bps: 3 },
+    { category: "*", maxDurationMinutes: 30, bps: 5 },
+    { category: "*", maxDurationMinutes: 60, bps: 7 },
+    { category: "*", maxDurationMinutes: 240, bps: 14 },
+    { category: "*", maxDurationMinutes: 1440, bps: 30 },
+  ],
+  defaultMarginBps: 50,
+} as never as Awaited<ReturnType<typeof getUpDownConfig>>;
+
 {
-  const cfg = await getUpDownConfig();
+  const cfg = LADDER_FIXTURE;
   ok("1.1 · a 5-minute round takes the 5-minute rung, not a longer one",
      resolveScheduledMarginBps(cfg, "crypto", 5) === 2, `got ${resolveScheduledMarginBps(cfg, "crypto", 5)}`);
   ok("1.2 · a 15-minute round takes the 15-minute rung",
@@ -79,8 +98,9 @@ __resetUpDownConfig();
 }
 
 // ── 3 · resolution order: chain override → ladder → flat default ─────────────
+// Against the explicit fixture too — this is the RESOLVER's contract, not the shipped value.
 {
-  const cfg = await getUpDownConfig();
+  const cfg = LADDER_FIXTURE;
   const chain = (durationMinutes: number, marginBps: number | null) =>
     ({ durationMinutes, marginBps }) as never;
   ok("3.1 · a chain's own override wins over the ladder",
@@ -94,16 +114,22 @@ __resetUpDownConfig();
      marginBpsForChain(chain(100_000, null), cfg, { category: "crypto" }) === cfg.defaultMarginBps);
 }
 
-// ── 4 · NO DURATION THE PLATFORM CAN EMIT IS PRICED AT THE OLD DEFAULT ───────
-// The ratchet. `ALLOWED_DURATIONS` is what an operator can actually pick, so every one of
-// them must be priced by the ladder — a rung going missing is how E-32 comes back.
+// ── 4 · NO DURATION THE PLATFORM CAN EMIT CARRIES A PERCENTAGE BAND ──────────
+//
+// ⛔ THE RATCHET, INVERTED 2026-08-04. It used to require every allowed duration to be priced
+// BY THE LADDER — correct while the ladder was the rule. Ali's decision replaced the ladder
+// with the TICK FLOOR, so the ratchet now points the other way: every duration must resolve
+// to 0 bps, i.e. to the floor, and a surviving rung is what would silently re-widen a band.
+//
+// ⚠️ The direction changed; the purpose did not. Both versions exist to stop one duration
+// being quietly priced differently from the rest, which is how E-32 hid.
 {
   const cfg = await getUpDownConfig();
   for (const d of ALLOWED_DURATIONS) {
     for (const category of ["crypto", "macro"]) {
       const bps = marginBpsForChain({ durationMinutes: d, marginBps: null } as never, cfg, { category });
-      ok(`4 · ${category} ${d}m is priced by the ladder at ${bps} bps, not the flat ${cfg.defaultMarginBps}`,
-         bps < 20 && bps === resolveScheduledMarginBps(cfg, category, d), `got ${bps}`);
+      ok(`4 · ${category} ${d}m runs at the TICK FLOOR (0 bps), with no rung re-pricing it`,
+         bps === 0 && resolveScheduledMarginBps(cfg, category, d) === null, `got ${bps}`);
     }
   }
 }
@@ -111,7 +137,8 @@ __resetUpDownConfig();
 // ── 5 · THE FIVE REAL PRODUCTION ROUNDS (campaign §6q) ───────────────────────
 // Real confirmed provider prices from the first five rounds the platform ever settled.
 // BTC/USD, decimals 2, minMoveTicks 1 — the live asset row.
-const BTC = { decimals: 2, minMoveTicks: 1 };
+// ⛔ 2 ticks, the floor since 2026-08-04 — at 1 the band equals the price's own rounding error.
+const BTC = { decimals: 2, minMoveTicks: 2 };
 const REAL_ROUNDS = [
   { n: 1, open: 63268.00, close: 63162.01, outcome: "DOWN" },
   { n: 2, open: 63162.01, close: 63132.00, outcome: "DOWN" },
@@ -123,43 +150,60 @@ const settle = (open: number, close: number, bps: number) => {
   const { upTarget, downTarget } = computeTargets(open, bps, BTC);
   return close >= upTarget ? "UP" : close <= downTarget ? "DOWN" : "VOID";
 };
+//
+// ⭐ THE SAME FIVE ROUNDS, NOW REPLAYED ACROSS ALL THREE SETTINGS THE PRODUCT HAS HAD. This is
+// the clearest statement of Ali's 2026-08-04 decision that exists anywhere, and it is made
+// entirely out of real money that really moved:
+//
+//     0.50% (the original flat default) →  0 of 5 resolve   ← E-32 itself
+//     0.02% (the E-32 ladder)           →  4 of 5 resolve
+//     the TICK FLOOR                    →  5 of 5 resolve   ← what ships now
 {
   const cfg = await getUpDownConfig();
-  const ladder = resolveScheduledMarginBps(cfg, "crypto", 5);
-  // ⚠️ Asserted before it is USED. `computeTargets(open, null, …)` quietly yields a 0
-  // margin (null/10000 === 0, floored at one tick), so a missing rung would make the
-  // replay below report 5/5 resolved and read like a pass on a broken ladder.
-  ok("5.0 · there IS a 5-minute crypto rung to replay against", ladder != null, `got ${ladder}`);
-  if (ladder == null) { console.log("❌ no 5-minute rung — the replay cannot run"); process.exit(1); }
+  ok("5.0 · ⭐ no rung prices a 5-minute crypto round any more — the ladder is retired",
+     resolveScheduledMarginBps(cfg, "crypto", 5) === null,
+     String(resolveScheduledMarginBps(cfg, "crypto", 5)));
 
   const atOld = REAL_ROUNDS.filter((r) => settle(r.open, r.close, 50) !== "VOID").length;
   ok("5.1 · at the OLD 0.50% default, 0 of the 5 real rounds resolve — this is E-32 itself",
      atOld === 0, `${atOld}/5 resolved`);
 
-  const atLadder = REAL_ROUNDS.filter((r) => settle(r.open, r.close, ladder) !== "VOID");
-  ok(`5.2 · at the ladder's ${ladder} bps, 4 of the 5 real rounds resolve`,
+  // The retired ladder, kept as the middle of the story rather than as a live rule.
+  const atLadder = REAL_ROUNDS.filter((r) => settle(r.open, r.close, 2) !== "VOID");
+  ok("5.2 · at the RETIRED ladder's 2 bps, 4 of the 5 resolve — better, and still a refund in five",
      atLadder.length === 4, `${atLadder.length}/5 resolved`);
+
+  // ⭐ THE DECISION, IN REAL MONEY. Round #5 moved 0.002% — $0.99 on a $63,206 price — which a
+  // 0.02% band swallowed and a $0.02 band does not. That one round is the difference between
+  // a player being paid and being handed their stake back with no fee earned (E-65).
+  const atFloor = REAL_ROUNDS.filter((r) => settle(r.open, r.close, 0) !== "VOID");
+  ok("5.2b · ⭐ at the TICK FLOOR, 5 of 5 resolve — including the one that moved only $0.99",
+     atFloor.length === 5, `${atFloor.length}/5 resolved`);
 
   // And they resolve the RIGHT WAY. A margin that resolved them all as UP would pass a
   // count-only assertion while paying the wrong side — the direction is the money.
   for (const r of REAL_ROUNDS) {
-    const got = settle(r.open, r.close, ladder);
-    const expected = r.n === 5 ? "VOID" : r.outcome; // #5 moved 0.002%, inside a 0.02% band
-    ok(`5.3 · round #${r.n} (${r.open} → ${r.close}) settles ${expected} at ${ladder} bps`,
-       got === expected, `got ${got}`);
+    const got = settle(r.open, r.close, 0);
+    ok(`5.3 · round #${r.n} (${r.open} → ${r.close}) settles ${r.outcome} at the tick floor`,
+       got === r.outcome, `got ${got}`);
   }
 }
 
 // ── 6 · the flat default is now only ever a long-window fallback ─────────────
 {
-  ok("6.1 · the shipped default config carries a ladder at all",
-     Array.isArray(DEFAULT_UPDOWN_CONFIG.marginSchedule) && DEFAULT_UPDOWN_CONFIG.marginSchedule.length >= 3,
+  // ⛔ AN EMPTY SCHEDULE IS A DECISION, NOT AN OMISSION — and the distinction is the point.
+  // `resolveScheduledMarginBps` returns null for every duration, so every chain falls through
+  // to `defaultMarginBps`, which is 0, which `computeTargets` floors at one tick. A single
+  // leftover rung would silently re-widen exactly one duration's band while every other
+  // surface still said "tick floor" — E-32's shape, arriving by omission rather than by edit.
+  ok("6.1 · ⭐ the shipped ladder is EMPTY — the tick floor is the rule, with nothing overriding it",
+     Array.isArray(DEFAULT_UPDOWN_CONFIG.marginSchedule) && DEFAULT_UPDOWN_CONFIG.marginSchedule.length === 0,
      `${DEFAULT_UPDOWN_CONFIG.marginSchedule?.length ?? 0} rungs`);
-  // The ladder must COVER every allowed duration, or one of them silently falls through to
-  // 0.50% — the exact defect, reintroduced by omission rather than by edit.
-  const uncovered = ALLOWED_DURATIONS.filter(
-    (d) => resolveScheduledMarginBps(DEFAULT_UPDOWN_CONFIG, "crypto", d) === null);
-  ok("6.2 · every ALLOWED_DURATION is covered by a rung", uncovered.length === 0, `uncovered: ${uncovered.join(", ")}`);
+  const covered = ALLOWED_DURATIONS.filter(
+    (d) => resolveScheduledMarginBps(DEFAULT_UPDOWN_CONFIG, "crypto", d) !== null);
+  ok("6.2 · ⭐ and NO ALLOWED_DURATION is captured by a rung", covered.length === 0, `captured: ${covered.join(", ")}`);
+  ok("6.3 · the flat default they all fall through to is the tick floor",
+     DEFAULT_UPDOWN_CONFIG.defaultMarginBps === 0, String(DEFAULT_UPDOWN_CONFIG.defaultMarginBps));
 }
 
 // ── 7 · a malformed ladder is refused, because it decides what winning IS ────

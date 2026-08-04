@@ -191,8 +191,30 @@ ok("the endpoint's host is checked before any call",
 console.log("\n── 6 · an ops mistake never voids a live round ─────────────────");
 const acquire = bodyOf(service, "export async function acquireObservation(");
 ok("acquireObservation was found", acquire.length > 0);
+// ⚠️ RE-POINTED 2026-08-04, AND THE REASON GENERALISES.
+//
+// This asserted the literal shape `if (!operatorState) await recordAttempt(...)`. That shape
+// is gone: the decision moved into ONE pure function, `refusalCostsAnAttempt`, because a
+// dated feed added a THIRD kind of refusal that must not burn the budget (`bar-not-published`
+// — the bar for the boundary minute has not published yet, measured at up to +60s on SOL).
+// Two copies of "does this cost an attempt" would be two answers to a question that voids
+// real rounds.
+//
+// ⛔ So the guard now pins the DELEGATION rather than an inlined condition. That is not a
+// weaker check — it is the same check at the right altitude: an unconditional
+// `recordAttempt` still fails here, and the carve-out's actual behaviour is proven
+// exhaustively in `test:updown-late-close` §1 (every reason × inside/outside the grace).
+// A guard that pins an implementation SHAPE fails when the code is factored properly, which
+// teaches the next session to inline rather than to share.
+// ⚠️ ONE POSITIVE ASSERTION, NOT A POSITIVE PLUS A NEGATIVE. The first version also required
+// that no bare `await observationStore.recordAttempt(obs.id, detail);` line existed — which is
+// the very line that sits INSIDE the conditional, so the guard contradicted itself and failed
+// on correct code. A "the bad shape is absent" check that cannot tell the bad shape from the
+// good one is worse than no check: it fails the fix and passes nothing.
+// The positive form is sufficient — an UNCONDITIONAL recordAttempt has no
+// `refusalCostsAnAttempt(...) {` wrapping it, so it fails here.
 ok("⛔ an operator-state refusal does NOT record an attempt",
-  /operatorState[\s\S]{0,200}if \(!operatorState\) await observationStore\.recordAttempt/.test(acquire),
+  /refusalCostsAnAttempt\([\s\S]{0,160}\)\s*\{[\s\S]{0,160}observationStore\.recordAttempt/.test(acquire),
   "burning the budget here voids live rounds for an ops action, which is what the old code did");
 // ⚠️ Asserts the CALL, not the field name. This used to match /retryBackoffSeconds/ against
 // the function body — which a mere COMMENT satisfies, so the guard would have gone on passing

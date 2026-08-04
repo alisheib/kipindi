@@ -184,6 +184,7 @@
     "ops:updown-shadow": "tsx scripts/ops-updown-shadow.mts",
     "test:updown-late-close": "tsx scripts/updown-late-close.test.mts",
     "test:updown-window": "tsx scripts/updown-window.test.mts",
+    "test:updown-margin": "tsx scripts/updown-margin.test.mts",
     "test:margin-schedule": "tsx scripts/updown-margin-schedule.test.mts",
     "test:rule-honesty": "tsx scripts/updown-rule-honesty.test.mts",
     "test:updown-digest": "tsx scripts/updown-digest.test.mts",

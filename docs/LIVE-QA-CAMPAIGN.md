@@ -1279,7 +1279,7 @@ which it named by filename.
 | # | Sev | Area | Finding | Evidence |
 |---|---|---|---|---|
 | **E-74** | 🔴 **HIGH — found + measured 2026-08-04 (session 23), NOT fixed** | Up & Down · price feed · staleness gate | **`/quote``s own timestamp is a minute LABEL rounded UP, and it currently names a minute that has not happened yet.** The staleness gate (`judgeFeedStaleness`) judges a reading by `last_quote_at`, and E-25 recorded that field as *"29-45s behind wall-clock, advancing 60s per minute"*. Measured on a raw `/quote` for BTC/USD called at **T+8s** (2026-08-04): `last_quote_at` came back as **T+60s — 52 seconds IN THE FUTURE**, i.e. the next whole minute. So the provider rounds the field UP to a minute boundary rather than reporting the instant it priced the asset. ⭐ **Consequence: `/quote` cannot date a price to better than a minute**, every boundary read reports a ~60s skew against a 90s limit, and the gate passes for the wrong reason — it is measuring a rounding artefact, not staleness. ⛔ **It is also an independent argument for the rebuild**, reached from a different direction than E-69: the quote reader cannot say WHEN its price was true, so it can never honestly settle a named instant. The bar reader has no such problem — the bar`s own label IS the boundary, which turns the same gate into a free correctness assertion. **Not fixed because the bar switch supersedes it**; if the quote reader is ever re-selected this must be revisited. | raw `/quote` BTC/USD called 2026-08-04T08:46:08Z (T=08:46:00): `last_quote_at=1785833220` → `2026-08-04T08:47:00Z` = **T+60s**, wall clock T+8s · `timestamp=1785801600` → `2026-08-04T00:00:00Z` = T−31,560s (the 1-day bar, E-25) |
-| **E-73** | 🔴 **HIGH — found on production 2026-08-04 (session 23), NOT fixed** | Up & Down · asset registry · **money: gold settled on a floor 29–87× below the feed`s own noise** | **There are TWO gold assets on the same symbol, and the ENABLED one runs the floor everybody believed was retired.** Read directly off production: `GOLD` (XAU/USD, macro) is **disabled** with `minMoveTicks: 15` (/usr/bin/bash.15) and 158 rounds, last 2026-08-01; `XAU` (XAU/USD, macro) is **ENABLED** with `minMoveTicks: 1` (/usr/bin/bash.01) and **1,291 rounds**, last 2026-08-03. ⛔ **So every live gold round settled against a /usr/bin/bash.01 floor**, not the /usr/bin/bash.15 §6ad reasoned about — and §6ad decision 3 (*"gold`s minMoveTicks comes down from 15"*) was aimed at the asset nobody is using. It had already been done, on the asset that matters, and it did not help: XAU still voids `no-move` 41 times in the 137-round window. ⭐ **The seam measurement makes this much worse than a config mismatch.** Gold`s bar-seam disagreement is **/usr/bin/bash.29–/usr/bin/bash.87**, so a /usr/bin/bash.01 floor is **29–87 ticks below the provider`s own price ambiguity at a single instant** — a short gold round is decided by which representation the feed returned, not by the market. It is the direct evidence for Ali`s call to offer gold at **15m and above only**, and for the `minMoveTicks ≥ 2` rule. ⚠️ Two enabled assets could also be pointed at one symbol and run two chains on it; nothing refuses that today. | production 2026-08-04: `GOLD enabled=false ticks=15 → 158 rounds`, `XAU enabled=true ticks=1 → 1,291 rounds, 41 no-move` · seam: XAU/USD disagrees $0.29–$0.87 on 5 of 5 seams (§6ad) · weekend arm: 1,440 XAU bars on Sat 2026-08-01 with a **$0.02** open range — 2× the $0.01 band, so a weekend gold round could RESOLVE |
+| **E-73** | 🟡 **HALF-FIXED 2026-08-04 (session 23) — `MIN_MOVE_TICKS_FLOOR = 2` now refuses a 1-tick asset at save time, and the row default was raised with it because the validator alone was not enough (`test:updown-margin` 25, RED 7/7). ⏳ The LIVE `XAU` row still carries 1 until an operator saves it, and the duplicate `GOLD`/`XAU` pair on one symbol is untouched — both are Phase 4 admin work.** | Up & Down · asset registry · **money: gold settled on a floor 29–87× below the feed`s own noise** | **There are TWO gold assets on the same symbol, and the ENABLED one runs the floor everybody believed was retired.** Read directly off production: `GOLD` (XAU/USD, macro) is **disabled** with `minMoveTicks: 15` (/usr/bin/bash.15) and 158 rounds, last 2026-08-01; `XAU` (XAU/USD, macro) is **ENABLED** with `minMoveTicks: 1` (/usr/bin/bash.01) and **1,291 rounds**, last 2026-08-03. ⛔ **So every live gold round settled against a /usr/bin/bash.01 floor**, not the /usr/bin/bash.15 §6ad reasoned about — and §6ad decision 3 (*"gold`s minMoveTicks comes down from 15"*) was aimed at the asset nobody is using. It had already been done, on the asset that matters, and it did not help: XAU still voids `no-move` 41 times in the 137-round window. ⭐ **The seam measurement makes this much worse than a config mismatch.** Gold`s bar-seam disagreement is **/usr/bin/bash.29–/usr/bin/bash.87**, so a /usr/bin/bash.01 floor is **29–87 ticks below the provider`s own price ambiguity at a single instant** — a short gold round is decided by which representation the feed returned, not by the market. It is the direct evidence for Ali`s call to offer gold at **15m and above only**, and for the `minMoveTicks ≥ 2` rule. ⚠️ Two enabled assets could also be pointed at one symbol and run two chains on it; nothing refuses that today. | production 2026-08-04: `GOLD enabled=false ticks=15 → 158 rounds`, `XAU enabled=true ticks=1 → 1,291 rounds, 41 no-move` · seam: XAU/USD disagrees $0.29–$0.87 on 5 of 5 seams (§6ad) · weekend arm: 1,440 XAU bars on Sat 2026-08-01 with a **$0.02** open range — 2× the $0.01 band, so a weekend gold round could RESOLVE |
 | **E-72** | ✅ **FIXED + guarded 2026-08-04 (session 23) — the last 20% of every round is now locked, server-enforced. Original filing kept below: it carries the reasoning that chose a proportion over a fixed 30s.** | player · Up & Down · bet acceptance · fairness | **Bets are accepted right up to the closing second, so a player can stake when the outcome is already known.** `openRound` writes `selectionClosedAt: null` (`updown-service.ts:514`) and `isSelectionClosed` (`market-service.ts:332-336`) falls back to `resolutionAt`, which for an Up & Down round **is the close instant**. The board shows the live price and both frozen targets, so at 21:26:59 on a round closing 21:27:00 a player can see the price is already past a target and stake with ~1 second of risk. ⚠️ **The code comment is NOT wrong** — it says *"Selections close AT the boundary"* and that is exactly what happens; this is a design choice nobody had examined, not a contradiction. ⛔ **It gets much worse under the settlement rebuild**: taking the open from a completed 1-minute bar puts the open 60–120s in the past, which on a 3-minute round is up to two-thirds already played. **Ali's decision 2026-08-04: close bets BEFORE the round ends** — an explicit `selectionClosedAt` (≈30s before a 3-minute round, 60s before a 5-minute one). `market-service.ts` already supports the field and `computeSelectionClosedAt` exists for the poll product; Up & Down simply never set it. ⛔ Ship this WITH the open-from-bar change, never after it. | `updown-service.ts:514` (`selectionClosedAt: null`) · `market-service.ts:334` (`m.selectionClosedAt ? … : Date.parse(m.resolutionAt)`) · `openRound` sets `resolutionAt: closeIso` |
 | **E-71** | 🔴 **HIGH — found + measured 2026-08-04 (session 22), NOT fixed** | Up & Down · price feed · **would settle money on the wrong minute** | **`time_series` labels XAU/USD bars in a NON-UTC zone by default, and our bar reader assumes UTC.** `time_series`'s `timezone` parameter defaults to **`Exchange`**, not UTC (provider docs). `fetchBars` (`ops-updown-margin-study.mts:158`) parses `datetime` as `Date.parse(\`${v.datetime.replace(" ","T")}Z\`)` — i.e. it **appends "Z" and calls it UTC**. Measured with a paired call, same instant: **XAU/USD `timezone=UTC` → `2026-08-04 07:29:00`, default → `2026-08-04 17:29:00` — exactly 600 minutes apart.** BTC, ETH and SOL returned identical values both ways, so the defect is invisible on crypto and only bites metals/FX. ⭐ **The live money path is NOT currently affected** — settlement reads `/quote`, whose `last_quote_at` is a unix timestamp and therefore zone-free. What IS affected today is the **margin study**, which means its gold market-shut warnings are computed on timestamps shifted 10 hours and cannot be trusted. ⛔ **And it would have been a money bug the moment the time-series reader shipped**, settling every gold round on a bar ten hours away. **Fix: pass `timezone=UTC` explicitly on every `time_series` call**, and guard it — a reader that omits it must fail the suite. ⚠️ This is why the first thing the rebuild does is measure rather than build. | `scripts/ops-updown-probe-bars.mts` §A, run against the production key 2026-08-04: `XAU/USD utc=2026-08-04 07:29:00 default=2026-08-04 17:29:00 🔴 DIFFER by -600 min`; BTC/ETH/SOL `✅ same` · provider docs: *"timezone … Default: Exchange"* |
 | **E-70** | 🔴 **HIGH — reported by Ali 2026-08-04, NOT yet reproduced** | player · navigation · session | **Ali: *"when I move from admin to game to markets there is no navbar, it's lost until I login as player or retry the URL as player."*** Moving from an ADMIN surface to a PLAYER surface leaves the page without its navigation — recoverable only by signing in as a player or re-entering the URL. ⚠️ Almost certainly the same root as the session-21 observation that `/admin/updown` returned the **signed-out player shell** immediately after a successful ADMIN sign-in: a staff session does not satisfy the player shell's expectations, so the layout renders its logged-out branch. ⛔ **A player who lands with no navigation is stranded on a money surface** — no wallet, no history, no way back. Reproduce as ADMIN → `/markets`, then compare the served HTML with the same route as a player. | Ali, live, 2026-08-04 · corroborating: `/admin/updown` served the signed-out shell to a freshly signed-in ADMIN (session 21) |
@@ -3640,6 +3640,97 @@ workstation shows an SLA countdown, but nothing escalates when it runs out. Ali'
   platform zone (+3) keeps it on the right day, and the E-2 fix is safe. The earlier note was
   the `pg` −3h trap (§3) reading back through an un-cast client.
 
+## 6ag. ⭐ THE MARGIN IS NOW THE TICK FLOOR — and the band can no longer be rounding noise (2026-08-04, session 23)
+
+> Executes §6ad phase 2 and Ali's decision 1. §6ad is settled; nothing here re-opens it.
+
+### The decision, restated as the five real rounds it changes
+
+The platform's first five non-VOID rounds ever (§6q, real confirmed provider prices), replayed
+through the real `computeTargets` at each setting the product has had:
+
+| Setting | Rounds that resolve |
+|---|---|
+| **0.50%** — the original flat default | **0 of 5** ← E-32 itself |
+| **0.02%** — the E-32 ladder | 4 of 5 |
+| **the TICK FLOOR** — what ships now | **5 of 5** |
+
+⭐ Round #5 moved **0.002%** — **$0.99 on a $63,206 price**. A 0.02% band swallowed it; a $0.02
+band does not. That one round is the difference between a player being paid and being handed
+their stake back with **no fee earned** (E-65).
+
+⛔ **The E-32 ladder was not wrong.** It targeted a ~25-40% void rate, honestly measured, and
+that was Ali's "balanced" call at the time. What replaced it answers a different question — not
+*"what band feels fair"* but *"how often should a round refund at all"* — and the answer is
+almost never. **A 25-40% void rate is a quarter of the product not happening.**
+
+`marginSchedule` is now **empty** and `defaultMarginBps` is **0**. ⭐ An empty schedule is a
+DECISION, not an omission: every chain falls through to 0, which `computeTargets` floors at one
+tick. A single leftover rung would silently re-widen one duration while every other surface
+still said "tick floor" — E-32's shape, arriving by omission rather than by edit. The per-chain
+override still works, so this is a default, not a law.
+
+### 🔴 AND AT ONE TICK THE BAND *IS* THE ROUNDING ERROR — which production was live on
+
+§6ad scenario 1: with `decimals: 2` and `minMoveTicks: 1` the band is **0.01** while `toFixed(2)`
+error reaches **0.005 on each of the two prices** that decide the round. The band is therefore no
+larger than the noise it is measured against, and a round can be decided by rounding.
+
+⛔ **That is E-73, and it was live.** `MIN_MOVE_TICKS_FLOOR = 2` is now enforced in
+`validateAsset` — and the row default was raised too, because the validator alone was not
+enough: an asset created **without** the field still landed on 1, the forbidden value reached
+through the door nobody was watching. **`test:updown-margin` §3.5 caught that during development.**
+
+⚠️ **Existing assets are not rewritten.** A stored 1 keeps working until an operator saves the
+row; refusing to SAVE a new one is what stops the population growing, and
+`recommendMinMoveTicks` is what moves the existing ones.
+
+### The recommendation — a number the operator is SHOWN, not one they must know
+
+`recommendMinMoveTicks` clears the larger of two measured facts, doubled: the asset's own
+rounding error, and **its feed's disagreement with itself at a single instant**.
+
+| Asset | feed disagreement | recommended | why |
+|---|---|---|---|
+| BTC/USD | $0.01 | **2 ticks** ($0.02) | rounding dominates; the floor holds |
+| XAU/USD | **$0.06–$0.20** | **40 ticks** ($0.40) | *"this feed disagrees with itself at one instant"* |
+
+⭐ The gold figure is measured, not assumed — shadow mode (§6ae) found the `/quote` price
+outside the same minute's bar range on **6 of 30** XAU samples, by $0.055–$0.201, while **75 of
+75** crypto samples agreed.
+
+### The card had to be re-worded, and that was the accepted consequence
+
+At the tick floor the Up/Down tiles sit essentially **at the open price**, so the game reads as
+**higher or lower** rather than *"reach the boundary"*. The card now heads that block
+*"Higher or lower than $63,572.10"*. ⛔ Leaving the old wording would describe a game the
+platform no longer runs — **E-39's exact shape**, a settlement rule printed underneath a band it
+does not match. EN/SW/ZH, `test:i18n` green at 1,614 keys each.
+
+**Guard**: `npm run test:updown-margin` (**25**), proven **RED 7/7** by
+`scripts/updown-margin-red.mjs` — `margin-back-to-a-band` · `ladder-rung-survives` ·
+`floor-back-to-one-tick` (E-73's live configuration) · `create-default-back-to-1` ·
+`no-tick-floor` · `recommendation-ignores-feed-noise` · `per-chain-override-lost`.
+
+### ⚠️ TWO OF MY OWN CHECKS WERE LYING, AND ONE HAD BEEN FOR A WHILE
+
+- 🔴 **`test:updown-config` §2.1, *"an UNTRUSTED domain is refused"*, was passing for the wrong
+  reason entirely.** Raising the tick floor made its shared fixture uncreatable — and because
+  the ticks check runs *before* the source gate, the assertion went on being satisfied by an
+  error that had nothing to do with domains. **It would have reported a working source
+  allowlist even if the allowlist were deleted.** Asked *"would this still pass if the feature
+  were absent?"*, the answer was yes.
+- ⚠️ **`test:updown-source` pinned an implementation SHAPE, not a behaviour.** It grepped for
+  the literal `if (!operatorState) await recordAttempt(...)`, which the refactor into the shared
+  `refusalCostsAnAttempt` legitimately removed. Re-pointed at the DELEGATION — same check at the
+  right altitude, and **proven still RED** against an unconditional `recordAttempt`. ⛔ A guard
+  that pins a shape fails when code is factored properly, which teaches the next session to
+  inline rather than to share.
+- ⚠️ And the re-pointed guard's *first* version carried a positive **and** a negative check,
+  where the negative matched the very line sitting inside the new conditional — so it
+  contradicted itself and failed on correct code. **A "the bad shape is absent" check that
+  cannot tell the bad shape from the good one is worse than none: it fails the fix.**
+
 ## 6af. ⭐ E-72 CLOSED — bets now stop before the round does, and one account gets one side (2026-08-04, session 23)
 
 > Executes §6ad phase 1e. §6ad is settled; nothing here re-opens it.
@@ -4064,7 +4155,7 @@ so a tick-floor margin on crypto measures the market, not the feed.
 ⛔ **`feedProvider` is still `twelvedata`. No money has touched the new reader yet** — the switch
 is gated on the shadow run's median delta (§6ae) and lands with phase 1e.
 
-#### ⏭️ **RESUME AT:** ① **Phase 2 — tick-floor margin.** E-72 and the late close are DONE (§6af, §6ae). `openRound` writes `selectionClosedAt: null`; set it to the last **20% of the round, floored at 30s**, config-driven. ⭐ The server enforcement is already free — `buyPosition` (`market-service.ts:621`) refuses `isSelectionClosed`. The card needs a **LOCKED** state whose countdown **RE-LABELS itself** and whose message carries its reason, and the lock turns `× 1.4 est.` into an exact payout. Ali's call 2026-08-04: **one account may NOT hold both sides of a round** — enforce in `buyPosition`, RED-first. Then **② Phase 2** tick-floor margin + `minMoveTicks ≥ 2` (see **E-73**) · **③ Phase 3** durations 3/5/10/15/30/60 on the epoch lattice, **gold 15m+ only** (Ali's call, 2026-08-04) · **④ Phase 4** the fully-controlled admin · **⑤ Phase 6** void honesty · **⑥ Phase 7** E-70, E-59, accountant/reports, the 4-width sweep, and consolidating the Up & Down docs to one truth.
+#### ⏭️ **RESUME AT:** ① **Phase 3 — durations 3/5/10/15/30/60 on the epoch lattice, gold 15m+ only.** Phases 1c/1d/1e/2 are DONE (§6ae, §6af, §6ag). `openRound` writes `selectionClosedAt: null`; set it to the last **20% of the round, floored at 30s**, config-driven. ⭐ The server enforcement is already free — `buyPosition` (`market-service.ts:621`) refuses `isSelectionClosed`. The card needs a **LOCKED** state whose countdown **RE-LABELS itself** and whose message carries its reason, and the lock turns `× 1.4 est.` into an exact payout. Ali's call 2026-08-04: **one account may NOT hold both sides of a round** — enforce in `buyPosition`, RED-first. Then **② Phase 2** tick-floor margin + `minMoveTicks ≥ 2` (see **E-73**) · **③ Phase 3** durations 3/5/10/15/30/60 on the epoch lattice, **gold 15m+ only** (Ali's call, 2026-08-04) · **④ Phase 4** the fully-controlled admin · **⑤ Phase 6** void honesty · **⑥ Phase 7** E-70, E-59, accountant/reports, the 4-width sweep, and consolidating the Up & Down docs to one truth.
 
 ### 🟢 Laptop A, session 22 (2026-08-04) — THE SETTLEMENT REBUILD IS UNDER WAY AND HALF SHIPPED. Read §6ad first; it carries every decision and the measured evidence.
 

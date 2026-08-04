@@ -335,17 +335,28 @@ export function UpDownCard(props: UpDownCardProps) {
         </div>
       </div>
 
-      {/* ── Winning boundaries — the PDF's Up/Down target prices ─────────
-          The exact price a side must REACH to win: UP at or above upTarget, DOWN at or
-          below downTarget; a smaller move voids + refunds (the ± buffer around the base).
-          Two tinted tiles echo the Up/Down bet buttons below — a quiet preview of the
-          choice — with the arrow + label stacked over the price so a 6-figure asset can
-          never overflow. Frozen at open; hidden once the round settles (it shows its
-          outcome instead) or before a price is confirmed (we never invent a boundary). */}
+      {/* ── The winning prices ────────────────────────────────────────────
+          ⛔ RE-WORDED FOR THE TICK-FLOOR MARGIN (Ali's decision, 2026-08-04). This block
+          used to be headed "Target to win" and framed the game as REACHING a boundary — a
+          band of ±0.02% around the open, which a 5-minute round often failed to cross (36.6%
+          of BTC rounds refunded at that setting).
+
+          At the tick floor the band is the asset's smallest meaningful move, so the two tiles
+          sit essentially AT the open price and the game is plainly **higher or lower**.
+          Keeping the old wording would describe a game the platform no longer runs — E-39's
+          exact shape, where a settlement rule was printed underneath a band it did not match.
+
+          Frozen at open; hidden once the round settles (it shows its outcome instead) or
+          before a price is confirmed (we never invent a boundary). */}
       {upTarget != null && downTarget != null && state !== "resolved" && state !== "void" && (
         <div className="mt-2.5">
+          {/* "Higher or lower than $63,572.10" — the OPEN price is the thing being compared
+              against, so it is what the heading names. The ± figure stays because it is the
+              honest size of the band, and at the tick floor it is reassuringly tiny. */}
           <div className="flex items-center justify-between gap-2 font-mono text-[8px] font-semibold uppercase tracking-[0.12em] text-text-faint">
-            <span className="truncate">{t.market.udWinTarget}</span>
+            <span className="truncate">
+              {t.market.udWinTarget}{openPrice != null ? ` ${usd(openPrice, decimals)}` : ""}
+            </span>
             {openPrice != null && <span className="shrink-0 tabular-nums">± {usd(upTarget - openPrice, decimals)}</span>}
           </div>
           <div className="mt-1 grid grid-cols-2 gap-2">

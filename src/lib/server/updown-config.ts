@@ -239,22 +239,40 @@ export const DEFAULT_UPDOWN_CONFIG: UpDownConfig = {
     estimatedWinningsRate: 0.4,
     showEstimatedWinnings: true,
   },
-  // Kept as the LAST resort only — a duration longer than the ladder's top rung. Every
-  // round the platform actually runs is priced by `marginSchedule` (E-32), and 0.50% is
-  // roughly right for the ~23-hour window it now only ever applies to.
-  defaultMarginBps: 50,
-  // The measured ladder — ~25-40% void, Ali's "balanced" call (E-32). Each rung is the
-  // margin whose measured void rate on real bars is nearest that band; the table of
-  // measurements is in the `marginSchedule` doc comment above. Ordered narrowest-window
-  // first for readability only; resolution picks the narrowest MATCHING rung regardless.
-  marginSchedule: [
-    { category: "*", maxDurationMinutes: 5, bps: 2 },
-    { category: "*", maxDurationMinutes: 15, bps: 3 },
-    { category: "*", maxDurationMinutes: 30, bps: 5 },
-    { category: "*", maxDurationMinutes: 60, bps: 7 },
-    { category: "*", maxDurationMinutes: 240, bps: 14 },
-    { category: "*", maxDurationMinutes: 1440, bps: 30 },
-  ],
+  // ⛔ ZERO — THE MARGIN IS NOW THE TICK FLOOR (Ali's decision, 2026-08-04).
+  //
+  // `computeTargets` floors the band at `minMoveTicks × 10^-decimals`, so a 0 bps margin means
+  // "the band IS the asset's minimum meaningful move". That floor stops being a safety net and
+  // becomes the load-bearing rule.
+  //
+  // ⚠️ MEASURED, on 5,000 real 1-minute bars per asset. The curve is brutally steep — between
+  // 0% and 0.01% the void rate leaps from ~1% to ~20%:
+  //
+  //     BTC 5m   median move 0.031%   @0.00% → 0.5% void   @0.02% → 36.6% void
+  //     ETH 5m   median move 0.043%   @0.00% → 0.6%        @0.02% → 26.6%
+  //     XAU 5m   median move 0.023%   @0.00% → 28.5%       @0.02% → 47.7%
+  //
+  // **There is no setting that gives both a visible winning band and a ~95% pay rate.** Ali
+  // chose the pay rate: ~99% of rounds decide, against ~63% today.
+  //
+  // ⛔ CONSEQUENCE ACCEPTED, AND IT CHANGES THE COPY: the Up/Down target tiles now sit
+  // essentially AT the open price, so the card reads as **higher or lower**, not "reach the
+  // boundary". A card still promising a boundary would be describing a game we no longer run.
+  defaultMarginBps: 0,
+  // ⛔ EMPTY — every duration now runs at the TICK FLOOR (Ali's decision, 2026-08-04).
+  //
+  // ⚠️ THIS REPLACES THE E-32 LADDER, AND THE LADDER WAS NOT WRONG. It targeted a ~25-40%
+  // void rate, which was Ali's "balanced" call at the time and was measured honestly. The
+  // decision that superseded it is a different answer to a different question: not *"what
+  // band feels fair"* but *"how often should a round refund at all"*, and the answer is
+  // almost never. A round that refunds pays 0% fee and hands a "winner" their stake back
+  // (E-65), so a 25-40% void rate is a quarter of the product not happening.
+  //
+  // ⭐ An empty schedule is a MEANINGFUL value, not an omission: `resolveScheduledMarginBps`
+  // returns null and the caller falls back to `defaultMarginBps`, which is now 0 — the tick
+  // floor. The per-chain override still exists for an operator who wants a wider band on one
+  // chain, so this is a default, not a hard-coding.
+  marginSchedule: [],
 };
 
 declare global {
@@ -548,9 +566,31 @@ async function validateAsset(input: AssetInput): Promise<{ ok: true; domain: str
   if (!Number.isInteger(decimals) || decimals < 0 || decimals > 8) {
     return { ok: false, error: "Decimals must be a whole number 0-8." };
   }
-  const ticks = input.minMoveTicks ?? 1;
-  if (!Number.isInteger(ticks) || ticks < 1 || ticks > 10_000) {
-    return { ok: false, error: "Minimum move must be a whole number of ticks, 1-10000." };
+  // ⛔ THE FLOOR IS 2 TICKS, NOT 1, AND IT IS A MONEY RULE (§6ad scenario 1, 2026-08-04).
+  //
+  // At the tick-floor margin `computeTargets` produces a band of exactly `minMoveTicks × 10^-d`,
+  // and that band is the entire difference between UP, DOWN and a refund. With `decimals: 2`
+  // and `minMoveTicks: 1` the band is **0.01** while `toFixed(2)` rounding error is up to
+  // **0.005** — so the band is only twice the noise it is measured against, and a round can be
+  // decided by rounding rather than by the market.
+  //
+  // ⚠️ AND THIS IS LIVE, NOT THEORETICAL (E-73). Production carries TWO gold assets on
+  // XAU/USD: `GOLD` (disabled, 15 ticks) and `XAU` (**enabled**, **1 tick**), and all 1,291
+  // live gold rounds ran on the 1-tick one — a $0.01 band on a $4,056 asset, against a feed
+  // whose own two endpoints disagree by $0.06-$0.20 at a single instant.
+  //
+  // ⭐ Existing assets are NOT rewritten by this: a stored 1 keeps working until an operator
+  // saves the row. Refusing to SAVE a new 1 is what stops the population growing, and the
+  // per-asset recommendation in the form is what moves the existing ones.
+  const ticks = input.minMoveTicks ?? MIN_MOVE_TICKS_FLOOR;
+  if (!Number.isInteger(ticks) || ticks < MIN_MOVE_TICKS_FLOOR || ticks > 10_000) {
+    return {
+      ok: false,
+      error:
+        `Minimum move must be a whole number of ticks, ${MIN_MOVE_TICKS_FLOOR}-10000. ` +
+        `At ${MIN_MOVE_TICKS_FLOOR - 1} tick the winning band is the same size as the rounding ` +
+        `error on the price, so a round could be decided by rounding rather than by the market.`,
+    };
   }
 
   // THE SOURCE GATE. One allowlist on the platform, not two.
@@ -628,7 +668,10 @@ export async function createAsset(input: AssetInput, officerId: string): Promise
     sourceDomain: v.domain,
     category: input.category ?? "macro",
     decimals: input.decimals ?? 2,
-    minMoveTicks: input.minMoveTicks ?? 1,
+    // ⛔ The FLOOR, not 1. The validator refuses an explicit 1, but an asset created
+    // WITHOUT the field used to land on 1 anyway — the forbidden configuration, reached
+    // through the door nobody was watching.  §3.5 caught this.
+    minMoveTicks: input.minMoveTicks ?? MIN_MOVE_TICKS_FLOOR,
     // NEW ASSETS START DISABLED. Enabling is a separate, audited act — creating a row
     // must never be enough to put an asset in front of real money.
     enabled: false,
@@ -742,7 +785,7 @@ export async function updateAsset(id: string, input: Partial<AssetInput>, office
     sourceDomain: v.domain,
     category: merged.category ?? "macro",
     decimals: merged.decimals ?? 2,
-    minMoveTicks: merged.minMoveTicks ?? 1,
+    minMoveTicks: merged.minMoveTicks ?? MIN_MOVE_TICKS_FLOOR,
     sortOrder: merged.sortOrder ?? 0,
     updatedAt: new Date().toISOString(),
   };
@@ -1051,6 +1094,55 @@ export function marginBpsForChain(
  * exhaustively testable. Matches the pricing model exactly: base 4120, 50 bps → margin 20.6,
  * up 4140.6, down 4099.4.
  */
+/**
+ * ⛔ THE SMALLEST `minMoveTicks` AN ASSET MAY BE SAVED WITH.
+ *
+ * At the tick-floor margin the winning band IS `minMoveTicks × 10^-decimals`. One tick makes
+ * that band the same order as the rounding error on the price itself, so the round is decided
+ * by `toFixed` rather than by the market. Two is the minimum at which the band is meaningfully
+ * larger than the noise it measures.
+ *
+ * ⚠️ It is NOT a claim that 2 is right for a given asset — it is the floor below which no
+ * asset can be right. Gold needs far more (its own feed disagrees with itself by $0.06-$0.20),
+ * which is what `recommendMinMoveTicks` is for.
+ */
+export const MIN_MOVE_TICKS_FLOOR = 2;
+
+/**
+ * The `minMoveTicks` an asset SHOULD carry, from measured facts about its price and its feed.
+ *
+ * ⛔ A NUMBER THE OPERATOR IS SHOWN, NOT ONE THEY MUST KNOW. Ali: *"I don't know how
+ * knowledgeable my admins are in typing asset names"* — and this is a far harder question than
+ * a symbol. The band has to clear three things at once:
+ *
+ *   1. **rounding** — half a tick at the asset's own precision, twice over (open and close);
+ *   2. **the feed's own disagreement about a single instant** — measured at **$0.06-$0.20** on
+ *      XAU/USD between `/quote` and the 1-minute bar, and at **$0.01** on BTC/USD;
+ *   3. and it must still be far SMALLER than a typical move, or every round refunds.
+ *
+ * Returns the ticks, plus the reason in the operator's own terms so the form can say WHY.
+ */
+export function recommendMinMoveTicks(asset: {
+  decimals: number;
+  /** Roughly what the asset trades at. The band is absolute, so $63,000 and $73 differ hugely. */
+  referencePrice: number;
+  /** Measured max disagreement between the two readers at one instant, in price units. */
+  feedNoiseAbs?: number;
+}): { ticks: number; why: string } {
+  const tickSize = Math.pow(10, -asset.decimals);
+  // Rounding: up to half a tick on each of the two prices that decide the round.
+  const roundingAbs = tickSize;
+  const noiseAbs = asset.feedNoiseAbs ?? 0;
+  // Clear the LARGER of the two, with a 2x margin so the band is not merely equal to the noise.
+  const needAbs = Math.max(roundingAbs, noiseAbs) * 2;
+  const ticks = Math.max(MIN_MOVE_TICKS_FLOOR, Math.ceil(needAbs / tickSize));
+  const why =
+    noiseAbs > roundingAbs
+      ? `this feed disagrees with itself by up to ${noiseAbs.toFixed(asset.decimals)} at one instant, so a smaller band would be decided by which reading arrived`
+      : `below this the band is the same size as the rounding error on the price, so the round would be decided by rounding`;
+  return { ticks, why };
+}
+
 export function computeTargets(
   openPrice: number,
   marginBps: number,
