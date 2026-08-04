@@ -148,6 +148,58 @@ const GOLD = {
 
   const badDecimals = await createAsset({ ...GOLD, key: "DEC", decimals: 99 }, OFFICER);
   ok("2.9 · out-of-range decimals are refused", !badDecimals.ok);
+
+  // ── 2.10-2.13 · THE EDIT LOCK ─────────────────────────────────────────────
+  //
+  // 🔴 THE PRODUCTION DEFECT. `validateAsset` refuses an `http://` source — correctly, because
+  // the URL carries a provider API key. But it validates the WHOLE row on every save, not the
+  // field being changed, and `quoteAsset` UPGRADES the scheme at request time rather than
+  // refusing. So a row stored as `http://` keeps working while becoming **unsavable in any
+  // way** — and that is exactly how `SOL` and `XAU` sat on production at a 1-tick band that
+  // could be decided by rounding: the fix was refused, and the refusal named the ticks.
+  //
+  // ⛔ THE PROPERTY IS NOT "http IS REFUSED" — that already held and is not the bug. It is
+  // that **a refusal on a field the caller did not touch must still leave a way through**, so
+  // no row can reach a state where nothing about it can be corrected. Guarded by proving the
+  // repair actually lands: change the ticks alone → refused; change the ticks AND the scheme
+  // → accepted, with BOTH values stored.
+  {
+    // ⚠️ Same symbol as the GOLD fixture, different key. Picking an uncatalogued symbol here
+    // ("XPD/USD") failed on the Phase-4 symbol gate instead — a setup failure that looked like
+    // the guard working. `key` is unique; `symbol` is not, and production carries two XAU/USD
+    // rows, so this is the real shape.
+    const httpAsset = await createAsset({ ...GOLD, key: "LOCKED" }, OFFICER);
+    if (!httpAsset.ok) {
+      ok("2.10 · (setup) a trusted https asset was created", false, httpAsset.error);
+    } else {
+      // Reach past the validator to plant the legacy shape, because the validator is what stops
+      // you creating it — which is the point: these rows predate the rule and cannot be re-made.
+      await assetStore.upsert({
+        ...(await assetStore.get(httpAsset.data.id))!,
+        priceSourceUrl: "http://www.kitco.com/pd",
+        minMoveTicks: 1,
+      });
+      ok("2.10 · (setup) a LEGACY http:// row with a 1-tick band exists",
+         (await assetStore.get(httpAsset.data.id))!.priceSourceUrl.startsWith("http://"));
+
+      const ticksOnly = await updateAsset(httpAsset.data.id, { minMoveTicks: 40 }, OFFICER);
+      ok("2.11 · raising the ticks ALONE is refused — the stored http:// fails whole-row validation",
+         !ticksOnly.ok, ticksOnly.ok ? "saved, so the lock does not exist" : ticksOnly.error.slice(0, 70));
+
+      const repaired = await updateAsset(
+        httpAsset.data.id,
+        { minMoveTicks: 40, priceSourceUrl: "https://www.kitco.com/pd" },
+        OFFICER,
+      );
+      ok("2.12 · repairing the scheme in the SAME call lets the row be saved again",
+         repaired.ok, repaired.ok ? "" : repaired.error.slice(0, 90));
+
+      const after = (await assetStore.get(httpAsset.data.id))!;
+      ok("2.13 · …and BOTH values landed — the band is off 1 tick and the key is off the wire",
+         after.minMoveTicks === 40 && after.priceSourceUrl.startsWith("https://"),
+         `ticks ${after.minMoveTicks} · ${after.priceSourceUrl}`);
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

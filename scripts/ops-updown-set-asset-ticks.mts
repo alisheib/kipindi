@@ -89,9 +89,27 @@ for (const a of assets) {
   }
   const band = (want * Math.pow(10, -a.decimals)).toFixed(a.decimals);
   console.log(`  →  ${a.key.padEnd(7)} ${a.symbol.padEnd(9)} ${a.minMoveTicks} → ${want} tick(s)  (band ${band})`);
+
+  // ⛔ REPAIR THE SCHEME IN THE SAME CALL, OR THE ROW CANNOT BE SAVED AT ALL.
+  //
+  // 🔴 `SOL` and `XAU` were REFUSED by the first run of this script, and the reason was not the
+  // ticks: their stored `priceSourceUrl` is **`http://`** — E-51's residue. `validateAsset`
+  // rightly refuses to save a row that would put a provider API key on the wire in cleartext,
+  // and it validates the WHOLE row, not the changed field. So the two assets that most needed
+  // fixing were the two that could not be edited **at all** — including from the console.
+  //
+  // ⚠️ The request path was never exposed: `quoteAsset` upgrades the scheme at call time. The
+  // defect was that the STORED row was never corrected, which turned a silent mitigation into
+  // an edit lock. Upgrading here is the same transformation the request path already performs,
+  // so it changes no behaviour — it only lets the row be written again.
+  const patch: { minMoveTicks: number; priceSourceUrl?: string } = { minMoveTicks: want };
+  if (a.priceSourceUrl.startsWith("http://")) {
+    patch.priceSourceUrl = a.priceSourceUrl.replace(/^http:\/\//, "https://");
+    console.log(`     ⚠️ also upgrading http:// → https:// (E-51 residue — this row is otherwise unsavable)`);
+  }
   if (!APPLY) continue;
 
-  const r = await updateAsset(a.id, { minMoveTicks: want }, ACTOR);
+  const r = await updateAsset(a.id, patch, ACTOR);
   if (r.ok) {
     changed++;
     console.log(`     ✓ saved`);

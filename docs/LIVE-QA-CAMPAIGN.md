@@ -3640,6 +3640,73 @@ workstation shows an SLA countdown, but nothing escalates when it runs out. Ali'
   platform zone (+3) keeps it on the right day, and the E-2 fix is safe. The earlier note was
   the `pg` −3h trap (§3) reading back through an un-cast client.
 
+## 6am. ✅ THE MONEY PAIRS ON THE DATED READER — and the two assets that could not be edited at all (2026-08-04, session 23)
+
+### ① Real money, both sides, one round, settled from a dated bar at BOTH ends
+
+§6al proved the *reader*; §6ak proved the *money*. Neither had proved them **together** — every
+round that carried a stake had settled on the QUOTE reader. Driven now, through the console as the
+trading officer, staked from the real player UI:
+
+| | |
+|---|---|
+| round | `udr_a1adea90027e90fe2283` · BTC 5m · opens `13:47:00` → closes `13:52:00` |
+| **open model** | **`feed:twelvedata-bars`** · open `63,856.00` |
+| **close model** | **`feed:twelvedata-bars`** · CONFIRMED · close `63,832.00` → **DOWN** |
+| alpha · UP | stake 500 → **0** · LOSS · wallet `61,060` unchanged |
+| echo · DOWN | stake 500 → **870** · WIN · wallet `24,400` + 870 = **`25,270`** |
+| pool 1,000 | − 13% (130) = 870 · **GGR 130** |
+
+Wallet, position and round row agree to the shilling on the reader the rebuild exists for.
+
+⚠️ **AND MY OWN CHECK WAS THE FOURTH LIAR OF THE SESSION.** `live-updown-bar-money-drive.mjs`
+waited for the card's `innerText` to CHANGE after the tap. The card contains a **countdown**, so
+that comparison is always true — it would have reported `PASS ... the pool moved` for a tap that
+never landed, on a pool of zero. It now reads the **VOL figure** and requires it to **grow**.
+Same lesson as [[checks-that-lie]], fifth instance: **assert the quantity, never the container.**
+
+### ② 🔴 THE TWO ASSETS THAT MATTERED MOST WERE THE TWO THAT COULD NOT BE EDITED AT ALL
+
+`SOL` and `XAU` sat on production at **`minMoveTicks: 1`** — a **$0.01** winning band. For gold
+that is against a feed which disagrees with itself by up to **$0.20** at a single instant: the
+round was decided by which reading arrived, not by the market. §6al filed it and could not fix it,
+because every attempt to raise the ticks was **refused**, and the refusal talked about the URL.
+
+**The mechanism, and it is a general one:**
+
+1. `validateAsset` refuses an `http://` price source — correctly; the URL carries a provider key.
+2. It validates the **whole row** on every save, not the field being changed.
+3. `quoteAsset` **upgrades the scheme at request time** rather than refusing, so the bad row kept
+   working and nothing ever surfaced it.
+
+⛔ **A silent mitigation turned into an edit lock.** The row was permanently frozen in the one
+state nobody wanted — including from the console, so no operator could have fixed it either. The
+mitigation is what hid it: had the request path refused, this would have been found in an hour.
+
+⭐ **The guarded property is NOT "http is refused"** — that already held and was never the bug. It
+is that **a refusal on a field the caller did not touch must still leave a way through**, so no row
+can reach a state where nothing about it can be corrected. `test:updown-config` §2.10–2.13 plants
+the legacy shape, proves the ticks-alone save is refused, then proves the same save **with the
+scheme repaired** lands **both** values. RED-proven by making `updateAsset` ignore the caller's URL
+— exit 1, 3 named failures.
+
+**On production now** (`--apply`, audited, named actor):
+
+| asset | | band | why that number |
+|---|---|---|---|
+| `SOL` | 1 → **2** ticks | $0.02 | rounding dominates; the two readers agreed **75/75** in shadow mode |
+| `XAU` | 1 → **40** ticks | **$0.40** | its own feed disagrees with itself by up to **$0.20** at one instant, and by **$0.29–$0.87** across a bar seam. Measured, not chosen. |
+
+⛔ **Do not "simplify" this to one number for all assets.** $0.40 on BTC would be 2 ticks of a
+$63,000 price and refund almost nothing; $0.02 on gold is what just came off production.
+
+### ⚠️ THE CATALOGUE ITSELF IS STILL A TRAP FOR AN OPERATOR
+
+Read off the live rows: **two gold assets** — `GOLD` (disabled, 40 ticks) and `XAU` (**enabled**,
+was 1 tick) — and `SNP500`, whose source is **kitco.com**, not the price feed, so it can never
+settle a round under the bar reader. An operator opening the asset dropdown is asked to choose
+between two rows both called **Gold** with different bands. That is the next fix, not a note.
+
 ## 6al. 🔴 THE SWITCH WAS IN THE DATABASE AND NOT IN THE SERVER — and three defects sat behind it (2026-08-04, session 23)
 
 > ⛔ **This section CORRECTS §6ak.** Read it before trusting anything there about which reader
