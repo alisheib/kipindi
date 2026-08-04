@@ -1278,6 +1278,8 @@ which it named by filename.
 
 | # | Sev | Area | Finding | Evidence |
 |---|---|---|---|---|
+| **E-72** | 🔴 **HIGH — found 2026-08-04 (session 22), NOT fixed · LIVE MONEY EXPOSURE** | player · Up & Down · bet acceptance · fairness | **Bets are accepted right up to the closing second, so a player can stake when the outcome is already known.** `openRound` writes `selectionClosedAt: null` (`updown-service.ts:514`) and `isSelectionClosed` (`market-service.ts:332-336`) falls back to `resolutionAt`, which for an Up & Down round **is the close instant**. The board shows the live price and both frozen targets, so at 21:26:59 on a round closing 21:27:00 a player can see the price is already past a target and stake with ~1 second of risk. ⚠️ **The code comment is NOT wrong** — it says *"Selections close AT the boundary"* and that is exactly what happens; this is a design choice nobody had examined, not a contradiction. ⛔ **It gets much worse under the settlement rebuild**: taking the open from a completed 1-minute bar puts the open 60–120s in the past, which on a 3-minute round is up to two-thirds already played. **Ali's decision 2026-08-04: close bets BEFORE the round ends** — an explicit `selectionClosedAt` (≈30s before a 3-minute round, 60s before a 5-minute one). `market-service.ts` already supports the field and `computeSelectionClosedAt` exists for the poll product; Up & Down simply never set it. ⛔ Ship this WITH the open-from-bar change, never after it. | `updown-service.ts:514` (`selectionClosedAt: null`) · `market-service.ts:334` (`m.selectionClosedAt ? … : Date.parse(m.resolutionAt)`) · `openRound` sets `resolutionAt: closeIso` |
+| **E-71** | 🔴 **HIGH — found + measured 2026-08-04 (session 22), NOT fixed** | Up & Down · price feed · **would settle money on the wrong minute** | **`time_series` labels XAU/USD bars in a NON-UTC zone by default, and our bar reader assumes UTC.** `time_series`'s `timezone` parameter defaults to **`Exchange`**, not UTC (provider docs). `fetchBars` (`ops-updown-margin-study.mts:158`) parses `datetime` as `Date.parse(\`${v.datetime.replace(" ","T")}Z\`)` — i.e. it **appends "Z" and calls it UTC**. Measured with a paired call, same instant: **XAU/USD `timezone=UTC` → `2026-08-04 07:29:00`, default → `2026-08-04 17:29:00` — exactly 600 minutes apart.** BTC, ETH and SOL returned identical values both ways, so the defect is invisible on crypto and only bites metals/FX. ⭐ **The live money path is NOT currently affected** — settlement reads `/quote`, whose `last_quote_at` is a unix timestamp and therefore zone-free. What IS affected today is the **margin study**, which means its gold market-shut warnings are computed on timestamps shifted 10 hours and cannot be trusted. ⛔ **And it would have been a money bug the moment the time-series reader shipped**, settling every gold round on a bar ten hours away. **Fix: pass `timezone=UTC` explicitly on every `time_series` call**, and guard it — a reader that omits it must fail the suite. ⚠️ This is why the first thing the rebuild does is measure rather than build. | `scripts/ops-updown-probe-bars.mts` §A, run against the production key 2026-08-04: `XAU/USD utc=2026-08-04 07:29:00 default=2026-08-04 17:29:00 🔴 DIFFER by -600 min`; BTC/ETH/SOL `✅ same` · provider docs: *"timezone … Default: Exchange"* |
 | **E-70** | 🔴 **HIGH — reported by Ali 2026-08-04, NOT yet reproduced** | player · navigation · session | **Ali: *"when I move from admin to game to markets there is no navbar, it's lost until I login as player or retry the URL as player."*** Moving from an ADMIN surface to a PLAYER surface leaves the page without its navigation — recoverable only by signing in as a player or re-entering the URL. ⚠️ Almost certainly the same root as the session-21 observation that `/admin/updown` returned the **signed-out player shell** immediately after a successful ADMIN sign-in: a staff session does not satisfy the player shell's expectations, so the layout renders its logged-out branch. ⛔ **A player who lands with no navigation is stranded on a money surface** — no wallet, no history, no way back. Reproduce as ADMIN → `/markets`, then compare the served HTML with the same route as a player. | Ali, live, 2026-08-04 · corroborating: `/admin/updown` served the signed-out shell to a freshly signed-in ADMIN (session 21) |
 | **E-69** | 🔴 **HIGH — found 2026-08-04 (session 21), NOT fixed** | Up & Down · round close · **the seal Ali asked for** | **A round can be created against a validated, priced source and still die without a close price — because nothing guarantees it is CLOSED at its own boundary.** Ali, on being shown a `source-failed` void: *"logically how can we not have a price if since creation the source is there, validated, it has a price? No way a possibly voiding game would be created. I want perfect sealing."* He is right, and the evidence agrees: `udr_01e034350b3c5d648ac3` opened at **63,672.01** with targets set from a live read, closed at **21:42:26**, and was not resolved until **21:51:14 — 529 seconds late**, with `closePrice = null`. ⭐ **The source never failed.** During that whole window the lifecycle log read *"not the leader — chores skipped. Another instance holds the lease."* — the leadership lease was churning across a run of deploys, so no instance ran the close. By the time the E-24 healer took it, asking the provider for a nine-minute-old boundary is refused as stale **by design**, and it deliberately does not pay for a reading past the deadline. So the round voided for want of a close nobody performed. ⛔ **The open is sealed and the close is not:** `generateRoundNow` refuses to create a round it cannot price (E-67), but nothing makes the same promise at the other end. **Scope of the seal:** close on the boundary independently of leadership churn; if the close read is late but the observation later confirms, re-derive the verdict from the stored targets rather than leaving `source-failed` (the mirror of E-63's backfill); and never leave a round unresolved past its own close without saying so on the card. ⚠️ Related and worth measuring first: `LEASE_MS` is 3 minutes, so any deploy costs up to three minutes of chores — on a 5-minute round that is most of its life. | production: round opened 21:37:26 priced 63,672.01, closed 21:42:26, resolved 21:51:14 `source-failed` with `closePrice NULL` · `railway logs`: repeated *"not the leader — chores skipped"* across the interval · `/api/health` → `"isMe":false,"expiresInSec":95` |
 | **E-68** | 🔴 **HIGH → ✅ FIXED 2026-08-04 (session 21). THE CLOSE-SIDE TWIN OF E-63, AND THE REASON NOBODY CAN WIN.** | Up & Down · round close · **player money + false statement** | **A round closes as `source-failed` ~25 seconds after its boundary even when BOTH prices are present and the verdict is plainly `no-move` — and the player is then told something untrue about their own money.** Measured on two rounds generated by hand this session: `udr_cd386bbaeaf63be696f5` open **63,719.98** close **63,722.47**, targets `63,707.24 … 63,732.72`; `udr_17e07a91ecf526c2ae17` open **63,716.56** close **63,710.73**, targets `63,703.82 … 63,729.30`. **Both closes sit strictly BETWEEN the targets**, so `decideOutcomeByTargets` gives `VOID / no-move` — the price did not move far enough. Both are stored `voidReason = "source-failed"`, and the board therefore prints *"The closing price could not be confirmed. Every stake is returned in full."* ⛔ **The closing price WAS confirmed — it is in the row.** That is a false money statement of exactly the E-39 / E-65 kind, on the screen a player checks after their stake comes back. ⭐ **Mechanism, and it is E-63 seen at the other end:** at the close boundary `acquireObservation` has not confirmed yet, so `advanceChain` calls `closeRound(id, obs.id, null, "source-failed")` — reason stamped from the *observation's* state, not from the *prices*. The retry ladder confirms moments later and the close price lands on the row, but nothing ever revisits the verdict or the reason. `resolvedAt` is only ~25s after `closesAt`, far too soon for the E-24 healer, so this is the scheduler's own close path. ⚠️ **Consequence: on a manual round a player cannot win** — not because they predicted wrongly, but because the round is stamped failed before its own evidence arrives. Fix is the mirror of E-63's backfill: on a late-confirming close observation, re-derive the verdict from the stored targets and correct the reason — or do not stamp a reason until the observation is terminal. | production rows above, read directly · `updown-service.ts` close path passes the literal `"source-failed"` · player card text on `/updown` (`shots/E67/E67-final.png`) |
@@ -3635,6 +3637,115 @@ workstation shows an SLA countdown, but nothing escalates when it runs out. Ali'
   `1995-04-12 00:00:00`, i.e. midnight **UTC**, for every submission. So formatting it in the
   platform zone (+3) keeps it on the right day, and the E-2 fix is safe. The earlier note was
   the `pg` −3h trap (§3) reading back through an un-cast client.
+
+## 6ad. ⭐ THE UP & DOWN SETTLEMENT REBUILD — Ali's decisions and the measurements behind them (2026-08-04, session 22)
+
+> ⛔ **These are DECISIONS, already taken. Do not re-open them; execute them.** Everything below
+> was measured against production or the live provider key on 2026-08-04, not reasoned from
+> documentation.
+
+### The root defect, stated once
+
+Settlement reads Twelve Data's **`/quote`** (`updown-feed.ts:171`), which can only answer *"what is
+the price NOW"*. **Miss the instant and the number is gone forever**, so the round voids. Every
+fragile thing descends from that one choice: the 90s staleness contract, the 4-rung retry ladder,
+and the 390s abandon deadline. **E-69** (a round resolved 529s late with `closePrice NULL` while the
+source never failed), **E-63** and **E-68** are all the same defect wearing different clothes.
+
+**The fix**: settle from `time_series?interval=1min` — a **dated bar**, which returns the same number
+whether asked at the boundary or six hours later. Same host, same allowlist entry, no schema change.
+**The rule**: `price at instant T = the open of the 1-minute bar labelled T`.
+
+### The void split — a number that has never existed in this product
+
+`/admin/updown` shows one void percentage with the **reason discarded** (`page.tsx:74`), which is
+exactly how **E-58** was misdiagnosed. Read directly from production 2026-08-04:
+
+| Chain | Resolved | Decisive | `no-move` | `source-failed` |
+|---|---|---|---|---|
+| **SOL 5m** | 290 | **0 (0%)** | 0 | **290 (100%)** |
+| BTC 5m | 357 | 267 (74.8%) | 76 (21.3%) | 14 (3.9%) |
+| ETH 5m | 304 | 223 (73.4%) | 45 (14.8%) | 36 (11.8%) |
+| XAU 5m *(excl. 1,154 `operator`)* | 137 | 86 (62.8%) | 41 (29.9%) | 10 (7.3%) |
+| BTC 15m | 18 | 10 (55.6%) | 8 (44.4%) | 0 |
+
+⭐ **SOL has never paid anyone — 290 of 290 rounds source-failed**, worse than E-63's 199/201.
+⭐ The XAU/GOLD/SNP500 `operator` piles are the July bulk remediation; counting them as product
+failure is precisely the E-58 mistake. **Split by reason or the metric lies.**
+🔴 **Every chain has `marginBps = NULL`** — not one override exists on production. They all inherit
+the ladder. The docs claiming "the live chains run a 2 bps override" are wrong: they *inherit* it.
+
+### The margin curve, measured on 5,000 real 1-minute bars per asset
+
+| Chain | median move | @0.00% | @0.01% | @0.02% *(live today)* |
+|---|---|---|---|---|
+| BTC 3m | 0.025% | **2.0%** | 24.7% | 41.1% |
+| BTC 5m | 0.031% | **0.5%** | 20.2% | 36.6% |
+| ETH 5m | 0.043% | 0.6% | 12.8% | 26.6% |
+| XAU 5m | 0.023% | **28.5%** | 37.7% | 47.7% |
+
+⭐ **The curve is brutally steep.** Between 0% and 0.01% the void rate leaps from ~1% to ~20%.
+**There is no setting that gives both a visible winning band and a ~95% pay rate.**
+
+### ⭐ Ali's three decisions, 2026-08-04
+
+1. **Margin = the tick floor.** ~99% of rounds pay a winner (today ~63%). ⛔ Consequence accepted:
+   the Up/Down target tiles then sit at the open price, so **the card must be re-worded — the game
+   reads as *higher or lower*, not "reach the boundary"** (EN/SW/ZH; `test:i18n` requires all three).
+   The `computeTargets` tick floor (`updown-config.ts:1009`) becomes the load-bearing rule and stays.
+2. **Bets close BEFORE the round ends** — see **E-72**. Ship it *with* the open-from-bar change.
+3. **Gold's `minMoveTicks` comes down** from 15 ($0.15). It is why XAU voids 28.5% at a *zero*
+   margin. ⛔ Measure the right value from real bars first.
+
+### 🔴 THE SEAM MEASUREMENT — and it reverses the direction of decision 3
+
+A bar labelled `T−1` closes at the same instant the bar labelled `T` opens. Those two numbers
+*should* be the same price. Measured live, `timezone=UTC`, 5 consecutive seams each:
+
+| | seam disagreement | as % of price | vs that asset's median 5-min move |
+|---|---|---|---|
+| **BTC/USD** | **−$0.01** on 4 of 5 seams (one exact) | 0.000016% | ~1/2000th — negligible |
+| **XAU/USD** | **$0.29 – $0.87**, all 5 seams | 0.007–0.021% | **comparable to a whole 5-minute move (0.023%)** |
+
+⭐ **Two conclusions, and the second one matters more.**
+
+1. **The settlement rule must NAME one end explicitly** — `price at T = the open of the bar
+   labelled T` — and be guarded. It can never be inferred from "whichever is handy", because on
+   gold the two answers differ by up to $0.87.
+2. ⛔ **Gold's floor cannot go DOWN.** Decision 3 was *"lower `XAU minMoveTicks` from 15 ($0.15)"*.
+   The measurement says the opposite: **$0.15 is already BELOW the provider's own price ambiguity
+   for gold at a single instant.** Lowering it further would mean gold rounds are decided by which
+   representation the feed happened to return, not by the market. And raising it to ~$1.00 (above
+   the noise) makes gold void even more at 3–5 minutes.
+   **The honest reading: gold does not work at 3–5 minutes at any floor.** It works at 15m+, where
+   its median move (0.036%) is several times the seam noise. ⛔ **Ali's call** — offer gold only on
+   longer durations, or accept a high refund rate on short gold rounds. Do not "fix" it with a
+   number.
+
+⚠️ **Crypto is unaffected** — BTC's one-cent seam is 2,000× smaller than its median 5-minute move,
+so a tick-floor margin on crypto measures the market, not the feed.
+
+### Provider facts (docs + live calls, 2026-08-04)
+
+- `/time_series` costs **1 credit per symbol regardless of `outputsize` (1–5000)**. ⭐ **This, not
+  E-69, is the strongest argument for the rebuild**: six durations on one asset need ~672 distinct
+  boundaries/day, already over a ~800/day plan — batching collapses that to ~24–96.
+- `datetime` is the bar's **START** minute. `order` defaults to **`desc`** — the reversal in
+  `fetchBars` is load-bearing.
+- 🔴 `timezone` defaults to **`Exchange`** — see **E-71**, measured at **600 minutes off for gold**.
+- **Plan Level A**: crypto + forex/currencies + **US** equities real-time; every other country
+  **EOD only**; indices absent. ⛔ So SPX stays unsupported *for a plan reason*, and **no non-US
+  equity may ever be an Up & Down asset** — EOD cannot settle an intraday round.
+
+### ⚠️ Traps paid for while measuring — all mine, none the product's
+
+- **PowerShell splats a comma-separated argument into separate arguments.** `--symbols BTC/USD,ETH/USD`
+  arrived as four arguments and the call failed. **Quote the list.**
+- **`ops-updown-margin-study.mts` labels SOL/USD category `unknown`** (absent from its `ASSETS` map),
+  so it applied a non-crypto calendar and printed *"MARKET SHUT — real money settled on synthetic
+  weekend prices"* for a **24/7 coin**. That line is a study artifact. The XAU ones are real (E-36).
+- **A `LEFT JOIN` counted a chain with zero rounds as "1 unresolved round"**, which read as stranded
+  money. Confirmed directly: **no unresolved rounds anywhere, no money in flight.** The check lied.
 
 ## 6b. NEXT SESSION — start here
 
