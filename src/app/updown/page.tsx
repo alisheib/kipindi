@@ -221,6 +221,7 @@ export default async function UpDownPage({
                 maxStake={stakeBounds.max}
                 myUpStake={r.myUpStake}
                 myDownStake={r.myDownStake}
+                myRefundedStake={r.myRefundedStake}
               />
             ))}
           </div>

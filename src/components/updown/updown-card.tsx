@@ -31,6 +31,9 @@ import { useUpDownQuickBet, usePlacePulse } from "./use-quick-bet";
 import { UpDownStakeControls } from "./updown-stake-controls";
 import { useCountdown, mmss } from "./round-countdown";
 import { SOURCE_CLASS_KEY } from "@/lib/updown-source-label";
+// ⛔ ONE RULE FOR "why did this stake come back", shared with the round page, the settlement
+// proof, the push and the inbox. Five copies is five chances to disagree about someone money.
+import { refundReasonFor, REFUND_REASON_KEY } from "@/lib/updown-refund-reason";
 import type { PublicSourceClass } from "@/lib/server/updown-symbols";
 
 export type UpDownCardState = "open" | "locked" | "closing" | "confirming" | "resolved" | "void";
@@ -111,6 +114,14 @@ export type UpDownCardProps = {
   /** Quick-stake selector bounds (the chain's, else the platform default). */
   minStake?: number;
   maxStake?: number;
+  /**
+   * What THIS viewer had returned to them on this round, in TZS. 0 when they were not
+   * refunded, or were not in the round at all.
+   *
+   * ⭐ E-65 · this is what tells a DECIDED round apart from a refunded one FOR THIS PLAYER.
+   * A round can resolve DOWN and still hand a stake back, when nobody took the other side.
+   */
+  myRefundedStake?: number;
   /** The viewer's OWN open stake per side on THIS round (server truth), shown as the
    *  "you're in" indicator and topped up optimistically on each tap. */
   myUpStake?: number;
@@ -172,7 +183,7 @@ export function UpDownCard(props: UpDownCardProps) {
     livePrice, openPrice, upTarget, downTarget, movePct, closesAtMs, volumeTzs, players, upPct,
     estMultiplier, state, outcome, closePrice, voidReason,
     sourceClass, sourceQuotedAt, className,
-    selectionClosesAtMs, serverNowMs, myExactPayout,
+    selectionClosesAtMs, serverNowMs, myExactPayout, myRefundedStake,
     marketId, isAuthed, minStake, maxStake, myUpStake = 0, myDownStake = 0,
   } = props;
   const { t } = useT();
@@ -214,6 +225,15 @@ export function UpDownCard(props: UpDownCardProps) {
   // `projectedPayout` the money path pays out with. One rule, one answer.
   const mySide: "UP" | "DOWN" | null = myUpStake > 0 ? "UP" : myDownStake > 0 ? "DOWN" : null;
   const exactWin = locked ? myExactPayout ?? null : null;
+
+  // ⭐ WHY THIS VIEWER GOT THEIR STAKE BACK — one shared rule (E-65). Covers both the round
+  // voiding AND the round deciding with nobody on the other side, which are opposite events
+  // that used to render as the same sentence.
+  const refundReason = refundReasonFor({
+    outcome: state === "void" ? "VOID" : outcome ?? null,
+    voidReason: voidReason ?? null,
+    refundedStake: myRefundedStake ?? 0,
+  });
   const downPct = Math.max(0, 100 - upPct);
   const dir = movePct == null ? null : movePct > 0 ? "up" : movePct < 0 ? "down" : "flat";
   const priceColor = dir === "up" ? "var(--yes-300)" : dir === "down" ? "var(--no-300)" : "var(--text-muted)";
@@ -439,12 +459,22 @@ export function UpDownCard(props: UpDownCardProps) {
             <span className="chip chip-pending">{t.market.udSettlingTitle}</span>
             <p className="mt-2 text-[11.5px] leading-[1.5] text-text-muted">{t.market.udConfirmingBody}</p>
           </div>
-        ) : state === "void" ? (
-          // NEUTRAL — a refund, not a failure. Default chip, no danger tone.
+        ) : refundReason ? (
+          // ── A REFUND, WITH ITS REAL REASON (E-65 / E-39) ──────────────────
+          //
+          // ⛔ THIS BRANCH USED TO BE `state === "void"` ONLY, AND THAT IS THE BUG.
+          // A round can DECIDE and still refund this player — when nobody took the other side
+          // there is no pool to win from. On production a round resolved DOWN, the player had
+          // backed UP, and this card said "VOID · REFUNDED" while the rule printed below said
+          // they had lost. The money was right and the page argued the opposite.
+          //
+          // Now the branch is driven by whether THIS VIEWER was refunded, and the sentence
+          // comes from `refundReasonFor` — one rule shared with the round page, the settlement
+          // proof, the push and the inbox. NEUTRAL chrome throughout: a refund is not a failure.
           <div className="rounded-xl p-3.5" style={{ background: "color-mix(in oklab, var(--bg-inset) 70%, transparent)", border: "1px solid var(--border)" }}>
-            <span className="chip">{t.market.udVoided}</span>
+            <span className="chip">{t.market.udRefundTitle}</span>
             <p className="mt-2 text-[11.5px] leading-[1.5] text-text-muted">
-              {voidReason === "source-failed" ? t.market.udVoidedSource : t.market.udVoidedBody}
+              {(t.market as Record<string, string>)[REFUND_REASON_KEY[refundReason]]}
             </p>
           </div>
         ) : state === "resolved" ? (

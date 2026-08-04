@@ -22,6 +22,9 @@ import { getRoundDetail } from "@/lib/server/updown-board";
 import { currentSession } from "@/lib/server/auth-service";
 import { isStaffRole } from "@/lib/server/roles";
 import { getServerT } from "@/lib/i18n-server";
+// ⛔ ONE RULE FOR "why did this stake come back", shared with the card — five copies would be
+// five chances to disagree about someone money.
+import { refundReasonFor, REFUND_REASON_KEY } from "@/lib/updown-refund-reason";
 import { pickLocalized } from "@/lib/localized";
 import { formatTzs } from "@/lib/utils";
 import { RoundCountdownPod } from "@/components/updown/round-countdown";
@@ -116,6 +119,14 @@ export default async function UpDownRoundPage({
     : t.market.udRoundSettled;
 
   // Result panel data (resolved rounds the viewer actually played).
+  // ⭐ E-65 · WHY THIS VIEWER GOT THEIR STAKE BACK, from the rule the card shares. Fires on a
+  // VOIDED round AND on a DECIDED one that refunded this player for want of a counterparty —
+  // two opposite events that used to print the same sentence.
+  const refundReason = refundReasonFor({
+    outcome: round.state === "void" ? "VOID" : (round.outcome ?? null),
+    voidReason: round.voidReason,
+    refundedStake: myPosition && myPosition.payout != null && myPosition.payout === myPosition.stake ? myPosition.stake : 0,
+  });
   const result = myPosition?.result ?? null;
   const resultChip = result === "WIN" ? "chip chip-resolved" : result === "LOSS" ? "chip chip-no" : "chip";
   const resultLabel = result === "WIN" ? t.market.resolvedWin : result === "LOSS" ? t.market.resolvedLoss : t.market.udVoided;
@@ -275,11 +286,16 @@ export default async function UpDownRoundPage({
                 <span className="chip chip-pending">{t.market.udSettlingTitle}</span>
                 <p className="mt-2 text-[12.5px] leading-[1.55] text-text-muted">{t.market.udConfirmingBody}</p>
               </section>
-            ) : round.state === "void" ? (
+            ) : refundReason ? (
+              // ── A REFUND, WITH ITS REAL REASON (E-65) ────────────────────
+              // ⛔ Driven by `refundReasonFor`, the SAME rule the card uses — so the board and
+              // this page cannot say different things about one player's money. It also fires
+              // on a round that DECIDED but refunded this viewer for want of a counterparty,
+              // which the old `state === "void"` branch could never reach.
               <section style={{ ...inset, padding: 16 }}>
-                <span className="chip">{t.market.udVoided}</span>
+                <span className="chip">{t.market.udRefundTitle}</span>
                 <p className="mt-2 text-[12.5px] leading-[1.55] text-text-muted">
-                  {round.voidReason === "source-failed" ? t.market.udVoidedSource : t.market.udVoidedBody}
+                  {(t.market as Record<string, string>)[REFUND_REASON_KEY[refundReason]]}
                 </p>
               </section>
             ) : null}

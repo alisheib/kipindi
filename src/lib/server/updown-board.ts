@@ -86,6 +86,9 @@ export type BoardRound = {
    *  state — so it survives a refresh. */
   myUpStake: number;
   myDownStake: number;
+  /** What this viewer had RETURNED on this round (E-65). Non-zero even when the round
+   *  DECIDED, if nobody took the other side — which is the whole point of the field. */
+  myRefundedStake: number;
   /**
    * What this viewer takes home if their side wins — EXACT, and only once the round is LOCKED.
    *
@@ -128,7 +131,7 @@ export function roundState(
 async function toBoardRound(
   r: StoredRound,
   chain: StoredChain,
-  mine?: { up: number; down: number },
+  mine?: { up: number; down: number; refunded: number },
 ): Promise<BoardRound | null> {
   const m = await marketStore.get(r.marketId);
   if (!m) return null;
@@ -168,6 +171,7 @@ async function toBoardRound(
     settled: !!r.settledAt,
     myUpStake: mine?.up ?? 0,
     myDownStake: mine?.down ?? 0,
+    myRefundedStake: mine?.refunded ?? 0,
     // Only for a LOCKED round the viewer actually holds — see the field comment. `projectedPayout`
     // is the money path's own function, so this figure and the settled one cannot disagree.
     myExactPayout:
@@ -179,15 +183,24 @@ async function toBoardRound(
 
 /** The viewer's OPEN stake per market, split UP(=YES)/DOWN(=NO). Empty when signed
  *  out. One query, then grouped — never an N+1 across the board. */
-async function myStakesByMarket(userId: string | undefined): Promise<Map<string, { up: number; down: number }>> {
-  const out = new Map<string, { up: number; down: number }>();
+async function myStakesByMarket(userId: string | undefined): Promise<Map<string, { up: number; down: number; refunded: number }>> {
+  const out = new Map<string, { up: number; down: number; refunded: number }>();
   if (!userId) return out;
   // UPDOWN only — this map powers the card's "you're in" indicator, so it must not
   // pull the player's long-form-poll positions.
   const positions = await listPositionsForUser(userId, 500, "UPDOWN").catch(() => []);
   for (const p of positions) {
-    if (p.status !== "OPEN") continue; // only live money on the round counts as "you're in"
-    const e = out.get(p.marketId) ?? { up: 0, down: 0 };
+    const e = out.get(p.marketId) ?? { up: 0, down: 0, refunded: 0 };
+    // ⭐ E-65 · A SETTLED POSITION WHOSE PAYOUT EQUALS ITS STAKE WAS REFUNDED, and that can
+    // happen on a round that DECIDED — when nobody took the other side there is no pool to
+    // win from. The card needs this to tell a refund apart from a loss; without it a decided
+    // round rendered "the price did not move enough" over a stake that came back for the
+    // opposite reason.
+    if (p.status !== "OPEN") {
+      if (p.finalPayout != null && p.finalPayout === p.stake) e.refunded += p.stake;
+      out.set(p.marketId, e);
+      continue; // only live money counts as "you're in"
+    }
     if (p.side === "YES") e.up += p.stake;
     else e.down += p.stake;
     out.set(p.marketId, e);
