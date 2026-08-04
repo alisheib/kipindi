@@ -20,10 +20,14 @@ const DURATIONS = new URL("../src/lib/updown-durations.ts", import.meta.url);
 
 const MUTATIONS = [
   {
+    // ⚠️ Anchor updated 2026-08-04: the local was renamed `openMs` → `nowMinute` when
+    // generateRoundNow gained its walk-back over completed minutes. The DEFECT this restores is
+    // unchanged — an expression that zeroes the milliseconds and keeps the SECONDS, so every
+    // boundary carries `21:27:37` and is unnamable in 1-minute bar data.
     name: "restore-the-shipped-expression — seconds survive into the boundary (21:27:37)",
     file: SERVICE,
-    from: `  const openMs = minuteFloor(Date.now());`,
-    to: `  const openMs = Math.floor(Date.now() / 1000) * 1000;`,
+    from: `  const nowMinute = minuteFloor(Date.now());`,
+    to: `  const nowMinute = Math.floor(Date.now() / 1000) * 1000;`,
   },
   {
     name: "round-UP-to-the-next-minute — a round opens on a price that does not exist yet",
@@ -38,10 +42,14 @@ const MUTATIONS = [
     to: `  return Number.isFinite(ms) && ms % 1000 === 0;`,
   },
   {
+    // ⚠️ Anchor updated 2026-08-04: the grid constant's doc comment became a block comment when
+    // the epoch-lattice rule replaced the 5-minute rule. The defect is unchanged — ANY import in
+    // this module makes it unreadable from a client component, which is how both admin consoles
+    // came to hand-copy `[5, 15, 30]`.
     name: "an-import-creeps-into-the-shared-module — both consoles lose it again",
     file: DURATIONS,
-    from: `/** The observation grid, in minutes.`,
-    to: `import { randomUUID } from "node:crypto";\n\n/** The observation grid, in minutes.`,
+    from: ` * The observation grid, in minutes.`,
+    to: `import { randomUUID } from "node:crypto";\n * The observation grid, in minutes.`,
   },
 ];
 

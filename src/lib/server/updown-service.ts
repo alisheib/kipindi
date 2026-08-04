@@ -31,7 +31,7 @@ import {
   assetStore, chainStore, roundStore, observationStore,
   type StoredAsset, type StoredChain, type StoredRound, type RoundOutcome, type VoidReason,
 } from "./updown-dal";
-import { minuteFloor, selectionClosesAt } from "@/lib/updown-durations";
+import { minuteFloor, selectionClosesAt, MINUTE_MS } from "@/lib/updown-durations";
 import { observePrice, describeRefusal, type OracleReading, type RefusalReason } from "./updown-oracle";
 import { feedFromId, quoteAsset, describeFeedRefusal, hostMatchesDomain, judgeFeedStaleness } from "./updown-feed";
 // E-36 — the trading calendar. A shut market must never settle real money.
@@ -360,21 +360,54 @@ export async function generateRoundNow(
   // `minuteFloor` rather than the arithmetic inline: the same rule is needed by the bar reader
   // and by anything that asks "which bar covers this instant", and two copies of a rounding rule
   // that decides which price settles a round is exactly the drift E-49/E-56 were about.
-  const openMs = minuteFloor(Date.now());
-  const boundaryIso = new Date(openMs).toISOString();
+  // ── WHICH MINUTE CAN ACTUALLY BE PRICED? ───────────────────────────────────
+  //
+  // 🔴 FOUND ON PRODUCTION 2026-08-04, and it made Generate a coin toss. This was
+  // `minuteFloor(Date.now())` — the minute that has only just BEGUN. A quote reader does not
+  // care (it only ever answers "the price now"), but a DATED reader asks for a published bar,
+  // and the bar labelled T does not exist until **+10s** (BTC/ETH/XAU) or **+60s** (SOL).
+  //
+  // So an operator clicking at :05 past the minute got *"Could not read a price"*, and the same
+  // click at :40 succeeded. **A control that works depending on where the second hand is, is not
+  // a control** — the same objection this function's own comment already makes about the grid.
+  //
+  // ⭐ Under a dated feed the open therefore comes from a COMPLETED minute, newest first, and it
+  // walks back until one reads. §6ad anticipated exactly this — *"taking the open from a
+  // completed 1-minute bar puts the open 60-120s in the past"* — which is precisely why E-72's
+  // betting window ships WITH the open-from-bar change rather than after it.
+  //
+  // ⚠️ BOUNDED AT THREE CANDIDATES. Each one costs a metered provider credit, so this must never
+  // become an unbounded hunt; three covers the measured worst case (SOL at +60s) with room, and
+  // the refusal below still names the feed's own reason if all three decline.
+  const genCfg = await getUpDownConfig();
+  const dated = !!findProvider(genCfg.feedProvider)?.dated;
+  const nowMinute = minuteFloor(Date.now());
+  const candidates = dated
+    ? [1, 2, 3].map((k) => nowMinute - k * MINUTE_MS)
+    : [nowMinute];
 
-  // 2 · E-36 — never open into a shut market.
-  const session = marketSessionAt(asset.category, boundaryIso);
-  if (!session.open) return { ok: false, error: describeClosure(session) };
+  let boundaryIso = new Date(candidates[0]!).toISOString();
+  let obs: Awaited<ReturnType<typeof acquireObservation>> | null = null;
 
-  // 4 · ⛔ THE PRICE, BEFORE ANYTHING IS WRITTEN. `acquireObservation` runs the calendar gate,
-  //     the approved-domain check and the staleness rule — the same ones settlement applies.
-  const obs = await acquireObservation(asset, boundaryIso);
-  if (obs.state !== "confirmed") {
+  for (const ms of candidates) {
+    const iso = new Date(ms).toISOString();
+    // 2 · E-36 — never open into a shut market. Checked per candidate, because walking back
+    //     across a session boundary must not slip a round into a closed market.
+    const session = marketSessionAt(asset.category, iso);
+    if (!session.open) return { ok: false, error: describeClosure(session) };
+
+    // 4 · ⛔ THE PRICE, BEFORE ANYTHING IS WRITTEN. `acquireObservation` runs the calendar gate,
+    //     the approved-domain check and the staleness rule — the same ones settlement applies.
+    boundaryIso = iso;
+    obs = await acquireObservation(asset, iso);
+    if (obs.state === "confirmed") break;
+  }
+
+  if (!obs || obs.state !== "confirmed") {
     return {
       ok: false,
       error:
-        `Could not read a price for ${asset.key} at ${boundaryIso} — ${obs.detail}. ` +
+        `Could not read a price for ${asset.key} at ${boundaryIso} — ${obs && "detail" in obs ? obs.detail : "no reading"}. ` +
         `No round was created. A round opened without an open price cannot resolve: it would ` +
         `take stakes, show a countdown, and then void and refund every one.`,
     };

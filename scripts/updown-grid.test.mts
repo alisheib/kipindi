@@ -74,8 +74,14 @@ ok("§2 an unparseable instant is not aligned", !isMinuteAligned("not-a-date"));
 // ── §4 · THE CALL SITE — the helper is worthless if the money path skips it ──
 // E-4 and E-56 both shipped because an assertion checked a symbol rather than its reachability.
 const service = read("../src/lib/server/updown-service.ts");
+// ⚠️ PINS THE PROPERTY, NOT THE VARIABLE NAME. This required the literal
+// `const openMs = minuteFloor(Date.now())`, so renaming the local to `nowMinute` — while the
+// boundary still went through the shared rule — failed the guard on correct code. That is the
+// third guard in this session to break on a rename rather than on a defect. What matters is that
+// the money path derives its boundary from `minuteFloor(Date.now())` and never from inline
+// arithmetic; the §4 assertion below already forbids the seconds-preserving expression itself.
 ok("§4 generateRoundNow floors its boundary through the shared rule",
-  /const openMs = minuteFloor\(Date\.now\(\)\)/.test(service),
+  /=\s*minuteFloor\(Date\.now\(\)\)/.test(service),
   "the call site is the assertion; a correct helper nobody calls is the defect");
 // ⚠️ STRIP COMMENTS BEFORE ASSERTING A DEFECT IS GONE. This assertion failed on a correct
 // file twice before it was written this way: the comment *explaining* the fix necessarily
