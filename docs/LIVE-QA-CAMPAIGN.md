@@ -3640,6 +3640,107 @@ workstation shows an SLA countdown, but nothing escalates when it runs out. Ali'
   platform zone (+3) keeps it on the right day, and the E-2 fix is safe. The earlier note was
   the `pg` −3h trap (§3) reading back through an un-cast client.
 
+## 6al. 🔴 THE SWITCH WAS IN THE DATABASE AND NOT IN THE SERVER — and three defects sat behind it (2026-08-04, session 23)
+
+> ⛔ **This section CORRECTS §6ak.** Read it before trusting anything there about which reader
+> settled today's rounds.
+
+### The correction, stated first
+
+§6ak claimed today's rounds were **"the first ever settled from a dated bar"**. They were not.
+Every observation from that drive records `model: feed:twelvedata` — the **QUOTE** reader.
+
+⭐ **What §6ak got right and still stands:** real stakes, both sides, correct arithmetic, wallets
+to the shilling, GGR 130. The MONEY was right. The READER claim was false, and the platform's own
+evidence column is what caught it.
+
+**The genuine first**, proven afterwards — round `udr_e45a9ca1d683e3470cee`, BTC 3m:
+
+| | |
+|---|---|
+| open / close | `13:25:00` → `13:28:00` |
+| **open model** | **`feed:twelvedata-bars`** |
+| **open url** | `https://api.twelvedata.com/time_series?symbol=BTC/USD&interval=1min` (no key) |
+| **close model** | **`feed:twelvedata-bars`** · CONFIRMED |
+| result | open 63,919.85 → close 63,902.00 → **DOWN** |
+
+### 🔴 ① A CONFIG CHANGE MADE OUTSIDE THE SERVER NEVER REACHES IT
+
+`ensureHydrated()` sets `__50PICK_UPDOWN_CONFIG_HYDRATED = true` **once per process and never
+re-reads**. The ops script that threw the switch wrote `twelvedata-bars` to `SystemConfig` and
+updated **its own** process; the live server kept `twelvedata` cached from boot. A later deploy is
+what finally activated it.
+
+⚠️ **THE PATTERN IS PLATFORM-WIDE.** Ten modules cache this way with **no TTL and no
+cross-process invalidation** — `payment-control`, **`payment-ops` (the kill-switches)**,
+`market-config` (fee rates), `resolution-policy`, `ai-controls`, **`source-registry` (the
+trusted-source allowlist)**, `market-sentinel`, `define-config`, `audit`, `updown-config`. The
+only reset that exists is a test helper.
+
+⭐ On a **single replica** the console path is fine: the request updates the process that serves
+it. It bites **ops scripts today**, and it would bite **every additional container** — and
+`docs/…` records multi-container as a proven, supported configuration. **A kill-switch flipped in
+one container would not stop the others.** ⏳ Filed, not fixed — it is far bigger than this
+rebuild, and the fix (a short TTL on each cache) touches every money control on the platform.
+
+### 🔴 ② SWITCHING THE READER SILENTLY DISABLED EVERY ASSET
+
+Every live asset stores `https://api.twelvedata.com/quote`. Correct for the quote reader,
+meaningless to the bar reader, which needs `/time_series`. The moment the switch took effect,
+`/quote?interval=1min` returned no `values` array, every read refused as `no-bar`, and **Up & Down
+produced nothing at all.**
+
+⭐ **The one thing that went right:** `generateRoundNow` refused to open a round it could not
+price, so **no stake was ever taken on a doomed round** — E-67 earning its keep.
+
+⛔ **The coupling was the defect, not the URL.** A GLOBAL reading method plus a PER-ASSET endpoint
+that must agree, with nothing enforcing the agreement, means one config edit disables the product.
+The feed now forces its own path: the asset still owns the operator's approved **host** — the
+security boundary, still gated by `hostMatchesDomain` — while the **path** is provider-API detail
+the feed class knows better than a stored row does. The reader can now be switched back and forth
+freely, which is the entire point of keeping the quote feed as the rollback lever.
+
+### 🔴 ③ GENERATE WORKED AT :40 PAST THE MINUTE AND REFUSED AT :05
+
+`generateRoundNow` opened on `minuteFloor(Date.now())` — the minute that has only just **begun**.
+A quote reader does not care. A dated reader needs a published bar, and bar T does not exist until
+**+10s** (BTC/ETH/XAU) or **+60s** (SOL).
+
+⛔ **A control that works depending on where the second hand is, is not a control** — the same
+objection this function's own comment already makes about the observation grid. Under a dated feed
+the open now comes from a **completed** minute, newest first, walking back until one reads,
+**bounded at three candidates** because each costs a metered credit. The E-36 calendar gate is
+re-checked per candidate so walking back across a session boundary cannot slip a round into a shut
+market.
+
+⭐ §6ad anticipated this exactly — *"taking the open from a completed 1-minute bar puts the open
+60-120s in the past"* — and it is precisely why E-72's betting window had to ship **with** the
+open-from-bar change rather than after it.
+
+### ✅ E-73 CLOSED on the live rows
+
+`BTC`, `ETH` → 2 ticks; `GOLD` → 40. ⏳ **`SOL` and `XAU` REFUSED** and are still at 1 tick,
+because their stored `priceSourceUrl` is **`http://`** — E-51's residue. The request path was
+fixed by upgrading the scheme at call time, so the credential was never exposed, but the two
+stored rows were never corrected, and `validateAsset` now (correctly) refuses to re-save a row
+that would keep an API key in cleartext. **Net effect: those two assets cannot be edited at all
+until their URL is fixed.** Gold is the one that matters — it is enabled and it is the asset
+needing 40 ticks.
+
+### ⚠️ AND A THIRD GUARD BROKE ON A RENAME, NOT A DEFECT
+
+`test:updown-grid` §4 pinned the literal `const openMs = minuteFloor(Date.now())`, so renaming the
+local to `nowMinute` failed the guard on correct code — while the property it cares about (the
+boundary derives from the shared rule, never inline arithmetic) held throughout. Re-pointed, and
+the RED harness's two now-stale anchors repaired so it proves **4/4** again.
+
+⛔ **Three guards in one session broke on renames.** The rule generalises: **pin the property, not
+the vocabulary** — a guard that fails when code is factored or renamed properly teaches the next
+session to leave it alone.
+
+**Guards**: `test:updown-bars` §9 (**26**) RED **8/8** — including `trust-the-stored-path`, the
+exact production defect · `test:updown-grid` (**17**) RED **4/4**.
+
 ## 6ak. ⭐ DRIVEN ON PRODUCTION WITH REAL MONEY — the rebuild settles, and the money agrees to the shilling (2026-08-04, session 23)
 
 > Not described. Driven on 50pick.tz. Every screenshot is `locator.screenshot()`, never `fullPage`.
@@ -3663,7 +3764,12 @@ the switch through `setUpDownConfig`, the same service the console calls, with a
 ⭐ It is also the **rollback lever**: `--provider twelvedata` returns settlement to the quote
 reader in one audited edit, no deploy.
 
-### 🎉 THE FIRST ROUND EVER SETTLED FROM A DATED BAR — and it was a 3-MINUTE round
+### 🔴 CORRECTED BY §6al — THIS ROUND SETTLED ON THE **QUOTE** READER, NOT A DATED BAR
+
+> ⛔ The heading below was wrong and §6al carries the correction and the genuine first. The
+> money in this section is right; the READER claim was not.
+
+### THE FIRST 3-MINUTE ROUND EVER SETTLED (reader: quote — see §6al)
 
 | | `udr_31bd2d13356bf4943c72` | E-69's round, for contrast |
 |---|---|---|
@@ -4548,7 +4654,7 @@ so a tick-floor margin on crypto measures the market, not the feed.
 ⛔ **`feedProvider` is still `twelvedata`. No money has touched the new reader yet** — the switch
 is gated on the shadow run's median delta (§6ae) and lands with phase 1e.
 
-#### ⏭️ **RESUME AT:** ① **Phase 7 and the two live proofs §6ak still lists as outstanding.** Phases 1c/1d/1e/2/3/4/6 are DONE and LIVE (§6ae–§6ak), settlement runs on DATED BARS at the tick floor, and the whole flow was driven with real money — a 3-minute round settled from a bar, both sides staked, wallet/position/round paired to the shilling, and E-65 proven fixed on a real refunded round in EN/SW/ZH. What is left: **a forced LATE close on production** (exhaustive in the late-close guard §3 at 529s, RED 7/7, but never forced live — it needs settlement deliberately missed, which risks real money); the **result chip that still reads VOID on a round that RESOLVED** (§6ak); the **accountant/reports pass**; **E-70** and **E-59**; the **4-width × EN/SW/ZH sweep**; and **consolidating the three Up & Down docs (SPEC, ARCHITECTURE, PRICING) to one truth** — their duration and margin claims are now stale.
+#### ⏭️ **RESUME AT:** ① **BUILD: the house seeds the thin side of a one-sided round.** Ali chose this on 2026-08-04 over accepting one-sided refunds, having been shown that it makes the platform take market risk. It is a real feature and it is **NOT started**: it needs a float source, a per-round and per-day exposure cap, seeding at the **LOCK** (not at open, or it can be gamed), house positions kept out of player metrics and leaderboards, and the accountant able to see house P&L apart from commission. ⛔ Money-critical — start it fresh. ② **`SOL` and `XAU` are stuck at 1 tick and cannot be edited at all**: their stored `priceSourceUrl` is `http://`, and `validateAsset` rightly refuses to re-save a row that would keep an API key in cleartext — fix the URL to `https://` in the same call (§6al). ③ **The ten hydrate-once config caches** — no TTL, no cross-process invalidation, including the `payment-ops` kill-switches and the trusted-source allowlist (§6al ①). ④ A forced **LATE close** on production. ⑤ The result chip reading **VOID on a RESOLVED round** (§6ak). ⑥ Accountant/reports pass · **E-70** · **E-59** · the 4-width × EN/SW/ZH sweep · consolidating the three Up & Down docs to one truth. ⚠️ **RG stays exactly as it is — Ali's decision 2026-08-04. Do not re-open it.**
 
 ### 🟢 Laptop A, session 22 (2026-08-04) — THE SETTLEMENT REBUILD IS UNDER WAY AND HALF SHIPPED. Read §6ad first; it carries every decision and the measured evidence.
 
