@@ -29,6 +29,7 @@ import {
   assetStore, chainStore, roundStore, observationStore,
   type StoredAsset, type StoredChain, type StoredRound, type RoundOutcome, type VoidReason,
 } from "./updown-dal";
+import { minuteFloor } from "@/lib/updown-durations";
 import { observePrice, describeRefusal, type OracleReading, type RefusalReason } from "./updown-oracle";
 import { feedFromId, quoteAsset, describeFeedRefusal, hostMatchesDomain, judgeFeedStaleness } from "./updown-feed";
 // E-36 — the trading calendar. A shut market must never settle real money.
@@ -308,10 +309,37 @@ export async function generateRoundNow(
   // Grid sharing was an optimisation for chains emitting on a timer, all landing on the same
   // instants. Manual rounds do not coincide, so there is nothing to share and nothing is lost:
   // this round takes its own open read now and its own close read at its own boundary — exactly
-  // the two reads it would have cost anyway. ⚠️ It does mean a manual round is NOT grid-aligned;
-  // that is fine for the round itself, and `advanceChain` is not involved because the chain is
-  // STOPPED. Seconds and milliseconds are zeroed so the boundary is a clean instant to display.
-  const openMs = Math.floor(Date.now() / 1000) * 1000;
+  // the two reads it would have cost anyway. ⚠️ It does mean a manual round is NOT aligned to the
+  // 5-minute lattice; that is fine for the round itself, and `advanceChain` is not involved
+  // because the chain is STOPPED.
+  //
+  // ⚠️ THIS PARAGRAPH USED TO END "Seconds and milliseconds are zeroed", AND THAT WAS UNTRUE —
+  // only the milliseconds were, which is the whole subject of the block below. A comment that
+  // describes an invariant the code does not hold is worse than no comment: it is the reason
+  // nobody noticed that every boundary carried a seconds component.
+  // ⛔ AND IT SNAPS TO A WHOLE MINUTE — seconds zeroed, not merely milliseconds.
+  //
+  // This line used to be `Math.floor(Date.now() / 1000) * 1000`, which PRESERVES THE SECONDS.
+  // A round generated at 21:22:37 therefore carried the boundary 21:27:37, and that is fine
+  // for a quote endpoint (which only ever answers "the price now") but it is fatal for the
+  // settlement rebuild: market data is published as **1-minute bars**, and there is no bar
+  // labelled 21:27:37. Every boundary the platform has ever created is unnamable in the data
+  // that is about to settle it.
+  //
+  // Snapping BACK to the current minute (0-59s ago) rather than forward to the next one is
+  // deliberate and keeps E-67's guarantee intact: the price for a minute that has already
+  // begun can be read NOW, so the round is still refused-or-priced before anything is
+  // written. Snapping forward would mean opening a round whose own open price does not exist
+  // yet — a round that takes stakes, shows a countdown, and then voids, which is precisely
+  // the failure E-67 was built to make impossible.
+  //
+  // ⚠️ The staleness contract still holds: the quote is at most 59s from the boundary against
+  // `maxStalenessSeconds` of 90.
+  //
+  // `minuteFloor` rather than the arithmetic inline: the same rule is needed by the bar reader
+  // and by anything that asks "which bar covers this instant", and two copies of a rounding rule
+  // that decides which price settles a round is exactly the drift E-49/E-56 were about.
+  const openMs = minuteFloor(Date.now());
   const boundaryIso = new Date(openMs).toISOString();
 
   // 2 · E-36 — never open into a shut market.

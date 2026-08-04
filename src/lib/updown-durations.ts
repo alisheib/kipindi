@@ -52,3 +52,43 @@ export type Duration = (typeof ALLOWED_DURATIONS)[number];
 export function landsOnGrid(minutes: number): boolean {
   return Number.isInteger(minutes) && minutes > 0 && minutes % OBSERVATION_GRID_MINUTES === 0;
 }
+
+// ---------------------------------------------------------------------------
+// THE MINUTE — because market data is published as 1-minute bars
+// ---------------------------------------------------------------------------
+//
+// ⛔ WHY THIS EXISTS (2026-08-04). `generateRoundNow` computed its boundary as
+// `Math.floor(Date.now() / 1000) * 1000`, which zeroes the MILLISECONDS and keeps the
+// SECONDS. A round generated at 21:22:37 therefore carried the boundary `21:27:37`.
+//
+// That is harmless against a quote endpoint, which only ever answers "the price now" and
+// does not care what instant you claim to be asking about. It is fatal against market data,
+// which is published as bars labelled by the minute: **there is no bar labelled 21:27:37**,
+// so every boundary the platform has ever created is unnamable in the very data that is
+// meant to settle it. Measured on the live provider the same day: the bar labelled T exists
+// 5 seconds after T and its `open` never changes thereafter — so a minute-aligned boundary
+// has an immutable, re-checkable price, and a boundary with seconds on it has none at all.
+//
+// Kept here, in the module with no imports, so the server and both admin consoles read one
+// definition — the same reason `ALLOWED_DURATIONS` lives here (a hand-copied array is how a
+// server came to accept a duration no screen could ask for).
+
+export const MINUTE_MS = 60_000;
+
+/**
+ * The whole minute `ms` belongs to — i.e. the start of the 1-minute bar covering it.
+ *
+ * ⚠️ It rounds DOWN, never up, and that is load-bearing. The minute that has already begun
+ * can be priced NOW; the next one cannot, and opening a round whose own open price does not
+ * exist yet is exactly the "takes stakes, shows a countdown, then voids" failure that E-67
+ * was built to make impossible.
+ */
+export function minuteFloor(ms: number): number {
+  return Math.floor(ms / MINUTE_MS) * MINUTE_MS;
+}
+
+/** Is this instant exactly on a minute? The property every round boundary must hold. */
+export function isMinuteAligned(iso: string): boolean {
+  const ms = Date.parse(iso);
+  return Number.isFinite(ms) && ms % MINUTE_MS === 0;
+}
