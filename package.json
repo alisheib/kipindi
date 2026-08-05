@@ -267,7 +267,9 @@
     "qa:updown-unhappy": "node scripts/live-updown-unhappy.mjs",
     "ops:updown-retire-asset": "tsx scripts/ops-updown-retire-asset.mts",
     "test:position-permalink": "tsx scripts/position-permalink.test.mts",
-    "red:position-permalink": "node scripts/red-e101.cjs"
+    "red:position-permalink": "node scripts/red-e101.cjs",
+    "test:refresh-cadence": "tsx scripts/refresh-cadence.test.mts",
+    "red:refresh-cadence": "node scripts/red-e102.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

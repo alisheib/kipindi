@@ -36,6 +36,9 @@ import { AssetMark } from "@/components/updown/updown-card";
 import { SOURCE_CLASS_KEY } from "@/lib/updown-source-label";
 // E-101 · one rule for "where does this ticket live", shared with the wallet and the emails.
 import { positionListHref } from "@/lib/position-permalink";
+// E-102 · how often this page re-asks the server, and when it stops.
+import { RefreshPoller } from "@/components/ui/refresh-poller";
+import { refreshCadence } from "@/lib/refresh-cadence";
 
 export const dynamic = "force-dynamic";
 
@@ -182,6 +185,18 @@ export default async function UpDownRoundPage({
   // could see. Both are now the board tier.
   return (
     <div className="mx-auto w-full max-w-board px-3 lg:px-6 pt-[22px] pb-14">
+      {/* ⭐ E-102 · THE RESULT HAS TO ARRIVE ON THE SCREEN. Ali, 2026-08-05: *"when a result
+          from Up & Down or any poll comes, the page should refresh; a user cannot refresh to
+          see a result if it came."*
+          🔴 THIS PAGE HAD NO POLLER AT ALL — the board carries one and `/markets/[id]` carries
+          one, but the ONE surface a player sits on watching E-99's `Result in 1:31` count down
+          was `force-dynamic` with nothing to re-fetch it. So the clock counted honestly to zero
+          and then the screen stayed exactly as it was until they reloaded by hand. A countdown
+          that finishes and changes nothing is worse than no countdown: it promises an arrival
+          and then denies it.
+          ⛔ The cadence is a RULE, not a number — fast while the price is landing, the board's
+          20s while the round is live, and OFF once it is decided. See `refreshCadence`. */}
+      <RefreshPoller {...refreshCadence({ settled: decided, awaitingResult })} />
       <HashFocus />
       <div className="flex flex-col gap-[18px]">
         <BackLink fallbackHref="/updown" label={t.market.udTitle} />

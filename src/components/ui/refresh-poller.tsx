@@ -19,16 +19,29 @@ import { useRouter } from "next/navigation";
 export function RefreshPoller({
   intervalMs = 30_000,
   eventName = "50pick:refresh",
+  enabled = true,
 }: {
   /** How often to poll (ms). Default 30s. */
   intervalMs?: number;
   /** Custom DOM event name that triggers an immediate refresh. */
   eventName?: string;
+  /**
+   * ⭐ E-102 · false ⇒ register NOTHING — no interval, no listener.
+   *
+   * Added because `/updown/[roundId]` needs to poll hard while a result is landing and then
+   * stop dead once the round is decided: outcome, proof and payout are final, and a page that
+   * keeps re-asking about them forever is pure waste on the low-end Android over 2G the
+   * standards bar names. ⛔ "Disabled" must mean no timer, not a long one — a slow poll on a
+   * settled round is the same defect with a bigger number. See `refreshCadence()`.
+   */
+  enabled?: boolean;
 }) {
   const router = useRouter();
   const lastRefresh = useRef(Date.now());
 
   useEffect(() => {
+    // ⛔ Inside the effect, not around it — hooks may not be called conditionally.
+    if (!enabled) return;
     // Interval-driven refresh — skip if the tab is hidden (saves
     // bandwidth on backgrounded tabs).
     const id = setInterval(() => {
@@ -50,7 +63,7 @@ export function RefreshPoller({
       clearInterval(id);
       window.removeEventListener(eventName, onEvent);
     };
-  }, [router, intervalMs, eventName]);
+  }, [router, intervalMs, eventName, enabled]);
 
   return null;
 }
