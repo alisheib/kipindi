@@ -446,7 +446,12 @@ export default async function MarketDetail({
                 const liveValue = positionCashOutValues.get(p.id) ?? null;
                 const sellShut = p.status === "OPEN" && (isSelectionClosed(m) || positionSellable.get(p.id) === false);
                 return (
-                  <div key={p.id} className="rounded-md border border-border bg-bg-overlay/40 p-3 space-y-2">
+                  /* ⭐ E-101 · THE LANDING TARGET for `/positions/<id>`. The fragment IS the
+                     position id, so this card is what the browser scrolls to — and `scroll-mt`
+                     keeps the sticky header off the row it just landed on. Without the id the
+                     fragment matches nothing, the page silently opens at the top, and the deep
+                     link is indistinguishable from the generic `/positions` href it replaced. */
+                  <div key={p.id} id={p.id} className="ticket-target scroll-mt-24 rounded-md border border-border bg-bg-overlay/40 p-3 space-y-2">
                     <div className="flex items-center justify-between gap-2 font-mono text-[12px]">
                       <div className="flex items-center gap-2">
                         <span className={`font-bold ${p.side === "YES" ? "text-yes-300" : "text-no-300"}`}>{p.side}</span>

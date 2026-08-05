@@ -23,6 +23,8 @@ import { resolvePhoneEmail } from "./email-map";
 import { isSuppressed } from "./email-suppression";
 import { appUrl } from "@/lib/app-url";
 import { formatTzs } from "@/lib/utils";
+// E-101 · an email that quotes a Reference must link to THAT reference, not to a list.
+import { positionPermalinkHref } from "@/lib/position-permalink";
 
 const FROM = "noreply@50pick.tz";
 const REPLY_TO = "support@50pick.tz";
@@ -868,7 +870,7 @@ export function betPlacedHtml({ reference, side, stake, marketTitle, placedAt, r
     ${subtitle("Your payout depends on how the pool ends up split. We'll email you the exact amount the moment betting closes and the pools are final.")}
     ${subtitle(exitLine)}
     ${refNote()}
-    ${ctaButton("/positions", "View positions · Tazama madau")}
+    ${ctaButton(positionPermalinkHref(reference), "View this ticket · Tazama tikiti hii")}
   `);
 }
 
@@ -888,7 +890,7 @@ export function winNotificationHtml({ reference, payout, stake, marketTitle, set
       ...(settledAt ? [{ label: "Settled", value: fmtDateTime(settledAt) }] : []),
     ])}
     ${refNote()}
-    ${ctaButton("/positions", "View positions · Tazama madau")}
+    ${ctaButton(positionPermalinkHref(reference), "View this ticket · Tazama tikiti hii")}
   `);
 }
 
@@ -1003,7 +1005,7 @@ export function cashOutReceiptHtml({ reference, value, stake, marketTitle, soldA
       ...(soldAt ? [{ label: "Sold", value: fmtDateTime(soldAt) }] : []),
     ])}
     ${refNote()}
-    ${ctaButton("/positions", "View positions \u00b7 Tazama madau")}
+    ${ctaButton(positionPermalinkHref(reference), "View this ticket \u00b7 Tazama tikiti hii")}
   `);
 }
 

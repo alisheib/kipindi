@@ -32,6 +32,8 @@ import { PriceHero } from "@/components/updown/price-hero";
 import { RoundStakePanel } from "@/components/updown/round-stake-panel";
 import { AssetMark } from "@/components/updown/updown-card";
 import { SOURCE_CLASS_KEY } from "@/lib/updown-source-label";
+// E-101 · one rule for "where does this ticket live", shared with the wallet and the emails.
+import { positionListHref } from "@/lib/position-permalink";
 
 export const dynamic = "force-dynamic";
 
@@ -287,7 +289,15 @@ export default async function UpDownRoundPage({
                 />
               </section>
             ) : decided && myPosition && result ? (
-              <section aria-label={t.market.udYourResult} style={{ ...card, padding: "14px 16px 16px" }}>
+              <section aria-label={t.market.udYourResult} className="ticket-scope" style={{ ...card, padding: "14px 16px 16px" }}>
+                {/* ⭐ E-101 · THE LANDING TARGET. `/positions/<id>` redirects here with the
+                    position id as the fragment, and a fragment that names nothing scrolls
+                    nowhere — the deep link would then look exactly like the generic href it
+                    replaced. One anchor per position this panel AGGREGATES (a player holds one
+                    side per round, but may have topped it up), zero-height so nothing moves. */}
+                {myPosition.ids.map((pid) => (
+                  <span key={pid} id={pid} className="ticket-anchor block scroll-mt-24" aria-hidden="true" />
+                ))}
                 <div className="flex items-center justify-between gap-2.5">
                   <p className={eyebrow}>{t.market.udYourResult}</p>
                   <span className={resultChip}>{resultLabel}</span>
@@ -317,7 +327,17 @@ export default async function UpDownRoundPage({
                     {(t.market as Record<string, string>)[REFUND_REASON_KEY[refundReason]]}
                   </p>
                 )}
-                <Link href="/positions" className="btn btn-ghost btn-sm mt-3.5 w-full justify-center">{t.market.udOpenInPositions}</Link>
+                {/* 🔴 E-101 · THIS BUTTON WAS A DEAD END BY CONSTRUCTION. It read "Open in
+                    positions" and pointed at `/positions`, which is
+                    `listPositionsForUser(…, "MARKET")` — long-form polls only. So the ONE page
+                    that knows for certain this is an Up & Down bet was the page sending the
+                    player to the other game's portfolio, where their own bet cannot appear and
+                    the empty state says they have none. It now goes to the Up & Down history,
+                    scrolled to this very ticket.
+                    ⚠️ The LIST href, not the permalink route — the permalink resolves back to
+                    this page, and a button that reloads the page you are already standing on is
+                    the same dead end wearing a correct-looking URL. */}
+                <Link href={positionListHref("UPDOWN", myPosition.ids[0] ?? "")} className="btn btn-ghost btn-sm mt-3.5 w-full justify-center">{t.market.udOpenInPositions}</Link>
               </section>
             ) : locked ? (
               // ── 🔒 LOCKED ────────────────────────────────────────────────

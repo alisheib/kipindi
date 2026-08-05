@@ -2560,3 +2560,32 @@ textarea::-webkit-resizer {
      - TimeSelect          — `inline-flex` with fixed-width segments, so it is
                              intrinsically sized and cannot stretch in the first place. */
 .field-measure { max-width: var(--field-max, none); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   E-101 · THE TICKET A PLAYER FOLLOWED — which row did I come for?
+
+   🔴 Ali, 2026-08-05: *"when I click on ticket it just opens positions, not the
+   specific position I was in with details."* The fix deep-links every ticket
+   reference to the surface that renders it (`position-permalink.ts`), and the
+   fragment is the position id. But a fragment only scrolls; on a market page
+   holding four of the player's positions, or an Up & Down history card holding
+   three bets, "we scrolled somewhere" is not "here is yours".
+
+   Two shapes, because the two destinations differ:
+     · `.ticket-target` — the element IS the position (a market position card).
+     · `.ticket-scope`  — the element GROUPS positions, and carries a zero-height
+       `.ticket-anchor` per id inside it. `:has()` lifts the match to the card.
+
+   ⛔ A RING, NOT A COLOUR CHANGE. The card's own status ink is money-semantic
+   (YES green / NO rose / gold payout, DESIGN_AUTHORITY B2), so recolouring the
+   surface to say "you are here" would collide with what the colours already
+   mean. Brand ring + brand border says "this one" without touching them.
+   ⛔ No animation: this fires on arrival, and a pulse at the moment a player
+   lands on their own money reads as an alert. Nothing to honour for
+   reduced-motion because nothing moves.                                       */
+.ticket-target:target,
+.ticket-scope:has(.ticket-anchor:target) {
+  border-color: var(--brand-400);
+  box-shadow: 0 0 0 1px var(--brand-400),
+              0 0 0 5px color-mix(in oklab, var(--brand-400) 18%, transparent);
+}

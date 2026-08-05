@@ -41,6 +41,9 @@ import { marketStore, positionStore } from "./market-dal";
 // E-94 · a void refund names the reason the player was already given everywhere else.
 import { roundStore } from "./updown-dal";
 import { formatTzs } from "@/lib/utils";
+// E-101 · one rule for "where does this ticket live", shared with the wallet, the round page
+// and the emails.
+import { positionPermalinkHref } from "@/lib/position-permalink";
 // Type-only (erased at build) — no runtime cycle with market-sentinel, which
 // itself imports only the StoredMarket TYPE from here. The AI check is invoked
 // via a dynamic import inside resolveDueMarket.
@@ -2470,7 +2473,10 @@ export async function settleMarket(
         // Up & Down (see perEventNotificationsSuppressed): the money above is already
         // credited, booked and audited; only the message is digested.
         if (!perEventNotificationsSuppressed(m)) {
-          notifyWin(p.userId, payout, `${m.titleEn} · ${p.id}`, "/positions");
+          // E-101 · the bell entry opens THIS ticket. It used to open `/positions`, which is
+          // the long-form list — right product here by luck (this branch is suppressed for
+          // Up & Down), wrong row always.
+          notifyWin(p.userId, payout, `${m.titleEn} · ${p.id}`, positionPermalinkHref(p.id));
           sendEmailToUser(p.userId, (email) => ({
             to: email,
             subject: `You won · ${formatTzs(payout)}`,

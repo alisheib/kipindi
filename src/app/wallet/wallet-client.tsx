@@ -13,6 +13,8 @@ import { Cash } from "@/components/ui/cash";
 import { CashbackPromo } from "@/components/ui/cashback-promo";
 import { PaymentLogo } from "@/components/wallet/payment-logo";
 import { formatDateTimeSafe, formatTzs, formatNumber } from "@/lib/utils";
+// E-101 · one rule for "where does this ticket live", shared with the round page and the emails.
+import { positionPermalinkHref } from "@/lib/position-permalink";
 import { useT } from "@/lib/i18n";
 
 const TXNS_PER_PAGE = 12;
@@ -325,8 +327,17 @@ function TxnRow({ tx }: { tx: Transaction }) {
             </Link>
           )}
           {tx.positionId && (
+            /* ⭐ E-101 · THE TICKET LINKS TO THE TICKET. Ali, 2026-08-05: *"when I click on
+               ticket it just opens positions, not the specific position I was in with
+               details."* It went to `/positions` — the long-form list — for EVERY position,
+               so an Up & Down bet landed on a page that queries `productLine: "MARKET"` and
+               therefore renders "no positions yet" over a bet the player is holding.
+               ⛔ The wallet cannot tell which game this was (a transaction carries only the
+               id), and resolving it HERE would mean a store lookup per row on a page that
+               loads 1,000 transactions. So it links to the permalink route, which resolves
+               ownership and product line once, server-side, when the player actually taps. */
             <Link
-              href="/positions"
+              href={positionPermalinkHref(tx.positionId)}
               className="rounded-md border border-border/60 bg-bg-overlay/40 px-2.5 py-1.5 hover:border-brand-400 transition-colors block"
             >
               <p className="font-mono text-[9px] uppercase tracking-[0.10em] text-text-faint">{t.common.ticket}</p>

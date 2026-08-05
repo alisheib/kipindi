@@ -180,8 +180,15 @@ export default async function UpDownHistoryPage({ searchParams }: {
                 <CardTag
                   key={r.marketId}
                   {...(roundLink ? { href: roundLink } : {})}
-                  className={"block rounded-xl border border-border bg-bg-elevated p-3.5 transition-colors" + (roundLink ? " hover:border-brand-400" : "")}
+                  className={"ticket-scope block scroll-mt-24 rounded-xl border border-border bg-bg-elevated p-3.5 transition-colors" + (roundLink ? " hover:border-brand-400" : "")}
                 >
+                  {/* ⭐ E-101 · one anchor per bet on this round, so `/updown/history#pos_…`
+                      lands on the card that holds it. A round card groups several bets, so the
+                      card cannot carry a single position id — and a fragment naming nothing
+                      scrolls nowhere while looking exactly like a working deep link. */}
+                  {g.bets.map((b) => (
+                    <span key={b.positionId} id={b.positionId} className="ticket-anchor block scroll-mt-24" aria-hidden="true" />
+                  ))}
                   {/* Header: asset + duration + when · round outcome */}
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">

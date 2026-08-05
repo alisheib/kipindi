@@ -265,7 +265,9 @@
     "qa:updown-gate": "node scripts/live-updown-gate.mjs",
     "qa:updown-soak": "node scripts/live-updown-soak.mjs",
     "qa:updown-unhappy": "node scripts/live-updown-unhappy.mjs",
-    "ops:updown-retire-asset": "tsx scripts/ops-updown-retire-asset.mts"
+    "ops:updown-retire-asset": "tsx scripts/ops-updown-retire-asset.mts",
+    "test:position-permalink": "tsx scripts/position-permalink.test.mts",
+    "red:position-permalink": "node scripts/red-e101.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

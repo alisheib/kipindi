@@ -261,7 +261,16 @@ export function notifyBetPlaced(userId: string, opts: {
   });
 }
 
-export function notifyWin(userId: string, amount: number, label: string, href = "/positions") {
+/**
+ * ⭐ E-101 · `href` IS REQUIRED, and the default it replaced was the defect.
+ *
+ * It used to default to `"/positions"`, so a win notification landed the player on the
+ * long-form list whatever they had won — and `/positions` queries `productLine: "MARKET"`,
+ * so an Up & Down win pointed at a page that structurally cannot show it. A default that is
+ * wrong for one of two products is not a safe default; it is a decision nobody made. Callers
+ * now state where the money is, and `positionPermalinkHref` is how they say it.
+ */
+export function notifyWin(userId: string, amount: number, label: string, href: string) {
   return notify({
     userId,
     kind: "WIN",

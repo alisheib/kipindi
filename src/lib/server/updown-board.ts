@@ -507,7 +507,7 @@ async function priceSeriesFor(
  *  adds no money logic. Null when the viewer holds no position on this round. */
 async function myPositionFor(
   userId: string | undefined, marketId: string,
-): Promise<{ side: "UP" | "DOWN"; stake: number; payout: number | null; result: "WIN" | "LOSS" | "VOID" | null } | null> {
+): Promise<{ side: "UP" | "DOWN"; stake: number; payout: number | null; result: "WIN" | "LOSS" | "VOID" | null; ids: string[] } | null> {
   if (!userId) return null;
   const positions = (await listPositionsForUser(userId, 500, "UPDOWN").catch(() => [])).filter((p) => p.marketId === marketId);
   if (positions.length === 0) return null;
@@ -522,7 +522,11 @@ async function myPositionFor(
   }
   const side: "UP" | "DOWN" = up >= down ? "UP" : "DOWN";
   const result: "WIN" | "LOSS" | "VOID" | null = !allSettled ? null : anyVoid && !anyWin ? "VOID" : anyWin ? "WIN" : "LOSS";
-  return { side, stake, payout: anyPayout ? payout : null, result };
+  // ⭐ E-101 · the ids the panel AGGREGATES, so the page can render an anchor for each one and a
+  // `/positions/<id>` permalink actually lands on the panel it named. Without these the fragment
+  // matches nothing, the browser silently stays at the top, and the deep link is
+  // indistinguishable from the generic href it replaced — the subtler version of the same bug.
+  return { side, stake, payout: anyPayout ? payout : null, result, ids: positions.map((p) => p.id) };
 }
 
 /** One round, for the detail page — with its settlement proof when it has one. */
@@ -532,8 +536,9 @@ export async function getRoundDetail(roundId: string, userId?: string): Promise<
   titleEn: string;
   /** Real confirmed price points inside the round window; null ⇒ hero draws open line only. */
   priceSeries: { t: string; price: number }[] | null;
-  /** The viewer's own stake/result on this round, or null when they did not play it. */
-  myPosition: { side: "UP" | "DOWN"; stake: number; payout: number | null; result: "WIN" | "LOSS" | "VOID" | null } | null;
+  /** The viewer's own stake/result on this round, or null when they did not play it.
+   *  `ids` are the positions it aggregates — E-101's anchors are rendered from them. */
+  myPosition: { side: "UP" | "DOWN"; stake: number; payout: number | null; result: "WIN" | "LOSS" | "VOID" | null; ids: string[] } | null;
   proof: {
     openPrice: number | null; closePrice: number | null;
     // E-53 · NEITHER endpoint is sent. The half-applied version of this change dropped
