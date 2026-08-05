@@ -829,7 +829,100 @@ did not settle against that source and the player was never told it would.</p>
       <td>Ask the owner.</td></tr>
 </table>
 
-<h2>13 · Terms</h2>
+<h2 class="pb">13 · The player's card, field by field — and when each part is visible</h2>
+
+<p><b>The card deliberately shows different things at different moments</b>, which is why two
+people looking at the same chain can describe different screens. Nothing is missing and nothing
+is random: each element belongs to a stage of the round. This section is the complete list, so
+an operator answering a player can say exactly what they should be seeing and why.</p>
+
+<h3>13.1 · The five stages</h3>
+
+<table>
+  <tr><th>Stage</th><th>What the card says</th><th>What is happening</th></tr>
+  <tr><td><b>OPEN</b></td><td><i>Betting closes in</i> + a countdown</td>
+      <td>Bets are being taken. This lasts the <b>whole advertised length</b> — a “5 min” round takes bets for five minutes.</td></tr>
+  <tr><td><b>LOCKED</b></td><td><i>Result in</i> + a countdown, and <b>🔒 Bets closed</b></td>
+      <td>The result phase. No more bets; the closing minute has not arrived yet.</td></tr>
+  <tr><td><b>CONFIRMING</b></td><td><i>Reading the closing price…</i></td>
+      <td>The round has closed and the platform is reading the closing minute’s record. Normally a few seconds; it retries by design.</td></tr>
+  <tr><td><b>RESOLVED</b></td><td><i>Round settled</i> + <b>Up wins / Down wins</b></td>
+      <td>A side won. Winners have been paid.</td></tr>
+  <tr><td><b>VOID</b></td><td><i>Round settled</i> + the refund reason</td>
+      <td>Nobody won. Every stake is back in full and no commission was taken.</td></tr>
+</table>
+
+<h3>13.2 · Every element, what it means, and when it appears</h3>
+
+<table>
+  <tr><th>On the card</th><th>What it means</th><th>Visible when</th></tr>
+  <tr><td><b>VOL · TZS n</b></td>
+      <td><b>The total staked in this round, both sides added together.</b> Not a payout, not a
+      balance, and not per-player. It is how much money the round is playing for.</td>
+      <td><b>Always.</b> It reads <code>TZS 0</code> until the first bet.</td></tr>
+  <tr><td>The number beside the <b>people icon</b></td>
+      <td>How many <b>separate accounts</b> hold a position in this round — not how many bets.
+      One account betting twice on the same side is still 1.</td>
+      <td>Always.</td></tr>
+  <tr><td><b>Up 60% / 40% Down</b></td>
+      <td>How the money is split, <b>by stake, not by number of players</b>. It shows an even
+      50/50 when the pool is empty, which is a starting position and not a prediction.</td>
+      <td>Always.</td></tr>
+  <tr><td><b>Higher or lower than $X</b> and <b>± $0.02</b></td>
+      <td>The <b>opening price</b> the round is judged against, and the size of the winning band.</td>
+      <td>Open, Locked and Confirming. <b>Hidden once the round settles</b> — it shows its
+      outcome instead — and absent entirely if no opening price was ever confirmed.</td></tr>
+  <tr><td><b>UP ≥ $A</b> and <b>DOWN ≤ $B</b></td>
+      <td>The two targets, frozen at open and never recalculated. The close must reach one of
+      them for that side to win.</td>
+      <td>Same as above.</td></tr>
+  <tr><td><b>500 · 1K · 2.5K · 5K · Custom</b></td>
+      <td>The stake to be used by the next tap. It is a chooser, not an amount already bet.</td>
+      <td><b>Only while betting is open.</b></td></tr>
+  <tr><td><b>Up × 1.4 est.</b> / <b>Down × 1.4 est.</b></td>
+      <td>⭐ <b>An ESTIMATE of the multiplier</b>, based on how the pool stands <i>at this
+      moment</i>. It moves as other people bet, and it is explicitly labelled <i>est.</i> because
+      it is not a promise.</td>
+      <td><b>Only while betting is open.</b> This is the single most common “why did the number
+      change?” question — it changes because the pool changed.</td></tr>
+  <tr><td><b>You’re in UP · TZS 1,000</b></td>
+      <td>What <i>this</i> player already has on this round.</td>
+      <td>Once they have bet.</td></tr>
+  <tr><td>🔒 <b>Bets closed at 09:40:00 — the result is locked…</b></td>
+      <td>Why the buttons stopped working, with the exact instant. The round is running normally.</td>
+      <td><b>Only in the result phase.</b></td></tr>
+  <tr><td><b>You win TZS 1,740</b> (no “est.”)</td>
+      <td>⭐ <b>The EXACT figure</b>, not an estimate. Once betting closes the pool is frozen, so
+      the payout is known precisely.</td>
+      <td><b>Only in the result phase, and only if the player holds a position.</b> The estimate
+      disappears at the same moment — that swap is deliberate.</td></tr>
+  <tr><td><b>Reading the closing price…</b></td>
+      <td>The closing record is being fetched. The platform never settles on a guess.</td>
+      <td>Only while confirming.</td></tr>
+  <tr><td><b>Up wins · $64,344.00 → $64,379.29</b></td>
+      <td>The outcome with the two prices that decided it.</td>
+      <td>Only once resolved, and only when both prices exist.</td></tr>
+  <tr><td><b>Live crypto market · quoted 18:37:00 · Open $64,326.01</b></td>
+      <td>Which minute’s record was used, and the opening price taken from it. This is the line
+      to quote to a player who disputes a result.</td>
+      <td>Whenever an opening price was confirmed.</td></tr>
+</table>
+
+<div class="note"><b>WHAT “VOID” MEANS, IN ONE SENTENCE</b> Nobody won, so
+<b>every stake is returned in full and the platform takes no commission</b> — it is not a loss,
+not a penalty and not an error. Six different things can cause it and the card always names the
+real one; §10 lists all six and what to say. ⛔ Never describe a void as “the price did not move”
+unless that is the reason printed on the screen — “nobody took the other side” is a completely
+different situation and the player will know the difference.</div>
+
+<div class="note warn"><b>WHY THE CARD LOOKS DIFFERENT EACH TIME YOU LOOK</b>
+Because a round moves through five stages in a few minutes and each stage shows what is true at
+that stage. The estimate exists only while it can still change; the exact figure replaces it the
+moment it stops changing; the targets give way to the result. If a player says a number
+“disappeared”, the answer is almost always that the round moved on — ask which stage the card is
+showing, using the first table above.</div>
+
+<h2>14 · Terms</h2>
 
 <table>
   <tr><th style="width:21%">Term</th><th>Meaning</th></tr>
