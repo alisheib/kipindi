@@ -253,28 +253,25 @@ take a few seconds to answer.</p>
     different thing entirely: those are ③ and greyed out, because the round would be decided by
     the feed rather than the market.)</td>
   </tr>
-  <tr>
-    <td><b>BNB</b><br><span class="pill r">OFF</span></td>
-    <td class="n">±$0.02</td><td>—</td><td>24 / 7</td>
-    <td>Disabled, and configured under the wrong calendar so the weekend closure of gold would be
-    applied to a coin that trades daily. Leave it disabled.</td>
-  </tr>
-  <tr>
-    <td><b>SNP500</b><br>S&amp;P 500<br><span class="pill r">UNUSABLE</span></td>
-    <td class="n">—</td><td>—</td><td>—</td>
-    <td><b>Never enable.</b> Stock indices are not carried by our price plan, and this row’s source is
-    a web page rather than the price feed. Every round would refund. It is retained only so that it
-    is not re-created.</td>
-  </tr>
-  <tr>
-    <td><b>GOLD</b><br>duplicate<br><span class="pill r">OFF</span></td>
-    <td class="n">±$0.40</td><td>15 · 30 · 60</td>
-    <td>Mon–Sat</td>
-    <td>A <b>second gold row</b>, disabled. Two entries in the asset list read “Gold”. <b>Use
-    <code>XAU</code></b>, the enabled one. Enabling both would split gold across two names in every
-    report.</td>
-  </tr>
 </table>
+
+<div class="box">
+<p><span class="pill">THREE ROWS WERE REMOVED ON 5 AUGUST 2026</span> If you used this console
+before that date you will have seen three more assets. They are gone on purpose, and none of them
+should come back as it was:</p>
+<ul style="margin:6px 0 0 18px">
+  <li><b>GOLD</b> — a <b>second gold row</b> carrying the same <code>XAU/USD</code> symbol, so the
+    list showed two entries both reading “Gold” and nothing said which one a chain would follow.
+    <b>Use <code>XAU</code>.</b></li>
+  <li><b>SNP500</b> — an S&amp;P 500 row whose symbol our price plan does not carry at all, and
+    which pointed at a web page rather than the price feed. Every round on it would have refunded.
+    <b>Stock indices are not supported; do not re-create it.</b></li>
+  <li><b>BNB</b> — configured under the wrong calendar, so enabling it would have applied gold’s
+    weekend closure to a coin that trades daily. If you want BNB, <b>add it again from the
+    Add-asset list</b> (8.4), which sets the calendar from the symbol and cannot repeat the
+    mistake.</li>
+</ul>
+</div>
 
 <div class="box">
 <p><span class="pill">HOW MUCH COUNTS AS A CHANGE</span> <b>A movement of one band or more decides
@@ -767,6 +764,13 @@ perfect record will never unlock gold at 5 minutes.</p>
 
 <h2>9 · Your first live round</h2>
 
+<p class="note"><b>The board you have been handed is deliberately empty.</b> Four assets are
+configured and ready — <b>BTC</b>, <b>ETH</b>, <b>SOL</b> and <b>XAU</b> (Gold) — and there are
+<b>no chains and no rounds</b>. That is on purpose: the chains are yours to create, from the steps
+below, so that the first one you run is one you understand. Every asset therefore reads
+<code>no readings yet</code> in its Feed record (8.5) until it has been run; that is the honest
+starting state, not a fault, and it fills in on its own as rounds go by.</p>
+
 <ol>
   <li><b>Up &amp; Down → Overview.</b> Confirm BTC is enabled and reads <code>2 dp · min 2</code>.</li>
   <li><b>+ Add chain</b> → Asset <code>① BTC · Bitcoin</code> → Duration <code>① 5 min</code> →
@@ -849,6 +853,13 @@ did not settle against that source and the player was never told it would.</p>
   <tr><td>Gold chain reads <b>market shut</b></td>
       <td>Between Saturday 00:00 and Monday 01:00 EAT.</td>
       <td>Nothing — correct behaviour. Run crypto over the weekend.</td></tr>
+  <tr><td><b>Price source asked too often</b></td>
+      <td>The provider is rate-limiting <i>us</i>, not failing. There is a ceiling on how many
+      price reads we may make per minute, and we reached it. <b>This is not a broken feed and the
+      round is not in danger</b> — the platform simply waits and asks again.</td>
+      <td>Nothing, if it clears within a minute or two. It does <b>not</b> spend the round's
+      retries and it does <b>not</b> cause a refund on its own. If you see it constantly, that is
+      a capacity matter — report it rather than changing any setting.</td></tr>
   <tr><td>Rounds keep refunding for want of an opposing side</td>
       <td>Only one side is betting.</td>
       <td>Fewer chains, more players per chain. A liquidity matter, not a fault.</td></tr>
@@ -962,7 +973,109 @@ moment it stops changing; the targets give way to the result. If a player says a
 “disappeared”, the answer is almost always that the round moved on — ask which stage the card is
 showing, using the first table above.</div>
 
-<h2>14 · Terms</h2>
+<h2 class="pb">14 · Testing it yourself — how to prove each outcome on purpose</h2>
+
+<p>Everything below is something you can make happen deliberately, on the real platform, in a few
+minutes. <b>Do not wait to discover these for the first time when a player asks about one.</b>
+Each test tells you what to do, what you should see, and how to put things back.</p>
+
+<div class="note">
+  <b>Before you start — four rules that keep a test a test.</b>
+  <ol style="margin:6px 0 0 18px">
+    <li><b>Use your own test account, and small stakes.</b> This is the live platform. The money
+      is real, it moves for real, and it lands in a real wallet.</li>
+    <li><b>Change one thing at a time.</b> If you widen a band and stop a chain together, you
+      will not know which one caused what you see next.</li>
+    <li><b>Put it back.</b> Every test below ends with a restore step. A band left wide is a
+      chain that refunds every round for as long as it is forgotten.</li>
+    <li><b>A round keeps the settings it opened with.</b> Change a band and the round already
+      running is unaffected — your change lands on the <i>next</i> one. Watching the wrong round
+      is the most common reason a control looks broken when it is not.</li>
+  </ol>
+</div>
+
+<h3>14.1 · Prove a normal round pays a winner</h3>
+<ol>
+  <li>Create a <b>BTC 5 min</b> chain, band <code>Smallest possible</code>, and press
+    <b>Generate round</b>.</li>
+  <li>On <b>50pick.tz/updown</b>, back <b>UP</b> from one account and <b>DOWN</b> from another.
+    Both sides must hold money or the round refunds for want of an opposing side (14.3).</li>
+  <li>Wait for the round to close, then the result.</li>
+</ol>
+<p><b>You should see:</b> one side marked won, the other lost. The winner's wallet rises by the
+payout; the loser's fell by the stake when they bet. Open the round and read the
+<b>Settlement proof</b>: the open price, the close price, both targets, and the times each price
+was quoted and observed. <b>Every figure a player can question is on that panel.</b></p>
+<p class="note"><b>Check the money to the shilling.</b> Wallet before, wallet after, and the
+payout shown on the card should agree exactly. If they do not, stop and report it — do not run
+another round on that chain.</p>
+
+<h3>14.2 · Force a <i>price did not move enough</i> refund</h3>
+<ol>
+  <li><b>Edit</b> the chain → <b>Winning band</b> → <code>Very wide · 0.50%</code> → save.</li>
+  <li>Wait for the <b>next</b> round to open (the one running keeps the old band), and back a
+    side.</li>
+</ol>
+<p><b>You should see:</b> the round resolves as a refund. On Bitcoin, 0.50% is roughly a
+<b>$320</b> move required inside three minutes — which almost never happens, which is the point.
+The player's card reads <i>“The price did not move far enough either way…”</i> and the stake is
+returned in full.</p>
+<p><b>Put it back:</b> Edit → band → <code>Smallest possible</code>. ⛔ Leaving it wide means
+every future round on that chain refunds and earns nothing.</p>
+
+<h3>14.3 · Force a <i>nobody took the other side</i> refund</h3>
+<ol><li>On a live round, back <b>one side only</b>, from one account, and let it settle.</li></ol>
+<p><b>You should see:</b> the round <b>decides normally</b> — it will say UP or DOWN — and your
+stake still comes back in full. The card reads <b>Stake returned</b> and explains: <i>“Nobody
+backed the other side, so there was nothing to win and nothing to lose.”</i></p>
+<p class="note">⚠️ <b>This is the one most easily explained wrongly.</b> The round was not void
+and the price did move — there was simply no counterparty, so there was no pool to be paid from.
+The card must never call it a void and must never suggest the player lost. If you ever see it do
+either, report it.</p>
+
+<h3>14.4 · Force a <i>cancelled by us</i> void</h3>
+<ol>
+  <li><b>Up &amp; Down → Rounds</b>, find a round that is still running, press
+    <b>Void &amp; refund</b>.</li>
+  <li>Type a real reason. It is required, and it is kept permanently against your name.</li>
+</ol>
+<p><b>You should see:</b> every stake refunded in full, no fee taken, and the player's card
+reading <i>“This round was cancelled by our team.”</i> The <b>Void &amp; refund</b> button
+disappears from that row, because a settled round cannot be voided twice.</p>
+<p class="note"><b>Only do this for a real reason.</b> The entry is permanent, it carries your
+name, and “testing” is a reason a regulator can read later.</p>
+
+<h3>14.5 · See the market-shut state</h3>
+<p>Try to run a <b>gold</b> round between <b>Saturday 00:00 and Monday 01:00 EAT</b>. The
+platform refuses to open or settle one and says so. Nothing is wrong: gold does not trade at
+weekends. During the week you cannot produce this state at all — which is itself worth knowing
+before you go looking for it.</p>
+
+<h3>14.6 · Watch the Feed record fill in</h3>
+<p>A brand-new asset reads <code>no readings yet</code>, then <code>not measured yet</code> while
+it has fewer than twenty readings, and only then starts showing a success rate and a typical wait
+(8.5). <b>Run a chain for an hour and watch the column change.</b> That is the platform learning
+the asset, and it is what decides which round lengths it will offer you later.</p>
+
+<h3>14.7 · The checks worth doing after ANY change</h3>
+<table>
+  <tr><th style="width:30%">Check</th><th>Why</th></tr>
+  <tr><td><b>PAID A WINNER · 7D</b> on the chain row</td>
+      <td>The single most useful number on the page. A healthy chain pays winners. A low figure
+      caused by unreadable prices is a technical problem; a low figure caused by the price not
+      moving means the band is too wide.</td></tr>
+  <tr><td><b>The void breakdown</b> beside it</td>
+      <td>The reasons are listed separately — <i>no-move</i>, <i>source-failed</i>,
+      <i>operator</i> — precisely so you can tell a wide band from a broken feed from your own
+      team's actions. One blended percentage would hide all three.</td></tr>
+  <tr><td><b>Wallet vs the card</b></td>
+      <td>Money is the only claim that cannot be argued with. Check it to the shilling.</td></tr>
+  <tr><td><b>The player's own language</b></td>
+      <td>Switch to <b>SW</b> or <b>中文</b> and re-read the result. Every reason exists in all
+      three; if one falls back to English, report it.</td></tr>
+</table>
+
+<h2>15 · Terms</h2>
 
 <table>
   <tr><th style="width:21%">Term</th><th>Meaning</th></tr>

@@ -2,7 +2,11 @@
 
 Written 2026-07-31. **Read this before opening anything else in here.**
 
-There are **42 files** in here — this index plus 41 documents. Some are law, some are a snapshot
+⭐ **If you are an ADMIN rather than a developer, you want exactly one file:**
+[`50pick-updown-operator-guide.pdf`](50pick-updown-operator-guide.pdf) — the Up & Down operator
+contract. Everything else in here is for whoever builds and runs the platform.
+
+There are **46 files** in here — this index plus 45 documents. Some are law, some are a snapshot
 of a Tuesday in May, and from the outside they look identical. Getting that wrong is how a session spends a night rebuilding
 something that shipped a week ago — which has happened in this repo more than once. This
 file exists so the *next* session can tell them apart in thirty seconds.
@@ -92,7 +96,16 @@ to teal and resurrects the killed light theme.
 | [`UPDOWN-SPEC.md`](UPDOWN-SPEC.md) | 🟢 LAW | Owns **WHAT** it is — rules, workflows, states. |
 | [`UPDOWN-ARCHITECTURE.md`](UPDOWN-ARCHITECTURE.md) | 🟢 LAW | Owns **HOW** it is built — data model, engines, money path. |
 | [`UPDOWN-PRICING.md`](UPDOWN-PRICING.md) | 🟢 LAW | The margin / winning-boundary math. Money-critical. |
-| [`NEXT-SESSION-UPDOWN-AI.md`](NEXT-SESSION-UPDOWN-AI.md) | 🔵 LIVE | 🔴 Describes work that exists on the **unmerged** branch `feat/updown-source-pinning-and-proposals` (28 commits, current with `main`). It fixes a real money bug: editing an asset's source URL silently switches the source under open rounds with stakes placed. **Another lane's work — do not merge without Ali.** |
+| [`NEXT-SESSION-UPDOWN-AI.md`](NEXT-SESSION-UPDOWN-AI.md) | ⚫ HISTORICAL | Described work on the branch `feat/updown-source-pinning-and-proposals`. **That source-pinning fix is MERGED and live** — a round pins `capturedSourceUrl` at open. Kept for its reasoning; do not action it. |
+| [`NEXT-SESSION-UPDOWN-LIVE.md`](NEXT-SESSION-UPDOWN-LIVE.md) | ⚫ HISTORICAL | A session-24 handoff. **Superseded by `LIVE-QA-CAMPAIGN.md` §6b**, which is the only handoff anyone should read. |
+| [`updown-operator-guide.html`](updown-operator-guide.html) → [`50pick-updown-operator-guide.pdf`](50pick-updown-operator-guide.pdf) | 🟢 **LAW — THE OPERATOR CONTRACT** | ⭐ **The document the admins are handed.** 14 sections: what the game is, every field and what to enter, the **Feed record** and the measured round-length gate (§8.5), the first live round (§9), the **six refund reasons and what to say to a player** (§10), the daily check (§11), troubleshooting (§12), and **every element on the player's card and when it is visible** (§13). ⛔ Edit the **HTML**, then regenerate with `node scripts/generate-pdfs.mjs`, then **verify by rasterising** — never by trusting the render. |
+
+## Up & Down — ops scripts (there is deliberately no delete in the console, E-59)
+
+| Script | | |
+|---|---|---|
+| `scripts/ops-updown-reset-games.mts` | 🟢 LAW | Clears chains, rounds, markets and observations so operators start from a clean board. **Dry run by default; refuses outright while any round is unresolved or any position is OPEN, and there is no `--force`.** Assets are never touched. |
+| `scripts/ops-updown-retire-asset.mts` | 🟢 LAW | Removes an asset row that should not exist. **Dry run by default; refuses anything still ENABLED or still referenced by a chain or an observation**, and writes a `updown.asset.retired` compliance row per removal. Used 2026-08-05 to retire `GOLD` (a duplicate of `XAU`), `SNP500` (unquotable symbol, pointed at kitco.com) and `BNB` (stored as `macro`, which would shut a 24/7 coin at weekends). |
 
 ## AI
 
