@@ -97,3 +97,12 @@ backups/
 
 # Live-QA run artifacts — screenshots, shadow samples, build logs. Evidence, not source.
 .qa-artifacts/
+
+# ⭐ REGENERABLE SCREENSHOTS. A driver writes these on every run, so committing them grows the
+# repo without adding a fact — `shots/` reached 32 MB of which 8 MB was the same few pages shot
+# over and over. Anything a script can recreate on demand is ignored here; a screenshot that is
+# EVIDENCE for a finding is committed under its own `shots/<FINDING>/` directory and is cited by
+# `docs/`, which `npm run test:docs` now checks actually exists.
+shots/chrome/
+shots/emails/
+shots/*.png

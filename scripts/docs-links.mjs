@@ -61,7 +61,68 @@ for (const f of readdirSync(DOCS).filter((n) => n.endsWith(".md"))) {
   });
 }
 
-console.log(`\nchecked ${links} links · ${paths} script paths · ${npms} npm refs across docs/`);
+// ═══════════════════════════════════════════════════════════════════════════
+// ⭐ EVIDENCE — a cited screenshot that is not on disk is a claim with no backing
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// 🔴 FOUND 2026-08-05: this gate checked links, script paths and npm scripts, and never once
+// looked at the `shots/*.png` the findings register cites as PROOF. **19 of the 26 cited
+// screenshots did not exist**, and the gate had been green over them for the whole campaign.
+// §0.1 of the campaign says every entry needs evidence — "a screenshot path, a DB row, a log
+// line" — so a path to a file nobody kept is precisely the shape of an unbacked claim.
+//
+// ⚠️ THE 19 ARE A RATCHET, NOT AN EXEMPTION. They are historical: written by sessions whose
+// screenshots went to a gitignored directory or to /tmp and were never committed. They cannot
+// be recreated — the rounds and players they photographed are gone. So they are listed, by
+// name, and the list may only SHRINK:
+//   · a NEW dangling reference fails the gate, which is the whole point;
+//   · restoring one and leaving it listed ALSO fails, so the list cannot rot.
+const MISSING_EVIDENCE = new Set([
+  "shots/PJ-2026-08-03/PJ-5-after-bet.png",
+  "shots/PJ-2026-08-03/PJ-8-settled-round.png",
+  "shots/e18-rq-moderator.png",
+  "shots/e1card-delta-sw-360.png",
+  "shots/e2-officer-768.png",
+  "shots/e47b-cost-line.png",
+  "shots/e4p-05-server-refused.png",
+  "shots/e4p-06-approved.png",
+  "shots/e5v-el-sw-360.png",
+  "shots/e6-officer-no-note.png",
+  "shots/p2-alpha-player-kyc-430.png",
+  "shots/p2-bravo-rejected.png",
+  "shots/p2-echo-docs.png",
+  "shots/p3-gate-_wallet.png",
+  "shots/p3-verify-valid.png",
+  "shots/s10-updown-history-1440.png",
+  "shots/s11--admin-resolver-queue-1440.png",
+  "shots/s11-postbet-modal-360.png",
+  "shots/settlement-mkt_54f75a1959cdee5f1ed8.png",
+]);
+
+let shots = 0;
+const seenEvidence = new Set();
+for (const f of readdirSync(DOCS).filter((n) => n.endsWith(".md") || n.endsWith(".html"))) {
+  readFileSync(join(DOCS, f), "utf8").split("\n").forEach((line, i) => {
+    for (const m of line.matchAll(/\bshots\/[\w./-]+\.png\b/g)) {
+      shots++;
+      seenEvidence.add(m[0]);
+      if (existsSync(join(ROOT, m[0]))) continue;
+      if (MISSING_EVIDENCE.has(m[0])) continue;
+      report("evidence not on disk", f, m[0], i + 1);
+    }
+  });
+}
+// ⛔ The ratchet must not rot: anything listed that IS now present, or that nothing cites any
+// more, has to come off the list — otherwise it silently licenses a future dangling path.
+for (const p of MISSING_EVIDENCE) {
+  if (existsSync(join(ROOT, p))) { bad++; console.log(`  ✗ ${p} EXISTS now — remove it from MISSING_EVIDENCE`); }
+  else if (!seenEvidence.has(p)) { bad++; console.log(`  ✗ ${p} is no longer cited — remove it from MISSING_EVIDENCE`); }
+}
+
+console.log(`\nchecked ${links} links · ${paths} script paths · ${npms} npm refs · ${shots} evidence shots across docs/`);
+if (MISSING_EVIDENCE.size) {
+  console.log(`⚠️  ${MISSING_EVIDENCE.size} historical screenshot(s) cited but never committed — listed in MISSING_EVIDENCE, and that list may only shrink.`);
+}
 if (bad) {
   console.log(`\n${bad} broken reference(s). Fix the doc, or say plainly that the thing is gone.\n`);
   process.exit(1);
