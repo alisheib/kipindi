@@ -29,7 +29,7 @@ for (const width of [375, 600]) {
   for (const [name, html] of Object.entries(samples)) {
     const p = await ctx.newPage();
     await p.setContent(html, { waitUntil: "networkidle" });
-    await p.screenshot({ path: `/tmp/email_${name}_${width}.png`, fullPage: true });
+    await p.screenshot({ path: `shots/emails/email_${name}_${width}.png`, fullPage: true });
     await p.close();
   }
   await ctx.close();

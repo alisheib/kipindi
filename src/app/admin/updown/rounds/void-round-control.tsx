@@ -133,7 +133,11 @@ export function VoidRoundControl({
             ref={textareaRef}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            rows={2}
+            // ⚠️ THREE ROWS, NOT TWO (E-88). At 375px the two-row box cut the placeholder
+            // mid-word — "…releasing the stak" — on the field that becomes the permanent
+            // compliance record for an irreversible refund. The example exists to show an
+            // operator what a usable reason looks like; half of one teaches the opposite.
+            rows={3}
             maxLength={500}
             placeholder="e.g. Price source unreadable at the boundary; releasing the stakes"
             className="w-full rounded-md border border-border bg-bg-inset px-3 py-2 text-[16px] text-text outline-none admin-focus"
