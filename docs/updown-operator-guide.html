@@ -644,7 +644,8 @@ produces none.</b></p>
     two cents, not “no band” · <b>PAID A WINNER · 7D</b> the share of the last week’s rounds that
     actually paid someone, with <b>—</b> for no rounds yet. A round that decided but had money on
     only one side is <b>not</b> counted here — it refunded everyone and earned nothing — and is
-    listed underneath as <i>unmatched</i>.
+    listed underneath as <i>unmatched</i>; a round nobody bet on at all is listed as
+    <i>no bets</i>, which is a quiet hour rather than a problem.
   </figcaption>
 </figure>
 
@@ -1067,12 +1068,14 @@ the asset, and it is what decides which round lengths it will offer you later.</
       caused by unreadable prices is a technical problem; a low figure caused by the price not
       moving means the band is too wide.</td></tr>
   <tr><td><b>The breakdown</b> beside it</td>
-      <td>The reasons are listed separately — <i>unmatched</i>, <i>no-move</i>,
-      <i>source-failed</i>, <i>operator</i> — precisely so you can tell a quiet chain from a wide
-      band from a broken feed from your own team's actions. One blended percentage would hide all
-      four. <b>unmatched</b> is 5.1's second cause: the round decided perfectly well and paid
-      nobody because only one side had money in it. It is the number that tells you to consolidate
-      players onto fewer chains, and it is <i>not</i> counted as having paid a winner.</td></tr>
+      <td>The reasons are listed separately — <i>unmatched</i>, <i>no bets</i>, <i>no-move</i>,
+      <i>source-failed</i>, <i>operator</i> — precisely so you can tell a thin chain from an empty
+      one from a wide band from a broken feed from your own team's actions. One blended percentage
+      would hide all five. <b>unmatched</b> is 5.1's second cause: the round decided perfectly well
+      and paid nobody because only one side had money in it — that is the number that tells you to
+      consolidate players onto fewer chains. <b>no bets</b> is different and must not be confused
+      with it: nobody staked anything at all, so nothing was paid <i>and</i> nothing was refunded.
+      Neither counts as having paid a winner.</td></tr>
   <tr><td><b>Wallet vs the card</b></td>
       <td>Money is the only claim that cannot be argued with. Check it to the shilling.</td></tr>
   <tr><td><b>The player's own language</b></td>

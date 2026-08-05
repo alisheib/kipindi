@@ -187,6 +187,45 @@ try {
       !!row && /±0\.02/.test(row) && /min move/i.test(row), row ?? "");
   }
 
+  // ── §14.2 · the operator's OWN lever for a no-move refund ────────────────────
+  //
+  // ⛔ THROUGH THE CONSOLE, NEVER THE DATABASE. The guide tells the operator to widen the band
+  // from the chain row's Edit panel and to put it back afterwards; driving it any other way
+  // tests something the operator cannot do.
+  // ⚠️ A ROUND FREEZES ITS BAND AT OPEN, so this lands on the NEXT round. Reading the running
+  // one and finding ±0.02 is what "the control did nothing" looks like when it worked.
+  if (CMD === "band") {
+    const want = process.argv[3];                       // "0.50" | "" (inherit) | "0.02"
+    if (want === undefined) throw new Error('usage: band <"0.50"|"0.02"|""> — the value the Select carries');
+    const row = page.locator('tbody tr:has-text("BTC 5m")').first();
+    await row.getByRole("button", { name: /^edit$/i }).click();
+    await page.waitForSelector('form:has-text("Edit BTC 5m")', { timeout: 15_000 });
+    const trigger = page.locator('form:has-text("Edit BTC 5m") button[role="combobox"]').first();
+    await trigger.click();
+    await page.waitForSelector('[role="option"]', { timeout: 10_000 });
+    const opts = await page.evaluate(() => [...document.querySelectorAll('[role="option"]')].map((o) => {
+      const spans = [...o.querySelectorAll("span")];
+      return { label: (spans[1]?.innerText ?? o.innerText).replace(/\s+/g, " ").trim() };
+    }));
+    rec.note(`band options: ${opts.map((o) => o.label).join(" | ")}`);
+    const wanted = want === "" ? /^inherit/i : want === "0.50" ? /very wide/i : /smallest possible/i;
+    const i = opts.findIndex((o) => wanted.test(o.label));
+    if (i < 0) throw new Error(`no band option matching ${wanted} — had: ${opts.map((o) => o.label).join(" | ")}`);
+    await page.locator('[role="option"]').nth(i).click();
+    const shown = await trigger.innerText();
+    rec.note(`band trigger now: ${shown.replace(/\s+/g, " ").trim()}`);
+    await page.locator('form:has-text("Edit BTC 5m") button[type="submit"]').click();
+    await page.waitForTimeout(4000);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForSelector("table", { timeout: 30_000 });
+    const after = (await page.locator('tbody tr:has-text("BTC 5m")').first().innerText()).replace(/\s+/g, " ").trim();
+    rec.note(`row after: ${after}`);
+    // ⛔ Assert the OUTCOME — the MARGIN cell the operator reads — not that a form submitted.
+    const expect = want === "0.50" ? /0\.50%/ : /±0\.02/;
+    rec.check(`5.1 the chain row shows the band that was just chosen (${want || "inherit"})`,
+      expect.test(after), after);
+  }
+
   if (CMD === "start" || CMD === "generate") {
     const rowSel = 'tbody tr:has-text("BTC 5m")';
     const row = page.locator(rowSel).first();

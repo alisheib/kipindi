@@ -112,13 +112,10 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
           .catch(() => new Map<string, { yesPool: number; noPool: number }>());
         const withPools = rounds.map((r) => {
           const p = pools.get(r.marketId);
-          return {
-            outcome: r.outcome,
-            voidReason: r.voidReason,
-            // ⛔ A MISSING MARKET IS NOT AN EMPTY POOL. Absent → treated as matched, so a
-            // read failure understates the problem rather than inventing one.
-            unmatched: p ? p.yesPool === 0 || p.noPool === 0 : false,
-          };
+          // ⛔ A MISSING MARKET IS NOT AN EMPTY POOL. Absent → counted as two sides, so a
+          // read failure understates the problem rather than inventing one.
+          const sides = !p ? 2 : ((p.yesPool > 0 ? 1 : 0) + (p.noPool > 0 ? 1 : 0)) as 0 | 1 | 2;
+          return { outcome: r.outcome, voidReason: r.voidReason, sides };
         });
         // ONE reducer, in a tested module — not a second copy of the rule living in JSX.
         return [c.id, { ...summariseRounds(withPools), truncated: rounds.length >= STATS_CAP }] as const;
@@ -523,6 +520,10 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
                               // nor a pricing choice: the round worked and nobody took the other
                               // side. It is the measurement the house-float decision needs.
                               s.unmatched > 0 ? `${s.unmatched} unmatched` : null,
+                              // ⛔ AND SEPARATE FROM IT (E-92). A round nobody bet on refunded
+                              // nothing and paid nothing; filing it under "unmatched" tells the
+                              // operator a stake came back when none was ever placed.
+                              s.noBets > 0 ? `${s.noBets} no bets` : null,
                               s.noMove > 0 ? `${s.noMove} no-move` : null,
                               s.sourceFailed > 0 ? `${s.sourceFailed} source-failed` : null,
                               s.sourceMismatch > 0 ? `${s.sourceMismatch} source-mismatch` : null,

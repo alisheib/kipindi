@@ -33,12 +33,21 @@ export type StatRound = {
   outcome: "UP" | "DOWN" | "VOID" | null;
   voidReason: string | null;
   /**
-   * ⭐ E-90 · The round DECIDED and still paid nobody, because one side held no money.
-   * `refundReasonFor` calls this `unmatched` and the player's card already says so in three
-   * languages; the operator's headline did not know it existed. Supplied by the caller from
-   * the round's pools (`yesPool === 0 || noPool === 0`), because a round row cannot tell.
+   * ⭐ E-90 / E-92 · How many sides of this round actually held money.
+   *
+   *   2 · both sides — a decided round PAID a winner
+   *   1 · one side — a decided round REFUNDED it for want of a counterparty (`unmatched`,
+   *       the word the player's own card uses: *"Nobody backed the other side…"*)
+   *   0 · neither — nobody bet at all. Nothing was paid AND nothing was refunded.
+   *
+   * ⛔ THREE CASES, NOT TWO. E-90's first fix had a boolean, so a round nobody bet on was
+   * reported as `unmatched` — and on production a quiet stretch made the console say
+   * `5 unmatched` when exactly ONE round had a refunded stake in it. That sends an operator
+   * hunting for liquidity on four rounds whose honest answer is "nobody was here".
+   *
+   * Supplied by the caller from the round's pools, because a round row cannot tell.
    */
-  unmatched: boolean;
+  sides: 0 | 1 | 2;
 };
 
 export type ChainStats = {
@@ -59,6 +68,12 @@ export type ChainStats = {
   paid: number;
   /** Decided, but one-sided — refunded in full, no winner, no fee. A LIQUIDITY fact. */
   unmatched: number;
+  /**
+   * Decided with NO bets at all. ⛔ Kept apart from `unmatched` (E-92): nothing was paid and
+   * nothing was refunded, so calling it unmatched states something untrue about a player's
+   * money and points the operator at the wrong problem — "no audience" is not "thin side".
+   */
+  noBets: number;
   noMove: number;
   sourceFailed: number;
   sourceMismatch: number;
@@ -76,8 +91,9 @@ export type ChainStats = {
 };
 
 export const EMPTY_CHAIN_STATS: ChainStats = {
-  resolved: 0, decisive: 0, paid: 0, unmatched: 0, noMove: 0, sourceFailed: 0, sourceMismatch: 0,
-  operator: 0, unknownVoid: 0, decisiveRate: null, paidRate: null, feedFailRate: null,
+  resolved: 0, decisive: 0, paid: 0, unmatched: 0, noBets: 0, noMove: 0, sourceFailed: 0,
+  sourceMismatch: 0, operator: 0, unknownVoid: 0,
+  decisiveRate: null, paidRate: null, feedFailRate: null,
 };
 
 /**
@@ -93,13 +109,17 @@ export function summariseRounds(rounds: readonly StatRound[]): ChainStats {
   const resolved = resolvedRounds.length;
   if (resolved === 0) return { ...EMPTY_CHAIN_STATS };
 
-  let decisive = 0, paid = 0, unmatched = 0, noMove = 0, sourceFailed = 0, sourceMismatch = 0, operator = 0, unknownVoid = 0;
+  let decisive = 0, paid = 0, unmatched = 0, noBets = 0;
+  let noMove = 0, sourceFailed = 0, sourceMismatch = 0, operator = 0, unknownVoid = 0;
   for (const r of resolvedRounds) {
-    // ⛔ TWO COUNTERS, NOT ONE. A decided round either found a counterparty and paid a
-    // winner, or it did not and refunded everybody. Both DECIDED; only one PAID.
+    // ⛔ THREE COUNTERS, NOT ONE AND NOT TWO. A decided round paid a winner (both sides held
+    // money), refunded one side for want of a counterparty, or had nobody in it at all. All
+    // three DECIDED; only the first PAID; and only the second put a stake back in a wallet.
     if (r.outcome === "UP" || r.outcome === "DOWN") {
       decisive++;
-      if (r.unmatched) unmatched++; else paid++;
+      if (r.sides === 2) paid++;
+      else if (r.sides === 1) unmatched++;
+      else noBets++;
       continue;
     }
     switch (r.voidReason) {
@@ -112,7 +132,7 @@ export function summariseRounds(rounds: readonly StatRound[]): ChainStats {
   }
 
   return {
-    resolved, decisive, paid, unmatched, noMove, sourceFailed, sourceMismatch, operator, unknownVoid,
+    resolved, decisive, paid, unmatched, noBets, noMove, sourceFailed, sourceMismatch, operator, unknownVoid,
     decisiveRate: decisive / resolved,
     paidRate: paid / resolved,
     feedFailRate: (sourceFailed + sourceMismatch) / resolved,

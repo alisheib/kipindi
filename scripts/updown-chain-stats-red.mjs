@@ -38,8 +38,23 @@ const MUTATIONS = [
     // showed `100% 2/2 paid` in the column the operator guide tells an operator to steer by.
     name: "decided-counted-as-paid — a one-sided round reads as having paid a winner (E-90)",
     file: STATS,
-    from: `      if (r.unmatched) unmatched++; else paid++;`,
+    from: `      if (r.sides === 2) paid++;
+      else if (r.sides === 1) unmatched++;
+      else noBets++;`,
     to: `      paid++;`,
+  },
+  {
+    // 🔴 E-92, restored: the three cases collapsed back into two, so a round NOBODY bet on is
+    // reported as "unmatched". Caught by driving E-90s own fix on production ten minutes after
+    // shipping it — a quiet stretch made the cell read `5 unmatched` when exactly ONE round had
+    // a refunded stake in it.
+    name: "no-bets-folded-into-unmatched — an empty round claims a stake came back (E-92)",
+    file: STATS,
+    from: `      if (r.sides === 2) paid++;
+      else if (r.sides === 1) unmatched++;
+      else noBets++;`,
+    to: `      if (r.sides === 2) paid++;
+      else unmatched++;`,
   },
   {
     // The same defect one layer up: the module counts correctly and the CELL shows the

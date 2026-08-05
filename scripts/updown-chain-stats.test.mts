@@ -25,8 +25,10 @@ let pass = 0; const fails: string[] = [];
 const ok = (n: string, c: boolean, d = "") => { if (c) pass++; else fails.push(`${n}${d ? ` — ${d}` : ""}`); };
 const read = (p: string) => readFileSync(new URL(p, import.meta.url), "utf8");
 
-const r = (outcome: StatRound["outcome"], voidReason: string | null = null, unmatched = false): StatRound =>
-  ({ outcome, voidReason, unmatched });
+/** `sides` = how many sides of the round held money: 2 paid a winner, 1 refunded one side,
+ *  0 had no players at all. Defaults to 2 so the void-reason checks below read unchanged. */
+const r = (outcome: StatRound["outcome"], voidReason: string | null = null, sides: 0 | 1 | 2 = 2): StatRound =>
+  ({ outcome, voidReason, sides });
 
 // ── §1 · every reason is counted SEPARATELY ────────────────────────────────
 // The production shape: a chain whose voids are a mix. If any two reasons share a bucket
@@ -129,7 +131,7 @@ ok("§4 the reason breakdown reaches the operator's screen",
 // the one the platform is deciding whether to seed a house float against. A metric that
 // hides the problem it exists to expose is worse than none.
 const oneSided = summariseRounds([
-  r("DOWN", null, true),   // decided, nobody on the other side → refunded, nobody paid
+  r("DOWN", null, 1),      // decided, nobody on the other side → refunded, nobody paid
   r("DOWN"),               // decided, both sides held → a winner was paid
 ]);
 ok("§6 ⭐ a decided round that paid NOBODY is counted as unmatched", oneSided.unmatched === 1,
@@ -149,9 +151,36 @@ ok("§6 ⛔ an unmatched round is NOT a feed failure", oneSided.feedFailRate ===
 ok("§6 ⛔ an unmatched round is NOT a no-move", oneSided.noMove === 0, `got ${oneSided.noMove}`);
 // A chain whose rounds all decide but never find a counterparty is NOT healthy — it earns
 // nothing, and before this it read "ok" at 100%.
-const allThin = summariseRounds(Array.from({ length: 10 }, () => r("UP", null, true)));
+const allThin = summariseRounds(Array.from({ length: 10 }, () => r("UP", null, 1)));
 ok("§6 ⭐ a chain that decides every round but pays nobody is NOT 'ok'",
   chainHealth(allThin) === "low-payout", `got ${chainHealth(allThin)}`);
+
+// ── §6c · 🔴 E-92 · A ROUND NOBODY BET ON IS NOT A ONE-SIDED ROUND ─────────
+//
+// Caught by driving E-90's own fix on production ten minutes after shipping it. The chain
+// ran through a quiet stretch: rounds #3–#6 took NO bets at all, and the cell reported
+// `17% 1/6 paid · 5 unmatched`. But `unmatched` is a word with a meaning — the player's own
+// card says *"Nobody backed the other side, so there was nothing to win and nothing to
+// lose"* — and it is FALSE about a round with no players. Only ONE of those five had a
+// refunded stake in it. An operator reading "5 unmatched" would go looking for liquidity on
+// four rounds where the honest answer is "nobody was here".
+//
+// ⛔ THE THREE CASES ARE THREE CASES: money on both sides, money on one, money on neither.
+const quiet = summariseRounds([
+  r("DOWN"),            // both sides → paid a winner
+  r("DOWN", null, 1),   // one side → someone was refunded
+  r("UP", null, 0),     // nobody bet at all
+  r("UP", null, 0),
+]);
+ok("§6c ⭐ a round with no players is NOT counted as unmatched", quiet.unmatched === 1,
+  `got ${quiet.unmatched} — "unmatched" claims a stake came back for want of a counterparty`);
+ok("§6c ⭐ it has its own bucket, so the operator can tell 'no audience' from 'thin side'",
+  quiet.noBets === 2, `got ${quiet.noBets}`);
+ok("§6c a round nobody bet on did not pay a winner either", quiet.paid === 1, `got ${quiet.paid}`);
+ok("§6c the three buckets still account for every DECIDED round",
+  quiet.paid + quiet.unmatched + quiet.noBets === quiet.decisive);
+ok("§6c ⛔ and `no bets` reaches the operator's screen, in those words",
+  /no bets/.test(page), "an operator told '5 unmatched' about 4 empty rounds goes hunting for a problem that is not there");
 
 // §6b · THE CALL SITE — the page must render the paid figure and surface the bucket.
 ok("§6b the console renders the PAID count, not the decisive one",
