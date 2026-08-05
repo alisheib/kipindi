@@ -3667,6 +3667,79 @@ workstation shows an SLA countdown, but nothing escalates when it runs out. Ali'
   platform zone (+3) keeps it on the right day, and the E-2 fix is safe. The earlier note was
   the `pg` −3h trap (§3) reading back through an un-cast client.
 
+## 6au. ⭐ THE FIRST REAL POOL THIS CAMPAIGN HAS EVER SETTLED — 12 players, both sides, both fee branches (2026-08-05, session 28)
+
+Ali named session 27's biggest miss: *the whole thing was driven on two players.* A QA fleet of
+**20** was minted (`ops-qa-fleet.mts`, ledger-safe — balanced double entry through
+`SYSTEM:ADJUSTMENT`, so the trial balance stays true and GGR is not inflated), funded, and put on
+**both sides of the same round**, repeatedly, at **different stake sizes**, **in parallel**.
+
+### Round #18 — the 13% branch, and the SMALLER side won
+
+`udr_6d6fcf9e173da9c04740` · BTC 5m · margin 0 (tick floor) · open **$64,545.73** → close
+**$64,588.93** → **UP**. **12 positions: UP 12,500 across 5 players · DOWN 14,500 across 7.**
+
+| | |
+|---|---|
+| Fee | `min(13%·27,000 = 3,510, ⅓·12,500 = 4,166)` = **3,510** — the **13% binds** |
+| Distributable | losing pool 14,500 − 3,510 = **10,990** |
+| Payouts | `.40→9,396` · `.24→5,638` · `.16→3,758` · `.12→2,819` · `.08→1,879` |
+| Total | **23,490 = 12,500 + 10,990**, exact |
+| Levies | `HOUSE:COMMISSION 2,985 + TRA 350 + GBT 175 = 3,510`, exact |
+| Ledger | 17 groups, **every one sums to zero** |
+
+⭐ **The smaller side won, which is the case the winner floor exists for** — and every winner was
+paid **above** stake. The four rounded fractions (.6/.4/.8/.2) cancel, so this pool closed at
+**exactly zero**: nothing created, nothing stranded.
+
+### Round #19 — the ⅓ CEILING, driven for the first time on production
+
+`udr_126b9ebedd663fb1d4a9` · open **$64,588.93** → close **$64,574.58** → **DOWN**.
+⚠️ **The pool was not the one that was planned**, and that is worth recording: the other operator
+staked **10,000 UP** on it mid-round and a second ADMIN account (`usr_0f49350d77107488ddd205dc`,
+`+255772619619`, **no display name**) placed **20 positions of 500** on DOWN. Final shape **UP
+11,000 · DOWN 36,000 · 29 positions**, and the ceiling bound anyway:
+`min(13%·47,000 = 6,110, ⅓·11,000 = 3,666.67)` → **the ⅓ CEILING BINDS**. ⭐ **That branch — the
+one that stops a thin side being taxed out of existence — had never been exercised with real money.**
+
+### 📊 …and the pool closed at **−1**, which is NOT a defect, and proving that mattered more than filing it
+
+Payouts **43,333** + house **3,668** = **47,001** against a pool of **47,000**. The instinct is
+"money was created". ⛔ **It is documented, bounded and already guarded, and filing it would have
+been a phantom finding.** `ledger.ts:305-313` states it in as many words — *"the POOL account can
+therefore end a settlement a shilling or two off zero… the wallet credit and the ledger's player
+line are the SAME `payout` value, so a player is never paid a different amount than the books
+say"* — and `scripts/money-invariants.test.mts` asserts **NO-MINT** (`payouts ≤ pool`, which
+holds: 43,333 ≤ 47,000), `payouts ≈ netPool` within per-winner dust, and **GLOBAL conservation**
+within `winnerCount + scenarios + 2`.
+
+⭐ **What was genuinely missing is that the bound had only ever been asserted on SYNTHETIC
+scenarios. Nothing had ever measured it on production.** `scripts/pool-drain.cjs` now does, and
+this is its first reading:
+
+| Positions in the market | Settled markets whose POOL does not close at 0 |
+|---|---|
+| **≤ 6** | **0 of 26** |
+| **7** | **2 of 3** |
+| 8 · 11 · 12 | 0 of 1 each |
+| **29** | **1 of 1** |
+
+**3 of 33 settled markets**, total **3 TZS created · 1 TZS stranded**, well inside the documented
+bound — and **two of the three are long-form polls from JULY** (`MARKET`, 25th and 28th), so this
+is platform-wide arithmetic, not an Up & Down one. ⭐ **The signature is unmistakable: every pool
+with six or fewer positions drains exactly, and the failures start at seven** — which is precisely
+why **two players could never have surfaced it**, and why the measurement needed a fleet.
+
+📌 **The mechanism, named precisely:** each winner's fee share is `Math.round(share × fee)`.
+`Math.round` is unbiased across arbitrary shares, but **twenty EQUAL stakes round the same way** —
+here `500/36,000 × 3,666.67 = 50.93 → 51`, twenty times, over-collecting **1.4**. So the dust
+direction is not random when a pool has many identical stakes. ⛔ **Left unchanged deliberately.**
+The winner floor holds by a wide margin, no player is paid a shilling other than what the books
+say, and re-shaping pari-mutuel rounding (largest-remainder allocation would make it exact) is a
+**money-model decision for Ali**, not a QA fix — the same reasoning that keeps §6b ⑥(a) open.
+⚠️ It is worth his ruling because the ⅓ is a **printed promise** (*"we never take more than a
+third of what you win"*) and 3,668 > 3,666.67 technically breaches it, by 0.012%.
+
 ## 6at. ⭐ THE GATE LEARNED THE ASSET, WATCHED FROM ZERO — and a second operator arrived mid-session (2026-08-05, session 27)
 
 ### §14.6, observed end to end rather than asserted
