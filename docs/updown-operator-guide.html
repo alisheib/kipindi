@@ -590,7 +590,10 @@ undo. These are all the reasons, in the order you will meet them.</p>
   <img src="guide-img/form-add-chain.png" alt="Add chain form">
   <figcaption><b>①</b> beside an option means ready; <b>②</b> usable with a caution; <b>③</b>
   unusable — greyed out <i>with the reason shown</i> rather than hidden, so it is always clear why,
-  for example, gold offers no 5-minute option.</figcaption>
+  for example, gold offers no 5-minute option. <b>From August 2026 these marks are also derived
+  from what the asset has actually done on this platform</b>, not only from what we know about the
+  instrument — see <b>8.5</b>. A ③ is refused by the server as well as greyed in the list, so a
+  pairing you cannot choose here is one that cannot be created by any other route either.</figcaption>
 </figure>
 
 <table>
@@ -724,6 +727,43 @@ produces none.</b></p>
       approved under <i>Sources &amp; categories</i>. The path is not significant; the reader supplies
       its own.</td></tr>
 </table>
+
+<h3 class="pb">8.5 · The Feed record column — what the round-length gate is reasoning from</h3>
+
+<p>Every asset row on <b>Up &amp; Down</b> carries a <b>Feed record</b>: what that asset has
+actually done here, measured from every price reading the platform has ever taken. It is what
+greys the round lengths in <i>Add chain</i>, so it is shown to you rather than hidden behind the
+decision.</p>
+
+<table>
+  <tr><th style="width:26%">You see</th><th>What it means</th></tr>
+  <tr><td><code>204 reads · 97% ok</code></td>
+      <td>How many readings this asset has here, and how often one produced a usable price. Below
+      98% you will see a caution; below 90% the asset is not offered at all, because rounds that
+      refund earn nothing.</td></tr>
+  <tr><td><code>+132s typical</code></td>
+      <td>How long after a boundary a price typically <i>becomes usable</i>. This is not the
+      provider being slow — a one-minute bar has to close and publish before it can be read.
+      <b>A chain does not open a round before its price is known</b>, so this time comes out of
+      the betting window: on a 3-minute round a 132-second wait leaves players about 48 seconds
+      to bet.</td></tr>
+  <tr><td><code>5m+ advised</code></td>
+      <td>The shortest round length this asset's own record supports while keeping most of its
+      betting time. Shorter lengths still work and stay selectable; they simply say what they
+      cost.</td></tr>
+  <tr><td><code>not measured yet</code></td>
+      <td><b>Fewer than 20 readings.</b> No average is shown, on purpose: a figure from three
+      readings looks exactly like one from three thousand, and acting on it is worse than having
+      none. Start such an asset on a longer round and watch it pay a winner before shortening it.</td></tr>
+  <tr><td><code>no readings yet</code></td>
+      <td>The platform has never read this asset. Nothing is known about it here.</td></tr>
+</table>
+
+<p class="note"><b>The record can only add caution, never remove it.</b> Gold's 15-minute minimum
+and Solana's short-round caution come from the size of a price step against the price itself, and
+from how far the feed disagrees with itself across a bar seam. The Feed record measures neither —
+it measures <i>when a reading arrived</i>, not <i>how far the market moved while it did</i>. So a
+perfect record will never unlock gold at 5 minutes.</p>
 
 <h2>9 · Your first live round</h2>
 

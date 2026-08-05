@@ -3657,6 +3657,56 @@ workstation shows an SLA countdown, but nothing escalates when it runs out. Ali'
   platform zone (+3) keeps it on the right day, and the E-2 fix is safe. The earlier note was
   the `pg` −3h trap (§3) reading back through an un-cast client.
 
+## 6as. ⭐ THE BOARD, CLEANED — and the hour soak that closed E-86 (2026-08-05, session 26)
+
+### The soak, run to its full hour on the fixed build
+
+| | |
+|---|---|
+| Window | **09:45 → 10:41 UTC**, one RUNNING BTC 3m chain |
+| Rounds | **15** |
+| Settled UP/DOWN | **10** |
+| 🔴 `source-failed` | **0** — the thing the soak existed to prove |
+| `no-move` | 4 — *deliberate*, the wide-band drive in §6ar |
+| `operator` | 1 — *deliberate*, the void drive in §6ar |
+| Unresolved | **0** |
+
+⭐ **E-86's live verification is closed.** Provider credit usage across a boundary stayed at the
+**1–10/min baseline** for the whole hour (and that baseline is the measuring poller itself), where
+before the fix a single boundary reached **345 of 377**.
+
+📌 A round left open on a STOPPED chain was closed by `healStuckRounds` at its deadline while the
+board was being drained — E-24's guarantee, observed rather than asserted.
+
+### Ali's cleanup: *"clean up anything old that looks bad — start freshly or keep what works"*
+
+**The games are cleared** (`ops-updown-reset-games.mts`, dry run first, then `--apply`), with its
+own money interlock satisfied: **0 unresolved, 0 OPEN positions** before anything was deleted.
+**3 chains · 212 rounds · 212 markets · 230 observations** removed, `updown.games.reset` on the
+audit record. ⛔ **`AuditLog` is untouched** — the compliance trail for every round this campaign
+drove, including today's three unhappy paths, survives the wipe.
+
+⚠️ **The observations went too, and that was the deliberate call.** They are what the new measured
+gate reasons from, so clearing them puts every asset back to **`no readings yet`**. That is the
+more honest state: the 230 readings were taken while the platform was re-reading the provider six
+times a second (E-86), so their success rate describes a defect that no longer exists. The gate is
+built to say *"not measured yet"* safely, and it re-measures within ~20 readings.
+
+**Three asset rows retired** — `ops-updown-retire-asset.mts`, new, dry-run by default, with an
+interlock that refuses anything still enabled or still referenced by a chain or an observation,
+and a `updown.asset.retired` compliance row per removal. There is deliberately **no `--force`**.
+
+| Retired | Why |
+|---|---|
+| **GOLD** | A **duplicate of XAU** — the same `XAU/USD` symbol, so the console listed **two rows both named Gold** and nothing said which one a chain would follow. |
+| **SNP500** | Symbol `S&P500`, which the provider does not quote at all (the catalogue's `SPX` is unsupported on this plan), pointing at **kitco.com** rather than the price feed. |
+| **BNB** | 🔴 **E-46 residue, still on production**: stored as category `macro`, so enabling it would have applied the **FX/metals weekend closure to a 24/7 coin**. The console cannot edit an asset's category, so the fix is to re-add it from the Add-asset catalogue — which locks category to the symbol and cannot repeat the mistake. |
+
+**The board now reads: `BTC · ETH · SOL · XAU`, all on `api.twelvedata.com`, one Gold, no chains,
+no rounds.** ⛔ Chains were deliberately **not** re-created: the guide's §9 walkthrough is *"Add
+chain → BTC → 5 min"*, and building them here would delete the exercise Ali asked the operators to
+learn from. Say the word and it is one console form.
+
 ## 6ar. ⭐ THE UNHAPPY PATHS, DRIVEN ON PRODUCTION WITH REAL MONEY, IN EN / SW / ZH (2026-08-05, session 26)
 
 Ali: *"no gaps"*. Every refund path a player can actually reach was driven live, end to end,
