@@ -22,6 +22,16 @@ const BOARD = new URL("../src/lib/server/updown-board.ts", import.meta.url);
 
 const MUTATIONS = [
   {
+    // ⛔ E-87, REVERTED. This is the code that ran on production this morning: a round that
+    // resolved UP, with the player on UP, labelled "Void · refunded" one card from a proof
+    // reading "OUTCOME ▲ Up".
+    name: "decided-round-labelled-void — the chip falls through to the round's void label again",
+    file: new URL("../src/app/updown/[roundId]/page.tsx", import.meta.url),
+    from: `    : refundReason === "unmatched" ? t.market.udRefundTitle`,
+    to: `    : result === null && false ? t.market.udRefundTitle`,
+  },
+
+  {
     // E-65 ITSELF: the ordering that made the one-sided case unreachable.
     name: "unmatched-checked-after-the-void-return — E-65 restored, a decided round prints a void's copy",
     file: RULE,

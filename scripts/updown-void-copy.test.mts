@@ -172,5 +172,54 @@ const ALL: RefundReason[] = ["no-move", "source-failed", "source-mismatch", "ope
      /myRefundedStake: mine\?\.refunded/.test(board));
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// E-87 · A ROUND THAT DECIDED IS NEVER LABELLED A VOID — the CHIP, not the sentence
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// 🔴 DRIVEN ON PRODUCTION 2026-08-05, round `udr_eb0dc4fad03e9dd7e6a2`. The round RESOLVED
+// **UP**, the player had backed **UP**, and the result chip read **"Void · refunded"** — one
+// card away from a settlement proof reading **"OUTCOME ▲ Up"**. The paragraph underneath was
+// already correct (*"Nobody backed the other side…"*), so the panel argued with itself: the
+// chip said the round was void, the proof said it decided, the sentence said neither.
+//
+// ⛔ IT IS E-65'S OWN DEFECT, ONE LINE FURTHER ON. `WIN : LOSS : else-void` is two branches for
+// four situations, so "refunded on a round that decided" fell into the bucket labelled "the
+// round voided" — exactly how a one-sided refund used to inherit "the price did not move
+// enough". §1 already pins that the SENTENCE is chosen by `refundReasonFor`; nothing pinned
+// that the LABEL above it agrees.
+//
+// ⚠️ THE PROPERTY, NOT THE WORDING: a viewer whose stake came back on a round that reached a
+// verdict must not be shown the round's own void label. Guarding the string "Void · refunded"
+// would break the next time the copy is edited and would still allow the same contradiction.
+{
+  const page = code("src/app/updown/[roundId]/page.tsx");
+
+  ok("E87.1 · ⭐ the result chip consults the refund REASON, not what is left over after WIN/LOSS",
+     /refundReason === "unmatched" \? t\.market\.udRefundTitle/.test(page),
+     "the chip still falls through to the round's void label");
+  ok("E87.2 · …and it is the same `refundReason` the sentence below it uses — one rule, one panel",
+     /const refundReason = refundReasonFor\(/.test(page) &&
+     page.indexOf("const refundReason = refundReasonFor(") < page.indexOf("const resultLabel ="),
+     "the chip must read the rule that is already computed above it");
+
+  // ⛔ THE CONTRADICTION ITSELF, stated as data rather than as source text: for every reason a
+  // stake can come back, is the round's own verdict a VOID? Only then may the void label show.
+  const decidedButRefunded: RefundReason[] = ["unmatched"];
+  const roundReallyVoided: RefundReason[] = ["no-move", "source-failed", "source-mismatch", "operator", "unexplained"];
+  ok("E87.3 · ⭐ `unmatched` is the ONLY refund reason that happens on a round that decided",
+     decidedButRefunded.every((r) => refundReasonFor({ outcome: "UP", voidReason: null, refundedStake: 500 }) === r),
+     "if this changes, the chip rule above must change with it");
+  ok("E87.4 · …and every other reason really does come from a VOID round",
+     roundReallyVoided.every((r) => ALL.includes(r)));
+
+  // The three languages must each have a label that does not claim a void.
+  for (const loc of ["en", "sw", "zh"] as const) {
+    const m = dict[loc].market as Record<string, string>;
+    ok(`E87.5.${loc} · a "stake returned" label exists and is distinct from the void label`,
+       !!m.udRefundTitle && !!m.udVoided && m.udRefundTitle !== m.udVoided,
+       `${m.udRefundTitle} vs ${m.udVoided}`);
+  }
+}
+
 console.log(`\n${fail === 0 ? "✅" : "🔴"} updown-void-copy: ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

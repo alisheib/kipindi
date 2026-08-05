@@ -129,7 +129,32 @@ export default async function UpDownRoundPage({
   });
   const result = myPosition?.result ?? null;
   const resultChip = result === "WIN" ? "chip chip-resolved" : result === "LOSS" ? "chip chip-no" : "chip";
-  const resultLabel = result === "WIN" ? t.market.resolvedWin : result === "LOSS" ? t.market.resolvedLoss : t.market.udVoided;
+  /**
+   * ⭐ E-87 · THE CHIP HAD THREE STATES AND THE WORLD HAS FOUR — and this is E-65's own defect,
+   * one line further on.
+   *
+   * 🔴 Driven on production 2026-08-05, round `udr_eb0dc4fad03e9dd7e6a2`: the round RESOLVED
+   * **UP**, the player had backed **UP**, and this chip read **"Void · refunded"** — directly
+   * beside a settlement proof reading **"OUTCOME ▲ Up"**, one card away. The paragraph
+   * underneath was already correct (*"Nobody backed the other side…"*), so the panel argued with
+   * itself: the chip said the round was void, the proof said it decided, and the sentence
+   * between them said neither.
+   *
+   * ⛔ THE ROOT CAUSE IS THE SAME ONE `refundReasonFor` EXISTS TO FIX. `WIN : LOSS : else-void`
+   * is two branches for four situations, so *"refunded on a round that decided"* fell into the
+   * bucket labelled *"the round voided"* — exactly how a one-sided refund used to inherit
+   * *"the price did not move enough"*. The rule that already knows the difference is
+   * `refundReason`, so the chip reads it rather than guessing from what is left over.
+   *
+   * ⛔ `udVoided` NOW MEANS WHAT IT SAYS: the ROUND voided. A stake that came back for any other
+   * reason says so without claiming the round did not happen.
+   */
+  const resultLabel =
+    result === "WIN" ? t.market.resolvedWin
+    : result === "LOSS" ? t.market.resolvedLoss
+    // The round DECIDED and this player was refunded anyway — never call that a void.
+    : refundReason === "unmatched" ? t.market.udRefundTitle
+    : t.market.udVoided;
   const payoutInk = result === "WIN" ? "var(--gilt)" : "var(--text)";
 
   // Proof geometry.
