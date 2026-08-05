@@ -220,6 +220,41 @@ const RULES: Rule[] = [
     },
   },
   {
+    // 🔴 E-100 · AN IDENTIFIER THAT CANNOT BREAK. Found by Ali on a real phone, on `/wallet`:
+    // the TICKET box read `pos_e290a28e8e906b6255…` running straight out of its border, while
+    // TRANSACTION ID **in the same grid, two boxes up** wrapped perfectly — because those two
+    // carried `break-all` and the ticket did not. A ticket a player cannot read in full is a
+    // ticket they cannot quote to support, which is the only reason it is printed at all.
+    //
+    // These strings are `pos_…` / `txn_…` cuids: one unbroken 28-character token with no spaces
+    // and no hyphens, so normal wrapping CANNOT act on it. It needs `break-all` explicitly, and
+    // that is what makes this a rule rather than a preference.
+    //
+    // ⚠️ `whitespace-nowrap` and `truncate` are ACCEPTED, not flagged. In a scrolling admin
+    // table a nowrap id is correct (the table scrolls, the cell does not clip), and a truncated
+    // one with the full value reachable is the documented pattern in `admin-clip.test.mts` §1.3.
+    // Flagging those would condemn correct code, which teaches people to ignore the detector —
+    // the same damage as missing the defect (E-97's first version did exactly that).
+    id: "unwrappable-identifier",
+    severity: "warning",
+    desc: "a raw id (pos_/txn_ cuid) rendered in a mono element with no way to break — it will run out of its box on a narrow screen (E-100)",
+    scan: (b) => {
+      const out: Array<{ index: number; snippet: string }> = [];
+      // Opening tag → its closing tag, so the className and the content are judged together.
+      for (const m of b.matchAll(/<(p|span)\b([^>]*className=\{?["'`]([^"'`]*)["'`][^>]*)>([\s\S]{0,300}?)<\/\1>/g)) {
+        const cls = m[3] ?? "";
+        const inner = m[4] ?? "";
+        if (!/\bfont-mono\b/.test(cls)) continue;
+        // Does it render an identifier rather than a formatted value?
+        if (!/\{\s*[\w.?]*\b(positionId|providerRef|\w+Ref|tx\.id|txnId|referenceId)\s*\}/.test(inner)) continue;
+        if (/\b(break-all|break-words|whitespace-nowrap|truncate)\b/.test(cls)) continue;
+        if (/overflow-wrap/.test(cls)) continue;
+        out.push({ index: m.index ?? 0, snippet: m[0].replace(/\s+/g, " ").trim().slice(0, 110) });
+      }
+      return out;
+    },
+  },
+  {
     id: "btn-inline-height-override",
     severity: "warning",
     desc: "height override (h-N / min-h-[] ) on a .btn — size via --h-control-* tokens, not utilities",

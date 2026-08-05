@@ -74,8 +74,10 @@ export function PositionCard({ marketId, marketTitle, side, stake, current, payo
           {marketTitle}
         </p>
         <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5">
+          {/* E-100 · the same rule as the wallet's TICKET box: an identifier must be able to
+              break, or a narrow card clips the end off the one string support asks for. */}
           {positionId && (
-            <p className="font-mono text-[10px] tracking-[0.06em] text-text-muted tabular-nums">
+            <p className="min-w-0 font-mono text-[10px] tracking-[0.06em] text-text-muted break-all">
               <I.ticket s={10} className="inline -mt-px mr-0.5 opacity-60" />
               {positionId}
             </p>

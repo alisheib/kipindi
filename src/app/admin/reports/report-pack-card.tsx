@@ -102,8 +102,13 @@ export async function ReportPackCard() {
         </div>
       )}
 
+      {/* E-100 · `break-all`, and this is the instance that matters most. The regulator's own
+          acknowledgement reference is operator-supplied free text of unknown length, and it is
+          what an officer reads back to TRA/GBT. Clipping it at a card edge would make the one
+          string on a statutory surface that must be quotable, unquotable. Found by the rule,
+          not by the eye — the wallet's ticket box was the reported symptom, this was the class. */}
       {sealed && pack.acknowledgedRef && (
-        <p className="mt-2 font-mono text-[11px] text-text-tertiary">Regulator ref · {pack.acknowledgedRef}</p>
+        <p className="mt-2 font-mono text-[11px] text-text-tertiary break-all">Regulator ref · {pack.acknowledgedRef}</p>
       )}
 
       {/* Action for the current state (guarded server-side). */}

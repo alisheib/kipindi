@@ -330,7 +330,14 @@ function TxnRow({ tx }: { tx: Transaction }) {
               className="rounded-md border border-border/60 bg-bg-overlay/40 px-2.5 py-1.5 hover:border-brand-400 transition-colors block"
             >
               <p className="font-mono text-[9px] uppercase tracking-[0.10em] text-text-faint">{t.common.ticket}</p>
-              <p className="font-mono text-[11px] tracking-[0.04em] text-brand-300 tabular-nums underline-offset-2 hover:underline">{tx.positionId}</p>
+              {/* 🔴 E-100 · `break-all`, like the two reference boxes above it. Found by Ali on a
+                  real phone: `pos_e290a28e8e906b6255…` ran straight out of its box while
+                  TRANSACTION ID beside it wrapped correctly — the two sit in the SAME grid and
+                  only these ones lacked the rule. A ticket a player cannot read in full is a
+                  ticket they cannot quote to support, which is the whole reason it is printed.
+                  ⛔ `tabular-nums` is gone with it: this is an identifier with letters in it, not
+                  a number, so the fixed-width figures bought nothing and cost width. */}
+              <p className="font-mono text-[11px] tracking-[0.04em] text-brand-300 break-all underline-offset-2 hover:underline">{tx.positionId}</p>
             </Link>
           )}
         </div>

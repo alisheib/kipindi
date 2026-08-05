@@ -70,8 +70,10 @@ export function SellConfirmModal({ open, pending, stake, value, positionId, onCo
         </p>
       </div>
 
+      {/* E-100 · same rule again. This one sits inside a modal, which is the narrowest place
+          the ticket is ever shown, and it is on the screen where a player commits money. */}
       {positionId && (
-        <p className="mb-3 font-mono text-[10px] tracking-[0.06em] text-text-muted tabular-nums">
+        <p className="mb-3 font-mono text-[10px] tracking-[0.06em] text-text-muted break-all">
           <I.ticket s={10} className="inline -mt-px mr-1 opacity-60" />
           {positionId}
         </p>
