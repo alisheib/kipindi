@@ -249,7 +249,8 @@
     "test:updown-void-copy": "tsx scripts/updown-void-copy.test.mts",
     "red:updown-void-copy": "node scripts/updown-void-copy-red.mjs",
     "ops:updown-switch-reader": "tsx scripts/ops-updown-switch-reader.mts",
-    "ops:updown-set-asset-ticks": "tsx scripts/ops-updown-set-asset-ticks.mts"
+    "ops:updown-set-asset-ticks": "tsx scripts/ops-updown-set-asset-ticks.mts",
+    "test:updown-advice": "tsx scripts/updown-feed-advice.test.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",
