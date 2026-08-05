@@ -252,7 +252,9 @@
     "ops:updown-set-asset-ticks": "tsx scripts/ops-updown-set-asset-ticks.mts",
     "test:updown-advice": "tsx scripts/updown-feed-advice.test.mts",
     "red:updown-advice": "node scripts/updown-advice-red.mjs",
-    "red:updown-heal": "node scripts/updown-heal-red.mjs"
+    "red:updown-heal": "node scripts/updown-heal-red.mjs",
+    "test:updown-chart": "tsx scripts/updown-chart.test.mts",
+    "red:updown-chart": "node scripts/updown-chart-red.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

@@ -42,12 +42,24 @@ try {
   ).then(() => true).catch(() => false);
   log(`   card rendered: ${ready}`);
 
-  const before = await bodyText(page);
-  if (/bets closed|dau limefungwa/.test(before)) throw new Error("selections already closed");
-
+  // ⭐ WAIT FOR A ROUND THAT CAN ACTUALLY BE BET ON, rather than racing one that is closing.
+  // A 5-minute chain locks 5 minutes after it opens and the NEXT round does not appear until
+  // its reading confirms (~100s after the boundary), so there is a real gap in which the board
+  // is correct and has no stake controls at all. Treating that gap as a failure produced
+  // "no DOWN control on /updown" about a page that was working exactly as designed.
   // ⚠️ `^up\b` — the accessible name, scoped so "Up & Down" in the chrome cannot match.
-  const btn = page.getByRole("button", { name: SIDE === "UP" ? /^up\b/i : /^down\b/i }).first();
-  if (!(await btn.count())) throw new Error(`no ${SIDE} control on ${url}`);
+  const name = SIDE === "UP" ? /^up\b/i : /^down\b/i;
+  const deadline = Date.now() + 8 * 60_000;
+  let btn = page.getByRole("button", { name }).first();
+  while ((await btn.count()) === 0 && Date.now() < deadline) {
+    log("   no stake control yet — the live round is locked or the next has not opened; waiting 20s");
+    await page.waitForTimeout(20_000);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForFunction(() => /\$\s?\d[\d,]*\.\d\d/.test(document.body.innerText),
+      undefined, { timeout: 60_000 }).catch(() => {});
+    btn = page.getByRole("button", { name }).first();
+  }
+  if (!(await btn.count())) throw new Error(`no ${SIDE} control on ${url} after waiting 8 minutes`);
   await btn.scrollIntoViewIfNeeded().catch(() => {});
   await btn.click();
 

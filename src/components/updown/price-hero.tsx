@@ -14,6 +14,37 @@
  * Pure/presentational: geometry is computed here, the localized label strings arrive as
  * `copy` from the server page, and the live-point breath is the kit's CSS `ud-point`.
  */
+/**
+ * 🔴 E-93 · WHERE THE LIVE-PRICE TAG GOES SO IT DOES NOT LAND ON A TARGET LABEL.
+ *
+ * The tag and both target labels are all right-anchored against the same edge of the plot, so
+ * they share a column and only their BASELINES keep them apart. On production a no-move round
+ * closed at $64,188.01 against an UP target of $64,265.72 — near enough that the tag and the
+ * `UP $64,265.72` label printed on top of each other, on the SETTLEMENT PROOF — the one surface
+ * whose entire job is to be evidence a player can read and check. A fixed `isUp ? -12 : 18`
+ * cannot avoid that: it does not know the target lines exist.
+ *
+ * So: try the preferred side first, then the other, then further out, and take the first offset
+ * that clears every target baseline by `MIN_GAP`. If none does — the point is boxed in between
+ * two close lines — take the roomiest, which is still strictly better than a fixed guess.
+ *
+ * Pure and exported so the arithmetic can be tested without a browser; the component is the
+ * only caller.
+ */
+export function priceTagOffsetY(
+  lastY: number,
+  targetBaselines: ReadonlyArray<number | null>,
+  preferAbove: boolean,
+): number {
+  const MIN_GAP = 13;                    // viewBox units — one line of 8.5px type plus air
+  const targets = targetBaselines.filter((v): v is number => v != null && Number.isFinite(v));
+  const candidates = preferAbove ? [-12, 18, -28, 34] : [18, -12, 34, -28];
+  if (targets.length === 0) return candidates[0];
+  const clearance = (dy: number) => Math.min(...targets.map((t) => Math.abs(lastY + dy - t)));
+  return candidates.find((dy) => clearance(dy) >= MIN_GAP)
+    ?? candidates.reduce((best, dy) => (clearance(dy) > clearance(best) ? dy : best), candidates[0]);
+}
+
 export function PriceHero({
   openPrice,
   upTarget,
@@ -82,7 +113,12 @@ export function PriceHero({
   const lastX = xAt(prices.length - 1).toFixed(1);
   const lastY = yAt(prices[prices.length - 1] ?? anchor).toFixed(1);
   const tagX = (parseFloat(lastX) - 10).toFixed(1);
-  const tagY = (parseFloat(lastY) + (isUp ? -12 : 18)).toFixed(1);
+  const tagY = (parseFloat(lastY) + priceTagOffsetY(
+    parseFloat(lastY),
+    // The baselines the two target labels are drawn on, in the same units.
+    [upY != null ? parseFloat(upY) - 4 : null, downY != null ? parseFloat(downY) + 11 : null],
+    isUp,
+  )).toFixed(1);
 
   return (
     <section
