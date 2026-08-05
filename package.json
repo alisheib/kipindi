@@ -254,7 +254,16 @@
     "red:updown-advice": "node scripts/updown-advice-red.mjs",
     "red:updown-heal": "node scripts/updown-heal-red.mjs",
     "test:updown-chart": "tsx scripts/updown-chart.test.mts",
-    "red:updown-chart": "node scripts/updown-chart-red.mjs"
+    "red:updown-chart": "node scripts/updown-chart-red.mjs",
+    "qa:updown-board": "node scripts/live-s27-board.mjs",
+    "qa:updown-play": "node scripts/live-s27-play.mjs",
+    "qa:updown-controls": "node scripts/live-s27-controls.mjs",
+    "qa:updown-band": "node scripts/live-updown-band.mjs",
+    "qa:updown-chrome": "node scripts/live-updown-chrome.mjs",
+    "qa:updown-gate": "node scripts/live-updown-gate.mjs",
+    "qa:updown-soak": "node scripts/live-updown-soak.mjs",
+    "qa:updown-unhappy": "node scripts/live-updown-unhappy.mjs",
+    "ops:updown-retire-asset": "tsx scripts/ops-updown-retire-asset.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

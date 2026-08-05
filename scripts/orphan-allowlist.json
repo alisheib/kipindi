@@ -114,7 +114,6 @@
     "ops-remint-qa-passwords.mts",
     "ops-set-payment-provider.mjs",
     "ops-updown-probe-sol.mts",
-    "ops-updown-reset-games.mts",
     "ops-updown-seed-one.mts",
     "overlay-responsiveness-test.mjs",
     "payments-control-shots.mjs",

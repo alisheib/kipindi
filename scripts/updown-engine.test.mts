@@ -716,10 +716,38 @@ let round1Id = "";
 // CONSULTS it — the distinction that matters, and the one a pure unit test cannot make: a
 // perfect calendar nothing calls is worth nothing. That is E-23's lesson, and E-31's.
 //
-// Deterministic by construction: the boundary is pinned to a known Saturday, so this case
-// says the same thing whatever day the suite runs.
+// 🔴 E-95 · THE DATES ARE DERIVED, NOT TYPED — AND THIS SUITE ROTTED BECAUSE THEY WERE NOT.
+//
+// The comment here used to say "deterministic by construction: the boundary is pinned to a
+// known Saturday, so this case says the same thing whatever day the suite runs." Half of that
+// was true. The Saturday case creates no market, so a past date is harmless — but the WEEKDAY
+// CONTROL below opens one, and it was pinned to `2026-08-05T12:00Z`, which was in the future
+// when it was written and became the past at noon on 2026-08-05. `createMarket` refuses a
+// market whose resolution is already past, so the suite stopped at an uncaught throw.
+//
+// ⛔ THE COST IS NOT THE FAILURE, IT IS THE SIGNAL. This is the suite whose own exit message
+// reads *"If §9 failed, money is being created or destroyed — stop and fix before anything
+// else"*, and from that moment it said so every single run, about nothing. A gate that cries
+// wolf is worse than a missing gate, because the next person learns to scroll past it.
+//
+// So both boundaries are computed from `now`: the next Saturday and the next Wednesday that are
+// strictly in the FUTURE. The case is as deterministic as it ever was — a Saturday is shut and a
+// Wednesday is open in every week there will ever be — and it cannot expire.
 {
-  const SATURDAY = "2026-08-01T12:00:00.000Z";
+  /** The next UTC `weekday` (0=Sun) at 12:00Z strictly after now. */
+  const nextWeekdayNoonUtc = (weekday: number): string => {
+    const d = new Date();
+    d.setUTCHours(12, 0, 0, 0);
+    // Strictly future: if today already is that weekday and noon has passed, go to next week.
+    while (d.getUTCDay() !== weekday || d.getTime() <= Date.now()) d.setUTCDate(d.getUTCDate() + 1);
+    return d.toISOString();
+  };
+  const SATURDAY = nextWeekdayNoonUtc(6);
+  // ⛔ THE GUARD AGAINST THE ROT ITSELF. If either boundary is ever pinned to a literal again,
+  // this fails on the day it expires instead of throwing out of `createMarket` with a message
+  // about resolution dates that says nothing about what actually broke.
+  ok("12.0 · ⛔ the calendar boundaries are in the FUTURE — a typed date expires, a derived one cannot",
+     Date.parse(SATURDAY) > Date.now(), `SATURDAY=${SATURDAY} vs now=${new Date().toISOString()}`);
   const mAsset = await createAsset({
     key: "GOLDCAL", symbol: "XAU/USD", nameEn: "Gold cal", nameSw: "Dhahabu cal", iconKey: "gold",
     priceSourceUrl: "https://www.kitco.com/price/precious-metals", category: "macro",
@@ -752,7 +780,9 @@ let round1Id = "";
 
   // …and the SAME chain on a weekday boundary DOES open. Without this, 12.1 would also pass
   // against a chain that is simply broken.
-  const WEDNESDAY = "2026-08-05T12:00:00.000Z";
+  const WEDNESDAY = nextWeekdayNoonUtc(3);
+  ok("12.3b · ⛔ …and so is the weekday control, which is the one that opens a market",
+     Date.parse(WEDNESDAY) > Date.now(), `WEDNESDAY=${WEDNESDAY} vs now=${new Date().toISOString()}`);
   await chainStore.patch(gc.data.id, { gridAnchorAt: WEDNESDAY, nextBoundaryAt: WEDNESDAY });
   // ⭐ E-83: the open now REQUIRES a confirmed price, so this control needs one — otherwise it
   // would refuse for want of a price and "pass" 12.1 for entirely the wrong reason, which is
