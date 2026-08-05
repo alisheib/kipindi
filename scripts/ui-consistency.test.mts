@@ -180,6 +180,46 @@ const RULES: Rule[] = [
     },
   },
   {
+    // 🔴 E-98 · A CONTROL THAT HIDES ITS OWN ANSWER. A dropdown's CLOSED trigger is the only
+    // place an operator reads what they chose, so `truncate` there is not a layout fix — it is
+    // data loss, which `scripts/admin-clip.test.mts` §1.3 already says in as many words about
+    // the KPI delta. Measured on production at 1280: the Up & Down winning band rendered
+    // `Smallest possible (reco…` — hiding the one word that tells an operator which band to
+    // pick — and the chain Edit panel rendered `Inherit · smal…`, 162px of a 307px label gone,
+    // on the control that decides what winning MEANS for a chain that already holds stakes.
+    //
+    // ⛔ WHY A STATIC RULE AND NOT A SCREENSHOT CHECK. Truncation is PAINT: `innerText` returns
+    // the whole string however little of it is visible, so every DOM-text assertion passes with
+    // the label completely invisible. This session wrote one of those and watched it score green
+    // beside the screenshot that disproved it. Geometry (`scrollWidth > clientWidth`) is the only
+    // honest runtime measure — `scripts/live-s28-clip.mjs` does that against production — and
+    // this rule is the cheap half: it stops the kit being edited back.
+    //
+    // ⚠️ SCOPED TO THE TRIGGER, NOT THE FILE. `truncate` is correct and common elsewhere in the
+    // same file — the OPTION labels in the open panel legitimately truncate when they carry no
+    // hint. A file-wide grep for the word would fail on correct code, which is the "assert the
+    // call site, not the symbol" trap in the standards skill §5b.
+    id: "combobox-trigger-truncates",
+    severity: "error",
+    desc: "a role=combobox trigger truncates its selected label — the operator cannot read what they chose (E-98)",
+    scan: (b) => {
+      const out: Array<{ index: number; snippet: string }> = [];
+      for (const m of b.matchAll(/role="combobox"/g)) {
+        const from = m.index ?? 0;
+        const end = b.indexOf("</button>", from);
+        if (end < 0) continue;                       // not a <button> trigger — nothing to judge
+        const trigger = b.slice(from, end);
+        // ⛔ Comments stripped FIRST. A guard that greps for a defect will match the comment
+        // explaining its fix — this repo has been bitten by that twice in one session.
+        const code = trigger.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+        if (/\btruncate\b/.test(code)) {
+          out.push({ index: from, snippet: code.replace(/\s+/g, " ").trim().slice(0, 90) });
+        }
+      }
+      return out;
+    },
+  },
+  {
     id: "btn-inline-height-override",
     severity: "warning",
     desc: "height override (h-N / min-h-[] ) on a .btn — size via --h-control-* tokens, not utilities",

@@ -192,7 +192,15 @@ export function Select({
 
   // `xs` is the compact admin filter-row size: neat 32px height, 12.5px label and
   // md radius so it sits flush with the h-8 search inputs + filter buttons.
-  const h = size === "xs" ? "h-8" : size === "sm" ? "h-9" : "h-11";
+  //
+  // ⛔ `min-h-*`, NOT `h-*` — E-98. These were fixed heights, which forced the label span
+  // to `truncate`, which silently destroyed the operator's only readout of what they had
+  // chosen. Measured on production at 1280: the Add-chain winning band rendered
+  // `Smallest possible (reco…` (59px of 298px hidden) and the Edit panel — which lays out
+  // inside a ~230px TABLE CELL — rendered `Inherit · smal…`, hiding 162px of a 307px
+  // label on the one control that decides what winning means. A floor lets a short label
+  // keep the exact height it has today and lets a long one grow instead of vanish.
+  const h = size === "xs" ? "min-h-8" : size === "sm" ? "min-h-9" : "min-h-11";
   const txt = size === "xs" ? "text-[12.5px]" : "text-[16px]";
   const radius = size === "xs" ? "rounded-md" : "rounded-lg";
 
@@ -208,7 +216,7 @@ export function Select({
         aria-expanded={open}
         aria-haspopup="listbox"
         className={cn(
-          "field-measure flex items-center justify-between gap-2 w-full px-3 border border-border text-left",
+          "field-measure flex items-center justify-between gap-2 w-full px-3 py-1.5 border border-border text-left",
           "focus:outline-none brand-focus",
           "transition-colors font-mono",
           radius, txt, h,
@@ -217,7 +225,17 @@ export function Select({
         )}
         style={{ background: "var(--bg-inset)" }}
       >
-        <span className="truncate">{selectedOption?.label ?? placeholder ?? t.common.selectPlaceholder}</span>
+        {/* ⛔ NOT `truncate` — E-98. A dropdown's closed trigger is the ONLY place the
+            operator reads what they chose, so hiding part of it is data loss, not a layout
+            fix (`scripts/admin-clip.test.mts` §1.3 already says exactly that about the KPI
+            delta). `truncate` also defeats measurement: `innerText` returns the full string
+            whatever the ellipsis paints, so a check asserting the words are "still there"
+            passes with the label 100% invisible — one of this session's own checks did.
+            Wrapping is the honest behaviour: the control grows, nothing disappears, and
+            `min-h-*` keeps every short label at exactly the height it had before. */}
+        <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
+          {selectedOption?.label ?? placeholder ?? t.common.selectPlaceholder}
+        </span>
         <svg viewBox="0 0 12 12" width={10} height={10} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="shrink-0 text-text-subtle" aria-hidden>
           <path d="M3 4.5l3 3 3-3" />
         </svg>

@@ -843,15 +843,25 @@ export function AddChainForm({
           numeric stake box, and the kit trigger's `.truncate` clipped it to "Smallest
           possible…" — so the closed control hid the single word that tells an operator which
           band to choose, on the field that decides whether rounds pay or refund. The two
-          optional stake boxes need a fraction of that room; the band gets the spare column. */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
+          optional stake boxes need a fraction of that room; the band gets the spare column.
+
+          ⛔ AND SIX WAS STILL NOT ENOUGH — E-98, measured rather than eyeballed. `lg:` fires
+          at 1024px, but the admin sidebar takes ~215px, so at 1280 each of six columns is
+          ~190px: the band still hid 59px of its 298px label and the ASSET hid 67px of 150px,
+          reading `② BTC ·…` — the operator could not tell which asset the chain was for.
+          Eight columns, with the two SENTENCE-carrying controls given the room and the two
+          optional numeric boxes given one column each, is what the content actually needs.
+          The kit no longer truncates either (E-98), so this is now about looking right rather
+          than about legibility — but a control laid out narrower than its own label is how
+          this defect keeps coming back, and `scripts/live-s28-clip.mjs` measures it. */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-8">
         {/* ⭐ THE ASSET CARRIES ITS OWN SIGNAL TOO, and this was the gap.
             Driven live: the asset list read plainly "XAU · Gold", and ONLY the duration list
             revealed that gold cannot run below 15 minutes. An operator should not have to open
             a second dropdown to learn the first choice was a bad one — the warning belongs at
             the moment of the choice. The mark here is the SYMBOL's readiness (weekend market,
             unsupported by the plan), and the hint names any minimum round length. */}
-        <Field label="Asset">
+        <Field label="Asset" className="lg:col-span-2">
           <Select name="assetId" value={assetId} onChange={setAssetId}
             options={assets.map((a) => {
               const r = assetReadiness?.[a.id];
@@ -878,7 +888,7 @@ export function AddChainForm({
             operator type a band that voids every round the chain ever emits — E-32 exactly, and
             the reason that finding exists. The options are the few values that mean something,
             each stating its consequence. */}
-        <Field label="Winning band" className="lg:col-span-2">
+        <Field label="Winning band" className="lg:col-span-3">
           <Select name="marginBpsChoice" value={marginChoice} onChange={setMarginChoice}
             options={MARGIN_CHOICES.map((m) => ({
               value: String(m.bps),
