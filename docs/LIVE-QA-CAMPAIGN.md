@@ -4924,6 +4924,32 @@ so a tick-floor margin on crypto measures the market, not the feed.
 
 ## 6b. NEXT SESSION — start here
 
+### 🟢 Laptop A, session 25 (2026-08-05) — ⭐ THE GAME HAD BEEN VOIDING EVERY ROUND ALL NIGHT. Read this first; it supersedes everything below.
+
+| Commit | What | Guard |
+|---|---|---|
+| `a7e7bc9d` | **E-83 — a RUNNING chain voided 175 consecutive rounds in 11 hours.** `advanceChain` opened rounds with `openPrice: null` because it asked for the bar labelled with the boundary instant, which does not exist yet | `test:updown-heal` **126**, `test:updown-engine` **92**, RED first |
+| `d8ac98f3` | E-83 **verified live** + **guide §13**: every element on the player's card, what it means, and when it is visible | PDF 19 pages |
+| `a519a6dd` | **cert-D2 — the KYC DAL trusted the uploader's mime LABEL over the sniffed one** | `test:cert-d2` **35/35** |
+
+⭐ **GO-LIVE GATE STATUS, measured this morning:** **169 of 170 suites green**, and the one real
+red (cert-D2) is fixed in `a519a6dd`. `test:responsive` run **against production**: **3,789
+passed · 0 failed** (630 advisory warnings, all header/footer links at 33–34px against a 40px
+bar). Comms gates — `email-stress`, `push`, `deposit-notifications`, `auth-email`,
+`auth-email-integrity`, `updown-push` — **232 checks, all green**.
+⚠️ `test:all` only exceeded a 180s harness cap; `test:trilingual` recorded a **false red under
+parallel load** and passes 36/36 alone — re-run a red gate on its own before believing it.
+
+⛔ **STILL OPEN BEFORE A PUBLIC LAUNCH — read these, they are the honest list:**
+① **E-76** — one unruled objection still freezes **TZS 59,450**. Ali confirmed the four holders
+are the admin/testing team, so it can simply be actioned: `/admin/objections` → the EWURA row →
+**VOID**. ② **SOL is not safe at short durations** — its median bar lag is **+86s** against a
+**90s** staleness window (F-1), so a material share of SOL rounds cannot be priced in time.
+③ **E-83 has only 11 minutes of live soak** — run a RUNNING chain for an hour and confirm
+`source-failed` stays flat before trusting it under load. ④ The **unhappy paths are still
+undriven live**: one-sided, no-move, market-shut gold and an operator void, each with its reason
+checked on the card, round page, proof, push and inbox in EN/SW/ZH.
+
 ### 🟢 Laptop A, session 24 (2026-08-04) — ⭐ THE OWNER COULD NOT SIGN IN · AND THE ROUND SHAPE CHANGED. Read this first; it supersedes everything below.
 
 | Commit | What | Guard |
