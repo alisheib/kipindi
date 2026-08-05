@@ -137,6 +137,14 @@ day, four checks passed while the thing they named was broken — each asserting
    nothing and report green.
 6. Every one of these was caught by **looking at a screenshot**, never by a suite. A green
    suite is a pre-flight check, not evidence.
+7. ⛔ **NEVER REGEX A CSS COLOUR** (added 2026-08-05, session 27). This design system's tokens
+   are `oklch()`, and Chrome hands `oklch(0.98 0.01 270)` straight back from
+   `getComputedStyle` — so the usual `[\d.]+` scrape reads **lightness, chroma and hue as R,
+   G and B**. A contrast probe written that way scored a bright primary button at **1.24:1**
+   against a dark card and reported three failures that were entirely its own. Let the browser
+   convert: paint the value into a 1×1 canvas and read the pixel back. The same rule covers
+   `backgroundImage` — a kit button painted by a **gradient** has a transparent
+   `backgroundColor`, so "has no background" is false about it.
 
 ## 6. Money & compliance invariants (never break)
 Authoritative detail: `50pick-audit` skill §6 + `docs/DATA-LAYER.md` + `docs/FLOWS.md`.
