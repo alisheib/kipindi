@@ -51,6 +51,31 @@ const A = (h: FeedHistory, durationMinutes?: number, abandonAfterSeconds = 390) 
   const justOver = A(H({ readings: MIN_SAMPLES_FOR_ADVICE }));
   ok("1.6 · the threshold is a real edge, not decoration",
      justUnder.unmeasured === true && justOver.unmeasured === false);
+
+  // ── 🔴 E-89 · NEVER-READ IS ITS OWN STATE, AND SAYING "only 0" IS NOT IT ──
+  //
+  // The operator guide §8.5 defines TWO states and the console's asset table renders both:
+  // `no readings yet` (the platform has never read this asset) and `not measured yet` (it has,
+  // but under the sample floor). The Add-chain dropdown collapsed them into one sentence —
+  // "BTC has only 0 recorded readings on this platform" — which is a different claim ("only",
+  // as though a few had been taken) in a register no one writes in. Driven live on the board
+  // built for §9, where every asset genuinely has zero.
+  const never = A(H({ assetKey: "BTC", readings: 0, confirmed: 0, medianLagSeconds: null, maxLagSeconds: null }));
+  ok("1.7 · ⭐ zero readings never renders as `only 0 recorded readings`",
+     !/only 0 recorded reading/i.test(never.message), never.message);
+  ok("1.8 · …it says the asset has NEVER been read, as the guide's §8.5 state does",
+     /never been read/i.test(never.message), never.message);
+  ok("1.9 · …and it still names the asset it is talking about",
+     /\bBTC\b/.test(never.message), never.message);
+  ok("1.10 · …still a caution, still no fabricated minimum",
+     never.level === 2 && never.unmeasured === true && never.advisedMinDurationMinutes === null,
+     JSON.stringify(never));
+  // ⛔ AND THE SIBLING STATE MUST SURVIVE THE FIX. A change that made every thin asset read
+  // "never been read" would satisfy 1.8 while destroying the distinction it exists to draw.
+  ok("1.11 · …while ONE reading is still 'only 1 recorded reading', not 'never'",
+     /only 1 recorded reading\b/i.test(A(H({ assetKey: "SOL", readings: 1, confirmed: 1 })).message)
+     && !/never been read/i.test(A(H({ assetKey: "SOL", readings: 1, confirmed: 1 })).message),
+     A(H({ assetKey: "SOL", readings: 1, confirmed: 1 })).message);
 }
 
 // ═══ 2 · A HEALTHY ASSET READS AS HEALTHY ══════════════════════════════════

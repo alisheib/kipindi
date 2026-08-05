@@ -164,12 +164,22 @@ export function adviseFromHistory(
   const allowedDurations = opts.allowedDurations ?? ALLOWED_DURATIONS;
 
   if (h.readings < MIN_SAMPLES_FOR_ADVICE || h.medianLagSeconds == null || h.maxLagSeconds == null) {
+    // 🔴 E-89 · NEVER-READ AND UNDER-MEASURED ARE TWO STATES, NOT ONE. The operator guide's
+    // §8.5 names both and the console's asset table renders both — `no readings yet` for an
+    // asset the platform has never read, `not measured yet` for one it has read too few times.
+    // This sentence, which is what the Add-chain dropdown actually shows, collapsed them into
+    // "BTC has only 0 recorded readings on this platform": a different claim ("only", as though
+    // a few had been taken) in a register nobody writes in, on the freshly-built board where
+    // EVERY asset is in exactly that state. Say the true thing for zero, and keep the sample
+    // count for the case where a count is what the operator needs to weigh.
+    const nextStep =
+      "Start it on a longer round and watch PAID A WINNER before shortening it.";
     return {
       level: 2,
-      message:
-        `${h.assetKey} has only ${h.readings} recorded reading${h.readings === 1 ? "" : "s"} on this ` +
-        `platform, which is not enough to advise from. Start it on a longer round and watch ` +
-        `PAID A WINNER before shortening it.`,
+      message: h.readings === 0
+        ? `${h.assetKey} has never been read on this platform, so nothing is known about it here yet. ${nextStep}`
+        : `${h.assetKey} has only ${h.readings} recorded reading${h.readings === 1 ? "" : "s"} on this ` +
+          `platform, which is not enough to advise from. ${nextStep}`,
       advisedMinDurationMinutes: null,
       basedOnReadings: h.readings,
       unmeasured: true,

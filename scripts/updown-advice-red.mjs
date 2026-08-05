@@ -28,6 +28,19 @@ const MUTATIONS = [
     to: `  if (h.medianLagSeconds >= 90) {`,
   },
   {
+    // 🔴 E-89, restored: the never-read state folded back into the under-measured one. On the
+    // board an operator is handed, EVERY asset is at zero, so this is the first sentence the
+    // Add-chain dropdown shows them — and "has only 0 recorded readings" is a claim the
+    // console's own asset table contradicts one card away with `no readings yet`.
+    name: "never-read-collapsed — a never-read asset reads `only 0 recorded readings`",
+    from: `      message: h.readings === 0
+        ? \`\${h.assetKey} has never been read on this platform, so nothing is known about it here yet. \${nextStep}\`
+        : \`\${h.assetKey} has only \${h.readings} recorded reading\${h.readings === 1 ? "" : "s"} on this \` +`,
+    to: `      message: false
+        ? \`\${h.assetKey} has never been read on this platform, so nothing is known about it here yet. \${nextStep}\`
+        : \`\${h.assetKey} has only \${h.readings} recorded reading\${h.readings === 1 ? "" : "s"} on this \` +`,
+  },
+  {
     name: "unmeasured-guard-removed — two readings summarised as a confident median",
     from: `  if (h.readings < MIN_SAMPLES_FOR_ADVICE || h.medianLagSeconds == null || h.maxLagSeconds == null) {`,
     to: `  if (h.readings < 0 || h.medianLagSeconds == null || h.maxLagSeconds == null) {`,
