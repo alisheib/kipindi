@@ -3656,6 +3656,86 @@ workstation shows an SLA countdown, but nothing escalates when it runs out. Ali'
   platform zone (+3) keeps it on the right day, and the E-2 fix is safe. The earlier note was
   the `pg` −3h trap (§3) reading back through an un-cast client.
 
+## 6aq. ⭐ THE SOAK EARNED ITS HOUR — E-86, and the one-sided refund driven with real money (2026-08-05, session 26)
+
+The handoff asked for a RUNNING chain to be soaked for a full hour because **E-83 was closed on
+eleven minutes of evidence**. The soak found a different, larger defect within twenty minutes.
+
+### What the soak found — E-86, and why 11 minutes could never have caught it
+
+| | |
+|---|---|
+| 08:59, 09:01, 09:03 | ✅ three rounds settled cleanly — an eleven-minute soak would have stopped here and declared victory |
+| **09:07** | 🔴 **BTC 3m #188 and BTC 5m #6 both VOID `source-failed`** on the shared boundary |
+| 09:13:24 → 09:14:18 | provider credits **10 → 345 of 377 in 55 seconds**, then HTTP 429 |
+
+⭐ **The platform was reading its own metered data provider about six times a second** for the
+~130s a 1-minute bar takes to publish — because the backoff ladder was skipped on the one
+refusal that happens at *every* boundary — and then treated the resulting rate limit as a
+verdict, spending all four of the boundary's lives in **90 seconds of a 390-second deadline**.
+Full mechanism and fix in **E-86** in §6.
+
+⛔ **The lesson is about the shape of the evidence, not the bug.** Three clean rounds is what
+the failure looks like from inside its own first ten minutes. The defect needed a *rate* to
+build up, and a rate is invisible to any check that asks "did this round settle?".
+
+### Verified on the fixed build, against the provider's own counter
+
+With the fix deployed and one chain RUNNING, credit usage across a boundary stayed at the
+**1–10/min baseline** (which is the measuring poller itself) where it had previously reached
+**345**. The observation for a pending boundary now reads
+`PENDING att=0 · "Price for that minute not published yet"` — uncharged, recorded, and spaced.
+
+### ⭐ THE ONE-SIDED REFUND, DRIVEN LIVE WITH REAL MONEY (E-65's own shape)
+
+`udr_eb0dc4fad03e9dd7e6a2` · BTC 3m · alpha staked **TZS 500 on UP and nothing on DOWN**.
+
+| | |
+|---|---|
+| The round **decided** | open **$64,170.11** → close **$64,174.00**, up target $64,170.13 → **outcome UP**, `voidReason` null |
+| The player's side **won** | and was **refunded in full** — `YES 500.00 → 500.00 [VOID]` |
+| The money | 61,540 → **61,040** → **61,540**, exact to the shilling |
+| The sentence | *"Nobody backed the other side, so there was nothing to win and nothing to lose. Your stake is back in full."* |
+
+✅ **EN, SW and ZH all state exactly ONE refund reason, the right one, and none says the player
+lost.** That is precisely the failure E-65 was filed for — a decided round dressed as a loss —
+and it is now driven, not asserted. Evidence: `shots/E84-gate/onesided-refund-en.png`.
+
+⚠️ **The result chip still reads `VOID · REFUNDED` beside a settlement proof that reads
+`OUTCOME ▲ Up`** — the §6ak item, now confirmed on the exact path E-65 was about. The chip
+describes the POSITION and the proof describes the ROUND, and one card apart they contradict
+each other. **Still open, and it is the last honest gap on this surface.**
+
+### ⚠️ What was NOT driven, and why — read before claiming the unhappy paths are done
+
+· **market-shut gold cannot be driven today at all.** Metals follow the FX week and today is a
+  Wednesday, so the market is genuinely open — the shut state is only reachable Fri 21:00 →
+  Sun 22:00 UTC. The console's *reason* copy for it is verified (the greyed-option sentence),
+  the live refusal is not. ⛔ Do not mark this done from a green suite.
+· **no-move refund** and **operator void** — not driven this session.
+· **The inbox leg is UNVERIFIED, not failed.** Per-round results appear to reach the player
+  through the DAILY DIGEST (`"4 Aug: 5 rounds — won 3…"`), so a round that settled two minutes
+  ago legitimately has no inbox entry. My check assumed one and is wrong until the digest
+  behaviour is confirmed — do not read its red as a product defect.
+
+### Harness traps this drive paid for, all mine, all now encoded
+
+1. ⛔ **`clickByName` is page-wide and takes `.first()`.** On a grid where every row has its own
+   `Start`, a confirm click after a row click lands on the **next row's button** — this started
+   a second chain on production (audit `updown.chain.started` 08:52:46 then 08:52:56) and
+   doubled the read rate. Scope every confirm to `[role=dialog]`.
+2. ⛔ **`networkidle` never fires on the Up & Down board** — it polls. And `domcontentloaded`
+   returns while every card is still a skeleton, so reading the text there reports *"no refund
+   reason on the page"* about a page that has not rendered one. Wait for the round's own
+   numbers.
+3. ⛔ **One browser context per persona.** Signing in as admin then as a player in the same
+   context reuses the admin cookie, `/auth/login` redirects, and the missing field surfaces as
+   `waiting for locator('#identifier')` — indistinguishable from a broken login page.
+4. ⚠️ **`page.screenshot()` does not wait for animations.** The kit's `.m-float-in` fades a
+   dropdown in, so a shot taken on open photographs an opaque panel as see-through. I nearly
+   filed it.
+5. ⚠️ **A mojibake `Â·` in an RSC response is the reader's decoding, not the data.** The DB
+   columns are clean in all three languages — checked before filing.
 ## 6ap. ⭐ THE DYNAMIC PER-ASSET GATE IS WIRED — and the engine it wires was wrong (2026-08-05, session 26)
 
 Ali, 2026-08-05: *"guide admins as they go for every asset based on history of 12data"* — and on

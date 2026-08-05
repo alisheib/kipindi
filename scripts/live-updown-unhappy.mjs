@@ -111,7 +111,16 @@ try {
       const p = await ctx.newPage();
       if (loc.code === "en") await login(p, "alpha");     // one session, reused across locales
       await p.goto(`${BASE}/updown/${ARG}`, { waitUntil: "domcontentloaded" });
-      await p.waitForLoadState("load").catch(() => {});
+      // 🔴 WAIT FOR CONTENT, NOT FOR A LOAD EVENT. This page server-renders a skeleton and
+      // streams the round in, so `domcontentloaded` (and even `load`) returns while every card
+      // is still an empty placeholder — and reading the text there reports "no refund reason on
+      // the page" about a page that has not rendered one yet. `networkidle` is not the answer
+      // either: the board polls, so it never goes idle. Wait for the ROUND'S OWN NUMBERS.
+      const rendered = await p.waitForFunction(
+        () => /d[d,]*.d{2}/.test(document.body.innerText) && document.body.innerText.length > 900,
+        undefined, { timeout: 45_000 },
+      ).then(() => true).catch(() => false);
+      rec.check(`${loc.label} · the round page actually rendered before it was read`, rendered);
       const t = await bodyText(p);
 
       // The sentence itself, per language, from the dictionary this feature ships.
@@ -139,7 +148,8 @@ try {
       rec.check(`${loc.label} · the settlement proof is on the page`, (await proof.count()) > 0);
 
       // The inbox — the same reason, reached the same player, in the same language.
-      await p.goto(`${BASE}/inbox`, { waitUntil: "networkidle" });
+      await p.goto(`${BASE}/inbox`, { waitUntil: "domcontentloaded" });
+      await p.waitForFunction(() => document.body.innerText.length > 600, undefined, { timeout: 30_000 }).catch(() => {});
       const inbox = await bodyText(p);
       rec.check(`${loc.label} · ⭐ the inbox carries the refund and its reason`,
         EXPECT.some((re) => re.test(inbox)) || /refund|kurudishwa|退回/i.test(inbox),
