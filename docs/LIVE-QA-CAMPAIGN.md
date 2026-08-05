@@ -3669,6 +3669,42 @@ workstation shows an SLA countdown, but nothing escalates when it runs out. Ali'
   platform zone (+3) keeps it on the right day, and the E-2 fix is safe. The earlier note was
   the `pg` −3h trap (§3) reading back through an un-cast client.
 
+## 6av. ⚠️ E-99 LIVE — the overrun branch is PROVEN, the counting branch is NOT (2026-08-05, session 28)
+
+Round **#20 `udr_4f9fedf2ea777414cccc`** (BTC 5m, boundary **16:18:00 UTC**) watched straight
+through the close by `scripts/live-s28-result-timer.mjs`, sampling every ~4s the way E-82's
+diagnosis did — because a phase that is reasoned about instead of looked at is how E-82 shipped.
+
+| From | What the pod read | Verdict |
+|---|---|---|
+| 16:15:43 → 16:16:24 | `Result in` counting to **16:16:25**, rose in the last 30s | the betting/lock clock, working |
+| 16:16:29 → 16:17:57 | `Result in` counting to **≈16:17:58**, **brand ink** | the result-phase clock, working |
+| **16:18:02 → 16:18:39** | **`Result in —:—`, brand ink**, for 42s | ⭐ **E-99's overrun branch, live** |
+| 16:18:44 | `Round settled 00:00` | correct for a settled round |
+
+⭐ **The defect Ali reported is gone: there is NO dead `0:00` anywhere in the wait.** The single
+`00:00` sample is the settled state, which is what a settled round should read.
+
+🔴 **BUT THE COUNTING BRANCH WAS NEVER OBSERVED, AND IT SHOULD HAVE BEEN.** BTC's measured median
+is **94.6s over 31 confirmed readings** (`.qa-s28/lagcheck.cjs`), well above the 20-sample floor,
+so `expectedResultAtMs` = 16:18:00 + 94.6s ≈ **16:19:35** and the pod should have counted **≈1:33
+→ 0:00** before falling to `—:—`. It went to `—:—` **immediately**. ⛔ **`—:—` only renders when
+`resultMode` is TRUE** (`spent = resultMode && !running`), so the target was present and had
+ALREADY PASSED — which the arithmetic above says it had not.
+
+⛔ **DO NOT MARK E-99 VERIFIED.** The next session must **instrument the prop** — read
+`expectedResultAtMs` out of the RSC payload or log it server-side — rather than infer it from the
+rendering, which is exactly the "derived values lie" trap. Two candidates worth checking first:
+the round page passes `resultTarget` into `RoundCountdownPod`'s `closesAtMs`, so a stale
+`serverNowMs` offset would spend the clock instantly; and `getRoundView`'s asset may not be the
+one whose history was read.
+
+📌 The measurement also found something worth keeping: split by role, observations that **opened**
+a round have a median lag of **94.6s (n=34)** and those that **closed** one **137.3s (n=5)**. The
+history query does not distinguish them, so the number the clock counts to is an average over two
+different physical events. Not wrong, but not obviously the right estimator either — worth Ali's
+eye before the estimate is advertised as a promise.
+
 ## 6au. ⭐ THE FIRST REAL POOL THIS CAMPAIGN HAS EVER SETTLED — 12 players, both sides, both fee branches (2026-08-05, session 28)
 
 Ali named session 27's biggest miss: *the whole thing was driven on two players.* A QA fleet of
@@ -5336,6 +5372,29 @@ so a tick-floor margin on crypto measures the market, not the feed.
   money. Confirmed directly: **no unresolved rounds anywhere, no money in flight.** The check lied.
 
 ## 6b. NEXT SESSION — start here
+
+### 🟢 Laptop A, session 28 (2026-08-05) — ⭐ A REAL FLEET, A REAL POOL, AND THE TIMER ALI ASKED FOR
+
+**Ali, mid-session:** *"you don't come back to me at all… perfect it, master it and finalise until
+the very end"*, and *"as we go make sure all docs update and up to date."* Four findings, each
+proven RED first, each pushed on its own.
+
+| Commit | What | Guard |
+|---|---|---|
+| `d67ad6eb` | **E-98** — the Add-chain **and** in-cell Edit band hid their own labels at 1280/1440 (`Smallest possible (reco…`, `Inherit · smal…`, `② BTC ·…`). Fixed in the **KIT**: a combobox trigger no longer truncates | new `ui-consistency` rule `combobox-trigger-truncates`, RED proven |
+| `3d598f24` | E-98 refinement — **a wrap satisfies the geometry check exactly as a fit does**; 8→10 columns, and the probe now counts LINES | `live-s28-clip.mjs` 12/12 live |
+| `2955f0c3` | **The first real pool this campaign has settled** — 12 players, both sides, **both fee branches**, paired to the shilling | `pool-drain.cjs` + 4 probes |
+| `0664d18e` | 🟠 **E-99 — the RESULT TIMER**, Ali's own request. The wait nothing counted: **median 95s, p90 116s, max 151s** of dead `0:00` | new `test:updown-result-clock` **19**, red **4/4** |
+| `f101f411` | 🟠 **E-100 — a ticket a player cannot read**, found by **Ali on a real phone**. 4 sites, incl. the **Regulator ref** nobody had seen | new rule `unwrappable-identifier`, RED proven |
+
+⭐ **THE ONE TO CARRY FORWARD: the fleet is the instrument.** Two players cannot make a pool with
+seven positions in it, and **every settlement defect class this session touched only appears above
+six.** `pool-drain.cjs` measured production for the first time: **0 of 26** markets with ≤6
+positions fail to drain their pool, **2 of 3** at seven, **1 of 1** at 29. (That dust is
+**documented, bounded and already guarded** — proving it was NOT a defect mattered more than
+filing it would have.)
+
+#### ⏭️ **RESUME AT (session 29):** ⓪ ⚠️ **THE BOARD IS SHARED — Jaykishan Kaba (`usr_53406f2f9f793abe1fd0e8af`, ADMIN) is operating it live**, and a **second ADMIN with NO display name** (`usr_0f49350d77107488ddd205dc`, `+255772619619`) placed **20 positions of 500** on one of this session's own rounds. His two **15m chains (BTC, XAU) are RUNNING and are NOT yours** — leave them. Ours is **BTC 5m `udc_2ba58e2e2c13a7f8`, STOPPED**; generate rounds on it with `node scripts/live-s27-board.mjs generate`. **Read `UpDownChain.state` and the audit log before trusting any board fact.** ① 🔴 **FINISH E-99 — IT IS PUSHED AND ONLY HALF PROVEN.** §6av has the full transcript: the **overrun branch is live and correct** (`Result in —:—`, brand ink, **no dead `0:00` anywhere**), but the **COUNTING branch was never observed** even though BTC's median is **94.6s over 31 readings** and the pod should have counted ≈**1:33**. ⛔ **Instrument the prop — read `expectedResultAtMs` out of the RSC payload or log it server-side — do NOT infer it from the rendering.** Two candidates: the round page feeds `resultTarget` into `RoundCountdownPod.closesAtMs`, so a stale `serverNowMs` would spend it instantly; and `getRoundView`'s asset may not be the one whose history was read. 📌 Also decide whether the estimator is right at all: observations that **opened** a round median **94.6s (n=34)**, those that **closed** one **137.3s (n=5)**, and the query does not separate them. ② 🔴 **TWO BUGS ALI REPORTED AND I HAVE NOT FIXED:** (a) **the wallet's TICKET link goes to `/positions` generically** — *"when I click on ticket it just opens positions, not the specific position I was in with details"*. It must deep-link to that position (`/positions#pos_…` or a detail route) and land on the row. (b) **NO AUTO-REFRESH WHEN A RESULT ARRIVES** — *"when a result from Up & Down or any poll comes, the page should refresh; a user cannot refresh to see a result if it came"*. The board polls every 20s but the **round page and the long-form market page do not**, so a player watching `Result in —:—` must reload by hand. This is the other half of E-99 and it is what makes the timer worth having. ③ ⭐ **THE BULK OF THE MANDATE, STILL NOT STARTED — and Ali's standing instruction is to VISUALLY ADMIRE EVERY SCREEN AND MAKE IT PERFECT, responsively:** every page under `/admin` (Overview · Live ops · Insights · Settlement · Finance · Reports · Payments ops · Transactions · Roster · Cohorts · Event calendar · AI poll generation · AI candidates · Player proposals · Curation queue · Resolver queue · Sources & categories · Rates & fees · Objections · Staff · Roles) · the whole **player side** (board, round, positions, wallet, deposit, withdraw, history, inbox, profile, KYC, RG) · the **login flows** (⚠️ never loop email sign-in — each failure costs a real account one of five lives) · and the **4-width × EN/SW/ZH sweep** with `locator.screenshot()`, ⛔ never `fullPage`, **and then OPEN THE IMAGES**. **With a funded fleet the roster, cohorts, insights and reports finally have data in them — check those numbers against the DB, not against each other.** ④ ⛔ **`market-shut gold` STILL UNREACHABLE** — it was **Wednesday**; metals follow the FX week (Fri 21:00 → Sun 22:00 UTC). Do not claim it from a suite. ⑤ 🔴 **THE FLEET IS STILL ALIVE ON PRODUCTION: 20 accounts holding ~TZS 1.6M**, and several now hold POSITIONS so `destroy` will KEEP them by design (deleting a bettor would strand the other half of its settlement ledger group). Run `railway run --service 50pick -- npx tsx scripts/ops-qa-fleet.mts destroy --yes` when the testing is done and **report what it keeps**. ⑥ 🔴 **STILL WAITING ON ALI, NOT ON A PATCH:** (a) the **GGR · this game** tile counts open unsettled stake as revenue — shared with the statutory pack, so it is a money-reporting call and the AWARKEH precedent is *fix by DISCLOSURE, not arithmetic*; (b) **Solana's hardcoded `cautionBelowMinutes`**; (c) 🆕 **per-winner fee rounding** — `Math.round(share × fee)` is unbiased across arbitrary shares but **twenty EQUAL stakes round the same way** (`500/36,000 × 3,666.67 = 50.93 → 51`, ×20, over-collecting 1.4), so the house took **3,668** against a ⅓ ceiling of **3,666.67**. Immaterial (0.012%) but the ⅓ is a **printed promise**; largest-remainder allocation would make it exact. **Left unchanged deliberately — it is a money-model decision.** ⑦ ⚠️ **ONE PRE-EXISTING RED, inherited and untouched:** `test:kyc-doc-metadata` fails one check (domain D). `test:responsive` and `test:motion` need a live `:3000` server and are the documented exception class. 💰 **Money state:** alpha **61,040**, echo **24,380**, fleet **~1.6M across 20**; every round this session paired to the shilling. 📌 **Harness traps this session paid for:** ⛔ **`UpDownRound.closesAt` IS the boundary** — the lock lives on `PredictionMarket.selectionClosedAt`, and reading the wrong column made a correct platform look like it had lost T-1 and E-72 · ⛔ **a wrap satisfies `scrollWidth === clientWidth` exactly as a fit does**, so the overflow probe is blind to a starved column and only the image shows it · ⛔ **`innerText` returns the full string whatever `text-overflow: ellipsis` paints**, so "the words are still there" passes with the label 100% invisible — **geometry is the only honest measure of truncation** · ⛔ **`toBoardRound(r, chain, mine)` type-checks with the new 4th argument missing**, so E-99 would have shipped dead on `/updown/[roundId]` while the board card worked — **check the call site, not the symbol** · ⛔ **JSX comments cannot sit inside `{cond && ( … )}`** — three files broke the build that way in one edit.
 
 ### 🟢 Laptop A, session 27 (2026-08-05) — ⭐ THE BOARD REBUILT FROM THE GUIDE, AND THE NUMBER AN OPERATOR STEERS BY WAS COUNTING ROUNDS THAT PAID NOBODY
 
