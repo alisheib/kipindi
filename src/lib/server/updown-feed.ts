@@ -78,6 +78,20 @@ export type FeedRefusal =
    * Refusing costs one refund. Paying the wrong player costs trust and cannot be undone.
    */
   | "implausible-bar"
+  /**
+   * ⭐ E-86 · THE PROVIDER SAID "ASK ME AGAIN IN A MOMENT", AND WE TREATED IT AS A VERDICT.
+   *
+   * A 429 is the one refusal that is transient BY DEFINITION — the same request, unchanged,
+   * succeeds a minute later. It was folded into `http-error` and therefore into the generic
+   * `error`, which burns a life from the boundary's attempt budget; four of them inside ninety
+   * seconds declared the boundary FAILED and refunded every stake, **at +90s against a 390s
+   * deadline**. Measured on production 2026-08-05: BTC 3m #188 and BTC 5m #6 both voided
+   * `source-failed` on the shared 09:07 boundary, `failReason` *"HTTP 429 — You have run out of
+   * API credits for the current minute"*.
+   *
+   * ⛔ It is exactly the mistake `no-bar` is carved out to avoid, one union member away.
+   */
+  | "rate-limited"
   | "error";
 
 export type FeedQuote =
@@ -295,7 +309,11 @@ export class TwelveDataFeed implements PriceFeed {
     if (!res.ok) {
       // The body is kept: a provider that explains the failure in its own words is the
       // only useful part, and discarding it is exactly the mistake the Selcom adapter made.
-      return { ok: false, reason: "http-error", detail: `HTTP ${res.status} — ${body.slice(0, 200)}` };
+      return {
+        ok: false,
+        reason: isRateLimit(res.status, null) ? "rate-limited" : "http-error",
+        detail: `HTTP ${res.status} — ${body.slice(0, 200)}`,
+      };
     }
 
     let parsed: Record<string, unknown>;
@@ -307,7 +325,11 @@ export class TwelveDataFeed implements PriceFeed {
 
     // The provider signals its own errors in-band with HTTP 200.
     if (typeof parsed.code === "number" && parsed.code >= 400) {
-      return { ok: false, reason: "http-error", detail: `provider error ${parsed.code} — ${String(parsed.message ?? "").slice(0, 200)}` };
+      return {
+        ok: false,
+        reason: isRateLimit(null, parsed.code) ? "rate-limited" : "http-error",
+        detail: `provider error ${parsed.code} — ${String(parsed.message ?? "").slice(0, 200)}`,
+      };
     }
 
     const price = Number(parsed.close ?? parsed.price);
@@ -459,7 +481,11 @@ export class TwelveDataBarFeed implements PriceFeed {
       return { ok: false, reason: "error", detail: (err as Error).message?.slice(0, 200) ?? "fetch failed" };
     }
     if (!res.ok) {
-      return { ok: false, reason: "http-error", detail: `HTTP ${res.status} — ${body.slice(0, 200)}` };
+      return {
+        ok: false,
+        reason: isRateLimit(res.status, null) ? "rate-limited" : "http-error",
+        detail: `HTTP ${res.status} — ${body.slice(0, 200)}`,
+      };
     }
 
     let parsed: { status?: string; message?: string; code?: number; values?: Array<Record<string, string>> };
@@ -470,7 +496,11 @@ export class TwelveDataBarFeed implements PriceFeed {
     }
     // The provider signals its own errors in-band with HTTP 200.
     if ((typeof parsed.code === "number" && parsed.code >= 400) || parsed.status === "error") {
-      return { ok: false, reason: "http-error", detail: `provider error ${parsed.code ?? ""} — ${String(parsed.message ?? "").slice(0, 200)}` };
+      return {
+        ok: false,
+        reason: isRateLimit(null, parsed.code) ? "rate-limited" : "http-error",
+        detail: `provider error ${parsed.code ?? ""} — ${String(parsed.message ?? "").slice(0, 200)}`,
+      };
     }
     if (!Array.isArray(parsed.values) || parsed.values.length === 0) {
       return { ok: false, reason: "no-bar", detail: `the provider returned no bars for ${req.symbol}` };
@@ -594,11 +624,24 @@ export class UnconfiguredFeed implements PriceFeed {
 }
 
 /** Operator-visible refusal text. Deliberately plain — these strings reach the ops readout. */
+/**
+ * Is this provider failure a RATE LIMIT — the one refusal that is transient by definition?
+ *
+ * ⛔ ONE RULE, FOUR CALL SITES. Twelve Data reports the same condition two ways (an HTTP 429,
+ * and an in-band `code: 429` under HTTP 200) and there are two readers, so this was four
+ * chances to classify the same thing differently — and a rate limit misclassified as a verdict
+ * is E-86: it burns the boundary's attempt budget and refunds a round whose price was fine.
+ */
+export function isRateLimit(httpStatus: number | null, providerCode: unknown): boolean {
+  return httpStatus === 429 || providerCode === 429;
+}
+
 export function describeFeedRefusal(reason: FeedRefusal, detail: string): string {
   switch (reason) {
     case "not-configured": return `Feed not configured — ${detail}`;
     case "mock-in-production": return `Simulated feed refused — ${detail}`;
     case "http-error": return `Provider error — ${detail}`;
+    case "rate-limited": return `Provider rate limit — ${detail}`;
     case "unparseable-price": return `No usable price — ${detail}`;
     case "no-timestamp": return `Quote had no timestamp — ${detail}`;
     case "wrong-source": return `Wrong source — ${detail}`;

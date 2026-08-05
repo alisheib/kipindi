@@ -340,6 +340,18 @@ export interface ObservationStore {
   }): Promise<boolean>;
   /** Record a failed attempt (bumps `attempts`); does not change state. */
   recordAttempt(id: string, failReason: string | null): Promise<void>;
+  /**
+   * ⭐ E-86. Record WHEN we last asked, WITHOUT spending one of the boundary's lives.
+   *
+   * ⛔ THE TWO ARE DIFFERENT QUESTIONS AND CONFLATING THEM COST 377 CREDITS A MINUTE ON
+   * PRODUCTION. `attempts` is a money control — spending it declares the boundary FAILED and
+   * refunds every stake. `lastAttemptAt` is a rate control — it is what the retry ladder gates
+   * the next read on. Because only `recordAttempt` set the timestamp, a refusal that
+   * deliberately does NOT cost an attempt left `lastAttemptAt` null, the ladder's readiness
+   * check was skipped entirely, and the metered provider was re-read on every tick with no
+   * delay at all — measured at ~6 reads/second for the ~130s a bar takes to publish.
+   */
+  touchAttempt(id: string, failReason: string | null): Promise<void>;
   /** Terminal failure — every round bounded by this observation VOIDs and refunds.
    *  Conditional on PENDING for the same reason as `confirm`. */
   fail(id: string, failReason: string): Promise<boolean>;
@@ -491,6 +503,10 @@ const memoryObservations: ObservationStore = {
   async recordAttempt(id, failReason) {
     const cur = memObs.get(id);
     if (cur) memObs.set(id, { ...cur, attempts: cur.attempts + 1, lastAttemptAt: new Date().toISOString(), failReason });
+  },
+  async touchAttempt(id, failReason) {
+    const cur = memObs.get(id);
+    if (cur) memObs.set(id, { ...cur, lastAttemptAt: new Date().toISOString(), failReason });
   },
   async fail(id, failReason) {
     const cur = memObs.get(id);
@@ -738,6 +754,12 @@ const prismaObservations: ObservationStore = {
     await pc().upDownObservation.update({
       where: { id },
       data: { attempts: { increment: 1 }, lastAttemptAt: new Date(), failReason },
+    });
+  },
+  async touchAttempt(id, failReason) {
+    await pc().upDownObservation.update({
+      where: { id },
+      data: { lastAttemptAt: new Date(), failReason },
     });
   },
   async fail(id, failReason) {

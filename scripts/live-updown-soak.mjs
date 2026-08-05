@@ -34,16 +34,30 @@ try {
   const before = (await row.innerText()).replace(/\s+/g, " ").trim();
   rec.note(`row before: ${before}`);
 
+  // 🔴 EVERY CONFIRM CLICK IS SCOPED TO THE DIALOG, and this cost a real state change on
+  // production. `clickByName` asks the WHOLE PAGE for a button and takes `.first()` — on a grid
+  // of chains, every row has its own `Start`, so a page-wide `/^start$/` after the row click
+  // lands on the NEXT CHAIN'S button. Start needs no confirmation, so the fallback fired and
+  // started `BTC 5m` ten seconds after `BTC 3m` (audit `updown.chain.started` 08:52:46 then
+  // 08:52:56). ⛔ On a page of repeated row controls, a page-wide accessible-name lookup is not
+  // a selector — it is a coin toss weighted by DOM order.
+  const dialog = page.locator('[role="dialog"]');
+  const confirmIn = async (name) => {
+    if (!(await dialog.count())) return false;              // no dialog: the act was immediate
+    await dialog.getByRole("button", { name }).first().click();
+    return true;
+  };
+
   if (MODE === "start") {
     rec.check("the chain is STOPPED before we start it", /STOPPED/i.test(before), before);
     await row.getByRole("button", { name: /^start$/i }).click();
-    // ⚠️ Start/Stop are confirmed in a dialog — skipping it looks exactly like a dead button.
-    await page.waitForSelector('[role="dialog"]', { timeout: 10_000 }).catch(() => {});
-    await clickByName(page, /start chain|^start$/i).catch(() => {});
+    await dialog.waitFor({ state: "visible", timeout: 5_000 }).catch(() => {});
+    rec.note(`confirm dialog on start: ${await confirmIn(/start chain|confirm/i) ? "yes" : "none — start is immediate"}`);
   } else {
     await row.getByRole("button", { name: /^stop$/i }).click();
-    await page.waitForSelector('[role="dialog"]', { timeout: 10_000 }).catch(() => {});
-    await clickByName(page, /stop chain/i).catch(() => {});
+    // ⚠️ Stop DOES require the dialog — skipping it looks exactly like a dead button.
+    await dialog.waitFor({ state: "visible", timeout: 10_000 }).catch(() => {});
+    rec.check("stopping asks for confirmation", await confirmIn(/stop chain|confirm/i));
   }
 
   // A positive signal, from the page the server re-rendered — never from the click succeeding.

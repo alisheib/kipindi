@@ -143,9 +143,20 @@ ok("§4b a cache-hit and a targeted fetch produce the SAME receipt",
   ev.ok && narrow.ok ? `${ev.rawHash} vs ${narrow.rawHash}` : "one refused");
 
 // ── §5 · provider faults are refusals, never prices ────────────────────────
+// ⭐ E-86 · A 429 IS ITS OWN REFUSAL NOW, AND THIS FIXTURE IS WHY THE DEFECT SURVIVED REVIEW:
+// the suite used a rate limit as its stand-in for "a provider error", so the classification
+// that voided two production rounds was the one shape nobody was asserting apart. A rate limit
+// is transient by definition — the identical request succeeds a minute later — so it must not
+// spend one of the boundary's lives. See `refusalCostsAnAttempt` and `test:updown-heal` §E-86.
 stub({ code: 429, message: "You have run out of API credits", status: "error" });
 const rateLimited = await quoteAsset(feed, { ...REQ, at: AT });
-ok("§5 an in-band provider error is refused", !rateLimited.ok && rateLimited.reason === "http-error");
+ok("§5 ⭐ an in-band RATE LIMIT is refused as a rate limit, not as a provider verdict",
+  !rateLimited.ok && rateLimited.reason === "rate-limited",
+  rateLimited.ok ? "accepted" : rateLimited.reason);
+stub({ code: 401, message: "Invalid API key", status: "error" });
+const inbandErr = await quoteAsset(feed, { ...REQ, at: AT });
+ok("§5 an in-band provider error is still refused as one",
+  !inbandErr.ok && inbandErr.reason === "http-error", inbandErr.ok ? "accepted" : inbandErr.reason);
 stub(HEALTHY, 500);
 const http500 = await quoteAsset(feed, { ...REQ, at: AT });
 ok("§5 an HTTP failure is refused", !http500.ok && http500.reason === "http-error");

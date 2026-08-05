@@ -95,6 +95,12 @@ export type RefusalReason =
    * no attempt; after it, it means *never* and burns one like any other source failure.
    */
   | "bar-not-published"
+  /**
+   * ⭐ E-86 · The provider refused because WE asked too often, not because the price is
+   * unknowable. Transient by definition: the identical request succeeds a minute later, so it
+   * must not spend one of the boundary's lives. See `refusalCostsAnAttempt`.
+   */
+  | "rate-limited"
   | "error";
 
 export type OracleReading =
@@ -403,6 +409,10 @@ export function describeRefusal(reason: RefusalReason, detail: string): string {
     // boundary is looking at the provider's normal publication delay, and telling them the
     // price source failed would send them to investigate an outage that is not happening.
     case "bar-not-published": return `Price for that minute not published yet — ${detail}`;
+    // ⭐ E-86. Says WE asked too often — not that the price source failed. An operator told
+    // "source failed" goes looking for an outage at the provider; the actual remedy is on our
+    // side (fewer reads, or a larger plan), and the rounds are not in danger while it lasts.
+    case "rate-limited": return `Price source asked too often — ${detail}`;
     case "error": return `Oracle error — ${detail}`;
   }
 }

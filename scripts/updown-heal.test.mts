@@ -53,7 +53,11 @@ import {
   __resetUpDownConfig,
   retryDelaySeconds, ladderSpanSeconds, abandonAfterSeconds, ABANDON_GRACE_SECONDS,
   DEFAULT_UPDOWN_CONFIG,
+  // E-86 — whether a refusal spends one of the boundary's lives is a MONEY decision.
+  refusalCostsAnAttempt,
 } from "../src/lib/server/updown-config.ts";
+// E-86 — one rule for "is this a rate limit", shared by both readers and both report shapes.
+import { isRateLimit } from "../src/lib/server/updown-feed.ts";
 import {
   openRound, closeRound, advanceChain, healStuckRounds, voidRoundByOperator, acquireObservation,
   settlementNote,
@@ -790,7 +794,30 @@ console.log("\n── 13 · E-29 · the settlement note states only what is true
   if (!c2c.ok) throw new Error(c2c.error);
   const chain2 = (await chainStore.get(c2c.data.id))!;
   await setChainState(chain2.id, "RUNNING", OFFICER);
-  await chainStore.patch(chain2.id, { gridAnchorAt: B(0), nextBoundaryAt: B(0), currentRoundId: null });
+
+  // 🔴 THE BOUNDARY IS PINNED RELATIVE TO **NOW**, AND THAT IS THE POINT (found 2026-08-05).
+  // This used to be `B(0)` — the chain's grid anchor, which `cleanGridAnchor` floors to a
+  // 5-minute mark at suite start. `advanceChain` reads wall-clock time and the mock feed quotes
+  // the present instant, so whether the reading was refused as `stale` depended on **how far
+  // into the current five minutes the suite happened to be launched**: start just after a mark
+  // and the skew is seconds, the mock CONFIRMS, a round opens, and E83.2 fails on correct code.
+  // Start at 4:30 past and the skew is 270s, the mock is refused, and it passes. A guard for a
+  // defect that voided 175 rounds cannot be decided by the second hand.
+  //
+  // ⛔ 120s BACK IS THE ONLY WINDOW THAT PINS BOTH PROPERTIES, and both edges are real config:
+  //   · > `maxStalenessSeconds` (90) — so the mock's "price now" is ALWAYS refused and the
+  //     reading is genuinely unconfirmed, which is what E83.1–E83.3 are about;
+  //   · < `abandonAfterSeconds` (390) — so the tick RETRIES this boundary instead of skipping
+  //     it, which is what E83.5 is about. Push it past the deadline and E83.5 inverts.
+  const cfgE83 = await getUpDownConfig();
+  const staleWindow = cfgE83.maxStalenessSeconds;
+  const abandonWindow = abandonAfterSeconds(cfgE83);
+  const backSeconds = Math.round((staleWindow + abandonWindow) / 2);   // 240s on the defaults
+  ok("E83.0 · the fixture sits between the staleness limit and the abandon deadline",
+     backSeconds > staleWindow && backSeconds < abandonWindow,
+     `${backSeconds}s back · stale>${staleWindow}s · abandon<${abandonWindow}s`);
+  const e83Boundary = new Date(Math.floor((Date.now() - backSeconds * 1000) / 60_000) * 60_000).toISOString();
+  await chainStore.patch(chain2.id, { gridAnchorAt: e83Boundary, nextBoundaryAt: e83Boundary, currentRoundId: null });
 
   const before = await roundStore.latestForChain(chain2.id);
   // No network in this suite, so the reading cannot confirm — exactly production's situation
@@ -813,7 +840,102 @@ console.log("\n── 13 · E-29 · the settlement note states only what is true
   // consumed unpriced and the chain silently produces nothing at all.
   const c2 = await chainStore.get(chain2.id);
   ok("E83.5 · ⭐ the boundary is RETRIED, not consumed",
-     c2!.nextBoundaryAt === B(0), `nextBoundaryAt=${c2!.nextBoundaryAt} (expected ${B(0)})`);
+     c2!.nextBoundaryAt === e83Boundary, `nextBoundaryAt=${c2!.nextBoundaryAt} (expected ${e83Boundary})`);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// E-86 · A READ THAT COSTS NO LIFE STILL COSTS A CREDIT — AND MUST STILL BE SPACED
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// 🔴 FOUND BY AN HOUR OF LIVE SOAK, 2026-08-05. §11's carve-out is right: an operator state or
+// an unpublished bar must not spend a round's lives. But `lastAttemptAt` was written ONLY by
+// `recordAttempt`, which runs ONLY when a refusal is charged — so a carved-out refusal left the
+// timestamp null, §12's backoff gate was skipped entirely, and the metered provider was re-read
+// with NO DELAY on every tick for the ~130s a bar takes to publish.
+//
+// ⭐ Measured on production against Twelve Data's OWN counter: usage climbed
+// **10 → 345 of 377 credits in 55 seconds** (~6 reads a second) and the next read returned HTTP
+// 429. That 429 was classified `error`, which IS charged — so four of them inside ninety seconds
+// declared the boundary FAILED and refunded every stake, **at +90s of a 390s deadline**.
+// BTC 3m #188 and BTC 5m #6, both `source-failed`, on the shared 09:07 boundary.
+//
+// ⛔ The comment beside the backoff gate predicted this exactly — *"a cost leak (TwelveData is
+// metered) and a good way to be rate-limited into voiding rounds that a slightly later read
+// would have settled"*. The ladder was wired for the refusals that already cost a life, and
+// bypassed for the one that happens at EVERY boundary.
+console.log("\n── E-86 · an uncharged read is still spaced, and a rate limit costs no life ──");
+{
+  const restore = await getUpDownConfig();
+  const savedKey = process.env.TWELVEDATA_API_KEY;
+  delete process.env.TWELVEDATA_API_KEY;
+  const setFeed = await setUpDownConfig({ observationMethod: "feed", feedProvider: "twelvedata" }, OFFICER);
+  ok("E86.0 · the unconfigured feed fixture is in place", setFeed.ok, setFeed.ok ? "" : setFeed.error);
+
+  const b = B(300);
+  const o = await observationStore.ensure(asset.id, b);
+  const t0 = Date.parse(b);
+
+  const first = await acquireObservation(asset, b, t0);
+  const afterFirst = (await observationStore.get(o.id))!;
+  ok("E86.1 · the read is refused without spending a life (the §11 carve-out still holds)",
+     first.state === "pending" && afterFirst.attempts === 0, `${first.state} attempts=${afterFirst.attempts}`);
+  ok("E86.2 · ⭐ …but WHEN we asked is now recorded — the rate control, not the money control",
+     !!afterFirst.lastAttemptAt, `lastAttemptAt=${afterFirst.lastAttemptAt}`);
+
+  // ⚠️ THE CLOCK IS DERIVED FROM THE ROW, exactly as §12 does it. `touchAttempt` stamps
+  // WALL-CLOCK time while `acquireObservation` takes an INJECTED `now`, so timing the next read
+  // from the synthetic boundary compares two unrelated clocks and the gate looks dead. In
+  // production the two are the same instant; in a test they are not, and reading `lastAttemptAt`
+  // back is the only honest base.
+  const askedAt = Date.parse(afterFirst.lastAttemptAt!);
+
+  // ⛔ THE HOLE ITSELF. One second later the provider must NOT be dialled again.
+  const immediate = await acquireObservation(asset, b, askedAt + 1 * SEC);
+  ok("E86.3 · ⭐⭐ a second read one second later is REFUSED BY THE LADDER, not sent",
+     "detail" in immediate && /waiting \d+s/.test(immediate.detail),
+     "detail" in immediate ? immediate.detail : "(no detail) — the metered provider was re-dialled");
+
+  // ⚠️ And the wait must be a real rung. With nothing charged, `retryDelaySeconds(cfg, 0)` is 0
+  // by design — reading it literally would restore the hole from the second read onward.
+  const waited = "detail" in immediate ? Number(/waiting (\d+)s/.exec(immediate.detail)?.[1] ?? 0) : 0;
+  ok("E86.4 · …and the wait is the ladder's FIRST RUNG, never zero",
+     waited > 0 && waited >= restore.retryBackoffSeconds[0] - 1, `waiting ${waited}s`);
+
+  // Past the rung it may ask again — a gate that never opens is an outage, not a fix.
+  const later = await acquireObservation(asset, b, askedAt + (restore.retryBackoffSeconds[0] + 2) * SEC);
+  ok("E86.5 · past the rung the read is allowed through again",
+     !("detail" in later && /waiting/.test(later.detail)), "detail" in later ? later.detail : String(later.state));
+  ok("E86.6 · …and STILL costs no life — the carve-out survives the spacing fix",
+     (await observationStore.get(o.id))!.attempts === 0,
+     `attempts=${(await observationStore.get(o.id))!.attempts}`);
+
+  if (savedKey !== undefined) process.env.TWELVEDATA_API_KEY = savedKey;
+  const back = await setUpDownConfig(
+    { observationMethod: restore.observationMethod, feedProvider: restore.feedProvider }, OFFICER);
+  if (!back.ok) throw new Error(back.error);
+}
+
+// ── E-86b · the classification itself, at the money decision ────────────────
+{
+  const cfg = await getUpDownConfig();
+  // ⛔ THE ONE THAT VOIDED REAL ROUNDS. A rate limit is transient by definition: the identical
+  // request succeeds a minute later, so charging it declares a boundary FAILED over our own
+  // request rate. Same shape as `bar-not-published`, one union member away.
+  ok("E86.7 · ⭐ a rate limit NEVER costs a life, at any elapsed time",
+     [0, 60, 200, 1000].every((e) => refusalCostsAnAttempt("rate-limited", e, cfg) === false));
+  ok("E86.8 · …while a genuine source failure still does — the budget is not disarmed",
+     refusalCostsAnAttempt("error", 60, cfg) === true &&
+     refusalCostsAnAttempt("unparseable-price", 60, cfg) === true);
+  ok("E86.9 · …and an unpublished bar keeps its measured grace, unchanged",
+     refusalCostsAnAttempt("bar-not-published", cfg.barPublicationGraceSeconds - 1, cfg) === false &&
+     refusalCostsAnAttempt("bar-not-published", cfg.barPublicationGraceSeconds + 1, cfg) === true);
+
+  // Both shapes the provider reports it in — an HTTP 429, and an in-band `code: 429` under
+  // HTTP 200. Two readers × two shapes was four chances to classify one thing differently.
+  ok("E86.10 · ⭐ a 429 is recognised as a rate limit however the provider reports it",
+     isRateLimit(429, null) && isRateLimit(null, 429) && isRateLimit(200, 429));
+  ok("E86.11 · …and an ordinary provider error is NOT swept into the carve-out",
+     !isRateLimit(500, null) && !isRateLimit(404, null) && !isRateLimit(null, 400));
 }
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);

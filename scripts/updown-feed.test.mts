@@ -134,12 +134,27 @@ console.log("\n── 5 · the stored time is the PROVIDER'S, never ours ──"
 // ── 6 · Provider failures are reported, not swallowed ───────────────────────
 console.log("\n── 6 · a failure keeps the provider's own words ──");
 {
-  const r1 = stubFetch(429, "rate limit exceeded for your plan");
+  // ⚠️ A 500, NOT A 429 — E-86. This check's property is "an HTTP error is refused and the
+  // provider's own words are kept", and it used a RATE LIMIT to demonstrate it. That is the
+  // fixture choice that let the real defect through review: the one status that must NOT be
+  // treated as a verdict was the one standing in for every verdict. It now has its own check
+  // below, and this one uses a status that really is a statement about the world.
+  const r1 = stubFetch(500, "upstream exploded, and here is why");
   const http = await new TwelveDataFeed(KEY).quote(REQ);
   r1();
   ok("6.1 · an HTTP error is refused and keeps the body",
-     !http.ok && http.reason === "http-error" && http.detail.includes("rate limit"),
+     !http.ok && http.reason === "http-error" && http.detail.includes("upstream exploded"),
      http.ok ? "" : http.detail);
+
+  // ⭐ E-86 · the rate limit, apart. Transient by definition: the identical request succeeds a
+  // minute later, so it must never spend one of the boundary's lives. On production, four of
+  // these inside ninety seconds voided BTC 3m #188 and BTC 5m #6 and refunded every stake.
+  const r429 = stubFetch(429, '{"code":429,"message":"You have run out of API credits for the current minute"}');
+  const limited = await new TwelveDataFeed(KEY).quote(REQ);
+  r429();
+  ok("6.1b · ⭐ a 429 is refused as a RATE LIMIT, never as a provider verdict",
+     !limited.ok && limited.reason === "rate-limited" && limited.detail.includes("API credits"),
+     limited.ok ? "accepted" : `${limited.reason} — ${limited.detail}`);
 
   // The provider signals its own errors in-band with HTTP 200.
   const r2 = stubFetch(200, JSON.stringify({ code: 401, message: "Invalid API key" }));

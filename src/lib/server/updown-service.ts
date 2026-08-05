@@ -221,6 +221,11 @@ export async function readPrice(
       // through as its own reason and `refusalCostsAnAttempt` decides, from the elapsed time,
       // whether this one means *not yet* or *never*.
       : q.reason === "no-bar" ? "bar-not-published"
+      // ⭐ E-86 · A RATE LIMIT IS "ASK ME AGAIN", NOT A VERDICT — the same class as `no-bar`
+      // above, and it was being folded into `error` and charged to the budget. Four of them
+      // inside 90 seconds declared the boundary FAILED and refunded every stake, against a
+      // 390-second deadline that had barely started.
+      : q.reason === "rate-limited" ? "rate-limited"
       : "error";
     return { ok: false, reason, detail: describeFeedRefusal(q.reason, q.detail) };
   }
@@ -485,8 +490,23 @@ export async function acquireObservation(
   //
   // ℹ️ MERGE NOTE (2026-08-01). Both the E-24 fix and the feed branch wired this ladder, in
   // different places — the healer and here. This is the single surviving implementation.
+  //
+  // 🔴 E-86 (2026-08-05, found by an hour of live soak). The gate below is right and it was
+  // being SKIPPED on the one refusal that happens at every single boundary. `lastAttemptAt` was
+  // only ever written by `recordAttempt`, which runs only when a refusal COSTS an attempt — so
+  // a bar that has merely not published yet (the deliberate carve-out above) left the timestamp
+  // null, this whole block was skipped, and the metered provider was re-read with NO DELAY on
+  // every tick for the ~130s a bar takes to appear. Measured on production against the
+  // provider's own counter: usage climbed **10 → 345 of 377 credits in 55 seconds**, ~6 reads a
+  // second, and the next read came back HTTP 429. `touchAttempt` now records WHEN we asked
+  // without spending one of the boundary's lives, so the ladder gates every read.
+  //
+  // ⚠️ AND THE RUNG IS FLOORED AT THE FIRST ONE. With no attempt charged, `retryDelaySeconds`
+  // returns 0 by design (the first read is taken AT the boundary, with no delay) — so reading
+  // it literally here would restore the very hole this fixes on the second read onward. Once we
+  // have asked at all, the shortest wait is the ladder's first rung.
   if (obs.lastAttemptAt && !opts?.pastDeadline) {
-    const readyAt = Date.parse(obs.lastAttemptAt) + retryDelaySeconds(cfg, obs.attempts) * 1000;
+    const readyAt = Date.parse(obs.lastAttemptAt) + retryDelaySeconds(cfg, Math.max(1, obs.attempts)) * 1000;
     if (Number.isFinite(readyAt) && now < readyAt) {
       return {
         state: "pending",
@@ -513,6 +533,11 @@ export async function acquireObservation(
     const elapsedSeconds = Math.round((now - Date.parse(boundaryAtIso)) / 1000);
     if (refusalCostsAnAttempt(reading.reason, elapsedSeconds, cfg)) {
       await observationStore.recordAttempt(obs.id, detail);
+    } else {
+      // ⛔ E-86. A refusal that costs no LIFE still costs a paid provider READ, and the next
+      // one must still be spaced. This is the whole fix: the boundary keeps its full attempt
+      // budget, and the ladder still decides when we may ask again.
+      await observationStore.touchAttempt(obs.id, detail);
     }
     return { state: "pending", id: obs.id, detail };
   }

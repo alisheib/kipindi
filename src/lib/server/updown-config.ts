@@ -1226,6 +1226,13 @@ export function refusalCostsAnAttempt(
 ): boolean {
   // The pre-existing carve-out, stated here rather than duplicated at the call site.
   if (reason === "no-api-key" || reason === "ai-paused") return false;
+  // ⭐ E-86 · A RATE LIMIT NEVER COSTS A LIFE. It is the purest case of the question above:
+  // the identical request succeeds a minute later, so charging it to the budget refunds a round
+  // whose price was perfectly knowable. ⛔ And it cannot hang the round — `abandonAfterSeconds`
+  // still bounds the boundary, and `acquireObservation` now spaces every read whether or not it
+  // was charged, so a permanently rate-limited source ends in a bounded refund rather than a
+  // tight loop. On production this voided BTC 3m #188 and BTC 5m #6 at +90s of a 390s deadline.
+  if (reason === "rate-limited") return false;
   if (reason === "bar-not-published") {
     // Inside the grace it means NOT YET. Outside it, the provider has had ample time and
     // still published nothing — that is a real failure and must terminate the boundary.
