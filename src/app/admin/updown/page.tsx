@@ -8,6 +8,8 @@ import { SYMBOL_CATALOGUE, symbolReadiness, readinessMark, findSymbol } from "@/
 // E-36 — a shut market must be VISIBLY shut. A wall of VOIDs looks identical whether the
 // market is closed or the feed is broken, and that ambiguity is what E-16/E-25/E-32 all cost.
 import { marketSessionAt, nextOpenAfter } from "@/lib/server/market-calendar";
+// ⭐ E-84 / the dynamic gate — each asset's measured record, and the advice derived from it.
+import { feedAdviceLookup } from "@/lib/server/updown-feed-history";
 import { observationStore, roundStore } from "@/lib/server/updown-dal";
 import { summariseRounds, chainHealth } from "@/lib/server/updown-chain-stats";
 import { poolFee } from "@/lib/payout";
@@ -45,10 +47,16 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
   const sp = await searchParams;
   // The economics card's window — presets + custom date+hour+minute, EAT-safe (default 30d).
   const range = resolveRange(sp, Date.now(), "30d");
-  const [assets, chains, cfg] = await Promise.all([
+  const [assets, chains, cfg, feed] = await Promise.all([
     listAssets().catch(() => []),
     listChains().catch(() => []),
     getUpDownConfig(),
+    // ⭐ THE ASSETS' OWN MEASURED RECORD, loaded ONCE for the whole page. It drives the ①②③ on
+    // every duration in the Add-chain form and the record column in the asset table, and it is
+    // the same lookup `createChain` refuses with — so the console cannot grey what the server
+    // would accept, or offer what it would refuse. Degrades to a zeroed record (which reads as
+    // UNMEASURED, never as healthy) rather than taking the page down.
+    feedAdviceLookup().catch(() => null),
   ]);
 
   const enabledAssets = assets.filter((a) => a.enabled);
@@ -302,7 +310,9 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
                 assets.filter((a) => a.enabled).map((a) => [
                   a.id,
                   ALLOWED_DURATIONS.map((d) => {
-                    const r = symbolReadiness(findSymbol(a.symbol), d);
+                    // ⭐ …and the asset's OWN measured record for this duration, keyed on
+                    // `a.key` exactly as `createChain` keys it.
+                    const r = symbolReadiness(findSymbol(a.symbol), d, feed?.advise(a.key, d));
                     return { minutes: d, level: r.level, mark: readinessMark(r.level), reason: r.reason };
                   }),
                 ]),
@@ -313,8 +323,10 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
               assetReadiness={Object.fromEntries(
                 assets.filter((a) => a.enabled).map((a) => {
                   const spec = findSymbol(a.symbol);
-                  const own = symbolReadiness(spec);
-                  const usable = ALLOWED_DURATIONS.filter((d) => symbolReadiness(spec, d).level !== 3);
+                  const own = symbolReadiness(spec, undefined, feed?.advise(a.key));
+                  const usable = ALLOWED_DURATIONS.filter(
+                    (d) => symbolReadiness(spec, d, feed?.advise(a.key, d)).level !== 3,
+                  );
                   const level = usable.length === 0 ? 3 : own.level;
                   const limit = spec?.minDurationMinutes
                     ? `${a.key} runs at ${spec.minDurationMinutes} minutes or longer only — ${spec.minDurationWhy ?? ""}`.trim()

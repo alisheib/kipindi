@@ -900,8 +900,14 @@ export async function createChain(input: ChainInput, officerId: string): Promise
   // pairing is allowed — and gold at 5 minutes is refused here even if the option is clicked.
   // ⚠️ Dynamic import for the same reason `validateSymbolCategory` uses one below: the symbol
   // catalogue reaches `market-calendar`, and a static cycle here breaks the config module.
+  // ⭐ …AND IT IS FED THE ASSET'S OWN MEASURED RECORD, so the refusal and the greyed option in
+  // the Add-chain form are computed from the same history by the same function. Keyed on
+  // `asset.key`, which is what `UpDownObservation` groups by — `asset.symbol` would silently
+  // find nothing and quietly disarm the measured half of the gate.
   const { validateSymbolDuration } = await import("./updown-symbols");
-  const durationErr = validateSymbolDuration(asset.symbol, input.durationMinutes);
+  const { feedAdviceFor } = await import("./updown-feed-history");
+  const measured = await feedAdviceFor(asset.key, input.durationMinutes);
+  const durationErr = validateSymbolDuration(asset.symbol, input.durationMinutes, measured);
   if (durationErr) return { ok: false, error: durationErr };
   const existing = (await chainStore.list({ assetId: input.assetId })).find((c) => c.durationMinutes === input.durationMinutes);
   if (existing) return { ok: false, error: `${asset.key} already has a ${input.durationMinutes}-minute chain.` };

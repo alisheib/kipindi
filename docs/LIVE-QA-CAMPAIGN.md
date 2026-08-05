@@ -3654,6 +3654,93 @@ workstation shows an SLA countdown, but nothing escalates when it runs out. Ali'
   platform zone (+3) keeps it on the right day, and the E-2 fix is safe. The earlier note was
   the `pg` −3h trap (§3) reading back through an un-cast client.
 
+## 6ap. ⭐ THE DYNAMIC PER-ASSET GATE IS WIRED — and the engine it wires was wrong (2026-08-05, session 26)
+
+Ali, 2026-08-05: *"guide admins as they go for every asset based on history of 12data"* — and on
+what to do with that guidance, *"not advise — don't allow it. Anything risky don't allow it… grey
+the field out or don't allow it in the dropdown."*
+
+The engine was built and pushed the session before (`286676d6`) with **22 green checks and no
+caller**. This session wired it. ⛔ **The first thing wiring it did was disprove it.**
+
+### The defect the wiring found — E-84
+
+Before writing a line I read the real record out of the production database, because the engine's
+whole claim is that it reasons from measurement:
+
+| | readings | confirmed | `confirmedAt − boundaryAt` | `sourceQuotedAt − boundaryAt` |
+|---|---|---|---|---|
+| **BTC** | 204 | **198 (97.1%)** | median **132.25s** · max **432.61s** | median **0.00s** · max **0.00s** |
+| **SOL** | 2 | 2 | — | — |
+
+⭐ **The skew the staleness gate actually judges is ZERO** — `judgeFeedStaleness` compares
+`sourceQuotedAt` to `boundaryAt`, and a dated 1-minute bar is labelled with the boundary itself.
+Meanwhile the 132s the engine was comparing against that 90s limit is very largely **our own
+configured patience**: `barPublicationGraceSeconds` is **120** on production. So the rule
+`median >= staleness → ③` would have stamped **③ "more than half its rounds cannot be priced in
+time"** on Bitcoin — at **every** duration — while Bitcoin priced 198 of 204 readings and settled
+real winners at three minutes the same morning. **A gate that blocks the flagship asset with a
+false sentence.**
+
+⚠️ And the suite that shipped with it was green, because **the checks were written from the same
+wrong model as the code**. That is [[checks-that-lie]] in its purest form: every check would have
+passed with the feature absent, because the feature and the check agreed with each other and with
+nothing else.
+
+### What the measured wait actually decides
+
+Since **E-83**, `advanceChain` will not open a round until its reading confirms. So the wait is
+not a settlement risk — **it is subtracted from the betting window**:
+
+```
+boundary ──── wait ────► round actually opens ──── betting ────► selections close
+|<─────────────── durationMinutes ───────────────>|<─ result phase ─>| close
+```
+
+A 3-minute BTC chain therefore opens ~132s after its boundary and leaves the player about
+**48 seconds** of a round advertised as three minutes. That is the honest, measured,
+player-facing consequence, and it is what the gate now reasons from:
+
+| | when | what the operator sees |
+|---|---|---|
+| **③ blocked** | usable price in <90% of readings · typical reading past `abandonAfterSeconds` (390s live) · less than **30s** of betting would survive the wait | greyed in the dropdown **and** refused by `createChain`, same sentence |
+| **② caution** | <98% success · under half the advertised betting window survives · **fewer than 20 readings — UNMEASURED** | selectable, with the measured seconds in the sentence |
+
+### The three call sites, all live
+
+1. **`symbolReadiness(spec, duration, measured?)`** folds the record in — a measured ③ returns ③.
+2. **`validateSymbolDuration(symbol, duration, measured?)`** is the same function, so `createChain`
+   refuses exactly what the dropdown greys. `test:updown-readiness` **§6.5 drives the write**, not
+   the symbol: a scripted POST is refused with the sentence the console showed.
+3. **`/admin/updown`** loads the record once (`feedAdviceLookup`) and every asset-driven readiness
+   call on the page reads it — asserted **structurally** by `test:updown-admin-options` §7, because
+   an engine with no caller passes every unit test it has.
+
+⛔ **Keyed on `asset.key`, never `asset.symbol`** — `UpDownObservation` groups by the key, so
+keying on the symbol finds nothing, reads as UNMEASURED and silently disarms the gate while every
+screen still looks right. Both halves are guarded on this specifically (`red` mutation
+`record-keyed-on-symbol`).
+
+### ⛔ One instruction from the handoff was NOT followed, deliberately
+
+The session prompt said the measured advice *"should REPLACE the hardcoded `cautionBelowMinutes`
+added for SOL in E-79, now that the same conclusion is derived from data."* **It is not the same
+conclusion, and replacing it would delete a true warning.** Solana's caution rests on
+**price-scale arithmetic** — a $0.02 band is ~0.03% of a $74 coin, so short SOL rounds refund more
+often (§6ao) — and gold's 15-minute floor rests on **bar-seam arithmetic** ($0.29–$0.87 across a
+seam). `UpDownObservation` measures **neither**: it records *when a reading arrived*, not *how far
+the market moved while it did*. Had the caution been deleted, it would have vanished the moment SOL
+crossed 20 readings and started reading as measured.
+
+⭐ So the rule is **measurement ESCALATES ONLY**: the record can add a caveat or a block, never
+remove one. Guarded by `updown-readiness` §6.10/§6.11 and the `measurement-overrides-the-catalogue`
+RED mutation. **Ali's call if he wants it the other way** — say so and it is a two-line change.
+
+### Evidence
+
+`test:updown-advice` **46** (was 22, rewritten — §6 asserts against BTC's real production record) ·
+`test:updown-readiness` **49** · `test:updown-admin-options` **41** · `red:updown-advice` **7/7** ·
+`red:updown-readiness` **13/13** · all 27 Up & Down suites green · `tsc` clean · build clean.
 ## 6ao. 🔴 SOL WAS NEVER THE PROBLEM — and four more guide claims were asserted, not verified (2026-08-04, session 23)
 
 > Ali: *"but SOL is there for Twelve Data no? check please why can we do SOL?"* — and then

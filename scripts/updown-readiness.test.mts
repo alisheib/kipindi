@@ -32,6 +32,9 @@ import { ALLOWED_DURATIONS } from "../src/lib/updown-durations.ts";
 import { MIN_MOVE_TICKS_FLOOR, createAsset, createChain, __resetUpDownConfig } from "../src/lib/server/updown-config.ts";
 import { assetStore, __resetUpDownMemoryStores } from "../src/lib/server/updown-dal.ts";
 import { seedDefaultSources, addSource } from "../src/lib/server/source-registry.ts";
+// §6 — the measured half of the gate, and the seam that lets the SERVER half be driven.
+import { adviseFromHistory, type FeedHistory } from "../src/lib/server/updown-feed-advice.ts";
+import { __setFeedHistoryForTests } from "../src/lib/server/updown-feed-history.ts";
 
 let pass = 0, fail = 0;
 const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; console.log(`${c ? "PASS" : "FAIL"} ${l}${x ? ` — ${x}` : ""}`); };
@@ -204,6 +207,99 @@ for (const cat of ["crypto", "macro"]) {
      symbolReadiness(btc, 3).level === 1, `level ${symbolReadiness(btc, 3).level}`);
   ok("5.7 · …and Ethereum at 3 minutes too",
      symbolReadiness(findSymbol("ETH/USD")!, 3).level === 1);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 6 · ⭐ THE MEASURED GATE — what the asset has ACTUALLY done here, folded in
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// Ali, 2026-08-05: *"guide admins as they go for every asset based on history of 12data"*, and
+// on what to do with that guidance: *"not advise — don't allow it. Anything risky don't allow
+// it… grey the field out or don't allow it in the dropdown."*
+//
+// ⛔ THE PROPERTY THAT MATTERS IS THAT THE TWO HALVES ARE ONE ANSWER. A greyed option and a
+// server refusal come from the same function reading the same record — §6.3 drives `createChain`
+// itself rather than asserting the symbol, because a form that greys what the server accepts (or
+// offers what it refuses) is the defect this design exists to prevent.
+{
+  const H = (over: Partial<FeedHistory>): FeedHistory => ({
+    assetKey: "X", readings: 500, confirmed: 500, failed: 0,
+    medianLagSeconds: 20, maxLagSeconds: 35, ...over,
+  });
+  const advise = (h: FeedHistory, d?: number) =>
+    adviseFromHistory(h, { durationMinutes: d, abandonAfterSeconds: 390 });
+
+  const btc = findSymbol("BTC/USD")!;
+  // A record that blocks: a reading 200s after the boundary leaves a 3-minute round no
+  // betting time at all, because a chain does not open before its price is known (E-83).
+  const blocked = H({ assetKey: "BTC", medianLagSeconds: 200, maxLagSeconds: 260 });
+
+  const r3 = symbolReadiness(btc, 3, advise(blocked, 3));
+  ok("6.1 · ⭐ a measured ③ BLOCKS a duration the catalogue alone would have allowed",
+     r3.level === 3, `${readinessMark(r3.level)} ${r3.reason.slice(0, 70)}`);
+  ok("6.2 · …and the refusal carries the measurement, not a bare rule",
+     /200s/.test(r3.reason) && /betting/.test(r3.reason), r3.reason);
+  ok("6.3 · …and it names the length it advises instead",
+     /below 10 minutes/.test(r3.reason), r3.reason);
+  ok("6.4 · …while the same asset at 10 minutes stays open",
+     symbolReadiness(btc, 10, advise(blocked, 10)).level !== 3);
+
+  // ⛔ THE SERVER HALF, DRIVEN. Not "the symbol reads ③" but "the write is refused".
+  __setFeedHistoryForTests(new Map([["BTCM", { ...blocked, assetKey: "BTCM" }]]));
+  const measuredAsset = await createAsset({
+    key: "BTCM", symbol: "BTC/USD", nameEn: "Bitcoin", nameSw: "Bitcoin", iconKey: "crypto",
+    priceSourceUrl: "https://api.twelvedata.com/time_series", category: "crypto",
+    decimals: 2, minMoveTicks: 2,
+  }, OFFICER);
+  if (!measuredAsset.ok) throw new Error(measuredAsset.error);
+  const scripted = await createChain({ assetId: measuredAsset.data.id, durationMinutes: 3 }, OFFICER);
+  ok("6.5 · ⭐ THE SERVER REFUSES the pairing the console greys — a scripted POST does not slip past",
+     !scripted.ok, scripted.ok ? "CREATED" : scripted.error.slice(0, 80));
+  ok("6.6 · …with the same sentence the dropdown shows — one answer, not two",
+     !scripted.ok && scripted.error === symbolReadiness(btc, 3, advise({ ...blocked, assetKey: "BTCM" }, 3)).reason,
+     scripted.ok ? "" : scripted.error.slice(0, 80));
+  const allowed = await createChain({ assetId: measuredAsset.data.id, durationMinutes: 10 }, OFFICER);
+  ok("6.7 · …and the same asset at an advised length IS created — the gate is not a wall",
+     allowed.ok, allowed.ok ? "" : allowed.error.slice(0, 80));
+  __setFeedHistoryForTests(null);
+
+  // ⭐ UNMEASURED MUST READ AS UNMEASURED. Production has exactly this shape: SOL has 2
+  // readings. Two samples produce a median as readily as two thousand.
+  const thin = advise(H({ assetKey: "SOL", readings: 2, confirmed: 2, medianLagSeconds: 200, maxLagSeconds: 260 }), 3);
+  const solThin = symbolReadiness(findSymbol("SOL/USD")!, 3, thin);
+  ok("6.8 · ⭐ two readings do not block anything — an unmeasured asset is not a broken one",
+     solThin.level === 2, `${readinessMark(solThin.level)}`);
+  ok("6.9 · …and no median is quoted from two samples",
+     !/200s/.test(solThin.reason), solThin.reason);
+
+  // ⛔ MEASUREMENT ESCALATES ONLY — it never lifts a catalogue floor or erases a caveat.
+  // The catalogue's floors rest on price-scale and bar-seam arithmetic, which
+  // `UpDownObservation` does not measure at all.
+  const perfect = advise(H({ assetKey: "XAU", medianLagSeconds: 5, maxLagSeconds: 9 }), 5);
+  ok("6.10 · ⭐ a perfect measured record does NOT lift gold's 15-minute floor",
+     symbolReadiness(findSymbol("XAU/USD")!, 5, perfect).level === 3);
+  ok("6.11 · ⭐ …nor erase Solana's price-scale caution, which is not what the feed record measures",
+     /share of the price|0\.0\d%|band cannot/i.test(
+       symbolReadiness(findSymbol("SOL/USD")!, 3, advise(H({ assetKey: "SOL", medianLagSeconds: 5, maxLagSeconds: 9 }), 3)).reason,
+     ));
+  ok("6.12 · a plain ① record adds no noise to a plain ① symbol",
+     symbolReadiness(btc, 15, advise(H({ assetKey: "BTC" }), 15)).level === 1 &&
+     symbolReadiness(btc, 15, advise(H({ assetKey: "BTC" }), 15)).reason === "");
+
+  // Both caveats survive together — the weekend AND the record, neither swallowing the other.
+  const eurSlow = symbolReadiness(
+    findSymbol("EUR/USD")!, 15,
+    advise(H({ assetKey: "EURUSD", readings: 200, confirmed: 190, medianLagSeconds: 20, maxLagSeconds: 35 }), 15),
+  );
+  ok("6.13 · a weekend caveat and a measured caveat are BOTH shown, not one or the other",
+     /weekend/i.test(eurSlow.reason) && /95% of the time/.test(eurSlow.reason), eurSlow.reason);
+
+  // ⛔ AND THE ABSENCE OF A RECORD MUST NOT WEAKEN ANYTHING. `measured` is optional so the
+  // catalogue stays callable without a database; omitted means "nobody measured", never "fine".
+  ok("6.14 · ⭐ omitting the record leaves every catalogue rule exactly as strict",
+     symbolReadiness(findSymbol("XAU/USD")!, 5).level === 3 &&
+     symbolReadiness(findSymbol("SPX"), 15).level === 3 &&
+     symbolReadiness(undefined, 5).level === 3);
 }
 
 console.log(`\n${fail === 0 ? "✅" : "🔴"} updown-readiness: ${pass} passed, ${fail} failed`);

@@ -34,6 +34,8 @@ import {
 } from "../src/lib/server/updown-symbols.ts";
 import { ALLOWED_DURATIONS } from "../src/lib/updown-durations.ts";
 import { FEED_PROVIDERS } from "../src/lib/updown-providers.ts";
+// §7 — the measured per-asset gate, and whether the console and the server both actually call it.
+import { adviseFromHistory } from "../src/lib/server/updown-feed-advice.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
@@ -229,6 +231,76 @@ const SELECT = "src/components/ui/select.tsx";
      pageSrc.match(/\(effectiveMarginBps\(c\) \/ 100\)\.toFixed\(2\)\}%/) ? "still prints a bare %" : "");
   ok("6.10 · …and says WHICH quantity it is, so ±0.02 is not read as a percentage",
      /·min move/.test(pageSrc));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 7 · ⭐ THE MEASURED GATE IS WIRED TO BOTH HALVES — the console AND the server
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// Ali, 2026-08-05: a risky pairing must be **blocked**, *"grey the field out or don't allow it
+// in the dropdown"*. The engine has existed since `286676d6` and for a session nothing used it —
+// a gate nobody calls is indistinguishable from no gate, and it passes every unit test it has.
+//
+// ⛔ SO THE CHECKS HERE ARE ABOUT THE CALL, NOT THE FUNCTION. §7.2 scans the page for every
+// asset-driven `symbolReadiness` call and requires each to pass the measured record; §7.4 does
+// the same for the server gate. Both are structural, because "the console greys what the server
+// refuses" is only true if both are actually reading the same thing.
+{
+  const pageSrc = code(PAGE);
+  const configSrc = code("src/lib/server/updown-config.ts");
+
+  ok("7.1 · the page loads each asset's measured record", /feedAdviceLookup\(\)/.test(pageSrc));
+
+  // Every `symbolReadiness(` call in the page, with its full argument text — paren-matched
+  // rather than regexed, so a nested `findSymbol(...)` cannot truncate the match and flatter
+  // the result. Calls naming an ASSET must carry the record; the Add-ASSET picker legitimately
+  // does not, because a symbol nobody has added has no history to read.
+  const calls: string[] = [];
+  for (let i = pageSrc.indexOf("symbolReadiness("); i >= 0; i = pageSrc.indexOf("symbolReadiness(", i + 1)) {
+    let depth = 0, j = i + "symbolReadiness".length;
+    for (; j < pageSrc.length; j++) {
+      if (pageSrc[j] === "(") depth++;
+      else if (pageSrc[j] === ")" && --depth === 0) break;
+    }
+    calls.push(pageSrc.slice(i, j + 1));
+  }
+  const assetCalls = calls.filter((c) => /\ba\.symbol\b|\bspec\b/.test(c));
+  ok("7.2 · ⭐ EVERY asset-driven readiness call on the page folds the measured record in",
+     assetCalls.length >= 3 && assetCalls.every((c) => /advise\(/.test(c)),
+     `${assetCalls.filter((c) => !/advise\(/.test(c)).length} of ${assetCalls.length} calls ignore it`);
+
+  // ⛔ KEYED ON THE ASSET KEY. `UpDownObservation` groups by `UpDownAsset.key` ("BTC"), not by
+  // the symbol ("BTC/USD"), so keying on the symbol finds nothing, reads as UNMEASURED, and
+  // silently disarms the measured half while every screen still looks right.
+  ok("7.3 · ⭐ …keyed on the asset KEY, which is what the observations group by",
+     assetCalls.every((c) => !/advise\(/.test(c) || /advise\(a\.key/.test(c)) &&
+     !/advise\(a\.symbol/.test(pageSrc));
+
+  ok("7.4 · ⭐ and the SERVER gate reads the same record, keyed the same way",
+     /feedAdviceFor\(asset\.key/.test(configSrc) &&
+     /validateSymbolDuration\(asset\.symbol, input\.durationMinutes, measured\)/.test(configSrc));
+
+  // ⛔ EXHAUSTIVE, AS §4.1 IS FOR THE CATALOGUE: with a measured record in hand, the console and
+  // the server must still agree on every symbol × duration. A record that blocks short rounds is
+  // used, because that is the pairing the two halves could disagree about.
+  const measured = (d?: number) => adviseFromHistory(
+    { assetKey: "M", readings: 500, confirmed: 500, failed: 0, medianLagSeconds: 200, maxLagSeconds: 260 },
+    { durationMinutes: d, abandonAfterSeconds: 390 },
+  );
+  const mismatches: string[] = [];
+  for (const spec of SYMBOL_CATALOGUE) {
+    for (const d of ALLOWED_DURATIONS) {
+      const greyed = symbolReadiness(spec, d, measured(d)).level === 3;
+      const refused = validateSymbolDuration(spec.symbol, d, measured(d)) !== null;
+      if (greyed !== refused) mismatches.push(`${spec.symbol}@${d}m greyed=${greyed} refused=${refused}`);
+    }
+  }
+  ok("7.5 · ⭐ with a measured record too, the console greys exactly what the server refuses",
+     mismatches.length === 0, mismatches.join(" · "));
+  // …and it really is blocking something, or 7.5 would be vacuously true.
+  ok("7.6 · …and that record does block the short rounds, so 7.5 is not vacuous",
+     symbolReadiness(findSymbol("BTC/USD"), 3, measured(3)).level === 3 &&
+     symbolReadiness(findSymbol("BTC/USD"), 15, measured(15)).level !== 3);
 }
 
 console.log(`\n${fail === 0 ? "✅" : "🔴"} updown-admin-options: ${pass} passed, ${fail} failed`);

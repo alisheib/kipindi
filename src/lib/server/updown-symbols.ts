@@ -33,6 +33,9 @@
  */
 import type { MarketCategory } from "./market-service";
 import { sessionKindFor } from "./market-calendar";
+// Type-only: erased at build, so this cannot create the import cycle `updown-config` avoids
+// with its dynamic import below.
+import type { FeedAdvice } from "./updown-feed-advice";
 
 /** The provider endpoint every catalogued symbol is quoted from. */
 export const QUOTE_ENDPOINT = "https://api.twelvedata.com/quote";
@@ -296,8 +299,34 @@ export type Readiness = {
  *
  * `durationMinutes` omitted asks about the SYMBOL alone — which is what the asset form needs
  * before any chain exists.
+ *
+ * ── ⭐ `measured` — WHAT THIS ASSET HAS ACTUALLY DONE HERE (Ali, 2026-08-05) ──
+ * *"guide admins as they go for every asset based on history of 12data"*, and *"not advise —
+ * don't allow it. Anything risky don't allow it… grey the field out."* So the caller loads the
+ * asset's own record (`feedAdviceLookup`) and hands the derived advice in, and a measured ③
+ * becomes a ③ here — greyed in the dropdown **and** refused by `validateSymbolDuration`, which
+ * is the same function.
+ *
+ * ⚠️ IT IS OPTIONAL, AND ITS ABSENCE MUST NOT SILENTLY WEAKEN THE GATE. Omitted means "nobody
+ * measured", not "measured and fine" — every caller that can reach the database passes it, and
+ * the catalogue floors below still apply on their own either way.
+ *
+ * ⛔ THE CATALOGUE FLOORS ARE NOT SUPERSEDED BY MEASUREMENT, and this was a deliberate call.
+ * `minDurationMinutes` (gold's 15) and `cautionBelowMinutes` (Solana's 5) rest on **price-scale
+ * and bar-seam arithmetic** — how large the smallest band is as a share of the price, and how
+ * far the feed disagrees with itself across a seam. `UpDownObservation` measures neither: it
+ * records when a reading arrived, not how far the market moved while it did. The handoff for
+ * this session proposed replacing Solana's caution with the measured advice "now that the same
+ * thing is derived from data" — it is not the same thing, and dropping it would delete a true
+ * warning (§6ao: a $0.02 band is ~0.03% of a $74 coin, so short SOL rounds refund more) the
+ * moment SOL crosses 20 readings and starts reading as measured. Measurement therefore only
+ * ESCALATES: it can add a caveat or a block, never remove one.
  */
-export function symbolReadiness(spec: SymbolSpec | undefined, durationMinutes?: number): Readiness {
+export function symbolReadiness(
+  spec: SymbolSpec | undefined,
+  durationMinutes?: number,
+  measured?: FeedAdvice,
+): Readiness {
   if (!spec) {
     return {
       level: 3,
@@ -320,7 +349,12 @@ export function symbolReadiness(spec: SymbolSpec | undefined, durationMinutes?: 
     };
   }
 
-  // ② a real caveat that does not stop the round happening. There are two, and BOTH can
+  // ③ FROM THE ASSET'S OWN RECORD. Measured after the catalogue's floors, because a floor is a
+  // property of the instrument and this is a property of the feed — and before the caveats,
+  // because a ③ is not a caveat. The sentence is the engine's, carrying its sample size.
+  if (measured && measured.level === 3) return { level: 3, reason: measured.message };
+
+  // ② a real caveat that does not stop the round happening. There are three, and ALL can
   // apply to one option, so they are collected rather than returned from the first match —
   // returning early would silently drop whichever caveat lost the race, and an operator
   // would be told about the weekend while never hearing that the round refunds often.
@@ -351,6 +385,12 @@ export function symbolReadiness(spec: SymbolSpec | undefined, durationMinutes?: 
     );
   }
 
+  // …and what the feed's own record says short of a refusal — a shortened betting window, a
+  // success rate below 98%, or an asset nobody has measured here yet. ⛔ A ① from the engine
+  // adds nothing: its ① sentence is "nothing to watch for", and appending that to a real
+  // caveat would bury it.
+  if (measured && measured.level === 2) caveats.push(measured.message);
+
   if (caveats.length > 0) return { level: 2, reason: caveats.join(" ") };
   return { level: 1, reason: "" };
 }
@@ -363,9 +403,20 @@ export function readinessMark(level: ReadinessLevel): string {
 /**
  * ⛔ THE SERVER-SIDE DURATION GATE, and the counterpart to `validateSymbolCategory`.
  * Returns null when the pairing is acceptable, or the sentence to show the operator.
+ *
+ * ⛔ `measured` IS NOT OPTIONAL POLISH HERE. A greyed option and a server refusal are one
+ * answer to one question; if the console greys a pairing on the asset's measured record and
+ * this function has never heard of that record, a scripted POST — or a stale tab, or a second
+ * browser — creates exactly the chain the console just refused. Every caller on the write path
+ * passes it (`createChain` does); the parameter is optional only so the pure catalogue rules
+ * stay callable without a database, which is what the tests and the in-memory path need.
  */
-export function validateSymbolDuration(symbol: string, durationMinutes: number): string | null {
-  const r = symbolReadiness(findSymbol(symbol), durationMinutes);
+export function validateSymbolDuration(
+  symbol: string,
+  durationMinutes: number,
+  measured?: FeedAdvice,
+): string | null {
+  const r = symbolReadiness(findSymbol(symbol), durationMinutes, measured);
   return r.level === 3 ? r.reason : null;
 }
 
