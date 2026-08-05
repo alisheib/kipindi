@@ -1,14 +1,20 @@
 {
- "round": "udr_bc2ec2b5ce1903325d6f",
+ "round": "udr_3ef8cde0696b9a9c7f38",
  "stake": 2000,
  "fired": {
-  "07": {
+  "10": {
+   "kind": "WIN-CELEBRATION",
+   "text": "POSITION WON Won! · Congratulations TZS 3,470 +TZS 1,480 net Up & Down · Down Continue"
+  },
+  "09": {
    "kind": "LOSS-OR-REFUND-TOAST",
    "text": "Round lost Up · TZS 2,000"
   }
  },
  "shots": [
-  "shots/E105/e105-fleet07-LOSS-OR-REFUND-TOAST.png",
-  "shots/E105/e105-fleet07-cropped.png"
+  "shots/E105/e105-fleet09-LOSS-OR-REFUND-TOAST.png",
+  "shots/E105/e105-fleet09-cropped.png",
+  "shots/E105/e105-fleet10-WIN-CELEBRATION.png",
+  "shots/E105/e105-fleet10-cropped.png"
  ]
 }

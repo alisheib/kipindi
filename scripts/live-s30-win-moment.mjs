@@ -114,6 +114,15 @@ try {
       if (!kind) continue;
       seen[nn] = kind;
       const el = kind === "WIN-CELEBRATION" ? dialog.first() : toast.first();
+      // ⛔ LET THE ROLLING COUNTER LAND BEFORE READING OR PHOTOGRAPHING IT.
+      // `RollingAmount` counts 0 → payout over 900ms (ease-out-quart), and the first version of
+      // this driver shot the dialog the instant it appeared: the picture read **TZS 3,470** beside
+      // **+TZS 1,480 net** on a payout the database records as **3,480.00**. The two figures
+      // disagreeing by 10 looks exactly like a money-display defect and is entirely the harness —
+      // the counter was ~99.7% through its animation. (The component ends on
+      // `Math.round(value * 1)`, so it always lands exactly.) This is the documented
+      // "page.screenshot() does not wait for animations" trap, on a money figure.
+      if (kind === "WIN-CELEBRATION") await page.waitForTimeout(1400);
       const text = (await el.innerText()).replace(/\s+/g, " ").trim();
       if (kind === "WIN-CELEBRATION") {
         rec.check(`3.${nn}-copy the celebration says it is a WIN, in this locale`,
