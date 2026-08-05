@@ -195,12 +195,34 @@ for (const f of srcFiles) {
     const lines = read(f).split("\n");
     let inBlockComment = false;
     lines.forEach((line, i) => {
-      const s = line.trim();
-      // Track /* … */ so a multi-line comment's middle lines (which do not start with *) are
-      // not read as copy. Without this the guard fires on its own documentation.
-      if (inBlockComment) { if (s.includes("*/")) inBlockComment = false; return; }
-      if (s.startsWith("/*") || s.startsWith("{/*")) { if (!s.includes("*/")) inBlockComment = true; return; }
-      if (s.startsWith("//") || s.startsWith("*")) return;
+      // 🔴 STRIP COMMENTS WHEREVER THEY OPEN, NOT ONLY WHERE THEY START A LINE.
+      //
+      // This rule tracked `/* … */` only when the TRIMMED line began with `/*` or `{/*`, so a
+      // comment opened mid-expression was invisible to it — and it fired on exactly that:
+      //     expectedResultAtMs={/* E-99 · null under the sample floor → no clock, never a
+      //                            guessed one. */ r.expectedResultAtMs}
+      // a JS block comment inside a JSX expression container, which renders nothing. The gate
+      // has been RED since E-99 shipped (session 28, `0664d18e`) and went unnoticed.
+      //
+      // ⛔ IT IS THE SIN THIS FILE IS FULL OF WARNINGS ABOUT: *"a guard that greps for a
+      // defect's code will match the comment explaining its fix — strip comments before
+      // asserting."* The rule's own header even claims "comment lines skipped, exactly as C1
+      // above does". It skipped comment LINES; the defect was comment SPANS.
+      let text = line;
+      if (inBlockComment) {
+        const end = text.indexOf("*/");
+        if (end < 0) return;                        // the whole line is inside a comment
+        text = text.slice(end + 2);
+        inBlockComment = false;
+      }
+      text = text.replace(/\/\*[\s\S]*?\*\//g, " ");   // complete spans on this line
+      const open = text.indexOf("/*");                 // an unterminated one opens a block
+      if (open >= 0) { inBlockComment = true; text = text.slice(0, open); }
+      // ⚠️ `//` only when it is not the `//` of a URL — `https://…` is content, not a comment.
+      const dbl = text.search(/(^|[^:])\/\//);
+      if (dbl >= 0) text = text.slice(0, dbl);
+      const s = text.trim();
+      if (s.startsWith("*")) return;                   // a JSDoc continuation line
       // ⛔ NOT `>text<` ON ONE LINE. The first version of this guard read only quoted strings
       // and JSX text bounded by tags on the same line — and MISSED the second of the two cases
       // that motivated it, because `…the measured ladder (E-32) — <strong>0.02%</strong>…` is a
@@ -210,7 +232,11 @@ for (const f of srcFiles) {
       // So: strip the tags and look at what prose is left. Comments are already gone, so what
       // remains on a `.tsx` line is either copy or code — and an `E-nn` token surrounded by
       // whitespace is not something code contains.
-      const prose = line.replace(/<[^>]*>/g, " ");
+      // ⚠️ `text`, NOT `line`. The comment-stripping above wrote to `text` and this read the
+      // ORIGINAL — so every span it had just removed came straight back. Caught by running it:
+      // the rule went from 1 failure to 3, all of them comments. Strip a thing and then measure
+      // the unstripped copy and you have done nothing but take longer about it.
+      const prose = text.replace(/<[^>]*>/g, " ");
       if (RENDERED_ID.test(prose) && /\S\s|\s\S/.test(prose.trim())) {
         fail("E96", `${f}:${i + 1}: a campaign finding id is rendered as copy — "${prose.trim().slice(0, 90)}"`);
       }
