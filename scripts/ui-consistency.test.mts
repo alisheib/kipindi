@@ -153,6 +153,33 @@ const RULES: Rule[] = [
         : matches(/<button\b[^>]*?className=\{?["'`][^"'`]*\bbtn\b[^"'`]*["'`]/gs, b),
   },
   {
+    // 🔴 E-91 · A CONTROL THAT LOOKS LIKE A LABEL. `raw-button-btn-class` catches a hand-rolled
+    // button that at least wears the kit's `btn` class — it cannot see one that wears nothing at
+    // all, which is the worse case. Measured on production: the Up & Down chain row's `Stop`
+    // rendered with no background, no border and 6.65:1 ink beside three siblings at 16.8–17.4,
+    // so the ONE destructive control on the page was the one that did not look pressable.
+    //
+    // ⚠️ Deliberately narrow. A button carrying a component CSS class (`cm-send`, `pchart-range`)
+    // or any paint at all (`bg-`, `border`, `ring-`, `shadow`, `rounded-full`, `underline`) is
+    // styled somewhere and is not what this is looking for. What is flagged is a `<button>` whose
+    // entire appearance is type.
+    id: "bare-text-button",
+    severity: "warning",
+    desc: "a <button> painted only with type — no kit `btn`, no background, no border. Reads as a label, not a control",
+    scan: (b, f) => {
+      if (isKitFile(f)) return [];
+      const out: Array<{ index: number; snippet: string }> = [];
+      for (const m of b.matchAll(/<button\b([^>]*)>/gs)) {
+        const cm = m[1].match(/className=\{?["'`]([^"'`]+)["'`]/);
+        if (!cm) continue;                                   // no className at all → unstyled by intent
+        const cls = cm[1];
+        if (/\b(btn|bg-|border|ring-|shadow|chip|rounded-full|underline)/.test(cls)) continue;
+        out.push({ index: m.index ?? 0, snippet: m[0].slice(0, 90) });
+      }
+      return out;
+    },
+  },
+  {
     id: "btn-inline-height-override",
     severity: "warning",
     desc: "height override (h-N / min-h-[] ) on a .btn — size via --h-control-* tokens, not utilities",

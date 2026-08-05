@@ -423,17 +423,16 @@ export function ChainStateControls({
           Pause
         </Button>
       )}
+      {/* 🔴 E-91 · THE ONE DESTRUCTIVE CONTROL ON THIS PAGE WAS THE ONLY ONE THAT DID NOT LOOK
+          PRESSABLE. Measured on production: this trigger was a hand-rolled button with no
+          background, no border and 6.65:1 ink, sitting beside Edit, Generate round and Pause at
+          16.8–17.4:1 — so the row read as three buttons and a label, and the label was the
+          irreversible one. It is the kit's ghost Button now, the same shape as Pause beside it;
+          the destructive weight is carried where it belongs, by the confirmation this trigger
+          opens (tone="claret", "Stop chain"). */}
       {state !== "STOPPED" && (
         <ConfirmDialog
-          trigger={
-            <button
-              type="button"
-              disabled={pending}
-              className="font-mono text-[11px] uppercase tracking-[0.12em] text-text-subtle hover:text-no-300 transition-colors px-2 py-1.5"
-            >
-              Stop
-            </button>
-          }
+          trigger={<Button type="button" variant="ghost" size="sm" disabled={pending}>Stop</Button>}
           title={`Stop ${label}?`}
           body="No new rounds will open. Rounds already open keep running and settle normally — no player is left holding an unsettled stake. You can start it again at any time."
           confirmLabel="Stop chain"
