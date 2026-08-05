@@ -71,6 +71,13 @@ const MUTATIONS = [
     with: ``,
   },
   {
+    // 🔴 E-101b, the defect this found on production: anchor present, ring lit, no scroll.
+    name: "destination-stops-scrolling-to-the-fragment (looks deep, lands at the top)",
+    file: "src/app/markets/[id]/page.tsx",
+    find: `      <HashFocus />\n`,
+    with: ``,
+  },
+  {
     name: "resolver-drops-the-ownership-check (a permalink is guessable)",
     file: "src/app/positions/[positionId]/page.tsx",
     find: `  if (!position || position.userId !== session.userId) notFound();`,

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { I, categoryGlyph } from "@/components/ui/glyphs";
+// E-101b · a fragment names a row; this is what actually scrolls to it.
+import { HashFocus } from "@/components/ui/hash-focus";
 import { BackLink } from "@/components/ui/back-link";
 import { TippingBar } from "@/components/brand";
 import { Countdown } from "@/components/markets/countdown";
@@ -277,6 +279,7 @@ export default async function MarketDetail({
           grid because a player on this page is about to bet and needs
           the freshest possible odds/pool/status. */}
       <RefreshPoller intervalMs={15_000} />
+      <HashFocus />
       {/* ── Back link ── */}
       <BackLink fallbackHref="/markets" label={t.common.markets} />
 

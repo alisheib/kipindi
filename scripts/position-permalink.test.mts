@@ -118,6 +118,24 @@ console.log("\n── 5 · the destinations RENDER the anchor, or the fragment l
     /id=\{pid\}|id=\{id\}/.test(round) && /myPosition\.ids/.test(round),
     "no per-position anchor on the round page");
 
+  // 🔴 E-101b · AND A CSS RING IS NOT A SCROLL. Driven on production: on
+  // `/markets/<id>#pos_…` the card sat at top 1066 in a 900px viewport with scrollY 0 — the
+  // anchor rendered, the `:target` ring applied, and the player still landed at the top of the
+  // page. These routes are force-dynamic and stream, so the browser resolves the fragment while
+  // parsing, finds nothing, and never retries once the card arrives in a later chunk.
+  // ⛔ AND THE UP & DOWN LEG PASSED IN THE SAME RUN, because its panel happened to sit above the
+  // fold — one check, two surfaces, and only the disagreement showed that neither had scrolled.
+  // Every ticket destination must therefore mount the component that actually does the scroll.
+  for (const f of [
+    "src/app/markets/[id]/page.tsx",
+    "src/app/updown/[roundId]/page.tsx",
+    "src/app/updown/history/page.tsx",
+    "src/app/positions/page.tsx",
+  ]) {
+    ok(`5.5 ⭐ ${f.replace("src/app", "")} scrolls to the fragment (<HashFocus />)`,
+      /<HashFocus\s*\/>/.test(code(f)), "no <HashFocus /> rendered");
+  }
+
   const css = read("src/app/globals.css");
   ok("5.4 a targeted row is VISIBLY marked, so the player can see which one they came for",
     /:target/.test(css), "no :target rule in globals.css");

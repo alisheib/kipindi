@@ -9,6 +9,8 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { BackLink } from "@/components/ui/back-link";
+// E-101b · a fragment names a row; this is what actually scrolls to it.
+import { HashFocus } from "@/components/ui/hash-focus";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { I } from "@/components/ui/glyphs";
@@ -104,6 +106,9 @@ export default async function UpDownHistoryPage({ searchParams }: {
 
   return (
     <div className="mx-auto w-full max-w-[1080px] px-4 py-6">
+      {/* E-101b · a `#pos_…` fragment names one card in this grid; this is what scrolls to it.
+          Without it the anchors render, the ring applies, and the player still lands at the top. */}
+      <HashFocus />
       <BackLink fallbackHref="/updown" label={t.market.udBackToBoard} />
       <div className="mt-3">
         <PageHeader eyebrow={t.market.udTitle} title={t.market.udHistoryTitle} subtitle={t.market.udHistoryBody} />

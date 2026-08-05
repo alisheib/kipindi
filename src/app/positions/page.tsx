@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
+// E-101b · a fragment names a row; this is what actually scrolls to it.
+import { HashFocus } from "@/components/ui/hash-focus";
 import { PageHeader } from "@/components/ui/page-header";
 import { PositionCard } from "@/components/markets/position-card";
 import { PnlSummaryStrip } from "@/components/positions/pnl-summary-strip";
@@ -106,6 +108,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
   return (
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-6">
       <RefreshPoller intervalMs={20_000} />
+      <HashFocus />
       {/* Positions is a primary destination (bottom-nav + top-nav tab), not a
           leaf — no Back-to-markets link (IA review R3). */}
       <header className="flex items-start justify-between gap-3">

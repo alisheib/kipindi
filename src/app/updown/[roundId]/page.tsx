@@ -18,6 +18,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BackLink } from "@/components/ui/back-link";
+// E-101b · a fragment names a row; this is what actually scrolls to it.
+import { HashFocus } from "@/components/ui/hash-focus";
 import { getRoundDetail } from "@/lib/server/updown-board";
 import { currentSession } from "@/lib/server/auth-service";
 import { isStaffRole } from "@/lib/server/roles";
@@ -180,6 +182,7 @@ export default async function UpDownRoundPage({
   // could see. Both are now the board tier.
   return (
     <div className="mx-auto w-full max-w-board px-3 lg:px-6 pt-[22px] pb-14">
+      <HashFocus />
       <div className="flex flex-col gap-[18px]">
         <BackLink fallbackHref="/updown" label={t.market.udTitle} />
 
