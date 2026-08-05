@@ -5496,7 +5496,46 @@ predicate did NOT match.**
 
 | Commit | What | Guard |
 |---|---|---|
-| _(this one)_ | ✅ **E-64 CLOSED** — Ali's bug, reported **twice**, written in session 21 and unshipped for two sessions. Placing a bet now toasts | new `test:updown-bet-feedback` **24**, `red:updown-bet-feedback` **7/7** |
+| `18fcabcc` | ✅ **E-64 CLOSED** — Ali's bug, reported **twice**, written in session 21 and unshipped for two sessions. Placing a bet now toasts | new `test:updown-bet-feedback` **24**, `red:updown-bet-feedback` **7/7** |
+| _(this one)_ | **E-64 DRIVEN LIVE on production with real money**, and the driver's own six vacuous checks corrected | `live-s30-bet-toast.mjs` + `s30-verify-bet.mts` **7/7** |
+
+#### ✅ E-64 VERIFIED ON PRODUCTION — a real stake, at 390px, and the money paired to the row
+
+Deploy `c6d47dee` SUCCESS, then driven on **our** chain's round `udr_8de03a317b043d5685ab`
+(BTC 5m — ⛔ **not** one of Jaykishan's two running 15m chains) as **fleet:07** at a **390×844
+phone viewport**, because a phone is where Ali saw it:
+
+> **`.qa-s30/e64/e64-2-toast-700ms.png`** — a green-check `Bet placed` / `Up · TZS 1,000` toast
+> on the brand surface with its countdown rail and a dismiss ×, sitting above the card. The card
+> below it reads `POOL TZS 1,000 · 1 PLAYERS · Up 100%` and `YOU'RE IN · UP TZS 1,000`.
+> **`.qa-s30/e64/e64-4-after-toast-cleared.png`** — the same viewport at ~5.3s, toast gone.
+
+**And the money agrees, which is the half that matters** (`s30-verify-bet.mts`, **7 passed / 0
+failed**): `pos_e4883b1d9ae6bbbfd3a6` · `YES` · `stake 1000.00` · `OPEN` · placed
+`20:57:13.065`, against market `mkt_1cdf1848354e6e2378db`, with `Transaction BET_PLACED
+-1000.00` and `balanceAfter 52452.00`. A toast reading *"Bet placed"* over a bet that did not
+place would be a **worse** defect than the silence it replaced, so the toast is never allowed to
+stand as evidence on its own.
+
+🔴 **AND THE DRIVER LIED IN EXACTLY THE WAY SESSION 29 WARNED ABOUT — six checks that could not
+fail, in the very run proving the fix.** It asserted the toast with `bodyText(page)`, i.e.
+*"does the page mention 'bet placed'?"* — and **it always does**: `setLiveMessage` writes
+`Bet placed · Up · TZS 1,000` into an **`aria-live` node that never leaves the DOM**. So the
+three timed checks plus "names the side" and "names the amount" would have passed over a page
+with **no toast at all**, and §3.4 then reported a **false FAILURE** — *"the toast never
+cleared"* — because that permanent line never disappears. ⭐ **The screenshot is what proved the
+toast; the suite beside it proved nothing.** Now scoped to
+`[role="region"]` filtered on the toast copy (measured: **0** matches with no bet placed, while
+the aria-live node is present — `.qa-s30/probe-crowd.mjs`), and a **CONTROL** was added that the
+first version lacked: **§1.3 asserts the toast is ABSENT before the tap**, so the suite can tell
+a working toast from a selector matching something permanent.
+
+⛔ **A SECOND THING I NEARLY FILED, AND IT WAS THE PICTURE LYING THIS TIME.** In the 700ms shot
+the pool card reads `Up 100%` on the left and, at 12px, what looks like **`8% Down`** — over
+`TZS 0`. A crowd bar claiming 8% on a side holding nothing would be a false money statement.
+**Read as code points it is `[48,37]` — `0% Down`.** The product is right. `8` and `0` are one
+pixel apart in this face, which is the same trap as `--:--` versus `—:—`: **when a digit decides
+whether something is a defect, read the string, never the pixels.**
 
 ⭐ **THE ONE TO CARRY FORWARD FROM E-64: the guard caught ITSELF being vacuous, twice over.**
 `use-quick-bet.ts` already held **two** `toast(` calls — both on failure branches — so *"does the
