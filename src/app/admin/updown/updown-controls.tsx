@@ -853,8 +853,15 @@ export function AddChainForm({
           optional numeric boxes given one column each, is what the content actually needs.
           The kit no longer truncates either (E-98), so this is now about looking right rather
           than about legibility — but a control laid out narrower than its own label is how
-          this defect keeps coming back, and `scripts/live-s28-clip.mjs` measures it. */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-8">
+          this defect keeps coming back, and `scripts/live-s28-clip.mjs` measures it.
+
+          ⚠️ TEN, NOT EIGHT, AND THE REASON IS ONLY VISIBLE IN A SCREENSHOT. At eight the
+          numbers were perfect — nothing hidden at any width — and `② 5 min` still wrapped onto
+          two lines, because a wrap satisfies `scrollWidth === clientWidth` exactly as fitting
+          does. The geometry check cannot see it and never will; only the image can. Ten
+          columns (asset 2 · duration 2 · band 4 · the two optional boxes 1 each) is what makes
+          every trigger read on ONE line at 1280 while the band keeps the room it needs. */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-10">
         {/* ⭐ THE ASSET CARRIES ITS OWN SIGNAL TOO, and this was the gap.
             Driven live: the asset list read plainly "XAU · Gold", and ONLY the duration list
             revealed that gold cannot run below 15 minutes. An operator should not have to open
@@ -881,14 +888,14 @@ export function AddChainForm({
             harder question than a symbol. ⛔ The levels come from `symbolReadiness`, the SAME
             function `createChain` refuses with, so the console and the money path cannot
             disagree about what is allowed. */}
-        <Field label="Duration">
+        <Field label="Duration" className="lg:col-span-2">
           <Select name="durationMinutes" value={dur} onChange={setDur} options={durationOptions} />
         </Field>
         {/* ⛔ A DROPDOWN, NOT A TYPED PERCENTAGE. This was a free number field, which let an
             operator type a band that voids every round the chain ever emits — E-32 exactly, and
             the reason that finding exists. The options are the few values that mean something,
             each stating its consequence. */}
-        <Field label="Winning band" className="lg:col-span-3">
+        <Field label="Winning band" className="lg:col-span-4">
           <Select name="marginBpsChoice" value={marginChoice} onChange={setMarginChoice}
             options={MARGIN_CHOICES.map((m) => ({
               value: String(m.bps),

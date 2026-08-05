@@ -32,13 +32,21 @@ async function measureTriggers(page, scopeSel) {
   if (!(await scope.count())) return null;
   return scope.evaluate((scope) => {
     return [...scope.querySelectorAll('button[role="combobox"]')].map((btn) => {
-      const span = btn.querySelector("span");   // the `.truncate` node, first child
+      const span = btn.querySelector("span");   // the label node, first child
+      // ⭐ LINE COUNT, BECAUSE GEOMETRY ALONE IS BLIND TO A WRAP. Once the kit stopped
+      // truncating (E-98), `scrollWidth === clientWidth` became true for a label that FITS
+      // and for one that WRAPPED ONTO THREE LINES alike — so the overflow measure below
+      // cannot tell a good layout from a cramped one. It said 0px hidden while `② 5 min`
+      // was stacked over two lines, and only the screenshot showed it. Height/line-height
+      // is the measurable difference, so the next run does not need my eye for this.
+      const lh = parseFloat(getComputedStyle(span ?? btn).lineHeight) || 0;
       return {
         text: (span?.innerText ?? btn.innerText).replace(/\s+/g, " ").trim(),
         cls: span?.className ?? "",
         scrollW: span?.scrollWidth ?? -1,
         clientW: span?.clientWidth ?? -1,
         over: (span?.scrollWidth ?? 0) - (span?.clientWidth ?? 0),
+        lines: lh > 0 ? Math.max(1, Math.round((span?.clientHeight ?? 0) / lh)) : 1,
         btnW: Math.round(btn.getBoundingClientRect().width),
       };
     });
@@ -64,7 +72,7 @@ try {
 
     console.log(`\n  ── ${width}px · Add chain (${add.length} triggers) ──`);
     for (const t of add)
-      console.log(`     ${t.text.padEnd(34)} span ${String(t.scrollW).padStart(4)}/${String(t.clientW).padStart(4)}  over=${String(t.over).padStart(3)}  btn=${t.btnW}`);
+      console.log(`     ${t.text.padEnd(34)} span ${String(t.scrollW).padStart(4)}/${String(t.clientW).padStart(4)}  over=${String(t.over).padStart(3)}  lines=${t.lines}  btn=${t.btnW}`);
 
     // ⚠️ The band trigger is identified by ITS OWN TEXT, not by index. Session 27 lost a
     // reading to an index-based click when two assets vanished from a list between the read
@@ -89,6 +97,13 @@ try {
     const clipped = add.filter((t) => t.over > 1);
     rec.check(`${width} · no trigger anywhere in the Add-chain form truncates`,
       clipped.length === 0, clipped.map((t) => `${t.text} (-${t.over}px)`).join(" · "));
+    // ⚠️ ONE LINE IS ASSERTED FOR THE ADD FORM ONLY. This form owns its own width and has
+    // room, so a wrap there means the column split is wrong. The EDIT panel does NOT own its
+    // width — it renders inside a table cell — so wrapping is the correct, honest behaviour
+    // there and asserting one line would be demanding the truncation E-98 just removed.
+    const wrapped = add.filter((t) => t.lines > 1);
+    rec.check(`${width} · …and every trigger reads on ONE line, so no column is starved`,
+      wrapped.length === 0, wrapped.map((t) => `${t.text} (${t.lines} lines)`).join(" · "));
 
     await page.locator(formSel).screenshot({ path: `${SHOT}/s28-addchain-${width}.png` }).catch(() => {});
     await page.keyboard.press("Escape");
