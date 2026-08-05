@@ -221,5 +221,55 @@ const ALL: RefundReason[] = ["no-move", "source-failed", "source-mismatch", "ope
   }
 }
 
+// ═══ E-94 · THE WALLET HISTORY IS A SURFACE, AND IT NAMED ONE REASON OUT OF FIVE ═══
+//
+// Driven on production: a no-move refund and an operator void produced BYTE-IDENTICAL wallet
+// rows — `Refund · "Bitcoin Up or Down · 5 min" voided` — while the one-sided case alone read
+// `One-sided refund · …`. `/wallet` renders `Transaction.description` verbatim, so two events a
+// player must be able to tell apart were indistinguishable in the only record they keep.
+{
+  const svc = code("src/lib/server/market-service.ts");
+  const raw = read("src/lib/server/market-service.ts");
+  const map = /const VOID_REFUND_DESCRIPTION[\s\S]*?\n\};/.exec(raw)?.[0] ?? "";
+
+  ok("E94.1 · ⭐ every STORED void reason has its own wallet wording",
+     ["no-move", "source-failed", "source-mismatch", "operator"].every((r) =>
+       new RegExp(`["']?${r}["']?:\\s*"`).test(map)),
+     map ? "one or more reasons missing from VOID_REFUND_DESCRIPTION" : "the map does not exist");
+  // ⛔ NOT "each key exists" — each key must produce a DIFFERENT sentence for the two reasons a
+  // player would dispute. `no-move` and `operator` are the pair that were identical.
+  const wording = (r: string) => new RegExp(`["']?${r}["']?:\\s*"([^"]+)"`).exec(map)?.[1] ?? "";
+  ok("E94.2 · ⭐ 'the price did not move' and 'we cancelled it' are not the same row",
+     !!wording("no-move") && !!wording("operator") && wording("no-move") !== wording("operator"),
+     `${wording("no-move")} vs ${wording("operator")}`);
+  ok("E94.3 · the operator wording mirrors the card — cancelled by us, not the internal word",
+     /cancel/i.test(wording("operator")) && !/void/i.test(wording("operator")), wording("operator"));
+  ok("E94.4 · the no-move wording names the PRICE, not a verdict",
+     /price/i.test(wording("no-move")) && !/void/i.test(wording("no-move")), wording("no-move"));
+  ok("E94.5 · a source failure is owned as ours, not blamed on the price",
+     /could not be confirmed/i.test(wording("source-failed")), wording("source-failed"));
+
+  // The CALL SITE — a map nobody reads is the E-4 shape, and this one has to be read once per
+  // settlement, not once per position.
+  ok("E94.6 · ⭐ the refund txn description is built from the map",
+     /description: `\$\{refundDescription \?\? "Refund"\}/.test(svc),
+     "the map being right does not change a single row a player can see");
+  // ⛔ SCOPE IT TO THE VOID BRANCH. `for (const p of myPositions)` appears in the ONE-SIDED
+  // branch too, earlier in the file, so a page-wide indexOf compared the lookup against the
+  // wrong loop and failed on correct code. Same trap as matching a table by a word its prose
+  // also contains: find the branch first, then look inside it.
+  const voidBranch = svc.slice(svc.indexOf('if (opts.outcome === "VOID")'));
+  ok("E94.7 · …and the round is looked up ONCE, before the position loop",
+     voidBranch.indexOf('const udReason = m.productLine === "UPDOWN"') >= 0
+     && voidBranch.indexOf('const udReason = m.productLine === "UPDOWN"') < voidBranch.indexOf("for (const p of myPositions)"),
+     "one round read per refunded position is a query per player on the settlement path");
+  ok("E94.8 · ⛔ an UNRECOGNISED reason keeps the old generic wording rather than guessing",
+     /VOID_REFUND_DESCRIPTION\[udReason \?\? ""\] \?\? null/.test(svc),
+     "the same rule refundReasonFor follows — never invent a reason for someone's money");
+  ok("E94.9 · a long-form poll that voids is UNCHANGED — it has no per-round reason to name",
+     /m\.productLine === "UPDOWN"/.test(svc),
+     "reaching for a round on a market that has none would be a lookup that always fails");
+}
+
 console.log(`\n${fail === 0 ? "✅" : "🔴"} updown-void-copy: ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

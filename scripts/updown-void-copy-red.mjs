@@ -19,8 +19,17 @@ const CARD = new URL("../src/components/updown/updown-card.tsx", import.meta.url
 const PAGE = new URL("../src/app/updown/[roundId]/page.tsx", import.meta.url);
 const DICT = new URL("../src/lib/i18n-dict.ts", import.meta.url);
 const BOARD = new URL("../src/lib/server/updown-board.ts", import.meta.url);
+const SVC = new URL("../src/lib/server/market-service.ts", import.meta.url);
 
 const MUTATIONS = [
+  {
+    // 🔴 E-94, REVERTED: every void reason back to one wallet row. Driven on production — a
+    // no-move refund and an operator void were byte-identical in the only record a player keeps.
+    name: "wallet-row-loses-the-reason — a no-move refund and an operator void read the same",
+    file: SVC,
+    from: '            description: `${refundDescription ?? "Refund"} · "${m.titleEn.slice(0, 60)}"${refundDescription ? "" : " voided"}`,',
+    to: '            description: `Refund · "${m.titleEn.slice(0, 60)}" voided`,',
+  },
   {
     // ⛔ E-87, REVERTED. This is the code that ran on production this morning: a round that
     // resolved UP, with the player on UP, labelled "Void · refunded" one card from a proof

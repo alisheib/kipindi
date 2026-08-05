@@ -38,6 +38,8 @@ import { onRecruitBet, onRecruitSettlement } from "./affiliate-service";
 import { postLedgerEntries, stakeEntries, settlementPayoutEntries, refundEntries, cashoutEntries, withMoneyTx } from "./ledger";
 import type { ServiceResult } from "./auth-service";
 import { marketStore, positionStore } from "./market-dal";
+// E-94 · a void refund names the reason the player was already given everywhere else.
+import { roundStore } from "./updown-dal";
 import { formatTzs } from "@/lib/utils";
 // Type-only (erased at build) — no runtime cycle with market-sentinel, which
 // itself imports only the StoredMarket TYPE from here. The AI check is invoked
@@ -1318,6 +1320,30 @@ export const AUTO_RESOLVER_ACTOR = "system_auto_resolver";
 const RESOLVE_CLAIM_TTL_MS = 10 * 60_000;
 
 /**
+ * 🔴 E-94 · WHAT A VOID REFUND IS CALLED IN THE PLAYER'S WALLET HISTORY.
+ *
+ * The wallet page renders `Transaction.description` verbatim, so this is copy a player reads —
+ * and until now every void reason produced the same row, `Refund · "…" voided`, while the
+ * one-sided case alone got a name. Two refunds a player must be able to tell apart (*"the price
+ * didn't move"* vs *"we cancelled it"*) were byte-identical in the only record they keep.
+ *
+ * ⛔ THE WORDING MIRRORS THE CARD, deliberately. A player who reads *"This round was cancelled
+ * by our team"* on the card and then *"voided"* in their history has to work out that those are
+ * the same event. Keys are `UpDownRound.voidReason`; an unrecognised reason falls through to the
+ * old generic wording rather than guessing — the same rule `refundReasonFor` follows.
+ *
+ * ⚠️ ENGLISH ONLY, and that is a pre-existing property of every stored description on this
+ * platform, not a regression introduced here: descriptions are written once at settlement, not
+ * rendered per locale. The trilingual statement of the reason is the CARD, which is unaffected.
+ */
+const VOID_REFUND_DESCRIPTION: Record<string, string> = {
+  "no-move": "Refund · price did not move enough",
+  "source-failed": "Refund · closing price could not be confirmed",
+  "source-mismatch": "Refund · closing price could not be confirmed",
+  operator: "Refund · round cancelled by our team",
+};
+
+/**
  * THE auto-resolve decision — pure, so it is exhaustively unit-testable without a
  * network call or a database. Given the AI assessment, the market's effective mode,
  * and the confidence floor, decide whether to seal the outcome automatically.
@@ -2299,6 +2325,22 @@ export async function settleMarket(
   }
 
   if (opts.outcome === "VOID") {
+    // 🔴 E-94 · THE WALLET HISTORY IS A SURFACE, AND IT NAMED ONE REASON OUT OF FIVE.
+    //
+    // E-65's rule is that a refund states its REAL reason wherever a player can read it. The
+    // card, the round page, the settlement proof and the push all do. The wallet's own
+    // transaction list — the surface a player actually cites in a dispute, and the one this
+    // page renders verbatim from `description` — said `One-sided refund · "…"` for exactly one
+    // reason and `Refund · "…" voided` for every other, which is the internal word for it.
+    // Driven live: a no-move refund and an operator void produced BYTE-IDENTICAL rows.
+    //
+    // ⚠️ ONE lookup, before the loop — not one per position. And only for Up & Down: a
+    // long-form poll that voids has no per-round reason to name, so its wording is unchanged.
+    const udReason = m.productLine === "UPDOWN"
+      ? await roundStore.getByMarketId(m.id).then((r) => r?.voidReason ?? null).catch(() => null)
+      : null;
+    const refundDescription = VOID_REFUND_DESCRIPTION[udReason ?? ""] ?? null;
+
     // Refund everyone
     for (const p of myPositions) {
       const w = await db.wallet.findByUserId(p.userId);
@@ -2325,7 +2367,7 @@ export async function settleMarket(
             amount: realPart, fee: 0, taxWithheld: 0,
             balanceAfter: updated.balance, currency: "TZS",
             provider: "INTERNAL", providerRef: null, msisdn: null,
-            description: `Refund · "${m.titleEn.slice(0, 60)}" voided`,
+            description: `${refundDescription ?? "Refund"} · "${m.titleEn.slice(0, 60)}"${refundDescription ? "" : " voided"}`,
             positionId: p.id,
             amlReason: null,
             createdAt: settledAt, updatedAt: settledAt, completedAt: settledAt,
