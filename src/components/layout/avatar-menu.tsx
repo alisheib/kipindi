@@ -135,10 +135,19 @@ export function AvatarMenu({
             </ul>
             {/* Staff console jump — admin-tier only. Gilt/gold treatment mirrors
                 the admin confidential band so it reads unmistakably as "staff",
-                clearly set apart from the player menu items above. */}
+                clearly set apart from the player menu items above.
+
+                ⛔ E-70 · A PLAIN <a>, ON PURPOSE — the mirror of the "Back to app" control in
+                `admin-shell.tsx`, and it fixes the half nobody had explained. `AppShell` (the
+                root layout) decides the player chrome from the `x-pathname` REQUEST HEADER, and
+                a layout is NOT re-executed on a soft navigation. A <Link> here therefore kept
+                the PLAYER layout and rendered the admin console inside player chrome — which is
+                exactly session 21's unexplained observation, "/admin/updown served the
+                signed-out player shell to a freshly signed-in ADMIN". Same root cause as Ali's
+                missing navbar, mirrored. 🔒 `npm run test:shell-boundary`. */}
             {isAdmin && (
               <div className="border-t border-border px-2 py-2">
-                <Link
+                <a
                   href="/admin"
                   role="menuitem"
                   className="group flex items-center gap-2.5 rounded-lg px-2.5 py-2.5 transition-colors hover:bg-gold-500/10"
@@ -152,7 +161,7 @@ export function AvatarMenu({
                     <span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-gold-300/80 leading-tight mt-0.5">Staff · Internal</span>
                   </span>
                   <I.arrowRight s={14} className="text-gold-300/70 transition-transform group-hover:translate-x-0.5" aria-hidden />
-                </Link>
+                </a>
               </div>
             )}
             {/* Language toggle — visible where the top-bar toggle is NOT: on mobile (< sm)

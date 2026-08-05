@@ -150,15 +150,27 @@ export async function AdminTopBar({ crumbs, session, activeKey, viewDomains, isO
             hub (hero + live markets + stats + full bottom-nav), NOT the raw
             /markets board which reads as a dead-end. Understated ghost pill;
             collapses to icon-only on narrow viewports. Mirrors the player-side
-            "Staff console" jump, closing the admin↔player loop. */}
-        <Link
+            "Staff console" jump, closing the admin↔player loop.
+
+            ⛔ E-70 · THIS IS A PLAIN <a> ON PURPOSE. DO NOT "OPTIMISE" IT BACK TO <Link>.
+            `AppShell` (the root layout) decides whether to render the player chrome from the
+            `x-pathname` REQUEST HEADER, and in the App Router a layout is NOT re-executed on a
+            client-side soft navigation — it is preserved across route changes. So a <Link>
+            here kept the shell-LESS layout rendered for /admin and dropped the landing page
+            into it: no top bar, no wallet, no bell, no bottom nav, and no way back. Ali
+            reported it twice; two sessions failed to reproduce it because they used
+            `page.goto()`, which is a HARD load and re-renders the layout correctly.
+            Measured on production, same URL and same session: click → `nav=0`, hard load →
+            `nav=2`. A full document load is the CORRECT primitive when crossing between two
+            entirely different shells. 🔒 `npm run test:shell-boundary`. */}
+        <a
           href="/"
           aria-label="Back to app"
           className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md border border-border bg-bg-inset text-text-secondary hover:text-text hover:border-border-strong hover:bg-bg-elevated transition-colors font-mono text-micro tracking-[0.10em] uppercase"
         >
           <I.chevronLeft s={13} aria-hidden />
           <span className="hidden md:inline">Back to app</span>
-        </Link>
+        </a>
         {/* Global grid refresh — re-fetches the current server-rendered admin
             screen in place. Present on every admin page so any grid can be
             refreshed from one predictable spot (screens with a filter bar also
