@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+// E-104 · the pod derives its phase from the SHARED rule, with a live clock the server cannot give it.
+import { resultClock } from "@/lib/updown-card-phase";
 
 /**
  * Seconds remaining until `targetMs`, ticking client-side.
@@ -44,13 +46,65 @@ export function mmss(s: number | null): string {
 }
 
 /**
+ * ⭐ E-104 · THE CURRENT INSTANT, ANCHORED TO THE SERVER, TICKING.
+ *
+ * 🔴 WHY IT EXISTS, caught by watching a real round settle on production (2026-08-05,
+ * `udr_8bd25a9f786ea498f132`): at the close the pod read a **dead `00:00` under a live
+ * "Result in" caption for 14 seconds**, then jumped to `01:18`. The countdown to the CLOSE
+ * ran out, and the phase did not change until the next poll arrived with a fresh server
+ * render.
+ *
+ * ⛔ THIS IS E-82's DEFECT AT THE NEXT BOUNDARY. `roundPhase`'s own header already says it:
+ * *"the instants do not go stale, so the phase is derived from them"* — but the round page
+ * derived `awaitingResult` from `round.state`, a value rendered ONCE on the server. A phase
+ * decided by a prop cannot change without a round trip; a phase decided from instants changes
+ * by itself, on the tick, which is what a countdown hitting zero has to do.
+ *
+ * ⛔ SERVER-ANCHORED, never `Date.now()` alone. A device clock can be minutes out (this
+ * campaign's own laptop is 94s slow, E-81) and would put the player in a different phase from
+ * the server — the screen and the money path disagreeing about the only deadline that matters.
+ * Returns `null` before the first client effect, exactly as `useCountdown` does, so the server
+ * and client render the same markup.
+ */
+export function useServerNow(serverNowMs?: number): number | null {
+  const [now, setNow] = useState<number | null>(null);
+  useEffect(() => {
+    const offset = serverNowMs != null ? serverNowMs - Date.now() : 0;
+    const tick = () => setNow(Date.now() + offset);
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [serverNowMs]);
+  return now;
+}
+
+/**
  * D3 round-detail countdown POD — the boxed readout in the round header: 28px tabular
  * digits with the label beside them, in the kit's inset-pod chrome. Open rounds tick
  * live and pulse rose in the final 30s (reduced-motion turns the pulse off); once closed
  * it shows a static 00:00 in `--text-subtle`. Same shared hook as everywhere else.
  */
-export function RoundCountdownPod({ closesAtMs, isOpen, label, serverNowMs, resultMode = false }: {
+export function RoundCountdownPod({
+  closesAtMs, isOpen, label, serverNowMs, resultMode = false,
+  roundClosesAtMs, resultTargetMs = null, settled = false, resultLabels,
+}: {
   closesAtMs: number; isOpen: boolean; label: string; serverNowMs?: number;
+  /**
+   * ⭐ E-104 · THE BOUNDARY, so the pod can enter the result phase BY ITSELF.
+   *
+   * 🔴 Without these the phase came from `round.state`, a server-rendered prop, and the pod
+   * showed a **dead `00:00` for 14 seconds** at the close on production while it waited for the
+   * next poll. Given the boundary, the measured target and the settled flag, the pod decides
+   * from the instants on every tick — and the transition is instant, with no round trip.
+   * ⛔ Omit them and the component behaves exactly as before (the board card passes its own
+   * phase in), so this is additive, not a rewrite of every caller.
+   */
+  roundClosesAtMs?: number;
+  /** The measured result instant, or null when the asset is under the sample floor (A-5). */
+  resultTargetMs?: number | null;
+  settled?: boolean;
+  /** Captions for the phases the pod can now enter on its own. Translated on the server. */
+  resultLabels?: { resultIn: string; awaiting: string; settled: string };
   /**
    * ⭐ E-99 · this clock is counting to the RESULT, not to a deadline the player can act on.
    * Two consequences, and both are deliberate:
@@ -62,27 +116,55 @@ export function RoundCountdownPod({ closesAtMs, isOpen, label, serverNowMs, resu
    */
   resultMode?: boolean;
 }) {
-  const left = useCountdown(closesAtMs, serverNowMs);
-  const running = isOpen && (left == null || left > 0);
+  // ⭐ E-104 · DERIVE THE PHASE FROM THE INSTANTS, ON THE TICK. `now` is null until the first
+  // client effect, so the server render is untouched and hydration matches.
+  const now = useServerNow(serverNowMs);
+  // ⛔ ONE RULE, NOT A SECOND COPY. `resultClock` already decides "are we waiting for a price,
+  // and is there an honest instant to count to" — it is pure precisely so it can be reached
+  // from a suite, and re-deriving it here would create the two-definitions drift §0 exists to
+  // stop. The only thing this component adds is a LIVE `nowMs`; the server can only ever supply
+  // a stale one, which is the whole defect.
+  const clock = roundClosesAtMs != null && now != null
+    ? resultClock({
+        state: settled ? "resolved" : "confirming",
+        closesAtMs: roundClosesAtMs,
+        expectedResultAtMs: resultTargetMs,
+        nowMs: now,
+      })
+    : null;
+  const pastClose = clock?.awaiting === true;
+  // The pod only takes over once it is genuinely past the boundary; before that the caller's
+  // phase stands, which is what keeps this additive for the board card.
+  const inResult = pastClose || resultMode;
+  const target = pastClose ? (clock!.targetMs ?? roundClosesAtMs!) : closesAtMs;
+  const caption = pastClose && resultLabels
+    ? (settled ? resultLabels.settled : resultTargetMs != null ? resultLabels.resultIn : resultLabels.awaiting)
+    : label;
+
+  const left = useCountdown(target, serverNowMs);
+  const running = (isOpen || pastClose) && (left == null || left > 0);
   // ⛔ Never urgent in result mode: `confirming` is CALM by design, and rose here would tell a
   // player something is wrong at the exact moment the platform is working correctly.
-  const urgent = !resultMode && isOpen && left != null && left > 0 && left <= 30;
-  const spent = resultMode && !running;
+  const urgent = !inResult && isOpen && left != null && left > 0 && left <= 30;
+  // ⛔ `—:—`, NEVER a dead `0:00`. Past the boundary with no measured target — or past a target
+  // that has been overrun — we say we have stopped counting, which is the truth. This branch is
+  // now reached the INSTANT the boundary passes rather than at the next poll.
+  const spent = inResult && !running;
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 14px", background: "var(--bg-inset)", border: "1px solid color-mix(in oklab, var(--border) 70%, transparent)", borderRadius: "var(--r-md)" }}>
-      <span className="font-mono text-[8.5px] font-semibold uppercase tracking-[0.12em] text-text-faint">{label}</span>
+      <span className="font-mono text-[8.5px] font-semibold uppercase tracking-[0.12em] text-text-faint">{caption}</span>
       <span
         className={urgent ? "ud-count-pulse" : undefined}
         style={{
           fontFamily: "var(--font-mono)", fontSize: 28, fontWeight: 700,
           fontVariantNumeric: "tabular-nums", letterSpacing: "0.05em", lineHeight: 1,
           color: urgent ? "var(--no-300)"
-            : resultMode && running ? "var(--brand-300)"
+            : inResult && running ? "var(--brand-300)"
             : running ? "var(--text)" : "var(--text-subtle)",
           transition: "color 240ms ease",
         }}
       >
-        {spent ? "—:—" : isOpen ? mmss(left) : "00:00"}
+        {spent ? "—:—" : (isOpen || pastClose) ? mmss(left) : "00:00"}
       </span>
     </div>
   );

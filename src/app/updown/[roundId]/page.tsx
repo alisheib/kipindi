@@ -233,6 +233,23 @@ export default async function UpDownRoundPage({
             serverNowMs={round.serverNowMs}
             label={countLabel}
             resultMode={resultTarget != null}
+            /* ⭐ E-104 · THE INSTANTS, so the pod enters the result phase BY ITSELF.
+               🔴 Watched on production 2026-08-05 (`udr_8bd25a9f786ea498f132`): at the close
+               the pod sat on a DEAD `00:00` under a live "Result in" caption for 14 seconds,
+               then jumped to `01:18`. The countdown to the close ran out and the phase did not
+               move, because `awaitingResult` is `round.state` — a value rendered ONCE on the
+               server. E-102's poller shortened that wait from "forever" to "one interval"; only
+               deriving the phase from the instants removes it.
+               ⛔ This is E-82's defect at the next boundary, and `roundPhase`'s own header
+               already carried the rule: the instants do not go stale, so derive from them. */
+            roundClosesAtMs={Date.parse(round.closesAt)}
+            resultTargetMs={round.expectedResultAtMs ?? null}
+            settled={decided}
+            resultLabels={{
+              resultIn: t.market.udResultIn,
+              awaiting: t.market.udAwaitingResult,
+              settled: t.market.udRoundSettled,
+            }}
           />
         </header>
 

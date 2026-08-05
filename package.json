@@ -270,7 +270,8 @@
     "red:position-permalink": "node scripts/red-e101.cjs",
     "test:refresh-cadence": "tsx scripts/refresh-cadence.test.mts",
     "red:refresh-cadence": "node scripts/red-e102.cjs",
-    "test:funnel-share": "tsx scripts/funnel-share.test.mts"
+    "test:funnel-share": "tsx scripts/funnel-share.test.mts",
+    "red:updown-result-clock-boundary": "node scripts/red-e104.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

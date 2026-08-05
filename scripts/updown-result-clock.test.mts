@@ -8,6 +8,7 @@
  * must break §2, §3 and §5. That is the bar §0 sets, and it is the bar four of session 27's
  * own checks failed to clear.
  */
+import { readFileSync } from "node:fs";
 import { resultClock, roundPhase } from "../src/lib/updown-card-phase.ts";
 
 let pass = 0; const fails: string[] = [];
@@ -86,6 +87,77 @@ console.log("\n── 6 · the result clock cannot re-open betting (the money ch
     `counting=${clock.counting} bettable=${phase.bettable}`);
   ok("6.2 …and it is not 'locked' either — locked means the result PHASE, before the close",
     phase.locked === false);
+}
+
+console.log("\n── 7 · E-104 · the phase must change AT THE BOUNDARY, not at the next poll ──");
+{
+  // 🔴 WATCHED ON PRODUCTION 2026-08-05 (`udr_8bd25a9f786ea498f132`): at the close the pod read
+  // a DEAD `00:00` under a live "Result in" caption for FOURTEEN SECONDS, then jumped to 01:18.
+  // The countdown to the close ran out and the phase did not move, because the round page
+  // derived it from `round.state` — a value rendered ONCE on the server. E-102's poller cut
+  // that wait from "forever" to "one interval"; only deriving from the instants removes it.
+  const oneMsAfter = resultClock({ state: "confirming", closesAtMs: CLOSE, expectedResultAtMs: EXPECTED, nowMs: CLOSE + 1 });
+  ok("7.1 ⭐ ONE MILLISECOND after the close the round is already awaiting a result",
+    oneMsAfter.awaiting === true && oneMsAfter.counting === true, JSON.stringify(oneMsAfter));
+  ok("7.2 ⭐ …with the measured target, so nothing ever renders a dead 0:00 in between",
+    oneMsAfter.targetMs === EXPECTED);
+  const oneMsBefore = resultClock({ state: "confirming", closesAtMs: CLOSE, expectedResultAtMs: EXPECTED, nowMs: CLOSE - 1 });
+  ok("7.3 …and one millisecond BEFORE it, it is not — the boundary is exact",
+    oneMsBefore.awaiting === false);
+}
+
+console.log("\n── 8 · E-104 · the POD is wired to the rule, with a LIVE clock ──");
+{
+  // ⛔ Source-level, because the thing under test is a `setInterval` inside a client component
+  // that no node suite can drive. What IS testable is that the component reaches for the shared
+  // rule and for a ticking clock, rather than trusting a prop — which is the whole defect.
+  // 🔴 THE FIRST VERSION OF THIS SECTION SCORED 1 OF 5 AGAINST ITS OWN MUTATIONS, and every
+  // miss was the same mistake in a new place — the mistake this campaign has a rule for:
+  //   · it looked for `useServerNow(` anywhere in the file and matched the hook's own
+  //     DEFINITION, so replacing the CALL with `null` changed nothing it could see;
+  //   · it looked for the server-anchor line anywhere in the file and matched `useCountdown`'s
+  //     identical line, so deleting the new hook's anchor passed;
+  //   · it looked for `resultLabels={` and matched `data-was-resultLabels={` as a substring.
+  // ⛔ So: SCOPE each check to the function under test, and anchor on statements with a
+  // leading boundary. "Assert the call site, not the symbol" is not enough on its own when the
+  // symbol is defined in the same file.
+  const strip = (p: string) => { try { return readFileSync(p, "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, ""); } catch { return ""; } };
+  const between = (src: string, from: RegExp, to: RegExp) => {
+    const i = src.search(from);
+    if (i < 0) return "";
+    const rest = src.slice(i);
+    const j = rest.slice(1).search(to);
+    return j < 0 ? rest : rest.slice(0, j + 1);
+  };
+  const src = strip("src/components/updown/round-countdown.tsx");
+  const podBody = between(src, /export function RoundCountdownPod/, /^export function /m);
+  const hookBody = between(src, /export function useServerNow/, /^export function /m);
+  ok("8.0 the probe actually found both functions (never measure an empty string)",
+    podBody.length > 200 && hookBody.length > 100, `pod=${podBody.length} hook=${hookBody.length}`);
+  // The call sits behind a ternary (`const clock = … ? resultClock({ … }) : null`), so anchor
+  // on the BINDING and allow the guard between it and the call — not on `= resultClock`, which
+  // was wrong about the shape of the code it was guarding.
+  ok("8.1 ⭐ the POD binds its phase to the SHARED rule rather than re-deriving it",
+    /const clock =[\s\S]{0,120}?resultClock\(\{/.test(podBody),
+    "no `const clock = … resultClock({` inside RoundCountdownPod");
+  ok("8.2 ⭐ …and feeds it a LIVE, server-anchored now — the CALL, not the definition",
+    /=\s*useServerNow\(serverNowMs\)/.test(podBody) && /nowMs:\s*now\b/.test(podBody),
+    "RoundCountdownPod does not call useServerNow(serverNowMs) and pass it as nowMs");
+  // ⛔ Assert what the hook CARRIES, inside the hook. A `useServerNow` that ignored
+  // `serverNowMs` would satisfy 8.2 while putting the player on their own device clock, which
+  // on this campaign's own laptop is 94 seconds out (E-81).
+  ok("8.3 the live clock is anchored to the SERVER's instant, never to the device alone",
+    /serverNowMs != null \? serverNowMs - Date\.now\(\) : 0/.test(hookBody),
+    "useServerNow's own body does not offset against serverNowMs");
+
+  const page = strip("src/app/updown/[roundId]/page.tsx");
+  // A leading boundary, so `data-was-roundClosesAtMs={` cannot pass for the real prop.
+  ok("8.4 ⭐ the round page hands the pod the BOUNDARY, so it can switch by itself",
+    /(^|\s)roundClosesAtMs=\{/m.test(page), "no roundClosesAtMs passed");
+  ok("8.5 …and the measured target and the settled flag with it",
+    /(^|\s)resultTargetMs=\{/m.test(page) && /(^|\s)settled=\{/m.test(page));
+  ok("8.6 …and the captions for the phases it can now enter alone",
+    /(^|\s)resultLabels=\{/m.test(page), "no resultLabels passed — the pod would keep the stale caption");
 }
 
 console.log(`\n${pass} passed, ${fails.length} failed\n`);
