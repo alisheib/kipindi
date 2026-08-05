@@ -25,7 +25,8 @@ let pass = 0; const fails: string[] = [];
 const ok = (n: string, c: boolean, d = "") => { if (c) pass++; else fails.push(`${n}${d ? ` — ${d}` : ""}`); };
 const read = (p: string) => readFileSync(new URL(p, import.meta.url), "utf8");
 
-const r = (outcome: StatRound["outcome"], voidReason: string | null = null): StatRound => ({ outcome, voidReason });
+const r = (outcome: StatRound["outcome"], voidReason: string | null = null, unmatched = false): StatRound =>
+  ({ outcome, voidReason, unmatched });
 
 // ── §1 · every reason is counted SEPARATELY ────────────────────────────────
 // The production shape: a chain whose voids are a mix. If any two reasons share a bucket
@@ -114,6 +115,54 @@ ok("§4 ⛔ the window is TIME-based — `boundaryFrom` is passed to the round q
 ok("§4 the reason breakdown reaches the operator's screen",
   /source-failed/.test(page) && /no-move/.test(page) && /operator/.test(page),
   "splitting the tally and then not rendering it is a write-only fix");
+
+// ── §6 · 🔴 E-90 · "PAID A WINNER" MUST MEAN A WINNER WAS PAID ─────────────
+//
+// Driven on production 2026-08-05: a fresh BTC 5m chain, two resolved rounds. Round #1
+// decided DOWN with one player on one side — every stake refunded, no winner, no fee.
+// Round #2 decided DOWN with both sides held — echo was paid TZS 870. The column headed
+// "PAID A WINNER · 7d", which the operator guide's §14.7 calls *"the single most useful
+// number on the page"*, read `100% 2/2 paid`.
+//
+// ⛔ `decisive` answers "did the round DECIDE", and the console labels it "paid". Those are
+// the same question only when both sides hold money — and the one-sided case is precisely
+// the one the platform is deciding whether to seed a house float against. A metric that
+// hides the problem it exists to expose is worse than none.
+const oneSided = summariseRounds([
+  r("DOWN", null, true),   // decided, nobody on the other side → refunded, nobody paid
+  r("DOWN"),               // decided, both sides held → a winner was paid
+]);
+ok("§6 ⭐ a decided round that paid NOBODY is counted as unmatched", oneSided.unmatched === 1,
+  `got ${oneSided.unmatched} — production round udr_887060cb9dcecc9eead1`);
+ok("§6 ⭐ `paid` excludes it — one of these two rounds paid a winner", oneSided.paid === 1,
+  `got ${oneSided.paid}, decisive ${oneSided.decisive}`);
+ok("§6 ⭐ paidRate is 50%, not 100%", Math.abs(oneSided.paidRate! - 0.5) < 1e-9,
+  `got ${oneSided.paidRate} — the live cell read 100% 2/2 paid`);
+ok("§6 `decisive` still counts both — the round DID decide, and the proof panel says so",
+  oneSided.decisive === 2, `got ${oneSided.decisive}`);
+ok("§6 the buckets still account for every resolved round",
+  oneSided.paid + oneSided.unmatched + oneSided.noMove + oneSided.sourceFailed
+  + oneSided.sourceMismatch + oneSided.operator + oneSided.unknownVoid === oneSided.resolved);
+// ⛔ AND UNMATCHED IS NOT A FEED FAILURE AND NOT A MARGIN SIGNAL. It is a liquidity fact, and
+// folding it into either is the E-58 misdiagnosis with a new label.
+ok("§6 ⛔ an unmatched round is NOT a feed failure", oneSided.feedFailRate === 0, `got ${oneSided.feedFailRate}`);
+ok("§6 ⛔ an unmatched round is NOT a no-move", oneSided.noMove === 0, `got ${oneSided.noMove}`);
+// A chain whose rounds all decide but never find a counterparty is NOT healthy — it earns
+// nothing, and before this it read "ok" at 100%.
+const allThin = summariseRounds(Array.from({ length: 10 }, () => r("UP", null, true)));
+ok("§6 ⭐ a chain that decides every round but pays nobody is NOT 'ok'",
+  chainHealth(allThin) === "low-payout", `got ${chainHealth(allThin)}`);
+
+// §6b · THE CALL SITE — the page must render the paid figure and surface the bucket.
+ok("§6b the console renders the PAID count, not the decisive one",
+  /s\.paid\}\/\{s\.resolved\}/.test(page) || /\{s\.paid\}/.test(page),
+  "labelling `decisive` as 'paid' is the defect itself");
+ok("§6b ⭐ the unmatched bucket reaches the operator's screen",
+  /unmatched/.test(page),
+  "splitting the tally and not rendering it is a write-only fix (see §4)");
+ok("§6b the page reads each round's pools to know whether a side was empty",
+  /poolsByIds|yesPool/.test(page),
+  "without the pools the page cannot tell a paid round from a one-sided one");
 
 // ── §5 · the DAL filter the window depends on ──────────────────────────────
 const dal = read("../src/lib/server/updown-dal.ts");

@@ -12,6 +12,8 @@ import { marketSessionAt, nextOpenAfter } from "@/lib/server/market-calendar";
 import { feedAdviceLookup } from "@/lib/server/updown-feed-history";
 import { MIN_SAMPLES_FOR_ADVICE } from "@/lib/server/updown-feed-advice";
 import { observationStore, roundStore } from "@/lib/server/updown-dal";
+// E-90 · the pools decide whether a decided round actually paid anybody.
+import { marketStore } from "@/lib/server/market-dal";
 import { summariseRounds, chainHealth } from "@/lib/server/updown-chain-stats";
 import { poolFee } from "@/lib/payout";
 import { formatTzs } from "@/lib/utils";
@@ -100,8 +102,26 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
         const rounds = await roundStore
           .list({ chainId: c.id, boundaryFrom: statsFrom, limit: STATS_CAP })
           .catch(() => []);
+        // ⭐ E-90 · WHETHER A ROUND PAID ANYONE IS A FACT ABOUT ITS POOLS, NOT ITS OUTCOME.
+        // A round that decided UP with nobody on DOWN refunds every stake: no winner, no
+        // fee. The cell headed "Paid a winner" counted those as paid, and on the freshly
+        // built board it read `100% 2/2 paid` over one paid round and one refunded one.
+        // One query for the window's pools, not one per round.
+        const pools = await marketStore
+          .poolsByIds(rounds.map((r) => r.marketId))
+          .catch(() => new Map<string, { yesPool: number; noPool: number }>());
+        const withPools = rounds.map((r) => {
+          const p = pools.get(r.marketId);
+          return {
+            outcome: r.outcome,
+            voidReason: r.voidReason,
+            // ⛔ A MISSING MARKET IS NOT AN EMPTY POOL. Absent → treated as matched, so a
+            // read failure understates the problem rather than inventing one.
+            unmatched: p ? p.yesPool === 0 || p.noPool === 0 : false,
+          };
+        });
         // ONE reducer, in a tested module — not a second copy of the rule living in JSX.
-        return [c.id, { ...summariseRounds(rounds), truncated: rounds.length >= STATS_CAP }] as const;
+        return [c.id, { ...summariseRounds(withPools), truncated: rounds.length >= STATS_CAP }] as const;
       }),
     ),
   );
@@ -486,17 +506,23 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
                           {(() => {
                             const s = chainStats.get(c.id);
                             if (!s || s.resolved === 0) return <span className="text-text-faint">—</span>;
-                            const decisivePct = s.decisiveRate! * 100;
-                            // Headline = how often this chain actually PAYS somebody — the number
-                            // an operator is really asking about, which the product never had.
+                            // ⛔ `paidRate`, NOT `decisiveRate` (E-90). Headline = how often this
+                            // chain actually PAYS somebody. A round that decided with nobody on
+                            // the other side refunded every stake — it decided, and it paid no
+                            // one, and those must not share a number on the page that says "paid".
                             // A FEED failure outranks a low pay rate: one is an outage, the other
                             // a pricing conversation, and they must never look the same again.
+                            const paidPct = s.paidRate! * 100;
                             const health = chainHealth(s);
                             const ink =
                               health === "feed-failing" ? "text-hot-rose-300"
                                 : health === "low-payout" ? "text-warning-fg"
                                 : "text-text-muted";
                             const parts = [
+                              // ⭐ First, because it is the only entry that is neither our fault
+                              // nor a pricing choice: the round worked and nobody took the other
+                              // side. It is the measurement the house-float decision needs.
+                              s.unmatched > 0 ? `${s.unmatched} unmatched` : null,
                               s.noMove > 0 ? `${s.noMove} no-move` : null,
                               s.sourceFailed > 0 ? `${s.sourceFailed} source-failed` : null,
                               s.sourceMismatch > 0 ? `${s.sourceMismatch} source-mismatch` : null,
@@ -505,8 +531,8 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
                             ].filter(Boolean);
                             return (
                               <>
-                                <span className={ink}>{decisivePct.toFixed(0)}%</span>
-                                <span className="text-text-faint"> {s.decisive}/{s.resolved} paid</span>
+                                <span className={ink}>{paidPct.toFixed(0)}%</span>
+                                <span className="text-text-faint"> {s.paid}/{s.resolved} paid</span>
                                 {parts.length > 0 && (
                                   <div className="text-text-faint text-[10.5px] leading-tight">
                                     {parts.join(" · ")}

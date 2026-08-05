@@ -33,6 +33,25 @@ const MUTATIONS = [
       case "source-failed": noMove++; break;`,
   },
   {
+    // 🔴 E-90, restored: "decided" relabelled as "paid". Read live on production — a chain
+    // whose first two rounds both decided DOWN, only one of which found a counterparty,
+    // showed `100% 2/2 paid` in the column the operator guide tells an operator to steer by.
+    name: "decided-counted-as-paid — a one-sided round reads as having paid a winner (E-90)",
+    file: STATS,
+    from: `      if (r.unmatched) unmatched++; else paid++;`,
+    to: `      paid++;`,
+  },
+  {
+    // The same defect one layer up: the module counts correctly and the CELL shows the
+    // wrong number. A correct reducer rendered through the wrong field is E-4's shape.
+    name: "cell-renders-the-decisive-rate — the arithmetic is right and the screen is not",
+    file: PAGE,
+    from: `                                <span className={ink}>{paidPct.toFixed(0)}%</span>
+                                <span className="text-text-faint"> {s.paid}/{s.resolved} paid</span>`,
+    to: `                                <span className={ink}>{(s.decisiveRate! * 100).toFixed(0)}%</span>
+                                <span className="text-text-faint"> {s.decisive}/{s.resolved} paid</span>`,
+  },
+  {
     name: "operator-counts-as-a-feed-failure — a July remediation reads as an outage (E-58)",
     file: STATS,
     from: `    feedFailRate: (sourceFailed + sourceMismatch) / resolved,`,
@@ -48,8 +67,10 @@ const MUTATIONS = [
     name: "low-payout-outranks-the-outage — an outage shown as a pricing choice",
     file: STATS,
     from: `  if ((s.feedFailRate ?? 0) > 0) return "feed-failing";
-  if ((s.decisiveRate ?? 1) < 0.6) return "low-payout";`,
-    to: `  if ((s.decisiveRate ?? 1) < 0.6) return "low-payout";
+  // ⛔ \`paidRate\`, NOT \`decisiveRate\` (E-90). A chain that decides every round and finds a
+  // counterparty for none of them earns nothing and pays nobody — it read \`ok\` at 100%.
+  if ((s.paidRate ?? 1) < 0.6) return "low-payout";`,
+    to: `  if ((s.paidRate ?? 1) < 0.6) return "low-payout";
   if ((s.feedFailRate ?? 0) > 0) return "feed-failing";`,
   },
   {

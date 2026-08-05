@@ -140,6 +140,18 @@ export interface MarketStore {
   has(id: string): Promise<boolean>;
   values(): Promise<StoredMarket[]>;
   /**
+   * Just the two pool columns, for many markets, in ONE query (E-90).
+   *
+   * ⭐ The chain-health cell has to know whether each resolved round found a counterparty,
+   * and that fact lives on the market, not the round. `get()` per round is N round-trips
+   * over a 7-day window; `values()` is the whole table. This is the narrow middle: one
+   * indexed `findMany` over the ids the caller already holds, selecting two columns.
+   *
+   * Absent ids are simply absent from the map — a caller must decide what a missing market
+   * means rather than inherit a zero that reads exactly like an empty pool.
+   */
+  poolsByIds(ids: readonly string[]): Promise<Map<string, { yesPool: number; noPool: number }>>;
+  /**
    * Every market with a PENDING time-based transition — i.e. what the per-market
    * scheduler must arm a timer for: LIVE markets (closing-soon / selection-closed /
    * resolve triggers) and adjudicated-but-unsettled markets (settle trigger).
@@ -308,6 +320,14 @@ const memoryMarkets: MarketStore = {
   async delete(id) { markets.delete(id); },
   async has(id) { return markets.has(id); },
   async values() { return Array.from(markets.values()); },
+  async poolsByIds(ids) {
+    const out = new Map<string, { yesPool: number; noPool: number }>();
+    for (const id of ids) {
+      const m = markets.get(id);
+      if (m) out.set(id, { yesPool: m.yesPool, noPool: m.noPool });
+    }
+    return out;
+  },
   async pending(productLine = "MARKET") {
     return Array.from(markets.values())
       .filter((m) => productLine === "ALL" || (m.productLine ?? "MARKET") === productLine)
@@ -544,6 +564,16 @@ const prismaMarkets: MarketStore = {
   async values() {
     const rows = await pc().predictionMarket.findMany();
     return rows.map(toStoredMarket);
+  },
+  async poolsByIds(ids) {
+    const out = new Map<string, { yesPool: number; noPool: number }>();
+    if (ids.length === 0) return out;
+    const rows = await pc().predictionMarket.findMany({
+      where: { id: { in: [...ids] } },
+      select: { id: true, yesPool: true, noPool: true },
+    });
+    for (const r of rows) out.set(r.id, { yesPool: Number(r.yesPool), noPool: Number(r.noPool) });
+    return out;
   },
   async pending(productLine = "MARKET") {
     // Indexed on status; the OR keeps the settle candidates (adjudicated, money not

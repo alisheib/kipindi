@@ -32,13 +32,33 @@
 export type StatRound = {
   outcome: "UP" | "DOWN" | "VOID" | null;
   voidReason: string | null;
+  /**
+   * ⭐ E-90 · The round DECIDED and still paid nobody, because one side held no money.
+   * `refundReasonFor` calls this `unmatched` and the player's card already says so in three
+   * languages; the operator's headline did not know it existed. Supplied by the caller from
+   * the round's pools (`yesPool === 0 || noPool === 0`), because a round row cannot tell.
+   */
+  unmatched: boolean;
 };
 
 export type ChainStats = {
   /** Rounds with a verdict. Rounds still pending are not evidence about anything. */
   resolved: number;
-  /** Paid somebody: UP or DOWN. */
+  /** Reached a verdict: UP or DOWN. ⚠️ NOT the same as "paid somebody" — see `paid`. */
   decisive: number;
+  /**
+   * ⭐ Decided AND a winner was actually paid. This is the number the console shows and
+   * the operator guide's §14.7 tells an operator to steer by.
+   *
+   * ⛔ IT IS NOT `decisive`, AND CONFLATING THEM WAS E-90. Driven on production: a fresh
+   * BTC 5m chain's first two rounds both decided DOWN, but only the second had money on
+   * both sides — the first refunded every stake and earned nothing, and the cell read
+   * `100% 2/2 paid`. A metric that hides the exact problem the house-float work exists to
+   * solve is worse than no metric.
+   */
+  paid: number;
+  /** Decided, but one-sided — refunded in full, no winner, no fee. A LIQUIDITY fact. */
+  unmatched: number;
   noMove: number;
   sourceFailed: number;
   sourceMismatch: number;
@@ -48,14 +68,16 @@ export type ChainStats = {
   unknownVoid: number;
   /** `decisive / resolved`, or null when there is nothing to divide. */
   decisiveRate: number | null;
+  /** `paid / resolved` — THE HEADLINE. Null when there is nothing to divide. */
+  paidRate: number | null;
   /** `(source-failed + source-mismatch) / resolved` — OUR failures, kept apart from the
    *  margin's. This should read 0. Anything above it is a defect, not a pricing choice. */
   feedFailRate: number | null;
 };
 
 export const EMPTY_CHAIN_STATS: ChainStats = {
-  resolved: 0, decisive: 0, noMove: 0, sourceFailed: 0, sourceMismatch: 0,
-  operator: 0, unknownVoid: 0, decisiveRate: null, feedFailRate: null,
+  resolved: 0, decisive: 0, paid: 0, unmatched: 0, noMove: 0, sourceFailed: 0, sourceMismatch: 0,
+  operator: 0, unknownVoid: 0, decisiveRate: null, paidRate: null, feedFailRate: null,
 };
 
 /**
@@ -71,9 +93,15 @@ export function summariseRounds(rounds: readonly StatRound[]): ChainStats {
   const resolved = resolvedRounds.length;
   if (resolved === 0) return { ...EMPTY_CHAIN_STATS };
 
-  let decisive = 0, noMove = 0, sourceFailed = 0, sourceMismatch = 0, operator = 0, unknownVoid = 0;
+  let decisive = 0, paid = 0, unmatched = 0, noMove = 0, sourceFailed = 0, sourceMismatch = 0, operator = 0, unknownVoid = 0;
   for (const r of resolvedRounds) {
-    if (r.outcome === "UP" || r.outcome === "DOWN") { decisive++; continue; }
+    // ⛔ TWO COUNTERS, NOT ONE. A decided round either found a counterparty and paid a
+    // winner, or it did not and refunded everybody. Both DECIDED; only one PAID.
+    if (r.outcome === "UP" || r.outcome === "DOWN") {
+      decisive++;
+      if (r.unmatched) unmatched++; else paid++;
+      continue;
+    }
     switch (r.voidReason) {
       case "no-move": noMove++; break;
       case "source-failed": sourceFailed++; break;
@@ -84,8 +112,9 @@ export function summariseRounds(rounds: readonly StatRound[]): ChainStats {
   }
 
   return {
-    resolved, decisive, noMove, sourceFailed, sourceMismatch, operator, unknownVoid,
+    resolved, decisive, paid, unmatched, noMove, sourceFailed, sourceMismatch, operator, unknownVoid,
     decisiveRate: decisive / resolved,
+    paidRate: paid / resolved,
     feedFailRate: (sourceFailed + sourceMismatch) / resolved,
   };
 }
@@ -100,6 +129,8 @@ export function summariseRounds(rounds: readonly StatRound[]): ChainStats {
 export function chainHealth(s: ChainStats): "none" | "feed-failing" | "low-payout" | "ok" {
   if (s.resolved === 0) return "none";
   if ((s.feedFailRate ?? 0) > 0) return "feed-failing";
-  if ((s.decisiveRate ?? 1) < 0.6) return "low-payout";
+  // ⛔ `paidRate`, NOT `decisiveRate` (E-90). A chain that decides every round and finds a
+  // counterparty for none of them earns nothing and pays nobody — it read `ok` at 100%.
+  if ((s.paidRate ?? 1) < 0.6) return "low-payout";
   return "ok";
 }
