@@ -218,6 +218,41 @@ for (const f of srcFiles) {
   }
 }
 
+// ── E-97 · AN ISO STRING IS NOT A TIME AN OPERATOR READS ────────────────────
+//
+// `generateRoundNow` refused with *"A round is already live on BTC 5m (closes
+// 2026-08-05T14:35:00.000Z)"* — measured off the live toast. Every other time on that page is
+// formatted (`14:35:00 UTC` on the chain row, `08-05 13:55Z` on the rounds grid), so the one
+// place the console spoke in machine format was the one place it was REFUSING, which is exactly
+// when an operator most needs to read it without decoding anything.
+//
+// ⚠️ SCOPED TO `error:` — the sentence that reaches a toast. `detail:` on a lifecycle result is
+// a LOG line, and an ISO instant is the right thing there; flagging it would be noise.
+{
+  for (const f of ["src/lib/server/updown-service.ts", "src/lib/server/market-service.ts"]) {
+    const lines = read(f).split("\n");
+    // ⛔ SCOPE TO THE `error:` STATEMENT, NOT TO "a line starting with a backtick". The first
+    // version did the latter and flagged the market's RESOLUTION CRITERION — an internal record
+    // that is redirected away from `/markets/[id]` for an Up & Down round and never reaches a
+    // player. A guard that fires on correct code teaches people to ignore it, which is the same
+    // damage as one that misses a defect. An `error:` template can wrap onto the next few lines,
+    // so the window follows the statement rather than assuming it fits on one.
+    let window = 0;
+    lines.forEach((line, i) => {
+      const s = line.trim();
+      if (s.startsWith("//") || s.startsWith("*") || s.startsWith("/*")) return;
+      if (/\berror:/.test(line)) window = 4; else if (window > 0) window--;
+      if (window === 0) return;
+      // An interpolated identifier that names an instant, not already passed through a formatter.
+      for (const m of line.matchAll(/\$\{([^}]*\b\w*(?:At|Iso)\b[^}]*)\}/g)) {
+        const expr = m[1];
+        if (/clockUtc\(|fmtTime\(|toLocale|slice\(/.test(expr)) continue;
+        fail("E97", `${f}:${i + 1}: an operator-facing error interpolates a raw instant — \${${expr.trim().slice(0, 60)}} — wrap it in clockUtc()`);
+      }
+    });
+  }
+}
+
 if (fails.length) {
   console.error(`\ncontent-integrity: ${fails.length} FAILURE(S) — misleading/superseded content detected:\n` + fails.map((x) => "  ✗ " + x).join("\n") + "\n");
   process.exit(1);

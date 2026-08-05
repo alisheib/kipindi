@@ -40,6 +40,23 @@ import { marketSessionAt, describeClosure } from "./market-calendar";
 export type LifecycleResult<T> = { ok: true; data: T } | { ok: false; error: string };
 
 /**
+ * 🔴 E-97 · A CLOCK TIME AN OPERATOR CAN READ, for messages that reach the console.
+ *
+ * `HH:MM:SS UTC` — the same shape `/admin/updown` already uses on the chain row, so a refusal
+ * and the grid behind it speak in one format. ⛔ NEVER interpolate an ISO string into operator
+ * copy: `2026-08-05T14:35:00.000Z` is a serialisation, and the moment it appears is the moment
+ * the console stops being written for a person.
+ *
+ * Returns the input unchanged if it is not a parseable instant — a message that has lost its
+ * time is better than one that claims a wrong one.
+ */
+export function clockUtc(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return Number.isFinite(d.getTime()) ? `${d.toISOString().slice(11, 19)} UTC` : iso;
+}
+
+/**
  * Player-facing round title, in all THREE platform languages. Kept in one place so the
  * board, the detail page, the audit trail and the reports name a round identically.
  *
@@ -316,7 +333,12 @@ export async function generateRoundNow(
   if (latest && !latest.resolvedAt) {
     return {
       ok: false,
-      error: `A round is already live on ${asset.key} ${chain.durationMinutes}m (closes ${latest.closesAt}). Wait for it to settle, or void it first.`,
+      // 🔴 E-97 · THIS IS THE SENTENCE AN OPERATOR SEES MOST OFTEN, and it printed a raw ISO
+      // string at them: `closes 2026-08-05T14:35:00.000Z`. Every other time on that page is
+      // formatted — `14:35:00 UTC` on the chain row, `08-05 13:55Z` on the rounds grid — so the
+      // one place the console speaks in machine format is the one place it is REFUSING, which
+      // is exactly when the operator most needs to read it without decoding anything.
+      error: `A round is already live on ${asset.key} ${chain.durationMinutes}m (closes ${clockUtc(latest.closesAt)}). Wait for it to settle, or void it first.`,
     };
   }
 
@@ -412,7 +434,9 @@ export async function generateRoundNow(
     return {
       ok: false,
       error:
-        `Could not read a price for ${asset.key} at ${boundaryIso} — ${obs && "detail" in obs ? obs.detail : "no reading"}. ` +
+        // E-97 · a clock time, not a serialisation — this is the refusal the guide's §9 step 4
+        // tells an operator they will meet, so it is the one they read most under pressure.
+        `Could not read a price for ${asset.key} at ${clockUtc(boundaryIso)} — ${obs && "detail" in obs ? obs.detail : "no reading"}. ` +
         `No round was created. A round opened without an open price cannot resolve: it would ` +
         `take stakes, show a countdown, and then void and refund every one.`,
     };
@@ -613,7 +637,8 @@ export async function openRound(
   const last = await roundStore.latestForChain(chain.id);
   const roundNumber = (last?.roundNumber ?? 0) + 1;
   if (last && last.boundaryAt === closeIso) {
-    return { ok: false, error: `Round ${roundNumber - 1} already covers ${closeIso}.` };
+    // E-97 · a clock time, not a serialisation.
+    return { ok: false, error: `Round ${roundNumber - 1} already covers ${clockUtc(closeIso)}.` };
   }
 
   const [profile, bounds] = await Promise.all([rateProfileFor(chain), stakeBoundsFor(chain)]);
