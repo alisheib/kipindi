@@ -301,6 +301,33 @@ const SELECT = "src/components/ui/select.tsx";
   ok("7.6 · …and that record does block the short rounds, so 7.5 is not vacuous",
      symbolReadiness(findSymbol("BTC/USD"), 3, measured(3)).level === 3 &&
      symbolReadiness(findSymbol("BTC/USD"), 15, measured(15)).level !== 3);
+
+  // ── The operator can SEE what the gate is reasoning from ─────────────────
+  //
+  // ⛔ A refusal computed from a number the operator cannot look at is not a guided console, it
+  // is an arbitrary one. The asset table therefore carries the record itself.
+  // ⚠️ Anchored on the COLUMN HEADING, not on the words anywhere in the file. The first version
+  // of this check matched `/Feed record/`, which the explanatory paragraph below the table also
+  // contains — so deleting the column left the check green. A guard that a prose sentence can
+  // satisfy is not measuring the table.
+  ok("7.7 · ⭐ the asset table shows each asset's measured record",
+     /<th[^>]*>Feed record<\/th>/.test(pageSrc) && /feed\?\.record\(a\.key\)/.test(pageSrc),
+     pageSrc.match(/<th[^>]*>Feed[^<]*<\/th>/)?.[0] ?? "no such column");
+  ok("7.8 · …readings and % ok, the two facts the level rests on",
+     /rec\.okPct/.test(pageSrc) && /h\.readings/.test(pageSrc));
+  // ⛔ A-5. Below the sample floor the cell must say so and show NO average — a median off two
+  // readings renders identically to one off two thousand, which is the fabrication A-5 forbids.
+  ok("7.9 · ⭐ an UNMEASURED asset shows no median at all, only that it is not measured",
+     /advice\?\.unmeasured\s*\n?\s*\?\s*"not measured yet"/.test(pageSrc),
+     "the median must sit in the else branch, never beside the words");
+  ok("7.10 · …and the table explains what the number means, since it is not provider latency",
+     /comes out of the betting window/.test(pageSrc));
+  ok("7.11 · the sample floor in the copy is the REAL constant, not a typed number",
+     /\{MIN_SAMPLES_FOR_ADVICE\}/.test(pageSrc) && !/Below 20 readings/.test(pageSrc));
+  // A column added to a min-width table that is not widened clips the last column instead of
+  // scrolling — the E-30 shape, which passes a document-level overflow check.
+  ok("7.12 · the table's min-width grew with the new column",
+     /admin-tbl min-w-\[8\d\dpx\]/.test(pageSrc), pageSrc.match(/admin-tbl min-w-\[\d+px\]/)?.[0] ?? "");
 }
 
 console.log(`\n${fail === 0 ? "✅" : "🔴"} updown-admin-options: ${pass} passed, ${fail} failed`);

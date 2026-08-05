@@ -10,6 +10,7 @@ import { SYMBOL_CATALOGUE, symbolReadiness, readinessMark, findSymbol } from "@/
 import { marketSessionAt, nextOpenAfter } from "@/lib/server/market-calendar";
 // ⭐ E-84 / the dynamic gate — each asset's measured record, and the advice derived from it.
 import { feedAdviceLookup } from "@/lib/server/updown-feed-history";
+import { MIN_SAMPLES_FOR_ADVICE } from "@/lib/server/updown-feed-advice";
 import { observationStore, roundStore } from "@/lib/server/updown-dal";
 import { summariseRounds, chainHealth } from "@/lib/server/updown-chain-stats";
 import { poolFee } from "@/lib/payout";
@@ -229,12 +230,16 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
             </div>
           ) : (
             <ScrollX label="Up & Down assets">
-              <table className="admin-tbl min-w-[640px]">
+              <table className="admin-tbl min-w-[820px]">
                 <thead>
                   <tr className="text-left font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle border-b border-border-subtle">
                     <th className="px-4 py-2.5 font-semibold">Key</th>
                     <th className="px-4 py-2.5 font-semibold">Name</th>
                     <th className="px-4 py-2.5 font-semibold">Source</th>
+                    {/* ⭐ WHAT THE GATE IS REASONING FROM. The Add-chain form greys durations on
+                        this record, so an operator who cannot see it is being refused by a
+                        number they have no way to look at. */}
+                    <th className="px-4 py-2.5 font-semibold">Feed record</th>
                     <th className="px-4 py-2.5 font-semibold text-right">Precision</th>
                     <th className="px-4 py-2.5 font-semibold text-right">Chains</th>
                     <th className="px-4 py-2.5 font-semibold text-right">Enabled</th>
@@ -254,6 +259,38 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
                         <td className="px-4 py-3">
                           <div className="font-mono text-[11px] text-text-muted">{a.sourceDomain}</div>
                           <div className="font-mono text-[10px] text-text-subtle">{a.category}</div>
+                        </td>
+                        {/* ⭐ THE MEASURED RECORD — the same numbers the duration gate reasons
+                            from, in the same units it states them in. ⛔ Below the sample floor
+                            it says NOT MEASURED and shows no median: two readings produce one as
+                            readily as two thousand, and on screen the two look identical (A-5).
+                            The advised minimum is shown when there is one, because "we advise
+                            5 minutes or more" is the sentence an operator can act on. */}
+                        <td className="px-4 py-3">
+                          {(() => {
+                            const rec = feed?.record(a.key);
+                            const advice = feed?.advise(a.key);
+                            if (!rec || rec.history.readings === 0) {
+                              return <div className="font-mono text-[11px] text-text-subtle">no readings yet</div>;
+                            }
+                            const h = rec.history;
+                            return (
+                              <>
+                                <div className="font-mono text-[11px] text-text-muted whitespace-nowrap">
+                                  {h.readings.toLocaleString()} read{h.readings === 1 ? "" : "s"}
+                                  {rec.okPct != null && <> · {rec.okPct.toFixed(0)}% ok</>}
+                                </div>
+                                <div className="font-mono text-[10px] text-text-subtle whitespace-nowrap">
+                                  {advice?.unmeasured
+                                    ? "not measured yet"
+                                    : <>
+                                        +{h.medianLagSeconds}s typical
+                                        {advice?.advisedMinDurationMinutes != null && <> · {advice.advisedMinDurationMinutes}m+ advised</>}
+                                      </>}
+                                </div>
+                              </>
+                            );
+                          })()}
                         </td>
                         <td className="px-4 py-3 text-right font-mono text-[11.5px] text-text-muted whitespace-nowrap">
                           {a.decimals} dp · min {a.minMoveTicks}
@@ -287,10 +324,17 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
               </table>
             </ScrollX>
           )}
-          <p className="px-4 pb-4 pt-3 text-[11.5px] leading-[1.55] text-text-subtle">
+          <p className="px-4 pb-4 pt-3 text-[11.5px] leading-[1.55] text-text-subtle max-w-[95ch]">
             An asset&rsquo;s price source must be an approved trusted source at{" "}
             <span className="font-mono text-[11px]">/admin/sources</span> — checked when it is added, when it is
             enabled, and again each time a chain starts.
+            <br />
+            <strong className="text-text-muted">Feed record</strong> is what this asset has actually done here, and it
+            is what greys the round lengths in <em>Add chain</em>. <em>% ok</em> is how often a reading produced a
+            usable price; <em>typical</em> is how long after a boundary a price became usable — a chain does not open a
+            round before its price is known, so that time comes out of the betting window. Below{" "}
+            {MIN_SAMPLES_FOR_ADVICE} readings an asset reads <em>not measured yet</em> and no average is shown, because
+            a handful of readings produces one that looks exactly like a reliable figure.
           </p>
         </AdminCard>
 

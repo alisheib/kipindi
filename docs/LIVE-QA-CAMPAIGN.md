@@ -3715,6 +3715,12 @@ player-facing consequence, and it is what the gate now reasons from:
 3. **`/admin/updown`** loads the record once (`feedAdviceLookup`) and every asset-driven readiness
    call on the page reads it — asserted **structurally** by `test:updown-admin-options` §7, because
    an engine with no caller passes every unit test it has.
+4. **The asset table carries the record itself** — `204 reads · 97% ok` / `+132s typical · 5m+
+   advised` — because a refusal computed from a number the operator cannot look at is an arbitrary
+   console, not a guided one. ⛔ Below the sample floor the cell reads **`not measured yet`** and
+   shows **no average at all**: a median off two readings renders identically to one off two
+   thousand, which is exactly the fabrication **A-5** forbids. SOL, with 2 readings, is the live
+   proof of that branch.
 
 ⛔ **Keyed on `asset.key`, never `asset.symbol`** — `UpDownObservation` groups by the key, so
 keying on the symbol finds nothing, reads as UNMEASURED and silently disarms the gate while every
@@ -3739,8 +3745,16 @@ RED mutation. **Ali's call if he wants it the other way** — say so and it is a
 ### Evidence
 
 `test:updown-advice` **46** (was 22, rewritten — §6 asserts against BTC's real production record) ·
-`test:updown-readiness` **49** · `test:updown-admin-options` **41** · `red:updown-advice` **7/7** ·
-`red:updown-readiness` **13/13** · all 27 Up & Down suites green · `tsc` clean · build clean.
+`test:updown-readiness` **49** · `test:updown-admin-options` **47** · `red:updown-advice` **7/7** ·
+`red:updown-readiness` **15/15** · all 27 Up & Down suites green · `tsc` clean · build clean.
+
+⚠️ **And one of my own checks lied, in the same pass that documents the class.** §7.7 asserted
+`/Feed record/` against the page source to prove the new column exists — and the explanatory
+paragraph *below* the table contains that same phrase, so the `record-column-removed` mutation
+deleted the column and the check stayed green (**MISS**, caught only because the RED harness ran).
+It is anchored on `<th>Feed record</th>` now. **A guard a prose sentence can satisfy is not
+measuring the table** — the same lesson as anchoring a handoff on the words `RESUME AT:` (§0.1a),
+found again, one section away from where it is written down.
 ## 6ao. 🔴 SOL WAS NEVER THE PROBLEM — and four more guide claims were asserted, not verified (2026-08-04, session 23)
 
 > Ali: *"but SOL is there for Twelve Data no? check please why can we do SOL?"* — and then

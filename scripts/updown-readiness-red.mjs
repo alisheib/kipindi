@@ -62,6 +62,26 @@ const MUTATIONS = [
     to: `                    const r = symbolReadiness(findSymbol(a.symbol), d);`,
   },
   {
+    // ⛔ A-5. Two readings produce a median as readily as two thousand, and on screen the two
+    // are indistinguishable — so an unmeasured asset showing "+132s typical" is a fabrication.
+    name: "unmeasured-shows-a-median — the asset table quotes an average off two readings",
+    file: PAGE,
+    suite: "updown-admin-options",
+    from: `                                  {advice?.unmeasured
+                                    ? "not measured yet"
+                                    : <>`,
+    to: `                                  {false
+                                    ? "not measured yet"
+                                    : <>`,
+  },
+  {
+    name: "record-column-removed — the operator cannot see what refuses their duration",
+    file: PAGE,
+    suite: "updown-admin-options",
+    from: `                    <th className="px-4 py-2.5 font-semibold">Feed record</th>`,
+    to: `                    <th className="px-4 py-2.5 font-semibold">Feed</th>`,
+  },
+  {
     name: "measurement-overrides-the-catalogue — a good record lifts gold's 15-minute floor",
     file: SYMBOLS,
     suite: "updown-readiness",
