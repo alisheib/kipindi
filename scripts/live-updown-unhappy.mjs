@@ -89,7 +89,7 @@ try {
     // ⛔ A VOID MUST CARRY A REASON — that is the whole point of the operator path.
     const reason = dialog.locator("textarea, input[type=text]").first();
     rec.check("the void asks for a reason before it will proceed", (await reason.count()) > 0);
-    await reason.fill("QA session 26: driving the operator-void unhappy path on production.");
+    await reason.fill("Supervised production test of the refund paths (QA session 27) — every stake returned in full.");
     await dialog.getByRole("button", { name: /void|confirm|refund/i }).last().click();
     // ⛔ A POSITIVE SIGNAL THE CONTROL CANNOT SUPPLY: the Remedy cell turns into a dash once the
     // round is settled, and the outcome column says VOID. Wait for the row to STOP offering the
