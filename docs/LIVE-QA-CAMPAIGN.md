@@ -370,8 +370,23 @@ E-16, which is a far more serious thing to know: the deployed engine does not wo
   `timestamp WITHOUT time zone` holding UTC wall-clock; node-postgres builds a JS `Date` using the
   laptop's zone (EAT, +3), so `.toISOString()` reads 3 hours early. It looks *exactly* like a
   server clock bug and nearly became a false "consent timestamps are wrong" compliance blocker.
-  **Always `::text`-cast timestamps**, or use the harness (`live/harness.mjs` sets the type
-  parsers for OIDs 1114/1082).
+  ⛔ **AND IT WAS PAID FOR A SECOND TIME IN SESSION 30**, because this entry's remedy did not
+  exist: it used to say *"use the harness (`live/harness.mjs` sets the type parsers for OIDs
+  1114/1082)"* and **`setTypeParser` appeared nowhere in this repository** — `harness.mjs` is a
+  Playwright driver that never imports `pg`. **A trap list whose remedy does not exist is worse
+  than no remedy**, because the next session imports the harness and then trusts
+  `.toISOString()`. Session 30 read a settled round's `closesAt` as `18:01Z`, saw the page's
+  auditable settlement proof say `00:01:00 EAT`, and was one commit from filing a money-grade
+  false-statement finding against a page that was correct on every line.
+  ⭐ **What makes it so convincing: `now()` is a genuine `timestamptz` and round-trips
+  CORRECTLY**, so one clock in the same script is right and the other is wrong, and they
+  disagree by exactly the offset of the room you are sitting in.
+  ✅ **Two remedies, and both are now real.** (a) `::text`-cast in the query — this DB session is
+  `Etc/UTC` (verified with `current_setting('TIMEZONE')`, never assumed), so `::text` is already
+  true UTC; `scripts/s29-board-state.cjs` does this and has always been honest. (b) **`const
+  { connect } = require("./live/db.cjs")`** — a shared connector that sets the 1114/1082 parsers
+  to hand back the raw string, and carries the `postgres.railway.internal` → public-proxy
+  rewrite every probe copy-pastes. ⛔ It deliberately leaves `timestamptz` (1184) alone.
 - ⚠️ **The phone field takes 9 digits, not 10.** `PhoneInput` renders a `+255` prefix and caps at
   9, so the number is `712000101` — typing the habitual `0712000101` silently truncates to
   `071200010` and fails with "Enter a valid Tanzania mobile number". See §6 (open question).
@@ -5529,6 +5544,56 @@ toast; the suite beside it proved nothing.** Now scoped to
 the aria-live node is present — `.qa-s30/probe-crowd.mjs`), and a **CONTROL** was added that the
 first version lacked: **§1.3 asserts the toast is ABSENT before the tap**, so the suite can tell
 a working toast from a selector matching something permanent.
+
+🔴🔴 **A THIRD NEAR-MISS — AND IT IS NOT A NEW TRAP, IT IS §3's VERY FIRST ONE, RE-PAID. THE
+REASON IS THE FINDING: §3's STATED REMEDY DID NOT EXIST.** ⛔ **The `pg` driver's `Date` is
+wrong by this machine's UTC offset.**
+
+The settled round page renders its **auditable settlement proof** as
+`CLOSE · quoted 00:01:00 EAT · Observed 00:02:29 EAT`. My probe read the same round with
+`row.closesAt.toISOString()` and got **`2026-08-05T18:01:00.000Z` = 21:01 EAT**. Three hours
+apart, on the **auditable record** — which would be a false statement of exactly the class this
+campaign exists to find, and I was one commit away from filing it.
+
+**Measured instead of assumed** (`.qa-s30/probe-time.cjs` prints five representations of one
+instant side by side, and names the session timezone rather than assuming it):
+
+| representation | value |
+|---|---|
+| `current_setting('TIMEZONE')` | **`Etc/UTC`** |
+| `"closesAt"::text` | `2026-08-05 21:01:00` ← **no offset suffix ⇒ the column is `timestamp WITHOUT time zone`** |
+| `("closesAt" at time zone 'UTC')::text` | `2026-08-05 21:01:00+00` |
+| driver `Date` → `.toISOString()` | `2026-08-05T18:01:00.000Z` ← 🔴 **the lie** |
+| what the page shows | `00:01:00 EAT` = 21:01 UTC + 3 ✅ **correct** |
+
+⭐ **Prisma maps `DateTime` to `timestamp(3)` WITHOUT time zone and writes UTC into it.** When
+`node-postgres` reads a naked timestamp it builds a `Date` **in the process's LOCAL zone** — and
+this machine is **EAT (UTC+3)** — so `.toISOString()` silently subtracts three hours. `now()` is
+a genuine `timestamptz` and round-trips correctly, which is what makes the pair so convincing:
+**one clock in the same script is right and the other is wrong, and they disagree by exactly the
+offset of the room you are sitting in.**
+
+⛔ **THE RULE, and it extends session 24's:** that session learned *"read the instant from the
+DB, the `Date` header, or a row the server wrote — never from `new Date()` on this machine."*
+**That is not sufficient.** A row the server wrote, read through the driver, is ALSO local-time
+poisoned. **Use `"col"::text` (this session is `Etc/UTC`, so it is already true UTC), or cast
+explicitly — never the driver's `Date` for a Prisma `DateTime` column.** 📌 `s29-board-state.cjs`
+uses `::text` throughout and has been telling the truth all along; `.qa-s30/round-watch.cjs`
+used `.toISOString()` and was the one lying. ✅ **Verified the other way too:** the proof's
+`Observed 23:56:20 EAT` matches the observation's stored `20:56:20` UTC exactly. **The
+settlement proof is correct on every line.**
+
+⭐⭐ **BUT THE REAL FINDING IS WHY A DOCUMENTED TRAP CAUGHT ANOTHER SESSION. §3's remedy pointed
+at code that did not exist.** It read *"use the harness (`live/harness.mjs` sets the type parsers
+for OIDs 1114/1082)"*, and **`setTypeParser` appeared nowhere in this repository** —
+`harness.mjs` is a Playwright driver that never imports `pg`. So a session that did exactly what
+the trap list told it to do would import the harness and then **trust `.toISOString()`**, which
+is the trap wearing the remedy's clothes. ⛔ **A trap list whose remedy does not exist is worse
+than no remedy at all.** Fixed by making the remedy real rather than by rewording it:
+**`scripts/live/db.cjs`** sets the 1114/1082 parsers to return the raw string and carries the
+`postgres.railway.internal` → public-proxy rewrite that every probe in this repo copy-pastes,
+and §3 now names both working remedies. **The lesson generalises past timestamps: when a trap
+recurs, check whether its documented fix is real before writing the warning a second time.**
 
 ⛔ **A SECOND THING I NEARLY FILED, AND IT WAS THE PICTURE LYING THIS TIME.** In the 700ms shot
 the pool card reads `Up 100%` on the left and, at 12px, what looks like **`8% Down`** — over
