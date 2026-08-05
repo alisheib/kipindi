@@ -1,0 +1,14 @@
+{
+ "round": "udr_bc2ec2b5ce1903325d6f",
+ "stake": 2000,
+ "fired": {
+  "07": {
+   "kind": "LOSS-OR-REFUND-TOAST",
+   "text": "Round lost Up · TZS 2,000"
+  }
+ },
+ "shots": [
+  "shots/E105/e105-fleet07-LOSS-OR-REFUND-TOAST.png",
+  "shots/E105/e105-fleet07-cropped.png"
+ ]
+}

@@ -17,7 +17,11 @@ import { cn } from "@/lib/utils";
 import { haptics } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 
-type ToastVariant = "default" | "success" | "warning" | "danger" | "gold";
+/**
+ * ⭐ `factual` states something that is neither good news, a warning, nor an error — see
+ * `variantStyles` for why the kit needed one and how its absence put a TICK on "Round lost".
+ */
+type ToastVariant = "default" | "success" | "warning" | "danger" | "gold" | "factual";
 
 type ToastInput = {
   title: string;
@@ -225,6 +229,26 @@ const variantStyles: Record<ToastVariant, { bar: string; icon: React.ReactNode; 
     icon: <span className="text-gold-300"><I.trophy s={18} /></span>,
     surface: "bg-bg-elevated border-gold-700",
     rail: "bg-gold-500",
+  },
+  /**
+   * FACTUAL — states something that is neither good news, a warning, nor an error.
+   *
+   * ⛔ ADDED 2026-08-05 BECAUSE THE KIT COULD NOT SAY "YOU LOST" HONESTLY, and the gap was
+   * found by looking at a photograph of a real one. Every other variant editorialises:
+   * `default` and `success` both paint **`checkCircle`**, so a toast reading *"Round lost ·
+   * TZS 2,000"* carried a **tick** — a confirmation glyph over the news that a player's money
+   * is gone, which is precisely the euphemism the RG wording rules exist to prevent. `warning`
+   * is **gold**, the celebration ink on this platform. `danger` is red `alertCircle` and reads
+   * as *something went wrong* — but losing a round is not an error, it is the game working.
+   *
+   * So: muted ink, an `info` glyph, no colour that congratulates or alarms. Use it for a
+   * settled outcome the player did not want but that the product performed correctly.
+   */
+  factual: {
+    bar: "bg-text-muted",
+    icon: <span className="text-text-secondary"><I.info s={18} /></span>,
+    surface: "bg-bg-elevated border-border-strong",
+    rail: "bg-text-muted",
   },
 };
 

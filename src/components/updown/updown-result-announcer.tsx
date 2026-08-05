@@ -118,10 +118,18 @@ export function UpDownResultAnnouncer({ rounds }: { rounds: AnnounceableRound[] 
 
       // LOSS — plain, direct, no glow and no haptic. It states the amount because a result
       // screen that will not name the number is the euphemism RG rules exist to prevent.
+      //
+      // ⛔ `factual`, AND THE VARIANT IS THE FIX. This shipped as `default` and the first live
+      // photograph showed why that was wrong: `default` and `success` both paint **checkCircle**,
+      // so a toast reading "Round lost · TZS 2,000" carried a **TICK** — a confirmation glyph
+      // over the news that a player's money is gone. `warning` is gold, the celebration ink;
+      // `danger` is red and reads as *something went wrong*, but losing a round is not an error,
+      // it is the game working. The kit had no way to state a fact, so one was added to the KIT
+      // (§0.1b rule 1) rather than a colour being hand-picked here.
       toast({
         title: t.market.udLostTitle,
         description: `${sideWord} · ${formatTzs(res.stake)}`,
-        variant: "default",
+        variant: "factual",
         durationMs: 6000,
       });
     }
