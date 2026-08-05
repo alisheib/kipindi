@@ -178,6 +178,46 @@ for (const f of srcFiles) {
   }
 }
 
+// ── E-96 · A CAMPAIGN FINDING ID IS NOT COPY ────────────────────────────────
+//
+// Two controls on `/admin/updown` narrated this campaign's own tracker to the operator:
+// the winning-band dropdown said a wide band *"is why **E-32** was filed"*, and the thresholds
+// paragraph said the ladder was *"the measured ladder **(E-32)**"*. `E-32` means nothing to the
+// person reading it; the operator guide, which is their actual contract, never uses it. Copy
+// discipline (SKILL §7) says a surface states the FACT, and the internal detail stays internal.
+//
+// ⚠️ COMMENTS ARE FINE AND ARE THE POINT — the code SHOULD say which finding it came from.
+// This looks only at what renders: string literals and JSX text, comment lines skipped, exactly
+// as C1 above does.
+{
+  const RENDERED_ID = /\bE-\d{1,3}\b/;
+  for (const f of srcFiles) {
+    const lines = read(f).split("\n");
+    let inBlockComment = false;
+    lines.forEach((line, i) => {
+      const s = line.trim();
+      // Track /* … */ so a multi-line comment's middle lines (which do not start with *) are
+      // not read as copy. Without this the guard fires on its own documentation.
+      if (inBlockComment) { if (s.includes("*/")) inBlockComment = false; return; }
+      if (s.startsWith("/*") || s.startsWith("{/*")) { if (!s.includes("*/")) inBlockComment = true; return; }
+      if (s.startsWith("//") || s.startsWith("*")) return;
+      // ⛔ NOT `>text<` ON ONE LINE. The first version of this guard read only quoted strings
+      // and JSX text bounded by tags on the same line — and MISSED the second of the two cases
+      // that motivated it, because `…the measured ladder (E-32) — <strong>0.02%</strong>…` is a
+      // JSX text RUN that starts on one line and ends on another. A guard that misses one of
+      // its own two founding examples is not measuring the class.
+      //
+      // So: strip the tags and look at what prose is left. Comments are already gone, so what
+      // remains on a `.tsx` line is either copy or code — and an `E-nn` token surrounded by
+      // whitespace is not something code contains.
+      const prose = line.replace(/<[^>]*>/g, " ");
+      if (RENDERED_ID.test(prose) && /\S\s|\s\S/.test(prose.trim())) {
+        fail("E96", `${f}:${i + 1}: a campaign finding id is rendered as copy — "${prose.trim().slice(0, 90)}"`);
+      }
+    });
+  }
+}
+
 if (fails.length) {
   console.error(`\ncontent-integrity: ${fails.length} FAILURE(S) — misleading/superseded content detected:\n` + fails.map((x) => "  ✗ " + x).join("\n") + "\n");
   process.exit(1);

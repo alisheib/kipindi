@@ -1301,7 +1301,7 @@ function auditHealed(round: StoredRound, action: HealOutcome, payload: Record<st
       roundNumber: round.roundNumber,
       boundaryAt: round.boundaryAt,
       note:
-        "Closed by the Up & Down self-healer (finding E-24). A round that cannot confirm a price VOIDs " +
+        "Closed by the Up & Down self-healer. A round that cannot confirm a price VOIDs " +
         "and every stake is refunded in full through the same settlement path as any other void; the " +
         "healer never invents a price and never decides a winner.",
     },

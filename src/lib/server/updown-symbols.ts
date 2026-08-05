@@ -256,14 +256,14 @@ export function validateSymbolCategory(symbol: string, category: string): string
   if (!spec) {
     return `"${symbol}" is not a symbol this platform can quote. Pick one from the list — ` +
       `a symbol the price feed does not carry produces rounds that void and refund forever ` +
-      `(finding E-46: "ETH" was accepted instead of "ETH/USD" and voided 27 of 27 rounds).`;
+      `(it has happened here: "ETH" was accepted instead of "ETH/USD" and voided 27 of 27 rounds).`;
   }
   if (spec.unsupported) return `${spec.symbol} cannot be used: ${spec.unsupported}`;
   if (spec.category !== category) {
     return `${spec.symbol} must be category "${spec.category}", not "${category}". ` +
       `The category decides the trading calendar: "crypto" is 24/7, everything else follows ` +
       `the FX/metals week (Sunday 22:00 → Friday 21:00 UTC). Mislabelling a coin as "macro" ` +
-      `shuts it every weekend for no reason (finding E-46: BNB).`;
+      `shuts it every weekend for no reason — it has happened here, to BNB.`;
   }
   return null;
 }
@@ -332,7 +332,7 @@ export function symbolReadiness(
       level: 3,
       reason:
         "Not a symbol this platform can quote. A symbol the price feed does not carry produces " +
-        "rounds that void and refund forever (E-46: \"ETH\" was accepted instead of \"ETH/USD\" " +
+        "rounds that void and refund forever (it has happened here: \"ETH\" was accepted instead of \"ETH/USD\" " +
         "and voided 27 of 27 rounds).",
     };
   }
