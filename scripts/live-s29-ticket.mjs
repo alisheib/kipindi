@@ -129,6 +129,21 @@ try {
       !url.pathname.startsWith("/positions"), url.pathname);
 
     // ── LAND ON THE ROW — geometry, never presence ────────────────────────────────────
+    // ⛔ WAIT FOR A LAID-OUT BOX BEFORE MEASURING. One run reported `top=0 height=0 absTop=0`
+    // on a cold dynamic render: the element existed and had no layout yet, which made the
+    // geometry meaningless AND made the anti-vacuity check pass vacuously (`absTop > innerHeight`
+    // is false for 0). A probe that measures a not-yet-laid-out element is measuring nothing.
+    const laidOut = await page.waitForFunction((id) => {
+      const el = document.getElementById(id);
+      if (!el) return false;
+      const box = el.getBoundingClientRect().height > 0 ? el : el.closest(".ticket-scope") ?? el;
+      return box.getBoundingClientRect().height > 0;
+    }, positionId, { timeout: 20_000 }).then(() => true).catch(() => false);
+    r.check(`${s.line} · the anchored row is laid out (so the geometry below means something)`,
+      laidOut === true, "the element never gained a box within 20s");
+    // Give HashFocus's smooth scroll time to land before reading the position.
+    await page.waitForTimeout(1500);
+
     const geo = await page.evaluate((id) => {
       const el = document.getElementById(id);
       if (!el) return { found: false };
@@ -153,6 +168,7 @@ try {
         // that is all the :target ring needs to be proven applied rather than merely written.
         ring: cs.boxShadow && cs.boxShadow !== "none",
         boxShadow: (cs.boxShadow || "").slice(0, 80),
+        boxShadowFull: cs.boxShadow || "",
       };
     }, positionId);
 
@@ -165,11 +181,55 @@ try {
     r.check(`${s.line} · …and where a scroll was REQUIRED, one happened`,
       !geo.belowFirstScreen || geo.scrollY > 0,
       geo.belowFirstScreen ? `row at absTop=${geo.absTop} but scrollY=${geo.scrollY} — the browser never scrolled` : "row was already on the first screen");
-    r.check(`${s.line} · the row is visibly marked, so they can see which one they came for`,
-      geo.ring === true, geo.boxShadow);
+    // ⛔ COMPARE AGAINST THE UNTARGETED STATE. `boxShadow !== "none"` is true of almost every
+    // card in this kit, so the first version of this check passed on the Up & Down panel while
+    // the ring was NOT painting at all — the panel is styled by an inline `style` object, which
+    // beats a stylesheet selector (E-101c). A state override can only be proven by loading the
+    // SAME element without the fragment and showing the two differ.
+    const bare = await page.evaluate(async ([url, id]) => {
+      const res = await fetch(url, { cache: "no-store" });
+      const doc = new DOMParser().parseFromString(await res.text(), "text/html");
+      const el = doc.getElementById(id);
+      if (!el) return null;
+      const box = el.closest(".ticket-scope") ?? el;
+      // The parsed doc is not styled, so read the AUTHORED inline style — that is the thing
+      // competing with the rule, and it is exactly what made the ring lose.
+      return box.getAttribute("style") ?? "";
+    }, [`${BASE}${expectPath}`, positionId]).catch(() => null);
+    const untargeted = await page.evaluate(async ([url, id]) => {
+      // Load the same page WITHOUT the fragment in a hidden frame and read the computed shadow.
+      const f = document.createElement("iframe");
+      f.style.cssText = "position:fixed;left:-9999px;width:1280px;height:900px";
+      f.src = url;
+      document.body.appendChild(f);
+      await new Promise((res) => { f.onload = res; setTimeout(res, 15_000); });
+      await new Promise((res) => setTimeout(res, 2_500));
+      const d = f.contentDocument;
+      const el = d?.getElementById(id);
+      if (!el) { f.remove(); return null; }
+      const box = el.getBoundingClientRect().height > 0 ? el : el.closest(".ticket-scope") ?? el;
+      const sh = f.contentWindow.getComputedStyle(box).boxShadow;
+      f.remove();
+      return sh;
+    }, [`${BASE}${expectPath}`, positionId]).catch(() => null);
 
-    await page.locator("main, body").first().screenshot({ path: `${SHOT}/s29-e101-${s.line}-landed.png` }).catch(() => {});
-    r.note(`shot → ${SHOT}/s29-e101-${s.line}-landed.png · scrollY=${geo.scrollY}`);
+    r.check(`${s.line} · ⭐ the row is visibly marked — and the ring is a REAL state change`,
+      untargeted != null && untargeted !== geo.boxShadowFull,
+      untargeted == null ? "could not read the untargeted state" : `untargeted and targeted box-shadow are identical: ${String(untargeted).slice(0, 60)}`);
+    r.note(`inline style on the anchored box: ${bare ? `"${String(bare).slice(0, 70)}"` : "(none)"}`);
+
+    // ⛔ VIEWPORT, NOT THE ELEMENT-THAT-IS-THE-PAGE. The first version shot
+    // `locator("main, body").first()` — which is `fullPage` wearing a locator, and it produced
+    // exactly the artefact the campaign already banned: Playwright scrolls and stitches, so the
+    // STICKY header is painted mid-page and lands on top of the Resolution card. That reads as a
+    // z-index defect and is entirely the harness's. It is also the wrong question: "did the
+    // player land on the row" is about what fits in ONE SCREEN, which is what `page.screenshot()`
+    // with no `fullPage` captures.
+    await page.screenshot({ path: `${SHOT}/s29-e101-${s.line}-landed.png` }).catch(() => {});
+    // …and the row itself, scoped, so the ring and the ticket id can be read.
+    await page.locator(`#${positionId}`).first()
+      .screenshot({ path: `${SHOT}/s29-e101-${s.line}-row.png` }).catch(() => {});
+    r.note(`shots → ${SHOT}/s29-e101-${s.line}-{landed,row}.png · scrollY=${geo.scrollY}`);
     await page.close();
     await fresh.close();
   }

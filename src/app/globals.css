@@ -2583,9 +2583,21 @@ textarea::-webkit-resizer {
    ⛔ No animation: this fires on arrival, and a pulse at the moment a player
    lands on their own money reads as an alert. Nothing to honour for
    reduced-motion because nothing moves.                                       */
+/* 🔴 E-101c · `!important`, AND IT IS EARNED — measured, not defensive.
+   Driven on production with the same element read twice, once with the fragment and once
+   without: on `/markets/[id]` the shadow went `none` → the brand ring, correctly. On
+   `/updown/[roundId]` it was BYTE-IDENTICAL both ways — the result panel is styled by an
+   INLINE `style={{ ...card }}` object, and an inline declaration beats any selector without
+   `!important`. So the ring simply never painted there.
+   ⛔ AND THE CHECK THAT SHOULD HAVE CAUGHT IT PASSED, because it asked
+   `boxShadow !== "none"` on a card that already carries the kit's elevation shadow. A state
+   override has to be compared AGAINST THE UNTARGETED STATE; "it has a shadow" is true of
+   almost everything. The elevation is restated below so a targeted card keeps its depth
+   rather than trading it for the ring.                                                      */
 .ticket-target:target,
 .ticket-scope:has(.ticket-anchor:target) {
-  border-color: var(--brand-400);
+  border-color: var(--brand-400) !important;
   box-shadow: 0 0 0 1px var(--brand-400),
-              0 0 0 5px color-mix(in oklab, var(--brand-400) 18%, transparent);
+              0 0 0 5px color-mix(in oklab, var(--brand-400) 18%, transparent),
+              var(--shadow-2) !important;
 }
