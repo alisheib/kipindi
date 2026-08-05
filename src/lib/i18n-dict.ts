@@ -692,6 +692,10 @@ export const dict = {
       udNoRoundsThatDay: "No rounds settled on that day.",
       udAllDays: "All days",
       udWon: "Won", udLost: "Lost", udStakedLabel: "Staked", udResultLabel: "Result",
+      // The in-app result moment (Ali, 2026-08-05). A refund is NEITHER a win nor a loss and
+      // says so in its own words; the loss line names the amount, because a result screen that
+      // will not name the number is the euphemism the RG rules exist to prevent.
+      udUpDown: "Up & Down", udStakeReturnedTitle: "Stake returned", udLostTitle: "Round lost",
       udOpenLabel: "Open", udBackToBoard: "Back to Up & Down",
       udNetReturn: "Net return", udRoundsPlayed: "Rounds", udWinRate: "Win rate", udBets: "bets", udInPlay: "In play",
       udStake: "Stake", udYoureIn: "You're in", udBetPlaced: "Bet placed", udBetFailed: "Bet not placed",
@@ -2090,6 +2094,7 @@ export const dict = {
       udNoRoundsThatDay: "Hakuna raundi iliyokamilika siku hiyo.",
       udAllDays: "Siku zote",
       udWon: "Umeshinda", udLost: "Umeshindwa", udStakedLabel: "Uliweka", udResultLabel: "Tokeo",
+      udUpDown: "Juu na Chini", udStakeReturnedTitle: "Dau limerudishwa", udLostTitle: "Umeshindwa raundi",
       udOpenLabel: "Wazi", udBackToBoard: "Rudi Juu na Chini",
       udNetReturn: "Faida halisi", udRoundsPlayed: "Raundi", udWinRate: "Kiwango cha ushindi", udBets: "dau", udInPlay: "Inaendelea",
       udStake: "Kiasi", udYoureIn: "Uko ndani", udBetPlaced: "Dau limewekwa", udBetFailed: "Dau halikuwekwa",
@@ -3460,6 +3465,7 @@ export const dict = {
       udNoRoundsThatDay: "该日没有结算的回合。",
       udAllDays: "全部日期",
       udWon: "赢", udLost: "输", udStakedLabel: "投注", udResultLabel: "结果",
+      udUpDown: "涨跌", udStakeReturnedTitle: "投注已退还", udLostTitle: "本轮失利",
       udOpenLabel: "进行中", udBackToBoard: "返回涨跌",
       udNetReturn: "净收益", udRoundsPlayed: "回合", udWinRate: "胜率", udBets: "注", udInPlay: "进行中",
       udStake: "投注额", udYoureIn: "已下注", udBetPlaced: "已下注", udBetFailed: "下注失败",

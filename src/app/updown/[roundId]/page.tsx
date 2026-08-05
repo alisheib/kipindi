@@ -38,6 +38,7 @@ import { SOURCE_CLASS_KEY } from "@/lib/updown-source-label";
 import { positionListHref } from "@/lib/position-permalink";
 // E-102 · how often this page re-asks the server, and when it stops.
 import { RefreshPoller } from "@/components/ui/refresh-poller";
+import { UpDownResultAnnouncer } from "@/components/updown/updown-result-announcer";
 import { refreshCadence } from "@/lib/refresh-cadence";
 
 export const dynamic = "force-dynamic";
@@ -197,6 +198,16 @@ export default async function UpDownRoundPage({
           ⛔ The cadence is a RULE, not a number — fast while the price is landing, the board's
           20s while the round is live, and OFF once it is decided. See `refreshCadence`. */}
       <RefreshPoller {...refreshCadence({ settled: decided, awaitingResult })} />
+      {/* ⭐ THE RESULT MOMENT — the same shared announcer the board mounts, so the two surfaces
+          cannot drift. It fires on the OBSERVED transition the poller above delivers, and
+          `sessionStorage` keeps it to once per round even if the player has both open.
+          ⛔ In-app only; Ali's 2026-07-24 notification suppression is untouched. */}
+      <UpDownResultAnnouncer rounds={[{
+        roundId,
+        myResult: myPosition && myPosition.result
+          ? { status: myPosition.result, side: myPosition.side, stake: myPosition.stake, payout: myPosition.payout ?? 0 }
+          : null,
+      }]} />
       <HashFocus />
       <div className="flex flex-col gap-[18px]">
         <BackLink fallbackHref="/updown" label={t.market.udTitle} />

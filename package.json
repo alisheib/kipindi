@@ -275,7 +275,9 @@
     "test:updown-bet-feedback": "tsx scripts/updown-bet-feedback.test.mts",
     "red:updown-bet-feedback": "node scripts/red-e64.cjs",
     "test:shell-boundary": "tsx scripts/shell-boundary.test.mts",
-    "red:shell-boundary": "node scripts/red-e70.cjs"
+    "red:shell-boundary": "node scripts/red-e70.cjs",
+    "test:updown-result-announce": "tsx scripts/updown-result-announce.test.mts",
+    "red:updown-result-announce": "node scripts/red-result-announce.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

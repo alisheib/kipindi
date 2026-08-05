@@ -21,6 +21,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { getServerT } from "@/lib/i18n-server";
 import { pickLocalized } from "@/lib/localized";
 import { UpDownCard } from "@/components/updown/updown-card";
+import { UpDownResultAnnouncer } from "@/components/updown/updown-result-announcer";
 
 export const dynamic = "force-dynamic";
 
@@ -178,6 +179,12 @@ export default async function UpDownPage({
             63,719.98, targets set, live until 21:15 UTC, and completely invisible to players.
             A chain's state says whether MORE rounds will appear; it says nothing about whether
             the one on the board can be played. */}
+        {/* ⭐ THE RESULT MOMENT (Ali, 2026-08-05). Announces on the OBSERVED transition of a
+            round this viewer holds from unsettled → settled, which the RefreshPoller above
+            delivers by re-rendering this server tree without remounting client children.
+            ⛔ In-app only — no email, no push, no inbox row. Ali's 2026-07-24 suppression of
+            per-round Up & Down notifications STANDS; this renders data the page already has. */}
+        <UpDownResultAnnouncer rounds={rounds.map((r) => ({ roundId: r.roundId, myResult: r.myResult }))} />
         {rounds.length === 0 ? (
           <EmptyState title={t.market.udNoRounds} body={t.market.udNoRoundsBody} />
         ) : (

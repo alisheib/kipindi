@@ -115,6 +115,35 @@ export type BoardRound = {
    *  DECIDED, if nobody took the other side — which is the whole point of the field. */
   myRefundedStake: number;
   /**
+   * ⭐ WHAT HAPPENED TO THIS VIEWER'S MONEY ON THIS ROUND — Ali's decision, 2026-08-05.
+   *
+   * ⛔ THE BOARD HAS NEVER CARRIED THIS, AND THAT IS WHY UP & DOWN HAS NO WIN MOMENT.
+   * `myStakesByMarket` recorded a settled position ONLY when `finalPayout === stake` (a
+   * refund); a WIN and a LOSS were both recorded as *nothing*, and `myUpStake`/`myDownStake`
+   * are zeroed the instant a position leaves OPEN because "only live money counts as you're
+   * in". So a winner and a loser received **byte-identical board props** — the card could not
+   * have congratulated anyone if it wanted to, because the data was never sent.
+   *
+   * The other half of the same silence: the platform's `WinCelebrationHost` is fired by
+   * `notify-poller.tsx`, gated on a `readStoredBet()` localStorage record that the Up & Down
+   * quick-bet path never writes — and gated behind notifications, which
+   * `perEventNotificationsSuppressed()` turns off for UPDOWN. Suppressing the MESSAGE (Ali's
+   * dated 2026-07-24 decision, which stands) also suppressed the MOMENT.
+   *
+   * ⛔ `payout` IS THE REALISED FIGURE, never a projection. The existing celebration path
+   * headlines `stored.payoutIfWin` from place-time — its own comment concedes it "may differ
+   * slightly from the realised payout" — and on a pari-mutuel pool it does. A celebrated
+   * amount that is not the amount paid is a false money statement of the E-39/E-65 kind, on
+   * the one screen a player is most likely to screenshot. This is `Position.finalPayout`.
+   */
+  myResult: {
+    status: "WIN" | "LOSS" | "VOID";
+    side: "UP" | "DOWN";
+    stake: number;
+    /** Realised, from the settled row. 0 for a loss. */
+    payout: number;
+  } | null;
+  /**
    * What this viewer takes home if their side wins — EXACT, and only once the round is LOCKED.
    *
    * ⛔ Null while the round is open, deliberately: the pool is still moving, so any figure
@@ -174,7 +203,7 @@ export function roundState(
 async function toBoardRound(
   r: StoredRound,
   chain: StoredChain,
-  mine?: { up: number; down: number; refunded: number },
+  mine?: MyMarketStake,
   /** The asset's measured median seconds from boundary to a confirmed reading, or null when
    *  it has too little history to quote one. Passed in — never recomputed per round, which
    *  would be one query per card. */
@@ -219,6 +248,9 @@ async function toBoardRound(
     myUpStake: mine?.up ?? 0,
     myDownStake: mine?.down ?? 0,
     myRefundedStake: mine?.refunded ?? 0,
+    // ⭐ The viewer's own settled outcome. Null while nothing of theirs has settled — which is
+    // also the signed-out case, because `mine` is undefined then.
+    myResult: mine?.result ?? null,
     // Only for a LOCKED round the viewer actually holds — see the field comment. `projectedPayout`
     // is the money path's own function, so this figure and the settled one cannot disagree.
     myExactPayout:
@@ -235,16 +267,26 @@ async function toBoardRound(
   };
 }
 
+/** One viewer's stake on one market: the live money, plus what SETTLED (E-64/result moment). */
+type MyMarketStake = {
+  up: number;
+  down: number;
+  refunded: number;
+  /** The settled outcome for this viewer, or null while nothing has settled. See
+   *  `BoardRound.myResult` for why this exists and why `payout` must be the realised figure. */
+  result: { status: "WIN" | "LOSS" | "VOID"; side: "UP" | "DOWN"; stake: number; payout: number } | null;
+};
+
 /** The viewer's OPEN stake per market, split UP(=YES)/DOWN(=NO). Empty when signed
  *  out. One query, then grouped — never an N+1 across the board. */
-async function myStakesByMarket(userId: string | undefined): Promise<Map<string, { up: number; down: number; refunded: number }>> {
-  const out = new Map<string, { up: number; down: number; refunded: number }>();
+async function myStakesByMarket(userId: string | undefined): Promise<Map<string, MyMarketStake>> {
+  const out = new Map<string, MyMarketStake>();
   if (!userId) return out;
   // UPDOWN only — this map powers the card's "you're in" indicator, so it must not
   // pull the player's long-form-poll positions.
   const positions = await listPositionsForUser(userId, 500, "UPDOWN").catch(() => []);
   for (const p of positions) {
-    const e = out.get(p.marketId) ?? { up: 0, down: 0, refunded: 0 };
+    const e = out.get(p.marketId) ?? { up: 0, down: 0, refunded: 0, result: null };
     // ⭐ E-65 · A SETTLED POSITION WHOSE PAYOUT EQUALS ITS STAKE WAS REFUNDED, and that can
     // happen on a round that DECIDED — when nobody took the other side there is no pool to
     // win from. The card needs this to tell a refund apart from a loss; without it a decided
@@ -252,6 +294,22 @@ async function myStakesByMarket(userId: string | undefined): Promise<Map<string,
     // opposite reason.
     if (p.status !== "OPEN") {
       if (p.finalPayout != null && p.finalPayout === p.stake) e.refunded += p.stake;
+      // ⭐ THE VIEWER'S OWN OUTCOME — see `BoardRound.myResult`. Until this line the board
+      // sent a winner and a loser byte-identical props, so no surface could tell them apart.
+      // ⛔ The status is read off the POSITION ROW, never inferred from the round's outcome:
+      // a round can resolve DOWN and still hand an UP backer their stake back when nobody
+      // took the other side (E-65), so "my side !== the outcome" is NOT a loss.
+      const payout = p.finalPayout ?? 0;
+      const status: "WIN" | "LOSS" | "VOID" =
+        p.status === "WIN" ? "WIN" : p.status === "LOSS" ? "LOSS" : "VOID";
+      // A player may top up the same side; aggregate rather than letting the last row win.
+      const prev = e.result;
+      e.result = {
+        status: prev && prev.status !== status ? prev.status : status,
+        side: p.side === "YES" ? "UP" : "DOWN",
+        stake: (prev?.stake ?? 0) + p.stake,
+        payout: (prev?.payout ?? 0) + payout,
+      };
       out.set(p.marketId, e);
       continue; // only live money counts as "you're in"
     }
