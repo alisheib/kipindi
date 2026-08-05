@@ -49,18 +49,40 @@ export function mmss(s: number | null): string {
  * live and pulse rose in the final 30s (reduced-motion turns the pulse off); once closed
  * it shows a static 00:00 in `--text-subtle`. Same shared hook as everywhere else.
  */
-export function RoundCountdownPod({ closesAtMs, isOpen, label, serverNowMs }: { closesAtMs: number; isOpen: boolean; label: string; serverNowMs?: number }) {
+export function RoundCountdownPod({ closesAtMs, isOpen, label, serverNowMs, resultMode = false }: {
+  closesAtMs: number; isOpen: boolean; label: string; serverNowMs?: number;
+  /**
+   * ⭐ E-99 · this clock is counting to the RESULT, not to a deadline the player can act on.
+   * Two consequences, and both are deliberate:
+   *   · it inks BRAND, not white — "something is coming", not "hurry";
+   *   · when it runs out it shows `—:—`, never `00:00`. The estimate is a MEDIAN, so about
+   *     one round in ten legitimately overruns it (p90 116s vs ~92s median). A zeroed clock
+   *     reads as "this should have happened and didn't"; `—:—` reads as "we've stopped
+   *     counting", which is the truth, and it keeps the calm `confirming` contract.
+   */
+  resultMode?: boolean;
+}) {
   const left = useCountdown(closesAtMs, serverNowMs);
   const running = isOpen && (left == null || left > 0);
-  const urgent = isOpen && left != null && left > 0 && left <= 30;
+  // ⛔ Never urgent in result mode: `confirming` is CALM by design, and rose here would tell a
+  // player something is wrong at the exact moment the platform is working correctly.
+  const urgent = !resultMode && isOpen && left != null && left > 0 && left <= 30;
+  const spent = resultMode && !running;
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 14px", background: "var(--bg-inset)", border: "1px solid color-mix(in oklab, var(--border) 70%, transparent)", borderRadius: "var(--r-md)" }}>
       <span className="font-mono text-[8.5px] font-semibold uppercase tracking-[0.12em] text-text-faint">{label}</span>
       <span
         className={urgent ? "ud-count-pulse" : undefined}
-        style={{ fontFamily: "var(--font-mono)", fontSize: 28, fontWeight: 700, fontVariantNumeric: "tabular-nums", letterSpacing: "0.05em", lineHeight: 1, color: urgent ? "var(--no-300)" : running ? "var(--text)" : "var(--text-subtle)" }}
+        style={{
+          fontFamily: "var(--font-mono)", fontSize: 28, fontWeight: 700,
+          fontVariantNumeric: "tabular-nums", letterSpacing: "0.05em", lineHeight: 1,
+          color: urgent ? "var(--no-300)"
+            : resultMode && running ? "var(--brand-300)"
+            : running ? "var(--text)" : "var(--text-subtle)",
+          transition: "color 240ms ease",
+        }}
       >
-        {isOpen ? mmss(left) : "00:00"}
+        {spent ? "—:—" : isOpen ? mmss(left) : "00:00"}
       </span>
     </div>
   );

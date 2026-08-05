@@ -50,3 +50,47 @@ export function roundPhase(input: {
 
   return { locked, bettable };
 }
+
+/**
+ * ⭐ E-99 · THE RESULT CLOCK — what the player sees AFTER the close, while the round waits for
+ * its dated bar. Ali, 2026-08-05: *"we agreed that we want a timer called results and put a new
+ * timer for results… so users would wait for results."*
+ *
+ * 🔴 WHAT IT REPLACES, measured over 22 production rounds: a DEAD `0:00` captioned "Selections
+ * closed" for a **median 95s, p90 116s, max 151s**. The betting clock counts to the lock and the
+ * result-phase clock counts to the close; nothing counted the wait for the price itself, which
+ * is the longest single pause in the game and the one a player is least able to explain.
+ *
+ * Pure, and separate from the card, for the same reason `roundPhase` is: the card is a client
+ * component wrapped around a ticking interval, and neither is drivable from a node suite.
+ *
+ * ⛔ `expectedResultAtMs` is NULL when the asset is under the measurement floor, and this then
+ * reports `counting: false` with no target. The card must show `—:—`, never a plausible number:
+ * a countdown is a promise about someone's money, and one we invented is A-5's fabrication.
+ */
+export type ResultClock = {
+  /** The round is past its close and has not settled — the player is waiting for a price. */
+  awaiting: boolean;
+  /** A measured instant to count to, or null when we cannot honestly name one. */
+  targetMs: number | null;
+  /** Digits should tick. False = show `—:—`, never `0:00`. */
+  counting: boolean;
+};
+
+export function resultClock(input: {
+  state: RoundPhaseState;
+  closesAtMs: number;
+  expectedResultAtMs: number | null;
+  nowMs: number;
+}): ResultClock {
+  const { state, closesAtMs, expectedResultAtMs, nowMs } = input;
+  const settled = state === "resolved" || state === "void";
+  const awaiting = !settled && nowMs >= closesAtMs;
+  if (!awaiting || expectedResultAtMs == null) {
+    return { awaiting, targetMs: null, counting: false };
+  }
+  // ⚠️ THE OVERRUN IS NORMAL AND MUST NOT READ AS A FAULT. The target is a MEDIAN, so about one
+  // round in ten passes it (p90 116s against ~92s). Past it we stop counting and say we are
+  // waiting — showing `0:00` would re-create the exact dead clock this function exists to remove.
+  return { awaiting, targetMs: expectedResultAtMs, counting: nowMs < expectedResultAtMs };
+}

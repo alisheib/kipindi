@@ -18,6 +18,31 @@ import { getUpDownConfig, stakeBoundsFor } from "./updown-config";
 import { publicSourceClassFor, type PublicSourceClass } from "./updown-symbols";
 import { ratesFor, listPositionsForUser, projectedPayout } from "./market-service";
 import { impliedYesPct } from "./market-service";
+// E-99 · the result clock is driven by an asset's OWN measured record, never by a constant.
+import { feedHistoryFor } from "./updown-feed-history";
+import { MIN_SAMPLES_FOR_ADVICE } from "./updown-feed-advice";
+
+/**
+ * ⭐ E-99 · How many seconds after its boundary this asset's reading TYPICALLY arrives — or
+ * `null` when we have not measured it enough to say.
+ *
+ * ⛔ THE SAMPLE FLOOR IS THE POINT, and it is the SAME one the operator-facing gate uses
+ * (`MIN_SAMPLES_FOR_ADVICE`). A median off three readings renders identically to one off three
+ * thousand, and putting the shallow one on a player's screen as a countdown is precisely the
+ * fabrication A-5 forbids. Below the floor this returns null and the card shows no clock —
+ * "Reading the closing price…" is the honest state and it stays.
+ *
+ * ⚠️ Never throws. A history read that fails degrades to "no clock", never to a guessed number.
+ */
+async function measuredLagSeconds(assetKey: string): Promise<number | null> {
+  try {
+    const h = await feedHistoryFor(assetKey);
+    if (h.confirmed < MIN_SAMPLES_FOR_ADVICE) return null;
+    return h.medianLagSeconds != null && h.medianLagSeconds >= 0 ? h.medianLagSeconds : null;
+  } catch {
+    return null;
+  }
+}
 
 export type BoardAsset = {
   id: string;
@@ -99,6 +124,24 @@ export type BoardRound = {
    * on the round's frozen fee snapshot. The client cannot derive it from the pool split.
    */
   myExactPayout: number | null;
+  /**
+   * ⭐ WHEN THE RESULT IS ACTUALLY EXPECTED — Ali's decision, 2026-08-05. E-99.
+   *
+   * The betting timer runs to the lock and the result-phase timer runs to the close, and then
+   * the player waited a **measured median 95s (p90 116s, max 151s)** with NOTHING counting
+   * down, because the closing price comes from a dated one-minute bar that does not exist until
+   * after the boundary. That is E-82's dead `00:00` one phase further out, and it is the single
+   * longest unexplained wait in the game.
+   *
+   * This is `boundaryAt + the asset's OWN measured median lag`, taken from `UpDownObservation`
+   * — the same history the admin console's Feed record column reasons from.
+   *
+   * ⛔ NULL WHEN THERE IS NO MEASUREMENT, and the card must then show no clock at all (A-5).
+   * A brand-new asset has no median; inventing 90s for it would be a fabricated number on a
+   * money surface, which is precisely what the sample floor in `updown-feed-advice.ts` exists
+   * to refuse. "Reading the closing price…" is the honest state, and it is what we keep.
+   */
+  expectedResultAtMs: number | null;
 };
 
 /**
@@ -132,6 +175,10 @@ async function toBoardRound(
   r: StoredRound,
   chain: StoredChain,
   mine?: { up: number; down: number; refunded: number },
+  /** The asset's measured median seconds from boundary to a confirmed reading, or null when
+   *  it has too little history to quote one. Passed in — never recomputed per round, which
+   *  would be one query per card. */
+  medianLagSeconds?: number | null,
 ): Promise<BoardRound | null> {
   const m = await marketStore.get(r.marketId);
   if (!m) return null;
@@ -177,6 +224,13 @@ async function toBoardRound(
     myExactPayout:
       state === "locked" && myStake > 0
         ? await projectedPayout(m, myUpStake > 0 ? "YES" : "NO", myStake)
+        : null,
+    // ⭐ E-99 · the instant the result is genuinely expected, from THIS asset's own record.
+    // ⛔ Null when unmeasured — see the field comment. A guessed lag on a money surface is a
+    // fabricated number, and the card is built to show nothing rather than a number we invented.
+    expectedResultAtMs:
+      medianLagSeconds != null && Number.isFinite(closesAtMs)
+        ? closesAtMs + medianLagSeconds * 1000
         : null,
   };
 }
@@ -303,9 +357,18 @@ export async function getBoard(opts?: { assetKey?: string; durationMinutes?: num
   // bet is validated against, so display and enforcement can never diverge.
   const stakeBounds = await stakeBoundsFor(chain);
 
+  // ⭐ E-99 · the ACTIVE ASSET'S measured lag, loaded ONCE for the whole board.
+  // ⛔ Under the same sample floor the operator-facing gate uses. Below it the median is null
+  // and the card shows no result clock at all — a median off three readings is not a
+  // measurement, and quoting one on a money surface is the fabrication A-5 forbids.
+  // ⚠️ Never fatal: a history read that fails degrades to "no clock", never to a guess.
+  const lagSeconds = await measuredLagSeconds(activeAsset.key);
+
   // Newest first, bounded — never an unbounded scan of a table that grows every minute.
   const raw = await roundStore.list({ chainId: chain.id, limit: 24 }).catch(() => []);
-  const mapped = (await Promise.all(raw.map((r) => toBoardRound(r, chain, mineByMarket.get(r.marketId))))).filter(Boolean) as BoardRound[];
+  const mapped = (await Promise.all(
+    raw.map((r) => toBoardRound(r, chain, mineByMarket.get(r.marketId), lagSeconds)),
+  )).filter(Boolean) as BoardRound[];
 
   // The board shows what a player can act on or has just watched: open + confirming,
   // plus the most recent settled one for continuity.
@@ -495,7 +558,12 @@ export async function getRoundDetail(roundId: string, userId?: string): Promise<
   // The viewer's OWN open stake per side on THIS round — powers the "you're in"
   // indicator + optimistic base on the inline bet box (same source as the board card).
   const mine = userId ? (await myStakesByMarket(userId)).get(r.marketId) : undefined;
-  const board = await toBoardRound(r, chain, mine);
+  // ⛔ E-99 · THE LAG MUST BE PASSED HERE TOO. This is the ROUND DETAIL path, and it was the
+  // one that would have silently shipped broken: `toBoardRound(r, chain, mine)` type-checks
+  // perfectly with the fourth argument missing, so `expectedResultAtMs` would have been null
+  // on `/updown/[roundId]` for ever while the board card worked — a feature that is present in
+  // the code, passes tsc, and does nothing on half the surfaces it claims to cover.
+  const board = await toBoardRound(r, chain, mine, await measuredLagSeconds(a.key));
   if (!board) return null;
 
   const live = await latestConfirmed(a.id);

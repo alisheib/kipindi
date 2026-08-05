@@ -31,7 +31,7 @@ import { useUpDownQuickBet, usePlacePulse } from "./use-quick-bet";
 import { UpDownStakeControls } from "./updown-stake-controls";
 import { useCountdown, mmss } from "./round-countdown";
 import { SOURCE_CLASS_KEY } from "@/lib/updown-source-label";
-import { roundPhase } from "@/lib/updown-card-phase";
+import { roundPhase, resultClock } from "@/lib/updown-card-phase";
 // ⛔ ONE RULE FOR "why did this stake come back", shared with the round page, the settlement
 // proof, the push and the inbox. Five copies is five chances to disagree about someone money.
 import { refundReasonFor, REFUND_REASON_KEY } from "@/lib/updown-refund-reason";
@@ -127,6 +127,15 @@ export type UpDownCardProps = {
    *  "you're in" indicator and topped up optimistically on each tap. */
   myUpStake?: number;
   myDownStake?: number;
+  /**
+   * ⭐ E-99 · when the result is genuinely expected — the boundary plus THIS asset's own
+   * measured median lag from `UpDownObservation`, computed on the server.
+   *
+   * ⛔ NULL means "not measured enough to say", and the card must then show no clock at all.
+   * Do not substitute a constant: 90s is right for BTC today and wrong for an asset nobody
+   * has read yet, and a countdown that expires without a result is worse than no countdown.
+   */
+  expectedResultAtMs?: number | null;
 };
 
 
@@ -186,6 +195,7 @@ export function UpDownCard(props: UpDownCardProps) {
     sourceClass, sourceQuotedAt, className,
     selectionClosesAtMs, serverNowMs, myExactPayout, myRefundedStake,
     marketId, isAuthed, minStake, maxStake, myUpStake = 0, myDownStake = 0,
+    expectedResultAtMs = null,
   } = props;
   const { t } = useT();
   const router = useRouter();
@@ -220,8 +230,32 @@ export function UpDownCard(props: UpDownCardProps) {
   const { locked, bettable: phaseBettable } = roundPhase({
     state, selectionClosesAtMs: selectionClosesAtMs ?? null, closesAtMs, nowMs,
   });
-  const countdownTarget = locked || selectionClosesAtMs == null ? closesAtMs : selectionClosesAtMs;
+  // ⭐ E-99 · THE THIRD TIMER — Ali, 2026-08-05: *"we agreed that we want a timer called
+  // results and put a new timer for results… so users would wait for results."*
+  //
+  // 🔴 THE GAP THIS CLOSES, MEASURED ON PRODUCTION over 22 real rounds. The betting clock runs
+  // to the LOCK and the result-phase clock runs to the CLOSE — and then the player sat in front
+  // of a DEAD `0:00` captioned "Selections closed" for a further **median 95s, p90 116s, max
+  // 151s**, because the closing price comes from a dated one-minute bar that does not exist
+  // until after the boundary. It is E-82's defect one phase further out, and it was the longest
+  // unexplained wait in the game: the round is working perfectly and the screen looks stuck.
+  //
+  // ⛔ THE TARGET IS MEASURED, NOT ASSUMED. `expectedResultAtMs` is the boundary plus THIS
+  // asset's own median lag from `UpDownObservation`, under the same 20-sample floor the
+  // operator gate uses. When it is null we show NO clock rather than a plausible one — a
+  // countdown is a promise, and a fabricated promise on a money surface is exactly A-5.
+  // ⛔ THE RULE LIVES IN `resultClock`, NOT HERE. Inlining it would put the logic somewhere no
+  // suite can reach, which is precisely why `roundPhase` was extracted after E-82.
+  const settledNow = state === "resolved" || state === "void";
+  const clock = resultClock({ state, closesAtMs, expectedResultAtMs, nowMs });
+  const awaitingResult = clock.awaiting;
+  const resultTarget = clock.targetMs;
+  const countdownTarget = resultTarget
+    ?? (locked || selectionClosesAtMs == null ? closesAtMs : selectionClosesAtMs);
   const secondsLeft = useCountdown(countdownTarget, serverNowMs);
+  // The pre-hydration tick renders `--:--` on both sides; treat it as still counting so the
+  // server and client markup agree (the same rule `running` uses below).
+  const resultRunning = resultTarget != null && (secondsLeft == null || clock.counting);
 
   // `secondsLeft === null` is the pre-hydration tick. Treat it as "not yet expired" so
   // the server renders the same action row the client will, and only the digits differ
@@ -346,13 +380,31 @@ export function UpDownCard(props: UpDownCardProps) {
             "Result in" after. Without it the player reads a live-looking clock over dead
             buttons and concludes the app cheated them. */}
         <div className="font-mono text-[8.5px] font-semibold uppercase tracking-[0.12em] text-text-faint">
-          {state === "resolved" || state === "void" ? t.market.udRoundSettled
+          {settledNow ? t.market.udRoundSettled
+            // ⭐ E-99 · past the close the caption is about the RESULT, never "Selections
+            // closed" — the player already knows selections closed, they are waiting to find
+            // out what happened. Once the estimate is spent we say we are waiting instead of
+            // counting, because a clock that has run out is not information.
+            : awaitingResult ? (resultRunning ? t.market.udResultIn : t.market.udAwaitingResult)
             : locked ? t.market.udResultIn
             : running ? t.market.udBetsCloseIn : t.market.udSelectionsClosed}
         </div>
         <div className={cn("font-mono font-bold tabular-nums leading-none", urgent && "ud-count-pulse")}
-             style={{ fontSize: 28, letterSpacing: "0.05em", color: urgent ? "var(--no-300)" : running ? "var(--text)" : "var(--text-subtle)" }}>
-          {mmss(secondsLeft)}
+             style={{
+               fontSize: 28, letterSpacing: "0.05em",
+               // Three states, three inks: rose = your last seconds to bet · brand = the
+               // result is coming · subtle = nothing is counting. Never rose for the wait —
+               // `confirming` is CALM by design (see this file's header), not an alarm.
+               color: urgent ? "var(--no-300)"
+                 : resultRunning ? "var(--brand-300)"
+                 : running ? "var(--text)" : "var(--text-subtle)",
+               transition: "color 240ms ease",
+             }}>
+          {/* ⛔ An em-dash pair, not `0:00`. A zeroed clock reads as "it should have happened
+              and did not"; `—:—` reads as "we are not counting this", which is the truth in
+              both the overrun and the never-measured case. It also matches the pre-hydration
+              `--:--` convention already used here, so the shape is familiar. */}
+          {awaitingResult && !resultRunning ? "—:—" : mmss(secondsLeft)}
         </div>
       </div>
 

@@ -113,9 +113,16 @@ export default async function UpDownRoundPage({
   // ⛔ RE-LABELLED AT THE LOCK. A reading of 0:36 means "36s left to bet" before it and
   // "36s until you find out" after — one set of digits, two deadlines, and the caption is
   // the only thing that distinguishes them.
+  // ⭐ E-99 · AND A THIRD DEADLINE AFTER THE CLOSE. `confirming` used to be a caption with no
+  // clock, so the round page sat on "Awaiting result" for a measured median 95s (p90 116s) with
+  // nothing counting. The card and this page must not disagree about that wait, so both read
+  // the SAME server-computed instant — the boundary plus this asset's own median lag.
+  // ⛔ Null when the asset is under the sample floor → no clock, and the caption stays honest.
+  const awaitingResult = round.state === "confirming";
+  const resultTarget = awaitingResult ? round.expectedResultAtMs ?? null : null;
   const countLabel = isOpen ? t.market.udBetsCloseIn
     : locked ? t.market.udResultIn
-    : round.state === "confirming" ? t.market.udAwaitingResult
+    : awaitingResult ? (resultTarget != null ? t.market.udResultIn : t.market.udAwaitingResult)
     : t.market.udRoundSettled;
 
   // Result panel data (resolved rounds the viewer actually played).
@@ -192,10 +199,20 @@ export default async function UpDownRoundPage({
             </div>
           </div>
           <RoundCountdownPod
-            closesAtMs={isOpen && round.selectionClosedAt ? Date.parse(round.selectionClosedAt) : Date.parse(round.closesAt)}
-            isOpen={isOpen || locked}
+            closesAtMs={
+              // E-99 · three deadlines now, in the order the player meets them: the LOCK while
+              // betting, the CLOSE during the result phase, and the measured RESULT instant
+              // after it. `resultTarget` is null when unmeasured, which falls through to the
+              // close and leaves the pod showing a spent clock — see `isOpen` below.
+              resultTarget
+              ?? (isOpen && round.selectionClosedAt
+                ? Date.parse(round.selectionClosedAt)
+                : Date.parse(round.closesAt))
+            }
+            isOpen={isOpen || locked || resultTarget != null}
             serverNowMs={round.serverNowMs}
             label={countLabel}
+            resultMode={resultTarget != null}
           />
         </header>
 

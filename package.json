@@ -184,6 +184,8 @@
     "ops:updown-shadow": "tsx scripts/ops-updown-shadow.mts",
     "test:updown-late-close": "tsx scripts/updown-late-close.test.mts",
     "test:updown-window": "tsx scripts/updown-window.test.mts",
+    "test:updown-result-clock": "tsx scripts/updown-result-clock.test.mts",
+    "red:updown-result-clock": "node scripts/red-e99.cjs",
     "test:updown-margin": "tsx scripts/updown-margin.test.mts",
     "test:updown-readiness": "tsx scripts/updown-readiness.test.mts",
     "test:margin-schedule": "tsx scripts/updown-margin-schedule.test.mts",

@@ -204,6 +204,8 @@ export default async function UpDownPage({
                 closesAtMs={Date.parse(r.closesAt)}
                 selectionClosesAtMs={r.selectionClosedAt ? Date.parse(r.selectionClosedAt) : null}
                 serverNowMs={r.serverNowMs}
+                expectedResultAtMs={/* E-99 · null under the sample floor → no clock, never a
+                                        guessed one. */ r.expectedResultAtMs}
                 myExactPayout={r.myExactPayout}
                 volumeTzs={r.volumeTzs}
                 players={r.players}
