@@ -156,8 +156,10 @@ const chain = (await chainStore.get(c.data.id))!;
 }
 
 // ── Helper: a confirmed observation at a boundary, without touching the API ──
-async function stubObservation(boundaryIso: string, price: number) {
-  const o = await observationStore.ensure(asset.id, boundaryIso);
+// `assetId` defaults to the suite's main asset; §12's calendar control needs the GOLD one,
+// because since E-83 an open without a confirmed price does not happen at all.
+async function stubObservation(boundaryIso: string, price: number, assetId?: string) {
+  const o = await observationStore.ensure(assetId ?? asset.id, boundaryIso);
   await observationStore.confirm(o.id, {
     price, sourceUrl: asset.priceSourceUrl, sourceQuotedAt: boundaryIso,
     evidence: `Spot gold quoted ${price}`, confidence: 96, model: "test-stub", rawHash: `h${price}`,
@@ -319,11 +321,34 @@ let round1Id = "";
   const adv = await advanceChain(chain.id);
   const roundsAfter = (await roundStore.list({ chainId: chain.id })).length;
   ok("7.1 · the boundary is not confirmed", adv.observation === "pending" || adv.observation === "failed", adv.observation);
-  ok("7.2 · ⛔ the chain STILL opened the next round — a slow source cannot freeze the game",
-     roundsAfter > roundsBefore, `${roundsBefore} → ${roundsAfter}`);
+  // 🔴 REWRITTEN 2026-08-05 (E-83), AND PRODUCTION IS WHY. These two used to assert that the
+  // chain opens the next round REGARDLESS — "a slow source cannot freeze the game". That
+  // sounds right and it is not: the round it opens has no open price, so it cannot resolve.
+  // On production a RUNNING chain did exactly this for eleven hours and voided **175
+  // consecutive rounds** with `source-failed`, every one taking stakes, showing a countdown
+  // and refunding. `generateRoundNow` refuses in the same situation and says why.
+  //
+  // ⭐ The legitimate half of the old concern is kept and still tested: a pending CLOSE must
+  // not block progress. It does not — the close is deferred and retried, and §3's deadline
+  // still terminates it. What has changed is that the OPEN now waits for its own price, which
+  // lands ~19-35s later (BTC/ETH/XAU, measured live), so the round opens seconds late rather
+  // than being born unresolvable. And the wait is BOUNDED — past `abandonAfterSeconds` the
+  // boundary is skipped, which 7.4 pins, so a permanently dead source cannot freeze the chain.
+  ok("7.2 · ⭐ E-83 — the chain does NOT open a priceless round; it waits for the price",
+     roundsAfter === roundsBefore && adv.opened === false, `${roundsBefore} → ${roundsAfter} opened=${adv.opened}`);
   const after = (await chainStore.get(chain.id))!;
-  ok("7.3 · and re-armed to a LATER boundary", Date.parse(after.nextBoundaryAt!) > Date.parse(B(7)),
-     String(after.nextBoundaryAt));
+  ok("7.3 · and it RETRIES the same boundary rather than consuming it unpriced",
+     after.nextBoundaryAt === B(7), `${after.nextBoundaryAt} (expected ${B(7)})`);
+
+  // ⛔ THE BOUND — without this, 7.2/7.3 would describe a chain that can hang forever.
+  // A boundary far enough in the past is abandoned and the chain re-arms ahead of it.
+  const STALE_BOUNDARY = new Date(Date.now() - 3600_000).toISOString();
+  await chainStore.patch(chain.id, { nextBoundaryAt: STALE_BOUNDARY });
+  const advOld = await advanceChain(chain.id);
+  const afterOld = (await chainStore.get(chain.id))!;
+  ok("7.4 · ⭐ a boundary that can never be priced is ABANDONED, not retried forever",
+     Date.parse(afterOld.nextBoundaryAt!) > Date.parse(STALE_BOUNDARY),
+     `${afterOld.nextBoundaryAt} · ${advOld.detail ?? ""}`);
 }
 
 // ── 8 · Idempotency — a duplicate fire settles exactly once ─────────────────
@@ -729,6 +754,10 @@ let round1Id = "";
   // against a chain that is simply broken.
   const WEDNESDAY = "2026-08-05T12:00:00.000Z";
   await chainStore.patch(gc.data.id, { gridAnchorAt: WEDNESDAY, nextBoundaryAt: WEDNESDAY });
+  // ⭐ E-83: the open now REQUIRES a confirmed price, so this control needs one — otherwise it
+  // would refuse for want of a price and "pass" 12.1 for entirely the wrong reason, which is
+  // the exact failure this control exists to prevent.
+  await stubObservation(WEDNESDAY, 4180.00, gold.id);
   const tick2 = await advanceChain(gc.data.id);
   const after2 = (await roundStore.list({ chainId: gc.data.id })).length;
   ok("12.4 · ★ the same chain DOES open on a weekday boundary — the gate is the calendar, not a break",

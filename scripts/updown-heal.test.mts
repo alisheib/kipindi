@@ -229,8 +229,14 @@ let strandedMarketId = "";
      adv.observation === "pending", `${adv.observation} ${adv.detail ?? ""}`);
   ok("2.4 · ⚠️ THE BUG — the round is still unresolved after its own boundary",
      !(await roundStore.get(strandedRoundId))!.resolvedAt);
-  ok("2.5 · ⚠️ THE BUG — the chain has already moved on, orphaning it",
-     (await chainStore.get(chain.id))!.currentRoundId !== strandedRoundId,
+  // ⭐ UPDATED 2026-08-05 (E-83), and the change is an IMPROVEMENT, not a weakening.
+  // This used to assert the chain had *already moved on*, orphaning the pending round — the
+  // bug this section reproduces. Since E-83 a tick that cannot confirm a reading opens no
+  // round at all, so `currentRoundId` stays put and that particular orphaning route is gone.
+  // The section still does its job: the round below is genuinely stranded (it was opened with
+  // a null price directly, above) and the healer still has to rescue it.
+  ok("2.5 · ⭐ E-83 — the chain no longer orphans it by opening a priceless successor",
+     (await chainStore.get(chain.id))!.currentRoundId === strandedRoundId,
      `currentRoundId=${(await chainStore.get(chain.id))!.currentRoundId}`);
 
   // ② A further boundary passes. On production this is the point of no return:
@@ -757,6 +763,58 @@ console.log("\n── 13 · E-29 · the settlement note states only what is true
      /closeRound\(round\.id, closeObservationId, closePrice, reason\)/.test(fn));
 }
 
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 6 · E-83 · A TICK MUST NEVER OPEN A ROUND WITHOUT AN OPEN PRICE
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// 🔴 FOUND ON PRODUCTION 2026-08-05: a RUNNING chain voided **175 consecutive rounds** over
+// eleven hours, every one `source-failed`, while the price data was available the whole time.
+// Every one of those rounds had `openObservationId: null` and `openPrice: null`.
+//
+// ⭐ The cause is timing, not the feed. `advanceChain` fires AT the boundary and asks for the
+// bar labelled with that same instant — and a bar labelled T does not exist until ~+19s
+// (BTC/ETH/XAU) or ~+87s (SOL), measured live. So the reading is legitimately `pending` at the
+// moment of every tick, and the code passed that `null` straight into `openRound`.
+//
+// `generateRoundNow` refuses in exactly this situation and says why: *"a round opened without
+// an open price cannot resolve: it would take stakes, show a countdown, and then void and
+// refund every one."* The manual path was fixed for this; the tick was not.
+//
+// ⛔ The property is NOT "the tick opens a round" — it is "any round the tick opens can
+// actually resolve". A guard asserting a round appeared would have passed all night.
+{
+  // A different duration: the asset already carries a 5-minute chain from §1, and one chain
+  // per asset per length is a real rule (§8.2) rather than a fixture inconvenience.
+  const c2c = await createChain({ assetId: asset.id, durationMinutes: 3 }, OFFICER);
+  if (!c2c.ok) throw new Error(c2c.error);
+  const chain2 = (await chainStore.get(c2c.data.id))!;
+  await setChainState(chain2.id, "RUNNING", OFFICER);
+  await chainStore.patch(chain2.id, { gridAnchorAt: B(0), nextBoundaryAt: B(0), currentRoundId: null });
+
+  const before = await roundStore.latestForChain(chain2.id);
+  // No network in this suite, so the reading cannot confirm — exactly production's situation
+  // at the instant of a tick.
+  const adv = await advanceChain(chain2.id);
+  const after = await roundStore.latestForChain(chain2.id);
+
+  ok("E83.1 · the reading is genuinely unconfirmed (the real oracle refused)",
+     adv.observation !== "confirmed", String(adv.observation));
+  ok("E83.2 · ⭐ NO round was opened — a priceless round can only void",
+     after === null && before === null && adv.opened === false,
+     `opened=${adv.opened} latest=${after?.id ?? "none"}`);
+  ok("E83.3 · …and no round exists carrying a null open price",
+     after === null || after.openPrice != null,
+     after ? `${after.id} openPrice=${after.openPrice}` : "no rounds");
+  ok("E83.4 · the tick says WHY, in the operator's terms",
+     /not published yet|not opening|abandoned/i.test(adv.detail ?? ""), String(adv.detail));
+
+  // ⛔ AND IT MUST RETRY THE SAME BOUNDARY, not skip it — otherwise every boundary is
+  // consumed unpriced and the chain silently produces nothing at all.
+  const c2 = await chainStore.get(chain2.id);
+  ok("E83.5 · ⭐ the boundary is RETRIED, not consumed",
+     c2!.nextBoundaryAt === B(0), `nextBoundaryAt=${c2!.nextBoundaryAt} (expected ${B(0)})`);
+}
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

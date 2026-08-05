@@ -1353,9 +1353,44 @@ export async function advanceChain(chainId: string): Promise<{
     };
   }
   if (!alreadyOpen) {
-    const openPrice = obs.state === "confirmed" ? obs.price : null;
-    const openObsId = obs.state === "confirmed" ? obs.id : null;
-    const o = await openRound(chain, boundaryIso, openObsId, openPrice);
+    // 🔴 NEVER OPEN A ROUND WITHOUT AN OPEN PRICE. This used to pass `null` through when the
+    // reading was not confirmed, and `generateRoundNow`'s own refusal message says exactly why
+    // that is fatal: *"a round opened without an open price cannot resolve: it would take
+    // stakes, show a countdown, and then void and refund every one."* The manual path was
+    // fixed for this; THIS path was not, and on production it voided **175 consecutive rounds**
+    // over eleven hours with `source-failed` while the price data was available the whole time.
+    //
+    // ⭐ The cause is timing, not the feed. `advanceChain` fires AT the boundary and asks for
+    // the bar labelled with that same instant — and a bar labelled T does not exist until
+    // ~+19s (BTC/ETH/XAU) or ~+87s (SOL), measured on the live plan 2026-08-05. So at the
+    // moment of the tick the reading is legitimately `pending`, every single time.
+    //
+    // So we do NOT open, and we do NOT re-arm — the same boundary is retried on the next tick,
+    // by which point the bar has landed. That is the same retry promise step 2 already makes
+    // for the close, and the reason the re-arm below had to move inside this branch.
+    if (obs.state !== "confirmed") {
+      const ageMs = Date.now() - Date.parse(boundaryIso);
+      // ⛔ BUT BOUNDED. If a boundary can never be priced, grinding on it forever would stop
+      // the chain producing anything at all — a silent outage. Past the same deadline the
+      // close side uses, give up on this boundary and re-arm to the next one at or after now,
+      // rather than walking the whole backlog one span at a time.
+      // ⛔ The SAME deadline the close side abandons on — two different numbers for "we gave
+      // up waiting for this boundary" is exactly the drift this file keeps paying for.
+      const abandonMs = abandonAfterSeconds(await getUpDownConfig()) * 1000;
+      if (ageMs > abandonMs) {
+        const skipTo = new Date(boundaryAfter(anchorMs, chain.durationMinutes, Date.now())).toISOString();
+        await chainStore.patch(chain.id, { nextBoundaryAt: skipTo });
+        return {
+          observation: obs.state, closed, opened: false,
+          detail: `no open price for ${boundaryIso} after ${Math.round(ageMs / 1000)}s — boundary abandoned, next ${skipTo}`,
+        };
+      }
+      return {
+        observation: obs.state, closed, opened: false,
+        detail: `open price for ${boundaryIso} not published yet (${Math.round(ageMs / 1000)}s) — not opening a round that could only void; will retry this boundary`,
+      };
+    }
+    const o = await openRound(chain, boundaryIso, obs.id, obs.price);
     opened = o.ok;
   }
 
