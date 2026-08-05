@@ -6,6 +6,8 @@ import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import { AdminFunnelChart } from "@/components/admin/admin-charts";
 import { I } from "@/components/ui/glyphs";
 import { db, type StoredTxn } from "@/lib/server/store";
+// E-103 · one denominator for a funnel column, and the card says which.
+import { funnelShares } from "@/lib/funnel-share";
 import { verifyChain, getAuditPage } from "@/lib/server/audit";
 import { loadBackupRun, backupHealth } from "@/lib/server/backup/state";
 import { isMonitoringEnabled } from "@/lib/server/monitoring";
@@ -61,12 +63,18 @@ export default async function AdminCompliancePage({
   const rcTotal = continued + tookBreak + sxd || 1;
 
   const kycConv = !kyc || kyc.registered === 0 ? 0 : (kyc.approved / kyc.registered) * 100;
-  const kycSteps = kyc ? [
+  // ⭐ E-103 · SHARE OF THE TOP STAGE, from the shared rule — see `funnel-share.ts`.
+  // 🔴 This column carried THREE different denominators: Started was a share of Registered,
+  // while Pending and Approved were both shares of Started, all under one heading that called
+  // them "conversion from the previous step". Pending and Approved are also SIBLINGS — a
+  // submission is one or the other — so "Approved, as a fraction of the row above it" was
+  // describing a relationship the data does not have. One denominator, named on the card.
+  const kycSteps = kyc ? funnelShares([
     { label: "Registered", value: kyc.registered },
-    { label: "Started",    value: kyc.started,    conversionFromPrev: kyc.registered === 0 ? "—" : `${((kyc.started / kyc.registered) * 100).toFixed(1)}%` },
-    { label: "Pending",    value: kyc.pending,    conversionFromPrev: kyc.started === 0 ? "—" : `${((kyc.pending / kyc.started) * 100).toFixed(1)}%` },
-    { label: "Approved",   value: kyc.approved,   conversionFromPrev: kyc.started === 0 ? "—" : `${((kyc.approved / kyc.started) * 100).toFixed(1)}%` },
-  ] : [];
+    { label: "Started",    value: kyc.started },
+    { label: "Pending",    value: kyc.pending },
+    { label: "Approved",   value: kyc.approved },
+  ]) : [];
 
   return (
     <>

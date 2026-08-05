@@ -20,6 +20,8 @@ import { canView } from "@/lib/server/rbac";
 import { getInsights } from "@/lib/server/insights";
 import { categoryBreakdown } from "@/lib/server/report-money";
 import { formatTzs, formatNumber } from "@/lib/utils";
+// E-103 · one rule for the share beside a funnel stage, and for the bar width.
+import { funnelShares, stagesAreNested } from "@/lib/funnel-share";
 
 export const metadata = { title: "Admin · Insights" };
 export const dynamic = "force-dynamic";
@@ -56,12 +58,15 @@ export default async function InsightsPage() {
   const { funnel, cohorts, maxMonthOffset, topMarkets, totals } = data;
   const registered = funnel[0]?.value ?? 0;
 
-  // Conversion vs the PREVIOUS step (that is what a funnel means).
-  const funnelSteps = funnel.map((s, i) => ({
-    label: s.label,
-    value: s.value,
-    conversionFromPrev: i === 0 ? undefined : pct(s.value, funnel[i - 1].value),
-  }));
+  // ⭐ E-103 · SHARE OF THE TOP STAGE, for every row — see `funnel-share.ts`.
+  // 🔴 This used to be `pct(s.value, funnel[i - 1].value)`, "conversion vs the previous step",
+  // and with the QA fleet funded it rendered `DEPOSITED 183%` and `PLACED A BET 245%` on the
+  // owner's dashboard. The arithmetic was right and the premise was wrong: these four stages
+  // are NOT nested here — 12 players have placed a bet with no confirmed deposit and 9
+  // deposited without approved KYC — so "conversion from the previous stage" is not a quantity
+  // that exists, and printing it reads as broken maths or, worse, as a triumph.
+  const funnelSteps = funnelShares(funnel);
+  const funnelNested = stagesAreNested(funnel);
 
   const cols = Math.min(maxMonthOffset, 6); // M0..M6 keeps the grid readable
 
@@ -82,9 +87,24 @@ export default async function InsightsPage() {
         <AdminCard title="Acquisition funnel" sw="Njia ya usajili">
           <AdminFunnelChart steps={funnelSteps} />
           <p className="mt-3 border-t border-border/60 pt-3 text-[11.5px] leading-relaxed text-text-subtle">
-            Starts at <strong className="text-text-muted">Registered</strong>. A “visits” stage is deliberately
-            absent: the platform has no web-analytics instrumentation, so any visit number here would be invented.
-            Add analytics first, then this funnel gains a real top stage.
+            Every percentage is a share of <strong className="text-text-muted">Registered</strong>, the top stage —
+            not of the row above it.
+            {!funnelNested && (
+              <>
+                {" "}
+                {/* ⭐ E-103 · DISCLOSURE, NOT ARITHMETIC. Rendered only when the data really is
+                    non-nested (`stagesAreNested`), so the page never asserts this about a set
+                    that happens to be a genuine funnel. Without it an operator reads four
+                    independent counts as a sequence and concludes the platform is leaking
+                    players between stages that nobody has to pass through. */}
+                <strong className="text-text-muted">These stages are independent counts, not a sequence.</strong>{" "}
+                A player can deposit before KYC clears, and a bonus or an operator adjustment can put
+                someone into a market having never deposited — so a later stage can legitimately be
+                larger than the one above it.
+              </>
+            )}{" "}
+            A “visits” stage is deliberately absent: the platform has no web-analytics instrumentation, so any
+            visit number here would be invented. Add analytics first, then this gains a real top stage.
           </p>
         </AdminCard>
 

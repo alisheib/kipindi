@@ -241,16 +241,23 @@ export function AdminStackedBars({
 
 /* ===== KYC funnel chart (proper proportional widths) ===== */
 
+/**
+ * ⭐ E-103 · THE NUMBERS ARE HANDED IN, NOT DERIVED HERE.
+ *
+ * This used to take a raw `value` plus a pre-formatted `conversionFromPrev` and compute its own
+ * bar width from its own `max` — two places deciding one number, which is exactly the drift
+ * §0's "single source of truth" rule exists to stop. `funnelShares()` now owns both the share
+ * and the bar width, and it is unit-tested; this component only paints.
+ */
 export function AdminFunnelChart({
   steps,
 }: {
-  steps: ReadonlyArray<{ label: string; value: number; conversionFromPrev?: string }>;
+  steps: ReadonlyArray<{ label: string; value: number; shareOfTop?: string; barPct: number }>;
 }) {
-  const max = Math.max(...steps.map((s) => s.value), 1);
   return (
     <div className="space-y-1.5">
       {steps.map((s, i) => {
-        const pct = Math.max(8, (s.value / max) * 100);
+        const pct = s.barPct;
         return (
           <div key={i} className="flex items-center gap-2">
             <span className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary w-24 shrink-0">{s.label}</span>
@@ -262,8 +269,10 @@ export function AdminFunnelChart({
                 <span className="font-mono text-micro tabular text-white">{s.value.toLocaleString()}</span>
               </div>
             </div>
-            {s.conversionFromPrev && (
-              <span className="font-mono text-micro tracking-wider text-brand-300 w-14 text-right shrink-0">{s.conversionFromPrev}</span>
+            {/* ⭐ E-103 · the share of the TOP stage, and the header says so. `w-14` is kept:
+                a share of the top can never need more than "100%". */}
+            {s.shareOfTop && (
+              <span className="font-mono text-micro tracking-wider text-brand-300 w-14 text-right shrink-0">{s.shareOfTop}</span>
             )}
           </div>
         );
