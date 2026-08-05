@@ -185,8 +185,28 @@ export function toKycDocumentRows(
       submissionId,
       docType: d.docType as KycDocTypeName,
       storageKey: d.storageKey,
-      mimeType: m?.[1] ?? d.mimeType ?? "application/octet-stream",
-      sizeBytes: m ? derivedBytes : d.sizeBytes ?? 0,
+      // ⛔ THE CAPTURED FACT WINS OVER THE DERIVED ONE, and the order here is the whole point.
+      //
+      // `m?.[1]` is the mime **label** parsed back out of the data URL — i.e. the string the
+      // UPLOADER supplied. `d.mimeType` is what `validateDocImage` actually SNIFFED from the
+      // bytes and persisted. D2 exists because those two disagree on a malicious file: the
+      // suite proves a `.wav` can carry an image mime label past a naive check. Preferring the
+      // label re-introduced exactly the trust D2 removed, and an officer reviewing KYC would
+      // have been shown the attacker's claim rather than the verified type.
+      //
+      // ⚠️ Do NOT write an image mime with a wildcard in this comment. `test:cert-d2` strips
+      // comments with a naive regex, so the two characters that begin a block comment OPEN one
+      // for the stripper and swallow the code below — the gate then reports this very line as
+      // missing while it sits here correctly. Same shape as the `--m-*` trap in needle.css.
+      //
+      // The size follows the same rule: a stored `sizeBytes` was measured at upload, while
+      // `derivedBytes` is inferred by counting base64 characters and only exists for inline
+      // documents at all — an `r2:<key>` cannot be measured, which is how every R2 document
+      // once recorded `application/octet-stream` / 0 bytes.
+      mimeType: d.mimeType ?? m?.[1] ?? "application/octet-stream",
+      // `??` and not `||`: a genuine 0-byte reading must survive, and only null/undefined
+      // should fall through to the derived count.
+      sizeBytes: d.sizeBytes ?? (m ? derivedBytes : 0),
       uploadedAt: new Date(d.uploadedAt),
     };
   });
