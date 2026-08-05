@@ -121,7 +121,28 @@ async function sweep(label, routes, who) {
     const c = await ctx.browser().newContext({ viewport: { width: WIDTHS[0], height: 900 } });
     const page = await c.newPage();
     await login(page, who);
-    await page.goto(`${BASE}/api/locale?set=${locale}&next=/`, { waitUntil: "domcontentloaded" }).catch(() => {});
+    // ⛔⛔ THE LOCALE IS SET BY COOKIE, AND THIS LINE USED TO BE A NO-OP AGAINST A 404.
+    // It read `await page.goto(\`${BASE}/api/locale?set=${locale}&next=/\`)` — and there is NO
+    // `/api/locale` route in this app. The app resolves language from the **`kp-locale`
+    // cookie** (`src/app/layout.tsx:97`, `src/lib/i18n-server.ts:19`). So every SW and ZH cell
+    // this sweep has ever captured was **English photographed a second time**: measured on
+    // 2026-08-06, `<html lang>` came back `"en"` after `?set=sw`, with **no locale cookie set at
+    // all**. 32 player and 104 admin screenshots, and the entire trilingual half of Ali's visual
+    // mandate, measured nothing — and would have sent the next session chasing i18n defects that
+    // are artefacts of this line.
+    await c.addCookies([{ name: "kp-locale", value: locale, url: BASE }]);
+    await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded" });
+    // ⛔ AND THEN REFUSE TO MEASURE IF IT DID NOT TAKE. A sweep that silently captures the wrong
+    // language is worse than one that fails, because its output looks like evidence. `<html lang>`
+    // is written from the SAME resolved locale the dictionary lookup uses, so it is the honest
+    // witness — not the cookie we just set, which only proves we asked.
+    const applied = await page.evaluate(() => document.documentElement.lang);
+    if (applied !== locale) {
+      throw new Error(
+        `LOCALE DID NOT APPLY: asked for "${locale}", <html lang> is "${applied}". ` +
+        `Refusing to capture — every shot would be mislabelled. Check the kp-locale cookie.`);
+    }
+    console.log(`  locale ${locale} confirmed (<html lang>="${applied}")`);
     for (const [name, path] of routes) {
       for (const w of WIDTHS) {
         await page.setViewportSize({ width: w, height: w < 768 ? 780 : 900 });
