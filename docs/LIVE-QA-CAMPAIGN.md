@@ -3657,6 +3657,60 @@ workstation shows an SLA countdown, but nothing escalates when it runs out. Ali'
   platform zone (+3) keeps it on the right day, and the E-2 fix is safe. The earlier note was
   the `pg` −3h trap (§3) reading back through an un-cast client.
 
+## 6ar. ⭐ THE UNHAPPY PATHS, DRIVEN ON PRODUCTION WITH REAL MONEY, IN EN / SW / ZH (2026-08-05, session 26)
+
+Ali: *"no gaps"*. Every refund path a player can actually reach was driven live, end to end,
+with real stakes — not asserted from a suite.
+
+| Path | Round | What the round did | The money | Copy |
+|---|---|---|---|---|
+| **one-sided** (`unmatched`) | `udr_eb0dc4fad03e9dd7e6a2` | **RESOLVED UP** — the player's own side WON | 500 → **500**, 61,040 → **61,540** | *"Nobody backed the other side…"* |
+| **no-move** | `udr_7a9d6dc2d5eb50f3db4a` | **VOID `no-move`** — moved +$23.70 inside a ±$320 band | 500 → **500**, back to **61,540** | *"The price did not move far enough either way…"* |
+| **operator** | `udr_a35d69c7d2842b0e9088` | **VOID `operator`** — voided from the console, mid-round, reason recorded in the audit | 500 → **500**, back to **61,540** | *"This round was cancelled by our team."* |
+
+**21 checks green on each, across all three languages**, covering: exactly ONE refund reason (not
+zero, not two), the reason in the language asked for, the settlement proof rendered, no surface
+claiming the player lost, and **E-87** — a decided round is never labelled a void.
+
+⭐ **The `no-move` path was forced through the operator's OWN lever**, not a database edit: the
+chain's band was widened to *Very wide · 0.50%* (`scripts/live-updown-band.mjs`), which on BTC is
+**±$320 over three minutes** — a refund every time. The band was restored to the tick floor
+afterwards. ⚠️ **A round freezes its band AT OPEN**, so the change lands on the *next* round —
+#195 still carried ±$0.02 while #196 carried ±$320, and reading the wrong one looks like the
+control did nothing.
+
+⛔ **`market-shut gold` REMAINS UNDRIVEN AND CANNOT BE DRIVEN TODAY.** Metals follow the FX week
+(Fri 21:00 → Sun 22:00 UTC) and it is Wednesday, so the shut state does not exist to be tested.
+Ali's call: understood, later. The greyed-option copy is verified; the live refusal is not.
+
+### ⚠️ THE INBOX LEG WAS MY ASSUMPTION, NOT A DEFECT — settled from source
+
+My check asserted the inbox carries a per-round refund entry. It does not, **by design**:
+`comms-registry` states that `ROUND_RESULT` **is the Up & Down daily digest, and it is the only
+message a player gets per round** — per-round entries were deliberately suppressed (E-37) so a
+busy chain cannot notify a player forty times an hour. Confirmed against the live database:
+alpha has **no notification row** for a round settled minutes earlier, which is correct. The
+check now asserts the DESIGN — that no per-round entry appears — instead of my wish.
+
+### 🔴 THREE MORE OF MY OWN CHECKS LIED, and the shape is always the same
+
+1. **"the round reads VOID on the console's own render"** — matched `/void/i` in the row, and the
+   row contains that word because the **button is labelled `Void & refund`**. It reported a
+   successful void on a round that had not been touched; the database showed `outcome null`,
+   position `OPEN`. ⛔ **Never assert a word the control itself supplies.** It now waits for the
+   Remedy button to DISAPPEAR, which only settlement can cause.
+2. **The void modal is `role="alertdialog"`, not `role="dialog"`** — so the reason field looked
+   absent and the confirm was never clicked, while check ① called it a success. Two harness bugs
+   hiding each other, which is exactly how E-77/E-78 went unnoticed for two sessions.
+3. **A digit-and-length "did it render?" heuristic** was satisfied by the chrome and the ticker,
+   so it reported *not rendered* on pages that plainly were, while the checks that mattered
+   passed beside it. It anchors on the **settlement proof** now — a thing only a decided round
+   can produce.
+
+📌 Running total for this session: **six** checks of mine that would have passed with the feature
+absent, against **four** product defects. That ratio is the argument for RED-first, and it is why
+none of them was believed until a mutation or the database contradicted it.
+
 ## 6aq. ⭐ THE SOAK EARNED ITS HOUR — E-86, and the one-sided refund driven with real money (2026-08-05, session 26)
 
 The handoff asked for a RUNNING chain to be soaked for a full hour because **E-83 was closed on

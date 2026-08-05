@@ -77,25 +77,32 @@ try {
     await admin.goto(`${BASE}/admin/updown/rounds`, { waitUntil: "networkidle" });
     const row = admin.locator("tr").filter({ hasText: ARG }).first();
     await row.waitFor({ state: "visible", timeout: 20_000 });
-    await row.getByRole("button", { name: /void/i }).first().click();
-    const dialog = admin.locator('[role="dialog"]');
-    await dialog.waitFor({ state: "visible", timeout: 10_000 }).catch(() => {});
+    // ⚠️ THE CONTROL IS "Void & refund", AND ITS MODAL IS role="alertdialog", NOT "dialog".
+    // Scoping to [role=dialog] found nothing, so the reason field looked absent and the confirm
+    // was never clicked — while the row still contained the word "Void" (it is the BUTTON's own
+    // label), so a check for /void/i in the row PASSED on a round that had not been touched.
+    // That is the same lying-check shape as matching a table column by a word the prose also
+    // contains: assert the OUTCOME, never a word the control itself supplies.
+    await row.getByRole("button", { name: /void.{0,3}refund/i }).first().click();
+    const dialog = admin.locator('[role="alertdialog"], [role="dialog"]').first();
+    await dialog.waitFor({ state: "visible", timeout: 10_000 });
     // ⛔ A VOID MUST CARRY A REASON — that is the whole point of the operator path.
     const reason = dialog.locator("textarea, input[type=text]").first();
     rec.check("the void asks for a reason before it will proceed", (await reason.count()) > 0);
-    if (await reason.count()) await reason.fill("QA: driving the operator-void unhappy path (session 26)");
-    // ⛔ SCOPED TO THE DIALOG. A page-wide accessible-name lookup on a grid of rows lands on
-    // whichever row is first in the DOM — that is how this session started a chain it did not
-    // mean to (see live-updown-soak.mjs).
-    await dialog.getByRole("button", { name: /void round|confirm/i }).first().click().catch(() => {});
+    await reason.fill("QA session 26: driving the operator-void unhappy path on production.");
+    await dialog.getByRole("button", { name: /void|confirm|refund/i }).last().click();
+    // ⛔ A POSITIVE SIGNAL THE CONTROL CANNOT SUPPLY: the Remedy cell turns into a dash once the
+    // round is settled, and the outcome column says VOID. Wait for the row to STOP offering the
+    // button rather than for a word the button itself prints.
     const voided = await admin.waitForFunction(
       (label) => {
         const tr = [...document.querySelectorAll("tr")].find((r) => r.innerText.includes(label));
-        return !!tr && /void/i.test(tr.innerText);
+        return !!tr && !/void.{0,3}refund/i.test(tr.innerText);
       },
-      ARG, { timeout: 30_000 },
+      ARG, { timeout: 60_000 },
     ).then(() => true).catch(() => false);
-    rec.check("the round reads VOID on the console's own render", voided);
+    rec.check("⭐ the round is voided — the Remedy control is gone, not merely re-rendered", voided,
+      (await admin.locator("tr").filter({ hasText: ARG }).first().innerText().catch(() => "")).replace(/s+/g, " ").slice(0, 120));
     await admin.screenshot({ path: `${SHOT}/unhappy-voided.png` }).catch(() => {});
     await c.close();
   }
@@ -116,11 +123,14 @@ try {
       // is still an empty placeholder — and reading the text there reports "no refund reason on
       // the page" about a page that has not rendered one yet. `networkidle` is not the answer
       // either: the board polls, so it never goes idle. Wait for the ROUND'S OWN NUMBERS.
+      // ⚠️ ANCHORED ON THE SETTLEMENT PROOF, which only renders once the round is decided —
+      // not on a digit-and-length heuristic, which the chrome and the ticker satisfy on their
+      // own and which therefore reported "not rendered" on pages that plainly were.
       const rendered = await p.waitForFunction(
-        () => /d[d,]*.d{2}/.test(document.body.innerText) && document.body.innerText.length > 900,
+        () => /settlement proof|uthibitisho wa malipo|结算凭证/i.test(document.body.innerText),
         undefined, { timeout: 45_000 },
       ).then(() => true).catch(() => false);
-      rec.check(`${loc.label} · the round page actually rendered before it was read`, rendered);
+      rec.check(`${loc.label} · the round page rendered its settlement proof before it was read`, rendered);
       const t = await bodyText(p);
 
       // The sentence itself, per language, from the dictionary this feature ships.
@@ -141,6 +151,15 @@ try {
         loc.code === "en" || !/nobody backed the other side/.test(t) || false,
         loc.code === "en" ? "" : "English copy leaked into a translated page");
 
+      // ⭐ E-87 · THE CHIP MUST NOT CONTRADICT THE PROOF BESIDE IT. A round that reached a
+      // verdict and refunded this player for want of a counterparty is NOT a void, and the
+      // label above the payout must not say it is while the proof panel below says "OUTCOME Up".
+      const decidedAndRefunded = /nobody backed the other side|hakuna aliyeweka dau upande mwingine|没有人投注另一方/.test(t);
+      const claimsVoid = /(void · refunded|batili · imerudishwa|作废 · 已退款)/.test(t);
+      rec.check(`${loc.label} · ⭐ E-87 · a DECIDED round is never labelled a void`,
+        !decidedAndRefunded || !claimsVoid,
+        decidedAndRefunded && claimsVoid ? "the chip says void while the proof says it decided" : "");
+
       await p.screenshot({ path: `${SHOT}/unhappy-round-${loc.code}.png` }).catch(() => {});
 
       // The settlement proof — the panel a player checks the maths against.
@@ -151,9 +170,18 @@ try {
       await p.goto(`${BASE}/inbox`, { waitUntil: "domcontentloaded" });
       await p.waitForFunction(() => document.body.innerText.length > 600, undefined, { timeout: 30_000 }).catch(() => {});
       const inbox = await bodyText(p);
-      rec.check(`${loc.label} · ⭐ the inbox carries the refund and its reason`,
-        EXPECT.some((re) => re.test(inbox)) || /refund|kurudishwa|退回/i.test(inbox),
-        inbox.slice(0, 180));
+      // ⛔ THE INBOX IS *SUPPOSED* TO BE QUIET HERE, and asserting otherwise was measuring my
+      // own assumption. `comms-registry` is explicit: **ROUND_RESULT is the Up & Down DAILY
+      // DIGEST, and it is the only message a player gets per round** — per-round inbox entries
+      // were deliberately suppressed (E-37, Ali's decision) so a busy chain cannot spam a
+      // player forty times an hour. Confirmed against the live database: alpha has NO
+      // notification row for a round that settled minutes ago, which is correct.
+      //
+      // So the check is the DESIGN, not the wish: a per-round result must NOT appear, and the
+      // reason still has to reach the player — on the round page, the proof, and the digest.
+      rec.check(`${loc.label} · ⭐ the inbox does NOT spam a per-round entry (E-37 — the digest carries it)`,
+        !/round result|matokeo ya raundi|本轮结果/i.test(inbox),
+        inbox.slice(0, 160));
       await p.screenshot({ path: `${SHOT}/unhappy-inbox-${loc.code}.png` }).catch(() => {});
       await p.close();
     }
