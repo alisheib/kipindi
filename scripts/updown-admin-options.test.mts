@@ -220,6 +220,15 @@ const SELECT = "src/components/ui/select.tsx";
   ok("6.8 · ⛔ and the help text does not argue against the recommended option",
      !/single tick decide real money/.test(controls));
 
+  // 🔴 E-85, found by LOOKING at the console rather than by any assertion. The band trigger read
+  // "Smallest possible…" — the kit's `.truncate` clipping away "(recommended)", the one word
+  // that tells an operator which band to pick, on the field that decides whether rounds pay or
+  // refund. ⛔ Pin the LAYOUT PROPERTY, not the label: shortening the copy would "fix" the
+  // screenshot while leaving the next long option to clip in exactly the same way.
+  ok("6.11 · ⭐ the winning band gets more width than a stake box, so its option is readable",
+     /lg:grid-cols-6/.test(controls) && /label="Winning band" className="lg:col-span-2"/.test(controls),
+     controls.match(/lg:grid-cols-\d/)?.[0] ?? "");
+
   // ⛔ "0.00%" IS NOT THE BAND. The chains grid printed the PERCENTAGE, and at the tick floor
   // that percentage is zero while the band is the asset's own minimum move — $0.02 on BTC,
   // $0.40 on gold. An operator reading `0.00%` concludes there is no band and that any movement

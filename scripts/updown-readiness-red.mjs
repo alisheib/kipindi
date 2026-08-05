@@ -75,6 +75,15 @@ const MUTATIONS = [
                                     : <>`,
   },
   {
+    // E-85: the band trigger clipped "(recommended)" away, on the field that decides whether
+    // rounds pay or refund. The regression is a layout one, so the mutation is a layout one.
+    name: "band-column-narrowed — the winning band clips back to \"Smallest possible…\"",
+    file: new URL("../src/app/admin/updown/updown-controls.tsx", import.meta.url),
+    suite: "updown-admin-options",
+    from: `      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">`,
+    to: `      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">`,
+  },
+  {
     name: "record-column-removed — the operator cannot see what refuses their duration",
     file: PAGE,
     suite: "updown-admin-options",

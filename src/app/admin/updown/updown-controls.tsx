@@ -839,7 +839,13 @@ export function AddChainForm({
   return (
     <form onSubmit={onSubmit} className="rounded-lg border border-border bg-bg-elevated p-4 space-y-3">
       <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle">Add chain</p>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      {/* ⚠️ SIX COLUMNS, NOT FIVE, SO THE BAND CAN SAY WHICH OPTION IS RECOMMENDED (E-85).
+          Five equal columns put "Smallest possible (recommended)" in the same width as a
+          numeric stake box, and the kit trigger's `.truncate` clipped it to "Smallest
+          possible…" — so the closed control hid the single word that tells an operator which
+          band to choose, on the field that decides whether rounds pay or refund. The two
+          optional stake boxes need a fraction of that room; the band gets the spare column. */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
         {/* ⭐ THE ASSET CARRIES ITS OWN SIGNAL TOO, and this was the gap.
             Driven live: the asset list read plainly "XAU · Gold", and ONLY the duration list
             revealed that gold cannot run below 15 minutes. An operator should not have to open
@@ -873,7 +879,7 @@ export function AddChainForm({
             operator type a band that voids every round the chain ever emits — E-32 exactly, and
             the reason that finding exists. The options are the few values that mean something,
             each stating its consequence. */}
-        <Field label="Winning band">
+        <Field label="Winning band" className="lg:col-span-2">
           <Select name="marginBpsChoice" value={marginChoice} onChange={setMarginChoice}
             options={MARGIN_CHOICES.map((m) => ({
               value: String(m.bps),
