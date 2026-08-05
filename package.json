@@ -271,7 +271,9 @@
     "test:refresh-cadence": "tsx scripts/refresh-cadence.test.mts",
     "red:refresh-cadence": "node scripts/red-e102.cjs",
     "test:funnel-share": "tsx scripts/funnel-share.test.mts",
-    "red:updown-result-clock-boundary": "node scripts/red-e104.cjs"
+    "red:updown-result-clock-boundary": "node scripts/red-e104.cjs",
+    "test:updown-bet-feedback": "tsx scripts/updown-bet-feedback.test.mts",
+    "red:updown-bet-feedback": "node scripts/red-e64.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

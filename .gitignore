@@ -114,3 +114,10 @@ shots/*.png
 .qa-s2*.txt
 .qa-s2*.log
 s2?-*.png
+# ⚠️ `.qa-s2*` does NOT cover session 30. The pattern was written when the session number
+# happened to start with a 2, and the next session's scratch would have been committed
+# silently. Widened rather than renamed, so session 29's paths in the campaign doc still hold.
+.qa-s3*/
+.qa-s3*.txt
+.qa-s3*.log
+s3?-*.png

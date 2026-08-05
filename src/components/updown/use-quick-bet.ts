@@ -40,10 +40,20 @@ export function usePlacePulse(nonce: number | undefined, ms = 260): boolean {
  * deliberate repeat bets (the "bet a lot in one tap" ask). A failed tap rolls its
  * optimistic delta back and shows the server's reason.
  *
- * SUCCESS feedback is NOT a toast (it piled up on rapid taps). The hook emits a
- * `justPlaced` signal (side + a monotonic nonce) that the surface turns into a 150–250ms
- * success pulse, fires a short mobile haptic, and sets an `aria-live` message for screen
- * readers. Only FAILURES toast — the user must see those regardless.
+ * SUCCESS feedback is FOUR channels (E-64, 2026-08-05): a `justPlaced` signal the surface
+ * turns into a 150–250ms pulse, a short mobile haptic, an `aria-live` message for screen
+ * readers, and a 3-second `variant: "success"` toast naming the side and the amount.
+ *
+ * ⛔ THE TOAST WAS ABSENT FOR A REASON THAT DID NOT SURVIVE CONTACT WITH PLAYERS. It was
+ * removed because it piled up on rapid taps, leaving only the three quiet channels — none
+ * of which a sighted player reliably notices. Ali, relaying real users: *"there is not
+ * popup nothing on placing bet on up and down."* Measured by staking a real TZS 500: zero
+ * toasts, zero dialogs, while a FAILED bet toasted `danger` loudly. Loud when nothing
+ * happened, silent when money left the wallet. The pile-up is a DURATION problem and is
+ * fixed with `durationMs: 3000`; it was never a reason to say nothing.
+ * 🔒 `npm run test:updown-bet-feedback` asserts this inside the success branch specifically —
+ * the file has always contained `toast(` on its failure paths, so a file-level check for the
+ * symbol would be green over the exact defect.
  *
  * STAKE can be a preset chip OR a custom typed amount. `customMode` swaps the source;
  * `customValid` gates placement so a bad amount never reaches the server (which also
@@ -114,11 +124,26 @@ export function useUpDownQuickBet(opts: {
       try {
         const r = await buyPositionAction(fd);
         if (r && "ok" in r && r.ok) {
-          // Non-intrusive success: a pulse the surface animates, a screen-reader line,
-          // and a short haptic where supported. Deliberately NOT a toast.
+          // E-64 · FOUR channels, because money left the wallet: a pulse the surface
+          // animates, a screen-reader line, a short haptic, and — since 2026-08-05 — a
+          // visible toast. It used to be the first three only, on the reasoning that a
+          // toast piled up on rapid taps. That reasoning was half right and the omission
+          // was wrong: a FAILED bet toasted loudly two lines below while a SUCCESSFUL one
+          // said nothing a sighted player could see, so the screen read "nothing happened"
+          // at the exact moment TZS left the wallet — and the natural response is to tap
+          // again. The pile-up is solved by the 3s `durationMs`, not by silence.
           nonce.current += 1;
           setJustPlaced({ side, amount, nonce: nonce.current });
           setLiveMessage(`${copy.placed} · ${side === "UP" ? copy.up : copy.down} · ${formatTzs(amount)}`);
+          // ⛔ The toast does NOT replace the line above. A toast is a transient region a
+          // screen reader may never voice; `aria-live` is the announcement, this is the
+          // sighted equivalent. Both, always.
+          toast({
+            title: copy.placed,
+            description: `${side === "UP" ? copy.up : copy.down} · ${formatTzs(amount)}`,
+            variant: "success",
+            durationMs: 3000,
+          });
           // Named token from the central vocabulary (respects the master switch,
           // per-token prefs and reduced-motion) — not a raw navigator.vibrate.
           haptics.confirm();
