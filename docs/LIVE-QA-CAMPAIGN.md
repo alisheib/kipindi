@@ -5561,9 +5561,21 @@ there. That is E-108's stale assertion working: it caught this on the first run.
    already touching. File the id, fix it, prove it RED, land it in its own atom. It does **not**
    authorise widening an atom: a money-path defect is still isolated (E-115), and a defect on a
    surface this pass does not own is still filed rather than fixed.
-   ⭐ **Already applied twice this session:** E-118 was filed and fixed within minutes of being
-   found rather than being handed to session 35, and the E-119 it uncovered is queued as the next
-   atom rather than as a note.
+   ⭐ **Already applied five times:** E-118 was filed and fixed within minutes of being found
+   rather than being handed on; the E-119 it uncovered became the next atom; E-120 was found by
+   E-119's own new instrument and fixed in the atom after that; E-121 was found while sizing
+   E-120; and three separate instrument bugs (the filter parser's nesting, the gradient parser's
+   angle assumption, the raster sampler's device-pixel scale) were each fixed the moment their
+   number looked wrong rather than being trusted.
+3. ⭐ **"proceed until done — I'll be away; keep working and testing visually until all done"**
+   (Ali, 2026-08-06). ⛔ **Do not stop between atoms to report or to ask.** The loop is: land the
+   atom → commit → push → **wait for the Railway deploy and verify on production** → record the
+   validation → start the next atom. Only stop for something that genuinely needs Ali's decision
+   (the money atom E-115's ledger question, or a design call the delivery does not answer), and
+   even then finish every atom that does *not* depend on the answer first.
+   ⛔ **This does NOT relax the four-part gate.** A session that lands three atoms to the bar is
+   worth more than one that lands twenty and cannot prove any of them — that sentence is at the
+   top of this block and Ali's "until all done" does not overrule it.
 
 | # | Commit | What landed | Proof |
 |---|---|---|---|
