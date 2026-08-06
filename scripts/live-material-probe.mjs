@@ -114,6 +114,58 @@ const SURFACES = {
     props: ["backgroundImage", "boxShadow", "color", "borderColor", "height", "fontSize"],
     vars: ["--pearl-50", "--light-angle"],
   },
+  /**
+   * ⭐ THE THREE FLOATING RUNGS (ATOM 2c-b). `--shadow-modal`, `--shadow-overlay`
+   * and `--shadow-overlay-up` each carried `inset 0 1px 0 oklch(100% 0 0 / 0.06)` —
+   * a PURE-WHITE line on the top edge only, banned twice over by M1 ("an EVEN 1px
+   * inner ring … carrying a 4% royal tint, never pure white — and never a
+   * one-sided line").
+   *
+   * ⛔ EACH OF THESE NEEDS A CLICK, WHICH IS WHY THEY DID NOT EXIST BEFORE. A
+   * floating surface is not on the page at load; `qa:contrast-rendered` says so
+   * itself ("cannot see a state it cannot reach"). So a surface may now declare
+   * `open` — the controls to press, by a LOCALE-INDEPENDENT selector, before the
+   * surface is located. ⛔ Never an aria-label: this probe iterates EN/SW/ZH and a
+   * label lookup would silently miss on two of the three and photograph nothing.
+   */
+  modal: {
+    route: "/markets",
+    persona: "fleet:07",
+    // The card's "How it works" control → the product's standard centred dialog.
+    // Chosen because it costs nothing: no stake, no write, no money path.
+    open: [{ click: ".mcardp-info", why: "the market card's how-it-works control" }],
+    selector: ".shadow-modal",
+    label: "centred dialog (rung 3) — --shadow-modal",
+    props: ["boxShadow", "backgroundColor", "borderColor"],
+    vars: ["--shadow-modal", "--edge-lit-strong"],
+  },
+  dropdown: {
+    route: "/markets",
+    persona: "fleet:07",
+    // `data-unread` is on the bell itself and is the same in every language.
+    open: [{ click: "button[data-unread]", why: "the notifications bell" }],
+    selector: ".shadow-overlay",
+    label: "attached panel (rung 2) — --shadow-overlay",
+    props: ["boxShadow", "backgroundColor", "borderColor"],
+    vars: ["--shadow-overlay", "--edge-lit-strong"],
+  },
+  /**
+   * ⚠️ THE NEEDLE DRAWER IS TWO SURFACES IN ONE RULE: `shadow-overlay-up
+   * sm:shadow-modal`. Below 640 it is a bottom sheet casting UPWARD; at and above
+   * 640 it becomes a centred panel on the dialog rung. The class `.shadow-overlay-up`
+   * is in the DOM at every width, so the SELECTOR matches throughout — but the
+   * COMPUTED value is `--shadow-overlay-up` only at 360. Read the report that way:
+   * 360 is the only cell that proves the up-cast token.
+   */
+  sheet: {
+    route: "/profile/responsible-gambling",
+    persona: "fleet:07",
+    open: [{ click: "button[aria-haspopup='dialog']", why: "Manage the Needle (settings variant)" }],
+    selector: ".shadow-overlay-up",
+    label: "bottom sheet (rung 2, cast UP) — --shadow-overlay-up @360; --shadow-modal at sm:",
+    props: ["boxShadow", "backgroundColor", "borderColor"],
+    vars: ["--shadow-overlay-up", "--shadow-modal", "--edge-lit-strong"],
+  },
 };
 
 const geom = (boxShadow) =>
@@ -170,6 +222,16 @@ async function run() {
           const lang = await page.evaluate(() => document.documentElement.lang);
           if (!String(lang).toLowerCase().startsWith(locale)) {
             throw new Error(`locale mismatch: asked ${locale}, <html lang> says "${lang}" — refusing to capture`);
+          }
+
+          // ⛔ OPEN THE SURFACE BEFORE LOOKING FOR IT, and FAIL LOUDLY if the
+          // control is not there. A missing trigger must never degrade into
+          // "selector not found on the page" — that reads as the surface being
+          // unstyled when it was never opened, which is a phantom finding.
+          for (const step of s.open ?? []) {
+            const trigger = page.locator(step.click).first();
+            await trigger.waitFor({ state: "visible", timeout: 60_000 });
+            await trigger.click();
           }
 
           const el = page.locator(s.selector).first();

@@ -61,6 +61,19 @@ const MUTATIONS = [
     to: `box-shadow: inset 0 0 0 1px oklch(100% 0 0 / 0.22)`,
   },
   {
+    // 🔴 ATOM 2c-b UNDONE — and this one is the reason the pending entry had to be
+    // DELETED rather than left in place "for safety". While `--shadow-modal` was on
+    // the pending list, restoring its pure-white top line would have been WAVED
+    // THROUGH by rule 1.1, because that is exactly what a pending entry licenses. So
+    // the mutation below could not have been caught yesterday and can today, and the
+    // gate now defends the three floating rungs the same way it defends the buttons.
+    name: "put --shadow-modal's pure-white top-edge line back — the floating rung un-converts",
+    check: "1.1",
+    file: "src/app/globals.css",
+    from: `  --shadow-modal:   var(--edge-lit-strong),\n                    0 30px 80px oklch(5% 0.05 268 / 0.65);`,
+    to: `  --shadow-modal:   0 30px 80px oklch(5% 0.05 268 / 0.65), inset 0 1px 0 oklch(100% 0 0 / 0.06);`,
+  },
+  {
     // 🔴 THE CEILING ITSELF. --edge-shade is the ONE exception the law grants, and
     // it is granted because the value is DARK. Lighten it and it stops being the
     // absence of light and becomes a second lamp — the gate must notice, or the

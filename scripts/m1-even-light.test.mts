@@ -76,9 +76,10 @@ const LAW_EXCEPTIONS = [{ file: "src/app/globals.css", token: "--edge-shade" }];
  * remaining two legs of the M1 sweep own.
  */
 const PENDING: { file: string; snippet: string; atom: string }[] = [
-  { file: "src/app/globals.css", snippet: "--shadow-modal", atom: "2c-b" },
-  { file: "src/app/globals.css", snippet: "--shadow-overlay:", atom: "2c-b" },
-  { file: "src/app/globals.css", snippet: "--shadow-overlay-up", atom: "2c-b" },
+  // ✅ 2c-b CONVERTED 2026-08-06 — the three floating rungs (--shadow-modal,
+  // --shadow-overlay, --shadow-overlay-up) now take var(--edge-lit-strong).
+  // ⛔ Their entries are DELETED, not commented into a corner: rule 1.2 fails on a
+  // stale entry precisely so a converted site cannot keep inflating the number.
   { file: "src/app/globals.css", snippet: "oklch(100% 0 0 / 0.22)", atom: "2c-c .pbar-yes" },
   { file: "src/app/globals.css", snippet: "oklch(100% 0 0 / 0.20)", atom: "2c-c .pbar-no" },
   { file: "src/app/globals.css", snippet: "oklch(98% 0.01 268 / 0.08) inset", atom: "2c-c .toast" },

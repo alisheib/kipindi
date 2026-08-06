@@ -404,14 +404,35 @@
 
      Both keep the hue-268 royal cast of the ladder above rather than the
      neutral rgba() the six bespoke versions drifted into — a black shadow on
-     an indigo canvas reads grey/dead, which is why they never quite matched. */
-  --shadow-modal:   0 30px 80px oklch(5% 0.05 268 / 0.65), inset 0 1px 0 oklch(100% 0 0 / 0.06);
-  --shadow-overlay: 0 24px 56px -16px oklch(5% 0.05 268 / 0.62), inset 0 1px 0 oklch(100% 0 0 / 0.06);
+     an indigo canvas reads grey/dead, which is why they never quite matched.
+
+     ⚠️ CHANGED 2026-08-06 (material system, DESIGN_AUTHORITY M1 — ATOM 2c-b).
+     All three used to end `inset 0 1px 0 oklch(100% 0 0 / 0.06)`: a PURE-WHITE
+     line on the TOP EDGE ONLY. M1 bans that twice over — "an EVEN 1px inner
+     ring (--edge-lit) carrying a 4% royal tint, NEVER pure white — and never a
+     one-sided line; the direction of the light lives in the WASH". A top-edge
+     line is a drawn suggestion of a lamp; the lamp is already in the wash.
+     ⭐ THE VALUE IS NOT A NEW CHOICE — it is the rung these three already ARE.
+     --shadow-overlay is the float rung and --shadow-modal the modal rung, and
+     the delivery gives both --edge-lit-strong (--elev-float / --elev-modal,
+     :519 / :523, whose casts are these tokens' casts verbatim). Taking the
+     token rather than retyping its value keeps ONE definition site for the ring,
+     so the day the ring changes, all five rungs and these three move together.
+     ⛔ Pure white was also wrong on its own terms: on OLED a chalky white edge
+     over an indigo canvas reads as a seam, not as light (designer R2 Q7). */
+  --shadow-modal:   var(--edge-lit-strong),
+                    0 30px 80px oklch(5% 0.05 268 / 0.65);
+  --shadow-overlay: var(--edge-lit-strong),
+                    0 24px 56px -16px oklch(5% 0.05 268 / 0.62);
   /* Same rung, cast UPWARD — for a surface docked to the BOTTOM edge (the needle
      drawer, a bottom sheet). A downward cast on a bottom-docked panel throws its
      shadow off-screen and the panel reads as pasted onto the viewport. Direction
-     is the only difference; keep the depth identical so the two read as one system. */
-  --shadow-overlay-up: 0 -24px 56px -16px oklch(5% 0.05 268 / 0.62), inset 0 1px 0 oklch(100% 0 0 / 0.06);
+     is the only difference; keep the depth identical so the two read as one system.
+     ⭐ And the RING does not flip with the cast: M1 puts the tilt in the light and
+     gravity straight down, so an up-cast panel catches the SAME even ring. Only
+     the shadow knows which way the surface is docked. */
+  --shadow-overlay-up: var(--edge-lit-strong),
+                    0 -24px 56px -16px oklch(5% 0.05 268 / 0.62);
   /* The card lit edge — the 1px inner highlight that makes an elevated surface
      read as lit rather than as a flat rectangle. It was retyped inline at ~8
      sites (globals.css:984, .badge--unlocked, the buttons, the Modal); this is
