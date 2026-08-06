@@ -46,6 +46,9 @@ scripts/_walkthrough/
 # are not, because a checked-in PNG is a claim nobody can re-derive. Same rule as
 # .qa-s3*/ — see docs/design-brief/INTAKE.md §3b "what to delete outside src/".
 .qa-design/
+# ⭐ And the BEFORE/AFTER pairs an M1 atom shoots either side of its deploy
+# (SHOT_DIR=.qa-design-before / -after, compared by scripts/material-ring-delta.mjs).
+.qa-design-*/
 
 # Test images (user reference, not for production)
 Test Images/
