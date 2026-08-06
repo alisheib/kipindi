@@ -45,6 +45,29 @@ function crestParams(seed: string) {
   return { rnd, hue, tilt, charge, petals, rr, dd, stars, rot, jitter };
 }
 
+/**
+ * ⭐ A MINIMUM STROKE, IN REAL PIXELS — because a viewBox unit is not a pixel.
+ *
+ * 🔴 THE DEFECT THIS FIXES, measured rather than judged. Every crest draws into a
+ * `viewBox="0 0 100 100"`, so a stroke of `w` units renders as `w × size / 100` CSS px. The
+ * crests shipped with hairlines of **0.7–0.8u** and gilt rings of **1u**, and at the six sizes
+ * this component is actually used at — 20 · 28 · 40 · 48 · 56 · 80px — that is:
+ *
+ *      0.8u →  0.16px (20) · 0.32px (40) · 0.45px (56) · 0.64px (80)
+ *      1.0u →  0.20px (20) · 0.40px (40) · 0.56px (56) · 0.80px (80)
+ *
+ * **Not one stroke reaches a single CSS pixel at any size the product renders.** So the gilt
+ * chief, its pips and the inner gilt ring — the whole heraldic layer — were drawn, shipped, and
+ * invisible. What reached the screen was initials in a gradient circle, which is why a
+ * deterministic four-direction crest system reads as a generic identicon.
+ *
+ * ⛔ THIS IS A FLOOR, NOT A REPLACEMENT. `Math.max(designed, su(minPx, size))` keeps the
+ * intended weight at 80px — where the original values are close to right — and only lifts the
+ * stroke where geometry would otherwise erase it. Changing the values outright would have made
+ * the large sizes heavier than they were designed to be, which is a taste change; this is not.
+ */
+const su = (cssPx: number, size: number) => (cssPx * 100) / size;
+
 type CrestProps = { seed: string; size?: number; initials: string };
 
 /* ── Direction 1 · Tipping Sigil ── split YES/NO field + generative charge ── */
@@ -59,9 +82,9 @@ function CrestTipping({ seed, size = 80, initials }: CrestProps) {
     if (small) return null;
     const g = "oklch(86% 0.13 82)";
     if (p.charge === 0) return <path d="M50 38 L53 47 L62 47 L55 52 L58 61 L50 55 L42 61 L45 52 L38 47 L47 47 Z" fill={g} opacity="0.95" />;
-    if (p.charge === 1) return <path d="M50 39 L60 50 L50 61 L40 50 Z" fill="none" stroke={g} strokeWidth="2.4" />;
+    if (p.charge === 1) return <path d="M50 39 L60 50 L50 61 L40 50 Z" fill="none" stroke={g} strokeWidth={Math.max(2.4, su(1.5, size))} />;
     if (p.charge === 2) return <g fill={g}><circle cx="50" cy="42" r="2.6" /><circle cx="44" cy="56" r="2.6" /><circle cx="56" cy="56" r="2.6" /></g>;
-    return <g fill="none" stroke={g} strokeWidth="2.4" strokeLinecap="round"><path d="M44 58 L50 40 L56 58" /><path d="M46 51 L54 51" /></g>;
+    return <g fill="none" stroke={g} strokeWidth={Math.max(2.4, su(1.5, size))} strokeLinecap="round"><path d="M44 58 L50 40 L56 58" /><path d="M46 51 L54 51" /></g>;
   };
   return (
     <svg viewBox="0 0 100 100" width={size} height={size} style={{ display: "block" }} aria-hidden>
@@ -69,12 +92,12 @@ function CrestTipping({ seed, size = 80, initials }: CrestProps) {
       <g clipPath={`url(#${id})`}>
         <path d={`M ${top.x} ${top.y} A ${r} ${r} 0 0 0 ${bot.x} ${bot.y} L ${top.x} ${top.y} Z`} fill="oklch(50% 0.10 152)" />
         <path d={`M ${top.x} ${top.y} A ${r} ${r} 0 0 1 ${bot.x} ${bot.y} L ${top.x} ${top.y} Z`} fill="oklch(52% 0.11 22)" />
-        <line x1={top.x} y1={top.y} x2={bot.x} y2={bot.y} stroke="oklch(80% 0.13 84)" strokeWidth="2.4" strokeLinecap="round" />
+        <line x1={top.x} y1={top.y} x2={bot.x} y2={bot.y} stroke="oklch(80% 0.13 84)" strokeWidth={Math.max(2.4, su(1.5, size))} strokeLinecap="round" />
         {charge()}
         {small && <text x={cx} y={cy + 1} textAnchor="middle" dominantBaseline="middle" fontFamily="Sora, sans-serif" fontWeight="700" fontSize="34" fill="var(--pearl-50)">{initials}</text>}
       </g>
-      <circle cx={cx} cy={cy} r={r - 1} fill="none" stroke="oklch(48% 0.20 268)" strokeWidth="2.5" />
-      <circle cx={cx} cy={cy} r={r - 3} fill="none" stroke="oklch(80% 0.13 84)" strokeWidth="0.8" opacity="0.6" />
+      <circle cx={cx} cy={cy} r={r - 1} fill="none" stroke="oklch(48% 0.20 268)" strokeWidth={Math.max(2.5, su(1.5, size))} />
+      <circle cx={cx} cy={cy} r={r - 3} fill="none" stroke="oklch(80% 0.13 84)" strokeWidth={Math.max(0.8, su(1, size))} opacity="0.6" />
     </svg>
   );
 }
@@ -98,13 +121,13 @@ function CrestMonogram({ seed, size = 80, initials }: CrestProps) {
       <g clipPath={`url(#${id}c)`}>
         {!small && <>
           <path d="M0 30 A 50 50 0 0 1 100 30 L100 22 L0 22 Z" fill="oklch(80% 0.13 84)" opacity="0.16" />
-          <line x1="14" y1="30" x2="86" y2="30" stroke="oklch(82% 0.13 84)" strokeWidth="0.8" opacity="0.7" />
-          {Array.from({ length: chiefPips }).map((_, i) => { const t = (i + 1) / (chiefPips + 1); return <circle key={i} cx={14 + t * 72} cy="25" r="1.5" fill="oklch(86% 0.13 82)" />; })}
+          <line x1="14" y1="30" x2="86" y2="30" stroke="oklch(82% 0.13 84)" strokeWidth={Math.max(0.8, su(1, size))} opacity="0.7" />
+          {Array.from({ length: chiefPips }).map((_, i) => { const t = (i + 1) / (chiefPips + 1); return <circle key={i} cx={14 + t * 72} cy="25" r={Math.max(1.5, su(1, size))} fill="oklch(86% 0.13 82)" />; })}
         </>}
         <text x="50" y={small ? 52 : 60} textAnchor="middle" dominantBaseline="middle" fontFamily="Sora, sans-serif" fontWeight="700" fontSize={small ? 38 : 34} fill="var(--pearl-50)" style={{ letterSpacing: "-0.02em" }}>{initials}</text>
       </g>
-      <circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" strokeWidth="2" />
-      <circle cx="50" cy="50" r="46.5" fill="none" stroke="oklch(80% 0.13 84)" strokeWidth="1" opacity="0.62" />
+      <circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" strokeWidth={Math.max(2, su(1.5, size))} />
+      <circle cx="50" cy="50" r="46.5" fill="none" stroke="oklch(80% 0.13 84)" strokeWidth={Math.max(1, su(1, size))} opacity="0.62" />
     </svg>
   );
 }
@@ -126,7 +149,7 @@ function CrestGuilloche({ seed, size = 80, initials }: CrestProps) {
       <circle cx="50" cy="50" r="49" fill={`oklch(20% 0.135 ${p.hue})`} />
       <g clipPath={`url(#${id})`}>
         <circle cx="50" cy="50" r="49" fill="none" stroke={`oklch(34% 0.16 ${p.hue})`} strokeWidth="10" opacity="0.5" />
-        {!small && <path d={path} fill="none" stroke="oklch(82% 0.13 84)" strokeWidth="0.7" opacity="0.62" />}
+        {!small && <path d={path} fill="none" stroke="oklch(82% 0.13 84)" strokeWidth={Math.max(0.7, su(1, size))} opacity="0.62" />}
         {small
           ? <text x="50" y="52" textAnchor="middle" dominantBaseline="middle" fontFamily="Sora, sans-serif" fontWeight="700" fontSize="34" fill="var(--pearl-50)">{initials}</text>
           : <>
@@ -134,8 +157,8 @@ function CrestGuilloche({ seed, size = 80, initials }: CrestProps) {
               <text x="50" y="51.5" textAnchor="middle" dominantBaseline="middle" fontFamily="Sora, sans-serif" fontWeight="700" fontSize="20" fill="var(--gilt)" style={{ letterSpacing: "-0.02em" }}>{initials}</text>
             </>}
       </g>
-      <circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" strokeWidth="2" />
-      <circle cx="50" cy="50" r="46.5" fill="none" stroke="oklch(80% 0.13 84)" strokeWidth="1" opacity="0.6" />
+      <circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" strokeWidth={Math.max(2, su(1.5, size))} />
+      <circle cx="50" cy="50" r="46.5" fill="none" stroke="oklch(80% 0.13 84)" strokeWidth={Math.max(1, su(1, size))} opacity="0.6" />
     </svg>
   );
 }
@@ -156,7 +179,7 @@ function CrestConstellation({ seed, size = 80, initials }: CrestProps) {
       </defs>
       <circle cx="50" cy="50" r="49" fill={`url(#${id})`} />
       <g clipPath={`url(#${id}c)`}>
-        {!small && <g stroke="oklch(80% 0.13 84)" strokeWidth="0.7" opacity="0.55" fill="none">
+        {!small && <g stroke="oklch(80% 0.13 84)" strokeWidth={Math.max(0.7, su(1, size))} opacity="0.55" fill="none">
           {nodes.map((nd, i) => <line key={i} x1="50" y1="50" x2={nd[0].toFixed(1)} y2={nd[1].toFixed(1)} />)}
           <polygon points={nodes.map((nd) => `${nd[0].toFixed(1)},${nd[1].toFixed(1)}`).join(" ")} opacity="0.4" />
         </g>}
@@ -165,8 +188,8 @@ function CrestConstellation({ seed, size = 80, initials }: CrestProps) {
           ? <text x="50" y="52" textAnchor="middle" dominantBaseline="middle" fontFamily="Sora, sans-serif" fontWeight="700" fontSize="34" fill="var(--pearl-50)">{initials}</text>
           : <circle cx="50" cy="50" r="6" fill="oklch(86% 0.13 82)" />}
       </g>
-      <circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" strokeWidth="2" />
-      <circle cx="50" cy="50" r="46.5" fill="none" stroke="oklch(80% 0.13 84)" strokeWidth="1" opacity="0.6" />
+      <circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" strokeWidth={Math.max(2, su(1.5, size))} />
+      <circle cx="50" cy="50" r="46.5" fill="none" stroke="oklch(80% 0.13 84)" strokeWidth={Math.max(1, su(1, size))} opacity="0.6" />
     </svg>
   );
 }
