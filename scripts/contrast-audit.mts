@@ -78,7 +78,7 @@ function parseOklch(raw: string): Oklch | null {
  * silent default would recreate exactly the drift this parser was written to
  * kill. Throws on a SECOND declaration site for the same reason (INTAKE §2a).
  */
-function token(name: string): Oklch {
+function declValue(name: string): string {
   const decls = [...CSS.matchAll(new RegExp(`--${name}\\s*:([^;}]*)`, "g"))].map((m) => m[1].trim());
   if (decls.length === 0) throw new Error(`contrast-audit: --${name} is not declared in ${GLOBALS}`);
   if (decls.length > 1) {
@@ -88,9 +88,27 @@ function token(name: string): Oklch {
         `would render one value while every ratio below scored another. Edit the token AT ITS LINE.`,
     );
   }
-  const val = parseOklch(decls[0]);
-  if (!val) throw new Error(`contrast-audit: --${name} is "${decls[0]}", not a literal oklch()`);
+  return decls[0];
+}
+
+function token(name: string): Oklch {
+  const raw = declValue(name);
+  const val = parseOklch(raw);
+  if (!val) throw new Error(`contrast-audit: --${name} is "${raw}", not a literal oklch()`);
   return val;
+}
+
+/**
+ * A plain numeric token — `--btn-hover-gain: 1.03` (E-120). It carries the same
+ * one-declaration-site rule as a colour, and for the same reason: the browser
+ * takes the last and this gate takes the first, so a second copy would leave the
+ * product on one hover gain while every ratio here scored another.
+ */
+function numberToken(name: string): number {
+  const raw = declValue(name);
+  const n = Number(raw);
+  if (!Number.isFinite(n)) throw new Error(`contrast-audit: --${name} is "${raw}", not a plain number`);
+  return n;
 }
 
 /**
@@ -212,7 +230,12 @@ function ruleFilter(selector: string): Filter {
   }
   for (const fn of fns) {
     const name = fn.slice(0, fn.indexOf("(")).toLowerCase();
-    const arg = Number(/^[a-z-]+\(\s*([\d.]+)\s*\)$/i.exec(fn)?.[1]);
+    const lit = /^[a-z-]+\(\s*([\d.]+)\s*\)$/i.exec(fn)?.[1];
+    // `brightness(var(--btn-hover-gain))` — E-120 moved the gain into one token so
+    // it cannot drift across five rules, and the gate has to follow it there or it
+    // would be scoring a literal the product no longer contains.
+    const ref = /^[a-z-]+\(\s*var\(\s*--([a-z0-9-]+)\s*\)\s*\)$/i.exec(fn)?.[1];
+    const arg = lit !== undefined ? Number(lit) : ref ? numberToken(ref) : NaN;
     if (name === "drop-shadow") continue;
     if (name === "brightness" && Number.isFinite(arg)) { f.brightness = arg; continue; }
     if (name === "saturate" && Number.isFinite(arg)) { f.saturate = arg; continue; }
@@ -330,6 +353,11 @@ const T = {
   btnClaretFg: ruleValue(".btn-claret", "color"),
   btnClaretStops: ruleGradient(".btn-claret", "background"),
   btnClaretHover: ruleFilter(".btn-claret:hover:not(:disabled)"),
+  // ── The flat-solid family's hover rasters (2026-08-06, ATOM 4 · E-120) ────
+  btnYesHover: ruleFilter(".btn-yes:hover:not(:disabled)"),
+  btnNoHover: ruleFilter(".btn-no:hover:not(:disabled)"),
+  btnDangerHover: ruleFilter(".btn-danger:hover:not(:disabled)"),
+  btnGoldHover: ruleFilter(".btn-gold:hover:not(:disabled)"),
 };
 
 // `decorative: true` = WCAG 1.4.11 exempt (a divider that is NOT the sole means
@@ -379,17 +407,19 @@ const CHECKS: Check[] = [
   { name: "btn-primary label :hover (filter rastered)", fg: T.pearl50, bg: worstStop(T.pearl50, T.btnPrimaryStops, T.btnPrimaryHover), min: 4.5, filter: T.btnPrimaryHover },
   { name: "btn-claret label (claret-50 on claret ramp, worst stop)", fg: T.btnClaretFg, bg: worstStop(T.btnClaretFg, T.btnClaretStops), min: 4.5 },
   { name: "btn-claret label :hover (filter rastered)", fg: T.btnClaretFg, bg: worstStop(T.btnClaretFg, T.btnClaretStops, T.btnClaretHover), min: 4.5, filter: T.btnClaretHover },
-];
 
-// 🔴 E-120 IS OPEN AND IS DELIBERATELY NOT LISTED ABOVE — say so here rather than
-// leave a reader to infer it from an absence. The same `filter: brightness()`
-// hover that E-119 forced this file to model puts THREE of the five flat-solid
-// buttons under 4.5 as well, measured on production rather than modelled:
-// `.btn-yes` 4.74 → **4.36**, `.btn-danger` 4.85 → **4.37**, `.btn-no` 5.00 →
-// 4.59 (the only one that survives). Their remedy is not this atom's: two of the
-// three are semantic fills and the third is `--danger-500`, a SHARED token, so
-// each needs its own visual sign-off. The checks land in the commit that fixes
-// them — a gate added over a known-failing surface would just be red on purpose.
+  // ── E-120 · the flat-solid family on :hover ───────────────────────────────
+  // ⛔ EVERY ONE OF THESE WAS BELOW ITS RESTING RATIO AND NOTHING COULD SEE IT.
+  // A `filter` is a raster effect, so the fill lightens while a `oklch(99%)` label
+  // is already clipped: `.btn-yes` 4.74 → 4.36 and `.btn-danger` 4.85 → 4.37 on
+  // production, both under the floor. The gain is now ONE token (`--btn-hover-gain`)
+  // read straight off globals.css, so these four cannot be satisfied by a literal
+  // that has drifted away from the one the product paints.
+  { name: "btn-yes label :hover (filter rastered)", fg: T.pearl50, bg: T.btnYesBg, min: 4.5, filter: T.btnYesHover },
+  { name: "btn-no label :hover (filter rastered)", fg: T.pearl50, bg: T.btnNoBg, min: 4.5, filter: T.btnNoHover },
+  { name: "btn-danger label :hover (filter rastered)", fg: T.pearl50, bg: T.danger500, min: 4.5, filter: T.btnDangerHover },
+  { name: "btn-gold label :hover (filter rastered)", fg: T.btnGoldFg, bg: T.btnGoldBg, min: 4.5, filter: T.btnGoldHover },
+];
 
 // ✅ AUDIT H10 IS CLOSED, and its fixes are now PARSED rather than described.
 // `.btn-yes` 57%→53%, `--danger-500` 60%→57% and the new `--border-control`

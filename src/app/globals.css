@@ -213,6 +213,28 @@
   --h-control-xl: 56px;   /* .btn-xl */
   --h-input:      44px;   /* .input / .input-group — already at the tap floor */
 
+  /* ---------- E-120 · the hover gain, in ONE place because it is an AA input ----
+     🔴 Every solid button used to lighten its own fill on hover — .btn-yes/.btn-no
+     brightness(1.07), .btn-danger/.btn-primary/.btn-claret brightness(1.08) — while
+     the label is --pearl-50 at oklch(99%), which is already a whisker from clipping.
+     So the fill rises and the ink CANNOT: contrast FALLS on hover, every time.
+     Measured on the real raster on production (`npm run qa:button-contrast`):
+     .btn-yes 4.74 → 4.36 and .btn-danger 4.85 → 4.37, both under the 4.5 floor.
+     ⛔ NO COLOUR-READING INSTRUMENT COULD SEE IT: a `filter` is a raster effect, so
+     `getComputedStyle` still reports the authored fill. It took an instrument that
+     puts a real pointer on a real button and reads the pixels back.
+     ⚠️ And :hover is not desktop-only — mobile Chrome applies sticky hover on tap,
+     and the device this product targets is a low-end Android.
+     ⭐ 1.03 is the number the whole family can share: it leaves .btn-yes at 4.64,
+     .btn-danger 4.75, .btn-no 4.91, .btn-primary ~5.2 and .btn-gold 7.57 (its ink is
+     dark, so brightness HELPS it). One token, so the AA relationship is a fact of
+     the system rather than five literals that can drift apart — and so
+     `test:contrast` can read the value the product actually uses.
+     ⭐ It is also the M1-consistent answer: on hover a surface RISES toward the one
+     lamp (`translateY(--m-lift)` plus its coloured cast, which every one of these
+     rules already carries). It does not change its own albedo. */
+  --btn-hover-gain: 1.03;
+
   /* ---------- Motion ----------
      Easing tokens are BARE CURVES. Always pair one with an explicit duration:
        transition: border-color var(--dur-micro) var(--ease-micro);
@@ -723,7 +745,7 @@ body {
   letter-spacing: 0.005em;
   text-shadow: 0 1px 0 oklch(20% 0.10 268 / 0.40);
 }
-.btn-primary:hover:not(:disabled) { filter: brightness(1.08) saturate(1.04) drop-shadow(0 6px 16px color-mix(in oklab, var(--teal-400) 30%, transparent)); }
+.btn-primary:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)) saturate(1.04) drop-shadow(0 6px 16px color-mix(in oklab, var(--teal-400) 30%, transparent)); }
 
 /* v2 kit: one flat-solid family — YES/NO/gold are SOLID fills (not gradients),
    with a 1px inset top-highlight + soft shadow. (primary keeps its gradient.) */
@@ -736,7 +758,7 @@ body {
   box-shadow: inset 0 1px 0 oklch(80% 0.14 152 / 0.4), 0 1px 2px oklch(10% 0.05 264 / 0.35);
   text-shadow: 0 1px 1px oklch(20% 0.1 264 / 0.32);
 }
-.btn-yes:hover:not(:disabled) { filter: brightness(1.07); box-shadow: inset 0 1px 0 oklch(80% 0.14 152 / 0.4), 0 5px 16px oklch(60% 0.16 150 / 0.5); }
+.btn-yes:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)); box-shadow: inset 0 1px 0 oklch(80% 0.14 152 / 0.4), 0 5px 16px oklch(60% 0.16 150 / 0.5); }
 
 .btn-no {
   background: oklch(56% 0.200 25);
@@ -747,7 +769,7 @@ body {
   box-shadow: inset 0 1px 0 oklch(80% 0.15 25 / 0.4), 0 1px 2px oklch(10% 0.05 264 / 0.35);
   text-shadow: 0 1px 1px oklch(20% 0.1 264 / 0.32);
 }
-.btn-no:hover:not(:disabled) { filter: brightness(1.07); box-shadow: inset 0 1px 0 oklch(80% 0.15 25 / 0.4), 0 5px 16px oklch(57% 0.20 25 / 0.5); }
+.btn-no:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)); box-shadow: inset 0 1px 0 oklch(80% 0.15 25 / 0.4), 0 5px 16px oklch(57% 0.20 25 / 0.5); }
 
 .btn-ghost {
   background: transparent;
@@ -766,7 +788,7 @@ body {
   box-shadow: inset 0 1px 0 oklch(80% 0.15 25 / 0.3), 0 1px 2px oklch(10% 0.05 264 / 0.35);
 }
 .btn-danger:hover:not(:disabled) {
-  filter: brightness(1.08);
+  filter: brightness(var(--btn-hover-gain));
   box-shadow: inset 0 1px 0 oklch(80% 0.15 25 / 0.3), 0 5px 16px oklch(60% 0.22 25 / 0.4);
 }
 
@@ -778,7 +800,7 @@ body {
   box-shadow: inset 0 1px 0 oklch(95% 0.06 86 / 0.55), 0 1px 2px oklch(10% 0.05 262 / 0.35);
   letter-spacing: 0.02em;
 }
-.btn-gold:hover:not(:disabled) { filter: brightness(1.07); box-shadow: inset 0 1px 0 oklch(95% 0.06 86 / 0.55), 0 5px 16px oklch(80% 0.13 82 / 0.5); }
+.btn-gold:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)); box-shadow: inset 0 1px 0 oklch(95% 0.06 86 / 0.55), 0 5px 16px oklch(80% 0.13 82 / 0.5); }
 
 .btn-claret {
   background: linear-gradient(180deg, var(--claret-500) 0%, var(--claret-700) 100%);
@@ -792,7 +814,7 @@ body {
     0 10px 28px -10px oklch(38% 0.14 15 / 0.55);
   text-shadow: 0 1px 0 oklch(15% 0.06 15 / 0.45);
 }
-.btn-claret:hover:not(:disabled) { filter: brightness(1.08) saturate(1.04) drop-shadow(0 6px 16px color-mix(in oklab, var(--claret-500) 32%, transparent)); }
+.btn-claret:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)) saturate(1.04) drop-shadow(0 6px 16px color-mix(in oklab, var(--claret-500) 32%, transparent)); }
 
 .btn-outline {
   background: transparent;

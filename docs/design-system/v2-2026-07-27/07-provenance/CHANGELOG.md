@@ -5,6 +5,34 @@
 The material merge, atom by atom. One token change per commit, each with its gates, its
 production drive and its image opened. This entry grows as the atoms land.
 
+**ATOM 4 — a surface rises toward the lamp; it does not re-light itself (E-120; E-121 filed).**
+
+- 🔴 **Every solid button lost contrast the moment a pointer touched it.** `.btn-yes`/`.btn-no`
+  carried `filter: brightness(1.07)` and `.btn-danger`/`.btn-primary`/`.btn-claret` 1.08, under a
+  `--pearl-50` label at `oklch(99%)` — already a whisker from clipping. So the fill rises and the
+  ink cannot. Measured on the production raster: `.btn-yes` **4.74 → 4.36**, `.btn-danger`
+  **4.85 → 4.37**, both under the floor; `.btn-no` survived at 4.59 by luck of its albedo.
+- ⭐ **The remedy is M1, not arithmetic.** In the one-lamp model a hover makes a surface **rise
+  toward the light** — `translateY(--m-lift)` plus the coloured cast every one of these rules
+  already carries. A `filter: brightness()` is a surface re-lighting *itself*, which that model
+  does not have. The gain drops to **1.03**, leaving the lift and the cast to do the work.
+- **One token, `--btn-hover-gain`, replacing five literals.** ⭐ The token is the point rather
+  than the number: a per-rule literal can only be wrong one button at a time — and can only be
+  FIXED one button at a time, which is how three of five drifted under the floor with nobody
+  choosing it. One RED mutation (`1.03 → 1.20`) now breaks all four at once.
+- ⛔ **The alternative was rejected on evidence, not on taste.** Darkening the fills clears AA at
+  one point of lightness (`.btn-yes` 53→52 → hover 4.535) but leaves **0.035** of headroom, moves
+  two *semantic* colours (YES/NO are the product's money vocabulary), and one of them is
+  `--danger-500`, a **shared** token with consumers beyond the button.
+- **Result:** `.btn-yes` 4.64 · `.btn-danger` 4.75 · `.btn-no` 4.91 · `.btn-primary` 5.25 ·
+  `.btn-gold` 7.57 (its ink is dark, so brightness helps it). `test:contrast` 30 → **34** checks,
+  `red:contrast` **17/17**, tsc 0, build exit 0.
+- 🔴 **E-121 filed while sizing this, and it is the same defect one file over.** `.cm-send` (the
+  support chat's send button) swaps its fill to a *lighter* `--brand-400` on hover, taking its
+  white glyph from **3.58 to 2.55** against WCAG 1.4.11's **3.0** floor for a graphical control.
+  ⛔ Not fixed here: different stylesheet, different token vocabulary, and `contrast-audit.mts`
+  reads `globals.css` only. ✅ Its neighbour `.cm-escalate` measured 5.34 / 5.35 and is fine.
+
 **ATOM 3 — the primary CTA's white label stops being 4:1 on its own light, and contrast
 gains a third instrument (E-119; E-120 filed).**
 

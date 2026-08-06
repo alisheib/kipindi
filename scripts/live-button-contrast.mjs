@@ -49,10 +49,12 @@ const VARIANTS = ["btn-primary", "btn-yes", "btn-no", "btn-danger", "btn-gold", 
 // Findings that already own a failure here, so a known-open defect reads as
 // tracked rather than as a fresh surprise. ⛔ An id in this map does NOT stop
 // the run failing — it only labels the row.
-const OPEN = {
-  "btn-yes:hover": "E-120",
-  "btn-danger:hover": "E-120",
-};
+// ⛔ EMPTY IS THE CORRECT STATE. E-120 (`.btn-yes` 4.36 · `.btn-danger` 4.37 on
+// hover) lived here until ATOM 4 closed it, and its entries were removed in the
+// same commit as the fix — a label that outlives its defect turns a regression
+// into a row that reads "already known". An unlabelled failure prints
+// "UNFILED — file it", which is what a new one should say.
+const OPEN = {};
 
 const lum = ([r, g, b]) => {
   const f = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };

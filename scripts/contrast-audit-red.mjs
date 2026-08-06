@@ -101,7 +101,7 @@ const MUTATIONS = [
     // is indistinguishable from one that returns the resting number.
     name: "crank .btn-primary's hover brightness to 1.30 — a raster-only failure",
     kind: "fail",
-    from: `.btn-primary:hover:not(:disabled) { filter: brightness(1.08)`,
+    from: `.btn-primary:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain))`,
     to: `.btn-primary:hover:not(:disabled) { filter: brightness(1.30)`,
   },
   {
@@ -119,8 +119,36 @@ const MUTATIONS = [
     // the gate would keep printing the resting ratio over it.
     name: "add an unmodelled contrast() to .btn-primary's hover filter",
     kind: "throw",
-    from: `.btn-primary:hover:not(:disabled) { filter: brightness(1.08)`,
-    to: `.btn-primary:hover:not(:disabled) { filter: contrast(0.4) brightness(1.08)`,
+    from: `.btn-primary:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain))`,
+    to: `.btn-primary:hover:not(:disabled) { filter: contrast(0.4) brightness(var(--btn-hover-gain))`,
+  },
+  {
+    // 🔴 E-120 ITSELF, PUT BACK — and this one mutation breaks FOUR buttons at
+    // once, which is the whole argument for the gain being a single token: a
+    // per-rule literal can only be wrong one button at a time, but it can also
+    // only be FIXED one button at a time, and that is how three of five drifted
+    // under the floor without anyone choosing it.
+    name: "raise --btn-hover-gain to 1.20 — the whole solid family loses AA on hover",
+    kind: "fail",
+    from: `  --btn-hover-gain: 1.03;`,
+    to: `  --btn-hover-gain: 1.20;`,
+  },
+  {
+    // A hover gain that is not a number must STOP the gate. `Number("")` is 0,
+    // which would model a hover that paints the button BLACK and print a
+    // flattering ratio for it — a default is never the safe answer here.
+    name: "make --btn-hover-gain non-numeric — an unreadable AA input",
+    kind: "throw",
+    from: `  --btn-hover-gain: 1.03;`,
+    to: `  --btn-hover-gain: var(--something-else);`,
+  },
+  {
+    // INTAKE §2a applies to a NUMERIC token exactly as it does to a colour: the
+    // browser takes the last declaration and this gate takes the first.
+    name: "re-declare --btn-hover-gain a second time (INTAKE §2a, numeric)",
+    kind: "throw",
+    from: `  --btn-hover-gain: 1.03;`,
+    to: `  --btn-hover-gain: 1.03;\n  --btn-hover-gain: 1.25;`,
   },
   {
     // ⛔ INTAKE §2a, the trap ATOM 2a walks into next: the browser takes the
