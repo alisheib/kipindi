@@ -425,7 +425,9 @@ export function UpDownCard(props: UpDownCardProps) {
                color: urgent ? "var(--no-300)"
                  : resultRunning ? "var(--brand-300)"
                  : running ? "var(--text)" : "var(--text-subtle)",
-               transition: "color 240ms ease",
+               // ⛔ The ladder, not a typed number — see the twin of this line in
+               // `round-countdown.tsx` for why `--t-base` and not `--t-flick`.
+               transition: "color var(--t-base) var(--m-glide)",
              }}>
           {/* ⛔ An em-dash pair, not `0:00`. A zeroed clock reads as "it should have happened
               and did not"; `—:—` reads as "we are not counting this", which is the truth in

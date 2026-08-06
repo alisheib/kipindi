@@ -23,16 +23,24 @@ import { join } from "node:path";
  * Files still holding raw timings, as measured 2026-08-06. THIS LIST MAY ONLY SHRINK.
  */
 const ALLOWLIST = new Set<string>([
-  // ⚠️ A SCHEDULING EXEMPTION, NOT A DESIGN ONE — and therefore the first two to remove.
-  // Another session was actively editing `src/components/updown/` on 2026-08-06 and these were
-  // left alone to avoid a collision. Nothing about the files themselves justifies the entry:
-  // migrate them the moment that directory is quiet and delete these two lines.
+  // ⭐ EMPTY, AND IT GOT THERE THE WAY A RATCHET IS SUPPOSED TO — 5 → 2 → 0 in one day.
   //
   // 📌 Started at 5. `needle.tsx`, `reward-burst.tsx` and `win-celebration.tsx` were listed on
   // the assumption they carried raw timings and §1.2 proved they do not — a ratchet that
   // catches its own author's guesses is doing its job.
-  "src/components/updown/updown-card.tsx",
-  "src/components/updown/round-countdown.tsx",
+  //
+  // 📌 The last two, `updown-card.tsx` and `round-countdown.tsx`, were a **SCHEDULING**
+  // exemption and never a design one: another session was live in `src/components/updown/` on
+  // 2026-08-06, so they were left alone to avoid a collision. That session finished its Up &
+  // Down work the same day and cleared them itself — both held the identical literal
+  // `color 240ms ease`, now `var(--t-base) var(--m-glide)`.
+  // ⚠️ `--t-base` (220ms) is the nearest rung and was chosen to PRESERVE the behaviour. The
+  // ladder's semantics would argue for `--t-flick` (a colour change travels nowhere), but
+  // 240 → 90 is a feel change on the clock counting out a player's last seconds to bet — a
+  // deliberate design call, not a side effect of a token migration.
+  //
+  // ⛔ THIS LIST MAY ONLY SHRINK, AND IT IS NOW AT ZERO. Adding an entry re-opens the hole; put
+  // the value on the ladder instead.
 ]);
 
 const RAW_MS = /\b\d{2,4}ms\b/;

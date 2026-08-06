@@ -161,7 +161,15 @@ export function RoundCountdownPod({
           color: urgent ? "var(--no-300)"
             : inResult && running ? "var(--brand-300)"
             : running ? "var(--text)" : "var(--text-subtle)",
-          transition: "color 240ms ease",
+          // ⛔ THE LADDER, NOT A TYPED NUMBER (E-113's ratchet). This was `240ms ease`, exempted
+          // only because another session was live in this directory — a SCHEDULING exemption,
+          // never a design one.
+          // ⚠️ `--t-base` (220ms) is the NEAREST rung, chosen to preserve the behaviour rather
+          // than to re-tune it. The ladder's own semantics would argue for `--t-flick` (a colour
+          // change travels nowhere), but 240 → 90 is a feel change on the clock that tells a
+          // player their last seconds are running out, and that is the design pass's call to
+          // make deliberately — not a side effect of a token migration.
+          transition: "color var(--t-base) var(--m-glide)",
         }}
       >
         {spent ? "—:—" : (isOpen || pastClose) ? mmss(left) : "00:00"}

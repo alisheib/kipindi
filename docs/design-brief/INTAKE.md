@@ -226,5 +226,60 @@ Two things are **in-house and do not need a designer**, and neither should wait 
    replaced, and one animation that ran at **800ms above the ladder's 620ms ceiling** brought
    down to it. `test:motion-ladder` is now a ratchet whose allowlist may only shrink — already
    5 → 2, and both survivors are a **scheduling** exemption (another session was live in
-   `src/components/updown/`), not a design one. ⛔ Removing those two is the first job for
-   whoever finds that directory quiet.
+   `src/components/updown/`), not a design one. ✅ **CLEARED THE SAME DAY — the ratchet is now at
+   0.** That session finished its Up & Down work and removed them itself; both held the identical
+   literal `color 240ms ease`, now `var(--t-base) var(--m-glide)`.
+   ⚠️ `--t-base` (220ms) was chosen as the nearest rung to **preserve** the behaviour. The
+   ladder's own semantics would argue for `--t-flick` (a colour change travels nowhere), but
+   240 → 90 is a feel change on the clock counting out a player's last seconds to bet — **that
+   one is yours to decide deliberately, not to inherit.**
+
+---
+
+## 8 · ⚠️ WHAT CHANGED UNDER THIS BRIEF WHILE IT WAS OUT — read before designing the card
+
+The brief and `AUDIT.txt` are a photograph, and the product moved on 2026-08-06 while they sat in
+the drop folder. **One of the four surfaces the critique names has changed shape**, and a
+material treatment sized to the old one would have to be re-worked.
+
+### The Up & Down **bettable** card is taller and busier than the shots (E-109)
+
+`CURRENT-STATE.md` §4 critiques `shots/board-card-settled.png` — the **settled** state, which is
+unchanged and whose critique still stands in full. But the **bettable** state gained, the same
+day, the honest-multiplier work:
+
+- the two place buttons now carry **different** multiples (`× 1.00 est.` / `× 2.66 est.`) instead
+  of one flat `× 1.5` — on a one-sided round they differ by an order of magnitude, so the two
+  buttons are no longer typographically symmetrical;
+- an **info-glyph sentence** — *"Nobody has backed Down yet — if that does not change, your stake
+  comes back"* — wrapping to 2 lines at 360;
+- the estimate note now renders on the **compact** size too, another 2–3 lines.
+
+**Measured on production at 360:** card height **563px (EN) · 578px (SW) · 545px (ZH)**, with
+0 overflow, 0 clipping and 0 document overflow in all three. Shots:
+`.qa-s32/e109-card-360-{en,sw,zh}.png` (gitignored — re-shoot with
+`SHOT_DIR=.qa-design node scripts/live-s32-card360.mjs`).
+
+⭐ **Why it matters to the material work:** this card is the iconic surface, it now carries **four
+text rows below its primary action**, and it is the surface most bets are placed from. An
+elevation and light treatment has more to hold up than the shots suggest.
+
+### Two live findings ON that card, filed FOR this pass and deliberately not fixed
+
+| id | what | why it was left |
+|---|---|---|
+| **E-112** | the five stake chips (`500 · 1K · 2.5K · 5K · Custom`) render **26px** tall against the platform's own **40px** tap floor — in all three languages, at 360. These choose **how much money a player stakes** | it is a control-height change (`chipBase`'s `py-1`, or the `--h-control-*` tokens) on the surface this pass owns. Two sessions restyling one row is how the UI-consistency work gets undone |
+| — | the footer trust line is ellipsised at **7% hidden in EN and 51% in SW** — *"Soko la sarafu-fiche la moja k…"*. Half the sentence naming where the price comes from sits behind the "…" | ⛔ a legitimate `text-overflow: ellipsis`, **not** a clip, and §0.1b.3 forbids scoring one as a defect. But 51% is a judgement a person should make, not a scan |
+
+### The rest of the alignment, one line each
+
+- ✅ `src/components/updown/` is **quiet** — that session is finished there. Nothing is reserved.
+- ✅ `test:motion-ladder` is at **0** exemptions. `test:design-frozen` still holds **45** — that is
+  the number §3b says must shrink when the delivery lands.
+- ⛔ **`src/lib/updown-pricing.ts` and `src/lib/updown-movement.ts` are money and gate logic**, not
+  design. Nothing in the delivery touches them, and nothing in `src/lib/server/` either (§2).
+- ⚠️ **Two sessions share this tree.** Stage surgically (`git add <path>`,
+  `git commit -F msg -- <paths>`), never `git add -A` — it shipped a half-finished feature to
+  `main` on 2026-08-06 and only the build failing kept it off production. And **re-grep finding
+  ids at the moment you file**: `E-111` was claimed by two sessions within minutes, and
+  `test:tracker-hygiene` §1 is what caught it.
