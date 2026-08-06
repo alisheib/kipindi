@@ -1,5 +1,12 @@
 # When the Claude Design work arrives — what to do with it, and where it goes
 
+> ✅ **IT ARRIVED, 2026-08-06, and it lives at**
+> **`docs/design-system/v2-2026-07-27/11-material/`** — read that folder's `README.md` first: it
+> carries the merge map, the eight laws in one line each, and the designer's own open items.
+> ⛔ **Nothing is merged yet.** Everything below still applies — §1 acceptance, §2 placement,
+> §3 order, and above all **§3b, what DIES when each piece lands.** The `delivery/` drop folder
+> this file used to name is gone; the delivery is in the design system where it cannot go stale.
+
 **For whichever session receives the delivery.** Written 2026-08-06, before anything was sent, so
 it is a plan and not a rationalisation. `README.md` in this folder is what we commissioned;
 `AUDIT.txt` is the measured state it was commissioned against. Read both before integrating.
@@ -46,7 +53,7 @@ D-3 was not delivered and that is the thing to send back. Everything else is rep
 | **the written rules** ("how to extend this") | `docs/DESIGN_AUTHORITY.md`, merged into the relevant section | this is the file future sessions actually read |
 | **motion documentation** | `docs/design-system/v2-2026-07-27/08-motion/` | the versioned system already has this section |
 | **their rendered stills** | `docs/design-system/v2-2026-07-27/07-provenance/` | provenance, so a future session can see what was signed off |
-| **the raw delivery, untouched** | `docs/design-brief/delivery/` (create it) | keep the original. When something looks wrong six weeks later, the question is always *"is this what they sent, or what we did to it?"* |
+| **the raw delivery, untouched** | ✅ already at `docs/design-system/v2-2026-07-27/11-material/` | keep the original. When something looks wrong six weeks later, the question is always *"is this what they sent, or what we did to it?"* |
 
 ⛔ **Nothing goes in `src/lib/server/`.** Design work never touches the money path.
 
@@ -96,8 +103,8 @@ defect class in this repo's history.**
 1. **`npm run test:design-frozen` — the allowlist should SHRINK.** It holds 45 files carrying
    inline design values. If the delivery is real, several stop needing the exemption. ⭐ **A
    delivery that leaves it at 45 did not replace anything, it decorated.**
-2. **`npm run test:motion-ladder` — its allowlist should also shrink** (currently 2, both
-   scheduling exemptions in `src/components/updown/`).
+2. **`npm run test:motion-ladder` — its allowlist is at 0 and may only stay there.** The two
+   scheduling exemptions were cleared 2026-08-06; a new entry re-opens the hole.
 3. **`node scripts/ui-material-audit.mjs`** — re-run it. The before-picture is `AUDIT.txt`:
    **79% no light · 60% no elevation · 44% no motion · 43 components with all three absent.**
    Those numbers must move. If they do not, the integration is wrong, not the audit.
@@ -111,7 +118,7 @@ defect class in this repo's history.**
 
 ### What to KEEP, deliberately
 
-- **`docs/design-brief/delivery/`, untouched.** It is provenance, not clutter.
+- **`docs/design-system/v2-2026-07-27/11-material/`, untouched** — spec, manifest and the two Q&A rounds. It is provenance, not clutter.
 - **`AUDIT.txt` and `CURRENT-STATE.md`** — they are the *before*. Deleting them destroys the
   only evidence of what the commission was for.
 - **`shots/podium-and-avatars.png`** — the BEFORE of E-111, paired with its AFTER.

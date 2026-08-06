@@ -18,6 +18,9 @@ haptic vocabulary; nothing from v1.0 was removed or re-specified. It *contains* 
 8. **09-needle/** — The Needle: the persistent pause object. Engine, haptics, bare
    playground, and NEEDLE-SPEC.md (read §0 before touching its colour).
 9. **10-haptics/** — the haptic vocabulary, standalone.
+10. **11-material/** — ⭐ **the material system** (Claude Design, 2026-08-06): one lamp at −14°,
+    five elevation rungs, one struck gold, glyph motion, and the win/loss asymmetry. **Delivered,
+    NOT yet merged** — its `README.md` carries the merge map and what dies when each piece lands.
 10. **07-provenance/** — where every fact came from, what was inferred, what was replaced, and what is still missing. **Read OPEN-GAPS.md before building anything new.**
 
 ## Authority

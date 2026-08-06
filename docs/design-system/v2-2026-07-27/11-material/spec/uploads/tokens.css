@@ -1,0 +1,261 @@
+/* Extracted from src/app/globals.css — the DESIGN TOKENS only.
+   ⛔ The palette is oklch(). Never emit hex or rgb; extend by adding a token here. */
+
+:root {
+  --royal-50:  oklch(97% 0.018 268);
+  --royal-100: oklch(93% 0.040 268);
+  --royal-200: oklch(86% 0.080 268);
+  --royal-300: oklch(76% 0.130 268);
+  --royal-400: oklch(60% 0.180 268);
+  --royal-500: oklch(48% 0.200 268);
+  --royal-600: oklch(40% 0.200 268);
+  --royal-700: oklch(32% 0.150 268);
+  --royal-800: oklch(24% 0.110 268);
+  --royal-900: oklch(18% 0.080 268);
+  --royal-950: oklch(13% 0.060 268);
+  --teal-50:  var(--royal-50);
+  --teal-100: var(--royal-100);
+  --teal-200: var(--royal-200);
+  --teal-300: var(--royal-300);
+  --teal-400: var(--royal-400);
+  --teal-500: var(--royal-500);
+  --teal-600: var(--royal-600);
+  --teal-700: var(--royal-700);
+  --teal-800: var(--royal-800);
+  --teal-900: var(--royal-900);
+  --teal-950: var(--royal-950);
+  --yes-50:  oklch(96% 0.04 152);
+  --yes-100: oklch(92% 0.07 152);
+  --yes-200: oklch(86% 0.11 152);
+  --yes-300: oklch(80% 0.14 152);
+  --yes-400: oklch(72% 0.16 152);
+  --yes-500: oklch(62% 0.17 152);
+  --yes-600: oklch(52% 0.16 152);
+  --yes-700: oklch(44% 0.14 152);
+  --yes-800: oklch(34% 0.11 152);
+  --yes-900: oklch(26% 0.08 152);
+  --yes-950: oklch(18% 0.05 152);
+  --no-50:  oklch(96% 0.03 22);
+  --no-100: oklch(92% 0.06 22);
+  --no-200: oklch(86% 0.10 22);
+  --no-300: oklch(80% 0.14 22);
+  --no-400: oklch(72% 0.18 22);
+  --no-500: oklch(62% 0.20 22);
+  --no-600: oklch(52% 0.19 22);
+  --no-700: oklch(44% 0.17 22);
+  --no-800: oklch(34% 0.13 22);
+  --no-900: oklch(26% 0.09 22);
+  --no-950: oklch(18% 0.06 22);
+  --gold-50:  oklch(98% 0.025 82);
+  --gold-100: oklch(94% 0.06 82);
+  --gold-200: oklch(90% 0.10 80);
+  --gold-300: oklch(86% 0.13 80);
+  --gold-400: oklch(80% 0.14 78);
+  --gold-500: oklch(72% 0.14 78);
+  --gold-600: oklch(64% 0.13 76);
+  --gold-700: oklch(56% 0.11 76);
+  --gold-800: oklch(46% 0.09 76);
+  --gold-900: oklch(36% 0.07 76);
+  --gold-950: oklch(26% 0.05 76);
+  --claret-50:  oklch(96% 0.025 15);
+  --claret-100: oklch(90% 0.060 15);
+  --claret-200: oklch(82% 0.100 15);
+  --claret-300: oklch(72% 0.140 15);
+  --claret-400: oklch(60% 0.160 15);
+  --claret-500: oklch(48% 0.160 15);
+  --claret-600: oklch(38% 0.140 15);
+  --claret-700: oklch(30% 0.110 15);
+  --claret-800: oklch(23% 0.085 15);
+  --claret-900: oklch(17% 0.060 15);
+  --claret-950: oklch(12% 0.040 15);
+  --aqua-50:  oklch(96% 0.025 195);
+  --aqua-100: oklch(92% 0.050 195);
+  --aqua-200: oklch(86% 0.080 195);
+  --aqua-300: oklch(80% 0.100 195);
+  --aqua-400: oklch(72% 0.110 195);
+  --aqua-500: oklch(62% 0.110 195);
+  --aqua-600: oklch(52% 0.100 195);
+  --aqua-700: oklch(42% 0.080 195);
+  --aqua-800: oklch(32% 0.060 195);
+  --aqua-900: oklch(22% 0.045 195);
+  --aqua-950: oklch(14% 0.030 195);
+  --claret:        var(--claret-600);
+  --aqua:          var(--aqua-300);
+  --slate-50:  oklch(99% 0.006 268);
+  --slate-100: oklch(96% 0.012 268);
+  --slate-150: oklch(90% 0.030 268);
+  --slate-200: oklch(82% 0.060 268);
+  --slate-300: oklch(74% 0.090 268);
+  --slate-400: oklch(64% 0.150 268);
+  --slate-500: oklch(54% 0.180 268);
+  --slate-600: oklch(46% 0.200 268);
+  --slate-700: oklch(38% 0.200 268);  /* canvas seed */
+  --slate-750: oklch(34% 0.180 268);
+  --slate-800: oklch(28% 0.150 268);
+  --slate-850: oklch(22% 0.110 268);
+  --slate-900: oklch(16% 0.090 268);
+  --slate-950: oklch(11% 0.060 268);
+  --pearl-50:    oklch(99% 0.006 268);
+  --pearl-100:   oklch(96% 0.012 268);
+  --pearl-200:   oklch(88% 0.030 268);
+  --pearl-300:   oklch(78% 0.060 268);
+  --pearl-muted: var(--slate-300);
+  --pearl-subtle: var(--slate-400);
+  --royal-ink:   oklch(99% 0.006 268);
+  --royal-ink-2: oklch(82% 0.040 268);
+  --royal-ink-3: oklch(64% 0.060 268);
+  --danger-500:  oklch(57% 0.22 25); /* audit H10: white label → 4.85:1 (was 60% = 4.28, fail) */
+  --info-500:    oklch(64% 0.17 268);
+  --warning-500: oklch(78% 0.13 86);
+  --font-sans:    var(--font-body);
+  --type-hero:      72px;
+  --type-display-1: 60px;
+  --type-display-2: 44px;
+  --type-h1:        32px;
+  --type-h2:        24px;
+  --type-h3:        20px;
+  --type-h4:        17px;
+  --type-body:      15px;
+  --type-small:     13px;
+  --type-micro:     11px;
+  --type-label:     9.5px;
+  --type-nano:      8.5px;
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px;
+  --sp-6: 24px; --sp-8: 32px; --sp-10: 40px; --sp-12: 48px; --sp-16: 64px;
+  --r-xs: 4px; --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-xl: 24px; --r-pill: 999px;
+  --tap-min:      40px;
+  --h-control-xs: 32px;   /* dense mouse-only admin inline controls (documented floor exception) */
+  --h-control-sm: 30px;   /* .btn-sm · Phase 3 → 40 */
+  --h-control-md: 38px;   /* .btn-md · Phase 3 → 44 (aligns with --h-input) */
+  --h-control-lg: 46px;   /* .btn-lg · Phase 3 → 48 */
+  --h-control-xl: 56px;   /* .btn-xl */
+  --h-input:      44px;   /* .input / .input-group — already at the tap floor */
+  --ease-micro:     var(--m-glide);    /* was cubic-bezier(0.2, 0.8, 0.2, 1) */
+  --ease-stage:     var(--m-glide);    /* was cubic-bezier(0.4, 0, 0.2, 1) — dup of --ease-sink */
+  --ease-celebrate: var(--m-settle);   /* was cubic-bezier(0.2, 0.8, 0.2, 1) — dup of --ease-micro */
+  --dur-micro:      var(--t-quick);    /* taps, focus rings, hover tints — was 120ms */
+  --bg:            oklch(13.5% 0.130 268); /* canvas — deep midnight indigo (was 15%) */
+  --bg-elevated:   oklch(22% 0.140 268);   /* elevated card — deliberately UNCHANGED */
+  --bg-overlay:    oklch(11% 0.110 268);   /* sunken / hover-down */
+  --bg-royal-soft: oklch(30% 0.165 268);   /* highlighted surface (modal, hero) */
+  --bg-inset:      oklch(11% 0.110 268);   /* sunken input / toggle track */
+  --bg-elevated2:  oklch(26% 0.150 268);   /* second-elevation card */
+  --panel:         oklch(20% 0.130 268);   /* nav / sidebar chrome */
+  --border:        oklch(36% 0.130 268);   /* crisper edge (was 34%) — Step 5 depth */
+  --border-strong: oklch(44% 0.150 268);
+  --border-royal:  oklch(56% 0.170 268);
+  --border-gold:   oklch(78% 0.13 80);
+  --border-control: oklch(52% 0.130 268);
+  --text:          oklch(98% 0.012 268);
+  --text-muted:    oklch(86% 0.040 268);
+  --text-subtle:   oklch(70% 0.080 268);
+  --text-faint:    oklch(62% 0.090 268);
+  --dial-neutral:  oklch(56% 0.030 268);
+  --live-400:      oklch(64% 0.20 25);
+  --gilt:          oklch(86% 0.13 82);
+  --brand-600: oklch(54% 0.165 262);
+  --brand-500: oklch(63% 0.180 262);
+  --brand-400: oklch(72% 0.160 262);
+  --brand-300: oklch(82% 0.120 262);
+  --brand-200: oklch(88% 0.090 262);
+  --brand-soft: oklch(34% 0.120 262);
+  --pill-active: oklch(40% 0.12 262 / 0.35);  /* one active filter/tab fill everywhere */
+  --gilt-strong:   oklch(80% 0.14 80);
+  --shadow-card:   0 1px 2px oklch(6% 0.06 268 / 0.55), 0 10px 28px -10px oklch(4% 0.04 268 / 0.70);
+  --shadow-royal:  0 14px 44px -14px oklch(4% 0.04 268 / 0.78);
+  --bg-base:        var(--bg);
+  --bg-subtle:      var(--bg-overlay);
+  --bg-sunken:      var(--bg-overlay);
+  --surface:        var(--bg-elevated);
+  --surface-hover:  oklch(48% 0.20 268);
+  --surface-pressed: oklch(40% 0.20 268);
+  --surface-selected: oklch(50% 0.20 268);
+  --surface-disabled: oklch(36% 0.16 268);
+  --border-subtle:  oklch(46% 0.18 268);
+  --border-focus:   var(--brand-500);
+  --border-divider: var(--border);
+  --text-primary:   var(--text);
+  --text-secondary: var(--text-muted);
+  --text-tertiary:  var(--text-muted);
+  --text-disabled:  var(--text-subtle);
+  --text-inverse:   oklch(15% 0.06 268);
+  --text-link:      var(--aqua-300);
+  --text-link-hover: var(--aqua-200);
+  --text-on-brand:  oklch(15% 0.06 268);
+  --accent-600: oklch(52% 0.100 195);
+  --accent-500: oklch(62% 0.110 195);
+  --accent-400: oklch(72% 0.110 195);
+  --accent-300: oklch(80% 0.095 195);
+  --accent-soft: oklch(32% 0.070 195);
+  --gold:               var(--gold-500);
+  --gold-hover:         var(--gold-400);
+  --gold-active:        var(--gold-600);
+  --gold-fg:            oklch(20% 0.05 80);
+  --royal:               var(--teal-500);
+  --royal-hover:         var(--teal-400);
+  --royal-active:        var(--teal-600);
+  --royal-fg:            var(--pearl-50);
+  --success:        var(--yes-500);
+  --success-fg:     var(--yes-200);
+  --warning:        var(--warning-500);
+  --warning-fg:     var(--gilt);
+  --danger:         var(--danger-500);
+  --danger-fg:      oklch(82% 0.16 25);
+  --info:           var(--info-500);
+  --info-fg:        oklch(86% 0.10 268);
+  --bet-win:    var(--yes-500);
+  --bet-lose:   var(--no-500);
+  --bet-draw:   var(--text-subtle);
+  --bet-pool:   var(--teal-400);
+  --bet-stake:  var(--teal-300);
+  --bet-jackpot: var(--gold-500);
+  --bet-streak: var(--gold-400);
+  --bet-hot:    var(--no-400);
+  --bet-cold:   var(--aqua-300);
+  --shadow-1: 0 1px 2px oklch(14% 0.08 268 / 0.40);
+  --shadow-2: 0 2px 6px oklch(14% 0.08 268 / 0.45);
+  --shadow-3: 0 4px 14px oklch(14% 0.08 268 / 0.50);
+  --shadow-4: 0 8px 28px -8px oklch(14% 0.08 268 / 0.55);
+  --shadow-5: 0 14px 44px -12px oklch(14% 0.08 268 / 0.62);
+  --shadow-modal:   0 30px 80px oklch(5% 0.05 268 / 0.65), inset 0 1px 0 oklch(100% 0 0 / 0.06);
+  --shadow-overlay: 0 24px 56px -16px oklch(5% 0.05 268 / 0.62), inset 0 1px 0 oklch(100% 0 0 / 0.06);
+  --shadow-overlay-up: 0 -24px 56px -16px oklch(5% 0.05 268 / 0.62), inset 0 1px 0 oklch(100% 0 0 / 0.06);
+  --glow-gold:    0 0 24px -4px color-mix(in oklab, var(--gold-500) 60%, transparent);
+  --glow-blue:    0 0 24px -4px color-mix(in oklab, var(--teal-400) 60%, transparent);
+  --glow-win:     0 0 32px -4px color-mix(in oklab, var(--yes-400) 60%, transparent);
+  --glow-jackpot: 0 0 60px -8px color-mix(in oklab, var(--gold-400) 70%, transparent);
+  --glow-selected: 0 0 12px -1px color-mix(in oklab, var(--brand-500) 45%, transparent);
+  --hero-mark-opacity: 0.10;
+  --hero-text-strong:  var(--pearl-50);
+  --hero-text-muted:   var(--pearl-300);
+  --hero-yes-accent:   var(--yes-300);
+  --hero-no-accent:    var(--no-300);
+  --hero-tag-yes:      var(--yes-300);
+  --bar-track:            oklch(50% 0.20 268);
+  --bar-track-border:     oklch(58% 0.17 268);
+  --bar-needle:           var(--gilt);
+  --bar-glow-yes:         0 0 18px oklch(58% 0.16 152 / 0.35);
+  --bar-glow-no:          0 0 18px oklch(60% 0.18 22 / 0.35);
+  --bar-label-yes:        oklch(94% 0.10 152);
+  --bar-label-yes-strong: var(--yes-200);
+  --bar-label-no:         oklch(94% 0.08 22);
+  --bar-label-no-strong:  var(--no-200);
+  --bar-label-tipping:    var(--text-muted);
+  --ease-glide:    var(--m-glide);     /* was cubic-bezier(0.22, 1, 0.36, 1)    */
+  --ease-arrive:   var(--m-settle);    /* was cubic-bezier(0.34, 1.56, 0.64, 1) */
+  --ease-sink:     var(--m-leave);     /* was cubic-bezier(0.4, 0, 0.2, 1)      */
+  --ease-conduct:  var(--m-breathe);   /* was cubic-bezier(0.65, 0, 0.35, 1) — byte-identical */
+  --dur-flick:  var(--t-quick);        /* was 120ms → 140ms */
+  --dur-quick:  var(--t-base);         /* was 220ms → 220ms, exact */
+  --dur-glide:  var(--t-move);         /* was 360ms → 340ms */
+  --dur-arrive: var(--t-stage);        /* was 520ms → 520ms, exact */
+  --dur-stage:  820ms;
+  --tw: 18px;
+  --w-console: 1600px;  /* admin console content column (sidebar sits outside)   */
+  --w-board:   1280px;  /* card grids — matches the top bar + footer chrome      */
+  --w-reading: 1080px;  /* detail / content / profile pages                      */
+  --w-form:     640px;  /* forms                                                 */
+  --w-receipt:  560px;  /* receipts + single-outcome confirmations               */
+  --w-auth:    1152px;  /* the auth split-pane ONLY — not a general tier         */
+  --w-field:    460px;  /* the measure of ONE control. Not a page tier.          */
+}

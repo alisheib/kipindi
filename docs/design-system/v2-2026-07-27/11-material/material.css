@@ -1,0 +1,301 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   50pick — THE MATERIAL SYSTEM · v1 · Claude Design · 2026-08-06
+   ─────────────────────────────────────────────────────────────────────────────
+   MERGE MAP (per INTAKE.md order — tokens land before any component):
+     §A  → law/tokens.css        tokens only, oklch() only
+     §B  → law/keyframes.css     6 new keyframes — none duplicates the 33
+     §C  → law/motion.css        utilities, beside the .m-* family
+     §D  → migration notes      comment only; delete once migrated
+
+   Everything here animates transform / opacity / filter / box-shadow only.
+   No new easing. No new duration. No new typeface. No new dependency.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+
+/* ═══ §A0 · THE LIGHT SOURCE — the one decision everything else inherits ═════
+
+   ONE lamp. It hangs high above the plane, tilted −14° — the same axis as the
+   NEEDLE in the mark (13.998° measured from the shipped artwork — brand-mark.ts;
+   tokenised as --m-tilt). Four consequences, applied consistently:
+
+     1. Every lit surface catches a soft, EVEN 1px inner ring (--edge-lit) —
+        never a one-sided line. The higher the rung, the brighter the ring;
+        the DIRECTION of the light lives in the wash, not in an edge.
+     2. Surface washes run at 166deg (180° − 14°): light enters high-left.
+     3. Speculars centre at x ≈ 42% (50% − tan14° ≈ 8pt left of centre).
+     4. Shadows fall straight DOWN, soft and ambient. The tilt lives in the
+        light, never in the gravity — a skewed shadow reads as a mistake.
+
+   ⚠ FLAGGED, per D-5 "say so and stop": `--shadow-card-top` is consumed by
+   `.mcardp` (law/keyframes.css) but is NOT defined in law/tokens.css as
+   shipped to us. §A2 defines it (as the alias of --edge-lit). If it already
+   exists in globals.css, keep the existing definition and delete ours.        */
+
+
+/* ═══ §A · TOKENS → merge into law/tokens.css ═══════════════════════════════ */
+:root {
+  /* §A1 · Light — edge rings carry a 4% royal tint (268), never pure white:
+     chalkiness on OLED (designer R2 Q7). Page field dropped 10%→6.5% for
+     depth against gilt; overrides law/tokens.css --bg on merge.               */
+  --light-angle: 166deg;                                /* 180° − 14° tilt   */
+  --bg: oklch(6.5% 0.05 268);
+  --edge-lit:        inset 0 0 0 1px oklch(96% 0.04 268 / 0.055);
+  --edge-lit-strong: inset 0 0 0 1px oklch(96% 0.04 268 / 0.09);
+  --edge-shade:      inset 0 -1px 0 oklch(6% 0.03 268 / 0.30); /* inset wells only */
+  --shadow-card-top: var(--edge-lit);                   /* see §A0 flag       */
+
+  /* §A1 · The wash each rung catches (replaces flat --bg-elevated fills).
+     Lightness spread is deliberately small: material, not decoration.        */
+  --wash-raised: linear-gradient(var(--light-angle), oklch(24% 0.145 268) 0%, oklch(20.5% 0.132 268) 100%);
+  --wash-float:  linear-gradient(var(--light-angle), oklch(26.5% 0.165 268) 0%, oklch(21% 0.150 268) 100%); /* +0.015 chroma — rung 4 anti-mud on OLED (R2 Q7) */
+  --wash-modal:  linear-gradient(var(--light-angle), oklch(28% 0.155 268) 0%, oklch(21.5% 0.138 268) 100%);
+  --wash-inset:  linear-gradient(var(--light-angle), oklch(10% 0.100 268) 0%, oklch(12.5% 0.115 268) 100%);
+
+  /* §A2 · THE ELEVATION LADDER — five rungs. A surface picks a rung; it never
+     composes its own shadow again. Rung = wash + edge + ring + cast.
+       0 flat    page plane: form rows, pollers — NO material (correctly)
+       1 raised  cards: market, updown, position, stat
+       2 float   dropdown · popover · tooltip · select · avatar-menu
+       3 modal   modal · confirm dialog · sheet (+ scrim, --m-blur-behind)
+       4 toast   highest physical object in the product                        */
+  --elev-flat:   none;
+  --elev-raised: var(--edge-lit),
+                 0 1px 2px oklch(6% 0.06 268 / 0.55),
+                 0 10px 28px -10px oklch(4% 0.04 268 / 0.70);
+  --elev-float:  var(--edge-lit-strong),
+                 0 0 0 1px oklch(42% 0.15 268 / 0.75),
+                 0 8px 28px -8px oklch(5% 0.05 268 / 0.55),
+                 0 24px 56px -16px oklch(5% 0.05 268 / 0.62);
+  --elev-modal:  var(--edge-lit-strong),
+                 0 8px 28px -8px oklch(5% 0.05 268 / 0.50),
+                 0 30px 80px oklch(5% 0.05 268 / 0.65);
+  --elev-toast:  var(--edge-lit-strong),
+                 0 0 0 1px oklch(46% 0.16 268 / 0.85),
+                 0 4px 14px oklch(14% 0.08 268 / 0.50),
+                 0 14px 44px -12px oklch(5% 0.05 268 / 0.62);
+  /* hover states of rung 1 (used with .m-raise — lift is still --m-lift)      */
+  --elev-raised-hover: var(--edge-lit-strong),
+                 0 2px 4px oklch(6% 0.06 268 / 0.55),
+                 0 14px 34px -10px oklch(4% 0.04 268 / 0.75);
+
+  /* §A3 · ONE GOLD — every shade re-derived from the trademark's #E3BC66
+     (oklch ≈ 79% · 0.095 · 84) so surface gold and brand gold are the same
+     metal (designer R2 Q6). Ladder: highlight 91 · body 79→72 · deep 65,
+     all at hue 84. Earned money ONLY (unchanged law).                         */
+  --gilt-metal: linear-gradient(var(--light-angle),
+                 oklch(91% 0.075 84) 0%, oklch(79% 0.095 84) 48%,
+                 oklch(72% 0.095 84) 100%);
+  --gilt-metal-edge: inset 0 0 0 1px oklch(95% 0.045 84 / 0.35);
+  /* the moving specular — one soft band of light, swept by `shimmer-gilt`     */
+  --gilt-sheen: linear-gradient(104deg, transparent 40%, oklch(99% 0.02 95 / 0.22) 50%, transparent 60%);
+  /* soft radial bloom — the replacement for drawn rays. Never strokes.        */
+  --gilt-bloom: radial-gradient(closest-side, color-mix(in oklab, var(--gold-400) 18%, transparent), transparent 72%);
+  /* money-amount ink: struck, not letter-spaced. Use with .gilt-ink.          */
+  --gilt-ink: linear-gradient(var(--light-angle), oklch(91% 0.075 84) 0%, oklch(84% 0.095 84) 50%, oklch(77% 0.100 84) 100%);
+  /* fine milling for the seal rim — body 79 against deep 65 (the R2 ladder)   */
+  --gilt-reeding: repeating-conic-gradient(from 166deg,
+                 oklch(79% 0.095 84) 0deg 2.5deg, oklch(65% 0.085 84) 2.5deg 5deg);
+}
+
+
+/* ═══ §B · KEYFRAMES → merge into law/keyframes.css ══════════════════════════
+   Six new names. `seal-impress`, `seal-place`, `badge-seal-rays`,
+   `win-aura-breathe`, `shimmer-gilt` and `count-up-flash` are REUSED from the
+   existing 33, not redefined. `badge-seal-rays` (rotate 0→140° + fade) now
+   drives a specular sweep, not literal rays — the named motion, finally built. */
+
+/* icon arrival — a glyph settles onto its baseline on the tilt axis.
+   trigger: mount / data arrival · exit: parent's (a glyph never exits alone)
+   guard: never on hover — icons don't perform, they respond.                  */
+@keyframes glyph-settle {
+  from { opacity: 0; transform: translateY(2px) rotate(-4deg); }
+  to   { opacity: 1; transform: none; }
+}
+/* directional emphasis — the up/down arrows nudge along their own meaning.
+   trigger: price/state CHANGE only · guard: never loops, never on mount       */
+@keyframes glyph-nudge-up   { 0% { transform: none; } 38% { transform: translateY(-3px); } 100% { transform: none; } }
+@keyframes glyph-nudge-down { 0% { transform: none; } 38% { transform: translateY(3px); }  100% { transform: none; } }
+/* state morph, outgoing half — pairs with glyph-swap-in on the incoming glyph.
+   trigger: state change (bell→ringing, lock→unlock, watch→watching)           */
+@keyframes glyph-swap-out { to { opacity: 0; transform: scale(0.82); } }
+@keyframes glyph-swap-in  { from { opacity: 0; transform: scale(0.82) rotate(-8deg); } to { opacity: 1; transform: none; } }
+/* the bell rings — decaying pivot, origin top-center. trigger: new notification */
+@keyframes glyph-ring {
+  0% { transform: rotate(0); } 22% { transform: rotate(11deg); }
+  46% { transform: rotate(-9deg); } 68% { transform: rotate(5deg); }
+  86% { transform: rotate(-2deg); } 100% { transform: rotate(0); }
+}
+/* the mark flips ON ITS OWN NEEDLE — the disc rotates about the −14° axis,
+   the needle as hinge. trigger: mount or hover on the LOGO ONLY (identity may
+   perform; glyphs may not) · never loops.
+   ⚠ −14deg written literally: like m-axis-sweep, a transform-list keyframe
+   cannot reliably take var(--m-tilt) in every engine — if the axis moves,
+   this moves with it.                                                         */
+@keyframes mark-flip {
+  from { transform: perspective(320px) rotate(-14deg) rotateY(0)      rotate(14deg); }
+  48%  { filter: brightness(1); }
+  52%  { filter: brightness(1.35); }   /* specular flash at the hub, mid-flip */
+  60%  { filter: brightness(1); }
+  to   { transform: perspective(320px) rotate(-14deg) rotateY(360deg) rotate(14deg); }
+}
+/* the impress recoil — a 2px landing kick on the impact frame (R2 Q4). Uses
+   the independent `translate` property so it composes with seal-impress's
+   transform on the same element.                                              */
+@keyframes seal-recoil { from { translate: 0 2px; } to { translate: 0 0; } }
+/* the needle sweeps to the winning vector before the flip — win only (R2 Q2) */
+@keyframes needle-sweep { from { transform: rotate(-26deg); } to { transform: rotate(0deg); } }
+/* the loss: the needle settles crisply AGAINST the position — one decisive
+   deflection into the loss angle, then stillness (M7). No color, no shake.    */
+@keyframes needle-settle { from { transform: rotate(0deg); } to { transform: rotate(16deg); } }
+/* pending (round settling): ±2° tilt pulse on the needle hinge — a DELIBERATE
+   ambient addition (R2 Q9); breathing cadence, never a spin.                  */
+@keyframes mark-pending-tilt {
+  0%, 100% { transform: perspective(320px) rotate(-14deg) rotateY(2deg)  rotate(14deg); }
+  50%      { transform: perspective(320px) rotate(-14deg) rotateY(-2deg) rotate(14deg); }
+}
+/* crest arrival — the identity settles into place; smaller cousin of
+   seal-impress (which stays reserved for settlement/celebration mass).
+   trigger: mount on podium/profile/menu · exit: parent's                      */
+@keyframes crest-settle {
+  from { opacity: 0; transform: scale(1.14); filter: blur(2px); }
+  to   { opacity: 1; transform: none; filter: none; }
+}
+
+
+/* ═══ §C · UTILITIES → merge into law/motion.css ═════════════════════════════
+   Every rule states duration before easing (B5). Reduced-motion branches at
+   the end of this section — every animation has one, written out.             */
+
+/* — the ladder, as classes. Pick a rung; never re-type a shadow (B10). —      */
+.mat-raised { background: var(--wash-raised); border: 1px solid var(--border);        box-shadow: var(--elev-raised); }
+.mat-float  { background: var(--wash-float);  border: 1px solid var(--border-strong); box-shadow: var(--elev-float);  }
+.mat-modal  { background: var(--wash-modal);  border: 1px solid var(--border-strong); box-shadow: var(--elev-modal);  }
+.mat-toast  { background: var(--wash-float);  border: 1px solid var(--border-strong); box-shadow: var(--elev-toast);  }
+.mat-inset  { background: var(--wash-inset);  border: 1px solid var(--border);        box-shadow: var(--edge-shade);  }
+
+/* rung-1 hover (compose with .m-raise for the lift; this only swaps material)
+   trigger: hover · exit: same transition back · cost: box-shadow, border      */
+.mat-raised-i { transition: box-shadow var(--t-quick) linear, border-color var(--t-quick) linear, transform var(--t-quick) var(--m-glide); }
+.mat-raised-i:hover  { box-shadow: var(--elev-raised-hover); border-color: var(--border-strong); transform: translateY(var(--m-lift)); }
+.mat-raised-i:active { transform: translateY(0) scale(var(--m-press)); transition-duration: var(--t-flick); }
+
+/* variant edge-light for toasts / callouts — colour arrives as LIT GLASS, not
+   as a flat tint: an even tinted inner ring + a breath of the hue in the wash.
+   Never a one-sided line. `factual` deliberately takes none of these — it is
+   the material distinction between "here is information" (plain rung 4) and a
+   coloured state.                                                             */
+.mat-edge-yes    { box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--yes-400) 32%, transparent),    var(--elev-toast); }
+.mat-edge-no     { box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--no-400) 32%, transparent),     var(--elev-toast); }
+.mat-edge-warn   { box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--warning-500) 32%, transparent), var(--elev-toast); }
+/* earned money ONLY — the payout toast and the celebration. Never decoration. */
+.mat-edge-gilt   { box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--gilt) 40%, transparent), var(--elev-toast); }
+
+/* — struck gilt: the control (Continue / Deposit / earned-money CTA) —
+   trigger: hover sweeps the specular once; press compresses; focus rings.
+   cost: transform, box-shadow, filter, background-position.
+   must NOT: loop the sheen, appear on non-money surfaces.                     */
+.gilt-metal {
+  background-image: var(--gilt-sheen), var(--gilt-metal);
+  background-size: 250% 100%, 100% 100%;
+  background-position: 200% 0, 0 0;
+  color: var(--gold-fg);
+  box-shadow: var(--gilt-metal-edge), 0 1px 2px oklch(6% 0.06 268 / 0.55), 0 6px 18px -6px color-mix(in oklab, var(--gold-500) 28%, transparent);
+  transition: transform var(--t-quick) var(--m-glide), box-shadow var(--t-quick) linear, filter var(--t-flick) linear;
+}
+.gilt-metal:hover {
+  transform: translateY(var(--m-lift));
+  box-shadow: var(--gilt-metal-edge), 0 2px 4px oklch(6% 0.06 268 / 0.55), 0 10px 24px -6px color-mix(in oklab, var(--gold-500) 38%, transparent);
+  animation: shimmer-gilt var(--t-stage) var(--m-glide) 1;   /* existing keyframe */
+}
+.gilt-metal:active { transform: translateY(0) scale(var(--m-press)); filter: brightness(0.94); transition-duration: var(--t-flick); }
+.gilt-metal:focus-visible { outline: none; box-shadow: var(--gilt-metal-edge), 0 0 0 3px oklch(63% 0.18 262 / 0.22), 0 0 0 1px var(--brand-500); }
+.gilt-metal:disabled { filter: grayscale(0.45) brightness(0.8); opacity: 0.6; box-shadow: var(--gilt-metal-edge); }
+
+/* — money-amount ink: struck metal as type. NEVER letter-spaced; the amount is
+   money, not a serial number. Always --font-mono + tabular-nums (D-0).        */
+.gilt-ink {
+  background: var(--gilt-ink);
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 16px oklch(80% 0.14 80 / 0.16));
+}
+
+/* — THE SEAL — arrival vocabulary (the SVG/markup recipe lives in the spec).
+   `seal-impress` lands the medal with mass + a 60ms recoil kick; the needle
+   sweeps to the winning vector; the mark flips on its needle; ONE band of
+   light. The bloom is REMOVED (R2 Q4) — radial glow dilutes the financial
+   texture. Exits with its panel (.m-out) — the seal never leaves alone.       */
+.seal-arrive { animation: seal-impress var(--t-max) var(--m-settle) both, seal-recoil 60ms linear var(--t-max); }
+.seal-sheen  { animation: badge-seal-rays var(--t-max) var(--m-glide) calc(2 * var(--t-max) + 500ms) 1 both; pointer-events: none; } /* existing · the closing beat, after the flip */
+/* the micro-seal on bet commit reuses seal-place (existing) at --t-stage      */
+.seal-commit { animation: seal-place var(--t-stage) var(--m-settle) both; }
+
+/* — icon motion primitives. Glyph #186 inherits by taking a class; no glyph
+   carries bespoke motion. All are single-shot; loops stay banned.             */
+.g-settle     { animation: glyph-settle var(--t-base) var(--m-settle) both; }
+.g-nudge-up   { animation: glyph-nudge-up var(--t-move) var(--m-settle); }
+.g-nudge-down { animation: glyph-nudge-down var(--t-move) var(--m-settle); }
+.g-ring       { animation: glyph-ring var(--t-max) var(--m-pivot); transform-origin: 50% 15%; }
+.g-swap       { position: relative; display: inline-grid; }
+.g-swap > *   { grid-area: 1 / 1; }
+.g-swap-out   { animation: glyph-swap-out var(--t-quick) var(--m-leave) both; }
+.g-swap-in    { animation: glyph-swap-in var(--t-base) var(--m-settle) both; }
+
+/* — the mark: flips once on mount, once per hover. Logo only — never a glyph.
+   --t-move (430ms) per the designer's 450–500ms ask — nearest rung, no new
+   duration token. .mark-pending is the settling-round ambient.                */
+.mark-flip   { animation: mark-flip var(--t-move) var(--m-settle) 1 both; }
+.mark-flip-i:hover { animation: mark-flip var(--t-move) var(--m-settle) 1; }
+.needle-sweep { animation: needle-sweep var(--t-stage) var(--m-settle) 600ms both; transform-box: view-box; transform-origin: 50% 50%; }
+.needle-settle-loss { animation: needle-settle var(--t-move) var(--m-settle) 400ms both; transform-box: view-box; transform-origin: 50% 50%; }
+.mark-pending { animation: mark-pending-tilt 1240ms var(--m-breathe) infinite; }
+
+/* — identity arrival + tier-ring reveal. Ring is a box-shadow (existing
+   convention), so the reveal is an opacity fade on a delay: crest first,
+   honours second.                                                             */
+.crest-arrive { animation: crest-settle var(--t-move) var(--m-settle) both; }
+.crest-ring-reveal { animation: m-scrim-in var(--t-base) linear var(--t-move) both; } /* existing keyframe */
+
+/* — REDUCED MOTION — every branch written out. State must survive: end frames
+   render, nothing is invisible, the bloom rests dim but present.              */
+@media (prefers-reduced-motion: reduce) {
+  .g-settle, .g-nudge-up, .g-nudge-down, .g-ring, .g-swap-in, .g-swap-out,
+  .crest-arrive, .crest-ring-reveal, .seal-arrive, .seal-commit, .mark-flip,
+  .needle-sweep, .mark-pending, .needle-settle-loss
+                 { animation: none !important; opacity: 1; transform: none; filter: none; }
+  .mark-flip-i:hover { animation: none !important; }
+  .seal-sheen    { animation: none !important; opacity: 0; }
+  .gilt-metal:hover { animation: none !important; }
+  .mat-raised-i, .gilt-metal { transition-duration: 0.01ms !important; }
+}
+html.kp-reduce-motion .g-settle, html.kp-reduce-motion .g-nudge-up,
+html.kp-reduce-motion .g-nudge-down, html.kp-reduce-motion .g-ring,
+html.kp-reduce-motion .g-swap-in, html.kp-reduce-motion .g-swap-out,
+html.kp-reduce-motion .crest-arrive, html.kp-reduce-motion .crest-ring-reveal,
+html.kp-reduce-motion .seal-arrive, html.kp-reduce-motion .seal-commit,
+html.kp-reduce-motion .mark-flip, html.kp-reduce-motion .mark-flip-i:hover,
+html.kp-reduce-motion .needle-sweep, html.kp-reduce-motion .mark-pending,
+html.kp-reduce-motion .needle-settle-loss
+                 { animation: none !important; opacity: 1; transform: none; filter: none; }
+html.kp-reduce-motion .seal-sheen { animation: none !important; opacity: 0; }
+
+
+/* ═══ §D · MIGRATION MAP — the 52% off-ladder, mapped. Comment only. ═════════
+
+   Rule of thumb for any timing not listed: pick the nearest rung DOWN.
+     ≤100ms → --t-flick · ≤180 → --t-quick · ≤280 → --t-base
+     ≤430 → --t-move · ≤570 → --t-stage · >570 → --t-max (settlement/celebration
+     ONLY; anything else clamps to --t-stage).
+
+   Measured in the shipped files:
+     kp-rise           420ms cubic-bezier(.2,.8,.2,1) → var(--t-move) var(--m-settle)
+     odds-flash-up/dn  600ms var(--ease-sink)         → var(--t-stage) var(--m-leave)
+     .mcardp           transition .2s ease-out        → var(--t-base) var(--m-glide)
+     .tooltip-popover  var(--dur-quick)               → already bridged; keep
+     toast-anim        var(--dur-arrive)              → already bridged; keep
+     --dur-stage       820ms                          → countdown ring only; frozen
+   AMBIENT LOOPS are outside the ladder BY DESIGN — a frozen list, may only
+   shrink: m-live-pip 2600ms · m-urgent 1000ms · m-aura 1240ms · mark-breathe
+   6s · m-ambient 64s · skeleton sweeps 1400/1600ms · mark-pending-tilt 1240ms
+   (added deliberately, designer R2 Q9 — the settling-round anticipation).
+   Nothing else joins this list without a token being added deliberately.      */
