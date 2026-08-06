@@ -5468,6 +5468,30 @@ so a tick-floor margin on crypto measures the market, not the feed.
 
 ## 6b. NEXT SESSION — start here
 
+> ### ⛔ HOW TO READ THIS SECTION — it is 29 handoffs deep and only the FIRST is current
+>
+> §6b is append-at-the-top and **never pruned**, because each block carries the reasoning that
+> produced its fixes and that reasoning stays useful. The cost is that **every block below the
+> first one describes a world that no longer exists** — and several of them are written in the
+> present tense with phrases like *"STILL OPEN BEFORE A PUBLIC LAUNCH"*. One such list was
+> **80% closed** when session 31 found it still reading as live.
+>
+> **The rule: only the topmost `RESUME AT` block is current truth.** Everything below it is
+> evidence, not instruction. If an older block contradicts the top one, the top one wins — and
+> if you act on an older block, you are re-doing finished work.
+>
+> **CURRENT TRUTH, 2026-08-06 (session 31):**
+> - **Up & Down design** → `docs/UPDOWN-FINAL-DESIGN.md`. Settled, measured, and it names what
+>   must NOT be re-opened.
+> - **Money** → 0 stranded · 0 open Up & Down positions · **0 winners ever underpaid** · 0
+>   negative wallets (F-2).
+> - **Feed** → **0 FAILED readings ever**, 0 of 35 voids feed-caused (F-3). Twelve Data is not
+>   a problem to chase.
+> - **Assets live** → **BTC and XAU only**. ETH and SOL are **disabled**.
+> - **The open product problem** → **one-sidedness**: 15 of 35 staked rounds refunded because
+>   nobody took the other side.
+> - **Fleet** → 20 accounts, TZS 1,598,963, **alive on purpose** — the visual sweep needs it.
+
 ### 🟢 Laptop A, session 31 (2026-08-06) — ⭐ THE FEED WAS NEVER THE PROBLEM, AND THE FINAL UP & DOWN DESIGN IS NOW WRITTEN FROM MEASUREMENTS
 
 Ali asked three questions and each one moved the plan. **Read `docs/UPDOWN-FINAL-DESIGN.md` first** — it is the settled design, and everything below is the evidence behind it.
@@ -5953,7 +5977,17 @@ bar). Comms gates — `email-stress`, `push`, `deposit-notifications`, `auth-ema
 ⚠️ `test:all` only exceeded a 180s harness cap; `test:trilingual` recorded a **false red under
 parallel load** and passes 36/36 alone — re-run a red gate on its own before believing it.
 
-⛔ **STILL OPEN BEFORE A PUBLIC LAUNCH — read these, they are the honest list:**
+⛔⛔ **SUPERSEDED 2026-08-06 (session 31) — THREE OF THESE FOUR ARE CLOSED. Do not read the list
+below as current.** ① **E-76 is CLOSED** — the objection was upheld VOID and all 8 positions
+refunded in full (TZS 59,450, exact), session 26. ② **SOL is DISABLED on production**, so its
+short-duration risk is **not live** (F-2); the hardcoded `cautionBelowMinutes` remains an open
+question for Ali, but nothing is exposed to players. ③ **E-83's soak was run** in session 26 and
+`source-failed` stayed flat; F-3 now shows **0 FAILED readings ever** and **0 of 35 voids
+feed-caused**. ④ **The unhappy paths were driven** in session 26 (§6ar) — only `market-shut gold`
+remains, and it is unreachable outside Fri 21:00 → Sun 22:00 UTC. **The current honest list is the
+RESUME AT (session 32) block at the top of this section, and `docs/UPDOWN-FINAL-DESIGN.md`.**
+
+⛔ *(historical, session 25)* **STILL OPEN BEFORE A PUBLIC LAUNCH — read these, they are the honest list:**
 ① **E-76** — one unruled objection still freezes **TZS 59,450**. Ali confirmed the four holders
 are the admin/testing team, so it can simply be actioned: `/admin/objections` → the EWURA row →
 **VOID**. ② **SOL is not safe at short durations** — its median bar lag is **+86s** against a

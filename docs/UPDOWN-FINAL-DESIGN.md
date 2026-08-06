@@ -133,6 +133,79 @@ both over-claims from a population that was not the one that mattered.
 
 ---
 
+## 3b. ⚠️ Gaps found on a second pass — including one in this document's own §1
+
+Ali asked whether §1–§3 seals it. It does not, and the honest list is short but load-bearing.
+Each of these would have surfaced later as a defect; they are cheaper as design.
+
+### G1 · "Tick floor, always" is a BTC conclusion, and gold does not share it
+
+§1's D1 says the band needs no per-asset tuning. **That was measured on Bitcoin and it does not
+generalise.** Consecutive-reading headroom above each asset's own floor:
+
+| asset | floor | median \|move\| | **headroom** | worst case (p10) | clears the floor |
+|---|---|---|---|---|---|
+| **BTC** | $0.02 | $47.98 | **2,399×** | **399×** | 99% |
+| **XAU** | $0.40 | $3.98 | **10×** | **2.1×** | **96%** |
+
+⛔ Gold has **240× less headroom than Bitcoin**, and that is at an 18-minute cadence. Scale to a
+3-minute round and its p10 move (~$0.34) falls **below its own $0.40 floor** — so a material share
+of short gold rounds would refund `no-move` *even at the tick floor*. Bitcoin cannot reproduce this
+because 399× of worst-case headroom absorbs any duration.
+
+⭐ **The missing control, and the platform is one axis short of it.** `symbolReadiness` /
+`validateSymbolDuration` already gate a pairing on whether the asset can be **priced in time**
+(F-1, E-84). Nothing gates on whether it **moves enough to decide**. Those are two different
+failure modes with the same symptom, and the second is unguarded. **The duration gate needs a
+second axis: measured `p10 |move| ÷ tick floor` for that asset at that length**, refusing or warning
+below a threshold. The data to compute it already exists in `UpDownObservation` — this is the same
+build as D1's advisory, one column wider.
+
+### G2 · D2 and D3 fight each other, and the loser is the player's trust
+
+If the house seeds the thin side (D3) and that seed **shares in the winnings**, then the pool-implied
+multiplier a player saw while betting (D2) is **higher than what they are actually paid** — the house
+diluted it after the fact. ⛔ **That is a false money statement on the exact surface D2 exists to make
+honest**, and it is the E-39/E-65 class this campaign has already paid for three times.
+
+⭐ **The resolving rule, and it must be stated before D3 is built: the house seed is returned at
+stake and takes no profit.** It exists to give a round a counterparty, not to compete with players
+for the pot. A seed that wins gets its stake back; a seed that loses funds the winners. This keeps
+D2's number true and makes the float's cost explicit and boundable, which is also what the
+accountant needs.
+
+### G3 · The multiplier moves, and the copy has to own that
+
+Pari-mutuel odds change with every subsequent bet. A player sees `× 4.2`, taps, and three more
+join the thin side — their real return is lower. ⛔ It cannot be locked without abandoning
+pari-mutuel. **So the number must be labelled as live and moving**, and the product must keep
+doing what it already does right: at the **LOCK** the pool freezes and `myExactPayout` replaces the
+estimate with arithmetic. D2 is an honest *estimate* upgrade, never a promise — and the existing
+lock behaviour is what makes that safe.
+
+### G4 · The adversarial case D3 creates
+
+Once the house reliably seeds the thin side, **a player who always takes the fat side is playing
+the house at roughly even odds, minus fee**. That is not a bug — it is what a market maker is —
+but it means the per-round and per-day exposure caps are not hygiene, they are **the only control**.
+They must be sized as a loss limit, not as a convenience, and house exposure needs its own alarm.
+
+### G5 · RG has not been considered in any of this
+
+A fast-cycling game, a celebration popup, and a newly-prominent `× 4.2` on the thin side together
+read differently from any one of them alone. ⭐ **The multiplier is information, not promotion:**
+no colour escalation, no size jump, no "big win" framing, and it must not out-weigh the stake
+control beside it. The existing rule stands — the win celebrates, **the loss is not its mirror**.
+
+### G6 · A missed celebration is never re-offered
+
+`sessionStorage` marks a round announced, so a player on another tab when their round settles
+never sees the moment. **Recoverable** — the round page, the history and the wallet all carry the
+result — so this is noted, not filed. Worth a decision only if the moment is ever considered
+load-bearing.
+
+---
+
 ## 4. What we deliberately do NOT do
 
 - **Do not widen the band to "make rounds decide".** It is backwards: the band is what makes a
