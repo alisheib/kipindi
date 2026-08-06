@@ -126,3 +126,8 @@ s3?-*.png
 # The AUTHORED parts are versioned in docs/design-brief/; this is the assembled package.
 /design-brief/
 /design-brief.zip
+
+# The identity pack is zipped for handoff; the folder beside it is the source.
+docs/design-brief/*.zip
+design-brief-ALL.txt
+design-brief-lite/
