@@ -98,22 +98,62 @@ for (const kind of ["top", "left"]) {
 const fmt = (k) => `${k} peaks at depth ${moved[k].peak} (${moved[k].value > 0 ? "+" : ""}${moved[k].value.toFixed(2)})`;
 console.log(`  → ${fmt("top")} · ${fmt("left")}`);
 
+/**
+ * ⭐ AND NOW THE QUESTION THAT ACTUALLY MATTERS, WHICH THE DELTA CANNOT ANSWER.
+ *
+ * "Did both edges CHANGE" is a proxy for "is the light even", and it is a proxy
+ * that breaks in a specific, predictable case: when the old one-sided line and
+ * the new even ring are near-identical in LUMINANCE. `.glass-panel` is exactly
+ * that — pure white at 8% replaced by royal `oklch(96% 0.04 268)` at 5.5% — so
+ * its top edge reads −0.06 (nothing) while its left gains +5.89. The delta rule
+ * called that a one-sided lamp. It is the opposite: it is a ring so well matched
+ * that only the side which had NO light shows a difference.
+ *
+ * So evenness is measured on the AFTER image directly: is the ring band brighter
+ * than the surface it sits on, on BOTH edges. ⛔ The band is LOCATED from the
+ * delta rather than assumed — the first version of this file assumed rows 0-3 and
+ * measured the BORDER, which is uniform on all four sides and therefore always
+ * "even". A band that is found cannot make that mistake.
+ */
+const bandFrom = (edge) => {
+  const pb = profile(B, edge), pa = profile(A, edge);
+  const d = pa.map((v, i) => Math.abs(v - pb[i]));
+  const peak = d.slice(0, 10).reduce((m, v, i) => (v > d[m] ? i : m), 0);
+  return [Math.max(0, peak - 1), Math.min(DEPTH - 1, peak + 2)];
+};
+// The LEFT edge is where a new ring is unambiguous: a one-sided TOP lamp leaves it
+// untouched, so whatever moved there is the ring.
+const [lo, hi] = bandFrom("left");
+const lit = {};
+for (const kind of ["top", "left"]) {
+  const p = profile(A, kind);
+  const interior = median(p.slice(11));
+  let best = -Infinity;
+  for (let d = lo; d <= hi; d++) best = Math.max(best, (p[d] - interior) * 1000);
+  lit[kind] = best;
+}
+console.log(`  → AFTER, ring band depth ${lo}-${hi} above its own surface: ` +
+  `top ${lit.top.toFixed(2)} · left ${lit.left.toFixed(2)}  (×1000 luminance)`);
+
 // The verdict is about EVENNESS, which is the whole of M1's geometry half: a
 // one-sided lamp changes the top and leaves the left alone. Anything below 0.1
 // (×1000 luminance) is noise on an 8-bit raster — a full 8-bit step at this
 // luminance is about 0.6.
+// Anything below 0.1 (×1000 luminance) is noise on an 8-bit raster — a full 8-bit
+// step at this luminance is about 0.6.
 const LIT = 0.1;
-const lit = { top: Math.abs(moved.top.value) >= LIT, left: Math.abs(moved.left.value) >= LIT };
-const ok = lit.top && lit.left;
-// ⛔ THE VERDICT NAMES WHAT IT SAW. "One edge moved and the other did not" printed
-// over a pair where NEITHER moved is a check describing a defect it did not
-// observe — and a run whose failure text is wrong gets disbelieved on the day it
-// is right. Three outcomes, three sentences.
+const changed = Math.abs(moved.top.value) >= LIT || Math.abs(moved.left.value) >= LIT;
+const even = lit.top >= LIT && lit.left >= LIT;
+const ok = changed && even;
+// ⛔ THE VERDICT NAMES WHAT IT SAW. A failure sentence describing a defect the run
+// did not observe gets the run disbelieved on the day it is right. Three outcomes,
+// three sentences — and the "nothing changed" case is separated from the
+// "one-sided" case, because they call for opposite responses.
 console.log(
   ok
-    ? "  ✅ BOTH edges moved — the light wraps rather than sitting on one side"
-    : !lit.top && !lit.left
-      ? "  ⛔ NOTHING moved on either edge — these two images are the same surface; the atom changed no light here"
-      : `  ⛔ only the ${lit.top ? "TOP" : "LEFT"} edge moved: that is a one-sided lamp, which is what M1 bans`,
+    ? `  ✅ EVEN — the AFTER ring is lit on both edges (top ${lit.top.toFixed(2)}, left ${lit.left.toFixed(2)}), and the pair differs`
+    : !changed
+      ? "  ⛔ NOTHING changed on either edge — these two images are the same surface; the atom moved no light here"
+      : `  ⛔ the AFTER ring is lit on only one edge (top ${lit.top.toFixed(2)}, left ${lit.left.toFixed(2)}) — a one-sided lamp is what M1 bans`,
 );
 process.exit(ok ? 0 : 1);
