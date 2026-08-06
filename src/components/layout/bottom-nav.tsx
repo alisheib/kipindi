@@ -75,7 +75,7 @@ export function BottomNav({ isAuthed = false }: { isAuthed?: boolean }) {
                 style={{
                   color: on ? "var(--accent-400)" : "var(--text-subtle)",
                   textDecoration: "none",
-                  transition: "color 150ms ease-out, transform 100ms ease-out",
+                  transition: "color var(--t-quick) ease-out, transform var(--t-flick) ease-out",
                 }}
               >
                 <span

@@ -83,7 +83,7 @@ export function Checkbox({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          transition: "all .15s cubic-bezier(0.2, 0.8, 0.2, 1)",
+          transition: "all var(--t-quick) var(--m-glide)",
           transform: on ? "scale(1)" : "scale(1)",
           boxShadow: on ? "0 0 0 3px oklch(63% 0.18 262 / 0.15)" : "none",
           flexShrink: 0,

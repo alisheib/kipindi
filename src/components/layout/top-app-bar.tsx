@@ -247,7 +247,7 @@ function NavLink({ it, pathname }: { it: NavItem; pathname: string }) {
         borderRadius: accent ? "var(--r-pill)" : "var(--r-sm)",
         fontSize: 13.5,
         fontWeight: active || accent ? 600 : 500,
-        transition: "color 150ms ease-out, background 150ms ease-out, box-shadow 150ms ease-out, font-weight 0ms",
+        transition: "color var(--t-quick) ease-out, background var(--t-quick) ease-out, box-shadow var(--t-quick) ease-out, font-weight 0ms",
         ...(accent
           ? accentStyle
           : {

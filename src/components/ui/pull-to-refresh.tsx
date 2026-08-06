@@ -85,7 +85,7 @@ export function PullToRefresh() {
       style={{
         top: Math.max(8, pullY - 20),
         opacity: refreshing ? 1 : Math.min(1, pullY / THRESHOLD),
-        transition: refreshing ? "none" : "opacity 100ms",
+        transition: refreshing ? "none" : "opacity var(--t-flick)",
       }}
     >
       <div className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-bg-elevated shadow-lg">

@@ -277,7 +277,7 @@ export function OperationResultModal({
               background: tone.bg,
               border: `2px solid ${tone.brd}`,
               boxShadow: tone.shadow,
-              animation: "orm-pop 360ms cubic-bezier(.2,1.4,.4,1)",
+              animation: "orm-pop var(--t-move) var(--m-pivot)",
             }}
             aria-hidden
           >

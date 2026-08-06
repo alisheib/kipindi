@@ -56,7 +56,7 @@ export function LanguageToggle() {
               border: "none",
               fontFamily: "var(--font-mono)",
               lineHeight: 1,
-              transition: "background 100ms, color 100ms",
+              transition: "background var(--t-flick), color var(--t-flick)",
             }}
           >
             {LABELS[code]}

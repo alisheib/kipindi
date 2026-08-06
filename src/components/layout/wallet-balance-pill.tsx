@@ -139,7 +139,7 @@ export function WalletBalancePill({ balance }: { balance: number }) {
           className="ml-1.5 font-mono text-[9.5px] tabular-nums"
           style={{
             color: delta > 0 ? "var(--yes-300)" : "var(--no-300)",
-            animation: "wbp-delta-fade 800ms ease-out forwards",
+            animation: "wbp-delta-fade var(--t-max) ease-out forwards",
           }}
         >
           {delta > 0 ? "+" : ""}

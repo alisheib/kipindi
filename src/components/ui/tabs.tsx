@@ -127,7 +127,7 @@ export function Tabs({
                 background: active ? "var(--brand-500)" : "transparent",
                 boxShadow: active ? "0 0 8px color-mix(in oklab, var(--brand-500) 50%, transparent)" : "none",
                 transform: active ? "scaleX(1)" : "scaleX(0)",
-                transition: "transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1), background 150ms ease-out, box-shadow 200ms ease-out",
+                transition: "transform var(--t-base) var(--m-glide), background var(--t-quick) ease-out, box-shadow var(--t-base) ease-out",
               }}
             />
           </button>

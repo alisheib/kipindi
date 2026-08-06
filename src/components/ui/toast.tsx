@@ -358,7 +358,7 @@ function ToastItem({ toast, exiting, onDismiss, onPause, onResume }: { toast: To
         transform,
         opacity,
         // No transition mid-drag (follow the finger 1:1); ease on enter/exit/snap.
-        transition: dragging ? "none" : "transform 200ms var(--ease-arrive, ease-out), opacity 200ms",
+        transition: dragging ? "none" : "transform var(--t-base) var(--ease-arrive, ease-out), opacity var(--t-base)",
         // `none` so the toast itself owns the swipe (up/sideways) instead of the
         // browser scrolling the page behind it.
         touchAction: "none",

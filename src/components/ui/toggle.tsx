@@ -54,7 +54,7 @@ export function Toggle({
             ? "linear-gradient(180deg, var(--gold-400), var(--gold-600))"
             : "var(--brand-500)"
           : "var(--bg-inset)",
-        transition: "background .18s cubic-bezier(0.2, 0.8, 0.2, 1), border-color .18s ease-out, transform .1s ease-out",
+        transition: "background var(--t-base) var(--m-glide), border-color var(--t-base) ease-out, transform var(--t-flick) ease-out",
       }}
     >
       <span
@@ -67,7 +67,7 @@ export function Toggle({
           borderRadius: 999,
           background: "var(--pearl-50)",
           transform: on ? "translateX(18px)" : "translateX(0)",
-          transition: "transform .18s cubic-bezier(0.2, 0.8, 0.2, 1)",
+          transition: "transform var(--t-base) var(--m-glide)",
           boxShadow: "0 1px 3px oklch(10% 0.05 264 / 0.5)",
           willChange: "transform",
         }}

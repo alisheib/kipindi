@@ -115,7 +115,7 @@ export function NavProgress() {
   return (
     <div
       className="fixed inset-x-0 top-0 z-[2000] h-[3px] pointer-events-none"
-      style={{ opacity: completing ? 0 : 1, transition: completing ? "opacity 300ms ease-out" : "none" }}
+      style={{ opacity: completing ? 0 : 1, transition: completing ? "opacity var(--t-move) ease-out" : "none" }}
     >
       <div
         ref={barRef}

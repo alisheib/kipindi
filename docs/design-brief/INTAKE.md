@@ -136,5 +136,9 @@ Two things are **in-house and do not need a designer**, and neither should wait 
    the heraldic layer is visible for the first time. `test:crest-legibility` guards it.
    ⛔ **What is still open is the band OPACITY and the crest's material — that is Claude
    Design's, not ours**, and re-doing it here would smuggle a redesign into a bug fix.
-2. **52% of animating components bypass the token ladder** (`AUDIT.txt`) — hardcoded milliseconds
-   instead of `--t-*`. Mechanical, and it is consistency already paid for.
+2. ✅ **DONE 2026-08-06 (E-113) — the token ladder.** 14 components migrated, 23 literals
+   replaced, and one animation that ran at **800ms above the ladder's 620ms ceiling** brought
+   down to it. `test:motion-ladder` is now a ratchet whose allowlist may only shrink — already
+   5 → 2, and both survivors are a **scheduling** exemption (another session was live in
+   `src/components/updown/`), not a design one. ⛔ Removing those two is the first job for
+   whoever finds that directory quiet.
