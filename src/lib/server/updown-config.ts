@@ -904,10 +904,17 @@ export async function createChain(input: ChainInput, officerId: string): Promise
   // the Add-chain form are computed from the same history by the same function. Keyed on
   // `asset.key`, which is what `UpDownObservation` groups by — `asset.symbol` would silently
   // find nothing and quietly disarm the measured half of the gate.
+  // ⭐ G1 · AND ITS MOVEMENT RECORD, THE SECOND AXIS. The line above answers "can we price it in
+  // time"; this answers "does it move enough to decide". ⛔ Both are passed here, on the write
+  // path, or the console greys an option the server would still accept — which is the same
+  // "a control that offers what the server refuses" defect in the other direction.
   const { validateSymbolDuration } = await import("./updown-symbols");
-  const { feedAdviceFor } = await import("./updown-feed-history");
-  const measured = await feedAdviceFor(asset.key, input.durationMinutes);
-  const durationErr = validateSymbolDuration(asset.symbol, input.durationMinutes, measured);
+  const { feedAdviceFor, movementAdviceFor } = await import("./updown-feed-history");
+  const [measured, movement] = await Promise.all([
+    feedAdviceFor(asset.key, input.durationMinutes),
+    movementAdviceFor(asset.key, input.durationMinutes),
+  ]);
+  const durationErr = validateSymbolDuration(asset.symbol, input.durationMinutes, measured, movement);
   if (durationErr) return { ok: false, error: durationErr };
   const existing = (await chainStore.list({ assetId: input.assetId })).find((c) => c.durationMinutes === input.durationMinutes);
   if (existing) return { ok: false, error: `${asset.key} already has a ${input.durationMinutes}-minute chain.` };

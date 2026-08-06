@@ -373,7 +373,7 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
                   ALLOWED_DURATIONS.map((d) => {
                     // ⭐ …and the asset's OWN measured record for this duration, keyed on
                     // `a.key` exactly as `createChain` keys it.
-                    const r = symbolReadiness(findSymbol(a.symbol), d, feed?.advise(a.key, d));
+                    const r = symbolReadiness(findSymbol(a.symbol), d, feed?.advise(a.key, d), feed?.movement(a.key, d));
                     return { minutes: d, level: r.level, mark: readinessMark(r.level), reason: r.reason };
                   }),
                 ]),
@@ -386,7 +386,7 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
                   const spec = findSymbol(a.symbol);
                   const own = symbolReadiness(spec, undefined, feed?.advise(a.key));
                   const usable = ALLOWED_DURATIONS.filter(
-                    (d) => symbolReadiness(spec, d, feed?.advise(a.key, d)).level !== 3,
+                    (d) => symbolReadiness(spec, d, feed?.advise(a.key, d), feed?.movement(a.key, d)).level !== 3,
                   );
                   const level = usable.length === 0 ? 3 : own.level;
                   const limit = spec?.minDurationMinutes

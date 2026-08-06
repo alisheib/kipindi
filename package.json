@@ -279,7 +279,9 @@
     "test:updown-result-announce": "tsx scripts/updown-result-announce.test.mts",
     "red:updown-result-announce": "node scripts/red-result-announce.cjs",
     "test:updown-pricing": "tsx scripts/updown-pricing.test.mts",
-    "red:updown-pricing": "node scripts/red-updown-pricing.cjs"
+    "red:updown-pricing": "node scripts/red-updown-pricing.cjs",
+    "test:updown-movement": "tsx scripts/updown-movement.test.mts",
+    "red:updown-movement": "node scripts/red-updown-movement.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

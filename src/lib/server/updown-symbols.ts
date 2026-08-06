@@ -36,6 +36,8 @@ import { sessionKindFor } from "./market-calendar";
 // Type-only: erased at build, so this cannot create the import cycle `updown-config` avoids
 // with its dynamic import below.
 import type { FeedAdvice } from "./updown-feed-advice";
+// ⭐ G1 · the second axis — see the note on `symbolReadiness`'s `movement` parameter.
+import type { MovementAdvice } from "../updown-movement";
 
 /** The provider endpoint every catalogued symbol is quoted from. */
 export const QUOTE_ENDPOINT = "https://api.twelvedata.com/quote";
@@ -322,10 +324,25 @@ export type Readiness = {
  * moment SOL crosses 20 readings and starts reading as measured. Measurement therefore only
  * ESCALATES: it can add a caveat or a block, never remove one.
  */
+/**
+ * ── ⭐ `movement` — THE SECOND AXIS (G1, `docs/UPDOWN-FINAL-DESIGN.md` §3b) ──
+ *
+ * ⛔ `measured` above gates on whether the asset can be **PRICED IN TIME**. Nothing gated on
+ * whether it **MOVES ENOUGH TO DECIDE**, and those are two different failure modes with one
+ * symptom — the stake comes back. Measured on production: Bitcoin's quietest tenth of moves is
+ * **411×** its own band; gold's is **2.1×**. Bitcoin cannot reveal that, which is why the gate
+ * looked complete.
+ *
+ * ⚠️ SAME RULE AS `measured`: it may only ESCALATE. A movement ③ becomes a ③ here (greyed and
+ * refused); a ② joins the caveats. Its absence means "nobody measured", never "measured and
+ * fine". See `@/lib/updown-movement` for why a ③ requires a directly-measured window and a ②
+ * may be inferred from a longer one.
+ */
 export function symbolReadiness(
   spec: SymbolSpec | undefined,
   durationMinutes?: number,
   measured?: FeedAdvice,
+  movement?: MovementAdvice,
 ): Readiness {
   if (!spec) {
     return {
@@ -353,6 +370,12 @@ export function symbolReadiness(
   // property of the instrument and this is a property of the feed — and before the caveats,
   // because a ③ is not a caveat. The sentence is the engine's, carrying its sample size.
   if (measured && measured.level === 3) return { level: 3, reason: measured.message };
+
+  // ⭐ G1 · ③ BECAUSE THE ASSET DOES NOT MOVE ENOUGH TO DECIDE A ROUND THIS SHORT. A separate
+  // check from the one above and deliberately after it: if the price cannot arrive in time the
+  // round fails for a reason no amount of movement fixes, and the operator should be told the
+  // first thing first. `judgeMovement` only ever returns ③ on a DIRECTLY measured window.
+  if (movement && movement.level === 3) return { level: 3, reason: movement.message };
 
   // ② a real caveat that does not stop the round happening. There are three, and ALL can
   // apply to one option, so they are collected rather than returned from the first match —
@@ -391,6 +414,14 @@ export function symbolReadiness(
   // caveat would bury it.
   if (measured && measured.level === 2) caveats.push(measured.message);
 
+  // ⭐ G1 · …and what its MOVEMENT record says short of a refusal — a thin mover at this length,
+  // or a window measured only over something longer than the round. ⛔ An UNMEASURED movement
+  // verdict is deliberately NOT a caveat when the asset is otherwise fine: "how far it moves has
+  // not been measured" is true of every asset on a fresh board, and pinning it to every option
+  // would train an operator to read past the ② that means something. It is surfaced in the
+  // console's own column instead, where it is information rather than a warning.
+  if (movement && movement.level === 2 && !movement.unmeasured) caveats.push(movement.message);
+
   if (caveats.length > 0) return { level: 2, reason: caveats.join(" ") };
   return { level: 1, reason: "" };
 }
@@ -415,8 +446,9 @@ export function validateSymbolDuration(
   symbol: string,
   durationMinutes: number,
   measured?: FeedAdvice,
+  movement?: MovementAdvice,
 ): string | null {
-  const r = symbolReadiness(findSymbol(symbol), durationMinutes, measured);
+  const r = symbolReadiness(findSymbol(symbol), durationMinutes, measured, movement);
   return r.level === 3 ? r.reason : null;
 }
 

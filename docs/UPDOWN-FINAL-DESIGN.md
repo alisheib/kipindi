@@ -148,6 +148,21 @@ Each of these would have surfaced later as a defect; they are cheaper as design.
 
 ### G1 · "Tick floor, always" is a BTC conclusion, and gold does not share it
 
+> ✅ **BUILT AND LIVE 2026-08-06 (session 32) — E-110.** `src/lib/updown-movement.ts` +
+> `test:updown-movement` (48) + `red:updown-movement` (12/12). The duration gate now has both
+> axes: `symbolReadiness(spec, duration, measured, movement)`, enforced on the write path and
+> shown in the console. **Gold is ② at every length the platform offers** (2.1× at 3–15m, 1.8×
+> at 30m); **Bitcoin is ① at all of them** (399×–1,099×).
+>
+> 🔴 **AND THE MEASUREMENT CORRECTS THE PARAGRAPH BELOW.** The √t projection is not supported by
+> this platform's own data: gold's p10 over **18 / 36 / 54** minutes is **0.84 → 0.74 → 0.71 —
+> FALLING**, because the lower tail is set by quiet regimes that persist for an hour rather than
+> by a random walk. The 3-minute conclusion may still be right; the *arithmetic offered for it*
+> is not evidence. ⛔ So the build extrapolates nothing: a **③ block requires a directly measured
+> window**, and an inference from a longer window may only ever **② warn**. A model must not be
+> the thing that refuses an operator's write. Read the ~$0.34 figure below as the hypothesis it
+> was, not as a measurement.
+
 §1's D1 says the band needs no per-asset tuning. **That was measured on Bitcoin and it does not
 generalise.** Consecutive-reading headroom above each asset's own floor:
 
