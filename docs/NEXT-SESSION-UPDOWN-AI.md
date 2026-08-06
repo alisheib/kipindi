@@ -1,3 +1,7 @@
+> ⛔ **SUPERSEDED — historical record only.** This was a session handoff prompt; the live one is
+> **`docs/LIVE-QA-CAMPAIGN.md` §6b, the topmost `RESUME AT` block**. Kept because other documents
+> cite it, not because anything in it is current. Do not act on it.
+
 # Up & Down + AI polls — where we are now (2026-07-30)
 
 > **This file is the state of play, not a plan.** It replaces the incoming plan of the same

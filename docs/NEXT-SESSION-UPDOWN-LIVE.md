@@ -1,3 +1,7 @@
+> ⛔ **SUPERSEDED — historical record only.** This was a session handoff prompt; the live one is
+> **`docs/LIVE-QA-CAMPAIGN.md` §6b, the topmost `RESUME AT` block**. Kept because other documents
+> cite it, not because anything in it is current. Do not act on it.
+
 # NEXT SESSION — Up & Down, driven live end to end until it is provably safe
 
 > Copy everything below the line into a fresh session. It is written to be pasted whole.

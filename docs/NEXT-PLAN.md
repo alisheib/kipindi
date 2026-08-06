@@ -1,3 +1,7 @@
+> ⛔ **SUPERSEDED — historical record only.** This was a session handoff prompt; the live one is
+> **`docs/LIVE-QA-CAMPAIGN.md` §6b, the topmost `RESUME AT` block**. Kept because other documents
+> cite it, not because anything in it is current. Do not act on it.
+
 STATUS: the next plan. Written 2026-07-29, immediately after the design system was
 frozen and shipped. **Revised 2026-07-31 against the live platform, not against memory.**
 

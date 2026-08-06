@@ -1,3 +1,8 @@
+> ⛔ **SUPERSEDED — the question is closed.** Ali chose **loser-share** (13% of the losing pool,
+> Platform 3% + Operator 10%) and it has been the live, frozen-per-poll model since 2026-07-23.
+> The decision record is `docs/FEE-MODEL-DECISION-2026-07-14.md`; the maths is `src/lib/payout.ts`.
+> This file states the question as OPEN and is kept only for the reasoning that produced the answer.
+
 # Fee-model decision: loser-based fee (Jay proposal) vs live capped-commission
 
 **Status:** OPEN — awaiting owner ruling

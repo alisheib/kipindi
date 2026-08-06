@@ -56,6 +56,50 @@ The brand hue is **royal indigo, OKLCH hue 268** — matching `design-master-bri
 port of the delivered logo `mark-a.svg` and are allowed to diverge from theme tokens —
 brand identity ≠ theme tokens.
 
+### B1a — ⭐ THE MARK ITSELF, and the two things people get wrong about it
+
+Recorded 2026-08-06 because an outside design pass reconstructed the mark from prose as
+*"the '50' on royal enamel over a −14° baton"* — and **both halves of that are wrong.**
+
+**What the mark is** (`src/lib/brand-mark.ts`, the ONE definition — audit C11; delivered
+`mark-a`, 2026-07-09): a circle split **YES-emerald LEFT · NO-rose RIGHT** by a diagonal
+chord, the **gilt NEEDLE** riding the seam past the rim, over a gilt hub with a navy pivot.
+⛔ **No ring, no numerals** — the wordmark carries the name.
+
+1. ⛔ **There is no "50" glyph in the mark.** A coin face bearing numerals contradicts the
+   canon. The name lives in `FiftyWordmark`; `FiftyLockup` is mark + wordmark, and the
+   delivered lockups are `public/brand/lockup-horizontal.svg` and `lockup-stacked.svg`.
+2. ⛔ **It is a NEEDLE, not a baton** — the same object as `TippingBar` and the conviction
+   dial. The mark is not a logo that sits near the UI; it is **the UI's own instrument
+   reduced**, and anything built on it must read as that instrument.
+
+**The −14° axis is measured from this artwork, not chosen.** From the shipped coordinates
+(`x1 38.39, y1 3.43 → x2 61.61, y2 96.57`): `atan(23.22 / 93.14) = 13.998°`, so
+`--m-tilt: -14deg` is accurate to three significant figures. Negative because the needle's
+top leans **left** of centre. ⚠️ `@keyframes m-axis-sweep` in `motion.css` writes `-14deg`
+**literally** — `skewX()` cannot take a custom property in every engine we support — so it is
+the one place the number is duplicated and it must move with the axis.
+
+⛔ **Never hand-edit a brand asset.** Every SVG and PNG under `public/brand/` and
+`public/icons/` is generated from `brand-mark.ts` by `scripts/build-brand-assets.mts`. Editing
+one directly is how the PWA icon and every outbound email once shipped the superseded round-1
+logo. **Change the source, regenerate.**
+
+⚠️ **And the mark's gold stays `#E3BC66`.** Any satin/material recipe adopted for *surfaces*
+does not apply to the trademark — that is this rule's parent, B1, applied to the one place it
+matters most.
+
+**Reproduction law** (enforced in `FiftyMark`, which auto-switches below 24px): full mark
+min **24px** · simplified min **14px** · clear space **0.25 × diameter**.
+
+📌 **The per-player heraldic crest (`ui/identity-avatar.tsx`) is a SECOND system** and must not
+borrow from the mark. E-111 fixed its sub-pixel geometry (every stroke now carries a 1-CSS-px
+floor, guarded by `test:crest-legibility`); its band opacity and material remain open.
+
+**Type:** Sora (display, `--font-display`) · Inter (body) · JetBrains Mono (money + numerals),
+all Google Fonts under **SIL OFL 1.1** — commercial use, embedding and web serving, no in-UI
+attribution. The wordmark is *set in Sora*; there is no separate logotype to license.
+
 ## B2 — YES / NO semantics are untouchable
 
 Green means YES/win; rose means NO/loss. This mapping is load-bearing for a money

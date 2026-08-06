@@ -1,3 +1,7 @@
+> ⛔ **SUPERSEDED — historical record only.** This was a session handoff prompt; the live one is
+> **`docs/LIVE-QA-CAMPAIGN.md` §6b, the topmost `RESUME AT` block**. Kept because other documents
+> cite it, not because anything in it is current. Do not act on it.
+
 # NEXT SESSION — the whole flow, driven live and fixed
 
 **Written 2026-08-05 at the end of session 26.** This file *is* the prompt: paste the fenced
