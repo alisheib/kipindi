@@ -183,11 +183,114 @@ shots/                    production screenshots — 3 languages, 2 widths, 4 su
 ⚠️ `shots/podium-and-avatars.png` shows leaderboard display names — QA personas plus one real
 team member. Flagged so the decision to share it is explicit.
 
-## Deliverable format
+---
 
-CSS custom properties + keyframes we can merge into `globals.css` / `motion.css`, and SVG/React
-that fits the **existing component props** (see `components/*.tsx` for current APIs).
-⛔ No new runtime dependency. ⛔ No public prop changes.
+# THE DELIVERABLE — read this section twice
 
-For each choice, **name the token it uses**. If something needs a token that does not exist,
-**say so rather than inventing a value** — we will add it to the system deliberately.
+We are not commissioning ideas, mood boards, or a motion "direction" to interpret. **We are
+commissioning the finished thing**: production CSS and SVG/React that we paste in and ship,
+complete enough that nothing is left for us to invent.
+
+## D-0 · The typefaces you are designing for
+
+Loaded via `next/font/google`, already in the product. Design to these and nothing else:
+
+| token | family | used for |
+|---|---|---|
+| `--font-display` | **Sora** | headings, the amount on a celebration, card titles |
+| `--font-body` | **Inter** | all prose |
+| `--font-mono` | **JetBrains Mono** | every number, every identifier, every countdown, every money figure |
+| `--font-cjk` | PingFang SC / Noto Sans SC stack | Chinese fallback, appended to all three above |
+
+⛔ **Money is always `--font-mono` with `tabular-nums`.** A payout that reflows as digits change
+is a defect. If a motion involves a changing number, it must not shift layout — **verify with
+tabular figures, not proportional ones.**
+⛔ **Do not introduce a typeface.** If a treatment needs one, say so; we will not add it.
+
+## D-1 · Every animation, fully specified — no gaps for us to fill
+
+For **each** motion you deliver, give all of:
+
+1. the **keyframes**, named in our existing convention (see `law/keyframes.css` — do not
+   duplicate a motion that already has a name there);
+2. the **easing token** and **duration token** it uses, by name (`--m-settle`, `--t-base`, …);
+3. the **trigger** — mount, hover, press, focus, state change, arrival of data;
+4. the **exit** — every entrance needs its leave, using `--m-leave`;
+5. the **reduced-motion fallback**, written out, not described. ⛔ *Every* animation must have
+   a `@media (prefers-reduced-motion: reduce)` branch that is still legible and still conveys
+   the state change;
+6. the **compositor cost** — we only accept `transform`, `opacity`, `filter` and `box-shadow`.
+   ⛔ Nothing that animates `width`, `height`, `top`, `left` or `margin`. If a layout change is
+   unavoidable, say so and we will decide;
+7. **what it must NOT do** — the failure mode you are guarding against.
+
+## D-2 · Every state and accessory, for every component you touch
+
+A component is not delivered until all of these exist. This is the "accessories" list and it is
+where most design handoffs stop short:
+
+- **states** — default · hover · active/press · focus-visible · disabled · loading · error ·
+  success · empty · skeleton
+- **sizes** — every size the component already ships (`sm` / `md` / `lg`, and `xs`/`2xl` where
+  the avatar uses them: **20 · 28 · 40 · 48 · 56 · 80px**)
+- **variants** — every variant already in the file (e.g. `toast.tsx` has `default` / `success` /
+  `warning` / `danger` / `factual`; `factual` exists because a tick over "you lost TZS 2,000"
+  was a real defect — respect why each one is there)
+- **densities** — the same component on a 360px phone and a 1920px desktop
+- **languages** — EN / SW / ZH. **Swahili runs ~40% longer, Chinese ~50% shorter.** Nothing may
+  break, clip, wrap to three lines, or depend on string length
+- **the dark-royal theme only** — there is no second theme to design
+
+## D-3 · A SYSTEM, not a set of one-offs
+
+⭐ **This is the part that determines whether the commission is worth it.** We have 133
+components today and we will add more. Deliver primitives that a component we have not built yet
+can adopt without asking you again:
+
+- a named **elevation ladder** — flat → raised → overlay → modal → toast — as tokens, with the
+  shadow/ring/light recipe at each step, so any future surface picks a rung rather than inventing one;
+- a named **entrance/exit family** — the two or three arrivals every surface may use, and their
+  matching exits;
+- a **gilt/metal recipe** as tokens, so any future money surface gets the same metal;
+- an **icon motion primitive set** applied to the 185 we have, expressed so glyph #186 inherits it;
+- a **"how to extend this" note** — the rules a future component follows, in the voice of
+  `law/DESIGN_AUTHORITY.md`, which we will merge into it.
+
+## D-4 · Coverage — the components in `components/` are the START, not the scope
+
+The 15 files shipped here are the worst offenders and the representative shapes. The system in
+D-3 must cover **the whole kit** (`AUDIT.txt` lists all 133), grouped as:
+
+| family | representatives shipped | what the family needs |
+|---|---|---|
+| **overlays** | `modal` · `confirm-dialog` · `toast` · `tooltip` · `select` · `avatar-menu` | one elevation + one entrance/exit language so an overlay reads as *above* the page |
+| **cards** | `market-card` · `updown-card` · `stat` · `chip` | light + a hierarchy that leads with the news, not the chrome |
+| **controls** | `button` | the press/hover/focus vocabulary, with `--m-lift` / `--m-press` honoured |
+| **identity** | `identity-avatar` · `avatar` | the crest made legible, plus arrival + tier-ring reveal |
+| **celebration** | `win-celebration` · `reward-burst` | the struck seal replacing the drawn trophy |
+| **iconography** | `glyphs-excerpt` | the primitive set, applied to all 185 |
+
+## D-5 · Format, and what "perfectly rendered" means here
+
+- **CSS**: custom properties + `@keyframes` we merge into `globals.css` / `motion.css`. Use our
+  token names. ⛔ **`oklch()` only — never hex, never rgb.**
+- **Components**: SVG / React matching the **existing props** in `components/*.tsx`.
+  ⛔ **No public prop changes. No new runtime dependency.** (We have no animation library and do
+  not want one — everything here is CSS + inline SVG, and it must stay that way.)
+- **Rendered proof**: for each deliverable, a still at **360px and 1280px**, and for anything
+  with a moving number, a still at the **midpoint of the motion** — our own celebration was once
+  photographed with a rolling counter 10 short, which reads exactly like a money bug.
+- **Naming**: every choice cites the token it uses. ⛔ **If something needs a token that does not
+  exist, say so and stop — do not invent a value.** We will add it to the system deliberately,
+  because the token file is the single definition site and drift there is the defect we spend
+  the most time repairing.
+
+## D-6 · How we will judge it
+
+1. It **passes `test:design-frozen`** — our ratchet over 45 files, which may only shrink.
+2. It **passes `test:ui-consistency`** — no new drift beyond the tracked baseline.
+3. Every animation has a **reduced-motion branch**.
+4. Nothing animates a layout property.
+5. It renders correctly in **EN, SW and ZH at 360 and 1280**.
+6. ⭐ **A component you never saw can adopt it from the written rules alone.** If we have to ask
+   you how to apply it to component #134, D-3 was not delivered.
