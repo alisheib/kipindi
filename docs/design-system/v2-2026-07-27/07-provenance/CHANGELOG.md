@@ -52,6 +52,40 @@ the pre-merge state it now reports `even 1px ring: no · one-sided line: YES ⛔
 That is SKILL §5b again — assert the value the platform hands back, not the symbol you wrote —
 and it is the third time this campaign has found more bugs in a check than in the product.
 
+🔴 **And its second bug was worse, because it manufactured product defects.** The first version
+opened a fresh browser context per cell and signed in each time — **24 logins as one fleet account
+against production inside a few minutes**. Eight failed, and one failure text read
+`跳到主要内容 50pick .tz 市场 涨跌 直播 结果` — the signed-**IN** navigation. The sign-in had
+worked and the harness said it had not. It now logs in **once per locale** and changes width by
+resizing the viewport, which keeps the session and keeps `deviceScaleFactor` (fixed at context
+creation). ⛔ And on a sign-in failure it refuses **every width for that locale** rather than
+shooting a logged-out page, because an unauthenticated screenshot looks exactly like evidence.
+
+**ATOM 2, validated on all four axes (INTAKE §4a).**
+
+- **Technical** — `tsc` 0 · `build` exit 0 · `test:tokens` (48 guarded) · `test:contrast` 0
+  failures · `test:design-frozen` 45 (unchanged, correctly — it walks `.tsx` only) ·
+  `test:motion-ladder` 0. Plus the three falsifiable checks: **one** definition of
+  `--shadow-card-top` and one consumer · **zero** consumers of any new token, so the atom is
+  inert as claimed · `--bg` still reads 13.5% and did not leak in from §A.
+- **Consistency with the handover** — M1 checked literally, not impressionistically: the ring is
+  **even** (`0 0 0 1px`), **1px**, **royal-tinted** (chroma 0.04 at hue 268, not `oklch(100% 0 0)`),
+  the wash angle resolves to **166deg** on the live page, and **all ten** elevation cast layers
+  have an x-offset of exactly `0` — *"the tilt lives in the light, never in the gravity"*.
+  ⚠️ The first version of that axis check printed `1px 2px` and was reading **y and blur**, not
+  x and y: the bare leading `0` carries no unit, so the pattern skipped it and the check would
+  have passed over a skewed shadow. Re-written to read the offset it names.
+- **Visual + responsive** — **16 of 24 cells captured, and 16/16 show the even ring with 0
+  retaining the one-sided line.** The market card is covered at 360 · 768 · 1280 · 1920 × EN · SW ·
+  ZH (11 of 12; the twelfth was the login contention above, not a rendering failure). At 4× the
+  before/after is unambiguous: light on the **top edge only** becomes light around the **whole
+  perimeter and every corner**.
+- 🔎 **One observation filed, not fixed here:** a green circular element is clipped at the market
+  card's right edge in the cold-start state, **identically in all three locales**. ⛔ Not caused
+  by this atom — a `box-shadow` cannot move layout — and it is not scored as a defect until it is
+  measured against **its own** container rather than the card's (§0.1b). It belongs to the card
+  atom.
+
 ## 2026-08-06 (design-system · acceptance) — the material system is ACCEPTED, and the map that came with it was wrong
 
 Claude Design's material commission landed at `11-material/` on 2026-08-06. **Nothing was merged

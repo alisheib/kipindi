@@ -103,18 +103,36 @@ async function run() {
   const report = [];
   const b = await chromium.launch({ headless: true, args: ["--no-sandbox"] });
 
+  // ⛔ ONE CONTEXT PER LOCALE, NOT PER CELL — and this is a correctness rule, not a
+  // speed one. The first version opened a fresh context for every (surface × locale ×
+  // width) and signed in each time: 24 logins as ONE fleet account inside a few
+  // minutes, against production. Eight of them failed, and the failure text gave the
+  // game away — one read `跳到主要内容 50pick .tz 市场 涨跌 直播 结果`, which is the
+  // signed-IN navigation. So the sign-in had worked and the harness said it had not.
+  // A rate-limited or contended login photographs as a product defect, and a probe
+  // that produces phantom failures gets ignored, which is worse than no probe.
+  // Log in once per locale; change WIDTH by resizing the viewport, which keeps the
+  // session and keeps deviceScaleFactor (it is fixed at context creation).
   for (const key of keys) {
     const s = SURFACES[key];
     for (const locale of LOCALES) {
-      for (const width of WIDTHS) {
+      const ctx = await b.newContext({ viewport: { width: WIDTHS[0], height: 900 }, deviceScaleFactor: 4 });
+      await ctx.addCookies([{ name: "kp-locale", value: locale, url: BASE }]);
+      const page = await ctx.newPage();
+      let signedIn = false;
+      try {
+        if (s.persona) { await login(page, s.persona); }
+        signedIn = true;
+      } catch (err) {
+        // ⛔ Refuse the whole locale rather than shoot a logged-out page: an
+        // unauthenticated screenshot looks exactly like evidence (§5b rule 5).
+        for (const width of WIDTHS) report.push({ surface: key, locale, width, error: `login: ${err.message.slice(0, 120)}` });
+        console.log(`\n── ${key}-*-${locale}  ⛔ SIGN-IN FAILED — every width for this locale refused`);
+      }
+      for (const width of signedIn ? WIDTHS : []) {
         const tag = `${key}-${width}-${locale}`;
-        // deviceScaleFactor 4: a 1px edge becomes 4 device pixels, which is the
-        // difference between "I can see the ring" and "I am agreeing with myself".
-        const ctx = await b.newContext({ viewport: { width, height: 900 }, deviceScaleFactor: 4 });
-        await ctx.addCookies([{ name: "kp-locale", value: locale, url: BASE }]);
-        const page = await ctx.newPage();
         try {
-          if (s.persona) await login(page, s.persona);
+          await page.setViewportSize({ width, height: 900 });
           await page.goto(`${BASE}${s.route}`, { waitUntil: "domcontentloaded", timeout: 60_000 });
 
           const lang = await page.evaluate(() => document.documentElement.lang);
@@ -172,10 +190,9 @@ async function run() {
         } catch (err) {
           console.log(`\n── ${tag}  ⛔ FAILED: ${err.message}`);
           report.push({ surface: key, locale, width, error: err.message });
-        } finally {
-          await ctx.close();
         }
       }
+      await ctx.close();
     }
   }
 
