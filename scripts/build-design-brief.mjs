@@ -29,6 +29,8 @@ const read = (p) => readFileSync(p, "utf8");
 copyFileSync("docs/design-brief/README.md", `${OUT}/README.md`);
 copyFileSync("docs/design-brief/CURRENT-STATE.md", `${OUT}/CURRENT-STATE.md`);
 copyFileSync("docs/design-brief/AUDIT.txt", `${OUT}/AUDIT.txt`);
+/* ⚠️ INTAKE.md is OURS, not theirs — it is how we integrate what comes back. Deliberately
+   NOT shipped in the package; it would read as instructions to the supplier. */
 
 /* ── 1 · the law ────────────────────────────────────────────────────────────────────── */
 copyFileSync("docs/DESIGN_AUTHORITY.md", `${OUT}/law/DESIGN_AUTHORITY.md`);

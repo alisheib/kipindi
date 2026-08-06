@@ -8,6 +8,21 @@ It is cited by number in code comments (e.g. `/* DESIGN_AUTHORITY B3 */`). When 
 rule lives beside the value it governs, a stale doc elsewhere can no longer mandate
 a regression (that was audit finding C9).
 
+> ### 🎨 EXTERNAL DESIGN WORK IS OUT FOR COMMISSION — read this before integrating any of it
+> A material system (light source, elevation ladder, real gilt treatment), a struck seal to
+> replace the drawn trophy, and icon/identity motion primitives were commissioned from Claude
+> Design on **2026-08-06**. The brief, the measured state it was commissioned against, and
+> **the integration playbook** live in **`docs/design-brief/`**:
+> - **`README.md`** — what was asked for, including the deliverable spec (D-0 … D-6)
+> - **`AUDIT.txt`** — all 133 components scored on light / elevation / motion, the before-picture
+> - **`CURRENT-STATE.md`** — the critique, per surface, with evidence
+> - ⭐ **`INTAKE.md`** — ⛔ **read this FIRST when the work arrives.** It says what to verify
+>   before anything moves, where each artifact goes, the integration ORDER (tokens before
+>   components, because everything inherits), the gates, and what to reject.
+>
+> ⛔ **Do not paste delivered work straight into `src/`.** `INTAKE.md` §3 exists because a
+> component integrated before the ladder it depends on has to be done twice.
+
 **Hierarchy of truth:**
 1. **`src/app/globals.css`** — the authoritative *implementation* (tokens, the live palette). Newest artifact; if anything disagrees with it, it wins.
 2. **`docs/design-master-brief.md`** — palette *rationale* / ground-truth sRGB. The live tokens match it to ~0.3%.
