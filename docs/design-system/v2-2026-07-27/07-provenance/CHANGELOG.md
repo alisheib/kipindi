@@ -53,6 +53,30 @@ gains a third instrument (E-119; E-120 filed).**
   `test:integrity` OK · **24 shots** at deviceScaleFactor 4, both button sizes ×
   360/768/1280/1920 × en/sw/zh.
 
+**ATOM 3, validated on all four axes (INTAKE §4a) — `44290cf8`, deployed and re-measured on
+production, not asserted from the diff.**
+
+1. **Technical.** `test:contrast` 30 checks / 0 failures · `red:contrast` **14/14**, and the
+   falsifiable one is the point: restoring the 60% stop prints `FAIL btn-primary label (pearl on
+   royal ramp, worst stop) → 4.01`, the exact number this was filed at. tsc 0 · build exit 0 ·
+   tokens 48 · design-frozen 45 · ui-consistency baseline · motion-ladder 0 · trilingual 36 ·
+   integrity OK · tracker-hygiene 15/0.
+2. **Visual.** 24 images opened at deviceScaleFactor 4, before and after. The CTA reads as a
+   deeper, more solid royal; the top bevel still carries the light; no truncation or clipping in
+   any cell, including 360/SW (`Jisajili`) and 360/ZH (`创建账户`).
+3. **Consistency with the handover.** The 5-point spread is `material.css` §A1's own rule
+   (*"deliberately small: material, not decoration"*, `--wash-float` 26.5%→21%), and M1's
+   direction-of-light stays in the wash. ⛔ The bevel pair and border were deliberately NOT
+   re-cut — that is the control-family edge pass, and smuggling it into a contrast atom is the
+   thing INTAKE §7 warns about.
+4. **Responsiveness.** 360 · 768 · 1280 · 1920 × EN · SW · ZH, **at both button sizes**, because
+   the size is what decides where on the ramp the glyphs sit.
+
+**Production, after deploy:** the live rule serves `linear-gradient(#3c5cdd, #304ccc)` where it
+served the 60% stop. Raster: `btn-sm` **4.39 → 5.65** at rest and **3.92 → 5.01** on hover;
+`btn-xl` **4.62 → 5.75** and **4.20 → 5.16**. `qa:contrast-rendered` over `/` + `/markets` at
+1280: **427 text nodes, cells 2/2, 0 AA failures** — it reported 3 before.
+
 **ATOM 2 — one lamp, five rungs (`src/app/globals.css`).**
 
 - **`--shadow-card-top` was a one-sided line, and M1 bans exactly that.** It read
