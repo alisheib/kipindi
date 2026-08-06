@@ -74,6 +74,92 @@ they do not, the integration is wrong, not the audit.
 
 ---
 
+## 3b · ⛔ WHAT DIES WHEN EACH PIECE LANDS — replace, never accumulate
+
+**This is the section that keeps the repo clean, and it is the one most likely to be skipped.**
+A delivery is a *replacement*, not an addition. If the old thing survives beside the new one you
+have not integrated a design system — you have created a second one, and every future session
+has to guess which is current. **Two definitions of one truth is the single most expensive
+defect class in this repo's history.**
+
+| when this lands | this must be DELETED in the same commit |
+|---|---|
+| the **struck seal** | the drawn trophy + its **eight straight-line rays** in `brand/reward-burst.tsx`, and any keyframe that only animated them |
+| an **elevation ladder** as tokens | every hand-written `box-shadow` / `ring-` in a component that the ladder now covers — grep `box-shadow` under `src/components/` and justify each survivor |
+| a **gilt/metal recipe** | every one-off gold gradient or `--gilt` blend written inline in a component |
+| an **entrance/exit family** | the superseded keyframes it replaces. ⛔ Check `law/keyframes.css` — 33 exist; if the new family covers `toast-slide` or `kp-rise`, those go |
+| **icon motion primitives** | any bespoke per-icon transition added ad hoc |
+| **new tokens** | the literals they replace. A token that lands while the literal survives has bought nothing |
+
+### The three checks that prove nothing was left behind
+
+1. **`npm run test:design-frozen` — the allowlist should SHRINK.** It holds 45 files carrying
+   inline design values. If the delivery is real, several stop needing the exemption. ⭐ **A
+   delivery that leaves it at 45 did not replace anything, it decorated.**
+2. **`npm run test:motion-ladder` — its allowlist should also shrink** (currently 2, both
+   scheduling exemptions in `src/components/updown/`).
+3. **`node scripts/ui-material-audit.mjs`** — re-run it. The before-picture is `AUDIT.txt`:
+   **79% no light · 60% no elevation · 44% no motion · 43 components with all three absent.**
+   Those numbers must move. If they do not, the integration is wrong, not the audit.
+
+### What to delete outside `src/`
+
+- **superseded design docs** — if a rule moves into `DESIGN_AUTHORITY.md`, remove the older
+  wording rather than leaving both. `npm run test:integrity` exists to catch exactly this.
+- **the scratch** — `.qa-s3*/`, `design-brief/`, `design-brief.zip` are gitignored build output.
+  Never commit them.
+
+### What to KEEP, deliberately
+
+- **`docs/design-brief/delivery/`, untouched.** It is provenance, not clutter.
+- **`AUDIT.txt` and `CURRENT-STATE.md`** — they are the *before*. Deleting them destroys the
+  only evidence of what the commission was for.
+- **`shots/podium-and-avatars.png`** — the BEFORE of E-111, paired with its AFTER.
+
+---
+
+## 3c · ⭐ DRIVE IT — a gate is a pre-flight, the browser is the evidence
+
+⛔ **No integration commit is finished until the thing has been driven on production.** Every
+gate in §4 can pass over a screen a person cannot read; this campaign's record on that is
+unambiguous, and the defects that mattered were found by opening an image.
+
+**For each family, after it lands:**
+
+```bash
+# the whole sweep — viewport shots, 4 widths × 3 locales, ranked
+SHOT_DIR=.qa-design node scripts/live-s29-sweep.mjs player 360,768,1280,1920 en,sw,zh
+SHOT_DIR=.qa-design node scripts/live-s29-sweep.mjs admin  360,1280 en,sw,zh
+```
+
+⛔ `locator.screenshot()`, **never `fullPage`** — Playwright stitches, so a sticky header paints
+mid-document and lands on the content, which reads exactly like a z-index bug and is entirely
+the harness's. ⚠️ The scan **ranks, it does not judge** — open the images.
+
+**The celebration and the overlays cannot be swept**, because they need a state. Drive them:
+
+```bash
+SHOT_DIR=.qa-design node scripts/live-s31-win-popup.mjs   # win modal, EN/SW/ZH × 360/1280
+```
+
+⚠️ Two timing traps already paid for: the payout is a **rolling counter over ~900ms** (a
+screenshot taken early photographs it 10 short, which reads exactly like a money bug), and the
+modal **auto-dismisses at 4.5s**. Shoot inside that window.
+
+**Still never seen live and worth catching:** the **VOID/refund toast** — the toasts are
+context-only with no imperative API, so it needs a real settlement on a round the viewer holds.
+
+**What to look for, specifically:**
+
+| | |
+|---|---|
+| **360 SW** | Swahili runs ~40% longer. It is where truncation and wrapping bite first |
+| **360 ZH** | ~50% shorter — the opposite failure, panels that now look empty |
+| **the boundary** | anything that changes at a phase change: a clock hitting zero, a result arriving |
+| **reduced motion** | run once with the OS setting on. Every animation must still convey its state change |
+
+---
+
 ## 4 · The gates — every commit, no exceptions
 
 ```
