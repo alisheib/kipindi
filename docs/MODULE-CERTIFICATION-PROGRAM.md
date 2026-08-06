@@ -713,7 +713,7 @@ it is detected · 🔴 does the admin UI show drift honestly, or round it away?
 **Owns** `HousePoolLedger`, `payout.ts` · **Existing** `test:fee-model` `test:loser-share-fee` `test:win-share` `test:payout-alloc`
 **Attack** A market where one side has zero stake · a single participant · rounding across many
 small stakes (does the pool leak a shilling per settlement?) · a fee that exceeds the pool ·
-🟡 **an OPEN owner decision:** [`FEE-MODEL-DECISION.md`](FEE-MODEL-DECISION.md) (2026-07-22) asks
+🟡 **an OPEN owner decision:** [`FEE-MODEL-DECISION-2026-07-14.md`](FEE-MODEL-DECISION-2026-07-14.md) (2026-07-22) asks
 whether to adopt Jay's flat 13%-of-losing-pool basis. **Do not certify G3 while the fee basis is
 undecided.**
 **Exit** Ali's fee ruling recorded and implemented, zero-shilling leak proven across 10k settlements.

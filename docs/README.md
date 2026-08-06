@@ -60,7 +60,7 @@ to teal and resurrects the killed light theme.
 | [`SELCOM-DISBURSEMENT-REQUEST.md`](SELCOM-DISBURSEMENT-REQUEST.md) | ⚪ RECORD | ✅ Granted 2026-07-27. |
 | [`PAYMENT-INTEGRATION-CHECKLIST.md`](PAYMENT-INTEGRATION-CHECKLIST.md) | 🔵 LIVE | Run the day new API keys land. |
 | [`FEE-MODEL-DECISION-2026-07-14.md`](FEE-MODEL-DECISION-2026-07-14.md) | ⚪ RECORD | **SHIPPED.** Fixed the bug where a winner was paid less than they staked. |
-| [`FEE-MODEL-DECISION.md`](FEE-MODEL-DECISION.md) | 🟡 **OPEN** | 🔴 **Confusing name — this is the NEWER file (2026-07-22).** A different question: Jay's flat 13%-of-losing-pool proposal vs the live `min(10% of pool, ⅓ of smaller pool)`. **Awaiting Ali's ruling. No code has changed.** Do not mistake it for superseded. |
+| [`FEE-MODEL-DECISION-2026-07-14.md`](FEE-MODEL-DECISION-2026-07-14.md) | 🟡 **OPEN** | 🔴 **Confusing name — this is the NEWER file (2026-07-22).** A different question: Jay's flat 13%-of-losing-pool proposal vs the live `min(10% of pool, ⅓ of smaller pool)`. **Awaiting Ali's ruling. No code has changed.** Do not mistake it for superseded. |
 | [`F6-LIQUIDITY-DESIGN.md`](F6-LIQUIDITY-DESIGN.md) | 🟠 DESIGN | Seeded liquidity. **No code written.** |
 | [`bonus-wallet-plan.md`](bonus-wallet-plan.md) | ⚪ RECORD | Shipped 2026-06-26. |
 | [`proposals.md`](proposals.md) | 🟢 LAW | Player market proposals → instant approval bonus. Supersedes the old prize model. |
@@ -96,9 +96,6 @@ to teal and resurrects the killed light theme.
 | [`UPDOWN-SPEC.md`](UPDOWN-SPEC.md) | 🟢 LAW | Owns **WHAT** it is — rules, workflows, states. |
 | [`UPDOWN-ARCHITECTURE.md`](UPDOWN-ARCHITECTURE.md) | 🟢 LAW | Owns **HOW** it is built — data model, engines, money path. |
 | [`UPDOWN-PRICING.md`](UPDOWN-PRICING.md) | 🟢 LAW | The margin / winning-boundary math. Money-critical. |
-| [`NEXT-SESSION-UPDOWN-AI.md`](NEXT-SESSION-UPDOWN-AI.md) | ⚫ HISTORICAL | Described work on the branch `feat/updown-source-pinning-and-proposals`. **That source-pinning fix is MERGED and live** — a round pins `capturedSourceUrl` at open. Kept for its reasoning; do not action it. |
-| [`NEXT-SESSION-UPDOWN-LIVE.md`](NEXT-SESSION-UPDOWN-LIVE.md) | ⚫ HISTORICAL | A session-24 handoff. **Superseded by `LIVE-QA-CAMPAIGN.md` §6b**, which is the only handoff anyone should read. |
-| [`NEXT-SESSION-LIVE-FLOW.md`](NEXT-SESSION-LIVE-FLOW.md) | 🔵 **LIVE — PASTE THIS** | ⭐ The prompt for the next session: **drive the whole flow on production and fix what is broken** — create/resolve/play Up & Down by our own rules, the login flows, every admin dashboard, and any inconsistency in a button, form or filter. Self-contained: credentials, mandate, standards and the eleven traps that have already cost this campaign real time. |
 | [`updown-operator-guide.html`](updown-operator-guide.html) → [`50pick-updown-operator-guide.pdf`](50pick-updown-operator-guide.pdf) | 🟢 **LAW — THE OPERATOR CONTRACT** | ⭐ **The document the admins are handed.** 14 sections: what the game is, every field and what to enter, the **Feed record** and the measured round-length gate (§8.5), the first live round (§9), the **six refund reasons and what to say to a player** (§10), the daily check (§11), troubleshooting (§12), and **every element on the player's card and when it is visible** (§13). ⛔ Edit the **HTML**, then regenerate with `node scripts/generate-pdfs.mjs`, then **verify by rasterising** — never by trusting the render. |
 
 ## Up & Down — ops scripts (there is deliberately no delete in the console, E-59)

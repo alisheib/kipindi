@@ -145,7 +145,7 @@ the house has no position, so it has no incentive to influence an outcome.
 
 > **NOTE (2026-07-23) — the `loser-share` (Jay) fee model is an owner-authorised
 > exception to the paragraph above.** By owner decision (`docs/COMPLIANCE-DECISIONS.md`,
-> `docs/FEE-MODEL-DECISION.md`), NEW polls default to `feeModel: "loser-share"`: the fee is
+> `docs/FEE-MODEL-DECISION-2026-07-14.md`), NEW polls default to `feeModel: "loser-share"`: the fee is
 > a fixed % of the LOSING pool, so it IS outcome-dependent (the house takes more when the
 > big pool loses). The house still stakes NOTHING into the pool — it has no position and
 > cannot lose — but its *rake* now varies with the result. This is a deliberate,

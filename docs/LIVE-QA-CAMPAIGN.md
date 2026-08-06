@@ -7533,7 +7533,7 @@ the wallet**. That run has still never happened. ③ Verify the control market
 `mkt_4969c3dd29fde8742618` settled unaided at 2026-08-02 09:54Z. ④ The interaction-state
 visual sweep — ⚠️ `test:responsive` needs `next dev` running and takes longer than a
 10-minute tool timeout; run it detached, and note the branch's own record that it and
-`test:trilingual` are **flaky under a full run** (`docs/NEXT-SESSION-UPDOWN-AI.md`).
+`test:trilingual` are **flaky under a full run** (`docs/LIVE-QA-CAMPAIGN.md` §6b).
 
 ### 🟢 Laptop B, session 5 (2026-08-01) — E-24 CLOSED. READ THIS FIRST; it supersedes everything below.
 

@@ -1,7 +1,3 @@
-> ⛔ **SUPERSEDED — historical record only.** This was a session handoff prompt; the live one is
-> **`docs/LIVE-QA-CAMPAIGN.md` §6b, the topmost `RESUME AT` block**. Kept because other documents
-> cite it, not because anything in it is current. Do not act on it.
-
 STATUS: the next plan. Written 2026-07-29, immediately after the design system was
 frozen and shipped. **Revised 2026-07-31 against the live platform, not against memory.**
 
@@ -154,7 +150,7 @@ procedure is in D2's dossier), and **item D2 below — narrowing the R2 token**.
    with no admin able to readmit him.
 2. **Wave 2 — the money core** (G1–G4, then E1–E3). This resolves the orphan TZS 100,000 wallet and
    the broken audit-chain link. ⚠️ **G3 is blocked** until Ali rules on the fee basis
-   ([`FEE-MODEL-DECISION.md`](FEE-MODEL-DECISION.md), open since 2026-07-22).
+   ([`FEE-MODEL-DECISION-2026-07-14.md`](FEE-MODEL-DECISION-2026-07-14.md) — **closed:** loser-share is live and frozen per poll).
 3. **F1's remaining gates** — G3 (double-pay adversarial) and G7 (rail-failure resilience). G8 is done.
 
 ### ⛔ Do NOT do these — each would undo a deliberate decision
@@ -564,7 +560,7 @@ Redis fail-open verified against a dead port: 2 ms, then 0 ms, never throws.
 - **An unmerged branch is open:** `feat/updown-source-pinning-and-proposals`, 28 commits,
   current with `main`. It fixes a real money bug (editing an Up & Down asset's source URL
   silently switches the source under open rounds with stakes already placed) and adds AI
-  round proposals behind an officer queue. See [`NEXT-SESSION-UPDOWN-AI.md`](NEXT-SESSION-UPDOWN-AI.md).
+  round proposals behind an officer queue. See [`LIVE-QA-CAMPAIGN.md` §6b](LIVE-QA-CAMPAIGN.md).
   **It is another lane's work — do not merge it without Ali.**
 
 ### Rules

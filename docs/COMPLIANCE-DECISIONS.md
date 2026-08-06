@@ -287,7 +287,7 @@ the early-re-check guard, and auto-seal → window → settle) · `test:settleme
 ## 2026-07-23 · Fee model: "loser-share" (Jay) + pre-bet estimate — new polls
 
 **Owner decision:** Ali, explicit, 2026-07-23 (authorised in-session), on the recommendation
-of accountant Jay (`Proposal/50pick Calculations.xlsx`, reviewed in `docs/FEE-MODEL-DECISION.md`).
+of accountant Jay (`Proposal/50pick Calculations.xlsx`, reviewed in `docs/FEE-MODEL-DECISION-2026-07-14.md`).
 
 **What changed (FUTURE polls only):** a new fee model, `loser-share`, is now the default a
 new poll freezes at creation:

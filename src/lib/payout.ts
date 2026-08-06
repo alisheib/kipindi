@@ -113,7 +113,7 @@ export const DEFAULT_GBT_LEVY_ON_COMMISSION_RATE = 0.05;
 export const THIN_PROFIT_RATIO = 1.05;
 
 // ── Fee model ("loser-share" — owner decision 2026-07-23) ─────────────────────
-// See docs/COMPLIANCE-DECISIONS.md and docs/FEE-MODEL-DECISION.md. The model is
+// See docs/COMPLIANCE-DECISIONS.md and docs/FEE-MODEL-DECISION-2026-07-14.md. The model is
 // FROZEN per poll (feeSnapshot.feeModel), so old polls keep `capped-commission`
 // and new polls use `loser-share` — the two maths NEVER mix. A snapshot with no
 // `feeModel` (every poll created before this change) is read as `capped-commission`.

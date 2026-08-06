@@ -172,7 +172,7 @@ export type RateConfig = {
   // ── Fee MODEL (owner decision 2026-07-23) ─────────────
   // These are FROZEN per poll at creation. Changing them here reprices only FUTURE
   // polls; every existing poll keeps the model + rates its snapshot froze, so the
-  // two maths never mix (docs/FEE-MODEL-DECISION.md, docs/COMPLIANCE-DECISIONS.md).
+  // two maths never mix (docs/FEE-MODEL-DECISION-2026-07-14.md, docs/COMPLIANCE-DECISIONS.md).
   /**
    * Which fee formula NEW polls use.
    *  - `capped-commission`: fee = min(commissionRate·pool, feeCeilingRate·smaller).

@@ -14,7 +14,7 @@ One fact, one home. Nothing below is restated in another doc; each links instead
 | [`UPDOWN-SPEC.md`](UPDOWN-SPEC.md) | What the product IS — rules, workflows, states, the source requirement, the proposal flow, copy rules | Table shapes, function names |
 | [`UPDOWN-PRICING.md`](UPDOWN-PRICING.md) | The margin / winning-boundary model and its admin levers | The lifecycle, the data model |
 | [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) | Owner decisions that touch a **compliance control** | Anything not compliance-bearing |
-| [`NEXT-SESSION-UPDOWN-AI.md`](NEXT-SESSION-UPDOWN-AI.md) | Where the AI work stands and what is next | Anything the three docs above own (it links) |
+| [`LIVE-QA-CAMPAIGN.md` §6b](LIVE-QA-CAMPAIGN.md) | Where the AI work stands and what is next | Anything the three docs above own (it links) |
 | `Up and Down/` (repo root) | The management team's original requirements, verbatim | — |
 
 ⚠️ **Corrected 2026-07-30.** This table previously listed three separate rows all pointing at
