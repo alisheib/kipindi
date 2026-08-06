@@ -38,18 +38,34 @@
   /* ---------- Gilt — RETIRED on the chat surface (gold = earned-money only).
      Kept defined so any stray reference degrades to a valid colour; nothing
      on the chat surface should use these now (player edge + citations moved
-     to --pearl-edge; the escalate pill is claret). */
-  --gilt:           oklch(86% 0.13 82);
+     to --pearl-edge; the escalate pill is claret).
+     ⛔ --gilt ITSELF IS NOT DECLARED HERE — E-122, 2026-08-06. This file is
+     @imported by globals.css:14, so globals' own :root is emitted AFTER it and
+     WINS every token both files name. A --gilt here was dead the day it was
+     written; the values happened to match, so nothing looked wrong — and the
+     gold re-derivation (ATOM 2b) takes globals' --gilt to hue 84, at which point
+     this copy would have sat at 82 telling a future reader the wrong thing.
+     The three below derive FROM globals' --gilt and stay correct through it. */
   --gilt-edge:      color-mix(in oklab, var(--gilt) 55%, transparent);
   --gilt-edge-hover: color-mix(in oklab, var(--gilt) 75%, transparent);
   --gilt-deep:      oklch(60% 0.12 82);
 
   /* ---------- Claret — escalate-to-human (heraldic, serious) ----------
      Distinct from --no-500 / --danger-500. Hue 12 is a deeper, less rosy
-     red than the NO surface; the chat must NEVER read as a betting cue. */
-  --claret:         oklch(46% 0.16 12);
+     red than the NO surface; the chat must NEVER read as a betting cue.
+     🔴 E-122 — AND THAT INTENT HAS NEVER BEEN WHAT SHIPPED. --claret and
+     --claret-edge were declared here AND in globals.css, and globals wins (see
+     the gilt note above). Measured on production: `--claret` computes to
+     lab(26.5157% 45.2839 16.149), byte-identical to globals' --claret-600 =
+     oklch(38% 0.140 15) — EIGHT points darker and 3° rosier than the
+     oklch(46% 0.16 12) this file used to state, directly under the comment
+     explaining why hue 12 was chosen. The dead copies are gone rather than
+     "fixed", because deleting them changes no pixel and makes the file true;
+     restoring the designed hue-12 claret would be a live colour change on a
+     surface this pass does not own, and that is Ali's call, not a merge's.
+     ⚠️ So the pill's gradient mixes this file's --claret-hover (hue 12) with
+     globals' --claret (hue 15). That was already true; it is now VISIBLE. */
   --claret-hover:   oklch(52% 0.17 12);
-  --claret-edge:    oklch(60% 0.16 12);
 
   /* ---------- Motion (brief names → kit easings) -----------------------
      Glide  · default state transitions (hover, focus, color)

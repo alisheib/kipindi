@@ -29,7 +29,11 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
-const ROOT = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
+// ⛔ RE-AIMABLE, AND IT PRINTS WHAT IT READ. Two sessions share this working tree,
+// so the RED harness copies the stylesheets somewhere else and points the gate at
+// the copy rather than mutating `src/` — the same rule `M1_ROOT` and `CONTRAST_CSS`
+// follow. A gate you can re-aim is only honest if it says where it looked.
+const ROOT = process.env.TOKENS_ROOT ?? new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
 const SRC = join(ROOT, "src");
 
 /** Token families where cross-file redefinition is a real bug, not a theme override.
@@ -65,7 +69,7 @@ function check(label: string, cond: boolean, detail = "") {
   else { fail++; log(`  FAIL ${label}${detail ? ` — ${detail}` : ""}`); }
 }
 
-log("CSS token collision guard\n");
+log(`CSS token collision guard — reading ${SRC}\n`);
 
 const files = cssFiles(SRC);
 
@@ -90,6 +94,53 @@ check(
   "no motion/elevation token defined in two files",
   collisions.length === 0,
   collisions.length ? `${collisions.length}: ${collisions.join(" | ")}` : "",
+);
+
+// ---------------------------------------------------------------------------
+// 1b. ⭐ AND NEITHER IS ANY OTHER TOKEN — E-122.
+//
+// Rule 1 above guards a HAND-LISTED set of families, and the list was a guess at
+// which tokens matter. It is the wrong shape: "the last declaration wins,
+// silently" is a property of every custom property, not of motion ones. Measured
+// 2026-08-06 — THREE colour tokens had two definition sites across
+// `globals.css` and `styles/chat/chat-tokens.css`, and none matched GUARDED:
+//
+//   --claret       chat says oklch(46% 0.16 12); globals wins with --claret-600,
+//                  oklch(38% 0.140 15). Read off PRODUCTION, `--claret` computes to
+//                  lab(26.5157% …) — byte-identical to --claret-600. So the chat's
+//                  escalate pill renders EIGHT points darker and 3° rosier than the
+//                  file that defines it says, under a comment explaining why hue 12
+//                  was chosen. The intent is documented; the pixels are somebody
+//                  else's.
+//   --claret-edge  same shape: chat's oklch(60% 0.16 12) is dead.
+//   --gilt         identical values today, so invisible — and directly in the path
+//                  of the gold re-derivation (ATOM 2b takes globals' --gilt to hue
+//                  84). The copy would have silently stayed at 82.
+//
+// ⛔ THE ALLOWLIST IS EMPTY AND MAY ONLY STAY THERE. A theme that genuinely needs
+// to re-declare a token does it in a SCOPED block in the same file, which this rule
+// never sees, because it compares files.
+// ---------------------------------------------------------------------------
+const CROSS_FILE_ALLOWED: string[] = [];
+const allDefinedIn = new Map<string, Set<string>>();
+for (const f of files) {
+  const rel = relative(ROOT, f).replace(/\\/g, "/");
+  const body = decomment(readFileSync(f, "utf8"));
+  // Anchored at a declaration boundary so `var(--x)` inside a value never counts.
+  for (const m of body.matchAll(/(?:^|[;{])\s*(--[a-z0-9-]+)\s*:/gi)) {
+    const tok = m[1];
+    if (CROSS_FILE_ALLOWED.includes(tok)) continue;
+    if (!allDefinedIn.has(tok)) allDefinedIn.set(tok, new Set());
+    allDefinedIn.get(tok)!.add(rel);
+  }
+}
+const anyCollisions = [...allDefinedIn.entries()]
+  .filter(([, fs]) => fs.size > 1)
+  .map(([tok, fs]) => `${tok} in ${[...fs].join(" + ")}`);
+check(
+  "⭐ no token AT ALL defined in two files (E-122)",
+  anyCollisions.length === 0,
+  anyCollisions.length ? `${anyCollisions.length}: ${anyCollisions.join(" | ")}` : "",
 );
 
 // ---------------------------------------------------------------------------
