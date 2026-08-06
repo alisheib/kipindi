@@ -152,7 +152,12 @@ export async function login(page, who) {
   }
   // Personas name an env key (`p.secret`); fleet players carry the value directly.
   await page.fill('input[type="password"]', p.secretValue ?? qaEnv(p.secret));
-  await clickByName(page, /sign in|log in|ingia/i);
+  // 🔴 THE CHINESE BUTTON WAS NEVER IN THIS PATTERN, so no driver could sign in as a ZH user —
+  // found 2026-08-06 the first time a run set `kp-locale` BEFORE logging in (which E-106's fix
+  // makes the natural order). The button reads **登录**; `/sign in|log in|ingia/i` misses it and
+  // the run dies on a 20s wait that looks like a broken login page. ⚠️ `退出登录` (sign OUT)
+  // contains `登录`, so the negative lookbehind keeps this from ever matching the wrong control.
+  await clickByName(page, /sign in|log in|ingia|(?<!退出)登录/i);
 
   // 🔴 WAIT FOR A POSITIVE SIGNAL, never for the absence of a negative one.
   // This used to `waitForLoadState("networkidle")` and then fail if the text still said
@@ -172,9 +177,18 @@ export async function login(page, who) {
       // reported them all green. Anchor on the authenticated shell, and explicitly
       // exclude the sign-in page.
       if (/admin sign in|kuingia kwa wafanyakazi|i'm a player, not staff/.test(t)) return false;
+      // 🔴 AND THE SIGNAL MUST EXIST IN EVERY LANGUAGE THE APP SHIPS. Found 2026-08-06: with
+      // `kp-locale=zh` set BEFORE signing in — which is the natural order once E-106 made the
+      // cookie the mechanism — the login SUCCEEDED and this predicate returned false, because
+      // `wallet|pochi|deposit` has no Chinese member. The run then threw "login failed" while
+      // its own error text showed a plainly authenticated Chinese page (`请为账户添加邮箱地址`,
+      // `直播`, `预测了`). ⛔ A trilingual product needs trilingual signals, or every ZH driver
+      // reports a working sign-in as broken. `钱包` = wallet · `充值` = deposit ·
+      // `返回应用` = back to app.
+      if (/管理员登录|我是玩家/.test(document.body.innerText)) return false;   // the ZH sign-in page
       return isStaff
-        ? /back to app|muhtasari|staff · confidential/.test(t)
-        : /wallet|pochi|deposit/.test(t) && !/\bsign up\b/.test(t);
+        ? /back to app|muhtasari|staff · confidential/.test(t) || /返回应用|内部机密/.test(document.body.innerText)
+        : (/wallet|pochi|deposit/.test(t) || /钱包|充值/.test(document.body.innerText)) && !/\bsign up\b/.test(t);
     },
     staff,
     { timeout: 45_000 },
