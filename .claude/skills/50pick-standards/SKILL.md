@@ -90,6 +90,23 @@ The two rules that catch the most bugs. Full detail: **`references/responsivenes
 - **Every meaningful (route × state × width × locale)** deserves a shot: empty · loading ·
   error · populated · edge (long text / big numbers / SW+ZH) · the feature's special states.
   Re-run the popup/overlay sweep at 360 + 1280 each cycle.
+- ⛔ **LANGUAGE COMES FROM THE `kp-locale` COOKIE — there is no `/api/locale` route** (E-106).
+  Set it on the Playwright **context** so it is present on the first request, then read
+  `<html lang>` back and **refuse to capture on a mismatch**: a sweep that silently shoots the
+  wrong language is worse than one that fails, because its output looks like evidence.
+  🔴 **AND THE SHARED `login()` COULD NOT SIGN IN AS A CHINESE USER AT ALL until 2026-08-06** —
+  its button pattern had no `登录` and its success predicate no `钱包`/`充值`, so with
+  `kp-locale=zh` set first (the natural order after E-106) a **successful** sign-in threw
+  *"login failed"* over a plainly authenticated Chinese page. **A trilingual product needs
+  trilingual signals in its harness, or every ZH driver reports working code as broken.**
+  ⚠️ `退出登录` (sign OUT) contains `登录`, so that pattern carries a negative lookbehind.
+- ⛔ **AN ELLIPSIS IS NOT A DEFECT, AND A PER-ELEMENT EDGE CHECK CANNOT SEE A CLIP.** Two halves
+  of one rule, both paid for on 2026-08-06: a `text-overflow: ellipsis` element must be **skipped**
+  (its hidden tail *is* the "…", and the "fix" is to undo a correct design) — but report **how
+  much** is hidden as a note, because *"51% of the trust line is behind the ellipsis in Swahili"*
+  is a judgement a human should make. And a child clipped by an **intermediate row** never
+  reaches the CARD's edge, so comparing rects against the card reports "no overflow" over a
+  visibly severed control. Measure every container against **its own** `scrollWidth`.
 
 ## 5. Testing discipline
 Full detail: **`references/testing-and-verify.md`.**
@@ -137,7 +154,39 @@ day, four checks passed while the thing they named was broken — each asserting
    nothing and report green.
 6. Every one of these was caught by **looking at a screenshot**, never by a suite. A green
    suite is a pre-flight check, not evidence.
-7. ⛔ **NEVER REGEX A CSS COLOUR** (added 2026-08-05, session 27). This design system's tokens
+7. ⛔ **A GUARD AND ITS OWN RED PROOF CAN AGREE WITH EACH OTHER AND BOTH BE WRONG** (added
+   2026-08-06, session 32 — **E-108**). `test:tracker-hygiene` §2 and `test:settlement-expectation`
+   §5 both located the current handoff with a pattern ending `RESUME AT:`; every handoff since
+   session 23 writes `RESUME AT (session NN):`. **All eight most recent handoffs were invisible**
+   and both guards validated a block from session ~16, green throughout. ⛔ **And the RED harness
+   was mutating the same dead block**, so the proof was as stale as the check. **Rule 2 above is
+   not enough on its own** — a mutation locating its target "exactly as the guard does" is
+   worthless if both use the same wrong locator. Add a check that the thing you found is the
+   thing you meant: the handoff locator now asserts the marker sits in §6b's **topmost** block,
+   and lives in ONE imported module (`scripts/campaign-handoff.mjs`) because each of the four
+   previous repairs fixed one copy and handed the next bug to the others by copy-paste.
+8. ⛔ **A CHECK WRITTEN AGAINST AN UNREACHABLE BRANCH PROVES NOTHING** (2026-08-06). A guard tried
+   to construct a rate set that makes `payoutFor` throw — `readRates` clamps both
+   `feeCeilingRate` and the loser-share rate to `1.0`, so no such input exists. It read as a
+   rigorous defensive test and asserted nothing. Replaced with a hostile-INPUT sweep, which is
+   reachable. **Before asserting a failure mode, prove you can produce it.**
+9. ⛔ **AN UNCONDITIONAL PRESENCE CHECK DEMANDS A FALSE STATEMENT** (2026-08-06). A 360px driver
+   required the Up & Down card's empty-side sentence on every card, and failed in all three
+   languages on a **correct** screen once the round gained a second side — the sentence was
+   rightly absent. ⭐ **State the INVARIANT, not the presence:** the sentence must appear *iff*
+   one of the two multiples reads exactly `1.00×` (the pari-mutuel signature of an empty
+   counterparty). That form also catches the opposite defect a presence check never can — the
+   sentence appearing on a two-sided round, where it would be a lie.
+10. ⛔ **A DERIVED FIGURE IS ONLY COMPARABLE AT THE SAME INPUTS** (2026-08-06). A live driver
+   hardcoded a 1,000 stake "the platform floor", priced the expected multiplier at that, and
+   reported the product wrong (card `1.74` vs its own `1.33`). The card was right: the live
+   global `minStake` is **500**, and **a pari-mutuel multiplier is a function OF the stake**.
+   Two numbers answering different questions is not a comparison. **Read the input off the
+   product** — it now takes the amount from the button's own accessible name.
+11. ⛔ **`node -e` AND SHELL HEREDOCS EAT A BACKSLASH LAYER** (2026-08-06, the second instance).
+   A generated driver shipped `/([d,]+)s*$/` and reported *"the Up button names no stake"* over a
+   label reading `TZS 500`. **Write files with an editor, never through a shell string.**
+12. ⛔ **NEVER REGEX A CSS COLOUR** (added 2026-08-05, session 27). This design system's tokens
    are `oklch()`, and Chrome hands `oklch(0.98 0.01 270)` straight back from
    `getComputedStyle` — so the usual `[\d.]+` scrape reads **lightness, chroma and hue as R,
    G and B**. A contrast probe written that way scored a bright primary button at **1.24:1**
@@ -231,6 +280,21 @@ shipped two more findings during the cleanup. The tell was a commit newer than t
   session made a slow lifecycle pass *visible* (an overrun alert); the other put a slow chore
   *inside* that pass. Neither is a bug; together they need a note. After merging a shared file,
   ask what the two changes do to **each other** — not just whether git resolved the text.
+
+🔴 **⛔ NEVER `git add -A` WHILE A SECOND SESSION MAY BE MID-EDIT — measured 2026-08-06, session 32.**
+The parallel session's `git add -A` swept **six of another session's in-flight files** into its own
+commit and pushed them to `main` **without the four that make them compile**. A required prop
+existed while the pages still passed the old one, so the Railway build FAILED and `main` was
+broken for 19 minutes. ⭐ **Production was never affected — a failed build never swaps the
+deployment**, which is the one safe failure mode here, and it is luck rather than a control.
+**Stage surgically: `git add <path>` and `git commit -F msg -- <paths>`**, which commits those
+paths whatever else sits in the index. Fix forward rather than reverting: the other session's
+commit carries its own work too.
+
+⚠️ **AND A SHARED REGISTER MEANS SHARED IDS.** The same session filed a finding as `E-111`; the
+other session had already taken `E-111` minutes earlier. `test:tracker-hygiene` §1 caught it (one
+id claiming both *"FILED, NOT FIXED"* and *"FIXED + proven RED"*). **Re-grep the ids at the moment
+you file, not at the start of the session.**
 
 **Shared resources — the three that actually bite:**
 - **Ports.** :3000 is usually taken. Check with
