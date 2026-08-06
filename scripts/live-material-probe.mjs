@@ -82,6 +82,38 @@ const SURFACES = {
     props: ["boxShadow", "backgroundImage", "backgroundColor", "borderColor"],
     vars: ["--shadow-card-top", "--edge-lit"],
   },
+  /**
+   * E-119 — the primary control, which is the one solid-family button painted
+   * with a RAMP. ⛔ No persona: the hero CTA on `/` exists for a VISITOR
+   * ("Create account" / "Jisajili" / "注册"); signed in, the same slot renders
+   * the markets CTA instead, so a logged-in shot would photograph a different
+   * button and call it evidence.
+   * ⚠️ Its `boxShadow` carries the authored bevel pair (`0 1px 0` top light +
+   * `0 -1px 0` bottom shade), so the M1 line below reports a one-sided line and
+   * is RIGHT to: a control-family edge pass has not happened yet. E-119 is a
+   * contrast atom and deliberately does not re-cut that bevel.
+   */
+  button: {
+    route: "/",
+    selector: ".btn-primary",
+    label: "primary control, btn-sm — the header 'Sign up' (30px · 13px/600)",
+    props: ["backgroundImage", "boxShadow", "color", "borderColor", "height", "fontSize"],
+    vars: ["--pearl-50", "--light-angle"],
+  },
+  /**
+   * ⭐ BOTH SIZES, AND THE SMALL ONE IS THE HARD CASE. The label's share of the
+   * button's height is what decides how far down a 180deg ramp the glyphs sit,
+   * so a 56px hero and a 30px header pill read DIFFERENT backgrounds off one
+   * gradient: measured at the 60% light stop, 4.62 on the hero and 4.39 on the
+   * pill. Shooting only the hero would have photographed the passing half.
+   */
+  "button-xl": {
+    route: "/",
+    selector: ".btn-primary.btn-xl",
+    label: "primary control, btn-xl — the hero CTA (56px · 16.5px/600)",
+    props: ["backgroundImage", "boxShadow", "color", "borderColor", "height", "fontSize"],
+    vars: ["--pearl-50", "--light-angle"],
+  },
 };
 
 const geom = (boxShadow) =>

@@ -102,24 +102,126 @@ function token(name: string): Oklch {
  * `.btn-danger`'s `var(--danger-500)` and `.btn-gold`'s `var(--gold-500)` are
  * followed to their definition rather than re-typed.
  */
-function ruleValue(selector: string, prop: string): Oklch {
+function ruleBody(selector: string): string {
   const at = CSS.indexOf(`\n${selector} {`) >= 0 ? CSS.indexOf(`\n${selector} {`) : CSS.indexOf(`\n${selector}{`);
   if (at < 0) throw new Error(`contrast-audit: rule "${selector}" not found in ${GLOBALS}`);
   const open = CSS.indexOf("{", at);
   const close = CSS.indexOf("}", open);
   if (close < 0) throw new Error(`contrast-audit: rule "${selector}" is unterminated`);
-  const body = CSS.slice(open + 1, close);
-  const m = new RegExp(`(?:^|;)\\s*${prop}\\s*:([^;]*)`).exec(body);
+  return CSS.slice(open + 1, close);
+}
+
+function ruleDecl(selector: string, prop: string): string {
+  const m = new RegExp(`(?:^|;)\\s*${prop}\\s*:([^;]*)`).exec(ruleBody(selector));
   if (!m) throw new Error(`contrast-audit: "${selector}" declares no ${prop}`);
-  const raw = m[1].trim();
+  return m[1].trim();
+}
+
+/** A single colour — an `oklch()` literal or a plain `var(--token)`. */
+function colour(where: string, raw: string): Oklch {
   const lit = parseOklch(raw);
   if (lit) return lit;
   const v = /^var\(\s*--([a-z0-9-]+)\s*\)$/i.exec(raw);
   if (v) return token(v[1]);
   throw new Error(
-    `contrast-audit: "${selector} { ${prop}: ${raw} }" is neither a literal oklch() nor a plain ` +
+    `contrast-audit: "${where}: ${raw}" is neither a literal oklch() nor a plain ` +
       `var(--token). It cannot be scored, and a gate that silently skips a control is worse than one that stops.`,
   );
+}
+
+function ruleValue(selector: string, prop: string): Oklch {
+  return colour(`${selector} { ${prop} }`, ruleDecl(selector, prop));
+}
+
+/**
+ * Read the COLOUR STOPS of a `linear-gradient()` painted by a rule — E-119.
+ *
+ * `.btn-primary` is the one solid-family button that is a ramp, and that put it
+ * in the blind spot BETWEEN this gate and its rendered companion: `ruleValue()`
+ * above refuses anything that is not one flat colour, and `contrast-rendered.mjs`
+ * read a gradient-painted element as transparent until E-118. So the platform's
+ * most-used CTA — 71 call sites — was the only control neither instrument could
+ * express, and its white label sat at 4.0:1.
+ *
+ * The angle and the stop POSITIONS are deliberately discarded: WCAG asks what is
+ * behind the ink, and on a ramp behind a centred label the honest answer is the
+ * stop that reads worst (`worstStop()` below). A stop this parser cannot resolve
+ * THROWS rather than being dropped — a ramp scored on the two stops out of three
+ * that happen to be literals is a gate reporting a number for a surface it only
+ * partly read.
+ */
+function ruleGradient(selector: string, prop: string): Oklch[] {
+  const raw = ruleDecl(selector, prop);
+  const g = /(?:linear|radial|conic)-gradient\(([\s\S]*)\)\s*$/.exec(raw);
+  if (!g) throw new Error(`contrast-audit: "${selector} { ${prop}: ${raw} }" is not a gradient`);
+  const terms = g[1]
+    .split(/,(?![^(]*\))/) // top-level commas only
+    .map((t) => t.trim().replace(/\s+(?:[-\d.]+(?:%|px|r?em)\s*)+$/, "").trim()) // drop stop positions
+    .filter(Boolean);
+  // ⛔ The direction is RECOGNISED, never assumed to be first. Blindly dropping
+  // args[0] eats a real colour stop the moment a gradient omits its angle —
+  // `linear-gradient(var(--gold-300), var(--gold-500))` is legal and would have
+  // been scored on ONE stop, which is how a ramp passes on its flattering half.
+  const DIRECTION = /^(?:[-\d.]+(?:deg|turn|rad|grad)|to\s+[a-z\s]+|circle\b|ellipse\b|closest-|farthest-|at\s|var\(\s*--[a-z0-9-]*angle[a-z0-9-]*\s*\))/i;
+  const stops = DIRECTION.test(terms[0]) ? terms.slice(1) : terms;
+  if (stops.length < 2) {
+    throw new Error(
+      `contrast-audit: "${selector} { ${prop} }" resolved to ${stops.length} colour stop(s) — a ramp ` +
+        `scored on one stop is a ramp half-read.`,
+    );
+  }
+  return stops.map((t) => colour(`${selector} { ${prop} } stop`, t));
+}
+
+/**
+ * ⛔ `filter: brightness()` IS A RASTER EFFECT, AND EVERY STYLESHEET-DERIVED
+ * FIGURE FOR A HOVER STATE IS THEREFORE A MODEL. `getComputedStyle` still hands
+ * back the authored colour, so nothing that reads CSS can see a hover state
+ * without simulating the filter — which is why the hover ratios below had never
+ * been checked by anything.
+ *
+ * The simulation is NOT trusted on its arithmetic. It was validated against the
+ * real product: `.qa-design/btn-pixels.mjs` samples the rendered pixels of every
+ * solid-family button on production under a real pointer, and this model agrees
+ * with the raster to within 0.01 on all five (`.btn-yes` 4.352 model / 4.36
+ * measured · `.btn-danger` 4.374 / 4.37 · `.btn-no` 4.597 / 4.59).
+ *
+ * The shorthand filter functions operate on GAMMA-ENCODED sRGB
+ * (filter-effects-1 pins `color-interpolation-filters: sRGB` for them), which is
+ * why the encode/decode round-trip below is not decoration: doing the multiply
+ * in linear light gives a different, wrong answer.
+ *
+ * `drop-shadow()` is ignored on purpose — it paints OUTSIDE the element and
+ * cannot sit between the label and its fill. Any other function throws: a filter
+ * this model does not implement would silently under-report.
+ */
+type Filter = { brightness: number; saturate: number };
+function ruleFilter(selector: string): Filter {
+  const raw = ruleDecl(selector, "filter");
+  const f: Filter = { brightness: 1, saturate: 1 };
+  // ⛔ SCANNED WITH A DEPTH COUNTER, NOT WITH A REGEX. `drop-shadow(… color-mix(
+  // in oklab, var(--teal-400) 30%, transparent))` nests THREE deep; a regex that
+  // allows one level of nesting skips past `drop-shadow` and then matches the
+  // inner `color-mix` as if it were a top-level filter function. Measured: the
+  // first version of this parser threw `applies filter function "color-mix"` on
+  // a perfectly ordinary hover rule.
+  const fns: string[] = [];
+  for (let i = 0, depth = 0, start = 0; i < raw.length; i++) {
+    if (raw[i] === "(") { if (depth++ === 0) start = raw.lastIndexOf(" ", i) + 1; continue; }
+    if (raw[i] === ")" && --depth === 0) fns.push(raw.slice(start, i + 1));
+  }
+  for (const fn of fns) {
+    const name = fn.slice(0, fn.indexOf("(")).toLowerCase();
+    const arg = Number(/^[a-z-]+\(\s*([\d.]+)\s*\)$/i.exec(fn)?.[1]);
+    if (name === "drop-shadow") continue;
+    if (name === "brightness" && Number.isFinite(arg)) { f.brightness = arg; continue; }
+    if (name === "saturate" && Number.isFinite(arg)) { f.saturate = arg; continue; }
+    throw new Error(
+      `contrast-audit: "${selector}" applies filter function "${name}", which this model does not ` +
+        `implement. A filter changes what the eye receives, so an unmodelled one must stop the gate.`,
+    );
+  }
+  return f;
 }
 
 // linear-sRGB channel from OKLCH (Björn Ottosson).
@@ -137,14 +239,41 @@ function oklchToLinearSrgb({ l: L, c: C, h: H }: Oklch): [number, number, number
   return [r, g, bl].map((v) => Math.min(1, Math.max(0, v))) as [number, number, number];
 }
 // WCAG relative luminance uses LINEAR rgb with these coefficients.
-function luminance(o: Oklch): number {
-  const [r, g, b] = oklchToLinearSrgb(o);
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+const LUMA = (rgb: number[]) => 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
+function luminance(o: Oklch, f?: Filter): number {
+  const linear = oklchToLinearSrgb(o);
+  if (!f || (f.brightness === 1 && f.saturate === 1)) return LUMA(linear);
+  // sRGB transfer function, both ways — the shorthand filters work encoded.
+  const enc = (u: number) => (u <= 0.0031308 ? 12.92 * u : 1.055 * u ** (1 / 2.4) - 0.055);
+  const dec = (v: number) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+  const clamp = (v: number) => Math.min(1, Math.max(0, v));
+  let [r, g, b] = linear.map(enc).map((v) => clamp(v * f.brightness));
+  if (f.saturate !== 1) {
+    const s = f.saturate;
+    // The saturate() matrix, filter-effects-1 §feColorMatrix type="saturate".
+    [r, g, b] = [
+      (0.213 + 0.787 * s) * r + (0.715 - 0.715 * s) * g + (0.072 - 0.072 * s) * b,
+      (0.213 - 0.213 * s) * r + (0.715 + 0.285 * s) * g + (0.072 - 0.072 * s) * b,
+      (0.213 - 0.213 * s) * r + (0.715 - 0.715 * s) * g + (0.072 + 0.928 * s) * b,
+    ].map(clamp);
+  }
+  return LUMA([r, g, b].map(dec));
 }
-function contrast(fg: Oklch, bg: Oklch): number {
-  const a = luminance(fg), b = luminance(bg);
+function contrast(fg: Oklch, bg: Oklch, f?: Filter): number {
+  const a = luminance(fg, f), b = luminance(bg, f);
   const [hi, lo] = a >= b ? [a, b] : [b, a];
   return (hi + 0.05) / (lo + 0.05);
+}
+
+/**
+ * The stop a ramp reads WORST against this ink — which is the light stop under
+ * pale ink and the dark stop under dark ink, so it must be chosen, never typed.
+ * `.chip-resolved` used to name `--gold-500` by hand for exactly this reason;
+ * the hand-picked stop was right, and it would have stayed pointing at gold-500
+ * through ATOM 2b's re-derivation of the whole ramp without anyone noticing.
+ */
+function worstStop(fg: Oklch, stops: Oklch[], f?: Filter): Oklch {
+  return stops.reduce((w, s) => (contrast(fg, s, f) < contrast(fg, w, f) ? s : w));
 }
 
 // ── tokens — READ FROM globals.css, not mirrored ─────────────────────────────
@@ -190,11 +319,22 @@ const T = {
   gold500: token("gold-500"),
   gold300: token("gold-300"),
   chipResolvedFg: ruleValue(".chip-resolved", "color"),
+  // ── The RAMPS, and their hover rasters (2026-08-06, ATOM 3 · E-119) ───────
+  // Three gradient-painted surfaces carry text. Two of them are controls, and
+  // until now none of the three had its ramp read: `.chip-resolved` was scored
+  // against a hand-picked `--gold-500`, and the two buttons were not scored at
+  // all, because `ruleValue()` refuses anything that is not one flat colour.
+  chipResolvedStops: ruleGradient(".chip-resolved", "background"),
+  btnPrimaryStops: ruleGradient(".btn-primary", "background"),
+  btnPrimaryHover: ruleFilter(".btn-primary:hover:not(:disabled)"),
+  btnClaretFg: ruleValue(".btn-claret", "color"),
+  btnClaretStops: ruleGradient(".btn-claret", "background"),
+  btnClaretHover: ruleFilter(".btn-claret:hover:not(:disabled)"),
 };
 
 // `decorative: true` = WCAG 1.4.11 exempt (a divider that is NOT the sole means
 // of identifying a control). Printed for reference but never fails the gate.
-type Check = { name: string; fg: Oklch; bg: Oklch; min: number; decorative?: boolean };
+type Check = { name: string; fg: Oklch; bg: Oklch; min: number; decorative?: boolean; filter?: Filter };
 const CHECKS: Check[] = [
   { name: "btn-no label (pearl on no-bg)", fg: T.pearl50, bg: T.btnNoBg, min: 4.5 },
   { name: "btn-yes label (pearl on yes-bg)", fg: T.pearl50, bg: T.btnYesBg, min: 4.5 },
@@ -225,11 +365,31 @@ const CHECKS: Check[] = [
   { name: "--gilt-strong on --bg", fg: T.giltStrong, bg: T.bg, min: 4.5 },
   { name: "--gilt-strong on --bg-elevated", fg: T.giltStrong, bg: T.bgElevated, min: 4.5 },
   // .chip-resolved paints its label over `linear-gradient(--gold-300 → --gold-500)`.
-  // Dark ink on a light ramp is worst at the DARK stop, so gold-500 is the honest
-  // background to score — checking the 300 would flatter it by ~2 points.
-  { name: "chip-resolved label on gold ramp (worst stop, gold-500)", fg: T.chipResolvedFg, bg: T.gold500, min: 4.5 },
+  // Dark ink on a light ramp is worst at the DARK stop — but the stop is now
+  // CHOSEN by worstStop() off the rule itself rather than named here, so ATOM
+  // 2b's re-derivation of the gold ramp cannot leave this pointing at a shade
+  // that is no longer the worst one.
+  { name: "chip-resolved label on gold ramp (worst stop)", fg: T.chipResolvedFg, bg: worstStop(T.chipResolvedFg, T.chipResolvedStops), min: 4.5 },
   { name: "--gold-300 on --bg (objection chip ink)", fg: T.gold300, bg: T.bg, min: 4.5 },
+
+  // ── The gradient controls, and their hover rasters — E-119 ────────────────
+  // ⛔ 13px/600 at `btn-sm` is NOT WCAG-large (that needs 18px, or 14px BOLD),
+  // so 4.5 is the bar on every one of these and 3.0 is not available.
+  { name: "btn-primary label (pearl on royal ramp, worst stop)", fg: T.pearl50, bg: worstStop(T.pearl50, T.btnPrimaryStops), min: 4.5 },
+  { name: "btn-primary label :hover (filter rastered)", fg: T.pearl50, bg: worstStop(T.pearl50, T.btnPrimaryStops, T.btnPrimaryHover), min: 4.5, filter: T.btnPrimaryHover },
+  { name: "btn-claret label (claret-50 on claret ramp, worst stop)", fg: T.btnClaretFg, bg: worstStop(T.btnClaretFg, T.btnClaretStops), min: 4.5 },
+  { name: "btn-claret label :hover (filter rastered)", fg: T.btnClaretFg, bg: worstStop(T.btnClaretFg, T.btnClaretStops, T.btnClaretHover), min: 4.5, filter: T.btnClaretHover },
 ];
+
+// 🔴 E-120 IS OPEN AND IS DELIBERATELY NOT LISTED ABOVE — say so here rather than
+// leave a reader to infer it from an absence. The same `filter: brightness()`
+// hover that E-119 forced this file to model puts THREE of the five flat-solid
+// buttons under 4.5 as well, measured on production rather than modelled:
+// `.btn-yes` 4.74 → **4.36**, `.btn-danger` 4.85 → **4.37**, `.btn-no` 5.00 →
+// 4.59 (the only one that survives). Their remedy is not this atom's: two of the
+// three are semantic fills and the third is `--danger-500`, a SHARED token, so
+// each needs its own visual sign-off. The checks land in the commit that fixes
+// them — a gate added over a known-failing surface would just be red on purpose.
 
 // ✅ AUDIT H10 IS CLOSED, and its fixes are now PARSED rather than described.
 // `.btn-yes` 57%→53%, `--danger-500` 60%→57% and the new `--border-control`
@@ -239,7 +399,7 @@ const CHECKS: Check[] = [
 
 let fails = 0;
 for (const c of CHECKS) {
-  const r = contrast(c.fg, c.bg);
+  const r = contrast(c.fg, c.bg, c.filter);
   const pass = r >= c.min;
   const tag = c.decorative ? (pass ? "PASS" : "INFO") : pass ? "PASS" : "FAIL";
   if (!pass && !c.decorative) fails++;

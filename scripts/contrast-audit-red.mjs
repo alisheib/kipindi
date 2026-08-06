@@ -86,6 +86,43 @@ const MUTATIONS = [
     to: `  --gold-500: oklch(38% 0.14 78);`,
   },
   {
+    // 🔴 E-119 ITSELF, PUT BACK. This is the falsifiable half of ATOM 3: if the
+    // gradient parser were not reading `.btn-primary`'s ramp, restoring the 60%
+    // light stop would move nothing — which is exactly the state the gate was in
+    // before, when it had no way to score a gradient at all.
+    name: "restore .btn-primary's 60% light stop — E-119, the white label back to 4.0",
+    kind: "fail",
+    from: `  background: linear-gradient(180deg, oklch(53% 0.20 268) 0%, oklch(48% 0.20 268) 100%);`,
+    to: `  background: linear-gradient(180deg, oklch(60% 0.20 268) 0%, oklch(48% 0.20 268) 100%);`,
+  },
+  {
+    // The hover half. A filter is a RASTER effect, so nothing that reads the
+    // stylesheet can see it without simulating it — and an unexercised simulation
+    // is indistinguishable from one that returns the resting number.
+    name: "crank .btn-primary's hover brightness to 1.30 — a raster-only failure",
+    kind: "fail",
+    from: `.btn-primary:hover:not(:disabled) { filter: brightness(1.08)`,
+    to: `.btn-primary:hover:not(:disabled) { filter: brightness(1.30)`,
+  },
+  {
+    // A ramp whose stops cannot all be resolved must STOP the gate. Scoring the
+    // two stops out of three that happen to be literals reports a number for a
+    // surface only partly read — the shape of defect E-118 fixed next door.
+    name: "make one of .btn-primary's gradient stops an unscoreable color-mix()",
+    kind: "throw",
+    from: `oklch(53% 0.20 268) 0%, oklch(48% 0.20 268) 100%);`,
+    to: `oklch(53% 0.20 268) 0%, color-mix(in oklab, oklch(48% 0.20 268) 80%, black) 100%);`,
+  },
+  {
+    // ⛔ A FILTER FUNCTION THIS MODEL DOES NOT IMPLEMENT MUST REFUSE, NOT ROUND
+    // DOWN TO 1.0. `contrast()` would quietly change what the eye receives and
+    // the gate would keep printing the resting ratio over it.
+    name: "add an unmodelled contrast() to .btn-primary's hover filter",
+    kind: "throw",
+    from: `.btn-primary:hover:not(:disabled) { filter: brightness(1.08)`,
+    to: `.btn-primary:hover:not(:disabled) { filter: contrast(0.4) brightness(1.08)`,
+  },
+  {
     // ⛔ INTAKE §2a, the trap ATOM 2a walks into next: the browser takes the
     // LAST declaration, this gate takes the FIRST. Before ATOM 2d the gate
     // scored the top copy and said PASS while the product rendered the bottom.

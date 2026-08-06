@@ -696,8 +696,23 @@ body {
    override repeated across ~14 CTAs (auth, kyc, wallet, profile, market sign-in). */
 .btn-pill { border-radius: var(--r-pill); }
 
+/* 🔴 E-119 — THE LIGHT STOP WAS 60% AND THE WHITE LABEL READ 4.0:1 AGAINST IT.
+   Measured on production, not modelled (`.qa-design/btn-pixels.mjs` samples the
+   rendered raster): at `btn-sm` — 13px/600, which is NOT WCAG-large, so the bar
+   is 4.5 — the fill directly behind the glyph band came back **4.39**, and under
+   the `:hover` `brightness(1.08)` below it fell to **3.92**. Neither instrument
+   could express it: `contrast-audit.mts` had no gradient parser and scored only
+   flat fills, and `contrast-rendered.mjs` read a gradient-painted element as
+   transparent until E-118. `.btn-primary` is the one solid-family button that is
+   a ramp, so it fell exactly between them — on 71 call sites, "Sign up" and
+   "Show all open markets" among them.
+   ⭐ 60% → 53% takes the worst stop to 5.40 at rest and 4.85 on hover. The
+   5-point spread that leaves is the delivery's own law, not a compromise:
+   `material.css` §A1 sets `--wash-float` at 26.5%→21% and says the spread is
+   "deliberately small: material, not decoration". The 12-point ramp was the
+   decoration. Gated at BOTH stops and in BOTH states by `test:contrast`. */
 .btn-primary {
-  background: linear-gradient(180deg, oklch(60% 0.20 268) 0%, oklch(48% 0.20 268) 100%);
+  background: linear-gradient(180deg, oklch(53% 0.20 268) 0%, oklch(48% 0.20 268) 100%);
   color: var(--pearl-50);
   border-color: oklch(40% 0.20 268);
   box-shadow:

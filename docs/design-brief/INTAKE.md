@@ -304,6 +304,34 @@ touching** — file the id, fix it, prove it RED, land it as its own atom. It do
 widening the atom: money-path defects stay isolated, and a defect on a surface this pass does not
 own is still filed rather than fixed.
 
+### ⭐ 4c · CONTRAST IS THREE INSTRUMENTS, AND EACH IS BLIND TO SOMETHING THE OTHERS SEE
+
+Added 2026-08-06 after E-119, which sat in the gap between the first two and was
+green in both. **Name which one you ran; "contrast passes" is not a statement.**
+
+| | reads | cannot see |
+|---|---|---|
+| `npm run test:contrast` | the **stylesheet** — token pairs, button fills, and (since E-119) gradient **stops**, worst-stop chosen per ink | anything not in its hand-listed pair table; opacity modifiers; a pair nobody thought of |
+| `npm run qa:contrast-rendered` | the **DOM** — every real text node against its real composited background | a state it cannot reach: `:hover`, `:focus`, a modal that needs data |
+| `npm run qa:button-contrast` | the **raster** — real pixels off a real button under a real pointer | anything that is not a button; it is a probe, not a sweep |
+
+⛔ **A `filter:` is a raster effect and BOTH colour-reading instruments are
+constitutionally blind to it.** `getComputedStyle` still returns the authored
+colour, so a hover that lightens a fill under a near-white label lowers contrast
+with nothing to notice — E-120, on three of the five solid buttons at once.
+
+⛔ **A gradient control is worse than a gradient surface.** `.btn-primary` was the
+only solid-family button painted with a ramp: the token gate had no way to
+express a gradient and the DOM sweep read the element as transparent, so the
+platform's most-used CTA was the one control *neither* could score. When a new
+surface takes a ramp, add its worst-stop pair in the same commit.
+
+⭐ **And the honest background behind a label on a `180deg` ramp is SIZE-DEPENDENT.**
+The gradient is invariant in x, so the fill at the label box's top row is what
+sits behind the tallest ascender — and a short button puts its glyphs higher up
+the ramp. One gradient measured **4.62** under a 56px hero and **4.39** under a
+30px pill. **Shoot the small size; it fails first.**
+
 ## The gates themselves
 
 ```

@@ -5,6 +5,54 @@
 The material merge, atom by atom. One token change per commit, each with its gates, its
 production drive and its image opened. This entry grows as the atoms land.
 
+**ATOM 3 — the primary CTA's white label stops being 4:1 on its own light, and contrast
+gains a third instrument (E-119; E-120 filed).**
+
+- **`.btn-primary` was the one solid-family button painted with a RAMP, and that put it in
+  the gap between both contrast instruments.** `linear-gradient(180deg, oklch(60%…),
+  oklch(48%…))` under a `--pearl-50` label: the token gate could only express a flat fill,
+  and the DOM sweep read a gradient-painted element as transparent (until E-118) and scored
+  the label against the page canvas behind the button. **Green in both, 4.0:1 in fact**, on
+  the two highest-intent controls in the product — `Sign up` and `Show all open markets`.
+- ⭐ **Measured, not modelled — and the raster said the size matters.** A `180deg` ramp is
+  invariant in x, so the fill at the LABEL BOX's top row is the background behind the tallest
+  ascender. That is **size-dependent**: **4.62** under the 56px hero CTA and **4.39** under
+  the 30px header pill, from one gradient. ⛔ Shooting only the hero would have photographed
+  the passing half and closed the atom on it.
+- **The light stop goes 60% → 53%** — worst stop **5.40** at rest, **4.85** on hover.
+  ⭐ **The 5-point spread that leaves is the delivery's own law, not a compromise:**
+  `material.css` §A1 sets `--wash-float` at 26.5%→21% and says the spread is *"deliberately
+  small: material, not decoration"*. The 12-point ramp was the decoration. The bevel pair and
+  the border are untouched — an edge pass on the control family has not happened yet, and
+  E-119 is a contrast atom.
+- **`contrast-audit.mts` gains a gradient parser, and `worstStop()` CHOOSES the stop** — the
+  light one under pale ink, the dark one under dark ink. `.chip-resolved` stops naming
+  `--gold-500` by hand: that pick was right, and it would have gone on pointing at gold-500
+  through **ATOM 2b's** re-derivation of the whole ramp with nothing to notice.
+- ⭐ **A `filter:` is a RASTER effect, so a hover state had never been scored by anything.**
+  `getComputedStyle` returns the authored colour, so both colour-reading instruments are
+  constitutionally blind to it. The gate now models `brightness`/`saturate` in gamma-encoded
+  sRGB and **refuses any filter function it does not implement** rather than rounding it to
+  1.0 — and the model is validated against real pixels on production, agreeing to within
+  **0.01** on all five solid buttons.
+- **New instrument: `npm run qa:button-contrast`** (`scripts/live-button-contrast.mjs`). It
+  puts a real pointer on a real button on production and reads the pixels back; the ink comes
+  from a solid `currentColor` swatch, never from a glyph (subpixel antialiasing tinted a
+  pearl-white sample `rgb(209,252,255)` — 0.3 of a point, in the flattering direction). It
+  refuses to report unless its fixture computes to the same `background-image` as the page's
+  own button.
+- 🔴 **It found E-120 on its first run: hover makes three of the five buttons LESS legible.**
+  The fill lightens while an `oklch(99%)` label is already clipped, so `.btn-yes` falls
+  4.74 → **4.36** and `.btn-danger` 4.85 → **4.37**. Filed, not fixed here: two are semantic
+  fills and the third is `--danger-500`, a shared token, and ATOM **2c** rewrites every one of
+  those hover rules for M1 — one visual pass, not two.
+- **Gates:** `test:contrast` 26 → **30** checks, 0 failures · `red:contrast` **14/14**,
+  including *restore the 60% stop → FAIL 4.01* · tsc 0 · build exit 0 · `test:tokens` 48 ·
+  `test:design-frozen` 45 (it walks `.tsx` only, so no CSS atom can move it) ·
+  `test:ui-consistency` baseline · `test:motion-ladder` 0 · `test:trilingual` 36 ·
+  `test:integrity` OK · **24 shots** at deviceScaleFactor 4, both button sizes ×
+  360/768/1280/1920 × en/sw/zh.
+
 **ATOM 2 — one lamp, five rungs (`src/app/globals.css`).**
 
 - **`--shadow-card-top` was a one-sided line, and M1 bans exactly that.** It read
