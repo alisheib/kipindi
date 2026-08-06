@@ -127,7 +127,30 @@ tinted surface off it.** One missing recipe, repairable in-house in one rule (a 
 ring-only modifier that composes with *any* rung). **This is the one item to send back**;
 everything else in the delivery is sound and self-consistent.
 
-### ⚠️ Six things in the delivery that are factually wrong about our files
+### 🔴 SEVEN things in the delivery that are factually wrong — and the seventh is the gold itself
+
+> **7. `#E3BC66` IS NOT `oklch(79% 0.095 84)`. It is `oklch(81.2% 0.1141 85.4)`.**
+> §A3 and M3 both anchor the whole "one gold" re-derivation on that conversion —
+> *"every shade re-derived from the trademark's #E3BC66 (oklch ≈ 79% · 0.095 · 84)
+> … Ladder: highlight 91 · body 79→72 · deep 65"*. Measured 2026-08-06 with the
+> Ottosson matrices and **proven by round-trip**: `oklch(81.20% 0.1141 85.38)`
+> converts back to `#E3BC66` exactly, while the delivery's own figure converts to
+> **`#D7B672`** — a visibly duller, greyer gold.
+> ⛔ **The chroma is understated by 17%.** So landing §A3's ladder verbatim would
+> make surface gold *less saturated than the trademark it exists to match*, which
+> is the precise inverse of M3's stated goal (*"surface gold and brand gold are the
+> same metal"*). The principle is right and the number is wrong.
+> ⭐ **ATOM 2b must anchor on the MEASURED value**, and the ladder's chroma should
+> be scaled to it (≈ ×1.20 on the delivery's figures) rather than pasted. The hue
+> is close enough to keep at **84** — the measured 85.4 is within a degree and a
+> half, and 84 is what M3, §A3, `--gilt-metal`, `--gilt-ink` and `--gilt-reeding`
+> all name; **one hue written once beats a decimal nobody can defend.**
+> ⚠️ For reference, what ships today at the same lightness: `--gold-400`
+> `oklch(80% 0.14 78)` = `#EFB146` and `--gilt` `oklch(86% 0.13 82)` = `#FBC865` —
+> both MORE saturated than the trademark, which is the "two metals" M3 exists to
+> end. The re-derivation still lowers chroma; it lowers it to **0.114**, not 0.095.
+
+### ⚠️ The other six things in the delivery that are factually wrong about our files
 
 Recorded so nobody pastes past them. None changes the verdict.
 
