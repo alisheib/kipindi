@@ -108,19 +108,79 @@ const COLLECT = () => {
   };
   const over = (fg, bg) => fg.rgb.map((c, i) => Math.round(c * fg.a + bg[i] * (1 - fg.a)));
 
-  /** Climb ancestors compositing every semi-transparent background we meet. */
+  /**
+   * 🔴 E-118 — A GRADIENT IS PAINT, AND `background-color` CANNOT SEE IT.
+   *
+   * An element painted with `background-image: linear-gradient(…)` reports
+   * `background-color: rgba(0, 0, 0, 0)`. The ancestor climb below therefore
+   * used to walk straight past it and score the text against whatever sits
+   * BEHIND the element. Measured on production: `.chip-resolved` — a gold pill
+   * with dark ink, plainly legible — came back at **1.08:1**, `rgb(46,27,0)` on
+   * the page canvas `rgb(7,4,90)`, eleven times. ⛔ The direction of that lie is
+   * not fixed: it manufactured a failure here, and on light text over a light
+   * gradient it would have HIDDEN one by compositing against a dark ancestor.
+   *
+   * So a gradient contributes its COLOUR STOPS as candidate backgrounds and the
+   * caller scores the worst of them — the same rule the token gate applies to
+   * `.chip-resolved`, where scoring the light stop instead of the dark one
+   * flatters it by ~2 points. A background we cannot decompose at all (a photo,
+   * `url()`, `image-set()`) returns "unmeasurable" and is REPORTED as such.
+   * ⛔ It is never silently replaced by an ancestor: a node scored against a
+   * background it does not have is worse than a node marked unscoreable, because
+   * it comes with a number attached.
+   */
+  const UNMEASURABLE = "unmeasurable";
+  const gradientStops = (bgImage) => {
+    if (!bgImage || bgImage === "none") return null;
+    if (!/gradient\(/.test(bgImage)) return UNMEASURABLE; // url(), image-set(), cross-fade()
+    // Chrome serialises stops as lab()/oklch()/color()/rgb() — never as the
+    // authored oklch() text, and never as a bare keyword after resolution.
+    const re = /(?:lab|lch|oklab|oklch|color|rgba?|hsla?)\([^()]*\)|#[0-9a-f]{3,8}\b/gi;
+    const stops = (String(bgImage).match(re) || []).map(parse).filter((s) => s && s.a > 0);
+    return stops.length ? stops : UNMEASURABLE;
+  };
+
+  /**
+   * Climb ancestors compositing every semi-transparent background we meet, and
+   * return EVERY candidate background — more than one when a gradient is in the
+   * stack. `{ bases: [], unmeasurable: true }` means "do not score this node".
+   */
   const bgOf = (el) => {
-    const stack = [];
+    const layers = []; // nearest-first; {c} for a colour, {stops} for a gradient
     let n = el;
     while (n && n !== document.documentElement) {
-      const c = parse(getComputedStyle(n).backgroundColor);
-      if (c && c.a > 0) { stack.push(c); if (c.a === 1) break; }
+      const cs = getComputedStyle(n);
+      const stops = gradientStops(cs.backgroundImage);
+      if (stops === UNMEASURABLE) return { bases: [], unmeasurable: true };
+      if (stops) {
+        layers.push({ stops });
+        // A gradient with any translucent stop still lets what is behind it
+        // through, so the climb continues; an all-opaque one ends it.
+        if (stops.every((s) => s.a === 1)) break;
+      }
+      const c = parse(cs.backgroundColor);
+      if (c && c.a > 0) { layers.push({ c }); if (c.a === 1) break; }
       n = n.parentElement;
     }
     const root = parse(getComputedStyle(document.documentElement).backgroundColor);
-    let base = root && root.a === 1 ? root.rgb : [10, 12, 40]; // canvas fallback
-    for (let i = stack.length - 1; i >= 0; i--) base = over(stack[i], base);
-    return base;
+    let bases = [root && root.a === 1 ? root.rgb : [10, 12, 40]]; // canvas fallback
+    for (let i = layers.length - 1; i >= 0; i--) {
+      const L = layers[i];
+      const next = [];
+      for (const b of bases) {
+        if (L.c) next.push(over(L.c, b));
+        else {
+          for (const s of L.stops) next.push(over(s, b));
+          // A translucent stop means the base itself is still visible somewhere
+          // along the ramp, so it stays a candidate.
+          if (L.stops.some((s) => s.a < 1)) next.push(b);
+        }
+      }
+      // Cap: a cross-product of stacked gradients is not worth exploding, and
+      // the worst stop of the nearest gradient dominates the verdict anyway.
+      bases = next.slice(0, 12);
+    }
+    return { bases, unmeasurable: false };
   };
 
   const out = [];
@@ -146,19 +206,22 @@ const COLLECT = () => {
 
     const fg = parse(cs.color);
     if (!fg) continue;
-    const bg = bgOf(el);
-    // A semi-transparent FOREGROUND is composited over its own background too —
-    // `text-text-subtle/60` is a real pattern in this codebase.
-    const fgSolid = fg.a < 1 ? over(fg, bg) : fg.rgb;
-
     const size = parseFloat(cs.fontSize) || 16;
     const weight = parseInt(cs.fontWeight, 10) || 400;
-    out.push({
-      fg: fgSolid, bg, size, weight,
+    const meta = {
+      size, weight,
       large: size >= 18 || (size >= 14 && weight >= 700),
       cls: (el.getAttribute("class") || "").slice(0, 90),
       tag: el.tagName.toLowerCase(),
       text: text.slice(0, 40),
+    };
+    const { bases, unmeasurable } = bgOf(el);
+    if (unmeasurable || !bases.length) { out.push({ ...meta, unmeasurable: true }); continue; }
+    // A semi-transparent FOREGROUND is composited over its own background too —
+    // `text-text-subtle/60` is a real pattern in this codebase.
+    out.push({
+      ...meta,
+      candidates: bases.map((bg) => ({ fg: fg.a < 1 ? over(fg, bg) : fg.rgb, bg })),
     });
   }
   return out;
@@ -166,7 +229,16 @@ const COLLECT = () => {
 
 const browser = await chromium.launch();
 const results = [];
-let checked = 0, failures = 0;
+let checked = 0, failures = 0, unmeasurable = 0;
+const unmeasurableCls = new Set();
+// 🔴 E-118 — COVERAGE IS PART OF THE VERDICT. A cell that never loaded used to
+// print one SKIP line and then vanish from the arithmetic, so a run in which
+// EVERY route failed still reported `PASS — no AA contrast failures`. It is
+// reproducible: from Git Bash, MSYS rewrites `ONLY=/results` into
+// `C:/Program Files/Git/results`, all four routes SKIP, and the sweep reports
+// success over ZERO measurements. A check that would still pass if every
+// surface it names had been deleted is not a check.
+const cells = { attempted: 0, measured: 0, skipped: [] };
 
 for (const locale of LOCALES) {
   for (const w of WIDTHS) {
@@ -181,6 +253,7 @@ for (const locale of LOCALES) {
     const page = await ctx.newPage();
 
     for (const route of ROUTES) {
+      cells.attempted++;
       try {
         // 60s + `load`: the FIRST hit of a route on a dev server pays a ~30s
         // Turbopack compile, and `domcontentloaded` can fire on a partially
@@ -189,8 +262,14 @@ for (const locale of LOCALES) {
         await page.goto(BASE + route, { waitUntil: "load", timeout: 60000 });
         await page.waitForLoadState("networkidle", { timeout: 15000 }).catch(() => {});
         await page.waitForTimeout(400);
-      } catch {
-        console.log(`  SKIP ${route} @${w}/${locale} — did not load`);
+      } catch (e) {
+        // ⚠️ SAY WHY. "did not load" with no cause sent one session hunting a
+        // network problem that was a mangled argument (MSYS turning
+        // `ONLY=/results` into `C:/Program Files/Git/results`). A skip reason is
+        // the difference between a coverage gap you can fix and one you re-run.
+        const why = String(e?.message ?? e).split("\n")[0].slice(0, 120);
+        console.log(`  SKIP ${route} @${w}/${locale} — did not load: ${why}`);
+        cells.skipped.push(`${route} @${w}/${locale} — ${why}`);
         continue;
       }
       // Sanity floor: a real page has more than a handful of text nodes. If this
@@ -204,16 +283,26 @@ for (const locale of LOCALES) {
       let rows = [];
       try { rows = await page.evaluate(COLLECT); } catch {
         console.log(`  SKIP ${route} @${w}/${locale} — context destroyed mid-measure`);
+        cells.skipped.push(`${route} @${w}/${locale} (context destroyed)`);
         continue;
       }
+      cells.measured++;
 
       for (const r of rows) {
+        if (r.unmeasurable) { unmeasurable++; unmeasurableCls.add(`${r.tag}.${r.cls}`); continue; }
         const need = r.large ? 3.0 : 4.5;
-        const got = ratio(r.fg, r.bg);
+        // ⛔ THE WORST CANDIDATE WINS. A gradient offers several backgrounds and
+        // the honest bar is the one that reads worst — scoring the flattering
+        // stop is how a legible-looking screenshot survives an illegible ramp.
+        let got = Infinity, worst = r.candidates[0];
+        for (const c of r.candidates) {
+          const v = ratio(c.fg, c.bg);
+          if (v < got) { got = v; worst = c; }
+        }
         checked++;
         if (got + 0.005 < need) {
           failures++;
-          results.push({ route, w, locale, ratio: +got.toFixed(2), need, ...r });
+          results.push({ route, w, locale, ratio: +got.toFixed(2), need, ...r, ...worst });
         }
       }
     }
@@ -235,8 +324,16 @@ for (const r of results) {
 
 console.log(`\nWCAG contrast audit — ${BASE}`);
 console.log(`  routes ${ROUTES.length} x widths ${WIDTHS.join("/")} x locales ${LOCALES.join("/")}`);
+console.log(`  cells measured: ${cells.measured}/${cells.attempted}`);
 console.log(`  text nodes measured: ${checked}`);
-console.log(`  AA failures: ${failures} (${byClass.size} distinct styling decisions)\n`);
+console.log(`  AA failures: ${failures} (${byClass.size} distinct styling decisions)`);
+if (unmeasurable) {
+  // Reported, never hidden: these are nodes over a background this model cannot
+  // decompose (a photo, `url()`). They are NOT scored and NOT counted as passes.
+  console.log(`  unmeasurable backgrounds: ${unmeasurable} node(s), ${unmeasurableCls.size} distinct — judged by eye, not here`);
+  for (const c of [...unmeasurableCls].slice(0, 8)) console.log(`      · ${c}`);
+}
+console.log("");
 
 for (const rec of [...byClass.values()].sort((a, b) => a.worst - b.worst).slice(0, 40)) {
   const rgb = (c) => `rgb(${c.join(",")})`;
@@ -251,6 +348,21 @@ if (JSON_OUT) {
   writeFileSync(JSON_OUT, JSON.stringify(
     [...byClass.values()].map((r) => ({ ...r, routes: [...r.routes] })), null, 2));
   console.log(`\n  wrote ${JSON_OUT}`);
+}
+
+// ⛔ E-118 — "NO FAILURES" IS NOT A PASS UNLESS SOMETHING WAS MEASURED.
+// Three ways this run is not evidence, and each is named rather than folded
+// into the failure count, so the output says WHICH kind of not-green it is.
+const blockers = [];
+if (checked === 0) blockers.push("measured ZERO text nodes — this run is not evidence of anything");
+if (cells.skipped.length) blockers.push(`${cells.skipped.length} of ${cells.attempted} cells never loaded`);
+
+if (blockers.length) {
+  console.log("\n⛔ INCONCLUSIVE — the sweep did not cover what it claims to cover:");
+  for (const b of blockers) console.log(`   · ${b}`);
+  for (const s of cells.skipped.slice(0, 12)) console.log(`     - ${s}`);
+  console.log("");
+  process.exit(2); // distinct from 1: a coverage failure is not an AA failure
 }
 
 console.log(failures === 0 ? "\nPASS — no AA contrast failures\n" : `\nFAIL — ${failures} AA failures\n`);

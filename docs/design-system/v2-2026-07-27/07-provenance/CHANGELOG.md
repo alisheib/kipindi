@@ -61,6 +61,43 @@ resizing the viewport, which keeps the session and keeps `deviceScaleFactor` (fi
 creation). ⛔ And on a sign-in failure it refuses **every width for that locale** rather than
 shooting a logged-out page, because an unauthenticated screenshot looks exactly like evidence.
 
+**ATOM 2e — the rendered sweep stops passing over nothing, and stops reading paint as transparent
+(`scripts/contrast-rendered.mjs`, `scripts/contrast-rendered-red.mjs`). E-118, and E-119 underneath it.**
+
+Found by cross-checking ATOM 2d's new gold pairs against the page that actually paints them.
+
+- 🔴 **`PASS — no AA contrast failures` over ZERO measured text nodes, exit 0.** Reproducible: from
+  Git Bash, MSYS rewrites `ONLY=/results` into `C:/Program Files/Git/results`, all four routes
+  SKIP, and the sweep reports success. ⛔ A check that would still pass if every surface it names
+  had been deleted is not a check. **Coverage is part of the verdict now** — zero nodes, or any
+  cell that failed to load, exits **2 · INCONCLUSIVE**, deliberately distinct from an AA failure's
+  exit 1, because "we found nothing wrong" and "we did not look" are different sentences.
+- 🔴 **A gradient is paint, and `background-color` cannot see it.** An element painted with
+  `background-image: linear-gradient(…)` reports `background-color: rgba(0, 0, 0, 0)`, so the
+  ancestor walk stepped straight past it and scored the text against whatever sat *behind* the
+  element. `.chip-resolved` — a gold pill with dark ink — came back at **1.08:1** against the page
+  canvas, eleven times, on production. **Now a gradient contributes its colour stops as candidate
+  backgrounds and the node is scored against the WORST of them**, which is the same rule the token
+  gate applies to that chip. A background that genuinely cannot be decomposed is reported
+  **unmeasurable** and is neither scored nor counted as a pass.
+- ⭐ **THE DIRECTION OF THAT LIE WAS NEVER FIXED, AND THE OTHER DIRECTION WAS LIVE.** Here it
+  manufactured a failure; on light text over a light gradient the identical bug **hides** one. The
+  RED fixture for that case is the reason it was caught: **`.btn-primary`'s white label scores
+  4.0:1 against its own gradient's light stop** and had been reported at ~18:1 against the page
+  canvas behind the button. That is **E-119**, on *"Sign up"* and *"Show all open markets"*, and it
+  is the next atom. ⚠️ The token gate could not have caught it either — `.btn-primary` is the one
+  solid-family button that is a **gradient**, so it is neither a `token()` nor a plain `var()`.
+  **Both instruments were blind to the same button for two different reasons.**
+- **RED 5/5 against a fixture server the harness starts itself** — neither defect is reproducible
+  on demand against production without breaking the live site. ⚠️ **And its first version was
+  broken in a way that made two of its five checks pass for the wrong reason:** it drove the sweep
+  with **`execFileSync`, which blocks the event loop of the process serving the fixtures**, so
+  every `goto` timed out — and a page that never loads reports *zero nodes, exit 2*, which is
+  byte-identical to *a page that loaded and was empty*. The check and the failure it was aimed at
+  had the same signature. Every check now asserts `cells measured: N/N` before anything else.
+- **And a SKIP says why now.** `did not load` with no cause is what sent this session hunting a
+  network fault that was a mangled argument.
+
 **ATOM 2d — the contrast gate stops mirroring, and gold is measured for the first time
 (`scripts/contrast-audit.mts`, `scripts/contrast-audit-red.mjs`). E-117.**
 
