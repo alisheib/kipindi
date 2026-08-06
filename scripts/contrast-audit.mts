@@ -19,26 +19,107 @@
  * and B8 (a class that resolves to nothing): the check and the thing being
  * checked lived in different places. Now there is one source.
  *
+ * ⚠️ 2026-08-06 (material merge, ATOM 2d) — THE MIRROR WAS ONLY HALF REMOVED,
+ * AND THE SURVIVING HALF HAD ALREADY DRIFTED.
+ *
+ * Five inputs were still typed by hand after the 2026-07-29 repair — `pearl50`,
+ * `danger500`, `text`, `btnYesBg`, `btnNoBg` — and `text` was typed
+ * `0.97 / 0.010` against a real `oklch(98% 0.012 268)` (globals.css:260). So
+ * `--text on --bg`, the single most-rendered pair in the product, was scored
+ * against ink the product does not use. The failure did not repeat because the
+ * 2026-07-29 note was wrong; it repeated because a PARTIAL repair leaves the
+ * same defect with a smaller surface, and nothing marks which half is which.
+ *
+ * Now every input is parsed, including the four button FILLS, which live in
+ * rule blocks rather than in `:root` and so needed a rule parser rather than an
+ * exemption. And the gold pairs are checked for the first time: `--gilt` is
+ * money ink (`.gilt-num`) and `.btn-gold` is a control, and neither had ever
+ * been put against a background by this gate.
+ *
+ * ⛔ `token()` now also fails on a SECOND declaration site. That is INTAKE §2a:
+ * the browser takes the LAST declaration and this parser takes the FIRST, so a
+ * token re-declared at the top of `:root` leaves the product on the old value
+ * while every ratio here prints the new one — and `test:tokens` cannot catch it,
+ * because its cross-file rule compares files and both copies are in globals.css.
+ *
  * Run: npm run test:contrast
+ * RED: node scripts/contrast-audit-red.mjs
  */
 import { readFileSync } from "node:fs";
 
 type Oklch = { l: number; c: number; h: number }; // l 0..1, c, h degrees
 const ok = (l: number, c: number, h: number): Oklch => ({ l, c, h });
 
-const GLOBALS = new URL("../src/app/globals.css", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
-const CSS = readFileSync(GLOBALS, "utf8");
+// ⛔ The path is PRINTED with the results. `CONTRAST_CSS` exists so the RED
+// harness can point the gate at a mutated COPY instead of rewriting the live
+// file — two sessions share this working tree and a mutate-then-restore window
+// over globals.css can land inside the other session's build. A gate you can
+// re-aim is only honest if it says what it read, so it does, every run.
+const GLOBALS =
+  process.env.CONTRAST_CSS ??
+  new URL("../src/app/globals.css", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
+// Comments are stripped first: a `/* --bg: was 15% */` note must not read as a
+// second declaration site, and must not be parseable as a value either.
+const CSS = readFileSync(GLOBALS, "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+// ⛔ PRINTED HERE, not beside the results. The token table below is built at
+// module scope and a parse defect throws inside it — so a path printed later
+// is a path that never prints on exactly the runs where you most need to know
+// which file was read.
+console.log(`contrast-audit: reading ${GLOBALS}\n`);
+
+/** `oklch(L% C H …)` → Oklch. Returns null when the text is not a literal. */
+function parseOklch(raw: string): Oklch | null {
+  const m = /oklch\(\s*([\d.]+)%\s+([\d.]+)\s+([\d.]+)/.exec(raw);
+  return m ? ok(Number(m[1]) / 100, Number(m[2]), Number(m[3])) : null;
+}
 
 /**
- * Read `--name: oklch(L% C H)` out of globals.css. Percent L is normalised to
- * 0..1. Throws rather than falling back: a silent default would recreate exactly
- * the drift this parser was written to kill.
+ * Read `--name: <value>` out of globals.css. Throws rather than falling back: a
+ * silent default would recreate exactly the drift this parser was written to
+ * kill. Throws on a SECOND declaration site for the same reason (INTAKE §2a).
  */
 function token(name: string): Oklch {
-  const re = new RegExp(`--${name}\\s*:\\s*oklch\\(\\s*([\\d.]+)%\\s+([\\d.]+)\\s+([\\d.]+)`);
-  const m = CSS.match(re);
-  if (!m) throw new Error(`contrast-audit: --${name} not found as a literal oklch() in globals.css`);
-  return ok(Number(m[1]) / 100, Number(m[2]), Number(m[3]));
+  const decls = [...CSS.matchAll(new RegExp(`--${name}\\s*:([^;}]*)`, "g"))].map((m) => m[1].trim());
+  if (decls.length === 0) throw new Error(`contrast-audit: --${name} is not declared in ${GLOBALS}`);
+  if (decls.length > 1) {
+    throw new Error(
+      `contrast-audit: --${name} has ${decls.length} declaration sites (${decls.join(" | ")}). ` +
+        `INTAKE §2a: the browser takes the LAST, this gate takes the FIRST — so the product ` +
+        `would render one value while every ratio below scored another. Edit the token AT ITS LINE.`,
+    );
+  }
+  const val = parseOklch(decls[0]);
+  if (!val) throw new Error(`contrast-audit: --${name} is "${decls[0]}", not a literal oklch()`);
+  return val;
+}
+
+/**
+ * Read one declaration out of a rule block — `.btn-yes { background: … }`.
+ *
+ * The four button fills are NOT tokens; they are literals inside their rules
+ * (`globals.css:715/727/748/759`), which is precisely why they were still being
+ * mirrored by hand here. A `var(--x)` value is resolved through `token()`, so
+ * `.btn-danger`'s `var(--danger-500)` and `.btn-gold`'s `var(--gold-500)` are
+ * followed to their definition rather than re-typed.
+ */
+function ruleValue(selector: string, prop: string): Oklch {
+  const at = CSS.indexOf(`\n${selector} {`) >= 0 ? CSS.indexOf(`\n${selector} {`) : CSS.indexOf(`\n${selector}{`);
+  if (at < 0) throw new Error(`contrast-audit: rule "${selector}" not found in ${GLOBALS}`);
+  const open = CSS.indexOf("{", at);
+  const close = CSS.indexOf("}", open);
+  if (close < 0) throw new Error(`contrast-audit: rule "${selector}" is unterminated`);
+  const body = CSS.slice(open + 1, close);
+  const m = new RegExp(`(?:^|;)\\s*${prop}\\s*:([^;]*)`).exec(body);
+  if (!m) throw new Error(`contrast-audit: "${selector}" declares no ${prop}`);
+  const raw = m[1].trim();
+  const lit = parseOklch(raw);
+  if (lit) return lit;
+  const v = /^var\(\s*--([a-z0-9-]+)\s*\)$/i.exec(raw);
+  if (v) return token(v[1]);
+  throw new Error(
+    `contrast-audit: "${selector} { ${prop}: ${raw} }" is neither a literal oklch() nor a plain ` +
+      `var(--token). It cannot be scored, and a gate that silently skips a control is worse than one that stops.`,
+  );
 }
 
 // linear-sRGB channel from OKLCH (Björn Ottosson).
@@ -67,17 +148,24 @@ function contrast(fg: Oklch, bg: Oklch): number {
 }
 
 // ── tokens — READ FROM globals.css, not mirrored ─────────────────────────────
+// ⛔ NOTHING IN THIS TABLE MAY BE A LITERAL. Every entry is `token()` or
+// `ruleValue()`. A hand-typed input is the defect this file's own header
+// narrates, twice; the second time it had already drifted (`text`).
 const T = {
-  pearl50: ok(0.99, 0.006, 268),
+  pearl50: token("pearl-50"),
   bg: token("bg"),
   bgElevated: token("bg-elevated"),
-  btnNoBg: ok(0.56, 0.2, 25),
-  btnYesBg: ok(0.53, 0.155, 150), // H10 fixed (was 0.57)
-  danger500: ok(0.57, 0.22, 25), // H10 fixed (was 0.60)
+  // The button FILLS, read off the rules that paint them — not re-typed.
+  btnNoBg: ruleValue(".btn-no", "background"),
+  btnYesBg: ruleValue(".btn-yes", "background"),
+  btnDangerBg: ruleValue(".btn-danger", "background"), // → var(--danger-500)
+  btnGoldBg: ruleValue(".btn-gold", "background"), // → var(--gold-500)
+  btnGoldFg: ruleValue(".btn-gold", "color"), // → var(--gold-fg)
+  danger500: token("danger-500"),
   border: token("border"),
   borderStrong: token("border-strong"),
   borderControl: token("border-control"),
-  text: ok(0.97, 0.01, 268), // --text (approx near-white)
+  text: token("text"), // ⚠️ was hand-typed 0.97/0.010 against a real 0.98/0.012
   // ── The ink ramp (added 2026-07-28 with DESIGN_AUTHORITY B8) ──────────────
   // These three were defined in globals.css from the start but were never bridged
   // into tailwind.config.ts, so `text-text-muted` / `-subtle` / `-faint` compiled
@@ -90,6 +178,18 @@ const T = {
   textFaint: token("text-faint"),
   bgInset: token("bg-inset"),
   panel: token("panel"),
+  // ── Gold (added 2026-08-06, material merge ATOM 2d) ───────────────────────
+  // Never checked before, on either side of the pair. `--gilt` is MONEY INK —
+  // `.gilt` / `.gilt-num` / `.gilt-strong` colour amounts, and M4 says money is
+  // mono and tabular, which means it is READ, which means 4.5. `.btn-gold` is a
+  // control. `.chip-resolved` labels a settled market.
+  // ⭐ These land BEFORE ATOM 2b re-derives the ramp to hue 84 deliberately: a
+  // gate added after the change it is meant to judge has no before-reading.
+  gilt: token("gilt"),
+  giltStrong: token("gilt-strong"),
+  gold500: token("gold-500"),
+  gold300: token("gold-300"),
+  chipResolvedFg: ruleValue(".chip-resolved", "color"),
 };
 
 // `decorative: true` = WCAG 1.4.11 exempt (a divider that is NOT the sole means
@@ -116,14 +216,26 @@ const CHECKS: Check[] = [
   { name: "--text-faint on --bg", fg: T.textFaint, bg: T.bg, min: 4.5 },
   { name: "--text-faint on --bg-elevated", fg: T.textFaint, bg: T.bgElevated, min: 4.5 },
   { name: "--text-faint on --panel", fg: T.textFaint, bg: T.panel, min: 4.5 },
+
+  // ── Gold, checked for the first time (ATOM 2d) ────────────────────────────
+  { name: "btn-gold label (gold-fg on gold-500)", fg: T.btnGoldFg, bg: T.btnGoldBg, min: 4.5 },
+  { name: "--gilt money ink on --bg", fg: T.gilt, bg: T.bg, min: 4.5 },
+  { name: "--gilt money ink on --bg-elevated", fg: T.gilt, bg: T.bgElevated, min: 4.5 },
+  { name: "--gilt money ink on --panel", fg: T.gilt, bg: T.panel, min: 4.5 },
+  { name: "--gilt-strong on --bg", fg: T.giltStrong, bg: T.bg, min: 4.5 },
+  { name: "--gilt-strong on --bg-elevated", fg: T.giltStrong, bg: T.bgElevated, min: 4.5 },
+  // .chip-resolved paints its label over `linear-gradient(--gold-300 → --gold-500)`.
+  // Dark ink on a light ramp is worst at the DARK stop, so gold-500 is the honest
+  // background to score — checking the 300 would flatter it by ~2 points.
+  { name: "chip-resolved label on gold ramp (worst stop, gold-500)", fg: T.chipResolvedFg, bg: T.gold500, min: 4.5 },
+  { name: "--gold-300 on --bg (objection chip ink)", fg: T.gold300, bg: T.bg, min: 4.5 },
 ];
 
-// H10 remaining fix (measured — apply next session, then this script goes green):
-//   .btn-yes    background 57% → oklch(53% 0.155 150)  (white label → 4.74)
-//   .btn-danger --danger-500 60% → oklch(57% 0.22 25)  (white label → 4.85)
-//   add --border-control: oklch(52% 0.130 268) (3.45/3.35) and use it on FORM
-//   controls (inputs/unfilled buttons); leave --border (34%) decorative (WCAG
-//   1.4.11 exempts non-control dividers). btn-no already passes (5.00).
+// ✅ AUDIT H10 IS CLOSED, and its fixes are now PARSED rather than described.
+// `.btn-yes` 57%→53%, `--danger-500` 60%→57% and the new `--border-control`
+// all shipped; this block used to carry them as a to-do list *and* as the
+// hand-typed inputs above, which is how `--text` drifted unnoticed. The values
+// are read off globals.css now, so the record belongs in the log, not here.
 
 let fails = 0;
 for (const c of CHECKS) {

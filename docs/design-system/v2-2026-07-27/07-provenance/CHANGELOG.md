@@ -61,6 +61,59 @@ resizing the viewport, which keeps the session and keeps `deviceScaleFactor` (fi
 creation). ⛔ And on a sign-in failure it refuses **every width for that locale** rather than
 shooting a logged-out page, because an unauthenticated screenshot looks exactly like evidence.
 
+**ATOM 2d — the contrast gate stops mirroring, and gold is measured for the first time
+(`scripts/contrast-audit.mts`, `scripts/contrast-audit-red.mjs`). E-117.**
+
+This atom lands **before** the M1 sweep on purpose: (2c) changes button fills and the gold
+re-derivation (2b) moves the whole ramp, and a gate added *after* the change it is meant to judge
+has no before-reading.
+
+- 🔴 **The 2026-07-29 repair was only half done, and the surviving half had drifted.** That commit
+  moved the token inputs into a parser and wrote a header explaining why hand-mirrored values
+  cannot be trusted — while leaving **five** of them hand-typed: `pearl50`, `danger500`, `text`,
+  `btnYesBg`, `btnNoBg`. `text` was typed `0.97 / 0.010` against a real
+  `oklch(98% 0.012 268)` (`globals.css:260`). ⭐ **`--text on --bg` is the most-rendered pair in
+  the product, and it was being scored against ink the product does not paint.** The reading moves
+  **17.96 → 18.47** — which is the falsifiable proof the atom did something, and also the measure
+  of how invisible this class of drift is: it was never going to fail a gate, it was going to
+  quietly answer the wrong question forever.
+- ⭐ **The lesson is about partial repairs, not about mirrors.** The 2026-07-29 note was *correct*;
+  it simply did not finish, and nothing recorded which half was done. A partial repair leaves the
+  identical defect with a smaller surface and a header that reads as if it were closed.
+- **The four button FILLS are parsed now, out of their rule blocks.** They were the reason the
+  mirror survived: `.btn-yes` / `.btn-no` declare literal `oklch()` **inside the rule**
+  (`globals.css:715/727`), not in `:root`, so `token()` could not reach them. `ruleValue()` reads
+  a declaration out of a named rule and follows a plain `var(--x)` to its definition, which also
+  covers `.btn-danger`'s `var(--danger-500)` and `.btn-gold`'s `var(--gold-500)`.
+- ⛔ **A control whose fill stops being scoreable now STOPS the gate.** If someone writes
+  `background: color-mix(…)` on `.btn-gold`, the parser refuses rather than skipping it — a
+  silently-skipped control is a green tick over a label nobody measured.
+- ⛔ **`token()` now fails on a SECOND declaration site — this is INTAKE §2a, installed as
+  enforcement rather than as a warning.** The browser takes the **last** declaration and this
+  parser takes the **first**, so a token re-declared at the top of `:root` leaves the product on
+  the old value while every ratio here prints the new one, and `test:tokens` cannot catch it
+  because its cross-file rule compares *files*. ⭐ **That is the exact trap ATOM 2a walks into
+  next** (`--bg` at `globals.css:244`), and it is now caught by the gate rather than by memory.
+- **Gold is checked for the first time — 8 new pairs, 18 → 26 checks.** `--gilt` is money ink
+  (`.gilt-num` colours amounts, and M4 says money is *read*, so it takes the 4.5 floor), on `--bg`,
+  `--bg-elevated` and `--panel`; `--gilt-strong` on two; `.btn-gold`'s own label on its own fill
+  (7.19); `.chip-resolved`'s label on the **dark** stop of its ramp (6.54 — scoring the light stop
+  would have flattered it by ~2 points); `--gold-300` on the canvas. All pass today, which is the
+  baseline 2b has to hold.
+- **RED 10/10 (`npm run red:contrast`)** — every mutation breaks a colour the product actually
+  paints. ⛔ **It does not rewrite `globals.css`**: two sessions share this tree and the house
+  mutate-then-restore pattern opens a window in which the other session's build reads a
+  deliberately-broken stylesheet. Each mutation is written to a copy and the gate is aimed at it
+  with `CONTRAST_CSS` — and the gate **prints the path it read on every run**, so re-aiming it can
+  never be silent.
+- ⚠️ **Two of my own checks were wrong before either was trusted.** The RED harness's "did it
+  refuse?" matcher was `/contrast-audit: .+/`, which matched the **source echo** `tsx` prints above
+  a stack trace — the un-interpolated template literal `--${name} is not declared in ${GLOBALS}`,
+  read straight out of the file. It scored a catch off text it had *read* rather than an error the
+  gate had *thrown*. And the gate printed the file it was reading **after** building its token
+  table, so on precisely the runs where a parse failed, the path never printed. Both were visible
+  only by reading the output; the exit codes were what they should have been.
+
 **ATOM 2, validated on all four axes (INTAKE §4a).**
 
 - **Technical** — `tsc` 0 · `build` exit 0 · `test:tokens` (48 guarded) · `test:contrast` 0
