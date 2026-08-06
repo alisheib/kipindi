@@ -131,8 +131,10 @@ In the same commit as the integration, not after it:
 
 Two things are **in-house and do not need a designer**, and neither should wait for the delivery:
 
-1. **The crest is dialled to invisible** — `ui/identity-avatar.tsx` renders the gilt chief at
-   `opacity="0.16"` over `strokeWidth="0.8"`. Sub-pixel at the 56px the podium uses. That is one
-   value, and it may change the read of the whole product.
+1. ✅ **DONE 2026-08-06 (E-111) — the crest geometry.** Every stroke in `ui/identity-avatar.tsx`
+   rendered sub-pixel at all six sizes (0.16px–0.64px); each now carries a 1-CSS-px floor and
+   the heraldic layer is visible for the first time. `test:crest-legibility` guards it.
+   ⛔ **What is still open is the band OPACITY and the crest's material — that is Claude
+   Design's, not ours**, and re-doing it here would smuggle a redesign into a bug fix.
 2. **52% of animating components bypass the token ladder** (`AUDIT.txt`) — hardcoded milliseconds
    instead of `--t-*`. Mechanical, and it is consistency already paid for.

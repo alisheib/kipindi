@@ -60,12 +60,19 @@ component is for. The ones that matter are called out below.
    panel width is dead space.
 5. **Modals and dialogs** — `ui/confirm-dialog.tsx` and `markets/sell-confirm-modal.tsx` both
    score 3/3 absent. These are **money-decision surfaces** with no material weight at all.
-6. **The identity system is invisible.** `ui/identity-avatar.tsx` is a **generative heraldic
-   crest** — four crest kinds, deterministic PRNG per seed, gilt chief with pips, tier rings,
-   dependency-free SVG. It renders with the chief at **`opacity="0.16"`** over a
-   **`strokeWidth="0.8"`** line. At the 56px the podium uses that is sub-pixel. ⭐ **It was
-   designed, built, and dialled below visibility.** See `shots/podium-and-avatars.png` — what
-   ships looks like initials in a circle.
+6. **The identity crest — ✅ HALF FIXED BY US ON 2026-08-06, read this before touching it.**
+   `ui/identity-avatar.tsx` is a **generative heraldic crest**: four crest kinds, deterministic
+   PRNG per seed, gilt chief with pips, tier rings, dependency-free SVG.
+   ⭐ It was **built and then rendered invisible by geometry** — every crest draws into a
+   `viewBox="0 0 100 100"`, so its 0.7–0.8u hairlines rendered at **0.16px–0.64px** across the
+   six sizes the product uses. **We fixed that ourselves** (E-111): every stroke now carries a
+   1-CSS-px floor, so the chief, its pips and the gilt ring are visible for the first time.
+   `shots/podium-and-avatars.png` is the **BEFORE**; `shots/podium-and-avatars-AFTER.png` is
+   what ships today. ⛔ **Do not re-fix the geometry.**
+   **What is still open and IS yours:** the chief band sits at `opacity="0.16"` — we left it
+   alone deliberately, because opacity is taste and sub-pixel geometry was a defect, and
+   conflating the two would have smuggled a redesign into a bug fix. The crest's **presence,
+   material and arrival** are part of the material system in §1.
 7. **The podium does not podium.** #1 is barely larger than #2/#3, ~26px higher, tiny outline
    crown, three flat circles on a panel that shares its background with the page.
 8. **Inverted hierarchy on the settled card** (`shots/board-card-settled.png`) — the biggest

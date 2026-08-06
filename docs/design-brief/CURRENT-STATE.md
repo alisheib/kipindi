@@ -50,7 +50,7 @@ works in all three languages (`shots/win-celebration-sw-360.png`, `-zh-360.png`)
 - **Three flat circles on a flat panel.** The panel shares its background with everything else,
   so the "hero" area is not a surface at all.
 
-## 3 · The identity system is invisible — `components/identity-avatar.tsx`
+## 3 · The identity system WAS invisible — ✅ fixed by us 2026-08-06 (E-111)
 
 ⭐ **The most surprising finding.** This is not a missing feature; it is a dial turned to zero.
 
@@ -58,9 +58,14 @@ The product has a **generative heraldic crest** system: four crest kinds, determ
 seed, gilt chief with pips, radial gradients, tier rings, dependency-free SVG that renders on the
 server. Real work.
 
-It renders today with the gilt chief at **`opacity="0.16"`** over a **`strokeWidth="0.8"`** line.
+It rendered with the gilt chief at **`opacity="0.16"`** over a **`strokeWidth="0.8"`** line.
 At the 56px the podium uses, that is sub-pixel. **The identity system was designed, built, and
-then dialled below the threshold of visibility.** What ships looks like initials in a circle.
+then dialled below the threshold of visibility by geometry nobody converted into pixels.**
+
+⭐ **We fixed the geometry ourselves (E-111)** — every stroke now carries a 1-CSS-px floor, so
+the chief, its pips and the gilt ring are visible for the first time. ⛔ **Do not re-fix it.**
+What remains open, and is yours, is the band opacity and the crest's material and arrival —
+that is the material system in README §1, not a geometry bug.
 
 ## 4 · The board card — `shots/board-card-settled.png`
 

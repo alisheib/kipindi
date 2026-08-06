@@ -95,6 +95,9 @@ const SHOTS = [
   [".qa-s31/design/3-board-full.png", "board-full-1280.png"],
   [".qa-s31/design/1-leaderboard-avatars.png", "podium-and-avatars.png"],
   [".qa-s31/design/4-avatar-menu.png", "avatar-menu-open.png"],
+  /* E-111 · the crest AFTER the sub-pixel fix — paired with the BEFORE above so the
+     supplier does not re-fix geometry we already corrected. */
+  [".qa-s31/design/6-leaderboard-after.png", "podium-and-avatars-AFTER.png"],
 ];
 let shots = 0;
 for (const [src, dst] of SHOTS) if (existsSync(src)) { copyFileSync(src, `${OUT}/shots/${dst}`); shots++; }
