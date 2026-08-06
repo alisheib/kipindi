@@ -266,6 +266,25 @@ context-only with no imperative API, so it needs a real settlement on a round th
 
 ## 4 · The gates — every commit, no exceptions
 
+### ⭐ 4a · THE EXIT GATE FOR AN ATOM IS FOUR-PART, AND ALL FOUR ARE REQUIRED
+
+Ali, 2026-08-06: *"don't finish any phase unless it's validated visually and technically and
+consistency-wise with the design handover and responsiveness."* An atom is **not done** until
+every one of these is true, and each has to be *shown*, not asserted:
+
+| | what it means | how it is shown |
+|---|---|---|
+| **1 · Technical** | the gates below are green **and the change is the one you meant** | `tsc` · `build` exit code · the `test:*` set · plus a **falsifiable check** — the grep or probe that would FAIL if the atom had done nothing |
+| **2 · Visual** | a person has **opened the image** | `scripts/live-material-probe.mjs` for material (4× corner crops — a 1px ring is invisible at 1×), `live-s29-sweep.mjs` for layout. ⛔ `locator.screenshot()`, never `fullPage` |
+| **3 · Consistency with the handover** | the shipped thing matches **what the delivery actually specifies**, not what looks fine | re-read the relevant M-law and the `spec.html` section for that surface, and state which one it satisfies. ⛔ "It looks good" is not this check |
+| **4 · Responsiveness** | **360 · 768 · 1280 · 1920 × EN · SW · ZH** | the same probe across the matrix. **360 SW** is where truncation bites first (~40% longer); **360 ZH** is the opposite failure, panels that look empty (~50% shorter) |
+
+⛔ **A single-viewport, single-locale capture does not close an atom.** Measured on this very
+merge: ATOM 2 was verified at 1280/EN, looked complete, and was **reopened** because 11 of its 12
+required cells had never been shot.
+
+## The gates themselves
+
 ```
 npx tsc --noEmit
 npm run build                 # the deploy gate
