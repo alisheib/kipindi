@@ -21,18 +21,26 @@ import { cn, formatTzs } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { usePlacePulse, type useUpDownQuickBet } from "./use-quick-bet";
 import { stakeChipLabel } from "./stake-math";
+// ⭐ D2 · ONE RULE for "what would I be paid", shared with the card, the round page and the
+// server's own `myExactPayout`. Never re-derived here — see `@/lib/updown-pricing`.
+import { impliedMultiplier, emptySideOf, formatMultiplier, type UpDownPricing } from "@/lib/updown-pricing";
 
 type Bet = ReturnType<typeof useUpDownQuickBet>;
 
 export function UpDownStakeControls({
   bet,
-  estMultiplier,
+  pricing,
   assetName,
   size = "card",
   stopPropagation = false,
 }: {
   bet: Bet;
-  estMultiplier: number | null;
+  /**
+   * ⛔ REQUIRED, not optional, and that is deliberate. The E-99 near-miss was a fourth argument
+   * left off one call site: it type-checked perfectly and the feature silently did nothing on
+   * half the surfaces it claimed to cover. A required prop makes forgetting it a compile error.
+   */
+  pricing: UpDownPricing;
   assetName: string;
   size?: "card" | "detail";
   /** The board card is itself a link, so its controls must stop click bubbling. */
@@ -40,6 +48,28 @@ export function UpDownStakeControls({
 }) {
   const { t } = useT();
   const compact = size === "card";
+  // ── D2 · THE HONEST MULTIPLIER ────────────────────────────────────────────
+  //
+  // 🔴 These two used to be ONE flat number, the same on both buttons whatever the pool held.
+  // They are now priced against the stake the player has actually chosen, through the same
+  // `payoutFor` settlement pays with — so on a round holding UP 36,000 / DOWN 0 the UP button
+  // reads `× 1.00` (your stake, back) and the DOWN button `× 16.6`. That asymmetry IS the
+  // information; nothing else on the card could have carried it.
+  //
+  // ⚠️ It moves with every later bet, which is what `udEstimateNote` now says. It is never a
+  // promise — the LOCK freezes the pool and `myExactPayout` replaces it with arithmetic.
+  const multUp = impliedMultiplier(pricing, "UP", bet.stake);
+  const multDown = impliedMultiplier(pricing, "DOWN", bet.stake);
+  // ⭐ Which side nobody has backed. Round-wide (not side-aware) because this control offers
+  // BOTH sides — the player can see which one is empty and choose. The round PAGE, where the
+  // side is already locked, uses `refundWarningFor` instead so it never warns the player who
+  // is about to fill the empty side.
+  const empty = emptySideOf(pricing);
+  const emptyCopy =
+    empty === "BOTH" ? t.market.udNobodyBackedEither
+    : empty === "UP" ? t.market.udNobodyBacked.replace("{side}", t.market.udUp)
+    : empty === "DOWN" ? t.market.udNobodyBacked.replace("{side}", t.market.udDown)
+    : null;
   const flash = usePlacePulse(bet.justPlaced?.nonce);
   const flashSide = bet.justPlaced?.side;
   const inputRef = useRef<HTMLInputElement>(null);
@@ -139,7 +169,7 @@ export function UpDownStakeControls({
           aria-label={`${t.market.udUp} — ${assetName}${bet.stakeReady ? ` · ${formatTzs(bet.stake)}` : ""}`}
         >
           <I.trendingUp s={compact ? 14 : 15} /> {t.market.udUp}
-          {estMultiplier != null && <span className="font-mono text-[12.5px] opacity-85">× {estMultiplier.toFixed(1)} est.</span>}
+          {multUp != null && <span className="font-mono text-[12.5px] opacity-85">× {formatMultiplier(multUp)} est.</span>}
         </button>
         <button
           type="button" onClick={guard(() => bet.place("DOWN"))} disabled={!bet.stakeReady}
@@ -147,7 +177,7 @@ export function UpDownStakeControls({
           aria-label={`${t.market.udDown} — ${assetName}${bet.stakeReady ? ` · ${formatTzs(bet.stake)}` : ""}`}
         >
           <I.trendingDown s={compact ? 14 : 15} /> {t.market.udDown}
-          {estMultiplier != null && <span className="font-mono text-[12.5px] opacity-85">× {estMultiplier.toFixed(1)} est.</span>}
+          {multDown != null && <span className="font-mono text-[12.5px] opacity-85">× {formatMultiplier(multDown)} est.</span>}
         </button>
       </div>
 
@@ -159,8 +189,25 @@ export function UpDownStakeControls({
             ? <>{t.market.udTapToBet} · {formatTzs(bet.stake)}</>
             : <>{t.market.udEnterStake}</>}
       </p>
-      {!compact && estMultiplier != null && (
-        <p className="mt-1 text-[10px] leading-[1.45] text-text-faint">{t.market.udEstimateNote}</p>
+      {/* ⭐ D2 · THE EMPTY-SIDE STATE, SAID BEFORE THE BET.
+          A one-sided round refunds everyone whichever way the price goes (E-65), and until now
+          the only place that was ever said was the refund notice — AFTER the round. It sits on
+          BOTH sizes, because the board card is where most bets are actually placed.
+          ⚠️ RG (G5): faint informational ink and the `info` glyph — the same "state a fact"
+          register the `factual` toast variant was added for. Not gold (gold is earned money on
+          this platform), not an alarm (a refund is not a failure). */}
+      {emptyCopy && (
+        <p className={cn("mt-1.5 flex items-start gap-1 leading-[1.45] text-text-faint", compact ? "text-[10px]" : "text-[10.5px]")}>
+          <I.info s={compact ? 10 : 11} className="mt-[2px] shrink-0" />
+          <span>{emptyCopy}</span>
+        </p>
+      )}
+      {/* ⛔ THE NOTE NOW RENDERS ON THE CARD TOO. It used to be `!compact`, so the board card —
+          the surface a quick-bet is actually placed from — carried a bare "× 1.5 est." with
+          nothing saying what the figure was. Now that the number moves with every later bet
+          (G3), the sentence that says so has to travel with it. */}
+      {(multUp != null || multDown != null) && (
+        <p className={cn("mt-1 leading-[1.45] text-text-faint", compact ? "text-[10px]" : "text-[10.5px]")}>{t.market.udEstimateNote}</p>
       )}
 
       {/* Screen-reader confirmation — replaces the happy-path toast. */}

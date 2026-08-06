@@ -35,6 +35,9 @@ import { roundPhase, resultClock } from "@/lib/updown-card-phase";
 // ⛔ ONE RULE FOR "why did this stake come back", shared with the round page, the settlement
 // proof, the push and the inbox. Five copies is five chances to disagree about someone money.
 import { refundReasonFor, REFUND_REASON_KEY } from "@/lib/updown-refund-reason";
+// ⛔ ONE RULE for "what would I be paid" (D2) — shared with the quick-bet controls, the round
+// page and the server's own `myExactPayout`. The card never re-derives money.
+import { impliedMultiplier, emptySideOf, formatMultiplier, type UpDownPricing } from "@/lib/updown-pricing";
 import type { PublicSourceClass } from "@/lib/server/updown-symbols";
 
 export type UpDownCardState = "open" | "locked" | "closing" | "confirming" | "resolved" | "void";
@@ -86,8 +89,15 @@ export type UpDownCardProps = {
   players: number;
   /** 0..100. Down is derived — one number, one source. */
   upPct: number;
-  /** Display-only estimate multiplier. null ⇒ show no "× …" at all, never "× 0". */
-  estMultiplier: number | null;
+  /**
+   * ⭐ D2 · THE ROUND'S REAL POOL + ITS FROZEN RATES, so the two buttons can quote what a
+   * player would ACTUALLY be paid instead of a config constant. See `@/lib/updown-pricing`.
+   *
+   * 🔴 This replaced `estMultiplier`, a flat `1 + estimatedWinningsRate` that read the same
+   * when the other side held TZS 36,000 and when it held nothing. Required, never optional —
+   * the E-99 lesson is that an omitted optional argument type-checks and silently does nothing.
+   */
+  pricing: UpDownPricing;
   state: UpDownCardState;
   outcome?: "UP" | "DOWN" | null;
   closePrice?: number | null;
@@ -191,7 +201,7 @@ export function UpDownCard(props: UpDownCardProps) {
   const {
     roundId, assetName, assetTicker, assetIcon, durationMinutes, decimals,
     livePrice, openPrice, upTarget, downTarget, movePct, closesAtMs, volumeTzs, players, upPct,
-    estMultiplier, state, outcome, closePrice, voidReason,
+    pricing, state, outcome, closePrice, voidReason,
     sourceClass, sourceQuotedAt, className,
     selectionClosesAtMs, serverNowMs, myExactPayout, myRefundedStake,
     marketId, isAuthed, minStake, maxStake, myUpStake = 0, myDownStake = 0,

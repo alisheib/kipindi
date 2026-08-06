@@ -668,7 +668,16 @@ export const dict = {
       udLowerThan: "Lower",
       udTickNote: "The price only has to move one step either way.",
       udAwaitingRead: "Awaiting price",
-      udEstimateNote: "× figures are pool estimates, not fixed odds — your final payout depends on how the pools close.",
+      // ⛔ D2/G3 · THIS SENTENCE USED TO BE FALSE ABOUT ITS OWN NUMBER. It said "pool
+      // estimates" while the × beside it was a fixed config constant. Now that the figure IS
+      // the pool, the note owns the other half of the truth: pari-mutuel odds move with every
+      // later bet, and the LOCK is where the estimate stops being one.
+      udEstimateNote: "× moves with every bet — it is this pool right now, not fixed odds. When betting closes it becomes your exact payout.",
+      // ⭐ D2 · the empty-side state, said BEFORE the bet. A one-sided round refunds everyone
+      // whichever way the price goes (E-65), and until now the only place that was ever said
+      // was the refund notice, after the round. `{side}` is the side nobody has backed.
+      udNobodyBacked: "Nobody has backed {side} yet — if that does not change, your stake comes back.",
+      udNobodyBackedEither: "No bets yet — if only one side is backed when betting closes, every stake comes back.",
       udSource: "Source", udQuoted: "quoted",
       // E-53 · the KIND of market a price is read from. Never the data vendor.
       udSourceCrypto: "Live crypto market", udSourceStock: "Live stock market",
@@ -2071,7 +2080,9 @@ export const dict = {
       udLowerThan: "Chini",
       udTickNote: "Bei inahitaji kusogea hatua moja tu upande wowote.",
       udAwaitingRead: "Inasubiri bei",
-      udEstimateNote: "Vipimo vya × ni makadirio ya bwawa, si odds zisizobadilika — malipo yako hutegemea jinsi mabwawa yatakavyofungwa.",
+      udEstimateNote: "× hubadilika kwa kila dau jipya — ni bwawa la sasa hivi, si odds zisizobadilika. Dau zikifungwa, inakuwa malipo yako kamili.",
+      udNobodyBacked: "Hakuna aliyeweka dau {side} bado — kama hali hii haitabadilika, dau lako litarudi.",
+      udNobodyBackedEither: "Hakuna dau bado — kama upande mmoja tu utawekewa dau wakati dau zinafungwa, kila dau litarudi.",
       udSource: "Chanzo", udQuoted: "imenukuliwa",
       // E-53 · aina ya soko, si muuzaji wa data.
       udSourceCrypto: "Soko la sarafu-fiche la moja kwa moja", udSourceStock: "Soko la hisa la moja kwa moja",
@@ -3442,7 +3453,9 @@ export const dict = {
       udLowerThan: "低于",
       udTickNote: "价格只需向任一方向变动一档即可。",
       udAwaitingRead: "等待价格",
-      udEstimateNote: "× 倍数为奖池估算，并非固定赔率——最终派彩取决于奖池的最终分布。",
+      udEstimateNote: "× 会随每一笔新投注变动——它是此刻的奖池，并非固定赔率。投注截止时，它将变为您的确切派彩。",
+      udNobodyBacked: "目前还没有人投注{side}——若情况不变，您的投注将全额退回。",
+      udNobodyBackedEither: "目前尚无投注——若投注截止时只有一方有人下注，所有投注都将全额退回。",
       udSource: "来源", udQuoted: "报价时间",
       // E-53 · 只说市场类别，不透露数据供应商。
       udSourceCrypto: "加密货币实时行情", udSourceStock: "股票市场实时行情",

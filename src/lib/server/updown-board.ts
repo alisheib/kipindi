@@ -18,6 +18,10 @@ import { getUpDownConfig, stakeBoundsFor } from "./updown-config";
 import { publicSourceClassFor, type PublicSourceClass } from "./updown-symbols";
 import { ratesFor, listPositionsForUser, projectedPayout } from "./market-service";
 import { impliedYesPct } from "./market-service";
+// ⭐ D2 · the shape the player surfaces price a bet from. Isomorphic by design — the card is a
+// client component, this is the server, and one definition of "what would I be paid" is the
+// point (same reasoning as `updown-refund-reason.ts`).
+import type { UpDownPricing } from "@/lib/updown-pricing";
 // E-99 · the result clock is driven by an asset's OWN measured record, never by a constant.
 import { feedHistoryFor } from "./updown-feed-history";
 import { MIN_SAMPLES_FOR_ADVICE } from "./updown-feed-advice";
@@ -80,9 +84,27 @@ export type BoardRound = {
   volumeTzs: number;
   players: number;
   upPct: number;
-  /** Display-only estimate from the round's OWN frozen snapshot, or null if the poll
-   *  did not freeze one — never a default invented at render time. */
-  estMultiplier: number | null;
+  /**
+   * ⭐ D2 · THE ROUND'S REAL MONEY, so a player can be told what they would ACTUALLY be paid
+   * before they bet — see `@/lib/updown-pricing`.
+   *
+   * 🔴 THIS REPLACED A FLAT CONFIG CONSTANT. The field was `estMultiplier: 1 +
+   * rates.estimatedWinningsRate`, which is a number an admin types at `/admin/config`. It read
+   * **identically when the other side held TZS 36,000 and when it held nothing** — so on a
+   * pari-mutuel game the board actively concealed the single strongest reason to take the thin
+   * side, and the thin side is **43% of every stake this product has ever refunded**. Measured
+   * on a real one-sided round: the fat side returns exactly 1.00× and the empty side 16.66×.
+   * Both buttons printed 1.5.
+   *
+   * ⛔ RAW SHILLINGS, NOT `upPct`. The percentage is rounded to an integer for the bar, and
+   * "is this side empty" — the whole question the copy answers — cannot be read off a rounded
+   * percentage: 0 and 400 on a 100,000 pool are both `0%`.
+   *
+   * ⛔ THE RATES ARE THE ROUND'S OWN FROZEN SNAPSHOT, never live config, for exactly the reason
+   * `myExactPayout` is computed on the server: a rate retune must not reprice a placed bet, and
+   * a surface pricing off live config would drift from what settlement pays.
+   */
+  pricing: UpDownPricing;
   state: "open" | "locked" | "closing" | "confirming" | "resolved" | "void";
   /**
    * E-72 · when bets stopped (or stop) being accepted — the last 20% of the round, floored
@@ -234,9 +256,26 @@ async function toBoardRound(
     volumeTzs: m.yesPool + m.noPool,
     players: m.predictorCount,
     upPct: impliedYesPct(m),
-    // Only if the poll actually froze one. `showEstimatedWinnings` false ⇒ null ⇒ the
-    // card hides the "× …" entirely rather than printing "× 0".
-    estMultiplier: rates.showEstimatedWinnings ? 1 + rates.estimatedWinningsRate : null,
+    // ⭐ D2 · the pool itself, so every player surface can price a bet through the SAME
+    // `payoutFor` settlement pays with. See the field comment for what this replaced.
+    pricing: {
+      upPool: m.yesPool,
+      downPool: m.noPool,
+      // Exactly the five fields `poolFee` reads — nothing else about the poll's fees crosses
+      // to the browser. Frozen per round, so a retune cannot reprice a bet already placed.
+      rates: {
+        feeModel: rates.feeModel,
+        commissionRate: rates.commissionRate,
+        feeCeilingRate: rates.feeCeilingRate,
+        platformFeeRate: rates.platformFeeRate,
+        operatorFeeRate: rates.operatorFeeRate,
+      },
+      // The operator's display switch, unchanged in meaning: a round that never froze the
+      // display fields shows no "× …" at all, exactly as before. ⚠️ It gates the MULTIPLIER
+      // only — the empty-side sentence is a fact about the round, and no display switch may
+      // suppress that.
+      show: rates.showEstimatedWinnings === true,
+    },
     // ⛔ The MARKET'S `selectionClosedAt`, because that is the exact field `isSelectionClosed`
     // enforces in `buyPosition`. Re-deriving it here from the duration would produce a second
     // answer to "when do bets close", and the two would drift the first time the fraction is

@@ -277,7 +277,9 @@
     "test:shell-boundary": "tsx scripts/shell-boundary.test.mts",
     "red:shell-boundary": "node scripts/red-e70.cjs",
     "test:updown-result-announce": "tsx scripts/updown-result-announce.test.mts",
-    "red:updown-result-announce": "node scripts/red-result-announce.cjs"
+    "red:updown-result-announce": "node scripts/red-result-announce.cjs",
+    "test:updown-pricing": "tsx scripts/updown-pricing.test.mts",
+    "red:updown-pricing": "node scripts/red-updown-pricing.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",
