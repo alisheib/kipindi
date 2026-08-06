@@ -5538,6 +5538,31 @@ consistency-wise with the design handover and responsiveness."*
 shot. A session that lands three atoms to this bar is worth more than one that lands twenty and
 cannot prove any of them.
 
+#### ⭐ TWO MORE STANDING INSTRUCTIONS FROM ALI, 2026-08-06 (session 34) — they change the animation work
+
+⚠️ **This block is a `####`, deliberately.** Written as a `###` it starts a *new* §6b block, which
+puts the `RESUME AT` marker below the topmost one — and `test:tracker-hygiene` §2 fails exactly
+there. That is E-108's stale assertion working: it caught this on the first run.
+
+1. ⭐ **"physics and mechanics of animations and smoothness are the most important thing,
+   perfectly."** So the motion atoms are **not** a skin pass. What is being judged is whether the
+   motion is *physically coherent* — one lamp, gravity straight down (M1), a rung's arrival paired
+   with its exit (M2), no second entrance — and whether it is **smooth on the device we target**, a
+   low-end Android over 2G. ⛔ **That makes three things hard requirements rather than preferences:**
+   compositor-only properties (`transform` / `opacity` / `filter`; **never** a layout property —
+   INTAKE §5 already calls this non-negotiable), a real `--t-*` duration and `--m-*` easing off the
+   ladder rather than a hand-tuned number, and a **measured** frame-time rather than an asserted
+   one. ⛔ **"It looks smooth on this laptop" is not evidence** — this machine is not the target
+   device, and §0 already records that its own clock runs 93s slow.
+2. ⭐ **"any bugs you find as you go — animations, physics, mechanics — fix as you go."** ⛔ This
+   **supersedes the file-and-defer default** for defects found inside the surface an atom is
+   already touching. File the id, fix it, prove it RED, land it in its own atom. It does **not**
+   authorise widening an atom: a money-path defect is still isolated (E-115), and a defect on a
+   surface this pass does not own is still filed rather than fixed.
+   ⭐ **Already applied twice this session:** E-118 was filed and fixed within minutes of being
+   found rather than being handed to session 35, and the E-119 it uncovered is queued as the next
+   atom rather than as a note.
+
 | # | Commit | What landed | Proof |
 |---|---|---|---|
 | **ATOM 1** | `3805d234` | Acceptance. The delivery is **ACCEPTED**; the merge map it shipped with pointed at three files that do not exist; D-0's celebration font row corrected to mono; open items 4/5/8 closed; `E-114`, `E-115`, `E-116` filed; the spec page's stylesheet link repaired | deploy SUCCESS, prod 200 on `/`, `/markets`, `/updown` |

@@ -283,6 +283,27 @@ every one of these is true, and each has to be *shown*, not asserted:
 merge: ATOM 2 was verified at 1280/EN, looked complete, and was **reopened** because 11 of its 12
 required cells had never been shot.
 
+### ⭐ 4b · MOTION IS JUDGED AS PHYSICS, NOT AS DECORATION
+
+Ali, 2026-08-06: *"physics and mechanics of animations and smoothness are the most important
+thing, perfectly"*, and *"any bugs you find as you go — animations, physics, mechanics — fix as
+you go."*
+
+For any atom that adds or changes motion, axis 1 (technical) gains three requirements and axis 2
+(visual) gains one. None of them is satisfiable by looking at a still:
+
+| | |
+|---|---|
+| **compositor-only** | `transform` / `opacity` / `filter` only. A layout property is already non-negotiable in §5; this makes it a *checked* property of the atom, not a rule someone remembered |
+| **on the ladder** | a `--t-*` duration **and** an `--m-*` easing, both named. A hand-tuned `340ms` is drift even when it feels right — `test:motion-ladder`'s allowlist is at **0** and may only stay there |
+| **measured, not felt** | frame timings from a real run, not "it looks smooth". ⛔ **This laptop is not the target device** — the product targets a low-end Android over 2G, and §0 records that this machine's own clock runs 93s slow |
+| **both reduced-motion gates + the third** | M6 needs the `prefers-reduced-motion` branch **and** the `html.kp-reduce-motion` mirror — and `theme-provider.tsx:43` writes a **third**, `data-motion="reduced"`, for low-end Android. ⛔ Neither universal clamp touches `animation-delay`, so a delayed keyframe holds its *first* frame instead of its last: `.needle-sweep` sits at `rotate(-26deg)` for 600ms and `.crest-ring-reveal` at `opacity: 0` for 340ms. **Close that before the first animation atom** |
+
+⛔ **"Fix as you go" supersedes file-and-defer for defects on a surface the atom is already
+touching** — file the id, fix it, prove it RED, land it as its own atom. It does **not** authorise
+widening the atom: money-path defects stay isolated, and a defect on a surface this pass does not
+own is still filed rather than fixed.
+
 ## The gates themselves
 
 ```
