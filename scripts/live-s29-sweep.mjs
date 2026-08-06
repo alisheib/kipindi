@@ -46,12 +46,38 @@ const ADMIN = [
   ["staff", "/admin/staff"], ["roles", "/admin/roles"], ["markets", "/admin/markets"],
   ["updown", "/admin/updown"], ["kyc", "/admin/kyc"], ["aml", "/admin/aml"], ["audit", "/admin/audit"],
 ];
+/**
+ * 🔴 READ OFF THE REAL ROUTER, NOT WRITTEN FROM MEMORY.
+ *
+ * Session 30 found three of these returning **HTTP 404** and deliberately did not file them,
+ * saying *"almost certainly three wrong paths in the harness, not three missing pages — one
+ * minute against the real router settles it."* It was right, and it was FOUR, not three.
+ * Checked against `.next/app-path-routes-manifest.json`:
+ *
+ *   `/history`            → does not exist. The long-form portfolio is `/positions`; Up & Down
+ *                           is `/updown/history`. Both were already in this list, so the entry
+ *                           was pure invention.
+ *   `/inbox`              → does not exist AT ALL. The nearest real surface is
+ *                           `/profile/notifications`.
+ *   `/kyc`                → `/profile/kyc`
+ *   `/responsible-gaming` → `/profile/responsible-gambling` (the fourth, which nobody had
+ *                           flagged because a 404 in a list of sixteen reads as noise)
+ *
+ * ⛔ A SWEEP THAT PHOTOGRAPHS A 404 IS THE SAME CLASS AS ONE THAT PHOTOGRAPHS THE WRONG
+ * LANGUAGE (E-106): the output looks like evidence. Four of sixteen player cells were
+ * measuring the not-found page, so a quarter of the player half of Ali's visual mandate was
+ * void before it ran — and the run still "looked orderly" because `status` was recorded but
+ * nothing refused to continue on it.
+ */
 const PLAYER = [
   ["board", "/updown"], ["markets", "/markets"], ["positions", "/positions"],
-  ["ud-history", "/updown/history"], ["wallet", "/wallet"], ["deposit", "/wallet/deposit"],
-  ["withdraw", "/wallet/withdraw"], ["history", "/history"], ["inbox", "/inbox"],
-  ["profile", "/profile"], ["kyc", "/kyc"], ["responsible", "/responsible-gaming"],
+  ["ud-history", "/updown/history"], ["performance", "/positions/performance"],
+  ["wallet", "/wallet"], ["deposit", "/wallet/deposit"], ["withdraw", "/wallet/withdraw"],
+  ["notifications", "/profile/notifications"], ["profile", "/profile"],
+  ["kyc", "/profile/kyc"], ["responsible", "/profile/responsible-gambling"],
+  ["account", "/profile/account"], ["security", "/profile/security"],
   ["leaderboard", "/leaderboard"], ["results", "/results"], ["live", "/live"], ["help", "/help"],
+  ["proposals", "/proposals"], ["watchlist", "/watchlist"], ["fairness", "/fairness"],
 ];
 
 /**
@@ -65,22 +91,34 @@ const SCAN = () => {
     const t = (el.innerText ?? el.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 60);
     out.push({ kind, tag: el.tagName.toLowerCase(), cls: String(el.className ?? "").slice(0, 50), text: t, ...detail });
   };
-  // Wide BY DESIGN — see the header note. Skipping these is not leniency, it is correctness.
-  const byDesign = (el) => {
-    if (el.closest(".live-ticker, [data-ticker], .sr-only, [aria-hidden='true']")) return true;
-    const cs = getComputedStyle(el);
-    if (cs.position === "fixed" || cs.position === "sticky") return false;
-    return false;
-  };
+  /**
+   * 🔴 WIDE BY DESIGN, AND THIS EXEMPTION USED TO MATCH NOTHING.
+   *
+   * It named `.live-ticker` — a class that **does not exist**. The marquee's track is
+   * `.ticker-track` (`globals.css:796`, `live-ticker.tsx:105`), so every one of its ~36
+   * off-screen spans was reported on EVERY page. Measured 2026-08-06 at 360/SW: `/help` and
+   * `/updown` returned **40 of 40 byte-identical findings**, because the scan was describing
+   * the shared chrome and never the page. ⛔ **A pre-flight that returns the same answer for
+   * every input is not ranking anything** — and it had already been handed to the next session
+   * as "open these first".
+   *
+   * ⛔ AND IT WAS ONLY EVER APPLIED TO THE OFF-SCREEN RULE. The `sr-only` skip link was flagged
+   * as truncated on all 21 routes for the same reason: the exemption existed, and the branch
+   * that needed it never called it. It is applied to every rule now.
+   */
+  const byDesign = (el) =>
+    !!el.closest(".ticker-track, .live-ticker, [data-ticker], .sr-only, [aria-hidden='true'], [hidden]");
 
   for (const el of document.querySelectorAll("body *")) {
     const cs = getComputedStyle(el);
     if (cs.display === "none" || cs.visibility === "hidden" || cs.opacity === "0") continue;
     const rect = el.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) continue;
+    // ⛔ ONE exemption, checked ONCE, for every rule below — see byDesign.
+    if (byDesign(el)) continue;
 
     // 1 · anything painting OUTSIDE the viewport horizontally
-    if (!byDesign(el) && (rect.right > vw + 1 || rect.left < -1) && el.children.length === 0) {
+    if ((rect.right > vw + 1 || rect.left < -1) && el.children.length === 0) {
       push("offscreen", el, { left: Math.round(rect.left), right: Math.round(rect.right), vw });
     }
     // 2 · TRUNCATION — geometry, never innerText
@@ -150,6 +188,13 @@ async function sweep(label, routes, who) {
         try {
           const res = await page.goto(`${BASE}${path}`, { waitUntil: "domcontentloaded", timeout: 45_000 });
           if (res && res.status() >= 400) status = `HTTP ${res.status()}`;
+          // ⛔ A 404 STILL PAINTS A PAGE, AND THE SCAN WILL HAPPILY MEASURE IT. `res.status()`
+          // can also be 200 on a soft not-found, so witness the RESULT the way E-106's locale
+          // check does rather than trusting the response code alone.
+          const notFound = await page.evaluate(() =>
+            /page not found|not found|ukurasa haujapatikana|页面未找到|404/i.test(
+              (document.querySelector("h1,h2")?.textContent ?? "") + " " + document.title));
+          if (notFound && status === "ok") status = "SOFT-404 (the page rendered a not-found)";
         } catch (e) { status = `NAV ${String(e.message).slice(0, 40)}`; }
         // Let the dynamic tree stream and any float-in settle — `page.screenshot()` does not
         // wait for animations, and the kit's `.m-float-in` photographs see-through if rushed.
@@ -192,3 +237,16 @@ for (const r of ranked.slice(0, 30)) {
 }
 const clean = results.filter((r) => !score(r)).length;
 console.log(`\n  ${clean} of ${results.length} came back with nothing to flag — those still need eyes, just not first.`);
+
+// ⛔ REFUSE TO EXIT GREEN OVER A ROUTE THAT NEVER RENDERED — the same rule E-106 applied to the
+// locale. Four of the sixteen player entries were wrong paths, so a quarter of the player half
+// of the sweep was photographing the not-found page while the run "looked orderly": the status
+// was recorded and nothing acted on it. A route list is an assumption, and an assumption whose
+// failure is only ever *printed* is an assumption nobody checks.
+const broken = [...new Set(results.filter((r) => r.status !== "ok").map((r) => `${r.path} → ${r.status}`))];
+if (broken.length) {
+  console.error(`\n🔴 ${broken.length} route(s) never rendered. Every shot of them is worthless:`);
+  for (const b of broken) console.error(`   ${b}`);
+  console.error(`\n   Fix the route list against .next/app-path-routes-manifest.json before believing this run.`);
+  process.exit(1);
+}
