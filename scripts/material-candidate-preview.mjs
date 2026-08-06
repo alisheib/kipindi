@@ -50,6 +50,18 @@ const OPEN = flag("open", "").split(",").filter(Boolean);
 const WIDTHS = flag("widths", "360,1280").split(",").map(Number);
 const LOCALES = flag("locales", "en").split(",");
 const PAD = Number(flag("pad", "8")); // CSS px of context around the element
+/**
+ * ⛔ WHICH PROPERTY THE "did it take" TEST READS. It was hard-wired to
+ * `boxShadow`, which is right for a ring atom and useless for a canvas atom:
+ * previewing `--bg` against `main` read `none` on both sides and the run
+ * correctly announced that it proved nothing. ⭐ That is the tool working — a
+ * missed injection MUST NOT look like "no visual risk" — but the fix is to let
+ * the caller name the property the change is expected to move, not to loosen the
+ * test. `--prop=backgroundColor` for a surface, `--prop=color` for ink.
+ */
+const PROP = flag("prop", "boxShadow");
+/** Cap the capture height: a full-page element at dsf 4 is a 10,000px image nobody opens. */
+const MAXH = Number(flag("maxh", "900"));
 
 if (!CSS_FILE) throw new Error("--css-file is required: the candidate rule(s) to inject");
 const CANDIDATE = readFileSync(CSS_FILE, "utf8");
@@ -94,27 +106,33 @@ async function run() {
         const box = await el.boundingBox();
         const clip = {
           x: Math.max(0, box.x - PAD), y: Math.max(0, box.y - PAD),
-          width: box.width + PAD * 2, height: box.height + PAD * 2,
+          width: box.width + PAD * 2, height: Math.min(MAXH, box.height + PAD * 2),
         };
 
-        const read = () => el.evaluate((n) => getComputedStyle(n).boxShadow);
-        const beforeShadow = await read();
+        const read = () => el.evaluate((n, prop) => getComputedStyle(n)[prop], PROP);
+        const beforeVal = await read();
         await page.screenshot({ path: `${SHOT}/candidate/${cell}-A-shipped.png`, clip });
 
         await page.addStyleTag({ content: CANDIDATE });
         await page.waitForTimeout(200);
-        const afterShadow = await read();
+        const afterVal = await read();
         await page.screenshot({ path: `${SHOT}/candidate/${cell}-B-candidate.png`, clip });
 
-        const took = geom(beforeShadow) !== geom(afterShadow);
+        // ⛔ RAW, NOT geom(). `geom()` replaces every colour function with ▢ so the
+        // geometry probe cannot mis-read L/C/H as R/G/B (§5b rule 12) — and that makes
+        // it BLIND to a colour change: previewing --bg printed "▢" on both sides and
+        // reported the injection had not applied. Comparing two raw strings for
+        // equality is not parsing a colour, so it is safe here and it is the only
+        // thing that can see a canvas atom at all.
+        const took = String(beforeVal) !== String(afterVal);
         console.log(`\n── ${cell}  lang=${lang}  ${clip.width.toFixed(0)}x${clip.height.toFixed(0)} CSS px @4x`);
-        console.log(`   A shipped   : ${geom(beforeShadow)}`);
-        console.log(`   B candidate : ${geom(afterShadow)}`);
+        console.log(`   A shipped   [${PROP}] : ${String(beforeVal).slice(0, 110)}`);
+        console.log(`   B candidate [${PROP}] : ${String(afterVal).slice(0, 110)}`);
         // ⛔ A candidate that changed NOTHING is the failure mode this must shout
         // about: the selector missed, or the injected rule lost the cascade, and
         // both produce two identical images that read as "no visual risk".
         console.log(`   → ${took ? "the injection TOOK" : "⛔ NO CHANGE — the rule did not apply; this preview proves nothing"}`);
-        report.push({ cell, lang, width, locale, beforeShadow, afterShadow, took });
+        report.push({ cell, lang, width, locale, prop: PROP, beforeVal, afterVal, took });
       } catch (err) {
         console.log(`\n── ${cell}  ⛔ FAILED: ${err.message}`);
         report.push({ cell, width, locale, error: err.message });

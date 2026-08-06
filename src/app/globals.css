@@ -263,7 +263,38 @@
      4.74 against a 4.5 floor, so lightening the card spends the accessibility
      budget to buy separation. Deepening the CANVAS buys the same separation and
      *improves* every ratio on it instead. Same delta, opposite risk. */
-  --bg:            oklch(13.5% 0.130 268); /* canvas — deep midnight indigo (was 15%) */
+  /* ⭐ CHANGED 2026-08-06 (material system, ATOM 2a) — 13.5% → 6.5%, and the
+     chroma is HELD at 0.130.
+     `material.css` §A1 proposes `oklch(6.5% 0.05 268)`: *"Page field dropped
+     10%→6.5% for depth against gilt"*. Two corrections, both recorded at
+     acceptance. ① The delivery was working from `10%` — the snapshot it was sent
+     already read 13.5%, so the real move is −7pt, not −3.5. ② It also halves the
+     chroma, 0.130 → 0.05, which is a different decision wearing the same edit.
+     ⛔ **Ali's call, 2026-08-06: LIGHTNESS ONLY — deepen the field, keep the
+     royal chroma.** A canvas at 0.05 chroma is grey; the identity is the indigo.
+     ⭐ IT SPENDS NO ACCESSIBILITY BUDGET — it EARNS some. Every pair scored
+     against `--bg` reads better on a deeper field, which is the same reasoning
+     the Step-5 note above gives for deepening the canvas rather than lightening
+     the card. Measured, both sides, by running the gate against a copy holding
+     the old value: `--text` 18.47 → **19.06** · `--text-muted` 12.78 → 13.19 ·
+     `--text-subtle` 7.29 → 7.52 · `--text-faint` **5.33 → 5.50** ·
+     `--border-control` **3.48 → 3.59** against a 3.0 floor · `--gilt` 12.69 →
+     13.09. Not one pair on this canvas moves down. ⚠️ The tightest pair in the
+     ramp is `--text-faint on --bg-elevated` at **4.88**, and it does not sit on
+     `--bg` at all — so this change cannot help it and does not hurt it either.
+     ⚠️ AND THE CONSEQUENCE THAT IS NOT A BUG: `--bg-overlay` and `--bg-inset`
+     (both 11%) are now LIGHTER than the canvas, so a "sunken" token is no longer
+     darker than the page it sits in. That is the delivery's own model, not an
+     oversight — its `--wash-inset` runs 10%→12.5%, i.e. ABOVE this canvas, and
+     its comment says a well is shaded at its top lip rather than being darker
+     overall. A well is read from its shading (`--edge-shade`), not from its
+     absolute lightness.
+     ⛔ EDITED HERE, AT ITS LINE, NEVER RE-DECLARED HIGHER UP — INTAKE §2a. The
+     browser takes the LAST declaration and `contrast-audit.mts` takes the FIRST,
+     so a second copy would leave the product on the old canvas while every ratio
+     printed the new one. `token()` refuses a second site outright since E-117,
+     so this trap is now enforced rather than remembered. */
+  --bg:            oklch(6.5% 0.130 268); /* canvas — deep midnight indigo (15% → 13.5% → 6.5%) */
   --bg-elevated:   oklch(22% 0.140 268);   /* elevated card — deliberately UNCHANGED */
   --bg-overlay:    oklch(11% 0.110 268);   /* sunken / hover-down */
   --bg-royal-soft: oklch(30% 0.165 268);   /* highlighted surface (modal, hero) */
