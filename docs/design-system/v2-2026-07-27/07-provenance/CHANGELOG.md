@@ -1,5 +1,57 @@
 # Changelog (reconstructed)
 
+## 2026-08-06 (design-system · merge) — §A: the lamp is installed, and the card's lit edge stops being a line
+
+The material merge, atom by atom. One token change per commit, each with its gates, its
+production drive and its image opened. This entry grows as the atoms land.
+
+**ATOM 2 — one lamp, five rungs (`src/app/globals.css`).**
+
+- **`--shadow-card-top` was a one-sided line, and M1 bans exactly that.** It read
+  `inset 0 1px 0` — a highlight on the TOP EDGE ONLY — and it is the lit edge under every
+  market card and Up & Down card in the product. M1 is explicit that a lit surface catches an
+  **even** ring and never a one-sided line, because the direction of the light belongs in the
+  **wash**, not in an edge; a one-sided highlight is a drawn *suggestion* of light rather than
+  light. Now `var(--edge-lit)`: same 1px, same job, all four sides, and a 4% royal tint instead
+  of near-white so it does not read chalky on OLED.
+- ⛔ **It was edited AT ITS LINE and never re-declared**, and that is not tidiness. The browser
+  takes the **last** declaration; `scripts/contrast-audit.mts` takes the **first**
+  (`CSS.match()`). A second copy higher up would have left the product on the old value while
+  every gate scored the new one — and `test:tokens` could not have caught it, because its rule
+  compares *files* and both copies would be in `globals.css`. Written into `INTAKE.md` §2a as a
+  standing rule, since exactly one other token in this delivery has the same shape (`--bg`).
+- **The rest of §A is inert by construction and that is the point.** `--light-angle`, the three
+  edges, the four washes and the six elevation rungs land with **zero consumers** — proven by
+  grep, not asserted — so the entire visible diff of this commit is attributable to one token.
+- ⭐ **The rungs are not a second ladder.** `--elev-raised`'s two cast layers are byte-identical
+  to the shipped `--shadow-card`; `--elev-modal` and `--elev-float` carry `--shadow-modal`'s and
+  `--shadow-overlay`'s casts verbatim. At every rung the only change is that a one-sided
+  highlight becomes an even one.
+- ⚠️ **Recorded in the token block: the washes can never be delivered by redefining
+  `--bg-elevated`.** That token is consumed as a *colour* — inside `color-mix()` at five sites
+  and as Tailwind alpha across a dozen components — so a gradient there makes `color-mix()`
+  invalid and those declarations drop **silently, with no build error**. The wash arrives as a
+  class per surface, which is what M2 says anyway.
+
+**The instrument — `scripts/live-material-probe.mjs`, and the bug it found in itself first.**
+
+The sweep answers "does this screen overflow or clip". It cannot answer the only question this
+merge asks: *is there light on that surface, and is it the right light.* A 1px ring at 5.5%
+alpha is invisible in a 360-wide screenshot — you can photograph a completely unlit card and see
+nothing wrong. So the probe shoots at **deviceScaleFactor 4 and crops the corner**, where a 1px
+edge is four device pixels and a person can judge it, and it prints the shadow **geometry** with
+every colour stripped, so "even ring" versus "top-only line" is a string comparison and not an
+opinion.
+
+🔴 **And its first run reported M1 compliance on the exact surface the merge exists to fix.** The
+matchers were written as the CSS is *authored* — `inset 0px 0px 0px 1px` — and Chrome's computed
+value serialises the colour first and `inset` **last**, so neither pattern could ever match. It
+printed *"top-only line present: no"* over a production card whose shadow plainly read
+`0px 1px 0px 0px inset`. Fixed, then **proven RED against production before being trusted**: on
+the pre-merge state it now reports `even 1px ring: no · one-sided line: YES ⛔ M1 violation`.
+That is SKILL §5b again — assert the value the platform hands back, not the symbol you wrote —
+and it is the third time this campaign has found more bugs in a check than in the product.
+
 ## 2026-08-06 (design-system · acceptance) — the material system is ACCEPTED, and the map that came with it was wrong
 
 Claude Design's material commission landed at `11-material/` on 2026-08-06. **Nothing was merged

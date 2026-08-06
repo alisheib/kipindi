@@ -390,12 +390,25 @@
      shadow off-screen and the panel reads as pasted onto the viewport. Direction
      is the only difference; keep the depth identical so the two read as one system. */
   --shadow-overlay-up: 0 -24px 56px -16px oklch(5% 0.05 268 / 0.62), inset 0 1px 0 oklch(100% 0 0 / 0.06);
-  /* The card top-highlight — the 1px lit edge that makes an elevated surface
-     read as lit from above rather than as a flat rectangle. It was retyped
-     inline at ~8 sites (globals.css:984, .badge--unlocked, the buttons, the
-     Modal); this is its one definition site. Compose it, never retype it:
-       box-shadow: var(--shadow-card-top), var(--shadow-4); */
-  --shadow-card-top: inset 0 1px 0 oklch(98% 0.01 268 / 0.08);
+  /* The card lit edge — the 1px inner highlight that makes an elevated surface
+     read as lit rather than as a flat rectangle. It was retyped inline at ~8
+     sites (globals.css:984, .badge--unlocked, the buttons, the Modal); this is
+     its one definition site. Compose it, never retype it:
+       box-shadow: var(--shadow-card-top), var(--shadow-4);
+
+     ⚠️ CHANGED 2026-08-06 (material system, DESIGN_AUTHORITY M1). It used to be
+     `inset 0 1px 0` — a highlight on the TOP EDGE ONLY. M1 is explicit that a lit
+     surface catches an EVEN ring and never a one-sided line, because the direction
+     of the light belongs in the WASH, not in an edge; a one-sided highlight is a
+     drawn suggestion of light rather than light. Same 1px, same job, all four
+     sides, and the royal tint replaces the near-white so it does not read chalky
+     on OLED (designer R2 Q7).
+     ⛔ It is edited HERE and never re-declared higher up. The browser takes the
+     LAST declaration and `scripts/contrast-audit.mts` takes the FIRST, so a second
+     copy would leave the product on the old value while every gate scored the new
+     one — and `test:tokens` would not catch it, because its cross-file rule sees
+     one file. INTAKE.md §2a. */
+  --shadow-card-top: var(--edge-lit);
   --glow-gold:    0 0 24px -4px color-mix(in oklab, var(--gold-500) 60%, transparent);
   --glow-blue:    0 0 24px -4px color-mix(in oklab, var(--teal-400) 60%, transparent);
   --glow-win:     0 0 32px -4px color-mix(in oklab, var(--yes-400) 60%, transparent);
@@ -406,6 +419,96 @@
      different intensities for one meaning. One rung, mixed off --brand-500 so it
      tracks the brand automatically instead of pinning a raw hue. */
   --glow-selected: 0 0 12px -1px color-mix(in oklab, var(--brand-500) 45%, transparent);
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     THE MATERIAL LAYER — one lamp, five rungs.
+     Claude Design commission, merged 2026-08-06. DESIGN_AUTHORITY M1 + M2.
+     ───────────────────────────────────────────────────────────────────────────
+     The diagnosis this answers was not that the motion was wrong — the motion
+     vocabulary was already disciplined. It is that NOTHING IN THE PRODUCT HAD A
+     LIGHT SOURCE. Every surface was flat colour on flat colour, and the restraint
+     law was answered with FLATNESS rather than with better material. Flat is not
+     the same as restrained: Apple Wallet is extremely restrained and feels
+     expensive.
+
+     M1 — ONE LAMP. It hangs high above the plane, tilted −14°: the same axis as
+     the NEEDLE in the mark (13.998° measured from the shipped artwork in
+     brand-mark.ts; tokenised as --m-tilt in motion.css). Four consequences, and
+     they are the entire system:
+       1. every lit surface catches a soft, EVEN 1px inner ring, never a one-sided
+          line — the higher the rung, the brighter the ring;
+       2. surface washes run at 166deg (180° − 14°), so light enters high-left —
+          THE DIRECTION OF THE LIGHT LIVES IN THE WASH, not in an edge;
+       3. speculars centre at x ≈ 42% (50% − tan14°, about 8pt left of centre);
+       4. shadows fall straight DOWN, soft and ambient.
+     ⛔ THE TILT LIVES IN THE LIGHT, NEVER IN THE GRAVITY. A skewed shadow reads as
+     a mistake, and a surface lit from below or from the right is a bug, not a
+     variant. There is no second lamp.
+
+     M2 — A SURFACE PICKS A RUNG; IT NEVER COMPOSES A SHADOW. Five rungs:
+       0 flat    the page plane: form rows, pollers, containers. NO material, and
+                 that is correct — flat is a legitimate rung, not a failure
+       1 raised  cards: market, updown, position, stat
+       2 float   dropdown, popover, tooltip, select, avatar-menu
+       3 modal   modal, confirm dialog, sheet (with a scrim)
+       4 toast   the highest physical object in the product
+     Component #134 takes a rung and is done. If it genuinely needs a sixth, THE
+     SYSTEM gains one, deliberately — the component does not improvise.
+
+     ⭐ These are not a second ladder beside the one above. Each rung is the cast
+     that was already there PLUS the even ring: --elev-raised's two cast layers are
+     byte-identical to --shadow-card, and --elev-modal and --elev-float carry
+     --shadow-modal's and --shadow-overlay's casts verbatim. The only thing the
+     material system changes at any rung is that a one-sided highlight becomes an
+     even one. That is M1 applied to our own file.
+
+     ⚠️ THE WASHES CANNOT BE DELIVERED BY REDEFINING --bg-elevated, and nobody
+     should try. That token is consumed as a COLOUR — inside color-mix() at five
+     sites here, and as Tailwind alpha (bg-bg-elevated at /40, /50, /60, /85)
+     across a dozen components. A gradient is not a colour, so color-mix() would
+     become invalid and those declarations would drop SILENTLY, with no build
+     error. The wash arrives as a class per surface, which is what M2 says anyway.
+     ═══════════════════════════════════════════════════════════════════════════ */
+  --light-angle: 166deg;                                  /* 180° − the 14° tilt */
+  --edge-lit:        inset 0 0 0 1px oklch(96% 0.04 268 / 0.055);
+  --edge-lit-strong: inset 0 0 0 1px oklch(96% 0.04 268 / 0.09);
+  /* The one deliberate exception to "even": a SUNKEN well is lit from above by
+     definition, so its shading sits on the bottom edge. Inset surfaces only. */
+  --edge-shade:      inset 0 -1px 0 oklch(6% 0.03 268 / 0.30);
+
+  /* The wash each rung catches. The lightness spread is deliberately small —
+     this is material, not decoration. Rung 4 carries +0.015 chroma against mud
+     on OLED (designer R2 Q7); the inset wash runs DARK-to-light, inverted,
+     because a well is shaded at its top lip. */
+  --wash-raised: linear-gradient(var(--light-angle), oklch(24% 0.145 268) 0%, oklch(20.5% 0.132 268) 100%);
+  --wash-float:  linear-gradient(var(--light-angle), oklch(26.5% 0.165 268) 0%, oklch(21% 0.150 268) 100%);
+  --wash-modal:  linear-gradient(var(--light-angle), oklch(28% 0.155 268) 0%, oklch(21.5% 0.138 268) 100%);
+  --wash-inset:  linear-gradient(var(--light-angle), oklch(10% 0.100 268) 0%, oklch(12.5% 0.115 268) 100%);
+
+  /* The five rungs. Rung = wash + edge + ring + cast; these carry the shadow half.
+     ⚠️ --elev-float deliberately adds an OUTER 1px ring at 42%. Six surfaces today
+     also carry `border border-border-strong` (44%), and a 42% ring immediately
+     outside a 44% border reads as one muddy 2px edge. A surface adopting this rung
+     DROPS ITS BORDER — the fix is at the call site, never in this token. */
+  --elev-flat:   none;
+  --elev-raised: var(--edge-lit),
+                 0 1px 2px oklch(6% 0.06 268 / 0.55),
+                 0 10px 28px -10px oklch(4% 0.04 268 / 0.70);
+  --elev-float:  var(--edge-lit-strong),
+                 0 0 0 1px oklch(42% 0.15 268 / 0.75),
+                 0 8px 28px -8px oklch(5% 0.05 268 / 0.55),
+                 0 24px 56px -16px oklch(5% 0.05 268 / 0.62);
+  --elev-modal:  var(--edge-lit-strong),
+                 0 8px 28px -8px oklch(5% 0.05 268 / 0.50),
+                 0 30px 80px oklch(5% 0.05 268 / 0.65);
+  --elev-toast:  var(--edge-lit-strong),
+                 0 0 0 1px oklch(46% 0.16 268 / 0.85),
+                 0 4px 14px oklch(14% 0.08 268 / 0.50),
+                 0 14px 44px -12px oklch(5% 0.05 268 / 0.62);
+  /* Rung 1 on hover. The LIFT is still --m-lift; this only swaps the material. */
+  --elev-raised-hover: var(--edge-lit-strong),
+                 0 2px 4px oklch(6% 0.06 268 / 0.55),
+                 0 14px 34px -10px oklch(4% 0.04 268 / 0.75);
 
   --g-brand:    linear-gradient(135deg, var(--teal-700), var(--teal-500));
   --g-gold:     linear-gradient(180deg, var(--gold-300), var(--gold-600));

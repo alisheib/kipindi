@@ -41,6 +41,12 @@ tsconfig.tsbuildinfo
 # Local QA screenshots
 scripts/_walkthrough/
 
+# Material-system merge shots (scripts/live-material-probe.mjs, SHOT_DIR=.qa-design).
+# Evidence, not source: the probe is committed so anyone can RE-SHOOT, and the images
+# are not, because a checked-in PNG is a claim nobody can re-derive. Same rule as
+# .qa-s3*/ — see docs/design-brief/INTAKE.md §3b "what to delete outside src/".
+.qa-design/
+
 # Test images (user reference, not for production)
 Test Images/
 F1 Tetsing image/
