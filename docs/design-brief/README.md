@@ -204,10 +204,18 @@ Loaded via `next/font/google`, already in the product. Design to these and nothi
 
 | token | family | used for |
 |---|---|---|
-| `--font-display` | **Sora** | headings, the amount on a celebration, card titles |
+| `--font-display` | **Sora** | headings, the **headline** on a celebration, card titles |
 | `--font-body` | **Inter** | all prose |
-| `--font-mono` | **JetBrains Mono** | every number, every identifier, every countdown, every money figure |
+| `--font-mono` | **JetBrains Mono** | every number, every identifier, every countdown, every money figure — **including the amount on a celebration** |
 | `--font-cjk` | PingFang SC / Noto Sans SC stack | Chinese fallback, appended to all three above |
+
+🔴 **AMENDED 2026-08-06 — this row used to say `--font-display` for "the amount on a celebration",
+and it was contradicting the ⛔ line directly beneath it.** Claude Design caught it and ruled for
+mono (material law **M4**, *"money is mono, and it never reflows"*). **Mono wins, and the reason is
+not typographic taste:** a celebration amount is the one number a player screenshots, and Sora has
+no tabular figures, so a rolling count-up in display type reflows as the digits change. The
+amount takes `--font-mono` + `tabular-nums`; the *headline* above it keeps Sora. Recorded in
+`DESIGN_AUTHORITY.md` section M.
 
 ⛔ **Money is always `--font-mono` with `tabular-nums`.** A payout that reflows as digits change
 is a defect. If a motion involves a changing number, it must not shift layout — **verify with

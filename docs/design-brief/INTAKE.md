@@ -19,6 +19,15 @@ looks right once and drifts the moment the ladder lands.
 
 ## 1 · First, verify the delivery against what was asked
 
+> ✅ **DONE 2026-08-06. The delivery is ACCEPTED.** The completed table, the D-6.6 result and the
+> four things the delivery gets factually wrong about our own files all live in
+> **`11-material/README.md`** — one definition site, not two. The short version:
+> **one item goes back** (there is no rung-independent tint recipe, so a tinted-but-flat surface
+> like `ui/callout.tsx` cannot be expressed and D-6.6 forces a guess), and everything else is
+> sound. ⭐ The ladder turned out not to be a second ladder at all: `--elev-raised`'s cast is
+> **byte-identical** to our shipped `--shadow-card`, and every rung's only delta is that the
+> banned one-sided `inset 0 1px 0` becomes an even ring.
+
 Before any file moves, check the delivery against **D-0 … D-6** in `README.md`. Anything missing
 is cheaper to ask for now than to reverse-engineer later.
 
@@ -56,6 +65,35 @@ D-3 was not delivered and that is the thing to send back. Everything else is rep
 | **the raw delivery, untouched** | ✅ already at `docs/design-system/v2-2026-07-27/11-material/` | keep the original. When something looks wrong six weeks later, the question is always *"is this what they sent, or what we did to it?"* |
 
 ⛔ **Nothing goes in `src/lib/server/`.** Design work never touches the money path.
+
+### ⛔ 2a · A token that ALREADY EXISTS is edited AT ITS LINE — never re-declared at the top
+
+Added 2026-08-06. This is the single hazard most likely to make an atom *appear* to land while
+changing nothing, and it cuts in **both** directions:
+
+- **The browser takes the LAST declaration. `scripts/contrast-audit.mts` takes the FIRST.**
+  Its `token()` uses `CSS.match(re)`, which returns the first hit (`contrast-audit.mts:37-38`).
+  So re-declaring `--bg` near the top of `:root` while `globals.css:244` still defines it means
+  **the product renders the old canvas and the gate scores the new one** — every ratio prints
+  better than reality, including `--text-faint`, which sits at 4.88 against a 4.5 floor. That is
+  byte-for-byte the drift the parser's own header says it was written to kill.
+- **And the mirror image: the repair silently does nothing.** Re-declare `--shadow-card-top` at
+  the top and `globals.css:398` still wins in the browser. The atom ships, the production LOOK
+  shows no change, and `test:tokens` passes — because its cross-file rule compares *files*, and
+  both declarations are in `globals.css`. You would have no way to tell.
+
+**So: additive tokens go in a new block; existing tokens are edited in place.** In this delivery
+exactly two qualify — `--bg` (`globals.css:244`) and `--shadow-card-top` (`:398`).
+
+### ⚠️ 2b · The wash cannot be delivered by redefining `--bg-elevated`
+
+`--bg-elevated` is consumed as a **colour**, not just as a background: inside `color-mix()` at
+`globals.css:1215, 1425, 1824, 2362, 2363`, and as Tailwind alpha `bg-bg-elevated/40|50|60|85`
+across a dozen components. A `linear-gradient()` is not a colour, so `color-mix()` becomes
+invalid and **those declarations drop entirely** — silently, with no build error. The wash must
+arrive as a **class per surface** (`.mat-raised` et al), which is what M2 says anyway: a surface
+*picks* a rung. ⭐ The elevation half of the ladder can be reached by repairing a token; the
+background half cannot.
 
 ---
 
@@ -105,9 +143,68 @@ defect class in this repo's history.**
    delivery that leaves it at 45 did not replace anything, it decorated.**
 2. **`npm run test:motion-ladder` — its allowlist is at 0 and may only stay there.** The two
    scheduling exemptions were cleared 2026-08-06; a new entry re-opens the hole.
-3. **`node scripts/ui-material-audit.mjs`** — re-run it. The before-picture is `AUDIT.txt`:
-   **79% no light · 60% no elevation · 44% no motion · 43 components with all three absent.**
-   Those numbers must move. If they do not, the integration is wrong, not the audit.
+3. 🔴 **`node scripts/ui-material-audit.mjs` — AND THIS CHECK, AS ORIGINALLY WRITTEN, IS BACKWARDS.
+   Corrected 2026-08-06 at acceptance, by reading the script instead of trusting its output.**
+
+   It said: *"the before-picture is `AUDIT.txt` — 79% no light · 60% no elevation · 44% no motion ·
+   43 with all three absent. Those numbers must move. If they do not, the integration is wrong,
+   not the audit."* **That is false for this instrument, and believing it would have made us do the
+   integration wrong on purpose.**
+
+   `ui-material-audit.mjs:44-47` scores each component by **word-grepping its own `.tsx` source**:
+   ```
+   light     = /gradient|specular|inset 0|backdrop-filter|blur\(/i
+   elevation = /shadow|--shadow-|ring-|elevat/i
+   tokens    = /--m-[a-z]|--t-[a-z]|var\(--ease|var\(--dur/
+   ```
+   `.mat-raised` contains none of those words. `--elev-*` and `--wash-*` match neither detector.
+   **So material that lands where B9/B10 REQUIRE it to land — in the law layer — is invisible to
+   this audit, and a component that stops hand-writing a `boxShadow` and takes a class LOSES its
+   elevation tick.** A correct merge drives these numbers the wrong way.
+
+   Measured, not argued: **`markets/market-card.tsx` scores 🔴 all-three-absent** and sits at the
+   very top of `AUDIT.txt` — while `.mcardp` (`globals.css:2196-2200`) already carries a cast, a
+   lit edge, a border, a background and a `m-draw` spark-line animation. The audit could not see
+   any of it. ⚠️ And ~8 of the 43 are not renderable surfaces at all (`notify-poller`,
+   `refresh-poller`, `scroll-restore`, `lazy-overlays`, `event-stream-provider`, `page-container`,
+   `form-column`, `scroll-x`) — a poller has no surface to light. **"43 → 0" was a grep result
+   being read as a brief.** The script's own header says so: *"THIS IS A PRE-FLIGHT, NOT A VERDICT
+   … It ranks; it does not judge."*
+
+   **What to do instead — two instruments, and say which is which:**
+   - **`ui-material-audit.mjs` stays byte-identical**, because it is the instrument that produced
+     `AUDIT.txt` and changing it would make the before and after two different rulers. Its number
+     is a *continuity* reading. Expect it to stay flat or worsen, and **say so plainly** rather
+     than quietly re-tuning it into agreement.
+   - **`--resolve` mode** follows each `className` into `globals.css`/`motion.css` and scores the
+     CSS that actually applies. That is the number that measures the merge.
+   - ⭐ **`test:design-frozen` is the honest scoreboard, but it is a NARROW one — measure what it
+     can actually see before promising it will move.** It is honest by construction: its per-line
+     escape hatch skips any line containing `var(--`, which is exactly what this merge does to a
+     hand-written shadow, and it **FAILS if a listed file becomes clean and is left on the list**
+     (`design-frozen.test.mts:192-201`, *"the ratchet holds no stale exemptions"*), so the number
+     cannot be left at 45 by accident.
+
+     ⚠️ **But it walks `.tsx` only.** Every token, keyframe and utility atom — the whole law
+     layer — is invisible to it. Only the atoms that edit components can move it at all.
+
+     ⚠️ **And most of the 45 are not held there by a shadow.** Measured 2026-08-06 by running the
+     script's own five rules against the single-violation files, minus the `var(--` hatch:
+     `ui/chip.tsx` is five raw `oklch()` **colour** literals in a variant table · `ui/tabs.tsx`
+     and `layout/nav-more.tsx` are raw `oklch()` backgrounds · `ui/empty-state.tsx` is a colour
+     **constant** (`const g = "oklch(78% 0.14 86)"`) · `layout/avatar-menu.tsx` and
+     `layout/notifications-panel.tsx` are `borderRadius:` **numbers**. **Material work does not
+     touch any of them.** The files this merge genuinely clears are the ones held by an actual
+     inline shadow or by geometry that is being deleted: `ui/toast.tsx` (`boxShadow: "0 0 6px 0
+     currentColor"`) and `brand/reward-burst.tsx` (two `borderRadius` values on the heraldic
+     corner brackets, which die with the rays). ⛔ **So expect roughly 45 → 42, not 45 → 30**, and
+     the honest report says which files moved and why — not a number with a story attached.
+
+     ⛔ And do not count `markets/position-card.tsx:55` as ratchet progress. Its duplicated
+     `shadow-[…]` line contains `var(--brand-500)`, so the per-line hatch already exempts it.
+     Fixing it is right — it is a verbatim second copy of `.mcardp:hover` — but it moves the
+     scoreboard by exactly zero, and claiming otherwise is the kind of arithmetic this campaign
+     has had to retract before.
 
 ### What to delete outside `src/`
 

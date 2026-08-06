@@ -1,5 +1,68 @@
 # Changelog (reconstructed)
 
+## 2026-08-06 (design-system · acceptance) — the material system is ACCEPTED, and the map that came with it was wrong
+
+Claude Design's material commission landed at `11-material/` on 2026-08-06. **Nothing was merged
+in this entry — this is the acceptance pass**, run against `design-brief/INTAKE.md` §1 before a
+single file moved, which is the whole reason §1 exists.
+
+- **Accepted, with one item going back.** Every animation names a `--t-*` duration and a `--m-*`
+  easing, nothing animates a layout property, no hex, no dependency, no prop change, and the
+  "how to extend this" note arrived as `EXTEND.md` M1–M8. ⭐ **The D-6.6 test — apply the system
+  to a component the designer never saw, from the written rules alone — was run against
+  `ui/callout.tsx` and it forced a guess.** M2 answers the *surface* cleanly (a callout is
+  content-plane furniture, so rung 0, and M2 blesses flat), but the delivered tint utilities are
+  welded to rung 4: `.mat-edge-warn` is `inset ring + var(--elev-toast)`, and its own comment
+  names *"toasts / callouts"*. **There is no rung-independent tint recipe, so a tinted-but-flat
+  surface cannot be expressed.** One rule fixes it in-house; it is the one thing to send back.
+- ⭐ **The elevation ladder is not a second ladder — it is ours, repaired.** `--elev-raised`'s
+  cast is **byte-identical** to the shipped `--shadow-card`; `--elev-modal` and `--elev-float`
+  likewise contain `--shadow-modal`'s and `--shadow-overlay`'s casts verbatim. At every rung the
+  only delta is that the one-sided `inset 0 1px 0` highlight becomes an **even** ring — which is
+  M1 ("never a one-sided line, never pure white") enforced against our own file, where
+  `inset 0 1px 0` appears **15 times** and two of those are pure white.
+- 🔴 **The delivered merge map named three files that do not exist.** It sends the sections to
+  `src/app/law/{tokens,keyframes,motion}.css`. There is no `src/app/law/`; `law/` is how the
+  *outbound brief* was split, and those files sit in the **gitignored** `design-brief/law/`. The
+  real destinations are `globals.css` (tokens **and** keyframes) and `motion.css` (utilities) —
+  which `INTAKE.md` §2 had right all along. ⛔ The brief's own `law/keyframes.css` extract is
+  **brace-unbalanced**: the extractor dropped an opening `@media (prefers-reduced-motion: reduce) {`,
+  so its calm branches sit at top level and would kill press/vote/streak/seal motion if it were
+  ever wired in. Corrected in the merge map, with the reason, so the next session does not
+  rediscover it.
+- ✅ **Open item 4 closed: `--shadow-card-top` already exists** (`globals.css:398`, bridged at
+  `tailwind.config.ts:218`). The delivery's alias is not merely redundant — `--shadow-*` is a
+  **guarded** family, so a second definition site is a hard `test:tokens` failure. The extract we
+  sent out was lossy and simply stopped before that line. The token keeps its name and its one
+  definition site and will take the even ring as its **value**.
+- ✅ **Open item 5 closed: D-0's celebration-amount row now reads `--font-mono`.** It had said
+  `--font-display` while the ⛔ line printed directly beneath it said money is *always* mono.
+  M4 wins, and not on taste: Sora has no tabular figures, so a rolling count-up in display type
+  reflows as its digits change. The headline keeps Sora; the amount does not.
+- ✅ **Open item 8 decided: the crest chief band ships at `0.26`**, the designer's own
+  recommendation, demoed at 0.16 / 0.26 / 0.38. ⛔ E-111's sub-pixel geometry is not re-opened.
+- 🔴 **E-116 — the audit that would have condemned a correct merge.** `ui-material-audit.mjs`
+  scores each component by word-grepping *its own `.tsx` source*, so it cannot see material that
+  lives in a CSS class: `markets/market-card.tsx` is scored all-three-absent at the top of
+  `AUDIT.txt` while `.mcardp` already carries a cast, a lit edge, a border and a draw-in. Because
+  B9/B10 *require* material to live in the law layer, **a correct merge drives those numbers flat
+  or backwards** — and `INTAKE.md` §3b told the next session to read that as proof the
+  integration had failed. The instrument is left **byte-identical** (changing it would measure
+  the before and the after with two different rulers); a `--resolve` mode will score the CSS a
+  class actually applies, and the honest scoreboard is `test:design-frozen`'s 45, which **fails
+  if a listed file becomes clean** and so cannot be left unmoved by accident.
+- 🔴 **E-114 and E-115 filed** — two live defects the acceptance reading surfaced, both on result
+  screens: the VOID/refund toast paints a confirmation tick over a returned stake (`default`,
+  three lines from the loss toast that was moved to `factual` for exactly that reason), and the
+  long-form win celebration headlines a place-time projection and infers the win from the round
+  outcome rather than reading the position row.
+- **Provenance repair.** `spec/spec.html` linked `deliverable/material.css`; our own
+  reorganisation (`faf386a4`) moved the file and left the link, so **from that commit until this
+  one the live spec page rendered with every `.mat-*`, `.gilt-*` and `.g-*` class inert** — the
+  page whose job is to demo the material system was demoing none of it. Repaired to the path it
+  always meant, with a note that it must be repointed at a frozen copy once `material.css` is
+  consumed, because the spec must keep rendering the *delivery* and never the current app.
+
 ## 2026-07-29 (repo · foundation) — the design system is FROZEN (v2 final)
 New law **B9/B10** (`06-patterns-and-rules/MERGE-DISCIPLINE.md`, RULES 15/16): one design
 system; new design merges *into* it, never beside it; every visual primitive is decided once

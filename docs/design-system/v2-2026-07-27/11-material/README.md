@@ -20,6 +20,12 @@ neither and no motion.** The diagnosis was not that the motion was wrong — the
 was already disciplined. **It is that nothing had a light source.** The restraint law was right;
 answering it with *flatness* rather than with *better material* was the defect.
 
+⚠️ **The diagnosis is right; the per-component scoring is not evidence.** That audit greps each
+component's own `.tsx` **source text**, so it cannot see material that lives in a CSS class — and
+`markets/market-card.tsx` is scored all-three-absent at the top of the list while `.mcardp` already
+carries a cast, a lit edge, a border and a draw-in. **Read `INTAKE.md` §3b check 3 before quoting
+any of these numbers as a target** — E-116.
+
 ---
 
 ## The files
@@ -45,11 +51,21 @@ the snapshot is simply old.
 
 `material.css` is written so a section moves whole. **Tokens first: everything inherits.**
 
+> 🔴 **CORRECTED 2026-08-06 at acceptance. `src/app/law/` DOES NOT EXIST.** The delivery was
+> briefed against `law/tokens.css` · `law/keyframes.css` · `law/motion.css` because that is how
+> the outbound package was *split* for the designer — those three files live in `design-brief/law/`
+> at the repo root, which is **gitignored** (`.gitignore:127`) and referenced by no build input.
+> The real destinations are below. `INTAKE.md` §2 already named them correctly; this table did not.
+> ⛔ Never merge into, diff against, or import `design-brief/law/*`: the `keyframes.css` extract is
+> **brace-unbalanced** (194 `{` vs 195 `}` — the extractor dropped an opening
+> `@media (prefers-reduced-motion: reduce) {`), so its calm branches sit at top level and would
+> kill press/vote/streak/seal motion outright if it were ever wired in.
+
 | section | destination | gate after |
 |---|---|---|
-| **§A** tokens (light, wash, 5 elevation rungs, one gold) | `src/app/law/tokens.css`, in the existing `:root` — **one definition site** | `test:design-frozen` still passes |
-| **§B** 12 keyframes (glyph ×6, mark-flip, seal-recoil, needle-sweep, needle-settle, mark-pending-tilt, crest-settle) | `src/app/law/keyframes.css` — ⛔ check the 33 that already exist first; **none of these duplicates one** | `tsc` + `build` |
-| **§C** 29 utilities (`.mat-*`, `.g-*`, `.gilt-*`, `.mark-*`, `.seal-*`, `.crest-*`, `.needle-*`) | `src/app/law/motion.css`, beside the `.m-*` family | `test:motion-ladder` (ratchet is at **0** — keep it there) |
+| **§A** tokens (light, wash, 5 elevation rungs, one gold) | **`src/app/globals.css`**, in the `:root` at **line 21**, beside the `--shadow-*` ladder it repairs — **one definition site** | `test:tokens` · `test:contrast` · `test:design-frozen` |
+| **§B** 12 keyframes (glyph ×6, mark-flip, seal-recoil, needle-sweep, needle-settle, mark-pending-tilt, crest-settle) | **`src/app/globals.css`**, beside each one's family — ⛔ check the **67** that already exist first (44 in `globals.css` + 14 in `motion.css` + 8 in `state-tokens.css` + 1 in `needle.css`); **none of the 12 duplicates a name** | `tsc` + `build` + `test:motion` |
+| **§C** 29 utilities (`.mat-*`, `.g-*`, `.gilt-*`, `.mark-*`, `.seal-*`, `.crest-*`, `.needle-*`) | **`src/app/motion.css`**, beside the `.m-*` family. ⚠️ `motion.css` is imported **last** (`layout.tsx:12`), so at equal specificity it outranks everything in `globals.css` | `test:motion-ladder` (ratchet is at **0** — keep it there) |
 | **§D** migration map | ⛔ **comment only — delete it once the migration it maps is done** | — |
 | `EXTEND.md` M1–M8 | `docs/DESIGN_AUTHORITY.md` as section M, in the authority's own voice | `test:integrity` |
 
@@ -75,16 +91,103 @@ part most likely to be skipped.
 
 ---
 
+## ✅ ACCEPTANCE — run 2026-08-06 against `INTAKE.md` §1. **The delivery is ACCEPTED.**
+
+| check (INTAKE §1) | verdict |
+|---|---|
+| every animation names its easing + duration token | ⚠️ **pass with exceptions** — the *durations* are all `var(--t-*)` and the *easings* all `var(--m-*)`. Five raw ms survive, and all five are **choreography offsets, not durations**: `seal-recoil 60ms`, `.needle-sweep`'s `600ms` delay, `.needle-settle-loss`'s `400ms`, `.seal-sheen`'s `+500ms`, and `.mark-pending`'s `1240ms` (a **deliberate** ambient loop, §D). The shipped file already carries the same shape — `.m-aura 1240ms`, `.m-skeleton 1400ms`. Not a rejection |
+| every animation has a **written** reduced-motion branch | ✅ written out, not described (`material.css:261-280`) — but see the gap below |
+| nothing animates a layout property | ✅ transform / opacity / filter / box-shadow / `translate` only. `.gilt-metal` also moves `background-position` (paint, not layout) — outside D-1.6's named list, inside its intent |
+| colours are `oklch()` | ✅ zero hex, zero `rgb()` in `material.css` |
+| no new runtime dependency | ✅ CSS only |
+| no public prop changes | ✅ CSS only |
+| an elevation ladder as tokens | ✅ and better than asked — see below |
+| a "how to extend this" note | ✅ `EXTEND.md`, M1–M8, in the authority's voice |
+
+**⭐ The ladder is not a second ladder — it is ours, repaired.** `--elev-raised`'s cast is
+**byte-identical** to the shipped `--shadow-card`; `--elev-modal` and `--elev-float` likewise
+contain `--shadow-modal`'s and `--shadow-overlay`'s casts verbatim. The only delta at every rung
+is that the banned one-sided `inset 0 1px 0` highlight is replaced by an **even** ring. That is
+M1 enforced against our own file, where `inset 0 1px 0` appears **15 times**.
+
+### ⭐ D-6.6 — the acceptance test that matters, applied to `ui/callout.tsx`
+
+Applied the system to a component the designer never saw, **from `EXTEND.md` alone**.
+
+- **M2 answers the surface cleanly.** A callout is content-plane furniture → **rung 0, flat**, and
+  M2 blesses flat explicitly (*"form rows, pollers, containers: flat is a rung, not a failure"*).
+- **But the tint utilities are welded to rung 4.** `.mat-edge-warn` is
+  `inset ring + var(--elev-toast)` — and its own comment names *"toasts / **callouts**"*. Applying
+  it to a Callout puts a toast-level cast under an inline box. **There is no rung-independent tint
+  recipe, so a tinted-but-flat surface cannot be expressed.** That is a guess, and D-6.6 says a
+  guess is the thing to send back.
+
+**Verdict: D-3 covers the six families in the spec's §8 coverage table and does not cover a
+tinted surface off it.** One missing recipe, repairable in-house in one rule (a `.mat-tint-*`
+ring-only modifier that composes with *any* rung). **This is the one item to send back**;
+everything else in the delivery is sound and self-consistent.
+
+### ⚠️ Six things in the delivery that are factually wrong about our files
+
+Recorded so nobody pastes past them. None changes the verdict.
+
+1. **`--t-move` is 340ms, not 430ms** (`motion.css:35`). §C's comment costs the mark-flip at 430.
+   `--t-stage` is 520, `--t-max` 620. The flip lands snappier than the designer priced it.
+2. **`--bg` was 13.5%, not 10%.** §A1 justifies "10%→6.5%"; the snapshot they were *sent*
+   (`spec/uploads/tokens.css:137`) reads `oklch(13.5% 0.130 268)`. So the proposed override is
+   −7pt lightness **and** chroma halved 0.130→0.05. **Ali's call, taken 2026-08-06: lightness
+   only — deepen the field, keep the royal chroma.**
+3. **"the 33 that already exist"** — there are **67** live keyframe names, not 33. And §B's own
+   header says *"Six new names"* while §B defines **twelve**.
+4. **`--m-pivot` is reserved.** `motion.css:28` says *"needle & dials ONLY"*; `.needle-sweep` and
+   `.needle-settle-loss` use `--m-settle` on the needle. We obey our own law and use `--m-pivot`.
+5. 🔴 **`shimmer-gilt` takes ONE value here and TWO on the spec page — and `.gilt-metal` needs
+   two.** The shipped keyframe is `globals.css:1490`:
+   `0% { background-position: -200% 0 } 100% { background-position: 200% 0 }` — a **single**
+   position, which CSS applies to **every** background layer. `.gilt-metal` declares two layers
+   (the sheen *and* the metal ramp) at two sizes. So on hover the gold ramp itself would translate
+   ±200% of its own box: **the metal slides off the button and back**, instead of one band of
+   light crossing a still surface. ⭐ The designer's own demo shim in `spec/spec.html` writes the
+   **two-value** form (`-200% 0, 0 0`), so the spec renders correctly and the product would not —
+   the delivery reused a name whose live definition it had not read. Fix with a two-layer
+   keyframe or a `::after` sheen; do **not** edit `shimmer-gilt` in place without checking its
+   other consumers. ⛔ No gate can see this: it is a paint bug inside a hover animation.
+6. **`.seal-arrive` writes a raw `60ms`.** `--t-flick` is 90ms and the motion ladder has no rung
+   below it. `test:motion-ladder` cannot catch it — the gate scans `src/components/**.tsx` only
+   and is blind to `.css` — so this is discipline, not enforcement. The recoil is a landing kick,
+   not travel; take `--t-flick`, or add the exemption deliberately and say why.
+   ⚠️ Related: the delivery also declares `--gilt-bloom` while MANIFEST, M3 and §C's own seal
+   comment all say **the bloom is REMOVED**. Landing §A verbatim ships a zero-consumer token plus
+   two comments describing behaviour that does not exist — and it mixes `--gold-400` (hue 78)
+   into a ramp the same file insists is hue 84.
+
 ## Open items the designer flagged — carried here so they are not lost
 
 1. **React/TSX drop-ins** — win-celebration, toast, market-card matching our existing props. *Offered, not yet delivered.*
-2. **Icon restyle pass** across all 185 glyphs (stroke 2.0, 2px live-area margin, 0.75px join radius). *Needs the set sent over.*
+2. **Icon restyle pass** across the glyph set (stroke 2.0, 2px live-area margin, 0.75px join radius). *Needs the set sent over.* ⚠️ The set is **178 unique keys**, not 185 (180 definitions, 2 shadowed by `Iplus`); **107** are referenced and ~71 are dead.
 3. ✅ Loss needle-settle — **delivered** (`needle-settle` + `.needle-settle-loss`).
-4. **`--shadow-card-top`** — confirm whether `globals.css` already defines it; if so, delete §A2's alias.
-5. **D-0 celebration font row** — the authority table says `--font-display` for the amount; **M4 says mono wins.** Amend the table when merging.
+4. ✅ **RESOLVED 2026-08-06 — `--shadow-card-top` DOES already exist**, `globals.css:398`
+   (`inset 0 1px 0 oklch(98% 0.01 268 / 0.08)`), bridged at `tailwind.config.ts:218`, with a
+   comment naming it the one definition site. **§A2's alias must be deleted when §A lands** — and
+   it is not merely redundant: `--shadow-*` is a **guarded** family, so a second definition site is
+   a hard `test:tokens` failure. ⭐ The extract sent out was lossy and simply stopped before it.
+   ⚠️ Note the existing *value* is precisely the one-sided line **M1 bans**, so the token keeps its
+   name and definition site and takes the even ring as its value.
+5. ✅ **RESOLVED 2026-08-06 — D-0's celebration font row now reads `--font-mono`.** M4 wins:
+   money is mono, tabular, never letter-spaced. Amended at source in `docs/design-brief/README.md`
+   §D-0 and restated in `DESIGN_AUTHORITY.md` section M. The table had been contradicting the ⛔
+   line printed directly beneath it.
 6. **SW/ZH proof** — the celebration is verified in three languages; toasts, cards and menus are EN-only in the spec. **Verify at merge** (see `scripts/live-s32-card360.mjs` for the pattern).
 7. **`m-axis-sweep` duplication** — the one place `−14°` is written twice, because `skewX()` cannot take a custom property everywhere. **If the axis changes, change both** (`DESIGN_AUTHORITY` B1a).
-8. **Crest chief-band opacity** — `0.26` recommended and demoed. **Ship decision is ours.** E-111 fixed the geometry; this is the material.
+   ⚠️ **It is worse than "written twice": `--m-tilt` currently has ZERO consumers.** `m-axis-sweep`
+   hard-codes `-14deg` four lines below the token, `TippingBar` computes `lean * 14` in TS
+   (`brand.tsx:254`) and `ConfidenceDial` uses a different constant entirely, `* 22`
+   (`brand.tsx:334`). **Three tilts and a token nothing reads.** Reconciling them belongs to the
+   identity atom, not to a token rename.
+8. ✅ **DECIDED 2026-08-06 — the crest chief band ships at `0.26`**, the designer's own
+   recommendation, demoed on the spec page at 0.16 / 0.26 / 0.38. It keeps the chief legible at
+   20px without shouting at 80px. ⛔ E-111's sub-pixel geometry is **not** re-opened — this is the
+   opacity only, on the line E-111 deliberately left to this pass.
 
 ---
 
