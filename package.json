@@ -39,6 +39,7 @@
     "test:lock-hash": "tsx scripts/lock-hash.test.mts",
     "test:contrast": "tsx scripts/contrast-audit.mts",
     "test:tokens": "tsx scripts/token-collision.test.mts",
+    "test:chat-availability": "tsx scripts/chat-availability.test.mts",
     "test:ui-consistency": "tsx scripts/ui-consistency.test.mts",
     "test:needle": "tsx scripts/needle-physics.test.mts",
     "test:integrity": "tsx scripts/content-integrity.test.mts",
@@ -290,7 +291,8 @@
     "qa:ring-delta": "node scripts/material-ring-delta.mjs",
     "test:m1-light": "tsx scripts/m1-even-light.test.mts",
     "red:m1-light": "node scripts/m1-even-light-red.mjs",
-    "red:tokens": "node scripts/token-collision-red.mjs"
+    "red:tokens": "node scripts/token-collision-red.mjs",
+    "red:chat-availability": "node scripts/chat-availability-red.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

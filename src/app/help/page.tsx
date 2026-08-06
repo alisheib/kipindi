@@ -5,6 +5,7 @@ import { PageHero } from "@/components/ui/page-hero";
 import { SUPPORT_EMAIL, SUPPORT_PHONE, SUPPORT_PHONE_TEL } from "@/lib/support-config";
 import { getServerT } from "@/lib/i18n-server";
 import { getEffectiveConfig } from "@/lib/server/market-config";
+import { isChatbotEnabled } from "@/lib/server/ai-controls";
 import { fill, fmtRate, pctNum } from "@/lib/utils";
 
 export async function generateMetadata() {
@@ -31,13 +32,33 @@ export default async function HelpPage() {
   // priced at. The numbers are interpolated, never written into the copy: a
   // hardcoded "9%" in an FAQ was true the day it shipped and false ever after.
   const cfg = await getEffectiveConfig();
+  // ⛔ THE SAME READ THE ROOT LAYOUT USES TO MOUNT THE WIDGET (`layout.tsx:101`),
+  // including its `.catch(() => true)`. Two surfaces answering "is live chat
+  // available?" from two sources is how they came to disagree in the first place;
+  // if the read fails, both fail the same way rather than one advertising a
+  // channel the other did not mount. E-123.
+  const chatEnabled = await isChatbotEnabled().catch(() => true);
   return (
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-5">
       <PageHero glow="info">
         <PageHeader tone="info" eyebrow={t.help.pageTitle} title={t.help.heading} />
       </PageHero>
 
-      <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      {/* 🔴 E-123 — THE LIVE-CHAT CARD FOLLOWS THE SWITCH THAT MOUNTS THE WIDGET.
+          It used to be unconditional, so this page offered *"LIVE CHAT · In-app ·
+          Tap the chat bubble"* as one of three support channels while
+          `layout.tsx:101` gated the whole widget behind `isChatbotEnabled()` —
+          and that flag is OFF in production. Measured 2026-08-06: `.cm-bubble`
+          count is **0** on `/`, `/help` and `/markets`, and the ChatRoot chunk is
+          never even fetched, while its non-gated sibling FirstVisitPrimer renders
+          normally on the same load. So a player in trouble was told to tap a
+          control that does not exist, on the one page they reach when stuck.
+          ⛔ The remedy is the CARD FOLLOWING THE FLAG, not deleting the card: the
+          day an operator switches the chatbot back on, the channel re-advertises
+          itself. A deletion would have to be remembered.
+          ⚠️ The grid drops to two columns with it, or two cards stretch across
+          three and the row reads as a missing tile. */}
+      <section className={`grid grid-cols-1 gap-3 ${chatEnabled ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
         <ContactCard
           icon={<I.phone s={15} />}
           tone="yes"
@@ -54,13 +75,15 @@ export default async function HelpPage() {
           sub={t.help.emailReply}
           href={`mailto:${SUPPORT_EMAIL()}`}
         />
-        <ContactCard
-          icon={<I.comment s={15} />}
-          tone="aqua"
-          title={t.help.liveChat}
-          value={t.help.inApp}
-          sub={t.help.tapChatBubble}
-        />
+        {chatEnabled && (
+          <ContactCard
+            icon={<I.comment s={15} />}
+            tone="aqua"
+            title={t.help.liveChat}
+            value={t.help.inApp}
+            sub={t.help.tapChatBubble}
+          />
+        )}
       </section>
 
       <section className="rounded-xl glass-panel p-5 lg:p-6 space-y-2">
