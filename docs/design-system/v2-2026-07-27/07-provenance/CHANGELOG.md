@@ -33,6 +33,31 @@ production drive and its image opened. This entry grows as the atoms land.
   ⛔ Not fixed here: different stylesheet, different token vocabulary, and `contrast-audit.mts`
   reads `globals.css` only. ✅ Its neighbour `.cm-escalate` measured 5.34 / 5.35 and is fine.
 
+**ATOM 4, validated (INTAKE §4a) — `54f80d8c`, deployed and re-measured on the raster.**
+
+- **Technical.** `test:contrast` 34 checks / 0 failures · `red:contrast` **17/17** · tsc 0 ·
+  build exit 0 · tokens 48 · design-frozen 45 · ui-consistency baseline · motion-ladder 0 ·
+  trilingual 36 · integrity OK · tracker-hygiene 16/0.
+- **Production, after deploy: 24/24 button states PASS.** `.btn-yes` hover 4.36 → **4.64**,
+  `.btn-danger` 4.37 → **4.74**, `.btn-no` 4.59 → **4.92**, `.btn-primary` 4.20 → **5.55**,
+  `.btn-gold` → 7.54. The modelled figures agree with the raster to **±0.01** on every button,
+  which is what licenses the gate to speak for a state it cannot photograph.
+- ⭐ **Hover states photographed for the first time.** `SHOT_DIR=… node
+  scripts/live-button-contrast.mjs` now keeps the frame at 4×; nothing else in the repo can shoot
+  a hover, because it needs a pointer held on the element while the shutter fires.
+- ⚠️ **And that shooting mode shipped a false-failure bug of its own, caught by disbelieving the
+  number.** The geometry is in CSS pixels and the raster is in DEVICE pixels, so at
+  `deviceScaleFactor 4` every sample landed a quarter of the way in: `worst` came off the rounded
+  **border** and the run condemned `.btn-claret` at **2.73** on a control that measures 7.05.
+  ⛔ A false failure is not a safe failure — it condemns something correct. The scale is now
+  derived from the image the browser returned, never assumed from the context, and both scales
+  are cross-checked against each other.
+- ⛔ **Recorded because it changes the next atom: the handoff's "16 one-sided lights" was a
+  partial grep.** Re-grepped after ATOM 3 shifted the line numbers, the real inventory is **23
+  sites across 2 files** — the old list missed the toast at `globals.css:1336`, four of the six
+  chat sites, and the two bevel PAIRS on `.btn-primary` and `.btn-claret`. It is split into three
+  atoms so each visual diff stays attributable.
+
 **ATOM 3 — the primary CTA's white label stops being 4:1 on its own light, and contrast
 gains a third instrument (E-119; E-120 filed).**
 

@@ -41,8 +41,14 @@
  * Exit 1 on a behind-glyph AA failure, 2 if the run measured nothing.
  */
 import { chromium } from "playwright";
+import { mkdirSync, writeFileSync } from "node:fs";
 
 const BASE = process.env.LIVE_BASE ?? "https://50pick.tz";
+// ⭐ SHOT_DIR makes this the only instrument in the repo that can PHOTOGRAPH a
+// hover state. `live-material-probe.mjs` shoots material at rest; a hover needs a
+// pointer held on the element while the shutter fires, which is exactly what this
+// file already does to measure it — so it may as well keep the frame.
+const SHOT = process.env.SHOT_DIR ?? "";
 const SIZES = (process.env.SIZES ?? "btn-xl,btn-sm").split(",");
 const VARIANTS = ["btn-primary", "btn-yes", "btn-no", "btn-danger", "btn-gold", "btn-claret"];
 
@@ -64,7 +70,10 @@ const ratio = (a, b) => { const x = lum(a), y = lum(b); const [hi, lo] = x >= y 
 const rgb = (c) => `rgb(${c.join(",")})`;
 
 const browser = await chromium.launch({ headless: true, args: ["--no-sandbox"] });
-const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, deviceScaleFactor: 1 });
+const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, deviceScaleFactor: SHOT ? 4 : 1 });
+// ⛔ deviceScaleFactor 4 ONLY when shooting. The pixel maths is scale-independent,
+// but a 4x raster is what makes a 1px ring judgeable by a human — and running the
+// measurement at 4x by default would quadruple every run for no measured gain.
 const page = await ctx.newPage();
 await page.goto(BASE, { waitUntil: "domcontentloaded", timeout: 60_000 });
 await page.waitForTimeout(1200);
@@ -142,18 +151,34 @@ for (const size of SIZES) {
         const l = document.getElementById(`lbl-${v}-${size}`).getBoundingClientRect();
         const i = document.getElementById(`ink-${v}-${size}`).getBoundingClientRect();
         return {
+          cssWidth: b.width,
           labelTop: Math.round(l.top - b.top),
           inkX: Math.round(i.left - b.left + i.width / 2),
           inkY: Math.round(i.top - b.top + i.height / 2),
         };
       }, { v, size });
 
-      const p = await pixels(await el.screenshot());
-      const ink = at(p, geom.inkX, geom.inkY);
+      const png = await el.screenshot();
+      if (SHOT) {
+        mkdirSync(`${SHOT}/buttons`, { recursive: true });
+        writeFileSync(`${SHOT}/buttons/${size}-${v}-${state}.png`, png);
+      }
+      const p = await pixels(png);
+      // 🔴 THE RASTER IS IN DEVICE PIXELS AND THE GEOMETRY IS IN CSS PIXELS.
+      // Measured the moment SHOT_DIR turned deviceScaleFactor up to 4: every
+      // sample landed a quarter of the way in, so `worst` came off the rounded
+      // BORDER and `behind` came off the top of the fill — and the run reported
+      // `.btn-claret` at 2.73 on a control that measures 7.05. ⛔ A false failure
+      // is not a safe failure: it condemns something correct, which this campaign
+      // has paid for repeatedly. The scale is DERIVED from the image the browser
+      // actually returned, never assumed from the context's deviceScaleFactor.
+      const S = p.w / geom.cssWidth;
+      const px = (x, y) => at(p, Math.round(x * S), Math.round(y * S));
+      const ink = px(geom.inkX, geom.inkY);
       // x=14 is inside the horizontal padding at every size: no glyph paints
       // there, and a 180deg ramp does not vary in x.
-      const worst = median([2, 3, 4].map((y) => at(p, 14, y)));
-      const behind = median([geom.labelTop, geom.labelTop + 1].map((y) => at(p, 14, y)));
+      const worst = median([2, 3, 4].map((y) => px(14, y)));
+      const behind = median([geom.labelTop, geom.labelTop + 1].map((y) => px(14, y)));
       const rW = ratio(ink, worst), rB = ratio(ink, behind);
       measured++;
       const key = `${v}:${state}`;
