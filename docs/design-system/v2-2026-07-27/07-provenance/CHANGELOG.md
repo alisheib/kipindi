@@ -5,6 +5,35 @@
 The material merge, atom by atom. One token change per commit, each with its gates, its
 production drive and its image opened. This entry grows as the atoms land.
 
+**ATOM 5 — 2c-a: the button family stops being lit from its own top edge, and M1 gets a ratchet.**
+
+- **Ten one-sided lights die.** `.btn-yes` `.btn-no` `.btn-danger` `.btn-gold` and each hover went
+  from `inset 0 1px 0` — a line on the TOP EDGE ONLY — to `inset 0 0 0 1px`. Same colour, same
+  alpha, same 1px, all four sides. M1: *"never a one-sided line; the direction of the light lives
+  in the WASH."* A top-only highlight puts direction in the edge, the one place the law forbids.
+- ⭐ **And the two BEVEL PAIRS the sweep's own list never had.** `.btn-primary` and `.btn-claret`
+  each carried a top light *and* a bottom shade, both fully opaque — two one-sided lines, not one.
+  ⛔ The bottom shade is NOT covered by `--edge-shade`: that exception is granted to sunken WELLS
+  ("inset wells only") and a raised control is not a well. ⭐ These two can afford to lose the
+  bevel precisely because they HAVE a wash — their gradients already carry the direction, which is
+  exactly what M1 asks for. The ring takes **32%** alpha, the delivery's own tinted-edge strength
+  (`.mat-edge-*` = 32% of the hue); at full opacity an even ring is a hard outline, not a lit edge.
+- ⛔ **The flat fills stay flat.** Giving YES/NO/danger/gold a wash to carry direction would invent
+  system the delivery does not specify, and M2 is explicit that flat is a rung, not a failure.
+- ⭐ **New ratchet: `npm run test:m1-light`, with `red:m1-light` 4/4.** The rule is geometry —
+  *an inset that carries light is compliant iff its x and y offsets are both zero* — with a pending
+  list that names the atom each unconverted site belongs to and that may only shrink. The sweep is
+  finished when it prints `one-sided LAMPS still to convert: 0`.
+- 🔴 **The gate's first version failed three correct designs, and the second waved two real ones
+  through.** v1 judged every offset inset a lamp and condemned `.cm-composer`'s dark inner shadow
+  (a sunken well M1 blesses) and `.admin-tbl`'s `inset 3px 0 0` (a structural accent rail, not
+  illumination). v2 added a lightness test with the ceiling at 45 — which then waved through
+  `.cm-bubble`'s `inset 0 1px 0 oklch(35% …)`, **on a bubble whose own background starts at 24%**.
+  ⭐ *"Dark" is relative to the surface*: an absolute ceiling only works below the darkest surface
+  in the system (`--bg-inset` 11%, `--bg` 13.5%), so it is **15**, and the file says the rule
+  becomes wrong the day a light theme exists. ⛔ An unreadable lightness counts as a LAMP — a gate
+  that waves through what it could not parse is not a gate, and there is a RED case for exactly it.
+
 **ATOM 4 — a surface rises toward the lamp; it does not re-light itself (E-120; E-121 filed).**
 
 - 🔴 **Every solid button lost contrast the moment a pointer touched it.** `.btn-yes`/`.btn-no`

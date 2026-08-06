@@ -737,9 +737,19 @@ body {
   background: linear-gradient(180deg, oklch(53% 0.20 268) 0%, oklch(48% 0.20 268) 100%);
   color: var(--pearl-50);
   border-color: oklch(40% 0.20 268);
+  /* ⭐ ATOM 5 · M1 — this was a BEVEL PAIR: `0 1px 0 oklch(74%…)` on the top edge
+     plus `0 -1px 0 oklch(36%…)` on the bottom, both fully opaque. That is two
+     one-sided lines, and it is the exact shape M1 moves into the wash: "the
+     direction of the light lives in the wash … a surface lit from below or from
+     the right is a bug." ⛔ The bottom shade is NOT covered by the `--edge-shade`
+     exception — that one is granted to sunken WELLS ("inset wells only") and a
+     raised control is not a well. ⭐ This button can afford to lose the bevel
+     precisely because it HAS a wash: its 53%→48% gradient already carries the
+     direction, which is what the law asks for. The ring takes 32% alpha, the
+     delivery's own tinted-edge strength (`.mat-edge-*` = 32% of the hue) —
+     at full opacity an even ring is a hard outline rather than a lit edge. */
   box-shadow:
-    0 1px 0 oklch(74% 0.16 268) inset,
-    0 -1px 0 oklch(36% 0.18 268) inset,
+    inset 0 0 0 1px oklch(74% 0.16 268 / 0.32),
     0 2px 8px -2px oklch(20% 0.10 268 / 0.50),
     0 8px 22px -10px oklch(48% 0.20 268 / 0.55);
   letter-spacing: 0.005em;
@@ -748,17 +758,25 @@ body {
 .btn-primary:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)) saturate(1.04) drop-shadow(0 6px 16px color-mix(in oklab, var(--teal-400) 30%, transparent)); }
 
 /* v2 kit: one flat-solid family — YES/NO/gold are SOLID fills (not gradients),
-   with a 1px inset top-highlight + soft shadow. (primary keeps its gradient.) */
+   with an EVEN 1px inset ring + soft shadow. (primary keeps its gradient.)
+   ⭐ ATOM 5 · M1 — the ring used to be `inset 0 1px 0`, a line on the TOP EDGE
+   ONLY, on all four fills and on all four hovers. M1: "never a one-sided line;
+   the direction of the light lives in the WASH … there is no second lamp." A
+   top-only highlight puts the light's direction in the EDGE, which is the one
+   place the law says it must not live. Same colour, same alpha, same 1px — all
+   four sides now. ⛔ The fills stay FLAT: giving them a wash to carry direction
+   would be inventing system the delivery does not specify, and M2 is explicit
+   that flat is a rung and not a failure. `test:m1-light` is the ratchet. */
 .btn-yes {
   background: oklch(53% 0.155 150); /* audit H10: white label → 4.74:1 (was 57% = 4.05, fail) */
   color: var(--pearl-50);
   font-weight: 700;
   letter-spacing: 0.06em;
   border-color: transparent;
-  box-shadow: inset 0 1px 0 oklch(80% 0.14 152 / 0.4), 0 1px 2px oklch(10% 0.05 264 / 0.35);
+  box-shadow: inset 0 0 0 1px oklch(80% 0.14 152 / 0.4), 0 1px 2px oklch(10% 0.05 264 / 0.35);
   text-shadow: 0 1px 1px oklch(20% 0.1 264 / 0.32);
 }
-.btn-yes:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)); box-shadow: inset 0 1px 0 oklch(80% 0.14 152 / 0.4), 0 5px 16px oklch(60% 0.16 150 / 0.5); }
+.btn-yes:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)); box-shadow: inset 0 0 0 1px oklch(80% 0.14 152 / 0.4), 0 5px 16px oklch(60% 0.16 150 / 0.5); }
 
 .btn-no {
   background: oklch(56% 0.200 25);
@@ -766,10 +784,10 @@ body {
   font-weight: 700;
   letter-spacing: 0.06em;
   border-color: transparent;
-  box-shadow: inset 0 1px 0 oklch(80% 0.15 25 / 0.4), 0 1px 2px oklch(10% 0.05 264 / 0.35);
+  box-shadow: inset 0 0 0 1px oklch(80% 0.15 25 / 0.4), 0 1px 2px oklch(10% 0.05 264 / 0.35);
   text-shadow: 0 1px 1px oklch(20% 0.1 264 / 0.32);
 }
-.btn-no:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)); box-shadow: inset 0 1px 0 oklch(80% 0.15 25 / 0.4), 0 5px 16px oklch(57% 0.20 25 / 0.5); }
+.btn-no:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)); box-shadow: inset 0 0 0 1px oklch(80% 0.15 25 / 0.4), 0 5px 16px oklch(57% 0.20 25 / 0.5); }
 
 .btn-ghost {
   background: transparent;
@@ -785,11 +803,11 @@ body {
   background: var(--danger-500);
   color: var(--pearl-50);
   border-color: transparent;
-  box-shadow: inset 0 1px 0 oklch(80% 0.15 25 / 0.3), 0 1px 2px oklch(10% 0.05 264 / 0.35);
+  box-shadow: inset 0 0 0 1px oklch(80% 0.15 25 / 0.3), 0 1px 2px oklch(10% 0.05 264 / 0.35);
 }
 .btn-danger:hover:not(:disabled) {
   filter: brightness(var(--btn-hover-gain));
-  box-shadow: inset 0 1px 0 oklch(80% 0.15 25 / 0.3), 0 5px 16px oklch(60% 0.22 25 / 0.4);
+  box-shadow: inset 0 0 0 1px oklch(80% 0.15 25 / 0.3), 0 5px 16px oklch(60% 0.22 25 / 0.4);
 }
 
 .btn-gold {
@@ -797,10 +815,10 @@ body {
   color: var(--gold-fg);
   font-weight: 700;
   border-color: transparent;
-  box-shadow: inset 0 1px 0 oklch(95% 0.06 86 / 0.55), 0 1px 2px oklch(10% 0.05 262 / 0.35);
+  box-shadow: inset 0 0 0 1px oklch(95% 0.06 86 / 0.55), 0 1px 2px oklch(10% 0.05 262 / 0.35);
   letter-spacing: 0.02em;
 }
-.btn-gold:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)); box-shadow: inset 0 1px 0 oklch(95% 0.06 86 / 0.55), 0 5px 16px oklch(80% 0.13 82 / 0.5); }
+.btn-gold:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)); box-shadow: inset 0 0 0 1px oklch(95% 0.06 86 / 0.55), 0 5px 16px oklch(80% 0.13 82 / 0.5); }
 
 .btn-claret {
   background: linear-gradient(180deg, var(--claret-500) 0%, var(--claret-700) 100%);
@@ -808,8 +826,7 @@ body {
   font-weight: 700;
   border: 1px solid var(--claret-800);
   box-shadow:
-    0 1px 0 var(--claret-300) inset,
-    0 -1px 0 var(--claret-900) inset,
+    inset 0 0 0 1px color-mix(in oklab, var(--claret-300) 32%, transparent),
     0 2px 8px -2px oklch(20% 0.10 268 / 0.50),
     0 10px 28px -10px oklch(38% 0.14 15 / 0.55);
   text-shadow: 0 1px 0 oklch(15% 0.06 15 / 0.45);

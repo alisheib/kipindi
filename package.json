@@ -286,7 +286,9 @@
     "red:updown-movement": "node scripts/red-updown-movement.cjs",
     "test:crest-legibility": "tsx scripts/crest-legibility.test.mts",
     "test:motion-ladder": "tsx scripts/motion-ladder.test.mts",
-    "qa:button-contrast": "node scripts/live-button-contrast.mjs"
+    "qa:button-contrast": "node scripts/live-button-contrast.mjs",
+    "test:m1-light": "tsx scripts/m1-even-light.test.mts",
+    "red:m1-light": "node scripts/m1-even-light-red.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",
