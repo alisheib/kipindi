@@ -55,22 +55,92 @@ const ok = (l: number, c: number, h: number): Oklch => ({ l, c, h });
 // file — two sessions share this working tree and a mutate-then-restore window
 // over globals.css can land inside the other session's build. A gate you can
 // re-aim is only honest if it says what it read, so it does, every run.
-const GLOBALS =
-  process.env.CONTRAST_CSS ??
-  new URL("../src/app/globals.css", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
-// Comments are stripped first: a `/* --bg: was 15% */` note must not read as a
-// second declaration site, and must not be parseable as a value either.
-const CSS = readFileSync(GLOBALS, "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+/**
+ * ⛔ RE-AIMED BY ROOT, NOT BY FILE — changed at ATOM 8 with the corpus.
+ * It used to be `CONTRAST_CSS`, one path to one stylesheet, which worked exactly
+ * as long as there was one stylesheet. With three, a single-file override would
+ * have meant the RED harness ran a gate whose chat checks were SKIPPED — so the
+ * four controls E-121 was filed against would have had no RED proof at all,
+ * while the harness reported a full sheet of catches. `M1_ROOT` and `TOKENS_ROOT`
+ * already work this way; this is the third of three, and now they agree.
+ */
+const ROOT = process.env.CONTRAST_ROOT ?? new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
+
+/**
+ * ⭐ THE CORPUS IS MORE THAN ONE FILE — E-121, ATOM 2c-c.
+ *
+ * This gate read `globals.css` and nothing else, which is why `.cm-send`'s glyph
+ * could sit at 2.55 against WCAG 1.4.11's 3.0 floor with every instrument green:
+ * the support chat lives in `src/styles/chat/`, and a control the gate cannot
+ * SEE is a control the gate cannot fail on. Adding a file is therefore not
+ * housekeeping, it is coverage.
+ *
+ * ⛔ THIS WAS BLOCKED UNTIL E-122 WAS FIXED, and the reason is `declValue()`'s
+ * own rule three functions below: it THROWS on a second declaration site,
+ * because the browser takes the last and this parser takes the first. Three
+ * tokens (`--claret`, `--claret-edge`, `--gilt`) were declared in globals AND in
+ * chat-tokens, so a corpus containing both would have refused to start — and
+ * "make the gate stop throwing" would have been the wrong repair. The duplicates
+ * were the defect; they are gone, and `test:tokens` rule 1b now keeps them gone.
+ *
+ * ⛔ ORDER IS THE CASCADE'S ORDER, not alphabetical: chat-tokens and chat-styles
+ * are `@import`ed at the TOP of globals.css, so globals is emitted LAST and wins
+ * at equal specificity. `declValue()` refuses duplicates outright, so ordering
+ * cannot silently pick a winner here — but a future reader must not have to
+ * guess which way it would lean, so it is written the way the browser sees it.
+ */
+const CORPUS = [
+  "src/styles/chat/chat-tokens.css",
+  "src/styles/chat/chat-styles.css",
+  "src/app/globals.css",
+].map((p) => `${ROOT.replace(/[\\/]+$/, "")}/${p}`);
+const SHEETS = CORPUS.map((f) => ({
+  path: f,
+  // Comments are stripped first: a `/* --bg: was 15% */` note must not read as a
+  // second declaration site, and must not be parseable as a value either.
+  text: readFileSync(f, "utf8").replace(/\/\*[\s\S]*?\*\//g, ""),
+}));
+const CSS = SHEETS.map((s) => s.text).join("\n");
 // ⛔ PRINTED HERE, not beside the results. The token table below is built at
 // module scope and a parse defect throws inside it — so a path printed later
 // is a path that never prints on exactly the runs where you most need to know
 // which file was read.
-console.log(`contrast-audit: reading ${GLOBALS}\n`);
+console.log(`contrast-audit: reading ${SHEETS.length} sheet(s)`);
+for (const s of SHEETS) console.log(`  · ${s.path}`);
+console.log("");
 
 /** `oklch(L% C H …)` → Oklch. Returns null when the text is not a literal. */
 function parseOklch(raw: string): Oklch | null {
   const m = /oklch\(\s*([\d.]+)%\s+([\d.]+)\s+([\d.]+)/.exec(raw);
   return m ? ok(Number(m[1]) / 100, Number(m[2]), Number(m[3])) : null;
+}
+
+/**
+ * ⭐ A HEX LITERAL — added with the chat sheets (ATOM 2c-c). `.cm-send` writes
+ * `color: #fff`, and until the corpus grew there was no hex anywhere in it.
+ *
+ * ⛔ IT IS CONVERTED, NOT APPROXIMATED. The tempting shortcut for `#fff` is to
+ * return `ok(1, 0, 0)` by inspection — correct for white and wrong for the next
+ * hex somebody writes, silently. This is the exact inverse of
+ * `oklchToLinearSrgb()` below (Ottosson's matrices), so a hex and an oklch()
+ * naming the same colour produce the same luminance. Verified on the round trip:
+ * `#fff` → L 1.000 C 0.000, and its luminance comes out 1.0 to 15 places.
+ */
+function parseHex(raw: string): Oklch | null {
+  const m = /^#([0-9a-f]{3}|[0-9a-f]{6})\b/i.exec(raw.trim());
+  if (!m) return null;
+  const h = m[1].length === 3 ? m[1].split("").map((c) => c + c).join("") : m[1];
+  const dec = (v: number) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+  const [r, g, b] = [0, 2, 4].map((i) => dec(parseInt(h.slice(i, i + 2), 16) / 255));
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m_ = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  const L = 0.2104542553 * l + 0.793617785 * m_ - 0.0040720468 * s;
+  const A = 1.9779984951 * l - 2.428592205 * m_ + 0.4505937099 * s;
+  const B = 0.0259040371 * l + 0.7827717662 * m_ - 0.808675766 * s;
+  const C = Math.hypot(A, B);
+  const H = ((Math.atan2(B, A) * 180) / Math.PI + 360) % 360;
+  return ok(L, C, H);
 }
 
 /**
@@ -80,22 +150,32 @@ function parseOklch(raw: string): Oklch | null {
  */
 function declValue(name: string): string {
   const decls = [...CSS.matchAll(new RegExp(`--${name}\\s*:([^;}]*)`, "g"))].map((m) => m[1].trim());
-  if (decls.length === 0) throw new Error(`contrast-audit: --${name} is not declared in ${GLOBALS}`);
+  if (decls.length === 0) throw new Error(`contrast-audit: --${name} is not declared in the corpus (${SHEETS.map((s) => s.path).join(", ")})`);
   if (decls.length > 1) {
     throw new Error(
       `contrast-audit: --${name} has ${decls.length} declaration sites (${decls.join(" | ")}). ` +
         `INTAKE §2a: the browser takes the LAST, this gate takes the FIRST — so the product ` +
-        `would render one value while every ratio below scored another. Edit the token AT ITS LINE.`,
+        `would render one value while every ratio below scored another. Edit the token AT ITS LINE. ` +
+        `⚠️ Since the corpus is more than one file, this now also catches a CROSS-FILE duplicate ` +
+        `(E-122) — the same rule test:tokens 1b enforces, arriving here as a hard stop.`,
     );
   }
   return decls[0];
 }
 
+/**
+ * ⛔ A TOKEN MAY BE AN ALIAS, AND THE CHAIN IS FOLLOWED — not refused.
+ * This used to demand a literal `oklch()` and throw otherwise, which was fine
+ * while the corpus was one file of leaf colours. It is not fine now:
+ * `--claret: var(--claret-600)` is a legitimate one-hop alias, and the chat's
+ * escalate pill paints its ramp from it. Refusing the alias would have meant
+ * hand-typing `--claret-600` into the check — the exact mirroring this file's
+ * header narrates as the defect (`--text` had already drifted that way).
+ * Resolution is bounded and reports the whole chain in the error, so a cycle
+ * names itself instead of hanging.
+ */
 function token(name: string): Oklch {
-  const raw = declValue(name);
-  const val = parseOklch(raw);
-  if (!val) throw new Error(`contrast-audit: --${name} is "${raw}", not a literal oklch()`);
-  return val;
+  return colour(`--${name}`, declValue(name));
 }
 
 /**
@@ -121,9 +201,26 @@ function numberToken(name: string): number {
  * followed to their definition rather than re-typed.
  */
 function ruleBody(selector: string): string {
-  const at = CSS.indexOf(`\n${selector} {`) >= 0 ? CSS.indexOf(`\n${selector} {`) : CSS.indexOf(`\n${selector}{`);
-  if (at < 0) throw new Error(`contrast-audit: rule "${selector}" not found in ${GLOBALS}`);
-  const open = CSS.indexOf("{", at);
+  // ⛔ EVERY OCCURRENCE, NOT THE FIRST — the same rule `declValue()` applies to a
+  // token, for the same reason, and it only became reachable when the corpus grew
+  // past one file (ATOM 2c-c). A selector written twice means the browser takes
+  // the last and this parser takes the first, so the gate would score a rule the
+  // product does not paint. `.cm-send` in the chat sheet and a hypothetical
+  // `.cm-send` in globals is exactly that shape.
+  const hits: number[] = [];
+  for (const pat of [`\n${selector} {`, `\n${selector}{`]) {
+    let i = CSS.indexOf(pat);
+    while (i >= 0) { hits.push(i); i = CSS.indexOf(pat, i + 1); }
+  }
+  if (hits.length === 0) throw new Error(`contrast-audit: rule "${selector}" not found in the corpus`);
+  if (hits.length > 1) {
+    throw new Error(
+      `contrast-audit: rule "${selector}" is declared ${hits.length} times in the corpus. ` +
+        `The browser takes the LAST and this gate takes the FIRST, so the ratio below would ` +
+        `describe a rule the product does not paint. One rule, one place.`,
+    );
+  }
+  const open = CSS.indexOf("{", hits[0]);
   const close = CSS.indexOf("}", open);
   if (close < 0) throw new Error(`contrast-audit: rule "${selector}" is unterminated`);
   return CSS.slice(open + 1, close);
@@ -135,20 +232,50 @@ function ruleDecl(selector: string, prop: string): string {
   return m[1].trim();
 }
 
-/** A single colour — an `oklch()` literal or a plain `var(--token)`. */
-function colour(where: string, raw: string): Oklch {
+/** A single colour — an `oklch()` literal, a `#hex`, or a `var(--token)` chain. */
+function colour(where: string, raw: string, depth = 0): Oklch {
   const lit = parseOklch(raw);
   if (lit) return lit;
-  const v = /^var\(\s*--([a-z0-9-]+)\s*\)$/i.exec(raw);
-  if (v) return token(v[1]);
+  const hex = parseHex(raw);
+  if (hex) return hex;
+  const v = /^var\(\s*--([a-z0-9-]+)\s*\)$/i.exec(raw.trim());
+  if (v) {
+    // Bounded, and the bound is not a style choice: a var() cycle would otherwise
+    // recurse until the stack dies, and a stack overflow in a contrast gate reads
+    // as "the gate is broken" rather than "the stylesheet has a cycle".
+    if (depth >= 8) throw new Error(`contrast-audit: "${where}" — var() chain deeper than 8 hops, or a cycle`);
+    return colour(`${where} → --${v[1]}`, declValue(v[1]), depth + 1);
+  }
   throw new Error(
-    `contrast-audit: "${where}: ${raw}" is neither a literal oklch() nor a plain ` +
+    `contrast-audit: "${where}: ${raw}" is not a literal oklch(), a #hex, or a plain ` +
       `var(--token). It cannot be scored, and a gate that silently skips a control is worse than one that stops.`,
   );
 }
 
 function ruleValue(selector: string, prop: string): Oklch {
   return colour(`${selector} { ${prop} }`, ruleDecl(selector, prop));
+}
+
+/**
+ * 🔴 THE FILL A STATE ACTUALLY PAINTS — and this is a hole the RED harness found
+ * in the first version of the chat checks (ATOM 8).
+ *
+ * A hover ratio was scored as "the REST fill, with the hover FILTER applied",
+ * which is right only while no `:hover` rule overrides the fill itself. E-121 was
+ * exactly such an override — `.cm-send:hover { background: var(--brand-400) }` —
+ * so the check written to defend against E-121 could not have SEEN E-121. The
+ * RED mutation that restores it scored the rest fill and passed.
+ *
+ * ⛔ THE STATE'S OWN DECLARATION WINS, and its absence falls back to the base
+ * rule — which is what the cascade does. A hover that has no fill of its own is
+ * still the base fill; a hover that has one is that one.
+ */
+function ruleValueForState(stateSelector: string, baseSelector: string, prop: string): Oklch {
+  const body = ruleBody(stateSelector);
+  const own = new RegExp(`(?:^|;)\\s*${prop}\\s*:([^;]*)`).exec(body);
+  return own
+    ? colour(`${stateSelector} { ${prop} }`, own[1].trim())
+    : ruleValue(baseSelector, prop);
 }
 
 /**
@@ -360,6 +487,39 @@ const T = {
   btnGoldHover: ruleFilter(".btn-gold:hover:not(:disabled)"),
 };
 
+/**
+ * ── The SUPPORT CHAT (2026-08-06, ATOM 8 · 2c-c · E-121) ────────────────────
+ *
+ * The first controls this gate has ever scored outside `globals.css`. E-121 was
+ * exactly the cost of that blindness: `.cm-send`'s white glyph sat at 2.55
+ * against WCAG 1.4.11's 3.0 floor on hover, and no instrument in the repo could
+ * see it — the token gate did not read the file, the DOM sweep cannot reach a
+ * `:hover`, and the raster probe only knows about buttons.
+ *
+ * ⛔ NOTHING HERE IS TYPED. Both fills, both inks and both hover filters are read
+ * off the rules that paint them, so an edit to `chat-styles.css` moves these
+ * numbers rather than leaving them describing a file nobody re-read.
+ *
+ * ⭐ UNCONDITIONAL, deliberately. These were briefly built only when the corpus
+ * happened to contain the chat sheets — which meant the RED harness, aiming the
+ * gate at one file, ran a sheet of catches while the four controls E-121 was
+ * FILED against were silently not in the run. That is a harness proving a gate
+ * it is not exercising. The whole corpus is now aimed by ROOT, so these always
+ * run, and a missing sheet is a hard read error rather than a quiet skip.
+ */
+const CHAT = {
+  sendFg: ruleValue(".cm-send", "color"), // #fff — the first hex in the corpus
+  sendBg: ruleValue(".cm-send", "background"), // var(--brand-500)
+  // ⛔ The HOVER's own fill if it declares one, the rest fill if it does not —
+  // see ruleValueForState(). Without this, the check written to defend against
+  // E-121 could not see E-121, which the RED harness proved on its first run.
+  sendHoverBg: ruleValueForState(".cm-send:hover", ".cm-send", "background"),
+  sendHover: ruleFilter(".cm-send:hover"),
+  escalateFg: ruleValue(".cm-escalate", "color"),
+  escalateStops: ruleGradient(".cm-escalate", "background"),
+  escalateHover: ruleFilter(".cm-escalate:hover"),
+};
+
 // `decorative: true` = WCAG 1.4.11 exempt (a divider that is NOT the sole means
 // of identifying a control). Printed for reference but never fails the gate.
 type Check = { name: string; fg: Oklch; bg: Oklch; min: number; decorative?: boolean; filter?: Filter };
@@ -419,6 +579,16 @@ const CHECKS: Check[] = [
   { name: "btn-no label :hover (filter rastered)", fg: T.pearl50, bg: T.btnNoBg, min: 4.5, filter: T.btnNoHover },
   { name: "btn-danger label :hover (filter rastered)", fg: T.pearl50, bg: T.danger500, min: 4.5, filter: T.btnDangerHover },
   { name: "btn-gold label :hover (filter rastered)", fg: T.btnGoldFg, bg: T.btnGoldBg, min: 4.5, filter: T.btnGoldHover },
+
+  // ── The support chat — E-121, and the first checks outside globals.css ─────
+  // ⛔ 3.0, NOT 4.5, on the send control: it is a GLYPH, so WCAG 1.4.11 (non-text
+  // contrast) is the applicable rule. Scoring it at 4.5 would overstate the
+  // defect, which is the arithmetic this campaign has had to retract before.
+  // The escalate pill carries TEXT at 13px/600, which is not WCAG-large, so 4.5.
+  { name: "cm-send glyph (#fff on brand-500)", fg: CHAT.sendFg, bg: CHAT.sendBg, min: 3.0 },
+  { name: "cm-send glyph :hover (own fill + filter rastered)", fg: CHAT.sendFg, bg: CHAT.sendHoverBg, min: 3.0, filter: CHAT.sendHover },
+  { name: "cm-escalate label on claret ramp (worst stop)", fg: CHAT.escalateFg, bg: worstStop(CHAT.escalateFg, CHAT.escalateStops), min: 4.5 },
+  { name: "cm-escalate label :hover (filter rastered)", fg: CHAT.escalateFg, bg: worstStop(CHAT.escalateFg, CHAT.escalateStops, CHAT.escalateHover), min: 4.5, filter: CHAT.escalateHover },
 ];
 
 // ✅ AUDIT H10 IS CLOSED, and its fixes are now PARSED rather than described.
@@ -435,5 +605,8 @@ for (const c of CHECKS) {
   if (!pass && !c.decorative) fails++;
   console.log(`${tag}  ${c.name.padEnd(52)} ${r.toFixed(2)} (need ${c.min})`);
 }
-console.log(`\ncontrast-audit: ${fails} gate failure(s) (decorative dividers are WCAG 1.4.11-exempt)`);
+// ⛔ THE COUNT IS PRINTED, not just the failures. "0 failures" over 34 checks and
+// over 38 read identically, and a check that silently stops running is the
+// campaign's own named `checks-that-lie` shape.
+console.log(`\ncontrast-audit: ${CHECKS.length} checks · ${fails} gate failure(s) (decorative dividers are WCAG 1.4.11-exempt)`);
 if (fails > 0) process.exit(1);

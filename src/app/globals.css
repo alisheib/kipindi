@@ -1013,18 +1013,33 @@ body {
 }
 .pbar-micro { height: 14px; }
 .pbar-large { height: 28px; }
+/* ⭐ M1 (ATOM 2c-c) — both fills carried `inset 0 1px 0 oklch(100% 0 0 / …)`: a
+   top-edge line in PURE WHITE, which M1 bans on both counts. Each now takes the
+   same ring its own family's button carries — `.btn-yes`'s `oklch(80% 0.14 152)`
+   and `.btn-no`'s `oklch(80% 0.15 25)` — at the alpha these bars already used,
+   so the geometry and the hue change and the weight does not.
+   ⛔ AND SAY THE UNCOMFORTABLE PART: THESE TWO RULES ARE DEAD CSS. `.pbar-*` has
+   ZERO consumers in `src/` — the live probability bar is `.tipbar-*` (TippingBar,
+   `brand.tsx`), whose fills carry `--bar-glow-*`, an OUTER glow that was already
+   M1-clean. `DESIGN_AUTHORITY.md` B6 has recorded `.pbar-yes`/`.pbar-no` as
+   "0 usages — dead CSS" since 2026-07-20. So NO PRODUCTION PHOTOGRAPH OF THIS
+   CHANGE IS POSSIBLE, and none is claimed; the only surface that renders it is
+   the design system's own `02-components/progress-bars/preview.html`.
+   ⚠️ They are converted rather than DELETED because `.pbar` is a documented kit
+   atom with a spec page and a preview, and deleting a documented atom is a
+   design-system decision, not an M1 conversion. Filed, not acted on. */
 .pbar-yes {
   position: absolute;
   inset: 0 auto 0 0;
   background: linear-gradient(90deg, var(--yes-700), var(--yes-500));
-  box-shadow: inset 0 1px 0 oklch(100% 0 0 / 0.22), 0 0 12px oklch(60% 0.18 150 / 0.20);
+  box-shadow: inset 0 0 0 1px oklch(80% 0.14 152 / 0.22), 0 0 12px oklch(60% 0.18 150 / 0.20);
   transition: width var(--dur-quick) var(--ease-stage);
 }
 .pbar-no {
   position: absolute;
   inset: 0 0 0 auto;
   background: linear-gradient(270deg, var(--no-700), var(--no-500));
-  box-shadow: inset 0 1px 0 oklch(100% 0 0 / 0.20), 0 0 12px oklch(60% 0.20 25 / 0.20);
+  box-shadow: inset 0 0 0 1px oklch(80% 0.15 25 / 0.20), 0 0 12px oklch(60% 0.20 25 / 0.20);
   transition: width var(--dur-quick) var(--ease-stage);
 }
 .pbar-large .pbar-label {
@@ -1380,7 +1395,7 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
 }
 
 /* ---------- Toast (kit class) ---------- */
-/* v2 Dark Glass: frosted translucent panel with a 1px top light-edge.
+/* v2 Dark Glass: frosted translucent panel with an EVEN 1px light-edge.
    backdrop-filter is GPU-accelerated and degrades gracefully (solid fill)
    on the few engines without support. */
 .toast {
@@ -1393,7 +1408,14 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
   background: color-mix(in oklab, var(--bg-elevated) 80%, transparent);
   backdrop-filter: blur(14px) saturate(1.1);
   -webkit-backdrop-filter: blur(14px) saturate(1.1);
-  box-shadow: 0 1px 0 oklch(98% 0.01 268 / 0.08) inset, var(--shadow-4);
+  /* ⭐ M1 (ATOM 2c-c) — was `0 1px 0 oklch(98% 0.01 268 / 0.08) inset`, a
+     top-edge line, and the comment three lines up still called it "a 1px top
+     light-edge". A toast is rung 4, the highest physical object in the product,
+     and the delivery gives that rung `--edge-lit-strong` (`--elev-toast`,
+     material.css:72). ⭐ The old literal was `--shadow-card-top`'s PRE-MERGE
+     value retyped here by hand — so this is the token reclaiming its own copy,
+     not a new colour. */
+  box-shadow: var(--edge-lit-strong), var(--shadow-4);
   min-width: 280px;
   max-width: 360px;
 }
@@ -2261,13 +2283,20 @@ html.kp-reduce-motion *::after {
 
 /* v2 Dark Glass — reusable frosted royal panel for prominent at-rest section
    surfaces. Swap a flat `border border-border bg-bg-elevated` box for
-   `glass-panel` (it brings its own border + gradient + soft elevation + 1px
-   inner light-edge). No backdrop-filter: these sit on the page canvas, so the
-   top-lit gradient + light-edge carry the depth without GPU cost on big panels. */
+   `glass-panel` (it brings its own border + soft elevation + an EVEN 1px inner
+   light-edge). No backdrop-filter: these sit on the page canvas, so the cast and
+   the ring carry the depth without GPU cost on big panels.
+   ⭐ M1 (ATOM 2c-c) — the ring was `inset 0 1px 0 oklch(100% 0 0 / 0.08)`: a
+   line on the top edge, in PURE WHITE, which M1 bans twice over ("an EVEN 1px
+   inner ring carrying a 4% royal tint, never pure white — and never a one-sided
+   line"). This panel sits ON the page plane, which is rung 1, so it takes
+   `--edge-lit` — the same ring `--elev-raised` gives every card.
+   ⚠️ The old comment claimed a "top-lit gradient" this rule has never had: the
+   background is one flat colour. Corrected rather than preserved. */
 .glass-panel {
   background: var(--bg-elevated);
   border: 1px solid var(--border);
-  box-shadow: 0 8px 24px -6px oklch(6% 0.08 268 / 0.45), inset 0 1px 0 oklch(100% 0 0 / 0.08);
+  box-shadow: var(--edge-lit), 0 8px 24px -6px oklch(6% 0.08 268 / 0.45);
   border-radius: var(--r-lg);
 }
 

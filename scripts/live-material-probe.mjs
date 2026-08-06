@@ -157,6 +157,56 @@ const SURFACES = {
    * COMPUTED value is `--shadow-overlay-up` only at 360. Read the report that way:
    * 360 is the only cell that proves the up-cast token.
    */
+  /**
+   * ── ATOM 2c-c's LIVE surfaces ────────────────────────────────────────────
+   * ⛔ AND THE ONES THAT ARE NOT HERE ARE NOT HERE FOR A REASON. Three of that
+   * atom's ten converted sites are DEAD CSS with zero consumers in `src/` —
+   * `.pbar-yes`, `.pbar-no` (the live probability bar is `.tipbar-*`) and the kit
+   * `.toast` (the live toast is the React component, which paints
+   * `shadow-[var(--shadow-card)]` and never takes the class). No probe can shoot
+   * them because nothing renders them, and inventing a surface to photograph
+   * would be evidence of a fixture, not of the product.
+   */
+  "glass-panel": {
+    route: "/auth/login",
+    selector: ".glass-panel",
+    label: "glass panel (rung 1) — the sign-in card",
+    props: ["boxShadow", "backgroundColor", "borderColor"],
+    vars: ["--edge-lit"],
+  },
+  /**
+   * 🔴 THE THREE `chat-*` SURFACES CANNOT BE REACHED ON PRODUCTION TODAY, and
+   * that is a product fact, not a broken probe — E-123. `layout.tsx:101` gates the
+   * whole widget behind `isChatbotEnabled()`, an operator switch, and measured
+   * 2026-08-06 `.cm-bubble` count is **0** on `/`, `/help` AND `/markets`. They
+   * are kept here, defined and failing loudly, because the CSS they photograph is
+   * live in the bundle and the day the switch flips these are the shots to take.
+   * ⛔ Do not "fix" the timeout by pointing them at a fixture: a screenshot of a
+   * surface the product does not serve is evidence of a fixture.
+   */
+  "chat-bubble": {
+    route: "/help",
+    selector: ".cm-bubble",
+    label: "support-chat launcher (rung 1) — --edge-lit, and --edge-lit-strong on hover",
+    props: ["boxShadow", "backgroundImage", "borderColor"],
+    vars: ["--edge-lit", "--edge-lit-strong"],
+  },
+  "chat-panel": {
+    route: "/help",
+    open: [{ click: ".cm-bubble", why: "the support-chat launcher" }],
+    selector: ".cm-panel",
+    label: "support-chat panel (rung 2/3) — --edge-lit-strong",
+    props: ["boxShadow", "backgroundColor", "borderColor"],
+    vars: ["--edge-lit-strong"],
+  },
+  "chat-send": {
+    route: "/help",
+    open: [{ click: ".cm-bubble", why: "the support-chat launcher" }],
+    selector: ".cm-send",
+    label: "support-chat send control — the E-121 glyph, 36×36",
+    props: ["boxShadow", "backgroundColor", "color", "borderColor"],
+    vars: ["--brand-500", "--brand-400", "--btn-hover-gain"],
+  },
   sheet: {
     route: "/profile/responsible-gambling",
     persona: "fleet:07",

@@ -16,8 +16,17 @@
   background:
     radial-gradient(120% 120% at 30% 25%, oklch(24% 0.115 268), var(--chat-canvas) 70%);
   border: 1px solid var(--chat-border);
+  /* ⭐ M1 (ATOM 2c-c) — was `0 1px 0 oklch(35% …) inset`, a top-edge line at full
+     opacity over a 24% fill: a drawn lamp, which is what M1 moves into the wash.
+     It takes `--edge-lit` — the law's own ring, and NOT a hue change: that line
+     was already hue 268, so this is the same royal light expressed once instead
+     of retyped. ⛔ It could not stay opaque and become even: this bubble already
+     carries `border: 1px solid var(--chat-border)`, and an opaque ring
+     immediately inside an opaque border reads as one muddy 2px edge — the same
+     reason `--elev-float`'s own comment tells a surface adopting it to drop its
+     border. */
   box-shadow:
-    0 1px 0 oklch(35% 0.090 268) inset,
+    var(--edge-lit),
     0 10px 28px -10px oklch(8% 0.080 268),
     0 2px 6px -2px oklch(8% 0.080 268 / 0.6);
   color: var(--pearl);
@@ -27,8 +36,12 @@
 .cm-bubble:hover {
   transform: translateY(-1px);
   border-color: var(--chat-border-strong);
+  /* ⭐ Rest → hover is `--edge-lit` → `--edge-lit-strong`, which is the ladder's
+     own pairing (`--elev-raised` → `--elev-raised-hover`). The old rule brightened
+     its top line 35% → 38% to say "hovered"; the ring says it now, on all four
+     sides, with the same two values every other raised surface uses. */
   box-shadow:
-    0 1px 0 oklch(38% 0.095 268) inset,
+    var(--edge-lit-strong),
     0 14px 32px -10px oklch(8% 0.080 268),
     0 2px 8px -2px oklch(8% 0.080 268 / 0.7);
 }
@@ -95,8 +108,13 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  /* ⭐ M1 (ATOM 2c-c) — the panel FLOATS (its cast is modal-depth), so it takes
+     rung 2/3's edge, `--edge-lit-strong`, exactly as `--shadow-overlay` and
+     `--shadow-modal` did in ATOM 6. The old value, `oklch(98% 0.01 268 / 0.08)`
+     on the top edge only, was `--shadow-card-top`'s pre-merge value copied here
+     by hand — one more literal that the token now owns. */
   box-shadow:
-    0 1px 0 oklch(98% 0.01 268 / 0.08) inset,
+    var(--edge-lit-strong),
     0 30px 80px -20px oklch(6% 0.090 268),
     0 12px 28px -10px oklch(6% 0.090 268 / 0.8);
   font-family: var(--font-body);
@@ -518,13 +536,26 @@
   display: grid;
   place-items: center;
   cursor: pointer;
-  transition: background var(--cm-dur-glide) var(--cm-ease-glide), transform var(--cm-dur-glide) var(--cm-ease-glide), box-shadow var(--cm-dur-glide) var(--cm-ease-glide);
-  box-shadow: inset 0 1px 0 oklch(72% 0.16 262 / 0.4);
+  transition: background var(--cm-dur-glide) var(--cm-ease-glide), transform var(--cm-dur-glide) var(--cm-ease-glide), box-shadow var(--cm-dur-glide) var(--cm-ease-glide), filter var(--cm-dur-glide) var(--cm-ease-glide);
+  /* ⭐ M1 (ATOM 2c-c) — was `inset 0 1px 0`, a line on the TOP EDGE only. Same
+     colour, same alpha, same 1px; all four sides. M1: "never a one-sided line;
+     the direction of the light lives in the WASH". */
+  box-shadow: inset 0 0 0 1px oklch(72% 0.16 262 / 0.4);
 }
+/* 🔴 E-121 — THE HOVER USED TO SWAP THE FILL TO A LIGHTER BLUE, `--brand-400`,
+   under a `#fff` glyph. White on --brand-500 is 3.58:1; on --brand-400 it is
+   2.55:1, and WCAG 1.4.11 sets 3.0 for a graphical control. So the one state a
+   pointer guarantees was the one state that failed.
+   ⭐ Identical in kind to E-120 one file over, and it takes E-120's answer: the
+   fill keeps its albedo and the surface RISES toward the one lamp — the same
+   `--btn-hover-gain` the five solid buttons share, plus the lift and the cast
+   this rule already carried. 3.58 at rest, 3.39 on hover, both above the floor.
+   ⛔ NOT a bespoke number: a sixth per-rule literal is how three of five buttons
+   drifted under the floor with nobody choosing it. */
 .cm-send:hover {
-  background: var(--brand-400);
+  filter: brightness(var(--btn-hover-gain));
   transform: translateY(-1px);
-  box-shadow: inset 0 1px 0 oklch(72% 0.16 262 / 0.4), 0 4px 14px -4px oklch(63% 0.18 262 / 0.4);
+  box-shadow: inset 0 0 0 1px oklch(72% 0.16 262 / 0.4), 0 4px 14px -4px oklch(63% 0.18 262 / 0.4);
 }
 .cm-send:active { transform: translateY(1px) scale(0.96); }
 .cm-send:focus-visible { outline: 2px solid var(--brand-500); outline-offset: 2px; }
@@ -556,12 +587,24 @@
   font-size: 13px;
   letter-spacing: 0.01em;
   cursor: pointer;
+  /* ⭐ M1 (ATOM 2c-c) — was `0 1px 0 … inset`, a top-edge line at FULL opacity.
+     An even ring at full opacity is a hard outline rather than a lit edge, so it
+     takes 32%: the delivery's own tinted-edge strength (`.mat-edge-*`), which is
+     what `.btn-primary` and `.btn-claret` took in ATOM 5 for the same reason.
+     ⭐ And this pill can afford to lose the bevel because it HAS a wash — its
+     180deg claret ramp already carries the direction, which is where M1 says the
+     light belongs. */
   box-shadow:
-    0 1px 0 oklch(60% 0.16 12) inset,
+    inset 0 0 0 1px oklch(60% 0.16 12 / 0.32),
     0 4px 14px -4px oklch(30% 0.12 12);
   transition: transform var(--cm-dur-glide) var(--cm-ease-glide), filter var(--cm-dur-glide) var(--cm-ease-glide);
 }
-.cm-escalate:hover { filter: brightness(1.08); }
+/* ⭐ E-120's token, not a sixth per-rule literal. This rule carried
+   `brightness(1.08)` — the same hand-tuned gain that took .btn-yes and
+   .btn-danger under AA before ATOM 4 replaced all five with one number. This
+   pill is comfortable either way (5.34 rest / 5.35 hover), which is exactly why
+   it would have been the one left behind. */
+.cm-escalate:hover { filter: brightness(var(--btn-hover-gain)); }
 .cm-escalate:active { transform: translateY(1px); }
 .cm-escalate:focus-visible { outline: 2px solid var(--pearl); outline-offset: 2px; }
 

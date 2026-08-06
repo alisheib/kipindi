@@ -11,26 +11,39 @@
  * the token. Every mutation below breaks a colour the product actually paints,
  * and a MISS means the gate is still scoring something else.
  *
- * ⛔ IT DOES NOT REWRITE globals.css. Two sessions share this working tree, and
- * the house mutate-then-restore pattern opens a window in which the other
+ * ⛔ IT DOES NOT REWRITE THE STYLESHEETS. Two sessions share this working tree,
+ * and the house mutate-then-restore pattern opens a window in which the other
  * session's `next build` reads a deliberately-broken stylesheet. Each mutation
- * is written to a COPY in the OS temp dir and the gate is aimed at it with
- * `CONTRAST_CSS`. The gate prints the path it read on every run, so pointing it
- * somewhere else can never be silent.
+ * is written to a COPY of the WHOLE CORPUS in the OS temp dir and the gate is
+ * aimed at it with `CONTRAST_ROOT`. The gate prints every path it read on every
+ * run, so pointing it somewhere else can never be silent.
+ *
+ * ⚠️ IT USED TO AIM AT ONE FILE (`CONTRAST_CSS`), and that stopped being safe the
+ * moment the gate grew a second stylesheet (ATOM 8). A one-file override made the
+ * gate skip its four support-chat checks — so this harness would have reported a
+ * full sheet of catches while the controls E-121 was FILED against were not in
+ * the run at all. A harness must exercise the gate that ships, not a subset of it.
  *
  * Rules, as everywhere else in this campaign: an unmatched anchor is a BROKEN
  * HARNESS and is reported as such, not as a MISS. And "it exited non-zero" is
  * not evidence on its own — the run must also name the check that failed, or a
  * typo in the script would read as a caught defect.
  */
-import { readFileSync, writeFileSync, mkdtempSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdtempSync, mkdirSync, cpSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
 
 const cwd = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
+/** The gate's corpus, in the gate's own order. A mutation names one of these. */
+const CORPUS = [
+  "src/styles/chat/chat-tokens.css",
+  "src/styles/chat/chat-styles.css",
+  "src/app/globals.css",
+];
+const ORIGINALS = new Map(CORPUS.map((f) => [f, readFileSync(join(cwd, f), "utf8")]));
 const GLOBALS = join(cwd, "src/app/globals.css");
-const ORIGINAL = readFileSync(GLOBALS, "utf8");
+const ORIGINAL = ORIGINALS.get("src/app/globals.css");
 const TMP = mkdtempSync(join(tmpdir(), "contrast-red-"));
 
 /**
@@ -173,6 +186,57 @@ const MUTATIONS = [
     from: `  --gilt:          oklch(86% 0.13 82);`,
     to: `  --gilt-legacy:   oklch(86% 0.13 82);`,
   },
+
+  // ── The support chat — the second stylesheet (ATOM 8 · E-121) ──────────────
+  {
+    // 🔴 E-121 ITSELF, PUT BACK. This is the declaration that shipped: the hover
+    // swaps the fill to a LIGHTER blue under a white glyph, 3.58 → 2.55 against a
+    // 3.0 floor. ⛔ If the corpus were still one file this mutation would change
+    // nothing the gate reads, which is precisely why the defect survived — so a
+    // MISS here means the second sheet is not really in the run.
+    // ⚠️ THE FILTER STAYS. Removing it as well makes the gate REFUSE (no filter to
+    // read) — a different signal that would have hidden what this is testing. The
+    // mutation under test is the FILL SWAP, and it must be scored, not dodged.
+    name: "E-121 restored — .cm-send:hover swaps its fill to the lighter --brand-400",
+    kind: "fail",
+    file: "src/styles/chat/chat-styles.css",
+    from: `  filter: brightness(var(--btn-hover-gain));\n  transform: translateY(-1px);`,
+    to: `  filter: brightness(var(--btn-hover-gain));\n  background: var(--brand-400);\n  transform: translateY(-1px);`,
+  },
+  {
+    // The rest state, so the pair is covered in both directions: a fill two steps
+    // lighter fails even without a hover.
+    name: ".cm-send's resting fill lightened to --brand-300 — the glyph goes under 3.0",
+    kind: "fail",
+    file: "src/styles/chat/chat-styles.css",
+    from: `  background: var(--brand-500);\n  color: #fff;`,
+    to: `  background: var(--brand-300);\n  color: #fff;`,
+  },
+  {
+    // ⭐ THE HEX PARSER, WHICH IS NEW AND THEREFORE UNPROVEN. `#fff` is the first
+    // hex this gate has ever read, and if `parseHex()` returned white for anything
+    // hex-shaped the gate would score 3.58 whatever the glyph became.
+    // ⚠️ THE FIRST VERSION OF THIS MUTATION WAS WRONG AND THE HARNESS WAS AT
+    // FAULT, NOT THE GATE: it used `#222`, a near-BLACK glyph, which on a mid-blue
+    // fill measures 4.55 and correctly PASSES. Dark ink on mid ink is legible.
+    // `#888` is chosen because its luminance sits almost exactly on --brand-500's,
+    // so the true ratio is ~1.0 — and a parser that shrugged and returned white
+    // would score 3.58 and pass. It can only fail if the VALUE was read.
+    name: "make .cm-send's glyph #888 — the hex parser must read the VALUE, not just the shape",
+    kind: "fail",
+    file: "src/styles/chat/chat-styles.css",
+    from: `  color: #fff;\n  border: 1px solid var(--brand-400);`,
+    to: `  color: #888;\n  border: 1px solid var(--brand-400);`,
+  },
+  {
+    // A chat control that stops being scoreable must STOP the gate, exactly as a
+    // globals one does. The two sheets are not held to different standards.
+    name: "make .cm-escalate's ramp unscoreable — the chat sheet gets no softer treatment",
+    kind: "throw",
+    file: "src/styles/chat/chat-styles.css",
+    from: `  background: linear-gradient(180deg, var(--claret-hover), var(--claret));`,
+    to: `  background: linear-gradient(180deg, color-mix(in oklab, var(--claret-hover) 80%, black), var(--claret));`,
+  },
 ];
 
 // ⛔ Normalise line endings before matching — a tracked CRLF file makes a
@@ -186,19 +250,30 @@ let caught = 0;
 const missed = [];
 
 for (const [i, m] of MUTATIONS.entries()) {
-  if (!base.includes(m.from)) {
-    console.log(`  ✗ ${m.name}\n      ⛔ ANCHOR NOT FOUND — the harness is broken, not the gate.`);
+  // ⛔ A mutation may name ANY sheet in the corpus. Defaulting to globals kept the
+  // old anchors working unchanged while letting the chat mutations exist at all.
+  const file = m.file ?? "src/app/globals.css";
+  const fileBase = lf(ORIGINALS.get(file) ?? "");
+  if (!fileBase.includes(m.from)) {
+    console.log(`  ✗ ${m.name}\n      ⛔ ANCHOR NOT FOUND in ${file} — the harness is broken, not the gate.`);
     missed.push(`${m.name} (anchor missing)`);
     continue;
   }
-  const path = join(TMP, `globals-${i}.css`);
-  const mutated = base.replace(m.from, m.to);
-  if (mutated === base) {
+  // A ROOT per mutation, holding a copy of the whole corpus with exactly one
+  // sheet altered — so the gate under test is byte-for-byte the shipping gate.
+  const root = join(TMP, `root-${i}`);
+  for (const f of CORPUS) {
+    mkdirSync(join(root, dirname(f)), { recursive: true });
+    cpSync(join(cwd, f), join(root, f));
+  }
+  const mutated = fileBase.replace(m.from, m.to);
+  if (mutated === fileBase) {
     console.log(`  ✗ ${m.name}\n      ⛔ MUTATION IS A NO-OP — the harness is broken, not the gate.`);
     missed.push(`${m.name} (no-op)`);
     continue;
   }
-  writeFileSync(path, mutated);
+  writeFileSync(join(root, file), mutated);
+  const path = root;
 
   let exitCode = 0;
   let out = "";
@@ -207,7 +282,7 @@ for (const [i, m] of MUTATIONS.entries()) {
       cwd,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
-      env: { ...process.env, CONTRAST_CSS: path },
+      env: { ...process.env, CONTRAST_ROOT: root },
     });
   } catch (e) {
     exitCode = e.status ?? 1;
@@ -237,20 +312,24 @@ for (const [i, m] of MUTATIONS.entries()) {
   } else {
     missed.push(m.name);
     const why = !readTheCopy
-      ? "the gate did NOT read the mutated copy — CONTRAST_CSS was ignored"
+      ? "the gate did NOT read the mutated copy — CONTRAST_ROOT was ignored"
       : `exit ${exitCode}, expected a ${m.kind.toUpperCase()}`;
     console.log(`  ✗ MISS ${m.name}\n         → ${why}`);
   }
 }
 
 // The tree is never touched, but assert it anyway: a harness that claims not to
-// mutate is exactly the claim worth checking.
-if (readFileSync(GLOBALS, "utf8") !== ORIGINAL) {
-  console.log("\n⛔ globals.css CHANGED. This harness must never write to the shared tree.");
-  process.exit(1);
+// mutate is exactly the claim worth checking. ⚠️ ALL THREE SHEETS, not just
+// globals — the corpus grew and this assertion did not, briefly, which would have
+// let a chat mutation write to the shared tree unnoticed.
+for (const [f, text] of ORIGINALS) {
+  if (readFileSync(join(cwd, f), "utf8") !== text) {
+    console.log(`\n⛔ ${f} CHANGED. This harness must never write to the shared tree.`);
+    process.exit(1);
+  }
 }
 
-console.log(`\nRED HARNESS (contrast) — ${caught}/${MUTATIONS.length} caught · globals.css untouched`);
+console.log(`\nRED HARNESS (contrast) — ${caught}/${MUTATIONS.length} caught · ${ORIGINALS.size} sheet(s) untouched`);
 if (missed.length) {
   for (const m of missed) console.log(`  · ${m}`);
   process.exit(1);

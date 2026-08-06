@@ -71,25 +71,22 @@ console.log(`m1-even-light: reading ${ROOT}`);
 const LAW_EXCEPTIONS = [{ file: "src/app/globals.css", token: "--edge-shade" }];
 
 /**
- * Sites that have NOT been converted yet, each with the atom that will take it.
- * ⛔ This list may only shrink. Seeded 2026-08-06 at ATOM 5 with the sites the
- * remaining two legs of the M1 sweep own.
+ * ⭐ EMPTY — THE SWEEP IS COMPLETE, 2026-08-06 (ATOM 8 · 2c-c).
+ *
+ * Seeded at ATOM 5 with 12 entries covering 13 one-sided lights across two
+ * stylesheets, and drained in three legs: 2c-a the button family (ATOM 5), 2c-b
+ * the three floating rungs (ATOM 6), 2c-c the toast, `.glass-panel`, the two
+ * `.pbar` fills and six chat sites (this one). `hits` now reads 0.
+ *
+ * ⛔ SO THIS LIST'S MEANING HAS CHANGED, AND THAT IS THE POINT. While it had
+ * entries, rule 1.1 asked "is every one-sided light either the law's exception or
+ * on the schedule?" Empty, it asks the only question worth asking afterwards:
+ * **is there a one-sided inner light anywhere in `src/**` at all?** A new entry
+ * here would re-open a hole that is now closed, so the answer to "the gate is
+ * failing, can I add an exemption" is no — convert the site, or argue that it is
+ * a well or a rail and let the classifier say so out loud.
  */
-const PENDING: { file: string; snippet: string; atom: string }[] = [
-  // ✅ 2c-b CONVERTED 2026-08-06 — the three floating rungs (--shadow-modal,
-  // --shadow-overlay, --shadow-overlay-up) now take var(--edge-lit-strong).
-  // ⛔ Their entries are DELETED, not commented into a corner: rule 1.2 fails on a
-  // stale entry precisely so a converted site cannot keep inflating the number.
-  { file: "src/app/globals.css", snippet: "oklch(100% 0 0 / 0.22)", atom: "2c-c .pbar-yes" },
-  { file: "src/app/globals.css", snippet: "oklch(100% 0 0 / 0.20)", atom: "2c-c .pbar-no" },
-  { file: "src/app/globals.css", snippet: "oklch(98% 0.01 268 / 0.08) inset", atom: "2c-c .toast" },
-  { file: "src/app/globals.css", snippet: "oklch(100% 0 0 / 0.08)", atom: "2c-c .glass-panel" },
-  { file: "src/styles/chat/chat-styles.css", snippet: "oklch(35% 0.090 268)", atom: "2c-c chat" },
-  { file: "src/styles/chat/chat-styles.css", snippet: "oklch(38% 0.095 268)", atom: "2c-c chat" },
-  { file: "src/styles/chat/chat-styles.css", snippet: "oklch(98% 0.01 268 / 0.08)", atom: "2c-c chat" },
-  { file: "src/styles/chat/chat-styles.css", snippet: "oklch(72% 0.16 262 / 0.4)", atom: "2c-c .cm-send (E-121)" },
-  { file: "src/styles/chat/chat-styles.css", snippet: "oklch(60% 0.16 12)", atom: "2c-c .cm-escalate" },
-];
+const PENDING: { file: string; snippet: string; atom: string }[] = [];
 
 /** Strip every colour function so only geometry keywords/lengths remain. */
 const stripColour = (s: string) =>
@@ -224,7 +221,9 @@ say(lawPresent, `1.3 the documented sunken-well exception (--edge-shade) is decl
 // ⚠️ `hits` can exceed PENDING's length: one entry covers a snippet that appears
 // in a rule AND in its :hover. The number to watch is hits, and it must reach 0.
 console.log(`\n  one-sided LAMPS still to convert:      ${hits.length}` +
-  `  (pending list: ${PENDING.length} entries — the ratchet is done when this reads 0)`);
+  (PENDING.length === 0 && hits.length === 0
+    ? `  ⭐ THE M1 SWEEP IS COMPLETE — no one-sided inner light anywhere in src/**`
+    : `  (pending list: ${PENDING.length} entries — the ratchet is done when this reads 0)`));
 console.log(`  classified as NOT light, and why:     ${benign.length}`);
 for (const b of benign) {
   const why = b.kind === "well"
