@@ -42,6 +42,9 @@
  * narrative sections. §1 would not have caught it and does not pretend to.
  */
 import { readFileSync } from "node:fs";
+// ⛔ ONE locator for "where is the current handoff", shared with test:settlement-expectation and
+// the RED harness. Four separate copies of this pattern drifted apart — see the file itself.
+import { locateHandoff } from "./campaign-handoff.mjs";
 
 let pass = 0;
 const fails: string[] = [];
@@ -138,9 +141,28 @@ const claimsOpen = (s: string) => !RESOLVED.test(s) && UNRESOLVED.test(s);
   // ⭐ The lesson refines the one above it. "Anchor on structure" is right, but the anchor has to
   // admit every form the structure legitimately takes — a handoff marker is the same marker
   // whether or not it is also a heading. Optional `#`s, and prose still cannot match it.
-  const resume = DOC.match(/^#{0,4} ?⏭️ \*\*RESUME AT:[\s\S]{0,900}/m)?.[0] ?? "";
-  ok("§2 the current handoff has a RESUME AT list", resume.length > 0,
-    "no '⏭️ **RESUME AT:' marker — has the handoff format changed?");
+  //
+  // 🔴 AND IT DRIFTED A FOURTH TIME — found 2026-08-06, and the pattern above is the culprit.
+  // From session 23 the marker carries its session number (`RESUME AT (session 32):`), which
+  // `RESUME AT:` cannot match, so ALL EIGHT most recent handoffs were invisible and this check
+  // fell through to a block from session ~16. Worse, `tracker-hygiene-red.mjs` was mutating that
+  // same dead block, so the RED "proof" was exactly as stale as the check — **a guard and its
+  // own proof can agree with each other and both be wrong.**
+  // ⛔ The pattern, the block bounds and the topmost-block assertion now live in ONE place
+  // (`campaign-handoff.mjs`), imported here, by `test:settlement-expectation` §5 and by the RED
+  // harness — because every previous fix was applied to one copy and propagated the next bug to
+  // the others by copy-paste. And the window is the WHOLE block: the old 900 characters covered
+  // about a tenth of the instruction a session is actually told to act on.
+  const handoff = locateHandoff(DOC);
+  const resume = handoff.text;
+  ok("§2 the current handoff has a RESUME AT list", handoff.found && resume.length > 0,
+    `no '⏭️ **RESUME AT' marker (${handoff.total} found in the document) — has the handoff format changed?`);
+  // ⭐ §6b's own rule is that ONLY the topmost block is current truth. A locator that finds a
+  // marker further down has failed even though it found one — which is precisely what happened
+  // three times before anyone noticed.
+  ok("§2 …and it is §6b's TOPMOST block, not a superseded one",
+    handoff.found && !handoff.stale,
+    "the marker matched outside the newest handoff block — the anchor has drifted again");
   const referenced = [...new Set((resume.match(/\b[EGAH]-\d+\b/g) ?? []))];
   ok("§2 …and it names findings", referenced.length > 0, "no finding ids in the resume list");
   for (const id of referenced) {

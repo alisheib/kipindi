@@ -106,11 +106,17 @@ export default async function UpDownRoundPage({
   const source =
     `${t.market[SOURCE_CLASS_KEY[asset.sourceClass]]}${asset.sourceQuotedAt ? ` · ${t.market.udQuoted} ${fmtEAT(asset.sourceQuotedAt)}` : ""}`;
 
-  // Pool split TZS — consistent with the bar (same upPct) and summing to the real volume.
+  // The BAR is a percentage and rounds; the MONEY beside it is not.
+  //
+  // 🔴 These two figures were `volumeTzs × upPct / 100` — reconstructed from a percentage that
+  // had already been rounded to a whole number. On a 100,000 pool that cannot tell TZS 0 from
+  // TZS 400, so a round with one real bet on the thin side printed the thin side as empty, and
+  // an empty side printed as 500. D2 makes "is this side empty" the load-bearing question on
+  // this page, so the page now reads the raw shillings the server already sends.
   const upPct = Math.round(round.upPct);
   const downPct = Math.max(0, 100 - upPct);
-  const upTzs = Math.round((round.volumeTzs * upPct) / 100);
-  const downTzs = Math.max(0, round.volumeTzs - upTzs);
+  const upTzs = round.pricing.upPool;
+  const downTzs = round.pricing.downPool;
 
   const statusWord =
     round.state === "open" ? t.market.statusLive
@@ -328,7 +334,7 @@ export default async function UpDownRoundPage({
                   maxStake={maxStake}
                   myUpStake={round.myUpStake}
                   myDownStake={round.myDownStake}
-                  estMultiplier={round.estMultiplier}
+                  pricing={round.pricing}
                   assetName={name}
                   signInHref={`/auth/login?next=${encodeURIComponent(`/updown/${roundId}${lockedSide ? `?side=${lockedSide}` : ""}`)}`}
                   lockedSide={lockedSide}

@@ -39,6 +39,9 @@
  * explanation out of the document and call that a pass.
  */
 import { readFileSync } from "node:fs";
+// ⛔ ONE locator for "where is the current handoff", shared with test:tracker-hygiene §2 and the
+// RED harness. Four separate copies of this pattern drifted apart — see the file itself.
+import { locateHandoff } from "./campaign-handoff.mjs";
 import {
   poolFee, settledPayoutFor, DEFAULT_FEE_MODEL,
   DEFAULT_PLATFORM_FEE_RATE, DEFAULT_OPERATOR_FEE_RATE,
@@ -192,11 +195,20 @@ const YES_POOL = 2000, NO_POOL = 2000, ALPHA_STAKE = 2000;
   // 🔴 AND SO DID THE FIX — the identical copy-paste propagated the NEXT bug too. From session
   // 23 the handoff is written as a HEADING (`#### ⏭️ **RESUME AT:`), which "starts a line"
   // does not match, so both guards silently fell through to a SUPERSEDED handoff from an
-  // earlier session and validated that instead. Optional `#`s admit every form the marker
-  // legitimately takes; prose still cannot match it. See the fuller note in tracker-hygiene §2.
-  const resume = camp.match(/^#{0,4} ?⏭️ \*\*RESUME AT:[\s\S]{0,600}/m)?.[0] ?? "";
-  ok("§5 §6b's resume line exists", resume.length > 0,
-    "no '⏭️ **RESUME AT:' marker — has the handoff format changed?");
+  // earlier session and validated that instead.
+  //
+  // 🔴 AND A FOURTH TIME, 2026-08-06: the marker now carries its session number, which
+  // `RESUME AT:` cannot match — so this check had been reading a handoff from session ~16.
+  // ⛔ THE PATTERN NO LONGER LIVES HERE. Every previous repair fixed one copy and handed the
+  // next bug to the others; the locator, the block bounds and the "is it really the topmost
+  // block" assertion are now imported from `campaign-handoff.mjs`. The window is the WHOLE
+  // handoff too — 600 characters was under a tenth of it.
+  const handoff = locateHandoff(camp);
+  const resume = handoff.text;
+  ok("§5 §6b's resume line exists", handoff.found && resume.length > 0,
+    `no '⏭️ **RESUME AT' marker (${handoff.total} in the document) — has the handoff format changed?`);
+  ok("§5 …and it is §6b's TOPMOST block", handoff.found && !handoff.stale,
+    "the marker matched outside the newest handoff block — the anchor has drifted again");
   // ⚠️ NOT `!resume.includes("3,480")`. The corrected line names 3,480 deliberately, to say
   // it was wrong and why — banning the characters would force that warning out and score the
   // silence as a pass. Parse the figure the line actually tells the next session to EXPECT.

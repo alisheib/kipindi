@@ -24,6 +24,8 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+// ⛔ THE GUARD'S OWN LOCATOR. A mutation must find its target exactly as the check does.
+import { locateHandoff } from "./campaign-handoff.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const DOC = join(ROOT, "docs/LIVE-QA-CAMPAIGN.md");
@@ -34,11 +36,27 @@ const DOC = join(ROOT, "docs/LIVE-QA-CAMPAIGN.md");
  */
 const MUTATIONS = [
   {
-    name: "E-99-in-handoff-but-not-filed",
+    name: "E-999-in-handoff-but-not-filed",
     what: "§2 — the resume list names a finding with no row in the register",
-    startsWith: "⏭️ **RESUME AT:**",
-    // Prepend a reference to an id that does not exist, leaving the rest of the line intact.
-    rewrite: (line) => line.replace("⏭️ **RESUME AT:**", "⏭️ **RESUME AT:** ⓪ **E-99** —"),
+    // 🔴 THIS MUTATION HAD BEEN PROVING NOTHING FOR EIGHT SESSIONS, and it is the same defect it
+    // was written to guard. It anchored on the literal `⏭️ **RESUME AT:**`, which no handoff has
+    // used since session 23 — they carry a session number (`RESUME AT (session 32):`). So
+    // `findIndex` matched a **superseded block from session ~16**, mutated that, and the guard
+    // — which had drifted to the identical wrong block — duly went red. Two wrongs agreeing.
+    // ⛔ §0.1a rule 2: a mutation must locate its target EXACTLY as the guard does. It now
+    // shares the guard's own locator rather than a copy of a pattern.
+    locate: "handoff",
+    rewrite: (line) => line.replace(/(⏭️ \*\*RESUME AT[^*]*\*\*)/, "$1 ⓪ **E-999** —"),
+  },
+  {
+    name: "handoff-marker-format-drift",
+    what: "§2 — the newest marker changes shape, so the locator falls through to a superseded block",
+    // ⭐ THE REGRESSION ITSELF, AS A MUTATION. This is what actually happened four times: the
+    // marker's wording moved, the pattern stopped matching it, and both guards silently began
+    // validating an older handoff while reporting green. The "topmost block" assertion is what
+    // turns that from a silent drift into a failure, and this proves it fires.
+    locate: "handoff",
+    rewrite: (line) => line.replace("⏭️ **RESUME AT", "⏭️ **RESUME POINT"),
   },
   {
     name: "E-58-withdrawn-but-asks-Ali",
@@ -93,9 +111,17 @@ for (const m of MUTATIONS) {
   const original = readFileSync(DOC, "utf8");
   const nl = original.includes("\r\n") ? "\r\n" : "\n";
   const lines = original.split(/\r?\n/);
-  const idx = lines.findIndex((l) => l.startsWith(m.startsWith));
+  // ⛔ A HANDOFF MUTATION LOCATES ITS TARGET THROUGH THE GUARD'S OWN LOCATOR, never through a
+  // second copy of the pattern — see the note on the first mutation for what that cost.
+  let idx;
+  if (m.locate === "handoff") {
+    const h = locateHandoff(original);
+    idx = h.found ? original.slice(0, h.index).split(/\r?\n/).length - 1 : -1;
+  } else {
+    idx = lines.findIndex((l) => l.startsWith(m.startsWith));
+  }
   if (idx < 0) {
-    broken.push(`${m.name} — ANCHOR NOT FOUND ("${m.startsWith}"), this mutation tested nothing`);
+    broken.push(`${m.name} — ANCHOR NOT FOUND ("${m.locate === "handoff" ? "the current handoff" : m.startsWith}"), this mutation tested nothing`);
     console.log(`  ⛔ ${m.name.padEnd(34)} anchor not found — harness broken, not a pass`);
     continue;
   }

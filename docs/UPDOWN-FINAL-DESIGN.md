@@ -50,9 +50,17 @@ option — it was the consequence.
 
 ### D2 · The card tells the truth about the other side, *before* the bet
 
-**Now:** the card shows a **flat `× 1.5 est.`** — `estimatedWinningsRate` is a config constant
-(`market-config.ts:238`), not derived from the pool. It reads the same when the other side holds
-TZS 36,000 and when it holds **nothing**.
+> ✅ **BUILT AND LIVE 2026-08-06 (session 32) — E-109.** `src/lib/updown-pricing.ts` +
+> `test:updown-pricing` (62) + `red:updown-pricing` (11/11). The multiplier is per-side and
+> pool-implied, the empty-side sentence is on the card, the quick-bet controls and the round
+> page's stake panel, and the round page is side-aware so the player *filling* an empty side is
+> not warned about a state they are about to end. **Measured on the live rates:** UP 36,000 /
+> DOWN 0 pays **1.00× / 16.66×**; a 90/10 pool pays **1.09× / 7.52×**.
+> ⛔ **The 43% one-sided rate below is therefore stale from this date** — see D3's sizing rule.
+
+**Was:** the card showed a **flat `× 1.5 est.`** — `estimatedWinningsRate` is a config constant
+(`market-config.ts:238`), not derived from the pool. It read the same when the other side held
+TZS 36,000 and when it held **nothing**.
 
 ⛔ **On a pari-mutuel game this hides the single strongest reason to take the thin side**, and the
 thin side is 43% of the problem. The platform already computes the honest number — `projectedPayout`
@@ -102,8 +110,8 @@ exists and works.
 | **`/admin/updown` · Add-chain form** | band defaults to tick floor; each wider option carries its **measured refund rate** for that asset | D1 |
 | **`/admin/updown` · Edit band (in-cell)** | same advisory — the in-cell editor is how both live chains were set | D1 |
 | **`/admin/updown` · chain row** | surface the chain's **live refund rate split** (`no-move` vs `one-sided`), so an operator sees the consequence of their own band without leaving the page | D1 |
-| **Player card (`updown-card.tsx`)** | replace the flat `estMultiplier` with the **pool-implied** figure; add the **empty-side** sentence | D2 |
-| **Round page (`/updown/[roundId]`)** | same two, plus the stake panel — a player who taps through must see the identical number | D2 |
+| **Player card (`updown-card.tsx`)** | ✅ **DONE (E-109)** — flat `estMultiplier` replaced by the **per-side pool-implied** figure; **empty-side** sentence added | D2 |
+| **Round page (`/updown/[roundId]`)** | ✅ **DONE (E-109)** — same two on the stake panel, **side-aware**, and its pool-TZS figures now read raw shillings instead of a rounded percentage | D2 |
 | **Round page · settlement proof** | already states the one-sided reason correctly (E-65/E-87). **No change.** | — |
 | **Result moment (E-105)** | already distinguishes WIN / LOSS / refund in their own words. **No change.** | — |
 | **`/admin/insights` · GGR tile** | still counts open unsettled stake as revenue — a money-reporting call, **Ali's** | open |

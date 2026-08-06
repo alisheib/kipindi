@@ -253,8 +253,12 @@ ok("4.3 …with the round's FROZEN snapshot, never live config",
 ok("4.4 …and the operator's display switch is carried through, not assumed",
    /show:\s*rates\.showEstimatedWinnings\s*===\s*true/.test(toBoardRound));
 // ⛔ THE DEFECT ITSELF: the flat headline must no longer reach a player surface.
+// ⚠️ READ THE STRIPPED SOURCE. This check FAILED on its first green run — on the field comment
+// that explains what `estMultiplier` was and why it went. §0.1a's rule, met for the second time
+// in one session: never match on words the code's own documentation will contain.
 ok("4.5 the board no longer derives a multiplier from `estimatedWinningsRate`",
-   !/estMultiplier/.test(board) && !/1\s*\+\s*rates\.estimatedWinningsRate/.test(board));
+   !/estMultiplier/.test(stripComments(board)) &&
+   !/1\s*\+\s*rates\.estimatedWinningsRate/.test(stripComments(board)));
 
 // ── §5. EVERY PLAYER SURFACE READS IT — AND NONE STILL PRINTS A CONSTANT ─────────────────
 console.log("\n§5 · card, quick-bet controls and round panel all read the same one function");

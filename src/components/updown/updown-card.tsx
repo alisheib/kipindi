@@ -320,6 +320,23 @@ export function UpDownCard(props: UpDownCardProps) {
   // A placed bet pulses the whole card (non-intrusive confirmation, reduced-motion aware).
   const cardPulse = usePlacePulse(bet.justPlaced?.nonce);
 
+  // ── D2 · WHAT THE OTHER SIDE IS WORTH, ON THE DISPLAY-ONLY CARD ───────────
+  //
+  // The authed card renders `UpDownStakeControls`, which prices against the stake the player
+  // has chosen. A SIGNED-OUT card has no stake control, so it prices at `bet.stake` — the
+  // default preset, i.e. exactly the stake those buttons would start on after sign-in. It is a
+  // reference amount, and the pari-mutuel multiplier barely moves with stake size on any pool
+  // that is not nearly empty; where it does move, the empty-side sentence below says so in
+  // words. ⛔ What it must NOT be is one number for both sides — that was the defect.
+  const outMultUp = impliedMultiplier(pricing, "UP", bet.stake);
+  const outMultDown = impliedMultiplier(pricing, "DOWN", bet.stake);
+  const outEmpty = emptySideOf(pricing);
+  const outEmptyCopy =
+    outEmpty === "BOTH" ? t.market.udNobodyBackedEither
+    : outEmpty === "UP" ? t.market.udNobodyBacked.replace("{side}", t.market.udUp)
+    : outEmpty === "DOWN" ? t.market.udNobodyBacked.replace("{side}", t.market.udDown)
+    : null;
+
   // Signed-out / display-only cards keep the old behaviour: open the round detail
   // (where the sign-in gate lives) rather than trying to place from the card.
   const go = (side: "UP" | "DOWN") => (e: React.MouseEvent) => {
@@ -494,7 +511,7 @@ export function UpDownCard(props: UpDownCardProps) {
           canQuickBet ? (
             // Authed + has its market → the shared quick-bet control (chips + custom
             // amount + place buttons + success pulse), identical to the round page.
-            <UpDownStakeControls bet={bet} estMultiplier={estMultiplier} assetName={assetName} size="card" stopPropagation />
+            <UpDownStakeControls bet={bet} pricing={pricing} assetName={assetName} size="card" stopPropagation />
           ) : (
             // Signed-out / display-only → the buttons route to the round detail, where
             // the sign-in gate lives. No stake control, no money path from here.
@@ -503,16 +520,25 @@ export function UpDownCard(props: UpDownCardProps) {
                 <button type="button" onClick={go("UP")} className="btn btn-yes btn-lg"
                         aria-label={`${t.market.udUp} — ${assetName}`}>
                   <I.trendingUp s={14} /> {t.market.udUp}
-                  {estMultiplier != null && <span className="font-mono text-[12.5px] opacity-85">× {estMultiplier.toFixed(1)} est.</span>}
+                  {outMultUp != null && <span className="font-mono text-[12.5px] opacity-85">× {formatMultiplier(outMultUp)} est.</span>}
                 </button>
                 <button type="button" onClick={go("DOWN")} className="btn btn-no btn-lg"
                         aria-label={`${t.market.udDown} — ${assetName}`}>
                   <I.trendingDown s={14} /> {t.market.udDown}
-                  {estMultiplier != null && <span className="font-mono text-[12.5px] opacity-85">× {estMultiplier.toFixed(1)} est.</span>}
+                  {outMultDown != null && <span className="font-mono text-[12.5px] opacity-85">× {formatMultiplier(outMultDown)} est.</span>}
                 </button>
               </div>
-              {estMultiplier != null && (
-                <p className="mt-1.5 text-[10px] leading-[1.45] text-text-faint">{t.market.udEstimateNote}</p>
+              {/* ⭐ D2 · the empty-side state — the same sentence the signed-in control shows,
+                  because a visitor deciding whether to sign up deserves the same fact. Faint
+                  informational ink + the `info` glyph: not gold, not an alarm (G5). */}
+              {outEmptyCopy && (
+                <p className="mt-1.5 flex items-start gap-1 text-[10px] leading-[1.45] text-text-faint">
+                  <I.info s={10} className="mt-[2px] shrink-0" />
+                  <span>{outEmptyCopy}</span>
+                </p>
+              )}
+              {(outMultUp != null || outMultDown != null) && (
+                <p className="mt-1 text-[10px] leading-[1.45] text-text-faint">{t.market.udEstimateNote}</p>
               )}
             </>
           )

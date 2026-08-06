@@ -20,6 +20,12 @@ import { useT } from "@/lib/i18n";
 import { useUpDownQuickBet, usePlacePulse } from "./use-quick-bet";
 import { UpDownStakeControls } from "./updown-stake-controls";
 import { stakeChipLabel } from "./stake-math";
+import { I } from "@/components/ui/glyphs";
+// ⛔ ONE RULE for "what would I be paid" (D2). This panel must agree with the board card to the
+// shilling, so it calls the same function rather than multiplying by a rate of its own.
+import {
+  impliedMultiplier, projectedReturn, refundWarningFor, formatMultiplier, type UpDownPricing,
+} from "@/lib/updown-pricing";
 
 export function RoundStakePanel(props: {
   marketId: string;
@@ -28,13 +34,14 @@ export function RoundStakePanel(props: {
   maxStake: number;
   myUpStake: number;
   myDownStake: number;
-  estMultiplier: number | null;
+  /** ⭐ D2 · the round's real pool + frozen rates. Required — see `UpDownStakeControls`. */
+  pricing: UpDownPricing;
   assetName: string;
   signInHref: string;
   lockedSide: "UP" | "DOWN" | null;
 }) {
   const { t } = useT();
-  const { marketId, isAuthed, minStake, maxStake, myUpStake, myDownStake, estMultiplier, assetName, signInHref, lockedSide } = props;
+  const { marketId, isAuthed, minStake, maxStake, myUpStake, myDownStake, pricing, assetName, signInHref, lockedSide } = props;
   const bet = useUpDownQuickBet({
     marketId, minStake, maxStake, myUpStake, myDownStake,
     copy: { placed: t.market.udBetPlaced, failed: t.market.udBetFailed, up: t.market.udUp, down: t.market.udDown },
@@ -59,7 +66,7 @@ export function RoundStakePanel(props: {
     return (
       <div className={cn(pulse && "ud-place-pulse")}>
         <p className="mb-3 text-[12.5px] leading-[1.55] text-text-muted">{t.market.udTagline}</p>
-        <UpDownStakeControls bet={bet} estMultiplier={estMultiplier} assetName={assetName} size="detail" />
+        <UpDownStakeControls bet={bet} pricing={pricing} assetName={assetName} size="detail" />
       </div>
     );
   }
@@ -67,7 +74,24 @@ export function RoundStakePanel(props: {
   // ── Locked pick — the D3 single-direction confirm panel ────────────────────
   const isUp = lockedSide === "UP";
   const pickWord = isUp ? t.market.udUp : t.market.udDown;
-  const projected = estMultiplier != null && bet.stakeReady ? Math.round(bet.stake * estMultiplier) : null;
+  // ⭐ D2 · THE PROJECTION IS THE POOL'S, NOT A RATE'S.
+  //
+  // 🔴 This line was `Math.round(bet.stake * estMultiplier)` — stake × a config constant. On a
+  // round where the other side held nothing it promised a 50% gain over a stake that was going
+  // to come straight back, on the one screen whose whole job is to state the commitment before
+  // it is made. It is now `projectedPayout`'s own arithmetic, through the shared module.
+  const projected = bet.stakeReady ? projectedReturn(pricing, lockedSide, bet.stake) : null;
+  const projectedMult = bet.stakeReady ? impliedMultiplier(pricing, lockedSide, bet.stake) : null;
+  // ⭐ SIDE-AWARE, and this is the distinction the copy rests on. On a round holding UP 36,000 /
+  // DOWN 0, a player locked to UP must be told DOWN has to fill or their stake comes back — but
+  // a player locked to DOWN is the one FILLING it, so the same sentence would be false the
+  // instant they confirm. `refundWarningFor` is what knows the difference.
+  const warn = refundWarningFor(pricing, lockedSide);
+  const warnCopy =
+    warn === "BOTH" ? t.market.udNobodyBackedEither
+    : warn === "UP" ? t.market.udNobodyBacked.replace("{side}", t.market.udUp)
+    : warn === "DOWN" ? t.market.udNobodyBacked.replace("{side}", t.market.udDown)
+    : null;
   const customInvalid = bet.customMode && bet.customValue.trim() !== "" && !bet.customValid;
   const arrow = isUp ? "M5 15l7-7 7 7" : "M5 9l7 7 7-7";
 
@@ -96,6 +120,11 @@ export function RoundStakePanel(props: {
           <span className="flex shrink-0 items-center gap-1.5">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
             <span className="font-mono text-[12.5px] font-semibold tabular-nums text-text-muted">{projected.toLocaleString("en-US")}</span>
+            {/* The multiple, in the SAME muted ink as the amount — it is the same fact stated
+                twice, and neither statement gets to be louder than the stake control (G5). */}
+            {projectedMult != null && (
+              <span className="font-mono text-[11px] tabular-nums text-text-faint">× {formatMultiplier(projectedMult)}</span>
+            )}
           </span>
         )}
       </div>
@@ -161,6 +190,14 @@ export function RoundStakePanel(props: {
         <span>{t.market.udConfirm} {pickWord}</span>
         {bet.stakeReady && <span className="font-mono" style={{ fontWeight: 600, opacity: 0.85 }}>{formatTzs(bet.stake)}</span>}
       </button>
+      {/* ⭐ D2 · the empty-side state, scoped to the side this player has locked. Faint
+          informational ink and the `info` glyph — a refund is not a failure and not a prize. */}
+      {warnCopy && (
+        <p className="mt-2 flex items-start gap-1 text-[10.5px] leading-[1.45] text-text-faint">
+          <I.info s={11} className="mt-[2px] shrink-0" />
+          <span>{warnCopy}</span>
+        </p>
+      )}
       <p className="mt-2 text-[10px] leading-[1.45] text-text-faint">{t.market.udEstimateNote}</p>
 
       <span aria-live="polite" className="sr-only">{bet.liveMessage}</span>

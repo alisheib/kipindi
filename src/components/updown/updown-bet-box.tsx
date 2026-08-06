@@ -15,6 +15,7 @@ import { cn, formatTzs } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { useUpDownQuickBet, usePlacePulse } from "./use-quick-bet";
 import { UpDownStakeControls } from "./updown-stake-controls";
+import type { UpDownPricing } from "@/lib/updown-pricing";
 
 export function UpDownBetBox(props: {
   marketId: string;
@@ -23,12 +24,13 @@ export function UpDownBetBox(props: {
   maxStake: number;
   myUpStake: number;
   myDownStake: number;
-  estMultiplier: number | null;
+  /** ⭐ D2 · the round's real pool + frozen rates — see `UpDownStakeControls`. */
+  pricing: UpDownPricing;
   assetName?: string;
   /** Where a signed-out tap goes (sign-in, returning to this round). */
   signInHref: string;
 }) {
-  const { marketId, isAuthed, minStake, maxStake, myUpStake, myDownStake, estMultiplier, assetName = "", signInHref } = props;
+  const { marketId, isAuthed, minStake, maxStake, myUpStake, myDownStake, pricing, assetName = "", signInHref } = props;
   const { t } = useT();
   const bet = useUpDownQuickBet({
     marketId, minStake, maxStake, myUpStake, myDownStake,
@@ -53,7 +55,7 @@ export function UpDownBetBox(props: {
   return (
     <div className={cn("rounded-lg", pulse && "ud-place-pulse")}>
       <p className="mb-3 text-[12.5px] leading-[1.55] text-text-muted">{t.market.udTagline}</p>
-      <UpDownStakeControls bet={bet} estMultiplier={estMultiplier} assetName={assetName} size="detail" />
+      <UpDownStakeControls bet={bet} pricing={pricing} assetName={assetName} size="detail" />
     </div>
   );
 }

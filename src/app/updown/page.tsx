@@ -217,7 +217,7 @@ export default async function UpDownPage({
                 volumeTzs={r.volumeTzs}
                 players={r.players}
                 upPct={r.upPct}
-                estMultiplier={r.estMultiplier}
+                pricing={r.pricing}
                 state={r.state}
                 outcome={r.outcome === "VOID" ? null : r.outcome}
                 closePrice={r.closePrice}
