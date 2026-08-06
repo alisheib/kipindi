@@ -89,14 +89,18 @@ const MUTATIONS = [
     // The gold pairs had NEVER been checked. This proves they are checked now.
     name: "darken --gilt to 45% — money ink on the canvas (M4: money is read)",
     kind: "fail",
-    from: `  --gilt:          oklch(86% 0.13 82);`,
-    to: `  --gilt:          oklch(45% 0.13 82);`,
+    // ⚠️ RE-ANCHORED at ATOM 12 — --gilt is now the ALIAS var(--gold-300), so the
+    // way to darken money ink is to darken the ramp step it points at. ⭐ That is a
+    // STRONGER mutation than the old one: it only fails if the gate followed the
+    // var() chain, which is machinery ATOM 8 had to add.
+    from: `  --gold-300: oklch(86% 0.110 84);`,
+    to: `  --gold-300: oklch(45% 0.110 84);`,
   },
   {
     name: "darken --gold-500 — .btn-gold's own dark label on its own fill",
     kind: "fail",
-    from: `  --gold-500: oklch(72% 0.14 78);`,
-    to: `  --gold-500: oklch(38% 0.14 78);`,
+    from: `  --gold-500: oklch(72% 0.114 84);`,
+    to: `  --gold-500: oklch(38% 0.114 84);`,
   },
   {
     // 🔴 E-119 ITSELF, PUT BACK. This is the falsifiable half of ATOM 3: if the
@@ -169,8 +173,11 @@ const MUTATIONS = [
     // scored the top copy and said PASS while the product rendered the bottom.
     name: "re-declare --bg at the top of :root instead of editing line 244 (INTAKE §2a)",
     kind: "throw",
-    from: `  --gold-50:  oklch(98% 0.025 82);`,
-    to: `  --bg: oklch(45% 0.130 268);\n  --gold-50:  oklch(98% 0.025 82);`,
+    // ⚠️ RE-ANCHORED at ATOM 12: the gold ramp moved to hue 84 on the MEASURED
+    // trademark (E-124), so the old literal is gone. Any `:root` line serves —
+    // this mutation is about the DUPLICATE `--bg`, not about gold.
+    from: `  --gold-50:  oklch(98% 0.030 84);`,
+    to: `  --bg: oklch(45% 0.130 268);\n  --gold-50:  oklch(98% 0.030 84);`,
   },
   {
     // A control whose fill stops being scoreable must STOP the gate, not be
@@ -183,8 +190,11 @@ const MUTATIONS = [
   {
     name: "rename --gilt out from under the gate — a token the gate names must exist",
     kind: "throw",
-    from: `  --gilt:          oklch(86% 0.13 82);`,
-    to: `  --gilt-legacy:   oklch(86% 0.13 82);`,
+    // ⚠️ RE-ANCHORED at ATOM 12: --gilt is now an ALIAS, var(--gold-300) — which
+    // is itself worth exercising, because the gate had to learn to follow a var()
+    // chain to score it at all.
+    from: `  --gilt:          var(--gold-300);`,
+    to: `  --gilt-legacy:   var(--gold-300);`,
   },
 
   // ── The support chat — the second stylesheet (ATOM 8 · E-121) ──────────────
