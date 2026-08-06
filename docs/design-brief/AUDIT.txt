@@ -1,0 +1,147 @@
+
+133 components audited across 7 directories
+
+  gap  light elev  motion tok  hard-ms  component
+  ───  ───── ────  ────── ───  ───────  ─────────
+  🔴 3                            0    markets/market-card.tsx
+  🔴 3                            0    ui/glyphs.tsx
+  🔴 3                            0    markets/resolution-panel.tsx
+  🔴 3                            0    markets/notify-poller.tsx
+  🔴 3                            0    markets/sell-confirm-modal.tsx
+  🔴 3                            0    updown/updown-result-announcer.tsx
+  🔴 3                            0    admin/status-badge.tsx
+  🔴 3                            0    markets/notify-prompt.tsx
+  🔴 3                            0    ui/phone-input.tsx
+  🔴 3                            0    ui/callout.tsx
+  🔴 3                            0    layout/page-container.tsx
+  🔴 3                            0    ui/confirm-dialog.tsx
+  🔴 3                            0    wallet/payout-status-notice.tsx
+  🔴 3                            0    ui/form-column.tsx
+  🔴 3                            0    ui/refresh-poller.tsx
+  🔴 3                            0    admin/sentinel-source-chip.tsx
+  🔴 3                            0    layout/announcement-banner.tsx
+  🔴 3                            0    updown/updown-bet-box.tsx
+  🔴 3                            0    admin/attestation-rail.tsx
+  🔴 3                            0    ui/avatar.tsx
+  🔴 3                            0    ui/submit-button.tsx
+  🔴 3                            0    ui/stat.tsx
+  🔴 3                            0    admin/control-locked.tsx
+  🔴 3                            0    ui/page-header.tsx
+  🔴 3                            0    ui/countdown-pill.tsx
+  🔴 3                            0    ui/maintenance-badge.tsx
+  🔴 3                            0    admin/admin-restricted.tsx
+  🔴 3                            0    ui/scroll-x.tsx
+  🔴 3                            0    markets/house-lean-warning.tsx
+  🔴 3                            0    layout/auth-flash.tsx
+  🔴 3                            0    layout/lazy-overlays.tsx
+  🔴 3                            0    ui/coming-soon-badge.tsx
+  🔴 3                            0    admin/admin-table-empty.tsx
+  🔴 3                            0    ui/proposals-state-badge.tsx
+  🔴 3                            0    admin/score-badge.tsx
+  🔴 3                            0    ui/field-legend.tsx
+  🔴 3                            0    ui/tooltip.tsx
+  🔴 3                            0    ui/scroll-restore.tsx
+  🔴 3                            0    markets/probability-bar.tsx
+  🔴 3                            0    wallet/idempotency-key-field.tsx
+  🔴 3                            0    markets/circular-progress.tsx
+  🔴 3                            0    layout/event-stream-provider.tsx
+  🔴 3                            0    admin/admin-pagination.tsx
+  🟠 2               ✅           1    updown/updown-card.tsx
+  🟠 2   ✅                       0    admin/admin-charts.tsx
+  🟠 2         ✅                 0    ui/empty-state.tsx
+  🟠 2               ✅           0    markets/sell-button.tsx
+  🟠 2   ✅                       0    markets/probability-chart.tsx
+  🟠 2               ✅           0    admin/kyc-review-controls.tsx
+  🟠 2               ✅           0    updown/updown-stake-controls.tsx
+  🟠 2               ✅           1    updown/round-countdown.tsx
+  🟠 2               ✅           0    ui/search-box.tsx
+  🟠 2               ✅           0    admin/admin-skeletons.tsx
+  🟠 2               ✅           0    ui/datetime-range-filter.tsx
+  🟠 2               ✅           0    markets/objection-dialog.tsx
+  🟠 2   ✅                       0    markets/price-chart.tsx
+  🟠 2               ✅           0    layout/email-verify-banner.tsx
+  🟠 2   ✅                       0    wallet/payment-logo.tsx
+  🟠 2               ✅           0    ui/cash.tsx
+  🟠 2               ✅           0    ui/notice-bar.tsx
+  🟠 2         ✅                 0    wallet/card-billing-fields.tsx
+  🟠 2               ✅           0    wallet/email-verify-gate.tsx
+  🟠 2               ✅           0    admin/admin-sort.tsx
+  🟠 2         ✅                 0    ui/route-error.tsx
+  🟠 2               ✅           0    wallet/amount-field.tsx
+  🟠 2               ✅           0    ui/button.tsx
+  🟠 2               ✅           0    ui/hash-focus.tsx
+  🟠 2               ✅           2    ui/language-toggle.tsx
+  🟠 2         ✅                 0    markets/countdown.tsx
+  🟠 2               ✅           0    admin/refresh-button.tsx
+  🟠 2         ✅                 0    layout/page-ribbon.tsx
+  🟠 2               ✅           0    ui/route-transition.tsx
+  🟠 2               ✅           0    markets/chart-toggle.tsx
+  🟠 2               ✅           0    admin/admin-sidebar-nav.tsx
+  🟠 2         ✅                 0    ui/page-loader.tsx
+  🟠 2   ✅                       0    ui/offline-banner.tsx
+  🟠 2               ✅           0    admin/controlled-elsewhere.tsx
+  🟠 2               ✅           0    ui/info-hint.tsx
+  🟠 2               ✅           0    ui/back-link.tsx
+  🟠 2               ✅           0    ui/otp-input.tsx
+  🟠 2               ✅           0    ui/textarea.tsx
+  🟠 2               ✅           0    ui/spinner.tsx
+  🟡 1         ✅    ✅   ✅      2    ui/toast.tsx
+  🟡 1   ✅          ✅           0    markets/bet-confirm-modal.tsx
+  🟡 1         ✅    ✅           0    ui/modal.tsx
+  🟡 1         ✅    ✅           0    ui/select.tsx
+  🟡 1         ✅    ✅           0    admin/ai-toolkit.tsx
+  🟡 1         ✅    ✅           0    markets/comments-thread.tsx
+  🟡 1   ✅    ✅                 0    ui/identity-avatar.tsx
+  🟡 1   ✅    ✅                 0    updown/price-hero.tsx
+  🟡 1         ✅    ✅           0    ui/duration-input.tsx
+  🟡 1         ✅    ✅           0    updown/round-stake-panel.tsx
+  🟡 1         ✅    ✅   ✅      0    layout/needle-drawer.tsx
+  🟡 1   ✅          ✅           0    markets/win-celebration.tsx
+  🟡 1         ✅    ✅           0    ui/input.tsx
+  🟡 1   ✅          ✅           1    brand/reward-burst.tsx
+  🟡 1         ✅    ✅           0    markets/share-button.tsx
+  🟡 1         ✅    ✅           0    layout/app-shell.tsx
+  🟡 1         ✅    ✅           2    layout/wallet-balance-pill.tsx
+  🟡 1         ✅    ✅           0    ui/pagination.tsx
+  🟡 1         ✅    ✅           0    ui/password-input.tsx
+  🟡 1         ✅    ✅           0    markets/position-card.tsx
+  🟡 1   ✅    ✅                 0    ui/chip.tsx
+  🟡 1         ✅    ✅           3    ui/tabs.tsx
+  🟡 1         ✅    ✅           0    admin/admin-mobile-nav.tsx
+  🟡 1         ✅    ✅           0    ui/search-help.tsx
+  🟡 1         ✅    ✅           0    admin/action-overlay.tsx
+  🟡 1         ✅    ✅           0    markets/position-share.tsx
+  🟡 1         ✅    ✅           0    markets/side-picker.tsx
+  🟡 1         ✅    ✅           0    layout/public-footer.tsx
+  🟡 1   ✅          ✅           0    layout/live-ticker.tsx
+  🟡 1         ✅    ✅           0    ui/checkbox.tsx
+  🟡 1         ✅    ✅           0    layout/nav-more.tsx
+  🟡 1         ✅    ✅           1    ui/pull-to-refresh.tsx
+  🟡 1         ✅    ✅           2    wallet/provider-radio-grid.tsx
+  🟡 1         ✅    ✅           0    markets/watch-star.tsx
+  🟡 1   ✅    ✅                 0    ui/page-hero.tsx
+  🟡 1         ✅    ✅   ✅      0    markets/stepped-progress.tsx
+     0   ✅    ✅    ✅   ✅      0    markets/conviction-dial.tsx
+     0   ✅    ✅    ✅           2    layout/needle.tsx
+     0   ✅    ✅    ✅           0    admin/admin-shell.tsx
+     0   ✅    ✅    ✅   ✅      0    layout/notifications-panel.tsx
+     0   ✅    ✅    ✅           1    markets/operation-result-modal.tsx
+     0   ✅    ✅    ✅   ✅      1    ui/date-select.tsx
+     0   ✅    ✅    ✅           3    layout/top-app-bar.tsx
+     0   ✅    ✅    ✅           1    layout/avatar-menu.tsx
+     0   ✅    ✅    ✅           0    ui/time-select.tsx
+     0   ✅    ✅    ✅           0    ui/ai-progress.tsx
+     0   ✅    ✅    ✅           1    ui/nav-progress.tsx
+     0   ✅    ✅    ✅           2    layout/bottom-nav.tsx
+     0   ✅    ✅    ✅           0    ui/toggle.tsx
+     0   ✅    ✅    ✅           0    ui/cashback-promo.tsx
+     0   ✅    ✅    ✅           0    ui/propose-promo.tsx
+
+── the shape of it ──
+   have NO light (flat fill only):        105/133 (79%)
+   have NO elevation (share the plane):   80/133 (60%)
+   have NO motion at all:                 58/133 (44%)
+   animate but bypass the token ladder:   69/133 (52%)
+   carry hardcoded ms timings:            16/133 (12%)
+
+   🔴 all three absent: 43 components

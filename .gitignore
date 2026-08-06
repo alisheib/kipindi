@@ -124,5 +124,5 @@ s3?-*.png
 
 # Design-brief build output — regenerate with `node scripts/build-design-brief.mjs`.
 # The AUTHORED parts are versioned in docs/design-brief/; this is the assembled package.
-design-brief/
-design-brief.zip
+/design-brief/
+/design-brief.zip
