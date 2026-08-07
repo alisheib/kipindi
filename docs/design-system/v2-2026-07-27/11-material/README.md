@@ -1,8 +1,34 @@
-# 11 · The material system — delivered, not yet merged
+# 11 · The material system — ⭐ §A, §B and §C are MERGED; the law is live
 
-**Claude Design commission, delivered 2026-08-06.** This folder is the **reference**; the
-**product does not use any of it yet**. Nothing here is live until it lands in `src/`, and the
-merge map below is the only sanctioned route.
+**Claude Design commission, delivered 2026-08-06. Merged into `src/` on 2026-08-06/07
+(sessions 34–35).** This folder is the **reference and the provenance**.
+
+> ## ⭐ STATUS, 2026-08-07 — read this before anything else in the folder
+>
+> | section | where it lives now | state |
+> |---|---|---|
+> | **§A** tokens | `src/app/globals.css` `:root` | ✅ merged · **deleted from `material.css`** |
+> | **§B** 12 keyframes | `src/app/globals.css`, beside each family | ✅ merged · **deleted** |
+> | **§C** 29 utilities | `src/app/motion.css` | ✅ merged · **deleted** |
+> | **§D** migration map | — | ⚪ still in `material.css`; the migration is not finished |
+> | **`EXTEND.md`** M1–M8 | `docs/DESIGN_AUTHORITY.md` §M | ⚪ **not yet** — ATOM J |
+>
+> ⛔ **THE THREE MERGED SECTIONS WERE DELETED FROM `material.css`, AND THAT IS THE
+> INSTRUCTION RATHER THAN TIDYING** — see the paragraph below. Do not restore them from git
+> to "see what was delivered": in **four** places what shipped is deliberately *not* what the
+> delivery said, and a diff against the original would mislead rather than inform. Every one
+> of the four is recorded at the top of `material.css`, with the measurement behind it:
+> **E-124** (the gold anchor is mis-converted — chroma understated 17%), **E-130** (two washes
+> would have broken AA), **E-129** (`outline: none` would have stripped the money CTA's focus
+> ring), and the `shimmer-gilt` two-layer paint bug.
+>
+> ⚠️ **THE LAW IS MERGED; THE ADOPTION IS NOT.** Measured 2026-08-07: **2 of 31 §C utility
+> classes are taken by a component.** Three surfaces have picked a rung — the market and
+> Up & Down cards (rung 1, via the tokens at `.mcardp`'s own rule), the kit `Modal` (rung 3,
+> `.mat-modal`), and the money-in CTA (`.gilt-metal`) — and seven one-sided lamps in `.tsx`
+> inline styles became even rings (**E-131**). Everything else in the class vocabulary is
+> still waiting for a consumer: all five tints, four rungs, the seal, the glyph primitives,
+> the mark and the crest. **That is the honest measure of what is left.**
 
 ⛔ **Do not import from this folder at runtime.** `material.css` is a *mergeable source*, not a
 stylesheet the app loads. Merging it means moving its four sections into the files named below
@@ -32,8 +58,8 @@ any of these numbers as a target** — E-116.
 
 | file | what it is | fate |
 |---|---|---|
-| `material.css` | **the mergeable source** — §A tokens · §B keyframes · §C utilities · §D migration map | ⛔ **delete section-by-section as each merges** |
-| `EXTEND.md` | **M1–M8, the material law**, written to merge into `docs/DESIGN_AUTHORITY.md` | delete once merged into the authority |
+| `material.css` | now **the merge RECORD + §D**. §A, §B and §C were deleted from it as each landed (2026-08-07); what remains is where each went, the four places we departed from the delivery and why, and the unfinished §D migration map | ⛔ **delete §D when its last line is struck; then the file goes** |
+| `EXTEND.md` | **M1–M8, the material law**, written to merge into `docs/DESIGN_AUTHORITY.md` | ⚪ still here — delete once merged into the authority (ATOM J). ⚠️ **M6 must land saying THREE reduced-motion gates**; this text names two, and `theme-provider.tsx` writes a third for low-end Android (E-125) |
 | `MANIFEST.md` | the designer's own decisions of record + 8 open items | **keep** — provenance |
 | `DESIGNER-QUESTIONS.md`, `-R2.md` | the questions we asked and the answers that settled them | **keep** — this is *why* each decision is what it is |
 | `spec/spec.html` | the live spec — open it in a browser. Self-contained | **keep** — provenance |
