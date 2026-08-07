@@ -33,7 +33,9 @@ const BOARD = "src/lib/server/updown-board.ts";
 const CARD = "src/components/updown/updown-card.tsx";
 const CONTROLS = "src/components/updown/updown-stake-controls.tsx";
 const PANEL = "src/components/updown/round-stake-panel.tsx";
-const BOX = "src/components/updown/updown-bet-box.tsx";
+// ⚠️ 2026-08-07 · `updown-bet-box.tsx` is GONE (deleted with Session B Stage 1 — zero
+// call sites; RoundStakePanel is the round page's one bet surface). The BOX slice went
+// with it; three surfaces remain.
 const BOARD_PAGE = "src/app/updown/page.tsx";
 const ROUND_PAGE = "src/app/updown/[roundId]/page.tsx";
 const DICT = "src/lib/i18n-dict.ts";
@@ -91,7 +93,6 @@ const board = read(BOARD);
 const cardCode = stripComments(read(CARD));
 const controlsCode = stripComments(read(CONTROLS));
 const panelCode = stripComments(read(PANEL));
-const boxCode = stripComments(read(BOX));
 const dict = read(DICT);
 const toBoardRound = sliceBraces(board, "async function toBoardRound(");
 ok("0.1 `toBoardRound`'s body is locatable", toBoardRound != null);
@@ -262,7 +263,7 @@ ok("4.5 the board no longer derives a multiplier from `estimatedWinningsRate`",
 
 // ── §5. EVERY PLAYER SURFACE READS IT — AND NONE STILL PRINTS A CONSTANT ─────────────────
 console.log("\n§5 · card, quick-bet controls and round panel all read the same one function");
-for (const [name, code] of [["card", cardCode], ["controls", controlsCode], ["panel", panelCode], ["bet box", boxCode]] as const) {
+for (const [name, code] of [["card", cardCode], ["controls", controlsCode], ["panel", panelCode]] as const) {
   ok(`5.${name === "card" ? 1 : name === "controls" ? 2 : name === "panel" ? 3 : 4}a the ${name} carries no \`estMultiplier\` any more`,
      !/estMultiplier/.test(code));
 }
@@ -278,8 +279,11 @@ ok("5.10 …and on the shared quick-bet controls", /emptySideOf\(|refundWarningF
 ok("5.11 …and on the round page's stake panel, scoped to the side the player locked",
    /refundWarningFor\(\s*pricing\s*,\s*lockedSide/.test(panelCode),
    "the panel knows the side, so it must use the side-aware rule, not the round-wide one");
+// ⚠️ 2026-08-07 · the round page now routes the stake surface through UD-2's
+// `RoundActionPanel`, so its pricing rides the `stakePanel` object (`pricing:
+// round.pricing`) instead of a direct JSX prop. Same server object, new plumbing.
 ok("5.12 both pages hand the surfaces the server's pricing object",
-   /pricing=\{r\.pricing\}/.test(read(BOARD_PAGE)) && /pricing=\{round\.pricing\}/.test(read(ROUND_PAGE)));
+   /pricing=\{r\.pricing\}/.test(read(BOARD_PAGE)) && /pricing:\s*round\.pricing/.test(read(ROUND_PAGE)));
 // ⛔ The client must never re-derive the money. One rule, one answer (this is how `myExactPayout`
 // was nearly shipped wrong).
 ok("5.13 no surface re-implements the fee — they all call the shared module",

@@ -62,7 +62,12 @@ async function hasErrorOverlay(page) {
   await new Promise((r) => setTimeout(r, 800));
 }
 
-const browser = await chromium.launch();
+// ⚠️ Sandbox override: some cloud sandboxes carry a full Chromium but not the
+// version-pinned headless-shell this Playwright resolves to. QA_CHROMIUM_PATH points
+// the gauntlet at the real binary; unset, behaviour is exactly as before.
+const browser = await chromium.launch(
+  process.env.QA_CHROMIUM_PATH ? { executablePath: process.env.QA_CHROMIUM_PATH } : {},
+);
 
 // ── A. Public route health ──────────────────────────────────────────
 console.log("\n[A] Public route health (render + no console/page/5xx errors + no error overlay)");

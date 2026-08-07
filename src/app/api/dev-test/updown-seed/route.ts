@@ -32,11 +32,20 @@ export async function POST(req: Request) {
   if (!existing.some((s) => s.domain === "kitco.com")) {
     await addSource({ domain: "kitco.com", label: "Kitco", category: "macro", rationale: "Spot metals — dev seed", addedBy: ACTOR });
   }
+  // `isSourceTrusted` matches on (domain, category) — the crypto asset needs its own row.
+  if (!(await listSources({ enabledOnly: true })).some((s) => s.domain === "kitco.com" && s.category === "crypto")) {
+    await addSource({ domain: "kitco.com", label: "Kitco", category: "crypto", rationale: "Crypto — dev seed", addedBy: ACTOR });
+  }
 
   const notes: string[] = [];
+  // ⚠️ BTC leads: the E-110 movement gate now refuses SHORT metal rounds (gold's feed
+  // noise is about the size of a 5-minute move), so a metals-only seed with the default
+  // [5, 15] durations quietly produced half a board. Bitcoin's headroom passes at every
+  // length the platform offers, which is what a visual/E2E seed needs.
   const want = [
-    { key: "XAU", symbol: "XAU/USD", nameEn: "Gold", nameSw: "Dhahabu", nameZh: "黄金", iconKey: "gold", url: "https://www.kitco.com/price/precious-metals" },
-    { key: "XAG", symbol: "XAG/USD", nameEn: "Silver", nameSw: "Fedha", nameZh: "白银", iconKey: "silver", url: "https://www.kitco.com/price/precious-metals/silver" },
+    { key: "BTC", symbol: "BTC/USD", nameEn: "Bitcoin", nameSw: "Bitcoin", nameZh: "比特币", iconKey: "crypto", url: "https://www.kitco.com/price/crypto", category: "crypto" as const },
+    { key: "XAU", symbol: "XAU/USD", nameEn: "Gold", nameSw: "Dhahabu", nameZh: "黄金", iconKey: "gold", url: "https://www.kitco.com/price/precious-metals", category: "macro" as const },
+    { key: "XAG", symbol: "XAG/USD", nameEn: "Silver", nameSw: "Fedha", nameZh: "白银", iconKey: "silver", url: "https://www.kitco.com/price/precious-metals/silver", category: "macro" as const },
   ];
 
   for (const w of want) {
@@ -45,7 +54,9 @@ export async function POST(req: Request) {
     if (!asset) {
       const r = await createAsset({
         key: w.key, symbol: w.symbol, nameEn: w.nameEn, nameSw: w.nameSw, nameZh: w.nameZh,
-        iconKey: w.iconKey, priceSourceUrl: w.url, category: "macro", decimals: 2, minMoveTicks: 1,
+        // ⚠️ minMoveTicks 2, not 1 — the config refuses a band the same size as the rounding
+        // error (MIN_MOVE_TICKS_FLOOR). This seed shipped `1` and silently created NOTHING.
+        iconKey: w.iconKey, priceSourceUrl: w.url, category: w.category, decimals: 2, minMoveTicks: 2,
       }, ACTOR);
       if (!r.ok) { notes.push(`${w.key}: ${r.error}`); continue; }
       asset = r.data;
