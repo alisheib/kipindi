@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { cn, formatTzs } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { useUpDownQuickBet, usePlacePulse } from "./use-quick-bet";
+import { udBetErrorMap } from "./bet-error-copy";
 import { UpDownStakeControls } from "./updown-stake-controls";
 import { stakeChipLabel } from "./stake-math";
 import { I } from "@/components/ui/glyphs";
@@ -51,7 +52,7 @@ export function RoundStakePanel(props: {
     marketId, minStake, maxStake, myUpStake, myDownStake,
     selectionClosesAtMs: props.selectionClosesAtMs, serverNowMs: props.serverNowMs,
     walletBalance: props.walletBalance,
-    copy: { placed: t.market.udBetPlaced, failed: t.market.udBetFailed, up: t.market.udUp, down: t.market.udDown, locked: t.market.udLockedTitle, insufficient: t.market.udInsufficientBalance },
+    copy: { placed: t.market.udBetPlaced, failed: t.market.udBetFailed, up: t.market.udUp, down: t.market.udDown, locked: t.market.udLockedTitle, insufficient: t.market.udInsufficientBalance, errorByCode: udBetErrorMap(t.market) },
   });
   const pulse = usePlacePulse(bet.justPlaced?.nonce);
 

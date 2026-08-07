@@ -29,6 +29,7 @@ import { I } from "@/components/ui/glyphs";
 import { cn, formatTzs } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { useUpDownQuickBet, usePlacePulse } from "./use-quick-bet";
+import { udBetErrorMap } from "./bet-error-copy";
 import { UpDownStakeControls } from "./updown-stake-controls";
 import { useCountdown, mmss } from "./round-countdown";
 import { SOURCE_CLASS_KEY } from "@/lib/updown-source-label";
@@ -331,7 +332,7 @@ export function UpDownCard(props: UpDownCardProps) {
     selectionClosesAtMs: selectionClosesAtMs ?? null, serverNowMs,
     // UD-1 · rendered balance for the pre-flight; null (guest / failed read) gates nothing.
     walletBalance,
-    copy: { placed: t.market.udBetPlaced, failed: t.market.udBetFailed, up: t.market.udUp, down: t.market.udDown, locked: t.market.udLockedTitle, insufficient: t.market.udInsufficientBalance },
+    copy: { placed: t.market.udBetPlaced, failed: t.market.udBetFailed, up: t.market.udUp, down: t.market.udDown, locked: t.market.udLockedTitle, insufficient: t.market.udInsufficientBalance, errorByCode: udBetErrorMap(t.market) },
   });
   // A placed bet pulses the whole card (non-intrusive confirmation, reduced-motion aware).
   const cardPulse = usePlacePulse(bet.justPlaced?.nonce);

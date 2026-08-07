@@ -712,6 +712,14 @@ export const dict = {
       udCustom: "Custom", udCustomAmount: "Custom stake amount", udStakeRange: "Outside the allowed range", udEnterStake: "Enter a stake to bet",
       // UD-1 · balance pre-flight — stated as a fact (info register), never an alarm.
       udInsufficientBalance: "Not enough balance for this stake.",
+      // UD-4 · a refusal is rendered in the PLAYER's language, keyed off the service code
+      // (bet-error-copy.ts). The service string stays API/audit truth, never player copy.
+      udErrSelectionClosed: "Selections closed before this bet arrived — your stake was not taken.",
+      udErrRateLimited: "Too fast — wait a moment, then try again.",
+      udErrBusy: "The game is busy right now — nothing was taken. Try again.",
+      udErrSuspended: "This bet can't be placed right now — your account or the game is unavailable.",
+      udErrInvalid: "The bet was refused — check the amount and your balance.",
+      udErrNotFound: "This round is no longer available.",
       // ── Up & Down · D3 round detail ──────────────────────────────────────
       udLivePrice: "Live price", udAboveOpenBy: "Above open by", udBelowOpenBy: "Below open by", udPool: "Pool",
       udPickLocked: "Locked from your pick on the board. To switch sides, leave this round.",
@@ -2114,6 +2122,12 @@ export const dict = {
       udSignInToBet: "Ingia ili kuweka dau", udTapToBet: "Gusa Juu au Chini kuweka dau",
       udCustom: "Maalum", udCustomAmount: "Kiasi maalum cha dau", udStakeRange: "Nje ya kiwango kinachoruhusiwa", udEnterStake: "Weka kiasi kucheza",
       udInsufficientBalance: "Salio halitoshi kwa dau hili.",
+      udErrSelectionClosed: "Uchaguzi ulifungwa kabla dau hili halijafika — kiasi chako hakikukatwa.",
+      udErrRateLimited: "Haraka mno — subiri kidogo, kisha jaribu tena.",
+      udErrBusy: "Mchezo una shughuli nyingi kwa sasa — hakuna kilichokatwa. Jaribu tena.",
+      udErrSuspended: "Dau haliwezi kuwekwa kwa sasa — akaunti yako au mchezo haupatikani.",
+      udErrInvalid: "Dau limekataliwa — angalia kiasi na salio lako.",
+      udErrNotFound: "Raundi hii haipatikani tena.",
       // ── Up & Down · D3 round detail ──────────────────────────────────────
       udLivePrice: "Bei ya sasa", udAboveOpenBy: "Juu ya ufunguzi kwa", udBelowOpenBy: "Chini ya ufunguzi kwa", udPool: "Dimbwi",
       udPickLocked: "Imefungwa kutoka chaguo lako kwenye ubao. Kubadili upande, ondoka kwenye raundi hii.",
@@ -3488,6 +3502,12 @@ export const dict = {
       udSignInToBet: "登录后下注", udTapToBet: "点击涨或跌下注",
       udCustom: "自定义", udCustomAmount: "自定义投注额", udStakeRange: "超出允许范围", udEnterStake: "输入投注额",
       udInsufficientBalance: "余额不足，无法下此注。",
+      udErrSelectionClosed: "本注到达前选择已截止——未扣除您的投注额。",
+      udErrRateLimited: "操作过快——请稍候再试。",
+      udErrBusy: "系统繁忙——未扣款，请重试。",
+      udErrSuspended: "目前无法下注——您的账户或该游戏不可用。",
+      udErrInvalid: "投注被拒——请检查金额与余额。",
+      udErrNotFound: "该回合已不可用。",
       // ── Up & Down · D3 round detail ──────────────────────────────────────
       udLivePrice: "实时价格", udAboveOpenBy: "高于开盘", udBelowOpenBy: "低于开盘", udPool: "奖池",
       udPickLocked: "已根据你在面板上的选择锁定。若要切换方向，请离开本轮。",

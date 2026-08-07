@@ -81,8 +81,17 @@ export function useUpDownQuickBet(opts: {
    * invents an "insufficient". The server re-checks; this is UX, not the boundary.
    */
   walletBalance?: number | null;
-  /** i18n copy — the hook stays language-agnostic. `placed` is the aria-live prefix. */
-  copy: { placed: string; failed: string; up: string; down: string; locked?: string; insufficient?: string };
+  /**
+   * i18n copy — the hook stays language-agnostic. `placed` is the aria-live prefix.
+   * UD-4 · `errorByCode` localizes a refusal by its `code` (build with `udBetErrorMap(t.market)`
+   * — ONE map, so the surfaces cannot drift); the raw server string is only a fallback for a
+   * missing code. The server is API/audit truth, never player copy.
+   */
+  copy: {
+    placed: string; failed: string; up: string; down: string;
+    locked?: string; insufficient?: string;
+    errorByCode?: Partial<Record<string, string>>;
+  };
 }) {
   const { marketId, myUpStake = 0, myDownStake = 0, copy } = opts;
   const min = opts.minStake ?? 1_000;
@@ -194,8 +203,12 @@ export function useUpDownQuickBet(opts: {
           haptics.confirm();
         } else {
           if (side === "UP") setOptUp((v) => Math.max(0, v - amount)); else setOptDown((v) => Math.max(0, v - amount));
-          const msg = r && "error" in r ? r.error : copy.failed;
-          toast({ title: copy.failed, description: msg, variant: "danger" });
+          // UD-4 · the player reads THEIR language, keyed off the refusal code; the raw
+          // service string (EN / EN·SW) is a fallback only when no code arrived.
+          const code = r && "code" in r && r.code != null ? String(r.code) : null;
+          const localized = code ? copy.errorByCode?.[code] : undefined;
+          const fallback = r && "error" in r ? r.error : undefined;
+          toast({ title: copy.failed, description: localized ?? fallback ?? copy.failed, variant: "danger" });
         }
       } catch {
         if (side === "UP") setOptUp((v) => Math.max(0, v - amount)); else setOptDown((v) => Math.max(0, v - amount));

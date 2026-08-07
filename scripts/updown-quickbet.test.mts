@@ -292,6 +292,30 @@ async function mine(userId: string | undefined): Promise<{ up: number; down: num
      controls.includes("/wallet/deposit") && panel.includes("/wallet/deposit"));
 }
 
+// ═══ §30 · UD-4 (ux-audit 2026-08) — a refusal reads in the PLAYER's language ═══════════════
+// The service's error strings are API/audit truth (EN, sometimes EN·SW); the surface renders
+// its own message keyed off `code`. One map (bet-error-copy.ts) so the surfaces cannot drift.
+{
+  const { udBetErrorMap } = await import("../src/components/updown/bet-error-copy.ts");
+  const { dict } = await import("../src/lib/i18n-dict.ts");
+  const CODES = ["SELECTION_CLOSED", "RATE_LIMITED", "BUSY", "SUSPENDED", "INVALID", "NOT_FOUND"] as const;
+  const locales = ["en", "sw", "zh"] as const;
+  const maps = locales.map((l) => udBetErrorMap((dict as any)[l].market));
+  ok("30.1 · ⭐ every buyPosition refusal code maps to copy in ALL THREE locales",
+     maps.every((m) => CODES.every((c) => typeof m[c] === "string" && m[c].length > 0)));
+  ok("30.2 · no locale ships the byte-identical English string for every code (a copied dict is not a translation)",
+     CODES.every((c) => maps[1][c] !== maps[0][c] && maps[2][c] !== maps[0][c]));
+
+  const { readFileSync } = await import("node:fs");
+  const hook = readFileSync("src/components/updown/use-quick-bet.ts", "utf8");
+  ok("30.3 · ⛔ the failure toast prefers the localized code copy; the raw server string is only a code-less fallback",
+     hook.includes("copy.errorByCode?.[code]") && hook.includes("localized ?? fallback"));
+  const rsp = readFileSync("src/components/updown/round-stake-panel.tsx", "utf8");
+  const card = readFileSync("src/components/updown/updown-card.tsx", "utf8");
+  ok("30.4 · both live surfaces build the map from the ONE home (udBetErrorMap)",
+     rsp.includes("udBetErrorMap(t.market)") && card.includes("udBetErrorMap(t.market)"));
+}
+
 console.log(`\nupdown-quickbet: ${pass} passed, ${fail} failed`);
 if (fail > 0) { console.error("\n✗ QUICK-BET BROKEN — the one-tap card would mischarge or misreport the player's position.\n"); process.exit(1); }
 console.log("updown-quickbet: OK — one tap places once, duplicates pay once, distinct taps stack, 'you're in' is per-viewer, bad taps refused");
