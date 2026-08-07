@@ -8,20 +8,14 @@ It is cited by number in code comments (e.g. `/* DESIGN_AUTHORITY B3 */`). When 
 rule lives beside the value it governs, a stale doc elsewhere can no longer mandate
 a regression (that was audit finding C9).
 
-> ### 🎨 EXTERNAL DESIGN WORK IS OUT FOR COMMISSION — read this before integrating any of it
-> A material system (light source, elevation ladder, real gilt treatment), a struck seal to
-> replace the drawn trophy, and icon/identity motion primitives were commissioned from Claude
-> Design on **2026-08-06**. The brief, the measured state it was commissioned against, and
-> **the integration playbook** live in **`docs/design-brief/`**:
-> - **`README.md`** — what was asked for, including the deliverable spec (D-0 … D-6)
-> - **`AUDIT.txt`** — all 133 components scored on light / elevation / motion, the before-picture
-> - **`CURRENT-STATE.md`** — the critique, per surface, with evidence
-> - ⭐ **`INTAKE.md`** — ⛔ **read this FIRST when the work arrives.** It says what to verify
->   before anything moves, where each artifact goes, the integration ORDER (tokens before
->   components, because everything inherits), the gates, and what to reject.
->
-> ⛔ **Do not paste delivered work straight into `src/`.** `INTAKE.md` §3 exists because a
-> component integrated before the ladder it depends on has to be done twice.
+> ### 🎨 THE COMMISSIONED MATERIAL SYSTEM IS DELIVERED, MERGED AND LAW — section M below
+> The material system commissioned from Claude Design on **2026-08-06** (light source,
+> elevation ladder, real gilt treatment, glyph/identity motion primitives) was accepted,
+> merged into `src/` (sessions 34–35, 2026-08-07) and is codified here as **§M (M1–M8)**.
+> Provenance — the delivery, the acceptance record, the four measured departures from it,
+> and the designer Q&A — lives in `docs/design-system/v2-2026-07-27/11-material/` and
+> `docs/design-brief/` (brief, before-picture `AUDIT.txt`, critique, `INTAKE.md` playbook).
+> Adoption progress is tracked in `docs/ux-audit-2026-08/MASTER-PLAN.md` §6 (DA/DS).
 
 **Hierarchy of truth:**
 1. **`src/app/globals.css`** — the authoritative *implementation* (tokens, the live palette). Newest artifact; if anything disagrees with it, it wins.
@@ -388,6 +382,117 @@ Two more standing rules from the same pass:
    market. The detail page shipped a fabricated 50/50 split and a "TIPPING" badge above
    "TZS 0" until this pass. If the rule changes, change all three — a card and a detail
    page disagreeing about someone's money is exactly the defect B6 exists for.
+
+---
+
+## M — The material law (M1–M8)
+
+Merged 2026-08-07 from the accepted Claude Design commission (ATOM J). The measured state it
+corrects: 79% of components had no light, 60% no elevation, 43 had neither and no motion. The
+restraint law was right; answering it with flatness was the defect. Where these rules differ
+from the delivery, the difference was **measured first** and recorded in
+`docs/design-system/v2-2026-07-27/11-material/material.css` (header) — the law below states
+what SHIPPED, which wins.
+
+### M1 — One lamp
+
+Light comes from high above the plane, tilted **−14°** — the mark's own axis (`--m-tilt`).
+Every lit surface catches a soft, **even** 1px inner ring (`--edge-lit`) carrying a 4% royal
+tint, never pure white — and never a one-sided line. The direction of the light lives in the
+wash (`--light-angle`, 166deg); speculars centre at x ≈ 42%; shadows fall straight down.
+**The tilt lives in the light, never in the gravity.** There is no second lamp; a surface lit
+from below or from the right is a bug — including a `.tsx` inline style, which is where the
+last seven lived (E-131). Guard: `npm run test:m1-light` — 0 lamps over 6 stylesheets **and**
+the full component corpus (`scripts/m1-corpus.mjs` is the one file list).
+
+### M2 — A surface picks a rung; it never composes a shadow
+
+Five rungs: `flat → raised → float → modal → toast` (`--elev-*` + `--wash-*` in
+`globals.css`, `.mat-*` in `motion.css`). A component takes a rung and is done. If it
+genuinely needs a sixth rung, the SYSTEM gains one (token + spec, deliberately) — the
+component does not improvise. `flat` is a legitimate rung (form rows, pollers, containers),
+not a failure.
+
+- **Every wash's lit stop is capped at 24%** (E-130) — solved from the ink floors
+  (`--text-faint` 4.5, `--border-control` 3.0), not chosen. The ladder rises on the cast and
+  the ring; the wash's one job is direction.
+- **Tint is rung-independent**: `.mat-tint-yes/-no/-warn/-gold/-brand` compose a ring into
+  ANY rung through the `--mat-tint` slot. (The delivery's `.mat-edge-*` welded a toast-level
+  cast to whatever it touched — the D-6.6 send-back.)
+- A surface taking `.mat-float` or `.mat-toast` **drops its own border** (those rungs carry
+  an outer ring); `.mat-modal` does **not** — its cast carries only the inset edge.
+- Each rung pairs with its arrival and every arrival has its exit: raised → `.m-in-lift`/
+  `.m-out` · float → `.m-float-in`/`.m-float-out` · modal → `.m-dialog-in` or `.m-sheet-in`/
+  `.m-out` (scrim `.m-scrim`) · toast → the toast component's own transition. There is no
+  third entrance.
+
+### M3 — Gold is struck, and struck means earned
+
+Gilt renders as satin metal — one calm `--gilt-metal` ramp anchored on the **measured**
+trademark: `#E3BC66` = `oklch(81.2% 0.1141 85.4)`, written at hue **84** (E-124 — the
+delivery's `0.095` figure round-trips to a duller `#D7B672`; every gilt chroma shipped
+×1.2011). An even `--gilt-metal-edge` ring; one soft `shimmer-gilt` specular sweep on hover
+(a per-layer keyframe — do not "simplify" it back to one value, the metal slides off the
+button). **No bloom** — radial glow dilutes the financial texture; **rays are banned**.
+The usage law has teeth: **struck gold appears only where money was earned** (payout,
+celebration, resolved seal). A decorative element wearing `--gilt-metal` is a violation, not
+a style choice. And `.gilt-metal:focus-visible` **keeps a real `outline`** (E-129): a
+box-shadow ring is invisible in forced-colors, and this class lands on the Deposit button.
+
+### M4 — Money is mono, and it never reflows
+
+Every amount: `--font-mono`, `tabular-nums`, **never letter-spaced** — tracking is for
+identifiers; money has weight, so at the earned peak it takes `.gilt-ink` (struck type,
+glow at the measured 84/0.114). A motion on a changing number must not shift layout; verify
+with tabular figures. (D-0's table listed `--font-display` for the celebration amount —
+mono won, amended at source.)
+
+### M5 — A glyph moves for a reason, and all 178 move the same way
+
+Four primitives, applied as classes (`.g-settle`, `.g-nudge-up/-down`, `.g-ring`,
+`.g-swap*` — state morphs go through the kit `GlyphSwap`, `ui/glyph-swap.tsx`): arrival,
+directional emphasis, alert, state morph. Triggers are mount, data change, or state change —
+**never hover**; icons respond, they do not perform. The nudges fire on a data CHANGE only,
+never on mount. In-flight is the kit `Spinner`, not a spinning glyph. Glyph #179 inherits by
+taking a class; a glyph with bespoke keyframes is a violation. Static glyphs stay static —
+this law governs motion, it does not demand it. Guard: `npm run test:glyph-motion`.
+
+### M6 — Every animation still works with motion off — and there are THREE gates
+
+1. **`@media (prefers-reduced-motion: reduce)`** — the OS setting. The universal clamp
+   zeroes duration **and delay** (E-126 — with only duration zeroed, a delayed animation
+   holds its invisible first frame for the whole delay).
+2. **`html.kp-reduce-motion`** — the user's own in-app setting, a written mirror of every
+   branch.
+3. **`[data-motion="reduced"]`** — the low-end-Android tier (`theme-provider.tsx`
+   `detectLowEnd()`: ≤4 cores, ≤4GB RAM, or Save-Data). **A THROTTLE, not a clamp**: full
+   durations, ambient loops off. Its one list lives in `globals.css` §6, and every
+   `infinite` animation needs an entry there.
+
+Every `.mat-*`/`.g-*`/`.seal-*`/`.crest-*` state has written branches for the two clamps:
+end frames render, nothing invisible, the bloom rests at 0.35. A new animation lands with
+its branches in the same change or it does not land. The delivery named only the first two
+gates; this product has three (E-125) — our target device is exactly the one the third
+covers. Guard: `npm run test:reduce-motion`.
+
+### M7 — Wins get the seal; losses get the receipt
+
+The celebration vocabulary (seal-impress, needle-sweep, mark-flip, gilt strike) is
+EXCLUSIVE to a win. A loss renders as bookkeeping: the factual toast (plain rung 4, no
+color, no tick), the settled card leading with the outcome, the needle settling crisply
+against the position. No red ceremony, no drained counters, no altered mark — a dramatized
+loss is punitive, dilutes the win, and is a compliance liability. The asymmetry is the
+design (designer R2 Q5, confirmed).
+
+### M8 — The mark performs; nothing else borrows its stage
+
+Identity motion (mark-flip on the needle axis, `.mark-pending`'s ambient breath — listed in
+the frozen ambient-loop set and in the third gate's list) is reserved for the trademark. The
+mark's colours stay the delivered hexes (#1EA362 / #B03A3E / #E3BC66) in chrome; on the seal
+it renders single-ink relief. Clear space 0.25 × diameter is law even inside our own seal —
+76px on a 114px face is the ceiling, not a style choice. Surface gold is the trademark
+re-derivation (M3); the two never drift because they share one source. `--m-pivot` is
+reserved for the needle and dials — `.g-ring` takes `--m-glide` (a bell is neither).
 
 ---
 

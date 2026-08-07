@@ -11,13 +11,13 @@
 
 ## ▶ PICK UP HERE  (update this block every session)
 
-- **Overall status:** IMPLEMENTING — Session A COMPLETE (7/7); Phase 2 core design set under way (toast rung 4, DA-8, DA-9, DA-2, DS-2, DS-3, DS-4 done).
+- **Overall status:** IMPLEMENTING — Session A COMPLETE (7/7); Phase 2 core design set under way (toast rung 4, DA-8, DA-9, DA-2, DA-6, DS-2, DS-3, DS-4 done).
 - **Active session:** ⚠️ OWNERSHIP RETURNED TO THE CLOUD SESSION 2026-08-07: the local session on F:\ imported the bundle, pushed through DS-3 and STOPPED COMPLETELY (Ali confirmed). The cloud session (claude-fable-5, working a clone of `origin/main`; the F:\ tree is idle — do not edit there) owns everything again — money, Up & Down, platform, all design work.
-- **Next action:** DA-6 (ATOM J — fold M1–M8 into DESIGN_AUTHORITY.md, M6 with THREE gates, delete EXTEND.md + material.css's merged sections), then Session B (Up & Down).
+- **Next action:** Session B (Up & Down, Report 1) — Stage 1 first: UD-2 → UD-1 → UD-4 → UD-3. Do DA-3 (E-112 stake chips to the 40px floor) together with the UD-9 tap-target item when Stage 3 reaches it; DA-4 (E-114 refund-toast tick) alongside UD-12.
 - **Blocked on:** nothing. Only the §9 items need Ali; they are parked, work continues.
 - **Environment note:** tests MUST run under Node 24 (`/opt/node24` in the cloud session). Under Node 22, tsx dual-instantiates modules and the seam-patching suites (late-bet, settlement-gate) fail falsely. Cloud sandbox extras: Google Fonts is blocked, so `next build` fails locally — verify CSS atoms on production via `npm run qa:bundle-css -- --live` after the deploy; `qa:live` runs with `QA_OFFLINE=1`; the local qa:live board has no live card on a fresh store, so "at least one bettable market exists" fails there — verified identical at clean HEAD, not a regression signal.
 - **Pre-existing red suites at `da231631` (verified identical before/after Session A; NOT caused by this work):** `test:kyc-doc-metadata` (1 fail), `test:updown-push` (1 fail, §2 suppression-gate else-branch), `test:orphans` (sessions 29–35 left unwired live-QA scripts), `test:updown-admin-options` (2 fails). `test:trilingual` is flaky (random poll fixture; passes on re-run). `test:prisma-delegate` needs the Prisma engine binary — unavailable in the cloud sandbox (blocked CDN), fine on Ali's machine. Fix the updown ones during Session B, orphans/kyc during the sweep/cleanup phases.
-- **Last updated by:** cloud implementation session (claude-fable-5), 2026-08-07 — DA-2 glyph-primitive migration (new kit `GlyphSwap`, new gate `test:glyph-motion`); test:all 182/188 (only the documented reds + server-needing suites; the new suite is green), qa:live 120/1 identical to clean-HEAD baseline. ⚠️ Fresh-container note: Node 24 installed from the npm `node-linux-x64` package (nodejs.org is 403 through the proxy); Prisma client generates with `PRISMA_SCHEMA_ENGINE_BINARY=<fake> PRISMA_QUERY_ENGINE_LIBRARY=<fake> PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING=1 npx prisma generate --no-engine` (engines CDN blocked); Playwright's chromium-1217 satisfied by symlinking the pre-installed 1194 build under /opt/pw-browsers.
+- **Last updated by:** cloud implementation session (claude-fable-5), 2026-08-07 — DA-2 glyph-primitive migration (new kit `GlyphSwap`, new gate `test:glyph-motion`) + DA-6 ATOM J (§M in the authority, EXTEND.md deleted). ⚠️ PUSH PENDING: the cloud git proxy refuses writes until Ali adds `alisheib/kipindi` to the session's authorized sources — commits are stacked locally on `main` and push the moment access lands. test:all 182/188 (only the documented reds + server-needing suites; the new suite is green), qa:live 120/1 identical to clean-HEAD baseline. ⚠️ Fresh-container note: Node 24 installed from the npm `node-linux-x64` package (nodejs.org is 403 through the proxy); Prisma client generates with `PRISMA_SCHEMA_ENGINE_BINARY=<fake> PRISMA_QUERY_ENGINE_LIBRARY=<fake> PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING=1 npx prisma generate --no-engine` (engines CDN blocked); Playwright's chromium-1217 satisfied by symlinking the pre-installed 1194 build under /opt/pw-browsers.
 
 > When you finish an item: tick it in §5/§6, update the counters in §4, and rewrite this
 > block (status / active session / next action / last updated). One session owns `main`
@@ -89,8 +89,8 @@ already doing.
 - **Session C (platform front-end):** 0 / ~17 findings done
 - **Visual set (design):** 1 / 7 done
 - **DS · design-consistency sweep (toasts/popups/modals):** 4 / 27 done
-- **DA · design-system atoms (carried over from design session):** 4 / 12 done (2 need Ali)
-- **TOTAL:** 17 / ~92 done
+- **DA · design-system atoms (carried over from design session):** 5 / 12 done (2 need Ali)
+- **TOTAL:** 18 / ~92 done
 
 ---
 
@@ -191,7 +191,7 @@ already doing.
 - [ ] DA-3 **E-112** — the five Up & Down stake chips render **26px** against the platform's own **40px** money-control floor, and they decide how much a player stakes → raise to the 40px floor. *(Overlaps UD-9 / tap-target work — do together.)*
 - [ ] DA-4 **E-114** — the refund toast paints a confirmation **tick** over a returned stake → use the `factual` variant (no tick, no gold). *(Same defect family as UD-12 / the LOSS-toast fix — do together.)*
 - [ ] DA-5 **E-115 · the money atom** — ⛔ crosses into `src/lib/server/`; needs **ledger verification + a fresh money census**. Gate under Session A money rules; full `test:all` before push. Overlaps `.gilt-ink` (DA-7).
-- [ ] DA-6 **ATOM J** — fold M1–M8 into `DESIGN_AUTHORITY.md`, then delete `EXTEND.md` and the merged `material.css` sections. ⚠️ **M6's text must land saying THREE gates — the delivery's wording says two; fix to three.**
+- [x] DA-6 **ATOM J** — fold M1–M8 into `DESIGN_AUTHORITY.md`, then delete `EXTEND.md` and the merged `material.css` sections. ⚠️ **M6's text must land saying THREE gates — the delivery's wording says two; fix to three.** — DONE 2026-08-07: `DESIGN_AUTHORITY.md` gains **§M (M1–M8)** in the authority's voice, stating the law AS SHIPPED (measured gold ×1.2011/E-124, 24% wash cap/E-130, rung-independent `.mat-tint-*`, E-129 focus outline, `.g-ring` on `--m-glide`); **M6 names THREE gates** (prefers-reduced-motion clamp incl. delay/E-126 · `html.kp-reduce-motion` mirror · `[data-motion="reduced"]` low-end-Android throttle/E-125). `EXTEND.md` `git rm`'d; the stale "out for commission" banner in the authority replaced with the delivered/merged record; every current-law pointer to EXTEND.md re-aimed at §M (two gate headers, glyph-swap, glyph-motion gate, 11-material README + material.css header, NEXT-SESSION table). `material.css`'s §A/§B/§C were already deleted at merge (sessions 34–35); §D stays — its migration map is NOT finished, per its own rule.
 - [ ] DA-7 **`.gilt-ink`** — money amounts as struck type; needs the celebration/payout surfaces, which overlap DA-5 (E-115) — sequence after/with it.
 
 **Filed cleanups (not yet swept):**

@@ -5,7 +5,7 @@
  * toggled glyph pair (bell→ringing, eye→eye-off, watch→watching) inherits the
  * one swap vocabulary by taking a class instead of hand-rolling motion.
  *
- * M5 (DESIGN_AUTHORITY §M / EXTEND.md): a glyph moves for a reason, and all 178
+ * M5 (DESIGN_AUTHORITY §M5): a glyph moves for a reason, and all 178
  * move the same way — four primitives, triggered by mount, data change or state
  * change, NEVER hover. This wrapper fires `glyph-swap-in` only when `state`
  * CHANGES: the first render is an arrival, not a morph, so it renders static.

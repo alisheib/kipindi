@@ -18,7 +18,7 @@ into `src/` and landed the first surfaces. What is left is **adoption**, not law
 > | §C utility classes **taken by a component** | ⚠️ **2 of 31** |
 > | surfaces that have picked a rung | cards (rung 1) · kit `Modal` (rung 3) · money-in CTA (`.gilt-metal`) |
 > | M1 one-sided lamps anywhere in `src/**` | **0**, over 6 stylesheets **+ 430 component files** |
-> | `EXTEND.md` M1–M8 → `DESIGN_AUTHORITY.md` §M | ⚪ not done (ATOM J) |
+> | `EXTEND.md` M1–M8 → `DESIGN_AUTHORITY.md` §M | ✅ merged, EXTEND.md deleted (ATOM J, DA-6, 2026-08-07) |
 >
 > ⛔ **§A, §B and §C were DELETED from `docs/design-system/v2-2026-07-27/11-material/material.css`
 > as they merged**, per that folder's own rule. Do not restore them from git to see what was

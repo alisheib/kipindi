@@ -4,7 +4,7 @@
  *   npm run test:reduce-motion            # the gate
  *   npm run red:reduce-motion             # the proof it can fail (mutates a COPY)
  *
- * THE LAW (design-system v2, 11-material/EXTEND.md M6):
+ * THE LAW (docs/DESIGN_AUTHORITY.md §M6):
  *   "Every mat / g / seal / crest state has a written prefers-reduced-motion
  *    branch AND the html.kp-reduce-motion mirror: end frames render, nothing
  *    invisible. A new animation lands with its branch in the same change or it

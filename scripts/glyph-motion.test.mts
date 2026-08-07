@@ -5,7 +5,7 @@
  *
  * Four primitives (`.g-settle`, `.g-nudge-up/-down`, `.g-ring`, `.g-swap*`) are the ONLY
  * motion a glyph may take. Triggers are mount, data change or state change — never hover.
- * A glyph with bespoke keyframes is a violation (DESIGN_AUTHORITY §M / EXTEND.md M5).
+ * A glyph with bespoke keyframes is a violation (DESIGN_AUTHORITY §M5).
  *
  * What this gate READS (the lesson of the three under-sized corpora, session 35): every
  * `.tsx` under src/ — components AND app routes — plus `src/app/motion.css` for the

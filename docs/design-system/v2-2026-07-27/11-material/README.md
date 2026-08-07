@@ -11,7 +11,7 @@
 > | **§B** 12 keyframes | `src/app/globals.css`, beside each family | ✅ merged · **deleted** |
 > | **§C** 29 utilities | `src/app/motion.css` | ✅ merged · **deleted** |
 > | **§D** migration map | — | ⚪ still in `material.css`; the migration is not finished |
-> | **`EXTEND.md`** M1–M8 | `docs/DESIGN_AUTHORITY.md` §M | ⚪ **not yet** — ATOM J |
+> | **`EXTEND.md`** M1–M8 | `docs/DESIGN_AUTHORITY.md` §M | ✅ merged 2026-08-07 (ATOM J) · **file deleted** |
 >
 > ⛔ **THE THREE MERGED SECTIONS WERE DELETED FROM `material.css`, AND THAT IS THE
 > INSTRUCTION RATHER THAN TIDYING** — see the paragraph below. Do not restore them from git
@@ -59,7 +59,7 @@ any of these numbers as a target** — E-116.
 | file | what it is | fate |
 |---|---|---|
 | `material.css` | now **the merge RECORD + §D**. §A, §B and §C were deleted from it as each landed (2026-08-07); what remains is where each went, the four places we departed from the delivery and why, and the unfinished §D migration map | ⛔ **delete §D when its last line is struck; then the file goes** |
-| `EXTEND.md` | **M1–M8, the material law**, written to merge into `docs/DESIGN_AUTHORITY.md` | ⚪ still here — delete once merged into the authority (ATOM J). ⚠️ **M6 must land saying THREE reduced-motion gates**; this text names two, and `theme-provider.tsx` writes a third for low-end Android (E-125) |
+| `EXTEND.md` | **M1–M8, the material law**, written to merge into `docs/DESIGN_AUTHORITY.md` | ✅ **merged and deleted** (ATOM J, 2026-08-07) — the law lives at `DESIGN_AUTHORITY.md` §M, written with the THREE reduced-motion gates (E-125) |
 | `MANIFEST.md` | the designer's own decisions of record + 8 open items | **keep** — provenance |
 | `DESIGNER-QUESTIONS.md`, `-R2.md` | the questions we asked and the answers that settled them | **keep** — this is *why* each decision is what it is |
 | `spec/spec.html` | the live spec — open it in a browser. Self-contained | **keep** — provenance |
@@ -102,7 +102,7 @@ part most likely to be skipped.
 
 ---
 
-## The eight laws, in one line each (full text in `EXTEND.md`)
+## The eight laws, in one line each (full text: `docs/DESIGN_AUTHORITY.md` §M)
 
 | | |
 |---|---|
