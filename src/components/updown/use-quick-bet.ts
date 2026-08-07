@@ -113,9 +113,27 @@ export function useUpDownQuickBet(opts: {
   /** Placement is allowed only when the chosen amount is usable. */
   const stakeReady = customMode ? customValid : presetStake > 0;
 
-  const [optUp, setOptUp] = useState(0);
-  const [optDown, setOptDown] = useState(0);
+  // UD-7 · the optimistic ledger is a MAP keyed by idempotency key, not two counters.
+  // With ≥2 bets in flight, counters let a reconcile landing between a success and a
+  // late failure briefly overstate "You're in". Each flight is tracked individually:
+  // in-flight → counted; success → marked settled (still counted — the server hasn't
+  // shown it yet); failure → deleted (its rollback); server truth advancing → settled
+  // entries deleted (their money is now IN myUp/myDownStake), in-flight ones KEPT.
+  // The displayed stake can never exceed server truth + genuinely-in-flight stakes.
+  type Flight = { side: "UP" | "DOWN"; amount: number; settled: boolean };
+  const flightsRef = useRef<Map<string, Flight>>(new Map());
+  const [, setFlightTick] = useState(0);
+  const mutateFlights = (fn: (m: Map<string, Flight>) => void) => {
+    fn(flightsRef.current);
+    setFlightTick((t) => t + 1);
+  };
+  let optUp = 0, optDown = 0;
+  for (const f of flightsRef.current.values()) {
+    if (f.side === "UP") optUp += f.amount; else optDown += f.amount;
+  }
   const [pending, startBet] = useTransition();
+  // UD-7 · auth loss mid-flight: true while we round-trip to sign-in (no failure toast).
+  const [signingIn, setSigningIn] = useState(false);
   // UD-3 · the server has spoken: SELECTION_CLOSED arrived, so the controls must not
   // keep offering what buyPosition refuses. Surfaces read this (or take onServerLocked)
   // to flip to the locked presentation without waiting for the poll.
@@ -127,11 +145,17 @@ export function useUpDownQuickBet(opts: {
   const [liveMessage, setLiveMessage] = useState("");
   const nonce = useRef(0);
 
-  // Server truth advanced (the surface's poller refreshed) ⇒ drop the optimistic
-  // deltas; the fresh myUp/myDownStake already contains the bets we placed, so keeping
-  // them would double-count. Keyed on the raw server values so it fires only when they
-  // actually change — not on every optimistic tap.
-  useEffect(() => { setOptUp(0); setOptDown(0); }, [myUpStake, myDownStake]);
+  // Server truth advanced (the surface's poller refreshed) ⇒ drop the SETTLED flights
+  // (the fresh myUp/myDownStake already contains them — keeping them would
+  // double-count) but KEEP the genuinely in-flight ones: that is UD-7's fix — the old
+  // clear-everything reset made a reconcile mid-burst zero a bet that was still on the
+  // wire. Keyed on the raw server values so it fires only when they actually change.
+  useEffect(() => {
+    mutateFlights((m) => {
+      for (const [k, f] of m) if (f.settled) m.delete(k);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myUpStake, myDownStake]);
   const shownUp = myUpStake + optUp;
   const shownDown = myDownStake + optDown;
 
@@ -188,11 +212,13 @@ export function useUpDownQuickBet(opts: {
       }
     }
     const amount = stake;
-    // Optimistic first — the tap feels instant even before the round-trip returns.
-    if (side === "UP") setOptUp((v) => v + amount); else setOptDown((v) => v + amount);
     const key =
       (globalThis.crypto?.randomUUID?.() as string | undefined) ??
       `${marketId}-${side}-${amount}-${optUp + optDown}`;
+    // Optimistic first — the tap feels instant even before the round-trip returns.
+    // UD-7 · one ledger entry per flight, keyed by the SAME idempotency key the server
+    // sees, so success/failure/reconcile each touch exactly their own bet.
+    mutateFlights((m) => m.set(key, { side, amount, settled: false }));
     startBet(async () => {
       const fd = new FormData();
       fd.set("marketId", marketId);
@@ -228,8 +254,10 @@ export function useUpDownQuickBet(opts: {
           // UD-5 · committed money must show on the committing surface: arm the
           // falling-edge refresh (one per burst — see the effect above).
           settledRef.current = true;
+          // UD-7 · settled: still counted until the server's own numbers include it.
+          mutateFlights((m) => { const f = m.get(key); if (f) f.settled = true; });
         } else {
-          if (side === "UP") setOptUp((v) => Math.max(0, v - amount)); else setOptDown((v) => Math.max(0, v - amount));
+          mutateFlights((m) => m.delete(key));
           // UD-4 · the player reads THEIR language, keyed off the refusal code; the raw
           // service string (EN / EN·SW) is a fallback only when no code arrived.
           const code = r && "code" in r && r.code != null ? String(r.code) : null;
@@ -251,8 +279,20 @@ export function useUpDownQuickBet(opts: {
             toast({ title: copy.failed, description: message, variant: "danger", durationMs: 0 });
           }
         }
-      } catch {
-        if (side === "UP") setOptUp((v) => Math.max(0, v - amount)); else setOptDown((v) => Math.max(0, v - amount));
+      } catch (e) {
+        mutateFlights((m) => m.delete(key));
+        // UD-7 · a session expiring mid-flight makes the action REDIRECT (it never
+        // returns), which the old generic catch dressed as "Bet not placed" while the
+        // router yanked the player to sign-in. A redirect is not a failure: no toast,
+        // a "signing in" state, and a clean round-trip that comes BACK to this surface
+        // (the action's own redirect carries no next=).
+        const digest = (e as { digest?: string } | null)?.digest;
+        if (typeof digest === "string" && digest.startsWith("NEXT_REDIRECT")) {
+          setSigningIn(true);
+          const next = encodeURIComponent(window.location.pathname + window.location.search);
+          window.location.href = `/auth/login?next=${next}`;
+          return;
+        }
         toast({ title: copy.failed, variant: "danger", durationMs: 0 });
       }
     });
@@ -264,6 +304,8 @@ export function useUpDownQuickBet(opts: {
     insufficient,
     /** UD-3 · the server said SELECTION_CLOSED — surfaces flip to locked immediately. */
     serverLocked,
+    /** UD-7 · session expired mid-flight; we are round-tripping to sign-in (not a failure). */
+    signingIn,
     shownUp, shownDown, pending, place,
     // custom amount
     min, max, customMode, customValue, setCustomValue, customValid, enterCustom, exitCustom,

@@ -322,7 +322,7 @@ async function freshRound() {
   ok("7b.3 · ⛔ the hook refuses place() past the lock instant — no optimistic bump, no request",
      hook.includes("selectionClosesAtMs") &&
      /nowMs >= opts\.selectionClosesAtMs/.test(hook) &&
-     hook.indexOf("nowMs >= opts.selectionClosesAtMs") < hook.indexOf("setOptUp((v) => v + amount)"),
+     hook.indexOf("nowMs >= opts.selectionClosesAtMs") < hook.indexOf("m.set(key, { side, amount, settled: false })"),
      "the guard must run BEFORE the optimistic apply");
   ok("7b.4 · the board card threads its lock instant into the hook (belt-and-braces on every surface)",
      readFileSync("src/components/updown/updown-card.tsx", "utf8").includes("selectionClosesAtMs: selectionClosesAtMs ?? null"));

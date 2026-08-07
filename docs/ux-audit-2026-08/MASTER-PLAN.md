@@ -13,7 +13,7 @@
 
 - **Overall status:** IMPLEMENTING — Session A COMPLETE (7/7); Phase 2 core design set under way (toast rung 4, DA-8, DA-9, DA-2, DA-6, DS-2, DS-3, DS-4 done).
 - **Active session:** ⚠️ OWNERSHIP RETURNED TO THE CLOUD SESSION 2026-08-07: the local session on F:\ imported the bundle, pushed through DS-3 and STOPPED COMPLETELY (Ali confirmed). The cloud session (claude-fable-5, working a clone of `origin/main`; the F:\ tree is idle — do not edit there) owns everything again — money, Up & Down, platform, all design work.
-- **Next action:** UD-7 (in-flight delta map keyed by idempotency key + auth-loss "signing in" state), then Stage 3 (UD-8/9/10/13/14/15/16 — do DA-3's 40px stake chips with UD-9). Do DA-3 (E-112 stake chips to the 40px floor) together with the UD-9 tap-target item when Stage 3 reaches it; DA-4 (E-114 refund-toast tick) alongside UD-12.
+- **Next action:** Session B Stage 3 (UD-8 gold Confirm spinner · UD-9 per-tap in-flight signal — do DA-3's 40px stake chips WITH it · UD-10 NavProgress guards · UD-13 tab switch keeps board · UD-14 skeleton geometry · UD-15 error.tsx ×3 · UD-16 nav-dead-zone). Re-verify each `file:line` against HEAD first — this session's Stage 1/2 work moved several of them. Do DA-3 (E-112 stake chips to the 40px floor) together with the UD-9 tap-target item when Stage 3 reaches it; DA-4 (E-114 refund-toast tick) alongside UD-12.
 - **Blocked on:** nothing. Only the §9 items need Ali; they are parked, work continues.
 - **Environment note:** tests MUST run under Node 24 (`/opt/node24` in the cloud session). Under Node 22, tsx dual-instantiates modules and the seam-patching suites (late-bet, settlement-gate) fail falsely. Cloud sandbox extras: Google Fonts is blocked, so `next build` fails locally — verify CSS atoms on production via `npm run qa:bundle-css -- --live` after the deploy; `qa:live` runs with `QA_OFFLINE=1`; the local qa:live board has no live card on a fresh store, so "at least one bettable market exists" fails there — verified identical at clean HEAD, not a regression signal.
 - **Pre-existing red suites at `da231631` (verified identical before/after Session A; NOT caused by this work):** `test:kyc-doc-metadata` (1 fail), `test:updown-push` (1 fail, §2 suppression-gate else-branch), `test:orphans` (sessions 29–35 left unwired live-QA scripts), `test:updown-admin-options` (2 fails). `test:trilingual` is flaky (random poll fixture; passes on re-run). `test:prisma-delegate` needs the Prisma engine binary — unavailable in the cloud sandbox (blocked CDN), fine on Ali's machine. Fix the updown ones during Session B, orphans/kyc during the sweep/cleanup phases.
@@ -85,12 +85,12 @@ already doing.
 ## 4 · Progress counters (update as you go)
 
 - **Session A (money/ops):** 7 / 7 items done
-- **Session B (Up & Down):** 7 / 22 findings done (Stage 1 COMPLETE; Stage 2: UD-5/6 done, UD-7 next)
+- **Session B (Up & Down):** 8 / 22 findings done (Stages 1 + 2 COMPLETE)
 - **Session C (platform front-end):** 0 / ~17 findings done
 - **Visual set (design):** 1 / 7 done
 - **DS · design-consistency sweep (toasts/popups/modals):** 4 / 27 done
 - **DA · design-system atoms (carried over from design session):** 5 / 12 done (2 need Ali)
-- **TOTAL:** 24 / ~92 done
+- **TOTAL:** 25 / ~92 done
 
 ---
 
@@ -122,7 +122,7 @@ already doing.
 **Stage 2 (P1 freshness):**
 - [x] UD-5 round-page + wallet pill refresh after bet — DONE 2026-08-07 with UD-6 (one mechanism): the hook dispatches `50pick:refresh` on the FALLING EDGE of its pending transition (useDeferredToast mirror, zero setTimeout), armed by the success branch; both pages' RefreshPoller (round page listens via refreshCadence mount) pick it up, so pool figures, `myExactPayout` and the top-bar pill move within a beat. No `wallet:balance` SSE emit added (per the report — event-refresh suffices, touches no money code).
 - [x] UD-6 one board refresh per tap burst (remove `/updown` from action revalidate) — DONE 2026-08-07, option (a): `revalidatePath("/updown")` removed from `buyPositionAction` (orchestration, not money — the ONE server-file edit Report 1 licenses); the falling-edge event is the single reconciliation per burst; the poller's 5s dedupe absorbs overlap. Guard: `test:updown-quickbet` §32 (4 checks: no per-tap revalidate, other four revalidates intact, falling-edge dispatch, success-armed).
-- [ ] UD-7 in-flight delta map / concurrent-tap rollback
+- [x] UD-7 in-flight delta map / concurrent-tap rollback — DONE 2026-08-07: the optimistic ledger is a Map keyed by the SAME idempotency key the server sees (in-flight → counted · success → `settled`, still counted · failure → deleted · server advance → **only settled entries cleared, in-flight survive the reconcile**), so the shown stake can never exceed server truth + genuinely-in-flight stakes and a mid-burst refresh no longer zeroes a bet on the wire. Auth loss mid-flight: `NEXT_REDIRECT` detected in the catch → no failure toast, `signingIn` state, clean `/auth/login?next=<this surface>` round-trip. Guard: `test:updown-quickbet` §33 (5 checks; §29.6 + window 7b.3 anchors re-pinned to the map apply).
 
 **Stage 3 (P1 loaders/transitions/boundaries):**
 - [ ] UD-8 gold Confirm spinner · [ ] UD-9 per-tap in-flight signal + queued escalation

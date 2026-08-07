@@ -282,7 +282,7 @@ async function mine(userId: string | undefined): Promise<{ up: number; down: num
   const panel = readFileSync("src/components/updown/round-stake-panel.tsx", "utf8");
   ok("29.6 · ⛔ the hook's place() refuses BEFORE the optimistic apply",
      hook.indexOf("insufficientFor(opts.walletBalance") > 0 &&
-     hook.indexOf("insufficientFor(opts.walletBalance") < hook.indexOf("setOptUp((v) => v + amount)"));
+     hook.indexOf("insufficientFor(opts.walletBalance") < hook.indexOf("m.set(key, { side, amount, settled: false })"));
   ok("29.7 · both place buttons disable on insufficient (board control)",
      (controls.match(/disabled=\{!bet\.stakeReady \|\| bet\.insufficient\}/g) ?? []).length === 2);
   ok("29.8 · the round page's gold Confirm disables too",
@@ -369,6 +369,27 @@ async function mine(userId: string | undefined): Promise<{ up: number; down: num
      !/setTimeout\([^)]*50pick:refresh/.test(hook));
   ok("32.4 · …armed by the SUCCESS branch (committed money is what must show)",
      hook.indexOf("settledRef.current = true") > hook.indexOf('if (r && "ok" in r && r.ok)'));
+}
+
+// ═══ §33 · UD-7 (ux-audit 2026-08) — the optimistic ledger is a per-flight MAP ══════════════
+// Two counters overstated "You're in" when a reconcile landed between a success and a late
+// failure; a session expiring mid-flight showed "Bet not placed" AND yanked to sign-in.
+{
+  const { readFileSync } = await import("node:fs");
+  const hook = readFileSync("src/components/updown/use-quick-bet.ts", "utf8");
+  ok("33.1 · ⭐ each flight is tracked by its own idempotency key (a Map, not two counters)",
+     hook.includes("flightsRef") && hook.includes("m.set(key, { side, amount, settled: false })") &&
+     !hook.includes("setOptUp("));
+  ok("33.2 · success marks the flight SETTLED (still counted until server truth shows it)",
+     hook.includes("f.settled = true"));
+  ok("33.3 · failure deletes exactly its own flight (its rollback, nobody else's)",
+     (hook.match(/m\.delete\(key\)/g) ?? []).length === 2, "server-refusal + thrown paths");
+  ok("33.4 · ⛔ a server advance clears ONLY settled flights — in-flight bets survive the reconcile",
+     /if \(f\.settled\) m\.delete\(k\)/.test(hook));
+  ok("33.5 · auth loss mid-flight is NOT a failure: no toast, a signing-in state, and next= back to this surface",
+     hook.includes('digest.startsWith("NEXT_REDIRECT")') && hook.includes("setSigningIn(true)") &&
+     hook.includes("/auth/login?next=") &&
+     hook.indexOf('digest.startsWith("NEXT_REDIRECT")') < hook.indexOf('toast({ title: copy.failed, variant: "danger", durationMs: 0 })'));
 }
 
 console.log(`\nupdown-quickbet: ${pass} passed, ${fail} failed`);
