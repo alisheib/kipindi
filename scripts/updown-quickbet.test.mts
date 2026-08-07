@@ -348,6 +348,29 @@ async function mine(userId: string | undefined): Promise<{ up: number; down: num
      card.includes("!bet.serverLocked") && panel.includes("lockedByServer"));
 }
 
+// ═══ §32 · UD-5 + UD-6 (ux-audit 2026-08) — one reconciliation per tap BURST ════════════════
+// Committed money must show on the committing surface within a beat (UD-5), and a burst of
+// taps must cost ONE board reconciliation, not N full renders (UD-6). One mechanism serves
+// both: the hook dispatches `50pick:refresh` on the falling edge of its transition, and the
+// per-tap `/updown` revalidate is gone from the action.
+{
+  const { readFileSync } = await import("node:fs");
+  const actions = readFileSync("src/app/markets/actions.ts", "utf8");
+  const buyBody = actions.slice(actions.indexOf("export async function buyPositionAction"),
+                                actions.indexOf("export async function cashOutPositionAction"));
+  ok("32.1 · ⭐ buyPositionAction no longer revalidates /updown per tap (UD-6a, the preferred option)",
+     !buyBody.includes('revalidatePath("/updown")'),
+     "each tap re-ran getBoard and reset the optimistic deltas mid-burst");
+  ok("32.2 · …while the other four revalidates stay",
+     ["/markets", "/positions", "/wallet"].every((p) => buyBody.includes(`revalidatePath("${p}")`)));
+  const hook = readFileSync("src/components/updown/use-quick-bet.ts", "utf8");
+  ok("32.3 · the hook dispatches 50pick:refresh on the FALLING EDGE of pending (the deferred-toast mirror, no setTimeout)",
+     hook.includes('new Event("50pick:refresh")') && /if \(!pending && settledRef\.current\)/.test(hook) &&
+     !/setTimeout\([^)]*50pick:refresh/.test(hook));
+  ok("32.4 · …armed by the SUCCESS branch (committed money is what must show)",
+     hook.indexOf("settledRef.current = true") > hook.indexOf('if (r && "ok" in r && r.ok)'));
+}
+
 console.log(`\nupdown-quickbet: ${pass} passed, ${fail} failed`);
 if (fail > 0) { console.error("\n✗ QUICK-BET BROKEN — the one-tap card would mischarge or misreport the player's position.\n"); process.exit(1); }
 console.log("updown-quickbet: OK — one tap places once, duplicates pay once, distinct taps stack, 'you're in' is per-viewer, bad taps refused");

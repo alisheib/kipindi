@@ -148,6 +148,22 @@ export function useUpDownQuickBet(opts: {
   // burst has already staked optimistically. Pure rule in stake-math (tested).
   const insufficient = stakeReady && insufficientFor(opts.walletBalance, optUp + optDown, stake);
 
+  // UD-5/UD-6 · ONE surface reconciliation per tap BURST, on the falling edge of the
+  // transition (the `useDeferredToast` mirror — never a setTimeout). The success branch
+  // arms it; when the last in-flight bet settles, one `50pick:refresh` reaches the
+  // page's own RefreshPoller (board and round page both mount one; its 5s dedupe
+  // absorbs the interval overlap). This is what moves the pool figures, `myExactPayout`
+  // and the top-bar balance pill on the committing surface within one beat — and it
+  // replaces the per-tap `/updown` revalidate that re-rendered the whole board N× per
+  // burst (UD-6a, the preferred option).
+  const settledRef = useRef(false);
+  useEffect(() => {
+    if (!pending && settledRef.current) {
+      settledRef.current = false;
+      window.dispatchEvent(new Event("50pick:refresh"));
+    }
+  }, [pending]);
+
   const place = (side: "UP" | "DOWN") => {
     if (!marketId || !stakeReady) return;
     // UD-1 · a predictably-doomed tap is PREVENTED, not round-tripped: no optimistic
@@ -209,6 +225,9 @@ export function useUpDownQuickBet(opts: {
           // Named token from the central vocabulary (respects the master switch,
           // per-token prefs and reduced-motion) — not a raw navigator.vibrate.
           haptics.confirm();
+          // UD-5 · committed money must show on the committing surface: arm the
+          // falling-edge refresh (one per burst — see the effect above).
+          settledRef.current = true;
         } else {
           if (side === "UP") setOptUp((v) => Math.max(0, v - amount)); else setOptDown((v) => Math.max(0, v - amount));
           // UD-4 · the player reads THEIR language, keyed off the refusal code; the raw
