@@ -85,12 +85,12 @@ already doing.
 ## 4 · Progress counters (update as you go)
 
 - **Session A (money/ops):** 7 / 7 items done
-- **Session B (Up & Down):** 14 / 22 findings done (Stages 1–3 complete)
+- **Session B (Up & Down):** 22 / 22 findings done — ALL FOUR STAGES COMPLETE (UD-12 was [S], shipped by DS-1)
 - **Session C (platform front-end):** 0 / ~17 findings done
 - **Visual set (design):** 1 / 7 done
 - **DS · design-consistency sweep (toasts/popups/modals):** 4 / 27 done
-- **DA · design-system atoms (carried over from design session):** 4 / 12 done (2 need Ali)
-- **TOTAL:** 30 / ~92 done
+- **DA · design-system atoms (carried over from design session):** 5 / 12 done (2 need Ali)
+- **TOTAL:** 39 / ~92 done
 
 ---
 
@@ -134,9 +134,14 @@ already doing.
 - [x] UD-16 controls are a nav-dead-zone — the quick-bet block wrapper swallows click + Enter/Space bubbling; header/countdown/stats keep card-as-link.
 
 **Stage 4 (P2):**
-- [ ] UD-11 BackLink nav bar · [ ] UD-12 toast `role=alert` · [ ] UD-17 rollover slot settle (ask Ali a/b)
-- [ ] UD-18 history `<Link>` · [ ] UD-19 history poller + EAT dates · [ ] UD-20 hedged-player payout line
-- [ ] UD-21 aria-live re-announce · [ ] UD-22 paused-chain empty state
+- [x] UD-11 BackLink nav bar — dispatches `50pick:navigating` before back()/push (the card's exact idiom), so the section's highest-traffic exit gets the gold bar.
+- [S] UD-12 toast `role=alert` — already shipped with DS-1: `role={variant === "danger" ? "alert" : "status"}` verified at toast.tsx:367.
+- [x] UD-17 rollover slot settle — option (a) implemented as the recommended default (Ali asked, no answer yet — flip to (b) on his word): a freshly-MOUNTED bettable card ignores pointer events for ~300ms; a card that merely moved slots keeps its React key and gets no guard.
+- [x] UD-18 history `<Link>` — the round cards use next/link (div fallback kept); no more MPA reload + NavProgress double-signal.
+- [x] UD-19 history poller + EAT dates — `RefreshPoller` mounted iff an in-play round is on screen (rule-shaped); `fmtDate` now renders Africa/Nairobi with the zone stated, matching the settlement proof.
+- [x] UD-20 hedged-player payout line — VERIFIED REAL and worse than filed: `myExactPayout` priced `myUpStake + myDownStake` as if ALL of it sat on the preferred side, so a hedger's locked card quoted a wrong figure (A-5 grade). Now null for hedged holders (the surfaces already suppress on null) — one number cannot state a two-sided position. Per-side figures available if Ali wants both outcomes quoted (§9).
+- [x] UD-21 aria-live re-announce — ZWSP suffix alternating on the nonce; identical consecutive bets re-voice without changing what is spoken.
+- [x] UD-22 paused-chain empty state — when the asset+duration resolves to a real chain, "Between rounds · The next {n}-minute round is being prepared" (EN/SW/ZH) instead of "no rounds"; deliberately promises no cadence (rounds are operator-generated). ⚠️ Copy awaits Ali's sign-off (§9).
 
 ### Session C — Platform front-end sweeps (Report 2 remaining)
 
@@ -193,7 +198,7 @@ already doing.
 - [x] DA-1 **Toast** — repaint at elevation rung 4 (M2 says rung 4; it currently paints rung 1); the six variants sit on a flat fill and each hand-writes a border the tints now compose — drive borders from the composed tints, not per-variant literals. *(This IS the core of DS-1 + V-5 + UD-3 — do them as one.)* — DONE with DS-1; contrast corpus rebased onto the wash stops.
 - [ ] DA-2 **The 178 glyphs (M5)** — four glyph primitives exist, zero glyphs use them yet; migrate all 178 onto the primitives.
 - [x] DA-3 **E-112** — the five Up & Down stake chips render **26px** against the platform's own **40px** money-control floor, and they decide how much a player stakes → raise to the 40px floor. *(Overlaps UD-9 / tap-target work — do together.)*
-- [ ] DA-4 **E-114** — the refund toast paints a confirmation **tick** over a returned stake → use the `factual` variant (no tick, no gold). *(Same defect family as UD-12 / the LOSS-toast fix — do together.)*
+- [x] DA-4 **E-114** — done with UD-12/Stage 4: the VOID/refund toast now uses the `factual` variant (the tick is gone from returned stakes); same register as the LOSS toast. — the refund toast paints a confirmation **tick** over a returned stake → use the `factual` variant (no tick, no gold). *(Same defect family as UD-12 / the LOSS-toast fix — do together.)*
 - [ ] DA-5 **E-115 · the money atom** — ⛔ crosses into `src/lib/server/`; needs **ledger verification + a fresh money census**. Gate under Session A money rules; full `test:all` before push. Overlaps `.gilt-ink` (DA-7).
 - [ ] DA-6 **ATOM J** — fold M1–M8 into `DESIGN_AUTHORITY.md`, then delete `EXTEND.md` and the merged `material.css` sections. ⚠️ **M6's text must land saying THREE gates — the delivery's wording says two; fix to three.**
 - [ ] DA-7 **`.gilt-ink`** — money amounts as struck type; needs the celebration/payout surfaces, which overlap DA-5 (E-115) — sequence after/with it.
@@ -269,6 +274,9 @@ the session should surface them to Ali and continue with everything else meanwhi
 - **Q8** Up & Down top-nav treatment — final placement/style.
 - **DA-P** The kit `<Modal>` rendered photograph for the design record needs an OPEN market live on the board at capture time.
 
+- **UD-17 (2026-08-07):** option (a) — the invisible 300ms tap-guard — is implemented as the recommended default. Say the word and it becomes (b) (fixed slots + enter transition).
+- **UD-20 (2026-08-07):** a hedged player's locked card now shows NO payout line (one number cannot state a two-sided position). If you want it to quote BOTH outcomes ("You win X if Up / Y if Down"), that is a payload+card change — say so.
+- **UD-22 (2026-08-07):** the between-rounds copy needs your sign-off: EN "Between rounds — The next {n}-minute round is being prepared. Stay close — it opens here." (+SW/ZH equivalents in i18n-dict).
 - **UD-4 note (2026-08-07):** the RG daily-loss refusal returns `code: "INVALID"` (same as a bounds error), so the client routes it to the acknowledge-modal by matching the refusal's stable phrase. A dedicated `RG_LIMIT` code in `buyPosition` would be cleaner — but that file is under the money-guardrail, so it is Ali's call, not this session's.
 
 > When Ali answers, record the decision here (one line each) and unblock DA-Q / the affected atoms.

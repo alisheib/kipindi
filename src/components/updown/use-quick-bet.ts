@@ -279,7 +279,17 @@ export function useUpDownQuickBet(opts: {
           mutateInFlight((m) => { const e = m.get(key); if (e) m.set(key, { ...e, settled: true }); });
           nonce.current += 1;
           setJustPlaced({ side, amount, nonce: nonce.current });
-          setLiveMessage(`${copy.placed} · ${side === "UP" ? copy.up : copy.down} · ${formatTzs(amount)}`);
+          // UD-21 · re-announce IDENTICAL consecutive bets. Two same-side same-stake taps
+          // set the same string, and most screen readers do not re-voice unchanged
+          // live-region content — so the second bet was silent for SR users, the E-64 gap
+          // one channel down. A zero-width-space suffix alternating on the nonce changes
+          // the NODE without changing what is spoken. (Chosen over "total so far" copy
+          // because the async closure would need a ref-carried running total; invisible
+          // and stale-proof beats richer-but-derivable.)
+          setLiveMessage(
+            `${copy.placed} · ${side === "UP" ? copy.up : copy.down} · ${formatTzs(amount)}` +
+            "\u200B".repeat(nonce.current % 2),
+          );
           // ⛔ The toast does NOT replace the line above. A toast is a transient region a
           // screen reader may never voice; `aria-live` is the announcement, this is the
           // sighted equivalent. Both, always.

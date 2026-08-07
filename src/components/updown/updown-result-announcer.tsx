@@ -107,10 +107,14 @@ export function UpDownResultAnnouncer({ rounds }: { rounds: AnnounceableRound[] 
       if (res.status === "VOID") {
         // A refund is neither a win nor a loss and must say so in its own words. The amount is
         // the stake that came back, which for a void IS the payout.
+        // ⛔ DA-4 (E-114) · `factual`, NOT `default` — the same reasoning as the LOSS toast
+        // below, one branch up: `default` paints checkCircle, a CONFIRMATION TICK, over a
+        // stake that merely came back. A refund is not an achievement and not an alarm; it
+        // is a fact, and the kit has a variant whose whole job is stating one.
         toast({
           title: t.market.udStakeReturnedTitle,
           description: `${sideWord} · ${formatTzs(res.payout)}`,
-          variant: "default",
+          variant: "factual",
           durationMs: 6000,
         });
         continue;

@@ -724,6 +724,8 @@ export const dict = {
       udDepositCta: "Deposit",
       udPlacing: "Placing…",
       udStillPlacing: "Still placing — busy moment, your tap is queued.",
+      udNextRoundSoon: "Between rounds",
+      udNextRoundSoonBody: "The next {n}-minute round is being prepared. Stay close — it opens here.",
       udSignInToBet: "Sign in to bet", udTapToBet: "Tap Up or Down to bet",
       udCustom: "Custom", udCustomAmount: "Custom stake amount", udStakeRange: "Outside the allowed range", udEnterStake: "Enter a stake to bet",
       // ── Up & Down · D3 round detail ──────────────────────────────────────
@@ -2138,6 +2140,8 @@ export const dict = {
       udDepositCta: "Weka pesa",
       udPlacing: "Inaweka…",
       udStillPlacing: "Bado inaweka — mfumo una shughuli, mguso wako uko kwenye foleni.",
+      udNextRoundSoon: "Kati ya raundi",
+      udNextRoundSoonBody: "Raundi inayofuata ya dakika {n} inaandaliwa. Kaa karibu — itafunguliwa hapa.",
       udSignInToBet: "Ingia ili kuweka dau", udTapToBet: "Gusa Juu au Chini kuweka dau",
       udCustom: "Maalum", udCustomAmount: "Kiasi maalum cha dau", udStakeRange: "Nje ya kiwango kinachoruhusiwa", udEnterStake: "Weka kiasi kucheza",
       // ── Up & Down · D3 round detail ──────────────────────────────────────
@@ -3524,6 +3528,8 @@ export const dict = {
       udDepositCta: "充值",
       udPlacing: "下注中…",
       udStillPlacing: "仍在下注——系统繁忙，您的操作已排队。",
+      udNextRoundSoon: "回合间歇",
+      udNextRoundSoonBody: "下一场 {n} 分钟回合正在准备中，即将在此开启。",
       udSignInToBet: "登录后下注", udTapToBet: "点击涨或跌下注",
       udCustom: "自定义", udCustomAmount: "自定义投注额", udStakeRange: "超出允许范围", udEnterStake: "输入投注额",
       // ── Up & Down · D3 round detail ──────────────────────────────────────

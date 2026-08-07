@@ -14,6 +14,7 @@ import { HashFocus } from "@/components/ui/hash-focus";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { I } from "@/components/ui/glyphs";
+import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { currentSession } from "@/lib/server/auth-service";
 import { getMyUpDownHistory, type MyRoundRow } from "@/lib/server/updown-board";
 import { getServerT } from "@/lib/i18n-server";
@@ -28,9 +29,16 @@ export async function generateMetadata() {
   return { title: t.market.udHistoryTitle };
 }
 
+// UD-19 · EAST AFRICA TIME, stated — the settlement proof on the round page speaks
+// EAT, and a player comparing their history row to the proof must not have to
+// convert time zones between two screens describing one bet.
 const fmtDate = (iso: string) => {
   const d = new Date(iso);
-  return Number.isFinite(d.getTime()) ? d.toISOString().slice(5, 16).replace("T", " ") + "Z" : "—";
+  if (!Number.isFinite(d.getTime())) return "—";
+  const s = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Africa/Nairobi", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false,
+  }).format(d);
+  return `${s} EAT`;
 };
 const usd = (n: number | null, d: number) => (n == null ? "—" : `$${n.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d })}`);
 
@@ -106,8 +114,14 @@ export default async function UpDownHistoryPage({ searchParams }: {
   const wins = settledRounds.filter((g) => g.returned > g.stake).length;
   const winRate = decided > 0 ? Math.round((wins / decided) * 100) : null;
 
+  // UD-19 · a history that lists LIVE rounds must move when they settle. Rule-shaped
+  // enablement, like `refreshCadence`: poll only while an in-play round is on screen;
+  // a page of finished rounds registers nothing.
+  const anyLive = rounds.some((g) => g.anyOpen);
+
   return (
     <div className="mx-auto w-full max-w-[1080px] px-4 py-6">
+      <RefreshPoller intervalMs={20_000} enabled={anyLive} />
       {/* E-101b · a `#pos_…` fragment names one card in this grid; this is what scrolls to it.
           Without it the anchors render, the ring applies, and the player still lands at the top. */}
       <HashFocus />
@@ -182,7 +196,12 @@ export default async function UpDownHistoryPage({ searchParams }: {
               const shown = g.bets.slice(0, 2);
               const extra = g.bets.length - shown.length;
               const roundLink = r.roundId ? `/updown/${r.roundId}` : null;
-              const CardTag: "a" | "div" = roundLink ? "a" : "div";
+              // ⛔ UD-18 · next/link, NOT a raw <a>. The anchor form made every click out
+              // of history a full document reload — the slowest navigation in the
+              // section, skipping the router cache and RouteTransition, with NavProgress
+              // firing over a white MPA reload (a double signal). The div fallback stays
+              // for rows whose round row is gone.
+              const CardTag = (roundLink ? Link : "div") as React.ElementType;
               return (
                 <CardTag
                   key={r.marketId}

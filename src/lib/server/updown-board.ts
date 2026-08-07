@@ -292,8 +292,17 @@ async function toBoardRound(
     myResult: mine?.result ?? null,
     // Only for a LOCKED round the viewer actually holds — see the field comment. `projectedPayout`
     // is the money path's own function, so this figure and the settled one cannot disagree.
+    //
+    // ⛔ UD-20 · NULL FOR A HEDGED HOLDER, and that null is a money-truth fix. Holding both
+    // sides is legal (repeat taps, either side), and this line used to price
+    // `myUpStake + myDownStake` as if ALL of it sat on the UP side — so a hedger's locked
+    // card read "You win X if Up" with an X computed from a stake that includes their DOWN
+    // money: a silently wrong figure on a money surface (A-5). One number cannot state a
+    // two-sided position; the surfaces suppress the line when this is null rather than
+    // print a half-truth. (Two per-side figures is the richer alternative — Ali's call if
+    // he wants the hedged card to quote both outcomes.)
     myExactPayout:
-      state === "locked" && myStake > 0
+      state === "locked" && myStake > 0 && (myUpStake === 0 || myDownStake === 0)
         ? await projectedPayout(m, myUpStake > 0 ? "YES" : "NO", myStake)
         : null,
     // ⭐ E-99 · the instant the result is genuinely expected, from THIS asset's own record.

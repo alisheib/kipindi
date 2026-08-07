@@ -163,7 +163,20 @@ export default async function UpDownPage({
             per-round Up & Down notifications STANDS; this renders data the page already has. */}
         <UpDownResultAnnouncer rounds={rounds.map((r) => ({ roundId: r.roundId, myResult: r.myResult }))} />
         {rounds.length === 0 ? (
-          <EmptyState title={t.market.udNoRounds} body={t.market.udNoRoundsBody} />
+          // ⭐ UD-22 · a chain between rounds is NOT an idle market. Rounds are
+          // operator-generated (E-67), so the gap between them showed the same copy as
+          // "nothing here today" and a player could not tell "wait a bit" from "leave".
+          // When the asset+duration resolves to a real chain, say the honest thing —
+          // the next round is being prepared — without promising a cadence manual
+          // generation does not guarantee. (Copy flagged for Ali's sign-off in §9.)
+          activeDuration != null ? (
+            <EmptyState
+              title={t.market.udNextRoundSoon}
+              body={t.market.udNextRoundSoonBody.replace("{n}", String(activeDuration))}
+            />
+          ) : (
+            <EmptyState title={t.market.udNoRounds} body={t.market.udNoRoundsBody} />
+          )
         ) : (
           <div className="grid items-stretch gap-4"
                style={{ gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))" }}>

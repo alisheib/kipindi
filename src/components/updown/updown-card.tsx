@@ -23,6 +23,7 @@
  *  · The footer shows the timestamp THE SOURCE published, never our boundary.
  */
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { cn, formatTzs } from "@/lib/utils";
@@ -318,6 +319,21 @@ export function UpDownCard(props: UpDownCardProps) {
   // router.refresh() per tap — the game is fast, so taps must feel instant; the
   // board's 20s poller reconciles server truth.
   const canQuickBet = bettable && !!marketId && isAuthed === true;
+
+  // ── UD-17 (option a — default per the audit's recommendation, 2026-08-07) ──
+  //
+  // At rollover the board's slots shift: the old current card moves to slot 2 and a
+  // NEW bettable card mounts under a pointer that may be mid-tap — a real-money
+  // mis-tap vector (the buttons are position-stable within a card; the card under the
+  // finger changes identity). A freshly-MOUNTED bettable card therefore ignores
+  // pointer events for ~300ms — invisible in normal use, and precisely scoped: the
+  // card that merely moved slots keeps its React identity (keyed by roundId) and gets
+  // no guard. Not motion, so no reduced-motion concern.
+  const [tapGuard, setTapGuard] = useState(true);
+  useEffect(() => {
+    const id = setTimeout(() => setTapGuard(false), 300);
+    return () => clearTimeout(id);
+  }, []);
   const bet = useUpDownQuickBet({
     marketId, minStake, maxStake, myUpStake, myDownStake,
     // UD-1/UD-2 · the pre-flight gates: the known balance, and the same lock instant +
@@ -361,7 +377,11 @@ export function UpDownCard(props: UpDownCardProps) {
     <article
       className={cn("mcardp group", cardPulse && "ud-place-pulse", className)}
       aria-label={`${assetName} ${t.market.udTitle} · ${durationMinutes} ${t.market.udMin}`}
-      style={{ cursor: "pointer", display: "flex", flexDirection: "column" }}
+      style={{
+        cursor: "pointer", display: "flex", flexDirection: "column",
+        // UD-17a · the settle window for a card that JUST mounted bettable.
+        pointerEvents: tapGuard && bettable ? "none" : undefined,
+      }}
       role="link"
       tabIndex={0}
       onClick={() => { window.dispatchEvent(new Event("50pick:navigating")); router.push(`/updown/${roundId}`); }}

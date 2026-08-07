@@ -20,6 +20,11 @@ export function BackLink({
     <button
       type="button"
       onClick={() => {
+        // UD-11 · programmatic navigations announce themselves so NavProgress runs —
+        // the exact idiom the Up & Down card uses. Without it, going BACK from a round
+        // (the highest-traffic exit of the section) showed no loader while every
+        // forward navigation got the gold bar: inconsistent perceived speed.
+        window.dispatchEvent(new Event("50pick:navigating"));
         // If there's real navigation history, go back.
         // window.history.length > 1 is true even on direct nav in some
         // browsers, so also check the referrer as a heuristic.
