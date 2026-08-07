@@ -5,7 +5,7 @@ import { useToast } from "@/components/ui/toast";
 import { buyPositionAction } from "@/app/markets/actions";
 import { formatTzs } from "@/lib/utils";
 import { haptics } from "@/lib/haptics";
-import { quickStakes, parseStake } from "./stake-math";
+import { quickStakes, parseStake, insufficientFor } from "./stake-math";
 import { useServerNow } from "./round-countdown";
 
 // Re-exported so existing importers of these helpers keep working.
@@ -75,8 +75,14 @@ export function useUpDownQuickBet(opts: {
    */
   selectionClosesAtMs?: number | null;
   serverNowMs?: number;
+  /**
+   * UD-1 · the SERVER-rendered wallet balance, for the pre-flight only. `null` =
+   * unknown (guest / failed read) and gates NOTHING — B-1: a failed read never
+   * invents an "insufficient". The server re-checks; this is UX, not the boundary.
+   */
+  walletBalance?: number | null;
   /** i18n copy — the hook stays language-agnostic. `placed` is the aria-live prefix. */
-  copy: { placed: string; failed: string; up: string; down: string; locked?: string };
+  copy: { placed: string; failed: string; up: string; down: string; locked?: string; insufficient?: string };
 }) {
   const { marketId, myUpStake = 0, myDownStake = 0, copy } = opts;
   const min = opts.minStake ?? 1_000;
@@ -122,8 +128,21 @@ export function useUpDownQuickBet(opts: {
   // which can only UNDER-lock; the server still refuses that race).
   const serverNow = useServerNow(opts.serverNowMs);
 
+  // UD-1 · the balance pre-flight, against the rendered balance minus what this
+  // burst has already staked optimistically. Pure rule in stake-math (tested).
+  const insufficient = stakeReady && insufficientFor(opts.walletBalance, optUp + optDown, stake);
+
   const place = (side: "UP" | "DOWN") => {
     if (!marketId || !stakeReady) return;
+    // UD-1 · a predictably-doomed tap is PREVENTED, not round-tripped: no optimistic
+    // bump, no request. The surface also disables the buttons + shows the inline
+    // reason; this guard is what stops a race past the disabled state.
+    if (insufficientFor(opts.walletBalance, optUp + optDown, stake)) {
+      const msg = copy.insufficient ?? copy.failed;
+      setLiveMessage(msg);
+      toast({ title: msg, variant: "factual" });
+      return;
+    }
     // UD-2 · the lock guard: a tap after the lock instant must never look like a
     // placed bet. Factual register — the round locked, the player did nothing wrong.
     if (opts.selectionClosesAtMs != null) {
@@ -187,6 +206,8 @@ export function useUpDownQuickBet(opts: {
 
   return {
     stakes, stakeIdx, setStakeIdx: pickPreset, stake, stakeReady,
+    /** UD-1 · true when the chosen stake exceeds the rendered balance (never for guests). */
+    insufficient,
     shownUp, shownDown, pending, place,
     // custom amount
     min, max, customMode, customValue, setCustomValue, customValid, enterCustom, exitCustom,

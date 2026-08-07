@@ -123,6 +123,8 @@ export type UpDownCardProps = {
   marketId?: string;
   /** Signed-out taps route to sign-in instead of placing. */
   isAuthed?: boolean;
+  /** UD-1 · server-rendered wallet balance for the bet pre-flight; null = unknown. */
+  walletBalance?: number | null;
   /** Quick-stake selector bounds (the chain's, else the platform default). */
   minStake?: number;
   maxStake?: number;
@@ -205,7 +207,7 @@ export function UpDownCard(props: UpDownCardProps) {
     pricing, state, outcome, closePrice, voidReason,
     sourceClass, sourceQuotedAt, className,
     selectionClosesAtMs, serverNowMs, myExactPayout, myRefundedStake,
-    marketId, isAuthed, minStake, maxStake, myUpStake = 0, myDownStake = 0,
+    marketId, isAuthed, walletBalance = null, minStake, maxStake, myUpStake = 0, myDownStake = 0,
     expectedResultAtMs = null,
   } = props;
   const { t } = useT();
@@ -327,7 +329,9 @@ export function UpDownCard(props: UpDownCardProps) {
     // UD-2 · belt-and-braces: the final-second race is refused locally, off the same
     // server-anchored instants the card's own phase derives from.
     selectionClosesAtMs: selectionClosesAtMs ?? null, serverNowMs,
-    copy: { placed: t.market.udBetPlaced, failed: t.market.udBetFailed, up: t.market.udUp, down: t.market.udDown, locked: t.market.udLockedTitle },
+    // UD-1 · rendered balance for the pre-flight; null (guest / failed read) gates nothing.
+    walletBalance,
+    copy: { placed: t.market.udBetPlaced, failed: t.market.udBetFailed, up: t.market.udUp, down: t.market.udDown, locked: t.market.udLockedTitle, insufficient: t.market.udInsufficientBalance },
   });
   // A placed bet pulses the whole card (non-intrusive confirmation, reduced-motion aware).
   const cardPulse = usePlacePulse(bet.justPlaced?.nonce);

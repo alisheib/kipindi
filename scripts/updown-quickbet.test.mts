@@ -258,6 +258,40 @@ async function mine(userId: string | undefined): Promise<{ up: number; down: num
   }
 }
 
+// ═══ §29 · UD-1 (ux-audit 2026-08) — the balance pre-flight, pure + wired ═══════════════════
+// A tap that is predictably doomed must never look like a placed bet. The rule is pure
+// (`insufficientFor`) so it is proven here; the structural checks pin the wiring that
+// historically regresses (guard ordered before the optimistic apply; surfaces threading
+// the rendered balance; buttons actually disabled).
+{
+  const { insufficientFor } = await import("../src/components/updown/stake-math.ts");
+  ok("29.1 · stake over the balance is insufficient", insufficientFor(1_000, 0, 1_500) === true);
+  ok("29.2 · stake equal to the balance is allowed (spend-to-zero is a real bet)",
+     insufficientFor(1_000, 0, 1_000) === false);
+  ok("29.3 · ⭐ an optimistic burst counts against the rendered balance",
+     insufficientFor(1_000, 600, 500) === true && insufficientFor(1_000, 500, 500) === false,
+     "without spentSinceTruth, six fast taps could each pass against the same rendered figure");
+  ok("29.4 · ⛔ a NULL balance (guest / failed read) gates NOTHING — B-1: a failed read never invents 'insufficient'",
+     insufficientFor(null, 0, 1_000_000) === false && insufficientFor(undefined, 0, 5) === false);
+  ok("29.5 · a zero/negative stake never reports insufficient (stakeReady owns that gate)",
+     insufficientFor(100, 0, 0) === false);
+
+  const { readFileSync } = await import("node:fs");
+  const hook = readFileSync("src/components/updown/use-quick-bet.ts", "utf8");
+  const controls = readFileSync("src/components/updown/updown-stake-controls.tsx", "utf8");
+  const panel = readFileSync("src/components/updown/round-stake-panel.tsx", "utf8");
+  ok("29.6 · ⛔ the hook's place() refuses BEFORE the optimistic apply",
+     hook.indexOf("insufficientFor(opts.walletBalance") > 0 &&
+     hook.indexOf("insufficientFor(opts.walletBalance") < hook.indexOf("setOptUp((v) => v + amount)"));
+  ok("29.7 · both place buttons disable on insufficient (board control)",
+     (controls.match(/disabled=\{!bet\.stakeReady \|\| bet\.insufficient\}/g) ?? []).length === 2);
+  ok("29.8 · the round page's gold Confirm disables too",
+     panel.includes("disabled={!bet.stakeReady || bet.pending || bet.insufficient}"));
+  ok("29.9 · the inline reason + Deposit route render on both surfaces",
+     controls.includes("udInsufficientBalance") && panel.includes("udInsufficientBalance") &&
+     controls.includes("/wallet/deposit") && panel.includes("/wallet/deposit"));
+}
+
 console.log(`\nupdown-quickbet: ${pass} passed, ${fail} failed`);
 if (fail > 0) { console.error("\n✗ QUICK-BET BROKEN — the one-tap card would mischarge or misreport the player's position.\n"); process.exit(1); }
 console.log("updown-quickbet: OK — one tap places once, duplicates pay once, distinct taps stack, 'you're in' is per-viewer, bad taps refused");

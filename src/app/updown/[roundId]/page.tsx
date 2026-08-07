@@ -22,6 +22,7 @@ import { BackLink } from "@/components/ui/back-link";
 import { HashFocus } from "@/components/ui/hash-focus";
 import { getRoundDetail } from "@/lib/server/updown-board";
 import { currentSession } from "@/lib/server/auth-service";
+import { db } from "@/lib/server/store";
 import { isStaffRole } from "@/lib/server/roles";
 import { getServerT } from "@/lib/i18n-server";
 // ⛔ ONE RULE FOR "why did this stake come back", shared with the card — five copies would be
@@ -82,6 +83,10 @@ export default async function UpDownRoundPage({
   const viewerIsStaff = isStaffRole(session?.role ?? "");
   const detail = await getRoundDetail(roundId, session?.userId).catch(() => null);
   if (!detail) notFound();
+  // UD-1 · the balance for the bet pre-flight. ⛔ B-1: a FAILED read stays null
+  // (unknown gates nothing) — it must never be dressed as an empty wallet.
+  const wallet = session ? await db.wallet.findByUserId(session.userId).catch(() => null) : null;
+  const walletBalance = wallet?.balance ?? null;
 
   const { round, asset, proof, priceSeries, myPosition, minStake, maxStake } = detail;
   const name = pickLocalized(locale, asset.nameEn, asset.nameSw, asset.nameZh);
@@ -344,6 +349,7 @@ export default async function UpDownRoundPage({
                 assetName={name}
                 signInHref={`/auth/login?next=${encodeURIComponent(`/updown/${roundId}${lockedSide ? `?side=${lockedSide}` : ""}`)}`}
                 lockedSide={lockedSide}
+                walletBalance={walletBalance}
                 cardStyle={card}
                 insetStyle={inset}
               />

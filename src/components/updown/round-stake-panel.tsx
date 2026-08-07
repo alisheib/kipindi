@@ -42,13 +42,16 @@ export function RoundStakePanel(props: {
   /** UD-2 · the lock instant + server clock, threaded to the hook's place() guard. */
   selectionClosesAtMs?: number | null;
   serverNowMs?: number;
+  /** UD-1 · server-rendered wallet balance; null = unknown, gates nothing. */
+  walletBalance?: number | null;
 }) {
   const { t } = useT();
   const { marketId, isAuthed, minStake, maxStake, myUpStake, myDownStake, pricing, assetName, signInHref, lockedSide } = props;
   const bet = useUpDownQuickBet({
     marketId, minStake, maxStake, myUpStake, myDownStake,
     selectionClosesAtMs: props.selectionClosesAtMs, serverNowMs: props.serverNowMs,
-    copy: { placed: t.market.udBetPlaced, failed: t.market.udBetFailed, up: t.market.udUp, down: t.market.udDown, locked: t.market.udLockedTitle },
+    walletBalance: props.walletBalance,
+    copy: { placed: t.market.udBetPlaced, failed: t.market.udBetFailed, up: t.market.udUp, down: t.market.udDown, locked: t.market.udLockedTitle, insufficient: t.market.udInsufficientBalance },
   });
   const pulse = usePlacePulse(bet.justPlaced?.nonce);
 
@@ -184,9 +187,10 @@ export function RoundStakePanel(props: {
         </div>
       )}
 
-      {/* The one money commit on this page — gold, because this is the commit. */}
+      {/* The one money commit on this page — gold, because this is the commit.
+          UD-1: unaffordable = disabled + the inline reason below; never a round-trip. */}
       <button
-        type="button" onClick={() => bet.place(lockedSide)} disabled={!bet.stakeReady || bet.pending}
+        type="button" onClick={() => bet.place(lockedSide)} disabled={!bet.stakeReady || bet.pending || bet.insufficient}
         className="btn btn-gold btn-lg mt-3 w-full justify-center"
         style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
         aria-label={`${t.market.udConfirm} ${pickWord} · ${formatTzs(bet.stake)}`}
@@ -194,6 +198,18 @@ export function RoundStakePanel(props: {
         <span>{t.market.udConfirm} {pickWord}</span>
         {bet.stakeReady && <span className="font-mono" style={{ fontWeight: 600, opacity: 0.85 }}>{formatTzs(bet.stake)}</span>}
       </button>
+      {/* UD-1 · the factual reason + the route to fix it (info register, not an alarm). */}
+      {bet.insufficient && (
+        <p className="mt-2 flex items-start gap-1 text-[10.5px] leading-[1.45] text-text-faint">
+          <I.info s={11} className="mt-[2px] shrink-0" />
+          <span>
+            {t.market.udInsufficientBalance}{" "}
+            <Link href="/wallet/deposit" className="underline decoration-[color:var(--border-strong)] underline-offset-2 hover:text-text">
+              {t.common.deposit}
+            </Link>
+          </span>
+        </p>
+      )}
       {/* ⭐ D2 · the empty-side state, scoped to the side this player has locked. Faint
           informational ink and the `info` glyph — a refund is not a failure and not a prize. */}
       {warnCopy && (

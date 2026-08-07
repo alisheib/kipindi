@@ -710,6 +710,8 @@ export const dict = {
       udStake: "Stake", udYoureIn: "You're in", udBetPlaced: "Bet placed", udBetFailed: "Bet not placed",
       udSignInToBet: "Sign in to bet", udTapToBet: "Tap Up or Down to bet",
       udCustom: "Custom", udCustomAmount: "Custom stake amount", udStakeRange: "Outside the allowed range", udEnterStake: "Enter a stake to bet",
+      // UD-1 · balance pre-flight — stated as a fact (info register), never an alarm.
+      udInsufficientBalance: "Not enough balance for this stake.",
       // ── Up & Down · D3 round detail ──────────────────────────────────────
       udLivePrice: "Live price", udAboveOpenBy: "Above open by", udBelowOpenBy: "Below open by", udPool: "Pool",
       udPickLocked: "Locked from your pick on the board. To switch sides, leave this round.",
@@ -2111,6 +2113,7 @@ export const dict = {
       udStake: "Kiasi", udYoureIn: "Uko ndani", udBetPlaced: "Dau limewekwa", udBetFailed: "Dau halikuwekwa",
       udSignInToBet: "Ingia ili kuweka dau", udTapToBet: "Gusa Juu au Chini kuweka dau",
       udCustom: "Maalum", udCustomAmount: "Kiasi maalum cha dau", udStakeRange: "Nje ya kiwango kinachoruhusiwa", udEnterStake: "Weka kiasi kucheza",
+      udInsufficientBalance: "Salio halitoshi kwa dau hili.",
       // ── Up & Down · D3 round detail ──────────────────────────────────────
       udLivePrice: "Bei ya sasa", udAboveOpenBy: "Juu ya ufunguzi kwa", udBelowOpenBy: "Chini ya ufunguzi kwa", udPool: "Dimbwi",
       udPickLocked: "Imefungwa kutoka chaguo lako kwenye ubao. Kubadili upande, ondoka kwenye raundi hii.",
@@ -3484,6 +3487,7 @@ export const dict = {
       udStake: "投注额", udYoureIn: "已下注", udBetPlaced: "已下注", udBetFailed: "下注失败",
       udSignInToBet: "登录后下注", udTapToBet: "点击涨或跌下注",
       udCustom: "自定义", udCustomAmount: "自定义投注额", udStakeRange: "超出允许范围", udEnterStake: "输入投注额",
+      udInsufficientBalance: "余额不足，无法下此注。",
       // ── Up & Down · D3 round detail ──────────────────────────────────────
       udLivePrice: "实时价格", udAboveOpenBy: "高于开盘", udBelowOpenBy: "低于开盘", udPool: "奖池",
       udPickLocked: "已根据你在面板上的选择锁定。若要切换方向，请离开本轮。",

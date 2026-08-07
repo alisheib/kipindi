@@ -18,6 +18,7 @@ import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { I } from "@/components/ui/glyphs";
 import { getBoard } from "@/lib/server/updown-board";
 import { currentSession } from "@/lib/server/auth-service";
+import { db } from "@/lib/server/store";
 import { getServerT } from "@/lib/i18n-server";
 import { pickLocalized } from "@/lib/localized";
 import { UpDownCard } from "@/components/updown/updown-card";
@@ -47,6 +48,10 @@ export default async function UpDownPage({
     durationMinutes: sp.d ? Number(sp.d) : undefined,
     userId: session?.userId,
   }).catch(() => null);
+  // UD-1 · the balance for the bet pre-flight. ⛔ B-1: a FAILED read stays null
+  // (unknown gates nothing) — it must never be dressed as an empty wallet.
+  const wallet = session ? await db.wallet.findByUserId(session.userId).catch(() => null) : null;
+  const walletBalance = wallet?.balance ?? null;
 
   if (!board || board.assets.length === 0) {
     return (
@@ -211,6 +216,7 @@ export default async function UpDownPage({
                 closesAtMs={Date.parse(r.closesAt)}
                 selectionClosesAtMs={r.selectionClosedAt ? Date.parse(r.selectionClosedAt) : null}
                 serverNowMs={r.serverNowMs}
+                walletBalance={walletBalance}
                 expectedResultAtMs={/* E-99 · null under the sample floor → no clock, never a
                                         guessed one. */ r.expectedResultAtMs}
                 myExactPayout={r.myExactPayout}

@@ -47,6 +47,8 @@ export function RoundActionPanel(props: {
   assetName: string;
   signInHref: string;
   lockedSide: "UP" | "DOWN" | null;
+  /** UD-1 · server-rendered wallet balance for the bet pre-flight; null = unknown. */
+  walletBalance?: number | null;
   /** The page's shared section chromes (kit tokens, composed page-side). */
   cardStyle: CSSProperties;
   insetStyle: CSSProperties;

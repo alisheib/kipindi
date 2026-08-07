@@ -15,6 +15,7 @@
  * and "detail" (roomier, on /updown/[roundId]).
  */
 import { useEffect, useRef } from "react";
+import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { Input } from "@/components/ui/input";
 import { cn, formatTzs } from "@/lib/utils";
@@ -161,10 +162,11 @@ export function UpDownStakeControls({
         </div>
       )}
 
-      {/* Place buttons — disabled until the chosen amount is usable. */}
+      {/* Place buttons — disabled until the chosen amount is usable AND coverable
+          (UD-1: a predictably-doomed tap is prevented, never round-tripped). */}
       <div className="grid grid-cols-2 gap-2">
         <button
-          type="button" onClick={guard(() => bet.place("UP"))} disabled={!bet.stakeReady}
+          type="button" onClick={guard(() => bet.place("UP"))} disabled={!bet.stakeReady || bet.insufficient}
           className={cn("btn btn-yes btn-lg", !compact && "justify-center", flash && flashSide === "UP" && "ud-side-flash")}
           aria-label={`${t.market.udUp} — ${assetName}${bet.stakeReady ? ` · ${formatTzs(bet.stake)}` : ""}`}
         >
@@ -172,7 +174,7 @@ export function UpDownStakeControls({
           {multUp != null && <span className="font-mono text-[12.5px] opacity-85">× {formatMultiplier(multUp)} est.</span>}
         </button>
         <button
-          type="button" onClick={guard(() => bet.place("DOWN"))} disabled={!bet.stakeReady}
+          type="button" onClick={guard(() => bet.place("DOWN"))} disabled={!bet.stakeReady || bet.insufficient}
           className={cn("btn btn-no btn-lg", !compact && "justify-center", flash && flashSide === "DOWN" && "ud-side-flash")}
           aria-label={`${t.market.udDown} — ${assetName}${bet.stakeReady ? ` · ${formatTzs(bet.stake)}` : ""}`}
         >
@@ -181,14 +183,33 @@ export function UpDownStakeControls({
         </button>
       </div>
 
-      {/* Helper line — streaming while a tap is in flight, else the prompt + the amount. */}
-      <p className={cn("mt-1.5 flex items-center gap-1 leading-[1.45] text-text-faint", compact ? "text-[10px]" : "text-[10.5px]")}>
-        {bet.pending
-          ? <><span className="live-dot" /> {formatTzs(bet.stake)} · {t.market.udStreaming}</>
-          : bet.stakeReady
-            ? <>{t.market.udTapToBet} · {formatTzs(bet.stake)}</>
-            : <>{t.market.udEnterStake}</>}
-      </p>
+      {/* Helper line — streaming while a tap is in flight, else the prompt + the amount.
+          UD-1: when the stake exceeds the rendered balance, the line states the fact
+          (info glyph, faint ink — the empty-side register, not an alarm) + a Deposit
+          route. Prevented, so nothing here ever round-trips. */}
+      {bet.insufficient ? (
+        <p className={cn("mt-1.5 flex items-start gap-1 leading-[1.45] text-text-faint", compact ? "text-[10px]" : "text-[10.5px]")}>
+          <I.info s={compact ? 10 : 11} className="mt-[2px] shrink-0" />
+          <span>
+            {t.market.udInsufficientBalance}{" "}
+            <Link
+              href="/wallet/deposit"
+              className="underline decoration-[color:var(--border-strong)] underline-offset-2 hover:text-text"
+              onClick={(e) => { if (stopPropagation) e.stopPropagation(); }}
+            >
+              {t.common.deposit}
+            </Link>
+          </span>
+        </p>
+      ) : (
+        <p className={cn("mt-1.5 flex items-center gap-1 leading-[1.45] text-text-faint", compact ? "text-[10px]" : "text-[10.5px]")}>
+          {bet.pending
+            ? <><span className="live-dot" /> {formatTzs(bet.stake)} · {t.market.udStreaming}</>
+            : bet.stakeReady
+              ? <>{t.market.udTapToBet} · {formatTzs(bet.stake)}</>
+              : <>{t.market.udEnterStake}</>}
+        </p>
+      )}
       {/* ⭐ D2 · THE EMPTY-SIDE STATE, SAID BEFORE THE BET.
           A one-sided round refunds everyone whichever way the price goes (E-65), and until now
           the only place that was ever said was the refund notice — AFTER the round. It sits on
