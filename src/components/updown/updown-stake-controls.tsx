@@ -15,11 +15,13 @@
  * and "detail" (roomier, on /updown/[roundId]).
  */
 import { useEffect, useRef } from "react";
+import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { Input } from "@/components/ui/input";
 import { cn, formatTzs } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { usePlacePulse, type useUpDownQuickBet } from "./use-quick-bet";
+import { UpDownBetBlockedModal } from "./updown-bet-blocked-modal";
 import { stakeChipLabel } from "./stake-math";
 // ⭐ D2 · ONE RULE for "what would I be paid", shared with the card, the round page and the
 // server's own `myExactPayout`. Never re-derived here — see `@/lib/updown-pricing`.
@@ -161,10 +163,12 @@ export function UpDownStakeControls({
         </div>
       )}
 
-      {/* Place buttons — disabled until the chosen amount is usable. */}
+      {/* Place buttons — disabled until the chosen amount is usable, when the known
+          balance cannot cover it (UD-1: a doomed tap is prevented, never round-tripped),
+          and once the lock has passed on the server-anchored clock (UD-2). */}
       <div className="grid grid-cols-2 gap-2">
         <button
-          type="button" onClick={guard(() => bet.place("UP"))} disabled={!bet.stakeReady}
+          type="button" onClick={guard(() => bet.place("UP"))} disabled={!bet.stakeReady || bet.insufficient || bet.locallyLocked}
           className={cn("btn btn-yes btn-lg", !compact && "justify-center", flash && flashSide === "UP" && "ud-side-flash")}
           aria-label={`${t.market.udUp} — ${assetName}${bet.stakeReady ? ` · ${formatTzs(bet.stake)}` : ""}`}
         >
@@ -172,7 +176,7 @@ export function UpDownStakeControls({
           {multUp != null && <span className="font-mono text-[12.5px] opacity-85">× {formatMultiplier(multUp)} est.</span>}
         </button>
         <button
-          type="button" onClick={guard(() => bet.place("DOWN"))} disabled={!bet.stakeReady}
+          type="button" onClick={guard(() => bet.place("DOWN"))} disabled={!bet.stakeReady || bet.insufficient || bet.locallyLocked}
           className={cn("btn btn-no btn-lg", !compact && "justify-center", flash && flashSide === "DOWN" && "ud-side-flash")}
           aria-label={`${t.market.udDown} — ${assetName}${bet.stakeReady ? ` · ${formatTzs(bet.stake)}` : ""}`}
         >
@@ -181,14 +185,35 @@ export function UpDownStakeControls({
         </button>
       </div>
 
-      {/* Helper line — streaming while a tap is in flight, else the prompt + the amount. */}
-      <p className={cn("mt-1.5 flex items-center gap-1 leading-[1.45] text-text-faint", compact ? "text-[10px]" : "text-[10.5px]")}>
-        {bet.pending
-          ? <><span className="live-dot" /> {formatTzs(bet.stake)} · {t.market.udStreaming}</>
-          : bet.stakeReady
-            ? <>{t.market.udTapToBet} · {formatTzs(bet.stake)}</>
-            : <>{t.market.udEnterStake}</>}
-      </p>
+      {/* Helper line — streaming while a tap is in flight; the lock notice once betting is
+          over; the balance shortfall with its deposit route (UD-1 — same faint factual
+          register as the empty-side note: a fact about the wallet, not an alarm); else the
+          prompt + the amount. */}
+      {bet.insufficient && !bet.locallyLocked ? (
+        <p className={cn("mt-1.5 flex items-start gap-1 leading-[1.45] text-text-faint", compact ? "text-[10px]" : "text-[10.5px]")}>
+          <I.info s={compact ? 10 : 11} className="mt-[2px] shrink-0" />
+          <span>
+            {t.market.udInsufficientBalance}{" "}
+            <Link
+              href="/wallet/deposit"
+              className="underline decoration-[color:var(--border-strong)] underline-offset-2 hover:text-text-muted"
+              onClick={(e) => { if (stopPropagation) e.stopPropagation(); }}
+            >
+              {t.market.udDepositCta}
+            </Link>
+          </span>
+        </p>
+      ) : (
+        <p className={cn("mt-1.5 flex items-center gap-1 leading-[1.45] text-text-faint", compact ? "text-[10px]" : "text-[10.5px]")}>
+          {bet.pending
+            ? <><span className="live-dot" /> {formatTzs(bet.stake)} · {t.market.udStreaming}</>
+            : bet.locallyLocked
+              ? <>{t.market.udErrSelectionClosed}</>
+              : bet.stakeReady
+                ? <>{t.market.udTapToBet} · {formatTzs(bet.stake)}</>
+                : <>{t.market.udEnterStake}</>}
+        </p>
+      )}
       {/* ⭐ D2 · THE EMPTY-SIDE STATE, SAID BEFORE THE BET.
           A one-sided round refunds everyone whichever way the price goes (E-65), and until now
           the only place that was ever said was the refund notice — AFTER the round. It sits on
@@ -212,6 +237,10 @@ export function UpDownStakeControls({
 
       {/* Screen-reader confirmation — replaces the happy-path toast. */}
       <span aria-live="polite" className="sr-only">{bet.liveMessage}</span>
+
+      {/* UD-3 · compliance/account refusals must be READ, not glimpsed — the canonical
+          result modal, danger variant, open until dismissed. One host per bet instance. */}
+      <UpDownBetBlockedModal blocked={bet.blocked} onClose={bet.clearBlocked} />
     </>
   );
 }

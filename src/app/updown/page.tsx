@@ -59,7 +59,7 @@ export default async function UpDownPage({
     );
   }
 
-  const { assets, activeAsset, activeDuration, rounds, recent, chainPaused, stakeBounds } = board;
+  const { assets, activeAsset, activeDuration, rounds, recent, chainPaused, stakeBounds, walletBalance } = board;
   const href = (assetKey: string, d?: number) => `/updown?asset=${assetKey}${d ? `&d=${d}` : ""}`;
   const isAuthed = !!session;
 
@@ -228,6 +228,7 @@ export default async function UpDownPage({
                 isAuthed={isAuthed}
                 minStake={stakeBounds.min}
                 maxStake={stakeBounds.max}
+                walletBalance={walletBalance}
                 myUpStake={r.myUpStake}
                 myDownStake={r.myDownStake}
                 myRefundedStake={r.myRefundedStake}

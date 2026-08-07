@@ -300,6 +300,26 @@ async function freshRound() {
   ok("7.8 · a legacy round with no lock instant is bettable to its close, not locked early",
      roundPhase({ state: "open", selectionClosesAtMs: null, closesAtMs: CLOSE, nowMs: CLOSE - 1_000 }).bettable &&
      !roundPhase({ state: "open", selectionClosesAtMs: null, closesAtMs: CLOSE, nowMs: CLOSE - 1_000 }).locked);
+
+  // ── 7b · UD-2 · the ROUND PAGE's action rail actually consumes this rule ──
+  //
+  // E-82's defect survived its own fix once already, in exactly this branch: the pod was
+  // made instant-driven (E-104) while the STAKE PANEL beside it stayed keyed to a
+  // server-rendered `round.state === "open"` — live chips and a gold Confirm for up to
+  // 20s after the lock. The rule alone cannot prevent that; only its ADOPTION can, so
+  // adoption is asserted: the panel derives from `roundPhase` on the server-anchored
+  // clock, and the page routes both open and locked states through it rather than
+  // rendering the stake panel off the raw prop.
+  const { readFileSync } = await import("node:fs");
+  const rail = readFileSync(new URL("../src/components/updown/round-action-panel.tsx", import.meta.url), "utf8");
+  const page = readFileSync(new URL("../src/app/updown/[roundId]/page.tsx", import.meta.url), "utf8");
+  ok("7b.1 · the round page's action rail derives its phase from roundPhase + useServerNow",
+     /roundPhase\(\{ state, selectionClosesAtMs, closesAtMs/.test(rail) && /useServerNow\(/.test(rail));
+  ok("7b.2 · ⛔ the page renders the rail for BOTH open and locked — never RoundStakePanel off the raw prop",
+     /isOpen \|\| locked \? \(/.test(page) && /<RoundActionPanel/.test(page) && !/<RoundStakePanel/.test(page));
+  ok("7b.3 · the quick-bet hook itself refuses a tap past the lock (the belt under the panel)",
+     /lockPassed \|\| lockedByServer/.test(
+       readFileSync(new URL("../src/components/updown/use-quick-bet.ts", import.meta.url), "utf8")));
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

@@ -370,6 +370,25 @@ async function latestConfirmed(assetId: string): Promise<{ price: number; quoted
  * Everything `/updown` needs: the enabled assets with their live prices, the durations
  * each actually runs, and the open rounds for the selected asset+duration.
  */
+/**
+ * UD-1 · the viewer's spendable balance for the quick-bet pre-flight.
+ *
+ * Null = signed out, no wallet, or the read failed. ⛔ Never 0 on failure: on this
+ * surface a fabricated zero would DISABLE betting for a player whose money is fine —
+ * B-1's "a failed read never renders as zero", pointed the other way. The gate is UX
+ * only; `buyPosition` re-checks the real balance inside the wallet lock.
+ */
+async function walletBalanceOf(userId: string | undefined): Promise<number | null> {
+  if (!userId) return null;
+  try {
+    const { db } = await import("./store");
+    const w = await Promise.resolve(db.wallet.findByUserId(userId));
+    return w ? Number(w.balance) : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function getBoard(opts?: { assetKey?: string; durationMinutes?: number; userId?: string }): Promise<{
   assets: BoardAsset[];
   activeAsset: BoardAsset | null;
@@ -379,13 +398,18 @@ export async function getBoard(opts?: { assetKey?: string; durationMinutes?: num
   chainPaused: boolean;
   /** Stake bounds for the ACTIVE chain — the quick-bet stake selector's range. */
   stakeBounds: { min: number; max: number };
+  /** UD-1 · the viewer's balance for the quick-bet pre-flight. Null = signed out or
+   *  the read failed — UNKNOWN, never zero (B-1): a fabricated 0 would falsely
+   *  disable betting, so a failed read simply leaves the gate unarmed. */
+  walletBalance: number | null;
 }> {
   const cfg = await getUpDownConfig();
   const defaultBounds = { min: cfg.defaultMinStake, max: cfg.defaultMaxStake };
-  const [enabled, allChains, mineByMarket] = await Promise.all([
+  const [enabled, allChains, mineByMarket, walletBalance] = await Promise.all([
     assetStore.list({ enabledOnly: true }).catch(() => [] as StoredAsset[]),
     chainStore.list().catch(() => [] as StoredChain[]),
     myStakesByMarket(opts?.userId),
+    walletBalanceOf(opts?.userId),
   ]);
 
   const assets: BoardAsset[] = await Promise.all(
@@ -436,17 +460,17 @@ export async function getBoard(opts?: { assetKey?: string; durationMinutes?: num
   const activeAsset =
     (opts?.assetKey ? assets.find((a) => a.key === opts.assetKey) : undefined)
     ?? firstPlayable ?? assets[0] ?? null;
-  if (!activeAsset) return { assets, activeAsset: null, activeDuration: null, rounds: [], recent: [], chainPaused: false, stakeBounds: defaultBounds };
+  if (!activeAsset) return { assets, activeAsset: null, activeDuration: null, rounds: [], recent: [], chainPaused: false, stakeBounds: defaultBounds, walletBalance };
 
   const activeDuration =
     (opts?.durationMinutes && activeAsset.durations.includes(opts.durationMinutes) ? opts.durationMinutes : undefined)
     ?? activeAsset.durations[0] ?? null;
   if (activeDuration == null) {
-    return { assets, activeAsset, activeDuration: null, rounds: [], recent: [], chainPaused: true, stakeBounds: defaultBounds };
+    return { assets, activeAsset, activeDuration: null, rounds: [], recent: [], chainPaused: true, stakeBounds: defaultBounds, walletBalance };
   }
 
   const chain = allChains.find((c) => c.assetId === activeAsset.id && c.durationMinutes === activeDuration);
-  if (!chain) return { assets, activeAsset, activeDuration, rounds: [], recent: [], chainPaused: true, stakeBounds: defaultBounds };
+  if (!chain) return { assets, activeAsset, activeDuration, rounds: [], recent: [], chainPaused: true, stakeBounds: defaultBounds, walletBalance };
 
   // ONE resolver, shared with the money path (buyPosition → stakeBoundsForUpDownMarket):
   // the product default is the FLOOR — a chain override may raise the min, never drop it
@@ -501,7 +525,7 @@ export async function getBoard(opts?: { assetKey?: string; durationMinutes?: num
     .reverse()
     .map((r) => r.outcome!) as Array<"UP" | "DOWN" | "VOID">;
 
-  return { assets, activeAsset, activeDuration, rounds, recent, chainPaused: chain.state !== "RUNNING", stakeBounds };
+  return { assets, activeAsset, activeDuration, rounds, recent, chainPaused: chain.state !== "RUNNING", stakeBounds, walletBalance };
 }
 
 /**
@@ -648,6 +672,9 @@ export async function getRoundDetail(roundId: string, userId?: string): Promise<
     openEvidence: string | null; closeEvidence: string | null;
   } | null;
   minStake: number; maxStake: number;
+  /** UD-1 · viewer's balance for the quick-bet pre-flight. Null = signed out / read
+   *  failed — unknown, never zero (see `walletBalanceOf`). */
+  walletBalance: number | null;
 } | null> {
   const r = await roundStore.get(roundId);
   if (!r) return null;
@@ -678,12 +705,13 @@ export async function getRoundDetail(roundId: string, userId?: string): Promise<
   // reads so far and a resolved one the full window up to close.
   const decided = board.state === "resolved" || board.state === "void";
   const endMs = decided ? Date.parse(r.closesAt) : Date.now();
-  const [priceSeries, myPosition] = await Promise.all([
+  const [priceSeries, myPosition, walletBalance, detailBounds] = await Promise.all([
     priceSeriesFor(a.id, Date.parse(r.opensAt), endMs),
     myPositionFor(userId, r.marketId),
+    walletBalanceOf(userId),
+    stakeBoundsFor(chain),
   ]);
 
-  const cfg = await getUpDownConfig();
   return {
     round: board,
     asset: {
@@ -708,7 +736,13 @@ export async function getRoundDetail(roundId: string, userId?: string): Promise<
           openEvidence: openObs?.evidence ?? null, closeEvidence: closeObs?.evidence ?? null,
         }
       : null,
-    minStake: chain.minStake ?? cfg.defaultMinStake,
-    maxStake: chain.maxStake ?? cfg.defaultMaxStake,
+    // ⛔ THROUGH `stakeBoundsFor`, not `chain.minStake ?? default`. The inline form skips
+    // the product floor the resolver applies (Math.max with defaultMinStake), so a chain
+    // configured below the floor showed this page a minimum `buyPosition` then refused —
+    // the exact display/enforcement split the money path's comment forbids. The board and
+    // the money path both already resolve through this ONE function.
+    minStake: detailBounds.min,
+    maxStake: detailBounds.max,
+    walletBalance,
   };
 }

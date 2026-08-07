@@ -85,12 +85,12 @@ already doing.
 ## 4 · Progress counters (update as you go)
 
 - **Session A (money/ops):** 7 / 7 items done
-- **Session B (Up & Down):** 1 / 22 findings done
+- **Session B (Up & Down):** 4 / 22 findings done (Stage 1 complete; the tracker's earlier '1' was UD-3's kit half via DS-1, now absorbed)
 - **Session C (platform front-end):** 0 / ~17 findings done
 - **Visual set (design):** 1 / 7 done
 - **DS · design-consistency sweep (toasts/popups/modals):** 4 / 27 done
 - **DA · design-system atoms (carried over from design session):** 3 / 12 done (2 need Ali)
-- **TOTAL:** 16 / ~92 done
+- **TOTAL:** 19 / ~92 done
 
 ---
 
@@ -114,10 +114,10 @@ already doing.
 ### Session B — Up & Down (Report 1, all 22) — run in the 4 staged commits
 
 **Stage 1 (P0 — the reported bet bug):**
-- [ ] UD-2 phase-aware round stake panel (lock race)
-- [ ] UD-1 balance + lock pre-flight in `useUpDownQuickBet`
-- [ ] UD-4 error-code → i18n map (udErr* keys)
-- [ ] UD-3 sticky failure toast (add `durationMs:0`) + compliance blocked-modal
+- [x] UD-2 phase-aware round stake panel (lock race) — `RoundActionPanel` derives open↔locked from `roundPhase` + `useServerNow` (the board card's exact rule); page routes BOTH states through it; hook refuses `place()` past the lock on every surface (the final-second belt); adoption pinned by `test:updown-window` §7b.
+- [x] UD-1 balance + lock pre-flight in `useUpDownQuickBet` — `walletBalance` threaded through `getBoard`/`getRoundDetail` (null = unknown, NEVER zero); doomed taps prevented (no optimistic flash, no request), buttons disabled + inline reason + Deposit route; factual register.
+- [x] UD-4 error-code → i18n map (udErr* keys) — `updown-bet-errors.ts`, EN/SW/ZH keys added; server string demoted to no-code fallback only; RG daily-loss classified to the modal via its stable phrase (code is INVALID — see §9 note for Ali). `test:updown-quickbet` §29.
+- [x] UD-3 sticky failure toast + compliance blocked-modal — server refusals now `danger` + `durationMs:0` (kit support landed in DS-1); SUSPENDED/RG → `UpDownBetBlockedModal` on `OperationResultModal` (danger, no gold, stays until dismissed); SELECTION_CLOSED flips the surface locked instantly. `test:updown-bet-feedback` 3.4 restated.
 
 **Stage 2 (P1 freshness):**
 - [ ] UD-5 round-page + wallet pill refresh after bet
@@ -264,5 +264,7 @@ the session should surface them to Ali and continue with everything else meanwhi
 - **Q7** Real Gold / Silver artwork — supply assets, or keep the lettermark chips?
 - **Q8** Up & Down top-nav treatment — final placement/style.
 - **DA-P** The kit `<Modal>` rendered photograph for the design record needs an OPEN market live on the board at capture time.
+
+- **UD-4 note (2026-08-07):** the RG daily-loss refusal returns `code: "INVALID"` (same as a bounds error), so the client routes it to the acknowledge-modal by matching the refusal's stable phrase. A dedicated `RG_LIMIT` code in `buyPosition` would be cleaner — but that file is under the money-guardrail, so it is Ali's call, not this session's.
 
 > When Ali answers, record the decision here (one line each) and unblock DA-Q / the affected atoms.

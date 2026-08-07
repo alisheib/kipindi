@@ -258,6 +258,50 @@ async function mine(userId: string | undefined): Promise<{ up: number; down: num
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 29 · UD-4 · the code→copy map — the player reads the dictionary, never the wire
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// Pure, so it is tested here rather than through a browser. The map decides two
+// things per refusal: WHAT the player reads (localized, by code) and HOW it is
+// presented (§5 matrix: transient → sticky toast; compliance/account → the
+// acknowledge-modal). Drift in either direction is a money-trust defect.
+{
+  const { udBetErrorCopy } = await import("../src/components/updown/updown-bet-errors.ts");
+  const dict = {
+    udErrSelectionClosed: "closed", udErrRateLimited: "rate", udErrBusy: "busy",
+    udErrNotFound: "notfound", udErrInvalid: "invalid",
+    udErrSuspendedTitle: "suspT", udErrSuspendedBody: "suspB",
+    udErrRgLimitTitle: "rgT", udErrRgLimitBody: "rgB",
+  };
+  const f = (code?: string, err?: string) => udBetErrorCopy(code, err, dict);
+
+  const closed = f("SELECTION_CLOSED", "Selections are closed — …");
+  ok("29.1 · SELECTION_CLOSED → transient sticky toast, localized, AND flips the surface locked",
+     closed.kind === "transient" && closed.kind === "transient" && closed.description === "closed" && closed.lockNow === true);
+  const rate = f("RATE_LIMITED", "Slow down.");
+  ok("29.2 · RATE_LIMITED → transient, localized, no lock",
+     rate.kind === "transient" && rate.description === "rate" && rate.lockNow === false);
+  const busy = f("BUSY", "…");
+  ok("29.3 · BUSY → transient, localized", busy.kind === "transient" && busy.description === "busy");
+  const susp = f("SUSPENDED", "Account suspended. Contact support.");
+  ok("29.4 · ⛔ SUSPENDED → the acknowledge-modal (LCCP), never a toast",
+     susp.kind === "blocked" && susp.title === "suspT" && susp.body === "suspB");
+  const rg = f("INVALID", "Daily loss limit reached.");
+  ok("29.5 · ⛔ the RG daily-loss refusal → the acknowledge-modal, even though its code is INVALID",
+     rg.kind === "blocked" && rg.title === "rgT" && rg.body === "rgB");
+  const bounds = f("INVALID", "Stake must be a whole number between TZS 500 and TZS 1,000,000.");
+  ok("29.6 · an ordinary INVALID (bounds) stays a transient toast, localized",
+     bounds.kind === "transient" && bounds.description === "invalid");
+  const noCode = f(undefined, "some raw server sentence");
+  ok("29.7 · with NO code at all the server string survives as fallback — and only then",
+     noCode.kind === "transient" && noCode.description === "some raw server sentence");
+  ok("29.8 · every OTHER mapped refusal never leaks the wire string",
+     [closed, rate, busy, susp, bounds].every((r) =>
+       (r.kind === "transient" ? r.description : `${r.title} ${r.body}`).indexOf("Slow down") === -1 &&
+       (r.kind === "transient" ? r.description : `${r.title} ${r.body}`).indexOf("Selections are") === -1));
+}
+
 console.log(`\nupdown-quickbet: ${pass} passed, ${fail} failed`);
 if (fail > 0) { console.error("\n✗ QUICK-BET BROKEN — the one-tap card would mischarge or misreport the player's position.\n"); process.exit(1); }
 console.log("updown-quickbet: OK — one tap places once, duplicates pay once, distinct taps stack, 'you're in' is per-viewer, bad taps refused");

@@ -126,6 +126,11 @@ export type UpDownCardProps = {
   minStake?: number;
   maxStake?: number;
   /**
+   * UD-1 · the viewer's wallet balance, from the board payload. `null` = unknown (a
+   * failed read never renders as zero — B-1) and the pre-flight simply does not arm.
+   */
+  walletBalance?: number | null;
+  /**
    * What THIS viewer had returned to them on this round, in TZS. 0 when they were not
    * refunded, or were not in the round at all.
    *
@@ -204,7 +209,7 @@ export function UpDownCard(props: UpDownCardProps) {
     pricing, state, outcome, closePrice, voidReason,
     sourceClass, sourceQuotedAt, className,
     selectionClosesAtMs, serverNowMs, myExactPayout, myRefundedStake,
-    marketId, isAuthed, minStake, maxStake, myUpStake = 0, myDownStake = 0,
+    marketId, isAuthed, minStake, maxStake, walletBalance, myUpStake = 0, myDownStake = 0,
     expectedResultAtMs = null,
   } = props;
   const { t } = useT();
@@ -315,7 +320,14 @@ export function UpDownCard(props: UpDownCardProps) {
   const canQuickBet = bettable && !!marketId && isAuthed === true;
   const bet = useUpDownQuickBet({
     marketId, minStake, maxStake, myUpStake, myDownStake,
-    copy: { placed: t.market.udBetPlaced, failed: t.market.udBetFailed, up: t.market.udUp, down: t.market.udDown },
+    // UD-1/UD-2 · the pre-flight gates: the known balance, and the same lock instant +
+    // server clock the card's own phase runs on — one deadline, screen and money agreeing.
+    walletBalance, selectionClosesAtMs, serverNowMs,
+    copy: {
+      placed: t.market.udBetPlaced, failed: t.market.udBetFailed,
+      up: t.market.udUp, down: t.market.udDown, insufficient: t.market.udInsufficientBalance,
+    },
+    errCopy: t.market,
   });
   // A placed bet pulses the whole card (non-intrusive confirmation, reduced-motion aware).
   const cardPulse = usePlacePulse(bet.justPlaced?.nonce);

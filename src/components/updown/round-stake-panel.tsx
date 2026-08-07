@@ -19,6 +19,7 @@ import { cn, formatTzs } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { useUpDownQuickBet, usePlacePulse } from "./use-quick-bet";
 import { UpDownStakeControls } from "./updown-stake-controls";
+import { UpDownBetBlockedModal } from "./updown-bet-blocked-modal";
 import { stakeChipLabel } from "./stake-math";
 import { I } from "@/components/ui/glyphs";
 // ⛔ ONE RULE for "what would I be paid" (D2). This panel must agree with the board card to the
@@ -39,12 +40,22 @@ export function RoundStakePanel(props: {
   assetName: string;
   signInHref: string;
   lockedSide: "UP" | "DOWN" | null;
+  /** UD-1 · the viewer's balance from the detail payload; null = unknown, gate unarmed. */
+  walletBalance?: number | null;
+  /** UD-2 · the lock instant + server clock — the hook refuses a tap past the lock. */
+  selectionClosesAtMs?: number | null;
+  serverNowMs?: number;
 }) {
   const { t } = useT();
   const { marketId, isAuthed, minStake, maxStake, myUpStake, myDownStake, pricing, assetName, signInHref, lockedSide } = props;
   const bet = useUpDownQuickBet({
     marketId, minStake, maxStake, myUpStake, myDownStake,
-    copy: { placed: t.market.udBetPlaced, failed: t.market.udBetFailed, up: t.market.udUp, down: t.market.udDown },
+    walletBalance: props.walletBalance, selectionClosesAtMs: props.selectionClosesAtMs, serverNowMs: props.serverNowMs,
+    copy: {
+      placed: t.market.udBetPlaced, failed: t.market.udBetFailed,
+      up: t.market.udUp, down: t.market.udDown, insufficient: t.market.udInsufficientBalance,
+    },
+    errCopy: t.market,
   });
   const pulse = usePlacePulse(bet.justPlaced?.nonce);
 
@@ -180,9 +191,12 @@ export function RoundStakePanel(props: {
         </div>
       )}
 
-      {/* The one money commit on this page — gold, because this is the commit. */}
+      {/* The one money commit on this page — gold, because this is the commit.
+          Disabled when the known balance cannot cover the stake (UD-1) or the lock has
+          passed (UD-2) — a doomed tap is prevented here, never round-tripped. */}
       <button
-        type="button" onClick={() => bet.place(lockedSide)} disabled={!bet.stakeReady || bet.pending}
+        type="button" onClick={() => bet.place(lockedSide)}
+        disabled={!bet.stakeReady || bet.pending || bet.insufficient || bet.locallyLocked}
         className="btn btn-gold btn-lg mt-3 w-full justify-center"
         style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
         aria-label={`${t.market.udConfirm} ${pickWord} · ${formatTzs(bet.stake)}`}
@@ -190,6 +204,19 @@ export function RoundStakePanel(props: {
         <span>{t.market.udConfirm} {pickWord}</span>
         {bet.stakeReady && <span className="font-mono" style={{ fontWeight: 600, opacity: 0.85 }}>{formatTzs(bet.stake)}</span>}
       </button>
+      {/* UD-1 · the inline reason + the deposit route — same factual register as the
+          empty-side note (info glyph, faint ink): a fact about the wallet, not an alarm. */}
+      {bet.insufficient && !bet.locallyLocked && (
+        <p className="mt-2 flex items-start gap-1 text-[10.5px] leading-[1.45] text-text-faint">
+          <I.info s={11} className="mt-[2px] shrink-0" />
+          <span>
+            {t.market.udInsufficientBalance}{" "}
+            <Link href="/wallet/deposit" className="underline decoration-[color:var(--border-strong)] underline-offset-2 hover:text-text-muted">
+              {t.market.udDepositCta}
+            </Link>
+          </span>
+        </p>
+      )}
       {/* ⭐ D2 · the empty-side state, scoped to the side this player has locked. Faint
           informational ink and the `info` glyph — a refund is not a failure and not a prize. */}
       {warnCopy && (
@@ -201,6 +228,10 @@ export function RoundStakePanel(props: {
       <p className="mt-2 text-[10px] leading-[1.45] text-text-faint">{t.market.udEstimateNote}</p>
 
       <span aria-live="polite" className="sr-only">{bet.liveMessage}</span>
+
+      {/* UD-3 · the compliance/account refusal modal for the locked-side commit path
+          (the two-way branch above hosts its own inside `UpDownStakeControls`). */}
+      <UpDownBetBlockedModal blocked={bet.blocked} onClose={bet.clearBlocked} />
     </div>
   );
 }
