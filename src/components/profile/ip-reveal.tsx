@@ -8,6 +8,7 @@
  */
 import { useState } from "react";
 import { I } from "@/components/ui/glyphs";
+import { GlyphSwap } from "@/components/ui/glyph-swap";
 import { useT } from "@/lib/i18n";
 
 function maskIp(ip: string): string {
@@ -35,7 +36,11 @@ export function IpReveal({ ip }: { ip: string }) {
       className="inline-flex items-center gap-1.5 font-mono text-[12px] tabular-nums text-text disabled:cursor-default hover:text-text-muted"
     >
       <span>{shown ? ip : masked}</span>
-      {canReveal && (shown ? <I.eyeOff s={12} className="text-text-subtle" /> : <I.eye s={12} className="text-text-subtle" />)}
+      {canReveal && (
+        <GlyphSwap state={shown} className="text-text-subtle">
+          {shown ? <I.eyeOff s={12} /> : <I.eye s={12} />}
+        </GlyphSwap>
+      )}
     </button>
   );
 }

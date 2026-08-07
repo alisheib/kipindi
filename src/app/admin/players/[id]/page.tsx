@@ -400,7 +400,9 @@ function KycTab({ kyc, userEmail, userId, makerCheckerRequired, canActSupport, c
       {/* Status banner — most important signal, shown first so officers see it immediately */}
       {kyc.status === "PENDING_REVIEW" && (
         <div className="rounded-lg border-2 border-warning-fg/40 bg-warning/10 px-4 py-3 flex items-start gap-3">
-          <I.shieldAlert s={16} className="text-warning-fg shrink-0 mt-0.5 animate-pulse" />
+          {/* M5 alert primitive — a single-shot ring on the banner's arrival; an
+              alert that loops is noise (was a bespoke infinite animate-pulse). */}
+          <I.shieldAlert s={16} className="text-warning-fg shrink-0 mt-0.5 g-ring" />
           <div>
             <p className="font-display font-semibold text-warning-fg text-[13px]">Action required · Inahitaji ukaguzi</p>
             <p className="mt-0.5 text-caption text-text-muted">This identity submission is awaiting officer review. Check the documents below and make a decision.</p>

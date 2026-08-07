@@ -139,7 +139,9 @@ function BonusWalletCard({
       }}
     >
       {/* warm gift motif + jackpot glow */}
-      <div className="absolute -right-6 -top-8 opacity-[0.12] text-gold-300 animate-pulse" aria-hidden style={{ animationDuration: "3.5s" }}>
+      {/* M5 — a decorative glyph does not perform: the gift motif rests still
+          (the infinite pulse was bespoke glyph motion outside the frozen ambient list). */}
+      <div className="absolute -right-6 -top-8 opacity-[0.12] text-gold-300" aria-hidden>
         <I.gift s={150} />
       </div>
       <div className="absolute -left-10 -bottom-12 h-40 w-40 rounded-full opacity-30" aria-hidden

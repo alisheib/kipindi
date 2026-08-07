@@ -3,6 +3,13 @@
 **Rewritten 2026-08-07 at the close of session 35.** Sessions 34–35 merged the whole delivery
 into `src/` and landed the first surfaces. What is left is **adoption**, not law.
 
+> ⚠️ **TRACKER MOVED (2026-08-07, later the same day):** the outstanding items below were
+> carried into `docs/ux-audit-2026-08/MASTER-PLAN.md` §6's **DA tracker**, which is now the
+> ONE live tracker (one fact, one home). Work and tick items THERE. Status at handover:
+> item 1 (toast) = DA-1 ✅ · item 3 (178 glyphs) = DA-2 ✅ (kit `GlyphSwap`, gate
+> `test:glyph-motion`) · item 4 (E-112) = DA-3 ⚪ · item 5 (E-115) = DA-5 ⚪ (money rules) ·
+> item 6 (ATOM J) = DA-6 ⚪. This file stays as the design session's context/instrument notes.
+
 > ## Read this table before anything else
 >
 > | | state |

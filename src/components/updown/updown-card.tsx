@@ -23,6 +23,7 @@
  *  · The footer shows the timestamp THE SOURCE published, never our boundary.
  */
 
+import { useRef } from "react";
 import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { cn, formatTzs } from "@/lib/utils";
@@ -305,6 +306,14 @@ export function UpDownCard(props: UpDownCardProps) {
   const downPct = Math.max(0, 100 - upPct);
   const dir = movePct == null ? null : movePct > 0 ? "up" : movePct < 0 ? "down" : "flat";
   const priceColor = dir === "up" ? "var(--yes-300)" : dir === "down" ? "var(--no-300)" : "var(--text-muted)";
+  /* M5 directional primitive — the live-price arrow takes `.g-nudge-up/-down` on a
+     data CHANGE only (the keyframe's own rule: never on mount, never looping). The
+     first render leaves it static; when the polled `dir` flips, the arrow branch
+     remounts carrying the nudge class. */
+  const prevDirRef = useRef(dir);
+  const dirChangedRef = useRef(false);
+  if (dir !== prevDirRef.current) { dirChangedRef.current = true; prevDirRef.current = dir; }
+  const nudge = dirChangedRef.current;
   const quoted = hhmmss(sourceQuotedAt);
 
   // ── Quick-bet ──────────────────────────────────────────────────────────────
@@ -385,8 +394,8 @@ export function UpDownCard(props: UpDownCardProps) {
           ) : (
             <>
               <div className="flex items-center justify-end gap-1 font-mono text-[15.5px] font-bold tabular-nums" style={{ color: priceColor }}>
-                {dir === "up" && <I.trendingUp s={11} />}
-                {dir === "down" && <I.trendingDown s={11} />}
+                {dir === "up" && <I.trendingUp s={11} className={nudge ? "g-nudge-up" : undefined} />}
+                {dir === "down" && <I.trendingDown s={11} className={nudge ? "g-nudge-down" : undefined} />}
                 {usd(livePrice, decimals)}
               </div>
               {movePct != null && (

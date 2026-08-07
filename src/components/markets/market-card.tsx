@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { TippingBar } from "@/components/brand";
@@ -88,9 +88,15 @@ function getSignalBadge(
 function MoveText({ move, label }: { move: number; label: string }) {
   const dir = move > 0 ? "up" : move < 0 ? "down" : "flat";
   const color = dir === "up" ? "var(--yes-400)" : dir === "down" ? "var(--no-400)" : "var(--text-subtle)";
+  /* M5 directional primitive — nudge on a data CHANGE only, never on mount
+     (the keyframe's own rule). Static until the refreshed board flips `dir`. */
+  const prevDirRef = useRef(dir);
+  const dirChangedRef = useRef(false);
+  if (dir !== prevDirRef.current) { dirChangedRef.current = true; prevDirRef.current = dir; }
+  const nudge = dirChangedRef.current;
   return (
     <span className="mcardp-move" title={label} style={{ color }}>
-      {dir === "up" ? <I.trendingUp s={10} /> : dir === "down" ? <I.trendingDown s={10} /> : <I.arrowRight s={10} />}
+      {dir === "up" ? <I.trendingUp s={10} className={nudge ? "g-nudge-up" : undefined} /> : dir === "down" ? <I.trendingDown s={10} className={nudge ? "g-nudge-down" : undefined} /> : <I.arrowRight s={10} />}
       {move > 0 ? "+" : ""}{move}<span className="u">pt</span>
     </span>
   );

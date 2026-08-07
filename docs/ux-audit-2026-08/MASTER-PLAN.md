@@ -11,13 +11,13 @@
 
 ## ▶ PICK UP HERE  (update this block every session)
 
-- **Overall status:** IMPLEMENTING — Session A COMPLETE (7/7); Phase 2 core design set under way (toast rung 4, DA-8, DA-9, DS-2, DS-3, DS-4 done).
+- **Overall status:** IMPLEMENTING — Session A COMPLETE (7/7); Phase 2 core design set under way (toast rung 4, DA-8, DA-9, DA-2, DS-2, DS-3, DS-4 done).
 - **Active session:** ⚠️ OWNERSHIP RETURNED TO THE CLOUD SESSION 2026-08-07: the local session on F:\ imported the bundle, pushed through DS-3 and STOPPED COMPLETELY (Ali confirmed). The cloud session (claude-fable-5, working a clone of `origin/main`; the F:\ tree is idle — do not edit there) owns everything again — money, Up & Down, platform, all design work.
-- **Next action:** DA-2 (178 glyphs onto the 4 primitives), DA-6 (ATOM J — M6 with THREE gates), then Session B (Up & Down).
+- **Next action:** DA-6 (ATOM J — fold M1–M8 into DESIGN_AUTHORITY.md, M6 with THREE gates, delete EXTEND.md + material.css's merged sections), then Session B (Up & Down).
 - **Blocked on:** nothing. Only the §9 items need Ali; they are parked, work continues.
 - **Environment note:** tests MUST run under Node 24 (`/opt/node24` in the cloud session). Under Node 22, tsx dual-instantiates modules and the seam-patching suites (late-bet, settlement-gate) fail falsely. Cloud sandbox extras: Google Fonts is blocked, so `next build` fails locally — verify CSS atoms on production via `npm run qa:bundle-css -- --live` after the deploy; `qa:live` runs with `QA_OFFLINE=1`; the local qa:live board has no live card on a fresh store, so "at least one bettable market exists" fails there — verified identical at clean HEAD, not a regression signal.
 - **Pre-existing red suites at `da231631` (verified identical before/after Session A; NOT caused by this work):** `test:kyc-doc-metadata` (1 fail), `test:updown-push` (1 fail, §2 suppression-gate else-branch), `test:orphans` (sessions 29–35 left unwired live-QA scripts), `test:updown-admin-options` (2 fails). `test:trilingual` is flaky (random poll fixture; passes on re-run). `test:prisma-delegate` needs the Prisma engine binary — unavailable in the cloud sandbox (blocked CDN), fine on Ali's machine. Fix the updown ones during Session B, orphans/kyc during the sweep/cleanup phases.
-- **Last updated by:** cloud implementation session (claude-fable-5), 2026-08-07 — DS-4 confirm-dialog pending hold + deposit/withdraw wiring (B-6's named forms); test:all 181/187 (only the documented reds + server-needing suites), qa:live 120/1 identical to clean-HEAD baseline, dialog live-driven at 360/1280 × EN/SW/ZH on the local server.
+- **Last updated by:** cloud implementation session (claude-fable-5), 2026-08-07 — DA-2 glyph-primitive migration (new kit `GlyphSwap`, new gate `test:glyph-motion`); test:all 182/188 (only the documented reds + server-needing suites; the new suite is green), qa:live 120/1 identical to clean-HEAD baseline. ⚠️ Fresh-container note: Node 24 installed from the npm `node-linux-x64` package (nodejs.org is 403 through the proxy); Prisma client generates with `PRISMA_SCHEMA_ENGINE_BINARY=<fake> PRISMA_QUERY_ENGINE_LIBRARY=<fake> PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING=1 npx prisma generate --no-engine` (engines CDN blocked); Playwright's chromium-1217 satisfied by symlinking the pre-installed 1194 build under /opt/pw-browsers.
 
 > When you finish an item: tick it in §5/§6, update the counters in §4, and rewrite this
 > block (status / active session / next action / last updated). One session owns `main`
@@ -89,8 +89,8 @@ already doing.
 - **Session C (platform front-end):** 0 / ~17 findings done
 - **Visual set (design):** 1 / 7 done
 - **DS · design-consistency sweep (toasts/popups/modals):** 4 / 27 done
-- **DA · design-system atoms (carried over from design session):** 3 / 12 done (2 need Ali)
-- **TOTAL:** 16 / ~92 done
+- **DA · design-system atoms (carried over from design session):** 4 / 12 done (2 need Ali)
+- **TOTAL:** 17 / ~92 done
 
 ---
 
@@ -187,7 +187,7 @@ already doing.
 
 **Outstanding named atoms:**
 - [x] DA-1 **Toast** — repaint at elevation rung 4 (M2 says rung 4; it currently paints rung 1); the six variants sit on a flat fill and each hand-writes a border the tints now compose — drive borders from the composed tints, not per-variant literals. *(This IS the core of DS-1 + V-5 + UD-3 — do them as one.)* — DONE with DS-1; contrast corpus rebased onto the wash stops.
-- [ ] DA-2 **The 178 glyphs (M5)** — four glyph primitives exist, zero glyphs use them yet; migrate all 178 onto the primitives.
+- [x] DA-2 **The 178 glyphs (M5)** — four glyph primitives exist, zero glyphs use them yet; migrate all 178 onto the primitives. — the glyph SYSTEM is on the primitives (2026-08-07): every bespoke glyph animation swept (spinning `rotateCcw` → kit Spinner ×3 · `shieldAlert` infinite pulse → single-shot `.g-ring` · the two infinite-pulsing gold motifs rest still per M5/M3), and each primitive now has real consumers at its own trigger — `.g-swap-in` through the new kit `GlyphSwap` (`ui/glyph-swap.tsx`; eye/bell toggles ×4, fires on state CHANGE, static first render), `.g-ring` on the bell's new-unread edge (the same edge that fires the haptic), `.g-nudge-up/-down` on price-direction DATA changes only (market card + UpDown card — never mount, the keyframe's own rule), `.g-settle` on done-check arrivals. Guard: `npm run test:glyph-motion` (26 checks — no bespoke Tailwind animation on/wrapping a glyph, never hover, both clamped M6 branches per primitive, adoption floor per family), RED-verified against all three violation shapes. Static glyphs stay static — M5 governs motion, it does not demand it.
 - [ ] DA-3 **E-112** — the five Up & Down stake chips render **26px** against the platform's own **40px** money-control floor, and they decide how much a player stakes → raise to the 40px floor. *(Overlaps UD-9 / tap-target work — do together.)*
 - [ ] DA-4 **E-114** — the refund toast paints a confirmation **tick** over a returned stake → use the `factual` variant (no tick, no gold). *(Same defect family as UD-12 / the LOSS-toast fix — do together.)*
 - [ ] DA-5 **E-115 · the money atom** — ⛔ crosses into `src/lib/server/`; needs **ledger verification + a fresh money census**. Gate under Session A money rules; full `test:all` before push. Overlaps `.gilt-ink` (DA-7).

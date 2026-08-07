@@ -15,6 +15,7 @@
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
+import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 
 export function RefreshButton({
@@ -46,7 +47,8 @@ export function RefreshButton({
           className,
         )}
       >
-        <I.rotateCcw s={15} className={pending ? "animate-spin motion-reduce:animate-none" : undefined} />
+        {/* M5 — a glyph never wears bespoke motion; in-flight is the kit Spinner. */}
+        {pending ? <Spinner size={15} /> : <I.rotateCcw s={15} />}
       </button>
     );
   }
@@ -59,7 +61,7 @@ export function RefreshButton({
       title={`${label} · ${sw}`}
       className={cn("btn btn-ghost btn-sm h-8 inline-flex items-center gap-1.5", className)}
     >
-      <I.rotateCcw s={14} className={pending ? "animate-spin motion-reduce:animate-none" : undefined} />
+      {pending ? <Spinner size={14} /> : <I.rotateCcw s={14} />}
       {label}
     </button>
   );

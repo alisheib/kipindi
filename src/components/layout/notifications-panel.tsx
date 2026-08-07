@@ -92,12 +92,17 @@ export function NotificationsPanel() {
   const unread = items.filter((n) => !n.readAt).length;
 
   const prevUnreadRef = useRef(0);
+  /* M5 alert primitive — the bell takes `.g-ring` on the arrival of a NEW unread
+     (the same edge that fires the haptic), single-shot; the key bump restarts the
+     keyframe on each fresh arrival. Never on hover, never looping. */
+  const [ringSeq, setRingSeq] = useState(0);
   const refresh = useCallback(async () => {
     const r = await fetchMyNotifications();
     setItems(r.items);
     const clientUnread = r.items.filter((n: StoredNotification) => !n.readAt).length;
     if (clientUnread > prevUnreadRef.current && prevUnreadRef.current >= 0) {
       haptics.success();
+      setRingSeq((s) => s + 1);
     }
     prevUnreadRef.current = clientUnread;
   }, []);
@@ -198,7 +203,9 @@ export function NotificationsPanel() {
           open ? "bg-bg-overlay/60 text-text" : "text-text-subtle hover:text-text hover:bg-bg-overlay/40",
         )}
       >
-        <I.bell s={20} />
+        <span key={ringSeq} aria-hidden className={cn("inline-flex", ringSeq > 0 && "g-ring")}>
+          <I.bell s={20} />
+        </span>
         {unread > 0 && (
           <span
             aria-hidden
