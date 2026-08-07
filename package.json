@@ -296,7 +296,12 @@
     "test:reduce-motion": "tsx scripts/reduce-motion.test.mts",
     "red:reduce-motion": "node scripts/reduce-motion-red.mjs",
     "qa:bundle-css": "node scripts/bundle-css-probe.mjs",
-    "qa:calm": "node scripts/live-calm-probe.mjs"
+    "qa:calm": "node scripts/live-calm-probe.mjs",
+    "qa:sweep": "node scripts/live-s29-sweep.mjs",
+    "qa:win-popup": "node scripts/live-s31-win-popup.mjs",
+    "qa:material-probe": "node scripts/live-material-probe.mjs",
+    "qa:material-preview": "node scripts/material-candidate-preview.mjs",
+    "qa:material-audit": "node scripts/ui-material-audit.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

@@ -28,16 +28,51 @@
  */
 import { globSync, readFileSync } from "node:fs";
 
+/**
+ * ⭐ TWO TARGETS, ONE EXPECTATION LIST — and that is the whole design.
+ *
+ *   npm run qa:bundle-css                # the local build, .next/static/chunks
+ *   npm run qa:bundle-css -- --live      # PRODUCTION's own stylesheets, fetched
+ *
+ * `--live` is also the honest **deploy detector** for a CSS atom. There is no
+ * commit-SHA health endpoint on this service, and "the push succeeded" says nothing
+ * about what the browser is being served. So the thing that proves the deploy landed
+ * is the same thing that proves the atom landed: the rule is in the stylesheet
+ * production hands out. ⛔ Two separate scripts for the two targets would be two
+ * lists drifting apart, which is the defect this repo has paid for most.
+ */
+const LIVE = process.argv.includes("--live");
+const BASE = process.env.LIVE_BASE ?? "https://50pick.tz";
 const ROOT = process.env.BUNDLE_ROOT ?? new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
-const FILES = globSync(".next/static/chunks/*.css", { cwd: ROOT }).map((f) => f.replace(/\\/g, "/")).sort();
-console.log(`bundle-css-probe: reading ${ROOT}`);
 
-if (FILES.length === 0) {
-  console.log(`\n⛔ NO CSS BUNDLE FOUND under .next/static/chunks/ — run \`npm run build\` first.`);
-  console.log(`   ⚠️ Exiting 2 · INCONCLUSIVE, never 0: "nothing to check" must not read as "all checks passed".\n`);
-  process.exit(2);
+let FILES = [];
+let css = "";
+if (LIVE) {
+  console.log(`bundle-css-probe: reading PRODUCTION ${BASE}`);
+  const html = await (await fetch(BASE, { headers: { "cache-control": "no-cache" } })).text();
+  // Next emits the app's stylesheets as <link rel="stylesheet" href="/_next/static/…">.
+  const hrefs = [...new Set([...html.matchAll(/href="(\/_next\/static\/[^"]+\.css)"/g)].map((m) => m[1]))];
+  if (hrefs.length === 0) {
+    console.log(`\n⛔ NO STYLESHEET LINK FOUND in ${BASE} — the page shape changed, or the fetch was blocked.`);
+    console.log(`   ⚠️ Exiting 2 · INCONCLUSIVE, never 0: "found nothing" must not read as "all checks passed".\n`);
+    process.exit(2);
+  }
+  for (const h of hrefs) {
+    const r = await fetch(`${BASE}${h}`, { headers: { "cache-control": "no-cache" } });
+    if (!r.ok) { console.log(`\n⛔ ${h} → HTTP ${r.status}\n`); process.exit(2); }
+    css += `\n${await r.text()}`;
+    FILES.push(h);
+  }
+} else {
+  console.log(`bundle-css-probe: reading ${ROOT}`);
+  FILES = globSync(".next/static/chunks/*.css", { cwd: ROOT }).map((f) => f.replace(/\\/g, "/")).sort();
+  if (FILES.length === 0) {
+    console.log(`\n⛔ NO CSS BUNDLE FOUND under .next/static/chunks/ — run \`npm run build\` first.`);
+    console.log(`   ⚠️ Exiting 2 · INCONCLUSIVE, never 0: "nothing to check" must not read as "all checks passed".\n`);
+    process.exit(2);
+  }
+  css = FILES.map((f) => readFileSync(`${ROOT}/${f}`, "utf8")).join("\n");
 }
-const css = FILES.map((f) => readFileSync(`${ROOT}/${f}`, "utf8")).join("\n");
 
 /** ⚠️ The minifier drops spaces and the quotes around attribute values, so every
  *  pattern below is written to tolerate both forms: `[data-motion="reduced"] .x`

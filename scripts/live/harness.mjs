@@ -113,8 +113,51 @@ export async function browser(opts = {}) {
 }
 
 /**
+ * ⭐ SIGN IN **ONCE** AND REUSE THE SESSION — for any driver that sweeps a MATRIX.
+ *
+ *   const state = await loginOnce(browser, "fleet:07");
+ *   const ctx = await browser.newContext({ storageState: state, ...perCellOptions });
+ *
+ * 🔴 WHY, MEASURED 2026-08-07 (ATOM A). A 36-cell probe (3 gates × 4 widths × 3 locales)
+ * that called `login()` in every cell got **22 passes and 14 failures**, and every failure
+ * was `login failed` on a cell whose *product* behaviour was fine. The failures clustered
+ * in the LATER cells across all three locales — i.e. after a dozen-odd successful
+ * sign-ins to the same account inside a few minutes, the server stops accepting them and
+ * bounces to the signed-out home page, which `login()`'s own comment already warns *"looks
+ * exactly like a wrong password, and it is not one."*
+ *
+ * ⛔ IT IS NOT WIDTH-DEPENDENT, AND THAT WAS THE FIRST GUESS. The obvious suspect was
+ * `clickByName`'s page-wide `.first()` grabbing the header's "Sign in" pill at ≥768 where
+ * the nav is not collapsed — the same shape as a trap already recorded in §6b. **Measured
+ * instead of assumed: `getByRole("button", …)` resolves to exactly ONE control at 360 and
+ * at 1280**, the form's `type=submit`; the three matching anchors are links and carry no
+ * button role. The guess was wrong and the measurement took two minutes.
+ *
+ * ⭐ So the fix is not a retry, it is not signing in 36 times. One sign-in, one saved
+ * state, N contexts — which is also ~30× faster and is the standard Playwright pattern.
+ * ⚠️ The `kp-locale` cookie is STRIPPED from the returned state on purpose: a matrix sets
+ * its own per cell, and a leftover cookie from the login context would silently pin every
+ * cell to the language the sign-in happened in — E-106's defect, one layer down.
+ */
+export async function loginOnce(b, who) {
+  const ctx = await b.newContext({ viewport: { width: 1280, height: 900 } });
+  const page = await ctx.newPage();
+  try {
+    await login(page, who);
+    const state = await ctx.storageState();
+    state.cookies = state.cookies.filter((c) => c.name !== "kp-locale");
+    return state;
+  } finally {
+    await ctx.close();
+  }
+}
+
+/**
  * Sign in. `who` is a PERSONA key. Players use /auth/login, staff use /auth/admin —
  * both render the same PhoneInput, so the selector rule is identical.
+ *
+ * ⚠️ For a MATRIX of cells use `loginOnce()` above — calling this per cell trips the
+ * server's attempt limiting partway through and reports product failures that are not.
  */
 export async function login(page, who) {
   // `who` is a PERSONA key, OR `fleet:NN` for a QA-fleet player (see
