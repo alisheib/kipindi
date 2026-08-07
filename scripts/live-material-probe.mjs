@@ -115,6 +115,30 @@ const SURFACES = {
     vars: ["--pearl-50", "--light-angle"],
   },
   /**
+   * ⭐ THE MONEY-IN CTA ON STRUCK GILT — added 2026-08-07 (ATOM D-2), and it is the
+   * falsifiable check for that atom that no CSS-reading gate can be.
+   *
+   * The adoption is a className in `top-app-bar.tsx`, so `qa:bundle-css` cannot see
+   * it: that probe reads the shipped stylesheet, and the stylesheet is identical
+   * whether or not any element ever takes the class. **What proves the adoption is
+   * the computed style of the REAL element on the REAL page** — the two-layer
+   * `backgroundImage` (sheen over metal) is the signature, and it can only appear if
+   * `.gilt-metal` actually applies to this control.
+   *
+   * ⛔ A PERSONA IS REQUIRED and that is not incidental: the deposit pill renders
+   * only for `user.isAuthed`, and only when the route is not already
+   * `/wallet/deposit`. Shot as a visitor this surface does not exist, and the probe
+   * would report "not found" over a control that is working.
+   */
+  gilt: {
+    route: "/markets",
+    persona: "fleet:07",
+    selector: "a.gilt-metal",
+    label: "money-in CTA, struck gilt (M3) — the top-bar Deposit pill",
+    props: ["backgroundImage", "backgroundSize", "boxShadow", "color", "height"],
+    vars: ["--gilt-metal", "--gilt-sheen", "--gilt-metal-edge", "--gold-fg", "--light-angle"],
+  },
+  /**
    * ⭐ THE THREE FLOATING RUNGS (ATOM 2c-b). `--shadow-modal`, `--shadow-overlay`
    * and `--shadow-overlay-up` each carried `inset 0 1px 0 oklch(100% 0 0 / 0.06)` —
    * a PURE-WHITE line on the top edge only, banned twice over by M1 ("an EVEN 1px

@@ -600,9 +600,35 @@
      this is material, not decoration. Rung 4 carries +0.015 chroma against mud
      on OLED (designer R2 Q7); the inset wash runs DARK-to-light, inverted,
      because a well is shaded at its top lip. */
+  /* 🔴 THE LIT STOP IS CAPPED AT 24% ON ALL THREE — E-130, 2026-08-07 (ATOM D).
+     The delivery asked for raised 24% · float 26.5% · modal 28%, and the last two
+     CANNOT BE ADOPTED AS WRITTEN: a lighter surface lowers contrast for light ink,
+     and measured against each wash's worst stop before any surface took one,
+     `--text-faint on --wash-modal` reads **4.16** against a 4.5 floor,
+     `--border-control on --wash-modal` **2.71** against 3.0, and
+     `--text-faint on --wash-float` **4.39**. A dialog and a menu both carry body
+     copy and form controls, so those are not hypothetical pairs.
+
+     ⭐ THE CAP IS DERIVED, NOT CHOSEN. Solving each ink's floor for the maximum lit
+     lightness at each wash's own chroma, the binding constraint is `--border-control`
+     at 3.0 every time: ≤ 24.44% (raised) · ≤ 24.90% (float) · ≤ 24.66% (modal). 24%
+     is the one value that clears all three with margin, and it is what the raised
+     wash already used — so the delivery's own first rung was the only one sized for
+     our ink.
+
+     ⭐ AND THE LADDER STILL RISES, on a better physical model than the delivery's.
+     Its higher rungs said "higher" by being LIGHTER overall, which is a budget our
+     fixed ink cannot pay. M2 defines a rung as "wash + edge + ring + cast" and M1
+     gives the wash ONE job — direction — so height is carried by the CAST and the
+     RING, where it belongs. What survives here is monotonic on the DARK stop
+     (20.5 → 21 → 21.5), which means the spread NARROWS as a surface rises: a
+     surface closer to the lamp is more evenly lit. That is the same lamp, read
+     correctly.
+     ⚠️ `--wash-float` keeps its +0.015 chroma over the others — the designer's
+     OLED anti-mud note (R2 Q7), which is about saturation, not lightness. */
   --wash-raised: linear-gradient(var(--light-angle), oklch(24% 0.145 268) 0%, oklch(20.5% 0.132 268) 100%);
-  --wash-float:  linear-gradient(var(--light-angle), oklch(26.5% 0.165 268) 0%, oklch(21% 0.150 268) 100%);
-  --wash-modal:  linear-gradient(var(--light-angle), oklch(28% 0.155 268) 0%, oklch(21.5% 0.138 268) 100%);
+  --wash-float:  linear-gradient(var(--light-angle), oklch(24% 0.165 268) 0%, oklch(21% 0.150 268) 100%);
+  --wash-modal:  linear-gradient(var(--light-angle), oklch(24% 0.155 268) 0%, oklch(21.5% 0.138 268) 100%);
   --wash-inset:  linear-gradient(var(--light-angle), oklch(10% 0.100 268) 0%, oklch(12.5% 0.115 268) 100%);
 
   /* The five rungs. Rung = wash + edge + ring + cast; these carry the shadow half.

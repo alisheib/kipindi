@@ -162,14 +162,34 @@ export function TopAppBar({ user, proposalsState }: { user: TopAppBarUser; propo
           )}
 
           {user.isAuthed && !pathname.startsWith("/wallet/deposit") && (
-            // The money-in CTA, now on the kit's flat-solid gold family (was the only
-            // gold GRADIENT left in a flat-gold system). `.btn btn-gold` carries the
-            // kit inset highlight + a built-in gold hover-glow, so it stays a premium
-            // CTA without bespoke inline styling. Pill shape; label hidden < sm.
+            // ⭐ THE MONEY-IN CTA, ON STRUCK GILT — M3, 2026-08-07 (ATOM D-2).
+            //
+            // ⚠️ THIS DELIBERATELY REVERSES AN EARLIER DECISION, AND THE EARLIER ONE IS
+            // NOT BEING CALLED WRONG. This CTA used to carry a bespoke gold GRADIENT and
+            // was moved to the kit's flat `.btn-gold` because it was "the only gold
+            // gradient left in a flat-gold system" — correct reasoning about a system
+            // whose gold was flat. M3 changes that premise at the root: *gold is struck,
+            // and struck means earned.* One satin ramp, re-derived from the trademark's
+            // #E3BC66, with an even edge ring and one specular sweep on hover. The
+            // delivery names this exact control — "Continue / Deposit / earned-money CTA".
+            // So the gradient returns, but as the SYSTEM's one ramp rather than as a
+            // one-off: `--gilt-metal` is a token, and it is the same metal as the mark.
+            //
+            // ⛔ `btn-gold` IS DROPPED, NOT LAYERED. Both classes paint a fill, and
+            // stacking them would leave two answers to one question relying on import
+            // order to pick a winner. `.gilt-metal` is a COMPLETE control skin — fill,
+            // ink, edge, hover, active, focus-visible and disabled — so `.btn` supplies
+            // the geometry and typography and the rung supplies the material, which is
+            // M2's division of labour. ⚠️ The other four `.btn-gold` sites are ATOM E's;
+            // this is the one representative control, per INTAKE §3 step 3.
+            //
+            // Measured, not assumed: `--gold-fg` on the struck ramp's worst stop reads
+            // 7.25 against a 4.5 floor (`test:contrast`), so the change costs nothing in
+            // legibility. Pill shape; label hidden < sm.
             <Link
               href="/wallet/deposit"
               aria-label={t.common.deposit}
-              className="btn btn-gold btn-md btn-pill"
+              className="btn gilt-metal btn-md btn-pill"
             >
               <I.plus s={14} />
               <span className="hidden sm:inline">

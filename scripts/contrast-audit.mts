@@ -557,6 +557,8 @@ const T = {
    * accessibility budget the canvas atom earned.
    */
   washRaisedStops: tokenGradient("wash-raised"),
+  washModalStops: tokenGradient("wash-modal"),
+  washFloatStops: tokenGradient("wash-float"),
 };
 
 /**
@@ -647,6 +649,17 @@ const CHECKS: Check[] = [
    */
   { name: "--border on --wash-raised (decorative — exempt)", fg: T.border, bg: worstStop(T.border, T.washRaisedStops), min: 3.0, decorative: true },
   { name: "--border-control on --wash-raised (form controls on a card)", fg: T.borderControl, bg: worstStop(T.borderControl, T.washRaisedStops), min: 3.0 },
+  // MEASURED BEFORE THE MODAL AND THE MENUS ARE ALLOWED TO ADOPT THEIR WASHES.
+  // --wash-modal lifts to 28% lightness and --wash-float to 26.5%, both well above
+  // the 22% flat fill they replace, so these are the pairs a lighter surface could
+  // push under. A dialog carries body copy and form controls, not just headings.
+  { name: "--text-faint on --wash-modal (worst stop)", fg: T.textFaint, bg: worstStop(T.textFaint, T.washModalStops), min: 4.5 },
+  { name: "--text-subtle on --wash-modal (worst stop)", fg: T.textSubtle, bg: worstStop(T.textSubtle, T.washModalStops), min: 4.5 },
+  { name: "--text on --wash-modal (worst stop)", fg: T.text, bg: worstStop(T.text, T.washModalStops), min: 4.5 },
+  { name: "--border-control on --wash-modal (form controls in a dialog)", fg: T.borderControl, bg: worstStop(T.borderControl, T.washModalStops), min: 3.0 },
+  { name: "--text-faint on --wash-float (worst stop)", fg: T.textFaint, bg: worstStop(T.textFaint, T.washFloatStops), min: 4.5 },
+  { name: "--text-subtle on --wash-float (worst stop)", fg: T.textSubtle, bg: worstStop(T.textSubtle, T.washFloatStops), min: 4.5 },
+  { name: "--text on --wash-float (worst stop)", fg: T.text, bg: worstStop(T.text, T.washFloatStops), min: 4.5 },
   { name: "--text-faint on --panel", fg: T.textFaint, bg: T.panel, min: 4.5 },
 
   // ── Gold, checked for the first time (ATOM 2d) ────────────────────────────

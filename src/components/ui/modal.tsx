@@ -146,9 +146,20 @@ export function Modal({
         onClick={closeOnScrim ? onClose : undefined}
         className="m-scrim fixed inset-0 bg-black/60"
       />
+      {/* ⭐ RUNG 3 (M2) — the dialog PICKS a rung instead of composing one. `mat-modal`
+          carries the wash, the border and `--elev-modal` together, so the three classes
+          it replaces (`border border-border-strong bg-bg-elevated shadow-modal`) are
+          gone rather than left beside it (INTAKE §3b: a class that lands while the
+          literals survive has bought nothing).
+          ⚠️ IT KEEPS ITS BORDER, and that was checked rather than assumed. The
+          border-drop rule applies to rungs whose cast carries an OUTER ring —
+          `--elev-float` at 42% and `--elev-toast` at 46% — because a 1px ring
+          immediately outside a 44% border reads as one muddy 2px edge. `--elev-modal`
+          carries only the inset `--edge-lit-strong`, so there is nothing to double up
+          with, and dropping the border here would have cost the dialog its edge. */}
       <div
         ref={panelRef}
-        className={`${sheet ? "m-sheet-in kp-modal-sheet" : "m-dialog-in"} relative w-full border border-border-strong bg-bg-elevated shadow-modal p-5 lg:p-6 ${
+        className={`${sheet ? "m-sheet-in kp-modal-sheet" : "m-dialog-in"} mat-modal relative w-full p-5 lg:p-6 ${
           sheet ? "rounded-t-modal sm:rounded-modal sm:my-auto" : "my-auto rounded-modal"
         } ${panelClassName}`}
         style={{ maxWidth }}
