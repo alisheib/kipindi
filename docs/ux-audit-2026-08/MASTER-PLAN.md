@@ -11,13 +11,13 @@
 
 ## ▶ PICK UP HERE  (update this block every session)
 
-- **Overall status:** IMPLEMENTING — Session A COMPLETE (7/7); Phase 2 core design set under way (toast rung 4, DA-8, DA-9, DS-2, DS-3 done).
-- **Active session:** ⚠️ OWNERSHIP HANDED OVER 2026-08-07 (late): the cloud session stood down cleanly when Ali opened a local session — ONE session owns main at a time. The LOCAL session on F:\kipindi-main now owns everything. ⛔ Before writing ANY code, import the cloud session's unpushed commits (Ali has the bundle: `git pull <bundle> main && git push`); they contain everything ticked below through DS-3.
-- **Next action:** DS-4 (confirm-dialog align + pending, B-6), DA-2 (178 glyphs onto the 4 primitives), DA-6 (ATOM J — M6 with THREE gates), then Session B (Up & Down).
+- **Overall status:** IMPLEMENTING — Session A COMPLETE (7/7); Phase 2 core design set under way (toast rung 4, DA-8, DA-9, DS-2, DS-3, DS-4 done).
+- **Active session:** ⚠️ OWNERSHIP RETURNED TO THE CLOUD SESSION 2026-08-07: the local session on F:\ imported the bundle, pushed through DS-3 and STOPPED COMPLETELY (Ali confirmed). The cloud session (claude-fable-5, working a clone of `origin/main`; the F:\ tree is idle — do not edit there) owns everything again — money, Up & Down, platform, all design work.
+- **Next action:** DA-2 (178 glyphs onto the 4 primitives), DA-6 (ATOM J — M6 with THREE gates), then Session B (Up & Down).
 - **Blocked on:** nothing. Only the §9 items need Ali; they are parked, work continues.
-- **Environment note:** tests MUST run under Node 24 (`/opt/node24` in the cloud session). Under Node 22, tsx dual-instantiates modules and the seam-patching suites (late-bet, settlement-gate) fail falsely.
+- **Environment note:** tests MUST run under Node 24 (`/opt/node24` in the cloud session). Under Node 22, tsx dual-instantiates modules and the seam-patching suites (late-bet, settlement-gate) fail falsely. Cloud sandbox extras: Google Fonts is blocked, so `next build` fails locally — verify CSS atoms on production via `npm run qa:bundle-css -- --live` after the deploy; `qa:live` runs with `QA_OFFLINE=1`; the local qa:live board has no live card on a fresh store, so "at least one bettable market exists" fails there — verified identical at clean HEAD, not a regression signal.
 - **Pre-existing red suites at `da231631` (verified identical before/after Session A; NOT caused by this work):** `test:kyc-doc-metadata` (1 fail), `test:updown-push` (1 fail, §2 suppression-gate else-branch), `test:orphans` (sessions 29–35 left unwired live-QA scripts), `test:updown-admin-options` (2 fails). `test:trilingual` is flaky (random poll fixture; passes on re-run). `test:prisma-delegate` needs the Prisma engine binary — unavailable in the cloud sandbox (blocked CDN), fine on Ali's machine. Fix the updown ones during Session B, orphans/kyc during the sweep/cleanup phases.
-- **Last updated by:** implementation session (claude-fable-5), 2026-08-07 — Session A B-2..B-5, B-1 slice, B-8, B-9 all done; this push also adds the audit-plan docs to the repo (they existed only on F:\ before).
+- **Last updated by:** cloud implementation session (claude-fable-5), 2026-08-07 — DS-4 confirm-dialog pending hold + deposit/withdraw wiring (B-6's named forms); test:all 181/187 (only the documented reds + server-needing suites), qa:live 120/1 identical to clean-HEAD baseline, dialog live-driven at 360/1280 × EN/SW/ZH on the local server.
 
 > When you finish an item: tick it in §5/§6, update the counters in §4, and rewrite this
 > block (status / active session / next action / last updated). One session owns `main`
@@ -88,9 +88,9 @@ already doing.
 - **Session B (Up & Down):** 1 / 22 findings done
 - **Session C (platform front-end):** 0 / ~17 findings done
 - **Visual set (design):** 1 / 7 done
-- **DS · design-consistency sweep (toasts/popups/modals):** 3 / 27 done
+- **DS · design-consistency sweep (toasts/popups/modals):** 4 / 27 done
 - **DA · design-system atoms (carried over from design session):** 3 / 12 done (2 need Ali)
-- **TOTAL:** 15 / ~92 done
+- **TOTAL:** 16 / ~92 done
 
 ---
 
@@ -164,7 +164,7 @@ already doing.
 - [x] DS-1 `ui/toast.tsx` — new toast look; variants success/danger/warning/factual/gold; `role=alert` for danger (V-5); sticky `durationMs:0` support (from UD-3). — rung 4 (`.mat-toast`) + composed `.mat-tint-*` per variant; factual stays untinted; dead `.toast` class family swept from globals.
 - [x] DS-2 `ui/modal.tsx` (`Modal` + `ConfirmModal`) — new popup chrome; add `loading` state (B-28); tiers. — Modal already rung 3 (design session); ConfirmModal gains `loading` (both buttons disabled, spinner + t.common.working, scrim/Esc/✕ blocked, aria-busy); wired into control-plane's provider switch. Remaining consequential call sites take it during the DS sweep.
 - [x] DS-3 `markets/operation-result-modal.tsx` — the canonical result popup; new crest/strip. — crest disc + detail-row tones now compose off the semantic ramp with color-mix (lit-glass recipe, same families as the toast tints); zero hand-typed oklch left in the TONE map.
-- [ ] DS-4 `ui/confirm-dialog.tsx` — align to the new `ConfirmModal` look + pending (B-6).
+- [x] DS-4 `ui/confirm-dialog.tsx` — align to the new `ConfirmModal` look + pending (B-6). — look was already ConfirmModal-delegated (rung 3); gains the `pending` hold-open contract (confirm no longer closes; ConfirmModal `loading` through the round-trip; falling-edge release; `onConfirm() === false` = refused pre-flight). Wired via `useFormStatus` into deposit-confirm + withdraw-confirm with `reportValidity()` pre-flight — B-6's two named money forms done; B-6's remaining half (B-12 try/catch) stays in Session C.
 
 **Confirm / result popups (conform to the new set):**
 - [ ] DS-5 bet-confirm-modal · [ ] DS-6 sell-confirm-modal · [ ] DS-7 win-celebration · [ ] DS-8 objection-dialog · [ ] DS-9 notify-prompt · [ ] DS-10 rg/reality-check · [ ] DS-11 rg/rg-confirm-submit · [ ] DS-12 admin/action-overlay · [ ] DS-13 onboarding/first-visit-primer

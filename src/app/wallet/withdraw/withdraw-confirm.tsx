@@ -8,6 +8,7 @@
  */
 
 import { useRef, useState } from "react";
+import { useFormStatus } from "react-dom";
 import { useT } from "@/lib/i18n";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { formatTzs } from "@/lib/utils";
@@ -24,6 +25,11 @@ export function WithdrawConfirm({ feeRate }: { feeRate: number }) {
   const { t } = useT();
   const [summary, setSummary] = useState({ amount: 0, provider: "", msisdn: "" });
   const [payee, setPayee] = useState<PayeeState>({ state: "idle", name: null });
+  // DS-4 / B-6 — read the surrounding form's in-flight state and hold the
+  // confirm dialog open (spinner, buttons disabled, no dismissal) until the
+  // withdrawal action settles. Money leaving an account is the last place a
+  // player should be staring at a page that looks idle.
+  const { pending } = useFormStatus();
 
   const openConfirm = () => {
     const form = buttonRef.current?.closest("form");
@@ -50,7 +56,11 @@ export function WithdrawConfirm({ feeRate }: { feeRate: number }) {
 
   const submitForm = () => {
     const form = buttonRef.current?.closest("form");
-    form?.requestSubmit();
+    if (!form) return false;
+    // Refused pre-flight: release the dialog so the field errors show, rather
+    // than holding a spinner for a submission that never started (see DS-4).
+    if (!form.reportValidity()) return false;
+    form.requestSubmit();
   };
 
   const rowLabel = "font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle";
@@ -106,6 +116,7 @@ export function WithdrawConfirm({ feeRate }: { feeRate: number }) {
       cancelLabel={t.common.cancel}
       onConfirm={submitForm}
       onOpen={openConfirm}
+      pending={pending}
       trigger={
         <button
           ref={buttonRef}

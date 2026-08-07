@@ -18,6 +18,18 @@
  * The scrim + portal + focus-trap + scroll-lock all live in the shared
  * <ConfirmModal>/<Modal> primitive — this file only adds the clone-the-trigger
  * ergonomics so callers don't manage open state themselves.
+ *
+ * ⭐ DS-4 / B-6 (2026-08-07) — the PENDING hold. Pass `pending` (from
+ * `useTransition` or `useFormStatus`) and confirm STOPS closing the dialog:
+ * it holds open through the round-trip wearing ConfirmModal's `loading`
+ * (both buttons disabled, spinner + "working", scrim/Esc/✕ blocked), then
+ * closes itself on the true→false falling edge. Before this, the two
+ * highest-stakes forms in the product (deposit, withdraw) confirmed → the
+ * modal vanished → the page sat dead-looking for the whole 2–10s Selcom
+ * round-trip → anxious re-submit. The dial and SellButton already did this
+ * correctly; this brings the convenience wrapper up to the same bar.
+ * ⚠️ Leave `pending` undefined to keep the classic close-on-confirm
+ * behaviour — the admin consumers that run their own overlay want exactly that.
  */
 
 import * as React from "react";
@@ -33,9 +45,18 @@ type Props = {
   cancelLabel?: string;
   /** Tone of the confirm button. claret = irreversible / destructive (default). */
   tone?: Tone;
-  onConfirm: () => void;
+  /** In hold-open mode (`pending` provided), return `false` to signal the
+   *  mutation did NOT start (e.g. `form.reportValidity()` refused) — the dialog
+   *  releases immediately instead of waiting for a round-trip that will never
+   *  come. Any other return (including void) means "in flight, hold". */
+  onConfirm: () => void | boolean;
   /** Fires right before the dialog opens — use to snapshot form data. */
   onOpen?: () => void;
+  /** DS-4 / B-6 — the mutation-in-flight signal (useTransition pending or
+   *  useFormStatus().pending). PROVIDING this prop (even as `false`) opts the
+   *  dialog into the hold-open contract: confirm no longer closes it; the
+   *  falling edge of `pending` does. Omit for classic close-on-confirm. */
+  pending?: boolean;
 };
 
 export function ConfirmDialog({
@@ -47,13 +68,35 @@ export function ConfirmDialog({
   tone = "claret",
   onConfirm,
   onOpen,
+  pending,
 }: Props) {
   const [open, setOpen] = React.useState(false);
+  // Hold-open bookkeeping (only used when `pending` is provided): `awaiting`
+  // means confirm was pressed and we are riding the round-trip; `sawPending`
+  // distinguishes "not started yet" from "settled" so the dialog closes on the
+  // falling edge and never on the gap before the transition starts.
+  const holdOpen = pending !== undefined;
+  const [awaiting, setAwaiting] = React.useState(false);
+  const sawPendingRef = React.useRef(false);
+
+  React.useEffect(() => {
+    if (!awaiting) return;
+    if (pending) { sawPendingRef.current = true; return; }
+    if (sawPendingRef.current) {
+      // Settled (success re-render, error re-render, or the action returned) —
+      // release the dialog. On a redirect this whole tree unmounts instead.
+      setAwaiting(false);
+      sawPendingRef.current = false;
+      setOpen(false);
+    }
+  }, [pending, awaiting]);
 
   // Clone the trigger so clicking it opens the dialog, but it can't
-  // submit the surrounding form directly.
+  // submit the surrounding form directly. While a held-open mutation is in
+  // flight the trigger is disabled too — no queueing a second confirm (B-6).
   const triggerEl = React.cloneElement(trigger as React.ReactElement<Record<string, unknown>>, {
     type: "button",
+    disabled: holdOpen ? (awaiting || pending || (trigger.props as { disabled?: boolean }).disabled) : (trigger.props as { disabled?: boolean }).disabled,
     onClick: (e: React.MouseEvent) => {
       e.preventDefault();
       onOpen?.();
@@ -66,13 +109,24 @@ export function ConfirmDialog({
       {triggerEl}
       <ConfirmModal
         open={open}
-        onClose={() => setOpen(false)}
-        onConfirm={() => { setOpen(false); onConfirm(); }}
+        onClose={() => { if (!awaiting) setOpen(false); }}
+        onConfirm={() => {
+          if (holdOpen) {
+            if (awaiting) return; // one confirm per round-trip
+            const started = onConfirm();
+            if (started === false) { setOpen(false); return; } // refused pre-flight — show the field errors
+            setAwaiting(true);
+          } else {
+            setOpen(false);
+            onConfirm();
+          }
+        }}
         title={title}
         body={body}
         tone={tone}
         confirmLabel={confirmLabel}
         cancelLabel={cancelLabel}
+        loading={holdOpen && awaiting}
       />
     </>
   );

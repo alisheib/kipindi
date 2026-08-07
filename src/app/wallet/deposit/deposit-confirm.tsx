@@ -9,6 +9,7 @@
  */
 
 import { useRef, useState } from "react";
+import { useFormStatus } from "react-dom";
 import { useT } from "@/lib/i18n";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { formatTzs } from "@/lib/utils";
@@ -17,6 +18,11 @@ export function DepositConfirm() {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const { t } = useT();
   const [summary, setSummary] = useState({ amount: 0, provider: "", msisdn: "" });
+  // DS-4 / B-6 — this component sits inside the deposit <form>, so the form
+  // action's in-flight state is readable right here. Passing it down keeps the
+  // confirm dialog OPEN with a spinner through the whole Selcom `create-order`
+  // round-trip (2–10s on 2G) instead of vanishing into a dead-looking page.
+  const { pending } = useFormStatus();
 
   const openConfirm = () => {
     const form = buttonRef.current?.closest("form");
@@ -29,7 +35,13 @@ export function DepositConfirm() {
   };
 
   const submitForm = () => {
-    buttonRef.current?.closest("form")?.requestSubmit();
+    const form = buttonRef.current?.closest("form");
+    if (!form) return false;
+    // Refused pre-flight (missing provider, bad amount): release the dialog so
+    // the field errors are visible, rather than holding a spinner for a
+    // submission that never started.
+    if (!form.reportValidity()) return false;
+    form.requestSubmit();
   };
 
   return (
@@ -61,6 +73,7 @@ export function DepositConfirm() {
       cancelLabel={t.common.cancel}
       onConfirm={submitForm}
       onOpen={openConfirm}
+      pending={pending}
       trigger={
         <button ref={buttonRef} type="button" className="btn btn-gold btn-lg w-full">
           {t.common.confirmDeposit}
