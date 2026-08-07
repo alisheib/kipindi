@@ -227,6 +227,7 @@ step function is gameable.
 
 | Topic | File |
 |---|---|
+| ⭐ **THE DESIGN SYSTEM — ONE HOME, START HERE FOR ANYTHING VISUAL** | [`docs/design-system/README.md`](docs/design-system/README.md). **It is the index and the map: it says where every design fact lives AND where a new design document must be stored.** ⛔ Read it before creating any design doc, brief, spec, plan or handoff — a design file written anywhere else is a second definition of one truth, which is the defect this project has been burned by twice. Its own first rule: *"One fact, one home. If you find a value in two places, that is a bug — fix it by deleting one, not by keeping both in sync."* |
 | Design authority (palette, tokens, invariants) | [`docs/DESIGN_AUTHORITY.md`](docs/DESIGN_AUTHORITY.md) — **read before any color / composition / hero change.** Implementation is [`src/app/globals.css`](src/app/globals.css) (authoritative); palette rationale is [`docs/design-master-brief.md`](docs/design-master-brief.md). ⚠️ `50PICK/design_handoff_prediction_market_kit/kit/` is a **SUPERSEDED snapshot** (teal 215, dead light theme) — historical only, do **NOT** build from it. |
 | Prisma data model | [`prisma/schema.prisma`](prisma/schema.prisma) |
 | In-memory store (Prisma-shaped) | [`src/lib/server/store.ts`](src/lib/server/store.ts) |

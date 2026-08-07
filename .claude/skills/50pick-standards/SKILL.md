@@ -59,6 +59,13 @@ once** (the "five-lens mindset").
   like it was always there.
 
 ## 3. UI & design discipline
+- ⭐ **THE DESIGN SYSTEM HAS ONE HOME: `docs/design-system/README.md`. Open it before any
+  visual work, and before creating ANY design document.** It is the index — it says where
+  every design fact lives *and where a new design doc must be stored*. ⛔ A brief, spec,
+  plan or handoff written anywhere else is a second definition of one truth. This project
+  has been burned by that twice (a superseded teal kit that kept reading as current, and a
+  second definition of "chart data" that fabricated price history for real-money bettors).
+  **If you find a value in two places that is a bug: delete one, do not sync both.**
 - **UI-kit only.** Build from the kit (`src/components/ui/*`, `src/components/admin/*`).
   Never hand-roll a one-off that duplicates a primitive — **extend the kit**, then use it
   everywhere. Same thing done two ways is a defect (perfection-plan §9.1 lists the primitives

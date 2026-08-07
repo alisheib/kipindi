@@ -23,6 +23,43 @@ keeping both in sync.
 
 ---
 
+## 0b · ⭐ WHERE A NEW DESIGN DOCUMENT GOES — read this BEFORE creating one
+
+Added 2026-08-06 at Ali's instruction: *"always make sure the location of the design
+system is in a common place, and known for other sessions to see where to store it and
+prevent redundancies."* §0's rule tells you not to duplicate a **value**; this table tells
+you where to put a **file**, which is how the duplication actually starts.
+
+| you are writing… | it goes here | ⛔ not here |
+|---|---|---|
+| a **law / invariant** (a rule that binds future code) | `docs/DESIGN_AUTHORITY.md`, in the lettered section it belongs to | a new top-level `docs/*.md` |
+| a **token / value** | `src/app/globals.css` at its line, with the rule in a comment beside it | any doc — docs describe values, they never define them |
+| a **component or page spec** | `docs/design-system/v2-2026-07-27/0X-…/` beside its siblings | a new folder |
+| an **incoming commission** (someone designed something for us) | `docs/design-system/v2-2026-07-27/NN-<name>/`, raw and untouched, + an `INTAKE`-style acceptance | anywhere outside the versioned system |
+| the **integration playbook** for such a commission | `docs/design-brief/INTAKE.md` | a second playbook |
+| a **session handoff / next-session prompt** | `docs/LIVE-QA-CAMPAIGN.md` §6b, at the TOP | ⚠️ a `docs/NEXT-SESSION-*.md` — see the note below |
+| **provenance** (rendered stills, the state something was signed off in) | `.../v2-2026-07-27/07-provenance/` | committed screenshots elsewhere |
+| **evidence** (QA shots, probe output) | nowhere — it is **gitignored** (`.qa-design*/`) | the repo. A checked-in PNG is a claim nobody can re-derive |
+
+⚠️ **`docs/NEXT-SESSION-*.md` is a tolerated exception, not a pattern.** One exists —
+`NEXT-SESSION-MATERIAL-VISIBLE.md` — because a copy-pasteable prompt is a different artefact
+from a tracker section. **There must never be two.** When its work is done, delete it; the
+durable record is §6b. If you are about to create a second one, you are creating the
+redundancy this section exists to stop.
+
+⛔ **THE SIX PLACES DESIGN FILES ALREADY LIVE, so nobody invents a seventh:**
+
+| path | what it is | status |
+|---|---|---|
+| `docs/design-system/README.md` | **this file — the index** | ⭐ the entry point |
+| `docs/design-system/v2-2026-07-27/` | the versioned system, 11 sections | current |
+| `docs/DESIGN_AUTHORITY.md` | the law that binds code | current |
+| `docs/design-brief/` | the outbound brief + `INTAKE.md`, the integration playbook | current |
+| `design-brief/law/` *(repo root)* | the gitignored outbound extract sent to the designer | ⛔ **never merge from it** — its `keyframes.css` is brace-unbalanced and would kill press/vote/streak/seal motion |
+| `50PICK/design_handoff_prediction_market_kit/` | the original teal kit | ⛔ **SUPERSEDED** — teal 215, dead light theme. Historical only |
+
+---
+
 ## 1 · Where truth actually lives
 
 **⚠️ THE MOST IMPORTANT TABLE IN THIS FOLDER.** Nothing in `v2-2026-07-27/` overrides
