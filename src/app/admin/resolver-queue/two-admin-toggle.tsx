@@ -19,6 +19,7 @@ import { ConfirmModal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { I } from "@/components/ui/glyphs";
 import { setTwoAdminAuthAction } from "./resolution-policy-action";
+import { runAdminAction } from "@/lib/client/run-admin-action";
 
 export function TwoAdminToggle({ enabled }: { enabled: boolean }) {
   const [pending, start] = useTransition();
@@ -30,7 +31,7 @@ export function TwoAdminToggle({ enabled }: { enabled: boolean }) {
     start(async () => {
       const fd = new FormData();
       fd.set("enabled", String(next));
-      const r = await setTwoAdminAuthAction(fd);
+      const r = await runAdminAction(() => setTwoAdminAuthAction(fd));
       setConfirmOff(false);
       if (!r.ok) { toast({ title: "Couldn't change authorization", description: r.error, variant: "danger" }); return; }
       toast({

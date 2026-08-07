@@ -14,6 +14,7 @@ import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { I } from "@/components/ui/glyphs";
 import { reconcileMatchAction, reconcileWriteOffAction } from "./payment-actions";
+import { runAdminAction } from "@/lib/client/run-admin-action";
 
 export function ReconcileControls({ txnId }: { txnId: string }) {
   const [pending, start] = useTransition();
@@ -35,8 +36,8 @@ export function ReconcileControls({ txnId }: { txnId: string }) {
       fd.set("txnId", txnId);
       fd.set("reason", reason.trim());
       let r: { ok: boolean; error?: string };
-      if (mode === "match") { fd.set("providerRef", ref.trim()); r = await reconcileMatchAction(fd); }
-      else { r = await reconcileWriteOffAction(fd); }
+      if (mode === "match") { fd.set("providerRef", ref.trim()); r = await runAdminAction(() => reconcileMatchAction(fd)); }
+      else { r = await runAdminAction(() => reconcileWriteOffAction(fd)); }
       if (!r.ok) { toast({ title: "Blocked", description: r.error, variant: "danger" }); return; }
       toast({ title: mode === "match" ? "Matched" : "Written off", variant: "success" });
       setMode(null); setRef(""); setReason("");

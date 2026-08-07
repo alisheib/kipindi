@@ -35,10 +35,12 @@ export default async function AdminOverviewPage() {
   // self-exclusion cards show an explicit "couldn't load" instead of a false
   // all-zero funnel / a false "nobody self-excluded" safety signal.
   const kyc = await kycFunnel().catch(() => null);
-  const provs = await providerSummary("28d").then((l) => l.slice(0, 5)).catch(() => []);
+  // B-1: null (not []) on a failed list read → AdminLoadError, so a read outage
+  // can't render as "no provider data" / a flat money-flow chart.
+  const provs = await providerSummary("28d").then((l) => l.slice(0, 5)).catch(() => null);
   const rg = await rgRosterCounts().catch(() => null);
   const recent = getAuditPage({ limit: 12 });
-  const flow = await moneyFlowSeries("today", 24).catch(() => []);
+  const flow = await moneyFlowSeries("today", 24).catch(() => null);
   // Read-only 7-day daily trend for the money-tile sparklines — each point is
   // that day's REAL GGR/NGR/active (canonical `summarise`), so the spark is the
   // metric's OWN recent history, not a net-flow proxy. `spark()` suppresses a
@@ -47,7 +49,7 @@ export default async function AdminOverviewPage() {
   const spark = (s: number[]) => (s.some((v) => v !== 0) ? s : undefined);
 
   // Provider mix flex shares — total deposits across the top 5 providers
-  const provTotal = provs.reduce((s, p) => s + p.deposits, 0) || 1;
+  const provTotal = (provs ?? []).reduce((s, p) => s + p.deposits, 0) || 1;
   const provColors = ["var(--royal)", "var(--royal-300)", "var(--aqua-400)", "var(--claret-400)", "var(--slate-400)"];
 
   const conversion = !kyc || kyc.registered === 0 ? 0 : (kyc.approved / kyc.registered) * 100;
@@ -72,14 +74,16 @@ export default async function AdminOverviewPage() {
             sw="Mtiririko wa pesa · TZS net per hour"
             action={<span className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">net inflow vs outflow</span>}
           >
-            <AdminAreaChart
-              series={flow}
-              xLabels={flow.map((p) => p.label)}
-              height={240}
-              fillVar="var(--royal)"
-              strokeVar="var(--royal)"
-              yLabel="Net flow"
-            />
+            {flow === null ? <AdminLoadError what="the money-flow series" /> : (
+              <AdminAreaChart
+                series={flow}
+                xLabels={flow.map((p) => p.label)}
+                height={240}
+                fillVar="var(--royal)"
+                strokeVar="var(--royal)"
+                yLabel="Net flow"
+              />
+            )}
           </AdminCard>
           <AdminCard
             title="Live activity feed"
@@ -134,7 +138,9 @@ export default async function AdminOverviewPage() {
           </AdminCard>
 
           <AdminCard title="Provider mix" sw="Watoa huduma ya simu">
-            {provs.length > 0 ? (
+            {provs === null ? (
+              <AdminLoadError what="the provider mix" />
+            ) : provs.length > 0 ? (
               <>
                 <AdminStackedBar
                   segments={provs.map((p, i) => ({

@@ -18,9 +18,18 @@ async function requireAdmin() {
   return { session, user: u };
 }
 
-export async function provisionTotpAction() {
+export async function provisionTotpAction(formData?: FormData) {
   const { session, user } = await requireAdmin();
   try {
+    // Step-up: ROTATING an existing secret must prove possession of the current
+    // authenticator — otherwise a hijacked session cookie can silently replace
+    // the officer's 2FA with its own (B-3). First-time enrolment stays open.
+    if (await hasTotp(session.userId)) {
+      const code = String(formData?.get("code") ?? "").trim();
+      if (!/^\d{6}$/.test(code) || !(await verifyTotp(session.userId, code))) {
+        return { ok: false as const, error: "Enter a valid current 6-digit code to re-provision 2FA." };
+      }
+    }
     const label = user?.displayName ?? user?.phoneE164 ?? session.userId.slice(0, 12);
     const result = await provisionTotp(session.userId, label);
     return { ok: true as const, ...result };
@@ -45,9 +54,18 @@ export async function verifyTotpAction(formData: FormData) {
   }
 }
 
-export async function removeTotpAction() {
+export async function removeTotpAction(formData?: FormData) {
   const { session } = await requireAdmin();
   try {
+    // Step-up: removing an EXISTING secret requires a valid current code (B-3).
+    // A stolen staff session must not be able to strip the officer's 2FA and
+    // then sail through requireAdminTotp on every money action.
+    if (await hasTotp(session.userId)) {
+      const code = String(formData?.get("code") ?? "").trim();
+      if (!/^\d{6}$/.test(code) || !(await verifyTotp(session.userId, code))) {
+        return { ok: false as const, error: "Enter a valid current 6-digit code to remove 2FA." };
+      }
+    }
     await removeTotp(session.userId);
     revalidatePath("/admin/2fa/setup");
     return { ok: true as const };

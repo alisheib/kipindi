@@ -58,10 +58,11 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
   const prevAmount = sp.amount ?? "";
   const prevMsisdn = sp.msisdn ?? "";
 
-  let wallet: Awaited<ReturnType<typeof db.wallet.findByUserId>> | null = null;
-  let kyc: Awaited<ReturnType<typeof db.kyc.findByUserId>> | null = null;
-  try { wallet = await db.wallet.findByUserId(session.userId); } catch { /* graceful */ }
-  try { kyc = await db.kyc.findByUserId(session.userId); } catch { /* graceful */ }
+  // B-1: a swallowed wallet read made the form silently unusable (max = 0) and a
+  // swallowed KYC read told an APPROVED player to start KYC. Failed reads throw
+  // to the wallet error boundary instead of fabricating those states.
+  const wallet = await db.wallet.findByUserId(session.userId);
+  const kyc = await db.kyc.findByUserId(session.userId);
   const kycApproved = kyc?.status === "APPROVED";
 
   // Can we actually pay a withdrawal right now? Since 2026-07-29 the honest answer has been no,

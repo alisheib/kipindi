@@ -8,6 +8,7 @@ import { BrandSpinner } from "@/components/brand";
 import { OperationResultModal } from "@/components/markets/operation-result-modal";
 import { ConfirmModal } from "@/components/ui/modal";
 import { formatDateTime } from "@/lib/utils";
+import { runAdminAction } from "@/lib/client/run-admin-action";
 
 export function ResolveControls({ marketId, stage, stagedOutcome, twoAdmin = false }: { marketId: string; stage: "stage1" | "stage2"; stagedOutcome?: "YES" | "NO" | "VOID" | null; twoAdmin?: boolean }) {
   const [pending, startTransition] = useTransition();
@@ -30,7 +31,7 @@ export function ResolveControls({ marketId, stage, stagedOutcome, twoAdmin = fal
       const fd = new FormData();
       fd.set("marketId", marketId);
       fd.set("outcome", outcome);
-      const r = await resolveMarketAction(fd);
+      const r = await runAdminAction(() => resolveMarketAction(fd));
       if (!r.ok) {
         toast({ title: "Could not resolve", description: r.error, variant: "danger" });
         setResultData({ variant: "danger", title: "Could not resolve", subtitle: r.error ?? "Try again." });

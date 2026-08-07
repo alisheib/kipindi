@@ -25,7 +25,9 @@ type Props = {
   noPool: number;
   yesPct: number;
   resolutionAt: string;
-  balance: number;
+  /** Spendable balance, or undefined when the read failed / signed out — the
+   *  dial suppresses its pre-flight "insufficient" warning on undefined (B-1). */
+  balance?: number;
   /** Pre-selected side from URL ?side= param (if arriving from card). */
   initialSide?: "YES" | "NO";
   /** Total effective fee for this market — passed straight to the dial so its

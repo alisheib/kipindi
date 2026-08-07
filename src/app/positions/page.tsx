@@ -35,7 +35,9 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
   // archive with the shared player page size so older positions stay reachable.
   // MARKET only — the Bets page is the long-form-poll portfolio. Up & Down bets are a
   // separate game with their own history at /updown/history (Ali, 2026-07-25).
-  const positions = await listPositionsForUser(session.userId, 5_000, "MARKET").catch(() => []);
+  // B-1: a failed read must NOT render as "No open positions yet" — held money
+  // vanishing on a DB blip reads as theft. Throw to positions/error.tsx instead.
+  const positions = await listPositionsForUser(session.userId, 5_000, "MARKET");
   // F5 — the viewer's affiliate code, so a shared pick/win carries their link.
   const myRefCode = await ensureAffiliateAccount(session.userId).then((a) => a.code).catch(() => undefined);
   const open = positions.filter((p) => p.status === "OPEN");
@@ -51,7 +53,9 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
   const marketIds = [...new Set([...open, ...pagedSettled].map((p) => p.marketId))];
   const marketMap = new Map<string, Awaited<ReturnType<typeof getMarket>>>();
   for (const mid of marketIds) {
-    try { marketMap.set(mid, await getMarket(mid)); } catch { /* skip unavailable market */ }
+    // B-1: a swallowed per-market read made that HELD position vanish from the
+    // list (stake invisible). Let a failure reach the error boundary.
+    marketMap.set(mid, await getMarket(mid));
   }
 
   // P&L summary — open at-risk + live cash-out value, settled net.

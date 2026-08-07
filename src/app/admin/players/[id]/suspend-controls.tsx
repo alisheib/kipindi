@@ -7,6 +7,7 @@ import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { I } from "@/components/ui/glyphs";
 import { suspendPlayerAction, restorePlayerAction } from "./actions";
+import { runAdminAction } from "@/lib/client/run-admin-action";
 
 /**
  * Suspend / Restore controls — the "ban hammer" pair on the player
@@ -42,8 +43,8 @@ export function SuspendControls({
       fd.set("userId", userId);
       fd.set("reason", reason.trim());
       const r = mode === "suspend"
-        ? await suspendPlayerAction(fd)
-        : await restorePlayerAction(fd);
+        ? await runAdminAction(() => suspendPlayerAction(fd))
+        : await runAdminAction(() => restorePlayerAction(fd));
       if (!r.ok) {
         toast({ title: `Could not ${mode}`, description: r.error, variant: "danger" });
         return;

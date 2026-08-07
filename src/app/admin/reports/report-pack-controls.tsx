@@ -20,6 +20,7 @@ import {
 } from "./pack-actions";
 import { CEREMONY } from "@/lib/admin-status-lexicon";
 import { AttestationRail } from "@/components/admin/attestation-rail";
+import { runAdminAction } from "@/lib/client/run-admin-action";
 
 type PackState = "draft" | "prepared" | "approved" | "submitted" | "acknowledged";
 
@@ -46,7 +47,7 @@ export function ReportPackControls({
       const fd = new FormData();
       fd.set("period", period);
       for (const [k, v] of Object.entries(extra ?? {})) fd.set(k, v);
-      const r = await fn(fd);
+      const r = await runAdminAction(() => fn(fd));
       if (!r.ok) {
         toast({ title: "Blocked", description: r.error, variant: "danger" });
         return;

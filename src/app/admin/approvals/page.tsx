@@ -248,8 +248,9 @@ export default async function AdminApprovalsPage({
               <p>
                 AML-held withdrawals (≥ TZS 1M) require two <em>different</em> officers: a first officer records
                 stage&nbsp;1 with a reason; a second, different officer counter-signs to release. No officer can
-                approve their own transaction. Both clicks are recorded in the <code>ADMIN</code> audit category
-                with each reviewer&apos;s user-id and reason.
+                approve their own transaction. Stage&nbsp;1 is stored durably (it survives restarts) and both
+                clicks are recorded in the <code>COMPLIANCE</code> audit category with each reviewer&apos;s
+                user-id and reason.
               </p>
             </div>
           </div>

@@ -65,17 +65,27 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
   if (!session) redirect("/auth/login?next=/wallet");
 
   const sp = await searchParams;
-  let w: Awaited<ReturnType<typeof db.wallet.findByUserId>> | null = null;
-  try { w = await db.wallet.findByUserId(session.userId); } catch { /* graceful */ }
+  // B-1: money reads must NEVER swallow a failure into a zero/empty render — a
+  // funded player shown "TZS 0 · make your first deposit" on a DB blip is
+  // indistinguishable from being robbed. A failed read throws to the route's
+  // error.tsx (RouteError with retry); the empty state is reachable only from a
+  // SUCCESSFUL empty query.
+  const w = await db.wallet.findByUserId(session.userId);
   const balance = w?.balance ?? 0;
   const pending = w?.pending ?? 0;
   const hold = w?.hold ?? 0;
   const currency = w?.currency ?? "TZS";
-  let txns: Transaction[] = [];
-  try { txns = ((await db.txn.findByUser(session.userId, 1000)) as StoredTxn[]).map(adaptTxn); } catch { /* graceful */ }
+  const rawTxns = (await db.txn.findByUser(session.userId, 1000)) as StoredTxn[];
+  const txns: Transaction[] = rawTxns.map(adaptTxn);
 
-  let bonus: Awaited<ReturnType<typeof getBonusSummary>> = { bonusBalance: 0, activeCount: 0, activeWagerRemainingTzs: 0, grants: [] };
-  try { bonus = await getBonusSummary(session.userId); } catch { /* graceful */ }
+  // B-5: the result modal renders ONLY for a txn this user actually owns, with
+  // the STORED status/amount — never the raw query params. A fabricated
+  // `?deposited=x&amount=5000000` finds no owned txn → no modal, no fake gilt.
+  const resultId = sp.deposited || sp.withdrawal || "";
+  const resultTxn = resultId ? rawTxns.find((x) => x.id === resultId) : undefined;
+
+  // Bonus balance is money too — same B-1 rule, no zero-on-failure.
+  const bonus = await getBonusSummary(session.userId);
   const bonusCfg = getBonusConfig();
   const cashbackPercent = bonusCfg.enabled && bonusCfg.cashbackEnabled ? bonusCfg.cashbackPercentage : 0;
   const cashbackMode = bonusCfg.cashbackMode ?? "REQUEST";
@@ -97,7 +107,14 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
   return (
     <>
       <RefreshPoller intervalMs={20_000} />
-      <WalletResultModal deposited={sp.deposited} withdrawal={sp.withdrawal} status={sp.status} amount={sp.amount} />
+      {resultTxn && (
+        <WalletResultModal
+          deposited={sp.deposited ? sp.deposited : undefined}
+          withdrawal={sp.withdrawal ? sp.withdrawal : undefined}
+          status={resultTxn.status}
+          amount={String(Math.abs(resultTxn.amount))}
+        />
+      )}
       <WalletPageClient
         balance={balance}
         pending={pending}

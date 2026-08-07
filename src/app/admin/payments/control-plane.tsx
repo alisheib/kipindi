@@ -23,6 +23,7 @@ import { ConfirmModal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { setPaymentControlsAction, testSelcomConnectionAction } from "./payment-actions";
 import type { PaymentControlsView, PaymentProviderId } from "@/lib/server/payment-control";
+import { runAdminAction } from "@/lib/client/run-admin-action";
 
 const PROVIDER_LABEL: Record<PaymentProviderId, string> = { mock: "Mock (test)", selcom: "Selcom", azampay: "AzamPay" };
 
@@ -39,7 +40,7 @@ export function ControlPlane({ controls }: { controls: PaymentControlsView }) {
     startTransition(async () => {
       const fd = new FormData();
       for (const [k, v] of Object.entries(update)) fd.set(k, v);
-      const r = await setPaymentControlsAction(fd);
+      const r = await runAdminAction(() => setPaymentControlsAction(fd));
       if (!r.ok) { toast({ title: "Blocked", description: r.error, variant: "danger" }); return; }
       toast({ title: "Control-plane updated", variant: "success" });
       setPending(null);
@@ -93,7 +94,7 @@ export function ControlPlane({ controls }: { controls: PaymentControlsView }) {
 
   const testConnection = () => {
     startTransition(async () => {
-      const r = await testSelcomConnectionAction();
+      const r = await runAdminAction(() => testSelcomConnectionAction());
       if (r.ok) toast({ title: "Selcom reachable", description: r.detail, variant: "success" });
       else toast({ title: "Selcom check failed", description: r.error, variant: "danger" });
     });

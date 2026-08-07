@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { I } from "@/components/ui/glyphs";
 import { formatTzs } from "@/lib/utils";
 import { adjustBalanceAction } from "./actions";
+import { TWO_PERSON_THRESHOLD_TZS } from "../../aml/constants";
+import { runAdminAction } from "@/lib/client/run-admin-action";
 
 /**
  * Manual balance adjustment (audit §9.3 #4) — an officer credits or debits a
@@ -29,10 +31,17 @@ export function BalanceAdjustControls({
   const [direction, setDirection] = useState<"credit" | "debit">("credit");
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
+  const [confirmWord, setConfirmWord] = useState("");
+  const [stage1Msg, setStage1Msg] = useState<string | null>(null);
   const amountRef = useRef<HTMLInputElement>(null);
 
   const amt = Number(amount.replace(/[,\s]/g, ""));
-  const valid = Number.isFinite(amt) && amt > 0 && reason.trim().length >= 5;
+  // Hard-tier ceremony (B-4): at/above the two-person threshold the officer must
+  // type the direction word — mirroring `ConfirmModal tier="hard" typedWord`.
+  const needsHard = Number.isFinite(amt) && amt >= TWO_PERSON_THRESHOLD_TZS;
+  const hardWord = direction === "credit" ? "CREDIT" : "DEBIT";
+  const armed = !needsHard || confirmWord.trim().toUpperCase() === hardWord;
+  const valid = Number.isFinite(amt) && amt > 0 && reason.trim().length >= 5 && armed;
 
   const submit = () => {
     if (!valid) return;
@@ -42,16 +51,24 @@ export function BalanceAdjustControls({
       fd.set("direction", direction);
       fd.set("amount", String(Math.round(amt)));
       fd.set("reason", reason.trim());
-      const r = await adjustBalanceAction(fd);
+      const r = await runAdminAction(() => adjustBalanceAction(fd));
       if (!r.ok) {
         toast({ title: "Adjustment failed", description: r.error, variant: "danger" });
         return;
       }
-      setOpen(false); setAmount(""); setReason("");
+      if ("stage" in r && r.stage === "stage1") {
+        // Two-person rule: nothing moved yet — say so plainly, keep the modal
+        // open in the "awaiting second officer" state, never claim credited.
+        setStage1Msg(r.message);
+        router.refresh();
+        toast({ title: "Second officer required", description: r.message, variant: "warning" });
+        return;
+      }
+      setOpen(false); setAmount(""); setReason(""); setConfirmWord(""); setStage1Msg(null);
       router.refresh();
       deferToast({
         title: direction === "credit" ? "Balance credited" : "Balance debited",
-        description: `New balance ${formatTzs(r.balance ?? 0)} · audit-logged`,
+        description: `New balance ${formatTzs((r as { balance?: number }).balance ?? 0)} · audit-logged`,
         variant: "success",
       });
     });
@@ -61,7 +78,7 @@ export function BalanceAdjustControls({
     <>
       <button
         type="button"
-        onClick={() => { setOpen(true); setDirection("credit"); setAmount(""); setReason(""); }}
+        onClick={() => { setOpen(true); setDirection("credit"); setAmount(""); setReason(""); setConfirmWord(""); setStage1Msg(null); }}
         disabled={pending}
         className="font-mono text-micro tracking-[0.10em] uppercase px-2.5 py-1.5 rounded-sm border border-border bg-bg-overlay text-text-secondary hover:bg-brand-500/10 hover:text-brand-300 hover:border-brand-500/60 transition-colors inline-flex items-center gap-1.5"
       >
@@ -130,6 +147,31 @@ export function BalanceAdjustControls({
           />
           <span className="font-mono text-[10px] text-text-subtle">{reason.trim().length} / 300</span>
         </label>
+
+        {needsHard && (
+          <label className="mt-3 block">
+            <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-claret-300">
+              {`Large adjustment (≥ ${formatTzs(TWO_PERSON_THRESHOLD_TZS)}) — type ${hardWord} to confirm; a second officer must countersign`}
+            </span>
+            <input
+              value={confirmWord}
+              onChange={(e) => setConfirmWord(e.target.value)}
+              autoComplete="off"
+              autoCapitalize="characters"
+              spellCheck={false}
+              aria-label={`Type ${hardWord} to confirm`}
+              placeholder={hardWord}
+              className="mt-1 w-full rounded-md border border-border-strong bg-bg-overlay px-2.5 py-2 font-mono text-[13px] tracking-[0.2em] uppercase text-text outline-none admin-focus transition-colors"
+            />
+          </label>
+        )}
+
+        {stage1Msg && (
+          <p className="mt-3 rounded-md border border-border bg-bg-sunken/40 px-3 py-2 text-[12.5px] text-text-secondary" role="status">
+            <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text block mb-0.5">Awaiting second officer</span>
+            {stage1Msg}
+          </p>
+        )}
 
         <div className="mt-4 flex flex-col gap-2">
           <Button

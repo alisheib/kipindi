@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
 import { toggleKillSwitchAction } from "./payment-actions";
+import { runAdminAction } from "@/lib/client/run-admin-action";
 
 export function KillSwitch({
   provider,
@@ -43,7 +44,7 @@ function FlowToggle({ provider, providerLabel, kind, paused }: { provider: strin
       fd.set("provider", provider);
       fd.set("kind", kind);
       fd.set("paused", String(next));
-      const r = await toggleKillSwitchAction(fd);
+      const r = await runAdminAction(() => toggleKillSwitchAction(fd));
       if (!r.ok) { toast({ title: "Blocked", description: r.error, variant: "danger" }); return; }
       toast({ title: next ? `${providerLabel} ${kind} PAUSED` : `${providerLabel} ${kind} resumed`, variant: next ? "warning" : "success" });
       setConfirm(false); setWord("");

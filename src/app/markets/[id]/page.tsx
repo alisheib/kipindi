@@ -141,8 +141,9 @@ export default async function MarketDetail({
   // is unreadable we fail loudly rather than invent a limit.
   const stakeCfg = await getEffectiveConfig(m.id);
   const session = await currentSession();
-  let myPositions: Awaited<ReturnType<typeof listPositionsForUser>> = [];
-  try { myPositions = session ? (await listPositionsForUser(session.userId)).filter((p) => p.marketId === m!.id) : []; } catch { /* graceful */ }
+  // B-1: a swallowed positions read rendered "You haven't bet yet" to a player
+  // whose stake is IN this market. Fail loudly to markets/error.tsx instead.
+  const myPositions = session ? (await listPositionsForUser(session.userId)).filter((p) => p.marketId === m!.id) : [];
   const myRefCode = session ? await ensureAffiliateAccount(session.userId).then((a) => a.code).catch(() => undefined) : undefined;
   // F3 — is this market on the signed-in player's watchlist?
   let watching = false;
@@ -246,9 +247,13 @@ export default async function MarketDetail({
   let comments: Awaited<ReturnType<typeof listComments>> = [];
   try { comments = await listComments(m.id, session?.userId ?? null); } catch { /* graceful */ }
 
-  // Pre-fetch wallet balance so we don't have an unguarded await in JSX
-  let myBalance = 0;
-  if (session) { try { myBalance = (await db.wallet.findByUserId(session.userId))?.balance ?? 0; } catch { /* graceful */ } }
+  // Pre-fetch wallet balance so we don't have an unguarded await in JSX.
+  // B-1: a failed read used to render balance=0 → the dial fired "insufficient
+  // balance" at a FUNDED player on the commit screen. On failure pass undefined
+  // — the dial's `balance !== undefined` guard suppresses the warning and the
+  // server remains the real gate.
+  let myBalance: number | undefined;
+  if (session) { try { myBalance = (await db.wallet.findByUserId(session.userId))?.balance ?? 0; } catch { myBalance = undefined; } }
 
   // Pre-compute hedge-warning for the aside
   const openPositions = myPositions.filter((p) => p.status === "OPEN");

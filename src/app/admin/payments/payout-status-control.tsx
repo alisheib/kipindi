@@ -20,6 +20,7 @@ import { I } from "@/components/ui/glyphs";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { setPayoutStatusAction } from "./payment-actions";
+import { runAdminAction } from "@/lib/client/run-admin-action";
 
 type Status = "operational" | "delayed" | "unavailable";
 
@@ -57,7 +58,7 @@ export function PayoutStatusControl({
       const fd = new FormData();
       fd.set("declared", pick);
       fd.set("note", text);
-      const r = await setPayoutStatusAction(fd);
+      const r = await runAdminAction(() => setPayoutStatusAction(fd));
       if (!r.ok) { toast({ title: "Blocked", description: r.error, variant: "danger" }); return; }
       toast({
         title: `Payouts declared ${pick.toUpperCase()}`,

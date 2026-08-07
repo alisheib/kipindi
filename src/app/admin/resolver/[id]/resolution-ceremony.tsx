@@ -23,6 +23,7 @@ import { BrandSpinner } from "@/components/brand";
 import { formatDateTime } from "@/lib/utils";
 import { CEREMONY, bi } from "@/lib/admin-status-lexicon";
 import { AttestationRail } from "@/components/admin/attestation-rail";
+import { runAdminAction } from "@/lib/client/run-admin-action";
 
 type Outcome = "YES" | "NO" | "VOID";
 
@@ -69,7 +70,7 @@ export function ResolutionCeremony({
       fd.set("marketId", marketId);
       fd.set("outcome", outcome);
       if (evidenceText.trim()) fd.set("evidence", evidenceText.trim());
-      const r = await resolveMarketAction(fd);
+      const r = await runAdminAction(() => resolveMarketAction(fd));
       if (!r.ok) {
         toast({ title: "Could not resolve", description: r.error, variant: "danger" });
         return;

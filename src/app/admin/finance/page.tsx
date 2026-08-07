@@ -1,4 +1,4 @@
-import { AdminPageHead, AdminKpi, AdminCard } from "@/components/admin/admin-shell";
+import { AdminPageHead, AdminKpi, AdminCard, AdminLoadError } from "@/components/admin/admin-shell";
 import { AdminAreaChart, AdminStackedBars, AdminBarList } from "@/components/admin/admin-charts";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
@@ -69,13 +69,15 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
   const ngr = await netGamingRevenue(period).catch(() => null);
   const margin = await operatorMarginPct(period).catch(() => null);
   const liability = await walletLiabilityTotal().catch(() => null);
-  const provs = await providerSummary(period).catch(() => []);
-  const top = await topNgrContributors(10).catch(() => []);
+  // B-1: list/series reads fail to null (rendered as AdminLoadError), never to
+  // [] — a failed read shown as "no provider activity" fabricates an all-clear.
+  const provs = await providerSummary(period).catch(() => null);
+  const top = await topNgrContributors(10).catch(() => null);
   const activePeriod = await activePlayers(period).catch(() => null);
-  const flow = await moneyFlowSeries(period, 28).catch(() => []);
-  const margins = await marginSeries(period, 28).catch(() => []);
-  const provBars = await providerStackedSeries(period, 14).catch(() => []);
-  const providers = await listProvidersInPeriod(period).catch(() => []);
+  const flow = await moneyFlowSeries(period, 28).catch(() => null);
+  const margins = await marginSeries(period, 28).catch(() => null);
+  const provBars = await providerStackedSeries(period, 14).catch(() => null);
+  const providers = await listProvidersInPeriod(period).catch(() => null);
   // Read-only 7-day daily trend for the GGR/NGR/active tile sparklines — each
   // point is that day's REAL metric (canonical `summarise`), the metric's own
   // recent history, not a proxy series. `spark()` hides an all-zero line.
@@ -346,18 +348,26 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
         {/* Charts row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           <AdminCard title="Net flow over time" sw="Mtiririko wa pesa · 28-day daily series">
-            <AdminAreaChart series={flow} xLabels={flow.map((p) => p.label)} height={240} fillVar="var(--royal)" strokeVar="var(--royal)" />
+            {flow === null ? <AdminLoadError what="the money-flow series" /> : (
+              <AdminAreaChart series={flow} xLabels={flow.map((p) => p.label)} height={240} fillVar="var(--royal)" strokeVar="var(--royal)" />
+            )}
           </AdminCard>
           <AdminCard title="Operator margin" sw="Faida ya mfumo · 28-day · band 7–10%">
-            <AdminAreaChart series={margins} xLabels={margins.map((p) => p.label)} height={240} fillVar="var(--royal)" strokeVar="var(--royal)" />
+            {margins === null ? <AdminLoadError what="the margin series" /> : (
+              <AdminAreaChart series={margins} xLabels={margins.map((p) => p.label)} height={240} fillVar="var(--royal)" strokeVar="var(--royal)" />
+            )}
           </AdminCard>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           <AdminCard title="Provider mix over time" sw="Mchanganyiko wa watoa huduma · 14-day daily">
-            <AdminStackedBars bars={provBars} legend={providers} height={240} />
+            {provBars === null || providers === null ? <AdminLoadError what="the provider mix" /> : (
+              <AdminStackedBars bars={provBars} legend={providers} height={240} />
+            )}
           </AdminCard>
           <AdminCard title="Top-10 player concentration" sw="Wachezaji 10 wakubwa">
-            {top.length === 0 ? (
+            {top === null ? (
+              <AdminLoadError what="the concentration list" />
+            ) : top.length === 0 ? (
               <p className="text-caption text-text-tertiary">No active players yet in this window.</p>
             ) : (
               // AdminBarList (royal fill) — replaces the hand-rolled gold bar
@@ -397,7 +407,10 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
                 </tr>
               </thead>
               <tbody>
-                {provs.map((p) => (
+                {provs === null && (
+                  <tr><td colSpan={6} className="py-3"><AdminLoadError what="the provider summary" /></td></tr>
+                )}
+                {(provs ?? []).map((p) => (
                   <tr key={p.provider}>
                     <td className="font-medium text-text whitespace-nowrap">{p.provider}</td>
                     <td className="font-mono tabular text-right">{formatTzs(p.deposits)}</td>
@@ -409,7 +422,7 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
                     </td>
                   </tr>
                 ))}
-                {provs.length === 0 && (
+                {provs !== null && provs.length === 0 && (
                   <AdminTableEmpty colSpan={6} kind="admin" title="No provider data" body="No provider activity in this window." />
                 )}
               </tbody>

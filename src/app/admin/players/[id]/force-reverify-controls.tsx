@@ -12,6 +12,7 @@ import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { I } from "@/components/ui/glyphs";
 import { forceReverifyKycAction } from "./actions";
+import { runAdminAction } from "@/lib/client/run-admin-action";
 
 export function ForceReverifyControls({ userId }: { userId: string }) {
   const [pending, start] = useTransition();
@@ -27,7 +28,7 @@ export function ForceReverifyControls({ userId }: { userId: string }) {
       const fd = new FormData();
       fd.set("userId", userId);
       fd.set("reason", reason.trim());
-      const r = await forceReverifyKycAction(fd);
+      const r = await runAdminAction(() => forceReverifyKycAction(fd));
       if (!r.ok) { toast({ title: "Blocked", description: r.error, variant: "danger" }); return; }
       setOpen(false); setReason("");
       router.refresh();

@@ -11,7 +11,7 @@ import { ScrollX } from "@/components/ui/scroll-x";
 import { AmlActionRow } from "./aml-actions-client";
 import { detectSuspiciousBets } from "@/lib/server/analytics";
 import { TWO_PERSON_THRESHOLD_TZS } from "./constants";
-import { getAuditPage } from "@/lib/server/audit";
+import { listFirstSignatures } from "./stage1-store";
 
 export const metadata = { title: "Admin · AML queue" };
 export const dynamic = "force-dynamic";
@@ -30,11 +30,12 @@ export default async function AdminAmlPage({
   try { inReviewAll = (await db.txn.listByStatus("AML_REVIEW")) as StoredTxn[]; } catch { amlFailed = true; }
   let flagsFailed = false;
   const flagsAll = await detectSuspiciousBets().catch(() => { flagsFailed = true; return []; });
-  // Track which txns already have a stage-1 signature (waiting on second officer)
-  const stage1 = new Map<string, { actorId: string | null; at: string }>();
-  for (const e of getAuditPage({ category: "ADMIN", limit: 200 })) {
-    if (e.action === "aml.approve.stage1" && e.targetId) stage1.set(e.targetId, { actorId: e.actorId, at: e.createdAt });
-  }
+  // B-9: which txns already carry a stage-1 signature (awaiting the second
+  // officer) — read from the DURABLE config-store the actions write, not the
+  // audit ring. The old getAuditPage({category:"ADMIN"}) scan was doubly wrong:
+  // stage-1 is audited under COMPLIANCE, and the ring forgets on deploy — so
+  // the badge + KPI never populated and officers couldn't see who signed first.
+  const stage1 = await listFirstSignatures(inReviewAll.map((t) => t.id));
 
   // Review queue (prefix "r") — newest first by default.
   const r = parseSort(sp, ["time", "type", "amount", "provider"] as const, "time", "desc", "r");
@@ -148,7 +149,7 @@ export default async function AdminAmlPage({
             <I.warning s={18} />
             <div className="text-caption text-text-secondary">
               <p className="text-text font-bold">Two-person approval</p>
-              <p>Approve / reject for amounts ≥ TZS 1M requires two <em>different</em> officers: a first officer records stage&nbsp;1, then a second officer counter-signs to release the funds (the same officer cannot do both, and no officer can review their own transaction). Both clicks are recorded in the <code>ADMIN</code> audit category with each reviewer&apos;s user-id and reason.</p>
+              <p>Approve / reject for amounts ≥ TZS 1M requires two <em>different</em> officers: a first officer records stage&nbsp;1, then a second officer counter-signs to release the funds (the same officer cannot do both, and no officer can review their own transaction). Stage&nbsp;1 is stored durably (it survives restarts) and both clicks are recorded in the <code>COMPLIANCE</code> audit category with each reviewer&apos;s user-id and reason.</p>
             </div>
           </div>
         </AdminCard>

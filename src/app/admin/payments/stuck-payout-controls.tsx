@@ -24,6 +24,7 @@ import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { I } from "@/components/ui/glyphs";
 import { reverseStuckPayoutAction } from "./payment-actions";
+import { runAdminAction } from "@/lib/client/run-admin-action";
 
 export function StuckPayoutControls({ txnId, amountLabel }: { txnId: string; amountLabel: string }) {
   const [pending, start] = useTransition();
@@ -41,7 +42,7 @@ export function StuckPayoutControls({ txnId, amountLabel }: { txnId: string; amo
       const fd = new FormData();
       fd.set("txnId", txnId);
       fd.set("reason", reason.trim());
-      const r = await reverseStuckPayoutAction(fd);
+      const r = await runAdminAction(() => reverseStuckPayoutAction(fd));
       if (!r.ok) { toast({ title: "Blocked", description: r.error, variant: "danger" }); return; }
       toast({ title: "Returned to the player", description: `${amountLabel} is back in their balance.`, variant: "success" });
       setOpen(false); setReason("");

@@ -131,7 +131,13 @@ export async function retryDepositAction(formData: FormData): Promise<Result> {
   const t = await db.txn.findById(txnId);
   if (!t || t.type !== "DEPOSIT" || t.status !== "FAILED") return { ok: false, error: "Not a retryable failed deposit." };
   const r = await deposit(t.userId, { provider: (t.provider ?? "MPESA") as DepositProvider, amount: Math.abs(t.amount), msisdn: t.msisdn ?? undefined });
-  await db.txn.update(txnId, { status: "CANCELLED", description: `${t.description ?? "deposit failed"} · superseded by retry` });
+  if (r.ok) {
+    await db.txn.update(txnId, { status: "CANCELLED", description: `${t.description ?? "deposit failed"} · superseded by retry` });
+  } else {
+    // Retry refused (kill-switch, KYC, rate limit, bounds) — no replacement txn was
+    // created, so the FAILED row must stay in the queue. Record why, cancel nothing.
+    await db.txn.update(txnId, { description: `${t.description ?? "deposit failed"} · retry refused: ${r.error ?? "unknown"}` });
+  }
   audit({ category: "WALLET", action: "payments.retry.deposit", actorId: g.userId, targetType: "Transaction", targetId: txnId, payload: { retried: r.ok, newStatus: r.ok ? r.data?.status : null } });
   revalidatePath("/admin/payments");
   return r.ok ? { ok: true } : { ok: false, error: r.error ?? "Retry failed again." };
@@ -169,7 +175,13 @@ export async function retryWithdrawalAction(formData: FormData): Promise<Result>
   const { withdraw } = await import("@/lib/server/wallet-service");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const r = await withdraw(t.userId, { provider: (t.provider ?? "MPESA"), amount: Math.abs(t.amount), msisdn: t.msisdn ?? undefined } as any);
-  await db.txn.update(txnId, { status: "CANCELLED", description: `${t.description ?? "withdrawal failed"} · superseded by retry` });
+  if (r.ok) {
+    await db.txn.update(txnId, { status: "CANCELLED", description: `${t.description ?? "withdrawal failed"} · superseded by retry` });
+  } else {
+    // Retry refused — withdraw() created no replacement txn; the FAILED row (the
+    // record that money is still owed) must stay in the retry queue. Status unchanged.
+    await db.txn.update(txnId, { description: `${t.description ?? "withdrawal failed"} · retry refused: ${r.error ?? "unknown"}` });
+  }
   audit({ category: "WALLET", action: "payments.retry.withdrawal", actorId: g.userId, targetType: "Transaction", targetId: txnId, payload: { retried: r.ok, newStatus: r.ok ? r.data?.status : null } });
   revalidatePath("/admin/payments");
   return r.ok ? { ok: true } : { ok: false, error: r.error ?? "Retry failed again." };
@@ -291,8 +303,14 @@ export async function bulkRetryAction(): Promise<{ ok: true; retried: number; st
         ? await deposit(t.userId, { provider: (t.provider ?? "MPESA") as DepositProvider, amount: Math.abs(t.amount), msisdn: t.msisdn ?? undefined })
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         : await withdraw(t.userId, { provider: (t.provider ?? "MPESA"), amount: Math.abs(t.amount), msisdn: t.msisdn ?? undefined } as any);
-      await db.txn.update(t.id, { status: "CANCELLED", description: `${t.description ?? "failed"} · superseded by bulk retry` });
-      if (r.ok) retried++; else stillFailed++;
+      if (r.ok) {
+        await db.txn.update(t.id, { status: "CANCELLED", description: `${t.description ?? "failed"} · superseded by bulk retry` });
+        retried++;
+      } else {
+        // Refused retries keep their FAILED row (and the obligation) visible in the queue.
+        await db.txn.update(t.id, { description: `${t.description ?? "failed"} · bulk retry refused: ${r.error ?? "unknown"}` });
+        stillFailed++;
+      }
     } catch { stillFailed++; }
   }
   audit({ category: "WALLET", action: "payments.retry.bulk", actorId: g.userId, targetType: null, targetId: null, payload: { attempted: failed.length, retried, stillFailed } });

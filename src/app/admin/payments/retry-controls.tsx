@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
 import { retryDepositAction, retryWithdrawalAction, cancelRefundTxnAction } from "./payment-actions";
+import { runAdminAction } from "@/lib/client/run-admin-action";
 
 export function RetryControls({ txnId, type }: { txnId: string; type: "DEPOSIT" | "WITHDRAWAL" }) {
   const [pending, startTransition] = useTransition();
@@ -21,7 +22,7 @@ export function RetryControls({ txnId, type }: { txnId: string; type: "DEPOSIT" 
     startTransition(async () => {
       const fd = new FormData();
       fd.set("txnId", txnId);
-      const r = await fn(fd);
+      const r = await runAdminAction(() => fn(fd));
       if (!r.ok) { toast({ title: "Blocked", description: r.error, variant: "danger" }); return; }
       toast({ title: okTitle, variant: "success" });
       setConfirmCancel(false);

@@ -14,6 +14,7 @@ import { useToast } from "@/components/ui/toast";
 import { I } from "@/components/ui/glyphs";
 import { formatTzs } from "@/lib/utils";
 import { settleMarketAction } from "./actions";
+import { runAdminAction } from "@/lib/client/run-admin-action";
 
 export function SettleButton({
   marketId, title, pool, positions, outcome,
@@ -33,7 +34,7 @@ export function SettleButton({
     start(async () => {
       const fd = new FormData();
       fd.set("marketId", marketId);
-      const r = await settleMarketAction(fd);
+      const r = await runAdminAction(() => settleMarketAction(fd));
       if (!r.ok) {
         toast({ title: "Not settled", description: r.error, variant: "danger" });
         return;

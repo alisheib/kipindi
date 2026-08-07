@@ -17,6 +17,7 @@ import { AttestationRail } from "@/components/admin/attestation-rail";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { CEREMONY } from "@/lib/admin-status-lexicon";
 import { KYC_ATTESTATIONS } from "@/lib/kyc-attestations";
+import { runAdminAction } from "@/lib/client/run-admin-action";
 import {
   approveKycWorkstationAction,
   rejectKycWorkstationAction,
@@ -77,7 +78,7 @@ export function KycDecisionRail({
       const fd = new FormData();
       fd.set("userId", userId);
       for (const [k, v] of Object.entries(extra ?? {})) fd.set(k, v);
-      const r = await fn(fd);
+      const r = await runAdminAction(() => fn(fd));
       if (!r.ok) { toast({ title: "Blocked", description: r.error, variant: "danger" }); return; }
       toast({ title: okTitle, variant: okVariant });
       router.refresh();

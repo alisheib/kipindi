@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
 import { I } from "@/components/ui/glyphs";
 import { bulkRetryAction } from "./payment-actions";
+import { runAdminAction } from "@/lib/client/run-admin-action";
 
 export function BulkRetryControls() {
   const [pending, start] = useTransition();
@@ -17,7 +18,7 @@ export function BulkRetryControls() {
 
   const run = () => {
     start(async () => {
-      const r = await bulkRetryAction();
+      const r = await runAdminAction(() => bulkRetryAction());
       if (!r.ok) { toast({ title: "Blocked", description: r.error, variant: "danger" }); return; }
       setConfirm(false);
       router.refresh();

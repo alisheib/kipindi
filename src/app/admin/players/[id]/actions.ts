@@ -11,6 +11,8 @@ import { revokeUserSessions } from "@/lib/server/session-registry";
 import { type AdminDomain } from "@/lib/server/roles";
 import { requireStaff } from "@/lib/server/rbac-guard";
 import { setUserEmail } from "@/lib/server/email-verification";
+import { loadConfig, saveConfig } from "@/lib/server/config-store";
+import { TWO_PERSON_THRESHOLD_TZS } from "../../aml/constants";
 
 /**
  * Privileged player-management actions. Each one:
@@ -203,6 +205,28 @@ export async function setPlayerEmailAction(formData: FormData) {
 // Officer credits/debits a player's real balance with a mandatory reason. The
 // money move + txn + ledger are atomic (wallet-service.adminAdjustBalance); this
 // wrapper only gates (MONEY_ROLES via requireAdmin + TOTP) and validates input.
+/**
+ * Maker-checker stage-1 store for LARGE balance adjustments (B-4). Same durable
+ * config-store pattern as the AML two-person queue (`admin/aml/actions.ts`) —
+ * survives restarts, keyed by player. One pending large adjustment per player;
+ * the second, DIFFERENT officer must submit the IDENTICAL direction+amount to
+ * countersign, else the pending record is replaced with their proposal.
+ */
+type AdjustStage1 = { actorId: string; at: string; signed: number; reason: string };
+const ADJUST_STAGE1_KEY = (userId: string) => `balance-adjust.stage1:${userId}`;
+const adjustStage1Mem = new Map<string, AdjustStage1>();
+async function getAdjustStage1(userId: string): Promise<AdjustStage1 | null> {
+  const mem = adjustStage1Mem.get(userId);
+  if (mem) return mem;
+  const persisted = await loadConfig<AdjustStage1>(ADJUST_STAGE1_KEY(userId));
+  if (persisted) adjustStage1Mem.set(userId, persisted);
+  return persisted;
+}
+async function setAdjustStage1(userId: string, sig: AdjustStage1 | null): Promise<void> {
+  if (sig) adjustStage1Mem.set(userId, sig); else adjustStage1Mem.delete(userId);
+  await saveConfig(ADJUST_STAGE1_KEY(userId), sig);
+}
+
 export async function adjustBalanceAction(formData: FormData) {
   const officerId = await requireAdmin("adjustBalanceAction");
   const userId = String(formData.get("userId") ?? "");
@@ -214,6 +238,37 @@ export async function adjustBalanceAction(formData: FormData) {
   if (reason.length < 5) return { ok: false as const, error: "Reason is required (≥ 5 chars)." };
   const signed = direction === "debit" ? -Math.round(amountRaw) : Math.round(amountRaw);
   try {
+    // Two-person rule (B-4): at/above the platform's two-person threshold the
+    // ceremony must not be WEAKER than an AML release of the same size. First
+    // officer records a pending adjustment; a second, DIFFERENT officer submits
+    // the identical adjustment to execute it. Below the threshold: unchanged.
+    if (Math.abs(signed) >= TWO_PERSON_THRESHOLD_TZS) {
+      const first = await getAdjustStage1(userId);
+      if (!first) {
+        await setAdjustStage1(userId, { actorId: officerId, at: new Date().toISOString(), signed, reason });
+        audit({ category: "COMPLIANCE", action: "balance_adjust.stage1", actorId: officerId, targetType: "User", targetId: userId, payload: { signed, reason } });
+        revalidatePath(`/admin/players/${userId}`);
+        return { ok: true as const, stage: "stage1" as const, message: "First approval recorded. A second, different officer must submit the same adjustment to apply it." };
+      }
+      if (first.actorId === officerId) {
+        return { ok: false as const, error: "A different officer must give the second approval (two-person rule). Your proposal is already recorded." };
+      }
+      if (first.signed !== signed) {
+        // A different figure is a NEW proposal, not a countersign — replace stage-1.
+        await setAdjustStage1(userId, { actorId: officerId, at: new Date().toISOString(), signed, reason });
+        audit({ category: "COMPLIANCE", action: "balance_adjust.stage1_replaced", actorId: officerId, targetType: "User", targetId: userId, payload: { signed, reason, previous: first } });
+        revalidatePath(`/admin/players/${userId}`);
+        return { ok: true as const, stage: "stage1" as const, message: "Amount differs from the pending proposal — recorded as a NEW first approval. A second, different officer must submit the same adjustment." };
+      }
+      // Countersigned: execute, then clear the pending record. Audit both ids.
+      const { adminAdjustBalance } = await import("@/lib/server/wallet-service");
+      const r = await adminAdjustBalance(userId, officerId, signed, reason);
+      if (!r.ok) return { ok: false as const, error: r.error };
+      await setAdjustStage1(userId, null);
+      audit({ category: "COMPLIANCE", action: "balance_adjust.countersigned", actorId: officerId, targetType: "User", targetId: userId, payload: { signed, reason, firstOfficerId: first.actorId, secondOfficerId: officerId } });
+      revalidatePath(`/admin/players/${userId}`);
+      return { ok: true as const, balance: r.balance };
+    }
     const { adminAdjustBalance } = await import("@/lib/server/wallet-service");
     const r = await adminAdjustBalance(userId, officerId, signed, reason);
     if (!r.ok) return { ok: false as const, error: r.error };

@@ -7,7 +7,7 @@ import { db, type StoredTxn } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
 import { withLock } from "@/lib/server/locks";
 import { dispatchApprovedWithdrawal } from "@/lib/server/wallet-service";
-import { loadConfig, saveConfig } from "@/lib/server/config-store";
+import { getFirstSignature, setFirstSignature } from "./stage1-store";
 
 import { TWO_PERSON_THRESHOLD_TZS } from "./constants";
 import { formatTzs } from "@/lib/utils";
@@ -22,27 +22,9 @@ async function requireAdmin() {
   return { session, role: u?.role ?? "ADMIN" };
 }
 
-/**
- * First-officer co-signature store. Durable (config-store → DB in prod) so the
- * two-person link survives restarts, AND mirrored in-process so it's reliable
- * regardless of how many ADMIN audit events occur between the two clicks. This
- * replaces the old getAuditPage({limit:200}) scan, which silently lost the
- * signature on a busy day (audit finding) — downgrading two-officer to one.
- */
-type Stage1Sig = { actorId: string; at: string };
-const STAGE1_KEY = (txnId: string) => `aml.stage1:${txnId}`;
-const stage1Mem = new Map<string, Stage1Sig>();
-async function getFirstSignature(txnId: string): Promise<Stage1Sig | null> {
-  const mem = stage1Mem.get(txnId);
-  if (mem) return mem;
-  const persisted = await loadConfig<Stage1Sig>(STAGE1_KEY(txnId));
-  if (persisted) stage1Mem.set(txnId, persisted);
-  return persisted;
-}
-async function setFirstSignature(txnId: string, sig: Stage1Sig): Promise<void> {
-  stage1Mem.set(txnId, sig);
-  await saveConfig(STAGE1_KEY(txnId), sig);
-}
+// First-officer co-signature store — moved to ./stage1-store (B-9) so the queue
+// page reads the SAME durable store these actions write, instead of scanning
+// the audit ring (wrong category, volatile) and never populating its badges.
 
 /**
  * Approve a withdrawal held in AML_REVIEW and DISPATCH the payout.

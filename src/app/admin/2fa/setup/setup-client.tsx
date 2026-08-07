@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { ConfirmModal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { I } from "@/components/ui/glyphs";
 import { provisionTotpAction, verifyTotpAction, removeTotpAction } from "./actions";
@@ -12,12 +13,19 @@ export function TotpSetupClient({ initiallyEnabled }: { initiallyEnabled: boolea
   const [provisioning, setProvisioning] = useState<{ secretBase32: string; otpauthUrl: string } | null>(null);
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
+  // Step-up ceremony state (B-3): removing or rotating an existing secret needs
+  // the CURRENT code + (for removal) a typed hard confirm, like the kill-switch.
+  const [removeOpen, setRemoveOpen] = useState(false);
+  const [reprovOpen, setReprovOpen] = useState(false);
+  const [stepCode, setStepCode] = useState("");
   const { toast } = useToast();
 
-  const start = async () => {
+  const start = async (currentCode?: string) => {
     setBusy(true);
     try {
-      const r = await provisionTotpAction();
+      const fd = new FormData();
+      if (currentCode) fd.set("code", currentCode);
+      const r = await provisionTotpAction(fd);
       if (r.ok) {
         setProvisioning({ secretBase32: r.secretBase32, otpauthUrl: r.otpauthUrl });
         toast({ title: "QR ready", description: "Scan it with your authenticator app, then enter the 6-digit code below.", variant: "success" });
@@ -56,12 +64,14 @@ export function TotpSetupClient({ initiallyEnabled }: { initiallyEnabled: boolea
     }
   };
 
-  const remove = async () => {
+  const remove = async (currentCode: string) => {
     setBusy(true);
     try {
       // Only flip the UI to "off" once the server confirms removal — otherwise
       // a rejected call would falsely tell the admin 2FA is gone while it's live.
-      const r = await removeTotpAction();
+      const fd = new FormData();
+      fd.set("code", currentCode);
+      const r = await removeTotpAction(fd);
       if (r.ok) {
         setEnabled(false);
         setProvisioning(null);
@@ -77,6 +87,26 @@ export function TotpSetupClient({ initiallyEnabled }: { initiallyEnabled: boolea
     }
   };
 
+  const stepCodeInput = (
+    <label className="block mt-3">
+      <span className="block text-caption uppercase tracking-[0.14em] font-bold text-text-secondary mb-1.5">
+        Current 6-digit code
+      </span>
+      <input
+        type="text"
+        inputMode="numeric"
+        pattern="\d{6}"
+        maxLength={6}
+        value={stepCode}
+        onChange={(e) => setStepCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+        placeholder="123 456"
+        autoComplete="one-time-code"
+        aria-label="Current 6-digit verification code"
+        className="w-40 h-11 px-3 rounded-md bg-bg-inset border border-border text-text font-mono text-title-sm tabular tracking-[0.2em] focus:outline-none admin-focus transition-colors"
+      />
+    </label>
+  );
+
   if (enabled && !provisioning) {
     return (
       <div className="space-y-3">
@@ -84,13 +114,63 @@ export function TotpSetupClient({ initiallyEnabled }: { initiallyEnabled: boolea
           Two-factor authentication is enabled on this account. Codes refresh every 30 seconds.
         </p>
         <div className="flex gap-2 flex-wrap">
-          <Button variant="secondary" size="md" leading={<I.keyRound size={14} />} onClick={start} loading={busy}>
+          <Button variant="secondary" size="md" leading={<I.keyRound size={14} />} onClick={() => { setStepCode(""); setReprovOpen(true); }} loading={busy}>
             Re-provision (new QR)
           </Button>
-          <Button variant="danger" size="md" leading={<I.trash s={14} />} onClick={remove} loading={busy}>
+          <Button variant="danger" size="md" leading={<I.trash s={14} />} onClick={() => { setStepCode(""); setRemoveOpen(true); }} loading={busy}>
             Remove 2FA
           </Button>
         </div>
+
+        {/* Hard-tier removal ceremony (B-3): current code + typed REMOVE, mirroring the kill-switch. */}
+        <ConfirmModal
+          open={removeOpen}
+          onClose={() => setRemoveOpen(false)}
+          onConfirm={() => {
+            if (stepCode.length !== 6) { toast({ title: "Enter your current 6-digit code", variant: "warning" }); return; }
+            setRemoveOpen(false);
+            void remove(stepCode);
+          }}
+          title="Remove two-factor authentication"
+          eyebrow="Step-up required"
+          tone="claret"
+          tier="hard"
+          typedWord="REMOVE"
+          confirmLabel="Remove 2FA"
+          body={
+            <div>
+              <p>
+                Removing 2FA takes the step-up gate off every privileged money action for this
+                account. Prove possession of the current authenticator to continue.
+              </p>
+              {stepCodeInput}
+            </div>
+          }
+        />
+
+        {/* Rotation also needs the current code — a new QR replaces the old secret. */}
+        <ConfirmModal
+          open={reprovOpen}
+          onClose={() => setReprovOpen(false)}
+          onConfirm={() => {
+            if (stepCode.length !== 6) { toast({ title: "Enter your current 6-digit code", variant: "warning" }); return; }
+            setReprovOpen(false);
+            void start(stepCode);
+          }}
+          title="Re-provision authenticator"
+          eyebrow="Step-up required"
+          tone="brand"
+          confirmLabel="Generate new QR"
+          body={
+            <div>
+              <p>
+                A new QR replaces your current secret. Enter a valid code from the CURRENT
+                authenticator first — after scanning, verify the new one to complete the swap.
+              </p>
+              {stepCodeInput}
+            </div>
+          }
+        />
       </div>
     );
   }
@@ -137,7 +217,7 @@ export function TotpSetupClient({ initiallyEnabled }: { initiallyEnabled: boolea
       <p className="text-body-sm text-text-secondary">
         Click below to provision a new QR code. Scan it with Google Authenticator, Authy, 1Password, or Bitwarden.
       </p>
-      <Button variant="primary" size="lg" leading={<I.keyRound size={14} />} onClick={start} loading={busy}>
+      <Button variant="primary" size="lg" leading={<I.keyRound size={14} />} onClick={() => start()} loading={busy}>
         Provision authenticator
       </Button>
     </div>

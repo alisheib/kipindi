@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Route } from "next";
-import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
+import { AdminPageHead, AdminCard, AdminLoadError } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { AdminMeter } from "@/components/admin/admin-charts";
 import { Chip } from "@/components/ui/chip";
@@ -39,10 +39,13 @@ export default async function PaymentsOpsPage({ searchParams }: { searchParams: 
   // vendor. It moves NO money (a signed status query for a transid that does not
   // exist) and it is the thing that answers, in seconds, the question that cost an
   // entire evening on 2026-07-29: is the rail down, or was it never switched on?
+  // B-1: failed reads carry an explicit `null` = "couldn't read" (rendered via
+  // AdminLoadError / an honest Unavailable line) — never an empty [] that hides
+  // a live alarm list or a probe result behind a benign blank.
   const [health, kill, recon, queue, controls, floatBal, railProbes, payouts] = await Promise.all([
     allMnoHealth(), getKillSwitches(), reconcile(), retryQueue(), getPaymentControls(),
     getFloatBalance().catch(() => null),
-    refreshRailProbes().catch(() => []),
+    refreshRailProbes().catch(() => null),
     getPayoutStatus(),
   ]);
   // Warn below one max-withdrawal of headroom — a dry float fails every payout.
@@ -52,7 +55,8 @@ export default async function PaymentsOpsPage({ searchParams }: { searchParams: 
   // nothing automatic can resolve it and the player's money stays held. Surfaced
   // here, oldest first, so an officer can see and release them.
   const FROZEN_AFTER_MS = 30 * 60 * 1000;
-  const frozenPayouts = (await db.txn.listByStatus("PROCESSING").catch(() => []))
+  const frozenPayoutsRead = await db.txn.listByStatus("PROCESSING").catch(() => null);
+  const frozenPayouts = frozenPayoutsRead === null ? null : frozenPayoutsRead
     .filter((t) => t.type === "WITHDRAWAL" && Date.now() - Date.parse(t.createdAt) > FROZEN_AFTER_MS)
     .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt))
     .slice(0, 25);
@@ -118,7 +122,12 @@ export default async function PaymentsOpsPage({ searchParams }: { searchParams: 
         {/* Payout rails — which Selcom disbursement products are actually provisioned
             for this vendor. Probed live (money-free status queries) on every load.
             A payout tries the ladder in order and skips anything marked NOT ENABLED. */}
-        {railProbes.length > 0 && (
+        {railProbes === null && (
+          <AdminCard title="Payout rails" sw="Njia za malipo">
+            <AdminLoadError what="the payout-rail probes" />
+          </AdminCard>
+        )}
+        {railProbes !== null && railProbes.length > 0 && (
           <AdminCard title="Payout rails" sw="Njia za malipo">
             <div className="space-y-2">
               {railProbes.map((p) => {
@@ -146,8 +155,15 @@ export default async function PaymentsOpsPage({ searchParams }: { searchParams: 
           </AdminCard>
         )}
 
-        {/* Frozen payouts — a player's money held with nothing able to release it. */}
-        {frozenPayouts.length > 0 && (
+        {/* Frozen payouts — a player's money held with nothing able to release it.
+            B-1: a FAILED read renders the explicit load-error card, never a blank
+            (a hidden alarm list is indistinguishable from "all clear"). */}
+        {frozenPayouts === null && (
+          <AdminCard>
+            <AdminLoadError what="the frozen-payouts alarm list" />
+          </AdminCard>
+        )}
+        {frozenPayouts !== null && frozenPayouts.length > 0 && (
           <AdminCard>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
               <span className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.14em] text-danger">
