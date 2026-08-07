@@ -179,7 +179,10 @@ const missing = ATOM_B_NEW.filter((n) => !names.has(n));
 say(missing.length === 0, `3.1 all ${ATOM_B_NEW.length} keyframes from material.css §B are present (ATOM B)`);
 for (const n of missing) console.log(`         ${n} is not defined anywhere`);
 
-const REUSED = ["seal-impress", "seal-place", "badge-seal-rays", "win-aura-breathe", "shimmer-gilt", "count-up-flash", "m-scrim-in"];
+/* `win-aura-breathe` left this list on 2026-08-07 (DA-8/E-128): its only consumer
+   `.win-aura-anim` was dead (zero call sites) and both were deleted. §C's aura is
+   its own `m-aura`; nothing in motion.css ever referenced win-aura-breathe. */
+const REUSED = ["seal-impress", "seal-place", "badge-seal-rays", "shimmer-gilt", "count-up-flash", "m-scrim-in"];
 const missingReused = REUSED.filter((n) => !names.has(n));
 say(missingReused.length === 0, `3.2 every keyframe §C REUSES rather than redefines still exists`);
 for (const n of missingReused) console.log(`         ${n} — §C references it; deleting it would break a utility silently`);
