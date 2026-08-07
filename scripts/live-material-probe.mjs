@@ -152,16 +152,34 @@ const SURFACES = {
    * surface is located. ⛔ Never an aria-label: this probe iterates EN/SW/ZH and a
    * label lookup would silently miss on two of the three and photograph nothing.
    */
+  /**
+   * 🔴 RE-AIMED TWICE OVER, 2026-08-07 (ATOM D-2), AND BOTH REASONS ARE WORTH KEEPING.
+   *
+   * ① **The trigger depended on production DATA and quietly stopped existing.** It
+   * clicked `.mcardp-info`, which `market-card.tsx` renders as `{live && <HowItWorks/>}`
+   * — only on an OPEN market. Session 34 reached it 36/36 times because the board had
+   * open markets; on 2026-08-07 the board held three RESOLVED cards, the count was
+   * **0**, and the probe reported a 60s timeout that reads exactly like a broken
+   * surface. ⛔ **A probe whose reachability depends on live content will eventually
+   * report a data state as a defect.** The first-visit primer is the kit `Modal` too,
+   * it is NOT feature-flagged (unlike the chat — see E-123), and it renders on any
+   * route for any context with empty `localStorage` — which every cell here has,
+   * because each opens a fresh context. So there is nothing to click.
+   *
+   * ② **The selector was a Tailwind class the merge removed.** It matched
+   * `.shadow-modal`, and ATOM D-2 replaced that on the kit Modal with `mat-modal` —
+   * so the instrument went stale the moment the product improved. It now anchors on
+   * `[data-rung]`, an attribute whose whole purpose is to say which rung a surface
+   * picked, and which therefore survives restyling. ⭐ That is the same rule the M1
+   * probe learned the hard way: **assert the structure, not the spelling.**
+   */
   modal: {
     route: "/markets",
     persona: "fleet:07",
-    // The card's "How it works" control → the product's standard centred dialog.
-    // Chosen because it costs nothing: no stake, no write, no money path.
-    open: [{ click: ".mcardp-info", why: "the market card's how-it-works control" }],
-    selector: ".shadow-modal",
-    label: "centred dialog (rung 3) — --shadow-modal",
-    props: ["boxShadow", "backgroundColor", "borderColor"],
-    vars: ["--shadow-modal", "--edge-lit-strong"],
+    selector: '[data-rung="modal"]',
+    label: "centred dialog (rung 3) — the kit Modal, via the first-visit primer",
+    props: ["boxShadow", "backgroundImage", "backgroundColor", "borderColor"],
+    vars: ["--elev-modal", "--wash-modal", "--edge-lit-strong"],
   },
   dropdown: {
     route: "/markets",

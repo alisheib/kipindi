@@ -159,6 +159,19 @@ export function Modal({
           with, and dropping the border here would have cost the dialog its edge. */}
       <div
         ref={panelRef}
+        /* ⭐ `data-rung` IS THE ADOPTION LEDGER, not a test hook bolted on.
+           A surface that picks a rung declares WHICH one, in the markup, so the set of
+           rung-adopting surfaces can be ENUMERATED instead of grepped for whichever
+           class name the merge happens to be using this week. Two things made this
+           worth one attribute: the material probe had been selecting `.shadow-modal`,
+           which this very commit removed — so the instrument went stale the moment the
+           product improved — and Ali's standing instruction is that the design applies
+           everywhere with no inconsistency, which you cannot check without being able
+           to list what has adopted and what has not.
+           ⚠️ The repo already uses exactly this idiom for exactly this reason:
+           `data-unread` on the bell and `data-stagger` on a cascade are both selected
+           by drivers precisely because a `data-` attribute survives restyling. */
+        data-rung="modal"
         className={`${sheet ? "m-sheet-in kp-modal-sheet" : "m-dialog-in"} mat-modal relative w-full p-5 lg:p-6 ${
           sheet ? "rounded-t-modal sm:rounded-modal sm:my-auto" : "my-auto rounded-modal"
         } ${panelClassName}`}
