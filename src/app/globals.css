@@ -299,7 +299,11 @@
   --bg-overlay:    oklch(11% 0.110 268);   /* sunken / hover-down */
   --bg-royal-soft: oklch(30% 0.165 268);   /* highlighted surface (modal, hero) */
   --bg-inset:      oklch(11% 0.110 268);   /* sunken input / toggle track */
-  --bg-elevated2:  oklch(26% 0.150 268);   /* second-elevation card */
+  /* DA-9/E-132 (2026-08-07): `--bg-elevated2` is RETIRED. It was a flat 26% —
+     above the 24% lit-stop ink cap every wash obeys — and rung 2 (`--wash-float`
+     + `--elev-float`) supersedes the "second-elevation card" idea entirely. Its
+     three consumers (toast inline override, avatar button, landing icon plate)
+     now sit on the ladder. Do not re-add: a second elevation is a RUNG. */
   --panel:         oklch(20% 0.130 268);   /* nav / sidebar chrome */
   --border:        oklch(36% 0.130 268);   /* crisper edge (was 34%) — Step 5 depth */
   --border-strong: oklch(44% 0.150 268);
@@ -1499,45 +1503,12 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
   100% { background-position: -200% 0; }
 }
 
-/* ---------- Toast (kit class) ---------- */
-/* v2 Dark Glass: frosted translucent panel with an EVEN 1px light-edge.
-   backdrop-filter is GPU-accelerated and degrades gracefully (solid fill)
-   on the few engines without support. */
-.toast {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 12px 14px;
-  border-radius: var(--r-lg);
-  border: 1px solid var(--border-strong);
-  background: color-mix(in oklab, var(--bg-elevated) 80%, transparent);
-  backdrop-filter: blur(14px) saturate(1.1);
-  -webkit-backdrop-filter: blur(14px) saturate(1.1);
-  /* ⭐ M1 (ATOM 2c-c) — was `0 1px 0 oklch(98% 0.01 268 / 0.08) inset`, a
-     top-edge line, and the comment three lines up still called it "a 1px top
-     light-edge". A toast is rung 4, the highest physical object in the product,
-     and the delivery gives that rung `--edge-lit-strong` (`--elev-toast`,
-     material.css:72). ⭐ The old literal was `--shadow-card-top`'s PRE-MERGE
-     value retyped here by hand — so this is the token reclaiming its own copy,
-     not a new colour. */
-  box-shadow: var(--edge-lit-strong), var(--shadow-4);
-  min-width: 280px;
-  max-width: 360px;
-}
-.toast-icon {
-  width: 22px; height: 22px;
-  border-radius: 50%;
-  display: grid; place-items: center;
-  flex-shrink: 0;
-  font-weight: 700;
-  font-size: 12px;
-}
-.toast-success .toast-icon { background: color-mix(in oklab, var(--yes-500) 22%, transparent); color: var(--yes-300); }
-.toast-warning .toast-icon { background: color-mix(in oklab, var(--warning-500) 22%, transparent); color: oklch(82% 0.16 80); }
-.toast-danger  .toast-icon { background: color-mix(in oklab, var(--danger-500) 22%, transparent); color: oklch(80% 0.18 25); }
-.toast-info    .toast-icon { background: color-mix(in oklab, var(--info-500) 22%, transparent); color: oklch(78% 0.13 268); }
-.toast-title   { font-weight: 600; font-size: 13px; margin-bottom: 2px; }
-.toast-body    { font-size: 12px; color: var(--text-muted); }
+/* ---------- Toast ----------
+   DA-1 (2026-08-07): the `.toast` kit-class family (surface, icon disc, four
+   variant tints, title, body — 8 rules) is GONE. It had ZERO consumers — the
+   real toast is the `ui/toast.tsx` component, which now takes rung 4 directly
+   (`.mat-toast` + `.mat-tint-*`, motion.css §C). Keeping a parallel class
+   recipe beside the component was a second definition of one truth. */
 
 /* ===========================================================================
    Legacy tooltip (kp-tooltip) — kept because existing components use it.
@@ -1688,19 +1659,11 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
 @keyframes pulse-urgent  { 0%, 100% { opacity: 1; } 50% { opacity: 0.65; } }
 @keyframes pulse-critical { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.55; transform: scale(0.97); } }
 
-/* ---------- Animated toast (entrance + auto-dismiss progress hairline) ---------- */
-.toast-anim {
-  animation: toast-slide var(--dur-arrive) var(--ease-arrive) both;
-  position: relative;
-  overflow: hidden;
-}
-.toast-anim::after {
-  content: ''; position: absolute; inset: auto 0 0 0;
-  height: 2px; background: currentColor; opacity: 0.35;
-  transform-origin: left;
-  animation: toast-bar 5s linear forwards;
-}
-@keyframes toast-slide { from { transform: translateY(-12px) scale(0.96); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+/* ---------- Toast auto-dismiss hairline ----------
+   DA-1 (2026-08-07): `.toast-anim` (+ its ::after and the `toast-slide`
+   keyframe) is GONE with the `.toast` family above — zero consumers; the
+   component owns its own enter/exit transition. `toast-bar` STAYS: it drives
+   the component's real countdown hairline (toast.tsx, inline animation). */
 @keyframes toast-bar   { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 
 /* Spinner — kit atom Spinner uses this. Stroke-only, so it inherits
@@ -2263,12 +2226,13 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
    ⛔ Deleted rather than repaired because the class had **zero consumers** anywhere in
    `src` — repairing it would have meant inventing a burst nobody had specified, for a
    surface nothing renders. `test:keyframes` rule 2.2 is the guard; it found this.
-   ⚠️ The rest of the `win-*` family is dead too (E-128) — left for the M7 / E-115
-   celebration atom, which is rebuilding that surface. Deleting it here would make this
-   atom's diff unattributable, and one of its keyframes (`badge-seal-rays`) is REUSED by
-   §C's `.seal-sheen`, so the sweep needs the §C context to be done safely. */
-.win-card-rare   { animation: celebrate-pop var(--dur-arrive) var(--ease-celebrate); }
-.win-seal        { animation: seal-impress var(--dur-glide) var(--ease-celebrate) both; animation-delay: 160ms; }
+   ✅ E-128 CLOSED (DA-8, 2026-08-07): the rest of the dead `win-*` family —
+   `.win-card-rare`, `.win-seal`, `.win-aura-anim` (+ its `win-aura-breathe`
+   keyframe) — is DELETED. All had zero consumers in the src tree (verified by grep
+   over static AND template classNames). §C is merged, so the one entanglement is
+   resolved by keeping, not deleting: `badge-seal-rays` STAYS — `.seal-sheen`
+   (motion.css §C) and `.badge-unlock-rays` both animate it. The E-115
+   celebration atom rebuilds its surface on the kit + ladder, not on these. */
 /* 🔴 `.win-trophy-halo` DELETED 2026-08-07 (ATOM B) — `wc-trophy-pulse` IS NOT DEFINED
    ANYWHERE IN THE REPO, so this animation could never run for anyone. It also had zero
    consumers, and M3 bans the drawn rays this halo belonged to. ⭐ It was found by
@@ -2278,13 +2242,6 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
    case, a name defined nowhere at all. **A filter written to avoid false positives had
    bought a false negative**, and one mutation ("delete a keyframe outright") walked
    straight through it. The rule names the KEYWORDS now, so anything else must resolve. */
-/* Calm gilt aura — a heraldic glow that breathes, NO rotation (replaces the
-   old spinning sunburst, which read slot-machine). */
-@keyframes win-aura-breathe {
-  0%, 100% { transform: scale(0.94); opacity: 0.5; }
-  50%      { transform: scale(1.05); opacity: 0.78; }
-}
-.win-aura-anim { animation: win-aura-breathe 4.6s var(--ease-conduct) infinite; }
 
 /* ---------------------------------------------------------------------------
    §5  REDUCED-MOTION BRANCHES (mandatory)
@@ -2320,8 +2277,9 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
      reduced-motion override for a rule that no longer exists is the same dead weight
      one layer down — `state-tokens.css:109` records the identical clean-up. */
   /* ⛔ `.win-trophy-halo` removed from this branch with the rule itself — calming a
-     selector that no longer exists is dead weight one layer down. */
-  .win-aura-anim, .badge-unlock-rays { animation: none !important; opacity: 0.4; }
+     selector that no longer exists is dead weight one layer down. `.win-aura-anim`
+     went the same way (DA-8/E-128, 2026-08-07). */
+  .badge-unlock-rays { animation: none !important; opacity: 0.4; }
 
   /* tab indicator: jump, don't slide */
   .tab-indicator { transition: none !important; }
@@ -2366,7 +2324,6 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
    the class had been deleted with the drawn rays (M3 bans them) and its entry
    outlived it, which is a list quietly claiming coverage it does not have. */
 [data-motion="reduced"] .cm-bubble::after,
-[data-motion="reduced"] .win-aura-anim,
 [data-motion="reduced"] .hm-halo-pulse,
 [data-motion="reduced"] .ticker-track,
 [data-motion="reduced"] .prog-sweep::after,

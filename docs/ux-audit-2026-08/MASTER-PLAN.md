@@ -13,7 +13,7 @@
 
 - **Overall status:** IMPLEMENTING — Session A COMPLETE (7/7). Next: phase 2, the core design set.
 - **Active session:** the SOLE implementation session (claude-fable-5, cloud, working a clone of `origin/main`; the F:\ tree is idle — do not edit there). It owns everything — money, Up & Down, platform, all design work.
-- **Next action:** Phase 2 — core design set (DA-1 toast rung 4 + DS-1..DS-4, DA-2 glyphs, DA-6 ATOM J, DA-8, DA-9), then Session B (Up & Down).
+- **Next action:** Phase 2 remainder — DS-2 (Modal loading state), DS-3, DS-4, DA-2 (178 glyphs), DA-6 (ATOM J), then Session B (Up & Down).
 - **Blocked on:** nothing. Only the §9 items need Ali; they are parked, work continues.
 - **Environment note:** tests MUST run under Node 24 (`/opt/node24` in the cloud session). Under Node 22, tsx dual-instantiates modules and the seam-patching suites (late-bet, settlement-gate) fail falsely.
 - **Pre-existing red suites at `da231631` (verified identical before/after Session A; NOT caused by this work):** `test:kyc-doc-metadata` (1 fail), `test:updown-push` (1 fail, §2 suppression-gate else-branch), `test:orphans` (sessions 29–35 left unwired live-QA scripts), `test:updown-admin-options` (2 fails). `test:trilingual` is flaky (random poll fixture; passes on re-run). `test:prisma-delegate` needs the Prisma engine binary — unavailable in the cloud sandbox (blocked CDN), fine on Ali's machine. Fix the updown ones during Session B, orphans/kyc during the sweep/cleanup phases.
@@ -85,12 +85,12 @@ already doing.
 ## 4 · Progress counters (update as you go)
 
 - **Session A (money/ops):** 7 / 7 items done
-- **Session B (Up & Down):** 0 / 22 findings done
+- **Session B (Up & Down):** 1 / 22 findings done
 - **Session C (platform front-end):** 0 / ~17 findings done
-- **Visual set (design):** 0 / 7 done
-- **DS · design-consistency sweep (toasts/popups/modals):** 0 / 27 done
-- **DA · design-system atoms (carried over from design session):** 0 / 12 done (2 need Ali)
-- **TOTAL:** 7 / ~92 done
+- **Visual set (design):** 1 / 7 done
+- **DS · design-consistency sweep (toasts/popups/modals):** 1 / 27 done
+- **DA · design-system atoms (carried over from design session):** 3 / 12 done (2 need Ali)
+- **TOTAL:** 13 / ~92 done
 
 ---
 
@@ -161,7 +161,7 @@ already doing.
 > consumers to it. If the design session already migrated a surface, mark it `[S]`.
 
 **Core kit primitives (must define the new design set, everything else inherits):**
-- [ ] DS-1 `ui/toast.tsx` — new toast look; variants success/danger/warning/factual/gold; `role=alert` for danger (V-5); sticky `durationMs:0` support (from UD-3).
+- [x] DS-1 `ui/toast.tsx` — new toast look; variants success/danger/warning/factual/gold; `role=alert` for danger (V-5); sticky `durationMs:0` support (from UD-3). — rung 4 (`.mat-toast`) + composed `.mat-tint-*` per variant; factual stays untinted; dead `.toast` class family swept from globals.
 - [ ] DS-2 `ui/modal.tsx` (`Modal` + `ConfirmModal`) — new popup chrome; add `loading` state (B-28); tiers.
 - [ ] DS-3 `markets/operation-result-modal.tsx` — the canonical result popup; new crest/strip.
 - [ ] DS-4 `ui/confirm-dialog.tsx` — align to the new `ConfirmModal` look + pending (B-6).
@@ -186,7 +186,7 @@ already doing.
 > money rules: ledger verification + a fresh money census + full `test:all` before any push.**
 
 **Outstanding named atoms:**
-- [ ] DA-1 **Toast** — repaint at elevation rung 4 (M2 says rung 4; it currently paints rung 1); the six variants sit on a flat fill and each hand-writes a border the tints now compose — drive borders from the composed tints, not per-variant literals. *(This IS the core of DS-1 + V-5 + UD-3 — do them as one.)*
+- [x] DA-1 **Toast** — repaint at elevation rung 4 (M2 says rung 4; it currently paints rung 1); the six variants sit on a flat fill and each hand-writes a border the tints now compose — drive borders from the composed tints, not per-variant literals. *(This IS the core of DS-1 + V-5 + UD-3 — do them as one.)* — DONE with DS-1; contrast corpus rebased onto the wash stops.
 - [ ] DA-2 **The 178 glyphs (M5)** — four glyph primitives exist, zero glyphs use them yet; migrate all 178 onto the primitives.
 - [ ] DA-3 **E-112** — the five Up & Down stake chips render **26px** against the platform's own **40px** money-control floor, and they decide how much a player stakes → raise to the 40px floor. *(Overlaps UD-9 / tap-target work — do together.)*
 - [ ] DA-4 **E-114** — the refund toast paints a confirmation **tick** over a returned stake → use the `factual` variant (no tick, no gold). *(Same defect family as UD-12 / the LOSS-toast fix — do together.)*
@@ -195,8 +195,8 @@ already doing.
 - [ ] DA-7 **`.gilt-ink`** — money amounts as struck type; needs the celebration/payout surfaces, which overlap DA-5 (E-115) — sequence after/with it.
 
 **Filed cleanups (not yet swept):**
-- [ ] DA-8 **E-128** — remove five dead `win-*` classes. ⛔ **Do NOT remove `badge-seal-rays` — it is reused by `.seal-sheen`.**
-- [ ] DA-9 **E-132** — `--bg-elevated2` is at 26%, above the 24% ink cap; it is superseded by rung 2 → drop/retune to the cap.
+- [x] DA-8 **E-128** — remove five dead `win-*` classes. ⛔ **Do NOT remove `badge-seal-rays` — it is reused by `.seal-sheen`.** — `.win-card-rare`/`.win-seal`/`.win-aura-anim`(+keyframe) deleted (`.win-card`/`.win-trophy-halo` had gone in ATOM B); badge-seal-rays kept; keyframe-registry REUSED pin updated.
+- [x] DA-9 **E-132** — `--bg-elevated2` is at 26%, above the 24% ink cap; it is superseded by rung 2 → drop/retune to the cap. — token RETIRED: toast now rung 4; avatar button + landing icon plate take `--wash-float`; tailwind alias removed; contrast corpus updated.
 - [ ] DA-10 **`share-button.tsx`** — hand-rolled overlay → migrate to the kit `<Modal>`. *(Same as DS-25 — one fix.)*
 
 **⚠️ NEEDS ALI — no atom can decide these (park until answered; see §9):**

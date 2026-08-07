@@ -98,7 +98,10 @@ export function AvatarMenu({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "linear-gradient(135deg, var(--bg-elevated2), var(--bg-inset))",
+          /* DA-9/E-132 — was a hand-built gradient off `--bg-elevated2` (26%,
+             above the 24% ink cap; token retired). The float wash is the system
+             gradient for a lit chrome surface, and its angle is the one lamp. */
+          background: "var(--wash-float)",
         }}
       >
         <Avatar initials={initials} size="sm" seed={seed ?? initials} src={avatarSrc ?? undefined} />

@@ -385,7 +385,10 @@ function TrustItem({
       <span
         className={`shrink-0 inline-flex h-10 w-10 items-center justify-center rounded-lg border border-border-strong ${accent}`}
         style={{
-          background: "linear-gradient(180deg, var(--bg-elevated2), var(--bg-overlay))",
+          /* DA-9/E-132 — was a 180deg gradient off `--bg-elevated2` (26%, above
+             the 24% ink cap; token retired). The float wash is the system's lit
+             gradient and carries the lamp's own angle (M1). */
+          background: "var(--wash-float)",
           /* M1 — even ring, tokenised. Same conversion as the hero above: a pure-white
              top-only line is banned twice over, and `--edge-lit` is the one definition of
              what a lit edge looks like on this platform. */

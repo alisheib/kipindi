@@ -5,8 +5,13 @@
  * - Provider mounted at the app root once (in ThemeProvider chain)
  * - useToast() hook returns a `toast()` function callable from any client component
  * - Variants: default | success | warning | danger | gold (gold for win events)
+ *   | factual (a settled outcome, neither praise nor alarm)
+ * - Material: rung 4 (`.mat-toast`, M2) + a composed `.mat-tint-*` per variant —
+ *   never a hand-written border/shadow (DA-1, 2026-08-07)
  * - Auto-dismiss with progress bar; the countdown PAUSES on hover/focus/touch
- *   (bar pauses in sync) and resumes from the banked remaining time
+ *   (bar pauses in sync) and resumes from the banked remaining time.
+ *   `durationMs: 0` = sticky: stays until dismissed (money-path failures, UD-3)
+ * - Danger toasts announce as `role="alert"`; everything else stays polite
  * - Dismiss by: close button, or swipe the toast UP (iPhone-style, since the
  *   stack sits at the top) or horizontally past a threshold
  * - Stack of up to 4 visible at once (oldest dropped on overflow, timer cleared)
@@ -27,6 +32,9 @@ type ToastInput = {
   title: string;
   description?: string;
   variant?: ToastVariant;
+  /** Auto-dismiss delay. `0` = STICKY (UD-3): no timer, no progress bar — the
+   *  toast stays until the close button / swipe. For money-path failures that
+   *  must stay until read (the house primary/secondary rule). */
   durationMs?: number;
 };
 
@@ -120,9 +128,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       case "warning": haptics.warning(); break;
       case "danger":  haptics.error(); break;
     }
-    metaRef.current.set(id, { remaining: next.durationMs!, start: Date.now() });
-    const tm = setTimeout(() => dismiss(id), next.durationMs);
-    timersRef.current.set(id, tm);
+    // Sticky (durationMs 0): no countdown at all — dismiss is the user's act.
+    if (next.durationMs! > 0) {
+      metaRef.current.set(id, { remaining: next.durationMs!, start: Date.now() });
+      const tm = setTimeout(() => dismiss(id), next.durationMs);
+      timersRef.current.set(id, tm);
+    }
     return id;
   }, [dismiss]);
 
@@ -199,35 +210,43 @@ export function useDeferredToast(pending: boolean) {
   return { deferToast, toast, dismiss };
 }
 
+/**
+ * DA-1 (2026-08-07) — the toast is RUNG 4, the highest physical object in the
+ * product (M2). `.mat-toast` carries the wash + border + `--elev-toast` cast;
+ * each variant contributes only a COMPOSED tint (`.mat-tint-*` sets the
+ * `--mat-tint` slot every rung's box-shadow opens with) — no per-variant border
+ * literals, no `bg-bg-elevated` (which was dead anyway: an inline
+ * `--bg-elevated2` override painted over it), no rung-1 `--shadow-card`.
+ */
 const variantStyles: Record<ToastVariant, { bar: string; icon: React.ReactNode; surface: string; rail: string }> = {
   default: {
     bar: "bg-brand-300",
     icon: <span className="text-brand-300"><I.checkCircle s={18} /></span>,
-    surface: "bg-bg-elevated border-brand-500/40",
+    surface: "mat-tint-brand",
     rail: "bg-brand-300",
   },
   success: {
     bar: "bg-yes-500",
     icon: <span className="text-yes-300"><I.checkCircle s={18} /></span>,
-    surface: "bg-bg-elevated border-yes-700/60",
+    surface: "mat-tint-yes",
     rail: "bg-yes-500",
   },
   warning: {
     bar: "bg-gold-500",
     icon: <span className="text-gold-300"><I.warning s={18} /></span>,
-    surface: "bg-bg-elevated border-gold-700/60",
+    surface: "mat-tint-warn",
     rail: "bg-gold-500",
   },
   danger: {
     bar: "bg-no-500",
     icon: <span className="text-no-300"><I.alertCircle s={18} /></span>,
-    surface: "bg-bg-elevated border-no-700/60",
+    surface: "mat-tint-no",
     rail: "bg-no-500",
   },
   gold: {
     bar: "bg-gold-500",
     icon: <span className="text-gold-300"><I.trophy s={18} /></span>,
-    surface: "bg-bg-elevated border-gold-700",
+    surface: "mat-tint-gilt",
     rail: "bg-gold-500",
   },
   /**
@@ -247,7 +266,9 @@ const variantStyles: Record<ToastVariant, { bar: string; icon: React.ReactNode; 
   factual: {
     bar: "bg-text-muted",
     icon: <span className="text-text-secondary"><I.info s={18} /></span>,
-    surface: "bg-bg-elevated border-border-strong",
+    // Deliberately NO tint — the plain rung IS the material distinction between
+    // "here is information" and a coloured state (M7: losses get the receipt).
+    surface: "",
     rail: "bg-text-muted",
   },
 };
@@ -337,9 +358,13 @@ function ToastItem({ toast, exiting, onDismiss, onPause, onResume }: { toast: To
     setPaused(false); onResume();
   };
 
+  const sticky = toast.durationMs === 0;
+
   return (
     <div
-      role="status"
+      // V-5 / UD-12: a money-failure toast must be announced assertively —
+      // `status` is polite and a 4.5s auto-dismiss can outrun the SR queue.
+      role={toast.variant === "danger" ? "alert" : "status"}
       onPointerEnter={onPointerEnter}
       onPointerLeave={onPointerLeave}
       onPointerDown={onPointerDown}
@@ -349,12 +374,13 @@ function ToastItem({ toast, exiting, onDismiss, onPause, onResume }: { toast: To
       onFocusCapture={() => { setPaused(true); onPause(); }}
       onBlurCapture={() => { setPaused(false); onResume(); }}
       className={cn(
-        // Kit toast — 280..360 max width, .toast surface, .shadow-card
-        "pointer-events-auto relative w-full max-w-[320px] overflow-hidden rounded-md border shadow-[var(--shadow-card)]",
+        // Rung 4 (`.mat-toast`): wash, border and `--elev-toast` cast come from
+        // the ladder; the variant adds only its composed `.mat-tint-*` ring.
+        // No own border/shadow classes here — that is the rung's job (M2).
+        "pointer-events-auto relative w-full max-w-[320px] overflow-hidden rounded-md mat-toast",
         v.surface,
       )}
       style={{
-        background: "var(--bg-elevated2)",
         transform,
         opacity,
         // No transition mid-drag (follow the finger 1:1); ease on enter/exit/snap.
@@ -390,16 +416,19 @@ function ToastItem({ toast, exiting, onDismiss, onPause, onResume }: { toast: To
       >
         <I.x s={14} />
       </button>
-      <div className="absolute inset-x-0 bottom-0 h-[3px] bg-border/30" aria-hidden>
-        <div
-          className={cn("h-full origin-left relative", v.bar)}
-          style={{
-            animation: `toast-bar ${toast.durationMs}ms linear forwards`,
-            animationPlayState: paused ? "paused" : "running",
-            boxShadow: "0 0 6px 0 currentColor",
-          }}
-        />
-      </div>
+      {/* Countdown hairline — a sticky toast has no countdown, so no bar. */}
+      {!sticky && (
+        <div className="absolute inset-x-0 bottom-0 h-[3px] bg-border/30" aria-hidden>
+          <div
+            className={cn("h-full origin-left relative", v.bar)}
+            style={{
+              animation: `toast-bar ${toast.durationMs}ms linear forwards`,
+              animationPlayState: paused ? "paused" : "running",
+              boxShadow: "0 0 6px 0 currentColor",
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }

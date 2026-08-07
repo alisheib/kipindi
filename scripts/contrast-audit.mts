@@ -558,7 +558,9 @@ const T = {
    */
   washRaisedStops: tokenGradient("wash-raised"),
   washModalStops: tokenGradient("wash-modal"),
-  bgElevated2: token("bg-elevated2"),
+  /* `bg-elevated2` left the corpus 2026-08-07 (DA-9/E-132): the token is retired —
+     the toast sits on `.mat-toast` (--wash-float) and both remaining consumers took
+     the float wash. The two pairs it anchored moved to the wash stops below. */
   washFloatStops: tokenGradient("wash-float"),
 };
 
@@ -659,21 +661,15 @@ const CHECKS: Check[] = [
   { name: "--text on --wash-modal (worst stop)", fg: T.text, bg: worstStop(T.text, T.washModalStops), min: 4.5 },
   { name: "--border-control on --wash-modal (form controls in a dialog)", fg: T.borderControl, bg: worstStop(T.borderControl, T.washModalStops), min: 3.0 },
   { name: "--text-muted on --wash-float (worst stop)", fg: T.textMuted, bg: worstStop(T.textMuted, T.washFloatStops), min: 4.5 },
-  // ⚠️ THE TOAST’S FILL TODAY. --bg-elevated2 is a flat 26% — LIGHTER than the 24% cap
-  // every wash is now held to — and the toast is a MONEY surface (it announces payouts and
-  // returned stakes). Measured before the rung adoption so the direction of travel is known:
-  // moving to --wash-float makes it DARKER, which can only raise these.
-  { name: "--text on --bg-elevated2 (the toast fill today)", fg: T.text, bg: T.bgElevated2, min: 4.5 },
-  { name: "--text-muted on --bg-elevated2 (the toast fill today)", fg: T.textMuted, bg: T.bgElevated2, min: 4.5 },
-  /* ⛔ `--text-faint on --bg-elevated2` IS NOT ASSERTED HERE, and that is a decision, not
-     an omission. Measured at **4.41** against a 4.5 floor — a genuine shortfall, because
-     `--bg-elevated2` is a flat 26% and every wash is now capped at 24% by the ink budget
-     (E-130). ⭐ But NO SURFACE PAINTS THAT PAIR: the toast uses `text-text` (15.28) and
-     `text-text-muted` (10.58), and neither the avatar-menu nor the home tile puts faint ink
-     on it. Asserting a pair the product does not render, and then exempting it as
-     "decorative" to make the gate green, would be inventing a check and then defeating it —
-     both halves wrong. The measurement is recorded in the findings register instead, where a
-     latent risk belongs, and the token is superseded by rung 2 anyway. */
+  // ⭐ THE TOAST NOW SITS ON RUNG 4 (`.mat-toast` → --wash-float; DA-1, 2026-08-07),
+  // so its money-surface ink is scored against the wash's WORST stop below —
+  // `--text on --wash-float` and `--text-muted on --wash-float`. The retired flat
+  // `--bg-elevated2` (26%, above the 24% cap) predicted this move could only RAISE
+  // contrast, and the wash pairs assert exactly that.
+  { name: "--text on --wash-float (worst stop — the toast fill)", fg: T.text, bg: worstStop(T.text, T.washFloatStops), min: 4.5 },
+  /* (Historical: `--text-faint on --bg-elevated2` measured 4.41 and was deliberately
+     never asserted — no surface painted that pair. The token itself is retired now
+     (DA-9/E-132), which closes that latent risk for good.) */
   { name: "--text-faint on --wash-float (worst stop)", fg: T.textFaint, bg: worstStop(T.textFaint, T.washFloatStops), min: 4.5 },
   { name: "--text-subtle on --wash-float (worst stop)", fg: T.textSubtle, bg: worstStop(T.textSubtle, T.washFloatStops), min: 4.5 },
   { name: "--text on --wash-float (worst stop)", fg: T.text, bg: worstStop(T.text, T.washFloatStops), min: 4.5 },

@@ -93,7 +93,9 @@
                        600ms ceiling and this line must move together.
      ⚪ odds-flash-up/dn 600ms var(--ease-sink) → var(--t-stage) var(--m-leave)
      ⚪ .tooltip-popover var(--dur-quick)       → already bridged; keep
-     ⚪ toast-anim       var(--dur-arrive)      → already bridged; keep
+     ✅ toast-anim       DELETED with the dead `.toast` class family (DA-1,
+                        2026-08-07) — zero consumers; the ui/toast.tsx component
+                        owns its own enter/exit transition (the toast arrival).
      ⚪ --dur-stage      820ms                  → countdown ring only; frozen
 
    AMBIENT LOOPS are outside the ladder BY DESIGN — a frozen list, may only
