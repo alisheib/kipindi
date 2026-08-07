@@ -40,6 +40,7 @@ import { positionListHref } from "@/lib/position-permalink";
 // E-102 · how often this page re-asks the server, and when it stops.
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { UpDownResultAnnouncer } from "@/components/updown/updown-result-announcer";
+import { UpDownBetBlockedModal } from "@/components/updown/updown-bet-blocked-modal";
 import { refreshCadence } from "@/lib/refresh-cadence";
 
 export const dynamic = "force-dynamic";
@@ -217,6 +218,8 @@ export default async function UpDownRoundPage({
           ? { status: myPosition.result, side: myPosition.side, stake: myPosition.stake, payout: myPosition.payout ?? 0 }
           : null,
       }]} />
+      {/* UD-3 · the shared compliance-refusal popup (same host as the board). */}
+      <UpDownBetBlockedModal />
       <HashFocus />
       <div className="flex flex-col gap-[18px]">
         <BackLink fallbackHref="/updown" label={t.market.udTitle} />

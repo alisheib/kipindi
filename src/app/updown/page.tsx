@@ -23,6 +23,7 @@ import { getServerT } from "@/lib/i18n-server";
 import { pickLocalized } from "@/lib/localized";
 import { UpDownCard } from "@/components/updown/updown-card";
 import { UpDownResultAnnouncer } from "@/components/updown/updown-result-announcer";
+import { UpDownBetBlockedModal } from "@/components/updown/updown-bet-blocked-modal";
 
 export const dynamic = "force-dynamic";
 
@@ -190,6 +191,8 @@ export default async function UpDownPage({
             ⛔ In-app only — no email, no push, no inbox row. Ali's 2026-07-24 suppression of
             per-round Up & Down notifications STANDS; this renders data the page already has. */}
         <UpDownResultAnnouncer rounds={rounds.map((r) => ({ roundId: r.roundId, myResult: r.myResult }))} />
+        {/* UD-3 · one shared compliance-refusal popup for every quick-bet on the board. */}
+        <UpDownBetBlockedModal />
         {rounds.length === 0 ? (
           <EmptyState title={t.market.udNoRounds} body={t.market.udNoRoundsBody} />
         ) : (

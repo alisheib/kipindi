@@ -336,6 +336,11 @@ export function UpDownCard(props: UpDownCardProps) {
   });
   // A placed bet pulses the whole card (non-intrusive confirmation, reduced-motion aware).
   const cardPulse = usePlacePulse(bet.justPlaced?.nonce);
+  // UD-3 · once the SERVER says SELECTION_CLOSED the card flips to its locked
+  // presentation immediately — it must not keep offering buttons the money path
+  // refuses until the next poll. The instants usually get there first; this covers
+  // clock skew and the final-second race.
+  const liveNow = bettable && !bet.serverLocked;
 
   // ── D2 · WHAT THE OTHER SIDE IS WORTH, ON THE DISPLAY-ONLY CARD ───────────
   //
@@ -389,8 +394,8 @@ export function UpDownCard(props: UpDownCardProps) {
             <span className="chip" style={{ marginLeft: 6, verticalAlign: "middle" }}>{durationMinutes} {t.market.udMin}</span>
           </h3>
           <div className="mt-1 flex items-center gap-1.5 font-mono text-[9.5px] font-semibold uppercase tracking-[0.10em] text-text-subtle">
-            {bettable && <span className="live-dot" />}
-            {bettable ? t.market.udStreaming : t.market.statusClosed} · {assetTicker}
+            {liveNow && <span className="live-dot" />}
+            {liveNow ? t.market.udStreaming : t.market.statusClosed} · {assetTicker}
           </div>
         </div>
         <div className="shrink-0 text-right">
@@ -526,7 +531,7 @@ export function UpDownCard(props: UpDownCardProps) {
 
       {/* ── The one action / status block. Exactly one renders. ────────── */}
       <div style={{ marginTop: "auto", paddingTop: 12 }}>
-        {bettable ? (
+        {liveNow ? (
           canQuickBet ? (
             // Authed + has its market → the shared quick-bet control (chips + custom
             // amount + place buttons + success pulse), identical to the round page.

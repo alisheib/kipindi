@@ -316,6 +316,38 @@ async function mine(userId: string | undefined): Promise<{ up: number; down: num
      rsp.includes("udBetErrorMap(t.market)") && card.includes("udBetErrorMap(t.market)"));
 }
 
+// ═══ §31 · UD-3 (ux-audit 2026-08) — failures persist; compliance blocks are read ═══════════
+// The decision matrix (Report 1 §5): race/transient refusals = STICKY danger toast
+// (durationMs: 0 — failures stay until dismissed, the house rule); compliance/account
+// blocks (SUSPENDED) = OperationResultModal via one shared host; SELECTION_CLOSED also
+// flips the surface to locked instead of offering buttons the money path refuses.
+{
+  const { readFileSync } = await import("node:fs");
+  const hook = readFileSync("src/components/updown/use-quick-bet.ts", "utf8");
+  ok("31.1 · ⭐ every danger failure toast is STICKY (durationMs: 0) — failures stay until dismissed",
+     (hook.match(/variant:\s*"danger",\s*durationMs:\s*0/g) ?? []).length === 2,
+     "both the server-refusal toast and the thrown-action toast");
+  ok("31.2 · SUSPENDED routes to the shared blocked-modal host, never a toast",
+     hook.includes('code === "SUSPENDED"') && hook.includes("50pick:updown-bet-blocked"));
+  ok("31.3 · SELECTION_CLOSED flips the surface to locked (serverLocked + onServerLocked)",
+     hook.includes('code === "SELECTION_CLOSED"') && hook.includes("setServerLocked(true)") &&
+     hook.includes("opts.onServerLocked?.()"));
+
+  const host = readFileSync("src/components/updown/updown-bet-blocked-modal.tsx", "utf8");
+  ok("31.4 · the blocked modal is the kit OperationResultModal, danger, and NEVER gold",
+     host.includes("OperationResultModal") && host.includes('variant="danger"') &&
+     !/stripTone|gold/i.test(host.replace(/^\s*\*.*$/gm, "").replace(/\/\/.*$/gm, "")),
+     "a refusal is not earned money");
+  const board = readFileSync("src/app/updown/page.tsx", "utf8");
+  const round = readFileSync("src/app/updown/[roundId]/page.tsx", "utf8");
+  ok("31.5 · the host is mounted on BOTH quick-bet pages (board + round)",
+     board.includes("<UpDownBetBlockedModal />") && round.includes("<UpDownBetBlockedModal />"));
+  const card = readFileSync("src/components/updown/updown-card.tsx", "utf8");
+  const panel = readFileSync("src/components/updown/round-action-panel.tsx", "utf8");
+  ok("31.6 · both surfaces consume the flip (card liveNow · panel lockedByServer)",
+     card.includes("!bet.serverLocked") && panel.includes("lockedByServer"));
+}
+
 console.log(`\nupdown-quickbet: ${pass} passed, ${fail} failed`);
 if (fail > 0) { console.error("\n✗ QUICK-BET BROKEN — the one-tap card would mischarge or misreport the player's position.\n"); process.exit(1); }
 console.log("updown-quickbet: OK — one tap places once, duplicates pay once, distinct taps stack, 'you're in' is per-viewer, bad taps refused");

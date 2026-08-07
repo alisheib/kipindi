@@ -720,6 +720,8 @@ export const dict = {
       udErrSuspended: "This bet can't be placed right now — your account or the game is unavailable.",
       udErrInvalid: "The bet was refused — check the amount and your balance.",
       udErrNotFound: "This round is no longer available.",
+      // UD-3 · the compliance/account refusal popup (OperationResultModal) headline.
+      udBlockedTitle: "This bet can't be placed",
       // ── Up & Down · D3 round detail ──────────────────────────────────────
       udLivePrice: "Live price", udAboveOpenBy: "Above open by", udBelowOpenBy: "Below open by", udPool: "Pool",
       udPickLocked: "Locked from your pick on the board. To switch sides, leave this round.",
@@ -2128,6 +2130,7 @@ export const dict = {
       udErrSuspended: "Dau haliwezi kuwekwa kwa sasa — akaunti yako au mchezo haupatikani.",
       udErrInvalid: "Dau limekataliwa — angalia kiasi na salio lako.",
       udErrNotFound: "Raundi hii haipatikani tena.",
+      udBlockedTitle: "Dau hili haliwezi kuwekwa",
       // ── Up & Down · D3 round detail ──────────────────────────────────────
       udLivePrice: "Bei ya sasa", udAboveOpenBy: "Juu ya ufunguzi kwa", udBelowOpenBy: "Chini ya ufunguzi kwa", udPool: "Dimbwi",
       udPickLocked: "Imefungwa kutoka chaguo lako kwenye ubao. Kubadili upande, ondoka kwenye raundi hii.",
@@ -3508,6 +3511,7 @@ export const dict = {
       udErrSuspended: "目前无法下注——您的账户或该游戏不可用。",
       udErrInvalid: "投注被拒——请检查金额与余额。",
       udErrNotFound: "该回合已不可用。",
+      udBlockedTitle: "无法下此注",
       // ── Up & Down · D3 round detail ──────────────────────────────────────
       udLivePrice: "实时价格", udAboveOpenBy: "高于开盘", udBelowOpenBy: "低于开盘", udPool: "奖池",
       udPickLocked: "已根据你在面板上的选择锁定。若要切换方向，请离开本轮。",

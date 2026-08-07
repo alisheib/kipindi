@@ -45,6 +45,8 @@ export function RoundStakePanel(props: {
   serverNowMs?: number;
   /** UD-1 · server-rendered wallet balance; null = unknown, gates nothing. */
   walletBalance?: number | null;
+  /** UD-3 · fired once when the server refuses SELECTION_CLOSED, so the parent flips. */
+  onServerLocked?: () => void;
 }) {
   const { t } = useT();
   const { marketId, isAuthed, minStake, maxStake, myUpStake, myDownStake, pricing, assetName, signInHref, lockedSide } = props;
@@ -52,6 +54,7 @@ export function RoundStakePanel(props: {
     marketId, minStake, maxStake, myUpStake, myDownStake,
     selectionClosesAtMs: props.selectionClosesAtMs, serverNowMs: props.serverNowMs,
     walletBalance: props.walletBalance,
+    onServerLocked: props.onServerLocked,
     copy: { placed: t.market.udBetPlaced, failed: t.market.udBetFailed, up: t.market.udUp, down: t.market.udDown, locked: t.market.udLockedTitle, insufficient: t.market.udInsufficientBalance, errorByCode: udBetErrorMap(t.market) },
   });
   const pulse = usePlacePulse(bet.justPlaced?.nonce);

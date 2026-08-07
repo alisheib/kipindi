@@ -21,6 +21,7 @@
  * staleness the old markup had, minus the live money controls.
  */
 
+import { useState } from "react";
 import { useCountdown } from "./round-countdown";
 import { roundPhase, type RoundPhaseState } from "@/lib/updown-card-phase";
 import { RoundStakePanel } from "./round-stake-panel";
@@ -65,7 +66,11 @@ export function RoundActionPanel(props: {
   // client markup agree.
   const secondsToClose = useCountdown(closesAtMs, serverNowMs);
   const nowMs = secondsToClose == null ? (serverNowMs ?? closesAtMs) : closesAtMs - secondsToClose * 1000;
-  const { bettable } = roundPhase({ state, selectionClosesAtMs, closesAtMs, nowMs });
+  const phase = roundPhase({ state, selectionClosesAtMs, closesAtMs, nowMs });
+  // UD-3 · the server's own SELECTION_CLOSED refusal flips this panel immediately —
+  // the server has spoken; don't keep offering the Confirm until the next poll.
+  const [lockedByServer, setLockedByServer] = useState(false);
+  const bettable = phase.bettable && !lockedByServer;
 
   if (bettable) {
     return (
@@ -74,6 +79,7 @@ export function RoundActionPanel(props: {
           {...panel}
           selectionClosesAtMs={selectionClosesAtMs}
           serverNowMs={serverNowMs}
+          onServerLocked={() => setLockedByServer(true)}
         />
       </section>
     );

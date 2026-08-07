@@ -75,6 +75,9 @@ export function useUpDownQuickBet(opts: {
    */
   selectionClosesAtMs?: number | null;
   serverNowMs?: number;
+  /** UD-3 · called once when the SERVER says SELECTION_CLOSED — the surface flips to its
+   *  locked presentation immediately instead of offering the buttons until the next poll. */
+  onServerLocked?: () => void;
   /**
    * UD-1 · the SERVER-rendered wallet balance, for the pre-flight only. `null` =
    * unknown (guest / failed read) and gates NOTHING — B-1: a failed read never
@@ -113,6 +116,10 @@ export function useUpDownQuickBet(opts: {
   const [optUp, setOptUp] = useState(0);
   const [optDown, setOptDown] = useState(0);
   const [pending, startBet] = useTransition();
+  // UD-3 · the server has spoken: SELECTION_CLOSED arrived, so the controls must not
+  // keep offering what buyPosition refuses. Surfaces read this (or take onServerLocked)
+  // to flip to the locked presentation without waiting for the poll.
+  const [serverLocked, setServerLocked] = useState(false);
   const { toast } = useToast();
 
   // Success pulse signal + a screen-reader announcement, in place of the old toast.
@@ -152,11 +159,12 @@ export function useUpDownQuickBet(opts: {
       toast({ title: msg, variant: "factual" });
       return;
     }
-    // UD-2 · the lock guard: a tap after the lock instant must never look like a
-    // placed bet. Factual register — the round locked, the player did nothing wrong.
-    if (opts.selectionClosesAtMs != null) {
+    // UD-2/UD-3 · the lock guard: a tap after the lock instant — or after the server
+    // has already said SELECTION_CLOSED — must never look like a placed bet. Factual
+    // register: the round locked, the player did nothing wrong.
+    if (serverLocked || opts.selectionClosesAtMs != null) {
       const nowMs = serverNow ?? opts.serverNowMs ?? null;
-      if (nowMs != null && nowMs >= opts.selectionClosesAtMs) {
+      if (serverLocked || (opts.selectionClosesAtMs != null && nowMs != null && nowMs >= opts.selectionClosesAtMs)) {
         const msg = copy.locked ?? copy.failed;
         setLiveMessage(msg);
         toast({ title: msg, variant: "factual" });
@@ -208,11 +216,25 @@ export function useUpDownQuickBet(opts: {
           const code = r && "code" in r && r.code != null ? String(r.code) : null;
           const localized = code ? copy.errorByCode?.[code] : undefined;
           const fallback = r && "error" in r ? r.error : undefined;
-          toast({ title: copy.failed, description: localized ?? fallback ?? copy.failed, variant: "danger" });
+          const message = localized ?? fallback ?? copy.failed;
+          // UD-3 · the decision matrix (Report 1 §5):
+          //  · compliance/account block (SUSPENDED — self-exclusion, lockout, maintenance)
+          //    → the shared OperationResultModal host (LCCP informed-consent: it must be
+          //    read and acknowledged, not glimpsed). Event, so all surfaces share one host.
+          //  · every other server refusal is a money-path failure → STICKY danger toast
+          //    (durationMs: 0 — the house rule: failures stay until dismissed).
+          //  · SELECTION_CLOSED also flips the surface to locked — the server has spoken;
+          //    don't keep offering the buttons until the next poll.
+          if (code === "SELECTION_CLOSED") { setServerLocked(true); opts.onServerLocked?.(); }
+          if (code === "SUSPENDED") {
+            window.dispatchEvent(new CustomEvent("50pick:updown-bet-blocked", { detail: { message } }));
+          } else {
+            toast({ title: copy.failed, description: message, variant: "danger", durationMs: 0 });
+          }
         }
       } catch {
         if (side === "UP") setOptUp((v) => Math.max(0, v - amount)); else setOptDown((v) => Math.max(0, v - amount));
-        toast({ title: copy.failed, variant: "danger" });
+        toast({ title: copy.failed, variant: "danger", durationMs: 0 });
       }
     });
   };
@@ -221,6 +243,8 @@ export function useUpDownQuickBet(opts: {
     stakes, stakeIdx, setStakeIdx: pickPreset, stake, stakeReady,
     /** UD-1 · true when the chosen stake exceeds the rendered balance (never for guests). */
     insufficient,
+    /** UD-3 · the server said SELECTION_CLOSED — surfaces flip to locked immediately. */
+    serverLocked,
     shownUp, shownDown, pending, place,
     // custom amount
     min, max, customMode, customValue, setCustomValue, customValid, enterCustom, exitCustom,
