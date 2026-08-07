@@ -92,15 +92,24 @@ own purpose, deleted, with every gate in the repo green over it).
 ⚠️ **And M6's text in `EXTEND.md` says TWO gates. When ATOM J lands it in `DESIGN_AUTHORITY.md`,
 it must say three.**
 
-**ATOM B — §B, the 12 keyframes** → `src/app/globals.css`, beside each one's family.
-⛔ **Check the 67 live keyframe names first** (44 globals + 14 motion.css + 8 state-tokens +
-1 needle.css). None of the 12 duplicates a name — verify that, do not trust it.
-⛔ **`shimmer-gilt` IS A TRAP AND NO GATE CAN SEE IT.** `globals.css` animates
-`background-position` with a **single** value; `.gilt-metal` declares **two** layers, so on
-hover the gold ramp itself translates ±200% — **the metal slides off the button.** The
-designer's spec shim writes the two-value form, so the spec demos correctly and the product
-would not. Fix with a two-layer keyframe or a `::after` sheen; do **not** edit `shimmer-gilt`
-in place without checking its other consumers.
+**~~ATOM B~~ — ✅ LANDED 2026-08-07. All 12 keyframes are in `globals.css` beside their family.**
+⭐ **The name check was RUN, not trusted**: the corpus is **101 unique names across 110
+definitions**, and none of the 12 collides. (The delivery's *"the 33 that already exist"* and its
+*"six new names"* heading over twelve definitions are both wrong; the real figure is **67 across
+the four stylesheets** plus more inside component `style` blocks.)
+⭐ **`shimmer-gilt` IS REPAIRED — and do NOT "simplify" it back to one value.** Sampled in a real
+browser on a paused timeline at 0 / 50 / 100%: `2 layers × 1 value → -200% 0, -200% 0` (both move,
+the metal slides off) · `2 layers × 2 values → -200% 0, 0px 0px` (only the sheen moves) ·
+**`1 layer × 2 values` is byte-identical to the one-value form** — which is what made editing it in
+place safe instead of inventing a thirteenth name. It also had **zero consumers**, so the
+delivery's "check its other consumers" resolved to none. `test:keyframes` rule 3.3 and a
+`qa:bundle-css` expectation both pin it now.
+🔴 **E-128 — it also turned up two animations that could never run.** `.win-card` named
+`win-burst`, defined **only inside its `prefers-reduced-motion` branch**, so that burst played for
+reduce-motion users and nobody else; `.win-trophy-halo` named `wc-trophy-pulse`, **defined nowhere
+in the repo.** Both classes had zero consumers, so both were deleted. The remaining five dead
+`win-*` classes are **left for the M7 / E-115 atom** — `badge-seal-rays` is REUSED by §C's
+`.seal-sheen`, so that sweep needs §C's context.
 
 **ATOM C — §C, the 29 utilities** → `src/app/motion.css` (imported LAST, so it outranks
 globals at equal specificity). This is where `.mat-raised/-float/-modal/-toast`, `.g-*`,
@@ -244,3 +253,34 @@ success on one replacement of two.
 RED harness that mutates a **copy** — never the shared tree — and names the check that failed.
 
 ## — copy to here
+
+---
+
+## ⏹️ PROGRESS LOG — appended as atoms land, so this prompt never lies about where it is
+
+- **ATOM A — ✅ LANDED, DEPLOYED, VERIFIED ON PRODUCTION** (`d8a96275` + `75125d1a`, 2026-08-07).
+  M6's third gate · the `animation-delay` clamp · the dropped-rule defect. E-125 · E-126 · E-127.
+  `test:reduce-motion` 12/12 · `red:reduce-motion` 12/12 · `qa:bundle-css` 8/8 on the LIVE
+  stylesheet (7 FAIL / 20 entries before the deploy → 8/8 / 31 after) · `qa:calm` **240 checks
+  over 36 production cells, three consecutive runs, 0 failures**.
+- **ATOM B — ✅ LANDED.** §B's 12 keyframes beside their families · the `shimmer-gilt` two-layer
+  repair, **measured in a browser on a paused timeline** rather than reasoned · **E-128**, two
+  animations that could never run (`win-burst` defined only inside its calm branch;
+  `wc-trophy-pulse` defined nowhere at all). New gate `test:keyframes` 7/7 · `red:keyframes` 7/7 ·
+  `qa:bundle-css` 26/26 including two PINS.
+
+### ⛔ WHAT THE NEXT ATOM MUST CARRY FORWARD
+
+1. **`npm run build && npm run qa:bundle-css`, and add your atom's expectations to its EXPECT
+   list.** For a CSS atom the source is not evidence. Use `-- --live` after the deploy: it reads
+   production's own stylesheets, and it is also the honest deploy detector — there is no
+   commit-SHA health endpoint on this service.
+2. **Two gates now compose, and §C is where they bite.** `mark-pending-tilt` is an INFINITE loop,
+   so the moment `.mark-pending` takes it, `test:reduce-motion` rule 2.1 fails until that class
+   has an entry in `globals.css` §6's `[data-motion="reduced"]` list. That is the third gate
+   doing its job, not an obstacle.
+3. **`shimmer-gilt` is already correct — do NOT "simplify" it back to one value.**
+   `test:keyframes` rule 3.3 and a `qa:bundle-css` expectation both pin it. One value applies to
+   every background layer and `.gilt-metal` has two.
+4. **E-128 is yours if you are the M7 / E-115 atom.** Five dead `win-*` classes remain, plus
+   `.badge-unlock-*`. ⛔ `badge-seal-rays` is REUSED by §C's `.seal-sheen` — do not delete it.

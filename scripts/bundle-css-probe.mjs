@@ -92,6 +92,33 @@ const EXPECT = [
   // ⛔ A PIN, NOT A FEATURE: clamping transition-delay would turn .kp-tooltip's
   // 300ms hover-intent wait into a hair-trigger. See motion.css's block comment.
   { atom: "A", mustNot: /(?:kp-reduce-motion|data-motion=.?minimal.?\])[^{]*\{[^}]*transition-delay/, what: "transition-delay is NOT clamped — hover-intent survives the calm" },
+
+  // ── ATOM B · 2026-08-07 — §B's twelve keyframes and the shimmer-gilt repair ──
+  // ⚠️ A keyframe with no consumer is exactly what INTAKE §3 step 2 asks for, and it is
+  // also the thing a minifier is most entitled to drop. So these are checked in the
+  // BUNDLE rather than the source: if the build ever starts tree-shaking unused
+  // keyframes, §C would land on top of nothing and every gate reading source would
+  // still be green.
+  { atom: "B", must: /@keyframes glyph-settle\b/, what: "the glyph arrival primitive survived into the bundle (M5)" },
+  { atom: "B", must: /@keyframes glyph-nudge-up\b/, what: "glyph directional emphasis, up" },
+  { atom: "B", must: /@keyframes glyph-nudge-down\b/, what: "glyph directional emphasis, down" },
+  { atom: "B", must: /@keyframes glyph-swap-out\b/, what: "glyph state morph, outgoing half" },
+  { atom: "B", must: /@keyframes glyph-swap-in\b/, what: "glyph state morph, incoming half" },
+  { atom: "B", must: /@keyframes glyph-ring\b/, what: "the bell's decaying pivot" },
+  { atom: "B", must: /@keyframes mark-flip\b/, what: "the mark flips on its own needle axis (M8)" },
+  { atom: "B", must: /@keyframes mark-pending-tilt\b/, what: "the settling-round ±2° breath" },
+  { atom: "B", must: /@keyframes needle-sweep\b/, what: "the needle sweeps to the winning vector — WIN only (M7)" },
+  { atom: "B", must: /@keyframes needle-settle\b/, what: "the loss settles crisply against the position (M7)" },
+  { atom: "B", must: /@keyframes seal-recoil\b/, what: "the impress recoil, on `translate` so it composes with seal-impress" },
+  { atom: "B", must: /@keyframes crest-settle\b/, what: "crest arrival — the smaller cousin of seal-impress" },
+  // ⭐ THE ONE NO OTHER CHECK CAN SEE. A single background-position applies to EVERY
+  // layer, and `.gilt-metal` has two — one value slides the metal off the button. The
+  // minifier may drop the space after the comma, so both spellings are accepted.
+  { atom: "B", must: /@keyframes shimmer-gilt\s*\{[^}]*background-position:\s*-?200%\s+0(?:px)?\s*,\s*0/, what: "⭐ shimmer-gilt ships a background-position PER LAYER (one value slides the metal off the button)" },
+  // ⛔ PINS: two rules deleted in ATOM B because they named a keyframe that could never
+  // run. If either comes back, an animation that plays for nobody comes back with it.
+  { atom: "B", mustNot: /animation:\s*win-burst/, what: "`.win-card` stays deleted — win-burst existed only in the calm branch" },
+  { atom: "B", mustNot: /animation:\s*wc-trophy-pulse/, what: "`.win-trophy-halo` stays deleted — wc-trophy-pulse is defined nowhere" },
 ];
 
 let failed = 0;

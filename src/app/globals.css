@@ -1650,6 +1650,13 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
   100% { transform: translateY(0) rotate(0deg); opacity: 1; }
 }
 @keyframes seal-impress { 0% { transform: scale(2.2); opacity: 0; filter: blur(6px); } 100% { transform: scale(1); opacity: 1; filter: blur(0); } }
+/* The impress RECOIL — a 2px landing kick on the impact frame (Claude Design §B,
+   designer R2 Q4). ⭐ It uses the independent `translate` property rather than a
+   transform, precisely so it can COMPOSE with `seal-impress`'s `transform` on the
+   same element: two animations, one surface, no fighting over one property.
+   ⚠️ Its consumer `.seal-arrive` arrives with §C; a keyframe with no consumer is
+   what INTAKE §3 step 2 asks for, not an oversight. */
+@keyframes seal-recoil { from { translate: 0 2px; } to { translate: 0 0; } }
 
 /* ---------- Settling shimmer ---------- */
 @keyframes settling-sweep { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
@@ -1694,6 +1701,82 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
 @keyframes mark-breathe { 0%, 100% { transform: rotate(0deg) scale(1); } 50% { transform: rotate(0.6deg) scale(1.015); } }
 .mark-breathe { animation: mark-breathe 6s var(--ease-conduct) infinite; transform-origin: center; }
 
+/* ---------- THE MARK'S OWN MOTION — Claude Design §B (2026-08-07, ATOM B) ------
+   M8: the mark performs and nothing else borrows its stage. These three are
+   IDENTITY motion, reserved for the trademark; a glyph may not take them.
+
+   ⚠️ −14deg IS WRITTEN LITERALLY, four times, and it is not a token by choice.
+   A transform-list keyframe cannot reliably resolve `var(--m-tilt)` in every
+   engine — the same limitation `m-axis-sweep` already lives with (DESIGN_AUTHORITY
+   B1a records it). ⛔ So if the mark's axis ever moves, it moves HERE TOO. The axis
+   is 13.998° measured off the shipped artwork (`brand-mark.ts`), rounded to 14.
+   ⚠️ `--m-tilt` currently has ZERO consumers and there are THREE different tilts in
+   the product (this 14, `TippingBar`'s `lean * 14`, `ConfidenceDial`'s `* 22`).
+   Reconciling them belongs to the identity atom, not here — recorded so the next
+   session does not "fix" one of the three in isolation. */
+
+/* The disc rotates about the −14° axis with the NEEDLE as its hinge, and takes one
+   specular flash at the hub mid-flip. Mount or hover on the LOGO only; never loops. */
+@keyframes mark-flip {
+  from { transform: perspective(320px) rotate(-14deg) rotateY(0)      rotate(14deg); }
+  48%  { filter: brightness(1); }
+  52%  { filter: brightness(1.35); }   /* the specular flash, at the hub          */
+  60%  { filter: brightness(1); }
+  to   { transform: perspective(320px) rotate(-14deg) rotateY(360deg) rotate(14deg); }
+}
+/* Round settling: a ±2° tilt pulse on the needle hinge — a breathing cadence of
+   anticipation, never a spin (designer R2 Q9, a deliberate ambient addition).
+   ⛔ It is an INFINITE loop, so the moment `.mark-pending` takes it in §C it needs
+   an entry in §6's `[data-motion="reduced"]` list — `test:reduce-motion` rule 2.1
+   will fail until it has one. That is the third gate doing its job. */
+@keyframes mark-pending-tilt {
+  0%, 100% { transform: perspective(320px) rotate(-14deg) rotateY(2deg)  rotate(14deg); }
+  50%      { transform: perspective(320px) rotate(-14deg) rotateY(-2deg) rotate(14deg); }
+}
+/* The needle sweeps to the winning vector before the flip — WIN ONLY (R2 Q2), and
+   that exclusivity is M7: the celebration vocabulary is not available to a loss. */
+@keyframes needle-sweep { from { transform: rotate(-26deg); } to { transform: rotate(0deg); } }
+/* The loss: ONE decisive deflection into the loss angle, then stillness. M7 again —
+   a loss renders as bookkeeping. No colour, no shake, no drama. */
+@keyframes needle-settle { from { transform: rotate(0deg); } to { transform: rotate(16deg); } }
+
+/* ---------- CREST ARRIVAL — Claude Design §B -------------------------------------
+   The identity settling into place on a podium, profile or menu: the smaller cousin
+   of `seal-impress`, which stays reserved for settlement and celebration MASS. */
+@keyframes crest-settle {
+  from { opacity: 0; transform: scale(1.14); filter: blur(2px); }
+  to   { opacity: 1; transform: none; filter: none; }
+}
+
+/* ---------- GLYPH MOTION — the four primitives, Claude Design §B ----------------
+   M5: a glyph moves for a reason, and all 178 move the SAME way. Four primitives —
+   arrival, directional emphasis, alert, state morph — triggered by mount, data
+   change, or state change. ⛔ NEVER on hover: icons respond, they do not perform.
+   A glyph with bespoke keyframes is a violation, which is the whole point of
+   defining these once here rather than per icon. */
+
+/* Arrival — a glyph settles onto its baseline along the tilt axis.
+   trigger: mount / data arrival · exit: its parent's (a glyph never exits alone). */
+@keyframes glyph-settle {
+  from { opacity: 0; transform: translateY(2px) rotate(-4deg); }
+  to   { opacity: 1; transform: none; }
+}
+/* Directional emphasis — the up/down arrows nudge along their own meaning.
+   trigger: a price or state CHANGE only · never on mount, never looping. */
+@keyframes glyph-nudge-up   { 0% { transform: none; } 38% { transform: translateY(-3px); } 100% { transform: none; } }
+@keyframes glyph-nudge-down { 0% { transform: none; } 38% { transform: translateY(3px); }  100% { transform: none; } }
+/* State morph, the two halves of one swap — outgoing glyph out, incoming glyph in.
+   trigger: a state change (bell→ringing, lock→unlock, watch→watching). */
+@keyframes glyph-swap-out { to { opacity: 0; transform: scale(0.82); } }
+@keyframes glyph-swap-in  { from { opacity: 0; transform: scale(0.82) rotate(-8deg); } to { opacity: 1; transform: none; } }
+/* Alert — the bell rings on a decaying pivot, origin top-centre (set by `.g-ring`).
+   trigger: a new notification. Single-shot: an alert that loops is noise. */
+@keyframes glyph-ring {
+  0% { transform: rotate(0); } 22% { transform: rotate(11deg); }
+  46% { transform: rotate(-9deg); } 68% { transform: rotate(5deg); }
+  86% { transform: rotate(-2deg); } 100% { transform: rotate(0); }
+}
+
 /* ---------- Bet placement seal ---------- */
 @keyframes seal-place {
   0%   { transform: translateY(0) scale(1); }
@@ -1720,7 +1803,30 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
    a second definition of "how a dialog arrives" is the drift bug, not a shortcut. */
 
 /* ---------- Skeleton bait — pulse pearl/gold ---------- */
-@keyframes shimmer-gilt { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+/* 🔴 TWO VALUES, NOT ONE, AND A GATE CANNOT SEE WHY — repaired 2026-08-07 (ATOM B).
+   This keyframe sweeps a band of light across a gilt surface. It used to write a
+   SINGLE `background-position`, and CSS applies a single value to EVERY background
+   layer. The material system's `.gilt-metal` (§C) declares TWO layers — the sheen
+   AND the metal ramp — so on hover the gold itself would have translated ±200% of
+   its own box: **the metal slides off the button and back**, instead of one band of
+   light crossing a still surface.
+
+   ⭐ MEASURED IN A BROWSER BEFORE BEING WRITTEN, because both halves of this needed
+   proof rather than reasoning (`getAnimations()` + a paused timeline, sampled at 0 /
+   50 / 100%):
+     2 layers · 1 value  → `-200% 0, -200% 0`  … both layers move  ⛔ the defect
+     2 layers · 2 values → `-200% 0, 0px 0px`  … only the sheen moves  ✅
+     1 layer  · 2 values → `-200% 0`           … byte-identical to the 1-value form
+   That third line is what makes editing this keyframe IN PLACE safe: a surplus
+   position is simply unused, so a single-layer consumer cannot tell the difference.
+
+   ⚠️ AND IT HAD ZERO CONSUMERS WHEN THIS WAS WRITTEN. The delivery's warning said
+   "do not edit it in place without checking its other consumers" — checked, by grep:
+   there were none in `src`, and `.gilt-metal` will be the first. So there was no
+   second definition to add and no third name to invent.
+   ⛔ The designer's own spec page demos the TWO-value form while the shipped file had
+   one, which is why the spec looked right and the product would not have. */
+@keyframes shimmer-gilt { 0% { background-position: -200% 0, 0 0; } 100% { background-position: 200% 0, 0 0; } }
 
 /* ---------- Reveal-on-mount stagger helpers — RETIRED 2026-07-28 ------------
    `.reveal-up`/`-d1..-d4` had ZERO consumers (only a stale comment in
@@ -2078,10 +2184,28 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
    These helpers just compose them. */
 /* No `both` fill: the card's resting state is fully visible (opacity:1);
    the keyframe only plays the entrance, then reverts to the visible base. */
-.win-card        { animation: win-burst var(--dur-arrive) var(--ease-arrive); }
+/* 🔴 `.win-card` DELETED 2026-08-07 (ATOM B) — it named a keyframe that does not exist.
+   `@keyframes win-burst` was declared ONLY inside the `prefers-reduced-motion` branch
+   below, while this rule sat at top level: so the burst played for reduce-motion users
+   and for **nobody else**, which is the exact inverse of what a calm branch is for.
+   ⛔ Deleted rather than repaired because the class had **zero consumers** anywhere in
+   `src` — repairing it would have meant inventing a burst nobody had specified, for a
+   surface nothing renders. `test:keyframes` rule 2.2 is the guard; it found this.
+   ⚠️ The rest of the `win-*` family is dead too (E-128) — left for the M7 / E-115
+   celebration atom, which is rebuilding that surface. Deleting it here would make this
+   atom's diff unattributable, and one of its keyframes (`badge-seal-rays`) is REUSED by
+   §C's `.seal-sheen`, so the sweep needs the §C context to be done safely. */
 .win-card-rare   { animation: celebrate-pop var(--dur-arrive) var(--ease-celebrate); }
 .win-seal        { animation: seal-impress var(--dur-glide) var(--ease-celebrate) both; animation-delay: 160ms; }
-.win-trophy-halo { animation: wc-trophy-pulse 2.4s var(--ease-conduct) infinite; }
+/* 🔴 `.win-trophy-halo` DELETED 2026-08-07 (ATOM B) — `wc-trophy-pulse` IS NOT DEFINED
+   ANYWHERE IN THE REPO, so this animation could never run for anyone. It also had zero
+   consumers, and M3 bans the drawn rays this halo belonged to. ⭐ It was found by
+   HARDENING rule 2.2 after its own RED harness proved the first version had a hole: that
+   version only kept identifier tokens matching a KNOWN keyframe name, so as not to flag
+   `both` / `infinite` / the easing keywords — and that filter silently excused the worse
+   case, a name defined nowhere at all. **A filter written to avoid false positives had
+   bought a false negative**, and one mutation ("delete a keyframe outright") walked
+   straight through it. The rule names the KEYWORDS now, so anything else must resolve. */
 /* Calm gilt aura — a heraldic glow that breathes, NO rotation (replaces the
    old spinning sunburst, which read slot-machine). */
 @keyframes win-aura-breathe {
@@ -2120,8 +2244,12 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
   /* badge unlock + win: fade to end state, no scale / no rays / no confetti */
   @keyframes seal-impress  { from { opacity: 0; } to { opacity: 1; transform: none; filter: none; } }
   @keyframes celebrate-pop { from { opacity: 0; } to { opacity: 1; transform: none; } }
-  @keyframes win-burst     { from { opacity: 0; } to { opacity: 1; transform: none; } }
-  .win-aura-anim, .badge-unlock-rays, .win-trophy-halo { animation: none !important; opacity: 0.4; }
+  /* `win-burst`'s calm branch went with `.win-card`, its only consumer (ATOM B). A
+     reduced-motion override for a rule that no longer exists is the same dead weight
+     one layer down — `state-tokens.css:109` records the identical clean-up. */
+  /* ⛔ `.win-trophy-halo` removed from this branch with the rule itself — calming a
+     selector that no longer exists is dead weight one layer down. */
+  .win-aura-anim, .badge-unlock-rays { animation: none !important; opacity: 0.4; }
 
   /* tab indicator: jump, don't slide */
   .tab-indicator { transition: none !important; }
@@ -2167,7 +2295,6 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
    outlived it, which is a list quietly claiming coverage it does not have. */
 [data-motion="reduced"] .cm-bubble::after,
 [data-motion="reduced"] .win-aura-anim,
-[data-motion="reduced"] .win-trophy-halo,
 [data-motion="reduced"] .hm-halo-pulse,
 [data-motion="reduced"] .ticker-track,
 [data-motion="reduced"] .prog-sweep::after,

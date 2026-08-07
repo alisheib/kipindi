@@ -130,5 +130,5 @@ export const haptics = {
 //   haptics.success();                 // on win reveal / money settled
 //
 // iOS note: navigator.vibrate is absent in Safari. fire() no-ops; the paired
-// animation (win-burst / seal-impress / value-flash) carries the moment so the
+// animation (seal-impress / value-flash) carries the moment so the
 // feedback never depends on the motor.
