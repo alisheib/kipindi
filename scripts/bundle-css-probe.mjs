@@ -119,6 +119,41 @@ const EXPECT = [
   // run. If either comes back, an animation that plays for nobody comes back with it.
   { atom: "B", mustNot: /animation:\s*win-burst/, what: "`.win-card` stays deleted — win-burst existed only in the calm branch" },
   { atom: "B", mustNot: /animation:\s*wc-trophy-pulse/, what: "`.win-trophy-halo` stays deleted — wc-trophy-pulse is defined nowhere" },
+
+  // ── ATOM C · 2026-08-07 — §C's utilities and the four deferred gilt tokens ──
+  { atom: "C", must: /\.mat-raised\s*\{[^}]*--wash-raised/, what: "rung 1 ships and reads the wash (M2)" },
+  { atom: "C", must: /\.mat-float\s*\{[^}]*--elev-float/, what: "rung 2 ships" },
+  { atom: "C", must: /\.mat-modal\s*\{[^}]*--elev-modal/, what: "rung 3 ships" },
+  { atom: "C", must: /\.mat-toast\s*\{[^}]*--elev-toast/, what: "rung 4 ships" },
+  { atom: "C", must: /\.mat-inset\s*\{[^}]*--wash-inset/, what: "the sunken well ships" },
+  // ⭐ D-6.6's ONE send-back: a tint that composes with ANY rung. It works only because
+  // every rung opens its box-shadow with the `--mat-tint` slot — if a rung ever loses
+  // the slot, the tint silently stops applying and nothing else would notice.
+  { atom: "C", must: /\.mat-tint-yes\s*\{\s*--mat-tint:/, what: "⭐ the rung-independent tint ships (D-6.6's send-back, repaired)" },
+  { atom: "C", must: /\.mat-raised\s*\{[^}]*var\(--mat-tint/, what: "⭐ rung 1 still opens its box-shadow with the tint SLOT — the tint composes only through it" },
+  { atom: "C", must: /\.gilt-metal\s*\{[^}]*--gilt-sheen[^}]*--gilt-metal/, what: "the money CTA ships with sheen over metal, in that layer order" },
+  /**
+   * ⭐ THE E-124 CORRECTION, ASSERTED IN THE SPELLING THAT ACTUALLY SHIPS.
+   * 🔴 The first version of this expectation looked for `oklch(79% 0.114 84)` and FAILED
+   * on a correct bundle — **no `oklch()` survives the build at all.** Next emits each
+   * colour twice: a `#hex` fallback and a `lab()` form for browsers that take it. So an
+   * expectation written in the authored syntax cannot pass, and "the atom did not land"
+   * and "the probe is reading the wrong language" look identical from the outside. That
+   * is §5b rule 12 one layer along: assert the value the platform HANDS BACK.
+   * ⭐ Verified by round-trip rather than by eye — the shipped `lab(75.8327% 8.07038
+   * 48.5249)` converts back through D50→XYZ→linear-sRGB→OKLab to **L 79.00% · C 0.1140 ·
+   * H 83.99**, i.e. the measured trademark chroma, not the delivery's 0.095. `#ddb45f` is
+   * that same stop in the fallback, and it can only arise from the corrected chroma.
+   * ⚠️ Deliberately brittle: if the build ever changes how it emits colour this FAILS
+   * loudly and someone looks, which is the right outcome, not a false alarm.
+   */
+  { atom: "C", must: /--gilt-metal:[^;}]*(?:#ddb45f|lab\(75\.83)/, what: "⭐ the metal's body chroma is the MEASURED 0.114, not the delivery's 0.095 (E-124) — checked in the shipped hex/lab, since no oklch() survives the build" },
+  { atom: "C", must: /\.gilt-ink\s*\{[^}]*background-clip:\s*text/, what: "money ink ships as background-clipped type (M4)" },
+  { atom: "C", must: /\.mark-pending\s*\{[^}]*mark-pending-tilt/, what: "the settling breath ships" },
+  { atom: "C", must: /\[data-motion=.?reduced.?\] ?\.mark-pending/, what: "⭐ …and it is gated on the target device — test:reduce-motion rule 2.1 forced this line" },
+  // ⛔ PINS on two corrections to the delivery that a future paste would undo.
+  { atom: "C", mustNot: /\.gilt-metal:focus-visible\s*\{[^}]*outline:\s*none/, what: "⛔ the money CTA keeps a real `outline` on focus — a box-shadow ring is invisible in forced-colors (E-129)" },
+  { atom: "C", mustNot: /--gilt-bloom/, what: "⛔ `--gilt-bloom` is never landed — MANIFEST, M3 and §C all say the bloom is removed" },
 ];
 
 let failed = 0;

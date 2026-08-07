@@ -335,6 +335,52 @@
   --brand-soft: oklch(34% 0.120 262);
   --pill-active: oklch(40% 0.12 262 / 0.35);  /* one active filter/tab fill everywhere */
   --gilt-strong:   var(--gold-400);
+
+  /* ═══ STRUCK GILT — the four gradient tokens ATOM 12 deferred (ATOM C, 2026-08-07)
+     M3: gold is struck, and struck means earned. One satin ramp, re-derived from the
+     trademark's #E3BC66, so surface gold and brand gold are the same metal.
+
+     ⛔ EVERY CHROMA HERE IS THE DELIVERY'S FIGURE × 1.2011 — E-124, AND THAT IS THE
+     WHOLE POINT OF THE TOKEN. `material.css` §A3 anchors the ladder on
+     "#E3BC66 ≈ oklch(79% 0.095 84)". Measured with the Ottosson matrices and PROVEN BY
+     ROUND-TRIP, the mark is `oklch(81.20% 0.1141 85.38)` — which converts back to
+     #E3BC66 exactly, while the delivery's figure converts to #D7B672, a visibly duller
+     grey-gold. Its chroma is understated by 17%, so pasting §A3 verbatim would have made
+     surface gold LESS saturated than the mark it exists to match — the precise inverse
+     of M3 — and it would have done it inside the one place gold matters most, the
+     earned-money surface. So: 0.075→0.090 · 0.095→0.114 · 0.100→0.120 · 0.045→0.054.
+     ⭐ HUE STAYS 84. The measured 85.38 is within 1.4°, and 84 is what M3, §A3 and all
+     four of these tokens name — one hue written once beats a decimal nobody can defend.
+     ⚠️ LIGHTNESS IS NOT TOUCHED, deliberately: ATOM 12 ruled that the L ladder is ours
+     and every gated contrast pair depends on it. Worth recording without acting on it —
+     the mark measures L 81.2 while the ramp's body stop is 79, so the metal's body sits
+     2.2 points under the mark. That is a range (79→72) rather than an anchor, and
+     re-opening it would re-open nine gated pairs.
+     ⛔ `--gilt-bloom` IS NOT LANDED, at all. MANIFEST, M3 and §C's own seal comment all
+     say the bloom is REMOVED — radial glow dilutes the financial texture — so landing it
+     would ship a zero-consumer token plus two comments describing behaviour that does
+     not exist. ⛔ `--gilt-reeding` is not landed either: nothing consumes it (§C has no
+     rule for it; it belongs to the seal's SVG markup), and a token whose literal never
+     arrives has bought nothing (INTAKE §3b). */
+
+  /* The metal itself: highlight → body → deep, on the one lamp's 166deg axis. */
+  --gilt-metal: linear-gradient(var(--light-angle),
+                 oklch(91% 0.090 84) 0%, oklch(79% 0.114 84) 48%,
+                 oklch(72% 0.114 84) 100%);
+  /* An EVEN 1px ring — M1, and the reason this passes `test:m1-light` unchanged. */
+  --gilt-metal-edge: inset 0 0 0 1px oklch(95% 0.054 84 / 0.35);
+  /* The moving specular: ONE soft band of light, swept by `shimmer-gilt`.
+     ⚠️ DELIBERATELY NOT SCALED, and this is the exception to the rule above. At 0.02
+     chroma on hue 95 this is white light ON the metal, not a shade OF the trademark —
+     E-124 is about shades of the mark. Scaling it would move a specular away from white
+     for no perceptible gain. Recorded here so the next reader does not "finish the job". */
+  --gilt-sheen: linear-gradient(104deg, transparent 40%, oklch(99% 0.02 95 / 0.22) 50%, transparent 60%);
+  /* Money-amount ink: struck metal AS TYPE. Used with `.gilt-ink`, always with
+     --font-mono + tabular-nums, NEVER letter-spaced (M4 — money has weight). */
+  --gilt-ink: linear-gradient(var(--light-angle),
+                 oklch(91% 0.090 84) 0%, oklch(84% 0.114 84) 50%,
+                 oklch(77% 0.120 84) 100%);
+
   --shadow-card:   0 1px 2px oklch(6% 0.06 268 / 0.55), 0 10px 28px -10px oklch(4% 0.04 268 / 0.70);
   --shadow-royal:  0 14px 44px -14px oklch(4% 0.04 268 / 0.78);
 
@@ -2322,6 +2368,14 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
 [data-motion="reduced"] .ud-count-pulse,            /* Up & Down live counters      */
 [data-motion="reduced"] .ud-point,
 [data-motion="reduced"] .cm-typing span,            /* support chat typing dots     */
+[data-motion="reduced"] .mark-pending,              /* ⭐ §C's settling-round ±2°
+                                    breath (ATOM C). It is the ONLY infinite loop the
+                                    material system adds, and it did not arrive here by
+                                    anybody remembering: `test:reduce-motion` rule 2.1
+                                    FAILED the moment `.mark-pending` landed in
+                                    motion.css and refused to pass without this line.
+                                    ⭐ That is ATOM A's gate doing its job on ATOM C —
+                                    which is the whole reason the gate came first       */
 [data-motion="reduced"] .dial-coach                 /* the conviction dial's coach
                                     nudge. ⭐ It lives in an inline <style> block, so
                                     the FIRST census of this list — which read .css

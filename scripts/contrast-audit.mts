@@ -46,6 +46,9 @@
  * RED: node scripts/contrast-audit-red.mjs
  */
 import { readFileSync } from "node:fs";
+// ⛔ ONE definition of the corpus, shared with the RED harness. See contrast-corpus.mjs
+// for why it is not a list in each file: two copies cost 21/21 → 0/21 in one edit.
+import { CONTRAST_CORPUS } from "./contrast-corpus.mjs";
 
 type Oklch = { l: number; c: number; h: number }; // l 0..1, c, h degrees
 const ok = (l: number, c: number, h: number): Oklch => ({ l, c, h });
@@ -88,12 +91,23 @@ const ROOT = process.env.CONTRAST_ROOT ?? new URL("..", import.meta.url).pathnam
  * at equal specificity. `declValue()` refuses duplicates outright, so ordering
  * cannot silently pick a winner here — but a future reader must not have to
  * guess which way it would lean, so it is written the way the browser sees it.
+ *
+ * ⭐ A FOURTH SHEET, 2026-08-07 (ATOM C) — `src/app/motion.css`, AND FOR THE SAME
+ * REASON E-121 ADDED THE CHAT PAIR: §C puts a CONTROL there. `.gilt-metal` is the
+ * platform's earned-money CTA — Deposit, Continue — painted on a re-derived gold
+ * ramp with `--gold-fg` ink, and until it was added the gate could not see the file
+ * it lives in. **A control the gate cannot SEE is a control the gate cannot fail
+ * on**, which is exactly how `.cm-send`'s glyph sat at 2.55 against a 3.0 floor with
+ * everything green. Adding a file is coverage, not housekeeping.
+ *
+ * ⛔ AND THE LIST NO LONGER LIVES HERE. It is imported from `contrast-corpus.mjs`,
+ * because the RED harness held a SECOND copy and adding the fourth sheet took it
+ * from 21/21 caught to 0/21 in a single edit — the harness was still copying three
+ * files, so every mutation ran against a corpus the gate refused to start on. That
+ * is E-108's shape one document over, and the answer is the same: one definition,
+ * imported by both.
  */
-const CORPUS = [
-  "src/styles/chat/chat-tokens.css",
-  "src/styles/chat/chat-styles.css",
-  "src/app/globals.css",
-].map((p) => `${ROOT.replace(/[\\/]+$/, "")}/${p}`);
+const CORPUS = CONTRAST_CORPUS.map((p) => `${ROOT.replace(/[\\/]+$/, "")}/${p}`);
 const SHEETS = CORPUS.map((f) => ({
   path: f,
   // Comments are stripped first: a `/* --bg: was 15% */` note must not read as a
@@ -319,6 +333,36 @@ function ruleGradient(selector: string, prop: string): Oklch[] {
 }
 
 /**
+ * ⭐ A RAMP THAT LIVES IN A TOKEN, NOT IN A RULE — added 2026-08-07 (ATOM C).
+ *
+ * `ruleGradient()` above reads a gradient written inline in a rule. §C's money control
+ * does not have one: `.gilt-metal { background-image: var(--gilt-sheen), var(--gilt-metal) }`
+ * points at two TOKENS, and the ramp a label actually sits on is `--gilt-metal`'s own
+ * value. Without this, the platform's earned-money CTA would have landed with **zero
+ * contrast coverage** — and INTAKE §4c is explicit that a new surface taking a ramp gets
+ * its worst-stop pair in the same commit, precisely because `.btn-primary` spent months
+ * as the one control neither colour instrument could score (E-119).
+ *
+ * ⛔ It reuses `declValue()`, so a token with two declaration sites is a hard failure
+ * here too (INTAKE §2a) rather than being silently read from the first one.
+ */
+function tokenGradient(name: string): Oklch[] {
+  const raw = declValue(name);
+  const g = /(?:linear|radial|conic)-gradient\(([\s\S]*)\)\s*$/.exec(raw);
+  if (!g) throw new Error(`contrast-audit: --${name} is "${raw}", which is not a gradient`);
+  const terms = g[1]
+    .split(/,(?![^(]*\))/)
+    .map((t) => t.trim().replace(/\s+(?:[-\d.]+(?:%|px|r?em)\s*)+$/, "").trim())
+    .filter(Boolean);
+  const DIRECTION = /^(?:[-\d.]+(?:deg|turn|rad|grad)|to\s+[a-z\s]+|circle\b|ellipse\b|closest-|farthest-|at\s|var\(\s*--[a-z0-9-]*angle[a-z0-9-]*\s*\))/i;
+  const stops = DIRECTION.test(terms[0]) ? terms.slice(1) : terms;
+  if (stops.length < 2) {
+    throw new Error(`contrast-audit: --${name} resolved to ${stops.length} colour stop(s) — a ramp scored on one stop is a ramp half-read.`);
+  }
+  return stops.map((t) => colour(`--${name} stop`, t));
+}
+
+/**
  * ⛔ `filter: brightness()` IS A RASTER EFFECT, AND EVERY STYLESHEET-DERIVED
  * FIGURE FOR A HOVER STATE IS THEREFORE A MODEL. `getComputedStyle` still hands
  * back the authored colour, so nothing that reads CSS can see a hover state
@@ -485,6 +529,24 @@ const T = {
   btnNoHover: ruleFilter(".btn-no:hover:not(:disabled)"),
   btnDangerHover: ruleFilter(".btn-danger:hover:not(:disabled)"),
   btnGoldHover: ruleFilter(".btn-gold:hover:not(:disabled)"),
+
+  /**
+   * ── §C's STRUCK-GILT CONTROL (2026-08-07, ATOM C) ─────────────────────────
+   * The earned-money CTA. Its ink is `--gold-fg` and its ramp is `--gilt-metal`,
+   * whose three chromas were re-derived from the MEASURED trademark (E-124) rather
+   * than pasted, so this pair is also the check that the re-derivation did not cost
+   * legibility while it was fixing saturation.
+   * ⚠️ REST IS THE WORST CASE HERE, and that is worth stating rather than leaving
+   * to be re-derived: `--gilt-sheen` is the first background layer, parked
+   * off-canvas at `background-position: 200% 0` until a hover sweeps it, and it is
+   * a band of near-WHITE at 22% alpha. Against `--gold-fg`'s dark ink a lighter
+   * background can only raise the ratio, so the resting metal is the honest
+   * measurement and the hover cannot be worse.
+   */
+  giltMetalFg: ruleValue(".gilt-metal", "color"),
+  giltMetalStops: tokenGradient("gilt-metal"),
+  /** Money ink, `.gilt-ink` — the same question one layer up: struck metal as TYPE. */
+  giltInkStops: tokenGradient("gilt-ink"),
 };
 
 /**
@@ -579,6 +641,15 @@ const CHECKS: Check[] = [
   { name: "btn-no label :hover (filter rastered)", fg: T.pearl50, bg: T.btnNoBg, min: 4.5, filter: T.btnNoHover },
   { name: "btn-danger label :hover (filter rastered)", fg: T.pearl50, bg: T.danger500, min: 4.5, filter: T.btnDangerHover },
   { name: "btn-gold label :hover (filter rastered)", fg: T.btnGoldFg, bg: T.btnGoldBg, min: 4.5, filter: T.btnGoldHover },
+  // ── §C's money control and money ink (ATOM C). A new ramp gets its worst-stop
+  // pair in the SAME commit — INTAKE §4c, written after `.btn-primary` spent months
+  // as the one control neither colour instrument could score.
+  { name: "gilt-metal label (gold-fg on the struck ramp, worst stop)", fg: T.giltMetalFg, bg: worstStop(T.giltMetalFg, T.giltMetalStops), min: 4.5 },
+  // ⭐ `.gilt-ink` is background-clipped TYPE, so the ramp is the INK and the surface
+  // behind it is the page. It is read as money, so it is held to 4.5 like any amount —
+  // scored at the ramp's worst stop against the deepest surface it can land on.
+  { name: "gilt-ink amount (struck-metal type on --bg, worst stop)", fg: worstStop(T.bg, T.giltInkStops), bg: T.bg, min: 4.5 },
+  { name: "gilt-ink amount on --bg-elevated (worst stop)", fg: worstStop(T.bgElevated, T.giltInkStops), bg: T.bgElevated, min: 4.5 },
 
   // ── The support chat — E-121, and the first checks outside globals.css ─────
   // ⛔ 3.0, NOT 4.5, on the send control: it is a GLYPH, so WCAG 1.4.11 (non-text

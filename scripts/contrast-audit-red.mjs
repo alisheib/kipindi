@@ -35,12 +35,16 @@ import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 
 const cwd = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
-/** The gate's corpus, in the gate's own order. A mutation names one of these. */
-const CORPUS = [
-  "src/styles/chat/chat-tokens.css",
-  "src/styles/chat/chat-styles.css",
-  "src/app/globals.css",
-];
+/**
+ * The gate's corpus, in the gate's own order — IMPORTED, never re-listed.
+ * 🔴 This file used to carry its own copy of the list, and on 2026-08-07 the gate
+ * gained a fourth sheet (`motion.css`, because §C put the money CTA there). This
+ * harness went from **21/21 caught to 0/21** in that one edit: it was still copying
+ * three files, so every mutation ran against a corpus the gate refused to start on —
+ * and "0/21" is indistinguishable from "the gate has stopped working". One definition,
+ * imported by both, is the same repair E-108 forced on the handoff locator.
+ */
+import { CONTRAST_CORPUS as CORPUS } from "./contrast-corpus.mjs";
 const ORIGINALS = new Map(CORPUS.map((f) => [f, readFileSync(join(cwd, f), "utf8")]));
 const GLOBALS = join(cwd, "src/app/globals.css");
 const ORIGINAL = ORIGINALS.get("src/app/globals.css");
@@ -246,6 +250,31 @@ const MUTATIONS = [
     file: "src/styles/chat/chat-styles.css",
     from: `  background: linear-gradient(180deg, var(--claret-hover), var(--claret));`,
     to: `  background: linear-gradient(180deg, color-mix(in oklab, var(--claret-hover) 80%, black), var(--claret));`,
+  },
+  {
+    // ── §C's MONEY CONTROL (2026-08-07, ATOM C) ──────────────────────────────
+    // ⭐ THE FOURTH SHEET, PROVEN READ. `.gilt-metal` lives in `motion.css`, which this
+    // gate could not see until ATOM C, and a control the gate cannot see is a control
+    // it cannot fail on — E-121's whole lesson. Lightening the ink on the earned-money
+    // CTA can only be caught if `motion.css` is genuinely in the corpus.
+    name: "lighten .gilt-metal's ink to near-white — the money CTA's label goes unreadable",
+    kind: "fail",
+    file: "src/app/motion.css",
+    from: `  color: var(--gold-fg);`,
+    to: `  color: oklch(96% 0.02 84);`,
+  },
+  {
+    // ⭐ AND THE RAMP ITSELF, WHICH LIVES IN A TOKEN RATHER THAN IN THE RULE.
+    // `tokenGradient()` was added for exactly this shape: `.gilt-metal` says
+    // `background-image: var(--gilt-sheen), var(--gilt-metal)`, so the ramp a label
+    // sits on is the TOKEN's value. Darkening the body stop must move the number, or
+    // the pair is decorative — the same "scored on one stop / not scored at all" hole
+    // that let `.btn-primary` ship at 4.0:1 (E-119).
+    name: "darken --gilt-metal's body stop to 28% — the token ramp must actually be read",
+    kind: "fail",
+    file: "src/app/globals.css",
+    from: `                 oklch(91% 0.090 84) 0%, oklch(79% 0.114 84) 48%,`,
+    to: `                 oklch(91% 0.090 84) 0%, oklch(28% 0.114 84) 48%,`,
   },
 ];
 

@@ -197,3 +197,230 @@ html.kp-reduce-motion *, html.kp-reduce-motion *::before, html.kp-reduce-motion 
   .m-live-pip,
   .m-urgent           { animation: none !important; opacity: 1; }
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §C · THE MATERIAL UTILITIES — Claude Design, merged 2026-08-07 (ATOM C)
+   ─────────────────────────────────────────────────────────────────────────────
+   ⭐ WHY THEY LIVE HERE AND NOT IN globals.css: `motion.css` is imported LAST
+   (`layout.tsx:12`), so at equal specificity it outranks everything in globals —
+   which is what lets a component ADOPT a rung and have it win over the
+   hand-written shadow it is replacing, without an `!important` anywhere.
+
+   ⛔ THE TOKENS THESE CONSUME ARE ALL DEFINED — verified rather than assumed.
+   All 36 custom properties referenced below resolve in `src/app/globals.css` or in
+   the `:root` above; a `var()` that does not resolve makes the whole declaration
+   INVALID and it drops silently, with no build error, which is the failure mode
+   INTAKE §2b was written about.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── M2 · THE ELEVATION LADDER, AS CLASSES ──────────────────────────────────
+   A surface PICKS a rung; it never composes a shadow again.
+     0 flat    the page plane — form rows, pollers, containers. A rung, not a failure
+     1 raised  cards: market, up & down, position, stat
+     2 float   dropdown · popover · tooltip · select · avatar-menu
+     3 modal   modal · confirm dialog · sheet
+     4 toast   the highest physical object in the product
+   ⚠️ A SURFACE TAKING `.mat-float`, `-modal` OR `-toast` MUST DROP ITS OWN BORDER
+   AT THE CALL SITE. Those rungs carry an outer 1px ring inside `--elev-*` at
+   42–46%, and six surfaces in this product also carry `border-border-strong` at
+   44%; the two together read as one muddy 2px edge. ⛔ The fix is at the call site,
+   never in the token — the ring is the rung's own definition of itself.
+
+   ⭐ `--mat-tint` IS A COMPOSITION SLOT, and it is the repair for D-6.6's one
+   send-back. Every rung's `box-shadow` opens with that slot so a tint can be
+   layered in from a SEPARATE class — see `.mat-tint-*` below. Its fallback
+   `0 0 transparent` is a valid no-op layer, so an untinted surface pays nothing. */
+.mat-flat   { background: none;               border: 1px solid var(--border);        box-shadow: var(--mat-tint, 0 0 transparent); }
+.mat-raised { background: var(--wash-raised); border: 1px solid var(--border);        box-shadow: var(--mat-tint, 0 0 transparent), var(--elev-raised); }
+.mat-float  { background: var(--wash-float);  border: 1px solid var(--border-strong); box-shadow: var(--mat-tint, 0 0 transparent), var(--elev-float);  }
+.mat-modal  { background: var(--wash-modal);  border: 1px solid var(--border-strong); box-shadow: var(--mat-tint, 0 0 transparent), var(--elev-modal);  }
+.mat-toast  { background: var(--wash-float);  border: 1px solid var(--border-strong); box-shadow: var(--mat-tint, 0 0 transparent), var(--elev-toast);  }
+.mat-inset  { background: var(--wash-inset);  border: 1px solid var(--border);        box-shadow: var(--mat-tint, 0 0 transparent), var(--edge-shade);  }
+
+/* Rung-1 hover. Compose with `.m-raise` for the lift; this only swaps material.
+   trigger: hover · exit: the same transition back · cost: box-shadow, border, transform */
+.mat-raised-i { transition: box-shadow var(--t-quick) linear, border-color var(--t-quick) linear, transform var(--t-quick) var(--m-glide); }
+.mat-raised-i:hover  { box-shadow: var(--mat-tint, 0 0 transparent), var(--elev-raised-hover); border-color: var(--border-strong); transform: translateY(var(--m-lift)); }
+.mat-raised-i:active { transform: translateY(0) scale(var(--m-press)); transition-duration: var(--t-flick); }
+
+/* ── ⭐ THE TINT, RUNG-INDEPENDENT — D-6.6's SEND-BACK, REPAIRED ────────────
+   The acceptance test applied the system to `ui/callout.tsx`, a component the
+   designer never saw, from `EXTEND.md` alone. M2 answered the surface cleanly —
+   a callout is content-plane furniture, so rung 0 — and then the delivery had no
+   way to express it: its `.mat-edge-warn` is `inset ring + var(--elev-toast)`,
+   welded to rung 4, while its own comment names callouts. Applying it puts a
+   toast-level cast under an inline box. There was no rung-independent tint
+   recipe, so a tinted-but-FLAT surface could not be said.
+
+   ⭐ ONE RULE EACH, and they compose with ANY rung because they set only a custom
+   property — `box-shadow` cannot be layered across two classes (the last one
+   wins), which is exactly why the delivery welded them. Colour arrives as LIT
+   GLASS: an even tinted inner ring at 32% of the hue, never a one-sided line (M1),
+   never a flat wash of the hue.
+
+   ⛔ `.mat-edge-yes`, `-no`, `-warn` and `-gilt` ARE DELIBERATELY NOT LANDED.
+   `.mat-toast` plus `.mat-tint-yes` says everything `.mat-edge-yes` said, and two
+   ways to say one thing is the drift INTAKE §3b exists to stop. If you came here to
+   "finish the delivery" by adding them: that is the second definition, and this
+   comment is the answer.
+   ⚠️ `factual` takes NONE of these, on purpose. That absence is the material
+   distinction between "here is information" (a plain rung) and a coloured state. */
+.mat-tint-yes  { --mat-tint: inset 0 0 0 1px color-mix(in oklab, var(--yes-400) 32%, transparent); }
+.mat-tint-no   { --mat-tint: inset 0 0 0 1px color-mix(in oklab, var(--no-400) 32%, transparent); }
+.mat-tint-warn { --mat-tint: inset 0 0 0 1px color-mix(in oklab, var(--warning-500) 32%, transparent); }
+/* Earned money ONLY — the payout toast and the celebration. Never decoration (M3). */
+.mat-tint-gilt { --mat-tint: inset 0 0 0 1px color-mix(in oklab, var(--gilt) 40%, transparent); }
+
+/* ── M3 · STRUCK GILT, THE CONTROL ──────────────────────────────────────────
+   The money CTA — Continue, Deposit, an earned-money action. Hover sweeps the
+   specular ONCE; press compresses; focus rings.
+   must NOT: loop the sheen, or appear on a surface where no money was earned.
+   ⛔ A decorative element wearing this is a violation, not a style choice. */
+.gilt-metal {
+  background-image: var(--gilt-sheen), var(--gilt-metal);
+  background-size: 250% 100%, 100% 100%;
+  background-position: 200% 0, 0 0;
+  color: var(--gold-fg);
+  box-shadow: var(--gilt-metal-edge), 0 1px 2px oklch(6% 0.06 268 / 0.55),
+              0 6px 18px -6px color-mix(in oklab, var(--gold-500) 28%, transparent);
+  transition: transform var(--t-quick) var(--m-glide), box-shadow var(--t-quick) linear,
+              filter var(--t-flick) linear;
+}
+.gilt-metal:hover {
+  transform: translateY(var(--m-lift));
+  box-shadow: var(--gilt-metal-edge), 0 2px 4px oklch(6% 0.06 268 / 0.55),
+              0 10px 24px -6px color-mix(in oklab, var(--gold-500) 38%, transparent);
+  /* ⭐ `shimmer-gilt` was REPAIRED in ATOM B to write a background-position PER
+     LAYER. With the single value it shipped with, this hover would have translated
+     the metal ramp itself ±200% — the gold sliding off the button — because one
+     value applies to every layer and this element has two. Measured in a browser
+     on a paused timeline, not reasoned. ⛔ Do not "simplify" that keyframe. */
+  animation: shimmer-gilt var(--t-stage) var(--m-glide) 1;
+}
+.gilt-metal:active { transform: translateY(0) scale(var(--m-press)); filter: brightness(0.94); transition-duration: var(--t-flick); }
+/* 🔴 THE DELIVERY WROTE `outline: none` HERE AND THAT IS AN ACCESSIBILITY
+   REGRESSION ON THE MONEY CTA — E-129. This class lands on a `.btn`, and the kit's
+   `.btn:focus-visible` (globals.css) gives it a real `outline` plus a 4px ring. A
+   `box-shadow` ring is INVISIBLE in forced-colors / Windows high-contrast mode,
+   where an `outline` survives — so replacing one with the other removes the focus
+   indicator from the Deposit button for exactly the users who need it most
+   (WCAG 2.4.7 + 1.4.11). ⭐ So the outline STAYS and the gilt edge is added to it. */
+.gilt-metal:focus-visible {
+  outline: 2px solid var(--brand-500);
+  outline-offset: 2px;
+  box-shadow: var(--gilt-metal-edge), 0 0 0 4px oklch(63% 0.18 262 / 0.25);
+}
+.gilt-metal:disabled { filter: grayscale(0.45) brightness(0.8); opacity: 0.6; box-shadow: var(--gilt-metal-edge); }
+
+/* ── M4 · MONEY-AMOUNT INK — struck metal as TYPE ───────────────────────────
+   ⛔ NEVER letter-spaced: the amount is money, not a serial number. Always
+   --font-mono with tabular-nums, so a changing figure cannot reflow (D-0, and M4
+   overrides D-0's own table, which had listed --font-display for the celebration).
+   ⚠️ The drop-shadow's colour was `oklch(80% 0.14 80)` in the delivery — hue 80 at
+   chroma 0.14, i.e. MORE saturated than the trademark and 4° off its hue. That is
+   the "two metals" problem M3 exists to end, hiding inside a glow. It takes the
+   measured mark instead: hue 84 at 0.114. */
+.gilt-ink {
+  background: var(--gilt-ink);
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: normal;
+  filter: drop-shadow(0 0 16px oklch(80% 0.114 84 / 0.16));
+}
+
+/* ── M7 · THE SEAL — arrival vocabulary, EXCLUSIVE TO A WIN ─────────────────
+   `seal-impress` lands the medal with mass, `seal-recoil` gives it a 2px landing
+   kick on the impact frame, and ONE band of light closes the beat. The bloom is
+   REMOVED (R2 Q4) — radial glow dilutes the financial texture. Rays are banned.
+   ⛔ A loss gets none of this: it renders as bookkeeping (the factual toast, the
+   settled card leading with the outcome, the needle settling against the
+   position). The asymmetry IS the design, and it is a compliance position as much
+   as an aesthetic one — a dramatised loss is punitive.
+   ⭐ EVERY OFFSET BELOW IS ON THE LADDER. The delivery wrote five raw millisecond
+   values; four are choreography offsets rather than durations and each takes its
+   nearest rung (§D's own rule of thumb, "nearest rung DOWN"): seal-recoil 60ms
+   takes --t-flick (90) · .seal-sheen's +500ms takes --t-stage (520) ·
+   .needle-sweep's 600ms takes --t-max (620) · .needle-settle-loss's 400ms takes
+   --t-move (340). Only `.mark-pending`'s 1240ms stays raw, and §D's frozen
+   ambient-loop list names it explicitly. */
+.seal-arrive { animation: seal-impress var(--t-max) var(--m-settle) both,
+                          seal-recoil var(--t-flick) linear var(--t-max); }
+.seal-sheen  { animation: badge-seal-rays var(--t-max) var(--m-glide)
+                          calc(2 * var(--t-max) + var(--t-stage)) 1 both; pointer-events: none; }
+/* The micro-seal on bet commit reuses the existing `seal-place`. */
+.seal-commit { animation: seal-place var(--t-stage) var(--m-settle) both; }
+
+/* ── M5 · GLYPH MOTION — four primitives, and all 178 glyphs move the same way ──
+   Triggers are mount, data change, or state change. ⛔ NEVER hover: icons respond,
+   they do not perform. A glyph with bespoke keyframes is a violation.
+   ⚠️ `.g-ring` takes `--m-glide`, NOT `--m-pivot`, and the delivery had it the
+   other way round. `--m-pivot`'s own definition at the top of this file reads
+   "needle and dials ONLY" — a bell is neither — and the ring keyframe already
+   encodes its decay in five steps, so the curve only has to be neutral travel.
+   The needle gets `--m-pivot` below, which is what the reservation is for. */
+.g-settle     { animation: glyph-settle var(--t-base) var(--m-settle) both; }
+.g-nudge-up   { animation: glyph-nudge-up var(--t-move) var(--m-settle); }
+.g-nudge-down { animation: glyph-nudge-down var(--t-move) var(--m-settle); }
+.g-ring       { animation: glyph-ring var(--t-max) var(--m-glide); transform-origin: 50% 15%; }
+.g-swap       { position: relative; display: inline-grid; }
+.g-swap > *   { grid-area: 1 / 1; }
+.g-swap-out   { animation: glyph-swap-out var(--t-quick) var(--m-leave) both; }
+.g-swap-in    { animation: glyph-swap-in var(--t-base) var(--m-settle) both; }
+
+/* ── M8 · THE MARK PERFORMS; NOTHING ELSE BORROWS ITS STAGE ─────────────────
+   Identity motion is reserved for the trademark. ⚠️ `--t-move` is 340ms, not the
+   430ms the delivery's comment prices the flip at — so it lands SNAPPIER than the
+   designer expected against their 450–500ms ask. It is still the nearest rung, and
+   a new duration token would be worse than a fast flip. */
+.mark-flip   { animation: mark-flip var(--t-move) var(--m-settle) 1 both; }
+.mark-flip-i:hover { animation: mark-flip var(--t-move) var(--m-settle) 1; }
+/* ⭐ The needle takes `--m-pivot` — the curve that exists for it. */
+.needle-sweep       { animation: needle-sweep var(--t-stage) var(--m-pivot) var(--t-max) both;
+                      transform-box: view-box; transform-origin: 50% 50%; }
+.needle-settle-loss { animation: needle-settle var(--t-move) var(--m-pivot) var(--t-move) both;
+                      transform-box: view-box; transform-origin: 50% 50%; }
+/* ⛔ AN AMBIENT LOOP, AND THEREFORE THE THIRD GATE'S BUSINESS. It is listed in
+   globals.css §6's `[data-motion="reduced"]` set; `test:reduce-motion` rule 2.1
+   fails if it ever is not. 1240ms is raw on purpose — §D's frozen ambient list
+   names it, and ambient loops sit outside the duration ladder by design. */
+.mark-pending { animation: mark-pending-tilt 1240ms var(--m-breathe) infinite; }
+
+/* ── IDENTITY ARRIVAL + TIER-RING REVEAL ───────────────────────────────────
+   The ring is a box-shadow (this product's existing convention), so the reveal is
+   an opacity fade on a delay: crest first, honours second. */
+.crest-arrive      { animation: crest-settle var(--t-move) var(--m-settle) both; }
+.crest-ring-reveal { animation: m-scrim-in var(--t-base) linear var(--t-move) both; }
+
+/* ── M6 · REDUCED MOTION — every branch written out, for BOTH clamped gates ──
+   ⛔ The universal clamp above zeroes duration AND delay, so these do not exist to
+   stop time — they exist to say what the surface must LOOK like once time is
+   stopped: an end frame renders, nothing is invisible, and every state still
+   reads. ⭐ `.needle-sweep` and `.crest-ring-reveal` are the two that needed the
+   delay clamp ATOM A landed: with only the duration zeroed they would have held
+   `rotate(-26deg)` and `opacity: 0` for their whole delay.
+   ⚠️ The `reduced` TIER is not here — it is a throttle, not a clamp, and its one
+   list lives in globals.css §6. `.mark-pending` is its only entry from §C. */
+@media (prefers-reduced-motion: reduce) {
+  .g-settle, .g-nudge-up, .g-nudge-down, .g-ring, .g-swap-in, .g-swap-out,
+  .crest-arrive, .crest-ring-reveal, .seal-arrive, .seal-commit, .mark-flip,
+  .needle-sweep, .needle-settle-loss, .mark-pending
+                     { animation: none !important; opacity: 1; transform: none; filter: none; }
+  .mark-flip-i:hover { animation: none !important; }
+  .gilt-metal:hover  { animation: none !important; }
+  /* The closing band of light conveys no state — it rests unseen rather than
+     flashing into place at full strength. */
+  .seal-sheen        { animation: none !important; opacity: 0; }
+}
+html.kp-reduce-motion .g-settle, html.kp-reduce-motion .g-nudge-up,
+html.kp-reduce-motion .g-nudge-down, html.kp-reduce-motion .g-ring,
+html.kp-reduce-motion .g-swap-in, html.kp-reduce-motion .g-swap-out,
+html.kp-reduce-motion .crest-arrive, html.kp-reduce-motion .crest-ring-reveal,
+html.kp-reduce-motion .seal-arrive, html.kp-reduce-motion .seal-commit,
+html.kp-reduce-motion .mark-flip, html.kp-reduce-motion .mark-flip-i:hover,
+html.kp-reduce-motion .needle-sweep, html.kp-reduce-motion .needle-settle-loss,
+html.kp-reduce-motion .mark-pending, html.kp-reduce-motion .gilt-metal:hover
+                   { animation: none !important; opacity: 1; transform: none; filter: none; }
+html.kp-reduce-motion .seal-sheen { animation: none !important; opacity: 0; }
