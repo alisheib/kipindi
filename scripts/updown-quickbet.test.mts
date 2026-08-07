@@ -302,6 +302,32 @@ async function mine(userId: string | undefined): Promise<{ up: number; down: num
        (r.kind === "transient" ? r.description : `${r.title} ${r.body}`).indexOf("Selections are") === -1));
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 30 · UD-5/6/7 · the optimistic ledger + the one-refresh-per-burst contract
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// The ledger lives inside a React hook, so its INVARIANTS are pinned structurally
+// (per §5b: assert the value the code carries). Each is a money-display rule: the
+// "You're in" figure must never exceed server truth + genuinely-in-flight stakes.
+{
+  const { readFileSync } = await import("node:fs");
+  const hook = readFileSync(new URL("../src/components/updown/use-quick-bet.ts", import.meta.url), "utf8");
+  const action = readFileSync(new URL("../src/app/markets/actions.ts", import.meta.url), "utf8");
+
+  ok("30.1 · the optimistic state is a per-key MAP, not two counters",
+     /Map<string, InFlightEntry>/.test(hook) && !/setOptUp\(/.test(hook) && !/setOptDown\(/.test(hook));
+  ok("30.2 · a failed or transport-dead tap deletes ITS OWN key — never subtracts from a sum",
+     (hook.match(/m\.delete\(key\)/g) ?? []).length >= 3);
+  ok("30.3 · success SETTLES the key; only a server advance removes settled entries",
+     /settled: true/.test(hook) && /filter\(\[, e\]\) => !e\.settled\)|filter\(\(\[, e\]\) => !e\.settled\)/.test(hook));
+  ok("30.4 · auth loss is not a failed bet — a null action result clears silently, no toast",
+     /if \(r == null\) \{\s*\n\s*mutateInFlight\(\(m\) => \{ m\.delete\(key\); \}\);\s*\n\s*return;/.test(hook));
+  ok("30.5 · ⭐ ONE surface reconciliation per tap burst — the falling-edge 50pick:refresh dispatch",
+     /wasPending\.current && !pending/.test(hook) && /dispatchEvent\(new Event\("50pick:refresh"\)\)/.test(hook));
+  ok("30.6 · ⛔ and /updown is GONE from the action's revalidate list (UD-6a) — the burst refresh replaced it",
+     !/revalidatePath\("\/updown"\)/.test(action));
+}
+
 console.log(`\nupdown-quickbet: ${pass} passed, ${fail} failed`);
 if (fail > 0) { console.error("\n✗ QUICK-BET BROKEN — the one-tap card would mischarge or misreport the player's position.\n"); process.exit(1); }
 console.log("updown-quickbet: OK — one tap places once, duplicates pay once, distinct taps stack, 'you're in' is per-viewer, bad taps refused");

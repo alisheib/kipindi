@@ -106,8 +106,25 @@ export function useUpDownQuickBet(opts: {
   /** Placement is allowed only when the chosen amount is usable. */
   const stakeReady = customMode ? customValid : presetStake > 0;
 
-  const [optUp, setOptUp] = useState(0);
-  const [optDown, setOptDown] = useState(0);
+  // ── UD-7 · the in-flight ledger, keyed by idempotency key ──────────────────
+  //
+  // 🔴 WHAT TWO COUNTERS COULD NOT SAY. With `optUp/optDown` as plain sums, a server
+  // reconcile landing BETWEEN a success and a late failure zeroed both — including the
+  // amount still genuinely in flight — and a late failure then subtracted from a
+  // counter that no longer contained it (clamped, so it silently misstated "You're
+  // in" until the next poll). Per-key entries make every transition exact: place adds
+  // a key, failure deletes ITS key, success marks ITS key settled, and a server
+  // advance removes only the SETTLED keys (their money is now inside `myUpStake`).
+  // The displayed stake is server truth + precisely the taps still unaccounted for.
+  type InFlightEntry = { side: "UP" | "DOWN"; amount: number; settled: boolean };
+  const [inFlight, setInFlight] = useState<ReadonlyMap<string, InFlightEntry>>(new Map());
+  const mutateInFlight = useCallback(
+    (fn: (m: Map<string, InFlightEntry>) => void) =>
+      setInFlight((prev) => { const m = new Map(prev); fn(m); return m; }),
+    [],
+  );
+  const optUp = [...inFlight.values()].reduce((s, e) => s + (e.side === "UP" ? e.amount : 0), 0);
+  const optDown = [...inFlight.values()].reduce((s, e) => s + (e.side === "DOWN" ? e.amount : 0), 0);
   const [pending, startBet] = useTransition();
   const { toast } = useToast();
 
@@ -134,13 +151,38 @@ export function useUpDownQuickBet(opts: {
   const [liveMessage, setLiveMessage] = useState("");
   const nonce = useRef(0);
 
-  // Server truth advanced (the surface's poller refreshed) ⇒ drop the optimistic
-  // deltas; the fresh myUp/myDownStake already contains the bets we placed, so keeping
-  // them would double-count. Keyed on the raw server values so it fires only when they
-  // actually change — not on every optimistic tap.
-  useEffect(() => { setOptUp(0); setOptDown(0); }, [myUpStake, myDownStake]);
+  // Server truth advanced (the surface's poller refreshed) ⇒ drop the SETTLED
+  // entries — the fresh myUp/myDownStake already contains those bets, so keeping them
+  // would double-count. Entries still in flight stay counted (UD-7): their money has
+  // not reached the server value yet, and dropping them was the old counters'
+  // misstatement. Keyed on the raw server values so it fires only when they actually
+  // change — not on every optimistic tap.
+  useEffect(() => {
+    setInFlight((prev) => {
+      if (![...prev.values()].some((e) => e.settled)) return prev;
+      const m = new Map([...prev].filter(([, e]) => !e.settled));
+      return m;
+    });
+  }, [myUpStake, myDownStake]);
   const shownUp = myUpStake + optUp;
   const shownDown = myDownStake + optDown;
+
+  // ── UD-5/UD-6 · ONE surface reconciliation per tap BURST, not per tap ──────
+  //
+  // The falling edge of `pending` (the exact `useDeferredToast` idiom): when the last
+  // queued placement settles, dispatch the platform's own refresh event — the same one
+  // the conviction dial and the sell button fire — and the mounted RefreshPoller
+  // re-fetches once. This is what updates the round page's pools/pill (UD-5, which the
+  // action's revalidate list never covered) AND what replaces the board's per-tap
+  // `revalidatePath("/updown")` (UD-6a — removed from the action), so six fast taps
+  // cost one board render instead of six racing the poller.
+  const wasPending = useRef(false);
+  useEffect(() => {
+    if (wasPending.current && !pending) {
+      window.dispatchEvent(new Event("50pick:refresh"));
+    }
+    wasPending.current = pending;
+  }, [pending]);
 
   const enterCustom = useCallback(() => { setCustomMode(true); }, []);
   const exitCustom = useCallback(() => { setCustomMode(false); }, []);
@@ -169,11 +211,12 @@ export function useUpDownQuickBet(opts: {
       return;
     }
     const amount = stake;
-    // Optimistic first — the tap feels instant even before the round-trip returns.
-    if (side === "UP") setOptUp((v) => v + amount); else setOptDown((v) => v + amount);
     const key =
       (globalThis.crypto?.randomUUID?.() as string | undefined) ??
-      `${marketId}-${side}-${amount}-${optUp + optDown}`;
+      `${marketId}-${side}-${amount}-${Date.now()}-${optUp + optDown}`;
+    // Optimistic first — the tap feels instant even before the round-trip returns.
+    // The entry is THIS tap's; only this tap's outcome can remove or settle it (UD-7).
+    mutateInFlight((m) => m.set(key, { side, amount, settled: false }));
     startBet(async () => {
       const fd = new FormData();
       fd.set("marketId", marketId);
@@ -182,7 +225,17 @@ export function useUpDownQuickBet(opts: {
       fd.set("idempotencyKey", key);
       try {
         const r = await buyPositionAction(fd);
-        if (r && "ok" in r && r.ok) {
+        // UD-7 · AUTH LOSS IS NOT A FAILED BET. A signed-out session makes the action
+        // `redirect("/auth/login")` — the router is already navigating when we get
+        // here and there is no verdict object at all. The old code fell into the
+        // generic failure branch, so the player saw "Bet not placed" (danger) WHILE
+        // being bounced to sign-in — two contradictory stories about one tap. Clear
+        // the optimistic entry silently and let the navigation speak.
+        if (r == null) {
+          mutateInFlight((m) => { m.delete(key); });
+          return;
+        }
+        if ("ok" in r && r.ok) {
           // E-64 · FOUR channels, because money left the wallet: a pulse the surface
           // animates, a screen-reader line, a short haptic, and — since 2026-08-05 — a
           // visible toast. It used to be the first three only, on the reasoning that a
@@ -191,6 +244,9 @@ export function useUpDownQuickBet(opts: {
           // said nothing a sighted player could see, so the screen read "nothing happened"
           // at the exact moment TZS left the wallet — and the natural response is to tap
           // again. The pile-up is solved by the 3s `durationMs`, not by silence.
+          // The tap's money moved — mark ITS entry settled; the next server advance
+          // (which now includes it) removes it (UD-7).
+          mutateInFlight((m) => { const e = m.get(key); if (e) m.set(key, { ...e, settled: true }); });
           nonce.current += 1;
           setJustPlaced({ side, amount, nonce: nonce.current });
           setLiveMessage(`${copy.placed} · ${side === "UP" ? copy.up : copy.down} · ${formatTzs(amount)}`);
@@ -207,7 +263,8 @@ export function useUpDownQuickBet(opts: {
           // per-token prefs and reduced-motion) — not a raw navigator.vibrate.
           haptics.confirm();
         } else {
-          if (side === "UP") setOptUp((v) => Math.max(0, v - amount)); else setOptDown((v) => Math.max(0, v - amount));
+          // This tap's entry, and only this tap's, comes back out (UD-7).
+          mutateInFlight((m) => { m.delete(key); });
           // UD-3/UD-4 · the refusal, in the player's own language, presented per the §5
           // matrix: race/transient → STICKY danger toast (a money refusal stays until
           // read); compliance/account block → the acknowledge-modal the surface hosts.
@@ -223,7 +280,7 @@ export function useUpDownQuickBet(opts: {
           }
         }
       } catch {
-        if (side === "UP") setOptUp((v) => Math.max(0, v - amount)); else setOptDown((v) => Math.max(0, v - amount));
+        mutateInFlight((m) => { m.delete(key); });
         // Transport-level failure — no server verdict at all. Sticky, like every
         // money-path failure: the player must be able to read why nothing happened.
         toast({ title: copy.failed, description: errCopy.udErrBusy, variant: "danger", durationMs: 0 });

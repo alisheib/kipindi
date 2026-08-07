@@ -85,12 +85,12 @@ already doing.
 ## 4 · Progress counters (update as you go)
 
 - **Session A (money/ops):** 7 / 7 items done
-- **Session B (Up & Down):** 4 / 22 findings done (Stage 1 complete; the tracker's earlier '1' was UD-3's kit half via DS-1, now absorbed)
+- **Session B (Up & Down):** 7 / 22 findings done (Stages 1–2 complete)
 - **Session C (platform front-end):** 0 / ~17 findings done
 - **Visual set (design):** 1 / 7 done
 - **DS · design-consistency sweep (toasts/popups/modals):** 4 / 27 done
 - **DA · design-system atoms (carried over from design session):** 3 / 12 done (2 need Ali)
-- **TOTAL:** 19 / ~92 done
+- **TOTAL:** 22 / ~92 done
 
 ---
 
@@ -120,9 +120,9 @@ already doing.
 - [x] UD-3 sticky failure toast + compliance blocked-modal — server refusals now `danger` + `durationMs:0` (kit support landed in DS-1); SUSPENDED/RG → `UpDownBetBlockedModal` on `OperationResultModal` (danger, no gold, stays until dismissed); SELECTION_CLOSED flips the surface locked instantly. `test:updown-bet-feedback` 3.4 restated.
 
 **Stage 2 (P1 freshness):**
-- [ ] UD-5 round-page + wallet pill refresh after bet
-- [ ] UD-6 one board refresh per tap burst (remove `/updown` from action revalidate)
-- [ ] UD-7 in-flight delta map / concurrent-tap rollback
+- [x] UD-5 round-page + wallet pill refresh after bet — the hook dispatches `50pick:refresh` on the falling edge of its pending burst (the `useDeferredToast` idiom); the RefreshPoller both updown surfaces already mount performs the fetch, so pools/pill move within a beat of the commit. No `wallet:balance` emit added (per the handover — money code untouched).
+- [x] UD-6 one board refresh per tap burst — option (a): `/updown` removed from `buyPositionAction`'s revalidate list; the falling-edge event is the ONE mechanism for board and round page alike. `test:updown-quickbet` §30.5/30.6.
+- [x] UD-7 in-flight delta map / concurrent-tap rollback — optimistic state is a per-key Map (place adds, failure deletes ITS key, success settles, server advance removes settled only); auth loss (`redirect` → null result) clears silently instead of toasting "Bet not placed" mid-navigation. §30.1–30.4.
 
 **Stage 3 (P1 loaders/transitions/boundaries):**
 - [ ] UD-8 gold Confirm spinner · [ ] UD-9 per-tap in-flight signal + queued escalation

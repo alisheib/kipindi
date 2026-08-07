@@ -85,9 +85,14 @@ export async function buyPositionAction(formData: FormData) {
     revalidatePath(`/markets/${marketId}`);
     revalidatePath("/positions");
     revalidatePath("/wallet");
-    // The Up & Down card quick-bet uses this SAME action (no parallel money path), so
-    // the board must refresh too — its volume/players/your-position all move on a bet.
-    revalidatePath("/updown");
+    // ⛔ UD-6 · `/updown` is deliberately NOT in this list any more. It made every tap's
+    // action response re-run getBoard and stream a full board render — six fast taps,
+    // six sequential board renders racing the 20s poller, on the 2G/low-end profile the
+    // standards bar names — while the card's own comment promised "no re-render per
+    // tap". The quick-bet hook now dispatches `50pick:refresh` on the falling edge of
+    // its pending burst (the useDeferredToast idiom), and the RefreshPoller both /updown
+    // and /updown/[roundId] mount performs ONE reconciliation per burst — which also
+    // finally refreshes the round page + wallet pill (UD-5), which this list never did.
   }
   return r;
 }
