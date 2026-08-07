@@ -22,6 +22,7 @@ import { getServerT } from "@/lib/i18n-server";
 import { pickLocalized } from "@/lib/localized";
 import { UpDownCard } from "@/components/updown/updown-card";
 import { UpDownResultAnnouncer } from "@/components/updown/updown-result-announcer";
+import { UpDownBoardTabs } from "@/components/updown/updown-board-tabs";
 
 export const dynamic = "force-dynamic";
 
@@ -42,13 +43,18 @@ export default async function UpDownPage({
   const sp = await searchParams;
   const { t, locale } = await getServerT();
   const session = await currentSession();
+  // ⛔ UD-15 · NO `.catch(() => null)` HERE ANY MORE. Swallowing the read rendered a
+  // DB outage as a calm "No rounds open right now" — an empty state is a statement
+  // about the WORLD ("nothing scheduled"), not about the PLATFORM. A real throw now
+  // reaches error.tsx: named, retryable, honest. The empty branch below remains for
+  // the query that SUCCEEDED and found nothing.
   const board = await getBoard({
     assetKey: sp.asset,
     durationMinutes: sp.d ? Number(sp.d) : undefined,
     userId: session?.userId,
-  }).catch(() => null);
+  });
 
-  if (!board || board.assets.length === 0) {
+  if (board.assets.length === 0) {
     return (
       <div className="mx-auto w-full max-w-[1280px] px-4 py-6">
         <PageHeader eyebrow={t.market.udStreaming} title={t.market.udTitle} subtitle={t.market.udTagline} />
@@ -101,47 +107,18 @@ export default async function UpDownPage({
         </span>
       </div>
 
-      {/* ── Asset tabs (primary) ─────────────────────────────────────────── */}
-      <nav aria-label={t.market.udAssets} className="mt-4 flex flex-wrap gap-2">
-        {assets.map((a) => {
-          const on = a.key === activeAsset?.key;
-          return (
-            <Link key={a.id} href={href(a.key) as never}
-                  aria-current={on ? "page" : undefined}
-                  className="inline-flex h-9 items-center rounded-md px-4 text-[13.5px] font-semibold transition-colors"
-                  style={{
-                    border: `1px solid ${on ? "var(--brand-500)" : "var(--border)"}`,
-                    background: on ? "var(--pill-active)" : "color-mix(in oklab, var(--bg-elevated) 60%, transparent)",
-                    color: on ? "var(--text)" : "var(--text-muted)",
-                    textDecoration: "none",
-                  }}>
-              {pickLocalized(locale, a.nameEn, a.nameSw, a.nameZh)}
-            </Link>
-          );
-        })}
-      </nav>
-
-      {/* ── Duration tabs (secondary — deliberately quieter) ─────────────── */}
-      {activeAsset && activeAsset.durations.length > 0 && (
-        <nav aria-label={t.market.udDurations} className="mt-2 flex flex-wrap gap-1.5">
-          {activeAsset.durations.map((d) => {
-            const on = d === activeDuration;
-            return (
-              <Link key={d} href={href(activeAsset.key, d) as never}
-                    aria-current={on ? "page" : undefined}
-                    className="inline-flex h-7 items-center rounded-md px-3 font-mono text-[11.5px] transition-colors"
-                    style={{
-                      border: `1px solid ${on ? "var(--border-strong)" : "transparent"}`,
-                      background: on ? "var(--bg-inset)" : "transparent",
-                      color: on ? "var(--text)" : "var(--text-subtle)",
-                      textDecoration: "none",
-                    }}>
-                {d} {t.market.udMin}
-              </Link>
-            );
-          })}
-        </nav>
-      )}
+      {/* ⭐ UD-13 · asset/duration tabs are a FILTER: the client shell below runs the
+          navigation in a transition and keeps the live board on screen (dimmed) while
+          the filtered one streams in — no skeleton flash, no countdown restart. */}
+      <UpDownBoardTabs
+        assetTabs={assets.map((a) => ({ key: a.key, href: href(a.key), label: pickLocalized(locale, a.nameEn, a.nameSw, a.nameZh) }))}
+        durationTabs={activeAsset ? activeAsset.durations.map((d) => ({ d, href: href(activeAsset.key, d) })) : []}
+        activeAssetKey={activeAsset?.key ?? null}
+        activeDuration={activeDuration}
+        assetsLabel={t.market.udAssets}
+        durationsLabel={t.market.udDurations}
+        minLabel={t.market.udMin}
+      >
 
       {/* ── Heartbeat: real outcomes only; hidden entirely when there are none ── */}
       {recent.length > 0 && (
@@ -237,6 +214,7 @@ export default async function UpDownPage({
           </div>
         )}
       </div>
+      </UpDownBoardTabs>
     </div>
   );
 }

@@ -85,12 +85,12 @@ already doing.
 ## 4 · Progress counters (update as you go)
 
 - **Session A (money/ops):** 7 / 7 items done
-- **Session B (Up & Down):** 7 / 22 findings done (Stages 1–2 complete)
+- **Session B (Up & Down):** 14 / 22 findings done (Stages 1–3 complete)
 - **Session C (platform front-end):** 0 / ~17 findings done
 - **Visual set (design):** 1 / 7 done
 - **DS · design-consistency sweep (toasts/popups/modals):** 4 / 27 done
-- **DA · design-system atoms (carried over from design session):** 3 / 12 done (2 need Ali)
-- **TOTAL:** 22 / ~92 done
+- **DA · design-system atoms (carried over from design session):** 4 / 12 done (2 need Ali)
+- **TOTAL:** 30 / ~92 done
 
 ---
 
@@ -125,9 +125,13 @@ already doing.
 - [x] UD-7 in-flight delta map / concurrent-tap rollback — optimistic state is a per-key Map (place adds, failure deletes ITS key, success settles, server advance removes settled only); auth loss (`redirect` → null result) clears silently instead of toasting "Bet not placed" mid-navigation. §30.1–30.4.
 
 **Stage 3 (P1 loaders/transitions/boundaries):**
-- [ ] UD-8 gold Confirm spinner · [ ] UD-9 per-tap in-flight signal + queued escalation
-- [ ] UD-10 NavProgress phantom-bar guards · [ ] UD-13 tab switch keeps board (no skeleton blank)
-- [ ] UD-14 round skeleton matches layout · [ ] UD-15 add `error.tsx` ×3 + stop swallowing · [ ] UD-16 controls are a nav-dead-zone
+- [x] UD-8 gold Confirm spinner — SubmitButton presentation (spinner + `udPlacing` label + aria-busy) on the programmatic gold commit; stays gold.
+- [x] UD-9 per-tap in-flight signal + queued escalation — `pendingSide` spinner inside the tapped button (buttons stay ENABLED — repeat taps = repeat bets untouched); helper line escalates to `udStillPlacing` past ~2.5s via a timestamp ref + one interval cleared on settle. **DA-3 (E-112) folded in**: stake chips carry a `min-h-[40px]` class floor on both sizes + the round-panel preset chips raised from 30 → 40.
+- [x] UD-10 NavProgress phantom-bar guards — bails on defaultPrevented / non-left / modifier clicks, `target≠_self`, `download`, and same pathname+search URLs; no more 8s crawl on a new-tab click or the active nav tab.
+- [x] UD-13 tab switch keeps board — `UpDownBoardTabs` client shell: router.push inside startTransition, board stays mounted and dims (`data-pending` + the kit disabled-opacity token), optimistic aria-current off the pending href; real Links underneath so modified clicks keep browser behaviour; loading.tsx still covers cold entries.
+- [x] UD-14 round skeleton matches layout — mirrors pt-[22px] pb-14, the header row with pod ghost, and the xl 2-column grid (hero ~300px left; pool ~h-40 + action ~h-56 right); proof ghost deliberately absent (A-5).
+- [x] UD-15 `error.tsx` ×3 (/updown, /updown/[roundId], /updown/history — RouteError + retry) + all three data-fetch swallows removed: board outage no longer renders "no games today", a round fetch failure no longer 404s a round holding money, history failure no longer reads "you have no bets". `notFound()` = query succeeded only. generateMetadata's catch stays.
+- [x] UD-16 controls are a nav-dead-zone — the quick-bet block wrapper swallows click + Enter/Space bubbling; header/countdown/stats keep card-as-link.
 
 **Stage 4 (P2):**
 - [ ] UD-11 BackLink nav bar · [ ] UD-12 toast `role=alert` · [ ] UD-17 rollover slot settle (ask Ali a/b)
@@ -188,7 +192,7 @@ already doing.
 **Outstanding named atoms:**
 - [x] DA-1 **Toast** — repaint at elevation rung 4 (M2 says rung 4; it currently paints rung 1); the six variants sit on a flat fill and each hand-writes a border the tints now compose — drive borders from the composed tints, not per-variant literals. *(This IS the core of DS-1 + V-5 + UD-3 — do them as one.)* — DONE with DS-1; contrast corpus rebased onto the wash stops.
 - [ ] DA-2 **The 178 glyphs (M5)** — four glyph primitives exist, zero glyphs use them yet; migrate all 178 onto the primitives.
-- [ ] DA-3 **E-112** — the five Up & Down stake chips render **26px** against the platform's own **40px** money-control floor, and they decide how much a player stakes → raise to the 40px floor. *(Overlaps UD-9 / tap-target work — do together.)*
+- [x] DA-3 **E-112** — the five Up & Down stake chips render **26px** against the platform's own **40px** money-control floor, and they decide how much a player stakes → raise to the 40px floor. *(Overlaps UD-9 / tap-target work — do together.)*
 - [ ] DA-4 **E-114** — the refund toast paints a confirmation **tick** over a returned stake → use the `factual` variant (no tick, no gold). *(Same defect family as UD-12 / the LOSS-toast fix — do together.)*
 - [ ] DA-5 **E-115 · the money atom** — ⛔ crosses into `src/lib/server/`; needs **ledger verification + a fresh money census**. Gate under Session A money rules; full `test:all` before push. Overlaps `.gilt-ink` (DA-7).
 - [ ] DA-6 **ATOM J** — fold M1–M8 into `DESIGN_AUTHORITY.md`, then delete `EXTEND.md` and the merged `material.css` sections. ⚠️ **M6's text must land saying THREE gates — the delivery's wording says two; fix to three.**

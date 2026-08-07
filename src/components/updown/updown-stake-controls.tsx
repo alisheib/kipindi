@@ -18,6 +18,7 @@ import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 import { cn, formatTzs } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { usePlacePulse, type useUpDownQuickBet } from "./use-quick-bet";
@@ -85,9 +86,14 @@ export function UpDownStakeControls({
     fn();
   };
 
+  // ⛔ DA-3 (E-112) · MIN-HEIGHT 40px, both sizes. These chips DECIDE HOW MUCH A PLAYER
+  // STAKES, and they rendered 26px tall against the platform's own 40px money-control
+  // floor — the smallest tap targets on the money path, on the surface most bets are
+  // placed from. The floor is a class on the chip, not a padding retune, so a font or
+  // padding change cannot silently sink it again.
   const chipBase = compact
-    ? "shrink-0 whitespace-nowrap rounded-md px-2 py-1 font-mono text-[10.5px] font-semibold tabular-nums transition-colors"
-    : "shrink-0 whitespace-nowrap rounded-md px-2.5 py-1.5 font-mono text-[11.5px] font-semibold tabular-nums transition-colors";
+    ? "shrink-0 whitespace-nowrap rounded-md px-2 py-1 min-h-[40px] inline-flex items-center justify-center font-mono text-[10.5px] font-semibold tabular-nums transition-colors"
+    : "shrink-0 whitespace-nowrap rounded-md px-2.5 py-1.5 min-h-[40px] inline-flex items-center justify-center font-mono text-[11.5px] font-semibold tabular-nums transition-colors";
   const chipStyle = (on: boolean) => ({
     border: `1px solid ${on ? "var(--border-strong)" : "transparent"}`,
     background: on ? "var(--bg-inset)" : "color-mix(in oklab, var(--bg-inset) 45%, transparent)",
@@ -167,12 +173,15 @@ export function UpDownStakeControls({
           balance cannot cover it (UD-1: a doomed tap is prevented, never round-tripped),
           and once the lock has passed on the server-anchored clock (UD-2). */}
       <div className="grid grid-cols-2 gap-2">
+        {/* UD-9 · the tapped button carries a small spinner while its burst is in flight.
+            The buttons stay ENABLED — repeat taps are repeat bets (Ali's standing
+            decision; the spinner is additive acknowledgement, never a gate). */}
         <button
           type="button" onClick={guard(() => bet.place("UP"))} disabled={!bet.stakeReady || bet.insufficient || bet.locallyLocked}
           className={cn("btn btn-yes btn-lg", !compact && "justify-center", flash && flashSide === "UP" && "ud-side-flash")}
           aria-label={`${t.market.udUp} — ${assetName}${bet.stakeReady ? ` · ${formatTzs(bet.stake)}` : ""}`}
         >
-          <I.trendingUp s={compact ? 14 : 15} /> {t.market.udUp}
+          {bet.pendingSide === "UP" ? <Spinner size={12} /> : <I.trendingUp s={compact ? 14 : 15} />} {t.market.udUp}
           {multUp != null && <span className="font-mono text-[12.5px] opacity-85">× {formatMultiplier(multUp)} est.</span>}
         </button>
         <button
@@ -180,7 +189,7 @@ export function UpDownStakeControls({
           className={cn("btn btn-no btn-lg", !compact && "justify-center", flash && flashSide === "DOWN" && "ud-side-flash")}
           aria-label={`${t.market.udDown} — ${assetName}${bet.stakeReady ? ` · ${formatTzs(bet.stake)}` : ""}`}
         >
-          <I.trendingDown s={compact ? 14 : 15} /> {t.market.udDown}
+          {bet.pendingSide === "DOWN" ? <Spinner size={12} /> : <I.trendingDown s={compact ? 14 : 15} />} {t.market.udDown}
           {multDown != null && <span className="font-mono text-[12.5px] opacity-85">× {formatMultiplier(multDown)} est.</span>}
         </button>
       </div>
@@ -206,7 +215,12 @@ export function UpDownStakeControls({
       ) : (
         <p className={cn("mt-1.5 flex items-center gap-1 leading-[1.45] text-text-faint", compact ? "text-[10px]" : "text-[10.5px]")}>
           {bet.pending
-            ? <><span className="live-dot" /> {formatTzs(bet.stake)} · {t.market.udStreaming}</>
+            // UD-9 · staged: past ~2.5s in flight the line escalates to the queued
+            // message — the admission queue can legitimately hold a bet for seconds,
+            // and the UI must never read as failed while the request is alive.
+            ? bet.pendingSlow
+              ? <><span className="live-dot" /> {t.market.udStillPlacing}</>
+              : <><span className="live-dot" /> {formatTzs(bet.stake)} · {t.market.udStreaming}</>
             : bet.locallyLocked
               ? <>{t.market.udErrSelectionClosed}</>
               : bet.stakeReady

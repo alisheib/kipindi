@@ -64,7 +64,9 @@ export default async function UpDownHistoryPage({ searchParams }: {
   const dayKey = dayWindow ? rawDay : null;   // null ⇒ no filter, no chip, no empty state
   const dayLabel = dayKey ? formatEatDay(dayKey, t.common.monthsShort, locale) : null;
 
-  const allRows = await getMyUpDownHistory(session.userId, 400).catch(() => []);
+  // ⛔ UD-15 · no swallow: a failed read must never render as "you have no bets"
+  // (B-1's exact defect class, on a money history). Throws reach error.tsx.
+  const allRows = await getMyUpDownHistory(session.userId, 400);
   // Filter on `settledAt` when the round has settled, and on `placedAt` while it
   // has not — the digest bins by settlement, and a still-open round has no
   // settlement to bin by but is still part of the day the player was playing.

@@ -80,7 +80,11 @@ export default async function UpDownRoundPage({
   const session = await currentSession();
   // Who is looking? The raw provider blob below is an officer tool, not player copy.
   const viewerIsStaff = isStaffRole(session?.role ?? "");
-  const detail = await getRoundDetail(roundId, session?.userId).catch(() => null);
+  // ⛔ UD-15 · the `.catch(() => null)` is GONE: it turned a transient failure into a
+  // 404 — telling a player their round DOES NOT EXIST while their money is in it.
+  // `notFound()` is now strictly "the query succeeded and no such round exists";
+  // every real throw reaches this route's error.tsx with a retry.
+  const detail = await getRoundDetail(roundId, session?.userId);
   if (!detail) notFound();
 
   const { round, asset, proof, priceSeries, myPosition, minStake, maxStake } = detail;

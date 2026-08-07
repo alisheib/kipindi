@@ -86,10 +86,27 @@ export function NavProgress() {
   // Listen for clicks on internal links
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
-      const anchor = (e.target as HTMLElement).closest("a[href]");
+      // ⛔ UD-10 · A BAR IS A PROMISE THAT A NAVIGATION IS HAPPENING. Every case below
+      // is a click that does NOT navigate this page, and each one used to start an 8s
+      // phantom crawl to 85% (the completion effect only fires when pathname+search
+      // change): modifier/middle clicks open a NEW tab; `target` sends the navigation
+      // elsewhere; `download` saves a file; a link to the CURRENT URL changes nothing.
+      if (e.defaultPrevented) return;
+      if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const anchor = (e.target as HTMLElement).closest("a[href]") as HTMLAnchorElement | null;
       if (!anchor) return;
+      if (anchor.target && anchor.target !== "_self") return;
+      if (anchor.hasAttribute("download")) return;
       const href = anchor.getAttribute("href");
       if (!href || href.startsWith("http") || href.startsWith("//") || href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:") || href.startsWith("sms:")) return;
+      // Same-URL click (e.g. the active bottom-nav tab): Next treats it as a no-op —
+      // no route change, no completion — so the bar must not start. Hash-only
+      // differences on the same path do not navigate either (the startsWith("#")
+      // check above already covers the bare-fragment form).
+      try {
+        const dest = new URL(href, window.location.href);
+        if (dest.pathname + dest.search === window.location.pathname + window.location.search) return;
+      } catch { /* unparseable href — let the bar start; worse is a stuck promise, not a missing one */ }
       // Internal navigation — start the bar
       startBar();
     };

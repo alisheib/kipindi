@@ -15,6 +15,7 @@
  */
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 import { cn, formatTzs } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { useUpDownQuickBet, usePlacePulse } from "./use-quick-bet";
@@ -151,7 +152,7 @@ export function RoundStakePanel(props: {
               onClick={() => bet.setStakeIdx(i)} title={formatTzs(s)}
               className="font-mono text-[11px] font-semibold tabular-nums transition-colors"
               style={{
-                flex: 1, height: 30, borderRadius: "var(--r-sm)",
+                flex: 1, minHeight: 40, // DA-3 (E-112) · the 40px money-control floor borderRadius: "var(--r-sm)",
                 border: `1px solid ${on ? "var(--brand-500)" : "var(--border)"}`,
                 background: on ? "var(--pill-active)" : "color-mix(in oklab, var(--bg-elevated) 60%, transparent)",
                 color: on ? "var(--text)" : "var(--text-muted)",
@@ -166,7 +167,7 @@ export function RoundStakePanel(props: {
           onClick={() => (bet.customMode ? bet.exitCustom() : bet.enterCustom())}
           className="inline-flex items-center justify-center gap-0.5 font-mono text-[11px] font-semibold transition-colors"
           style={{
-            flex: 1, height: 30, borderRadius: "var(--r-sm)",
+            flex: 1, minHeight: 40, // DA-3 (E-112) · the 40px money-control floor borderRadius: "var(--r-sm)",
             border: `1px solid ${bet.customMode ? "var(--brand-500)" : "var(--border)"}`,
             background: bet.customMode ? "var(--pill-active)" : "color-mix(in oklab, var(--bg-elevated) 60%, transparent)",
             color: bet.customMode ? "var(--text)" : "var(--text-muted)",
@@ -193,16 +194,30 @@ export function RoundStakePanel(props: {
 
       {/* The one money commit on this page — gold, because this is the commit.
           Disabled when the known balance cannot cover the stake (UD-1) or the lock has
-          passed (UD-2) — a doomed tap is prevented here, never round-tripped. */}
+          passed (UD-2) — a doomed tap is prevented here, never round-tripped.
+          ⭐ UD-8 · and it WORKS while it works: the SubmitButton presentation (spinner +
+          pending label + aria-busy) on a programmatic action. Under load a bet may
+          legitimately queue up to 15s in admission — 15s of a dead-looking gold button
+          was the defect. Stays gold; a pending commit is still the commit. */}
       <button
         type="button" onClick={() => bet.place(lockedSide)}
         disabled={!bet.stakeReady || bet.pending || bet.insufficient || bet.locallyLocked}
+        aria-busy={bet.pending}
         className="btn btn-gold btn-lg mt-3 w-full justify-center"
         style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
         aria-label={`${t.market.udConfirm} ${pickWord} · ${formatTzs(bet.stake)}`}
       >
-        <span>{t.market.udConfirm} {pickWord}</span>
-        {bet.stakeReady && <span className="font-mono" style={{ fontWeight: 600, opacity: 0.85 }}>{formatTzs(bet.stake)}</span>}
+        {bet.pending ? (
+          <>
+            <Spinner size={14} />
+            <span>{t.market.udPlacing}</span>
+          </>
+        ) : (
+          <>
+            <span>{t.market.udConfirm} {pickWord}</span>
+            {bet.stakeReady && <span className="font-mono" style={{ fontWeight: 600, opacity: 0.85 }}>{formatTzs(bet.stake)}</span>}
+          </>
+        )}
       </button>
       {/* UD-1 · the inline reason + the deposit route — same factual register as the
           empty-side note (info glyph, faint ink): a fact about the wallet, not an alarm. */}

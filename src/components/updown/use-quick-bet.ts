@@ -128,6 +128,35 @@ export function useUpDownQuickBet(opts: {
   const [pending, startBet] = useTransition();
   const { toast } = useToast();
 
+  // ── UD-9 · the per-tap acknowledgement + the queued escalation ─────────────
+  //
+  // The side buttons stay ENABLED while pending — repeat taps are repeat bets (Ali's
+  // standing decision; do not debounce). What was missing is acknowledgement: on a slow
+  // link the only in-flight signal was a helper-line dot. `pendingSide` names the last
+  // tapped side so THAT button can carry a small spinner, and `pendingSlow` trips once
+  // a burst has been in flight beyond ~2.5s (admission can legitimately queue a bet for
+  // seconds) so the helper line can escalate to "still placing — your tap is queued".
+  // ⛔ Driven off a timestamp ref read by one interval cleared on settle — never a
+  // setTimeout that *schedules a message* (the falling edge clears everything).
+  const [pendingSide, setPendingSide] = useState<"UP" | "DOWN" | null>(null);
+  const [pendingSlow, setPendingSlow] = useState(false);
+  const pendingStartRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!pending) {
+      pendingStartRef.current = null;
+      setPendingSlow(false);
+      setPendingSide(null);
+      return;
+    }
+    pendingStartRef.current ??= Date.now();
+    const id = setInterval(() => {
+      if (pendingStartRef.current != null && Date.now() - pendingStartRef.current > 2_500) {
+        setPendingSlow(true);
+      }
+    }, 500);
+    return () => clearInterval(id);
+  }, [pending]);
+
   // ── UD-1/UD-2/UD-3 · pre-flight + refusal state ────────────────────────────
   //
   // A tap that cannot succeed must never look like a placed bet: these gates refuse
@@ -217,6 +246,7 @@ export function useUpDownQuickBet(opts: {
     // Optimistic first — the tap feels instant even before the round-trip returns.
     // The entry is THIS tap's; only this tap's outcome can remove or settle it (UD-7).
     mutateInFlight((m) => m.set(key, { side, amount, settled: false }));
+    setPendingSide(side); // UD-9 · the tapped button carries the acknowledgement
     startBet(async () => {
       const fd = new FormData();
       fd.set("marketId", marketId);
@@ -295,6 +325,11 @@ export function useUpDownQuickBet(opts: {
     min, max, customMode, customValue, setCustomValue, customValid, enterCustom, exitCustom,
     // feedback
     justPlaced, liveMessage,
+    // UD-9 · per-tap acknowledgement + slow-burst escalation
+    /** The last tapped side while a burst is in flight — that button shows a spinner. */
+    pendingSide: pending ? pendingSide : null,
+    /** A burst has been in flight > ~2.5s (admission queue) — escalate the helper line. */
+    pendingSlow: pending && pendingSlow,
     // pre-flight + refusal state (UD-1/UD-2/UD-3)
     /** True when the chosen stake exceeds the KNOWN balance — surfaces disable + explain. */
     insufficient,

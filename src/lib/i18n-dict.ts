@@ -723,6 +723,7 @@ export const dict = {
       udInsufficientBalance: "Not enough balance for this stake.",
       udDepositCta: "Deposit",
       udPlacing: "Placing…",
+      udStillPlacing: "Still placing — busy moment, your tap is queued.",
       udSignInToBet: "Sign in to bet", udTapToBet: "Tap Up or Down to bet",
       udCustom: "Custom", udCustomAmount: "Custom stake amount", udStakeRange: "Outside the allowed range", udEnterStake: "Enter a stake to bet",
       // ── Up & Down · D3 round detail ──────────────────────────────────────
@@ -2136,6 +2137,7 @@ export const dict = {
       udInsufficientBalance: "Salio halitoshi kwa dau hili.",
       udDepositCta: "Weka pesa",
       udPlacing: "Inaweka…",
+      udStillPlacing: "Bado inaweka — mfumo una shughuli, mguso wako uko kwenye foleni.",
       udSignInToBet: "Ingia ili kuweka dau", udTapToBet: "Gusa Juu au Chini kuweka dau",
       udCustom: "Maalum", udCustomAmount: "Kiasi maalum cha dau", udStakeRange: "Nje ya kiwango kinachoruhusiwa", udEnterStake: "Weka kiasi kucheza",
       // ── Up & Down · D3 round detail ──────────────────────────────────────
@@ -3521,6 +3523,7 @@ export const dict = {
       udInsufficientBalance: "余额不足，无法下此注。",
       udDepositCta: "充值",
       udPlacing: "下注中…",
+      udStillPlacing: "仍在下注——系统繁忙，您的操作已排队。",
       udSignInToBet: "登录后下注", udTapToBet: "点击涨或跌下注",
       udCustom: "自定义", udCustomAmount: "自定义投注额", udStakeRange: "超出允许范围", udEnterStake: "输入投注额",
       // ── Up & Down · D3 round detail ──────────────────────────────────────
