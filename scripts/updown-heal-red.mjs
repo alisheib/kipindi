@@ -20,6 +20,24 @@ const FEED = new URL("../src/lib/server/updown-feed.ts", import.meta.url);
 
 const MUTATIONS = [
   {
+    // ⭐ E-63 · THE SEAL ITSELF. Deleting the open-side backfill reverts the healer to
+    // voiding a round whose confirmed open observation sits in the ledger — SOL's
+    // 199-of-201, the defect this seal exists to make impossible to reintroduce.
+    name: "open-backfill-deleted — a confirmed open observation is ignored and the round voids again",
+    file: SERVICE,
+    from: `  let subject = round;
+  if (subject.openPrice == null) {`,
+    to: `  let subject = round;
+  if (false && subject.openPrice == null) {`,
+  },
+  {
+    // The provenance half: money-relevant stamps with no compliance row of their own.
+    name: "open-backfill-unaudited — the stamp happens but the compliance record cannot answer who priced the round",
+    file: SERVICE,
+    from: `          action: "updown.round.open_backfilled",`,
+    to: `          action: "updown.round.healed",`,
+  },
+  {
     // ⛔ THE HOLE ITSELF. Without the touch, `lastAttemptAt` stays null for a carved-out
     // refusal, the backoff gate is skipped, and the metered provider is re-read every tick.
     name: "uncharged-read-not-recorded — the ladder is skipped and the provider is re-dialled",

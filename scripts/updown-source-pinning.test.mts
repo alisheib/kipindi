@@ -98,13 +98,21 @@ ok("⛔ the IN-MEMORY store enforces the SAME allowlist",
   (dal.match(/is not a patchable column/g) ?? []).length >= 2,
   "a fake more permissive than production makes a green suite prove nothing");
 
-ok("computeTargets is called in exactly ONE place",
-  (service.match(/computeTargets\(/g) ?? []).length === 1);
+// ⛔ UPDATED 2026-08-07 — TWO sanctioned sites now, not one. The E-63 seal gave the healer
+// a from-null open backfill, and it must price the targets at the round's OWN frozen
+// marginBps; that is a second `computeTargets` call with the same freeze discipline
+// (claim-the-row, `WHERE openPrice IS NULL`), not a second definition of the line. Any
+// THIRD site is still the drift this check exists to stop.
+ok("computeTargets is called in exactly TWO places — the open, and the healer's from-null backfill",
+  (service.match(/computeTargets\(/g) ?? []).length === 2);
 const open  = bodyOf(service, "export async function openRound(");
 const close = bodyOf(service, "export async function closeRound(");
+const healOne = bodyOf(service, "async function healOneRound(");
 ok("openRound was found", open.length > 0);
 ok("closeRound was found", close.length > 0);
-ok("…and that one place is openRound", open.includes("computeTargets("));
+ok("…one site is openRound", open.includes("computeTargets("));
+ok("…the other is the healer's backfill, priced at the round's OWN frozen marginBps — never live config",
+  healOne.includes("computeTargets(openObs.price, subject.marginBps"));
 ok("closeRound never recomputes the line — it reads the frozen targets",
   !close.includes("computeTargets(") && close.includes("round.upTarget") && close.includes("round.downTarget"));
 

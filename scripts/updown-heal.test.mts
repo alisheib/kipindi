@@ -61,7 +61,11 @@ import { isRateLimit } from "../src/lib/server/updown-feed.ts";
 import {
   openRound, closeRound, advanceChain, healStuckRounds, voidRoundByOperator, acquireObservation,
   settlementNote,
+  // E-63 — the seal's verdict arithmetic, proven per live asset in §2c.
+  decideOutcomeByTargets,
 } from "../src/lib/server/updown-service.ts";
+import { computeTargets } from "../src/lib/server/updown-config.ts";
+import { findSymbol } from "../src/lib/server/updown-symbols.ts";
 import { marketStore } from "../src/lib/server/market-dal.ts";
 import { buyPosition, listPositionsForMarket } from "../src/lib/server/market-service.ts";
 import { addSource, seedDefaultSources } from "../src/lib/server/source-registry.ts";
@@ -299,6 +303,135 @@ let strandedMarketId = "";
   ok("2.23 · it records how late the round was", typeof p.lateBySeconds === "number", JSON.stringify(p.lateBySeconds));
   ok("2.24 · and whether the money actually moved", p.settled === true, JSON.stringify(p.settled));
   ok("2.25 · it never claims a price was observed", p.closePrice === null, JSON.stringify(p.closePrice));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 2c · ⭐ E-63 · THE OPEN-SIDE BACKFILL — the round gets the open it already paid for
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// SOL 5m voided 199 of 201 rounds while a CONFIRMED observation sat at each round's own
+// `opensAt` — the price the round needed was in the database, confirmed, and the round
+// refunded for want of it (`decideOutcome*` answers `source-failed` to a null ROUND
+// price, not to a missing observation). The PRODUCING mechanism is closed — E-83 made
+// `advanceChain` refuse to open a priceless round, `generateRoundNow` always refused, and
+// the 176 legacy rows were cascade-deleted — so no current code can create the shape.
+// This section is the SEAL: if it ever reappears (a new caller, a restore, a regression),
+// the healer must stamp the open the round already paid for and let the ordinary close
+// path deliver the verdict the market produced, instead of refunding it.
+//
+// ⚠️ THE CONTROL IS §2 ABOVE, UNCHANGED: a null-open round with NO confirmed open
+// observation still voids `source-failed` and refunds in full (2.10–2.18). Together the
+// two sections say: the healer never invents a price — and never discards one either.
+{
+  const opened = await openRound(chain, B(80), null, null); // E-63's shape, verbatim
+  if (!opened.ok) throw new Error(opened.error);
+  const r0 = (await roundStore.get(opened.data.id))!;
+  ok("2c.1 · the E-63 shape: open, priceless, targetless",
+     r0.openPrice === null && r0.upTarget === null && r0.downTarget === null);
+
+  // Two sides, so the verdict pays a winner and charges a loser — a one-sided round
+  // would refund whatever the prices did and prove nothing about the verdict.
+  // ⚠️ FRESH USERS, not alpha/bravo: this is the one section whose money moves
+  // DECISIVELY (a fee is kept), and §6–§9 assert alpha's and bravo's balances to the
+  // shilling on the premise that every earlier section refunded in full.
+  const charlie = await fundedUser("heal_charlie", START_BALANCE);
+  const delta = await fundedUser("heal_delta", START_BALANCE);
+  const aBefore = await balanceOf(charlie), bBefore = await balanceOf(delta);
+  const betUp = await buyPosition(charlie, { marketId: r0.marketId, side: "YES", stake: 1_000 });
+  const betDn = await buyPosition(delta, { marketId: r0.marketId, side: "NO", stake: 1_000 });
+  ok("2c.2 · both sides carry real stakes", betUp.ok && betDn.ok,
+     `${betUp.ok ? "" : betUp.error} ${betDn.ok ? "" : betDn.error}`);
+
+  // The CONFIRMED observation at the round's own `opensAt` — the row production had 178
+  // of on SOL alone, every one ignored.
+  const OPEN_PRICE = 63_268.0;
+  const openObs = await observationStore.ensure(asset.id, r0.opensAt);
+  const won = await observationStore.confirm(openObs.id, {
+    price: OPEN_PRICE, sourceUrl: asset.priceSourceUrl, sourceQuotedAt: r0.opensAt,
+    evidence: null, confidence: 100, model: null, rawHash: null,
+  });
+  ok("2c.3 · the open observation is CONFIRMED with a price", won);
+
+  // A confirmed close strictly beyond the up target the backfill must compute — the
+  // market delivered a decisive UP, at the round's OWN frozen marginBps.
+  const expected = computeTargets(OPEN_PRICE, r0.marginBps!, asset);
+  const CLOSE_PRICE = Number((expected.upTarget + 5).toFixed(2));
+  const closeObs = await observationStore.ensure(asset.id, r0.boundaryAt);
+  await observationStore.confirm(closeObs.id, {
+    price: CLOSE_PRICE, sourceUrl: asset.priceSourceUrl, sourceQuotedAt: r0.boundaryAt,
+    evidence: null, confidence: 100, model: null, rawHash: null,
+  });
+
+  // Heal INSIDE the window (60s past the boundary), exactly as the lifecycle ticker would.
+  const report = await healStuckRounds({ now: Date.parse(r0.boundaryAt) + 60 * SEC });
+  ok("2c.4 · the healer RESOLVED it — nothing was voided", report.resolved >= 1 && report.voided === 0,
+     JSON.stringify(report));
+
+  const healed = (await roundStore.get(r0.id))!;
+  // ⭐ ALL FOUR, as the campaign's session-31 seal spec demands:
+  ok("2c.5 · ① openPrice is the confirmed observation's, to the digit",
+     healed.openPrice === OPEN_PRICE, String(healed.openPrice));
+  ok("2c.6 · ② both targets computed at the round's own frozen marginBps",
+     healed.upTarget === expected.upTarget && healed.downTarget === expected.downTarget,
+     `${healed.downTarget}…${healed.upTarget} vs ${expected.downTarget}…${expected.upTarget}`);
+  ok("2c.7 · ③ the outcome is DECISIVE — UP, the verdict the market delivered",
+     healed.outcome === "UP", String(healed.outcome));
+  ok("2c.8 · ④ voidReason is null — nothing about this round failed",
+     healed.voidReason === null, String(healed.voidReason));
+  ok("2c.9 · the observation id is stamped, so source-pinning covered the backfill too",
+     healed.openObservationId === openObs.id, String(healed.openObservationId));
+  ok("2c.10 · the round is terminal and its money moved", !!healed.resolvedAt && !!healed.settledAt);
+
+  // ── THE LEDGER PROOF. UP won: the winner is paid the pool minus the fee, never below
+  // stake (the winner floor); the loser's stake is gone; the two deltas net to exactly
+  // what the house kept, and the house can never keep more than a third of the smaller
+  // side (the fee rule, frozen per poll).
+  const aAfter = await balanceOf(charlie), bAfter = await balanceOf(delta);
+  const payout = aAfter - (aBefore - 1_000);
+  const houseTake = 2_000 - payout;
+  ok("2c.11 · the winner is paid at least their stake back", payout >= 1_000, `payout ${payout}`);
+  ok("2c.12 · the loser's stake is gone — this was a verdict, not a refund",
+     bAfter === bBefore - 1_000, `${bBefore} → ${bAfter}`);
+  ok("2c.13 · conservation: winner credit + loser debit net to the house take, ≤ ⅓ of the smaller side",
+     houseTake >= 0 && houseTake <= Math.ceil(1_000 / 3), `house ${houseTake}`);
+
+  // ── The compliance record answers "who put a price on a live round" ────────
+  const rows = getAuditPage({ limit: 1000 }).filter((e) => e.action === "updown.round.open_backfilled");
+  const mine = rows.find((e) => e.targetId === r0.id);
+  ok("2c.14 · a `updown.round.open_backfilled` audit row names the round", !!mine);
+  ok("2c.15 · it is the healer's act, COMPLIANCE category",
+     mine?.actorId === "system_updown_healer" && mine?.category === "COMPLIANCE",
+     `${mine?.actorId} ${mine?.category}`);
+  const bp = (mine?.payload ?? {}) as Record<string, unknown>;
+  ok("2c.16 · it records the price and both targets it stamped",
+     bp.openPrice === OPEN_PRICE && bp.upTarget === expected.upTarget && bp.downTarget === expected.downTarget,
+     JSON.stringify({ p: bp.openPrice, u: bp.upTarget, d: bp.downTarget }));
+}
+
+// ── 2c-b · the seal's arithmetic holds for ALL FOUR live Twelve Data assets ──
+//
+// The lifecycle above proves the backfill end-to-end once; what differs per asset is the
+// TARGET ARITHMETIC (decimals, tick floors — BTC's $0.02 against gold's $0.40). Sweep the
+// four real catalogue specs at the measured ladder's tightest band (2 bps): the band must
+// never collapse below the asset's own tick floor, and the stored targets must decide
+// UP / DOWN / VOID exactly at their boundaries — the pari-mutuel signature the seal
+// restores on every asset equally.
+{
+  const CASES: readonly [string, number][] = [
+    ["BTC/USD", 63_268.12], ["ETH/USD", 2_456.78], ["SOL/USD", 72.46], ["XAU/USD", 2_408.55],
+  ];
+  for (const [symbol, price] of CASES) {
+    const spec = findSymbol(symbol);
+    if (!spec) { ok(`2c-b · ${symbol} is in the catalogue`, false); continue; }
+    const t = computeTargets(price, 2, spec);
+    const tick = spec.minMoveTicks * Math.pow(10, -spec.decimals);
+    const up = decideOutcomeByTargets(t.upTarget, t.upTarget, t.downTarget).outcome;
+    const dn = decideOutcomeByTargets(t.downTarget, t.upTarget, t.downTarget).outcome;
+    const mid = decideOutcomeByTargets(price, t.upTarget, t.downTarget).outcome;
+    ok(`2c-b · ${symbol}: band ≥ its own tick floor and targets decide UP/DOWN/VOID at their boundaries`,
+       t.margin >= tick && up === "UP" && dn === "DOWN" && mid === "VOID",
+       `margin ${t.margin} tick ${tick} · ${up}/${dn}/${mid}`);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

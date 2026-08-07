@@ -312,6 +312,20 @@ export interface RoundStore {
   resolvedUnsettled(limit: number): Promise<StoredRound[]>;
   create(r: StoredRound): Promise<void>;
   patch(id: string, fields: Partial<StoredRound>): Promise<void>;
+  /**
+   * ⭐ E-63 · CLAIM-THE-ROW open backfill — the ONE sanctioned write to the frozen line.
+   *
+   * The open price, its observation and both targets are create-only everywhere else
+   * (`patch` refuses them), because a later write could move a live round's boundaries.
+   * The single legitimate exception is the healer giving a priceless round the open it
+   * already paid for — and only FROM null: conditional on `openPrice IS NULL`, so a round
+   * that has a price can never have it replaced by anyone, including the healer racing a
+   * second instance of itself. Returns false when it did not win the claim.
+   */
+  backfillOpen(id: string, fields: {
+    openPrice: number; openObservationId: string;
+    upTarget: number | null; downTarget: number | null;
+  }): Promise<boolean>;
 }
 
 export interface ObservationStore {
@@ -466,6 +480,13 @@ const memoryRounds: RoundStore = {
     }
     const cur = memRounds.get(id);
     if (cur) memRounds.set(id, { ...cur, ...fields, updatedAt: new Date().toISOString() });
+  },
+  async backfillOpen(id, fields) {
+    // The in-memory mirror of the conditional UPDATE ... WHERE openPrice IS NULL.
+    const cur = memRounds.get(id);
+    if (!cur || cur.openPrice != null) return false;
+    memRounds.set(id, { ...cur, ...fields, updatedAt: new Date().toISOString() });
+    return true;
   },
 };
 
@@ -701,6 +722,19 @@ const prismaRounds: RoundStore = {
     }
     if (Object.keys(data).length === 0) return;
     await pc().upDownRound.update({ where: { id }, data });
+  },
+  async backfillOpen(id, fields) {
+    // Conditional on the row still being priceless — the same claim-the-row shape every
+    // money write uses, so a second healer instance (or a re-run) cannot overwrite a
+    // price that may already have been used.
+    const r = await pc().upDownRound.updateMany({
+      where: { id, openPrice: null },
+      data: {
+        openPrice: fields.openPrice, openObservationId: fields.openObservationId,
+        upTarget: fields.upTarget, downTarget: fields.downTarget,
+      },
+    });
+    return r.count === 1;
   },
 };
 

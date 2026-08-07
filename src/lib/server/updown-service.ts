@@ -1143,11 +1143,70 @@ async function healOneRound(
     return (await finishRound(round, null, null, "operator", "chain or asset no longer exists", now)) ? "voided" : "failed";
   }
 
-  const elapsedSec = Math.round((now - Date.parse(round.boundaryAt)) / 1000);
-  const observation = await observationStore.find(asset.id, round.boundaryAt);
+  // ── ⭐ E-63 · THE OPEN-SIDE BACKFILL — the seal on a dormant gap ────────────
+  //
+  // `decideOutcome`/`decideOutcomeByTargets` return `source-failed` when the ROUND's own
+  // `openPrice` is null — not when an observation is missing. On production that voided
+  // 199 of 201 SOL rounds while a CONFIRMED observation for each round's own `opensAt`
+  // sat in the ledger: the price the round needed was in the database, confirmed, and the
+  // round refunded for want of it. The PRODUCING path is closed (E-83: `advanceChain`
+  // refuses to open a priceless round; `generateRoundNow` always has; the 176 legacy rows
+  // were cascade-deleted) — so this branch is the guarantee that if the shape EVER appears
+  // again (a new caller, a restore, a regression), the healer gives the round the open it
+  // already paid for instead of voiding it.
+  //
+  // Stamp price + observation + the targets computed at the round's OWN frozen `marginBps`
+  // — never live config, so retuning a band cannot reprice a round already carrying
+  // stakes. A null-open round with NO confirmed open observation is left exactly as it
+  // was: it voids `source-failed` below and every stake is refunded in full. The close
+  // path's source-pinning check covers the backfilled observation too, because the id is
+  // stamped onto the row the same as an on-time open.
+  let subject = round;
+  if (subject.openPrice == null) {
+    const openObs = await observationStore.find(asset.id, subject.opensAt);
+    if (openObs?.state === "CONFIRMED" && openObs.price != null) {
+      const targets = subject.marginBps != null ? computeTargets(openObs.price, subject.marginBps, asset) : null;
+      // Claim-the-row (`WHERE openPrice IS NULL`), not `patch` — the frozen line is
+      // create-only everywhere else and stays that way; losing the claim means another
+      // instance already stamped it, and their write stands.
+      const claimed = await roundStore.backfillOpen(subject.id, {
+        openPrice: openObs.price,
+        openObservationId: openObs.id,
+        upTarget: targets?.upTarget ?? null,
+        downTarget: targets?.downTarget ?? null,
+      });
+      subject = (await roundStore.get(subject.id)) ?? subject;
+      if (claimed) {
+        // Provenance, not decoration: targets appearing on a live round after open is a
+        // money-relevant stamp change and must be answerable from the compliance record.
+        // A distinct action (not `updown.round.healed`) because no verdict is being made
+        // here — the round goes on to resolve or void through the ordinary paths below.
+        audit({
+          category: "COMPLIANCE",
+          action: "updown.round.open_backfilled",
+          actorId: "system_updown_healer",
+          targetType: "UpDownRound",
+          targetId: subject.id,
+          payload: {
+            chainId: subject.chainId, marketId: subject.marketId, roundNumber: subject.roundNumber,
+            opensAt: subject.opensAt, boundaryAt: subject.boundaryAt,
+            openPrice: openObs.price, openObservationId: openObs.id,
+            upTarget: subject.upTarget, downTarget: subject.downTarget, marginBps: subject.marginBps,
+            note:
+              "The round was open without an open price while a confirmed observation existed " +
+              "at its own open boundary. The healer stamped the price the round had already " +
+              "paid for; the verdict still comes from the ordinary close path.",
+          },
+        });
+      }
+    }
+  }
+
+  const elapsedSec = Math.round((now - Date.parse(subject.boundaryAt)) / 1000);
+  const observation = await observationStore.find(asset.id, subject.boundaryAt);
 
   // ── PAST THE DEADLINE ──────────────────────────────────────────────────────
-  if (now - Date.parse(round.boundaryAt) >= deadlineMs) {
+  if (now - Date.parse(subject.boundaryAt) >= deadlineMs) {
     // ⭐ THE LATE CLOSE, AND IT IS THE WHOLE POINT OF THE SETTLEMENT REBUILD.
     //
     // This branch used to void WITHOUT RE-READING, on a premise that was true and has
@@ -1172,13 +1231,13 @@ async function healOneRound(
       // nothing left to wait for) and the attempt budget (which rations reads that CANNOT
       // succeed; this one can). It cannot revive a FAILED observation: the ledger is
       // write-once per (assetId, boundaryAt) and that guarantee is not being relaxed.
-      const late = await acquireObservation(asset, round.boundaryAt, now, { pastDeadline: true });
+      const late = await acquireObservation(asset, subject.boundaryAt, now, { pastDeadline: true });
       if (late.state === "confirmed") {
-        auditHealed(round, "resolved", {
+        auditHealed(subject, "resolved", {
           detail: `settled from a dated reading ${elapsedSec}s after the boundary — a late close is no longer a void`,
           lateBySeconds: elapsedSec, observationId: late.id, price: late.price,
         });
-        return (await finishRound(round, late.id, late.price, "source-failed", `dated reading applied ${elapsedSec}s late`, now)) ? "resolved" : "failed";
+        return (await finishRound(subject, late.id, late.price, "source-failed", `dated reading applied ${elapsedSec}s late`, now)) ? "resolved" : "failed";
       }
       // Fall through and void — but with the reason the reader actually gave, not a
       // manufactured one. `no-bar` past the grace, an implausible print, or a shut market
@@ -1195,17 +1254,17 @@ async function healOneRound(
     const fresh = observation ? await observationStore.get(observation.id) : null;
     if (fresh && fresh.state === "CONFIRMED" && fresh.price != null) {
       // It confirmed between our read and our write. Use the real price.
-      return (await finishRound(round, fresh.id, fresh.price, "source-failed", `late confirmation, ${elapsedSec}s after the boundary`, now)) ? "resolved" : "failed";
+      return (await finishRound(subject, fresh.id, fresh.price, "source-failed", `late confirmation, ${elapsedSec}s after the boundary`, now)) ? "resolved" : "failed";
     }
-    return (await finishRound(round, observation?.id ?? null, null, "source-failed", `no confirmed reading ${elapsedSec}s after the boundary`, now)) ? "voided" : "failed";
+    return (await finishRound(subject, observation?.id ?? null, null, "source-failed", `no confirmed reading ${elapsedSec}s after the boundary`, now)) ? "voided" : "failed";
   }
 
   // ── INSIDE THE WINDOW: run the ladder that has never run ───────────────────
   if (observation?.state === "CONFIRMED" && observation.price != null) {
-    return (await finishRound(round, observation.id, observation.price, "source-failed", "confirmed reading applied by the healer", now)) ? "resolved" : "failed";
+    return (await finishRound(subject, observation.id, observation.price, "source-failed", "confirmed reading applied by the healer", now)) ? "resolved" : "failed";
   }
   if (observation?.state === "FAILED") {
-    return (await finishRound(round, observation.id, null, "source-failed", observation.failReason ?? "boundary failed", now)) ? "voided" : "failed";
+    return (await finishRound(subject, observation.id, null, "source-failed", observation.failReason ?? "boundary failed", now)) ? "voided" : "failed";
   }
 
   // ── THE LADDER, climbed by the ONE thing that climbs it ────────────────────
@@ -1224,12 +1283,12 @@ async function healOneRound(
   // This call is also what actually advances `attempts`, and therefore what eventually
   // reaches `maxObservationAttempts` and fails the boundary. Nothing else in the system does.
   // `now` is handed down so the gate judges the same instant this sweep does.
-  const acquired = await acquireObservation(asset, round.boundaryAt, now);
+  const acquired = await acquireObservation(asset, subject.boundaryAt, now);
   if (acquired.state === "confirmed") {
-    return (await finishRound(round, acquired.id, acquired.price, "source-failed", "confirmed on a ladder retry", now)) ? "resolved" : "failed";
+    return (await finishRound(subject, acquired.id, acquired.price, "source-failed", "confirmed on a ladder retry", now)) ? "resolved" : "failed";
   }
   if (acquired.state === "failed") {
-    return (await finishRound(round, acquired.id, null, "source-failed", acquired.detail, now)) ? "voided" : "failed";
+    return (await finishRound(subject, acquired.id, null, "source-failed", acquired.detail, now)) ? "voided" : "failed";
   }
   return "waiting";
 }
