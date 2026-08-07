@@ -47,9 +47,11 @@ const ROOT = process.env.BUNDLE_ROOT ?? new URL("..", import.meta.url).pathname.
 
 let FILES = [];
 let css = "";
+let markup = "";
 if (LIVE) {
   console.log(`bundle-css-probe: reading PRODUCTION ${BASE}`);
   const html = await (await fetch(BASE, { headers: { "cache-control": "no-cache" } })).text();
+  markup = html;
   // Next emits the app's stylesheets as <link rel="stylesheet" href="/_next/static/…">.
   const hrefs = [...new Set([...html.matchAll(/href="(\/_next\/static\/[^"]+\.css)"/g)].map((m) => m[1]))];
   if (hrefs.length === 0) {
@@ -179,15 +181,51 @@ const EXPECT = [
    */
   { atom: "E", must: /--edge-lit:/, what: "`--edge-lit` ships — seven .tsx lamps were converted to reference it or an even ring" },
   { atom: "E", must: /--edge-lit-strong:/, what: "`--edge-lit-strong` ships — the active/rest pairing in the top bar depends on it" },
+  /**
+   * ⭐ THE MARKUP HALF — the only thing that can detect a `.tsx` deploy. These read the
+   * served HTML, which is where an inline style ends up. ⛔ The two `mustNot`s are the pins
+   * that matter: they are the exact old values, so if a revert or a stale rollout puts them
+   * back, the deploy detector says so instead of reporting 44/44 on an unrelated stylesheet.
+   */
+  { atom: "E", where: "html", must: /var\(--edge-lit-strong\)/, what: "⭐ the served MARKUP carries the bottom nav's even ring (the .tsx deploy actually landed)" },
+  { atom: "E", where: "html", must: /var\(--edge-lit\)/, what: "…and the top bar's rest-state even ring" },
+  { atom: "E", where: "html", mustNot: /inset 0 1px 0 oklch\(100% 0 0 \/ 0\.12\)/, what: "⛔ the bottom nav's pure-white top-only line stays gone" },
+  { atom: "E", where: "html", mustNot: /inset 0 -1px 0 oklch\(0% 0 0 \/ 0\.20\)/, what: "⛔ …and its bottom shade, the other half of the bevel M1 bans" },
+  { atom: "E", where: "html", mustNot: /inset 0 1px 0 oklch\(100% 0 0 \/ 0\.10\)/, what: "⛔ the top bar's rest-state pure-white line stays gone" },
 ];
 
 let failed = 0;
-console.log(`\n${FILES.length} bundle(s) · ${css.length.toLocaleString()} bytes\n`);
+let skipped = 0;
+console.log(`\n${FILES.length} bundle(s) · ${css.length.toLocaleString()} bytes` +
+  (LIVE ? ` · ${markup.length.toLocaleString()} bytes of served markup` : "") + `\n`);
 for (const e of EXPECT) {
-  const hit = e.must ? e.must.test(css) : !e.mustNot.test(css);
+  /**
+   * ⭐ AN EXPECTATION MAY TARGET THE MARKUP INSTEAD OF THE STYLESHEET (`where: "html"`),
+   * AND THAT GAP COST A FALSE ALARM ON 2026-08-07.
+   *
+   * ATOM E-1 converted seven one-sided lamps that live in `.tsx` INLINE STYLES — nothing
+   * about them reaches the CSS bundle. I used `-- --live` as the deploy detector anyway,
+   * it reported 44/44 on the stylesheet, and I then read the live DOM **inside the rollout
+   * window** and found the OLD values on the bottom nav and the top bar. For several
+   * minutes the evidence said the product had not changed. It had: the served HTML already
+   * carried `var(--edge-lit-strong)`, and a re-read showed `0px 0px 0px 1px inset`
+   * everywhere. ⛔ **A CSS-only detector cannot gate a change that is not in the CSS**, and
+   * "the probe passed" is not "the deploy landed" unless the probe reads the thing that
+   * changed.
+   *
+   * ⚠️ Markup expectations are LIVE-ONLY and are SKIPPED (never silently passed) in the
+   * local mode, because there is no server to ask. A skip prints; it does not count as ok.
+   */
+  const target = e.where === "html" ? markup : css;
+  if (e.where === "html" && !LIVE) {
+    skipped++;
+    console.log(`  skip [ATOM ${e.atom}] ${e.what}\n         (markup expectation — needs \`-- --live\`; there is no served HTML locally)`);
+    continue;
+  }
+  const hit = e.must ? e.must.test(target) : !e.mustNot.test(target);
   if (!hit) failed++;
   console.log(`  ${hit ? "ok  " : "FAIL"} [ATOM ${e.atom}] ${e.what}`);
-  if (!hit) console.log(`         pattern: ${(e.must ?? e.mustNot).source.slice(0, 120)}`);
+  if (!hit) console.log(`         pattern: ${(e.must ?? e.mustNot).source.slice(0, 120)}  (in the ${e.where === "html" ? "served MARKUP" : "CSS bundle"})`);
 }
 
 // Reported, never silent: a count that moves when a list grows or shrinks.
