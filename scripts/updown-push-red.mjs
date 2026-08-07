@@ -46,6 +46,16 @@ const MUTATIONS = [
     to: "          bodyEn: `${m.titleEn.slice(0, 60)} — settled.`,",
   },
   {
+    name: "gate-loses-its-else",
+    why: "the refund gate's else is severed into a dead `if` — the push still reads as a statement, but no branch of the gate can ever reach it",
+    file: MS,
+    from: `      } else {
+        // E-57 · ⛔ THE REFUND PUSHES TOO, AND THIS BRANCH IS THE WHOLE POINT OF E-43.`,
+    to: `      }
+      if (Math.random() < 0) {
+        // E-57 · ⛔ THE REFUND PUSHES TOO, AND THIS BRANCH IS THE WHOLE POINT OF E-43.`,
+  },
+  {
     name: "results-share-the-bet-tag",
     why: "outcomes collapse under the bet's key, so a win is silently replaced on the device by a later loss",
     file: MS,

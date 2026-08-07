@@ -39,7 +39,9 @@ const MUTATIONS = [
     // reported as a MISS. A mutation has to remove the BEHAVIOUR, not rename the evidence.
     name: "margin-back-to-a-typed-field — an operator can type a band that voids every round",
     file: CONTROLS,
-    from: `        <Field label="Winning band">
+    // ⚠️ Anchor refreshed 2026-08-07: the band Field gained `className="lg:col-span-4"` when
+    // the add-chain form moved to the 10-column grid (E-96 layout), which orphaned the old text.
+    from: `        <Field label="Winning band" className="lg:col-span-4">
           <Select name="marginBpsChoice" value={marginChoice} onChange={setMarginChoice}
             options={MARGIN_CHOICES.map((m) => ({
               value: String(m.bps),
@@ -47,7 +49,7 @@ const MUTATIONS = [
               hint: m.hint,
             }))} />
         </Field>`,
-    to: `        <Field label="Margin % (optional)">
+    to: `        <Field label="Margin % (optional)" className="lg:col-span-4">
           <Input name="marginPct" type="number" step="0.01" min="0" max="20"
             placeholder={\`inherit (\${(inherited / 100).toFixed(2)})\`} size="sm" />
         </Field>`,
@@ -84,19 +86,20 @@ import { symbolReadiness } from "@/lib/server/updown-symbols";`,
     // make impossible. Gold's minimum moves on ONE side only.
     name: "console-and-server-drift — the greying stops matching the refusal",
     file: SYMBOLS,
-    from: `export function validateSymbolDuration(symbol: string, durationMinutes: number): string | null {
-  const r = symbolReadiness(findSymbol(symbol), durationMinutes);
+    // ⚠️ Anchor refreshed 2026-08-07: E-110 added the measured/movement axes to the signature.
+    // The drift itself is unchanged — the server keeps accepting a pairing the console greys.
+    from: `  const r = symbolReadiness(findSymbol(symbol), durationMinutes, measured, movement);
   return r.level === 3 ? r.reason : null;
 }`,
-    to: `export function validateSymbolDuration(symbol: string, durationMinutes: number): string | null {
-  const r = symbolReadiness(findSymbol(symbol), durationMinutes);
+    to: `  const r = symbolReadiness(findSymbol(symbol), durationMinutes, measured, movement);
   return r.level === 3 && durationMinutes < 3 ? r.reason : null;
 }`,
   },
   {
     name: "page-stops-computing-readiness — the console has nothing to grey with",
     file: PAGE,
-    from: `                    const r = symbolReadiness(findSymbol(a.symbol), d);`,
+    // ⚠️ Anchor refreshed 2026-08-07: the page call now folds in the measured + movement records.
+    from: `                    const r = symbolReadiness(findSymbol(a.symbol), d, feed?.advise(a.key, d), feed?.movement(a.key, d));`,
     to: `                    const r = { level: 1 as const, reason: "" };`,
   },
 ];

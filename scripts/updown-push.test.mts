@@ -20,9 +20,15 @@
  */
 import { readFileSync } from "node:fs";
 
-const MS = readFileSync(new URL("../src/lib/server/market-service.ts", import.meta.url), "utf8");
-const NS = readFileSync(new URL("../src/lib/server/notification-service.ts", import.meta.url), "utf8");
-const SW = readFileSync(new URL("../public/sw.js", import.meta.url), "utf8");
+// ⚠️ NORMALIZED TO LF AT THE DOOR. §2's old gate check matched `\n      }\n` literally, so on
+// a CRLF checkout (Ali's machine) it matched NOTHING and passed vacuously, while on an LF
+// checkout it matched the else-block's own closing brace and failed a CORRECT tree — the same
+// suite reporting opposite verdicts about one commit depending on the machine. Every regex
+// below now reads one canonical text.
+const lf = (s: string) => s.replace(/\r\n/g, "\n");
+const MS = lf(readFileSync(new URL("../src/lib/server/market-service.ts", import.meta.url), "utf8"));
+const NS = lf(readFileSync(new URL("../src/lib/server/notification-service.ts", import.meta.url), "utf8"));
+const SW = lf(readFileSync(new URL("../public/sw.js", import.meta.url), "utf8"));
 
 let pass = 0;
 const fails: string[] = [];
@@ -54,10 +60,46 @@ const ok = (name: string, cond: boolean, detail = "") => {
   const gates = (MS.match(/if \(!perEventNotificationsSuppressed\(/g) ?? []).length;
   ok("§2 the suppression predicate gates exactly 5 player messages", gates === 5, `found ${gates}`);
 
-  // ⭐ AND EVERY GATE MUST HAVE AN `else`. Consistency is the assertion: a gate without
-  // one is an outcome the device never hears about, which is E-43's shape exactly.
-  const bare = (MS.match(/if \(!perEventNotificationsSuppressed\([\s\S]{0,1400}?\n      \}\n(?!\s*else)/g) ?? []).length;
-  ok("§2 ⭐ no suppression gate is missing its push branch", bare === 0, `${bare} gate(s) with no else`);
+  // ⭐ AND EVERY GATE MUST HAVE AN `else`, AND THE ELSE MUST PUSH. Consistency is the
+  // assertion: a gate without one is an outcome the device never hears about, which is
+  // E-43's shape exactly.
+  //
+  // ⛔ REWRITTEN 2026-08-07. The old form scanned a 1,400-char window for `\n      }\n` not
+  // followed by `else` — a shape that (a) matched the else-block's OWN closing brace on any
+  // gate compact enough to fit the window, failing a correct tree, and (b) never matched at
+  // all on CRLF, passing vacuously. It asserted a distance, not a structure. This walks the
+  // braces: from each gate, match the if-block's closing brace, require `else` immediately
+  // after it, then require a reachable `pushOnly(` STATEMENT inside that else block.
+  const bareGates: string[] = [];
+  {
+    const gateRe = /if \(!perEventNotificationsSuppressed\(/g;
+    let g: RegExpExecArray | null;
+    const matchBlock = (openBrace: number): number => {
+      let depth = 0;
+      for (let i = openBrace; i < MS.length; i++) {
+        if (MS[i] === "{") depth++;
+        else if (MS[i] === "}" && --depth === 0) return i;
+      }
+      return -1;
+    };
+    while ((g = gateRe.exec(MS))) {
+      const line = MS.slice(0, g.index).split("\n").length;
+      const ifOpen = MS.indexOf("{", g.index);
+      const ifClose = matchBlock(ifOpen);
+      const afterIf = MS.slice(ifClose + 1);
+      if (ifClose < 0 || !/^\s*else\s*\{/.test(afterIf)) {
+        bareGates.push(`line ${line}: no else branch`);
+        continue;
+      }
+      const elseOpen = ifClose + 1 + afterIf.indexOf("{");
+      const elseClose = matchBlock(elseOpen);
+      const elseBody = MS.slice(elseOpen + 1, elseClose);
+      if (!/^[ \t]*pushOnly\(/m.test(elseBody)) {
+        bareGates.push(`line ${line}: else branch has no reachable pushOnly statement`);
+      }
+    }
+  }
+  ok("§2 ⭐ no suppression gate is missing its push branch", bareGates.length === 0, bareGates.join(" · "));
 
   // ⭐⭐ COUNT CALLS THAT CAN ACTUALLY RUN, NOT OCCURRENCES OF THE NAME.
   // The first version of this counted `pushOnly(` anywhere in the file, and the RED

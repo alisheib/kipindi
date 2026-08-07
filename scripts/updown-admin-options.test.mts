@@ -225,9 +225,24 @@ const SELECT = "src/components/ui/select.tsx";
   // that tells an operator which band to pick, on the field that decides whether rounds pay or
   // refund. ⛔ Pin the LAYOUT PROPERTY, not the label: shortening the copy would "fix" the
   // screenshot while leaving the next long option to clip in exactly the same way.
-  ok("6.11 · ⭐ the winning band gets more width than a stake box, so its option is readable",
-     /lg:grid-cols-6/.test(controls) && /label="Winning band" className="lg:col-span-2"/.test(controls),
-     controls.match(/lg:grid-cols-\d/)?.[0] ?? "");
+  // ⛔ REWRITTEN 2026-08-07 — the old form pinned the LITERALS of a layout that has since
+  // been retuned (`lg:grid-cols-6` + band `col-span-2`; the form now runs 10 columns with the
+  // band on 4), so it failed a tree on which the invariant it protects had got STRONGER. Pin
+  // the RATIO, not the numbers: whatever the grid, the band's span must beat a stake box's,
+  // or the one dropdown that decides what winning means is the one that truncates first.
+  {
+    const bandIdx = controls.indexOf('name="marginBpsChoice"');
+    const addGrid = bandIdx >= 0 ? controls.slice(controls.lastIndexOf('className="grid grid-cols-1', bandIdx), bandIdx + 1200) : "";
+    const gridCols = Number(/lg:grid-cols-(\d+)/.exec(addGrid)?.[1] ?? 1);
+    const bandSpan = Number(/label="Winning band" className="lg:col-span-(\d+)"/.exec(addGrid)?.[1] ?? 0);
+    const stakeSpan = Math.max(
+      Number(/label="Min stake \(optional\)"(?: className="lg:col-span-(\d+)")?/.exec(addGrid)?.[1] ?? 1),
+      Number(/label="Max stake \(optional\)"(?: className="lg:col-span-(\d+)")?/.exec(addGrid)?.[1] ?? 1),
+    );
+    ok("6.11 · ⭐ the winning band gets more width than a stake box, so its option is readable",
+       bandIdx >= 0 && (gridCols === 1 || bandSpan > stakeSpan),
+       `grid lg:${gridCols} cols · band span ${bandSpan} vs stake span ${stakeSpan}`);
+  }
 
   // ⛔ "0.00%" IS NOT THE BAND. The chains grid printed the PERCENTAGE, and at the tick floor
   // that percentage is zero while the band is the asset's own minimum move — $0.02 on BTC,
@@ -285,9 +300,16 @@ const SELECT = "src/components/ui/select.tsx";
      assetCalls.every((c) => !/advise\(/.test(c) || /advise\(a\.key/.test(c)) &&
      !/advise\(a\.symbol/.test(pageSrc));
 
-  ok("7.4 · ⭐ and the SERVER gate reads the same record, keyed the same way",
-     /feedAdviceFor\(asset\.key/.test(configSrc) &&
-     /validateSymbolDuration\(asset\.symbol, input\.durationMinutes, measured\)/.test(configSrc));
+  // ⛔ UPDATED 2026-08-07 — E-110 gave the gate a SECOND axis (movement: "does it move enough
+  // to be decided", alongside "can it be priced in time"), so `validateSymbolDuration` now
+  // takes `measured, movement`. The old anchor pinned the one-axis call and failed the
+  // stronger tree. Both records must be read, both keyed on `asset.key` (what the
+  // observations group by — `asset.symbol` would find nothing and silently disarm the gate),
+  // and both handed to the refusal.
+  ok("7.4 · ⭐ and the SERVER gate reads the same records, keyed the same way",
+     /feedAdviceFor\(asset\.key, input\.durationMinutes\)/.test(configSrc) &&
+     /movementAdviceFor\(asset\.key, input\.durationMinutes\)/.test(configSrc) &&
+     /validateSymbolDuration\(asset\.symbol, input\.durationMinutes, measured, movement\)/.test(configSrc));
 
   // ⛔ EXHAUSTIVE, AS §4.1 IS FOR THE CATALOGUE: with a measured record in hand, the console and
   // the server must still agree on every symbol × duration. A record that blocks short rounds is
