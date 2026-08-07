@@ -85,40 +85,40 @@ type Props = {
   celebrateGlyph?: RewardGlyph;
 };
 
+/**
+ * DS-3 (2026-08-07) — the crest consumes the SYSTEM, not hand-typed oklch.
+ * Each variant's disc is the `.mat-tint-*` recipe (colour as LIT GLASS: an even
+ * tinted ring + an 18% fill composed off the semantic ramp with color-mix),
+ * anchored on the same four families the toast tints use — yes / no / warning /
+ * brand. A token retune now moves the crest, the toast ring and the buttons
+ * together instead of leaving a re-typed copy behind (the one-fact rule).
+ */
+const crest = (ramp: string, fg: string) => ({
+  fg,
+  bg: `color-mix(in oklab, ${ramp} 18%, transparent)`,
+  brd: `color-mix(in oklab, ${ramp} 55%, transparent)`,
+  shadow: `0 0 0 6px color-mix(in oklab, ${ramp} 14%, transparent)`,
+});
+
 const TONE: Record<OperationVariant, { fg: string; bg: string; brd: string; shadow: string; primaryBtn: string }> = {
   success: {
-    fg: "oklch(78% 0.13 152)",
-    bg: "oklch(40% 0.10 152 / 0.18)",
-    brd: "oklch(45% 0.13 152)",
-    shadow: "0 0 0 6px oklch(45% 0.13 152 / 0.18)",
+    ...crest("var(--yes-400)", "var(--yes-300)"),
     // NOT btn-gold. Success is not the same thing as EARNED MONEY, and gold means
     // only the latter (RULES law 3). A deposit, a KYC approval and a submitted
     // proposal are all "success", and none of them is money the player has won.
     // The gold button is opted INTO with stripTone="gold"; see effectiveBtn below.
-    // This value was btn-gold and is unreachable for the success variant today —
-    // but a dead default that says the wrong thing is a trap for whoever next
-    // edits effectiveBtn, so it now states the rule instead of contradicting it.
     primaryBtn: "btn-primary",
   },
   danger: {
-    fg: "oklch(78% 0.16 22)",
-    bg: "oklch(40% 0.13 22 / 0.18)",
-    brd: "oklch(48% 0.15 22)",
-    shadow: "0 0 0 6px oklch(48% 0.15 22 / 0.18)",
+    ...crest("var(--no-400)", "var(--no-300)"),
     primaryBtn: "btn-no",
   },
   warning: {
-    fg: "oklch(78% 0.13 86)",
-    bg: "oklch(40% 0.10 86 / 0.18)",
-    brd: "oklch(58% 0.12 76)",
-    shadow: "0 0 0 6px oklch(58% 0.12 76 / 0.18)",
+    ...crest("var(--warning-500)", "var(--warning-500)"),
     primaryBtn: "btn-gold",
   },
   info: {
-    fg: "oklch(78% 0.10 268)",
-    bg: "oklch(40% 0.10 268 / 0.18)",
-    brd: "oklch(48% 0.10 268)",
-    shadow: "0 0 0 6px oklch(48% 0.10 268 / 0.18)",
+    ...crest("var(--brand-400)", "var(--brand-300)"),
     primaryBtn: "btn-primary",
   },
 };
@@ -331,8 +331,8 @@ export function OperationResultModal({
                   className="min-w-0 ml-auto text-right font-mono text-[14px] font-bold tabular-nums break-all"
                   style={{
                     color:
-                      d.tone === "good" ? "oklch(78% 0.13 152)" :
-                      d.tone === "bad"  ? "oklch(78% 0.16 22)"  :
+                      d.tone === "good" ? "var(--yes-300)" :
+                      d.tone === "bad"  ? "var(--no-300)"  :
                                           "var(--text)",
                   }}
                 >

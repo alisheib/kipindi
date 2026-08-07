@@ -28,6 +28,7 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import { I } from "@/components/ui/glyphs";
+import { Spinner } from "@/components/ui/spinner";
 import { haptics } from "@/lib/haptics";
 import { useModalLock } from "@/lib/use-modal-lock";
 import { useT } from "@/lib/i18n";
@@ -224,6 +225,11 @@ export type ConfirmModalProps = {
   /** Override the header glyph (defaults to the warning triangle). */
   icon?: React.ReactNode;
   maxWidth?: number;
+  /** DS-2 / B-28 — mutation in flight. Disables BOTH buttons (the provider
+   *  switch could double-fire), swaps the confirm label for a spinner, blocks
+   *  scrim/Esc/✕ dismissal, and sets aria-busy. Wire it from useTransition's
+   *  pending at every consequential call site. */
+  loading?: boolean;
 };
 
 const TONE_BTN: Record<Tone, string> = {
@@ -256,6 +262,7 @@ export function ConfirmModal({
   typedWord,
   icon,
   maxWidth = 400,
+  loading = false,
 }: ConfirmModalProps) {
   const { t } = useT();
   const [typed, setTyped] = React.useState("");
@@ -274,11 +281,16 @@ export function ConfirmModal({
   return (
     <Modal
       open={open}
-      onClose={onClose}
+      // While the mutation is in flight the dialog must not be dismissable —
+      // closing it mid-action reads as cancelled while the server proceeds.
+      onClose={loading ? () => {} : onClose}
       role="alertdialog"
       ariaLabel={title}
       maxWidth={maxWidth}
       initialFocus={isHard ? inputRef : confirmRef}
+      ariaBusy={loading}
+      closeOnScrim={!loading}
+      showClose={!loading}
     >
       <div className="mb-3 flex items-start gap-3">
         <span
@@ -328,13 +340,18 @@ export function ConfirmModal({
         <button
           ref={confirmRef}
           type="button"
-          disabled={!armed}
+          disabled={!armed || loading}
+          aria-busy={loading || undefined}
           onClick={() => { haptics.warning(); onConfirm(); }}
           className={`${TONE_BTN[tone]} btn-md w-full`}
         >
-          {confirmLabel ?? t.common.confirm}
+          {loading ? (
+            <span className="inline-flex items-center gap-2"><Spinner size={14} />{t.common.working}</span>
+          ) : (
+            confirmLabel ?? t.common.confirm
+          )}
         </button>
-        <button type="button" onClick={onClose} className="btn btn-ghost btn-md w-full">
+        <button type="button" disabled={loading} onClick={onClose} className="btn btn-ghost btn-md w-full disabled:opacity-50">
           {cancelLabel ?? t.common.cancel}
         </button>
       </div>

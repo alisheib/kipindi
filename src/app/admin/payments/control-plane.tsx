@@ -266,6 +266,9 @@ export function ControlPlane({ controls }: { controls: PaymentControlsView }) {
         tier={pending?.tier ?? "medium"}
         typedWord={pending?.typedWord}
         confirmLabel={pending?.confirmLabel}
+        /* B-28: while the switch is in flight the confirm can't double-fire and
+           the dialog can't be dismissed into a false "cancelled". */
+        loading={busy}
       />
     </>
   );
