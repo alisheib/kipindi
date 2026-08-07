@@ -39,12 +39,16 @@ export function RoundStakePanel(props: {
   assetName: string;
   signInHref: string;
   lockedSide: "UP" | "DOWN" | null;
+  /** UD-2 · the lock instant + server clock, threaded to the hook's place() guard. */
+  selectionClosesAtMs?: number | null;
+  serverNowMs?: number;
 }) {
   const { t } = useT();
   const { marketId, isAuthed, minStake, maxStake, myUpStake, myDownStake, pricing, assetName, signInHref, lockedSide } = props;
   const bet = useUpDownQuickBet({
     marketId, minStake, maxStake, myUpStake, myDownStake,
-    copy: { placed: t.market.udBetPlaced, failed: t.market.udBetFailed, up: t.market.udUp, down: t.market.udDown },
+    selectionClosesAtMs: props.selectionClosesAtMs, serverNowMs: props.serverNowMs,
+    copy: { placed: t.market.udBetPlaced, failed: t.market.udBetFailed, up: t.market.udUp, down: t.market.udDown, locked: t.market.udLockedTitle },
   });
   const pulse = usePlacePulse(bet.justPlaced?.nonce);
 

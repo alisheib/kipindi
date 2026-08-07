@@ -324,7 +324,10 @@ export function UpDownCard(props: UpDownCardProps) {
   const canQuickBet = bettable && !!marketId && isAuthed === true;
   const bet = useUpDownQuickBet({
     marketId, minStake, maxStake, myUpStake, myDownStake,
-    copy: { placed: t.market.udBetPlaced, failed: t.market.udBetFailed, up: t.market.udUp, down: t.market.udDown },
+    // UD-2 · belt-and-braces: the final-second race is refused locally, off the same
+    // server-anchored instants the card's own phase derives from.
+    selectionClosesAtMs: selectionClosesAtMs ?? null, serverNowMs,
+    copy: { placed: t.market.udBetPlaced, failed: t.market.udBetFailed, up: t.market.udUp, down: t.market.udDown, locked: t.market.udLockedTitle },
   });
   // A placed bet pulses the whole card (non-intrusive confirmation, reduced-motion aware).
   const cardPulse = usePlacePulse(bet.justPlaced?.nonce);

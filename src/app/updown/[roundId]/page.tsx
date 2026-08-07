@@ -31,7 +31,7 @@ import { pickLocalized } from "@/lib/localized";
 import { formatTzs } from "@/lib/utils";
 import { RoundCountdownPod } from "@/components/updown/round-countdown";
 import { PriceHero } from "@/components/updown/price-hero";
-import { RoundStakePanel } from "@/components/updown/round-stake-panel";
+import { RoundActionPanel } from "@/components/updown/round-action-panel";
 import { AssetMark } from "@/components/updown/updown-card";
 import { SOURCE_CLASS_KEY } from "@/lib/updown-source-label";
 // E-101 · one rule for "where does this ticket live", shared with the wallet and the emails.
@@ -93,9 +93,7 @@ export default async function UpDownRoundPage({
   // through from a locked card lands on a page still offering the buttons — and the server
   // then refuses the bet. That gap is worse than no lock at all.
   const locked = round.state === "locked";
-  const lockClock = round.selectionClosedAt
-    ? new Date(round.selectionClosedAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" })
-    : null;
+  // (The lock clock is formatted inside RoundActionPanel now — UD-2.)
   const decided = round.state === "resolved" || round.state === "void";
 
   // Hero price: the current live read while open, the round's own close once decided.
@@ -324,22 +322,31 @@ export default async function UpDownRoundPage({
               </div>
             </section>
 
-            {/* Stake (open) · Result (resolved & played) · calm panels otherwise */}
-            {isOpen ? (
-              <section aria-label={t.market.udStake} style={{ ...card, padding: "14px 16px 16px" }}>
-                <RoundStakePanel
-                  marketId={round.marketId}
-                  isAuthed={!!session}
-                  minStake={minStake}
-                  maxStake={maxStake}
-                  myUpStake={round.myUpStake}
-                  myDownStake={round.myDownStake}
-                  pricing={round.pricing}
-                  assetName={name}
-                  signInHref={`/auth/login?next=${encodeURIComponent(`/updown/${roundId}${lockedSide ? `?side=${lockedSide}` : ""}`)}`}
-                  lockedSide={lockedSide}
-                />
-              </section>
+            {/* Stake/locked (client, instant-driven — UD-2) · Result (resolved & played) · calm panels otherwise */}
+            {isOpen || locked ? (
+              /* UD-2 · the open-vs-locked branch is CLIENT-side and derives from the
+                 instants via roundPhase, so the stake panel flips to the locked card at
+                 the lock INSTANT — not at the next poll. `isOpen` here is only the
+                 server's first word; the panel keeps deciding on every tick. */
+              <RoundActionPanel
+                state={round.state as "open" | "locked"}
+                selectionClosedAt={round.selectionClosedAt ?? null}
+                closesAtMs={Date.parse(round.closesAt)}
+                serverNowMs={round.serverNowMs}
+                myExactPayout={round.myExactPayout ?? null}
+                marketId={round.marketId}
+                isAuthed={!!session}
+                minStake={minStake}
+                maxStake={maxStake}
+                myUpStake={round.myUpStake}
+                myDownStake={round.myDownStake}
+                pricing={round.pricing}
+                assetName={name}
+                signInHref={`/auth/login?next=${encodeURIComponent(`/updown/${roundId}${lockedSide ? `?side=${lockedSide}` : ""}`)}`}
+                lockedSide={lockedSide}
+                cardStyle={card}
+                insetStyle={inset}
+              />
             ) : decided && myPosition && result ? (
               <section aria-label={t.market.udYourResult} className="ticket-scope" style={{ ...card, padding: "14px 16px 16px" }}>
                 {/* ⭐ E-101 · THE LANDING TARGET. `/positions/<id>` redirects here with the
@@ -391,26 +398,9 @@ export default async function UpDownRoundPage({
                     the same dead end wearing a correct-looking URL. */}
                 <Link href={positionListHref("UPDOWN", myPosition.ids[0] ?? "")} className="btn btn-ghost btn-sm mt-3.5 w-full justify-center">{t.market.udOpenInPositions}</Link>
               </section>
-            ) : locked ? (
-              // ── 🔒 LOCKED ────────────────────────────────────────────────
-              // ⛔ The message carries its REASON. "Closed" reads as the app being too slow;
-              // naming the instant and the fairness rule reads as fair. Same event, opposite
-              // feeling, and it is the most load-bearing sentence in the feature.
-              <section aria-label={t.market.udLockedTitle} style={{ ...inset, padding: 16 }}>
-                <span className="chip chip-pending">🔒 {t.market.udLockedTitle}</span>
-                <p className="mt-2.5 m-0 text-[12.5px] leading-[1.55] text-text-muted">
-                  {t.market.udLockedWhy.replace("{time}", lockClock ?? "—")}
-                </p>
-                {/* ⭐ No estimate here — the pool is frozen, so this is the real number. */}
-                {round.myExactPayout != null && (round.myUpStake > 0 || round.myDownStake > 0) && (
-                  <p className="mt-3 m-0 font-mono text-[15px] font-bold tabular-nums"
-                     style={{ color: round.myUpStake > 0 ? "var(--yes-300)" : "var(--no-300)" }}>
-                    {t.market.udYouWin} {formatTzs(round.myExactPayout)}{" "}
-                    {round.myUpStake > 0 ? t.market.udIfUp : t.market.udIfDown}
-                  </p>
-                )}
-              </section>
             ) : round.state === "confirming" ? (
+              /* 🔒 The LOCKED presentation lives in RoundActionPanel above (UD-2) — one
+                 markup for the lock, decided from the instants, never two copies. */
               <section style={{ ...inset, padding: 16 }}>
                 <span className="chip chip-pending">{t.market.udSettlingTitle}</span>
                 <p className="mt-2 text-[12.5px] leading-[1.55] text-text-muted">{t.market.udConfirmingBody}</p>

@@ -13,7 +13,7 @@
 
 - **Overall status:** IMPLEMENTING — Session A COMPLETE (7/7); Phase 2 core design set under way (toast rung 4, DA-8, DA-9, DA-2, DA-6, DS-2, DS-3, DS-4 done).
 - **Active session:** ⚠️ OWNERSHIP RETURNED TO THE CLOUD SESSION 2026-08-07: the local session on F:\ imported the bundle, pushed through DS-3 and STOPPED COMPLETELY (Ali confirmed). The cloud session (claude-fable-5, working a clone of `origin/main`; the F:\ tree is idle — do not edit there) owns everything again — money, Up & Down, platform, all design work.
-- **Next action:** Session B (Up & Down, Report 1) — Stage 1 first: UD-2 → UD-1 → UD-4 → UD-3. Do DA-3 (E-112 stake chips to the 40px floor) together with the UD-9 tap-target item when Stage 3 reaches it; DA-4 (E-114 refund-toast tick) alongside UD-12.
+- **Next action:** Session B Stage 1 continues: UD-1 (balance pre-flight) → UD-4 (code→i18n map) → UD-3 (sticky toast + blocked modal). Then Stage 2 (UD-5/6/7). Do DA-3 (E-112 stake chips to the 40px floor) together with the UD-9 tap-target item when Stage 3 reaches it; DA-4 (E-114 refund-toast tick) alongside UD-12.
 - **Blocked on:** nothing. Only the §9 items need Ali; they are parked, work continues.
 - **Environment note:** tests MUST run under Node 24 (`/opt/node24` in the cloud session). Under Node 22, tsx dual-instantiates modules and the seam-patching suites (late-bet, settlement-gate) fail falsely. Cloud sandbox extras: Google Fonts is blocked, so `next build` fails locally — verify CSS atoms on production via `npm run qa:bundle-css -- --live` after the deploy; `qa:live` runs with `QA_OFFLINE=1`; the local qa:live board has no live card on a fresh store, so "at least one bettable market exists" fails there — verified identical at clean HEAD, not a regression signal.
 - **Pre-existing red suites at `da231631` (verified identical before/after Session A; NOT caused by this work):** `test:kyc-doc-metadata` (1 fail), `test:updown-push` (1 fail, §2 suppression-gate else-branch), `test:orphans` (sessions 29–35 left unwired live-QA scripts), `test:updown-admin-options` (2 fails). `test:trilingual` is flaky (random poll fixture; passes on re-run). `test:prisma-delegate` needs the Prisma engine binary — unavailable in the cloud sandbox (blocked CDN), fine on Ali's machine. Fix the updown ones during Session B, orphans/kyc during the sweep/cleanup phases.
@@ -85,12 +85,12 @@ already doing.
 ## 4 · Progress counters (update as you go)
 
 - **Session A (money/ops):** 7 / 7 items done
-- **Session B (Up & Down):** 1 / 22 findings done
+- **Session B (Up & Down):** 2 / 22 findings done
 - **Session C (platform front-end):** 0 / ~17 findings done
 - **Visual set (design):** 1 / 7 done
 - **DS · design-consistency sweep (toasts/popups/modals):** 4 / 27 done
 - **DA · design-system atoms (carried over from design session):** 5 / 12 done (2 need Ali)
-- **TOTAL:** 18 / ~92 done
+- **TOTAL:** 19 / ~92 done
 
 ---
 
@@ -114,7 +114,7 @@ already doing.
 ### Session B — Up & Down (Report 1, all 22) — run in the 4 staged commits
 
 **Stage 1 (P0 — the reported bet bug):**
-- [ ] UD-2 phase-aware round stake panel (lock race)
+- [x] UD-2 phase-aware round stake panel (lock race) — DONE 2026-08-07: new `round-action-panel.tsx` (client) owns the page's open-vs-locked slot, deriving from `roundPhase` off the server-anchored clock exactly like the board card; the locked markup moved there (one copy). Belt-and-braces: `useUpDownQuickBet` gains `selectionClosesAtMs`/`serverNowMs` and `place()` refuses past the lock instant BEFORE the optimistic apply (factual toast + aria-live, no request) — threaded on both live surfaces (round panel + board card; `updown-bet-box.tsx` has ZERO consumers at HEAD — dead component, left for the sweep). Guards: `test:updown-window` §7b (4 structural checks) + `test:updown-bet-feedback` 3.4 re-pinned to the new exact shape (2 danger + 1 factual). Playwright "tap at lock+1s" not addable locally (no live round on a fresh store — documented limitation); covered by 7b.3's before-optimistic ordering assertion.
 - [ ] UD-1 balance + lock pre-flight in `useUpDownQuickBet`
 - [ ] UD-4 error-code → i18n map (udErr* keys)
 - [ ] UD-3 sticky failure toast (add `durationMs:0`) + compliance blocked-modal

@@ -302,6 +302,32 @@ async function freshRound() {
      !roundPhase({ state: "open", selectionClosesAtMs: null, closesAtMs: CLOSE, nowMs: CLOSE - 1_000 }).locked);
 }
 
+// ── §7b · UD-2 (ux-audit 2026-08) — the ROUND PAGE's action panel uses this rule ─────────────
+// E-82's defect had one branch left: the round page rendered the stake panel iff
+// `round.state === "open"`, a server-rendered prop, so the panel stayed live for up to 20s
+// past the lock. These are STRUCTURAL assertions — the pure rule is proven above; what
+// regressed historically is a surface deciding its phase from the prop instead of the rule.
+{
+  const { readFileSync } = await import("node:fs");
+  const page = readFileSync("src/app/updown/[roundId]/page.tsx", "utf8");
+  const panel = readFileSync("src/components/updown/round-action-panel.tsx", "utf8");
+  const hook = readFileSync("src/components/updown/use-quick-bet.ts", "utf8");
+
+  ok("7b.1 · ⭐ the round page's action slot is the instant-driven RoundActionPanel, not a raw isOpen branch",
+     page.includes("<RoundActionPanel") && !page.includes("<RoundStakePanel"),
+     "the stake panel must be reached only through the phase-deriving wrapper");
+  ok("7b.2 · RoundActionPanel derives its branch from roundPhase off the server-anchored clock",
+     panel.includes("roundPhase({") && panel.includes("useCountdown(") && panel.includes("serverNowMs"),
+     "a phase decided by a prop cannot change without a round trip");
+  ok("7b.3 · ⛔ the hook refuses place() past the lock instant — no optimistic bump, no request",
+     hook.includes("selectionClosesAtMs") &&
+     /nowMs >= opts\.selectionClosesAtMs/.test(hook) &&
+     hook.indexOf("nowMs >= opts.selectionClosesAtMs") < hook.indexOf("setOptUp((v) => v + amount)"),
+     "the guard must run BEFORE the optimistic apply");
+  ok("7b.4 · the board card threads its lock instant into the hook (belt-and-braces on every surface)",
+     readFileSync("src/components/updown/updown-card.tsx", "utf8").includes("selectionClosesAtMs: selectionClosesAtMs ?? null"));
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 console.log(`\n${fail === 0 ? "✅" : "🔴"} updown-window: ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

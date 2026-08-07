@@ -6,6 +6,7 @@ import { buyPositionAction } from "@/app/markets/actions";
 import { formatTzs } from "@/lib/utils";
 import { haptics } from "@/lib/haptics";
 import { quickStakes, parseStake } from "./stake-math";
+import { useServerNow } from "./round-countdown";
 
 // Re-exported so existing importers of these helpers keep working.
 export { quickStakes, parseStake } from "./stake-math";
@@ -65,8 +66,17 @@ export function useUpDownQuickBet(opts: {
   maxStake?: number;
   myUpStake?: number;
   myDownStake?: number;
+  /**
+   * UD-2 · belt-and-braces at the lock: when the lock instant has passed on the
+   * SERVER-anchored clock, `place()` refuses locally — no optimistic bump, no request —
+   * instead of letting a doomed tap flash "You're in" and round-trip to a refusal.
+   * The surface's own phase flip (roundPhase) is the primary defence; this covers the
+   * final-second race on every surface. Server stays the security boundary.
+   */
+  selectionClosesAtMs?: number | null;
+  serverNowMs?: number;
   /** i18n copy — the hook stays language-agnostic. `placed` is the aria-live prefix. */
-  copy: { placed: string; failed: string; up: string; down: string };
+  copy: { placed: string; failed: string; up: string; down: string; locked?: string };
 }) {
   const { marketId, myUpStake = 0, myDownStake = 0, copy } = opts;
   const min = opts.minStake ?? 1_000;
@@ -107,8 +117,24 @@ export function useUpDownQuickBet(opts: {
   const exitCustom = useCallback(() => { setCustomMode(false); }, []);
   const pickPreset = useCallback((i: number) => { setCustomMode(false); setStakeIdx(i); }, []);
 
+  // Server-anchored current instant for the lock guard (null until the first client
+  // effect — a pre-hydration tap then falls back to the render-time server clock,
+  // which can only UNDER-lock; the server still refuses that race).
+  const serverNow = useServerNow(opts.serverNowMs);
+
   const place = (side: "UP" | "DOWN") => {
     if (!marketId || !stakeReady) return;
+    // UD-2 · the lock guard: a tap after the lock instant must never look like a
+    // placed bet. Factual register — the round locked, the player did nothing wrong.
+    if (opts.selectionClosesAtMs != null) {
+      const nowMs = serverNow ?? opts.serverNowMs ?? null;
+      if (nowMs != null && nowMs >= opts.selectionClosesAtMs) {
+        const msg = copy.locked ?? copy.failed;
+        setLiveMessage(msg);
+        toast({ title: msg, variant: "factual" });
+        return;
+      }
+    }
     const amount = stake;
     // Optimistic first — the tap feels instant even before the round-trip returns.
     if (side === "UP") setOptUp((v) => v + amount); else setOptDown((v) => v + amount);
