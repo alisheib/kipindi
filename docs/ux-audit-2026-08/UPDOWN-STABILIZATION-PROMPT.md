@@ -34,14 +34,34 @@ THE MISSION, in priority order — one item at a time, test → commit → push 
    UD-15 `error.tsx` ×3 + stop swallowing · UD-16 controls nav-dead-zone).
 4. **Session B Stage 4** (UD-11 · UD-12 + **DA-4**/E-114 refund-toast `factual` · UD-17
    — ask Ali a/b first · UD-18 · UD-19 · UD-20 · UD-21 · UD-22).
-5. **Full live QA sweep of the game**: drive board + round + history + admin console on
-   production as a real player (bets with small real TZS where Ali's test bootstrap
-   allows), all states (open/locked/confirming/resolved/void/refund), AI resolution +
-   poll/oracle paths, SSE, pollers, deep links.
-6. **Full visual pass**: 360/768/1280 × EN/SW/ZH × light-drive with screenshots
-   (Playwright locally; `qa:sweep`/`qa:material-probe` patterns). Fix every visual bug
-   found — overflow, clipped copy (SW runs ~35% longer), broken states, contrast,
-   reduced-motion. Kit primitives only; design is frozen (`test:design-frozen`).
+5. **Full live QA sweep — BOTH sides of the game (Ali, 2026-08-07: "full from admin side
+   and player side").**
+   · **Player side:** board + round + history + positions/wallet touchpoints, driven on
+     production as a real player (small real TZS where the test bootstrap allows), every
+     state (open/locked/confirming/resolved/void/refund), SSE, pollers, deep links,
+     sign-in round-trips.
+   · **Admin side:** the whole Up & Down console — assets, chains, durations, pause/
+     resume, proposals, resolver/observation views, per-asset feed health panel, manual
+     re-checks, void/refund handling, audit trail. Every control does what its label
+     says, every figure is real (A-5), every action lands in the audit log.
+   · **CALCULATIONS verified end-to-end:** open/close/targets, movePct, the implied
+     multipliers vs `updown-pricing`, `myExactPayout` vs actual settlement payout,
+     refunds, fees vs the frozen snapshot, pool == Σ stakes — proven against the LEDGER
+     and the settlement proof, never against a screenshot. (Verify only — the pricing/
+     payout modules themselves stay untouched per the guardrails.)
+   · AI paths: resolution/oracle, poll generation where it feeds Up & Down.
+6. **Full visual + responsiveness + theme-consistency pass**: 360/768/1280 (and 1920
+   where the matrix names it) × EN/SW/ZH, player AND admin surfaces, with screenshots
+   (Playwright locally; `qa:sweep`/`qa:material-probe` patterns). Fix every visual bug —
+   overflow, clipped copy (SW runs ~35% longer), broken states, contrast, reduced-motion,
+   tap targets. Everything must read as ONE system in the theme kit: kit primitives only,
+   rungs/tints per DESIGN_AUTHORITY §M, no hand-rolled panels; design is frozen
+   (`test:design-frozen`).
+
+⭐ **UNRELATED BUGS: fix as you go (Ali's standing instruction).** Any visual or technical
+defect you meet on the way — even outside Up & Down — gets fixed in its own small commit
+(or filed in the plan with one line if it is genuinely large/money-path), never silently
+passed by. Same bar: test, doc update, commit, push.
 
 RULES (non-negotiable): the §6 guardrails of the handover (repeat taps = repeat bets;
 4-channel bet feedback; in-app-only results; pricing/refund modules and `buyPosition`
