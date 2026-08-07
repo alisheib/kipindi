@@ -593,7 +593,9 @@
   /* Hero gradient — sapphire royal + gilt + emerald + rose finishing pass */
   --hero-grad:        linear-gradient(135deg, oklch(28% 0.16 268) 0%, oklch(40% 0.20 268) 100%);
   /* Hero PANEL gradient — the deeper royal used behind form-page heros
-     (deposit/withdraw/help/profile/*). One source for the ~12 inlined copies. */
+     (deposit, withdraw, help, profile). One source for the ~12 inlined copies.
+     ⚠️ Written as a list, not a glob: a starred path inside a CSS comment is how
+     the 2026-08-07 dropped-rule defect happened. `test:reduce-motion` rule 0.1. */
   --hero-panel-grad:  linear-gradient(135deg, oklch(22% 0.140 268) 0%, oklch(30% 0.165 268) 100%);
   /* Hero "warm" — kit-faithful deep royal radial. Spec: kit/banners.jsx
      BannerHero (1600×540) uses a radial ellipse 90% 70% at 75% 30% from
@@ -1766,14 +1768,15 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
 @media (prefers-reduced-motion: reduce) { .kp-shimmer-track::after { animation: none; } }
 [data-motion="minimal"] .kp-shimmer-track::after { animation: none; }
 
-/* ---------- Reduced-motion respect ---------- */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-}
+/* ---------- Reduced-motion respect ----------
+   ⛔ THE UNIVERSAL CLAMP THAT USED TO SIT HERE IS GONE, DELIBERATELY (2026-08-07).
+   It was one of FOUR copies of one declaration set — two in this file, two in
+   `motion.css` — and they had already drifted apart (only two of the four carried
+   `scroll-behavior`, none carried `animation-delay`). The single home is now
+   `src/app/motion.css`, which is imported LAST (`layout.tsx:12`) so nothing can
+   outrank it at equal specificity, and `npm run test:reduce-motion` fails if a
+   second copy appears anywhere under `src`. The per-surface calm branches below
+   stay here, beside the rules they calm. */
 
 
 /* =====================================================================
@@ -2100,9 +2103,12 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
   @keyframes streak-tick { from, to { transform: none; } }
   @keyframes toggle-glow { from, to { box-shadow: none; } }
 
-  /* stagger: everything arrives at once */
-  .stagger-item { animation-delay: 0ms !important; }
-  .market-grid > * { animation-delay: 0ms !important; }
+  /* stagger: everything arrives at once. ⛔ The two per-class `animation-delay: 0ms`
+     resets that used to sit here are GONE — the calm clamp in motion.css now zeroes
+     `animation-delay` universally, which covers these two AND the four sites they
+     never covered (`.win-seal` 160ms, `.check-tick` 120ms, `.cm-empty-starter`
+     100–340ms, `.cm-typing span` 180/360ms). Keeping them would be a second answer
+     to a question that now has one. */
 
   /* checkmark: show drawn, no draw */
   .check-draw .check-tick { stroke-dashoffset: 0 !important; animation: none !important; }
@@ -2124,17 +2130,10 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
   .kp-rise { animation: none !important; }
 }
 
-/* In-app "Reduce motion" switch (Sound & feedback settings). Mirrors the
-   prefers-reduced-motion clamp but is user-driven via the kp-reduce-motion
-   class on <html>, applied from the saved feedback pref. */
-html.kp-reduce-motion *,
-html.kp-reduce-motion *::before,
-html.kp-reduce-motion *::after {
-  animation-duration: 0.01ms !important;
-  animation-iteration-count: 1 !important;
-  transition-duration: 0.01ms !important;
-  scroll-behavior: auto !important;
-}
+/* In-app "Reduce motion" switch (Sound & feedback settings) — its clamp, and the
+   `[data-motion="minimal"]` clamp that used to sit at the end of §6, both moved to
+   `src/app/motion.css` on 2026-08-07. See the note at the top of that block: one
+   declaration set, written once per gate, with `animation-delay` finally in it. */
 
 /* ---------------------------------------------------------------------------
    §6  data-motion THROTTLE (mid-tier Android)
@@ -2144,10 +2143,31 @@ html.kp-reduce-motion *::after {
    --------------------------------------------------------------------------- */
 /* B4 (Claude Design): at the `reduced` tier, stop ALL decorative loops EXCEPT
    the live status-dot — which keeps a cheap OPACITY-ONLY pulse (no box-shadow).
-   "minimal" stops everything (handled by the universal clamp below). */
+   "minimal" stops everything (the universal clamp in motion.css).
+
+   ⛔ THIS LIST IS THE THIRD GATE, IT IS THE ONLY ONE, AND IT IS NOW ENFORCED.
+   `npm run test:reduce-motion` rule 2.1 walks every `infinite` animation in every
+   stylesheet AND in the inline `style` blocks of every component — two of the
+   entries below (`.notif-badge-pulse`, `.csrf-rest-ring`) live only in a `.tsx`,
+   so a gate that read stylesheets alone would report them missing and send
+   somebody to delete a live rule. Every loop must be listed here or on the gate's
+   KEPT list with a written reason.
+
+   🔴 AND DO NOT WRITE A GLOB IN A CSS COMMENT. The first draft of this block wrote
+   the two corpora as glob patterns, and a `star star slash star` contains the
+   sequence that CLOSES a comment: prose leaked into the selector list below, a
+   real parser read this whole rule's selector as English, and the browser would
+   have DROPPED the entire third gate. The gate said "all checks passed" over it,
+   because its own reader made the same mistake in the same direction. Rules 1.6
+   and 2.0 exist so that can never be silent again.
+
+   🔴 MEASURED 2026-08-07, BEFORE THIS EDIT: the list named 14 loops and MISSED 15
+   — on the one tier that exists for our target device. `.wc-rays` was also dead:
+   the class had been deleted with the drawn rays (M3 bans them) and its entry
+   outlived it, which is a list quietly claiming coverage it does not have. */
 [data-motion="reduced"] .cm-bubble::after,
-[data-motion="reduced"] .wc-rays,
 [data-motion="reduced"] .win-aura-anim,
+[data-motion="reduced"] .win-trophy-halo,
 [data-motion="reduced"] .hm-halo-pulse,
 [data-motion="reduced"] .ticker-track,
 [data-motion="reduced"] .prog-sweep::after,
@@ -2158,7 +2178,34 @@ html.kp-reduce-motion *::after {
 [data-motion="reduced"] .notif-badge-pulse,
 [data-motion="reduced"] .csrf-rest-ring,
 [data-motion="reduced"] .skeleton,
-[data-motion="reduced"] .settling-bar::before { animation: none !important; }
+[data-motion="reduced"] .settling-bar::before,
+/* ⬇ ADDED 2026-08-07 — the 11 loops the tier had never switched off. Each one is
+   `animation: none`, never a colour change: the state has to survive the calm. */
+[data-motion="reduced"] .kp-shimmer-track::after,   /* loading shimmer            */
+[data-motion="reduced"] .m-skeleton::after,         /* the kit's loading sweep    */
+[data-motion="reduced"] .m-ambient,                 /* 64s spin + will-change: a
+                                    permanently promoted layer is precisely what a
+                                    low-end device cannot afford, "free" or not    */
+[data-motion="reduced"] .countdown-ring.urgent .ring-arc,   /* the stroke colour +
+                                    drop-shadow carry urgent/critical statically,
+                                    so stopping the pulse loses no meaning (M6)    */
+[data-motion="reduced"] .countdown-ring.critical .ring-arc,
+[data-motion="reduced"] .closing-pill,              /* its base IS the gold urgent
+                                    end of the pulse, by its own design comment    */
+[data-motion="reduced"] .ud-count-pulse,            /* Up & Down live counters      */
+[data-motion="reduced"] .ud-point,
+[data-motion="reduced"] .cm-typing span,            /* support chat typing dots     */
+[data-motion="reduced"] .dial-coach                 /* the conviction dial's coach
+                                    nudge. ⭐ It lives in an inline <style> block, so
+                                    the FIRST census of this list — which read .css
+                                    only — never saw it and reported 15 uncovered
+                                    loops where there are 16                        */
+                                              { animation: none !important; }
+/* The needle's wake halo. ⛔ Gated from HERE and never in needle.css: that file is a
+   vendored port whose header pins behaviour, geometry and timing. `opacity: 0.8` is
+   not a choice — it is the value the vendored file's own prefers-reduced-motion
+   branch (needle.css:64) settles the halo at, so the two gates agree. */
+[data-motion="reduced"] #needle-root #wake.on { animation: none !important; opacity: 0.8 !important; }
 /* live status-dot — KEPT at reduced, opacity-only (no box-shadow GPU cost).
    Uses the kit's `m-breathe`; the local `dot-pulse-soft` keyframe this used to
    name was byte-identical to it and has been retired. */
@@ -2175,16 +2222,15 @@ html.kp-reduce-motion *::after {
     -webkit-backdrop-filter: blur(12px) saturate(1.15);
   }
 }
+/* ⭐ These two STAY, and are not the deleted pair from §5. The `reduced` tier is a
+   THROTTLE, not a clamp — it keeps full durations, so nothing zeroes a delay for
+   it. A cascade a phone waits 360ms to finish is worth collapsing on the device
+   that tier exists for, even though the entrance itself is kept. */
 [data-motion="reduced"] .stagger-item { animation-delay: 0ms !important; }
 [data-motion="reduced"] .market-grid > * { animation-delay: 0ms !important; }
 
-[data-motion="minimal"] *,
-[data-motion="minimal"] *::before,
-[data-motion="minimal"] *::after {
-  animation-duration: 0.01ms !important;
-  animation-iteration-count: 1 !important;
-  transition-duration: 0.01ms !important;
-}
+/* The `[data-motion="minimal"]` universal clamp moved to `src/app/motion.css` on
+   2026-08-07, into the one block that now serves all three gates. */
 
 
 /* =====================================================================

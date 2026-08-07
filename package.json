@@ -292,7 +292,11 @@
     "test:m1-light": "tsx scripts/m1-even-light.test.mts",
     "red:m1-light": "node scripts/m1-even-light-red.mjs",
     "red:tokens": "node scripts/token-collision-red.mjs",
-    "red:chat-availability": "node scripts/chat-availability-red.mjs"
+    "red:chat-availability": "node scripts/chat-availability-red.mjs",
+    "test:reduce-motion": "tsx scripts/reduce-motion.test.mts",
+    "red:reduce-motion": "node scripts/reduce-motion-red.mjs",
+    "qa:bundle-css": "node scripts/bundle-css-probe.mjs",
+    "qa:calm": "node scripts/live-calm-probe.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

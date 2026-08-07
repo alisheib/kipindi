@@ -135,27 +135,65 @@
 .m-urgent           { animation: m-breathe 1000ms var(--m-breathe) infinite; }
 
 /* ===========================================================================
-   Reduced motion — the clamp, plus calm branches where a state must persist.
+   ⭐ THE CALM CLAMP — ONE declaration set, and it is written TWICE because CSS
+   has no way to put a media query and a class into one selector. Nothing else
+   anywhere under `src` may declare it: `test:reduce-motion` fails on a third
+   copy and on any drift between these two, which is how four disagreeing
+   copies (two here, three in globals.css) came to exist before 2026-08-07.
+
+   ⛔ THERE ARE THREE GATES, NOT TWO (M6). `theme-provider.tsx:36-46` decides:
+        user set "Reduce motion" off → html.kp-reduce-motion + data-motion=minimal
+        low-end Android detected     → data-motion=reduced   ← OUR TARGET DEVICE
+        otherwise                    → data-motion=full
+   The OS preference is a fourth, independent path. `reduced` is a THROTTLE, not
+   a clamp — full durations, ambient loops off — so it is NOT listed here; its
+   home is the one list in globals.css §6.
+
+   ⭐ `animation-delay` IS CLAMPED, AND THAT IS THE BUG THIS BLOCK WAS OPENED FOR.
+   Zeroing the DURATION alone does not zero the WAIT, so a delayed keyframe holds
+   its FIRST frame for the whole delay and then jumps to its last. With
+   `both`/`backwards` fill that first frame is usually `opacity: 0`, i.e. the
+   surface is INVISIBLE for the delay: measured before the fix, on a user who had
+   switched Reduce motion ON — `.market-grid > *` up to 360ms (nth-child cascade),
+   `.stagger-item` up to 4 × --m-stagger, `.win-seal` 160ms, `.check-tick` 120ms.
+   The delivery's own `.needle-sweep` (600ms) and `.crest-ring-reveal` (340ms)
+   would have joined them, which is why this lands before any animation atom.
+
+   ⛔ `transition-delay` IS DELIBERATELY *NOT* CLAMPED, and a future session must
+   not "complete" this list by adding it. A transition's delay is usually INTENT,
+   not motion: `.kp-tooltip-popover` (globals.css:1508) waits 300ms so a pointer
+   passing over a control does not fire the tooltip. Holding the pre-hover state
+   through that wait is correct behaviour, not a stuck frame. Clamping it would
+   turn every hover-intent delay into a hair-trigger.
    =========================================================================== */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+/* The in-app switch (Sound & feedback → Reduce motion) and the `minimal` tier
+   are the same promise as the OS preference, so they take the same clamp. */
+html.kp-reduce-motion *, html.kp-reduce-motion *::before, html.kp-reduce-motion *::after,
+[data-motion="minimal"] *, [data-motion="minimal"] *::before, [data-motion="minimal"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-delay: 0s !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* Calm branches where a state must PERSIST — the clamp only zeroes time; these
+   say what the surface should look like once it has. ⛔ Written for all three
+   gates: the `reduced` tier reaches them through globals.css §6's list, so a
+   new entry here needs an entry there too (test:reduce-motion rule 2.1). */
+@media (prefers-reduced-motion: reduce) {
   .m-ambient          { animation: none !important; }
   .m-skeleton::after  { animation: none !important; opacity: 0.4; }
   .m-aura             { animation: none !important; opacity: 0.45; }
   .m-live-pip,
   .m-urgent           { animation: none !important; opacity: 1; }
-  [data-stagger]      { animation-delay: 0ms !important; }
-}
-
-/* In-app switch (settings toggle) mirrors the OS preference. Selector adapted to the
-   class this repo actually toggles (theme-provider.tsx): html.kp-reduce-motion. */
-html.kp-reduce-motion *, html.kp-reduce-motion *::before, html.kp-reduce-motion *::after {
-  animation-duration: 0.01ms !important;
-  animation-iteration-count: 1 !important;
-  transition-duration: 0.01ms !important;
 }

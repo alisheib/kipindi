@@ -96,7 +96,7 @@ part most likely to be skipped.
 | check (INTAKE §1) | verdict |
 |---|---|
 | every animation names its easing + duration token | ⚠️ **pass with exceptions** — the *durations* are all `var(--t-*)` and the *easings* all `var(--m-*)`. Five raw ms survive, and all five are **choreography offsets, not durations**: `seal-recoil 60ms`, `.needle-sweep`'s `600ms` delay, `.needle-settle-loss`'s `400ms`, `.seal-sheen`'s `+500ms`, and `.mark-pending`'s `1240ms` (a **deliberate** ambient loop, §D). The shipped file already carries the same shape — `.m-aura 1240ms`, `.m-skeleton 1400ms`. Not a rejection |
-| every animation has a **written** reduced-motion branch | ✅ written out, not described (`material.css:261-280`) — but see the gap below |
+| every animation has a **written** reduced-motion branch | ⚠️ **pass, but against TWO gates where this product has THREE** — see item 7 below. ✅ The branches are written out rather than described (`material.css:261-280`) and cover `prefers-reduced-motion` + `html.kp-reduce-motion`. ⛔ **Neither covers `data-motion="reduced"`, the low-end-Android tier — our target device.** Closed in-house 2026-08-07 (**E-125**), and `npm run test:reduce-motion` now fails on any `infinite` animation that has no entry in that tier's list, so §C's `.mark-pending` cannot land without one |
 | nothing animates a layout property | ✅ transform / opacity / filter / box-shadow / `translate` only. `.gilt-metal` also moves `background-position` (paint, not layout) — outside D-1.6's named list, inside its intent |
 | colours are `oklch()` | ✅ zero hex, zero `rgb()` in `material.css` |
 | no new runtime dependency | ✅ CSS only |
@@ -153,6 +153,24 @@ everything else in the delivery is sound and self-consistent.
 ### ⚠️ The other six things in the delivery that are factually wrong about our files
 
 Recorded so nobody pastes past them. None changes the verdict.
+
+> **7b. ⛔ AND THE REDUCED-MOTION SECTION IS WRITTEN FOR TWO GATES, NOT THREE** — added
+> 2026-08-07 (**E-125**), because it is the one item that would have forced every
+> animation atom to be re-opened. `theme-provider.tsx:36-46` writes
+> `data-motion="reduced"` whenever its own `detectLowEnd()` fires (≤4 cores, ≤4GB RAM,
+> or Save-Data) and toggles `html.kp-reduce-motion` **only** on the user's own setting.
+> So a **low-end Android player who has changed nothing** gets neither of
+> `material.css:261-280`'s two branches. That tier is a THROTTLE, not a clamp — full
+> durations, ambient loops off — and its list is hand-written in `globals.css` §6.
+> ⭐ **What this means for §C when it lands:** `.mark-pending` (`mark-pending-tilt`,
+> 1240ms `infinite`) needs an entry in that list, and `npm run test:reduce-motion`
+> rule 2.1 will fail until it has one. `.seal-sheen` and `.gilt-metal:hover` are
+> single-shot and do not.
+> ⚠️ Also measured while closing it: the clamp the delivery relies on **never zeroed
+> `animation-delay`**, so `.needle-sweep`'s 600ms delay and `.crest-ring-reveal`'s
+> 340ms would each have held their FIRST frame — `rotate(-26deg)` and `opacity: 0` —
+> for the whole delay on a reduce-motion user (**E-126**). Fixed at source; §C's
+> delays are now safe to land as written.
 
 1. **`--t-move` is 340ms, not 430ms** (`motion.css:35`). §C's comment costs the mark-flip at 430.
    `--t-stage` is 520, `--t-max` 620. The flip lands snappier than the designer priced it.

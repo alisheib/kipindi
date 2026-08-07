@@ -67,14 +67,30 @@ every atom that does not depend on the answer first.
 
 ### ▶ THE ATOMS, IN THIS ORDER AND FOR THESE REASONS
 
-**ATOM A — reduced motion's THIRD gate + `animation-delay`. ⛔ BEFORE ANY ANIMATION ATOM.**
-`theme-provider.tsx:43` writes `data-motion="reduced"` for **low-end Android — our target
-device** — and toggles `kp-reduce-motion` only on the user's own setting. So M6 has THREE
-gates and the delivery covers two. ⛔ **Neither universal clamp touches `animation-delay`**,
-so a delayed keyframe holds its FIRST frame instead of its last: `.needle-sweep` sits at
-`rotate(-26deg)` for 600 ms and `.crest-ring-reveal` at `opacity: 0` for 340 ms for a
-reduce-motion user. Close it here or M6 forces you to re-open all five animation atoms.
-Gate it, and prove the gate RED.
+**~~ATOM A~~ — ✅ LANDED 2026-08-07. Do not redo it; read what it changed for you.**
+Three findings: **E-126** (the calm clamp existed in four drifted copies and none of them zeroed
+`animation-delay` — up to **360ms of invisible market grid** for a player who had switched Reduce
+motion on), **E-125** (the third gate named 14 ambient loops and missed **16**, on the one tier
+that exists for our target device, and carried one dead entry), and **E-127** (a glob written in a
+CSS comment closed it early and the browser **dropped the whole third-gate rule** — the commit's
+own purpose, deleted, with every gate in the repo green over it).
+
+⭐ **WHAT THIS CHANGES FOR EVERY ATOM AFTER IT — three things:**
+1. **`npm run build && npm run qa:bundle-css`, and add your atom's expectations to its list.**
+   For a CSS atom **the source is not evidence**; the shipped bundle is. A rule can be perfect in
+   `src/` and absent from the product with no error from `tsc`, from `next build`, or from any of
+   the nine design gates — all of which grep source text.
+2. **A new animation needs its branch in ONE place, not three.** The calm clamp now lives only in
+   `src/app/motion.css` and covers the OS preference, the in-app switch and the `minimal` tier.
+   ⛔ But an **ambient loop** still needs a hand entry in `globals.css` §6's `[data-motion="reduced"]`
+   list — `test:reduce-motion` rule 2.1 fails without it, and it reads inline `<style>` blocks in
+   `.tsx` as well as stylesheets, so hiding a loop in a component does not exempt it.
+3. **Never write a glob or starred path inside a CSS comment.** `test:reduce-motion` rule 0.1
+   fails on it. The narrow `--token-*` version of that rule was deleted from `test:design-frozen`
+   in the same commit — one fact, one home.
+
+⚠️ **And M6's text in `EXTEND.md` says TWO gates. When ATOM J lands it in `DESIGN_AUTHORITY.md`,
+it must say three.**
 
 **ATOM B — §B, the 12 keyframes** → `src/app/globals.css`, beside each one's family.
 ⛔ **Check the 67 live keyframe names first** (44 globals + 14 motion.css + 8 state-tokens +
@@ -175,6 +191,14 @@ npm run qa:button-contrast     # the RASTER — real pixels, real pointer, the o
 npm run test:m1-light          # the M1 ratchet — prints 0; red:m1-light 6/6
 npm run test:tokens            # cross-file token collisions (rule 1b) · red:tokens 3/3
 npm run test:chat-availability # E-123's coupling rule · red:chat-availability 3/3
+npm run test:reduce-motion     # ⭐ NEW (ATOM A) — M6's THREE gates + the comment-close trap.
+                               #   12 checks, read with postcss · red:reduce-motion 12/12
+npm run build && npm run qa:bundle-css
+                               # ⭐ NEW (ATOM A) — THE SHIPPED BUNDLE, not the source. The only
+                               #   thing here that can see a rule the build silently DROPPED.
+                               #   Add your atom's expectations to its EXPECT list.
+npm run qa:calm                # ⭐ NEW (ATOM A) — production, all three reduce gates, 4×3 cells.
+                               #   It makes the PRODUCT set each gate; it never stamps the class on.
 
 SHOT_DIR=.qa-design node scripts/live-material-probe.mjs card updown button button-xl \
   modal dropdown sheet glass-panel --widths=360,768,1280,1920 --locales=en,sw,zh

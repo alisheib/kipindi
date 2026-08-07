@@ -225,28 +225,22 @@ for (const file of walk(SRC, /\.tsx$/)) {
 }
 check("no hand-rolled createPortal outside the shared primitives", roguePortals.length === 0, roguePortals.join(", "));
 
-// ── The CSS comment trap ─────────────────────────────────────────────────────
-// Writing a pair of token FAMILIES inside a /* … */ comment — e.g. the motion
-// curves and tiers separated by a slash — puts a `*` immediately before a `/`.
-// That sequence CLOSES THE COMMENT. Everything after it is parsed as CSS, and
-// the build dies with a bewildering "Unknown word" pointing at prose. It has
-// cost this repo twice, most recently while writing the very comment that
-// documents deleting dead CSS. It is a landmine in a file full of `--x-*` names,
-// so it gets a guard rather than another note.
-const cssFiles = [...walk(join(SRC, "app"), /\.css$/), ...walk(join(SRC, "components"), /\.css$/), ...walk(join(SRC, "styles"), /\.css$/)];
-const trapped: string[] = [];
-for (const f of cssFiles) {
-  const rel = relative(ROOT, f).replace(/\\/g, "/");
-  readFileSync(f, "utf8").split("\n").forEach((line, i) => {
-    // A `*` glued to a `/` inside a token-family name, e.g. `--m-*` then `/`.
-    if (/--[a-z0-9-]+-\*\//.test(line)) trapped.push(`${rel}:${i + 1}`);
-  });
-}
-check(
-  "no `--token-*` followed by `/` in CSS (would close a comment early)",
-  trapped.length === 0,
-  trapped.join(", "),
-);
+// ── The CSS comment trap — MOVED, not dropped (2026-08-07) ───────────────────
+// This gate used to carry its own version: a line matching `--token-*` glued to a
+// `/`, which puts a `*` immediately before a `/` and CLOSES THE COMMENT. The trap is
+// real and has cost this repo three times now — but that rule only ever matched a
+// TOKEN FAMILY, and the third instance was a filesystem glob written in prose
+// (`src` + a star-star-slash-star pattern) inside globals.css §6. It closed the
+// comment eleven lines early, eleven lines of English became the head of the third
+// reduced-motion gate's selector list, and a real CSS parser confirmed the browser
+// would DROP all 27 entries. This gate was green over it.
+//
+// ⛔ The check now lives in `npm run test:reduce-motion` rule 0.1, ONCE, and it
+// anchors on the unambiguous wreckage instead of on one spelling: a comment closer
+// found outside a comment, or an opener found inside one. Both are impossible in a
+// correct stylesheet, and neither depends on guessing what the author was typing.
+// Two copies of one rule is the defect design-system/README §0 exists to forbid,
+// so the narrow one is gone rather than kept in sync.
 
 log(`\n  (ratchet holds ${FROZEN_ALLOWLIST.size} file(s) — the list may only shrink)`);
 log(`\n${fail === 0 ? "PASS" : "FAIL"} — design primitives are frozen`);
