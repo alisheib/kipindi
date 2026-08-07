@@ -2658,18 +2658,62 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
    fonts/icons/chips so the premium elements (gilt frame, category sigil,
    sparkline, trader crest-stack) fit authentically. Title-left / YES%-right
    head keeps it landscape; fixed title reserve keeps bars aligned across cards. */
-.mcardp { position: relative; display: flex; flex-direction: column; gap: 10px; padding: 14px 15px 13px; border-radius: var(--r-lg); background: var(--bg-elevated);
-  /* Step 5 depth: the SHARED card rungs, composed — the 1px lit top edge over
-     the standard card cast. Was a bespoke `0 1px 2px oklch(8% 0.07 264 / 0.35)`
-     typed here, a fourth elevation value one component wide (B10). */
-  border: 1px solid var(--border); box-shadow: var(--shadow-card-top), var(--shadow-card); overflow: hidden; isolation: isolate;
+/* ═══ THE CARD PICKS RUNG 1 — Claude Design M2, 2026-08-07 (ATOM D) ═══════════
+   This is the first surface in the product to take the material ladder, and it is
+   the one a player looks at most: every market card and every Up & Down card is a
+   `.mcardp`.
+
+   ⭐ THE RUNG IS PICKED AT THE SURFACE'S OWN DEFINITION SITE, not by adding a
+   second class at each call site, and that is a deliberate choice. There are
+   exactly three consumers of `.mcardp` (market-card.tsx twice, updown-card.tsx
+   once) — verified by grep, not assumed — and a class on each would put the card's
+   MATERIAL somewhere different from its geometry while leaving a fourth call site
+   free to omit it. **Structural beats remembered.** `.mat-raised` stays available
+   for surfaces that have no class of their own.
+
+   ⛔ WHAT ACTUALLY CHANGES, AND WHAT DOES NOT. The elevation half is a NO-OP by
+   construction: `--elev-raised` IS `var(--edge-lit)` plus the two cast layers that
+   `--shadow-card` already carried, so `--shadow-card-top, --shadow-card` and
+   `--elev-raised` are the same pixels. **The visible change is the WASH** — a flat
+   `--bg-elevated` at 22% lightness becomes a 24% → 20.5% gradient on the lamp's
+   166deg axis, so the card is lit at its top-left and falls away at the
+   bottom-right. That is M1: the direction of the light lives in the wash.
+   ⛔ AND IT ARRIVES AS A CLASS-LEVEL BACKGROUND, NEVER by redefining
+   `--bg-elevated` — that token is consumed as a COLOUR inside `color-mix()` at five
+   sites and as Tailwind alpha across a dozen components, and a gradient there makes
+   every one of those declarations drop silently with no build error (INTAKE §2b).
+
+   ⚠️ THE WASH COSTS CONTRAST AND IT WAS MEASURED FIRST, not after. A lighter
+   surface means lower contrast for light ink, and `--text-faint on --bg-elevated`
+   was already the tightest pair in the ramp. Scored against the wash's WORST stop
+   before this edit was allowed: `--text-faint` **4.88 → 4.65** (floor 4.5, so it
+   keeps 0.15) · `--text-subtle` 6.36 · `--text-muted` 11.16 · `--text` 16.13.
+   ⚠️ `--border-control on --wash-raised` reads **3.04** against a 3.0 floor — a form
+   control on a card has 0.04 of margin, so the wash's light stop cannot rise
+   without breaking it. Five new pairs in `test:contrast` hold all of this. */
+.mcardp { position: relative; display: flex; flex-direction: column; gap: 10px; padding: 14px 15px 13px; border-radius: var(--r-lg);
+  background: var(--wash-raised);
+  border: 1px solid var(--border);
+  /* Rung 1, and the `--mat-tint` slot so a state accent can compose without
+     re-typing the rung (see motion.css §C). */
+  box-shadow: var(--mat-tint, 0 0 transparent), var(--elev-raised);
+  overflow: hidden; isolation: isolate;
   height: 100%; /* fill the stretched grid cell so every card is the same height */
-  transition: transform .2s ease-out, border-color .2s ease-out, box-shadow .2s ease-out; cursor: pointer; }
+  /* §D's migration map, applied: `.mcardp transition .2s ease-out` → the ladder. */
+  transition: transform var(--t-base) var(--m-glide), border-color var(--t-base) var(--m-glide), box-shadow var(--t-base) var(--m-glide);
+  cursor: pointer; }
 @media (hover: hover) {
-  /* Restraint: lift + a crisp border ring + depth shadow. The ambient brand
-     GLOW is deliberately withheld here so it can mean "look at me" where it's
-     reserved — the featured market and live pulses. */
-  .mcardp:hover { transform: translateY(-3px); border-color: var(--brand-500); box-shadow: 0 0 0 1px var(--brand-500), 0 14px 34px oklch(8% 0.08 264 / 0.6); }
+  /* Restraint: lift + a crisp border ring + the rung's own hover cast. The ambient
+     brand GLOW is deliberately withheld here so it can mean "look at me" where it
+     is reserved — the featured market and live pulses.
+     ⭐ The bespoke `0 14px 34px oklch(8% 0.08 264 / 0.6)` cast is GONE: that is a
+     hand-written shadow the ladder now covers, which INTAKE §3b says must die in
+     the same commit as the rung that replaces it. The brand ring STAYS, because it
+     is a state accent rather than an elevation — the rung says how high the card
+     is, the ring says the pointer is on it.
+     ⚠️ The lift is `--m-lift` (-2px) where it was -3px: one hover displacement in
+     the product, and this was the last surface not using it. */
+  .mcardp:hover { transform: translateY(var(--m-lift)); border-color: var(--brand-500); box-shadow: 0 0 0 1px var(--brand-500), var(--elev-raised-hover); }
 }
 /* Category glyph watermark — bottom-right bleed, brightens on hover. */
 .mcardp-watermark { position: absolute; bottom: -18px; right: -14px; color: var(--border-strong); opacity: 0.055; pointer-events: none; z-index: 0;

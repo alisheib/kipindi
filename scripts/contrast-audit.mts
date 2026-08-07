@@ -547,6 +547,16 @@ const T = {
   giltMetalStops: tokenGradient("gilt-metal"),
   /** Money ink, `.gilt-ink` — the same question one layer up: struck metal as TYPE. */
   giltInkStops: tokenGradient("gilt-ink"),
+
+  /**
+   * ── THE RAISED WASH (2026-08-07, ATOM D) ──────────────────────────────────
+   * The surface every market and Up & Down card sits on once `.mcardp` picks rung 1.
+   * ⛔ Read as a RAMP, not as a colour: it runs 24% → 20.5% on the lamp's axis, and
+   * the pair that matters is each ink against whichever stop reads WORST — the top-left
+   * lit end for light ink. Scoring it as one colour is how a wash quietly costs the
+   * accessibility budget the canvas atom earned.
+   */
+  washRaisedStops: tokenGradient("wash-raised"),
 };
 
 /**
@@ -605,6 +615,38 @@ const CHECKS: Check[] = [
   { name: "--text-subtle on --bg-inset", fg: T.textSubtle, bg: T.bgInset, min: 4.5 },
   { name: "--text-faint on --bg", fg: T.textFaint, bg: T.bg, min: 4.5 },
   { name: "--text-faint on --bg-elevated", fg: T.textFaint, bg: T.bgElevated, min: 4.5 },
+  /**
+   * ── THE WASH, SCORED (2026-08-07, ATOM D) ─────────────────────────────────
+   * ⛔ ADDED BEFORE THE CARD WAS ALLOWED TO ADOPT IT, not after. `.mcardp` moves from
+   * a FLAT `--bg-elevated` at 22% lightness to `--wash-raised`, a 24% → 20.5%
+   * gradient on the lamp's 166deg axis — so the surface behind card text gets
+   * LIGHTER at the top-left, and lighter background means LOWER contrast for light
+   * ink. `--text-faint on --bg-elevated` was already the tightest pair in the whole
+   * ramp at 4.88 against a 4.5 floor, so this is the exact pair a wash could push
+   * under, and "the card looks better" would have shipped over it.
+   * ⭐ `worstStop()` picks the stop that reads worst against each ink, so these are
+   * the honest figures rather than the flattering end of the ramp — which is the
+   * lesson E-119 cost: a ramp scored on one stop is a ramp half-read.
+   */
+  { name: "--text-faint on --wash-raised (worst stop)", fg: T.textFaint, bg: worstStop(T.textFaint, T.washRaisedStops), min: 4.5 },
+  { name: "--text-subtle on --wash-raised (worst stop)", fg: T.textSubtle, bg: worstStop(T.textSubtle, T.washRaisedStops), min: 4.5 },
+  { name: "--text-muted on --wash-raised (worst stop)", fg: T.textMuted, bg: worstStop(T.textMuted, T.washRaisedStops), min: 4.5 },
+  { name: "--text on --wash-raised (worst stop)", fg: T.text, bg: worstStop(T.text, T.washRaisedStops), min: 4.5 },
+  /**
+   * The card's own edge, and a FORM CONTROL's edge on a card — two different rules,
+   * which the gate already encodes and my first version of these two lines did not.
+   * 🔴 The card border went in without `decorative: true` and FAILED at 1.53, over a
+   * value the gate has classified as exempt since it was written: `--border on --bg`
+   * sits three lines above carrying that flag, because a card's edge is not the sole
+   * means of identifying a control (WCAG 1.4.11's actual wording). **My check invented
+   * a floor the repo deliberately does not apply** — and a gate that fails on correct
+   * code is the failure mode this campaign has paid for more than any other.
+   * ⭐ It stays MEASURED and printed as INFO rather than deleted: the number is worth
+   * watching, it just is not a gate. `--border-control` IS held to 3.0, because a form
+   * control's boundary genuinely is required information, and inputs do sit on cards.
+   */
+  { name: "--border on --wash-raised (decorative — exempt)", fg: T.border, bg: worstStop(T.border, T.washRaisedStops), min: 3.0, decorative: true },
+  { name: "--border-control on --wash-raised (form controls on a card)", fg: T.borderControl, bg: worstStop(T.borderControl, T.washRaisedStops), min: 3.0 },
   { name: "--text-faint on --panel", fg: T.textFaint, bg: T.panel, min: 4.5 },
 
   // ── Gold, checked for the first time (ATOM 2d) ────────────────────────────

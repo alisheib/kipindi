@@ -154,6 +154,18 @@ const EXPECT = [
   // ⛔ PINS on two corrections to the delivery that a future paste would undo.
   { atom: "C", mustNot: /\.gilt-metal:focus-visible\s*\{[^}]*outline:\s*none/, what: "⛔ the money CTA keeps a real `outline` on focus — a box-shadow ring is invisible in forced-colors (E-129)" },
   { atom: "C", mustNot: /--gilt-bloom/, what: "⛔ `--gilt-bloom` is never landed — MANIFEST, M3 and §C all say the bloom is removed" },
+
+  // ── ATOM D · 2026-08-07 — the first surface a PLAYER can see ────────────────
+  // ⭐ The market card and the Up & Down card are both `.mcardp`. This is the first
+  // consumer of the wash and the ladder, so these are the expectations that turn
+  // "the tokens exist" into "the product uses them".
+  { atom: "D", must: /\.mcardp\s*\{[^}]*var\(--wash-raised\)/, what: "⭐ the card is painted by the WASH, not a flat fill — the visible half of M1" },
+  { atom: "D", must: /\.mcardp\s*\{[^}]*var\(--elev-raised\)/, what: "the card picks rung 1 rather than composing a shadow (M2)" },
+  { atom: "D", must: /\.mcardp:hover\s*\{[^}]*var\(--elev-raised-hover\)/, what: "…and its hover takes the rung's own hover cast" },
+  // ⛔ PIN: the bespoke card cast the ladder replaced must not come back. INTAKE §3b —
+  // a token that lands while the literal survives has bought nothing.
+  { atom: "D", mustNot: /\.mcardp:hover\s*\{[^}]*0 14px 34px/, what: "⛔ the hand-written hover cast stays deleted (the ladder covers it)" },
+  { atom: "D", mustNot: /\.mcardp\s*\{[^}]*background:\s*var\(--bg-elevated\)/, what: "⛔ the card's flat fill stays replaced — and `--bg-elevated` itself is untouched (INTAKE §2b)" },
 ];
 
 let failed = 0;
