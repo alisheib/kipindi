@@ -247,9 +247,16 @@ function NavLink({ it, pathname }: { it: NavItem; pathname: string }) {
       : "linear-gradient(180deg, oklch(48% 0.15 262 / 0.34), oklch(40% 0.13 262 / 0.26))",
     border: `1px solid ${active ? "var(--brand-400)" : "color-mix(in oklab, var(--brand-500) 55%, transparent)"}`,
     color: active ? "var(--text)" : "var(--brand-300)",
+    /* M1 — both states take an EVEN ring, and both were pure white, which M1 bans twice
+       over (one-sided AND chalky on OLED). ⭐ The rest/active DISTINCTION survives, which
+       is the point: the ladder already has two lit-edge strengths, so active takes
+       `--edge-lit-strong` (0.09) and rest takes `--edge-lit` (0.055) — the same rest→hover
+       pairing `.cm-bubble` took in ATOM 8. The state is still legible, it is now legible in
+       the system's own vocabulary, and the brand glow that actually carries "active" is
+       untouched on both lines. */
     boxShadow: active
-      ? "inset 0 1px 0 oklch(100% 0 0 / 0.16), 0 0 16px -4px oklch(63% 0.18 262 / 0.55)"
-      : "inset 0 1px 0 oklch(100% 0 0 / 0.10), 0 0 12px -6px oklch(63% 0.18 262 / 0.40)",
+      ? "var(--edge-lit-strong), 0 0 16px -4px oklch(63% 0.18 262 / 0.55)"
+      : "var(--edge-lit), 0 0 12px -6px oklch(63% 0.18 262 / 0.40)",
   };
   return (
     <Link

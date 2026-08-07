@@ -166,6 +166,19 @@ const EXPECT = [
   // a token that lands while the literal survives has bought nothing.
   { atom: "D", mustNot: /\.mcardp:hover\s*\{[^}]*0 14px 34px/, what: "⛔ the hand-written hover cast stays deleted (the ladder covers it)" },
   { atom: "D", mustNot: /\.mcardp\s*\{[^}]*background:\s*var\(--bg-elevated\)/, what: "⛔ the card's flat fill stays replaced — and `--bg-elevated` itself is untouched (INTAKE §2b)" },
+
+  /**
+   * ── ATOM E · 2026-08-07 — M1 over the corpus it had never read ────────────────
+   * ⚠️ These seven conversions live in `.tsx` INLINE STYLES, so they are not in the CSS
+   * bundle at all — this probe cannot see them and must not pretend to. The falsifiable
+   * check for that work is `test:m1-light` (now reading 6 stylesheets + 430 component
+   * files, printing 0) plus `red:m1-light` 8/8, which includes a one-sided lamp restored
+   * in a `.tsx` and a must-stay-GREEN even ring. ⛔ Recorded here so a future reader does
+   * not add an expectation that can never match and then "fix" the product to satisfy it.
+   * What IS checkable here is that the tokens those seven sites now reference still ship.
+   */
+  { atom: "E", must: /--edge-lit:/, what: "`--edge-lit` ships — seven .tsx lamps were converted to reference it or an even ring" },
+  { atom: "E", must: /--edge-lit-strong:/, what: "`--edge-lit-strong` ships — the active/rest pairing in the top bar depends on it" },
 ];
 
 let failed = 0;

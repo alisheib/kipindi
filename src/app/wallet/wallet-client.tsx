@@ -50,7 +50,14 @@ function BalanceCard({
       style={{
         background: "linear-gradient(135deg, oklch(23% 0.075 268), oklch(16% 0.05 268))",
         border: "1px solid oklch(78% 0.13 80 / 0.3)",
-        boxShadow: "inset 0 1px 0 oklch(92% 0.06 84 / 0.15), 0 12px 34px oklch(8% 0.05 264 / 0.5)",
+        /* M1 — the light becomes an EVEN ring: same colour, same alpha, all four sides.
+           ⭐ The gold tint STAYS. This is the wallet balance panel, so the warm edge is
+           earned-money identity (M3) rather than decoration, and converting the geometry
+           without touching the colour keeps this diff attributable to M1 alone — the same
+           treatment ATOM 5 gave `.btn-yes` and its family.
+           ⚠️ The outer `0 12px 34px` cast is untouched: M1 says shadows fall straight
+           down, so a directional CAST is the law being obeyed, not broken. */
+        boxShadow: "inset 0 0 0 1px oklch(92% 0.06 84 / 0.15), 0 12px 34px oklch(8% 0.05 264 / 0.5)",
       }}
     >
       <div className="absolute -right-8 -bottom-8 opacity-[0.07]" aria-hidden>
@@ -126,7 +133,9 @@ function BonusWalletCard({
       style={{
         background: "linear-gradient(135deg, oklch(30% 0.085 80), oklch(18% 0.055 72))",
         border: "1px solid var(--border-gold)",
-        boxShadow: "inset 0 1px 0 oklch(92% 0.10 84 / 0.18), var(--glow-jackpot)",
+        /* M1 — even ring, colour and alpha unchanged. Second of the two gilt-edged wallet
+           panels; see the note above for why the gold survives the conversion. */
+        boxShadow: "inset 0 0 0 1px oklch(92% 0.10 84 / 0.18), var(--glow-jackpot)",
       }}
     >
       {/* warm gift motif + jackpot glow */}

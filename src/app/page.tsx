@@ -313,7 +313,11 @@ export default async function LandingPage() {
           background:
             "radial-gradient(130% 150% at 0% 0%, oklch(27% 0.155 268) 0%, oklch(19% 0.12 268) 58%), " +
             "radial-gradient(80% 120% at 100% 0%, oklch(40% 0.10 80 / 0.10), transparent 60%)",
-          boxShadow: "var(--shadow-3), inset 0 1px 0 oklch(100% 0 0 / 0.06)",
+          /* M1 — an EVEN ring, and the token rather than a literal. Was
+             `inset 0 1px 0 oklch(100% 0 0 / 0.06)`: a top-only line, which M1 bans, in
+             PURE WHITE, which M1 bans a second time ("chalkiness on OLED"). `--edge-lit`
+             is both even and carries the 4% royal tint, at 0.055 against this 0.06. */
+          boxShadow: "var(--shadow-3), var(--edge-lit)",
         }}
       >
         <div className="relative grid grid-cols-1 gap-5 md:grid-cols-3 md:gap-7">
@@ -382,7 +386,10 @@ function TrustItem({
         className={`shrink-0 inline-flex h-10 w-10 items-center justify-center rounded-lg border border-border-strong ${accent}`}
         style={{
           background: "linear-gradient(180deg, var(--bg-elevated2), var(--bg-overlay))",
-          boxShadow: "inset 0 1px 0 oklch(100% 0 0 / 0.06)",
+          /* M1 — even ring, tokenised. Same conversion as the hero above: a pure-white
+             top-only line is banned twice over, and `--edge-lit` is the one definition of
+             what a lit edge looks like on this platform. */
+          boxShadow: "var(--edge-lit)",
         }}
       >
         {icon}

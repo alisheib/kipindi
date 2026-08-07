@@ -266,6 +266,13 @@ html.kp-reduce-motion *, html.kp-reduce-motion *::before, html.kp-reduce-motion 
    comment is the answer.
    ⚠️ `factual` takes NONE of these, on purpose. That absence is the material
    distinction between "here is information" (a plain rung) and a coloured state. */
+/* ⭐ `brand` is OURS, not the delivery's. Its `.mat-edge-*` set covered yes / no / warn /
+   gilt, which is the state vocabulary of a MARKET — but this product's default toast is
+   brand-blue ("Saved", "Copied"), a neutral acknowledgement that is none of those four.
+   Without it, adopting the rung would have flattened the most common toast in the product
+   to no ring at all, or forced it to borrow `warn` and read as a caution. One more rule on
+   the same recipe is the right answer; inventing a fifth semantic is not. */
+.mat-tint-brand { --mat-tint: inset 0 0 0 1px color-mix(in oklab, var(--brand-400) 32%, transparent); }
 .mat-tint-yes  { --mat-tint: inset 0 0 0 1px color-mix(in oklab, var(--yes-400) 32%, transparent); }
 .mat-tint-no   { --mat-tint: inset 0 0 0 1px color-mix(in oklab, var(--no-400) 32%, transparent); }
 .mat-tint-warn { --mat-tint: inset 0 0 0 1px color-mix(in oklab, var(--warning-500) 32%, transparent); }

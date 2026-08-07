@@ -20,13 +20,19 @@
  * evidence — the run must name the CHECK that failed, or a typo in this file
  * would score as a caught defect.
  */
-import { readFileSync, writeFileSync, mkdtempSync, mkdirSync, cpSync, globSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdtempSync, mkdirSync, cpSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
+// ⛔ ONE definition of the corpus, shared with the gate — see m1-corpus.mjs. This harness
+// used to glob its own list, and when the gate gained the component files that would have
+// left every mutation running against a corpus the gate no longer reads. `red:contrast` hit
+// exactly that and went from 21/21 caught to 0/21 in a single edit.
+import { m1Corpus } from "./m1-corpus.mjs";
 
 const cwd = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
-const CSS_FILES = globSync("src/**/*.css", { cwd }).map((f) => f.replace(/\\/g, "/"));
+const CORPUS = m1Corpus(cwd);
+const CSS_FILES = CORPUS.all;
 const ORIGINAL = new Map(CSS_FILES.map((f) => [f, readFileSync(join(cwd, f), "utf8")]));
 
 const MUTATIONS = [
@@ -103,6 +109,41 @@ const MUTATIONS = [
     from: `--edge-shade:      inset 0 -1px 0 oklch(6% 0.03 268 / 0.30);`,
     to: `--edge-shade:      inset 0 -1px 0 oklch(60% 0.03 268 / 0.30);`,
   },
+  {
+    /**
+     * 🔴 A ONE-SIDED LAMP IN A `.tsx` INLINE STYLE — the exact shape this ratchet was blind
+     * to until 2026-08-07, when it was printing "THE M1 SWEEP IS COMPLETE" over SEVEN of
+     * them. Two were pure white on the home page, two on the WALLET, and two in the
+     * persistent chrome (bottom nav, top bar). ⛔ This mutation is the only proof that the
+     * component half of the corpus is genuinely read: revert it to the CSS-only glob and
+     * this is the mutation that goes quiet.
+     */
+    name: "put a one-sided lamp back in a .tsx inline style — the component half of the corpus",
+    check: "1.1",
+    file: "src/components/layout/top-app-bar.tsx",
+    from: `      ? "var(--edge-lit-strong), 0 0 16px -4px oklch(63% 0.18 262 / 0.55)"`,
+    to: `      ? "inset 0 1px 0 oklch(100% 0 0 / 0.16), 0 0 16px -4px oklch(63% 0.18 262 / 0.55)"`,
+  },
+  {
+    /**
+     * ⭐ A MUST-STAY-GREEN CASE, and it is worth more than most of the failures above.
+     * The first `.tsx` run of this gate flagged the three EVEN rings that had just replaced
+     * one-sided lamps — because a JSX value is a JS STRING, so the leading quote came out as
+     * the first geometry token and `zero(g[0])` was false. **The gate could not tell the fix
+     * from the defect**, and its output was correct only by accident on the run before.
+     * ⛔ This mutation writes a perfectly compliant even ring, in a `.tsx`, with the quotes
+     * and a string CONCATENATION around it — and demands the gate stay SILENT. A gate that
+     * fails here is a gate that will send the next session to un-fix working code.
+     */
+    name: "an EVEN ring in a .tsx, quoted and concatenated — the gate must stay SILENT",
+    kind: "green",
+    check: "1.1",
+    file: "src/components/layout/bottom-nav.tsx",
+    from: `          "0 14px 36px -10px oklch(8% 0.09 264 / 0.8), " +
+          "var(--edge-lit-strong)",`,
+    to: `          "0 14px 36px -10px oklch(8% 0.09 264 / 0.8), " +
+          "inset 0 0 0 1px oklch(96% 0.04 268 / 0.09)",`,
+  },
 ];
 
 const lf = (s) => s.replace(/\r\n/g, "\n");
@@ -143,6 +184,17 @@ for (const [i, m] of MUTATIONS.entries()) {
   if (isGate) {
     mkdirSync(join(root, "scripts"), { recursive: true });
     writeFileSync(join(root, GATE_SRC), mutated);
+    /**
+     * ⛔ THE INJECTED GATE NEEDS ITS SIBLINGS, and forgetting one is silent.
+     * The gate imports `./m1-corpus.mjs` (the shared corpus, extracted so this harness and
+     * the gate cannot disagree about which files exist). A copy written into the temp
+     * `scripts/` dir without it fails at IMPORT — the mutated gate produces no output at
+     * all, and this harness reported *"the MUTATED GATE did not run"*, which is true and
+     * says nothing about the gate's quality. ⭐ Third time today that extracting a shared
+     * module broke a harness that copies files: fixing duplication moves the fragility to
+     * the copy step, so the copy step has to know the module graph.
+     */
+    cpSync(join(cwd, "scripts/m1-corpus.mjs"), join(root, "scripts/m1-corpus.mjs"));
     gateEntry = join(root, GATE_SRC);
   } else {
     writeFileSync(join(root, m.file), mutated);
@@ -168,19 +220,38 @@ for (const [i, m] of MUTATIONS.entries()) {
   // the injected entry's own label does.
   const failedCheck = new RegExp(`^\\s*FAIL ${m.check.replace(".", "\\.")} `, "m").test(out);
   const ranTheMutant = isGate ? out.includes("red-harness only") : out.includes(root);
-  const ok = exitCode !== 0 && ranTheMutant && failedCheck;
+
+  /**
+   * ⭐ A THIRD KIND: `green`, where the mutation is COMPLIANT and the gate must stay SILENT.
+   * ⛔ A harness made only of failures cannot catch a gate that fails on correct code, and
+   * that is the more expensive direction: a false failure sends somebody to un-fix working
+   * code. This ratchet earned the kind on 2026-08-07, when it condemned the three even rings
+   * that had just replaced one-sided lamps — a JSX value is a JS string, so the leading quote
+   * parsed as the first geometry token. It was reporting the right answer for the wrong reason
+   * on the run before, which is indistinguishable from working until you fix the defect.
+   */
+  const isGreen = m.kind === "green";
+  const ok = isGreen
+    ? exitCode === 0 && ranTheMutant && !failedCheck
+    : exitCode !== 0 && ranTheMutant && failedCheck;
 
   if (ok) {
     caught++;
-    const line = out.split("\n").find((l) => l.trim().startsWith(`FAIL ${m.check}`)) ?? "";
-    console.log(`  ✓ RED  ${m.name}\n         → ${line.trim().slice(0, 108)}`);
+    if (isGreen) {
+      console.log(`  ✓ GREEN ${m.name}\n         → stayed silent over a compliant even ring, as it must`);
+    } else {
+      const line = out.split("\n").find((l) => l.trim().startsWith(`FAIL ${m.check}`)) ?? "";
+      console.log(`  ✓ RED  ${m.name}\n         → ${line.trim().slice(0, 108)}`);
+    }
   } else {
     missed.push(m.name);
     const why = !ranTheMutant
       ? (isGate ? "the MUTATED GATE did not run — its injected entry never appeared in the output" : "the gate did NOT read the mutated copy — M1_ROOT was ignored")
-      : exitCode === 0
-        ? "the gate PASSED over a stylesheet that breaks it"
-        : `exit ${exitCode}, but check ${m.check} was not the one that failed`;
+      : isGreen
+        ? `⛔ THE GATE FAILED ON COMPLIANT CODE — check ${m.check} fired over an even ring. It cannot tell the fix from the defect.`
+        : exitCode === 0
+          ? "the gate PASSED over a stylesheet that breaks it"
+          : `exit ${exitCode}, but check ${m.check} was not the one that failed`;
     console.log(`  ✗ MISS ${m.name}\n         → ${why}`);
   }
 }

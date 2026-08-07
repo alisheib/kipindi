@@ -50,7 +50,7 @@
  * stays put and reads as "still to do" when the work is already done.
  */
 import { readFileSync } from "node:fs";
-import { globSync } from "node:fs";
+import { m1Corpus } from "./m1-corpus.mjs";
 
 // ⛔ RE-AIMABLE, AND IT PRINTS WHAT IT READ. Two sessions share this working
 // tree, so the RED harness copies the stylesheets somewhere else and points the
@@ -58,8 +58,33 @@ import { globSync } from "node:fs";
 // follows next door. A gate you can re-aim is only honest if it says where it
 // looked, so it does, on every run.
 const ROOT = process.env.M1_ROOT ?? new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
-const FILES = globSync("src/**/*.css", { cwd: ROOT }).map((f) => f.replace(/\\/g, "/")).sort();
+
+/**
+ * 🔴 THE CORPUS IS MORE THAN ONE LANGUAGE — 2026-08-07 (ATOM E), AND THIS RATCHET HAD
+ * BEEN DECLARING ITSELF COMPLETE OVER A CORPUS THAT EXCLUDED HALF THE PRODUCT.
+ *
+ * It read `src/**` stylesheets only. On 2026-08-06 (ATOM 8) it printed
+ * `one-sided LAMPS still to convert: 0 · ⭐ THE M1 SWEEP IS COMPLETE`, and that sentence
+ * was believed — by me, in this file's own comments. Measured the day after, over `.tsx`
+ * inline `boxShadow:` values and `<style>` blocks: **FIVE one-sided inner lamps**, two of
+ * them PURE WHITE (which M1 bans a second time over), and **two of them on the wallet** —
+ * the money surface. `page.tsx:316` · `page.tsx:385` · `wallet-client.tsx:53` ·
+ * `wallet-client.tsx:129` · `cashback-promo.tsx:40`.
+ *
+ * ⭐ THE LESSON IS ONE THE SIBLING GATES ALREADY LEARNED AND THIS ONE DID NOT.
+ * `test:contrast` learned "the corpus is more than one FILE" at E-121, when `.cm-send`
+ * sat at 2.55 against a 3.0 floor because the chat lived in a stylesheet nobody read.
+ * `test:reduce-motion` was written reading `.tsx` `<style>` blocks from its first line,
+ * because two of the loops it governs exist only there. **A ratchet that reports 0 is
+ * making a claim about a CORPUS, and the corpus is part of the claim.**
+ *
+ * ⛔ So "0" now means 0 across both languages, and the count it prints is honest.
+ */
+// ⛔ ONE definition of the corpus, shared with the RED harness — see m1-corpus.mjs. Two
+// copies of a file list is what took `red:contrast` from 21/21 to 0/21 in a single edit.
+const { css: CSS_FILES, tsx: TSX_FILES, all: FILES } = m1Corpus(ROOT);
 console.log(`m1-even-light: reading ${ROOT}`);
+console.log(`  corpus: ${CSS_FILES.length} stylesheet(s) + ${TSX_FILES.length} component file(s)`);
 
 /**
  * The permanent exception, and the ONLY one the law grants.
@@ -93,6 +118,22 @@ const stripColour = (s: string) =>
   s.replace(/(oklch|oklab|lab|lch|rgba?|hsla?|color-mix|color|var)\([^()]*(\([^()]*\)[^()]*)*\)/g, " ")
     .replace(/#[0-9a-f]{3,8}\b/gi, " ")
     .replace(/\b(transparent|currentcolor|white|black)\b/gi, " ");
+
+/**
+ * 🔴 JS STRING SYNTAX IS NOT GEOMETRY — and leaving it in made this gate condemn its own fix.
+ *
+ * A CSS declaration's value is bare: `inset 0 0 0 1px oklch(…)`. A JSX inline style's value
+ * is a JS STRING, sometimes concatenated: `boxShadow: "inset 0 0 0 1px oklch(…)" + "…"`. With
+ * the quotes left in, the first geometry token of an even ring came out as `"` rather than
+ * `0`, so `zero(g[0])` was false and a perfectly even ring was reported as a one-sided LAMP.
+ *
+ * ⛔ WHICH MEANS THE FIRST `.tsx` RUN OF THIS GATE WAS RIGHT BY ACCIDENT. It flagged seven
+ * real one-sided lamps — every one of them genuinely `inset 0 1px 0`, verifiable by eye — but
+ * it would have flagged them identically had they been even, and it DID flag the three even
+ * rings that replaced them. **A check that cannot tell the fix from the defect is not
+ * measuring the thing it names**, even on a run where its output happens to be correct.
+ */
+const stripJs = (s: string) => s.replace(/["'`]|\s\+\s/g, " ");
 
 /** Split a shadow value into layers on TOP-LEVEL commas only. */
 function layers(value: string): string[] {
@@ -155,9 +196,19 @@ const benign: Hit[] = [];
 
 for (const rel of FILES) {
   const text = readFileSync(`${ROOT}/${rel}`, "utf8").replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "));
-  // Every declaration whose property is a shadow — `box-shadow`, and any custom
-  // property whose name contains `shadow` or `edge` (the token ladder lives there).
-  const re = /(^|[;{])\s*((?:box-shadow)|(?:--[a-z0-9-]*(?:shadow|edge|elev)[a-z0-9-]*))\s*:([^;}]*)/gi;
+  /**
+   * Every declaration whose property is a shadow: `box-shadow` in CSS and inside a `.tsx`
+   * `<style>` block, **`boxShadow` in a JSX inline style object**, and any custom property
+   * whose name contains `shadow`, `edge` or `elev` (the token ladder lives there).
+   *
+   * ⛔ `boxShadow` IS THE WHOLE REASON THIS RATCHET'S "0" WAS FALSE. Five one-sided lamps
+   * live in JSX inline styles, where the property is camelCased and so matched nothing.
+   * ⚠️ The delimiter had to grow a `,` too: in CSS a declaration follows `;` or `{`, but in
+   * a style object it follows the previous property's comma — so a corpus that included
+   * `.tsx` files but kept the CSS delimiter would have read the files and still found
+   * nothing, which is the more dangerous half of the same bug.
+   */
+  const re = /(^|[;{,])\s*((?:box-shadow)|(?:boxShadow)|(?:--[a-z0-9-]*(?:shadow|edge|elev)[a-z0-9-]*))\s*:([^;}]*)/gi;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text))) {
     const prop = m[2].trim();
@@ -165,7 +216,7 @@ for (const rel of FILES) {
     const line = text.slice(0, m.index).split("\n").length;
     for (const layer of layers(value)) {
       if (!/\binset\b/i.test(layer)) continue; // a cast is meant to be directional
-      const g = stripColour(layer).replace(/\binset\b/gi, " ").trim().split(/\s+/).filter(Boolean);
+      const g = stripJs(stripColour(layer)).replace(/\binset\b/gi, " ").trim().split(/\s+/).filter(Boolean);
       if (g.length < 2) continue; // `inset var(--x)` — geometry lives in the token
       const zero = (t: string) => /^-?0(?:[a-z%]*)$/i.test(t);
       if (zero(g[0]) && zero(g[1])) continue; // both offsets zero → even

@@ -52,10 +52,21 @@ export function BottomNav({ isAuthed = false }: { isAuthed?: boolean }) {
         background: "color-mix(in oklab, var(--bg-elevated) 78%, transparent)",
         backdropFilter: "blur(16px) saturate(1.2)",
         WebkitBackdropFilter: "blur(16px) saturate(1.2)",
+        /* M1 — THE BEVEL PAIR DIES FOR ONE EVEN RING, exactly as ATOM 5 did to
+           `.btn-primary` and `.btn-claret`. A top light AND a bottom shade is a bevel, and
+           M1's whole premise is that there is ONE lamp: the tilt lives in the light, never
+           in the gravity, so a surface does not get lit from above and shaded from below.
+           ⛔ The bottom shade is deleted rather than kept: `--edge-shade`'s own comment
+           reads "inset wells only", and a floating nav bar is not a well — it is the
+           highest chrome in the product on a phone.
+           ⚠️ `--edge-lit-strong` (0.09) replaces a pure-white 0.12. Pure white is banned by
+           M1 for OLED chalkiness, and an even ring at 0.12 would read as a hard outline
+           rather than an edge — the lesson ATOM 5 paid for when it took four fully-opaque
+           button highlights down to the delivery's tinted-edge alpha.
+           ⚠️ The outer cast is untouched; a directional cast IS M1 obeyed. */
         boxShadow:
           "0 14px 36px -10px oklch(8% 0.09 264 / 0.8), " +
-          "inset 0 1px 0 oklch(100% 0 0 / 0.12), " +
-          "inset 0 -1px 0 oklch(0% 0 0 / 0.20)",
+          "var(--edge-lit-strong)",
       }}
     >
       <ul

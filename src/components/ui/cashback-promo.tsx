@@ -37,7 +37,14 @@ export function CashbackPromo({
       style={{
         background: "linear-gradient(135deg, oklch(30% 0.085 80), oklch(18% 0.055 72))",
         border: "1px solid var(--border-gold)",
-        boxShadow: "inset 0 1px 0 oklch(92% 0.10 84 / 0.18), var(--glow-jackpot)",
+        /* M1 — even ring, colour and alpha unchanged.
+           ⚠️ NOTE FOR THE §3b SWEEP: this panel's `background`, `border` and `boxShadow`
+           are BYTE-IDENTICAL to the second wallet panel (`wallet-client.tsx`). One recipe
+           in two files is the drift design-system/README §0 forbids, and it means a future
+           edit to one will silently diverge from the other — as it nearly did here, since
+           both needed this same M1 conversion. Extracting it is a refactor, not an M1
+           change, so it is recorded rather than done inside this atom. */
+        boxShadow: "inset 0 0 0 1px oklch(92% 0.10 84 / 0.18), var(--glow-jackpot)",
       }}
     >
       {/* warm coins motif + jackpot glow — same treatment as the bonus card */}
