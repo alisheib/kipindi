@@ -13,6 +13,14 @@
 > | **§D** migration map | — | ⚪ still in `material.css`; the migration is not finished |
 > | **`EXTEND.md`** M1–M8 | `docs/DESIGN_AUTHORITY.md` §M | ✅ merged 2026-08-07 (ATOM J) · **file deleted** |
 >
+> ℹ️ **2026-08-08 — Ali re-uploaded the delivery zip ("Material system design review.zip").
+> Verified byte-for-byte identical to the original delivery** (every file matches the repo copy
+> or commit `faf386a4`; CSS differences were CRLF-only). It contains **no new design content and
+> no React/TSX drop-ins** — open item 1 below stays open. The one thing it restored is the
+> pristine `material.css`, now filed at `spec/uploads/material-as-delivered.css` so the spec
+> page renders the delivery again (its stylesheet link had gone inert when §A/§B/§C were
+> deleted from the mergeable copy — exactly as the provenance note predicted).
+>
 > ⛔ **THE THREE MERGED SECTIONS WERE DELETED FROM `material.css`, AND THAT IS THE
 > INSTRUCTION RATHER THAN TIDYING** — see the paragraph below. Do not restore them from git
 > to "see what was delivered": in **four** places what shipped is deliberately *not* what the
@@ -64,6 +72,7 @@ any of these numbers as a target** — E-116.
 | `DESIGNER-QUESTIONS.md`, `-R2.md` | the questions we asked and the answers that settled them | **keep** — this is *why* each decision is what it is |
 | `spec/spec.html` | the live spec — open it in a browser. Self-contained | **keep** — provenance |
 | `spec/support.js`, `spec/uploads/*.css` | what the spec page needs to render | **keep**, ⚠️ see below |
+| `spec/uploads/material-as-delivered.css` | the **pristine delivered `material.css`**, byte-identical to commit `faf386a4` (verified 2026-08-08 against Ali's re-upload of the delivery zip). Exists so the spec keeps RENDERING the delivery after §A/§B/§C were deleted from the mergeable `material.css` — the spec's stylesheet link points here permanently | **keep, frozen** — ⛔ never edit, never merge from it; the mergeable source was `material.css` and its merged sections are already law |
 
 ⚠️ **`spec/uploads/tokens.css` and `motion.css` are a SNAPSHOT of *our own* files as they stood
 on 2026-08-06**, sent out with the brief so the spec could render against real values.

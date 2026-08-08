@@ -12,17 +12,19 @@
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="uploads/tokens.css">
 <link rel="stylesheet" href="uploads/motion.css">
-<link rel="stylesheet" href="../material.css">
+<link rel="stylesheet" href="uploads/material-as-delivered.css">
 <!-- PROVENANCE REPAIR, 2026-08-06 (acceptance). These three hrefs read `deliverable/…` as
      delivered, and OUR OWN reorganisation (commit faf386a4, "filed where designs live") moved
      material.css to the folder root without following the link. So from that commit until this
      one the live spec rendered with EVERY .mat-*, .gilt-* and .g-* class INERT — the page that
      exists to demo the material system was demoing none of it. The paths are repaired to point
      at what they always meant; nothing the designer authored was altered.
-     ⚠️ NEXT SESSION: material.css is deleted section-by-section as each merges, so this link is
-     living on borrowed time. When the last section lands, copy the delivered file to
-     uploads/material-as-delivered.css and repoint here — the spec must keep rendering the
-     DELIVERY, never the current app, or it stops being provenance and becomes a mirror. -->
+     PROVENANCE REPAIR 2, 2026-08-08. The warning below came true: §A/§B/§C were deleted from
+     ../material.css as each merged (DA-6), which made the spec inert AGAIN. Ali re-uploaded the
+     original delivery zip; it is byte-identical to commit faf386a4's material.css, and that
+     pristine copy now lives at uploads/material-as-delivered.css (do NOT edit it — it is the
+     delivery, frozen). This link points there permanently: the spec renders the DELIVERY,
+     never the current app. ../material.css remains the merge record + §D migration map only. -->
 <style>
 :root { --font-display: "Sora", sans-serif; --font-body: "Inter", sans-serif; --font-mono: "JetBrains Mono", monospace; }
 html, body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font-body); -webkit-font-smoothing: antialiased; }
@@ -58,7 +60,7 @@ a { color: var(--aqua-300); text-decoration: none; } a:hover { color: var(--aqua
   <header data-screen-label="Masthead" style="display: flex; flex-direction: column; gap: 14px">
     <div style="font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.18em; color: var(--text-subtle); margin-top: 42px">MATERIAL SYSTEM · V1 · CLAUDE DESIGN · 2026-08-06</div>
     <h1 style="font-family: var(--font-display); font-size: 40px; font-weight: 800; margin: 0; letter-spacing: -0.02em">One lamp, five rungs, satin gold.</h1>
-    <p style="margin: 0; max-width: 68ch; font-size: 15px; line-height: 1.65; color: var(--text-muted)">Light hangs high above the plane, tilted <b style="color: var(--text)">−14°</b> — the mark's needle axis, 13.998° measured from the shipped artwork. Every lit surface catches a soft, even 1px inner ring — never a one-sided line; the direction lives in the wash at <span style="font-family: var(--font-mono); font-size: 13px">166deg</span>, speculars centre at x ≈ 42%, shadows fall straight down. The tilt lives in the light, never in the gravity. Mergeable source: <a href="../material.css">material.css</a> · law: <a href="../EXTEND.md">EXTEND.md</a></p>
+    <p style="margin: 0; max-width: 68ch; font-size: 15px; line-height: 1.65; color: var(--text-muted)">Light hangs high above the plane, tilted <b style="color: var(--text)">−14°</b> — the mark's needle axis, 13.998° measured from the shipped artwork. Every lit surface catches a soft, even 1px inner ring — never a one-sided line; the direction lives in the wash at <span style="font-family: var(--font-mono); font-size: 13px">166deg</span>, speculars centre at x ≈ 42%, shadows fall straight down. The tilt lives in the light, never in the gravity. Mergeable source: <a href="uploads/material-as-delivered.css">material.css</a> · law: <a href="../../../../DESIGN_AUTHORITY.md">EXTEND.md</a></p>
     <div style="display: flex; gap: 8px; flex-wrap: wrap; font-family: var(--font-mono); font-size: 10.5px; color: var(--warning-fg)">
       <span style="border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px">⚑ --shadow-card-top consumed by .mcardp but absent from law/tokens.css — defined in §A2, delete ours if globals.css has it</span>
       <span style="border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px">⚑ D-0 lists Sora for the celebration amount, but money-is-mono wins — flag if display was intended</span>
@@ -369,7 +371,7 @@ a { color: var(--aqua-300); text-decoration: none; } a:hover { color: var(--aqua
       <div style="display: flex; gap: 12px; padding: 11px 16px; border-bottom: 1px solid var(--border)"><span style="width: 120px; font-family: var(--font-mono); font-size: 11px; color: var(--gold-300)">celebration</span><span style="color: var(--text-muted)">the seal recipe · .seal-arrive (+recoil) / .needle-sweep / .mark-flip / .seal-sheen · micro-commit .seal-commit</span></div>
       <div style="display: flex; gap: 12px; padding: 11px 16px"><span style="width: 120px; font-family: var(--font-mono); font-size: 11px; color: var(--gold-300)">iconography</span><span style="color: var(--text-muted)">.g-settle / .g-nudge-up / .g-nudge-down / .g-ring / .g-swap — a class, never bespoke keyframes</span></div>
     </div>
-    <p style="margin: 0; font-size: 13px; line-height: 1.6; color: var(--text-subtle); max-width: 76ch">Delivered: <a href="../material.css">deliverable/material.css</a> (§A tokens → law/tokens.css · §B keyframes → law/keyframes.css · §C utilities → law/motion.css · §D migration map) and <a href="../EXTEND.md">deliverable/EXTEND.md</a> (M1–M6, in the authority's voice). No hex outside the trademark's delivered identity, no new easing/duration/typeface/dependency, no public prop changes. Every animation carries both the <span style="font-family: var(--font-mono); font-size: 11.5px">prefers-reduced-motion</span> branch and the <span style="font-family: var(--font-mono); font-size: 11.5px">html.kp-reduce-motion</span> mirror.</p>
+    <p style="margin: 0; font-size: 13px; line-height: 1.6; color: var(--text-subtle); max-width: 76ch">Delivered: <a href="uploads/material-as-delivered.css">deliverable/material.css</a> (§A tokens → law/tokens.css · §B keyframes → law/keyframes.css · §C utilities → law/motion.css · §D migration map) and <a href="../../../../DESIGN_AUTHORITY.md">deliverable/EXTEND.md</a> (M1–M6, in the authority's voice). No hex outside the trademark's delivered identity, no new easing/duration/typeface/dependency, no public prop changes. Every animation carries both the <span style="font-family: var(--font-mono); font-size: 11.5px">prefers-reduced-motion</span> branch and the <span style="font-family: var(--font-mono); font-size: 11.5px">html.kp-reduce-motion</span> mirror.</p>
   </section>
 
 </div>
