@@ -424,7 +424,9 @@ async function overlaySweep(browser, playerCtxFactory, adminCtxFactory) {
 
 // ---- context factories -----------------------------------------------------
 async function main() {
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({
+  ...(process.env.QA_CHROMIUM_PATH ? { executablePath: process.env.QA_CHROMIUM_PATH } : {}),
+});
 
   const localeCookie = (locale) => ([{ name: "kp-locale", value: locale, url: BASE }]);
 

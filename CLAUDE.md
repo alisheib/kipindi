@@ -423,15 +423,23 @@ At typical usage (500 chat messages/day + 50 poll generations/day):
 Run with `node scripts/<name>.mjs`. They use the dev server on `:3000` and
 hit dev-only helpers under `/api/dev-test/*` (returns 404 in production).
 
+⚠️ **Corrected 2026-08-08 — three of the rows this table carried named DELETED files**
+(`multi-player-resolution-e2e.mjs`, `notifications-redirect-test.mjs`,
+`demo-auto-resolve-test.mjs`; verified by listing). Their coverage lives on in the
+wired suites: settlement + money conservation in `e2e:money` (real Postgres) +
+`test:settlement-gate` + `test:fee-model`; bet/win/loss receipts in
+`test:updown-result-announce` + `qa:seal` (a REAL two-player settle, celebration
+tied to the shilling). The rows below were re-verified to exist. The FULL runnable
+inventory is `package.json` (`test:*` / `qa:*` / `e2e:*` / `ops:*` / `red:*`) plus
+`scripts/orphan-allowlist.json` for by-hand drivers — trust those two, not a prose
+table, for anything not listed here.
+
 | Script | What it covers |
 |---|---|
-| `multi-player-resolution-e2e.mjs` | **Authoritative settlement test.** 4 players + 2 officers, mixed YES/NO bets, two-officer settlement, wallet deltas, win/loss notifications, audit chain, money conservation. 26/26. |
 | `candidate-pipeline-e2e.mjs` | AI market-candidate state machine — seed L1–L4 fixtures, officer queue, approve/reject/publish, audit. 22/22. |
 | `flow-architecture-e2e.mjs` | Every redirect + gate — auth gates, KYC gate, /not-found, SOF threshold gate, locale preservation. 16/16. |
-| `notifications-redirect-test.mjs` | Bet-placed receipt + win/loss receipt + click-through to market / positions. 13/13. |
 | `visibility-states-test.mjs` | Top-bar / nav / CTAs per actor (public · player · admin). 44/44. |
 | `responsive-overflow-test.mjs` | 393/768/1024/1280/1440 across all public + auth routes. 70/70. |
-| `demo-auto-resolve-test.mjs` | Auto-resolved demo markets settle correctly + emit notifications. 31/31. |
 | `i18n-toggle-e2e.mjs` | EN/SW/ZH cookie + localStorage + `<html lang>` round trip + persistence. 13/13. |
 | `report-renderers-smoke.mjs` | Renders every catalogue entry (5 reports × PDF + XLSX) and checks magic bytes. 11/11. |
 | `break-it-player.mjs` | 23 manipulator scenarios — auth bypass, cookie tampering, stake validation, race, KYC, XSS, privilege escalation. |
@@ -454,6 +462,11 @@ hit dev-only helpers under `/api/dev-test/*` (returns 404 in production).
 | `POST /api/dev-test/fast-forward-market` `{ marketId }` | Pull a market's resolution to +1h so it appears in the resolver queue |
 | `POST /api/dev-test/reset-rate-limits` | Wipe per-IP / per-phone token buckets |
 | `GET  /api/dev-test/last-otp?phone=...` | Last OTP code for a phone (when SMS is on `console`) |
+| `POST /api/dev-test/updown-seed` `{ durations?, feedProvider? }` | Stand up running Up & Down chains through the real admin service path. `feedProvider: "mock-bars"` (validated against the shared registry) gives DECISIVE local settles — the default `mock` quotes one constant price per symbol, so every round voids on no-move |
+| `POST /api/dev-test/updown-advance` | Force every RUNNING chain across one boundary (rounds then resolve on the lifecycle healer's ~60s cadence, not instantly) |
+
+⚠️ The table lists the helpers sessions reach for most — `src/app/api/dev-test/` is the
+full set (36 routes, all double-gated out of production).
 
 ## Design rules
 

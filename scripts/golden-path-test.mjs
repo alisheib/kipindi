@@ -24,7 +24,7 @@ async function readBal(page) {
   return v ? parseInt(v, 10) : null;
 }
 
-const browser = await chromium.launch();
+const browser = await chromium.launch({ ...(process.env.QA_CHROMIUM_PATH ? { executablePath: process.env.QA_CHROMIUM_PATH } : {}) });
 const ctx = await browser.newContext({ viewport: { width: 430, height: 932 } });
 
 try {
