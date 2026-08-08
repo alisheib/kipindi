@@ -35,6 +35,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { getServerT } from "@/lib/i18n-server";
 import { formatTzs, formatDateTime } from "@/lib/utils";
 import { settleDepositFromReturn } from "@/lib/server/wallet-service";
+import { RefreshPoller } from "@/components/ui/refresh-poller";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Deposit result", which a Swahili player saw in their browser tab and history.
@@ -95,6 +96,16 @@ export default async function DepositReturnPage({
           subtitle={body}
         />
       </PageHero>
+
+      {/* B-19 — while the money is still moving, the page watches for it. The
+          credit lands server-side on the ~15s fast poll, and this page promised
+          "the receipt updates itself" while being force-dynamic with no poller —
+          a PENDING player sat on "do not deposit again" forever. Poll only in
+          the non-terminal states; a settled page registers nothing (E-102). */}
+      <RefreshPoller
+        intervalMs={10_000}
+        enabled={outcome.state === "PENDING" || outcome.state === "UNKNOWN"}
+      />
 
       {/* PENDING is the state players misread as failure and re-pay on. Say the
           quiet part loudly: do NOT deposit again. */}

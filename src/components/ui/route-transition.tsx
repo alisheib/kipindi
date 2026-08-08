@@ -20,6 +20,17 @@ export function RouteTransition({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [key, setKey] = useState(pathname);
   const ref = useRef<HTMLDivElement>(null);
+  // B-19 — TRUE on a history traversal (back/forward), false on a pushed nav.
+  // The unconditional scroll-to-top below used to fire on popstate too, racing
+  // scroll-restore.tsx and yanking a back-navigating reader to the top of a
+  // board they had scrolled. A pushed nav still gets the top (deep links must
+  // not land mid-scroll); a traversal keeps the position the restorer restores.
+  const traversalRef = useRef(false);
+  useEffect(() => {
+    const onPop = () => { traversalRef.current = true; };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
 
   useEffect(() => {
     if (pathname !== key) {
@@ -39,8 +50,11 @@ export function RouteTransition({ children }: { children: React.ReactNode }) {
   }, [pathname, key]);
 
   useEffect(() => {
-    // Scroll to top on route change so deep-linked pages don't land mid-scroll
-    window.scrollTo(0, 0);
+    // Scroll to top on PUSHED route changes only, so deep-linked pages don't
+    // land mid-scroll — never on back/forward, where scroll-restore.tsx owns
+    // the position (B-19).
+    if (!traversalRef.current) window.scrollTo(0, 0);
+    traversalRef.current = false;
 
     const el = ref.current;
     if (!el) return;

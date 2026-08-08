@@ -54,6 +54,10 @@ export function ChatPanel({ lang, messages, pending, onClose, onSend, variant }:
 
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
+    // B-20: the send BUTTON is disabled while pending, but Enter arrives through
+    // handleKey → here, and hammering it queued overlapping chatWithClaude calls
+    // (burns quota, interleaves replies). One gate for both entry points.
+    if (pending) return;
     const el = composerRef.current;
     if (!el) return;
     const text = el.value.trim();

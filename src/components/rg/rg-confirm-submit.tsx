@@ -16,6 +16,7 @@
  */
 
 import { useRef, type ReactNode } from "react";
+import { useFormStatus } from "react-dom";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 export function RgConfirmSubmit({
@@ -32,9 +33,17 @@ export function RgConfirmSubmit({
 }) {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const submitForm = () => buttonRef.current?.closest("form")?.requestSubmit();
+  // B-20 — this component always renders INSIDE the server-action <form> it
+  // submits (that is its whole mechanism), so useFormStatus sees that form's
+  // in-flight state. Passing it opts into ConfirmDialog's DS-4 hold-open
+  // contract: confirm keeps the dialog up wearing the spinner until the
+  // round-trip settles, instead of vanishing while a self-exclusion is still
+  // being written — the one action a player will absolutely re-click.
+  const { pending } = useFormStatus();
 
   return (
     <ConfirmDialog
+      pending={pending}
       tone="claret"
       title={label}
       body={typeof body === "string" ? <p>{body}</p> : body}

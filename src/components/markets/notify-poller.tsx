@@ -93,6 +93,14 @@ export function NotifyPoller() {
 
     const tick = async () => {
       if (cancelled) return;
+      // B-17 — a hidden tab does not poll at the 2s cadence. The visibility
+      // handler below re-ticks the moment the user comes back, so nothing is
+      // lost; without this gate every backgrounded tab kept hammering the
+      // server 30×/min for a celebration nobody could see.
+      if (document.hidden) {
+        timer = setTimeout(tick, IDLE_POLL_MS);
+        return;
+      }
       const watch = readWatch();
       if (watch.length === 0) {
         timer = setTimeout(tick, IDLE_POLL_MS);
@@ -173,6 +181,9 @@ export function NotifyPoller() {
     // timer and re-tick from scratch.
     const onWake = () => {
       if (cancelled) return;
+      // visibilitychange fires on HIDE too — waking the poller on hide is the
+      // opposite of the intent (B-17). Only a visible tab re-ticks.
+      if (document.hidden) return;
       if (timer) clearTimeout(timer);
       tick();
     };

@@ -33,6 +33,8 @@ export function useEventStream(): { connected: boolean } {
   const esRef = useRef<EventSource | null>(null);
   const backoffRef = useRef(1_000);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Arms on open; only if the stream survives 10s does the backoff reset (B-18). */
+  const stableTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pausedRef = useRef(false);
 
   /** Tear down the current EventSource (if any). */
@@ -62,10 +64,19 @@ export function useEventStream(): { connected: boolean } {
 
     es.onopen = () => {
       setConnected(true);
-      backoffRef.current = 1_000; // reset backoff on success
+      // ⛔ B-18: do NOT reset backoff here. A proxy that accepts-then-drops
+      // (the mid-deploy 502-after-headers shape) fires onopen before every
+      // failure, so resetting on open turns exponential backoff into an
+      // indefinite tight 1s loop. The connection has to EARN the reset: stay
+      // open ~10s or deliver a real event.
+      if (stableTimer.current) clearTimeout(stableTimer.current);
+      stableTimer.current = setTimeout(() => { backoffRef.current = 1_000; }, 10_000);
     };
 
     es.onmessage = (event) => {
+      // A real event is proof of a healthy stream — the other half of B-18's
+      // earn-the-reset rule.
+      backoffRef.current = 1_000;
       try {
         const parsed = JSON.parse(event.data) as { type: string; data: unknown };
         const windowEvent = EVENT_MAP[parsed.type];
@@ -83,14 +94,19 @@ export function useEventStream(): { connected: boolean } {
       setConnected(false);
       es.close();
       esRef.current = null;
+      if (stableTimer.current) { clearTimeout(stableTimer.current); stableTimer.current = null; }
 
-      // Exponential backoff reconnect.
+      // Exponential backoff reconnect, with ±30% jitter (B-18): after a Railway
+      // deploy every client loses the stream on the SAME instant, and a
+      // jitterless retry ladder sends the whole fleet back in lockstep at the
+      // worst possible moment.
       const delay = backoffRef.current;
       backoffRef.current = Math.min(delay * 2, MAX_BACKOFF_MS);
+      const jittered = Math.round(delay * (0.7 + Math.random() * 0.6));
       reconnectTimer.current = setTimeout(() => {
         reconnectTimer.current = null;
         if (!pausedRef.current) connect();
-      }, delay);
+      }, jittered);
     };
   }, [close]);
 

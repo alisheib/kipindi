@@ -27,6 +27,7 @@ import { db } from "@/lib/server/store";
 import type { StoredTxn } from "@/lib/server/store";
 import { getServerT } from "@/lib/i18n-server";
 import { formatTzs, formatDateTime } from "@/lib/utils";
+import { RefreshPoller } from "@/components/ui/refresh-poller";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Receipt", which a Swahili player saw in their browser tab and history.
@@ -79,11 +80,16 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
 
   const tone = STATUS_TONE[txn.status];
   const statusLabel = t.wallet[tone.label];
+  // B-19 — a receipt opened while the money is still in flight watches for the
+  // terminal state (the server's fast poll confirms within ~15s); a settled
+  // receipt registers nothing (E-102).
+  const inFlight = txn.status === "PENDING" || txn.status === "PROCESSING";
 
   const isCredit = txn.amount > 0;
 
   return (
     <main className="mx-auto max-w-[560px] px-3 lg:px-6 py-6 space-y-5">
+      <RefreshPoller intervalMs={10_000} enabled={inFlight} />
       <BackLink fallbackHref="/wallet" label={t.wallet.title} />
 
       <PageHero glow={tone.key === "paid" && isCredit ? "gold" : undefined}>

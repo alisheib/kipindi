@@ -6,7 +6,7 @@
  * Vote arrows are NEVER betting green/red — a proposal is not a YES/NO bet.
  * Optimistic: the score updates instantly, then reconciles with the server.
  */
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { I } from "@/components/ui/glyphs";
 import { voteAction } from "@/app/proposals/actions";
 import { useToast } from "@/components/ui/toast";
@@ -41,6 +41,8 @@ export function VoteControl({
   const scoreColor = vote === "up" ? "var(--accent-400)" : vote === "down" ? "var(--claret-300)" : "var(--text)";
 
   const [pop, setPop] = useState(0);
+  /** Monotonic per-click sequence — the stale-response guard (B-20). */
+  const voteSeq = useRef(0);
 
   const click = (dir: "up" | "down") => {
     if (disabled) return;
@@ -63,8 +65,21 @@ export function VoteControl({
       if (next === "down") d++;
       return { up: Math.max(0, u), down: Math.max(0, d) };
     });
+    // B-20 — a rapid up→down fires two requests, and the FIRST response can land
+    // last: applied in arrival order, the stale tally overwrites the fresh one.
+    // Each click takes a sequence number; only the latest may apply its response.
+    const seq = ++voteSeq.current;
     start(async () => {
-      const r = await voteAction(proposalId, next);
+      // B-12 — a flaky network mid-action THROWS inside the transition, and an
+      // uncaught throw replaces the whole page with error.tsx. Same rollback as
+      // a refused vote; the toast states the network truth.
+      let r: Awaited<ReturnType<typeof voteAction>>;
+      try {
+        r = await voteAction(proposalId, next);
+      } catch {
+        r = { ok: false as const, error: t.error.somethingDidntWork };
+      }
+      if (seq !== voteSeq.current) return; // a newer click owns the state now
       if (r.ok) setTally({ up: r.up, down: r.down });
       else {
         // Roll back to the captured pre-click state.
