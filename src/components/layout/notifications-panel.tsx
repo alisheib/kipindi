@@ -251,7 +251,8 @@ export function NotificationsPanel() {
               borderRadius: 9,
               background: "linear-gradient(180deg, var(--no-400), var(--no-600))",
               border: "2px solid var(--bg-base)",
-              boxShadow: "0 0 8px var(--no-500), 0 2px 4px oklch(10% 0.05 264 / 0.4)",
+              // DS-24 — fully token-composed (the drop half was a raw oklch).
+              boxShadow: "0 0 8px var(--no-500), 0 2px 4px color-mix(in oklab, var(--royal-950) 40%, transparent)",
               zIndex: 20,
               pointerEvents: "none",
               display: "flex",

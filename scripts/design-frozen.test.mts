@@ -78,11 +78,11 @@ const FROZEN_ALLOWLIST = new Set<string>([
   "src/app/profile/page.tsx",                  // 2
   // reward-burst.tsx CLEARED 2026-08-08 — its two borderRadius literals were the
   // heraldic corner brackets, which died with the rays (INTAKE §3b, 45 → 44).
-  "src/components/markets/bet-confirm-modal.tsx",  // 2
-  "src/components/markets/sell-confirm-modal.tsx", // 2
+  // bet-confirm-modal + sell-confirm-modal + offline-banner CLEARED 2026-08-08
+  // (session 37, DS-5/DS-6/DS-16): side-chip tones, exit-value panel and the
+  // offline strip now compose from the semantic families (44 → 41).
   "src/components/ui/cashback-promo.tsx",      // 2
   "src/components/ui/checkbox.tsx",            // 2
-  "src/components/ui/offline-banner.tsx",      // 2
   "src/components/ui/toggle.tsx",              // 2
   "src/app/auth/register/page.tsx",            // 1
   "src/app/markets/[id]/page.tsx",             // 1

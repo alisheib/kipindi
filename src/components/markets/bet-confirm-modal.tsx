@@ -192,9 +192,12 @@ export function BetConfirmModal({
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
+  // DS-5 — composed from the YES/NO semantic families (the same lit-glass
+  // recipe as the ORM crest), not hand-typed oklch triples that drift the
+  // moment the palette moves.
   const sideTone = side === "YES"
-    ? { fg: "oklch(78% 0.13 152)", bg: "oklch(40% 0.10 152 / 0.18)", brd: "oklch(45% 0.13 152)" }
-    : { fg: "oklch(78% 0.16 22)",  bg: "oklch(40% 0.13 22 / 0.18)",  brd: "oklch(48% 0.15 22)" };
+    ? { fg: "var(--yes-300)", bg: "color-mix(in oklab, var(--yes-500) 18%, transparent)", brd: "color-mix(in oklab, var(--yes-500) 62%, transparent)" }
+    : { fg: "var(--no-300)",  bg: "color-mix(in oklab, var(--no-500) 18%, transparent)",  brd: "color-mix(in oklab, var(--no-500) 62%, transparent)" };
   const seconds = Math.ceil(remainingMs / 1000);
 
   return (

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { Chip } from "@/components/ui/chip";
+import { Callout } from "@/components/ui/callout";
 import { BackLink } from "@/components/ui/back-link";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageHero } from "@/components/ui/page-hero";
@@ -72,15 +73,13 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-5">
       <BackLink fallbackHref="/profile" label={t.common.profile} />
 
+      {/* DS-26 — the kit Callout, not a bespoke box, for the outcome of a
+          protection-limit change (consequential; `live` announces promptly). */}
       {sp.error && (
-        <div role="alert" className="rounded-xl border border-no-700 bg-no-500/10 px-4 py-3 text-[13px] text-no-300">
-          {sp.error}
-        </div>
+        <Callout tone="danger" live>{sp.error}</Callout>
       )}
       {sp.saved && !sp.error && (
-        <div role="status" className="rounded-xl border border-yes-700 bg-yes-500/10 px-4 py-3 text-[13px] text-yes-300">
-          {t.rg.limitsSaved}
-        </div>
+        <Callout tone="success" live>{t.rg.limitsSaved}</Callout>
       )}
 
       <PageHero glow="yes">

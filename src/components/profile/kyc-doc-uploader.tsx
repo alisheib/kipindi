@@ -61,7 +61,7 @@ export function KycDocUploader({
       } catch {
         r = { ok: false, error: t.error.somethingDidntWork };
       }
-      if (!r.ok) { setPreview(null); setBusy(false); toast({ title: t.toast.uploadFailed, description: errorCopy(t, r), variant: "danger" }); return; }
+      if (!r.ok) { setPreview(null); setBusy(false); toast({ title: t.toast.uploadFailed, description: errorCopy(t, r), variant: "danger", durationMs: 0 }); return; } // DS-26 — an identity-document failure stays until read
       setDone(true);
       setBusy(false);
       toast({ title: t.toast.documentAttached, variant: "success" });
@@ -165,7 +165,7 @@ export function KycExtraDocUploader({
       } catch {
         r = { ok: false, error: t.error.somethingDidntWork };
       }
-      if (!r.ok) { setPreview(null); setBusy(false); toast({ title: t.toast.uploadFailed, description: errorCopy(t, r), variant: "danger" }); return; }
+      if (!r.ok) { setPreview(null); setBusy(false); toast({ title: t.toast.uploadFailed, description: errorCopy(t, r), variant: "danger", durationMs: 0 }); return; } // DS-26 — an identity-document failure stays until read
       setDone(true);
       setBusy(false);
       toast({ title: t.toast.documentAttached, variant: "success" });

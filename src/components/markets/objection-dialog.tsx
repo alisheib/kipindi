@@ -20,6 +20,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
+import { Callout } from "@/components/ui/callout";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
 import { fileObjectionAction } from "@/app/markets/actions";
@@ -48,9 +49,16 @@ export function ObjectionDialog({ marketId, onFiled }: { marketId: string; onFil
       fd.set("marketId", marketId);
       fd.set("reason", reason);
       fd.set("detail", detail);
-      const r = await fileObjectionAction(fd);
+      // B-12 — a flaky network mid-filing must not nuke the page.
+      let r: Awaited<ReturnType<typeof fileObjectionAction>>;
+      try {
+        r = await fileObjectionAction(fd);
+      } catch {
+        r = { ok: false as const, error: t.error.somethingDidntWork };
+      }
       if (!r.ok) {
-        toast({ title: r.error, variant: "danger" });
+        // DS-26 — filing a dispute is consequential; the failure stays until read.
+        toast({ title: r.error, variant: "danger", durationMs: 0 });
         return;
       }
       setOpen(false);
@@ -84,10 +92,9 @@ export function ObjectionDialog({ marketId, onFiled }: { marketId: string; onFil
             {t.market.objTitle}
           </h2>
 
-          {/* The promise we can now actually keep. */}
-          <p className="rounded-md border border-warning-border bg-warning-bg/20 px-3 py-2 text-[12px] leading-relaxed text-warning-fg">
-            {t.market.objIntro}
-          </p>
+          {/* The promise we can now actually keep. DS-8 — the kit Callout, not a
+              hand-rolled warning box. */}
+          <Callout tone="warning">{t.market.objIntro}</Callout>
 
           <div className="space-y-1.5">
             <label

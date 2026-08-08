@@ -34,9 +34,12 @@ export function OfflineBanner() {
     <div
       role="alert"
       className="fixed top-0 inset-x-0 z-[200] flex items-center justify-center gap-2 px-4 py-2 text-[12px] font-semibold text-text"
+      // DS-16 — the strip stays viewport-fixed (connectivity outranks layout),
+      // but it paints with the WARNING semantic family now, not a hue-40 amber
+      // that matched no token in the system.
       style={{
-        background: "linear-gradient(90deg, oklch(35% 0.12 40), oklch(30% 0.10 40))",
-        borderBottom: "1px solid oklch(50% 0.14 40 / 0.5)",
+        background: "linear-gradient(90deg, color-mix(in oklab, var(--warning-bg) 88%, var(--bg-base)), color-mix(in oklab, var(--warning-bg) 70%, var(--bg-base)))",
+        borderBottom: "1px solid color-mix(in oklab, var(--warning-fg) 45%, transparent)",
         paddingTop: "calc(env(safe-area-inset-top, 0px) + 8px)",
       }}
     >

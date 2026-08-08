@@ -23,7 +23,7 @@
 import { I, type GlyphKey } from "@/components/ui/glyphs";
 import { cn } from "@/lib/utils";
 
-export type CalloutTone = "warning" | "info" | "brand" | "danger";
+export type CalloutTone = "warning" | "info" | "brand" | "danger" | "success";
 
 // `strongBox` is NOT just "the same but 2px". The normal borders are deliberately
 // low-opacity so an inline note sits quietly inside content — and at 2px that
@@ -34,6 +34,9 @@ const TONE: Record<CalloutTone, { box: string; strongBox: string; icon: string; 
   info: { box: "border-info-border bg-info-bg/20", strongBox: "border-info-fg bg-info-bg/50", icon: "text-info", glyph: "info" },
   brand: { box: "border-gold-500/30 bg-gold-500/10", strongBox: "border-gold-400 bg-gold-500/15", icon: "text-gold-300", glyph: "shieldcheck" },
   danger: { box: "border-no-500/40 bg-no-500/10", strongBox: "border-no-500 bg-no-500/15", icon: "text-no-300", glyph: "alertCircle" },
+  // DS sweep (2026-08-08) — the confirmation family. Several pages hand-rolled
+  // this exact green box (RG "limits saved" was the flagged one); one home now.
+  success: { box: "border-yes-700 bg-yes-500/10", strongBox: "border-yes-500 bg-yes-500/15", icon: "text-yes-300", glyph: "checkCircle" },
 };
 
 export function Callout({

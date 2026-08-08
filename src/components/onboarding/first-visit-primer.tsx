@@ -313,14 +313,16 @@ export function FirstVisitPrimer() {
               onClick={() => setStep(i)}
               aria-label={t.primer.step.replace("{n}", String(i + 1))}
               className="h-[3px] flex-1 rounded-pill transition-all duration-300 hover:opacity-80"
+              // DS-13 — UI chrome composes from tokens (the SVG brand art keeps
+              // its literals; chrome must not).
               style={{
                 background:
                   i < step
-                    ? "oklch(78% 0.13 80)"
+                    ? "var(--gold-400)"
                     : i === step
                       ? "var(--gold-300)"
-                      : "oklch(34% 0.130 268)",
-                boxShadow: i === step ? "0 0 8px oklch(78% 0.13 80 / 0.4)" : "none",
+                      : "var(--royal-700)",
+                boxShadow: i === step ? "0 0 8px color-mix(in oklab, var(--gold-400) 40%, transparent)" : "none",
               }}
             />
           ))}
@@ -375,7 +377,7 @@ export function FirstVisitPrimer() {
                   key={i}
                   className="inline-block h-[5px] w-[5px] rounded-full transition-all duration-300"
                   style={{
-                    background: i === step ? "var(--gold-300)" : "oklch(34% 0.130 268)",
+                    background: i === step ? "var(--gold-300)" : "var(--royal-700)", /* DS-13 */
                     transform: i === step ? "scale(1.4)" : "scale(1)",
                   }}
                 />

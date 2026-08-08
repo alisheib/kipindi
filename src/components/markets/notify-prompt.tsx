@@ -15,6 +15,7 @@ import { useT } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { I } from "@/components/ui/glyphs";
 import { GlyphSwap } from "@/components/ui/glyph-swap";
+import { Callout } from "@/components/ui/callout";
 
 const KEY = "50pick-notify-markets";
 
@@ -56,11 +57,8 @@ export function NotifyPrompt({ marketId, marketTitle }: { marketId: string; mark
   }, [marketId]);
 
   if (!supported) {
-    return (
-      <div className="rounded-md border border-border bg-bg-overlay px-3 py-2 text-[11px] text-text-subtle">
-        {t.market.notifUnsupported}
-      </div>
-    );
+    // DS-9 — the kit Callout, not a hand-rolled notice box.
+    return <Callout tone="info">{t.market.notifUnsupported}</Callout>;
   }
 
   const toggle = async () => {
@@ -95,11 +93,9 @@ export function NotifyPrompt({ marketId, marketTitle }: { marketId: string; mark
   };
 
   if (permission === "denied") {
+    // DS-9 — kit Callout with the bell-off glyph override.
     return (
-      <div className="flex items-center gap-2 rounded-md border border-border bg-bg-overlay px-3 py-2 text-[11px] text-text-subtle">
-        <I.bellOff s={14} />
-        <span>{t.market.notifBlocked}</span>
-      </div>
+      <Callout tone="info" glyph="bellOff">{t.market.notifBlocked}</Callout>
     );
   }
 

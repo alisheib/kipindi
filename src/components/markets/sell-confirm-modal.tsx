@@ -12,6 +12,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Modal } from "@/components/ui/modal";
 import { I } from "@/components/ui/glyphs";
+import { Callout } from "@/components/ui/callout";
 import { haptics } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { formatTzs, formatNumber } from "@/lib/utils";
@@ -96,11 +97,13 @@ export function SellConfirmModal({ open, pending, stake, value, positionId, onCo
         </p>
       )}
 
+      {/* DS-6 — composed from the semantic families (YES green for the free
+          window, royal for the fee'd exit), not hand-typed oklch. */}
       <div
         className="rounded-lg border p-4"
         style={{
-          borderColor: isFree ? "oklch(45% 0.13 152)" : "oklch(50% 0.10 264)",
-          background:  isFree ? "oklch(40% 0.10 152 / 0.18)" : "oklch(40% 0.08 264 / 0.18)",
+          borderColor: isFree ? "color-mix(in oklab, var(--yes-500) 62%, transparent)" : "color-mix(in oklab, var(--royal-500) 62%, transparent)",
+          background:  isFree ? "color-mix(in oklab, var(--yes-500) 18%, transparent)" : "color-mix(in oklab, var(--royal-500) 16%, transparent)",
         }}
       >
         <div className="flex items-baseline justify-between">
@@ -114,7 +117,7 @@ export function SellConfirmModal({ open, pending, stake, value, positionId, onCo
             <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-text-subtle mb-1">{t.dialog.earlyExitFee}</p>
             <p
               className="font-mono font-bold text-[18px] tabular-nums leading-none"
-              style={{ color: isFree ? "oklch(78% 0.13 152)" : "var(--text)" }}
+              style={{ color: isFree ? "var(--yes-300)" : "var(--text)" }}
             >
               {isFree ? t.dialog.noFee : `−${formatTzs(fee)}`}
             </p>
@@ -123,24 +126,17 @@ export function SellConfirmModal({ open, pending, stake, value, positionId, onCo
         </div>
       </div>
 
-      <div className="mt-3 flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg/30 p-3">
-        <I.warning s={14} />
-        <p className="text-[12px] text-text-muted leading-snug">
-          {isFree
-            ? <>{t.dialog.freeExitExplain}</>
-            : <>{t.dialog.earlyExitExplain}</>
-          }
-          <span className="block italic text-text-subtle text-[11px] mt-0.5">
-            {t.dialog.stakeWillLeavePool}
-          </span>
-        </p>
-      </div>
+      {/* DS-6 — the kit Callout (this is the exact box callout.tsx absorbed
+          from this file), not a hand-rolled warning panel. */}
+      <Callout tone="warning" className="mt-3">
+        {isFree ? t.dialog.freeExitExplain : t.dialog.earlyExitExplain}
+        <span className="block italic text-text-subtle text-[11px] mt-0.5">
+          {t.dialog.stakeWillLeavePool}
+        </span>
+      </Callout>
 
       {quoteExpired && !pending && (
-        <div className="mt-3 flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg/30 p-3" role="alert">
-          <I.warning s={14} />
-          <p className="text-[12px] text-text-muted leading-snug">{t.dialog.quoteExpired}</p>
-        </div>
+        <Callout tone="warning" live className="mt-3">{t.dialog.quoteExpired}</Callout>
       )}
 
       <div className="mt-5 flex flex-col gap-2">

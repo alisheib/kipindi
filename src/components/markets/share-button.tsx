@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { createPortal } from "react-dom";
+import { Modal } from "@/components/ui/modal";
 import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
@@ -69,31 +69,12 @@ export function ShareButton({
         {copied ? t.common.copied : t.common.share}
       </button>
 
-      {open && typeof document !== "undefined" && createPortal(
-        <>
-          <div
-            aria-hidden
-            className="fixed inset-0 z-popover bg-black/60 backdrop-blur-md"
-            onClick={() => setOpen(false)}
-          />
-          <div
-            role="dialog"
-            aria-label={t.dialog.shareMarket}
-            className="fixed left-3 right-3 bottom-3 sm:left-auto sm:right-6 sm:top-20 sm:bottom-auto sm:w-[320px] z-popover rounded-xl border border-border bg-bg-elevated shadow-e5 overflow-hidden m-in"
-            style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
-          >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-              <p className="font-display text-[14px] font-semibold text-text">{t.dialog.shareMarket}</p>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                aria-label={t.common.close}
-                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-text-muted hover:bg-bg-overlay"
-              >
-                <I.x s={14} />
-              </button>
-            </div>
-            <div className="p-2">
+      {/* DA-10 / DS-25 — the kit <Modal> replaced a hand-rolled portal + scrim +
+          anchored sheet (own z-index, own ✕, no focus trap, no scroll lock).
+          Chrome, a11y and the scrim recipe are all inherited now. */}
+      <Modal open={open} onClose={() => setOpen(false)} ariaLabel={t.dialog.shareMarket} maxWidth={360}>
+        <p className="mb-2 font-display text-[14px] font-semibold text-text">{t.dialog.shareMarket}</p>
+        <div className="-mx-2">
               {hasWebShare && (
                 <button
                   type="button"
@@ -137,11 +118,8 @@ export function ShareButton({
                   <span className="block font-mono text-[11px] text-text-subtle truncate max-w-full">{url.replace(/^https?:\/\//, "")}</span>
                 </span>
               </button>
-            </div>
-          </div>
-        </>,
-        document.body,
-      )}
+        </div>
+      </Modal>
     </>
   );
 }
