@@ -311,6 +311,22 @@ const SELECT = "src/components/ui/select.tsx";
      /movementAdviceFor\(asset\.key, input\.durationMinutes\)/.test(configSrc) &&
      /validateSymbolDuration\(asset\.symbol, input\.durationMinutes, measured, movement\)/.test(configSrc));
 
+  // ⛔ THE ACTION VALIDATES AGAINST THE SHARED LIST TOO (found live 2026-08-08). The
+  // dropdown was rendered from FEED_PROVIDERS while the ACTION kept a hand-written
+  // `provider !== "mock" && provider !== "twelvedata"` — so the console OFFERED the two
+  // `-bars` readers (including twelvedata-bars, the dated reader settlement runs on) and
+  // the save refused them with "Choose a feed provider." after a completed type-to-arm
+  // ceremony. The refusal must come from the ONE list, and the SIMULATED gate from the
+  // spec's own flag — never an id literal.
+  {
+    const actions = code("src/app/admin/updown/actions.ts");
+    ok("7.5 · ⛔ the reading-method action validates the provider against the SHARED list",
+       /findProvider\(provider as FeedProviderId\)/.test(actions) &&
+       !/provider !== "mock" && provider !== "twelvedata"/.test(actions));
+    ok("7.6 · …and the SIMULATED confirmation keys off the spec's own flag, not an id",
+       /spec\.simulated/.test(actions) && !/provider === "mock"\)/.test(actions));
+  }
+
   // ⛔ EXHAUSTIVE, AS §4.1 IS FOR THE CATALOGUE: with a measured record in hand, the console and
   // the server must still agree on every symbol × duration. A record that blocks short rounds is
   // used, because that is the pairing the two halves could disagree about.

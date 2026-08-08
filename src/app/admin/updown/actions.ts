@@ -8,6 +8,7 @@ import { db } from "@/lib/server/store";
 import { type AdminDomain } from "@/lib/server/roles";
 import { requireStaff } from "@/lib/server/rbac-guard";
 import { CONTROL_DOMAIN, type ControlId } from "@/lib/server/control-gates";
+import { findProvider, type FeedProviderId } from "@/lib/updown-providers";
 import {
   createAsset, updateAsset, setAssetEnabled,
   createChain, updateChain, setChainState,
@@ -316,18 +317,28 @@ export async function updateReadingMethodAction(formData: FormData) {
     if (method !== "feed" && method !== "ai") {
       return { ok: false as const, error: "Choose a reading method: market feed or AI." };
     }
-    if (provider !== "mock" && provider !== "twelvedata") {
+    // ⛔ VALIDATED AGAINST THE SHARED LIST, never a hand-written pair. This line was
+    // `provider !== "mock" && provider !== "twelvedata"` — the exact drift the console's
+    // own dropdown comment says was fixed on the DISPLAY side ("rendered from the shared
+    // list") while the ACTION kept a stale literal: the console OFFERED all four providers
+    // and this refused both `-bars` readers with "Choose a feed provider." — including
+    // `twelvedata-bars`, the DATED reader the whole settlement rebuild runs on. An operator
+    // could not select the production reader through the product. Found by driving the
+    // ceremony end-to-end (the type-to-arm modal completed, then the refusal toast).
+    const spec = findProvider(provider as FeedProviderId);
+    if (!spec) {
       return { ok: false as const, error: "Choose a feed provider." };
     }
-    // The typed confirmation is required only for the simulated provider, and only when it
-    // is the provider that would actually be used. Asking for it on every save trains the
-    // operator to type it without reading.
-    if (method === "feed" && provider === "mock") {
+    // The typed confirmation is required for ANY simulated provider (the spec's own flag,
+    // not an id comparison — same rule the console uses), and only when the feed method
+    // would actually use it. Asking for it on every save trains the operator to type it
+    // without reading.
+    if (method === "feed" && spec.simulated) {
       if (String(formData.get("confirm") ?? "").trim().toUpperCase() !== "SIMULATED") {
         return { ok: false as const, error: 'Type SIMULATED to confirm a simulated price feed.' };
       }
     }
-    const r = await setUpDownConfig({ observationMethod: method, feedProvider: provider }, session.userId);
+    const r = await setUpDownConfig({ observationMethod: method, feedProvider: provider as FeedProviderId }, session.userId);
     if (!r.ok) return { ok: false as const, error: r.error };
     refresh();
     return { ok: true as const, warn: r.warn };
