@@ -8,10 +8,17 @@
  */
 import { chromium, devices } from "playwright";
 import { mkdirSync } from "node:fs";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const BASE = process.env.BASE || "http://localhost:3000";
-const OUT  = "C:/kipindi/scripts/mobile-audit";
+// 🔴 Was the absolute `C:/kipindi/scripts/mobile-audit` (2026-08-08, session 37).
+// That path stopped existing when the checkout moved to `C:\kipindi-main`, so the
+// driver wrote its evidence into a directory nobody was looking at — and it could
+// never run on any other machine at all. Resolved from THIS file's own location,
+// so it lands beside the script wherever the repo is cloned. `SHOT_DIR` overrides,
+// matching every other driver in scripts/.
+const OUT = process.env.SHOT_DIR || join(dirname(fileURLToPath(import.meta.url)), "mobile-audit");
 
 // iPhone 17 Pro Max approx (Apple spec 430×932 logical pixels, dpr 3)
 const viewport = { width: 430, height: 932 };

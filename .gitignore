@@ -122,14 +122,19 @@ shots/*.png
 .qa-s2*/
 .qa-s2*.txt
 .qa-s2*.log
-s2?-*.png
+/s2?-*.png
 # ⚠️ `.qa-s2*` does NOT cover session 30. The pattern was written when the session number
 # happened to start with a 2, and the next session's scratch would have been committed
 # silently. Widened rather than renamed, so session 29's paths in the campaign doc still hold.
 .qa-s3*/
 .qa-s3*.txt
 .qa-s3*.log
-s3?-*.png
+/s3?-*.png
+# 🔴 THE LEADING SLASH IS LOAD-BEARING (2026-08-08, session 37). Unanchored, `s2?-*.png`
+# matches at ANY depth — so it silently claimed `shots/S27/s27-add-chain.png`, which is
+# COMMITTED EVIDENCE cited by LIVE-QA-CAMPAIGN §E-89 and checked by `npm run test:docs`.
+# A cleanup that trusted `git ls-files -i` would have deleted a finding's only proof.
+# These patterns mean "session scratch dropped in the repo ROOT", so they say so.
 
 # Design-brief build output — regenerate with `node scripts/build-design-brief.mjs`.
 # The AUTHORED parts are versioned in docs/design-brief/; this is the assembled package.

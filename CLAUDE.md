@@ -219,9 +219,11 @@ snapshot. Both live in `payout.ts`; both are under `test:fee-model`.
   never write copy that says they might be.
 - Proof: `npm run test:fee-model` (77 assertions), `npm run test:withdrawal`.
 
-- **Repo:** `C:\kipindi`
+- **Repo:** `C:\kipindi-main` ⚠️ corrected 2026-08-08 — this said `C:\kipindi`, a path
+  that no longer exists, so every "cd" a session copied out of this file failed.
 - **GitHub:** `https://github.com/alisheib/kipindi.git` (private)
-- **Live demo:** `https://kipindi-production.up.railway.app`
+- **Live site:** `https://www.50pick.tz` (the `kipindi-production.up.railway.app`
+  address this line used to name is the pre-DNS Railway host, not where players are)
 - **Operator:** Ali, Dar es Salaam (non-technical — lead on architecture
   and design decisions, ask in plain English).
 
@@ -333,8 +335,13 @@ read-modify-write sequences remain.
 
 ## Deploy workflow
 
+⚠️ **Ali's checkout sits on branch `qa/live-experience`, not `main`** — so the push
+line is ALWAYS `git push origin HEAD:main`. A bare `git push` pushes the wrong branch
+and the deploy never fires. (And never put a `#` comment on a command line: Windows
+`cmd` does not strip them, so git reads the comment words as refspecs and errors.)
+
 ```
-cd C:\kipindi
+cd C:\kipindi-main
 # Make your change
 git add <files>
 git commit -m "Sprint NN: short title — one-line summary"
@@ -756,11 +763,24 @@ Gold is reserved for **earned money moments only** (kit invariant #2):
 ```
 git add <files>
 git commit -m "Sprint NN: short title"
-git push
+git push origin HEAD:main
 ```
 
 **Never leave commits unpushed.** Railway auto-redeploys on push.
 Ali checks the live site, not local — unpushed work is invisible to him.
+⚠️ `HEAD:main` is not decoration — see the deploy-workflow note above: the working
+checkout is on `qa/live-experience`, so a bare `git push` updates that branch and
+deploys nothing.
+
+⚠️ **A CLOUD session cannot push at all** — the sandbox proxy returns 403 on every
+attempt, every time. Delivery is a git bundle Ali imports; do not burn a session
+re-discovering this:
+```
+git bundle create <name>.bundle origin/main..HEAD      # in the sandbox
+git fetch "C:\Users\Ali\Downloads\<name>.bundle" HEAD  # on Ali's machine
+git merge --ff-only FETCH_HEAD
+git push origin HEAD:main
+```
 
 ## Where progress is tracked (canonical)
 
