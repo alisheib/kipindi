@@ -6,7 +6,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { deposit } from "@/lib/server/wallet-service";
 import { db } from "@/lib/server/store";
 import { displayLabel } from "@/lib/display-label";
-import type { DepositInput } from "@/lib/server/validators";
+import { DEPOSIT_MIN_TZS, DEPOSIT_MAX_TZS, type DepositInput } from "@/lib/server/validators";
 import type { CardCheckoutContext } from "@/lib/server/payments";
 import { getServerT } from "@/lib/i18n-server";
 import { errorCopy } from "@/lib/error-copy";
@@ -55,10 +55,14 @@ export async function depositAction(formData: FormData) {
   const fail = (message: string): never =>
     redirect((`/wallet/deposit?error=${encodeURIComponent(message)}&${carry.toString()}`) as never);
 
-  // Canonical bounds — must match the depositAmount schema (validators.ts) and
-  // the "Min TZS 500" helper text on the form. Single source of truth: 500–2,000,000.
-  if (!Number.isFinite(amount) || amount < 500 || amount > 2_000_000) {
-    fail(t.wallet.depositBounds);
+  // B-23 — the bounds are IMPORTED from validators.ts (the schema's own
+  // constants), not restated. The old literals here were a second definition
+  // that would silently drift the moment the schema was retuned. The copy
+  // fills the same constants, so the message can never disagree either.
+  if (!Number.isFinite(amount) || amount < DEPOSIT_MIN_TZS || amount > DEPOSIT_MAX_TZS) {
+    fail(t.wallet.depositBounds
+      .replace("{min}", DEPOSIT_MIN_TZS.toLocaleString("en-US"))
+      .replace("{max}", DEPOSIT_MAX_TZS.toLocaleString("en-US")));
   }
 
   // ── Rail-specific requirements, enforced HERE because the form can't ───────

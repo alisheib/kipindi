@@ -76,5 +76,7 @@ export async function startRegisterOtpAction(formData: FormData) {
   if (!result.ok) return { ok: false as const, error: result.error, code: result.code };
   const otpParams = new URLSearchParams({ purpose: "register", phone: result.data!.phone });
   if (safeNext) otpParams.set("next", safeNext);
+  // B-27 — anchor the OTP page's countdown to the code's real expiry.
+  otpParams.set("exp", result.data!.expiresAt);
   redirect(`/auth/otp?${otpParams.toString()}`);
 }

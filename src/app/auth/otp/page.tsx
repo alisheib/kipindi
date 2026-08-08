@@ -15,7 +15,7 @@ export async function generateMetadata() {
   return { title: t.common.verification };
 }
 
-export default async function OtpPage({ searchParams }: { searchParams: Promise<{ purpose?: string; phone?: string; error?: string; sent?: string; next?: string; retry?: string }> }) {
+export default async function OtpPage({ searchParams }: { searchParams: Promise<{ purpose?: string; phone?: string; error?: string; sent?: string; next?: string; retry?: string; exp?: string }> }) {
   // SMS OTP is not wired yet — the live auth flow is password-based. Until the
   // licensed SMS provider is live (OTP_ENABLED=1), this page is dormant and would
   // only confuse a player who lands here via a stale link, so bounce to login.
@@ -30,6 +30,10 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
   const retrySec = Math.min(300, Math.max(0, parseInt(sp.retry ?? "0", 10) || 0));
   const nextRaw = (sp.next ?? "").trim();
   const nextSafe = /^\/(?![/\\])/.test(nextRaw) && !nextRaw.startsWith("/auth/") ? nextRaw : "";
+  // B-27 — remaining life computed on the SERVER clock from the code's real
+  // expiry (`?exp=` from the issue/resend hop). undefined → component's TTL default.
+  const expTs = sp.exp ? Date.parse(sp.exp) : NaN;
+  const otpRemainingSec = Number.isFinite(expTs) ? Math.max(0, (expTs - Date.now()) / 1000) : undefined;
   const masked = phone ? phone.slice(0, 4) + "*****" + phone.slice(-2) : "+255*****";
   const errorMsg: Record<string, string> = {
     wrong_code: t.auth.wrongCode,
@@ -75,6 +79,8 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
             <input type="hidden" name="phone" value={phone} />
             <input type="hidden" name="purpose" value={purpose} />
             {nextSafe && <input type="hidden" name="next" value={nextSafe} />}
+            {/* B-27 — a failed verify round-trips the real expiry too. */}
+            {sp.exp && Number.isFinite(expTs) && <input type="hidden" name="exp" value={sp.exp} />}
             <label className="block">
               <FieldLegend className="block mb-1.5">{t.common.codeLabel}</FieldLegend>
               <OtpInput
@@ -85,7 +91,7 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
                 aria-invalid={error ? "true" : undefined}
                 aria-describedby={error ? "otp-error" : "otp-hint"}
               />
-              <OtpExpiryCountdown />
+              <OtpExpiryCountdown initialRemainingSec={otpRemainingSec} />
             </label>
             <SubmitButton label={t.common.confirm} pendingLabel={t.common.verifying} />
           </form>

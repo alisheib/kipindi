@@ -75,7 +75,7 @@ export type ServiceResult<T = void> =
   | { ok: false; error: string; code?: "RATE_LIMITED" | "INVALID" | "EXPIRED" | "ALREADY_EXISTS" | "EMAIL_EXISTS" | "NOT_FOUND" | "TOO_MANY_ATTEMPTS" | "SUSPENDED" | "SELECTION_CLOSED" | "CONFLICT" | "TOO_EARLY" | "OBJECTION_OPEN" | "EMAIL_UNVERIFIED" | "BUSY"; retryAfterSec?: number };
 
 /** Step 1: request OTP for login (existing user). */
-export async function requestLoginOtp(input: z.input<typeof LoginRequestSchema>): Promise<ServiceResult<{ otpId: string }>> {
+export async function requestLoginOtp(input: z.input<typeof LoginRequestSchema>): Promise<ServiceResult<{ otpId: string; expiresAt: string }>> {
   const parse = LoginRequestSchema.safeParse(input);
   if (!parse.success) return { ok: false, error: parse.error.errors[0]?.message ?? "Invalid input", code: "INVALID" };
   const phone = parse.data.phone;
@@ -117,7 +117,7 @@ export async function requestLoginOtp(input: z.input<typeof LoginRequestSchema>)
 }
 
 /** Register a new account — OTP-driven. Returns OTP id. */
-export async function requestRegisterOtp(input: z.input<typeof RegisterSchema>): Promise<ServiceResult<{ otpId: string; phone: string }>> {
+export async function requestRegisterOtp(input: z.input<typeof RegisterSchema>): Promise<ServiceResult<{ otpId: string; phone: string; expiresAt: string }>> {
   const parse = RegisterSchema.safeParse(input);
   if (!parse.success) return { ok: false, error: parse.error.errors[0]?.message ?? "Invalid input", code: "INVALID" };
   const meta = await clientMeta();
@@ -136,7 +136,7 @@ export async function requestRegisterOtp(input: z.input<typeof RegisterSchema>):
   if (!issued.ok) return issued;
   // Stash registration intent (DOB, terms) so OTP verify can finalize
   pendingRegistration.set(phone, { dob: parse.data.dob, marketingOptIn: parse.data.marketingOptIn ?? false });
-  return { ok: true, data: { otpId: issued.data!.otpId, phone } };
+  return { ok: true, data: { otpId: issued.data!.otpId, phone, expiresAt: issued.data!.expiresAt } };
 }
 
 // Stash registration intent (DOB, terms) between requestRegisterOtp and the
@@ -149,9 +149,13 @@ declare global {
 const pendingRegistration: Map<string, { dob: string; marketingOptIn: boolean }> =
   globalThis.__50PICK_PENDING_REG ?? (globalThis.__50PICK_PENDING_REG = new Map());
 
-async function issueOtp(phone: string, purpose: "login" | "register" | "withdraw" | "reauth" | "self_exclusion", meta: { ip: string | null; ua: string | null }): Promise<ServiceResult<{ otpId: string }>> {
+async function issueOtp(phone: string, purpose: "login" | "register" | "withdraw" | "reauth" | "self_exclusion", meta: { ip: string | null; ua: string | null }): Promise<ServiceResult<{ otpId: string; expiresAt: string }>> {
   const code = generateOtp();
   const salt = randomId(8);
+  // B-27 — the expiry is minted ONCE and returned to the caller, so the OTP
+  // page can anchor its countdown to the code's REAL remaining life instead of
+  // inventing a fresh 5:00 on every render.
+  const expiresAt = new Date(Date.now() + OTP_TTL_MS).toISOString();
   const otp = await db.otp.create({
     id: `otp_${randomId(12)}`,
     phoneE164: phone,
@@ -160,7 +164,7 @@ async function issueOtp(phone: string, purpose: "login" | "register" | "withdraw
     purpose,
     attempts: 0,
     consumedAt: null,
-    expiresAt: new Date(Date.now() + OTP_TTL_MS).toISOString(),
+    expiresAt,
     createdAt: new Date().toISOString(),
   });
 
@@ -171,7 +175,7 @@ async function issueOtp(phone: string, purpose: "login" | "register" | "withdraw
     audit({ category: "SECURITY", action: "sms.delivery_failed", actorId: null, targetType: "Phone", targetId: maskPhoneForAudit(phone), payload: { otpId: otp.id } });
   });
 
-  return { ok: true, data: { otpId: otp.id } };
+  return { ok: true, data: { otpId: otp.id, expiresAt } };
 }
 
 /**

@@ -78,6 +78,22 @@ export function SearchBox({
   const [searching, startTransition] = useTransition();
   const [q, setQ] = useState(mode === "url" ? (searchParams.get(param) ?? "") : (value ?? ""));
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // B-25 — the input seeded itself from the URL once and never looked back, so
+  // back/forward (and any filter link that carries `q`) moved the URL while the
+  // box kept showing the old text. When the URL param changes and the player
+  // is NOT actively typing in the box, the URL wins.
+  const urlValue = mode === "url" ? (searchParams.get(param) ?? "") : null;
+  const lastUrlRef = useRef(urlValue);
+  useEffect(() => {
+    if (mode !== "url" || urlValue === null) return;
+    if (urlValue === lastUrlRef.current) return;
+    lastUrlRef.current = urlValue;
+    if (document.activeElement === inputRef.current) return; // mid-typing — theirs wins
+    setQ(urlValue);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlValue, mode]);
 
   const push = (raw: string) => {
     const v = raw.trim();
@@ -128,6 +144,7 @@ export function SearchBox({
           {searching ? <Spinner size={16} /> : <I.search s={16} />}
         </span>
         <input
+          ref={inputRef}
           type="search"
           value={q}
           maxLength={MAX_QUERY_LEN}

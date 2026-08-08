@@ -20,6 +20,11 @@ import { useT } from "@/lib/i18n";
 
 const STORAGE_KEY = "50pick-primer-seen";
 const HIDE_ON = /^\/(auth|admin)(\/|$)/;
+// B-26 — a deep-linked market detail (especially one carrying `?side=` from a
+// shared card) is a bet-intent moment: ambushing it 700ms in with a four-card
+// primer costs the platform its most valuable arriving click. The primer waits
+// for a board-level landing instead.
+const SUPPRESS_ON = /^\/markets\/[^/]+|^\/updown\/[^/]+/;
 
 type Lang = "en" | "sw" | "zh";
 type L10n = { en: string; sw: string; zh: string };
@@ -223,6 +228,7 @@ export function FirstVisitPrimer() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (HIDE_ON.test(pathname ?? "/")) return;
+    if (SUPPRESS_ON.test(pathname ?? "/")) return; // B-26 — not on a deep-linked detail
     if (/HeadlessChrome|Playwright/i.test(navigator.userAgent)) return;
     try {
       const seen = window.localStorage.getItem(STORAGE_KEY);

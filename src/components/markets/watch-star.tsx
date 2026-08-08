@@ -7,8 +7,8 @@
  * roll back + toast on failure. Signed-out users are sent to login rather than
  * silently failing. Used inside clickable cards, so it stops propagation.
  */
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, useTransition } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
@@ -30,9 +30,23 @@ export function WatchStar({
 }) {
   const { t } = useT();
   const router = useRouter();
+  const pathname = usePathname();
   const { toast } = useToast();
   const [on, setOn] = useState(initial);
   const [pending, start] = useTransition();
+
+  // B-24 — one market can render several stars on one page (card + detail
+  // header). They each held private state, so toggling one left its twins
+  // stale until a full refresh. A window event keeps every star for the same
+  // market in agreement the moment the server confirms.
+  useEffect(() => {
+    const sync = (e: Event) => {
+      const d = (e as CustomEvent<{ marketId: string; watching: boolean }>).detail;
+      if (d?.marketId === marketId) setOn(d.watching);
+    };
+    window.addEventListener("50pick:watch", sync);
+    return () => window.removeEventListener("50pick:watch", sync);
+  }, [marketId]);
 
   function click(e: React.MouseEvent) {
     // Cards navigate on click — never let the star trigger that.
@@ -48,13 +62,27 @@ export function WatchStar({
     // haptic rule is contact / passing true / coming to rest, NEVER encouragement or
     // attention-pulling. The star's own state change is the feedback.
     start(async () => {
-      const r = await toggleWatchAction(marketId);
+      // B-12 — a flaky network mid-toggle must roll back, not crash the page.
+      let r: Awaited<ReturnType<typeof toggleWatchAction>>;
+      try {
+        r = await toggleWatchAction(marketId);
+      } catch {
+        r = { ok: false, watching: prev, error: "network" };
+      }
       if (!r.ok) {
         setOn(prev); // roll back
+        // B-24 — the session lapsed mid-visit: `signedIn` was true at render,
+        // but the server says otherwise. "Couldn't update" would be a lie the
+        // player can't act on; the login redirect (with the way back) is.
+        if (r.error === "auth") {
+          router.push(`/auth/login?next=${encodeURIComponent(pathname || `/markets/${marketId}`)}` as never);
+          return;
+        }
         toast({ title: t.watchlist.toggleFailed, variant: "danger" });
         return;
       }
       setOn(r.watching);
+      window.dispatchEvent(new CustomEvent("50pick:watch", { detail: { marketId, watching: r.watching } }));
     });
   }
 

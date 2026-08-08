@@ -12,17 +12,50 @@ import { useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { useT } from "@/lib/i18n";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/components/ui/toast";
 import { formatTzs } from "@/lib/utils";
+import { DEPOSIT_MIN_TZS, DEPOSIT_MAX_TZS } from "@/lib/server/validators";
 
 export function DepositConfirm() {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const { t } = useT();
+  const { toast } = useToast();
   const [summary, setSummary] = useState({ amount: 0, provider: "", msisdn: "" });
   // DS-4 / B-6 — this component sits inside the deposit <form>, so the form
   // action's in-flight state is readable right here. Passing it down keeps the
   // confirm dialog OPEN with a spinner through the whole Selcom `create-order`
   // round-trip (2–10s on 2G) instead of vanishing into a dead-looking page.
   const { pending } = useFormStatus();
+
+  // B-22 / V-3 — the confirm dialog no longer opens for input the server will
+  // refuse (TZS 0 was confirmable), and the refusal is a KIT toast, never the
+  // OS-styled native validation bubble (which read as broken on the dark
+  // surface). Returns the error copy, or null when the form is sound.
+  const validate = (form: HTMLFormElement): string | null => {
+    const fd = new FormData(form);
+    const amount = parseInt(String(fd.get("amount") ?? "0"), 10) || 0;
+    const provider = String(fd.get("provider") ?? "");
+    const msisdn = String(fd.get("msisdn") ?? "").trim();
+    if (!provider) return t.wallet.chooseProvider;
+    if (!Number.isFinite(amount) || amount < DEPOSIT_MIN_TZS || amount > DEPOSIT_MAX_TZS) {
+      return t.wallet.depositBounds
+        .replace("{min}", DEPOSIT_MIN_TZS.toLocaleString("en-US"))
+        .replace("{max}", DEPOSIT_MAX_TZS.toLocaleString("en-US"));
+    }
+    if (provider !== "CARD" && !msisdn) return t.wallet.msisdnRequired;
+    return null;
+  };
+
+  const guardOpen = () => {
+    const form = buttonRef.current?.closest("form");
+    if (!form) return false;
+    const err = validate(form);
+    if (err) {
+      toast({ title: err, variant: "warning" });
+      return false;
+    }
+    return true;
+  };
 
   const openConfirm = () => {
     const form = buttonRef.current?.closest("form");
@@ -37,10 +70,16 @@ export function DepositConfirm() {
   const submitForm = () => {
     const form = buttonRef.current?.closest("form");
     if (!form) return false;
-    // Refused pre-flight (missing provider, bad amount): release the dialog so
-    // the field errors are visible, rather than holding a spinner for a
-    // submission that never started.
-    if (!form.reportValidity()) return false;
+    // Re-check at commit time (a second tab could have mutated shared state);
+    // release the dialog on refusal rather than holding a spinner for a
+    // submission that never started. JS + server validation own correctness —
+    // native bubbles are suppressed (V-3).
+    const err = validate(form);
+    if (err) {
+      toast({ title: err, variant: "warning" });
+      return false;
+    }
+    form.noValidate = true;
     form.requestSubmit();
   };
 
@@ -73,6 +112,7 @@ export function DepositConfirm() {
       cancelLabel={t.common.cancel}
       onConfirm={submitForm}
       onOpen={openConfirm}
+      openGuard={guardOpen}
       pending={pending}
       trigger={
         <button ref={buttonRef} type="button" className="btn btn-gold btn-lg w-full">

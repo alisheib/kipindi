@@ -11,9 +11,18 @@ import { useT } from "@/lib/i18n";
 
 const OTP_TTL_SEC = 5 * 60; // 5 minutes
 
-export function OtpExpiryCountdown() {
+/**
+ * B-27 — anchored, not invented. `initialRemainingSec` is computed SERVER-SIDE
+ * from the code's real `expiresAt` (threaded through the redirect as `?exp=`),
+ * so a reload or a failed verify resumes the true remainder instead of
+ * restarting a fabricated 5:00 progress bar. Falls back to the full TTL when
+ * the param is absent (legacy links).
+ */
+export function OtpExpiryCountdown({ initialRemainingSec }: { initialRemainingSec?: number }) {
   const { t } = useT();
-  const [remaining, setRemaining] = useState(OTP_TTL_SEC);
+  const [remaining, setRemaining] = useState(
+    Math.max(0, Math.min(OTP_TTL_SEC, Math.floor(initialRemainingSec ?? OTP_TTL_SEC))),
+  );
 
   useEffect(() => {
     const id = setInterval(() => {

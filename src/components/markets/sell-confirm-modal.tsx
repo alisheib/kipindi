@@ -9,7 +9,7 @@
  * Enter-to-confirm keybind — the sell logic and money math are unchanged.
  */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Modal } from "@/components/ui/modal";
 import { I } from "@/components/ui/glyphs";
 import { haptics } from "@/lib/haptics";
@@ -31,6 +31,23 @@ export function SellConfirmModal({ open, pending, stake, value, positionId, onCo
   const { t } = useT();
   const confirmRef = useRef<HTMLButtonElement>(null);
 
+  // B-21 — the quote hold. The bet path locks its quote for 10s; the exit path
+  // (same pool volatility) let the player consent to a figure that could be a
+  // whole poll interval stale. The rendered value now has a 10s life: a fresh
+  // `value` (poll tick while open) re-arms it; past the hold the confirm
+  // disables and the modal says to reopen. Server execution is unchanged —
+  // this stops the CONSENT going stale, which is the informed-consent defect.
+  const QUOTE_HOLD_MS = 10_000;
+  const [quoteExpired, setQuoteExpired] = useState(false);
+  useEffect(() => {
+    if (!open) { setQuoteExpired(false); return; }
+    setQuoteExpired(false);
+    const id = window.setTimeout(() => setQuoteExpired(true), QUOTE_HOLD_MS);
+    return () => window.clearTimeout(id);
+  }, [open, value]);
+  const quoteExpiredRef = useRef(quoteExpired);
+  useEffect(() => { quoteExpiredRef.current = quoteExpired; }, [quoteExpired]);
+
   // Enter-to-confirm is bespoke to this flow; Esc / focus-trap / scroll-lock all
   // live in <Modal>. Refs keep the keybind stable without re-subscribing.
   const onConfirmRef = useRef(onConfirm);
@@ -40,7 +57,7 @@ export function SellConfirmModal({ open, pending, stake, value, positionId, onCo
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Enter" && !pendingRef.current) { e.preventDefault(); onConfirmRef.current(); }
+      if (e.key === "Enter" && !pendingRef.current && !quoteExpiredRef.current) { e.preventDefault(); onConfirmRef.current(); }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -119,12 +136,19 @@ export function SellConfirmModal({ open, pending, stake, value, positionId, onCo
         </p>
       </div>
 
+      {quoteExpired && !pending && (
+        <div className="mt-3 flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg/30 p-3" role="alert">
+          <I.warning s={14} />
+          <p className="text-[12px] text-text-muted leading-snug">{t.dialog.quoteExpired}</p>
+        </div>
+      )}
+
       <div className="mt-5 flex flex-col gap-2">
         <button
           ref={confirmRef}
           type="button"
-          onClick={() => { haptics.confirm(); onConfirm(); }}
-          disabled={pending}
+          onClick={() => { if (quoteExpired) return; haptics.confirm(); onConfirm(); }}
+          disabled={pending || quoteExpired}
           className="btn btn-gold btn-lg w-full"
         >
           {pending ? t.dialog.selling : `${t.dialog.sellLabel} · ${formatTzs(value)}`}

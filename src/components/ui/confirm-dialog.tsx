@@ -52,6 +52,10 @@ type Props = {
   onConfirm: () => void | boolean;
   /** Fires right before the dialog opens — use to snapshot form data. */
   onOpen?: () => void;
+  /** B-22 — pre-flight gate: return `false` to REFUSE opening (invalid input).
+   *  The caller surfaces its own kit-styled error (inline/toast) — never the
+   *  native browser bubble. Omit for always-openable dialogs. */
+  openGuard?: () => boolean;
   /** DS-4 / B-6 — the mutation-in-flight signal (useTransition pending or
    *  useFormStatus().pending). PROVIDING this prop (even as `false`) opts the
    *  dialog into the hold-open contract: confirm no longer closes it; the
@@ -68,6 +72,7 @@ export function ConfirmDialog({
   tone = "claret",
   onConfirm,
   onOpen,
+  openGuard,
   pending,
 }: Props) {
   const [open, setOpen] = React.useState(false);
@@ -99,6 +104,8 @@ export function ConfirmDialog({
     disabled: holdOpen ? (awaiting || pending || (trigger.props as { disabled?: boolean }).disabled) : (trigger.props as { disabled?: boolean }).disabled,
     onClick: (e: React.MouseEvent) => {
       e.preventDefault();
+      // B-22 — an invalid form never earns a confirm dialog.
+      if (openGuard && !openGuard()) return;
       onOpen?.();
       setOpen(true);
     },

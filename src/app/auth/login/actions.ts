@@ -136,6 +136,9 @@ export async function startLoginOtpAction(formData: FormData) {
   }
   const otpParams = new URLSearchParams({ purpose: "login", phone: phoneRaw });
   if (safeNext) otpParams.set("next", safeNext);
+  // B-27 — carry the code's REAL expiry so the countdown is anchored truth,
+  // not a client-invented 5:00 that restarts on every reload.
+  if (result.data?.expiresAt) otpParams.set("exp", result.data.expiresAt);
   redirect(`/auth/otp?${otpParams.toString()}`);
 }
 
@@ -158,6 +161,8 @@ export async function resendOtpAction(formData: FormData) {
     if (result.code === "RATE_LIMITED" && result.retryAfterSec) params.set("retry", String(result.retryAfterSec));
   } else {
     params.set("sent", "1");
+    // B-27 — the fresh code's real expiry re-anchors the countdown.
+    if (result.data?.expiresAt) params.set("exp", result.data.expiresAt);
   }
   redirect(`/auth/otp?${params.toString()}`);
 }
@@ -184,6 +189,9 @@ export async function verifyLoginOtpAction(formData: FormData) {
         : "failed",
     });
     if (safeNext) params.set("next", safeNext);
+    // B-27 — the failed-verify hop keeps the code's real expiry anchor.
+    const expRaw = String(formData.get("exp") ?? "");
+    if (expRaw && Number.isFinite(Date.parse(expRaw))) params.set("exp", expRaw);
     redirect(`/auth/otp?${params.toString()}`);
   }
   // Success — fire a "welcome" flash on the destination so the user
