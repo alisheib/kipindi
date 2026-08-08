@@ -281,10 +281,12 @@ These are live today and I did not go looking for them:
    > HOUSE:TRA_LEVY / HOUSE:GBT_LEVY). The rates (10% TRA + 5% GBT = 15% of
    > commission) live in admin config and are the single source of truth.
 
-2. **🔴 `/admin/finance` shows a FABRICATED tax number.** `admin/finance/page.tsx:46-48`
-   computes `taxAccrued = ggr × 0.05` with the comment *"placeholder formula"*. It is
-   presented to the owner as real. This violates our own never-fabricate rule and I
-   would fix it immediately (show the real computed levies, or an empty state).
+2. **✅ FIXED (verified against the code 2026-08-08) — `/admin/finance` showed a FABRICATED
+   tax number.** It computed `taxAccrued = ggr × 0.05` with a *"placeholder formula"*
+   comment and presented it to the owner as real. Today `admin/finance/page.tsx` derives
+   the figure from the live admin-config rates on the real commission base and renders
+   "—" with *"rates unavailable"* when it cannot — the never-fabricate rule holds; its own
+   comment records the history.
 
 3. **✅ FIXED 2026-07-14 — The cash-out fee is documented as revenue but is not.**
    `market-config.ts` said the cash-out fee was *"booked to the house reserve as

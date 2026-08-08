@@ -255,6 +255,14 @@ narrows it, but *which base is correct* is a tax question. **It has deliberately
 been resolved in code** — picking one silently would be choosing our own tax base.
 See `docs/F6-LIQUIDITY-DESIGN.md` §6.1.
 
+> ✅ **CORRECTION, 2026-08-08 (the line above is the record; this is what happened next).**
+> The ruling CAME, the day after this was written: **Ali, 2026-07-15 — tax on what we
+> KEEP.** Ledger and statutory report now levy TRA/GBT on the same base (commission, with
+> GGR net of refunds), verified end-to-end and guarded by `test:report-parity`. The full
+> account is `F6-LIQUIDITY-DESIGN.md` open-defect #1 (marked resolved there) and
+> CLAUDE.md's tax section. Left fenced here so nobody re-derives "the tax base is open"
+> from this record.
+
 ---
 
 ## Proof

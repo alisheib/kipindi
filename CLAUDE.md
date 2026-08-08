@@ -201,6 +201,15 @@ Write it as `min(commission, ceiling)` — **never as a threshold `if`**. The tw
 rules cross over seamlessly at 70/30; a threshold would be a step function, and a
 step function is gameable.
 
+⚠️ **AND A SECOND MODEL JOINED IT — 2026-07-23, Ali's ruling (recorded in
+`docs/COMPLIANCE-DECISIONS.md` § 2026-07-23).** The rule above is the `capped-commission`
+model and everything it says stays true — but it is no longer the only frozen model.
+NEW long-form polls freeze **`loser-share`** (platform 3% + operator 10% of the LOSING
+pool); **Up & Down rounds freeze `capped-commission` at 13%** with the same ⅓ ceiling
+(fee = min(0.13·pool, ⅓·smaller) — outcome-neutral, the licence posture). ⛔ The two
+maths NEVER mix: the model is frozen per poll at creation and settlement reads only the
+snapshot. Both live in `payout.ts`; both are under `test:fee-model`.
+
 - Single source of truth: **`src/lib/payout.ts`** (isomorphic — client *and* server).
 - **Rates stick to the poll.** Every market freezes its rates at creation
   (`PredictionMarket.feeSnapshot`). Settlement, cash-out and every preview read the

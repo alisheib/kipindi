@@ -6,7 +6,12 @@ Written 2026-07-31. **Read this before opening anything else in here.**
 [`50pick-updown-operator-guide.pdf`](50pick-updown-operator-guide.pdf) — the Up & Down operator
 contract. Everything else in here is for whoever builds and runs the platform.
 
-There are **46 files** in here — this index plus 45 documents. Some are law, some are a snapshot
+There are **45 files** at this level — this index plus 44 documents — and five
+subdirectories with their own indexes: [`design-system/`](design-system/README.md) (the design
+rule book — start there for anything visual), [`design-brief/`](design-brief/INTAKE.md) (the
+material commission's brief + intake playbook), [`ux-audit-2026-08/`](ux-audit-2026-08/MASTER-PLAN.md)
+(the live UX-audit tracker), [`runbooks/`](runbooks/README.md) (the operator PDFs + their HTML
+sources), and `guide-img/` (manual screenshots). Some files are law, some are a snapshot
 of a Tuesday in May, and from the outside they look identical. Getting that wrong is how a session spends a night rebuilding
 something that shipped a week ago — which has happened in this repo more than once. This
 file exists so the *next* session can tell them apart in thirty seconds.
@@ -31,7 +36,9 @@ reference in `docs/` must resolve on disk. Broken on purpose and observed to go 
 
 | Doc | | What it is |
 |---|---|---|
-| [`NEXT-PLAN.md`](NEXT-PLAN.md) | 🔵 LIVE | **The one live plan.** Opens with "PICK UP HERE" — the state at the close of the last session, what is done, and the single thing blocking backups. Start every session here. |
+| [`NEXT-PLAN.md`](NEXT-PLAN.md) | 🔵 LIVE | **The one live plan.** Opens with "PICK UP HERE" — the state at the close of the last session, what is done, what is left. Start every session here. |
+| [`LIVE-QA-CAMPAIGN.md`](LIVE-QA-CAMPAIGN.md) | 🔵 LIVE | **The finding register (E-1…) + the §6b session handoffs** — the newest handoff sits at the TOP of §6b, and a commit newer than the newest handoff means another session is IN FLIGHT. Guarded by `test:tracker-hygiene`. |
+| [`ux-audit-2026-08/MASTER-PLAN.md`](ux-audit-2026-08/MASTER-PLAN.md) | 🔵 LIVE | The 2026-08 UX-audit implementation tracker — Sessions A/B/C, the DS/DA design sweeps, §9 open decisions for Ali. |
 | [`MODULE-CERTIFICATION-PROGRAM.md`](MODULE-CERTIFICATION-PROGRAM.md) | 🟢 LAW | **The program that finishes the platform.** 52 modules in 12 domains, each with a dossier, an attack list and a `cert:` gate; the eight gates that define "0 flaws"; the 12 laws; the orphan reckoning; a status board; and a copy-paste session prompt. Governs certification — `NEXT-PLAN.md` governs launch hardening. |
 | [`AGENT-ACCESS.md`](AGENT-ACCESS.md) | 🟢 LAW | How to grant an agent access, and the two kinds of block that look identical. Also records which accounts own Cloudflare/Railway — **and that the Cloudflare login is written down nowhere**. |
 | [`SETUP.md`](SETUP.md) | 🟢 LAW | **Getting 50pick running on a machine that has never seen it.** Prerequisites, install, booting with no database, `railway run` vs `railway ssh`, and a symptom→cause table for the traps that waste an afternoon. |
@@ -59,8 +66,7 @@ to teal and resurrects the killed light theme.
 | [`SELCOM-PAYOUT-INCIDENT-2026-07-30.md`](SELCOM-PAYOUT-INCIDENT-2026-07-30.md) | ⚪ RECORD | The incident itself. |
 | [`SELCOM-DISBURSEMENT-REQUEST.md`](SELCOM-DISBURSEMENT-REQUEST.md) | ⚪ RECORD | ✅ Granted 2026-07-27. |
 | [`PAYMENT-INTEGRATION-CHECKLIST.md`](PAYMENT-INTEGRATION-CHECKLIST.md) | 🔵 LIVE | Run the day new API keys land. |
-| [`FEE-MODEL-DECISION-2026-07-14.md`](FEE-MODEL-DECISION-2026-07-14.md) | ⚪ RECORD | **SHIPPED.** Fixed the bug where a winner was paid less than they staked. |
-| [`FEE-MODEL-DECISION-2026-07-14.md`](FEE-MODEL-DECISION-2026-07-14.md) | 🟡 **OPEN** | 🔴 **Confusing name — this is the NEWER file (2026-07-22).** A different question: Jay's flat 13%-of-losing-pool proposal vs the live `min(10% of pool, ⅓ of smaller pool)`. **Awaiting Ali's ruling. No code has changed.** Do not mistake it for superseded. |
+| [`FEE-MODEL-DECISION-2026-07-14.md`](FEE-MODEL-DECISION-2026-07-14.md) | ⚪ RECORD | **SHIPPED.** Fixed the bug where a winner was paid less than they staked (the capped fee). ⚠️ This index used to carry a second row claiming a "newer 2026-07-22 file" awaiting a ruling — **no such file exists, and the question it described was RULED 2026-07-23**: new long-form polls freeze `loser-share` (3%+10% of the losing pool), Up & Down rounds freeze `capped-commission` @ 13% with the ⅓ ceiling, models never mix. The ruling's record is `COMPLIANCE-DECISIONS.md` § 2026-07-23; the maths is `src/lib/payout.ts`. |
 | [`F6-LIQUIDITY-DESIGN.md`](F6-LIQUIDITY-DESIGN.md) | 🟠 DESIGN | Seeded liquidity. **No code written.** |
 | [`bonus-wallet-plan.md`](bonus-wallet-plan.md) | ⚪ RECORD | Shipped 2026-06-26. |
 | [`proposals.md`](proposals.md) | 🟢 LAW | Player market proposals → instant approval bonus. Supersedes the old prize model. |
@@ -96,6 +102,7 @@ to teal and resurrects the killed light theme.
 | [`UPDOWN-SPEC.md`](UPDOWN-SPEC.md) | 🟢 LAW | Owns **WHAT** it is — rules, workflows, states. |
 | [`UPDOWN-ARCHITECTURE.md`](UPDOWN-ARCHITECTURE.md) | 🟢 LAW | Owns **HOW** it is built — data model, engines, money path. |
 | [`UPDOWN-PRICING.md`](UPDOWN-PRICING.md) | 🟢 LAW | The margin / winning-boundary math. Money-critical. |
+| [`UPDOWN-FINAL-DESIGN.md`](UPDOWN-FINAL-DESIGN.md) | 🟢 LAW | **The settled Up & Down design, written from production measurements.** §4 names what must NOT be re-opened (the settlement proof, refund-reason copy, the result moment); §3b carries G1–G6. |
 | [`updown-operator-guide.html`](updown-operator-guide.html) → [`50pick-updown-operator-guide.pdf`](50pick-updown-operator-guide.pdf) | 🟢 **LAW — THE OPERATOR CONTRACT** | ⭐ **The document the admins are handed.** 14 sections: what the game is, every field and what to enter, the **Feed record** and the measured round-length gate (§8.5), the first live round (§9), the **six refund reasons and what to say to a player** (§10), the daily check (§11), troubleshooting (§12), and **every element on the player's card and when it is visible** (§13). ⛔ Edit the **HTML**, then regenerate with `node scripts/generate-pdfs.mjs`, then **verify by rasterising** — never by trusting the render. |
 
 ## Up & Down — ops scripts (there is deliberately no delete in the console, E-59)
@@ -118,6 +125,8 @@ to teal and resurrects the killed light theme.
 | [`perfection-plan.md`](perfection-plan.md) | 🟠 DESIGN | The 9 role-gate *framework*. ⚠️ **Aspirational, not a defect list** — and until 2026-07-31 its own header cited itself as the authority. For what is actually open, use `NEXT-PLAN.md`. |
 | [`feature-backlog.md`](feature-backlog.md) | ⚫ HISTORICAL | Wishlist. **Not committed requirements.** |
 | [`LOAD_DAY1_FINDINGS.md`](LOAD_DAY1_FINDINGS.md) | ⚫ HISTORICAL | First-ever Postgres load run. Superseded by the measured ceilings in `POLISH-BACKLOG.md` §3. |
+| [`NEXT-SESSION-MATERIAL-VISIBLE.md`](NEXT-SESSION-MATERIAL-VISIBLE.md) | ⚫ HISTORICAL | The design session's context notes for the material-adoption push. Its tracker MOVED to `ux-audit-2026-08/MASTER-PLAN.md` §6 (DA) — work there, not here. The tolerated `NEXT-SESSION-*` exception (design-system README §0b): **delete it when the DA/DS sweep closes.** |
+| [`GLI-COST-TRACKER.csv`](GLI-COST-TRACKER.csv) | ⚪ RECORD | Cost lines for the GLI remediation. Companion to `gli-remediation-tracker.md`. |
 
 ---
 
