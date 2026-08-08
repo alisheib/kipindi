@@ -10,7 +10,7 @@
 > | **§A** tokens | `src/app/globals.css` `:root` | ✅ merged · **deleted from `material.css`** |
 > | **§B** 12 keyframes | `src/app/globals.css`, beside each family | ✅ merged · **deleted** |
 > | **§C** 29 utilities | `src/app/motion.css` | ✅ merged · **deleted** |
-> | **§D** migration map | — | ⚪ still in `material.css`; the migration is not finished |
+> | **§D** migration map | ✅ struck through 2026-08-08 — kp-rise and odds-flash took their rungs; the two standing rules (nearest-rung-down, the frozen ambient list) moved to `src/app/motion.css`'s header | ✅ **`material.css` is DELETED**, per its own instruction |
 > | **`EXTEND.md`** M1–M8 | `docs/DESIGN_AUTHORITY.md` §M | ✅ merged 2026-08-07 (ATOM J) · **file deleted** |
 >
 > ℹ️ **2026-08-08 — Ali re-uploaded the delivery zip ("Material system design review.zip").
@@ -19,16 +19,19 @@
 > no React/TSX drop-ins** — open item 1 below stays open. The one thing it restored is the
 > pristine `material.css`, now filed at `spec/uploads/material-as-delivered.css` so the spec
 > page renders the delivery again (its stylesheet link had gone inert when §A/§B/§C were
-> deleted from the mergeable copy — exactly as the provenance note predicted).
+> deleted from the mergeable copy — exactly as the provenance note predicted). The one thing
+> it did NOT contain — the offered React drop-ins — was built in-house on 2026-08-08 (open
+> item 1 below).
 >
-> ⛔ **THE THREE MERGED SECTIONS WERE DELETED FROM `material.css`, AND THAT IS THE
-> INSTRUCTION RATHER THAN TIDYING** — see the paragraph below. Do not restore them from git
-> to "see what was delivered": in **four** places what shipped is deliberately *not* what the
-> delivery said, and a diff against the original would mislead rather than inform. Every one
-> of the four is recorded at the top of `material.css`, with the measurement behind it:
-> **E-124** (the gold anchor is mis-converted — chroma understated 17%), **E-130** (two washes
-> would have broken AA), **E-129** (`outline: none` would have stripped the money CTA's focus
-> ring), and the `shimmer-gilt` two-layer paint bug.
+> ⛔ **THE MERGEABLE `material.css` IS GONE (2026-08-08), AND THAT IS ITS OWN INSTRUCTION
+> COMPLETED, NOT TIDYING.** Do not restore it from git to "see what was delivered" — the
+> frozen delivery is `spec/uploads/material-as-delivered.css`, and in **four** places what
+> shipped is deliberately *not* what it says, each recorded AT THE SHIPPED LINE with the
+> measurement behind it: **E-124** (the gold anchor is mis-converted — chroma understated
+> 17%; see `--gilt-metal`'s comment, globals.css) · **E-130** (two washes would have broken
+> AA; the wash tokens' comment) · **E-129** (`outline: none` would have stripped the money
+> CTA's focus ring; `.gilt-metal:focus-visible`, motion.css) · the `shimmer-gilt` two-layer
+> paint bug (the keyframe's comment, globals.css).
 >
 > ⚠️ **THE LAW IS MERGED; THE ADOPTION IS UNDER WAY.** Measured 2026-08-07: **2 of 31 §C
 > utility classes are taken by a component.** Three surfaces had picked a rung — the market
@@ -45,11 +48,11 @@
 > `.crest-ring-reveal`, `.mat-inset`, and the flat/raised/float tints outside the toast.
 > **That is the honest measure of what is left.**
 
-⛔ **Do not import from this folder at runtime.** `material.css` is a *mergeable source*, not a
-stylesheet the app loads. Merging it means moving its four sections into the files named below
-and then **deleting the section from here**, so this folder shrinks to zero as the work lands.
-A copy that survives beside the merged original is a second definition of one truth — the most
-expensive defect class this repo has.
+⛔ **Do not import from this folder at runtime.** Nothing here is a stylesheet the app loads —
+the delivery's sections were merged into `src/` and the mergeable copy deleted section by
+section as each landed, exactly as planned: a copy that survives beside the merged original is
+a second definition of one truth, the most expensive defect class this repo has. What remains
+in this folder is provenance only.
 
 ---
 
@@ -73,7 +76,7 @@ any of these numbers as a target** — E-116.
 
 | file | what it is | fate |
 |---|---|---|
-| `material.css` | now **the merge RECORD + §D**. §A, §B and §C were deleted from it as each landed (2026-08-07); what remains is where each went, the four places we departed from the delivery and why, and the unfinished §D migration map | ⛔ **delete §D when its last line is struck; then the file goes** |
+| `material.css` | ✅ **DELETED 2026-08-08** — §A/§B/§C had merged (2026-08-07) and §D's last line was struck (kp-rise → `--t-move --m-settle`, odds-flash → `--t-stage --m-leave`). The merge record lives in `../07-provenance/CHANGELOG.md`; the four departures are documented at each token's own line in `src/`; §D's two standing rules moved to `src/app/motion.css` | gone, as designed |
 | `EXTEND.md` | **M1–M8, the material law**, written to merge into `docs/DESIGN_AUTHORITY.md` | ✅ **merged and deleted** (ATOM J, 2026-08-07) — the law lives at `DESIGN_AUTHORITY.md` §M, written with the THREE reduced-motion gates (E-125) |
 | `MANIFEST.md` | the designer's own decisions of record + 8 open items | **keep** — provenance |
 | `DESIGNER-QUESTIONS.md`, `-R2.md` | the questions we asked and the answers that settled them | **keep** — this is *why* each decision is what it is |

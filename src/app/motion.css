@@ -43,6 +43,27 @@
   --m-blur-behind: 7px;
 }
 
+/* ── THE LADDER'S TWO STANDING RULES — carried here from the material delivery's
+   §D migration map when its last line was struck (2026-08-08) and the map's file
+   was deleted per its own instruction. This is their ONE home now.
+
+   1 · A timing not on the ladder takes the NEAREST RUNG DOWN:
+         ≤100ms → --t-flick · ≤180 → --t-quick · ≤280 → --t-base · ≤430 → --t-move
+         ≤570 → --t-stage · >570 → --t-max (settlement/celebration ONLY; anything
+         else clamps to --t-stage).
+
+   2 · AMBIENT LOOPS sit OUTSIDE the ladder by design — a FROZEN list that may
+       only shrink: m-live-pip 2600ms · m-urgent 1000ms · m-aura 1240ms ·
+       mark-breathe 6s · m-ambient 64s · skeleton sweeps 1400/1600ms ·
+       mark-pending-tilt 1240ms (deliberate, designer R2 Q9 — the settling-round
+       anticipation). Nothing joins this list without a token being added
+       deliberately, and ⛔ every entry needs a row in globals.css §6's
+       `[data-motion="reduced"]` list — `test:reduce-motion` rule 2.1 fails
+       without one (the low-end-Android tier is a throttle whose one job is
+       turning these off).
+   Also frozen, recorded rather than migrated: `--dur-stage` stays 820ms for the
+   countdown ring only, and `.tooltip-popover` stays on `--dur-quick` (bridged). */
+
 /* ===========================================================================
    Keyframes
    =========================================================================== */
@@ -349,11 +370,11 @@ html.kp-reduce-motion *, html.kp-reduce-motion *::before, html.kp-reduce-motion 
    as an aesthetic one — a dramatised loss is punitive.
    ⭐ EVERY OFFSET BELOW IS ON THE LADDER. The delivery wrote five raw millisecond
    values; four are choreography offsets rather than durations and each takes its
-   nearest rung (§D's own rule of thumb, "nearest rung DOWN"): seal-recoil 60ms
-   takes --t-flick (90) · .seal-sheen's +500ms takes --t-stage (520) ·
-   .needle-sweep's 600ms takes --t-max (620) · .needle-settle-loss's 400ms takes
-   --t-move (340). Only `.mark-pending`'s 1240ms stays raw, and §D's frozen
-   ambient-loop list names it explicitly. */
+   nearest rung (the ladder's own rule of thumb at the top of this file, "nearest
+   rung DOWN"): seal-recoil 60ms takes --t-flick (90) · .seal-sheen's +500ms takes
+   --t-stage (520) · .needle-sweep's 600ms takes --t-max (620) ·
+   .needle-settle-loss's 400ms takes --t-move (340). Only `.mark-pending`'s 1240ms
+   stays raw, and the frozen ambient-loop list names it explicitly. */
 .seal-arrive { animation: seal-impress var(--t-max) var(--m-settle) both,
                           seal-recoil var(--t-flick) linear var(--t-max); }
 .seal-sheen  { animation: badge-seal-rays var(--t-max) var(--m-glide)
@@ -406,8 +427,8 @@ html.kp-reduce-motion *, html.kp-reduce-motion *::before, html.kp-reduce-motion 
                       transform-box: view-box; transform-origin: 50% 50%; }
 /* ⛔ AN AMBIENT LOOP, AND THEREFORE THE THIRD GATE'S BUSINESS. It is listed in
    globals.css §6's `[data-motion="reduced"]` set; `test:reduce-motion` rule 2.1
-   fails if it ever is not. 1240ms is raw on purpose — §D's frozen ambient list
-   names it, and ambient loops sit outside the duration ladder by design. */
+   fails if it ever is not. 1240ms is raw on purpose — the frozen ambient list at
+   the top of this file names it; ambient loops sit outside the ladder by design. */
 .mark-pending { animation: mark-pending-tilt 1240ms var(--m-breathe) infinite; }
 
 /* ── IDENTITY ARRIVAL + TIER-RING REVEAL ───────────────────────────────────

@@ -265,7 +265,7 @@
      *improves* every ratio on it instead. Same delta, opposite risk. */
   /* ⭐ CHANGED 2026-08-06 (material system, ATOM 2a) — 13.5% → 6.5%, and the
      chroma is HELD at 0.130.
-     `material.css` §A1 proposes `oklch(6.5% 0.05 268)`: *"Page field dropped
+     the delivery's §A1 (frozen at 11-material/spec/uploads/material-as-delivered.css) proposes `oklch(6.5% 0.05 268)`: *"Page field dropped
      10%→6.5% for depth against gilt"*. Two corrections, both recorded at
      acceptance. ① The delivery was working from `10%` — the snapshot it was sent
      already read 13.5%, so the real move is −7pt, not −3.5. ② It also halves the
@@ -345,7 +345,7 @@
      trademark's #E3BC66, so surface gold and brand gold are the same metal.
 
      ⛔ EVERY CHROMA HERE IS THE DELIVERY'S FIGURE × 1.2011 — E-124, AND THAT IS THE
-     WHOLE POINT OF THE TOKEN. `material.css` §A3 anchors the ladder on
+     WHOLE POINT OF THE TOKEN. The delivery's §A3 anchors the ladder on
      "#E3BC66 ≈ oklch(79% 0.095 84)". Measured with the Ottosson matrices and PROVEN BY
      ROUND-TRIP, the mark is `oklch(81.20% 0.1141 85.38)` — which converts back to
      #E3BC66 exactly, while the delivery's figure converts to #D7B672, a visibly duller
@@ -865,7 +865,7 @@ body {
    "Show all open markets" among them.
    ⭐ 60% → 53% takes the worst stop to 5.40 at rest and 4.85 on hover. The
    5-point spread that leaves is the delivery's own law, not a compromise:
-   `material.css` §A1 sets `--wash-float` at 26.5%→21% and says the spread is
+   the delivery's §A1 sets `--wash-float` at 26.5%→21% and says the spread is
    "deliberately small: material, not decoration". The 12-point ramp was the
    decoration. Gated at BOTH stops and in BOTH states by `test:contrast`. */
 .btn-primary {
@@ -1765,8 +1765,10 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
 /* ---------- Live odds flash on change ---------- */
 @keyframes odds-flash-up   { 0% { background: color-mix(in oklab, var(--yes-500) 40%, transparent); } 100% { background: transparent; } }
 @keyframes odds-flash-down { 0% { background: color-mix(in oklab, var(--no-500)  40%, transparent); } 100% { background: transparent; } }
-.odds-flash-up   { animation: odds-flash-up   600ms var(--ease-sink); }
-.odds-flash-down { animation: odds-flash-down 600ms var(--ease-sink); }
+/* §D strike (2026-08-08): 600ms var(--ease-sink) → --t-stage + --m-leave (the map's
+   own row). The flash is an exit of emphasis, so the leave curve is the right voice. */
+.odds-flash-up   { animation: odds-flash-up   var(--t-stage) var(--m-leave); }
+.odds-flash-down { animation: odds-flash-down var(--t-stage) var(--m-leave); }
 
 /* ---------- Up & Down quick-bet success pulse ----------
    Non-intrusive confirmation for a placed bet (replaces the happy-path toast).
@@ -2666,7 +2668,10 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
    grids never feel sluggish. Cards end at opacity:1 + transform:none as the
    keyframe's `to` state, so nothing is hidden if animation fails. */
 .market-grid > * {
-  animation: kp-rise 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  /* §D strike (2026-08-08): 420ms cubic-bezier(.2,.8,.2,1) → the ladder's nearest
+     rung, --t-move + --m-settle. qa:calm's low-end ceiling (600ms) still holds —
+     the entrance got SHORTER, and the probe reads the animation from outside. */
+  animation: kp-rise var(--t-move) var(--m-settle) both;
 }
 .market-grid > *:nth-child(1)  { animation-delay: 0ms; }
 .market-grid > *:nth-child(2)  { animation-delay: 45ms; }
@@ -2682,7 +2687,7 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
    card ALWAYS ends visible even if JS / the observer never runs — no more
    "empty container that fills in later". Disabled under reduced motion. */
 @keyframes kp-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-.kp-rise { animation: kp-rise 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.kp-rise { animation: kp-rise var(--t-move) var(--m-settle) both; }
 
 /* Generative identity wrapper (IdentityAvatar). The inner span carries the
    fixed size + optional tier ring; this just keeps it inline + self-contained. */

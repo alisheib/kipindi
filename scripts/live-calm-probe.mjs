@@ -107,7 +107,9 @@ mkdirSync(SHOT, { recursive: true });
 console.log(`\ncalm probe · ${BASE} · route ${ROUTE} · per-frame watch for ${WATCH_MS}ms from each card's first layout`);
 console.log(`${WIDTHS.length} width(s) × ${LOCALES.length} locale(s) × ${GATES.length} gate(s) = ${WIDTHS.length * LOCALES.length * GATES.length} cells\n`);
 
-const browser = await chromium.launch();
+const browser = await chromium.launch({
+  ...(process.env.QA_CHROMIUM_PATH ? { executablePath: process.env.QA_CHROMIUM_PATH } : {}),
+});
 const rows = [];
 
 /* ⛔ ONE sign-in for the whole matrix, reused as a storage state. Signing in per cell

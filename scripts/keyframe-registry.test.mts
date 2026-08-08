@@ -176,7 +176,7 @@ const ATOM_B_NEW = [
   "seal-recoil", "crest-settle",
 ];
 const missing = ATOM_B_NEW.filter((n) => !names.has(n));
-say(missing.length === 0, `3.1 all ${ATOM_B_NEW.length} keyframes from material.css §B are present (ATOM B)`);
+say(missing.length === 0, `3.1 all ${ATOM_B_NEW.length} keyframes from the delivery's §B are present (ATOM B)`);
 for (const n of missing) console.log(`         ${n} is not defined anywhere`);
 
 /* `win-aura-breathe` left this list on 2026-08-07 (DA-8/E-128): its only consumer

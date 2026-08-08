@@ -106,7 +106,13 @@ export function recorder(title) {
  * headed mode returns `"granted"`. Anything that tests the push opt-in must run headed.
  */
 export async function browser(opts = {}) {
-  const b = await chromium.launch({ headless: opts.headless !== false, args: ["--no-sandbox"] });
+  // QA_CHROMIUM_PATH — sandboxes whose pinned headless-shell is missing point this
+  // at any real chromium binary (same escape hatch qa:live carries).
+  const b = await chromium.launch({
+    headless: opts.headless !== false,
+    args: ["--no-sandbox"],
+    ...(process.env.QA_CHROMIUM_PATH ? { executablePath: process.env.QA_CHROMIUM_PATH } : {}),
+  });
   const ctx = await b.newContext({ viewport: opts.viewport ?? { width: 1440, height: 1000 } });
   if (opts.permissions?.length) await ctx.grantPermissions(opts.permissions, { origin: BASE });
   return { b, ctx };
