@@ -5,6 +5,7 @@
  * PLAYER_PER_PAGE (12). `admin/admin-pagination` re-exports this so existing
  * admin imports keep working.
  */
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { I } from "@/components/ui/glyphs";
 
@@ -87,7 +88,9 @@ export function Pagination({
   const btnDisabled = "border border-border bg-bg-elevated text-text-subtle/40 pointer-events-none";
 
   // One control renderer for both modes: a <button onClick> in client mode
-  // (onNavigate), else an <a href="?page="> for the URL-driven default.
+  // (onNavigate), else a client-routed <Link href="?page="> for the URL-driven
+  // default — B-11: a raw <a> made every page turn a full document teardown
+  // (flash, scroll lost, SSE reconnect). A disabled chevron stays a span.
   const Control = ({ to, disabled, cls, aria, children }: {
     to: number; disabled?: boolean; cls: string; aria?: string; children: ReactNode;
   }) =>
@@ -95,10 +98,14 @@ export function Pagination({
       <button type="button" onClick={() => onNavigate(to)} disabled={disabled} className={cls} aria-label={aria}>
         {children}
       </button>
-    ) : (
-      <a href={disabled ? undefined : href(to)} className={cls} aria-label={aria}>
+    ) : disabled ? (
+      <span aria-disabled="true" className={cls} aria-label={aria}>
         {children}
-      </a>
+      </span>
+    ) : (
+      <Link href={href(to) as never} className={cls} aria-label={aria}>
+        {children}
+      </Link>
     );
 
   return (

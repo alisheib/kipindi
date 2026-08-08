@@ -134,9 +134,10 @@ async function FilterBar({ searchParams }: { searchParams: Promise<{ cat?: strin
         {WHEN_OPTIONS.map((o) => {
           const active = o.id === activeWhen;
           return (
-            <a
+            <Link
               key={o.id}
-              href={buildHref({ when: o.id })}
+              scroll={false}
+              href={buildHref({ when: o.id }) as never}
               className={
                 "inline-flex h-8 items-center rounded-md border px-3.5 font-mono text-[12px] font-semibold whitespace-nowrap transition-all lg:w-full lg:justify-start " +
                 (active
@@ -146,7 +147,7 @@ async function FilterBar({ searchParams }: { searchParams: Promise<{ cat?: strin
               style={active ? { background: "var(--pill-active)" } : undefined}
             >
               {o.label}
-            </a>
+            </Link>
           );
         })}
       </nav>
@@ -156,9 +157,10 @@ async function FilterBar({ searchParams }: { searchParams: Promise<{ cat?: strin
           const active = c.id === activeCat;
           const Glyph = c.id === "all" ? I.layoutGrid : I[categoryGlyph(c.id)];
           return (
-            <a
+            <Link
               key={c.id}
-              href={buildHref({ cat: c.id })}
+              scroll={false}
+              href={buildHref({ cat: c.id }) as never}
               className={
                 "inline-flex h-8 items-center gap-1.5 rounded-md border px-3 font-mono text-[12px] font-semibold whitespace-nowrap transition-all lg:w-full lg:justify-start " +
                 (active
@@ -169,7 +171,7 @@ async function FilterBar({ searchParams }: { searchParams: Promise<{ cat?: strin
             >
               <Glyph s={14} className={"shrink-0 " + (active ? "text-brand-300" : "opacity-70")} />
               {c.label}
-            </a>
+            </Link>
           );
         })}
       </nav>
@@ -428,9 +430,9 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
                 {t.market.newMarkets}
               </h2>
             </div>
-            <a href="/markets?when=new" className="font-mono text-[11.5px] font-semibold text-brand-300 hover:text-text transition-colors whitespace-nowrap">
+            <Link href={"/markets?when=new" as never} className="font-mono text-[11.5px] font-semibold text-brand-300 hover:text-text transition-colors whitespace-nowrap">
               {t.market.seeAllNew}
-            </a>
+            </Link>
           </div>
           <div className="market-grid">
             {newMarkets.map((m) => (
@@ -461,9 +463,9 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
             <h2 className="font-display text-[20px] font-semibold text-text">
               {searching ? `${t.market.marketsMatch}` : t.market.recentlyResolved}
             </h2>
-            <a href="/results" className="font-mono text-[11.5px] font-semibold text-brand-300 hover:text-text transition-colors whitespace-nowrap">
+            <Link href={"/results" as never} className="font-mono text-[11.5px] font-semibold text-brand-300 hover:text-text transition-colors whitespace-nowrap">
               {t.market.allResults}
-            </a>
+            </Link>
           </div>
           <div className="market-grid">
             {resolved.map((m) => (

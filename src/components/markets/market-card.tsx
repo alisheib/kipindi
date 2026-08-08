@@ -380,14 +380,14 @@ export function MarketCard({
           real link (card body uses onClick nav); the resolved card is already a
           full <Link>, so its footer is a decorative span to avoid a nested anchor. */}
       {live ? (
-        <a
-          href={`/markets/${id}`}
+        <Link
+          href={`/markets/${id}` as never}
           onClick={(e) => e.stopPropagation()}
           className="mcardp-details"
         >
           {t.market.details}
           <I.chevronRight s={11} />
-        </a>
+        </Link>
       ) : (
         <span className="mcardp-details" aria-hidden>
           {t.market.details}

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { I, categoryGlyph } from "@/components/ui/glyphs";
@@ -596,12 +597,12 @@ export default async function MarketDetail({
                   const q = `?next=${encodeURIComponent(betNext)}`;
                   return (
                     <div className="mt-4 grid grid-cols-1 xs:grid-cols-2 gap-2">
-                      <a href={`/auth/register${q}`} className="btn btn-primary btn-md btn-pill">
+                      <Link href={`/auth/register${q}` as never} className="btn btn-primary btn-md btn-pill">
                         {t.common.signUp}
-                      </a>
-                      <a href={`/auth/login${q}`} className="btn btn-ghost btn-md btn-pill">
+                      </Link>
+                      <Link href={`/auth/login${q}` as never} className="btn btn-ghost btn-md btn-pill">
                         {t.common.signIn}
-                      </a>
+                      </Link>
                     </div>
                   );
                 })()}

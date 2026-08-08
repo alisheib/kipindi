@@ -220,9 +220,10 @@ async function ResultsContent({
               {SORT_OPTIONS.map((o) => {
                 const active = o.id === activeSort;
                 return (
-                  <a
+                  <Link
                     key={o.id}
-                    href={buildHref({ sort: o.id, page: 1 })}
+                    scroll={false}
+                    href={buildHref({ sort: o.id, page: 1 }) as never}
                     className={
                       "inline-flex h-8 items-center rounded-md border px-3.5 font-mono text-[12px] font-semibold whitespace-nowrap transition-all lg:w-full lg:justify-start " +
                       (active
@@ -232,7 +233,7 @@ async function ResultsContent({
                     style={active ? { background: "var(--pill-active)" } : undefined}
                   >
                     {o.label}
-                  </a>
+                  </Link>
                 );
               })}
             </nav>
@@ -244,9 +245,10 @@ async function ResultsContent({
                 const active = c.id === activeCat;
                 const Glyph = c.id === "all" ? I.layoutGrid : I[categoryGlyph(c.id)];
                 return (
-                  <a
+                  <Link
                     key={c.id}
-                    href={buildHref({ cat: c.id, page: 1 })}
+                    scroll={false}
+                    href={buildHref({ cat: c.id, page: 1 }) as never}
                     className={
                       "inline-flex h-8 items-center gap-1.5 rounded-md border px-3 font-mono text-[12px] font-semibold whitespace-nowrap transition-all lg:w-full lg:justify-start " +
                       (active
@@ -257,7 +259,7 @@ async function ResultsContent({
                   >
                     <Glyph s={14} className={"shrink-0 " + (active ? "text-brand-300" : "opacity-70")} />
                     {c.label}
-                  </a>
+                  </Link>
                 );
               })}
             </nav>

@@ -6,6 +6,7 @@
  * authors + moderators can delete. Bilingual, on-theme, reduced-motion safe.
  */
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
@@ -143,12 +144,12 @@ export function CommentsThread({
           </div>
         </div>
       ) : (
-        <a
-          href={signInHref}
+        <Link
+          href={signInHref as never}
           className="btn btn-ghost btn-md mb-5 block w-full text-center"
         >
           {t.market.signInToPredict}
-        </a>
+        </Link>
       )}
 
       {comments.length === 0 ? (

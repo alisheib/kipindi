@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { cn } from "@/lib/utils";
 import { fetchMyNotifications, markNotifReadAction, markAllReadAction, dismissNotifAction, dismissAllAction } from "@/app/_actions/notifications";
@@ -81,6 +81,7 @@ function pickBody(n: StoredNotification, locale: string): string {
 }
 
 export function NotificationsPanel() {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<StoredNotification[]>([]);
   const ref = useRef<HTMLDivElement>(null);
@@ -97,7 +98,10 @@ export function NotificationsPanel() {
      keyframe on each fresh arrival. Never on hover, never looping. */
   const [ringSeq, setRingSeq] = useState(0);
   const refresh = useCallback(async () => {
-    const r = await fetchMyNotifications();
+    // B-15 — offline, this rejected every 5s as an unhandled promise. A poll
+    // that cannot reach the server simply skips its beat.
+    let r: Awaited<ReturnType<typeof fetchMyNotifications>>;
+    try { r = await fetchMyNotifications(); } catch { return; }
     setItems(r.items);
     const clientUnread = r.items.filter((n: StoredNotification) => !n.readAt).length;
     if (clientUnread > prevUnreadRef.current && prevUnreadRef.current >= 0) {
@@ -152,15 +156,19 @@ export function NotificationsPanel() {
     };
   }, [open]);
 
-  const handleClick = (n: StoredNotification) => {
+  const handleClick = async (n: StoredNotification) => {
+    // B-15 — mark-read is AWAITED before navigating. The old fire-and-forget
+    // raced the full-page navigation (B-11's raw location.href), and the unload
+    // aborted the in-flight action often enough that a tapped item stayed
+    // unread. A failed mark-read must not strand the tap: swallow and navigate.
     if (!n.readAt) {
-      void markNotifReadAction(n.id).then(() => refresh()).catch(() => {});
+      try { await markNotifReadAction(n.id); } catch { /* offline — navigate anyway */ }
     }
     if (n.href) {
       const sameOrigin = n.href.startsWith("/") && !n.href.startsWith("//");
       if (sameOrigin) {
         setOpen(false);
-        window.location.href = n.href;
+        router.push(n.href as never); // client nav — no MPA teardown (B-11)
       } else {
         window.location.href = n.href;
       }
@@ -171,20 +179,42 @@ export function NotificationsPanel() {
 
   const handleDismiss = async (e: React.MouseEvent | React.KeyboardEvent, id: string) => {
     e.stopPropagation();
-    await dismissNotifAction(id);
-    await refresh();
+    // B-15 — optimistic: the row leaves NOW (a dismiss that waits a round-trip
+    // reads as a dead ✕ on 2G). On failure the snapshot comes back — the row
+    // reappearing IS the failure notice, honest without inventing copy.
+    const prev = items;
+    setItems((cur) => cur.filter((n) => n.id !== id));
+    try {
+      await dismissNotifAction(id);
+      await refresh();
+    } catch {
+      setItems(prev);
+    }
   };
 
   const handleMarkAll = async () => {
     if (items.length === 0) return;
-    await markAllReadAction();
-    await refresh();
+    // Optimistic + rollback, same contract as a single dismiss (B-15).
+    const prev = items;
+    setItems((cur) => cur.map((n) => (n.readAt ? n : { ...n, readAt: new Date().toISOString() })));
+    try {
+      await markAllReadAction();
+      await refresh();
+    } catch {
+      setItems(prev);
+    }
   };
 
   const handleClearAll = async () => {
     if (items.length === 0) return;
-    await dismissAllAction();
-    await refresh();
+    const prev = items;
+    setItems([]);
+    try {
+      await dismissAllAction();
+      await refresh();
+    } catch {
+      setItems(prev);
+    }
   };
 
   return (
