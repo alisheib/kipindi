@@ -104,12 +104,14 @@ export function AvatarUploader({
 
   return (
     <div className="relative inline-block">
+      {/* Hero placement → identity arrival (spec §8, .crest-arrive). The ring here is
+          chrome, not an honours ring, so it does not take the ring reveal. */}
       <Avatar
         initials={initials}
         seed={seed}
         size={size}
         src={preview ?? undefined}
-        className="ring-2 ring-bg-elevated/80 shadow-e4"
+        className="crest-arrive ring-2 ring-bg-elevated/80 shadow-e4"
       />
 
       <input

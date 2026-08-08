@@ -259,14 +259,22 @@ export function OperationResultModal({
       )}
 
       <div className="p-6 lg:p-7 text-center">
-        {/* Crest — the visual hit. */}
+        {/* Crest — the visual hit. ⭐ A BET COMMIT takes the micro-seal (spec §8's
+            "micro-commit .seal-commit" — `seal-place`, the stamp landing) instead of
+            the generic pop: `stripTone` yes/no is the modal's own definition of "a
+            side was staked", so the commit moment is detected from the prop that
+            already means it, not a new one. Everything else keeps `orm-pop`. */}
         <div
-          className="mx-auto inline-flex h-16 w-16 items-center justify-center rounded-full"
+          className={`mx-auto inline-flex h-16 w-16 items-center justify-center rounded-full${
+            variant === "success" && (stripTone === "yes" || stripTone === "no") ? " seal-commit" : ""
+          }`}
           style={{
             background: tone.bg,
             border: `2px solid ${tone.brd}`,
             boxShadow: tone.shadow,
-            animation: "orm-pop var(--t-move) var(--m-pivot)",
+            ...(variant === "success" && (stripTone === "yes" || stripTone === "no")
+              ? {}
+              : { animation: "orm-pop var(--t-move) var(--m-pivot)" }),
           }}
           aria-hidden
         >

@@ -103,8 +103,11 @@ export function TopAppBar({ user, proposalsState }: { user: TopAppBarUser; propo
       <div className="mx-auto max-w-board flex items-center h-full gap-2 px-3 sm:gap-4 sm:px-5">
         {/* Brand lockup — kit: BrandLockup size={30} */}
         <Link href="/" aria-label={`50pick ${t.common.home}`} className="shrink-0 hover:opacity-90 transition-opacity">
-          <span className="inline-flex sm:hidden"><FiftyMark size={26} /></span>
-          <span className="hidden sm:inline-flex"><FiftyLockup size={22} /></span>
+          {/* M8 — the mark performs: one flip on its own needle axis per hover
+              (.mark-flip-i), on the LOGO only. Wrapped on the mark span, not the
+              lockup, so the wordmark never rotates with it. */}
+          <span className="mark-flip-i inline-flex sm:hidden"><FiftyMark size={26} /></span>
+          <span className="hidden sm:inline-flex"><FiftyLockup size={22} markClassName="mark-flip-i" /></span>
         </Link>
 
         {/* Nav links — primary nav shows from `lg` (IA review R1). Core links

@@ -91,8 +91,12 @@ async function buildLeaderboard() {
   // by BOARD_SIZE — 50 — no matter how large the platform grows.
   const detail = await Promise.all(
     ranked.map(async (r) => ({
-      user: await db.user.findById(r.userId).catch(() => null),
-      positions: await listPositionsForUser(r.userId, 200).catch(() => []),
+      // ⚠️ Promise.resolve(), not a bare .catch() — the dev in-memory store's
+      // db.user.* return VALUES, not Promises (CLAUDE.md gotcha §9), so calling
+      // .catch() on the raw return crashed /leaderboard on every memory-store
+      // boot while working fine against Prisma. Found live 2026-08-08.
+      user: await Promise.resolve(db.user.findById(r.userId)).catch(() => null),
+      positions: await Promise.resolve(listPositionsForUser(r.userId, 200)).catch(() => [] as Awaited<ReturnType<typeof listPositionsForUser>>),
     })),
   );
 
@@ -302,11 +306,17 @@ function Podium({ top, t }: { top: Row[]; t: Dict }) {
               ) : (
                 <span className="mb-1 block h-[22px]" aria-hidden />
               )}
-              <div
-                className="relative rounded-full"
-                style={{ padding: 3, background: ring, boxShadow: first ? "0 0 16px color-mix(in oklab, var(--gold-400) 45%, transparent)" : "none" }}
-              >
-                <Avatar initials={r.handle.slice(0, 2)} size={first ? "xl" : "lg"} seed={r.userId} />
+              {/* Identity arrival on the hero placement (spec §8): the crest settles
+                  first (.crest-arrive), the honours ring reveals second
+                  (.crest-ring-reveal) — so the ring is its OWN layer now; painting
+                  it on the wrapper would hide the crest through its own arrival. */}
+              <div className="relative rounded-full" style={{ padding: 3 }}>
+                <span
+                  aria-hidden
+                  className="crest-ring-reveal absolute inset-0 rounded-full"
+                  style={{ background: ring, boxShadow: first ? "0 0 16px color-mix(in oklab, var(--gold-400) 45%, transparent)" : "none" }}
+                />
+                <Avatar className="crest-arrive relative" initials={r.handle.slice(0, 2)} size={first ? "xl" : "lg"} seed={r.userId} />
                 <span
                   className="absolute -bottom-1 -right-1 grid place-items-center rounded-full font-mono text-[10px] font-bold"
                   style={{

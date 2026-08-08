@@ -121,6 +121,7 @@ export function FiftyLockup({
   tz = true,
   layout = "horizontal",
   className,
+  markClassName,
 }: {
   size?: number;
   color?: string;
@@ -128,18 +129,21 @@ export function FiftyLockup({
   tz?: boolean;
   layout?: "horizontal" | "stacked";
   className?: string;
+  /** Class for the MARK alone (e.g. `mark-flip-i`, M8) — identity motion must
+   *  never rotate the wordmark beside it. */
+  markClassName?: string;
 }) {
   if (layout === "stacked") {
     return (
       <div className={cn("inline-flex flex-col items-center", className)} style={{ gap: size * 0.5 }}>
-        <FiftyMark size={size * 2.1} variant={variant} />
+        <FiftyMark size={size * 2.1} variant={variant} className={markClassName} />
         <FiftyWordmark size={size} color={color} tz={tz} />
       </div>
     );
   }
   return (
     <div className={cn("inline-flex items-center", className)} style={{ gap: size * 0.38 }}>
-      <FiftyMark size={size * 1.22} variant={variant} />
+      <FiftyMark size={size * 1.22} variant={variant} className={markClassName} />
       <FiftyWordmark size={size} color={color} tz={tz} />
     </div>
   );
