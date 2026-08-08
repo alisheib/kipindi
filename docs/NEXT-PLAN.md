@@ -1,7 +1,12 @@
 STATUS: the next plan. Written 2026-07-29, immediately after the design system was
 frozen and shipped. **Revised 2026-07-31 against the live platform, not against memory.**
 
-**Items 1, 2 and 4 are DONE and live. Item 3 (withdrawals) is blocked at Selcom.
+**Items 1, 2 and 4 are DONE and live. Item 3 (withdrawals): ~~blocked at Selcom~~ —
+CORRECTED 2026-08-08: the rail works (four real payouts settled 2026-07-31) and the block
+is OURS to lift: three payouts stuck at `999` since 07-29 keep `derivePayoutStatus` at
+`unavailable`, the float arithmetic proves they never paid, and `/admin/payments` →
+"Return to player" on each closes them safely — the banner clears itself, no deploy
+(`SELCOM-PAYOUT-RAILS.md` § 2026-08-02). Ali's 2026-08-08 word: payouts are allowed now.
 Multi-container is DONE and merged (2026-07-31); scale ceilings are the one code item
 left.** What is left on 1 and 2 is not code — it is the operator actions listed under
 "Only Ali can do these", below.
@@ -243,7 +248,7 @@ This file is the brief. Copy the block at the bottom into a fresh session.
 | | State |
 |---|---|
 | Live | `www.50pick.tz`, Railway `50pick` / `production`, running `be4a12be`; `/api/health` `ok:true` |
-| Money mode | **TEST** — deposits real via Selcom. **Withdrawals PAY as of 2026-07-31** (2 real payouts settled) but the form is still shut to players: two payouts stuck at `999` since 07-29 keep `derivePayoutStatus` at `unavailable`. Only Selcom closing those reopens it. |
+| Money mode | **TEST** — deposits real via Selcom. **Withdrawals PAY as of 2026-07-31** (4 real payouts settled lifetime) but the form is still shut to players: three payouts stuck at `999` since 07-29 keep `derivePayoutStatus` at `unavailable`. ~~Only Selcom closing those reopens it~~ — corrected 2026-08-02/08: the prepaid float proves they never paid, and `/admin/payments` → "Return to player" ×3 closes them from our side; the banner self-clears. Then seal the bypass (`PAYOUT_TEST_BYPASS_MSISDN` unset + delete `isPayoutTestBypass`). |
 | Test suite | **110** `test:*` scripts. **108 verified green 2026-07-31**; `test:responsive` was **not** verified — see below |
 | Design | FROZEN + LIVE (B9/B10, `test:design-frozen`) |
 | Error tracking | ✅ code complete — durable + scrubbed + `@sentry/node` wired and proven (`test:alerting`). ⚠️ **`SENTRY_DSN` is NOT set in Railway (verified), so nobody is paged.** `/api/health` reports `monitoring.alerting:false` |
@@ -357,13 +362,18 @@ This file is the brief. Copy the block at the bottom into a fresh session.
    `resultcode 000`), the first successes in the platform's life. The success path —
    confirm → hold release → ledger → notification → "Withdrawal sent" email — has now run.
 
-   🔴 **But withdrawals are still SHUT to players, and it is no longer Selcom's rail.** The two
-   payouts stranded at `999` since 07-29 (TZS 15,000 of a customer's money) are older than
-   `UNAVAILABLE_AFTER_HOURS`, so `derivePayoutStatus` reports `unavailable` and the form refuses
-   everyone. **Closing those two — either way — is what reopens withdrawals**; no code change
-   will, and an officer cannot override it (`worstOf(declared, derived)`, by design).
+   🔴 **But withdrawals are still SHUT to players, and it is no longer Selcom's rail.** The
+   payouts stranded at `999` since 07-29 (three by the 2026-08-02 count, TZS 17,000 of a
+   customer's money) are older than `UNAVAILABLE_AFTER_HOURS`, so `derivePayoutStatus` reports
+   `unavailable` and the form refuses everyone. **Closing them is what reopens withdrawals**;
+   no code change will, and an officer cannot override it (`worstOf(declared, derived)`, by
+   design). ⭐ **CORRECTED 2026-08-02 (see `SELCOM-PAYOUT-RAILS.md` § Current state): closing
+   them is OURS to do** — the prepaid float proves none of the three ever paid, and
+   `/admin/payments` → "Return to player" (reason ≥10 chars) closes each safely
+   (`reverseStuckPayoutAction` re-queries the provider first and refuses a CONFIRMED payout).
    A scoped `PAYOUT_TEST_BYPASS_MSISDN` lets the owner-testers through meanwhile; **seal it**
-   with `railway variables --unset` once the two are closed.
+   with `railway variables --unset` once the three are closed, then delete
+   `isPayoutTestBypass()` and its call sites.
 
    🔴 **One bug was ours, and only a working rail could expose it:** Selcom refuses a NET below
    TZS 1,000 (`resultcode 013`). Our minimum was 1,000 *gross*, so after the 1.5% fee we asked

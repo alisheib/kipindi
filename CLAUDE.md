@@ -139,17 +139,20 @@ corrected.
 > conflicted-resolution flag was cleared in production via
 > `scripts/ops-clear-conflicted-override.mjs` (true → false, confirmed by the compliance
 > warning disappearing from the boot log).
-> 🔴 **ONE OPERATOR ACTION STILL BLOCKS EVERY DEPOSIT — 30 seconds, and it is the ONLY
-> thing between the platform and real-money testers:**
->   **/admin/payments → set the active provider to `selcom`.** `getPaymentProvider()` is
->   `store.provider ?? envProvider()`, so the persisted `mock` **outranks**
->   `PAYMENT_AGGREGATOR=selcom` (which IS set, with all four Selcom credentials present).
->   Until it is flipped, every deposit is refused with `PROVIDER_DOWN` and the boot log
->   warns on each deploy. It stays an admin-UI action because that is what puts a NAMED
->   ACTOR in the compliance trail on the switch that turns on real money movement.
->   (`scripts/ops-set-payment-provider.mjs` exists as a break-glass path and REFUSES to run
->   without `--actor`.) **Redeploy afterwards — the config is cached in-process.**
-> ⚠️ deposit-only — withdrawals still need Selcom disbursement creds + float PIN.
+> ✅ **BOTH MONEY DIRECTIONS HAVE RUN END-TO-END — corrected 2026-08-08.** The two warnings
+> this block used to carry are history: the `selcom` provider WAS flipped (deposits have been
+> live since 2026-07-18/20 — the mobile-money and card records above are of real settled
+> deposits), and *"withdrawals still need Selcom disbursement creds + float PIN"* stopped
+> being true on 2026-07-27 (creds granted) and provably false on 2026-07-31, when **four real
+> payouts settled end-to-end on `WALLET_CASHIN`** (2×1,970 on 07-31 08:04/08:06 + two more at
+> 13:55/13:57 — `docs/SELCOM-PAYOUT-RAILS.md` § Current state 2026-08-02). The rail WORKS.
+> ⚠️ What still gates the withdraw form is DATA, not creds: three payouts stuck at Selcom
+> `999` since 07-29 hold `derivePayoutStatus` at `unavailable` (`worstOf(declared, derived)` —
+> an officer cannot force it green, by design). The float arithmetic proves all three never
+> paid, so **`/admin/payments` → "Return to player" on each (reason ≥10 chars) closes them
+> safely** (`reverseStuckPayoutAction` re-queries the provider and refuses a CONFIRMED payout)
+> — the banner then clears itself with no deploy. Then clear `PAYOUT_TEST_BYPASS_MSISDN` on
+> Railway and delete `isPayoutTestBypass()`. Full mechanics: `docs/SELCOM-PAYOUT-RAILS.md`.
 > ⚠️ `NEXT_PUBLIC_LICENSE_REF` is still the placeholder `TZ-GBT-2026-XXXX` — the footer shows
 > it as "(pending)". Replace with the real GBT number before public launch.
 > ⭐ **Full handoff + copy-paste go-live prompt: [`docs/GO-LIVE-RUNBOOK.md`](docs/GO-LIVE-RUNBOOK.md)**

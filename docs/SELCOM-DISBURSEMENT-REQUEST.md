@@ -1,10 +1,13 @@
 # The Selcom ask to unlock real-money CASH-OUT (withdrawals)
 
-> ### ✅ GRANTED — 2026-07-27
-> **Selcom has granted the disbursement (Wallet Cashin) API.** This request is fulfilled.
-> Activation is now tracked in **[`SELCOM-DISBURSEMENT-ACTIVATION.md`](SELCOM-DISBURSEMENT-ACTIVATION.md)**
-> — payouts are NOT live yet: they still need the float PIN/creds set in Railway, three small code
-> phases, and one real end-to-end test. The email below is kept for the record.
+> ### ✅ GRANTED — 2026-07-27 · ✅ PROVEN LIVE — 2026-07-31
+> **Selcom has granted the disbursement (Wallet Cashin) API.** This request is fulfilled, and
+> the activation it fed is COMPLETE: **four real payouts settled end-to-end on 2026-07-31**
+> (`resultcode 000`, fast-settled, "Withdrawal sent" emails delivered — see
+> [`SELCOM-PAYOUT-RAILS.md`](SELCOM-PAYOUT-RAILS.md) § Current state). The old note here that
+> payouts *"still need the float PIN/creds set in Railway"* is stale: creds + float + PIN are
+> set and have paid. What keeps the player form shut is three stuck `999` rows from 07-29 —
+> the rails doc says how to close them. The email below is kept for the record.
 
 > 50pick has Selcom **collection (deposit)** access live and validated. What *was*
 > still missing — and the ONLY thing blocking real withdrawals — was **disbursement
