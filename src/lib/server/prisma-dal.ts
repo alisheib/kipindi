@@ -26,6 +26,7 @@ import {
   summarise, GATEWAY_TYPES, STUCK_PROCESSING_MS,
   type TxnSearchFilters, type TxnSearchResult,
 } from "./txn-filters";
+import { sniffBase64ImageMime } from "./image-signature";
 import type {
   StoredUser,
   StoredKyc,
@@ -185,28 +186,30 @@ export function toKycDocumentRows(
       submissionId,
       docType: d.docType as KycDocTypeName,
       storageKey: d.storageKey,
-      // ⛔ THE CAPTURED FACT WINS OVER THE DERIVED ONE, and the order here is the whole point.
+      // ⛔ A MEASUREMENT BEATS A COLUMN, AND A COLUMN BEATS A LABEL — in that order.
       //
-      // `m?.[1]` is the mime **label** parsed back out of the data URL — i.e. the string the
-      // UPLOADER supplied. `d.mimeType` is what `validateDocImage` actually SNIFFED from the
-      // bytes and persisted. D2 exists because those two disagree on a malicious file: the
-      // suite proves a `.wav` can carry an image mime label past a naive check. Preferring the
-      // label re-introduced exactly the trust D2 removed, and an officer reviewing KYC would
-      // have been shown the attacker's claim rather than the verified type.
+      // For an INLINE document the bytes are right there, so both facts are MEASURED
+      // fresh: the mime is magic-byte sniffed from the decoded head (`sniffBase64ImageMime`,
+      // the same D2 instrument `validateDocImage` uses) and the size is counted from the
+      // base64 itself. A stale or wrong stored column cannot survive when the truth is in
+      // hand. For an `r2:<key>` the bytes live in a bucket and cannot be measured here, so
+      // the stored column — sniffed by `validateDocImage` at upload — is the only evidence.
+      //
+      // `m?.[1]`, the mime **label** parsed back out of the data URL, is trusted NOWHERE:
+      // it is the string the UPLOADER supplied, and D2 exists because a malicious file can
+      // carry an image mime label past a naive check. Sniffing the actual bytes is what
+      // keeps "measured wins" from re-opening that hole — an inline doc whose bytes are
+      // not a supported image falls through to the stored column, never to the label.
       //
       // ⚠️ Do NOT write an image mime with a wildcard in this comment. `test:cert-d2` strips
       // comments with a naive regex, so the two characters that begin a block comment OPEN one
       // for the stripper and swallow the code below — the gate then reports this very line as
       // missing while it sits here correctly. Same shape as the `--m-*` trap in needle.css.
-      //
-      // The size follows the same rule: a stored `sizeBytes` was measured at upload, while
-      // `derivedBytes` is inferred by counting base64 characters and only exists for inline
-      // documents at all — an `r2:<key>` cannot be measured, which is how every R2 document
-      // once recorded `application/octet-stream` / 0 bytes.
-      mimeType: d.mimeType ?? m?.[1] ?? "application/octet-stream",
-      // `??` and not `||`: a genuine 0-byte reading must survive, and only null/undefined
-      // should fall through to the derived count.
-      sizeBytes: d.sizeBytes ?? (m ? derivedBytes : 0),
+      mimeType: (m ? sniffBase64ImageMime(b64) : null) ?? d.mimeType ?? "application/octet-stream",
+      // Inline → the measured count, always (base64 arithmetic, padding-corrected — the
+      // same figure `validateDocImage` reports). R2 → the stored column, `??` and not `||`
+      // so a genuine 0-byte reading survives; no evidence at all → the honest 0.
+      sizeBytes: m ? derivedBytes : (d.sizeBytes ?? 0),
       uploadedAt: new Date(d.uploadedAt),
     };
   });
