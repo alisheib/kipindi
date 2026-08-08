@@ -23,7 +23,9 @@ export default async function PerformancePage() {
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/positions/performance");
 
-  const positions = await listPositionsForUser(session.userId, 5_000).catch(() => []);
+  // B-1 — no swallow: a failed positions read must throw to positions/error.tsx,
+  // never render the "no performance yet" empty state to a player with history.
+  const positions = await listPositionsForUser(session.userId, 5_000);
   const settled = positions.filter((p) => p.status !== "OPEN");
 
   // ── Core stats (unchanged real aggregation) ─────────────────────────
@@ -77,7 +79,8 @@ export default async function PerformancePage() {
     pnlSeries.push({ label: `${d.getDate()}/${d.getMonth() + 1}`, value: cumulative });
   }
 
-  // Best win title
+  // Best win title — B-1: deliberate degrade; a failed title lookup only drops
+  // the caption under the (real) payout figure.
   let bestTitle = "";
   if (bestMarket) {
     try { const m = await getMarket(bestMarket.marketId); if (m) bestTitle = pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh); } catch { /* skip */ }
@@ -87,6 +90,7 @@ export default async function PerformancePage() {
   const recent = sortedSettled.slice(0, 5);
   const recentMarketMap = new Map<string, Awaited<ReturnType<typeof getMarket>>>();
   for (const mid of [...new Set(recent.map((p) => p.marketId))]) {
+    // B-1 — deliberate degrade: a missing title falls back to the id slice.
     try { recentMarketMap.set(mid, await getMarket(mid)); } catch { /* skip */ }
   }
   const statusLabel = (s: string) =>

@@ -39,8 +39,9 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
   if (cfg.state === "DISABLED") redirect("/proposals");
   const active = isProposalsActive(cfg);
   const session = await currentSession();
-  let p: Awaited<ReturnType<typeof getProposalDetail>> | null = null;
-  try { p = await getProposalDetail(id, session?.userId ?? null); } catch { /* graceful */ }
+  // B-1 — no swallow: a FAILED read must throw to proposals/error.tsx, never
+  // render 404. notFound() fires only when the query succeeded and found nothing.
+  const p = await getProposalDetail(id, session?.userId ?? null);
   if (!p) notFound();
 
   const open = p.status === "REVIEW" || p.status === "CHANGES_REQUESTED";

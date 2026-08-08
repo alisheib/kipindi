@@ -33,19 +33,26 @@ export default async function ProfilePage() {
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/profile");
 
-  let user: Awaited<ReturnType<typeof db.user.findById>> | null = null;
-  try { user = await db.user.findById(session.userId); } catch { /* graceful */ }
+  // B-1 — no swallow: a FAILED user read used to bounce a signed-in player to
+  // the login page. Throw to profile/error.tsx instead; the redirect below is
+  // only for a successful read finding no row.
+  const user = await db.user.findById(session.userId);
   if (!user) redirect("/auth/login?next=/profile");
 
   let wallet: Awaited<ReturnType<typeof db.wallet.findByUserId>> | null = null;
-  let kyc: Awaited<ReturnType<typeof db.kyc.findByUserId>> | null = null;
   let sof: Awaited<ReturnType<typeof db.sourceOfFunds.get>> | null = null;
-  let positions: Awaited<ReturnType<typeof listPositionsForUser>> = [];
   let badges: Awaited<ReturnType<typeof computeAchievementShelf>> = [];
+  // B-1 — deliberate degrade: a failed wallet read renders "—", visually
+  // distinct from a real 0 balance.
   try { wallet = await db.wallet.findByUserId(user.id); } catch { /* graceful */ }
-  try { kyc = await db.kyc.findByUserId(user.id); } catch { /* graceful */ }
+  // B-1 — no swallow: a failed KYC read fabricated NOT_STARTED (a verified
+  // player shown "Verify your identity"); a failed positions read fabricated
+  // 0 open / 0 settled. Both throw to profile/error.tsx now.
+  const kyc = await db.kyc.findByUserId(user.id);
+  const positions = await listPositionsForUser(user.id, 500);
+  // B-1 — deliberate degrade: the SoF banner and the badges shelf are optional
+  // enrichment; their absence never mimics real data.
   try { sof = await db.sourceOfFunds.get(user.id); } catch { /* graceful */ }
-  try { positions = await listPositionsForUser(user.id, 500); } catch { /* graceful */ }
   try { badges = await computeAchievementShelf(user.id); } catch { /* graceful */ }
   const initials = displayInitials(user);
   const displayName = user.displayName ?? t.profile.setYourName;

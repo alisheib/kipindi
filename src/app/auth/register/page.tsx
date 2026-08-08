@@ -51,9 +51,13 @@ export default async function RegisterPage({
   // but can still bet with the starter balance, so we honor their intent.
   const nextRaw = (sp.next ?? "").trim();
   const nextOk = /^\/(?![/\\])/.test(nextRaw) ? nextRaw : "";
-  const referral = refCode ? await resolveReferralPreview(refCode).catch(() => null) : null;
+  // B-1 — no swallow: the hidden ref/invite form inputs render only when these
+  // previews resolve, so a FAILED read silently dropped the player's referral
+  // binding (and its bonus). Throw to auth/error.tsx instead; a genuinely
+  // invalid code still resolves null and simply shows no banner.
+  const referral = refCode ? await resolveReferralPreview(refCode) : null;
   const inviteCode = (sp.invite ?? "").trim().slice(0, 24);
-  const invite = inviteCode ? await getInvitePreview(inviteCode).catch(() => null) : null;
+  const invite = inviteCode ? await getInvitePreview(inviteCode) : null;
 
   const errorPanel = (() => {
     if (!sp.error) return null;

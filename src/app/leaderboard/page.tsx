@@ -83,8 +83,10 @@ async function buildLeaderboard() {
   // mid-run — on a public page whose trigger is somebody sharing the link.
   //
   // Now: one GROUP BY, ordered and limited by the database.
-  let ranked: Awaited<ReturnType<typeof positionStore.leaderboard>> = [];
-  try { ranked = await positionStore.leaderboard(BOARD_SIZE); } catch { return []; }
+  // B-1 — no swallow: a failed aggregate must throw to leaderboard/error.tsx.
+  // The old `catch { return [] }` rendered an empty board (or, worse, the
+  // non-production SYNTHETIC board) whenever the read failed.
+  const ranked = await positionStore.leaderboard(BOARD_SIZE);
   if (ranked.length === 0) return [];
 
   // Only the rows actually being rendered need a name and a streak, so this is bounded
@@ -95,6 +97,8 @@ async function buildLeaderboard() {
       // db.user.* return VALUES, not Promises (CLAUDE.md gotcha §9), so calling
       // .catch() on the raw return crashed /leaderboard on every memory-store
       // boot while working fine against Prisma. Found live 2026-08-08.
+      // B-1 — deliberate degrade: per-row detail (name/streak) failing drops
+      // only that row's decoration, bounded at BOARD_SIZE; the ranking is real.
       user: await Promise.resolve(db.user.findById(r.userId)).catch(() => null),
       positions: await Promise.resolve(listPositionsForUser(r.userId, 200)).catch(() => [] as Awaited<ReturnType<typeof listPositionsForUser>>),
     })),

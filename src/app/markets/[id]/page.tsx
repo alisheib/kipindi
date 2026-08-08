@@ -93,8 +93,11 @@ export default async function MarketDetail({
   const { t, locale } = await getServerT();
   const { id } = await params;
   const { side } = await searchParams;
-  let m: Awaited<ReturnType<typeof getMarket>> | null = null;
-  try { m = await getMarket(id); } catch { /* graceful */ }
+  // B-1 — no swallow on the PRIMARY read: a failed query must throw to
+  // markets/error.tsx (retry), never 404 a market that may be holding money.
+  // notFound() fires only when the query succeeded and the row is absent.
+  // (generateMetadata's own catch above deliberately stays — title garnish.)
+  const m = await getMarket(id);
   if (!m) notFound();
 
   // Up & Down is a SEPARATE game with its own detail surface (countdown, price,
@@ -243,6 +246,9 @@ export default async function MarketDetail({
   // fabricated a random walk whenever history was empty; since history lived in
   // a Map wiped on every deploy, that meant every market, every time. Deleted.
   // A market without enough real points renders no chart (A-5 no-fabrication).
+  // B-1 — deliberate degrade: chart + comments are enrichment on the market
+  // detail; a failed read renders no chart / no thread, which the page already
+  // does for genuinely-sparse markets.
   let probChart: Awaited<ReturnType<typeof getProbabilityChart>> = { series: {}, ranges: [] };
   try { probChart = await getProbabilityChart(m.id); } catch { /* graceful */ }
   let comments: Awaited<ReturnType<typeof listComments>> = [];

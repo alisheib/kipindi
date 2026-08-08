@@ -46,13 +46,16 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
   ];
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/profile/responsible-gambling");
-  let rg: Awaited<ReturnType<typeof getRgSettings>>;
-  try { rg = await getRgSettings(session.userId); } catch { rg = { userId: session.userId, dailyDepositLimit: null, weeklyDepositLimit: null, monthlyDepositLimit: null, dailyLossLimit: null, sessionTimeLimitMin: null, realityCheckIntervalMin: 30, selfExclusionUntil: null, coolingOffUntil: null, selfExclusionStartedAt: null, coolingOffStartedAt: null, pendingIncreaseTo: null, pendingIncreaseEffectiveAt: null, pendingWeeklyIncreaseTo: null, pendingWeeklyIncreaseEffectiveAt: null, pendingMonthlyIncreaseTo: null, pendingMonthlyIncreaseEffectiveAt: null }; }
+  // B-1 — no swallow: the fallback object fabricated "no limits, no exclusion,
+  // no cool-off" to a player who may have set all three. Throw to
+  // profile/error.tsx instead.
+  const rg = await getRgSettings(session.userId);
   const hasPendingIncrease = (rg.pendingIncreaseTo !== null && rg.pendingIncreaseEffectiveAt !== null) || (rg.pendingWeeklyIncreaseTo !== null && rg.pendingWeeklyIncreaseEffectiveAt !== null) || (rg.pendingMonthlyIncreaseTo !== null && rg.pendingMonthlyIncreaseEffectiveAt !== null);
 
   // Read-only usage snapshot for the limit meters below. Every figure is the
   // SAME quantity the deposit/loss gates enforce (getLimitUsage). null on a
   // failed read → the usage section is simply hidden (never a fabricated 0).
+  // B-1 — deliberate degrade: a hidden section is distinguishable from real 0s.
   const usage = await getLimitUsage(session.userId).catch(() => null);
   const usageMeters = usage
     ? ([

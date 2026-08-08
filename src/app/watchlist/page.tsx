@@ -30,12 +30,16 @@ export default async function WatchlistPage() {
   const session = await getSession();
   if (!session) redirect("/auth/login?next=/watchlist");
 
-  const ids = await listWatchedMarketIds(session.userId).catch(() => [] as string[]);
+  // B-1 — no swallow: the starred set IS this page; a failed read must throw to
+  // watchlist/error.tsx, never render "your watchlist is empty" over real stars.
+  const ids = await listWatchedMarketIds(session.userId);
   // B-17 — ONE board read instead of an N+1 `getMarket` fan-out per starred
   // market (a 30-star watchlist was 30 sequential-ish store reads). The board
   // query already hydrates every market; filter it to the starred set, keeping
   // the player's star order.
-  const byId = new Map((await listMarkets({ productLine: "ALL" }).catch(() => [])).map((m) => [m.id, m] as const));
+  // B-1 — no swallow here either: this read hydrates every starred card, so its
+  // failure also fabricated the empty state.
+  const byId = new Map((await listMarkets({ productLine: "ALL" })).map((m) => [m.id, m] as const));
   const markets = ids.map((id) => byId.get(id)).filter((m): m is NonNullable<typeof m> => !!m);
 
   return (

@@ -69,7 +69,9 @@ const fmtTime = (iso: string | null) => formatDateTimeSafe(iso);
 
 export default async function FairnessPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const { t, locale } = await getServerT();
-  const allResolved = await listMarkets({ status: "RESOLVED" }).catch(() => []);
+  // B-1 — no swallow: the attestation list IS this page; a failed read must
+  // throw to fairness/error.tsx, never render "no resolved markets yet".
+  const allResolved = await listMarkets({ status: "RESOLVED" });
   const sp = await searchParams;
   const totalPages = Math.max(1, Math.ceil(allResolved.length / PLAYER_PER_PAGE));
   const safePage = Math.min(Math.max(1, parseInt(sp.page ?? "1", 10) || 1), totalPages);

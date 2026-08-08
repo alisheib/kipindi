@@ -106,8 +106,10 @@ async function ResultsContent({
 
   // Fetch all resolved + voided
   const effectiveCat = searching ? undefined : (activeCat === "all" ? undefined : activeCat as MarketCategory);
-  const resolved = await listMarkets({ status: "RESOLVED", category: effectiveCat }).then((l) => l.filter(matches)).catch(() => []);
-  const voided = await listMarkets({ status: "VOIDED", category: effectiveCat }).then((l) => l.filter(matches)).catch(() => []);
+  // B-1 — no swallow: the results archive IS this page; a failed read must throw
+  // to results/error.tsx, never render "no results yet" over a live archive.
+  const resolved = (await listMarkets({ status: "RESOLVED", category: effectiveCat })).filter(matches);
+  const voided = (await listMarkets({ status: "VOIDED", category: effectiveCat })).filter(matches);
   const all = [...resolved, ...voided];
 
   // Sort
@@ -147,6 +149,8 @@ async function ResultsContent({
 
   // Build chart data for visible page only
   // One query for the whole board — never map getCardChart across a list.
+  // B-1 — deliberate degrade: sparks are garnish; a card without one renders no
+  // chart (A-5), which is distinguishable from a real flat series.
   const cardCharts = await getCardCharts(paged.map((m) => m.id)).catch(() => new Map());
 
   // Helpers

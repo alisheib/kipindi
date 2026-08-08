@@ -39,13 +39,19 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
   // banner while their inbox held "Identity check needs attention".
   // Auto-create only when there is genuinely nothing to read; restarting a
   // rejected submission is an explicit player action (restartKycAction).
-  let kyc: Awaited<ReturnType<typeof getKycStatus>> | null = null;
-  try { kyc = await getKycStatus(session.userId); } catch { /* graceful */ }
+  // B-1 — no swallow on the status read: a failed read rendered the blank
+  // NOT_STARTED form to a player whose submission may be pending/rejected.
+  // Throw to profile/error.tsx instead.
+  let kyc = await getKycStatus(session.userId);
   if (!kyc || kyc.status === "NOT_STARTED") {
+    // B-1 — deliberate degrade: at this point the read SUCCEEDED and the state
+    // is genuinely not-started; if the auto-create write fails, the honest
+    // not-started form still renders.
     try { await startKyc(session.userId); kyc = await getKycStatus(session.userId); } catch { /* graceful */ }
   }
-  let user: Awaited<ReturnType<typeof db.user.findById>> | null = null;
-  try { user = await db.user.findById(session.userId); } catch { /* graceful */ }
+  // B-1 — no swallow: a failed user read fabricated "no email on file" and
+  // mis-drew the email verification step.
+  const user = await db.user.findById(session.userId);
 
   const sp = (await searchParams) ?? {};
   const isWelcome = sp.welcome === "new";
@@ -77,7 +83,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
   let payoutsAccepting = true;
   try {
     payoutsAccepting = payoutsAcceptingRequests((await getPayoutStatus()).status);
-  } catch { /* graceful — see above */ }
+  } catch { /* B-1 — deliberate degrade, see rationale above */ }
 
   return (
     <main className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-5">

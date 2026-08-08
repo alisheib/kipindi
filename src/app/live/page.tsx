@@ -36,7 +36,10 @@ export default async function LivePage() {
     // "ON LIVE — shows everything" (Markets Appearing.txt). This is the ONE player
     // board that deliberately opts into BOTH product lines: /markets holds long-form
     // polls, /updown holds the short-term rounds, and /live is where they meet.
-    listMarkets({ status: "LIVE", productLine: "ALL" }).catch(() => [] as Awaited<ReturnType<typeof listMarkets>>),
+    // B-1 — no swallow on the wall itself: a failed board read must throw to
+    // live/error.tsx, never render "no live markets right now" over a live board.
+    listMarkets({ status: "LIVE", productLine: "ALL" }),
+    // B-1 — deliberate degrade: trader chips are garnish; cards render without them.
     traderSeedsByMarket().catch(() => new Map() as Awaited<ReturnType<typeof traderSeedsByMarket>>),
   ]);
 
@@ -64,6 +67,8 @@ export default async function LivePage() {
   const roundByMarket = new Map<string, string>();
   await Promise.all(
     updownIds.map(async (mid) => {
+      // B-1 — deliberate degrade: a missed round lookup falls back to the
+      // /markets/[id] redirect safety net (see comment above).
       const r = await roundStore.getByMarketId(mid).catch(() => null);
       if (r) roundByMarket.set(mid, r.id);
     }),

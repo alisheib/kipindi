@@ -32,10 +32,16 @@ export default async function PositionPermalinkPage({ params }: { params: Promis
   // detour — the alternative drops them on the board having lost what they clicked.
   if (!session) redirect(`/auth/login?next=${encodeURIComponent(`/positions/${positionId}`)}`);
 
-  const position = await positionStore.get(positionId).catch(() => null);
+  // B-1 — no swallow: a FAILED read must throw to positions/error.tsx, never
+  // render notFound(). notFound() fires only when the query succeeded and the
+  // row is absent (or foreign).
+  const position = await positionStore.get(positionId);
   // ⛔ Identical outcome for "missing" and "not yours". See the header note.
   if (!position || position.userId !== session.userId) notFound();
 
+  // B-1 — deliberate degrade: market/round lookups only refine the redirect
+  // target; on failure we fall back to /markets/<id>, whose own redirect is the
+  // safety net for Up & Down tickets.
   const market = await marketStore.get(position.marketId).catch(() => null);
   const productLine = market?.productLine === "UPDOWN" ? "UPDOWN" : "MARKET";
   // Only ask for a round when the market says it is an Up & Down one — a lookup per long-form

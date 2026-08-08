@@ -35,8 +35,11 @@ const WHEN_CUTOFFS: Record<WhenFilter, number | null> = {
 // the bettable grid all consumed the same list but each ran its own query (up
 // to 4 board fetches per render). React cache() dedupes across the page's
 // streamed sections within a single request render.
+// B-1 — no swallow: the page cannot distinguish "no live markets" from "read
+// failed", so a failed board read must throw to markets/error.tsx, never render
+// the empty board.
 const getLiveBoard = cache(async () =>
-  (await listMarkets({ status: "LIVE" }).catch(() => [])).filter((m) => !isClosedByTime(m)),
+  (await listMarkets({ status: "LIVE" })).filter((m) => !isClosedByTime(m)),
 );
 
 export default async function MarketsPage({ searchParams }: { searchParams: Promise<{ cat?: string; when?: string; q?: string; page?: string }> }) {
@@ -269,6 +272,9 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
   }
 
   // Show a small resolved teaser — the full browsable archive lives at /results.
+  // B-1 — deliberate degrade: the teaser (and the trader/chart/comment
+  // enrichments below) are garnish on the live board; their absence degrades
+  // the cards, it never mimics an empty board.
   const resolved = searching
     ? (await listMarkets({ status: "RESOLVED" }).catch(() => [])).filter(matches).slice(0, 6)
     : (await listMarkets({ status: "RESOLVED" }).catch(() => [])).slice(0, 3);
@@ -308,6 +314,7 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
         .slice(0, 6);
   // One extra chart/comment lookup pass for the new-markets section, batched the
   // same way as the main board (never map a per-card query across a list).
+  // B-1 — deliberate degrade: chart garnish only.
   const newCharts = newMarkets.length
     ? await getCardCharts(newMarkets.map((m) => m.id)).catch(() => new Map())
     : new Map();
