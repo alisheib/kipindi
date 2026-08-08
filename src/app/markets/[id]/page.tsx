@@ -427,7 +427,7 @@ export default async function MarketDetail({
           {!isResolved && (
             <div className="glass-panel p-4 space-y-2.5">
               {m.selectionClosedAt && !isSelectionClosed(m) && (
-                <Countdown to={m.selectionClosedAt} label={t.market.selectionClosesIn} />
+                <Countdown to={m.selectionClosedAt} label={t.market.selectionClosesIn} serverNow={Date.now()} />
               )}
               {m.selectionClosedAt && isSelectionClosed(m) && m.status === "LIVE" && (
                 <div className="flex items-center gap-2 text-[12.5px] font-semibold" style={{ color: "var(--gold-300)" }}>
@@ -435,7 +435,7 @@ export default async function MarketDetail({
                   {t.market.selectionClosedWaiting}
                 </div>
               )}
-              <Countdown to={m.resolutionAt} label={m.selectionClosedAt ? t.market.resultsIn : t.market.closesIn} />
+              <Countdown to={m.resolutionAt} label={m.selectionClosedAt ? t.market.resultsIn : t.market.closesIn} serverNow={Date.now()} />
             </div>
           )}
 
@@ -565,6 +565,8 @@ export default async function MarketDetail({
                 noPool={m.noPool}
                 yesPct={yesPct}
                 resolutionAt={m.resolutionAt}
+                closesAt={m.selectionClosedAt ?? m.resolutionAt}
+                serverNow={Date.now()}
                 balance={myBalance}
                 initialSide={side === "YES" || side === "NO" ? side : undefined}
                 rates={marketRates}

@@ -25,8 +25,13 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
   if (BOUNCE_AUTHED.has(pathname)) {
     const session = await getSession();
     if (session) {
-      // Authenticated user on login/register — send them home.
-      redirect("/" as never);
+      // B-14 — an authed user on /auth/login?next=/wallet wanted /wallet, not
+      // home. Honour a safe same-origin `next` (never back into /auth/*).
+      const href = h.get("x-href") ?? pathname;
+      const qs = href.includes("?") ? href.slice(href.indexOf("?") + 1) : "";
+      const nextRaw = new URLSearchParams(qs).get("next") ?? "";
+      const safeNext = /^\/(?![/\\])/.test(nextRaw) && !nextRaw.startsWith("/auth/") ? nextRaw : "";
+      redirect((safeNext || "/") as never);
     }
   }
 

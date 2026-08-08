@@ -54,7 +54,16 @@ export function CreateProposalForm({ rateLimit, openCount }: { rateLimit: number
 
   const submit = () => {
     start(async () => {
-      const r = await createProposalAction({ titleEn, titleSw: titleSw || undefined, titleZh: titleZh || undefined, description: description || undefined, resolutionCriterion: criterion, category, resolutionDate: date, selectionCloseDate: closeDate || undefined, sourceUrl: sourceUrl.trim() });
+      // B-12 — a flaky network mid-submit used to throw inside the transition
+      // and replace this page (with the whole typed proposal) with error.tsx.
+      // Caught, the draft stays on screen and the toast states the truth.
+      let r: Awaited<ReturnType<typeof createProposalAction>>;
+      try {
+        r = await createProposalAction({ titleEn, titleSw: titleSw || undefined, titleZh: titleZh || undefined, description: description || undefined, resolutionCriterion: criterion, category, resolutionDate: date, selectionCloseDate: closeDate || undefined, sourceUrl: sourceUrl.trim() });
+      } catch {
+        toast({ title: t.toast.couldntSubmit, description: t.error.somethingDidntWork, variant: "danger" });
+        return;
+      }
       if (r.ok) setDone(true);
       else toast({ title: t.toast.couldntSubmit, description: r.error, variant: "danger" });
     });

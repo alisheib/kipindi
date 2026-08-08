@@ -135,6 +135,15 @@ type Props = {
    *  state on the next render so the player sees the transition without
    *  a hard refresh. */
   resolutionAt?: string;
+  /** B-10 — the instant BETTING shuts (`selectionClosedAt ?? resolutionAt`).
+   *  Betting closes at the SELECTION cutoff, which can be well before
+   *  resolution; without this the dial stayed live through that gap, let the
+   *  player aim, open the 10s quote hold, confirm — and only then handed them
+   *  SELECTION_CLOSED. Falls back to `resolutionAt` when absent. */
+  closesAt?: string;
+  /** Server's Date.now() at render — the closed tick corrects device-clock
+   *  skew with it (a phone minutes off no longer shows a live market closed). */
+  serverNow?: number;
   /** Player's current spendable balance — used to show an inline
    *  "insufficient balance" warning BEFORE they tap Place, not after. */
   balance?: number;
@@ -158,7 +167,7 @@ type Props = {
   boardHref?: string;
 };
 
-export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, maxStake, initial = 0.5, marketTitle, resolutionAt, balance, lockedSide, rates, boardHref = "/markets" }: Props) {
+export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, maxStake, initial = 0.5, marketTitle, resolutionAt, closesAt, serverNow, balance, lockedSide, rates, boardHref = "/markets" }: Props) {
   // The side the dial is locked to (null = free bidirectional). The choice is
   // made on the market card (outside) and is FINAL here — the in-dial YES/NO
   // pills are display-only indicators, NOT switchable. To change sides the
@@ -200,19 +209,26 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
   // (edge-trigger the haptic so it ticks once per detent, not every frame).
   const gestureBeyond50Ref = useRef(false);
   const lastDetentRef = useRef(-1);
-  // closedNow flips the moment the wall clock crosses resolutionAt.
-  // Tick every 200ms — tight enough to prevent the player interacting
-  // with the dial after the market closes (previous 1s interval left a
-  // window where a bet could be attempted on a closed market).
+  // closedNow flips the moment the wall clock crosses the SELECTION cutoff
+  // (B-10 — betting shuts at `closesAt ?? resolutionAt`, and the tick runs on
+  // the server-calibrated clock, mirroring SellButton). Tick every 200ms —
+  // tight enough to prevent the player interacting with the dial after the
+  // market closes (previous 1s interval left a window where a bet could be
+  // attempted on a closed market).
   const [closedNow, setClosedNow] = useState(false);
   useEffect(() => {
-    if (!resolutionAt) return;
-    const closeTs = Date.parse(resolutionAt);
-    const update = () => setClosedNow(Date.now() >= closeTs);
+    const cutoffIso = closesAt ?? resolutionAt;
+    if (!cutoffIso) return;
+    const closeTs = Date.parse(cutoffIso);
+    if (!Number.isFinite(closeTs)) return;
+    // Server ahead → positive offset. Captured once per effect run; the skew
+    // is what matters, not micro-drift over the dial's lifetime.
+    const clockOffset = serverNow != null ? serverNow - Date.now() : 0;
+    const update = () => setClosedNow(Date.now() + clockOffset >= closeTs);
     update();
     const id = setInterval(update, 200);
     return () => clearInterval(id);
-  }, [resolutionAt]);
+  }, [closesAt, resolutionAt, serverNow]);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [resultOpen, setResultOpen] = useState(false);
   const [resultData, setResultData] = useState<{

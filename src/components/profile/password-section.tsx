@@ -28,7 +28,14 @@ export function PasswordSection({ hasPassword }: { hasPassword: boolean }) {
       const fd = new FormData();
       fd.set("current", current);
       fd.set("new", next);
-      const r = await changePasswordAction(fd);
+      // B-12 — a flaky network mid-action throws inside the transition; uncaught,
+      // React nukes the page (and the typed passwords) to error.tsx.
+      let r: Awaited<ReturnType<typeof changePasswordAction>>;
+      try {
+        r = await changePasswordAction(fd);
+      } catch {
+        r = { ok: false, error: t.error.somethingDidntWork };
+      }
       if (r.ok) {
         toast({ title: hasPassword ? t.toast.passwordUpdated : t.toast.passwordSet, variant: "success" });
         setOpen(false);

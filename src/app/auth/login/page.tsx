@@ -19,7 +19,7 @@ export async function generateMetadata() {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ phone?: string; identifier?: string; error?: string; retry?: string; next?: string; closed?: string; excluded?: string; cooled?: string; reset?: string }>;
+  searchParams: Promise<{ phone?: string; identifier?: string; error?: string; retry?: string; next?: string; closed?: string; excluded?: string; cooled?: string; reset?: string; revoked?: string }>;
 }) {
   // Note: the "bounce authed users away from this page" check lives in
   // src/app/auth/layout.tsx so the redirect happens before the page renders.
@@ -27,10 +27,13 @@ export default async function LoginPage({
   // hook-count mismatch on hot reload.
   const { t } = await getServerT();
   const sp = await searchParams;
-  // Detect session-revoked flash (another device signed in)
+  // Detect session-revoked flash (another device signed in). B-13: `?revoked=1`
+  // is the reliable path (set by the revoked-device redirect — a render context
+  // can never write the flash cookie); the cookie is kept for actions/handlers
+  // that CAN set it. Never mutate cookies here — a delete during render throws,
+  // and the flash self-expires in 30s anyway.
   const jar = await cookies();
-  const wasRevoked = jar.get("kp_revoked")?.value === "1";
-  if (wasRevoked) try { jar.delete("kp_revoked"); } catch {}
+  const wasRevoked = sp.revoked === "1" || jar.get("kp_revoked")?.value === "1";
   // Re-fill whatever the player typed. `?identifier=` is what the action now
   // round-trips; `?phone=` is still honoured so older links (and the sign-up
   // page's "already have an account?" hand-off) keep working.
@@ -108,6 +111,29 @@ export default async function LoginPage({
           title: t.auth.accountUnavailable,
           body: t.auth.blockedContactSupport.replace("{email}", SUPPORT_EMAIL()),
           cta: null,
+        };
+      // B-13 — previously unmapped: a 2FA lapse bounced here with a blank form.
+      case "session_expired":
+        return {
+          tone: "warning" as const,
+          title: t.auth.sessionExpired,
+          body: t.auth.sessionExpiredBody,
+          cta: null,
+        };
+      // B-13 — the brute-force lockout, with its countdown AND the way out.
+      case "locked":
+        return {
+          tone: "danger" as const,
+          title: t.auth.accountLocked,
+          body: (
+            <>
+              {t.auth.accountLockedBody}
+              {Number.isFinite(retrySec) && retrySec > 0 && (
+                <RateLimitBanner seconds={retrySec} clearHref={`/auth/login${nextSafe ? `?next=${encodeURIComponent(nextSafe)}` : ""}`} />
+              )}
+            </>
+          ),
+          cta: { href: `/auth/forgot-password`, label: t.common.resetPassword },
         };
       default:
         return null;

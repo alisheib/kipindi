@@ -110,6 +110,8 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
               <form action={resendOtpAction}>
                 <input type="hidden" name="phone" value={phone} />
                 <input type="hidden" name="purpose" value={purpose} />
+                {/* B-14 — the resend hop keeps the destination too. */}
+                {nextSafe && <input type="hidden" name="next" value={nextSafe} />}
                 <ResendOtpButton />
               </form>
             )}

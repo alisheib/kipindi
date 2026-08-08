@@ -4,8 +4,8 @@
 import { useEffect, useState } from "react";
 import { useT } from "@/lib/i18n";
 
-function diff(toIso: string) {
-  const ms = Math.max(0, Date.parse(toIso) - Date.now());
+function diff(toIso: string, offset: number) {
+  const ms = Math.max(0, Date.parse(toIso) - (Date.now() + offset));
   const d = Math.floor(ms / (24 * 3600_000));
   const h = Math.floor((ms / 3600_000) % 24);
   const m = Math.floor((ms / 60_000) % 60);
@@ -13,26 +13,32 @@ function diff(toIso: string) {
   return { d, h, m, s };
 }
 
-// Render-once-on-server placeholder. The actual remaining time
-// depends on Date.now() which differs between server SSR and client
-// hydration (by 100 ms – 2 s typically), producing a hydration
-// mismatch on the seconds cell. We deliberately render zeros until
-// the first client effect runs, then snap to the live value. This
-// trades a single sub-frame flash for a clean console + no React
-// "regenerated on the client" warning.
-const PLACEHOLDER = { d: 0, h: 0, m: 0, s: 0 };
-
-export function Countdown({ to, label }: { to: string; label?: string }) {
+/**
+ * B-10 — two defects lived here:
+ *  · the first paint was hard-zeros ("00 00 00 00") until hydration — on a 2G
+ *    hydration lag the player stared at a dead clock on a live market;
+ *  · every tick ran on the raw device clock, so a phone a few minutes off
+ *    showed a live market as closed (or the reverse).
+ * Now the TRUE remainder renders on the server (server clock — authoritative),
+ * the client's first paint recomputes it synchronously, and ticks are corrected
+ * by a once-captured offset against the server's own `serverNow` stamp.
+ * suppressHydrationWarning stays on every cell: SSR and hydration are moments
+ * apart by construction, and a minute/hour boundary can legally flip any cell
+ * between the two paints.
+ */
+export function Countdown({ to, label, serverNow }: { to: string; label?: string; serverNow?: number }) {
   const { t } = useT();
   const resolvedLabel = label ?? t.common.closesIn;
-  const [time, set] = useState(PLACEHOLDER);
+  // Captured ONCE (server render: offset ≈ 0 against its own clock; client
+  // hydration: the device-vs-server skew). Recomputing per render would let the
+  // offset decay as Date.now() advances past the fixed serverNow stamp.
+  const [offset] = useState(() => (serverNow != null ? serverNow - Date.now() : 0));
+  const [time, set] = useState(() => diff(to, offset));
   useEffect(() => {
-    // First tick fires synchronously so the placeholder is replaced
-    // immediately on hydration — the flash is invisible to a player.
-    set(diff(to));
-    const id = setInterval(() => set(diff(to)), 1000);
+    set(diff(to, offset));
+    const id = setInterval(() => set(diff(to, offset)), 1000);
     return () => clearInterval(id);
-  }, [to]);
+  }, [to, offset]);
 
   return (
     <div>
@@ -53,11 +59,9 @@ function Cell({ v, unit }: { v: number; unit: string }) {
       <div
         className="font-mono font-bold text-[28px] tabular-nums leading-none rounded-md border border-border bg-bg-elevated px-3 py-2.5 min-w-[48px] text-center text-text"
         style={{ letterSpacing: "-0.04em" }}
-        // The number flips on every client tick. suppressHydrationWarning
-        // is the React-blessed escape for time-sensitive text that we
-        // know will diverge between server SSR and the first client
-        // commit — paired with the PLACEHOLDER above it eliminates the
-        // mismatch warning entirely.
+        // SSR and hydration are moments apart; the seconds cell (and, at a
+        // boundary, any cell) legally differs between the two paints. This is
+        // the React-blessed escape for exactly that.
         suppressHydrationWarning
       >
         {String(v).padStart(2, "0")}

@@ -370,7 +370,7 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
               yesPct={impliedYesPct(m)}
               volume={m.yesPool + m.noPool}
               predictors={m.predictorCount}
-              timeLeft={isSelectionClosed(m) ? t.market.waitingForResults : timeLeftStr(m.resolutionAt)}
+              timeLeft={isSelectionClosed(m) ? t.market.waitingForResults : timeLeftStr(m.selectionClosedAt ?? m.resolutionAt)}
               status="LIVE"
               selectionClosed={isSelectionClosed(m)}
               sourceUrl={m.sourceUrl}
@@ -446,7 +446,7 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
                 yesPct={impliedYesPct(m)}
                 volume={m.yesPool + m.noPool}
                 predictors={m.predictorCount}
-                timeLeft={isSelectionClosed(m) ? t.market.waitingForResults : timeLeftStr(m.resolutionAt)}
+                timeLeft={isSelectionClosed(m) ? t.market.waitingForResults : timeLeftStr(m.selectionClosedAt ?? m.resolutionAt)}
                 status="LIVE"
                 selectionClosed={isSelectionClosed(m)}
                 sourceUrl={m.sourceUrl}

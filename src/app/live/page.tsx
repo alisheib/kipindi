@@ -81,7 +81,7 @@ export default async function LivePage() {
     yesPct: impliedYesPct(m),
     volume: m.yesPool + m.noPool,
     predictors: m.predictorCount,
-    timeLeft: isSelectionClosed(m) ? t.market.waitingForResults : timeLeftStr(m.resolutionAt),
+    timeLeft: isSelectionClosed(m) ? t.market.waitingForResults : timeLeftStr(m.selectionClosedAt ?? m.resolutionAt),
     selectionClosed: isSelectionClosed(m),
     traders: traderMap.get(m.id),
     productLine: m.productLine === "UPDOWN" ? ("UPDOWN" as const) : ("MARKET" as const),

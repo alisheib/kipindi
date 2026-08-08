@@ -38,9 +38,22 @@ export async function startLoginAction(formData: FormData) {
 
   const result = await loginWithPassword({ identifier, password });
   if (!result.ok) {
+    // B-13 — two states used to collapse into dead-ends:
+    //  · every SUSPENDED became the generic "blocked · contact support", which
+    //    told a self-excluded player nothing (the ?excluded=1 panel existed but
+    //    was unreachable from login);
+    //  · the brute-force LOCKOUT (a RATE_LIMITED with lockout wording) rendered
+    //    as ordinary rate-limiting, hiding the "reset your password" way out.
+    // The service's code union is shared platform-wide, so the refinement reads
+    // the refusal's own stable phrase — the UD-4 doctrine.
+    if (result.code === "SUSPENDED" && /self-exclusion/i.test(result.error)) {
+      redirect(`/auth/login?excluded=1${safeNext ? `&next=${encodeURIComponent(safeNext)}` : ""}`);
+    }
+    const isLockout = result.code === "RATE_LIMITED" && /locked/i.test(result.error);
     const params = new URLSearchParams({
       identifier,
       error: result.code === "NOT_FOUND" ? "no_account"
+        : isLockout ? "locked"
         : result.code === "RATE_LIMITED" ? "rate_limited"
         : result.code === "SUSPENDED" ? "blocked"
         : "wrong_credentials",
@@ -82,7 +95,9 @@ export async function verifyLogin2faAction(formData: FormData) {
   const jar = await cookies();
   const payload = verifySession<{ p?: string; uid?: string }>(jar.get(PENDING_2FA_COOKIE)?.value);
   if (!payload || payload.p !== "login-2fa" || !payload.uid) {
-    redirect("/auth/login?error=session_expired");
+    // B-14 — keep the destination through the expiry hop so a re-login still
+    // lands where the player was heading (B-13 gave this error its panel).
+    redirect(`/auth/login?error=session_expired${safeNext ? `&next=${encodeURIComponent(safeNext)}` : ""}`);
   }
   const userId = payload!.uid!;
   const nextParam = safeNext ? `&next=${encodeURIComponent(safeNext)}` : "";
@@ -132,8 +147,12 @@ export async function startLoginOtpAction(formData: FormData) {
 export async function resendOtpAction(formData: FormData) {
   const phone = String(formData.get("phone") ?? "");
   const purpose = String(formData.get("purpose") ?? "login") as "login" | "register" | "withdraw" | "reauth" | "self_exclusion";
+  // B-14 — the resend hop used to rebuild the OTP URL without `next`, dropping
+  // the destination the whole funnel had carried up to that point.
+  const safeNext = sanitizeNext(String(formData.get("next") ?? ""));
   const result = await requestLoginOtp({ phone });
   const params = new URLSearchParams({ purpose, phone });
+  if (safeNext) params.set("next", safeNext);
   if (!result.ok) {
     params.set("error", result.code === "NOT_FOUND" ? "no_account" : result.code === "RATE_LIMITED" ? "rate_limited" : "failed");
     if (result.code === "RATE_LIMITED" && result.retryAfterSec) params.set("retry", String(result.retryAfterSec));
@@ -147,6 +166,10 @@ export async function verifyLoginOtpAction(formData: FormData) {
   const phone = String(formData.get("phone") ?? "");
   const code = String(formData.get("code") ?? "");
   const purpose = String(formData.get("purpose") ?? "login") as "login" | "register" | "withdraw" | "reauth" | "self_exclusion";
+  // B-14 — read `next` up front: the FAILURE hop used to drop it, so one wrong
+  // code cost the player their destination for the rest of the funnel.
+  const nextRaw = String(formData.get("next") ?? "").trim();
+  const safeNext = /^\/(?![/\\])/.test(nextRaw) && !nextRaw.startsWith("/auth/") ? nextRaw : "";
   const result = await verifyOtpAndAuth({ phone, code, purpose });
   if (!result.ok) {
     // Surface OTP errors back on the OTP page via query-param flash so
@@ -160,14 +183,13 @@ export async function verifyLoginOtpAction(formData: FormData) {
         : result.code === "RATE_LIMITED" ? "rate_limited"
         : "failed",
     });
+    if (safeNext) params.set("next", safeNext);
     redirect(`/auth/otp?${params.toString()}`);
   }
   // Success — fire a "welcome" flash on the destination so the user
   // gets clear confirmation that the auth completed.
   // Honor a safe ?next= (same rules as the password path) so a gated OTP login
   // lands back where the player intended, not always home.
-  const nextRaw = String(formData.get("next") ?? "").trim();
-  const safeNext = /^\/(?![/\\])/.test(nextRaw) && !nextRaw.startsWith("/auth/") ? nextRaw : "";
   if (result.data?.isNew) redirect(`/profile/kyc?welcome=new${safeNext ? `&next=${encodeURIComponent(safeNext)}` : ""}`);
   redirect((safeNext || "/?welcome=back") as never);
 }

@@ -26,7 +26,8 @@ import { PublicFooter } from "./public-footer";
 import { AuthFlash } from "./auth-flash";
 import { NavProgress } from "@/components/ui/nav-progress";
 import { RouteTransition } from "@/components/ui/route-transition";
-import { getSession } from "@/lib/server/session";
+import { getSession, wasSessionRevokedThisRequest } from "@/lib/server/session";
+import { SessionRevokedRedirect } from "./session-revoked-redirect";
 import { db } from "@/lib/server/store";
 import { guestUser } from "@/lib/ui-stubs";
 import { getTickerFeed } from "@/lib/server/ticker-feed";
@@ -52,6 +53,13 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   const session = await getSession();
+  // B-13 — the revoked device gets its explanation. getSession() found the
+  // cookie displaced by a newer login but could not set the flash (render
+  // context); route to login with ?revoked=1 instead of silently rendering a
+  // signed-out shell. /auth/* is excluded so the login page itself renders.
+  if (!session && wasSessionRevokedThisRequest() && !pathname.startsWith("/auth")) {
+    return <SessionRevokedRedirect next={h.get("x-href") ?? pathname} />;
+  }
   let topUser: {
     initials: string;
     name: string;

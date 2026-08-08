@@ -25,6 +25,11 @@ type Props = {
   noPool: number;
   yesPct: number;
   resolutionAt: string;
+  /** B-10 — the instant BETTING shuts (`selectionClosedAt ?? resolutionAt`),
+   *  which is earlier than resolution. The dial flips itself on this one. */
+  closesAt?: string;
+  /** Server's Date.now() at render — the dial corrects device-clock skew with it. */
+  serverNow?: number;
   /** Spendable balance, or undefined when the read failed / signed out — the
    *  dial suppresses its pre-flight "insufficient" warning on undefined (B-1). */
   balance?: number;
@@ -44,7 +49,7 @@ type Props = {
 };
 
 export function SidePicker({
-  marketId, marketTitle, yesPool, noPool, yesPct, resolutionAt, balance, initialSide, rates, minStake, maxStake, boardHref,
+  marketId, marketTitle, yesPool, noPool, yesPct, resolutionAt, closesAt, serverNow, balance, initialSide, rates, minStake, maxStake, boardHref,
 }: Props) {
   const { t } = useT();
   const [side, setSide] = useState<"YES" | "NO" | null>(initialSide ?? null);
@@ -78,6 +83,8 @@ export function SidePicker({
           noPool={noPool}
           marketTitle={marketTitle}
           resolutionAt={resolutionAt}
+          closesAt={closesAt}
+          serverNow={serverNow}
           balance={balance}
           lockedSide={side}
           rates={rates}

@@ -53,7 +53,14 @@ export function KycDocUploader({
       const fd = new FormData();
       fd.set("docType", docType);
       fd.set("image", dataUrl);
-      const r = await attachDocumentAction(fd);
+      // B-12 — a KYC upload on a dropping connection throws mid-transition;
+      // uncaught, the whole KYC page (and the player's progress) becomes error.tsx.
+      let r: Awaited<ReturnType<typeof attachDocumentAction>>;
+      try {
+        r = await attachDocumentAction(fd);
+      } catch {
+        r = { ok: false, error: t.error.somethingDidntWork };
+      }
       if (!r.ok) { setPreview(null); setBusy(false); toast({ title: t.toast.uploadFailed, description: errorCopy(t, r), variant: "danger" }); return; }
       setDone(true);
       setBusy(false);
@@ -151,7 +158,13 @@ export function KycExtraDocUploader({
       const fd = new FormData();
       fd.set("requestId", requestId);
       fd.set("image", dataUrl);
-      const r = await attachExtraDocumentAction(fd);
+      // B-12 — guarded like the main uploader above.
+      let r: Awaited<ReturnType<typeof attachExtraDocumentAction>>;
+      try {
+        r = await attachExtraDocumentAction(fd);
+      } catch {
+        r = { ok: false, error: t.error.somethingDidntWork };
+      }
       if (!r.ok) { setPreview(null); setBusy(false); toast({ title: t.toast.uploadFailed, description: errorCopy(t, r), variant: "danger" }); return; }
       setDone(true);
       setBusy(false);

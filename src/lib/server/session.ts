@@ -7,9 +7,25 @@
  *  - Compliance: ISO 27001 A.9 access control, GBT user accountability
  */
 import { cookies } from "next/headers";
+import { cache } from "react";
 import { signSession, verifySession, randomId } from "./crypto";
 import { audit } from "./audit";
 import { getActiveSessionId, setActiveSessionId, clearActiveSession } from "./session-registry";
+
+/**
+ * B-13 — request-scoped "this session was just revoked" signal.
+ *
+ * `getSession()` mostly runs during Server Component renders, where cookie
+ * mutation THROWS — so the kp_revoked flash was never actually written from the
+ * common path and the revoked device saw an unexplained silent sign-out.
+ * React `cache()` gives one shared cell per request render pass: the mismatch
+ * branch sets it, and AppShell (which itself calls getSession) reads it to
+ * route the device to `/auth/login?revoked=1` with the real explanation.
+ */
+const revocationSignal = cache(() => ({ revoked: false }));
+export function wasSessionRevokedThisRequest(): boolean {
+  return revocationSignal().revoked;
+}
 
 export type SessionData = {
   userId: string;
@@ -85,6 +101,13 @@ export async function getSession(): Promise<SessionData | null> {
   //      before the durable registry existed lands here once and re-logs-in.
   const activeId = await getActiveSessionId(session.userId);
   if (!activeId || activeId !== session.sessionId) {
+    // B-13 — the cookie mutations below THROW in a Server Component render
+    // (most getSession calls), so the flash was silently never written and the
+    // player got an unexplained sign-out. The request-scoped signal is the
+    // render-safe channel: AppShell reads it and sends the revoked device to
+    // /auth/login?revoked=1 with the explanation. The cookie path is kept for
+    // actions/route handlers, where it does work.
+    revocationSignal().revoked = true;
     try {
       jar.delete(COOKIE_NAME);
       // Short-lived flash cookie so the login page can explain WHY

@@ -75,8 +75,15 @@ export function AvatarUploader({
       start(async () => {
         const fd = new FormData();
         fd.set("dataUrl", dataUrl);
-        const r = await updateAvatarAction(fd);
+        // B-12 — guarded: an upload on a dropping connection throws mid-transition.
+        let r: Awaited<ReturnType<typeof updateAvatarAction>>;
+        try {
+          r = await updateAvatarAction(fd);
+        } catch {
+          r = { ok: false, error: t.error.somethingDidntWork };
+        }
         if (!r.ok) {
+          setPreview(null);
           toast({ title: t.toast.nameFailed, description: errorCopy(t, r), variant: "danger" });
           return;
         }
@@ -93,7 +100,13 @@ export function AvatarUploader({
     start(async () => {
       const fd = new FormData();
       fd.set("dataUrl", "");
-      const r = await updateAvatarAction(fd);
+      // B-12 — guarded like the upload path.
+      let r: Awaited<ReturnType<typeof updateAvatarAction>>;
+      try {
+        r = await updateAvatarAction(fd);
+      } catch {
+        r = { ok: false, error: t.error.somethingDidntWork };
+      }
       if (!r.ok) {
         toast({ title: t.toast.nameFailed, description: errorCopy(t, r), variant: "danger" });
         return;

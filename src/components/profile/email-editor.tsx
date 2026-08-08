@@ -34,7 +34,14 @@ export function EmailEditor({ currentEmail, verified }: { currentEmail: string |
       // nothing else. It used to send `currentName || "Player"`, which wrote the
       // literal string "Player" over the name of anyone who hadn't set one.
       fd.set("email", v); // "" clears it
-      const r = await updateProfileBasicsAction(fd);
+      // B-12 — a flaky network mid-action throws inside the transition; uncaught,
+      // React swaps the whole page for error.tsx. Same handling as a refusal.
+      let r: Awaited<ReturnType<typeof updateProfileBasicsAction>>;
+      try {
+        r = await updateProfileBasicsAction(fd);
+      } catch {
+        r = { ok: false, error: t.error.somethingDidntWork };
+      }
       if (!r.ok) { toast({ title: t.toast.emailFailed, description: errorCopy(t, r), variant: "danger" }); return; }
       toast({
         title: v ? t.toast.emailSaved : t.common.emailRemoved,
@@ -49,7 +56,14 @@ export function EmailEditor({ currentEmail, verified }: { currentEmail: string |
   const resend = () => {
     if (!currentEmail) return;
     start(async () => {
-      const r = await resendEmailVerificationAction();
+      // B-12 — guarded like the save path.
+      let r: Awaited<ReturnType<typeof resendEmailVerificationAction>>;
+      try {
+        r = await resendEmailVerificationAction();
+      } catch {
+        toast({ title: t.toast.couldntResend, description: t.error.somethingDidntWork, variant: "danger" });
+        return;
+      }
       // B-7 — `r.error` here is a CODE (RATE_LIMITED, EMAIL_SUPPRESSED, …). It was
       // printed literally, machine token and all, and dropped `retryAfterSec`.
       // `verifyErrorMessage` is the existing mapper for exactly these codes.

@@ -75,7 +75,9 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
   const sp = await searchParams;
   const filter: BoardFilter = (["hot", "new", "listed", "mine"] as const).includes(sp.f as BoardFilter) ? (sp.f as BoardFilter) : "hot";
   const session = await currentSession();
-  if (filter === "mine" && !session) redirect("/auth/login?next=/proposals");
+  // B-14 — round-trip the FILTER too: the player asked for "mine", so landing
+  // them back on the default board after login silently lost their intent.
+  if (filter === "mine" && !session) redirect(`/auth/login?next=${encodeURIComponent("/proposals?f=mine")}`);
 
   const pageNum = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
   const { proposals, matchedCount, totalProposals, totalVotes, page } = await listBoard(session?.userId ?? null, filter, pageNum, PLAYER_PER_PAGE).catch(() => ({ proposals: [] as ProposalView[], matchedCount: 0, totalProposals: 0, totalVotes: 0, state, active, page: 1 }));

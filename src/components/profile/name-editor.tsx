@@ -48,7 +48,14 @@ export function ProfileNameEditor({
     start(async () => {
       const fd = new FormData();
       fd.set("displayName", v);
-      const r = await updateProfileBasicsAction(fd);
+      // B-12 — a flaky network mid-action throws inside the transition; uncaught,
+      // React swaps the whole page for error.tsx. Same handling as a refusal.
+      let r: Awaited<ReturnType<typeof updateProfileBasicsAction>>;
+      try {
+        r = await updateProfileBasicsAction(fd);
+      } catch {
+        r = { ok: false, error: t.error.somethingDidntWork };
+      }
       if (!r.ok) {
         toast({ title: t.toast.nameFailed, description: errorCopy(t, r), variant: "danger" });
         return;
