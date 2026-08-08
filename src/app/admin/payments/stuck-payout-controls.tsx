@@ -19,7 +19,7 @@
  */
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { useToast } from "@/components/ui/toast";
+import { useDeferredToast } from "@/components/ui/toast";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { I } from "@/components/ui/glyphs";
@@ -31,7 +31,8 @@ export function StuckPayoutControls({ txnId, amountLabel }: { txnId: string; amo
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
   const router = useRouter();
-  const { toast } = useToast();
+  // B-28 — success toasts ride the transition's falling edge (data visible when announced)
+  const { toast, deferToast } = useDeferredToast(pending);
 
   const valid = reason.trim().length >= 10;
   const close = () => { if (!pending) { setOpen(false); setReason(""); } };
@@ -44,7 +45,7 @@ export function StuckPayoutControls({ txnId, amountLabel }: { txnId: string; amo
       fd.set("reason", reason.trim());
       const r = await runAdminAction(() => reverseStuckPayoutAction(fd));
       if (!r.ok) { toast({ title: "Blocked", description: r.error, variant: "danger" }); return; }
-      toast({ title: "Returned to the player", description: `${amountLabel} is back in their balance.`, variant: "success" });
+      deferToast({ title: "Returned to the player", description: `${amountLabel} is back in their balance.`, variant: "success" });
       setOpen(false); setReason("");
       router.refresh();
     });

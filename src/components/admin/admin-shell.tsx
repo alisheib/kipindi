@@ -5,6 +5,7 @@
  * gold-positive / royal-active / muted-loss colour discipline.
  */
 import Link from "next/link";
+import { cache as reactCache } from "react";
 import { db } from "@/lib/server/store";
 import { FiftyMark } from "@/components/brand";
 import { I } from "@/components/ui/glyphs";
@@ -53,11 +54,18 @@ export async function ConfidentialBand({ session }: { session: AdminSession }) {
  * Counts of pending items across the system — drives sidebar badges so an
  * operator can see at a glance "3 in AML, 7 compliance items, 2 approvals."
  */
-export async function getSidebarBadges() {
-  const aml = (await db.txn.listByStatus("AML_REVIEW")).length;
-  const sof = (await db.sourceOfFunds.listPending()).length;
-  const { listPendingKyc } = await import("@/lib/server/kyc-service");
-  const kyc = (await listPendingKyc()).length;
+// B-28 — two fixes in one:
+//  · `cache()` — the sidebar AND the top bar both call this, so every admin
+//    render ran the three queries twice; one memoised run per request now.
+//  · guarded reads — these are BADGES. A failed query used to throw and take
+//    the whole admin shell down with it; a badge that can't be counted simply
+//    doesn't render (undefined), which is also what "0 pending" renders.
+export const getSidebarBadges = reactCache(async () => {
+  const [aml, sof, kyc] = await Promise.all([
+    db.txn.listByStatus("AML_REVIEW").then((r) => r.length).catch(() => 0),
+    db.sourceOfFunds.listPending().then((r) => r.length).catch(() => 0),
+    import("@/lib/server/kyc-service").then(({ listPendingKyc }) => listPendingKyc()).then((r) => r.length).catch(() => 0),
+  ]);
   // Approvals badge surfaces work waiting on an officer: pending KYC + AML +
   // source-of-funds. This is the admin's "new player to review" signal.
   const approvals = kyc + aml + sof;
@@ -66,7 +74,7 @@ export async function getSidebarBadges() {
     compliance: aml + sof > 0 ? String(aml + sof) : undefined,
     approvals: approvals > 0 ? String(approvals) : undefined,
   };
-}
+});
 
 export async function AdminSidebar({ activeKey, viewDomains, isOwner }: { activeKey: string; viewDomains: AdminDomain[]; isOwner: boolean }) {
   const badges = await getSidebarBadges();

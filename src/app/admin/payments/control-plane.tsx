@@ -20,7 +20,7 @@ import { Chip } from "@/components/ui/chip";
 import { Callout } from "@/components/ui/callout";
 import { Toggle } from "@/components/ui/toggle";
 import { ConfirmModal } from "@/components/ui/modal";
-import { useToast } from "@/components/ui/toast";
+import { useDeferredToast } from "@/components/ui/toast";
 import { setPaymentControlsAction, testSelcomConnectionAction } from "./payment-actions";
 import type { PaymentControlsView, PaymentProviderId } from "@/lib/server/payment-control";
 import { runAdminAction } from "@/lib/client/run-admin-action";
@@ -33,7 +33,8 @@ export function ControlPlane({ controls }: { controls: PaymentControlsView }) {
   const [busy, startTransition] = useTransition();
   const [pending, setPending] = useState<Pending>(null);
   const router = useRouter();
-  const { toast } = useToast();
+  // B-28 — success toasts ride the transition's falling edge (data visible when announced)
+  const { toast, deferToast } = useDeferredToast(busy);
   const live = controls.mode === "LIVE";
 
   const apply = (update: Record<string, string>) => {
@@ -42,7 +43,7 @@ export function ControlPlane({ controls }: { controls: PaymentControlsView }) {
       for (const [k, v] of Object.entries(update)) fd.set(k, v);
       const r = await runAdminAction(() => setPaymentControlsAction(fd));
       if (!r.ok) { toast({ title: "Blocked", description: r.error, variant: "danger" }); return; }
-      toast({ title: "Control-plane updated", variant: "success" });
+      deferToast({ title: "Control-plane updated", variant: "success" });
       setPending(null);
       router.refresh();
     });

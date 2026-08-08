@@ -10,7 +10,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
-import { useToast } from "@/components/ui/toast";
+import { useDeferredToast } from "@/components/ui/toast";
 import { Select } from "@/components/ui/select";
 import { BrandSpinner } from "@/components/brand";
 import { AttestationRail } from "@/components/admin/attestation-rail";
@@ -67,7 +67,8 @@ export function KycDecisionRail({
   const [reasonCode, setReasonCode] = useState("");
   const [note, setNote] = useState("");
   const router = useRouter();
-  const { toast } = useToast();
+  // B-28 — success toasts ride the transition's falling edge (data visible when announced)
+  const { toast, deferToast } = useDeferredToast(pending);
 
   const cycle = (k: string) => setJudg((p) => ({ ...p, [k]: p[k] === "pending" ? "pass" : p[k] === "pass" ? "fail" : "pending" }));
   const allJudged = JUDGMENT_CHECKS.every((c) => judg[c.key] === "pass");
@@ -80,7 +81,8 @@ export function KycDecisionRail({
       for (const [k, v] of Object.entries(extra ?? {})) fd.set(k, v);
       const r = await runAdminAction(() => fn(fd));
       if (!r.ok) { toast({ title: "Blocked", description: r.error, variant: "danger" }); return; }
-      toast({ title: okTitle, variant: okVariant });
+      // Success outcomes defer to the refresh; warning outcomes stay immediate.
+      (okVariant === "success" ? deferToast : toast)({ title: okTitle, variant: okVariant });
       router.refresh();
     });
   };

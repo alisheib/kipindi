@@ -14,7 +14,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { useToast } from "@/components/ui/toast";
+import { useDeferredToast } from "@/components/ui/toast";
 import { I } from "@/components/ui/glyphs";
 import { Spinner } from "@/components/ui/spinner";
 import { recheckMarketNowAction } from "./resolution-mode-action";
@@ -23,7 +23,8 @@ export function RecheckButton({ marketId }: { marketId: string }) {
   const [pending, startTransition] = useTransition();
   const [done, setDone] = useState(false);
   const router = useRouter();
-  const { toast } = useToast();
+  // B-28 — success toasts ride the transition's falling edge (data visible when announced)
+  const { toast, deferToast } = useDeferredToast(pending);
 
   const run = () => {
     setDone(false);
@@ -36,7 +37,8 @@ export function RecheckButton({ marketId }: { marketId: string }) {
         return;
       }
       setDone(true);
-      toast({
+      // "AI sealed" announces as a warning (immediate); the success outcomes defer to the refresh.
+      (r.status === "resolved-auto" ? toast : deferToast)({
         title: r.status === "resolved-auto" ? "AI sealed this market"
           : r.status === "closed-human" ? "Closed — ready for the ceremony"
           : "Re-check complete",

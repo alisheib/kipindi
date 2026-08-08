@@ -19,30 +19,18 @@ export default async function MarketDetailLoading() {
         <div className="h-5 w-48 rounded bg-bg-overlay kp-shimmer-track" />
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-5 lg:gap-7">
-        {/* Left — dial + chart skeleton */}
-        <div className="space-y-4" aria-hidden>
+      {/* B-29 / V-2 — mirror the REAL layout: content LEFT, bet widget RIGHT
+          (and widget FIRST on mobile). The old skeleton painted the dial in the
+          left column, so the bet widget visibly jumped sides when the page
+          resolved — the single most jarring paint on the product's core page. */}
+      <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[1fr_360px] lg:items-start lg:gap-6">
+        {/* Left — content: tipping bar + info + chart */}
+        <div className="order-2 lg:order-1 min-w-0 space-y-4" aria-hidden>
           {/* Tipping bar skeleton */}
           <div className="h-2 w-full rounded-full bg-bg-overlay kp-shimmer-track" />
 
-          {/* Dial skeleton */}
-          <div className="rounded-xl border border-border bg-bg-elevated p-6 kp-shimmer-track" style={{ height: 260 }}>
-            <div className="flex flex-col items-center justify-center h-full gap-3">
-              <div className="h-32 w-32 rounded-full bg-bg-overlay/20" />
-              <div className="h-4 w-20 rounded bg-bg-overlay/20" />
-            </div>
-          </div>
-
-          {/* Chart skeleton */}
-          <div className="rounded-lg border border-border bg-bg-elevated p-4 kp-shimmer-track" style={{ height: 180 }}>
-            <div className="h-3 w-24 rounded bg-bg-overlay mb-3" />
-            <div className="h-full w-full rounded bg-bg-overlay/10" />
-          </div>
-        </div>
-
-        {/* Right — info cards skeleton */}
-        <div className="space-y-3" aria-hidden>
-          {Array.from({ length: 3 }).map((_, i) => (
+          {/* Info card skeletons */}
+          {Array.from({ length: 2 }).map((_, i) => (
             <div key={i} className="rounded-xl border border-border bg-bg-elevated p-4 kp-shimmer-track" style={{ height: 96 }}>
               <div className="space-y-2">
                 <div className="h-2.5 w-16 rounded bg-bg-overlay" />
@@ -51,6 +39,28 @@ export default async function MarketDetailLoading() {
               </div>
             </div>
           ))}
+
+          {/* Chart skeleton */}
+          <div className="rounded-lg border border-border bg-bg-elevated p-4 kp-shimmer-track" style={{ height: 180 }}>
+            <div className="h-3 w-24 rounded bg-bg-overlay mb-3" />
+            <div className="h-full w-full rounded bg-bg-overlay/10" />
+          </div>
+        </div>
+
+        {/* Right — the bet widget (dial), sticky column on desktop, FIRST on mobile */}
+        <div className="order-1 lg:order-2 space-y-3 lg:sticky lg:top-6" aria-hidden>
+          <div className="rounded-xl border border-border bg-bg-elevated p-6 kp-shimmer-track" style={{ height: 260 }}>
+            <div className="flex flex-col items-center justify-center h-full gap-3">
+              <div className="h-32 w-32 rounded-full bg-bg-overlay/20" />
+              <div className="h-4 w-20 rounded bg-bg-overlay/20" />
+            </div>
+          </div>
+          <div className="rounded-xl border border-border bg-bg-elevated p-4 kp-shimmer-track" style={{ height: 96 }}>
+            <div className="space-y-2">
+              <div className="h-2.5 w-16 rounded bg-bg-overlay" />
+              <div className="h-4 w-full rounded bg-bg-overlay" />
+            </div>
+          </div>
         </div>
       </div>
     </main>

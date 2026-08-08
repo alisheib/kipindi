@@ -3,7 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
-import { useToast } from "@/components/ui/toast";
+import { useDeferredToast } from "@/components/ui/toast";
 import { OperationResultModal } from "@/components/markets/operation-result-modal";
 import { emergencyVoidMarketAction } from "@/app/markets/actions";
 import { Modal } from "@/components/ui/modal";
@@ -21,7 +21,8 @@ export function EmergencyVoidControl({ marketId, title }: { marketId: string; ti
   const [result, setResult] = useState<{ variant: "success" | "danger"; title: string; subtitle: string; detail?: string } | null>(null);
   const [resultOpen, setResultOpen] = useState(false);
   const router = useRouter();
-  const { toast } = useToast();
+  // B-28 — success toasts ride the transition's falling edge (data visible when announced)
+  const { toast, deferToast } = useDeferredToast(pending);
 
   const fire = () => {
     startTransition(async () => {
@@ -35,7 +36,7 @@ export function EmergencyVoidControl({ marketId, title }: { marketId: string; ti
         setResult({ variant: "danger", title: "Could not void", subtitle: r.error ?? "Try again." });
       } else {
         const detail = `Refunded ${formatTzs(r.data!.refundedTzs)} to ${r.data!.refundedCount} ${r.data!.refundedCount === 1 ? "player" : "players"}`;
-        toast({ title: "Market voided", description: detail, variant: "success" });
+        deferToast({ title: "Market voided", description: detail, variant: "success" });
         setResult({ variant: "success", title: "Market voided & refunded", subtitle: "Every open stake was returned in full and the market is closed. Audit entry recorded.", detail });
         setReason("");
         router.refresh();

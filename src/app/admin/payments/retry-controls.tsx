@@ -7,7 +7,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
-import { useToast } from "@/components/ui/toast";
+import { useDeferredToast } from "@/components/ui/toast";
 import { retryDepositAction, retryWithdrawalAction, cancelRefundTxnAction } from "./payment-actions";
 import { runAdminAction } from "@/lib/client/run-admin-action";
 
@@ -16,7 +16,8 @@ export function RetryControls({ txnId, type }: { txnId: string; type: "DEPOSIT" 
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [confirmRetry, setConfirmRetry] = useState(false);
   const router = useRouter();
-  const { toast } = useToast();
+  // B-28 — success toasts ride the transition's falling edge (data visible when announced)
+  const { toast, deferToast } = useDeferredToast(pending);
 
   const run = (fn: (fd: FormData) => Promise<{ ok: boolean; error?: string }>, okTitle: string) => {
     startTransition(async () => {
@@ -24,7 +25,7 @@ export function RetryControls({ txnId, type }: { txnId: string; type: "DEPOSIT" 
       fd.set("txnId", txnId);
       const r = await runAdminAction(() => fn(fd));
       if (!r.ok) { toast({ title: "Blocked", description: r.error, variant: "danger" }); return; }
-      toast({ title: okTitle, variant: "success" });
+      deferToast({ title: okTitle, variant: "success" });
       setConfirmCancel(false);
       setConfirmRetry(false);
       router.refresh();

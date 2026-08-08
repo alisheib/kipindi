@@ -13,13 +13,18 @@ export const dynamic = "force-dynamic";
 
 // RBAC: any staff role may open the console + enrol 2FA (see isStaffRole).
 
-export default async function TotpSetupPage() {
+export default async function TotpSetupPage({ searchParams }: { searchParams?: Promise<{ next?: string }> }) {
   const session = await currentSession();
   if (!session) redirect("/auth/admin");
   const u = await db.user.findById(session.userId);
   if (!(u && isStaffRole(u.role))) redirect("/auth/admin");
 
   const enabled = await hasTotp(session.userId);
+  // B-28 — the enrolment gate now carries where the officer was heading
+  // (requireAdminTotp threads it); after enabling, the client offers the way
+  // back instead of dead-ending on this page. /admin paths only.
+  const nextRaw = (await searchParams)?.next ?? "";
+  const next = nextRaw.startsWith("/admin") && !nextRaw.startsWith("//") && !nextRaw.startsWith("/admin/2fa/setup") ? nextRaw : "";
 
   return (
     <>
@@ -49,7 +54,7 @@ export default async function TotpSetupPage() {
             <I.smartphone size={16} className="text-royal-300" />
             <h2 className="font-display font-bold text-body-sm text-text">Authenticator app</h2>
           </div>
-          <TotpSetupClient initiallyEnabled={enabled} />
+          <TotpSetupClient initiallyEnabled={enabled} next={next} />
         </AdminCard>
 
         <AdminCard className="border-info-border bg-info-bg/15">

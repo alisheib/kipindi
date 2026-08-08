@@ -1,4 +1,3 @@
-import { BrandSpinner } from "@/components/brand";
 import { getServerT } from "@/lib/i18n-server";
 
 export default async function MarketsLoading() {
@@ -19,10 +18,15 @@ export default async function MarketsLoading() {
           ))}
         </aside>
         <div className="min-w-0 flex-1">
-          <div className="rounded-lg border border-border bg-bg-elevated/40 p-16 grid place-items-center mb-3">
-            <div className="flex flex-col items-center gap-4">
-              <BrandSpinner size={56} />
-              <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-text-muted">{t.common.loading}</p>
+          {/* B-29 / V-2 — the real page opens with the search bar, then the
+              grid. The old giant spinner panel occupied the exact spot the
+              search box lands in, so the whole board jumped on resolve. */}
+          <div className="mb-3 space-y-2" aria-hidden>
+            <div className="search-box h-11 rounded-lg border border-border bg-bg-inset kp-shimmer-track" />
+            <div className="flex items-center gap-1.5">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="h-7 w-20 rounded-pill border border-border bg-bg-elevated kp-shimmer-track" />
+              ))}
             </div>
           </div>
           <div className="market-grid" aria-hidden>

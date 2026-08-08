@@ -9,7 +9,7 @@
  *  correction deserves a deliberate confirm surface, not a one-tap inline link. */
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { useToast } from "@/components/ui/toast";
+import { useDeferredToast } from "@/components/ui/toast";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { I } from "@/components/ui/glyphs";
@@ -22,7 +22,8 @@ export function ReconcileControls({ txnId }: { txnId: string }) {
   const [ref, setRef] = useState("");
   const [reason, setReason] = useState("");
   const router = useRouter();
-  const { toast } = useToast();
+  // B-28 — success toasts ride the transition's falling edge (data visible when announced)
+  const { toast, deferToast } = useDeferredToast(pending);
   const firstFieldRef = useRef<HTMLElement | null>(null);
 
   const valid = mode === "match" ? ref.trim().length > 0 : reason.trim().length >= 3;
@@ -39,7 +40,7 @@ export function ReconcileControls({ txnId }: { txnId: string }) {
       if (mode === "match") { fd.set("providerRef", ref.trim()); r = await runAdminAction(() => reconcileMatchAction(fd)); }
       else { r = await runAdminAction(() => reconcileWriteOffAction(fd)); }
       if (!r.ok) { toast({ title: "Blocked", description: r.error, variant: "danger" }); return; }
-      toast({ title: mode === "match" ? "Matched" : "Written off", variant: "success" });
+      deferToast({ title: mode === "match" ? "Matched" : "Written off", variant: "success" });
       setMode(null); setRef(""); setReason("");
       router.refresh();
     });

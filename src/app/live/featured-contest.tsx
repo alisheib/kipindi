@@ -14,6 +14,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { TippingBar } from "@/components/brand";
 import { I } from "@/components/ui/glyphs";
+import { useT } from "@/lib/i18n";
 
 export type FeaturedMarket = { id: string; title: string; yesPct: number };
 
@@ -39,6 +40,7 @@ export function FeaturedContest({
   eyebrow: string;
   openLabel: string;
 }) {
+  const { t } = useT(); // V-7 — SR labels come from the dictionary now
   const [idx, setIdx] = useState(0);
   const [paused, setPaused] = useState(false);
   const n = markets.length;
@@ -126,7 +128,7 @@ export function FeaturedContest({
                     background: i === idx ? "var(--aqua-400)" : "var(--border-strong)",
                   }}
                   tabIndex={-1}
-                  aria-label={`Show market ${i + 1}`}
+                  aria-label={t.market.showMarketN.replace("{n}", String(i + 1))}
                 />
               ))}
             </div>
@@ -139,11 +141,12 @@ export function FeaturedContest({
 
 function Arrow({ dir, onClick }: { dir: "prev" | "next"; onClick: () => void }) {
   const Icon = dir === "prev" ? I.chevronLeft : I.chevronRight;
+  const { t } = useT(); // V-7
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-label={dir === "prev" ? "Previous market" : "Next market"}
+      aria-label={dir === "prev" ? t.market.prevMarket : t.market.nextMarket}
       className="grid h-11 w-11 place-items-center rounded-full border transition-colors hover:bg-[color-mix(in_oklab,var(--aqua-400)_14%,transparent)]"
       style={{ borderColor: "color-mix(in oklab, var(--aqua-400) 55%, transparent)", color: "var(--aqua-300)" }}
     >

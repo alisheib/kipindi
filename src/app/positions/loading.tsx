@@ -22,9 +22,27 @@ export default async function PositionsLoading() {
         ))}
       </nav>
 
-      {/* Position card skeletons */}
-      <div className="space-y-3" aria-hidden>
-        {Array.from({ length: 5 }).map((_, i) => (
+      {/* B-29 / V-2 — "Your standing" PnL strip: the real page shows it above
+          the grid, so the cards must not jump down when it pops in. */}
+      <div className="glass-panel px-5 pt-4 pb-[18px] kp-shimmer-track" aria-hidden>
+        <div className="flex items-center justify-between gap-3">
+          <div className="h-3 w-28 rounded bg-bg-overlay" />
+          <div className="h-2.5 w-16 rounded bg-bg-overlay" />
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="space-y-1.5">
+              <div className="h-2.5 w-16 rounded bg-bg-overlay" />
+              <div className="h-5 w-20 rounded bg-bg-overlay" />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Position card skeletons — the real list is a 2-col grid at md
+          (grid-cols-1 md:grid-cols-2), not a single column. */}
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2" aria-hidden>
+        {Array.from({ length: 6 }).map((_, i) => (
           <div
             key={i}
             className="rounded-xl border border-border bg-bg-elevated p-4 kp-shimmer-track"

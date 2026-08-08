@@ -17,10 +17,16 @@ export function KycDocViewer({ userId, slots }: { userId: string; slots: Slot[] 
   const [active, setActive] = useState(firstPresent?.type ?? "NIDA_FRONT");
   const [zoom, setZoom] = useState<"fit" | "100" | "200">("fit");
   const [rot, setRot] = useState(0);
+  // B-28 / V-4 — the img used to render bare: while fetching there was nothing,
+  // and on a 403/failed fetch the browser's broken-image glyph appeared — which,
+  // on an identity-review screen, reads as TAMPERED EVIDENCE. Track the fetch
+  // and say what actually happened. `retryNonce` busts the URL to retry.
+  const [imgState, setImgState] = useState<"loading" | "ok" | "error">("loading");
+  const [retryNonce, setRetryNonce] = useState(0);
 
   const current = slots.find((s) => s.type === active);
   const present = !!current?.uploadedAt;
-  const src = `/api/admin/kyc-doc?user=${encodeURIComponent(userId)}&type=${active}`;
+  const src = `/api/admin/kyc-doc?user=${encodeURIComponent(userId)}&type=${active}${retryNonce ? `&r=${retryNonce}` : ""}`;
 
   const scale = zoom === "fit" ? "100%" : zoom === "100" ? "100%" : "200%";
   const objectFit = zoom === "fit" ? "contain" : "none";
@@ -36,7 +42,7 @@ export function KycDocViewer({ userId, slots }: { userId: string; slots: Slot[] 
             <button
               key={s.type}
               type="button"
-              onClick={() => { setActive(s.type); setRot(0); }}
+              onClick={() => { setActive(s.type); setRot(0); setImgState("loading"); }}
               className="inline-flex items-center gap-1.5 rounded-md border px-2.5 h-8 font-mono text-[11px] uppercase tracking-[0.08em] transition-colors"
               style={on
                 ? { borderColor: "var(--brand-500)", background: "color-mix(in oklab, var(--brand-500) 14%, transparent)", color: "var(--brand-200)" }
@@ -74,13 +80,39 @@ export function KycDocViewer({ userId, slots }: { userId: string; slots: Slot[] 
       <div className="rounded-lg bg-bg-sunken" style={{ padding: 12 }}>
         <div className="relative flex h-[340px] w-full items-center justify-center overflow-auto rounded-md" style={{ background: "#0b0e1a" }}>
           {present ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={src}
-              alt={current?.label}
-              className="select-none"
-              style={{ maxWidth: scale, maxHeight: zoom === "fit" ? "100%" : "none", width: objectFit === "none" ? scale : "auto", objectFit, transform: `rotate(${rot}deg)`, transition: "transform 0.2s" }}
-            />
+            <>
+              {imgState === "loading" && (
+                <div className="absolute inset-0 grid place-items-center" aria-live="polite" aria-busy>
+                  <div className="h-[70%] w-[60%] animate-pulse rounded-md" style={{ background: "color-mix(in oklab, var(--panel) 60%, transparent)" }} />
+                </div>
+              )}
+              {imgState === "error" ? (
+                <div className="flex max-w-[380px] flex-col items-center gap-2 p-4 text-center" role="alert">
+                  <I.warning s={24} className="text-warning-fg" />
+                  <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">Document failed to load</p>
+                  <p className="text-[12px] leading-snug text-text-subtle">
+                    The file exists on record — this is a fetch or permission failure, not missing or altered evidence. Retry before drawing any conclusion.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => { setImgState("loading"); setRetryNonce((n) => n + 1); }}
+                    className="btn btn-ghost btn-sm mt-1"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={src}
+                  alt={current?.label}
+                  className="select-none"
+                  onLoad={() => setImgState("ok")}
+                  onError={() => setImgState("error")}
+                  style={{ maxWidth: scale, maxHeight: zoom === "fit" ? "100%" : "none", width: objectFit === "none" ? scale : "auto", objectFit, transform: `rotate(${rot}deg)`, transition: "transform 0.2s", visibility: imgState === "ok" ? "visible" : "hidden" }}
+                />
+              )}
+            </>
           ) : (
             <div className="flex flex-col items-center gap-2 text-text-subtle">
               <I.idCard s={28} />

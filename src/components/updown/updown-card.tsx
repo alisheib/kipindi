@@ -602,7 +602,9 @@ export function UpDownCard(props: UpDownCardProps) {
           // Deliberately NOT an alarm tone: the round is running normally and the player has
           // done nothing wrong. Same calm chrome as `confirming`.
           <div className="rounded-xl p-3.5" style={{ background: "color-mix(in oklab, var(--bg-inset) 70%, transparent)", border: "1px solid var(--border)" }}>
-            <span className="chip chip-pending">🔒 {t.market.udLockedTitle}</span>
+            {/* V-1 — kit glyph, not the 🔒 emoji: platform rule is no emoji in
+                UI copy, and the OS-rendered glyph broke the card's ink. */}
+            <span className="chip chip-pending"><I.lock s={11} /> {t.market.udLockedTitle}</span>
             <p className="mt-2 text-[11.5px] leading-[1.5] text-text-muted">
               {lockClock ? t.market.udLockedWhy.replace("{time}", lockClock) : t.market.udLockedWhy.replace("{time}", "—")}
             </p>

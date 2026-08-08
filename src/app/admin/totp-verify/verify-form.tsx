@@ -20,7 +20,19 @@ export function TotpVerifyForm({ next }: { next?: string }) {
     const fd = new FormData();
     fd.set("code", code);
     if (next) fd.set("next", next);
-    const r = await verifyAdminTotpAction(fd);
+    // B-28 — a transport failure here used to wedge a PERMANENT spinner (the
+    // await threw, setBusy(false) never ran, and the redirect-on-success path
+    // masked it). Catch → release the button so the officer can retry.
+    let r: Awaited<ReturnType<typeof verifyAdminTotpAction>>;
+    try {
+      r = await verifyAdminTotpAction(fd);
+    } catch (err) {
+      // NEXT_REDIRECT is the SUCCESS path (server-side redirect) — rethrow it.
+      if (err && typeof err === "object" && String((err as { digest?: string }).digest ?? "").startsWith("NEXT_REDIRECT")) throw err;
+      toast({ title: "Couldn't verify", description: "Network hiccup — nothing was applied. Try again.", variant: "danger" });
+      setBusy(false);
+      return;
+    }
     if (r && !r.ok) {
       toast({ title: "Invalid code", description: r.error, variant: "danger" });
       setCode("");

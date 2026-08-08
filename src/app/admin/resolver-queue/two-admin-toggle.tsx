@@ -16,7 +16,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Toggle } from "@/components/ui/toggle";
 import { ConfirmModal } from "@/components/ui/modal";
-import { useToast } from "@/components/ui/toast";
+import { useDeferredToast } from "@/components/ui/toast";
 import { I } from "@/components/ui/glyphs";
 import { setTwoAdminAuthAction } from "./resolution-policy-action";
 import { runAdminAction } from "@/lib/client/run-admin-action";
@@ -25,7 +25,8 @@ export function TwoAdminToggle({ enabled }: { enabled: boolean }) {
   const [pending, start] = useTransition();
   const [confirmOff, setConfirmOff] = useState(false);
   const router = useRouter();
-  const { toast } = useToast();
+  // B-28 — success toasts ride the transition's falling edge (data visible when announced)
+  const { toast, deferToast } = useDeferredToast(pending);
 
   const apply = (next: boolean) => {
     start(async () => {
@@ -34,7 +35,8 @@ export function TwoAdminToggle({ enabled }: { enabled: boolean }) {
       const r = await runAdminAction(() => setTwoAdminAuthAction(fd));
       setConfirmOff(false);
       if (!r.ok) { toast({ title: "Couldn't change authorization", description: r.error, variant: "danger" }); return; }
-      toast({
+      // Re-imposing the ceremony is the success (deferred); relaxing is a warning (immediate).
+      (next ? deferToast : toast)({
         title: next ? "Two-admin authorization ON" : "Single-admin resolution ON",
         description: next
           ? "Every resolution now needs two distinct officers (stage-1 then a different stage-2)."

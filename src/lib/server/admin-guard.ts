@@ -1,4 +1,4 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { hasTotp } from "./totp";
 import { verifySession } from "./crypto";
@@ -55,6 +55,19 @@ export async function checkAdminTotp(userId: string, sessionId: string): Promise
 
 export async function requireAdminTotp(userId: string, sessionId: string): Promise<void> {
   const status = await checkAdminTotp(userId, sessionId);
-  if (status === "not-enrolled") redirect("/admin/2fa/setup");
-  if (status === "unverified") redirect("/admin/totp-verify");
+  if (status === "ok") return;
+  // B-28 — the step-up used to drop the officer's location: a TOTP lapse
+  // mid-deep-link (or mid-action) bounced to a bare /admin/totp-verify, and
+  // after verifying they landed on the dashboard instead of where they were.
+  // The verify page already honours `?next=` (open-redirect-safe, /admin only);
+  // this carries it. Best-effort: no request scope → plain redirect as before.
+  let next = "";
+  try {
+    const href = (await headers()).get("x-href") ?? "";
+    if (href.startsWith("/admin") && !href.startsWith("//") && !href.startsWith("/admin/totp-verify")) {
+      next = `?next=${encodeURIComponent(href)}`;
+    }
+  } catch { /* no request scope (background caller) */ }
+  if (status === "not-enrolled") redirect(`/admin/2fa/setup${next}`);
+  redirect(`/admin/totp-verify${next}`);
 }

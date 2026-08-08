@@ -28,7 +28,7 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
-import { useToast } from "@/components/ui/toast";
+import { useDeferredToast } from "@/components/ui/toast";
 import { Modal } from "@/components/ui/modal";
 import { voidRoundAction } from "../actions";
 
@@ -48,7 +48,8 @@ export function VoidRoundControl({
   const [reason, setReason] = useState("");
   const [pending, startTransition] = useTransition();
   const router = useRouter();
-  const { toast } = useToast();
+  // B-28 — success toasts ride the transition's falling edge (data visible when announced)
+  const { toast, deferToast } = useDeferredToast(pending);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const canConfirm = reason.trim().length >= 5 && !pending;
 
@@ -64,7 +65,8 @@ export function VoidRoundControl({
       }
       setOpen(false);
       setReason("");
-      toast({
+      // The settled case is the success (deferred); the held case is a warning (immediate).
+      (r.settled ? deferToast : toast)({
         title: "Round voided",
         // `settled: false` is not a failure — the standing-objection freeze can hold
         // the money legitimately. Say which happened rather than implying payment.

@@ -10,7 +10,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/toast";
+import { useDeferredToast } from "@/components/ui/toast";
 import { I } from "@/components/ui/glyphs";
 import { formatTzs } from "@/lib/utils";
 import { settleMarketAction } from "./actions";
@@ -25,10 +25,11 @@ export function SettleButton({
   positions: number;
   outcome: string | null;
 }) {
-  const { toast } = useToast();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
+  // B-28 — success toasts ride the transition's falling edge (data visible when announced)
+  const { toast, deferToast } = useDeferredToast(pending);
 
   const settle = () => {
     start(async () => {
@@ -40,7 +41,7 @@ export function SettleButton({
         return;
       }
       setOpen(false);
-      toast({ title: "Settled", description: r.detail, variant: "success" });
+      deferToast({ title: "Settled", description: r.detail, variant: "success" });
       router.refresh();
     });
   };

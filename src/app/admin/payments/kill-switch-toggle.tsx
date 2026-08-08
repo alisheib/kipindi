@@ -8,7 +8,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
-import { useToast } from "@/components/ui/toast";
+import { useDeferredToast } from "@/components/ui/toast";
 import { toggleKillSwitchAction } from "./payment-actions";
 import { runAdminAction } from "@/lib/client/run-admin-action";
 
@@ -36,7 +36,8 @@ function FlowToggle({ provider, providerLabel, kind, paused }: { provider: strin
   const [confirm, setConfirm] = useState(false);
   const [word, setWord] = useState("");
   const router = useRouter();
-  const { toast } = useToast();
+  // B-28 — success toasts ride the transition's falling edge (data visible when announced)
+  const { toast, deferToast } = useDeferredToast(pending);
 
   const apply = (next: boolean) => {
     startTransition(async () => {
@@ -46,7 +47,8 @@ function FlowToggle({ provider, providerLabel, kind, paused }: { provider: strin
       fd.set("paused", String(next));
       const r = await runAdminAction(() => toggleKillSwitchAction(fd));
       if (!r.ok) { toast({ title: "Blocked", description: r.error, variant: "danger" }); return; }
-      toast({ title: next ? `${providerLabel} ${kind} PAUSED` : `${providerLabel} ${kind} resumed`, variant: next ? "warning" : "success" });
+      // Pause announces as a warning (immediate); resume is a success → deferred to the refresh.
+      (next ? toast : deferToast)({ title: next ? `${providerLabel} ${kind} PAUSED` : `${providerLabel} ${kind} resumed`, variant: next ? "warning" : "success" });
       setConfirm(false); setWord("");
       router.refresh();
     });

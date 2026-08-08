@@ -12,6 +12,7 @@
 import { useState, useCallback, useRef } from "react";
 import type { ReactNode } from "react";
 import { I } from "@/components/ui/glyphs";
+import { useT } from "@/lib/i18n";
 
 const SWIPE_THRESHOLD = 40;
 
@@ -26,6 +27,7 @@ export function NotableCarousel({
   prevLabel: string;
   nextLabel: string;
 }) {
+  const { t } = useT(); // V-7 — the dot-rail SR label comes from the dictionary
   const [idx, setIdx] = useState(0);
   const n = slides.length;
   const multi = n > 1;
@@ -77,7 +79,7 @@ export function NotableCarousel({
               type="button"
               onClick={() => setIdx(i)}
               tabIndex={-1}
-              aria-label={`Show notable result ${i + 1}`}
+              aria-label={t.market.showResultN.replace("{n}", String(i + 1))} /* V-7 */
               className="h-1.5 rounded-full transition-all"
               style={{
                 width: i === current ? 18 : 6,

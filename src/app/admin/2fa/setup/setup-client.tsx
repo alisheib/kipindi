@@ -8,7 +8,7 @@ import { I } from "@/components/ui/glyphs";
 import { provisionTotpAction, verifyTotpAction, removeTotpAction } from "./actions";
 import QRCode from "qrcode";
 
-export function TotpSetupClient({ initiallyEnabled }: { initiallyEnabled: boolean }) {
+export function TotpSetupClient({ initiallyEnabled, next }: { initiallyEnabled: boolean; next?: string }) {
   const [enabled, setEnabled] = useState(initiallyEnabled);
   const [provisioning, setProvisioning] = useState<{ secretBase32: string; otpauthUrl: string } | null>(null);
   const [code, setCode] = useState("");
@@ -113,6 +113,15 @@ export function TotpSetupClient({ initiallyEnabled }: { initiallyEnabled: boolea
         <p className="text-body-sm text-text-secondary">
           Two-factor authentication is enabled on this account. Codes refresh every 30 seconds.
         </p>
+        {/* B-28 — the way back. An officer sent here by the enrolment gate used
+            to finish set-up and… stay, with no path to where they were going.
+            The next hop still passes through /admin/totp-verify (a fresh code
+            proves possession), which itself round-trips this destination. */}
+        {next && (
+          <a href={next} className="btn btn-primary btn-md inline-flex items-center gap-1.5">
+            Continue to where you were <I.chevronRight s={13} />
+          </a>
+        )}
         <div className="flex gap-2 flex-wrap">
           <Button variant="secondary" size="md" leading={<I.keyRound size={14} />} onClick={() => { setStepCode(""); setReprovOpen(true); }} loading={busy}>
             Re-provision (new QR)

@@ -18,7 +18,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/toast";
+import { useDeferredToast } from "@/components/ui/toast";
 import { setPayoutStatusAction } from "./payment-actions";
 import { runAdminAction } from "@/lib/client/run-admin-action";
 
@@ -51,7 +51,8 @@ export function PayoutStatusControl({
   const [pick, setPick] = useState<Status>(declared);
   const [text, setText] = useState(note ?? "");
   const router = useRouter();
-  const { toast } = useToast();
+  // B-28 — success toasts ride the transition's falling edge (data visible when announced)
+  const { toast, deferToast } = useDeferredToast(pending);
 
   const save = () => {
     startTransition(async () => {
@@ -60,7 +61,8 @@ export function PayoutStatusControl({
       fd.set("note", text);
       const r = await runAdminAction(() => setPayoutStatusAction(fd));
       if (!r.ok) { toast({ title: "Blocked", description: r.error, variant: "danger" }); return; }
-      toast({
+      // Declaring OPERATIONAL is the success (deferred); delayed/unavailable is a warning (immediate).
+      (pick === "operational" ? deferToast : toast)({
         title: `Payouts declared ${pick.toUpperCase()}`,
         description: pick === "unavailable" ? "Players are now told withdrawals cannot be paid." : undefined,
         variant: pick === "operational" ? "success" : "warning",

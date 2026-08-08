@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { useToast } from "@/components/ui/toast";
+import { useDeferredToast } from "@/components/ui/toast";
 import { resolveMarketAction } from "@/app/markets/actions";
 import { BrandSpinner } from "@/components/brand";
 import { OperationResultModal } from "@/components/markets/operation-result-modal";
@@ -23,7 +23,8 @@ export function ResolveControls({ marketId, stage, stagedOutcome, twoAdmin = fal
   } | null>(null);
   const [resultOpen, setResultOpen] = useState(false);
   const router = useRouter();
-  const { toast } = useToast();
+  // B-28 — success toasts ride the transition's falling edge (data visible when announced)
+  const { toast, deferToast } = useDeferredToast(pending);
 
   const fire = (outcome: "YES" | "NO" | "VOID") => {
     setSubmittedSide(outcome);
@@ -53,7 +54,7 @@ export function ResolveControls({ marketId, stage, stagedOutcome, twoAdmin = fal
         const detail = r.data?.settlesAt
           ? `Pays out ${formatDateTime(r.data.settlesAt)}, unless a player objects`
           : "Pays out on the next settlement sweep";
-        toast({ title: `Verdict recorded · ${outcome}`, description: detail, variant: "success" });
+        deferToast({ title: `Verdict recorded · ${outcome}`, description: detail, variant: "success" });
         setResultData({
           variant: "success",
           title: `Verdict recorded · ${outcome}`,

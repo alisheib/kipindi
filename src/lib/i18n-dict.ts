@@ -558,6 +558,8 @@ export const dict = {
       // it rendered "23masaa yaliyobaki" on every card. Chinese correctly takes no
       // space at all — which is exactly why the join cannot live in the template.
       timeLeftD: "{n}d left", timeLeftH: "{n}h left", timeLeftM: "{n}m left",
+      // V-7 — carousel SR labels, previously hardcoded English.
+      showMarketN: "Show market {n}", prevMarket: "Previous market", nextMarket: "Next market", showResultN: "Show notable result {n}",
       similarMarkets: "Similar markets", similarMarketsBody: "Live now — place another prediction without going back.",
       twentyFourHourMove: "24h move",
       noLiveMatch: "No live markets match",
@@ -2048,6 +2050,7 @@ export const dict = {
       noPoolYet: "Hakuna dau bado",
       closed: "imefungwa",
       timeLeftD: "siku {n} zimebaki", timeLeftH: "masaa {n} yaliyobaki", timeLeftM: "dakika {n} zimebaki",
+      showMarketN: "Onyesha soko {n}", prevMarket: "Soko lililopita", nextMarket: "Soko linalofuata", showResultN: "Onyesha tokeo maarufu {n}",
       similarMarkets: "Masoko yanayofanana", similarMarketsBody: "Hai sasa — weka utabiri mwingine bila kurudi nyuma.",
       twentyFourHourMove: "Mwenendo wa saa 24",
       noLiveMatch: "Hakuna soko hai linalolingana",
@@ -3484,6 +3487,7 @@ export const dict = {
       noPoolYet: "暂无奖池",
       closed: "已关闭",
       timeLeftD: "{n}天后", timeLeftH: "{n}小时后", timeLeftM: "{n}分钟后",
+      showMarketN: "显示市场 {n}", prevMarket: "上一个市场", nextMarket: "下一个市场", showResultN: "显示精选结果 {n}",
       similarMarkets: "相似市场", similarMarketsBody: "正在进行——无需返回即可再下一注。",
       twentyFourHourMove: "24小时变动",
       noLiveMatch: "没有匹配的直播市场",

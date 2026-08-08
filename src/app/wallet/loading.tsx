@@ -15,16 +15,32 @@ export default async function WalletLoading() {
         </div>
       </header>
 
-      {/* Balance card skeleton */}
-      <div
-        className="rounded-xl border border-border overflow-hidden kp-shimmer-track"
-        style={{ height: 160, background: "linear-gradient(135deg, oklch(23% 0.075 268), oklch(16% 0.05 268))" }}
-      >
-        <div className="p-5 lg:p-6 space-y-4">
-          <div className="h-3 w-20 rounded bg-bg-overlay/30" />
-          <div className="h-10 w-40 rounded bg-bg-overlay/20" />
-          <div className="grid grid-cols-2 gap-3">
-            <div className="h-16 rounded-md bg-bg-overlay/15" />
+      {/* B-29 / V-2 — the page renders TWO wallet cards side-by-side at lg
+          (main + bonus). The old single full-width ghost snapped to half-width
+          and popped a second card when the real page resolved — the most
+          visible "cheap" moment on the money page. Mirror the real grid. */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch" aria-hidden>
+        <div
+          className="rounded-xl border border-border overflow-hidden kp-shimmer-track"
+          style={{ height: 160, background: "linear-gradient(135deg, oklch(23% 0.075 268), oklch(16% 0.05 268))" }}
+        >
+          <div className="p-5 lg:p-6 space-y-4">
+            <div className="h-3 w-20 rounded bg-bg-overlay/30" />
+            <div className="h-10 w-40 rounded bg-bg-overlay/20" />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="h-16 rounded-md bg-bg-overlay/15" />
+              <div className="h-16 rounded-md bg-bg-overlay/15" />
+            </div>
+          </div>
+        </div>
+        {/* Bonus wallet card (warm-toned on the real page). */}
+        <div
+          className="rounded-xl border border-border overflow-hidden kp-shimmer-track"
+          style={{ height: 160, background: "linear-gradient(135deg, oklch(21% 0.05 80), oklch(15% 0.03 80))" }}
+        >
+          <div className="p-5 lg:p-6 space-y-4">
+            <div className="h-3 w-24 rounded bg-bg-overlay/30" />
+            <div className="h-10 w-32 rounded bg-bg-overlay/20" />
             <div className="h-16 rounded-md bg-bg-overlay/15" />
           </div>
         </div>
@@ -38,6 +54,12 @@ export default async function WalletLoading() {
           </div>
         ))}
       </nav>
+
+      {/* 30-day balance spark strip (46px svg + label padding on the page). */}
+      <div className="rounded-xl border border-border bg-bg-elevated p-3 kp-shimmer-track" aria-hidden>
+        <div className="h-2.5 w-36 rounded bg-bg-overlay mb-2" />
+        <div className="h-[46px] w-full rounded bg-bg-overlay/40" />
+      </div>
 
       {/* Transaction row skeletons */}
       <div className="rounded-xl border border-border bg-bg-elevated overflow-hidden" aria-hidden>
