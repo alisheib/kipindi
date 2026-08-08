@@ -6,7 +6,7 @@
  * doesn't reappear on refresh. Kit rule: every consequential money mutation
  * confirms through this modal.
  */
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useT } from "@/lib/i18n";
 import { OperationResultModal } from "@/components/markets/operation-result-modal";
@@ -26,13 +26,11 @@ export function WalletResultModal({
   const router = useRouter();
   const { t } = useT();
   const [open, setOpen] = useState(true);
-  // Trigger a global refresh so the balance pill and any other live
-  // components pick up the new wallet state immediately.
-  useEffect(() => {
-    if (deposited || withdrawal) {
-      window.dispatchEvent(new Event("50pick:refresh"));
-    }
-  }, [deposited, withdrawal]);
+  // B-16 — no refresh on mount. This modal renders from the search params of a
+  // page the server JUST rendered with the post-mutation state (the action
+  // redirected here), so dispatching "50pick:refresh" re-fetched a page that
+  // could not be fresher — a third RSC fetch per deposit on top of the pair the
+  // dial/sell double used to fire. The balance pill is in the same fresh render.
 
   if (!deposited && !withdrawal) return null;
 

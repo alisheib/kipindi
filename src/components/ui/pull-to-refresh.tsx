@@ -6,29 +6,27 @@
  * Renders an invisible touch area at the top of the viewport. When the
  * user pulls down (scrollY === 0 and the gesture exceeds the threshold),
  * a small spinner appears and the page data is refetched via
- * router.refresh(). Pauses 600ms after the refresh call so the spinner
- * is visible long enough to feel intentional, not accidental.
+ * router.refresh(), run inside a transition — the spinner stays up until the
+ * refreshed data has actually landed (B-16), not for a fixed timer.
  *
  * Only active on touch devices — pointer:coarse media query. No-ops on
  * desktop entirely (the component renders null via CSS, not JS, so
  * the hook doesn't fire on desktop at all).
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Spinner } from "@/components/ui/spinner";
 
 const THRESHOLD = 80; // px of pull before triggering (raised from 60 to prevent accidental triggers)
-const SETTLE_MS = 600; // how long the spinner shows after refresh
 
 export function PullToRefresh() {
   const router = useRouter();
   const [pulling, setPulling] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
+  const [refreshing, start] = useTransition();
   const [pullY, setPullY] = useState(0);
   const startY = useRef(0);
   const active = useRef(false);
-  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const onTouchStart = useCallback((e: TouchEvent) => {
     if (window.scrollY > 5 || refreshing) return;
@@ -48,20 +46,19 @@ export function PullToRefresh() {
     if (!active.current) { setPulling(false); setPullY(0); return; }
     active.current = false;
     if (pullY >= THRESHOLD * 0.6) {
-      setRefreshing(true);
-      router.refresh();
-      window.dispatchEvent(new Event("50pick:refresh"));
-      settleTimer.current = setTimeout(() => {
-        settleTimer.current = null;
-        setRefreshing(false);
-        setPulling(false);
-        setPullY(0);
-      }, SETTLE_MS);
+      // B-16 — ONE refresh, and the spinner tells the truth: router.refresh()
+      // runs inside a transition whose falling edge releases the spinner when
+      // the data has actually landed. The old version ALSO dispatched
+      // "50pick:refresh" (a second fetch wherever a poller was mounted) and
+      // hid the spinner on a fixed 600ms timer regardless of the network.
+      start(() => router.refresh());
+      setPulling(false);
+      setPullY(0);
     } else {
       setPulling(false);
       setPullY(0);
     }
-  }, [pullY, router]);
+  }, [pullY, router, start]);
 
   useEffect(() => {
     // Only attach on touch devices
@@ -73,7 +70,6 @@ export function PullToRefresh() {
       window.removeEventListener("touchstart", onTouchStart);
       window.removeEventListener("touchmove", onTouchMove);
       window.removeEventListener("touchend", onTouchEnd);
-      if (settleTimer.current) clearTimeout(settleTimer.current);
     };
   }, [onTouchStart, onTouchMove, onTouchEnd]);
 

@@ -919,7 +919,10 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
       // by the time this event dispatches the notification is already
       // available. Eliminates the 5 s "where's my receipt?" gap.
       window.dispatchEvent(new Event("50pick:refresh-notifications"));
-      router.refresh();
+      // B-16 — no direct router.refresh() beside the "50pick:refresh" dispatch
+      // above: the detail page mounts a RefreshPoller listening for exactly that
+      // event, so the pair meant TWO RSC fetches per bet. One mechanism (the
+      // event), one fetch — the settled UD-6 idiom.
     });
   };
 

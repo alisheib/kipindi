@@ -147,7 +147,9 @@ export function SellButton({
       setResultOpen(true);
       window.dispatchEvent(new Event("50pick:refresh"));
       window.dispatchEvent(new Event("50pick:refresh-notifications"));
-      router.refresh();
+      // B-16 — both SellButton hosts (/markets/[id], /positions) mount a
+      // RefreshPoller on the "50pick:refresh" event; a direct refresh beside
+      // the dispatch was a guaranteed double fetch.
     });
   };
 
