@@ -132,7 +132,9 @@ export function ChatRoot() {
     async (text: string) => {
       const user = buildUserMessage(text);
       setMessages((prev) => [...prev, user]);
-      setLang(user.lang);
+      // Panel chrome stays EN/SW (its labels have no zh corpus — B-7 note in
+      // types.ts); a zh-stamped message keeps whatever chrome was showing.
+      if (user.lang === "en" || user.lang === "sw") setLang(user.lang);
       setPending(true);
       try {
         // Try live Claude first (server action), fall back to stub

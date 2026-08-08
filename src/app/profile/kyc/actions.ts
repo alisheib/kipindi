@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
 import { startKyc, submitNidaStep, attachDocument, attachExtraDocument, submitForReview } from "@/lib/server/kyc-service";
+import { getServerT } from "@/lib/i18n-server";
+import { errorCopy } from "@/lib/error-copy";
 
 /**
  * Player explicitly restarts a REJECTED submission.
@@ -45,8 +47,10 @@ export async function submitNidaAction(formData: FormData) {
   // Carry form values through the error redirect so the player doesn't
   // have to re-type a 20-digit NIDA number + full name on validation failure.
   if (!result.ok) {
+    // B-7 — the page renders this verbatim; mint it in the player's language.
+    const { t } = await getServerT();
     const carry = `&nida=${encodeURIComponent(nida)}&fullName=${encodeURIComponent(fullName)}&dob=${encodeURIComponent(dob)}${emailStr ? `&email=${encodeURIComponent(emailStr)}` : ""}`;
-    redirect(`/profile/kyc?error=${encodeURIComponent(result.error)}${carry}`);
+    redirect(`/profile/kyc?error=${encodeURIComponent(errorCopy(t, result))}${carry}`);
   }
   // A NIDA that FAILS the identity check (mismatch / sanctioned / underage /
   // not-found) still returns ok:true — `ok` reports that the step ran, not that
@@ -59,28 +63,30 @@ export async function submitNidaAction(formData: FormData) {
   redirect("/profile/kyc?nida=verified");
 }
 
-export async function attachDocumentAction(formData: FormData): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function attachDocumentAction(formData: FormData): Promise<{ ok: true } | { ok: false; error: string; code?: string }> {
+  // B-7 — failures carry `code` (+ the stable service string) so the uploader
+  // can render its own localized line via errorCopy.
   const session = await currentSession();
-  if (!session) return { ok: false, error: "Sign in required." };
+  if (!session) return { ok: false, error: "Sign in required.", code: "AUTH" };
   const docType = String(formData.get("docType") ?? "") as "NIDA_FRONT" | "NIDA_BACK" | "SELFIE";
-  if (!["NIDA_FRONT", "NIDA_BACK", "SELFIE"].includes(docType)) return { ok: false, error: "Invalid document type." };
+  if (!["NIDA_FRONT", "NIDA_BACK", "SELFIE"].includes(docType)) return { ok: false, error: "Invalid document type.", code: "INVALID" };
   // The client resizes the photo and posts it as a base64 image data URL; the
   // service validates the format + size and stores it on the submission.
   const image = String(formData.get("image") ?? "");
   const result = await attachDocument(session.userId, docType, image);
   revalidatePath("/profile/kyc");
-  return result.ok ? { ok: true } : { ok: false, error: result.error };
+  return result.ok ? { ok: true } : { ok: false, error: result.error, code: result.code };
 }
 
-export async function attachExtraDocumentAction(formData: FormData): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function attachExtraDocumentAction(formData: FormData): Promise<{ ok: true } | { ok: false; error: string; code?: string }> {
   const session = await currentSession();
-  if (!session) return { ok: false, error: "Sign in required." };
+  if (!session) return { ok: false, error: "Sign in required.", code: "AUTH" };
   const requestId = String(formData.get("requestId") ?? "");
-  if (!requestId) return { ok: false, error: "Missing request." };
+  if (!requestId) return { ok: false, error: "Missing request.", code: "INVALID" };
   const image = String(formData.get("image") ?? "");
   const result = await attachExtraDocument(session.userId, requestId, image);
   revalidatePath("/profile/kyc");
-  return result.ok ? { ok: true } : { ok: false, error: result.error };
+  return result.ok ? { ok: true } : { ok: false, error: result.error, code: result.code };
 }
 
 export async function submitKycForReviewAction() {
@@ -88,6 +94,9 @@ export async function submitKycForReviewAction() {
   if (!session) redirect("/auth/login");
   const result = await submitForReview(session.userId);
   revalidatePath("/profile/kyc");
-  if (!result.ok) redirect(`/profile/kyc?error=${encodeURIComponent(result.error)}`);
+  if (!result.ok) {
+    const { t } = await getServerT();
+    redirect(`/profile/kyc?error=${encodeURIComponent(errorCopy(t, result))}`);
+  }
   redirect("/profile/kyc?submitted=1");
 }

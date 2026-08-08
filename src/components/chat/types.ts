@@ -7,7 +7,10 @@
  * plain text from the model.
  */
 
-export type Lang = "en" | "sw";
+// B-7 — "zh" joined so a Chinese message is stamped honestly. The stub corpus
+// stays EN/SW (recorded position, like email); stubReply answers zh with a
+// dedicated hand-off line, and the live model replies in Chinese natively.
+export type Lang = "en" | "sw" | "zh";
 
 export type Citation = { n: number; href: string; label: string };
 

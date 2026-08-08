@@ -11,6 +11,7 @@ import { I } from "@/components/ui/glyphs";
 import { voteAction } from "@/app/proposals/actions";
 import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
+import { errorCopy } from "@/lib/error-copy";
 
 type Dir = "up" | "down" | null;
 
@@ -73,11 +74,13 @@ export function VoteControl({
       // B-12 — a flaky network mid-action THROWS inside the transition, and an
       // uncaught throw replaces the whole page with error.tsx. Same rollback as
       // a refused vote; the toast states the network truth.
-      let r: Awaited<ReturnType<typeof voteAction>>;
+      let r: { ok: true; up: number; down: number; myVote: "up" | "down" | null } | { ok: false; error: string; code?: string };
       try {
         r = await voteAction(proposalId, next);
       } catch {
-        r = { ok: false as const, error: t.error.somethingDidntWork };
+        // No code on purpose: errorCopy's no-code path renders this localized
+        // string as-is — the network truth, not a server refusal.
+        r = { ok: false, error: t.error.somethingDidntWork };
       }
       if (seq !== voteSeq.current) return; // a newer click owns the state now
       if (r.ok) setTally({ up: r.up, down: r.down });
@@ -85,7 +88,7 @@ export function VoteControl({
         // Roll back to the captured pre-click state.
         setVote(prevVote);
         setTally(prevTally);
-        toast({ title: t.toast.voteFailed, description: r.error, variant: "danger" });
+        toast({ title: t.toast.voteFailed, description: errorCopy(t, r), variant: "danger" });
       }
     });
   };

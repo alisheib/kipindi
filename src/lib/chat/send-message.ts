@@ -36,6 +36,9 @@ const nextId = () => `m_${Date.now().toString(36)}_${__id++}`;
 /** Detect the user's language from their last message. Heuristic, not
  *  exhaustive — production swaps to a real classifier. */
 function detectLang(text: string): Lang {
+  // B-7 — CJK first: a Chinese question used to be stamped "en" and keyword-missed
+  // into an English "I'm not sure", which read as being ignored.
+  if (/[一-鿿㐀-䶿]/.test(text)) return "zh";
   const sw = /\b(habari|niko|vipi|chochote|amana|malipo|soko|dau|jaribu|asante|hapana|ndio|kucheza|mfumo|niulize|kusaidia|alika|pendekez|tume|kiungo)\b/i;
   return sw.test(text) ? "sw" : "en";
 }
@@ -94,6 +97,19 @@ function stubReply(userText: string, lang: Lang): Reply {
 
   if (isAtRiskLanguage(userText)) {
     return { role: "ai", kind: "rg_redirect", lang };
+  }
+
+  // B-7 — the stub corpus is EN/SW; a Chinese question gets an honest Chinese
+  // hand-off instead of an English keyword miss. (Live mode replies in Chinese
+  // natively — this line is stub-mode only.)
+  if (lang === "zh") {
+    return {
+      role: "ai",
+      kind: "text",
+      lang,
+      unresolved: true,
+      text: "您好！您可以在帮助页面（/help）找到中文版的平台指南 — 涵盖充值、投注、提现和身份验证。如需人工协助，我可以为您转接支持团队。",
+    };
   }
 
   if (isBettingPickQuestion(userText)) {

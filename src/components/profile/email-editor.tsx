@@ -14,6 +14,8 @@ import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
 import { updateProfileBasicsAction, resendEmailVerificationAction } from "@/app/profile/actions";
+import { errorCopy } from "@/lib/error-copy";
+import { verifyErrorMessage } from "@/lib/verify-error";
 
 export function EmailEditor({ currentEmail, verified }: { currentEmail: string | null; verified?: boolean }) {
   const [editing, setEditing] = useState(false);
@@ -33,7 +35,7 @@ export function EmailEditor({ currentEmail, verified }: { currentEmail: string |
       // literal string "Player" over the name of anyone who hadn't set one.
       fd.set("email", v); // "" clears it
       const r = await updateProfileBasicsAction(fd);
-      if (!r.ok) { toast({ title: t.toast.emailFailed, description: r.error, variant: "danger" }); return; }
+      if (!r.ok) { toast({ title: t.toast.emailFailed, description: errorCopy(t, r), variant: "danger" }); return; }
       toast({
         title: v ? t.toast.emailSaved : t.common.emailRemoved,
         description: v ? (r.emailVerificationSent ? t.toast.checkInbox : t.toast.receiptsHere) : undefined,
@@ -48,7 +50,10 @@ export function EmailEditor({ currentEmail, verified }: { currentEmail: string |
     if (!currentEmail) return;
     start(async () => {
       const r = await resendEmailVerificationAction();
-      if (!r.ok) { toast({ title: t.toast.couldntResend, description: r.error, variant: "danger" }); return; }
+      // B-7 — `r.error` here is a CODE (RATE_LIMITED, EMAIL_SUPPRESSED, …). It was
+      // printed literally, machine token and all, and dropped `retryAfterSec`.
+      // `verifyErrorMessage` is the existing mapper for exactly these codes.
+      if (!r.ok) { toast({ title: t.toast.couldntResend, description: verifyErrorMessage(t, r.error, r.retryAfterSec), variant: "danger" }); return; }
       toast({ title: t.toast.confirmationSent, description: t.toast.checkInbox, variant: "success" });
       router.refresh();
     });

@@ -18,6 +18,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
 import { updateAvatarAction } from "@/app/profile/actions";
+import { errorCopy } from "@/lib/error-copy";
 
 const TARGET_PX = 256;
 const JPEG_QUALITY = 0.82;
@@ -76,7 +77,7 @@ export function AvatarUploader({
         fd.set("dataUrl", dataUrl);
         const r = await updateAvatarAction(fd);
         if (!r.ok) {
-          toast({ title: t.toast.nameFailed, description: r.error, variant: "danger" });
+          toast({ title: t.toast.nameFailed, description: errorCopy(t, r), variant: "danger" });
           return;
         }
         toast({ title: t.toast.photoUpdated, variant: "success" });
@@ -94,7 +95,7 @@ export function AvatarUploader({
       fd.set("dataUrl", "");
       const r = await updateAvatarAction(fd);
       if (!r.ok) {
-        toast({ title: t.toast.nameFailed, description: r.error, variant: "danger" });
+        toast({ title: t.toast.nameFailed, description: errorCopy(t, r), variant: "danger" });
         return;
       }
       toast({ title: t.toast.photoRemoved, variant: "default" });

@@ -11,6 +11,7 @@ import type { WithdrawInput } from "@/lib/server/validators";
 import { WITHDRAW_MIN_TZS, WITHDRAW_MAX_TZS } from "@/lib/server/validators";
 import { getPayoutStatus, payoutsAcceptingRequests, isPayoutTestBypass } from "@/lib/server/payout-status";
 import { getServerT } from "@/lib/i18n-server";
+import { errorCopy } from "@/lib/error-copy";
 
 const WITHDRAW_PROVIDERS = new Set(["MPESA", "AIRTEL_MONEY", "HALO_PESA", "MIXX"]);
 
@@ -53,7 +54,9 @@ export async function withdrawAction(formData: FormData) {
   // whether Selcom's rail pays at all. Off unless PAYOUT_TEST_BYPASS_MSISDN names them.
   const testBypass = isPayoutTestBypass(session.phoneE164);
   if (!payoutsAcceptingRequests(payouts.status) && !testBypass) {
-    redirect(("/wallet/withdraw?error=" + encodeURIComponent(payouts.note ?? t.wallet.payoutsUnavailableBody)) as never);
+    // B-7 — `payouts.note` is operator diagnostics ("N stuck payouts…"), not
+    // player copy; the localized body says everything the player can act on.
+    redirect(("/wallet/withdraw?error=" + encodeURIComponent(t.wallet.payoutsUnavailableBody)) as never);
   }
   if (testBypass && !payoutsAcceptingRequests(payouts.status)) {
     // Loud on purpose. A bypassed money control that leaves no trace is how a temporary
@@ -93,6 +96,8 @@ export async function withdrawAction(formData: FormData) {
     msisdn,
   }, idempotencyKey);
   revalidatePath("/wallet");
-  if (!result.ok) redirect(("/wallet/withdraw?error=" + encodeURIComponent(result.error) + carryParams) as never);
+  // B-7 — mint the refusal in the player's language; the English service string
+  // stays in the audit record, not on the screen.
+  if (!result.ok) redirect(("/wallet/withdraw?error=" + encodeURIComponent(errorCopy(t, result)) + carryParams) as never);
   redirect(`/wallet?withdrawal=${result.data!.txnId}&status=${result.data!.status}&amount=${amount}` as never);
 }

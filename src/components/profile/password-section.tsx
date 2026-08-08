@@ -8,6 +8,7 @@ import { I } from "@/components/ui/glyphs";
 import { PasswordInput } from "@/components/ui/password-input";
 import { FieldLegend } from "@/components/ui/field-legend";
 import { changePasswordAction } from "@/app/profile/account/actions";
+import { errorCopy } from "@/lib/error-copy";
 
 export function PasswordSection({ hasPassword }: { hasPassword: boolean }) {
   const [open, setOpen] = useState(false);
@@ -36,7 +37,7 @@ export function PasswordSection({ hasPassword }: { hasPassword: boolean }) {
         setConfirm("");
         router.refresh();
       } else {
-        toast({ title: t.toast.failed, description: r.error, variant: "danger" });
+        toast({ title: t.toast.failed, description: errorCopy(t, r), variant: "danger" });
       }
     });
   };

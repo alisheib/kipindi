@@ -23,13 +23,20 @@ export async function exportDataAction(): Promise<{ ok: true; payload: string; f
   };
 }
 
-export async function changePasswordAction(formData: FormData): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function changePasswordAction(formData: FormData): Promise<{ ok: true } | { ok: false; error: string; code?: string }> {
   const session = await currentSession();
   if (!session) redirect("/auth/login");
   const current = String(formData.get("current") ?? "");
   const next = String(formData.get("new") ?? "");
   const { changePassword } = await import("@/lib/server/password-reset");
-  return changePassword(session.userId, current, next);
+  const r = await changePassword(session.userId, current, next);
+  if (r.ok) return r;
+  // B-7 — attach the code here (the service string is shared with admin flows);
+  // the profile editor maps it to the player's language via errorCopy.
+  const code =
+    /current password is incorrect/i.test(r.error) ? "PW_CURRENT_WRONG" :
+    /not found/i.test(r.error) ? "NOT_FOUND" : "PW_WEAK";
+  return { ...r, code };
 }
 
 export async function closeAccountAction(formData: FormData) {

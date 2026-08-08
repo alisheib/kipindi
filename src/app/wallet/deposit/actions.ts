@@ -8,6 +8,8 @@ import { db } from "@/lib/server/store";
 import { displayLabel } from "@/lib/display-label";
 import type { DepositInput } from "@/lib/server/validators";
 import type { CardCheckoutContext } from "@/lib/server/payments";
+import { getServerT } from "@/lib/i18n-server";
+import { errorCopy } from "@/lib/error-copy";
 
 /** Absolute base for the URLs we hand Selcom to send the buyer back to. Must be
  *  the real public host — a relative path is meaningless to the gateway. */
@@ -16,6 +18,10 @@ const BASE_URL = () => (process.env.NEXT_PUBLIC_APP_URL || "https://www.50pick.t
 export async function depositAction(formData: FormData) {
   const session = await currentSession();
   if (!session) redirect("/auth/login");
+
+  // B-7 — every refusal this action redirects with is rendered verbatim by the
+  // deposit page, so it must be minted in the player's own language, here.
+  const { t } = await getServerT();
 
   const amount = parseInt(String(formData.get("amount") ?? "0"), 10);
   // Pass the chosen provider through (don't coerce to MPESA) — the schema validates it.
@@ -52,7 +58,7 @@ export async function depositAction(formData: FormData) {
   // Canonical bounds — must match the depositAmount schema (validators.ts) and
   // the "Min TZS 500" helper text on the form. Single source of truth: 500–2,000,000.
   if (!Number.isFinite(amount) || amount < 500 || amount > 2_000_000) {
-    fail("Enter an amount between TZS 500 and TZS 2,000,000.");
+    fail(t.wallet.depositBounds);
   }
 
   // ── Rail-specific requirements, enforced HERE because the form can't ───────
@@ -74,10 +80,13 @@ export async function depositAction(formData: FormData) {
     // Selcom rejects card orders with incomplete billing info, and these fields
     // feed the acquirer's fraud screening — so we stop here rather than send a
     // half-filled order and surface an opaque gateway decline instead.
-    if (missing) fail(`Enter your billing ${missing} to pay by card.`);
+    // B-7 — the form highlights its own empty fields; the localized line names
+    // the requirement rather than the field (the English field name helped no
+    // SW/ZH player). `missing` still gates, so behaviour is unchanged.
+    if (missing) fail(t.wallet.billingIncomplete);
 
     const user = await db.user.findById(session.userId);
-    if (!user?.email) fail("Add and confirm your email address before paying by card.");
+    if (!user?.email) fail(t.wallet.emailForCard);
 
     // `order_id` is pre-seeded by US — Selcom appends payment_status + transid on
     // the return but does NOT echo order_id back. Without this the return page
@@ -103,7 +112,7 @@ export async function depositAction(formData: FormData) {
   } else if (!msisdn) {
     // Mobile money has nowhere to push the USSD prompt without a number. The
     // adapter would return a bare DECLINED; say the useful thing instead.
-    fail("Enter the mobile-money number to send the payment prompt to.");
+    fail(t.wallet.msisdnRequired);
   }
 
   const idempotencyKey = formData.get("idempotencyKey") ? String(formData.get("idempotencyKey")) : undefined;
@@ -115,7 +124,9 @@ export async function depositAction(formData: FormData) {
     // to the gate surface (which offers resend / change address) rather than
     // re-rendering the form with a message they can't act on.
     if (result.code === "EMAIL_UNVERIFIED") redirect("/wallet/deposit" as never);
-    return fail(result.error);
+    // B-7 — the service's English string is audit truth; the player reads the
+    // dictionary line for its code (bilingual gateway reasons pass through).
+    return fail(errorCopy(t, result));
   }
   const data = result.data!;
 

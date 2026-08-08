@@ -18,6 +18,7 @@ import { cashOutPositionAction } from "@/app/markets/actions";
 import { SellConfirmModal } from "./sell-confirm-modal";
 import { OperationResultModal } from "./operation-result-modal";
 import { formatTzs, formatNumber } from "@/lib/utils";
+import { errorCopy } from "@/lib/error-copy";
 
 const GRACE_MS = 5 * 60_000;
 
@@ -128,8 +129,11 @@ export function SellButton({
       const r = await cashOutPositionAction(fd);
       setConfirmOpen(false);
       if (!r.ok) {
-        toast({ title: t.toast.couldntCashOut, description: r.error, variant: "danger" });
-        setResultData({ variant: "danger", value: value, net, error: r.error });
+        // B-7 — the refusal is rendered as toast body AND modal title, so it must
+        // be the localized line, never the raw service string.
+        const msg = errorCopy(t, r);
+        toast({ title: t.toast.couldntCashOut, description: msg, variant: "danger" });
+        setResultData({ variant: "danger", value: value, net, error: msg });
         setResultOpen(true);
         return;
       }

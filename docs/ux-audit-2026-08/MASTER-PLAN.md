@@ -88,11 +88,11 @@ already doing.
 
 - **Session A (money/ops):** 7 / 7 items done
 - **Session B (Up & Down):** 22 / 22 findings done — ALL FOUR STAGES COMPLETE (UD-12 was [S], shipped by DS-1)
-- **Session C (platform front-end):** 0 / ~17 findings done
+- **Session C (platform front-end):** 5 / ~17 findings done (B-7, B-11, B-15, B-18, B-19 whole; B-16/B-17/B-20 part-done — see tracker)
 - **Visual set (design):** 1 / 7 done
 - **DS · design-consistency sweep (toasts/popups/modals):** 5 / 27 done
 - **DA · design-system atoms (carried over from design session):** 5 / 12 done (2 need Ali)
-- **TOTAL:** 40 / ~92 done
+- **TOTAL:** 45 / ~92 done
 
 ---
 
@@ -147,7 +147,7 @@ already doing.
 
 ### Session C — Platform front-end sweeps (Report 2 remaining)
 
-- [ ] **Pattern 2** — B-7 one error-code→`t.*` mapper adopted everywhere
+- [x] **Pattern 2** — B-7 DONE 2026-08-08 (session 37): ONE shared mapper `src/lib/error-copy.ts` (the `verifyErrorMessage`/UD-4 pattern generalised — code → `t.error.err*`, phrase-refined ONLY where one code covers different player actions: RG limits, SOF, KYC doc families, withdraw-min with figures re-threaded; bilingual EN·SW gateway reasons pass through by design; no-code → server string demoted to fallback). Adopted: deposit action (4 hardcoded English refusals → `t.wallet.*`, service failures mapped), withdraw action (bounds were already localized; final refusal + payout-gate note now mapped — `payouts.note` was operator diagnostics), sell-button (toast body AND modal title), conviction-dial's two raw-`err` fallthroughs, profile editors ×4 (basics/avatar/password actions now carry `code`; EmailEditor's literal `RATE_LIMITED` now goes through `verifyErrorMessage` WITH `retryAfterSec`), KYC (page redirects minted localized server-side; uploader toasts mapped; service strings classified), proposals (voteAction carries codes; decline-reason enum localized on the player page, officer note verbatim), chat (both English fallbacks per-locale; `detectLang` recognises CJK; stub answers zh with an honest hand-off). +40 dictionary keys ×3 locales; `test:i18n` 1681=1681=1681.
 - [ ] **Pattern 3 (player)** — B-6 deposit/withdraw pending state · B-12 try/catch+rollback on awaited actions
 - [x] **Pattern 5** — B-11 DONE 2026-08-08: markets When/Topic chips + both "see all" links, results sort/category chips (all `scroll={false}`), the LIVE card's Details link, the detail page's auth CTAs, the comments sign-in CTA, pagination's URL mode (disabled chevrons become spans — a `<Link>` cannot be disabled), and the notifications panel now `router.push`es same-origin hrefs. External links (source URLs) rightly stay `<a target=_blank>`. Proven by driving: a window marker survives the filter click — no MPA teardown
 - [ ] **Pattern 1 (rest)** — B-1 remaining player pages + add missing `error.tsx` (see report §7 appendix)

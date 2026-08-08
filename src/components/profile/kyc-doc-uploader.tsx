@@ -15,6 +15,7 @@ import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
 import { attachDocumentAction, attachExtraDocumentAction } from "@/app/profile/kyc/actions";
 import { fileToDataUrl, MAX_DOC_BYTES as MAX_BYTES } from "@/lib/client/kyc-image";
+import { errorCopy } from "@/lib/error-copy";
 
 export function KycDocUploader({
   docType, label, attached, locked,
@@ -53,7 +54,7 @@ export function KycDocUploader({
       fd.set("docType", docType);
       fd.set("image", dataUrl);
       const r = await attachDocumentAction(fd);
-      if (!r.ok) { setPreview(null); setBusy(false); toast({ title: t.toast.uploadFailed, description: r.error, variant: "danger" }); return; }
+      if (!r.ok) { setPreview(null); setBusy(false); toast({ title: t.toast.uploadFailed, description: errorCopy(t, r), variant: "danger" }); return; }
       setDone(true);
       setBusy(false);
       toast({ title: t.toast.documentAttached, variant: "success" });
@@ -151,7 +152,7 @@ export function KycExtraDocUploader({
       fd.set("requestId", requestId);
       fd.set("image", dataUrl);
       const r = await attachExtraDocumentAction(fd);
-      if (!r.ok) { setPreview(null); setBusy(false); toast({ title: t.toast.uploadFailed, description: r.error, variant: "danger" }); return; }
+      if (!r.ok) { setPreview(null); setBusy(false); toast({ title: t.toast.uploadFailed, description: errorCopy(t, r), variant: "danger" }); return; }
       setDone(true);
       setBusy(false);
       toast({ title: t.toast.documentAttached, variant: "success" });

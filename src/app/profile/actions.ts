@@ -33,9 +33,11 @@ const BasicsSchema = z.object({
   email: z.string().trim().toLowerCase().email("Enter a valid email.").max(254).or(z.literal("")).optional(),
 });
 
-export async function updateProfileBasicsAction(formData: FormData): Promise<{ ok: true; emailVerificationSent?: boolean } | { ok: false; error: string }> {
+export async function updateProfileBasicsAction(formData: FormData): Promise<{ ok: true; emailVerificationSent?: boolean } | { ok: false; error: string; code?: string }> {
+  // B-7 — failures carry a `code` so the trilingual editors can render their own
+  // localized line (src/lib/error-copy.ts); `error` stays the audit/API truth.
   const session = await currentSession();
-  if (!session) return { ok: false, error: "Sign in required." };
+  if (!session) return { ok: false, error: "Sign in required.", code: "AUTH" };
 
   const rawEmail = formData.get("email");
   const parsed = BasicsSchema.safeParse({
@@ -44,13 +46,18 @@ export async function updateProfileBasicsAction(formData: FormData): Promise<{ o
     email: rawEmail === null ? undefined : rawEmail,
   });
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+    const issuePath = String(parsed.error.issues[0]?.path?.[0] ?? "");
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid input.",
+      code: issuePath === "email" ? "EMAIL_INVALID" : issuePath === "displayName" ? "NAME_INVALID" : "INVALID",
+    };
   }
   const next = await db.user.update(session.userId, {
     ...(parsed.data.displayName !== undefined ? { displayName: parsed.data.displayName } : {}),
     ...(parsed.data.locale ? { locale: parsed.data.locale } : {}),
   });
-  if (!next) return { ok: false, error: "User not found." };
+  if (!next) return { ok: false, error: "User not found.", code: "NOT_FOUND" };
 
   // Email goes through the single setUserEmail() writer so a new/changed
   // address resets verification and triggers a confirmation link — the same
@@ -58,7 +65,7 @@ export async function updateProfileBasicsAction(formData: FormData): Promise<{ o
   let emailVerificationSent = false;
   if (parsed.data.email !== undefined) {
     const r = await setUserEmail(session.userId, parsed.data.email);
-    if (!r.ok) return { ok: false, error: r.error };
+    if (!r.ok) return { ok: false, error: r.error, code: /already linked/i.test(r.error) ? "EMAIL_TAKEN" : "NOT_FOUND" };
     emailVerificationSent = r.verificationSent;
   }
 
@@ -117,12 +124,12 @@ export async function resendEmailVerificationAction(): Promise<{ ok: true; sent:
   return { ok: true, sent: true };
 }
 
-export async function updateAvatarAction(formData: FormData): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function updateAvatarAction(formData: FormData): Promise<{ ok: true } | { ok: false; error: string; code?: string }> {
   const session = await currentSession();
-  if (!session) return { ok: false, error: "Sign in required." };
+  if (!session) return { ok: false, error: "Sign in required.", code: "AUTH" };
 
   const raw = formData.get("dataUrl");
-  if (typeof raw !== "string") return { ok: false, error: "No image received." };
+  if (typeof raw !== "string") return { ok: false, error: "No image received.", code: "INVALID" };
 
   // Empty string → clear avatar.
   if (raw === "") {
@@ -141,10 +148,10 @@ export async function updateAvatarAction(formData: FormData): Promise<{ ok: true
 
   // Validate shape + size budget.
   if (!/^data:image\/(jpeg|png|webp);base64,/.test(raw)) {
-    return { ok: false, error: "Only JPEG / PNG / WebP images are accepted." };
+    return { ok: false, error: "Only JPEG / PNG / WebP images are accepted.", code: "AVATAR_TYPE" };
   }
   if (raw.length > MAX_AVATAR_BYTES * 1.4) {
-    return { ok: false, error: "Image is too large after compression. Try a smaller picture." };
+    return { ok: false, error: "Image is too large after compression. Try a smaller picture.", code: "AVATAR_SIZE" };
   }
 
   await db.user.update(session.userId, { avatarDataUrl: raw });

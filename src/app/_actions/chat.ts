@@ -60,6 +60,19 @@ async function consumeDailyQuota(userId: string): Promise<boolean> {
   return true;
 }
 
+// B-7 — the two failure fallbacks used to be English-only, so a SW/ZH player
+// got English exactly when the model failed them. Same shape as CAPACITY_MESSAGES.
+const EMPTY_REPLY_MESSAGES: Record<string, string> = {
+  en: "I'm not sure about that. Can you tell me more?",
+  sw: "Sina uhakika kuhusu hilo. Unaweza kunieleza zaidi?",
+  zh: "这个我不太确定。您能多告诉我一些吗？",
+};
+const TROUBLE_MESSAGES: Record<string, string> = {
+  en: "I'm having trouble right now. Please try again in a moment, or reach out to support.",
+  sw: "Nina tatizo kwa sasa. Tafadhali jaribu tena baada ya muda mfupi, au wasiliana na msaada.",
+  zh: "我现在遇到了一些问题。请稍后重试，或联系客服。",
+};
+
 const CAPACITY_MESSAGES: Record<string, string> = {
   en: `You've reached this session's question limit. For anything else, our support team is here to help — call ${SUPPORT_PHONE()} (free, 24/7) or email ${SUPPORT_EMAIL()}.`,
   sw: `Umefikia kikomo cha maswali kwa kipindi hiki. Kwa msaada zaidi, wasiliana na timu yetu — piga ${SUPPORT_PHONE()} (bure, saa 24) au barua pepe ${SUPPORT_EMAIL()}.`,
@@ -166,13 +179,13 @@ export async function chatWithClaude(
       .filter((b) => b.type === "text")
       .map((b) => b.text as string)
       .join("\n\n");
-    return { text: text || "I'm not sure about that. Can you tell me more?" };
+    return { text: text || (EMPTY_REPLY_MESSAGES[locale] ?? EMPTY_REPLY_MESSAGES.en) };
   } catch (err) {
     console.error("[50pick-chat] Claude API error:", err);
     try {
       const { recordAiUsage } = await import("@/lib/server/ai-usage");
       await recordAiUsage({ feature: "chat", model: "claude-haiku-4-5-20251001", ok: false });
     } catch { /* best-effort */ }
-    return { text: "I'm having trouble right now. Please try again in a moment, or reach out to support." };
+    return { text: TROUBLE_MESSAGES[locale] ?? TROUBLE_MESSAGES.en };
   }
 }

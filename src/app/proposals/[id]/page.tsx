@@ -82,7 +82,19 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
       {p.status === "DECLINED" && (
         <section className="rounded-xl border p-4" style={{ borderColor: "color-mix(in oklab, var(--claret-500) 30%, var(--border))", background: "color-mix(in oklab, var(--claret-500) 7%, var(--bg-elevated))" }}>
           <div className="mb-1.5 flex items-center gap-2 text-claret-300"><I.void s={16} /><p className="text-[13px] font-bold">{t.common.declined}</p></div>
-          <p className="text-[12.5px] leading-relaxed text-text-muted">{`${t.proposals.reason}: `}{p.declineReason}.{p.declineNote ? ` ${p.declineNote}` : ""}</p>
+          {/* B-7 — the stored reason is the admin console's English enum; render
+              the player's localized equivalent (unknown/legacy values fall through
+              verbatim rather than disappearing). The free-text note stays as
+              written — it is the officer's own message. */}
+          <p className="text-[12.5px] leading-relaxed text-text-muted">{`${t.proposals.reason}: `}{({
+            "Politics": t.proposals.declinePolitics,
+            "Ambiguous outcome": t.proposals.declineAmbiguous,
+            "No official source": t.proposals.declineNoSource,
+            "Duplicate": t.proposals.declineDuplicate,
+            "Past resolution": t.proposals.declinePastResolution,
+            "Outside jurisdiction": t.proposals.declineJurisdiction,
+            "Officer decision": t.proposals.declineOfficer,
+          } as Record<string, string>)[p.declineReason ?? ""] ?? p.declineReason}.{p.declineNote ? ` ${p.declineNote}` : ""}</p>
         </section>
       )}
       {p.status === "CHANGES_REQUESTED" && p.changeNote && (

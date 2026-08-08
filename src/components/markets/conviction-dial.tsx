@@ -27,6 +27,7 @@ import { OperationResultModal } from "./operation-result-modal";
 import { payoutFor, leanFor, DEFAULT_COMMISSION_RATE, DEFAULT_FEE_CEILING_RATE, type LeanLevel, type PollRates } from "@/lib/payout";
 import { haptics, motionReduced } from "@/lib/haptics";
 import { formatTzs, formatNumber, fill, fmtRate, pctNum } from "@/lib/utils";
+import { errorCopy } from "@/lib/error-copy";
 
 type Side = "YES" | "NO" | "NEUTRAL";
 
@@ -805,9 +806,14 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
         if (/balance|funds|salio/i.test(err)) {
           return { title: t.common.insufficientBalance, body: t.common.topUpWallet, variant: "danger" };
         }
-        return { title: t.common.couldNotPlace, body: err, variant: "danger" };
+        // B-7 — the non-balance INVALID body was the raw English service string.
+        // The shared mapper phrase-refines the families that change what the
+        // player should do (RG limits) and falls back to the generic line.
+        return { title: t.common.couldNotPlace, body: errorCopy(t, { code: "INVALID", error: err }), variant: "danger" };
       default:
-        return { title: t.common.couldNotPlace, body: err, variant: "danger" };
+        // No code → transport-shaped failure; errorCopy keeps the server string
+        // as last-resort truth (UD-4 doctrine), never preferred over the dict.
+        return { title: t.common.couldNotPlace, body: errorCopy(t, { error: err }), variant: "danger" };
     }
   };
 

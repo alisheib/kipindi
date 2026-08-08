@@ -14,8 +14,16 @@ import { getProposalsConfig, isProposalsActive } from "@/lib/server/proposals-co
  */
 export async function voteAction(proposalId: string, dir: "up" | "down" | null) {
   const s = await currentSession();
-  if (!s) return { ok: false as const, error: "Sign in to vote." };
-  return castVote(s.userId, proposalId, dir);
+  // B-7 — carry a code so VoteControl renders its own localized line.
+  if (!s) return { ok: false as const, error: "Sign in to vote.", code: "AUTH" as const };
+  const r = await castVote(s.userId, proposalId, dir);
+  if (r.ok) return r;
+  // castVote's refusals: the feature gate (any proposalsBlockedReason phrasing),
+  // voting closed, or a missing proposal.
+  const code =
+    /unavailable|available right now|coming soon/i.test(r.error) ? ("PAUSED" as const) :
+    /voting has closed/i.test(r.error) ? ("VOTING_CLOSED" as const) : ("NOT_FOUND" as const);
+  return { ...r, code };
 }
 
 /** Submit a new proposal. Returns the new id on success (client shows the modal). */

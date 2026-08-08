@@ -12,6 +12,7 @@ import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
 import { updateProfileBasicsAction } from "@/app/profile/actions";
+import { errorCopy } from "@/lib/error-copy";
 
 export function ProfileNameEditor({
   currentName,
@@ -49,7 +50,7 @@ export function ProfileNameEditor({
       fd.set("displayName", v);
       const r = await updateProfileBasicsAction(fd);
       if (!r.ok) {
-        toast({ title: t.toast.nameFailed, description: r.error, variant: "danger" });
+        toast({ title: t.toast.nameFailed, description: errorCopy(t, r), variant: "danger" });
         return;
       }
       toast({ title: t.toast.nameUpdated, variant: "success" });
