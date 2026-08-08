@@ -1,3 +1,10 @@
+> 📑 **RECORD, NOT RULE.** The design rulebook is **`docs/DESIGN_AUTHORITY.md`** — every
+> law, floor and threshold is there, and nothing else is required to build correctly.
+> This file is kept as the merge-discipline narrative.
+> ⚠️ **Values written here are a snapshot and some have drifted.** The live values are in
+> `src/app/globals.css` / `src/app/motion.css`, which outrank every document.
+> (Consolidated 2026-08-08 — nine files used to claim to be the place to start.)
+
 STATUS: authoritative — the merge-discipline law of the 50pick design system.
 Cited as **B9 / B10** in `docs/DESIGN_AUTHORITY.md` and as **laws 15 / 16** in
 `06-patterns-and-rules/RULES.md`. Installed 2026-07-29 (design finalization pass).

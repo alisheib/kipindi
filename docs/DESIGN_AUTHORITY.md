@@ -1,12 +1,42 @@
-STATUS: authoritative — the design invariants of 50pick. Cited by code
-(`globals.css`, `theme-provider.tsx`). Last verified against the build 2026-07-20.
+STATUS: authoritative — **THE** design rulebook of 50pick. Cited by code
+(`globals.css`, `theme-provider.tsx`). Consolidated + re-verified 2026-08-08.
 
 # 50pick — Design Authority
+
+## ⭐ THIS IS THE ONLY DESIGN RULEBOOK. THERE IS NO SECOND ONE.
+
+Every design law, floor, ratio, threshold and convention is in **this file**. If you
+are building anything visual, you read this and nothing else is required. You do not
+need `design-system/`, `design-brief/`, `design-master-brief.md` or any `spec.md` to
+build correctly — those are **record**, not rule (§0c says what each is for).
+
+> **Why this banner exists (2026-08-08).** Nine different files claimed to be the
+> place to start — `design-system/README.md` ("start here for anything visual"),
+> `00-START-HERE.md` ("chat histories, memories, or older files outside this archive
+> have no authority" — which, read literally, voided this file), `11-material/README.md`
+> ("read this before anything else"), `RULES.md` ("the laws"), and CLAUDE.md pointing
+> at a different one again. They formed a **cycle**, and three of them disagreed with
+> the shipped code on values a session would have pasted straight into `globals.css`:
+> the canvas lightness, `--text-faint` (at a figure that fails AA), and easing tokens
+> carrying baked-in durations — the exact shape that once zeroed motion platform-wide
+> (§B5). A rulebook nobody can find the front door of is not a rulebook. **One door.**
 
 This document records the **invariants** the design system must never violate.
 It is cited by number in code comments (e.g. `/* DESIGN_AUTHORITY B3 */`). When a
 rule lives beside the value it governs, a stale doc elsewhere can no longer mandate
 a regression (that was audit finding C9).
+
+### How to read a rule here
+
+A rule is one of two kinds, and the difference is the whole discipline:
+
+- **A law, floor, ratio or threshold** — stated *here*, in full, with its number.
+  `≥ 4.5:1`, `≥ 40px`, `~35% expansion`, `below 0.35 px/ms nothing fires`. These are
+  decisions about what is acceptable, and they belong in the rulebook.
+- **A paint value** — a colour, a shadow, a duration, a radius. **Never restated here.**
+  This file names the *token* and points at its ONE definition site. A value written in
+  two places is a bug the moment one of them is edited (§B9), and a doc that restates a
+  colour is a doc that will eventually mandate a regression. See §0d for the map.
 
 > ### 🎨 THE COMMISSIONED MATERIAL SYSTEM IS DELIVERED, MERGED AND LAW — section M below
 > The material system commissioned from Claude Design on **2026-08-06** (light source,
@@ -28,6 +58,65 @@ deleted in the 2026-07-15 finalization (archive: `F:/50pick-design-archive/` + g
 Historical only. **Do NOT build from it** — following it reverts the brand to teal and
 resurrects the killed light theme. If a note tells you to "consult the kit first", that note
 is stale; consult `globals.css` instead.
+
+---
+
+## §0 — THE FILING LAW: where a design fact goes
+
+> This section is why the consolidation holds. Without it, the next design document
+> gets written somewhere new and the maze rebuilds itself in a month.
+
+### 0a — One fact, one home
+
+**If you find a value in two places, that is a bug. Fix it by DELETING one, never by
+keeping both in sync.** Two copies do not stay equal; they diverge silently, and the
+stale one is always the one somebody reads. This is the doc-level twin of §B9.
+
+### 0b — Where each kind of design fact is written
+
+| The thing you have | Where it goes | ⛔ Never |
+|---|---|---|
+| **A law / invariant / floor / ratio** | **This file**, in its lettered section | ⛔ a new top-level `docs/*.md`; ⛔ a component spec |
+| **A token or paint value** | `src/app/globals.css` (or `motion.css` for timing) **at its line, with the rule as a comment beside it** | ⛔ any doc — docs *describe* values, they never *define* them |
+| **A component's geometry that is genuinely code** (dial tilt maths, chart viewBox) | The component file itself, which is authoritative; this rulebook may *point* at it | ⛔ copying the numbers into a doc |
+| **A component/page spec** | `docs/design-system/v2-2026-07-27/02-components/<name>/` beside its siblings | ⛔ a second specs folder |
+| **An incoming commission from a designer** | `docs/design-system/v2-2026-07-27/NN-<name>/`, raw and untouched, plus an acceptance record | ⛔ merging it into `src/` before acceptance |
+| **A session handoff** | `docs/LIVE-QA-CAMPAIGN.md` §6b, at the TOP | ⛔ a new handoff file |
+| **Provenance / "what the designer delivered"** | `07-provenance/` | ⛔ this file |
+| **Evidence (screenshots)** | **Nowhere — it is gitignored** (`.qa-design*/`, `.qa-shots/`). A checked-in PNG is a claim nobody can re-derive. *Exception:* a shot cited by a doc as a finding's proof lives in `shots/<FINDING>/` and `test:docs` enforces that it exists | ⛔ committing regenerable screenshots |
+
+### 0c — What every other design file actually is
+
+None of these is a rulebook. Each carries a header saying so.
+
+| File / tree | What it is | Read it when |
+|---|---|---|
+| `src/app/globals.css`, `motion.css` | **The implementation — the values themselves.** Outranks every doc | always, for a value |
+| `docs/design-master-brief.md` | Palette **rationale** + ground-truth sRGB | you want to know *why* a hue |
+| `docs/design-system/README.md` | Index of the archive | you are looking for a delivered artefact |
+| `docs/design-system/v2-2026-07-27/**` | The **July 2026 designer delivery**, frozen | you need provenance or a preview |
+| `…/02-components/*/spec.md` | The designer's **original redlines**. ⚠️ Their fenced CSS blocks are stale scrapes — two carry WCAG-failing fills and nine carry the one-sided lamp §M1 bans | you want the *intent* behind a component |
+| `docs/design-brief/` | The **before-picture**: the commission, the critique, `AUDIT.txt`, the `INTAKE.md` receiving playbook | you want to know what the material commission was *for* |
+| `docs/design-system/…/11-material/` | Provenance for §M + the designer Q&A | you are auditing §M's derivation |
+
+### 0d — Where values live (so this file never restates one)
+
+| Family | Definition site |
+|---|---|
+| Palette, surfaces, borders, text ramp, semantic families | `src/app/globals.css` `:root` |
+| Spacing `--sp-*`, radii `--r-*`, control heights `--h-control-*`, `--tap-min`, `--h-input` | `src/app/globals.css` |
+| The measure (`--w-console/board/reading/form/receipt/auth`, field measure) | `src/app/globals.css` — see §B7 |
+| Motion ladder `--t-*`, materials `--m-*`, easings | `src/app/motion.css` (imported LAST, so at equal specificity it outranks `globals.css`) |
+| Elevation rungs `--elev-*`, `--shadow-*`, `--wash-*`, `--edge-lit*` | `src/app/globals.css` — guarded family, a second definition site is a hard `test:tokens` failure |
+| Tailwind aliases | `tailwind.config.ts` — a bridge only; it never originates a value |
+| Glyph geometry | `src/components/ui/glyphs.tsx` |
+| Dial / needle / chart geometry | the component file (`brand.tsx`, `pnl-chart.tsx`, `updown-card.tsx`) |
+| Haptic patterns | `src/lib/haptics.ts` (product) and `src/lib/needle-haptics.js` (needle) — see §H |
+
+### 0e — The tolerated exception
+
+`docs/NEXT-SESSION-*.md` is a **tolerated exception, not a pattern**. There must never
+be two. When its work is done, delete it.
 
 ---
 
@@ -385,6 +474,193 @@ Two more standing rules from the same pass:
 
 ---
 
+## T — Type is a scale, and every numeral is mono
+
+Values: the `--type-*` ladder in `globals.css`. Laws:
+
+1. **The scale is closed.** Sizes come from the ladder. A hand-typed `text-[13.7px]` is
+   a violation even if it looks right — the next screen will pick a different number and
+   the product loses its rhythm one component at a time.
+2. **`--type-h1` is the market-question size (`.mterm-q`), NOT a page-title token.**
+   Page and section `<h1>`s use the 28px page-title step. The token is held at its value
+   so Markets is not restyled; reading it as "the heading size" restyles the wrong thing.
+3. **`--type-label` and `--type-nano` are the blessed sub-`micro` tier** — UPPERCASE mono
+   tracking microlabels only. They sit below the reading floor deliberately.
+   ⛔ **Never reading copy.**
+4. **Reading-copy floor: 12.5px in-app, 12pt in print.** Below that is a label, not prose.
+5. **Every numeral is JetBrains Mono with `font-variant-numeric: tabular-nums`** — no
+   exceptions, *including numbers inside body sentences when they are data* (stakes, odds,
+   times). Proportional digits make a changing number twitch; see §M4 for the money case.
+6. **Families:** display = Sora, body = Inter, numerals/labels = JetBrains Mono.
+   **CJK is per-glyph fallback — no CJK webfont is downloaded**, deliberately: our players
+   are on Tanzanian mobile data and a CJK face is megabytes.
+
+---
+
+## S — Space, shape and the weight of a line
+
+Values: `--sp-*`, `--r-*` in `globals.css`. Laws:
+
+1. **Layout space comes from the `--sp-*` scale, applied as `gap`** on flex/grid — not as
+   margins sprinkled per element. Consistent gutters are what make an unfamiliar screen
+   read as the same product.
+2. **The radius scale is additive and closed, and each family has ONE radius:**
+   cards, modals and sheets take `--r-lg`; inputs, stake rows, stat tiles and ledger
+   containers take `--r-md`; tabs and filter pills take `--r-sm`; chips, quick-stake pills
+   and split-bar tracks take `--r-pill`; avatars and dots are 50%. Buttons take the control
+   radius, except `btn-xl`, which takes `--r-lg`.
+   ⛔ **No one-off `rounded-[…]`.** An arbitrary radius is a second definition site.
+3. **Border weights are semantic, not decorative:** 1px is structure (`--border`,
+   `--border-strong` for emphasis, dashed for empty states); 1.5px is instrument (dial
+   rings, line-art, kit icon strokes); 2–2.4px is brand (the mark's ring and divider); the
+   needle is heaviest. A weight chosen for looks rather than for what the line *is* will
+   contradict the next one.
+4. ⚠️ **The legacy numeric Tailwind radius scale is NOT the `--r-*` scale** (`rounded-md`
+   is 8px, `--r-md` is 12px). Both are frozen; do not renumber (Ali deferred, 2026-07-29).
+   Use the semantic keys.
+
+---
+
+## A — The floors: contrast, tap, focus, language
+
+These are the accessibility and reach guarantees. They are floors: a design may exceed
+them, never dip under.
+
+1. **Contrast: WCAG 2.1 AA, text ≥ 4.5:1 measured ON ITS ACTUAL SURFACE** — not against
+   the canvas it is nominally "on". Non-text UI ≥ 3.0:1. Guard: `npm run test:contrast`.
+   ⚠️ `--text-faint` sits at its value **as an accessibility floor, not a style choice**;
+   darkening it requires re-running the gate.
+2. **Tap targets ≥ `--tap-min` (40px), 44px preferred on mobile.** Money controls are
+   never the exception — a stake chip is where a player chooses how much to risk, and it
+   was shipped at 26px once (E-112). `--h-input` already sits at 44px.
+3. **The focus ring is one recipe, everywhere:** a 2px `--brand-500` outline at offset 2,
+   plus a 4px 25% halo, with a defensive catch-all so nothing in the long tail is unfocusable.
+   ⛔ Never `outline: none` without a replacement ring.
+4. **Colour is never the only signal.** Every YES/NO, up/down, win/loss or status colour is
+   paired with a word, an arrow or a glyph. About 8% of men are colour-blind, and this is a
+   product where the colour means *which way your money went*.
+5. **Trilingual reach: EN ships with SW and ZH.** Every label must survive **Swahili at
+   ~35–40% longer** and Chinese at ~50% shorter. Wrap or ellipsise text —
+   ⛔ **never clip money or a timestamp.**
+6. **Design at 360 / 768 / 1280 / 1920, and zero horizontal overflow at 360.**
+
+---
+
+## C — What the interface may say: honesty and tone
+
+The platform's hardest-won rules. Most were bought with an incident.
+
+1. **Money is written `TZS 320,000`** — prefix, thousands separators, mono tabular.
+   Never `KSH`, never a bare number. Signed P&L uses **U+2212 (−), not a hyphen**.
+   The one legal `$` is an asset's own price, because the source publishes USD — and it
+   must read as market data (muted or coloured), ⛔ **never gold** (§M3).
+2. **Never render a guessed, placeholder, or zero-as-unknown number.**
+   Unknown → **an em-dash plus a labelled state** ("awaiting read", "Confirming price").
+   `livePrice ?? 0` rendering `$0.00` is the canonical bug; a skeleton number that looks
+   like data is the same bug wearing a shimmer. Confirming states are calm and deliberate
+   — a confirming price is not an error.
+3. **An unrealised figure is always labelled as one.** Open-position value is captioned
+   **"if settled now"**; a projected multiplier always carries "est." and a qualifier line;
+   ⛔ per-position potential payout stays hidden pre-resolution. "You will win TZS 140" on
+   an open round is a promised return, which is a licensing problem, not a copy preference.
+   (2026-05 licence review.)
+4. **Losses are stated with dignity: calm, factual, final.** No punishment styling, no
+   alarm panels. The closing line is *"Every figure here is final — nothing further is
+   owed."* **VOID / refunded is NEUTRAL — never an error treatment**; the money came back.
+5. **The countdown is the only manufactured urgency permitted.** ⛔ No confetti, no
+   flashing, no streak flames, no combo meters, no celebratory burst beyond the calm gilt
+   aura. Wins breathe or fade; ⛔ nothing spins forever. (§M3, §M7.)
+6. ⛔ **NO EMOJI IN UI COPY. ANYWHERE.** Glyphs are stroke SVG from the kit, or typographic
+   marks. Reasons, in order: tone on a licensed money product; rendering on cheap Android;
+   and localisation, because an emoji is not translatable.
+7. **Illustration idiom: gilt line-art / etched SVG, 1.5px stroke, a single gold accent.**
+   ⛔ No mascots. ⛔ **No baked-in text in reusable art** — it cannot be translated.
+
+---
+
+## H — Haptics: physical events only
+
+⚠️ **There are TWO haptic modules and they are not interchangeable.**
+`src/lib/haptics.ts` is the product vocabulary (tap · select · confirm · success · warning
+· error · celebrate). `src/lib/needle-haptics.js` is the needle's *physical* vocabulary
+(grab · wake · cross · tuck · trueFound · settled) and models a real object being handled.
+Patterns live in those two files. Laws:
+
+1. **Physical events only. Contact, passing true, coming to rest.**
+   ⛔ Never encouragement, never reward, never to pull attention back to the app. On a
+   licensed gambling product a congratulatory buzz is a dark pattern, not delight.
+2. **Proportional.** Impact strength scales with real impact speed.
+   **Below 0.35 px/ms nothing fires** — that is a graze you should see and not feel.
+3. **Rate-limited to 40ms.** Closer than that is indistinguishable to skin and only
+   costs battery.
+4. **Silent when asked.** `prefers-reduced-motion`, the in-app mute
+   (`50pick.haptics.muted`), or a hidden document suppress everything.
+5. **Fails silently where unsupported — no feature-detection in calling code.**
+6. ⛔ **iOS gets no haptics, and we do not fake it.** Safari has no Vibration API; the
+   AudioContext workaround is a dark pattern. Leave it absent.
+7. Duration is standing in for amplitude, which is a documented hack. If a native wrapper
+   ever ships, replace this module's internals with real amplitude curves and
+   **keep every call site identical.**
+
+---
+
+## E — Elevation and motion mechanics
+
+Extends §B5 (one definition site per motion token) and §M2 (a surface picks a rung).
+
+1. **A shadow is COMPOSED from tokens, never retyped.** `box-shadow: var(--shadow-card-top),
+   var(--shadow-4)`. `--shadow-*` is a guarded family: a second definition site is a hard
+   `test:tokens` failure.
+2. **The overlay rung is shallower than the modal rung on purpose** — an overlay is attached
+   to a trigger, not to a scrim, so it must not claim a dialog's depth.
+3. **Bottom-docked surfaces cast UPWARD** (`--shadow-overlay-up`). A downward cast on a
+   bottom sheet throws its shadow off-screen and the panel reads as pasted onto the viewport.
+4. **Glows mix off `--brand-500`, so they track the brand** instead of pinning a raw hue.
+5. **Every keyframe family has a written calm branch, and they are not all the same branch.**
+   Pausing a ticker, removing a shimmer, and reducing a celebration to a fade are three
+   different answers. Ambient loops pause or stop; celebrations become **fade only**;
+   count-ups become **colour only**; transforms are explicitly neutralised `from` *and* `to`;
+   staggers collapse. See §M6 for the three gates this must satisfy, and `globals.css` §6
+   for the low-end tier's list — **every `infinite` animation needs an entry there.**
+6. **Before adding a keyframe, check the ones that already exist** (across `globals.css`,
+   `motion.css`, `state-tokens.css`, `needle.css`). ⛔ No new name may duplicate an existing
+   one; the registry is pinned by `test:keyframes`.
+7. **There is no rung below `--t-flick`.** Any raw sub-`--t-flick` duration is a deliberate,
+   documented exemption — not a convenience.
+8. ⚠️ **`motion.css` is imported LAST** (`layout.tsx`), so at equal specificity it outranks
+   everything in `globals.css`. Place a rule accordingly.
+
+---
+
+## K — Kit adoption, and the Definition of Done
+
+1. ⛔ **Never hard-code a control height** (`h-8`, `min-h-[…]`) on a `.btn`. Sizes come from
+   `--h-control-*` via `.btn-xs/sm/md/lg/xl`.
+2. ⛔ **Never introduce a native `<select>`, `<input type=checkbox>` or `datetime-local`**, an
+   ad-hoc portal, or a hard-coded token literal where a kit primitive exists.
+   `npm run test:ui-consistency` fails the build.
+3. ⛔ **Never import an icon library into a player surface.** Glyphs come from
+   `src/components/ui/glyphs.tsx`.
+4. ⛔ **Never read a `globals.css` out of a design export** — those are dated snapshots and
+   they drift. The live file is the truth.
+5. **Extend the kit; never fork it.** A one-off that duplicates a primitive is how a design
+   system dies — not in one decision, but in fifteen reasonable-looking ones.
+
+**Definition of Done — every design task, no exceptions:**
+
+- Zero new hex/rgb literals in components; zero new `.css` files.
+- Every new value is a token in `globals.css`, bridged in `tailwind.config.ts` if needed.
+- Every new or changed state is a **prop on the existing component**, not a clone of it.
+- The component's `spec.md` and the provenance `CHANGELOG.md` are updated in the same change.
+- `test:tokens` + `test:bridge` + `test:measure` + `test:design-frozen` green.
+- **A grep for the thing you added finds it in exactly ONE definition site.**
+
+**Verification is visual, and a green suite is not proof.** Verify at 360 / 768 / 1280 /
+1920, in EN + SW + ZH, and **look at the screenshots**. A deliberate exception must be
+re-baselined with a written reason.
+
+---
+
 ## M — The material law (M1–M8)
 
 Merged 2026-08-07 from the accepted Claude Design commission (ATOM J). The measured state it
@@ -496,9 +772,35 @@ reserved for the needle and dials — `.g-ring` takes `--m-glide` (a bell is nei
 
 ---
 
-## Related
+## Related — all RECORD, none of it rule
 
-- Palette rationale & history: `docs/design-master-brief.md`
-- Merge discipline / frozen system (B9, B10): `docs/design-system/v2-2026-07-27/06-patterns-and-rules/MERGE-DISCIPLINE.md`
-- Superseded snapshot (do not use): `50PICK/design_handoff_prediction_market_kit/`
-- Brand identity assets: `public/brand/` (generated from `src/components/brand.tsx`)
+⚠️ Nothing below is required to build correctly. Each file carries a "RECORD, NOT RULE"
+banner and each may contain values that have since drifted; `globals.css` outranks them
+all. §0c says what each one is for.
+
+- **Palette rationale & history** (why a hue, not what it is): `docs/design-master-brief.md`
+- **The delivered July-2026 archive** (component redlines, previews, foundations,
+  provenance): `docs/design-system/` — index at its `README.md`
+- **The material commission's before-picture** (the critique, `AUDIT.txt`, the `INTAKE.md`
+  receiving playbook): `docs/design-brief/`
+- **§M provenance** (the delivery, the four measured departures, designer Q&A):
+  `docs/design-system/v2-2026-07-27/11-material/`
+- **Superseded snapshot — do NOT use:** `50PICK/design_handoff_prediction_market_kit/`
+- **Brand identity assets:** `public/brand/` (generated from `src/components/brand.tsx`)
+
+---
+
+## Open design decisions — need Ali, not a session
+
+These are recorded here so they stop being rediscovered in four different files.
+⛔ No session may decide them.
+
+1. **The gold asset-icon tint** (Up & Down asset artwork) vs the "gold = earned money only"
+   law (§M3). The code currently ships the tint as *asset identity*; §M3 as written does not
+   permit it. Either M3 gains a written carve-out or the tint changes. (Q5)
+2. **The gold tier badge** as *rank identity* — same question, same law. (Q5)
+3. **The 360px card title in Swahili/Chinese** — ellipsis or 2-line clamp. (Q6)
+4. **Real Gold/Silver artwork**, or keep the lettermark chips. (Q7)
+5. **The Up & Down top-nav treatment.** (Q8)
+6. **The crest chief band opacity** — recorded in provenance as decided at `0.26`, declared
+   open here, and rendering at `0.16` in `identity-avatar.tsx`. Three answers; needs one.

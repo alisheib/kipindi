@@ -1,3 +1,10 @@
+> 📑 **RECORD, NOT RULE.** The rulebook is **`docs/DESIGN_AUTHORITY.md`** §M.
+> This file is the **provenance** of the material commission: what was delivered, what we
+> measured, the four departures and the designer Q&A. Its own "read this before anything
+> else in the folder" line means *before anything else in this folder* — not before the
+> rulebook. ⚠️ Two counts in here are stale: the glyph set is **178** unique keys (not 185),
+> and M6 has **THREE** reduced-motion gates (not two) — §M is correct on both.
+
 # 11 · The material system — ⭐ §A, §B and §C are MERGED; the law is live
 
 **Claude Design commission, delivered 2026-08-06. Merged into `src/` on 2026-08-06/07

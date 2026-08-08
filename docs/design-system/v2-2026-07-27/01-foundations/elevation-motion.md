@@ -1,3 +1,10 @@
+> 📑 **RECORD, NOT RULE.** The design rulebook is **`docs/DESIGN_AUTHORITY.md`** — every
+> law, floor and threshold is there, and nothing else is required to build correctly.
+> This file is kept as the delivered elevation/motion reasoning.
+> ⚠️ **Values written here are a snapshot and some have drifted.** The live values are in
+> `src/app/globals.css` / `src/app/motion.css`, which outrank every document.
+> (Consolidated 2026-08-08 — nine files used to claim to be the place to start.)
+
 # Elevation, glass & motion
 
 ## Shadows (tokens, verbatim)
@@ -49,11 +56,21 @@ numeric scale is frozen as legacy — do not renumber it. See
 .glass-panel (tokens.css) — the ledger/hero surface: translucent royal fill + blur + 1px border (exact recipe extracted verbatim in 02-components/stat-tiles/spec.md). Dialog scrims animate backdrop-filter blur(0→8px) via scrim-fade.
 
 ## Easing & duration tokens
-- --ease-micro 100ms cubic-bezier(0.2,0.8,0.2,1) — hovers, toggles
-- --ease-stage 240ms cubic-bezier(0.4,0,0.2,1) — bars, layout shifts
-- --ease-celebrate 600ms cubic-bezier(0.2,0.8,0.2,1) — win moments
-- Curves: --ease-glide (0.22,1,0.36,1) default · --ease-arrive (0.34,1.56,0.64,1) entries · --ease-sink (0.4,0,0.2,1) exits · --ease-conduct (0.65,0,0.35,1) breathing
-- Durations: --dur-flick 120 · --dur-quick 220 · --dur-glide 360 · --dur-arrive 520 · --dur-stage 820 (ms)
+
+> 🔴 **DELETED 2026-08-08 — THIS BLOCK WAS DANGEROUS, NOT MERELY STALE.**
+>
+> It published three easing tokens with **durations baked into them**
+> (`--ease-micro: 100ms cubic-bezier(…)`). That exact form once **zeroed transitions
+> platform-wide**, because every `transition: … var(--ease-micro)` then carried two
+> durations and the browser discarded the declaration. It is the defect
+> `DESIGN_AUTHORITY.md` §B5 exists to prevent, and `npm run test:tokens` now FAILS on a
+> duration-bearing easing token — so a session that pasted this block back in would
+> break the build, and a session that only *read* it would reintroduce the outage by hand.
+>
+> The live easings are bare curves aliased onto the `--m-*` materials, and the live
+> ladder is `--t-flick / --t-quick / --t-base / --t-move / --t-stage / --t-max`.
+> **Both live in `src/app/motion.css`, which is the only definition site.**
+> The law is `DESIGN_AUTHORITY.md` §B5 and §E.
 
 ## Animation inventory (every @keyframes in tokens.css)
 | Keyframe | What / where | Reduced-motion behaviour |

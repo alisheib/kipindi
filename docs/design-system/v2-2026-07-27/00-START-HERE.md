@@ -1,3 +1,14 @@
+> 📑 **RECORD, NOT RULE.** The rulebook is **`docs/DESIGN_AUTHORITY.md`**.
+>
+> 🔴 **This file's "Authority" section is SUPERSEDED (2026-08-08).** It declared that
+> nothing outside this archive carried any weight, and put its own dated `tokens.css`
+> at the top of the order of truth. Read literally,
+> that voided `DESIGN_AUTHORITY.md` — which lives outside this archive — and promoted a
+> July snapshot above the shipped `globals.css`. The real order is:
+> **1. `src/app/globals.css` + `motion.css` (the implementation) · 2. `DESIGN_AUTHORITY.md`
+> (the laws) · 3. everything in here (the record).**
+> This archive is the *delivery*, frozen at its date. It is not the law.
+
 # 50pick Design System — v1.1 · 2026-07-27
 
 ## What this is
@@ -23,13 +34,27 @@ haptic vocabulary; nothing from v1.0 was removed or re-specified. It *contains* 
     NOT yet merged** — its `README.md` carries the merge map and what dies when each piece lands.
 10. **07-provenance/** — where every fact came from, what was inferred, what was replaced, and what is still missing. **Read OPEN-GAPS.md before building anything new.**
 
-## Authority
-This archive is the final word on the 50pick theme as of its date. If anything disagrees, the order of truth is:
-1. `01-foundations/tokens.css` — exact values (the stylesheet IS the theme)
-2. `06-patterns-and-rules/RULES.md` — the laws that constrain how values may be used
-3. Component `spec.md` files + `_specs-as-delivered/` — per-component redlines and contracts
-4. Prose docs (colour.md, typography.md, …) — explanation, never override
-Chat histories, memories, or older files outside this archive have no authority. A future theme change must supersede this archive with a v2.0 that names what it replaced and why (follow 07-provenance/SUPERSEDED.md as the model).
+## Authority — 🔴 SUPERSEDED 2026-08-08, corrected below
+
+~~This archive is the final word on the 50pick theme as of its date.~~ It is the **delivery**,
+frozen at its date. It was never the law, and its own `tokens.css` is a July snapshot that
+has since drifted from the shipped stylesheet.
+
+**The order of truth is:**
+1. **`src/app/globals.css` + `src/app/motion.css`** — the implementation. Newest artifact;
+   if anything disagrees with it, it wins.
+2. **`docs/DESIGN_AUTHORITY.md`** — the laws, floors and thresholds. The only rulebook.
+3. **Everything in this archive** — record: redlines, previews, provenance, reasoning.
+
+~~Chat histories, memories, or older files outside this archive have no authority.~~
+That sentence was the dangerous one: `DESIGN_AUTHORITY.md` lives *outside* this archive,
+so read literally it voided the rulebook and promoted a dated snapshot above the shipped
+code. A session that obeyed it would have pasted a canvas lightness, a `--text-faint`
+that fails AA, and duration-bearing easing tokens into `globals.css`.
+
+A future theme change supersedes **the rulebook's affected section** and the values in
+`globals.css`; this archive is not re-opened (follow `07-provenance/SUPERSEDED.md` as the
+model for recording what was replaced and why).
 
 ## Conventions used throughout
 - **GIVEN** = handed to the design sessions by the team (kit specimens, globals.css, briefs) — authoritative.

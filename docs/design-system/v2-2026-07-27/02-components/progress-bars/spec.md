@@ -1,3 +1,10 @@
+> 📑 **RECORD, NOT RULE.** The rulebook is **`docs/DESIGN_AUTHORITY.md`**.
+> This is the designer's original redline for this component (July 2026).
+> 🔴 **Do NOT paste the fenced CSS below into `src/`.** Those blocks are a scrape of
+> `globals.css` frozen at this folder's date: some carry button fills that FAIL WCAG AA
+> (superseded by E-119) and several carry the one-sided `inset 0 1px 0` lamp that
+> §M1 now bans outright. The live values are in `src/app/globals.css`.
+
 # Probability / progress bars — spec
 
 GIVEN (kit/atoms.jsx):

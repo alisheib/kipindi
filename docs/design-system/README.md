@@ -1,9 +1,25 @@
-# 50pick Design System — the rule book
+# 50pick Design System — the archive index
 
-> **Start here for anything visual.** This is the entry point for every design
-> question, every new screen, and every future theme change.
+> 📑 **RECORD, NOT RULE. This is not the rule book — `docs/DESIGN_AUTHORITY.md` is.**
+> That file holds every law, floor and threshold, and nothing else is needed to build
+> correctly. This file is the **index of the delivered design archive**: what was
+> commissioned, what landed, and where each artefact sits.
 >
-> **Last updated:** 2026-07-27 · **Current version:** `v2-2026-07-27` — the complete system and the ONLY archive (the earlier `v1-2026-07-24` was retired into it; see §6)
+> ⚠️ **This file used to open by claiming to be where every visual question begins —
+> which is how the product ended up with nine competing front doors** (this one, `00-START-HERE.md`,
+> `11-material/README.md`, `RULES.md`, `DESIGN_AUTHORITY.md` and CLAUDE.md pointing at
+> a different one again). They formed a cycle, and three of them disagreed with the
+> shipped code on values a session would have pasted into `globals.css`. One door now.
+> The filing law that keeps it that way is **`DESIGN_AUTHORITY.md` §0**.
+
+<!-- superseded entry-point claim, kept struck so its absence is legible:
+> ~~Start here for anything visual. This is the entry point for every design
+> question, every new screen, and every future theme change.~~
+-->
+
+**Last updated:** 2026-08-08 · **Archive version:** `v2-2026-07-27` — the complete
+delivered system and the ONLY archive (the earlier `v1-2026-07-24` was retired into it;
+see §6). The archive is frozen; the *rules* extracted from it live in `DESIGN_AUTHORITY.md`.
 
 ---
 

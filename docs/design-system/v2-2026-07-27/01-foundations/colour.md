@@ -1,3 +1,10 @@
+> 📑 **RECORD, NOT RULE.** The design rulebook is **`docs/DESIGN_AUTHORITY.md`** — every
+> law, floor and threshold is there, and nothing else is required to build correctly.
+> This file is kept as the delivered colour reasoning.
+> ⚠️ **Values written here are a snapshot and some have drifted.** The live values are in
+> `src/app/globals.css` / `src/app/motion.css`, which outrank every document.
+> (Consolidated 2026-08-08 — nine files used to claim to be the place to start.)
+
 # Colour — every colour, its job, and what it must never do
 
 Source of truth: `tokens.css` (values below are verbatim). Grouped by role. "NEVER" lines are binding law (06-patterns-and-rules/).
@@ -5,7 +12,7 @@ Source of truth: `tokens.css` (values below are verbatim). Grouped by role. "NEV
 ## Canvas & surfaces (royal indigo, hue 268 — anchored to #060a50)
 | Token | Value | For | Never |
 |---|---|---|---|
-| --bg | oklch(15% 0.130 268) | page canvas | lightened into a "light mode" |
+| --bg | ⚠️ STALE — live is oklch(6.5% …), see globals.css | page canvas | lightened into a "light mode" |
 | --bg-elevated | oklch(22% 0.140 268) | cards | — |
 | --bg-elevated2 | oklch(26% 0.150 268) | second-elevation card | — |
 | --bg-overlay / --bg-inset / --bg-sunken | oklch(11% 0.110 268) | sunken wells, inputs, hover-down | — |
@@ -22,7 +29,7 @@ Source of truth: `tokens.css` (values below are verbatim). Grouped by role. "NEV
 | --text | oklch(98% 0.012 268) | primary ink |
 | --text-muted | oklch(86% 0.040 268) | secondary |
 | --text-subtle | oklch(70% 0.080 268) | labels, captions |
-| --text-faint | oklch(60% 0.090 268) | micro-labels, footers |
+| --text-faint | ⚠️ STALE — live is 62%, an AA FLOOR (60% measured 4.50, under the 4.5 minimum) | micro-labels, footers |
 | --text-link / --text-link-hover | var(--aqua-300) / var(--aqua-200) | links — the ONLY default link colour |
 
 ## YES — emerald, hue 152. Semantic, untouchable.

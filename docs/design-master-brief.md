@@ -1,4 +1,6 @@
-> **STATUS: authoritative** — palette + composition source of truth. The live
+> 📑 **STATUS: RATIONALE, NOT RULE (re-scoped 2026-08-08).** This explains *why* the
+> palette is what it is. The rulebook is **`docs/DESIGN_AUTHORITY.md`**; the values are
+> `src/app/globals.css`. Read this when you want the reasoning behind a hue. The live
 > tokens in `src/app/globals.css` match this brief to ~0.3%. Invariants (single
 > theme, YES/NO semantics, claret/aqua rules) are in `docs/DESIGN_AUTHORITY.md`.
 

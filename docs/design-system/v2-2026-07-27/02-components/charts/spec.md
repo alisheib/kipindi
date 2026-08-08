@@ -1,3 +1,10 @@
+> 📑 **RECORD, NOT RULE.** The rulebook is **`docs/DESIGN_AUTHORITY.md`**.
+> This is the designer's original redline for this component (July 2026).
+> 🔴 **Do NOT paste the fenced CSS below into `src/`.** Those blocks are a scrape of
+> `globals.css` frozen at this folder's date: some carry button fills that FAIL WCAG AA
+> (superseded by E-119) and several carry the one-sided `inset 0 1px 0` lamp that
+> §M1 now bans outright. The live values are in `src/app/globals.css`.
+
 # Charts — spec
 
 GIVEN — PriceChart (kit-source/microstructure.jsx): THE primary market viz. YES probability 0..1 over time; line + area fill; hover tooltip; right-edge tag. Page chrome .pchart / .pchart-dot-halo lives in tokens.css (overflow:hidden wrapper rule for Android).

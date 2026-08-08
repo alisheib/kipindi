@@ -1,3 +1,10 @@
+> 📑 **RECORD, NOT RULE.** The design rulebook is **`docs/DESIGN_AUTHORITY.md`** — every
+> law, floor and threshold is there, and nothing else is required to build correctly.
+> This file is kept as the delivered spacing/shape reasoning.
+> ⚠️ **Values written here are a snapshot and some have drifted.** The live values are in
+> `src/app/globals.css` / `src/app/motion.css`, which outrank every document.
+> (Consolidated 2026-08-08 — nine files used to claim to be the place to start.)
+
 # Spacing, shape & borders
 
 ## Spacing scale (tokens)
@@ -22,7 +29,7 @@ Per component type (law: **16px cards/modals, 12px inputs**):
 - 1px is the default everywhere (--border; --border-strong for emphasis; dashed 1px --border-strong for empty states).
 - 1.5px: dial rings, line-art illustration strokes, kit icon strokes.
 - 2–2.4px: brand mark ring/divider; needle strokes 2.4–3px.
-- Buttons are solid fills with a 1px inset top highlight (box-shadow inset 0 1px 0 …) — not outlines.
+- Buttons are solid fills with a 🔴 SUPERSEDED by §M1 — an EVEN 1px inner ring (`inset 0 0 0 1px`), never the one-sided top line this once prescribed (box-shadow inset 0 1px 0 …) — not outlines.
 
 ## Breakpoints & floors
 Design at **360 / 768 / 1280 / 1920**. Zero horizontal overflow at 360. Tap targets ≥ 40px (44px preferred on mobile). Card grids: 1 col at 360, 2 at 768, 3 at 1280, 4 at 1920 — implemented as repeat(auto-fill, minmax(300px, 1fr)).

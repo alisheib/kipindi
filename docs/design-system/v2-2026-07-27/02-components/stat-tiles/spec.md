@@ -1,3 +1,10 @@
+> 📑 **RECORD, NOT RULE.** The rulebook is **`docs/DESIGN_AUTHORITY.md`**.
+> This is the designer's original redline for this component (July 2026).
+> 🔴 **Do NOT paste the fenced CSS below into `src/`.** Those blocks are a scrape of
+> `globals.css` frozen at this folder's date: some carry button fills that FAIL WCAG AA
+> (superseded by E-119) and several carry the one-sided `inset 0 1px 0` lamp that
+> §M1 now bans outright. The live values are in `src/app/globals.css`.
+
 # Stat tiles & ledger cells — spec (INVENTED 2026-06, Positions work)
 
 Tile: border 1px --border, bg --bg-elevated, radius --r-md, pad 14px 16px. Label mono 9.5px/600 ls 0.10em uppercase --text-subtle; value mono 18px/700 tabular (19px inside the ledger strip); sub mono 10.5px --text-muted, single-line ellipsis.
