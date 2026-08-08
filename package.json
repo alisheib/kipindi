@@ -223,6 +223,7 @@
     "ops:updown-await-settle": "node scripts/await-settle.cjs",
     "ops:updown-result-lag": "node scripts/lag.cjs",
     "qa:card360": "node scripts/live-s32-card360.mjs",
+    "qa:seal": "node scripts/qa-seal-drive.mjs",
     "red:combobox-truncate": "node scripts/red-e98.cjs",
     "red:unwrappable-id": "node scripts/red-e100.cjs",
     "qa:updown-guide-shots": "node scripts/capture-guide-shots.mjs",

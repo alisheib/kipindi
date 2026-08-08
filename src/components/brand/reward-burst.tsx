@@ -1,31 +1,30 @@
 /**
- * RewardBurst — the shared "earned peak" crest (spec A5).
+ * RewardBurst — the shared "earned peak" crest, remade under the material law
+ * (2026-08-08, with the struck-seal win celebration).
  *
- * One composable celebration used at every earned-money / earned-status
- * high point: proposal APPROVED (`/proposals/[id]`), KYC VERIFIED
- * (`/profile/kyc`), market-create success, and win payout. A direct port of
- * the kit's living standard (`specimens/50pick-refinement-mockups.html` §A5):
+ * One calm medallion used at the NON-WIN earned peaks: proposal APPROVED
+ * (`/proposals/[id]` — a real bonus, earned money), KYC VERIFIED
+ * (`/profile/kyc` — earned status). A gilt-ringed medallion holding the context
+ * glyph, an optional struck amount line, an optional Sora caption.
  *
- *   • 12 gilt rays (`--gold-300` → transparent, 1.5px strokes) radiating from
- *   • a corner-bracketed medallion holding the context glyph
- *     (trophy / shieldcheck / resolved star), over
- *   • an optional amount line (JetBrains Mono, `--gold-300`) and
- *   • an optional Sora caption + muted sub-caption.
+ * ⛔ WHAT DIED HERE, AND WHY (INTAKE §3b — a delivery replaces, it never sits
+ * beside): the 12 drawn rays, the corner brackets and the trophy-burst
+ * choreography are GONE. M3 bans rays outright, and M7 reserves the celebration
+ * vocabulary (seal, needle-sweep, mark-flip, strike) for a WIN — the win moment
+ * is `markets/win-celebration.tsx`'s struck seal now, and this crest must never
+ * grow back toward it. What earned-status keeps is gold ink and a quiet arrival.
  *
- * Gold is legitimate on EVERY one of these — each is an earned-money or
- * earned-status peak, the one place the palette permits it.
- *
- * Motion (`animate`): medallion pops (280ms spring) → rays stagger in
- * (420ms) → amount pops. Reduced-motion + `animate={false}` both render the
- * static end-frame (rays at 40%, everything final) — the reduced-motion
- * fallback lives with the `.reward-burst__*` classes in `state-tokens.css`.
+ * Motion is the kit's own: the medallion arrives on `.m-in-lift` (a raised
+ * surface arriving), the glyph settles with `.g-settle` (M5 — the arrival
+ * primitive, never bespoke keyframes), the amount follows one stagger step.
+ * `animate={false}` renders the static end-frame; reduced-motion branches live
+ * with the utilities in motion.css (M6).
  *
  * Presentational only (no hooks) so it renders in both server components
- * (the KYC / proposals pages) and client modals (OperationResultModal).
+ * (the KYC / proposals pages) and client modals.
  *
  * HARD RULE for callers: only ever mount this AFTER the server has confirmed
- * the state (approval, verification, settlement) — never optimistically on
- * money.
+ * the state (approval, verification) — never optimistically on money.
  */
 
 import * as React from "react";
@@ -35,7 +34,7 @@ import { cn } from "@/lib/utils";
 export type RewardGlyph = "trophy" | "shieldcheck" | "resolved" | "star";
 
 export function RewardBurst({
-  glyph = "trophy",
+  glyph = "shieldcheck",
   amount,
   caption,
   captionSub,
@@ -53,107 +52,38 @@ export function RewardBurst({
   captionSub?: string;
   /** Play the entrance choreography. `false` = static end-frame. */
   animate?: boolean;
-  /** Medallion diameter in px. Rays + glyph scale from it. */
+  /** Medallion diameter in px. The glyph scales from it. */
   size?: number;
   className?: string;
 }) {
   const Glyph = I[glyph];
-  const raysSize = Math.round(size * 2.619); // 84 → 220 (kit native ray box)
   const glyphSize = Math.round(size * 0.43); // 84 → 36
-  const bracket = Math.round(size * 0.167); // 84 → 14
-  const inset = -(size * 0.083); // 84 → -7
 
   return (
     <div className={cn("inline-flex flex-col items-center text-center", className)}>
-      <div className="relative grid place-items-center" style={{ width: size, height: size }}>
-        {/* 12 gilt rays — kit A5 geometry (viewBox 0 0 220 220) */}
-        <svg
-          aria-hidden
-          className={animate ? "reward-burst__rays" : undefined}
-          width={raysSize}
-          height={raysSize}
-          viewBox="0 0 220 220"
-          style={{
-            // Centre with negative margins, NOT translate: the `.reward-burst__rays`
-            // entrance animation drives `transform: scale()`, which would clobber a
-            // centering translate and shove the starburst off the medallion.
-            position: "absolute",
-            left: "50%",
-            top: "50%",
-            marginLeft: -raysSize / 2,
-            marginTop: -raysSize / 2,
-            overflow: "visible",
-            opacity: animate ? undefined : 0.4,
-          }}
-        >
-          <g stroke="var(--gold-300)" strokeWidth={1.5} strokeLinecap="round" opacity={0.8}>
-            <path d="M110 26v22" />
-            <path d="M110 172v22" />
-            <path d="M26 110h22" />
-            <path d="M172 110h22" />
-            <path d="M51 51l15 15" />
-            <path d="M154 154l15 15" />
-            <path d="M169 51l-15 15" />
-            <path d="M66 154l-15 15" />
-            <path d="M76 32l8 20" opacity={0.5} />
-            <path d="M144 32l-8 20" opacity={0.5} />
-            <path d="M76 188l8-20" opacity={0.5} />
-            <path d="M144 188l-8-20" opacity={0.5} />
-          </g>
-        </svg>
-
-        {/* Corner-bracketed medallion */}
-        <div
-          className={cn("relative grid place-items-center rounded-full", animate && "reward-burst__medal")}
-          style={{
-            width: size,
-            height: size,
-            border: "2px solid var(--gold-500)",
-            background:
-              "radial-gradient(circle at 35% 30%, color-mix(in oklab, var(--gold-300) 25%, transparent), color-mix(in oklab, var(--gold-500) 6%, transparent))",
-            color: "var(--gold-300)",
-          }}
-        >
-          {/* Heraldic gilt corner brackets (top-left + bottom-right) */}
-          <span
-            aria-hidden
-            style={{
-              position: "absolute",
-              top: inset,
-              left: inset,
-              width: bracket,
-              height: bracket,
-              borderTop: "1.5px solid var(--gold-500)",
-              borderLeft: "1.5px solid var(--gold-500)",
-              borderRadius: "4px 0 0 0",
-            }}
-          />
-          <span
-            aria-hidden
-            style={{
-              position: "absolute",
-              bottom: inset,
-              right: inset,
-              width: bracket,
-              height: bracket,
-              borderBottom: "1.5px solid var(--gold-500)",
-              borderRight: "1.5px solid var(--gold-500)",
-              borderRadius: "0 0 4px 0",
-            }}
-          />
+      {/* The medallion — a gilt ring on a quiet gold-tinted face. No rays, no
+          brackets, no cast of its own: it sits IN its section, not above it. */}
+      <div
+        className={cn("grid place-items-center rounded-full", animate && "m-in-lift")}
+        style={{
+          width: size,
+          height: size,
+          border: "2px solid var(--gold-500)",
+          background:
+            "radial-gradient(circle at 42% 30%, color-mix(in oklab, var(--gold-300) 25%, transparent), color-mix(in oklab, var(--gold-500) 6%, transparent))",
+          boxShadow: "inset 0 0 0 1px color-mix(in oklab, var(--gold-300) 18%, transparent)",
+          color: "var(--gold-300)",
+        }}
+      >
+        <span className={cn("inline-flex", animate && "g-settle")}>
           <Glyph s={glyphSize} />
-        </div>
+        </span>
       </div>
 
       {amount && (
         <p
-          className={cn("mt-4 font-mono font-bold tabular-nums", animate && "reward-burst__medal")}
-          style={{
-            fontSize: Math.round(size * 0.26),
-            color: "var(--gold-300)",
-            letterSpacing: "-0.01em",
-            animationDelay: animate ? "150ms" : undefined,
-          }}
+          className={cn("gilt-ink mt-4 font-bold", animate && "g-settle")}
+          style={{ fontSize: Math.round(size * 0.26) }}
         >
           {amount}
         </p>

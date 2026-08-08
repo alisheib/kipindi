@@ -116,8 +116,16 @@ ok("🔴 the verified mime + size are persisted, not re-guessed from the key",
   "An `r2:<key>` cannot be measured. The DAL used to regex it as a data URL and\n" +
   "       recorded application/octet-stream / 0 bytes for EVERY R2 document.");
 const dal = stripComments(read("src/lib/server/prisma-dal.ts"));
-ok("the DAL prefers the captured facts over the derived ones",
-  /mimeType: d\.mimeType \?\?/.test(dal) && /sizeBytes: d\.sizeBytes \?\?/.test(dal));
+// 2026-08-08 — restated with test:kyc-doc-metadata's fix. The intent here was always
+// "the attacker's data-URL mime LABEL is trusted nowhere, and an r2:<key> keeps the
+// captured column (its only evidence)". The old expression made the captured column
+// beat a real MEASUREMENT on inline documents too, which the behavioural suite
+// (kyc-doc-metadata §2) proves wrong: for an inline doc the bytes are in hand, so the
+// mime is magic-byte SNIFFED (the same D2 instrument) and the size counted — a stale
+// column cannot survive them, and the label still decides nothing.
+ok("the DAL measures inline bytes, keeps captured facts for r2, trusts the label nowhere",
+  /mimeType: \(m \? sniffBase64ImageMime\(b64\) : null\) \?\? d\.mimeType \?\?/.test(dal) &&
+  /sizeBytes: m \? derivedBytes : \(d\.sizeBytes \?\? 0\)/.test(dal));
 
 // ── 3 · 🔴 Storage mode cannot degrade silently ───────────────────────────────────────────────
 section("3 · inline-while-r2 is impossible, not merely unlikely");

@@ -361,6 +361,20 @@ html.kp-reduce-motion *, html.kp-reduce-motion *::before, html.kp-reduce-motion 
 /* The micro-seal on bet commit reuses the existing `seal-place`. */
 .seal-commit { animation: seal-place var(--t-stage) var(--m-settle) both; }
 
+/* ── THE CELEBRATION CHOREOGRAPHY — the spec's §3 cascade, on the ladder ────
+   The spec prices the beat in raw ms (copy at 480–780, flip at 1550); every one
+   is a choreography OFFSET, so each takes its nearest rung (§D's rule), built
+   from the moments they follow:
+     · the copy settles as the seal lands — base --t-stage (the impress runs
+       --t-max), then the kit's own 4-step stagger, same cap as `.stagger-item`;
+     · the mark flips once the needle has found the winning vector — the sweep
+       is delay --t-max + duration --t-stage, so the flip starts at their sum;
+     · `.seal-sheen` (above) already closes the beat two --t-max later.
+   Set `--i` per row (0-based); rows past the 4th land together — that is the
+   stagger law, not a shortcut. */
+.seal-cascade > .g-settle { animation-delay: calc(var(--t-stage) + min(var(--i, 0), 4) * var(--m-stagger)); }
+.seal-mark-flip { animation: mark-flip var(--t-move) var(--m-settle) calc(var(--t-max) + var(--t-stage)) 1 both; }
+
 /* ── M5 · GLYPH MOTION — four primitives, and all 178 glyphs move the same way ──
    Triggers are mount, data change, or state change. ⛔ NEVER hover: icons respond,
    they do not perform. A glyph with bespoke keyframes is a violation.
@@ -414,7 +428,7 @@ html.kp-reduce-motion *, html.kp-reduce-motion *::before, html.kp-reduce-motion 
 @media (prefers-reduced-motion: reduce) {
   .g-settle, .g-nudge-up, .g-nudge-down, .g-ring, .g-swap-in, .g-swap-out,
   .crest-arrive, .crest-ring-reveal, .seal-arrive, .seal-commit, .mark-flip,
-  .needle-sweep, .needle-settle-loss, .mark-pending
+  .seal-mark-flip, .needle-sweep, .needle-settle-loss, .mark-pending
                      { animation: none !important; opacity: 1; transform: none; filter: none; }
   .mark-flip-i:hover { animation: none !important; }
   .gilt-metal:hover  { animation: none !important; }
@@ -428,6 +442,7 @@ html.kp-reduce-motion .g-swap-in, html.kp-reduce-motion .g-swap-out,
 html.kp-reduce-motion .crest-arrive, html.kp-reduce-motion .crest-ring-reveal,
 html.kp-reduce-motion .seal-arrive, html.kp-reduce-motion .seal-commit,
 html.kp-reduce-motion .mark-flip, html.kp-reduce-motion .mark-flip-i:hover,
+html.kp-reduce-motion .seal-mark-flip,
 html.kp-reduce-motion .needle-sweep, html.kp-reduce-motion .needle-settle-loss,
 html.kp-reduce-motion .mark-pending, html.kp-reduce-motion .gilt-metal:hover
                    { animation: none !important; opacity: 1; transform: none; filter: none; }

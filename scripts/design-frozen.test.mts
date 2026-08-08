@@ -76,7 +76,8 @@ const FROZEN_ALLOWLIST = new Set<string>([
   "src/components/ui/chip.tsx",                // 5
   "src/components/ui/page-hero.tsx",           // 5
   "src/app/profile/page.tsx",                  // 2
-  "src/components/brand/reward-burst.tsx",     // 2
+  // reward-burst.tsx CLEARED 2026-08-08 — its two borderRadius literals were the
+  // heraldic corner brackets, which died with the rays (INTAKE §3b, 45 → 44).
   "src/components/markets/bet-confirm-modal.tsx",  // 2
   "src/components/markets/sell-confirm-modal.tsx", // 2
   "src/components/ui/cashback-promo.tsx",      // 2

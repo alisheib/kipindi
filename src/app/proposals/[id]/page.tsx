@@ -92,7 +92,7 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
         </section>
       )}
 
-      {/* Approval bonus celebration for the proposer — A5 reward-burst end-frame */}
+      {/* Approval bonus crest for the proposer — an earned-money peak (remade 2026-08-08: medallion + struck amount, no rays — M3) */}
       {showBonus && (
         <section className="relative overflow-hidden rounded-xl border p-5 text-center" style={{ borderColor: "var(--gold-700)", background: "linear-gradient(160deg, var(--bg-elevated), var(--royal-950))" }}>
           <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "linear-gradient(180deg, transparent, color-mix(in oklab, var(--gold-700) 16%, transparent))" }} />

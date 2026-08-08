@@ -29,7 +29,9 @@ const AMOUNT = 3470, NET = 1480;
 /** The label the announcer itself builds: `${t.market.udUpDown} · ${sideWord}`. */
 const LABEL = { en: "Up & Down · Down", sw: "Juu na Chini · Chini", zh: "涨跌 · 跌" };
 /** `wonHeading` per locale — used to PROVE the modal rendered in the language we asked for. */
-const HEADING = { en: "Won!", sw: "Umeshinda!", zh: "赢了！" };
+/* 2026-08-08 — the struck-seal celebration collapsed "Won! · Congratulations" to one
+   headline; EN is now "You won" (spec §3 copy law). SW/ZH were already one word. */
+const HEADING = { en: "You won", sw: "Umeshinda!", zh: "赢了！" };
 
 const WIDTHS = [360, 1280];
 const r = recorder("The Up & Down win moment · EN / SW / ZH");

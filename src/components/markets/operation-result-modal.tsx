@@ -29,7 +29,6 @@
 import { useEffect, useRef } from "react";
 import { Modal } from "@/components/ui/modal";
 import { I } from "@/components/ui/glyphs";
-import { RewardBurst, type RewardGlyph } from "@/components/brand/reward-burst";
 import { useT } from "@/lib/i18n";
 
 const DEFAULT_AUTO_CLOSE_MS = 5_000;
@@ -73,17 +72,11 @@ type Props = {
    *  - "no"    — NO-side bet placed
    *  Defaults to "brand". Ignored for non-success variants. */
   stripTone?: "gold" | "brand" | "yes" | "no";
-  /**
-   * Swap the plain success crest for the A5 reward-burst (gilt rays +
-   * medallion). Reserve for EARNED-money / earned-status peaks only —
-   * payout, proposal-approved, KYC-approved — NEVER deposit or bet-placed
-   * (gold = earned-money only). Ignored for non-success variants, and the
-   * caller must only open the modal AFTER the server confirms the state.
-   */
-  celebrate?: boolean;
-  /** Context glyph for the reward-burst medallion. Defaults to "trophy". */
-  celebrateGlyph?: RewardGlyph;
 };
+/* `celebrate`/`celebrateGlyph` (the A5 reward-burst swap) were DELETED 2026-08-08:
+   zero call sites ever passed them, and the win moment they anticipated is the
+   struck seal in `win-celebration.tsx` now (M7 — the celebration vocabulary is
+   exclusive to a win, so a generic result modal must not be able to wear it). */
 
 /**
  * DS-3 (2026-08-07) — the crest consumes the SYSTEM, not hand-typed oklch.
@@ -141,7 +134,7 @@ const STRIP_GRADIENTS: Record<string, string> = {
 export function OperationResultModal({
   open, variant, eyebrow, title, subtitle, details, footnote,
   primaryLabel, secondaryLabel, onPrimary, onSecondary, onClose,
-  autoCloseMs, stripTone = "brand", celebrate = false, celebrateGlyph = "trophy",
+  autoCloseMs, stripTone = "brand",
 }: Props) {
   const { t } = useT();
   const closeRef = useRef(onClose);
@@ -266,24 +259,19 @@ export function OperationResultModal({
       )}
 
       <div className="p-6 lg:p-7 text-center">
-        {/* Crest — the visual hit. Earned-money success gets the A5 gilt
-            reward-burst; everything else gets the plain OKLCH glow circle. */}
-        {variant === "success" && celebrate ? (
-          <RewardBurst glyph={celebrateGlyph} size={64} className="mx-auto" />
-        ) : (
-          <div
-            className="mx-auto inline-flex h-16 w-16 items-center justify-center rounded-full"
-            style={{
-              background: tone.bg,
-              border: `2px solid ${tone.brd}`,
-              boxShadow: tone.shadow,
-              animation: "orm-pop var(--t-move) var(--m-pivot)",
-            }}
-            aria-hidden
-          >
-            <CrestIcon variant={variant} color={tone.fg} />
-          </div>
-        )}
+        {/* Crest — the visual hit. */}
+        <div
+          className="mx-auto inline-flex h-16 w-16 items-center justify-center rounded-full"
+          style={{
+            background: tone.bg,
+            border: `2px solid ${tone.brd}`,
+            boxShadow: tone.shadow,
+            animation: "orm-pop var(--t-move) var(--m-pivot)",
+          }}
+          aria-hidden
+        >
+          <CrestIcon variant={variant} color={tone.fg} />
+        </div>
 
         <p
           className="mt-4 font-mono text-[10px] uppercase tracking-[0.16em] font-bold"

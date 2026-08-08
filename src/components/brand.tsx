@@ -33,22 +33,33 @@ export function FiftyMark({
   variant = "color",
   simplified,
   className,
+  needleClassName,
 }: {
   size?: number;
   variant?: FiftyMarkVariant;
   /** Heavier needle + hub, drops the pivot dot. Use at or below ~20px. */
   simplified?: boolean;
   className?: string;
+  /** Wraps needle + hub (+ pivot) in a `<g>` carrying this class, so IDENTITY
+   *  motion (M8 — `.needle-sweep`, `.needle-settle-loss`) can move the needle on
+   *  its own hinge without a second mark definition existing anywhere. The mark
+   *  stays `brand-mark.ts`'s one geometry either way. */
+  needleClassName?: string;
 }) {
   const simple = simplified ?? size < 24;
   const c = markColors(variant, simple);
+  const needle = (
+    <>
+      <line x1={MARK.n.x1} y1={MARK.n.y1} x2={MARK.n.x2} y2={MARK.n.y2} stroke={c.needle} strokeWidth={simple ? 5 : 3.5} strokeLinecap="round" />
+      <circle cx="50" cy="50" r={simple ? 6 : 5} fill={c.hub} />
+      {c.pivot && <circle cx="50" cy="50" r="1.7" fill={c.pivot} />}
+    </>
+  );
   return (
     <svg viewBox="0 0 100 100" width={size} height={size} className={className} style={{ display: "block" }} aria-label="50pick">
       <path d={MARK.greenPath} fill={c.green} />
       <path d={MARK.redPath} fill={c.red} />
-      <line x1={MARK.n.x1} y1={MARK.n.y1} x2={MARK.n.x2} y2={MARK.n.y2} stroke={c.needle} strokeWidth={simple ? 5 : 3.5} strokeLinecap="round" />
-      <circle cx="50" cy="50" r={simple ? 6 : 5} fill={c.hub} />
-      {c.pivot && <circle cx="50" cy="50" r="1.7" fill={c.pivot} />}
+      {needleClassName ? <g className={needleClassName}>{needle}</g> : needle}
     </svg>
   );
 }

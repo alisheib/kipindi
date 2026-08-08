@@ -371,7 +371,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
       )}
 
       {submitted && kyc?.status === "APPROVED" && (
-        // A5 reward-burst — KYC verified is an earned-status peak, so gold is legitimate here.
+        // Earned-peak crest (remade 2026-08-08 — no rays, M3) — KYC verified is an earned-status peak, so gold is legitimate here.
         <section className="rounded-xl border border-gold-700/60 bg-bg-elevated p-5 lg:p-6 text-center">
           <RewardBurst glyph="shieldcheck" caption={t.profile.idVerified} />
           <p className="mt-3 text-[13px] text-text-muted leading-snug max-w-[400px] mx-auto">

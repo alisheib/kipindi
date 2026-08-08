@@ -29,11 +29,12 @@
 .countdown--critical { color: var(--no-400, #E6424C); animation: cd-pulse 60s steps(1) infinite, live-pulse 1.2s ease-in-out 1; }
 @keyframes cd-pulse { 0% { opacity: 1 } } /* re-triggers the one-shot pulse each minute */
 
-/* Reward burst (spec A5) */
-@keyframes burst-medal-pop { from { transform: scale(.5); opacity: 0 } to { transform: scale(1); opacity: 1 } }
-@keyframes burst-rays-in   { from { transform: scale(.6); opacity: 0 } to { transform: scale(1); opacity: 1 } }
-.reward-burst__medal { animation: burst-medal-pop 280ms cubic-bezier(.2,1.4,.4,1) both; }
-.reward-burst__rays  { animation: burst-rays-in 420ms cubic-bezier(.2,.8,.2,1) .2s both; }
+/* Reward burst (spec A5) — DELETED 2026-08-08 with the struck-seal celebration.
+   The rays died under M3 ("rays are banned") and the medallion's bespoke pop
+   under M5 — the remade crest arrives on the kit's `.m-in-lift` + `.g-settle`
+   (motion.css), so `burst-medal-pop`, `burst-rays-in` and the two
+   `.reward-burst__*` classes had zero consumers. INTAKE §3b: a keyframe that
+   only animated the rays goes in the same commit as the rays. */
 
 /* Sparkline draw-in (spec A1) — `.spark-draw` DELETED 2026-07-29 (B10): zero
    consumers. The sparkline that actually ships is `.mcardp-spark-line` in
@@ -99,8 +100,6 @@
 /* Every effect above has a static fallback */
 @media (prefers-reduced-motion: reduce) {
   .countdown--urgent, .countdown--critical { animation: none }
-  .reward-burst__medal, .reward-burst__rays { animation: none }
-  .reward-burst__rays { opacity: .4 }
   .admin-bar-grow { animation: none }
   .podium-crown { animation: none }
   .closing-pill { animation: none } /* stays on the gold "urgent" end-state */

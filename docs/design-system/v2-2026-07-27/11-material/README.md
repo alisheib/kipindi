@@ -30,13 +30,20 @@
 > would have broken AA), **E-129** (`outline: none` would have stripped the money CTA's focus
 > ring), and the `shimmer-gilt` two-layer paint bug.
 >
-> ⚠️ **THE LAW IS MERGED; THE ADOPTION IS NOT.** Measured 2026-08-07: **2 of 31 §C utility
-> classes are taken by a component.** Three surfaces have picked a rung — the market and
-> Up & Down cards (rung 1, via the tokens at `.mcardp`'s own rule), the kit `Modal` (rung 3,
-> `.mat-modal`), and the money-in CTA (`.gilt-metal`) — and seven one-sided lamps in `.tsx`
-> inline styles became even rings (**E-131**). Everything else in the class vocabulary is
-> still waiting for a consumer: all five tints, four rungs, the seal, the glyph primitives,
-> the mark and the crest. **That is the honest measure of what is left.**
+> ⚠️ **THE LAW IS MERGED; THE ADOPTION IS UNDER WAY.** Measured 2026-08-07: **2 of 31 §C
+> utility classes are taken by a component.** Three surfaces had picked a rung — the market
+> and Up & Down cards (rung 1, via the tokens at `.mcardp`'s own rule), the kit `Modal`
+> (rung 3, `.mat-modal`), and the money-in CTA (`.gilt-metal`) — and seven one-sided lamps
+> in `.tsx` inline styles became even rings (**E-131**). The toast took rung 4 + the five
+> tints (DA-1/DS-1), the result-modal crest composes the tint recipe (DS-3), and
+> **2026-08-08 the CELEBRATION VOCABULARY gained its consumer**: the struck seal shipped in
+> `win-celebration.tsx` (`.seal-arrive`, `.seal-sheen`, `.seal-mark-flip`, `.needle-sweep`,
+> `.g-settle` cascade, `.gilt-ink`, `.gilt-metal` CTA — record in
+> `../07-provenance/CHANGELOG.md`). **Still waiting for a consumer:** `.seal-commit`
+> (seal-on-bet-commit), `.g-nudge-*`/`.g-ring`/`.g-swap*` (wired into the kit `GlyphSwap`
+> but adoption across surfaces is partial), `.mark-flip-i`/`.mark-pending`, `.crest-arrive`/
+> `.crest-ring-reveal`, `.mat-inset`, and the flat/raised/float tints outside the toast.
+> **That is the honest measure of what is left.**
 
 ⛔ **Do not import from this folder at runtime.** `material.css` is a *mergeable source*, not a
 stylesheet the app loads. Merging it means moving its four sections into the files named below
@@ -239,7 +246,11 @@ Recorded so nobody pastes past them. None changes the verdict.
 
 ## Open items the designer flagged — carried here so they are not lost
 
-1. **React/TSX drop-ins** — win-celebration, toast, market-card matching our existing props. *Offered, not yet delivered.*
+1. ✅ **CLOSED 2026-08-08 — built in-house.** The offered React/TSX drop-ins (win-celebration,
+   toast, market-card) never arrived; the toast and market-card had already adopted the system
+   directly, and the win celebration was rebuilt in place from `spec/spec.html` §3
+   (`markets/win-celebration.tsx` — the struck seal, the cascade, the strike, the flip).
+   Nothing is owed on this item any more.
 2. **Icon restyle pass** across the glyph set (stroke 2.0, 2px live-area margin, 0.75px join radius). *Needs the set sent over.* ⚠️ The set is **178 unique keys**, not 185 (180 definitions, 2 shadowed by `Iplus`); **107** are referenced and ~71 are dead.
 3. ✅ Loss needle-settle — **delivered** (`needle-settle` + `.needle-settle-loss`).
 4. ✅ **RESOLVED 2026-08-06 — `--shadow-card-top` DOES already exist**, `globals.css:398`
@@ -253,7 +264,10 @@ Recorded so nobody pastes past them. None changes the verdict.
    money is mono, tabular, never letter-spaced. Amended at source in `docs/design-brief/README.md`
    §D-0 and restated in `DESIGN_AUTHORITY.md` section M. The table had been contradicting the ⛔
    line printed directly beneath it.
-6. **SW/ZH proof** — the celebration is verified in three languages; toasts, cards and menus are EN-only in the spec. **Verify at merge** (see `scripts/live-s32-card360.mjs` for the pattern).
+6. ✅ **DONE for the celebration, 2026-08-08** — `npm run qa:seal` proves the struck seal at
+   360/768/1280 × EN/SW/ZH + a reduced-motion cell (94 checks), each language witnessed by its
+   own headline off `<html lang>`. Toasts, cards and menus were proven trilingually by the
+   Session-B sweep (40 shots, MASTER-PLAN "Last updated" record).
 7. **`m-axis-sweep` duplication** — the one place `−14°` is written twice, because `skewX()` cannot take a custom property everywhere. **If the axis changes, change both** (`DESIGN_AUTHORITY` B1a).
    ⚠️ **It is worse than "written twice": `--m-tilt` currently has ZERO consumers.** `m-axis-sweep`
    hard-codes `-14deg` four lines below the token, `TippingBar` computes `lean * 14` in TS

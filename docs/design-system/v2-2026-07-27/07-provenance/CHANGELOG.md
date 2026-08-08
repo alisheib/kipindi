@@ -1,5 +1,36 @@
 # Changelog (reconstructed)
 
+## 2026-08-08 (design-system · celebration) — the struck seal replaces the gilt trophy; the celebration vocabulary gains its first consumer
+
+**The win moment is the spec's §3 now, built in place** (`markets/win-celebration.tsx` — the
+designer's offered React drop-ins never arrived; 11-material README open item 1 closes as
+"built in-house from the spec"). The reeded gilt rim (`--gilt-reeding`, landed with its first
+consumer, chroma ×1.2011 per E-124) around a guilloché royal-enamel face carrying the trademark
+in **single-ink relief** — `FiftyMark variant="white"` from `brand-mark.ts`'s one geometry, with
+a new `needleClassName` prop so `.needle-sweep` can ride the needle without a second drawing.
+Choreography all on the ladder: `.seal-arrive` impress + recoil → `.seal-cascade`'s staggered
+`.g-settle` copy → the rolling amount **strikes to `.gilt-ink`** as the count lands → the mark
+flips once on its own axis (`.seal-mark-flip`, delay `--t-max + --t-stage`) → `.seal-band
+.seal-sheen` closes the beat. Seal paint lives in `globals.css` (`.seal-rim/-spec/-enamel/-band`),
+choreography offsets in `motion.css`; the component only composes classes (B10). Two deliberate
+departures from the spec markup, recorded at the recipe: the enamel ring and guilloché carry the
+royal tint, never pure white (M1's own text), and initial focus lands on the Continue CTA rather
+than the demoted ✕.
+
+**What died with it (INTAKE §3b):** the drawn trophy, the 12 rays, the corner brackets and the
+`burst-medal-pop`/`burst-rays-in` keyframes + `.reward-burst__*` classes (state-tokens.css).
+`RewardBurst` is remade as the calm NON-WIN earned-peak medallion (KYC verified, proposal-bonus)
+on `.m-in-lift` + `.g-settle`, its amount in `.gilt-ink`; `OperationResultModal` lost its
+never-called `celebrate`/`celebrateGlyph` props (M7 — a generic result modal must not be able to
+wear the win vocabulary). "Won! · Congratulations" collapsed to one headline (`wonSub` deleted,
+all three locales). `test:design-frozen` ratchet 45 → 44 (reward-burst's bracket literals died).
+
+**Proof:** `npm run qa:seal` (new, wired) — 94/94 across 360/768/1280 × EN/SW/ZH + a
+reduced-motion cell (amount snaps pre-struck, sheen rests at 0), and a REAL two-player
+mock-bars settle: seal fired on the winner's mounted board at the realised payout to the
+shilling (modal 1,740 = wallet-derived 1,740; fee 260 under the ⅓ ceiling), loser got the
+factual receipt and exactly −stake. Shots in `.qa-design/seal/` (gitignored, re-shootable).
+
 ## 2026-08-06 (design-system · merge) — §A: the lamp is installed, and the card's lit edge stops being a line
 
 The material merge, atom by atom. One token change per commit, each with its gates, its

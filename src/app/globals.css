@@ -363,9 +363,9 @@
      ⛔ `--gilt-bloom` IS NOT LANDED, at all. MANIFEST, M3 and §C's own seal comment all
      say the bloom is REMOVED — radial glow dilutes the financial texture — so landing it
      would ship a zero-consumer token plus two comments describing behaviour that does
-     not exist. ⛔ `--gilt-reeding` is not landed either: nothing consumes it (§C has no
-     rule for it; it belongs to the seal's SVG markup), and a token whose literal never
-     arrives has bought nothing (INTAKE §3b). */
+     not exist. ⭐ `--gilt-reeding` LANDED 2026-08-08 with the struck seal (its one
+     consumer — the win celebration's rim, `.seal-rim` below). Chroma scaled ×1.2011
+     like its three siblings: the delivery wrote 0.095/0.085. */
 
   /* The metal itself: highlight → body → deep, on the one lamp's 166deg axis. */
   --gilt-metal: linear-gradient(var(--light-angle),
@@ -384,6 +384,11 @@
   --gilt-ink: linear-gradient(var(--light-angle),
                  oklch(91% 0.090 84) 0%, oklch(84% 0.114 84) 50%,
                  oklch(77% 0.120 84) 100%);
+  /* Fine milling for the seal's rim — body 79 against deep 65, the R2 ladder, on the
+     one lamp's own from-angle. Consumed by `.seal-rim` (the win celebration) ONLY —
+     M7 makes the seal exclusive to a win, so a second consumer is a violation. */
+  --gilt-reeding: repeating-conic-gradient(from 166deg,
+                 oklch(79% 0.114 84) 0deg 2.5deg, oklch(65% 0.102 84) 2.5deg 5deg);
 
   --shadow-card:   0 1px 2px oklch(6% 0.06 268 / 0.55), 0 10px 28px -10px oklch(4% 0.04 268 / 0.70);
   --shadow-royal:  0 14px 44px -14px oklch(4% 0.04 268 / 0.78);
@@ -1692,6 +1697,57 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
    ⚠️ Its consumer `.seal-arrive` arrives with §C; a keyframe with no consumer is
    what INTAKE §3 step 2 asks for, not an oversight. */
 @keyframes seal-recoil { from { translate: 0 2px; } to { translate: 0 0; } }
+
+/* ---------- THE STRUCK SEAL — surface recipe (Claude Design spec §3, landed
+   2026-08-08 with the new win celebration) --------------------------------------
+   A finely milled gilt rim (`--gilt-reeding`) around a guilloché royal-enamel face
+   carrying the trademark in single-ink relief — mint-mark authenticity; full colour
+   stays in chrome (M8). ⛔ M7: these classes are EXCLUSIVE to a win. The one
+   consumer is `markets/win-celebration.tsx`; a loss, a refund, or any decorative
+   surface wearing them is a violation, not a style choice.
+   The GEOMETRY (layer sizes, the 132px stage, the 76px mark) lives in the component;
+   the PAINT lives here (B10 — a component consumes the system, it does not compose).
+   Two deliberate departures from the delivered spec markup, both the law's own text:
+   the enamel's inner ring and the guilloché lines carry the 1-2% royal tint of
+   `--edge-lit` rather than the spec's pure white (M1 — "never pure white"), and the
+   reeding chroma is ×1.2011 (E-124, with the rest of the gilt family). The rim's
+   soft gold ambience is the delivered recipe — the REMOVED bloom was the separate
+   radial halo element behind the seal, not the rim's own shadow stack. */
+.seal-rim {
+  position: absolute; inset: 0; border-radius: 50%;
+  background: var(--gilt-reeding);
+  box-shadow: var(--gilt-metal-edge),
+              0 10px 26px -6px oklch(4% 0.04 268 / 0.75),
+              0 0 30px -6px color-mix(in oklab, var(--gold-500) 32%, transparent);
+}
+/* The one lamp's specular, centred at x ≈ 42% (M1 — 50% − tan14°). */
+.seal-spec {
+  position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle at 42% 20%, oklch(99% 0.02 95 / 0.18), transparent 62%);
+}
+/* The enamel face — a sunken royal well inside the rim (inset 6.8% ≈ 9px at the
+   celebration's 132px). Its bottom inner shade is the well vocabulary M1 blesses
+   (`--edge-shade`, "inset wells only"); its guilloché is the ::before overlay. */
+.seal-enamel {
+  position: absolute; inset: 6.8%; border-radius: 50%; overflow: hidden;
+  display: grid; place-items: center;
+  background: radial-gradient(circle at 42% 34%, oklch(30% 0.155 268), oklch(15% 0.115 268));
+  box-shadow: inset 0 0 0 1px oklch(98% 0.01 268 / 0.08),
+              inset 0 0 0 1.5px color-mix(in oklab, var(--gilt) 50%, transparent),
+              inset 0 -10px 22px oklch(4% 0.03 268 / 0.38);
+}
+.seal-enamel::before {
+  content: ""; position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
+  background: repeating-radial-gradient(circle at 50% 50%,
+              transparent 0 3px, oklch(98% 0.01 268 / 0.018) 3px 4px);
+}
+/* The closing band of light — PAINT only; its sweep is `.seal-sheen` (motion.css),
+   and the two compose on one element: `class="seal-band seal-sheen"`. */
+.seal-band {
+  position: absolute; inset: 6.8%; border-radius: 50%; pointer-events: none;
+  background: conic-gradient(from 300deg, transparent 0deg,
+              oklch(99% 0.02 95 / 0.15) 26deg, transparent 56deg);
+}
 
 /* ---------- Settling shimmer ---------- */
 @keyframes settling-sweep { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }

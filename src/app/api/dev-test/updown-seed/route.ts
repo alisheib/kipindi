@@ -13,8 +13,9 @@ import { NextResponse } from "next/server";
 import { seedDefaultSources, addSource, listSources } from "@/lib/server/source-registry";
 import {
   createAsset, setAssetEnabled, createChain, setChainState,
-  listAssets, listChains,
+  listAssets, listChains, setUpDownConfig,
 } from "@/lib/server/updown-config";
+import { FEED_PROVIDERS } from "@/lib/updown-providers";
 
 const ACTOR = "dev_test_seed";
 
@@ -24,6 +25,20 @@ export async function POST(req: Request) {
   }
   const body = await req.json().catch(() => ({}));
   const durations: number[] = Array.isArray(body?.durations) ? body.durations : [5, 15];
+
+  // Optional feed-provider override, so a driver that needs DECISIVE local settles can
+  // ask for `mock-bars` (dated — a different price per boundary) instead of the default
+  // `mock`, whose constant per-symbol price makes every round a no-move VOID. Validated
+  // against the shared registry and applied through the same `setUpDownConfig` the admin
+  // action calls, so a value the console would refuse is refused here too. Dev-only —
+  // both simulated providers refuse outright in production by construction.
+  if (typeof body?.feedProvider === "string") {
+    if (!FEED_PROVIDERS.some((p) => p.id === body.feedProvider)) {
+      return NextResponse.json({ ok: false, error: `unknown feedProvider "${body.feedProvider}"` }, { status: 400 });
+    }
+    const c = await setUpDownConfig({ feedProvider: body.feedProvider as import("@/lib/updown-providers").FeedProviderId }, ACTOR);
+    if (!c.ok) return NextResponse.json({ ok: false, error: c.error }, { status: 400 });
+  }
 
   await seedDefaultSources();
   // bot.go.tz ships as a trusted `macro` source; kitco is added so the seed matches

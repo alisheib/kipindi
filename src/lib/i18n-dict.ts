@@ -789,7 +789,7 @@ export const dict = {
       changeSide: "Change side",
       whichWay: "Which way will it resolve?",
       chooseSideHelp: "Choose a side to set your conviction and place your bet.",
-      wonHeading: "Won!", wonSub: "Congratulations",
+      wonHeading: "You won", /* wonSub deleted 2026-08-08 — the spec collapses "Won! · Congratulations" to ONE headline */
     },
     wallet: {
       title: "Wallet",
@@ -2200,7 +2200,7 @@ export const dict = {
       changeSide: "Badilisha upande",
       whichWay: "Litatatuliwa upande gani?",
       chooseSideHelp: "Chagua upande ili kuweka msimamo wako na kuweka dau lako.",
-      wonHeading: "Umeshinda!", wonSub: "Hongera",
+      wonHeading: "Umeshinda!",
     },
     wallet: {
       title: "Pochi",
@@ -3589,7 +3589,7 @@ export const dict = {
       changeSide: "更换方向",
       whichWay: "它会朝哪个方向结算？",
       chooseSideHelp: "选择一方以设置您的信念并下注。",
-      wonHeading: "赢了！", wonSub: "恭喜",
+      wonHeading: "赢了！",
     },
     wallet: {
       title: "钱包",
