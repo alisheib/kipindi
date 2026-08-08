@@ -60,15 +60,21 @@ export function LivePulseGrid({ markets }: { markets: Market[] }) {
   // (a live wall can be thousands of bars) and gives a real "loading more"
   // affordance instead of dumping everything at once.
   const [count, setCount] = useState(() => Math.min(BATCH, markets.length));
-  const [appending, setAppending] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const busyRef = useRef(false);
   const hasMore = count < filtered.length;
 
-  // Reset the visible batch whenever the filtered set changes (new query).
+  // B-17 — reset the visible batch on a NEW QUERY only. This used to key on
+  // `filtered.length`, so the 15s poll tick changing the live count chopped a
+  // scrolled reader back to 24 cards. A data change now only CLAMPS the count
+  // into range (functional update — no reset, no lost scroll position).
   useEffect(() => {
     setCount(Math.min(BATCH, filtered.length));
-  }, [filtered.length, query]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query]);
+  useEffect(() => {
+    setCount((c) => Math.min(Math.max(c, Math.min(BATCH, filtered.length)), Math.max(filtered.length, BATCH)));
+  }, [filtered.length]);
 
   useEffect(() => {
     if (!hasMore) return;
@@ -78,13 +84,10 @@ export function LivePulseGrid({ markets }: { markets: Market[] }) {
       (entries) => {
         if (entries[0]?.isIntersecting && !busyRef.current) {
           busyRef.current = true;
-          setAppending(true);
-          // a short, kit-consistent loader beat, then reveal the next batch
-          window.setTimeout(() => {
-            setCount((c) => Math.min(c + BATCH, filtered.length));
-            setAppending(false);
-            busyRef.current = false;
-          }, 350);
+          // V-6 — the next batch is in-memory; the 350ms setTimeout here was
+          // manufactured latency and is gone. Reveal immediately.
+          setCount((c) => Math.min(c + BATCH, filtered.length));
+          busyRef.current = false;
         }
       },
       { rootMargin: "300px 0px" },
@@ -131,7 +134,6 @@ export function LivePulseGrid({ markets }: { markets: Market[] }) {
           ref={sentinelRef}
           className="flex flex-col items-center gap-2.5 py-8"
           aria-live="polite"
-          aria-busy={appending}
         >
           <BrandSpinner size={30} />
           <p className="font-mono text-[10.5px] uppercase tracking-[0.16em] text-text-subtle">

@@ -5,7 +5,7 @@
  * appear immediately; anyone can report (auto-hides at threshold, server-side);
  * authors + moderators can delete. Bilingual, on-theme, reduced-motion safe.
  */
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { Spinner } from "@/components/ui/spinner";
@@ -50,6 +50,18 @@ export function CommentsThread({
   const INITIAL_SHOW = 15;
   const [comments, setComments] = useState<CommentView[]>(initialComments);
   const [showAll, setShowAll] = useState(initialComments.length <= INITIAL_SHOW);
+  // B-17 — useState(initialComments) froze this thread at FIRST render: the
+  // 15s poll re-rendered the server component with fresh comments and this
+  // client component ignored them forever. Reconcile on prop change — server
+  // truth wins (it includes anything this client optimistically prepended,
+  // once the refresh after postCommentAction lands).
+  const lastServerRef = useRef(initialComments);
+  useEffect(() => {
+    if (lastServerRef.current !== initialComments) {
+      lastServerRef.current = initialComments;
+      setComments(initialComments);
+    }
+  }, [initialComments]);
   const [body, setBody] = useState("");
   const [pending, startTransition] = useTransition();
   const { toast } = useToast();

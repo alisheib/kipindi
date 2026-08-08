@@ -12,7 +12,7 @@
  */
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { useToast } from "@/components/ui/toast";
+import { useDeferredToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
 import { cashOutPositionAction } from "@/app/markets/actions";
 import { SellConfirmModal } from "./sell-confirm-modal";
@@ -99,7 +99,9 @@ export function SellButton({
   const [resultOpen, setResultOpen] = useState(false);
   const [resultData, setResultData] = useState<{ variant: "success" | "danger"; value: number; net: number; error?: string } | null>(null);
   const router = useRouter();
-  const { toast } = useToast();
+  // B-16 — the success toast rides the transition's falling edge (the wallet
+  // figure it announces is then actually on screen); errors stay immediate.
+  const { toast, deferToast } = useDeferredToast(pending);
   const { t } = useT();
 
   // Free exit is only valid if: grace window hasn't expired AND the market
@@ -139,7 +141,7 @@ export function SellButton({
       }
       const realisedValue = r.data!.value;
       const realisedFee = Math.max(0, stake - realisedValue); // 0 inside the free-exit window
-      toast({
+      deferToast({
         title: `${t.dialog.sellLabel} · ${formatTzs(realisedValue)} ${t.toast.soldReturned}`,
         description: realisedFee <= 0
           ? t.toast.fullStakeRefunded

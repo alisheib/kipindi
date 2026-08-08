@@ -9,6 +9,8 @@ import { IpReveal } from "@/components/profile/ip-reveal";
 import { getSession } from "@/lib/server/session";
 import { formatDateTime } from "@/lib/utils";
 import { getServerT, type Dict } from "@/lib/i18n-server";
+import { SubmitButton } from "@/components/ui/submit-button";
+import { logoutAction } from "@/app/auth/logout/actions";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Active sessions", which a Swahili player saw in their browser tab and history.
@@ -100,11 +102,19 @@ export default async function SessionsPage() {
           </div>
           {/* Destructive: ends this (the only) session → ghost button with claret
               text. Inline colour beats .btn-ghost's own `color: var(--text)`. */}
-          <form action="/auth/logout" method="POST" className="inline-flex shrink-0">
-            <button type="submit" className="btn btn-ghost btn-sm" style={{ color: "var(--no-300)" }}>
-              <I.logOut s={13} />
-              {t.common.signOut}
-            </button>
+          {/* B-20 — the destructive sign-out finally has a pending face: a real
+              server action (useFormStatus needs one — a native POST navigation
+              never flips pending), and the kit SubmitButton's new icon slot,
+              so the spinner replaces the glyph and a double-tap can't fire twice. */}
+          <form action={logoutAction} className="inline-flex shrink-0">
+            <SubmitButton
+              label={t.common.signOut}
+              variant="ghost"
+              size="sm"
+              fullWidth={false}
+              icon={<I.logOut s={13} />}
+              style={{ color: "var(--no-300)" }}
+            />
           </form>
         </div>
         <div className="mt-4 flex items-center justify-between gap-3 border-t border-border/60 pt-3">

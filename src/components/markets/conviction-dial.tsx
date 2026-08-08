@@ -18,7 +18,7 @@ import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { InfoHint } from "@/components/ui/info-hint";
 import { I } from "@/components/ui/glyphs";
-import { useToast } from "@/components/ui/toast";
+import { useDeferredToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
 import { buyPositionAction } from "@/app/markets/actions";
 import { HouseLeanWarning } from "./house-lean-warning";
@@ -248,7 +248,9 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
   const [pending, startTransition] = useTransition();
   const trackRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
-  const { toast } = useToast();
+  // B-16 — success toasts ride the transition's falling edge (when the refresh
+  // has committed), the admin idiom; error toasts stay immediate.
+  const { toast, deferToast } = useDeferredToast(pending);
   const { t } = useT();
 
   const distFromCenter = Math.abs(pos - 0.5) * 2;
@@ -888,7 +890,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
         }
         return;
       }
-      toast({
+      deferToast({
         title: `${t.toast.betPlaced} · ${q.side} ${formatTzs(q.stake)}`,
         description: t.toast.payoutAtResolution,
         variant: "success",

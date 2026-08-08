@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+import { Suspense, cache } from "react";
 import { fill } from "@/lib/utils";
 import Link from "next/link";
 import { SignalPip } from "@/components/brand";
@@ -6,7 +6,7 @@ import { I, categoryGlyph } from "@/components/ui/glyphs";
 import { MarketCard } from "@/components/markets/market-card";
 import { listMarkets, impliedYesPct, isClosedByTime, isSelectionClosed, traderSeedsByMarket, type MarketCategory } from "@/lib/server/market-service";
 import { getCardCharts } from "@/lib/server/market-history";
-import { countComments } from "@/lib/server/comments-store";
+import { countCommentsByMarkets } from "@/lib/server/comments-store";
 import { getServerT } from "@/lib/i18n-server";
 
 import { EmptyState } from "@/components/ui/empty-state";
@@ -31,9 +31,17 @@ const WHEN_CUTOFFS: Record<WhenFilter, number | null> = {
   all:   null,
 };
 
+// B-17 — ONE live-board read per request. The header, the total-live count and
+// the bettable grid all consumed the same list but each ran its own query (up
+// to 4 board fetches per render). React cache() dedupes across the page's
+// streamed sections within a single request render.
+const getLiveBoard = cache(async () =>
+  (await listMarkets({ status: "LIVE" }).catch(() => [])).filter((m) => !isClosedByTime(m)),
+);
+
 export default async function MarketsPage({ searchParams }: { searchParams: Promise<{ cat?: string; when?: string; q?: string; page?: string }> }) {
   const { t } = await getServerT();
-  const allLive = (await listMarkets({ status: "LIVE" }).catch(() => [])).filter((m) => !isClosedByTime(m));
+  const allLive = await getLiveBoard();
   const totalVolume = allLive.reduce((s, m) => s + m.yesPool + m.noPool, 0);
   return (
     <main className="mx-auto max-w-[1280px] px-3 lg:px-6 py-6">
@@ -208,18 +216,12 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
   const effectiveCat = searching ? undefined : cat;
   // Total live count (unfiltered) — used to distinguish "platform has zero
   // markets" from "no markets match the active filter".
-  const totalLive = effectiveCat
-    ? (await listMarkets({ status: "LIVE" }).catch(() => [])).filter(m => !isClosedByTime(m)).length
-    : 0; // no category filter means bettable IS total
-  // Sort by closest-to-resolution first so the demo-friendly minute-scale
-  // markets float to the top. Past-resolution markets sink (they're in the
-  // resolver queue, not the live grid).
-  const bettable = (await listMarkets({ status: "LIVE", category: effectiveCat }).catch(() => []))
-    // Filter out markets whose clock has already passed but the
-    // resolver hasn't yet acted — they're closed-by-time, not bettable,
-    // and showing them in the LIVE grid produces a confused UX where
-    // you can click a card whose dial then refuses to fire.
-    .filter(m => !isClosedByTime(m));
+  // B-17 — both figures derive from the ONE cached board read (getLiveBoard
+  // already excludes closed-by-time rows: they're in the resolver queue, not
+  // the live grid, and a card whose dial refuses to fire is a confused UX).
+  const liveBoard = await getLiveBoard();
+  const totalLive = effectiveCat ? liveBoard.length : 0; // no category filter means bettable IS total
+  const bettable = effectiveCat ? liveBoard.filter(m => m.category === effectiveCat) : liveBoard;
   let live;
   if (searching) {
     // While searching, ignore the time-window entirely — a market the player
@@ -274,7 +276,8 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
   const allForCharts = [...pagedLive, ...resolved];
   // One query for the whole board — never map getCardChart across a list.
   const cardCharts = await getCardCharts(allForCharts.map((m) => m.id)).catch(() => new Map());
-  const commentCounts = new Map(await Promise.all(allForCharts.map(async (m) => [m.id, await countComments(m.id).catch(() => 0)] as const)));
+  // B-17 — one grouped query for the whole board, not one count per card.
+  const commentCounts = await countCommentsByMarkets(allForCharts.map((m) => m.id)).catch(() => new Map<string, number>());
 
   const resultCount = live.length + resolved.length;
 

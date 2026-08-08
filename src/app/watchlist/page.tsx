@@ -12,7 +12,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { MarketCard } from "@/components/markets/market-card";
 import { getSession } from "@/lib/server/session";
 import { listWatchedMarketIds } from "@/lib/server/watchlist-service";
-import { getMarket, impliedYesPct, isClosedByTime, isSelectionClosed } from "@/lib/server/market-service";
+import { listMarkets, impliedYesPct, isClosedByTime, isSelectionClosed } from "@/lib/server/market-service";
+import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { getServerT } from "@/lib/i18n-server";
 import { formatDateTime } from "@/lib/utils";
 
@@ -30,12 +31,18 @@ export default async function WatchlistPage() {
   if (!session) redirect("/auth/login?next=/watchlist");
 
   const ids = await listWatchedMarketIds(session.userId).catch(() => [] as string[]);
-  const markets = (
-    await Promise.all(ids.map((id) => getMarket(id).catch(() => null)))
-  ).filter((m): m is NonNullable<typeof m> => !!m);
+  // B-17 — ONE board read instead of an N+1 `getMarket` fan-out per starred
+  // market (a 30-star watchlist was 30 sequential-ish store reads). The board
+  // query already hydrates every market; filter it to the starred set, keeping
+  // the player's star order.
+  const byId = new Map((await listMarkets({ productLine: "ALL" }).catch(() => [])).map((m) => [m.id, m] as const));
+  const markets = ids.map((id) => byId.get(id)).filter((m): m is NonNullable<typeof m> => !!m);
 
   return (
     <main className="mx-auto max-w-[1280px] px-3 lg:px-6 py-6 space-y-5">
+      {/* B-17 — the watchlist is a "what's moving" surface; it polled never.
+          Same cadence as wallet/positions (pauses when the tab is hidden). */}
+      <RefreshPoller intervalMs={20_000} />
       <PageHeader tone="info" icon={<I.star s={22} />} eyebrow={t.watchlist.eyebrow} title={t.watchlist.title} />
 
       {markets.length === 0 ? (

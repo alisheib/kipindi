@@ -195,6 +195,32 @@ export async function countComments(marketId: string): Promise<number> {
   return n;
 }
 
+/**
+ * B-17 — visible-comment counts for a whole board in ONE query. The markets
+ * board used to call `countComments` per card, which under the Prisma DAL was
+ * one `findMany` per market on every board render. Missing ids simply have no
+ * entry (treat as 0). Same visibility rule as `countComments`.
+ */
+export async function countCommentsByMarkets(marketIds: string[]): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  if (marketIds.length === 0) return out;
+  if (usePrisma) {
+    const rows = await pc().comment.groupBy({
+      by: ["marketId"],
+      where: { marketId: { in: marketIds }, hidden: false, deleted: false },
+      _count: { _all: true },
+    });
+    for (const r of rows) out.set(r.marketId, r._count._all);
+    return out;
+  }
+  const wanted = new Set(marketIds);
+  for (const c of comments.values()) {
+    if (!wanted.has(c.marketId) || c.deleted || c.hidden) continue;
+    out.set(c.marketId, (out.get(c.marketId) ?? 0) + 1);
+  }
+  return out;
+}
+
 /** A row in the admin moderation queue. */
 export type ModerationItem = {
   id: string;
