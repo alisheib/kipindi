@@ -48,7 +48,9 @@ export function CashbackPromo({
       }}
     >
       {/* warm coins motif + jackpot glow — same treatment as the bonus card */}
-      <div className="absolute -right-5 -top-7 opacity-[0.12] text-gold-300 animate-pulse" aria-hidden style={{ animationDuration: "3.5s" }}>
+      {/* M5 — a decorative glyph does not perform: the coins motif rests still
+          (the infinite pulse was bespoke glyph motion outside the frozen ambient list). */}
+      <div className="absolute -right-5 -top-7 opacity-[0.12] text-gold-300" aria-hidden>
         <I.coins s={compact ? 110 : 140} />
       </div>
       <div className="absolute -left-10 -bottom-12 h-40 w-40 rounded-full opacity-30" aria-hidden

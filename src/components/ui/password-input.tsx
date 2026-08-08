@@ -13,6 +13,7 @@
 
 import * as React from "react";
 import { I } from "@/components/ui/glyphs";
+import { GlyphSwap } from "@/components/ui/glyph-swap";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
@@ -90,7 +91,8 @@ export const PasswordInput = React.forwardRef<HTMLInputElement, Props>(function 
           onClick={() => setReveal(r => !r)}
           className="inline-flex items-center justify-center px-3 bg-bg-elevated border-l border-border text-text-subtle hover:text-text transition-colors shrink-0"
         >
-          {reveal ? <I.eyeOff s={16} /> : <I.eye s={16} />}
+          {/* M5 state morph — the eye swaps through the kit primitive, never bespoke motion. */}
+          <GlyphSwap state={reveal}>{reveal ? <I.eyeOff s={16} /> : <I.eye s={16} />}</GlyphSwap>
         </button>
       </span>
 

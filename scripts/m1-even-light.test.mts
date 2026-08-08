@@ -4,7 +4,7 @@
  *   npm run test:m1-light        # the gate
  *   node scripts/m1-even-light-red.mjs   # the proof it can fail
  *
- * THE LAW (design-system v2, 11-material/EXTEND.md M1):
+ * THE LAW (docs/DESIGN_AUTHORITY.md §M1):
  *   "Every lit surface catches a soft, EVEN 1px inner ring (--edge-lit) carrying
  *    a 4% royal tint, never pure white — and never a one-sided line; the
  *    direction of the light lives in the WASH (--light-angle, 166deg) …

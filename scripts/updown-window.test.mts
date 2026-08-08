@@ -301,25 +301,32 @@ async function freshRound() {
      roundPhase({ state: "open", selectionClosesAtMs: null, closesAtMs: CLOSE, nowMs: CLOSE - 1_000 }).bettable &&
      !roundPhase({ state: "open", selectionClosesAtMs: null, closesAtMs: CLOSE, nowMs: CLOSE - 1_000 }).locked);
 
-  // ── 7b · UD-2 · the ROUND PAGE's action rail actually consumes this rule ──
-  //
-  // E-82's defect survived its own fix once already, in exactly this branch: the pod was
-  // made instant-driven (E-104) while the STAKE PANEL beside it stayed keyed to a
-  // server-rendered `round.state === "open"` — live chips and a gold Confirm for up to
-  // 20s after the lock. The rule alone cannot prevent that; only its ADOPTION can, so
-  // adoption is asserted: the panel derives from `roundPhase` on the server-anchored
-  // clock, and the page routes both open and locked states through it rather than
-  // rendering the stake panel off the raw prop.
+}
+
+// ── §7b · UD-2 (ux-audit 2026-08) — the ROUND PAGE's action panel uses this rule ─────────────
+// E-82's defect had one branch left: the round page rendered the stake panel iff
+// `round.state === "open"`, a server-rendered prop, so the panel stayed live for up to 20s
+// past the lock. These are STRUCTURAL assertions — the pure rule is proven above; what
+// regressed historically is a surface deciding its phase from the prop instead of the rule.
+{
   const { readFileSync } = await import("node:fs");
-  const rail = readFileSync(new URL("../src/components/updown/round-action-panel.tsx", import.meta.url), "utf8");
-  const page = readFileSync(new URL("../src/app/updown/[roundId]/page.tsx", import.meta.url), "utf8");
-  ok("7b.1 · the round page's action rail derives its phase from roundPhase + useServerNow",
-     /roundPhase\(\{ state, selectionClosesAtMs, closesAtMs/.test(rail) && /useServerNow\(/.test(rail));
-  ok("7b.2 · ⛔ the page renders the rail for BOTH open and locked — never RoundStakePanel off the raw prop",
-     /isOpen \|\| locked \? \(/.test(page) && /<RoundActionPanel/.test(page) && !/<RoundStakePanel/.test(page));
-  ok("7b.3 · the quick-bet hook itself refuses a tap past the lock (the belt under the panel)",
-     /lockPassed \|\| lockedByServer/.test(
-       readFileSync(new URL("../src/components/updown/use-quick-bet.ts", import.meta.url), "utf8")));
+  const page = readFileSync("src/app/updown/[roundId]/page.tsx", "utf8");
+  const panel = readFileSync("src/components/updown/round-action-panel.tsx", "utf8");
+  const hook = readFileSync("src/components/updown/use-quick-bet.ts", "utf8");
+
+  ok("7b.1 · ⭐ the round page's action slot is the instant-driven RoundActionPanel, not a raw isOpen branch",
+     page.includes("<RoundActionPanel") && !page.includes("<RoundStakePanel"),
+     "the stake panel must be reached only through the phase-deriving wrapper");
+  ok("7b.2 · RoundActionPanel derives its branch from roundPhase off the server-anchored clock",
+     panel.includes("roundPhase({") && panel.includes("useServerNow(") && panel.includes("serverNowMs"),
+     "a phase decided by a prop cannot change without a round trip");
+  ok("7b.3 · ⛔ the hook refuses place() past the lock instant — no optimistic bump, no request",
+     hook.includes("selectionClosesAtMs") &&
+     /(lockPassed \|\| lockedByServer)/.test(hook) &&
+     hook.indexOf("if (lockPassed || lockedByServer)") < hook.indexOf("m.set(key, { side, amount, settled: false })"),
+     "the guard must run BEFORE the optimistic apply");
+  ok("7b.4 · the board card threads its lock instant into the hook (belt-and-braces on every surface)",
+     readFileSync("src/components/updown/updown-card.tsx", "utf8").includes("selectionClosesAtMs: selectionClosesAtMs ?? null"));
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

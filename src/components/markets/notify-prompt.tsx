@@ -14,6 +14,7 @@ import { useT } from "@/lib/i18n";
  */
 import { useEffect, useState } from "react";
 import { I } from "@/components/ui/glyphs";
+import { GlyphSwap } from "@/components/ui/glyph-swap";
 
 const KEY = "50pick-notify-markets";
 
@@ -114,7 +115,8 @@ export function NotifyPrompt({ marketId, marketTitle }: { marketId: string; mark
           : "btn-ghost"
       }`}
     >
-      {watching ? <I.bellRing s={14} /> : <I.bell s={14} />}
+      {/* M5 state morph — bell→ringing swaps through the kit primitive. */}
+      <GlyphSwap state={watching}>{watching ? <I.bellRing s={14} /> : <I.bell s={14} />}</GlyphSwap>
       {watching ? `${t.common.watching} · ${t.common.watchingHint}` : t.common.notifyOnResolve}
     </button>
   );

@@ -39,3 +39,25 @@ export function stakeIsValid(raw: string, min: number, max: number): boolean {
   const n = parseStake(raw);
   return n != null && n >= min && n <= max;
 }
+
+/**
+ * UD-1 (ux-audit 2026-08) · THE BALANCE PRE-FLIGHT — pure, so the suite can drive it.
+ *
+ * A tap that is predictably doomed must never look like a placed bet: the conviction
+ * dial already warns pre-click when `stake > balance` (CLAUDE.md UX commitments), and
+ * the quick-bet stack had nothing equivalent. `balance` is the SERVER-rendered wallet
+ * balance; `spentSinceTruth` is the optimistic stake placed since that render (the
+ * hook's `optUp + optDown`), so a rapid burst cannot overdraw the rendered figure.
+ *
+ * ⛔ `balance == null` = UNKNOWN (guest, or the wallet read failed) → NOT insufficient.
+ * B-1's law: a failed read never renders as zero — inventing "insufficient" from a
+ * null would block a real bettor on a read hiccup. The server stays the boundary.
+ */
+export function insufficientFor(
+  balance: number | null | undefined,
+  spentSinceTruth: number,
+  stake: number,
+): boolean {
+  if (balance == null || stake <= 0) return false;
+  return stake > balance - spentSinceTruth;
+}

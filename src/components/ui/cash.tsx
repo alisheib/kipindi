@@ -21,6 +21,7 @@
 
 import * as React from "react";
 import { I } from "@/components/ui/glyphs";
+import { GlyphSwap } from "@/components/ui/glyph-swap";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 
@@ -117,7 +118,8 @@ export function CashEye({
         className,
       )}
     >
-      {hidden ? <I.eyeOff s={size} /> : <I.eye s={size} />}
+      {/* M5 state morph — kit swap primitive, never bespoke motion. */}
+      <GlyphSwap state={hidden}>{hidden ? <I.eyeOff s={size} /> : <I.eye s={size} />}</GlyphSwap>
     </button>
   );
 }

@@ -98,7 +98,8 @@ export function KycDocUploader({
           }`}>
             {/* C1b — per-slot silhouette line-art: ID card for NIDA front/back,
                 person for the selfie slot. */}
-            {working ? <Spinner size={14} /> : done ? <I.check s={14} /> : (docType === "SELFIE" ? <I.user s={14} /> : <I.idCard s={14} />)}
+            {/* M5 — the done-check ARRIVES on the state change via the settle primitive. */}
+            {working ? <Spinner size={14} /> : done ? <I.check s={14} className="g-settle" /> : (docType === "SELFIE" ? <I.user s={14} /> : <I.idCard s={14} />)}
           </span>
         )}
         <span className="block font-display text-[12px] font-semibold text-text">{label}</span>
@@ -174,7 +175,7 @@ export function KycExtraDocUploader({
         <span className={`shrink-0 h-9 w-9 inline-flex items-center justify-center rounded-pill ${
           done ? "bg-yes-500 text-yes-950" : "bg-bg-overlay text-text-subtle border border-border"
         }`}>
-          {working ? <Spinner size={14} /> : done ? <I.check s={14} /> : <I.plus s={14} />}
+          {working ? <Spinner size={14} /> : done ? <I.check s={14} className="g-settle" /> : <I.plus s={14} />}
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-[12.5px] text-text leading-snug">{description}</p>

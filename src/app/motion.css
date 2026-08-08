@@ -246,7 +246,8 @@ html.kp-reduce-motion *, html.kp-reduce-motion *::before, html.kp-reduce-motion 
 
 /* ── ⭐ THE TINT, RUNG-INDEPENDENT — D-6.6's SEND-BACK, REPAIRED ────────────
    The acceptance test applied the system to `ui/callout.tsx`, a component the
-   designer never saw, from `EXTEND.md` alone. M2 answered the surface cleanly —
+   designer never saw, from the M1–M8 law alone (then EXTEND.md; since ATOM J it
+   lives at docs/DESIGN_AUTHORITY.md section M). M2 answered the surface cleanly —
    a callout is content-plane furniture, so rung 0 — and then the delivery had no
    way to express it: its `.mat-edge-warn` is `inset ring + var(--elev-toast)`,
    welded to rung 4, while its own comment names callouts. Applying it puts a

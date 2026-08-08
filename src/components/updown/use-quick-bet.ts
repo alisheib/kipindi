@@ -5,7 +5,7 @@ import { useToast } from "@/components/ui/toast";
 import { buyPositionAction } from "@/app/markets/actions";
 import { formatTzs } from "@/lib/utils";
 import { haptics } from "@/lib/haptics";
-import { quickStakes, parseStake } from "./stake-math";
+import { quickStakes, parseStake, insufficientFor } from "./stake-math";
 // UD-4 · the ONE code→copy map, shared by every bet surface. The server string is
 // audit truth; the player reads the dictionary.
 import { udBetErrorCopy, type UdBetFailure } from "./updown-bet-errors";
@@ -168,9 +168,11 @@ export function useUpDownQuickBet(opts: {
     opts.selectionClosesAtMs != null && serverNow != null && serverNow >= opts.selectionClosesAtMs;
   /** The server refused with SELECTION_CLOSED — it has spoken; don't wait for the poll. */
   const [lockedByServer, setLockedByServer] = useState(false);
-  /** The chosen stake exceeds the known balance. Unknown balance (null) never gates. */
-  const insufficient =
-    opts.walletBalance != null && stakeReady && stake > opts.walletBalance;
+  /** The chosen stake exceeds the known balance, AFTER the money already committed in
+   *  this burst (the other session's `insufficientFor` — one home, and it subtracts
+   *  in-flight spend, which a bare `stake > balance` misses on a rapid burst). Unknown
+   *  balance (null) never gates — B-1: a failed read never invents "insufficient". */
+  const insufficient = stakeReady && insufficientFor(opts.walletBalance, optUp + optDown, stake);
   /** UD-3 · a compliance/account block the surface must present as an acknowledge-modal. */
   const [blocked, setBlocked] = useState<Extract<UdBetFailure, { kind: "blocked" }> | null>(null);
   const clearBlocked = useCallback(() => setBlocked(null), []);
