@@ -53,7 +53,16 @@ for (const section of ["## T —", "## S —", "## A —", "## C —", "## H —
 }
 
 // ── 2 · nobody else claims the door ─────────────────────────────────────────
+// 🔴 NORMALISE THE SEPARATOR BEFORE COMPARING — this gate was RED on Windows and GREEN on
+// Linux for the same commit, which is the worst failure a ratchet can have: it makes the
+// verdict a property of the machine rather than the repo. `globSync` yields
+// `docs\DESIGN_AUTHORITY.md` on Windows, so `p !== AUTHORITY` (written with a forward
+// slash) never matched, the rulebook was never excluded from its OWN competing-doors
+// scan, and it failed on the three front-door phrases it is *supposed* to be the only
+// file allowed to carry. Same lesson as `test:updown-push`'s CRLF literal: a guard must
+// compare normalised values, or it is judging the filesystem, not the code.
 const designDocs = globSync("docs/**/*.md", { exclude: (p) => p.includes("node_modules") })
+  .map((p) => p.replace(/\\/g, "/"))
   .filter((p) => p !== AUTHORITY)
   .filter((p) => /design/i.test(p));
 
