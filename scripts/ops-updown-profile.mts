@@ -19,7 +19,7 @@
 import { ALLOWED_DURATIONS } from "../src/lib/updown-durations.ts";
 import type { AssetProfile } from "../src/lib/updown-playbook.ts";
 import { buildPlaybook, judgeAsset, DEFAULT_POLICY } from "../src/lib/updown-playbook.ts";
-import { saveProfile } from "../src/lib/server/updown-playbook-store.ts";
+import { saveProfile, loadProfile } from "../src/lib/server/updown-playbook-store.ts";
 
 const API = "https://api.twelvedata.com/time_series";
 /** ⚠️ TwelveData sits behind Cloudflare and answers a default Node/py agent with `error 1010`.
@@ -182,7 +182,17 @@ async function main() {
         ` floor ${String(floor).padEnd(9)} min ${String(book.minDurationMinutes ?? "-").padStart(3)}` +
         ` rec ${(book.recommendedDurations.join(",") || "—").padEnd(15)} dead ${book.deadHoursUtc.join(",") || "—"}`);
       console.log(`             ${verdict.reason}`);
-      if (!DRY) { await saveProfile(p); console.log(`             saved`); }
+      if (!DRY) {
+        await saveProfile(p);
+        // ⛔ VERIFY THE WRITE, NEVER ASSUME IT. `saveConfig` is deliberately never-throws (a
+        // config write must not break an admin action), which means a dead database returns
+        // silently — and this line printed "saved" over a save that never happened, caught in
+        // testing 2026-08-10. A job that reports success it did not achieve is the same defect
+        // class as a settlement note describing evidence we do not have.
+        const back = await loadProfile(symbol);
+        if (back && back.measuredAt === p.measuredAt) console.log(`             saved · read back OK`);
+        else { console.log(`             ⛔ SAVE DID NOT PERSIST — check DATABASE_URL`); process.exitCode = 1; }
+      }
     } catch (e) {
       console.log(`  ${symbol.padEnd(10)} ERROR ${(e as Error).message.slice(0, 110)}`);
     }
