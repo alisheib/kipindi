@@ -520,6 +520,55 @@ export function allocateWinnerPayouts(
 }
 
 /**
+ * Split the poll's SINGLE fee across its winners so the parts sum to EXACTLY the whole.
+ *
+ * 🔴 WHY THIS EXISTS. The ledger used to derive each winner's commission line on its own,
+ * as `Math.round((stake / winningPool) * fee)`. Independent rounding does not have to sum
+ * to the fee — and `Math.round` breaks ties UPWARD, so it systematically over-collects.
+ * Meanwhile the PAYOUTS were allocated by largest remainder and summed exactly. The
+ * difference had to come from somewhere, and it came from the pool: the escrow account
+ * finished settlement holding a NEGATIVE balance, i.e. the platform paid out money nobody
+ * had staked.
+ *
+ * ⛔ Measured on production 2026-08-11, not theorised: 9 settled markets held a non-zero
+ * pool residual and 7 were negative. On the certification market two winners with exact
+ * .5 shares each rounded up — commission 98 + 163 = 261 against a fee of 260 — so
+ * `POOL:mkt_85f1bae30206db0995a5` closed at −1.
+ *
+ * ⚠️ It was invisible to every money suite because the OVERALL ledger still summed to
+ * zero: the error lives inside a self-cancelling pair (POOL −1, HOUSE:COMMISSION +1).
+ * `test:trial-balance` and `test:money-invariants` were green throughout. An aggregate
+ * that balances is not evidence that its components do.
+ *
+ * Same largest-remainder discipline as `allocateWinnerPayouts`, and the same deterministic
+ * tie-break, so a resumed settlement reproduces the identical split.
+ */
+export function allocateFeeShares(
+  winners: Array<{ id: string; stake: number }>,
+  winningPool: number,
+  fee: number,
+): Map<string, number> {
+  const out = new Map<string, number>();
+  const total = Math.max(0, Math.floor(fee));
+  if (winners.length === 0 || winningPool <= 0 || total <= 0) {
+    for (const w of winners) out.set(w.id, 0);
+    return out;
+  }
+  const rows = winners.map((w) => {
+    const raw = Math.max(0, (w.stake / winningPool) * total);
+    return { id: w.id, floor: Math.floor(raw), frac: raw - Math.floor(raw) };
+  });
+  let allocated = 0;
+  for (const r of rows) { out.set(r.id, r.floor); allocated += r.floor; }
+  let remainder = total - allocated; // in [0, winners.length)
+  const byFrac = [...rows].sort((a, b) => (b.frac !== a.frac ? b.frac - a.frac : (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)));
+  for (let i = 0; i < byFrac.length && remainder > 0; i++, remainder--) {
+    out.set(byFrac[i].id, (out.get(byFrac[i].id) ?? 0) + 1);
+  }
+  return out;
+}
+
+/**
  * PROJECTION for a bet not yet placed: the stake is added to the chosen side
  * first, then the settlement function runs on the resulting pools. Same maths,
  * one code path — a projection that used its own formula is how the old code

@@ -318,14 +318,32 @@ export function settlementPayoutEntries(opts: {
   marketId: string;
   payout: number;
   stake: number;
-  /** The WHOLE poll's fee in TZS, from poolFee(). Not a rate. */
+  /** The WHOLE poll's fee in TZS, from poolFee(). Not a rate.
+   *  ⚠️ Kept for the legacy fallback below and for the audit payload; it is NOT the
+   *  number booked when `commissionAmount` is supplied, which it always is from
+   *  settleMarket. */
   fee: number;
   winningPool: number;
+  /**
+   * 🔴 THIS WINNER'S SHARE OF THE FEE, PRE-ALLOCATED so every winner's share sums to
+   * EXACTLY the poll's fee (`allocateFeeShares`, largest remainder).
+   *
+   * Deriving it here per-winner as `Math.round(share * fee)` was the defect: independent
+   * rounding need not sum to the whole and `Math.round` breaks ties upward, so the
+   * commission over-collected and the POOL account finished settlement NEGATIVE — the
+   * platform paying out money nobody staked. Measured on production: 7 settled pools
+   * negative, net −6 TZS. Invisible to the money suites because the overall ledger still
+   * summed to zero (POOL −1 against COMMISSION +1 cancels).
+   */
+  commissionAmount?: number;
   rates: { traTaxOnCommissionRate: number; gbtLevyOnCommissionRate: number };
 }): LedgerLine[] {
-  // This winner's share of the poll's single fee.
+  // The pre-allocated share when the caller computed one (always, from settleMarket).
+  // The derived form remains only so an older caller cannot silently book ZERO fee.
   const share = opts.winningPool > 0 ? opts.stake / opts.winningPool : 0;
-  const commAmt = Math.max(0, Math.round(share * opts.fee));
+  const commAmt = opts.commissionAmount != null
+    ? Math.max(0, Math.round(opts.commissionAmount))
+    : Math.max(0, Math.round(share * opts.fee));
   const traLevyAmt = Math.round(commAmt * opts.rates.traTaxOnCommissionRate);
   const gbtLevyAmt = Math.round(commAmt * opts.rates.gbtLevyOnCommissionRate);
 

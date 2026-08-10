@@ -263,7 +263,7 @@
     "red:updown-readiness": "node scripts/updown-readiness-red.mjs",
     "red:updown-source-class": "node scripts/updown-source-class-red.mjs",
     "red:updown-window": "node scripts/updown-window-red.mjs",
-    "red:all": "npm run red:aipoll-reap && npm run red:contrast && npm run red:contrast-rendered && npm run red:payout-view && npm run red:settlement-expectation && npm run red:tracker-hygiene && npm run red:updown-advice && npm run red:updown-admin-options && npm run red:updown-bars && npm run red:updown-chain-stats && npm run red:updown-digest && npm run red:updown-grid && npm run red:updown-heal && npm run red:updown-late-close && npm run red:updown-margin && npm run red:updown-proposal && npm run red:updown-push && npm run red:updown-readiness && npm run red:updown-source-class && npm run red:updown-void-copy && npm run red:updown-window && npm run red:settle-atomicity && npm run red:board-discovery",
+    "red:all": "npm run red:aipoll-reap && npm run red:contrast && npm run red:contrast-rendered && npm run red:payout-view && npm run red:settlement-expectation && npm run red:tracker-hygiene && npm run red:updown-advice && npm run red:updown-admin-options && npm run red:updown-bars && npm run red:updown-chain-stats && npm run red:updown-digest && npm run red:updown-grid && npm run red:updown-heal && npm run red:updown-late-close && npm run red:updown-margin && npm run red:updown-proposal && npm run red:updown-push && npm run red:updown-readiness && npm run red:updown-source-class && npm run red:updown-void-copy && npm run red:updown-window && npm run red:settle-atomicity && npm run red:board-discovery && npm run red:pool-residual",
     "test:updown-admin-options": "tsx scripts/updown-admin-options.test.mts",
     "red:updown-admin-options": "node scripts/updown-admin-options-red.mjs",
     "test:updown-void-copy": "tsx scripts/updown-void-copy.test.mts",
@@ -336,7 +336,9 @@
     "qa:poll-board": "node scripts/live-poll-board.mjs",
     "qa:poll-lifecycle": "node scripts/live-poll-lifecycle.mjs",
     "qa:poll-visual": "node scripts/live-poll-visual.mjs",
-    "qa:place-bet": "node scripts/live-place-bet.mjs"
+    "qa:place-bet": "node scripts/live-place-bet.mjs",
+    "test:pool-residual": "tsx scripts/pool-residual.test.mts",
+    "red:pool-residual": "node scripts/pool-residual-red.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

@@ -28,7 +28,7 @@ import { isLockedOut, checkLossLimit } from "./responsible-gambling";
 import { rateCheck } from "./rate-limit";
 import { getEffectiveConfig, getEffectiveResolutionMode, snapshotFromConfig, snapshotOrLegacy, type RateConfig } from "./market-config";
 import { stakeBoundsForUpDownMarket } from "./updown-config";
-import { payoutFor, settledPayoutFor, allocateWinnerPayouts, poolFee, levySplit, type FeeSnapshot } from "@/lib/payout";
+import { payoutFor, settledPayoutFor, allocateWinnerPayouts, allocateFeeShares, poolFee, levySplit, type FeeSnapshot } from "@/lib/payout";
 import { getRequireTwoOfficerResolution } from "./resolution-policy";
 import { isMaintenanceMode, maintenanceMessage } from "./platform-config";
 import { recordSnapshot } from "./market-history";
@@ -2527,6 +2527,19 @@ export async function settleMarket(
       winningPool,
       settleFee.netPool,
     );
+    // 🔴 THE FEE IS ALLOCATED THE SAME WAY THE PAYOUTS ARE, and for the same reason.
+    // The ledger used to derive each winner's commission line independently as
+    // `Math.round(share * fee)`. Independent rounding need not sum to the fee, and
+    // `Math.round` breaks ties UPWARD — so on a poll whose winners hold exact half
+    // shares every one of them rounds up and the commission over-collects. The payouts
+    // were already exact (largest remainder), so the difference fell on the POOL, which
+    // finished settlement holding a NEGATIVE balance: money paid out that nobody staked.
+    // Measured on production before this fix: 9 settled pools non-zero, 7 negative.
+    const feeByPos = allocateFeeShares(
+      winningSidePositions.map((wp) => ({ id: wp.id, stake: wp.stake })),
+      winningPool,
+      settleFee.fee,
+    );
     for (const p of myPositions) {
       const w = await db.wallet.findByUserId(p.userId);
       // ⛔ REFUSE, NEVER SKIP. This used to be `if (!w) continue;` — it stepped over
@@ -2573,6 +2586,7 @@ export async function settleMarket(
           await postLedgerEntries(`settle_${payoutTxnId}`, settlementPayoutEntries({
             groupId: `settle_${payoutTxnId}`, userId: p.userId, marketId: m.id,
             payout, stake: p.stake, fee: settleFee.fee, winningPool,
+            commissionAmount: feeByPos.get(p.id) ?? 0,
             rates: { traTaxOnCommissionRate: settleCfg.traTaxOnCommissionRate, gbtLevyOnCommissionRate: settleCfg.gbtLevyOnCommissionRate },
           }), tx);
           return updated.balance;
