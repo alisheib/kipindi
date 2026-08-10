@@ -1487,9 +1487,17 @@ export const dict = {
       estimateDisclaimer: "Estimate only — the actual amount is set by the pool when betting closes, and may be higher or lower.",
       estimateHowItWorks: "A rough guide (1.5× your stake). Your real winnings come from the pool: winners share the losing side's money after our fee, so the final amount can be higher or lower than this.",
       payoutHowItWorks: "Winners share the pool in proportion to their stake, after our commission. The commission is {pct}% of the pool but never more than {ceiling} of the smaller side — so a winning bet is never paid less than it staked.",
-      freeExitLabel: "5-min free exit",
+      /** ⚠️ {mins} — NEVER a hard number. This read "5-min free exit" while the body
+       *  beside it interpolated the poll's OWN frozen freeExitGraceMinutes, so a poll
+       *  with any other window contradicted itself inside one sentence. */
+      freeExitLabel: "{mins}-min free exit",
       freeExitBody: "Sell within {mins} minutes for a full refund — no fee. Then a {pct}% fee applies, and after {lock} minutes total selling closes and the bet rides to settlement.",
       freeExitBodyLocked: "Sell within {mins} minutes for a full refund — no fee. After that, selling closes and the bet rides to settlement.",
+      /** Shown INSTEAD of the free-exit promise when this poll closes too soon for a
+       *  full grace window — the server would refuse the sale TOO_SHORT, so promising
+       *  one would be a false statement made on the commit screen. */
+      noExitWindowLabel: "No early exit",
+      noExitWindowBody: "This poll closes too soon for the free-exit window, so this bet cannot be sold — it rides to settlement.",
       quoteHeldFor: "Quote held for",
       thenReaim: "then re-aim on the dial.",
       placing: "Placing…",
@@ -2929,9 +2937,11 @@ export const dict = {
       estimateDisclaimer: "Ni makadirio tu — kiasi halisi hupangwa na bwawa dau litakapofungwa, na kinaweza kuwa zaidi au chini.",
       estimateHowItWorks: "Mwongozo wa jumla (mara 1.5 ya dau lako). Ushindi wako halisi hutoka kwenye bwawa: washindi hugawana fedha za upande ulioshindwa baada ya ada yetu, hivyo kiasi cha mwisho kinaweza kuwa zaidi au chini ya hiki.",
       payoutHowItWorks: "Washindi wanagawana bwawa kulingana na dau lao, baada ya kamisheni yetu. Kamisheni ni {pct}% ya bwawa lakini kamwe si zaidi ya {ceiling} ya upande mdogo — kwa hiyo dau lililoshinda halilipwi chini ya dau lake.",
-      freeExitLabel: "Dakika 5 bila gharama",
+      freeExitLabel: "Dakika {mins} bila gharama",
       freeExitBody: "Uza ndani ya dakika {mins} upate marejesho kamili — bila ada. Kisha ada ya {pct}% itatumika, na baada ya dakika {lock} kwa jumla kuuza kunafungwa na dau litaenda hadi malipo.",
       freeExitBodyLocked: "Uza ndani ya dakika {mins} upate marejesho kamili — bila ada. Baada ya hapo, kuuza kunafungwa na dau litaenda hadi malipo.",
+      noExitWindowLabel: "Hakuna kutoka mapema",
+      noExitWindowBody: "Soko hili linafunga hivi karibuni mno kwa dirisha la kutoka bila gharama, hivyo dau hili haliwezi kuuzwa — litaenda hadi malipo.",
       quoteHeldFor: "Bei imehifadhiwa kwa",
       thenReaim: "kisha lenga upya kwenye dial.",
       placing: "Inaweka…",
@@ -4370,9 +4380,11 @@ export const dict = {
       estimateDisclaimer: "仅为估算 — 实际金额在投注关闭时由奖池确定，可能更高或更低。",
       estimateHowItWorks: "仅供大致参考（您投注额的1.5倍）。您的实际赢额来自奖池：赢家在扣除我们的费用后分享失败方的资金，因此最终金额可能高于或低于此数。",
       payoutHowItWorks: "获胜者按投注比例分享奖池（扣除佣金后）。佣金为奖池的 {pct}%，但绝不超过较小一方的 {ceiling} — 因此获胜的投注绝不会拿到低于本金的金额。",
-      freeExitLabel: "5分钟免费退出",
+      freeExitLabel: "{mins} 分钟免费退出",
       freeExitBody: "在 {mins} 分钟内卖出可获全额退款 — 无手续费。之后收取 {pct}% 手续费；满 {lock} 分钟后卖出关闭，投注保留至结算。",
       freeExitBodyLocked: "在 {mins} 分钟内卖出可获全额退款 — 无手续费。之后卖出关闭，投注保留至结算。",
+      noExitWindowLabel: "无提前退出",
+      noExitWindowBody: "本市场关闭过早，无法提供免费退出窗口，因此该投注无法卖出 — 将保留至结算。",
       quoteHeldFor: "报价保留",
       thenReaim: "然后重新瞄准。",
       placing: "下注中…",

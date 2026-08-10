@@ -1573,6 +1573,21 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
         lean={lean}
         rates={rates}
         isOneSided={(yesPool > 0 && noPool === 0) || (noPool > 0 && yesPool === 0)}
+        // 🔴 DOES THIS BET ACTUALLY GET A FREE EXIT? The confirm dialog promised one
+        // unconditionally. The SERVER grants it only when the poll had a full grace
+        // window left AT THE MOMENT OF THE BET — `hadRunway = graceMs > 0 && closesAt -
+        // placedAt >= graceMs` (market-service.ts:1813). Bet on a poll closing in three
+        // minutes with a five-minute grace and cashOutPosition refuses TOO_SHORT: no
+        // Sell control ever appears, and the promise made on the commit screen was
+        // never true. Mirrors the server's rule exactly rather than approximating it.
+        hasExitRunway={(() => {
+          const graceMs = (rates?.freeExitGraceMinutes ?? 0) * 60_000;
+          if (graceMs <= 0) return false;
+          const cutoff = Date.parse(closesAt ?? resolutionAt ?? "");
+          if (!Number.isFinite(cutoff)) return true; // unknown cutoff → don't invent a refusal
+          const clockOffset = serverNow != null ? serverNow - Date.now() : 0;
+          return cutoff - (Date.now() + clockOffset) >= graceMs;
+        })()}
         pending={pending}
         marketTitle={marketTitle}
         onConfirm={submit}

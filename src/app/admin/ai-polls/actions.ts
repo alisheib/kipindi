@@ -31,6 +31,7 @@ import {
 import { createMarket, emergencyVoidMarket, resolvePublishCategory } from "@/lib/server/market-service";
 import { isSourceTrusted, seedDefaultSources } from "@/lib/server/source-registry";
 import { safeError } from "@/lib/server/safe-error";
+import { withLock } from "@/lib/server/locks";
 import { requireStaff } from "@/lib/server/rbac-guard";
 
 // RBAC: authorization is data-driven — requireStaff checks canAct for this domain
@@ -307,6 +308,29 @@ export async function publishPollAction(formData: FormData) {
   }
 
   try {
+  // 🔴 SERIALISED, AND THE STATE IS RE-CHECKED INSIDE THE LOCK.
+  //
+  // Publishing is an eight-step pipeline — ingest candidate, filter, verify, score,
+  // approve, createMarket, markPublished, markAIPollPublished — and the only thing
+  // that stopped it running twice was an `APPROVED` check made BEFORE any of it, on a
+  // read that anyone could race. A double-click, a retried request, or two officers on
+  // the same queue both passed that check and both reached `createMarket`, which
+  // creates a market **status: "LIVE"** unconditionally.
+  //
+  // ⛔ The result is two live markets asking the same question, each taking real
+  // stakes into its own pool, each resolving separately. Nothing downstream can merge
+  // them and nothing detects them: `markAIPollPublished` records only the LAST market
+  // id, so the first duplicate is orphaned the moment it is created — live, bettable
+  // and unreferenced.
+  //
+  // The re-check inside the lock is what actually closes it: the second caller now
+  // reads PUBLISHED and refuses. Same shape as proposals-service's listing path.
+  return await withLock(`aipoll:publish:${id}`, async () => {
+  const fresh = await getAIPoll(id);
+  if (!fresh) return { ok: false as const, error: "Poll not found." };
+  if (fresh.state !== "APPROVED") {
+    return { ok: false as const, error: "Poll is no longer approved — it may already have been published." };
+  }
   // Create a market candidate through the existing pipeline
   // The candidate pipeline's category type has no tech/other (it predates them),
   // so fold those into macro for the intermediate record only. The market itself
@@ -358,17 +382,38 @@ export async function publishPollAction(formData: FormData) {
     proposedBy: officerId,
   });
 
-  await markPublished(candidate.id, market.id, officerId);
-  await markAIPollPublished(poll.id, {
+  // ⚠️ THE LINK-BACK IS CHECKED, NOT ASSUMED. These two writes are what tie the new
+  // LIVE market to the poll it came from. Their return values were discarded, so a
+  // failure here left a market live and bettable with nothing recording where it came
+  // from — and the poll still APPROVED, so the next publish made a second one. Failing
+  // loudly cannot un-create the market (it is already live by design), but it stops the
+  // silent duplicate and puts the orphan in front of an operator instead of in a log.
+  const pub = await markPublished(candidate.id, market.id, officerId);
+  const linked = await markAIPollPublished(poll.id, {
     candidateId: candidate.id,
     marketId: market.id,
     officerId,
   });
+  if (!pub || !linked) {
+    audit({
+      category: "SYSTEM",
+      action: "aipoll.publish_link_failed",
+      actorId: officerId,
+      targetType: "Market",
+      targetId: market.id,
+      payload: { pollId: poll.id, candidateId: candidate.id, marketPublished: !!pub, pollLinked: !!linked },
+    });
+    return {
+      ok: false as const,
+      error: `Market ${market.id} was created and is LIVE, but the poll could not be marked published. Do NOT retry — check /admin/markets first.`,
+    };
+  }
 
   revalidatePath("/admin/ai-polls");
   revalidatePath("/admin/candidates");
   revalidatePath("/admin/markets");
   return { ok: true as const, marketId: market.id, candidateId: candidate.id };
+  });
   } catch (err) {
     return { ok: false as const, error: safeError(err, "Publish failed") };
   }

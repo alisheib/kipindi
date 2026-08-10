@@ -42,6 +42,10 @@ type Props = {
   lean: LeanLevel;
   /** When true, suppress the thin-upside notice — settlement will refund at 0% fee. */
   isOneSided?: boolean;
+  /** True when this bet will actually get a free-exit window — i.e. the poll closes
+   *  at least one full grace period from now, which is the SERVER rule
+   *  (market-service.ts hadRunway). False means no Sell control will ever appear. */
+  hasExitRunway?: boolean;
   /** THIS POLL'S frozen rates — the free-exit terms quoted here must be the ones
    *  we will actually honour, not a hardcoded "5 minutes / 9%". */
   rates?: PollRates;
@@ -57,7 +61,7 @@ type Props = {
 // modal shows copy, not numbers. Threading a payout in here just to throw it away
 // invited someone to "helpfully" render it one day and break the policy.
 export function BetConfirmModal({
-  open, side, stake, multiplier, lean, isOneSided, rates, pending, marketTitle, onConfirm, onCancel,
+  open, side, stake, multiplier, lean, isOneSided, rates, pending, marketTitle, hasExitRunway = true, onConfirm, onCancel,
 }: Props) {
   const { t } = useT();
 
@@ -75,6 +79,10 @@ export function BetConfirmModal({
     .replace(/\{mins\}/g, String(graceMins))
     .replace(/\{lock\}/g, String(lockMins))
     .replace(/\{pct\}/g, String(exitPct));
+  // The LABEL takes the same figure as the body. It used to read "5-min free exit"
+  // while the sentence under it interpolated the poll's own frozen window — so any
+  // poll with a different grace contradicted itself inside a single disclosure.
+  const exitLabel = t.dialog.freeExitLabel.replace(/\{mins\}/g, String(graceMins));
   const [remainingMs, setRemainingMs] = useState(QUOTE_HOLD_MS);
   const startedAtRef = useRef<number>(0);
   const rafRef = useRef<number | null>(null);
@@ -305,12 +313,20 @@ export function BetConfirmModal({
           </div>
         )}
 
-        {/* Grace period disclosure */}
-        <div className="mt-2 rounded-lg border border-brand-500/30 bg-brand-500/[0.07] px-3 py-2.5 flex items-start gap-2">
-          <I.shieldcheck s={13} className="shrink-0 mt-0.5 text-brand-300" />
+        {/* Exit terms — a PROMISE or its absence, never a promise that will not hold.
+            ⛔ This block used to render the free-exit offer unconditionally. The server
+            grants an exit only when the poll had a full grace window left at the moment
+            of the bet, so on a poll closing sooner than that the player was promised a
+            sale on the commit screen and then found no Sell control at all. */}
+        <div className={`mt-2 rounded-lg border px-3 py-2.5 flex items-start gap-2 ${
+          hasExitRunway ? "border-brand-500/30 bg-brand-500/[0.07]" : "border-border bg-bg-overlay/40"
+        }`}>
+          <I.shieldcheck s={13} className={`shrink-0 mt-0.5 ${hasExitRunway ? "text-brand-300" : "text-text-subtle"}`} />
           <p className="text-[11px] leading-relaxed text-text-muted">
-            <span className="font-semibold text-brand-300">{t.dialog.freeExitLabel} · </span>
-            {freeExitBody}
+            <span className={`font-semibold ${hasExitRunway ? "text-brand-300" : "text-text-subtle"}`}>
+              {hasExitRunway ? exitLabel : t.dialog.noExitWindowLabel} ·{" "}
+            </span>
+            {hasExitRunway ? freeExitBody : t.dialog.noExitWindowBody}
           </p>
         </div>
 
