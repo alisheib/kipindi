@@ -5509,6 +5509,94 @@ so a tick-floor margin on crypto measures the market, not the feed.
 - **A `LEFT JOIN` counted a chain with zero rounds as "1 unresolved round"**, which read as stranded
   money. Confirmed directly: **no unresolved rounds anywhere, no money in flight.** The check lied.
 
+## 6c. ⭐ THE POLL MONEY PATH, DRIVEN END TO END WITH REAL MONEY ON PRODUCTION (2026-08-11, session 41)
+
+**The gap this closes, stated plainly: nobody had ever watched a poll pay out.** Every layer
+had been tested separately — the side-locked dial, the confirm dialog, settlement arithmetic
+in suites, the ledger invariants — and `qa:live` asserts the **Place** button *exists* with
+the right label and locking but **never clicks it**. So "the poll product works" was an
+inference, never an observation. It is an observation now.
+
+### What was driven
+
+| step | evidence |
+|---|---|
+| **Create** | `mkt_85f1bae30206db0995a5` built through the real 4-step admin wizard as OWNER — *"Will Bitcoin (BTC) be above $64,000 on TwelveData at 01:30 EAT on 11 August 2026?"*, crypto, **loser-share 13%**, source `twelvedata.com` |
+| **Bet** | three real stakes, each wallet read **before and after**: alpha **YES 3,000** (61,040→58,040), owner **YES 5,000** (220,078→215,078), echo **NO 2,000** (24,380→22,380). Every delta EXACT. |
+| **Close** | the per-market timer fired at 01:30 and moved it to `CLOSED` awaiting the officer — `resolutionMode: "human"` behaving exactly as designed |
+| **Resolve** | officer ceremony: outcome + evidence + type-`SEAL` to arm. Sealed **YES**. |
+| **Settle** | winners paid **3,652** (alpha) and **6,088** (owner); loser 0. Wallets: 61,692 / 221,166 / 22,380 — all exact. |
+
+⭐ **THE OUTCOME WAS READ, NEVER ASSUMED, AND THE DISTINCTION MATTERED.** The market closed at
+01:30 and was resolved at 02:26. BTC was **63,993** at the console — below the line — but the
+criterion names **01:30**, and the TwelveData 1-minute bar at 22:30:00 UTC reads **open
+64014.51 / close 64014.52**. It fell below the threshold at **22:31**, one minute AFTER the
+deadline. Resolving on "the price now" would have paid the wrong side. ⛔ `timezone=UTC` was
+passed explicitly — **E-71**: `time_series` defaults to `Exchange` and would have shifted the
+bar by hours.
+
+⭐ **TWO WINNERS ON ONE SIDE WAS DELIBERATE.** A 1-v-1 market never exercises the
+largest-remainder allocator, which is where a shilling can silently appear or vanish. Both
+winners' true shares landed on an exact **.5** (3,652.5 and 6,087.5); the allocator split them
+3,652 / 6,088, summing to **9,740 = floor(netPool)** to the shilling, and the winner floor held
+on both.
+
+### 🔴 AND IT FOUND A REAL DEFECT THAT FOUR MONEY SUITES COULD NOT SEE
+
+The pool closed at **−1**. Payouts were exact (largest remainder) but the **commission was
+not**: `settlementPayoutEntries` derived each winner's line as `Math.round(share * fee)`, and
+independent rounding need not sum to the fee — `Math.round` breaks ties **upward**, so on
+exact half-shares every winner rounds up. 98 + 163 = **261** against a fee of **260**. The
+difference came out of escrow: the platform paid out a shilling nobody staked.
+
+⛔ **Systematic, and it favours the house** — ties can only ever round up. Across all of
+production history: **9 settled markets with a non-zero pool residual, 7 negative, net −6 TZS**.
+
+⛔ **`trial-balance` 18, `money-invariants` 84, `ledger` 89 and `payout-alloc` 12 were green on
+BOTH sides of it**, because the error lives in a self-cancelling pair (POOL −1 against
+COMMISSION +1) and the overall ledger still sums to zero. **An aggregate that balances is not
+evidence that its components do.** Fixed by `allocateFeeShares`; guarded by
+`test:pool-residual`, RED-proven 2/2.
+
+⚠️ **The first version of that guard was hollow and its own RED proof said so — 0/2.** It drove
+a settlement in the in-memory harness and asked `ledgerAccountBalance` for the pool, but every
+ledger writer starts `const pc = prisma(); if (!pc) return` — with no database **nothing is
+written**, so the balance was 0 because the account did not exist. A check that cannot fail is
+worse than no check: it declared the defect fixed while reverting the fix changed nothing.
+
+### What the players actually saw
+
+Winner: settled P&L **+TZS 24,142**, 4W·0L. Loser: *"NO · RESOLVED · LOSS · TZS 2,000"*, settled
+P&L **−TZS 29,000**. **Both** see the settlement-proof panel carrying the officer's recorded
+evidence — the exact bar, timezone and all. Shots in `.qa-board/` (gitignored; re-shoot with
+`qa:place-bet` and the probes).
+
+### ⚠️ Two operational notes
+
+**The objection window was temporarily 24h → 0 and is RESTORED to 24, verified.** Settlement is
+gated on that window and the settle button deliberately has **no bypass**, so a market resolved
+tonight would not have paid until tomorrow. `objectionsClosedAt` is stamped **at resolution**
+from live config, so the change only ever affected markets resolved inside that window — and
+nothing else was due for 72 hours. ⛔ The config's own hint is right: *"0 = NO objection window
+… Do not ship real money like this."*
+
+**Ali's console login was restored**: password set and the **lost TOTP enrolment cleared** (zero
+unused backup codes, so the authenticator was the only key). Driven and proven — `777777777`
+lands on `/admin` as OWNER. 🔴 **`Admin@1234` is on the go-live checklist as a MUST-CHANGE**, and
+re-enrolling 2FA at `/admin/2fa/setup` should happen in the same sitting: this account can
+resolve markets and approve withdrawals. ⚠️ Neither change is in `AuditLog` — that table is an
+HMAC-linked chain and appending a row with a wrong `prevHash` would corrupt the verification the
+licence depends on, so a missing row was chosen over a broken chain. **Log it manually.**
+
+### The instruments this left behind
+
+`qa:place-bet` (places a real bet as a named player; **refuses without `--live`**; proves the
+wallet moved rather than believing the receipt) · `scripts/live/ops/pool-residual.cjs` (does
+every settled pool return to zero?) · `scripts/live/ops/house-money.cjs` (where the platform's
+own money lives: **HOUSE:COMMISSION 113,645 owned**, TRA 13,371 + GBT 6,694 **owed to the
+state**, 1,338,504 of players' stakes in escrow, and every ledger entry ever written summing to
+**0**).
+
 ## 6b. NEXT SESSION — start here
 
 > ### ⛔ HOW TO READ THIS SECTION — it is 29 handoffs deep and only the FIRST is current
@@ -5563,7 +5651,7 @@ so a tick-floor margin on crypto measures the market, not the feed.
 
 🔑 **FOUR NEW INSTRUMENTS, ALL COMMITTED AND WIRED (`test:orphans` refuses an unwired script, and it caught me).** `npm run qa:poll-board` (the board at every window, in a browser) · `qa:poll-visual` (36 measured cells; a screenshot is written only for a cell that FAILS, because a directory of 36 PNGs is not a check) · `qa:poll-lifecycle` (the money flow; **refuses any non-localhost base**) · `scripts/live/ops/poll-census.cjs` (the poll lane on production, read-only — ⛔ it filters `productLine = 'MARKET'` on **every** query, because the Up & Down rows outnumber the polls ~12:1 and a forgotten filter reads as a healthy poll lane built entirely out of price rounds).
 
-▶ **WHAT IS LEFT, AND IT IS HONEST: 14 CONFIRMED findings remain, ALL `medium`, ZERO critical and ZERO high.** The full verdict set with evidence and proposed fixes is in the session transcript; the highest-value are: **`sell-offered-on-bonus-funded-position`** (a priced Sell button on positions `cashOutPosition` refuses outright), **`resolution-criterion-english-only`** (the rule the payout turns on has no sw/zh column and is rendered raw to every locale — it needs a schema change, which is why it was not taken today), **`one-sided-loser-share-phantom-fee`** (a fee printed to the player and booked in the accountant's readout that was never charged — narrowed on verification to one-sided loser-share polls only), **`wizard-resolution-time-parsed-in-browser-timezone`**, **`per-market-rate-overrides-are-inert`**, and **`regex-advertised-never-executed`** (four surfaces advertise regex search; none pass `allowRegex`, so the pattern is treated as literal text and the filter returns zero rows while reporting that as the answer).
+⭐ **AND THE MONEY PATH IS NO LONGER AN INFERENCE.** After this handoff was first written, the poll product was driven END TO END with real money on production — created, staked from three accounts, closed on its own timer, resolved by the officer ceremony against the declared source, and SETTLED, with every wallet checked either side. See **§6c above**. It found a defect four money suites could not see (the commission over-collected and the escrow pool closed NEGATIVE), now fixed and RED-proven. 🔴 Ali's console login was restored in the same session and ** is a MUST-CHANGE before launch**, with 2FA to re-enrol.  ▶ **WHAT IS LEFT, AND IT IS HONEST: 14 CONFIRMED findings remain, ALL `medium`, ZERO critical and ZERO high.** The full verdict set with evidence and proposed fixes is in the session transcript; the highest-value are: **`sell-offered-on-bonus-funded-position`** (a priced Sell button on positions `cashOutPosition` refuses outright), **`resolution-criterion-english-only`** (the rule the payout turns on has no sw/zh column and is rendered raw to every locale — it needs a schema change, which is why it was not taken today), **`one-sided-loser-share-phantom-fee`** (a fee printed to the player and booked in the accountant's readout that was never charged — narrowed on verification to one-sided loser-share polls only), **`wizard-resolution-time-parsed-in-browser-timezone`**, **`per-market-rate-overrides-are-inert`**, and **`regex-advertised-never-executed`** (four surfaces advertise regex search; none pass `allowRegex`, so the pattern is treated as literal text and the filter returns zero rows while reporting that as the answer).
 
 ⚠️ **THREE THINGS A COLD SESSION WOULD OTHERWISE RE-DERIVE.** ① **The E-138 shape is still on production and is still CLOSED** — 5 LIVE polls carry pools inflated by the pre-launch purge (`mkt_2d9a78b25cd7e0fc1228` shows 210,500 against 500 of real open stake; also `mkt_73407e3296dc0d950b2c`, `mkt_3d9a15deb284089e8f22`, `mkt_037b284976b9dd2bd9e2`, `mkt_0d271bde3ae784abe12b`). ⛔ **Do not re-raise it** — Ali ruled *"the data gets reset before launch"*. It is listed here as a **pre-launch reset checklist**, not as a finding. ② **One poll has sat in CLOSED for 22.8h awaiting an officer's verdict** (`mkt_fdf70a0704dc1789f404`, TCRA Q2 report; officers were alerted 2026-08-09 21:00). That is an operator task, not a defect. ③ **Two LIVE polls have no Chinese title**, both player-PROPOSED rather than AI-generated — the AI path sets `titleZh`, the proposal path does not, and `backfill:zh` exists because this has been patched by backfill before rather than at source.
 
