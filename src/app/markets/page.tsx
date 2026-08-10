@@ -31,6 +31,30 @@ const WHEN_CUTOFFS: Record<WhenFilter, number | null> = {
   all:   null,
 };
 
+/**
+ * The window a player gets with no query string — i.e. THE BOARD.
+ *
+ * 🔴 THIS WAS `"today"` AND IT SHOWED A PLAYER NOTHING. Measured on production
+ * 2026-08-10, in a real browser, at 360/768/1280 × en/sw/zh — all nine combinations
+ * rendered **0 cards** while the header directly above them said "40 live · TZS
+ * 1,659k in play". The inventory is long-dated and always will be: of 40 live polls,
+ * **0 resolved within 24h, 2 within a week, 38 beyond it.** A 24-hour window over
+ * long-horizon inventory is empty on essentially every day the platform runs, so the
+ * board's own first impression was an empty grid over three FINISHED markets.
+ *
+ * ⛔ Do not "fix" an empty board by adding another compensation. Three already
+ * existed — a featured treatment, a "just listed" section and a see-wider nudge —
+ * and all three are downstream of this one literal. The board now shows the whole
+ * live book, still sorted soonest-first, so urgency leads without hiding anything.
+ * `soon` / `today` / `week` remain as deliberate NARROWING choices.
+ *
+ * ⚠️ ONE DEFINITION. Four sites used to hard-code "today" independently — the two
+ * readers plus the two href builders that omit the param when it equals the default.
+ * Changing three of four leaves links that disagree with the page they point at, so
+ * the value lives here and nowhere else.
+ */
+const DEFAULT_WHEN: WhenFilter = "all";
+
 // B-17 — ONE live-board read per request. The header, the total-live count and
 // the bettable grid all consumed the same list but each ran its own query (up
 // to 4 board fetches per render). React cache() dedupes across the page's
@@ -105,7 +129,7 @@ export default async function MarketsPage({ searchParams }: { searchParams: Prom
 async function FilterBar({ searchParams }: { searchParams: Promise<{ cat?: string; when?: string; q?: string; page?: string }> }) {
   const { t } = await getServerT();
   const sp = await searchParams;
-  const activeWhen = (sp.when as WhenFilter | undefined) ?? "today";
+  const activeWhen = (sp.when as WhenFilter | undefined) ?? DEFAULT_WHEN;
   const activeCat = sp.cat ?? "all";
   const activeQ = (sp.q ?? "").trim();
 
@@ -132,7 +156,7 @@ async function FilterBar({ searchParams }: { searchParams: Promise<{ cat?: strin
     const params = new URLSearchParams();
     const w = next.when ?? activeWhen;
     const c = next.cat  ?? activeCat;
-    if (w !== "today") params.set("when", w);
+    if (w !== DEFAULT_WHEN) params.set("when", w);
     if (c !== "all")   params.set("cat", c);
     if (activeQ)       params.set("q", activeQ); // keep the search when switching filters
     const qs = params.toString();
@@ -194,13 +218,13 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
   const { t } = await getServerT();
   const sp = await searchParams;
   const cat = (sp.cat as MarketCategory | undefined) ?? undefined;
-  const whenId = (sp.when as WhenFilter | undefined) ?? "today";
-  // NB: `?? WHEN_CUTOFFS.today` would be a bug — WHEN_CUTOFFS.all is *intentionally*
-  // null ("no cutoff"), and `null ?? today` collapses it back to the 24h window,
+  const whenId = (sp.when as WhenFilter | undefined) ?? DEFAULT_WHEN;
+  // NB: `?? WHEN_CUTOFFS[DEFAULT_WHEN]` would be a bug — WHEN_CUTOFFS.all is
+  // *intentionally* null ("no cutoff"), and `null ?? x` collapses it back to x,
   // which silently made the "All" filter behave like "Today" (hiding every market
-  // that settles > 24h out). Only fall back to today for an UNKNOWN when key.
+  // that settles > 24h out). Only fall back for an UNKNOWN `when` key.
   const rawCutoff = WHEN_CUTOFFS[whenId];
-  const whenCutoff = rawCutoff === undefined ? WHEN_CUTOFFS.today : rawCutoff;
+  const whenCutoff = rawCutoff === undefined ? WHEN_CUTOFFS[DEFAULT_WHEN] : rawCutoff;
   // The shared grammar (src/lib/search). This page's old hand-rolled token-AND
   // matcher was one of only TWO that got multi-word right; the other ten surfaces
   // did a single contiguous `.includes()`. It is now one rule for all of them —
@@ -253,7 +277,7 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
   const pagedLive = live.slice((safePage - 1) * PLAYER_PER_PAGE, safePage * PLAYER_PER_PAGE);
   const marketsBaseHref = (() => {
     const params = new URLSearchParams();
-    if (whenId !== "today") params.set("when", whenId);
+    if (whenId !== DEFAULT_WHEN) params.set("when", whenId);
     if (sp.cat && sp.cat !== "all") params.set("cat", sp.cat);
     if (qRaw) params.set("q", qRaw);
     const qs = params.toString();
@@ -275,9 +299,19 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
   // B-1 — deliberate degrade: the teaser (and the trader/chart/comment
   // enrichments below) are garnish on the live board; their absence degrades
   // the cards, it never mimics an empty board.
-  const resolved = searching
-    ? (await listMarkets({ status: "RESOLVED" }).catch(() => [])).filter(matches).slice(0, 6)
-    : (await listMarkets({ status: "RESOLVED" }).catch(() => [])).slice(0, 3);
+  // 🔴 "RECENTLY RESOLVED" WAS SHOWING THE OLDEST RESULTS ON THE PLATFORM, FOREVER.
+  // `listMarkets` → `listBoard` orders `resolutionAt: "asc"` (market-dal.ts) because
+  // that is right for the LIVE board — soonest to close, first. Slicing the same
+  // ascending list for RESOLVED rows takes the three that resolved EARLIEST in the
+  // platform's history and pins them there permanently. Measured on production
+  // 2026-08-10: the board offered three markets from **5 July** as "recently
+  // resolved" while markets settled on 1–2 August sat below them in the same list.
+  // ⛔ Never slice a board-ordered list for a "recent" section — re-sort by the
+  // clock that section actually names.
+  const resolvedAll = (await listMarkets({ status: "RESOLVED" }).catch(() => []))
+    .slice()
+    .sort((a, b) => b.resolutionAt.localeCompare(a.resolutionAt));
+  const resolved = searching ? resolvedAll.filter(matches).slice(0, 6) : resolvedAll.slice(0, 3);
   const traderMap = await traderSeedsByMarket().catch(() => new Map());
   const allForCharts = [...pagedLive, ...resolved];
   // One query for the whole board — never map getCardChart across a list.
@@ -287,10 +321,13 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
 
   const resultCount = live.length + resolved.length;
 
-  // ── Board composition (2026-07-29) ───────────────────────────────────────
-  // The board defaults to when="today", so on a quiet day a 1280px screen could
-  // render ONE card beside a column of filters and an ocean of nothing —
-  // measured, not imagined: 40 markets live, 1 closing today.
+  // ── Board composition (2026-07-29, re-based 2026-08-10) ──────────────────
+  // ⚠️ WRITTEN FOR A DEFAULT THAT NO LONGER EXISTS. These two additions were built
+  // because the board defaulted to when="today" and a 1280px screen could render one
+  // card beside a column of filters and an ocean of nothing. The default is now
+  // `all` (see DEFAULT_WHEN), so the ocean is gone and both additions are load-
+  // bearing only when a player NARROWS the window themselves. They are kept because
+  // that case is still real; they are no longer propping up the landing view.
   //
   // Two additions, both of which show REAL markets or nothing at all:
   //
@@ -304,12 +341,21 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
   //     Same `fresh` rule the card uses (volume 0 + predictors 0), so the board
   //     and the card can never disagree about what "new" means — one rule, one
   //     place. Suppressed while searching and when it would add nothing.
-  const shownIds = new Set(pagedLive.map((m) => m.id));
+  // ⚠️ EXCLUDED BY THE **WINDOW**, NEVER BY THE PAGE. This section exists to surface
+  // fresh markets the active time filter hides — that is what its own heading claims.
+  // It used to subtract `pagedLive` (the current PAGE), which was indistinguishable
+  // from subtracting the window only because the old 24h default made the window
+  // smaller than one page. On a board showing its whole book, subtracting the page
+  // would re-advertise page 2 under a "just listed" heading, directly beneath the
+  // pager that already leads there. Subtracting `live` (the windowed set) means the
+  // section renders exactly when the filter is genuinely hiding something, and
+  // disappears on the default board — which is correct, because nothing is hidden.
+  const inWindow = new Set(live.map((m) => m.id));
   const featuredId = !searching && pagedLive.length > 0 && pagedLive.length <= 4 ? pagedLive[0].id : null;
   const newMarkets = searching
     ? []
     : bettable
-        .filter((m) => !shownIds.has(m.id) && m.yesPool + m.noPool === 0 && m.predictorCount === 0)
+        .filter((m) => !inWindow.has(m.id) && m.yesPool + m.noPool === 0 && m.predictorCount === 0)
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
         .slice(0, 6);
   // One extra chart/comment lookup pass for the new-markets section, batched the
@@ -320,9 +366,11 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
     : new Map();
 
   // ── Sparse-board continuation nudge ──────────────────────────────────────
-  // The board defaults to when="today"; on a quiet day that's a small, single
-  // page while more markets settle further out. Rather than leave a fresh
-  // tester on a near-empty board, offer a calm "see wider" prompt. It is a
+  // A player who NARROWS to soon/today/week can land on a small single page while
+  // more markets settle further out. Rather than leave them on a near-empty board,
+  // offer a calm "see wider" prompt. ⚠️ This can no longer fire on the landing view
+  // — `all` is the default and has no wider window — which is the point: the nudge
+  // is for a choice the player made, not a hole the default dug. It is a
   // NUDGE — pure links to a wider window — and never injects non-matching
   // cards. Shown only when: not searching · a bounded window (soon/today/week)
   // · the whole window fits on one page (sparse) · AND a wider window
@@ -336,7 +384,7 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
     const catParam = cat ?? null; // `cat` is a real category or undefined (URL never carries ?cat=all)
     const widerHref = (w: WhenFilter) => {
       const params = new URLSearchParams();
-      if (w !== "today") params.set("when", w); // "today" is the default → no param
+      if (w !== DEFAULT_WHEN) params.set("when", w); // the default carries no param
       if (catParam) params.set("cat", catParam); // stay in the topic the player chose
       const qs = params.toString();
       return qs ? `/markets?${qs}` : "/markets";
@@ -522,9 +570,9 @@ async function LiveEmptyState({
   anyLiveAnyCat: boolean;
 }) {
   const { t } = await getServerT();
-  // The board defaults to when="today", so on a quiet day a fresh visitor can
-  // land on an empty board even though markets exist — they just settle later.
-  // Distinguish the three real causes so the CTA never loops back to empty:
+  // A NARROWED window can still be empty while markets exist further out (the
+  // default `all` cannot be — see DEFAULT_WHEN). Distinguish the three real causes
+  // so the CTA never loops back to empty:
   //   1. time window too tight (markets exist in this category, just later)
   //   2. category has none (but other categories are live)
   //   3. platform genuinely has no live markets

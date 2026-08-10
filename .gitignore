@@ -49,6 +49,10 @@ scripts/_walkthrough/
 # ⭐ And the BEFORE/AFTER pairs an M1 atom shoots either side of its deploy
 # (SHOT_DIR=.qa-design-before / -after, compared by scripts/material-ring-delta.mjs).
 .qa-design-*/
+# Poll-board evidence shots (scripts/live-poll-board.mjs --shots). Same rule: the
+# probe is committed so the board can be RE-SHOT at any width and locale; the PNGs
+# are not, because a checked-in screenshot is a claim nobody can re-derive.
+.qa-board/
 
 # Test images (user reference, not for production)
 Test Images/
