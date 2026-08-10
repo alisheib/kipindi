@@ -31,7 +31,7 @@ export async function generateMetadata() {
 export const dynamic = "force-dynamic";
 
 export default async function LivePage() {
-  const [{ t, locale }, liveRaw, traderMap] = await Promise.all([
+  const [{ t, locale }, liveRaw] = await Promise.all([
     getServerT(),
     // "ON LIVE — shows everything" (Markets Appearing.txt). This is the ONE player
     // board that deliberately opts into BOTH product lines: /markets holds long-form
@@ -39,8 +39,6 @@ export default async function LivePage() {
     // B-1 — no swallow on the wall itself: a failed board read must throw to
     // live/error.tsx, never render "no live markets right now" over a live board.
     listMarkets({ status: "LIVE", productLine: "ALL" }),
-    // B-1 — deliberate degrade: trader chips are garnish; cards render without them.
-    traderSeedsByMarket().catch(() => new Map() as Awaited<ReturnType<typeof traderSeedsByMarket>>),
   ]);
 
   function timeLeftStr(iso: string): string {
@@ -57,6 +55,15 @@ export default async function LivePage() {
   // Exclude markets whose resolution time has passed — they're closed/awaiting
   // settlement, not live, and must not show a LIVE badge on the board.
   const all = liveRaw.filter((m) => !isClosedByTime(m));
+
+  // ⚠️ Scoped to THIS wall, and sequential on purpose — see traderSeedsByMarket. It
+  // used to run in the Promise.all above and therefore could not know which markets it
+  // was for, so it read the entire Position table. /live is the worst place for that:
+  // it is the ONE board that opts into both product lines, so it is drawn against the
+  // table that holds every Up & Down round ever settled.
+  // B-1 — deliberate degrade: trader chips are garnish; cards render without them.
+  const traderMap = await traderSeedsByMarket(all.map((m) => m.id))
+    .catch(() => new Map() as Awaited<ReturnType<typeof traderSeedsByMarket>>);
 
   // /live shows BOTH games, so an Up & Down round must (a) wear an "Up & Down" chip
   // so a mixed wall still reads as two games, and (b) link to its OWN round page, not

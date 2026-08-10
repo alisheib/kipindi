@@ -1046,12 +1046,27 @@ export async function listPositionsForMarket(marketId: string) {
   return positionStore.listForMarket(marketId);
 }
 
-/** One pass over all positions → up to `n` distinct trader user-ids per market.
- *  Used by the card grids for the live trader crest-stack (cheap: O(positions),
- *  not O(markets × positions)). */
-export async function traderSeedsByMarket(n = 3) {
+/**
+ * Up to `n` distinct trader user-ids per market, for the card grids' crest-stack.
+ *
+ * 🔴 `marketIds` IS REQUIRED AND IT IS THE WHOLE POINT. This used to read
+ * `positionStore.values()` — the ENTIRE Position table — and its comment called that
+ * "cheap: O(positions), not O(markets × positions)". That comparison is true and
+ * irrelevant: the board draws about twelve cards and needs positions for those twelve
+ * markets, not for every market the platform has ever run. It ran on every render of
+ * `/markets`, the homepage and the watchlist, and again on each 30-second auto-refresh
+ * from RefreshPoller.
+ *
+ * The scan can only grow. Position rows are financial records that nothing prunes
+ * (`privacy.ts` refuses erasure outright), and Up & Down rounds live in the same table
+ * — already ~20× the poll rows on production. Scoping it to the ids being rendered
+ * turns an unbounded table scan into one indexed lookup on
+ * `@@index([marketId, status])`.
+ */
+export async function traderSeedsByMarket(marketIds: string[], n = 3) {
   const map = new Map<string, string[]>();
-  for (const p of await positionStore.values()) {
+  if (marketIds.length === 0) return map;
+  for (const p of await positionStore.listForMarkets(marketIds)) {
     let arr = map.get(p.marketId);
     if (!arr) { arr = []; map.set(p.marketId, arr); }
     if (arr.length < n && !arr.includes(p.userId)) arr.push(p.userId);

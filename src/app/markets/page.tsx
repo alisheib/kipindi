@@ -312,12 +312,15 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
     .slice()
     .sort((a, b) => b.resolutionAt.localeCompare(a.resolutionAt));
   const resolved = searching ? resolvedAll.filter(matches).slice(0, 6) : resolvedAll.slice(0, 3);
-  const traderMap = await traderSeedsByMarket().catch(() => new Map());
   const allForCharts = [...pagedLive, ...resolved];
+  const boardIds = allForCharts.map((m) => m.id);
+  // Scoped to the cards actually being drawn — this used to read the ENTIRE Position
+  // table on every render and every 30s refresh (see traderSeedsByMarket).
+  const traderMap = await traderSeedsByMarket(boardIds).catch(() => new Map());
   // One query for the whole board — never map getCardChart across a list.
-  const cardCharts = await getCardCharts(allForCharts.map((m) => m.id)).catch(() => new Map());
+  const cardCharts = await getCardCharts(boardIds).catch(() => new Map());
   // B-17 — one grouped query for the whole board, not one count per card.
-  const commentCounts = await countCommentsByMarkets(allForCharts.map((m) => m.id)).catch(() => new Map<string, number>());
+  const commentCounts = await countCommentsByMarkets(boardIds).catch(() => new Map<string, number>());
 
   const resultCount = live.length + resolved.length;
 

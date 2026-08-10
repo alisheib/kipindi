@@ -227,6 +227,22 @@ export interface PositionStore {
   }>>;
   listForMarket(marketId: string): Promise<StoredPosition[]>;
   /**
+   * Positions across a KNOWN SET of markets, in one indexed query.
+   *
+   * ⛔ THE REASON THIS EXISTS. `traderSeedsByMarket()` — the crest-stack on every card —
+   * used `values()`, i.e. the ENTIRE Position table, on every render of the board, the
+   * homepage and the watchlist, and again on each 30-second auto-refresh. It was
+   * commented "cheap: O(positions), not O(markets × positions)", which is true and is
+   * the wrong comparison: the board needs positions for the ~12 markets it is drawing,
+   * not for every market that ever existed. Position rows are financial records and are
+   * never pruned (privacy.ts refuses erasure), so that scan only ever grows, and the Up
+   * & Down rounds share the table — on production it is already ~20× the poll rows.
+   *
+   * Served by `@@index([marketId, status])`. Never call this with an unbounded id list;
+   * the board passes exactly the page it is rendering.
+   */
+  listForMarkets(marketIds: string[]): Promise<StoredPosition[]>;
+  /**
    * One player's positions on one market.
    *
    * ⛔ NOT `listForMarket(...).filter(...)`. The one-side-per-round rule reads this INSIDE the
@@ -359,6 +375,11 @@ const memoryPositions: PositionStore = {
   },
   async listForMarket(marketId) {
     return Array.from(positions.values()).filter((p) => p.marketId === marketId);
+  },
+  async listForMarkets(marketIds) {
+    if (marketIds.length === 0) return [];
+    const want = new Set(marketIds);
+    return Array.from(positions.values()).filter((p) => want.has(p.marketId));
   },
   async listForUserAndMarket(userId, marketId) {
     return Array.from(positions.values()).filter((p) => p.userId === userId && p.marketId === marketId);
@@ -680,6 +701,14 @@ const prismaPositions: PositionStore = {
   },
   async listForMarket(marketId) {
     const rows = await pc().position.findMany({ where: { marketId } });
+    return rows.map(toStoredPosition);
+  },
+  async listForMarkets(marketIds) {
+    // ⛔ Guard the empty case: `{ in: [] }` is a valid Prisma filter that matches
+    // nothing, but issuing the round-trip at all is pure waste on a board with no
+    // cards. Served by @@index([marketId, status]).
+    if (marketIds.length === 0) return [];
+    const rows = await pc().position.findMany({ where: { marketId: { in: marketIds } } });
     return rows.map(toStoredPosition);
   },
   async listForUserAndMarket(userId, marketId, tx) {

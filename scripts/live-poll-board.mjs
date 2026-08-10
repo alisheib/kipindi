@@ -80,7 +80,14 @@ for (const locale of LOCALES) {
     console.log(`\n=== ${BASE} · ${locale} · ${width}px ===`);
     for (const w of WINDOWS) {
       const url = w === "(default)" ? `${BASE}/markets` : `${BASE}/markets?when=${w}`;
-      await page.goto(url, { waitUntil: "networkidle", timeout: 60_000 });
+      // ⚠️ `networkidle` is the WRONG wait for this page and it hangs. /markets mounts
+      // RefreshPoller, which fires every 30s, and an SSE odds channel — the network is
+      // never idle by design, so the wait burns its full timeout on a page that
+      // finished rendering in a second. `domcontentloaded` plus the explicit
+      // skeleton-replaced condition below is the honest signal: it waits for the thing
+      // we actually care about (the streamed grid) rather than for silence that will
+      // never come.
+      await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60_000 });
       // The grid streams. Wait for the skeleton to be REPLACED, not for a timeout —
       // a fixed sleep is what makes this class of probe report the fallback.
       await page

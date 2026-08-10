@@ -15,18 +15,24 @@ import { getServerT } from "@/lib/i18n-server";
 export const dynamic = "force-dynamic";
 
 export default async function LandingPage() {
-  const [{ t }, liveRaw, updownLiveRaw, traderMap, session, stats] = await Promise.all([
+  const [{ t }, liveRaw, updownLiveRaw, session, stats] = await Promise.all([
     getServerT(),
     listMarkets({ status: "LIVE" }).catch(() => [] as Awaited<ReturnType<typeof listMarkets>>),
     // The fast game is its own product line, so it never appears in the poll list above.
     // Count its LIVE rounds for the home discovery band (real data — no fabricated count).
     listMarkets({ status: "LIVE", productLine: "UPDOWN" }).catch(() => [] as Awaited<ReturnType<typeof listMarkets>>),
-    traderSeedsByMarket().catch(() => new Map() as Awaited<ReturnType<typeof traderSeedsByMarket>>),
     getSession(),
     getPlatformStats(),
   ]);
   const live = liveRaw.filter((m) => !isClosedByTime(m)).slice(0, 6);
   const updownLiveCount = updownLiveRaw.filter((m) => !isClosedByTime(m)).length;
+  // ⚠️ Deliberately sequential, and it is cheaper this way. The crest-stack lookup used
+  // to run inside the Promise.all above, which meant it could not know which markets
+  // the landing page would draw — so it read the ENTIRE Position table, every render.
+  // Waiting one round-trip to learn the six ids buys an indexed lookup instead of an
+  // unbounded scan that grows forever (positions are never pruned).
+  const traderMap = await traderSeedsByMarket(live.map((m) => m.id))
+    .catch(() => new Map() as Awaited<ReturnType<typeof traderSeedsByMarket>>);
 
   // C2a stats band — REAL aggregates, never fabricated. Markets settled = resolved
   // count; TZS paid out = Σ of CONFIRMED BET_PAYOUT + CASHOUT (same basis as the
