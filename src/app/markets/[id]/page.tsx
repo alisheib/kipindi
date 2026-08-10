@@ -32,7 +32,7 @@ import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { formatDateTime, formatDayTime, formatTzsCompact, formatTzs, fill, pctNum } from "@/lib/utils";
 import { appUrl } from "@/lib/app-url";
 import { getServerT } from "@/lib/i18n-server";
-import { pickLocalized } from "@/lib/localized";
+import { pickLocalized, marketCategoryLabel } from "@/lib/localized";
 
 
 export const dynamic = "force-dynamic";
@@ -330,7 +330,7 @@ export default async function MarketDetail({
           );
         })()}
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <Chip variant="cat" size="lg">{m.category}</Chip>
+          <Chip variant="cat" size="lg">{marketCategoryLabel(t, m.category)}</Chip>
           {/* C1a hero state — LIVE only while actually accepting predictions
               (open/closing); waiting & resolved carry their own state chips. */}
           {(heroState === "open" || heroState === "closing") && m.status === "LIVE" && (
@@ -351,7 +351,7 @@ export default async function MarketDetail({
             </span>
           )}
           {isResolved && m.resolvedOutcome && (
-            <Chip variant="resolved" size="lg">{t.market.resolvedOutcome} · {m.resolvedOutcome}</Chip>
+            <Chip variant="resolved" size="lg">{t.market.resolvedOutcome} · {m.resolvedOutcome === "YES" ? t.common.yes : m.resolvedOutcome === "NO" ? t.common.no : t.market.statusVoid}</Chip>
           )}
           <a
             href={m.sourceUrl}
@@ -491,10 +491,23 @@ export default async function MarketDetail({
                   <div key={p.id} id={p.id} className="ticket-target scroll-mt-24 rounded-md border border-border bg-bg-overlay/40 p-3 space-y-2">
                     <div className="flex items-center justify-between gap-2 font-mono text-[12px]">
                       <div className="flex items-center gap-2">
-                        <span className={`font-bold ${p.side === "YES" ? "text-yes-300" : "text-no-300"}`}>{p.side}</span>
+                        {/* ⛔ RAW PRISMA ENUMS, ON THE ROW ABOUT THIS PLAYER'S OWN MONEY.
+                            The side printed `p.side` ("YES"/"NO") and the state printed
+                            `p.status` ("OPEN"/"WIN"/"LOSS"/"VOID") plus a hardcoded
+                            English "CASHED" — untranslated in every locale, while the
+                            status chip in the same header three hundred lines above was
+                            fully localised. A Swahili player reading "NDIO" on the card
+                            they arrived from met "YES" here. */}
+                        <span className={`font-bold ${p.side === "YES" ? "text-yes-300" : "text-no-300"}`}>{p.side === "YES" ? t.common.yes : t.common.no}</span>
                         <span className={`text-[10px] uppercase tracking-[0.10em] font-semibold ${
                           p.status === "OPEN" ? "text-info-fg" : p.status === "WIN" ? "text-gold-300" : p.status === "LOSS" ? "text-no-300" : "text-text-subtle"
-                        }`}>{p.status === "CASHED_OUT" ? "CASHED" : p.status}</span>
+                        }`}>{
+                          p.status === "OPEN" ? t.market.posOpen
+                          : p.status === "WIN" ? t.market.posWin
+                          : p.status === "LOSS" ? t.market.posLoss
+                          : p.status === "CASHED_OUT" ? t.market.posCashed
+                          : t.market.posVoid
+                        }</span>
                       </div>
                       <span className="font-bold tabular-nums text-text">{formatTzs(p.stake)}</span>
                     </div>
@@ -707,7 +720,12 @@ export default async function MarketDetail({
                   yesPct={impliedYesPct(s)}
                   volume={s.yesPool + s.noPool}
                   predictors={s.predictorCount}
-                  timeLeft={similarTimeLeft(s.resolutionAt, t)}
+                  // ⚠️ Counts down to BETTING CLOSE, not to resolution. This rail is a
+                  // "place another prediction" invitation, so a countdown to the
+                  // settlement instant promises betting time the market will not
+                  // accept — on a sports poll, hours of it. Matches the board and the
+                  // card, which both show `selectionClosedAt ?? resolutionAt`.
+                  timeLeft={isSelectionClosed(s) ? t.market.waitingForResults : similarTimeLeft(s.selectionClosedAt ?? s.resolutionAt, t)}
                   status="LIVE"
                   selectionClosed={isSelectionClosed(s)}
                   sourceUrl={s.sourceUrl}

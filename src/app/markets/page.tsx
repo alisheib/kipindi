@@ -113,7 +113,13 @@ export default async function MarketsPage({ searchParams }: { searchParams: Prom
           Sticky offset = 56 (app bar) + ~66 (sticky search zone) so the rail
           parks just below the search instead of colliding with it. */}
       <div className="mt-1 flex flex-col gap-5 lg:flex-row lg:gap-6">
-        <aside className="lg:w-[208px] lg:shrink-0 lg:sticky lg:top-[122px] lg:self-start lg:max-h-[calc(100dvh-134px)] lg:overflow-y-auto lg:overflow-x-hidden kp-thin-scroll lg:pb-3">
+        {/* ⚠️ `lg:z-10` — BELOW the sticky search zone's z-20, deliberately. The two
+            sticky elements share an edge, and the search zone's height is now constant
+            (its echo row is always reserved), so they should never overlap. If a future
+            change makes them anyway, an explicit lower z-index degrades to the rail
+            passing UNDER the search bar rather than the search bar occluding the rail's
+            first control. */}
+        <aside className="lg:w-[208px] lg:shrink-0 lg:sticky lg:top-[122px] lg:z-10 lg:self-start lg:max-h-[calc(100dvh-134px)] lg:overflow-y-auto lg:overflow-x-hidden kp-thin-scroll lg:pb-3">
           <FilterBar searchParams={searchParams} />
         </aside>
         <div className="min-w-0 flex-1">
@@ -238,6 +244,24 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
   const matches = (m: { titleEn: string; titleSw: string; titleZh?: string | null; category: string; resolutionCriterion?: string }) =>
     matchesQuery(parsed, m as unknown as Record<string, string | null | undefined>, MARKET_SEARCH);
   const now = Date.now();
+  // 🔴 THE CLOCK A PLAYER IS SHOWN IS THE CLOCK THEY MUST BE FILTERED AND SORTED BY.
+  //
+  // Every card states its time left as time-to-BETTING-CLOSE
+  // (`selectionClosedAt ?? resolutionAt`), because that is the deadline that matters
+  // to someone deciding whether to stake. The window filters and the soonest-first
+  // sort, however, measured `resolutionAt` — the settlement instant, which on a poll
+  // with a lead time is a different moment and on a sports poll can be hours later.
+  //
+  // The two disagreeing produced a board that contradicted its own cards: "Ending
+  // soon" could omit a market that stops taking bets in ten minutes (because it
+  // RESOLVES tomorrow), while listing one whose betting shut hours ago. Sorting had
+  // the same fault — "soonest first" ordered by a deadline the player was never shown.
+  //
+  // ⛔ `isClosedByTime` (resolutionAt) stays the board-INCLUSION gate: a market whose
+  // betting has closed is still live and still belongs on the board, awaiting its
+  // result. This changes only how the shown rows are ordered and windowed.
+  const bettableUntil = (m: { selectionClosedAt: string | null; resolutionAt: string }) =>
+    Date.parse(m.selectionClosedAt ?? m.resolutionAt);
   // A name search is global: ignore the category filter so a remembered market
   // surfaces no matter which topic chip happens to be active.
   const effectiveCat = searching ? undefined : cat;
@@ -254,14 +278,14 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
     // While searching, ignore the time-window entirely — a market the player
     // remembers must surface regardless of when it closes — and sort soonest first.
     live = bettable.filter(matches)
-      .sort((a, b) => Date.parse(a.resolutionAt) - Date.parse(b.resolutionAt));
+      .sort((a, b) => bettableUntil(a) - bettableUntil(b));
   } else if (whenId === "new") {
     // "New" — newly-listed polls first, so freshly-generated markets are
     // easy to find regardless of when they close.
     live = [...bettable].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   } else {
     const liveAll = bettable
-      .map(m => ({ m, ms: Math.max(0, Date.parse(m.resolutionAt) - now) }))
+      .map(m => ({ m, ms: Math.max(0, bettableUntil(m) - now) }))
       .sort((a, b) => a.ms - b.ms);
     live = (whenCutoff === null
       ? liveAll
@@ -381,7 +405,10 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
   type ContLink = { href: string; label: string };
   let continuation: { lead: string; links: ContLink[] } | null = null;
   if (!searching && live.length > 0 && totalLivePages === 1 && (whenId === "today" || whenId === "soon" || whenId === "week")) {
-    const msLeft = bettable.map((m) => Math.max(0, Date.parse(m.resolutionAt) - now));
+    // Same clock as the windows themselves — this counts how many markets a WIDER
+    // window would reveal, so it has to measure what those windows measure or the
+    // nudge would promise markets the wider view does not contain.
+    const msLeft = bettable.map((m) => Math.max(0, bettableUntil(m) - now));
     const within = (cut: number | null) => (cut === null ? msLeft.length : msLeft.filter((ms) => ms <= cut).length);
     const here = live.length; // == within(current window cutoff) on these branches
     const catParam = cat ?? null; // `cat` is a real category or undefined (URL never carries ?cat=all)

@@ -644,6 +644,10 @@ export const dict = {
       opened: "Opened",
       paidLabel: "paid",
       statusLive: "Live", statusResolved: "Resolved", statusVoid: "Void",
+      /** A PLAYER'S OWN POSITION state. The market detail page printed the raw
+       *  Prisma enum here — OPEN / WIN / LOSS / VOID, plus a hardcoded English
+       *  "CASHED" — on the one row that is about that player's own money. */
+      posOpen: "OPEN", posWin: "WON", posLoss: "LOST", posVoid: "VOID", posCashed: "CASHED",
       statusPending: "Pending", statusClosed: "Closed",
       // ── Up & Down (short-term price rounds) ──────────────────────────────
       // Player-facing only: never narrate ops detail. "Confirming price" is a calm
@@ -2140,6 +2144,7 @@ export const dict = {
       opened: "Imefunguliwa",
       paidLabel: "imelipwa",
       statusLive: "Mubashara", statusResolved: "Imekamilika", statusVoid: "Batili",
+      posOpen: "WAZI", posWin: "UMESHINDA", posLoss: "UMEPOTEZA", posVoid: "BATILI", posCashed: "UMETOA",
       statusPending: "Inasubiri", statusClosed: "Imefungwa",
       // ── Juu na Chini (Up & Down) ─────────────────────────────────────────
       udTitle: "Juu na Chini",
@@ -3579,6 +3584,7 @@ export const dict = {
       opened: "开仓于",
       paidLabel: "已支付",
       statusLive: "实时", statusResolved: "已结算", statusVoid: "已作废",
+      posOpen: "进行中", posWin: "已获胜", posLoss: "未中", posVoid: "已作废", posCashed: "已套现",
       // ── 涨跌 (Up & Down) ──────────────────────────────────────────────────
       udTitle: "涨跌",
       udTagline: "倒计时结束时，价格会更高还是更低？",

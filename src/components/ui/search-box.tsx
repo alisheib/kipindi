@@ -168,11 +168,23 @@ export function SearchBox({
         )}
         <SearchHelp fields={helpFields} allowRegex={allowRegex} onInsert={(ex) => { setQ(ex); }} />
       </div>
-      {invalidReason ? (
-        <p role="alert" className="mt-1.5 text-[11px] text-no-300">{invalidReason}</p>
-      ) : echo ? (
-        <p className="mt-1.5 text-[11px] text-text-subtle">{echo}</p>
-      ) : null}
+      {/* 🔴 THE ECHO ROW IS ALWAYS RESERVED, EVEN WHEN EMPTY.
+          On /markets this box sits in a STICKY zone, and the filter rail beside it is
+          stickied to a hard-coded offset computed from that zone's height (56px app bar
+          + ~66px search). Rendering this row conditionally made the zone GROW the moment
+          a player typed — so the sticky search bar slid down over the top of the filter
+          rail and hid the "When" heading and its first control, exactly when a player
+          was most likely to be narrowing the board.
+          ⛔ Bumping the rail's offset instead would break the collapsed case, which is
+          the common one. A constant-height zone keeps both true, and `min-h` costs one
+          line of reserved space rather than a second magic number to keep in sync. */}
+      <p
+        role={invalidReason ? "alert" : undefined}
+        aria-live="polite"
+        className={`mt-1.5 min-h-[17px] text-[11px] ${invalidReason ? "text-no-300" : "text-text-subtle"}`}
+      >
+        {invalidReason || echo || " "}
+      </p>
     </div>
   );
 }

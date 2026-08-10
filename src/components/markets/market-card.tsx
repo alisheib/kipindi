@@ -9,7 +9,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Modal } from "@/components/ui/modal";
 import { cn, formatTzs } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
-import { pickLocalized } from "@/lib/localized";
+import { pickLocalized, marketCategoryLabel } from "@/lib/localized";
 
 type Props = {
   id: string;
@@ -257,13 +257,9 @@ export function MarketCard({
   const CatIco = I[categoryGlyph(category)];
   // Localised category label — a Swahili player must not read "SPORTS" over a
   // "MICHEZO" filter chip (POLISH-BACKLOG §1.1, the most-seen untranslated token
-  // in the product). Built inline from the dictionary rather than via
-  // categoryLabel(), which has no "other" arm and renders blank for it.
-  const CAT_LABEL: Record<string, string> = {
-    SPORTS: t.market.catSports, MACRO: t.market.catMacro, WEATHER: t.market.catWeather,
-    CRYPTO: t.market.catCrypto, CULTURE: t.market.catCulture, TECH: t.market.catTech, OTHER: t.market.catOther,
-  };
-  const catLabel = CAT_LABEL[(category ?? "").toUpperCase()] ?? t.market.catOther;
+  // in the product). Now the SHARED helper, so the card and the detail page cannot
+  // drift apart again — the detail page was still printing the raw enum.
+  const catLabel = marketCategoryLabel(t, category);
   const go = (side: "YES" | "NO") => (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
     // Micro-interaction: brief press-pop on the button before navigating

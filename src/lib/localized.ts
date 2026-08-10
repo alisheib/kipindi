@@ -25,3 +25,29 @@ export function pickLocalized(
   if (locale === "zh") return zh && zh.trim() ? zh : en;
   return en;
 }
+
+/**
+ * The localised label for a market CATEGORY.
+ *
+ * ⛔ ONE DEFINITION, because there were two and one of them was raw. The card built
+ * this map inline (correctly, with an `other` arm that the older `categoryLabel()`
+ * helper lacks), while the market DETAIL page rendered `{m.category}` straight into a
+ * chip — so a Swahili player read "MICHEZO" on the filter rail, "MICHEZO" on the card,
+ * and then "sports" on the page they had just opened from it. The detail page is also
+ * where the same header shows a fully localised status chip beside it, which made the
+ * untranslated one read as a rendering fault rather than a missing translation.
+ *
+ * Accepts any casing and falls back to "Other" for an unknown category rather than
+ * rendering blank — an unrecognised value must not produce an empty chip.
+ */
+export function marketCategoryLabel(
+  t: { market: { catSports: string; catMacro: string; catWeather: string; catCrypto: string; catCulture: string; catTech: string; catOther: string } },
+  category: string | null | undefined,
+): string {
+  const map: Record<string, string> = {
+    SPORTS: t.market.catSports, MACRO: t.market.catMacro, WEATHER: t.market.catWeather,
+    CRYPTO: t.market.catCrypto, CULTURE: t.market.catCulture, TECH: t.market.catTech,
+    OTHER: t.market.catOther,
+  };
+  return map[(category ?? "").toUpperCase()] ?? t.market.catOther;
+}
