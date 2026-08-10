@@ -334,7 +334,8 @@
     "test:board-discovery": "tsx scripts/board-discovery.test.mts",
     "red:board-discovery": "node scripts/board-discovery-red.mjs",
     "qa:poll-board": "node scripts/live-poll-board.mjs",
-    "qa:poll-lifecycle": "node scripts/live-poll-lifecycle.mjs"
+    "qa:poll-lifecycle": "node scripts/live-poll-lifecycle.mjs",
+    "qa:poll-visual": "node scripts/live-poll-visual.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",
