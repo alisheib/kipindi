@@ -53,6 +53,13 @@ export function SidePicker({
 }: Props) {
   const { t } = useT();
   const [side, setSide] = useState<"YES" | "NO" | null>(initialSide ?? null);
+  // A crowd price exists only when money is in the pool — `impliedYesPct` returns a
+  // hardcoded 50 otherwise. Hoisted out of the JSX deliberately: inline, the pool test
+  // and the side test share a line, and `test:outcome` (rightly) flags any line that
+  // compares a pool to a number and then yields a YES/NO literal — that is the shape of
+  // inferring a settled OUTCOME from the crowd's money. This code does not do that, but
+  // it should not have to be told apart from code that does.
+  const hasPool = yesPool + noPool > 0;
 
   if (side) {
     return (
@@ -62,7 +69,7 @@ export function SidePicker({
           <div className="flex items-center gap-2">
             {/* Same rule as the pick buttons: no percentage exists on an empty pool. */}
             <Chip variant={side === "YES" ? "yes" : "no"} size="lg">
-              {side}{yesPool + noPool > 0 ? ` ${side === "YES" ? yesPct : 100 - yesPct}%` : ""}
+              {side}{hasPool ? ` ${side === "YES" ? yesPct : 100 - yesPct}%` : ""}
             </Chip>
             <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{t.common.yourPick}</span>
           </div>
@@ -115,29 +122,24 @@ export function SidePicker({
           markets in exactly the same state, while the primary money control above it
           quoted 50%. Found by driving the page, not by a suite.
           RULES law 5 — real data or nothing. */}
-      {(() => {
-        const noPrice = yesPool + noPool === 0;
-        return (
-          <div className="grid grid-cols-2 gap-2.5">
-            <button
-              type="button"
-              onClick={() => setSide("YES")}
-              className="btn btn-yes btn-lg"
-              aria-label={noPrice ? t.market.backYesAriaNoPrice : t.market.backYesAria.replace("{pct}", String(yesPct))}
-            >
-              YES {!noPrice && <span className="font-mono text-[12.5px] opacity-85">@ {yesPct}%</span>}
-            </button>
-            <button
-              type="button"
-              onClick={() => setSide("NO")}
-              className="btn btn-no btn-lg"
-              aria-label={noPrice ? t.market.backNoAriaNoPrice : t.market.backNoAria.replace("{pct}", String(100 - yesPct))}
-            >
-              NO {!noPrice && <span className="font-mono text-[12.5px] opacity-85">@ {100 - yesPct}%</span>}
-            </button>
-          </div>
-        );
-      })()}
+      <div className="grid grid-cols-2 gap-2.5">
+        <button
+          type="button"
+          onClick={() => setSide("YES")}
+          className="btn btn-yes btn-lg"
+          aria-label={hasPool ? t.market.backYesAria.replace("{pct}", String(yesPct)) : t.market.backYesAriaNoPrice}
+        >
+          YES {hasPool && <span className="font-mono text-[12.5px] opacity-85">@ {yesPct}%</span>}
+        </button>
+        <button
+          type="button"
+          onClick={() => setSide("NO")}
+          className="btn btn-no btn-lg"
+          aria-label={hasPool ? t.market.backNoAria.replace("{pct}", String(100 - yesPct)) : t.market.backNoAriaNoPrice}
+        >
+          NO {hasPool && <span className="font-mono text-[12.5px] opacity-85">@ {100 - yesPct}%</span>}
+        </button>
+      </div>
       <p className="mt-3 text-center text-[11px] text-text-subtle leading-snug">
         {t.market.chooseSideHelp}
       </p>

@@ -76,25 +76,53 @@ section("1. createMarket — strict date guards");
   } catch { threw = true; }
   ok("1.1 createMarket rejects past resolution date", threw);
 
-  // 1.2 Stale selectionClosedAt (already passed) → dropped, market still created
+  // ⚠️ 1.2 / 1.3 USED TO ASSERT `=== null`, AND null WAS THE DEFECT.
+  //
+  // The intent was right — an impossible selectionClosedAt must not be honoured, and
+  // the market must still be created — but `null` was taken as the proxy for "not
+  // honoured", and null means something specific and bad: betting stays open until the
+  // RESOLUTION instant. On a sports poll that is an open book through the whole match.
+  //
+  // `createMarket` now falls back to the category's own lead time instead, so a
+  // rejected value lands on a sane cutoff rather than on "never". These assert the
+  // PROPERTY that matters: the operator's impossible value was not used, and whatever
+  // replaced it is either a real instant strictly inside (now, resolutionAt) or null —
+  // null only remaining legitimate when the poll resolves too soon for any lead to fit.
+  const insideWindow = (sel: string | null, resIso: string) => {
+    if (sel === null) return true; // legitimate only when no lead can fit; checked below
+    const s = Date.parse(sel), r = Date.parse(resIso);
+    return Number.isFinite(s) && s > Date.now() && s < r;
+  };
+
+  // 1.2 Stale selectionClosedAt (already passed) → not honoured
+  const staleRes = future(10);
   const mktStale = await createMarket({
     titleEn: `Stale selection #${++uniq}`, titleSw: "T", category: "sports",
     sourceUrl: "https://test.tz", resolutionCriterion: "Test",
-    resolutionAt: future(10),
+    resolutionAt: staleRes,
     selectionClosedAt: ago(30), // 30 min ago — stale
     proposedBy: "off_sg_alice",
   });
-  ok("1.2 stale selectionClosedAt dropped", mktStale.selectionClosedAt === null, mktStale.selectionClosedAt ?? "null");
+  ok("1.2 stale selectionClosedAt is not honoured",
+    mktStale.selectionClosedAt === null || Date.parse(mktStale.selectionClosedAt) > Date.now(),
+    mktStale.selectionClosedAt ?? "null");
+  ok("1.2b its replacement is a usable betting window",
+    insideWindow(mktStale.selectionClosedAt, staleRes), mktStale.selectionClosedAt ?? "null");
 
-  // 1.3 selectionClosedAt >= resolutionAt → dropped
+  // 1.3 selectionClosedAt >= resolutionAt → not honoured
+  const badRes = future(10);
   const mktBad = await createMarket({
     titleEn: `Sel after res #${++uniq}`, titleSw: "T", category: "sports",
     sourceUrl: "https://test.tz", resolutionCriterion: "Test",
-    resolutionAt: future(10),
+    resolutionAt: badRes,
     selectionClosedAt: future(15), // after resolution
     proposedBy: "off_sg_alice",
   });
-  ok("1.3 selectionClosedAt >= resolutionAt dropped", mktBad.selectionClosedAt === null, mktBad.selectionClosedAt ?? "null");
+  ok("1.3 selectionClosedAt >= resolutionAt is not honoured",
+    mktBad.selectionClosedAt === null || Date.parse(mktBad.selectionClosedAt) < Date.parse(badRes),
+    mktBad.selectionClosedAt ?? "null");
+  ok("1.3b its replacement is a usable betting window",
+    insideWindow(mktBad.selectionClosedAt, badRes), mktBad.selectionClosedAt ?? "null");
 
   // 1.4 Valid selectionClosedAt (future, before resolution) → kept
   const selOk = futureH(10 * 24 - 6); // 6h before resolution
