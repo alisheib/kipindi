@@ -641,14 +641,29 @@ async function LiveEmptyState({
 
 /** Shimmer skeleton shown while the async grid is loading (filter switch,
  *  initial load, or 30s auto-refresh with a slow server response). */
+/**
+ * The streamed grid's fallback — THE skeleton a visitor actually sees, because the grid
+ * is inside a Suspense boundary and this is what the first HTML response carries.
+ * (`loading.tsx` only paints on a client-side navigation into the route.)
+ *
+ * 🔴 IT WAS THE WRONG SIZE AND THE WRONG COUNT. Measured in a real browser at 1280 on
+ * 2026-08-10: the real market card is **349.4px** and the first page holds **12** of
+ * them (PLAYER_PER_PAGE). This drew **8** cards at **220px** — so the board committed to
+ * a layout ~129px per row too short and two rows too few, then grew by well over 500px
+ * as the real grid arrived, under a reader whose eye was already moving. That is the
+ * B-29 finding again: a skeleton that lies about the page is worse than no skeleton.
+ *
+ * ⚠️ Card height and count are pinned to the real values, and the count is taken from
+ * PLAYER_PER_PAGE rather than re-typed, so a page-size change moves both together.
+ */
 function GridSkeleton() {
   return (
     <div className="market-grid" aria-hidden>
-      {Array.from({ length: 8 }).map((_, i) => (
+      {Array.from({ length: PLAYER_PER_PAGE }).map((_, i) => (
         <div
           key={i}
           className="rounded-md border border-border bg-bg-elevated overflow-hidden kp-shimmer-track"
-          style={{ height: 220 }}
+          style={{ height: 349 }}
         >
           <div className="p-4 space-y-3">
             <div className="flex items-center gap-2">
@@ -657,11 +672,17 @@ function GridSkeleton() {
             </div>
             <div className="h-4 w-3/4 rounded bg-bg-overlay" />
             <div className="h-4 w-1/2 rounded bg-bg-overlay" />
+            {/* The real card carries a probability block, the tipping bar, a trader
+                row and the money buttons between the title and the footer. Reserving
+                them keeps the INTERNAL rhythm honest too, not just the outer box. */}
+            <div className="h-8 w-20 rounded bg-bg-overlay mt-4" />
             <div className="h-[7px] w-full rounded-pill bg-bg-overlay mt-4" />
+            <div className="h-5 w-32 rounded bg-bg-overlay mt-3" />
             <div className="flex gap-2 mt-3">
               <div className="h-9 flex-1 rounded-md bg-bg-overlay" />
               <div className="h-9 flex-1 rounded-md bg-bg-overlay" />
             </div>
+            <div className="h-4 w-24 rounded bg-bg-overlay mt-3" />
           </div>
         </div>
       ))}
