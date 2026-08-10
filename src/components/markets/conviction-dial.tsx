@@ -1585,7 +1585,10 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
               : undefined
           }
           onSecondary={
-            resultData.variant === "success" ? () => router.push("/positions")
+            // ⚠️ Close FIRST, then navigate. `onClose` below also pushes the player to
+            // the board on success, so the secondary must not route through it — that
+            // is what made "View positions" land on /markets instead.
+            resultData.variant === "success" ? () => { setResultOpen(false); router.push("/positions"); }
               : resultData.retryable ? () => setResultOpen(false)
               : undefined
           }

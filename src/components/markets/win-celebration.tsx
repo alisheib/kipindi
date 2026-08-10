@@ -130,30 +130,94 @@ export function WinCelebrationHost() {
   // The Needle its acknowledge() nudge (one quarter-turn back to true, no win/loss
   // variant). Fired on dismiss so the quiet nod is visible as the celebration clears,
   // not hidden behind its modal. No-ops if the object is hidden/suppressed.
-  const dismiss = () => { setOpen(false); acknowledgeNeedle(); };
+  // 🔴 WINS QUEUE — THEY USED TO OVERWRITE EACH OTHER.
+  //
+  // `setPayload(detail)` on a single slot meant that when two wins arrived in the same
+  // poller tick — one `for` loop, synchronous `dispatchEvent` per position — the second
+  // replaced the first before React ever painted it. The player saw ONE seal.
+  //
+  // ⛔ And the lost win was gone for good: `notify-poller` marks each position `seen`
+  // and persists that set in the same pass, so a win that was overwritten is never
+  // re-announced. Two bets on one market settling together is the ordinary case, and
+  // it is the exact scenario that file's own header says it exists to handle.
+  //
+  // The queue presents them one at a time, each with its own open cycle so the
+  // seal-arrive impact, the count-up and the mark flip all restart cleanly rather than
+  // half-playing over a swapped-out figure.
+  const queueRef = useRef<WinCelebrationPayload[]>([]);
+  const openRef = useRef(false);
+  const gapRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ⭐ A weekend backlog must not become twenty modals. Past this many the tail is
+  // collapsed into ONE honest summary — the total actually paid and how many wins it
+  // covers — which is a truthful statement rather than a queue the player has to
+  // dismiss their way out of.
+  const MAX_INDIVIDUAL = 3;
+
+  /** Present the next queued win, or go idle.
+   *  ⚠️ The clean restart between two seals depends on `Modal` returning null while
+   *  closed: that unmounts `RollingAmount`, so its count-up effect re-runs even when
+   *  two consecutive wins are for the IDENTICAL amount (its deps are `[value]`, which
+   *  would not change). If the modal is ever changed to keep its children mounted,
+   *  this needs an explicit remount key or the second win will show a final figure
+   *  with no count and no strike. */
+  const present = () => {
+    const next = queueRef.current.shift();
+    if (!next) { openRef.current = false; return; }
+    openRef.current = true;
+    setPayload(next);
+    setStruck(false);
+    setOpen(true);
+    if (!motionOff()) {
+      // `success` (money settled), NOT `celebrate`. The 7-pulse celebrate flourish
+      // is reinforcement, and the kit's haptic rule is explicit: physical events
+      // only — never reward. On a real-money product a congratulatory buzz on a win
+      // is also the exact pattern responsible-gambling guidance warns about. The
+      // money landing is a real event and still deserves feedback, so it keeps one.
+      haptics.success();
+    }
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(dismiss, 4_500);
+  };
+
+  // Dismiss closes THIS seal, then hands over to the next after a short gap so the
+  // two never cross-fade into one another.
+  const dismiss = () => {
+    setOpen(false);
+    acknowledgeNeedle();
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (gapRef.current) clearTimeout(gapRef.current);
+    if (queueRef.current.length > 0) gapRef.current = setTimeout(present, 350);
+    else openRef.current = false;
+  };
 
   useEffect(() => {
     const onCelebrate = (e: Event) => {
       const detail = (e as CustomEvent<WinCelebrationPayload>).detail;
       if (!detail) return;
-      setPayload(detail);
-      setOpen(true);
-      if (!motionOff()) {
-        // `success` (money settled), NOT `celebrate`. The 7-pulse celebrate flourish
-        // is reinforcement, and the kit's haptic rule is explicit: physical events
-        // only — never reward. On a real-money product a congratulatory buzz on a win
-        // is also the exact pattern responsible-gambling guidance warns about. The
-        // money landing is a real event and still deserves feedback, so it keeps one.
-        haptics.success();
+      queueRef.current.push(detail);
+      if (queueRef.current.length > MAX_INDIVIDUAL) {
+        const tail = queueRef.current.splice(MAX_INDIVIDUAL - 1);
+        queueRef.current.push({
+          kind: "WIN",
+          amount: tail.reduce((s, p) => s + p.amount, 0),
+          net: tail.every((p) => typeof p.net === "number")
+            ? tail.reduce((s, p) => s + (p.net ?? 0), 0)
+            : undefined,
+          // No market title — this seal stands for several, and naming one of them
+          // would be a false statement about the figure above it.
+          label: undefined,
+        });
       }
-      if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(dismiss, 4_500);
+      if (!openRef.current) present();
     };
     window.addEventListener(EVENT_NAME, onCelebrate as EventListener);
     return () => {
       window.removeEventListener(EVENT_NAME, onCelebrate as EventListener);
       if (timerRef.current) clearTimeout(timerRef.current);
+      if (gapRef.current) clearTimeout(gapRef.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (!payload) return null;

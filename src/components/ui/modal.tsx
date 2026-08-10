@@ -93,18 +93,49 @@ export function Modal({
   useModalLock(open);
   React.useEffect(() => { setMounted(true); }, []);
 
+  // 🔴 THE CALLBACKS ARE HELD IN REFS SO THEY ARE NOT EFFECT DEPENDENCIES.
+  //
+  // This effect used to depend on `[open, onClose, initialFocus]`. Every caller passes
+  // `onClose` as a fresh inline arrow (`onClose={() => { if (!pending) onCancel(); }}`),
+  // so its identity changed on EVERY render — and the effect therefore tore down and
+  // re-ran on every render, not on every open.
+  //
+  // Each of those re-runs did three things in order: the cleanup restored focus to the
+  // trigger (still enabled, sitting behind the scrim), the body re-captured
+  // `prevFocus` from whatever was focused *after* that restore, and 30 ms later the
+  // timer forced focus onto `initialFocus`. The net effect is that focus is dragged
+  // off whatever the user selected and onto the dialog's primary button.
+  //
+  // ⛔ On the BET CONFIRM dialog that happened ONCE A SECOND, because the modal
+  // re-renders each time its countdown label ticks. A keyboard or screen-reader user
+  // who tabbed to Cancel had focus pulled onto Confirm within the second — so pressing
+  // Enter placed the bet they were cancelling. It is a money dialog; that is the whole
+  // severity of it.
+  //
+  // ⭐ With `[open]` as the only dependency the cleanup now runs on a TRUE close (or
+  // unmount) and nowhere else, which is what "restore focus to the trigger" always
+  // meant. `initialFocus` is a ref object and is read at timer time, so it needs no
+  // dependency either — reading it late is strictly more correct than pinning it.
+  const onCloseRef = React.useRef(onClose);
+  React.useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+  const initialFocusRef = React.useRef(initialFocus);
+  React.useEffect(() => { initialFocusRef.current = initialFocus; }, [initialFocus]);
+
   React.useEffect(() => {
     if (!open) return;
     // Remember what had focus so keyboard/SR users land back on the trigger.
     prevFocus.current = document.activeElement as HTMLElement | null;
+    // Captured now, not read at cleanup time: by then the DOM may have moved on, and
+    // this is the element that was focused when the dialog actually opened.
+    const restoreTo = prevFocus.current;
     const focusables = () =>
       Array.from(panelRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? []);
     const timer = setTimeout(() => {
-      const target = initialFocus?.current ?? focusables()[0] ?? panelRef.current;
+      const target = initialFocusRef.current?.current ?? focusables()[0] ?? panelRef.current;
       target?.focus();
     }, 30);
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { e.preventDefault(); onClose(); return; }
+      if (e.key === "Escape") { e.preventDefault(); onCloseRef.current(); return; }
       if (e.key !== "Tab") return;
       // Focus trap: keep Tab inside the dialog instead of leaking behind the scrim.
       const f = focusables();
@@ -122,9 +153,9 @@ export function Modal({
       clearTimeout(timer);
       window.removeEventListener("keydown", onKey);
       // Restore focus to the trigger (guard: it may have unmounted).
-      prevFocus.current?.focus?.();
+      restoreTo?.focus?.();
     };
-  }, [open, onClose, initialFocus]);
+  }, [open]);
 
   if (!mounted || !open) return null;
 

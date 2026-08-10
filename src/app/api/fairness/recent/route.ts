@@ -46,7 +46,26 @@ export async function GET() {
     ...(await listMarkets({ status: "RESOLVED" }).catch(() => [])),
     ...(await listMarkets({ status: "VOIDED" }).catch(() => [])),
   ]
-    .sort((a, b) => (b.resolutionStage2At ?? "").localeCompare(a.resolutionStage2At ?? ""))
+    // 🔴 SORT ON THE SETTLEMENT CLOCK, FALLING BACK TO ADJUDICATION.
+    //
+    // This used to window on `resolutionStage2At` alone — the instant the VERDICT was
+    // recorded. But the money moves later: `settleMarket` stamps `settledAt` only once
+    // the objection window has elapsed, which is 24 hours by default. So a market's
+    // position in this 50-row feed was fixed a full day before the event the feed
+    // exists to announce.
+    //
+    // On a busy day that is a lost win: a market adjudicated on Monday is already 50
+    // rows deep by the time it SETTLES on Tuesday, so it never appears here, the
+    // poller never sees its attestation, and the player's win is never announced —
+    // while the poller keeps polling that market forever because nothing ever tells it
+    // the market is done.
+    //
+    // Ordering by `settledAt` puts markets in the feed at the moment their money
+    // actually moves. `resolutionStage2At` remains the fallback so a market inside its
+    // objection window (adjudicated, not yet settled) still shows up and still ranks
+    // sensibly — it just no longer burns its place in the queue a day early.
+    .sort((a, b) =>
+      (b.settledAt ?? b.resolutionStage2At ?? "").localeCompare(a.settledAt ?? a.resolutionStage2At ?? ""))
     .slice(0, 50);
   return NextResponse.json({
     attestations: resolved.map((m) => ({
@@ -62,6 +81,10 @@ export async function GET() {
       twoOfficer: !!(m.resolutionStage1By && m.resolutionStage2By && m.resolutionStage1By !== m.resolutionStage2By),
       stage1At: m.resolutionStage1At,
       stage2At: m.resolutionStage2At,
+      // ⭐ The clock the MONEY moved on, published so a client can tell "a verdict was
+      // recorded" apart from "the pool has been paid out". `stage2At` alone cannot:
+      // it is set up to 24h earlier, at the start of the objection window.
+      settledAt: m.settledAt,
       objectionsClosedAt: m.objectionsClosedAt,
       yesPool: m.yesPool,
       noPool: m.noPool,

@@ -351,7 +351,13 @@ export function OperationResultModal({
           {secondaryLabel && (
             <button
               type="button"
-              onClick={() => { onSecondary?.(); onClose(); }}
+              // 🔴 THE SECONDARY OWNS ITS OWN DISMISSAL. This used to be
+              // `onSecondary?.(); onClose();` — and on the bet receipt `onClose` also
+              // does `router.push(boardHref)`. So tapping "View positions" fired a
+              // push to /positions and then IMMEDIATELY a second push to /markets,
+              // which won. The button did the opposite of what it said, every time.
+              // Callers that pass no `onSecondary` still get plain dismissal.
+              onClick={() => { if (onSecondary) onSecondary(); else onClose(); }}
               className="btn btn-ghost btn-md w-full"
             >
               {secondaryLabel}
