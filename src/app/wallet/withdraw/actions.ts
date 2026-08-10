@@ -9,7 +9,7 @@ import { rateCheckAsync } from "@/lib/server/rate-limit";
 import { db } from "@/lib/server/store";
 import type { WithdrawInput } from "@/lib/server/validators";
 import { WITHDRAW_MIN_TZS, WITHDRAW_MAX_TZS } from "@/lib/server/validators";
-import { getPayoutStatus, payoutsAcceptingRequests, isPayoutTestBypass } from "@/lib/server/payout-status";
+import { getPayoutStatus, payoutsAcceptingRequests } from "@/lib/server/payout-status";
 import { getServerT } from "@/lib/i18n-server";
 import { errorCopy } from "@/lib/error-copy";
 
@@ -50,22 +50,17 @@ export async function withdrawAction(formData: FormData) {
   // a request we cannot fulfil is worse than refusing it: it takes the money out of the player's
   // available balance and looks like progress. Refuse here, in the player's own language.
   const payouts = await getPayoutStatus();
-  // ⏳ TEMPORARY (2026-07-31): a named tester may proceed past a shut gate so we can prove
-  // whether Selcom's rail pays at all. Off unless PAYOUT_TEST_BYPASS_MSISDN names them.
-  const testBypass = isPayoutTestBypass(session.phoneE164);
-  if (!payoutsAcceptingRequests(payouts.status) && !testBypass) {
+  // ✅ SEALED 2026-08-10. The temporary `PAYOUT_TEST_BYPASS_MSISDN` escape hatch that let one
+  // named tester past a shut gate is GONE — variable cleared on Railway, function and both
+  // call sites deleted. It existed because the gate was self-locking: two payouts frozen
+  // since 2026-07-29 made `derivePayoutStatus` report `unavailable`, so nobody could request
+  // the one controlled withdrawal that would prove whether the rail paid at all. That
+  // deadlock is over — the last stuck payout was returned to its owner today and the queue
+  // reads 0 — so the gate is the only gate again, for everyone, with no exceptions.
+  if (!payoutsAcceptingRequests(payouts.status)) {
     // B-7 — `payouts.note` is operator diagnostics ("N stuck payouts…"), not
     // player copy; the localized body says everything the player can act on.
     redirect(("/wallet/withdraw?error=" + encodeURIComponent(t.wallet.payoutsUnavailableBody)) as never);
-  }
-  if (testBypass && !payoutsAcceptingRequests(payouts.status)) {
-    // Loud on purpose. A bypassed money control that leaves no trace is how a temporary
-    // measure becomes permanent — this line is what makes it obvious it is still on.
-    console.warn(
-      `[payouts] ⚠️ TEST BYPASS ACTIVE — ${session.phoneE164} allowed past a "${payouts.status}" gate ` +
-      `(${payouts.stuckCount} stuck, oldest ${payouts.oldestStuckHours?.toFixed(1) ?? "?"}h). ` +
-      `Clear PAYOUT_TEST_BYPASS_MSISDN to seal it.`,
-    );
   }
 
   const amount = parseInt(String(formData.get("amount") ?? "0"), 10);

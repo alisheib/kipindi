@@ -166,34 +166,3 @@ export function setPayoutStatus(
  * refusing it would be its own lie about what we can do.
  */
 export const payoutsAcceptingRequests = (s: PayoutStatus): boolean => s !== "unavailable";
-
-/**
- * ⏳ TEMPORARY TEST BYPASS — added 2026-07-31 on Ali's explicit instruction. REMOVE WHEN DONE.
- *
- * WHY IT EXISTS. The gate above is currently self-locking. Two payouts have been frozen at
- * `999` since 2026-07-29, so `derivePayoutStatus` reports `unavailable`, so no player may
- * request a withdrawal — including the one controlled test that would tell us whether Selcom's
- * rail is working again. We cannot test a payout because a payout is stuck. Only Selcom can
- * close the stuck two, and they have not.
- *
- * WHAT IT DOES NOT DO — this is the whole design, and it must stay this way:
- *   · It does NOT change `getPayoutStatus`, `derivePayoutStatus` or `worstOf`. The declared /
- *     derived asymmetry is untouched, and `test:cert-f1` still guards it.
- *   · It does NOT change what any player is TOLD. The "withdrawals cannot be paid" banner still
- *     renders for the tester too — they see the truth and choose to proceed anyway.
- *   · It is OFF unless `PAYOUT_TEST_BYPASS_MSISDN` names specific numbers. Empty or unset — the
- *     shipped default — means nobody bypasses anything.
- *
- * SEALING IT. Clear the Railway variable and the bypass is gone in seconds with no deploy. That
- * is deliberate: an outage control must be closable faster than a build takes. Deleting this
- * function afterwards is the tidy-up, not the kill switch.
- */
-export function isPayoutTestBypass(phoneE164: string | null | undefined): boolean {
-  const raw = process.env.PAYOUT_TEST_BYPASS_MSISDN ?? "";
-  if (!raw.trim() || !phoneE164) return false;
-  // Compare on digits alone — "+255757619808", "255757619808" and "0757 619 808" are one number
-  // to a human, and a bypass that misses on punctuation is a bypass nobody can switch on.
-  const digits = (s: string) => s.replace(/\D/g, "").replace(/^0/, "255");
-  const me = digits(phoneE164);
-  return raw.split(",").map((s) => digits(s.trim())).filter(Boolean).includes(me);
-}

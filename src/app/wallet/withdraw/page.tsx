@@ -24,7 +24,7 @@ import { db } from "@/lib/server/store";
 import { withdrawAction } from "./actions";
 import { getServerT } from "@/lib/i18n-server";
 import { ProviderRadioGrid } from "@/components/wallet/provider-radio-grid";
-import { getPayoutStatus, payoutsAcceptingRequests, isPayoutTestBypass } from "@/lib/server/payout-status";
+import { getPayoutStatus, payoutsAcceptingRequests } from "@/lib/server/payout-status";
 import { PayoutStatusNotice } from "@/components/wallet/payout-status-notice";
 
 export async function generateMetadata() {
@@ -68,11 +68,10 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
   // Can we actually pay a withdrawal right now? Since 2026-07-29 the honest answer has been no,
   // and until this landed the form said nothing at all. `unavailable` disables the form — taking
   // a request we cannot fulfil is worse than refusing it, because it looks like progress.
-  // ⏳ TEMPORARY (2026-07-31): a named tester gets a working form so we can prove whether the
-  // rail pays at all. The NOTICE below is deliberately NOT suppressed for them — they still read
-  // "withdrawals cannot be paid" and proceed knowingly. Off unless PAYOUT_TEST_BYPASS_MSISDN.
+  // ✅ SEALED 2026-08-10 — the temporary named-tester bypass is deleted (see the withdraw
+  // action for the full note). One gate, everyone, no exceptions.
   const payouts = await getPayoutStatus();
-  const payoutsOpen = payoutsAcceptingRequests(payouts.status) || isPayoutTestBypass(session.phoneE164);
+  const payoutsOpen = payoutsAcceptingRequests(payouts.status);
   const canSubmit = kycApproved && payoutsOpen;
 
   return (
