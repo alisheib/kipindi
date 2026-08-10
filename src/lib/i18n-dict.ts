@@ -802,6 +802,10 @@ export const dict = {
       multInputAria: "Conviction multiplier — type {min}× to {max}×",
       insufficientDetail: "You need TZS {need} but have TZS {have}. Deposit to continue.",
       backYesAria: "Back YES at {pct}%", backNoAria: "Back NO at {pct}%",
+      /** Accessible name when the pool is EMPTY and no price exists. ⚠️ Keeps the VERB
+       *  and drops only the fabricated percentage — a bare "YES" would tell a screen
+       *  reader what the label says but not what the control does. */
+      backYesAriaNoPrice: "Back YES", backNoAriaNoPrice: "Back NO",
       notifUnsupported: "Browser notifications not supported here. Add this market to your home screen for the best alerts.",
       watchingTitle: "Watching this market",
       notifBlocked: "Notifications blocked. Enable them in your browser settings to get a ping when this market resolves.",
@@ -2268,6 +2272,7 @@ export const dict = {
       multInputAria: "Kizidishi cha msimamo — andika {min}× hadi {max}×",
       insufficientDetail: "Unahitaji TZS {need} lakini una TZS {have}. Weka pesa ili kuendelea.",
       backYesAria: "Unga mkono NDIYO kwa {pct}%", backNoAria: "Unga mkono HAPANA kwa {pct}%",
+      backYesAriaNoPrice: "Unga mkono NDIYO", backNoAriaNoPrice: "Unga mkono HAPANA",
       notifUnsupported: "Arifa za kivinjari hazitumiki hapa. Ongeza soko hili kwenye skrini yako ya mwanzo kwa arifa bora.",
       watchingTitle: "Unafuatilia soko hili",
       notifBlocked: "Arifa zimezuiwa. Ziwashe katika mipangilio ya kivinjari chako upate arifa soko hili litakapotatuliwa.",
@@ -3707,6 +3712,7 @@ export const dict = {
       multInputAria: "信念倍数 — 输入 {min}× 至 {max}×",
       insufficientDetail: "您需要 TZS {need}，但只有 TZS {have}。请充值以继续。",
       backYesAria: "以 {pct}% 押注 YES", backNoAria: "以 {pct}% 押注 NO",
+      backYesAriaNoPrice: "押注 YES", backNoAriaNoPrice: "押注 NO",
       notifUnsupported: "此处不支持浏览器通知。将此市场添加到主屏幕以获得最佳提醒。",
       watchingTitle: "正在关注此市场",
       notifBlocked: "通知已被阻止。请在浏览器设置中开启，以便此市场结算时收到提醒。",

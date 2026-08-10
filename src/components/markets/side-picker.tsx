@@ -60,8 +60,9 @@ export function SidePicker({
         {/* Side indicator + switch button */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
+            {/* Same rule as the pick buttons: no percentage exists on an empty pool. */}
             <Chip variant={side === "YES" ? "yes" : "no"} size="lg">
-              {side} {side === "YES" ? yesPct : 100 - yesPct}%
+              {side}{yesPool + noPool > 0 ? ` ${side === "YES" ? yesPct : 100 - yesPct}%` : ""}
             </Chip>
             <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{t.common.yourPick}</span>
           </div>
@@ -105,24 +106,38 @@ export function SidePicker({
       <h3 className="mt-1.5 mb-4 font-display text-[17px] font-bold text-text leading-tight text-center">
         {t.market.whichWay}
       </h3>
-      <div className="grid grid-cols-2 gap-2.5">
-        <button
-          type="button"
-          onClick={() => setSide("YES")}
-          className="btn btn-yes btn-lg"
-          aria-label={t.market.backYesAria.replace("{pct}", String(yesPct))}
-        >
-          YES <span className="font-mono text-[12.5px] opacity-85">@ {yesPct}%</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setSide("NO")}
-          className="btn btn-no btn-lg"
-          aria-label={t.market.backNoAria.replace("{pct}", String(100 - yesPct))}
-        >
-          NO <span className="font-mono text-[12.5px] opacity-85">@ {100 - yesPct}%</span>
-        </button>
-      </div>
+      {/* 🔴 NO PRICE ON AN EMPTY POOL — the same rule the card obeys.
+          `impliedYesPct` returns a hardcoded 50 when both pools are zero
+          (market-service.ts:223), so on a market nobody has bet these buttons read
+          "YES @ 50% · NO @ 50%" and presented the default as a crowd price.
+          ⛔ It was visible ON THIS PAGE that the two disagreed: the "Similar markets"
+          rail below correctly showed "— · No bets yet · Be the first to predict" for
+          markets in exactly the same state, while the primary money control above it
+          quoted 50%. Found by driving the page, not by a suite.
+          RULES law 5 — real data or nothing. */}
+      {(() => {
+        const noPrice = yesPool + noPool === 0;
+        return (
+          <div className="grid grid-cols-2 gap-2.5">
+            <button
+              type="button"
+              onClick={() => setSide("YES")}
+              className="btn btn-yes btn-lg"
+              aria-label={noPrice ? t.market.backYesAriaNoPrice : t.market.backYesAria.replace("{pct}", String(yesPct))}
+            >
+              YES {!noPrice && <span className="font-mono text-[12.5px] opacity-85">@ {yesPct}%</span>}
+            </button>
+            <button
+              type="button"
+              onClick={() => setSide("NO")}
+              className="btn btn-no btn-lg"
+              aria-label={noPrice ? t.market.backNoAriaNoPrice : t.market.backNoAria.replace("{pct}", String(100 - yesPct))}
+            >
+              NO {!noPrice && <span className="font-mono text-[12.5px] opacity-85">@ {100 - yesPct}%</span>}
+            </button>
+          </div>
+        );
+      })()}
       <p className="mt-3 text-center text-[11px] text-text-subtle leading-snug">
         {t.market.chooseSideHelp}
       </p>

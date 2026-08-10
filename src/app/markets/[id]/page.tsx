@@ -207,6 +207,16 @@ export default async function MarketDetail({
   const freshMarket =
     m.status === "LIVE" && !selectionClosed && !closedByTime && !isResolved &&
     m.yesPool + m.noPool === 0 && m.predictorCount === 0;
+  // ⚠️ "Nobody has touched this" (freshMarket) and "there is no crowd price"
+  // (noPriceMarket) are DIFFERENT questions, and the card splits them the same way.
+  // A price is a statement about the POOL alone: `impliedYesPct` returns a hardcoded
+  // 50 when both pools are zero, and a market whose only bettor cashed out sits at
+  // pool 0 with predictorCount 1 (the count is never decremented), so ANDing the two
+  // let the default 50 render as a real price. Keeping the two definitions in step
+  // across the card, the bar and the side-picker is what the comment above demands.
+  const noPriceMarket =
+    m.status === "LIVE" && !selectionClosed && !closedByTime && !isResolved &&
+    m.yesPool + m.noPool === 0;
 
   // ── C1a hero lifecycle state — open · closing · waiting · resolved ──
   // Server-computed (page is force-dynamic + RefreshPoller re-fetches every 15s,
@@ -386,7 +396,7 @@ export default async function MarketDetail({
             height={28}
             showLabels
             resolved={isResolved}
-            empty={freshMarket}
+            empty={noPriceMarket}
             emptyLabel={t.market.noBetsYet}
           />
           {freshMarket && (

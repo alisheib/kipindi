@@ -376,10 +376,10 @@ export function MarketCard({
 
       {live ? (
         <div className="mcardp-actions">
-          <button type="button" aria-label={noPrice ? t.common.yes : t.market.backYesAria.replace("{pct}", String(yesPct))} onClick={go("YES")} className="btn btn-yes btn-md">
+          <button type="button" aria-label={noPrice ? t.market.backYesAriaNoPrice : t.market.backYesAria.replace("{pct}", String(yesPct))} onClick={go("YES")} className="btn btn-yes btn-md">
             {t.common.yes}{!noPrice && <span className="font-mono text-[11.5px] opacity-85"> @ {yesPct}%</span>}
           </button>
-          <button type="button" aria-label={noPrice ? t.common.no : t.market.backNoAria.replace("{pct}", String(100 - yesPct))} onClick={go("NO")} className="btn btn-no btn-md">
+          <button type="button" aria-label={noPrice ? t.market.backNoAriaNoPrice : t.market.backNoAria.replace("{pct}", String(100 - yesPct))} onClick={go("NO")} className="btn btn-no btn-md">
             {t.common.no}{!noPrice && <span className="font-mono text-[11.5px] opacity-85"> @ {100 - yesPct}%</span>}
           </button>
         </div>
