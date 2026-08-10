@@ -253,5 +253,22 @@ const book = (sym: string, policy: PlaybookPolicy = P, catalogueMin: number | nu
   ok("10.16 the boolean helper threads the hours too", isMarketOpenAt("macro", wed21, [21]) === false);
 }
 
+// ── 11. THE OPS SCRIPT'S ENTRY POINT — the bug that printed nothing and exited 0. ───────────
+{
+  const { readFileSync } = await import("node:fs");
+  const src = readFileSync(join(HERE, "ops-updown-profile.mts"), "utf8");
+  ok("11.1 run-if-main compares URLs, never a hand-glued file:// string",
+     /pathToFileURL\(process\.argv\[1\]/.test(src));
+  ok("11.2 …and the broken form is gone",
+     !/import\.meta\.url === `file:\/\/\$\{process\.argv\[1\]\}`/.test(src));
+  // ⛔ The property, not the spelling: on a Windows-shaped path the two must still agree.
+  const { pathToFileURL } = await import("node:url");
+  const win = "F:\\kipindi-main\\scripts\\ops-updown-profile.mts";
+  ok("11.3 the glued form genuinely fails on a Windows path (why this test exists)",
+     `file://${win}` !== pathToFileURL(win).href);
+  ok("11.4 the ops script is registered so test:orphans can see it",
+     JSON.parse(readFileSync(join(HERE, "..", "package.json"), "utf8")).scripts["ops:updown-profile"] != null);
+}
+
 console.log(`\n${fail === 0 ? "PASS" : "FAIL"}  updown-playbook — ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

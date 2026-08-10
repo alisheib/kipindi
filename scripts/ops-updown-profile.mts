@@ -16,6 +16,7 @@
  * ⚠️ Needs `TWELVEDATA_API_KEY`. Without a `DATABASE_URL` the save is a no-op by design
  * (`config-store` no-ops), so `--dry` and a local run print the same numbers either way.
  */
+import { pathToFileURL } from "node:url";
 import { ALLOWED_DURATIONS } from "../src/lib/updown-durations.ts";
 import type { AssetProfile } from "../src/lib/updown-playbook.ts";
 import { buildPlaybook, judgeAsset, DEFAULT_POLICY } from "../src/lib/updown-playbook.ts";
@@ -199,5 +200,19 @@ async function main() {
   }
 }
 
-// Importable for the guard without firing the network.
-if (import.meta.url === `file://${process.argv[1]}`) await main();
+/**
+ * ⛔ RUN-IF-MAIN, COMPARED AS URLs — NEVER BY GLUEING A PATH ONTO "file://".
+ *
+ * This line was `import.meta.url === \`file://${process.argv[1]}\`` and it silently did NOTHING
+ * ON WINDOWS. There, `process.argv[1]` is `F:\kipindi-main\scripts\…` while `import.meta.url` is
+ * `file:///F:/kipindi-main/scripts/…` — different separators, different slash count, so the
+ * comparison is false forever. `main()` never ran, the process exited 0, and it printed nothing at
+ * all: the operator saw a clean run that had done nothing. On Linux the two happen to match, which
+ * is exactly why it passed every test here and failed the first time it met a real machine.
+ *
+ * ⚠️ This is E-133 in a new costume. `test:design-one-door` compared `docs\X.md` against
+ * `docs/X.md`; `test:updown-push` had the CRLF version. The rule generalises and is worth carrying:
+ * **compare normalised values, or you are comparing the filesystem instead of the thing you meant.**
+ * `pathToFileURL` is the normalisation for this one. Guarded by `test:updown-playbook` §11.
+ */
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) await main();
