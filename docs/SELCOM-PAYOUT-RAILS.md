@@ -172,6 +172,41 @@ out on *every* failed payout, previously carried no identifier at all.
 - `npm run test:payments`, `test:fast-payout`, `test:selcom` — the pre-existing money-safety suites,
   unchanged in intent.
 
+## ✅ Current state — 2026-08-10: ONE RAIL RUNS, AND THAT NEEDS NO CODE CHANGE
+
+**This section supersedes every state block below it.** Measured from production 2026-08-10,
+after the last frozen payout was returned and the withdrawal gate reopened.
+
+**The question this answers, because it will be asked again:** *"only one rail works — remove
+the redundancy and keep the one that worked."* ⛔ **There is nothing to remove. Exactly one rail
+already runs, and it is the ladder doing its job, not a gap in it.**
+
+| Rail | Probe says | What actually happens on a payout |
+|---|---|---|
+| `WALLET_CASHIN` | ENABLED | **attempted** — the only rail a request is sent to |
+| `SELCOM_PESA` | `NOT_ENABLED` (`HTTP 403 · 4035`) | **skipped without a request** — [`payments.ts:400-403`](../src/lib/server/payments.ts) |
+| `HUDUMA_AGENT` | `NOT_ENABLED` (`HTTP 403 · 4035`) | **never automatic, by design** — it is not in `PAYOUT_LADDER` at all |
+
+So the runtime behaviour is already *"keep the one that worked"*. Deleting `SELCOM_PESA` from
+`PAYOUT_LADDER` would change **no** behaviour today; its only effect would be that the day Selcom
+provisions the endpoint, the fallback would need a **code change and a deploy** to come back
+instead of resuming on the next probe. ⭐ **Ali's call, 2026-08-10: leave the code, document it.**
+
+⚠️ **`UNKNOWN` is not `NOT_ENABLED`, and the difference is deliberate.** A probe timeout does NOT
+disable a rail — one wasted request is cheaper than a payout that never goes out. Only a rail
+Selcom has *definitively refused* is skipped.
+
+🔴 **THE ACTUAL CONSTRAINT ON PAYOUTS TODAY IS NOT THE RAILS — IT IS THE FLOAT.** The console
+reads **TZS 88,645** available and flags it *"Low float — payouts fail when it runs dry."* A rail
+that is provisioned and healthy still fails on an empty float, and it fails in a way that looks
+like a rail problem. **Check the float first.**
+
+⚠️ **And the rail has not been exercised since the gate reopened.** Measured 2026-08-10 08:38Z:
+**0 withdrawals and 0 cash-outs** since 08:10Z. What *did* work in the preceding 24h was **22
+`BET_PAYOUT` settlements totalling TZS 193,782** — but that is an internal wallet credit, not
+money leaving to Selcom. ⛔ **Do not read settlement payouts as evidence that the payout rail
+works.** They are different halves of the system, and only one of them has been proven today.
+
 ## ✅ Current state — 2026-08-02: PAYOUTS WORK, and the three stuck rows CAN be closed by us
 
 **This section supersedes every other state block in `docs/SELCOM-*`, including the 07-31 one
