@@ -10,6 +10,7 @@ import { SYMBOL_CATALOGUE, symbolReadiness, readinessMark, findSymbol } from "@/
 import { marketSessionAt, nextOpenAfter } from "@/lib/server/market-calendar";
 // ⭐ E-84 / the dynamic gate — each asset's measured record, and the advice derived from it.
 import { feedAdviceLookup } from "@/lib/server/updown-feed-history";
+import { playbookLookup, toReadinessAdvice } from "@/lib/server/updown-playbook-store";
 import { MIN_SAMPLES_FOR_ADVICE } from "@/lib/server/updown-feed-advice";
 import { observationStore, roundStore } from "@/lib/server/updown-dal";
 // E-90 · the pools decide whether a decided round actually paid anybody.
@@ -50,7 +51,7 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
   const sp = await searchParams;
   // The economics card's window — presets + custom date+hour+minute, EAT-safe (default 30d).
   const range = resolveRange(sp, Date.now(), "30d");
-  const [assets, chains, cfg, feed] = await Promise.all([
+  const [assets, chains, cfg, feed, book] = await Promise.all([
     listAssets().catch(() => []),
     listChains().catch(() => []),
     getUpDownConfig(),
@@ -60,6 +61,11 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
     // would accept, or offer what it would refuse. Degrades to a zeroed record (which reads as
     // UNMEASURED, never as healthy) rather than taking the page down.
     feedAdviceLookup().catch(() => null),
+    // ⭐ THE THIRD ADVICE SOURCE — the provider's own tape. Loaded here, beside the other two,
+    // so every duration option, the asset dropdown and the server's own refusal all read one
+    // answer. ⛔ Degrades to null rather than taking the page down: a console that will not
+    // render is worse than one that cannot say whether an asset was measured.
+    playbookLookup().catch(() => null),
   ]);
 
   const enabledAssets = assets.filter((a) => a.enabled);
@@ -146,7 +152,7 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
   const sessionOf = (c: { assetId: string }) => {
     const a = assetById.get(c.assetId);
     if (!a) return null;
-    const v = marketSessionAt(a.category, nowIso);
+    const v = marketSessionAt(a.category, nowIso, book?.book(a.symbol).deadHoursUtc);
     return { ...v, nextOpen: v.open ? null : nextOpenAfter(a.category, nowIso) };
   };
 
@@ -373,7 +379,8 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
                   ALLOWED_DURATIONS.map((d) => {
                     // ⭐ …and the asset's OWN measured record for this duration, keyed on
                     // `a.key` exactly as `createChain` keys it.
-                    const r = symbolReadiness(findSymbol(a.symbol), d, feed?.advise(a.key, d), feed?.movement(a.key, d));
+                    const r = symbolReadiness(findSymbol(a.symbol), d, feed?.advise(a.key, d), feed?.movement(a.key, d),
+                      toReadinessAdvice(book?.choice(a.symbol, d, findSymbol(a.symbol)?.minDurationMinutes ?? null)));
                     return { minutes: d, level: r.level, mark: readinessMark(r.level), reason: r.reason };
                   }),
                 ]),
@@ -384,9 +391,11 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
               assetReadiness={Object.fromEntries(
                 assets.filter((a) => a.enabled).map((a) => {
                   const spec = findSymbol(a.symbol);
-                  const own = symbolReadiness(spec, undefined, feed?.advise(a.key));
+                  const own = symbolReadiness(spec, undefined, feed?.advise(a.key), undefined,
+                    toReadinessAdvice(book?.asset(a.symbol)));
                   const usable = ALLOWED_DURATIONS.filter(
-                    (d) => symbolReadiness(spec, d, feed?.advise(a.key, d), feed?.movement(a.key, d)).level !== 3,
+                    (d) => symbolReadiness(spec, d, feed?.advise(a.key, d), feed?.movement(a.key, d),
+                      toReadinessAdvice(book?.choice(a.symbol, d, spec?.minDurationMinutes ?? null))).level !== 3,
                   );
                   const level = usable.length === 0 ? 3 : own.level;
                   const limit = spec?.minDurationMinutes

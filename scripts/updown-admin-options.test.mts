@@ -309,7 +309,7 @@ const SELECT = "src/components/ui/select.tsx";
   ok("7.4 · ⭐ and the SERVER gate reads the same records, keyed the same way",
      /feedAdviceFor\(asset\.key, input\.durationMinutes\)/.test(configSrc) &&
      /movementAdviceFor\(asset\.key, input\.durationMinutes\)/.test(configSrc) &&
-     /validateSymbolDuration\(asset\.symbol, input\.durationMinutes, measured, movement\)/.test(configSrc));
+     /validateSymbolDuration\([\s\S]{0,160}?measured,\s*movement[,)]/.test(configSrc));
 
   // ⛔ THE ACTION VALIDATES AGAINST THE SHARED LIST TOO (found live 2026-08-08). The
   // dropdown was rendered from FEED_PROVIDERS while the ACTION kept a hand-written

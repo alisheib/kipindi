@@ -103,7 +103,27 @@ export function sessionKindFor(category: string): SessionKind {
  * The weekend is the case where that protection was measured to FAIL, because the provider
  * synthesises weekend bars; a holiday has not been measured. Recorded as a known limit.
  */
-export function marketSessionAt(category: string, at: string | Date): SessionVerdict {
+export function marketSessionAt(
+  category: string,
+  at: string | Date,
+  /**
+   * ⭐ THE DAILY SESSION BREAK — measured, not tabulated, and passed in rather than hardcoded.
+   *
+   * ⛔ THIS FILE MODELLED THE WEEKEND AND NOTHING ELSE, AND THAT WAS A HOLE WITH REAL MONEY IN IT.
+   * Measured 2026-08-10 over 14 days of 1-minute bars: gold's 21:00–22:00 UTC hour — the CME/FX
+   * daily settlement break — runs at **0.064×** its own median movement, bottoming at $0.009 a
+   * minute with a third of minutes literally frozen. At the live $0.40 floor that hour would
+   * refund **95% of 3-minute and 79% of 15-minute** gold rounds. Bitcoin at the same hour is
+   * 0.62×, which is the control that proves it is the market and not the provider.
+   *
+   * ⚠️ The hours are DERIVED per asset by `src/lib/updown-playbook.ts` and handed in by the
+   * caller, never listed here. A calendar that hardcodes "21" is a calendar that is wrong the day
+   * an exchange moves its settlement, and it would say nothing at all about the next instrument.
+   * `SessionVerdict` has carried the `session-break` reason since it was written; until now the
+   * only thing that ever emitted it was an unparseable date.
+   */
+  deadHoursUtc?: readonly number[],
+): SessionVerdict {
   const kind = sessionKindFor(category);
   if (kind === "always") return { open: true };
 
@@ -125,12 +145,25 @@ export function marketSessionAt(category: string, at: string | Date): SessionVer
   if (dow === 5 && hour >= 21) {
     return { open: false, reason: "weekend", detail: `${stamp} is Friday after 21:00 UTC — the week has closed` };
   }
+  // ⛔ AFTER the weekend tests, never before. A Saturday instant inside the daily break is shut for
+  // the bigger reason, and an operator told "the settlement break" about a Saturday would go
+  // looking for it to end in an hour.
+  if (deadHoursUtc?.includes(hour)) {
+    return {
+      open: false,
+      reason: "session-break",
+      detail:
+        `${stamp} falls in this asset's measured daily settlement break (${String(hour).padStart(2, "0")}:00–` +
+        `${String((hour + 1) % 24).padStart(2, "0")}:00 UTC), when its price barely moves. ` +
+        `A round opened here would almost certainly refund rather than pay a winner.`,
+    };
+  }
   return { open: true };
 }
 
 /** Convenience for the common boolean question. */
-export function isMarketOpenAt(category: string, at: string | Date): boolean {
-  return marketSessionAt(category, at).open;
+export function isMarketOpenAt(category: string, at: string | Date, deadHoursUtc?: readonly number[]): boolean {
+  return marketSessionAt(category, at, deadHoursUtc).open;
 }
 
 /**

@@ -235,16 +235,16 @@ console.log("\n§5 · every call site passes it (an omitted optional argument ty
   ok("5.3 …and a ② joins the caveats, excluding the unmeasured case",
      /movement\.level\s*===\s*2\s*&&\s*!movement\.unmeasured/.test(symbols));
   ok("5.4 `validateSymbolDuration` forwards it to `symbolReadiness`",
-     /symbolReadiness\(findSymbol\(symbol\),\s*durationMinutes,\s*measured,\s*movement\)/.test(symbols));
+     /symbolReadiness\(findSymbol\(symbol\),\s*durationMinutes,\s*measured,\s*movement[,)]/.test(symbols));
   // ⛔ THE WRITE PATH. Without this the console greys an option the server still accepts.
   const createChain = sliceBraces(config, "const { validateSymbolDuration } = await import");
   ok("5.5 the create-chain gate loads the movement record", /movementAdviceFor/.test(config));
   ok("5.6 …and passes it into the refusal",
-     /validateSymbolDuration\([^)]*measured,\s*movement\)/.test(config));
+     /validateSymbolDuration\([\s\S]*?measured,\s*movement[,)]/.test(config));
   ok("5.7 the console passes it for every duration option",
-     /symbolReadiness\(findSymbol\(a\.symbol\),\s*d,\s*feed\?\.advise\(a\.key,\s*d\),\s*feed\?\.movement\(a\.key,\s*d\)\)/.test(consoleSrc));
+     /symbolReadiness\(findSymbol\(a\.symbol\),\s*d,\s*feed\?\.advise\(a\.key,\s*d\),\s*feed\?\.movement\(a\.key,\s*d\)[,)]/.test(consoleSrc));
   ok("5.8 …and when deciding whether an asset is usable at ANY duration",
-     /symbolReadiness\(spec,\s*d,\s*feed\?\.advise\(a\.key,\s*d\),\s*feed\?\.movement\(a\.key,\s*d\)\)/.test(consoleSrc));
+     /symbolReadiness\(spec,\s*d,\s*feed\?\.advise\(a\.key,\s*d\),\s*feed\?\.movement\(a\.key,\s*d\)[,)]/.test(consoleSrc));
   ok("5.9 the lookup exposes movement beside the feed advice", /movement:\s*\(assetKey,\s*durationMinutes\)/.test(history));
   void createChain;
 }

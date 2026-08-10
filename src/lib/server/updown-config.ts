@@ -908,13 +908,22 @@ export async function createChain(input: ChainInput, officerId: string): Promise
   // time"; this answers "does it move enough to decide". ⛔ Both are passed here, on the write
   // path, or the console greys an option the server would still accept — which is the same
   // "a control that offers what the server refuses" defect in the other direction.
-  const { validateSymbolDuration } = await import("./updown-symbols");
+  // ⭐ …AND THE PROVIDER'S OWN TAPE, THE THIRD AXIS. ⛔ Passed here for exactly the reason the
+  // two lines above give: a console that greys an option the server would still accept is the
+  // defect, not the fix. Keyed by `asset.symbol` — the PROVIDER's symbol, which is what the
+  // playbook profiles are stored under, and deliberately not `asset.key`, which is ours.
+  const { validateSymbolDuration, findSymbol } = await import("./updown-symbols");
   const { feedAdviceFor, movementAdviceFor } = await import("./updown-feed-history");
-  const [measured, movement] = await Promise.all([
+  const { playbookVerdictFor, toReadinessAdvice } = await import("./updown-playbook-store");
+  const catalogueMin = findSymbol(asset.symbol)?.minDurationMinutes ?? null;
+  const [measured, movement, playbook] = await Promise.all([
     feedAdviceFor(asset.key, input.durationMinutes),
     movementAdviceFor(asset.key, input.durationMinutes),
+    playbookVerdictFor(asset.symbol, input.durationMinutes, catalogueMin),
   ]);
-  const durationErr = validateSymbolDuration(asset.symbol, input.durationMinutes, measured, movement);
+  const durationErr = validateSymbolDuration(
+    asset.symbol, input.durationMinutes, measured, movement, toReadinessAdvice(playbook),
+  );
   if (durationErr) return { ok: false, error: durationErr };
   const existing = (await chainStore.list({ assetId: input.assetId })).find((c) => c.durationMinutes === input.durationMinutes);
   if (existing) return { ok: false, error: `${asset.key} already has a ${input.durationMinutes}-minute chain.` };

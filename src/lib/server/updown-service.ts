@@ -36,6 +36,7 @@ import { observePrice, describeRefusal, type OracleReading, type RefusalReason }
 import { feedFromId, quoteAsset, describeFeedRefusal, hostMatchesDomain, judgeFeedStaleness } from "./updown-feed";
 // E-36 — the trading calendar. A shut market must never settle real money.
 import { marketSessionAt, describeClosure } from "./market-calendar";
+import { deadHoursFor } from "./updown-playbook-store";
 
 export type LifecycleResult<T> = { ok: true; data: T } | { ok: false; error: string };
 
@@ -416,11 +417,14 @@ export async function generateRoundNow(
   let boundaryIso = new Date(candidates[0]!).toISOString();
   let obs: Awaited<ReturnType<typeof acquireObservation>> | null = null;
 
+  // ⭐ The asset's MEASURED daily settlement break, loaded ONCE outside the candidate loop. Empty
+  // for any symbol with no profile on file, which is byte-for-byte today's behaviour.
+  const deadHours = await deadHoursFor(asset.symbol);
   for (const ms of candidates) {
     const iso = new Date(ms).toISOString();
     // 2 · E-36 — never open into a shut market. Checked per candidate, because walking back
     //     across a session boundary must not slip a round into a closed market.
-    const session = marketSessionAt(asset.category, iso);
+    const session = marketSessionAt(asset.category, iso, deadHours);
     if (!session.open) return { ok: false, error: describeClosure(session) };
 
     // 4 · ⛔ THE PRICE, BEFORE ANYTHING IS WRITTEN. `acquireObservation` runs the calendar gate,
@@ -1454,7 +1458,7 @@ export async function advanceChain(chainId: string): Promise<{
   let opened = false;
   const latest = await roundStore.latestForChain(chain.id);
   const alreadyOpen = latest && latest.opensAt === boundaryIso;
-  const openSession = marketSessionAt(asset.category, boundaryIso);
+  const openSession = marketSessionAt(asset.category, boundaryIso, await deadHoursFor(asset.symbol));
   if (!openSession.open) {
     return {
       observation: obs.state, closed, opened: false,

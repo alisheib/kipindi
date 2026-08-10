@@ -39,6 +39,16 @@ import type { FeedAdvice } from "./updown-feed-advice";
 // ⭐ G1 · the second axis — see the note on `symbolReadiness`'s `movement` parameter.
 import type { MovementAdvice } from "../updown-movement";
 
+/**
+ * ⭐ THE THIRD ADVICE SOURCE, in the shape the other two already use.
+ *
+ * Deliberately a local structural type rather than an import of `PlaybookVerdict`: this module is
+ * the catalogue and stays free of the playbook's dependencies, and `FeedAdvice`/`MovementAdvice`
+ * both name their sentence `message`, so all three read identically at the call site. The adapter
+ * lives in `updown-playbook-store.ts`, next to the thing being adapted.
+ */
+export type PlaybookAdvice = { level: 1 | 2 | 3; message: string };
+
 /** The provider endpoint every catalogued symbol is quoted from. */
 export const QUOTE_ENDPOINT = "https://api.twelvedata.com/quote";
 /** The host that must be an enabled `TrustedSource` in the symbol's category. */
@@ -343,6 +353,7 @@ export function symbolReadiness(
   durationMinutes?: number,
   measured?: FeedAdvice,
   movement?: MovementAdvice,
+  playbook?: PlaybookAdvice,
 ): Readiness {
   if (!spec) {
     return {
@@ -376,6 +387,14 @@ export function symbolReadiness(
   // round fails for a reason no amount of movement fixes, and the operator should be told the
   // first thing first. `judgeMovement` only ever returns ③ on a DIRECTLY measured window.
   if (movement && movement.level === 3) return { level: 3, reason: movement.message };
+
+  // ⭐ ③ FROM THE PROVIDER'S OWN TAPE — the axis neither source above can see, because both learn
+  // only from rounds we have already run. It answers two questions about the INSTRUMENT: is a move
+  // real or quote wobble, and can a naive player beat our commission. ⛔ Deliberately last of the
+  // three refusals: the first two describe something that went wrong with a round, and this one
+  // describes an asset that should never have been listed — an operator should hear the fixable
+  // things first. See `src/lib/updown-playbook.ts` and `docs/UPDOWN-PLAYBOOK.md`.
+  if (playbook && playbook.level === 3) return { level: 3, reason: playbook.message };
 
   // ② a real caveat that does not stop the round happening. There are three, and ALL can
   // apply to one option, so they are collected rather than returned from the first match —
@@ -422,6 +441,11 @@ export function symbolReadiness(
   // console's own column instead, where it is information rather than a warning.
   if (movement && movement.level === 2 && !movement.unmeasured) caveats.push(movement.message);
 
+  // …and what the PROVIDER's tape says short of a refusal. ⚠️ Same treatment as `measured`: a ①
+  // adds nothing and would bury a real caveat, and an ABSENT verdict is "nobody measured", which
+  // the console shows in its own column rather than as a warning on every option.
+  if (playbook && playbook.level === 2) caveats.push(playbook.message);
+
   if (caveats.length > 0) return { level: 2, reason: caveats.join(" ") };
   return { level: 1, reason: "" };
 }
@@ -447,8 +471,9 @@ export function validateSymbolDuration(
   durationMinutes: number,
   measured?: FeedAdvice,
   movement?: MovementAdvice,
+  playbook?: PlaybookAdvice,
 ): string | null {
-  const r = symbolReadiness(findSymbol(symbol), durationMinutes, measured, movement);
+  const r = symbolReadiness(findSymbol(symbol), durationMinutes, measured, movement, playbook);
   return r.level === 3 ? r.reason : null;
 }
 
