@@ -2166,7 +2166,11 @@ export async function settleMarket(
   // the market lock releases, because it takes the REFERRER's wallet lock.
   const pendingReferralAccruals: Array<{ userId: string; operatorFee: number }> = [];
 
-  const result = await withLock(`market:${marketId}`, async (): Promise<ServiceResult<{ winnersPaid: number; positionsSettled: number }>> => {
+  // `lockTx` is the transaction `withLock` opened for this scope. It is threaded to
+  // `persistResolution` below so the settledAt stamp commits WITH the payouts —
+  // see the block comment there. Null on the in-memory store, where there is no
+  // transaction to join and `set()` writes straight to the map.
+  const result = await withLock(`market:${marketId}`, async (lockTx): Promise<ServiceResult<{ winnersPaid: number; positionsSettled: number }>> => {
   const m = await marketStore.get(marketId);
   if (!m) return { ok: false, error: "Market not found.", code: "NOT_FOUND" };
   if (m.status !== "RESOLVED" && m.status !== "VOIDED") {
@@ -2201,14 +2205,34 @@ export async function settleMarket(
   m.settledAt = settledAt;
   m.updatedAt = settledAt;
 
-  // settledAt is persisted LAST, after every position is paid. Advisory-lock
-  // writes autocommit on their own connections, so stamping settledAt first and
-  // then crashing mid-payout would strand winners as OPEN on a market the guard
-  // above now considers settled — with no recovery. Persisting it last keeps
-  // settlement resumable: a re-run re-enters (settledAt still null) and pays only
-  // the still-OPEN positions.
+  // 🔴 settledAt MUST COMMIT IN THE SAME TRANSACTION AS THE PAYOUTS. It did not,
+  // and the comment that used to sit here described a world that no longer existed.
+  //
+  // The old reasoning — "advisory-lock writes autocommit on their own connections,
+  // so persist settledAt LAST" — was correct when each payout autocommitted as it
+  // was written. It stopped being correct when the lock began publishing its
+  // transaction (locks.ts:126-140) and `withMoneyTx` started JOINING it
+  // (ledger.ts:57-59). From that moment every winner credit, position mark, payout
+  // txn and ledger group stayed UNCOMMITTED until this whole callback returned —
+  // while `marketStore.set(m)` with no `tx` resolved `(tx ?? pc())` to the global
+  // client (market-dal.ts:486) and committed settledAt IMMEDIATELY, on a different
+  // connection. Persisting it "last" therefore persisted it FIRST.
+  //
+  // The window is not theoretical and it is not instantaneous: after this call the
+  // scope still awaits the watcher alert (two round-trips) before the transaction
+  // commits, and the enclosing $transaction carries a 30s timeout. A rollback in
+  // that tail leaves settledAt committed with every winning position still OPEN and
+  // no wallet credited — and NOTHING can see or repair it, because `settleMarket`
+  // itself (:2175), `listSettlementQueue`, `getSettlementHealth`, `marketStore.pending`
+  // and the scheduler all treat a non-null settledAt as "done".
+  //
+  // ⭐ Threading `lockTx` makes the stamp and the money one atomic unit: they commit
+  // together or roll back together, so a resume still re-enters with settledAt null
+  // and pays only the still-OPEN positions. That is strictly stronger than either
+  // ordering could ever be.
+  // ⛔ Never call `marketStore.set` inside this scope without `lockTx`.
   const persistResolution = async () => {
-    await marketStore.set(m);
+    await marketStore.set(m, lockTx ?? undefined);
     recordSnapshot(m.id, m.yesPool, m.noPool);
   };
 
@@ -2243,7 +2267,15 @@ export async function settleMarket(
   if (isOneSided) {
     for (const p of myPositions) {
       const w = await db.wallet.findByUserId(p.userId);
-      if (!w) continue;
+      // ⛔ REFUSE, NEVER SKIP. This used to be `if (!w) continue;` — it stepped over
+      // the position, left it OPEN, and then settlement stamped settledAt anyway, so
+      // the stake was stranded permanently with nothing able to detect it (every
+      // settlement readout filters on settledAt being null). It also contradicted the
+      // winner path itself, which THROWS on exactly this condition once inside the
+      // transaction. Throwing here rolls the whole settlement back — settledAt now
+      // commits with the money — so the market stays unsettled, visible in the queue,
+      // and retryable. Refusal is the safe direction (see this function's docstring).
+      if (!w) throw new Error(`settle ${m.id}: wallet row missing for user ${p.userId} — refusing to settle and strand position ${p.id}`);
       // Split: real portion → real balance now; bonus portion → bonus wallet
       // after the lock (queued in pendingBonusRefunds).
       const bonusPart = p.bonusStakeTzs ?? 0;
@@ -2366,7 +2398,15 @@ export async function settleMarket(
     // Refund everyone
     for (const p of myPositions) {
       const w = await db.wallet.findByUserId(p.userId);
-      if (!w) continue;
+      // ⛔ REFUSE, NEVER SKIP. This used to be `if (!w) continue;` — it stepped over
+      // the position, left it OPEN, and then settlement stamped settledAt anyway, so
+      // the stake was stranded permanently with nothing able to detect it (every
+      // settlement readout filters on settledAt being null). It also contradicted the
+      // winner path itself, which THROWS on exactly this condition once inside the
+      // transaction. Throwing here rolls the whole settlement back — settledAt now
+      // commits with the money — so the market stays unsettled, visible in the queue,
+      // and retryable. Refusal is the safe direction (see this function's docstring).
+      if (!w) throw new Error(`settle ${m.id}: wallet row missing for user ${p.userId} — refusing to settle and strand position ${p.id}`);
       const bonusPart = p.bonusStakeTzs ?? 0;
       const realPart = p.stake - bonusPart;
       const refundTxnId = `txn_${randomId(12)}`;
@@ -2445,7 +2485,15 @@ export async function settleMarket(
     );
     for (const p of myPositions) {
       const w = await db.wallet.findByUserId(p.userId);
-      if (!w) continue;
+      // ⛔ REFUSE, NEVER SKIP. This used to be `if (!w) continue;` — it stepped over
+      // the position, left it OPEN, and then settlement stamped settledAt anyway, so
+      // the stake was stranded permanently with nothing able to detect it (every
+      // settlement readout filters on settledAt being null). It also contradicted the
+      // winner path itself, which THROWS on exactly this condition once inside the
+      // transaction. Throwing here rolls the whole settlement back — settledAt now
+      // commits with the money — so the market stays unsettled, visible in the queue,
+      // and retryable. Refusal is the safe direction (see this function's docstring).
+      if (!w) throw new Error(`settle ${m.id}: wallet row missing for user ${p.userId} — refusing to settle and strand position ${p.id}`);
       if (p.side === opts.outcome) {
         // M2: use the pre-computed largest-remainder allocation (Σ == floor(netPool),
         // winner floor asserted in allocateWinnerPayouts) instead of an independent
@@ -2518,7 +2566,16 @@ export async function settleMarket(
         }
       } else {
         p.status = "LOSS"; p.finalPayout = 0; p.settledAt = settledAt;
-        await positionStore.set(p);
+        // ⚠️ ON THE LOCK'S TRANSACTION, like every other position write in this
+        // scope. This was the ONE `positionStore.set` here that took no `tx` (the
+        // refund paths at :2301/:2422 and the winner path at :2490 all do), so a
+        // loss mark autocommitted on a pooled connection while the winners it was
+        // being written alongside were still uncommitted. It looks harmless because
+        // a loser is owed nothing — but if the transaction then rolls back, the
+        // market re-opens for settlement with those positions already stamped LOSS,
+        // and an emergency VOID only refunds positions that are still OPEN. Those
+        // players would be silently excluded from a refund they are owed.
+        await positionStore.set(p, lockTx ?? undefined);
         // Loss receipt. ⚠️ Losses stay DIRECT and non-euphemistic wherever they are
         // shown — suppressing the per-round message for Up & Down does not soften it,
         // it moves it into the daily digest, which still states each loss plainly
@@ -2925,7 +2982,7 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
 
   const pendingBonusRefunds: Array<{ userId: string; amount: number }> = [];
   const pendingWagerReversals: Array<{ userId: string; stake: number }> = [];
-  const result = await withLock(`market:${opts.marketId}`, async () => {
+  const result = await withLock(`market:${opts.marketId}`, async (lockTx) => {
     const m = await marketStore.get(opts.marketId);
     if (!m) return { ok: false as const, error: "Market not found.", code: "NOT_FOUND" as const };
     // The test is whether the MONEY has moved, not what the status says. Since
@@ -2949,39 +3006,58 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
     let refundedTzs = 0;
     for (const p of open) {
       const w = await db.wallet.findByUserId(p.userId);
-      if (!w) continue;
+      // ⛔ REFUSE, NEVER SKIP. `if (!w) continue;` stepped over the position, left it
+      // OPEN, and let the void complete anyway — the player's stake silently excluded
+      // from an emergency refund every other holder received. Refusing aborts the void
+      // (now transactional, below), so nothing is half-done and the officer can retry.
+      if (!w) throw new Error(`emergency void ${m.id}: wallet row missing for user ${p.userId} — refusing to void and skip position ${p.id}`);
       // Split: real portion → real now; bonus portion → bonus wallet after the
       // lock; reverse the bet's turnover (it never settled).
       const bonusPart = p.bonusStakeTzs ?? 0;
       const realPart = p.stake - bonusPart;
-      let balanceAfter = w.balance;
-      if (realPart > 0) {
-        const updated = await db.wallet.adjust(w.id, { balance: realPart });
-        balanceAfter = updated?.balance ?? w.balance + realPart;
-      }
-      p.status = "VOID";
-      p.finalPayout = p.stake;
-      p.settledAt = now;
-      await positionStore.set(p);
+      const emergTxnId = `txn_${randomId(12)}`;
+      // 🔴 ATOMIC — this loop used to move money with NO TRANSACTION AT ALL, and its
+      // own docstring called the operation atomic. It credited the wallet FIRST
+      // (`db.wallet.adjust`) and only then marked the position VOID, on separate
+      // autocommitting statements. A crash, a pool timeout or a connection drop
+      // between those two lines left the player CREDITED and the position still OPEN
+      // — and because the retry re-reads exactly the OPEN positions, running the void
+      // again REFUNDED THEM A SECOND TIME. Every other refund path in this file was
+      // already wrapped (the one-sided and VOID branches of settleMarket, audit C3);
+      // this was the one that never got it.
+      // ⭐ Same shape as those: credit, position mark, BET_REFUND txn and the ledger
+      // group commit together or not at all, so a resume finds the position still
+      // OPEN *and un-credited*, and pays it exactly once.
+      // ⚠️ The ledger write is `await`ed with the tx now, not fire-and-forget — a
+      // dropped ledger group inside a money transaction is the C3 finding, and
+      // swallowing it here would let the credit commit without its double entry.
+      await withMoneyTx(async (tx) => {
+        p.status = "VOID";
+        p.finalPayout = p.stake;
+        p.settledAt = now;
+        if (realPart > 0) {
+          const updated = await db.wallet.adjust(w.id, { balance: realPart }, undefined, tx);
+          if (!updated) throw new Error(`emergency void ${m.id}: wallet ${w.id} row missing`);
+          await db.txn.create({
+            id: emergTxnId,
+            walletId: w.id, userId: p.userId,
+            type: "BET_REFUND", status: "CONFIRMED",
+            amount: realPart, fee: 0, taxWithheld: 0,
+            balanceAfter: updated.balance, currency: "TZS",
+            provider: "INTERNAL", providerRef: null, msisdn: null,
+            description: `Emergency refund · "${m.titleEn.slice(0, 60)}" cancelled`,
+            positionId: p.id,
+            amlReason: null,
+            createdAt: now, updatedAt: now, completedAt: now,
+          }, tx);
+        }
+        await positionStore.set(p, tx);
+        if (realPart > 0 || bonusPart > 0) {
+          await postLedgerEntries(`refund_${emergTxnId}`, refundEntries({ txnId: emergTxnId, userId: p.userId, marketId: m.id, realPart, bonusPart }), tx);
+        }
+      });
       pendingWagerReversals.push({ userId: p.userId, stake: p.stake });
       if (bonusPart > 0) pendingBonusRefunds.push({ userId: p.userId, amount: bonusPart });
-      if (realPart > 0 || bonusPart > 0) {
-        const emergTxnId = `txn_${randomId(12)}`;
-        if (realPart > 0) await db.txn.create({
-          id: emergTxnId,
-          walletId: w.id, userId: p.userId,
-          type: "BET_REFUND", status: "CONFIRMED",
-          amount: realPart, fee: 0, taxWithheld: 0,
-          balanceAfter, currency: "TZS",
-          provider: "INTERNAL", providerRef: null, msisdn: null,
-          description: `Emergency refund · "${m.titleEn.slice(0, 60)}" cancelled`,
-          positionId: p.id,
-          amlReason: null,
-          createdAt: now, updatedAt: now, completedAt: now,
-        });
-        // Dual-write: emergency refund to double-entry ledger (fire-and-forget).
-        postLedgerEntries(`refund_${emergTxnId}`, refundEntries({ txnId: emergTxnId, userId: p.userId, marketId: m.id, realPart, bonusPart })).catch(() => {});
-      }
       // Player notice — BOTH channels, and both carry the admin's reason so the
       // player knows WHY their market was pulled and that they were made whole.
       notifyMarketCancelled(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id, reason });
@@ -3007,13 +3083,17 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
     m.resolutionStage2At = now;
     // The money moved HERE — stamp it, or the per-market settle timer would see a
     // VOIDED market with settledAt still null and try to settle it a second time.
+    // ⛔ And it is written on `lockTx` below, WITH the refunds — the same reason
+    // settleMarket's persistResolution is: a settledAt that autocommits while the
+    // refunds are still uncommitted is a market every readout calls "done" over
+    // players who were never paid.
     m.settledAt = now;
     // Surface the recorded cancellation reason as the settlement-proof evidence so
     // a voided market tells players WHY it was pulled (same value already sent in
     // the cancellation notice; capped for parity with the ceremony path).
     m.resolutionEvidence = reason ? String(reason).trim().slice(0, 2000) || null : null;
     m.updatedAt = now;
-    await marketStore.set(m);
+    await marketStore.set(m, lockTx ?? undefined);
     recordSnapshot(m.id, 0, 0);
 
     audit({
