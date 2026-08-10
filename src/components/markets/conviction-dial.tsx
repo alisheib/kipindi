@@ -812,7 +812,20 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
       case "SELECTION_CLOSED":
         return { title: t.common.marketClosed, body: t.common.marketStoppedPredictions, variant: "warning" };
       case "SUSPENDED":
-        return { title: t.common.accountSelfExclusion, body: t.common.predictionsPaused, variant: "warning" };
+        // 🔴 EVERY SUSPENSION USED TO READ AS SELF-EXCLUSION. This case hardcoded
+        // "Account in self-exclusion" and discarded the server's own message — but
+        // FOUR different refusals share the SUSPENDED code: platform-wide maintenance,
+        // a temporary lockout, a frozen wallet, and a responsible-gambling break the
+        // player set themselves. Only the last one is self-exclusion.
+        //
+        // ⛔ So a player refused during scheduled MAINTENANCE was told they had
+        // excluded themselves from gambling — a false statement about their own
+        // account, on a regulated product, in a place where it reads as a compliance
+        // action against them. The operator's actual message was thrown away.
+        //
+        // `errorCopy` already disambiguates all four families and is what the rest of
+        // the platform uses; the dial was the one surface that bypassed it.
+        return { title: t.common.couldNotPlace, body: errorCopy(t, { code: "SUSPENDED", error: err }), variant: "warning" };
       case "NOT_FOUND":
         return { title: t.common.couldNotPlace, body: t.common.marketStoppedPredictions, variant: "danger" };
       case "INVALID":
@@ -862,7 +875,29 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
       fd.set("side", q.side);
       fd.set("stake", String(q.stake));
       fd.set("idempotencyKey", betIdempotencyKey.current);
-      const r = await buyPositionAction(fd);
+      // 🔴 A THROW USED TO BE COMPLETELY SILENT. `buyPositionAction` returns a result
+      // object for every refusal it ANTICIPATES, but the money path also re-throws
+      // (market-service.ts:561-571), and a server action that throws — or a dropped
+      // connection on a 2G handset mid-submit — rejected this await. The rejection
+      // escaped the startTransition callback, so `setConfirmOpen(false)` never ran and
+      // none of the failure UI below ever mounted: no toast, no result modal, no error
+      // state. The confirm dialog simply dismissed itself and the player was left
+      // unable to tell whether their stake had moved. On a real-money control that is
+      // the worst possible outcome — worse than a wrong error, because there is
+      // nothing to act on.
+      //
+      // ⭐ BUSY is the correct mapping, not a generic failure. Its copy states that the
+      // stake has NOT moved, and its Retry path (`retrySubmit`) deliberately REUSES
+      // `betIdempotencyKey.current` — so if the bet did in fact land before the
+      // connection dropped, retrying returns the same position instead of placing a
+      // second one. A terminal error would instead wipe the dial and mint a fresh key,
+      // which is exactly the wrong response to an unknown outcome.
+      let r: Awaited<ReturnType<typeof buyPositionAction>>;
+      try {
+        r = await buyPositionAction(fd);
+      } catch {
+        r = { ok: false as const, error: "", code: "BUSY" } as Awaited<ReturnType<typeof buyPositionAction>>;
+      }
       // Whether success or failure, the modal MUST close — leaving it
       // open with the same locked quote was racing into double-place.
       setConfirmOpen(false);

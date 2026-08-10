@@ -128,7 +128,16 @@ export function SellButton({
     start(async () => {
       const fd = new FormData();
       fd.set("positionId", positionId);
-      const r = await cashOutPositionAction(fd);
+      // A throw here was as silent as it was on the bet path (see conviction-dial):
+      // the rejection escaped the transition, the confirm dialog dismissed itself, and
+      // no toast, modal or error state ever mounted — leaving the player unsure whether
+      // their position had been sold. Mapped to a refusal the copy layer can render.
+      let r: Awaited<ReturnType<typeof cashOutPositionAction>>;
+      try {
+        r = await cashOutPositionAction(fd);
+      } catch {
+        r = { ok: false as const, error: "", code: "BUSY" } as Awaited<ReturnType<typeof cashOutPositionAction>>;
+      }
       setConfirmOpen(false);
       if (!r.ok) {
         // B-7 — the refusal is rendered as toast body AND modal title, so it must

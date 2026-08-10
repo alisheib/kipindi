@@ -259,8 +259,20 @@ export default async function MarketDetail({
   // balance" at a FUNDED player on the commit screen. On failure pass undefined
   // — the dial's `balance !== undefined` guard suppresses the warning and the
   // server remains the real gate.
+  // 🔴 THE DIAL MUST BE GIVEN THE **SPENDABLE** BALANCE, NOT THE CASH ONE.
+  // `buyPosition` funds a stake from `balance` FIRST and then from `bonusBalance`
+  // (market-service.ts:745-749), so the money a player can actually stake is the sum.
+  // Passing `balance` alone made the CLIENT gate stricter than the SERVER gate: a
+  // player holding a bonus grant had Place disabled and read "insufficient balance"
+  // over a stake the server would have funded without complaint — the platform
+  // refusing to spend the bonus it had just given them.
   let myBalance: number | undefined;
-  if (session) { try { myBalance = (await db.wallet.findByUserId(session.userId))?.balance ?? 0; } catch { myBalance = undefined; } }
+  if (session) {
+    try {
+      const w = await db.wallet.findByUserId(session.userId);
+      myBalance = (w?.balance ?? 0) + (w?.bonusBalance ?? 0);
+    } catch { myBalance = undefined; }
+  }
 
   // Pre-compute hedge-warning for the aside
   const openPositions = myPositions.filter((p) => p.status === "OPEN");
