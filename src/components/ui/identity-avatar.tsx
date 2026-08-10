@@ -154,7 +154,11 @@ function CrestGuilloche({ seed, size = 80, initials }: CrestProps) {
           ? <text x="50" y="52" textAnchor="middle" dominantBaseline="middle" fontFamily="Sora, sans-serif" fontWeight="700" fontSize="34" fill="var(--pearl-50)">{initials}</text>
           : <>
               <circle cx="50" cy="50" r="15" fill={`oklch(16% 0.12 ${p.hue})`} opacity="0.78" />
-              <text x="50" y="51.5" textAnchor="middle" dominantBaseline="middle" fontFamily="Sora, sans-serif" fontWeight="700" fontSize="20" fill="var(--gilt)" style={{ letterSpacing: "-0.02em" }}>{initials}</text>
+              {/* ⛔ Q5: a player's INITIALS are the purest identity there is, so they do not wear
+                  `var(--gilt)` — the money ink — however well it looked. The crest keeps its
+                  warm metal through the guilloché stroke and rim above/below, which are raw
+                  oklch and not the money tokens; only the token reference goes. */}
+              <text x="50" y="51.5" textAnchor="middle" dominantBaseline="middle" fontFamily="Sora, sans-serif" fontWeight="700" fontSize="20" fill="oklch(86% 0.10 84)" style={{ letterSpacing: "-0.02em" }}>{initials}</text>
             </>}
       </g>
       <circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" strokeWidth={Math.max(2, su(1.5, size))} />
@@ -257,7 +261,14 @@ export function IdentityAvatar({
   const Crest = CREST[kind] || CREST.monogram;
   const ringStyle: React.CSSProperties | undefined =
     ring && tier
-      ? { boxShadow: `0 0 0 2px var(--bg-elevated), 0 0 0 ${Math.max(2, size * 0.045)}px ${TIER_RING[tier]}${tier === "sovereign" ? ", 0 0 0 1px var(--gilt) inset" : ""}` }
+      // 🔴 THE SOVEREIGN INSET WAS THE HALF Q5 MISSED, found by auditing the close-out. The
+      // TIER_RING table and the `.tier-*` chord were both moved off the money tokens, and this
+      // inline `var(--gilt)` — the money ink itself — survived both edits, because it is the
+      // one place the ring is composed in TSX rather than read from the table. It made the
+      // file's own law (see TIER_RING above) false in its own render.
+      // ⛔ It now takes the sovereign tier's own colour, so there is ONE definition of what a
+      // sovereign ring looks like instead of two that disagreed.
+      ? { boxShadow: `0 0 0 2px var(--bg-elevated), 0 0 0 ${Math.max(2, size * 0.045)}px ${TIER_RING[tier]}${tier === "sovereign" ? `, 0 0 0 1px ${TIER_RING.sovereign} inset` : ""}` }
       : undefined;
   return (
     <span className={"crest-holder" + (className ? " " + className : "")} style={{ width: size, height: size }}>

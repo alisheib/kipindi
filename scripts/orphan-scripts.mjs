@@ -59,8 +59,18 @@ const files = readdirSync(here)
  * `market-result-announce` both had to learn: **never match on words the code's own
  * documentation will one day contain.**
  */
+// ⚠️ TRAILING `//` COMMENTS TOO, not just whole-line ones — the first version of this fix only
+// anchored `^\s*//`, so `const x = 1; // see foo.mjs` still conferred reachability and E-136 was
+// one keystroke from returning. Measured when it was tightened: `reachable` is 312 either way,
+// so the hole was latent rather than active — which is exactly the kind of thing that is cheap
+// now and expensive after somebody leans on it.
+// ⛔ Deliberately naive about `//` inside strings and regexes: over-stripping can only ADD
+// orphans (a stricter gate), never hide one, and this list may only shrink.
 const stripComments = (src) =>
-  src.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/^\s*\/\/.*$/gm, "");
+  src
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .replace(/^\s*\/\/.*$/gm, "")
+    .replace(/\/\/.*$/gm, "");
 
 const namedDirectly = new Set(files.filter((n) => allScripts.includes(n)));
 const reachable = new Set(namedDirectly);

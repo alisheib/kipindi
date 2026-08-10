@@ -175,10 +175,10 @@ uses teal 215 and a light theme, both killed.
 
 | # | Question | Owner |
 |---|---|---|
-| Q5 | The Gold asset icon uses a gold tint as *asset identity*, which collides with "gold = earned money only". Accept (artwork replaces it anyway), or use a neutral metallic ring? | Ali |
+| ~~Q5~~ | ✅ **CLOSED 2026-08-10 — GOLD IS MONEY, AND NOTHING ELSE.** Both halves shipped: the Gold asset chip and the tier ring/badge are off `--gilt` / `--gilt-metal` / `--gold-300…500`. A tier or asset may be METALLIC; it may not wear the money tokens. ⚠️ The “accept — artwork replaces it anyway” option died with Q7. Enforced by `npm run test:gold-is-money`. Rule lives in `DESIGN_AUTHORITY.md` — that file is the rulebook; this row is record. | — |
 | ~~Q6~~ | ✅ **CLOSED 2026-08-10 — answered by implementation, not by Ali.** The clamp shipped on both card families: `updown-card.tsx:399-402` (`WebkitLineClamp: 2`, cites Q6 by name) and `globals.css:2782` (`.mcardp-q`). See `DESIGN_AUTHORITY.md` → *Closed here* — that file is the rulebook; this row is record. | — |
-| Q7 | Real Gold/Silver artwork to replace the `Au`/`Ag` placeholder glyphs. | Ali |
-| Q8 | Top-nav treatment for Up & Down — purple highlight + live round timer, to signal "different game". Prompt D6 drafted. | Ali |
+| ~~Q7~~ | ✅ **CLOSED 2026-08-10 — the `Au`/`Ag` lettermark chips are FINAL.** No artwork is coming. ⚠️ They are ELEMENT symbols, not `ticker.slice(0,2)` — XAU and XAG both start “XA” and once rendered identical chips. ⭐ This answer is what forced Q5 to a decision. | — |
+| ~~Q8~~ | ✅ **CLOSED 2026-08-10 — indigo pill, NO countdown.** The timer half was refused on record: a permanent countdown in global chrome is a persistent urgency cue (an RG problem for a licensed operator) and a per-second re-render fails the “usable on a low-end Android over 2G” bar. ⚠️ Reopens by instruction, not by rediscovery. | — |
 
 ---
 

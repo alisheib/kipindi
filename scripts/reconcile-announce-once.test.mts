@@ -20,9 +20,23 @@
  * in-memory store and COUNTS the rows it wrote. Asserting the source contains a Set would
  * pass on a Set that is never consulted.
  */
-import { db } from "../src/lib/server/store.ts";
-import { withdraw, reconcileStalePayments } from "../src/lib/server/wallet-service.ts";
-import { getAuditForTarget, auditFlush } from "../src/lib/server/audit.ts";
+// 🔴 PIN THE IN-MEMORY STORE **BEFORE** IMPORTING ANYTHING, AND IMPORT DYNAMICALLY.
+// `store.ts` chooses Prisma whenever `DATABASE_URL` is set (`hasDatabase() && USE_PRISMA_DAL
+// !== "false"`), so on the very shell this campaign prescribes — one that has just run
+// `scripts/live/ops/mkenv.cjs` to mint a PRODUCTION `DATABASE_URL` — this suite would create
+// real User/Wallet/Kyc/Transaction rows and write real `payments.reconcile_needs_review` rows
+// into the audit chain that E-134 exists to keep clean. ⛔ AND IT WOULD STILL PRINT GREEN,
+// because `getAuditForTarget` reads the in-memory ring, not the table. A test that silently
+// pollutes production while reporting success is the worst thing in this directory.
+// ⚠️ Static `import` statements are HOISTED above any assignment, so setting the env vars in
+// the body would be too late — the imports must be `await import(...)` below. Precedent:
+// `scripts/ai-usage.test.mts:8-13`.
+process.env.USE_PRISMA_DAL = "false";
+delete process.env.DATABASE_URL;
+
+const { db } = await import("../src/lib/server/store.ts");
+const { withdraw, reconcileStalePayments } = await import("../src/lib/server/wallet-service.ts");
+const { getAuditForTarget, auditFlush } = await import("../src/lib/server/audit.ts");
 
 let pass = 0, fail = 0;
 const ok = (label: string, cond: boolean, detail = "") => {

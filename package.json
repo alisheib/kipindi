@@ -323,7 +323,9 @@
     "red:reconcile-announce": "node scripts/reconcile-announce-once-red.mjs",
     "test:market-result-announce": "tsx scripts/market-result-announce.test.mts",
     "red:market-result-announce": "node scripts/market-result-announce-red.mjs",
-    "ops:backfill-predictors": "node scripts/ops-backfill-predictor-count.mjs"
+    "ops:backfill-predictors": "node scripts/ops-backfill-predictor-count.mjs",
+    "test:gold-is-money": "tsx scripts/gold-is-money.test.mts",
+    "test:predictor-count": "tsx scripts/predictor-count.test.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

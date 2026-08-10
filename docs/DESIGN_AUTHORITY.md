@@ -792,23 +792,32 @@ all. §0c says what each one is for.
 
 ## Open design decisions — need Ali, not a session
 
-These are recorded here so they stop being rediscovered in four different files.
-⛔ No session may decide them.
+⚪ **NONE. All four were answered by Ali on 2026-08-10 and are recorded below.** ⛔ **Do not
+put them to him again**, and do not treat this heading as an invitation to add one without a
+date and a quote.
 
-1. **The gold asset-icon tint** (Up & Down asset artwork) vs the "gold = earned money only"
-   law (§M3). The code currently ships the tint as *asset identity*; §M3 as written does not
-   permit it. Either M3 gains a written carve-out or the tint changes. (Q5)
-2. **The gold tier badge** as *rank identity* — same question, same law. (Q5)
-3. **Real Gold/Silver artwork**, or keep the lettermark chips. (Q7)
-   ⚠️ **Ask Q7 BEFORE Q5, and ask Q5's two halves together.** `design-system/README.md`
-   offers *"accept — artwork replaces it anyway"* as a Q5 answer, and that answer is only
-   available if Q7 lands on "supply artwork". If Q7 keeps the lettermarks, Q5's gold-tint
-   violation is permanent and has to be decided on its own merits.
-4. **The Up & Down top-nav treatment.** (Q8) The purple half is shipped; what needs Ali is
-   **ratifying the refusal of the other half** — `top-app-bar.tsx:33-37` declines the live
-   round timer in global chrome on two stated grounds, that a permanent countdown is an
-   RG problem for a licensed operator and that a per-second re-render fails the "usable on
-   a low-end Android over 2G" bar. That is an argument to accept or overrule, not a gap.
+⚠️ **This section listed Q5, Q7 and Q8 as OPEN for the rest of the day after they were
+answered**, in a file `docs/README.md` marks 🟢 LAW and which the design-system README points at
+as the single front door. A law doc asserting refuted state is worse than a stale note: it is
+the thing a session is told to trust. Found by auditing the close-out, not by reading it.
+
+1. ✅ **Q5 — GOLD IS MONEY, AND NOTHING ELSE.** Both halves resolved: the Gold **asset chip**
+   (`updown-card.tsx` `AssetMark`) and the **tier ring / badge** (`TIER_RING`, `.tier-*`) are
+   off the money tokens. The rule, narrower than "no gold anywhere": a tier or asset may be
+   METALLIC; it may not wear `--gilt`, `--gilt-metal`, `--gilt-ink`, `--gilt-strong` or
+   `--gold-300…500`. ⛔ **Q7 forced this decision** — with the lettermarks final, the standing
+   *"accept it, artwork replaces the tint anyway"* answer ceased to exist. **Enforced by
+   `npm run test:gold-is-money`**, which exists because this law shipped as prose and was
+   already broken in its own file (E-141).
+2. ✅ **Q7 — the `Au` / `Ag` LETTERMARK CHIPS ARE FINAL.** No artwork is coming. ⚠️ They are
+   ELEMENT symbols, not `ticker.slice(0,2)`: XAU and XAG both start "XA" and once rendered
+   identical chips.
+3. ✅ **Q8 — the Up & Down nav ships as the indigo pill with NO countdown.** The refusal at
+   `top-app-bar.tsx:33-37` stands on its stated grounds: a permanent countdown in global chrome
+   is a persistent urgency cue (an RG problem for a licensed operator) and a per-second
+   re-render fails the *"usable on a low-end Android over 2G"* bar. ⚠️ Ali did not tick this one
+   explicitly; it is closed on that argument and reopens by instruction, not by rediscovery.
+4. ✅ **Q6 and the crest chief band opacity** — closed the same day; see *Closed here* below.
 
 ### ✅ Closed here, 2026-08-10 (session 38) — these were never Ali's to decide
 

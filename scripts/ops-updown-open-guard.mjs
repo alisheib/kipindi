@@ -160,6 +160,18 @@ if (corpus.joined === 0) {
     longer holds the round id. A guard that cannot see its subject must say so, not pass.`);
   process.exit(2);
 }
+// ⛔ AND THE WINDOW HAS ITS OWN EMPTY CASE, which the first version computed, PRINTED, and then
+// never asserted. After a board clear — exactly the event that produced E-135 — `in_window` can
+// be 0 while `joined` is not, and the ⭐ "priceless opens in last Nd · must be 0 · the producing
+// path" line then reads 0 because it counted nothing, and the script prints ✓ SEALED over a
+// question it never asked. That is verbatim the failure this file condemns in its own header,
+// reappearing one variable along. **A number is only evidence once its corpus is asserted.**
+if (corpus.in_window === 0) {
+  console.error(`  ✗ INCONCLUSIVE — no opened-round audit row inside the ${WINDOW_DAYS}-day window joins a
+    surviving round, so the 'producing path' check below counted NOTHING and its 0 means
+    "not measured", not "sealed". Widen E63_WINDOW_DAYS, or wait for rounds to open.`);
+  process.exit(2);
+}
 if (live.still_null > 0) {
   console.error(`  ✗ FAIL — ${live.still_null} round(s) that STILL EXIST have no openPrice. Settlement has
     nothing to compare a close against. This is the money-critical half; fix it first.`);

@@ -380,8 +380,17 @@ await setGlobalConfig({ paidExitWindowMinutes: 15 }, "officer_mi");
     `pool=${m.yesPool + m.noPool} Σstakes=${sumStakes} drift=${m.yesPool + m.noPool - sumStakes}`);
   ok("12: pool == accepted × stake", m.yesPool + m.noPool === accepted * stake,
     `pool=${m.yesPool + m.noPool} expected=${accepted * stake}`);
-  ok("12: predictorCount matches positions", m.predictorCount === positions.length,
-    `count=${m.predictorCount} positions=${positions.length}`);
+  // ⚠️ RE-WORDED 2026-08-10, AND THE OLD WORDING WAS THE DEFECT WRITTEN DOWN. This read
+  // "predictorCount matches positions" and asserted `=== positions.length` — true here only
+  // because this scenario uses 12 DISTINCT users placing one bet each, so it passed identically
+  // under the old unconditional `+1` and would have kept passing after the field's meaning
+  // changed. `predictorCount` counts PEOPLE now, not bets; the honest assertion is against the
+  // number of distinct bettors, which in this scenario happens to equal the position count.
+  // ⛔ The case that actually distinguishes the two — one player betting twice — is asserted in
+  // `scripts/predictor-count.test.mts`, because this suite cannot express it.
+  const distinctBettors = new Set(positions.map((p) => p.userId)).size;
+  ok("12: predictorCount counts distinct PLAYERS (not bets)", m.predictorCount === distinctBettors,
+    `count=${m.predictorCount} distinctBettors=${distinctBettors} positions=${positions.length}`);
   await assertNoNegatives("after sweep-vs-bets race");
 }
 

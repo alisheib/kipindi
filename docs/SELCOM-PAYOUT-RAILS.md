@@ -303,11 +303,21 @@ reopens withdrawals**, not any code change.
 (`SPSCASHIN` → HTTP 403). Less urgent now that Wallet Cash-In works, but a second rail is what
 would keep us paying through the next TIPS outage.
 
-### ⏳ A scoped test bypass is LIVE in production — seal it when the two above are closed
+### ✅ The scoped test bypass is SEALED AND DELETED — 2026-08-10 (historical section below)
 
-`isPayoutTestBypass()` in `payout-status.ts` lets numbers listed in **`PAYOUT_TEST_BYPASS_MSISDN`**
-past the shut gate. Currently `255757619808` (Jay, co-owner, testing with Ali). It exists because
-the gate is self-locking: we could not test the rail because a payout was stuck.
+⛔ **THIS SECTION IS HISTORY. Nothing described below is live.** It is kept because it records
+*why* the hatch existed, which is the part worth remembering; the mechanism itself is gone.
+**`PAYOUT_TEST_BYPASS_MSISDN` is cleared on Railway** (verified absent via `railway run`) and
+**`isPayoutTestBypass()` plus both call sites are DELETED** from the codebase — a repo-wide grep
+returns only a past-tense tombstone comment at `src/app/wallet/withdraw/actions.ts`. One gate,
+everyone, no exceptions. ⚠️ It is flagged this loudly because a reader grepping this file for
+the hatch used to land on a present-tense claim that it was live, three sessions after it was
+not — the § at the top of this file supersedes everything below, but nobody greps a header.
+
+*Historical, for the reasoning only:* `isPayoutTestBypass()` in `payout-status.ts` let numbers
+listed in **`PAYOUT_TEST_BYPASS_MSISDN`** past the shut gate — `255757619808` (Jay, co-owner,
+testing with Ali). It existed because the gate was self-locking: we could not test the rail
+because a payout was stuck. That deadlock ended when the last stuck payout was returned.
 
 It deliberately does **not** touch `getPayoutStatus`/`derivePayoutStatus`/`worstOf`, does **not**
 suppress the player-facing notice for the tester, and is **off when the variable is unset**. Every
