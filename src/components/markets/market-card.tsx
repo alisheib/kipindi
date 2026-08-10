@@ -369,7 +369,7 @@ export function MarketCard({
                 ))}
               </span>
             )}
-            <span className="t-txt"><b>{predictors.toLocaleString()}</b> {t.market.predictorsCount}</span>
+            <span className="t-txt"><b>{predictors.toLocaleString()}</b> {predictors === 1 ? t.market.predictorsCountOne : t.market.predictorsCount}</span>
           </>
         )}
       </div>

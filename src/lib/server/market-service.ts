@@ -381,15 +381,44 @@ export async function createMarket(input: CreateMarketInput) {
   if (!Number.isFinite(resMs) || resMs <= nowMs) {
     throw new Error("Cannot create a market with a past or invalid resolution date.");
   }
-  // If selectionClosedAt is already past, drop it — the market would be born
-  // with betting immediately closed, which is useless. Null falls back to
-  // resolutionAt (legacy behavior = betting open until resolution).
+  // 🔴 A MISSING CUTOFF NOW DEFAULTS TO THE CATEGORY'S LEAD TIME, NOT TO "NEVER".
+  //
+  // `null` here means betting stays open until the RESOLUTION instant. On a sports
+  // poll that is not legacy behaviour, it is an open book during the match: bets and
+  // cash-outs were accepted right through kickoff, the whole ninety minutes, and up to
+  // the moment the result is declared — against players who can already see the score.
+  //
+  // Every caller was supposed to compute the cutoff itself, and most do
+  // (markets/actions.ts, ai-polls/actions.ts, proposals-service.ts). The candidate
+  // publisher (admin/candidates/actions.ts) simply omitted the field and inherited
+  // "never" silently, with nothing to notice. A default that fails OPEN on a money
+  // path is the wrong default no matter how many callers get it right.
+  //
+  // ⭐ Computing it HERE closes it for every present and future caller at once, using
+  // the same `computeSelectionClosedAt` the other three already call, so a poll cannot
+  // be born bettable-through-its-own-event by omission.
+  // ⚠️ An explicitly-passed value still wins, and the existing sanity checks still
+  // apply to it: a cutoff that is already past, unparseable, or at/after resolution is
+  // discarded — and then falls through to the same computed default rather than to
+  // null, because "the operator typed something impossible" and "betting never closes"
+  // are not the same answer.
+  const { computeSelectionClosedAt } = await import("./ai-poll-config");
+  const categoryLead = () => {
+    const c = computeSelectionClosedAt(input.resolutionAt, input.category);
+    const ms = Date.parse(c);
+    // The lead can only be honoured if it lands strictly inside (now, resolutionAt).
+    // On a poll resolving within the minimum window it cannot, and betting-until-
+    // resolution is then the only coherent answer.
+    return Number.isFinite(ms) && ms > nowMs && ms < resMs ? c : null;
+  };
   let effectiveSelectionClosedAt = input.selectionClosedAt ?? null;
   if (effectiveSelectionClosedAt) {
     const selMs = Date.parse(effectiveSelectionClosedAt);
     if (!Number.isFinite(selMs) || selMs <= nowMs || selMs >= resMs) {
-      effectiveSelectionClosedAt = null;
+      effectiveSelectionClosedAt = categoryLead();
     }
+  } else {
+    effectiveSelectionClosedAt = categoryLead();
   }
 
   // THE RATES STICK TO THE POLL. Freeze the live config onto the market at
@@ -1699,7 +1728,7 @@ export async function repairOrphanedPositions(): Promise<{ repaired: number; ref
       amlReason: null,
       createdAt: p.settledAt, updatedAt: p.settledAt, completedAt: p.settledAt,
     });
-    notifyRefund(p.userId, { stake: p.stake, marketTitle: "Orphaned position", marketId: "" });
+    notifyRefund(p.userId, { stake: p.stake, marketTitle: "Orphaned position", marketId: "", positionId: p.id });
     audit({
       category: "WALLET",
       action: "position.orphan_refund",
@@ -2461,7 +2490,7 @@ export async function settleMarket(
       // E-57 — and the same push, for the same reason: every terminal outcome reaches
       // the device or none does.
       if (!perEventNotificationsSuppressed(m)) {
-        notifyRefund(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id });
+        notifyRefund(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id, positionId: p.id });
       } else {
         pushOnly(p.userId, {
           titleEn: `Refunded · ${formatTzs(p.stake)}`,
@@ -3075,7 +3104,7 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
       if (bonusPart > 0) pendingBonusRefunds.push({ userId: p.userId, amount: bonusPart });
       // Player notice — BOTH channels, and both carry the admin's reason so the
       // player knows WHY their market was pulled and that they were made whole.
-      notifyMarketCancelled(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id, reason });
+      notifyMarketCancelled(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id, reason, positionId: p.id });
       sendEmailToUser(p.userId, (email) => ({
         to: email,
         subject: `Market cancelled — ${formatTzs(p.stake)} refunded`,

@@ -769,6 +769,10 @@ export const dict = {
       payoutExactNote: "Exact — betting is closed and the pools are final.",
       payoutAtClose: "When betting closes",
       predictorsCount: "predictors",
+      /** Singular form. Every card on the board read "1 predictors" until 2026-08-10 —
+       *  the count is interpolated in front of a hard-coded plural noun. Chinese has no
+       *  plural and repeats the same word; Swahili takes the true singular (mtabiri). */
+      predictorsCountOne: "predictor",
       tickerPredicted: "predicted", tickerWonOn: "won on",
       tickerSettled: "settled", tickerOn: "on",
       // === i18n coverage pass ===
@@ -2234,6 +2238,7 @@ export const dict = {
       payoutExactNote: "Kamili — dau limefungwa na bwawa limekamilika.",
       payoutAtClose: "Dau likifungwa",
       predictorsCount: "watabiri",
+      predictorsCountOne: "mtabiri",
       tickerPredicted: "alitabiri", tickerWonOn: "alishinda kwenye",
       tickerSettled: "imekamilika", tickerOn: "kwenye",
       // === i18n coverage pass ===
@@ -3671,6 +3676,8 @@ export const dict = {
       payoutExactNote: "确切金额 — 投注已关闭，奖池已最终确定。",
       payoutAtClose: "投注关闭时",
       predictorsCount: "预测者",
+      // Chinese does not inflect for number — the same noun serves both counts.
+      predictorsCountOne: "预测者",
       tickerPredicted: "预测了", tickerWonOn: "赢得了",
       tickerSettled: "已结算", tickerOn: "在",
       // === i18n coverage pass ===

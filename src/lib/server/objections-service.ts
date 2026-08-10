@@ -330,7 +330,7 @@ export async function upholdObjection(
     return { ok: false, error: "You cannot rule on your own objection.", code: "CONFLICT" };
   }
 
-  return withLock(`market:${o.marketId}`, async (): Promise<ServiceResult<{ newOutcome: string }>> => {
+  const ruling = await withLock(`market:${o.marketId}`, async (): Promise<ServiceResult<{ newOutcome: string }>> => {
     // Re-read under the lock — this is a money decision.
     const { marketStore } = await import("./market-dal");
     const m = await marketStore.get(o.marketId);
@@ -402,4 +402,31 @@ export async function upholdObjection(
 
     return { ok: true, data: { newOutcome: m.resolvedOutcome! } };
   });
+
+  // 🔴 RE-ARM THE SETTLE TIMER — MOVING `objectionsClosedAt` IS NOT ENOUGH.
+  //
+  // Upholding an objection rewrites the settlement deadline in BOTH directions: a VOID
+  // remedy backdates it to a second ago so refunds go out immediately, and a flipped
+  // verdict opens a fresh window. But the market already HAS an armed timer — it is
+  // RESOLVED/VOIDED with settledAt null, which is exactly the shape `nextDeadlineFor`
+  // arms a "settle" deadline for — and that timer is still pointing at the OLD instant.
+  //
+  // ⛔ The reconciler cannot rescue it. `reconcileMarketSchedules` exists to arm markets
+  // that have NO live timer and skips anything already armed (`if (timers.has(m.id))
+  // continue`), so it walks straight past a timer aimed at the wrong time.
+  //
+  // The comment on the VOID branch said "settle on the next sweep". There is no sweep
+  // that would: the refund waited for the ORIGINAL objection window — up to a full 24
+  // hours after an officer ruled the market void — while the settlement page told the
+  // operator the reconciler would pick it up.
+  //
+  // ⚠️ Outside the lock, so the row is committed before the scheduler re-reads it —
+  // `armMarket` fetches fresh state and would otherwise arm against the pre-write row.
+  // Fire-and-forget, like every other arm site: a scheduler hiccup must not fail a
+  // ruling that has already been recorded and audited.
+  if (ruling.ok) {
+    const { armMarket } = await import("./market-scheduler");
+    void armMarket(o.marketId).catch(() => {});
+  }
+  return ruling;
 }

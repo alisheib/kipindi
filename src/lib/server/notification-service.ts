@@ -842,33 +842,42 @@ export function notifyProposalDeclined(userId: string, opts: { titleEn: string; 
   });
 }
 
-/** Refund receipt — when a market is voided and stakes are returned. */
-export function notifyRefund(userId: string, opts: { stake: number; marketTitle: string; marketId: string }) {
+/** Refund receipt — when a market is voided and stakes are returned.
+ *
+ *  ⚠️ `positionId` IS LOAD-BEARING, NOT DECORATION. `notify()` de-duplicates on the
+ *  rendered content, so two refunds of the SAME stake on the SAME market collapsed into
+ *  ONE notice — and a player holding two positions saw a single receipt for money that
+ *  came back twice. That is the ordinary case on a voided market, not a corner: the
+ *  platform allows repeat bets by design. `notifyCashout` and `notifyOneSidedRefund`
+ *  already carry the reference for exactly this reason; these two did not. */
+export function notifyRefund(userId: string, opts: { stake: number; marketTitle: string; marketId: string; positionId?: string }) {
+  const ref = opts.positionId ? ` · ${opts.positionId}` : "";
   return notify({
     userId,
     kind: "DEPOSIT",
     titleEn: `Refund · ${formatTzs(opts.stake)} returned`,
     titleSw: `Kurudishiwa · ${formatTzs(opts.stake)}`,
     titleZh: `退款 · 已退回 ${formatTzs(opts.stake)}`,
-    bodyEn: `${opts.marketTitle.slice(0, 70)} was voided. Your stake has been returned.`,
-    bodySw: `Soko limebatilishwa. Dau lako limerudishwa.`,
-    bodyZh: `${opts.marketTitle.slice(0, 50)} 已作废。您的本金已全额退回。`,
+    bodyEn: `${opts.marketTitle.slice(0, 70)} was voided. Your stake has been returned.${ref}`,
+    bodySw: `Soko limebatilishwa. Dau lako limerudishwa.${ref}`,
+    bodyZh: `${opts.marketTitle.slice(0, 50)} 已作废。您的本金已全额退回。${ref}`,
     href: `/markets/${opts.marketId}`,
   });
 }
 
 /** Player notice: a market they had a stake in was cancelled (emergency void).
  *  Carries the admin's reason and confirms the full refund. */
-export function notifyMarketCancelled(userId: string, opts: { stake: number; marketTitle: string; marketId: string; reason: string }) {
+export function notifyMarketCancelled(userId: string, opts: { stake: number; marketTitle: string; marketId: string; reason: string; positionId?: string }) {
+  const ref = opts.positionId ? ` · ${opts.positionId}` : "";
   return notify({
     userId,
     kind: "DEPOSIT", // money returned to the wallet
     titleEn: `Market cancelled · ${formatTzs(opts.stake)} refunded`,
     titleSw: `Soko limefutwa · ${formatTzs(opts.stake)} imerejeshwa`,
     titleZh: `市场已取消 · 已退款 ${formatTzs(opts.stake)}`,
-    bodyEn: `"${opts.marketTitle.slice(0, 60)}" was cancelled: ${opts.reason.slice(0, 120)}. Your full stake has been returned to your wallet.`,
-    bodySw: `Soko limefutwa. Dau lako lote limerejeshwa kwenye pochi yako.`,
-    bodyZh: `"${opts.marketTitle.slice(0, 60)}" 已取消：${opts.reason.slice(0, 120)}。您的本金已全额退回钱包。`,
+    bodyEn: `"${opts.marketTitle.slice(0, 60)}" was cancelled: ${opts.reason.slice(0, 120)}. Your full stake has been returned to your wallet.${ref}`,
+    bodySw: `Soko limefutwa. Dau lako lote limerejeshwa kwenye pochi yako.${ref}`,
+    bodyZh: `"${opts.marketTitle.slice(0, 60)}" 已取消：${opts.reason.slice(0, 120)}。您的本金已全额退回钱包。${ref}`,
     href: "/wallet",
   });
 }
