@@ -220,7 +220,17 @@ const byFn = Object.fromEntries(EMITTED.filter((e) => e.row).map((e) => [e.fn, e
 const loss = byFn.notifyLoss;
 ok("loss names the loss in English", /Bet lost/.test(loss.titleEn));
 ok("loss names the loss in Swahili", /limepotea/.test(loss.titleSw));
-ok("loss names the loss in Chinese", /投注失败/.test(loss.titleZh ?? ""));
+// ⚠️ THIS ASSERTION USED TO PIN THE DEFECT. It required the literal `投注失败`, which
+// does not mean "the bet lost" — it means "the bet FAILED", i.e. never went through.
+// In this product that is a different event with the opposite money consequence (a
+// failed placement returns the stake; a lost bet does not), so a Chinese-reading player
+// was told their bet had not been placed at the moment it had been placed and lost.
+// The suite was green throughout, because it was checking the spelling it had been
+// given rather than the thing the sentence has to accomplish.
+// ⭐ Now it asserts the PROPERTY, from both sides: the title must say the bet did not
+// WIN, and must not use the word that means it did not HAPPEN.
+ok("loss names the loss in Chinese", /未中/.test(loss.titleZh ?? ""));
+ok("loss is not readable as a FAILED PLACEMENT in Chinese", !/失败/.test(loss.titleZh ?? ""));
 ok("loss states the amount in every locale",
   [loss.titleEn, loss.titleSw, loss.titleZh ?? ""].every((t) => t.includes("10,000")));
 for (const euph of ["better luck", "unlucky", "so close", "next time"]) {

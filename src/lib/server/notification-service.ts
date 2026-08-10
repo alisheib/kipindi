@@ -298,9 +298,18 @@ export function notifyLoss(userId: string, opts: { stake: number; marketTitle: s
     // amount are named outright, everywhere.
     titleEn: `Bet lost · ${formatTzs(opts.stake)}`,
     titleSw: `Dau limepotea · ${formatTzs(opts.stake)}`,
-    titleZh: `投注失败 · ${formatTzs(opts.stake)}`,
+    // ⛔ NOT `投注失败`. That means "the bet FAILED" — i.e. it never went through —
+    // which in THIS product is a completely different event with the opposite money
+    // consequence (a failed placement returns the stake; a lost bet does not). A
+    // Chinese-reading player was told their bet had not been placed at the exact
+    // moment it had been placed and lost. `投注未中` is the idiomatic "the bet did not
+    // win" and cannot be read as a placement failure.
+    titleZh: `投注未中 · ${formatTzs(opts.stake)}`,
     bodyEn: `${opts.marketTitle.slice(0, 70)} · your side didn't win.${ref}`,
-    bodySw: `Upande wako haukushinda.${ref}`,
+    // ⚠️ Carries the market title, like EN and ZH. Without it a Swahili player with
+    // several open positions got "your side didn't win" with nothing saying WHICH
+    // market — the one thing the receipt exists to identify.
+    bodySw: `${opts.marketTitle.slice(0, 70)} · Upande wako haukushinda.${ref}`,
     bodyZh: `${opts.marketTitle.slice(0, 50)} · 您所选的一方未获胜。${ref}`,
     href: `/markets/${opts.marketId}`,
   });
@@ -859,7 +868,7 @@ export function notifyRefund(userId: string, opts: { stake: number; marketTitle:
     titleSw: `Kurudishiwa · ${formatTzs(opts.stake)}`,
     titleZh: `退款 · 已退回 ${formatTzs(opts.stake)}`,
     bodyEn: `${opts.marketTitle.slice(0, 70)} was voided. Your stake has been returned.${ref}`,
-    bodySw: `Soko limebatilishwa. Dau lako limerudishwa.${ref}`,
+    bodySw: `${opts.marketTitle.slice(0, 70)} limebatilishwa. Dau lako limerudishwa.${ref}`,
     bodyZh: `${opts.marketTitle.slice(0, 50)} 已作废。您的本金已全额退回。${ref}`,
     href: `/markets/${opts.marketId}`,
   });
@@ -876,7 +885,7 @@ export function notifyMarketCancelled(userId: string, opts: { stake: number; mar
     titleSw: `Soko limefutwa · ${formatTzs(opts.stake)} imerejeshwa`,
     titleZh: `市场已取消 · 已退款 ${formatTzs(opts.stake)}`,
     bodyEn: `"${opts.marketTitle.slice(0, 60)}" was cancelled: ${opts.reason.slice(0, 120)}. Your full stake has been returned to your wallet.${ref}`,
-    bodySw: `Soko limefutwa. Dau lako lote limerejeshwa kwenye pochi yako.${ref}`,
+    bodySw: `"${opts.marketTitle.slice(0, 60)}" limefutwa: ${opts.reason.slice(0, 120)}. Dau lako lote limerejeshwa kwenye pochi yako.${ref}`,
     bodyZh: `"${opts.marketTitle.slice(0, 60)}" 已取消：${opts.reason.slice(0, 120)}。您的本金已全额退回钱包。${ref}`,
     href: "/wallet",
   });
@@ -943,7 +952,7 @@ export function notifyOneSidedRefund(userId: string, opts: { stake: number; mark
     titleSw: `Pesa imerudishwa · ${formatTzs(opts.stake)}`,
     titleZh: `全额退款 · ${formatTzs(opts.stake)}`,
     bodyEn: `${opts.marketTitle.slice(0, 60)} — all bets were on one side. Full stake returned, no fee.${ref}`,
-    bodySw: `Dau lako lote limerudishwa bila gharama — wote walibetia upande mmoja.${ref}`,
+    bodySw: `${opts.marketTitle.slice(0, 60)} — wote walibetia upande mmoja. Dau lako lote limerudishwa bila gharama.${ref}`,
     bodyZh: `${opts.marketTitle.slice(0, 50)} — 所有投注都在同一方。本金全额退回，不收取手续费。${ref}`,
     href: `/markets/${opts.marketId}`,
   });
