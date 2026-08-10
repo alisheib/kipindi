@@ -470,6 +470,33 @@ function worstStop(fg: Oklch, stops: Oklch[], f?: Filter): Oklch {
   return stops.reduce((w, s) => (contrast(fg, s, f) < contrast(fg, w, f) ? s : w));
 }
 
+/**
+ * Composite `top` over `base` at alpha `t`, IN OKLAB — because that is what the product does.
+ *
+ * Added 2026-08-10 for DA-7. The proposal-approved bonus panel paints
+ * `color-mix(in oklab, var(--gold-700) 16%, transparent)` over a royal gradient and then puts
+ * `.gilt-ink` on top of it — **the only gold-ink-on-gold-surface pair in the product**, and the
+ * one place striking an amount can plausibly erode AA. Nothing measured it, because this file
+ * had no way to express "a colour laid over another colour".
+ *
+ * ⛔ It mixes in OKLAB rather than lerping l/c/h, and the difference is not pedantry: hue is an
+ * ANGLE, so a naive `h` lerp between two hues takes the long way round whenever they straddle
+ * 0°/360° and invents a colour that is on no screen. Converting to the a/b plane, mixing there,
+ * and converting back is what `color-mix(in oklab, …)` itself does — so the model matches the
+ * CSS rather than approximating it.
+ */
+function mixOklab(base: Oklch, top: Oklch, t: number): Oklch {
+  const ab = (o: Oklch) => [o.c * Math.cos((o.h * Math.PI) / 180), o.c * Math.sin((o.h * Math.PI) / 180)] as const;
+  const [a1, b1] = ab(base);
+  const [a2, b2] = ab(top);
+  const l = base.l + (top.l - base.l) * t;
+  const a = a1 + (a2 - a1) * t;
+  const b = b1 + (b2 - b1) * t;
+  let h = (Math.atan2(b, a) * 180) / Math.PI;
+  if (h < 0) h += 360;
+  return { l, c: Math.hypot(a, b), h };
+}
+
 // ── tokens — READ FROM globals.css, not mirrored ─────────────────────────────
 // ⛔ NOTHING IN THIS TABLE MAY BE A LITERAL. Every entry is `token()` or
 // `ruleValue()`. A hand-typed input is the defect this file's own header
@@ -501,11 +528,21 @@ const T = {
   textFaint: token("text-faint"),
   bgInset: token("bg-inset"),
   panel: token("panel"),
+  // DA-7 (2026-08-10) — the two ends of the proposal bonus panel, so the one
+  // gold-on-gold pair in the product can be modelled rather than eyeballed.
+  royal950: token("royal-950"),
+  gold700: token("gold-700"),
   // ── Gold (added 2026-08-06, material merge ATOM 2d) ───────────────────────
-  // Never checked before, on either side of the pair. `--gilt` is MONEY INK —
-  // `.gilt` / `.gilt-num` / `.gilt-strong` colour amounts, and M4 says money is
-  // mono and tabular, which means it is READ, which means 4.5. `.btn-gold` is a
-  // control. `.chip-resolved` labels a settled market.
+  // Never checked before, on either side of the pair. `--gilt` is MONEY INK.
+  // ⚠️ CORRECTED 2026-08-10 (DA-7): this comment used to say `.gilt` / `.gilt-num` /
+  // `.gilt-strong` "colour amounts", in the present tense. They do not and did not —
+  // all three have ZERO className consumers anywhere in `src/` (`.gilt-num` even carries
+  // a `letter-spacing` M4 bans outright, harmless only because nothing renders it). What
+  // actually paints those amounts is the Tailwind alias `text-gilt` (`tailwind.config.ts:106`,
+  // used by `resolution-panel.tsx`) and, since DA-7, `.gilt-ink`. ⛔ A gate whose comment
+  // describes consumers that do not exist is how a dead class survives four sweeps.
+  // M4 says money is mono and tabular, which means it is READ, which means 4.5.
+  // `.btn-gold` is a control. `.chip-resolved` labels a settled market.
   // ⭐ These land BEFORE ATOM 2b re-derives the ramp to hue 84 deliberately: a
   // gate added after the change it is meant to judge has no before-reading.
   gilt: token("gilt"),
@@ -718,6 +755,36 @@ const CHECKS: Check[] = [
   // scored at the ramp's worst stop against the deepest surface it can land on.
   { name: "gilt-ink amount (struck-metal type on --bg, worst stop)", fg: worstStop(T.bg, T.giltInkStops), bg: T.bg, min: 4.5 },
   { name: "gilt-ink amount on --bg-elevated (worst stop)", fg: worstStop(T.bgElevated, T.giltInkStops), bg: T.bgElevated, min: 4.5 },
+
+  // ── DA-7 · the surfaces struck money ACTUALLY lands on (added 2026-08-10) ──
+  // 🔴 THESE EXIST BECAUSE THE ADOPTION SHRINKS THE OTHER CORPUS. `.gilt-ink` paints via
+  // `background-clip: text` with a transparent fill, and `contrast-rendered.mjs:200-205`
+  // deliberately SKIPS such nodes — their computed `color` is the canvas colour, which
+  // would measure 1:1 against itself and read as a catastrophic false positive. So every
+  // figure DA-7 strikes silently LEAVES the rendered sweep's corpus. Without the modelled
+  // pairs below, measured coverage would fall while both gates kept printing green — the
+  // E-131 failure exactly, arriving through a door nobody was watching.
+  //
+  // ⛔ And the two pairs above did not cover EITHER existing consumer: the win celebration
+  // sits on `--wash-modal` (via `.mat-modal`), not on `--bg`.
+  { name: "DA-7 · gilt-ink on --wash-modal, the win celebration's real surface (worst stop × worst stop)",
+    fg: worstStop(worstStop(T.giltInkStops[0], T.washModalStops), T.giltInkStops),
+    bg: worstStop(worstStop(T.giltInkStops[0], T.washModalStops), T.washModalStops), min: 4.5 },
+  { name: "DA-7 · gilt-ink on --panel (settled payout cards)", fg: worstStop(T.panel, T.giltInkStops), bg: T.panel, min: 4.5 },
+  { name: "DA-7 · gilt-ink on --bg-inset (the Up & Down result panel)", fg: worstStop(T.bgInset, T.giltInkStops), bg: T.bgInset, min: 4.5 },
+
+  // ⭐ THE ONLY GOLD-INK-ON-GOLD-SURFACE PAIR IN THE PRODUCT, and until now nothing could
+  // express it. `proposals/[id]/page.tsx:110-111` lays `color-mix(in oklab, --gold-700 16%,
+  // transparent)` over `linear-gradient(160deg, --bg-elevated, --royal-950)` and then puts a
+  // struck amount on top. Modelled at the WORST case on both axes: the overlay gradient runs
+  // transparent → 16%, so the gold is fullest at the bottom, and the base is scored at
+  // whichever of its two stops reads worst under it.
+  { name: "DA-7 · gilt-ink on the proposal bonus panel (gold-700 @16% over royal, oklab)",
+    fg: worstStop(mixOklab(T.royal950, T.gold700, 0.16), T.giltInkStops),
+    bg: [T.bgElevated, T.royal950]
+      .map((base) => mixOklab(base, T.gold700, 0.16))
+      .reduce((w, s) => (contrast(worstStop(s, T.giltInkStops), s) < contrast(worstStop(w, T.giltInkStops), w) ? s : w)),
+    min: 4.5 },
 
   // ── The support chat — E-121, and the first checks outside globals.css ─────
   // ⛔ 3.0, NOT 4.5, on the send control: it is a GLYPH, so WCAG 1.4.11 (non-text

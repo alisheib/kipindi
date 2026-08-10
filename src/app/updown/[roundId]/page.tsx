@@ -177,7 +177,11 @@ export default async function UpDownRoundPage({
     // The round DECIDED and this player was refunded anyway — never call that a void.
     : refundReason === "unmatched" ? t.market.udRefundTitle
     : t.market.udVoided;
-  const payoutInk = result === "WIN" ? "var(--gilt)" : "var(--text)";
+  // DA-7 · the "Paid out" figure. A WIN is money the player EARNED, so M3 puts it in struck
+  // type rather than gold colour; everything else keeps plain text ink. The class carries its
+  // own gradient, mono family and tabular-nums, so no `color` may be set alongside it — a flat
+  // colour under a transparent fill is two sources of truth for one figure.
+  const payoutStruck = result === "WIN";
 
   // Proof geometry.
   const pMove = proof && proof.openPrice != null && proof.closePrice != null ? proof.closePrice - proof.openPrice : null;
@@ -371,7 +375,7 @@ export default async function UpDownRoundPage({
                 <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
                   <div>
                     <p className="m-0 font-mono text-[9px] uppercase tracking-[0.10em] text-text-faint">{t.market.udPaidOut}</p>
-                    <p className="mt-1 m-0 font-mono text-[22px] font-bold leading-none tabular-nums" style={{ color: payoutInk }}>{formatTzs(myPosition.payout ?? 0)}</p>
+                    <p className={`mt-1 m-0 font-mono text-[22px] font-bold leading-none tabular-nums${payoutStruck ? " gilt-ink" : " text-text"}`}>{formatTzs(myPosition.payout ?? 0)}</p>
                   </div>
                   <div className="text-right">
                     <p className="m-0 font-mono text-[9px] uppercase tracking-[0.10em] text-text-faint">{t.market.udYourPick} · {t.market.udStake}</p>

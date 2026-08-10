@@ -96,7 +96,11 @@ export function PositionCard({ marketId, marketTitle, side, stake, current, payo
         // Settled: the real, final, paid amount.
         <div className="grid grid-cols-2 gap-3">
           <Stat label={t.market.finalLabel} value={formatTzs(current)} money />
-          <Stat label={t.dialog.payoutLabel} value={formatTzs(payout)} tone={status === "WIN" ? "gold" : "default"} money />
+          {/* DA-7 · a SETTLED win is earned money, so it is struck type, not gold colour (M3).
+              ⛔ The `payoutIfWin` figure below is deliberately NOT struck: at betting-close the
+              arithmetic is frozen and exact, but it has not been won — striking it would promise
+              in ink what the round has not yet decided. */}
+          <Stat label={t.dialog.payoutLabel} value={formatTzs(payout)} tone={status === "WIN" ? "gold" : "default"} struck={status === "WIN"} money />
         </div>
       ) : bettingClosed ? (
         // Betting is CLOSED: the pools are frozen, so this figure is exact — it was

@@ -101,6 +101,38 @@ const MUTATIONS = [
     to: `  --gold-300: oklch(45% 0.110 84);`,
   },
   {
+    // DA-7 (2026-08-10). The four surfaces struck money actually lands on had never been
+    // scored — the two pre-existing gilt-ink pairs covered `--bg` and `--bg-elevated`, and
+    // NEITHER existing consumer sits on either: the win celebration is on `--wash-modal`.
+    // ⭐ Darkening the ramp's DEEP stop is the right mutation because `worstStop()` is what
+    // picks the stop to score, so this only fails if the gate really walked the gradient
+    // rather than taking its first colour. It must break all six gilt-ink pairs at once —
+    // which is the argument for the ramp being ONE token instead of six literals.
+    name: "darken --gilt-ink's deep stop to 45% — every struck money figure at once (DA-7)",
+    kind: "fail",
+    from: `                 oklch(77% 0.120 84) 100%);`,
+    to: `                 oklch(45% 0.120 84) 100%);`,
+  },
+  {
+    // ⚠️ THE TIGHTEST OF THE SIX (7.26), and the only gold-INK-on-gold-SURFACE pair in the
+    // product (`proposals/[id]/page.tsx:110-111`). This mutation exists to prove `mixOklab`
+    // does real work rather than decorating the output: `--royal-950` reaches the gate ONLY
+    // through the composite, so if the mix were ignored this edit would move nothing.
+    //
+    // 🔴 THE FIRST ATTEMPT HERE FAILED TO CATCH, AND THE REASON IS WORTH KEEPING. It
+    // lightened `--gold-700` to 88%, reasoning that a thicker-looking wash under light ink
+    // must erode AA. It does not: the overlay is **16%**, so 16% of anything over a 13%
+    // royal base lands near 20% lightness and the pair stays comfortably above 4.5. ⭐ The
+    // pair is genuinely robust to that edit, and a mutation that cannot fail proves nothing
+    // — recording it as "caught" would have been the harness lying in the flattering
+    // direction. Lightening the BASE is the edit that can actually break it, and it is a
+    // plausible one: somebody re-tuning the royal ramp.
+    name: "lighten --royal-950 — the proposal bonus panel goes pale under struck gold ink (DA-7)",
+    kind: "fail",
+    from: `  --royal-950: oklch(13% 0.060 268);`,
+    to: `  --royal-950: oklch(85% 0.060 268);`,
+  },
+  {
     name: "darken --gold-500 — .btn-gold's own dark label on its own fill",
     kind: "fail",
     from: `  --gold-500: oklch(72% 0.114 84);`,
