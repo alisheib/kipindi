@@ -328,6 +328,43 @@ async function mine(userId: string | undefined): Promise<{ up: number; down: num
      !/revalidatePath\("\/updown"\)/.test(action));
 }
 
+// ── 31 · UD-17a — THE MIS-TAP SETTLE WINDOW, AND THE KEY THAT SCOPES IT ───────
+// UD-17 was carried on Ali's decision list for three sessions as "(a) or (b)?" when (a)
+// was the auditor's own recommendation, was shipped, and (b) had never been specified.
+// The thing that was actually open is that NOTHING GUARDED IT: five lines could be
+// deleted and the mis-tap vector would come back silently, on a money surface.
+//
+// ⭐ 31.3 IS THE ONE THAT MATTERS AND IT IS THE EASIEST TO GET WRONG. The guard is only
+// acceptable because it fires on MOUNT, not on every render — a card that merely moves
+// slots keeps its React identity and must NOT re-arm, or a player who reaches for a card
+// that shifted under them gets 300ms of dead surface every reshuffle. That property does
+// not live in updown-card.tsx at all: it lives in the parent's `key`. Assert both halves,
+// in both files, or the pair can drift apart while each half still reads correct.
+{
+  const { readFileSync } = await import("node:fs");
+  const card = readFileSync(new URL("../src/components/updown/updown-card.tsx", import.meta.url), "utf8");
+  const page = readFileSync(new URL("../src/app/updown/page.tsx", import.meta.url), "utf8");
+
+  ok("31.1 · the card ARMS a tap guard on mount and releases it on a timer",
+     /const \[tapGuard, setTapGuard\] = useState\(true\)/.test(card)
+     && /setTimeout\(\(\) => setTapGuard\(false\), 300\)/.test(card));
+
+  ok("31.2 · …and while armed a BETTABLE card ignores pointer events",
+     /pointerEvents:\s*tapGuard && bettable \? "none" : undefined/.test(card));
+
+  ok("31.3 · ⭐ the card list is keyed by roundId, so a card that only MOVES SLOTS does not remount and does not re-arm",
+     /<UpDownCard\b[\s\S]{0,200}?key=\{r\.roundId\}/.test(page));
+
+  ok("31.4 · the effect has an EMPTY dep array — a re-render must not restart the window",
+     /useEffect\(\(\) => \{[\s\S]{0,200}?setTapGuard\(false\)[\s\S]{0,120}?\}, \[\]\);/.test(card));
+
+  // ⚠️ Guard the guard: if the identifier is ever renamed, 31.1–31.2 would both go quietly
+  // false and read as "the feature is gone" — so assert the SUBJECT exists before believing
+  // a negative. (The pattern that let a locator and its own RED proof agree and both be wrong.)
+  ok("31.5 · the assertions above are anchored on text that really is in the file (not vacuously false)",
+     card.includes("tapGuard") && card.includes("UD-17a") && page.includes("UpDownCard"));
+}
+
 console.log(`\nupdown-quickbet: ${pass} passed, ${fail} failed`);
 if (fail > 0) { console.error("\n✗ QUICK-BET BROKEN — the one-tap card would mischarge or misreport the player's position.\n"); process.exit(1); }
 console.log("updown-quickbet: OK — one tap places once, duplicates pay once, distinct taps stack, 'you're in' is per-viewer, bad taps refused");

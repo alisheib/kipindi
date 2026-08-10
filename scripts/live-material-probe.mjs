@@ -292,7 +292,36 @@ async function run() {
   for (const key of keys) {
     const s = SURFACES[key];
     for (const locale of LOCALES) {
-      const ctx = await b.newContext({ viewport: { width: WIDTHS[0], height: 900 }, deviceScaleFactor: 4 });
+      // 🔴 THE THIRD REASON THE `modal` SURFACE WAS UNREACHABLE — 0/6, found 2026-08-10.
+      // The block above this loop records two re-aimings of that surface (a trigger that
+      // depended on live data, and a selector the merge renamed). Both were fixed, the
+      // comment concluded the primer "renders on any route for any context with empty
+      // localStorage — so there is nothing to click", and the probe still timed out on
+      // every cell. The reason is in the PRODUCT, not the probe:
+      // `first-visit-primer.tsx:232` — `if (/HeadlessChrome|Playwright/i.test(
+      // navigator.userAgent)) return;` — the primer deliberately refuses to open for
+      // automation, so the one Modal instance reachable without money or operator state
+      // is the one instance a Playwright context can never see.
+      //
+      // ⭐ Overriding the UA here is honest, and it is the narrow kind. That check exists
+      // to keep an onboarding dialog away from crawlers and screenshot bots in the wild;
+      // it is not a product behaviour this probe is meant to measure. We photograph the
+      // real component, rendered by the real page, with real CSS — only the string the
+      // page uses to decide "is this a bot" is changed. ⛔ Nothing else about the context
+      // is faked, and no other surface needs this.
+      //
+      // ⚠️ THE LESSON, because it cost 6 timeouts and a wrong "the blocker is dead":
+      // **a surface can have more than one reason to be unreachable, and fixing the two
+      // you found does not make it reachable.** The two earlier re-aimings were correct
+      // and the conclusion drawn from them was still false — reachability is a property
+      // to MEASURE by running the probe, never to infer from having fixed the last cause.
+      const ctx = await b.newContext({
+        viewport: { width: WIDTHS[0], height: 900 },
+        deviceScaleFactor: 4,
+        userAgent:
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) " +
+          "Chrome/131.0.0.0 Safari/537.36 50pick-design-probe",
+      });
       await ctx.addCookies([{ name: "kp-locale", value: locale, url: BASE }]);
       const page = await ctx.newPage();
       let signedIn = false;

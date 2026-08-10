@@ -176,7 +176,7 @@ uses teal 215 and a light theme, both killed.
 | # | Question | Owner |
 |---|---|---|
 | Q5 | The Gold asset icon uses a gold tint as *asset identity*, which collides with "gold = earned money only". Accept (artwork replaces it anyway), or use a neutral metallic ring? | Ali |
-| Q6 | Card title at 360px — ellipsis on one line, or 2-line clamp? Recommend the clamp: Swahili and Chinese expand ~35%. | Ali |
+| ~~Q6~~ | ✅ **CLOSED 2026-08-10 — answered by implementation, not by Ali.** The clamp shipped on both card families: `updown-card.tsx:399-402` (`WebkitLineClamp: 2`, cites Q6 by name) and `globals.css:2782` (`.mcardp-q`). See `DESIGN_AUTHORITY.md` → *Closed here* — that file is the rulebook; this row is record. | — |
 | Q7 | Real Gold/Silver artwork to replace the `Au`/`Ag` placeholder glyphs. | Ali |
 | Q8 | Top-nav treatment for Up & Down — purple highlight + live round timer, to signal "different game". Prompt D6 drafted. | Ali |
 

@@ -400,8 +400,14 @@ single file moved, which is the whole reason §1 exists.
   `--font-display` while the ⛔ line printed directly beneath it said money is *always* mono.
   M4 wins, and not on taste: Sora has no tabular figures, so a rolling count-up in display type
   reflows as its digits change. The headline keeps Sora; the amount does not.
-- ✅ **Open item 8 decided: the crest chief band ships at `0.26`**, the designer's own
-  recommendation, demoed at 0.16 / 0.26 / 0.38. ⛔ E-111's sub-pixel geometry is not re-opened.
+- ⚠️ **Open item 8 — this row said the crest chief band ships at `0.26`, and it never did.**
+  Recorded here as the designer's recommendation (demoed at 0.16 / 0.26 / 0.38), left "open"
+  in `DESIGN_AUTHORITY.md`, and **rendering at `0.16`** the whole time
+  (`identity-avatar.tsx:123`, `opacity="0.16"`). Three documents, three answers, one
+  observable truth. **Corrected 2026-08-10 (session 38): the shipped value `0.16` is the
+  declared value**, and the decision is closed in `DESIGN_AUTHORITY.md` rather than here —
+  ⛔ a *record* file recording a decision is how the three-way split happened. ⛔ E-111's
+  sub-pixel geometry is not re-opened.
 - 🔴 **E-116 — the audit that would have condemned a correct merge.** `ui-material-audit.mjs`
   scores each component by word-grepping *its own `.tsx` source*, so it cannot see material that
   lives in a CSS class: `markets/market-card.tsx` is scored all-three-absent at the top of

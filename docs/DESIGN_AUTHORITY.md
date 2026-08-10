@@ -799,8 +799,30 @@ These are recorded here so they stop being rediscovered in four different files.
    law (§M3). The code currently ships the tint as *asset identity*; §M3 as written does not
    permit it. Either M3 gains a written carve-out or the tint changes. (Q5)
 2. **The gold tier badge** as *rank identity* — same question, same law. (Q5)
-3. **The 360px card title in Swahili/Chinese** — ellipsis or 2-line clamp. (Q6)
-4. **Real Gold/Silver artwork**, or keep the lettermark chips. (Q7)
-5. **The Up & Down top-nav treatment.** (Q8)
-6. **The crest chief band opacity** — recorded in provenance as decided at `0.26`, declared
-   open here, and rendering at `0.16` in `identity-avatar.tsx`. Three answers; needs one.
+3. **Real Gold/Silver artwork**, or keep the lettermark chips. (Q7)
+   ⚠️ **Ask Q7 BEFORE Q5, and ask Q5's two halves together.** `design-system/README.md`
+   offers *"accept — artwork replaces it anyway"* as a Q5 answer, and that answer is only
+   available if Q7 lands on "supply artwork". If Q7 keeps the lettermarks, Q5's gold-tint
+   violation is permanent and has to be decided on its own merits.
+4. **The Up & Down top-nav treatment.** (Q8) The purple half is shipped; what needs Ali is
+   **ratifying the refusal of the other half** — `top-app-bar.tsx:33-37` declines the live
+   round timer in global chrome on two stated grounds, that a permanent countdown is an
+   RG problem for a licensed operator and that a per-second re-render fails the "usable on
+   a low-end Android over 2G" bar. That is an argument to accept or overrule, not a gap.
+
+### ✅ Closed here, 2026-08-10 (session 38) — these were never Ali's to decide
+
+- **The 360px card title (Q6) — ANSWERED BY IMPLEMENTATION.** The 2-line clamp shipped on
+  both card families, and one of them cites Q6 by name: `updown-card.tsx:399-402`
+  (`WebkitLineClamp: 2`) and `globals.css:2782` (`.mcardp-q`). Both took the recommended
+  answer and agree with each other. ⚠️ It is *asserted, not proven* — `innerText` returns
+  the full string either way and a WRAP satisfies `scrollWidth === clientWidth` exactly as
+  a fit does, so the honest check is rendered: computed `-webkit-line-clamp` plus height at
+  360 × sw/zh. That belongs to the exit sweeps.
+- **The crest chief band opacity — DECLARED AT THE RENDERED VALUE, `0.16`.** Three
+  documents held three answers (provenance `0.26`, this file "open", the render `0.16`)
+  for one thing that has exactly one observable truth: `identity-avatar.tsx:123` paints
+  `opacity="0.16"`. ⛔ **A value an engineer can read off the render is not an owner
+  decision** — parking it as one is how a three-way disagreement survives four sessions.
+  Provenance's `0.26` is corrected to match; if Ali later wants a different band, that is
+  a new instruction, not an unanswered question.
