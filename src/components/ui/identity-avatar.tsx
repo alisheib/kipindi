@@ -201,10 +201,34 @@ const CREST: Record<CrestKind, (p: CrestProps) => React.ReactElement> = {
   constellation: CrestConstellation,
 };
 
-/** tier → ring colour (matches the .tier-* chord). */
+/**
+ * tier → ring colour (matches the `.tier-*` chord).
+ *
+ * ⭐ Q5, RESOLVED 2026-08-10: **RANK IS NOT MONEY, SO RANK DOES NOT WEAR THE MONEY INK.**
+ * `gold` used to be `var(--gold-500)` and `sovereign` `var(--gilt)` — the same tokens the
+ * payout seal and the struck amount use. M3 reserves struck gold for money that was EARNED,
+ * and a tier ring is an achievement badge, not a payment. The two highest tiers were quietly
+ * teaching a player that gold means "status" on the very ink that elsewhere means "you were
+ * paid". Ali's call, with the Gold ASSET chip in `updown-card.tsx` (same ruling, same day).
+ *
+ * ⛔ THE RULE THAT COMES OUT OF IT, AND IT IS NARROWER THAN "NO GOLD ANYWHERE": **a tier may
+ * be metallic; it may not wear the tokens the money surfaces own** — `--gilt`, `--gilt-metal`,
+ * `--gold-300/400/500`. Stripping the ladder of warmth entirely would make a ladder named
+ * bronze → silver → gold → diamond → sovereign meaningless, which is not an improvement.
+ *
+ * So: `gold` becomes **antique brass** — warm, but at 0.068 chroma against money gold's 0.11,
+ * so it reads as a rank, not as an amount. `sovereign` becomes **platinum**, cool and lighter
+ * than everything below it. ⭐ And `diamond` moved the furthest: it was
+ * `oklch(78% 0.13 80)` — *more saturated than money gold, at almost the same hue*, which made
+ * the worst offender the one tier nobody had thought to question. It is now icy cyan, which
+ * is both lawful and what a diamond actually looks like.
+ *
+ * ⚠️ These five values are mirrored by the `.tier-*` chord in `globals.css`. Change one, change
+ * both — and `test:contrast` now carries the badge pairs, which it did not before.
+ */
 export const TIER_RING: Record<Tier, string> = {
-  bronze: "oklch(58% 0.09 70)", silver: "oklch(82% 0.018 268)", gold: "var(--gold-500)",
-  diamond: "oklch(78% 0.13 80)", sovereign: "var(--gilt)",
+  bronze: "oklch(58% 0.09 70)", silver: "oklch(82% 0.018 268)", gold: "oklch(76% 0.068 88)",
+  diamond: "oklch(86% 0.090 210)", sovereign: "oklch(88% 0.022 250)",
 };
 
 /** Unified identity avatar — crest | photo, optional tier ring. */

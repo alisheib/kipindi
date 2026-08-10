@@ -1486,14 +1486,32 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
   border: 1.5px solid;
 }
 .tier-bronze  { background: oklch(40% 0.060 70);  color: oklch(90% 0.060 78);   border-color: oklch(58% 0.090 70); }
-.tier-silver  { background: oklch(60% 0.020 268); color: oklch(98% 0.006 268);  border-color: oklch(82% 0.018 268); }
-.tier-gold    { background: var(--gold-700);      color: var(--gold-100);       border-color: var(--gold-500); }
-.tier-diamond { background: oklch(46% 0.14 268);  color: oklch(96% 0.012 268);  border-color: oklch(78% 0.13 80); }
+/* 🔴 FOUND BY THE Q5 PAIRS, NOT INTRODUCED BY THEM (2026-08-10). At a 60% fill this badge's
+   own label read **3.73** against a 4.5 floor — a live AA failure on the leaderboard that had
+   never been measured, because no contrast pair named the tier chips until today. It was also
+   the ladder's outlier: bronze fills at 40%, diamond at 46%, gold at 38%, and silver sat at
+   60%. Dropping it to 48% fixes the ratio and puts it back in the family. ⭐ The lesson is the
+   one this campaign keeps re-buying: a value nothing measures is not "fine", it is UNKNOWN. */
+.tier-silver  { background: oklch(48% 0.020 268); color: oklch(98% 0.006 268);  border-color: oklch(82% 0.018 268); }
+/* ⭐ Q5, RESOLVED 2026-08-10 — RANK IS NOT MONEY, SO RANK DOES NOT WEAR THE MONEY INK.
+   `.tier-gold` was the `--gold-700/100/500` ramp and `.tier-sovereign`'s rim was `--gilt`
+   itself: the exact tokens the payout seal and the struck amount use. M3 reserves struck gold
+   for money that was EARNED, so the top of the rank ladder was teaching a player that gold
+   means "status" on the ink that elsewhere means "you were paid".
+   ⛔ The rule is narrower than "no gold anywhere": a tier may be METALLIC, it may not wear
+   `--gilt` / `--gilt-metal` / `--gold-3xx-5xx`. A ladder named bronze→silver→gold→diamond
+   →sovereign with the warmth stripped out would be meaningless, which is not an improvement.
+   ⚠️ Mirrored by `TIER_RING` in `identity-avatar.tsx` — change one, change both. */
+.tier-gold    { background: oklch(38% 0.045 88);  color: oklch(94% 0.030 88);   border-color: oklch(76% 0.068 88); }
+/* `diamond` moved furthest, and it was the worst offender nobody had questioned: its rim was
+   oklch(78% 0.13 80) — MORE saturated than money gold, at almost the same hue. Icy cyan is
+   both lawful and what a diamond actually looks like. */
+.tier-diamond { background: oklch(46% 0.14 268);  color: oklch(96% 0.012 268);  border-color: oklch(86% 0.090 210); }
 .tier-sovereign {
   background: var(--claret-700);
   color: var(--claret-100);
-  border-color: var(--gilt);
-  box-shadow: 0 0 0 1px color-mix(in oklab, var(--gilt) 50%, transparent) inset;
+  border-color: oklch(88% 0.022 250);
+  box-shadow: 0 0 0 1px color-mix(in oklab, oklch(88% 0.022 250) 50%, transparent) inset;
 }
 
 /* ---------- Skeleton ---------- */

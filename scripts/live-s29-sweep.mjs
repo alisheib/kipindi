@@ -38,13 +38,24 @@ mkdirSync(SHOT, { recursive: true });
 const ADMIN = [
   ["overview", "/admin"], ["live-ops", "/admin/live"], ["insights", "/admin/insights"],
   ["settlement", "/admin/settlement"], ["finance", "/admin/finance"], ["reports", "/admin/reports"],
-  ["payments", "/admin/payments"], ["transactions", "/admin/finance/transactions"],
+  // ⚠️ `/admin/finance/transactions` NEVER EXISTED — corrected 2026-08-10. The ledger page is
+  // `/admin/transactions`; `/admin/finance` is a different screen. Every run since this list
+  // was written shot 3 cells of a 404 and reported them as route failures.
+  ["payments", "/admin/payments"], ["transactions", "/admin/transactions"],
   ["roster", "/admin/players"], ["cohorts", "/admin/retention"], ["events", "/admin/events"],
   ["ai-polls", "/admin/ai-polls"], ["candidates", "/admin/candidates"], ["proposals", "/admin/proposals"],
   ["curation", "/admin/moderation"], ["resolver-queue", "/admin/resolver-queue"],
   ["sources", "/admin/sources"], ["config", "/admin/config"], ["objections", "/admin/objections"],
   ["staff", "/admin/staff"], ["roles", "/admin/roles"], ["markets", "/admin/markets"],
-  ["updown", "/admin/updown"], ["kyc", "/admin/kyc"], ["aml", "/admin/aml"], ["audit", "/admin/audit"],
+  // ⚠️ `/admin/kyc` HAS NO INDEX PAGE, BY DESIGN — corrected 2026-08-10. `src/app/admin/kyc/`
+  // contains only `[id]`, and `admin-nav-groups.ts:159` says so in as many words:
+  // *"/admin/kyc → approvals (KYC review is part of the approvals queue)"*. So the sweep was
+  // demanding an index that was deliberately never built, and calling its absence a defect.
+  // ⛔ Both of these are the same class of harness lie: **a route list written from memory
+  // reports the LIST's staleness as the PRODUCT's failure**, and 6 of 423 cells in the last
+  // run were shots of a 404. This file's own banner already says to check the list against
+  // the router before believing a run — that instruction existed and was not followed.
+  ["updown", "/admin/updown"], ["approvals", "/admin/approvals"], ["aml", "/admin/aml"], ["audit", "/admin/audit"],
 ];
 /**
  * 🔴 READ OFF THE REAL ROUTER, NOT WRITTEN FROM MEMORY.

@@ -221,10 +221,18 @@ function ruleBody(selector: string): string {
   // the last and this parser takes the first, so the gate would score a rule the
   // product does not paint. `.cm-send` in the chat sheet and a hypothetical
   // `.cm-send` in globals is exactly that shape.
+  // ⚠️ WHITESPACE-TOLERANT, since 2026-08-10 (Q5). This matched exactly `"\n<sel> {"` or
+  // `"\n<sel>{"`, so a COLUMN-ALIGNED rule was invisible to it: `.tier-gold    { … }` — the
+  // house style for the tier chord — could not be looked up at all, and the gate threw
+  // "not found in the corpus" on a rule plainly sitting in `globals.css`. ⛔ A gate that
+  // cannot see a rule because of the spaces around it is measuring the FORMATTER, and the
+  // failure mode is worse than noise: the natural response is to give up on scoring the pair.
+  // ⭐ The trailing `\s*\{` still anchors the selector's end, so `.tier-gold` cannot match
+  // `.tier-golden` — and the declared-twice check below keeps its exact meaning.
   const hits: number[] = [];
-  for (const pat of [`\n${selector} {`, `\n${selector}{`]) {
-    let i = CSS.indexOf(pat);
-    while (i >= 0) { hits.push(i); i = CSS.indexOf(pat, i + 1); }
+  {
+    const re = new RegExp(`\\n${selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*\\{`, "g");
+    for (let m = re.exec(CSS); m; m = re.exec(CSS)) hits.push(m.index);
   }
   if (hits.length === 0) throw new Error(`contrast-audit: rule "${selector}" not found in the corpus`);
   if (hits.length > 1) {
@@ -785,6 +793,22 @@ const CHECKS: Check[] = [
       .map((base) => mixOklab(base, T.gold700, 0.16))
       .reduce((w, s) => (contrast(worstStop(s, T.giltInkStops), s) < contrast(worstStop(w, T.giltInkStops), w) ? s : w)),
     min: 4.5 },
+
+  // ── Q5 · the tier badges, checked for the first time (2026-08-10) ─────────
+  // 🔴 THE RANK LADDER HAD NEVER BEEN SCORED. It carries ink on a fill on the leaderboard,
+  // and no pair here named it — which is how `.tier-diamond`'s rim came to be
+  // `oklch(78% 0.13 80)`, **more saturated than money gold at almost the same hue**, without
+  // anything objecting. Q5 moved these off the money tokens; that change is worthless if the
+  // new values are as unmeasured as the old ones were.
+  { name: "Q5 · .tier-gold label on its own fill (antique brass, off the money ramp)",
+    fg: ruleValue(".tier-gold", "color"), bg: ruleValue(".tier-gold", "background"), min: 4.5 },
+  { name: "Q5 · .tier-diamond label on its own fill", fg: ruleValue(".tier-diamond", "color"), bg: ruleValue(".tier-diamond", "background"), min: 4.5 },
+  { name: "Q5 · .tier-bronze label on its own fill", fg: ruleValue(".tier-bronze", "color"), bg: ruleValue(".tier-bronze", "background"), min: 4.5 },
+  { name: "Q5 · .tier-silver label on its own fill", fg: ruleValue(".tier-silver", "color"), bg: ruleValue(".tier-silver", "background"), min: 4.5 },
+  // The rims are non-text (WCAG 1.4.11 → 3.0), and each must still separate from the CANVAS
+  // the badge sits on, or the ladder stops being a ladder.
+  { name: "Q5 · .tier-gold rim against the page (non-text 3.0)", fg: ruleValue(".tier-gold", "border-color"), bg: T.bg, min: 3.0 },
+  { name: "Q5 · .tier-diamond rim against the page (non-text 3.0)", fg: ruleValue(".tier-diamond", "border-color"), bg: T.bg, min: 3.0 },
 
   // ── The support chat — E-121, and the first checks outside globals.css ─────
   // ⛔ 3.0, NOT 4.5, on the send control: it is a GLYPH, so WCAG 1.4.11 (non-text

@@ -808,9 +808,28 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
           // which is the prerequisite for dropping that lock (deploy 5/5).
           // Placed AFTER the two throw points above so an abort never touches
           // pools (in-memory `fresh` aliases the stored object).
+          // 🔴 `predictorCount` COUNTS PEOPLE, NOT BETS — corrected 2026-08-10 (Ali's call).
+          // This added +1 on EVERY bet, and repeat taps are repeat bets by design, so one
+          // player tapping twice read as "2 players". Measured on the live drive: **2 real
+          // humans, 16 bets → the card said "16 PLAYERS"**. Participation was systematically
+          // overstated on a money surface, and not only there — the same field feeds the
+          // regulator-facing match-integrity report (`reports/catalogue.ts`), the admin
+          // economics panel, and the PUBLIC social share card.
+          //
+          // ⭐ The fix costs nothing: `mine` is already loaded 126 lines above, inside this
+          // very `withLock("wallet:…")` callback, for the ONE-ACCOUNT-ONE-SIDE check. So this
+          // is a read we have already paid for, and it is race-safe by construction — the
+          // wallet lock serialises one account's bets, which is the same guarantee the C4
+          // loss-cap audit relies on. No new query, no new lock, no money arithmetic touched.
+          //
+          // ⚠️ `mine` is the snapshot from BEFORE this bet was written, so "no prior position
+          // on this market" is exactly "this is my first, count me once".
+          const firstForThisPlayer = mine.length === 0 ? 1 : 0;
           const pools = await marketStore.addToPool(
             opts.marketId,
-            opts.side === "YES" ? { yesPool: opts.stake, predictorCount: 1 } : { noPool: opts.stake, predictorCount: 1 },
+            opts.side === "YES"
+              ? { yesPool: opts.stake, predictorCount: firstForThisPlayer }
+              : { noPool: opts.stake, predictorCount: firstForThisPlayer },
             tx,
           );
           // Use the TRUE committed pools for the snapshot/odds push below.

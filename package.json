@@ -322,7 +322,8 @@
     "test:reconcile-announce": "tsx scripts/reconcile-announce-once.test.mts",
     "red:reconcile-announce": "node scripts/reconcile-announce-once-red.mjs",
     "test:market-result-announce": "tsx scripts/market-result-announce.test.mts",
-    "red:market-result-announce": "node scripts/market-result-announce-red.mjs"
+    "red:market-result-announce": "node scripts/market-result-announce-red.mjs",
+    "ops:backfill-predictors": "node scripts/ops-backfill-predictor-count.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",
