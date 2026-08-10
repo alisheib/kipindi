@@ -43,12 +43,30 @@ const files = readdirSync(here)
  * A file counts as reachable if any package.json script names it, OR if another reachable
  * script imports/spawns it. One hop is enough in practice: helpers are required by the suite
  * that uses them, and a helper of a helper is not a coverage claim on its own.
+ *
+ * 🔴 COMMENTS ARE STRIPPED FIRST, AND THAT IS A CORRECTNESS FIX, NOT TIDINESS — E-136,
+ * found 2026-08-10. This scanned the RAW source, so **merely NAMING a script in prose marked
+ * it covered.** A new suite whose header explained *why* `betting-winning-stress-e2e.mjs`
+ * could not fail was enough to move that file from `orphaned` to `reachable`, and the gate
+ * then demanded its allowlist entry be removed — i.e. it asked to forget a script nothing
+ * runs, on the strength of a sentence saying nothing runs it.
+ *
+ * ⛔ THE DIRECTION OF THE FAILURE IS WHAT MAKES IT SERIOUS. This gate's entire purpose is to
+ * stop a suite from LOOKING covered while its guarantee expired silently — the same defect as
+ * the compliance card showing a hardcoded green tick for backups that did not exist. A
+ * mention-counts-as-coverage rule lets anyone defeat it with a comment, which is the exact
+ * shape of the thing being guarded against. It is also the trap `updown-result-announce` and
+ * `market-result-announce` both had to learn: **never match on words the code's own
+ * documentation will one day contain.**
  */
+const stripComments = (src) =>
+  src.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/^\s*\/\/.*$/gm, "");
+
 const namedDirectly = new Set(files.filter((n) => allScripts.includes(n)));
 const reachable = new Set(namedDirectly);
 for (const entry of namedDirectly) {
   let src = "";
-  try { src = readFileSync(join(here, entry), "utf8"); } catch { continue; }
+  try { src = stripComments(readFileSync(join(here, entry), "utf8")); } catch { continue; }
   for (const n of files) if (n !== entry && src.includes(n)) reachable.add(n);
 }
 

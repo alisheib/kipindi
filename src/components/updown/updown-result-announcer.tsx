@@ -9,10 +9,14 @@
  *     `myUpStake`/`myDownStake` are zeroed the moment a position leaves OPEN. **A winner and a
  *     loser received byte-identical board props** — no surface could have congratulated anyone.
  *  2. The platform's `WinCelebrationHost` — which already exists and is already mounted once in
- *     `AppShell` — is fired by `notify-poller.tsx`, gated on a `readStoredBet()` localStorage
+ *     `AppShell` — was fired by `notify-poller.tsx`, gated on a `readStoredBet()` localStorage
  *     record that the Up & Down quick-bet path never writes, and gated behind notifications,
  *     which `perEventNotificationsSuppressed()` turns off for UPDOWN. **Suppressing the message
  *     also suppressed the moment.**
+ *     ✅ **2026-08-10 (DA-5 / E-115): that `readStoredBet()` gate no longer exists.** The
+ *     long-form poller was rebuilt on this component's own contract — settled rows,
+ *     `finalPayout`, status read never inferred — so the sentence above is history. This file
+ *     stays the precedent; it is no longer the only one obeying the rule.
  *
  * ⛔ ALI'S 2026-07-24 DECISION STANDS AND THIS DOES NOT TOUCH IT. Shown the measured volume
  * (6.7 messages/hour per player on today's board, 15/hour on a 3-minute chain) he chose

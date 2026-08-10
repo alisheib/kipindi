@@ -146,17 +146,22 @@ export type BoardRound = {
    * in". So a winner and a loser received **byte-identical board props** — the card could not
    * have congratulated anyone if it wanted to, because the data was never sent.
    *
-   * The other half of the same silence: the platform's `WinCelebrationHost` is fired by
+   * The other half of the same silence: the platform's `WinCelebrationHost` was fired by
    * `notify-poller.tsx`, gated on a `readStoredBet()` localStorage record that the Up & Down
    * quick-bet path never writes — and gated behind notifications, which
    * `perEventNotificationsSuppressed()` turns off for UPDOWN. Suppressing the MESSAGE (Ali's
    * dated 2026-07-24 decision, which stands) also suppressed the MOMENT.
    *
-   * ⛔ `payout` IS THE REALISED FIGURE, never a projection. The existing celebration path
-   * headlines `stored.payoutIfWin` from place-time — its own comment concedes it "may differ
-   * slightly from the realised payout" — and on a pari-mutuel pool it does. A celebrated
-   * amount that is not the amount paid is a false money statement of the E-39/E-65 kind, on
-   * the one screen a player is most likely to screenshot. This is `Position.finalPayout`.
+   * ⛔ `payout` IS THE REALISED FIGURE, never a projection. A celebrated amount that is not
+   * the amount paid is a false money statement of the E-39/E-65 kind, on the one screen a
+   * player is most likely to screenshot. This is `Position.finalPayout`.
+   *
+   * ✅ UPDATED 2026-08-10 (DA-5 / E-115): **the long-form path has been brought to this same
+   * rule and the paragraph above is now history.** `notify-poller.tsx` no longer reads any
+   * `localStorage` bet record — that write is deleted at its source in `conviction-dial.tsx`
+   * — and instead reads the viewer's own settled rows through `/api/positions/settled`,
+   * requiring `settledAt` so it cannot announce before the money has moved. This file's
+   * contract was the model for that fix; both product lines now headline `finalPayout`.
    */
   myResult: {
     status: "WIN" | "LOSS" | "VOID";

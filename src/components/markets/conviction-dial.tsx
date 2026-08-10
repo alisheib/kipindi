@@ -927,9 +927,20 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
       // the user explicitly opted into via NotifyPrompt would fire the
       // celebration — so the most common path (place bet → win) was
       // silently skipping the popup. Ali's report fixed in this line.
+      // ⛔ DA-5 / E-115 — THE `50pick-bet-<id>` RECORD IS GONE, DELIBERATELY. It cached
+      // `side`, `stake` and a place-time `payoutIfWin`, and the poller headlined that
+      // figure as the amount won. On a pari-mutuel pool the pools keep moving after a
+      // bet, so the projection is a DIFFERENT number from the realised payout — the
+      // celebration was, by construction, striking a figure the player was not paid.
+      // The poller now reads the settled `Position` row through
+      // `/api/positions/settled`, whose `settledAt` is stamped in the same transaction
+      // as the wallet credit. ⛔ Do not reintroduce a browser-side copy of a money
+      // figure: a client-side number can be stale, edited, or belong to a bet that was
+      // later cashed out, and all three of those shipped.
+      //
+      // ⚠️ The watch-list write BELOW stays and is load-bearing — it is what makes the
+      // poller look at this market at all.
       try {
-        const key = `50pick-bet-${marketId}`;
-        localStorage.setItem(key, JSON.stringify({ side: q.side, stake: q.stake, payoutIfWin: r.data!.payoutIfWin }));
         const WATCH_KEY = "50pick-notify-markets";
         const watchRaw = localStorage.getItem(WATCH_KEY);
         const watch: string[] = watchRaw ? (JSON.parse(watchRaw) as string[]) : [];

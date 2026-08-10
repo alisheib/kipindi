@@ -1,38 +1,51 @@
 "use client";
 
 /**
- * NotifyPoller — mounted in AppShell. Reads the user's watched-market list
- * from localStorage every 30s, polls /api/fairness/recent for resolutions,
- * and fires a browser Notification + brand toast for any newly-resolved
- * market the user is watching.
+ * NotifyPoller — mounted in AppShell. Watches the markets the player asked to be told
+ * about and announces what a resolution MEANT FOR THEM: a celebration, a refund, or a
+ * loss, each read off their own settled position row.
  *
- * Keeps a `seen` set in sessionStorage so a notification fires once per
- * resolution per session, not on every poll.
+ * ── DA-5 / E-115 · WHY THIS IS NOT A `localStorage` READ ANY MORE ─────────────────────
+ *
+ * 🔴 It used to headline `payoutIfWin`, written at PLACE TIME by `conviction-dial.tsx`,
+ * and decide the player had won by comparing the market's PUBLIC outcome to a side kept
+ * in the same browser. Four defects lived in that one shortcut:
+ *
+ *   1. **The figure was a projection, not the payment.** The pools keep moving after a
+ *      bet, so on a pari-mutuel market the place-time number is a DIFFERENT number from
+ *      the realised payout — and it was the one struck in gilt in front of the player.
+ *   2. **It could fire a day before the money existed.** The trigger was `stage2At`
+ *      (adjudication). `settleMarket` will not move a shilling until the objection window
+ *      closes — 24h by default — and an objection can still void the market in between.
+ *   3. **A cashed-out player got the seal.** Nothing cleared the browser key on sell, so
+ *      an early exit whose side later won was celebrated for money never received (M7).
+ *   4. **Two bets on one market collapsed into one**, because the key was per market.
+ *
+ * ⭐ Now: `/api/fairness/recent` stays the cheap PUBLIC heartbeat that detects *that* a
+ * market resolved; one authed call to `/api/positions/settled` then says what it meant
+ * for this viewer, from rows whose `settledAt` is stamped in the same transaction as the
+ * wallet credit. **The product cannot be its own witness about money.** This mirrors
+ * `UpDownResultAnnouncer`, which has always done it correctly — its own comment even
+ * named this defect as the outstanding one.
+ *
+ * ⚠️ THE THREE OUTCOMES ARE NOT TWO. A market can resolve YES and still refund an
+ * unmatched backer in full. Saying "you lost" there is a false money statement; the
+ * status is read off the ROW, never inferred from the outcome.
+ *
+ * ⚠️ RG: the win is celebratory, the loss is NOT its mirror. A loss gets a plain factual
+ * toast — no glow, no counter, no haptic — and it NAMES the amount, because a result
+ * screen that will not say the number is the euphemism RG rules exist to prevent.
  */
 import { useEffect } from "react";
 import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
 import { dispatchWinCelebration } from "@/components/markets/win-celebration";
+import { formatTzs } from "@/lib/utils";
 
 const WATCH_KEY = "50pick-notify-markets";
-const SEEN_KEY = "50pick-notify-seen";
-const BET_PREFIX = "50pick-bet-";
-
-type StoredBet = { side: "YES" | "NO"; stake: number; payoutIfWin: number };
-
-function readStoredBet(marketId: string): StoredBet | null {
-  try {
-    const raw = localStorage.getItem(BET_PREFIX + marketId);
-    if (!raw) return null;
-    const v = JSON.parse(raw) as StoredBet;
-    if ((v.side === "YES" || v.side === "NO") && typeof v.stake === "number") return v;
-  } catch { /* private browsing or stale */ }
-  return null;
-}
-
-function clearStoredBet(marketId: string) {
-  try { localStorage.removeItem(BET_PREFIX + marketId); } catch { /* no-op */ }
-}
+/** Announced-once key. ⛔ Per POSITION, not per market — two bets on one market are two
+ *  results, and a per-market key silently swallowed the second. */
+const SEEN_KEY = "50pick-notify-seen-positions";
 
 function readWatch(): string[] {
   try {
@@ -71,15 +84,21 @@ type Attestation = {
   stage2At: string | null;
 };
 
-// Poll cadence — tight when the user has live watched markets (so a
-// 5-minute demo market's resolution lands within ~8s of settlement),
-// relaxed when there's nothing to watch (no point pinging the server
-// every 8 seconds for an empty list). Also re-runs immediately on
-// tab focus so an alt-tabbed user sees the celebration the moment
-// they come back to the window.
-// Tight when the user has a watched market — 2 s feels effectively
-// instant to a human watching a countdown. Idle stays high so a
-// session with nothing to watch doesn't burn the server.
+/** One settled row of the viewer's own — the only thing money is announced from. */
+type SettledPosition = {
+  positionId: string;
+  marketId: string;
+  status: "WIN" | "LOSS" | "VOID";
+  side: "YES" | "NO";
+  stake: number;
+  payout: number;
+  settledAt: string | null;
+  title: string;
+};
+
+// Tight while the player has a watched market — 2s is effectively instant to a human
+// watching a countdown. Idle stays high so a session with nothing to watch does not
+// burn the server.
 const ACTIVE_POLL_MS = 2_000;
 const IDLE_POLL_MS = 60_000;
 
@@ -93,10 +112,8 @@ export function NotifyPoller() {
 
     const tick = async () => {
       if (cancelled) return;
-      // B-17 — a hidden tab does not poll at the 2s cadence. The visibility
-      // handler below re-ticks the moment the user comes back, so nothing is
-      // lost; without this gate every backgrounded tab kept hammering the
-      // server 30×/min for a celebration nobody could see.
+      // B-17 — a hidden tab does not poll at the 2s cadence. The visibility handler below
+      // re-ticks the moment the user comes back, so nothing is lost.
       if (document.hidden) {
         timer = setTimeout(tick, IDLE_POLL_MS);
         return;
@@ -113,76 +130,97 @@ export function NotifyPoller() {
           return;
         }
         const j = (await r.json()) as { attestations: Attestation[] };
-        const seen = readSeen();
-        const newly = (j.attestations ?? []).filter(
-          (a) => watch.includes(a.marketId) && a.stage2At && !seen.has(a.marketId),
-        );
-        for (const a of newly) {
-          seen.add(a.marketId);
-          const title = `${t.market.marketResolvedToast} · ${a.resolvedOutcome ?? "VOID"}`;
-          const body = a.titleEn?.slice(0, 120) ?? "";
-          if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-            try {
-              new Notification(title, { body, tag: `50pick-${a.marketId}` });
-            } catch {
-              /* no-op */
+        // The public feed only says a market REACHED adjudication. That is the cue to go
+        // and ask about our own money — it is not itself news about money.
+        const adjudicated = (j.attestations ?? []).filter((a) => watch.includes(a.marketId) && a.stage2At);
+
+        if (adjudicated.length > 0) {
+          const ids = adjudicated.map((a) => a.marketId);
+          const pr = await fetch(`/api/positions/settled?markets=${encodeURIComponent(ids.join(","))}`, { cache: "no-store" });
+          // 401 = the session lapsed. Say nothing; a signed-out browser has no money news.
+          if (pr.ok) {
+            const pj = (await pr.json()) as { positions: SettledPosition[] };
+            const seen = readSeen();
+            let added = false;
+
+            for (const p of pj.positions ?? []) {
+              if (seen.has(p.positionId)) continue;
+              seen.add(p.positionId);
+              added = true;
+
+              const label = p.title || adjudicated.find((a) => a.marketId === p.marketId)?.titleEn || "";
+
+              if (p.status === "WIN") {
+                // ⛔ THE REALISED PAYOUT, from the settled row. `net` is profit, so it is
+                // payout − stake.
+                dispatchWinCelebration({
+                  kind: "WIN",
+                  amount: p.payout,
+                  net: p.payout - p.stake,
+                  label,
+                });
+              } else if (p.status === "VOID") {
+                // ⛔ `factual`, NOT `default` — E-114. `default` paints checkCircle, a
+                // CONFIRMATION TICK, over a stake that merely came back. A refund is not
+                // an achievement and not an alarm; it is a fact, and the kit has a variant
+                // whose whole job is stating one. This is the same fix DA-4 made on the
+                // Up & Down path, which had been left undone here.
+                toast({
+                  title: t.market.marketStakeReturnedTitle,
+                  description: `${label} · ${formatTzs(p.payout)}`,
+                  variant: "factual",
+                  durationMs: 6000,
+                });
+              } else {
+                // LOSS — plain and direct. ⛔ NOT `warning`, which is GOLD, the celebration
+                // ink; and not `danger`, which reads as *something went wrong* when losing
+                // is the game working.
+                toast({
+                  title: t.market.marketLostTitle,
+                  description: `${label} · ${formatTzs(p.stake)}`,
+                  variant: "factual",
+                  durationMs: 6000,
+                });
+              }
+
+              // A browser notification only for money that MOVED, and only once.
+              if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+                try {
+                  new Notification(`${t.market.marketResolvedToast} · ${p.status}`, {
+                    body: label.slice(0, 120),
+                    tag: `50pick-${p.positionId}`,
+                  });
+                } catch { /* no-op */ }
+              }
+
+              // Stop watching a market once OUR position on it has settled. ⛔ Not on
+              // adjudication: between stage 2 and settlement there is nothing to tell the
+              // player yet, and dropping it there would lose the announcement entirely.
+              try {
+                const remaining = readWatch().filter((id) => id !== p.marketId);
+                localStorage.setItem(WATCH_KEY, JSON.stringify(remaining));
+              } catch { /* ignore */ }
             }
+
+            if (added) writeSeen(seen);
           }
-          // Did the user pick the winning side on this market? If yes,
-          // upgrade the toast to a full WinCelebration popup. The stored
-          // payoutIfWin is from place-time and may differ slightly from
-          // the realised payout, but it's directionally accurate for the
-          // demo and is replaced on the next /positions render.
-          const stored = readStoredBet(a.marketId);
-          const won = stored && a.resolvedOutcome === stored.side;
-          if (won && stored) {
-            dispatchWinCelebration({
-              kind: "WIN",
-              amount: stored.payoutIfWin,
-              net: stored.payoutIfWin - stored.stake,
-              label: a.titleEn,
-            });
-            clearStoredBet(a.marketId);
-          } else if (a.resolvedOutcome === "VOID" || (stored && stored.side !== a.resolvedOutcome)) {
-            clearStoredBet(a.marketId);
-          }
-          // Drop the resolved market from the watch list so subsequent
-          // polls don't keep re-checking it. The seen-set guards
-          // against duplicate fires within a session, but pruning the
-          // watch list keeps the poll payload small over time.
-          try {
-            const remaining = watch.filter((id) => id !== a.marketId);
-            localStorage.setItem("50pick-notify-markets", JSON.stringify(remaining));
-          } catch { /* ignore */ }
-          toast({
-            title,
-            description: body,
-            variant: won ? "gold"
-              : a.resolvedOutcome === "YES" ? "success"
-              : a.resolvedOutcome === "NO" ? "warning"
-              : "default",
-          });
         }
-        if (newly.length > 0) writeSeen(seen);
       } catch {
         /* network — try again later */
       }
-      // Stay tight while there's at least one watched market; otherwise
-      // fall back to the idle cadence. Re-read from localStorage (not the
-      // cached `watch` from before the async fetch) so pruned markets are
+      // Re-read from localStorage (not the cached `watch`) so pruned markets are
       // reflected in the cadence decision.
       const stillWatching = readWatch().length > 0;
       if (cancelled) return;
       timer = setTimeout(tick, stillWatching ? ACTIVE_POLL_MS : IDLE_POLL_MS);
     };
 
-    // Tab focus / visibility — immediately fire a tick so an alt-tabbed
-    // user sees the win the moment they refocus. We clear any pending
-    // timer and re-tick from scratch.
+    // Tab focus / visibility — fire a tick so an alt-tabbed user sees the result the
+    // moment they refocus.
     const onWake = () => {
       if (cancelled) return;
-      // visibilitychange fires on HIDE too — waking the poller on hide is the
-      // opposite of the intent (B-17). Only a visible tab re-ticks.
+      // visibilitychange fires on HIDE too — waking on hide is the opposite of the
+      // intent (B-17). Only a visible tab re-ticks.
       if (document.hidden) return;
       if (timer) clearTimeout(timer);
       tick();
