@@ -26,7 +26,12 @@ A screen/flow/feature is **DONE only when ALL are true** (from `docs/perfection-
 2. **Money-safe** — no path can mint/lose/double-pay/strand money; every mutation audited;
    invariants hold under concurrency.
 3. **Compliant** — POCA/GBT/TRA/FATF/PDPA met; never fabricates data/signatures/state; RG-safe.
-4. **Consistent** — uses the kit; no divergence; gold-discipline held.
+4. **Consistent** — uses the kit; no divergence; gold-discipline held. ⛔ **GOLD IS MONEY AND
+   NOTHING ELSE (Q5, settled 2026-08-10).** A tier or an asset may be METALLIC; it may not wear
+   the tokens the money surfaces own — `--gilt`, `--gilt-metal`, `--gold-300…500`. Struck gold
+   marks money that was **earned**: a payout, a celebration, a resolved seal. An amount that is
+   merely *projected* (`payoutIfWin` before a result, a fee simulation) stays flat — gilding it
+   promises in ink what the round has not decided.
 5. **Responsive** — pixel-clean **360 → 768 → 1280 → 1920**, mobile-first, 0 horizontal
    overflow, tap targets ≥ 40px.
 6. **Accessible** — WCAG 2.1 AA: keyboard-operable, focus-visible, labelled, contrast ≥ 4.5:1,

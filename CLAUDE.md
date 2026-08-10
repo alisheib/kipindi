@@ -146,13 +146,19 @@ corrected.
 > being true on 2026-07-27 (creds granted) and provably false on 2026-07-31, when **four real
 > payouts settled end-to-end on `WALLET_CASHIN`** (2×1,970 on 07-31 08:04/08:06 + two more at
 > 13:55/13:57 — `docs/SELCOM-PAYOUT-RAILS.md` § Current state 2026-08-02). The rail WORKS.
-> ⚠️ What still gates the withdraw form is DATA, not creds: three payouts stuck at Selcom
-> `999` since 07-29 hold `derivePayoutStatus` at `unavailable` (`worstOf(declared, derived)` —
-> an officer cannot force it green, by design). The float arithmetic proves all three never
-> paid, so **`/admin/payments` → "Return to player" on each (reason ≥10 chars) closes them
-> safely** (`reverseStuckPayoutAction` re-queries the provider and refuses a CONFIRMED payout)
-> — the banner then clears itself with no deploy. Then clear `PAYOUT_TEST_BYPASS_MSISDN` on
-> Railway and delete `isPayoutTestBypass()`. Full mechanics: `docs/SELCOM-PAYOUT-RAILS.md`.
+> ✅ **AND THE WITHDRAW FORM IS OPEN AGAIN — closed end to end 2026-08-10.** The last of the
+> stuck payouts was returned through `/admin/payments` → *Return to player*, so the queue reads
+> **0**, `derivePayoutStatus` returns **operational**, and the console shows *"PLAYERS ARE TOLD:
+> ✓ OPERATIONAL"*. `PAYOUT_TEST_BYPASS_MSISDN` is cleared on Railway and `isPayoutTestBypass()`
+> plus both call sites are **deleted** — one gate, everyone, no exceptions.
+> 🔴 **WHAT ACTUALLY LIMITS PAYOUTS NOW IS THE FLOAT, NOT THE RAILS.** The console reads
+> **TZS 88,645** and flags it *"low — payouts fail when it runs dry"*. ⛔ And the rail has NOT
+> been exercised since the gate reopened (0 withdrawals, 0 cash-outs): **do not read settlement
+> `BET_PAYOUT` rows as evidence the payout rail works** — those credit a wallet inside 50pick;
+> a WITHDRAWAL is money leaving to Selcom, and only one of the two has been proven today.
+> ⚠️ Only **one** rail is provisioned (`WALLET_CASHIN`); the ladder already skips the other two
+> on their `NOT_ENABLED` probe, so there is nothing redundant to remove — Ali's call 2026-08-10.
+> Full mechanics: `docs/SELCOM-PAYOUT-RAILS.md` § Current state 2026-08-10.
 > ⚠️ `NEXT_PUBLIC_LICENSE_REF` is still the placeholder `TZ-GBT-2026-XXXX` — the footer shows
 > it as "(pending)". Replace with the real GBT number before public launch.
 > ⭐ **Full handoff + copy-paste go-live prompt: [`docs/GO-LIVE-RUNBOOK.md`](docs/GO-LIVE-RUNBOOK.md)**

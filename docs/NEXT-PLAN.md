@@ -1,15 +1,20 @@
 STATUS: the next plan. Written 2026-07-29, immediately after the design system was
 frozen and shipped. **Revised 2026-07-31 against the live platform, not against memory.**
 
-**Items 1, 2 and 4 are DONE and live. Item 3 (withdrawals): ~~blocked at Selcom~~ —
-CORRECTED 2026-08-08: the rail works (four real payouts settled 2026-07-31) and the block
-is OURS to lift: three payouts stuck at `999` since 07-29 keep `derivePayoutStatus` at
-`unavailable`, the float arithmetic proves they never paid, and `/admin/payments` →
-"Return to player" on each closes them safely — the banner clears itself, no deploy
-(`SELCOM-PAYOUT-RAILS.md` § 2026-08-02). Ali's 2026-08-08 word: payouts are allowed now.
-Multi-container is DONE and merged (2026-07-31); scale ceilings are the one code item
-left.** What is left on 1 and 2 is not code — it is the operator actions listed under
-"Only Ali can do these", below.
+**Items 1, 2, 3 and 4 are DONE and live.** ✅ **Item 3 (withdrawals) CLOSED 2026-08-10:** the
+rail works (four real payouts settled 2026-07-31), the block was ours to lift, and it has been
+lifted — the last stuck payout was returned through `/admin/payments`, the queue reads **0**,
+`derivePayoutStatus` is **operational**, and the withdraw form is open to players. The
+`PAYOUT_TEST_BYPASS_MSISDN` escape hatch is cleared on Railway and `isPayoutTestBypass()` plus
+both call sites are **deleted** — one gate, everyone, no exceptions.
+🔴 **The live constraint is now the FLOAT — TZS 88,645, which the console itself flags as low —
+not the rails.** ⛔ And the rail has **not been exercised since the gate reopened** (0
+withdrawals, 0 cash-outs): settlement `BET_PAYOUT` rows credit a wallet *inside* 50pick and are
+**not** evidence that money can leave to Selcom. Full mechanics:
+[`SELCOM-PAYOUT-RAILS.md`](SELCOM-PAYOUT-RAILS.md) § Current state 2026-08-10.
+Multi-container is DONE and merged (2026-07-31); scale ceilings are the one code item left.
+What is left on 1 and 2 is not code — it is the operator actions listed under "Only Ali can do
+these", below.
 
 ⚠️ **Two lanes ran in parallel on 2026-07-30/31** and both have now landed on `main`
 (merge `491318a`): the launch-hardening lane (backups → alerting → multi-container) from
@@ -248,7 +253,7 @@ This file is the brief. Copy the block at the bottom into a fresh session.
 | | State |
 |---|---|
 | Live | `www.50pick.tz`, Railway `50pick` / `production`, running `be4a12be`; `/api/health` `ok:true` |
-| Money mode | **TEST** — deposits real via Selcom. **Withdrawals PAY as of 2026-07-31** (4 real payouts settled lifetime) but the form is still shut to players: three payouts stuck at `999` since 07-29 keep `derivePayoutStatus` at `unavailable`. ~~Only Selcom closing those reopens it~~ — corrected 2026-08-02/08: the prepaid float proves they never paid, and `/admin/payments` → "Return to player" ×3 closes them from our side; the banner self-clears. Then seal the bypass (`PAYOUT_TEST_BYPASS_MSISDN` unset + delete `isPayoutTestBypass`). |
+| Money mode | **TEST** — deposits real via Selcom. ✅ **WITHDRAWALS ARE OPEN TO PLAYERS as of 2026-08-10**: the last stuck payout was returned via /admin/payments, the queue reads 0, and derivePayoutStatus is operational. The PAYOUT_TEST_BYPASS_MSISDN escape hatch is cleared and isPayoutTestBypass() is deleted — one gate, everyone. 🔴 The live limit is the FLOAT (TZS 88,645, console-flagged low), not the rails; and the rail has not been exercised since reopening, so settlement BET_PAYOUT rows are NOT evidence money can leave to Selcom. |
 | Test suite | **110** `test:*` scripts. **108 verified green 2026-07-31**; `test:responsive` was **not** verified — see below |
 | Design | FROZEN + LIVE (B9/B10, `test:design-frozen`) |
 | Error tracking | ✅ code complete — durable + scrubbed + `@sentry/node` wired and proven (`test:alerting`). ⚠️ **`SENTRY_DSN` is NOT set in Railway (verified), so nobody is paged.** `/api/health` reports `monitoring.alerting:false` |
@@ -371,9 +376,13 @@ This file is the brief. Copy the block at the bottom into a fresh session.
    them is OURS to do** — the prepaid float proves none of the three ever paid, and
    `/admin/payments` → "Return to player" (reason ≥10 chars) closes each safely
    (`reverseStuckPayoutAction` re-queries the provider first and refuses a CONFIRMED payout).
-   A scoped `PAYOUT_TEST_BYPASS_MSISDN` lets the owner-testers through meanwhile; **seal it**
-   with `railway variables --unset` once the three are closed, then delete
-   `isPayoutTestBypass()` and its call sites.
+   ✅ **ALL OF THAT IS DONE — 2026-08-10.** The last stuck payout was returned, the queue reads
+   **0**, `derivePayoutStatus` is **operational**, and the withdraw form is open to players.
+   `PAYOUT_TEST_BYPASS_MSISDN` is cleared on Railway and `isPayoutTestBypass()` plus both call
+   sites are **deleted** — there is no bypass left to seal. 🔴 **The live constraint is now the
+   FLOAT (TZS 88,645, flagged low), not the rails**, and the rail has not been exercised since
+   the gate reopened — ⛔ settlement `BET_PAYOUT` rows are an internal wallet credit and are
+   **not** evidence that money can leave to Selcom.
 
    🔴 **One bug was ours, and only a working rail could expose it:** Selcom refuses a NET below
    TZS 1,000 (`resultcode 013`). Our minimum was 1,000 *gross*, so after the 1.5% fee we asked
