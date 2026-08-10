@@ -226,7 +226,26 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
                     // `potentialPayout` has been restamped with the EXACT amount
                     // (notifySelectionClosedMarkets → settledPayoutFor). Before
                     // that it is a moving projection and the card shows no figure.
-                    bettingClosed={isSelectionClosed(m)}
+                    // 🔴 THE STAMP, NOT THE CLOCK. `bettingClosed` makes the card
+                    // promise "Exact — betting is closed and the pools are final"
+                    // over `potentialPayout`. But that figure is only REPLACED with
+                    // the exact settled amount when `notifySelectionClosedForMarket`
+                    // runs, and that is a separate sweep — `isSelectionClosed()` is a
+                    // pure time comparison that knows nothing about whether it fired.
+                    //
+                    // So between the cutoff instant and the sweep, the card presented
+                    // the stale BET-TIME projection as a frozen exact figure. And the
+                    // sweep is barred forever once the market leaves LIVE
+                    // (market-service.ts:1220), so a market an officer resolves early
+                    // never gets its restamp at all. Measured on production:
+                    // pos_5c8d70dc0431d40ad699 was shown 6,911 and paid 6,723.
+                    //
+                    // `selectionClosedNotifiedAt` is written INSIDE the same function
+                    // that restamps every position, so it is the only honest witness
+                    // that the freeze happened. Without it the card falls back to
+                    // "you'll get the number when betting closes" — which is true, and
+                    // is a far better failure than a confident wrong number.
+                    bettingClosed={isSelectionClosed(m) && !!m.selectionClosedNotifiedAt}
                     placedAt={p.placedAt}
                     positionId={p.id}
                     refCode={myRefCode}
