@@ -318,7 +318,9 @@
     "qa:win-popup": "node scripts/live-s31-win-popup.mjs",
     "qa:material-probe": "node scripts/live-material-probe.mjs",
     "qa:material-preview": "node scripts/material-candidate-preview.mjs",
-    "qa:material-audit": "node scripts/ui-material-audit.mjs"
+    "qa:material-audit": "node scripts/ui-material-audit.mjs",
+    "test:reconcile-announce": "tsx scripts/reconcile-announce-once.test.mts",
+    "red:reconcile-announce": "node scripts/reconcile-announce-once-red.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

@@ -1045,6 +1045,57 @@ export async function settleConfirmedWithdrawals(
   return { checked: inFlight.length, confirmed };
 }
 
+/**
+ * E-134 — "this one needs a human", said ONCE per transaction rather than once per sweep.
+ *
+ * 🔴 MEASURED ON PRODUCTION 2026-08-10. A single withdrawal that had been waiting for an
+ * officer since 2026-08-07 had written **1,329 byte-identical audit rows** — one every ~5
+ * minutes for 69 hours — and `payments.reconcile_needs_review` as a whole was **1,363 rows,
+ * 3.4% of the entire audit chain**, with `payments.reconcile_sweep` another **5.3%** beside
+ * it. The reconcile machinery alone was **8.7% of 40,052 rows**.
+ *
+ * ⛔ NOTHING IS WRONG WITH THE MONEY LOGIC BELOW, and this changes none of it. Every one of
+ * those rows was TRUE: refusing to auto-reverse a payout with no `providerRef` is correct,
+ * and it is the reason no player was ever wrongly refunded. They are the same truth,
+ * restated 1,329 times. The harm is dilution of evidence a regulator reads — an officer
+ * scanning a day of WALLET activity scrolls past hundreds of copies of one open item.
+ *
+ * ⭐ The pattern is already in this function, eleven lines below the worst offender: the
+ * payout arm writes `providerStatus` only when the gateway's answer CHANGED. This is that
+ * rule applied to the announcement itself.
+ *
+ * ⚠️ It removes noise and NO information. `/admin/payments` derives its stuck count from the
+ * TRANSACTION table (`derivePayoutStatus` → `db.txn.search`), never from these rows, and the
+ * per-sweep `reconcile_sweep` summary still carries `leftPending` every cycle.
+ *
+ * ⚠️ Pinned on `globalThis`, not a module-level `const` — route handlers and the chore runner
+ * land on different module instances, so a plain module Set would dedupe per-instance and let
+ * the spam straight back in. A process restart re-announces each open item exactly once,
+ * which is intended: a fresh process should state what it inherited.
+ */
+const NEEDS_REVIEW_SEEN: Set<string> = ((globalThis as unknown as Record<string, unknown>).__kpNeedsReviewSeen ??=
+  new Set<string>()) as Set<string>;
+
+/** Beyond this the set is dropped and every open item re-announces once. A stale-payment
+ *  queue is small by nature; this only exists so a pathological run cannot grow it forever. */
+const NEEDS_REVIEW_CAP = 5_000;
+
+function auditNeedsReviewOnce(txnId: string, reason: string, payload: Record<string, unknown>): void {
+  // Keyed on the REASON as well as the id: a transaction that moves from "no providerRef" to
+  // "status unavailable" has genuinely changed state, and that transition deserves a row.
+  const key = `${txnId}::${reason}`;
+  if (NEEDS_REVIEW_SEEN.has(key)) return;
+  if (NEEDS_REVIEW_SEEN.size >= NEEDS_REVIEW_CAP) NEEDS_REVIEW_SEEN.clear();
+  NEEDS_REVIEW_SEEN.add(key);
+  audit({ category: "WALLET", action: "payments.reconcile_needs_review", actorId: null, targetType: "Transaction", targetId: txnId, payload: { ...payload, reason } });
+}
+
+/** Forget a transaction once it reaches a terminal state, so a LATER stall speaks again. */
+function clearNeedsReview(txnId: string): void {
+  const prefix = `${txnId}::`;
+  for (const k of NEEDS_REVIEW_SEEN) if (k.startsWith(prefix)) NEEDS_REVIEW_SEEN.delete(k);
+}
+
 export async function reconcileStalePayments(olderThanMs = 30 * 60 * 1000): Promise<{ depositsFailed: number; withdrawalsReversed: number; depositsConfirmed: number; withdrawalsConfirmed: number; leftPending: number }> {
   const cutoff = Date.now() - olderThanMs;
   const stale = (await db.txn.listByStatus("PROCESSING")).filter((t) => Date.parse(t.createdAt) < cutoff);
@@ -1068,19 +1119,19 @@ export async function reconcileStalePayments(olderThanMs = 30 * 60 * 1000): Prom
         // mock/test rail, where nothing can have been charged, still auto-fails.
         if (isLiveMoneyMode()) {
           leftPending++;
-          audit({ category: "WALLET", action: "payments.reconcile_needs_review", actorId: null, targetType: "Transaction", targetId: t.id,
-            payload: { reason: "deposit has no providerRef — cannot prove it was never dispatched; not auto-failed", amount: t.amount } });
+          auditNeedsReviewOnce(t.id, "deposit has no providerRef — cannot prove it was never dispatched; not auto-failed", { amount: t.amount });
         } else if (await settleDepositFailed(t.id, "reconcile-timeout-no-ref")) {
           depositsFailed++;
+          clearNeedsReview(t.id);
         }
         continue;
       }
       const v = await verifyDepositStatus(ref);
       if (v.status === "CONFIRMED") {
         const r = await settlePaymentWebhook({ providerRef: ref, status: "CONFIRMED", amount: v.amount }); // exactly-once + amount-tamper check
-        if (r.handled) depositsConfirmed++;
+        if (r.handled) { depositsConfirmed++; clearNeedsReview(t.id); }
       } else if (v.status === "FAILED") {
-        if (await settleDepositFailed(t.id, "reconcile-verified-failed")) depositsFailed++;
+        if (await settleDepositFailed(t.id, "reconcile-verified-failed")) { depositsFailed++; clearNeedsReview(t.id); }
       } else if (v.status === "UNSUPPORTED") {
         // UNSUPPORTED means "we could not ask" — the mock rail, or a live provider
         // whose credentials are missing. Terminalising on that is only safe when no
@@ -1089,16 +1140,18 @@ export async function reconcileStalePayments(olderThanMs = 30 * 60 * 1000): Prom
         // sweep, with the audit reason indistinguishable from a real timeout.
         if (isLiveMoneyMode()) {
           leftPending++;
-          audit({ category: "WALLET", action: "payments.reconcile_needs_review", actorId: null, targetType: "Transaction", targetId: t.id,
-            payload: { reason: "provider status unavailable in LIVE mode — not auto-failed", providerRef: ref } });
+          auditNeedsReviewOnce(t.id, "provider status unavailable in LIVE mode — not auto-failed", { providerRef: ref });
         } else if (await settleDepositFailed(t.id, "reconcile-timeout")) {
           depositsFailed++; // mock/test — no money credited, safe
+          clearNeedsReview(t.id);
         }
       } else {
         leftPending++; // PENDING — still in flight; leave PROCESSING for the next sweep
       }
     } else if (t.type === "WITHDRAWAL") {
-      if (!ref) { leftPending++; audit({ category: "WALLET", action: "payments.reconcile_needs_review", actorId: null, targetType: "Transaction", targetId: t.id, payload: { reason: "stale withdrawal has no providerRef — not auto-reversed" } }); continue; }
+      // ⚠️ THE 1,329-ROW SITE. One withdrawal sat here from 2026-08-07 to 2026-08-10 and this
+      // line fired on every sweep. The refusal is right; the repetition was not.
+      if (!ref) { leftPending++; auditNeedsReviewOnce(t.id, "stale withdrawal has no providerRef — not auto-reversed", {}); continue; }
       // 🔴 `t.payoutRail` is load-bearing here, not decoration. This is the ONLY path
       // that can auto-reverse a payout, so querying the wrong rail's endpoint would
       // read a stranger's envelope as FAILED and refund a player whose money is gone.
@@ -1111,9 +1164,9 @@ export async function reconcileStalePayments(olderThanMs = 30 * 60 * 1000): Prom
       }
       if (v.status === "CONFIRMED") {
         const r = await settlePaymentWebhook({ providerRef: ref, status: "CONFIRMED" }); // release the hold, exactly-once
-        if (r.handled) withdrawalsConfirmed++;
+        if (r.handled) { withdrawalsConfirmed++; clearNeedsReview(t.id); }
       } else if (v.status === "FAILED") {
-        if (await settleWithdrawalFailed(t.id, "reconcile-verified-failed")) withdrawalsReversed++;
+        if (await settleWithdrawalFailed(t.id, "reconcile-verified-failed")) { withdrawalsReversed++; clearNeedsReview(t.id); }
       } else if (v.status === "UNSUPPORTED") {
         // UNSUPPORTED means "we could not ask", NOT "nothing happened". It is
         // reachable with no operator action at all: any PAYMENT_API_* variable
@@ -1126,8 +1179,7 @@ export async function reconcileStalePayments(olderThanMs = 30 * 60 * 1000): Prom
         // has a providerRef is never auto-reversed in ANY mode. Gating it would leave
         // a branch shaped exactly like the bug, waiting for someone to flip a flag.
         leftPending++;
-        audit({ category: "WALLET", action: "payments.reconcile_needs_review", actorId: null, targetType: "Transaction", targetId: t.id,
-          payload: { reason: "payout status unavailable — never auto-reversed", providerRef: ref } });
+        auditNeedsReviewOnce(t.id, "payout status unavailable — never auto-reversed", { providerRef: ref });
       } else {
         leftPending++; // PENDING — payout may be in flight; NEVER blind-reverse
       }

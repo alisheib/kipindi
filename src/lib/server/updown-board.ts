@@ -293,14 +293,27 @@ async function toBoardRound(
     // Only for a LOCKED round the viewer actually holds — see the field comment. `projectedPayout`
     // is the money path's own function, so this figure and the settled one cannot disagree.
     //
-    // ⛔ UD-20 · NULL FOR A HEDGED HOLDER, and that null is a money-truth fix. Holding both
-    // sides is legal (repeat taps, either side), and this line used to price
-    // `myUpStake + myDownStake` as if ALL of it sat on the UP side — so a hedger's locked
-    // card read "You win X if Up" with an X computed from a stake that includes their DOWN
-    // money: a silently wrong figure on a money surface (A-5). One number cannot state a
-    // two-sided position; the surfaces suppress the line when this is null rather than
-    // print a half-truth. (Two per-side figures is the richer alternative — Ali's call if
-    // he wants the hedged card to quote both outcomes.)
+    // ⛔ UD-20 · NULL FOR A HEDGED HOLDER, and that null is a money-truth fix. This line used
+    // to price `myUpStake + myDownStake` as if ALL of it sat on the UP side — so a hedger's
+    // locked card read "You win X if Up" with an X computed from a stake that includes their
+    // DOWN money: a silently wrong figure on a money surface (A-5). One number cannot state
+    // a two-sided position; the surfaces suppress the line rather than print a half-truth.
+    //
+    // ⚠️ CORRECTED 2026-08-10. This comment used to open with *"Holding both sides is legal
+    // (repeat taps, either side)"*, and that has been FALSE since 2026-08-04 — the UX audit
+    // that filed UD-20 was written on a premise the money engine had already retired.
+    // **ONE ACCOUNT, ONE SIDE** (`market-service.ts:671`) refuses any bet whose opposite side
+    // the account already holds OPEN, inside the wallet lock, unconditionally, and every
+    // Up & Down bet routes through `buyPosition`. `myUpStake`/`myDownStake` count OPEN
+    // positions only (see the accumulator below), so `myUpStake > 0 && myDownStake > 0` is
+    // **unreachable** for anything placed after that date, and no sell path can create it.
+    // Guarded three times: `updown-engine.test.mts:455`, `updown-quickbet.test.mts:134`,
+    // `updown-window.test.mts:233`.
+    //
+    // ⭐ So the branch stays as DEFENCE-IN-DEPTH for pre-2026-08-04 legacy rows, not because
+    // the state is expected. ⛔ And "quote both outcomes" is NOT an open question for Ali:
+    // it would be building a surface for a state the money engine refuses to create. UD-20
+    // is closed as moot.
     myExactPayout:
       state === "locked" && myStake > 0 && (myUpStake === 0 || myDownStake === 0)
         ? await projectedPayout(m, myUpStake > 0 ? "YES" : "NO", myStake)
