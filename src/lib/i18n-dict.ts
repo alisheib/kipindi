@@ -76,7 +76,16 @@ export const dict = {
       strongPassword: "Choose a strong password (8+ characters).",
       noEmailContactSupport: "No email? Contact support",
       howItWorks: "How it works",
-      howItWorksBody: "Pick YES or NO. Your stake joins the pool. If your side wins, you share the pool after our commission — which is capped at a third of the smaller side, so a correct call never loses money.",
+      // ⛔ NO FEE FIGURE HERE. This string used to promise the commission "is capped at
+      // a third of the smaller side". That is the capped-commission formula, and it is
+      // NOT true of loser-share — the platform default since 2026-07-23 — where the fee
+      // is 13% of the LOSING pool with no ceiling at all. The card receives no fee
+      // snapshot, so it cannot know which model a poll froze and cannot state a rate
+      // without being wrong on one of them. (It understated the fee precisely on
+      // upsets, when the losing side is more than ~2.5x the winning one.)
+      // The exact, model-aware figure lives on the detail page, which reads the poll's
+      // own snapshot. What remains here is true under BOTH models: the winner floor.
+      howItWorksBody: "Pick YES or NO. Your stake joins the pool. If your side wins, you share the pool after our commission, so a correct call never loses money.",
       howItWorksFine: "Your payout depends on the final pool, not the current odds. We tell you the exact amount the moment betting closes. Only stake what you can afford to lose. 18+.",
       previousPage: "Previous page", nextPage: "Next page",
       sendMessage: "Send message", message: "Message",
@@ -1598,7 +1607,7 @@ export const dict = {
       strongPassword: "Chagua nenosiri imara (herufi 8+).",
       noEmailContactSupport: "Huna barua pepe? Wasiliana na msaada",
       howItWorks: "Inavyofanya kazi",
-      howItWorksBody: "Chagua NDIYO au HAPANA. Dau lako linajiunga na bwawa. Upande wako ukishinda, mnagawana bwawa baada ya kamisheni yetu — ambayo haizidi theluthi moja ya upande mdogo, kwa hiyo jibu sahihi halipotezi pesa kamwe.",
+      howItWorksBody: "Chagua NDIYO au HAPANA. Dau lako linajiunga na bwawa. Upande wako ukishinda, mnagawana bwawa baada ya kamisheni yetu, kwa hiyo jibu sahihi halipotezi pesa kamwe.",
       howItWorksFine: "Malipo yako yanategemea bwawa la mwisho, si odds za sasa. Tutakuambia kiasi kamili mara dau litakapofungwa. Weka dau unaloweza kumudu kupoteza tu. Miaka 18+.",
       previousPage: "Ukurasa uliopita", nextPage: "Ukurasa unaofuata",
       sendMessage: "Tuma ujumbe", message: "Ujumbe",
@@ -3036,7 +3045,7 @@ export const dict = {
       strongPassword: "选择一个强密码（8个以上字符）。",
       noEmailContactSupport: "没有邮箱？联系客服",
       howItWorks: "如何运作",
-      howItWorksBody: "选择「是」或「否」。您的投注进入奖池。若您所选一方获胜，将在扣除我们的佣金后分享奖池 — 佣金上限为较小一方的三分之一，因此判断正确绝不会亏钱。",
+      howItWorksBody: "选择「是」或「否」。您的投注进入奖池。若您所选一方获胜，将在扣除我们的佣金后分享奖池，因此判断正确绝不会亏钱。",
       howItWorksFine: "您的赔付取决于最终奖池，而非当前赔率。投注一关闭，我们就会告知您确切金额。请量力而行。18岁以上。",
       previousPage: "上一页", nextPage: "下一页",
       sendMessage: "发送消息", message: "消息",

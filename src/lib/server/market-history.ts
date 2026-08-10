@@ -299,7 +299,24 @@ function cardChartFrom(points: { t: string; yes: number }[]): CardChart {
   if (points.length < 2) return EMPTY_CARD;
   const spark = compress(points, 16).map((s) => Math.round(s.yes * 100));
   const now = Date.now();
-  const dayAgo = points.find((s) => now - Date.parse(s.t) <= 24 * 3600_000) ?? points[0];
+  // 🔴 THE FALLBACK MADE "24h MOVE" A LIE ON EVERY QUIET MARKET.
+  //
+  // Points arrive oldest-first from both readers, so `.find` correctly returns the
+  // earliest reading INSIDE the last 24 hours — a sound baseline. The defect was
+  // `?? points[0]`: when NOTHING was recorded in the last 24 hours it silently fell
+  // back to the oldest point in the batched reader's window, which is SEVEN DAYS
+  // (CARD_WINDOW_MS). The card then labelled a up-to-7-day delta "24h move".
+  //
+  // That is not a rounding quibble on a prediction market: a poll nobody has touched
+  // since last week is exactly the one whose week-old swing looks like fresh momentum,
+  // and it is stated as fact next to a money control.
+  //
+  // ⭐ No baseline inside the window means no 24-hour move exists. `move24h` is
+  // already optional and the card renders the row empty when it is undefined, so the
+  // honest answer costs nothing. The remaining window can only ever be SHORTER than
+  // 24h (a market younger than a day measures its whole life), never longer.
+  const dayAgo = points.find((s) => now - Date.parse(s.t) <= 24 * 3600_000);
+  if (!dayAgo) return { spark };
   const cur = Math.round(points[points.length - 1].yes * 100);
   return { spark, move24h: cur - Math.round(dayAgo.yes * 100) };
 }

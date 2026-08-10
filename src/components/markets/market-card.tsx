@@ -78,8 +78,15 @@ function getSignalBadge(
   if (fresh) return { kind: "new", label: labels.new };
   if (volume >= 30_000 || predictors >= 40) return { kind: "hot", label: labels.hot };
   if (/^\d+m left$/.test(timeLeft) || /^\d+s left$/.test(timeLeft)) return { kind: "soon", label: labels.soon };
-  // "Tipping" now REQUIRES real activity — an empty 50/50 is not a contest.
-  if ((volume > 0 || predictors > 0) && Math.abs(yesPct - 50) <= 3) return { kind: "tipping", label: labels.tipping };
+  // "Tipping" REQUIRES A REAL POOL — an empty 50/50 is not a contest.
+  // ⛔ The test used to be `volume > 0 || predictors > 0`, and the OR is the defect:
+  // "tipping" is a claim about money sitting on both sides, and `predictors` is not
+  // money. At volume 0 with predictors 1 — the ordinary state of a market whose only
+  // bettor cashed out, since predictorCount is never decremented — the left side
+  // passed on the count while `yesPct` was the hardcoded 50 that `impliedYesPct`
+  // returns for an empty pool. The card then badged a fabricated dead-heat as the
+  // most contested market on the board.
+  if (volume > 0 && Math.abs(yesPct - 50) <= 3) return { kind: "tipping", label: labels.tipping };
   return null;
 }
 
@@ -208,7 +215,27 @@ export function MarketCard({
   // COLD-START: a LIVE, still-open market with genuinely no activity. Derived
   // when the caller doesn't pass it, so the fix holds everywhere the card is
   // used. We show emptiness; we never invent a price (RULES law 5).
+  // 🔴 TWO DIFFERENT QUESTIONS, AND THEY WERE ANSWERED BY ONE FLAG.
+  //
+  // `fresh` means "nobody has touched this yet" — it drives the NEW badge, hides the
+  // sparkline and hides the trader crest. That correctly needs volume AND predictors
+  // to be zero.
+  //
+  // `noPrice` means "there is no crowd price to state". That is a question about the
+  // POOL ALONE, because `impliedYesPct` returns a hardcoded 50 when the pool is empty
+  // (market-service.ts:223) — an artefact of the default, not a signal.
+  //
+  // ANDing the two let a market with an empty pool but a non-zero predictor count
+  // assert a 50% split, a centred needle and a TIPPING badge as if they were real.
+  // ⛔ That state is reachable and ordinary: `predictorCount` is never DECREMENTED on
+  // cash-out (market-service.ts:1923 debits the pool and closes the position, and
+  // nothing touches the count), so a market whose only bettor cashes out sits at
+  // volume 0 with predictors 1 — and stated a fabricated 50% to every player on the
+  // board. It is also the shape the pre-launch data purge leaves behind.
+  //
+  // RULES law 5 is real data or nothing, so the price gate is now the pool.
   const fresh = live && (isNew ?? (volume === 0 && predictors === 0));
+  const noPrice = live && (isNew ?? volume === 0);
   const signal = getSignalBadge(status, yesPct, volume, predictors, timeLeft, fresh, {
     hot: t.common.hot, soon: t.common.soon, tipping: t.market.tipping, new: t.common.newBadge,
   });
@@ -296,9 +323,12 @@ export function MarketCard({
           <h3 className="mcardp-q">{title}</h3>
         </div>
         <div className="mcardp-prob">
-          {fresh ? (
-            // No crowd price yet — an honest em-dash, never a fabricated 50%.
+          {noPrice ? (
+            // No crowd price — an honest em-dash, never a fabricated 50%.
             // No "YES" caption either: there is no figure for it to label.
+            // ⚠️ Gated on `noPrice` (empty POOL), not `fresh`: a market whose only
+            // bettor cashed out has volume 0 with predictors 1, and its 50% is the
+            // default, not a price.
             <div className="mcardp-pct mcardp-pct--empty" aria-label={t.market.noBetsYet}>—</div>
           ) : (
             <>
@@ -317,8 +347,10 @@ export function MarketCard({
         </div>
       )}
 
-      <TippingBar yesPct={yesPct} height={7} resolved={isResolved} showLabels={false} recastOnHover={false} empty={fresh} emptyLabel={t.market.noBetsYet} />
-      {fresh && <div className="mcardp-nobets">{t.market.noBetsYet}</div>}
+      {/* `noPrice`, not `fresh` — a centred bar on an empty pool reads as "contested",
+          which is a claim about a crowd that is not there. */}
+      <TippingBar yesPct={yesPct} height={7} resolved={isResolved} showLabels={false} recastOnHover={false} empty={noPrice} emptyLabel={t.market.noBetsYet} />
+      {noPrice && <div className="mcardp-nobets">{t.market.noBetsYet}</div>}
 
       {showSpark && <Spark data={spark!} />}
 
@@ -344,11 +376,11 @@ export function MarketCard({
 
       {live ? (
         <div className="mcardp-actions">
-          <button type="button" aria-label={t.market.backYesAria.replace("{pct}", String(yesPct))} onClick={go("YES")} className="btn btn-yes btn-md">
-            {t.common.yes}{!fresh && <span className="font-mono text-[11.5px] opacity-85"> @ {yesPct}%</span>}
+          <button type="button" aria-label={noPrice ? t.common.yes : t.market.backYesAria.replace("{pct}", String(yesPct))} onClick={go("YES")} className="btn btn-yes btn-md">
+            {t.common.yes}{!noPrice && <span className="font-mono text-[11.5px] opacity-85"> @ {yesPct}%</span>}
           </button>
-          <button type="button" aria-label={t.market.backNoAria.replace("{pct}", String(100 - yesPct))} onClick={go("NO")} className="btn btn-no btn-md">
-            {t.common.no}{!fresh && <span className="font-mono text-[11.5px] opacity-85"> @ {100 - yesPct}%</span>}
+          <button type="button" aria-label={noPrice ? t.common.no : t.market.backNoAria.replace("{pct}", String(100 - yesPct))} onClick={go("NO")} className="btn btn-no btn-md">
+            {t.common.no}{!noPrice && <span className="font-mono text-[11.5px] opacity-85"> @ {100 - yesPct}%</span>}
           </button>
         </div>
       ) : (
