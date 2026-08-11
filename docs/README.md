@@ -6,7 +6,7 @@ Written 2026-07-31. **Read this before opening anything else in here.**
 [`50pick-updown-operator-guide.pdf`](50pick-updown-operator-guide.pdf) — the Up & Down operator
 contract. Everything else in here is for whoever builds and runs the platform.
 
-There are **45 files** at this level — this index plus 44 documents — and five
+There are **46 files** at this level — this index plus 45 documents — and five
 subdirectories with their own indexes: [`design-system/`](design-system/README.md) (the design
 rule book — start there for anything visual), [`design-brief/`](design-brief/INTAKE.md) (the
 material commission's brief + intake playbook), [`ux-audit-2026-08/`](ux-audit-2026-08/MASTER-PLAN.md)
@@ -39,6 +39,7 @@ reference in `docs/` must resolve on disk. Broken on purpose and observed to go 
 | [`NEXT-PLAN.md`](NEXT-PLAN.md) | 🔵 LIVE | **The one live plan.** Opens with "PICK UP HERE" — the state at the close of the last session, what is done, what is left. Start every session here. |
 | [`LIVE-QA-CAMPAIGN.md`](LIVE-QA-CAMPAIGN.md) | 🔵 LIVE | **The finding register (E-1…) + the §6b session handoffs** — the newest handoff sits at the TOP of §6b, and a commit newer than the newest handoff means another session is IN FLIGHT. Guarded by `test:tracker-hygiene`. |
 | [`ux-audit-2026-08/MASTER-PLAN.md`](ux-audit-2026-08/MASTER-PLAN.md) | 🔵 LIVE | The 2026-08 UX-audit implementation tracker — Sessions A/B/C, the DS/DA design sweeps, §9 open decisions for Ali. |
+| [`POLL-OPEN-FINDINGS.md`](POLL-OPEN-FINDINGS.md) | 🔵 LIVE | **The poll lane's open findings, with evidence.** The six that survived session 41 (re-confirmed against source), the **eight that were lost with its transcript**, and the operator items. Exists because a finding recorded only in a handoff paragraph is a finding you will lose — read it before touching `productLine: "MARKET"`. |
 | [`MODULE-CERTIFICATION-PROGRAM.md`](MODULE-CERTIFICATION-PROGRAM.md) | 🟢 LAW | **The program that finishes the platform.** 52 modules in 12 domains, each with a dossier, an attack list and a `cert:` gate; the eight gates that define "0 flaws"; the 12 laws; the orphan reckoning; a status board; and a copy-paste session prompt. Governs certification — `NEXT-PLAN.md` governs launch hardening. |
 | [`AGENT-ACCESS.md`](AGENT-ACCESS.md) | 🟢 LAW | How to grant an agent access, and the two kinds of block that look identical. Also records which accounts own Cloudflare/Railway — **and that the Cloudflare login is written down nowhere**. |
 | [`SETUP.md`](SETUP.md) | 🟢 LAW | **Getting 50pick running on a machine that has never seen it.** Prerequisites, install, booting with no database, `railway run` vs `railway ssh`, and a symptom→cause table for the traps that waste an afternoon. |
