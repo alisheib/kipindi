@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { useDeferredToast } from "@/components/ui/toast";
 import { setPayoutStatusAction } from "./payment-actions";
 import { runAdminAction } from "@/lib/client/run-admin-action";
+import { useMayAct, useActDisabledReason } from "@/components/admin/act-gate";
 
 type Status = "operational" | "delayed" | "unavailable";
 
@@ -48,6 +49,8 @@ export function PayoutStatusControl({
   derivedOverrodeDeclared: boolean;
 }) {
   const [pending, startTransition] = useTransition();
+  const mayAct = useMayAct();
+  const disabledReason = useActDisabledReason();
   const [pick, setPick] = useState<Status>(declared);
   const [text, setText] = useState(note ?? "");
   const router = useRouter();
@@ -109,7 +112,14 @@ export function PayoutStatusControl({
             key={o.id}
             type="button"
             onClick={() => setPick(o.id)}
-            className="rounded-md border px-2 py-1.5 text-left transition-colors"
+            // ⚠️ GATED TOO, not just Apply. Leaving the pills live let a read-only officer
+            // STAGE a declaration they could never apply — the form would show "Unavailable"
+            // selected while players were still told "Operational". A control that changes
+            // what the screen says without changing what the platform does is its own small
+            // lie, and it is the same family as the offer this whole finding is about.
+            disabled={!mayAct}
+            title={disabledReason}
+            className="rounded-md border px-2 py-1.5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50"
             style={pick === o.id
               ? { borderColor: "var(--gold-edge)", background: "var(--gold-soft)", color: "var(--text)" }
               : { borderColor: "var(--border)", color: "var(--text-muted)" }}
@@ -143,7 +153,12 @@ export function PayoutStatusControl({
 
       {/* The kit primitive, not a raw `btn` class — `test:ui-consistency` catches the latter,
           and it already handles the loading + disabled states this needs. */}
-      <Button type="button" variant="primary" size="sm" fullWidth loading={pending} disabled={!dirty} onClick={save}>
+      {/* A1 — declaring what players are told about withdrawals is an `accounting` ACT, and
+          AUDITOR + COMPLIANCE hold accounting VIEW without ACT. The status pills above stay
+          readable (the declared state is information a read-only officer needs); only Apply,
+          the thing that writes, is gated. */}
+      <Button type="button" variant="primary" size="sm" fullWidth loading={pending}
+        disabled={!dirty || !mayAct} title={disabledReason} onClick={save}>
         Apply
       </Button>
     </div>

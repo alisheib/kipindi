@@ -10,8 +10,15 @@ import { I } from "@/components/ui/glyphs";
 import { useDeferredToast } from "@/components/ui/toast";
 import { retryDepositAction, retryWithdrawalAction, cancelRefundTxnAction } from "./payment-actions";
 import { runAdminAction } from "@/lib/client/run-admin-action";
+import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 
 export function RetryControls({ txnId, type }: { txnId: string; type: "DEPOSIT" | "WITHDRAWAL" }) {
+  // A1 — this control only ACTS, so a role holding VIEW without ACT is shown why rather
+  // than being offered a button the server will refuse (and logged as a privilege
+  // escalation for pressing it). See docs/ADMIN-CONSOLE-FINDINGS.md.
+  const mayAct = useMayAct();
+  if (!mayAct) return <ActReadOnly />;
+
   const [pending, startTransition] = useTransition();
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [confirmRetry, setConfirmRetry] = useState(false);

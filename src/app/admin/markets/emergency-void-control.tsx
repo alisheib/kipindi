@@ -8,6 +8,7 @@ import { OperationResultModal } from "@/components/markets/operation-result-moda
 import { emergencyVoidMarketAction } from "@/app/markets/actions";
 import { Modal } from "@/components/ui/modal";
 import { formatTzs } from "@/lib/utils";
+import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 
 /**
  * Emergency "kill switch" for one market — voids it and refunds every open
@@ -15,6 +16,12 @@ import { formatTzs } from "@/lib/utils";
  * REQUIRES a reason (≥5 chars), because it's irreversible and moves money.
  */
 export function EmergencyVoidControl({ marketId, title }: { marketId: string; title: string }) {
+  // A1 — this control only ACTS, so a role holding VIEW without ACT is shown why rather
+  // than being offered a button the server will refuse (and logged as a privilege
+  // escalation for pressing it). See docs/ADMIN-CONSOLE-FINDINGS.md.
+  const mayAct = useMayAct();
+  if (!mayAct) return <ActReadOnly />;
+
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [pending, startTransition] = useTransition();

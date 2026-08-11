@@ -7,10 +7,19 @@ import { useToast } from "@/components/ui/toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ActionOverlay, useActionOverlay } from "@/components/admin/action-overlay";
 import { buildDsarBundleAction, fulfillDsarAction } from "./actions";
+import { useMayAct, useActDisabledReason } from "@/components/admin/act-gate";
+
+// A1 — /admin/privacy is the `compliance` domain, and an AUDITOR holds compliance VIEW with
+// no ACT. Both controls below were rendered fully enabled to them: eight `Export bundle`
+// buttons for a player's entire personal-data file. The server always refused, so nothing
+// leaked — but the officer was offered a control that could not work, and the refused click
+// wrote `privilege_escalation_blocked` against them on the PDPA surface.
 
 export function ExportDsarBundleButton({ userId }: { userId: string }) {
   const [busy, setBusy] = useState(false);
   const { toast } = useToast();
+  const mayAct = useMayAct();
+  const disabledReason = useActDisabledReason();
   const onClick = async () => {
     setBusy(true);
     try {
@@ -36,7 +45,8 @@ export function ExportDsarBundleButton({ userId }: { userId: string }) {
     }
   };
   return (
-    <Button type="button" size="sm" variant="secondary" onClick={onClick} loading={busy}>
+    <Button type="button" size="sm" variant="secondary" onClick={onClick} loading={busy}
+      disabled={!mayAct} title={disabledReason}>
       Export bundle
     </Button>
   );
@@ -46,6 +56,8 @@ export function FulfillDsarButton({ id }: { id: string }) {
   const [pending, startTransition] = useTransition();
   const overlay = useActionOverlay();
   const router = useRouter();
+  const mayAct = useMayAct();
+  const disabledReason = useActDisabledReason();
   const onClick = () => {
     overlay.run("Marking fulfilled…", "Recording completion date for this DSAR.");
     startTransition(async () => {
@@ -68,7 +80,8 @@ export function FulfillDsarButton({ id }: { id: string }) {
     <>
       <ConfirmDialog
         trigger={
-          <Button type="button" size="sm" variant="primary" loading={pending}>
+          <Button type="button" size="sm" variant="primary" loading={pending}
+            disabled={!mayAct} title={disabledReason}>
             Mark fulfilled
           </Button>
         }

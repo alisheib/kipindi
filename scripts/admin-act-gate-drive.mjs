@@ -81,20 +81,73 @@ const r = recorder("qa:admin-act-gate — does the page gate its controls on can
  */
 const ROLE_WORDS = /^(owner|compliance|trading|finance|growth|auditor|support|admin|qa)$/i;
 
+/**
+ * ⭐ CHROME AND READ CONTROLS ARE EXCLUDED, and adding this changed the verdict from noise to
+ * signal. The first version compared EVERY button in `<main>`, so a page whose only controls
+ * are the refresh glyph, the nav opener, the AI toolkit, a search box, a status filter or a
+ * pagination link reported an "identical render" — true, and entirely correct behaviour,
+ * because a read-only officer must still be able to read, filter, sort, page and export.
+ *
+ * ⛔ 8 of the original 23 failures were exactly that. Reporting them beside the real ones is
+ * how a finding gets inflated 3×. With them filtered, a remaining identical render is a claim
+ * about ACT controls specifically — which is what the finding is about.
+ */
+const READ_SAFE = new RegExp(
+  "^(" + [
+    // shell chrome — present in both renders
+    "refresh", "open admin navigation", "ai toolkit", "ai off", "ai on", "back to app",
+    // reading the data: search, sort, page, export
+    "search", "clear", "reset", "next", "previous", "prev", "all statuses", "all",
+    "download excel report", "download pdf report", "export csv", "copy",
+    "show", "hide", "expand", "collapse", "\\d+",
+    // ⭐ DATE-RANGE PRESETS. `DateTimeRangeFilter` renders these on finance, reports and
+    // transactions, and they are READS — a read-only officer must be able to change the
+    // window they are looking at. Treating them as act controls reported 9–14 phantom
+    // "ungated controls" on three pages and would have pushed a fix that broke the one
+    // thing an auditor is there to do. `Tumia` is Apply in Swahili.
+    "apply", "apply filters", "tumia", "custom", "month", "quarter", "all time", "today",
+    "yesterday", "this week", "last hour", "last \\d+\\s*h(ours?)?", "last \\d+\\s*days?",
+    "\\d+\\s*days?", "\\d+\\s*h(ours?)?", "\\d+\\s*months?",
+    // The /admin/transactions filter row — Select comboboxes named by what they filter.
+    "provider", "mtoa", "status", "hali", "type", "aina", "how to search",
+    // The /admin/config FEE SIMULATOR's side picker. `poll-open-findings` F2 records that
+    // this panel is "a labelled what-if simulator, not a booked figure" — it computes a
+    // preview and writes nothing, so it is a read.
+    "yes", "no",
+  ].join("|") + ")$",
+  "i",
+);
+
+/**
+ * ⭐ ADMIN LABELS ARE BILINGUAL, and `textContent` concatenates both halves. A filter button
+ * reads `"Apply · Tumia"` and a Select reads `"Provider · Mtoa"`, so matching the whole
+ * string against a list of English names fails on every one of them — the sweep reported
+ * nine phantom "ungated act controls" on /admin/transactions for exactly this reason.
+ * Splitting on the interpunct and asking whether EVERY part is read-safe is the fix, and it
+ * cannot accidentally pass an act control: a single unrecognised part keeps the whole
+ * control in the signature.
+ */
+const readSafeName = (name, re) =>
+  name.split("·").map((p) => p.trim()).filter(Boolean).every((p) => re.test(p));
+
 async function signature(page) {
-  return page.evaluate((roleWordsSrc) => {
-    const roleWords = new RegExp(roleWordsSrc.slice(1, roleWordsSrc.lastIndexOf("/")), "i");
+  return page.evaluate(([roleWordsSrc, readSafeSrc, splitterSrc]) => {
+    const mk = (s) => new RegExp(s.slice(1, s.lastIndexOf("/")), "i");
+    const roleWords = mk(roleWordsSrc);
+    const readSafe = mk(readSafeSrc);
+    // eslint-disable-next-line no-new-func
+    const isReadSafe = new Function("return " + splitterSrc)();
     const main = document.querySelector("main");
     if (!main) return null;
     const out = [];
-    for (const el of main.querySelectorAll('button, input[type="submit"], [role="button"]')) {
+    for (const el of main.querySelectorAll('button, input[type="submit"], [role="button"], [role="combobox"]')) {
       const name = (el.getAttribute("aria-label") || el.textContent || "").replace(/\s+/g, " ").trim();
-      if (!name || roleWords.test(name)) continue;
+      if (!name || roleWords.test(name) || isReadSafe(name, readSafe)) continue;
       const disabled = el.hasAttribute("disabled") || el.getAttribute("aria-disabled") === "true";
       out.push(`${name}|${disabled ? "disabled" : "enabled"}`);
     }
     return out.sort();
-  }, ROLE_WORDS.toString());
+  }, [ROLE_WORDS.toString(), READ_SAFE.toString(), readSafeName.toString()]);
 }
 
 const { b } = await browser();
@@ -140,14 +193,21 @@ try {
         const slug = `${path.replace(/\//g, "_")}__${role}`;
         await pB.screenshot({ path: `${SHOT}/${slug}.png`, fullPage: true });
 
+        // ⭐ THE INVARIANT HAS TWO ARMS — stating it as "the renders must differ" was wrong
+        // for pages that carry no act controls at all, where an identical render is the
+        // correct answer and there is nothing to gate. What must never happen is an ENABLED
+        // act control on a role that cannot act.
+        //   · the actor sees no act controls → identical is correct; and
+        //   · otherwise the view-only role must see zero ENABLED ones.
+        const ok2 = enabledA === 0 ? same : enabledB === 0;
         r.check(
-          `${path} · ${role} (${domain}: view, NO act) sees a DIFFERENT control set than ${actor}`,
-          !same,
-          same
-            ? `IDENTICAL render — ${enabledB} enabled control(s) offered to a role that cannot act. shot=${slug}.png`
-            : `differs (${actor}=${enabledA} enabled, ${role}=${enabledB} enabled)`,
+          `${path} · ${role} (${domain}: view, NO act) is offered no ENABLED act control`,
+          ok2,
+          ok2
+            ? `${actor}=${enabledA} enabled · ${role}=${enabledB} enabled`
+            : `${enabledB} enabled act control(s) offered to a role that cannot act${same ? " (IDENTICAL render)" : ""}. shot=${slug}.png`,
         );
-        if (same && enabledB > 0) {
+        if (!ok2 && enabledB > 0) {
           r.note(`   controls offered to ${role}: ${sigB.filter((s) => s.endsWith("|enabled")).slice(0, 6).map((s) => s.split("|")[0]).join(" · ")}${enabledB > 6 ? ` … +${enabledB - 6}` : ""}`);
         }
         await ctxB.close();

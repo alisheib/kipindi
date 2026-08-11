@@ -32,16 +32,16 @@ and a page that renders is not a working control.
 
 | # | slug | sev | confirmed | where |
 |---|---|---|---|---|
-| A1 | `view-only-roles-are-offered-act-controls` | medium | ✅ **DRIVEN** on 2 surfaces, 🔍 structural on 21 more | [`admin/privacy/page.tsx`](../src/app/admin/privacy/page.tsx) + 20 others |
+| A1 | `view-only-roles-are-offered-act-controls` | medium | 🟢 **SHIPPED 2026-08-11** | guard: `test:admin-act-gate` · driven: `qa:admin-act-gate` 39/0 |
 | A2 | `privacy-refusal-is-never-audited` | medium | 🟢 **SHIPPED 2026-08-11** | guard: `test:admin-soft-gate` · RED `red:admin-soft-gate` |
-| A3 | `refused-clicks-pollute-the-security-log` | medium | ✅ **DRIVEN** | [`control-gates.ts`](../src/lib/server/control-gates.ts) names it; two domains still carry it |
+| A3 | `refused-clicks-pollute-the-security-log` | medium | 🟢 **SHIPPED 2026-08-11** — fixed at source by A1 | guard: `test:admin-act-gate` |
 | A4 | `area-chart-y-axis-mislabels-its-own-gridlines` | low | ✅ **DRIVEN** (rendered) · ⚪ **not reachable today** | [`admin-charts.tsx:119`](../src/components/admin/admin-charts.tsx#L119) |
 | A5 | `a-zero-paints-a-visible-mark` | low–medium | ✅ **DRIVEN** (rendered) · ✅ **reachable, measured on prod** | [`admin-charts.tsx`](../src/components/admin/admin-charts.tsx) ×3 primitives |
 | A6 | `operator-margin-chart-divides-settlements-by-the-wrong-days-stakes` | **medium–high** | ✅ **MEASURED on production** | [`analytics.ts:339-363`](../src/lib/server/analytics.ts#L339-L363) |
 
 ---
 
-### A1 · `view-only-roles-are-offered-act-controls` — ⚪ NOT FIXED
+### A1 · `view-only-roles-are-offered-act-controls` — 🟢 SHIPPED 2026-08-11
 
 **`canView` without `canAct` is a state the console very largely does not render for.**
 
@@ -122,11 +122,79 @@ COMPLIANCE's identical click succeeded and wrote `privacy.dsar.exported`.
 (`objections`) is the precedent everything else was supposed to follow. **The `accounting`
 domain has zero.** This is a systematic gap, not a slipped page.
 
-**Fix, and it is Ali's call between two shapes:** ① give each page the `objections` treatment
-— compute `canAct` once and pass it down, rendering read-only; or ② render the gate once in
-the admin shell, since the domain is already known there (`domainForPath`), and have pages
-opt in. ⛔ Do not "fix" it by widening the grants — `roles.ts` is explicit that Trading never
-touches money/PII/config and Auditor is read-only everywhere.
+#### 🟢 SHIPPED 2026-08-11 — Ali chose the shell-level gate
+
+⛔ **Not by widening the grants.** `roles.ts` is explicit that Trading never touches
+money/PII/config and Auditor is read-only everywhere; the grants are right and the console
+was wrong about them.
+
+**The gate is one question, asked once, in [`admin/layout.tsx`](../src/app/admin/layout.tsx)**
+— `canAct(viewerRole, domainForPath(path))`, the **same** `domain` the view gate two lines
+above already resolved, so the two can never disagree about which domain a route belongs to.
+It is published through [`AdminActProvider`](../src/components/admin/act-gate.tsx) and read by
+controls as `useMayAct()`.
+
+⭐ **THE REFUSAL NAMES THE ROLE, THE DOMAIN AND THE REMEDY**, because an officer's next
+question is always *"then who can?"*: *"The Auditor role can view Accounting & money but not
+change it, so the controls on this page are disabled. The Owner can adjust this at
+/admin/roles."*
+
+⚠️ **AND THE BANNER IS SUPPRESSED ON A DOMAIN WITH NO ACTIONS — found by driving, not by
+reasoning.** EVERY non-Owner role holds `overview` as view-without-act; that is the shipped
+matrix, deliberately. So the first version put the banner on `/admin` and `/admin/live` for
+all six roles, announcing *"the controls on this page are disabled"* on pages that have no
+controls. ⛔ **A banner that is technically true and practically false is worse than none** —
+it trains an officer to ignore the one that matters. `DOMAIN_SUMMARY[domain].act === "—"` is
+the existing single definition of *"this domain has nothing to do"*, so it decides.
+
+⛔ **"GATED BY DEFAULT" IS THE GUARD, NOT THE MECHANISM, AND SAYING OTHERWISE WOULD BE THE
+LIE.** A layout cannot reach inside a control component and disable its button; a new control
+that never calls `useMayAct()` is ungated no matter what the shell computes.
+[`test:admin-act-gate`](../scripts/admin-act-gate.test.mts) is what makes the property real:
+it fails on any client component under `src/app/admin` that imports a server action and does
+not consult the gate.
+
+**Coverage, stated exactly: 24 of 46 acting controls consult the gate.** The other 22 are
+declared in [`act-gate-allowlist.json`](../scripts/act-gate-allowlist.json) **with a reason
+each**, and the guard fails if that number grows or if a migrated control is left listed.
+⭐ **Every one of the 22 sits on a domain where no role currently holds view-without-act**, so
+none can exhibit A1 under the shipped matrix — but that is a statement about today's grant
+table, **not** about the code: the Owner can create a view-only grant for any (role, domain)
+pair at `/admin/roles`, and the moment they do those 22 become reachable. They are work items,
+not exemptions, and the allowlist says so in its own header.
+
+⚠️ **`Select` gained a control-level `disabled` + `disabledReason`** rather than a hand-rolled
+one at the call site — the kit rule, and `test:ui-consistency` exists because this codebase has
+already paid for three hand-rolled copies of a kit primitive.
+
+⭐ **THE READING SURVIVES, WHICH IS THE WHOLE POINT.** Date-range presets, search, sort,
+pagination, CSV/PDF export and the transactions filter selects stay live for a read-only
+officer — an auditor who cannot change the window they are looking at cannot audit. The
+payout-status pills and the config toggles are gated *despite* not writing directly, because
+they let a read-only officer **stage** a change they can never apply: the form would show
+"Unavailable" selected while players were still told "Operational".
+
+**Driven: [`qa:admin-act-gate`](../scripts/admin-act-gate-drive.mjs) — 39 passed, 0 failed
+across all 23 cells** (was 23 of 23 rendering identically). Plus `qa:admin-privacy-gate`
+**14/0** and `qa:admin-act-refusal` with the kill-switch now reading `disabled=true` for
+AUDITOR while FINANCE's identical ceremony still changes the switch.
+
+✅ **LOOKED AT.** `/admin/payments` as AUDITOR, read by eye at 1280: the banner is legible,
+and the provider switcher, Test Selcom, demo-async, all three withdrawal-status pills, Apply
+and **all eight MNO kill-switches** render greyed — while `REAL MONEY LIVE`, the simulation
+warning, MNO health, reconciliation and the telemetry note are all still readable.
+
+🔴 **AND THE SWEEP ITSELF WAS WRONG THREE TIMES BEFORE THE PRODUCT WAS.** ① It compared every
+button in `<main>`, so chrome and read controls counted — 8 of the original 23 "failures" were
+a refresh glyph and a nav opener. ② Admin labels are **bilingual** and `textContent`
+concatenates them, so a filter reading `"Apply · Tumia"` matched no English name and reported
+nine phantom ungated controls on `/admin/transactions`; it now splits on the interpunct and
+requires **every** part to be read-safe, which cannot accidentally pass an act control.
+③ Its assertion was *"the renders must differ"* — correct while the defect existed and **wrong
+the moment the fix landed**, because a page with no act controls legitimately renders the same
+for everyone. Restated as the real invariant: *no ENABLED act control is offered to a role that
+cannot act.* ⛔ **Two of my drivers failed over exactly the behaviour they exist to require**,
+which is the [[a-guard-that-cries-wolf]] shape.
 
 ---
 
@@ -219,7 +287,7 @@ as it was; what changed is that the attempt is now recorded.
 
 ---
 
-### A3 · `refused-clicks-pollute-the-security-log` — ⚪ NOT FIXED, and it is A1's other half
+### A3 · `refused-clicks-pollute-the-security-log` — 🟢 SHIPPED 2026-08-11 (fixed at source by A1)
 
 [`control-gates.ts:19-23`](../src/lib/server/control-gates.ts#L19-L23) already states this as
 a defect it exists to prevent, in its own words:

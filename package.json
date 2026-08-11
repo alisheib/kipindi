@@ -358,7 +358,8 @@
     "qa:admin-act-refusal": "node scripts/admin-act-refusal-drive.mjs",
     "test:admin-charts": "tsx scripts/admin-charts.test.mts",
     "test:admin-soft-gate": "tsx scripts/admin-soft-gate.test.mts",
-    "red:admin-soft-gate": "node scripts/admin-soft-gate-red.mjs"
+    "red:admin-soft-gate": "node scripts/admin-soft-gate-red.mjs",
+    "test:admin-act-gate": "tsx scripts/admin-act-gate.test.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

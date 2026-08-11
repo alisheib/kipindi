@@ -1,0 +1,41 @@
+{
+  "_README": [
+    "Admin control components that call a server action and do NOT yet consult the act gate",
+    "(useMayAct / ActGuard). Guarded by `npm run test:admin-act-gate`.",
+    "",
+    "⛔ THE COUNT MAY ONLY SHRINK. `count` is the recorded ceiling and the suite fails if the",
+    "number of ungated controls exceeds it. Adding a name here to buy a green tick defeats the",
+    "entire guard — the same rule `orphan-allowlist.json` carries, for the same reason.",
+    "",
+    "⚠️ EVERY ENTRY BELOW IS ON A DOMAIN WHERE NO ROLE CURRENTLY HOLDS canView WITHOUT canAct,",
+    "so none of them can exhibit A1 under the shipped DEFAULT_GRANTS. That is a statement about",
+    "today's grant matrix, NOT about the code: the Owner can create a view-only grant for ANY",
+    "(role, domain) pair live at /admin/roles, and the moment they do, every control listed here",
+    "becomes reachable. They are work items, not exemptions."
+  ],
+  "count": 22,
+  "entries": {
+    "src/app/admin/2fa/setup/setup-client.tsx": "ops · TOTP enrolment runs BEFORE authorization is established — gating it on canAct would be circular. Genuinely exempt rather than pending.",
+    "src/app/admin/totp-verify/verify-form.tsx": "ops · the step-up 2FA gate itself, same reason as 2fa/setup. Genuinely exempt.",
+    "src/app/admin/roles/roles-matrix.tsx": "ops · OWNER-ONLY (isOwnerOnlyPath), and ADMIN always canAct, so no view-only viewer can reach it. ⚠️ It also carries its own `canAct` identifier — that is the grant DATA it edits, not a permission prop.",
+    "src/app/admin/staff/staff-forms.tsx": "ops · OWNER-ONLY, same as roles-matrix.",
+    "src/app/admin/system/system-client.tsx": "ops · only ADMIN holds `ops` view under DEFAULT_GRANTS, and ADMIN always canAct.",
+    "src/app/admin/ai-usage/ai-ops-controls.tsx": "ops · as system-client.",
+    "src/app/admin/ai-usage/credit-controls.tsx": "ops · as system-client.",
+    "src/app/admin/objections/objection-decision.tsx": "compliance · ALREADY GATED, by the `canDecide` prop the page computes — this is the precedent control-gates.ts cites and that the shell gate generalises. Migrating it to useMayAct would be tidier; it is not a hole.",
+    "src/app/admin/ai-polls/poll-actions.tsx": "trading · MODERATOR holds trading view+act; no role holds trading view WITHOUT act.",
+    "src/app/admin/candidates/candidate-actions.tsx": "trading · as ai-polls.",
+    "src/app/admin/proposals/admin-proposals-client.tsx": "trading · as ai-polls. Also mixes filters/search with acting, so it needs per-button gating rather than an early return.",
+    "src/app/admin/sources/source-controls.tsx": "trading · as ai-polls.",
+    "src/app/admin/events/events-client.tsx": "trading · as ai-polls.",
+    "src/app/admin/moderation/moderation-client.tsx": "trading · as ai-polls.",
+    "src/app/admin/markets/new/wizard.tsx": "trading · as ai-polls. A multi-step form: gating belongs on the Publish step, not on the whole wizard.",
+    "src/app/admin/resolver-queue/resolve-controls.tsx": "trading · as ai-polls. ⚠️ CONTROL_DOMAIN.resolveMarket is `trading`, so the queue must still hide it from a trading role granted VIEW-only at /admin/roles.",
+    "src/app/admin/resolver/[id]/resolution-ceremony.tsx": "trading · as resolve-controls; the resolution ceremony is the highest-consequence trading surface and should be migrated first of this group.",
+    "src/app/admin/updown/updown-controls.tsx": "trading · as ai-polls.",
+    "src/app/admin/updown/proposals/proposal-actions.tsx": "trading · as ai-polls.",
+    "src/app/admin/affiliate/affiliate-admin-client.tsx": "growth · GROWTH holds growth view+act; no role holds growth view WITHOUT act.",
+    "src/app/admin/bonuses/bonus-admin-client.tsx": "growth · as affiliate.",
+    "src/app/admin/invites/invite-admin-client.tsx": "growth · as affiliate."
+  }
+}

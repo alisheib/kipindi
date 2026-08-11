@@ -31,6 +31,7 @@ import { I } from "@/components/ui/glyphs";
 import { useDeferredToast } from "@/components/ui/toast";
 import { Modal } from "@/components/ui/modal";
 import { voidRoundAction } from "../actions";
+import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 
 export function VoidRoundControl({
   roundId,
@@ -44,6 +45,12 @@ export function VoidRoundControl({
   volume: string;
   players: number;
 }) {
+  // A1 — this control only ACTS, so a role holding VIEW without ACT is shown why rather
+  // than being offered a button the server will refuse (and logged as a privilege
+  // escalation for pressing it). See docs/ADMIN-CONSOLE-FINDINGS.md.
+  const mayAct = useMayAct();
+  if (!mayAct) return <ActReadOnly />;
+
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [pending, startTransition] = useTransition();

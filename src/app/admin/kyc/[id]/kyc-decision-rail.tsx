@@ -24,6 +24,7 @@ import {
   escalateKycToAmlAction,
   recommendKycApprovalAction,
 } from "./kyc-actions";
+import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 
 type TriState = "pass" | "fail" | "pending";
 type AutoCheck = { label: string; state: TriState; detail: string };
@@ -61,6 +62,12 @@ export function KycDecisionRail({
   isRecommender: boolean;
   recommenderName: string | null;
 }) {
+  // A1 — this control only ACTS, so a role holding VIEW without ACT is shown why rather
+  // than being offered a button the server will refuse (and logged as a privilege
+  // escalation for pressing it). See docs/ADMIN-CONSOLE-FINDINGS.md.
+  const mayAct = useMayAct();
+  if (!mayAct) return <ActReadOnly />;
+
   const [pending, startTransition] = useTransition();
   const [judg, setJudg] = useState<Record<string, TriState>>(Object.fromEntries(JUDGMENT_CHECKS.map((c) => [c.key, "pending"])));
   const [rejectOpen, setRejectOpen] = useState(false);

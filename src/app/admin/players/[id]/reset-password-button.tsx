@@ -6,8 +6,15 @@ import { I } from "@/components/ui/glyphs";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ActionOverlay, useActionOverlay } from "@/components/admin/action-overlay";
 import { adminResetPasswordAction } from "./actions";
+import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 
 export function ResetPasswordButton({ userId }: { userId: string }) {
+  // A1 — this control only ACTS, so a role holding VIEW without ACT is shown why rather
+  // than being offered a button the server will refuse (and logged as a privilege
+  // escalation for pressing it). See docs/ADMIN-CONSOLE-FINDINGS.md.
+  const mayAct = useMayAct();
+  if (!mayAct) return <ActReadOnly />;
+
   const [result, setResult] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const overlay = useActionOverlay();

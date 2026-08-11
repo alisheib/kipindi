@@ -9,8 +9,15 @@ import { I } from "@/components/ui/glyphs";
 import { bulkRetryAction } from "./payment-actions";
 import { runAdminAction } from "@/lib/client/run-admin-action";
 import { ActionOverlay, useActionOverlay } from "@/components/admin/action-overlay";
+import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 
 export function BulkRetryControls() {
+  // A1 — this control only ACTS, so a role holding VIEW without ACT is shown why rather
+  // than being offered a button the server will refuse (and logged as a privilege
+  // escalation for pressing it). See docs/ADMIN-CONSOLE-FINDINGS.md.
+  const mayAct = useMayAct();
+  if (!mayAct) return <ActReadOnly />;
+
   const [pending, start] = useTransition();
   const [confirm, setConfirm] = useState(false);
   const router = useRouter();

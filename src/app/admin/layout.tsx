@@ -11,9 +11,10 @@ import { hasTotp } from "@/lib/server/totp";
 import { verifySession, signSession } from "@/lib/server/crypto";
 import { ConfidentialBand, AdminSidebar, AdminTopBar, type AdminSession } from "@/components/admin/admin-shell";
 import { TOTP_COOKIE_NAME, TOTP_TTL_SEC } from "@/lib/server/totp-cookie";
-import { isStaffRole, isAdmin, isOwnerOnlyPath, domainForPath, DOMAIN_LABEL } from "@/lib/server/roles";
-import { canView, viewableDomains } from "@/lib/server/rbac";
+import { isStaffRole, isAdmin, isOwnerOnlyPath, domainForPath, DOMAIN_LABEL, DOMAIN_SUMMARY, roleLabel } from "@/lib/server/roles";
+import { canView, canAct, viewableDomains } from "@/lib/server/rbac";
 import { AdminRestricted } from "@/components/admin/admin-restricted";
+import { AdminActProvider, ActReadOnlyBanner } from "@/components/admin/act-gate";
 import { activeKeyFromPath } from "@/components/admin/admin-nav-groups";
 
 /**
@@ -170,6 +171,29 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const viewDomains = Array.from(await viewableDomains(viewerRole));
   const isOwner = isAdmin(viewerRole);
 
+  // ⭐ THE ACT GATE — the same question the ACTION will ask, asked ONCE, here (finding A1).
+  // `canView` without `canAct` is a real, reachable state: under DEFAULT_GRANTS an AUDITOR
+  // holds accounting+compliance view-only and a COMPLIANCE officer holds accounting+support
+  // view-only, and the Owner can create the same shape for ANY (role, domain) pair live at
+  // /admin/roles. Before this, every such page rendered the identical control set it renders
+  // to a role that CAN act — measured across all 23 cells — so an AUDITOR was offered the
+  // real-money kill-switches on /admin/payments. The action layer always refused, but the
+  // offer cost the officer a click and wrote `privilege_escalation_blocked` against them.
+  //
+  // ⛔ The domain is `domainForPath(path)` — the SAME resolver the view gate above uses, so
+  // the two cannot disagree about which domain a route belongs to.
+  const mayAct = ownerOnly ? isAdmin(viewerRole) : await canAct(viewerRole, domain);
+  // ⚠️ THE BANNER IS NOT SHOWN ON A DOMAIN THAT HAS NO ACTIONS, and this was found by driving
+  // rather than by reasoning. EVERY non-Owner role holds `overview` as view-without-act — that
+  // is the shipped matrix, deliberately — so the first version of this banner appeared on
+  // /admin and /admin/live for all six roles, announcing that "the controls on this page are
+  // disabled" on pages that have no controls to disable. A banner that is technically true and
+  // practically false is worse than none: it trains an officer to ignore it, and the one page
+  // where it matters is then also ignored. `DOMAIN_SUMMARY[domain].act === "—"` is the
+  // existing, single definition of "this domain has nothing to do".
+  const domainHasActions = DOMAIN_SUMMARY[domain].act !== "—";
+  const readOnly = !viewBlocked && !mayAct && domainHasActions;
+
   return (
     <div className="min-h-screen bg-bg-base text-text">
       <ConfidentialBand session={adminSession} />
@@ -192,9 +216,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               `data-measure` is what lets scripts/responsive-audit.mjs assert the
               upper bound at runtime — see `npm run test:measure`. */}
           <div className="flex-1 mx-auto w-full max-w-console" data-measure="console">
-            {viewBlocked
-              ? <AdminRestricted title={crumbs[crumbs.length - 1] ?? "Restricted"} need={need} />
-              : children}
+            {viewBlocked ? (
+              <AdminRestricted title={crumbs[crumbs.length - 1] ?? "Restricted"} need={need} />
+            ) : (
+              <AdminActProvider mayAct={mayAct} role={roleLabel(viewerRole)} domainLabel={DOMAIN_LABEL[domain]}>
+                {readOnly && <ActReadOnlyBanner role={roleLabel(viewerRole)} domainLabel={DOMAIN_LABEL[domain]} />}
+                {children}
+              </AdminActProvider>
+            )}
           </div>
         </main>
       </div>

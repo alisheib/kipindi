@@ -75,7 +75,12 @@ async function pause(p) {
   const toggle = p.getByRole("button", { name: /deposits/i }).first();
   if (await toggle.isDisabled()) return false;
   await toggle.click();
+  // ⚠️ The confirm panel replaces the button through a React state update, so it is not in
+  // the DOM on the same tick as the click. Waiting for the element rather than counting it
+  // immediately — a count taken too early reads as "the ceremony would not open", which is a
+  // statement about the driver's timing, not the product.
   const word = p.getByPlaceholder("PAUSE");
+  await word.waitFor({ state: "visible", timeout: 5000 }).catch(() => {});
   if ((await word.count()) !== 1) { r.note(`   confirm panel not open (placeholder count=${await word.count()})`); return false; }
   await word.fill("PAUSE");
   const confirmBtn = p.getByRole("button", { name: "Pause", exact: true });
@@ -125,8 +130,13 @@ try {
   // §5's control caught it, because FINANCE's identical single click changed nothing
   // either. A refusal indistinguishable from an un-fired action is not evidence.
   const clicked = await pause(page);
-  r.check("§3 the control was actually exercised through its confirm (else nothing below proves anything)",
-    clicked, `clicked=${clicked}`);
+  // ⭐ THE INVARIANT HAS TWO ARMS, and it had to be restated once A1's fix landed. This once
+  // read "the control must have been exercised", which was correct while the page offered an
+  // enabled kill-switch to a read-only auditor — and became WRONG the moment the fix disabled
+  // it, so the driver failed over the exact behaviour it exists to require. Either the page
+  // gated the control (the fix), or it was actionable and must be driven and refused.
+  r.check("§3 either the page gated the kill-switch, or it was exercised through its confirm",
+    wasDisabled || clicked, `disabled=${wasDisabled} clicked=${clicked}`);
 
   const after = { kill: await killState(), sec: await secCount(), all: await allAudit() };
   r.note(`after  — killswitch=${after.kill}  privilege_escalation_blocked=${after.sec}  AuditLog=${after.all}`);

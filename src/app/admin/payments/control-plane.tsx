@@ -24,12 +24,20 @@ import { useDeferredToast } from "@/components/ui/toast";
 import { setPaymentControlsAction, testSelcomConnectionAction } from "./payment-actions";
 import type { PaymentControlsView, PaymentProviderId } from "@/lib/server/payment-control";
 import { runAdminAction } from "@/lib/client/run-admin-action";
+import { useMayAct, useActDisabledReason } from "@/components/admin/act-gate";
 
 const PROVIDER_LABEL: Record<PaymentProviderId, string> = { mock: "Mock (test)", selcom: "Selcom", azampay: "AzamPay" };
 
 type Pending = { update: Record<string, string>; title: string; body: ReactNode; confirmLabel: string; tone: "brand" | "warning" | "claret"; tier?: "medium" | "hard"; typedWord?: string } | null;
 
 export function ControlPlane({ controls }: { controls: PaymentControlsView }) {
+  // A1 — this panel carries the REAL MONEY / MOCK mode switch and the provider selector on
+  // the `accounting` domain, and AUDITOR + COMPLIANCE both hold accounting VIEW without ACT.
+  // ⚠️ It is NOT early-returned like the pure act controls: the panel also STATES the current
+  // operations mode, which a read-only officer legitimately needs to read. The reading stays;
+  // only the acting is disabled.
+  const mayActGate = useMayAct();
+  const actReason = useActDisabledReason();
   const [busy, startTransition] = useTransition();
   const [pending, setPending] = useState<Pending>(null);
   const router = useRouter();
@@ -201,7 +209,7 @@ export function ControlPlane({ controls }: { controls: PaymentControlsView }) {
           {providerOptions.map((p) => {
             const active = controls.provider === p;
             const selectable = controls.selectable[p];
-            const disabled = busy || (!active && !selectable);
+            const disabled = busy || !mayActGate || (!active && !selectable);
             return (
               <button
                 key={p}
@@ -230,10 +238,12 @@ export function ControlPlane({ controls }: { controls: PaymentControlsView }) {
           </p>
           <button
             type="button"
-            disabled={busy}
+            disabled={busy || !mayActGate}
             onClick={testConnection}
             className="inline-flex min-h-[36px] shrink-0 items-center gap-1.5 rounded-md border border-border px-3 font-mono text-[10.5px] uppercase tracking-[0.08em] text-text-muted transition-colors hover:text-text disabled:opacity-50"
-            title="Signed order-status probe — no money moves. Must run from an allow-listed IP."
+            /* ⚠️ ONE title, and the read-only reason WINS when it applies — the probe's own
+               explanation is useless on a control the officer cannot press. */
+            title={actReason ?? "Signed order-status probe — no money moves. Must run from an allow-listed IP."}
           >
             <I.bolt s={12} /> Test Selcom · Jaribu
           </button>
@@ -251,7 +261,7 @@ export function ControlPlane({ controls }: { controls: PaymentControlsView }) {
           on={controls.demoAsync}
           explicit={controls.demoAsyncExplicit}
           envValue={controls.env.demoAsync}
-          disabled={busy}
+          disabled={busy || !mayActGate}
           locked={false}
           onChange={(next) => apply({ demoAsync: String(next) })}
         />

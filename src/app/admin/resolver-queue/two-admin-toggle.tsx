@@ -20,8 +20,15 @@ import { useDeferredToast } from "@/components/ui/toast";
 import { I } from "@/components/ui/glyphs";
 import { setTwoAdminAuthAction } from "./resolution-policy-action";
 import { runAdminAction } from "@/lib/client/run-admin-action";
+import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 
 export function TwoAdminToggle({ enabled }: { enabled: boolean }) {
+  // A1 — this control only ACTS, so a role holding VIEW without ACT is shown why rather
+  // than being offered a button the server will refuse (and logged as a privilege
+  // escalation for pressing it). See docs/ADMIN-CONSOLE-FINDINGS.md.
+  const mayAct = useMayAct();
+  if (!mayAct) return <ActReadOnly />;
+
   const [pending, start] = useTransition();
   const [confirmOff, setConfirmOff] = useState(false);
   const router = useRouter();

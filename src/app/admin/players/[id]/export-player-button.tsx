@@ -4,9 +4,16 @@ import { useState } from "react";
 import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
 import { exportPlayerDataAction } from "./actions";
+import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 
 /** Officer-triggered GDPR Art. 15 export — downloads the player's data bundle. */
 export function ExportPlayerButton({ userId }: { userId: string }) {
+  // A1 — this control only ACTS, so a role holding VIEW without ACT is shown why rather
+  // than being offered a button the server will refuse (and logged as a privilege
+  // escalation for pressing it). See docs/ADMIN-CONSOLE-FINDINGS.md.
+  const mayAct = useMayAct();
+  if (!mayAct) return <ActReadOnly />;
+
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const click = async () => {

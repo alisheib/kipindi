@@ -47,11 +47,20 @@ type Props = {
   /** Compact size for admin filter bars. `xs` (h-9) matches the kit's compact
    *  search inputs + btn-sm height so filter rows align flush. */
   size?: "md" | "sm" | "xs";
+  /** Disable the whole control. Options already carry a per-option `disabled`; this is the
+   *  control-level form, added 2026-08-11 for the admin act gate (finding A1) — a role with
+   *  VIEW but not ACT must be able to READ the selected value and not change it. ⚠️ Added to
+   *  the kit rather than hand-rolled at the call site: `test:ui-consistency` exists because
+   *  this codebase has already paid for three hand-rolled copies of a kit primitive. */
+  disabled?: boolean;
+  /** Why it is disabled, surfaced as the trigger's tooltip. A disabled control with no
+   *  reason reads as a bug; the reason turns it into a policy the operator can act on. */
+  disabledReason?: string;
 };
 
 export function Select({
   name, value, defaultValue, onChange, options, placeholder,
-  required, className, ariaLabel, size = "md",
+  required, className, ariaLabel, size = "md", disabled, disabledReason,
 }: Props) {
   const { t } = useT();
   const controlled = value !== undefined;
@@ -209,6 +218,8 @@ export function Select({
       <button
         ref={triggerRef}
         type="button"
+        disabled={disabled}
+        title={disabledReason}
         onClick={() => open ? setOpen(false) : openDropdown()}
         onKeyDown={onTriggerKey}
         role="combobox"
@@ -221,6 +232,7 @@ export function Select({
           "transition-colors font-mono",
           radius, txt, h,
           selectedOption ? "text-text" : "text-text-subtle",
+          disabled && "cursor-not-allowed opacity-50",
           className,
         )}
         style={{ background: "var(--bg-inset)" }}

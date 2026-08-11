@@ -9,8 +9,15 @@ import { approveAmlAction, rejectAmlAction } from "./actions";
 import { TWO_PERSON_THRESHOLD_TZS } from "./constants";
 import { useRouter } from "next/navigation";
 import { formatTzs } from "@/lib/utils";
+import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 
 export function AmlActionRow({ txnId, amount }: { txnId: string; amount: number }) {
+  // A1 — this control only ACTS, so a role holding VIEW without ACT is shown why rather
+  // than being offered a button the server will refuse (and logged as a privilege
+  // escalation for pressing it). See docs/ADMIN-CONSOLE-FINDINGS.md.
+  const mayAct = useMayAct();
+  if (!mayAct) return <ActReadOnly />;
+
   const [busy, setBusy] = useState<"approve" | "reject" | null>(null);
   const [mode, setMode] = useState<"approve" | "reject" | null>(null);
   const [reason, setReason] = useState("");

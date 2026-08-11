@@ -158,8 +158,18 @@ try {
     await page.waitForTimeout(2500); // the action is a server round-trip
     clicked = true;
   }
-  r.check("§3 the refused control was actually exercised (else this proves nothing)", clicked || nExport === 0,
-    `clicked=${clicked} rendered=${nExport} disabled=${disabled}`);
+  // ⭐ THE INVARIANT, NOT THE PRESENCE — and it had to be restated once the fix landed.
+  // Before the page gated its controls this read "the control must have been clicked", which
+  // was right then and became WRONG the moment the fix made the control un-clickable: the
+  // driver reported a failure over exactly the behaviour it exists to require. The real rule
+  // has two arms, and one of them must hold:
+  //   · the control is NOT actionable (absent, or disabled) — the page gated it, which is the fix; or
+  //   · it IS actionable, in which case it must be pressed and the refusal proven below.
+  // ⛔ An unconditional presence check demands a false statement — the same shape as the
+  // Up & Down empty-side sentence that failed on a correct screen.
+  const notActionable = nExport === 0 || disabled === true;
+  r.check("§3 either the page gated the control, or it was exercised and refused",
+    notActionable || clicked, `rendered=${nExport} disabled=${disabled} clicked=${clicked}`);
 
   const after = await snapshot();
   r.note(`after  — DsarRequest=${after.dsar} AuditLog=${after.audits} privilege_escalation_blocked=${after.sec}`);
@@ -183,7 +193,11 @@ try {
                                     from "AuditLog" order by "createdAt" desc limit 3`);
     r.note(`3 newest audit rows: ${recent.map((x) => `${x.category}/${x.action}@${x.at}`).join(" | ") || "(none)"}`);
   } else {
-    r.note("§4 SKIP — nothing was clicked, so there is no refusal to audit. Not a pass.");
+    // ⚠️ SKIP, NOT A PASS, and the distinction is the point: since the page now gates the
+    // control there is no bounced click to audit — which is A3 fixed at the source. The
+    // action-layer audit itself is proven separately and unconditionally by
+    // `test:admin-soft-gate` + `qa:admin-act-refusal`, so nothing is left unproven here.
+    r.note("§4 SKIP — the page gated the control, so no refusal reached the server. That is A3 fixed, not an untested path.");
   }
 
   // ─────────────────────────────────────────────────────────────────────────────────

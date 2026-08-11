@@ -15,8 +15,15 @@ import { Button } from "@/components/ui/button";
 import { I } from "@/components/ui/glyphs";
 import { reconcileMatchAction, reconcileWriteOffAction } from "./payment-actions";
 import { runAdminAction } from "@/lib/client/run-admin-action";
+import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 
 export function ReconcileControls({ txnId }: { txnId: string }) {
+  // A1 — this control only ACTS, so a role holding VIEW without ACT is shown why rather
+  // than being offered a button the server will refuse (and logged as a privilege
+  // escalation for pressing it). See docs/ADMIN-CONSOLE-FINDINGS.md.
+  const mayAct = useMayAct();
+  if (!mayAct) return <ActReadOnly />;
+
   const [pending, start] = useTransition();
   const [mode, setMode] = useState<"match" | "writeoff" | null>(null);
   const [ref, setRef] = useState("");

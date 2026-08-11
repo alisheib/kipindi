@@ -10,6 +10,7 @@ import { formatTzs } from "@/lib/utils";
 import { adjustBalanceAction } from "./actions";
 import { TWO_PERSON_THRESHOLD_TZS } from "../../aml/constants";
 import { runAdminAction } from "@/lib/client/run-admin-action";
+import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 
 /**
  * Manual balance adjustment (audit §9.3 #4) — an officer credits or debits a
@@ -24,6 +25,12 @@ export function BalanceAdjustControls({
   userId: string;
   currentBalance: number;
 }) {
+  // A1 — this control only ACTS, so a role holding VIEW without ACT is shown why rather
+  // than being offered a button the server will refuse (and logged as a privilege
+  // escalation for pressing it). See docs/ADMIN-CONSOLE-FINDINGS.md.
+  const mayAct = useMayAct();
+  if (!mayAct) return <ActReadOnly />;
+
   const router = useRouter();
   const [pending, start] = useTransition();
   const { deferToast, toast } = useDeferredToast(pending);

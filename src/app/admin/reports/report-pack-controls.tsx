@@ -21,6 +21,7 @@ import {
 import { CEREMONY } from "@/lib/admin-status-lexicon";
 import { AttestationRail } from "@/components/admin/attestation-rail";
 import { runAdminAction } from "@/lib/client/run-admin-action";
+import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 
 type PackState = "draft" | "prepared" | "approved" | "submitted" | "acknowledged";
 
@@ -33,6 +34,12 @@ export function ReportPackControls({
   state: PackState;
   isPreparer: boolean;
 }) {
+  // A1 — this control only ACTS, so a role holding VIEW without ACT is shown why rather
+  // than being offered a button the server will refuse (and logged as a privilege
+  // escalation for pressing it). See docs/ADMIN-CONSOLE-FINDINGS.md.
+  const mayAct = useMayAct();
+  if (!mayAct) return <ActReadOnly />;
+
   const [pending, startTransition] = useTransition();
   const [ackRef, setAckRef] = useState("");
   const router = useRouter();

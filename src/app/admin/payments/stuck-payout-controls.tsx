@@ -25,8 +25,15 @@ import { Button } from "@/components/ui/button";
 import { I } from "@/components/ui/glyphs";
 import { reverseStuckPayoutAction } from "./payment-actions";
 import { runAdminAction } from "@/lib/client/run-admin-action";
+import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 
 export function StuckPayoutControls({ txnId, amountLabel }: { txnId: string; amountLabel: string }) {
+  // A1 — this control only ACTS, so a role holding VIEW without ACT is shown why rather
+  // than being offered a button the server will refuse (and logged as a privilege
+  // escalation for pressing it). See docs/ADMIN-CONSOLE-FINDINGS.md.
+  const mayAct = useMayAct();
+  if (!mayAct) return <ActReadOnly />;
+
   const [pending, start] = useTransition();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");

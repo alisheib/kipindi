@@ -11,6 +11,7 @@ import { I } from "@/components/ui/glyphs";
 import { useDeferredToast } from "@/components/ui/toast";
 import { toggleKillSwitchAction } from "./payment-actions";
 import { runAdminAction } from "@/lib/client/run-admin-action";
+import { useMayAct, useActDisabledReason } from "@/components/admin/act-gate";
 
 export function KillSwitch({
   provider,
@@ -38,6 +39,12 @@ function FlowToggle({ provider, providerLabel, kind, paused }: { provider: strin
   const router = useRouter();
   // B-28 — success toasts ride the transition's falling edge (data visible when announced)
   const { toast, deferToast } = useDeferredToast(pending);
+  // A1 — the kill-switch is the emergency stop for the LIVE payment rail, on the `accounting`
+  // domain. AUDITOR and COMPLIANCE both hold accounting VIEW without ACT and were offered all
+  // eight of these fully enabled; driven proof that the server refused is in
+  // `qa:admin-act-refusal`, which read the switch back out of Postgres unchanged.
+  const mayAct = useMayAct();
+  const disabledReason = useActDisabledReason();
 
   const apply = (next: boolean) => {
     startTransition(async () => {
@@ -73,9 +80,10 @@ function FlowToggle({ provider, providerLabel, kind, paused }: { provider: strin
   return (
     <button
       type="button"
-      disabled={pending}
+      disabled={pending || !mayAct}
+      title={disabledReason}
       onClick={() => (paused ? apply(false) : setConfirm(true))}
-      className="flex items-center justify-between gap-1.5 rounded-md border px-2.5 h-9 transition-colors disabled:opacity-50"
+      className="flex items-center justify-between gap-1.5 rounded-md border px-2.5 h-9 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       style={paused
         ? { borderColor: "var(--claret-edge)", background: "var(--claret-soft)", color: "var(--claret-200)" }
         : { borderColor: "var(--border)", color: "var(--text-muted)" }}

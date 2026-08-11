@@ -15,6 +15,7 @@ import { I } from "@/components/ui/glyphs";
 import { formatTzs } from "@/lib/utils";
 import { settleMarketAction } from "./actions";
 import { runAdminAction } from "@/lib/client/run-admin-action";
+import { useMayAct, useActDisabledReason } from "@/components/admin/act-gate";
 
 export function SettleButton({
   marketId, title, pool, positions, outcome,
@@ -30,6 +31,12 @@ export function SettleButton({
   const [pending, start] = useTransition();
   // B-28 — success toasts ride the transition's falling edge (data visible when announced)
   const { toast, deferToast } = useDeferredToast(pending);
+  // A1 — paying a market is `accounting` canAct. A role with accounting VIEW (AUDITOR, and
+  // COMPLIANCE) reaches this page legitimately, so the button must state why it cannot be
+  // used rather than bouncing off `softRequireStaff` and logging the officer as an attempted
+  // privilege escalation.
+  const mayAct = useMayAct();
+  const disabledReason = useActDisabledReason();
 
   const settle = () => {
     start(async () => {
@@ -51,7 +58,9 @@ export function SettleButton({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex min-h-[40px] items-center gap-1.5 rounded-md border border-brand-500 bg-brand-500/10 px-3 py-2 font-mono text-[10.5px] font-bold uppercase tracking-[0.08em] text-brand-300 transition-colors hover:bg-brand-500/20 brand-focus"
+        disabled={!mayAct}
+        title={disabledReason}
+        className="inline-flex min-h-[40px] items-center gap-1.5 rounded-md border border-brand-500 bg-brand-500/10 px-3 py-2 font-mono text-[10.5px] font-bold uppercase tracking-[0.08em] text-brand-300 transition-colors hover:bg-brand-500/20 brand-focus disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-brand-500/10"
       >
         <I.check s={13} className="shrink-0" />
         Settle now

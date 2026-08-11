@@ -15,8 +15,15 @@ import {
 } from "./actions";
 import type { RateConfig } from "@/lib/server/market-config";
 import { formatTzs } from "@/lib/utils";
+import { useMayAct, useActDisabledReason } from "@/components/admin/act-gate";
 
 export function GlobalConfigForm({ config }: { config: RateConfig }) {
+  // A1 — /admin/config is the `accounting` domain, and AUDITOR + COMPLIANCE both hold
+  // accounting VIEW without ACT. The rate values stay readable — a read-only officer needs
+  // to see what the platform charges — and only the writes are gated.
+  const mayAct = useMayAct();
+  const disabledReason = useActDisabledReason();
+
   const [pending, start] = useTransition();
   const router = useRouter();
   const { deferToast, toast } = useDeferredToast(pending);
@@ -208,6 +215,8 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
             <Select
               name="feeModel"
               ariaLabel="Fee model for new polls"
+              disabled={!mayAct}
+              disabledReason={disabledReason}
               defaultValue={config.feeModel}
               onChange={(v) => setFeeModel(v as RateConfig["feeModel"])}
               options={[
@@ -264,6 +273,7 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
                 <Toggle
                   on={showEst}
                   onClick={() => setShowEst((v) => !v)}
+                  disabled={!mayAct}
                   aria-label="Show the possible-winnings estimate to players before betting"
                 />
                 <span className="text-[13px] text-text-muted">
@@ -276,7 +286,7 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
       </div>
 
       <div className="flex items-center gap-2 pt-1">
-        <Button type="submit" variant="yes" loading={pending}>
+        <Button type="submit" variant="yes" loading={pending} disabled={!mayAct} title={disabledReason}>
           Save · Hifadhi
         </Button>
         {/* The old note here read "Combined tax + commission + reserve + aggregator
@@ -313,6 +323,12 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
 }
 
 export function MarketOverrideForm({ globalConfig }: { globalConfig: RateConfig }) {
+  // A1 — /admin/config is the `accounting` domain, and AUDITOR + COMPLIANCE both hold
+  // accounting VIEW without ACT. The rate values stay readable — a read-only officer needs
+  // to see what the platform charges — and only the writes are gated.
+  const mayAct = useMayAct();
+  const disabledReason = useActDisabledReason();
+
   const [pending, start] = useTransition();
   const router = useRouter();
   const { deferToast, toast } = useDeferredToast(pending);
@@ -372,7 +388,7 @@ export function MarketOverrideForm({ globalConfig }: { globalConfig: RateConfig 
           <Input name="maxStake" type="number" step="1000" min="1000" placeholder="" mono />
         </Field>
       </div>
-      <Button type="submit" variant="primary" loading={pending}>
+      <Button type="submit" variant="primary" loading={pending} disabled={!mayAct} title={disabledReason}>
         Save override
       </Button>
     </form>
@@ -380,6 +396,12 @@ export function MarketOverrideForm({ globalConfig }: { globalConfig: RateConfig 
 }
 
 export function ClearOverrideButton({ marketId }: { marketId: string }) {
+  // A1 — /admin/config is the `accounting` domain, and AUDITOR + COMPLIANCE both hold
+  // accounting VIEW without ACT. The rate values stay readable — a read-only officer needs
+  // to see what the platform charges — and only the writes are gated.
+  const mayAct = useMayAct();
+  const disabledReason = useActDisabledReason();
+
   const [pending, start] = useTransition();
   const router = useRouter();
   const { deferToast, toast } = useDeferredToast(pending);
@@ -401,7 +423,7 @@ export function ClearOverrideButton({ marketId }: { marketId: string }) {
     });
   };
   return (
-    <Button type="button" size="sm" variant="ghost" onClick={onClick} loading={pending}>
+    <Button type="button" size="sm" variant="ghost" onClick={onClick} loading={pending} disabled={!mayAct} title={disabledReason}>
       Clear
     </Button>
   );
