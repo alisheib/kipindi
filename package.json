@@ -363,7 +363,8 @@
     "test:margin-series": "tsx scripts/margin-series.test.mts",
     "red:margin-series": "node scripts/margin-series-red.mjs",
     "red:admin-charts": "node scripts/admin-charts-red.mjs",
-    "qa:admin-view-matrix": "tsx scripts/admin-view-matrix-drive.mjs"
+    "qa:admin-view-matrix": "tsx scripts/admin-view-matrix-drive.mjs",
+    "qa:admin-filters": "node scripts/admin-filter-drive.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",
