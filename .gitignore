@@ -57,6 +57,8 @@ scripts/_walkthrough/
 # ⭐ Re-shooting the TRANSLATED arm needs `npm run db:seed-criterion-local` first —
 # until F6b/F6c land, no production poll has a translated criterion to photograph.
 .qa-f6*/
+# Per-market override panel shots (npm run qa:override-visual --shots). Same rule.
+.qa-f3/
 
 # Test images (user reference, not for production)
 Test Images/
