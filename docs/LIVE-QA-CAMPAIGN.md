@@ -5668,6 +5668,56 @@ state**, 1,338,504 of players' stakes in escrow, and every ledger entry ever wri
 > landing one atom per commit. Read the block directly below this note before touching
 > `src/app/globals.css`, `src/app/motion.css`, or anything under `src/components/ui/`.
 
+### 🟢 Laptop A, session 43 (2026-08-11) — ⭐ THE SENTENCE THE PAYOUT TURNS ON NOW EXISTS IN THREE LANGUAGES, END TO END
+
+#### ⏭️ **RESUME AT (session 44):** ⭐ **READ [`docs/POLL-OPEN-FINDINGS.md`](POLL-OPEN-FINDINGS.md) FIRST — it is the record; this block is only the pointer.** Six commits shipped and deployed, each one fix + one RED-proven guard + docs in ONE commit, pushed and verified separately. **F6 is COMPLETE end to end and F3 is CLOSED.**
+
+💰 **NO MONEY MOVED THIS SESSION, NOTHING IS IN FLIGHT, NOTHING IS STRANDED, AND THERE IS NO PAYOUT TO EXPECT — and this sentence is written at the END of the session, not the start.** No bet was placed, no market created on production, no wallet touched, and no production write of any kind was made. Production census across the whole session: **users 71 · marketsLive 45 · marketsResolved 1213 → 1230**, ordinary traffic only.
+
+⚠️ **`src/lib/server/` WAS TOUCHED IN FIVE FILES** — `market-service.ts` (`StoredMarket`, `CreateMarketInput`, `createMarket`), `market-dal.ts` (BOTH arms of the upsert), `ai-poll-generation.ts`, `market-candidate.ts`, `ai-provider*.ts`. ⛔ **No branch, threshold, refusal, fee, payout or ledger write changed.** Every edit adds two nullable columns and carries them; `test:money-invariants` 84, `test:ledger`, `test:cashout-lock` and `test:settle-atomicity` were green throughout.
+
+🔴 **TWO MIGRATIONS RAN ON THE LIVE MONEY DB, BOTH ADDITIVE, BOTH PROVEN ON THE LOCAL DISPOSABLE CLUSTER FIRST.** `20260811120000` adds `resolutionCriterionSw`/`Zh` to **PredictionMarket**; `20260811150000` adds the same pair to **AIPoll** and **MarketCandidate**. All six columns were read back out of `information_schema` as `is_nullable = YES` before either went near a deploy. A nullable `ADD COLUMN` with no default is catalogue-only — no table rewrite on a live money table. ⛔ **NEITHER IS BACKFILLED WITH THE ENGLISH**, because that would make *"untranslated"* and *"translated identically"* permanently indistinguishable — which is **F8**, on three brand-new columns.
+
+✅ **WHAT SHIPPED — E-146 … E-151, plus one skill fix.**
+1. **E-148** · `test:proposal-close` had been **RED on `main`** since E-145 six hours earlier, asserting the UTC day-pin that E-145 deliberately abolished. **Proven pre-existing on a stashed clean tree**, not assumed. The expectation now derives from `endOfProposalDayIso`, plus a 27th assertion that deliberately does NOT use it (an `Intl` read-back), so the two halves can fail independently.
+2. **E-146 · F6a** — the criterion's READ path: two nullable columns, `pickCriterion` returning `{ text, shownIn, fellBack }`, and a player surface **obliged to say** which language it is showing.
+3. **E-149 · F6b** — the wizard collects all three; a translation that is too short, or that IS the English, is **refused rather than silently corrected**.
+4. **E-150 · F6c** — the AI path asks for it, stores it, shows it to the officer and publishes it; **both** publish paths (`/admin/ai-polls` and `/admin/candidates`) carry it.
+5. **E-151 · F3** — the four inert per-market rate inputs removed (Ali's option ①); `minStake`/`maxStake` kept, and guarded against collateral removal.
+6. **The `50pick-audit` skill said the local Postgres lives at `C:\pg-loadtest`. It is on `F:`** — and `scripts/load/README.md`, the file that same line names as its full guide, said `F:` all along. A skill that disagrees with its own cited source gets read first and believed.
+
+⭐ **THE LESSON OF THIS SESSION, AND IT IS USEFULLY EMBARRASSING: SIX OF MY OWN CHECKS WERE WRONG BEFORE THE PRODUCT WAS, AND FOUR WERE THE SAME MISTAKE.** ⛔ **An anchor that matches in more than one place is not an anchor.**
+① A §3 locator anchored on a `{/* … */}` comment that the guard's own `decomment()` had already deleted — it found **0 characters** and then "failed" five assertions about a section it had never read.
+② A row inserted into `LIVE-QA-CAMPAIGN.md` by matching `|---|---|---|---|---|` landed in the **QA persona roster**; that header occurs **14 times** in this file.
+③ `required:` in the AI tool schema matched the **`sources` sub-schema** first.
+④ Re-anchored on "the array containing `titleEn`" — still wrong, because a **second tool schema** has one too. ⭐ **The token parse that finally fixed ④ matters more than the fix**: `"resolutionCriterion"` is a **PREFIX** of `"resolutionCriterionSw"`, so `includes()` could not tell *"the English is required"* from *"the Swahili is required"* — the check was **unable to fail in the one direction that mattered.**
+⑤ A check requiring a literal `&&` failed over a correct ternary — testing which JSX idiom the author picked, not a fact about the product.
+⑥ A page-wide `[role="alert"]` matched the always-mounted toast region, so "no alert on the page" was false over a valid field.
+**Every one was found by asking what the check READ.**
+
+🔴 **AND AN HOUR WENT INTO ONE SCREENSHOT THAT THE INSTRUMENT — NOT THE PRODUCT — WAS BLOCKING, THREE SEPARATE TIMES.** ① `/api/dev-test/seed-admin` **404s under `next start`** (gated on `NODE_ENV`), so `next dev` was tried; its **HMR WebSocket never came up** on this machine (19 × `ERR_INVALID_HTTP_RESPONSE`) and the page rendered from the server and **never hydrated** — a perfectly healthy wizard whose Continue button stayed `disabled` through 60s of retries. ⭐ The answer was to **stop needing the dev server** ([`seed-admin-local.mts`](../scripts/seed-admin-local.mts)), not to lower the bar to what it could show. ② The local `next start` had **no `AUDIT_CHAIN_SECRET`**, so the audit write inside the login transaction threw and sign-in bounced to the signed-out home page — *"looks exactly like a wrong password, and is not one."* Settled by verifying the credential with the app's own `verifyPassword` (**true**) before trusting the browser again. ③ A label carries `text-transform: uppercase` and **`innerText` returns the RENDERED text**, so a case-sensitive check failed over correct markup.
+⚠️ **The 9-digit local part, `/auth/admin` for staff, and `networkidle` before filling are ALL already written down in [`scripts/live/harness.mjs`](../scripts/live/harness.mjs) — I re-derived two of them the hard way before reading it. Read that file before writing any driver that signs in.**
+
+▶ **WHAT IS LEFT, AND NONE OF IT IS BLOCKED ON EFFORT.**
+1. **F2 `one-sided-loser-share-phantom-fee`** — ⛔ **STILL NOT LOCATED, and deliberately untouched.** All three consumers of the notional `commission` field are correctly gated. **Locate and photograph the wrong number before writing any fix** — [[remedy-inherits-the-trap]].
+2. **F7** — `/positions` discounts a cash-out fee off a position that can never be cashed out. Needs a product decision about what *"live value"* should mean for a bet that can only ride to settlement.
+3. **F8** — proposal publish writes `p.titleEn` into the `titleSw` column. ⭐ The `titleZh: … ?? null` line beside it is the CORRECT one of the pair; make `titleSw` match it, not the reverse. ⚠️ Check whether anything reads `titleSw` raw first.
+4. **F10 / E-147 — NEW, filed this session.** The player's proposal form asks for **three titles by language** and **one criterion by none**, so a Swahili proposer types Swahili into the field that becomes the market's canonical **English** column — the one the resolver and `market-sentinel.ts` read to decide the payout. ⭐ **This is F6's mirror and the worse of the two.** ⛔ The live count has **NOT** been measured. **Ali's call between two remedies.**
+5. **OP2** — `mkt_fdf70a0704dc1789f404` has been CLOSED awaiting an officer's verdict since 2026-08-09 21:00, now ~**60h**. A human task, not code.
+6. **OP3** — the owner console password rotation. **Ali's, and still open.**
+7. ⛔ **The eight findings lost with session 41's transcript are still lost.** The honest count of this lane is **4 known-open + 8 unknown**, not 4.
+
+⚠️ **WHAT THIS SESSION COULD NOT VERIFY, STATED PLAINLY.** ⛔ **No admin surface was driven on PRODUCTION**, because an owner login there revokes Ali's live session — the thing that locked him out in session 42. The wizard, the AI-poll review card and the config panel were driven and photographed on a **local production build** (`next build && next start`) against the disposable cluster, never on prod. The **player** surface WAS verified on production, in all three locales, on a real live poll, after every one of the three F6 deploys. ⚠️ `/api/health` still carries no commit SHA, so *"the deploy landed"* is inferred from uptime resetting, not proven.
+
+⚠️ **AND TWO §8 ASSERTIONS WERE NOT EXERCISED BY THEIR RED RUN.** `git stash push` does **not** stash untracked files, so the new migration survived the stash and its two existence checks passed in both states. They are existence checks on a file authored in the same commit, not defect detectors — but **a RED run covering 16 of 18 assertions is not a RED run covering 18**, and calling it one would be exactly the kind of claim this file exists to prevent.
+
+✅ **THE EVIDENCE.** `test:all` **198/200** — the two reds are `test:responsive` and `test:motion`, which need a live `:3000` (`ECONNREFUSED ::1:3000`, the documented environmental class), and **`test:proposal-close` is green again** · `test:criterion-i18n` **91/91**, RED **23 / 7 / 2 / 4 / 16** across five separate plants and stashes, every file restored byte-identical (`cmp`) · `test:override-scope` **17/17**, RED **6** · `qa:criterion-visual` **32/0 ON PRODUCTION** ×3 and **68/0** locally · `qa:criterion-wizard` **38/0** · `qa:override-visual` **24/0** · `tsc` **0** · `next build` **exit 0** ×5. ⚠️ The build logs **2 × "Ecmascript file had an error"** in `lock-key.ts`/`audit.ts` — **pre-existing**, identical count before and after, files untouched here.
+
+🔑 **NEW INSTRUMENTS, ALL WIRED (`test:orphans` refuses an unwired script, and it caught me).** `test:criterion-i18n` · `test:override-scope` · `qa:criterion-visual` — the player surface, **runs against production**, and skips the translated arm there with a printed NOTE rather than covering one arm silently · `qa:criterion-wizard` and `qa:override-visual` — **localhost-only, they refuse any other base**, because an admin login on prod revokes the owner session · `db:seed-criterion-local` and `db:seed-admin-local` — **three refusal gates each**.
+
+— *the prior session's record is kept below:*
+
+
 ### 🟢 Laptop B, session 42 (2026-08-11) — ⭐ FOURTEEN FINDINGS LIVED IN A TRANSCRIPT AND EIGHT DIED WITH IT; THREE OF THE SURVIVORS ARE FIXED
 
 #### ⏭️ **RESUME AT (session 43):** ⭐ **THE OPEN FINDINGS NOW LIVE IN A TRACKED FILE — [`docs/POLL-OPEN-FINDINGS.md`](POLL-OPEN-FINDINGS.md). READ THAT FIRST; it is more current than this block will be.** This session opened on a DIFFERENT machine from session 41 and pulled 22 commits.
