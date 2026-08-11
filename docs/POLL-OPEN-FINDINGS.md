@@ -324,9 +324,75 @@ situations apart.
 
 | # | item | owner | state |
 |---|---|---|---|
-| OP1 | Two LIVE polls carry no Chinese title | dev | proposal path never sets `titleZh`; AI path does. Fix at source — `backfill:zh` exists because this has been patched by backfill before |
+| OP1 | Two LIVE polls carry no Chinese title | — | ⚪ **NOT A DEFECT — closed 2026-08-11.** See below |
 | OP2 | `mkt_fdf70a0704dc1789f404` (TCRA Q2) CLOSED awaiting an officer's verdict since **2026-08-09 21:00** | officers | ~46h as of 2026-08-11. Needs a human verdict, not code |
 | OP3 | Owner console password rotation | **Ali** | 🔴 `Admin@1234` was in this repo in plaintext from 2026-08-04 to 2026-08-11 on a pushed branch. Redacted in `3bc5d60b`; **redaction does not un-publish**. Rotation is the only remedy, plus 2FA re-enrol |
+
+### OP1 · "two LIVE polls have no Chinese title" — ⚪ NOT A DEFECT, closed 2026-08-11
+
+Session 41 recorded this as a dev task: *"the AI path sets `titleZh`, the proposal path does not,
+and `backfill:zh` exists because this has been patched by backfill before rather than at source."*
+
+**Checked, and the premise is wrong in both halves.**
+
+① **The proposal path does set it.** [`proposals-service.ts:559`](../src/lib/server/proposals-service.ts#L559)
+passes `titleZh: p.titleZh ?? null`, the service stores it
+([`:193`](../src/lib/server/proposals-service.ts#L193)), and the player's submission form has a
+Chinese field ([`create-form.tsx:101`](../src/app/proposals/new/create-form.tsx#L101)). The whole
+chain is wired. The field is simply **optional**, and these two proposers left it blank.
+
+② **And a blank one renders correctly.** [`pickLocalized`](../src/lib/localized.ts) treats
+`null` / `""` / whitespace as absent and falls back to English — *"English is the CANONICAL
+language … the UI always renders exactly ONE language and never a blank."* A Chinese player sees
+the English title, which is the documented design, not a hole.
+
+⭐ **This is the [[write-only-fields]] lesson running in reverse: I checked the READ path and it
+was already right.** The finding described a write-side asymmetry and inferred a player-visible
+consequence that does not exist. ⛔ Before filing "field X is missing", render it.
+
+⚠️ **AND THE ASYMMETRY IS REAL BUT POINTS THE OTHER WAY — filed as F8 below.** It is
+`titleSw`, not `titleZh`, that is handled wrongly.
+
+### F8 · `proposal-publish-bakes-english-into-the-swahili-column` — ⚪ NEW, found 2026-08-11, NOT fixed
+
+The line above `titleZh` reads:
+
+```ts
+titleSw: p.titleSw ?? p.titleEn,     // proposals-service.ts:558
+titleZh: p.titleZh ?? null,          // :559
+```
+
+Since `pickLocalized` already falls back to English at render time, the `?? p.titleEn` is not
+needed for display — and it does real harm: it **writes the English string into the Swahili
+column**, making "this poll has no Swahili translation" permanently indistinguishable from "its
+Swahili translation is the same as its English". Any audit, any `backfill:sw`, any *"which live
+polls still need translating?"* query is blinded for every proposal-published poll.
+
+⭐ **`titleZh: … ?? null` is the CORRECT one of the pair.** The fix is to make `titleSw` match it,
+not the reverse.
+
+**Not fixed today** because it changes what gets STORED for future polls, and a data-semantics
+change on a money-adjacent entity should be Ali's call rather than a quiet edit. ⚠️ Check whether
+anything reads `titleSw` raw (outside `pickLocalized`) before flipping it.
+
+### F9 · `proposal-resolution-date-pinned-to-23:59-UTC` — ⚪ NEW, found 2026-08-11, NOT fixed
+
+Same family as F4, found while reading the publish path:
+
+```ts
+const resolutionAt = new Date(`${p.resolutionDate}T23:59:59.000Z`).toISOString();   // :550
+```
+
+A proposer picks a **calendar date**. It is pinned to 23:59:59 **UTC**, which is **02:59:59 EAT
+the following morning** — so a poll a player proposed "for the 15th" actually resolves three
+hours into the 16th, and betting stays open through those hours. `selectionCloseDate` gets the
+same treatment on the next line.
+
+⚠️ **Not the same fix as F4** and must not be swept in with it: F4 converts an officer's *wall
+clock*, whereas this is a *date* that needs a policy — "end of that day **on the platform
+clock**" (20:59:59Z for EAT) is almost certainly the intent, but changing it moves the resolution
+instant of every future proposal-published poll by three hours. ⛔ Decide the policy first, then
+change it; do not infer it from F4.
 
 ⚪ **Deliberately NOT open:** the E-138 pool-inflation shape on 5 LIVE polls. Ali ruled *"the data
 gets reset before launch"* — see [[50pick-data-resets-before-launch]]. It is a pre-launch reset

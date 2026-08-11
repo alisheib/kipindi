@@ -231,7 +231,15 @@ const YES_POOL = 2000, NO_POOL = 2000, ALPHA_STAKE = 2000;
   // that said "freezing TZS 59,450" simply because that verb was missing here,
   // which is the same vocabulary-pinning mistake three earlier guards made.
   // What it must NOT accept is silence, and it does not.
-  const declares = /money in flight|nothing in flight|stranded|frozen|freezing|unsettled|no money (is )?(in flight|outstanding)/i.test(resume);
+  // ⚠️ `no money moved` ADDED 2026-08-11 (session 42) — the same vocabulary-pinning
+  // failure the comment above describes, recurring for the fourth time. Session 42's
+  // handoff declared the position as plainly as any wording on this list ("NO MONEY
+  // MOVED THIS SESSION … THERE IS NO PAYOUT TO EXPECT") and was refused, because the
+  // list happened not to contain that verb. ⭐ The property is "the handoff SAYS where
+  // the money stands"; a session that moved none has stated it, and forcing it to
+  // reword into an approved synonym teaches sessions to write for the guard rather
+  // than for the reader. Silence still fails — which is the whole point.
+  const declares = /money in flight|nothing in flight|stranded|frozen|freezing|unsettled|no money (is )?(in flight|outstanding)|no money moved/i.test(resume);
   ok("§5 §6b states the money position — an expected payout, or an explicit declaration",
     expected != null || declares,
     "the handoff names neither a 'receive **TZS …**' figure nor the money position");
