@@ -40,8 +40,18 @@ KP_REPO=F:/kipindi-main node scripts/live/ops/census.cjs
 | `e63-red.cjs` | can the E-63 guard still fail | corpus + inverted-predicate proof, read-only |
 | `e134-count.cjs` · `e134-timeline.cjs` | audit-row volume and its per-minute pairing | ⚠️ fixing the subject mid-measurement makes the "after" window prove nothing |
 | `predictor-zero.cjs` | which POPULATION a count counts | stopped a backfill writing *"TZS 500,000 volume · 0 predictors"* onto 37 cards |
-| `stranded-check.cjs` | is money stuck, or inside its objection window | timing is the whole answer |
 | `e138-diagnose.cjs` · `orphan-stakes.cjs` | why a pool has no positions; is anyone out of pocket | the ledger is the arbiter, not the pool |
+| `poll-census.cjs` | the whole POLL lane: clocks, sweeps, settlement, content integrity | ⛔ filters `productLine = 'MARKET'` on EVERY query — the Up & Down rounds outnumber the polls ~12:1, so a forgotten filter reads as a healthy poll lane built entirely out of price rounds |
+| `house-money.cjs` | where the platform's own money lives, and how much | ⚠️ separates what is OWNED (`HOUSE:COMMISSION`) from what is merely HELD — the TRA/GBT levies are owed to the state and `POOL:*` is players' stakes in escrow, not revenue |
+| `pool-residual.cjs` | does every SETTLED market's pool return to zero | ⭐ found the commission-rounding defect that four money suites were green over: the error hid in a self-cancelling POOL/COMMISSION pair, so the aggregate balanced while the component did not |
+
+<!-- ⛔ `stranded-check.cjs` WAS LISTED HERE AND HAS NEVER EXISTED. Removed 2026-08-11 after
+     a close-out audit went looking for it. This file's own opening rule is that a tool named
+     in a handoff has to exist in the repo or the handoff is fiction — the table had been
+     breaking that rule about itself. The question it claimed to answer ("is money stuck, or
+     inside its objection window") is answered by `census.cjs`, which separates IN FLIGHT from
+     STRANDED on exactly that distinction. -->
+
 
 ## Rules
 

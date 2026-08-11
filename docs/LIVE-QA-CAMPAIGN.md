@@ -5588,6 +5588,23 @@ resolve markets and approve withdrawals. ⚠️ Neither change is in `AuditLog` 
 HMAC-linked chain and appending a row with a wrong `prevHash` would corrupt the verification the
 licence depends on, so a missing row was chosen over a broken chain. **Log it manually.**
 
+### ⚠️ One thing the fix does NOT do, quantified
+
+**The fix is FORWARD-ONLY. The nine historical residuals are still there** — verified after the
+deploy: `settled pools still non-zero: 9`, seven of them negative, **net −6 TZS across the whole of
+production history**. Correcting them means writing compensating ledger entries against closed
+markets, which is an operator decision about the books rather than a code change, so it was NOT
+done unilaterally. ⭐ Re-measure any time with
+`KP_REPO=C:/kipindi-main node scripts/live/ops/pool-residual.cjs`; the number may only shrink from
+here, because no NEW settlement can add to it. ⛔ It belongs on the pre-launch reset list beside
+E-138, not in the backlog.
+
+⚠️ **And note how the shell nearly ate this paragraph.** Two backtick-quoted fragments were written
+through `node -e` inside a bash heredoc and bash ran them as command substitution, deleting both —
+leaving a sentence that read *"verified after the deploy: , seven of them negative"*. It was caught
+by reading the rendered file back. ⛔ **Write prose with the editor, not through a shell**; a doc
+edit that silently loses its evidence is the same defect class as a guard that reads nothing.
+
 ### The instruments this left behind
 
 `qa:place-bet` (places a real bet as a named player; **refuses without `--live`**; proves the
