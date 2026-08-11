@@ -151,6 +151,25 @@ console.log("\n§5 AdminBarList");
   const allZero = render(h(AdminBarList, { rows: [{ label: "a", value: 0 }, { label: "b", value: 0 }] }));
   ok("§5 an all-zero list emits no NaN", !/NaN|Infinity/.test(allZero));
   ok("§5 CONTROL — an empty list renders without throwing", render(h(AdminBarList, { rows: [] })).length >= 0);
+
+  // ⭐ THE ANTI-COLLATERAL ASSERTION. A5's fix is "zero is zero", NOT "small values vanish".
+  // A row worth 1 in 10,000 is 0.01% and would be a sub-pixel bar, so the 2% floor must
+  // survive for every non-zero value — otherwise the fix trades one misreading for another
+  // and nothing would notice. ⚠️ This is expected to pass in BOTH states, on purpose: a check
+  // that only goes red with the defect cannot protect the thing the fix might break.
+  const tiny = render(h(AdminBarList, { rows: [{ label: "big", value: 10_000 }, { label: "tiny", value: 1 }] }));
+  const tinyWidths = [...tiny.matchAll(/width:\s*([\d.]+)%/g)].map((m) => Number(m[1]));
+  ok("§5 CONTROL — a tiny NON-zero row still paints its visibility floor",
+    tinyWidths.includes(2), `widths=[${tinyWidths.join(", ")}]`);
+
+  const tinyMeter = render(h(AdminMeter, { value: 1, cap: 10_000, label: "Credit" }));
+  ok("§4 CONTROL — a tiny NON-zero meter still paints its 1% floor",
+    /width:\s*1%/.test(tinyMeter), tinyMeter.match(/width:\s*[\d.]+%/)?.[0] ?? "none");
+
+  const tinySeg = render(h(AdminStackedBars, { bars: [{ label: "d1", segments: [10_000, 1] }] }));
+  const segHeights = [...tinySeg.matchAll(/<rect[^>]*height="([\d.]+)"/g)].map((m) => Number(m[1]));
+  ok("§2 CONTROL — a tiny NON-zero segment still paints its 0.5px floor",
+    segHeights.includes(0.5), `heights=[${segHeights.join(", ")}]`);
 }
 
 // ── §6 · AdminGauge ────────────────────────────────────────────────────────────────

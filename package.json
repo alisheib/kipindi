@@ -359,7 +359,10 @@
     "test:admin-charts": "tsx scripts/admin-charts.test.mts",
     "test:admin-soft-gate": "tsx scripts/admin-soft-gate.test.mts",
     "red:admin-soft-gate": "node scripts/admin-soft-gate-red.mjs",
-    "test:admin-act-gate": "tsx scripts/admin-act-gate.test.mts"
+    "test:admin-act-gate": "tsx scripts/admin-act-gate.test.mts",
+    "test:margin-series": "tsx scripts/margin-series.test.mts",
+    "red:margin-series": "node scripts/margin-series-red.mjs",
+    "red:admin-charts": "node scripts/admin-charts-red.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

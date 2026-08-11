@@ -116,7 +116,7 @@ export function AdminAreaChart({
               fontSize="11"
               fill="var(--text-tertiary)"
             >
-              {compact(t)}
+              {compact(t, range / 4)}
             </text>
           </g>
         );
@@ -197,7 +197,16 @@ export function AdminStackedBars({
         return (
           <g key={i}>
             {b.segments.map((v, si) => {
+              // ⛔ A ZERO PAINTS NOTHING (finding A5). This was `Math.max(0.5, segH)`, so a
+              // provider with NO volume in a bucket still drew a 0.5px sliver — and unlike the
+              // bar-list and the meter, a stacked bar prints no number beside it, so nothing
+              // disclosed the zero. Measured on production: 6 of 8 (provider × day) cells on
+              // /admin/finance's "Provider mix over time" hold zero volume, so three quarters
+              // of that chart's marks stood for deposits that did not happen.
+              // ⭐ A NON-ZERO value keeps a visible floor — the fix is "zero is zero", not
+              // "make small values invisible", which would trade one misreading for another.
               const segH = (v / maxStack) * innerH;
+              const painted = v === 0 ? 0 : Math.max(0.5, segH);
               yCursor -= segH;
               return (
                 <rect
@@ -205,7 +214,7 @@ export function AdminStackedBars({
                   x={x.toFixed(1)}
                   y={yCursor.toFixed(1)}
                   width={barW.toFixed(1)}
-                  height={Math.max(0.5, segH).toFixed(1)}
+                  height={painted.toFixed(1)}
                   fill={colors[si % colors.length]}
                 />
               );
@@ -348,7 +357,9 @@ export function AdminMeter({
       <div className="relative h-2.5 rounded-sm bg-bg-sunken overflow-hidden">
         <div
           className="absolute inset-y-0 left-0 rounded-sm admin-bar-grow"
-          style={{ width: `${Math.max(1, pct)}%`, background: danger ? "var(--no-500)" : "var(--brand-500)" }}
+          // ⛔ A ZERO PAINTS NOTHING (finding A5) — this was `Math.max(1, pct)`. A non-zero
+          //    value keeps the 1% floor so a tiny reading stays visible.
+          style={{ width: `${value === 0 ? 0 : Math.max(1, pct)}%`, background: danger ? "var(--no-500)" : "var(--brand-500)" }}
         />
         {thresholdPct > 0 && thresholdPct < 100 && (
           <span aria-hidden className="absolute inset-y-0 w-px" style={{ left: `${thresholdPct}%`, background: "var(--text-tertiary)", opacity: 0.6 }} />
@@ -379,7 +390,11 @@ export function AdminBarList({
   return (
     <div className="space-y-2.5">
       {rows.map((r, i) => {
-        const pct = Math.max(2, (r.value / max) * 100);
+        // ⛔ A ZERO PAINTS NOTHING (finding A5) — this was an unconditional `Math.max(2, …)`,
+        // so an empty row drew a 2% bar. The floor stays for non-zero values: a row worth 1
+        // out of 10,000 must still be visible, and making it invisible would swap one
+        // misreading for another.
+        const pct = r.value === 0 ? 0 : Math.max(2, (r.value / max) * 100);
         return (
           <div key={i} title={r.title}>
             <div className="mb-1 flex items-baseline justify-between gap-2 text-caption">
@@ -457,10 +472,29 @@ export function AdminGauge({
   );
 }
 
-function compact(n: number): string {
+/**
+ * Compact axis/label formatting.
+ *
+ * ⛔ `step` IS NOT OPTIONAL DECORATION — it is what stops an axis mislabelling its own
+ * gridlines (finding A4). The five y-ticks sit at `min + t·range` for t ∈ {0,.25,.5,.75,1},
+ * and this function used to round every one of them to a whole number. On a series topping
+ * out at 1 that produced the labels `0, 0, 1, 1, 1` across five DISTINCT values: the gridline
+ * at 0.25 was labelled `0` and the one at 0.5 was labelled `1`. A reader taking a value off
+ * the axis read a number the chart did not mean, with no adjacent figure to correct it.
+ *
+ * ⭐ Passing the distance between ticks lets the formatter keep exactly enough precision to
+ * tell them apart, and no more — so a money axis stays `24K` and a count axis of 0..1 becomes
+ * `0, 0.25, 0.50, 0.75, 1.00` instead of lying.
+ */
+function compact(n: number, step?: number): string {
   const abs = Math.abs(n);
   if (abs >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}B`;
   if (abs >= 1_000_000)     return `${(n / 1_000_000).toFixed(abs >= 10_000_000 ? 0 : 1)}M`;
   if (abs >= 1_000)         return `${Math.round(n / 1_000)}K`;
+  if (step !== undefined && step > 0 && step < 1) {
+    // Enough decimals that two adjacent ticks cannot collapse onto one label.
+    const decimals = step >= 0.1 ? 1 : step >= 0.01 ? 2 : 3;
+    return n.toFixed(decimals);
+  }
   return Math.round(n).toString();
 }

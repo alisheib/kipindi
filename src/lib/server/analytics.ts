@@ -330,11 +330,37 @@ export async function moneyFlowSeries(period: Window = "today", buckets = 24) {
 }
 
 /**
- * Operator margin over time (per bucket). Margin = hold % using the SAME
- * definition as the canonical report-money summary (report-money.ts `summarise`):
- * holdPct = (stakes − payouts − refunds) / stakes × 100. Refunds MUST net out or
- * a bucket containing a voided/one-sided poll overstates margin and the chart
- * disagrees with the GGR line + the scalar margin tile.
+ * Operator margin over time — **CUMULATIVE TO DATE**, not per bucket.
+ *
+ * Margin = hold %, the same definition as the canonical report-money summary
+ * (report-money.ts `summarise`): `(stakes − payouts − refunds) / stakes × 100`.
+ *
+ * 🔴 THIS WAS PER-BUCKET AND IT WAS NOT A MARGIN (finding A6, 2026-08-11). Every term was
+ * bucketed by the day the money MOVED, and in a prediction market a payout or a refund
+ * happens days after the stake that earned it — so the numerator and the denominator
+ * described **different bets** and no bucket compared like with like. Measured on the live
+ * database across 23 days:
+ *
+ *   · 2026-07-20 · stakes 4,000 · payouts 0 · refunds 0        → **100.0%**
+ *   · 2026-07-28 · stakes 13,000 · payouts 58,097              → **−346.9%**
+ *   · 2026-07-30 · stakes 7,500 · refunds 96,250               → **−1183.3%**
+ *
+ * ⛔ **FIVE OF THE TWENTY-THREE DAYS READ EXACTLY 100.0%**, because nothing had settled yet.
+ * A 100% operator margin is impossible in a pari-mutuel, where the operator takes a
+ * commission and the rest of the pool belongs to the winners — the chart stated it as fact
+ * five times, under a card subtitled "band 7–10%".
+ *
+ * ⭐ CUMULATIVE FIXES IT WITHOUT CHANGING THE DEFINITION. Each point is the margin over
+ * `[window start → this bucket's end]`, which is a real period with its own settled stakes
+ * and payouts. It cannot print 100% once anything has settled, it cannot swing to −1183%
+ * because one day's refunds dwarf that day's stakes, and **its last point equals
+ * `operatorMarginPct(period)` by construction** — so the chart and the KPI tile beside it,
+ * which are both labelled "Operator margin", can no longer disagree.
+ *
+ * ⚠️ The alternative remains open and is a bigger change: attribute each settlement to the
+ * bucket of its ORIGINATING bet, which would give a true per-day margin at the cost of
+ * leaving the most recent buckets provisional until their markets resolve. Recorded in
+ * `docs/ADMIN-CONSOLE-FINDINGS.md` as option ① of A6.
  */
 export async function marginSeries(period: Window = "28d", buckets = 28) {
   const { start, end } = windowBounds(period);
@@ -342,12 +368,14 @@ export async function marginSeries(period: Window = "28d", buckets = 28) {
   const bucketMs = totalMs / buckets;
   const ts = await txnsInPeriod(period);
   const out: Array<{ x: number; y: number; label: string }> = [];
+  // Running totals — the whole point: every bucket's margin is computed over everything
+  // seen SO FAR, so the settlement lag that makes a per-day figure meaningless averages out.
+  let stakes = 0;
+  let payouts = 0;
+  let refunds = 0;
   for (let i = 0; i < buckets; i++) {
     const bucketStart = start + i * bucketMs;
     const bucketEnd = bucketStart + bucketMs;
-    let stakes = 0;
-    let payouts = 0;
-    let refunds = 0;
     for (const t of ts) {
       const at = new Date(t.createdAt).getTime();
       if (at < bucketStart || at >= bucketEnd) continue;

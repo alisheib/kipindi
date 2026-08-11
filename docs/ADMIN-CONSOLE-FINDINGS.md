@@ -35,9 +35,9 @@ and a page that renders is not a working control.
 | A1 | `view-only-roles-are-offered-act-controls` | medium | 🟢 **SHIPPED 2026-08-11** | guard: `test:admin-act-gate` · driven: `qa:admin-act-gate` 39/0 |
 | A2 | `privacy-refusal-is-never-audited` | medium | 🟢 **SHIPPED 2026-08-11** | guard: `test:admin-soft-gate` · RED `red:admin-soft-gate` |
 | A3 | `refused-clicks-pollute-the-security-log` | medium | 🟢 **SHIPPED 2026-08-11** — fixed at source by A1 | guard: `test:admin-act-gate` |
-| A4 | `area-chart-y-axis-mislabels-its-own-gridlines` | low | ✅ **DRIVEN** (rendered) · ⚪ **not reachable today** | [`admin-charts.tsx:119`](../src/components/admin/admin-charts.tsx#L119) |
-| A5 | `a-zero-paints-a-visible-mark` | low–medium | ✅ **DRIVEN** (rendered) · ✅ **reachable, measured on prod** | [`admin-charts.tsx`](../src/components/admin/admin-charts.tsx) ×3 primitives |
-| A6 | `operator-margin-chart-divides-settlements-by-the-wrong-days-stakes` | **medium–high** | ✅ **MEASURED on production** | [`analytics.ts:339-363`](../src/lib/server/analytics.ts#L339-L363) |
+| A4 | `area-chart-y-axis-mislabels-its-own-gridlines` | low | 🟢 **SHIPPED 2026-08-11** | guard: `test:admin-charts` · RED `red:admin-charts` |
+| A5 | `a-zero-paints-a-visible-mark` | low–medium | 🟢 **SHIPPED 2026-08-11** | guard: `test:admin-charts` · RED `red:admin-charts` |
+| A6 | `operator-margin-chart-divides-settlements-by-the-wrong-days-stakes` | **medium–high** | 🟢 **SHIPPED 2026-08-11** | guard: `test:margin-series` · RED `red:margin-series` |
 
 ---
 
@@ -311,7 +311,7 @@ to audit.
 
 ---
 
-### A4 · `area-chart-y-axis-mislabels-its-own-gridlines` — ⚪ NOT FIXED, ⚪ not reachable today
+### A4 · `area-chart-y-axis-mislabels-its-own-gridlines` — 🟢 SHIPPED 2026-08-11
 
 `AdminAreaChart` draws five y-gridlines at `minY + t·range` for `t ∈ {0, .25, .5, .75, 1}` and
 labels each with [`compact()`](../src/components/admin/admin-charts.tsx#L460), which **rounds
@@ -342,7 +342,7 @@ plots a small count rather than a money amount.
 
 ---
 
-### A5 · `a-zero-paints-a-visible-mark` — ⚪ NOT FIXED, ✅ reachable and firing
+### A5 · `a-zero-paints-a-visible-mark` — 🟢 SHIPPED 2026-08-11
 
 Three primitives floor their bar size, so a **zero value draws a mark**:
 
@@ -373,7 +373,7 @@ chart and 0.5px of area means "some".
 
 ---
 
-### A6 · `operator-margin-chart-divides-settlements-by-the-wrong-days-stakes` — ⚪ NOT FIXED
+### A6 · `operator-margin-chart-divides-settlements-by-the-wrong-days-stakes` — 🟢 SHIPPED 2026-08-11
 
 🔴 **The `/admin/finance` "Operator margin" chart is not an operator margin.**
 
@@ -414,7 +414,7 @@ the per-day series. **Two surfaces, one name, different denominators, visibly di
 own distinction: a DATA inconsistency is disregarded; a code path that keeps producing one is
 not. Wiping the data changes none of the arithmetic above.
 
-**Fix — Ali's call between two honest options:**
+**Two honest options:**
 ① **attribute settlement to the originating bet's bucket**, so a day's margin describes that
 day's bets. Correct, and the largest change — it needs the payout joined back to the stake's
 date, and the last buckets stay provisional until their markets resolve.
@@ -423,6 +423,42 @@ is a real operator margin over a real period, it cannot print 100% once anything
 and it agrees with the scalar tile at the right-hand edge by construction.
 ⛔ **Do not simply clamp the axis or hide the outliers** — that would leave the number wrong
 and make it look right, which is worse.
+
+#### 🟢 SHIPPED 2026-08-11 — option ②, and the arithmetic did not change
+
+⭐ **THE DEFECT WAS NEVER THE FORMULA. It was WHERE THE ACCUMULATORS LIVED.** Declared outside
+the bucket loop the series is cumulative and every point is a real margin over
+`[window start → this bucket]`; declared inside it, each bucket divides that day's
+settlements by that day's stakes. The diff is three `let`s moving up four lines, and it is the
+whole finding. **A guard that checked the formula would have passed in both states** — which
+is why `test:margin-series` §4 asserts the *position* of the declaration and §3 asserts
+agreement with the KPI tile.
+
+⚠️ **The card's subtitle changed too, and that is not cosmetic.** It read *"28-day · band
+7–10%"* while plotting points at 100% and −1183%; inviting an officer to read those against a
+band was the compounding half. It now says **"cumulative to date · 28-day window"** — what is
+actually plotted.
+
+**Guarded by [`test:margin-series`](../scripts/margin-series.test.mts) — 15 assertions, and
+§3 is the one that matters:** the series' LAST point must equal `operatorMarginPct` over the
+same window, which is exactly the "two surfaces, one name, different denominators"
+disagreement this finding is about. ⭐ **The fixture is the REAL production shape** — four of
+the 23 measured live days, including both impossible readings — so §1's CONTROLs first prove
+the *old* algorithm produces 100% and −346% on this data before asserting the new one does
+not. A guard written against invented numbers proves the algebra; written against the numbers
+that actually broke, it proves the defect.
+
+🔴 **AND §4's CARD CHECK WAS VACUOUS AS FIRST WRITTEN — the RED run caught it.** It did
+`fin.split("Operator margin")[1].slice(0, 200)`, and `"Operator margin"` occurs **twice** in
+`finance/page.tsx`: once as the KPI tile's label and once as this card's title. It read the
+200 characters after the *tile*, so the plant that restored `band 7–10%` onto the **card**
+left the guard GREEN. Re-anchored on `<AdminCard title="Operator margin"` **and asserted to
+match exactly once**. ⛔ **Sixth ambiguous anchor of this session, in a check written by
+someone who had already been burned five times.**
+
+**RED-proven by [`red:margin-series`](../scripts/margin-series-red.mjs) — 8/0, both files
+restored byte-identical:** ① the accumulators move back inside the loop; ② the card
+re-advertises the 7–10% band.
 
 ---
 

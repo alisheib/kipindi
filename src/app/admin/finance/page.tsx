@@ -352,7 +352,13 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
               <AdminAreaChart series={flow} xLabels={flow.map((p) => p.label)} height={240} fillVar="var(--royal)" strokeVar="var(--royal)" />
             )}
           </AdminCard>
-          <AdminCard title="Operator margin" sw="Faida ya mfumo · 28-day · band 7–10%">
+          {/* A6 — the subtitle says WHAT IS PLOTTED, because the series changed meaning.
+              It read "28-day · band 7–10%" while the chart plotted a PER-DAY hold that
+              printed 100% on any day nothing had settled and −1183% on a day whose refunds
+              were 12.8× its stakes. Inviting an officer to read those points against a
+              7–10% band was the compounding half of the defect. Now cumulative, so the last
+              point IS the KPI tile above. */}
+          <AdminCard title="Operator margin" sw="Faida ya mfumo · cumulative to date · 28-day window">
             {margins === null ? <AdminLoadError what="the margin series" /> : (
               <AdminAreaChart series={margins} xLabels={margins.map((p) => p.label)} height={240} fillVar="var(--royal)" strokeVar="var(--royal)" />
             )}
