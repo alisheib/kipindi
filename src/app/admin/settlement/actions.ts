@@ -1,24 +1,26 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { currentSession } from "@/lib/server/auth-service";
-import { db } from "@/lib/server/store";
-import { canAct } from "@/lib/server/rbac";
-import { requireAdminTotp } from "@/lib/server/admin-guard";
+import { softRequireStaff } from "@/lib/server/rbac-guard";
 import { settleMarket } from "@/lib/server/market-service";
 import { formatTzs } from "@/lib/utils";
 
 /**
  * Paying a market is a MONEY act, so it sits at the same tier as an emergency
  * void or an objection remedy: ADMIN / COMPLIANCE only. Never MODERATOR.
+ *
+ * ⛔ THIS USED TO REFUSE BY REDIRECTING TO `/auth/admin`, AND IT WROTE NO AUDIT ROW
+ * (finding A2). Two problems in one line. A signed-in officer whose role lacks
+ * `accounting` was bounced to the sign-in page — which reads as an expired session, not
+ * as a refusal, so the officer retries the login that was never the problem. And the
+ * attempt to move money by hand left **no trace at all**, while every other admin gate in
+ * this codebase records `privilege_escalation_blocked` at SECURITY severity.
+ * `softRequireStaff` fixes both: the officer is told why, in the action's own
+ * `{ ok: false, error }` shape, and the attempt is on the record.
  */
 async function requireMoneyOfficer() {
-  const session = await currentSession();
-  if (!session) redirect("/auth/admin");
-  const u = await db.user.findById(session.userId);
-  if (!(u && (u.role === "ADMIN" || (await canAct(u.role, "accounting"))))) redirect("/auth/admin");
-  return session;
+  return softRequireStaff("accounting", "settleMarket",
+    "Forbidden: paying a market is a money act — accounting access is required.");
 }
 
 /**
@@ -48,7 +50,7 @@ async function requireMoneyOfficer() {
  */
 export async function settleMarketAction(formData: FormData): Promise<{ ok: true; detail: string } | { ok: false; error: string }> {
   const session = await requireMoneyOfficer();
-  await requireAdminTotp(session.userId, session.sessionId);
+  if (!session.ok) return { ok: false, error: session.error };
 
   const marketId = String(formData.get("marketId") ?? "");
   if (!marketId) return { ok: false, error: "Missing market id." };

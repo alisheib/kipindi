@@ -33,7 +33,7 @@ and a page that renders is not a working control.
 | # | slug | sev | confirmed | where |
 |---|---|---|---|---|
 | A1 | `view-only-roles-are-offered-act-controls` | medium | ✅ **DRIVEN** on 2 surfaces, 🔍 structural on 21 more | [`admin/privacy/page.tsx`](../src/app/admin/privacy/page.tsx) + 20 others |
-| A2 | `privacy-refusal-is-never-audited` | medium | ✅ **DRIVEN** | [`admin/privacy/actions.ts`](../src/app/admin/privacy/actions.ts) |
+| A2 | `privacy-refusal-is-never-audited` | medium | 🟢 **SHIPPED 2026-08-11** | guard: `test:admin-soft-gate` · RED `red:admin-soft-gate` |
 | A3 | `refused-clicks-pollute-the-security-log` | medium | ✅ **DRIVEN** | [`control-gates.ts`](../src/lib/server/control-gates.ts) names it; two domains still carry it |
 | A4 | `area-chart-y-axis-mislabels-its-own-gridlines` | low | ✅ **DRIVEN** (rendered) · ⚪ **not reachable today** | [`admin-charts.tsx:119`](../src/components/admin/admin-charts.tsx#L119) |
 | A5 | `a-zero-paints-a-visible-mark` | low–medium | ✅ **DRIVEN** (rendered) · ✅ **reachable, measured on prod** | [`admin-charts.tsx`](../src/components/admin/admin-charts.tsx) ×3 primitives |
@@ -130,7 +130,7 @@ touches money/PII/config and Auditor is read-only everywhere.
 
 ---
 
-### A2 · `privacy-refusal-is-never-audited` — ⚪ NOT FIXED
+### A2 · `privacy-refusal-is-never-audited` — 🟢 SHIPPED 2026-08-11
 
 **Every admin gate in this codebase writes `privilege_escalation_blocked` at SECURITY
 severity when it refuses. `/admin/privacy` is the only one that does not.**
@@ -153,8 +153,69 @@ the action.
 would expect to find recorded, successful or not. ⚠️ It is also a difference two officers
 would never notice, because the refusal message looks identical either way.
 
-⛔ **Do not fix A2 by copying `requireStaff` into privacy.** That would be a fifth copy of a
-gate that already exists in four places (see A3) — the fix is one gate, not another one.
+#### 🟢 SHIPPED 2026-08-11 — and the count was **seven** copies, not four
+
+⛔ **Do not fix A2 by copying `requireStaff` into privacy.** That would have been a fifth copy
+of a gate that already existed in four places — the fix is one gate, not another one.
+
+**`softRequireStaff(domain, action, refusal)`** now lives in
+[`rbac-guard.ts`](../src/lib/server/rbac-guard.ts) beside `requireStaff`: grant lookup →
+SECURITY audit on refusal → step-up 2FA → the officer's session. It is the SOFT form, for
+surfaces that return `{ ok: false, error }` because their controls render the message inline.
+
+⚠️ **THE FIRST WRITE-UP SAID FOUR COPIES. THE GUARD FOUND SEVEN**, and the three extra ones
+were the interesting ones — this is why §2 asserts the *absence* of copies rather than the
+presence of a call:
+
+| file | refusal shape | audited? | now |
+|---|---|---|---|
+| `payments/payment-actions.ts` | soft `{error}` | ✅ | delegates |
+| `kyc/[id]/kyc-actions.ts` | soft `{error}` | ✅ | delegates |
+| `reports/pack-actions.ts` | soft `{error}` | ✅ | delegates |
+| `privacy/actions.ts` | soft `{error}` | 🔴 **no** | delegates |
+| `resolver-queue/resolution-mode-action.ts` | soft `{error}` | ✅ | delegates |
+| `resolver-queue/resolution-policy-action.ts` | soft `{error}` | ✅ | delegates |
+| `settlement/actions.ts` | 🔴 **`redirect("/auth/admin")`** | 🔴 **no** | delegates |
+
+🔴 **`settleMarketAction` was the second unaudited refusal, and it is the MONEY path** — an
+officer pays out a market by hand there. A role without `accounting` was **redirected to the
+sign-in page while still signed in**, which reads as an expired session rather than a
+refusal, so the officer retries a login that was never the problem — and the attempt to move
+money by hand left **no trace at all**. Both halves are fixed by the delegation: the officer
+now gets *"Forbidden: paying a market is a money act — accounting access is required."* in
+the action's own return shape, and the attempt is on the record.
+
+⚠️ **AND ONE CLAIM IN AN EARLIER DRAFT OF THIS SECTION WAS FALSE.** It said `reports` had
+"lost step-up 2FA". It had not — each of its four actions called `requireAdminTotp` itself,
+immediately after gating, so the protection was present and merely placed differently. Those
+call-site calls are now redundant and were removed; the second factor is taken once, in the
+same place as every other gate. ⛔ **The difference between "this copy is missing a control"
+and "this copy puts the control somewhere else" is the difference between a finding and a
+false alarm**, and only reading all four bodies tells them apart.
+
+**Guarded by [`test:admin-soft-gate`](../scripts/admin-soft-gate.test.mts) — 24 assertions.**
+§1 asserts the helper audits, carries `SECURITY`, takes 2FA, consults `canAct`, lets ADMIN
+bypass, and — the one that matters — that **the audit is written BEFORE the refusal returns**.
+§2 asserts **no admin action file calls `canAct()` directly at all**, which is what caught the
+three copies the finding had missed. §3 asserts each of the seven delegates, asks for the
+right domain, and **keeps no local copy of the decision**.
+
+**RED-proven by [`red:admin-soft-gate`](../scripts/admin-soft-gate-red.mjs) — 11/0, three
+plants, every file restored byte-identical (verified by re-reading, not assumed):** ① privacy
+keeps its own local gate, the A2 defect exactly → §2 + §3 red; ② the helper loses its audit
+call → §1 red; ③ the helper returns *before* it audits → §1's ordering assertion red. ⭐ Plant
+③ exists because ② alone would pass over a gate that audits unreachably — the
+[[checks-that-lie]] shape.
+
+✅ **AND IT WAS EXECUTED, NOT ONLY GREPPED.** `qa:admin-privacy-gate` re-run against a fresh
+production build: **`privilege_escalation_blocked` 1 → 2**, newest row
+`SECURITY/privilege_escalation_blocked@2026-08-11 13:13:37`. **The same driver measured 0 → 0
+before the fix.** §3 still passes — no DSAR row was created — so the data is exactly as safe
+as it was; what changed is that the attempt is now recorded.
+
+⚠️ Suites re-run after the change: `test:rbac` 115 · `test:control-gates` 219 ·
+`test:admin-roles` 33 · `test:staff-role` 24 · `test:admin-money-ops` 16 · `test:two-admin` 18
+· `test:settlement-gate` 121 · `test:money-invariants` 84 — all 0 failed. `tsc` exit 0.
 
 ---
 

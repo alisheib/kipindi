@@ -16,13 +16,9 @@
  */
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import { currentSession } from "@/lib/server/auth-service";
-import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
 import { safeError } from "@/lib/server/safe-error";
-import { requireAdminTotp } from "@/lib/server/admin-guard";
-import { canAct } from "@/lib/server/rbac";
+import { softRequireStaff } from "@/lib/server/rbac-guard";
 import { CONTROL_DOMAIN } from "@/lib/server/control-gates";
 
 // E-18: the domain is NOT hard-coded here. This page is `trading` while this action
@@ -30,20 +26,14 @@ import { CONTROL_DOMAIN } from "@/lib/server/control-gates";
 // renders the button — one definition, in control-gates.ts.
 const DOMAIN = CONTROL_DOMAIN.recheckMarketNow;
 
+// ⛔ ONE GATE, NOT A COPY (finding A2). The DOMAIN stays local and still comes from
+// `CONTROL_DOMAIN` — that is E-18's point and it is untouched: this action is `compliance`
+// on a `trading` page. What moved out is the DECISION (grant lookup, SECURITY audit,
+// step-up 2FA), which seven admin files had each written for themselves and two had
+// written wrongly.
 async function gate(action: string): Promise<{ ok: true; userId: string } | { ok: false; error: string }> {
-  const session = await currentSession();
-  if (!session) redirect("/auth/admin");
-  const user = await db.user.findById(session.userId);
-  if (!user || !(user.role === "ADMIN" || (await canAct(user.role, DOMAIN)))) {
-    audit({
-      category: "SECURITY", action: "privilege_escalation_blocked",
-      actorId: session.userId, targetType: "Action", targetId: action,
-      payload: { role: user?.role ?? "unknown", domain: DOMAIN },
-    });
-    return { ok: false, error: "Forbidden: compliance access is required." };
-  }
-  await requireAdminTotp(session.userId, session.sessionId);
-  return { ok: true, userId: session.userId };
+  const g = await softRequireStaff(DOMAIN, action, "Forbidden: compliance access is required.");
+  return g.ok ? { ok: true, userId: g.userId } : g;
 }
 
 /**

@@ -10,13 +10,10 @@
  * every step is gated (ADMIN/COMPLIANCE + 2FA) and audited.
  */
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
-import { requireAdminTotp } from "@/lib/server/admin-guard";
 import { twoOfficerGate } from "@/lib/server/two-officer";
-import { canAct } from "@/lib/server/rbac";
+import { softRequireStaff } from "@/lib/server/rbac-guard";
 import { reviewKyc } from "@/lib/server/kyc-service";
 import { kycRiskScore, getApprovalRecommendation, KYC_MAKER_CHECKER_THRESHOLD } from "@/lib/server/kyc-risk";
 import { parseAttestations } from "@/lib/kyc-attestations";
@@ -51,16 +48,10 @@ const REJECT_REASONS: Record<string, { text: string; code: RejectCode }> = {
   other: { text: "", code: "OTHER" },
 };
 
+// ⛔ ONE GATE, NOT A COPY — see the note in `payment-actions.ts` and finding A2.
 async function gate(action: string): Promise<{ userId: string; sessionId: string } | { error: string }> {
-  const session = await currentSession();
-  if (!session) redirect("/auth/admin");
-  const user = await db.user.findById(session.userId);
-  if (!user || !(user.role === "ADMIN" || (await canAct(user.role, "compliance")))) {
-    audit({ category: "SECURITY", action: "privilege_escalation_blocked", actorId: session.userId, targetType: "Action", targetId: action, payload: { role: user?.role ?? "unknown", domain: "compliance" } });
-    return { error: "Forbidden: compliance access is required." };
-  }
-  await requireAdminTotp(session.userId, session.sessionId);
-  return { userId: session.userId, sessionId: session.sessionId };
+  const g = await softRequireStaff("compliance", action, "Forbidden: compliance access is required.");
+  return g.ok ? { userId: g.userId, sessionId: g.sessionId } : { error: g.error };
 }
 
 /** Maker step (high-risk only): recommend approval for a second officer to seal. */

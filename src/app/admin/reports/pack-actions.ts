@@ -10,36 +10,32 @@
  * fabricated — the actor is always the authenticated officer.
  */
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { createHash } from "node:crypto";
-import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
 import { twoOfficerGate } from "@/lib/server/two-officer";
-import { requireAdminTotp } from "@/lib/server/admin-guard";
-import { canAct } from "@/lib/server/rbac";
+import { softRequireStaff } from "@/lib/server/rbac-guard";
 import { getReportPack, packIdFor, currentPackPeriod } from "@/lib/server/report-pack";
 import { buildGbtMonthly } from "@/lib/server/reports/catalogue";
 import { renderPdf } from "@/lib/server/reports/pdf";
 
 type ActionResult = { ok: true } | { ok: false; error: string };
 
+// ⛔ ONE GATE, NOT A COPY (finding A2). ⚠️ This copy did not take step-up 2FA *inside* the
+// helper — each of the four actions below called `requireAdminTotp` itself, immediately
+// after gating, so the protection was present and merely placed differently. Now that
+// `softRequireStaff` takes it, those call-site calls are redundant and have been removed;
+// the second factor is taken exactly once, in the same place as every other admin gate.
 async function requireSigningOfficer(): Promise<{ userId: string; sessionId: string } | { error: string }> {
-  const session = await currentSession();
-  if (!session) redirect("/auth/admin");
-  const user = await db.user.findById(session.userId);
-  if (!user || !(user.role === "ADMIN" || (await canAct(user.role, "accounting")))) {
-    audit({ category: "SECURITY", action: "privilege_escalation_blocked", actorId: session.userId, targetType: "Action", targetId: "report-pack", payload: { role: user?.role ?? "unknown", domain: "accounting" } });
-    return { error: "Forbidden: a report-pack signing officer (accounting access) is required." };
-  }
-  return { userId: session.userId, sessionId: session.sessionId };
+  const g = await softRequireStaff("accounting", "report-pack",
+    "Forbidden: a report-pack signing officer (accounting access) is required.");
+  return g.ok ? { userId: g.userId, sessionId: g.sessionId } : { error: g.error };
 }
 
 /** Prepare — the maker generates the pack, hashes the rendered PDF, and signs. */
 export async function prepareReportPack(formData: FormData): Promise<ActionResult> {
   const gate = await requireSigningOfficer();
   if ("error" in gate) return { ok: false, error: gate.error };
-  await requireAdminTotp(gate.userId, gate.sessionId);
 
   const period = String(formData.get("period") ?? "") || currentPackPeriod();
   const pack = await getReportPack(period);
@@ -73,7 +69,6 @@ export async function prepareReportPack(formData: FormData): Promise<ActionResul
 export async function approveReportPack(formData: FormData): Promise<ActionResult> {
   const gate = await requireSigningOfficer();
   if ("error" in gate) return { ok: false, error: gate.error };
-  await requireAdminTotp(gate.userId, gate.sessionId);
 
   const period = String(formData.get("period") ?? "") || currentPackPeriod();
   const pack = await getReportPack(period);
@@ -94,7 +89,6 @@ export async function approveReportPack(formData: FormData): Promise<ActionResul
 export async function submitReportPack(formData: FormData): Promise<ActionResult> {
   const gate = await requireSigningOfficer();
   if ("error" in gate) return { ok: false, error: gate.error };
-  await requireAdminTotp(gate.userId, gate.sessionId);
 
   const period = String(formData.get("period") ?? "") || currentPackPeriod();
   const pack = await getReportPack(period);
@@ -108,7 +102,6 @@ export async function submitReportPack(formData: FormData): Promise<ActionResult
 export async function acknowledgeReportPack(formData: FormData): Promise<ActionResult> {
   const gate = await requireSigningOfficer();
   if ("error" in gate) return { ok: false, error: gate.error };
-  await requireAdminTotp(gate.userId, gate.sessionId);
 
   const period = String(formData.get("period") ?? "") || currentPackPeriod();
   const reference = String(formData.get("reference") ?? "").trim().slice(0, 120) || null;

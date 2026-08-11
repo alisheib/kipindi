@@ -356,7 +356,9 @@
     "qa:admin-privacy-gate": "node scripts/admin-privacy-gate-drive.mjs",
     "qa:admin-act-gate": "node scripts/admin-act-gate-drive.mjs",
     "qa:admin-act-refusal": "node scripts/admin-act-refusal-drive.mjs",
-    "test:admin-charts": "tsx scripts/admin-charts.test.mts"
+    "test:admin-charts": "tsx scripts/admin-charts.test.mts",
+    "test:admin-soft-gate": "tsx scripts/admin-soft-gate.test.mts",
+    "red:admin-soft-gate": "node scripts/admin-soft-gate-red.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

@@ -9,13 +9,8 @@
  * ⛔ One control, one place: this flag is set ONLY here. Do not expose it elsewhere.
  */
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import { currentSession } from "@/lib/server/auth-service";
-import { db } from "@/lib/server/store";
-import { audit } from "@/lib/server/audit";
 import { safeError } from "@/lib/server/safe-error";
-import { requireAdminTotp } from "@/lib/server/admin-guard";
-import { canAct } from "@/lib/server/rbac";
+import { softRequireStaff } from "@/lib/server/rbac-guard";
 import { CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import { setRequireTwoOfficerResolution } from "@/lib/server/resolution-policy";
 
@@ -25,18 +20,10 @@ const DOMAIN = CONTROL_DOMAIN.setTwoAdminAuth;
 export async function setTwoAdminAuthAction(formData: FormData): Promise<
   { ok: true; enabled: boolean } | { ok: false; error: string }
 > {
-  const session = await currentSession();
-  if (!session) redirect("/auth/admin");
-  const user = await db.user.findById(session.userId);
-  if (!user || !(user.role === "ADMIN" || (await canAct(user.role, DOMAIN)))) {
-    audit({
-      category: "SECURITY", action: "privilege_escalation_blocked",
-      actorId: session.userId, targetType: "Action", targetId: "setTwoAdminAuth",
-      payload: { role: user?.role ?? "unknown", domain: DOMAIN },
-    });
-    return { ok: false, error: "Forbidden: compliance access is required." };
-  }
-  await requireAdminTotp(session.userId, session.sessionId);
+  // ⛔ ONE GATE, NOT A COPY (finding A2) — the DOMAIN stays local (E-18: this action is
+  // `compliance` on a `trading` page); only the DECISION moved to `softRequireStaff`.
+  const session = await softRequireStaff(DOMAIN, "setTwoAdminAuth", "Forbidden: compliance access is required.");
+  if (!session.ok) return { ok: false, error: session.error };
 
   const enabled = String(formData.get("enabled") ?? "") === "true";
   try {

@@ -10,12 +10,9 @@
  * fail-time, and a failed deposit never moved money, so nothing is minted here.
  */
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
-import { requireAdminTotp } from "@/lib/server/admin-guard";
-import { canAct } from "@/lib/server/rbac";
+import { softRequireStaff } from "@/lib/server/rbac-guard";
 import { setKillSwitch, type Mno, MNOS } from "@/lib/server/payment-ops";
 import { setPaymentControls, type ControlsUpdate, type PaymentProviderId } from "@/lib/server/payment-control";
 import { setPayoutStatus, PAYOUT_STATUSES, type PayoutStatus } from "@/lib/server/payout-status";
@@ -26,16 +23,13 @@ type DepositProvider = "MPESA" | "AIRTEL_MONEY" | "HALO_PESA" | "MIXX" | "CARD";
 
 type Result = { ok: true } | { ok: false; error: string };
 
+// ⛔ ONE GATE, NOT A COPY (finding A2). This wrapper keeps the local error wording and the
+// `"error" in g` shape every call site below already uses; the DECISION — grant lookup,
+// SECURITY audit on refusal, step-up 2FA — lives in `softRequireStaff`. Four surfaces had
+// hand-rolled this and two had drifted: privacy lost the audit, reports lost the 2FA.
 async function gate(action: string): Promise<{ userId: string; sessionId: string } | { error: string }> {
-  const session = await currentSession();
-  if (!session) redirect("/auth/admin");
-  const user = await db.user.findById(session.userId);
-  if (!user || !(user.role === "ADMIN" || (await canAct(user.role, "accounting")))) {
-    audit({ category: "SECURITY", action: "privilege_escalation_blocked", actorId: session.userId, targetType: "Action", targetId: action, payload: { role: user?.role ?? "unknown", domain: "accounting" } });
-    return { error: "Forbidden: your role cannot manage payments." };
-  }
-  await requireAdminTotp(session.userId, session.sessionId);
-  return { userId: session.userId, sessionId: session.sessionId };
+  const g = await softRequireStaff("accounting", action, "Forbidden: your role cannot manage payments.");
+  return g.ok ? { userId: g.userId, sessionId: g.sessionId } : { error: g.error };
 }
 
 /** Kill-switch — pause/resume deposits or withdrawals for one MNO (hard tier). */

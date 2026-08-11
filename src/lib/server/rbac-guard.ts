@@ -48,6 +48,58 @@ export async function requireStaff(domain: AdminDomain, action?: string): Promis
 }
 
 /**
+ * The SOFT form of `requireStaff` — for surfaces that RETURN `{ ok: false, error }`
+ * instead of throwing, because their controls render the message inline.
+ *
+ * ⛔ WHY THIS EXISTS (finding A2, 2026-08-11). Four admin surfaces had hand-rolled this
+ * same gate — `payments/payment-actions.ts` `gate()`, `kyc/[id]/kyc-actions.ts` `gate()`,
+ * `reports/pack-actions.ts` `requireSigningOfficer()` and `privacy/actions.ts`
+ * `requireOfficer()` — and **the four copies had drifted in two different ways**:
+ *
+ *   · **privacy did not AUDIT its refusal.** Every other gate in this codebase writes
+ *     `privilege_escalation_blocked` at SECURITY severity; privacy returned
+ *     *"Not authorised."* and recorded nothing. Driven and measured: a role without
+ *     `compliance` canAct clicked Export bundle and the counter went 0 → 0. ⭐ That is the
+ *     PDPA surface — a data-subject export is exactly the attempt a regulator expects to
+ *     find recorded, successful or not.
+ *   · **reports did not take STEP-UP 2FA.** `requireAdminTotp` is the second factor at the
+ *     action layer; the report-pack signing ceremony skipped it while payments and KYC
+ *     took it.
+ *
+ * ⭐ Neither drift is visible from any one file — you only see it by putting the four side
+ * by side, which is the argument for there being one. The call sites keep their own thin
+ * wrapper so their local error wording survives; what they must not keep is their own copy
+ * of the DECISION.
+ *
+ * Returns the officer's session on success. Redirects (rather than soft-refusing) when
+ * there is no session at all, exactly like `requireStaff` — a signed-out visitor needs the
+ * login page, not an inline message they cannot act on.
+ */
+export async function softRequireStaff(
+  domain: AdminDomain,
+  action: string,
+  refusal: string,
+): Promise<{ ok: true; userId: string; sessionId: string } | { ok: false; error: string }> {
+  const session = await currentSession();
+  if (!session) redirect("/auth/admin");
+  const me = await db.user.findById(session.userId);
+  if (!me) redirect("/auth/admin");
+  if (me.role !== "ADMIN" && !(await canAct(me.role as Role, domain))) {
+    audit({
+      category: "SECURITY",
+      action: "privilege_escalation_blocked",
+      actorId: session.userId,
+      targetType: "Action",
+      targetId: action,
+      payload: { role: me.role, domain, action },
+    });
+    return { ok: false, error: refusal };
+  }
+  await requireAdminTotp(session.userId, session.sessionId); // step-up 2FA, as requireStaff does
+  return { ok: true, userId: session.userId, sessionId: session.sessionId };
+}
+
+/**
  * Owner-only ACTION guard — for staff-role assignment + grant-matrix edits. Returns
  * the Owner's session. Never routed through the grant table (ADMIN hardcoded).
  */

@@ -3,22 +3,21 @@
 import { safeError } from "@/lib/server/safe-error";
 import { revalidatePath } from "next/cache";
 import { fileDsarRequest, fulfillDsarRequest, buildDsarBundle } from "@/lib/server/privacy";
-import { getSession } from "@/lib/server/session";
-import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
-import { canAct } from "@/lib/server/rbac";
-import { requireAdminTotp } from "@/lib/server/admin-guard";
+import { softRequireStaff } from "@/lib/server/rbac-guard";
 
-// RBAC: authorization is data-driven — canAct checks the role's grant for `compliance`
-// (Owner/ADMIN bypasses inside canAct). Kept as a soft {ok:false} return because this
-// surface returns errors rather than redirecting; then step-up 2FA.
+// RBAC: authorization is data-driven and lives in ONE place — `softRequireStaff` checks
+// the role's grant for `compliance` (Owner/ADMIN bypasses inside canAct), AUDITS a refusal
+// as `privilege_escalation_blocked`, then takes step-up 2FA.
+//
+// ⛔ THIS USED TO BE A LOCAL COPY, AND THE COPY HAD LOST THE AUDIT (finding A2). It returned
+// "Not authorised." and recorded nothing, so a role without compliance canAct could click
+// Export bundle on the DSAR queue and leave no trace of the attempt — measured 0 → 0 against
+// the live counter while every other admin gate in the codebase wrote a row. **A DSAR export
+// is precisely the attempt a regulator expects to find recorded, refused or not.**
 async function requireOfficer(): Promise<{ ok: true; userId: string } | { ok: false; error: string }> {
-  const session = await getSession();
-  if (!session) return { ok: false, error: "Sign in." };
-  const u = await db.user.findById(session.userId);
-  if (!u || !(u.role === "ADMIN" || (await canAct(u.role, "compliance")))) return { ok: false, error: "Not authorised." };
-  await requireAdminTotp(session.userId, session.sessionId);
-  return { ok: true, userId: session.userId };
+  const g = await softRequireStaff("compliance", "privacy.dsar", "Not authorised.");
+  return g.ok ? { ok: true, userId: g.userId } : g;
 }
 
 export async function fileDsarAction(formData: FormData) {
