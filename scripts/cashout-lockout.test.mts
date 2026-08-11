@@ -251,5 +251,72 @@ async function pastGrace(posId: string): Promise<void> {
   ok("6: a bogus position id is refused", !ghost.ok);
 }
 
+// ═══ 7 · THE OFFER AND THE REFUSAL MUST AGREE (bonus-funded positions) ═══════
+//
+// The defect (2026-08-11, `sell-offered-on-bonus-funded-position`): `cashOutPosition`
+// refuses any position with `bonusStakeTzs > 0` — correctly, since cash-out pays into
+// the REAL wallet and would launder non-withdrawable bonus into withdrawable cash. But
+// `cashOutValue`, which decides whether to OFFER the sale and at what price, took
+// `Pick<StoredPosition, "side" | "stake" | "placedAt">`. `bonusStakeTzs` was not in the
+// Pick, so the function answering "can this be sold?" could not see the fact that
+// decides it. The player got a formatted price on a sale the server always refused.
+//
+// ⛔ THE INVARIANT, NOT THE SYMPTOM. Asserting `sellable === false` alone would pass
+// for a position whose window merely happens to be shut — the vacuous form. What this
+// asserts is the AGREEMENT: for the same position, the quote and the server must reach
+// the same verdict. That holds whatever future reason either side grows.
+//
+// ⚠️ AND `bonusStakeTzs` IS OPTIONAL ON StoredPosition, so omitting it at a call site
+// still COMPILES. tsc gave no protection here and cannot — which is the whole reason
+// this is a runtime guard.
+{
+  const mid = await makeMarket(60);            // selections open for an hour
+  await fundedUser("co_bonus");
+  await fundedUser("co_bonus2");
+  await fundedUser("co_bonus_ctl");
+  const b = await buyPosition("co_bonus", { marketId: mid, side: "YES", stake: 8_000 });
+  await buyPosition("co_bonus2", { marketId: mid, side: "NO", stake: 8_000 });
+  const ctl = await buyPosition("co_bonus_ctl", { marketId: mid, side: "YES", stake: 8_000 });
+  const posId = b.ok ? b.data!.positionId : "";
+  const ctlId = ctl.ok ? ctl.data!.positionId : "";
+  await pastGrace(posId);                      // past the free window, still inside the paid one
+  await pastGrace(ctlId);
+
+  const m = (await getMarket(mid))!;
+  const quote = async (id: string) => {
+    const p = (await positionStore.get(id))!;
+    return cashOutValue(p, m);
+  };
+
+  // ⭐ THE CONTROL FIRST. Without it this whole section is worthless: if the window
+  // were shut, `sellable` would be false for a reason that has nothing to do with
+  // bonus and every assertion below would pass over a dead test.
+  const ctlQuote = await quote(ctlId);
+  ok("7: CONTROL — an ordinary position in this same window IS sellable", ctlQuote.sellable,
+     `reason=${ctlQuote.reason ?? "none"} — if this fails the section below proves nothing`);
+  ok("7: CONTROL — and it is quoted a real price", ctlQuote.value > 0, `value=${ctlQuote.value}`);
+
+  // Now make the position bonus-funded, changing nothing else about it.
+  const p = (await positionStore.get(posId))!;
+  p.bonusStakeTzs = 8_000;
+  await positionStore.set(p);
+
+  const bonusQuote = await quote(posId);
+  ok("7: a bonus-funded position is NOT offered for sale", !bonusQuote.sellable);
+  ok("7: and it says why", bonusQuote.reason === "BONUS_FUNDED", `reason=${bonusQuote.reason}`);
+
+  // The agreement — the actual invariant.
+  const before = await bal("co_bonus");
+  const server = await cashOutPosition("co_bonus", posId);
+  ok("7: the server refuses it too — quote and server AGREE", !server.ok && !bonusQuote.sellable);
+  ok("7: no money moved", (await bal("co_bonus")) === before, `delta=${(await bal("co_bonus")) - before}`);
+
+  // And the control still sells, on the same market, in the same window — proving the
+  // refusal above belongs to the bonus and not to anything ambient.
+  const ctlSale = await cashOutPosition("co_bonus_ctl", ctlId);
+  ok("7: the control position still sells — the refusal is the BONUS, not the window",
+     ctlSale.ok, ctlSale.ok ? "" : (ctlSale as { error: string }).error);
+}
+
 console.log(`\ncashout-lockout: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

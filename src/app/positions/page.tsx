@@ -73,7 +73,11 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
     if (m && (m.status === "LIVE" || m.status === "CLOSED")) {
       try {
         openLiveValue += (await cashOutValue(
-          { side: p.side, stake: p.stake, placedAt: p.placedAt },
+          // Passed for consistency with the two `sellable` call sites. It does not
+          // move this total — `value` does not depend on it. ⚠️ But see F7 in
+          // docs/POLL-OPEN-FINDINGS.md: this total discounts a cash-out fee off a
+          // position that can never BE cashed out, which understates the holding.
+          { side: p.side, stake: p.stake, placedAt: p.placedAt, bonusStakeTzs: p.bonusStakeTzs },
           { id: m.id, yesPool: m.yesPool, noPool: m.noPool, resolutionAt: m.resolutionAt, selectionClosedAt: m.selectionClosedAt, feeSnapshot: m.feeSnapshot },
         )).value;
       } catch { openLiveValue += p.potentialPayout; }
@@ -90,7 +94,9 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
     const m = marketMap.get(p.marketId);
     if (m && m.status === "LIVE") {
       try {
-        const co = await cashOutValue({ side: p.side, stake: p.stake, placedAt: p.placedAt }, { id: m.id, yesPool: m.yesPool, noPool: m.noPool, resolutionAt: m.resolutionAt, selectionClosedAt: m.selectionClosedAt, feeSnapshot: m.feeSnapshot });
+        // `bonusStakeTzs` — see the note in markets/[id]/page.tsx. Without it this
+        // page offers a priced Sell on a position cashOutPosition always refuses.
+        const co = await cashOutValue({ side: p.side, stake: p.stake, placedAt: p.placedAt, bonusStakeTzs: p.bonusStakeTzs }, { id: m.id, yesPool: m.yesPool, noPool: m.noPool, resolutionAt: m.resolutionAt, selectionClosedAt: m.selectionClosedAt, feeSnapshot: m.feeSnapshot });
         openCashOutValues.set(p.id, co.sellable ? co.value : null);
         openSellable.set(p.id, co.sellable);
       } catch { openCashOutValues.set(p.id, null); openSellable.set(p.id, false); }

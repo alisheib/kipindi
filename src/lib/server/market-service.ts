@@ -1791,9 +1791,9 @@ export async function repairOrphanedPositions(): Promise<{ repaired: number; ref
  * a too-short runway) and the UI must show "rides to settlement", not a sell price.
  */
 export async function cashOutValue(
-  position: Pick<StoredPosition, "side" | "stake" | "placedAt">,
+  position: Pick<StoredPosition, "side" | "stake" | "placedAt" | "bonusStakeTzs">,
   market: Pick<StoredMarket, "id" | "yesPool" | "noPool" | "resolutionAt" | "selectionClosedAt" | "feeSnapshot">,
-): Promise<{ value: number; ratio: number; gross: number; fee: number; feeRate: number; inGracePeriod: boolean; sellable: boolean; reason?: "WINDOW_PASSED" | "TOO_SHORT" }> {
+): Promise<{ value: number; ratio: number; gross: number; fee: number; feeRate: number; inGracePeriod: boolean; sellable: boolean; reason?: "WINDOW_PASSED" | "TOO_SHORT" | "BONUS_FUNDED" }> {
   // The poll's OWN rates, not live config — a mid-poll retune must not change the
   // exit terms a player was promised when he bet.
   const cfg = ratesFor(market);
@@ -1814,14 +1814,32 @@ export async function cashOutValue(
 
   const withinWindow = sinceBet < windowMs;
   const inGracePeriod = hadRunway && withinWindow && sinceBet < graceMs;
-  const sellable = hadRunway && withinWindow; // the LIVE / open / selection-open checks live in cashOutPosition
+
+  // BONUS-FUNDED POSITIONS ARE NOT SELLABLE, AND THIS FUNCTION HAS TO KNOW IT.
+  // `cashOutPosition` refuses them outright — cash-out pays into the REAL wallet,
+  // which would launder non-withdrawable bonus into withdrawable cash. But until
+  // 2026-08-11 this Pick did not even include `bonusStakeTzs`, so the function that
+  // decides whether to OFFER a sale could not see the one fact that decides it: the
+  // player got `sellable: true` and a formatted price on a position the server would
+  // always refuse. The refusal and the offer were written against different inputs.
+  // ⛔ The docstring above already stated the contract — "the UI must show 'rides to
+  // settlement', not a sell price". Keep the two in one place, here.
+  const bonusFunded = (position.bonusStakeTzs ?? 0) > 0;
+
+  const sellable = hadRunway && withinWindow && !bonusFunded; // LIVE / open / selection-open live in cashOutPosition
 
   const feeRate = inGracePeriod ? 0 : Math.min(0.30, Math.max(0, cfg.cashOutFeeRate));
   const gross = Math.max(0, Math.round(position.stake)); // the player's money in the pool
   const value = inGracePeriod ? gross : Math.round(gross * (1 - feeRate)); // full refund in grace
   const cashOutFee = Math.max(0, gross - value);          // our commission (0 in grace)
   const ratio = gross > 0 ? value / gross : 0;
-  const reason = sellable ? undefined : (!hadRunway ? "TOO_SHORT" as const : "WINDOW_PASSED" as const);
+  // Bonus first: it is the most specific cause, and a bonus-funded bet placed with
+  // no runway would otherwise be explained as "closing too soon" — true, but not why.
+  const reason = sellable
+    ? undefined
+    : bonusFunded ? "BONUS_FUNDED" as const
+    : !hadRunway ? "TOO_SHORT" as const
+    : "WINDOW_PASSED" as const;
   return { value, ratio, gross, fee: cashOutFee, feeRate, inGracePeriod, sellable, reason };
 }
 

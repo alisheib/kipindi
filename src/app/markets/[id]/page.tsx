@@ -242,7 +242,10 @@ export default async function MarketDetail({
   for (const p of myPositions) {
     if (!isResolved && (m.status === "LIVE" || m.status === "CLOSED") && p.status === "OPEN") {
       try {
-        const co = await cashOutValue({ side: p.side, stake: p.stake, placedAt: p.placedAt }, { id: m.id, yesPool: m.yesPool, noPool: m.noPool, resolutionAt: m.resolutionAt, selectionClosedAt: m.selectionClosedAt, feeSnapshot: m.feeSnapshot });
+        // ⛔ `bonusStakeTzs` is load-bearing, not decorative: cashOutValue returns
+        // `sellable: false` for a bonus-funded position because the server refuses
+        // to sell one. Drop it here and the button prices a sale that always fails.
+        const co = await cashOutValue({ side: p.side, stake: p.stake, placedAt: p.placedAt, bonusStakeTzs: p.bonusStakeTzs }, { id: m.id, yesPool: m.yesPool, noPool: m.noPool, resolutionAt: m.resolutionAt, selectionClosedAt: m.selectionClosedAt, feeSnapshot: m.feeSnapshot });
         positionCashOutValues.set(p.id, co.sellable ? co.value : null);
         positionSellable.set(p.id, co.sellable);
       } catch { positionCashOutValues.set(p.id, null); positionSellable.set(p.id, false); }

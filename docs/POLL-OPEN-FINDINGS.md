@@ -33,14 +33,14 @@ The line references are what a fix should start from.
 
 | # | slug | sev | confirmed | where |
 |---|---|---|---|---|
-| F1 | `sell-offered-on-bonus-funded-position` | medium | ✅ re-confirmed | [`market-service.ts:1793-1826`](../src/lib/server/market-service.ts#L1793-L1826) |
+| F1 | `sell-offered-on-bonus-funded-position` | medium | 🟢 **SHIPPED 2026-08-11** | guard: `test:cashout-lock` §7 |
 | F2 | `one-sided-loser-share-phantom-fee` | medium | ⚠️ **narrowed, line NOT pinned** | [`payout.ts:344-362`](../src/lib/payout.ts#L344-L362) |
 | F3 | `per-market-rate-overrides-are-inert` | medium | ✅ re-confirmed | [`config-form.tsx:337-365`](../src/app/admin/config/config-form.tsx#L337-L365) |
 | F4 | `wizard-resolution-time-parsed-in-browser-timezone` | medium | ✅ re-confirmed | [`wizard.tsx:46`](../src/app/admin/markets/new/wizard.tsx#L46) |
 | F5 | `regex-advertised-never-executed` | medium | 🟢 **SHIPPED 2026-08-11** | guard: `test:search-adoption` §5 |
 | F6 | `resolution-criterion-english-only` | medium | ✅ by inspection | `prisma/schema.prisma` — `resolutionCriterion` is one column |
 
-### F1 · `sell-offered-on-bonus-funded-position`
+### F1 · `sell-offered-on-bonus-funded-position` — 🟢 SHIPPED 2026-08-11
 
 A **priced Sell button** is rendered on positions the server refuses outright.
 
@@ -58,10 +58,44 @@ inside its exit window gets `sellable: true` and a real, formatted sell price.
 `:1790` already states the contract — *"`sellable` — false means … the UI must show 'rides to
 settlement', not a sell price"* — so the code disagrees with its own stated rule.
 
-**Fix:** add `bonusStakeTzs` to the Pick and to the `sellable` computation, with a third
-`reason: "BONUS_FUNDED"` so the UI can say why. The guard must assert `sellable === false` for a
-bonus-funded position **inside** the window — outside it, `sellable` is already false for an
-unrelated reason and the check would pass vacuously ([[checks-that-lie]]).
+**SHIPPED.** `bonusStakeTzs` added to the Pick and to `sellable`, with `reason: "BONUS_FUNDED"`
+ordered first (a bonus bet with no runway would otherwise be explained as "closing too soon" —
+true, but not why). Both page call sites now pass the field; the UI already rendered "rides to
+settlement" for `sellable: false`, so no component changed.
+
+**Guarded by [`test:cashout-lock` §7](../scripts/cashout-lockout.test.mts), which asserts the
+AGREEMENT rather than the symptom:** for one position, the quote and the server must reach the
+same verdict. `sellable === false` on its own would pass for a position whose window merely
+happens to be shut.
+
+⭐ **The section carries a CONTROL, and the control is what makes it evidence.** An ordinary
+position on the same market, in the same window, is asserted sellable at a real price (7,200)
+*before* the bonus case runs — so a failure can never be the window. RED-proven by reverting the
+one-clause fix: controls PASS, the three bonus assertions FAIL, exit 1, file restored
+byte-identical (`cmp`).
+
+⚠️ **`no money moved` PASSED even in the RED run**, and that is the defect's exact shape: the
+server always refused, so nothing was ever stolen — only the *offer* lied. A guard that watched
+the wallet would have stayed green through the whole bug.
+
+⛔ **`bonusStakeTzs` is optional on `StoredPosition`, so omitting it at a call site still
+COMPILES.** `tsc` gave no protection here and cannot; that is why this is a runtime guard.
+
+### F7 · `portfolio-live-value-discounts-an-uncharged-fee` — ⚪ NEW, found 2026-08-11, NOT fixed
+
+Found while fixing F1, and written down here rather than carried in a head — which is the whole
+point of this file.
+
+`/positions` sums `openLiveValue` from `cashOutValue(...).value`. That value is
+`gross × (1 − cashOutFeeRate)` outside the grace window — it prices the position as if it were
+being **sold**. For a bonus-funded position that sale can never happen, so the portfolio total
+subtracts a fee the player will never be charged and **understates their holding**.
+
+⚠️ Small, and it moves a *displayed* figure rather than money — but it is a money figure shown to
+a player, so it is not cosmetic. **Not fixed today**: the right answer is a judgement about what
+"live value" should mean for a position that can only ride to settlement (stake? projected
+payout? the sale price it cannot get?), and that is a product decision, not a bug fix. Flagged in
+the code at the call site.
 
 ### F2 · `one-sided-loser-share-phantom-fee` — ⚠️ NOT YET PINNED
 
