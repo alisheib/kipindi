@@ -350,8 +350,12 @@
     "qa:criterion-wizard": "node scripts/criterion-wizard-visual.mjs",
     "db:seed-criterion-local": "node scripts/seed-criterion-i18n-local.mjs",
     "db:seed-admin-local": "tsx scripts/seed-admin-local.mts",
+    "db:seed-staff-local": "tsx scripts/seed-staff-local.mts",
     "test:proposal-day": "tsx scripts/proposal-day.test.mts",
-    "qa:verify-s42": "node scripts/live-verify-s42.mjs"
+    "qa:verify-s42": "node scripts/live-verify-s42.mjs",
+    "qa:admin-privacy-gate": "node scripts/admin-privacy-gate-drive.mjs",
+    "qa:admin-act-gate": "node scripts/admin-act-gate-drive.mjs",
+    "qa:admin-act-refusal": "node scripts/admin-act-refusal-drive.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

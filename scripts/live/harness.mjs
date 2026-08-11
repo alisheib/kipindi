@@ -24,6 +24,7 @@
  */
 import { chromium } from "playwright";
 import { readFileSync } from "node:fs";
+import { LOCAL_STAFF, LOCAL_STAFF_PASSWORD } from "../local-staff.mjs";
 
 export const BASE = process.env.LIVE_BASE ?? "https://50pick.tz";
 export const SHOT = process.env.SHOT_DIR ?? ".";
@@ -60,6 +61,25 @@ export function fleetPersona(nn) {
   const phone = `7990000${n}`;
   if (phone.length !== 9) throw new Error(`fleet phone must be 9 digits, got "${phone}"`);
   return { phone, secretValue: secret, label: `QA Fleet ${n}` };
+}
+
+/**
+ * A LOCAL staff fixture, by role — `local:AUDITOR` → `+255700000014`.
+ *
+ * ⭐ WHY THESE EXIST AT ALL, MEASURED 2026-08-11 (`scripts/live/ops/rbac-census.cjs`):
+ * **AUDITOR and SUPPORT hold no account on production**, and `.env.qa.local` carries no
+ * persona for either. So a role sweep limited to the existing identities cannot exercise
+ * 2 of the 7 staff roles, and would report a clean matrix having never touched a third of
+ * it — the two-personas blindness, one layer up.
+ *
+ * ⛔ LOCALHOST ONLY. `seed-staff-local.mts` refuses any non-localhost DATABASE_URL, so
+ * these rows cannot exist on production; signing in as one against BASE=production would
+ * simply fail. They are never a way to reach the live console.
+ */
+export function localStaffPersona(role) {
+  const phone = LOCAL_STAFF[role];
+  if (!phone) throw new Error(`unknown local staff role "${role}" — have ${Object.keys(LOCAL_STAFF).join(", ")}`);
+  return { phone, secretValue: LOCAL_STAFF_PASSWORD, label: `local ${role}` };
 }
 
 export function qaEnv(name) {
@@ -172,9 +192,16 @@ export async function login(page, who) {
   // near-identical noise that drifts the moment the fleet is resized.
   const p = typeof who === "string" && who.startsWith("fleet:")
     ? fleetPersona(who.slice(6))
+    : typeof who === "string" && who.startsWith("local:")
+    ? localStaffPersona(who.slice(6))
     : PERSONA[who];
   if (!p) throw new Error(`unknown persona ${who}`);
-  const staff = ["officer", "trading", "growth", "finance", "admin"].includes(who);
+  // ⚠️ `local:*` are STAFF and must go to /auth/admin. Omitting them here would send a
+  // staff account to the PLAYER form, which renders `#identifier` rather than `#phone`
+  // and lands on the player shell — the sign-in "succeeds" and the driver then measures
+  // the wrong surface entirely.
+  const staff = ["officer", "trading", "growth", "finance", "admin"].includes(who)
+    || (typeof who === "string" && who.startsWith("local:"));
   // 🔴 `networkidle`, NOT `domcontentloaded`. PhoneInput is a React component that mirrors
   // the visible field into a hidden input on change. Fill it before hydration and the DOM
   // value is set but no React onChange fires, so the HIDDEN mirror stays EMPTY and the form
