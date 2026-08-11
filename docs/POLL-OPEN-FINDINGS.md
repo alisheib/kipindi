@@ -185,12 +185,27 @@ via `getEffectiveConfig(m.id)` on the market page and enforced server-side in `b
 fix that deleted the form would have deleted two working controls. **Before quoting this finding,
 ask which population it counts: 4 of 6, never 6 of 6.**
 
-**Guarded by [`test:override-scope`](../scripts/market-override-scope.test.mts), 17 assertions.**
-⭐ §3 asserts the **AGREEMENT** — the set of fields the form offers must equal the set the action
-consumes — which catches the defect in *both* directions: an input with no writer, and a writer
-with no input (the state `cashOutFeeRate`/`thinProfitRatio` were once in, reachable from storage
-but not from the UI). ⛔ It counts `updates.x =` in **statement position**, so the four dead keys
-now appearing inside a refusal *message* do not read as consumers.
+**Guarded by [`test:override-scope`](../scripts/market-override-scope.test.mts), 20 assertions.**
+§3 asserts the **AGREEMENT** — the set of fields the form offers must equal the set the action
+consumes — which guards against an input with no writer and a writer with no input (the state
+`cashOutFeeRate`/`thinProfitRatio` were once in, reachable from storage but not from the UI).
+⛔ It counts `updates.x =` in **statement position**, so the four dead keys now appearing inside a
+refusal *message* do not read as consumers.
+
+⚠️ **BUT §3 IS NOT WHAT CAUGHT THIS DEFECT, AND THE ⭐ THIS PARAGRAPH ONCE CARRIED WAS MISPLACED.**
+Before the fix all six fields were *both* offered and consumed, so the agreement held perfectly —
+§3 **passed in the defect state** and contributed **zero** of the six red failures. The defect was
+never "an input with no writer"; it was "a writer whose value nothing can ever read". §1's
+absence checks and §4's refusal check are what went red. §3 protects a *different* future
+regression, which is worth having and is not evidence about this one.
+
+🔴 **AND §5's "buyPosition enforces both bounds" WAS A FILE-WIDE GREP** — `/minStake/` and
+`/maxStake/` over all 3,200 lines of `market-service.ts`, non-vacuous only by luck because today
+the sole occurrences happen to sit in the buy path. It now brace-matches the function body.
+⚠️ Scoping it exposed a second error of the same kind: the enforcement is in **`buyPositionInner`**,
+not the exported `buyPosition`, which is a thin admission/retry wrapper — so the first scoped
+version reported "the bounds are not enforced" about code that enforces them one call deeper.
+Both halves are asserted now, including that the wrapper still delegates.
 
 ⭐ **§4 RECORDS THE REASON, NOT THE SYMPTOM** — that `createMarket` mints `mkt_${randomId(10)}`
 and then asks `getEffectiveConfig(id)` for *that* id. **If someone later re-keys overrides onto
@@ -383,21 +398,36 @@ something a player has to leave their language to read.**
 which on a fallback is not the page's language. Same fact, spent twice: once for a reader, once
 for a screen reader that would otherwise pronounce English with Swahili phonetics.
 
-**Guarded by [`test:criterion-i18n`](../scripts/criterion-i18n.test.mts) — 45 assertions, and §2
-is the one that matters.** It asserts the **AGREEMENT**: over every locale × six data shapes,
-`fellBack` must equal the observable fact *(the text is the English one AND the locale is not
-en)*, and `shownIn` must name the language the text is genuinely written in. ⛔ Neither half is
-satisfiable alone — an unread `…Sw` column fails it, and so does a "shown in English" note
-printed over a real Swahili paragraph. §2 also carries a **CONTROL**: `pickCriterion` must pick
-the *same text* as `pickLocalized` in all 18 cells, because the difference between the two
-helpers is the disclosure, not the string.
+**Guarded by [`test:criterion-i18n`](../scripts/criterion-i18n.test.mts) §1–§5, and §2 is the one
+that matters.** It asserts the **AGREEMENT** over every locale × six data shapes: the returned
+`text`, `fellBack` and `shownIn` must all equal what a correct implementation would return, and
+⛔ **that expectation is computed from the ARGUMENTS, never from the result.** §2 also carries a
+**CONTROL**: `pickCriterion` must pick the *same text* as `pickLocalized` in all 18 cells,
+because the difference between the two helpers is the disclosure, not the string.
+
+🔴 **AND §2 WAS VACUOUS AS FIRST SHIPPED — an adversarial audit proved it on 2026-08-11 by
+planting a `pickCriterion` that never reads the `sw`/`zh` arguments at all.** The original derived
+"the fact" from `r.text` itself, so a helper that always returned English was *internally
+consistent* (English text + `fellBack` for every non-`en` locale) and the agreement passed with
+**"0 disagreed"**. ⛔ **A check that derives its expectation from the answer can only catch a
+helper that contradicts itself, never one that is uniformly wrong** — the
+guard-agrees-with-itself shape, in the assertion this write-up called *"the one that matters"*.
+Rewritten against an independent oracle and re-proven: the same plant now fails §2 with
+**5 disagreed**.
+
+⚠️ **THE ORIGINAL CLAIM HERE — *"an unread `…Sw` column fails it"* — WAS FALSE.** It is true only
+of the rewritten version.
 
 **RED-proven twice, both restored byte-identical (`cmp`):**
-① against the **unmodified product** — 20 passed / **23 failed**, exit 1, naming the absent
-columns, the absent dictionary keys and the raw `{m.resolutionCriterion}` render;
-② with `fellBack` forced to `false` (i.e. `pickLocalized`'s silent behaviour planted back into
-`pickCriterion`) — **7 failed**, exit 1, while the §2 CONTROL stayed **green**, which is what
-proves the guard measures the *disclosure* rather than the text.
+① against the **unmodified product** — **22 passed / 23 failed**, exit 1, naming the absent
+columns, the absent dictionary keys and the raw `{m.resolutionCriterion}` render. ⚠️ **This was
+first recorded as "20 passed"**, which is arithmetically impossible against a 45-assertion file;
+22/23 is the reproduced figure;
+② with `fellBack` forced to `false` — **6 assertions failed**, exit 1, while the §2 CONTROL stayed
+**green**. ⚠️ **This was first recorded as "7 failed" and that was also wrong**: 7 was the count of
+disagreeing locale×data **cells** inside one assertion's detail string, not the number of failing
+assertions. ⛔ **Before quoting a count, ask which population it counts** — the rule this file
+states in F3 and then broke about itself, twice, in the paragraph above.
 
 🔴 **AND TWO OF MY OWN ASSERTIONS WERE WRONG BEFORE THE PRODUCT WAS.**
 - The §3 locator anchored on the `{/* 5. Resolution criterion */}` comment — which the guard's
@@ -454,7 +484,23 @@ on `text-[14px]` against the atom's `text-[16px]`. ⭐ The 16px is not cosmetic:
 Safari zooms the viewport on focus**, so an officer typing the legal text of a money contract had
 the page jumping under them.
 
-**Guarded by `test:criterion-i18n` §6 + §7 (71 assertions total).** §6 is the storage rule,
+🔴 **AND THE WRITE PATH WAS NEVER EXECUTED UNTIL 2026-08-11, WHICH IS THE MOST IMPORTANT
+CORRECTION IN THIS FILE.** §7 is titled *"the write path, end to end"* and is **100% `readFileSync`
++ regex**: it proves the characters are in the wizard, the action and the service. It never calls
+one of them. `qa:criterion-wizard` filled the form and **never pressed Publish**;
+`qa:criterion-visual` read markets that had been **seeded straight into the database**. Four
+pieces of evidence, and not one of them joined officer input to player output.
+⭐ **Now executed, and it is a different class of evidence:**
+[`qa:criterion-publish`](../scripts/criterion-publish-e2e.mjs) — **18/0** — signs an officer in,
+types three criteria into the real wizard, **presses Publish**, then opens the created market as a
+player in `en`/`sw`/`zh` and asserts the criterion read back is the one that was typed. Nothing
+seeded, nothing called directly. Plus [`test:criterion-chain`](../scripts/criterion-chain-e2e.test.mts)
+— **19/0** — which drives `createMarket` against **real Postgres** and reads the row back with
+**raw SQL**, bypassing the very DAL under test.
+
+**Guarded by `test:criterion-i18n` §6 + §7 — 26 assertions across those two sections** (⚠️ this
+said *"71 assertions total"*, which is the whole file including F6a's §1–§5 and inflates F6b's
+guard by 2.7×). §6 is the storage rule,
 including a **PROPERTY** over ten hostile inputs — *whatever is fed in, the English is never
 stored as a translation* — which is the one assertion that survives someone rewriting the helper.
 §7 joins the three surfaces: the wizard sends both fields, both files import the **same** rule
@@ -514,10 +560,21 @@ unlabelled"*; F10 is *"a Swahili rule reaches the English column unlabelled"* �
 the worse of the two, because F6 was a display problem while this one puts the wrong language
 into the field the **resolver** and `market-sentinel.ts` read to decide the payout.
 
-⚠️ **AND F6a MAKES ONE SMALL PART OF IT LOUDER, WHICH IS WORTH SAYING PLAINLY.** The criterion
-paragraph now carries `lang={criterion.shownIn}`, which on this data asserts `lang="en"` over
-Swahili text. That is a new (quiet, screen-reader-only) untruth **about data that was already
-wrong**; the fix is the data, not the attribute. ⛔ Do not "fix" it by dropping the `lang`.
+🔴 **AND F6a MAKES IT WORSE IN A WAY THE FIRST WRITE-UP UNDERSTATED — corrected after an
+adversarial pass.** It said only that `lang={criterion.shownIn}` would assert `lang="en"` over
+Swahili text: *"a quiet, screen-reader-only untruth."* **The visible note is wrong too.**
+`pickCriterion` decides `fellBack` purely from whether the `…Sw` COLUMN is populated — it never
+inspects what language `resolutionCriterion` is actually in. So on a poll whose "English" column
+holds Swahili, a Swahili reader is shown that Swahili text under the sentence
+*"Imeonyeshwa kwa Kiingereza — hakuna tafsiri ya Kiswahili ya kigezo hiki"* — **"shown in English,
+there is no Swahili translation", printed directly above Swahili.** F6a's whole purpose is to stop
+the page claiming something false about the language on screen, and on this data it does exactly
+that.
+
+⛔ **The fix is the DATA, not the note** — `pickCriterion` cannot detect language and should not
+try; a heuristic there would be a new source of false statements. ⚠️ **Not currently firing:
+measured 0 non-English criteria across 102 live poll rows** (heuristic — see above). ⛔ Do not
+"fix" it by dropping the `lang` or softening the note.
 
 **Not fixed today, because the honest answers are product decisions rather than bug fixes:**
 ① demand English in the proposal form (name the language in the label, as the title field
@@ -526,10 +583,95 @@ store *which* language it is, and have the officer supply the English at publish
 step is already an officer ceremony, so there is a place to put it. ⛔ **Do not guess which.**
 
 **Before quoting a count, ask which population it counts.** This affects proposal-published polls
-only — AI-generated and wizard-created polls are English by construction. **The number of live
-polls actually carrying a non-English criterion has NOT been measured**; it is a
-`productLine = 'MARKET'` query against production, and the census tool at
-`scripts/live/ops/poll-census.cjs` is where it belongs.
+only — AI-generated and wizard-created polls are English by construction.
+
+✅ **MEASURED 2026-08-11, having been filed as "NOT measured".**
+[`criterion-i18n-census.cjs`](../scripts/live/ops/criterion-i18n-census.cjs) sweeps every live poll
+criterion for Han characters and for common Swahili resolution wording: **0 candidates among 102
+poll rows.** ⚠️ **Heuristic, and the probe says so in its own output** — zero is evidence of
+absence only for the patterns tested. The *shape* remains real and unfixed; its current live
+exposure appears to be nil.
+
+⭐ **AND THREE MORE PROPOSAL-SIDE GAPS FOUND IN THE SAME PASS, all consistent with this finding:**
+- [`/proposals/[id]`](../src/app/proposals/[id]/page.tsx) still renders `{p.resolutionCriterion}`
+  **raw under a fully localized heading** — the exact defect F6a fixed on `/markets/[id]`, still
+  live one route away. The page localizes the title, the heading and the decline reasons, then
+  prints the criterion bare with no disclosure.
+- `goLiveProposal` is the **one production `createMarket` call site that passes no translations**.
+  Three of the four now do. It cannot pass any, because a Proposal has no such columns.
+- **Search never looks at the new columns**: `MARKET_SEARCH`'s `criterion` field maps to
+  `["resolutionCriterion"]` only, so a Swahili *title* is findable and a Swahili *criterion* is not.
+
+**Whether to give Proposal the same two columns is the same decision as F10 itself**, which is why
+these are recorded here rather than as separate findings.
+
+### F12 · `criterion-translations-are-write-once-and-can-go-stale` — ⚪ NEW, found 2026-08-11, NOT fixed
+
+Two halves of one lifecycle gap, both found by an adversarial pass over F6's own code.
+
+**① A market's translations can never be changed after creation.** Grepping every write:
+`resolutionCriterionSw`/`Zh` are set on a `PredictionMarket` in exactly one place — inside
+`createMarket`. There is no admin surface, action or service that edits them on a LIVE poll.
+⛔ **So a translation that is wrong, or that an officer later realises is misleading, cannot be
+corrected — on the sentence the payout turns on.** The English has the same property, which is
+defensible for a *binding* text that players have already bet against; a translation is an aid to
+reading and has no such reason to be immutable.
+
+**② Editing the English leaves the translations describing the OLD rule.** The AI-poll edit panel
+seeds `criterionSw`/`criterionZh` from the stored poll and always resubmits all three, so an
+officer who edits only the English silently keeps two translations of a rule that no longer
+exists. ⛔ **The player then reads a Swahili criterion that describes different terms from the
+English one the officer will resolve against** — worse than no translation, and invisible.
+⭐ The `SAME_AS_ENGLISH` rule cannot catch this: after the edit the two genuinely differ.
+
+**③ And the RESOLVER cannot see what the non-English player read.**
+[`/admin/resolver/[id]`](../src/app/admin/resolver/[id]/page.tsx) renders `{m.titleEn}` and then
+`{m.titleSw}` — its own established convention is to show the officer what a Swahili player saw —
+but the criterion block prints the English only. ⭐ **The officer deciding the payout is the one
+person who most needs to know whether the player was shown a different wording**, and they are the
+only one who cannot.
+
+**Not fixed** — ① is a new surface, ② needs a policy (clear the translations on an English edit?
+warn? require re-confirmation?), ③ is a small render change but on the resolution ceremony, which
+is not a surface to touch casually. All three are Ali's call. ⚠️ Neither is reachable today on
+production, because **no live poll has a translation yet** (measured: `withSw = 0`, `withZh = 0`
+across 102 poll rows). That is the window to decide in.
+
+### F11 · `one-failed-edit-locks-an-ai-poll-forever` — ⚪ NEW, found 2026-08-11, NOT fixed
+
+Found by *running* the officer edit path instead of grepping it — which is the only reason it was
+found at all.
+
+[`editAIPoll`](../src/lib/server/ai-poll-generation.ts) re-validates after every edit and sets
+`state = revalidation.passes ? "PENDING_REVIEW" : "FILTERED"`. Its own entry guard is
+`if (!poll || (poll.state !== "PENDING_REVIEW" && poll.state !== "EDITING")) return null`.
+
+⛔ **So an edit whose re-validation fails moves the poll into a state from which `editAIPoll`
+refuses every further edit.** Nothing moves a poll out of `FILTERED` — the only `PENDING_REVIEW`
+assignment elsewhere is in the *generation* path, which mints a new poll. The officer's remaining
+options are DELETE or REGENERATE, and regenerating costs a paid AI call.
+
+🔴 **AND IT FIRES ON A FIELD RE-VALIDATION NEVER EVEN RECEIVES.** `validateAndFilter` is passed
+titles, category, criterion, date, options, sources, confidence and reasoning — **not** the new
+`resolutionCriterionSw`/`Zh`. Measured deterministically: a poll at `PENDING_REVIEW` with
+`filterReasons = 0`, edited to add **only a Swahili criterion**, came back `state = FILTERED`, and
+the next edit returned `null`. So the officer's very first attempt to add a translation can lock
+the poll.
+
+⚠️ **PRE-EXISTING — the `FILTERED` transition predates this session** and is deliberate (its
+comment explains that an edit introducing a hard fail must not stay approvable). **But F6c added
+two new editable fields to that form**, so it is newly reachable by an officer doing exactly what
+F6c asks of them.
+
+**Fix, and it is Ali's call:** ① admit `FILTERED` into `editAIPoll`'s guard — editing is *how* you
+fix a filtered poll, and approval is separately gated on `filterReasons.length === 0`, so this
+looks safe; or ② leave the state machine alone and say so in the UI, so an officer knows one bad
+edit ends the poll. ⛔ Do not guess: ① changes a money-adjacent state machine.
+
+**Reproduced by** [`test:criterion-ai-publish`](../scripts/criterion-ai-publish-e2e.test.mts) §3,
+which creates its own isolated poll, demonstrates the lock, and deletes it. ⚠️ The first draft of
+that section **borrowed a seeded fixture and could not put it back** — it had locked it. A harness
+that damages state it did not create is destructive however green it prints.
 
 #### F6c · the AI generation path — 🟢 SHIPPED 2026-08-11
 
@@ -562,20 +704,24 @@ class this campaign has already filed. ⛔ A missing translation is spelled out 
 players see the English with a note saying so"* — rather than left as a blank row, because a blank
 row reads as *"I forgot to look"*.
 
-**Guarded by `test:criterion-i18n` §8 (91 assertions in the suite now).** It asserts the **CHAIN**
-— asked for → stored → shown → published — because any single link is worthless alone: a model
-that generates a translation, a column that stores it and a screen that shows it still leave the
-player told *"no translation available"* if `publishPoll` drops it at `createMarket`.
+**Guarded structurally by `test:criterion-i18n` §8, and EXECUTED by
+[`test:criterion-ai-publish`](../scripts/criterion-ai-publish-e2e.test.mts) — 13/0.** The second
+one is the evidence: it runs the publish hop with real data and asserts the translations land on
+the market, and that the server-side storage rule refuses a re-cased copy of the English.
 
-**RED-proven: the F6c product stashed with the guard kept → 16 named §8 failures, exit 1**, naming
-the absent tool-schema fields, the absent prompt rule, every storage site, both publish paths,
-both officer surfaces and both schema models. Restored cleanly.
+🔴 **§8's "the chain" ASSERTION WAS VACUOUS FOR THE AI-POLL PUBLISH HOP, and an adversarial audit
+proved it by planting exactly the defect it claims to catch.** `ai-polls/actions.ts` contains
+`resolutionCriterionSw: poll.resolutionCriterionSw` **twice** — once in `ingestCandidate(...)`
+and once in `createMarket(...)` — so a file-wide regex stayed **GREEN** when the `createMarket`
+pair was deleted. That is the write-only-field defect this section exists to prevent, sailing
+past the check named after it. ⛔ **Fifth ambiguous anchor of the session.** Each call's argument
+object is now extracted by **brace matching** and asserted separately; the same plant now fails.
 
-⚠️ **TWO §8 ASSERTIONS WERE NOT EXERCISED BY THAT RED RUN, AND SAYING SO IS THE POINT.**
-`git stash push` does not stash **untracked** files, so the new migration survived the stash and
-its two checks (*"the migration exists"*, *"is purely additive"*) passed in both states. They are
-existence checks on a file authored in the same commit, not defect detectors — but a RED run that
-covers 16 of 18 assertions is not a RED run that covers 18.
+⚠️ **AND THE CORRECTIONS TO THE RED CLAIM.** It was recorded as *"16 of 18 assertions"* with two
+unexercised. §8 has **20** assertions, and **four** passed in both states — the two admitted
+untracked-migration ones plus two more. ⛔ **A caveat that undercounts itself is not a caveat.**
+The RED run (F6c product stashed, guard kept) produced **16 named §8 failures, exit 1**, and
+that figure is right; the denominator was not.
 
 🔴 **AND A THIRD LOCATOR OF MINE WAS WRONG, IN THE SAME WAY AS THE FIRST TWO.** §8 read the tool
 schema's `required` array with a plain `.match()` — which returned the **`sources` sub-schema's**

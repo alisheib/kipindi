@@ -104,7 +104,14 @@ for (const width of [360, 1280]) {
     await ctx.close(); continue;
   }
   await page.getByText("Step 1 / 4").waitFor({ timeout: 60000 });
-  ok(`${width}: the wizard rendered (not a login redirect)`, true, page.url());
+  // ⛔ NOT `ok(..., true, ...)`. This line used to pass the literal `true` — a
+  // PASS-BY-CONSTRUCTION that could not fail, quietly padding a count the write-up
+  // then quoted as evidence. The guard above it (the early `continue` on a redirect)
+  // does the real work, so the honest thing is to assert something that can be
+  // false: that this is the wizard, on the wizard's URL.
+  ok(`${width}: the wizard rendered (not a login redirect)`,
+     page.url().includes("/admin/markets/new") && (await page.getByText("Step 1 / 4").count()) === 1,
+     page.url());
 
   /**
    * ⚠️ FILL, THEN WAIT FOR THE BUTTON TO AGREE — never fill and click.

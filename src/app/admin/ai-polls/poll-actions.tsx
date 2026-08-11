@@ -1317,6 +1317,17 @@ function EditForm({ poll, onClose, overlay }: { poll: StoredAIPoll; onClose: () 
   };
 
   const submit = () => {
+    // 🔴 REFUSE A BAD TRANSLATION HERE, BECAUSE THE INLINE ALERT DOES NOT STOP THE
+    // SAVE. Until this guard existed the panel rendered the red warning, submitted
+    // anyway, `normaliseCriterionTranslation` dropped the value server-side, and the
+    // officer got "Poll updated · Changes saved" — a SUCCESS toast over a discarded
+    // translation. ⛔ That is the precise failure mode this whole finding is about:
+    // an officer who believes they saved a translation and did not. The wizard blocks
+    // its Continue button on the same rule; this panel had the rule and never used it.
+    if (swIssue || zhIssue) {
+      overlay.fail("Couldn't save", issueText(swIssue ?? zhIssue) ?? "Fix the criterion translation first.");
+      return;
+    }
     // A resolution date is mandatory on edit — guard the unsafe Date() parse.
     if (!/^\d{4}-\d{2}-\d{2}$/.test(editDate)) {
       setDateError("Pick a resolution date.");

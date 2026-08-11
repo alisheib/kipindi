@@ -108,9 +108,42 @@ for (const k of LIVE) {
   const page = decomment(read("src/app/markets/[id]/page.tsx"));
   ok("5: the market page reads stake bounds LIVE for this market",
      /getEffectiveConfig\(m\.id\)/.test(page));
+  // 🔴 SCOPED TO `buyPosition`, AND THE FIRST VERSION WAS NOT. It read
+  // `/minStake/.test(svc) && /maxStake/.test(svc)` over the WHOLE 3,200-line
+  // market-service.ts — i.e. "these two words appear somewhere in the file". It was
+  // non-vacuous only by luck: today the only occurrences happen to sit inside
+  // buyPosition. Delete the enforcement and mention either word anywhere else — a
+  // type, a new function, a comment that survives decomment — and it stays green
+  // while the bound it names is gone. An assertion that says "buyPosition enforces"
+  // must look inside buyPosition.
   const svc = decomment(read("src/lib/server/market-service.ts"));
-  ok("5: and buyPosition enforces both bounds server-side",
-     /minStake/.test(svc) && /maxStake/.test(svc));
+  const fnBody = (src: string, name: string) => {
+    const at = src.search(new RegExp(`(export\\s+)?async function ${name}\\(`));
+    if (at < 0) return "";
+    const open = src.indexOf("{", at);
+    let depth = 0;
+    for (let i = open; i < src.length; i++) {
+      if (src[i] === "{") depth++;
+      else if (src[i] === "}") { depth--; if (depth === 0) return src.slice(at, i + 1); }
+    }
+    return "";
+  };
+  // ⚠️ THE ENFORCEMENT IS IN `buyPositionInner`, NOT `buyPosition`. The exported
+  // `buyPosition` is a thin wrapper (admission + transient retry) that delegates.
+  // Scoping to the exported name found the wrapper and reported "the bounds are not
+  // enforced" about code that enforces them one call deeper — a locator naming the
+  // wrong function is just as wrong as one matching too much. Both halves are
+  // asserted, so the check breaks if the delegation is ever removed.
+  const outer = fnBody(svc, "buyPosition");
+  const inner = fnBody(svc, "buyPositionInner");
+  ok("5: buyPosition and buyPositionInner were both located",
+     outer.length > 100 && inner.length > 500, `outer=${outer.length} inner=${inner.length}`);
+  ok("5: buyPosition delegates to buyPositionInner", /buyPositionInner\(/.test(outer));
+  ok("5: and buyPositionInner enforces both bounds, server-side",
+     /minStake/.test(inner) && /maxStake/.test(inner));
+  // ⭐ And it REFUSES on them, rather than merely mentioning them.
+  ok("5: …by refusing the stake, not just referencing the names",
+     /stake\s*<\s*minStake/.test(inner) && /stake\s*>\s*maxStake/.test(inner));
 }
 
 console.log(`\nmarket-override-scope: ${pass} passed, ${fail} failed`);

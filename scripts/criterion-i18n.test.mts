@@ -75,17 +75,27 @@ const ZH = "若坦桑尼亚银行最后一个营业日的中间价低于首日�
   const rows: Array<[string | null | undefined, string | null | undefined]> = [
     [SW, ZH], [SW, null], [null, ZH], [null, null], ["  ", "  "], ["", ZH],
   ];
+  // 🔴 THE ORACLE IS COMPUTED FROM THE INPUTS, NOT FROM THE RESULT — and the first
+  // version of this was VACUOUS, which an audit proved by planting a `pickCriterion`
+  // that never reads `sw`/`zh` at all. That version derived "the fact" from `r.text`
+  // itself, so a helper which always returned English was INTERNALLY CONSISTENT
+  // (English text + fellBack for every non-en locale) and the agreement passed with
+  // "0 disagreed". ⛔ A check that derives the expectation from the answer is the
+  // guard-agrees-with-itself shape — it can only catch a helper that contradicts
+  // itself, never one that is uniformly wrong.
+  const usable = (v: string | null | undefined) => (v && v.trim() ? v : null);
   let agree = 0, disagree = 0;
   for (const loc of locales) {
     for (const [sw, zh] of rows) {
+      // What a correct implementation MUST return, derived only from the arguments.
+      const want = loc === "sw" ? usable(sw) : loc === "zh" ? usable(zh) : null;
+      const expectText = want ?? EN;
+      const expectFellBack = loc !== "en" && want === null;
+      const expectShownIn = want ? loc : "en";
+
       const r = pickCriterion(loc, EN, sw, zh);
-      // The claim must match the observable fact, in BOTH directions.
-      const isEnglishText = r.text === EN;
-      const claimsFallback = r.fellBack;
-      const factIsFallback = isEnglishText && loc !== "en";
-      // And `shownIn` must name the language the text is genuinely written in.
-      const shownInHonest = r.shownIn === (isEnglishText ? "en" : loc);
-      if (claimsFallback === factIsFallback && shownInHonest) agree++; else disagree++;
+      if (r.text === expectText && r.fellBack === expectFellBack && r.shownIn === expectShownIn) agree++;
+      else disagree++;
     }
   }
   ok(`2: the fallback claim matches the rendered text in all ${agree + disagree} locale × data cases`,
@@ -149,6 +159,17 @@ const ZH = "若坦桑尼亚银行最后一个营业日的中间价低于首日�
      `${section.length} chars, ${(section.match(/<section/g) ?? []).length} <section>`);
   ok("3: its BODY paragraph is the localised text, not the raw column",
      /<p[^>]*>\{criterion\.text\}<\/p>/.test(section));
+  // ⛔ AND THE NEGATIVE, WHICH THIS SECTION'S OWN TITLE PROMISES AND DID NOT ASSERT.
+  // "the raw column must not reach the page" was only ever checked positively — a
+  // page that rendered BOTH `{criterion.text}` and a bare `{m.resolutionCriterion}`
+  // paragraph would have passed. The one legitimate raw render is the English
+  // original inside the `<details>` disclosure, so the negative is scoped to exclude
+  // that: outside `<details>`, the bare column must not appear.
+  const withoutDetails = section.replace(/<details[\s\S]*?<\/details>/g, "");
+  ok("3: …and the RAW column appears nowhere outside the English-original disclosure",
+     !/\{m\.resolutionCriterion\}/.test(withoutDetails));
+  ok("3: while the disclosure itself DOES carry it (else the negative above is vacuous)",
+     /\{m\.resolutionCriterion\}/.test(section));
 
   // ⛔ ASSERT THE NESTING, NOT THE OPERATOR. The first version of this check required
   // a literal `criterion.fellBack &&` and failed over a correct ternary — it was
@@ -350,8 +371,18 @@ const ZH = "若坦桑尼亚银行最后一个营业日的中间价低于首日�
   const required = requiredSets.find((set) => set.includes("resolutionCriterion")) ?? [];
   ok("8: the outer tool-schema `required` was located", required.length > 0,
      `${requiredSets.length} required-array(s) in file`);
-  ok("8: …and neither translation is in it — omitting beats guessing",
-     required.length > 0 && !required.includes("resolutionCriterionSw") && !required.includes("resolutionCriterionZh"));
+  // ⛔ COUPLED TO EXISTENCE, because on its own this cannot fail in the direction the
+  // RED run was meant to demonstrate. "Sw/Zh are absent from `required`" is ALSO true
+  // when the fields do not exist at all — the pre-F6c state — so it passed in the
+  // 16-failure RED run and proved nothing there. It distinguishes "deliberately
+  // optional" from "wrongly required", never from "never added". The existence check
+  // above is what supplies the missing half, so they are asserted together.
+  const declared = /resolutionCriterionSw:\s*\{\s*type:\s*"string"/.test(claude) &&
+                   /resolutionCriterionZh:\s*\{\s*type:\s*"string"/.test(claude);
+  ok("8: …both are DECLARED and neither is REQUIRED — omitting beats guessing",
+     declared && required.length > 0 &&
+     !required.includes("resolutionCriterionSw") && !required.includes("resolutionCriterionZh"),
+     declared ? "" : "fields are not declared at all");
   ok("8: the prompt tells the model to OMIT rather than guess, and never to copy the English",
      /OMIT the field entirely/i.test(claude) && /[Nn]ever copy the English/.test(claude));
 
@@ -362,30 +393,78 @@ const ZH = "若坦桑尼亚银行最后一个营业日的中间价低于首日�
   ok("8: the officer's edit applies the same rule",
      /opts\.resolutionCriterionSw\s*!==\s*undefined/.test(gen) &&
      /opts\.resolutionCriterionZh\s*!==\s*undefined/.test(gen));
-  ok("8: and the AIPoll row carries them in both directions",
+  // ⚠️ BOTH COLUMNS, BOTH DIRECTIONS — and the first version tested only `Sw` in both
+  // conjuncts while its label said "both directions". Deleting the Chinese mapping
+  // left it green. A label is not an assertion.
+  ok("8: the AIPoll row carries BOTH columns in BOTH directions",
      /resolutionCriterionSw:\s*r\.resolutionCriterionSw\s*\?\?\s*null/.test(gen) &&
-     /resolutionCriterionSw:\s*p\.resolutionCriterionSw/.test(gen));
+     /resolutionCriterionZh:\s*r\.resolutionCriterionZh\s*\?\?\s*null/.test(gen) &&
+     /resolutionCriterionSw:\s*p\.resolutionCriterionSw/.test(gen) &&
+     /resolutionCriterionZh:\s*p\.resolutionCriterionZh/.test(gen));
 
   // The candidate record, whose upsert duplicates its column list across two arms.
-  ok("8: ingestCandidate normalises both", /resolutionCriterionSw:\s*normaliseCriterionTranslation\(/.test(cand));
+  // ⚠️ Same correction: "normalises both" tested ONE column, so the exact F8 shape
+  // this file forbids could be reintroduced on the Chinese column with the guard green.
+  ok("8: ingestCandidate normalises BOTH columns",
+     /resolutionCriterionSw:\s*normaliseCriterionTranslation\(/.test(cand) &&
+     /resolutionCriterionZh:\s*normaliseCriterionTranslation\(/.test(cand));
   for (const col of ["resolutionCriterionSw", "resolutionCriterionZh"]) {
     const n = (cand.match(new RegExp(`${col}:\\s*c\\.${col}\\s*\\?\\?\\s*null`, "g")) ?? []).length;
     ok(`8: ${col} is written in BOTH arms of the candidate upsert`, n === 2, `${n} arm(s)`);
   }
 
   // ③ PUBLISHED — the link that makes the other two matter.
-  // ⛔ There are TWO paths that create a market from the AI pipeline and they are in
-  // different files. Fixing only the one the finding named would leave every
-  // candidate-published poll untranslated, which is the same defect with a smaller
-  // blast radius — so both are named here.
-  ok("8: publishing an AI poll carries both into createMarket",
-     /resolutionCriterionSw:\s*poll\.resolutionCriterionSw/.test(pollPub) &&
-     /resolutionCriterionZh:\s*poll\.resolutionCriterionZh/.test(pollPub));
+  //
+  // 🔴 SCOPED TO THE CALL, AND THIS ONE WAS VACUOUS UNTIL AN AUDIT CAUGHT IT.
+  // `ai-polls/actions.ts` contains `resolutionCriterionSw: poll.resolutionCriterionSw`
+  // TWICE — once in `ingestCandidate(...)` and once in `createMarket(...)`. A
+  // file-wide regex therefore stayed GREEN when the `createMarket` pair was deleted,
+  // which is precisely the defect this assertion claims to catch: the translation
+  // stored on the poll and dropped at the one boundary that reaches a player. The
+  // check named "the chain" did not test the chain.
+  // ⛔ Fifth ambiguous anchor of this session — an anchor that matches in more than
+  // one place is not an anchor. Each call's argument object is now extracted first.
+  // ⚠️ BRACE-MATCHED, not indentation-guessed. The first version looked for the
+  // literal `\n  });`, which is the closing indentation in ai-polls/actions.ts but
+  // NOT in candidates/actions.ts, where the call sits inside a `try` — so it
+  // extracted 0 characters there and "failed" an assertion about a call it had never
+  // read. Same class as every other locator mistake in this session: an anchor that
+  // depends on incidental formatting is not an anchor.
+  const callBody = (src: string, fn: string) => {
+    const at = src.indexOf(`await ${fn}({`);
+    if (at < 0) return "";
+    let depth = 0;
+    for (let i = src.indexOf("{", at); i < src.length; i++) {
+      if (src[i] === "{") depth++;
+      else if (src[i] === "}") { depth--; if (depth === 0) return src.slice(at, i + 1); }
+    }
+    return "";
+  };
+  const pollCreate = callBody(pollPub, "createMarket");
+  const pollIngest = callBody(pollPub, "ingestCandidate");
+  const candCreate = callBody(candPub, "createMarket");
+  ok("8: the two calls in ai-polls/actions.ts were located SEPARATELY",
+     pollCreate.length > 100 && pollIngest.length > 100 && pollCreate !== pollIngest,
+     `create=${pollCreate.length} ingest=${pollIngest.length}`);
+  ok("8: the candidates createMarket call was located", candCreate.length > 100, `${candCreate.length}`);
+
+  ok("8: publishing an AI poll carries both into THE createMarket CALL",
+     /resolutionCriterionSw:\s*poll\.resolutionCriterionSw/.test(pollCreate) &&
+     /resolutionCriterionZh:\s*poll\.resolutionCriterionZh/.test(pollCreate));
   ok("8: publishing a CANDIDATE carries both too — the second, easily-missed path",
-     /resolutionCriterionSw:\s*c\.resolutionCriterionSw/.test(candPub) &&
-     /resolutionCriterionZh:\s*c\.resolutionCriterionZh/.test(candPub));
-  ok("8: and the candidate RECORD gets them at ingest, so the audit trail matches the market",
-     /resolutionCriterionSw:\s*poll\.resolutionCriterionSw/.test(pollPub));
+     /resolutionCriterionSw:\s*c\.resolutionCriterionSw/.test(candCreate) &&
+     /resolutionCriterionZh:\s*c\.resolutionCriterionZh/.test(candCreate));
+  ok("8: and the candidate RECORD gets them at ingest — a SEPARATE claim, separately located",
+     /resolutionCriterionSw:\s*poll\.resolutionCriterionSw/.test(pollIngest) &&
+     /resolutionCriterionZh:\s*poll\.resolutionCriterionZh/.test(pollIngest));
+
+  // ⚠️ AND THE STRUCTURAL CHECK IS NOT THE EVIDENCE. `test:criterion-chain` and
+  // `test:criterion-ai-publish` EXECUTE these hops with real data; this section only
+  // proves the wiring is still present. Both are named here so the pair cannot drift
+  // apart, and so nobody reads a green §8 as proof the value arrives.
+  const wired = read("package.json");
+  ok("8: the EXECUTING companions are wired, because a grep is not a proof",
+     /"test:criterion-chain"/.test(wired) && /"test:criterion-ai-publish"/.test(wired));
 
   // ④ VISIBLE TO THE OFFICER — a translation stored and never shown is write-only,
   // and this is the sentence the payout turns on. Both a read and an edit surface.
@@ -398,6 +477,34 @@ const ZH = "若坦桑尼亚银行最后一个营业日的中间价低于首日�
   ok("8: the officer can EDIT both, under the same imported rule",
      /criterionSw/.test(editor) && /criterionZh/.test(editor) &&
      /import\s*\{[^}]*criterionTranslationIssue[^}]*\}\s*from\s*["']@\/lib\/localized["']/.test(editor));
+
+  // 🔴 AND THE PANEL MUST *REFUSE*, NOT JUST WARN — a real defect this guard did not
+  // have. The edit panel computed `swIssue`/`zhIssue` and rendered a red alert, then
+  // submitted anyway: the server dropped the value and the officer got
+  // "Poll updated · Changes saved". A SUCCESS TOAST OVER A DISCARDED TRANSLATION is
+  // precisely the state this whole finding is about. The wizard blocks its Continue
+  // on the same rule; the panel had the rule and never used it.
+  // ⛔ Asserted inside `submit()`, not file-wide — the issues are *computed* elsewhere
+  // in the file, so a page-wide grep would pass on the broken version.
+  // ⛔ AND THERE ARE **TWO** `const submit = () => {` IN THIS FILE. Taking the first
+  // grabbed the OTHER form's handler and reported "the panel does not refuse" over a
+  // panel that does — the sixth ambiguous anchor of this session, in the assertion
+  // written to catch the sixth defect. The right one is selected by CONTENT: the
+  // handler that submits the criterion fields.
+  const submitBody = (() => {
+    const bodies: string[] = [];
+    for (let at = editor.indexOf("const submit = () => {"); at >= 0; at = editor.indexOf("const submit = () => {", at + 1)) {
+      let depth = 0;
+      for (let i = editor.indexOf("{", at); i < editor.length; i++) {
+        if (editor[i] === "{") depth++;
+        else if (editor[i] === "}") { depth--; if (depth === 0) { bodies.push(editor.slice(at, i + 1)); break; } }
+      }
+    }
+    return bodies.find((b) => b.includes("resolutionCriterionSw")) ?? "";
+  })();
+  ok("8: the edit panel's submit() was located", submitBody.length > 300, `${submitBody.length}`);
+  ok("8: …and it REFUSES to save while a translation issue stands",
+     /if\s*\(\s*swIssue\s*\|\|\s*zhIssue\s*\)/.test(submitBody) && /return;/.test(submitBody));
 
   // ⑤ The schema half, both models, both nullable and additive.
   const schema = read("prisma/schema.prisma");
