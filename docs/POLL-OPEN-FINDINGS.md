@@ -306,6 +306,30 @@ render falls back to EN when a translation is absent, and says so rather than pr
 
 ---
 
+## ⭐ ALI'S STANDING AUTHORIZATION — given 2026-08-11, session 42
+
+> *"yes do full schema migrations, changed and stored data changes, anything — all clear …
+> you have full access, ask me for atomic permission."*
+
+**Scope:** F6's schema migration, F8's stored-data change, F3's form change, F7's money-figure
+decision — all approved in principle. **Ali approves each tool call as it happens**, so the
+authorization is to *proceed*, not to batch.
+
+⛔ **THIS IS WRITTEN DOWN BECAUSE IT WAS SPOKEN IN A TRANSCRIPT, WHICH IS THE ONE THING THIS
+WHOLE FILE EXISTS TO PREVENT.** A permission that lives only in a chat log is gone the moment
+the session ends, and the next session would re-ask a question already answered.
+
+⚠️ **BUT IT IS NOT A LICENCE TO SKIP THE RULES, AND TWO STILL BIND:**
+- **Additive migrations only, local PG first, prod via the deploy — never by hand.** `main`
+  auto-deploys and `prisma migrate deploy` runs on start, so a bad migration reaches the live
+  money DB with no staging in between.
+- **One change, one guard proven RED first, docs in the same commit, one push, one production
+  verification.** "All clear" removes the *asking*, not the *proving*.
+
+⛔ **SESSION 42 DID NOT START F6.** It reached the end of its context window here, and a schema
+migration against a live money DB is the exact thing not to begin without the runway to finish
+and verify it. That is a deliberate stop, not an oversight — see the ready-to-run plan in F6.
+
 ## The eight that were lost
 
 ⛔ **Names, evidence and proposed fixes: gone.** They existed only in session 41's transcript,
