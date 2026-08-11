@@ -43,7 +43,14 @@ export function NewMarketWizard({ feeInfo, platformTz }: { feeInfo: FeeInfo; pla
       day: "numeric", month: "short", year: "numeric",
       hour: "2-digit", minute: "2-digit", timeZone: platformTz, timeZoneName: "short",
     });
-    return `${local}   ·   stored as ${iso}`;
+    // ⚠️ MINUTE PRECISION, AND IT IS A LEGIBILITY FIX FOUND BY LOOKING AT THE PAGE.
+    // The full ISO (`…T11:30:00.000Z`) overflowed this row's measure and `break-all`
+    // split it mid-token — `…T11:30:0` / `0.000Z` across two lines. An officer is
+    // confirming the instant their poll's money settles; a timestamp broken through
+    // the middle is the one thing on this screen that must read cleanly.
+    // Nothing is lost: `datetime-local` only offers minutes, so the seconds are
+    // always `:00` — this is the same instant, written to the precision it was typed.
+    return `${local}   ·   stored as ${iso.replace(/:\d{2}\.\d{3}Z$/, "Z")}`;
   })();
 
   const canNext = (() => {

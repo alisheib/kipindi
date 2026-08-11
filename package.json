@@ -340,7 +340,8 @@
     "test:pool-residual": "tsx scripts/pool-residual.test.mts",
     "red:pool-residual": "node scripts/pool-residual-red.mjs",
     "test:zoned-time": "tsx scripts/zoned-time.test.mts",
-    "test:proposal-day": "tsx scripts/proposal-day.test.mts"
+    "test:proposal-day": "tsx scripts/proposal-day.test.mts",
+    "qa:verify-s42": "node scripts/live-verify-s42.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",
