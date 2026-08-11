@@ -13,6 +13,8 @@ import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import {
   createProposal, approveProposal, goLiveProposal, editProposal, getProposalDetail,
 } from "../src/lib/server/proposals-service.ts";
+import { endOfProposalDayIso } from "../src/lib/server/proposals-service.ts";
+import { getPlatformTimezone } from "../src/lib/server/platform-config.ts";
 import { getMarket } from "../src/lib/server/market-service.ts";
 import { setProposalsConfig } from "../src/lib/server/proposals-config.ts";
 import { setBonusConfig } from "../src/lib/server/bonus-config.ts";
@@ -110,8 +112,34 @@ const officer = await mkUser("ADMIN");
   const g = c.ok ? await goLiveProposal(c.proposal.id, officer, TRUSTED_MACRO) : { ok: false as const };
   ok("7: go-live ok", g.ok, g.ok ? "" : (g as { error?: string }).error ?? "");
   const m = g.ok ? await getMarket(g.marketId) : null;
-  ok("7: market selectionClosedAt matches proposal close date",
-    m?.selectionClosedAt === `${close}T23:59:59.000Z`, `got=${m?.selectionClosedAt}`);
+  // ⛔ THE EXPECTATION IS DERIVED, NOT WRITTEN OUT — and it used to be
+  // `${close}T23:59:59.000Z`, which pinned the proposed day to **UTC**. E-145
+  // deliberately replaced that policy ("the proposed day ends when that day ends on
+  // the clock the platform runs on") and this line was not updated with it, so
+  // `test:proposal-close` sat RED on `main` asserting the defect it had just been
+  // fixed of. ⭐ A hardcoded instant makes the guard a SECOND definition of a policy
+  // that already has one; calling `endOfProposalDayIso` means the check moves with
+  // the zone an admin configures instead of contradicting it.
+  ok("7: market selectionClosedAt matches proposal close date, on the PLATFORM's clock",
+    m?.selectionClosedAt === endOfProposalDayIso(close), `got=${m?.selectionClosedAt} want=${endOfProposalDayIso(close)}`);
+
+  // ⭐ AND AN INDEPENDENT READ-BACK, because the line above compares the product
+  // against THE SAME HELPER THE PRODUCT CALLS — on its own that asserts only that
+  // the publish path used the helper, never that the helper is right. A guard and
+  // the thing it guards sharing one definition is how two checks agree and are both
+  // wrong ([[guards-that-agree-and-are-both-wrong]]). Intl is a different code path
+  // from `wallClockToUtcIso`, so this half can fail while the half above passes.
+  {
+    const tz = getPlatformTimezone();
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", hour12: false,
+    }).formatToParts(new Date(m?.selectionClosedAt ?? 0));
+    const g = (k: string) => parts.find((p) => p.type === k)?.value ?? "";
+    ok("7: …and that instant reads back as 23:59 on the proposed date in the platform zone",
+      !!m?.selectionClosedAt && `${g("year")}-${g("month")}-${g("day")}` === close && `${g("hour")}:${g("minute")}` === "23:59",
+      `${g("year")}-${g("month")}-${g("day")} ${g("hour")}:${g("minute")} ${tz}`);
+  }
 }
 
 // 8. FULL FLOW without a close date: market still gets a resolution + (auto) close
