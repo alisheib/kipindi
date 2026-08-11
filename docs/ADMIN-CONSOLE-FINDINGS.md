@@ -30,14 +30,21 @@ and a page that renders is not a working control.
 
 ## The findings
 
-| # | slug | sev | confirmed | where |
-|---|---|---|---|---|
-| A1 | `view-only-roles-are-offered-act-controls` | medium | 🟢 **SHIPPED 2026-08-11** | guard: `test:admin-act-gate` · driven: `qa:admin-act-gate` 39/0 |
-| A2 | `privacy-refusal-is-never-audited` | medium | 🟢 **SHIPPED 2026-08-11** | guard: `test:admin-soft-gate` · RED `red:admin-soft-gate` |
-| A3 | `refused-clicks-pollute-the-security-log` | medium | 🟢 **SHIPPED 2026-08-11** — fixed at source by A1 | guard: `test:admin-act-gate` |
-| A4 | `area-chart-y-axis-mislabels-its-own-gridlines` | low | 🟢 **SHIPPED 2026-08-11** | guard: `test:admin-charts` · RED `red:admin-charts` |
-| A5 | `a-zero-paints-a-visible-mark` | low–medium | 🟢 **SHIPPED 2026-08-11** | guard: `test:admin-charts` · RED `red:admin-charts` |
-| A6 | `operator-margin-chart-divides-settlements-by-the-wrong-days-stakes` | **medium–high** | 🟢 **SHIPPED 2026-08-11** | guard: `test:margin-series` · RED `red:margin-series` |
+| # | campaign id | slug | sev | confirmed | where |
+|---|---|---|---|---|---|
+| A1 | **E-155** | `view-only-roles-are-offered-act-controls` | medium | 🟢 **SHIPPED 2026-08-11** | guard: `test:admin-act-gate` · driven: `qa:admin-act-gate` 39/0 |
+| A2 | **E-156** | `privacy-refusal-is-never-audited` | medium | 🟢 **SHIPPED 2026-08-11** | guard: `test:admin-soft-gate` · RED `red:admin-soft-gate` |
+| A3 | **E-157** | `refused-clicks-pollute-the-security-log` | medium | 🟢 **SHIPPED 2026-08-11** — fixed at source by A1 | guard: `test:admin-act-gate` |
+| A4 | **E-158** | `area-chart-y-axis-mislabels-its-own-gridlines` | low | 🟢 **SHIPPED 2026-08-11** | guard: `test:admin-charts` · RED `red:admin-charts` |
+| A5 | **E-159** | `a-zero-paints-a-visible-mark` | low–medium | 🟢 **SHIPPED 2026-08-11** | guard: `test:admin-charts` · RED `red:admin-charts` |
+| A6 | **E-160** | `operator-margin-chart-divides-settlements-by-the-wrong-days-stakes` | **medium–high** | 🟢 **SHIPPED 2026-08-11** | guard: `test:margin-series` · RED `red:margin-series` |
+
+⚠️ **WHY BOTH IDS.** The `A` numbers are this lane's own; the `E` numbers are the campaign
+register's series, which is what [`LIVE-QA-CAMPAIGN.md`](LIVE-QA-CAMPAIGN.md) and its handoff
+guard index on. ⛔ **`A-1` … `A-5` were ALREADY TAKEN** in that file, which is why this lane
+uses `A1` without the hyphen — and why the campaign id exists as a separate column rather than
+a rename. **Re-grepped at the moment of filing: the highest live id was `E-154`**, so these
+take 155–160. (`E-999` is the documented mutation sentinel, not a finding.)
 
 ---
 
