@@ -155,8 +155,29 @@ shots/*.png
 # The AUTHORED receiving playbook is versioned at docs/design-brief/INTAKE.md.
 # ⛔ A commission NEVER carries a copy of the rulebook, the tokens, or component source — it
 #    links to them. See docs/design-system/README.md §0b and `npm run test:design-one-door`.
-/design-brief/
+# ⚠️ `/design-brief/*` not `/design-brief/` — git cannot re-include anything inside an EXCLUDED
+# DIRECTORY, so the trailing-slash form makes every `!` rule below silently dead.
+/design-brief/*
 /design-brief.zip
+
+# EXCEPTION, 2026-08-11 (Ali): the commission currently UNDER REVIEW is checked in so a new
+# session can see it without being handed a zip. **Its authored documents only** — the
+# screenshots stay out of git, because §0b bans committing regenerable evidence and this
+# package's 18 binaries are 2.37 MB of re-shootable captures of our own live pages.
+# ⛔ This is a REVIEW window, not a home. When the round is sent, delete the folder and these
+#    lines with it. One commission tracked at a time; never two.
+!/design-brief/handover-v2-2026-08-11/
+/design-brief/handover-v2-2026-08-11/**/*.jpg
+/design-brief/handover-v2-2026-08-11/**/*.png
+/design-brief/handover-v2-2026-08-11/**/*.zip
+
+# Local playbook + session tooling dropped at the repo root (not build output, not evidence).
+# Untracked AND unignored is the dangerous combination — that is how 2.37 MB of screenshots
+# nearly went in on a `git add -A`. Ignored so they cannot be swept in by accident.
+/*.bundle
+/playbook-enable.sql
+/run-playbook.cmd
+/verify-playbook.cmd
 
 # Anything unzipped at the repo root. A design handover arrived as "New Landing Design/" on
 # 2026-08-11: untracked, NOT ignored, 50 files / 2.87 MB, of which 2.37 MB were regenerable

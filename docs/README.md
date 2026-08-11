@@ -51,7 +51,8 @@ reference in `docs/` must resolve on disk. Broken on purpose and observed to go 
 
 | Doc | | |
 |---|---|---|
-| [`DESIGN_AUTHORITY.md`](DESIGN_AUTHORITY.md) | 🟢 LAW | B1–B10 invariants + "what the freeze pass found — do not undo". Enforced by `test:design-frozen`. |
+| [`DESIGN_AUTHORITY.md`](DESIGN_AUTHORITY.md) | 🟢 LAW | **The design rule book — the only one.** B1–B10 invariants, §0 the filing law, §M the material law. Enforced by `test:design-frozen` + `test:design-one-door`. |
+| `../design-brief/handover-v2-2026-08-11/` | 🟠 OPEN | **The design commission under review** — round 2, landing composition + `/markets` discovery. Read its `README.md`, then `SOURCES.md`. ⚠️ **Not approved, not sent.** 7 of its 21 findings do not hold and its self-check cannot be passed. Screenshots are gitignored; only the `.md` files are tracked. Delete the folder when the round is sent. |
 | [`design-master-brief.md`](design-master-brief.md) | 🟢 LAW | Palette + composition source of truth; live tokens match to ~0.3%. |
 | [`POLISH-BACKLOG.md`](POLISH-BACKLOG.md) | 🔵 LIVE | §1 and §4 done; **§2 FIX SOON and §3 LATER are open**. §3 carries the measured scale ceilings. |
 

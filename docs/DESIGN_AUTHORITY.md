@@ -80,7 +80,17 @@ stale one is always the one somebody reads. This is the doc-level twin of §B9.
 | **A token or paint value** | `src/app/globals.css` (or `motion.css` for timing) **at its line, with the rule as a comment beside it** | ⛔ any doc — docs *describe* values, they never *define* them |
 | **A component's geometry that is genuinely code** (dial tilt maths, chart viewBox) | The component file itself, which is authoritative; this rulebook may *point* at it | ⛔ copying the numbers into a doc |
 | **A component/page spec** | `docs/design-system/v2-2026-07-27/02-components/<name>/` beside its siblings | ⛔ a second specs folder |
-| **An OUTBOUND commission** (the brief/package we send a designer) | `design-brief/<name>/` at the repo root — **gitignored**, one folder per round, assembled from LIVE files at send time | ⛔ anywhere else on disk; ⛔ carrying a COPY of this file, the tokens, or component source — a package **links**, it never bundles; ⛔ keeping the snapshot after the round |
+| **An OUTBOUND commission** (the brief/package we send a designer) | `design-brief/<name>/` at the repo root — one folder per round, assembled from LIVE files at send time. While a round is **under review**, its authored `.md` files are **tracked** so a new session can read the plan; its screenshots stay gitignored | ⛔ anywhere else on disk; ⛔ carrying a COPY of this file, the tokens, or component source — a package **links**, it never bundles; ⛔ committing its screenshots; ⛔ two tracked commissions at once; ⛔ keeping the folder after the round is sent |
+
+> 🟠 **ONE COMMISSION IS UNDER REVIEW RIGHT NOW — `design-brief/handover-v2-2026-08-11/`.**
+> Round 2, landing-page composition + `/markets` discovery. Read its `README.md` first, then
+> `SOURCES.md`. **It is not approved and not sent**; Ali is judging its quality.
+> ⚠️ Do not commission against `02-findings/` as it stands — an audit on 2026-08-11 checked all
+> 21 findings against live source and **7 do not hold**, and the self-check at
+> `06-handover-contract/OUTPUT-SPEC.md:107` cannot be passed (it bans `oklch(` while
+> `needle.css:44`, a frozen asset the designer must reproduce, contains it). `SOURCES.md` lists
+> the three defects to fix before any rebuild. **When the round is sent, delete the folder and
+> its `.gitignore` exception together.**
 | **An incoming commission from a designer** | `docs/design-system/v2-2026-07-27/NN-<name>/`, raw and untouched, plus an acceptance record | ⛔ merging it into `src/` before acceptance |
 | **A session handoff** | `docs/LIVE-QA-CAMPAIGN.md` §6b, at the TOP | ⛔ a new handoff file |
 | **Provenance / "what the designer delivered"** | `07-provenance/` | ⛔ this file |
