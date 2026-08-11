@@ -35,10 +35,10 @@ The line references are what a fix should start from.
 |---|---|---|---|---|
 | F1 | `sell-offered-on-bonus-funded-position` | medium | 🟢 **SHIPPED 2026-08-11** | guard: `test:cashout-lock` §7 |
 | F2 | `one-sided-loser-share-phantom-fee` | medium | ⚠️ **narrowed, line NOT pinned** | [`payout.ts:344-362`](../src/lib/payout.ts#L344-L362) |
-| F3 | `per-market-rate-overrides-are-inert` | medium | ✅ re-confirmed | [`config-form.tsx:337-365`](../src/app/admin/config/config-form.tsx#L337-L365) |
+| F3 | `per-market-rate-overrides-are-inert` | medium | 🟢 **SHIPPED 2026-08-11** | [`config-form.tsx:337-365`](../src/app/admin/config/config-form.tsx#L337-L365) |
 | F4 | `wizard-resolution-time-parsed-in-browser-timezone` | medium | 🟢 **SHIPPED 2026-08-11** | guard: `test:zoned-time` |
 | F5 | `regex-advertised-never-executed` | medium | 🟢 **SHIPPED 2026-08-11** | guard: `test:search-adoption` §5 |
-| F6 | `resolution-criterion-english-only` | medium | 🟡 **READ PATH SHIPPED 2026-08-11** | guard: `test:criterion-i18n` · writers pending (F6b/F6c below) |
+| F6 | `resolution-criterion-english-only` | medium | 🟢 **SHIPPED 2026-08-11 — read + both writers** | guard: `test:criterion-i18n` (91) · F6a/F6b/F6c below |
 
 ### F1 · `sell-offered-on-bonus-funded-position` — 🟢 SHIPPED 2026-08-11
 
@@ -168,6 +168,40 @@ population it is a count of.
 global-at-creation; or ② key rate overrides on something a *future* poll can carry (category, or
 a named profile) rather than on an id that cannot exist yet. ①  is smaller and truthful; ② is the
 feature the form's comment thinks it already has. **Ali's call.**
+
+#### 🟢 SHIPPED 2026-08-11 — Ali chose ①
+
+The four rate inputs are gone, the misleading comment is replaced with what is actually true, and
+the panel now says **"Stake bounds only. Fee rates are global and are frozen onto a poll when it
+is created, so they cannot be overridden per market."**
+
+⛔ **THE ACTION REFUSES A RATE KEY RATHER THAN IGNORING IT.** A stale tab or a hand-rolled POST
+now gets told why, naming the fields. ⭐ **Silently dropping a value an officer typed is exactly
+how the four dead inputs survived**: every signal — the input, the save, the success toast —
+said the write had worked.
+
+⚠️ **`minStake` / `maxStake` STAY, and the guard's §2 exists to keep them.** They are read live
+via `getEffectiveConfig(m.id)` on the market page and enforced server-side in `buyPosition`, so a
+fix that deleted the form would have deleted two working controls. **Before quoting this finding,
+ask which population it counts: 4 of 6, never 6 of 6.**
+
+**Guarded by [`test:override-scope`](../scripts/market-override-scope.test.mts), 17 assertions.**
+⭐ §3 asserts the **AGREEMENT** — the set of fields the form offers must equal the set the action
+consumes — which catches the defect in *both* directions: an input with no writer, and a writer
+with no input (the state `cashOutFeeRate`/`thinProfitRatio` were once in, reachable from storage
+but not from the UI). ⛔ It counts `updates.x =` in **statement position**, so the four dead keys
+now appearing inside a refusal *message* do not read as consumers.
+
+⭐ **§4 RECORDS THE REASON, NOT THE SYMPTOM** — that `createMarket` mints `mkt_${randomId(10)}`
+and then asks `getEffectiveConfig(id)` for *that* id. **If someone later re-keys overrides onto
+something a future poll can carry (option ②), §4 is the assertion to revisit deliberately**,
+instead of §1 being quietly deleted because it has become inconvenient.
+
+**RED-proven on the unmodified form: 6 named failures, exit 1** — all four inputs present, the
+consumed set reading `[commissionRate, feeCeilingRate, cashOutFeeRate, thinProfitRatio, minStake,
+maxStake]`, and no refusal in the action. ⚠️ **§2 passed in both states, on purpose**: it is the
+anti-collateral assertion, so it *should* be green before and after — a check that only goes red
+with the defect cannot protect the thing the fix might break.
 
 ### F4 · `wizard-resolution-time-parsed-in-browser-timezone`
 

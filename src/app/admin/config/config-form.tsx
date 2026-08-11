@@ -337,29 +337,38 @@ export function MarketOverrideForm({ globalConfig }: { globalConfig: RateConfig 
       <Field label="Market id" hint="Get this from the markets table — starts with mkt_">
         <Input name="marketId" placeholder="mkt_abc123…" mono />
       </Field>
-      {/* An override only affects polls created AFTER it is set — a poll freezes
-          its rates at creation, so setting an override on a poll that already
-          exists changes nothing about it. That is the point. */}
+      {/* 🔴 F3 · FOUR RATE INPUTS USED TO SIT HERE AND NONE OF THEM COULD EVER DO
+          ANYTHING — commission, fee ceiling, cash-out fee and thin-profit ratio.
+          The old comment claimed this was by design:
+
+            "An override only affects polls created AFTER it is set — a poll freezes
+             its rates at creation … That is the point."
+
+          It is not the point, it is a dead end. This form is keyed on an EXISTING
+          `mkt_` id. `createMarket` mints `mkt_${randomId(10)}` and then asks
+          `getEffectiveConfig(id)` for the rates of that brand-new id, one
+          microsecond old — so an override stored under any existing poll's id can
+          never be the one it reads. A poll created "after" has a DIFFERENT id.
+
+          ⭐ The comment described unreachable code as a designed limitation, which is
+          why it survived: it reads like a decision. Ali's call was to remove the four
+          rather than re-key overrides on something a future poll can carry.
+
+          ⚠️ MIN/MAX STAKE STAY, AND THAT DISTINCTION IS THE WHOLE FINDING. They are
+          read LIVE via `getEffectiveConfig(m.id)` on the market page and enforced
+          server-side in `buyPosition`, so they work exactly as advertised. This was
+          "4 of 6 controls are inert", never "the form is broken" — deleting the form
+          would have deleted two working controls. */}
+      <p className="rounded-md border border-border bg-bg-overlay px-3 py-2.5 text-[11.5px] leading-relaxed text-text-muted">
+        <strong className="text-text">Stake bounds only.</strong> Fee rates are global and are
+        frozen onto a poll when it is created, so they cannot be overridden per market — change
+        them above, before creating the poll.
+      </p>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <Field label="Commission (%)" hint={`Leave blank to inherit ${(globalConfig.commissionRate * 100).toFixed(1)}%`}>
-          <Input name="commissionRate" type="number" step="0.1" min="0" max="30" placeholder="" mono />
-        </Field>
-        <Field label="Fee ceiling (%)" hint={`Leave blank to inherit ${(globalConfig.feeCeilingRate * 100).toFixed(1)}% of the smaller side`}>
-          <Input name="feeCeilingRate" type="number" step="0.1" min="0" max="100" placeholder="" mono />
-        </Field>
-        {/* These two were merged by getEffectiveConfig() but the form had no input
-            for them — so a per-market override of either was unreachable through
-            the UI. The storage layer always supported it. */}
-        <Field label="Cash-out fee (%)" hint={`Leave blank to inherit ${(globalConfig.cashOutFeeRate * 100).toFixed(1)}%`}>
-          <Input name="cashOutFeeRate" type="number" step="0.1" min="0" max="30" placeholder="" mono />
-        </Field>
-        <Field label="Thin-profit threshold" hint={`Leave blank to inherit ${globalConfig.thinProfitRatio.toFixed(2)}×`}>
-          <Input name="thinProfitRatio" type="number" step="0.01" min="1" max="2" placeholder="" mono />
-        </Field>
-        <Field label="Min stake (TZS)" hint="Optional override">
+        <Field label="Min stake (TZS)" hint={`Leave blank to inherit ${globalConfig.minStake.toLocaleString()}`}>
           <Input name="minStake" type="number" step="100" min="100" placeholder="" mono />
         </Field>
-        <Field label="Max stake (TZS)" hint="Optional override">
+        <Field label="Max stake (TZS)" hint={`Leave blank to inherit ${globalConfig.maxStake.toLocaleString()}`}>
           <Input name="maxStake" type="number" step="1000" min="1000" placeholder="" mono />
         </Field>
       </div>

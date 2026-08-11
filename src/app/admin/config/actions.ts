@@ -115,19 +115,26 @@ export async function setMarketOverrideAction(formData: FormData) {
   const marketId = String(formData.get("marketId") ?? "").trim();
   if (!marketId) return { ok: false as const, error: "Missing market id." };
   try {
+    // 🔴 F3 · A PER-MARKET RATE OVERRIDE CANNOT REACH ANYTHING, so this action no
+    // longer pretends to accept one. `createMarket` freezes rates by asking
+    // `getEffectiveConfig` for an id it minted one microsecond earlier, so an
+    // override stored under an existing poll's id is never the one it reads.
+    // ⛔ REFUSED RATHER THAN IGNORED. Silently dropping a rate an officer typed is
+    // how the four dead inputs survived so long — every signal said the write had
+    // worked. A stale tab or a hand-rolled POST gets told the truth instead.
+    const DEAD_RATE_KEYS = ["commissionRate", "feeCeilingRate", "cashOutFeeRate", "thinProfitRatio"] as const;
+    const attempted = DEAD_RATE_KEYS.filter((k) => String(formData.get(k) ?? "").trim() !== "");
+    if (attempted.length > 0) {
+      return {
+        ok: false as const,
+        error: `Fee rates cannot be overridden per market (${attempted.join(", ")}). They are global and are frozen onto a poll at creation — set them in the global config before creating the poll.`,
+      };
+    }
     const updates: Partial<RateConfig> = {};
-    const c = parseRate(String(formData.get("commissionRate") ?? ""));
-    const ceil = parseRate(String(formData.get("feeCeilingRate") ?? ""));
-    // cashOutFeeRate + thinProfitRatio were always merged by getEffectiveConfig
-    // but had no input in the form, so overriding either was unreachable.
-    const co = parseRate(String(formData.get("cashOutFeeRate") ?? ""));
-    const thin = parseRatio(String(formData.get("thinProfitRatio") ?? ""));
     const min = parseInteger(String(formData.get("minStake") ?? ""));
     const max = parseInteger(String(formData.get("maxStake") ?? ""));
-    if (c !== undefined) updates.commissionRate = c;
-    if (ceil !== undefined) updates.feeCeilingRate = ceil;
-    if (co !== undefined) updates.cashOutFeeRate = co;
-    if (thin !== undefined) updates.thinProfitRatio = thin;
+    // ⚠️ These two DO work: read live via getEffectiveConfig(m.id) on the market page
+    // and enforced server-side in buyPosition. They are why the form still exists.
     if (min !== undefined) updates.minStake = min;
     if (max !== undefined) updates.maxStake = max;
     if (Object.keys(updates).length === 0) {
