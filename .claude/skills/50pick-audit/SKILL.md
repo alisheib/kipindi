@@ -47,16 +47,16 @@ next start` **against the live money DB**. There is no staging. So:
 - **`npm run test:integrity`** — content-integrity guard: fails if a superseded/removed pattern returns in a current-truth surface (README/CLAUDE/source): the 15% withholding tax, a French UI locale, "bilingual EN/SW", the flat-9% fee, a light theme / next-themes, a committed `db-check.*`, raw-PII selects outside the server layer, or a doc mandating the teal kit. Keep it green — it's how the "docs say things that aren't true" class stays fixed.
 
 ## 3. Local disposable Postgres — the SAFE DB target
-A user-space PG16 cluster lives at **`C:\pg-loadtest`, port 5433** (`fsync=off`, disposable). Full guide: `scripts/load/README.md`. Three gates refuse prod (hostname denylist `rlwy.net`/`railway.app`/`50pick.tz`, localhost-only, and a `SystemConfig['__LOAD_TEST_TARGET__']` marker row).
+A user-space PG16 cluster lives at **`F:\pg-loadtest`, port 5433** (`fsync=off`, disposable). Full guide: `scripts/load/README.md`. ⚠️ **This said `C:\` until 2026-08-11 (session 43) and had been wrong the whole time** — `scripts/load/README.md`, the file this line names as the source of truth, said `F:\` all along. A skill that DISAGREES with the doc it points at is worse than one that stays silent: it is read first and believed. **When these two differ, the README wins; fix the skill.** Three gates refuse prod (hostname denylist `rlwy.net`/`railway.app`/`50pick.tz`, localhost-only, and a `SystemConfig['__LOAD_TEST_TARGET__']` marker row).
 
 ```powershell
 # start (idempotent)
-& C:\pg-loadtest\pgsql\bin\pg_ctl.exe -D C:\pg-loadtest\data -l C:\pg-loadtest\pg.log start
+& F:\pg-loadtest\pgsql\bin\pg_ctl.exe -D F:\pg-loadtest\data -l F:\pg-loadtest\pg.log start
 $env:DATABASE_URL='postgresql://postgres:pw@localhost:5433/kipindi_load?schema=public'
 node scripts/load/reset-db.mjs         # clean + migrate + re-plant marker (before any money-total assertion)
 npx tsx scripts/load/s10-cross-instance.mts   # the multi-instance (C6/C4) harness
 ```
-psql: `& C:\pg-loadtest\pgsql\bin\psql.exe "postgresql://postgres:pw@localhost:5433/kipindi_load" -c "..."`
+psql: `& F:\pg-loadtest\pgsql\bin\psql.exe "postgresql://postgres:pw@localhost:5433/kipindi_load" -c "..."`
 
 ## 4. Migrations — the ONLY safe workflow ⛔
 **Never hand-run an untested schema change against the production money DB.** A push that outran its schema once took checkout + admin down (see memory).
