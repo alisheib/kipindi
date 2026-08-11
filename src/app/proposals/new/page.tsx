@@ -7,6 +7,7 @@ import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
 import { ProposalsBlockedComposer } from "@/components/proposals/proposals-state-views";
 import { currentSession } from "@/lib/server/auth-service";
 import { getProposalsConfig, isProposalsActive } from "@/lib/server/proposals-config";
+import { getPlatformTimezone } from "@/lib/server/platform-config";
 import { db } from "@/lib/server/store";
 import { CreateProposalForm } from "./create-form";
 import { getServerT } from "@/lib/i18n-server";
@@ -45,7 +46,7 @@ export default async function NewProposalPage() {
         </div>
       </PageHero>
       {active ? (
-        <CreateProposalForm rateLimit={cfg.rateLimit} openCount={openCount} />
+        <CreateProposalForm rateLimit={cfg.rateLimit} openCount={openCount} platformTz={getPlatformTimezone()} />
       ) : (
         <ProposalsBlockedComposer
           state={state}

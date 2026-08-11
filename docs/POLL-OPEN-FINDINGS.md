@@ -375,7 +375,7 @@ not the reverse.
 change on a money-adjacent entity should be Ali's call rather than a quiet edit. ⚠️ Check whether
 anything reads `titleSw` raw (outside `pickLocalized`) before flipping it.
 
-### F9 · `proposal-resolution-date-pinned-to-23:59-UTC` — ⚪ NEW, found 2026-08-11, NOT fixed
+### F9 · `proposal-resolution-date-pinned-to-23:59-UTC` — 🟢 SHIPPED 2026-08-11 (E-145)
 
 Same family as F4, found while reading the publish path:
 
@@ -388,11 +388,26 @@ the following morning** — so a poll a player proposed "for the 15th" actually 
 hours into the 16th, and betting stays open through those hours. `selectionCloseDate` gets the
 same treatment on the next line.
 
-⚠️ **Not the same fix as F4** and must not be swept in with it: F4 converts an officer's *wall
-clock*, whereas this is a *date* that needs a policy — "end of that day **on the platform
-clock**" (20:59:59Z for EAT) is almost certainly the intent, but changing it moves the resolution
-instant of every future proposal-published poll by three hours. ⛔ Decide the policy first, then
-change it; do not infer it from F4.
+**SHIPPED, with the policy stated explicitly rather than inferred:** *"the proposed day ends when
+that day ends on the clock the platform runs on."* On EAT the 15th now ends at **20:59:59Z**, not
+23:59:59Z.
+
+⭐ **It was written FIVE times, and that is the finding underneath the finding.** Two validation
+gates, one edit gate, and the two that move money (`resolutionAt`, `selectionClosedAt`) each
+inlined `Date.parse(\`${date}T23:59:59.000Z\`)`. All five now route through **one**
+`endOfProposalDayIso`, which takes its zone from `getPlatformTimezone()` — so it cannot drift
+from the zone every other timestamp is displayed in.
+
+⚠️ **A sixth site was found on the CLIENT and fixed in the same commit.** `create-form.tsx`
+enabled Submit using `T23:59:59Z` — **three hours later** than the server's cutoff — so for a
+three-hour window every night the form lit up Submit on a date the server then refused as
+*"must be in the future"*. The platform zone is now passed to the form so both apply one policy.
+
+**RED-proven:** restoring the literal on the `resolutionAt` line fails both the structural check
+and the by-name money check, exit 1; file restored byte-identical. ⭐ **The structural half is
+the one that holds** — the arithmetic is three assertions, but the real risk is the *sixth copy*,
+and this concept reached five copies precisely because inlining it is easier than finding the
+helper. `test:proposal-day` §3 now fails the file if the literal returns.
 
 ⚪ **Deliberately NOT open:** the E-138 pool-inflation shape on 5 LIVE polls. Ali ruled *"the data
 gets reset before launch"* — see [[50pick-data-resets-before-launch]]. It is a pre-launch reset

@@ -38,6 +38,8 @@ import { maskName } from "./affiliate-service";
 import { creditBonus } from "./bonus-service";
 import { creditInternal } from "./wallet-service";
 import { displayLabel } from "@/lib/display-label";
+import { wallClockToUtcIso } from "@/lib/zoned-time";
+import { getPlatformTimezone } from "./platform-config";
 import { resolvePhoneEmail } from "./email-map";
 import {
   notifyProposalUnderReview,
@@ -104,6 +106,37 @@ export function validateSourceUrl(raw: string | null | undefined): { ok: true; u
 }
 
 /**
+ * THE LAST INSTANT OF A PROPOSED CALENDAR DAY, ON THE PLATFORM CLOCK.
+ *
+ * A proposer picks a DATE — `2026-08-15` — not a time. Turning that into an instant
+ * is a policy, and until 2026-08-11 the policy was written FIVE separate times as
+ * `Date.parse(\`${date}T23:59:59.000Z\`)`: twice in validation here, once in the edit
+ * path, and — the two that move money — once each for the published market's
+ * `resolutionAt` and `selectionClosedAt`.
+ *
+ * ⛔ EVERY ONE OF THEM PINNED THE DAY TO **UTC**, which is 02:59:59 EAT the FOLLOWING
+ * MORNING. So a poll a player proposed "for the 15th" actually resolved three hours
+ * into the 16th, and betting stayed open through those three hours. Same family as
+ * E-144 (the wizard's wall clock), reached from the other end: that one converted an
+ * officer's typed time, this one interprets a bare date.
+ *
+ * ⭐ ONE definition, and it is a POLICY statement rather than an offset: "the proposed
+ * day ends when that day ends on the clock the platform runs on". The zone comes from
+ * `getPlatformTimezone()` — admin-configurable — so this cannot drift from the zone
+ * every other timestamp in the product is displayed in. ⛔ Do not inline
+ * `T23:59:59.000Z` again; `test:proposal-day` fails the file if it reappears.
+ */
+export function endOfProposalDayIso(date: string): string | null {
+  return wallClockToUtcIso(`${date}T23:59:59`, getPlatformTimezone());
+}
+
+/** The same instant as epoch ms, or `NaN` when the date is not `YYYY-MM-DD`. */
+export function endOfProposalDayMs(date: string): number {
+  const iso = endOfProposalDayIso(date);
+  return iso ? Date.parse(iso) : NaN;
+}
+
+/**
  * Validate an OPTIONAL betting-close (selection) date against a resolution date.
  * Empty → null (market's selectionClosedAt is auto-derived at publish). If present:
  * YYYY-MM-DD, in the future, and on/before the resolution date. Shared by
@@ -114,7 +147,7 @@ export function parseSelectionCloseDate(raw: string | null | undefined, resoluti
   const s = (raw ?? "").trim();
   if (!s) return { ok: true, date: null };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return { ok: false, error: "Selection-close date must be YYYY-MM-DD." };
-  const ts = Date.parse(`${s}T23:59:59.000Z`);
+  const ts = endOfProposalDayMs(s);
   if (!Number.isFinite(ts)) return { ok: false, error: "Invalid selection-close date." };
   if (ts <= Date.now()) return { ok: false, error: "Selection-close date must be in the future." };
   // Strictly before resolution: an equal date resolves to the same 23:59:59 cutoff
@@ -167,7 +200,7 @@ export async function createProposal(userId: string, input: CreateProposalInput)
   if (/[<>]/.test(titleEn)) return { ok: false, error: "Title cannot contain < or >.", code: "INVALID" };
   if (criterion.length < 12) return { ok: false, error: "Resolution criterion must be at least 12 characters.", code: "INVALID" };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { ok: false, error: "Resolution date must be YYYY-MM-DD.", code: "INVALID" };
-  const ts = Date.parse(`${date}T23:59:59.000Z`);
+  const ts = endOfProposalDayMs(date);
   if (!Number.isFinite(ts)) return { ok: false, error: "Invalid resolution date.", code: "INVALID" };
   if (ts <= Date.now()) return { ok: false, error: "Resolution date must be in the future.", code: "INVALID" };
   if (!PROPOSAL_CATEGORIES.includes(input.category)) return { ok: false, error: "Pick a valid category.", code: "INVALID" };
@@ -548,11 +581,18 @@ export async function goLiveProposal(proposalId: string, officerId: string, sour
 
     const { createMarket } = await import("./market-service");
     const { computeSelectionClosedAt } = await import("./ai-poll-config");
-    const resolutionAt = new Date(`${p.resolutionDate}T23:59:59.000Z`).toISOString();
+    // ⛔ THE TWO LINES BELOW MOVE MONEY — they become the published market's
+    // resolution and betting-close instants. Both used to pin the proposed day to
+    // 23:59:59 UTC, i.e. 02:59:59 EAT the NEXT morning, so a poll proposed "for the
+    // 15th" resolved three hours into the 16th with betting open throughout.
+    // `?? ""` rather than a fallback instant: the date was already validated as
+    // YYYY-MM-DD on both the create and edit paths, so null here means the shape
+    // changed, and createMarket refuses an unparseable resolutionAt loudly.
+    const resolutionAt = endOfProposalDayIso(p.resolutionDate) ?? "";
     // Betting-close: use the proposal's explicit selection-close date when set
     // (proposer- or officer-specified), otherwise fall back to the auto heuristic.
     const selectionClosedAt = p.selectionCloseDate
-      ? new Date(`${p.selectionCloseDate}T23:59:59.000Z`).toISOString()
+      ? (endOfProposalDayIso(p.selectionCloseDate) ?? undefined)
       : computeSelectionClosedAt(resolutionAt, toMarketCategory(p.category));
     const market = await createMarket({
       titleEn: p.titleEn,
@@ -697,7 +737,7 @@ export async function editProposal(proposalId: string, officerId: string, patch:
     if (patch.resolutionDate !== undefined) {
       const d = (patch.resolutionDate ?? "").trim();
       if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return { ok: false, error: "Resolution date must be YYYY-MM-DD." };
-      const ts = Date.parse(`${d}T23:59:59.000Z`);
+      const ts = endOfProposalDayMs(d);
       if (!Number.isFinite(ts) || ts <= Date.now()) return { ok: false, error: "Resolution date must be a valid future date." };
       next.resolutionDate = d;
     }

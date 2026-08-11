@@ -13,6 +13,7 @@ import { useToast } from "@/components/ui/toast";
 import { CategoryIcon, categoryLabel } from "@/components/proposals/category-icon";
 import { createProposalAction } from "../actions";
 import { useT } from "@/lib/i18n";
+import { wallClockToUtcIso } from "@/lib/zoned-time";
 import type { ProposalCategory } from "@/lib/server/store";
 
 const CATEGORIES: ProposalCategory[] = ["sports", "macro", "weather", "crypto", "culture", "infrastructure", "tech", "mixed"];
@@ -29,7 +30,7 @@ function isValidHttpUrl(raw: string): boolean {
   }
 }
 
-export function CreateProposalForm({ rateLimit, openCount }: { rateLimit: number; openCount: number }) {
+export function CreateProposalForm({ rateLimit, openCount, platformTz }: { rateLimit: number; openCount: number; platformTz: string }) {
   const router = useRouter();
   const { t } = useT();
   const { toast } = useToast();
@@ -46,9 +47,17 @@ export function CreateProposalForm({ rateLimit, openCount }: { rateLimit: number
   const [done, setDone] = useState(false);
 
   const atLimit = openCount >= rateLimit;
-  const dateValid = /^\d{4}-\d{2}-\d{2}$/.test(date) && Date.parse(`${date}T23:59:59Z`) > Date.now();
+  // The proposed day ends on the PLATFORM clock, not in UTC — the same policy the
+  // server applies in `endOfProposalDayIso`. It used to pin `T23:59:59Z` here, three
+  // hours LATER than the server's cutoff, so for a three-hour window each night this
+  // form enabled Submit on a date the server then refused as "must be in the future".
+  const endOfDay = (d: string) => {
+    const iso = wallClockToUtcIso(`${d}T23:59:59`, platformTz);
+    return iso ? Date.parse(iso) : NaN;
+  };
+  const dateValid = /^\d{4}-\d{2}-\d{2}$/.test(date) && endOfDay(date) > Date.now();
   // Selection-close is optional; when set it must be a future date strictly before resolution.
-  const closeValid = !closeDate || (/^\d{4}-\d{2}-\d{2}$/.test(closeDate) && Date.parse(`${closeDate}T23:59:59Z`) > Date.now() && (!dateValid || closeDate < date));
+  const closeValid = !closeDate || (/^\d{4}-\d{2}-\d{2}$/.test(closeDate) && endOfDay(closeDate) > Date.now() && (!dateValid || closeDate < date));
   const sourceValid = isValidHttpUrl(sourceUrl);
   const valid = !atLimit && titleEn.trim().length >= 8 && titleEn.trim().length <= 120 && criterion.trim().length >= 12 && dateValid && closeValid && sourceValid;
 
