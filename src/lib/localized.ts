@@ -27,6 +27,52 @@ export function pickLocalized(
 }
 
 /**
+ * The resolution criterion for ONE locale, WITH ITS PROVENANCE.
+ *
+ * ⛔ WHY THIS IS NOT `pickLocalized`, WHICH IS RIGHT ABOVE IT AND LOOKS SUFFICIENT.
+ * That helper answers *"which string do I render?"* and deliberately DISCARDS the
+ * fact that it fell back — correct for a title, where a Chinese player reading the
+ * English question has lost nothing they can act on. The resolution criterion is the
+ * sentence the PAYOUT TURNS ON. A player who cannot read it cannot check whether the
+ * rule that took their money was the rule they agreed to, and a Swahili page that
+ * prints English with no comment is claiming a translation it does not have.
+ *
+ * So this returns the FACT alongside the text, and the surface is obliged to say it.
+ *
+ * ⭐ ENGLISH STAYS CANONICAL, AND THAT IS THE RESOLUTION CONTRACT RATHER THAN A GAP.
+ * Officers resolve against `resolutionCriterion` (`/admin/resolver/[id]`) and the
+ * sentinel reads the same column — so a translation is an aid to READING the rule,
+ * never the rule itself. `shownIn` is what lets a surface tell the player which of
+ * those two things is currently on their screen.
+ */
+export type CriterionForLocale = {
+  /** What to render: the translation when one exists, else the canonical English. */
+  text: string;
+  /** The language `text` is actually written in — NOT the language that was asked for. */
+  shownIn: Locale;
+  /** `true` when the reader's language was asked for and we do not have it. */
+  fellBack: boolean;
+};
+
+export function pickCriterion(
+  locale: Locale,
+  en: string,
+  sw?: string | null,
+  zh?: string | null,
+): CriterionForLocale {
+  // Same absence rule as pickLocalized: null / "" / whitespace-only is ABSENT.
+  // ⚠️ A whitespace-only column would otherwise render a BLANK rule and report it as
+  // a successful translation — the worst of the three outcomes, because it neither
+  // shows the rule nor admits that it hasn't.
+  const wanted = locale === "sw" ? sw : locale === "zh" ? zh : null;
+  const have = wanted && wanted.trim() ? wanted : null;
+  if (locale === "en" || !have) {
+    return { text: en, shownIn: "en", fellBack: locale !== "en" };
+  }
+  return { text: have, shownIn: locale, fellBack: false };
+}
+
+/**
  * The localised label for a market CATEGORY.
  *
  * ⛔ ONE DEFINITION, because there were two and one of them was raw. The card built

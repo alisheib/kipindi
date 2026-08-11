@@ -38,7 +38,7 @@ The line references are what a fix should start from.
 | F3 | `per-market-rate-overrides-are-inert` | medium | ✅ re-confirmed | [`config-form.tsx:337-365`](../src/app/admin/config/config-form.tsx#L337-L365) |
 | F4 | `wizard-resolution-time-parsed-in-browser-timezone` | medium | 🟢 **SHIPPED 2026-08-11** | guard: `test:zoned-time` |
 | F5 | `regex-advertised-never-executed` | medium | 🟢 **SHIPPED 2026-08-11** | guard: `test:search-adoption` §5 |
-| F6 | `resolution-criterion-english-only` | medium | ✅ by inspection | `prisma/schema.prisma` — `resolutionCriterion` is one column |
+| F6 | `resolution-criterion-english-only` | medium | 🟡 **READ PATH SHIPPED 2026-08-11** | guard: `test:criterion-i18n` · writers pending (F6b/F6c below) |
 
 ### F1 · `sell-offered-on-bonus-funded-position` — 🟢 SHIPPED 2026-08-11
 
@@ -303,6 +303,143 @@ F1–F5 and it should be scheduled deliberately rather than swept in.
 **Fix:** `resolutionCriterionSw` / `resolutionCriterionZh`, nullable and additive; wizard collects
 all three (the AI generation path already produces trilingual titles and can produce these);
 render falls back to EN when a translation is absent, and says so rather than pretending.
+
+#### F6a · the READ path — 🟢 SHIPPED 2026-08-11
+
+⭐ **SPLIT IN THREE ON PURPOSE, READ SIDE FIRST.** The finding's actual harm is what a player
+sees, and that is fixable without a single new writer: the columns, the helper that returns the
+fallback FACT, and a surface obliged to state it. Shipping the schema ahead of the writers also
+puts the migration on production by itself, where a deploy problem has one candidate cause.
+
+**Schema.** `PredictionMarket.resolutionCriterionSw` / `…Zh`, both `String?`. Migration
+[`20260811120000_market_resolution_criterion_i18n`](../prisma/migrations/20260811120000_market_resolution_criterion_i18n/migration.sql)
+— two nullable `ADD COLUMN`s, no default, so it is a catalogue-only change with no table rewrite
+on the live money table. Applied to the local disposable cluster first and read back out of
+`information_schema` (`is_nullable = YES` on both) before it was allowed near a deploy.
+
+⛔ **NULLABLE, AND NOT BACKFILLED WITH THE ENGLISH.** `null` is the honest value for *"nobody has
+translated this yet"*. Copying `resolutionCriterion` into them would make "untranslated" and
+"the translation happens to equal the English" permanently indistinguishable — which is **F8**
+(`proposal-publish-bakes-english-into-the-swahili-column`) reappearing on a brand-new column,
+in the same file that files F8 as a defect.
+
+**The helper: [`pickCriterion`](../src/lib/localized.ts), and it is deliberately NOT
+`pickLocalized`.** That existing helper answers *"which string do I render?"* and **discards the
+fact that it fell back** — correct for a title, where a Chinese player reading the English
+question has lost nothing they can act on. ⭐ **The criterion is the sentence the payout turns
+on: a player who cannot read it cannot check that the rule which took their stake is the rule
+they agreed to.** So `pickCriterion` returns `{ text, shownIn, fellBack }` and the surface is
+obliged to say it.
+
+**The render** ([`markets/[id]/page.tsx`](../src/app/markets/[id]/page.tsx)) has exactly two
+non-English states and is silent in neither:
+- **no translation** → the English text, plus *"Imeonyeshwa kwa Kiingereza — hakuna tafsiri ya
+  Kiswahili ya kigezo hiki"* / *"以英文显示 — 此规则暂无中文译文。"*
+- **translation shown** → the translation, plus *"Tafsiri. Maandishi ya Kiingereza ndiyo
+  yanayoamua matokeo"* and a `<details>` holding the English original.
+
+⭐ **THE SECOND NOTE IS NOT DECORATION — IT IS THE RESOLUTION CONTRACT.** Officers resolve
+against `resolutionCriterion` (`/admin/resolver/[id]`) and `market-sentinel.ts` reads the same
+column, so English is what decides. Rendering a translation *without* saying that would replace
+one untruth with a worse one: a player would be reading a rule that is not the rule. The English
+is one tap away rather than a language switch away, because **the binding text must never be
+something a player has to leave their language to read.**
+
+⚠️ **The `<p>` also carries `lang={criterion.shownIn}`** — the language the text is *actually* in,
+which on a fallback is not the page's language. Same fact, spent twice: once for a reader, once
+for a screen reader that would otherwise pronounce English with Swahili phonetics.
+
+**Guarded by [`test:criterion-i18n`](../scripts/criterion-i18n.test.mts) — 45 assertions, and §2
+is the one that matters.** It asserts the **AGREEMENT**: over every locale × six data shapes,
+`fellBack` must equal the observable fact *(the text is the English one AND the locale is not
+en)*, and `shownIn` must name the language the text is genuinely written in. ⛔ Neither half is
+satisfiable alone — an unread `…Sw` column fails it, and so does a "shown in English" note
+printed over a real Swahili paragraph. §2 also carries a **CONTROL**: `pickCriterion` must pick
+the *same text* as `pickLocalized` in all 18 cells, because the difference between the two
+helpers is the disclosure, not the string.
+
+**RED-proven twice, both restored byte-identical (`cmp`):**
+① against the **unmodified product** — 20 passed / **23 failed**, exit 1, naming the absent
+columns, the absent dictionary keys and the raw `{m.resolutionCriterion}` render;
+② with `fellBack` forced to `false` (i.e. `pickLocalized`'s silent behaviour planted back into
+`pickCriterion`) — **7 failed**, exit 1, while the §2 CONTROL stayed **green**, which is what
+proves the guard measures the *disclosure* rather than the text.
+
+🔴 **AND TWO OF MY OWN ASSERTIONS WERE WRONG BEFORE THE PRODUCT WAS.**
+- The §3 locator anchored on the `{/* 5. Resolution criterion */}` comment — which the guard's
+  own `decomment()` had already deleted. It located **0 characters** and then "failed" five
+  assertions about a section it had never read. ⛔ **A guard whose own preprocessing destroys
+  its anchor reports the INSTRUMENT, not the product** ([[an-instrument-reports-its-own-staleness]]).
+  Re-anchored on the heading key, and it now **asserts that what it found is what it meant** —
+  one `<section>`, under 2,500 chars, containing both the heading and the source link.
+- §3 then required a literal `criterion.fellBack &&` and failed over a perfectly correct
+  ternary. **That is testing which JSX idiom the author picked, not a fact about the product.**
+  Replaced with the real invariant: the note must sit *inside* the branch the fact opens, appear
+  exactly once, and be the other arm from the binding note.
+- ⚠️ And §2's vacuity check read `agree >= 12`, so **the planted defect failed it too** — a
+  "the sweep ran" check that goes red because the product is broken tells you nothing. It now
+  asserts the sweep's SHAPE (every cell visited, both arms present) and is independent of the
+  verdict.
+
+✅ **AND IT WAS LOOKED AT, IN A BROWSER, BECAUSE A GREEN SUITE IS NOT A READABLE SCREEN.**
+`npm run qa:criterion-visual` drives both arms × en/sw/zh × 360/1280 — **56 assertions, 0
+failures** — reading the rendered text back out of the criterion panel and refusing to capture
+on an `<html lang>` mismatch. ⭐ **The translated arm cannot exist on production until F6b/F6c
+land**, so `npm run db:seed-criterion-local` (localhost-only, three refusal gates) creates it on
+the disposable cluster — otherwise that half of the feature would ship having only ever been
+unit-tested. All twelve shots were read by eye: the Swahili and Chinese bodies render without
+clipping at 360, and the disclosure opens to the English original.
+
+#### F6b · the WRITE path — ⚪ NEXT
+
+`createMarket` currently writes `null` to both columns with a comment saying why. The wizard,
+`createMarketAction` and `CreateMarketInput` still carry one criterion. Until this lands, every
+poll on production correctly reports that it has no translation.
+
+#### F10 · `proposal-criterion-lands-in-the-canonical-english-column` — ⚪ NEW, found 2026-08-11, NOT fixed
+
+Found while wiring F6a, and written down here rather than carried in a head.
+
+**The player's proposal form asks for three TITLES by language and exactly one CRITERION, by
+none.** [`create-form.tsx:100`](../src/app/proposals/new/create-form.tsx#L100) labels the title
+`t.common.titleEn` — *"Title (EN)"* / *"Kichwa (EN)"* / *"标题（英文）"*, the language **named in
+the label**, with optional SW and ZH fields beneath it. The criterion field twelve lines down is
+labelled `t.common.resolutionCriterion` — *"Kigezo cha utatuzi"* to a Swahili proposer, with no
+language asked for and none implied.
+
+So a Swahili proposer reads a Swahili label and types **Swahili**. On publish,
+[`proposals-service.ts:603`](../src/lib/server/proposals-service.ts#L603) does
+`resolutionCriterion: p.resolutionCriterion` — straight into `PredictionMarket.resolutionCriterion`,
+**the column this product treats as canonical English and that officers resolve against.**
+
+⭐ **This is F6 wearing its mirror image.** F6 was *"the English rule reaches a Swahili reader
+unlabelled"*; F10 is *"a Swahili rule reaches the English column unlabelled"* — and the second is
+the worse of the two, because F6 was a display problem while this one puts the wrong language
+into the field the **resolver** and `market-sentinel.ts` read to decide the payout.
+
+⚠️ **AND F6a MAKES ONE SMALL PART OF IT LOUDER, WHICH IS WORTH SAYING PLAINLY.** The criterion
+paragraph now carries `lang={criterion.shownIn}`, which on this data asserts `lang="en"` over
+Swahili text. That is a new (quiet, screen-reader-only) untruth **about data that was already
+wrong**; the fix is the data, not the attribute. ⛔ Do not "fix" it by dropping the `lang`.
+
+**Not fixed today, because the honest answers are product decisions rather than bug fixes:**
+① demand English in the proposal form (name the language in the label, as the title field
+already does) and let F6b/F6c collect the translations; or ② accept the proposer's language,
+store *which* language it is, and have the officer supply the English at publish — the publish
+step is already an officer ceremony, so there is a place to put it. ⛔ **Do not guess which.**
+
+**Before quoting a count, ask which population it counts.** This affects proposal-published polls
+only — AI-generated and wizard-created polls are English by construction. **The number of live
+polls actually carrying a non-English criterion has NOT been measured**; it is a
+`productLine = 'MARKET'` query against production, and the census tool at
+`scripts/live/ops/poll-census.cjs` is where it belongs.
+
+#### F6c · the AI generation path — ⚪ AFTER F6b
+
+`AIPoll` / `MarketCandidate` need the same two nullable columns or the model's Swahili criterion
+is generated and then dropped at storage. The provider schema
+([`ai-provider-claude.ts`](../src/lib/server/ai-provider-claude.ts)) already requires
+`titleEn`/`titleSw`/`titleZh` and can require these the same way.
 
 ---
 

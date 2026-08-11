@@ -32,7 +32,7 @@ import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { formatDateTime, formatDayTime, formatTzsCompact, formatTzs, fill, pctNum } from "@/lib/utils";
 import { appUrl } from "@/lib/app-url";
 import { getServerT } from "@/lib/i18n-server";
-import { pickLocalized, marketCategoryLabel } from "@/lib/localized";
+import { pickLocalized, pickCriterion, marketCategoryLabel } from "@/lib/localized";
 
 
 export const dynamic = "force-dynamic";
@@ -112,6 +112,11 @@ export default async function MarketDetail({
   }
 
   const yesPct = impliedYesPct(m);
+
+  // The resolution criterion FOR THIS READER, and the fact of whether we had it.
+  // ⛔ Not `pickLocalized`: that helper discards the fallback, which is right for a
+  // title and wrong for the sentence the payout turns on. See src/lib/localized.ts.
+  const criterion = pickCriterion(locale, m.resolutionCriterion, m.resolutionCriterionSw, m.resolutionCriterionZh);
 
   // THIS POLL'S OWN RATES — frozen onto the market at creation and loaded with it.
   //
@@ -553,7 +558,46 @@ export default async function MarketDetail({
               <I.fileCheck s={15} className="text-text-subtle" />
               {t.market.resolutionCriterion}
             </h2>
-            <p className="text-[14px] leading-relaxed text-text-muted whitespace-pre-line">{m.resolutionCriterion}</p>
+            {/* `lang` names the language the text is ACTUALLY in, which on a fallback
+                is not the page's language — so a screen reader stops reading English
+                with Swahili phonetics. That is the same fact the note below states,
+                spent twice: once for a reader, once for a listener. */}
+            <p lang={criterion.shownIn} className="text-[14px] leading-relaxed text-text-muted whitespace-pre-line">{criterion.text}</p>
+
+            {/* ⭐ F6 · THE PAGE SAYS WHICH LANGUAGE THIS IS, BECAUSE THIS PARAGRAPH IS
+                THE RULE THE PAYOUT TURNS ON. It used to render `m.resolutionCriterion`
+                raw into all three locales: a Swahili player got an English paragraph
+                under a Swahili heading, with nothing to distinguish "we wrote it this
+                way" from "we have not translated it". A player who cannot read the
+                criterion cannot check that the rule which took their stake is the rule
+                they agreed to.
+                ⛔ Both notes are non-English-only by construction — `fellBack` is false
+                for `en`, and the binding note is gated on the locale — so an English
+                reader sees exactly what they saw before. */}
+            {criterion.fellBack ? (
+              <p className="mt-2.5 flex items-start gap-1.5 text-[12px] leading-relaxed text-text-subtle">
+                <I.globe s={12} className="mt-[3px] shrink-0 opacity-70" />
+                <span>{t.market.criterionNoTranslation}</span>
+              </p>
+            ) : locale !== "en" ? (
+              // A translation is on screen — so the player is told, plainly, that the
+              // English is the version officers resolve against, and is given it. It
+              // is one tap away rather than absent: the binding text must never be
+              // something a player has to change language to read.
+              <details className="mt-2.5 group">
+                <summary className="flex cursor-pointer list-none items-start gap-1.5 text-[12px] leading-relaxed text-text-subtle hover:text-text-muted">
+                  <I.globe s={12} className="mt-[3px] shrink-0 opacity-70" />
+                  <span>
+                    {t.market.criterionEnglishBinding}{" "}
+                    <span className="underline underline-offset-2">{t.market.criterionShowEnglish}</span>
+                  </span>
+                </summary>
+                <p className="mt-2 border-l-2 border-border/60 pl-3 text-[13px] leading-relaxed text-text-muted whitespace-pre-line" lang="en">
+                  {m.resolutionCriterion}
+                </p>
+              </details>
+            ) : null}
+
             <p className="mt-3 pt-3 border-t border-border/50 font-mono text-[11px] text-text-subtle flex items-center gap-1.5">
               <I.ext s={11} />
               <a href={m.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-text underline break-all">{m.sourceUrl}</a>

@@ -128,6 +128,13 @@ export type StoredMarket = {
   category: MarketCategory;
   sourceUrl: string;
   resolutionCriterion: string;
+  /** SW / ZH translations of the criterion. Null = no translation exists, which the
+   *  player surface DISCLOSES rather than hiding behind a silent English fallback.
+   *  ⛔ English stays canonical — resolution is judged against `resolutionCriterion`.
+   *  Read them through `pickCriterion`, never directly: that helper returns the
+   *  fallback FACT alongside the text, and the fact is what the page owes the player. */
+  resolutionCriterionSw: string | null;
+  resolutionCriterionZh: string | null;
   resolutionAt: string;
   /** When new bets (selections) stop being accepted. Null = bets close at
    *  resolutionAt (legacy behavior). Always < resolutionAt when set. */
@@ -441,6 +448,14 @@ export async function createMarket(input: CreateMarketInput) {
     category: input.category,
     sourceUrl: input.sourceUrl,
     resolutionCriterion: input.resolutionCriterion,
+    // ⚠️ NULL ON PURPOSE, AND ONLY UNTIL THE WRITERS LAND (F6b/F6c). Nothing collects
+    // a translated criterion yet, and `null` is the honest value for that — writing
+    // `input.resolutionCriterion` into these would make "nobody translated this" and
+    // "the translation is identical to the English" permanently indistinguishable,
+    // which is F8 (`proposal-publish-bakes-english-into-the-swahili-column`) reappearing
+    // on a new column. The player surface already discloses the absence.
+    resolutionCriterionSw: null,
+    resolutionCriterionZh: null,
     resolutionAt: input.resolutionAt,
     selectionClosedAt: effectiveSelectionClosedAt,
     status: "LIVE",

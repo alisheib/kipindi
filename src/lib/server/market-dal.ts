@@ -45,6 +45,8 @@ function toStoredMarket(r: any): StoredMarket {
     category: r.category as MarketCategory,
     sourceUrl: r.sourceUrl,
     resolutionCriterion: r.resolutionCriterion,
+    resolutionCriterionSw: r.resolutionCriterionSw ?? null,
+    resolutionCriterionZh: r.resolutionCriterionZh ?? null,
     resolutionAt: iso(r.resolutionAt)!,
     selectionClosedAt: iso(r.selectionClosedAt) ?? null,
     status: r.status as MarketStatus,
@@ -512,6 +514,12 @@ const prismaMarkets: MarketStore = {
         titleEn: m.titleEn, titleSw: m.titleSw, titleZh: m.titleZh,
         category: m.category, sourceUrl: m.sourceUrl,
         resolutionCriterion: m.resolutionCriterion,
+        // ⚠️ BOTH ARMS OF THIS UPSERT, ALWAYS. A column added to `create` only is
+        // silently dropped the first time anything writes an EXISTING poll — the
+        // market is born with its translations and loses them on the next touch,
+        // which reads as green everywhere because nothing ever errors.
+        resolutionCriterionSw: m.resolutionCriterionSw,
+        resolutionCriterionZh: m.resolutionCriterionZh,
         resolutionAt: new Date(m.resolutionAt),
         selectionClosedAt: m.selectionClosedAt ? new Date(m.selectionClosedAt) : null,
         status: m.status, yesPool: m.yesPool, noPool: m.noPool,
@@ -544,6 +552,12 @@ const prismaMarkets: MarketStore = {
         titleEn: m.titleEn, titleSw: m.titleSw, titleZh: m.titleZh,
         category: m.category, sourceUrl: m.sourceUrl,
         resolutionCriterion: m.resolutionCriterion,
+        // ⚠️ BOTH ARMS OF THIS UPSERT, ALWAYS. A column added to `create` only is
+        // silently dropped the first time anything writes an EXISTING poll — the
+        // market is born with its translations and loses them on the next touch,
+        // which reads as green everywhere because nothing ever errors.
+        resolutionCriterionSw: m.resolutionCriterionSw,
+        resolutionCriterionZh: m.resolutionCriterionZh,
         resolutionAt: new Date(m.resolutionAt),
         selectionClosedAt: m.selectionClosedAt ? new Date(m.selectionClosedAt) : null,
         status: m.status, yesPool: m.yesPool, noPool: m.noPool,

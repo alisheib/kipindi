@@ -1049,6 +1049,17 @@ model PredictionMarket {
   category                  String // sports, macro, weather, crypto, culture, tech, other
   sourceUrl                 String
   resolutionCriterion       String
+  /// SW / ZH translations of the sentence the PAYOUT TURNS ON. Nullable and
+  /// additive: `null` means "no translation exists", and the player surface
+  /// DISCLOSES that rather than printing English under a Swahili heading and
+  /// letting it read as the product's considered wording (F6).
+  ///
+  /// ⛔ ENGLISH REMAINS CANONICAL — officers resolve against `resolutionCriterion`
+  /// and the sentinel reads the same column, so these two are an aid to READING
+  /// the rule and never the rule itself. Do not make either of them authoritative
+  /// without changing the resolver and the sentinel in the same commit.
+  resolutionCriterionSw     String?
+  resolutionCriterionZh     String?
   resolutionAt              DateTime
   /**
    * When new bets (selections) stop being accepted. Null = bets close at

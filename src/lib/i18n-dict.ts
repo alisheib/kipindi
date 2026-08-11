@@ -580,6 +580,14 @@ export const dict = {
       yourPositions: "Your positions",
       noBetYet: "You haven\u2019t bet on this market yet. Use the dial to get started.",
       resolutionCriterion: "Resolution criterion",
+      // ⭐ F6 · THE CRITERION IS THE SENTENCE THE PAYOUT TURNS ON, so the page has to
+      // say which language the player is looking at. Two states, never silent:
+      // no translation → admit it; translation shown → name English as binding.
+      // ⛔ These are never rendered in EN (English cannot fall back to itself); the
+      // English values exist for parity and are the honest wording of each claim.
+      criterionNoTranslation: "Shown in English — no translation of this rule is available yet.",
+      criterionEnglishBinding: "Translation. The English wording is what decides the outcome.",
+      criterionShowEnglish: "Show the English original",
       // Resolution panel (resolved / voided markets)
       resTitle: "Resolution",
       resEvidence: "Officer’s recorded evidence",
@@ -2090,6 +2098,9 @@ export const dict = {
       yourPositions: "Nafasi zako",
       noBetYet: "Bado hujaweka dau kwenye soko hili. Tumia dial kuanza.",
       resolutionCriterion: "Kigezo cha utatuzi",
+      criterionNoTranslation: "Imeonyeshwa kwa Kiingereza — hakuna tafsiri ya Kiswahili ya kigezo hiki.",
+      criterionEnglishBinding: "Tafsiri. Maandishi ya Kiingereza ndiyo yanayoamua matokeo.",
+      criterionShowEnglish: "Onyesha maandishi asili ya Kiingereza",
       // Resolution panel (resolved / voided markets)
       resTitle: "Utatuzi",
       resEvidence: "Ushahidi uliorekodiwa na afisa",
@@ -3532,6 +3543,9 @@ export const dict = {
       yourPositions: "您的持仓",
       noBetYet: "您还没有在这个市场投注。使用刻度盘开始。",
       resolutionCriterion: "结算标准",
+      criterionNoTranslation: "以英文显示 — 此规则暂无中文译文。",
+      criterionEnglishBinding: "译文。结算以英文原文为准。",
+      criterionShowEnglish: "显示英文原文",
       // Resolution panel (resolved / voided markets)
       resTitle: "结算",
       resEvidence: "官员记录的证据",

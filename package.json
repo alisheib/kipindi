@@ -340,6 +340,9 @@
     "test:pool-residual": "tsx scripts/pool-residual.test.mts",
     "red:pool-residual": "node scripts/pool-residual-red.mjs",
     "test:zoned-time": "tsx scripts/zoned-time.test.mts",
+    "test:criterion-i18n": "tsx scripts/criterion-i18n.test.mts",
+    "qa:criterion-visual": "node scripts/criterion-i18n-visual.mjs",
+    "db:seed-criterion-local": "node scripts/seed-criterion-i18n-local.mjs",
     "test:proposal-day": "tsx scripts/proposal-day.test.mts",
     "qa:verify-s42": "node scripts/live-verify-s42.mjs"
   },
