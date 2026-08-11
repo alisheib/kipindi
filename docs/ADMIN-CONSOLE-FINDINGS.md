@@ -35,6 +35,9 @@ and a page that renders is not a working control.
 | A1 | `view-only-roles-are-offered-act-controls` | medium | ✅ **DRIVEN** on 2 surfaces, 🔍 structural on 21 more | [`admin/privacy/page.tsx`](../src/app/admin/privacy/page.tsx) + 20 others |
 | A2 | `privacy-refusal-is-never-audited` | medium | ✅ **DRIVEN** | [`admin/privacy/actions.ts`](../src/app/admin/privacy/actions.ts) |
 | A3 | `refused-clicks-pollute-the-security-log` | medium | ✅ **DRIVEN** | [`control-gates.ts`](../src/lib/server/control-gates.ts) names it; two domains still carry it |
+| A4 | `area-chart-y-axis-mislabels-its-own-gridlines` | low | ✅ **DRIVEN** (rendered) · ⚪ **not reachable today** | [`admin-charts.tsx:119`](../src/components/admin/admin-charts.tsx#L119) |
+| A5 | `a-zero-paints-a-visible-mark` | low–medium | ✅ **DRIVEN** (rendered) · ✅ **reachable, measured on prod** | [`admin-charts.tsx`](../src/components/admin/admin-charts.tsx) ×3 primitives |
+| A6 | `operator-margin-chart-divides-settlements-by-the-wrong-days-stakes` | **medium–high** | ✅ **MEASURED on production** | [`analytics.ts:339-363`](../src/lib/server/analytics.ts#L339-L363) |
 
 ---
 
@@ -176,6 +179,121 @@ obvious thing on a page they were legitimately given becomes a SECURITY event.
 ⭐ **A1, A2 and A3 are one fix.** Gate the control at the page and none of the three can
 happen: the officer is told why, no refusal fires, and there is nothing to audit or to fail
 to audit.
+
+---
+
+### A4 · `area-chart-y-axis-mislabels-its-own-gridlines` — ⚪ NOT FIXED, ⚪ not reachable today
+
+`AdminAreaChart` draws five y-gridlines at `minY + t·range` for `t ∈ {0, .25, .5, .75, 1}` and
+labels each with [`compact()`](../src/components/admin/admin-charts.tsx#L460), which **rounds
+to a whole number**. So on a series with a small range, distinct gridlines carry identical or
+wrong labels.
+
+✅ **DRIVEN by rendering** (`test:admin-charts` §1), not by reading:
+
+| series max | rendered labels | distinct |
+|---|---|---|
+| 1 | `0, 0, 1, 1, 1` | **2 of 5** |
+| 2 | `0, 1, 1, 2, 2` | **3 of 5** |
+| 3 | `0, 1, 2, 2, 3` | **4 of 5** |
+| 4 | `0, 1, 2, 3, 4` | 5 of 5 ✅ |
+
+The gridline at 0.25 is labelled `0` and the one at 0.5 is labelled `1`. A reader taking a
+value off the axis reads a number the chart does not mean, and unlike the bar-list and the
+meter there is no adjacent figure to correct it.
+
+⚪ **NOT REACHABLE TODAY, and this is measured rather than assumed.**
+[`chart-source-census.cjs`](../scripts/live/ops/chart-source-census.cjs) recomputes the real
+series from the live DB: the 24h net flow runs `min=-24,499 max=0` and the 28d margin
+`min=-1183 max=100`. Both give **5 of 5 distinct labels**. ⭐ The `minY = Math.min(…, 0)`
+zero-baseline is what saves them — it forces the range to at least the series max, so only a
+series topping out at ≤ 3 collides. **That is why this is `low` and not `medium`: the defect
+is certain, its current exposure is nil.** ⛔ It becomes reachable the moment any area chart
+plots a small count rather than a money amount.
+
+---
+
+### A5 · `a-zero-paints-a-visible-mark` — ⚪ NOT FIXED, ✅ reachable and firing
+
+Three primitives floor their bar size, so a **zero value draws a mark**:
+
+| primitive | code | a zero paints | number beside it? |
+|---|---|---|---|
+| `AdminStackedBars` | `Math.max(0.5, segH)` | 0.5px segment | ❌ **no** |
+| `AdminMeter` | `Math.max(1, pct)` | 1% fill | ✅ `0 / cap` |
+| `AdminBarList` | `Math.max(2, pct)` | 2% bar | ✅ `0` |
+
+✅ **DRIVEN by rendering** (`test:admin-charts` §2/§4/§5) — the emitted markup carries
+`height="0.5"`, `width: 1%` and `width: 2%` respectively for a zero input.
+
+⭐ **`AdminStackedBars` IS THE ONE THAT MATTERS, AND IT IS THE ONLY ONE WITH NO NUMBER.** The
+bar-list and the meter print the true value right next to the floored bar, so the reader is
+told `0` even though a sliver shows; the stacked bar has only a legend, so nothing discloses
+it. Its single instance is `/admin/finance` **"Provider mix over time"**.
+
+🔴 **REACHABLE AND FIRING, measured on production 2026-08-11**: the legend takes the distinct
+providers across the whole window (`MIXX`, `MPESA`, `AIRTEL_MONEY`, `HALO_PESA`) and then
+emits one segment per provider per bucket — so **6 of 8 (provider × day) cells hold zero
+volume**, each painting a sliver for deposits that did not happen. ⚠️ 75% of that chart's
+segments are currently fabricated marks.
+
+⛔ **Do not "fix" the meter and the bar-list by removing their floors without checking the
+design intent** — a 2% stub on a bar list is arguably a deliberate affordance so a row is
+still clickable/visible. **The stacked bar has no such defence**: it is a proportional area
+chart and 0.5px of area means "some".
+
+---
+
+### A6 · `operator-margin-chart-divides-settlements-by-the-wrong-days-stakes` — ⚪ NOT FIXED
+
+🔴 **The `/admin/finance` "Operator margin" chart is not an operator margin.**
+
+[`marginSeries`](../src/lib/server/analytics.ts#L339-L363) buckets by `createdAt` and computes
+per bucket:
+
+```ts
+margin = stakes === 0 ? 0 : ((stakes - payouts - refunds) / stakes) * 100;
+```
+
+**Every term is bucketed by the day the money MOVED.** In a prediction market a payout or a
+refund happens days after the stake that earned it, so the numerator and the denominator
+describe **different bets**. No bucket compares like with like.
+
+✅ **MEASURED ON PRODUCTION, 23 days, recomputed from raw SQL with the same definition:**
+
+| day | stakes | payouts | refunds | margin |
+|---|---|---|---|---|
+| 2026-07-20 | 4,000 | 0 | 0 | **100.0%** |
+| 2026-07-28 | 13,000 | 58,097 | 0 | **−346.9%** |
+| 2026-07-30 | 7,500 | 0 | 96,250 | **−1183.3%** |
+| 2026-08-05 | 825,600 | 362,927 | 379,450 | 10.1% |
+
+- **5 of 23 days read exactly `100.0%`** — because nothing had settled that day. ⛔ **A 100%
+  operator margin is impossible in a pari-mutuel**, where the operator takes a commission and
+  the rest of the pool belongs to the winners. The chart states it as fact five times.
+- **2026-07-30 reads −1183%** because that day's refunds were **12.8× its stakes**, and those
+  refunds belong to bets placed on earlier days.
+- The card is subtitled **"28-day · band 7–10%"**, inviting the operator to read each point
+  against a band no point in the series is near.
+
+⚠️ **AND THE SAME PAGE PRINTS A SECOND, DIFFERENT "Operator margin".** The KPI tile at
+[`finance/page.tsx:145`](../src/app/admin/finance/page.tsx#L145) uses `operatorMarginPct(period)`
+— the **aggregate** over the window (~37.9% on this data) — while the chart at `:357` plots
+the per-day series. **Two surfaces, one name, different denominators, visibly disagreeing.**
+
+⭐ **This is a CODE path, so [[50pick-data-resets-before-launch]] does not cover it.** Ali's
+own distinction: a DATA inconsistency is disregarded; a code path that keeps producing one is
+not. Wiping the data changes none of the arithmetic above.
+
+**Fix — Ali's call between two honest options:**
+① **attribute settlement to the originating bet's bucket**, so a day's margin describes that
+day's bets. Correct, and the largest change — it needs the payout joined back to the stake's
+date, and the last buckets stay provisional until their markets resolve.
+② **make the series cumulative-to-date** over the window. Identical formula, but every point
+is a real operator margin over a real period, it cannot print 100% once anything has settled,
+and it agrees with the scalar tile at the right-hand edge by construction.
+⛔ **Do not simply clamp the axis or hide the outliers** — that would leave the number wrong
+and make it look right, which is worse.
 
 ---
 

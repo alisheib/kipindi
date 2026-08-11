@@ -1,0 +1,169 @@
+/**
+ * `npm run test:admin-charts` — the admin chart primitives, RENDERED, at the edges.
+ *
+ * ⛔ WHY RENDERED AND NOT GREPPED. This codebase has already shipped a chart that
+ * FABRICATED price history for real-money bettors, and a card that badged a fabricated
+ * 50% crowd price on an empty pool. A chart defect lives in the geometry the component
+ * emits, not in the characters of its source — so every assertion below reads the actual
+ * SVG/HTML that `renderToStaticMarkup` produces and checks a property of it.
+ *
+ * THE EDGES THAT MANUFACTURE A FAKE POINT, and they are the same three every time:
+ *   · an EMPTY series      — does it say so, or paint something?
+ *   · a ONE-POINT series   — a line needs two points; what does it draw?
+ *   · an ALL-ZERO series   — does a zero paint a visible mark?
+ *   · a tiny RANGE         — do the axis labels still describe the gridlines they sit on?
+ *   · a huge OUTLIER       — does the scale survive it?
+ *
+ * ⭐ THE AXIS ONE IS THE FINDING. `compact()` rounds every y-tick to a whole number, but
+ * the ticks are `min + t*range` for t ∈ {0,.25,.5,.75,1}. On any chart whose range is
+ * small — a count series topping out at 1, 2 or 3, which is ordinary on a young platform —
+ * distinct gridlines get IDENTICAL or WRONG labels. A reader taking a value off the axis
+ * reads a number the chart does not mean.
+ */
+import { createElement as h } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import {
+  AdminAreaChart, AdminStackedBars, AdminSpark, AdminMeter, AdminBarList, AdminGauge,
+  type SeriesPoint,
+} from "../src/components/admin/admin-charts.tsx";
+
+let pass = 0;
+const fails: string[] = [];
+const ok = (name: string, cond: boolean, detail = "") => {
+  if (cond) { pass++; console.log(`  ok   ${name}`); }
+  else { fails.push(`${name}${detail ? ` — ${detail}` : ""}`); console.log(`  FAIL ${name}${detail ? ` — ${detail}` : ""}`); }
+};
+const render = (el: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(el);
+const pts = (ys: number[]): SeriesPoint[] => ys.map((y, x) => ({ x, y }));
+
+/** Every `<text …>LABEL</text>` in render order. */
+function texts(html: string): string[] {
+  return [...html.matchAll(/<text[^>]*>([^<]*)<\/text>/g)].map((m) => m[1]);
+}
+/** The y-tick labels of an AdminAreaChart: the 5 emitted before the area path. */
+function yTickLabels(html: string): string[] {
+  const cut = html.indexOf("<path");
+  return texts(cut > 0 ? html.slice(0, cut) : html);
+}
+
+console.log("\ntest:admin-charts — the chart primitives, rendered, at the edges\n");
+
+// ── §1 · AdminAreaChart ────────────────────────────────────────────────────────────
+console.log("§1 AdminAreaChart");
+{
+  const empty = render(h(AdminAreaChart, { series: [] }));
+  ok("§1 empty series says 'No data in this window' rather than drawing", empty.includes("No data in this window"));
+  ok("§1 empty series emits NO <path> (nothing is drawn from nothing)", !empty.includes("<path"));
+
+  const one = render(h(AdminAreaChart, { series: pts([7]) }));
+  const onePaths = [...one.matchAll(/<path d="([^"]*)"/g)].map((m) => m[1]);
+  // A single point cannot make a line. The line path must not invent a second vertex.
+  const lineSegs = (onePaths[1] ?? "").match(/L /g)?.length ?? 0;
+  ok("§1 a ONE-POINT series does not invent a second vertex", lineSegs === 0, `line path = "${onePaths[1] ?? ""}"`);
+
+  // ⭐ THE AXIS. Ticks are min + t*range for t in {0,.25,.5,.75,1}; with 5 DISTINCT tick
+  // values the 5 labels must also be distinct, or two different gridlines carry one number.
+  for (const [name, series] of [
+    ["max 1", pts([0, 1, 0, 1])],
+    ["max 2", pts([0, 1, 2, 1])],
+    ["max 3", pts([0, 3, 1, 2])],
+    ["max 4", pts([0, 4, 2, 1])],
+  ] as const) {
+    const html = render(h(AdminAreaChart, { series: series as SeriesPoint[] }));
+    const labels = yTickLabels(html);
+    const uniq = new Set(labels);
+    ok(
+      `§1 y-axis labels are distinct for a series with ${name} (5 gridlines, 5 different values)`,
+      labels.length === 5 && uniq.size === 5,
+      `labels=[${labels.join(", ")}] unique=${uniq.size}`,
+    );
+  }
+
+  // A zero-range series: every tick IS the same value, so identical labels are correct.
+  const flat = render(h(AdminAreaChart, { series: pts([0, 0, 0, 0]) }));
+  ok("§1 CONTROL — an all-zero series renders (its axis may legitimately repeat)", flat.includes("<path"));
+
+  // A huge outlier must not produce NaN/Infinity in the geometry.
+  const huge = render(h(AdminAreaChart, { series: pts([0, 1, 9_999_999_999]) }));
+  ok("§1 a huge outlier emits no NaN/Infinity coordinates", !/NaN|Infinity/.test(huge));
+  ok("§1 CONTROL — the huge value is compacted on the axis, not printed raw",
+    yTickLabels(huge).some((l) => /B$/.test(l)), `labels=[${yTickLabels(huge).join(", ")}]`);
+}
+
+// ── §2 · AdminStackedBars ──────────────────────────────────────────────────────────
+console.log("\n§2 AdminStackedBars");
+{
+  const empty = render(h(AdminStackedBars, { bars: [] }));
+  ok("§2 empty bars say 'No data' rather than drawing", empty.includes("No data"));
+  ok("§2 empty bars emit NO <rect>", !empty.includes("<rect"));
+
+  // ⛔ A ZERO SEGMENT MUST NOT PAINT. `Math.max(0.5, segH)` gives a zero-volume rail a
+  // visible sliver in a provider-mix chart — a mark where there is no data.
+  const zeroSeg = render(h(AdminStackedBars, { bars: [{ label: "d1", segments: [10, 0, 5] }] }));
+  const heights = [...zeroSeg.matchAll(/<rect[^>]*height="([\d.]+)"/g)].map((m) => Number(m[1]));
+  ok("§2 a ZERO segment paints no height (a rail with no volume shows none)",
+    !heights.includes(0.5), `heights=[${heights.join(", ")}]`);
+
+  const nan = render(h(AdminStackedBars, { bars: [{ label: "d1", segments: [0, 0] }] }));
+  ok("§2 an all-zero stack emits no NaN", !/NaN|Infinity/.test(nan));
+}
+
+// ── §3 · AdminSpark ────────────────────────────────────────────────────────────────
+console.log("\n§3 AdminSpark");
+{
+  ok("§3 a 0-point series renders nothing rather than a flat invented line",
+    render(h(AdminSpark, { series: [] })) === "");
+  ok("§3 a 1-point series renders nothing (a line needs two points)",
+    render(h(AdminSpark, { series: [5] })) === "");
+  const two = render(h(AdminSpark, { series: [1, 2] }));
+  ok("§3 CONTROL — a 2-point series DOES draw", two.includes("<path"));
+  ok("§3 a constant series emits no NaN", !/NaN|Infinity/.test(render(h(AdminSpark, { series: [4, 4, 4] }))));
+}
+
+// ── §4 · AdminMeter ────────────────────────────────────────────────────────────────
+console.log("\n§4 AdminMeter");
+{
+  // ⛔ `Math.max(1, pct)` paints 1% for a zero value.
+  const zero = render(h(AdminMeter, { value: 0, cap: 100, label: "Credit" }));
+  const w = zero.match(/width:\s*([\d.]+)%/)?.[1];
+  ok("§4 a ZERO value paints no fill", w === "0", `width=${w}%`);
+
+  // cap = 0 — division guarded, and the label must not read as a real ratio.
+  const noCap = render(h(AdminMeter, { value: 5, cap: 0, label: "Credit" }));
+  ok("§4 cap=0 emits no NaN", !/NaN|Infinity/.test(noCap));
+
+  // Over-cap: the BAR clamps, so the disclosure has to come from the number.
+  const over = render(h(AdminMeter, { value: 150, cap: 100, label: "Credit" }));
+  ok("§4 over-cap still prints the true value (the bar clamps, so the number must not)",
+    over.includes("150"), "the ring/bar is clamped to 100% by design");
+  ok("§4 CONTROL — over-cap flips to the danger colour", over.includes("var(--no-500)"));
+}
+
+// ── §5 · AdminBarList ──────────────────────────────────────────────────────────────
+console.log("\n§5 AdminBarList");
+{
+  // ⛔ `Math.max(2, pct)` paints 2% for a zero row — the most visible of the three floors.
+  const withZero = render(h(AdminBarList, { rows: [{ label: "M-Pesa", value: 100 }, { label: "Airtel", value: 0 }] }));
+  const widths = [...withZero.matchAll(/width:\s*([\d.]+)%/g)].map((m) => m[1]);
+  ok("§5 a ZERO row paints no bar", widths.includes("0") || !widths.includes("2"), `widths=[${widths.join(", ")}]`);
+  ok("§5 CONTROL — the non-zero row still paints full width", widths.includes("100"), `widths=[${widths.join(", ")}]`);
+
+  const allZero = render(h(AdminBarList, { rows: [{ label: "a", value: 0 }, { label: "b", value: 0 }] }));
+  ok("§5 an all-zero list emits no NaN", !/NaN|Infinity/.test(allZero));
+  ok("§5 CONTROL — an empty list renders without throwing", render(h(AdminBarList, { rows: [] })).length >= 0);
+}
+
+// ── §6 · AdminGauge ────────────────────────────────────────────────────────────────
+console.log("\n§6 AdminGauge");
+{
+  const zero = render(h(AdminGauge, { value: 0, max: 100 }));
+  ok("§6 a zero gauge emits no NaN", !/NaN|Infinity/.test(zero));
+  const noMax = render(h(AdminGauge, { value: 5, max: 0 }));
+  ok("§6 max=0 emits no NaN", !/NaN|Infinity/.test(noMax));
+  const over = render(h(AdminGauge, { value: 150, max: 100 }));
+  ok("§6 over-max still prints the true value (the arc clamps, so the number must not)", over.includes("150"));
+}
+
+console.log(`\n${pass} passed, ${fails.length} failed\n`);
+for (const f of fails) console.log(`  · ${f}`);
+process.exit(fails.length > 0 ? 1 : 0);

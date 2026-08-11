@@ -355,7 +355,8 @@
     "qa:verify-s42": "node scripts/live-verify-s42.mjs",
     "qa:admin-privacy-gate": "node scripts/admin-privacy-gate-drive.mjs",
     "qa:admin-act-gate": "node scripts/admin-act-gate-drive.mjs",
-    "qa:admin-act-refusal": "node scripts/admin-act-refusal-drive.mjs"
+    "qa:admin-act-refusal": "node scripts/admin-act-refusal-drive.mjs",
+    "test:admin-charts": "tsx scripts/admin-charts.test.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",
