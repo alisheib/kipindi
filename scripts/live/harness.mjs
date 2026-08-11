@@ -24,7 +24,7 @@
  */
 import { chromium } from "playwright";
 import { readFileSync } from "node:fs";
-import { LOCAL_STAFF, LOCAL_STAFF_PASSWORD } from "../local-staff.mjs";
+import { LOCAL_STAFF, LOCAL_STAFF_PASSWORD, LOCAL_ADMIN } from "../local-staff.mjs";
 
 export const BASE = process.env.LIVE_BASE ?? "https://50pick.tz";
 export const SHOT = process.env.SHOT_DIR ?? ".";
@@ -77,8 +77,17 @@ export function fleetPersona(nn) {
  * simply fail. They are never a way to reach the live console.
  */
 export function localStaffPersona(role) {
+  // ⭐ `local:ADMIN` IS THE OWNER FIXTURE from `seed-admin-local.mts`, routed through the same
+  // `login()` as everyone else. A driver that hand-rolled its own Owner sign-in reproduced the
+  // exact trap this file's predicate exists to prevent: it waited for
+  // `/staff · confidential/`, which the ADMIN SIGN-IN PAGE also renders, so it declared
+  // success on the login form and then reported seven "the Owner cannot view this page"
+  // failures over a perfectly working console. One login implementation, always.
+  if (role === "ADMIN") {
+    return { phone: LOCAL_ADMIN.phone, secretValue: LOCAL_ADMIN.password, label: "local ADMIN (Owner)" };
+  }
   const phone = LOCAL_STAFF[role];
-  if (!phone) throw new Error(`unknown local staff role "${role}" — have ${Object.keys(LOCAL_STAFF).join(", ")}`);
+  if (!phone) throw new Error(`unknown local staff role "${role}" — have ADMIN, ${Object.keys(LOCAL_STAFF).join(", ")}`);
   return { phone, secretValue: LOCAL_STAFF_PASSWORD, label: `local ${role}` };
 }
 

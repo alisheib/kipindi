@@ -462,6 +462,57 @@ re-advertises the 7–10% band.
 
 ---
 
+## Coverage — what is proven, and what is not
+
+⛔ **Stated as three buckets, because "we audited the admin console" is not a claim anyone can
+check.** The console is 47 pages; nothing below rounds up.
+
+### ✅ PROVEN BY DRIVING
+
+| axis | instrument | result |
+|---|---|---|
+| The VIEW gate, **7 roles × 7 domains** + owner-only for every role | [`qa:admin-view-matrix`](../scripts/admin-view-matrix-drive.mjs) | **73/0** |
+| The ACT gate, **all 23 canView-without-canAct cells** | [`qa:admin-act-gate`](../scripts/admin-act-gate-drive.mjs) | **39/0** |
+| A money control refused + the switch read back from Postgres | [`qa:admin-act-refusal`](../scripts/admin-act-refusal-drive.mjs) | kill-switch unchanged; FINANCE's control DID change |
+| A PII control refused + the DSAR queue read back | [`qa:admin-privacy-gate`](../scripts/admin-privacy-gate-drive.mjs) | **14/0** |
+
+⭐ **THE VIEW MATRIX IS 49 CELLS, NOT 47 × 7 = 329, AND THAT IS A STRENGTH.** The gate is
+decided **per domain** — `domainForPath(path)` → `canView(role, domain)` — so loading every
+route as every role would re-prove one function call 282 times. Driving 7 × 7 proves the gate;
+`test:rbac`'s `assertRouteDomainsComplete` proves the route→domain map separately; §0 of the
+sweep asserts each representative route resolves to the domain it claims **using the product's
+own resolver**. Together they cover all 47 routes. ⛔ **Without §0 this would be a sweep that
+passes while a mis-mapped route is mis-gated** — the map is the load-bearing assumption and it
+is checked, not trusted.
+
+### 🔍 ASSERTED STRUCTURALLY (source only — a question, not evidence)
+
+- **24 of 46** acting controls consult the act gate; the other **22** are declared with reasons
+  in [`act-gate-allowlist.json`](../scripts/act-gate-allowlist.json), all on domains where no
+  role currently holds view-without-act.
+- Every exported admin server action carries a guard whose domain matches its route
+  (`test:admin-soft-gate` §2/§3 — no file calls `canAct()` directly any more).
+- The chart primitives' edge behaviour is proven by **rendering** them
+  (`test:admin-charts`, 32 assertions) — that is stronger than a grep and weaker than a
+  screenshot of the real page with real data.
+
+### ⚪ NOT COVERED — say so rather than implying otherwise
+
+- **Per-page filter / sort / pagination correctness.** `test:date-range` covers the shared
+  `resolveRange`, and the act-gate sweep proves filters stay *usable* for a read-only role, but
+  **no instrument yet asserts that a filter actually narrows the rows** on each of the 47 pages.
+- **The remaining chart instances' provenance.** A6 pinned and fixed the operator-margin
+  series; the other 18 instances have their source named but only
+  `/admin/finance`'s provider mix and the 24h flow were recomputed from raw SQL.
+- **Empty / loading / error states per page.** Only the states the drivers happened to hit.
+- **Production browser verification of the admin console.** Every drive above ran against a
+  local production build (`next build && next start`) on the disposable cluster. Ali cleared
+  the Owner login on production this session, so this is now a matter of remaining time, not
+  permission.
+- **The 22 allowlisted controls**, by definition.
+
+---
+
 ## Measured facts about the live console (2026-08-11, read-only, no login)
 
 From [`scripts/live/ops/rbac-census.cjs`](../scripts/live/ops/rbac-census.cjs) — read-only,
