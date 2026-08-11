@@ -20,6 +20,9 @@
 
 import { parseQuery, matchesQuery, fieldNames, POLL_SEARCH } from "@/lib/search";
 import { randomId } from "./crypto";
+// The ONE storage rule for a criterion translation — shared with the admin wizard
+// and `createMarket`, so the AI cannot enter something an officer would be refused.
+import { normaliseCriterionTranslation } from "@/lib/localized";
 import { audit } from "./audit";
 import { getAIProvider, type AIPollGeneration, type AIProviderResponse, type PollIdea } from "./ai-provider";
 import { getAIPollConfig, computeSelectionClosedAt } from "./ai-poll-config";
@@ -90,6 +93,11 @@ export type StoredAIPoll = {
   titleZh: string;
   category: string;
   resolutionCriterion: string;
+  /** F6c · SW / ZH translations of the criterion. `null` = none, which the player
+   *  surface DISCLOSES rather than hiding. Officer-editable before publish, like
+   *  every other field on this record. */
+  resolutionCriterionSw: string | null;
+  resolutionCriterionZh: string | null;
   resolutionAt: string;
   /** When selections (bets) close. Computed from resolutionAt - category lead
    *  time, or explicitly set in controlled mode. */
@@ -170,6 +178,8 @@ function toStoredAIPoll(r: any): StoredAIPoll {
     titleZh: r.titleZh ?? "",
     category: r.category,
     resolutionCriterion: r.resolutionCriterion,
+    resolutionCriterionSw: r.resolutionCriterionSw ?? null,
+    resolutionCriterionZh: r.resolutionCriterionZh ?? null,
     resolutionAt: r.resolutionAt instanceof Date ? r.resolutionAt.toISOString() : String(r.resolutionAt ?? ""),
     selectionClosedAt: r.selectionClosedAt instanceof Date ? r.selectionClosedAt.toISOString() : (r.selectionClosedAt ?? null),
     options: (r.options ?? []) as StoredAIPoll["options"],
@@ -209,6 +219,10 @@ function toPrismaData(p: StoredAIPoll): any {
     titleZh: p.titleZh || null,
     category: p.category,
     resolutionCriterion: p.resolutionCriterion,
+    // ⚠️ ONE payload, used by BOTH create and update here — unlike marketStore.set,
+    // whose two arms duplicate their column list and can drift apart.
+    resolutionCriterionSw: p.resolutionCriterionSw,
+    resolutionCriterionZh: p.resolutionCriterionZh,
     resolutionAt: p.resolutionAt ? new Date(p.resolutionAt) : new Date(0),
     selectionClosedAt: p.selectionClosedAt ? new Date(p.selectionClosedAt) : null,
     options: p.options,
@@ -347,6 +361,12 @@ async function validateAndFilter(
     titleZh: gen.titleZh ? sanitise(gen.titleZh) : undefined,
     category: sanitise(gen.category ?? "").toLowerCase(),
     resolutionCriterion: sanitise(gen.resolutionCriterion ?? ""),
+    // F6c · same absent-or-nothing treatment as titleSw/titleZh two lines up.
+    // ⛔ A model that copies the English into these is not translating, and storing
+    // that would make "untranslated" indistinguishable from "translated identically"
+    // (F8) — `normaliseCriterionTranslation` drops it at the storage boundary below.
+    resolutionCriterionSw: gen.resolutionCriterionSw ? sanitise(gen.resolutionCriterionSw) : undefined,
+    resolutionCriterionZh: gen.resolutionCriterionZh ? sanitise(gen.resolutionCriterionZh) : undefined,
     resolutionAt: typeof gen.resolutionAt === "string" ? gen.resolutionAt : "",
     // Array fields may arrive as non-arrays, or hold strings/null instead of
     // objects — coerce defensively so a malformed shape filters, never throws.
@@ -763,6 +783,8 @@ export async function generateAIPoll(opts: {
     titleZh: "",
     category: opts.category,
     resolutionCriterion: "",
+    resolutionCriterionSw: null,
+    resolutionCriterionZh: null,
     resolutionAt: "",
     selectionClosedAt: null,
     options: [],
@@ -985,6 +1007,12 @@ function copyGenerationToPoll(poll: StoredAIPoll, gen: AIPollGeneration) {
   poll.titleZh = gen.titleZh ?? "";
   poll.category = gen.category;
   poll.resolutionCriterion = gen.resolutionCriterion;
+  // ⛔ THROUGH THE NORMALISER, NOT STRAIGHT ACROSS. A model that copies the English
+  // into a translation field is not translating, and storing that would make
+  // "untranslated" indistinguishable from "translated identically" — F8 arriving from
+  // the AI instead of from an officer. One rule, one function, every writer.
+  poll.resolutionCriterionSw = normaliseCriterionTranslation(gen.resolutionCriterionSw, gen.resolutionCriterion);
+  poll.resolutionCriterionZh = normaliseCriterionTranslation(gen.resolutionCriterionZh, gen.resolutionCriterion);
   // In controlled mode, admin may have pre-set resolutionAt — keep it.
   if (!poll.resolutionAt) poll.resolutionAt = gen.resolutionAt;
   // Compute selectionClosedAt from the category's default lead time, unless
@@ -1318,6 +1346,8 @@ export async function editAIPoll(id: string, opts: {
   titleZh?: string;
   category?: string;
   resolutionCriterion?: string;
+  resolutionCriterionSw?: string | null;
+  resolutionCriterionZh?: string | null;
   resolutionAt?: string;
   selectionClosedAt?: string | null;
   options?: Array<{ label: string; descriptionEn?: string; descriptionSw?: string; descriptionZh?: string }>;
@@ -1330,6 +1360,14 @@ export async function editAIPoll(id: string, opts: {
   if (opts.titleZh !== undefined) poll.titleZh = sanitise(opts.titleZh);
   if (opts.category !== undefined) poll.category = sanitise(opts.category).toLowerCase();
   if (opts.resolutionCriterion !== undefined) poll.resolutionCriterion = sanitise(opts.resolutionCriterion);
+  // ⚠️ AFTER the English, deliberately: the rule compares against `poll.resolutionCriterion`,
+  // so an officer editing both in one submit is checked against the NEW English, not the old.
+  if (opts.resolutionCriterionSw !== undefined) {
+    poll.resolutionCriterionSw = normaliseCriterionTranslation(sanitise(opts.resolutionCriterionSw ?? ""), poll.resolutionCriterion);
+  }
+  if (opts.resolutionCriterionZh !== undefined) {
+    poll.resolutionCriterionZh = normaliseCriterionTranslation(sanitise(opts.resolutionCriterionZh ?? ""), poll.resolutionCriterion);
+  }
   if (opts.resolutionAt !== undefined) {
     poll.resolutionAt = opts.resolutionAt;
     // Recompute selectionClosedAt when resolutionAt changes (unless explicitly overridden)
@@ -1617,6 +1655,10 @@ export async function seedAIPollFixtures(): Promise<StoredAIPoll[]> {
       titleZh: f.titleZh ?? "",
       category: f.category ?? "",
       resolutionCriterion: f.resolutionCriterion ?? "",
+      // Seed fixtures carry no translations on purpose: an untranslated poll is the
+      // state a fresh store should reproduce, and it exercises the disclosing arm.
+      resolutionCriterionSw: null,
+      resolutionCriterionZh: null,
       resolutionAt: f.resolutionAt ?? "",
       selectionClosedAt: (f as Record<string, unknown>).selectionClosedAt as string | null ?? null,
       options: f.options ?? [],

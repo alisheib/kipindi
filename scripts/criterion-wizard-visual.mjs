@@ -191,6 +191,33 @@ for (const width of [360, 1280]) {
      review.includes("players see the English"), review.slice(0, 0));
   await page.screenshot({ path: `${SHOTS}/review-${width}.png`, fullPage: true });
 
+  // ── F6c · the OFFICER's review surface for an AI-generated poll ───────────
+  // ⛔ A translation the model generates, the DB stores and the publish path carries
+  // to the player must be READABLE by the officer who approves it — otherwise a
+  // human signs off on the sentence that decides the payout without ever seeing it.
+  // Both arms, because "no translation" has to say so rather than leave a blank row.
+  for (const [arm, id] of [["translated", "aip_f6_translated"], ["fallback", "aip_f6_untranslated"]]) {
+    const tag = `aipoll-${arm}-${width}`;
+    await page.goto(`${BASE}/admin/ai-polls/${id}`, { waitUntil: "domcontentloaded", timeout: 60000 });
+    const card = page.getByText("Resolution criterion · EN (binding)").locator("xpath=ancestor::*[self::div][1]");
+    await card.waitFor({ state: "visible", timeout: 20000 }).catch(() => {});
+    const text = await card.innerText().catch(() => "");
+    ok(`${tag}: the criterion card was located`, text.length > 40, `${text.length} chars`);
+    // ⚠️ CASE-INSENSITIVE, because the label carries `text-transform: uppercase` and
+    // `innerText` returns the RENDERED text — "EN (BINDING)", not "EN (binding)".
+    // The same class of trap as reading a truncated string back from the DOM: CSS
+    // changed what the property returns, and the check failed over correct markup.
+    ok(`${tag}: it labels English as BINDING`, /en \(binding\)/i.test(text), text.slice(0, 40));
+    if (arm === "translated") {
+      ok(`${tag}: the Swahili the model produced is shown to the officer`, text.includes("Inatatuliwa NDIYO"));
+      ok(`${tag}: and the Chinese too`, /若坦桑尼亚银行/.test(text));
+    } else {
+      const misses = (text.match(/No translation — players see the English/g) ?? []).length;
+      ok(`${tag}: BOTH missing translations say so, rather than leaving blank rows`, misses === 2, `${misses} of 2`);
+    }
+    await card.screenshot({ path: `${SHOTS}/${tag}.png` }).catch(() => {});
+  }
+
   // Reported, not gated — the dev server can serve stale CSS (see the header).
   const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   console.log(`     note ${width}: page horizontal overflow = ${over}px (reported, dev CSS)`);

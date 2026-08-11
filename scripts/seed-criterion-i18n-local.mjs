@@ -88,6 +88,51 @@ for (const r of rows) {
   if (!okSw || !okZh) { await db.$disconnect(); process.exit(1); }
 }
 
+// ── F6c · an AI poll awaiting review, one translated and one not ────────────
+// So the OFFICER's surfaces can be photographed too. A generated translation that
+// nobody can read before publish is a write-only field, and this is the sentence
+// the payout turns on — the review page and the edit panel both have to show it.
+const polls = [
+  { id: "aip_f6_translated", sw: SW, zh: ZH, titleEn: "Will the shilling strengthen against the dollar by month-end?" },
+  { id: "aip_f6_untranslated", sw: null, zh: null, titleEn: "Will the Bank of Tanzania hold the policy rate at the next meeting?" },
+];
+for (const p of polls) {
+  const data = {
+    state: "PENDING_REVIEW",
+    requestCategory: "macro",
+    requestPrompt: "seed",
+    rawResponse: null,
+    filterReasons: [],
+    qualityIndicators: [],
+    overallQuality: 85,
+    titleEn: p.titleEn,
+    titleSw: "Je, shilingi itaimarika dhidi ya dola ifikapo mwisho wa mwezi?",
+    titleZh: "坦桑尼亚先令会在月底前对美元走强吗？",
+    category: "macro",
+    resolutionCriterion: EN,
+    resolutionCriterionSw: p.sw,
+    resolutionCriterionZh: p.zh,
+    resolutionAt: new Date(Date.now() + 30 * day),
+    selectionClosedAt: new Date(Date.now() + 25 * day),
+    options: [],
+    sources: [{ url: "https://www.bot.go.tz", publisher: "Bank of Tanzania" }],
+    confidence: 80,
+    reasoning: "Seeded for F6c visual verification.",
+    rejectReasons: [],
+  };
+  await db.aIPoll.upsert({ where: { id: p.id }, create: { id: p.id, ...data }, update: data });
+  const got = await db.aIPoll.findUnique({
+    where: { id: p.id },
+    select: { resolutionCriterionSw: true, resolutionCriterionZh: true },
+  });
+  const okSw = (got?.resolutionCriterionSw ?? null) === p.sw;
+  const okZh = (got?.resolutionCriterionZh ?? null) === p.zh;
+  console.log(`seeded ${p.id} — sw ${okSw ? "OK" : "MISMATCH"} · zh ${okZh ? "OK" : "MISMATCH"}`);
+  if (!okSw || !okZh) { await db.$disconnect(); process.exit(1); }
+}
+
 await db.$disconnect();
-console.log("\n/markets/mkt_f6_translated   — the TRANSLATED arm");
-console.log("/markets/mkt_f6_untranslated — the FALLBACK arm");
+console.log("\n/markets/mkt_f6_translated   — the TRANSLATED arm (player)");
+console.log("/markets/mkt_f6_untranslated — the FALLBACK arm (player)");
+console.log("/admin/ai-polls/aip_f6_translated   — the officer's review, translated");
+console.log("/admin/ai-polls/aip_f6_untranslated — the officer's review, untranslated");

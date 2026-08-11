@@ -75,6 +75,11 @@ export async function publishCandidateAction(formData: FormData) {
       category: c.category === "infrastructure" ? "macro" : c.category,
       sourceUrl: primary.url,
       resolutionCriterion: c.resolutionCriterion,
+      // ⚠️ THE SECOND PUBLISH PATH, and it is easy to miss. `/admin/candidates`
+      // creates markets independently of `/admin/ai-polls`; fixing only the one the
+      // finding named would leave every candidate-published poll untranslated.
+      resolutionCriterionSw: c.resolutionCriterionSw,
+      resolutionCriterionZh: c.resolutionCriterionZh,
       resolutionAt: c.resolutionAt,
       proposedBy: officerId,
     });

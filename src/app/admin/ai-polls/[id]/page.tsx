@@ -142,10 +142,25 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
         {/* Resolution + options */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <AdminCard>
-            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle mb-2">Resolution criterion</p>
+            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle mb-2">Resolution criterion · EN (binding)</p>
             <p className="text-[13px] text-text leading-relaxed">
               {poll.resolutionCriterion || <span className="italic text-text-subtle">No criterion set</span>}
             </p>
+            {/* ⭐ F6c · SHOWN, NOT JUST STORED. The model now generates SW/ZH criteria and
+                the publish path carries them to the market — so an officer reviewing this
+                poll must be able to READ what will be published in the player's language.
+                A translation stored and never displayed is a write-only field, which this
+                campaign has already filed once as a defect class.
+                ⛔ "None" is spelled out rather than left blank: an empty row reads as
+                "I forgot to look", and this states what the player will actually get. */}
+            {([["SW", poll.resolutionCriterionSw], ["ZH", poll.resolutionCriterionZh]] as const).map(([lang, text]) => (
+              <div key={lang} className="mt-2 border-l-2 border-border/60 pl-2.5">
+                <p className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-text-subtle">{lang}</p>
+                {text
+                  ? <p className="text-[12.5px] text-text-muted leading-relaxed" lang={lang.toLowerCase()}>{text}</p>
+                  : <p className="text-[12px] italic text-text-subtle">No translation — players see the English with a note saying so.</p>}
+              </div>
+            ))}
             <div className="mt-3 pt-3 border-t border-border/60 grid grid-cols-2 gap-3">
               <div>
                 <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle mb-1">{SELECTION.selectionCloses.en}</p>

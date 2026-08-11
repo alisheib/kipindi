@@ -15,6 +15,7 @@
 
 import { parseQuery, matchesQuery, fieldNames, CANDIDATE_SEARCH } from "@/lib/search";
 import { randomId } from "./crypto";
+import { normaliseCriterionTranslation } from "@/lib/localized";
 import { audit } from "./audit";
 import { prisma, hasDatabase } from "./prisma";
 
@@ -55,6 +56,10 @@ export type Candidate = {
   proposedTitleSw?: string;
   proposedTitleZh?: string;
   resolutionCriterion: string;
+  /** F6c · SW / ZH translations of the criterion, carried to the published market.
+   *  `null` = none, which the player surface discloses. English stays canonical. */
+  resolutionCriterionSw?: string | null;
+  resolutionCriterionZh?: string | null;
   resolutionAt: string;
   sources: Source[];               // primary + cross-verification sources
   confidence: number;              // 0..100
@@ -109,6 +114,8 @@ function toCandidate(r: any): Candidate {
     proposedTitleSw: r.proposedTitleSw ?? undefined,
     proposedTitleZh: r.proposedTitleZh ?? undefined,
     resolutionCriterion: r.resolutionCriterion,
+    resolutionCriterionSw: r.resolutionCriterionSw ?? null,
+    resolutionCriterionZh: r.resolutionCriterionZh ?? null,
     resolutionAt: iso(r.resolutionAt)!,
     sources: (r.sources ?? []) as Source[],
     confidence: r.confidence,
@@ -176,6 +183,10 @@ const prismaCandidates: CandidateStore = {
         proposedTitleSw: c.proposedTitleSw ?? null,
         proposedTitleZh: c.proposedTitleZh ?? null,
         resolutionCriterion: c.resolutionCriterion,
+        // ⚠️ BOTH ARMS of this upsert, like marketStore.set — a column added to
+        // `create` only is silently dropped the first time an existing row is written.
+        resolutionCriterionSw: c.resolutionCriterionSw ?? null,
+        resolutionCriterionZh: c.resolutionCriterionZh ?? null,
         resolutionAt: new Date(c.resolutionAt),
         sources: c.sources as unknown as import("@prisma/client").Prisma.JsonArray,
         confidence: c.confidence,
@@ -197,6 +208,10 @@ const prismaCandidates: CandidateStore = {
         proposedTitleSw: c.proposedTitleSw ?? null,
         proposedTitleZh: c.proposedTitleZh ?? null,
         resolutionCriterion: c.resolutionCriterion,
+        // ⚠️ BOTH ARMS of this upsert, like marketStore.set — a column added to
+        // `create` only is silently dropped the first time an existing row is written.
+        resolutionCriterionSw: c.resolutionCriterionSw ?? null,
+        resolutionCriterionZh: c.resolutionCriterionZh ?? null,
         resolutionAt: new Date(c.resolutionAt),
         sources: c.sources as unknown as import("@prisma/client").Prisma.JsonArray,
         confidence: c.confidence,
@@ -307,6 +322,8 @@ export async function ingestCandidate(input: {
   proposedTitleSw?: string;
   proposedTitleZh?: string;
   resolutionCriterion: string;
+  resolutionCriterionSw?: string | null;
+  resolutionCriterionZh?: string | null;
   resolutionAt: string;
   sources: Source[];
   tokensSpent?: number;
@@ -322,6 +339,9 @@ export async function ingestCandidate(input: {
     proposedTitleSw: input.proposedTitleSw,
     proposedTitleZh: input.proposedTitleZh,
     resolutionCriterion: input.resolutionCriterion,
+    // ⛔ Through the shared rule, so a copy of the English cannot enter here either.
+    resolutionCriterionSw: normaliseCriterionTranslation(input.resolutionCriterionSw, input.resolutionCriterion),
+    resolutionCriterionZh: normaliseCriterionTranslation(input.resolutionCriterionZh, input.resolutionCriterion),
     resolutionAt: input.resolutionAt,
     sources: input.sources,
     confidence: 0,

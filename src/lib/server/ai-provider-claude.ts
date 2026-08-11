@@ -93,6 +93,13 @@ function buildSubmitPollTool(allowedCategories?: string[]) {
         titleZh: { type: "string", description: "Simplified Chinese (简体中文) translation of the question — natural and fluent, same meaning as the English." },
         category: { type: "string", enum: categoryEnum(allowedCategories) },
         resolutionCriterion: { type: "string", description: "The specific, publicly verifiable condition + named source that decides YES." },
+        // F6c · the criterion is the sentence the PAYOUT TURNS ON, so it is asked for in
+        // all three languages exactly as the title already is. ⛔ Both are OPTIONAL in
+        // `required` below: a model that cannot translate faithfully must be able to omit
+        // one, because the player surface DISCLOSES a missing translation but silently
+        // renders a wrong one as the rule that decides their money.
+        resolutionCriterionSw: { type: "string", description: "Kiswahili translation of resolutionCriterion — natural, fluent, and EXACTLY the same condition. Omit this field entirely rather than guess: a criterion that differs from the English in any way describes a different bet. Never copy the English here." },
+        resolutionCriterionZh: { type: "string", description: "Simplified Chinese (简体中文) translation of resolutionCriterion — natural, fluent, and EXACTLY the same condition. Omit this field entirely rather than guess. Never copy the English here." },
         resolutionAt: { type: "string", description: "ISO 8601 datetime the question resolves. MUST be in the future." },
         options: {
           type: "array",
@@ -197,6 +204,7 @@ HARD RULES:
 2. The event MUST still be genuinely open right now — it must NOT have already happened or been decided. ${opts.webSearch ? "Use web search to confirm the event is real, still upcoming, and unresolved, and to pin down exact names, dates and figures." : "Be conservative: if you are not certain an event is still in the future, do not use it."}
 3. resolutionAt MUST be between ${earliest} and ${latest} (i.e. ${opts.minLeadHours}h to ${opts.maxLeadDays}d from now). Never a past date. Note: betting closes BEFORE the resolution date (e.g. 1h before for sports, 2h for crypto, 1–2 days for macro). Pick events where this lead time makes sense.
 4. resolutionCriterion MUST name a specific, publicly verifiable source (official body, regulator, data provider, or major news agency) and the exact condition for a YES.
+4b. resolutionCriterion is THE SENTENCE THE PAYOUT TURNS ON, and players read it in Kiswahili and Chinese too. Provide resolutionCriterionSw and resolutionCriterionZh whenever you can translate it EXACTLY — same threshold, same source, same date, same YES condition. If you cannot, OMIT the field entirely: a missing translation is shown to the player as the English with a note explaining why, which is honest, whereas a translation that drifts from the English describes a DIFFERENT BET and is read as the rule that decides their money. Never copy the English into either field.
 5. Provide at least one REAL, reachable source URL whose domain is on the SOURCE ALLOWLIST above. ${opts.webSearch ? "Use web search to find the real page on one of those approved domains — never invent a URL, and never substitute a different domain." : "Cite the specific approved domain from the allowlist."}
 6. NEVER generate questions about: politics, elections, religion, violence, war, adult content, or the death/health of any individual. These are banned under the GBT license.
 7. Anchor in Tanzania / East Africa wherever possible. Global topics are welcome for crypto, weather, and major world sport.

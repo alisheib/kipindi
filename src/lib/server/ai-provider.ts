@@ -33,6 +33,12 @@ export type AIPollGeneration = {
   titleZh?: string;
   category: string;
   resolutionCriterion: string;
+  /** F6c · SW / ZH translations of the criterion. OPTIONAL by design — the tool
+   *  schema tells the model to OMIT rather than guess, because a criterion that
+   *  drifts from the English describes a different bet and is read by the player as
+   *  the rule that decides their money. Absent is disclosed; wrong is not. */
+  resolutionCriterionSw?: string;
+  resolutionCriterionZh?: string;
   resolutionAt: string;
   options: AIPollOption[];
   sources: Array<{ url: string; publisher: string }>;

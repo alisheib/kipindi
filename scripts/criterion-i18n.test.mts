@@ -314,5 +314,105 @@ const ZH = "若坦桑尼亚银行最后一个营业日的中间价低于首日�
      !/resolutionCriterionZh:[^,\n]*\?\?\s*input\.resolutionCriterion/.test(svc));
 }
 
+// ── 8 · F6c · the AI pipeline, GENERATE → STORE → PUBLISH ────────────────────
+// ⛔ THE CHAIN IS THE ASSERTION, NOT ANY LINK IN IT. A model that generates a Swahili
+// criterion, a column that stores it, and an officer screen that shows it are worth
+// nothing if `publishPoll` drops it at `createMarket` — the poll would carry a real
+// translation while the player is told there isn't one. That is a WRITE-ONLY FIELD,
+// a defect class this campaign has already filed once, so it is asserted end to end.
+{
+  const claude = decomment(read("src/lib/server/ai-provider-claude.ts"));
+  const gen = decomment(read("src/lib/server/ai-poll-generation.ts"));
+  const cand = decomment(read("src/lib/server/market-candidate.ts"));
+  const pollPub = decomment(read("src/app/admin/ai-polls/actions.ts"));
+  const candPub = decomment(read("src/app/admin/candidates/actions.ts"));
+
+  // ① ASKED FOR — in the tool schema the model actually answers.
+  ok("8: the provider tool schema asks for both translations",
+     /resolutionCriterionSw:\s*\{\s*type:\s*"string"/.test(claude) &&
+     /resolutionCriterionZh:\s*\{\s*type:\s*"string"/.test(claude));
+  // ⭐ AND DELIBERATELY *NOT* REQUIRED. A model forced to fill the field will invent a
+  // translation, and a criterion that drifts from the English describes a DIFFERENT
+  // BET while being read as the rule that decides the money. Absent is disclosed;
+  // wrong is not. This asserts the omission is intentional rather than forgotten.
+  // ⛔ THE *OUTER* `required`, PICKED BY WHAT IT CONTAINS. This file has more than one
+  // — the `sources` sub-schema carries `required: ["url", "publisher"]`, and it comes
+  // FIRST, so a plain `.match()` grabbed that one and the check failed over correct
+  // code. Same shape as the two locator mistakes already recorded in this file:
+  // an anchor that matches in more than one place is not an anchor.
+  // ⚠️ AND THE TOKENS ARE PARSED, NOT SUBSTRING-MATCHED. `"resolutionCriterion"` is a
+  // PREFIX of `"resolutionCriterionSw"`, so `includes()` cannot tell "the English is
+  // required" from "the Swahili is required" — the check would have been unable to
+  // fail in the direction that matters. This file's whole subject is one name being
+  // mistaken for another.
+  const requiredSets = [...claude.matchAll(/required:\s*\[([^\]]*)\]/g)]
+    .map((m) => m[1].split(",").map((t) => t.trim().replace(/^["']|["']$/g, "")).filter(Boolean));
+  const required = requiredSets.find((set) => set.includes("resolutionCriterion")) ?? [];
+  ok("8: the outer tool-schema `required` was located", required.length > 0,
+     `${requiredSets.length} required-array(s) in file`);
+  ok("8: …and neither translation is in it — omitting beats guessing",
+     required.length > 0 && !required.includes("resolutionCriterionSw") && !required.includes("resolutionCriterionZh"));
+  ok("8: the prompt tells the model to OMIT rather than guess, and never to copy the English",
+     /OMIT the field entirely/i.test(claude) && /[Nn]ever copy the English/.test(claude));
+
+  // ② STORED — and through the same rule every other writer uses.
+  ok("8: the generation copies both onto the poll THROUGH the shared normaliser",
+     /poll\.resolutionCriterionSw\s*=\s*normaliseCriterionTranslation\(/.test(gen) &&
+     /poll\.resolutionCriterionZh\s*=\s*normaliseCriterionTranslation\(/.test(gen));
+  ok("8: the officer's edit applies the same rule",
+     /opts\.resolutionCriterionSw\s*!==\s*undefined/.test(gen) &&
+     /opts\.resolutionCriterionZh\s*!==\s*undefined/.test(gen));
+  ok("8: and the AIPoll row carries them in both directions",
+     /resolutionCriterionSw:\s*r\.resolutionCriterionSw\s*\?\?\s*null/.test(gen) &&
+     /resolutionCriterionSw:\s*p\.resolutionCriterionSw/.test(gen));
+
+  // The candidate record, whose upsert duplicates its column list across two arms.
+  ok("8: ingestCandidate normalises both", /resolutionCriterionSw:\s*normaliseCriterionTranslation\(/.test(cand));
+  for (const col of ["resolutionCriterionSw", "resolutionCriterionZh"]) {
+    const n = (cand.match(new RegExp(`${col}:\\s*c\\.${col}\\s*\\?\\?\\s*null`, "g")) ?? []).length;
+    ok(`8: ${col} is written in BOTH arms of the candidate upsert`, n === 2, `${n} arm(s)`);
+  }
+
+  // ③ PUBLISHED — the link that makes the other two matter.
+  // ⛔ There are TWO paths that create a market from the AI pipeline and they are in
+  // different files. Fixing only the one the finding named would leave every
+  // candidate-published poll untranslated, which is the same defect with a smaller
+  // blast radius — so both are named here.
+  ok("8: publishing an AI poll carries both into createMarket",
+     /resolutionCriterionSw:\s*poll\.resolutionCriterionSw/.test(pollPub) &&
+     /resolutionCriterionZh:\s*poll\.resolutionCriterionZh/.test(pollPub));
+  ok("8: publishing a CANDIDATE carries both too — the second, easily-missed path",
+     /resolutionCriterionSw:\s*c\.resolutionCriterionSw/.test(candPub) &&
+     /resolutionCriterionZh:\s*c\.resolutionCriterionZh/.test(candPub));
+  ok("8: and the candidate RECORD gets them at ingest, so the audit trail matches the market",
+     /resolutionCriterionSw:\s*poll\.resolutionCriterionSw/.test(pollPub));
+
+  // ④ VISIBLE TO THE OFFICER — a translation stored and never shown is write-only,
+  // and this is the sentence the payout turns on. Both a read and an edit surface.
+  const detail = decomment(read("src/app/admin/ai-polls/[id]/page.tsx"));
+  const editor = decomment(read("src/app/admin/ai-polls/poll-actions.tsx"));
+  ok("8: the officer's review page RENDERS both translations",
+     /poll\.resolutionCriterionSw/.test(detail) && /poll\.resolutionCriterionZh/.test(detail));
+  ok("8: …and says what a missing one means rather than leaving a blank row",
+     /No translation — players see the English/.test(detail));
+  ok("8: the officer can EDIT both, under the same imported rule",
+     /criterionSw/.test(editor) && /criterionZh/.test(editor) &&
+     /import\s*\{[^}]*criterionTranslationIssue[^}]*\}\s*from\s*["']@\/lib\/localized["']/.test(editor));
+
+  // ⑤ The schema half, both models, both nullable and additive.
+  const schema = read("prisma/schema.prisma");
+  for (const model of ["AIPoll", "MarketCandidate"]) {
+    const m = schema.match(new RegExp(`model ${model} \\{[\\s\\S]*?\\n\\}`))?.[0] ?? "";
+    ok(`8: ${model} declares both columns NULLABLE`,
+       /resolutionCriterionSw\s+String\?/.test(m) && /resolutionCriterionZh\s+String\?/.test(m),
+       m.length ? "" : "model not located");
+  }
+  let mig = "";
+  try { mig = read("prisma/migrations/20260811150000_ai_resolution_criterion_i18n/migration.sql"); } catch { /* reported */ }
+  ok("8: the AI migration exists and touches both tables",
+     /ALTER TABLE "AIPoll"/.test(mig) && /ALTER TABLE "MarketCandidate"/.test(mig));
+  ok("8: and is purely additive", mig.length > 0 && !/NOT\s+NULL/i.test(mig) && !/\bDROP\b/i.test(mig) && !/\bUPDATE\b/i.test(mig));
+}
+
 console.log(`\ncriterion-i18n: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

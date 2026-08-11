@@ -221,6 +221,8 @@ export async function editPollAction(formData: FormData) {
   const titleZh = formData.has("titleZh") ? String(formData.get("titleZh")) : undefined;
   const category = formData.has("category") ? String(formData.get("category")) : undefined;
   const resolutionCriterion = formData.has("resolutionCriterion") ? String(formData.get("resolutionCriterion")) : undefined;
+  const resolutionCriterionSw = formData.has("resolutionCriterionSw") ? String(formData.get("resolutionCriterionSw")) : undefined;
+  const resolutionCriterionZh = formData.has("resolutionCriterionZh") ? String(formData.get("resolutionCriterionZh")) : undefined;
   const resolutionAt = formData.has("resolutionAt") ? String(formData.get("resolutionAt")) : undefined;
   const selectionClosedAt = formData.has("selectionClosedAt")
     ? (formData.get("selectionClosedAt") === "" ? null : String(formData.get("selectionClosedAt")))
@@ -234,6 +236,8 @@ export async function editPollAction(formData: FormData) {
       titleZh,
       category,
       resolutionCriterion,
+      resolutionCriterionSw,
+      resolutionCriterionZh,
       resolutionAt,
       selectionClosedAt,
     });
@@ -342,6 +346,8 @@ export async function publishPollAction(formData: FormData) {
     proposedTitleSw: poll.titleSw || undefined,
     proposedTitleZh: poll.titleZh || undefined,
     resolutionCriterion: poll.resolutionCriterion,
+    resolutionCriterionSw: poll.resolutionCriterionSw,
+    resolutionCriterionZh: poll.resolutionCriterionZh,
     resolutionAt: poll.resolutionAt,
     sources: poll.sources.map((s) => ({
       url: s.url,
@@ -377,6 +383,13 @@ export async function publishPollAction(formData: FormData) {
     category: publishCategory,
     sourceUrl: poll.sources[0]?.url ?? "",
     resolutionCriterion: poll.resolutionCriterion,
+    // ⭐ THE POINT OF F6c. Without these two lines the model's Swahili criterion is
+    // generated, validated, stored, shown to the officer — and then dropped at the
+    // one boundary that matters, leaving the player told "no translation available"
+    // about a translation that exists. A write-only field, in the file that files
+    // write-only fields as a defect class.
+    resolutionCriterionSw: poll.resolutionCriterionSw,
+    resolutionCriterionZh: poll.resolutionCriterionZh,
     resolutionAt: poll.resolutionAt,
     selectionClosedAt: poll.selectionClosedAt,
     proposedBy: officerId,

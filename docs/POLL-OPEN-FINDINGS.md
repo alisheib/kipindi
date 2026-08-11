@@ -497,12 +497,71 @@ polls actually carrying a non-English criterion has NOT been measured**; it is a
 `productLine = 'MARKET'` query against production, and the census tool at
 `scripts/live/ops/poll-census.cjs` is where it belongs.
 
-#### F6c · the AI generation path — ⚪ AFTER F6b
+#### F6c · the AI generation path — 🟢 SHIPPED 2026-08-11
 
-`AIPoll` / `MarketCandidate` need the same two nullable columns or the model's Swahili criterion
-is generated and then dropped at storage. The provider schema
-([`ai-provider-claude.ts`](../src/lib/server/ai-provider-claude.ts)) already requires
-`titleEn`/`titleSw`/`titleZh` and can require these the same way.
+The model is now **asked** for the criterion in all three languages, the pipeline **stores** what
+it returns, the officer can **read and edit** it before publish, and **both** publish paths carry
+it to the market. Second migration:
+[`20260811150000_ai_resolution_criterion_i18n`](../prisma/migrations/20260811150000_ai_resolution_criterion_i18n/migration.sql)
+adds the same two nullable columns to `AIPoll` and `MarketCandidate`.
+
+⭐ **THE TWO TRANSLATIONS ARE DELIBERATELY *NOT* IN THE TOOL SCHEMA'S `required`, AND THE GUARD
+ASSERTS THAT ABSENCE.** A model forced to fill a field will invent something, and a criterion that
+drifts from the English **describes a different bet** while being read by the player as the rule
+that decides their money. The prompt says so in as many words: *"OMIT the field entirely rather
+than guess … never copy the English here."* ⛔ **Absent is disclosed; wrong is not.**
+
+⛔ **EVERY WRITER GOES THROUGH `normaliseCriterionTranslation` — the same function the wizard and
+`createMarket` use.** A model that copies the English into a translation field is not translating,
+and storing that is F8 arriving from the AI instead of from an officer. One rule, four surfaces.
+
+⚠️ **THERE ARE TWO PUBLISH PATHS AND THEY ARE IN DIFFERENT FILES.** `/admin/ai-polls` and
+`/admin/candidates` each call `createMarket` independently. Fixing only the one this finding named
+would have left every candidate-published poll untranslated — the same defect with a smaller blast
+radius. ⭐ **The guard names both**, because the reason to write it down is that it is easy to miss.
+
+⭐ **AND THE OFFICER CAN NOW SEE WHAT THEY ARE APPROVING.** `/admin/ai-polls/[id]` renders both
+translations under the English (labelled **binding**), and the edit panel makes all three
+editable under the same imported rule. Without that, a generated Swahili criterion would be
+stored and published **with no human ever having read it** — a write-only field, which is a defect
+class this campaign has already filed. ⛔ A missing translation is spelled out — *"No translation —
+players see the English with a note saying so"* — rather than left as a blank row, because a blank
+row reads as *"I forgot to look"*.
+
+**Guarded by `test:criterion-i18n` §8 (91 assertions in the suite now).** It asserts the **CHAIN**
+— asked for → stored → shown → published — because any single link is worthless alone: a model
+that generates a translation, a column that stores it and a screen that shows it still leave the
+player told *"no translation available"* if `publishPoll` drops it at `createMarket`.
+
+**RED-proven: the F6c product stashed with the guard kept → 16 named §8 failures, exit 1**, naming
+the absent tool-schema fields, the absent prompt rule, every storage site, both publish paths,
+both officer surfaces and both schema models. Restored cleanly.
+
+⚠️ **TWO §8 ASSERTIONS WERE NOT EXERCISED BY THAT RED RUN, AND SAYING SO IS THE POINT.**
+`git stash push` does not stash **untracked** files, so the new migration survived the stash and
+its two checks (*"the migration exists"*, *"is purely additive"*) passed in both states. They are
+existence checks on a file authored in the same commit, not defect detectors — but a RED run that
+covers 16 of 18 assertions is not a RED run that covers 18.
+
+🔴 **AND A THIRD LOCATOR OF MINE WAS WRONG, IN THE SAME WAY AS THE FIRST TWO.** §8 read the tool
+schema's `required` array with a plain `.match()` — which returned the **`sources` sub-schema's**
+`required: ["url", "publisher"]`, the first of several in that file. Re-anchored on *the array that
+contains `resolutionCriterion`*, then wrong again because a **second tool schema** also lists
+`titleEn`. ⭐ **And the tokens are now PARSED rather than substring-matched, because
+`"resolutionCriterion"` is a PREFIX of `"resolutionCriterionSw"`** — `includes()` literally could
+not tell *"the English is required"* from *"the Swahili is required"*, so the check was unable to
+fail in the one direction that mattered. ⛔ **An anchor that matches in more than one place is not
+an anchor** — three times in one session, in a file whose entire subject is one name being
+mistaken for another.
+
+✅ **LOOKED AT.** `qa:criterion-wizard` now also drives the officer's review card at 360 and 1280
+for a seeded translated poll and an untranslated one — **38 assertions, 0 failures** across both
+surfaces. Shots read by eye: the Swahili and Chinese criteria render cleanly under the English,
+and the untranslated poll states the absence twice rather than showing two empty rows.
+⚠️ **One instrument bug on the way:** the label carries `text-transform: uppercase`, and
+`innerText` returns the **rendered** text — so a case-sensitive `includes("EN (binding)")` failed
+over correct markup. CSS changed what the DOM property returned, which is the same family as
+reading a truncated string back and believing it.
 
 ---
 

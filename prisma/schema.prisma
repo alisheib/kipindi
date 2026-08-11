@@ -1502,6 +1502,11 @@ model MarketCandidate {
   proposedTitleSw     String?
   proposedTitleZh     String?
   resolutionCriterion String
+  /// SW / ZH translations of the criterion, carried from the AI generation through
+  /// to the published market (F6c). Nullable: null means "no translation", which the
+  /// player surface discloses rather than hiding. ⛔ English stays canonical.
+  resolutionCriterionSw String?
+  resolutionCriterionZh String?
   resolutionAt        DateTime
   sources             Json // Array<{ url, publisher, publishedAt?, retrievedAt }>
   confidence          Int            @default(0)
@@ -1535,6 +1540,11 @@ model AIPoll {
   titleZh              String?
   category             String
   resolutionCriterion  String
+  /// SW / ZH translations of the criterion, as GENERATED (and officer-editable
+  /// before publish). Nullable — the model may decline, and null is the honest
+  /// value for that. ⛔ Never backfilled with the English: see F8.
+  resolutionCriterionSw String?
+  resolutionCriterionZh String?
   resolutionAt         DateTime
   selectionClosedAt    DateTime?
   options              Json        @default("[]")

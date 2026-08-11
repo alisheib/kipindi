@@ -7,6 +7,10 @@ import { AiProgress, AiOverlayShell, type AiPhase } from "@/components/ui/ai-pro
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import {
+  criterionTranslationIssue, MIN_CRITERION_TRANSLATION,
+  type CriterionTranslationIssue,
+} from "@/lib/localized";
 import { DateSelect } from "@/components/ui/date-select";
 import { TimeSelect } from "@/components/ui/time-select";
 import { Toggle } from "@/components/ui/toggle";
@@ -1278,6 +1282,19 @@ function EditForm({ poll, onClose, overlay }: { poll: StoredAIPoll; onClose: () 
   const [titleZh, setTitleZh] = useState(poll.titleZh ?? "");
   const [category, setCategory] = useState(poll.category);
   const [criterion, setCriterion] = useState(poll.resolutionCriterion);
+  const [criterionSw, setCriterionSw] = useState(poll.resolutionCriterionSw ?? "");
+  const [criterionZh, setCriterionZh] = useState(poll.resolutionCriterionZh ?? "");
+  // ⛔ THE SAME imported rule the wizard and the server action use — one policy, three
+  // surfaces. Re-implementing it here is how a client comes to accept what the server
+  // refuses (E-145's shape).
+  const swIssue = criterionTranslationIssue(criterionSw, criterion);
+  const zhIssue = criterionTranslationIssue(criterionZh, criterion);
+  const issueText = (i: CriterionTranslationIssue | null) =>
+    i === "SAME_AS_ENGLISH"
+      ? "This is the English text — leave it blank instead. Blank already shows the English with a note; a stored copy makes “not translated” impossible to tell from “translated identically”."
+      : i === "TOO_SHORT"
+        ? `Too short to be a translation (minimum ${MIN_CRITERION_TRANSLATION} characters). Leave it blank instead.`
+        : null;
   const initialDt = poll.resolutionAt ? new Date(poll.resolutionAt) : null;
   const validInit = initialDt && !Number.isNaN(initialDt.getTime()) ? initialDt : null;
   const [editDate, setEditDate] = useState(validInit ? validInit.toISOString().slice(0, 10) : "");   // YYYY-MM-DD
@@ -1329,6 +1346,8 @@ function EditForm({ poll, onClose, overlay }: { poll: StoredAIPoll; onClose: () 
         fd.set("titleZh", titleZh);
         fd.set("category", category);
         fd.set("resolutionCriterion", criterion);
+        fd.set("resolutionCriterionSw", criterionSw);
+        fd.set("resolutionCriterionZh", criterionZh);
         fd.set("resolutionAt", resIso.toISOString());
         fd.set("selectionClosedAt", selIsoStr ?? "");
         const r = await editPollAction(fd);
@@ -1364,8 +1383,26 @@ function EditForm({ poll, onClose, overlay }: { poll: StoredAIPoll; onClose: () 
           options={CATEGORIES.map((c) => ({ value: c.id, label: c.label }))} />
       </div>
       <label className="block">
-        <span className="text-[10px] text-text-subtle">Resolution criterion</span>
+        <span className="text-[10px] text-text-subtle">Resolution criterion (EN) · binding</span>
         <textarea value={criterion} onChange={(e) => setCriterion(e.target.value)} className={adminTextarea} rows={2} />
+      </label>
+      {/* ⭐ F6c · THE OFFICER MUST BE ABLE TO SEE AND FIX WHAT THE MODEL WROTE. Without
+          these two, a generated Swahili criterion would be stored and published with no
+          human ever reading it — and this is the sentence the payout turns on. Blank is
+          a legitimate answer: the player is shown the English with a note saying why. */}
+      <label className="block">
+        <span className="text-[10px] text-text-subtle">Criterion (SW) · blank = show English + note</span>
+        <textarea value={criterionSw} onChange={(e) => setCriterionSw(e.target.value)}
+          className={`${adminTextarea}${swIssue ? " border-no-700" : ""}`} rows={2}
+          aria-invalid={!!swIssue || undefined} />
+        {swIssue && <p role="alert" className="mt-1 text-[10px] leading-snug text-no-300">{issueText(swIssue)}</p>}
+      </label>
+      <label className="block">
+        <span className="text-[10px] text-text-subtle">Criterion (ZH) · blank = show English + note</span>
+        <textarea value={criterionZh} onChange={(e) => setCriterionZh(e.target.value)}
+          className={`${adminTextarea}${zhIssue ? " border-no-700" : ""}`} rows={2}
+          aria-invalid={!!zhIssue || undefined} />
+        {zhIssue && <p role="alert" className="mt-1 text-[10px] leading-snug text-no-300">{issueText(zhIssue)}</p>}
       </label>
       <div>
         <span className="text-[10px] text-text-subtle">{bi(SELECTION.selectionClose)}</span>
