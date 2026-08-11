@@ -37,7 +37,7 @@ The line references are what a fix should start from.
 | F2 | `one-sided-loser-share-phantom-fee` | medium | ⚠️ **narrowed, line NOT pinned** | [`payout.ts:344-362`](../src/lib/payout.ts#L344-L362) |
 | F3 | `per-market-rate-overrides-are-inert` | medium | ✅ re-confirmed | [`config-form.tsx:337-365`](../src/app/admin/config/config-form.tsx#L337-L365) |
 | F4 | `wizard-resolution-time-parsed-in-browser-timezone` | medium | ✅ re-confirmed | [`wizard.tsx:46`](../src/app/admin/markets/new/wizard.tsx#L46) |
-| F5 | `regex-advertised-never-executed` | medium | ✅ re-confirmed | [`search-box.tsx:125`](../src/components/ui/search-box.tsx#L125) vs every call site |
+| F5 | `regex-advertised-never-executed` | medium | 🟢 **SHIPPED 2026-08-11** | guard: `test:search-adoption` §5 |
 | F6 | `resolution-criterion-english-only` | medium | ✅ by inspection | `prisma/schema.prisma` — `resolutionCriterion` is one column |
 
 ### F1 · `sell-offered-on-bonus-funded-position`
@@ -159,7 +159,7 @@ officer confirms what will actually be stored. ⚠️ `wizard.tsx:128` currently
 `<Row label="Resolves at" value={resolutionAt} />` — the raw, zoneless string, which is exactly
 the value that cannot be checked.
 
-### F5 · `regex-advertised-never-executed`
+### F5 · `regex-advertised-never-executed` — 🟢 SHIPPED 2026-08-11
 
 Three admin surfaces pass `allowRegex` to `SearchBox`
 ([`poll-filters.tsx:73`](../src/app/admin/ai-polls/poll-filters.tsx#L73),
@@ -195,6 +195,30 @@ advertising surfaces. ✅ Both executors already handle it correctly and need no
 `allowRegex: true` appears — the whole defect is that the string was present in one place and
 absent in the other. Assert the set of components passing `allowRegex` to `SearchBox` equals the
 set of surfaces whose `parseQuery` carries it.
+
+**SHIPPED.** `allowRegex: true` at all three executing call sites; guarded by
+[`test:search-adoption` §5](../scripts/search-adoption.test.mts), which joins advertisement to
+execution through the `XXX_SEARCH` schema both of them already name — so there is no
+hand-maintained map to fall out of date. **RED-proven on the unmodified product**: the guard
+named all three real call sites and exited 1 before the fix.
+
+⭐ **A SECOND DEFECT WAS FIXED ON THE WAY, AND IT WOULD HAVE MADE THE FIRST FIX A LIE.** Both
+server call sites did `filter?.search?.trim().toLowerCase()` **before** parsing. `parseQuery`
+lowercases term values itself, so that was redundant for terms — but for a regex it is
+destructive: `/[A-Z]+/` arrives as `/[a-z]+/`, a **different pattern that still compiles and
+still returns rows**. Shipping regex support on top of it would have meant every case-sensitive
+pattern silently answering a question the operator did not ask. The pre-lowercasing is gone;
+`matchesQuery` already matches regex against original-case text.
+
+⚠️ **AND THE GUARD'S OWN RECONCILIATION WAS WRONG FIRST — it passed over a planted drift.** The
+`<SearchBox …/>` matcher used a lazy `[\s\S]*?`, so rewriting one element as `></SearchBox>` let
+it run **past** the closing tag to the next `/>` in the file and stitch two elements into one
+phantom advertisement that still carried both `allowRegex` and a `fieldNames(…)`. The
+reconciliation shared that matcher and agreed with it. Fixed to `[^<]`, which cannot leave the
+element it started in, and re-proven: the same plant now drops `CANDIDATE_SEARCH` from the
+advertised set and exits 1. ⛔ **A reconciliation built on the same locator as the thing it
+reconciles only catches the matcher matching too LITTLE, never too much** — see
+[[guards-that-agree-and-are-both-wrong]].
 
 ### F6 · `resolution-criterion-english-only`
 

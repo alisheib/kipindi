@@ -636,8 +636,17 @@ export type AIPollFilter = {
 };
 
 export async function listAIPolls(filter?: AIPollFilter): Promise<StoredAIPoll[]> {
-  const q = filter?.search?.trim().toLowerCase();
-  const parsedQ = parseQuery(q, { fields: fieldNames(POLL_SEARCH) });
+  // `allowRegex` because this surface ADVERTISES regex — poll-filters.tsx passes it
+  // to SearchBox, which renders the regex row in SearchHelp and echoes "pattern" as
+  // the operator types. Without it here the pattern was matched as literal text and
+  // the zero rows were reported as the answer. Safe: this is the JS executor over an
+  // already-loaded list, not SQL `~*` — no pooled connection, and isSafeRegex plus
+  // the 4,000-char haystack cap bound it. Guarded by test:search-adoption §5.
+  // ⛔ NOT pre-lowercased. parseQuery lowercases term values itself, so doing it here
+  // was redundant for terms and destructive for regex: `/[A-Z]+/` arriving as
+  // `/[a-z]+/` is a DIFFERENT pattern that still compiles and still returns rows.
+  const q = filter?.search?.trim();
+  const parsedQ = parseQuery(q, { allowRegex: true, fields: fieldNames(POLL_SEARCH) });
   const all = await store.values();
   return all
     .filter((p) => {

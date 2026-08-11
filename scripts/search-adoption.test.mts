@@ -125,5 +125,137 @@ for (const f of files) {
 }
 check("allowRegex appears on NO player route", leaked.length === 0, leaked.join(", "));
 
+// ── 5. What is ADVERTISED is what is EXECUTED ────────────────────────────────
+/**
+ * The defect (2026-08-11, `regex-advertised-never-executed`): three admin surfaces
+ * passed `allowRegex` to SearchBox — which makes SearchHelp render the regex row —
+ * while EVERY call site that actually filters called `parseQuery` without it. The
+ * flag reached exactly one thing: SearchBox's own echo line. So an operator typing
+ * `/^mkt_8/` saw the help chip, saw the echo read "pattern", and got zero rows —
+ * three independent signals that the pattern had run, over a filter that had
+ * matched the literal characters `/^mkt_8/` and found nothing.
+ *
+ * ⛔ THE OBVIOUS GUARD IS THE USELESS ONE. Asserting that `allowRegex: true` appears
+ * at the filtering call sites just re-states the fix; the whole defect is that the
+ * string was present in one place and absent in another, so a check that greps for
+ * it in one place cannot see the disagreement. This asserts the AGREEMENT.
+ *
+ * The join key is structural and needs no hand-maintained map: an advertising
+ * surface always names its entity in the same JSX element it advertises in
+ * (`helpFields={fieldNames(POLL_SEARCH)} allowRegex`), and every executing call
+ * site names the same schema (`parseQuery(q, { fields: fieldNames(POLL_SEARCH) })`).
+ * So: if a schema is advertised anywhere, every non-player parse of it must honour
+ * the advertisement.
+ *
+ * Player routes are excluded because rule 4 above forbids regex there outright —
+ * requiring it here would make the two rules contradict each other on any schema
+ * shared between an admin and a player surface (MARKET_SEARCH is).
+ */
+/**
+ * The search atom — the two kit files that DEFINE the flag rather than use it.
+ * `search-box.tsx` takes it as a prop and forwards it; `search-help.tsx` is what
+ * renders the regex row, i.e. it IS the advertisement's implementation. Neither is
+ * a surface, so neither can be reconciled against a `<SearchBox/>` element.
+ */
+const SEARCH_ATOM = new Set(["src/components/ui/search-box.tsx", "src/components/ui/search-help.tsx"]);
+
+/** Text between `open(` and its matching `)` — parseQuery calls span lines. */
+function balanced(src: string, from: number): string {
+  let depth = 0;
+  for (let i = from; i < src.length; i++) {
+    if (src[i] === "(") depth++;
+    else if (src[i] === ")") { depth--; if (depth === 0) return src.slice(from + 1, i); }
+  }
+  return "";
+}
+
+const advertised = new Set<string>();
+const executed = new Map<string, { rel: string; regex: boolean }[]>();
+/** Files mentioning allowRegex at all — the reconciliation population, see below. */
+const mentionsFlag = new Set<string>();
+let adElements = 0;
+
+for (const f of files) {
+  const rel = relative(ROOT, f).replace(/\\/g, "/");
+  if (SEARCH_ATOM.has(rel)) continue; // the atom itself — it is the messenger, not a surface
+  const src = decomment(readFileSync(f, "utf8"));
+  if (/\ballowRegex\b/.test(src)) mentionsFlag.add(rel);
+
+  // ADVERTISED — a <SearchBox …> element carrying both `allowRegex` and its schema.
+  for (const m of src.matchAll(/<SearchBox\b([^<]*?)\/>/g)) {
+    const el = m[1];
+    if (!/\ballowRegex\b/.test(el)) continue;
+    adElements++;
+    const schema = el.match(/fieldNames\(\s*(\w+_SEARCH)\s*\)/);
+    check(`advertising SearchBox in ${rel} names its entity schema`, !!schema,
+      "allowRegex with no fieldNames(X_SEARCH) — the guard cannot tell what it filters");
+    if (schema) advertised.add(schema[1]);
+  }
+
+  // EXECUTED — a parseQuery call, the schema it filters, and whether it honours regex.
+  for (const m of src.matchAll(/\bparseQuery\s*\(/g)) {
+    const args = balanced(src, m.index! + m[0].length - 1);
+    const schema = args.match(/fieldNames\(\s*(\w+_SEARCH)\s*\)/);
+    if (!schema) continue;
+    if (PLAYER_ROUTE_RE.test(rel)) continue; // rule 4 owns these
+    const list = executed.get(schema[1]) ?? [];
+    list.push({ rel, regex: /\ballowRegex\b/.test(args) });
+    executed.set(schema[1], list);
+  }
+}
+
+const broken: string[] = [];
+for (const schema of advertised) {
+  for (const site of executed.get(schema) ?? []) {
+    if (!site.regex) broken.push(`${schema} advertised, but ${site.rel} parses it without allowRegex`);
+  }
+}
+check("every schema advertised as regex-capable is parsed with allowRegex",
+  broken.length === 0, broken.join(" · "));
+
+// A schema advertised but never executed anywhere is the same lie by omission.
+const orphanAds = [...advertised].filter((s) => !(executed.get(s) ?? []).length);
+check("every advertised schema has at least one non-player parse site",
+  orphanAds.length === 0, orphanAds.join(", "));
+
+/**
+ * ⛔ RECONCILIATION — what stops the two checks above from passing VACUOUSLY.
+ *
+ * Everything above hangs off one regex, `<SearchBox …/>`. The day someone writes
+ * `<SearchBox …></SearchBox>`, or wraps it, that regex matches nothing, `advertised`
+ * is empty, and BOTH checks go green while reporting on an empty set — a guard whose
+ * silence means "I found nothing to look at", rendered identically to "I looked and
+ * it was fine". That is the failure this repo has already paid for four times on the
+ * handoff locator (E-108): a check and its own proof agreeing on the wrong anchor.
+ *
+ * So: every file that MENTIONS the flag must also have yielded a parsed advertising
+ * element. Mentions are cheap to count and impossible to miss; parsed elements are
+ * the thing that can silently fall to zero. If they diverge, the parser has drifted
+ * from the JSX and the guard says so instead of passing.
+ *
+ * ⚠️ AND THIS RECONCILIATION CAUGHT ITSELF BEING WRONG ONCE, WHICH IS WHY THE
+ * ATTRIBUTE CLASS IS `[^<]` AND NOT `[\s\S]`. Rewriting one SearchBox as
+ * `></SearchBox>` — the exact drift above — did NOT go red, because a lazy
+ * `[\s\S]*?` simply ran past the closing tag to the NEXT `/>` in the file and
+ * stitched two elements into one phantom advertisement that still contained both
+ * `allowRegex` and a `fieldNames(…)`. The reconciliation shared that matcher, so it
+ * agreed. `[^<]` cannot leave the element it started in. ⛔ A reconciliation built on
+ * the same locator as the thing it reconciles is not independent — it only catches
+ * the matcher matching too LITTLE, never too much.
+ */
+const unparsed = [...mentionsFlag].filter((rel) => {
+  const src = decomment(readFileSync(join(ROOT, rel), "utf8"));
+  const parsed = [...src.matchAll(/<SearchBox\b([^<]*?)\/>/g)].filter((m) => /\ballowRegex\b/.test(m[1]));
+  const isCallSite = /\bparseQuery\s*\(/.test(src);   // execution sites mention it legitimately
+  return parsed.length === 0 && !isCallSite;
+});
+check("every file mentioning allowRegex was actually PARSED as an advertisement",
+  unparsed.length === 0,
+  unparsed.length ? `${unparsed.join(", ")} — the <SearchBox/> matcher has drifted from the JSX` : "");
+check("the advertisement matcher found something at all", adElements > 0,
+  "0 advertising elements parsed — the checks above would be vacuous");
+
+log(`  (advertised: ${[...advertised].join(", ") || "none"} · parse sites checked: ${[...executed.values()].flat().length})`);
+
 log(`\n${fail === 0 ? "ALL PASS" : `${fail} FAILURE(S)`} — ${files.length} source files`);
 process.exit(fail ? 1 : 0);

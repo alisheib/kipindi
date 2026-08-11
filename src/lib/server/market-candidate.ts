@@ -251,8 +251,10 @@ export type CandidateFilter = {
 };
 
 export async function listCandidates(filter?: CandidateFilter): Promise<Candidate[]> {
-  const q = filter?.search?.trim().toLowerCase();
-  const parsedQ = parseQuery(q, { fields: fieldNames(CANDIDATE_SEARCH) });
+  // Regex enabled and the query left in its original case — same rule as
+  // listAIPolls, and for the same reason: candidate-filters.tsx advertises regex.
+  const q = filter?.search?.trim();
+  const parsedQ = parseQuery(q, { allowRegex: true, fields: fieldNames(CANDIDATE_SEARCH) });
   const all = await candidateStore.values();
   return all
     .filter((c) => {

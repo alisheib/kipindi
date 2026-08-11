@@ -217,7 +217,8 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
   // Search (live, on every keystroke) → filter → sort → only the current page is
   // ever materialised in the DOM.
   const filteredQueue = useMemo(() => {
-    const parsedSearch = parseQuery(search, { fields: fieldNames(PROPOSAL_SEARCH) });
+    // `allowRegex` because the SearchBox below advertises it — see test:search-adoption §5.
+    const parsedSearch = parseQuery(search, { allowRegex: true, fields: fieldNames(PROPOSAL_SEARCH) });
     return queue.filter((q) => {
       const passFilter =
         qFilter === "all" ? true
