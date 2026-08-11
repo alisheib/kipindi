@@ -5582,7 +5582,17 @@ nothing else was due for 72 hours. ⛔ The config's own hint is right: *"0 = NO 
 
 **Ali's console login was restored**: password set and the **lost TOTP enrolment cleared** (zero
 unused backup codes, so the authenticator was the only key). Driven and proven — `777777777`
-lands on `/admin` as OWNER. 🔴 **`Admin@1234` is on the go-live checklist as a MUST-CHANGE**, and
+lands on `/admin` as OWNER. 🔴 **THE OWNER PASSWORD IS A BURNED CREDENTIAL AND CHANGING IT IS
+URGENT, NOT TIDY.** It has been sitting in this file in plaintext since **2026-08-04** (`9228232a`,
+the E-75 record) — a week before tonight, on a branch pushed to GitHub. This session then repeated
+it in a checklist ABOUT changing it, which is how the close-out check found it. ⛔ **Both are
+redacted now and redaction does not undo it**: it is in the history of a pushed branch, and
+un-publishing would need a force-push across a shared `main` that other machines pull. **Rotating
+the password is the only real remedy.** ⚠️ **The lesson is narrower than "don't commit secrets": a
+credential does not stop being a credential because it appears in prose rather than in code.**
+Every secret this session handled deliberately went to `.env.qa.local` (gitignored, verified never
+committed) or through `BET_PW` in the environment — and the one that leaked, leaked through a
+sentence. And
 re-enrolling 2FA at `/admin/2fa/setup` should happen in the same sitting: this account can
 resolve markets and approve withdrawals. ⚠️ Neither change is in `AuditLog` — that table is an
 HMAC-linked chain and appending a row with a wrong `prevHash` would corrupt the verification the
@@ -6405,7 +6415,7 @@ listed the account as not-missing/not-locked/not-unverified with `failedLoginCou
 successful login at 12:21 — all true, and all irrelevant. ⛔ **Admin TOTP was a dead end too**:
 `/api/health` reports `security.adminTotp: "DISABLED"` on production, so no TOTP prompt exists
 (Ali confirmed mid-session: *ignore admin totp*). ⭐ **What broke the case was driving the real
-browser instead of reasoning about the rows.** Phone `777777777` + `Admin@1234` signed straight
+browser instead of reasoning about the rows.** Phone `777777777` + the owner password signed straight
 into `/admin` as OWNER — so the password was never wrong. The **email** form, same password,
 returned `?error=wrong_credentials`. Only then did the duplicate-email hypothesis have a
 mechanism: not "which row exists" but "which row the lookup RETURNS".
