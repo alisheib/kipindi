@@ -21,7 +21,9 @@
  *
  * Run: npm run test:criterion-i18n
  */
-import { pickCriterion, pickLocalized } from "../src/lib/localized.ts";
+import {
+  pickCriterion, pickLocalized, criterionTranslationIssue, normaliseCriterionTranslation,
+} from "../src/lib/localized.ts";
 import type { Locale } from "../src/lib/i18n-dict.ts";
 import { readFileSync } from "node:fs";
 
@@ -223,6 +225,93 @@ const ZH = "若坦桑尼亚银行最后一个营业日的中间价低于首日�
   ok("5: the migration adds both columns", /"resolutionCriterionSw"\s+TEXT/.test(mig) && /"resolutionCriterionZh"\s+TEXT/.test(mig));
   ok("5: and is purely additive — no NOT NULL, no DROP, no data rewrite",
      !/NOT\s+NULL/i.test(mig) && !/\bDROP\b/i.test(mig) && !/\bUPDATE\b/i.test(mig));
+}
+
+// ── 6 · F6b · what may be STORED as a translation ────────────────────────────
+// Two ways a "translation" is worse than none, and the second is the one with a
+// history: writing the English into the Swahili column is exactly F8
+// (`proposal-publish-bakes-english-into-the-swahili-column`), which makes
+// "untranslated" and "translated identically" permanently indistinguishable.
+{
+  for (const [name, v] of [["undefined", undefined], ["null", null], ["empty", ""], ["whitespace", "   "]] as const) {
+    ok(`6: an ${name} translation is legitimate — no issue, stores null`,
+       criterionTranslationIssue(v, EN) === null && normaliseCriterionTranslation(v, EN) === null);
+  }
+  ok("6: a stub is refused as TOO_SHORT", criterionTranslationIssue("TODO", EN) === "TOO_SHORT");
+  ok("6: …and is never stored", normaliseCriterionTranslation("TODO", EN) === null);
+  ok("6: the English itself is refused as SAME_AS_ENGLISH", criterionTranslationIssue(EN, EN) === "SAME_AS_ENGLISH");
+  ok("6: …and is never stored", normaliseCriterionTranslation(EN, EN) === null);
+
+  // ⭐ THE PASTE-AND-TWEAK CASE, which a naive `!==` misses entirely. An officer who
+  // pastes the English and re-cases or re-spaces it has still stored the English.
+  ok("6: the English re-cased is still the English",
+     criterionTranslationIssue(EN.toUpperCase(), EN) === "SAME_AS_ENGLISH");
+  ok("6: the English re-spaced is still the English",
+     criterionTranslationIssue(`  ${EN.replace(/ /g, "  ")}  `, EN) === "SAME_AS_ENGLISH");
+
+  ok("6: a real translation is accepted", criterionTranslationIssue(SW, EN) === null);
+  ok("6: …and stored trimmed", normaliseCriterionTranslation(`  ${SW}  `, EN) === SW);
+  ok("6: a Chinese translation is accepted despite being far shorter than the English",
+     criterionTranslationIssue(ZH, EN) === null && ZH.length < EN.length);
+
+  // ⛔ THE GUARANTEE, STATED AS A PROPERTY RATHER THAN A LIST OF CASES. Whatever is
+  // fed in, what comes out is never the English wearing different whitespace or case.
+  // This is the one assertion that would survive someone rewriting the helper.
+  const flat = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
+  const hostile = [EN, ` ${EN} `, EN.toUpperCase(), EN.replace(/ /g, "\n"), "TODO", "-", "", "   ", SW, ZH];
+  const leaked = hostile.filter((h) => {
+    const stored = normaliseCriterionTranslation(h, EN);
+    return stored !== null && flat(stored) === flat(EN);
+  });
+  ok(`6: PROPERTY — across ${hostile.length} hostile inputs, the English is never stored as a translation`,
+     leaked.length === 0, leaked.length ? `${leaked.length} leaked` : "");
+  ok("6: …and the sweep is not vacuous — some of those inputs DO store",
+     hostile.some((h) => normaliseCriterionTranslation(h, EN) !== null));
+}
+
+// ── 7 · F6b · the write path, end to end, ONE policy on both sides ───────────
+{
+  const wizard = decomment(read("src/app/admin/markets/new/wizard.tsx"));
+  const action = decomment(read("src/app/markets/actions.ts"));
+  const svc = decomment(read("src/lib/server/market-service.ts"));
+
+  ok("7: the wizard sends both translations",
+     /fd\.set\(\s*["']resolutionCriterionSw["']\s*,\s*criterionSw\s*\)/.test(wizard) &&
+     /fd\.set\(\s*["']resolutionCriterionZh["']\s*,\s*criterionZh\s*\)/.test(wizard));
+
+  // ⛔ ONE POLICY, BOTH SIDES — the E-145 shape. A client that accepts what the
+  // server refuses lights up Submit on a value that is about to be rejected. Both
+  // files must call the SAME imported symbol, not two copies of the same idea.
+  const importsRule = (s: string) => /import\s*\{[^}]*criterionTranslationIssue[^}]*\}\s*from\s*["']@\/lib\/localized["']/.test(s);
+  ok("7: the wizard imports the shared rule", importsRule(wizard));
+  ok("7: the action imports the SAME shared rule", importsRule(action));
+  ok("7: and neither re-implements it locally",
+     !/function\s+criterionTranslationIssue/.test(wizard) && !/function\s+criterionTranslationIssue/.test(action));
+
+  ok("7: the wizard blocks step 2 on either issue",
+     /criterion\.length\s*>=\s*30\s*&&\s*!swIssue\s*&&\s*!zhIssue/.test(wizard));
+  ok("7: and it evaluates the rule against the ENGLISH criterion, not against nothing",
+     /swIssue\s*=\s*criterionTranslationIssue\(\s*criterionSw\s*,\s*criterion\s*\)/.test(wizard) &&
+     /zhIssue\s*=\s*criterionTranslationIssue\(\s*criterionZh\s*,\s*criterion\s*\)/.test(wizard));
+
+  ok("7: the action reads both fields off the form",
+     /formData\.get\(["']resolutionCriterionSw["']\)/.test(action) &&
+     /formData\.get\(["']resolutionCriterionZh["']\)/.test(action));
+  ok("7: the action REFUSES rather than silently correcting",
+     /criterionTranslationIssue\(/.test(action) && /SAME_AS_ENGLISH/.test(action) && /TOO_SHORT/.test(action));
+  ok("7: and it passes both into CreateMarketInput",
+     /resolutionCriterionSw:\s*criterionSwRaw\s*\|\|\s*null/.test(action) &&
+     /resolutionCriterionZh:\s*criterionZhRaw\s*\|\|\s*null/.test(action));
+
+  // The storage guarantee at the one place a market is born.
+  ok("7: createMarket normalises both columns",
+     /resolutionCriterionSw:\s*normaliseCriterionTranslation\(/.test(svc) &&
+     /resolutionCriterionZh:\s*normaliseCriterionTranslation\(/.test(svc));
+  // ⛔ AND THE F8 SHAPE IS NAMED AND FORBIDDEN. `?? input.resolutionCriterion` is the
+  // one-character version of this whole defect; it must never appear on these columns.
+  ok("7: and NEITHER falls back to the English criterion",
+     !/resolutionCriterionSw:[^,\n]*\?\?\s*input\.resolutionCriterion/.test(svc) &&
+     !/resolutionCriterionZh:[^,\n]*\?\?\s*input\.resolutionCriterion/.test(svc));
 }
 
 console.log(`\ncriterion-i18n: ${pass} passed, ${fail} failed`);

@@ -11,6 +11,8 @@ import { audit } from "@/lib/server/audit";
 import { canAct } from "@/lib/server/rbac";
 import { CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import { requireAdminTotp } from "@/lib/server/admin-guard";
+// ⛔ The SAME rule the wizard applies client-side — imported, never re-implemented.
+import { criterionTranslationIssue } from "@/lib/localized";
 
 /**
  * F3 — toggle the watchlist star on a market. Returns the NEW state so the
@@ -234,6 +236,23 @@ export async function createMarketAction(formData: FormData) {
   if (resolutionCriterion.length < 30) {
     return { ok: false as const, error: "Resolution criterion must be at least 30 characters." };
   }
+  // F6b · the criterion is the sentence the payout turns on, so it is collected in all
+  // three languages. Both translations are OPTIONAL — a missing one is disclosed to the
+  // player, not hidden — but a BAD one is refused rather than silently corrected: an
+  // officer who believes they saved a translation and did not is the state this whole
+  // finding is about. ⛔ The same rule runs in the wizard (one policy, both sides — a
+  // client that accepts what the server refuses is E-145's shape).
+  const criterionSwRaw = String(formData.get("resolutionCriterionSw") ?? "").trim();
+  const criterionZhRaw = String(formData.get("resolutionCriterionZh") ?? "").trim();
+  for (const [label, raw] of [["Swahili", criterionSwRaw], ["Chinese", criterionZhRaw]] as const) {
+    const issue = criterionTranslationIssue(raw, resolutionCriterion);
+    if (issue === "TOO_SHORT") {
+      return { ok: false as const, error: `The ${label} criterion is too short to be a translation. Leave it blank — a blank one shows the English and says so.` };
+    }
+    if (issue === "SAME_AS_ENGLISH") {
+      return { ok: false as const, error: `The ${label} criterion is the English text. Leave it blank instead — blank already shows the English, and storing a copy makes "not translated" impossible to tell from "translated identically".` };
+    }
+  }
   if (!VALID_CATEGORIES.has(rawCategory)) {
     return { ok: false as const, error: "Invalid category." };
   }
@@ -248,6 +267,8 @@ export async function createMarketAction(formData: FormData) {
     category: rawCategory as CreateMarketInput["category"],
     sourceUrl,
     resolutionCriterion,
+    resolutionCriterionSw: criterionSwRaw || null,
+    resolutionCriterionZh: criterionZhRaw || null,
     resolutionAt,
     selectionClosedAt: selectionClosedAtRaw && !Number.isNaN(Date.parse(selectionClosedAtRaw))
       ? selectionClosedAtRaw

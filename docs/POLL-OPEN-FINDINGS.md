@@ -390,11 +390,74 @@ the disposable cluster — otherwise that half of the feature would ship having 
 unit-tested. All twelve shots were read by eye: the Swahili and Chinese bodies render without
 clipping at 360, and the disclosure opens to the English original.
 
-#### F6b · the WRITE path — ⚪ NEXT
+#### F6b · the WRITE path — 🟢 SHIPPED 2026-08-11
 
-`createMarket` currently writes `null` to both columns with a comment saying why. The wizard,
-`createMarketAction` and `CreateMarketInput` still carry one criterion. Until this lands, every
-poll on production correctly reports that it has no translation.
+The wizard's step 3 collects **all three**, `createMarketAction` validates them and
+`createMarket` stores them. `CreateMarketInput` gained two optional nullable fields.
+
+⭐ **BOTH TRANSLATIONS ARE OPTIONAL AND A BAD ONE IS REFUSED RATHER THAN SILENTLY CORRECTED.**
+Two shapes are worse than leaving it blank, and blank is already honest because F6a discloses it:
+- **`TOO_SHORT`** — *"n/a"*, *"TODO"*, *"-"*. A stub renders **as the rule**.
+- **`SAME_AS_ENGLISH`** — pasting the English in. This is **F8 exactly**, and storing it makes
+  *"untranslated"* and *"translated identically"* indistinguishable forever. ⚠️ The comparison is
+  whitespace- and case-insensitive, because *"pasted the English then title-cased it"* is still
+  the English and a naive `!==` misses it entirely.
+
+⛔ **ONE POLICY, BOTH SIDES.** [`criterionTranslationIssue`](../src/lib/localized.ts) is imported
+by the wizard **and** by the action — not re-implemented in either. **E-145 was this same shape
+from the other end**: the proposal form enabled Submit on a cutoff three hours later than the
+server's, so for a window every night it lit up a value the server then refused. A client that
+accepts what the server rejects is a defect even though the server wins.
+
+⭐ **AND `normaliseCriterionTranslation` IS DEFENCE IN DEPTH, NOT A SECOND COPY.** The refusal is
+the message to the officer; the normaliser is the guarantee about the data — a caller that skips
+validation entirely still cannot write the English into a translation column.
+
+⚠️ **Fixed on the way:** the wizard's criterion box was a **hand-rolled `<textarea>`**, and the
+kit's `Textarea` atom docstring says in so many words that it *"replaces 3 hand-rolled textareas
+that drifted on background, padding and font size"* — this was a **fourth** the cleanup missed,
+on `text-[14px]` against the atom's `text-[16px]`. ⭐ The 16px is not cosmetic: **under 16px, iOS
+Safari zooms the viewport on focus**, so an officer typing the legal text of a money contract had
+the page jumping under them.
+
+**Guarded by `test:criterion-i18n` §6 + §7 (71 assertions total).** §6 is the storage rule,
+including a **PROPERTY** over ten hostile inputs — *whatever is fed in, the English is never
+stored as a translation* — which is the one assertion that survives someone rewriting the helper.
+§7 joins the three surfaces: the wizard sends both fields, both files import the **same** rule
+and neither re-implements it, the action refuses, and `createMarket` normalises. ⛔ It also
+**names and forbids the one-character version of this defect**: `?? input.resolutionCriterion`
+must never appear on these columns.
+
+**RED-proven three ways, every file restored byte-identical (`cmp`):** ① callers stashed, helper
+kept → **9 named §7 failures**, exit 1; ② `?? input.resolutionCriterion` planted on the Sw column
+→ **2 failures**, which is the F8 shape being caught at the moment it is written; ③ the normaliser
+made to skip its own rule → §6's property reports **4 of 10 hostile inputs leaked**.
+
+✅ **LOOKED AT.** `npm run qa:criterion-wizard` signs in through the real form and drives the
+step at **360 and 1280 — 24 assertions, 0 failures**: three fields present, the English pasted
+into Swahili refused with Continue disabled, a stub refused as too short, a real translation
+clearing both, and the review step reading *"— none · players see the English, with a note saying
+so"* instead of a bare dash. Shots read by eye; the refusal is legible and unclipped at 360.
+
+🔴 **AND GETTING THAT SCREENSHOT COST AN HOUR IN THE INSTRUMENT, NOT THE PRODUCT — three separate
+false alarms, all worth writing down.**
+1. **`/api/dev-test/seed-admin` 404s under `next start`** (gated on `NODE_ENV`), so the first
+   attempt used `next dev`. The dev server's **HMR WebSocket never came up** on this machine (19
+   × `ERR_INVALID_HTTP_RESPONSE`), so the page rendered from the server and **never hydrated** —
+   a perfectly healthy wizard whose Continue button stayed `disabled` through 60s of retries.
+   ⭐ The answer was to stop needing the dev server ([`seed-admin-local.mts`](../scripts/seed-admin-local.mts)),
+   not to lower the bar to what it could show — dev also serves stale CSS.
+2. **The local `next start` had no `AUDIT_CHAIN_SECRET`**, so the audit write inside the login
+   transaction threw and the sign-in bounced to the signed-out home page — *"looks exactly like a
+   wrong password, and is not one"*. Settled by verifying the credential against the app's own
+   `verifyPassword` before touching the browser again: **`true`**, so the browser was the liar.
+3. **A page-wide `[role="alert"]` also matches the always-mounted toast region**, so *"no alert
+   on the page"* was false over a perfectly valid field. ⛔ Scope every selector to the thing
+   under test — I quoted that rule in the same file and then broke it.
+
+⚠️ **The 9-digit local part, `/auth/admin` for staff, and `networkidle` before filling are all
+already written down in [`scripts/live/harness.mjs`](../scripts/live/harness.mjs) — I re-derived
+two of them the hard way before reading it.** The driver now cites that file as the source.
 
 #### F10 · `proposal-criterion-lands-in-the-canonical-english-column` — ⚪ NEW, found 2026-08-11, NOT fixed
 

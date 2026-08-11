@@ -3,7 +3,12 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
+import {
+  criterionTranslationIssue, MIN_CRITERION_TRANSLATION,
+  type CriterionTranslationIssue,
+} from "@/lib/localized";
 import { SteppedProgress } from "@/components/markets/stepped-progress";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
@@ -25,6 +30,8 @@ export function NewMarketWizard({ feeInfo, platformTz }: { feeInfo: FeeInfo; pla
   const [sourceUrl, setSourceUrl] = useState("");
   const [resolutionAt, setResolutionAt] = useState("");
   const [criterion, setCriterion] = useState("");
+  const [criterionSw, setCriterionSw] = useState("");
+  const [criterionZh, setCriterionZh] = useState("");
   const [pending, startTransition] = useTransition();
   const router = useRouter();
   const { toast } = useToast();
@@ -53,10 +60,25 @@ export function NewMarketWizard({ feeInfo, platformTz }: { feeInfo: FeeInfo; pla
     return `${local}   ·   stored as ${iso.replace(/:\d{2}\.\d{3}Z$/, "Z")}`;
   })();
 
+  // ⛔ ONE POLICY, BOTH SIDES. `criterionTranslationIssue` is the SAME function
+  // `createMarketAction` validates with — imported, not re-implemented. E-145 was
+  // this exact shape from the other end: the proposal form enabled Submit on a
+  // cutoff three hours later than the server's, so for a window every night it lit
+  // up a value the server then refused. A client that accepts what the server
+  // rejects is a defect even though the server wins.
+  const swIssue = criterionTranslationIssue(criterionSw, criterion);
+  const zhIssue = criterionTranslationIssue(criterionZh, criterion);
+  const issueText = (i: CriterionTranslationIssue | null) =>
+    i === "SAME_AS_ENGLISH"
+      ? "This is the English text. Leave it blank — blank already shows the English and says so, and storing a copy makes “not translated” impossible to tell from “translated identically”."
+      : i === "TOO_SHORT"
+        ? `Too short to be a translation (minimum ${MIN_CRITERION_TRANSLATION} characters). Leave it blank instead.`
+        : null;
+
   const canNext = (() => {
     if (step === 0) return titleEn.length >= 10;
     if (step === 1) return /^https?:\/\//.test(sourceUrl) && resolutionAt;
-    if (step === 2) return criterion.length >= 30;
+    if (step === 2) return criterion.length >= 30 && !swIssue && !zhIssue;
     return true;
   })();
 
@@ -75,6 +97,8 @@ export function NewMarketWizard({ feeInfo, platformTz }: { feeInfo: FeeInfo; pla
       // settings chose, not the one they confirmed on the review step.
       fd.set("resolutionAt", resolutionAt);
       fd.set("resolutionCriterion", criterion);
+      fd.set("resolutionCriterionSw", criterionSw);
+      fd.set("resolutionCriterionZh", criterionZh);
       const r = await createMarketAction(fd);
       if (!r.ok) {
         toast({ title: "Couldn't create", description: r.error, variant: "danger" });
@@ -141,8 +165,33 @@ export function NewMarketWizard({ feeInfo, platformTz }: { feeInfo: FeeInfo; pla
 
       {step === 2 && (
         <Section title="Resolution criterion" sw="Kigezo cha utatuzi">
-          <Field label="Written criterion" hint="≥30 chars. Be precise — this is the legal text resolvers and players will rely on.">
-            <textarea value={criterion} onChange={(e) => setCriterion(e.target.value)} disabled={pending} rows={6} className="w-full rounded-lg border border-border bg-[var(--bg-inset)] px-3 py-2.5 text-[14px] text-text placeholder:text-text-subtle outline-none admin-focus transition-colors resize-none disabled:opacity-50 disabled:cursor-not-allowed" placeholder="Resolves YES if the BoT mid-rate on the last business day…" />
+          {/* ⚠️ The kit `Textarea`, not a hand-rolled one. Its docstring records that it
+              "replaces 3 hand-rolled textareas that drifted on background, padding and
+              font size" — this wizard held a FOURTH that the cleanup missed, on
+              `bg-[var(--bg-inset)] px-3 py-2.5 text-[14px]` against the atom's
+              `bg-bg-inset px-3.5 py-2.5 text-[16px]`. ⭐ The 16px matters: under 16px
+              iOS Safari zooms the viewport on focus, so the officer typing the legal
+              text of a money contract got the page jumping under them. */}
+          <Field label="Written criterion (EN)" hint="≥30 chars. Be precise — this is the legal text resolvers and players will rely on. ENGLISH IS BINDING: officers resolve against this text, and it is what the player is told decides the outcome.">
+            <Textarea value={criterion} onChange={(e) => setCriterion(e.target.value)} disabled={pending} rows={6}
+              placeholder="Resolves YES if the BoT mid-rate on the last business day…" />
+          </Field>
+          {/* ⭐ F6b · COLLECTED HERE BECAUSE THIS IS THE SENTENCE THE PAYOUT TURNS ON.
+              A player who cannot read it cannot check that the rule which took their
+              stake is the rule they agreed to. Both are OPTIONAL — a poll with no
+              translation renders the English and TELLS the player so, which is honest;
+              what is not honest is English printed silently under a Swahili heading. */}
+          <Field label="Criterion (SW) · Swahili" hint="Optional. Leave blank if you have no translation — the player is shown the English with a note saying why, which is better than a bad translation of the rule that decides their money.">
+            <Textarea value={criterionSw} onChange={(e) => setCriterionSw(e.target.value)} disabled={pending} rows={5}
+              aria-invalid={!!swIssue || undefined} className={swIssue ? "border-no-700" : undefined}
+              placeholder="Inatatuliwa NDIYO iwapo kiwango cha katikati cha BoT…" />
+            {swIssue && <p role="alert" className="mt-1.5 text-[11.5px] leading-snug text-no-300">{issueText(swIssue)}</p>}
+          </Field>
+          <Field label="Criterion (ZH) · Chinese / 中文" hint="Optional. Same rule as Swahili — blank is honest, a copy of the English is not.">
+            <Textarea value={criterionZh} onChange={(e) => setCriterionZh(e.target.value)} disabled={pending} rows={5}
+              aria-invalid={!!zhIssue || undefined} className={zhIssue ? "border-no-700" : undefined}
+              placeholder="若坦桑尼亚银行最后一个营业日的中间价…" />
+            {zhIssue && <p role="alert" className="mt-1.5 text-[11.5px] leading-snug text-no-300">{issueText(zhIssue)}</p>}
           </Field>
         </Section>
       )}
@@ -161,7 +210,12 @@ export function NewMarketWizard({ feeInfo, platformTz }: { feeInfo: FeeInfo; pla
                 does not say which clock it was read off. An officer confirming a poll is
                 confirming the moment its money settles; they have to be able to see it. */}
             <Row label="Resolves at" value={resolutionEcho} mono />
-            <Row label="Criterion"  value={criterion} />
+            <Row label="Criterion (EN)" value={criterion} />
+            {/* ⭐ "— none, shows English" rather than an empty dash. A blank cell reads
+                as "I forgot to look"; this says what the player will actually get, so
+                publishing without a translation is a decision rather than an omission. */}
+            <Row label="Criterion (SW)" value={criterionSw || "— none · players see the English, with a note saying so"} />
+            <Row label="Criterion (ZH)" value={criterionZh || "— none · players see the English, with a note saying so"} />
           </div>
         </Section>
       )}

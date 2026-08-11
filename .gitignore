@@ -56,7 +56,7 @@ scripts/_walkthrough/
 # Resolution-criterion i18n shots (npm run qa:criterion-visual --shots). Same rule.
 # ⭐ Re-shooting the TRANSLATED arm needs `npm run db:seed-criterion-local` first —
 # until F6b/F6c land, no production poll has a translated criterion to photograph.
-.qa-f6/
+.qa-f6*/
 
 # Test images (user reference, not for production)
 Test Images/

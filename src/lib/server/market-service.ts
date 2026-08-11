@@ -26,6 +26,10 @@ import { spendBonusLocked, recordWageringLocked, reverseWagering, refundBonusToA
 import { notifyBonusFulfilled } from "./notification-service";
 import { isLockedOut, checkLossLimit } from "./responsible-gambling";
 import { rateCheck } from "./rate-limit";
+// The storage half of the criterion-translation rule. ⛔ Defence in depth: even a
+// caller that skipped the action's validation cannot write the English into a
+// translation column, which is the F8 shape this whole finding must not recreate.
+import { normaliseCriterionTranslation } from "../localized";
 import { getEffectiveConfig, getEffectiveResolutionMode, snapshotFromConfig, snapshotOrLegacy, type RateConfig } from "./market-config";
 import { stakeBoundsForUpDownMarket } from "./updown-config";
 import { payoutFor, settledPayoutFor, allocateWinnerPayouts, allocateFeeShares, poolFee, levySplit, type FeeSnapshot } from "@/lib/payout";
@@ -354,6 +358,11 @@ export type CreateMarketInput = {
   category: MarketCategory;
   sourceUrl: string;
   resolutionCriterion: string;
+  /** Optional SW / ZH translations of the criterion. Omitted or `null` = none, which
+   *  the player surface DISCLOSES. ⛔ Never pass the English string here to "fill
+   *  them in" — see the note on the StoredMarket fields. */
+  resolutionCriterionSw?: string | null;
+  resolutionCriterionZh?: string | null;
   resolutionAt: string;
   selectionClosedAt?: string | null;
   proposedBy: string;
@@ -448,14 +457,13 @@ export async function createMarket(input: CreateMarketInput) {
     category: input.category,
     sourceUrl: input.sourceUrl,
     resolutionCriterion: input.resolutionCriterion,
-    // ⚠️ NULL ON PURPOSE, AND ONLY UNTIL THE WRITERS LAND (F6b/F6c). Nothing collects
-    // a translated criterion yet, and `null` is the honest value for that — writing
-    // `input.resolutionCriterion` into these would make "nobody translated this" and
-    // "the translation is identical to the English" permanently indistinguishable,
-    // which is F8 (`proposal-publish-bakes-english-into-the-swahili-column`) reappearing
-    // on a new column. The player surface already discloses the absence.
-    resolutionCriterionSw: null,
-    resolutionCriterionZh: null,
+    // ⛔ `?? null`, NEVER `?? input.resolutionCriterion`. Writing the English into
+    // these would make "nobody translated this" and "the translation is identical to
+    // the English" permanently indistinguishable — F8
+    // (`proposal-publish-bakes-english-into-the-swahili-column`) reappearing on a new
+    // column. A missing translation is DISCLOSED at render, so null costs nothing.
+    resolutionCriterionSw: normaliseCriterionTranslation(input.resolutionCriterionSw, input.resolutionCriterion),
+    resolutionCriterionZh: normaliseCriterionTranslation(input.resolutionCriterionZh, input.resolutionCriterion),
     resolutionAt: input.resolutionAt,
     selectionClosedAt: effectiveSelectionClosedAt,
     status: "LIVE",

@@ -73,6 +73,57 @@ export function pickCriterion(
 }
 
 /**
+ * THE ONE RULE FOR STORING A CRITERION TRANSLATION — shared by every writer.
+ *
+ * ⛔ IT LIVES HERE, NOT IN THE SERVER ACTION, BECAUSE THE WIZARD MUST APPLY THE SAME
+ * ONE. E-145 was exactly this shape reached from the other end: the proposal form
+ * enabled Submit on a cutoff three hours later than the server's, so for a window
+ * every night the form lit up a date the server then refused. A client and a server
+ * disagreeing about what is acceptable is a defect even when the server wins.
+ *
+ * Two ways a "translation" is worse than none, and both are refusals rather than
+ * silent corrections — an officer who thinks they saved one and did not is exactly
+ * the state this whole finding is about:
+ *   · TOO_SHORT      — "n/a", "TODO", "-". A stub renders as the rule.
+ *   · SAME_AS_ENGLISH — the F8 shape. Storing the English makes "untranslated" and
+ *     "translated identically" indistinguishable forever, and blank ALREADY renders
+ *     the English (with a note saying so), so it buys nothing and costs the audit.
+ */
+export const MIN_CRITERION_TRANSLATION = 10;
+
+export type CriterionTranslationIssue = "TOO_SHORT" | "SAME_AS_ENGLISH";
+
+/** Whitespace-insensitive, case-insensitive — "pasted the English then title-cased it" is still the English. */
+const sameText = (a: string, b: string) =>
+  a.trim().replace(/\s+/g, " ").toLowerCase() === b.trim().replace(/\s+/g, " ").toLowerCase();
+
+export function criterionTranslationIssue(
+  value: string | null | undefined,
+  en: string,
+): CriterionTranslationIssue | null {
+  const v = (value ?? "").trim();
+  if (!v) return null;                                   // absent is legitimate
+  if (v.length < MIN_CRITERION_TRANSLATION) return "TOO_SHORT";
+  if (sameText(v, en)) return "SAME_AS_ENGLISH";
+  return null;
+}
+
+/**
+ * What to STORE. Returns `null` for absent — and also for anything
+ * `criterionTranslationIssue` rejects, so a caller that skipped validation still
+ * cannot write the English into a translation column. Defence in depth: the refusal
+ * is the message to the officer, this is the guarantee about the data.
+ */
+export function normaliseCriterionTranslation(
+  value: string | null | undefined,
+  en: string,
+): string | null {
+  const v = (value ?? "").trim();
+  if (!v || criterionTranslationIssue(v, en)) return null;
+  return v;
+}
+
+/**
  * The localised label for a market CATEGORY.
  *
  * ⛔ ONE DEFINITION, because there were two and one of them was raw. The card built
