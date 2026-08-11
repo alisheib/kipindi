@@ -338,7 +338,8 @@
     "qa:poll-visual": "node scripts/live-poll-visual.mjs",
     "qa:place-bet": "node scripts/live-place-bet.mjs",
     "test:pool-residual": "tsx scripts/pool-residual.test.mts",
-    "red:pool-residual": "node scripts/pool-residual-red.mjs"
+    "red:pool-residual": "node scripts/pool-residual-red.mjs",
+    "test:zoned-time": "tsx scripts/zoned-time.test.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

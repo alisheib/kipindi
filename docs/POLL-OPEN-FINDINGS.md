@@ -36,7 +36,7 @@ The line references are what a fix should start from.
 | F1 | `sell-offered-on-bonus-funded-position` | medium | 🟢 **SHIPPED 2026-08-11** | guard: `test:cashout-lock` §7 |
 | F2 | `one-sided-loser-share-phantom-fee` | medium | ⚠️ **narrowed, line NOT pinned** | [`payout.ts:344-362`](../src/lib/payout.ts#L344-L362) |
 | F3 | `per-market-rate-overrides-are-inert` | medium | ✅ re-confirmed | [`config-form.tsx:337-365`](../src/app/admin/config/config-form.tsx#L337-L365) |
-| F4 | `wizard-resolution-time-parsed-in-browser-timezone` | medium | ✅ re-confirmed | [`wizard.tsx:46`](../src/app/admin/markets/new/wizard.tsx#L46) |
+| F4 | `wizard-resolution-time-parsed-in-browser-timezone` | medium | 🟢 **SHIPPED 2026-08-11** | guard: `test:zoned-time` |
 | F5 | `regex-advertised-never-executed` | medium | 🟢 **SHIPPED 2026-08-11** | guard: `test:search-adoption` §5 |
 | F6 | `resolution-criterion-english-only` | medium | ✅ by inspection | `prisma/schema.prisma` — `resolutionCriterion` is one column |
 
@@ -187,11 +187,47 @@ the wrong instant pays the wrong side. A timezone slip is that same error multip
 ⚠️ And every cloud/CI session runs on **UTC**, so a poll created from one is silently 3 hours off
 EAT.
 
-**Fix:** interpret the wizard's wall-clock in the platform zone (Africa/Dar_es_Salaam, UTC+3)
-explicitly, and echo the resolved absolute instant **with its zone** on the review step so the
-officer confirms what will actually be stored. ⚠️ `wizard.tsx:128` currently shows
-`<Row label="Resolves at" value={resolutionAt} />` — the raw, zoneless string, which is exactly
-the value that cannot be checked.
+**SHIPPED**, and the fix is architectural rather than a patched line.
+
+⛔ **THE CONVERSION MOVED TO THE SERVER.** The wizard now sends the wall clock **raw**;
+[`createMarketAction`](../src/app/markets/actions.ts) resolves it with `toUtcIso(raw,
+getPlatformTimezone())`. The platform timezone is **admin-configurable** and lives server-side,
+so that is the only place the answer is authoritative — and it means the officer's laptop can no
+longer decide when a poll settles.
+
+⭐ **`selectionClosedAt` got the same treatment in the same commit.** It decides when *betting*
+shuts, so a three-hour slip there is the same defect wearing a different name. Fixing only the
+one the finding named would have left the other live.
+
+**New module [`src/lib/zoned-time.ts`](../src/lib/zoned-time.ts)** — the inverse of `utils.ts`,
+which had nine helpers turning an instant into a string in the platform zone and **not one**
+going the other way. That absence is why the wizard reached for `new Date()`.
+
+⛔ **The zone is a PARAMETER, never a constant, and the guard asserts that.** This repo already
+had two disagreeing conventions: `eat-day.ts` pins a fixed `EAT_OFFSET_MS` (+3h, correct — no
+DST since 1931), while `utils.ts` reads the configurable `getPlatformTimezone()`. An officer
+reads the whole console through the second, so the wizard must too. Hardcoding +3 here would
+have made a **third** convention. `test:zoned-time` §6 fails if `zoned-time.ts` ever contains an
+offset literal or a zone name.
+
+**The review step now echoes the instant that will be stored**, named with its zone —
+`15 Aug 2026, 14:30 EAT · stored as 2026-08-15T11:30:00.000Z`. It used to print the raw
+`datetime-local` string, which is the one value in the flow that **cannot be checked**, because
+it does not say which clock it was read off.
+
+**RED-proven in both halves, separately:** reverting the wizard fails §6's two client checks;
+reverting the action fails §6's server check. Both files restored byte-identical (`cmp`).
+
+⚠️ **One assertion SKIPPED rather than passed, and that is deliberate.** §4 compares the old
+browser-parse against the correct answer — on a host already on EAT the two agree *by luck*, so
+the guard detects that and prints `SKIP` instead of a green tick it did not earn. This laptop is
+on EAT, so it skipped here. ⛔ A check that passes because the environment happens to match is
+the [[checks-that-lie]] shape; saying so is the fix.
+
+⭐ **Coverage bought cheaply: the DST branch is exercised via `America/New_York`** (−4h July,
+−5h January). EAT has no DST, so without a second zone the two-pass correction would be
+untested code that only ever runs if an admin switches the platform timezone — i.e. it would
+first execute in production.
 
 ### F5 · `regex-advertised-never-executed` — 🟢 SHIPPED 2026-08-11
 

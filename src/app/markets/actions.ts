@@ -205,13 +205,24 @@ export async function createMarketAction(formData: FormData) {
   const rawCategory = String(formData.get("category") ?? "other");
   const sourceUrl = String(formData.get("sourceUrl") ?? "").trim();
   const resolutionCriterion = String(formData.get("resolutionCriterion") ?? "").trim();
-  const resolutionAt = String(formData.get("resolutionAt") ?? "").trim();
+  const resolutionAtRaw = String(formData.get("resolutionAt") ?? "").trim();
   if (titleEn.length < 10) {
     return { ok: false as const, error: "Title must be at least 10 characters." };
   }
   if (!sourceUrl || !/^https?:\/\/.+/.test(sourceUrl)) {
     return { ok: false as const, error: "Source URL must be a valid HTTP(S) URL." };
   }
+  // ⛔ THE WALL CLOCK IS RESOLVED HERE, ON THE SERVER, NOT IN THE BROWSER.
+  // The wizard's `<input type="datetime-local">` yields `2026-08-15T14:30` — no zone.
+  // It used to be sent through `new Date(...).toISOString()` in the CLIENT, which
+  // reads it on the officer's laptop clock; an officer not on EAT published a poll
+  // resolving at a different absolute instant from the one they confirmed, and every
+  // cloud/CI session (UTC) was silently three hours out. The platform timezone is
+  // admin-configurable and lives on the server, so the conversion belongs here.
+  // A value that already carries a zone is passed through untouched.
+  const { toUtcIso } = await import("@/lib/zoned-time");
+  const { getPlatformTimezone } = await import("@/lib/server/platform-config");
+  const resolutionAt = toUtcIso(resolutionAtRaw, getPlatformTimezone()) ?? "";
   if (!resolutionAt || Number.isNaN(Date.parse(resolutionAt))) {
     return { ok: false as const, error: "Resolution time is required and must be a valid date." };
   }
@@ -227,7 +238,9 @@ export async function createMarketAction(formData: FormData) {
     return { ok: false as const, error: "Invalid category." };
   }
   const { computeSelectionClosedAt } = await import("@/lib/server/ai-poll-config");
-  const selectionClosedAtRaw = String(formData.get("selectionClosedAt") ?? "").trim();
+  // Same wall-clock treatment as resolutionAt — this field decides when BETTING shuts,
+  // so a three-hour slip here is the same class of defect wearing a different name.
+  const selectionClosedAtRaw = toUtcIso(String(formData.get("selectionClosedAt") ?? ""), getPlatformTimezone()) ?? "";
   const input: CreateMarketInput = {
     titleEn,
     titleSw,

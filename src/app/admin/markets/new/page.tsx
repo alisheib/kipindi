@@ -1,6 +1,7 @@
 import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
 import { FormColumn } from "@/components/ui/form-column";
 import { getGlobalConfig } from "@/lib/server/market-config";
+import { getPlatformTimezone } from "@/lib/server/platform-config";
 import { NewMarketWizard } from "./wizard";
 
 export const metadata = { title: "Admin · New market" };
@@ -35,7 +36,10 @@ export default async function NewMarketPage() {
             phone number or an amount. */}
         <FormColumn measure="form">
           <AdminCard>
-            <NewMarketWizard feeInfo={feeInfo} />
+            {/* The zone the wizard's wall clock is read on — the SAME one every other
+                timestamp in this console is displayed in. Passed down so the review step
+                can name it; the binding conversion still happens server-side. */}
+            <NewMarketWizard feeInfo={feeInfo} platformTz={getPlatformTimezone()} />
           </AdminCard>
         </FormColumn>
       </div>

@@ -8,6 +8,7 @@ import { SteppedProgress } from "@/components/markets/stepped-progress";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { createMarketAction } from "@/app/markets/actions";
+import { wallClockToUtcIso } from "@/lib/zoned-time";
 
 const CATEGORIES = ["sports", "macro", "weather", "crypto", "culture", "tech", "other"] as const;
 
@@ -15,7 +16,7 @@ type FeeInfo =
   | { model: "loser-share"; feePct: string; estMult: string; showEstimate: boolean }
   | { model: "capped-commission"; commissionPct: string; ceilingPct: string };
 
-export function NewMarketWizard({ feeInfo }: { feeInfo: FeeInfo }) {
+export function NewMarketWizard({ feeInfo, platformTz }: { feeInfo: FeeInfo; platformTz: string }) {
   const [step, setStep] = useState(0);
   const [titleEn, setTitleEn] = useState("");
   const [titleSw, setTitleSw] = useState("");
@@ -27,6 +28,23 @@ export function NewMarketWizard({ feeInfo }: { feeInfo: FeeInfo }) {
   const [pending, startTransition] = useTransition();
   const router = useRouter();
   const { toast } = useToast();
+
+  /**
+   * What the officer is actually confirming: their wall clock, named with the zone it
+   * will be read on, plus the UTC instant that gets stored. Display only — the binding
+   * conversion happens server-side in `createMarketAction`, so this can never be the
+   * thing that decides the money. If the two ever disagreed, they would both be visible.
+   */
+  const resolutionEcho = (() => {
+    if (!resolutionAt) return "—";
+    const iso = wallClockToUtcIso(resolutionAt, platformTz);
+    if (!iso) return resolutionAt;
+    const local = new Date(iso).toLocaleString("en-GB", {
+      day: "numeric", month: "short", year: "numeric",
+      hour: "2-digit", minute: "2-digit", timeZone: platformTz, timeZoneName: "short",
+    });
+    return `${local}   ·   stored as ${iso}`;
+  })();
 
   const canNext = (() => {
     if (step === 0) return titleEn.length >= 10;
@@ -43,7 +61,12 @@ export function NewMarketWizard({ feeInfo }: { feeInfo: FeeInfo }) {
       fd.set("titleZh", titleZh);
       fd.set("category", category);
       fd.set("sourceUrl", sourceUrl);
-      fd.set("resolutionAt", new Date(resolutionAt).toISOString());
+      // ⛔ SENT RAW, ON PURPOSE. This is a bare wall clock with no zone; the server
+      // reads it on the PLATFORM's clock (createMarketAction → toUtcIso). It used to
+      // be `new Date(resolutionAt).toISOString()` here, which resolved it on the
+      // officer's laptop — so the poll resolved at an instant their machine's
+      // settings chose, not the one they confirmed on the review step.
+      fd.set("resolutionAt", resolutionAt);
       fd.set("resolutionCriterion", criterion);
       const r = await createMarketAction(fd);
       if (!r.ok) {
@@ -125,7 +148,12 @@ export function NewMarketWizard({ feeInfo }: { feeInfo: FeeInfo }) {
             <Row label="Title (ZH)" value={titleZh || "—"} mono />
             <Row label="Category"   value={category} />
             <Row label="Source URL" value={sourceUrl} mono />
-            <Row label="Resolves at" value={resolutionAt} mono />
+            {/* ⛔ THE ECHO NAMES ITS ZONE, AND SHOWS THE INSTANT THAT WILL BE STORED.
+                This row used to print the raw `datetime-local` string — `2026-08-15T14:30`,
+                which is the one value in the whole flow that CANNOT be checked, because it
+                does not say which clock it was read off. An officer confirming a poll is
+                confirming the moment its money settles; they have to be able to see it. */}
+            <Row label="Resolves at" value={resolutionEcho} mono />
             <Row label="Criterion"  value={criterion} />
           </div>
         </Section>
