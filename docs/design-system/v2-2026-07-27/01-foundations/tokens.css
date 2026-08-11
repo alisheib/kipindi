@@ -1,3 +1,21 @@
+/* =========================================================================
+   WARNING - DATED SNAPSHOT. NOT THE LIVE THEME. DO NOT BUILD FROM THIS FILE.
+
+   Live truth: src/app/globals.css (178429 bytes). DESIGN_AUTHORITY.md section K:
+   'Never read a globals.css out of a design export - those are dated snapshots
+   and they drift.'
+
+   Measured drift, 2026-08-11:
+     --bg            here oklch(15% 0.130 268)  |  live oklch(6.5% 0.130 268)
+     --bg-elevated2  DEFINED here - RETIRED live (globals.css:302 says 'Do not re-add')
+     gilt ramp       pre-M3 (hue 82) - M3 moved every gold token to hue 84
+
+   Kept because the July-2026 delivery's foundations record. Deleting it was tried on 2026-08-11 and REVERTED:
+   34 .dc.html previews in this archive load their sibling theme/ folder so the
+   archive runs offline. The duplication is deliberate; this header is why it
+   is safe. Stamped 2026-08-11.
+   ========================================================================= */
+
 /* ===========================================================================
    50pick — application stylesheet
    Direct port of `kit/tokens.css` from the design handoff. Single canonical

@@ -105,13 +105,19 @@ the snapshot is simply old.
 
 > 🔴 **CORRECTED 2026-08-06 at acceptance. `src/app/law/` DOES NOT EXIST.** The delivery was
 > briefed against `law/tokens.css` · `law/keyframes.css` · `law/motion.css` because that is how
-> the outbound package was *split* for the designer — those three files live in `design-brief/law/`
-> at the repo root, which is **gitignored** (`.gitignore:127`) and referenced by no build input.
+> the outbound package was *split* for the designer. Those three files used to sit in a
+> gitignored `design-brief/law/` at the repo root, referenced by no build input.
 > The real destinations are below. `INTAKE.md` §2 already named them correctly; this table did not.
-> ⛔ Never merge into, diff against, or import `design-brief/law/*`: the `keyframes.css` extract is
-> **brace-unbalanced** (194 `{` vs 195 `}` — the extractor dropped an opening
-> `@media (prefers-reduced-motion: reduce) {`), so its calm branches sit at top level and would
-> kill press/vote/streak/seal motion outright if it were ever wired in.
+>
+> ✅ **`design-brief/law/` was DELETED on 2026-08-11** (archived to `F:\50pick-design-archive\`).
+> The hazard it carried is recorded here so the extract is never rebuilt the same way: its
+> `keyframes.css` was **brace-unbalanced** (194 `{` vs 195 `}` — the extractor dropped an opening
+> `@media (prefers-reduced-motion: reduce) {`), so its calm branches sat at top level and would
+> have killed press/vote/streak/seal motion outright if it had ever been wired in. Its
+> `tokens.css` still defined `--bg-elevated2`, retired at `globals.css:302` with *"Do not
+> re-add"*, and carried `--bg` at 13.5% against a live 6.5%.
+> ⛔ **An outbound package is assembled from LIVE files at send time and deleted after the
+> round** — see `DESIGN_AUTHORITY.md` §0b, outbound row.
 
 | section | destination | gate after |
 |---|---|---|

@@ -18,7 +18,23 @@ Open the .dc.html files directly in a browser **with this folder intact** (they 
 
 Not designed (no file, see 07-provenance/OPEN-GAPS.md): /updown/round/:id (D3), admin console (D4), bottom nav (D5), /markets board, /live, wallet, auth.
 
-Note: theme/globals.css here is the offline-safe copy (webfont import removed); the
-byte-exact original is 07-provenance/kit-source/globals.css. `Motion Language.dc.html`
-also loads `theme/motion.css`; `Needle Fidget.dc.html` additionally loads
-`needle-physics.js` and `needle-haptics.js` from this folder.
+Note: `Motion Language.dc.html` also loads `theme/motion.css`; `Needle Fidget.dc.html`
+additionally loads `needle-physics.js` and `needle-haptics.js` from this folder. ⛔ Those four
+files are **load-bearing for these previews, not redundant copies** — deleting them as
+duplicates was tried on 2026-08-11 and reverted.
+
+> 🔴 **CORRECTED 2026-08-11 — this note previously stated two things that are not true.**
+>
+> 1. It said `theme/globals.css` here is *"the offline-safe copy (webfont import removed)"*.
+>    **The webfont import is present** — `@import url('https://fonts.googleapis.com/css2?…')`.
+>    These previews **fetch Google Fonts and are not offline-safe.** Open them with a network
+>    connection, or the type falls back to system fonts and the layout you are judging is not
+>    the one that ships.
+> 2. It said the byte-exact original is `07-provenance/kit-source/globals.css`. It is not —
+>    that file differs. The byte-identical twin of this one is
+>    `01-foundations/tokens.css`.
+>
+> ⚠️ **None of these snapshots is the live theme.** Each now opens with a `DATED SNAPSHOT`
+> header naming its own drift: `--bg` is `oklch(15% 0.130 268)` here against a live
+> `oklch(6.5% 0.130 268)`, and `--bg-elevated2` is defined here but **retired** in
+> `src/app/globals.css:302` with the words *"Do not re-add"*.

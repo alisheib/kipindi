@@ -28,7 +28,7 @@ const AUTHORITY = "docs/DESIGN_AUTHORITY.md";
 
 /** Phrases that claim primacy. Case-insensitive. */
 const DOOR_CLAIMS: RegExp[] = [
-  /start here for anything visual/i,
+  /start (?:here|there) for anything visual/i,
   /\bthis is the entry point\b/i,
   /^#\s.*—\s*the rule ?book\s*$/im,
   /have no authority/i,
@@ -104,6 +104,64 @@ if (existsSync(em)) {
   if (/--ease-micro\s+100ms\s+cubic-bezier/.test(body.replace(/^>.*$/gm, ""))) {
     bad("elevation-motion.md publishes duration-bearing easing tokens again (the platform-wide motion outage, DESIGN_AUTHORITY B5)");
   } else ok("the duration-bearing easing block stays deleted (B5)");
+}
+
+// ── 5 · the INDEXES must name the right door ────────────────────────────────
+// Added 2026-08-11. Sections 1–4 only ever scanned `docs/**/*.md` filtered by /design/i,
+// so the two files a new session actually opens first — docs/README.md and CLAUDE.md —
+// were structurally invisible to this guard. They are not "design docs" by path.
+//
+// That blind spot cost us: docs/README.md:10 shipped "design-system/ (the design rule book
+// — start there for anything visual)" and was committed 2026-08-11, while
+// design-system/README.md:3 says "RECORD, NOT RULE. This is not the rule book". The repo's
+// two indexes named different doors and every gate was green.
+//
+// The rule: wherever a file calls something "the rulebook", DESIGN_AUTHORITY must be the
+// thing it is pointing at. Proximity, not phrasing — so a reworded mislabel still trips it.
+const INDEXES = ["docs/README.md", "CLAUDE.md", "README.md"];
+const RULEBOOK_MENTION = /rule ?book/gi;
+const NEAR = 220;
+
+for (const p of INDEXES) {
+  if (!existsSync(p)) { ok(`${p} — absent (fine)`); continue; }
+  const body = readFileSync(p, "utf8");
+  let m: RegExpExecArray | null;
+  let mentions = 0;
+  let bad_ = 0;
+  RULEBOOK_MENTION.lastIndex = 0;
+  while ((m = RULEBOOK_MENTION.exec(body)) !== null) {
+    mentions++;
+    const window = body.slice(Math.max(0, m.index - NEAR), m.index + NEAR);
+    if (!/DESIGN_AUTHORITY/.test(window)) {
+      bad_++;
+      const line = body.slice(0, m.index).split("\n").length;
+      bad(`${p}:${line} calls something "${m[0]}" but does not name DESIGN_AUTHORITY.md within ${NEAR} chars — the index is pointing a new session at the wrong door`);
+    }
+  }
+  if (mentions > 0 && bad_ === 0) ok(`${p} — all ${mentions} rulebook mention(s) name DESIGN_AUTHORITY.md`);
+  if (mentions === 0) ok(`${p} — no rulebook claim`);
+}
+
+// ── 6 · exactly ONE DESIGN_AUTHORITY.md on disk ─────────────────────────────
+// Added 2026-08-11. An outbound design commission bundled a byte-identical copy of the
+// rulebook — a file whose line 6 reads "THIS IS THE ONLY DESIGN RULEBOOK. THERE IS NO
+// SECOND ONE." while being the second one. It sat at the repo root, untracked and NOT
+// gitignored, so `git add -A` would have committed it. Byte-identical today is not the
+// point: it diverges the first time docs/ is edited, and then two files disagree.
+//
+// Copies are banned outright. A commission points at the rulebook; it never carries it.
+const authorityCopies = globSync("**/DESIGN_AUTHORITY.md", {
+  exclude: (p) => /node_modules|[\\/]\.next[\\/]|[\\/]\.git[\\/]/.test(p),
+})
+  .map((p) => p.replace(/\\/g, "/"))
+  .filter((p) => p !== AUTHORITY);
+
+if (authorityCopies.length === 0) {
+  ok("exactly one DESIGN_AUTHORITY.md on disk");
+} else {
+  for (const c of authorityCopies) {
+    bad(`${c} is a SECOND copy of the rulebook — delete it and link to ${AUTHORITY} instead (§0a: fix a duplicate by deleting one, never by keeping both in sync)`);
+  }
 }
 
 console.log(failed === 0

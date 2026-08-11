@@ -146,10 +146,25 @@ shots/*.png
 # A cleanup that trusted `git ls-files -i` would have deleted a finding's only proof.
 # These patterns mean "session scratch dropped in the repo ROOT", so they say so.
 
-# Design-brief build output — regenerate with `node scripts/build-design-brief.mjs`.
-# The AUTHORED parts are versioned in docs/design-brief/; this is the assembled package.
+# OUTBOUND DESIGN COMMISSIONS — the package we send a designer, and nothing else.
+# ⚠️ CORRECTED 2026-08-11: this said "regenerate with `node scripts/build-design-brief.mjs`".
+# That script has never existed in the repo (`find . -name 'build-design-brief*'` → nothing), so
+# the package was hand-maintained and unregenerable — which is how its README came to tell an
+# outside designer that a celebration amount is set in Sora, the row DESIGN_AUTHORITY §M4
+# overturned. Assemble a commission from LIVE files at send time; never from a kept snapshot.
+# The AUTHORED receiving playbook is versioned at docs/design-brief/INTAKE.md.
+# ⛔ A commission NEVER carries a copy of the rulebook, the tokens, or component source — it
+#    links to them. See docs/design-system/README.md §0b and `npm run test:design-one-door`.
 /design-brief/
 /design-brief.zip
+
+# Anything unzipped at the repo root. A design handover arrived as "New Landing Design/" on
+# 2026-08-11: untracked, NOT ignored, 50 files / 2.87 MB, of which 2.37 MB were regenerable
+# screenshots that §0b bans from git. It belongs in /design-brief/. These patterns stop the
+# next unzip from becoming a commit; they do not excuse leaving it there.
+/New Landing Design/
+/*-design-handover*/
+/*design-handover*.zip
 
 # The identity pack is zipped for handoff; the folder beside it is the source.
 docs/design-brief/*.zip

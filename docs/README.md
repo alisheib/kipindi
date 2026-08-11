@@ -7,8 +7,10 @@ Written 2026-07-31. **Read this before opening anything else in here.**
 contract. Everything else in here is for whoever builds and runs the platform.
 
 There are **46 files** at this level — this index plus 45 documents — and five
-subdirectories with their own indexes: [`design-system/`](design-system/README.md) (the design
-rule book — start there for anything visual), [`design-brief/`](design-brief/INTAKE.md) (the
+subdirectories with their own indexes: [`design-system/`](design-system/README.md) (the index of
+the delivered design archive — **record, not rule**; the design rule book is
+[`DESIGN_AUTHORITY.md`](DESIGN_AUTHORITY.md) and nothing else is needed to build correctly),
+[`design-brief/`](design-brief/INTAKE.md) (the
 material commission's brief + intake playbook), [`ux-audit-2026-08/`](ux-audit-2026-08/MASTER-PLAN.md)
 (the live UX-audit tracker), [`runbooks/`](runbooks/README.md) (the operator PDFs + their HTML
 sources), and `guide-img/` (manual screenshots). Some files are law, some are a snapshot

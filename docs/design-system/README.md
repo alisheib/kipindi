@@ -63,16 +63,31 @@ from a tracker section. **There must never be two.** When its work is done, dele
 durable record is §6b. If you are about to create a second one, you are creating the
 redundancy this section exists to stop.
 
-⛔ **THE SIX PLACES DESIGN FILES ALREADY LIVE, so nobody invents a seventh:**
+⛔ **THE FIVE PLACES DESIGN FILES LIVE, so nobody invents a sixth** (re-measured 2026-08-11):
 
 | path | what it is | status |
 |---|---|---|
-| `docs/design-system/README.md` | **this file — the index** | ⭐ the entry point |
-| `docs/design-system/v2-2026-07-27/` | the versioned system, 11 sections | current |
-| `docs/DESIGN_AUTHORITY.md` | the law that binds code | current |
-| `docs/design-brief/` | the outbound brief + `INTAKE.md`, the integration playbook | current |
-| `design-brief/law/` *(repo root)* | the gitignored outbound extract sent to the designer | ⛔ **never merge from it** — its `keyframes.css` is brace-unbalanced and would kill press/vote/streak/seal motion |
-| `50PICK/design_handoff_prediction_market_kit/` | the original teal kit | ⛔ **SUPERSEDED** — teal 215, dead light theme. Historical only |
+| `docs/DESIGN_AUTHORITY.md` | **the rulebook** — every law, floor, ratio and threshold | ⭐ **the one door** |
+| `src/app/globals.css` + `motion.css` | **the values themselves** | outranks every document |
+| `docs/design-system/README.md` + `v2-2026-07-27/` | **this file and the archive it indexes** — the delivered July-2026 system, 11 sections | 📑 record, not rule; frozen |
+| `docs/design-brief/` | the material commission's brief + `INTAKE.md`, the receiving playbook | 📑 record |
+| `design-brief/` *(repo root, **gitignored**)* | **outbound commissions only** — the package we send a designer, plus its `SOURCES.md` | ⛔ never a source of truth, never merge from it |
+
+**Two entries were removed from this table on 2026-08-11 because they no longer exist:**
+
+- `design-brief/law/` — the 2026-08-06 outbound extract. **Deleted.** It was the one file on
+  disk claiming `STATUS: authoritative` with no RECORD banner while being 482 lines short of the
+  rulebook (missing §0, §T, §S, §A, §C, §H, §E, §K and all of §M), and its `keyframes.css` was
+  brace-unbalanced (194 `{` vs 195 `}`). Archived to `F:\50pick-design-archive\`.
+- `50PICK/design_handoff_prediction_market_kit/` — the teal kit. Not on disk since the
+  2026-07-15 finalization; listing it as a "place design files live" implied otherwise.
+
+⛔ **A commission package NEVER carries a copy of the rulebook, the tokens, or component
+source.** It links to them. The 2026-08-11 round-2 package bundled 27 byte-identical copies —
+including a `DESIGN_AUTHORITY.md` whose own line 6 reads *"THERE IS NO SECOND ONE"* — at the
+repo root, untracked and un-ignored, where `git add -A` would have committed 2.37 MB of
+regenerable screenshots. Guarded now by `npm run test:design-one-door`, which fails on a second
+`DESIGN_AUTHORITY.md` anywhere on disk.
 
 ---
 
@@ -147,8 +162,34 @@ reconstructible copy — **nothing unique was lost.**
 |---|---|
 | `Final Design Sytem/` (repo root) | **Byte-for-byte identical** to `Up Down Design System/` — same files, same checksums. Two names for one export. |
 | `Up Down Design System/` (repo root) | Consolidated into `v1-2026-07-24/` |
-| `theme/globals.css` (97,006 bytes) | A **stale snapshot**. The live file is 102,215 bytes. Keeping it invites someone to build from it. |
+| `theme/globals.css` (97,006 bytes) | A **stale snapshot**. Keeping it invites someone to build from it. |
 | `uploads/globals_css-*.css` (97,109 bytes) | A **third, different** stale copy. Three versions of one file is the drift bug itself. |
+
+> ⚠️ **CORRECTED 2026-08-11 — read this before trusting the two rows above.**
+> They said *"the live file is 102,215 bytes"*. It is **178,429**. More importantly, the table
+> reads as if the ~97 KB stale snapshots are gone and *"nothing unique was lost"*. They are not
+> gone: **four of them are still in this archive**, at the exact byte counts named above —
+>
+> | file | bytes | `--bg` |
+> |---|---|---|
+> | `v2-2026-07-27/01-foundations/tokens.css` | 97,351 | `oklch(15% 0.130 268)` |
+> | `v2-2026-07-27/05-pages/theme/globals.css` | 97,356 | `oklch(15% 0.130 268)` |
+> | `v2-2026-07-27/09-needle/theme/globals.css` | 97,006 | `oklch(15% 0.130 268)` |
+> | `v2-2026-07-27/07-provenance/kit-source/globals.css` | 97,109 | `oklch(15% 0.130 268)` |
+>
+> **Live `--bg` is `oklch(6.5% 0.130 268)`** — the archived canvas is more than twice as light,
+> and all four still define `--bg-elevated2`, which `globals.css:302` retired with the words
+> *"Do not re-add"*. The canvas lightness is one of the three values `DESIGN_AUTHORITY.md`'s own
+> banner names as having *"disagreed with the shipped code on values a session would have pasted
+> straight into `globals.css`."*
+>
+> They were **kept deliberately, not overlooked**: the 34 `.dc.html` previews in `05-pages/` and
+> `09-needle/` load their sibling `theme/` folder so the archive runs offline, and the other two
+> are provenance §0b assigns a home. Deleting them breaks the previews — which was tried on
+> 2026-08-11 and reverted. **Every one now opens with a `DATED SNAPSHOT` header stating its own
+> drift**, so a session that greps for `--bg` and lands mid-file is warned at the point of use
+> rather than three folders away. That is the §0d principle: a rule beside its value cannot be
+> contradicted by a stale doc elsewhere.
 | `uploads/*.jsx`, `uploads/*.tsx` | Copies of our own `src/` files, sent as context. Git history is the archive for those. |
 | `uploads/UPDOWN-SPEC.md` | Already lives at [`docs/UPDOWN-SPEC.md`](../UPDOWN-SPEC.md) |
 | `support.js`, `.thumbnail` | Claude Design editor runtime artifacts, not design content |

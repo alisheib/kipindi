@@ -5,9 +5,16 @@
 > `src/app/globals.css` / `src/app/motion.css`, which outrank every document.
 > (Consolidated 2026-08-08 — nine files used to claim to be the place to start.)
 
-STATUS: authoritative — the merge-discipline law of the 50pick design system.
-Cited as **B9 / B10** in `docs/DESIGN_AUTHORITY.md` and as **laws 15 / 16** in
-`06-patterns-and-rules/RULES.md`. Installed 2026-07-29 (design finalization pass).
+STATUS: **the reasons behind B9 / B10, not a second statement of them.** The binding text is
+§B9 and §B10 in `docs/DESIGN_AUTHORITY.md`; this file carries the worked failure modes those
+two rules were bought with. `RULES.md` laws 15 / 16 are the designer's original wording of the
+same pair. Installed 2026-07-29 (design finalization pass).
+
+⚠️ **Corrected 2026-08-11.** This line previously read *"STATUS: authoritative — the
+merge-discipline law"*, seven lines under a banner saying **RECORD, NOT RULE**. One file
+claiming both is the same defect in miniature that the whole consolidation exists to remove: a
+session that scrolled past the banner found an authority claim and stopped there. If B9/B10 and
+this file ever disagree, **B9/B10 win** — and the disagreement is the bug.
 
 # Design-system merge discipline — the single-source-of-truth law
 

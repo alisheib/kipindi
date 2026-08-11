@@ -384,7 +384,8 @@ single file moved, which is the whole reason §1 exists.
   `inset 0 1px 0` appears **15 times** and two of those are pure white.
 - 🔴 **The delivered merge map named three files that do not exist.** It sends the sections to
   `src/app/law/{tokens,keyframes,motion}.css`. There is no `src/app/law/`; `law/` is how the
-  *outbound brief* was split, and those files sit in the **gitignored** `design-brief/law/`. The
+  *outbound brief* was split, and those files sat in the **gitignored** `design-brief/law/`
+  (⚠️ that folder was **deleted 2026-08-11** — archived to `F:\50pick-design-archive\`). The
   real destinations are `globals.css` (tokens **and** keyframes) and `motion.css` (utilities) —
   which `INTAKE.md` §2 had right all along. ⛔ The brief's own `law/keyframes.css` extract is
   **brace-unbalanced**: the extractor dropped an opening `@media (prefers-reduced-motion: reduce) {`,

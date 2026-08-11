@@ -270,11 +270,23 @@ F:\kipindi-main\docs\ux-audit-2026-08\          ← COMMITTED
 ├── RUN-EVERYTHING-PROMPT.md           ← the full-run prompt
 └── UPDOWN-STABILIZATION-PROMPT.md     ← the Up & Down stabilisation kickoff
 
-…\docs\ux-audit-2026-08.localbak\               ← ⚠️ UNTRACKED, laptop-only, NOT in git
+F:\50pick-design-archive\ux-audit-localbak-2026-08-11\   ← OUT OF THE REPO (moved 2026-08-11)
 ├── SESSION-PROMPTS.md                 ← copy-paste kickoff prompt per session
 ├── updown-handover-brief.html         ← visual summary of Report 1
 └── platform-handover-brief.html       ← visual summary of Report 2
 ```
+
+⚠️ **`docs/ux-audit-2026-08.localbak/` was removed from the repo on 2026-08-11.** It held eight
+files: four byte-identical duplicates of the committed ones, this file's own twin **31 lines
+shorter**, and the three unique artefacts listed above. The twin was the hazard — it opened with
+the identical claim *"This is the single source of truth for the 2026-08-07 UX-audit
+implementation"* and stated `**Location:** docs/ux-audit-2026-08/MASTER-PLAN.md`, a path it was
+not at, **while carrying a newer mtime than the real file** (11:45 vs 09:53). A session sorting
+by modification date would have picked the stale one and believed it was authoritative.
+
+The three unique files were not deleted — they are in the archive path above. ⛔ **Do not
+re-create a `.localbak` beside a tracked tracker.** If local work must be parked, park it
+outside the repo.
 
 ---
 

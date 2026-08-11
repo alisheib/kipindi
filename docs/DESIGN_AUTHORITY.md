@@ -80,10 +80,25 @@ stale one is always the one somebody reads. This is the doc-level twin of §B9.
 | **A token or paint value** | `src/app/globals.css` (or `motion.css` for timing) **at its line, with the rule as a comment beside it** | ⛔ any doc — docs *describe* values, they never *define* them |
 | **A component's geometry that is genuinely code** (dial tilt maths, chart viewBox) | The component file itself, which is authoritative; this rulebook may *point* at it | ⛔ copying the numbers into a doc |
 | **A component/page spec** | `docs/design-system/v2-2026-07-27/02-components/<name>/` beside its siblings | ⛔ a second specs folder |
+| **An OUTBOUND commission** (the brief/package we send a designer) | `design-brief/<name>/` at the repo root — **gitignored**, one folder per round, assembled from LIVE files at send time | ⛔ anywhere else on disk; ⛔ carrying a COPY of this file, the tokens, or component source — a package **links**, it never bundles; ⛔ keeping the snapshot after the round |
 | **An incoming commission from a designer** | `docs/design-system/v2-2026-07-27/NN-<name>/`, raw and untouched, plus an acceptance record | ⛔ merging it into `src/` before acceptance |
 | **A session handoff** | `docs/LIVE-QA-CAMPAIGN.md` §6b, at the TOP | ⛔ a new handoff file |
 | **Provenance / "what the designer delivered"** | `07-provenance/` | ⛔ this file |
 | **Evidence (screenshots)** | **Nowhere — it is gitignored** (`.qa-design*/`, `.qa-shots/`). A checked-in PNG is a claim nobody can re-derive. *Exception:* a shot cited by a doc as a finding's proof lives in `shots/<FINDING>/` and `test:docs` enforces that it exists | ⛔ committing regenerable screenshots |
+
+> **Why the outbound row was added (2026-08-11).** §0b had a row for a commission coming *in*
+> and none for one going *out*, so two rounds of outbound packages filed themselves: one at
+> `design-brief/` (gitignored) and one unzipped at the repo root as `New Landing Design/`
+> (untracked and **not** ignored — `git add -A` would have committed 2.37 MB of regenerable
+> screenshots). Between them they held **27 byte-identical copies** of live files, a
+> `tokens-LOCKED.css` duplicated inside a single package, and a copy of *this file* whose line 6
+> reads *"THERE IS NO SECOND ONE."* Nothing in the packages was wrong on the day it was cut —
+> that is the point. A snapshot is correct exactly once, and the older extract had already
+> drifted: it still defined `--bg-elevated2`, retired at `globals.css:302` with the words *"Do
+> not re-add"*, and told a designer the celebration amount is set in Sora, which §M4 overturned.
+> **A missing filing row is not a tidiness problem — it is where the next stale truth gets born.**
+> Guarded by `npm run test:design-one-door`, which now fails on a second `DESIGN_AUTHORITY.md`
+> anywhere on disk, and on any index that calls something "the rulebook" without naming this file.
 
 ### 0c — What every other design file actually is
 
