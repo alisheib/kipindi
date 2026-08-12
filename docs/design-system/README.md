@@ -128,7 +128,7 @@ docs/design-system/
     ├── 00-START-HERE.md         manifest + order of authority
     ├── 01-foundations/          tokens.css / tokens.json (SNAPSHOT — see §1) + colour/type/space/elevation docs
     ├── 02-components/           every component (preview.html + spec.md); _specs-as-delivered/ holds D1/D2/D3 + P&L handoff code
-    ├── 03-glyphs/               39 stroke SVGs + contact sheet
+    ├── 03-glyphs/               ⛔ DELETED 2026-08-12 — 39 SVGs at 1.5/1.85px stroke, 22% of the live corpus. The glyph truth is src/components/ui/glyphs.tsx (178 keys @1.9px). Archived off-repo; see design-brief/CLEANUP-MANIFEST.md
     ├── 04-brand/                brand.md + preview
     ├── 05-pages/                every screen as a runnable .dc.html
     ├── 06-patterns-and-rules/   RULES.md — the 12 platform laws

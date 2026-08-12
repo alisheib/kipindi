@@ -40,11 +40,24 @@ design-brief/CLEANUP-MANIFEST.md                          this file             
 F:\50pick-design-archive\2026-08-12-final\                everything removed, verified
 ```
 
-## Still pending (Phase 3, after the new design is live)
+## Round 2 of cleanup (same day, Ali's re-scope: "dedicate this session to cleaning")
 
-- `docs/design-system/v2-2026-07-27/` stale glyph sub-archive (39 SVGs at wrong stroke weights
-  vs the live 178-glyph corpus) — cite-check, archive, delete the sub-folder only.
-- Old-version sweep (`*-old*`, `*-v1*`, `*backup*`, stray `*.zip` under `docs/`) — list, never
-  bulk-delete.
-- ⛔ NOT touched, ever: `.dc.html` previews with sibling `theme/` folders · `.qa-*` scratch
-  dirs (74 scripts cited by docs) · the unreferenced 8-key glyph family (a design decision).
+| Path | Why stale | What cited it | Decision |
+|---|---|---|---|
+| `docs/design-system/v2-2026-07-27/03-glyphs/` (41 files: 39 SVGs + README + contact-sheet) | Describes a 39-glyph corpus at 1.5/1.85px stroke; the live corpus is `src/components/ui/glyphs.tsx` — 178 keys @ 1.9px. INVENTORY.md's own warning: "Do not hand that folder to the designer as the glyph inventory" | 4 prose citers: `docs/design-system/README.md:131` · `v2-2026-07-27/00-START-HERE.md:24` · `v2-2026-07-27/06-patterns-and-rules/RULES.md:48` · `docs/design-brief/handover-2026-08/INVENTORY.md:307` — **all four annotated in the same commit** | Archived to `…\2026-08-12-final\stale-glyph-archive-03-glyphs` — verified 41 files / 22,866 bytes both sides — then `git rm` |
+
+**Old-version sweep results** (`*-old*` / `*-v1*` / `*backup*` / `*.zip` under `docs/` +
+`design-brief/`): only false positives and out-of-scope items —
+`docs/BACKUP-RUNBOOK.md` (a runbook *about* backups — live doc, kept) ·
+`docs/runbooks/updown-assets/07-thresholds.png` (matched "old" inside "thresh**old**s" — kept) ·
+`03-glyphs/svg/backup.svg` (a glyph *named* backup — went with its folder above).
+Out of design scope, noted for an ops session, NOT touched here: root `_playbook-old.bundle`,
+`tsconfig.backup.json`, `backups/` (ops scratch), `scripts/live/ops/house-money-census.cjs`
+(another session's in-flight file). Zero stray zips remain under `docs/` or `design-brief/`.
+
+## Protected, deliberately NOT touched
+
+- `.dc.html` previews with sibling `theme/` folders (`v2-2026-07-27/05-pages/theme`,
+  `…/09-needle/theme`) — wrongly deleted once before; never again.
+- `.qa-*` scratch dirs (74 scripts cited by docs).
+- The unreferenced 8-key glyph family inside `glyphs.tsx` — a design decision, not cleanup.

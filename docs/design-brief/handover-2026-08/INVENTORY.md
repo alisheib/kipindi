@@ -304,7 +304,7 @@ GUARD: `npm run test:glyph-motion` → scripts/glyph-motion.test.mts. It reads e
 
 ⛔ IDENTITY MOTION IS NOT GLYPH MOTION (motion.css §M8, line 416+): `.needle-sweep`, `.needle-settle-loss`, `.mark-flip`, `.seal-mark-flip`, `.seal-arrive/commit/sheen`, `.crest-arrive`, `.crest-ring-reveal`, `.mark-pending` and `@keyframes m-axis-sweep` / `m-axis-reveal` are reserved for the trademark and the crest. Nothing else may borrow that stage.
 
-⚠️ THE DESIGNER-FACING GLYPH DOC IS STALE. docs/design-system/v2-2026-07-27/03-glyphs/README.md:3-5 states "24×24 viewBox … kit icons 1.5px … the 2026-07 additions use 1.85px … 39 glyphs in ./svg/". Measured: that folder really does hold 39 .svg files with stroke-width 1.5 (×31) and 1.85 (×8) — but the SHIPPED kit is 178 keys at 1.9 (and 2.2 on the 64-grid). The glyph doc and its contact-sheet.html therefore describe a corpus 22% the size of the live one, at the wrong stroke weight. Do not hand that folder to the designer as the glyph inventory.
+⚠️ THE DESIGNER-FACING GLYPH DOC IS STALE. docs/design-system/v2-2026-07-27/03-glyphs/README.md:3-5 states "24×24 viewBox … kit icons 1.5px … the 2026-07 additions use 1.85px … 39 glyphs in ./svg/". Measured: that folder really does hold 39 .svg files with stroke-width 1.5 (×31) and 1.85 (×8) — but the SHIPPED kit is 178 keys at 1.9 (and 2.2 on the 64-grid). The glyph doc and its contact-sheet.html therefore describe a corpus 22% the size of the live one, at the wrong stroke weight. Do not hand that folder to the designer as the glyph inventory. *[Editorial note, 2026-08-12: acted on — the folder was archived off-repo and deleted; see design-brief/CLEANUP-MANIFEST.md.]*
 
 <details><summary>All 178 glyph keys</summary>
 

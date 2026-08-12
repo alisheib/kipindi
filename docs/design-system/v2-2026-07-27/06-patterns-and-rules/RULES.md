@@ -45,7 +45,7 @@ For each: the rule → the reason → an example of it being broken (so you reco
 **Broken looks like:** the 🔥 streak chip (existed in a kit specimen — superseded); a spinning sunburst behind a win (replaced by win-aura-breathe).
 
 ## 8 · Emoji
-**Rule:** none. Anywhere. Glyphs are stroke SVG (03-glyphs) or typographic marks (✓ ! × i in toasts).
+**Rule:** none. Anywhere. Glyphs are stroke SVG (the live set: `src/components/ui/glyphs.tsx`; the archive's 03-glyphs folder was deleted 2026-08-12 as a stale 39-glyph subset) or typographic marks (✓ ! × i in toasts).
 **Reason:** tone (licensed product), rendering inconsistency across cheap Android devices, localisation.
 **Broken looks like:** 🔥 streaks, 🎉 win toasts, 📈 market categories.
 

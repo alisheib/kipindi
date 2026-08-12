@@ -21,7 +21,10 @@ haptic vocabulary; nothing from v1.0 was removed or re-specified. It *contains* 
 1. **06-patterns-and-rules/** first — the laws. Everything else is an application of them.
 2. **01-foundations/** — tokens.css is the single source of truth for every value; tokens.json is the same data machine-readable; the four .md files explain intent.
 3. **02-components/** — one folder per component: `preview.html` (open in any browser, offline) + `spec.md` (exact values, token names, prop contract, GIVEN/INVENTED provenance).
-4. **03-glyphs/** — every icon as SVG + contact-sheet.html.
+4. ~~**03-glyphs/** — every icon as SVG + contact-sheet.html.~~ ⛔ Deleted 2026-08-12: its 39
+   SVGs (stroke 1.5/1.85px) described 22% of the live corpus at the wrong weight — the glyph
+   inventory is `src/components/ui/glyphs.tsx` (178 keys @ 1.9px). Archived off-repo
+   (`design-brief/CLEANUP-MANIFEST.md`).
 5. **04-brand/** — mark, wordmark, lockup, never-do list.
 6. **05-pages/** — every screen ever designed, as runnable HTML. Open the .dc.html files directly in a browser **keeping the folder intact** (they load ./support.js and ./theme/globals.css). See its README for the route map.
 7. **08-motion/** — "The Settle": the motion language. Four curves, six duration tiers,
