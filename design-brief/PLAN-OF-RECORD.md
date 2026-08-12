@@ -155,7 +155,8 @@ topic taxonomy source of truth, whether search is server-side._
 | 1a organize | `78b7f000` | docs · one-door · integrity · orphans · tsc — all green | pushed, prod 200 | kit filed + acceptance; references refiled; v2 deletion committed |
 | 1b gates | `c7cb34ec` | all 22 design gates green individually; 72 predeploy steps resolve | pushed, prod 200 | 2 ghost steps removed |
 | 1c glyph cleanup | `fd66292b` | docs · one-door · integrity green | pushed | 03-glyphs archived (41 files / 22,866 B verified) + 4 citers annotated |
-| 2a contract | _next session_ | | | |
+| 2a contract · step 1 (pure module + gate) | `(this session)` | `test:discovery-contract` 78 assertions green; `red:discovery-contract` **7/7 real defects caught**, tree restored byte-identical; tsc 0 | local | `src/lib/markets/discovery.ts` — parsing, defaults, ONE href builder, status predicates, odds/pool buckets, sorts + explicit tie-breakers, cross-filtered counts, relaxations. Pure: no server imports, lifecycle facts stay in `market-service.ts` |
+| 2a contract · step 2 (page wiring) | _in progress_ | | | |
 | 2b markets UI | _next session_ | | | |
 | 2c hero | _next session_ | | | |
 | 2d landing + header | _next session_ | | | |
@@ -230,9 +231,16 @@ file:line; re-verify only what a later commit may have moved.
   never max-height) replaces this — re-derive the offsets once, keep them in one place.
 - `ProposePromo` renders at `page.tsx:98` — kit: **remove from /markets entirely** (footer
   link keeps the flag).
-- i18n: ONE dict (`src/lib/i18n-dict.ts`, en≈1 / sw≈1637 / zh≈3083; `Dict = typeof dict.en`
-  so missing keys are compile errors). `common.sort` ("Panga"/"排序") exists unused;
-  `results.sortNewest/sortHighest` are the sort-label precedent.
+- i18n: ONE dict (`src/lib/i18n-dict.ts`, en≈1 / sw≈1637 / zh≈3083). `common.sort`
+  ("Panga"/"排序") exists unused; `results.sortNewest/sortHighest` are the sort-label
+  precedent. ⛔ **CORRECTED 2026-08-13 — this line used to say "`Dict = typeof dict.en` so
+  missing keys are compile errors". THAT IS FALSE and it is the dangerous direction to be
+  wrong in.** `Dict` is derived from `en` ALONE, there is no `satisfies Record<Locale, Dict>`
+  anywhere in the file, and both consumers erase the drift with a cast
+  (`i18n-server.ts:20`, `i18n.tsx:98` — `dict[locale] as Dict`). A key added to `en` and
+  forgotten in `sw`/`zh` **typechecks clean and ships**. `npm run test:i18n` is the only real
+  parity check — the gate's own header says so. The group is `market` (singular, 334 keys);
+  there is no `markets.*`.
 
 ### 7b · Landing + header today (what batches 2c/2d replace)
 
