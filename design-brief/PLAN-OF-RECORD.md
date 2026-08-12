@@ -5,19 +5,23 @@ Operator authorization: Ali, 2026-08-12 evening — full autonomy, commits + pus
 ("apply all changes in the new design kit literally · don't touch market cards and progress bars ·
 just the things we agreed on · organize the design files first").
 
-**STATUS: Phase 1 (organize + gates) — in progress.**
+**STATUS: organization session COMPLETE — implementation starts in a NEW session.**
+Ali re-scoped on 2026-08-12 evening: this session is dedicated to organizing the design files,
+cleaning up old docs, wiring the gates, and writing the plan; the implementation (batches 2a–2d
+below) runs in a fresh session from the copy-paste prompt at
+`design-brief/00-NEXT-SESSION-PROMPT.md`.
 
 | Phase | State |
 |---|---|
-| 0 · Locate kit, INHERIT-MANIFEST | ✅ done — kit at `docs/design-system/v3-2026-08-11-landing-discovery/` (moving there this phase), acceptance record beside it |
-| 1a · Organize design files | 🔶 in progress |
-| 1b · Wire 22 design gates into predeploy | ⬜ next |
-| 2a · /markets data contract | ⬜ |
-| 2b · /markets UI (filter bar replaces rail) | ⬜ |
-| 2c · Hero replacement (photo out, same commit) | ⬜ |
-| 2d · Landing composition + header | ⬜ |
-| 3 · Final cleanup + CLEANUP-MANIFEST | ⬜ |
-| 4 · Report + next-session prompt | ⬜ |
+| 0 · Locate kit, acceptance record | ✅ done — kit filed at `docs/design-system/v3-2026-08-11-landing-discovery/` + `ACCEPTANCE.md` (commit `78b7f000`) |
+| 1a · Organize design files | ✅ done — commit `78b7f000`, pushed. Everything removed archived at `F:\50pick-design-archive\2026-08-12-final\` |
+| 1b · Wire 22 design gates into predeploy | ✅ done — all 22 wired; 2 ghost steps removed; **baseline: all 22 gates GREEN** on `78b7f000` (each run individually, exit 0, 2026-08-12) — no pre-existing red to carry |
+| 1c · Old-doc cleanup (stale glyph archive, old-version sweep) | ✅ this session — see CLEANUP-MANIFEST |
+| 2a · /markets data contract | ⬜ NEXT SESSION |
+| 2b · /markets UI (filter bar replaces rail) | ⬜ NEXT SESSION |
+| 2c · Hero replacement (photo out, same commit) | ⬜ NEXT SESSION |
+| 2d · Landing composition + header | ⬜ NEXT SESSION |
+| 3 · Post-implementation cleanup remainder | ⬜ NEXT SESSION |
 
 ---
 
@@ -79,7 +83,11 @@ strategy): `design-frozen` FROZEN_ALLOWLIST (41) · `motion-ladder` ALLOWLIST (0
 RAW_WIDTH_ALLOWLIST (58) · `m1-light` PENDING (0) · `reduce-motion` KEPT (4). Entries move only
 when a change in this plan legitimately moves a measured value.
 
-**Gate baseline on the current tree:** _to be recorded when run (next step)._
+**Gate baseline (2026-08-12, tree `78b7f000`): all 22 gates GREEN** — run individually,
+`test:tokens … test:overdue-format -> EXIT=0` for every one. The two ghost predeploy steps
+(`test:sentinel-timer`, `test:sentinel-pause` — scripts that never existed) are removed, so the
+chain no longer dies at step 44 before `build`; all 72 remaining steps resolve to real scripts
+(verified by parsing `package.json`).
 
 ## 4 · The /markets data contract (Phase 2a) — concrete values, from the kit
 
