@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>50pick — Markets discovery · 390</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../brand/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../tokens-LOCKED.css">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:var(--type-body);line-height:1.5;-webkit-font-smoothing:antialiased;text-wrap:pretty}
+a{color:var(--text-link);text-decoration:none}
+a:hover{color:var(--text-link-hover)}
+button{font:inherit;color:inherit;background:none;border:0;margin:0}
+h1,h2,h3,h4,p,ul,ol,figure{margin:0}
+ul{padding:0;list-style:none}
+.ic{flex:none}
+:focus-visible{outline:2px solid var(--border-focus);outline-offset:2px;border-radius:var(--r-xs)}
+
+/* ═══ composition layer — the vertical rhythm scale. Four steps, built from --sp-*. ═══ */
+:root{
+  --rh-tight:   var(--sp-6);
+  --rh-close:   var(--sp-12);
+  --rh-section: calc(var(--sp-12) * 2);
+  --rh-chapter: calc(var(--sp-12) * 3);
+  --gutter:     var(--sp-6);
+  --board:      var(--w-board);
+}
+.wrap{max-width:var(--board);margin:0 auto;padding-inline:var(--gutter)}
+.band{background:var(--bg-overlay);border-block:1px solid var(--claret-edge)}
+.band-panel{background:var(--panel);border-block:1px solid var(--border)}
+
+/* ═══ type ═══ */
+.d1{font-family:var(--font-display);font-weight:800;letter-spacing:-.022em;line-height:1.02}
+.d2{font-family:var(--font-display);font-weight:700;letter-spacing:-.015em;line-height:1.1}
+.h2{font-family:var(--font-display);font-weight:700;font-size:var(--type-h1);letter-spacing:-.012em;line-height:1.15}
+.h3{font-family:var(--font-display);font-weight:700;font-size:var(--type-h2);line-height:1.25}
+.h4{font-family:var(--font-display);font-weight:700;font-size:var(--type-h4);line-height:1.35}
+.lede{font-size:var(--type-h3);line-height:1.5;color:var(--text-muted)}
+.body{font-size:var(--type-body);line-height:1.6;color:var(--text-muted)}
+.sm{font-size:var(--type-small);color:var(--text-subtle)}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.eyebrow{display:inline-flex;align-items:center;gap:var(--sp-3);font-family:var(--font-mono);font-size:var(--type-micro);font-weight:700;text-transform:uppercase;letter-spacing:.18em;color:var(--text-subtle)}
+/* the mark's own needle, at its own angle (--m-tilt = 14deg), on every eyebrow */
+.eyebrow::before{content:"";flex:none;width:2px;height:13px;border-radius:var(--r-pill);background:var(--gilt);transform:rotate(14deg)}
+.heroplace::before{display:none}
+.heroplace .dot{width:2px;height:14px;border-radius:var(--r-pill);background:var(--gilt);transform:rotate(14deg)}
+.nano{font-family:var(--font-mono);font-size:var(--type-micro);font-weight:700;text-transform:uppercase;letter-spacing:.16em}
+.gilt{color:var(--gilt)}
+
+.shead{display:flex;align-items:flex-end;justify-content:space-between;gap:var(--sp-4);padding-right:var(--sp-3);margin-bottom:var(--rh-tight)}
+.shead .t{display:flex;flex-direction:column;gap:var(--sp-2);min-width:0}
+.tlink{display:inline-flex;align-items:center;gap:var(--sp-2);min-height:44px;padding-inline:var(--sp-3);margin-right:calc(var(--sp-3) * -1);border-radius:var(--r-sm);font-family:var(--font-mono);font-size:var(--type-micro);font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-link);white-space:nowrap}
+.tlink:hover{background:var(--bg-overlay);color:var(--text-link-hover)}
+
+/* ═══ buttons — one geometry family, 44px floor ═══ */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-2);min-height:44px;padding:0 var(--sp-5);border-radius:var(--r-md);font-family:var(--font-body);font-size:var(--type-h4);font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid transparent;transition:background 140ms ease-out,border-color 140ms ease-out,box-shadow 140ms ease-out,transform 140ms ease-out}
+.btn-primary{background:var(--brand-600);border-color:var(--brand-400);color:var(--pearl-50);box-shadow:var(--edge-lit)}
+.btn-primary:hover{filter:brightness(var(--btn-hover-gain));transform:translateY(-1px);box-shadow:var(--edge-lit-strong),var(--glow-selected)}
+.btn-ghost{background:transparent;border-color:var(--border-control);color:var(--text)}
+.btn-ghost:hover{background:var(--bg-overlay);border-color:var(--border-royal)}
+.btn-quiet{min-height:44px;padding:0 var(--sp-4);border-radius:var(--r-sm);display:inline-flex;align-items:center;gap:var(--sp-2);font-family:var(--font-mono);font-size:var(--type-micro);font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-link);cursor:pointer;white-space:nowrap}
+.btn-quiet:hover{background:var(--bg-overlay)}
+.btn-pill{border-radius:var(--r-pill)}
+
+/* ══════════════════════════════════════════════════════════════════════
+   FROZEN BLOCK — market card, conviction bar, YES/NO control.
+   Reproduced from 01-approved-design/market-card.tsx and the APPROVED-*.jpg
+   screenshots so the composition can be judged with the real component in it.
+   Engineering renders <MarketCard/>; nothing below is a proposal.
+   ══════════════════════════════════════════════════════════════════════ */
+.mcardp{position:relative;overflow:hidden;display:flex;flex-direction:column;background:var(--wash-raised);border:1px solid var(--border);border-radius:var(--r-lg);padding:var(--sp-5);box-shadow:var(--elev-raised);color:var(--text);text-align:left}
+.mcardp--featured{border-color:var(--border-royal);box-shadow:var(--elev-raised-hover),var(--glow-selected)}
+.mcardp-watermark{position:absolute;right:calc(var(--sp-4) * -1);bottom:calc(var(--sp-8) * -1);color:var(--border-royal);opacity:.20;pointer-events:none;line-height:0}
+.mcardp-watermark svg{stroke-width:1.1}
+.mcardp-top{display:flex;align-items:center;gap:var(--sp-2);margin-bottom:var(--sp-3);position:relative}
+.chip{display:inline-flex;align-items:center;gap:var(--sp-1);height:22px;padding:0 var(--sp-2);border-radius:var(--r-pill);border:1px solid var(--border-control);background:var(--bg-overlay);color:var(--text-muted);font-family:var(--font-mono);font-size:var(--type-label);font-weight:700;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap}
+.chip-live{background:var(--danger-bg);border-color:var(--danger-border);color:var(--danger-fg)}
+.chip-hot-rose{background:var(--no-900);border-color:var(--no-700);color:var(--no-300)}
+.chip-pending{background:var(--bg-overlay);border-color:var(--border-royal);color:var(--brand-300)}
+.chip-resolved{background:var(--gold-subtle);border-color:var(--border-gold);color:var(--gilt)}
+.live-dot{width:5px;height:5px;border-radius:var(--r-pill);background:var(--live-400);flex:none}
+.mcardp-catico{margin-left:var(--sp-1);color:var(--text-faint);display:inline-flex}
+.mcardp-cat{font-family:var(--font-mono);font-size:var(--type-label);font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-faint)}
+.mcardp-head{display:flex;align-items:flex-start;gap:var(--sp-3);position:relative}
+.mcardp-qwrap{flex:1;min-width:0}
+.mcardp-q{font-family:var(--font-display);font-weight:700;font-size:var(--type-body);line-height:1.32;min-height:2.64em;color:var(--text);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.mcardp-prob{text-align:right;flex:none;padding-top:1px}
+.mcardp-pctcap{font-family:var(--font-mono);font-size:var(--type-label);font-weight:700;letter-spacing:.16em;color:var(--yes-300)}
+.mcardp-pct{font-family:var(--font-display);font-weight:800;font-size:34px;line-height:1;color:var(--yes-400);letter-spacing:-.02em}
+.mcardp-pct .u{font-size:15px;font-weight:700;margin-left:1px}
+.mcardp-moveline{min-height:15px;display:flex;justify-content:flex-end;align-items:center;margin-top:var(--sp-2)}
+.mcardp-move{display:inline-flex;align-items:center;gap:3px;font-family:var(--font-mono);font-size:var(--type-label);font-weight:700}
+.mcardp-move .u{opacity:.8}
+.tbar{position:relative;height:7px;border-radius:var(--r-pill);background:var(--bar-fill-no);border:1px solid var(--bar-track-border);margin-top:var(--sp-2)}
+.tbar .fill{position:absolute;inset:0 auto 0 0;border-radius:var(--r-pill);background:var(--bar-fill-yes);box-shadow:var(--bar-glow-yes)}
+.tbar .needle{position:absolute;top:50%;width:4px;height:19px;border-radius:var(--r-pill);background:var(--bar-needle);box-shadow:0 0 8px var(--bar-needle-glow);transform:translate(-50%,-50%) rotate(14deg)}
+.tbar--empty{background:var(--bar-empty-track);border-color:transparent}
+.mcardp-spark{display:block;width:100%;height:28px;margin-top:var(--sp-2)}
+.mcardp-traders{display:flex;align-items:center;min-height:24px;margin-top:var(--sp-2)}
+.av-stack{display:flex}
+.av{width:21px;height:21px;border-radius:var(--r-pill);display:inline-flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:var(--type-nano);font-weight:700;color:var(--text);border:1.5px solid var(--bg-elevated);margin-right:-6px}
+.av-stack .av:last-child{margin-right:0}
+.av-1{background:var(--brand-soft)}.av-2{background:var(--claret-800)}.av-3{background:var(--aqua-800)}
+.t-txt{font-family:var(--font-mono);font-size:var(--type-micro);color:var(--text-subtle);margin-left:var(--sp-3)}
+.t-txt b{color:var(--text-muted)}
+.mcardp-actions{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2);margin-top:var(--sp-3)}
+.mcardp-actions--single{grid-template-columns:1fr}
+.btn-side{display:inline-flex;align-items:center;justify-content:center;height:38px;border-radius:var(--r-md);font-family:var(--font-body);font-size:var(--type-h4);font-weight:700;color:var(--pearl-50);border:1px solid transparent;cursor:pointer;box-shadow:var(--edge-lit)}
+.btn-side .o{font-family:var(--font-mono);font-size:11.5px;font-weight:500;opacity:.85;margin-left:5px}
+.btn-yes{background:var(--yes-600);border-color:var(--yes-500)}
+.btn-no{background:var(--no-600);border-color:var(--no-500)}
+.btn-yes:hover,.btn-no:hover{filter:brightness(var(--btn-hover-gain))}
+.btn-closed{display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-2);height:38px;border-radius:var(--r-md);border:1px solid var(--border-control);color:var(--text-muted);font-size:var(--type-h4);font-weight:600;opacity:.85}
+.mcardp-meta{display:flex;align-items:center;gap:var(--sp-2);margin-top:var(--sp-4);font-family:var(--font-mono);font-size:var(--type-micro);color:var(--text-faint);position:relative;min-height:34px;flex-wrap:nowrap;white-space:nowrap}
+.mcardp-meta .dot{width:3px;height:3px;border-radius:var(--r-pill);background:var(--text-faint)}
+.mcardp-meta-right{margin-left:auto;display:flex;align-items:center;gap:var(--sp-2)}
+.mcardp-timeleft{display:inline-flex;align-items:center;gap:var(--sp-2)}
+.mcardp-timeleft.live{color:var(--yes-300)}
+.mcardp-info{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:var(--r-md);background:var(--bg-overlay);border:1px solid var(--border);color:var(--text-muted);cursor:pointer}
+.mcardp-details{display:flex;align-items:center;justify-content:flex-end;gap:3px;margin-top:var(--sp-1);font-size:var(--type-small);font-weight:600;color:var(--text-link)}
+.mcardp-nobets{font-family:var(--font-mono);font-size:var(--type-micro);color:var(--text-faint);margin-top:var(--sp-2)}
+/* ═════════════════════════ end frozen block ═════════════════════════ */
+
+/* ═══ header ═══ */
+.topbar{position:sticky;top:0;z-index:30;height:56px;background:var(--panel);border-bottom:1px solid var(--border);box-shadow:var(--shadow-2)}
+.topbar--rest{background:transparent;border-bottom-color:transparent;box-shadow:none}
+.topbar .in{max-width:var(--board);margin:0 auto;height:100%;display:flex;align-items:center;gap:var(--sp-3);padding-inline:var(--gutter)}
+.topbar .in > a:first-child{display:inline-flex;align-items:center;min-height:44px}
+.lockup{display:inline-flex;align-items:center;gap:var(--sp-2)}
+.lk-img{display:block;height:29px;width:auto}
+.hero .disc img,.heroB .disc img{display:block;width:100%;height:100%}
+.tico img{display:block}
+.pfoot-lock img{display:block}
+.lk-word{font-family:var(--font-display);font-weight:800;letter-spacing:-.02em;color:var(--text);line-height:1}
+.lk-tld{font-family:var(--font-mono);font-weight:500;font-size:.44em;color:var(--text-subtle);letter-spacing:.04em}
+.nav{display:flex;align-items:center;gap:2px;margin-left:var(--sp-4)}
+.nav a{display:inline-flex;align-items:center;gap:6px;height:44px;padding:0 var(--sp-3);border-radius:var(--r-sm);font-size:13.5px;font-weight:500;color:var(--text-subtle);white-space:nowrap;transition:background 140ms ease-out,color 140ms ease-out}
+.nav a:hover{color:var(--text);background:var(--bg-overlay)}
+.nav a[aria-current]{color:var(--text);font-weight:600;background:var(--pill-active)}
+/* Up & Down is a DESTINATION, so it keeps the destination geometry.
+   Its "different game" signal is a gilt marker, not a different shape —
+   otherwise --r-pill would mean both "product line" and "account action". */
+.nav a.accent{color:var(--brand-300)}
+.nav a.accent::before{content:"";width:5px;height:5px;border-radius:var(--r-pill);background:var(--gilt);flex:none}
+.nav a.accent:hover{color:var(--text)}
+.nav a.accent[aria-current]{color:var(--text)}
+.skip{position:absolute;left:var(--sp-4);top:-60px;z-index:80;display:inline-flex;align-items:center;min-height:44px;padding-inline:var(--sp-4);border-radius:var(--r-sm);background:var(--brand-600);border:1px solid var(--brand-400);color:var(--pearl-50);font-size:var(--type-small);font-weight:600;transition:top 140ms ease-out}
+.skip:focus{top:var(--sp-2);color:var(--pearl-50)}
+.hspace{flex:1}
+.hright{display:flex;align-items:center;gap:var(--sp-2);position:relative}
+.langbtn{display:inline-flex;align-items:center;gap:6px;height:44px;min-width:44px;padding:0 var(--sp-3);border-radius:var(--r-sm);border:1px solid var(--border-control);font-family:var(--font-mono);font-size:var(--type-small);font-weight:700;color:var(--text-muted);cursor:pointer}
+.langbtn:hover{color:var(--text);border-color:var(--border-royal)}
+.langmenu{position:absolute;top:52px;right:0;min-width:196px;padding:var(--sp-2);border-radius:var(--r-md);background:var(--wash-float);box-shadow:var(--elev-float);z-index:60}
+.langmenu > button{display:flex;align-items:center;gap:var(--sp-3);width:100%;min-height:44px;padding:0 var(--sp-3);border-radius:var(--r-sm);font-size:var(--type-small);color:var(--text-muted);cursor:pointer;text-align:left}
+.langmenu > button:hover{background:var(--bg-overlay);color:var(--text)}
+.langmenu > button[aria-selected="true"]{color:var(--text);background:var(--pill-active)}
+.langmenu .nm{flex:1;min-width:0}
+.langmenu .tick{display:inline-flex;width:16px;flex:none;color:var(--gilt)}
+.langmenu .code{font-family:var(--font-mono);font-size:var(--type-micro);color:var(--text-faint)}
+.btn-auth{display:inline-flex;align-items:center;justify-content:center;height:44px;padding:0 var(--sp-4);border-radius:var(--r-pill);font-size:var(--type-small);font-weight:600;cursor:pointer;white-space:nowrap}
+.btn-auth.g{border:1px solid var(--border-control);color:var(--text)}
+.btn-auth.g:hover{border-color:var(--border-royal);background:var(--bg-overlay)}
+.btn-auth.p{background:var(--brand-600);border:1px solid var(--brand-400);color:var(--pearl-50);box-shadow:var(--edge-lit)}
+.btn-auth.p:hover{filter:brightness(var(--btn-hover-gain))}
+
+/* ═══ live ticker ═══ */
+.ticker{position:relative;height:34px;display:flex;align-items:center;background:var(--bg-overlay);border-bottom:1px solid var(--border);overflow:hidden}
+.ticker .lbl{flex:none;display:inline-flex;align-items:center;gap:6px;padding-inline:var(--gutter);font-family:var(--font-mono);font-size:var(--type-label);font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--danger-fg);border-right:1px solid var(--border);height:100%}
+.ticker .vp{position:relative;flex:1;overflow:hidden;height:100%;-webkit-mask-image:linear-gradient(90deg,transparent 0,var(--text) 32px,var(--text) calc(100% - 48px),transparent 100%);mask-image:linear-gradient(90deg,transparent 0,var(--text) 32px,var(--text) calc(100% - 48px),transparent 100%)}
+.ticker .run{position:absolute;top:0;left:0;height:100%;display:flex;align-items:center;gap:var(--sp-8);white-space:nowrap;font-family:var(--font-mono);font-size:var(--type-micro);color:var(--text-subtle);animation:ticker-scroll 42s linear infinite;will-change:transform;padding-left:var(--sp-8)}
+.ticker:hover .run,.ticker:focus-within .run{animation-play-state:paused}
+.ticker .run b{color:var(--text-muted);font-weight:500}
+.ticker .run .y{color:var(--yes-400)}
+.ticker .run .n{color:var(--no-400)}
+@keyframes ticker-scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+/* ═══ discovery layer ═══ */
+.proof{display:flex;align-items:center;gap:var(--sp-4);flex-wrap:wrap}
+.proof .grp{display:flex;flex-direction:column;gap:2px}
+.proof .n{font-family:var(--font-mono);font-weight:700;font-size:var(--type-h1);letter-spacing:-.02em;line-height:1;font-variant-numeric:tabular-nums;display:flex;align-items:center}
+.proof .n.live{color:var(--yes-400)}
+.proof .n.pool{color:var(--gilt)}
+.proof .u{font-family:var(--font-mono);font-size:var(--type-micro);font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--text-subtle)}
+.proof .sep{width:1px;align-self:stretch;background:var(--border)}
+.livepip{display:inline-block;width:8px;height:8px;border-radius:var(--r-pill);background:var(--yes-400);box-shadow:var(--bar-glow-yes);margin-right:var(--sp-3);flex:none}
+
+.searchfield{display:flex;align-items:center;gap:var(--sp-3);height:var(--h-input);padding-inline:var(--sp-4);border-radius:var(--r-md);background:var(--wash-inset);border:1px solid var(--border-control);box-shadow:var(--edge-shade);color:var(--text-faint);min-width:0}
+.searchfield input{flex:1;min-width:0;height:44px;margin-block:-1px;background:none;border:0;outline:none;color:var(--text);font:inherit;font-size:var(--type-body)}
+.searchfield input::placeholder{color:var(--text-faint)}
+.searchfield .hint{font-family:var(--font-mono);font-size:var(--type-label);color:var(--text-faint);white-space:nowrap}
+
+.filterbar{position:sticky;top:56px;z-index:20;background:var(--panel);border-bottom:1px solid var(--border);box-shadow:var(--shadow-2)}
+.filterbar .in{max-width:var(--board);margin:0 auto;padding:var(--sp-3) var(--gutter);display:flex;align-items:center;gap:var(--sp-3);flex-wrap:wrap}
+.fgroup{display:flex;align-items:center;gap:var(--sp-2);min-width:0;position:relative}
+.flabel{font-family:var(--font-mono);font-size:var(--type-micro);font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--text-faint);white-space:nowrap}
+.fdiv{width:1px;height:28px;background:var(--border);flex:none}
+
+.fchip{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:0 var(--sp-3);border-radius:var(--r-pill);border:1px solid transparent;background:transparent;color:var(--text-muted);font-size:var(--type-small);font-weight:600;white-space:nowrap;cursor:pointer;transition:background 140ms ease-out,border-color 140ms ease-out,color 140ms ease-out,box-shadow 140ms ease-out}
+.fchip:hover{background:var(--bg-overlay);color:var(--text)}
+.fchip:active{background:var(--bg-inset);border-color:var(--border-royal);transform:translateY(1px)}
+.fchip[aria-pressed="true"],.fchip[aria-selected="true"]{padding-inline:var(--sp-4);background:var(--pill-active);border-color:var(--brand-400);color:var(--text);box-shadow:var(--glow-selected)}
+.fchip[disabled]{border-color:var(--border);color:var(--text-disabled);background:var(--surface-disabled);opacity:.45;cursor:not-allowed}
+.fchip .ct{font-family:var(--font-mono);font-size:var(--type-micro);font-weight:700;color:var(--text-faint)}
+.fchip[aria-pressed="true"] .ct{color:var(--brand-200)}
+
+.seg{display:inline-flex;padding:3px;gap:3px;border-radius:var(--r-pill);background:var(--wash-inset);border:1px solid var(--border-control);box-shadow:var(--edge-shade)}
+.seg button{min-height:44px;padding:0 var(--sp-4);border-radius:var(--r-pill);font-size:var(--type-small);font-weight:600;color:var(--text-subtle);white-space:nowrap;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:background 140ms ease-out,color 140ms ease-out}
+.seg button:hover{color:var(--text);background:var(--bg-overlay)}
+.seg button[aria-pressed="true"]{background:var(--pill-active);color:var(--text);box-shadow:var(--edge-lit)}
+.seg button .ct{font-family:var(--font-mono);font-size:var(--type-micro);font-weight:700;color:var(--text-faint)}
+.seg button[aria-pressed="true"] .ct{color:var(--brand-200)}
+
+/* PALETTE RULE — blue = view state · gold = value and possession · green/red = outcome.
+   Sort is view state, so it carries no gold: it sits beside blue-selected peers and a
+   second accent family on a peer control is the one thing the palette cannot absorb.
+   Its first-classness is size, position and a named key — not colour. */
+.sortctl{display:inline-flex;align-items:center;gap:var(--sp-2);min-height:44px;max-width:360px;padding:0 var(--sp-3) 0 var(--sp-4);border-radius:var(--r-md);border:1px solid var(--border-control);background:var(--wash-inset);box-shadow:var(--edge-shade);color:var(--text);font-size:var(--type-small);font-weight:600;cursor:pointer;white-space:nowrap;transition:background 140ms ease-out}
+.sortctl:hover{background:var(--bg-overlay);border-color:var(--border-royal)}
+.sortctl .k{font-family:var(--font-mono);font-size:var(--type-micro);font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--text-faint);flex:none}
+.sortctl .v{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.sortctl .ic{color:var(--text-faint)}
+.sortmenu{position:absolute;top:52px;left:0;min-width:292px;padding:var(--sp-2);border-radius:var(--r-md);background:var(--wash-float);box-shadow:var(--elev-float);z-index:60}
+.sortmenu .grp{font-family:var(--font-mono);font-size:var(--type-micro);font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--text-faint);padding:var(--sp-2) var(--sp-3) var(--sp-1)}
+.sortmenu button{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);width:100%;min-height:44px;padding:0 var(--sp-3);border-radius:var(--r-sm);font-size:var(--type-small);color:var(--text-muted);text-align:left;cursor:pointer}
+.sortmenu button:hover{background:var(--bg-overlay);color:var(--text)}
+.sortmenu button[aria-selected="true"]{background:var(--pill-active);color:var(--text)}
+.sortmenu button[aria-selected="true"] .ic{color:var(--brand-200)}
+.sortmenu .why{font-family:var(--font-mono);font-size:var(--type-micro);color:var(--text-faint);white-space:nowrap}
+
+.summary{display:flex;align-items:center;gap:var(--sp-3);flex-wrap:wrap}
+.count{font-family:var(--font-mono);font-size:var(--type-h4);font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;white-space:nowrap}
+.count b{color:var(--gilt)}
+.count .of{color:var(--text-faint);font-weight:500}
+.tokenchip{display:inline-flex;align-items:center;gap:var(--sp-2);min-height:44px;padding:0 0 0 var(--sp-3);border-radius:var(--r-pill);background:var(--pill-active);border:1px solid var(--brand-400);color:var(--text);font-size:var(--type-small);font-weight:600;white-space:nowrap}
+.tokenchip .k{font-family:var(--font-mono);font-size:var(--type-micro);font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--brand-200)}
+.tokenchip button{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:var(--r-pill);color:var(--brand-200);cursor:pointer}
+.tokenchip button:hover{background:var(--surface-pressed);color:var(--text)}
+.clearall{display:inline-flex;align-items:center;min-height:44px;padding-inline:var(--sp-3);border-radius:var(--r-sm);font-family:var(--font-mono);font-size:var(--type-micro);font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-link);cursor:pointer;white-space:nowrap}
+.clearall:hover{background:var(--bg-overlay)}
+
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-6)}
+.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--sp-6)}
+.grid1{display:grid;grid-template-columns:1fr;gap:var(--sp-4)}
+.pager{display:flex;flex-direction:column;align-items:center;gap:var(--sp-3);padding-top:var(--rh-tight)}
+.pager p{margin:0;font-family:var(--font-mono);font-size:var(--type-small);color:var(--text-faint);font-variant-numeric:tabular-nums}
+.pager p b{color:var(--text-muted);font-weight:700}
+.pager .btn{min-width:220px}
+
+
+.emptystate{display:flex;flex-direction:column;align-items:center;text-align:center;gap:var(--sp-4);padding:var(--rh-section) var(--sp-6);border:1px dashed var(--border-control);border-radius:var(--r-xl);background:var(--bg-overlay)}
+.emptystate .ring{display:inline-flex;align-items:center;justify-content:center;width:68px;height:68px;border-radius:var(--r-pill);border:1px solid var(--border);background:var(--wash-inset);color:var(--text-faint)}
+.skel{position:relative;overflow:hidden;background:var(--bg-inset);border-radius:var(--r-xs)}
+.skel::after{content:"";position:absolute;inset:0;background:var(--bar-shimmer);transform:translateX(-100%);animation:skel 1200ms ease-in-out infinite}
+@keyframes skel{to{transform:translateX(100%)}}
+.skelcard{border:1px solid var(--border);border-radius:var(--r-lg);background:var(--wash-raised);padding:var(--sp-5);box-shadow:var(--elev-raised)}
+
+.rise{animation:rise 340ms cubic-bezier(.22,1,.36,1) both}
+.rise-1{animation-delay:80ms}.rise-2{animation-delay:150ms}.rise-3{animation-delay:210ms}
+.fadein{animation:fadein 220ms linear both}
+@keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:1ms !important;animation-iteration-count:1 !important;transition-duration:1ms !important}
+  .ticker .run{animation:none;transform:none}
+  .skel::after{display:none}
+}
+
+/* layout-file chrome only — never ships */
+.viewnote{max-width:var(--board);margin:0 auto;padding:var(--sp-6) var(--gutter) 0;display:flex;align-items:baseline;gap:var(--sp-3);flex-wrap:wrap}
+.viewnote .tag{font-family:var(--font-mono);font-size:var(--type-micro);font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--text-inverse);background:var(--gilt);border-radius:var(--r-xs);padding:3px 7px}
+.viewnote p{font-family:var(--font-mono);font-size:var(--type-micro);color:var(--text-faint)}
+
+.boardtop{padding-block:var(--sp-8) var(--rh-tight)}
+.boardhead{display:flex;align-items:flex-end;justify-content:space-between;gap:var(--rh-close);flex-wrap:wrap}
+.boardhead .l{min-width:0}
+.boardhead h1{font-size:var(--type-h1);margin-block:var(--sp-2) var(--sp-5)}
+.boardhead .r{flex:1;min-width:320px;max-width:420px;padding-bottom:var(--sp-2)}
+.proof .n{font-size:var(--type-display-2)}
+.proof .sep{min-height:44px}
+.filtered{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap;padding-block:var(--rh-tight) var(--sp-5)}
+.filtered .lab{font-family:var(--font-mono);font-size:var(--type-micro);font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--text-faint);margin-right:var(--sp-1)}
+.results{padding-bottom:var(--rh-section)}
+.resolvedstrip{padding-block:var(--rh-close) var(--rh-section)}
+.filterbar .row{display:flex;align-items:center;gap:var(--sp-3);flex-wrap:wrap;width:100%}
+.filterbar .row + .row{margin-top:var(--sp-2);padding-top:var(--sp-2);border-top:1px solid var(--border)}
+.filterbar .row + .row .fgroup{flex-wrap:wrap;row-gap:var(--sp-1)}
+.filterbar .in{flex-direction:column;align-items:stretch;padding-block:var(--sp-2)}
+.spacer{flex:1;min-width:var(--sp-4)}
+
+body{background:var(--bg-overlay)}
+.stage{display:flex;gap:var(--sp-8);justify-content:center;align-items:flex-start;padding:var(--sp-6);flex-wrap:wrap}
+.phone{width:390px;background:var(--bg);position:relative;overflow:hidden;box-shadow:var(--shadow-5);flex:none}
+.phone .cap{display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-3) var(--sp-4);background:var(--panel);border-bottom:1px solid var(--border)}
+.phone .cap .tag{font-family:var(--font-mono);font-size:var(--type-micro);font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--text-inverse);background:var(--gilt);border-radius:var(--r-xs);padding:3px 7px}
+.phone .cap p{font-family:var(--font-mono);font-size:var(--type-micro);color:var(--text-faint)}
+:root{--gutter:var(--sp-4);--board:390px}
+.boardtop{padding-block:var(--sp-5) var(--sp-4)}
+.boardhead{flex-direction:column;align-items:stretch;gap:var(--sp-5)}
+.boardhead h1{font-size:var(--type-h2);margin-block:var(--sp-1) var(--sp-4)}
+.boardhead .r{max-width:none;min-width:0;padding-bottom:0}
+.proof{gap:var(--sp-3)}
+.proof .n{font-size:var(--type-h2)}
+.proof .grp{flex:1;min-width:0}
+.proof .u{font-size:var(--type-nano);letter-spacing:.12em}
+.filterbar{top:56px}
+.filterbar .in{padding:var(--sp-2) 0}
+.filterbar .row{flex-wrap:nowrap;padding-inline:var(--gutter);gap:var(--sp-2)}
+.filterbar .row.scroll{overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.filterbar .row.scroll::-webkit-scrollbar{display:none}
+.filterbar .row + .row{margin-top:var(--sp-2);padding-top:var(--sp-2)}
+.sortctl{flex:1;min-width:0;max-width:none;justify-content:space-between}
+.fbtn{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 var(--sp-3);border-radius:var(--r-md);border:1px solid var(--brand-400);background:var(--pill-active);color:var(--text);font-size:var(--type-small);font-weight:600;white-space:nowrap;flex:none;cursor:pointer}
+.fbtn .n{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;border-radius:var(--r-pill);background:var(--brand-500);color:var(--pearl-50);font-family:var(--font-mono);font-size:var(--type-label);font-weight:700}
+.countline{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);padding:var(--sp-4) var(--gutter) 0}
+.filtered{padding:var(--sp-3) var(--gutter) var(--sp-4);gap:var(--sp-2)}
+.results{padding-bottom:var(--rh-close)}
+.grid3{grid-template-columns:1fr;gap:var(--sp-4)}
+.resolvedstrip{padding-block:var(--rh-tight) var(--rh-close)}
+.shead{flex-direction:column;align-items:flex-start;gap:var(--sp-2)}
+/* bottom sheet */
+.scrim{position:absolute;inset:0;background:var(--bg-overlay);opacity:.72;z-index:90}
+.sheet{position:absolute;left:0;right:0;bottom:0;z-index:100;background:var(--wash-modal);border-radius:var(--r-xl) var(--r-xl) 0 0;box-shadow:var(--shadow-overlay-up);padding:var(--sp-3) var(--gutter) var(--sp-5);max-height:80%;overflow:auto}
+.sheet .grab{width:44px;height:4px;border-radius:var(--r-pill);background:var(--border-strong);margin:0 auto var(--sp-4)}
+.sheet h2{margin-bottom:var(--sp-5)}
+.sheetgrp{margin-bottom:var(--sp-5)}
+.sheetgrp .flabel{display:block;margin-bottom:var(--sp-3)}
+.sheetchips{display:flex;flex-wrap:wrap;gap:var(--sp-2)}
+.topiclist{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2)}
+.sheetfoot{display:flex;gap:var(--sp-3);position:sticky;bottom:0;padding-top:var(--sp-4);background:var(--wash-modal)}
+.sheetfoot .btn{flex:1}
+.bnav{position:relative;z-index:110;display:grid;grid-template-columns:repeat(5,1fr);background:var(--panel);border-top:1px solid var(--border);box-shadow:var(--shadow-overlay-up)}
+.bnav a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:64px;padding-top:6px;font-size:var(--type-micro);font-weight:600;color:var(--text-subtle)}
+.bnav .pip{display:inline-flex;align-items:center;justify-content:center;width:44px;height:26px;border-radius:var(--r-pill);transition:background 140ms ease-out}
+.bnav a:hover .pip{background:var(--bg-overlay)}
+.bnav a[aria-current]{color:var(--text)}
+.bnav a[aria-current] .pip{background:var(--pill-active);box-shadow:var(--edge-lit)}
+.bnav a.accent{color:var(--brand-300)}
+.bnav a.accent .pip::after{content:"";position:absolute;margin:-16px 0 0 22px;width:4px;height:4px;border-radius:var(--r-pill);background:var(--gilt)}
+.bnav a.accent[aria-current]{color:var(--text)}
+
+</style>
+</head>
+<body>
+<div class="stage"><div class="phone"><div class="cap"><span class="tag">05a</span><p>390 · board, filters applied</p></div><header class="topbar"><div class="in"><a href="#" aria-label="50pick home"><img src="../brand/mark-color.svg" width="26" height="26" alt="" aria-hidden="true"></a><div class="hspace"></div><div class="hright"><button type="button" class="langbtn">EN <svg class="ic" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 9 7 7 7-7"/></svg></button><a href="#" class="btn-auth g">Sign in</a><a href="#" class="btn-auth p">Sign up</a></div></div></header><div class="ticker"><span class="lbl"><span class="live-dot"></span>Live</span><div class="vp"><div class="run"><span><b>TZS 45K</b> predicted <span class="y">YES</span> on Simba SC wins NBC Premier League 2026-27</span><span aria-hidden="true">·</span><span><b>TZS 180K</b> won on <span class="y">YES</span> on Long rains begin before 15 Apr</span><span aria-hidden="true">·</span><span><b>TZS 12K</b> predicted <span class="n">NO</span> on USD/TZS closes under 2,650 in Q2</span><span aria-hidden="true">·</span><span><b>TZS 8K</b> predicted <span class="y">YES</span> on Arusha maximum temperature reaches 28°C</span><span aria-hidden="true">·</span><span><b>TZS 63K</b> predicted <span class="n">NO</span> on Arsenal keep a clean sheet vs Coventry City</span><span aria-hidden="true">·</span><span><b>TZS 21K</b> predicted <span class="y">YES</span> on SGR Dodoma–Singida opens to passengers in 2026</span><span aria-hidden="true">·</span><span><b>TZS 45K</b> predicted <span class="y">YES</span> on Simba SC wins NBC Premier League 2026-27</span><span aria-hidden="true">·</span><span><b>TZS 180K</b> won on <span class="y">YES</span> on Long rains begin before 15 Apr</span><span aria-hidden="true">·</span><span><b>TZS 12K</b> predicted <span class="n">NO</span> on USD/TZS closes under 2,650 in Q2</span><span aria-hidden="true">·</span><span><b>TZS 8K</b> predicted <span class="y">YES</span> on Arusha maximum temperature reaches 28°C</span><span aria-hidden="true">·</span><span><b>TZS 63K</b> predicted <span class="n">NO</span> on Arsenal keep a clean sheet vs Coventry City</span><span aria-hidden="true">·</span><span><b>TZS 21K</b> predicted <span class="y">YES</span> on SGR Dodoma–Singida opens to passengers in 2026</span></div></div></div><main><section class="wrap boardtop"><div class="boardhead"><div class="l"><p class="eyebrow">Markets · Dar es Salaam</p><h1 class="h2">The board</h1><div class="proof"><div class="grp"><span class="n live"><span class="livepip"></span>41</span><span class="u">Live now</span></div><span class="sep"></span><div class="grp"><span class="n pool">1,669k</span><span class="u">TZS in play</span></div><span class="sep"></span><div class="grp"><span class="n">6</span><span class="u">Close today</span></div></div></div><div class="r"><label class="searchfield"><svg class="ic" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><input type="search" placeholder="Search 41 markets"></label></div></div></section><div class="filterbar"><div class="in"><div class="row"><button type="button" class="sortctl" aria-haspopup="listbox" aria-expanded="false"><span class="k"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4.5v15M6 19.5l-3-3M6 19.5l3-3"/><path d="M13 6h8M13 11h6M13 16h4"/></svg> Sort</span><span class="v">Closing soonest</span><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 9 7 7 7-7"/></svg></button><button type="button" class="fbtn"><svg class="ic" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h10M18 8h2M4 16h4M12 16h8"/><circle cx="16" cy="8" r="2.2"/><circle cx="10" cy="16" r="2.2"/></svg> Filters <span class="n">2</span></button></div><div class="row scroll"><button type="button" class="fchip" aria-pressed="true">Open<span class="ct">41</span></button><button type="button" class="fchip" aria-pressed="false">Closing today<span class="ct">6</span></button><button type="button" class="fchip" aria-pressed="false">New<span class="ct">4</span></button><button type="button" class="fchip" aria-pressed="false">All<span class="ct">58</span></button></div></div></div><div class="countline"><span class="count"><b>9</b> <span class="of">of 41 markets</span></span><button type="button" class="clearall">Clear all</button></div><section class="wrap results"><div class="grid3"><article class="mcardp"><span class="mcardp-watermark" aria-hidden="true"><svg class="ic" width="132" height="132" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.2 15.6 9.8 14.2 14h-4.4L8.4 9.8Z"/><path d="M12 3v4.2M20.5 9.8 15.6 9.8M18.3 18.6 14.2 14M5.7 18.6 9.8 14M3.5 9.8h4.9"/></svg></span><div class="mcardp-top"><span class="chip chip-live"><span class="live-dot"></span>LIVE</span><span class="chip chip-hot-rose">HOT</span><span class="chip chip-pending">SOON</span><span class="mcardp-catico"><svg class="ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.2 15.6 9.8 14.2 14h-4.4L8.4 9.8Z"/><path d="M12 3v4.2M20.5 9.8 15.6 9.8M18.3 18.6 14.2 14M5.7 18.6 9.8 14M3.5 9.8h4.9"/></svg></span><span class="mcardp-cat">Sports</span></div><div class="mcardp-head"><div class="mcardp-qwrap"><h3 class="mcardp-q">Will Yanga SC beat Simba SC in the Kariakoo derby on 22 August?</h3></div><div class="mcardp-prob"><div class="mcardp-pctcap">YES</div><div class="mcardp-pct">52<span class="u">%</span></div></div></div><div class="mcardp-moveline"><span class="mcardp-move" style="color:var(--yes-400)">↗ +3<span class="u">pt</span></span></div><div class="tbar"><span class="fill" style="width:52%"></span><span class="needle" style="left:52%"></span></div><svg class="mcardp-spark" viewBox="0 0 300 28" preserveAspectRatio="none" aria-hidden="true"><path d="M0 16 C40 18 70 13 110 15 C150 12 190 16 230 11 C260 13 280 10 300 12" fill="none" stroke="var(--aqua-400)" stroke-width="1.5" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg><div class="mcardp-traders"><span class="av-stack"><span class="av av-1">JM</span><span class="av av-2">K</span><span class="av av-3">SW</span></span><span class="t-txt"><b>31</b> predictors</span></div><div class="mcardp-actions"><button type="button" class="btn-side btn-yes">YES<span class="o">@ 52%</span></button><button type="button" class="btn-side btn-no">NO<span class="o">@ 48%</span></button></div><div class="mcardp-meta"><span>TZS 118,900</span><span class="dot"></span><span><svg class="ic" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 4.5h15v10.5h-9L5 19.5v-4.5H4.5Z"/></svg> 12</span><span class="mcardp-meta-right"><span class="mcardp-timeleft live">5h left</span><button type="button" class="mcardp-info" aria-label="How it works"><svg class="ic" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.6v.9"/></svg></button></span></div><span class="mcardp-details">Details <svg class="ic" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg></span></article><article class="mcardp"><span class="mcardp-watermark" aria-hidden="true"><svg class="ic" width="132" height="132" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 16a4.2 4.2 0 0 1 .5-8.37A5.5 5.5 0 0 1 18 8.5a3.75 3.75 0 0 1 .3 7.5Z"/><path d="M9 19.5 8 21.5M13 19.5 12 21.5M17 19.5 16 21.5"/></svg></span><div class="mcardp-top"><span class="chip chip-live"><span class="live-dot"></span>LIVE</span><span class="chip chip-pending">SOON</span><span class="mcardp-catico"><svg class="ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 16a4.2 4.2 0 0 1 .5-8.37A5.5 5.5 0 0 1 18 8.5a3.75 3.75 0 0 1 .3 7.5Z"/><path d="M9 19.5 8 21.5M13 19.5 12 21.5M17 19.5 16 21.5"/></svg></span><span class="mcardp-cat">Weather</span></div><div class="mcardp-head"><div class="mcardp-qwrap"><h3 class="mcardp-q">Will Dar es Salaam record rainfall above 5mm on 13 August, per TMA?</h3></div><div class="mcardp-prob"><div class="mcardp-pctcap">YES</div><div class="mcardp-pct">44<span class="u">%</span></div></div></div><div class="mcardp-moveline"><span class="mcardp-move" style="color:var(--no-400)">↘ -6<span class="u">pt</span></span></div><div class="tbar"><span class="fill" style="width:44%"></span><span class="needle" style="left:44%"></span></div><div class="mcardp-traders"><span class="av-stack"><span class="av av-1">AF</span><span class="av av-2">RE</span></span><span class="t-txt"><b>8</b> predictors</span></div><div class="mcardp-actions"><button type="button" class="btn-side btn-yes">YES<span class="o">@ 44%</span></button><button type="button" class="btn-side btn-no">NO<span class="o">@ 56%</span></button></div><div class="mcardp-meta"><span>TZS 22,400</span><span class="mcardp-meta-right"><span class="mcardp-timeleft live">19h left</span><button type="button" class="mcardp-info" aria-label="How it works"><svg class="ic" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.6v.9"/></svg></button></span></div><span class="mcardp-details">Details <svg class="ic" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg></span></article><article class="mcardp"><span class="mcardp-watermark" aria-hidden="true"><svg class="ic" width="132" height="132" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17 9.5 10.5l4 4L21 7"/><path d="M15 7h6v6"/></svg></span><div class="mcardp-top"><span class="chip chip-live"><span class="live-dot"></span>LIVE</span><span class="mcardp-catico"><svg class="ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17 9.5 10.5l4 4L21 7"/><path d="M15 7h6v6"/></svg></span><span class="mcardp-cat">Macro</span></div><div class="mcardp-head"><div class="mcardp-qwrap"><h3 class="mcardp-q">Will USD/TZS close below 2,650 on the Bank of Tanzania mid-rate before 30 September?</h3></div><div class="mcardp-prob"><div class="mcardp-pctcap">YES</div><div class="mcardp-pct">41<span class="u">%</span></div></div></div><div class="mcardp-moveline"><span class="mcardp-move" style="color:var(--no-400)">↘ -3<span class="u">pt</span></span></div><div class="tbar"><span class="fill" style="width:41%"></span><span class="needle" style="left:41%"></span></div><div class="mcardp-traders"><span class="av-stack"><span class="av av-1">CD</span><span class="av av-2">RE</span><span class="av av-3">7C</span></span><span class="t-txt"><b>11</b> predictors</span></div><div class="mcardp-actions"><button type="button" class="btn-side btn-yes">YES<span class="o">@ 41%</span></button><button type="button" class="btn-side btn-no">NO<span class="o">@ 59%</span></button></div><div class="mcardp-meta"><span>TZS 54,200</span><span class="dot"></span><span><svg class="ic" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 4.5h15v10.5h-9L5 19.5v-4.5H4.5Z"/></svg> 3</span><span class="mcardp-meta-right"><span class="mcardp-timeleft live">2d left</span><button type="button" class="mcardp-info" aria-label="How it works"><svg class="ic" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.6v.9"/></svg></button></span></div><span class="mcardp-details">Details <svg class="ic" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg></span></article></div><div class="pager" style="padding-top:var(--sp-5)"><p>Showing <b>6</b> of <b>9</b></p><a href="#" class="btn btn-ghost" style="width:100%">Load 3 more<svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 9 7 7 7-7"/></svg></a></div></section></main><nav class="bnav" aria-label="Primary"><a href="#" aria-current="page"><span class="pip"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5v17M7 20.5h10M6 7.5h12m-12 0-3 6a3.2 3.2 0 0 0 6 0Zm12 0-3 6a3.2 3.2 0 0 0 6 0Z"/></svg></span>Markets</a><a href="#" class="accent"><span class="pip"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17 9.5 10.5l4 4L21 7M15 7h6v6"/></svg></span>Up &amp; Down</a><a href="#"><span class="pip"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4.5 13.5H11L10 22l8.5-11.5H12Z"/></svg></span>Live</a><a href="#"><span class="pip"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4.5 12.5 5 5 10-11"/></svg></span>Results</a><a href="#"><span class="pip"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></span>More</a></nav></div><div class="phone" style="position:relative"><div class="cap"><span class="tag">05b</span><p>390 · filter sheet open</p></div><div style="position:relative;overflow:hidden"><header class="topbar"><div class="in"><a href="#" aria-label="50pick home"><img src="../brand/mark-color.svg" width="26" height="26" alt="" aria-hidden="true"></a><div class="hspace"></div><div class="hright"><button type="button" class="langbtn">EN <svg class="ic" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 9 7 7 7-7"/></svg></button><a href="#" class="btn-auth g">Sign in</a><a href="#" class="btn-auth p">Sign up</a></div></div></header><div class="ticker"><span class="lbl"><span class="live-dot"></span>Live</span><div class="vp"><div class="run"><span><b>TZS 45K</b> predicted <span class="y">YES</span> on Simba SC wins NBC Premier League 2026-27</span><span aria-hidden="true">·</span><span><b>TZS 180K</b> won on <span class="y">YES</span> on Long rains begin before 15 Apr</span><span aria-hidden="true">·</span><span><b>TZS 12K</b> predicted <span class="n">NO</span> on USD/TZS closes under 2,650 in Q2</span><span aria-hidden="true">·</span><span><b>TZS 8K</b> predicted <span class="y">YES</span> on Arusha maximum temperature reaches 28°C</span><span aria-hidden="true">·</span><span><b>TZS 63K</b> predicted <span class="n">NO</span> on Arsenal keep a clean sheet vs Coventry City</span><span aria-hidden="true">·</span><span><b>TZS 21K</b> predicted <span class="y">YES</span> on SGR Dodoma–Singida opens to passengers in 2026</span><span aria-hidden="true">·</span><span><b>TZS 45K</b> predicted <span class="y">YES</span> on Simba SC wins NBC Premier League 2026-27</span><span aria-hidden="true">·</span><span><b>TZS 180K</b> won on <span class="y">YES</span> on Long rains begin before 15 Apr</span><span aria-hidden="true">·</span><span><b>TZS 12K</b> predicted <span class="n">NO</span> on USD/TZS closes under 2,650 in Q2</span><span aria-hidden="true">·</span><span><b>TZS 8K</b> predicted <span class="y">YES</span> on Arusha maximum temperature reaches 28°C</span><span aria-hidden="true">·</span><span><b>TZS 63K</b> predicted <span class="n">NO</span> on Arsenal keep a clean sheet vs Coventry City</span><span aria-hidden="true">·</span><span><b>TZS 21K</b> predicted <span class="y">YES</span> on SGR Dodoma–Singida opens to passengers in 2026</span></div></div></div><main><section class="wrap boardtop"><div class="boardhead"><div class="l"><p class="eyebrow">Markets · Dar es Salaam</p><h1 class="h2">The board</h1><div class="proof"><div class="grp"><span class="n live"><span class="livepip"></span>41</span><span class="u">Live now</span></div><span class="sep"></span><div class="grp"><span class="n pool">1,669k</span><span class="u">TZS in play</span></div><span class="sep"></span><div class="grp"><span class="n">6</span><span class="u">Close today</span></div></div></div><div class="r"><label class="searchfield"><svg class="ic" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><input type="search" placeholder="Search 41 markets"></label></div></div></section><div class="filterbar"><div class="in"><div class="row"><button type="button" class="sortctl" aria-haspopup="listbox" aria-expanded="false"><span class="k"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4.5v15M6 19.5l-3-3M6 19.5l3-3"/><path d="M13 6h8M13 11h6M13 16h4"/></svg> Sort</span><span class="v">Closing soonest</span><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 9 7 7 7-7"/></svg></button><button type="button" class="fbtn"><svg class="ic" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h10M18 8h2M4 16h4M12 16h8"/><circle cx="16" cy="8" r="2.2"/><circle cx="10" cy="16" r="2.2"/></svg> Filters <span class="n">2</span></button></div><div class="row scroll"><button type="button" class="fchip" aria-pressed="true">Open<span class="ct">41</span></button><button type="button" class="fchip" aria-pressed="false">Closing today<span class="ct">6</span></button><button type="button" class="fchip" aria-pressed="false">New<span class="ct">4</span></button><button type="button" class="fchip" aria-pressed="false">All<span class="ct">58</span></button></div></div></div><div class="countline"><span class="count"><b>9</b> <span class="of">of 41 markets</span></span><button type="button" class="clearall">Clear all</button></div><section class="wrap results"><div class="grid3"><article class="mcardp"><span class="mcardp-watermark" aria-hidden="true"><svg class="ic" width="132" height="132" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.2 15.6 9.8 14.2 14h-4.4L8.4 9.8Z"/><path d="M12 3v4.2M20.5 9.8 15.6 9.8M18.3 18.6 14.2 14M5.7 18.6 9.8 14M3.5 9.8h4.9"/></svg></span><div class="mcardp-top"><span class="chip chip-live"><span class="live-dot"></span>LIVE</span><span class="chip chip-hot-rose">HOT</span><span class="chip chip-pending">SOON</span><span class="mcardp-catico"><svg class="ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.2 15.6 9.8 14.2 14h-4.4L8.4 9.8Z"/><path d="M12 3v4.2M20.5 9.8 15.6 9.8M18.3 18.6 14.2 14M5.7 18.6 9.8 14M3.5 9.8h4.9"/></svg></span><span class="mcardp-cat">Sports</span></div><div class="mcardp-head"><div class="mcardp-qwrap"><h3 class="mcardp-q">Will Yanga SC beat Simba SC in the Kariakoo derby on 22 August?</h3></div><div class="mcardp-prob"><div class="mcardp-pctcap">YES</div><div class="mcardp-pct">52<span class="u">%</span></div></div></div><div class="mcardp-moveline"><span class="mcardp-move" style="color:var(--yes-400)">↗ +3<span class="u">pt</span></span></div><div class="tbar"><span class="fill" style="width:52%"></span><span class="needle" style="left:52%"></span></div><svg class="mcardp-spark" viewBox="0 0 300 28" preserveAspectRatio="none" aria-hidden="true"><path d="M0 16 C40 18 70 13 110 15 C150 12 190 16 230 11 C260 13 280 10 300 12" fill="none" stroke="var(--aqua-400)" stroke-width="1.5" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg><div class="mcardp-traders"><span class="av-stack"><span class="av av-1">JM</span><span class="av av-2">K</span><span class="av av-3">SW</span></span><span class="t-txt"><b>31</b> predictors</span></div><div class="mcardp-actions"><button type="button" class="btn-side btn-yes">YES<span class="o">@ 52%</span></button><button type="button" class="btn-side btn-no">NO<span class="o">@ 48%</span></button></div><div class="mcardp-meta"><span>TZS 118,900</span><span class="dot"></span><span><svg class="ic" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 4.5h15v10.5h-9L5 19.5v-4.5H4.5Z"/></svg> 12</span><span class="mcardp-meta-right"><span class="mcardp-timeleft live">5h left</span><button type="button" class="mcardp-info" aria-label="How it works"><svg class="ic" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.6v.9"/></svg></button></span></div><span class="mcardp-details">Details <svg class="ic" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg></span></article><article class="mcardp"><span class="mcardp-watermark" aria-hidden="true"><svg class="ic" width="132" height="132" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 16a4.2 4.2 0 0 1 .5-8.37A5.5 5.5 0 0 1 18 8.5a3.75 3.75 0 0 1 .3 7.5Z"/><path d="M9 19.5 8 21.5M13 19.5 12 21.5M17 19.5 16 21.5"/></svg></span><div class="mcardp-top"><span class="chip chip-live"><span class="live-dot"></span>LIVE</span><span class="chip chip-pending">SOON</span><span class="mcardp-catico"><svg class="ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 16a4.2 4.2 0 0 1 .5-8.37A5.5 5.5 0 0 1 18 8.5a3.75 3.75 0 0 1 .3 7.5Z"/><path d="M9 19.5 8 21.5M13 19.5 12 21.5M17 19.5 16 21.5"/></svg></span><span class="mcardp-cat">Weather</span></div><div class="mcardp-head"><div class="mcardp-qwrap"><h3 class="mcardp-q">Will Dar es Salaam record rainfall above 5mm on 13 August, per TMA?</h3></div><div class="mcardp-prob"><div class="mcardp-pctcap">YES</div><div class="mcardp-pct">44<span class="u">%</span></div></div></div><div class="mcardp-moveline"><span class="mcardp-move" style="color:var(--no-400)">↘ -6<span class="u">pt</span></span></div><div class="tbar"><span class="fill" style="width:44%"></span><span class="needle" style="left:44%"></span></div><div class="mcardp-traders"><span class="av-stack"><span class="av av-1">AF</span><span class="av av-2">RE</span></span><span class="t-txt"><b>8</b> predictors</span></div><div class="mcardp-actions"><button type="button" class="btn-side btn-yes">YES<span class="o">@ 44%</span></button><button type="button" class="btn-side btn-no">NO<span class="o">@ 56%</span></button></div><div class="mcardp-meta"><span>TZS 22,400</span><span class="mcardp-meta-right"><span class="mcardp-timeleft live">19h left</span><button type="button" class="mcardp-info" aria-label="How it works"><svg class="ic" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.6v.9"/></svg></button></span></div><span class="mcardp-details">Details <svg class="ic" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg></span></article><article class="mcardp"><span class="mcardp-watermark" aria-hidden="true"><svg class="ic" width="132" height="132" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17 9.5 10.5l4 4L21 7"/><path d="M15 7h6v6"/></svg></span><div class="mcardp-top"><span class="chip chip-live"><span class="live-dot"></span>LIVE</span><span class="mcardp-catico"><svg class="ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17 9.5 10.5l4 4L21 7"/><path d="M15 7h6v6"/></svg></span><span class="mcardp-cat">Macro</span></div><div class="mcardp-head"><div class="mcardp-qwrap"><h3 class="mcardp-q">Will USD/TZS close below 2,650 on the Bank of Tanzania mid-rate before 30 September?</h3></div><div class="mcardp-prob"><div class="mcardp-pctcap">YES</div><div class="mcardp-pct">41<span class="u">%</span></div></div></div><div class="mcardp-moveline"><span class="mcardp-move" style="color:var(--no-400)">↘ -3<span class="u">pt</span></span></div><div class="tbar"><span class="fill" style="width:41%"></span><span class="needle" style="left:41%"></span></div><div class="mcardp-traders"><span class="av-stack"><span class="av av-1">CD</span><span class="av av-2">RE</span><span class="av av-3">7C</span></span><span class="t-txt"><b>11</b> predictors</span></div><div class="mcardp-actions"><button type="button" class="btn-side btn-yes">YES<span class="o">@ 41%</span></button><button type="button" class="btn-side btn-no">NO<span class="o">@ 59%</span></button></div><div class="mcardp-meta"><span>TZS 54,200</span><span class="dot"></span><span><svg class="ic" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 4.5h15v10.5h-9L5 19.5v-4.5H4.5Z"/></svg> 3</span><span class="mcardp-meta-right"><span class="mcardp-timeleft live">2d left</span><button type="button" class="mcardp-info" aria-label="How it works"><svg class="ic" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.6v.9"/></svg></button></span></div><span class="mcardp-details">Details <svg class="ic" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg></span></article></div><div class="pager" style="padding-top:var(--sp-5)"><p>Showing <b>6</b> of <b>9</b></p><a href="#" class="btn btn-ghost" style="width:100%">Load 3 more<svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 9 7 7 7-7"/></svg></a></div></section></main><div class="scrim"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Filter markets"><div class="grab"></div><h2 class="h3">Filter markets</h2><div class="sheetgrp"><span class="flabel">Odds</span><div class="sheetchips"><button type="button" class="fchip" aria-pressed="false">Any</button><button type="button" class="fchip" aria-pressed="false">Close call · 40–60%</button><button type="button" class="fchip" aria-pressed="true">Contested · 25–75%</button><button type="button" class="fchip" aria-pressed="false">Longshots · under 15%</button></div></div><div class="sheetgrp"><span class="flabel">Pool size</span><div class="sheetchips"><button type="button" class="fchip" aria-pressed="false">Any</button><button type="button" class="fchip" aria-pressed="true">TZS 10k+</button><button type="button" class="fchip" aria-pressed="false">TZS 50k+</button></div></div><div class="sheetgrp"><span class="flabel">Topic</span><div class="topiclist"><button type="button" class="fchip" aria-pressed="true"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></svg> All topics<span class="ct">41</span></button><button type="button" class="fchip" aria-pressed="false"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.2 15.6 9.8 14.2 14h-4.4L8.4 9.8Z"/><path d="M12 3v4.2M20.5 9.8 15.6 9.8M18.3 18.6 14.2 14M5.7 18.6 9.8 14M3.5 9.8h4.9"/></svg> Sports<span class="ct">14</span></button><button type="button" class="fchip" aria-pressed="false"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17 9.5 10.5l4 4L21 7"/><path d="M15 7h6v6"/></svg> Macro<span class="ct">6</span></button><button type="button" class="fchip" aria-pressed="false"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 8h4a2.25 2.25 0 0 1 0 4.5h-4Zm0 4.5h4.4a2.25 2.25 0 0 1 0 4.5H9.5Zm0-4.5v9M11.4 6v2M11.4 17v2"/></svg> Crypto<span class="ct">7</span></button><button type="button" class="fchip" aria-pressed="false"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5v17M7 20.5h10"/><path d="M6 7.5h12"/><path d="m6 7.5-3 6a3.2 3.2 0 0 0 6 0Z"/><path d="m18 7.5-3 6a3.2 3.2 0 0 0 6 0Z"/></svg> Other<span class="ct">4</span></button><button type="button" class="fchip" aria-pressed="false"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 16a4.2 4.2 0 0 1 .5-8.37A5.5 5.5 0 0 1 18 8.5a3.75 3.75 0 0 1 .3 7.5Z"/><path d="M9 19.5 8 21.5M13 19.5 12 21.5M17 19.5 16 21.5"/></svg> Weather<span class="ct">5</span></button><button type="button" class="fchip" aria-pressed="false"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V9.5l8-5.5 8 5.5V20"/><path d="M9.5 20v-5.5h5V20"/><path d="M2.5 20h19"/></svg> Culture<span class="ct">3</span></button><button type="button" class="fchip" aria-pressed="false"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="1.6"/><path d="M10.5 4v3M13.5 4v3M10.5 17v3M13.5 17v3M4 10.5h3M4 13.5h3M17 10.5h3M17 13.5h3"/></svg> Tech<span class="ct">2</span></button></div></div><div class="sheetfoot"><button type="button" class="btn btn-ghost">Clear</button><button type="button" class="btn btn-primary">Show 9 markets</button></div></div></div><nav class="bnav" aria-label="Primary"><a href="#" aria-current="page"><span class="pip"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5v17M7 20.5h10M6 7.5h12m-12 0-3 6a3.2 3.2 0 0 0 6 0Zm12 0-3 6a3.2 3.2 0 0 0 6 0Z"/></svg></span>Markets</a><a href="#" class="accent"><span class="pip"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17 9.5 10.5l4 4L21 7M15 7h6v6"/></svg></span>Up &amp; Down</a><a href="#"><span class="pip"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4.5 13.5H11L10 22l8.5-11.5H12Z"/></svg></span>Live</a><a href="#"><span class="pip"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4.5 12.5 5 5 10-11"/></svg></span>Results</a><a href="#"><span class="pip"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></span>More</a></nav></div></div>
+</body>
+</html>

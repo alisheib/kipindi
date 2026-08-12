@@ -17,9 +17,13 @@
 > question, every new screen, and every future theme change.~~
 -->
 
-**Last updated:** 2026-08-08 · **Archive version:** `v2-2026-07-27` — the complete
-delivered system and the ONLY archive (the earlier `v1-2026-07-24` was retired into it;
-see §6). The archive is frozen; the *rules* extracted from it live in `DESIGN_AUTHORITY.md`.
+**Last updated:** 2026-08-12 · **Archive versions:** `v2-2026-07-27` — the complete delivered
+system (the earlier `v1-2026-07-24` was retired into it; see §6) — plus
+**`v3-2026-08-11-landing-discovery/`**, the round-2 delivery (landing composition + `/markets`
+discovery ONLY), accepted 2026-08-12; its `ACCEPTANCE.md` records INHERIT/IGNORE per file and
+every place our laws beat the kit. Both archives are frozen; the *rules* extracted from them
+live in `DESIGN_AUTHORITY.md`. The v3 kit is being applied per `design-brief/PLAN-OF-RECORD.md`;
+the measured reference from that commission round lives at `docs/design-brief/handover-2026-08/`.
 
 ---
 
@@ -51,7 +55,7 @@ you where to put a **file**, which is how the duplication actually starts.
 | a **law / invariant** (a rule that binds future code) | `docs/DESIGN_AUTHORITY.md`, in the lettered section it belongs to | a new top-level `docs/*.md` |
 | a **token / value** | `src/app/globals.css` at its line, with the rule in a comment beside it | any doc — docs describe values, they never define them |
 | a **component or page spec** | `docs/design-system/v2-2026-07-27/0X-…/` beside its siblings | a new folder |
-| an **incoming commission** (someone designed something for us) | `docs/design-system/v2-2026-07-27/NN-<name>/`, raw and untouched, + an `INTAKE`-style acceptance | anywhere outside the versioned system |
+| an **incoming commission** (someone designed something for us) | `docs/design-system/` — an addition to the July system goes in `v2-2026-07-27/NN-<name>/`; a new dated delivery gets its own versioned folder (e.g. `v3-2026-08-11-landing-discovery/`) — raw and untouched, + an acceptance record | anywhere outside the versioned system |
 | the **integration playbook** for such a commission | `docs/design-brief/INTAKE.md` | a second playbook |
 | a **session handoff / next-session prompt** | `docs/LIVE-QA-CAMPAIGN.md` §6b, at the TOP | ⚠️ a `docs/NEXT-SESSION-*.md` — see the note below |
 | **provenance** (rendered stills, the state something was signed off in) | `.../v2-2026-07-27/07-provenance/` | committed screenshots elsewhere |

@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="icon" href="brand/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="tokens-LOCKED.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--font-body);-webkit-font-smoothing:antialiased}
+  *,*::before,*::after{box-sizing:border-box}
+  a{color:var(--text-link);text-decoration:none}
+  a:hover{color:var(--text-link-hover)}
+  button{font:inherit;color:inherit;background:none;border:0;margin:0;padding:0}
+  :focus-visible{outline:2px solid var(--border-focus);outline-offset:2px;border-radius:var(--r-xs)}
+  @keyframes tick{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+  @media (prefers-reduced-motion:reduce){*{animation-duration:1ms !important;animation-iteration-count:1 !important;transition-duration:1ms !important}}
+</style>
+</helmet>
+
+<div style="min-height:100vh;background:var(--bg)">
+
+  <header style="position:sticky;top:0;z-index:30;height:56px;background:var(--panel);border-bottom:1px solid var(--border);box-shadow:var(--shadow-2)">
+    <div style="{{ headInCss }}">
+      <img src="brand/lockup-horizontal.svg" width="132" height="29" alt="50pick.tz" style="display:block;flex:none">
+      <nav aria-label="Primary" style="{{ navCss }}">
+        <a href="#" aria-current="page" style="display:inline-flex;align-items:center;height:44px;padding:0 12px;border-radius:var(--r-sm);font-size:13.5px;font-weight:600;color:var(--text);background:var(--pill-active)">Markets</a>
+        <a href="#" style="display:inline-flex;align-items:center;height:44px;padding:0 12px;border-radius:var(--r-pill);font-size:13.5px;font-weight:500;color:var(--brand-300);border:1px solid var(--brand-soft);box-shadow:var(--edge-lit)" style-hover="color:var(--text);border-color:var(--brand-400)">Up &amp; Down</a>
+        <a href="#" style="display:inline-flex;align-items:center;height:44px;padding:0 12px;border-radius:var(--r-sm);font-size:13.5px;font-weight:500;color:var(--text-subtle)" style-hover="color:var(--text);background:var(--bg-overlay)">Live</a>
+        <a href="#" style="display:inline-flex;align-items:center;height:44px;padding:0 12px;border-radius:var(--r-sm);font-size:13.5px;font-weight:500;color:var(--text-subtle)" style-hover="color:var(--text);background:var(--bg-overlay)">Results</a>
+      </nav>
+      <span style="flex:1"></span>
+      <button type="button" style="display:inline-flex;align-items:center;gap:6px;height:44px;min-width:44px;padding:0 12px;border-radius:var(--r-sm);border:1px solid var(--border-control);font-family:var(--font-mono);font-size:13px;font-weight:700;color:var(--text-muted);cursor:pointer" style-hover="color:var(--text);border-color:var(--border-royal)">EN</button>
+      <a href="#" style="{{ signInCss }}" style-hover="border-color:var(--border-royal);background:var(--bg-overlay)">Sign in</a>
+      <a href="#" style="display:inline-flex;align-items:center;height:44px;padding:0 16px;border-radius:var(--r-pill);background:var(--brand-600);border:1px solid var(--brand-400);font-size:13px;font-weight:600;color:var(--pearl-50);box-shadow:var(--edge-lit);white-space:nowrap">Sign up</a>
+    </div>
+  </header>
+
+  <div style="height:34px;display:flex;align-items:center;background:var(--bg-overlay);border-bottom:1px solid var(--border);overflow:hidden">
+    <span style="flex:none;display:inline-flex;align-items:center;gap:6px;padding-inline:24px;height:100%;font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--danger-fg);border-right:1px solid var(--border)"><span style="width:5px;height:5px;border-radius:var(--r-pill);background:var(--live-400)"></span>Live</span>
+    <div style="position:relative;flex:1;overflow:hidden;height:100%;-webkit-mask-image:linear-gradient(90deg,transparent 0,var(--text) 32px,var(--text) calc(100% - 48px),transparent 100%);mask-image:linear-gradient(90deg,transparent 0,var(--text) 32px,var(--text) calc(100% - 48px),transparent 100%)">
+      <div style="position:absolute;top:0;left:0;height:100%;display:flex;align-items:center;gap:32px;padding-left:32px;white-space:nowrap;font-family:var(--font-mono);font-size:11px;color:var(--text-subtle);animation:tick 42s linear infinite">
+        <sc-for list="{{ tickerItems }}" as="t" hint-placeholder-count="6"><span>{{ t }}</span></sc-for>
+        <sc-for list="{{ tickerItems }}" as="t" hint-placeholder-count="6"><span>{{ t }}</span></sc-for>
+      </div>
+    </div>
+  </div>
+
+  <section style="{{ boardTopCss }}">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:32px;flex-wrap:wrap">
+      <div style="min-width:0;flex:1 1 340px">
+        <p style="margin:0;font-family:var(--font-mono);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.18em;color:var(--text-subtle)">Markets · Dar es Salaam</p>
+        <h1 style="margin:8px 0 20px;font-family:var(--font-display);font-weight:700;font-size:32px;letter-spacing:-.012em">The board</h1>
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+          <span style="display:flex;flex-direction:column;gap:2px">
+            <span style="{{ figCss }}color:var(--yes-400)"><span style="display:inline-block;width:8px;height:8px;border-radius:var(--r-pill);background:var(--yes-400);box-shadow:var(--bar-glow-yes);margin-right:12px"></span>{{ liveCount }}</span>
+            <span style="{{ capCss }}">Markets live now</span>
+          </span>
+          <span style="width:1px;align-self:stretch;min-height:44px;background:var(--border)"></span>
+          <span style="display:flex;flex-direction:column;gap:2px">
+            <span style="{{ figCss }}color:var(--gilt)">{{ poolTotal }}</span>
+            <span style="{{ capCss }}">Staked and in play</span>
+          </span>
+          <span style="width:1px;align-self:stretch;min-height:44px;background:var(--border)"></span>
+          <span style="display:flex;flex-direction:column;gap:2px">
+            <span style="{{ figCss }}">{{ closingToday }}</span>
+            <span style="{{ capCss }}">Close today</span>
+          </span>
+        </div>
+      </div>
+
+      <div style="position:relative;flex:1 1 320px;max-width:460px;min-width:0">
+        <label style="{{ searchCss }}">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 4.5 4.5"></path></svg>
+          <input type="search" role="combobox" aria-expanded="{{ suggestOpen }}" aria-autocomplete="list" aria-label="Search markets" placeholder="Search markets — team, topic, source" value="{{ query }}" onInput="{{ onQuery }}" onFocus="{{ onSearchFocus }}" onKeyDown="{{ onSearchKeys }}" style="flex:1;min-width:0;height:44px;margin-block:-1px;background:none;border:0;outline:none;color:var(--text);font:inherit;font-size:15px">
+          <sc-if value="{{ hasQuery }}" hint-placeholder-val="{{ false }}">
+            <button type="button" aria-label="Clear search" onClick="{{ clearQuery }}" style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:var(--r-pill);color:var(--text-faint);cursor:pointer;flex:none" style-hover="background:var(--bg-overlay);color:var(--text)">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6 18 18M18 6 6 18"></path></svg>
+            </button>
+          </sc-if>
+          <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-faint);border:1px solid var(--border);border-radius:var(--r-xs);padding:2px 6px;flex:none">/</span>
+        </label>
+        <sc-if value="{{ suggestOpen }}" hint-placeholder-val="{{ false }}">
+          <div role="listbox" aria-label="Search suggestions" style="position:absolute;top:52px;left:0;right:0;padding:8px;border-radius:var(--r-md);background:var(--wash-float);box-shadow:var(--elev-float);z-index:60;max-height:340px;overflow:auto">
+            <sc-for list="{{ suggestions }}" as="s" hint-placeholder-count="5">
+              <button type="button" role="option" aria-selected="{{ s.on }}" onClick="{{ s.pick }}" onMouseEnter="{{ s.hover }}" style="{{ s.css }}">
+                <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;flex:none;color:var(--text-faint)">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ s.icon }}"></path></svg>
+                </span>
+                <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ s.label }}</span>
+                <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-faint);flex:none">{{ s.kind }}</span>
+              </button>
+            </sc-for>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+  </section>
+
+  <div style="position:sticky;top:56px;z-index:20;background:var(--panel);border-bottom:1px solid var(--border);box-shadow:var(--shadow-2)">
+    <div style="{{ barInCss }}">
+
+      <div style="{{ row1Css }}">
+        <span style="min-height:52px;display:inline-flex;align-items:center;flex:none">
+          <span role="radiogroup" aria-label="Market status" onKeyDown="{{ statusKeys }}" style="display:inline-flex;padding:3px;gap:3px;border-radius:var(--r-pill);background:var(--wash-inset);border:1px solid var(--border-control);box-shadow:var(--edge-shade)">
+            <sc-for list="{{ statuses }}" as="s" hint-placeholder-count="5">
+              <button type="button" role="radio" aria-checked="{{ s.on }}" tabindex="{{ s.tab }}" onClick="{{ s.pick }}" style="{{ s.css }}" style-hover="color:var(--text)">
+                <sc-if value="{{ s.star }}" hint-placeholder-val="{{ false }}">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="{{ s.starFill }}" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="m12 3.6 2.6 5.3 5.9.85-4.25 4.15 1 5.85L12 17l-5.25 2.75 1-5.85L3.5 9.75l5.9-.85Z"></path></svg>
+                </sc-if>
+                {{ s.label }}<span style="{{ s.countCss }}">{{ s.count }}</span>
+              </button>
+            </sc-for>
+          </span>
+        </span>
+
+        <span style="width:1px;height:28px;background:var(--border);flex:none"></span>
+
+        <span style="position:relative;display:inline-flex;align-items:center;gap:0;flex:none">
+          <button type="button" aria-haspopup="listbox" aria-expanded="{{ sortOpen }}" onClick="{{ toggleSort }}" style="{{ sortCss }}" style-hover="background:var(--gold-subtle-hover)">
+            <span style="{{ sortKeyCss }}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4.5v15M6 19.5l-3-3M6 19.5l3-3"></path><path d="M13 6h8M13 11h6M13 16h4"></path></svg>Sort
+            </span>
+            <span style="overflow:hidden;text-overflow:ellipsis;min-width:0">{{ sortLabel }}</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="opacity:.7"><path d="m5 9 7 7 7-7"></path></svg>
+          </button>
+          <button type="button" aria-label="{{ dirAria }}" onClick="{{ flipDir }}" style="{{ dirCss }}" style-hover="background:var(--gold-subtle-hover)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="{{ dirIconCss }}"><path d="M12 4.5v15M12 19.5l-4.5-4.5M12 19.5l4.5-4.5"></path></svg>
+          </button>
+          <sc-if value="{{ sortOpen }}" hint-placeholder-val="{{ false }}">
+            <div role="listbox" aria-label="Sort markets" style="position:absolute;top:52px;left:0;min-width:300px;padding:8px;border-radius:var(--r-md);background:var(--wash-float);box-shadow:var(--elev-float);z-index:60">
+              <p style="margin:0;padding:8px 12px 4px;font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--text-faint)">Order the board by</p>
+              <sc-for list="{{ sortOptions }}" as="o" hint-placeholder-count="6">
+                <button type="button" role="option" aria-selected="{{ o.on }}" onClick="{{ o.pick }}" style="{{ o.css }}" style-hover="background:var(--bg-overlay);color:var(--text)">
+                  <span>{{ o.label }}</span><span style="font-family:var(--font-mono);font-size:11px;color:var(--text-faint);white-space:nowrap">{{ o.hint }}</span>
+                </button>
+              </sc-for>
+            </div>
+          </sc-if>
+        </span>
+
+        <span style="flex:1;min-width:12px"></span>
+
+        <span role="group" aria-label="Result density" style="display:inline-flex;padding:3px;gap:3px;border-radius:var(--r-pill);background:var(--wash-inset);border:1px solid var(--border-control);box-shadow:var(--edge-shade);flex:none">
+          <sc-for list="{{ densities }}" as="d" hint-placeholder-count="2">
+            <button type="button" aria-pressed="{{ d.on }}" aria-label="{{ d.aria }}" onClick="{{ d.pick }}" style="{{ d.css }}">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="{{ d.icon }}"></path></svg>
+            </button>
+          </sc-for>
+        </span>
+
+        <span style="font-family:var(--font-mono);font-size:17px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;flex:none"><span style="color:var(--gilt)">{{ resultCount }}</span> <span style="color:var(--text-faint);font-weight:500">{{ ofLabel }}</span></span>
+      </div>
+
+      <div style="{{ row2Css }}">
+       <div style="{{ row2InnerCss }}">
+        <span style="display:flex;align-items:center;gap:8px;min-width:0;flex-wrap:wrap">
+          <span style="{{ groupLabelCss }}">Odds</span>
+          <sc-for list="{{ oddsChips }}" as="c" hint-placeholder-count="4">
+            <button type="button" aria-pressed="{{ c.on }}" onClick="{{ c.pick }}" style="{{ c.css }}" style-hover="color:var(--text)">{{ c.label }}</button>
+          </sc-for>
+        </span>
+        <span style="width:1px;height:28px;background:var(--border);flex:none"></span>
+        <span style="display:flex;align-items:center;gap:8px;min-width:0;flex-wrap:wrap">
+          <span style="{{ groupLabelCss }}">Pool</span>
+          <sc-for list="{{ poolChips }}" as="c" hint-placeholder-count="3">
+            <button type="button" aria-pressed="{{ c.on }}" onClick="{{ c.pick }}" style="{{ c.css }}" style-hover="color:var(--text)">{{ c.label }}</button>
+          </sc-for>
+        </span>
+        <span style="width:1px;height:28px;background:var(--border);flex:none"></span>
+        <span style="display:flex;align-items:center;gap:8px;min-width:0;flex-wrap:wrap">
+          <span style="{{ groupLabelCss }}">Topic</span>
+          <sc-for list="{{ topicChips }}" as="c" hint-placeholder-count="8">
+            <button type="button" aria-pressed="{{ c.on }}" onClick="{{ c.pick }}" style="{{ c.css }}" style-hover="color:var(--text)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ c.icon }}"></path></svg>
+              {{ c.label }}<span style="{{ c.countCss }}">{{ c.count }}</span>
+            </button>
+          </sc-for>
+        </span>
+        <span style="flex:1;min-width:12px"></span>
+        <button type="button" onClick="{{ clearAll }}" style="{{ clearCss }}" style-hover="background:var(--bg-overlay)">Clear all</button>
+       </div>
+      </div>
+    </div>
+  </div>
+
+  <section style="{{ resultsCss }}">
+
+    <sc-if value="{{ hasTokens }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:24px 0 20px">
+        <span style="font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--text-faint);margin-right:4px">Filtered by</span>
+        <sc-for list="{{ tokens }}" as="t" hint-placeholder-count="2">
+          <span style="display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 0 0 12px;border-radius:var(--r-pill);background:var(--pill-active);border:1px solid var(--brand-400);color:var(--text);font-size:13px;font-weight:600;white-space:nowrap">
+            <span style="font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--brand-200)">{{ t.kind }}</span>{{ t.label }}
+            <button type="button" aria-label="{{ t.aria }}" onClick="{{ t.clear }}" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:var(--r-pill);color:var(--brand-200);cursor:pointer" style-hover="background:var(--surface-pressed);color:var(--text)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6 18 18M18 6 6 18"></path></svg>
+            </button>
+          </span>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:16px;padding:96px 24px;border:1px dashed var(--border-control);border-radius:var(--r-xl);background:var(--bg-overlay);margin-top:24px">
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:68px;height:68px;border-radius:var(--r-pill);border:1px solid var(--border);background:var(--wash-inset);color:var(--text-faint)">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 4.5 4.5"></path></svg>
+        </span>
+        <h3 style="margin:0;font-family:var(--font-display);font-weight:700;font-size:24px">{{ emptyTitle }}</h3>
+        <p style="margin:0;max-width:46ch;font-size:15px;line-height:1.6;color:var(--text-muted)">{{ emptyBody }}</p>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
+          <sc-for list="{{ relaxations }}" as="r" hint-placeholder-count="2">
+            <button type="button" onClick="{{ r.act }}" style="{{ r.css }}" style-hover="filter:brightness(var(--btn-hover-gain))">{{ r.label }}<span style="font-family:var(--font-mono);font-size:13px;opacity:.8;margin-left:8px">{{ r.n }}</span></button>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isGrid }}" hint-placeholder-val="{{ true }}">
+      <div style="{{ gridCss }}">
+        <sc-for list="{{ results }}" as="m" hint-placeholder-count="9">
+          <article style="position:relative;overflow:hidden;display:flex;flex-direction:column;background:var(--wash-raised);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px;box-shadow:var(--elev-raised);text-align:left" style-hover="border-color:var(--border-royal);box-shadow:var(--elev-raised-hover)">
+            <span aria-hidden="true" style="position:absolute;right:-16px;bottom:-32px;color:var(--border-royal);opacity:.20;pointer-events:none;line-height:0">
+              <svg width="132" height="132" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"><path d="{{ m.catPath }}"></path></svg>
+            </span>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;position:relative">
+              <span style="display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:var(--r-pill);background:var(--danger-bg);border:1px solid var(--danger-border);color:var(--danger-fg);font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap"><span style="width:5px;height:5px;border-radius:var(--r-pill);background:var(--live-400)"></span>Live</span>
+              <sc-if value="{{ m.hot }}" hint-placeholder-val="{{ false }}">
+                <span style="display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:var(--r-pill);background:var(--no-900);border:1px solid var(--no-700);color:var(--no-300);font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase">Hot</span>
+              </sc-if>
+              <span style="margin-left:4px;color:var(--text-faint);display:inline-flex"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ m.catPath }}"></path></svg></span>
+              <span style="font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-faint)">{{ m.catLabel }}</span>
+              <span style="flex:1"></span>
+              <button type="button" aria-label="{{ m.watchAria }}" aria-pressed="{{ m.watched }}" onClick="{{ m.toggleWatch }}" style="{{ m.watchCss }}" style-hover="background:var(--bg-overlay);color:var(--gilt)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="{{ m.watchFill }}" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="m12 3.6 2.6 5.3 5.9.85-4.25 4.15 1 5.85L12 17l-5.25 2.75 1-5.85L3.5 9.75l5.9-.85Z"></path></svg>
+              </button>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:12px;position:relative">
+              <div style="flex:1;min-width:0">
+                <h3 style="margin:0;font-family:var(--font-display);font-weight:700;font-size:15px;line-height:1.32;min-height:2.64em;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">{{ m.q }}</h3>
+              </div>
+              <div style="text-align:right;flex:none;padding-top:1px">
+                <div style="font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.16em;color:var(--yes-300)">YES</div>
+                <div style="font-family:var(--font-display);font-weight:800;font-size:34px;line-height:1;color:var(--yes-400);letter-spacing:-.02em">{{ m.pct }}<span style="font-size:15px;font-weight:700;margin-left:1px">%</span></div>
+              </div>
+            </div>
+            <div style="min-height:15px;display:flex;justify-content:flex-end;align-items:center;margin-top:8px">
+              <span style="{{ m.moveCss }}">{{ m.moveText }}</span>
+            </div>
+            <div style="position:relative;height:7px;border-radius:var(--r-pill);background:var(--bar-fill-no);border:1px solid var(--bar-track-border);margin-top:8px">
+              <span style="{{ m.fillCss }}"></span>
+              <span style="{{ m.needleCss }}"></span>
+            </div>
+            <svg viewBox="0 0 300 28" preserveAspectRatio="none" aria-hidden="true" style="display:block;width:100%;height:28px;margin-top:8px">
+              <path d="{{ m.sparkPath }}" fill="none" stroke="var(--aqua-400)" stroke-width="1.5" stroke-linecap="round" vector-effect="non-scaling-stroke"></path>
+            </svg>
+            <div style="display:flex;align-items:center;min-height:24px;margin-top:8px">
+              <span style="display:flex">
+                <sc-for list="{{ m.avatars }}" as="a" hint-placeholder-count="3">
+                  <span style="{{ a.css }}">{{ a.t }}</span>
+                </sc-for>
+              </span>
+              <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-subtle);margin-left:12px"><b style="color:var(--text-muted)">{{ m.predictors }}</b> {{ m.predictorWord }}</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
+              <button type="button" style="display:inline-flex;align-items:center;justify-content:center;height:38px;border-radius:var(--r-md);background:var(--yes-600);border:1px solid var(--yes-500);color:var(--pearl-50);font-size:17px;font-weight:700;cursor:pointer;box-shadow:var(--edge-lit)" style-hover="filter:brightness(var(--btn-hover-gain))">YES<span style="font-family:var(--font-mono);font-size:11.5px;font-weight:500;opacity:.85;margin-left:5px">@ {{ m.pct }}%</span></button>
+              <button type="button" style="display:inline-flex;align-items:center;justify-content:center;height:38px;border-radius:var(--r-md);background:var(--no-600);border:1px solid var(--no-500);color:var(--pearl-50);font-size:17px;font-weight:700;cursor:pointer;box-shadow:var(--edge-lit)" style-hover="filter:brightness(var(--btn-hover-gain))">NO<span style="font-family:var(--font-mono);font-size:11.5px;font-weight:500;opacity:.85;margin-left:5px">@ {{ m.noPct }}%</span></button>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:16px;font-family:var(--font-mono);font-size:11px;color:var(--text-faint);position:relative;min-height:34px;white-space:nowrap">
+              <span>{{ m.poolText }}</span>
+              <span style="margin-left:auto;display:flex;align-items:center;gap:8px">
+                <span aria-live="off" style="color:var(--yes-300)">{{ m.timeText }}</span>
+                <button type="button" aria-label="How it works" style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:var(--r-md);background:var(--bg-overlay);border:1px solid var(--border);color:var(--text-muted);cursor:pointer">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5.5M12 7.6v.9"></path></svg>
+                </button>
+              </span>
+            </div>
+          </article>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isList }}" hint-placeholder-val="{{ false }}">
+      <div role="table" aria-label="Markets" style="border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;background:var(--wash-raised);box-shadow:var(--elev-raised)">
+        <div role="row" style="{{ listHeadCss }}">
+          <span role="columnheader" style="width:44px;flex:none"></span>
+          <span role="columnheader" style="flex:1;min-width:0">Market</span>
+          <span role="columnheader" style="{{ colTrendCss }}">Trend</span>
+          <span role="columnheader" style="width:56px;flex:none;text-align:right">YES</span>
+          <span role="columnheader" style="{{ colPoolCss }}">Pool</span>
+          <span role="columnheader" style="{{ colTimeCss }}">Closes</span>
+          <span role="columnheader" style="{{ colActCss }}">Take a side</span>
+        </div>
+        <sc-for list="{{ results }}" as="m" hint-placeholder-count="12">
+          <div role="row" style="{{ m.rowCss }}" style-hover="background:var(--bg-overlay)">
+            <button type="button" aria-label="{{ m.watchAria }}" aria-pressed="{{ m.watched }}" onClick="{{ m.toggleWatch }}" style="{{ m.watchCss }}" style-hover="background:var(--bg-overlay);color:var(--gilt)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="{{ m.watchFill }}" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="m12 3.6 2.6 5.3 5.9.85-4.25 4.15 1 5.85L12 17l-5.25 2.75 1-5.85L3.5 9.75l5.9-.85Z"></path></svg>
+            </button>
+            <span role="cell" style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px">
+              <span style="display:flex;align-items:center;gap:8px;min-width:0">
+                <span style="color:var(--text-faint);display:inline-flex;flex:none"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ m.catPath }}"></path></svg></span>
+                <span style="font-family:var(--font-display);font-weight:600;font-size:15px;line-height:1.35;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ m.q }}</span>
+                <sc-if value="{{ m.hot }}" hint-placeholder-val="{{ false }}">
+                  <span style="display:inline-flex;align-items:center;height:20px;padding:0 7px;border-radius:var(--r-pill);background:var(--no-900);border:1px solid var(--no-700);color:var(--no-300);font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;flex:none">Hot</span>
+                </sc-if>
+              </span>
+              <span style="display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:11px;color:var(--text-faint)">
+                <span style="position:relative;width:72px;height:5px;border-radius:var(--r-pill);background:var(--bar-fill-no);border:1px solid var(--bar-track-border);flex:none">
+                  <span style="{{ m.miniFillCss }}"></span><span style="{{ m.miniNeedleCss }}"></span>
+                </span>
+                <span>{{ m.predictors }} {{ m.predictorWord }}</span>
+                <span style="{{ m.listPoolCss }}">· {{ m.poolText }}</span>
+                <span style="{{ m.listTimeCss }}">· <span aria-live="off">{{ m.timeText }}</span></span>
+              </span>
+            </span>
+            <span role="cell" style="{{ colTrendCss }}">
+              <svg viewBox="0 0 300 28" preserveAspectRatio="none" aria-hidden="true" style="display:block;width:100%;height:26px">
+                <path d="{{ m.sparkPath }}" fill="none" stroke="var(--aqua-400)" stroke-width="1.5" stroke-linecap="round" vector-effect="non-scaling-stroke"></path>
+              </svg>
+            </span>
+            <span role="cell" style="width:56px;flex:none;text-align:right">
+              <span style="display:block;font-family:var(--font-mono);font-weight:700;font-size:19px;line-height:1;color:var(--yes-400);font-variant-numeric:tabular-nums">{{ m.pct }}<span style="font-size:11px">%</span></span>
+              <span style="{{ m.moveCss }}display:block;margin-top:3px">{{ m.moveText }}</span>
+            </span>
+            <span role="cell" style="{{ colPoolCss }}">{{ m.poolText }}</span>
+            <span role="cell" style="{{ colTimeCss }}"><span aria-live="off">{{ m.timeText }}</span></span>
+            <span role="cell" style="{{ colActCss }}">
+              <button type="button" style="display:inline-flex;align-items:center;justify-content:center;min-width:64px;height:38px;border-radius:var(--r-md);background:var(--yes-600);border:1px solid var(--yes-500);color:var(--pearl-50);font-size:15px;font-weight:700;cursor:pointer;box-shadow:var(--edge-lit)" style-hover="filter:brightness(var(--btn-hover-gain))">YES <span style="font-family:var(--font-mono);font-size:11px;font-weight:500;opacity:.85;margin-left:4px">{{ m.pct }}</span></button>
+              <button type="button" style="display:inline-flex;align-items:center;justify-content:center;min-width:64px;height:38px;border-radius:var(--r-md);background:var(--no-600);border:1px solid var(--no-500);color:var(--pearl-50);font-size:15px;font-weight:700;cursor:pointer;box-shadow:var(--edge-lit)" style-hover="filter:brightness(var(--btn-hover-gain))">NO <span style="font-family:var(--font-mono);font-size:11px;font-weight:500;opacity:.85;margin-left:4px">{{ m.noPct }}</span></button>
+            </span>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ hasMore }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:12px;padding-top:32px">
+        <p aria-live="polite" style="margin:0;font-family:var(--font-mono);font-size:13px;color:var(--text-faint);font-variant-numeric:tabular-nums">{{ pagerLine }}</p>
+        <button type="button" onClick="{{ loadMore }}" style="display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 24px;border-radius:var(--r-md);border:1px solid var(--border-control);background:transparent;color:var(--text);font-size:17px;font-weight:600;cursor:pointer" style-hover="background:var(--bg-overlay);border-color:var(--border-royal)">
+          {{ moreLabel }}
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 9 7 7 7-7"></path></svg>
+        </button>
+      </div>
+    </sc-if>
+    <sc-if value="{{ allShown }}" hint-placeholder-val="{{ false }}">
+      <p aria-live="polite" style="margin:32px 0 0;text-align:center;font-family:var(--font-mono);font-size:13px;color:var(--text-faint)">{{ pagerLine }} — that is the whole board</p>
+    </sc-if>
+  </section>
+
+  <sc-if value="{{ arrived }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;left:0;right:0;bottom:24px;z-index:70;display:flex;justify-content:center;pointer-events:none">
+      <span style="display:inline-flex;align-items:center;gap:10px;padding:0 8px 0 16px;min-height:44px;border-radius:var(--r-pill);background:var(--wash-float);box-shadow:var(--elev-float);pointer-events:auto">
+        <span style="width:8px;height:8px;border-radius:var(--r-pill);background:var(--yes-400);box-shadow:var(--bar-glow-yes);flex:none"></span>
+        <button type="button" onClick="{{ showArrival }}" style="font-size:13px;font-weight:600;color:var(--text);cursor:pointer;white-space:nowrap;min-height:44px;display:inline-flex;align-items:center">1 new market opened — show it</button>
+        <button type="button" aria-label="Dismiss" onClick="{{ dismissArrival }}" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:var(--r-pill);color:var(--text-faint);cursor:pointer" style-hover="background:var(--bg-overlay);color:var(--text)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6 18 18M18 6 6 18"></path></svg>
+        </button>
+      </span>
+    </div>
+  </sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:1100},&quot;defaultSort&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;closing&quot;,&quot;pool&quot;,&quot;people&quot;,&quot;close&quot;,&quot;move&quot;,&quot;new&quot;],&quot;default&quot;:&quot;closing&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Discovery model&quot;},&quot;openOnly&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Discovery model&quot;},&quot;showTokens&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Discovery model&quot;},&quot;giltSort&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Discovery model&quot;}}">
+const CAT = {
+  sports: {label:'Sports', path:'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18M12 7.2 15.6 9.8 14.2 14h-4.4L8.4 9.8Z'},
+  macro:  {label:'Macro',  path:'M3 17 9.5 10.5l4 4L21 7M15 7h6v6'},
+  weather:{label:'Weather',path:'M7 16a4.2 4.2 0 0 1 .5-8.37A5.5 5.5 0 0 1 18 8.5a3.75 3.75 0 0 1 .3 7.5ZM9 19.5 8 21.5M13 19.5 12 21.5M17 19.5 16 21.5'},
+  crypto: {label:'Crypto', path:'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18M9.5 8h4a2.25 2.25 0 0 1 0 4.5h-4Zm0 4.5h4.4a2.25 2.25 0 0 1 0 4.5H9.5Zm0-4.5v9'},
+  culture:{label:'Culture',path:'M4 20V9.5l8-5.5 8 5.5V20M9.5 20v-5.5h5V20M2.5 20h19'},
+  tech:   {label:'Tech',   path:'M7 7h10v10H7zM10.5 4v3M13.5 4v3M10.5 17v3M13.5 17v3M4 10.5h3M4 13.5h3M17 10.5h3M17 13.5h3'},
+  other:  {label:'Other',  path:'M12 3.5v17M7 20.5h10M6 7.5h12m-12 0-3 6a3.2 3.2 0 0 0 6 0Zm12 0-3 6a3.2 3.2 0 0 0 6 0Z'},
+};
+const ALL_ICON = 'M3.5 3.5h7v7h-7zM13.5 3.5h7v7h-7zM3.5 13.5h7v7h-7zM13.5 13.5h7v7h-7z';
+const SEARCH_ICON = 'M11 4.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13m5 11.5 4.5 4.5';
+
+const MARKETS = [
+  {id:'derby', q:'Will Yanga SC beat Simba SC in the Kariakoo derby on 22 August?', cat:'sports', src:'NBC Premier League', pct:52, pool:118900, predictors:31, hours:5, added:2, avatars:['JM','K','SW'], move:3},
+  {id:'dsmrain', q:'Will Dar es Salaam record rainfall above 5mm on 13 August, per TMA?', cat:'weather', src:'Tanzania Meteorological Authority', pct:44, pool:22400, predictors:8, hours:19, added:6, avatars:['AF','RE'], move:-6},
+  {id:'arsenal', q:'Will Arsenal keep a clean sheet vs Coventry City in the 2026/27 opener?', cat:'sports', src:'Premier League', pct:21, pool:63300, predictors:3, hours:22, added:9, avatars:['A','G','FE']},
+  {id:'tzs', q:'Will USD/TZS close below 2,650 on the Bank of Tanzania mid-rate before 30 September?', cat:'macro', src:'Bank of Tanzania', pct:41, pool:54200, predictors:11, hours:52, added:14, avatars:['CD','RE','7C'], move:-3},
+  {id:'gold', q:'Will the spot price of gold (XAU/USD) close above $4,300/oz before 31 August?', cat:'macro', src:'TwelveData', pct:68, pool:172505, predictors:6, hours:56, added:11, avatars:['A','A','FE'], move:2},
+  {id:'simba', q:'Will Simba SC win the NBC Premier League 2026-27?', cat:'sports', src:'NBC Premier League', pct:63, pool:96400, predictors:24, hours:96, added:20, avatars:['JM','LK','TZ'], move:4},
+  {id:'eth', q:'Will Ethereum (ETH) close above $2,200 on or before 19 August 2026?', cat:'crypto', src:'CoinGecko', pct:92, pool:51200, predictors:4, hours:104, added:8, avatars:['AF']},
+  {id:'btc', q:'Will Bitcoin (BTC) close above $70,000 on CoinGecko on or before 19 August?', cat:'crypto', src:'CoinGecko', pct:37, pool:41800, predictors:14, hours:144, added:5, avatars:['CD','15'], move:-2},
+  {id:'mpesa', q:'Will Vodacom M-Pesa or Mixx by Yas announce a new agent tariff before Q4?', cat:'other', src:'TCRA', pct:88, pool:247600, predictors:12, hours:168, added:3, avatars:['CI','15'], move:1},
+  {id:'nane', q:'Will Nane Nane 2027 be announced for Mbeya before the end of Q3?', cat:'other', src:'Ministry of Agriculture', pct:55, pool:18300, predictors:5, hours:192, added:1, avatars:['DA','7C']},
+  {id:'arusha', q:'Will Arusha\u2019s maximum temperature reach 28°C or above on 21 August?', cat:'weather', src:'Tanzania Meteorological Authority', pct:29, pool:12700, predictors:7, hours:216, added:4, avatars:['FI','7I','AF'], move:-5},
+  {id:'bagamoyo', q:'Will Bagamoyo be added to the UNESCO World Heritage list in 2026?', cat:'culture', src:'UNESCO', pct:12, pool:9400, predictors:6, hours:240, added:16, avatars:['MK','TZ']},
+  {id:'sgr', q:'Will the SGR Dodoma–Singida line open to passenger service during 2026?', cat:'tech', src:'TRC', pct:74, pool:31900, predictors:9, hours:288, added:7, avatars:['AM','LK','TZ'], move:6},
+  {id:'coventry', q:'Will Coventry City fail to score against Arsenal in the Premier League opener?', cat:'sports', src:'Premier League', pct:13, pool:4000, predictors:2, hours:264, added:13, avatars:['FI','AF']},
+  {id:'infl', q:'Will Tanzania\u2019s headline inflation print below 3.2% for August?', cat:'macro', src:'National Bureau of Statistics', pct:58, pool:27500, predictors:10, hours:312, added:10, avatars:['RE','CD']},
+  {id:'bongo', q:'Will Bongo Flava take three of the top five Spotify Tanzania slots on 1 September?', cat:'culture', src:'Spotify Charts', pct:47, pool:16200, predictors:13, hours:336, added:12, avatars:['MK','JM','SW'], move:-1},
+  {id:'5g', q:'Will Vodacom Tanzania announce 5G in Mwanza before the end of 2026?', cat:'tech', src:'TCRA', pct:66, pool:38700, predictors:8, hours:400, added:15, avatars:['AM','CI']},
+  {id:'rains', q:'Will the long rains be declared above average by TMA for the 2027 season?', cat:'weather', src:'Tanzania Meteorological Authority', pct:35, pool:74800, predictors:19, hours:520, added:18, avatars:['AF','FI','RE'], move:2},
+];
+
+// a deterministic 14-point price history per market, ending at its current pct
+MARKETS.forEach(m => {
+  const pts = [], n = 14, drift = (m.move || 0);
+  let seed = 0; for (let i = 0; i < m.id.length; i++) seed = (seed * 31 + m.id.charCodeAt(i)) % 9973;
+  for (let i = 0; i < n; i++) {
+    seed = (seed * 1103515245 + 12345) % 2147483648;
+    const wob = ((seed / 2147483648) - 0.5) * 11;
+    const t = i / (n - 1);
+    pts.push(Math.max(2, Math.min(98, m.pct - drift * (1 - t) * 2.2 + wob * (1 - t * 0.55))));
+  }
+  pts[n - 1] = m.pct;
+  m.series = pts;
+});
+function sparkPath(series){
+  const n = series.length, lo = Math.min.apply(null, series), hi = Math.max.apply(null, series);
+  const span = Math.max(6, hi - lo);
+  return series.map((v, i) => {
+    const x = (i / (n - 1)) * 300;
+    const y = 25 - ((v - lo) / span) * 22;
+    return (i ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1);
+  }).join(' ');
+}
+
+const SORTS = [
+  {id:'closing', label:'Closing soonest', hint:'5h \u2192 22d', key:m=>m.hours,               asc:true},
+  {id:'pool',    label:'Biggest pool',    hint:'TZS 248k \u2192 4k', key:m=>m.pool,           asc:false},
+  {id:'people',  label:'Most predictors', hint:'31 \u2192 2', key:m=>m.predictors,            asc:false},
+  {id:'close',   label:'Closest call',    hint:'nearest 50%', key:m=>Math.abs(50-m.pct),      asc:true},
+  {id:'move',    label:'Biggest move',    hint:'24h swing', key:m=>Math.abs(m.move||0),       asc:false},
+  {id:'new',     label:'Newest first',    hint:'added today', key:m=>m.added,                 asc:true},
+];
+const ODDS = [
+  {id:'any',  label:'Any', test:()=>true},
+  {id:'call', label:'Close call · 40–60%', test:m=>m.pct>=40&&m.pct<=60},
+  {id:'cont', label:'Contested · 25–75%', test:m=>m.pct>=25&&m.pct<=75},
+  {id:'long', label:'Longshots · under 15%', test:m=>m.pct<15},
+];
+const POOLS = [
+  {id:'any', label:'Any', test:()=>true},
+  {id:'10k', label:'TZS 10k+', test:m=>m.pool>=10000},
+  {id:'50k', label:'TZS 50k+', test:m=>m.pool>=50000},
+];
+const STATUSES = [
+  {id:'open',  label:'Open',          test:()=>true},
+  {id:'today', label:'Closing today', test:m=>m.hours<=24},
+  {id:'new',   label:'New',           test:m=>m.added<=4},
+  {id:'watch', label:'Watching',      star:true},
+  {id:'all',   label:'All',           test:()=>true},
+];
+const TOPIC_IDS = ['sports','macro','weather','crypto','culture','tech','other'];
+
+const CHIP = 'display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:0 16px;border-radius:var(--r-pill);font-size:13px;font-weight:600;white-space:nowrap;cursor:pointer;transition:background 140ms ease-out,border-color 140ms ease-out,color 140ms ease-out,box-shadow 140ms ease-out;';
+const CHIP_OFF = CHIP + 'border:1px solid var(--border-control);background:transparent;color:var(--text-muted);';
+const CHIP_ON  = CHIP + 'border:1px solid var(--brand-400);background:var(--pill-active);color:var(--text);box-shadow:var(--glow-selected);';
+const SEG = 'min-height:44px;padding:0 16px;border-radius:var(--r-pill);font-size:13px;font-weight:600;white-space:nowrap;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:background 140ms ease-out,color 140ms ease-out;';
+const SEG_OFF  = SEG + 'color:var(--text-subtle);background:transparent;';
+const SEG_ON   = SEG + 'color:var(--text);background:var(--pill-active);box-shadow:var(--edge-lit);';
+const MENU_OFF = 'display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:44px;padding:0 12px;border-radius:var(--r-sm);font-size:13px;color:var(--text-muted);text-align:left;cursor:pointer;';
+const MENU_ON  = MENU_OFF.replace('color:var(--text-muted)', 'color:var(--text);background:var(--pill-active)');
+const BTN_P = 'display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 20px;border-radius:var(--r-md);background:var(--brand-600);border:1px solid var(--brand-400);color:var(--pearl-50);font-size:17px;font-weight:600;cursor:pointer;box-shadow:var(--edge-lit);';
+const BTN_G = 'display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 20px;border-radius:var(--r-md);background:transparent;border:1px solid var(--border-control);color:var(--text);font-size:17px;font-weight:600;cursor:pointer;';
+const DENS_OFF = 'display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:var(--r-pill);color:var(--text-subtle);cursor:pointer;transition:background 140ms ease-out,color 140ms ease-out;';
+const DENS_ON  = DENS_OFF + 'color:var(--text);background:var(--pill-active);box-shadow:var(--edge-lit);';
+const GRID_ICON = 'M4 4.5h7v7H4zM13 4.5h7v7h-7zM4 13.5h7v7H4zM13 13.5h7v7h-7z';
+const LIST_ICON = 'M3.5 6h17M3.5 12h17M3.5 18h17';
+
+const TICKER = [
+  'TZS 45K predicted YES on Simba SC wins NBC Premier League 2026-27',
+  'TZS 180K won on YES on Long rains begin before 15 Apr',
+  'TZS 12K predicted NO on USD/TZS closes under 2,650 in Q2',
+  'TZS 8K predicted YES on Arusha maximum temperature reaches 28°C',
+  'TZS 63K predicted NO on Arsenal keep a clean sheet vs Coventry City',
+  'TZS 21K predicted YES on SGR Dodoma–Singida opens to passengers in 2026',
+];
+
+const RM = typeof window !== 'undefined' && window.matchMedia
+  ? window.matchMedia('(prefers-reduced-motion: reduce)').matches : false;
+const STORE = '50pick.discovery.v1';
+const PAGE = 12;
+function pad(n){ return (n < 10 ? '0' : '') + n; }
+
+class Component extends DCLogic {
+  constructor(props){
+    super(props);
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem(STORE) || '{}') || {}; } catch (e) { saved = {}; }
+    this.state = {
+      status: props.openOnly === false ? 'all' : 'open',
+      sort: saved.sort || null,
+      sortDir: saved.sortDir || null,
+      odds: 'any', pool: 'any',
+      topics: [],
+      query: '', sortOpen: false, suggestOpen: false, sugIndex: -1,
+      density: saved.density || 'grid',
+      watch: Array.isArray(saved.watch) ? saved.watch : [],
+      now: Date.now(), dim: false, condensed: false, arrived: 0, shown: PAGE,
+      poolShown: RM ? MARKETS.reduce((a,m)=>a+m.pool,0) : 0,
+      w: typeof window !== 'undefined' ? window.innerWidth : 1440,
+    };
+    this.t0 = Date.now();
+    MARKETS.forEach(m => { if (!m.deadline) m.deadline = this.t0 + m.hours * 3600000; });
+  }
+
+  persist(patch){
+    this.setState(patch);
+    try {
+      const s = Object.assign({}, JSON.parse(localStorage.getItem(STORE) || '{}'), patch);
+      localStorage.setItem(STORE, JSON.stringify({
+        sort: s.sort, sortDir: s.sortDir, density: s.density, watch: s.watch,
+      }));
+    } catch (e) {}
+  }
+
+  componentDidMount(){
+    const rate = () => MARKETS.some(m => m.deadline - Date.now() < 3600000) ? 1000 : 15000;
+    const schedule = () => {
+      clearInterval(this.tick);
+      this.rate = rate();
+      this.tick = setInterval(() => {
+        this.setState({ now: Date.now() });
+        if (rate() !== this.rate) schedule();
+      }, this.rate);
+    };
+    schedule();
+    this.arriveT = setTimeout(() => this.setState({ arrived: 1 }), 14000);
+    this.onScroll = () => {
+      const c = window.scrollY > 300;
+      if (c !== this.state.condensed) this.setState({ condensed: c });
+    };
+    window.addEventListener('scroll', this.onScroll, { passive: true });
+    this.onResize = () => { if (Math.abs(window.innerWidth - this.state.w) > 4) this.setState({ w: window.innerWidth }); };
+    window.addEventListener('resize', this.onResize);
+    this.onKey = e => {
+      if (e.key === '/' && !/^(INPUT|TEXTAREA)$/.test((e.target.tagName || ''))) {
+        e.preventDefault();
+        const el = document.querySelector('input[type=search]');
+        if (el) el.focus();
+      }
+      if (e.key === 'Escape') this.setState({ sortOpen: false, suggestOpen: false });
+    };
+    window.addEventListener('keydown', this.onKey);
+    if (!RM) {
+      const total = MARKETS.reduce((a,m)=>a+m.pool,0);
+      let i = 0; const steps = 15;
+      this.countT = setInterval(() => {
+        i++;
+        const e = 1 - Math.pow(1 - i / steps, 3);
+        this.setState({ poolShown: Math.round(total * e) });
+        if (i >= steps) clearInterval(this.countT);
+      }, 60);
+    }
+  }
+  componentWillUnmount(){
+    clearInterval(this.tick); clearInterval(this.countT);
+    clearTimeout(this.dimT); clearTimeout(this.arriveT);
+    window.removeEventListener('scroll', this.onScroll);
+    window.removeEventListener('resize', this.onResize);
+    window.removeEventListener('keydown', this.onKey);
+  }
+
+  sortId(){ return this.state.sort || this.props.defaultSort || 'closing'; }
+  sortAsc(){
+    const d = SORTS.find(s => s.id === this.sortId()) || SORTS[0];
+    return this.state.sortDir === null || this.state.sortDir === undefined ? d.asc : this.state.sortDir === 'asc';
+  }
+  redeal(patch){
+    // any change to what is being shown resets paging — page 3 of the old query is
+    // meaningless against the new one
+    this.setState(Object.assign({ sortOpen: false, dim: !RM, shown: PAGE }, patch));
+    if (!RM) { clearTimeout(this.dimT); this.dimT = setTimeout(() => this.setState({ dim: false }), 30); }
+  }
+  set(k, v){ return () => this.redeal({ [k]: v }); }
+
+  matches(m, over){
+    const s = Object.assign({}, this.state, over || {});
+    if (s.status === 'watch') { if (s.watch.indexOf(m.id) === -1) return false; }
+    else { const st = STATUSES.find(x => x.id === s.status) || STATUSES[4]; if (st.test && !st.test(m)) return false; }
+    if (!(ODDS.find(x => x.id === s.odds) || ODDS[0]).test(m)) return false;
+    if (!(POOLS.find(x => x.id === s.pool) || POOLS[0]).test(m)) return false;
+    if (s.topics.length && s.topics.indexOf(m.cat) === -1) return false;
+    const q = (s.query || '').trim().toLowerCase();
+    if (q && m.q.toLowerCase().indexOf(q) === -1 && CAT[m.cat].label.toLowerCase().indexOf(q) === -1
+        && m.src.toLowerCase().indexOf(q) === -1) return false;
+    return true;
+  }
+  countWith(over){ return MARKETS.filter(m => this.matches(m, over)).length; }
+  countdown(m){
+    const ms = m.deadline - this.state.now;
+    if (ms <= 0) return 'closed';
+    const s = Math.floor(ms / 1000), d = Math.floor(s / 86400), h = Math.floor(s / 3600) % 24,
+          mi = Math.floor(s / 60) % 60, se = s % 60;
+    if (s < 3600) return mi + 'm ' + pad(se) + 's';
+    if (s < 86400) return h + 'h ' + pad(mi) + 'm';
+    return d + 'd';
+  }
+  fmt(n){ return 'TZS ' + n.toLocaleString('en-US'); }
+
+  buildSuggestions(){
+    const q = this.state.query.trim().toLowerCase();
+    const out = [];
+    if (q) {
+      TOPIC_IDS.forEach(id => {
+        if (CAT[id].label.toLowerCase().indexOf(q) === 0) out.push({ kind:'Topic', label:CAT[id].label, icon:CAT[id].path, apply:() => this.redeal({ topics:[id], query:'', suggestOpen:false }) });
+      });
+      const srcs = {};
+      MARKETS.forEach(m => { if (m.src.toLowerCase().indexOf(q) !== -1) srcs[m.src] = true; });
+      Object.keys(srcs).slice(0,2).forEach(s => out.push({ kind:'Source', label:s, icon:'M12 3.2 4.5 6.2v5.1c0 4.4 3.1 8.2 7.5 9.5 4.4-1.3 7.5-5.1 7.5-9.5V6.2Z', apply:() => this.redeal({ query:s, suggestOpen:false }) }));
+      MARKETS.filter(m => m.q.toLowerCase().indexOf(q) !== -1).slice(0,6)
+        .forEach(m => out.push({ kind:'Market', label:m.q, icon:CAT[m.cat].path, apply:() => this.redeal({ query:m.q, suggestOpen:false }) }));
+    } else {
+      [['derby','Kariakoo derby'],['gold','Gold above $4,300'],['tzs','USD/TZS mid-rate']].forEach(p => {
+        const m = MARKETS.find(x => x.id === p[0]);
+        out.push({ kind:'Popular', label:p[1], icon:CAT[m.cat].path, apply:() => this.redeal({ query:m.q, suggestOpen:false }) });
+      });
+      TOPIC_IDS.slice(0,3).forEach(id => out.push({ kind:'Topic', label:CAT[id].label, icon:CAT[id].path, apply:() => this.redeal({ topics:[id], query:'', suggestOpen:false }) }));
+    }
+    return out.slice(0, 8);
+  }
+
+  renderVals(){
+    const st = this.state;
+    const narrow = st.w < 1024, tiny = st.w < 720;
+    // page size fills whole rows: 12 at 2–3 columns, 6 at one. Never an orphan row.
+    const page = tiny ? 6 : PAGE;
+    const sortDef = SORTS.find(s => s.id === this.sortId()) || SORTS[0];
+    const asc = this.sortAsc();
+    const results = MARKETS.filter(m => this.matches(m)).sort((a, b) => {
+      const d = sortDef.key(a) - sortDef.key(b);
+      return asc ? d : -d;
+    });
+    const isList = st.density === 'list';
+
+    const tokens = [];
+    if (st.status !== 'all') tokens.push({ kind:'Status', label:(STATUSES.find(s=>s.id===st.status)||{}).label, aria:'Remove status filter', clear:this.set('status','all') });
+    if (st.odds !== 'any') tokens.push({ kind:'Odds', label:(ODDS.find(o=>o.id===st.odds)||{}).label.split(' · ')[1], aria:'Remove odds filter', clear:this.set('odds','any') });
+    if (st.pool !== 'any') tokens.push({ kind:'Pool', label:(POOLS.find(p=>p.id===st.pool)||{}).label, aria:'Remove pool filter', clear:this.set('pool','any') });
+    st.topics.forEach(id => tokens.push({ kind:'Topic', label:CAT[id].label, aria:'Remove topic filter: ' + CAT[id].label,
+      clear: () => this.redeal({ topics: st.topics.filter(x => x !== id) }) }));
+    if (st.query.trim()) tokens.push({ kind:'Search', label:'\u201C' + st.query.trim().slice(0,28) + '\u201D', aria:'Clear search', clear:this.set('query','') });
+
+    const relax = [];
+    if (st.pool !== 'any') relax.push({ label:'Drop the pool filter', n:this.countWith({pool:'any'}), act:this.set('pool','any') });
+    if (st.odds !== 'any') relax.push({ label:'Drop the odds filter', n:this.countWith({odds:'any'}), act:this.set('odds','any') });
+    if (st.topics.length) relax.push({ label:'All topics', n:this.countWith({topics:[]}), act:this.set('topics',[]) });
+    if (st.query.trim()) relax.push({ label:'Clear the search', n:this.countWith({query:''}), act:this.set('query','') });
+    if (st.status !== 'all') relax.push({ label:'Include everything', n:this.countWith({status:'all'}), act:this.set('status','all') });
+    const usable = relax.filter(r => r.n > 0);
+
+    const sugs = st.suggestOpen ? this.buildSuggestions() : [];
+    const statusIdx = STATUSES.findIndex(s => s.id === st.status);
+
+    const row = m => {
+      const watched = st.watch.indexOf(m.id) !== -1;
+      return {
+        id: m.id, q: m.q, pct: m.pct, noPct: 100 - m.pct,
+        catPath: CAT[m.cat].path, catLabel: CAT[m.cat].label,
+        hot: m.pool >= 60000 || m.predictors >= 20,
+        predictors: m.predictors,
+        predictorWord: m.predictors === 1 ? 'predictor' : 'predictors',
+        poolText: this.fmt(m.pool),
+        timeText: this.countdown(m) + (isList ? '' : ' left'),
+        sparkPath: sparkPath(m.series),
+        watched, watchFill: watched ? 'var(--gilt)' : 'none',
+        watchAria: (watched ? 'Stop watching: ' : 'Watch: ') + m.q,
+        watchCss: 'display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;flex:none;border-radius:var(--r-pill);cursor:pointer;transition:color 140ms ease-out,background 140ms ease-out;color:'
+          + (watched ? 'var(--gilt)' : 'var(--text-faint)'),
+        toggleWatch: () => this.persist({ watch: watched ? st.watch.filter(x => x !== m.id) : st.watch.concat(m.id) }),
+        moveText: m.move === undefined ? '' : (m.move > 0 ? '\u2197 +' : '\u2198 ') + m.move + 'pt',
+        moveCss: 'font-family:var(--font-mono);font-size:11px;font-weight:700;color:'
+          + (m.move === undefined ? 'transparent' : (m.move > 0 ? 'var(--yes-400)' : 'var(--no-400)')) + ';',
+        fillCss: 'position:absolute;inset:0 auto 0 0;border-radius:var(--r-pill);background:var(--bar-fill-yes);box-shadow:var(--bar-glow-yes);width:' + m.pct + '%',
+        needleCss: 'position:absolute;top:50%;width:4px;height:19px;border-radius:var(--r-pill);background:var(--bar-needle);box-shadow:0 0 8px var(--bar-needle-glow);transform:translate(-50%,-50%) rotate(14deg);left:' + m.pct + '%',
+        miniFillCss: 'position:absolute;inset:0 auto 0 0;border-radius:var(--r-pill);background:var(--bar-fill-yes);width:' + m.pct + '%',
+        miniNeedleCss: 'position:absolute;top:50%;width:3px;height:11px;border-radius:var(--r-pill);background:var(--bar-needle);transform:translate(-50%,-50%) rotate(14deg);left:' + m.pct + '%',
+        listPoolCss: tiny ? 'display:inline' : 'display:none',
+        listTimeCss: tiny ? 'display:inline' : 'display:none',
+        rowCss: 'display:flex;align-items:center;gap:' + (tiny ? '8px' : '16px') + ';padding:10px ' + (tiny ? '10px' : '16px') + ';border-bottom:1px solid var(--border);transition:background 140ms ease-out;',
+        avatars: (m.avatars||[]).map((t,i) => ({
+          t, css: 'width:21px;height:21px;border-radius:var(--r-pill);display:inline-flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--text);border:1.5px solid var(--bg-elevated);margin-right:-6px;background:var('
+            + (i % 3 === 0 ? '--brand-soft' : i % 3 === 1 ? '--claret-800' : '--aqua-800') + ')',
+        })),
+      };
+    };
+
+    return {
+      tickerItems: TICKER,
+      liveCount: MARKETS.length,
+      poolTotal: 'TZS ' + st.poolShown.toLocaleString('en-US'),
+      closingToday: MARKETS.filter(m => m.hours <= 24).length,
+      resultCount: results.length,
+      ofLabel: narrow ? '/ ' + MARKETS.length : 'of ' + MARKETS.length + ' markets',
+
+      headInCss: 'max-width:1280px;margin:0 auto;height:100%;display:flex;align-items:center;gap:12px;padding-inline:' + (tiny ? '16px' : '24px'),
+      navCss: 'display:' + (narrow ? 'none' : 'flex') + ';align-items:center;gap:2px;margin-left:16px',
+      signInCss: 'display:' + (tiny ? 'none' : 'inline-flex') + ';align-items:center;height:44px;padding:0 16px;border-radius:var(--r-pill);border:1px solid var(--border-control);font-size:13px;font-weight:600;color:var(--text);white-space:nowrap',
+      boardTopCss: 'max-width:1280px;margin:0 auto;padding:' + (tiny ? '24px 16px 20px' : '32px 24px 24px'),
+      barInCss: 'max-width:1280px;margin:0 auto;padding:8px ' + (tiny ? '16px' : '24px') + ';display:flex;flex-direction:column;align-items:stretch',
+      resultsCss: 'max-width:1280px;margin:0 auto;padding:0 ' + (tiny ? '16px' : '24px') + ' 96px',
+      figCss: 'display:flex;align-items:center;font-family:var(--font-mono);font-weight:700;font-size:' + (tiny ? '28px' : '44px') + ';line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums;',
+      capCss: 'font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--text-subtle)',
+      searchCss: 'display:flex;align-items:center;gap:12px;height:44px;padding-inline:16px;border-radius:var(--r-md);background:var(--wash-inset);border:1px solid ' + (st.suggestOpen ? 'var(--border-royal)' : 'var(--border-control)') + ';box-shadow:var(--edge-shade);color:var(--text-faint)',
+      groupLabelCss: 'font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--text-faint);white-space:nowrap',
+      clearCss: 'display:inline-flex;align-items:center;min-height:44px;padding-inline:12px;border-radius:var(--r-sm);font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-link);cursor:pointer;white-space:nowrap',
+      row1Css: 'display:flex;align-items:center;gap:12px;flex-wrap:wrap;width:100%',
+
+      query: st.query,
+      hasQuery: st.query.length > 0,
+      clearQuery: this.set('query',''),
+      onQuery: e => this.redeal({ query: e.target.value, suggestOpen: true, sugIndex: -1 }),
+      onSearchFocus: () => this.setState({ suggestOpen: true, sugIndex: -1 }),
+      onSearchKeys: e => {
+        const list = this.buildSuggestions();
+        if (e.key === 'ArrowDown') { e.preventDefault(); this.setState({ suggestOpen:true, sugIndex: Math.min(list.length - 1, st.sugIndex + 1) }); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); this.setState({ sugIndex: Math.max(-1, st.sugIndex - 1) }); }
+        else if (e.key === 'Enter' && st.sugIndex >= 0 && list[st.sugIndex]) { e.preventDefault(); list[st.sugIndex].apply(); }
+        else if (e.key === 'Escape') this.setState({ suggestOpen: false });
+      },
+      suggestOpen: st.suggestOpen && sugs.length > 0,
+      suggestions: sugs.map((s, i) => ({
+        label: s.label, kind: s.kind, icon: s.icon, on: i === st.sugIndex,
+        pick: s.apply, hover: () => this.setState({ sugIndex: i }),
+        css: 'display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:0 10px;border-radius:var(--r-sm);font-size:13px;text-align:left;cursor:pointer;'
+          + (i === st.sugIndex ? 'background:var(--pill-active);color:var(--text);' : 'color:var(--text-muted);'),
+      })),
+
+      statuses: STATUSES.map((s, i) => {
+        const on = st.status === s.id;
+        const cnt = s.id === 'watch' ? this.countWith({ status:'watch' }) : this.countWith({ status: s.id });
+        return {
+          label: s.label, on, tab: i === (statusIdx < 0 ? 0 : statusIdx) ? 0 : -1,
+          star: !!s.star, starFill: on ? 'var(--gilt)' : 'none',
+          count: cnt, css: on ? SEG_ON : SEG_OFF,
+          countCss: 'font-family:var(--font-mono);font-size:11px;font-weight:700;color:' + (on ? 'var(--brand-200)' : 'var(--text-faint)'),
+          pick: this.set('status', s.id),
+        };
+      }),
+      statusKeys: e => {
+        const ids = STATUSES.map(s => s.id), i = ids.indexOf(st.status);
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); this.set('status', ids[(i+1) % ids.length])(); }
+        if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   { e.preventDefault(); this.set('status', ids[(i-1+ids.length) % ids.length])(); }
+        if (e.key === 'Home') { e.preventDefault(); this.set('status', ids[0])(); }
+        if (e.key === 'End')  { e.preventDefault(); this.set('status', ids[ids.length-1])(); }
+      },
+
+      sortOpen: st.sortOpen,
+      sortLabel: sortDef.label,
+      // PALETTE RULE: blue = view state · gold = value and possession · green/red = outcome.
+      // Sort is view state, so it carries no gold: its first-classness comes from size,
+      // position and a named label, never a second accent beside its blue-selected peers.
+      sortCss: 'display:inline-flex;align-items:center;gap:8px;min-height:44px;max-width:' + (narrow ? '210px' : '340px') + ';padding:0 12px 0 16px;border-radius:var(--r-md) 0 0 var(--r-md);font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;transition:background 140ms ease-out;border:1px solid var(--border-control);border-right:0;color:var(--text);'
+        + (this.props.giltSort === true ? 'background:var(--gold-subtle);' : 'background:var(--wash-inset);box-shadow:var(--edge-shade);'),
+      sortKeyCss: 'display:inline-flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;flex:none;color:' + (this.props.giltSort === true ? 'var(--gilt)' : 'var(--text-faint)'),
+      dirCss: 'display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;flex:none;border-radius:0 var(--r-md) var(--r-md) 0;border:1px solid var(--border-control);color:var(--text-muted);cursor:pointer;transition:background 140ms ease-out;'
+        + (this.props.giltSort === true ? 'background:var(--gold-subtle);' : 'background:var(--wash-inset);box-shadow:var(--edge-shade);'),
+      dirIconCss: 'transition:transform 200ms cubic-bezier(.22,1,.36,1);transform:rotate(' + (asc ? '0deg' : '180deg') + ')',
+      dirAria: asc ? 'Sorted ascending — switch to descending' : 'Sorted descending — switch to ascending',
+      flipDir: () => this.persist({ sortDir: asc ? 'desc' : 'asc', sortOpen: false }),
+      toggleSort: () => this.setState(s => ({ sortOpen: !s.sortOpen, suggestOpen: false })),
+      sortOptions: SORTS.map(s => ({
+        label: s.label, hint: s.hint, on: this.sortId() === s.id,
+        css: this.sortId() === s.id ? MENU_ON : MENU_OFF,
+        pick: () => { this.persist({ sort: s.id, sortDir: null }); this.redeal({}); },
+      })),
+
+      densities: [
+        { id:'grid', icon:GRID_ICON, aria:'Card view' },
+        { id:'list', icon:LIST_ICON, aria:'Compact list view' },
+      ].map(d => ({
+        on: st.density === d.id, aria: d.aria, icon: d.icon,
+        css: st.density === d.id ? DENS_ON : DENS_OFF,
+        pick: () => this.persist({ density: d.id }),
+      })),
+
+      oddsChips: ODDS.map(o => ({ label:o.label, on:st.odds===o.id, css:(st.odds===o.id?CHIP_ON:CHIP_OFF), pick:this.set('odds', o.id) })),
+      poolChips: POOLS.map(p => ({ label:p.label, on:st.pool===p.id, css:(st.pool===p.id?CHIP_ON:CHIP_OFF), pick:this.set('pool', p.id) })),
+      topicChips: [{ id:'all', label:'All', icon:ALL_ICON }].concat(TOPIC_IDS.map(id => ({ id, label:CAT[id].label, icon:CAT[id].path })))
+        .map(t => {
+          const on = t.id === 'all' ? st.topics.length === 0 : st.topics.indexOf(t.id) !== -1;
+          return {
+            label: t.label, icon: t.icon, on,
+            count: t.id === 'all' ? this.countWith({ topics: [] }) : this.countWith({ topics: [t.id] }),
+            countCss: 'font-family:var(--font-mono);font-size:11px;font-weight:700;color:' + (on ? 'var(--brand-200)' : 'var(--text-faint)'),
+            css: on ? CHIP_ON : CHIP_OFF,
+            pick: t.id === 'all'
+              ? this.set('topics', [])
+              : () => this.redeal({ topics: st.topics.indexOf(t.id) !== -1 ? st.topics.filter(x => x !== t.id) : st.topics.concat(t.id) }),
+          };
+        }),
+
+      hasTokens: this.props.showTokens !== false && tokens.length > 0,
+      tokens,
+      clearAll: () => this.redeal({ status:'open', odds:'any', pool:'any', topics:[], query:'' }),
+
+      row2Css: 'display:grid;grid-template-rows:' + (st.condensed ? '0fr' : '1fr') + ';width:100%;overflow:hidden;'
+        + 'transition:grid-template-rows 220ms cubic-bezier(.22,1,.36,1),opacity 160ms ease-out;'
+        + (st.condensed ? 'opacity:0;pointer-events:none;' : 'opacity:1;'),
+      row2InnerCss: 'display:flex;align-items:center;gap:12px;flex-wrap:wrap;width:100%;min-height:0;overflow:hidden;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);'
+        + (st.condensed ? 'margin-top:0;padding-top:0;border-top-color:transparent;' : ''),
+
+      isEmpty: results.length === 0,
+      isGrid: results.length > 0 && !isList,
+      isList: results.length > 0 && isList,
+      emptyTitle: st.status === 'watch' && !st.watch.length ? 'You are not watching any market yet'
+        : st.query.trim() ? 'Nothing open for \u201C' + st.query.trim() + '\u201D' : 'No market matches all of those',
+      emptyBody: st.status === 'watch' && !st.watch.length
+        ? 'Tap the star on any market and it stays here — across sessions, on this device.'
+        : st.query.trim()
+          ? 'No live market mentions it. Markets are proposed weekly \u2014 ask for this one, or look at what is close.'
+          : 'The board has ' + MARKETS.length + ' live markets, but none clears every constraint at once. Drop one and it fills again.',
+      relaxations: (usable.length ? usable : [{ label:'Clear every filter', n:MARKETS.length, act:() => this.redeal({ status:'all', odds:'any', pool:'any', topics:[], query:'' }) }])
+        .slice(0,3).map((r,i) => ({ label:r.label, n:r.n, act:r.act, css:(i===0?BTN_P:BTN_G) })),
+
+      gridCss: 'display:grid;grid-template-columns:repeat(auto-fill,minmax(' + (tiny ? '260px' : '320px') + ',1fr));gap:24px;'
+        + 'transition:opacity 220ms ease-out,transform 220ms cubic-bezier(.22,1,.36,1);'
+        + (st.dim ? 'opacity:.35;transform:translateY(6px);' : 'opacity:1;transform:none;'),
+      listHeadCss: 'display:flex;align-items:center;gap:' + (tiny ? '8px' : '16px') + ';padding:10px ' + (tiny ? '10px' : '16px') + ';background:var(--bg-overlay);border-bottom:1px solid var(--border);font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--text-faint)',
+      colTrendCss: (narrow ? 'display:none;' : 'display:block;') + 'width:96px;flex:none',
+      colPoolCss: (tiny ? 'display:none;' : 'display:block;') + 'width:104px;flex:none;text-align:right;font-family:var(--font-mono);font-size:13px;color:var(--text-muted);font-variant-numeric:tabular-nums',
+      colTimeCss: (tiny ? 'display:none;' : 'display:block;') + 'width:78px;flex:none;text-align:right;font-family:var(--font-mono);font-size:13px;color:var(--yes-300);font-variant-numeric:tabular-nums',
+      colActCss: (narrow ? 'display:none;' : 'display:flex;') + 'gap:8px;width:144px;flex:none;justify-content:flex-end',
+
+      results: results.slice(0, st.shown).map(row),
+
+      // ONE paging model, for every grid and the list alike: an explicit page size, a
+      // sentence saying exactly where you are, and a button that names the next step.
+      // Never infinite scroll — it strands the footer and loses your place on return.
+      hasMore: results.length > st.shown,
+      pagerLine: 'Showing ' + Math.min(st.shown, results.length) + ' of ' + results.length,
+      moreLabel: 'Load ' + Math.min(page, results.length - st.shown) + ' more',
+      loadMore: () => this.setState(s => ({ shown: s.shown + page })),
+      allShown: results.length > page && results.length <= st.shown,
+
+      condensed: st.condensed,
+      arrived: !!st.arrived,
+      showArrival: () => this.redeal({ arrived: 0, status: 'new', sort: 'new' }),
+      dismissArrival: () => this.setState({ arrived: 0 }),
+    };
+  }
+}
+
+</script>
+</body>
+</html>

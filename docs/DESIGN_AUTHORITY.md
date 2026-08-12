@@ -82,16 +82,19 @@ stale one is always the one somebody reads. This is the doc-level twin of §B9.
 | **A component/page spec** | `docs/design-system/v2-2026-07-27/02-components/<name>/` beside its siblings | ⛔ a second specs folder |
 | **An OUTBOUND commission** (the brief/package we send a designer) | `design-brief/<name>/` at the repo root — one folder per round, assembled from LIVE files at send time. While a round is **under review**, its authored `.md` files are **tracked** so a new session can read the plan; its screenshots stay gitignored | ⛔ anywhere else on disk; ⛔ carrying a COPY of this file, the tokens, or component source — a package **links**, it never bundles; ⛔ committing its screenshots; ⛔ two tracked commissions at once; ⛔ keeping the folder after the round is sent |
 
-> 🟠 **ONE COMMISSION IS UNDER REVIEW RIGHT NOW — `design-brief/handover-v2-2026-08-11/`.**
-> Round 2, landing-page composition + `/markets` discovery. Read its `README.md` first, then
-> `SOURCES.md`. **It is not approved and not sent**; Ali is judging its quality.
-> ⚠️ Do not commission against `02-findings/` as it stands — an audit on 2026-08-11 checked all
-> 21 findings against live source and **7 do not hold**, and the self-check at
-> `06-handover-contract/OUTPUT-SPEC.md:107` cannot be passed (it bans `oklch(` while
-> `needle.css:44`, a frozen asset the designer must reproduce, contains it). `SOURCES.md` lists
-> the three defects to fix before any rebuild. **When the round is sent, delete the folder and
-> its `.gitignore` exception together.**
-| **An incoming commission from a designer** | `docs/design-system/v2-2026-07-27/NN-<name>/`, raw and untouched, plus an acceptance record | ⛔ merging it into `src/` before acceptance |
+> ✅ **THE ROUND-2 COMMISSION IS RESOLVED (2026-08-12).** The round went out, the kit came
+> back, and it was **accepted for three surfaces only** — the landing hero/banner, the
+> `/markets` discovery layer, the landing composition (incl. header). The delivery is filed raw
+> at `docs/design-system/v3-2026-08-11-landing-discovery/` with its `ACCEPTANCE.md`
+> (INHERIT/IGNORE per file + the reconciliations where our laws beat the kit). The
+> `design-brief/handover-v2-2026-08-11/` review folder and its `.gitignore` exception are
+> deleted, per this row's own rule. The living application plan is
+> `design-brief/PLAN-OF-RECORD.md`; the measured reference that outlived the round is
+> `docs/design-brief/handover-2026-08/` (LAWS · LANGUAGE-AND-CONTENT · INVENTORY ·
+> integration notes). A **total-replacement** commission was also assembled that day and the
+> strategy was abandoned — if any document resurfaces ordering a from-scratch visual system or
+> "ratchet allowlists regenerated at zero", it is dead; do not obey it.
+| **An incoming commission from a designer** | `docs/design-system/` — an addition to the July system goes in `v2-2026-07-27/NN-<name>/`; a new dated delivery gets its own versioned folder (e.g. `v3-2026-08-11-landing-discovery/`) — raw and untouched, plus an acceptance record | ⛔ merging it into `src/` before acceptance |
 | **A session handoff** | `docs/LIVE-QA-CAMPAIGN.md` §6b, at the TOP | ⛔ a new handoff file |
 | **Provenance / "what the designer delivered"** | `07-provenance/` | ⛔ this file |
 | **Evidence (screenshots)** | **Nowhere — it is gitignored** (`.qa-design*/`, `.qa-shots/`). A checked-in PNG is a claim nobody can re-derive. *Exception:* a shot cited by a doc as a finding's proof lives in `shots/<FINDING>/` and `test:docs` enforces that it exists | ⛔ committing regenerable screenshots |

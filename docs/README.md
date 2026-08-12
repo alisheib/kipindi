@@ -52,7 +52,9 @@ reference in `docs/` must resolve on disk. Broken on purpose and observed to go 
 | Doc | | |
 |---|---|---|
 | [`DESIGN_AUTHORITY.md`](DESIGN_AUTHORITY.md) | 🟢 LAW | **The design rule book — the only one.** B1–B10 invariants, §0 the filing law, §M the material law. Enforced by `test:design-frozen` + `test:design-one-door`. |
-| `../design-brief/handover-v2-2026-08-11/` | 🟠 OPEN | **The design commission under review** — round 2, landing composition + `/markets` discovery. Read its `README.md`, then `SOURCES.md`. ⚠️ **Not approved, not sent.** 7 of its 21 findings do not hold and its self-check cannot be passed. Screenshots are gitignored; only the `.md` files are tracked. Delete the folder when the round is sent. |
+| [`design-system/v3-2026-08-11-landing-discovery/`](design-system/v3-2026-08-11-landing-discovery/ACCEPTANCE.md) | 🟢 ACCEPTED | **The round-2 design delivery** — landing composition + `/markets` discovery, accepted 2026-08-12 for those surfaces only. `ACCEPTANCE.md` records INHERIT/IGNORE per file and where our laws beat the kit. Being applied per `../design-brief/PLAN-OF-RECORD.md`. |
+| [`design-brief/handover-2026-08/`](design-brief/handover-2026-08/README.md) | ⚪ RECORD | **The measured reference that outlived the August commission round**: `LAWS.md` (85 invariants + 4 licence conditions), the trilingual measurement corpus, the system inventory, integration cost notes. Live repo wins on any disagreement. |
+| `../design-brief/PLAN-OF-RECORD.md` | 🔵 LIVE | **The inheritance plan** — how the accepted round-2 kit is being applied (gates, batches, decisions log). Updated after every batch. |
 | [`design-master-brief.md`](design-master-brief.md) | 🟢 LAW | Palette + composition source of truth; live tokens match to ~0.3%. |
 | [`POLISH-BACKLOG.md`](POLISH-BACKLOG.md) | 🔵 LIVE | §1 and §4 done; **§2 FIX SOON and §3 LATER are open**. §3 carries the measured scale ceilings. |
 

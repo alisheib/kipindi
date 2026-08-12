@@ -160,16 +160,16 @@ shots/*.png
 /design-brief/*
 /design-brief.zip
 
-# EXCEPTION, 2026-08-11 (Ali): the commission currently UNDER REVIEW is checked in so a new
-# session can see it without being handed a zip. **Its authored documents only** — the
-# screenshots stay out of git, because §0b bans committing regenerable evidence and this
-# package's 18 binaries are 2.37 MB of re-shootable captures of our own live pages.
-# ⛔ This is a REVIEW window, not a home. When the round is sent, delete the folder and these
-#    lines with it. One commission tracked at a time; never two.
-!/design-brief/handover-v2-2026-08-11/
-/design-brief/handover-v2-2026-08-11/**/*.jpg
-/design-brief/handover-v2-2026-08-11/**/*.png
-/design-brief/handover-v2-2026-08-11/**/*.zip
+# EXCEPTION, 2026-08-12: the round-2 review window above is CLOSED — the kit came back, was
+# accepted, and is filed at docs/design-system/v3-2026-08-11-landing-discovery/ (tracked
+# normally; not under this exclusion). The ONLY tracked files in /design-brief/ are the living
+# plan documents below — everything else that lands here (kit zips, extracted deliveries,
+# scratch) stays out of git and gets filed to its §0b home or archived to
+# F:\50pick-design-archive\.
+!/design-brief/PLAN-OF-RECORD.md
+!/design-brief/CLEANUP-MANIFEST.md
+!/design-brief/00-NEXT-SESSION-PROMPT.md
+/design-brief/**/*.zip
 
 # Local playbook + session tooling dropped at the repo root (not build output, not evidence).
 # Untracked AND unignored is the dangerous combination — that is how 2.37 MB of screenshots

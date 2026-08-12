@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>50pick — Landing · 390</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../brand/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../tokens-LOCKED.css">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:var(--type-body);line-height:1.5;-webkit-font-smoothing:antialiased;text-wrap:pretty}
+a{color:var(--text-link);text-decoration:none}
+a:hover{color:var(--text-link-hover)}
+button{font:inherit;color:inherit;background:none;border:0;margin:0}
+h1,h2,h3,h4,p,ul,ol,figure{margin:0}
+ul{padding:0;list-style:none}
+.ic{flex:none}
+:focus-visible{outline:2px solid var(--border-focus);outline-offset:2px;border-radius:var(--r-xs)}
+
+/* ═══ composition layer — the vertical rhythm scale. Four steps, built from --sp-*. ═══ */
+:root{
+  --rh-tight:   var(--sp-6);
+  --rh-close:   var(--sp-12);
+  --rh-section: calc(var(--sp-12) * 2);
+  --rh-chapter: calc(var(--sp-12) * 3);
+  --gutter:     var(--sp-6);
+  --board:      var(--w-board);
+}
+.wrap{max-width:var(--board);margin:0 auto;padding-inline:var(--gutter)}
+.band{background:var(--bg-overlay);border-block:1px solid var(--claret-edge)}
+.band-panel{background:var(--panel);border-block:1px solid var(--border)}
+
+/* ═══ type ═══ */
+.d1{font-family:var(--font-display);font-weight:800;letter-spacing:-.022em;line-height:1.02}
+.d2{font-family:var(--font-display);font-weight:700;letter-spacing:-.015em;line-height:1.1}
+.h2{font-family:var(--font-display);font-weight:700;font-size:var(--type-h1);letter-spacing:-.012em;line-height:1.15}
+.h3{font-family:var(--font-display);font-weight:700;font-size:var(--type-h2);line-height:1.25}
+.h4{font-family:var(--font-display);font-weight:700;font-size:var(--type-h4);line-height:1.35}
+.lede{font-size:var(--type-h3);line-height:1.5;color:var(--text-muted)}
+.body{font-size:var(--type-body);line-height:1.6;color:var(--text-muted)}
+.sm{font-size:var(--type-small);color:var(--text-subtle)}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.eyebrow{display:inline-flex;align-items:center;gap:var(--sp-3);font-family:var(--font-mono);font-size:var(--type-micro);font-weight:700;text-transform:uppercase;letter-spacing:.18em;color:var(--text-subtle)}
+/* the mark's own needle, at its own angle (--m-tilt = 14deg), on every eyebrow */
+.eyebrow::before{content:"";flex:none;width:2px;height:13px;border-radius:var(--r-pill);background:var(--gilt);transform:rotate(14deg)}
+.heroplace::before{display:none}
+.heroplace .dot{width:2px;height:14px;border-radius:var(--r-pill);background:var(--gilt);transform:rotate(14deg)}
+.nano{font-family:var(--font-mono);font-size:var(--type-micro);font-weight:700;text-transform:uppercase;letter-spacing:.16em}
+.gilt{color:var(--gilt)}
+
+.shead{display:flex;align-items:flex-end;justify-content:space-between;gap:var(--sp-4);padding-right:var(--sp-3);margin-bottom:var(--rh-tight)}
+.shead .t{display:flex;flex-direction:column;gap:var(--sp-2);min-width:0}
+.tlink{display:inline-flex;align-items:center;gap:var(--sp-2);min-height:44px;padding-inline:var(--sp-3);margin-right:calc(var(--sp-3) * -1);border-radius:var(--r-sm);font-family:var(--font-mono);font-size:var(--type-micro);font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-link);white-space:nowrap}
+.tlink:hover{background:var(--bg-overlay);color:var(--text-link-hover)}
+
+/* ═══ buttons — one geometry family, 44px floor ═══ */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-2);min-height:44px;padding:0 var(--sp-5);border-radius:var(--r-md);font-family:var(--font-body);font-size:var(--type-h4);font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid transparent;transition:background 140ms ease-out,border-color 140ms ease-out,box-shadow 140ms ease-out,transform 140ms ease-out}
+.btn-primary{background:var(--brand-600);border-color:var(--brand-400);color:var(--pearl-50);box-shadow:var(--edge-lit)}
+.btn-primary:hover{filter:brightness(var(--btn-hover-gain));transform:translateY(-1px);box-shadow:var(--edge-lit-strong),var(--glow-selected)}
+.btn-ghost{background:transparent;border-color:var(--border-control);color:var(--text)}
+.btn-ghost:hover{background:var(--bg-overlay);border-color:var(--border-royal)}
+.btn-quiet{min-height:44px;padding:0 var(--sp-4);border-radius:var(--r-sm);display:inline-flex;align-items:center;gap:var(--sp-2);font-family:var(--font-mono);font-size:var(--type-micro);font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-link);cursor:pointer;white-space:nowrap}
+.btn-quiet:hover{background:var(--bg-overlay)}
+.btn-pill{border-radius:var(--r-pill)}
+
+/* ══════════════════════════════════════════════════════════════════════
+   FROZEN BLOCK — market card, conviction bar, YES/NO control.
+   Reproduced from 01-approved-design/market-card.tsx and the APPROVED-*.jpg
+   screenshots so the composition can be judged with the real component in it.
+   Engineering renders <MarketCard/>; nothing below is a proposal.
+   ══════════════════════════════════════════════════════════════════════ */
+.mcardp{position:relative;overflow:hidden;display:flex;flex-direction:column;background:var(--wash-raised);border:1px solid var(--border);border-radius:var(--r-lg);padding:var(--sp-5);box-shadow:var(--elev-raised);color:var(--text);text-align:left}
+.mcardp--featured{border-color:var(--border-royal);box-shadow:var(--elev-raised-hover),var(--glow-selected)}
+.mcardp-watermark{position:absolute;right:calc(var(--sp-4) * -1);bottom:calc(var(--sp-8) * -1);color:var(--border-royal);opacity:.20;pointer-events:none;line-height:0}
+.mcardp-watermark svg{stroke-width:1.1}
+.mcardp-top{display:flex;align-items:center;gap:var(--sp-2);margin-bottom:var(--sp-3);position:relative}
+.chip{display:inline-flex;align-items:center;gap:var(--sp-1);height:22px;padding:0 var(--sp-2);border-radius:var(--r-pill);border:1px solid var(--border-control);background:var(--bg-overlay);color:var(--text-muted);font-family:var(--font-mono);font-size:var(--type-label);font-weight:700;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap}
+.chip-live{background:var(--danger-bg);border-color:var(--danger-border);color:var(--danger-fg)}
+.chip-hot-rose{background:var(--no-900);border-color:var(--no-700);color:var(--no-300)}
+.chip-pending{background:var(--bg-overlay);border-color:var(--border-royal);color:var(--brand-300)}
+.chip-resolved{background:var(--gold-subtle);border-color:var(--border-gold);color:var(--gilt)}
+.live-dot{width:5px;height:5px;border-radius:var(--r-pill);background:var(--live-400);flex:none}
+.mcardp-catico{margin-left:var(--sp-1);color:var(--text-faint);display:inline-flex}
+.mcardp-cat{font-family:var(--font-mono);font-size:var(--type-label);font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-faint)}
+.mcardp-head{display:flex;align-items:flex-start;gap:var(--sp-3);position:relative}
+.mcardp-qwrap{flex:1;min-width:0}
+.mcardp-q{font-family:var(--font-display);font-weight:700;font-size:var(--type-body);line-height:1.32;min-height:2.64em;color:var(--text);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.mcardp-prob{text-align:right;flex:none;padding-top:1px}
+.mcardp-pctcap{font-family:var(--font-mono);font-size:var(--type-label);font-weight:700;letter-spacing:.16em;color:var(--yes-300)}
+.mcardp-pct{font-family:var(--font-display);font-weight:800;font-size:34px;line-height:1;color:var(--yes-400);letter-spacing:-.02em}
+.mcardp-pct .u{font-size:15px;font-weight:700;margin-left:1px}
+.mcardp-moveline{min-height:15px;display:flex;justify-content:flex-end;align-items:center;margin-top:var(--sp-2)}
+.mcardp-move{display:inline-flex;align-items:center;gap:3px;font-family:var(--font-mono);font-size:var(--type-label);font-weight:700}
+.mcardp-move .u{opacity:.8}
+.tbar{position:relative;height:7px;border-radius:var(--r-pill);background:var(--bar-fill-no);border:1px solid var(--bar-track-border);margin-top:var(--sp-2)}
+.tbar .fill{position:absolute;inset:0 auto 0 0;border-radius:var(--r-pill);background:var(--bar-fill-yes);box-shadow:var(--bar-glow-yes)}
+.tbar .needle{position:absolute;top:50%;width:4px;height:19px;border-radius:var(--r-pill);background:var(--bar-needle);box-shadow:0 0 8px var(--bar-needle-glow);transform:translate(-50%,-50%) rotate(14deg)}
+.tbar--empty{background:var(--bar-empty-track);border-color:transparent}
+.mcardp-spark{display:block;width:100%;height:28px;margin-top:var(--sp-2)}
+.mcardp-traders{display:flex;align-items:center;min-height:24px;margin-top:var(--sp-2)}
+.av-stack{display:flex}
+.av{width:21px;height:21px;border-radius:var(--r-pill);display:inline-flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:var(--type-nano);font-weight:700;color:var(--text);border:1.5px solid var(--bg-elevated);margin-right:-6px}
+.av-stack .av:last-child{margin-right:0}
+.av-1{background:var(--brand-soft)}.av-2{background:var(--claret-800)}.av-3{background:var(--aqua-800)}
+.t-txt{font-family:var(--font-mono);font-size:var(--type-micro);color:var(--text-subtle);margin-left:var(--sp-3)}
+.t-txt b{color:var(--text-muted)}
+.mcardp-actions{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2);margin-top:var(--sp-3)}
+.mcardp-actions--single{grid-template-columns:1fr}
+.btn-side{display:inline-flex;align-items:center;justify-content:center;height:38px;border-radius:var(--r-md);font-family:var(--font-body);font-size:var(--type-h4);font-weight:700;color:var(--pearl-50);border:1px solid transparent;cursor:pointer;box-shadow:var(--edge-lit)}
+.btn-side .o{font-family:var(--font-mono);font-size:11.5px;font-weight:500;opacity:.85;margin-left:5px}
+.btn-yes{background:var(--yes-600);border-color:var(--yes-500)}
+.btn-no{background:var(--no-600);border-color:var(--no-500)}
+.btn-yes:hover,.btn-no:hover{filter:brightness(var(--btn-hover-gain))}
+.btn-closed{display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-2);height:38px;border-radius:var(--r-md);border:1px solid var(--border-control);color:var(--text-muted);font-size:var(--type-h4);font-weight:600;opacity:.85}
+.mcardp-meta{display:flex;align-items:center;gap:var(--sp-2);margin-top:var(--sp-4);font-family:var(--font-mono);font-size:var(--type-micro);color:var(--text-faint);position:relative;min-height:34px;flex-wrap:nowrap;white-space:nowrap}
+.mcardp-meta .dot{width:3px;height:3px;border-radius:var(--r-pill);background:var(--text-faint)}
+.mcardp-meta-right{margin-left:auto;display:flex;align-items:center;gap:var(--sp-2)}
+.mcardp-timeleft{display:inline-flex;align-items:center;gap:var(--sp-2)}
+.mcardp-timeleft.live{color:var(--yes-300)}
+.mcardp-info{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:var(--r-md);background:var(--bg-overlay);border:1px solid var(--border);color:var(--text-muted);cursor:pointer}
+.mcardp-details{display:flex;align-items:center;justify-content:flex-end;gap:3px;margin-top:var(--sp-1);font-size:var(--type-small);font-weight:600;color:var(--text-link)}
+.mcardp-nobets{font-family:var(--font-mono);font-size:var(--type-micro);color:var(--text-faint);margin-top:var(--sp-2)}
+/* ═════════════════════════ end frozen block ═════════════════════════ */
+
+/* ═══ header ═══ */
+.topbar{position:sticky;top:0;z-index:30;height:56px;background:var(--panel);border-bottom:1px solid var(--border);box-shadow:var(--shadow-2)}
+.topbar--rest{box-shadow:none}
+.topbar .in{max-width:var(--board);margin:0 auto;height:100%;display:flex;align-items:center;gap:var(--sp-3);padding-inline:var(--gutter)}
+.topbar .in > a:first-child{display:inline-flex;align-items:center;min-height:44px}
+.lockup{display:inline-flex;align-items:center;gap:var(--sp-2)}
+.lk-img{display:block;height:29px;width:auto}
+.hero .disc img,.heroB .disc img{display:block;width:100%;height:100%}
+.tico img{display:block}
+.pfoot-lock img{display:block}
+.lk-word{font-family:var(--font-display);font-weight:800;letter-spacing:-.02em;color:var(--text);line-height:1}
+.lk-tld{font-family:var(--font-mono);font-weight:500;font-size:.44em;color:var(--text-subtle);letter-spacing:.04em}
+.nav{display:flex;align-items:center;gap:2px;margin-left:var(--sp-4)}
+.nav a{display:inline-flex;align-items:center;gap:6px;height:44px;padding:0 var(--sp-3);border-radius:var(--r-sm);font-size:13.5px;font-weight:500;color:var(--text-subtle);white-space:nowrap;transition:background 140ms ease-out,color 140ms ease-out}
+.nav a:hover{color:var(--text);background:var(--bg-overlay)}
+.nav a[aria-current]{color:var(--text);font-weight:600;background:var(--pill-active)}
+/* Up & Down is a DESTINATION, so it keeps the destination geometry.
+   Its "different game" signal is a gilt marker, not a different shape —
+   otherwise --r-pill would mean both "product line" and "account action". */
+.nav a.accent{color:var(--brand-300)}
+.nav a.accent::before{content:"";width:5px;height:5px;border-radius:var(--r-pill);background:var(--gilt);flex:none}
+.nav a.accent:hover{color:var(--text)}
+.nav a.accent[aria-current]{color:var(--text)}
+.skip{position:absolute;left:var(--sp-4);top:-60px;z-index:80;display:inline-flex;align-items:center;min-height:44px;padding-inline:var(--sp-4);border-radius:var(--r-sm);background:var(--brand-600);border:1px solid var(--brand-400);color:var(--pearl-50);font-size:var(--type-small);font-weight:600;transition:top 140ms ease-out}
+.skip:focus{top:var(--sp-2);color:var(--pearl-50)}
+.hspace{flex:1}
+.hright{display:flex;align-items:center;gap:var(--sp-2);position:relative}
+.langbtn{display:inline-flex;align-items:center;gap:6px;height:44px;min-width:44px;padding:0 var(--sp-3);border-radius:var(--r-sm);border:1px solid var(--border-control);font-family:var(--font-mono);font-size:var(--type-small);font-weight:700;color:var(--text-muted);cursor:pointer}
+.langbtn:hover{color:var(--text);border-color:var(--border-royal)}
+.langmenu{position:absolute;top:52px;right:0;min-width:196px;padding:var(--sp-2);border-radius:var(--r-md);background:var(--wash-float);box-shadow:var(--elev-float);z-index:60}
+.langmenu > button{display:flex;align-items:center;gap:var(--sp-3);width:100%;min-height:44px;padding:0 var(--sp-3);border-radius:var(--r-sm);font-size:var(--type-small);color:var(--text-muted);cursor:pointer;text-align:left}
+.langmenu > button:hover{background:var(--bg-overlay);color:var(--text)}
+.langmenu > button[aria-selected="true"]{color:var(--text);background:var(--pill-active)}
+.langmenu .nm{flex:1;min-width:0}
+.langmenu .tick{display:inline-flex;width:16px;flex:none;color:var(--gilt)}
+.langmenu .code{font-family:var(--font-mono);font-size:var(--type-micro);color:var(--text-faint)}
+.btn-auth{display:inline-flex;align-items:center;justify-content:center;height:44px;padding:0 var(--sp-4);border-radius:var(--r-pill);font-size:var(--type-small);font-weight:600;cursor:pointer;white-space:nowrap}
+.btn-auth.g{border:1px solid var(--border-control);color:var(--text)}
+.btn-auth.g:hover{border-color:var(--border-royal);background:var(--bg-overlay)}
+.btn-auth.p{background:var(--brand-600);border:1px solid var(--brand-400);color:var(--pearl-50);box-shadow:var(--edge-lit)}
+.btn-auth.p:hover{filter:brightness(var(--btn-hover-gain))}
+
+/* ═══ live ticker ═══ */
+.ticker{position:relative;height:34px;display:flex;align-items:center;background:var(--bg-overlay);border-bottom:1px solid var(--border);overflow:hidden}
+.ticker .lbl{flex:none;display:inline-flex;align-items:center;gap:6px;padding-inline:var(--gutter);font-family:var(--font-mono);font-size:var(--type-label);font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--danger-fg);border-right:1px solid var(--border);height:100%}
+.ticker .vp{position:relative;flex:1;overflow:hidden;height:100%;-webkit-mask-image:linear-gradient(90deg,transparent 0,var(--text) 32px,var(--text) calc(100% - 48px),transparent 100%);mask-image:linear-gradient(90deg,transparent 0,var(--text) 32px,var(--text) calc(100% - 48px),transparent 100%)}
+.ticker .run{position:absolute;top:0;left:0;height:100%;display:flex;align-items:center;gap:var(--sp-8);white-space:nowrap;font-family:var(--font-mono);font-size:var(--type-micro);color:var(--text-subtle);animation:ticker-scroll 42s linear infinite;will-change:transform;padding-left:var(--sp-8)}
+.ticker:hover .run,.ticker:focus-within .run{animation-play-state:paused}
+.ticker .run b{color:var(--text-muted);font-weight:500}
+.ticker .run .y{color:var(--yes-400)}
+.ticker .run .n{color:var(--no-400)}
+@keyframes ticker-scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+/* ═══ discovery layer ═══ */
+.proof{display:flex;align-items:center;gap:var(--sp-4);flex-wrap:wrap}
+.proof .grp{display:flex;flex-direction:column;gap:2px}
+.proof .n{font-family:var(--font-mono);font-weight:700;font-size:var(--type-h1);letter-spacing:-.02em;line-height:1;font-variant-numeric:tabular-nums;display:flex;align-items:center}
+.proof .n.live{color:var(--yes-400)}
+.proof .n.pool{color:var(--gilt)}
+.proof .u{font-family:var(--font-mono);font-size:var(--type-micro);font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--text-subtle)}
+.proof .sep{width:1px;align-self:stretch;background:var(--border)}
+.livepip{display:inline-block;width:8px;height:8px;border-radius:var(--r-pill);background:var(--yes-400);box-shadow:var(--bar-glow-yes);margin-right:var(--sp-3);flex:none}
+
+.searchfield{display:flex;align-items:center;gap:var(--sp-3);height:var(--h-input);padding-inline:var(--sp-4);border-radius:var(--r-md);background:var(--wash-inset);border:1px solid var(--border-control);box-shadow:var(--edge-shade);color:var(--text-faint);min-width:0}
+.searchfield input{flex:1;min-width:0;height:44px;margin-block:-1px;background:none;border:0;outline:none;color:var(--text);font:inherit;font-size:var(--type-body)}
+.searchfield input::placeholder{color:var(--text-faint)}
+.searchfield .hint{font-family:var(--font-mono);font-size:var(--type-label);color:var(--text-faint);white-space:nowrap}
+
+.filterbar{position:sticky;top:56px;z-index:20;background:var(--panel);border-bottom:1px solid var(--border);box-shadow:var(--shadow-2)}
+.filterbar .in{max-width:var(--board);margin:0 auto;padding:var(--sp-3) var(--gutter);display:flex;align-items:center;gap:var(--sp-3);flex-wrap:wrap}
+.fgroup{display:flex;align-items:center;gap:var(--sp-2);min-width:0;position:relative}
+.flabel{font-family:var(--font-mono);font-size:var(--type-micro);font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--text-faint);white-space:nowrap}
+.fdiv{width:1px;height:28px;background:var(--border);flex:none}
+
+.fchip{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:0 var(--sp-3);border-radius:var(--r-pill);border:1px solid transparent;background:transparent;color:var(--text-muted);font-size:var(--type-small);font-weight:600;white-space:nowrap;cursor:pointer;transition:background 140ms ease-out,border-color 140ms ease-out,color 140ms ease-out,box-shadow 140ms ease-out}
+.fchip:hover{background:var(--bg-overlay);color:var(--text)}
+.fchip:active{background:var(--bg-inset);border-color:var(--border-royal);transform:translateY(1px)}
+.fchip[aria-pressed="true"],.fchip[aria-selected="true"]{padding-inline:var(--sp-4);background:var(--pill-active);border-color:var(--brand-400);color:var(--text);box-shadow:var(--glow-selected)}
+.fchip[disabled]{border-color:var(--border);color:var(--text-disabled);background:var(--surface-disabled);opacity:.45;cursor:not-allowed}
+.fchip .ct{font-family:var(--font-mono);font-size:var(--type-micro);font-weight:700;color:var(--text-faint)}
+.fchip[aria-pressed="true"] .ct{color:var(--brand-200)}
+
+.seg{display:inline-flex;padding:3px;gap:3px;border-radius:var(--r-pill);background:var(--wash-inset);border:1px solid var(--border-control);box-shadow:var(--edge-shade)}
+.seg button{min-height:44px;padding:0 var(--sp-4);border-radius:var(--r-pill);font-size:var(--type-small);font-weight:600;color:var(--text-subtle);white-space:nowrap;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:background 140ms ease-out,color 140ms ease-out}
+.seg button:hover{color:var(--text);background:var(--bg-overlay)}
+.seg button[aria-pressed="true"]{background:var(--pill-active);color:var(--text);box-shadow:var(--edge-lit)}
+.seg button .ct{font-family:var(--font-mono);font-size:var(--type-micro);font-weight:700;color:var(--text-faint)}
+.seg button[aria-pressed="true"] .ct{color:var(--brand-200)}
+
+/* PALETTE RULE — blue = view state · gold = value and possession · green/red = outcome.
+   Sort is view state, so it carries no gold: it sits beside blue-selected peers and a
+   second accent family on a peer control is the one thing the palette cannot absorb.
+   Its first-classness is size, position and a named key — not colour. */
+.sortctl{display:inline-flex;align-items:center;gap:var(--sp-2);min-height:44px;max-width:360px;padding:0 var(--sp-3) 0 var(--sp-4);border-radius:var(--r-md);border:1px solid var(--border-control);background:var(--wash-inset);box-shadow:var(--edge-shade);color:var(--text);font-size:var(--type-small);font-weight:600;cursor:pointer;white-space:nowrap;transition:background 140ms ease-out}
+.sortctl:hover{background:var(--bg-overlay);border-color:var(--border-royal)}
+.sortctl .k{font-family:var(--font-mono);font-size:var(--type-micro);font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--text-faint);flex:none}
+.sortctl .v{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.sortctl .ic{color:var(--text-faint)}
+.sortmenu{position:absolute;top:52px;left:0;min-width:292px;padding:var(--sp-2);border-radius:var(--r-md);background:var(--wash-float);box-shadow:var(--elev-float);z-index:60}
+.sortmenu .grp{font-family:var(--font-mono);font-size:var(--type-micro);font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--text-faint);padding:var(--sp-2) var(--sp-3) var(--sp-1)}
+.sortmenu button{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);width:100%;min-height:44px;padding:0 var(--sp-3);border-radius:var(--r-sm);font-size:var(--type-small);color:var(--text-muted);text-align:left;cursor:pointer}
+.sortmenu button:hover{background:var(--bg-overlay);color:var(--text)}
+.sortmenu button[aria-selected="true"]{background:var(--pill-active);color:var(--text)}
+.sortmenu button[aria-selected="true"] .ic{color:var(--brand-200)}
+.sortmenu .why{font-family:var(--font-mono);font-size:var(--type-micro);color:var(--text-faint);white-space:nowrap}
+
+.summary{display:flex;align-items:center;gap:var(--sp-3);flex-wrap:wrap}
+.count{font-family:var(--font-mono);font-size:var(--type-h4);font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;white-space:nowrap}
+.count b{color:var(--gilt)}
+.count .of{color:var(--text-faint);font-weight:500}
+.tokenchip{display:inline-flex;align-items:center;gap:var(--sp-2);min-height:44px;padding:0 0 0 var(--sp-3);border-radius:var(--r-pill);background:var(--pill-active);border:1px solid var(--brand-400);color:var(--text);font-size:var(--type-small);font-weight:600;white-space:nowrap}
+.tokenchip .k{font-family:var(--font-mono);font-size:var(--type-micro);font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--brand-200)}
+.tokenchip button{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:var(--r-pill);color:var(--brand-200);cursor:pointer}
+.tokenchip button:hover{background:var(--surface-pressed);color:var(--text)}
+.clearall{display:inline-flex;align-items:center;min-height:44px;padding-inline:var(--sp-3);border-radius:var(--r-sm);font-family:var(--font-mono);font-size:var(--type-micro);font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-link);cursor:pointer;white-space:nowrap}
+.clearall:hover{background:var(--bg-overlay)}
+
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-6)}
+.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--sp-6)}
+.grid1{display:grid;grid-template-columns:1fr;gap:var(--sp-4)}
+.pager{display:flex;flex-direction:column;align-items:center;gap:var(--sp-3);padding-top:var(--rh-tight)}
+.pager p{margin:0;font-family:var(--font-mono);font-size:var(--type-small);color:var(--text-faint);font-variant-numeric:tabular-nums}
+.pager .btn{min-width:220px}
+
+
+.emptystate{display:flex;flex-direction:column;align-items:center;text-align:center;gap:var(--sp-4);padding:var(--rh-section) var(--sp-6);border:1px dashed var(--border-control);border-radius:var(--r-xl);background:var(--bg-overlay)}
+.emptystate .ring{display:inline-flex;align-items:center;justify-content:center;width:68px;height:68px;border-radius:var(--r-pill);border:1px solid var(--border);background:var(--wash-inset);color:var(--text-faint)}
+.skel{position:relative;overflow:hidden;background:var(--bg-inset);border-radius:var(--r-xs)}
+.skel::after{content:"";position:absolute;inset:0;background:var(--bar-shimmer);transform:translateX(-100%);animation:skel 1200ms ease-in-out infinite}
+@keyframes skel{to{transform:translateX(100%)}}
+.skelcard{border:1px solid var(--border);border-radius:var(--r-lg);background:var(--wash-raised);padding:var(--sp-5);box-shadow:var(--elev-raised)}
+
+.rise{animation:rise 340ms cubic-bezier(.22,1,.36,1) both}
+.rise-1{animation-delay:80ms}.rise-2{animation-delay:150ms}.rise-3{animation-delay:210ms}
+.fadein{animation:fadein 220ms linear both}
+@keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:1ms !important;animation-iteration-count:1 !important;transition-duration:1ms !important}
+  .ticker .run{animation:none;transform:none}
+  .skel::after{display:none}
+}
+
+/* layout-file chrome only — never ships */
+.viewnote{max-width:var(--board);margin:0 auto;padding:var(--sp-6) var(--gutter) 0;display:flex;align-items:baseline;gap:var(--sp-3);flex-wrap:wrap}
+.viewnote .tag{font-family:var(--font-mono);font-size:var(--type-micro);font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--text-inverse);background:var(--gilt);border-radius:var(--r-xs);padding:3px 7px}
+.viewnote p{font-family:var(--font-mono);font-size:var(--type-micro);color:var(--text-faint)}
+
+/* hero */
+.hero{position:relative;overflow:hidden;background:var(--hero-grad-warm);border-bottom:1px solid var(--border)}
+.hero .disc{position:absolute;right:-190px;bottom:-320px;width:880px;height:880px;opacity:var(--hero-mark-opacity);transform:rotate(-14deg);pointer-events:none}
+.hero .in{position:relative;display:grid;grid-template-columns:1fr 420px;gap:var(--sp-16);align-items:center;padding-block:var(--rh-section)}
+.how .in{padding-block:var(--rh-close)}
+.board{padding-block:var(--rh-close)}
+.ud{padding-block:var(--rh-close) var(--rh-section)}
+.trustband .in{padding-block:var(--rh-close) var(--rh-section)}
+.hero h1{font-size:var(--type-hero);color:var(--hero-text-strong);margin-block:var(--sp-5) var(--sp-6)}
+.hero h1 .y{color:var(--hero-yes-accent)}
+.hero h1 .n{color:var(--hero-no-accent)}
+.hero .lede{max-width:34ch}
+.ctas{display:flex;align-items:center;gap:var(--sp-3);flex-wrap:wrap;margin-top:var(--rh-tight)}
+.rule{position:relative;height:3px;max-width:236px;border-radius:var(--r-pill);margin-block:var(--rh-close) var(--sp-8);
+  background:linear-gradient(90deg,var(--yes-600) 0 50%,var(--no-600) 50% 100%)}
+.rule::after{content:"";position:absolute;left:50%;top:50%;width:3px;height:17px;border-radius:var(--r-pill);
+  background:var(--bar-needle);box-shadow:0 0 8px var(--bar-needle-glow);transform:translate(-50%,-50%) rotate(14deg)}
+.heroplace{display:inline-flex;align-items:center;gap:var(--sp-3)}
+.heroplace .dot{width:5px;height:5px;border-radius:var(--r-pill);background:var(--gilt)}
+.cardnote{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);margin-top:var(--sp-3)}
+.cardnote span{font-family:var(--font-mono);font-size:var(--type-micro);font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-faint)}
+
+/* how it works */
+.how .head{max-width:62ch;margin-bottom:var(--rh-close)}
+.how .head h2{margin-block:var(--sp-3)}
+.stepgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-16)}
+.step{position:relative;padding-top:var(--sp-6);border-top:1px solid var(--border-strong)}
+.step .sn{position:absolute;top:calc(var(--sp-6) * -1 + 4px);left:0;font-size:var(--type-small);font-weight:700;letter-spacing:.2em;color:var(--gilt);background:var(--bg-overlay);padding-right:var(--sp-3)}
+.step h3{margin-bottom:var(--sp-3)}
+
+/* board */
+.topics{display:grid;grid-template-columns:repeat(6,1fr);gap:var(--sp-3);margin-top:var(--rh-close)}
+.topic:nth-child(1),.topic:nth-child(2){grid-column:span 3;min-height:84px;flex-wrap:nowrap}
+/* the six narrow tiles are 195px at 1280 — the meta line cannot share a row with the name */
+.topic:nth-child(n+3){align-content:center;padding-block:var(--sp-3)}
+.topic:nth-child(n+3) .tn{flex:1 0 auto}
+.topic:nth-child(n+3) .tm{flex-basis:100%;padding-left:calc(18px + var(--sp-3))}
+.topic:nth-child(1) .tn,.topic:nth-child(2) .tn{font-size:var(--type-h3)}
+/* the crowd's lean in that topic, drawn with the conviction bar's own fill */
+.topic::after{content:"";position:absolute;left:0;bottom:0;height:2px;width:var(--lean,50%);background:var(--bar-fill-yes);opacity:.6;border-radius:0 var(--r-pill) 0 0;transition:width 340ms cubic-bezier(.22,1,.36,1)}
+.topic:hover::after{opacity:1}
+.topic:nth-child(1){--lean:54%}.topic:nth-child(2){--lean:61%}.topic:nth-child(3){--lean:44%}.topic:nth-child(4){--lean:38%}
+.topic:nth-child(5){--lean:72%}.topic:nth-child(6){--lean:33%}.topic:nth-child(7){--lean:49%}.topic:nth-child(8){--lean:66%}
+.topic{position:relative;overflow:hidden;display:flex;flex-wrap:wrap;align-items:center;gap:6px var(--sp-3);min-height:64px;padding:var(--sp-3) var(--sp-4);border:1px solid var(--border);border-radius:var(--r-md);background:var(--bg-overlay);color:var(--text-muted);transition:border-color 140ms ease-out,background 140ms ease-out,transform 140ms ease-out}
+.topic:hover{border-color:var(--border-royal);background:var(--bg-elevated);color:var(--text);transform:translateY(-1px)}
+.topic .ic{color:var(--text-faint)}
+.topic:hover .ic{color:var(--brand-300)}
+.topic .tn{font-family:var(--font-display);font-weight:600;font-size:var(--type-h4);color:var(--text);flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.topic .tm{display:flex;align-items:center;gap:6px;flex:none;font-size:var(--type-micro);font-weight:700;letter-spacing:.06em;color:var(--text-faint);white-space:nowrap}
+.topic .tl{color:var(--yes-400)}
+.topic .td{opacity:.5}
+
+/* up & down */
+.udbox{max-width:920px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:var(--sp-8);padding:var(--sp-6) var(--sp-8);border:1px solid var(--brand-soft);border-radius:var(--r-lg);background:var(--hero-panel-grad);box-shadow:var(--elev-raised)}
+.udbox .l{min-width:0}
+.udbox h3{margin-block:var(--sp-2) 6px}
+.udbox .rounds{font-family:var(--font-mono);font-size:var(--type-micro);font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--gilt);margin-top:var(--sp-3);display:block}
+
+/* trust */
+.truststate{max-width:30ch;font-family:var(--font-display);font-weight:700;font-size:var(--type-display-2);line-height:1.1;letter-spacing:-.015em;margin-block:var(--sp-4) var(--rh-close)}
+.truststate em{font-style:normal;color:var(--gilt)}
+.trustgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-top:1px solid var(--claret-edge)}
+.tcell{display:block;padding:var(--sp-6) var(--sp-6) 0 0}
+.tcell + .tcell{border-left:1px solid var(--border);padding-left:var(--sp-6)}
+.tico{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;flex:none;color:var(--gilt);margin-bottom:var(--sp-3)}
+.tcell h3{margin-bottom:var(--sp-2)}
+.tbody{font-size:var(--type-small)}
+/* responsible gambling — reuses public-footer.tsx strings verbatim */
+.rgline{display:flex;align-items:center;gap:var(--sp-5);flex-wrap:wrap;margin-top:var(--rh-close);padding-top:var(--sp-5);border-top:1px solid var(--border)}
+.rgline .age{flex:none}
+.rgline p{font-size:var(--type-small);color:var(--text-muted);flex:1;min-width:260px}
+.rgline p em{font-style:italic;color:var(--text-subtle)}
+.rgline a{display:inline-flex;align-items:center;min-height:44px;padding-inline:var(--sp-3);border-radius:var(--r-sm);font-size:var(--type-small);font-weight:600}
+.rgline a:hover{background:var(--bg-overlay)}
+/* top predictors — social proof from the leaderboard that already exists */
+/* recently settled — the only proof that the machine completes a cycle */
+.settled{margin-top:var(--rh-close);border-top:1px solid var(--border)}
+.strow{display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:var(--sp-5);min-height:64px;padding-block:var(--sp-3);border-bottom:1px solid var(--border);color:var(--text)}
+.strow:hover{background:var(--bg-overlay)}
+.stout{display:inline-flex;align-items:center;justify-content:center;min-width:56px;height:28px;padding-inline:var(--sp-2);border-radius:var(--r-pill);font-family:var(--font-mono);font-size:var(--type-micro);font-weight:700;letter-spacing:.12em}
+.stout.y{background:var(--success-bg);border:1px solid var(--success-border);color:var(--success-fg)}
+.stout.n{background:var(--danger-bg);border:1px solid var(--danger-border);color:var(--danger-fg)}
+.stq{font-size:var(--type-small);color:var(--text-muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stsrc{font-family:var(--font-mono);font-size:var(--type-micro);font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-faint);white-space:nowrap}
+.stpaid{font-family:var(--font-mono);font-size:var(--type-small);font-weight:700;color:var(--gilt);white-space:nowrap;font-variant-numeric:tabular-nums}
+
+/* footer */
+.pfooter{background:var(--bg-overlay);margin-top:0}
+.claret-rule{height:2px;max-width:var(--board);margin:0 auto;background:linear-gradient(90deg,var(--claret-soft),var(--gilt) 50%,var(--claret-soft))}
+.pfoot-in{display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr;gap:var(--sp-8);padding-block:var(--sp-10) var(--sp-12);font-size:var(--type-small)}
+.pfoot-in.one{grid-template-columns:1fr;gap:var(--sp-8)}
+.pfoot-lock{display:flex;align-items:center;gap:var(--sp-3);margin-bottom:var(--sp-4)}
+.age{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:var(--r-pill);border:2px solid var(--no-700);color:var(--no-300);font-family:var(--font-display);font-weight:700;font-size:var(--type-micro)}
+.pfoot-name{font-family:var(--font-display);font-weight:700;font-size:var(--type-h4);color:var(--text)}
+.pfoot-lic{color:var(--text-muted);line-height:1.6;margin-bottom:var(--sp-3)}
+.pfoot-mono{font-family:var(--font-mono);font-size:var(--type-micro);color:var(--text-subtle);line-height:1.9}
+.pfoot-h{font-size:var(--type-micro);color:var(--text-subtle);margin-bottom:var(--sp-3)}
+.pfoot-col li a{display:inline-flex;align-items:center;gap:var(--sp-2);min-height:44px;color:var(--text-muted);border-bottom:1px solid transparent}
+.pfoot-col li a:hover{color:var(--text);border-bottom-color:var(--text-subtle)}
+.pfoot-note{color:var(--text-subtle);font-style:italic;font-size:12px;padding-top:var(--sp-2)}
+.csoon{margin-left:var(--sp-2);font-family:var(--font-mono);font-size:var(--type-label);font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gilt);border:1px solid var(--border-gold);border-radius:var(--r-xs);padding:2px 5px}
+
+body{background:var(--bg-overlay)}
+.phone{width:390px;margin:0 auto;background:var(--bg);position:relative;overflow:hidden;box-shadow:var(--shadow-5);padding-bottom:82px}
+:root{--gutter:var(--sp-4);--board:390px}
+.topbar .in{gap:var(--sp-2)}
+.topbar .langbtn{padding:0 var(--sp-2)}
+.btn-auth{padding:0 var(--sp-3)}
+.hero .in{grid-template-columns:1fr;gap:var(--rh-close);padding-block:var(--sp-10) var(--rh-close)}
+.hero .disc{right:-260px;bottom:auto;top:-160px;width:620px;height:620px}
+.hero h1{font-size:var(--type-display-2);margin-block:var(--sp-4) var(--sp-5)}
+.hero .lede{font-size:var(--type-h4);max-width:none}
+.ctas{gap:var(--sp-3)}
+.ctas .btn{width:100%}
+.ctas .btn-quiet{width:100%;justify-content:center}
+.proof{gap:var(--sp-4);flex-direction:column;align-items:flex-start}
+.proof .n{font-size:var(--type-h2)}
+.proof .sep{width:100%;height:1px;align-self:auto}
+.rule{margin-block:var(--rh-tight) var(--sp-5)}
+.how .in{padding-block:var(--rh-close)}
+.how .head{margin-bottom:var(--rh-tight)}
+.how .head h2{font-size:var(--type-h2)}
+.how .lede{font-size:var(--type-h4)}
+.stepgrid{grid-template-columns:1fr;gap:var(--rh-tight)}
+.step{padding-top:var(--sp-5)}
+.step h3{font-size:var(--type-h3)}
+.board{padding-block:var(--rh-close)}
+.shead{flex-direction:column;align-items:flex-start;gap:var(--sp-2)}
+.shead h2{font-size:var(--type-h2)}
+.grid3{grid-template-columns:1fr;gap:var(--sp-4)}
+.topics{grid-template-columns:1fr 1fr;gap:var(--sp-2);margin-top:var(--rh-tight)}
+.topic:nth-child(1),.topic:nth-child(2){grid-column:span 2;min-height:64px;flex-wrap:wrap}
+.topic:nth-child(1) .tn,.topic:nth-child(2) .tn{font-size:var(--type-body)}
+.topic:nth-child(n+3) .tm{padding-left:calc(18px + var(--sp-2))}
+.topic{flex-wrap:wrap;gap:var(--sp-2);padding:var(--sp-3)}
+.topic .tn{flex:1 0 auto;font-size:var(--type-body)}
+.topic .tm{flex-basis:100%;padding-left:26px}
+.ud{padding-block:var(--rh-close)}
+.udbox{flex-direction:column;align-items:stretch;gap:var(--sp-5);padding:var(--sp-5)}
+.udbox .btn{width:100%}
+.trustband .in{padding-block:var(--rh-close)}
+.trustgrid{grid-template-columns:1fr;gap:0}
+.truststate{font-size:var(--type-h1)}
+.tcell{padding:var(--sp-5) 0 0}
+.tcell + .tcell{border-left:0;border-top:1px solid var(--border);padding-left:0}
+.strow{grid-template-columns:auto 1fr;gap:var(--sp-3);padding-block:var(--sp-4)}
+.stq{white-space:normal;font-size:var(--type-small)}
+.stsrc,.stpaid{grid-column:2}
+.rgline{gap:var(--sp-3)}
+.rgline p{min-width:0;flex-basis:100%}
+.pfoot-in{grid-template-columns:1fr;gap:var(--sp-8);padding-block:var(--sp-8) var(--sp-10)}
+.viewall{width:100%;margin-top:var(--sp-4)}
+/* bottom nav — opaque, fixes BUG-nav-bleed-390 */
+.bnav{position:sticky;bottom:0;z-index:40;display:grid;grid-template-columns:repeat(5,1fr);background:var(--panel);border-top:1px solid var(--border);box-shadow:var(--shadow-overlay-up);padding-bottom:env(safe-area-inset-bottom,0px);margin-top:calc(-82px)}
+.bnav a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:64px;padding-top:6px;font-size:var(--type-micro);font-weight:600;color:var(--text-subtle)}
+.bnav .pip{display:inline-flex;align-items:center;justify-content:center;width:44px;height:26px;border-radius:var(--r-pill);transition:background 140ms ease-out}
+.bnav a:hover .pip{background:var(--bg-overlay)}
+/* the SAME active language as the desktop bar: --pill-active behind, --text ink */
+.bnav a[aria-current]{color:var(--text)}
+.bnav a[aria-current] .pip{background:var(--pill-active);box-shadow:var(--edge-lit)}
+.bnav a.accent .pip::after{content:"";position:absolute;margin:-16px 0 0 22px;width:4px;height:4px;border-radius:var(--r-pill);background:var(--gilt)}
+.bnav a.accent{color:var(--brand-300)}
+.bnav a.accent[aria-current]{color:var(--text)}
+
+.altwrap{padding-block:var(--sp-8) var(--rh-section)}
+.altnote{max-width:var(--board);margin:0 auto var(--rh-tight);padding-inline:var(--gutter)}
+.altnote h1{font-size:var(--type-h1);margin-block:var(--sp-2) var(--sp-3)}
+.altnote p{max-width:74ch}
+.heroB{position:relative;overflow:hidden;background:var(--hero-grad-warm);border-block:1px solid var(--border)}
+.heroB .disc{position:absolute;left:50%;top:-40%;width:1100px;height:1100px;margin-left:-550px;opacity:var(--hero-mark-opacity);transform:rotate(-14deg);pointer-events:none}
+.heroB .in{position:relative;padding-block:var(--rh-section)}
+.heroB h2{font-size:var(--type-display-1);color:var(--hero-text-strong);margin-block:var(--sp-5) var(--sp-6);max-width:20ch}
+.heroB h2 .y{color:var(--hero-yes-accent)}
+.heroB h2 .n{color:var(--hero-no-accent)}
+.qboard{margin-top:var(--rh-close);border-top:1px solid var(--border-royal)}
+.qrow{display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:var(--sp-5);min-height:88px;padding-block:var(--sp-4);border-bottom:1px solid var(--border);color:var(--text);position:relative;transition:background 140ms ease-out,padding 140ms ease-out}
+.qrow:hover{background:var(--bg-overlay);padding-inline:var(--sp-4)}
+.qrow .ico{color:var(--text-faint)}
+.qrow:hover .ico{color:var(--brand-300)}
+.qrow .q{font-family:var(--font-display);font-weight:700;font-size:var(--type-h2);line-height:1.25;letter-spacing:-.01em;min-width:0}
+.qrow .pool{font-family:var(--font-mono);font-size:var(--type-small);color:var(--text-faint);white-space:nowrap}
+.qrow .pc{font-family:var(--font-mono);font-weight:700;font-size:var(--type-h1);color:var(--gilt);font-variant-numeric:tabular-nums;white-space:nowrap}
+.qrow .pc .u{font-size:var(--type-micro);color:var(--text-subtle);margin-left:2px}
+.qrow .bar{position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--bar-fill-yes);border-radius:var(--r-pill)}
+.altfoot{display:grid;grid-template-columns:1fr 420px;gap:var(--sp-16);align-items:center;margin-top:var(--rh-close)}
+.altfoot .ctas{margin-top:var(--sp-5)}
+
+
+/* the question board, promoted from the alternative to the recommendation */
+.heroB .in{padding-block:var(--rh-section)}
+.heroB h1{font-size:var(--type-display-1);color:var(--hero-text-strong);margin-block:var(--sp-5) var(--sp-6);max-width:20ch;letter-spacing:-.022em;line-height:1.02}
+.heroB h1 .y{color:var(--hero-yes-accent)}
+.heroB h1 .n{color:var(--hero-no-accent)}
+.qrow:focus-visible{outline:2px solid var(--border-focus);outline-offset:-2px}
+/* reveal-on-scroll — progressive, so no-JS renders everything visible */
+.js [data-reveal]{opacity:0;transform:translateY(12px)}
+.js [data-reveal][data-in]{opacity:1;transform:none;transition:opacity 340ms cubic-bezier(.22,1,.36,1),transform 340ms cubic-bezier(.22,1,.36,1)}
+@media (prefers-reduced-motion:reduce){.js [data-reveal]{opacity:1;transform:none}}
+
+/* question board at 390 — the row becomes two lines, never four columns */
+.heroB .disc{left:50%;top:-140px;width:660px;height:660px;margin-left:-330px}
+.heroB .in{padding-block:var(--sp-10) var(--rh-close)}
+.heroB h1{font-size:var(--type-display-2);max-width:none;margin-block:var(--sp-4) var(--sp-5)}
+.qboard{margin-top:var(--rh-tight)}
+.agg{margin-top:var(--rh-tight);max-width:none}
+.aggread{font-size:var(--type-micro);line-height:1.6}
+.qrow{grid-template-columns:auto 1fr auto;grid-template-areas:"i q p" ". s p";gap:var(--sp-2) var(--sp-3);min-height:76px;padding-block:var(--sp-4)}
+.qrow .ico{grid-area:i;align-self:start;margin-top:3px}
+.qrow .q{grid-area:q;font-size:var(--type-h4);line-height:1.35}
+.qrow .pool{grid-area:s;font-size:var(--type-micro)}
+.qrow .pc{grid-area:p;font-size:var(--type-h2);align-self:center}
+.qrow:hover{padding-inline:0}
+.heroB .proof{flex-direction:row;align-items:stretch;gap:var(--sp-3)}
+.heroB .proof .grp{flex:1;min-width:0}
+.heroB .proof .n{font-size:var(--type-h3)}
+.heroB .proof .u{font-size:var(--type-micro);letter-spacing:.1em;line-height:1.3}
+.heroB .proof .sep{width:1px;height:auto;align-self:stretch}
+/* three figures is one too many at 390 — predictions-today is the one to lose */
+.heroB .proof .grp:nth-of-type(3),.heroB .proof .sep:nth-of-type(2){display:none}
+.altfoot{grid-template-columns:1fr;gap:var(--rh-tight);margin-top:var(--rh-tight)}
+.altfoot .lede{font-size:var(--type-h4)}
+.altfoot .ctas .btn,.altfoot .ctas .btn-quiet{width:100%;justify-content:center}
+.js [data-reveal]{opacity:0;transform:translateY(12px)}
+.js [data-reveal][data-in]{opacity:1;transform:none;transition:opacity 340ms cubic-bezier(.22,1,.36,1),transform 340ms cubic-bezier(.22,1,.36,1)}
+@media (prefers-reduced-motion:reduce){.js [data-reveal]{opacity:1;transform:none}}
+
+/* the same instrument at page scale — the board's aggregate conviction */
+.agg{margin-top:var(--rh-close);max-width:620px}
+.aggbar{position:relative;height:10px;margin-block:var(--sp-3);border-radius:var(--r-pill);background:var(--bar-fill-no);border:1px solid var(--bar-track-border)}
+.aggbar .fill{position:absolute;inset:0 auto 0 0;width:54%;border-radius:var(--r-pill);background:var(--bar-fill-yes);box-shadow:var(--bar-glow-yes)}
+.aggbar .needle{position:absolute;left:54%;top:50%;width:5px;height:24px;border-radius:var(--r-pill);background:var(--bar-needle);box-shadow:0 0 10px var(--bar-needle-glow);transform:translate(-50%,-50%) rotate(14deg)}
+.aggread{font-family:var(--font-mono);font-size:var(--type-small);color:var(--text-subtle)}
+.aggread b{color:var(--yes-400);font-weight:700}
+.aggread i{font-style:normal;color:var(--no-300)}
+</style>
+</head>
+<body>
+<div class="viewnote"><span class="tag">02</span><p>Landing · 390 · designed for the phone, not squeezed from 1440</p></div><div class="phone"><a class="skip" href="#main">Skip to markets</a><header class="topbar fadein"><div class="in"><a href="#" aria-label="50pick home"><img src="../brand/mark-color.svg" width="26" height="26" alt="" aria-hidden="true"></a><div class="hspace"></div><div class="hright"><button type="button" class="langbtn" aria-haspopup="listbox" aria-expanded="false">EN <svg class="ic" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 9 7 7 7-7"/></svg></button><a href="#" class="btn-auth g">Sign in</a><a href="#" class="btn-auth p">Sign up</a></div></div></header><div class="ticker fadein"><span class="lbl"><span class="live-dot"></span>Live</span><div class="vp"><div class="run"><span><b>TZS 45K</b> predicted <span class="y">YES</span> on Simba SC wins NBC Premier League 2026-27</span><span aria-hidden="true">·</span><span><b>TZS 180K</b> won on <span class="y">YES</span> on Long rains begin before 15 Apr</span><span aria-hidden="true">·</span><span><b>TZS 12K</b> predicted <span class="n">NO</span> on USD/TZS closes under 2,650 in Q2</span><span aria-hidden="true">·</span><span><b>TZS 8K</b> predicted <span class="y">YES</span> on Arusha maximum temperature reaches 28°C</span><span aria-hidden="true">·</span><span><b>TZS 63K</b> predicted <span class="n">NO</span> on Arsenal keep a clean sheet vs Coventry City</span><span aria-hidden="true">·</span><span><b>TZS 21K</b> predicted <span class="y">YES</span> on SGR Dodoma–Singida opens to passengers in 2026</span><span aria-hidden="true">·</span><span><b>TZS 45K</b> predicted <span class="y">YES</span> on Simba SC wins NBC Premier League 2026-27</span><span aria-hidden="true">·</span><span><b>TZS 180K</b> won on <span class="y">YES</span> on Long rains begin before 15 Apr</span><span aria-hidden="true">·</span><span><b>TZS 12K</b> predicted <span class="n">NO</span> on USD/TZS closes under 2,650 in Q2</span><span aria-hidden="true">·</span><span><b>TZS 8K</b> predicted <span class="y">YES</span> on Arusha maximum temperature reaches 28°C</span><span aria-hidden="true">·</span><span><b>TZS 63K</b> predicted <span class="n">NO</span> on Arsenal keep a clean sheet vs Coventry City</span><span aria-hidden="true">·</span><span><b>TZS 21K</b> predicted <span class="y">YES</span> on SGR Dodoma–Singida opens to passengers in 2026</span></div></div></div><main id="main"><section class="heroB"><span class="disc"><img src="../brand/mark-color.svg" width="1100" height="1100" alt="" aria-hidden="true"></span><div class="wrap in"><p class="eyebrow heroplace rise"><span class="dot"></span>Tanzania · Dar es Salaam · Est. 2026</p><h1 class="d1 rise">The wisdom of <span class="y">YES</span> &amp; <span class="n">NO</span>.</h1><div class="proof rise rise-1"><div class="grp"><span class="n live"><span class="livepip"></span>41</span><span class="u">Markets live now</span></div><span class="sep"></span><div class="grp"><span class="n pool">TZS 1,669,000</span><span class="u">Staked and in play</span></div><span class="sep"></span><div class="grp"><span class="n">247</span><span class="u">Predictions today</span></div></div><div class="agg rise rise-2"><p class="eyebrow">The whole board, right now</p><div class="aggbar"><span class="fill"></span><span class="needle"></span></div><p class="aggread"><b>54% YES</b> · <i>46% NO</i> — every open market, weighted by the money on it</p></div><div class="qboard rise rise-3"><a class="qrow" href="#"><span class="ico"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.2 15.6 9.8 14.2 14h-4.4L8.4 9.8Z"/><path d="M12 3v4.2M20.5 9.8 15.6 9.8M18.3 18.6 14.2 14M5.7 18.6 9.8 14M3.5 9.8h4.9"/></svg></span><span class="q">Will Simba SC win the NBC Premier League 2026-27?</span><span class="pool">TZS 96,400</span><span class="pc">63<span class="u">% YES</span></span><span class="bar" style="width:63%"></span></a><a class="qrow" href="#"><span class="ico"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 16a4.2 4.2 0 0 1 .5-8.37A5.5 5.5 0 0 1 18 8.5a3.75 3.75 0 0 1 .3 7.5Z"/><path d="M9 19.5 8 21.5M13 19.5 12 21.5M17 19.5 16 21.5"/></svg></span><span class="q">Will Arusha reach 28°C on 21 August?</span><span class="pool">TZS 12,700</span><span class="pc">29<span class="u">% YES</span></span><span class="bar" style="width:29%"></span></a><a class="qrow" href="#"><span class="ico"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17 9.5 10.5l4 4L21 7"/><path d="M15 7h6v6"/></svg></span><span class="q">Will USD/TZS close below 2,650 before 30 September?</span><span class="pool">TZS 54,200</span><span class="pc">41<span class="u">% YES</span></span><span class="bar" style="width:41%"></span></a><a class="qrow" href="#"><span class="ico"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="1.6"/><path d="M10.5 4v3M13.5 4v3M10.5 17v3M13.5 17v3M4 10.5h3M4 13.5h3M17 10.5h3M17 13.5h3"/></svg></span><span class="q">Will the SGR Dodoma–Singida line carry passengers in 2026?</span><span class="pool">TZS 31,900</span><span class="pc">74<span class="u">% YES</span></span><span class="bar" style="width:74%"></span></a></div><div class="altfoot rise rise-3"><div><p class="lede">Trade questions about Tanzania’s weather, markets, sport and culture — settled by official sources.</p><div class="ctas"><a href="#" class="btn btn-primary">Create account <svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg></a><a href="#" class="btn-quiet">Browse all 41 markets <svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg></a></div></div><div><p class="eyebrow" style="margin-bottom:var(--sp-3)">Live right now</p><article class="mcardp mcardp--featured"><span class="mcardp-watermark" aria-hidden="true"><svg class="ic" width="132" height="132" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.2 15.6 9.8 14.2 14h-4.4L8.4 9.8Z"/><path d="M12 3v4.2M20.5 9.8 15.6 9.8M18.3 18.6 14.2 14M5.7 18.6 9.8 14M3.5 9.8h4.9"/></svg></span><div class="mcardp-top"><span class="chip chip-live"><span class="live-dot"></span>LIVE</span><span class="chip chip-hot-rose">HOT</span><span class="mcardp-catico"><svg class="ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.2 15.6 9.8 14.2 14h-4.4L8.4 9.8Z"/><path d="M12 3v4.2M20.5 9.8 15.6 9.8M18.3 18.6 14.2 14M5.7 18.6 9.8 14M3.5 9.8h4.9"/></svg></span><span class="mcardp-cat">Sports</span></div><div class="mcardp-head"><div class="mcardp-qwrap"><h3 class="mcardp-q">Will Simba SC win the NBC Premier League 2026-27?</h3></div><div class="mcardp-prob"><div class="mcardp-pctcap">YES</div><div class="mcardp-pct">63<span class="u">%</span></div></div></div><div class="mcardp-moveline"><span class="mcardp-move" style="color:var(--yes-400)">↗ +4<span class="u">pt</span></span></div><div class="tbar"><span class="fill" style="width:63%"></span><span class="needle" style="left:63%"></span></div><svg class="mcardp-spark" viewBox="0 0 300 28" preserveAspectRatio="none" aria-hidden="true"><path d="M0 18 C40 16 70 20 110 14 C150 9 190 13 230 8 C260 6 280 9 300 7" fill="none" stroke="var(--aqua-400)" stroke-width="1.5" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg><div class="mcardp-traders"><span class="av-stack"><span class="av av-1">JM</span><span class="av av-2">K</span><span class="av av-3">SW</span></span><span class="t-txt"><b>24</b> predictors</span></div><div class="mcardp-actions"><button type="button" class="btn-side btn-yes">YES<span class="o">@ 63%</span></button><button type="button" class="btn-side btn-no">NO<span class="o">@ 37%</span></button></div><div class="mcardp-meta"><span>TZS 96,400</span><span class="dot"></span><span><svg class="ic" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 4.5h15v10.5h-9L5 19.5v-4.5H4.5Z"/></svg> 7</span><span class="mcardp-meta-right"><span class="mcardp-timeleft live">4d left</span><button type="button" class="mcardp-info" aria-label="How it works"><svg class="ic" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.6v.9"/></svg></button></span></div><span class="mcardp-details">Details <svg class="ic" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg></span></article></div></div></div></section><section class="band how" data-reveal><div class="wrap in"><div class="head"><p class="eyebrow">How 50pick works</p><h2 class="h2">Predict events. Not chance.</h2><p class="lede">Every question is a real-world event with a YES or NO answer — settled against an official public source. No dice, no slots. Just conviction.</p></div><div class="stepgrid"><div class="step"><span class="mono sn">01</span><h3 class="h3">Pick a side</h3><p class="body">Every market is one question with two answers. Stake what you want in shillings — the conviction needle shows where the crowd’s money already sits.</p></div><div class="step"><span class="mono sn">02</span><h3 class="h3">Two people verify the result</h3><p class="body">Every market settles against a named public source: the meteorological agency, the league table, the Bank of Tanzania mid-rate. Two officers sign it off.</p></div><div class="step"><span class="mono sn">03</span><h3 class="h3">Winners split the pool</h3><p class="body">The pool is shared between everyone who was right, minus a capped commission. Paid to your M-Pesa wallet in seconds.</p></div></div></div></section><section class="wrap board" data-reveal><div class="shead"><div class="t"><p class="eyebrow">Closing soonest</p><h2 class="h2">Pick a side now</h2></div></div><div class="grid3"><article class="mcardp"><span class="mcardp-watermark" aria-hidden="true"><svg class="ic" width="132" height="132" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17 9.5 10.5l4 4L21 7"/><path d="M15 7h6v6"/></svg></span><div class="mcardp-top"><span class="chip chip-live"><span class="live-dot"></span>LIVE</span><span class="chip chip-hot-rose">HOT</span><span class="mcardp-catico"><svg class="ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17 9.5 10.5l4 4L21 7"/><path d="M15 7h6v6"/></svg></span><span class="mcardp-cat">Macro</span></div><div class="mcardp-head"><div class="mcardp-qwrap"><h3 class="mcardp-q">Will the spot price of gold (XAU/USD) close above $4,300/oz on any trading day before 31 Aug?</h3></div><div class="mcardp-prob"><div class="mcardp-pctcap">YES</div><div class="mcardp-pct">99<span class="u">%</span></div></div></div><div class="mcardp-moveline"><span class="mcardp-move" style="color:var(--yes-400)">↗ +2<span class="u">pt</span></span></div><div class="tbar"><span class="fill" style="width:99%"></span><span class="needle" style="left:99%"></span></div><svg class="mcardp-spark" viewBox="0 0 300 28" preserveAspectRatio="none" aria-hidden="true"><path d="M0 22 C40 20 70 18 110 15 C150 12 190 9 230 6 C260 4 280 3 300 2" fill="none" stroke="var(--aqua-400)" stroke-width="1.5" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg><div class="mcardp-traders"><span class="av-stack"><span class="av av-1">A</span><span class="av av-2">A</span><span class="av av-3">FE</span></span><span class="t-txt"><b>6</b> predictors</span></div><div class="mcardp-actions"><button type="button" class="btn-side btn-yes">YES<span class="o">@ 99%</span></button><button type="button" class="btn-side btn-no">NO<span class="o">@ 1%</span></button></div><div class="mcardp-meta"><span>TZS 172,505</span><span class="dot"></span><span><svg class="ic" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 4.5h15v10.5h-9L5 19.5v-4.5H4.5Z"/></svg> 1</span><span class="mcardp-meta-right"><span class="mcardp-timeleft live">2d left</span><button type="button" class="mcardp-info" aria-label="How it works"><svg class="ic" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.6v.9"/></svg></button></span></div><span class="mcardp-details">Details <svg class="ic" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg></span></article><article class="mcardp"><span class="mcardp-watermark" aria-hidden="true"><svg class="ic" width="132" height="132" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 16a4.2 4.2 0 0 1 .5-8.37A5.5 5.5 0 0 1 18 8.5a3.75 3.75 0 0 1 .3 7.5Z"/><path d="M9 19.5 8 21.5M13 19.5 12 21.5M17 19.5 16 21.5"/></svg></span><div class="mcardp-top"><span class="chip chip-live"><span class="live-dot"></span>LIVE</span><span class="mcardp-catico"><svg class="ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 16a4.2 4.2 0 0 1 .5-8.37A5.5 5.5 0 0 1 18 8.5a3.75 3.75 0 0 1 .3 7.5Z"/><path d="M9 19.5 8 21.5M13 19.5 12 21.5M17 19.5 16 21.5"/></svg></span><span class="mcardp-cat">Weather</span></div><div class="mcardp-head"><div class="mcardp-qwrap"><h3 class="mcardp-q">Will Arusha’s maximum temperature reach 28°C or above on August 14, 2026?</h3></div><div class="mcardp-prob"><div class="mcardp-pctcap">YES</div><div class="mcardp-pct">6<span class="u">%</span></div></div></div><div class="mcardp-moveline"><span class="mcardp-move" style="color:var(--no-400)">↘ -11<span class="u">pt</span></span></div><div class="tbar"><span class="fill" style="width:6%"></span><span class="needle" style="left:6%"></span></div><div class="mcardp-traders"><span class="av-stack"><span class="av av-1">FI</span><span class="av av-2">7I</span><span class="av av-3">AF</span></span><span class="t-txt"><b>3</b> predictors</span></div><div class="mcardp-actions"><button type="button" class="btn-side btn-yes">YES<span class="o">@ 6%</span></button><button type="button" class="btn-side btn-no">NO<span class="o">@ 94%</span></button></div><div class="mcardp-meta"><span>TZS 8,000</span><span class="mcardp-meta-right"><span class="mcardp-timeleft live">3d left</span><button type="button" class="mcardp-info" aria-label="How it works"><svg class="ic" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.6v.9"/></svg></button></span></div><span class="mcardp-details">Details <svg class="ic" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg></span></article><article class="mcardp"><span class="mcardp-watermark" aria-hidden="true"><svg class="ic" width="132" height="132" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="1.6"/><path d="M10.5 4v3M13.5 4v3M10.5 17v3M13.5 17v3M4 10.5h3M4 13.5h3M17 10.5h3M17 13.5h3"/></svg></span><div class="mcardp-top"><span class="chip chip-live"><span class="live-dot"></span>LIVE</span><span class="chip chip-pending">SOON</span><span class="mcardp-catico"><svg class="ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="1.6"/><path d="M10.5 4v3M13.5 4v3M10.5 17v3M13.5 17v3M4 10.5h3M4 13.5h3M17 10.5h3M17 13.5h3"/></svg></span><span class="mcardp-cat">Tech</span></div><div class="mcardp-head"><div class="mcardp-qwrap"><h3 class="mcardp-q">Will the SGR Dodoma–Singida line open to passenger service during 2026?</h3></div><div class="mcardp-prob"><div class="mcardp-pctcap">YES</div><div class="mcardp-pct">78<span class="u">%</span></div></div></div><div class="mcardp-moveline"><span class="mcardp-move" style="color:var(--yes-400)">↗ +6<span class="u">pt</span></span></div><div class="tbar"><span class="fill" style="width:78%"></span><span class="needle" style="left:78%"></span></div><div class="mcardp-traders"><span class="av-stack"><span class="av av-1">AM</span><span class="av av-2">LK</span><span class="av av-3">TZ</span></span><span class="t-txt"><b>9</b> predictors</span></div><div class="mcardp-actions"><button type="button" class="btn-side btn-yes">YES<span class="o">@ 78%</span></button><button type="button" class="btn-side btn-no">NO<span class="o">@ 22%</span></button></div><div class="mcardp-meta"><span>TZS 31,900</span><span class="mcardp-meta-right"><span class="mcardp-timeleft live">6h left</span><button type="button" class="mcardp-info" aria-label="How it works"><svg class="ic" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.6v.9"/></svg></button></span></div><span class="mcardp-details">Details <svg class="ic" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg></span></article></div><a href="#" class="btn btn-ghost viewall">Showing 3 of 41 · see all <svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg></a><div class="shead" style="margin-top:var(--rh-close);margin-bottom:0"><div class="t"><p class="eyebrow">Browse by topic</p></div></div><div class="topics"><a class="topic" href="#"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></svg><span class="tn">All topics</span><span class="tm mono"><span class="tl">41 live</span><span class="td">·</span>TZS 1,669k</span></a><a class="topic" href="#"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.2 15.6 9.8 14.2 14h-4.4L8.4 9.8Z"/><path d="M12 3v4.2M20.5 9.8 15.6 9.8M18.3 18.6 14.2 14M5.7 18.6 9.8 14M3.5 9.8h4.9"/></svg><span class="tn">Sports</span><span class="tm mono"><span class="tl">14 live</span><span class="td">·</span>TZS 486k</span></a><a class="topic" href="#"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17 9.5 10.5l4 4L21 7"/><path d="M15 7h6v6"/></svg><span class="tn">Macro</span><span class="tm mono"><span class="tl">6 live</span><span class="td">·</span>TZS 341k</span></a><a class="topic" href="#"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 8h4a2.25 2.25 0 0 1 0 4.5h-4Zm0 4.5h4.4a2.25 2.25 0 0 1 0 4.5H9.5Zm0-4.5v9M11.4 6v2M11.4 17v2"/></svg><span class="tn">Crypto</span><span class="tm mono"><span class="tl">7 live</span><span class="td">·</span>TZS 274k</span></a><a class="topic" href="#"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5v17M7 20.5h10"/><path d="M6 7.5h12"/><path d="m6 7.5-3 6a3.2 3.2 0 0 0 6 0Z"/><path d="m18 7.5-3 6a3.2 3.2 0 0 0 6 0Z"/></svg><span class="tn">Other</span><span class="tm mono"><span class="tl">4 live</span><span class="td">·</span>TZS 286k</span></a><a class="topic" href="#"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 16a4.2 4.2 0 0 1 .5-8.37A5.5 5.5 0 0 1 18 8.5a3.75 3.75 0 0 1 .3 7.5Z"/><path d="M9 19.5 8 21.5M13 19.5 12 21.5M17 19.5 16 21.5"/></svg><span class="tn">Weather</span><span class="tm mono"><span class="tl">5 live</span><span class="td">·</span>TZS 128k</span></a><a class="topic" href="#"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V9.5l8-5.5 8 5.5V20"/><path d="M9.5 20v-5.5h5V20"/><path d="M2.5 20h19"/></svg><span class="tn">Culture</span><span class="tm mono"><span class="tl">3 live</span><span class="td">·</span>TZS 96k</span></a><a class="topic" href="#"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="1.6"/><path d="M10.5 4v3M13.5 4v3M10.5 17v3M13.5 17v3M4 10.5h3M4 13.5h3M17 10.5h3M17 13.5h3"/></svg><span class="tn">Tech</span><span class="tm mono"><span class="tl">2 live</span><span class="td">·</span>TZS 58k</span></a></div></section><section class="wrap ud" data-reveal><div class="udbox"><div class="l"><p class="eyebrow" style="color:var(--gilt)">Fast game · Live</p><h3 class="h3">Up &amp; Down</h3><p class="body">Will the price be higher or lower when the clock runs out?</p><span class="rounds">4 rounds live now</span></div><a href="#" class="btn btn-primary">Play Up &amp; Down <svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg></a></div></section><section class="band trustband" data-reveal><div class="wrap in"><p class="eyebrow">Why the result can be trusted</p><h2 class="truststate">A market is only worth playing if the <em>result</em> is not an opinion.</h2><div class="trustgrid"><div class="tcell"><span class="tico"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.2 4.5 6.2v5.1c0 4.4 3.1 8.2 7.5 9.5 4.4-1.3 7.5-5.1 7.5-9.5V6.2Z"/><path d="m9 12 2.2 2.2L15.4 10"/></svg></span><div><h3 class="h4">Named public sources</h3><p class="body tbody">TMA for weather, the NBC league table for football, the Bank of Tanzania mid-rate for the shilling. The source is printed on the market before you stake.</p></div></div><div class="tcell"><span class="tico"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.5 20v-1.8a3.6 3.6 0 0 0-3.6-3.6H6.6A3.6 3.6 0 0 0 3 18.2V20"/><circle cx="9.2" cy="7.6" r="3.6"/><path d="M21 20v-1.8a3.6 3.6 0 0 0-2.7-3.48M15.6 4.12a3.6 3.6 0 0 1 0 6.97"/></svg></span><div><h3 class="h4">Two signatures per result</h3><p class="body tbody">No single officer can settle a market alone. Every resolution is attested and published.</p></div></div><div class="tcell"><span class="tico"><img src="../brand/mpesa.svg" width="20" height="20" alt="M-Pesa"></span><div><h3 class="h4">M-Pesa in, M-Pesa out</h3><p class="body tbody">Deposits and withdrawals run through the wallet you already use. Winnings land in seconds.</p></div></div></div><p class="eyebrow" style="margin-top:var(--rh-close)">Settled in the last seven days</p><div class="settled"><a class="strow" href="#"><span class="stout y">YES</span><span class="stq">Will the long rains begin before 15 April?</span><span class="stsrc">Tanzania Meteorological Authority</span><span class="stpaid">TZS 180,000 paid</span></a><a class="strow" href="#"><span class="stout n">NO</span><span class="stq">Will Vinícius Júnior leave Real Madrid before the summer 2026 window closes?</span><span class="stsrc">Transfermarkt</span><span class="stpaid">TZS 15,000 paid</span></a><a class="strow" href="#"><span class="stout y">YES</span><span class="stq">Will Bitcoin (BTC) be above $64,000 on TwelveData at 03:00 EAT on 9 August?</span><span class="stsrc">TwelveData</span><span class="stpaid">TZS 10,000 paid</span></a></div><div class="rgline"><span class="age">18+</span><p><em>If gambling stops being fun, stop.</em></p><a href="#">Set limits</a><a href="#">Take a break / Self-exclude</a><a href="#">Helpline · 0800 11 0011</a></div></div></section></main><footer class="pfooter"><div class="claret-rule"></div><div class="wrap pfoot-in one"><div class="pfoot-brand"><div class="pfoot-lock"><span class="age">18+</span><img src="../brand/mark-color.svg" width="20" height="20" alt="" aria-hidden="true"><span class="pfoot-name">50pick</span></div><p class="pfoot-lic">Licensed by the Gaming Board of Tanzania.</p><p class="mono pfoot-mono">License: TZ-GBT-2026-XXXX</p><p class="mono pfoot-mono">© 2026 50pick · Tanzania</p></div><div class="pfoot-col"><p class="nano pfoot-h">Play safe</p><ul><li><a href="#">Set limits</a></li><li><a href="#">Take a break / Self-exclude</a></li><li><a href="#">Helpline · 0800 11 0011</a></li><li><a href="#">Email · support@50pick.tz</a></li><li class="pfoot-note">If gambling stops being fun, stop.</li></ul></div><div class="pfoot-col"><p class="nano pfoot-h">Fairness</p><ul><li><a href="#">Resolution attestation</a></li><li><a href="#">Propose markets & get paid<span class="csoon">Coming soon</span></a></li><li><a href="#">Game RTP & rules</a></li><li><a href="#">Help & support</a></li></ul></div><div class="pfoot-col"><p class="nano pfoot-h">Privacy</p><ul><li><a href="#">Privacy notice</a></li><li><a href="#">AML / KYC policy</a></li><li><a href="#">Terms of service</a></li><li><a href="#">Export / close my account</a></li></ul></div></div></footer><nav class="bnav" aria-label="Primary"><a href="#" aria-current="page"><span class="pip"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5v17M7 20.5h10M6 7.5h12m-12 0-3 6a3.2 3.2 0 0 0 6 0Zm12 0-3 6a3.2 3.2 0 0 0 6 0Z"/></svg></span>Markets</a><a href="#" class="accent"><span class="pip"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17 9.5 10.5l4 4L21 7M15 7h6v6"/></svg></span>Up &amp; Down</a><a href="#"><span class="pip"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4.5 13.5H11L10 22l8.5-11.5H12Z"/></svg></span>Live</a><a href="#"><span class="pip"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4.5 12.5 5 5 10-11"/></svg></span>Results</a><a href="#"><span class="pip"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></span>More</a></nav></div>
+<script>
+(function(){
+  document.documentElement.classList.add('js');
+  if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    document.querySelectorAll('[data-reveal]').forEach(function(el){ el.setAttribute('data-in',''); });
+    return;
+  }
+  var io = new IntersectionObserver(function(es){
+    es.forEach(function(e){ if (e.isIntersecting) { e.target.setAttribute('data-in',''); io.unobserve(e.target); } });
+  }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
+  document.querySelectorAll('[data-reveal]').forEach(function(el){ io.observe(el); });
+})();
+</script>
+</body>
+</html>
