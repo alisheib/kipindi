@@ -1,6 +1,12 @@
 STATUS: the next plan. Written 2026-07-29, immediately after the design system was
 frozen and shipped. **Revised 2026-07-31 against the live platform, not against memory.**
 
+> 🎨 **DESIGN LANE (2026-08-12):** the round-2 design delivery (landing + `/markets`
+> discovery) was accepted and filed at `docs/design-system/v3-2026-08-11-landing-discovery/`;
+> all 22 static design gates now run in `predeploy` (were 4, and the chain was broken).
+> The living plan is [`../design-brief/PLAN-OF-RECORD.md`](../design-brief/PLAN-OF-RECORD.md);
+> the implementation session starts from `design-brief/00-NEXT-SESSION-PROMPT.md`.
+
 **Items 1, 2, 3 and 4 are DONE and live.** ✅ **Item 3 (withdrawals) CLOSED 2026-08-10:** the
 rail works (four real payouts settled 2026-07-31), the block was ours to lift, and it has been
 lifted — the last stuck payout was returned through `/admin/payments`, the queue reads **0**,
