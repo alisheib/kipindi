@@ -1,6 +1,33 @@
 # NEXT SESSION — implement the accepted round-2 design (markets · hero · landing · header)
 
 **Paste this whole file as your opening prompt. Turn ultracode on.**
+**The whole implementation ships cleanly in THIS ONE session — plan first, then all four
+batches, end to end, every push verified.**
+
+## ⚠️ FIRST — the design files MOVED on 2026-08-12. This machine may hold the OLD layout.
+
+This session may run on a DIFFERENT PC than the one that reorganized the design files.
+`git pull` syncs the tracked truth but does NOT remove old **untracked/gitignored** leftovers —
+and it will REFUSE to pull if a stale untracked file sits where a new tracked one goes
+("untracked working tree file would be overwritten"). So, before anything else:
+
+1. `git fetch origin && git status` — confirm you are on `main`.
+2. If `git pull` complains about untracked files in `design-brief/`, that IS the stale layout.
+3. Any of these found on disk are pre-reorganization leftovers — canonical copies are in git
+   and archived on the main laptop (`F:\50pick-design-archive\2026-08-12-final\`). Move them
+   to a local folder OUTSIDE the repo (e.g. `..\50pick-design-stale-localbak\`), then pull:
+   - `design-brief/handover-v3-total-2026-08-11/` · `design-brief/handover-v2-2026-08-11/`
+     (incl. its gitignored `02-current-state/`, `01-approved-design/screens/` remnants)
+   - `design-brief/send/` · `design-brief/*.zip` (any kit/handover zips)
+   - a stale `design-brief/00-NEXT-SESSION-PROMPT.md` (the old "total commission" brief —
+     if the file does not start with "implement the accepted round-2 design", it is stale)
+   - repo-root `NEXT-SESSION-PROMPT.md` · `New Landing Design/` · `scripts/build-design-handover.mts`
+4. After the pull, the correct layout is: the kit at
+   `docs/design-system/v3-2026-08-11-landing-discovery/` (+ `ACCEPTANCE.md`), the living
+   references at `docs/design-brief/handover-2026-08/`, and `design-brief/` holding EXACTLY
+   three files (`PLAN-OF-RECORD.md` · `CLEANUP-MANIFEST.md` · this prompt). If that matches,
+   you are clean — proceed. If anything else claims to be a design plan or kit, it is stale;
+   do not read it, move it out.
 
 Read, in order, before touching anything:
 1. `CLAUDE.md` (the mechanics + the ACTIVE-WORK banner)
