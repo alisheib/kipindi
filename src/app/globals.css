@@ -194,6 +194,27 @@
   --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px;
   --sp-6: 24px; --sp-8: 32px; --sp-10: 40px; --sp-12: 48px; --sp-16: 64px;
 
+  /* ---------- Vertical rhythm — the FOUR gaps a long page is allowed ----------
+     Inherited from the round-2 design kit (2026-08-13). Derived from --sp-* rather than given
+     literals, so the rhythm cannot drift away from the spacing scale it is built on.
+
+     THE RULE, which is why these are named and not typed inline:
+       --rh-tight    24px   inside a group — a heading and the thing it labels
+       --rh-close    48px   between sibling blocks in one section
+       --rh-section  96px   between sections
+       --rh-chapter 144px   at a chapter break, where the page changes subject
+
+     ⚠️ A section's OBSERVED gap is the sum of the two paddings that meet at it
+     (A.padding-bottom + B.padding-top). The kit's landing rhythm — 144 · 96 · 96 · 144 — is
+     produced that way, from 96/96, 48/48, 48/48 and 48/96 pairs. ⛔ So do NOT also write
+     `margin: var(--rh-chapter)` at a boundary whose padding already sums to 144: that is a
+     288px gap and a double-count. The kit's own layouts declare --rh-chapter and never consume
+     it, for exactly this reason. */
+  --rh-tight: var(--sp-6);
+  --rh-close: var(--sp-12);
+  --rh-section: calc(var(--sp-12) * 2);
+  --rh-chapter: calc(var(--sp-12) * 3);
+
   /* ---------- Radius — additive +4 rhythm ---------- */
   --r-xs: 4px; --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-xl: 24px; --r-pill: 999px;
 
@@ -2642,6 +2663,41 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
   gap: 14px;
   grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
 }
+
+/* ───────────────────────────── /markets discovery bar ─────────────────────────────
+   The round-2 kit's filter surface (2026-08-13), replacing the 13-pill vertical rail.
+   Geometry and the six chip states live on the components; only what CANNOT be expressed as a
+   utility is here. */
+
+/* COMPONENTS §3 — the transition is named property-by-property. ⛔ `transition: all` must never
+   appear: it animates properties nobody chose, including layout ones, and it is the reason a
+   hover could cost a reflow. 140ms ease-out is the kit's figure for a control this small. */
+.kp-fchip {
+  transition:
+    background 140ms ease-out,
+    border-color 140ms ease-out,
+    color 140ms ease-out,
+    box-shadow 140ms ease-out;
+}
+/* Press feedback — 1px, the same nudge every other control in the system uses. */
+.kp-fchip:active { transform: translateY(1px); }
+
+/* The sort/topic menus are <details>, so they open with no JavaScript. The native marker is
+   replaced by the caret glyph inside the summary. */
+.kp-menu > summary { list-style: none; }
+.kp-menu > summary::-webkit-details-marker { display: none; }
+.kp-menu[open] > summary .kp-menu-caret { transform: rotate(180deg); }
+.kp-menu-caret { transition: transform var(--t-quick) ease-out; }
+
+/* The direction button's arrow points the way the board is ordered. One glyph, rotated —
+   never two glyphs, which would be two things to keep in agreement. */
+.kp-sortdir { transition: transform var(--t-quick) ease-out; }
+.kp-sortdir[data-dir="desc"] { transform: rotate(180deg); }
+
+/* ⚠️ MOTION.CSS ATOM A — under reduced motion every transition above collapses to ~0ms via the
+   global reduced-motion block. These rules deliberately animate only transform/colour, never
+   `animation-delay` on a `both`-fill keyframe, because THAT is clamped rather than skipped and
+   would blank the control for the length of its delay. */
 /* FEATURED (2026-07-29) — the top market of a board leads, instead of every card
    competing at one weight. It spans two columns from `md` up, so on a wide board
    the eye has somewhere to land first and a short board still reads composed

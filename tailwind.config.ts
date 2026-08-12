@@ -69,6 +69,12 @@ const config: Config = {
           strong: "var(--border-strong)",
           focus: "var(--border-focus)",
           divider: "var(--border-divider)",
+          // WCAG 1.4.11 (audit H10): --border is DECORATIVE-only at 36% L. A border that is a
+          // control's ONLY boundary must reach 3:1, which is what --border-control is for
+          // (globals.css:316, 3.45:1 on --bg). The token existed with no bridge, so
+          // `border-border-control` compiled to NOTHING at two call sites on the discovery bar
+          // — the same silent-dead-class defect that once left 1,325 classes emitting no CSS.
+          control: "var(--border-control)",
         },
         text: {
           DEFAULT: "var(--text-primary)",

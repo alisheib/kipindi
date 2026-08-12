@@ -2,19 +2,46 @@ import { Suspense, cache } from "react";
 import { fill } from "@/lib/utils";
 import Link from "next/link";
 import { SignalPip } from "@/components/brand";
-import { I, categoryGlyph } from "@/components/ui/glyphs";
 import { MarketCard } from "@/components/markets/market-card";
-import { listMarkets, impliedYesPct, isClosedByTime, isSelectionClosed, traderSeedsByMarket, type MarketCategory } from "@/lib/server/market-service";
+import {
+  listMarkets,
+  impliedYesPct,
+  isClosedByTime,
+  isSelectionClosed,
+  traderSeedsByMarket,
+  MARKET_CATEGORIES,
+  type MarketCategory,
+} from "@/lib/server/market-service";
 import { getCardCharts } from "@/lib/server/market-history";
 import { countCommentsByMarkets } from "@/lib/server/comments-store";
 import { getServerT } from "@/lib/i18n-server";
+import { getSession } from "@/lib/server/session";
+import { listWatchedMarketIds } from "@/lib/server/watchlist-service";
 
 import { EmptyState } from "@/components/ui/empty-state";
-import { ProposePromo } from "@/components/ui/propose-promo";
+import { PageContainer } from "@/components/layout/page-container";
 import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { SearchBox } from "@/components/ui/search-box";
 import { parseQuery, matchesQuery, fieldNames, MARKET_SEARCH } from "@/lib/search";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
+import { DiscoveryBar, type DiscoveryCounts } from "@/components/markets/discovery-bar";
+import { MARKET_CARD_H } from "@/components/markets/card-geometry";
+import {
+  ODDS_IDS,
+  POOL_IDS,
+  STATUS_IDS,
+  buildDiscoveryHref,
+  countFor,
+  emptyCause,
+  matchesStatus,
+  filterRows,
+  parseDiscoveryParams,
+  relaxations,
+  sortRows,
+  type DiscoveryRow,
+  type DiscoveryState,
+  type RelaxationId,
+} from "@/lib/markets/discovery";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -22,291 +49,213 @@ export async function generateMetadata() {
 }
 export const dynamic = "force-dynamic";
 
-type WhenFilter = "new" | "soon" | "today" | "week" | "all";
-const WHEN_CUTOFFS: Record<WhenFilter, number | null> = {
-  new:   null,
-  soon:  60 * 60_000,
-  today: 24 * 3600_000,
-  week:  7 * 24 * 3600_000,
-  all:   null,
-};
+type SP = Record<string, string | string[] | undefined>;
 
 /**
- * The window a player gets with no query string — i.e. THE BOARD.
+ * ⭐ ONE BOARD READ PER REQUEST (B-17). The header figure, every control's count and the grid
+ * all consume this same array; each used to run its own query (up to four board fetches per
+ * render). `cache()` dedupes across the page's streamed sections within one request render.
  *
- * 🔴 THIS WAS `"today"` AND IT SHOWED A PLAYER NOTHING. Measured on production
- * 2026-08-10, in a real browser, at 360/768/1280 × en/sw/zh — all nine combinations
- * rendered **0 cards** while the header directly above them said "40 live · TZS
- * 1,659k in play". The inventory is long-dated and always will be: of 40 live polls,
- * **0 resolved within 24h, 2 within a week, 38 beyond it.** A 24-hour window over
- * long-horizon inventory is empty on essentially every day the platform runs, so the
- * board's own first impression was an empty grid over three FINISHED markets.
+ * ⛔ B-1 — NO SWALLOW. The page cannot distinguish "no live markets" from "read failed", so a
+ * failed board read must throw to `markets/error.tsx`. It must never render an empty board.
+ * (The enrichments below — traders, charts, comments — DO degrade with `.catch()`: their
+ * absence garnishes a card, it never mimics an empty board.)
  *
- * ⛔ Do not "fix" an empty board by adding another compensation. Three already
- * existed — a featured treatment, a "just listed" section and a see-wider nudge —
- * and all three are downstream of this one literal. The board now shows the whole
- * live book, still sorted soonest-first, so urgency leads without hiding anything.
- * `soon` / `today` / `week` remain as deliberate NARROWING choices.
+ * ⚠️ The read now spans LIVE ∪ CLOSED, because `All` is the UNSETTLED book (PLAN-OF-RECORD
+ * §8.2). `isClosedByTime` still gates LIVE rows: a LIVE market past its settlement clock is in
+ * the resolver queue, not on the board. CLOSED rows are admitted deliberately — CLOSED appears
+ * on no other player discovery surface.
  *
- * ⚠️ ONE DEFINITION. Four sites used to hard-code "today" independently — the two
- * readers plus the two href builders that omit the param when it equals the default.
- * Changing three of four leaves links that disagree with the page they point at, so
- * the value lives here and nowhere else.
+ * ⛔ productLine stays the MARKET default. `test:product-line` lists this file as
+ * MUST_STAY_DEFAULT: opting into "ALL" would flood the board with Up & Down rounds (~300k/yr).
  */
-const DEFAULT_WHEN: WhenFilter = "all";
+const getBoard = cache(async () => {
+  const [live, closed] = await Promise.all([
+    listMarkets({ status: "LIVE" }),
+    listMarkets({ status: "CLOSED" }),
+  ]);
+  return [...live.filter((m) => !isClosedByTime(m)), ...closed];
+});
 
-// B-17 — ONE live-board read per request. The header, the total-live count and
-// the bettable grid all consumed the same list but each ran its own query (up
-// to 4 board fetches per render). React cache() dedupes across the page's
-// streamed sections within a single request render.
-// B-1 — no swallow: the page cannot distinguish "no live markets" from "read
-// failed", so a failed board read must throw to markets/error.tsx, never render
-// the empty board.
-const getLiveBoard = cache(async () =>
-  (await listMarkets({ status: "LIVE" })).filter((m) => !isClosedByTime(m)),
-);
+const getWatchedIds = cache(async (userId: string | null): Promise<Set<string>> => {
+  if (!userId) return new Set();
+  return new Set(await listWatchedMarketIds(userId).catch(() => []));
+});
 
-export default async function MarketsPage({ searchParams }: { searchParams: Promise<{ cat?: string; when?: string; q?: string; page?: string }> }) {
+type BoardMarket = Awaited<ReturnType<typeof getBoard>>[number];
+
+/**
+ * Decorate a stored market into the shape the pure contract reasons about.
+ *
+ * ⚠️ `yesPct` is null on an empty pool. `impliedYesPct` returns a hardcoded 50 when nobody has
+ * staked (`market-service.ts:232-236`) — passing that into an odds bucket would file a
+ * cold-start market under "Close call · 40–60%" on a number nobody produced.
+ *
+ * ⚠️ `bettableUntilMs` is `selectionClosedAt ?? resolutionAt` — the deadline the CARD shows.
+ * The board once sorted and windowed by `resolutionAt` while every card stated
+ * time-to-betting-close, so the board contradicted its own cards.
+ */
+function toRow(m: BoardMarket, watched: Set<string>, move24h: number | undefined): DiscoveryRow {
+  const pool = m.yesPool + m.noPool;
+  return {
+    id: m.id,
+    category: m.category,
+    pool,
+    predictors: m.predictorCount,
+    yesPct: pool > 0 ? impliedYesPct(m) : null,
+    move24h,
+    createdAtMs: Date.parse(m.createdAt),
+    bettableUntilMs: Date.parse(m.selectionClosedAt ?? m.resolutionAt),
+    selectionClosed: isSelectionClosed(m),
+    status: m.status as DiscoveryRow["status"],
+    watched: watched.has(m.id),
+  };
+}
+
+export default async function MarketsPage({ searchParams }: { searchParams: Promise<SP> }) {
   const { t } = await getServerT();
-  const allLive = await getLiveBoard();
-  const totalVolume = allLive.reduce((s, m) => s + m.yesPool + m.noPool, 0);
+  const board = await getBoard();
+
+  /**
+   * 🔴 THE HEADER COUNTS THE SET IT NAMES, AND NOTHING WIDER.
+   *
+   * The word here is "live", so it counts markets a player can act on — the SAME predicate the
+   * `Open` segment uses, read from the same place. It deliberately does NOT count the whole
+   * board: the board now spans LIVE ∪ CLOSED (because `All` is the unsettled book), and a
+   * header reading "49 live" over a book containing three settled-and-waiting markets would be
+   * false in the exact way that shipped once already — "40 live · TZS 1,659k in play" printed
+   * above a grid of ZERO cards, at nine of nine viewport × locale combinations. The number was
+   * factually true of *something*; it just was not true of what the sentence claimed.
+   *
+   * ⛔ `matchesStatus` is imported rather than re-expressed. A second copy of "open" here is
+   * how the header and the segment start disagreeing.
+   */
+  const NO_WATCH = new Set<string>();
+  const nowMs = Date.now();
+  const openMarkets = board.filter((m) => matchesStatus(toRow(m, NO_WATCH, undefined), "open", nowMs));
+  const openVolume = openMarkets.reduce((s, m) => s + m.yesPool + m.noPool, 0);
+
   return (
-    <main className="mx-auto max-w-[1280px] px-3 lg:px-6 py-6">
-      {/* Accessible page heading (WCAG 1.3.1 / 2.4.6). Visually hidden — the
-          design uses a slim content-first header, not a marketing H1. */}
+    <PageContainer tier="board">
+      {/* Accessible page heading (WCAG 1.3.1 / 2.4.6). Visually hidden — the design uses a
+          slim content-first header, not a marketing H1. */}
       <h1 className="sr-only">{t.market.title}</h1>
-      {/* Auto-refresh every 30s so odds, volumes, and time-left stay
-          current without the player needing to F5. Pauses when the tab
-          is backgrounded. Also responds to 50pick:refresh events. */}
+      {/* Odds, volumes and time-left stay current without an F5. Pauses when backgrounded. */}
       <RefreshPoller intervalMs={30_000} />
-      {/* Lean, content-first header — the marketing hero lives on the homepage. */}
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">{t.market.title}</p>
-        {/* The board's heartbeat. Aqua live-pip + the two figures at full ink,
-            their labels kept quiet — a confident pulse, not a shout. Aqua (not
-            gilt) by design: gold is reserved for earned-money moments. */}
-        <p className="flex items-center gap-1.5 font-mono text-[12.5px] tabular-nums whitespace-nowrap">
+
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <p className="font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-text-subtle">
+          {t.market.title}
+        </p>
+        {/* Aqua (not gilt) by design: gold is reserved for earned-money moments. */}
+        <p className="flex items-center gap-1.5 whitespace-nowrap font-mono text-[12.5px] tabular-nums">
           <SignalPip size={7} className="mr-0.5" />
-          <span className="font-semibold text-text">{allLive.length}</span>
+          <span className="font-semibold text-text">{openMarkets.length}</span>
           <span className="text-text-subtle">{t.market.liveCount}</span>
           <span className="text-border-strong">·</span>
-          <span className="font-semibold text-text">TZS {(totalVolume / 1000).toFixed(0)}k</span>
+          <span className="font-semibold text-text">TZS {(openVolume / 1000).toFixed(0)}k</span>
           <span className="text-text-subtle">{t.market.tzsInPlay}</span>
         </p>
       </div>
 
-      <ProposePromo href="/proposals" />
+      <SearchBox
+        placeholder={t.common.searchMarkets}
+        ariaLabel={t.common.searchMarkets}
+        helpFields={fieldNames(MARKET_SEARCH)}
+      />
 
-      {/* Search — the primary "find a market by name" affordance. Sticks just
-          under the 56px app bar so it stays reachable while scrolling a long
-          board; the board background sits behind it so cards scroll cleanly
-          under. The sidebar's sticky offset below is set to clear this bar. */}
-      <div className="sticky top-[56px] z-20 mt-4 bg-bg-base py-2.5">
-        <SearchBox
-          placeholder={t.common.searchMarkets}
-          ariaLabel={t.common.searchMarkets}
-          helpFields={fieldNames(MARKET_SEARCH)}
-        />
-      </div>
-
-      {/* Filters as a left column on desktop, stacked above the grid on mobile.
-          Sticky offset = 56 (app bar) + ~66 (sticky search zone) so the rail
-          parks just below the search instead of colliding with it. */}
-      <div className="mt-1 flex flex-col gap-5 lg:flex-row lg:gap-6">
-        {/* ⚠️ `lg:z-10` — BELOW the sticky search zone's z-20, deliberately. The two
-            sticky elements share an edge, and the search zone's height is now constant
-            (its echo row is always reserved), so they should never overlap. If a future
-            change makes them anyway, an explicit lower z-index degrades to the rail
-            passing UNDER the search bar rather than the search bar occluding the rail's
-            first control. */}
-        <aside className="lg:w-[208px] lg:shrink-0 lg:sticky lg:top-[122px] lg:z-10 lg:self-start lg:max-h-[calc(100dvh-134px)] lg:overflow-y-auto lg:overflow-x-hidden kp-thin-scroll lg:pb-3">
-          <FilterBar searchParams={searchParams} />
-        </aside>
-        <div className="min-w-0 flex-1">
-          <Suspense fallback={<GridSkeleton />}>
-            <SearchAwareGrid searchParams={searchParams} />
-          </Suspense>
-        </div>
-      </div>
-    </main>
+      <Suspense fallback={<GridSkeleton />}>
+        <DiscoveryBoard searchParams={searchParams} />
+      </Suspense>
+    </PageContainer>
   );
 }
 
-async function FilterBar({ searchParams }: { searchParams: Promise<{ cat?: string; when?: string; q?: string; page?: string }> }) {
+async function DiscoveryBoard({ searchParams }: { searchParams: Promise<SP> }) {
   const { t } = await getServerT();
   const sp = await searchParams;
-  const activeWhen = (sp.when as WhenFilter | undefined) ?? DEFAULT_WHEN;
-  const activeCat = sp.cat ?? "all";
-  const activeQ = (sp.q ?? "").trim();
+  const session = await getSession().catch(() => null);
+  const userId = session?.userId ?? null;
 
-  const CATEGORIES: Array<{ id: "all" | MarketCategory; label: string }> = [
-    { id: "all",     label: t.market.catAll },
-    { id: "sports",  label: t.market.catSports },
-    { id: "macro",   label: t.market.catMacro },
-    { id: "weather", label: t.market.catWeather },
-    { id: "crypto",  label: t.market.catCrypto },
-    { id: "culture", label: t.market.catCulture },
-    { id: "tech",    label: t.market.catTech },
-    { id: "other",   label: t.market.catOther },
-  ];
-
-  const WHEN_OPTIONS: Array<{ id: WhenFilter; label: string }> = [
-    { id: "new",   label: t.market.whenNew },
-    { id: "soon",  label: t.market.whenEndingSoon },
-    { id: "today", label: t.market.whenToday },
-    { id: "week",  label: t.market.whenThisWeek },
-    { id: "all",   label: t.market.whenAll },
-  ];
-
-  const buildHref = (next: { when?: WhenFilter; cat?: string }) => {
-    const params = new URLSearchParams();
-    const w = next.when ?? activeWhen;
-    const c = next.cat  ?? activeCat;
-    if (w !== DEFAULT_WHEN) params.set("when", w);
-    if (c !== "all")   params.set("cat", c);
-    if (activeQ)       params.set("q", activeQ); // keep the search when switching filters
-    const qs = params.toString();
-    return qs ? `/markets?${qs}` : "/markets";
-  };
-  return (
-    <div className="space-y-2.5 lg:space-y-4">
-      <nav aria-label={t.common.when} className="flex flex-wrap items-center gap-1.5 -mx-1 px-1 overflow-x-auto lg:flex-col lg:flex-nowrap lg:items-stretch lg:gap-1 lg:mx-0 lg:px-0 lg:overflow-visible">
-        <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle pr-1 lg:pr-0 lg:mb-1">{t.common.when}</span>
-        {WHEN_OPTIONS.map((o) => {
-          const active = o.id === activeWhen;
-          return (
-            <Link
-              key={o.id}
-              scroll={false}
-              href={buildHref({ when: o.id }) as never}
-              className={
-                "inline-flex h-8 items-center rounded-md border px-3.5 font-mono text-[12px] font-semibold whitespace-nowrap transition-all lg:w-full lg:justify-start " +
-                (active
-                  ? "border-brand-500 text-text"
-                  : "border-border bg-bg-elevated/60 text-text-muted hover:border-brand-400 hover:text-text")
-              }
-              style={active ? { background: "var(--pill-active)" } : undefined}
-            >
-              {o.label}
-            </Link>
-          );
-        })}
-      </nav>
-      <nav aria-label={t.common.topic} className="flex flex-wrap items-center gap-1.5 -mx-1 px-1 overflow-x-auto lg:flex-col lg:flex-nowrap lg:items-stretch lg:gap-1 lg:mx-0 lg:px-0 lg:overflow-visible">
-        <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle pr-1 lg:pr-0 lg:mb-1">{t.common.topic}</span>
-        {CATEGORIES.map((c) => {
-          const active = c.id === activeCat;
-          const Glyph = c.id === "all" ? I.layoutGrid : I[categoryGlyph(c.id)];
-          return (
-            <Link
-              key={c.id}
-              scroll={false}
-              href={buildHref({ cat: c.id }) as never}
-              className={
-                "inline-flex h-8 items-center gap-1.5 rounded-md border px-3 font-mono text-[12px] font-semibold whitespace-nowrap transition-all lg:w-full lg:justify-start " +
-                (active
-                  ? "border-brand-500 text-text"
-                  : "border-border bg-bg-elevated/60 text-text-muted hover:border-brand-400 hover:text-text")
-              }
-              style={active ? { background: "var(--pill-active)" } : undefined}
-            >
-              <Glyph s={14} className={"shrink-0 " + (active ? "text-brand-300" : "opacity-70")} />
-              {c.label}
-            </Link>
-          );
-        })}
-      </nav>
-    </div>
-  );
-}
-
-async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?: string; when?: string; q?: string; page?: string }> }) {
-  const { t } = await getServerT();
-  const sp = await searchParams;
-  const cat = (sp.cat as MarketCategory | undefined) ?? undefined;
-  const whenId = (sp.when as WhenFilter | undefined) ?? DEFAULT_WHEN;
-  // NB: `?? WHEN_CUTOFFS[DEFAULT_WHEN]` would be a bug — WHEN_CUTOFFS.all is
-  // *intentionally* null ("no cutoff"), and `null ?? x` collapses it back to x,
-  // which silently made the "All" filter behave like "Today" (hiding every market
-  // that settles > 24h out). Only fall back for an UNKNOWN `when` key.
-  const rawCutoff = WHEN_CUTOFFS[whenId];
-  const whenCutoff = rawCutoff === undefined ? WHEN_CUTOFFS[DEFAULT_WHEN] : rawCutoff;
-  // The shared grammar (src/lib/search). This page's old hand-rolled token-AND
-  // matcher was one of only TWO that got multi-word right; the other ten surfaces
-  // did a single contiguous `.includes()`. It is now one rule for all of them —
-  // and this page gains "quoted phrase", -exclude and field: for free.
-  // No regex here: `allowRegex` is admin-only by construction.
-  const parsed = parseQuery(sp.q, { fields: fieldNames(MARKET_SEARCH) });
-  const searching = parsed.mode !== "empty";
-  // The raw text, already trimmed and length-clamped by the parser — used for the
-  // result-count copy and to carry the query across filter links.
-  const qRaw = parsed.raw;
-  const matches = (m: { titleEn: string; titleSw: string; titleZh?: string | null; category: string; resolutionCriterion?: string }) =>
-    matchesQuery(parsed, m as unknown as Record<string, string | null | undefined>, MARKET_SEARCH);
+  const state = parseDiscoveryParams(sp, MARKET_CATEGORIES);
+  const board = await getBoard();
+  const watched = await getWatchedIds(userId);
   const now = Date.now();
-  // 🔴 THE CLOCK A PLAYER IS SHOWN IS THE CLOCK THEY MUST BE FILTERED AND SORTED BY.
-  //
-  // Every card states its time left as time-to-BETTING-CLOSE
-  // (`selectionClosedAt ?? resolutionAt`), because that is the deadline that matters
-  // to someone deciding whether to stake. The window filters and the soonest-first
-  // sort, however, measured `resolutionAt` — the settlement instant, which on a poll
-  // with a lead time is a different moment and on a sports poll can be hours later.
-  //
-  // The two disagreeing produced a board that contradicted its own cards: "Ending
-  // soon" could omit a market that stops taking bets in ten minutes (because it
-  // RESOLVES tomorrow), while listing one whose betting shut hours ago. Sorting had
-  // the same fault — "soonest first" ordered by a deadline the player was never shown.
-  //
-  // ⛔ `isClosedByTime` (resolutionAt) stays the board-INCLUSION gate: a market whose
-  // betting has closed is still live and still belongs on the board, awaiting its
-  // result. This changes only how the shown rows are ordered and windowed.
-  const bettableUntil = (m: { selectionClosedAt: string | null; resolutionAt: string }) =>
-    Date.parse(m.selectionClosedAt ?? m.resolutionAt);
-  // A name search is global: ignore the category filter so a remembered market
-  // surfaces no matter which topic chip happens to be active.
-  const effectiveCat = searching ? undefined : cat;
-  // Total live count (unfiltered) — used to distinguish "platform has zero
-  // markets" from "no markets match the active filter".
-  // B-17 — both figures derive from the ONE cached board read (getLiveBoard
-  // already excludes closed-by-time rows: they're in the resolver queue, not
-  // the live grid, and a card whose dial refuses to fire is a confused UX).
-  const liveBoard = await getLiveBoard();
-  const totalLive = effectiveCat ? liveBoard.length : 0; // no category filter means bettable IS total
-  const bettable = effectiveCat ? liveBoard.filter(m => m.category === effectiveCat) : liveBoard;
-  let live;
-  if (searching) {
-    // While searching, ignore the time-window entirely — a market the player
-    // remembers must surface regardless of when it closes — and sort soonest first.
-    live = bettable.filter(matches)
-      .sort((a, b) => bettableUntil(a) - bettableUntil(b));
-  } else if (whenId === "new") {
-    // "New" — newly-listed polls first, so freshly-generated markets are
-    // easy to find regardless of when they close.
-    live = [...bettable].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  } else {
-    const liveAll = bettable
-      .map(m => ({ m, ms: Math.max(0, bettableUntil(m) - now) }))
-      .sort((a, b) => a.ms - b.ms);
-    live = (whenCutoff === null
-      ? liveAll
-      : liveAll.filter(x => x.ms <= whenCutoff!)
-    ).map(x => x.m);
-  }
-  // Paginate the live grid with the shared player page size so a long board
-  // pages like every other list instead of rendering an unbounded wall.
-  const pageNum = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
-  const totalLiveCount = live.length;
-  const totalLivePages = Math.max(1, Math.ceil(totalLiveCount / PLAYER_PER_PAGE));
-  const safePage = Math.min(pageNum, totalLivePages);
-  const pagedLive = live.slice((safePage - 1) * PLAYER_PER_PAGE, safePage * PLAYER_PER_PAGE);
-  const marketsBaseHref = (() => {
-    const params = new URLSearchParams();
-    if (whenId !== DEFAULT_WHEN) params.set("when", whenId);
-    if (sp.cat && sp.cat !== "all") params.set("cat", sp.cat);
-    if (qRaw) params.set("q", qRaw);
-    const qs = params.toString();
-    return qs ? `/markets?${qs}` : "/markets";
-  })();
+
+  // The shared search grammar (src/lib/search) — quoted phrase, -exclude, field:. Injected into
+  // the contract rather than reimplemented there, so there is one definition of matching.
+  const parsed = parseQuery(state.q, { fields: fieldNames(MARKET_SEARCH) });
+  const byId = new Map(board.map((m) => [m.id, m] as const));
+  const matchesText = (r: DiscoveryRow) => {
+    const m = byId.get(r.id);
+    return m ? matchesQuery(parsed, m as unknown as Record<string, string | null | undefined>, MARKET_SEARCH) : false;
+  };
+
+  /**
+   * `Biggest move` needs a board-wide `move24h`, not one scoped to the rendered page — a sort
+   * cannot rank rows it has no value for. Fetched ONLY for that sort, so the ordinary board
+   * still pays for the cards it draws. A-5: absent stays absent and is partitioned last by the
+   * comparator; it is never coerced to 0.
+   */
+  const moveMap =
+    state.sort === "move"
+      ? await getCardCharts(board.map((m) => m.id)).catch(() => new Map())
+      : new Map();
+
+  const rows = board.map((m) => toRow(m, watched, moveMap.get(m.id)?.move24h));
+
+  // Counts are CROSS-FILTERED — the number beside a control is what pressing it would yield.
+  const counts: DiscoveryCounts = {
+    status: Object.fromEntries(
+      STATUS_IDS.map((s) => [s, countFor(rows, state, now, matchesText, { status: s })]),
+    ) as DiscoveryCounts["status"],
+    odds: Object.fromEntries(
+      ODDS_IDS.map((o) => [o, countFor(rows, state, now, matchesText, { odds: o })]),
+    ) as DiscoveryCounts["odds"],
+    pool: Object.fromEntries(
+      POOL_IDS.map((p) => [p, countFor(rows, state, now, matchesText, { pool: p })]),
+    ) as DiscoveryCounts["pool"],
+    topic: Object.fromEntries(
+      ["all", ...MARKET_CATEGORIES].map((c) => [c, countFor(rows, state, now, matchesText, { topic: c })]),
+    ),
+  };
+
+  const matched = sortRows(filterRows(rows, state, now, matchesText), state);
+
+  // Paging. The pager total IS the bar's result count — same variable, never recomputed.
+  const pageNum = Math.max(1, parseInt(String(sp.page ?? "1"), 10) || 1);
+  const totalPages = Math.max(1, Math.ceil(matched.length / PLAYER_PER_PAGE));
+  const safePage = Math.min(pageNum, totalPages);
+  const paged = matched.slice((safePage - 1) * PLAYER_PER_PAGE, safePage * PLAYER_PER_PAGE);
+
+  const topics = [
+    { id: "all", label: t.market.catAll },
+    ...MARKET_CATEGORIES.map((c) => ({ id: c, label: CATEGORY_LABEL(t, c) })),
+  ];
+
+  // 🔴 "RECENTLY RESOLVED" ONCE SHOWED THE OLDEST RESULTS ON THE PLATFORM, FOREVER.
+  // `listMarkets` orders `resolutionAt: "asc"` because that is right for a LIVE board — soonest
+  // to close, first. Slicing that ascending list for RESOLVED rows pins the three that resolved
+  // EARLIEST in the platform's history. Measured on production 2026-08-10: three markets from
+  // 5 July offered as "recently resolved" while markets settled on 1–2 August sat below them.
+  // ⛔ Never slice a board-ordered list for a "recent" section — re-sort by the clock the
+  // section names. It stays a strip BELOW the grid: `All` is the unsettled book, and the
+  // settled archive is /results.
+  const resolvedAll = (await listMarkets({ status: "RESOLVED" }).catch(() => []))
+    .slice()
+    .sort((a, b) => b.resolutionAt.localeCompare(a.resolutionAt));
+  const searching = parsed.mode !== "empty";
+  const resolved = searching
+    ? resolvedAll.filter((m) => matchesQuery(parsed, m as unknown as Record<string, string | null | undefined>, MARKET_SEARCH)).slice(0, 6)
+    : resolvedAll.slice(0, 3);
+
+  const drawIds = [...paged.map((r) => r.id), ...resolved.map((m) => m.id)];
+  // B-1 — deliberate degrade: these are garnish on the cards, never the board itself.
+  const traderMap = await traderSeedsByMarket(drawIds).catch(() => new Map());
+  const cardCharts = await getCardCharts(drawIds).catch(() => new Map());
+  const commentCounts = await countCommentsByMarkets(drawIds).catch(() => new Map<string, number>());
+
+  const cause = emptyCause(state, matched.length, board.length);
 
   function timeLeftStr(iso: string): string {
     const ms = Date.parse(iso) - Date.now();
@@ -315,137 +264,23 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
     if (d > 0) return fill(t.market.timeLeftD, { n: d });
     const h = Math.floor(ms / 3600_000);
     if (h > 0) return fill(t.market.timeLeftH, { n: h });
-    const m = Math.floor(ms / 60_000);
-    return fill(t.market.timeLeftM, { n: m });
-  }
-
-  // Show a small resolved teaser — the full browsable archive lives at /results.
-  // B-1 — deliberate degrade: the teaser (and the trader/chart/comment
-  // enrichments below) are garnish on the live board; their absence degrades
-  // the cards, it never mimics an empty board.
-  // 🔴 "RECENTLY RESOLVED" WAS SHOWING THE OLDEST RESULTS ON THE PLATFORM, FOREVER.
-  // `listMarkets` → `listBoard` orders `resolutionAt: "asc"` (market-dal.ts) because
-  // that is right for the LIVE board — soonest to close, first. Slicing the same
-  // ascending list for RESOLVED rows takes the three that resolved EARLIEST in the
-  // platform's history and pins them there permanently. Measured on production
-  // 2026-08-10: the board offered three markets from **5 July** as "recently
-  // resolved" while markets settled on 1–2 August sat below them in the same list.
-  // ⛔ Never slice a board-ordered list for a "recent" section — re-sort by the
-  // clock that section actually names.
-  const resolvedAll = (await listMarkets({ status: "RESOLVED" }).catch(() => []))
-    .slice()
-    .sort((a, b) => b.resolutionAt.localeCompare(a.resolutionAt));
-  const resolved = searching ? resolvedAll.filter(matches).slice(0, 6) : resolvedAll.slice(0, 3);
-  const allForCharts = [...pagedLive, ...resolved];
-  const boardIds = allForCharts.map((m) => m.id);
-  // Scoped to the cards actually being drawn — this used to read the ENTIRE Position
-  // table on every render and every 30s refresh (see traderSeedsByMarket).
-  const traderMap = await traderSeedsByMarket(boardIds).catch(() => new Map());
-  // One query for the whole board — never map getCardChart across a list.
-  const cardCharts = await getCardCharts(boardIds).catch(() => new Map());
-  // B-17 — one grouped query for the whole board, not one count per card.
-  const commentCounts = await countCommentsByMarkets(boardIds).catch(() => new Map<string, number>());
-
-  const resultCount = live.length + resolved.length;
-
-  // ── Board composition (2026-07-29, re-based 2026-08-10) ──────────────────
-  // ⚠️ WRITTEN FOR A DEFAULT THAT NO LONGER EXISTS. These two additions were built
-  // because the board defaulted to when="today" and a 1280px screen could render one
-  // card beside a column of filters and an ocean of nothing. The default is now
-  // `all` (see DEFAULT_WHEN), so the ocean is gone and both additions are load-
-  // bearing only when a player NARROWS the window themselves. They are kept because
-  // that case is still real; they are no longer propping up the landing view.
-  //
-  // Two additions, both of which show REAL markets or nothing at all:
-  //
-  //  1. FEATURED — the first card of the live grid leads. Only when the grid is
-  //     genuinely short (<= 4) and we're not searching: on a full board every
-  //     card competing at one weight is correct, and a search result must stay
-  //     ranked by relevance, not by a treatment we chose.
-  //  2. NEW MARKETS — freshly-listed markets that the active time window
-  //     excludes. This is a SEPARATE, LABELLED section, never an injection into
-  //     the filtered grid: the grid keeps meaning exactly what the filter says.
-  //     Same `fresh` rule the card uses (volume 0 + predictors 0), so the board
-  //     and the card can never disagree about what "new" means — one rule, one
-  //     place. Suppressed while searching and when it would add nothing.
-  // ⚠️ EXCLUDED BY THE **WINDOW**, NEVER BY THE PAGE. This section exists to surface
-  // fresh markets the active time filter hides — that is what its own heading claims.
-  // It used to subtract `pagedLive` (the current PAGE), which was indistinguishable
-  // from subtracting the window only because the old 24h default made the window
-  // smaller than one page. On a board showing its whole book, subtracting the page
-  // would re-advertise page 2 under a "just listed" heading, directly beneath the
-  // pager that already leads there. Subtracting `live` (the windowed set) means the
-  // section renders exactly when the filter is genuinely hiding something, and
-  // disappears on the default board — which is correct, because nothing is hidden.
-  const inWindow = new Set(live.map((m) => m.id));
-  const featuredId = !searching && pagedLive.length > 0 && pagedLive.length <= 4 ? pagedLive[0].id : null;
-  const newMarkets = searching
-    ? []
-    : bettable
-        .filter((m) => !inWindow.has(m.id) && m.yesPool + m.noPool === 0 && m.predictorCount === 0)
-        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-        .slice(0, 6);
-  // One extra chart/comment lookup pass for the new-markets section, batched the
-  // same way as the main board (never map a per-card query across a list).
-  // B-1 — deliberate degrade: chart garnish only.
-  const newCharts = newMarkets.length
-    ? await getCardCharts(newMarkets.map((m) => m.id)).catch(() => new Map())
-    : new Map();
-
-  // ── Sparse-board continuation nudge ──────────────────────────────────────
-  // A player who NARROWS to soon/today/week can land on a small single page while
-  // more markets settle further out. Rather than leave them on a near-empty board,
-  // offer a calm "see wider" prompt. ⚠️ This can no longer fire on the landing view
-  // — `all` is the default and has no wider window — which is the point: the nudge
-  // is for a choice the player made, not a hole the default dug. It is a
-  // NUDGE — pure links to a wider window — and never injects non-matching
-  // cards. Shown only when: not searching · a bounded window (soon/today/week)
-  // · the whole window fits on one page (sparse) · AND a wider window
-  // genuinely reveals MORE live markets (honest — no dead link).
-  type ContLink = { href: string; label: string };
-  let continuation: { lead: string; links: ContLink[] } | null = null;
-  if (!searching && live.length > 0 && totalLivePages === 1 && (whenId === "today" || whenId === "soon" || whenId === "week")) {
-    // Same clock as the windows themselves — this counts how many markets a WIDER
-    // window would reveal, so it has to measure what those windows measure or the
-    // nudge would promise markets the wider view does not contain.
-    const msLeft = bettable.map((m) => Math.max(0, bettableUntil(m) - now));
-    const within = (cut: number | null) => (cut === null ? msLeft.length : msLeft.filter((ms) => ms <= cut).length);
-    const here = live.length; // == within(current window cutoff) on these branches
-    const catParam = cat ?? null; // `cat` is a real category or undefined (URL never carries ?cat=all)
-    const widerHref = (w: WhenFilter) => {
-      const params = new URLSearchParams();
-      if (w !== DEFAULT_WHEN) params.set("when", w); // the default carries no param
-      if (catParam) params.set("cat", catParam); // stay in the topic the player chose
-      const qs = params.toString();
-      return qs ? `/markets?${qs}` : "/markets";
-    };
-    // Candidate wider windows per bounded window, nearest-first; each is shown
-    // only if it actually contains more markets than the current view.
-    const WIDER: Record<"soon" | "today" | "week", Array<{ w: WhenFilter; cut: number | null; label: string }>> = {
-      soon:  [{ w: "today", cut: WHEN_CUTOFFS.today, label: t.market.contSeeToday }, { w: "all", cut: null, label: t.market.contSeeAll }],
-      today: [{ w: "week",  cut: WHEN_CUTOFFS.week,  label: t.market.contSeeWeek },  { w: "all", cut: null, label: t.market.contSeeAll }],
-      week:  [{ w: "all",   cut: null,               label: t.market.contSeeAll }],
-    };
-    const links = WIDER[whenId]
-      .filter((c) => within(c.cut) > here)
-      .map((c) => ({ href: widerHref(c.w), label: c.label }));
-    if (links.length > 0) {
-      const lead = whenId === "today" ? t.market.contTodayLead : whenId === "soon" ? t.market.contSoonLead : t.market.contWeekLead;
-      continuation = { lead, links };
-    }
+    return fill(t.market.timeLeftM, { n: Math.floor(ms / 60_000) });
   }
 
   return (
     <>
-      {searching && (
-        <p aria-live="polite" className="mb-3 font-mono text-[11px] text-text-subtle tabular-nums">
-          {resultCount === 0
-            ? `${t.market.noMarketsMatch} "${qRaw}"`
-            : `${resultCount} ${resultCount === 1 ? t.market.marketMatch : t.market.marketsMatch} "${qRaw}"`}
-        </p>
-      )}
-      <section className="market-grid">
-        {pagedLive.map((m) => {
+      <DiscoveryBar
+        state={state}
+        counts={counts}
+        resultCount={matched.length}
+        topics={topics}
+        t={t}
+        signedIn={!!userId}
+      />
+
+      <section className="market-grid mt-3">
+        {paged.map((r) => {
+          const m = byId.get(r.id)!;
           const cc = cardCharts.get(m.id) ?? { spark: [] };
           return (
             <MarketCard
@@ -458,100 +293,46 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
               yesPct={impliedYesPct(m)}
               volume={m.yesPool + m.noPool}
               predictors={m.predictorCount}
-              timeLeft={isSelectionClosed(m) ? t.market.waitingForResults : timeLeftStr(m.selectionClosedAt ?? m.resolutionAt)}
-              status="LIVE"
-              selectionClosed={isSelectionClosed(m)}
+              timeLeft={
+                r.selectionClosed ? t.market.waitingForResults : timeLeftStr(m.selectionClosedAt ?? m.resolutionAt)
+              }
+              status={m.status === "CLOSED" ? "CLOSED" : "LIVE"}
+              selectionClosed={r.selectionClosed}
               sourceUrl={m.sourceUrl}
               spark={cc.spark}
               move24h={cc.move24h}
               traders={traderMap.get(m.id)}
               comments={commentCounts.get(m.id) ?? 0}
-              featured={m.id === featuredId}
             />
           );
         })}
-        {live.length === 0 && (
-          <LiveEmptyState
-            searching={searching}
-            qRaw={qRaw}
-            whenId={whenId}
-            activeCat={cat ?? "all"}
-            categoryLiveCount={bettable.length}
-            anyLiveAnyCat={effectiveCat ? totalLive > 0 : bettable.length > 0}
-          />
-        )}
+        {cause && <BoardEmptyState cause={cause} state={state} rows={rows} now={now} matchesText={matchesText} t={t} />}
       </section>
 
-      {/* Pagination — shared platform pager (live grid) */}
-      {totalLivePages > 1 && (
-        <div className="mt-6 rounded-lg border border-border bg-bg-elevated/40 overflow-hidden">
-          <Pagination total={totalLiveCount} page={safePage} perPage={PLAYER_PER_PAGE} baseHref={marketsBaseHref} ofLabel={t.common.of} prevLabel={t.common.previousPage} nextLabel={t.common.nextPage} />
+      {totalPages > 1 && (
+        <div className="mt-6 overflow-hidden rounded-lg border border-border bg-bg-elevated/40">
+          <Pagination
+            total={matched.length}
+            page={safePage}
+            perPage={PLAYER_PER_PAGE}
+            baseHref={buildDiscoveryHref(state)}
+            ofLabel={t.common.of}
+            prevLabel={t.common.previousPage}
+            nextLabel={t.common.nextPage}
+          />
         </div>
-      )}
-
-      {/* Sparse-board continuation — a calm "see wider" nudge (mutually
-          exclusive with the pager: this shows only on a single-page board). */}
-      {continuation && (
-        <div className="mt-6 flex flex-col items-center gap-3 rounded-lg border border-border/70 bg-bg-elevated/40 px-4 py-4 text-center sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:text-left">
-          <p className="min-w-0 font-mono text-[12.5px] text-text-muted">{continuation.lead}</p>
-          <div className="flex flex-wrap items-center justify-center gap-2 sm:shrink-0 sm:justify-end">
-            {continuation.links.map((l) => (
-              <Link key={l.href} href={l.href as never} className="btn btn-ghost btn-sm whitespace-nowrap">
-                {l.label} <span aria-hidden="true" className="ml-1">→</span>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── New markets ──
-          Freshly-listed markets the active time window leaves out. A SEPARATE,
-          LABELLED section — never an injection into the filtered grid above, so
-          that grid keeps meaning exactly what the filter says. Real markets or
-          this section does not render at all; there is no placeholder here. */}
-      {newMarkets.length > 0 && (
-        <section className="mt-10" aria-labelledby="new-markets-heading">
-          <div className="board-section-head">
-            <div>
-              <p className="board-section-eyebrow">{t.market.justListed}</p>
-              <h2 id="new-markets-heading" className="font-display text-[20px] font-semibold text-text">
-                {t.market.newMarkets}
-              </h2>
-            </div>
-            <Link href={"/markets?when=new" as never} className="font-mono text-[11.5px] font-semibold text-brand-300 hover:text-text transition-colors whitespace-nowrap">
-              {t.market.seeAllNew}
-            </Link>
-          </div>
-          <div className="market-grid">
-            {newMarkets.map((m) => (
-              <MarketCard
-                key={m.id}
-                id={m.id}
-                titleEn={m.titleEn}
-                titleSw={m.titleSw}
-                titleZh={m.titleZh}
-                category={m.category}
-                yesPct={impliedYesPct(m)}
-                volume={m.yesPool + m.noPool}
-                predictors={m.predictorCount}
-                timeLeft={isSelectionClosed(m) ? t.market.waitingForResults : timeLeftStr(m.selectionClosedAt ?? m.resolutionAt)}
-                status="LIVE"
-                selectionClosed={isSelectionClosed(m)}
-                sourceUrl={m.sourceUrl}
-                spark={(newCharts.get(m.id) ?? { spark: [] }).spark}
-              />
-            ))}
-          </div>
-        </section>
       )}
 
       {resolved.length > 0 && (
         <section className="mt-10">
           <div className="mb-3 flex items-baseline justify-between gap-2">
             <h2 className="font-display text-[20px] font-semibold text-text">
-              {searching ? `${t.market.marketsMatch}` : t.market.recentlyResolved}
+              {searching ? t.market.marketsMatch : t.market.recentlyResolved}
             </h2>
-            <Link href={"/results" as never} className="font-mono text-[11.5px] font-semibold text-brand-300 hover:text-text transition-colors whitespace-nowrap">
+            <Link
+              href={"/results" as never}
+              className="whitespace-nowrap font-mono text-[11.5px] font-semibold text-brand-300 transition-colors hover:text-text"
+            >
               {t.market.allResults}
             </Link>
           </div>
@@ -582,107 +363,128 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
   );
 }
 
-async function LiveEmptyState({
-  searching,
-  qRaw,
-  whenId,
-  activeCat,
-  categoryLiveCount,
-  anyLiveAnyCat,
-}: {
-  searching: boolean;
-  qRaw: string;
-  whenId: WhenFilter;
-  activeCat: string;
-  /** Live markets in the ACTIVE category, ignoring the time window. */
-  categoryLiveCount: number;
-  /** Any live market exists (this category, or any category). */
-  anyLiveAnyCat: boolean;
-}) {
-  const { t } = await getServerT();
-  // A NARROWED window can still be empty while markets exist further out (the
-  // default `all` cannot be — see DEFAULT_WHEN). Distinguish the three real causes
-  // so the CTA never loops back to empty:
-  //   1. time window too tight (markets exist in this category, just later)
-  //   2. category has none (but other categories are live)
-  //   3. platform genuinely has no live markets
-  const timeWindowTooTight = !searching && categoryLiveCount > 0 && whenId !== "all";
-  const categoryEmpty = !searching && categoryLiveCount === 0 && activeCat !== "all" && anyLiveAnyCat;
-  const noMarketsAtAll = !searching && !timeWindowTooTight && !categoryEmpty;
+function CATEGORY_LABEL(t: Awaited<ReturnType<typeof getServerT>>["t"], c: MarketCategory): string {
+  const map: Record<MarketCategory, string> = {
+    sports: t.market.catSports,
+    macro: t.market.catMacro,
+    weather: t.market.catWeather,
+    crypto: t.market.catCrypto,
+    culture: t.market.catCulture,
+    tech: t.market.catTech,
+    other: t.market.catOther,
+  };
+  return map[c];
+}
 
-  // Widen to when=all — guaranteed non-empty (categoryLiveCount > 0). Keep the
-  // category so the player stays in the topic they picked.
-  const showAllHref = `/markets?when=all${activeCat !== "all" ? `&cat=${activeCat}` : ""}`;
-  // Drop the category too — show every live market when the topic itself is empty.
-  const allCatsHref = "/markets?when=all";
+/**
+ * The board is empty for one of four genuinely different reasons, and each gets its own exit.
+ *
+ * ⛔ Never one generic message with one generic CTA. Three compensations for the 2026-08-10
+ * empty board all failed because they sat downstream of the thing that emptied it — the
+ * see-wider nudge in particular required `live.length > 0`, so it switched off exactly when the
+ * board was emptiest. Every exit here carries a REAL count and is offered only when that count
+ * is greater than zero, so an exit can never lead to another empty board.
+ */
+function BoardEmptyState({
+  cause,
+  state,
+  rows,
+  now,
+  matchesText,
+  t,
+}: {
+  cause: NonNullable<ReturnType<typeof emptyCause>>;
+  state: DiscoveryState;
+  rows: DiscoveryRow[];
+  now: number;
+  matchesText: (r: DiscoveryRow) => boolean;
+  t: Awaited<ReturnType<typeof getServerT>>["t"];
+}) {
+  const RELAX_LABEL: Record<RelaxationId, string> = {
+    pool: t.market.relaxPool,
+    odds: t.market.relaxOdds,
+    topic: t.market.relaxTopic,
+    q: t.market.relaxQuery,
+    status: t.market.relaxStatus,
+  };
 
   const title =
-    searching ? `${t.market.noLiveMatch} "${qRaw}"`
-    : timeWindowTooTight ? t.market.noMarketsInWindow
-    : categoryEmpty ? t.market.noMarketsInCat
-    : t.market.noMarketsAvailable;
+    cause === "search-miss" ? `${t.market.noLiveMatch} "${state.q}"`
+    : cause === "watching-empty" ? t.market.watchingEmptyTitle
+    : cause === "no-inventory" ? t.market.noMarketsAvailable
+    : t.market.filterMissTitle;
   const body =
-    searching ? t.market.checkSpelling
-    : timeWindowTooTight ? t.market.noMarketsInWindowBody
-    : categoryEmpty ? t.market.noMarketsInCatBody
-    : t.market.noMarketsAvailableBody;
-  const action =
-    searching ? <Link href="/markets" className="btn btn-ghost btn-sm">{t.market.clearSearchLabel}</Link>
-    : timeWindowTooTight ? <Link href={showAllHref as never} className="btn btn-primary btn-sm">{t.market.showAllOpen}</Link>
-    : categoryEmpty ? <Link href={allCatsHref as never} className="btn btn-ghost btn-sm">{t.market.seeAllCategories}</Link>
-    : undefined;
+    cause === "search-miss" ? t.market.checkSpelling
+    : cause === "watching-empty" ? t.market.watchingEmptyBody
+    : cause === "no-inventory" ? t.market.noMarketsAvailableBody
+    : t.market.filterMissBody;
+
+  // An empty PLATFORM is not the filters' fault and must not offer to widen them.
+  const exits = cause === "no-inventory" ? [] : relaxations(rows, state, now, matchesText);
 
   return (
     <div className="col-span-full">
-      <EmptyState kind="markets" title={title} body={body} action={action} />
+      <EmptyState
+        kind="markets"
+        title={title}
+        body={body}
+        action={
+          exits.length > 0 ? (
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {exits.map((r, i) => (
+                <Link
+                  key={r.id}
+                  href={buildDiscoveryHref(state, r.patch) as never}
+                  replace
+                  scroll={false}
+                  className={`btn btn-sm ${i === 0 ? "btn-primary" : "btn-ghost"}`}
+                >
+                  {RELAX_LABEL[r.id]}
+                  <span className="ml-1.5 font-mono text-[11px] tabular-nums opacity-80">{r.count}</span>
+                </Link>
+              ))}
+            </div>
+          ) : undefined
+        }
+      />
     </div>
   );
 }
 
-/** Shimmer skeleton shown while the async grid is loading (filter switch,
- *  initial load, or 30s auto-refresh with a slow server response). */
 /**
- * The streamed grid's fallback — THE skeleton a visitor actually sees, because the grid
- * is inside a Suspense boundary and this is what the first HTML response carries.
- * (`loading.tsx` only paints on a client-side navigation into the route.)
- *
- * 🔴 IT WAS THE WRONG SIZE AND THE WRONG COUNT. Measured in a real browser at 1280 on
- * 2026-08-10: the real market card is **349.4px** and the first page holds **12** of
- * them (PLAYER_PER_PAGE). This drew **8** cards at **220px** — so the board committed to
- * a layout ~129px per row too short and two rows too few, then grew by well over 500px
- * as the real grid arrived, under a reader whose eye was already moving. That is the
- * B-29 finding again: a skeleton that lies about the page is worse than no skeleton.
- *
- * ⚠️ Card height and count are pinned to the real values, and the count is taken from
- * PLAYER_PER_PAGE rather than re-typed, so a page-size change moves both together.
+ * THE skeleton a visitor actually sees — the grid is inside a Suspense boundary and this is
+ * what the first HTML response carries. (`loading.tsx` only paints on a client-side navigation
+ * into the route.) Height and count are pinned to the real values: `MARKET_CARD_H` is the one
+ * shared definition, and the count comes from `PLAYER_PER_PAGE` rather than being re-typed, so
+ * a page-size change moves both together.
  */
 function GridSkeleton() {
   return (
-    <div className="market-grid" aria-hidden>
+    <div className="market-grid mt-3" aria-hidden>
       {Array.from({ length: PLAYER_PER_PAGE }).map((_, i) => (
         <div
           key={i}
-          className="rounded-md border border-border bg-bg-elevated overflow-hidden kp-shimmer-track"
-          style={{ height: 349 }}
+          className="kp-shimmer-track overflow-hidden rounded-md border border-border bg-bg-elevated"
+          style={{ height: MARKET_CARD_H }}
         >
-          <div className="p-4 space-y-3">
+          <div className="space-y-3 p-4">
             <div className="flex items-center gap-2">
               <div className="h-5 w-12 rounded-pill bg-bg-overlay" />
               <div className="h-5 w-16 rounded-pill bg-bg-overlay" />
             </div>
             <div className="h-4 w-3/4 rounded bg-bg-overlay" />
             <div className="h-4 w-1/2 rounded bg-bg-overlay" />
-            {/* The real card carries a probability block, the tipping bar, a trader
-                row and the money buttons between the title and the footer. Reserving
-                them keeps the INTERNAL rhythm honest too, not just the outer box. */}
-            <div className="h-8 w-20 rounded bg-bg-overlay mt-4" />
-            <div className="h-[7px] w-full rounded-pill bg-bg-overlay mt-4" />
-            <div className="h-5 w-32 rounded bg-bg-overlay mt-3" />
-            <div className="flex gap-2 mt-3">
+            {/* The real card carries a probability block, the tipping bar, a trader row and the
+                money buttons between the title and the footer. Reserving them keeps the INTERNAL
+                rhythm honest too, not just the outer box. */}
+            <div className="mt-4 h-8 w-20 rounded bg-bg-overlay" />
+            <div className="mt-4 h-[7px] w-full rounded-pill bg-bg-overlay" />
+            <div className="mt-3 h-5 w-32 rounded bg-bg-overlay" />
+            <div className="mt-3 flex gap-2">
               <div className="h-9 flex-1 rounded-md bg-bg-overlay" />
               <div className="h-9 flex-1 rounded-md bg-bg-overlay" />
             </div>
-            <div className="h-4 w-24 rounded bg-bg-overlay mt-3" />
+            <div className="mt-3 h-4 w-24 rounded bg-bg-overlay" />
           </div>
         </div>
       ))}

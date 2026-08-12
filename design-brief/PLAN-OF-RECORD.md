@@ -156,8 +156,7 @@ topic taxonomy source of truth, whether search is server-side._
 | 1b gates | `c7cb34ec` | all 22 design gates green individually; 72 predeploy steps resolve | pushed, prod 200 | 2 ghost steps removed |
 | 1c glyph cleanup | `fd66292b` | docs · one-door · integrity green | pushed | 03-glyphs archived (41 files / 22,866 B verified) + 4 citers annotated |
 | 2a contract · step 1 (pure module + gate) | `(this session)` | `test:discovery-contract` 78 assertions green; `red:discovery-contract` **7/7 real defects caught**, tree restored byte-identical; tsc 0 | local | `src/lib/markets/discovery.ts` — parsing, defaults, ONE href builder, status predicates, odds/pool buckets, sorts + explicit tie-breakers, cross-filtered counts, relaxations. Pure: no server imports, lifecycle facts stay in `market-service.ts` |
-| 2a contract · step 2 (page wiring) | _in progress_ | | | |
-| 2b markets UI | _next session_ | | | |
+| 2a+2b · `/markets` rebuilt on the contract | `(this session)` | 32 gates green incl. the 22 + `board-discovery` + `product-line` + `discovery-contract` + `i18n`/`trilingual`; tsc 0; `npm run build` ✓ 43s; both RED harnesses 6/6 and 7/7 | 12 shots at 360+1280 × en/sw/zh, **overflowX=0 on all 12**; HTTP driver green | 13-pill rail DELETED · sticky 2-row bar · 5 status segments · 6 sorts + direction · odds/pool chips · topic menu · cross-filtered counts · per-cause empty states with real-count exits · `PageContainer tier="board"` (2 raw-width ratchet entries removed) · `ProposePromo` gone · categories derive from `MARKET_CATEGORIES` · both skeletons on ONE height definition |
 | 2c hero | _next session_ | | | |
 | 2d landing + header | _next session_ | | | |
 | 3 remainder | _next session_ | | | |
@@ -566,6 +565,49 @@ rail · **4** cleanup + handoff. Every step, without exception:
    operator's commits before every batch.
 5. Push, then verify: prod 200 + clean boot + a live screenshot.
 6. Update §6's batch log **in the same commit** as the code.
+
+## 8.7b · What batch 1 found that the plan did not predict
+
+Three things, all caught by measuring rather than by reading:
+
+1. 🔴 **The bar was 448px tall at 360 in Swahili and Chinese** — eleven controls wrapped into six
+   rows, sticky, eating **57% of a 780px phone viewport** before one card was visible. Built by
+   wrapping, which reads fine at 1280 and is unusable on the device most of the audience holds.
+   Measured with `document.querySelector(".kp-discovery-bar").getBoundingClientRect().height`,
+   not eyeballed. Fixed by scrolling each row horizontally below `lg` (the codebase's existing
+   answer — the old rail scrolled its groups the same way) → **116px**, desktop unchanged at 168.
+   ⚠️ The kit's own answer is a mobile filter SHEET (`05-markets-discovery-mobile.html`); the
+   scroll strip was chosen because it needs no JavaScript. If the sheet is ever built, this is
+   the note that says why it was not.
+
+2. 🔴 **`border-border-control` compiled to NOTHING** at two call sites. `--border-control` exists
+   in `globals.css:316` — it is the WCAG 1.4.11 token for a border that is a control's ONLY
+   boundary (3.45:1, where the decorative `--border` is 36% L and does not qualify) — but it had
+   no Tailwind bridge key. Caught by `test:bridge`, which is exactly the gate born from the
+   1,325-classes-emitting-no-CSS finding. Fixed by adding the bridge, not by changing the call
+   site: the token was the correct one.
+
+3. ⚠️ **`PageContainer` forbids padding on the call site.** `<PageContainer tier="board"
+   className="py-6">` fails `test:measure` — the container owns page padding, and a `py-6` there
+   is a second definition of it. The migration is a pure swap; do not carry the old page's
+   padding across with it.
+
+## 8.8 · Deliberately DEFERRED — named, with the reason (not silently dropped)
+
+Two pieces of the kit's `/markets` spec are **not** in batch 1. Both are recorded here rather
+than half-built, because a control that carries a promise it does not keep is the one thing this
+codebase does not ship.
+
+| Deferred | Why | What it needs |
+|---|---|---|
+| **Density toggle / compact list** (kit §3e, COMPONENTS §5) | The label is "Compact list view" and the spec is a genuinely different DOM: `role="table"`, `role="row"`, `role="cell"`, seven columns with individual hide points (watch star 44 never hides · market flex:1 · trend 96 hidden <1024 · YES 56 · pool 104 hidden <720 · closes 78 hidden <720 · YES/NO 144 hidden <1024). A toggle bearing that label while only restyling the existing cards would be a false promise | A `MarketListRow` component + its own responsive column table. The toggle's persistence (`50pick.discovery.v1`) and its 44×44 geometry are already specified |
+| **Search typeahead** (kit §3g) | `SearchBox` already delivers debounced-URL search on the shared grammar (quoted phrase, `-exclude`, `field:`), so the board searches correctly today. The typeahead is an ENHANCEMENT — combobox + listbox, `/` focus shortcut, topic/source/market suggestion kinds — not a gap in behaviour | A client combobox over the existing parser; suggestion kinds are specified in COMPONENTS §8 |
+
+Also **not** adopted, deliberately: the kit's `Load N more` pager. The shared `Pagination`
+component is used instead — it is already built, already tested, and shared with `/results` and
+`/positions`, so replacing it is a platform-wide change, not a `/markets` one. The parts of the
+kit's paging contract that carry meaning ARE honoured: the pager total **is** the filter-bar
+count (same variable), and any filter change resets to page 1.
 
 **Local harness for this session** (`.qa-design-round2/`, gitignored under `.qa-design-*/`):
 in-memory dev server on `:3009` (no `DATABASE_URL` exists on this machine — verified — so a local

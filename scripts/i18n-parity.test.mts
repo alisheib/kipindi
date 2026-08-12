@@ -48,6 +48,13 @@ const IDENTICAL_OK = new Set<string>([
   "profile.kycLabel",             // KYC — acronym
   "profile.sofBand2",             // "TZS 12M – 50M" — currency range
   "profile.sofBand3",             // "TZS 50M – 200M" — currency range
+  // The /markets pool-filter thresholds. Same shape and same reasoning as the two SOF bands
+  // above: a currency code and an amount, which the platform writes identically in every
+  // locale. ⚠️ Deliberately NOT rendered as "TZS 1万+" in zh — TZS amounts use the k/M
+  // abbreviation everywhere else in the product, and one surface switching to 万 would be the
+  // inconsistency, not the fix.
+  "market.pool10k",               // "TZS 10k+" — currency threshold
+  "market.pool50k",               // "TZS 50k+" — currency threshold
 ]);
 
 const en = flatten(dict.en);

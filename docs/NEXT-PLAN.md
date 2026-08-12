@@ -6,6 +6,21 @@ frozen and shipped. **Revised 2026-07-31 against the live platform, not against 
 > all 22 static design gates now run in `predeploy` (were 4, and the chain was broken).
 > The living plan is [`../design-brief/PLAN-OF-RECORD.md`](../design-brief/PLAN-OF-RECORD.md);
 > the implementation session starts from `design-brief/00-NEXT-SESSION-PROMPT.md`.
+>
+> ⭐ **BATCH 1 IS LIVE (2026-08-13): `/markets` is rebuilt on the inherited contract.** The
+> 13-pill vertical rail is gone, replaced by a sticky two-row bar — five status segments, six
+> sorts with a direction toggle, odds and pool chips, a topic menu, per-cause empty states whose
+> exits carry real counts, and `PageContainer tier="board"`. Two definitions the kit left open
+> and flagged as invented are now pinned on production measurement (PLAN-OF-RECORD §8.1/§8.2):
+> **`Open` = LIVE and still taking bets** (hides 1 of 41 today — measured, because macro
+> selection-lead runs to 48h and on another book it could hide far more) and **`All` = the
+> unsettled book, LIVE ∪ CLOSED** — never the settled archive `/results` already owns.
+> **Every count on the board is cross-filtered**: the number beside a control is what pressing it
+> delivers, asserted control-by-control against the running server. New gates:
+> `test:discovery-contract` (+ its RED harness, 7/7 defects caught). `test:board-discovery` was
+> rewritten from source-greps onto behavioural assertions — the old anchors (`DEFAULT_WHEN`,
+> `WHEN_CUTOFFS`, `sp.when`) are gone from the product **deliberately; do not restore them**.
+> ⬜ Density/compact-list and search typeahead are deferred with reasons in §8.8 — not dropped.
 
 **Items 1, 2, 3 and 4 are DONE and live.** ✅ **Item 3 (withdrawals) CLOSED 2026-08-10:** the
 rail works (four real payouts settled 2026-07-31), the block was ours to lift, and it has been

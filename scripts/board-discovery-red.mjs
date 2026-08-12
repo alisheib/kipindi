@@ -1,137 +1,121 @@
 /**
- * RED proof for `board-discovery.test.mts`.
+ * RED PROOF for `npm run test:board-discovery`.
  *
- * Reverts each half of the 2026-08-10 board-discovery fix in turn, requires the suite
- * to EXIT NON-ZERO **on the specific check that mutation targets**, then restores
- * `src/app/markets/page.tsx` byte-for-byte and re-verifies it is green.
+ * A gate nobody has watched fail is not evidence. This reintroduces the defects that gate
+ * exists to prevent — each one a thing that actually shipped, or the kit's own proposal —
+ * and asserts the gate goes red for every one.
  *
- * ⛔ Checking only that the file CHANGED is the trap: a mutation the guard never reads
- * looks exactly like a guard that works. Each mutation names the check it must break,
- * and one caught by a DIFFERENT check is reported as a miss — because that would mean
- * the guard is right by accident.
+ * ⚠️ RE-ANCHORED 2026-08-13. The previous harness mutated `markets/page.tsx` by exact string
+ * anchors (`const DEFAULT_WHEN: WhenFilter = "all";`, the `WHEN_CUTOFFS` table, the `sp.when`
+ * readers). The round-2 discovery work deleted the 5-window rail those belonged to, so five of
+ * its six cases could no longer find their anchor and silently reported "ANCHOR MISSING"
+ * instead of failing — a red harness that has stopped proving anything is worse than none,
+ * because the gate above it still prints green. The defects now live where the logic does:
+ * mostly in the pure contract module, which is also why they can be injected precisely.
  *
- * ⭐ It also carries a GREEN mutation: a compliant edit the guard must stay SILENT on.
- * A harness made only of failures cannot catch a gate that condemns working code —
- * which this guard's first draft did, flagging the CATEGORY default `sp.cat ?? "all"`
- * as a window-default regression because the two share the word "all".
+ * Run: npm run red:board-discovery
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 
-const HERE = dirname(fileURLToPath(import.meta.url));
-const TARGET = join(HERE, "..", "src", "app", "markets", "page.tsx");
-const SUITE = join(HERE, "board-discovery.test.mts");
-const TSX = join(HERE, "..", "node_modules", "tsx", "dist", "cli.mjs");
-const original = readFileSync(TARGET, "utf8");
+const CONTRACT = "src/lib/markets/discovery.ts";
+const PAGE = "src/app/markets/page.tsx";
 
-// See settle-atomicity-red.mjs: `npx` is `npx.cmd` on Windows and execFileSync cannot
-// spawn it without a shell, which turns ENOENT into a fake "suite failed".
-const run = () => {
-  try {
-    const out = execFileSync(process.execPath, [TSX, SUITE], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
-    return { code: 0, out };
-  } catch (e) {
-    return { code: e.status ?? 1, out: `${e.stdout ?? ""}${e.stderr ?? ""}` };
-  }
-};
+const originals = new Map([
+  [CONTRACT, readFileSync(CONTRACT, "utf8")],
+  [PAGE, readFileSync(PAGE, "utf8")],
+]);
 
-// Anchors are rewritten into the file's own EOL — this checkout is CRLF, and a
-// multi-line "\n" anchor silently matches nothing (E-133's CRLF half).
-const EOL = original.includes("\r\n") ? "\r\n" : "\n";
-const toEol = (s) => s.replace(/\r?\n/g, EOL);
-
-const MUTATIONS = [
+/** Every case is a defect with a provenance, not an invented mutation. */
+const CASES = [
   {
-    name: "the landing board goes back to a 24-hour window (THE BUG)",
-    breaks: 'the default window ("today") applies NO time cutoff',
-    from: 'const DEFAULT_WHEN: WhenFilter = "all";',
-    to: 'const DEFAULT_WHEN: WhenFilter = "today";',
+    name: 'the landing board goes back to a 24-hour window (THE 2026-08-10 BUG)',
+    file: CONTRACT,
+    from: '  status: "open" as StatusId,',
+    to: '  status: "today" as StatusId,',
   },
   {
-    name: "a reader drifts back to its own literal",
-    breaks: "no `when` reader falls back to a bare literal",
-    from: 'const whenId = (sp.when as WhenFilter | undefined) ?? DEFAULT_WHEN;',
-    to: 'const whenId = (sp.when as WhenFilter | undefined) ?? "today";',
+    name: 'the default status quietly gains a clock (same harm, different spelling)',
+    file: CONTRACT,
+    from: '      return row.status === "LIVE" && !row.selectionClosed;',
+    to: '      return row.status === "LIVE" && !row.selectionClosed && row.bettableUntilMs - nowMs <= DAY_MS;',
   },
   {
-    name: "an href builder pins the omit-check to a literal again",
-    breaks: "no href builder compares the window to a literal",
-    from: 'if (whenId !== DEFAULT_WHEN) params.set("when", whenId);',
-    to: 'if (whenId !== "today") params.set("when", whenId);',
+    name: 'counts computed over the census instead of the active filters',
+    file: CONTRACT,
+    from: "  const next = { ...state, ...patch };",
+    to: "  const next = { ...state, ...patch, pool: 'any', odds: 'any', topic: 'all' };",
+  },
+  {
+    name: '`New` drifts back to the kit\'s clock ("added in the last four days")',
+    file: CONTRACT,
+    from: '      return row.status === "LIVE" && row.pool === 0 && row.predictors === 0;',
+    to: '      return row.status === "LIVE" && nowMs - row.createdAtMs <= 4 * DAY_MS;',
   },
   {
     name: '"recently resolved" goes back to slicing the ascending board order',
-    breaks: "it sorts resolutionAt DESCENDING (newest first)",
-    from: ".sort((a, b) => b.resolutionAt.localeCompare(a.resolutionAt));",
-    to: ".sort((a, b) => a.resolutionAt.localeCompare(b.resolutionAt));",
+    file: PAGE,
+    from: "    .sort((a, b) => b.resolutionAt.localeCompare(a.resolutionAt));",
+    to: "    .slice();",
   },
   {
-    name: '"just listed" goes back to subtracting the current page',
-    breaks: "the new-markets section subtracts the windowed set, not the page",
-    from: "const inWindow = new Set(live.map((m) => m.id));",
-    to: "const inWindow = new Set(pagedLive.map((m) => m.id));",
+    name: "the page falls back to its own bare status literal again",
+    file: PAGE,
+    from: "  const state = parseDiscoveryParams(sp, MARKET_CATEGORIES);",
+    to: '  const state = { ...parseDiscoveryParams(sp, MARKET_CATEGORIES), status: (sp.status as never) ?? "open" };',
   },
 ];
 
-// A compliant edit. The guard must NOT fire on it.
-const GREEN = {
-  name: "GREEN — an unrelated category default keeps its own literal",
-  from: 'const activeCat = sp.cat ?? "all";',
-  to: 'const activeCat = sp.cat ?? "all"; // unchanged behaviour, reworded comment',
+let failures = 0;
+
+function gateExits() {
+  try {
+    execFileSync("npx", ["tsx", "scripts/board-discovery.test.mts"], { stdio: "pipe", shell: true });
+    return 0;
+  } catch (e) {
+    return e.status ?? 1;
+  }
+}
+
+const restore = () => {
+  for (const [f, s] of originals) writeFileSync(f, s, "utf8");
 };
 
-let caught = 0;
-let missed = 0;
+console.log("\nRED proof — board discovery\n");
+try {
+  const base = gateExits();
+  console.log(base === 0 ? "  baseline: GREEN" : `  baseline: ⛔ ALREADY RED (exit ${base})`);
+  if (base !== 0) failures++;
+  console.log("");
 
-console.log(`RED proof — board discovery  (file EOL: ${EOL === "\r\n" ? "CRLF" : "LF"})\n`);
-
-const baseline = run();
-if (baseline.code !== 0) {
-  console.log("⛔ ABORT: the suite is already RED before any mutation.");
-  console.log(baseline.out.slice(-1200));
-  process.exit(1);
-}
-console.log("  baseline: GREEN\n");
-
-for (const m of MUTATIONS) {
-  const from = toEol(m.from);
-  if (!original.includes(from)) {
-    console.log(`  ⛔ ANCHOR MISSING — ${m.name}\n     could not find: ${m.from.slice(0, 90)}`);
-    missed++;
-    continue;
+  for (const c of CASES) {
+    const src = originals.get(c.file);
+    if (!src.includes(c.from)) {
+      console.log(`  ⛔ ANCHOR MISSING — ${c.name}\n     could not find: ${c.from}`);
+      failures++;
+      continue;
+    }
+    writeFileSync(c.file, src.replace(c.from, c.to), "utf8");
+    const code = gateExits();
+    restore();
+    if (code === 0) {
+      console.log(`  ⛔ NOT CAUGHT — ${c.name}`);
+      failures++;
+    } else {
+      console.log(`  ✔ CAUGHT  ${c.name}`);
+    }
   }
-  writeFileSync(TARGET, original.replace(from, toEol(m.to)), "utf8");
-  const r = run();
-  writeFileSync(TARGET, original, "utf8");
-
-  const brokeTheRightCheck = r.out.includes(`FAIL ${m.breaks}`);
-  if (r.code !== 0 && brokeTheRightCheck) { console.log(`  ✔ CAUGHT  ${m.name}`); caught++; }
-  else if (r.code !== 0) {
-    console.log(`  ⚠️ CAUGHT BY THE WRONG CHECK — ${m.name}\n     expected "FAIL ${m.breaks}"`);
-    missed++;
-  } else { console.log(`  ⛔ MISS    ${m.name} — the guard did not notice`); missed++; }
+} finally {
+  restore();
+  const clean = [...originals].every(([f, s]) => readFileSync(f, "utf8") === s);
+  console.log(`\n  files restored byte-for-byte: ${clean ? "yes" : "NO — check git diff"}`);
+  if (!clean) failures++;
+  console.log(`  suite green again: ${gateExits() === 0 ? "yes" : "NO"}`);
 }
 
-// The green case.
-{
-  const from = toEol(GREEN.from);
-  if (!original.includes(from)) {
-    console.log(`  ⛔ ANCHOR MISSING — ${GREEN.name}`);
-    missed++;
-  } else {
-    writeFileSync(TARGET, original.replace(from, toEol(GREEN.to)), "utf8");
-    const r = run();
-    writeFileSync(TARGET, original, "utf8");
-    if (r.code === 0) { console.log(`  ✔ SILENT  ${GREEN.name}`); caught++; }
-    else { console.log(`  ⛔ FALSE POSITIVE — ${GREEN.name}: the guard condemned a compliant edit`); missed++; }
-  }
-}
-
-const restored = readFileSync(TARGET, "utf8");
-console.log(`\n  file restored byte-for-byte: ${restored === original ? "yes" : "🔴 NO"}`);
-const final = run();
-console.log(`  suite green again: ${final.code === 0 ? "yes" : "🔴 NO"}`);
-console.log(`\n  ${caught}/${MUTATIONS.length + 1} cases correct, ${missed} wrong`);
-process.exit(missed === 0 && restored === original && final.code === 0 ? 0 : 1);
+console.log(
+  failures === 0
+    ? `\n  ${CASES.length}/${CASES.length} cases correct\n`
+    : `\n  ${failures} wrong — the gate does not catch everything it claims to\n`,
+);
+process.exit(failures === 0 ? 0 : 1);
