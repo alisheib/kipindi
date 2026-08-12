@@ -5,23 +5,30 @@ Operator authorization: Ali, 2026-08-12 evening — full autonomy, commits + pus
 ("apply all changes in the new design kit literally · don't touch market cards and progress bars ·
 just the things we agreed on · organize the design files first").
 
-**STATUS: organization session COMPLETE — implementation starts in a NEW session.**
-Ali re-scoped on 2026-08-12 evening: this session is dedicated to organizing the design files,
-cleaning up old docs, wiring the gates, and writing the plan; the implementation (batches 2a–2d
-below) runs in a fresh session from the copy-paste prompt at
-`design-brief/00-NEXT-SESSION-PROMPT.md`.
+**STATUS: implementation session RUNNING (started 2026-08-13).** The organization session
+(2026-08-12, `78b7f000`→`fd66292b`) filed the kit, wired the gates and wrote §1–§7. This session
+builds it. Ali's instruction 2026-08-13: *"walk through the design inheritance step by step,
+detail by detail, side by side, every filter every bar every detail, every logic implemented,
+every flow — take as much time as needed"* + *"when done don't ask, just push cleanly, all docs
+updated"*. Full autonomy on commits and pushes; push per batch, verified live.
+
+**§8 below is THE EXECUTION PLAN** — written before any code was touched, per Ali's plan-first
+instruction. It pins the two open definitions on measured evidence and resolves every internal
+contradiction found in the kit.
 
 | Phase | State |
 |---|---|
 | 0 · Locate kit, acceptance record | ✅ done — kit filed at `docs/design-system/v3-2026-08-11-landing-discovery/` + `ACCEPTANCE.md` (commit `78b7f000`) |
 | 1a · Organize design files | ✅ done — commit `78b7f000`, pushed. Everything removed archived at `F:\50pick-design-archive\2026-08-12-final\` |
 | 1b · Wire 22 design gates into predeploy | ✅ done — all 22 wired; 2 ghost steps removed; **baseline: all 22 gates GREEN** on `78b7f000` (each run individually, exit 0, 2026-08-12) — no pre-existing red to carry |
-| 1c · Old-doc cleanup (stale glyph archive, old-version sweep) | ✅ this session — see CLEANUP-MANIFEST |
-| 2a · /markets data contract | ⬜ NEXT SESSION |
-| 2b · /markets UI (filter bar replaces rail) | ⬜ NEXT SESSION |
-| 2c · Hero replacement (photo out, same commit) | ⬜ NEXT SESSION |
-| 2d · Landing composition + header | ⬜ NEXT SESSION |
-| 3 · Post-implementation cleanup remainder | ⬜ NEXT SESSION |
+| 1c · Old-doc cleanup (stale glyph archive, old-version sweep) | ✅ done — see CLEANUP-MANIFEST |
+| 1d · Re-verify the baseline on `5bfd95fa` | ✅ **2026-08-13: 22/22 GREEN re-run individually with real exit codes; `npx tsc --noEmit` exit 0, zero output.** Nothing red inherited |
+| 2 · Write the execution plan (§8) | ✅ 2026-08-13 — §8, definitions pinned |
+| 2a · /markets data contract | ⬜ batch 1 |
+| 2b · /markets UI (filter bar replaces rail) | ⬜ batch 1 |
+| 2c · Hero replacement (photo out, same commit) | ⬜ batch 2 |
+| 2d · Landing composition + header | ⬜ batch 3 |
+| 3 · Post-implementation cleanup remainder | ⬜ batch 4 |
 
 ---
 
@@ -319,3 +326,242 @@ file:line; re-verify only what a later commit may have moved.
 4. ⚠️ A second operator shares `main` — `git fetch` + check for new commits before every
    batch; never `git add -A` (another session's in-flight files were once swept into a
    broken deploy).
+
+---
+
+# 8 · THE EXECUTION PLAN (written 2026-08-13, before any code was touched)
+
+## 8.0 · How this session works
+
+One step at a time: **make the change → verify it → record it → next**. Never two batches in
+flight. If a step's outcome contradicts this plan, the plan is updated *before* proceeding, not
+after. Four batches, each ending in: gates green → screenshots at 360 and 1280 in en/sw/zh →
+commit by explicit path → push → verify live → batch log updated in §6.
+
+**Session baseline, measured 2026-08-13 on `5bfd95fa` (not inherited from the previous session's
+claim):** `npx tsc --noEmit` → exit 0, zero output lines. All 22 design gates run individually
+with real exit codes → **22 green / 0 red**. ⚠️ The exit code was captured *without* a pipe:
+`npm run test:x > log 2>&1; code=$?`. Trap 4 (`EXIT=$?` after a pipe reads the last command) was
+hit once during this session's first typecheck and the reading was discarded.
+
+## 8.1 · PINNED DEFINITION 1 — what `Open` means
+
+> **`Open` = status `LIVE` **and** `isSelectionClosed(m) === false`.**
+> A market a player can actually place a bet on at this instant.
+
+This closes the kit's open question 5 (`README.md:416`, `OPEN-QUESTIONS.md §6.1`), which the kit
+deliberately left unanswered and which `ACCEPTANCE.md`'s twelve reconciliations do not resolve.
+
+**Why this direction, and why it is safe — measured on production 2026-08-13:**
+
+| Whole live board, all 4 pages of `https://50pick.tz/markets` | |
+|---|---|
+| Bettable cards (`chip-live`) | **40** |
+| Selection-closed cards (`chip-pending`) | **1** |
+| Total | **41** — exactly the header's own "41 live" |
+| Share an `Open` segment removes from the default view | **2.4 %** |
+
+⛔ **This is the number that had to be checked before pinning, and it is why the answer is not
+obvious.** `createMarket` forces a category selection-lead onto essentially every poll, and the
+table runs to **2,880 minutes = 48 hours** for macro/infrastructure
+(`ai-poll-config.ts:23-32`) — so a macro poll is betting-closed but still `LIVE` on the board for
+up to two days. On a differently-shaped book this definition could hide a large slice. It hides
+**one card today**, which is nowhere near the class of the 2026-08-10 incident (a 24-hour window
+over long-horizon inventory rendered **0 cards** at nine of nine viewport×locale combinations
+under a header reading "40 live"). ⚠️ **Re-measure this ratio before assuming it still holds.**
+
+**The supporting argument (the measurement alone does not decide it):**
+- The card already contradicts the word. A selection-closed card wears `chip-pending` labelled
+  **"Closed"**, loses the live dot, and its YES/NO row is replaced by a `pointer-events-none`
+  ghost (`market-card.tsx:213`, `:289-297`, `:373-390`). Calling that card "Open" is a promise
+  the server itself refuses — `buyPosition` returns `SELECTION_CLOSED` (`market-service.ts:678`).
+- The kit's stated purpose for the segment is exactly this: *"`Open` being the default is the
+  entire mechanism that removes closed markets from the default view"* (`COMPONENTS.md:122-124`).
+- It makes every count truthful: the number beside `Open` is the number of markets you can bet on.
+
+⛔ **What does NOT change:** `isClosedByTime` stays the board-INCLUSION gate
+(`markets/page.tsx:65-67`, `:260-262`). A selection-closed market is still fetched, still on the
+board, still reachable — it simply lives under `All` rather than `Open`. The ⛔ comment at
+`page.tsx:260-262` remains true and must not be deleted.
+
+## 8.2 · PINNED DEFINITION 2 — what `All` means
+
+> **`All` = the UNSETTLED book of the poll product line: status `LIVE` ∪ status `CLOSED`.**
+> `RESOLVED` and `VOIDED` are **not** included — they live at `/results`.
+
+This **departs from the kit's literal text**, and the departure is deliberate and recorded.
+
+**What the kit actually says, and why it is not authority here:**
+- The kit's own documents flag `All` as **invented and unconfirmed**, twice, in identical words:
+  *"`All` includes closed and resolved; confirm that is what a user expects `All` to mean"*
+  (`OPEN-QUESTIONS.md:59`, `README.md:398`).
+- **The executable spec is silent.** In the prototype, `open` and `all` carry the *byte-identical*
+  predicate `test:()=>true`, and the 18-market fixture has no status, resolved or outcome field
+  at all (`prototype/…dc.html:446-452`, `:383-402`). At runtime the prototype's `All` and `Open`
+  return the same set and the same count. There is nothing to inherit.
+- The kit's drawn `All 58` vs `Open 41` is a delta of 17 that is never itemised anywhere.
+
+**Why LIVE ∪ CLOSED is the right answer:**
+1. **It does not duplicate a whole nav destination.** `/results` already covers the entire settled
+   archive — `RESOLVED` + `VOIDED`, category filter, two sorts, an outcome-donut KPI, a notable
+   carousel, search on the shared grammar and pagination at 12/page
+   (`results/page.tsx:111-148`) — and it is in the primary nav for both authed and anonymous
+   users (`top-app-bar.tsx:71`, `:79`).
+2. **It fills the one genuine hole.** `CLOSED` appears on **no player discovery surface today**:
+   `/markets` queries LIVE (`:66`), `/live` queries LIVE (`live/page.tsx:41`), `/results` queries
+   RESOLVED+VOIDED (`:111-112`), `/fairness` queries RESOLVED (`:74`). Only the detail page and
+   `/watchlist` render one.
+3. **It makes `Open` ⊂ `All` a real, non-empty difference** — `All − Open` = selection-closed
+   markets ∪ CLOSED markets — which is what a segment control is *for*. The kit's version could
+   not distinguish them.
+4. **The card needs no new state.** `MarketCard` already renders CLOSED with its own chip and
+   copy (`market-card.tsx:24`, `:288-298`), and `/watchlist` is the live precedent for a player
+   board passing every status through one grid (`watchlist/page.tsx:76-80`).
+
+⛔ **`All` NEVER means "both product lines".** `test:product-line` lists
+`src/app/markets/page.tsx` as `MUST_STAY_DEFAULT`; any `listMarkets` call there carrying
+`productLine:"ALL"` fails the gate, because Up & Down rounds (~300k/yr) would flood the board
+(`scripts/product-line.test.mts:100-114`).
+
+⚠️ **Adding `VOIDED` would be a new unbounded query** — `/markets` reads LIVE and RESOLVED today
+and never reads VOIDED. Another reason the line is drawn at CLOSED.
+
+## 8.3 · Count honesty — the rule this session adds
+
+The 2026-08-10 incident's real lesson is recorded at `board-discovery.test.mts:15-19`: the
+number "40 live" was **factually true** and the board was still a lie, because the count described
+the census while the grid described a filtered subset. The kit puts a count on **every** segment
+and binds the pager total to the filter-bar count (`README.md:227`). So:
+
+> **Every count rendered on `/markets` names the exact set the board would show if you pressed it.**
+
+Concretely:
+- Each status segment's count = markets matching **that status AND every other active filter**
+  (odds/pool/topic/q) — the prototype's cross-filtered `countWith` behaviour
+  (`prototype:731`, `:589`), **not** the drawn layouts', which show `Open 41` while odds+pool are
+  pressed and the result reads 9 (`04-markets-discovery-desktop.html:362`). The layouts are wrong
+  on this and the prototype is right.
+- Topic counts use the same cross-filtered mechanism (`prototype:784`).
+- The pager total **is** the filter-bar count — same value, same variable, never recomputed.
+- The page header's census figure is relabelled to name the set it actually counts, so the header
+  and the segments can never state two different totals for the same word.
+
+## 8.4 · The kit contradicts itself in eleven places — every one resolved here
+
+Found by reading `README.md`, `SPEC.md`, `COMPONENTS.md`, `DISCOVERY-RATIONALE.md`,
+`OPEN-QUESTIONS.md`, the three layouts and the working prototype against each other.
+
+| # | The contradiction | Resolution (and why) |
+|---|---|---|
+| 1 | **`topic` is specified three incompatible ways** — SPEC/URL says single value (`:565`); README says comma-joined array (`:321`, `:308`); DISCOVERY-RATIONALE explicitly rejects multi-select by name (`:37-40`) | **Single-select.** Two of three sources agree and the third *argues* the case ("multi-select doubles the state space"). URL carries `topic=<slug>`, default `all` omitted |
+| 2 | **Topic control shape flipped twice inside the kit** — round 2.1 made it chips on desktop (`SPEC.md:457-458`); round 2.6, the LAST round, replaced eight pills with one menu (`SPEC.md:734`). Layouts follow 2.6; the prototype still renders chips | **One menu control**, same shape as sort. The last correction round wins — that is what "round 2 final" means |
+| 3 | **Status segment count: 5 in the docs, 4 in every drawn layout** — `Watching` appears in README/COMPONENTS but in none of 04/05/06 | **Five.** `Watching` is specified behaviour with a server-side service already built; the layouts simply predate it |
+| 4 | **Sort count: 6 in the docs, 5 in every drawn menu** — `Biggest move` is absent from all three layouts | **Six.** README/SPEC/COMPONENTS/prototype all carry it; SPEC calls it out as a new sort (`:460`) |
+| 5 | **`Biggest move` absent-value handling** — written rule and `ACCEPTANCE.md:111` say *sort last*; the prototype coerces absent→0 (`:432`), which puts them last only in the natural direction and **first** once the user flips it | **Last in BOTH directions.** Implemented as a partition, not a coerced value. `ACCEPTANCE` already adopted this; the prototype is the defect |
+| 6 | **Segment counts cross-filtered (prototype) vs not (layouts)** | **Cross-filtered** — see §8.3. A count that says 41 and yields 9 is the incident's own failure shape |
+| 7 | **`Clear all` clears to a different status than `Clear every filter`** — bar resets `status:'open'` (`:795`), empty-state fallback resets `status:'all'` (`:813`) | **`Clear all` → `open`** (the default), and the empty-state's last-resort exit is relabelled **"Include everything"** → `all`, which is what it actually does. They are two different actions and will read as two different actions |
+| 8 | **Page size 6 at one column is specified but not implemented** — the responsive `page` (6 when <720) is used for `Load N more` but the initial cursor and every reset use the constant 12 (`:499`, `:572`, vs `:627`) | **Implement the contract**: initial page and every reset use the responsive size. Whole rows, never an orphan |
+| 9 | **`shown` resets "on any change" — except density and watch, which bypass `redeal()`** (`:774`, `:670` vs `README.md:312`) | **Density and watch do NOT reset paging** — they change presentation and membership-of-a-set, not the query. The README's blanket sentence is the imprecise one |
+| 10 | **End-of-set copy differs** — spec/layouts: *"…that is every market matching these filters"* (`COMPONENTS.md:232`); prototype: *"…that is the whole board"* (`:352`) | **The spec's wording.** It is true under every filter combination; the prototype's is only true with no filters applied |
+| 11 | **Search-miss exits exist only in the drawn layout**, never in the prototype (`06-states.html:384` vs `:813-814`) | **Build the layout's version** — search-miss and filter-miss are genuinely different causes and the plan already requires per-cause empty states |
+
+**Two further absences (nothing to resolve — recorded so nobody re-hunts them):**
+- **Tie-breaking is unspecified across the entire kit.** The prototype relies on JS sort
+  stability. → This session defines one explicit secondary key per sort and records it in §8.5.
+- **`status=watch`, `sortDir` and `density` have no URL representation** (`SPEC.md:561`), yet ship
+  as state. → `sortDir`/`density` stay client-persisted (`50pick.discovery.v1`) and out of the
+  URL, per the kit. `Watching` **does** get a URL value, because a status segment that cannot be
+  linked to is the only one that breaks the back button.
+
+## 8.5 · The pinned data contract (what Batch 1 implements)
+
+**URL params** — every default omitted, server-renderable, `replaceState` on every control except
+`q` which uses `pushState` debounced 300 ms so Back clears a search:
+
+| Param | Values | Default |
+|---|---|---|
+| `status` | `open` · `today` · `new` · `watch` · `all` | `open` |
+| `sort` | `closing` · `pool` · `people` · `close` · `move` · `new` | `closing` |
+| `dir` | `asc` · `desc` | *(absent = the sort's natural direction)* |
+| `odds` | `any` · `call` · `cont` · `long` | `any` |
+| `pool` | `any` · `10k` · `50k` | `any` |
+| `topic` | `all` + the 7 category slugs | `all` |
+| `q` | free text, trimmed | *(empty)* |
+
+**Status predicates** (all against the ONE cached board read):
+`open` = LIVE ∧ ¬selectionClosed · `today` = open ∧ closes ≤ 24 h · `new` = **follows
+`market-card.tsx`'s rule** (`volume === 0 && predictors === 0`, `:237-238`) not the kit's
+"added in 4 days" — per `ACCEPTANCE.md:109-110` · `watch` = server-side watchlist membership
+(the service wins over the kit's localStorage) · `all` = §8.2.
+
+**Sort keys, natural direction, and the tie-breaker this session defines:**
+
+| Key | Label | Expression | Natural | Tie-break |
+|---|---|---|---|---|
+| `closing` | Closing soonest | `bettableUntil(m)` | asc | `createdAt` desc |
+| `pool` | Biggest pool | `yesPool + noPool` | desc | `bettableUntil` asc |
+| `people` | Most predictors | `predictorCount` | desc | pool desc |
+| `close` | Closest call | `abs(50 − yesPct)` | asc | pool desc |
+| `move` | Biggest move | `abs(move24h)` | desc | pool desc |
+| `new` | Newest first | `createdAt` | desc | `bettableUntil` asc |
+
+⛔ `move`: markets with **no** `move24h` are partitioned OUT and appended last **in both
+directions** — never coerced to 0 (contradiction 5). `move24h` is `undefined` without a 24 h
+baseline (`market-history.ts:293-338`) and A-5 forbids inventing one.
+⚠️ `closing` must sort by **`selectionClosedAt ?? resolutionAt`** — the clock the card *shows* —
+not `resolutionAt`. The existing `bettableUntil` helper (`page.tsx:263-264`) already encodes this
+and the comment above it records why (a board that contradicted its own cards).
+
+**Odds buckets** (single-select, inclusive unless stated): `call` = 40 ≤ pct ≤ 60 ·
+`cont` = 25 ≤ pct ≤ 75 · `long` = pct < 15 (strictly under). `call` ⊂ `cont` by design.
+⚠️ `impliedYesPct` returns a hardcoded **50** on an empty pool (`market-service.ts:232-236`), so
+a cold-start market would land in `call` and `cont` on a number nobody staked. **Markets with
+`pool === 0` are excluded from every odds bucket** — licence condition 1 (never render a guessed
+number) applied to filtering, not just display.
+
+**Pool buckets**: `10k` = pool ≥ 10,000 · `50k` = pool ≥ 50,000 (TZS, inclusive, no upper bound).
+
+**Paging**: 12 at 2–3 columns, 6 at one column, always whole rows. `Load N more` where
+N = min(pageSize, remaining). Under one page → no pager. Reset to page 1 on any status/sort/
+odds/pool/topic/q change (not on density/watch). Count line `aria-live="polite"`; the grid is not.
+Infinite scroll is prohibited (`DISCOVERY-RATIONALE`).
+
+**Empty states — three causes, never one generic**: filter-miss (offer computed relaxations with
+real counts, priority-ordered, only those yielding > 0, capped at 3, first primary) · search-miss
+(search-everything-including-closed + suggest + Try chips) · watching-empty.
+
+## 8.6 · Gate risk register (checked before writing code)
+
+| Gate | Risk from this work | Action |
+|---|---|---|
+| **`test:board-discovery`** | 🔴 **Will break by design.** It is a *structural* guard pinned byte-close to the current implementation: `DEFAULT_WHEN` as a named constant, the `WHEN_CUTOFFS` table, ≥5 `DEFAULT_WHEN` usages, ≥2 `sp.when` readers, the `resolvedAll` descending re-sort, `inWindow = new Set(...)` (`board-discovery.test.mts:64-141`). Replacing the when-rail removes every anchor it greps for | **Rewrite the gate onto the new structure in the SAME commit**, preserving its *property* — "a player who has chosen nothing is never shown a subset of the live book chosen by a clock" (`:26-29`). ⛔ Do not delete it, do not weaken it. Its RED harness (`board-discovery-red.mjs:45-60`) mutates `page.tsx` by exact string anchors and must be re-anchored too |
+| **`test:product-line`** | `/markets` must never opt into `productLine:"ALL"` | `All` = LIVE ∪ CLOSED on the MARKET line only. Gate stays green untouched |
+| **`test:outcome`** | If the grid can render a RESOLVED card, law 25 forces `resolvedOutcome` onto that call site. ⚠️ The gate's detection is **regex-shallow** — `status={statusFor(m)}` would EVADE it (`outcome-display.test.mts:92-95`) | `All` excludes RESOLVED, so the main grid never renders one. The existing resolved teaser keeps its literal `status="RESOLVED"` + `resolvedOutcome` |
+| **`test:measure`** | `/markets` page + loading are on the `RAW_WIDTH_ALLOWLIST` (`measure-system.test.mts:50`) | Migrating both to `<PageContainer tier="board">` **removes** two entries — the one legitimate ratchet move (shrinking, never zeroing) |
+| **`test:gold-is-money`** | Watch star and any gilt nav dot are challengeable | Verify both against the gate before shipping; default to non-gold. Sort carries no gold (the kit's own final round withdrew it) |
+| **`test:i18n` / `test:trilingual`** | Every new key needs real SW + ZH; `Dict = typeof dict.en` makes a missing key a **compile error** | Add all three locales in the same edit |
+| **`test:chip-contract`, `test:ui-consistency`, `test:contrast`, `test:shell-boundary`** | New chips, new controls, new sticky bar | Run after every step, not once at the end |
+
+⚠️ `test:board-discovery` and `test:product-line` are **NOT in `predeploy`** — they can rot
+silently. Both are run explicitly in this session's per-step verification.
+
+## 8.7 · Batch order and per-step verification
+
+Unchanged from the brief: **1** `/markets` contract + UI · **2** hero · **3** landing + header +
+rail · **4** cleanup + handoff. Every step, without exception:
+
+1. `npx tsc --noEmit` — real exit code, no pipe.
+2. The gates that step can plausibly break, plus `test:board-discovery` + `test:product-line`.
+3. Local drive at **360** and **1280** in **en · sw · zh** against a seeded in-memory server, and
+   the screenshots are **read**, not just captured (ellipsis, clipping inside cards).
+4. Commit by explicit path. `git branch --show-current` first. `git fetch` and check for a second
+   operator's commits before every batch.
+5. Push, then verify: prod 200 + clean boot + a live screenshot.
+6. Update §6's batch log **in the same commit** as the code.
+
+**Local harness for this session** (`.qa-design-round2/`, gitignored under `.qa-design-*/`):
+in-memory dev server on `:3009` (no `DATABASE_URL` exists on this machine — verified — so a local
+boot cannot reach production), seeded via `/api/dev-test/seed-real-markets` +
+`/api/dev-test/seed-markets` → **46 live markets**, enough for 4 pages at 12/page.
+⚠️ A dev server booted while `prisma generate` was running served **404 on every `/api/*` route**
+while rendering pages normally; a clean restart fixed it. Not a product defect — do not chase it.
