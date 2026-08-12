@@ -26,8 +26,33 @@ for commits newer than the newest handoff before assuming the tree is yours.
 
 The organization session (2026-08-12, commits `78b7f000`→`fd66292b`) filed the kit, wired all
 22 design gates into `predeploy` (baseline: all green), and wrote the plan. **This session
-builds it.** Four deploy-safe batches, in this order — after each: gates green, verify at 360
-and 1280 in en/sw/zh, commit by explicit path, push, verify live, update the plan's batch log.
+builds it — everything: the new `/markets` filters and sorting, the new hero/banner, the full
+landing composition, the header and rail.** Four deploy-safe batches, in this order — after
+each: gates green, verify at 360 and 1280 in en/sw/zh, commit by explicit path, push, verify
+live, update the plan's batch log.
+
+### STEP 0 — PLAN FIRST, then build (Ali's instruction, 2026-08-12)
+
+Before touching any code: write the full execution plan into `PLAN-OF-RECORD.md` — a per-batch
+checklist of concrete steps, the two open definitions pinned (`All` semantics;
+selection-closed counting), the i18n keys each batch adds, and the exact verification each
+step needs. Work it **carefully, step by step: one step, verify, record, then the next** —
+never two batches in flight, never a change without its verification. If a step's outcome
+contradicts the plan, stop and update the plan before proceeding, not after.
+
+### Standing rules for the whole session
+
+- **Docs move with the code.** Every commit updates the doc that owns the subject in the SAME
+  commit: the batch log in `PLAN-OF-RECORD.md`, `docs/NEXT-PLAN.md`'s design-lane note when a
+  batch lands, `CLEANUP-MANIFEST.md` for anything removed, and DESIGN_AUTHORITY where a rule
+  changes (e.g. the cold-start rule gaining its fourth consumer). A future session must be
+  able to reconstruct the state from the docs alone.
+- **Design files stay filed and findable.** Every design fact goes to its §0b home — a value
+  to `globals.css`/`motion.css` beside its rule, a law to `DESIGN_AUTHORITY.md`, records to
+  `docs/design-system/` / `docs/design-brief/` — and every new file is registered in
+  `docs/README.md`'s index. Never a stray design file anywhere else. At session end verify
+  `design-brief/` still holds exactly three files (the plan, the cleanup manifest, the
+  next-session prompt) and say so with a quoted listing.
 
 **The integration rule:** take the kit's structure, layout, behaviour and copy; express every
 visual value through EXISTING tokens (`var(--…)`). The kit's `tokens-LOCKED.css` is a proven
