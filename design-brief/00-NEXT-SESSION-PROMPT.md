@@ -142,7 +142,48 @@ the `--rh-*` rhythm tokens, `.kp-hero*` pattern). Additions from batch 3:
 
 ---
 
+## ⚠️ TWO LIVE COMPLIANCE FLAGS FROM BATCH 3 — neither has an actual confirmation, get one
+
+Both shipped to production because the plan's own resolution said "build as designed, flag for
+sign-off" — but "flag" never became a closed conversation with a yes or a no. Get one before this
+session ends, not after:
+
+1. **The RG line's placement above the footer.** LCCP §SR 5.1.5 governs where responsible-gambling
+   messaging must appear on a licensed real-money page, and moving it up from footer-only may
+   change how it is assessed. Every string is verbatim from `public-footer.tsx` — nothing was
+   invented — but the PLACEMENT is the open question. `src/components/home/rg-line.tsx` is the
+   whole surface; if the answer is no, it is a one-line deletion (`<RgLine />` in `page.tsx`).
+2. **The settled strip names its public sources.** Live right now: `NBC.CO.TZ`, `EIA.GOV`,
+   `METEO.GO.TZ`, `COINGECKO.COM`. Naming a data source at this prominence, on a page every visitor
+   sees, may be a contractual question with each provider, not only a design one. If any name
+   needs to come down, `.kp-settled__src` in `trust-band.tsx` is the one render site.
+
+Ask Ali directly, get an explicit answer, and record it in `PLAN-OF-RECORD.md` §5 item 6 (currently
+still worded as a future flag from BEFORE either of these shipped) so the next reader does not
+re-open a question that was actually settled.
+
+---
+
 ## BATCH 4 — the work, in the order it should be done
+
+### ⭐ Practicality first — what this batch actually owes, and what is optional
+
+**§4a (cite-check/archive/decide) + §4d + §4e + §4f are the batch's real deliverable** — cheap,
+bounded, and each already has a known-correct answer written down. **§4b's three builds are
+enhancements, not the job.** If time runs short, deciding all three EXPLICITLY as "carried forward,
+reason restated" is a complete and honest batch 4 — a rushed build of a new sheet/combobox under
+time pressure, verified at half the rigor batch 3 held everything else to, is a worse outcome than
+naming it deferred again. Do not let three optional builds crowd out the docs-and-decisions work
+that is actually owed.
+
+If ANY of the three IS built this session, it gets the **same bar** as every other component in
+this plan, not a lighter one because it is "just batch 4": all seven engineer roles sign off, real
+device widths (360/768/1280/1920) in all three locales, every control opened (not just screenshot
+closed), a contract test + RED proof if it carries a real invariant, tokens-only with no new colour
+or radius, and — if it is the mobile filter sheet specifically — verify it does not regress what is
+being replaced: the scrolling-strip's keyboard operability and the sheet's own focus trap / focus
+return / Escape-closes must all be checked against the shared `<Modal>` primitive's contract, not
+assumed from the kit's spec drawing alone.
 
 ### 4a · Cite-check → archive → delete the round-2 kit's working copies
 
@@ -210,8 +251,18 @@ batch's closing step.
 
 ## DEFINITION OF DONE
 
+- **The two live compliance flags above have an explicit answer from Ali**, recorded in
+  `PLAN-OF-RECORD.md` §5, not left as a standing question.
 - Every one of §4a–4e's items has an explicit outcome recorded (built + verified, or carried
   forward with its reason intact) — none silently dropped.
+- **If anything visual shipped this batch:** read at 360/768/1280/1920 × en/sw/zh, `FULL=1`
+  whole-page frames included (batch 2's own defect — the same market stated twice — was invisible
+  to every per-band clip and visible only in a whole-page frame), plus every new control actually
+  opened. A closed menu or an unscrolled sheet looks perfect regardless of what is inside it.
+- **No new colour, radius, shadow or type size** — every value a token consumed through a class in
+  `globals.css`, never inline (B9/B10, law 82). If a genuinely new visual pattern is needed that
+  the kit's delivered spec does not cover, that is a second design decision and gets named for Ali
+  (§0b), not invented at the call site.
 - `git fetch` shows no surprise commits; `git branch --show-current` is `main`; every push
   verified live (HTTP 200, clean `railway logs`, a live screenshot actually read).
 - All gates from batch 3 (33 + the 2 new ones) still green; any NEW gate this batch adds has its
