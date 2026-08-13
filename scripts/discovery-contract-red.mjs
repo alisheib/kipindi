@@ -12,6 +12,7 @@
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
+import { injectDefect } from "./red-anchor.mjs";
 
 const SRC = "src/lib/markets/discovery.ts";
 
@@ -80,12 +81,19 @@ try {
   if (base !== 0) { failures++; }
 
   for (const m of MUTATIONS) {
-    if (!original.includes(m.from)) {
-      console.log(`  FAIL anchor missing — cannot inject: ${m.name}`);
+    let mutated;
+    try {
+      // ⛔ Line-ending agnostic ON PURPOSE. Two of these seven anchors span a line break, and with
+      // `core.autocrlf=true` and no `.gitattributes` the working tree is CRLF — so a `\n` anchor
+      // matched nothing and this harness called the product unprovable on a normal Windows clone.
+      // See `scripts/red-anchor.mjs`.
+      mutated = injectDefect(original, m.from, m.to);
+    } catch (e) {
+      console.log(`  FAIL ${e.message}: ${m.name}`);
       failures++;
       continue;
     }
-    writeFileSync(SRC, original.replace(m.from, m.to), "utf8");
+    writeFileSync(SRC, mutated, "utf8");
     const code = gateExits();
     if (code === 0) {
       console.log(`  FAIL gate stayed GREEN with: ${m.name}`);

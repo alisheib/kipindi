@@ -17,6 +17,14 @@
 process.env.SESSION_SECRET ??= "test-only-session-secret-32chars-min-aaaa";
 delete process.env.ANTHROPIC_API_KEY; // force the mock provider
 delete process.env.DATABASE_URL;      // force the in-memory store
+// ⛔ PIN THE MOCK. Part C asserts that a SUCCESSFUL generation carries all three titles. The mock
+// provider otherwise rolls a weighted scenario and returns a titleless response ("empty",
+// "malformed", "error", "timeout") on ~7.5% of calls — measured 9/120 on 2026-08-13 — so this gate
+// failed one predeploy run in thirteen with nothing wrong. The error scenarios are the AI-poll
+// gates' subject, not this one's; this file is about EN/SW/ZH titles.
+// `RED_MOCK_SCENARIO=empty npm run test:trilingual` reproduces the titleless response on purpose —
+// that is the positive control proving the three title assertions in part C can actually go red.
+process.env.AI_MOCK_SCENARIO = process.env.RED_MOCK_SCENARIO ?? "clean";
 
 import { pickLocalized } from "../src/lib/localized.ts";
 import type { Locale } from "../src/lib/i18n-dict.ts";
@@ -141,8 +149,14 @@ async function partB() {
 async function partC() {
   console.log("\nC. generation pipeline (mock provider)");
   const poll = await generateAIPoll({ category: "sports", actorId: "tester" });
-  ok("generated poll has a titleZh field (string)", typeof poll.titleZh === "string");
-  ok("generated poll has titleEn", !!poll.titleEn);
+  ok("generated poll has titleEn", !!poll.titleEn, `got ${JSON.stringify(poll.titleEn)}`);
+  // ⛔ `typeof poll.titleZh === "string"` used to stand here and it passed on "" — the exact
+  // reading a titleless mock response produces. A Chinese title that is empty, or that is just
+  // the English string copied across, is the defect this line exists to catch, so assert what
+  // the value CARRIES: non-empty, and actually distinct from the English.
+  ok("generated poll carries a non-empty titleZh", !!poll.titleZh?.trim(), `got ${JSON.stringify(poll.titleZh)}`);
+  ok("titleZh is not the English string", !!poll.titleZh && poll.titleZh !== poll.titleEn);
+  ok("titleZh contains CJK characters", /[一-鿿]/.test(poll.titleZh ?? ""), `got ${JSON.stringify(poll.titleZh)}`);
 
   // controlled mode: the operator's exact English title is pinned verbatim
   const fixed = "Will the operator-pinned exact question resolve YES by 2026?";

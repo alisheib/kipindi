@@ -2682,6 +2682,25 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
 /* Press feedback — 1px, the same nudge every other control in the system uses. */
 .kp-fchip:active { transform: translateY(1px); }
 
+/* ⭐ THE STRIPS MUST LOOK LIKE THEY SCROLL — measured 2026-08-13 at 360px.
+   The chip strip hides 660 of its 1020px of controls in Swahili, and a hard cut at the viewport
+   edge reads as a finished row, not a scrollable one: a player can miss two thirds of the filters.
+   The status strip was worse — its clipped chip landed hard against the result count beside it, so
+   "Mpya" and "masoko 40" rendered as one broken word ("Mpymasoko 40"). A 24px fade at the
+   trailing edge says "there is more this way", and it costs no colour at all: a mask reveals
+   whatever the bar is already painted on, so the palette is untouched.
+   ⛔ MOBILE ONLY. Above `lg` both strips stop scrolling (`lg:overflow-visible` / `lg:contents`)
+   and a fade over a static row would dim a control for no reason.
+   ⛔ AND THIS IS THE SECOND REASON THE MENUS LIVE OUTSIDE THE CHIP STRIP: a mask clips an
+   absolutely-positioned panel exactly as an overflow does. Putting a `<details>` menu back inside
+   a faded strip would re-create the 4px-tall listbox this replaced. */
+@media (max-width: 1023.98px) {
+  .kp-strip-fade {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent 100%);
+    mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent 100%);
+  }
+}
+
 /* The sort/topic menus are <details>, so they open with no JavaScript. The native marker is
    replaced by the caret glyph inside the summary. */
 .kp-menu > summary { list-style: none; }

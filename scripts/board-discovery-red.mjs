@@ -17,6 +17,7 @@
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
+import { injectDefect } from "./red-anchor.mjs";
 
 const CONTRACT = "src/lib/markets/discovery.ts";
 const PAGE = "src/app/markets/page.tsx";
@@ -90,12 +91,17 @@ try {
 
   for (const c of CASES) {
     const src = originals.get(c.file);
-    if (!src.includes(c.from)) {
-      console.log(`  ⛔ ANCHOR MISSING — ${c.name}\n     could not find: ${c.from}`);
+    let mutated;
+    try {
+      // Shared with `discovery-contract-red.mjs` so a line-ending convention can never decide
+      // whether this harness proves anything — see `scripts/red-anchor.mjs`.
+      mutated = injectDefect(src, c.from, c.to);
+    } catch (e) {
+      console.log(`  ⛔ ${e.message} — ${c.name}\n     could not inject: ${c.from}`);
       failures++;
       continue;
     }
-    writeFileSync(c.file, src.replace(c.from, c.to), "utf8");
+    writeFileSync(c.file, mutated, "utf8");
     const code = gateExits();
     restore();
     if (code === 0) {

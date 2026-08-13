@@ -346,7 +346,27 @@ const SCENARIO_WEIGHTS: Array<[MockScenario, number]> = [
   ["error", 2],
 ];
 
+/** Every scenario name, derived from the weights so the two can never drift apart. */
+const MOCK_SCENARIOS = SCENARIO_WEIGHTS.map(([s]) => s);
+
 function pickScenario(): MockScenario {
+  // ⛔ A TEST THAT NEEDS A SPECIFIC PROVIDER BEHAVIOUR MUST BE ABLE TO ASK FOR IT.
+  // Measured 2026-08-13: the weighted roll below returns a no-title scenario ("empty",
+  // "malformed", "error", "timeout") on 9 of 120 calls — so `test:trilingual` partC, which
+  // asserts a *successful* generation carries all three titles, failed ~7.5% of runs on a
+  // completely correct product. It sits in `predeploy`, so a clean tree went red for nothing
+  // roughly one run in thirteen, which is how a guard teaches people to ignore it.
+  // Unpinned behaviour is unchanged — this only reads an env var that nothing sets by default,
+  // and the mock provider itself is only reachable when there is no ANTHROPIC_API_KEY.
+  const pinned = process.env.AI_MOCK_SCENARIO;
+  if (pinned) {
+    if (!MOCK_SCENARIOS.includes(pinned as MockScenario)) {
+      // Fail loudly. A silent fallback to the random roll would reintroduce the flake while
+      // the caller believed it had pinned the behaviour.
+      throw new Error(`AI_MOCK_SCENARIO="${pinned}" is not a mock scenario. One of: ${MOCK_SCENARIOS.join(", ")}`);
+    }
+    return pinned as MockScenario;
+  }
   const total = SCENARIO_WEIGHTS.reduce((s, [, w]) => s + w, 0);
   let r = Math.random() * total;
   for (const [scenario, weight] of SCENARIO_WEIGHTS) {

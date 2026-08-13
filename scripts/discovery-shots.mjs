@@ -1,9 +1,18 @@
 // Screenshot driver for the round-2 design inheritance.
 // Run: LOCALES=en,sw,zh npm run qa:discovery-shots -- <outDir> [baseUrl]
 // Shots are EVIDENCE and gitignored — write them under .qa-design-*/ (DESIGN_AUTHORITY §0b).
-// Captures the three surfaces under change at 1280 and 360, in en/sw/zh.
+//
+// 🔴 CORRECTED 2026-08-13. This driver used to set cookies named `locale` and `NEXT_LOCALE`.
+// The product reads NEITHER — language comes from `kp-locale` only. Twelve frames labelled
+// en/sw/zh were captured and read as trilingual evidence while eight of them were **English**
+// (proven: with the old cookies the live site returns `<html lang="en">`). It now sets the real
+// cookie through `scripts/qa-locale.mjs` and calls `assertLang` after every navigation, so a
+// mismatch throws instead of producing a frame that merely LOOKS like evidence.
+//
+// Widths are the project matrix 360 / 768 / 1280 / 1920 (50pick-standards §4), not just two.
 import { chromium } from "playwright";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { localisedContext, assertLang } from "./qa-locale.mjs";
 
 const OUT = process.argv[2] || "./shots";
 const BASE = process.argv[3] || "http://localhost:3009";
@@ -11,10 +20,16 @@ const BASE = process.argv[3] || "http://localhost:3009";
 const ROUTES = [
   { name: "landing", path: "/" },
   { name: "markets", path: "/markets" },
+  // Filtered + empty states: the board's promise is only testable with controls PRESSED, and the
+  // per-cause empty state is the surface most likely to read as a dead end.
+  { name: "markets-filtered", path: "/markets?status=all&pool=10k&sort=pool" },
+  { name: "markets-empty", path: "/markets?q=zzzqqqxx" },
 ];
 const WIDTHS = [
-  { name: "1280", w: 1280, h: 900 },
   { name: "360", w: 360, h: 780 },
+  { name: "768", w: 768, h: 1024 },
+  { name: "1280", w: 1280, h: 900 },
+  { name: "1920", w: 1920, h: 1080 },
 ];
 const LOCALES = (process.env.LOCALES || "en").split(",");
 
@@ -23,19 +38,11 @@ mkdirSync(OUT, { recursive: true });
 const browser = await chromium.launch();
 let n = 0;
 const failures = [];
+const rows = [];
 
 for (const loc of LOCALES) {
   for (const vp of WIDTHS) {
-    const ctx = await browser.newContext({
-      viewport: { width: vp.w, height: vp.h },
-      deviceScaleFactor: 1,
-      locale: loc === "zh" ? "zh-CN" : loc === "sw" ? "sw-TZ" : "en-US",
-    });
-    // The app reads locale from a cookie.
-    await ctx.addCookies([
-      { name: "locale", value: loc, url: BASE },
-      { name: "NEXT_LOCALE", value: loc, url: BASE },
-    ]);
+    const ctx = await localisedContext(browser, { locale: loc, width: vp.w, height: vp.h, baseUrl: BASE });
     const page = await ctx.newPage();
     const consoleErrors = [];
     page.on("console", (m) => {
@@ -49,22 +56,58 @@ for (const loc of LOCALES) {
         // Trap 10: first cold compile of a page under Turbopack is ~30s.
         const resp = await page.goto(url, { waitUntil: "networkidle", timeout: 90000 });
         const status = resp ? resp.status() : 0;
+        // ⛔ Before measuring or capturing ANYTHING: prove the page is in the language asked for.
+        await assertLang(page, loc);
         await page.waitForTimeout(600);
         const file = `${OUT}/${r.name}-${vp.name}-${loc}.png`;
         await page.screenshot({ path: file, fullPage: true });
-        // Horizontal overflow check — the mobile killer.
-        const overflow = await page.evaluate(
-          () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-        );
+
+        const m = await page.evaluate(() => {
+          const docOverflow = document.documentElement.scrollWidth - document.documentElement.clientWidth;
+          const bar = document.querySelector(".kp-discovery-bar");
+          // Tap targets: every interactive control inside the bar. A control under 44px on a
+          // phone is a miss the eye forgives and a thumb does not.
+          const controls = bar ? [...bar.querySelectorAll("a,button,select,[role=option],[role=button]")] : [];
+          const boxes = controls
+            .map((el) => el.getBoundingClientRect())
+            .filter((b) => b.width > 0 && b.height > 0);
+          const minH = boxes.length ? Math.round(Math.min(...boxes.map((b) => b.height))) : -1;
+          // A clip inside an intermediate row never reaches the document edge — measure every
+          // scroll container against ITS OWN scrollWidth (50pick-standards §4).
+          const clipped = bar
+            ? [...bar.querySelectorAll("*")].filter((el) => {
+                const s = getComputedStyle(el);
+                if (s.overflowX === "auto" || s.overflowX === "scroll") return false; // scrolling is the design
+                return el.scrollWidth - el.clientWidth > 1;
+              }).length
+            : 0;
+          return {
+            docOverflow,
+            barHeight: bar ? Math.round(bar.getBoundingClientRect().height) : -1,
+            controls: controls.length,
+            minControlH: minH,
+            clippedInBar: clipped,
+          };
+        });
+
         n++;
-        console.log(
-          `${status} ${r.name} ${vp.name} ${loc}  overflowX=${overflow}px  ${consoleErrors.length ? "CONSOLE_ERRORS=" + consoleErrors.length : ""}`,
-        );
+        const line =
+          `${status} ${r.name.padEnd(17)} ${vp.name.padEnd(5)} ${loc}  overflowX=${m.docOverflow}px` +
+          `  bar=${m.barHeight}px  controls=${m.controls}  minTap=${m.minControlH}px  clippedInBar=${m.clippedInBar}` +
+          `${consoleErrors.length ? "  CONSOLE_ERRORS=" + consoleErrors.length : ""}`;
+        console.log(line);
+        rows.push(line);
+
         if (status !== 200) failures.push(`${r.path} ${vp.name} ${loc} -> HTTP ${status}`);
-        if (overflow > 0) failures.push(`${r.path} ${vp.name} ${loc} -> overflowX ${overflow}px`);
+        if (m.docOverflow > 0) failures.push(`${r.path} ${vp.name} ${loc} -> overflowX ${m.docOverflow}px`);
+        if (m.clippedInBar > 0) failures.push(`${r.path} ${vp.name} ${loc} -> ${m.clippedInBar} clipped node(s) inside the bar`);
+        // Only the phone width is held to the tap-target floor; the bar is absent on some routes.
+        if (vp.w <= 480 && m.minControlH > 0 && m.minControlH < 40) {
+          failures.push(`${r.path} ${vp.name} ${loc} -> smallest bar control ${m.minControlH}px (< 40px)`);
+        }
       } catch (e) {
-        failures.push(`${r.path} ${vp.name} ${loc} -> ${String(e.message).slice(0, 120)}`);
-        console.log(`FAIL ${r.name} ${vp.name} ${loc}: ${String(e.message).slice(0, 120)}`);
+        failures.push(`${r.path} ${vp.name} ${loc} -> ${String(e.message).slice(0, 160)}`);
+        console.log(`FAIL ${r.name} ${vp.name} ${loc}: ${String(e.message).slice(0, 160)}`);
       }
     }
     if (consoleErrors.length) {
@@ -75,6 +118,7 @@ for (const loc of LOCALES) {
 }
 
 await browser.close();
+writeFileSync(`${OUT}/MEASUREMENTS.txt`, rows.join("\n") + "\n", "utf8");
 console.log(`\n${n} screenshots -> ${OUT}`);
 if (failures.length) {
   console.log("FAILURES:");

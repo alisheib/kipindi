@@ -26,6 +26,7 @@ export function MenuShell({
   count,
   ariaLabel,
   className,
+  rootClassName,
   children,
 }: {
   /** The quiet key — never truncates. */
@@ -34,7 +35,10 @@ export function MenuShell({
   value: string;
   count?: number;
   ariaLabel: string;
+  /** Classes for the SUMMARY — the visible control. */
   className?: string;
+  /** Classes for the `<details>` root, so the caller can place the control in its row. */
+  rootClassName?: string;
   children: React.ReactNode;
 }) {
   const ref = useRef<HTMLDetailsElement>(null);
@@ -61,7 +65,7 @@ export function MenuShell({
   }, []);
 
   return (
-    <details ref={ref} className="kp-menu relative shrink-0">
+    <details ref={ref} className={cn("kp-menu relative shrink-0", rootClassName)}>
       <summary
         aria-label={ariaLabel}
         className={cn(

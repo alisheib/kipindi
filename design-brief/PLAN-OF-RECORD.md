@@ -157,6 +157,7 @@ topic taxonomy source of truth, whether search is server-side._
 | 1c glyph cleanup | `fd66292b` | docs · one-door · integrity green | pushed | 03-glyphs archived (41 files / 22,866 B verified) + 4 citers annotated |
 | 2a contract · step 1 (pure module + gate) | `(this session)` | `test:discovery-contract` 78 assertions green; `red:discovery-contract` **7/7 real defects caught**, tree restored byte-identical; tsc 0 | local | `src/lib/markets/discovery.ts` — parsing, defaults, ONE href builder, status predicates, odds/pool buckets, sorts + explicit tie-breakers, cross-filtered counts, relaxations. Pure: no server imports, lifecycle facts stay in `market-service.ts` |
 | 2a+2b · `/markets` rebuilt on the contract | `(this session)` | 32 gates green incl. the 22 + `board-discovery` + `product-line` + `discovery-contract` + `i18n`/`trilingual`; tsc 0; `npm run build` ✓ 43s; both RED harnesses 6/6 and 7/7 | 12 shots at 360+1280 × en/sw/zh, **overflowX=0 on all 12**; HTTP driver green | 13-pill rail DELETED · sticky 2-row bar · 5 status segments · 6 sorts + direction · odds/pool chips · topic menu · cross-filtered counts · per-cause empty states with real-count exits · `PageContainer tier="board"` (2 raw-width ratchet entries removed) · `ProposePromo` gone · categories derive from `MARKET_CATEGORIES` · both skeletons on ONE height definition |
+| 1v · batch-1 VALIDATION pass (2026-08-13, later) | `(this session)` | 22 gates green individually incl. both RED harnesses (7/7 and 6/6); tsc 0; `npm run build` ✓ | 48 shots at 360/768/1280/1920 × en/sw/zh **read**, overflowX 0 / minTap 44px / 0 clipped on all 48; new menu guard proven RED against production and GREEN against the fix | 🔴 **The sort and topic menus were 1% usable on a phone** — fixed. Plus 3 instrument defects that had been reporting green for the wrong reason. Full account in §8.7c |
 | 2c hero | _next session_ | | | |
 | 2d landing + header | _next session_ | | | |
 | 3 remainder | _next session_ | | | |
@@ -624,6 +625,91 @@ Three things, all caught by measuring rather than by reading:
    is a second definition of it. The migration is a pure swap; do not carry the old page's
    padding across with it.
 
+## 8.7c · THE VALIDATION PASS — one product defect, three instruments that lied
+
+Ali asked for batch 1 to be re-validated before batch 2 was built on top of it: *"make sure it's
+100% functional visually and technically"*. It was not. **The board's data was flawless and its
+mobile controls were not usable.**
+
+### 🔴 The product defect: the sort and topic menus were 1% visible on a phone
+
+| Measured on production, 360px | |
+|---|---|
+| Sort menu panel | 274px tall · **4px visible · 1%** · 0 of 6 options reachable |
+| Topic menu panel | 362px tall · **4px visible · 1%** · 0 of 8 topics reachable |
+| At 1280px | 100% visible — desktop was always fine |
+
+**Cause.** Both menus are `<details>` whose listbox is absolutely positioned. They sat inside the
+row that scrolls horizontally below `lg`, and **CSS coerces `overflow-y: visible` to `auto` the
+moment one axis scrolls** — so a 62px strip clipped a 362px panel. A box cannot both scroll on one
+axis and let a child escape on the other; there is no property that fixes it in place.
+
+⛔ **Nothing caught it, and the reason is the lesson.** The page had zero horizontal overflow,
+every tap target measured 44px, no element overflowed its own box, and a screenshot of a *closed*
+menu looks perfect. Two of the six controls the batch shipped were dead, and every green check was
+honestly green. **The defect only exists once the control is opened, so the check has to open it.**
+
+**Fix.** The chips keep the scrolling strip — that is what took the bar from 448px to 116px in
+Swahili — and the menus moved out of it. Mobile row 2 is a one-column grid, so the four groups
+stack in the kit's own sort → odds → pool → topic order with no reordering. Two alternatives were
+measured and rejected: sort and topic sharing a line fits in 168px but truncates the Swahili sort
+value mid-word and squeezes the fused direction button to nothing (flex-wrap breaks a line *before*
+it shrinks), and keeping the old `-mx-3` edge bleed made the row overflow its own container by 16px.
+
+`.kp-strip-fade` replaces the edge bleed: a 24px trailing fade on each scrolling strip. It costs no
+colour — a mask reveals whatever the bar is painted on — and it fixes a second, quieter defect. The
+status strip's clipped chip used to land hard against the result count, so at 360 in Swahili
+**"Mpya" and "masoko 40" rendered as one broken word, "Mpymasoko 40"**. The strip also hides 660 of
+its 1,020px of chips in Swahili; a hard cut reads as a finished row, a fade reads as "more here".
+
+**Cost of the fix, stated:** the mobile bar goes 116px → **220px** (28% of a 780px viewport), and
+stays 220px whether or not filters are active — Topic and Clear share a grid cell so pressing a
+filter cannot grow the bar to 272px. Desktop is unchanged: 168px, and 116px in Chinese, whose
+labels are compact enough to fit one row fewer.
+
+**The guard that would have caught it** now lives in `qa:discovery-board`: at 360 in Swahili it
+opens every `details.kp-menu`, counts its options and asserts ≥90% of the panel is visible; it also
+refuses to pass if it cannot find exactly two menu controls, so a rotted selector reads as a
+failure rather than a pass. Proven both ways in one sitting — **RED against production** (1%,
+2 failures) and **GREEN against the fix** (100%).
+
+### The three instruments that were green for the wrong reason
+
+1. 🔴 **`qa:discovery-shots` and `qa:discovery-board` set the wrong locale cookie.** They set
+   `locale` and `NEXT_LOCALE`; the product reads **`kp-locale`** and nothing else
+   (`src/lib/i18n-server.ts:18`, `i18n.tsx:39`, `layout.tsx:97`). Proven, not argued: with the old
+   cookies the live site returns `<html lang="en">`. So the twelve frames batch 1 captured as
+   en/sw/zh were **eight English frames read as trilingual evidence**, and the guard asserting the
+   bar height *"in Swahili"* was measuring **English — the easy case**, on the very regression that
+   batch 1 existed to fix. This is E-106 recurring four sessions later, so the cookie name now
+   lives once in `scripts/qa-locale.mjs`, and `assertLang` reads `<html lang>` back after every
+   navigation and **throws** on a mismatch. The real Swahili and Chinese numbers turned out fine
+   (116px both), which is luck, not evidence.
+2. 🔴 **`red:discovery-contract` could not prove 2 of its 7 defects on a normal Windows clone.**
+   The two failing anchors were **the only two that spanned a line break**: `core.autocrlf=true`
+   and there is no `.gitattributes`, so the working tree is CRLF while the anchors were written
+   with `\n`. The harness's verdict depended on how the tree had been checked out. Both defect
+   classes it could not reach — cold-start markets entering the odds buckets on `impliedYesPct`'s
+   hardcoded 50, and ties left to JS sort stability — **are** caught by the gate once the anchor
+   matches. The gate was sound; the instrument was broken. Anchor resolution now lives once in
+   `scripts/red-anchor.mjs`, shared with `red:board-discovery` so the same trap cannot be
+   copy-pasted forward, and it refuses an anchor that matches twice.
+3. ⚠️ **`test:trilingual` failed ~7.5% of runs with nothing wrong** — measured 9 of 120. The mock
+   AI provider rolls a weighted scenario, and `empty`/`malformed`/`error`/`timeout` return no
+   title, so part C's *"a generated poll carries all three titles"* lost a coin flip. It is in
+   `predeploy`, so a clean tree went red about one run in thirteen. Pinnable now via
+   `AI_MOCK_SCENARIO` (validated against the known list, throwing on a typo rather than silently
+   falling back to the roll). ⛔ **And one of its assertions was vacuous**:
+   `typeof poll.titleZh === "string"` passes on `""` — exactly what a titleless response produces.
+   It now asserts the value CARRIES something: non-empty, different from the English, and
+   containing CJK. Positive control kept in the file — `RED_MOCK_SCENARIO=empty` makes all four
+   title assertions fail on demand, and it was run.
+
+⚠️ **A note for whoever reads the old claim.** The batch-1 log said 12 shots at 360+1280 × en/sw/zh
+with overflowX 0 on all 12. The overflow figure was true; the languages were not. It is corrected
+here rather than deleted, because the failure mode — *evidence that looks like evidence* — is worth
+more than the tidy version.
+
 ## 8.8 · Deliberately DEFERRED — named, with the reason (not silently dropped)
 
 Two pieces of the kit's `/markets` spec are **not** in batch 1. Both are recorded here rather
@@ -633,6 +719,7 @@ codebase does not ship.
 | Deferred | Why | What it needs |
 |---|---|---|
 | **Density toggle / compact list** (kit §3e, COMPONENTS §5) | The label is "Compact list view" and the spec is a genuinely different DOM: `role="table"`, `role="row"`, `role="cell"`, seven columns with individual hide points (watch star 44 never hides · market flex:1 · trend 96 hidden <1024 · YES 56 · pool 104 hidden <720 · closes 78 hidden <720 · YES/NO 144 hidden <1024). A toggle bearing that label while only restyling the existing cards would be a false promise | A `MarketListRow` component + its own responsive column table. The toggle's persistence (`50pick.discovery.v1`) and its 44×44 geometry are already specified |
+| **The mobile filter SHEET** (kit `05-markets-discovery-mobile.html`) | The kit puts every filter behind one `Filters` button on a phone, which would take the sticky bar from **220px back under 120px**. Batch 1 chose scrolling strips instead because they need no JavaScript, and §8.7c has now spent 104px of sticky height keeping every control readable and operable. That is the right trade for a defect fix and the wrong end state | A `<details>`-driven bottom sheet with a scrim (elevation rung 3 already defines "sheet with a scrim"). ⛔ The sort and topic options must render as flat lists inside it, NOT as nested `<details>` menus — a sheet that scrolls would clip an absolutely-positioned panel and re-create exactly the 4px listbox §8.7c just removed |
 | **Search typeahead** (kit §3g) | `SearchBox` already delivers debounced-URL search on the shared grammar (quoted phrase, `-exclude`, `field:`), so the board searches correctly today. The typeahead is an ENHANCEMENT — combobox + listbox, `/` focus shortcut, topic/source/market suggestion kinds — not a gap in behaviour | A client combobox over the existing parser; suggestion kinds are specified in COMPONENTS §8 |
 
 Also **not** adopted, deliberately: the kit's `Load N more` pager. The shared `Pagination`
@@ -693,10 +780,17 @@ production**, and they are now registered npm scripts:
 | Command | What it proves |
 |---|---|
 | `npm run qa:discovery-probe -- https://50pick.tz` | every control's promised count equals what pressing it delivers, incl. cross-filtering · URL hygiene · sorting reorders · empty-state exits are non-empty |
-| `npm run qa:discovery-board -- https://50pick.tz` | the GRID draws a page of that set — counted in a real browser DOM, because response byte order ≠ DOM order under streaming · and the mobile bar height regression |
+| `npm run qa:discovery-board -- https://50pick.tz` | the GRID draws a page of that set — counted in a real browser DOM, because response byte order ≠ DOM order under streaming · the mobile bar height in **real** sw and zh · and ⭐ that **every menu actually OPENS** (≥90% of its panel visible at 360), the check §8.7c's defect proved was missing |
 | `LOCALES=en,sw,zh npm run qa:discovery-shots -- .qa-design-round2/after` | 360 + 1280 × en/sw/zh, failing on any horizontal overflow. ⚠️ Shots are EVIDENCE — write them under `.qa-design-*/`, never into the tree (§0b) |
 
 ⛔ Screenshots stay gitignored. The *drivers* travel; the *evidence* is re-derived.
+
+**Two shared modules the drivers now depend on — read them before writing another driver:**
+
+| Module | The rule it owns, once |
+|---|---|
+| `scripts/qa-locale.mjs` | `kp-locale` is the ONLY cookie that changes the product's language, and `assertLang` reads `<html lang>` back and throws on a mismatch. Two drivers set a cookie the product never read and produced English frames labelled sw/zh (§8.7c) |
+| `scripts/red-anchor.mjs` | A RED harness's string anchors are matched in the FILE's line-ending convention, and an anchor that matches twice is refused. A `\n` anchor cannot match a CRLF checkout, which made a harness call the product unprovable (§8.7c) |
 
 **Local harness scratch** (`.qa-design-round2/`, gitignored under `.qa-design-*/`):
 in-memory dev server on `:3009` (no `DATABASE_URL` exists on this machine — verified — so a local

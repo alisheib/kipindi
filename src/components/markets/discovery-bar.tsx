@@ -176,7 +176,14 @@ export function DiscoveryBar({
       <div className="flex items-center gap-x-3 pt-2.5">
         <nav
           aria-label={t.market.statusAria}
-          className="kp-thin-scroll -mx-3 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto px-3 lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0"
+          /* ⚠️ NO EDGE BLEED. `-mx-3 px-3` used to run both strips 16px past the content box so a
+             half-visible chip would signal "more this way". It cost more than it bought: on the
+             right it ate the whole gap before the result count, so a clipped chip landed hard
+             against it and "Mpya" + "masoko 40" rendered as one broken word; and the bleed made
+             the row overflow its own container by 16px. `.kp-strip-fade` now carries the
+             "there is more this way" signal properly, so the strips sit inside the content box
+             and nothing overflows. */
+          className="kp-thin-scroll kp-strip-fade flex min-w-0 flex-1 items-center gap-1 overflow-x-auto pr-2 lg:flex-wrap lg:overflow-visible lg:pr-0"
         >
           {statuses.map((s) => (
             <Chip
@@ -201,11 +208,36 @@ export function DiscoveryBar({
         </p>
       </div>
 
-      {/* ── row 2 · sort + direction · odds · pool · topic · clear ────────────────────── */}
-      <div className="kp-thin-scroll -mx-3 flex items-center gap-x-2 overflow-x-auto px-3 pb-2.5 pt-1.5 lg:mx-0 lg:flex-wrap lg:gap-y-1.5 lg:overflow-visible lg:px-0">
+      {/* ── row 2 · sort + direction · odds · pool · topic · clear ──────────────────────
+          🔴 THE TWO `<details>` MENUS MUST NOT SIT INSIDE A HORIZONTALLY SCROLLING BOX.
+          Measured on production 2026-08-13: they did, and both were unusable on a phone. A box
+          that scrolls on one axis cannot let a child escape on the other — CSS coerces
+          `overflow-y: visible` to `auto` the moment `overflow-x` scrolls — so the listbox panel
+          (274px for sort, 362px for topic) was clipped by the 62px strip to a FOUR-PIXEL sliver:
+          1% of the panel, 0 of 6 sort options and 0 of 8 topics reachable at 360px.
+          ⛔ Every automated check passed while that was true — zero horizontal overflow, every
+          tap target 44px, no element overflowing its own box, and the closed menus look correct
+          in a screenshot. Only OPENING the control found it.
+          So the layout is now: the chips keep the scrolling strip (that is what fixed the 448px
+          wrapped bar), and the menus live outside it. `order-*` puts sort and topic together on
+          the first mobile line while the DOM keeps the kit's sort → odds → pool → topic order,
+          and `lg:contents` dissolves the strip at desktop so the row is byte-identical to before
+          this fix. Still no JavaScript: `<details>` opens natively either way.
+
+          ⭐ MOBILE IS A ONE-COLUMN GRID, so the four groups stack in the kit's own
+          sort → odds → pool → topic order with no placement classes and no reordering. Two
+          arrangements were measured at 360 and rejected: sort and topic sharing a line fits in
+          168px but truncates the Swahili sort value mid-word ("Zinazofunga kwa") and squeezes the
+          fused direction button to nothing, and flex-wrap cannot help because it breaks a line
+          BEFORE it shrinks. Stacked costs 52px of sticky height and every control reads in full,
+          which is the trade this surface should make.
+          ⬜ The kit's own mobile answer is a filter SHEET behind one button
+          (`05-markets-discovery-mobile.html`), which would take the bar back under 120px. It is
+          not built here — recorded in PLAN-OF-RECORD §8.8 with this measurement, not dropped. */}
+      <div className="grid grid-cols-1 justify-items-start gap-y-1.5 pb-2.5 pt-1.5 lg:flex lg:flex-wrap lg:items-center lg:gap-x-2">
         {/* Sort. ⛔ NO GOLD — sort is view state, and the kit's own round-2 final withdrew the
             gilt shell it had proposed. Gold is money on this platform (test:gold-is-money). */}
-        <div className="flex shrink-0 items-center">
+        <div className="flex max-w-full items-center">
           <MenuShell
             label={t.common.sort}
             value={SORT_LABEL[state.sort]}
@@ -241,7 +273,7 @@ export function DiscoveryBar({
             scroll={false}
             aria-label={dir === "asc" ? t.market.sortedAsc : t.market.sortedDesc}
             title={dir === "asc" ? t.market.sortedAsc : t.market.sortedDesc}
-            className="inline-flex h-[44px] w-[44px] items-center justify-center rounded-r-pill border border-border-control bg-bg-inset text-text-muted hover:text-text"
+            className="inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-r-pill border border-border-control bg-bg-inset text-text-muted hover:text-text"
           >
             <span
               aria-hidden
@@ -253,8 +285,14 @@ export function DiscoveryBar({
           </Link>
         </div>
 
-        <span aria-hidden className="mx-0.5 h-5 w-px shrink-0 bg-border" />
+        {/* The group dividers are a desktop device: on a phone the groups already sit on their
+            own line, and a 1px rule between two scrolled strips reads as a glitch. */}
+        <span aria-hidden className="mx-0.5 hidden h-5 w-px shrink-0 bg-border lg:block" />
 
+        {/* The chips keep the scrolling strip — that is what took the bar from 448px to 116px in
+            Swahili. `lg:contents` removes this box at desktop so odds and pool become direct
+            children of the row again, exactly as they were before the menus moved out. */}
+        <div className="kp-thin-scroll kp-strip-fade flex w-full items-center gap-x-2 overflow-x-auto lg:contents">
         {/* ⚠️ THE GROUP KEY IS LOAD-BEARING, NOT DECORATION. Odds and pool each open with an
             "Any" chip, so without a visible key the bar renders two identical "Any" pills side
             by side and neither says what it clears. The key uses the same quiet mono treatment
@@ -275,7 +313,7 @@ export function DiscoveryBar({
           ))}
         </nav>
 
-        <span aria-hidden className="mx-0.5 h-5 w-px shrink-0 bg-border" />
+        <span aria-hidden className="mx-0.5 hidden h-5 w-px shrink-0 bg-border lg:block" />
 
         <nav aria-label={t.market.poolAria} className="flex shrink-0 items-center gap-1">
           <span className="shrink-0 pr-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-text-subtle">
@@ -293,13 +331,21 @@ export function DiscoveryBar({
           ))}
         </nav>
 
-        <span aria-hidden className="mx-0.5 h-5 w-px shrink-0 bg-border" />
+        </div>
+
+        <span aria-hidden className="mx-0.5 hidden h-5 w-px shrink-0 bg-border lg:block" />
 
         {/* Topic is ONE menu, not eight pills. The kit flipped this twice; correction round 2.6
             — the LAST one — replaced the eight-pill wall with a single menu, and "round 2 final"
             means the last round wins. It is also single-select: DISCOVERY-RATIONALE rejects
             multi-select by name ("doubles the state space"). */}
+        {/* Topic and Clear share one grid cell so pressing a filter never grows the sticky bar by
+            another 52px on a phone — it measured 272px with Clear on its own row, past the 260px
+            ceiling the mobile guard holds. `lg:contents` returns both to the desktop row, where
+            Clear keeps its `lg:ml-auto` and sits at the far end. */}
+        <div className="flex max-w-full items-center gap-x-2 lg:contents">
         <MenuShell
+          rootClassName="max-w-full"
           label={t.common.topic}
           value={topics.find((x) => x.id === state.topic)?.label ?? t.market.catAll}
           count={counts.topic[state.topic]}
@@ -339,6 +385,7 @@ export function DiscoveryBar({
             {t.market.clearAll}
           </Link>
         )}
+        </div>
       </div>
     </div>
   );

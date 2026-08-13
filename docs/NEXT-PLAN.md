@@ -21,6 +21,21 @@ frozen and shipped. **Revised 2026-07-31 against the live platform, not against 
 > rewritten from source-greps onto behavioural assertions — the old anchors (`DEFAULT_WHEN`,
 > `WHEN_CUTOFFS`, `sp.when`) are gone from the product **deliberately; do not restore them**.
 > ⬜ Density/compact-list and search typeahead are deferred with reasons in §8.8 — not dropped.
+>
+> 🔴 **AND BATCH 1 WAS RE-VALIDATED BEFORE BATCH 2 (2026-08-13, later) — it was not done.** The
+> board's data was flawless; **two of its six controls were unusable on a phone.** The sort and
+> topic menus are `<details>` whose panel is absolutely positioned, and they sat inside the row
+> that scrolls horizontally below `lg` — CSS coerces `overflow-y: visible` to `auto` as soon as one
+> axis scrolls, so a 62px strip clipped a 362px panel to **4px: 1%, zero of 8 topics reachable at
+> 360px**. ⛔ Nothing caught it: no horizontal overflow, every tap target 44px, nothing overflowing
+> its own box, and a closed menu screenshots perfectly. **A control's defect can live entirely in
+> its open state — the check has to open it**, and `qa:discovery-board` now does (proven RED against
+> production, GREEN against the fix). Fixed by moving the menus out of the scrolling strip; the
+> mobile bar costs 116px → 220px for it, and the kit's filter sheet would win that back (§8.8).
+> Three QA instruments were also green for the wrong reason — a wrong locale cookie that made
+> **8 of 12 "trilingual" frames English**, a RED harness whose `\n` anchors could not match a CRLF
+> checkout, and a `predeploy` gate that failed 7.5% of runs on a correct product. All in
+> [`../design-brief/PLAN-OF-RECORD.md`](../design-brief/PLAN-OF-RECORD.md) §8.7c.
 
 **Items 1, 2, 3 and 4 are DONE and live.** ✅ **Item 3 (withdrawals) CLOSED 2026-08-10:** the
 rail works (four real payouts settled 2026-07-31), the block was ours to lift, and it has been
