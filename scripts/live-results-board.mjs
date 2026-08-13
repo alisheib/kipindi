@@ -96,7 +96,12 @@ async function promiseEqualsDelivery(label, qs, promisedFrom, id) {
   ok(`${label} — the rail promised ${promised} and the page states ${stated}`, stated === promised,
     "the count beside a control disagrees with the page's own total");
 
-  ok(`${label} delivers no more than one page (${r.allCards} ≤ ${PER_PAGE})`, r.allCards <= PER_PAGE);
+  // ⛔ THE PAGE-SIZE BOUND BELONGS TO THE GRID, NOT THE PAGE. Measured against production: page 1
+  // of a 60-result archive renders 12 grid cards PLUS the visible notable slide, and when the
+  // notable markets fall outside the current 12 that is 13 distinct markets on screen. The featured
+  // card is a deliberate separate section, not part of the pager's slice — asserting `allCards ≤ 12`
+  // called a correct page broken.
+  ok(`${label} — the GRID delivers no more than one page (${r.gridCards} ≤ ${PER_PAGE})`, r.gridCards <= PER_PAGE);
   ok(`${label} delivers no more than it promised (${r.allCards} ≤ ${promised})`, r.allCards <= promised);
   if (promised > 0) {
     ok(`${label} promised ${promised} and delivered something (${r.allCards})`, r.allCards > 0,
