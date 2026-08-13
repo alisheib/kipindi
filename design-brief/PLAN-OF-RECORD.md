@@ -641,7 +641,21 @@ component is used instead — it is already built, already tested, and shared wi
 kit's paging contract that carry meaning ARE honoured: the pager total **is** the filter-bar
 count (same variable), and any filter change resets to page 1.
 
-**Local harness for this session** (`.qa-design-round2/`, gitignored under `.qa-design-*/`):
+## 8.9 · The instruments this work leaves behind (tracked, so they travel)
+
+⚠️ They were written in `.qa-design-round2/`, which is **gitignored** — so they would have died
+with the machine. They are real QA instruments, they run read-only against **local or
+production**, and they are now registered npm scripts:
+
+| Command | What it proves |
+|---|---|
+| `npm run qa:discovery-probe -- https://50pick.tz` | every control's promised count equals what pressing it delivers, incl. cross-filtering · URL hygiene · sorting reorders · empty-state exits are non-empty |
+| `npm run qa:discovery-board -- https://50pick.tz` | the GRID draws a page of that set — counted in a real browser DOM, because response byte order ≠ DOM order under streaming · and the mobile bar height regression |
+| `LOCALES=en,sw,zh npm run qa:discovery-shots -- .qa-design-round2/after` | 360 + 1280 × en/sw/zh, failing on any horizontal overflow. ⚠️ Shots are EVIDENCE — write them under `.qa-design-*/`, never into the tree (§0b) |
+
+⛔ Screenshots stay gitignored. The *drivers* travel; the *evidence* is re-derived.
+
+**Local harness scratch** (`.qa-design-round2/`, gitignored under `.qa-design-*/`):
 in-memory dev server on `:3009` (no `DATABASE_URL` exists on this machine — verified — so a local
 boot cannot reach production), seeded via `/api/dev-test/seed-real-markets` +
 `/api/dev-test/seed-markets` → **46 live markets**, enough for 4 pages at 12/page.
