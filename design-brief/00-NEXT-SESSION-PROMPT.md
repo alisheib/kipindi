@@ -40,7 +40,8 @@ SKILL.md` §1). A change is not done until all seven sign off.
 ## ▶ START HERE
 
 1. `cd F:\kipindi-main` · `git fetch origin` · `git status` — expect **`main`, clean** at or
-   past `6f97911e`.
+   past `8239d1d3` (batch 3's code at `6f97911e`; three docs-only commits since — the batch-4
+   handoff prompt and the compliance-flag resolution below — carry no app-code changes).
    ⚠️ One untracked file is **not yours**: `scripts/live/ops/house-money-census.cjs`. Never stage
    it — three sessions in a row have now independently confirmed this.
 2. `npm install` is **not** normally needed — check first: if `package-lock.json` and
@@ -191,6 +192,12 @@ anything that was accidentally written into a tracked path instead of the gitign
 directory) gets archived to `F:\50pick-design-archive\2026-08-13-final\` with **verified counts
 and bytes, quoted** — the same standard §1a's archive used — then deleted from the tree.
 
+⚠️ **A dry run of this exact check was done once already (2026-08-13) and came back clean** —
+one provenance comment (`discovery.ts:4`, expected), zero tracked files in either scratch
+directory, `design-brief/` already holding exactly its three files. That check was never
+committed, so it is not in `CLEANUP-MANIFEST.md` yet — re-run it properly and record the result
+yourself; do not take "someone already looked" as a reason to skip recording it.
+
 ### 4b · The three deliberately-deferred kit pieces (§8.8) — decide, don't leave floating
 
 | Deferred | What it needs | The decision this session makes |
@@ -243,8 +250,8 @@ batch's closing step.
 
 ## DEFINITION OF DONE
 
-- **The two live compliance flags above have an explicit answer from Ali**, recorded in
-  `PLAN-OF-RECORD.md` §5, not left as a standing question.
+- ✅ The two compliance flags are already resolved (see above) — nothing to do for this one
+  unless new information changes the calculus, in which case treat it as a fresh decision.
 - Every one of §4a–4e's items has an explicit outcome recorded (built + verified, or carried
   forward with its reason intact) — none silently dropped.
 - **If anything visual shipped this batch:** read at 360/768/1280/1920 × en/sw/zh, `FULL=1`
