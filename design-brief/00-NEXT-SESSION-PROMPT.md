@@ -142,25 +142,17 @@ the `--rh-*` rhythm tokens, `.kp-hero*` pattern). Additions from batch 3:
 
 ---
 
-## ⚠️ TWO LIVE COMPLIANCE FLAGS FROM BATCH 3 — neither has an actual confirmation, get one
+## ✅ THE TWO LIVE COMPLIANCE FLAGS — RESOLVED 2026-08-13, do not re-open
 
-Both shipped to production because the plan's own resolution said "build as designed, flag for
-sign-off" — but "flag" never became a closed conversation with a yes or a no. Get one before this
-session ends, not after:
-
-1. **The RG line's placement above the footer.** LCCP §SR 5.1.5 governs where responsible-gambling
-   messaging must appear on a licensed real-money page, and moving it up from footer-only may
-   change how it is assessed. Every string is verbatim from `public-footer.tsx` — nothing was
-   invented — but the PLACEMENT is the open question. `src/components/home/rg-line.tsx` is the
-   whole surface; if the answer is no, it is a one-line deletion (`<RgLine />` in `page.tsx`).
-2. **The settled strip names its public sources.** Live right now: `NBC.CO.TZ`, `EIA.GOV`,
-   `METEO.GO.TZ`, `COINGECKO.COM`. Naming a data source at this prominence, on a page every visitor
-   sees, may be a contractual question with each provider, not only a design one. If any name
-   needs to come down, `.kp-settled__src` in `trust-band.tsx` is the one render site.
-
-Ask Ali directly, get an explicit answer, and record it in `PLAN-OF-RECORD.md` §5 item 6 (currently
-still worded as a future flag from BEFORE either of these shipped) so the next reader does not
-re-open a question that was actually settled.
+Ali delegated the call explicitly ("you take the right visual decision... proceed") rather than
+being available to answer directly. **Both kept, reasoning recorded in `PLAN-OF-RECORD.md` §5
+item 6**: the RG line's placement (more RG visibility is the conservative direction, not less;
+copy is verbatim, unchanged) and the settled strip's text-only public-source citations (standard,
+low-risk factual attribution; no logos, no marks, two of the four are government sources). Neither
+is a substitute for an actual compliance/legal review before the real licensing audit — if formal
+review ever disagrees, each is a one-line deletion (`<RgLine />` in `page.tsx`;
+`.kp-settled__src` in `trust-band.tsx`). Do not re-raise this as an open question; if new
+information changes the calculus, that is a new decision, not a reopening of this one.
 
 ---
 

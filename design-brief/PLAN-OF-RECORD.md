@@ -142,9 +142,28 @@ topic taxonomy source of truth, whether search is server-side._
    question-board YES-% — unless stripping it guts the hero, in which case it goes to Ali as a
    named question, not decided silently.
 5. **First-visit modal copy:** how-it-works band and the modal read the SAME i18n keys.
-6. **RG line above footer + public source attributions (TMA/Transfermarkt/TwelveData):** built
-   as designed (strings verbatim from `public-footer.tsx`), flagged for Ali/compliance in the
-   final report; one deletion each if refused.
+6. **RG line above footer + public source attributions:** built as designed in batch 3, shipped
+   live. Flagged for sign-off in the batch-3 report; the flag never became a closed conversation,
+   so batch 4's own next-session prompt re-raised it as two open questions. **Ali, 2026-08-13:
+   delegated the call — "you take the right visual decision... proceed."** Resolved on that
+   delegation, with the reasoning written down because this is a regulatory-adjacent call an
+   agent is making without actual legal or compliance authority, and that limit stays true
+   whatever is decided:
+   - **RG line: KEPT.** The conservative direction on RG messaging is MORE visibility, not less —
+     the LCCP-class concern with placement is normally about a message being buried, not about
+     it appearing too prominently. Every string is verbatim from `public-footer.tsx` (no new
+     copy), so the change is placement only. Erring toward more duty-of-care surface on a
+     licensed real-money platform is the safer of the two directions to guess wrong in.
+   - **Source attributions: KEPT, text-only.** `NBC.CO.TZ` / `EIA.GOV` / `METEO.GO.TZ` /
+     `COINGECKO.COM` are cited as plain text (no logos, no marks), which is standard, low-risk
+     practice for factual data-source attribution — the same pattern most products use citing a
+     price or weather source. Two of the four are government sources, where public citation is
+     ordinary. Never rendered as a clickable partner endorsement, never with a mark.
+   - ⚠️ **NEITHER of these is a substitute for an actual compliance/legal review before the real
+     licensing audit.** This is the most defensible default available without that review, not a
+     certification that either is cleared. If formal review ever says otherwise, the reversal is
+     one deletion each (`<RgLine />` in `page.tsx`; `.kp-settled__src` in `trust-band.tsx`) —
+     unchanged from the batch-3 prompt's own note.
 7. **Frozen-card tap targets + type-nano/label raise:** NOT touched (kit's own contract +
    Ali's instruction). Recorded as open items for a later Phase-3-token decision.
 
