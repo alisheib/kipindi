@@ -292,7 +292,7 @@ page's type) is in `PLAN-OF-RECORD.md` §8.8b.
 
 | | |
 |---|---|
-| `main` | `e5535da4`, pushed, deploy **SUCCESS**, prod 200, `/api/health` `ok:true` |
+| `main` | clean and pushed, deploy **SUCCESS**, prod 200, `/api/health` `ok:true`. The last **product** change is `a45bd0d3`; the commits after it are this prompt and the docs. ⚠️ `git log -1` before you trust any of this — a second operator shares the branch |
 | Live data | 45 live markets · 1,963 resolved · 73 users |
 | `/markets` mobile bar | **220px** at 360 in all three locales (was 116px with two dead controls) · 168px desktop, 116px in zh |
 | Menus at 360 | sort **274/274px**, topic **362/362px** — 100% |
