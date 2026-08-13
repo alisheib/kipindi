@@ -641,6 +641,49 @@ component is used instead — it is already built, already tested, and shared wi
 kit's paging contract that carry meaning ARE honoured: the pager total **is** the filter-bar
 count (same variable), and any filter change resets to page 1.
 
+## 8.8b · 🔴 THE BUILD CAN FAIL ON RAILWAY FOR A REASON THAT IS NOT IN THE CODE
+
+**Twice on 2026-08-13, and once BEFORE this session's first commit.** A Railway build can die
+with 18 errors that all read:
+
+```
+Module not found: Can't resolve '@vercel/turbopack-next/internal/font/google/font'
+  [next]/internal/font/google/jetbrains_mono_65a12ad3.module.css
+```
+
+⛔ **That is NOT a code error, and chasing it in `src/` wastes the session.** Scroll UP in the
+build log to the warnings above it:
+
+```
+Received response with status 404 when requesting
+https://fonts.gstatic.com/s/jetbrainsmono/v24/…woff2
+```
+
+`next/font/google` fetches the actual font files from **`fonts.gstatic.com` at build time**.
+When Google's CDN 404s them, Turbopack cannot materialise the generated font CSS module and the
+build fails. It is a transient external dependency.
+
+**The evidence it is environmental, not ours:**
+
+| Deployment | Commit | Font that 404'd | |
+|---|---|---|---|
+| `118f32ec` 2026-08-12 19:44 | `5bfd95fa` — **before this session touched anything** | **Inter** | FAILED |
+| `bab41877` 2026-08-13 00:15 | `4ebad091` | — | SUCCESS |
+| `00c6eaa5` 2026-08-13 05:43 | `628565ec` — docs + QA scripts only | **JetBrains Mono** | FAILED |
+
+The same commit that failed on Railway built **locally, exit 0, "Compiled successfully"**.
+
+**What to do:** re-push (any commit re-triggers the git build) — it is transient and usually
+passes on the next attempt. ⛔ Do **not** use the Railway MCP `deploy` tool to retry: it uploads
+a tarball of the local directory, which breaks the git↔deploy linkage and can ship gitignored
+files.
+
+⭐ **THE REAL FIX, NOT YET DONE — it needs Ali's sign-off because it touches every page's
+type.** Self-host the three families with `next/font/local` instead of `next/font/google`
+(`src/app/layout.tsx` loads Sora, Inter and JetBrains Mono). That removes Google's CDN from the
+build path entirely. It is a typography-wide change on a licensed live product, so it is
+recorded here rather than slipped into a design batch. Until then, expect this to recur.
+
 ## 8.9 · The instruments this work leaves behind (tracked, so they travel)
 
 ⚠️ They were written in `.qa-design-round2/`, which is **gitignored** — so they would have died

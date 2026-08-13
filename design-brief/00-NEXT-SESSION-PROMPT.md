@@ -145,6 +145,20 @@ newest handoff before assuming the tree is yours.
    report backed by quoted output.
 6. Batch log complete; this prompt replaced.
 
+## 🔴 IF THE RAILWAY BUILD FAILS AND THE CODE LOOKS FINE — READ THIS FIRST
+
+A build can die with 18 errors reading `Module not found: Can't resolve
+'@vercel/turbopack-next/internal/font/google/font'`. **It is not a code error.** Scroll UP to the
+warnings: `Received response with status 404 when requesting https://fonts.gstatic.com/…woff2`.
+`next/font/google` fetches font files from Google's CDN **at build time**; when they 404 the
+build dies. It hit twice on 2026-08-13 — once on Inter, once on JetBrains Mono — including on a
+commit that pre-dated all of this session's work, and the same commit built locally with exit 0.
+
+**Retry by re-pushing.** ⛔ Never retry with the Railway MCP `deploy` tool: it uploads a tarball
+of the local directory, breaking the git↔deploy link and potentially shipping gitignored files.
+Full record + the permanent fix (self-hosting the fonts, which needs Ali's sign-off because it
+touches every page's type): `PLAN-OF-RECORD.md` §8.8b.
+
 ## TRAPS — every one of these has been paid for
 
 1. PowerShell 5.1 destroys UTF-8 on round-trip — use the editor tools, never
