@@ -278,7 +278,7 @@ async function DiscoveryBoard({ searchParams }: { searchParams: Promise<SP> }) {
         signedIn={!!userId}
       />
 
-      <section className="market-grid mt-3">
+      <section data-board="grid" className="market-grid mt-3">
         {paged.map((r) => {
           const m = byId.get(r.id)!;
           const cc = cardCharts.get(m.id) ?? { spark: [] };
