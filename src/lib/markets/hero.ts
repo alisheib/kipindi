@@ -57,10 +57,18 @@ export type HeroFigures = {
    * empty book — that is licence condition 1, and `impliedYesPct` hands out exactly that number.
    */
   yesShare: number | null;
-  /** The question board: open markets, closing soonest, capped. */
+  /**
+   * The question board: the open markets closing soonest AFTER the featured one.
+   *
+   * 🔴 IT STARTS AT THE SECOND MARKET, AND THAT IS DELIBERATE. While the board began at the first,
+   * the hero stated its lead market TWICE — once as row 1 and again, 400px lower, as the featured
+   * card, same title and same price. Caught by reading a whole-page frame; every gate was green
+   * over it and the per-band clips could not show it either. The card and the board still come from
+   * ONE ordering, which is what the kit means by "the same query" and what stops anyone pinning a
+   * favourite here — they are consecutive slices of it, not two queries.
+   */
   board: HeroRow[];
-  /** The card beside the lede. The SAME query as the board — the kit is explicit that pinning a
-   *  favourite here would stop the hero being an instrument. */
+  /** The card beside the lede: the single soonest-closing open market. */
   featured: HeroRow | null;
 };
 
@@ -86,7 +94,9 @@ export function heroFigures(rows: readonly HeroRow[], nowMs: number): HeroFigure
     // Reuses the board's own `today` predicate rather than re-testing the 24h window here.
     closingToday: rows.filter((r) => matchesStatus(r, "today", nowMs)).length,
     yesShare: pricedYesPct(sumYes, sumNo),
-    board: ordered.slice(0, QUESTION_BOARD_SIZE),
+    // ⛔ Consecutive slices of ONE ordering: [0] is the card, [1..4] are the rows. Never overlapping
+    // — see the note on `board` above.
+    board: ordered.slice(1, 1 + QUESTION_BOARD_SIZE),
     featured: ordered[0] ?? null,
   };
 }

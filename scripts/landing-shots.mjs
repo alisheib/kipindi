@@ -24,6 +24,26 @@ const BASE = process.argv[3] || "http://localhost:3009";
 const LOCALES = (process.env.LOCALES || "en").split(",");
 /** Bands that MUST exist. Empty = baseline mode (capture what is there, require nothing). */
 const REQUIRED = (process.env.BANDS || "").split(",").map((s) => s.trim()).filter(Boolean);
+/**
+ * `AUTH=demo` mints a local player session before shooting.
+ *
+ * ⭐ WHY THIS IS HERE. The hero renders DIFFERENT CTAs to a signed-in player ("Browse markets" +
+ * "My positions") than to a visitor ("Create account" + "Browse all N markets"), and the authed
+ * branch had never been rendered even once — the whole batch was verified anonymous. A branch no
+ * instrument can reach is a branch that ships unlooked-at. `/auth/demo` is dev-only (404 in
+ * production), so this flag is silently useless against prod rather than dangerous: the assertion
+ * below catches that instead of quietly shooting the anonymous page and labelling it authed.
+ */
+const AUTH = process.env.AUTH === "demo";
+/**
+ * ⛔ AN AUTHED PAGE NEVER REACHES `networkidle` ON THIS PLATFORM — measured 2026-08-13. With a
+ * session, `app-shell` mounts `LazyEventStream` (a server-sent-events connection) and
+ * `LazyNotifyPoller`, so there is ALWAYS an open request and every `goto` times out at 90s. The
+ * anonymous sweep is unaffected, which is exactly why this went unnoticed until the authed hero was
+ * shot for the first time. `load` is the correct signal here; the explicit settle wait below covers
+ * the rest.
+ */
+const WAIT_UNTIL = AUTH ? "load" : "networkidle";
 
 const WIDTHS = [
   { name: "360", w: 360, h: 780 },
@@ -49,10 +69,21 @@ for (const loc of LOCALES) {
     });
     page.on("pageerror", (e) => consoleErrors.push("PAGEERROR " + String(e).slice(0, 200)));
 
-    const tag = `${vp.name}-${loc}`;
+    const tag = `${vp.name}-${loc}${AUTH ? "-authed" : ""}`;
     try {
+      if (AUTH) {
+        // Redirects to "/" carrying the session cookie.
+        await page.goto(BASE + "/auth/demo", { waitUntil: WAIT_UNTIL, timeout: 90000 });
+        // ⛔ REFUSE TO CONTINUE IF THE SESSION DID NOT TAKE. Otherwise this shoots the anonymous
+        // hero and files it as authed evidence — the failure shape that made eight "trilingual"
+        // frames English.
+        const cookies = await ctx.cookies();
+        if (!cookies.some((c) => c.name.includes("session") || c.name.startsWith("kp_"))) {
+          throw new Error(`AUTH=demo set no session cookie (got: ${cookies.map((c) => c.name).join(",") || "none"}) — /auth/demo is 404 in production`);
+        }
+      }
       // Trap: first cold compile of a page under Turbopack is ~30s.
-      const resp = await page.goto(BASE + "/", { waitUntil: "networkidle", timeout: 90000 });
+      const resp = await page.goto(BASE + "/", { waitUntil: WAIT_UNTIL, timeout: 90000 });
       const status = resp ? resp.status() : 0;
       // ⛔ Prove the page is in the language asked for BEFORE measuring or capturing anything.
       await assertLang(page, loc);
@@ -74,6 +105,15 @@ for (const loc of LOCALES) {
       // The above-the-fold frame is the one that decides whether a visitor stays.
       await page.screenshot({ path: `${OUT}/fold-${tag}.png`, fullPage: false });
       frames++;
+
+      // FULL=1 adds the whole-page frame. It is the only way to see SECTION RHYTHM — whether the
+      // bands read as a composed page or as a stack of unrelated boxes — which per-band clips
+      // cannot show by construction. Off by default: at 360 this page is ~6,000px tall and a
+      // reviewer cannot read one frame that size, which is why the sweep leads with fold + bands.
+      if (process.env.FULL === "1") {
+        await page.screenshot({ path: `${OUT}/full-${tag}.png`, fullPage: true });
+        frames++;
+      }
 
       for (const want of REQUIRED) {
         if (!page_m.bands.includes(want)) failures.push(`/ ${tag} -> required band "${want}" is ABSENT`);

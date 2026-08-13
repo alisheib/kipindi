@@ -159,6 +159,7 @@ topic taxonomy source of truth, whether search is server-side._
 | 2a+2b · `/markets` rebuilt on the contract | `(this session)` | 32 gates green incl. the 22 + `board-discovery` + `product-line` + `discovery-contract` + `i18n`/`trilingual`; tsc 0; `npm run build` ✓ 43s; both RED harnesses 6/6 and 7/7 | 12 shots at 360+1280 × en/sw/zh, **overflowX=0 on all 12**; HTTP driver green | 13-pill rail DELETED · sticky 2-row bar · 5 status segments · 6 sorts + direction · odds/pool chips · topic menu · cross-filtered counts · per-cause empty states with real-count exits · `PageContainer tier="board"` (2 raw-width ratchet entries removed) · `ProposePromo` gone · categories derive from `MARKET_CATEGORIES` · both skeletons on ONE height definition |
 | 1v · batch-1 VALIDATION pass (2026-08-13, later) | `(this session)` | 22 gates green individually incl. both RED harnesses (7/7 and 6/6); tsc 0; `npm run build` ✓ | 48 shots at 360/768/1280/1920 × en/sw/zh **read**, overflowX 0 / minTap 44px / 0 clipped on all 48; new menu guard proven RED against production and GREEN against the fix | 🔴 **The sort and topic menus were 1% usable on a phone** — fixed. Plus 3 instrument defects that had been reporting green for the wrong reason. Full account in §8.7c |
 | 2c hero | `(this commit)` | **29 gates green individually, real exit codes, no pipes** — the 22 design gates + `hero-contract` (29 assertions) + `discovery-contract` + `board-discovery` + `product-line` + `i18n`/`trilingual` + `integrity`/`outcome`/`history`/`docs`; **3 RED harnesses**: `red:hero-contract` **6/6**, `red:discovery-contract` 7/7, `red:board-discovery` 6/6; `tsc` exit 0 / 0 lines; `npm run build` exit 0, "Compiled successfully in 14.9s" (the 2 warnings are the known pre-existing `node:crypto`-in-Edge pair at `lock-key.ts:12` / `audit.ts:38`) | **40 frames read** at 360/768/1280/1920 × en/sw/zh across **two data states** — a populated book (Σ TZS 185,500, 52% YES) and a genuinely cold platform (users 0 · markets 46 · resolved 0). `overflowX=0` and `clipped=0` on every frame; **my** smallest control **56px** at every width | Photographic hero **DELETED** (`hero-bg.webp` 193 KB + its `:80` ref, cite-checked repo-wide) → the kit's question board: mark backdrop (geometry/opacity only) · headline from a dict key, **no gold on "wisdom"** · 3-figure proof rail · aggregate conviction via `TippingBar`'s existing `empty` state · 4 real markets closing soonest · one live featured `<MarketCard/>`. ⭐ **Cold start is now ONE rule with FOUR consumers** (`pricedYesPct`) and `DESIGN_AUTHORITY` was **corrected** — it had been stating the rule as the `&& predictors === 0` conjunction the card fixed as a bug. New instrument `qa:landing-shots`. Full account + 5 unpredicted findings in §8.7e |
+| 2c-bis hero RE-VALIDATION | `(this commit)` | tsc 0 · **30 gates green individually**, real exit codes · `red:hero-contract` **7/7** (was 6/6 — a seventh case reintroduces the duplication defect) · build exit 0, 13.3s · against **PRODUCTION**: `qa:discovery-probe` 0, `qa:discovery-board` 0, `qa:filter-stress` 0 incl. all 288 combinations | authed hero shot for the FIRST time (4 widths); whole-page frames read at 4 widths; hero `40 OPEN MARKETS` **measured** equal to the board's `status:open` 40 on prod | 🔴 **Found a defect I had already shipped**: the hero stated its lead market twice (featured card == board row 1). Fixed — the card is the soonest, the board opens at the second. Plus: the authed branch had never been rendered (now `AUTH=demo`), an authed page can never reach `networkidle` (SSE), and `git checkout --` during `next dev` 500s every CSS page until `.next/dev` is cleared. Full account in §8.7e-bis |
 | 2d landing + header | _next session_ | | | |
 | 3 remainder | _next session_ | | | |
 
@@ -895,6 +896,68 @@ mandating the defect. There are two states with two gates, and **the price gate 
    shipped inside a design batch. Σ `predictorCount` over the open book is free (it comes from the
    board read the hero already does), is exactly as real, and is captioned as what it counts.
    Deferred with the reason; see §8.8.
+
+### 8.7e-bis · THE RE-VALIDATION PASS — one real product defect I had shipped, and three instrument gaps
+
+Batch 2 was pushed and live before this pass. It was then re-analysed by going back over every claim
+made about it and asking what had been *asserted* rather than *measured*. Seven such claims existed;
+one of them was a live defect.
+
+🔴 **THE HERO STATED ITS LEAD MARKET TWICE — shipped in `1de3b38d`, fixed in the follow-up.**
+The featured card and question-board row 1 were the same market: same title, same price, ~400px
+apart, plus a third appearance in the "Pick a side now" grid below. **Every gate was green over it.**
+The per-band clips could not show it either — both elements are inside the one band, and neither
+overflows, clips, nor drops below a tap floor. It was found by capturing a **whole-page** frame and
+reading it, which is why `qa:landing-shots` now has a `FULL=1` mode: section rhythm and cross-band
+repetition are invisible to per-band clips *by construction*.
+Fix: the card is the soonest-closing market and the board opens at the **second** — consecutive
+slices of ONE ordering, so "the same query" still holds and a pinned favourite is still impossible.
+Guarded by two new assertions (`the featured market is NEVER also a board row`, `the card still
+comes from the same ordering as the board`) and a seventh RED case that reintroduces the exact
+shipped defect. `red:hero-contract` is now **7/7**.
+
+⚠️ **THE AUTHED HERO HAD NEVER BEEN RENDERED ONCE.** The component branches on `isAuthed` — a
+signed-in player gets "Browse markets" + "My positions" instead of "Create account" + "Browse all N
+markets" — and the entire batch was verified anonymous. A branch no instrument can reach is a branch
+that ships unlooked-at, so `qa:landing-shots` now takes `AUTH=demo`, which mints a local session via
+`/auth/demo` and **refuses to continue if no session cookie is set** (otherwise it would shoot the
+anonymous page and file it as authed evidence). Verified: correct CTAs, `minTap` 56px, `overflowX` 0.
+
+⛔ **AND AN AUTHED PAGE NEVER REACHES `networkidle` ON THIS PLATFORM.** With a session, `app-shell`
+mounts `LazyEventStream` (server-sent events) and `LazyNotifyPoller`, so a request is always open and
+every `page.goto(..., { waitUntil: "networkidle" })` times out at 90s. The anonymous sweep is
+unaffected, which is exactly why nothing found this until the authed branch was shot for the first
+time. **Any future authed driver must use `load`.**
+
+⚠️ **`git checkout --` DURING `next dev` POISONS TAILWIND, AND A RESTART DOES NOT FIX IT.** Reverting
+three watched files left Tailwind's content tracker holding a stale `stat`, and every page importing
+`globals.css` returned **500** with `ENOENT: no such file or directory, stat '…platform-stats.ts'`
+— on a file that demonstrably existed (`Test-Path` → `True`). It survived a full server restart
+because the tracker state lives in **`.next/dev`**; clearing that directory fixed it on the first
+request. ⛔ Do not read this as a code defect: production was serving the same commit with
+`ok:true` throughout. Three retries confirmed it was persistent rather than transient before
+anything was cleared.
+
+⚠️ **The Needle fidget can sit on top of a hero question's price.** When authed it rendered as a
+64×64 fixed element at x=1248 in a 1280 viewport — half off-screen, `z-index: 45`, over row 1's
+`86 % YES`. It is the vendored do-not-edit physics toy (`needle.css:28`) and it roams, so this is
+**pre-existing and not a batch-2 regression** — the baseline frames show it overlapping the bottom
+rail's first slot as well. Recorded because its `#hit` area is `pointer-events: auto`, so a tap
+there grabs the fidget instead of opening the market. Belongs to a needle/z-index pass.
+
+**Re-verified against PRODUCTION after the change, not just locally:**
+
+| Check | Result |
+|---|---|
+| `qa:discovery-probe` | exit 0 — every control's promise == delivery, cross-filtered |
+| `qa:discovery-board` | exit 0 — grid draws its page; sticky bar 220px in real sw AND zh; both menus open 100% at 360 |
+| `qa:filter-stress` | exit 0 — **all 288** status×sort×odds×pool combinations, 12 hostile payload classes on both boards, idempotent |
+| ⭐ hero vs board agreement | the board reports `status:open` = **40**; the hero's proof rail reads **40 OPEN MARKETS**. Same data, same instant — **measured**, where before it was only argued from shared code |
+
+**Still open, and deliberately batch 3's:** the hero's four questions are also the first four cards of
+the "Pick a side now" grid below it, because both are closing-soonest over the same book. The hero no
+longer repeats itself; the PAGE still repeats. Fixing it is a landing-composition decision (give the
+grid a different lens — biggest pool — or offset it past the hero's five), which is §1c's work.
 
 ## 8.8b · 🔴 THE BUILD CAN FAIL ON RAILWAY FOR A REASON THAT IS NOT IN THE CODE
 

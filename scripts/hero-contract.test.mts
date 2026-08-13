@@ -103,9 +103,11 @@ log("\n── 2 · the aggregate conviction bar ──────────�
   ok("a staked book DOES have a share (positive control)", warm.yesShare === 75, String(warm.yesShare));
 
   // The board is still drawn on a cold book — emptiness is not a reason to hide the questions,
-  // only a reason not to price them.
-  ok("a cold book still renders its questions", cold.board.length === 2, String(cold.board.length));
+  // only a reason not to price them. (Two open markets → one is the card, one is the row.)
+  ok("a cold book still renders its questions", cold.board.length === 1, String(cold.board.length));
+  ok("   and its featured card", cold.featured !== null);
   ok("   every cold row is unpriced", cold.board.every((r) => r.yesPct === null));
+  ok("   the cold featured card is unpriced too", cold.featured?.yesPct === null, String(cold.featured?.yesPct));
 }
 
 // ── 3 · WEIGHTED, not averaged ─────────────────────────────────────────────────
@@ -143,7 +145,11 @@ log("\n── 4 · the open book, and nothing else ─────────�
   ok("the share is computed over the open book only", f.yesShare === 100, String(f.yesShare));
   ok("openCount agrees with the board's own predicate",
     f.openCount === mixed.filter((r) => matchesStatus(r as DiscoveryRow, "open", NOW)).length);
-  ok("the question board draws only open markets", f.board.length === 1, String(f.board.length));
+  // Stated as an INVARIANT, not a count: with one open market that market becomes the CARD and the
+  // board is legitimately empty. A count here would go red on a correct page.
+  ok("the featured card is the one open market", f.featured?.status === "LIVE" && !f.featured.selectionClosed);
+  ok("no shut / closed / settled market reaches the board or the card",
+    f.board.every((r) => r.status === "LIVE" && !r.selectionClosed));
 }
 
 // ── 5 · ordering, capping, and the featured card ───────────────────────────────
@@ -161,10 +167,21 @@ log("\n── 5 · closing soonest, and the card beside the lede ─────
   ok("the board is capped", f.board.length === QUESTION_BOARD_SIZE, String(f.board.length));
   const deadlines = f.board.map((r) => r.bettableUntilMs);
   ok("soonest first", deadlines.every((d, i) => i === 0 || deadlines[i - 1] <= d), deadlines.join(","));
-  ok("the soonest market leads", f.board[0].bettableUntilMs === NOW + 1 * H);
-  // The kit is explicit that the card and the board come from ONE query — a pinned favourite
-  // would stop the hero being an instrument.
-  ok("the featured card IS the board's lead", f.featured?.id === f.board[0].id);
+  // The single soonest market is the CARD, so the board opens at the second-soonest.
+  ok("the featured card is the soonest-closing market", f.featured?.bettableUntilMs === NOW + 1 * H,
+    String(f.featured?.bettableUntilMs));
+  ok("the board opens at the SECOND soonest", f.board[0].bettableUntilMs === NOW + 2 * H,
+    String(f.board[0].bettableUntilMs));
+  // 🔴 THE DEFECT THIS PAIR EXISTS FOR. While the board started at [0], the hero stated its lead
+  // market twice — row 1 and the featured card, same title, same price, 400px apart. Found by
+  // reading a whole-page frame; nothing automated saw it.
+  ok("⛔ the featured market is NEVER also a board row",
+    !!f.featured && !f.board.some((r) => r.id === f.featured!.id),
+    `featured=${f.featured?.id} board=${f.board.map((r) => r.id).join(",")}`);
+  // …and they are still slices of ONE ordering, so nobody can pin a favourite into the card: the
+  // card must close sooner than every row beside it.
+  ok("the card still comes from the same ordering as the board",
+    f.board.every((r) => f.featured!.bettableUntilMs <= r.bettableUntilMs));
   ok("closing-today counts the 24h window", f.closingToday === 6, String(f.closingToday));
 }
 

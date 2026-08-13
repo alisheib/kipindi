@@ -64,11 +64,23 @@ const CASES = [
     expect: "soonest first",
   },
   {
-    name: "the featured card stops being the board's lead (a pinned favourite)",
+    name: "the card is pinned to the LAST market instead of coming from the ordering",
     file: HERO,
     from: "    featured: ordered[0] ?? null,",
     to: "    featured: ordered[ordered.length - 1] ?? null,",
-    expect: "the featured card IS the board's lead",
+    expect: "the featured card is the soonest-closing market",
+  },
+  {
+    // 🔴 THE DUPLICATION DEFECT, REINTRODUCED. This is precisely what shipped in `1de3b38d`: the
+    // board started at [0], so the hero stated its lead market TWICE — row 1 and the featured card,
+    // same title and same price, 400px apart. Every gate was green over it and the per-band clips
+    // could not show it; it was found by reading a whole-page frame. Now it cannot come back
+    // silently.
+    name: "the board starts at the featured market again (the hero states its lead twice)",
+    file: HERO,
+    from: "    board: ordered.slice(1, 1 + QUESTION_BOARD_SIZE),",
+    to: "    board: ordered.slice(0, QUESTION_BOARD_SIZE),",
+    expect: "the featured market is NEVER also a board row",
   },
 ];
 
