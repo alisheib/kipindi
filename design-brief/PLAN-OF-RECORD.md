@@ -566,6 +566,38 @@ rail · **4** cleanup + handoff. Every step, without exception:
 5. Push, then verify: prod 200 + clean boot + a live screenshot.
 6. Update §6's batch log **in the same commit** as the code.
 
+## 8.7a · Batch 1 — VERIFIED ON PRODUCTION 2026-08-13
+
+Driven against `https://50pick.tz` after the deploy, not merely deployed:
+
+| Measured on production | |
+|---|---|
+| `Open` | **40** — markets a player can bet on right now |
+| `All` | **42** — the unsettled book. **The 2-market difference is the definition doing real work**: markets in the book that are not bettable, including a `CLOSED` one that appears on no other player surface |
+| Header census | `40 live · TZS 1,653k in play` — the OPEN set, matching the segment |
+| Promise == delivery | **every control**, incl. cross-filtered (with `pool=10k` pressed: `odds=cont` promises 1 and delivers 1; `status=all` promises 20 and delivers 20) |
+| Grid vs promise | 12 drawn of 40 promised · `pool=50k` → 11 of 11 · `odds=cont` → 2 of 2 · page 2 → 12. **Counted in a real browser DOM** |
+| Sticky bar at 360 / Swahili | **116px** (was 448px when rows wrapped) |
+| Recently resolved | 11 Aug · 3 Aug — genuinely recent, so the descending re-sort holds |
+
+⚠️ **Three probe bugs were found before any product bug, and each was green for the wrong
+reason first.** They are worth more than the passes:
+1. Counting every rendered question also counted the 3-card resolved strip → "15 of 40". It had
+   passed LOCALLY only because the in-memory store holds **zero** resolved markets — green for
+   the absence of the thing it should have excluded.
+2. Taking the first `.market-grid` picked up a streamed Suspense **skeleton** (production HTML
+   carries four such blocks; three are fallbacks).
+3. Slicing between `data-board="grid"` and the next grid read 6, because **React streams
+   Suspense content — the byte order of the response is not the DOM order**. Of 15 questions on
+   the page, 6 bytes-land before the resolved strip and 9 after.
+   ⛔ **A regex over a streamed response cannot answer "what does the grid render."** Card
+   counting moved to a real browser (`.qa-design-round2/count-cards.mjs`); the HTTP driver keeps
+   only attribute reads, which are position-independent.
+4. `sort=closing` vs `sort=pool` "produces a different lead card" passed only while the fixture
+   had varied pools. On a fresh seed every pool is 0, `pool` ties everywhere and falls to its
+   documented tie-break (`bettableUntil` asc) — which IS the closing order. Identical leads,
+   arithmetically correct. The assertion now states its own precondition.
+
 ## 8.7b · What batch 1 found that the plan did not predict
 
 Three things, all caught by measuring rather than by reading:
