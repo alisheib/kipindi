@@ -60,10 +60,22 @@ export async function ConfidentialBand({ session }: { session: AdminSession }) {
 //  · guarded reads — these are BADGES. A failed query used to throw and take
 //    the whole admin shell down with it; a badge that can't be counted simply
 //    doesn't render (undefined), which is also what "0 pending" renders.
+//
+// 🔴 AND THE GUARD ABOVE DID NOT WORK — measured 2026-08-13, and the comment claiming it
+// did is the reason nobody looked. `db.txn.listByStatus` and `db.sourceOfFunds.listPending`
+// are the DEV IN-MEMORY store's SYNC methods: they return an array, not a Promise, while
+// tsc only ever sees the async Prisma types (CLAUDE.md "Known gotchas"). So `.then` threw
+// a TypeError **while Promise.all's arguments were being evaluated** — before any `.catch`
+// was attached — and took every /admin/* page's subtree down with it locally. The shell's
+// own "a badge that can't be counted simply doesn't render" was false about itself.
+// ⚠️ `Promise.resolve()` is what makes the guard real: a no-op on a genuine Promise (prod,
+// Prisma) and the fix in dev. `listPendingKyc` is a real `async function`, so it always
+// returns a Promise and needs no wrapper — the two that DO are wrapped, not all three,
+// because wrapping something that never needed it teaches the next reader the wrong rule.
 export const getSidebarBadges = reactCache(async () => {
   const [aml, sof, kyc] = await Promise.all([
-    db.txn.listByStatus("AML_REVIEW").then((r) => r.length).catch(() => 0),
-    db.sourceOfFunds.listPending().then((r) => r.length).catch(() => 0),
+    Promise.resolve(db.txn.listByStatus("AML_REVIEW")).then((r) => r.length).catch(() => 0),
+    Promise.resolve(db.sourceOfFunds.listPending()).then((r) => r.length).catch(() => 0),
     import("@/lib/server/kyc-service").then(({ listPendingKyc }) => listPendingKyc()).then((r) => r.length).catch(() => 0),
   ]);
   // Approvals badge surfaces work waiting on an officer: pending KYC + AML +

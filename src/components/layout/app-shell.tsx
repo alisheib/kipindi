@@ -41,9 +41,10 @@ import { getProposalsConfig } from "@/lib/server/proposals-config";
 import { AnnouncementBanner } from "./announcement-banner";
 import { EmailVerifyBanner } from "./email-verify-banner";
 import { Needle } from "./needle";
+import { HeaderScrollCast } from "./scroll-cast";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
-  const { t } = await getServerT();
+  const { t, locale } = await getServerT();
   // Admin routes render their own full-screen layout (sidebar, topbar, chrome).
   // Skip the player shell entirely so admin pages don't get a double navbar.
   const h = await headers();
@@ -114,9 +115,16 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       : null;
   }
 
-  // Site-wide operator banner (§9.3 #5) — maintenance notice takes priority
-  // over an active broadcast. Cheap cached config read (graceful on failure).
-  const platformCfg = await getPlatformConfig().catch(() => null);
+  // The live ticker's REAL settlements. Batched with the config read rather than awaited at its
+  // JSX site so the two do not serialise; `getPlatformStats` is memoised on `globalThis` for 60s,
+  // so on a warm shell this costs nothing at all. ⛔ It must never become a per-request scan —
+  // this component renders on EVERY page (see the ONE-SCAN note in `platform-stats.ts`).
+  const [platformCfg, tickerEvents] = await Promise.all([
+    // Site-wide operator banner (§9.3 #5) — maintenance notice takes priority
+    // over an active broadcast. Cheap cached config read (graceful on failure).
+    getPlatformConfig().catch(() => null),
+    getTickerFeed(locale).catch(() => []),
+  ]);
   const maintBanner = platformCfg?.maintenanceMode ? await maintenanceMessage().catch(() => null) : null;
   const announcement = platformCfg?.announcement?.active && platformCfg.announcement.message.trim()
     ? { message: platformCfg.announcement.message, tone: platformCfg.announcement.tone }
@@ -137,11 +145,23 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       >
         {t.common.skipToContent}
       </a>
+      {/* The header's scroll cast: `--shadow-2` once the page has moved (kit §2). One attribute
+          write per crossing of scrollY 0 — never per frame — and it lands on `<html>` rather than
+          on the header element React owns. Renders null.
+          ⚠️ The section reveal is NOT here. It used to be, as one effect that set `data-revealed`
+          on every `[data-reveal]` node it found, and that produced a hydration mismatch on 9 of 12
+          frames because the page's bands STREAM: a shell effect fires before they finish
+          hydrating. It is now the `<Reveal>` client wrapper, which renders the attribute from
+          state so React owns it. Do not reintroduce a shell-level DOM mutation for this. */}
+      <HeaderScrollCast />
       <Suspense fallback={null}><NavProgress /></Suspense>
       <TopAppBar user={topUser} proposalsState={proposalsState} />
       <AnnouncementBanner maintenance={maintBanner} announcement={announcement} />
       {emailVerifyState && <EmailVerifyBanner email={emailVerifyState.email} />}
-      <LiveTicker events={getTickerFeed()} />
+      {/* REAL settlements only, and NOTHING when the platform has settled nothing —
+          `LiveTicker` returns null on an empty list, so the strip stops existing rather than
+          inventing a line to fill itself. */}
+      <LiveTicker events={tickerEvents} />
       <main id="main-content" className="pb-[calc(88px+env(safe-area-inset-bottom))] lg:pb-0">
         <RouteTransition>{children}</RouteTransition>
       </main>

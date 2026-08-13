@@ -65,12 +65,9 @@ const FROZEN_ALLOWLIST = new Set<string>([
   "src/components/onboarding/first-visit-primer.tsx", // 21
   "src/components/markets/operation-result-modal.tsx", // 19 — the TONE map
   "src/app/global-error.tsx",                  // 18 — ships without app CSS
-  "src/app/page.tsx",                          // 17
   "src/components/markets/conviction-dial.tsx", // 11
   "src/components/markets/price-chart.tsx",    // 11
   "src/components/brand.tsx",                  // 9  — non-TippingBar marks
-  "src/components/layout/bottom-nav.tsx",      // 7
-  "src/components/layout/top-app-bar.tsx",     // 6
   "src/lib/i18n.tsx",                          // 6
   "src/app/wallet/wallet-client.tsx",          // 5
   "src/components/ui/chip.tsx",                // 5
@@ -81,6 +78,13 @@ const FROZEN_ALLOWLIST = new Set<string>([
   // bet-confirm-modal + sell-confirm-modal + offline-banner CLEARED 2026-08-08
   // (session 37, DS-5/DS-6/DS-16): side-chip tones, exit-value panel and the
   // offline strip now compose from the semantic families (44 → 41).
+  // page.tsx + top-app-bar + bottom-nav + nav-more CLEARED 2026-08-13 (batch 3, the
+  // round-2 landing/header/rail): the landing's inline oklch gradients and hand-typed sizes moved
+  // into the .kp-band / .kp-rail blocks in globals.css, the header dropped its bespoke accent
+  // gradient + glow for a 5px gilt dot, the rail dropped its aqua-literal active pill and 78%
+  // backdrop-blur capsule for --pill-active on --panel, and nav-more's hand-typed
+  // oklch(40% 0.08 264 / 0.4) became --pill-active. language-toggle.tsx is DELETED — one 44x44
+  // language menu replaced the 3-pill capsule (41 -> 36).
   "src/components/ui/cashback-promo.tsx",      // 2
   "src/components/ui/checkbox.tsx",            // 2
   "src/components/ui/toggle.tsx",              // 2
@@ -91,10 +95,8 @@ const FROZEN_ALLOWLIST = new Set<string>([
   "src/app/wallet/loading.tsx",                // 1
   "src/components/chat/messages/RgRedirectCard.tsx", // 1
   "src/components/layout/avatar-menu.tsx",     // 1
-  "src/components/layout/nav-more.tsx",        // 1
   "src/components/layout/notifications-panel.tsx", // 1
   "src/components/ui/empty-state.tsx",         // 1
-  "src/components/ui/language-toggle.tsx",     // 1
   "src/components/ui/nav-progress.tsx",        // 1
   "src/components/ui/propose-promo.tsx",       // 1
   "src/components/ui/tabs.tsx",                // 1

@@ -31,13 +31,28 @@ const BROWSER_LOCALE = { en: "en-US", sw: "sw-TZ", zh: "zh-CN" };
  * A Playwright context that will speak `locale` on its FIRST request. The cookie must be on the
  * context, not set after a navigation: the server renders from the cookie, so a cookie added
  * later only affects the second page load — and the shot is usually taken on the first.
+ *
+ * ⭐ `reducedMotion` IS FORWARDED, AND IT USED TO BE SILENTLY DROPPED — measured 2026-08-13, the
+ * third instrument bug of that session and the same shape as the two above. A ticker probe passed
+ * `reducedMotion: "reduce"` to read the marquee at its RESTING position; this function accepted
+ * the object, ignored the key, and handed back a normal context. The probe then measured a
+ * running marquee, found item 1 legitimately scrolled off the left edge, and reported a clip in
+ * all three locales over a strip that was fine. **A shared helper that quietly discards an option
+ * is worse than one that never offered it**, because the caller's code reads as if the option took
+ * effect. So it is passed through, and an unrecognised VALUE throws rather than degrading to
+ * "no preference" — which is exactly the reading that would make a calm-motion probe report on
+ * the animated page.
  */
-export async function localisedContext(browser, { locale, width, height, baseUrl }) {
+export async function localisedContext(browser, { locale, width, height, baseUrl, reducedMotion }) {
   if (!LOCALES.includes(locale)) throw new Error(`unknown locale "${locale}" — one of: ${LOCALES.join(", ")}`);
+  if (reducedMotion !== undefined && reducedMotion !== "reduce" && reducedMotion !== "no-preference") {
+    throw new Error(`unknown reducedMotion "${reducedMotion}" — "reduce" or "no-preference"`);
+  }
   const ctx = await browser.newContext({
     viewport: { width, height },
     deviceScaleFactor: 1,
     locale: BROWSER_LOCALE[locale],
+    ...(reducedMotion ? { reducedMotion } : {}),
   });
   await ctx.addCookies([{ name: LOCALE_COOKIE, value: locale, url: baseUrl }]);
   return ctx;

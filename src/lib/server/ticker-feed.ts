@@ -1,36 +1,45 @@
 /**
- * Live ticker feed — platform activity for the scrolling banner.
+ * The live ticker's feed — the platform's REAL recent settlements, in the reader's language.
  *
- * Currently serves realistic synthetic data that matches real platform
- * patterns. When real-time events are wired (WebSocket or polling),
- * replace the synthetic array with actual store queries.
+ * 🔴 WHAT WAS HERE BEFORE, AND WHY IT HAD TO GO. A hardcoded twelve-item synthetic array —
+ * "TZS 180K won on YES on Long rains begin before 15 Apr · 5m ago", a TZS 2,400,000 Bitcoin
+ * settlement, "50pick reaches 1,000 predictions this week" — rendered by `app-shell` on EVERY
+ * page of a licensed real-money platform. This file's own header admitted it: *"realistic
+ * synthetic data that matches real platform patterns."* Not one of those events had happened.
+ * Same defect class as the fabricated price history killed in `6b1975b`, and it broke the A-5
+ * no-fabrication rule that `market-card.tsx` cites and obeys three components away. Two further
+ * tells, both confirmed on production: in Chinese it wrapped Chinese connectives around ENGLISH
+ * market titles (the titles were English literals — there was nothing to translate), and its
+ * first item was clipped at the left edge in every locale.
+ *
+ * ⭐ NO QUERY OF ITS OWN. The rules live in the pure `lib/markets/ticker.ts`; the rows come from
+ * `getPlatformStats`, which already scans the resolved book once a minute behind a memo and used
+ * to discard every row to keep a `.length`. This module is only the join: pick the reader's
+ * language, hand the rows to the pure filter. See the ONE-SCAN note in `platform-stats.ts`.
  */
+import { getPlatformStats } from "./platform-stats";
+import { pickLocalized } from "@/lib/localized";
+import { tickerEvents, TICKER_LIMIT, type TickerEvent, type TickerRow } from "@/lib/markets/ticker";
+import type { Locale } from "@/lib/i18n-dict";
 
-export type TickerEvent = {
-  id: string;
-  kind: "bet" | "win" | "resolve" | "milestone";
-  side?: "YES" | "NO";
-  marketTitle: string;
-  amount?: number;
-  timeAgo: string;
-};
+export type { TickerEvent };
 
-/** Realistic ticker events — rotates through Tanzania-relevant content. */
-const FEED: TickerEvent[] = [
-  { id: "t1",  kind: "bet",       side: "YES", marketTitle: "Simba SC wins NBC Premier League 2026-27",          amount: 45_000,    timeAgo: "2m ago" },
-  { id: "t2",  kind: "win",       side: "YES", marketTitle: "Long rains begin before 15 Apr",                    amount: 180_000,   timeAgo: "5m ago" },
-  { id: "t3",  kind: "bet",       side: "NO",  marketTitle: "USD/TZS closes < 2,650 in Q2",                     amount: 12_000,    timeAgo: "8m ago" },
-  { id: "t4",  kind: "resolve",   side: "YES", marketTitle: "Bitcoin closes above $100,000 on 1 July",          amount: 2_400_000, timeAgo: "12m ago" },
-  { id: "t5",  kind: "bet",       side: "YES", marketTitle: "Dar es Salaam rainfall > 200mm July",              amount: 30_000,    timeAgo: "18m ago" },
-  { id: "t6",  kind: "milestone",              marketTitle: "50pick reaches 1,000 predictions this week",                           timeAgo: "25m ago" },
-  { id: "t7",  kind: "bet",       side: "NO",  marketTitle: "BoT holds rate at next MPC",                       amount: 75_000,    timeAgo: "32m ago" },
-  { id: "t8",  kind: "win",       side: "NO",  marketTitle: "Kilimanjaro tops 50k climbs this year",            amount: 320_000,   timeAgo: "40m ago" },
-  { id: "t9",  kind: "bet",       side: "YES", marketTitle: "Young Africans qualifies for CAF group stage",     amount: 55_000,    timeAgo: "48m ago" },
-  { id: "t10", kind: "resolve",   side: "NO",  marketTitle: "SGR Dodoma-Singida begins operations before Dec",  amount: 890_000,   timeAgo: "1h ago" },
-  { id: "t11", kind: "bet",       side: "YES", marketTitle: "Diamond Platnumz releases new album before Oct",   amount: 20_000,    timeAgo: "1h ago" },
-  { id: "t12", kind: "win",       side: "YES", marketTitle: "Tanzania GDP growth exceeds 6% in Q3",             amount: 450_000,   timeAgo: "2h ago" },
-];
-
-export function getTickerFeed(limit = 12): TickerEvent[] {
-  return FEED.slice(0, limit);
+/**
+ * The strip's events for one reader, most recently settled first — or `[]` when the platform has
+ * settled nothing yet, in which case `LiveTicker` renders `null` and the strip does not exist.
+ * A-5: nothing over a guess.
+ */
+export async function getTickerFeed(locale: Locale, limit = TICKER_LIMIT): Promise<TickerEvent[]> {
+  const stats = await getPlatformStats().catch(() => null);
+  if (!stats) return [];
+  const rows: TickerRow[] = stats.recentSettlements.map((s) => ({
+    id: s.id,
+    settledAtMs: s.settledAtMs,
+    outcome: s.outcome,
+    amountTzs: s.amountTzs,
+    // The fix for the Chinese-connectives defect: the question arrives here already in the
+    // reader's language, so a localised sentence can never close around an English title.
+    title: pickLocalized(locale, s.titleEn, s.titleSw, s.titleZh),
+  }));
+  return tickerEvents(rows, limit);
 }

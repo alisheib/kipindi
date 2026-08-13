@@ -59,26 +59,26 @@ export function AvatarMenu({
     };
   }, [open]);
 
-  if (!isAuthed) {
-    return (
-      <div className="ml-1 flex items-center gap-1.5">
-        <Link
-          href="/auth/login"
-          className="btn btn-ghost btn-sm btn-pill hidden sm:inline-flex"
-          aria-label={t.common.signIn}
-        >
-          {t.common.signIn}
-        </Link>
-        <Link
-          href="/auth/register"
-          className="btn btn-primary btn-sm btn-pill"
-          aria-label={t.common.createAccount}
-        >
-          {t.common.signUp}
-        </Link>
-      </div>
-    );
-  }
+  /**
+   * 🔴 THE GUEST BRANCH RENDERED A SECOND `Sign in` + `Sign up` PAIR, AND IT SHIPPED FOR ABOUT AN
+   * HOUR OF BATCH 3 BEFORE A FRAME CAUGHT IT. `TopAppBar` now renders auth as the kit's ACTION
+   * tier at every width (§2), and this component sits inside that same right-hand cluster — so a
+   * visitor saw `EN ⌄ · Sign in · Sign up · Sign in · Sign up`. **Measured, not eyeballed**: four
+   * controls in the header whose visible text was exactly an auth label.
+   *
+   * ⛔ Every gate was green over it. `overflowX` was 0, no band clipped, no control under the tap
+   * floor in any band, no console error — it is the same shape as batch 2's hero stating its lead
+   * market twice, and it was found the same way: by looking at a rendered frame.
+   *
+   * ⭐ The header's pair is the one that stays, for two reasons beyond the kit saying so: it is
+   * `btn-md` (38px) against this pair's `btn-sm` (**30px**, under the 44px floor, on the two
+   * controls a new visitor is most likely to reach for), and it lives beside the language control
+   * where the action tier belongs. A guest now gets NO avatar affordance at all, which is correct
+   * — there is no account to open a menu for.
+   * ⚠️ If auth is ever removed from the header, restore it HERE at `btn-md` or better; do not
+   * reintroduce a second pair.
+   */
+  if (!isAuthed) return null;
 
   return (
     <div ref={ref} className="relative ml-1">
@@ -167,13 +167,16 @@ export function AvatarMenu({
                 </a>
               </div>
             )}
-            {/* Language toggle — visible where the top-bar toggle is NOT: on mobile (< sm)
-                and at the lg–xl band (1024–1279), where the top bar hides it to keep the
-                avatar on-screen. Exactly one language control is reachable at every width. */}
-            <div className="border-t border-border px-3.5 py-2.5 sm:hidden lg:block xl:hidden">
-              <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle mb-1.5">{t.common.language}</p>
-              <MobileLangPicker locale={locale} />
-            </div>
+            {/* ⛔ THE DUPLICATE LANGUAGE PICKER IS GONE — batch 3, 2026-08-13.
+                It existed only to cover two gaps in the header: the 3-pill capsule was hidden
+                below 640 AND hidden again across 1024–1279, so this was the language control at
+                those widths. The header now carries ONE 44×44 `EN ⌄` menu at EVERY width
+                (`LanguageMenu`, kit §2), which is what closes both gaps — so keeping this would
+                leave two controls for one decision, and the kit's rule is exactly "one language
+                control is visible at every width, never two". The comment above it even claimed
+                "exactly one is reachable", which was true only because of the two holes.
+                ⚠️ If a future change re-hides the header control at some width, fix the HEADER;
+                do not re-add a second picker here. */}
             {/* The Needle — opens the controls drawer (show/hide + Spin/Bounce). Lives
                 here (not as an always-visible top-bar button) because the header already
                 overflows at 1024–1279px; the avatar menu is the right home for it. */}
@@ -212,37 +215,6 @@ export function AvatarMenu({
         </>,
         document.body,
       )}
-    </div>
-  );
-}
-
-const LANG_CODES: Locale[] = ["en", "sw", "zh"];
-const LANG_LABELS: Record<Locale, string> = { en: "EN", sw: "SW", zh: "中文" };
-
-function MobileLangPicker({ locale: current }: { locale: string }) {
-  const { t, setLocale } = useT();
-  return (
-    <div className="flex gap-1">
-      {LANG_CODES.map((code) => {
-        const active = code === current;
-        return (
-          <button
-            key={code}
-            type="button"
-            onClick={() => setLocale(code)}
-            aria-label={t.common.switchTo.replace("{lang}", LANG_LABELS[code])}
-            aria-pressed={active}
-            className={cn(
-              "h-7 px-3 rounded-pill font-mono text-[11.5px] font-semibold transition-colors",
-              active
-                ? "bg-brand-500 text-onBrand"
-                : "bg-bg-overlay text-text-subtle border border-border hover:bg-brand-500/10 hover:text-brand-300",
-            )}
-          >
-            {LANG_LABELS[code]}
-          </button>
-        );
-      })}
     </div>
   );
 }

@@ -506,7 +506,6 @@ export const dict = {
       heroBoardCloseToday: "{n} close today",
       heroNoPrice: "No bets yet",
       heroBrowseAll: "Browse all {n} markets",
-      statsSettled: "Markets settled", statsPaidOut: "Paid out",
       heroBody: "Trade questions about Tanzania's weather, markets, sport and culture — settled by official sources.",
       heroCta: "Browse markets",
       myPositions: "My positions",
@@ -524,6 +523,63 @@ export const dict = {
       getPaidViaMpesa: "Get paid via M-Pesa",
       getPaidBody: "Winners receive their money directly in their wallet. Withdrawals in seconds.",
       waitingForResults: "Waiting for results",
+
+      /* ── §1b HOW IT WORKS (batch 3) ────────────────────────────────────────────────────
+         The band's heading and lede are NOT here: they read `t.primer.card1Title` /
+         `card1Body`, the same keys the first-visit modal reads, so the best copy on the site
+         has ONE home and two render sites (kit Open Q7, resolved in ACCEPTANCE §7).
+
+         🔴 STEP 2 IS NOT THE KIT'S WORDING, AND THE DIFFERENCE IS A COMPLIANCE ONE. The kit
+         says "Two people verify the result" / "Two officers sign it off." **That is false by
+         default on this platform.** `resolveMarket` splits into two stages only when
+         `requireTwoOfficer` is configured; single-admin resolution seals in ONE call and is
+         the default in every money mode (`market-service.ts:2115`, and the recorded operator
+         decision). The live copy it replaces was carefully hedged for exactly this reason. So
+         the kit's concrete, persuasive SOURCE LIST is kept — it is true, and it is the good
+         part of the rewrite — and the signature is stated as it actually works. A landing page
+         claiming a two-officer ceremony the product does not perform is a regulatory finding,
+         not a copy preference. */
+      howEyebrow: "How 50pick works",
+      howStep1H: "Pick a side",
+      howStep1B: "Every market is one question with two answers. Stake what you want in shillings — the conviction needle shows where the crowd's money already sits.",
+      howStep2H: "Every result has a named source",
+      howStep2B: "Every market settles against a named public source: the meteorological agency, the league table, the Bank of Tanzania mid-rate. An officer signs it off — two, when two-officer authorization is enabled.",
+      howStep3H: "Winners split the pool",
+      howStep3B: "The pool is shared between everyone who was right, minus a commission capped at a third of the smaller side. Paid to your M-Pesa wallet in seconds.",
+
+      /* ── §1c THE GRID'S LENS ───────────────────────────────────────────────────────────
+         The eyebrow NAMES THE ORDERING, so the grid is a claim rather than a sample (kit
+         §1c). Two lenses, because "biggest pools" is meaningless on a book where every pool
+         is zero — see `gridLensFor` in `lib/markets/landing.ts`. */
+      gridEyebrowPool: "Biggest pools first",
+      gridEyebrowNew: "Just opened",
+      gridSeeAll: "All {n} markets",
+
+      /* ── §1d BROWSE BY TOPIC ── real count + real pool per tile, folded from ONE board read. */
+      topicLive: "{n} live",
+      topicAll: "All topics",
+
+      /* ── §1f WHY THE RESULT CAN BE TRUSTED ─────────────────────────────────────────────
+         ⚠️ The kit sets the word "result" in `--gilt`. It does NOT get gold here: Q5 settled
+         that gold means money that was EARNED, and batch 2 removed gilt from the hero's
+         "wisdom" on the same ground. A headline word is emphasis, not money — it takes an
+         `<em>`, which is a typographic mark rather than a colour. */
+      trustEyebrow: "Why the result can be trusted",
+      trustClaim: "A market is only worth playing if the result is not an opinion.",
+      trustClaimAccent: "result",
+      trustCell1H: "Named public sources",
+      trustCell1B: "Every market carries the public source its outcome is judged against, before you place anything.",
+      trustCell2H: "Signed off by an officer",
+      trustCell2B: "A person records the evidence excerpt that justifies the verdict, and it is written to an append-only audit chain.",
+      trustCell3H: "M-Pesa in, M-Pesa out",
+      trustCell3B: "Money arrives and leaves by the same wallet you already use. No cards, no branch visit.",
+
+      /* ── §1g SETTLED ── the only element on the page proving the product finishes a cycle. */
+      settledEyebrow: "Proof the cycle completes",
+      settledHead: "Recently settled",
+      settledPaid: "paid",
+      settledVoid: "refunded",
+      settledSeeAll: "All results",
     },
     market: {
       title: "Markets",
@@ -825,8 +881,13 @@ export const dict = {
        *  the count is interpolated in front of a hard-coded plural noun. Chinese has no
        *  plural and repeats the same word; Swahili takes the true singular (mtabiri). */
       predictorsCountOne: "predictor",
-      tickerPredicted: "predicted", tickerWonOn: "won on",
+      /* The live strip's grammar. ⛔ `tickerPredicted` ("predicted") and `tickerWonOn` ("won on")
+         were DELETED in all three locales on 2026-08-13: the strip carries settlements only, and
+         a line naming one player's stake on every page of the site publishes an identifiable
+         person's bet (PDPA), which is why there is no key here that could render one.
+         `tickerVoided` is stated NEUTRALLY — a refund is not a failure (§C4). */
       tickerSettled: "settled", tickerOn: "on",
+      tickerVoided: "voided · stakes refunded",
       // === i18n coverage pass ===
       catInfrastructure: "Infrastructure",
       catMixed: "Mixed / All",
@@ -1356,6 +1417,27 @@ export const dict = {
       sourceN: "Source {n}: {href}", sources: "Sources",
       rgRedirectAria: "Responsible gambling redirect",
     },
+    /* 🔴 THESE KEYS WERE DEAD *AND* WRONG UNTIL 2026-08-13, AND THE SECOND HALF IS THE
+       DANGEROUS ONE. `first-visit-primer.tsx` carried its own inline `L10n` copies and never
+       read this group, so nothing rendered these strings — and while they sat unread they went
+       stale against the capped-fee model. `card3Body` still described the OLD model ("minus a
+       small margin"), and the **Swahili line described a FEE-FREE SPLIT** with no commission
+       mentioned at all: a false statement about money, in three languages, one render away from
+       a player. That is exactly the defect the component's own comment records having fixed in
+       its inline copy.
+
+       So batch 3 did NOT simply point the component at this group — that would have shipped the
+       fee-free-split claim to every Swahili player. The dict was corrected to the component's
+       ACCURATE text first, and only then did the component start reading it (§0a: fix two copies
+       of one truth by DELETING the wrong one, never by syncing both). The how-it-works band on
+       the landing page reads `card1Title` / `card1Body`, so this copy now has ONE home and two
+       render sites (kit Open Q7 / ACCEPTANCE §7).
+
+       ⛔ `losersFoundWinners` is DELETED rather than corrected: it carried the same retired
+       "small operator margin" claim, nothing referenced it, and `poolCaption` below is the line
+       the component actually renders. A stale key nobody reads is a defect waiting for its first
+       consumer. `dragToCommit` and `skipPrimer` are KEPT — both were matched by a hardcoded
+       trilingual literal inside the component, so they were never dead, only bypassed. */
     primer: {
       card1Eyebrow: "what is 50pick",
       card1Title: "Predict events. Not chance.",
@@ -1365,9 +1447,9 @@ export const dict = {
       card2Body: "One gesture sets both your side and your stake. Drag toward YES or NO — the further from centre, the higher your conviction multiplier.",
       card3Eyebrow: "how payouts work",
       card3Title: "Winners share the losers' pool.",
-      card3Body: "No fixed odds. The losing side's pool (minus a small margin) is split among winners by the size of their stake. When one side grows, the other's potential payout grows too.",
+      card3Body: "No fixed odds. Winners share the pool by the size of their stake, after our commission — which is capped at a third of the smaller side, so being right never costs you money. When betting closes we tell you the exact amount you'll receive.",
+      poolCaption: "losers fund winners · a correct call never loses",
       dragToCommit: "drag to commit",
-      losersFoundWinners: "losers fund winners · small operator margin",
       skipPrimer: "Skip primer",
       // === i18n coverage pass ===
       primerLabel: "50pick primer", step: "Step {n}",
@@ -2071,7 +2153,6 @@ export const dict = {
       heroBoardCloseToday: "{n} yanafunga leo",
       heroNoPrice: "Hakuna dau bado",
       heroBrowseAll: "Tazama masoko yote {n}",
-      statsSettled: "Masoko yaliyotatuliwa", statsPaidOut: "Zilizolipwa",
       heroBody: "Shiriki katika utabiri wa hali ya hewa, masoko, michezo na utamaduni wa Tanzania — kila tukio likithibitishwa kwa mujibu wa vyanzo rasmi.",
       heroCta: "Tazama masoko",
       myPositions: "Nafasi zangu",
@@ -2089,6 +2170,37 @@ export const dict = {
       getPaidViaMpesa: "Lipwa kwa M-Pesa",
       getPaidBody: "Washindi wanapokea pesa moja kwa moja kwenye pochi yao. Kutoa pesa kwa sekunde.",
       waitingForResults: "Inasubiri matokeo",
+
+      howEyebrow: "50pick inafanya kazi vipi",
+      howStep1H: "Chagua upande",
+      howStep1B: "Kila soko ni swali moja lenye majibu mawili. Weka dau unalotaka kwa shilingi — sindano ya imani inaonyesha pesa za umati zilipo tayari.",
+      howStep2H: "Kila matokeo yana chanzo kilichotajwa",
+      howStep2B: "Kila soko linatatuliwa kwa chanzo rasmi cha umma kilichotajwa: wakala wa hali ya hewa, jedwali la ligi, kiwango cha kati cha Benki Kuu ya Tanzania. Afisa anathibitisha — wawili, pale idhini ya maafisa wawili inapowashwa.",
+      howStep3H: "Washindi wanagawana bwawa",
+      howStep3B: "Bwawa linagawanywa kati ya wote waliokuwa sahihi, kasoro kamisheni ambayo haizidi theluthi moja ya upande mdogo. Hulipwa kwenye pochi yako ya M-Pesa kwa sekunde.",
+
+      gridEyebrowPool: "Bwawa kubwa kwanza",
+      gridEyebrowNew: "Yamefunguliwa hivi punde",
+      gridSeeAll: "Masoko yote {n}",
+
+      topicLive: "{n} hai",
+      topicAll: "Mada zote",
+
+      trustEyebrow: "Kwa nini matokeo yanaweza kuaminiwa",
+      trustClaim: "Soko lina thamani ya kuchezwa tu ikiwa matokeo si maoni.",
+      trustClaimAccent: "matokeo",
+      trustCell1H: "Vyanzo rasmi vya umma vilivyotajwa",
+      trustCell1B: "Kila soko linaonyesha chanzo cha umma ambacho matokeo yake yanahukumiwa nacho, kabla uweke dau lolote.",
+      trustCell2H: "Kinathibitishwa na afisa",
+      trustCell2B: "Mtu anaandika kifungu cha ushahidi kinachohalalisha uamuzi, na kinaandikwa kwenye mnyororo wa ukaguzi wa kuongeza-tu.",
+      trustCell3H: "M-Pesa kuingia, M-Pesa kutoka",
+      trustCell3B: "Pesa zinaingia na kutoka kwa pochi ile ile unayotumia. Hakuna kadi, hakuna safari ya benki.",
+
+      settledEyebrow: "Uthibitisho kwamba mzunguko unakamilika",
+      settledHead: "Yaliyokamilika hivi karibuni",
+      settledPaid: "yalilipwa",
+      settledVoid: "yalirejeshwa",
+      settledSeeAll: "Matokeo yote",
     },
     market: {
       title: "Masoko",
@@ -2336,8 +2448,8 @@ export const dict = {
       payoutAtClose: "Dau likifungwa",
       predictorsCount: "watabiri",
       predictorsCountOne: "mtabiri",
-      tickerPredicted: "alitabiri", tickerWonOn: "alishinda kwenye",
       tickerSettled: "imekamilika", tickerOn: "kwenye",
+      tickerVoided: "imefutwa · dau limerejeshwa",
       // === i18n coverage pass ===
       catInfrastructure: "Miundombinu",
       catMixed: "Mchanganyiko / Zote",
@@ -2849,9 +2961,13 @@ export const dict = {
       card2Body: "Mguso mmoja huweka upande wako na dau lako. Sogeza kuelekea NDIO au HAPANA — kadri unavyosogea mbali, ndivyo kiwango chako kinaongezeka.",
       card3Eyebrow: "jinsi malipo yanavyofanya kazi",
       card3Title: "Washindi wanagawana bwawa la wapotezao.",
-      card3Body: "Hakuna odds. Bwawa la upande uliopoteza linagawanywa kati ya washindi kulingana na dau. Upande mmoja ukikua, malipo ya upande mwingine yanaongezeka.",
+      /* ⛔ THIS LINE USED TO DESCRIBE A FEE-FREE SPLIT — no commission mentioned at all, while
+         the English beside it at least said "minus a small margin". A Swahili player reading it
+         would have been told the whole losing pool is shared out. Corrected to the same promise
+         the other two locales make. */
+      card3Body: "Hakuna odds. Washindi wanagawana bwawa kulingana na dau lao, baada ya kamisheni yetu — ambayo haizidi theluthi moja ya upande mdogo, kwa hiyo kuwa sahihi hakukugharimu pesa kamwe. Dau likifungwa tutakuambia kiasi kamili utakachopata.",
+      poolCaption: "wapotezao hulipa washindi · jibu sahihi halipotezi",
       dragToCommit: "sogeza kujitolea",
-      losersFoundWinners: "waliopoteza wanafadhili washindi · ada ndogo",
       skipPrimer: "Ruka utangulizi",
       // === i18n coverage pass ===
       primerLabel: "Utangulizi wa 50pick", step: "Hatua {n}",
@@ -3545,7 +3661,6 @@ export const dict = {
       heroBoardCloseToday: "今天 {n} 个结束",
       heroNoPrice: "尚无投注",
       heroBrowseAll: "浏览全部 {n} 个市场",
-      statsSettled: "已结算市场", statsPaidOut: "已派彩",
       heroBody: "参与坦桑尼亚天气、市场、体育和文化方面的问题竞猜 — 由官方来源验证结算。",
       heroCta: "浏览市场",
       myPositions: "我的持仓",
@@ -3563,6 +3678,37 @@ export const dict = {
       getPaidViaMpesa: "通过M-Pesa收款",
       getPaidBody: "赢家直接在钱包中收到资金。提现秒到。",
       waitingForResults: "等待结果",
+
+      howEyebrow: "50pick 如何运作",
+      howStep1H: "选择一方",
+      howStep1B: "每个市场都是一个问题、两个答案。用先令投注您想要的金额 — 信念指针显示大众资金目前所在的位置。",
+      howStep2H: "每个结果都有指定来源",
+      howStep2B: "每个市场都以指定的官方公开来源结算：气象局、联赛积分榜、坦桑尼亚银行中间价。由一名审核员签核 — 启用双审核员授权时为两名。",
+      howStep3H: "赢家分享奖池",
+      howStep3B: "奖池由所有判断正确的人分享，扣除佣金 — 佣金上限为较小一方的三分之一。数秒内支付到您的 M-Pesa 钱包。",
+
+      gridEyebrowPool: "奖池最大优先",
+      gridEyebrowNew: "刚刚开放",
+      gridSeeAll: "全部 {n} 个市场",
+
+      topicLive: "{n} 进行中",
+      topicAll: "所有主题",
+
+      trustEyebrow: "为何结果值得信赖",
+      trustClaim: "只有当结果不是观点时，市场才值得参与。",
+      trustClaimAccent: "结果",
+      trustCell1H: "指定的公开来源",
+      trustCell1B: "在您投注之前，每个市场都会标明其结果所依据的公开来源。",
+      trustCell2H: "由审核员签核",
+      trustCell2B: "由人工记录支持该裁定的证据摘录，并写入仅可追加的审计链。",
+      trustCell3H: "M-Pesa 进，M-Pesa 出",
+      trustCell3B: "资金通过您已在使用的同一个钱包进出。无需银行卡，无需前往网点。",
+
+      settledEyebrow: "周期完成的证明",
+      settledHead: "近期已结算",
+      settledPaid: "已支付",
+      settledVoid: "已退还",
+      settledSeeAll: "全部结果",
     },
     market: {
       title: "市场",
@@ -3811,8 +3957,8 @@ export const dict = {
       predictorsCount: "预测者",
       // Chinese does not inflect for number — the same noun serves both counts.
       predictorsCountOne: "预测者",
-      tickerPredicted: "预测了", tickerWonOn: "赢得了",
       tickerSettled: "已结算", tickerOn: "在",
+      tickerVoided: "已作废 · 投注已退还",
       // === i18n coverage pass ===
       catInfrastructure: "基础设施",
       catMixed: "混合 / 全部",
@@ -4324,9 +4470,9 @@ export const dict = {
       card2Body: "一个手势设置您的立场和投注额。向「是」或「否」拖动 — 离中心越远，信念倍数越高。",
       card3Eyebrow: "赔付如何运作",
       card3Title: "赢家分享输家的奖池。",
-      card3Body: "没有固定赔率。输方奖池（扣除少量佣金）按投注额比例分配给赢家。一方增长，另一方的潜在赔付也随之增长。",
+      card3Body: "没有固定赔率。赢家按投注额比例分享奖池（扣除我们的佣金后）— 佣金上限为较小一方的三分之一，因此判断正确绝不会让您亏钱。投注关闭时，我们会告知您将收到的确切金额。",
+      poolCaption: "输家资助赢家 · 判断正确绝不亏损",
       dragToCommit: "拖动确认",
-      losersFoundWinners: "输家资助赢家 · 少量运营佣金",
       skipPrimer: "跳过引导",
       // === i18n coverage pass ===
       primerLabel: "50pick 引导", step: "第 {n} 步",

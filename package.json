@@ -375,7 +375,11 @@
     "red:margin-series": "node scripts/margin-series-red.mjs",
     "red:admin-charts": "node scripts/admin-charts-red.mjs",
     "qa:admin-view-matrix": "tsx scripts/admin-view-matrix-drive.mjs",
-    "qa:admin-filters": "node scripts/admin-filter-drive.mjs"
+    "qa:admin-filters": "node scripts/admin-filter-drive.mjs",
+    "test:ticker-honesty": "tsx scripts/ticker-honesty.test.mts",
+    "red:ticker-honesty": "node scripts/ticker-honesty-red.mjs",
+    "test:landing-contract": "tsx scripts/landing-contract.test.mts",
+    "red:landing-contract": "node scripts/landing-contract-red.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

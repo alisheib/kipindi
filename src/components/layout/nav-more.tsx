@@ -9,18 +9,28 @@ import { useT } from "@/lib/i18n";
 import type { ProposalsState } from "@/lib/server/proposals-config";
 
 /**
- * NavMore — the top-bar overflow menu. At `lg` (1024–1279px) the primary nav
- * shows the core links inline and folds the rest (Propose/Invite/Leaderboard)
- * behind this "More ▾" dropdown, so no primary destination is hidden on
- * tablets/small laptops (IA review R1). At `xl` these items render inline and
- * this button is hidden, so the dropdown never double-shows.
+ * NavMore — the overflow menu, in two places.
+ *
+ * `variant="bar"` (default) is the top-bar menu: at `lg` (1024–1279px) the primary nav shows the
+ * core links inline and folds the rest behind this "More ▾", so no primary destination is hidden
+ * on tablets/small laptops (IA review R1). At `xl` those items render inline and this is hidden.
+ *
+ * `variant="rail"` is the bottom rail's FIFTH SLOT (batch 3, kit §2). It shares this component
+ * rather than growing a second one, so `More` behaves identically in both places — the same
+ * outside-click, the same Escape, the same close-on-navigate. What differs is only geometry and
+ * which way the panel opens: the rail is pinned to the bottom edge, so its panel opens UPWARD.
  */
 export function NavMore({
   items,
   label,
+  variant = "bar",
+  active,
 }: {
   items: readonly { href: string; label: string; proposalsBadge?: ProposalsState }[];
   label: string;
+  variant?: "bar" | "rail";
+  /** Rail only: `More` reads as current when the page behind it is one of its own. */
+  active?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -46,7 +56,57 @@ export function NavMore({
 
   if (items.length === 0) return null;
 
-  const anyActive = items.some((it) => pathname.startsWith(it.href));
+  const isRail = variant === "rail";
+  const anyActive = active ?? items.some((it) => pathname.startsWith(it.href));
+
+  if (isRail) {
+    return (
+      <div ref={ref} className="relative flex flex-1">
+        <button
+          type="button"
+          aria-haspopup="menu"
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+          className="kp-rail__item"
+          data-on={anyActive ? "1" : undefined}
+        >
+          <span className="kp-rail__pip">
+            <I.menu s={20} />
+          </span>
+          <span className="kp-rail__label">{label}</span>
+        </button>
+        {open && (
+          <div
+            role="menu"
+            /* Opens UPWARD — the rail is pinned to the bottom edge, so a downward panel would
+               render off-screen entirely. `right-2` keeps it inside the viewport at 360. */
+            className="absolute bottom-[calc(100%+8px)] right-2 z-[50] min-w-[190px] rounded-modal border border-border-strong bg-bg-elevated p-1 shadow-overlay"
+          >
+            {items.map((it) => {
+              const a = pathname.startsWith(it.href);
+              return (
+                <Link
+                  key={it.href}
+                  href={it.href as never}
+                  role="menuitem"
+                  aria-current={a ? "page" : undefined}
+                  /* 44px rows — this is the phone, where the floor is not negotiable. */
+                  className="flex min-h-[44px] items-center gap-1.5 rounded-lg px-3 text-[13.5px] transition-colors hover:bg-bg-overlay"
+                  style={{
+                    color: a ? "var(--text)" : "var(--text-subtle)",
+                    fontWeight: a ? 600 : 500,
+                    background: a ? "var(--pill-active)" : "transparent",
+                  }}
+                >
+                  {it.label}
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div ref={ref} className="relative">
@@ -57,12 +117,17 @@ export function NavMore({
         onClick={() => setOpen((v) => !v)}
         className="inline-flex items-center gap-1 whitespace-nowrap"
         style={{
-          padding: "7px 10px 7px 12px",
+          // 44px — the tap floor, matching every other destination in the bar. This was 7px of
+          // vertical padding on a 13.5px line, i.e. ~33px, on the primary nav of a money product.
+          minHeight: 44,
+          padding: "0 var(--sp-3)",
           borderRadius: "var(--r-sm)",
           fontSize: 13.5,
           fontWeight: anyActive ? 600 : 500,
           color: anyActive ? "var(--text)" : "var(--text-subtle)",
-          background: anyActive ? "oklch(40% 0.08 264 / 0.4)" : "transparent",
+          // `--pill-active`, not the hand-typed `oklch(40% 0.08 264 / 0.4)` this carried: ONE
+          // active treatment across the header, the rail and this menu.
+          background: anyActive ? "var(--pill-active)" : "transparent",
         }}
       >
         <span className="capitalize">{label}</span>

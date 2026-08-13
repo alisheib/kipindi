@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { FiftyLockup, FiftyMark } from "@/components/brand";
-import { LanguageToggle } from "@/components/ui/language-toggle";
+import { LanguageMenu } from "@/components/ui/language-menu";
 import { NotificationsPanel } from "@/components/layout/notifications-panel";
 import { AvatarMenu } from "@/components/layout/avatar-menu";
 import { NavMore } from "@/components/layout/nav-more";
@@ -14,26 +14,51 @@ import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
 import type { ProposalsState } from "@/lib/server/proposals-config";
 
-/** A primary-nav item; `proposalsBadge`, when set, rides a proposals entry point
- *  and renders the gilt/amber state flag (never on ACTIVE/DISABLED). */
+/**
+ * THE HEADER — round-2 kit §2 / COMPONENTS §14, rebuilt in batch 3.
+ *
+ * ── 🔴 THE SEE-THROUGH BUG IS REMOVED, NOT TUNED ─────────────────────────────────────────────
+ * The bar was `color-mix(--panel 92%, transparent)` inline, and `globals.css` mixed it down to
+ * **78% with a 12px backdrop blur** from 1024 up. A translucent bar over a scrolling board of
+ * conviction bars, avatar stacks and gilt price figures cannot be made legible by raising a mix
+ * percentage — it can only be made less bad. It is now `var(--panel)`, OPAQUE, at every scroll
+ * position and every width, with a 1px `--border` bottom edge giving the bar the boundary it never
+ * had, and `--shadow-2` appearing only once the page has scrolled. Dropping the blur also stops
+ * the bar re-rastering the scrolling content every frame on a mid-tier Android, which is the
+ * device this product is built for.
+ *
+ * ── THE NAVIGATION MODEL: THREE TIERS, ONE MEANING EACH (the round's largest correction) ──────
+ *   destination      no border, `--r-sm`, 44px           Markets · Up & Down · Live · Results · Top
+ *   utility control  BORDERED, `--r-sm`, 44×44           Language
+ *   action           `--r-pill`                          Sign in (ghost) · Sign up (filled)
+ *
+ * `--r-pill` used to mean BOTH "product line" (Up & Down) and "account action" (Sign in / Sign
+ * up) — one shape, two kinds. Shape now has exactly one meaning: Up & Down is a destination, so
+ * it takes destination geometry, and its distinction moves to a 5px gilt dot plus `--brand-300`
+ * ink.
+ *
+ * **Current destination = `--pill-active` + `--text` + weight 600. That is the ONLY active
+ * treatment, at every width** — the bottom rail says it the same way. It used to say it with
+ * `--aqua-300`, a second active language for one idea.
+ *
+ * ⚠️ THE GILT DOT WAS VERIFIED AGAINST `test:gold-is-money` BEFORE SHIPPING, as the plan required.
+ * The gate is scoped to two named identity surfaces (`identity-avatar.tsx`, `updown-card.tsx`) and
+ * the `.tier-*` rank rules, so it does not object to a nav dot — and the dot is not identity, rank
+ * or status: it marks a distinct PRODUCT LINE. If a future revision widens that gate to nav
+ * chrome, the dot goes `--brand-300`, not gold; it is one token change and nothing else moves.
+ */
 type NavItem = {
   href: string;
   label: string;
   proposalsBadge?: ProposalsState;
   /**
-   * Marks a destination as a DISTINCT PRODUCT LINE rather than another page of the
-   * same game — currently only Up & Down. It gets a brand-indigo treatment even when
-   * inactive, so a player can tell at a glance that it is a different kind of game.
+   * Marks a destination as a DISTINCT PRODUCT LINE rather than another page of the same game —
+   * currently only Up & Down. It keeps destination geometry (see the note above); the accent is a
+   * gilt dot and brand ink, never a different shape or the active pill.
    *
-   * Brand indigo is the one accent free to mean this: gold means earned money,
-   * green/rose mean betting actions, and cyan already means "active tab". The accent
-   * must therefore read as IDENTITY, never be confusable with the active state — which
-   * is why it is a left rule + tinted label, not the active pill.
-   *
-   * ⏳ Ali's final treatment is pending (Q8 / design prompt D6). This is the restrained
-   * interim: no per-second timer in global chrome — a countdown on every page is a
-   * persistent urgency cue (an RG problem for a licensed operator) and a per-second
-   * re-render on a platform whose bar is "usable on a low-end Android over 2G".
+   * ⏳ No per-second timer in global chrome, ever: a countdown on every page is a persistent
+   * urgency cue (an RG finding for a licensed operator, §C5) and a per-second re-render on a bar
+   * that must stay usable on a low-end Android over 2G.
    */
   accent?: boolean;
 };
@@ -60,9 +85,7 @@ export function TopAppBar({ user, proposalsState }: { user: TopAppBarUser; propo
   // menu at lg and render inline only at `xl` (IA review R1 — no primary
   // destination is hidden on tablets/small laptops).
   // Up & Down sits directly after Markets in BOTH navs — it is a peer product line, not
-  // a sub-page of Markets, and a player must be able to reach it from any width. (It was
-  // added to the bottom nav first and missed here, which meant it was invisible on
-  // desktop entirely: the bottom bar is `lg:hidden`.)
+  // a sub-page of Markets, and a player must be able to reach it from any width.
   const CORE_ITEMS: NavItem[] = user.isAuthed
     ? [
         { href: "/markets",   label: t.common.markets },
@@ -96,13 +119,24 @@ export function TopAppBar({ user, proposalsState }: { user: TopAppBarUser; propo
       className="sticky top-0 z-30 app-topbar"
       style={{
         height: 56,
-        background: "color-mix(in oklab, var(--panel) 92%, transparent)",
+        // OPAQUE. See the header note above — this was a 92% mix, dropped to 78% + blur ≥1024.
+        background: "var(--panel)",
         borderBottom: "1px solid var(--border)",
       }}
     >
       <div className="mx-auto max-w-board flex items-center h-full gap-2 px-3 sm:gap-4 sm:px-5">
-        {/* Brand lockup — kit: BrandLockup size={30} */}
-        <Link href="/" aria-label={`50pick ${t.common.home}`} className="shrink-0 hover:opacity-90 transition-opacity">
+        {/* Brand lockup — kit COMPONENTS §14: "inside a `min-height: 44px` link".
+            ⚠️ It was 136×33, i.e. UNDER the 44px floor on the control that takes a reader back to
+            the board from anywhere in the product. Pre-existing rather than introduced here, and
+            surfaced by measuring every control in the bar rather than only the ones this batch
+            added — the kit had already specified the fix. Width was never the problem (136px);
+            only the height was, so `inline-flex items-center` gives it the floor without moving
+            the mark one pixel. */}
+        <Link
+          href="/"
+          aria-label={`50pick ${t.common.home}`}
+          className="shrink-0 inline-flex min-h-[44px] items-center hover:opacity-90 transition-opacity"
+        >
           {/* M8 — the mark performs: one flip on its own needle axis per hover
               (.mark-flip-i), on the LOGO only. Wrapped on the mark span, not the
               lockup, so the wordmark never rotates with it. */}
@@ -134,15 +168,13 @@ export function TopAppBar({ user, proposalsState }: { user: TopAppBarUser; propo
         <div className="flex-1" />
 
         <div className="shrink-0 flex items-center gap-2">
-          {/* Language toggle. Hidden at the lg–xl band (1024–1279): there the desktop nav
-              (6 core links + More) turns on and the full cluster + toggle overflowed 1024,
-              pushing the avatar off-screen. Same compromise the balance pill makes at this
-              exact band — and language stays one tap away in the avatar menu, which surfaces
-              its own picker for precisely this band (avatar-menu: sm:hidden lg:block xl:hidden).
-              One language control is visible at every width, never two. */}
-          <div className="lg:hidden xl:block">
-            <LanguageToggle />
-          </div>
+          {/* ⭐ ONE 44×44 LANGUAGE CONTROL, AT EVERY WIDTH — kit §2. The 3-pill capsule this
+              replaces was hidden below 640 AND hidden again across 1024–1279 (the band where the
+              desktop nav turns on and the cluster overflowed 1024), so the control a trilingual
+              product depends on was absent on a phone and absent on a small laptop, with the
+              avatar menu carrying a duplicate picker to cover the gap. One trigger, always
+              present, no duplicate. */}
+          <LanguageMenu />
 
           {user.isAuthed && user.balance !== null && user.balance !== undefined && (
             // Balance glance-pill visibility follows available width:
@@ -210,6 +242,31 @@ export function TopAppBar({ user, proposalsState }: { user: TopAppBarUser; propo
               way — this one was simply missed. */}
           {user.isAuthed && <NotificationsPanel />}
 
+          {/* ⭐ AUTH IS IN THE HEADER AT EVERY WIDTH — kit §2, and the reason the bottom rail is
+              destinations only. `Sign in` is the ghost action, `Sign up` the filled one; both take
+              `--r-pill`, which now means "account action" and nothing else.
+              ⚠️ The label is hidden below `sm` on `Sign in` only: at 360 the two pills plus the
+              language control and the avatar do not fit, and of the two, the one a NEW visitor
+              needs is Sign up. `aria-label` keeps the shortened control named. */}
+          {!user.isAuthed && (
+            <>
+              <Link
+                href={"/auth/login" as never}
+                aria-label={t.common.signIn}
+                className="btn btn-ghost btn-lg btn-pill hidden sm:inline-flex"
+              >
+                {t.common.signIn}
+              </Link>
+              <Link
+                href={"/auth/register" as never}
+                aria-label={t.common.signUp}
+                className="btn btn-primary btn-lg btn-pill"
+              >
+                {t.common.signUp}
+              </Link>
+            </>
+          )}
+
           <AvatarMenu
             initials={user.initials}
             name={user.name}
@@ -226,7 +283,14 @@ export function TopAppBar({ user, proposalsState }: { user: TopAppBarUser; propo
   );
 }
 
-/** A single primary-nav link with the shared active-state logic. */
+/**
+ * A single primary-nav link.
+ *
+ * ONE BOX for every item — 44px tall, identical horizontal padding. The accent (Up & Down) pill
+ * used to run 6px 14px against 7px 12px for its siblings, so it read visibly taller and wider than
+ * every other link. Height and padding are now identical across all links; the accent differs only
+ * in ink and a dot (identity), never in size or shape.
+ */
 function NavLink({ it, pathname }: { it: NavItem; pathname: string }) {
   const { t } = useT();
   const active =
@@ -236,65 +300,41 @@ function NavLink({ it, pathname }: { it: NavItem; pathname: string }) {
     : it.href === "/positions" ? pathname.startsWith("/positions")
     : it.href === "/updown" ? pathname.startsWith("/updown")
     : pathname === it.href;
-  // A product-line accent (see NavItem.accent): a glassy indigo PILL, in the kit's own
-  // button idiom — translucent brand fill, hairline brand border, the inset top
-  // highlight every `.btn` carries, and a soft glow. It reads as a distinct thing you
-  // can enter, not as a nav item someone drew a line next to.
-  //
-  // It brightens when active rather than swapping to the flat active pill, so identity
-  // and active-state reinforce each other instead of competing.
   const accent = it.accent === true;
-  const accentStyle: React.CSSProperties = {
-    background: active
-      ? "linear-gradient(180deg, oklch(52% 0.17 262 / 0.55), oklch(44% 0.15 262 / 0.45))"
-      : "linear-gradient(180deg, oklch(48% 0.15 262 / 0.34), oklch(40% 0.13 262 / 0.26))",
-    border: `1px solid ${active ? "var(--brand-400)" : "color-mix(in oklab, var(--brand-500) 55%, transparent)"}`,
-    color: active ? "var(--text)" : "var(--brand-300)",
-    /* M1 — both states take an EVEN ring, and both were pure white, which M1 bans twice
-       over (one-sided AND chalky on OLED). ⭐ The rest/active DISTINCTION survives, which
-       is the point: the ladder already has two lit-edge strengths, so active takes
-       `--edge-lit-strong` (0.09) and rest takes `--edge-lit` (0.055) — the same rest→hover
-       pairing `.cm-bubble` took in ATOM 8. The state is still legible, it is now legible in
-       the system's own vocabulary, and the brand glow that actually carries "active" is
-       untouched on both lines. */
-    boxShadow: active
-      ? "var(--edge-lit-strong), 0 0 16px -4px oklch(63% 0.18 262 / 0.55)"
-      : "var(--edge-lit), 0 0 12px -6px oklch(63% 0.18 262 / 0.40)",
-  };
   return (
     <Link
       href={it.href as never}
       aria-current={active ? "page" : undefined}
       className="inline-flex items-center gap-1.5 whitespace-nowrap"
       style={{
-        // One consistent nav-link box for EVERY item — the accent (Up & Down) pill
-        // used to run 6px 14px vs 7px 12px for the rest, so it read visibly taller and
-        // wider than its siblings. Height + horizontal padding are now identical across
-        // all links (no bigger than before); the accent differs only in colour/border/glow
-        // (identity), never size.
-        height: 34,
-        padding: "0 11px",
-        borderRadius: accent ? "var(--r-pill)" : "var(--r-sm)",
+        // 44px is the tap floor and the kit's destination height. The nav used to be 34px —
+        // under the floor on the primary navigation of a money product.
+        minHeight: 44,
+        padding: "0 var(--sp-3)",
+        // DESTINATION geometry, for every item including Up & Down. `--r-pill` is reserved for an
+        // account action now, so shape carries exactly one meaning.
+        borderRadius: "var(--r-sm)",
         fontSize: 13.5,
-        fontWeight: active || accent ? 600 : 500,
-        transition: "color var(--t-quick) ease-out, background var(--t-quick) ease-out, box-shadow var(--t-quick) ease-out, font-weight 0ms",
-        ...(accent
-          ? accentStyle
-          : {
-              color: active ? "var(--text)" : "var(--text-subtle)",
-              background: active ? "oklch(40% 0.08 264 / 0.4)" : "transparent",
-            }),
+        fontWeight: active ? 600 : 500,
+        // ⛔ Never `transition: all` — that is what produced 895 elements computing to
+        // `transition: all 0s ease`. One rule per property, from the motion ladder.
+        transition: "color var(--t-quick) ease-out, background var(--t-quick) ease-out",
+        // THE ONLY ACTIVE TREATMENT, at every width, shared with the bottom rail.
+        background: active ? "var(--pill-active)" : "transparent",
+        color: active ? "var(--text)" : accent ? "var(--brand-300)" : "var(--text-subtle)",
       }}
     >
-      {/* The product signature: a tiny up/down pair — green up, rose down — that says
-          "this is the price game" at a glance, on the purple base. It marries Ali's two
-          ideas (purple + a green/red hint) without a garish full split, and green/rose
-          appear only inside a betting-adjacent mark, never as navigation colour. */}
+      {/* The product-line mark: a 5px gilt dot. It replaces a glassy indigo pill, a bespoke
+          gradient, a brand border, a glow AND a green/rose arrow pair — five distinctions for one
+          idea, on an item that is simply another destination. */}
       {accent && (
-        <span aria-hidden className="inline-flex flex-col items-center justify-center" style={{ marginRight: 1, lineHeight: 0 }}>
-          <I.trendingUp s={9} style={{ color: "var(--yes-400)", marginBottom: -2 }} />
-          <I.trendingDown s={9} style={{ color: "var(--no-400)", marginTop: -2 }} />
-        </span>
+        <span
+          aria-hidden
+          style={{
+            flex: "none", width: 5, height: 5,
+            borderRadius: "var(--r-pill)", background: "var(--gilt)",
+          }}
+        />
       )}
       {it.label}
       {it.proposalsBadge && (

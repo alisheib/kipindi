@@ -1,40 +1,50 @@
 "use client";
 
 /**
- * Live ticker — 32px strip with infinite horizontal marquee.
+ * Live ticker — a 32px strip carrying the platform's REAL recent settlements.
+ *
+ * ⛔ THE TYPE IS IMPORTED, NEVER RE-DECLARED. `TickerEvent` used to be declared here AND in
+ * `ticker-feed.ts`, which is exactly how a `timeAgo` field that nothing rendered survived in
+ * both copies. One declaration, in `lib/markets/ticker.ts` (B9 / §0a: two copies of one truth do
+ * not stay equal). ⚠️ `import type` is load-bearing — this is a CLIENT component and the feed
+ * module reaches the store, so a value import would pull the server graph into a browser chunk.
+ * The pure module is safe either way; the rule is kept because the next type to live there may
+ * not be.
+ *
  * Kit tokens (bg-inset, border, live-400, mono) + horizontal scroll.
  */
 
 import { useState } from "react";
 import { useT } from "@/lib/i18n";
 import { formatTzsCompact } from "@/lib/utils";
+import type { TickerEvent } from "@/lib/markets/ticker";
 
-export type TickerEvent = {
-  id: string;
-  kind: "bet" | "win" | "resolve" | "milestone";
-  side?: "YES" | "NO";
-  marketTitle: string;
-  amount?: number;
-  timeAgo: string;
-};
+type Verbs = { settled: string; on: string; voided: string };
 
-function Items({ events, prefix, verbs }: { events: TickerEvent[]; prefix: string; verbs: { predicted: string; wonOn: string; settled: string; on: string } }) {
+function Items({ events, prefix, verbs }: { events: TickerEvent[]; prefix: string; verbs: Verbs }) {
   return (
     <>
-      {events.map((ev) => {
-        const amt = ev.amount && ev.amount > 0 ? `${formatTzsCompact(ev.amount)} ` : "";
-        const verb = ev.kind === "bet" ? verbs.predicted : ev.kind === "win" ? verbs.wonOn : ev.kind === "resolve" ? verbs.settled : "";
-        return (
-          <span key={`${prefix}-${ev.id}`} className="inline-flex items-center gap-1.5 shrink-0 font-mono text-[12px] pr-8 whitespace-nowrap">
-            <span className="text-text-muted">{amt}{verb} </span>
-            {ev.side && (
+      {events.map((ev) => (
+        <span key={`${prefix}-${ev.id}`} className="inline-flex items-center gap-1.5 shrink-0 font-mono text-[12px] pr-8 whitespace-nowrap">
+          {/* A VOID CARRIES NO FIGURE AND NO SIDE — we kept nothing and every stake was
+              refunded, so there is no amount that describes what happened, and no winning
+              side to name. Stated neutrally, never as an error: licence condition 4 / §C4,
+              "the money came back". */}
+          {ev.kind === "void" ? (
+            <span className="text-text-muted">{verbs.voided}</span>
+          ) : (
+            <>
+              {/* Absent rather than "TZS 0" when a settlement paid nothing — §C2 forbids a
+                  zero standing in for an unknown, and a bare TZS 0 reads as a broken figure. */}
+              {ev.amount !== undefined && <span className="text-text-muted">{formatTzsCompact(ev.amount)} </span>}
+              <span className="text-text-muted">{verbs.settled} </span>
               <span className={`font-bold ${ev.side === "YES" ? "text-yes-400" : "text-no-400"}`}>{ev.side}</span>
-            )}
-            <span className="text-text-muted"> {verbs.on} {ev.marketTitle}</span>
-            <span className="inline-block w-[3px] h-[3px] rounded-full bg-gold-400 opacity-40 shrink-0 ml-2" />
-          </span>
-        );
-      })}
+            </>
+          )}
+          <span className="text-text-muted"> {verbs.on} {ev.title}</span>
+          <span className="inline-block w-[3px] h-[3px] rounded-full bg-gold-400 opacity-40 shrink-0 ml-2" />
+        </span>
+      ))}
     </>
   );
 }
@@ -42,19 +52,25 @@ function Items({ events, prefix, verbs }: { events: TickerEvent[]; prefix: strin
 export function LiveTicker({ events }: { events: TickerEvent[] }) {
   const [paused, setPaused] = useState(false);
   const { t } = useT();
-  const verbs = {
-    predicted: t.market.tickerPredicted,
-    wonOn: t.market.tickerWonOn,
+  const verbs: Verbs = {
     settled: t.market.tickerSettled,
     on: t.market.tickerOn,
+    voided: t.market.tickerVoided,
   };
 
+  // A platform with no settlements has no strip. ⛔ Not an empty rail, not a placeholder line —
+  // A-5: nothing over a guess.
   if (events.length === 0) return null;
 
   return (
     <div
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
+      /* Pauses for the KEYBOARD too, not only the mouse. The run holds real settlement figures
+         and market questions; a strip a keyboard user can never stop is content they cannot
+         read. `:focus-within` is the kit's own answer and costs nothing. */
+      onFocus={() => setPaused(true)}
+      onBlur={() => setPaused(false)}
       style={{
         height: 32,
         background: "var(--bg-inset)",
@@ -100,8 +116,18 @@ export function LiveTicker({ events }: { events: TickerEvent[] }) {
           track itself. Without this box the marquee rendered straight across the
           LIVE label and ate the first characters — in Swahili "MUBASHARA" and
           "TZS" collided into "MUBASHARAZS". The container's own overflow:hidden
-          does not help: it clips at the window edge, not at the label. */}
-      <div style={{ flex: "1 1 auto", minWidth: 0, overflow: "hidden", display: "flex", alignItems: "center" }}>
+          does not help: it clips at the window edge, not at the label.
+
+          `paddingLeft` is 8px of air between the LIVE label's trailing fade and item 1 AT
+          REST — the state a reduced-motion reader sees permanently, and the first frame
+          everyone else sees. ⚠️ It is NOT a clip fix, and this comment claimed it was for one
+          revision: that reading came from a probe measuring the marquee MID-FLIGHT, where
+          item 1 sitting left of its container is simply what a marquee does. Re-measured at
+          rest with the product's own calm branch applied (computed `transform: none`), item 1
+          begins 8px INSIDE the viewport in en, sw and zh. Corrected here rather than quietly
+          deleted, because a comment claiming a fix for a defect that was really the
+          instrument's is how the next reader "protects" behaviour nothing ever needed. */}
+      <div style={{ flex: "1 1 auto", minWidth: 0, overflow: "hidden", display: "flex", alignItems: "center", paddingLeft: 8 }}>
         <div className="ticker-track" style={{ animationPlayState: paused ? "paused" : "running" }}>
           <Items events={events} prefix="a" verbs={verbs} />
           <Items events={events} prefix="b" verbs={verbs} />

@@ -2473,16 +2473,26 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
 [data-motion="reduced"] .live-dot,
 [data-motion="reduced"] .cm-status-dot { animation: m-breathe 1.6s var(--m-breathe) infinite !important; box-shadow: none !important; }
 
-/* Sticky top-bar frosted blur — DESKTOP ONLY. On phones the bar is near-opaque
-   (set inline on .app-topbar) with NO backdrop-filter, so it doesn't re-raster
-   the scrolling content every frame on mid-tier Android. */
-@media (min-width: 1024px) {
-  .app-topbar {
-    background: color-mix(in oklab, var(--panel) 78%, transparent) !important;
-    backdrop-filter: blur(12px) saturate(1.15);
-    -webkit-backdrop-filter: blur(12px) saturate(1.15);
-  }
+/* 🔴 THE STICKY TOP-BAR FROSTED BLUR IS DELETED — batch 3, 2026-08-13 (kit §2 / SPEC §3.1).
+   It was `color-mix(in oklab, var(--panel) 78%, transparent) !important` plus a 12px backdrop
+   blur from 1024 up, over an inline 92% mix on the element itself.
+
+   ⛔ THE SEE-THROUGH BAR IS REMOVED, NOT TUNED. A translucent bar over a scrolling board of
+   conviction bars, avatar stacks and gilt price figures cannot be made legible by raising a mix
+   percentage — it can only be made less bad, and the percentage had already been raised once.
+   `--panel` is opaque, and the 1px `--border` bottom edge gives the bar the boundary it never had.
+   Dropping the blur also stops the bar re-rastering the scrolling content every frame, which is
+   not free on the mid-tier Android this product is built for. `--shadow-2` on scroll is the
+   depth cue instead — see `.app-topbar--cast` below.
+   ⛔ Do not reintroduce a translucent header. If a future design wants depth here, it takes a
+   shadow or an edge; transparency over live data is what was wrong with it. */
+
+/* The scrolled state: no cast at rest, `--shadow-2` once the page has moved (kit: 140ms
+   ease-out). Set by `scroll-cast.tsx`, which toggles the class off `scrollY > 0`. */
+.app-topbar {
+  transition: box-shadow var(--t-quick) ease-out;
 }
+[data-scrolled] .app-topbar { box-shadow: var(--shadow-2); }
 /* ⭐ These two STAY, and are not the deleted pair from §5. The `reduced` tier is a
    THROTTLE, not a clamp — it keeps full durations, so nothing zeroes a delay for
    it. A cascade a phone waits 360ms to finish is worth collapsing on the device
@@ -3524,3 +3534,553 @@ textarea::-webkit-resizer {
               0 0 0 5px color-mix(in oklab, var(--brand-400) 18%, transparent),
               var(--shadow-2) !important;
 }
+
+
+/* =====================================================================
+   LANDING COMPOSITION — round-2 kit README §1 / SPEC §1 + §3 (batch 3, 2026-08-13)
+   =====================================================================
+
+   ⛔ WHY THE VALUES ARE HERE AND NOT IN THE COMPONENTS. B9/B10 + law 82, and the same reason
+   the `.kp-hero*` block above exists: a value lives in the stylesheet and the component
+   consumes a class. The page this replaces carried `text-[26px] md:text-[30px]`,
+   `rounded-2xl` and inline oklch gradient literals on the sections it drew.
+
+   ⭐ THE RHYTHM IS PAIRS OF PADDING, NEVER A MARGIN. The four `--rh-*` tokens have existed
+   with ZERO consumers since batch 2; this is their first. A section's OBSERVED gap is
+   `A.padding-bottom + B.padding-top` — the tokens' own comment in §Spacing says so, and warns
+   that ALSO writing a margin double-counts it. The kit's landing rhythm, top to bottom:
+
+     hero            pad  96 / 96      (--rh-section each side)
+     how it works    pad  48 / 48      -> gap before = 96 + 48 = 144   CHAPTER (+ surface change)
+     pick a side     pad  48 / 48      -> gap before = 48 + 48 =  96   new idea
+       browse topics  internal 48                                       (--rh-close, same surface)
+     up and down     pad  48 / 96      -> gap before = 48 + 48 =  96   new idea
+     why trusted     pad  48 / 96      -> gap before = 96 + 48 = 144   CHAPTER
+     footer                            -> continuous with the trust surface
+
+   Observed section gaps: 144 · 96 · 96 · 144, plus one internal 48. At <=1024 the scale
+   compresses because the section padding steps down one rung. Two tinted `--bg-overlay` bands,
+   both at a chapter break, both edged `--claret-edge` — the heraldic thread the footer's claret
+   rule already carries, now running through the page.
+   ========================================================================================= */
+
+/* ── the band: a full-bleed surface that owns its own vertical padding ───────────────────── */
+.kp-band { padding-block: var(--rh-close); }
+.kp-band__inner {
+  max-width: var(--w-board);
+  margin-inline: auto;
+  padding-inline: var(--sp-4);
+}
+@media (min-width: 768px) { .kp-band__inner { padding-inline: var(--sp-6); } }
+
+/* A chapter break: a tinted surface, edged top and bottom. */
+.kp-band--overlay {
+  background: var(--bg-overlay);
+  border-top: 1px solid var(--claret-edge);
+  border-bottom: 1px solid var(--claret-edge);
+}
+/* The trust band is the LAST band before the footer, which shares its surface — so its bottom
+   edge would draw a rule a section's-worth above the footer's own claret rule. It keeps its top
+   edge only, and the footer's rule closes the act. */
+.kp-band--seam { border-bottom: 0; }
+/* §4 and §5 close their act with a full section of air below them (the 48 / 96 pairs). */
+.kp-band--closes { padding-bottom: var(--rh-section); }
+@media (min-width: 1024px) {
+  .kp-band { padding-block: var(--rh-section); }
+  .kp-band--tight { padding-block: var(--rh-close); }
+  .kp-band--closes { padding-bottom: var(--rh-section); }
+}
+
+/* ── section head: eyebrow + heading + optional right-aligned link ────────────────────────── */
+.kp-shead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-bottom: var(--rh-tight);
+}
+.kp-shead__h {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--type-h1);
+  letter-spacing: -0.01em;
+  line-height: 1.14;
+  color: var(--text);
+  margin: var(--sp-2) 0 0;
+}
+/* 44px so the "see all" link is a real target on a phone, where it sits under the heading. */
+.kp-shead__link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: 44px;
+  font-family: var(--font-mono);
+  font-size: var(--type-micro);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--brand-300);
+  transition: color var(--t-quick) ease-out;
+}
+.kp-shead__link:hover { color: var(--brand-200); }
+.kp-lede {
+  font-size: var(--type-h3);
+  line-height: 1.5;
+  color: var(--text-muted);
+  max-width: 62ch;
+  margin: var(--sp-3) 0 0;
+}
+
+/* ── §1b HOW IT WORKS — three steps, each notched into a rule ─────────────────────────────── */
+.kp-steps {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sp-8);
+  margin-top: var(--rh-close);
+}
+@media (min-width: 768px)  { .kp-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1024px) { .kp-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-16); } }
+.kp-step {
+  position: relative;
+  border-top: 1px solid var(--border-strong);
+  padding-top: var(--sp-6);
+}
+/* The numeral SITS ON the rule and knocks it out with the band's own surface behind it. That
+   background must therefore be the band colour, which is why this only ever appears inside
+   `.kp-band--overlay`. */
+/* ⚠️ ABSOLUTE, NOT A NEGATIVE MARGIN. The first version pulled an inline-block up with
+   `margin-top: calc(-1 * var(--sp-5) - 0.62em)` and the numerals rendered plainly BELOW the
+   rule: the parent's first line box is still laid out after `padding-top`, and baseline
+   alignment within that line box absorbed the shift. Caught by reading the frame, not by a
+   gate. `top: 0` is the border edge and `translateY(-50%)` centres the numeral across the 1px
+   line at any type size. The `--bg-overlay` behind it is what knocks the rule out, which is
+   why this shape only works inside `.kp-band--overlay`. */
+.kp-step__n {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translateY(-50%);
+  padding-right: var(--sp-3);
+  background: var(--bg-overlay);
+  font-family: var(--font-mono);
+  font-size: var(--type-small);
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--gilt);
+}
+.kp-step__h {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--type-h2);
+  line-height: 1.2;
+  color: var(--text);
+  margin: 0;
+}
+.kp-step__b {
+  font-size: var(--type-body);
+  line-height: 1.6;
+  color: var(--text-muted);
+  margin: var(--sp-2) 0 0;
+}
+
+/* ── §1d BROWSE BY TOPIC — count + pool per tile, lean underline ──────────────────────────── */
+.kp-topics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-2);
+  margin-top: var(--rh-close);
+}
+@media (min-width: 768px)  { .kp-topics { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-3); } }
+@media (min-width: 1024px) { .kp-topics { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-3); } }
+.kp-topic {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px var(--sp-3);
+  min-height: 64px;
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--bg-overlay);
+  transition: background var(--t-quick) ease-out, border-color var(--t-quick) ease-out,
+              transform var(--t-quick) ease-out;
+}
+.kp-topic:hover {
+  background: var(--bg-elevated);
+  border-color: var(--border-royal);
+  transform: translateY(-1px);
+}
+.kp-topic__glyph { flex: none; display: flex; color: var(--text-faint); transition: color var(--t-quick) ease-out; }
+.kp-topic:hover .kp-topic__glyph { color: var(--brand-300); }
+/* ⚠️ THESE TWO DECLARATIONS ARE LOAD-BEARING AND THE KIT PAID FOR THEM (round 2.4). Without
+   `flex: none` on the meta, its box shrinks under its own text and the text runs BACKWARDS over
+   the topic name; without `text-overflow` on the name, the name cannot ellipsise either. At
+   195px with `Hali ya hewa` (nearly twice `Weather`) the two cannot share a line — so the meta
+   takes its own row and can no longer be squeezed. */
+.kp-topic__n {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--type-h4);
+  color: var(--text);
+}
+.kp-topic__m {
+  flex: none;
+  flex-basis: 100%;
+  padding-left: calc(18px + var(--sp-3));
+  font-family: var(--font-mono);
+  font-size: var(--type-micro);
+  font-weight: 700;
+  color: var(--text-faint);
+}
+.kp-topic__live { color: var(--yes-400); }
+/* The topic's crowd lean, drawn with the conviction bar's own gradient. ⛔ Rendered ONLY when the
+   topic has money on it — a 50%-wide bar over an empty topic is the same fabricated claim as a
+   "50%" label, drawn instead of written (licence condition 1). */
+.kp-topic__lean {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--bar-fill-yes);
+  opacity: 0.6;
+  transition: width var(--t-move) var(--m-glide), opacity var(--t-quick) ease-out;
+}
+.kp-topic:hover .kp-topic__lean { opacity: 1; }
+
+/* ── §1e UP AND DOWN — 920 centred is the whole fix for the ~500px hole at 1440 ───────────── */
+.kp-updown {
+  display: block;
+  position: relative;
+  overflow: hidden;
+  max-width: 920px;
+  margin-inline: auto;
+  padding: var(--sp-5);
+  border: 1px solid var(--brand-soft);
+  border-radius: var(--r-lg);
+  background: var(--hero-panel-grad);
+  box-shadow: var(--elev-raised);
+  transition: border-color var(--t-quick) ease-out, box-shadow var(--t-quick) ease-out;
+}
+@media (min-width: 768px) { .kp-updown { padding: var(--sp-6); } }
+.kp-updown:hover { border-color: var(--brand-400); box-shadow: var(--elev-raised-hover); }
+.kp-updown__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+}
+
+/* ── §1f WHY THE RESULT CAN BE TRUSTED — one editorial claim, three demoted facts ─────────── */
+.kp-claim {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--type-h1);
+  line-height: 1.16;
+  letter-spacing: -0.015em;
+  color: var(--text);
+  max-width: 30ch;
+  margin: var(--sp-2) 0 0;
+}
+@media (min-width: 1024px) { .kp-claim { font-size: var(--type-display-2); } }
+.kp-trust {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sp-6);
+  margin-top: var(--rh-close);
+  padding-top: var(--rh-close);
+  border-top: 1px solid var(--claret-edge);
+}
+@media (min-width: 1024px) {
+  .kp-trust { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; }
+  /* 1px rules BETWEEN the cells, never around them. */
+  .kp-trust > * { padding-right: var(--sp-6); }
+  .kp-trust > * + * { border-left: 1px solid var(--border); padding-left: var(--sp-6); }
+}
+.kp-trust__glyph { display: flex; color: var(--gilt); }
+.kp-trust__h {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--type-h4);
+  color: var(--text);
+  margin: var(--sp-3) 0 0;
+}
+.kp-trust__b {
+  font-size: var(--type-small);
+  line-height: 1.6;
+  color: var(--text-muted);
+  margin: var(--sp-2) 0 0;
+}
+/* The M-Pesa mark sits on a WHITE tile via `PaymentLogo` — the marks are trademarked and every
+   one of them is drawn for a light surface. Only the ROW is styled here. */
+.kp-trust__marks { display: flex; align-items: center; gap: var(--sp-2); margin-top: var(--sp-3); }
+
+/* ── §1g SETTLED IN THE LAST SEVEN DAYS — the only element proving a cycle completes ──────── */
+.kp-settled { border-top: 1px solid var(--border); margin-top: var(--rh-close); }
+/* The ROW is the anchor (see trust-band.tsx): the question alone measured 20px at 360,
+   under half the 44px floor. As a link it needs the text-decoration reset and a hover the whole
+   row shares. */
+.kp-settled__row {
+  color: inherit;
+  text-decoration: none;
+  transition: background var(--t-quick) ease-out;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas: "o q" ". s" ". a";
+  align-items: center;
+  gap: var(--sp-1) var(--sp-4);
+  min-height: 64px;
+  padding-block: var(--sp-3);
+  border-bottom: 1px solid var(--border);
+}
+@media (min-width: 768px) {
+  .kp-settled__row {
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    grid-template-areas: "o q s a";
+    gap: var(--sp-4);
+  }
+}
+.kp-settled__row:hover { background: var(--bg-overlay); }
+.kp-settled__row:hover .kp-settled__q { color: var(--text); }
+.kp-settled__pill { grid-area: o; }
+.kp-settled__q {
+  grid-area: q;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--type-small);
+  color: var(--text-muted);
+}
+.kp-settled__src {
+  grid-area: s;
+  font-family: var(--font-mono);
+  font-size: var(--type-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+/* Gilt is correct here and nowhere near it is: this is money that was EARNED and PAID (Q5). */
+.kp-settled__amt {
+  grid-area: a;
+  font-family: var(--font-mono);
+  font-size: var(--type-small);
+  font-weight: 700;
+  color: var(--gilt);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+/* A void paid nothing — it says so in words rather than wearing the money ink over a blank. */
+.kp-settled__amt--void { color: var(--text-faint); font-weight: 400; }
+
+/* ── §1h THE RESPONSIBLE-GAMBLING LINE ───────────────────────────────────────────────────────
+   ⚠️ EVERY STRING IS VERBATIM FROM `public-footer.tsx` — no new RG copy exists anywhere in this
+   work, and the footer itself is untouched. Placement above the footer is a REGULATORY question
+   (LCCP §SR 5.1.5 governs where RG messaging must appear); it is built as designed and flagged
+   for compliance sign-off. It is one deletion if refused. */
+.kp-rg {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3) var(--sp-4);
+  margin-top: var(--rh-close);
+  padding-top: var(--rh-close);
+  border-top: 1px solid var(--border);
+}
+.kp-rg__18 {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--no-700);
+  border-radius: var(--r-pill);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--type-micro);
+  color: var(--no-300);
+}
+.kp-rg__say { font-size: var(--type-small); font-style: italic; color: var(--text-subtle); }
+.kp-rg__links { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-4); }
+.kp-rg__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: var(--type-small);
+  color: var(--text-muted);
+  transition: color var(--t-quick) ease-out;
+}
+.kp-rg__link:hover { color: var(--text); }
+
+
+/* =====================================================================
+   THE BOTTOM RAIL — round-2 kit §2 / COMPONENTS §14 (batch 3, 2026-08-13)
+   =====================================================================
+   Was a floating inset capsule on a 78% `--bg-elevated` mix with a 16px backdrop blur — the
+   same see-through problem as the header, on the highest chrome a phone has. And it said
+   "current" with `--aqua-300` (`oklch(72% 0.11 195 / 0.18)` plus a matching glow, both
+   hand-typed) while the desktop bar said it with `--pill-active`: two active languages for one
+   idea, one of them a literal.
+
+   Now: `--panel`, a 1px `--border` top, `--shadow-overlay-up`, safe-area padding. Active is
+   `--pill-active` on the pip and a `--text` label — the same sentence the desktop bar speaks.
+   ⛔ Aqua is gone from navigation entirely.
+   ========================================================================================= */
+.kp-rail {
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  box-shadow: var(--shadow-overlay-up);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.kp-rail__item {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-1);
+  /* 64px + the label, so the whole slot is the target — not just the pip inside it. */
+  min-height: 64px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  color: var(--text-subtle);
+  text-decoration: none;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  transition: color var(--t-quick) ease-out;
+}
+.kp-rail__item[data-on] { color: var(--text); }
+.kp-rail__item:hover { color: var(--text); }
+.kp-rail__pip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 26px;
+  border-radius: var(--r-pill);
+  transition: background var(--t-quick) ease-out, box-shadow var(--t-quick) ease-out;
+}
+.kp-rail__item[data-on] .kp-rail__pip {
+  background: var(--pill-active);
+  box-shadow: var(--edge-lit);
+}
+.kp-rail__label {
+  font-family: var(--font-mono);
+  font-size: var(--type-micro);
+  font-weight: 600;
+  line-height: 1;
+  /* ⚠️ Swahili runs 1.74x p90 against English on short labels and `Jedwali la Washindi` is
+     x6.33 — a rail label has one line and 20% of a 360px viewport, so it must be allowed to
+     ellipsise rather than wrap the bar into two rows. `max-width` is the slot, not a guess. */
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-inline: 2px;
+}
+.kp-rail__item[data-on] .kp-rail__label { font-weight: 700; }
+/* The product-line dot — the same 5px gilt mark the desktop nav carries, on the pip's corner. */
+.kp-rail__dot {
+  position: absolute;
+  top: 1px;
+  right: 5px;
+  width: 5px;
+  height: 5px;
+  border-radius: var(--r-pill);
+  background: var(--gilt);
+}
+
+/* =====================================================================
+   ENTRY MOTION — kit MOTION.md + README §Interactions (batch 3)
+   =====================================================================
+   ⭐ THE BUDGET IS 550ms, AND THE KIT CONTRADICTS ITSELF ABOUT IT. `MOTION.md` §2 states 520ms
+   with delays 0/60/120/180; correction round 2.1 replaced that stagger with a weighted
+   80/150/210 and says "budget now 550ms", and the round-2-FINAL README repeats 550. The later
+   correction round wins — that is what "round 2 final" means — so: four glide rises of 340ms at
+   0 / 80 / 150 / 210, i.e. 210 + 340 = 550. `MOTION.md`'s own table is the pre-2.1 draft.
+   (Same for the ticker: §1 and §4 say 64s, round 2.1 and the README say 42s. The strip's
+   existing 70s is left alone — it is shipped, it is inside the "reads as a wire feed" intent,
+   and re-timing a running marquee is not a landing-composition change.)
+
+   ⛔ NOTHING BELOW THE FOLD PARTICIPATES IN THE BUDGET. Sections reveal on first intersection,
+   once, and the observer is dropped after firing.
+
+   ⭐ PROGRESSIVE: the hidden state is scoped to `.js [data-reveal]` and the SCRIPT adds `.js` to
+   <html> itself, so a no-JS load renders every section visible. A reveal that hides content by
+   default and needs JavaScript to show it is a blank page on a failed bundle.
+
+   ⚠️ `animation-delay` IS clamped by the universal calm block in `motion.css` (ATOM A), so a
+   delayed `both`-fill keyframe would otherwise hold its invisible first frame for the whole
+   delay. That is why the hero's four steps use a plain `transition`-free keyframe with an
+   explicit delay AND the calm branches below mark everything visible outright — belt and braces,
+   because the failure mode is a blank hero rather than a missing flourish.
+   ========================================================================================= */
+/* 🔴 `kp-rise` IS REUSED, NOT REDEFINED — and `test:keyframes` rule 1.1 is what caught the
+   attempt. A second `@keyframes kp-rise` was written here with the kit's 16px offset while one
+   already existed at globals.css:2792 with 8px. A duplicate top-level name does not shadow one
+   rule: **the LAST definition wins document-wide**, so it would have silently retuned the
+   leaderboard podium and the `/live` pulse grid, which both consume `.kp-rise`, and nothing
+   anywhere would have errored.
+   ⭐ So the hero rises on the platform's EXISTING rise. The kit's 16px is a paint value and
+   `globals.css` outranks every document on a paint value (§0d); one rise keyframe for the whole
+   product is the stronger system decision than two that differ by 8px. What the hero varies is
+   what a call site is allowed to vary: the easing (`--m-glide`, the kit's "anything arriving")
+   and the delay. */
+@keyframes kp-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* The four hero steps. Only ever applied under `.js`, so no-JS renders them at rest. */
+.js .kp-hero__inner > *:nth-child(1) { animation: kp-rise var(--t-move) var(--m-glide) 0ms both; }
+.js .kp-hero__inner > *:nth-child(2) { animation: kp-rise var(--t-move) var(--m-glide) 80ms both; }
+.js .kp-hero__inner > *:nth-child(3) { animation: kp-rise var(--t-move) var(--m-glide) 150ms both; }
+.js .kp-hero__inner > *:nth-child(4) { animation: kp-rise var(--t-move) var(--m-glide) 210ms both; }
+/* Anything after the fourth block rises with it rather than extending the budget. */
+.js .kp-hero__inner > *:nth-child(n+5) { animation: kp-rise var(--t-move) var(--m-glide) 210ms both; }
+.js .app-topbar { animation: kp-fade var(--t-base) linear 0ms both; }
+
+/* Below the fold: revealed on first intersection by `section-reveal.tsx`, which sets
+   `data-revealed` and then unobserves. */
+/* Hidden ONLY while unrevealed, and only under .js — see reveal.tsx for why the attribute
+   is rendered by React from state rather than written onto the node by a script. */
+.js [data-reveal]:not([data-revealed]) {
+  opacity: 0;
+  transform: translateY(12px);
+}
+.js [data-reveal][data-revealed] {
+  opacity: 1;
+  transform: none;
+  transition: opacity var(--t-move) var(--m-glide), transform var(--t-move) var(--m-glide);
+}
+
+/* ── the three calm branches, all in this one change (test:reduce-motion) ───────────────────
+   ⛔ ALL THREE GATES, OR NONE. The OS media query, the in-app switch (`[data-motion="minimal"]`)
+   and the low-end-device THROTTLE (`[data-motion="reduced"]`) are three different audiences, and
+   our target device gets neither of the first two. Every branch marks the content VISIBLE rather
+   than merely shortening the animation, because the failure being prevented is a surface that is
+   invisible for the length of a delay — not a flourish that is too long. */
+@media (prefers-reduced-motion: reduce) {
+  .js .kp-hero__inner > *,
+  .js .app-topbar { animation: none; opacity: 1; transform: none; }
+  .js [data-reveal] { opacity: 1; transform: none; transition: none; }
+}
+[data-motion="minimal"] .kp-hero__inner > *,
+[data-motion="minimal"] .app-topbar { animation: none; opacity: 1; transform: none; }
+[data-motion="minimal"] [data-reveal] { opacity: 1; transform: none; transition: none; }
+/* The low-end tier is a THROTTLE — it keeps full durations, so the entry itself survives; what
+   it drops is the WAIT, exactly as `[data-motion="reduced"] .stagger-item` already does. */
+[data-motion="reduced"] .kp-hero__inner > * { animation-delay: 0ms; }
+[data-motion="reduced"] [data-reveal] { opacity: 1; transform: none; transition: none; }

@@ -1,22 +1,60 @@
 import Link from "next/link";
 import { fill } from "@/lib/utils";
-import { I, categoryGlyph } from "@/components/ui/glyphs";
+import { I } from "@/components/ui/glyphs";
 import { MarketCard } from "@/components/markets/market-card";
 
-import { listMarkets, impliedYesPct, isClosedByTime, isSelectionClosed, traderSeedsByMarket } from "@/lib/server/market-service";
+import {
+  listMarkets, impliedYesPct, isClosedByTime, isSelectionClosed, traderSeedsByMarket,
+  MARKET_CATEGORIES,
+} from "@/lib/server/market-service";
 
 import { getCardCharts } from "@/lib/server/market-history";
 import { getSession } from "@/lib/server/session";
 import { getPlatformStats } from "@/lib/server/platform-stats";
-import { StatsBand } from "@/components/home/stats-band";
 import { LandingHero } from "@/components/home/landing-hero";
+import { HowItWorks } from "@/components/home/how-it-works";
+import { TopicTiles } from "@/components/home/topic-tiles";
+import { TrustBand } from "@/components/home/trust-band";
+import { RgLine } from "@/components/home/rg-line";
+import { Reveal } from "@/components/layout/reveal";
 import { pricedYesPct } from "@/lib/markets/discovery";
 import { heroFigures, type HeroRow } from "@/lib/markets/hero";
+import { landingComposition, LANDING_GRID_SIZE } from "@/lib/markets/landing";
 import { timeLeftLabel } from "@/lib/markets/time-left";
 import { getServerT } from "@/lib/i18n-server";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * THE LANDING PAGE — round-2 kit README §1 / SPEC §1 + §3, applied in batch 3.
+ *
+ * ── THE COMPOSITION, AND WHY IT IS IN THIS ORDER ──────────────────────────────────────────────
+ * hero → how it works → pick a side (grid) → browse by topic → Up & Down → why it can be trusted
+ * (+ the settled strip and the RG line inside that last act) → footer.
+ *
+ * The purpose is a funnel: show what Tanzania is actually predicting today, THEN teach the
+ * mechanic, THEN prove the results are trustworthy. Up & Down moves BELOW the grid — it was
+ * directly under the hero, which put a second product line in front of a visitor who had not yet
+ * seen a single market of the first one.
+ *
+ * Section gaps are 144 · 96 · 96 · 144 and they come from PAIRS OF PADDING, never a margin — see
+ * the `.kp-band` block in `globals.css` and the `--rh-*` comment in §Spacing. Batch 3 is the first
+ * consumer those four tokens have ever had.
+ *
+ * ── WHAT WAS DELETED ──────────────────────────────────────────────────────────────────────────
+ * `StatsBand` (the two zero-counters, gated `settledCount > 0`) is GONE, component and call. Its
+ * job is done twice over by things that are above the fold or that prove more: the hero's proof
+ * rail carries the live figures, and the settled strip proves the platform finishes what it starts.
+ * A number whose purpose is to show the platform is alive is worthless 4,900px down the page.
+ *
+ * ── 🔴 THE REPETITION THIS FIXES ──────────────────────────────────────────────────────────────
+ * Batch 2's re-validation pass recorded that the hero no longer repeated itself but the PAGE still
+ * did: the hero's four questions were also the first four cards of this grid, because both were
+ * closing-soonest over the same book — the same markets twice within two screens. The grid now has
+ * a DIFFERENT LENS and is disjoint from the hero by construction (`landingGrid`), so a visitor
+ * scrolling two screens reads ten different markets instead of five markets twice. The eyebrow
+ * NAMES the lens, so the grid is a claim rather than a sample (kit §1c).
+ */
 export default async function LandingPage() {
   const [{ t, locale }, liveRaw, updownLiveRaw, session, stats] = await Promise.all([
     getServerT(),
@@ -29,13 +67,12 @@ export default async function LandingPage() {
   ]);
   const nowMs = Date.now();
   const liveAll = liveRaw.filter((m) => !isClosedByTime(m));
-  const live = liveAll.slice(0, 6);
   const updownLiveCount = updownLiveRaw.filter((m) => !isClosedByTime(m)).length;
 
-  // ── the hero's figures ──────────────────────────────────────────────────────────────
-  // Over the WHOLE open book, not the six cards below: "44 open · TZS 186K in play · 57% YES"
-  // are claims about the platform, and computing them from a slice would make the hero state a
-  // smaller number than /markets does for the same word. Pure and synchronous — no extra query.
+  // ── ONE decorated board read, four consumers ────────────────────────────────────────────────
+  // The hero's figures, the grid, the topic tiles and the cards all fold over THIS array. Every
+  // predicate and ordering comes from `discovery.ts`, so the landing cannot drift from `/markets`
+  // about what "open" means — two surfaces disagreeing about someone's money is what B6 exists for.
   const heroRows: HeroRow[] = liveAll.map((m) => ({
     id: m.id,
     category: m.category,
@@ -60,44 +97,37 @@ export default async function LandingPage() {
   }));
   const figures = heroFigures(heroRows, nowMs);
 
+  // The hero draws the featured card plus its question board; the grid must show none of them.
+  const heroIds = [
+    ...(figures.featured ? [figures.featured.id] : []),
+    ...figures.board.map((r) => r.id),
+  ];
+  const comp = landingComposition(heroRows, nowMs, {
+    openPoolTzs: figures.poolTzs,
+    heroIds,
+    categories: MARKET_CATEGORIES,
+  });
+
   // ⚠️ Deliberately sequential, and it is cheaper this way. The crest-stack lookup used
   // to run inside the Promise.all above, which meant it could not know which markets
   // the landing page would draw — so it read the ENTIRE Position table, every render.
   // Waiting one round-trip to learn the ids buys an indexed lookup instead of an
   // unbounded scan that grows forever (positions are never pruned).
   // ⛔ The hero's featured market is chosen by "closing soonest" across the whole open book, so
-  // it is not necessarily one of the six below — it joins the id list explicitly rather than
-  // being fetched separately, which would be a second unbounded read.
-  const drawnIds = [...new Set([...live.map((m) => m.id), ...(figures.featured ? [figures.featured.id] : [])])];
+  // it is not necessarily one of the grid's — it joins the id list explicitly rather than being
+  // fetched separately, which would be a second unbounded read.
+  const drawnIds = [...new Set([...comp.grid.map((r) => r.id), ...heroIds])];
   const traderMap = await traderSeedsByMarket(drawnIds)
     .catch(() => new Map() as Awaited<ReturnType<typeof traderSeedsByMarket>>);
-
-  // C2a stats band — REAL aggregates, never fabricated. Markets settled = resolved
-  // count; TZS paid out = Σ of CONFIRMED BET_PAYOUT + CASHOUT (same basis as the
-  // finance reports). Materialised: `getPlatformStats` does a DB-side sum (no row
-  // scan) + a short-TTL cache so the high-traffic landing doesn't recompute per view.
-  const settledCount = stats.settledCount;
-  const paidOut = stats.paidOutTzs;
   // One query for the whole board — never map getCardChart across a list.
   const cardCharts = await getCardCharts(drawnIds).catch(() => new Map());
   const isAuthed = !!session;
 
-  const TOPICS: Array<{ id: string; label: string }> = [
-    { id: "all",     label: t.market.catAll },
-    { id: "sports",  label: t.market.catSports },
-    { id: "macro",   label: t.market.catMacro },
-    { id: "weather", label: t.market.catWeather },
-    { id: "crypto",  label: t.market.catCrypto },
-    { id: "culture", label: t.market.catCulture },
-    { id: "tech",    label: t.market.catTech },
-    { id: "other",   label: t.market.catOther },
-  ];
-
   // ONE definition, shared with the hero and /markets — this was a fifth copy of the same nine
   // lines, and the copies had drifted (three could render "0m left" on a market still taking
   // bets). See src/lib/markets/time-left.ts.
-  const timeLeftStr = (iso: string): string =>
-    timeLeftLabel(Date.parse(iso), nowMs, {
+  const timeLeftStr = (ms: number): string =>
+    timeLeftLabel(ms, nowMs, {
       closed: t.market.closed,
       days: t.market.timeLeftD,
       hours: t.market.timeLeftH,
@@ -105,11 +135,10 @@ export default async function LandingPage() {
     }, fill);
 
   return (
-    <div className="space-y-8 lg:space-y-10">
-
-      {/* HERO — the question board (round-2 kit §1a). Built from the brand mark, the type and
-          REAL market data; `public/hero/hero-bg.webp` and the 75vh photograph it filled went out
-          in the same commit this landed. Its own comment called itself INTERIM. */}
+    <div>
+      {/* ── §1a HERO — the question board (kit §1a) ───────────────────────────────────────────
+          Built from the brand mark, the type and REAL market data; `public/hero/hero-bg.webp` and
+          the 75vh photograph it filled went out in the same commit this landed. */}
       <LandingHero
         figures={figures}
         t={t}
@@ -119,208 +148,111 @@ export default async function LandingPage() {
         cards={{ charts: cardCharts, traders: traderMap }}
       />
 
-      {/* Rest of page — centered container */}
-      <div className="mx-auto max-w-[1280px] px-3 lg:px-6 space-y-8 lg:space-y-10">
+      {/* ── §1b HOW IT WORKS — chapter break: tinted band, 144 from the hero ───────────────── */}
+      <HowItWorks t={t} />
 
-      {/* UP & DOWN discovery band — the fast game is a separate product line and never
-          appears in the poll lists, so the landing page promotes it explicitly (it was
-          otherwise invisible to a new visitor). Fast-market visual language: live pulse,
-          indigo brand accent, "higher or lower before the clock runs out". */}
-      <section>
-        <Link
-          href={"/updown" as never}
-          className="group relative block overflow-hidden rounded-2xl border border-brand-500/40 p-5 sm:p-6 transition-colors hover:border-brand-400"
-          style={{ background: "radial-gradient(120% 160% at 0% 0%, oklch(34% 0.15 262 / 0.55) 0%, oklch(20% 0.10 262 / 0.30) 55%, transparent 100%), var(--bg-elevated)" }}
-        >
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="min-w-0">
-              <p className="mb-1 inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-brand-200">
-                <span className="live-dot" /> {t.home.updownEyebrow}
-              </p>
-              <h2 className="font-display text-[24px] md:text-[28px] font-bold text-text">{t.market.udTitle}</h2>
-              <p className="mt-1 max-w-[52ch] text-[13.5px] leading-[1.5] text-text-muted">{t.market.udTagline}</p>
-              <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.10em] text-text-subtle">
-                {updownLiveCount > 0
-                  ? <span className="text-brand-200">{updownLiveCount} {t.home.updownRoundsLive}</span>
-                  : t.home.updownStartsSoon}
-              </p>
-            </div>
-            <span className="btn btn-primary btn-lg shrink-0">
-              <I.trendingUp s={16} /> {t.home.updownCta}
-              <I.chevronRight s={14} />
-            </span>
-          </div>
-        </Link>
-      </section>
-
-      {/* LIVE MARKETS — surfaced immediately, no scroll-the-marketing-page-first */}
-      {live.length > 0 && (
-        <section>
-          <div className="mb-4 flex items-baseline justify-between">
-            <div>
-              <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold" style={{ color: "var(--live-400)" }}>{t.home.liveSection}</p>
-              <h2 className="font-display text-[26px] md:text-[30px] font-bold text-text">{t.home.pickASideNow}</h2>
-            </div>
-            <Link href={"/markets" as never} className="font-mono text-[12px] uppercase tracking-[0.16em] text-brand-300 hover:text-brand-200">
-              {t.common.viewAll}
-            </Link>
-          </div>
-          <div className="market-grid">
-            {live.slice(0, 8).map((m) => {
-              const cc = cardCharts.get(m.id) ?? { spark: [] };
-              return (
-                <MarketCard
-                  key={m.id}
-                  id={m.id}
-                  titleEn={m.titleEn}
-                  titleSw={m.titleSw}
-                  titleZh={m.titleZh}
-                  category={m.category}
-                  yesPct={impliedYesPct(m)}
-                  volume={m.yesPool + m.noPool}
-                  predictors={m.predictorCount}
-                  timeLeft={isSelectionClosed(m) ? t.home.waitingForResults : timeLeftStr(m.selectionClosedAt ?? m.resolutionAt)}
-                  status="LIVE"
-                  selectionClosed={isSelectionClosed(m)}
-                  sourceUrl={m.sourceUrl}
-                  spark={cc.spark}
-                  move24h={cc.move24h}
-                  traders={traderMap.get(m.id)}
-                />
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      {/* BROWSE BY TOPIC (A7) — 8 tappable category tiles into the filtered board.
-          Royal-tinted glyphs (active/nav colour), never gold. */}
-      <section>
-        <div className="mb-4">
-          <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-brand-300">{t.common.topic}</p>
-          <h2 className="font-display text-[26px] md:text-[30px] font-bold text-text">{t.common.browseByTopic}</h2>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
-          {TOPICS.map((c) => {
-            const Glyph = c.id === "all" ? I.layoutGrid : I[categoryGlyph(c.id)];
-            const href = c.id === "all" ? "/markets" : `/markets?cat=${c.id}`;
-            return (
-              <Link
-                key={c.id}
-                href={href as never}
-                className="group flex flex-col items-center justify-center gap-2 rounded-md border border-border bg-bg-elevated/60 px-2 py-4 text-center transition-all hover:border-brand-400 hover:bg-brand-500/[0.06]"
-              >
-                <span className="text-brand-300 transition-colors group-hover:text-brand-200"><Glyph s={22} /></span>
-                <span className="font-mono text-[11px] font-semibold leading-tight text-text-muted transition-colors group-hover:text-text">{c.label}</span>
+      {/* ── §1c PICK A SIDE NOW + §1d BROWSE BY TOPIC — one section, one surface, 48 between ── */}
+      {comp.grid.length > 0 && (
+        <Reveal band="board" className="kp-band kp-band--tight">
+          <div className="kp-band__inner">
+            <div className="kp-shead">
+              <div>
+                <p className="kp-hero__eyebrow">
+                  <span className="kp-hero__tick" aria-hidden />
+                  {/* The eyebrow NAMES THE ORDERING. `pool` when there is money on the book,
+                      `new` when there is not — because "biggest pools" over a book of empty pools
+                      is a claim about a number nobody produced, and it would also order the grid
+                      identically to the hero. See `gridLensFor`. */}
+                  {comp.lens === "pool" ? t.home.gridEyebrowPool : t.home.gridEyebrowNew}
+                </p>
+                <h2 className="kp-shead__h">{t.home.pickASideNow}</h2>
+              </div>
+              <Link href={`/markets?sort=${comp.lens}` as never} className="kp-shead__link">
+                {fill(t.home.gridSeeAll, { n: figures.openCount })}
+                <I.chevronRight s={14} />
               </Link>
-            );
-          })}
-        </div>
-      </section>
+            </div>
 
-      {/* TRUST STRIP — combined "how + why" in one tight row, no more 6-card scroll.
-          v2 Dark Glass: top-lit royal glass panel + faint gilt/aqua corner glow
-          + 1px inner light-edge, so it reads as a premium frosted panel at rest. */}
-      <section
-        className="relative overflow-hidden rounded-xl border border-border p-5 lg:p-7"
-        style={{
-          background:
-            "radial-gradient(130% 150% at 0% 0%, oklch(27% 0.155 268) 0%, oklch(19% 0.12 268) 58%), " +
-            "radial-gradient(80% 120% at 100% 0%, oklch(40% 0.10 80 / 0.10), transparent 60%)",
-          /* M1 — an EVEN ring, and the token rather than a literal. Was
-             `inset 0 1px 0 oklch(100% 0 0 / 0.06)`: a top-only line, which M1 bans, in
-             PURE WHITE, which M1 bans a second time ("chalkiness on OLED"). `--edge-lit`
-             is both even and carries the 4% royal tint, at 0.055 against this 0.06. */
-          boxShadow: "var(--shadow-3), var(--edge-lit)",
-        }}
-      >
-        <div className="relative grid grid-cols-1 gap-5 md:grid-cols-3 md:gap-7">
-          <TrustItem
-            icon={<I.chart s={20} />}
-            n="01"
-            title={t.home.pickASideStake}
-            body={t.home.priceCompetitionPool}
-            tone="yes"
-          />
-          <TrustItem
-            icon={<I.shieldcheck s={20} />}
-            n="02"
-            title={t.home.twoOfficerResolution}
-            body={t.home.twoOfficerBody}
-            tone="teal"
-            href="/fairness"
-          />
-          <TrustItem
-            icon={<I.phone s={20} />}
-            n="03"
-            title={t.home.getPaidViaMpesa}
-            body={t.home.getPaidBody}
-            tone="gold"
-          />
-        </div>
-      </section>
+            <div className="market-grid">
+              {comp.grid.slice(0, LANDING_GRID_SIZE).map((r) => {
+                const cc = cardCharts.get(r.id) ?? { spark: [] };
+                return (
+                  <MarketCard
+                    key={r.id}
+                    id={r.id}
+                    titleEn={r.titleEn}
+                    titleSw={r.titleSw}
+                    titleZh={r.titleZh}
+                    category={r.category}
+                    /* The card owns its own cold-start gate (`noPrice = volume === 0`), so the
+                       fallback here is unreachable — and it is 0 rather than 50 deliberately: a
+                       50 would look like a price and ship, a 0 is visibly absurd and gets caught. */
+                    yesPct={r.yesPct ?? impliedYesPct({ yesPool: r.yesPool, noPool: r.noPool })}
+                    volume={r.pool}
+                    predictors={r.predictors}
+                    timeLeft={r.selectionClosed ? t.home.waitingForResults : timeLeftStr(r.bettableUntilMs)}
+                    status="LIVE"
+                    selectionClosed={r.selectionClosed}
+                    sourceUrl={r.sourceUrl}
+                    spark={cc.spark}
+                    move24h={cc.move24h}
+                    traders={traderMap.get(r.id)}
+                  />
+                );
+              })}
+            </div>
 
-      {/* STATS BAND (C2a) — real platform aggregates, count-up on scroll-in.
-          Hidden until at least one market has settled (no empty "0" proof band). */}
-      {settledCount > 0 && (
-        <section>
-          <StatsBand
-            settled={settledCount}
-            paidOut={paidOut}
-            settledLabel={t.home.statsSettled}
-            paidOutLabel={t.home.statsPaidOut}
-          />
-        </section>
+            {/* 48px below the grid, same surface — it belongs to this section (kit §1d). */}
+            <div style={{ marginTop: "var(--rh-close)" }}>
+              <TopicTiles topics={comp.topics} t={t} openCount={figures.openCount} />
+            </div>
+          </div>
+        </Reveal>
       )}
 
-      </div>{/* end centered container */}
-    </div>
-  );
-}
+      {/* ── §1e UP & DOWN — 920 centred inside the 1280 column ────────────────────────────────
+          The fast game is a separate product line and never appears in the poll lists, so the
+          landing promotes it explicitly (it was otherwise invisible to a new visitor). Its
+          max-width is the whole fix for the ~500px hole a full-width two-item flex row left
+          at 1440. */}
+      <Reveal band="updown" className="kp-band kp-band--tight kp-band--closes">
+        <div className="kp-band__inner">
+          <Link href={"/updown" as never} className="kp-updown group">
+            <div className="kp-updown__row">
+              <div className="min-w-0">
+                <p className="kp-hero__eyebrow" style={{ marginBottom: "var(--sp-1)" }}>
+                  <span className="live-dot" /> {t.home.updownEyebrow}
+                </p>
+                <h2 className="kp-shead__h" style={{ marginTop: 0 }}>{t.market.udTitle}</h2>
+                <p className="kp-trust__b" style={{ maxWidth: "52ch" }}>{t.market.udTagline}</p>
+                <p className="kp-topic__m" style={{ paddingLeft: 0, marginTop: "var(--sp-2)" }}>
+                  {updownLiveCount > 0
+                    ? <span className="kp-topic__live">{updownLiveCount} {t.home.updownRoundsLive}</span>
+                    : t.home.updownStartsSoon}
+                </p>
+              </div>
+              <span className="btn btn-primary btn-lg shrink-0">
+                <I.trendingUp s={16} /> {t.home.updownCta}
+                <I.chevronRight s={14} />
+              </span>
+            </div>
+          </Link>
+        </div>
+      </Reveal>
 
-function TrustItem({
-  icon, n, title, body, tone, href,
-}: {
-  icon: React.ReactNode;
-  n: string;
-  title: string;
-  body: string;
-  tone: "yes" | "teal" | "gold";
-  href?: string;
-}) {
-  const accent = {
-    yes:  "text-yes-300",
-    teal: "text-royal-300",
-    gold: "text-gold-300",
-  }[tone];
+      {/* ── §1f WHY THE RESULT CAN BE TRUSTED + §1g SETTLED + §1h RG ──────────────────────────
+          Chapter break: tinted band, 144 from Up & Down, and it runs continuously into the
+          footer's own claret rule (hence `--seam`). The settled strip and the RG line are parts
+          of this act, not two more sections. */}
+      <TrustBand t={t} locale={locale} settlements={stats.recentSettlements.slice(0, 5)} />
 
-  const inner = (
-    <div className="flex items-start gap-3.5">
-      <span
-        className={`shrink-0 inline-flex h-10 w-10 items-center justify-center rounded-lg border border-border-strong ${accent}`}
-        style={{
-          /* DA-9/E-132 — was a 180deg gradient off `--bg-elevated2` (26%, above
-             the 24% ink cap; token retired). The float wash is the system's lit
-             gradient and carries the lamp's own angle (M1). */
-          background: "var(--wash-float)",
-          /* M1 — even ring, tokenised. Same conversion as the hero above: a pure-white
-             top-only line is banned twice over, and `--edge-lit` is the one definition of
-             what a lit edge looks like on this platform. */
-          boxShadow: "var(--edge-lit)",
-        }}
-      >
-        {icon}
-      </span>
-      <div className="min-w-0">
-        <p className={`font-mono text-[10px] tracking-[0.16em] font-bold ${accent}`}>{n}</p>
-        <h3 className="font-display text-[15px] font-semibold leading-tight text-text">{title}</h3>
-        <p className="mt-1 text-[13px] leading-relaxed text-text-muted">{body}</p>
+      {/* The RG line sits inside the trust surface, above the footer. Rendered in its own
+          container so the band above can close its own padding. */}
+      <div className="kp-band kp-band--overlay kp-band--seam" style={{ paddingBlock: 0, borderTop: 0 }}>
+        <div className="kp-band__inner" style={{ paddingBottom: "var(--rh-close)" }}>
+          <RgLine />
+        </div>
       </div>
     </div>
   );
-  return href ? (
-    <Link href={href as never} className="block hover:opacity-90 transition-opacity">
-      {inner}
-    </Link>
-  ) : inner;
 }

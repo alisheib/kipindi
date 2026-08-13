@@ -24,10 +24,10 @@ contradiction found in the kit.
 | 1c · Old-doc cleanup (stale glyph archive, old-version sweep) | ✅ done — see CLEANUP-MANIFEST |
 | 1d · Re-verify the baseline on `5bfd95fa` | ✅ **2026-08-13: 22/22 GREEN re-run individually with real exit codes; `npx tsc --noEmit` exit 0, zero output.** Nothing red inherited |
 | 2 · Write the execution plan (§8) | ✅ 2026-08-13 — §8, definitions pinned |
-| 2a · /markets data contract | ⬜ batch 1 |
-| 2b · /markets UI (filter bar replaces rail) | ⬜ batch 1 |
-| 2c · Hero replacement (photo out, same commit) | ⬜ batch 2 |
-| 2d · Landing composition + header | ⬜ batch 3 |
+| 2a · /markets data contract | ✅ batch 1 |
+| 2b · /markets UI (filter bar replaces rail) | ✅ batch 1 |
+| 2c · Hero replacement (photo out, same commit) | ✅ batch 2 |
+| 2d · Landing composition + header + rail | ✅ **batch 3 — this session** |
 | 3 · Post-implementation cleanup remainder | ⬜ batch 4 |
 
 ---
@@ -160,7 +160,7 @@ topic taxonomy source of truth, whether search is server-side._
 | 1v · batch-1 VALIDATION pass (2026-08-13, later) | `(this session)` | 22 gates green individually incl. both RED harnesses (7/7 and 6/6); tsc 0; `npm run build` ✓ | 48 shots at 360/768/1280/1920 × en/sw/zh **read**, overflowX 0 / minTap 44px / 0 clipped on all 48; new menu guard proven RED against production and GREEN against the fix | 🔴 **The sort and topic menus were 1% usable on a phone** — fixed. Plus 3 instrument defects that had been reporting green for the wrong reason. Full account in §8.7c |
 | 2c hero | `(this commit)` | **29 gates green individually, real exit codes, no pipes** — the 22 design gates + `hero-contract` (29 assertions) + `discovery-contract` + `board-discovery` + `product-line` + `i18n`/`trilingual` + `integrity`/`outcome`/`history`/`docs`; **3 RED harnesses**: `red:hero-contract` **6/6**, `red:discovery-contract` 7/7, `red:board-discovery` 6/6; `tsc` exit 0 / 0 lines; `npm run build` exit 0, "Compiled successfully in 14.9s" (the 2 warnings are the known pre-existing `node:crypto`-in-Edge pair at `lock-key.ts:12` / `audit.ts:38`) | **40 frames read** at 360/768/1280/1920 × en/sw/zh across **two data states** — a populated book (Σ TZS 185,500, 52% YES) and a genuinely cold platform (users 0 · markets 46 · resolved 0). `overflowX=0` and `clipped=0` on every frame; **my** smallest control **56px** at every width | Photographic hero **DELETED** (`hero-bg.webp` 193 KB + its `:80` ref, cite-checked repo-wide) → the kit's question board: mark backdrop (geometry/opacity only) · headline from a dict key, **no gold on "wisdom"** · 3-figure proof rail · aggregate conviction via `TippingBar`'s existing `empty` state · 4 real markets closing soonest · one live featured `<MarketCard/>`. ⭐ **Cold start is now ONE rule with FOUR consumers** (`pricedYesPct`) and `DESIGN_AUTHORITY` was **corrected** — it had been stating the rule as the `&& predictors === 0` conjunction the card fixed as a bug. New instrument `qa:landing-shots`. Full account + 5 unpredicted findings in §8.7e |
 | 2c-bis hero RE-VALIDATION | `(this commit)` | tsc 0 · **30 gates green individually**, real exit codes · `red:hero-contract` **7/7** (was 6/6 — a seventh case reintroduces the duplication defect) · build exit 0, 13.3s · against **PRODUCTION**: `qa:discovery-probe` 0, `qa:discovery-board` 0, `qa:filter-stress` 0 incl. all 288 combinations | authed hero shot for the FIRST time (4 widths); whole-page frames read at 4 widths; hero `40 OPEN MARKETS` **measured** equal to the board's `status:open` 40 on prod | 🔴 **Found a defect I had already shipped**: the hero stated its lead market twice (featured card == board row 1). Fixed — the card is the soonest, the board opens at the second. Plus: the authed branch had never been rendered (now `AUTH=demo`), an authed page can never reach `networkidle` (SSE), and `git checkout --` during `next dev` 500s every CSS page until `.next/dev` is cleared. Full account in §8.7e-bis |
-| 2d landing + header | _next session_ | | | |
+| 2d landing + header + rail | `(this session, batch 3)` | **33 gates green individually incl. `landing-contract` and `ticker-honesty` (new)** + `hero-contract`/`discovery-contract`/`board-discovery`/`product-line` + `i18n`/`trilingual`; **4 RED harnesses**: `red:ticker-honesty` **13/13**, `red:landing-contract` **5/5**, `red:hero-contract` 7/7, `red:discovery-contract` 7/7, `red:board-discovery` 6/6; `tsc` exit 0 / 0 lines; `npm run build` exit 0, 11.5s | **96 frames** at 360/768/1280/1920 × en/sw/zh, `FULL=1`, all 6 required bands present, **0 failures**; 0 console errors (a real hydration mismatch was found and fixed — see below); every control OPENED (language menu, rail `More`, skip link) at 9 width×locale combinations, 0 failures; header/rail cross-checked on `/markets` + `/results` (the OTHER two pages this batch's global shell components render on) — 0 failures; cold-start pair proven directly: an 8,000/8,000 control card renders a REAL 50%, a genuinely empty market renders an em-dash + "No bets yet", never both as 50% | 🔴 **§3a compliance fix, done first: the ticker was FABRICATED** — a hardcoded 12-item synthetic array on every page. Rebuilt on ONE `getPlatformStats` scan (no second unbounded query), settlements only (no individual bets — PDPA), ordered by `settledAt` DESC, a VOID carries no figure, outcome read never inferred, localised before render. `StatsBand` deleted. Landing composed on the `--rh-*` rhythm tokens (their first consumer). **The hero/grid repetition batch 2 left open is fixed**: `lib/markets/landing.ts` excludes the hero's own ids from the grid by construction and picks a lens the eyebrow states (`pool` when the book has money, `new` when it doesn't — average-of-zeros would have ordered the grid identically to the hero on a cold book). Topic tiles reconcile to the hero by construction (folds over the same open set), asserted by `landingTopicsReconcile`. Header: opaque at every scroll position (was 78%+blur), 3 nav tiers, ONE 44×44 language menu at every width (was a 3-pill capsule absent below 640 AND across 1024–1279, with a duplicate picker in the avatar menu to cover the second gap — both gone). Rail: 5 slots, `--pill-active` (aqua literals gone), `data-needle-keepout` wired to an existing-but-unused obstacle mechanism. Settled strip + RG line + trust band (M-Pesa via `PaymentLogo`, never inlined). Entry motion at 550ms on the EXISTING `kp-rise` keyframe (a second definition would have silently retuned two other consumers — caught by `test:keyframes`). Primer copy: the dict's `card3Body` was STALE against the capped-fee model (Swahili line described a fee-free split) and was corrected BEFORE the component was pointed at it, not after. Two-officer resolution copy corrected to match `requireTwoOfficer` actually being optional, not default. Full account, every defect found and how each was caught, in §8.7f below |
 | 3 remainder | _next session_ | | | |
 
 ## 7 · IMPLEMENTATION DOSSIER — measured facts for the next session (2026-08-12)
@@ -725,10 +725,27 @@ inventory of every player surface that filters:
 |---|---|
 | `/markets` | the round-2 bar (batch 1 + §8.7c) |
 | **`/results`** | 🔴 old sidebar rail · own category list · own sort · own href builder · **no counts** · **no guard of any kind** — addressed below |
-| `/positions` | a `tab` pill rail (4 states, no categories/sort) — shares the vestigial-bleed fix below |
+| `/positions` | a `tab` pill rail (**3** states — all/open/settled, no categories/sort) — shares the vestigial-bleed fix below |
 | `/proposals` | one `f` param, no rail |
-| `/live` · `/watchlist` · `/leaderboard` · `/fairness` · `/updown/history` | no category or sort filtering at all |
+| `/updown/history` | one real param (`?day=`), driving a chip and a validated empty state — a genuine single-axis filter, correctly named here rather than folded into the "no filtering" row below |
+| `/live` · `/watchlist` · `/leaderboard` · `/fairness` | no category or sort filtering at all |
 | admin lists | a different design language (admin kit); the round-2 kit is player surfaces only. ⚠️ Five admin files still spell their own `CATEGORIES` — recorded, not touched |
+
+⚠️ **RE-VERIFIED IN BATCH 3 (2026-08-13), and two things above were corrected on that pass** —
+`/positions` has 3 tabs, not 4 (the `["open","settled","all"] as const` union, checked against the
+tab array itself), and `/updown/history` was miscategorised alongside the truly unfiltered pages
+when it in fact carries a real, working day-window filter. Read the code, not a table, when the
+two disagree — this is exactly the class of drift §0a exists to catch.
+
+⛔ **Extending the round-2 discovery bar to `/live`, `/watchlist`, `/leaderboard` or `/fairness` is
+NOT in scope for batches 1–3, and re-verifying that they are unfiltered is not the same decision as
+building filtering for them.** The round-2 kit commission covers exactly three surfaces (hero,
+`/markets` discovery, the landing composition + header) — there is no delivered design for a
+leaderboard/fairness/live filter bar, and inventing one now would be a second, uncommissioned
+design decision, not an application of the existing one. If a future session is asked to add
+filtering to these pages, that is new scope needing its own design source (per §0b: a new design
+fact goes in `DESIGN_AUTHORITY.md`, never invented ad hoc at the call site) — named here so it is a
+decision for Ali, not a silent expansion.
 
 ### 🔴 `/results` dropped the category whenever a search was active
 
@@ -958,6 +975,192 @@ there grabs the fidget instead of opening the market. Belongs to a needle/z-inde
 the "Pick a side now" grid below it, because both are closing-soonest over the same book. The hero no
 longer repeats itself; the PAGE still repeats. Fixing it is a landing-composition decision (give the
 grid a different lens — biggest pool — or offset it past the hero's five), which is §1c's work.
+
+## 8.7f · BATCH 3 — the landing composition, header and rail
+
+**Shipped:** the ticker honesty fix (§3a of the next-session prompt, done first because it is the
+batch's compliance item) · `StatsBand` deleted · the page composed on the `--rh-*` rhythm tokens ·
+the hero/grid repetition batch 2 left open, fixed · how-it-works band reading the first-visit
+modal's own keys · real per-topic tiles · the header rebuilt on three nav tiers with one language
+control · the bottom rail rebuilt on five destinations · the RG line + trust band + settled strip ·
+entry motion at 550ms with all three reduced-motion gates.
+
+### 🔴 §3a — the ticker was fabricated, and this is the batch's compliance fix, done first
+
+`src/lib/server/ticker-feed.ts` was a hardcoded twelve-item synthetic array — "TZS 180K won on YES
+on Long rains begin before 15 Apr · 5m ago" — rendered by `app-shell` on **every page** of a
+licensed real-money platform. Its own header comment admitted it: *"realistic synthetic data that
+matches real platform patterns."* Same defect class as the fabricated price history killed in
+`6b1975b`.
+
+Rebuilt on five rules, each with a positive control in `test:ticker-honesty` (59 assertions) and
+each caught on its own assertion by `red:ticker-honesty` (13/13):
+
+1. **Settlements only, never a bet.** "TZS 45K predicted YES on X" publishes one identifiable
+   player's stake on every page — with 73 accounts on production that is not anonymous to anyone
+   who knows them (PDPA), not a missing-data problem.
+2. **A row with `settledAt: null` is not an event.** `status: RESOLVED` is the verdict;
+   `settledAt` is when the money moved. A RESOLVED market with no `settledAt` is still inside its
+   objection window.
+3. **Ordered by `settledAt` DESC**, never the board's order — slicing a board-ordered list once
+   pinned three July markets as "recent" on production (`markets/page.tsx:326-334`).
+4. **A VOID carries no amount.** We kept nothing and every stake was refunded, so `netPool` does
+   not describe what happened; a void is stated NEUTRALLY, never as an error (§C4).
+5. **The outcome is read, never inferred** (law 25); an unrecorded outcome is dropped.
+
+⭐ **One scan, two consumers.** `getPlatformStats` already ran an unbounded
+`listMarkets({status:"RESOLVED"})` once a minute behind a 60s memo **and threw every row away to
+keep a `.length`**. The ticker, rendered on every page, would otherwise have put a second full scan
+behind every request on the site; it now reads the rows that scan already produced
+(`platform-stats.ts`'s `recentSettlements`). `paidOutTzs` — `StatsBand`'s only reader — was removed
+in the same pass once `StatsBand` was deleted, rather than left as a query kept warm for nobody.
+
+⚠️ Two further tells confirmed on production and fixed structurally: Chinese connectives wrapping
+English titles (fixed by handing the feed an already-localised title, so the shape is
+unrepresentable) and a left-edge clip (real, but caused by `animation-play-state: paused` freezing
+the marquee wherever it happened to be under `prefers-reduced-motion` rather than returning it to
+rest — the reduced-motion OS gate for the ticker had never actually been exercised).
+
+### The hero/grid repetition, closed by construction
+
+Batch 2's re-validation pass recorded that the hero no longer repeated itself but the PAGE still
+did: the hero's four board questions were also the first four cards of "Pick a side now" — both
+closing-soonest over the same book. `src/lib/markets/landing.ts`:
+
+- `landingGrid(rows, nowMs, { lens, excludeIds })` subtracts the hero's own drawn ids from the set
+  it orders — the repeat is impossible by construction, not by remembering to offset a slice.
+- `gridLensFor(openPoolTzs)` picks `pool` when the book has real money and `new` when it does not.
+  **Not a fallback** — on a cold book every pool is 0, `pool` ties everywhere and falls to its
+  documented tie-break (`bettableUntil` asc), which **is** closing order: a grid headed "Biggest
+  pools" would order identically to the hero on the exact data state batch 1 shipped with. The
+  eyebrow states whichever lens is active, so the grid is a claim, not a decoration.
+- `landingTopics` + `landingTopicsReconcile` make the kit's own requirement — "per-topic counts and
+  pools must reconcile to the header or the page contradicts itself" — an assertion rather than an
+  argument: both figures are folds over the identical `open` set.
+
+Proven by `test:landing-contract` (23 assertions) + `red:landing-contract` (5/5, incl. the
+regression itself: excluding nothing lets the biggest pool lead the grid exactly as it leads the
+hero) and directly on the rendered board: the exact-50 control card and a genuinely cold card were
+read from the live DOM and shown to differ (`— · No bets yet · No pool yet` vs `50% · YES @ 50% ·
+NO @ 50%`) — proving the cold-start law rather than asserting it.
+
+### The header — three tiers, one language control, and what was found building it
+
+Opaque `var(--panel)` at every scroll position (was 92% inline, mixed to 78% + 12px blur ≥1024 —
+the see-through bug removed, not tuned). Three nav tiers, one meaning each. ONE 44×44 `EN ⌄`
+control at every width via `LanguageMenu`, replacing a 3-pill capsule that was hidden below 640
+**and** hidden again across 1024–1279 — the avatar menu carried a duplicate picker to cover the
+second gap, and that duplicate is now deleted (one control, never two, per the kit's own rule).
+
+🔴 **Found only by reading a rendered frame, invisible to every gate:**
+
+1. **The guest header rendered TWO `Sign in`/`Sign up` pairs** — `TopAppBar`'s own action tier plus
+   `AvatarMenu`'s pre-existing guest fallback, both in the same right-hand cluster. `overflowX` was
+   0, no band clipped, no control under the tap floor, no console error — the exact shape of
+   batch 2's hero-stated-twice defect. `AvatarMenu` now returns `null` when signed out; the header
+   owns auth at every width, `btn-lg` (46px) rather than the removed pair's `btn-sm` (30px, under
+   the floor on the two controls a new visitor reaches for first).
+2. **The language menu's flyout ran 64px off the left edge at 360 in a guest session** (67% visible
+   in English, 79% in Swahili) — the exact §8.7c defect shape recurring in new work. Root cause:
+   the panel self-aligned to the trigger's own right edge (`right:0` relative to itself), and at
+   360 the trigger is not the rightmost thing in its cluster — `Sign up` sits after it. Fixed by
+   measuring on open and flipping to left-anchored whenever right-anchoring would run off-screen,
+   rather than guessing a breakpoint that the next thing added to the cluster would re-break.
+3. **The step numeral in "How it works" rendered below its rule, not notched into it.** A negative
+   `margin-top` on an inline-block did not lift it — the parent's line box still laid out after
+   `padding-top`, and baseline alignment absorbed the shift. Fixed with absolute positioning
+   (`top: 0; transform: translateY(-50%)`), which is deterministic at any type size.
+4. **The brand lockup link was 136×33** — under the 44px floor on the control that returns a
+   reader to the board from anywhere in the product. The kit had already specified the fix
+   (`min-height: 44px`); it had simply never been applied.
+
+All four found by opening a control or reading a frame; none were visible to `overflowX`,
+`test:measure`, or any static gate. `qa:landing-shots` measured 0 clipped / 0 sub-44px controls
+throughout — the pattern §8.7c named: a screenshot of a *closed* menu, or a page with no overflow,
+looks perfect regardless.
+
+### The rail, the Needle, and a real hydration mismatch
+
+Five destinations (`Markets · Up & Down · Live · Results · More`), `--pill-active` on the pip
+(the aqua-literal active pill and 78%-mix backdrop-blur capsule are gone), auth out of the rail
+entirely. The Needle/rail collision from the batch-2 baseline frames is fixed at
+`[data-needle-keepout]` — an obstacle mechanism `needle.tsx` already read and nothing had ever
+supplied; one attribute on `<nav class="kp-rail">`, zero lines of the vendored physics touched.
+
+🔴 **The section-reveal effect produced a real hydration mismatch on 9 of 12 width×locale
+combinations.** Its first version was a single shell-level effect that found every `[data-reveal]`
+node and set `data-revealed` on it directly — including a `requestAnimationFrame` pass for bands
+already in view on load. Both mutations land on nodes the page's streamed bands had not finished
+hydrating, and every affected frame logged *"a tree hydrated but some attributes of the server
+rendered HTML didn't match the client properties"*, naming `data-revealed` as the extra attribute.
+Fixed by moving the reveal into a `<Reveal>` client wrapper that renders the attribute **from
+React state**, so the mismatch is unrepresentable rather than merely less likely — the same reason
+the header's scroll cast writes a `data-scrolled` flag to `<html>` instead of a class onto the
+header element `TopAppBar` owns. Re-verified after the fix: 0 console messages on the same 12
+combinations that had failed.
+
+### Three more things a rendered frame settled, that a plausible-looking artifact did not
+
+1. A tall single-element screenshot of the settled strip and of the topic band appeared to show a
+   small black "N" badge overlapping a settled row and, separately, the bottom rail's first slot.
+   Both are the documented §8.7e-bis artifact: Chromium paints `position:fixed` chrome (the chat
+   FAB) at a fixed VIEWPORT-relative offset when a beyond-viewport capture spans more than one
+   viewport height, so it appears to repeat "mid-band". Confirmed twice independently — once via
+   `elementsFromPoint` at the real scroll position (the settled row's own chip paints on top; the
+   FAB is nowhere in that stack) and once via exact rect overlap against the rail (0px² on every
+   one of the five slots) — before it was dismissed rather than "fixed".
+2. A green underline on a `TZS 0` topic tile looked, at reduced screenshot scale, like the
+   cold-start lean-bar rule had been violated. The DOM proved otherwise: `leanPresent: false` on
+   both zero-pool tiles (Sports, Culture), `true` with real widths (51%/54%/51%) on the three with
+   money. The visual read was wrong; the code was already correct.
+3. The two-officer resolution copy in `t.home.howStep2B` was corrected to state the mechanism as it
+   actually runs. `requireTwoOfficer` is a config flag and single-admin resolution seals in one
+   call — the platform default in every money mode (`market-service.ts:2115` + the recorded
+   operator decision). The kit's own wording — *"Two people verify the result… Two officers sign it
+   off"* — is a persuasive claim the product does not make by default; the source list (named
+   agency, league table, BoT mid-rate) is kept because it is the good and true part of the rewrite,
+   and the signature line now reads "An officer signs it off — two, when two-officer authorization
+   is enabled."
+
+### The dict's own primer copy was stale before it had its first reader
+
+`first-visit-primer.tsx` never read `t.primer.*` — it carried its own inline `L10n` copy objects,
+so the dict's matching keys sat unread and drifted against the capped-fee model. `card3Body`
+still said "minus a small margin", and **its Swahili line described a fee-free split with no
+commission mentioned at all** — a false statement about money, in the one language most likely to
+be read by the audience it targets, one render away from shipping the moment anything pointed at
+it. The how-it-works band needed exactly this copy (kit Open Q7: the band and the modal read one
+definition). So the dict was corrected to the component's own accurate text FIRST, and only then
+was the component — and the new band — wired to read it (§0a: delete the wrong copy, never sync
+two). Two more hardcoded trilingual literal blocks in the same file (`Back`/`Next`/`Got it`, the
+skip label, the dial's `drag to commit` caption rendering English inside an SVG to every locale)
+were pointed at the dict in the same pass, and the private `readLang()` cookie parser — a second
+reader of `kp-locale` beside `I18nProvider`'s own — was deleted.
+
+### Re-verified — the OTHER two pages these global components render on
+
+`TopAppBar` and `BottomNav` are shell components; `/markets` (batch 1) and `/results` (batch 1's
+§8.7d work) render the rebuilt versions on every load too. Cross-checked directly rather than
+assumed: on both routes, at 360 and 1280, in en and sw — `overflowX` 0, exactly one active nav
+item (localised correctly: `Masoko`/`Matokeo` in Swahili, not the English word a naive check would
+have looked for), exactly 2 auth controls, the discovery/filter rail present, rail visibility
+correct for the width, exactly one active rail slot. `test:hero-contract`, `test:discovery-contract`
+`test:board-discovery`, `test:product-line` and their three pre-existing RED harnesses (7/7, 7/7,
+6/6) are unchanged and green after this batch.
+
+### Gates and verification, in full
+
+33 gates green individually (the 22 design gates + `hero-contract` + `discovery-contract` +
+`board-discovery` + `product-line` + `i18n`/`trilingual` + `docs`/`orphans`/`needle` + the two new
+gates this batch adds: `ticker-honesty` 59 assertions, `landing-contract` 23 assertions). Five RED
+harnesses, all real-defect-per-assertion: `red:ticker-honesty` 13/13, `red:landing-contract` 5/5,
+`red:hero-contract` 7/7, `red:discovery-contract` 7/7, `red:board-discovery` 6/6. `tsc` exit 0 / 0
+lines. `npm run build` exit 0, 11.5s, the same two pre-existing `node:crypto`-in-Edge warnings.
+96 frames read at 360/768/1280/1920 × en/sw/zh with `FULL=1`, 0 failures, 0 console errors. Every
+control opened at 9 width×locale combinations (language menu ≥90% visible + direct-child options
++ Escape-closes, rail `More` ≥90% visible, skip link first-Tab), 0 failures. `qa:discovery-probe`,
+`qa:discovery-board`, `qa:results-board`, `qa:filter-stress` all exit 0 against the local server
+with the new header/rail in place.
 
 ## 8.8b · 🔴 THE BUILD CAN FAIL ON RAILWAY FOR A REASON THAT IS NOT IN THE CODE
 
