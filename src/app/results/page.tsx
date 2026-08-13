@@ -4,7 +4,8 @@ import { I, categoryGlyph } from "@/components/ui/glyphs";
 import { MarketCard } from "@/components/markets/market-card";
 import { Chip } from "@/components/ui/chip";
 import { TippingBar } from "@/components/brand";
-import { listMarkets, impliedYesPct, type MarketCategory } from "@/lib/server/market-service";
+import { listMarkets, impliedYesPct, MARKET_CATEGORIES } from "@/lib/server/market-service";
+import { categoryOptions } from "@/lib/markets/category-label";
 import { getCardCharts } from "@/lib/server/market-history";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
@@ -81,16 +82,10 @@ async function ResultsContent({
 }) {
   const { t, locale } = await getServerT();
 
-  const CATEGORIES: Array<{ id: "all" | MarketCategory; label: string }> = [
-    { id: "all",     label: t.market.catAll },
-    { id: "sports",  label: t.market.catSports },
-    { id: "macro",   label: t.market.catMacro },
-    { id: "weather", label: t.market.catWeather },
-    { id: "crypto",  label: t.market.catCrypto },
-    { id: "culture", label: t.market.catCulture },
-    { id: "tech",    label: t.market.catTech },
-    { id: "other",   label: t.market.catOther },
-  ];
+  // ⛔ DERIVED, NEVER RE-DECLARED. This used to be a hand-written eight-item list; the canonical
+  // set is seven (politics is licence-excluded) and lives in MARKET_CATEGORIES. A surface that
+  // spells its own list can silently gain or lose a category — see `lib/markets/category-label.ts`.
+  const CATEGORIES = categoryOptions(t, MARKET_CATEGORIES);
 
   const SORT_OPTIONS: Array<{ id: SortField; label: string }> = [
     { id: "resolved", label: t.results.sortNewest },
@@ -104,13 +99,27 @@ async function ResultsContent({
   const matches = (m: { titleEn: string; titleSw: string; titleZh?: string | null; category: string; resolutionCriterion?: string }) =>
     matchesQuery(parsed, m as unknown as Record<string, string | null | undefined>, MARKET_SEARCH);
 
-  // Fetch all resolved + voided
-  const effectiveCat = searching ? undefined : (activeCat === "all" ? undefined : activeCat as MarketCategory);
+  // 🔴 THE CATEGORY USED TO BE SILENTLY DROPPED DURING A SEARCH — measured on production
+  // 2026-08-13: `/results?q=bitcoin` returned the SAME four cards under cat=crypto, cat=sports and
+  // cat=weather, while the rail still painted the chosen category as selected. A control that says
+  // it is applied and is not is the 2026-08-10 failure shape, and it is exactly what the round-2
+  // count contract forbids (PLAN-OF-RECORD §8.3). Search and category now compose.
+  //
+  // ⛔ ONE read of the archive, then filter in JS — the same discipline as /markets. It is what
+  // lets every category name the set it would actually show, and it is not a new scale ceiling:
+  // the unfiltered read is what already happened on the default `cat=all` view.
   // B-1 — no swallow: the results archive IS this page; a failed read must throw
   // to results/error.tsx, never render "no results yet" over a live archive.
-  const resolved = (await listMarkets({ status: "RESOLVED", category: effectiveCat })).filter(matches);
-  const voided = (await listMarkets({ status: "VOIDED", category: effectiveCat })).filter(matches);
-  const all = [...resolved, ...voided];
+  const resolved = await listMarkets({ status: "RESOLVED" });
+  const voided = await listMarkets({ status: "VOIDED" });
+  /** Everything the SEARCH admits, across every category — the set the counts are folded from. */
+  const searched = [...resolved, ...voided].filter(matches);
+  const all = activeCat === "all" ? searched : searched.filter((m) => m.category === activeCat);
+  /** Cross-filtered: each number is what pressing that category would deliver under this search. */
+  const catCounts: Record<string, number> = {
+    all: searched.length,
+    ...Object.fromEntries(MARKET_CATEGORIES.map((c) => [c, searched.filter((m) => m.category === c).length])),
+  };
 
   // Sort
   if (activeSort === "volume") {
@@ -216,16 +225,29 @@ async function ResultsContent({
       {/* Filters + Grid */}
       <div className="mt-1 flex flex-col gap-5 lg:flex-row lg:gap-6">
         {/* Sidebar filters — sticky on desktop, horizontal scroll on mobile */}
-        <aside className="lg:w-[208px] lg:shrink-0 lg:sticky lg:top-[122px] lg:self-start lg:max-h-[calc(100dvh-134px)] lg:overflow-y-auto lg:overflow-x-hidden kp-thin-scroll lg:pb-3">
+        {/* `data-filter-rail` makes this addressable to the visual sweep. Without it the sweep
+            looked only for `.kp-discovery-bar`, found nothing on /results and reported
+            "0 controls, minTap -1" — a measurement of nothing, printed beside real ones. */}
+        <aside data-filter-rail className="lg:w-[208px] lg:shrink-0 lg:sticky lg:top-[122px] lg:self-start lg:max-h-[calc(100dvh-134px)] lg:overflow-y-auto lg:overflow-x-hidden kp-thin-scroll lg:pb-3">
           <div className="space-y-2.5 lg:space-y-4">
             {/* Sort */}
-            <nav aria-label={t.results.sortAria} className="flex flex-wrap items-center gap-1.5 -mx-1 px-1 overflow-x-auto lg:flex-col lg:flex-nowrap lg:items-stretch lg:gap-1 lg:mx-0 lg:px-0 lg:overflow-visible">
+            {/* ⚠️ NO `-mx-1 px-1 overflow-x-auto` HERE. It was vestigial and it cost a real
+                overflow: the rail wraps (`flex-wrap`), so a horizontal scroller never engages and
+                the 4px bleed on each side simply pushed the wrapper 4px past its own container at
+                360 and 768 in all three languages. Same shape as the `-mx-3` bleed removed from
+                the /markets strips. */}
+            <nav aria-label={t.results.sortAria} className="flex flex-wrap items-center gap-1.5 lg:flex-col lg:flex-nowrap lg:items-stretch lg:gap-1">
               <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle pr-1 lg:pr-0 lg:mb-1">{t.common.sort}</span>
               {SORT_OPTIONS.map((o) => {
                 const active = o.id === activeSort;
                 return (
                   <Link
                     key={o.id}
+                    /* ⛔ `replace`, not a push — a filter is not a navigation (kit README §3, and
+                       every /markets control does this). Without it, pressing five filters left
+                       five history entries and Back walked the player backwards through their own
+                       filter states instead of leaving the page. */
+                    replace
                     scroll={false}
                     href={buildHref({ sort: o.id, page: 1 }) as never}
                     className={
@@ -243,7 +265,7 @@ async function ResultsContent({
             </nav>
 
             {/* Categories */}
-            <nav aria-label={t.results.categoriesAria} className="flex flex-wrap items-center gap-1.5 -mx-1 px-1 overflow-x-auto lg:flex-col lg:flex-nowrap lg:items-stretch lg:gap-1 lg:mx-0 lg:px-0 lg:overflow-visible">
+            <nav aria-label={t.results.categoriesAria} className="flex flex-wrap items-center gap-1.5 lg:flex-col lg:flex-nowrap lg:items-stretch lg:gap-1">
               <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle pr-1 lg:pr-0 lg:mb-1">{t.common.topic}</span>
               {CATEGORIES.map((c) => {
                 const active = c.id === activeCat;
@@ -251,8 +273,13 @@ async function ResultsContent({
                 return (
                   <Link
                     key={c.id}
+                    replace
                     scroll={false}
                     href={buildHref({ cat: c.id, page: 1 }) as never}
+                    /* Machine-readable so a driver can read the promise and press exactly this
+                       control — the same contract `/markets` chips carry. */
+                    data-chip={`cat:${c.id}`}
+                    data-count={catCounts[c.id] ?? 0}
                     className={
                       "inline-flex h-8 items-center gap-1.5 rounded-md border px-3 font-mono text-[12px] font-semibold whitespace-nowrap transition-all lg:w-full lg:justify-start " +
                       (active
@@ -263,6 +290,11 @@ async function ResultsContent({
                   >
                     <Glyph s={14} className={"shrink-0 " + (active ? "text-brand-300" : "opacity-70")} />
                     {c.label}
+                    {/* Every count names the set pressing it would show — cross-filtered by the
+                        active search, so it can never promise 22 and deliver 4. */}
+                    <span className={"ml-auto pl-1.5 font-mono text-[11px] font-bold tabular-nums " + (active ? "text-brand-200" : "text-text-faint")}>
+                      {catCounts[c.id] ?? 0}
+                    </span>
                   </Link>
                 );
               })}
@@ -280,6 +312,22 @@ async function ResultsContent({
                 ? `${t.results.noResultsMatch} "${qRaw}"`
                 : `${totalCount} ${totalCount === 1 ? t.results.resultMatch : t.results.resultsMatch} "${qRaw}"`}
             </p>
+          )}
+
+          {/* Per-cause exit, and it carries a REAL count. Now that a category genuinely narrows a
+              search, a search can come back empty because of the category rather than the words —
+              a different cause, so it gets a different way out, and it is only offered when it
+              actually leads somewhere non-empty. */}
+          {totalCount === 0 && activeCat !== "all" && catCounts.all > 0 && (
+            <Link
+              scroll={false}
+              href={buildHref({ cat: "all", page: 1 }) as never}
+              className="mb-3 inline-flex min-h-[44px] items-center gap-1.5 rounded-pill border border-brand-400 px-4 text-[13px] font-semibold text-text"
+              style={{ background: "var(--pill-active)" }}
+            >
+              {t.market.catAll}
+              <span className="font-mono text-[11px] font-bold tabular-nums text-brand-200">{catCounts.all}</span>
+            </Link>
           )}
 
           {paged.length > 0 ? (

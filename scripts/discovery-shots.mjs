@@ -17,13 +17,19 @@ import { localisedContext, assertLang } from "./qa-locale.mjs";
 const OUT = process.argv[2] || "./shots";
 const BASE = process.argv[3] || "http://localhost:3009";
 
+/** `rail: true` = this route MUST expose a filter surface, so measuring nothing is a failure. */
 const ROUTES = [
-  { name: "landing", path: "/" },
-  { name: "markets", path: "/markets" },
+  { name: "landing", path: "/", rail: false },
+  { name: "markets", path: "/markets", rail: true },
   // Filtered + empty states: the board's promise is only testable with controls PRESSED, and the
   // per-cause empty state is the surface most likely to read as a dead end.
-  { name: "markets-filtered", path: "/markets?status=all&pool=10k&sort=pool" },
-  { name: "markets-empty", path: "/markets?q=zzzqqqxx" },
+  { name: "markets-filtered", path: "/markets?status=all&pool=10k&sort=pool", rail: true },
+  { name: "markets-empty", path: "/markets?q=zzzqqqxx", rail: true },
+  // /results is the platform's OTHER filtering board. It carries a category rail and a sort, so it
+  // belongs in the same sweep — its filters were shipped without any visual or behavioural guard.
+  { name: "results", path: "/results", rail: true },
+  { name: "results-filtered", path: "/results?cat=macro&sort=volume", rail: true },
+  { name: "results-empty", path: "/results?q=zzzqqqxx", rail: true },
 ];
 const WIDTHS = [
   { name: "360", w: 360, h: 780 },
@@ -64,7 +70,10 @@ for (const loc of LOCALES) {
 
         const m = await page.evaluate(() => {
           const docOverflow = document.documentElement.scrollWidth - document.documentElement.clientWidth;
-          const bar = document.querySelector(".kp-discovery-bar");
+          // Either board's filter surface. ⛔ It used to look only for `.kp-discovery-bar`, so on
+          // /results it measured NOTHING and printed "controls=0 minTap=-1" next to real readings —
+          // a check that names tap targets and clipping while testing neither.
+          const bar = document.querySelector(".kp-discovery-bar, [data-filter-rail]");
           // Tap targets: every interactive control inside the bar. A control under 44px on a
           // phone is a miss the eye forgives and a thumb does not.
           const controls = bar ? [...bar.querySelectorAll("a,button,select,[role=option],[role=button]")] : [];
@@ -101,9 +110,15 @@ for (const loc of LOCALES) {
         if (status !== 200) failures.push(`${r.path} ${vp.name} ${loc} -> HTTP ${status}`);
         if (m.docOverflow > 0) failures.push(`${r.path} ${vp.name} ${loc} -> overflowX ${m.docOverflow}px`);
         if (m.clippedInBar > 0) failures.push(`${r.path} ${vp.name} ${loc} -> ${m.clippedInBar} clipped node(s) inside the bar`);
-        // Only the phone width is held to the tap-target floor; the bar is absent on some routes.
+        // Only the phone width is held to the tap-target floor.
         if (vp.w <= 480 && m.minControlH > 0 && m.minControlH < 40) {
           failures.push(`${r.path} ${vp.name} ${loc} -> smallest bar control ${m.minControlH}px (< 40px)`);
+        }
+        // ⛔ AND A MEASUREMENT OF NOTHING IS NOT A PASS. Every route in this sweep is a filtering
+        // board, so each one must expose a filter surface; `controls=0` means the selector missed
+        // it, which is exactly how /results was swept twelve times while nothing was measured.
+        if (r.rail && m.controls === 0) {
+          failures.push(`${r.path} ${vp.name} ${loc} -> no filter controls found (measured nothing)`);
         }
       } catch (e) {
         failures.push(`${r.path} ${vp.name} ${loc} -> ${String(e.message).slice(0, 160)}`);

@@ -36,6 +36,20 @@ frozen and shipped. **Revised 2026-07-31 against the live platform, not against 
 > **8 of 12 "trilingual" frames English**, a RED harness whose `\n` anchors could not match a CRLF
 > checkout, and a `predeploy` gate that failed 7.5% of runs on a correct product. All in
 > [`../design-brief/PLAN-OF-RECORD.md`](../design-brief/PLAN-OF-RECORD.md) §8.7c.
+>
+> 🔴 **AND `/results` — the platform's OTHER filtering board — was silently ignoring its category
+> filter during a search.** Measured on production: `?q=bitcoin` returned the identical four cards
+> under `cat=crypto`, `cat=sports` and `cat=weather`, while the rail painted the chosen category as
+> selected (without a search it worked: crypto 2, sports 22). Search and category now compose, the
+> archive is read once and filtered in JS, and **every category carries a cross-filtered count**.
+> Its eight-item hand-written category list is gone — ids from `MARKET_CATEGORIES` (seven), labels
+> from the new `src/lib/markets/category-label.ts`, which also absorbed the private `CATEGORY_LABEL`
+> from `markets/page.tsx`. Filter links now `replace` instead of pushing history. New guards:
+> `qa:results-board` (+ `red:results-filter`, which reintroduces the exact production line, because
+> running the guard against prod reds for the *wrong* reason) and `qa:filter-stress` (12 hostile
+> payload classes × every param of both boards; **all 288** status×sort×odds×pool combinations).
+> ⚠️ Three of this session's own new instruments were wrong before any product defect was found.
+> Full account in §8.7d.
 
 **Items 1, 2, 3 and 4 are DONE and live.** ✅ **Item 3 (withdrawals) CLOSED 2026-08-10:** the
 rail works (four real payouts settled 2026-07-31), the block was ours to lift, and it has been

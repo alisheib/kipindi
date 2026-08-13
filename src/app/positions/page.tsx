@@ -133,7 +133,13 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
 
       {/* Tab filter — All / Open / Settled (matches markets page filter pattern) */}
       {positions.length > 0 && (
-        <nav className="flex flex-wrap items-center gap-1.5 -mx-1 px-1 overflow-x-auto" aria-label={t.positions.filterAria}>
+        <nav
+          /* ⚠️ The `-mx-1 px-1 overflow-x-auto` this used to carry was vestigial: the rail wraps,
+             so a horizontal scroller never engages, and the 4px bleed pushed the row past its own
+             container. Removed with the identical pair on /results. */
+          className="flex flex-wrap items-center gap-1.5"
+          aria-label={t.positions.filterAria}
+        >
           {([
             { id: "all", label: t.positions.tabAll, count: positions.length },
             { id: "open", label: t.positions.tabOpen, count: open.length },

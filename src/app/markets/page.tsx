@@ -42,6 +42,7 @@ import {
   type DiscoveryState,
   type RelaxationId,
 } from "@/lib/markets/discovery";
+import { categoryLabel } from "@/lib/markets/category-label";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -230,7 +231,7 @@ async function DiscoveryBoard({ searchParams }: { searchParams: Promise<SP> }) {
 
   const topics = [
     { id: "all", label: t.market.catAll },
-    ...MARKET_CATEGORIES.map((c) => ({ id: c, label: CATEGORY_LABEL(t, c) })),
+    ...MARKET_CATEGORIES.map((c) => ({ id: c, label: categoryLabel(t, c) })),
   ];
 
   // 🔴 "RECENTLY RESOLVED" ONCE SHOWED THE OLDEST RESULTS ON THE PLATFORM, FOREVER.
@@ -361,19 +362,6 @@ async function DiscoveryBoard({ searchParams }: { searchParams: Promise<SP> }) {
       )}
     </>
   );
-}
-
-function CATEGORY_LABEL(t: Awaited<ReturnType<typeof getServerT>>["t"], c: MarketCategory): string {
-  const map: Record<MarketCategory, string> = {
-    sports: t.market.catSports,
-    macro: t.market.catMacro,
-    weather: t.market.catWeather,
-    crypto: t.market.catCrypto,
-    culture: t.market.catCulture,
-    tech: t.market.catTech,
-    other: t.market.catOther,
-  };
-  return map[c];
 }
 
 /**

@@ -710,6 +710,92 @@ with overflowX 0 on all 12. The overflow figure was true; the languages were not
 here rather than deleted, because the failure mode — *evidence that looks like evidence* — is worth
 more than the tidy version.
 
+## 8.7d · THE OTHER FILTERING BOARD — /results was never guarded, and it was lying
+
+Ali, 2026-08-13: *"make sure the filtering logic and new design is applied anywhere old filtering
+existed — perfectly working, no glitches, 100% functional, no workarounds, clean code."* The
+inventory of every player surface that filters:
+
+| Surface | State |
+|---|---|
+| `/markets` | the round-2 bar (batch 1 + §8.7c) |
+| **`/results`** | 🔴 old sidebar rail · own category list · own sort · own href builder · **no counts** · **no guard of any kind** — addressed below |
+| `/positions` | a `tab` pill rail (4 states, no categories/sort) — shares the vestigial-bleed fix below |
+| `/proposals` | one `f` param, no rail |
+| `/live` · `/watchlist` · `/leaderboard` · `/fairness` · `/updown/history` | no category or sort filtering at all |
+| admin lists | a different design language (admin kit); the round-2 kit is player surfaces only. ⚠️ Five admin files still spell their own `CATEGORIES` — recorded, not touched |
+
+### 🔴 `/results` dropped the category whenever a search was active
+
+Measured on production before the fix — three different categories, one query, identical boards:
+
+| URL | Cards |
+|---|---|
+| `/results?cat=crypto` | 2 |
+| `/results?cat=sports` | 22 |
+| `/results?q=bitcoin&cat=crypto` | **4** |
+| `/results?q=bitcoin&cat=sports` | **4** |
+| `/results?q=bitcoin&cat=weather` | **4** |
+
+`effectiveCat` was `searching ? undefined : …`, so a search wiped the category out of the read while
+the rail went on painting it as selected. A control that says it is applied and is not — the
+2026-08-10 failure shape, on the surface nobody had checked. **Search and category now compose**,
+the archive is read **once** and filtered in JS (the /markets discipline), and that is what lets
+every category carry a **cross-filtered count**: the number beside it is what pressing it delivers
+under the active search. An empty filtered search now gets a per-cause exit carrying the real
+all-category count, offered only when it leads somewhere non-empty.
+
+Also fixed here: the hand-written eight-item category list is gone — ids come from
+`MARKET_CATEGORIES` (**seven**; politics is licence-excluded) and labels from the new
+`src/lib/markets/category-label.ts`, which also replaced the private `CATEGORY_LABEL` that had been
+sitting inside `markets/page.tsx`. And the filter links now carry `replace`: a filter is not a
+navigation, so pressing five of them no longer leaves five history entries for Back to walk through.
+
+### The guards, and why the obvious red proof was NOT one
+
+`qa:results-board` is new: promise == delivery per category, with and without a search; a search may
+only ever **narrow** a category; a query matching nothing zeroes **every** count and empties the
+board; and a zero-count category offers a real way out.
+
+⛔ Running it against production makes it go red — **for the wrong reason.** Production predates the
+`data-chip` attributes, so it cannot read a single promise and correctly refuses on an absent
+premise. A red light caused by a missing selector is not evidence that a guard catches a defect.
+`red:results-filter` is the real proof: it reintroduces the exact production line, waits for the
+recompile, and asserts the guard fails **on the promise-vs-delivery assertions specifically** —
+`q="a" cat=sports promised 0, delivered 2` — then restores the file.
+
+### ⚠️ Three defects in this session's own new instruments, before any product defect
+
+1. The `/results` counter counted `h3.mcardp-q` — the **grid** card's heading. /results lifts its
+   top markets out of the grid into a featured carousel whose card is an `<h2>`, so the guard
+   reported *"promised 2, delivered 1"* against a page rendering both. Counting unique
+   `a[href^="/markets/"]` sees the whole set.
+2. It asserted *"the counts changed when the search was applied"*. On a fixture where every title
+   contains the query the counts are correctly identical, so **a correct product failed** — the
+   unconditional-presence trap (`50pick-standards` §5b rule 9). Replaced with invariants that are
+   true for every query: monotonicity, and a no-match query zeroing everything.
+3. `qa:filter-stress` counted market links page-wide and picked up **/markets' "recently resolved"
+   strip** — *"promised 0, delivered 2"* on a correct board. This is batch 1's own "15 of 40" trap
+   recurring in a new driver; the count is scoped to `[data-board="grid"]` now, as batch 1's guard
+   already was.
+
+⚠️ And the visual sweep **measured nothing on /results for twelve frames while printing a result**:
+it looked only for `.kp-discovery-bar`, found no rail, and reported `controls=0 minTap=-1` beside
+real readings. The rail carries `data-filter-rail` now, the sweep accepts either surface, and
+`controls === 0` on a route flagged `rail: true` is a **failure** rather than a pass. With it
+actually measuring, it immediately found a 4px overflow inside the /results rail at 360 and 768 in
+all three languages — `-mx-1 px-1 overflow-x-auto` on a `flex-wrap` row, where a horizontal
+scroller can never engage, so the bleed bought nothing and pushed the wrapper past its container.
+The identical pair on `/positions` was removed with it.
+
+### Manipulation stress — `qa:filter-stress`
+
+| Checked | Result |
+|---|---|
+| 12 hostile payload classes × every param of both boards (XSS script/attr, SQL-ish, traversal, null byte, 4 KB string, bidi override, duplicated params, negative/huge/NaN/float page) | **no 500s, no payload executed** — XSS is judged by whether the page set a flag, never by finding the payload text, which would flag correctly-escaped output |
+| **All 288** `status × sort × odds × pool` combinations of /markets | every one renders and delivers its promise |
+| The same URL requested twice | identical board (idempotent) |
+
 ## 8.8 · Deliberately DEFERRED — named, with the reason (not silently dropped)
 
 Two pieces of the kit's `/markets` spec are **not** in batch 1. Both are recorded here rather
@@ -781,6 +867,8 @@ production**, and they are now registered npm scripts:
 |---|---|
 | `npm run qa:discovery-probe -- https://50pick.tz` | every control's promised count equals what pressing it delivers, incl. cross-filtering · URL hygiene · sorting reorders · empty-state exits are non-empty |
 | `npm run qa:discovery-board -- https://50pick.tz` | the GRID draws a page of that set — counted in a real browser DOM, because response byte order ≠ DOM order under streaming · the mobile bar height in **real** sw and zh · and ⭐ that **every menu actually OPENS** (≥90% of its panel visible at 360), the check §8.7c's defect proved was missing |
+| `npm run qa:results-board -- https://50pick.tz` | /results' category rail: promise == delivery per category, with and without a search; a search may only narrow; a no-match query zeroes every count; a zero-count category offers a real exit. Its RED proof is `red:results-filter` — ⛔ running it against production reds for the WRONG reason (no `data-chip` there yet) |
+| `npm run qa:filter-stress -- https://50pick.tz` | 12 hostile payload classes × every param of both boards (no 500, nothing executes) · **all 288** status×sort×odds×pool combinations keep promise == delivery · the same URL twice gives the same board |
 | `LOCALES=en,sw,zh npm run qa:discovery-shots -- .qa-design-round2/after` | 360 + 1280 × en/sw/zh, failing on any horizontal overflow. ⚠️ Shots are EVIDENCE — write them under `.qa-design-*/`, never into the tree (§0b) |
 
 ⛔ Screenshots stay gitignored. The *drivers* travel; the *evidence* is re-derived.
