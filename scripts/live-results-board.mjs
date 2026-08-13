@@ -50,7 +50,15 @@ async function read(qs = "") {
     );
     const grid = document.querySelector(".market-grid");
     const gridCards = grid ? grid.querySelectorAll("h3.mcardp-q").length : 0;
-    return { promised, gridCards, allCards: hrefs.size };
+    const countEl = document.querySelector("[data-result-count]");
+    return {
+      promised,
+      gridCards,
+      allCards: hrefs.size,
+      // The page's own stated total for the active filters. `null` (not NaN) when absent, so a
+      // missing attribute reads as "this page does not publish a total" rather than as a number.
+      resultCount: countEl ? Number(countEl.getAttribute("data-result-count")) : null,
+    };
   });
 }
 
@@ -61,16 +69,43 @@ const cats = Object.keys(base.promised);
 ok(`the category rail exposes per-control counts (${cats.length} controls)`, cats.length >= 2, "no [data-chip=cat:*] found — selector may have rotted");
 console.log(`  promised: ${JSON.stringify(base.promised)}\n`);
 
-/** Press a control and check the page delivers the number it advertised (capped by the page size). */
+/**
+ * Press a control and check the page keeps the promise it advertised.
+ *
+ * ⛔ THIS CANNOT BE `delivered === min(promised, PER_PAGE)`, and assuming it could made this guard
+ * fail twice against a CORRECT production page. Page 1 lifts up to three markets out of the grid
+ * into the notable carousel, and `NotableCarousel` renders only `slides[current]` — so two of those
+ * three are not in the document at all. The DOM card count is therefore
+ * `(pageSize − liftedIntoCarousel) + 1`, which no caller can predict.
+ *
+ * So the strong assertion is made against the number the PAGE publishes (`data-result-count`,
+ * which is the pager total), and the DOM is held to what is genuinely knowable: never more than a
+ * page, never more than the promise, non-empty whenever the promise is non-empty — and EXACT when
+ * the set is small enough that no multi-slide carousel exists to lift anything out.
+ */
+const CAROUSEL_MULTI_FROM = 8; // `all.length >= 8` is when /results lifts three instead of one
+
 async function promiseEqualsDelivery(label, qs, promisedFrom, id) {
   const r = await read(qs);
   const promised = promisedFrom[id];
-  const expected = Math.min(promised, PER_PAGE);
-  ok(
-    `${label} promised ${promised}, delivered ${r.allCards} (expected ${expected})`,
-    r.allCards === expected,
-    `grid heading count=${r.gridCards}`,
-  );
+  const stated = r.resultCount;
+
+  // Refuse on an absent premise rather than comparing against NaN.
+  ok(`${label} — the page publishes a total`, stated !== null, "no [data-result-count] on the page");
+  // The contract that matters: the rail's number and the page's own total are the same value.
+  ok(`${label} — the rail promised ${promised} and the page states ${stated}`, stated === promised,
+    "the count beside a control disagrees with the page's own total");
+
+  ok(`${label} delivers no more than one page (${r.allCards} ≤ ${PER_PAGE})`, r.allCards <= PER_PAGE);
+  ok(`${label} delivers no more than it promised (${r.allCards} ≤ ${promised})`, r.allCards <= promised);
+  if (promised > 0) {
+    ok(`${label} promised ${promised} and delivered something (${r.allCards})`, r.allCards > 0,
+      "a control advertised results and the board came back empty");
+  }
+  if (promised > 0 && promised < CAROUSEL_MULTI_FROM) {
+    ok(`${label} delivers EXACTLY its promise (${r.allCards} === ${promised}, no carousel lift)`,
+      r.allCards === promised, `grid heading count=${r.gridCards}`);
+  }
 }
 
 console.log("── promise == delivery, category by category ──");
@@ -117,6 +152,7 @@ for (const id of cats) {
     `still advertising: ${nonZero.map((c) => `${c}=${r.promised[c]}`).join(", ")}`,
   );
   ok(`a query matching nothing delivers an empty board`, r.allCards === 0, `delivered ${r.allCards}`);
+  ok(`a query matching nothing states a total of 0`, r.resultCount === 0, `states ${r.resultCount}`);
 }
 
 // A category whose promise is 0 must not be reachable-but-lying: pressing it delivers 0 AND the

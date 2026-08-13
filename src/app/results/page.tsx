@@ -205,7 +205,13 @@ async function ResultsContent({
               </div>
             </div>
           )}
-          <p className="hidden sm:block font-mono text-[10.5px] text-text-subtle tabular-nums whitespace-nowrap">
+          {/* `data-result-count` is the page's own stated total for the ACTIVE filters — the same
+              contract /markets carries, so a driver can check the rail's promise against the number
+              the page itself publishes instead of trying to reverse-engineer it from the render.
+              It cannot be reconstructed from the DOM: page 1 lifts up to three markets into the
+              notable carousel, which renders only the current slide, so two of them are not in the
+              document at all. */}
+          <p data-result-count={totalCount} className="hidden sm:block font-mono text-[10.5px] text-text-subtle tabular-nums whitespace-nowrap">
             {totalCount} {t.results.resolved} · {formatTzsCompact(totalVolume)} {t.common.settled}
           </p>
         </div>

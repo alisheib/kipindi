@@ -62,10 +62,18 @@ try {
   } else {
     // ⛔ Insist it failed for the RIGHT reason. A red caused by "no [data-chip] found" would mean
     // the harness had broken the page rather than restored the defect.
-    const composed = /cat=\w+ promised \d+, delivered \d+/.test(red.out) && !/selector may have rotted/.test(red.out);
+    // ⚠️ This pattern used to be the guard's exact sentence, `promised N, delivered N`. The guard's
+    // wording changed and the pattern silently stopped matching, so a correct red proof reported
+    // "not on promise-vs-delivery" — a harness coupled to another file's prose. It now keys on the
+    // durable parts: a failing line that names a category AND reports a delivered/stated number.
+    const failLines = red.out.split("\n").filter((l) => l.includes("FAIL"));
+    const composed =
+      failLines.some((l) => /cat=\w+/.test(l) && /(delivered|states|delivers)/.test(l)) &&
+      !/selector may have rotted/.test(red.out);
     if (composed) {
       console.log(`  PASS the guard went red (exit ${red.code}) on the promise-vs-delivery assertion`);
-      for (const line of red.out.split("\n").filter((l) => l.includes("FAIL"))) console.log(`      ${line.trim()}`);
+      for (const line of failLines.slice(0, 8)) console.log(`      ${line.trim()}`);
+      if (failLines.length > 8) console.log(`      … and ${failLines.length - 8} more`);
     } else {
       console.log("  FAIL the guard went red, but not on promise-vs-delivery — it could not read the rail");
       console.log(red.out);
