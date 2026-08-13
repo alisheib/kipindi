@@ -494,11 +494,32 @@ Two more standing rules from the same pass:
    `rounded-md` is 8px while `--r-md` is 12px — they disagree. Reconciling them shifts
    every corner in the product, so it was deliberately deferred. New design uses the
    semantic `rounded-card` / `control` / `chip` / `modal`. **Do not renumber the scale.**
-5. **Cold-start is ONE rule with THREE consumers.** The board, the market card and the
-   detail page each derive it as `volume === 0 && predictors === 0` on a live, open
-   market. The detail page shipped a fabricated 50/50 split and a "TIPPING" badge above
-   "TZS 0" until this pass. If the rule changes, change all three — a card and a detail
-   page disagreeing about someone's money is exactly the defect B6 exists for.
+5. **Cold-start is ONE rule with FOUR consumers, and it is TWO questions — not one.**
+   The consumers are the board (`markets/page.tsx`), the market card
+   (`market-card.tsx`), the detail page (`markets/[id]/page.tsx`) and, since 2026-08-13,
+   the **landing hero** (`components/home/landing-hero.tsx` via
+   `lib/markets/hero.ts`). The detail page shipped a fabricated 50/50 split and a
+   "TIPPING" badge above "TZS 0" until the freeze pass. If the rule changes, change all
+   four — two surfaces disagreeing about someone's money is exactly the defect B6 exists
+   for.
+
+   ⚠️ **CORRECTED 2026-08-13.** This item used to state the rule as
+   `volume === 0 && predictors === 0`. That conjunction is not the rule; it is the bug the
+   card fixed and documents at `market-card.tsx:218-238`. There are **two** derived states
+   and they have different gates:
+
+   | State | Gate | What it drives |
+   |---|---|---|
+   | `fresh` — nobody has touched this yet | `volume === 0 && predictors === 0` | the NEW badge, no sparkline, no trader crest |
+   | `noPrice` — there is no crowd price to state | **`volume === 0` — the POOL ALONE** | the em-dash, the dashed empty bar, YES/NO buttons with no `@ pct%` |
+
+   ⛔ **The price gate is the pool and nothing else.** `predictorCount` is never
+   decremented, so a market whose only bettor cashes out sits at volume 0 with predictors
+   1 — reachable and ordinary — and under the conjunction it asserted a fabricated 50% to
+   every player on the board. It is also the shape the pre-launch data purge leaves behind.
+   The one implementation is `pricedYesPct(yesPool, noPool)` in `lib/markets/discovery.ts`,
+   which returns **null**, never 50. Guarded by `npm run test:hero-contract` (+ its RED
+   proof `red:hero-contract`, 6/6) and `npm run test:discovery-contract`.
 
 ---
 

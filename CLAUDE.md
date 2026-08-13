@@ -225,8 +225,10 @@ snapshot. Both live in `payout.ts`; both are under `test:fee-model`.
   never write copy that says they might be.
 - Proof: `npm run test:fee-model` (77 assertions), `npm run test:withdrawal`.
 
-- **Repo:** `C:\kipindi-main` ⚠️ corrected 2026-08-08 — this said `C:\kipindi`, a path
-  that no longer exists, so every "cd" a session copied out of this file failed.
+- **Repo:** `F:\kipindi-main` on laptop A ⚠️ corrected again 2026-08-13 — this said
+  `C:\kipindi-main`, which does not exist on laptop A either, so a session copying the `cd`
+  out of this file still failed. Laptop B has its own clone at its own path; the skill's
+  §8b table is the authority on which machine is where.
 - **GitHub:** `https://github.com/alisheib/kipindi.git` (private)
 - **Live site:** `https://www.50pick.tz` (the `kipindi-production.up.railway.app`
   address this line used to name is the pre-DNS Railway host, not where players are)
@@ -543,12 +545,14 @@ Already shipped (was on this list before):
 
 ## Postponed features
 
-- **Hero slideshow / video background** — full-bleed Ken Burns image slideshow
-  for the landing page. ⚠️ **The component and slides no longer exist** —
-  `src/components/landing/` (incl. `hero-slideshow.tsx`) was deleted in `5fc3784` and
-  `public/hero/slides/` is empty; the landing hero is now a single inline
-  `hero-bg.webp`. Verified 2026-07-20. Reviving this means rebuilding it, not
-  re-activating it. Still waiting on a professional album either way.
+- **Hero slideshow / video background** — ⛔ **ABANDONED, not postponed (2026-08-13).**
+  The landing hero is now the round-2 kit's **question board**: the brand mark as a
+  backdrop, the type, and REAL market data (open count · Σ open pools · open predictions ·
+  a volume-weighted conviction bar · four live markets closing soonest · one live
+  `<MarketCard/>`). It needs **no photography and no new asset** — the kit says so in as
+  many words — and `public/hero/hero-bg.webp` is **deleted**. There is nothing here waiting
+  on an album. `src/components/landing/hero-slideshow.tsx` was deleted in `5fc3784` and
+  `public/hero/slides/` is gone. Do not revive either.
 - **Full Prisma entity migration** — COMPLETE. All entities migrated to
   per-row Prisma tables. `USE_PRISMA_DAL=true` on production. See
   `docs/DATA-LAYER.md`.

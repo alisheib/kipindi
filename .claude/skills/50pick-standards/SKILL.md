@@ -64,13 +64,19 @@ once** (the "five-lens mindset").
   like it was always there.
 
 ## 3. UI & design discipline
-- ⭐ **THE DESIGN SYSTEM HAS ONE HOME: `docs/design-system/README.md`. Open it before any
-  visual work, and before creating ANY design document.** It is the index — it says where
-  every design fact lives *and where a new design doc must be stored*. ⛔ A brief, spec,
-  plan or handoff written anywhere else is a second definition of one truth. This project
-  has been burned by that twice (a superseded teal kit that kept reading as current, and a
-  second definition of "chart data" that fabricated price history for real-money bettors).
+- ⭐ **THE DESIGN SYSTEM HAS ONE HOME: [`docs/DESIGN_AUTHORITY.md`](../../../docs/DESIGN_AUTHORITY.md).
+  Open it before any visual work, and before creating ANY design document.** Its **§0 is the
+  filing law** — it says where every design fact goes, and what every other design file
+  actually is (record, never rule). ⛔ A brief, spec, plan or handoff written anywhere else is
+  a second definition of one truth. This project has been burned by that twice (a superseded
+  teal kit that kept reading as current, and a second definition of "chart data" that
+  fabricated price history for real-money bettors).
   **If you find a value in two places that is a bug: delete one, do not sync both.**
+  ⚠️ **Corrected 2026-08-13.** This line used to send every session to
+  `docs/design-system/README.md`. That file is the *archive index*, not the rulebook — it was
+  one of the nine files that each claimed to be the place to start, and the consolidation on
+  2026-08-08 made `DESIGN_AUTHORITY.md` the single door. `npm run test:design-one-door` is the
+  guard, and it does not read `.claude/**`, which is exactly why this line rotted for five days.
 - **UI-kit only.** Build from the kit (`src/components/ui/*`, `src/components/admin/*`).
   Never hand-roll a one-off that duplicates a primitive — **extend the kit**, then use it
   everywhere. Same thing done two ways is a defect (perfection-plan §9.1 lists the primitives

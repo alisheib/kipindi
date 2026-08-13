@@ -158,7 +158,7 @@ topic taxonomy source of truth, whether search is server-side._
 | 2a contract · step 1 (pure module + gate) | `(this session)` | `test:discovery-contract` 78 assertions green; `red:discovery-contract` **7/7 real defects caught**, tree restored byte-identical; tsc 0 | local | `src/lib/markets/discovery.ts` — parsing, defaults, ONE href builder, status predicates, odds/pool buckets, sorts + explicit tie-breakers, cross-filtered counts, relaxations. Pure: no server imports, lifecycle facts stay in `market-service.ts` |
 | 2a+2b · `/markets` rebuilt on the contract | `(this session)` | 32 gates green incl. the 22 + `board-discovery` + `product-line` + `discovery-contract` + `i18n`/`trilingual`; tsc 0; `npm run build` ✓ 43s; both RED harnesses 6/6 and 7/7 | 12 shots at 360+1280 × en/sw/zh, **overflowX=0 on all 12**; HTTP driver green | 13-pill rail DELETED · sticky 2-row bar · 5 status segments · 6 sorts + direction · odds/pool chips · topic menu · cross-filtered counts · per-cause empty states with real-count exits · `PageContainer tier="board"` (2 raw-width ratchet entries removed) · `ProposePromo` gone · categories derive from `MARKET_CATEGORIES` · both skeletons on ONE height definition |
 | 1v · batch-1 VALIDATION pass (2026-08-13, later) | `(this session)` | 22 gates green individually incl. both RED harnesses (7/7 and 6/6); tsc 0; `npm run build` ✓ | 48 shots at 360/768/1280/1920 × en/sw/zh **read**, overflowX 0 / minTap 44px / 0 clipped on all 48; new menu guard proven RED against production and GREEN against the fix | 🔴 **The sort and topic menus were 1% usable on a phone** — fixed. Plus 3 instrument defects that had been reporting green for the wrong reason. Full account in §8.7c |
-| 2c hero | _next session_ | | | |
+| 2c hero | `(this commit)` | **29 gates green individually, real exit codes, no pipes** — the 22 design gates + `hero-contract` (29 assertions) + `discovery-contract` + `board-discovery` + `product-line` + `i18n`/`trilingual` + `integrity`/`outcome`/`history`/`docs`; **3 RED harnesses**: `red:hero-contract` **6/6**, `red:discovery-contract` 7/7, `red:board-discovery` 6/6; `tsc` exit 0 / 0 lines; `npm run build` exit 0, "Compiled successfully in 14.9s" (the 2 warnings are the known pre-existing `node:crypto`-in-Edge pair at `lock-key.ts:12` / `audit.ts:38`) | **40 frames read** at 360/768/1280/1920 × en/sw/zh across **two data states** — a populated book (Σ TZS 185,500, 52% YES) and a genuinely cold platform (users 0 · markets 46 · resolved 0). `overflowX=0` and `clipped=0` on every frame; **my** smallest control **56px** at every width | Photographic hero **DELETED** (`hero-bg.webp` 193 KB + its `:80` ref, cite-checked repo-wide) → the kit's question board: mark backdrop (geometry/opacity only) · headline from a dict key, **no gold on "wisdom"** · 3-figure proof rail · aggregate conviction via `TippingBar`'s existing `empty` state · 4 real markets closing soonest · one live featured `<MarketCard/>`. ⭐ **Cold start is now ONE rule with FOUR consumers** (`pricedYesPct`) and `DESIGN_AUTHORITY` was **corrected** — it had been stating the rule as the `&& predictors === 0` conjunction the card fixed as a bug. New instrument `qa:landing-shots`. Full account + 5 unpredicted findings in §8.7e |
 | 2d landing + header | _next session_ | | | |
 | 3 remainder | _next session_ | | | |
 
@@ -472,6 +472,10 @@ Found by reading `README.md`, `SPEC.md`, `COMPONENTS.md`, `DISCOVERY-RATIONALE.m
 | 9 | **`shown` resets "on any change" — except density and watch, which bypass `redeal()`** (`:774`, `:670` vs `README.md:312`) | **Density and watch do NOT reset paging** — they change presentation and membership-of-a-set, not the query. The README's blanket sentence is the imprecise one |
 | 10 | **End-of-set copy differs** — spec/layouts: *"…that is every market matching these filters"* (`COMPONENTS.md:232`); prototype: *"…that is the whole board"* (`:352`) | **The spec's wording.** It is true under every filter combination; the prototype's is only true with no filters applied |
 | 11 | **Search-miss exits exist only in the drawn layout**, never in the prototype (`06-states.html:384` vs `:813-814`) | **Build the layout's version** — search-miss and filter-miss are genuinely different causes and the plan already requires per-cause empty states |
+
+| 12 | **The hero headline has two different sizes at the same width** — §1a says `--type-display-2` (44px) "at 390"; §Responsive says `--type-h1` (32px) at "≤560". 390 is inside ≤560, so both cannot hold (found while building batch 2) | **`--type-h1` at ≤560, `--type-display-2` from 561, `--type-display-1` from 1024.** The width-specific table wins — it is the responsive authority, and 44px on a 328px content column is the reading that breaks. Encoded in `globals.css` `.kp-hero__headline`, not in the component |
+| 13 | **The hero's second CTA is specified as `.btn-quiet`, a class that does not exist** — 0 occurrences anywhere in `src` | **`.btn-ghost`**, the system's existing quiet variant and the one the old hero already used for its secondary action. ⛔ Not a new class: law 82 says a class must name a key that exists |
+| 14 | **The aggregate conviction bar is specified as a "New component"** | **It is not new.** `TippingBar` already carries `empty` + `emptyLabel`, documented in its own source as *"A STATE OF THIS BAR, not a second component — DESIGN_AUTHORITY B9"*, and its needle already tilts on the ±14° signature axis. Building a second bar would have cloned the cold-start rule as well as the component |
 
 **Two further absences (nothing to resolve — recorded so nobody re-hunts them):**
 - **Tie-breaking is unspecified across the entire kit.** The prototype relies on JS sort
@@ -808,11 +812,89 @@ codebase does not ship.
 | **The mobile filter SHEET** (kit `05-markets-discovery-mobile.html`) | The kit puts every filter behind one `Filters` button on a phone, which would take the sticky bar from **220px back under 120px**. Batch 1 chose scrolling strips instead because they need no JavaScript, and §8.7c has now spent 104px of sticky height keeping every control readable and operable. That is the right trade for a defect fix and the wrong end state | A `<details>`-driven bottom sheet with a scrim (elevation rung 3 already defines "sheet with a scrim"). ⛔ The sort and topic options must render as flat lists inside it, NOT as nested `<details>` menus — a sheet that scrolls would clip an absolutely-positioned panel and re-create exactly the 4px listbox §8.7c just removed |
 | **Search typeahead** (kit §3g) | `SearchBox` already delivers debounced-URL search on the shared grammar (quoted phrase, `-exclude`, `field:`), so the board searches correctly today. The typeahead is an ENHANCEMENT — combobox + listbox, `/` focus shortcut, topic/source/market suggestion kinds — not a gap in behaviour | A client combobox over the existing parser; suggestion kinds are specified in COMPONENTS §8 |
 
+| **"Predictions today" as the hero's third figure** (kit §1a, §7b) | It needs `COUNT(Position WHERE placedAt >= 00:00 EAT)`. `Position` is a never-pruned financial-record table already ~20× the poll rows on production, `placedAt` is unindexed, and the landing is the highest-traffic public page — so this is an unindexed count on the hottest surface, plus a migration inside a design batch. The hero ships **Σ `predictorCount` over the open book**, captioned "Open predictions": free (already in the board read), equally real, and it names the set it counts | A `@@index([placedAt])` migration + a DB-side count folded into `getPlatformStats`'s existing 60s memo (never a per-render query) |
+| **`a.mcardp-details` at 17px** (found in batch 2, §8.7e#3) | It is inside the FROZEN card and its row is a constant one-line height *so the card never changes height between boards*; `MARKET_CARD_H` depends on that, so raising it re-derives card geometry on `/markets`, `/live`, `/watchlist` and the landing at once | A `::after` hit-area extension — negative margins + `min-height: 44px` on the pseudo-element — which reaches the floor **without moving layout**. Belongs with the frozen-card tap-target pass (`--h-control-md: 38 → 44`), not a landing batch |
+| **The time-left formatter at its two remaining call sites** (`live/page.tsx:44`, `markets/[id]/page.tsx:800`) | Both are money/detail surfaces outside batch 2's visual sweep. The shared helper changes the minute branch from `Math.floor` to `Math.max(1, …)`, i.e. it changes displayed text — doing that on a page nobody is screenshotting this batch is how a cleanup ships a regression | Point both at `src/lib/markets/time-left.ts` and shoot `/live` + a market detail page at 360/1280 × en/sw/zh in the same batch |
+
 Also **not** adopted, deliberately: the kit's `Load N more` pager. The shared `Pagination`
 component is used instead — it is already built, already tested, and shared with `/results` and
 `/positions`, so replacing it is a platform-wide change, not a `/markets` one. The parts of the
 kit's paging contract that carry meaning ARE honoured: the pager total **is** the filter-bar
 count (same variable), and any filter change resets to page 1.
+
+## 8.7e · BATCH 2 — the hero, and what building it found
+
+**Shipped:** the photographic hero is gone. `public/hero/hero-bg.webp` (193 KB) and its
+`page.tsx:80` reference were deleted in the same commit the replacement landed, after a
+repo-wide cite-check found no remaining code reference. The new hero is
+`src/components/home/landing-hero.tsx` + the `.kp-hero*` block in `globals.css`, fed by the
+pure `src/lib/markets/hero.ts`.
+
+**The one rule this batch existed to protect, and how it is now provable.** The kit puts a
+`--gilt` YES price on *every* question-board row. On the local cold-start book **43 of 44
+markets have an empty pool**, so that specification renders four fabricated `50%`s in gold —
+breaking licence condition 1 and gold-is-money in one element. §7b anticipated this for the
+aggregate bar and for `live.length > 0`; it did **not** anticipate it per row. Both are now
+gated on the pool:
+
+| Surface | Empty-pool behaviour | Proven by |
+|---|---|---|
+| Aggregate conviction bar | `TippingBar empty` → the dashed `--bar-empty-track` rail + "Nothing staked yet — there is no crowd price to show". ⛔ Never 50% | `test:hero-contract` §2 + a rendered cold-start sweep |
+| Each question row | em-dash + a labelled state, and **no lean rule drawn** (a 50%-wide bar is the same lie in graphics) | `test:hero-contract` §2 + `% YES` = 0 occurrences in the cold HTML |
+| The featured card | the card's own `noPrice` gate (`volume === 0`) already did this correctly | rendered: "No pool yet", buttons with no `@ pct%` |
+
+Measured on a genuinely cold platform (users 0 · markets 46 · resolved 0): `tipbar-empty` × 8,
+`No bets yet` × 29, `kp-qrow__lean` × **0**, `% YES` × **0**.
+
+**⭐ `pricedYesPct` is now the ONE cold-start price rule, with four consumers** — the board's
+`toRow`, the hero's rows, the hero's aggregate, and (via its own `noPrice`) the card.
+`DESIGN_AUTHORITY.md` §"cold start" was updated from three consumers to four **and corrected**:
+it had been stating the rule as `volume === 0 && predictors === 0`, which is the conjunction the
+card fixed in the freeze pass and documents as a bug (`market-card.tsx:218-238`). The rulebook was
+mandating the defect. There are two states with two gates, and **the price gate is the pool alone**.
+
+### What building it found that the plan did not predict
+
+1. 🔴 **The eyebrow said Dar es Salaam twice.** `heroLocation` ("Tanzania · Dar es Salaam") and
+   `heroEst` ("Est. 2026 · Dar es Salaam") both carried the city, and the kit composes them:
+   `TANZANIA · DAR ES SALAAM · EST. 2026 · DAR ES SALAAM`. `heroEst` is now the year phrase only.
+   Nothing else read that key. **Only looking at the rendered frame catches this** — every gate was
+   green over it.
+2. 🔴 **The time-left formatter existed FIVE times** (`page.tsx:58`, `markets/page.tsx:264`,
+   `live/page.tsx:44`, `markets/[id]/page.tsx:800`) and the copies had **drifted**: three floor the
+   minute branch with a plain `Math.floor`, so a market with forty seconds of betting left rendered
+   **"0m left"** while the detail page rendered "1m left" for the same market at the same instant.
+   Extracted to `src/lib/markets/time-left.ts`, which keeps the `Math.max(1, …)` behaviour — "0m
+   left" says the door is shut when it is open. ⚠️ **Migrated at two of the four call sites only**
+   (`page.tsx`, `markets/page.tsx` — the files this batch already owns). `live/page.tsx` and
+   `markets/[id]/page.tsx` still hold their copies; they are money/detail surfaces not in this
+   batch's visual sweep, and changing displayed text on a page nobody is shooting is how a
+   "cleanup" ships a regression. **Named follow-up, not silently dropped.**
+3. 🔴 **`a.mcardp-details` is a 17px tap target** — the frozen card's "Details" link, on every
+   board (`/markets`, `/live`, `/watchlist`), at every width. ⚠️ **ACCEPTANCE.md §11 records the
+   frozen card's sub-44 targets as "38px YES/NO, 34px info" — this is a THIRD one it does not
+   name, and it is less than half the floor.** No existing instrument could see it:
+   `qa:discovery-shots` measures controls inside the *filter bar* only, never inside a card.
+   ⛔ Not fixed here: `globals.css:3194` makes that row a constant one-line height *so the card
+   never changes height between boards*, and `MARKET_CARD_H` depends on it — raising it re-derives
+   the card's geometry platform-wide. `qa:landing-shots` **reports it on every line** rather than
+   exempting it silently. ⭐ The fix that does not move layout is a `::after` hit-area extension
+   (negative margins, `min-height: 44px` on the pseudo-element), which satisfies the floor without
+   touching card height. Recommended for the frozen-card pass.
+4. ⚠️ **Two of my own checks were wrong before the product was.** `qa:landing-shots` first reported
+   "1 clipped node" in the hero at **all twelve** width×locale combinations — it was flagging the
+   brand mark, a 1100px decorative backdrop that *deliberately* bleeds off both edges behind
+   `overflow: hidden`, exactly as the kit specifies. The clip check now only considers nodes holding
+   their **own text**, which is the defect class it is for. And its band clips composite
+   viewport-fixed elements (the bottom rail, the chat FAB) into the middle of a tall band, which
+   read as collisions until checked against the fold frames. **The instrument was wrong twice
+   before the product was wrong once.**
+5. **The third proof figure is "open predictions", not "predictions today".** §7b asked for a count
+   since 00:00 EAT. That needs a new `COUNT` over `Position` — a never-pruned, financial-record
+   table already ~20× the poll rows — on the highest-traffic public page, plus an index migration
+   shipped inside a design batch. Σ `predictorCount` over the open book is free (it comes from the
+   board read the hero already does), is exactly as real, and is captioned as what it counts.
+   Deferred with the reason; see §8.8.
 
 ## 8.8b · 🔴 THE BUILD CAN FAIL ON RAILWAY FOR A REASON THAT IS NOT IN THE CODE
 

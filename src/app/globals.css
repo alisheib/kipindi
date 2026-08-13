@@ -2786,6 +2786,283 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
    fixed size + optional tier ring; this just keeps it inline + self-contained. */
 .crest-holder { display: inline-flex; position: relative; flex-shrink: 0; vertical-align: middle; line-height: 0; }
 
+/* ───────────────────────────────── the landing hero ──────────────────────────────────
+   Round-2 kit README §1a (2026-08-13), replacing the full-bleed `hero-bg.webp` photograph.
+   The photo was an F1 champagne spray: it leaned "casino win" against RULES law 7, and 75vh
+   of it stated NOTHING about what Tanzania is predicting today. This hero is built from the
+   brand mark, the type and REAL market data.
+
+   ⛔ WHY THE VALUES ARE HERE AND NOT IN THE COMPONENT. B9/B10 + law 82: a value lives in the
+   stylesheet, and the component consumes it. The old hero typed `text-[42px] sm:text-[56px]
+   md:text-[68px]` — three sizes, none of them on the `--type-*` ladder, which law T1 closes.
+   Every size below IS a ladder step, so the hero cannot drift off the scale. */
+
+.kp-hero {
+  position: relative;
+  overflow: hidden;
+  background: var(--hero-grad-warm);
+  border-top: 1px solid var(--claret-edge);
+  border-bottom: 1px solid var(--claret-edge);
+}
+
+/* The mark is the backdrop: GEOMETRY AND OPACITY ONLY, never recoloured (B1a / kit §Assets).
+   Its chord is deliberately off-centre — the unequal halves ARE the tipping idea — so the
+   shipped file is used as-is rather than redrawn. -14deg is the page's signature needle axis,
+   shared with the gilt eyebrow tick and the conviction needle. */
+.kp-hero__mark {
+  position: absolute;
+  top: -14%;
+  left: 50%;
+  width: 1100px;
+  max-width: none;
+  opacity: var(--hero-mark-opacity);
+  transform: translateX(-50%) rotate(-14deg);
+  pointer-events: none;
+  user-select: none;
+}
+
+/* The hero is full-bleed (the gradient and the mark need the whole width), so it sits OUTSIDE
+   `PageContainer` and owns its own measure. `--w-board` is the same 1280 the board uses, so the
+   hero's content edge lines up with every section below it. */
+.kp-hero__inner {
+  position: relative;
+  max-width: var(--w-board);
+  margin-inline: auto;
+  padding: var(--sp-12) var(--sp-4);
+  display: grid;
+  gap: var(--sp-8);
+}
+@media (min-width: 768px) {
+  .kp-hero__inner { padding: var(--sp-16) var(--sp-6); gap: var(--sp-10); }
+}
+
+/* 11px, not the 10px `.board-section-eyebrow` carries: the kit sets the minimum for NEW work at
+   `--type-micro`, and this is new work. */
+.kp-hero__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--type-micro);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+  margin: 0;
+}
+.kp-hero__lede {
+  font-size: var(--type-h3);
+  line-height: 1.5;
+  color: var(--text-muted);
+  max-width: 52ch;
+  margin: 0;
+}
+.kp-hero__ctas { display: flex; flex-wrap: wrap; gap: var(--sp-3); margin-top: var(--sp-6); }
+.kp-conv__read {
+  font-family: var(--font-mono);
+  font-size: var(--type-small);
+  color: var(--text-muted);
+  margin: var(--sp-3) 0 0;
+}
+
+/* Eyebrow — the 2×14 gilt tick leans on the same axis as the needle, mirrored. */
+.kp-hero__tick {
+  display: inline-block;
+  width: 2px;
+  height: 14px;
+  background: var(--gilt);
+  transform: rotate(14deg);
+  flex: none;
+}
+
+.kp-hero__headline {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--type-h1);
+  line-height: 1.02;
+  letter-spacing: -0.022em;
+  color: var(--hero-text-strong);
+  margin: 0;
+  text-wrap: balance;
+}
+/* ⚠️ THE KIT CONTRADICTS ITSELF HERE (contradiction 12, PLAN-OF-RECORD §8.4): §1a specifies
+   `--type-display-2` (44px) "at 390", while §Responsive specifies `--type-h1` (32px) "≤560".
+   390 is inside ≤560, so the two cannot both hold. The width-specific table wins — it is the
+   responsive authority — so 360 gets 32px and 44px starts above the band it excludes. */
+@media (min-width: 561px)  { .kp-hero__headline { font-size: var(--type-display-2); } }
+@media (min-width: 1024px) { .kp-hero__headline { font-size: var(--type-display-1); } }
+
+/* Proof rail — three REAL figures, separated by hairlines.
+   ⛔ The kit hides the third figure at 390. We keep all three and reflow instead: each one is a
+   measured fact about the live book, and dropping a fact to save 40px of width is the wrong
+   trade on the surface whose whole job is proving the platform is real. */
+.kp-proof {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-4);
+}
+.kp-proof__fig {
+  min-height: 44px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-left: var(--sp-4);
+  border-left: 1px solid var(--border);
+}
+.kp-proof__fig:first-child { padding-left: 0; border-left: 0; }
+.kp-proof__num {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--type-h2);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.kp-proof__cap {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--type-micro);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+  margin-top: 4px;
+}
+/* An 8px pip beside the live count, carrying the YES glow — the same ink the board uses for a
+   market that is taking bets. */
+.kp-proof__pip {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--yes-400);
+  box-shadow: var(--bar-glow-yes);
+  flex: none;
+}
+@media (min-width: 561px) {
+  .kp-proof { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .kp-proof__num { font-size: var(--type-display-2); }
+  .kp-proof__fig:nth-child(3) { border-left: 1px solid var(--border); }
+}
+/* At 360 the third figure sits on its own row under the two above it, so nothing truncates. */
+@media (max-width: 560.98px) {
+  .kp-proof__fig:nth-child(3) { grid-column: 1 / -1; padding-left: 0; border-left: 0; border-top: 1px solid var(--border); padding-top: var(--sp-3); }
+}
+
+.kp-conv { max-width: 620px; }
+
+/* The question board — the hero's substance. Four real open markets, closing soonest. */
+.kp-qboard { border-top: 1px solid var(--border-royal); }
+.kp-qrow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "i q p" ". s p";
+  align-items: center;
+  column-gap: var(--sp-4);
+  min-height: 76px;
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+  transition: background var(--t-quick) ease-out, padding-inline var(--t-quick) ease-out;
+}
+.kp-qrow:hover { background: var(--bg-overlay); padding-inline: var(--sp-4); }
+.kp-qrow__glyph { grid-area: i; color: var(--text-faint); display: flex; }
+.kp-qrow__q {
+  grid-area: q;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--type-h4);
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  color: var(--text);
+}
+.kp-qrow__sub {
+  grid-area: s;
+  font-family: var(--font-mono);
+  font-size: var(--type-small);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-faint);
+}
+.kp-qrow__price { grid-area: p; text-align: right; white-space: nowrap; }
+/* The price is NOT gilt. ACCEPTANCE.md §6 resolves the kit's gold-on-prices against the system
+   law (Q5, gold is money and nothing else) and says to default to non-gold: a crowd price is
+   odds, not money anybody has earned. */
+.kp-qrow__num {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--type-h2);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  line-height: 1.1;
+}
+.kp-qrow__unit {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: var(--type-micro);
+  letter-spacing: 0.1em;
+  color: var(--text-subtle);
+}
+/* The row's own crowd lean, as a 2px rule on its bottom edge. Width is DATA (bound at the call
+   site) — and it is not drawn at all on a market nobody has staked.
+   `grid-area: 1/1/-1/-1` keeps this absolutely-positioned child from being auto-placed into a
+   cell of its own and opening an implicit row that would add height to every question. */
+.kp-qrow__lean {
+  position: absolute;
+  grid-area: 1 / 1 / -1 / -1;
+  left: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--bar-fill-yes);
+  pointer-events: none;
+}
+@media (min-width: 821px) {
+  .kp-qrow {
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    grid-template-areas: "i q s p";
+    min-height: 88px;
+    column-gap: var(--sp-5);
+  }
+}
+/* ⭐ AT 360 THE QUESTION TAKES THE WHOLE LINE — measured, in Swahili, on the cold-start board.
+   With the price in its own column the question had ~150px and "Hakuna dau bado" had ~105px of
+   the 328px content width, so a three-line title sat jammed against the label. Nothing truncated
+   and no overflow, which is exactly why only LOOKING at it found this. The question now spans the
+   full width and the pool and price share the line below it — same DOM, same three fields, and
+   the longest label in the longest language stops competing with the sentence it belongs to. */
+@media (max-width: 560.98px) {
+  .kp-qrow {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "i q q"
+      ". s p";
+    row-gap: var(--sp-2);
+  }
+  /* On the meta line the value reads as a phrase — "— No bets yet", "71% YES" — rather than as
+     a stacked figure, which at this size looked like two unrelated fields. */
+  .kp-qrow__num { font-size: var(--type-h3); }
+  .kp-qrow__unit { display: inline; }
+  /* ⚠️ The unpriced label is a PHRASE and needs the word space that a "%" must never have. Set
+     inline it rendered "—Hakuna dau bado". A `gap` on the cell would have fixed this one and
+     broken the other, turning "71% YES" into "71 % YES". */
+  .kp-qrow__unit--label { margin-left: 0.35em; }
+}
+
+/* Hero foot — the lede and its two CTAs, with one real card beside them. */
+.kp-hero__foot { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-8); }
+@media (min-width: 1024px) {
+  .kp-hero__foot { grid-template-columns: minmax(0, 1fr) 380px; gap: var(--sp-16); align-items: start; }
+}
+@media (min-width: 1280px) {
+  .kp-hero__foot { grid-template-columns: minmax(0, 1fr) 420px; }
+}
+/* At 360 the two CTAs each take the full width rather than sharing a cramped line — flex-wrap
+   breaks a line BEFORE it shrinks, so two side-by-side buttons would land one-per-line anyway,
+   at half width and ragged. */
+@media (max-width: 560.98px) {
+  .kp-hero__cta { width: 100%; justify-content: center; }
+}
+
 /* ===========================================================================
    APPENDED: Claude Design — Market Card Pro (premium binary card). Gilt
    hairline frame, category sigil, number-as-hero + sparkline, live trader

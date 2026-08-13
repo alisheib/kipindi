@@ -56,6 +56,27 @@ export type DiscoveryRow = {
   watched: boolean;
 };
 
+/**
+ * The crowd's implied YES share, or **null when nobody has staked**.
+ *
+ * ⭐ ONE DEFINITION, THREE CONSUMERS (B9 / law 81): the board's `toRow`, the landing hero's
+ * per-question price, and the hero's aggregate conviction bar. It is deliberately NOT
+ * `impliedYesPct` from `market-service.ts` — that function returns a hardcoded **50** on an
+ * empty pool, which is the right answer for a money projection and a fabricated number on a
+ * display surface. Licence condition 1: never render a guessed figure. Matching
+ * `market-card.tsx`'s own gate, the question is the POOL ALONE (`noPrice = volume === 0`) —
+ * predictors do not enter into whether a price exists.
+ *
+ * ⚠️ Callers that need a WEIGHTED aggregate must pass summed pools, never average the
+ * per-market results this returns: these values are rounded, and a mean of rounded percentages
+ * is not the share of the money.
+ */
+export function pricedYesPct(yesPool: number, noPool: number): number | null {
+  const pool = yesPool + noPool;
+  if (pool <= 0) return null;
+  return Math.round((yesPool / pool) * 100);
+}
+
 /* ─────────────────────────────────── the URL contract ─────────────────────────────────── */
 
 export const STATUS_IDS = ["open", "today", "new", "watch", "all"] as const;
@@ -340,7 +361,13 @@ export function compareRows(a: DiscoveryRow, b: DiscoveryRow, sort: SortId, dir:
   return TIE_BREAK[sort](a, b) || byId(a, b);
 }
 
-export function sortRows(rows: readonly DiscoveryRow[], state: Pick<DiscoveryState, "sort" | "dir">): DiscoveryRow[] {
+/**
+ * Generic in the row type so a caller carrying MORE than a `DiscoveryRow` keeps its own fields
+ * through the sort. The landing hero needs titles and raw pools to render a question, and a
+ * `DiscoveryRow[]` return would have forced a cast — or, worse, a second sort implementation,
+ * which is how the hero and the board would start disagreeing about "closing soonest".
+ */
+export function sortRows<T extends DiscoveryRow>(rows: readonly T[], state: Pick<DiscoveryState, "sort" | "dir">): T[] {
   const dir = effectiveDir(state);
   return [...rows].sort((a, b) => compareRows(a, b, state.sort, dir));
 }

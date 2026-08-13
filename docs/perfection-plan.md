@@ -65,7 +65,8 @@ A screen/flow/feature is **DONE** only when ALL are true:
 
 **Already green** (do not regress): `tsc`, i18n 1217³, the money suite (markets/ledger/wallet/cashout/officer-conflict/emergency/solo-resolution/killswitch/kyc/payments/selection-closed/proposals), `admin-grids-smoke` 125/125, `ui-regression` 236/236.
 
-**Known ⊘ blockers (asset pipeline — Ali):** `hero-bg.webp` (TZ-appropriate), propose/bonus/invite banners, category `*.webp`, navy-weave texture, `win-seal.png`, the 4 official MNO logos, the regulator seal. All are drop-in-ready in code.
+**Known ⊘ blockers (asset pipeline — Ali):** propose/bonus/invite banners, category `*.webp`, navy-weave texture, `win-seal.png`, the 4 official MNO logos, the regulator seal. All are drop-in-ready in code.
+⚠️ **`hero-bg.webp` is OFF this list (2026-08-13) — it is no longer wanted.** The round-2 hero is built from the brand mark, the type and real market data; the kit's own words are "No photography. No illustration. No new asset is required." The file is deleted. Do not commission a TZ hero photograph against this line.
 
 ---
 
@@ -184,7 +185,8 @@ register→KYC→deposit→bet→(cashout|resolve)→payout→withdraw · referr
 - ConfirmDialog `Tone` still includes `gold` — audit remaining callers; retire if unused.
 
 **P3 (⊘ assets — wire on delivery, Ali):**
-- hero-bg.webp · MNO logos (`PaymentLogo.MNO_LOGOS` 1-liner) · regulator seal (deposit trust-strip + reports) · banners · category art · texture · win-seal.png.
+- MNO logos (`PaymentLogo.MNO_LOGOS` 1-liner) · regulator seal (deposit trust-strip + reports) · banners · category art · texture · win-seal.png.
+  (`hero-bg.webp` removed from this list 2026-08-13 — the hero needs no photograph; see §"Known ⊘ blockers".)
 
 ---
 

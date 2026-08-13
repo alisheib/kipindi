@@ -36,6 +36,11 @@ function flatten(o: Obj, prefix = ""): Map<string, string> {
 /** Key paths that are intentionally identical to English (proper nouns, codes, units). */
 const IDENTICAL_OK = new Set<string>([
   "home.heroLocation",          // "Tanzania · Dar es Salaam" — place names
+  // The hero headline is verbatim in all three locales — a DECIDED CALL, not an omission
+  // (PLAN-OF-RECORD §7b): YES and NO are product terms and the sentence is the brand line.
+  // It is keyed rather than hardcoded so the string has one home; before the round-2 hero it
+  // lived as English JSX in page.tsx with no key, which is why nothing could check it at all.
+  "home.heroHeadline",          // "The wisdom of YES & NO." — brand line, intentionally untranslated
   "profile.nida",               // NIDA — national-ID acronym
   "profile.signOutConfirmBodySw", // already a Swahili-named key
   "profile.tanzania",           // "Tanzania" — proper noun

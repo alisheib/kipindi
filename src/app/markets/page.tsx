@@ -36,6 +36,7 @@ import {
   matchesStatus,
   filterRows,
   parseDiscoveryParams,
+  pricedYesPct,
   relaxations,
   sortRows,
   type DiscoveryRow,
@@ -103,7 +104,9 @@ function toRow(m: BoardMarket, watched: Set<string>, move24h: number | undefined
     category: m.category,
     pool,
     predictors: m.predictorCount,
-    yesPct: pool > 0 ? impliedYesPct(m) : null,
+    // ONE definition of "priced, or null because nobody staked" — shared with the landing hero
+    // so the two surfaces cannot disagree about which markets have a crowd price (B9 / law 81).
+    yesPct: pricedYesPct(m.yesPool, m.noPool),
     move24h,
     createdAtMs: Date.parse(m.createdAt),
     bettableUntilMs: Date.parse(m.selectionClosedAt ?? m.resolutionAt),

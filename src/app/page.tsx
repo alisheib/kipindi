@@ -2,7 +2,6 @@ import Link from "next/link";
 import { fill } from "@/lib/utils";
 import { I, categoryGlyph } from "@/components/ui/glyphs";
 import { MarketCard } from "@/components/markets/market-card";
-import { FiftyLockup } from "@/components/brand";
 
 import { listMarkets, impliedYesPct, isClosedByTime, isSelectionClosed, traderSeedsByMarket } from "@/lib/server/market-service";
 
@@ -10,12 +9,16 @@ import { getCardCharts } from "@/lib/server/market-history";
 import { getSession } from "@/lib/server/session";
 import { getPlatformStats } from "@/lib/server/platform-stats";
 import { StatsBand } from "@/components/home/stats-band";
+import { LandingHero } from "@/components/home/landing-hero";
+import { pricedYesPct } from "@/lib/markets/discovery";
+import { heroFigures, type HeroRow } from "@/lib/markets/hero";
+import { timeLeftLabel } from "@/lib/markets/time-left";
 import { getServerT } from "@/lib/i18n-server";
 
 export const dynamic = "force-dynamic";
 
 export default async function LandingPage() {
-  const [{ t }, liveRaw, updownLiveRaw, session, stats] = await Promise.all([
+  const [{ t, locale }, liveRaw, updownLiveRaw, session, stats] = await Promise.all([
     getServerT(),
     listMarkets({ status: "LIVE" }).catch(() => [] as Awaited<ReturnType<typeof listMarkets>>),
     // The fast game is its own product line, so it never appears in the poll list above.
@@ -24,14 +27,49 @@ export default async function LandingPage() {
     getSession(),
     getPlatformStats(),
   ]);
-  const live = liveRaw.filter((m) => !isClosedByTime(m)).slice(0, 6);
+  const nowMs = Date.now();
+  const liveAll = liveRaw.filter((m) => !isClosedByTime(m));
+  const live = liveAll.slice(0, 6);
   const updownLiveCount = updownLiveRaw.filter((m) => !isClosedByTime(m)).length;
+
+  // ── the hero's figures ──────────────────────────────────────────────────────────────
+  // Over the WHOLE open book, not the six cards below: "44 open · TZS 186K in play · 57% YES"
+  // are claims about the platform, and computing them from a slice would make the hero state a
+  // smaller number than /markets does for the same word. Pure and synchronous — no extra query.
+  const heroRows: HeroRow[] = liveAll.map((m) => ({
+    id: m.id,
+    category: m.category,
+    pool: m.yesPool + m.noPool,
+    predictors: m.predictorCount,
+    yesPct: pricedYesPct(m.yesPool, m.noPool),
+    // The hero sorts by `closing` only, which never reads move24h — and we have no 24h baseline
+    // at this point in the render. A-5: absent, not invented.
+    move24h: undefined,
+    createdAtMs: Date.parse(m.createdAt),
+    bettableUntilMs: Date.parse(m.selectionClosedAt ?? m.resolutionAt),
+    selectionClosed: isSelectionClosed(m),
+    status: m.status as HeroRow["status"],
+    // No watchlist on the landing page; `matchesStatus(…, "open")` does not read this field.
+    watched: false,
+    titleEn: m.titleEn,
+    titleSw: m.titleSw,
+    titleZh: m.titleZh,
+    yesPool: m.yesPool,
+    noPool: m.noPool,
+    sourceUrl: m.sourceUrl,
+  }));
+  const figures = heroFigures(heroRows, nowMs);
+
   // ⚠️ Deliberately sequential, and it is cheaper this way. The crest-stack lookup used
   // to run inside the Promise.all above, which meant it could not know which markets
   // the landing page would draw — so it read the ENTIRE Position table, every render.
-  // Waiting one round-trip to learn the six ids buys an indexed lookup instead of an
+  // Waiting one round-trip to learn the ids buys an indexed lookup instead of an
   // unbounded scan that grows forever (positions are never pruned).
-  const traderMap = await traderSeedsByMarket(live.map((m) => m.id))
+  // ⛔ The hero's featured market is chosen by "closing soonest" across the whole open book, so
+  // it is not necessarily one of the six below — it joins the id list explicitly rather than
+  // being fetched separately, which would be a second unbounded read.
+  const drawnIds = [...new Set([...live.map((m) => m.id), ...(figures.featured ? [figures.featured.id] : [])])];
+  const traderMap = await traderSeedsByMarket(drawnIds)
     .catch(() => new Map() as Awaited<ReturnType<typeof traderSeedsByMarket>>);
 
   // C2a stats band — REAL aggregates, never fabricated. Markets settled = resolved
@@ -41,7 +79,7 @@ export default async function LandingPage() {
   const settledCount = stats.settledCount;
   const paidOut = stats.paidOutTzs;
   // One query for the whole board — never map getCardChart across a list.
-  const cardCharts = await getCardCharts(live.map((m) => m.id)).catch(() => new Map());
+  const cardCharts = await getCardCharts(drawnIds).catch(() => new Map());
   const isAuthed = !!session;
 
   const TOPICS: Array<{ id: string; label: string }> = [
@@ -55,161 +93,31 @@ export default async function LandingPage() {
     { id: "other",   label: t.market.catOther },
   ];
 
-  function timeLeftStr(iso: string): string {
-    const ms = Date.parse(iso) - Date.now();
-    if (ms <= 0) return t.market.closed;
-    const d = Math.floor(ms / (24 * 3600_000));
-    if (d > 0) return fill(t.market.timeLeftD, { n: d });
-    const h = Math.floor(ms / 3600_000);
-    if (h > 0) return fill(t.market.timeLeftH, { n: h });
-    const m = Math.floor(ms / 60_000);
-    return fill(t.market.timeLeftM, { n: m });
-  }
+  // ONE definition, shared with the hero and /markets — this was a fifth copy of the same nine
+  // lines, and the copies had drifted (three could render "0m left" on a market still taking
+  // bets). See src/lib/markets/time-left.ts.
+  const timeLeftStr = (iso: string): string =>
+    timeLeftLabel(Date.parse(iso), nowMs, {
+      closed: t.market.closed,
+      days: t.market.timeLeftD,
+      hours: t.market.timeLeftH,
+      minutes: t.market.timeLeftM,
+    }, fill);
 
   return (
     <div className="space-y-8 lg:space-y-10">
 
-      {/* HERO — full-bleed background image with text overlay.
-          The F1 champagne image takes over the entire hero. A directional
-          gradient overlay darkens the left for text readability while
-          letting the image show clearly on the right. */}
-      <section className="relative w-full overflow-hidden" style={{ minHeight: "75vh" }}>
-        {/* Background image */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/hero/hero-bg.webp"
-          alt=""
-          aria-hidden="true"
-          className="absolute inset-0 w-full h-full object-cover"
-          /* INTERIM, 2026-07-29 (design brief, HERO). The confetti/celebration
-             photo leans "casino win", against RULES law 7 (no manufactured
-             celebration, trustworthy first). The real fix is an authentic
-             editorial Tanzania album — Ali's call, and a commissioning decision
-             rather than a code one.
-             Until then the photo RECEDES so the typography carries the hero:
-             saturation 0.75 → 0.45 and brightness 0.5 → 0.30. No new asset, no
-             new vocabulary, and reversible by editing these two numbers. */
-          style={{ filter: "saturate(0.45) brightness(0.30)" }}
-        />
-
-        {/* Gradient overlay — left darker for text, right transparent for image */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background: `
-              linear-gradient(
-                90deg,
-                oklch(10% 0.08 268 / 0.85) 0%,
-                oklch(10% 0.08 268 / 0.60) 35%,
-                oklch(10% 0.06 268 / 0.30) 60%,
-                oklch(10% 0.04 268 / 0.10) 100%
-              ),
-              linear-gradient(
-                180deg,
-                oklch(10% 0.08 268 / 0.15) 0%,
-                transparent 40%,
-                oklch(10% 0.08 268 / 0.55) 100%
-              )
-            `,
-          }}
-        />
-
-        {/* Content */}
-        <div
-          className="relative flex flex-col justify-center px-6 sm:px-10 lg:px-16 xl:px-24 py-16 lg:py-24"
-          style={{ zIndex: 2, minHeight: "75vh" }}
-        >
-          <div className="flex flex-col gap-5 lg:gap-6 max-w-[640px]">
-            <div className="flex items-center gap-3">
-              <FiftyLockup size={22} />
-              <span
-                className="hidden sm:inline-flex items-center gap-2 font-mono text-[10.5px] uppercase tracking-[0.16em]"
-                style={{ color: "oklch(90% 0.10 80)" }}
-              >
-                <span style={{ width: 5, height: 5, borderRadius: 999, background: "oklch(90% 0.10 80)" }} />
-                {t.home.heroLocation}
-              </span>
-            </div>
-
-            <h1
-              className="font-display font-bold text-[42px] sm:text-[56px] md:text-[68px] leading-[1.02] tracking-[-0.03em] max-w-[18ch] m-0"
-              style={{ color: "oklch(99% 0.006 268)", textShadow: "0 2px 24px oklch(8% 0.10 268 / 0.7)" }}
-            >
-              The{" "}
-              <span
-                style={{
-                  background: "linear-gradient(180deg, oklch(94% 0.12 82) 0%, oklch(74% 0.15 78) 100%)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  backgroundClip: "text",
-                  color: "transparent",
-                }}
-              >
-                wisdom
-              </span>{" "}
-              of <span style={{ color: "var(--hero-yes-accent)" }}>YES</span> &{" "}
-              <span style={{ color: "var(--hero-no-accent)" }}>NO</span>.
-            </h1>
-
-            <div className="flex items-center gap-3">
-              <span style={{ height: 1, width: 80, background: "linear-gradient(90deg, oklch(90% 0.10 80), transparent)" }} />
-              <span className="font-mono text-[10.5px] uppercase tracking-[0.16em]" style={{ color: "oklch(90% 0.10 80)" }}>
-                {t.home.heroEst}
-              </span>
-            </div>
-
-            <p
-              className="font-display text-[15px] md:text-[18px] leading-[1.55] max-w-[52ch] m-0"
-              style={{ color: "oklch(88% 0.03 268)", textShadow: "0 1px 12px oklch(8% 0.10 268 / 0.6)" }}
-            >
-              {t.home.heroBody}
-            </p>
-
-            <div className="flex flex-wrap gap-3 items-center">
-              {isAuthed ? (
-                <>
-                  <Link
-                    href={"/markets" as never}
-                    className="btn btn-primary btn-xl inline-flex items-center gap-2 rounded-pill"
-                  >
-                    {t.home.heroCta}
-                    <I.arrowRight s={16} />
-                  </Link>
-                  <Link
-                    href={"/positions" as never}
-                    className="btn btn-ghost btn-xl inline-flex items-center rounded-pill"
-                  >
-                    {t.home.myPositions}
-                  </Link>
-                </>
-              ) : (
-                <>
-                  <Link
-                    href={"/auth/register" as never}
-                    className="btn btn-primary btn-xl inline-flex items-center gap-2 rounded-pill"
-                  >
-                    {t.common.createAccount}
-                    <I.arrowRight s={16} />
-                  </Link>
-                  <Link
-                    href={"/auth/login" as never}
-                    className="btn btn-ghost btn-xl inline-flex items-center rounded-pill"
-                  >
-                    {t.common.signIn}
-                  </Link>
-                  <Link
-                    href={"/markets" as never}
-                    className="font-mono text-[11px] uppercase tracking-[0.14em] hover:underline self-center"
-                    style={{ color: "oklch(84% 0.08 200)" }}
-                  >
-                    {t.home.browsFirst}
-                  </Link>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* HERO — the question board (round-2 kit §1a). Built from the brand mark, the type and
+          REAL market data; `public/hero/hero-bg.webp` and the 75vh photograph it filled went out
+          in the same commit this landed. Its own comment called itself INTERIM. */}
+      <LandingHero
+        figures={figures}
+        t={t}
+        locale={locale}
+        isAuthed={isAuthed}
+        nowMs={nowMs}
+        cards={{ charts: cardCharts, traders: traderMap }}
+      />
 
       {/* Rest of page — centered container */}
       <div className="mx-auto max-w-[1280px] px-3 lg:px-6 space-y-8 lg:space-y-10">

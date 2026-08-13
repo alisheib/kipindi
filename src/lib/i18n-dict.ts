@@ -485,7 +485,27 @@ export const dict = {
     },
     home: {
       heroLocation: "Tanzania · Dar es Salaam",
-      heroEst: "Est. 2026 · Dar es Salaam",
+      // ⚠️ The city is NOT repeated here. The hero composes `heroLocation · heroEst`, and while
+      // this key carried "Est. 2026 · Dar es Salaam" the eyebrow rendered
+      // "TANZANIA · DAR ES SALAAM · EST. 2026 · DAR ES SALAAM". Only the old photographic hero
+      // read this key, and it read it alone.
+      heroEst: "Est. 2026",
+      // ── the hero (round-2 kit §1a) ────────────────────────────────────────────────
+      // The headline is VERBATIM IN ALL THREE LOCALES — a decided call: YES and NO are
+      // product terms and the sentence is the brand line. It lives in the dict anyway so
+      // the string has ONE home; it used to be hardcoded English JSX in page.tsx with no
+      // key at all. `home.heroHeadline` is therefore on test:i18n's IDENTICAL_OK list.
+      heroHeadline: "The wisdom of YES & NO.",
+      heroProofOpen: "Open markets",
+      heroProofPool: "In play now",
+      heroProofPredictions: "Open predictions",
+      heroConvEyebrow: "The whole board, right now",
+      heroConvRead: "{yesPct}% {yesWord} · {noPct}% {noWord} — every open market, weighted by the money on it",
+      heroConvEmpty: "Nothing staked yet — there is no crowd price to show",
+      heroBoardEyebrow: "Closing soonest",
+      heroBoardCloseToday: "{n} close today",
+      heroNoPrice: "No bets yet",
+      heroBrowseAll: "Browse all {n} markets",
       statsSettled: "Markets settled", statsPaidOut: "Paid out",
       heroBody: "Trade questions about Tanzania's weather, markets, sport and culture — settled by official sources.",
       heroCta: "Browse markets",
@@ -2038,7 +2058,19 @@ export const dict = {
     },
     home: {
       heroLocation: "Tanzania · Dar es Salaam",
-      heroEst: "Tangu 2026 · Dar es Salaam",
+      heroEst: "Tangu 2026",
+      // The headline stays in English by decision — see the en block.
+      heroHeadline: "The wisdom of YES & NO.",
+      heroProofOpen: "Masoko yaliyo wazi",
+      heroProofPool: "Fedha zilizowekwa",
+      heroProofPredictions: "Utabiri ulio wazi",
+      heroConvEyebrow: "Bodi yote, sasa hivi",
+      heroConvRead: "{yesPct}% {yesWord} · {noPct}% {noWord} — kila soko lililo wazi, kwa uzito wa fedha zilizowekwa",
+      heroConvEmpty: "Hakuna fedha iliyowekwa bado — hakuna bei ya umati ya kuonyesha",
+      heroBoardEyebrow: "Yanayofungwa karibuni",
+      heroBoardCloseToday: "{n} yanafunga leo",
+      heroNoPrice: "Hakuna dau bado",
+      heroBrowseAll: "Tazama masoko yote {n}",
       statsSettled: "Masoko yaliyotatuliwa", statsPaidOut: "Zilizolipwa",
       heroBody: "Shiriki katika utabiri wa hali ya hewa, masoko, michezo na utamaduni wa Tanzania — kila tukio likithibitishwa kwa mujibu wa vyanzo rasmi.",
       heroCta: "Tazama masoko",
@@ -3500,7 +3532,19 @@ export const dict = {
     },
     home: {
       heroLocation: "坦桑尼亚 · 达累斯萨拉姆",
-      heroEst: "创立于2026年 · 达累斯萨拉姆",
+      heroEst: "创立于2026年",
+      // The headline stays in English by decision — see the en block.
+      heroHeadline: "The wisdom of YES & NO.",
+      heroProofOpen: "开放市场",
+      heroProofPool: "当前投注总额",
+      heroProofPredictions: "未结算预测",
+      heroConvEyebrow: "全部市场，此刻",
+      heroConvRead: "{yesPct}% {yesWord} · {noPct}% {noWord} — 所有开放市场，按投注金额加权",
+      heroConvEmpty: "尚无投注 — 暂无群众价格",
+      heroBoardEyebrow: "最快结束",
+      heroBoardCloseToday: "今天 {n} 个结束",
+      heroNoPrice: "尚无投注",
+      heroBrowseAll: "浏览全部 {n} 个市场",
       statsSettled: "已结算市场", statsPaidOut: "已派彩",
       heroBody: "参与坦桑尼亚天气、市场、体育和文化方面的问题竞猜 — 由官方来源验证结算。",
       heroCta: "浏览市场",
