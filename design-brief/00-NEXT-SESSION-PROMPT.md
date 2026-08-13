@@ -157,6 +157,51 @@ information changes the calculus, that is a new decision, not a reopening of thi
 
 ---
 
+## 🔴 A REAL DEFECT, FOUND LIVE AFTER SHIPPING — the RG line duplicates the footer, with a
+## ~192px dead gap between them. Fix this FIRST, before anything in §4.
+
+Ali, reading the live page: *"this section now feels redundant, find a way to make it better."*
+Confirmed by reading the code, not just the screenshot — **two distinct defects, not one vague
+feeling**:
+
+1. **Content duplication.** `src/components/home/rg-line.tsx` renders THREE links —
+   `t.footer.setLimits`, `t.footer.takeABreak`/`selfExclude`, `t.footer.helpline` — and the
+   footer's own "PLAY SAFE" column (`public-footer.tsx`, a few hundred pixels below) already
+   renders the exact same three. A visitor sees "Set limits · Take a break / Self-exclude ·
+   Helpline · 0800 11 0011" TWICE within one scroll.
+2. **A padding/margin stacking bug — the gap is not decorative, it is a bug.** `page.tsx:251-255`
+   wraps `<RgLine/>` in its own `.kp-band` with `paddingBottom: var(--rh-close)` (48px). It sits
+   directly after `<TrustBand>`, which closes with `kp-band--closes` → `padding-bottom:
+   var(--rh-section)` (96px, `globals.css:3587`). Then `<PublicFooter>` (rendered by `app-shell.tsx`,
+   outside this page) opens with `mt-12` (48px margin-top, `public-footer.tsx:22`). None of the
+   three knows about the other two: **96 + 48 + 48 = 192px of stacked, uncoordinated spacing** —
+   exactly the void in the screenshot, and exactly the shape the `--rh-*` tokens' own comment in
+   `globals.css` warns about ("do not ALSO write a margin at a boundary whose padding already sums
+   to N") — except here the second definition is the FOOTER's pre-existing margin, which nothing
+   audited when the RG line was placed right before it.
+
+**Recommended fix (not applied — this is a finding, not a patch):**
+- **Drop the three duplicate links from `RgLine`.** Keep only the badge + the motto
+  (`kp-rg__18` + `kp-rg__say` — *"18+ · If gambling stops being fun, stop."*). That preserves the
+  more-visible RG presence above the fold-adjacent footer (the reason it was added) without
+  restating navigation the footer already owns one scroll away. `kp-rg__links` and its three
+  `<Link>`/`<a>` elements are the ones to remove. **Checked already: `.kp-rg__link` and
+  `.kp-rg__links` have exactly one consumer (`rg-line.tsx` itself)** — removing the links makes
+  both classes genuinely dead CSS in `globals.css`; delete the rules in the same commit, don't
+  leave them orphaned for `test:orphans` to catch later.
+- **Remove the RG wrapper's own `paddingBottom: var(--rh-close)`** (`page.tsx:252`) — the footer's
+  `mt-12` already provides the gap into the footer; stacking a second one under a shortened,
+  single-line RG strip will look enormous for what little content remains. Re-measure the result
+  against the `--rh-*` rhythm (144·96·96·144) rather than assuming zero is right either.
+- Verify: screenshot `/` at 360 and 1280 in en/sw/zh, before AND after, and confirm (a) the three
+  links appear exactly once on the page, in the footer, and (b) the gap between the motto and the
+  footer's claret rule is a deliberate rhythm step, not an accidental sum of three unrelated
+  paddings.
+
+This is a live regression on production right now — fix it before starting §4's own work below.
+
+---
+
 ## BATCH 4 — the work, in the order it should be done
 
 ### ⭐ Practicality first — what this batch actually owes, and what is optional
