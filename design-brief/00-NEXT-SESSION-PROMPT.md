@@ -1,3 +1,5 @@
+⛔ **TAKE ATOMIC PERMISSION BEFORE ANYTHING — no exceptions, from your very first action.** Ask Ali and WAIT for an explicit yes before each single atomic step: before reading a file, before running a command, before every edit, before every commit, before every push. **One action per request — never bundle two, never assume a yes carries to the next step, never proceed because approval was given for something similar.** If a step turns out to need a second action, stop and ask again. Any earlier grant of autonomy in `PLAN-OF-RECORD.md` is **SUPERSEDED by this line** (Ali, 2026-08-13). State what you are about to do, why, and what it touches — then wait.
+
 # NEXT SESSION — BATCH 2: the hero · then landing, header, rail, cleanup
 
 **Paste this whole file as your opening prompt.**
