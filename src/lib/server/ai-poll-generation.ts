@@ -139,7 +139,7 @@ const polls: Map<string, StoredAIPoll> =
 // DAL interface + implementations
 // ---------------------------------------------------------------------------
 
-interface AIPollStore {
+export interface AIPollStore {
   get(id: string): Promise<StoredAIPoll | null>;
   set(poll: StoredAIPoll): Promise<void>;
   delete(id: string): Promise<boolean>;
@@ -276,7 +276,16 @@ const prismaStore: AIPollStore = {
 };
 
 const usePrisma = hasDatabase() && process.env.USE_PRISMA_DAL !== "false";
-const store: AIPollStore = usePrisma ? prismaStore : memoryStore;
+/**
+ * The DAL, exported for the same reason `market-candidate.ts` exports `candidateStore`:
+ * an AIPoll row is otherwise unreachable except through `generateAIPoll`, which calls a
+ * provider and picks its own confidence — so the ONE state that matters to
+ * `test:aipoll-publish` (APPROVED, confidence below the autopilot threshold) could not be
+ * constructed, and the chain that puts a LIVE market on the board would stay untested.
+ * It is the same store the service uses; there is no separate test path.
+ */
+export const aiPollStore: AIPollStore = usePrisma ? prismaStore : memoryStore;
+const store: AIPollStore = aiPollStore;
 
 /* ─── Constants ─── */
 

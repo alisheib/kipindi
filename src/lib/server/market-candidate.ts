@@ -255,6 +255,15 @@ export const candidateStore: CandidateStore = usePrisma ? prismaCandidates : mem
 // Constants
 // ---------------------------------------------------------------------------
 
+/**
+ * The score below which a candidate is filtered out **when no human has approved it**.
+ *
+ * ⚠️ THIS IS AN AUTOPILOT GATE, NOT A LICENCE RULE. It exists so the unattended
+ * pipeline (news → extract → filter → verify → score) cannot promote a weak candidate
+ * on its own. A candidate a human officer has already read and approved is past the
+ * question this number asks — see `scoreCandidate({ humanApproved: true })` and
+ * `docs/COMPLIANCE-DECISIONS.md` § 2026-08-14 ("a human approval wins").
+ */
 const CONFIDENCE_PUBLISH_THRESHOLD = 75;
 
 export type CandidateFilter = {
@@ -404,8 +413,24 @@ export async function attachVerification(id: string, opts: { confirmingSources: 
   return c;
 }
 
-/** Layer 4 — assign confidence. Routes to PENDING_REVIEW or FILTERED_OUT. */
-export async function scoreCandidate(id: string, opts: { confidence: number; tokensSpent: number; costUsd: number; rubric: Record<string, number> }): Promise<Candidate | null> {
+/**
+ * Layer 4 — assign confidence. Routes to PENDING_REVIEW or FILTERED_OUT.
+ *
+ * 🔴 `humanApproved` — A HUMAN APPROVAL WINS (Ali, 2026-08-14; recorded in
+ * `docs/COMPLIANCE-DECISIONS.md`). The `/admin/ai-polls` publish path runs a poll an
+ * officer has ALREADY approved through this pipeline for its audit trail, then hands
+ * the candidate to `approveCandidate`. With the gate applied there, a poll scored below
+ * 75 went to FILTERED_OUT, `approveCandidate` returned null — **and its return value was
+ * discarded** — so `createMarket` ran anyway and `markPublished` then refused. The market
+ * was LIVE and bettable and the officer was told the publish had FAILED. It happened
+ * three times on production (2026-08-11 / 08-14 ×2) before it was found; one of those
+ * markets had 15,000 TZS staked in it.
+ *
+ * The confidence is still RECORDED and still visible to the officer — nothing is hidden.
+ * What changes is that the autopilot's admission test does not get to overrule the human
+ * who already said yes. The threshold still governs every unattended path.
+ */
+export async function scoreCandidate(id: string, opts: { confidence: number; tokensSpent: number; costUsd: number; rubric: Record<string, number>; humanApproved?: boolean }): Promise<Candidate | null> {
   const c = await candidateStore.get(id);
   if (!c) return null;
   const now = new Date().toISOString();
@@ -413,16 +438,30 @@ export async function scoreCandidate(id: string, opts: { confidence: number; tok
   c.tokensSpent += opts.tokensSpent;
   c.costUsd += opts.costUsd;
   c.updatedAt = now;
-  if (c.confidence < CONFIDENCE_PUBLISH_THRESHOLD) {
+  const belowThreshold = c.confidence < CONFIDENCE_PUBLISH_THRESHOLD;
+  if (belowThreshold && !opts.humanApproved) {
     c.state = "FILTERED_OUT";
     c.rejectReason = "low_confidence";
     c.rejectNote = `Confidence ${c.confidence} below threshold ${CONFIDENCE_PUBLISH_THRESHOLD}`;
     c.trace.push({ layer: 4, outcome: `low_confidence:${c.confidence}`, at: now });
   } else {
     c.state = "PENDING_REVIEW";
-    c.trace.push({ layer: 4, outcome: `scored:${c.confidence}:${JSON.stringify(opts.rubric)}`, at: now });
+    // The trace says WHY a sub-threshold candidate is standing — an officer reading the
+    // record months later must be able to see the override, not infer it from a gap.
+    const outcome = belowThreshold
+      ? `scored:${c.confidence}:human_approved:${JSON.stringify(opts.rubric)}`
+      : `scored:${c.confidence}:${JSON.stringify(opts.rubric)}`;
+    c.trace.push({ layer: 4, outcome, at: now });
   }
   await candidateStore.set(c);
+
+  if (belowThreshold && opts.humanApproved) {
+    audit({
+      category: "COMPLIANCE", action: "candidate.confidence_gate_waived",
+      actorId: "system_ai", targetType: "Candidate", targetId: c.id,
+      payload: { confidence: c.confidence, threshold: CONFIDENCE_PUBLISH_THRESHOLD, reason: "human_officer_approved" },
+    });
+  }
 
   return c;
 }

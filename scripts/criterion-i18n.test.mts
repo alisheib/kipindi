@@ -345,7 +345,17 @@ const ZH = "若坦桑尼亚银行最后一个营业日的中间价低于首日�
   const claude = decomment(read("src/lib/server/ai-provider-claude.ts"));
   const gen = decomment(read("src/lib/server/ai-poll-generation.ts"));
   const cand = decomment(read("src/lib/server/market-candidate.ts"));
-  const pollPub = decomment(read("src/app/admin/ai-polls/actions.ts"));
+  // ⚠️ RE-ANCHORED 2026-08-14. The AI-poll publish chain moved OUT of
+  // `src/app/admin/ai-polls/actions.ts` into `src/lib/server/ai-poll-publish.ts` (D1 — a
+  // "use server" action cannot be executed by a test, so the one chain that puts a LIVE
+  // market on the board was covered by nothing that ran it). This guard went red on the
+  // move, which is exactly right: it is anchored on WHERE the calls are, and they moved.
+  // ⛔ A guard whose anchor has gone stale is an ABSENT guard, not a failing one — so the
+  // anchor is corrected here, never relaxed, and `pollAction` below asserts the action
+  // still delegates to this module. Without that, a later refactor could move the calls
+  // back and leave this section reading a file nothing invokes.
+  const pollPub = decomment(read("src/lib/server/ai-poll-publish.ts"));
+  const pollAction = decomment(read("src/app/admin/ai-polls/actions.ts"));
   const candPub = decomment(read("src/app/admin/candidates/actions.ts"));
 
   // ① ASKED FOR — in the tool schema the model actually answers.
@@ -443,10 +453,15 @@ const ZH = "若坦桑尼亚银行最后一个营业日的中间价低于首日�
   const pollCreate = callBody(pollPub, "createMarket");
   const pollIngest = callBody(pollPub, "ingestCandidate");
   const candCreate = callBody(candPub, "createMarket");
-  ok("8: the two calls in ai-polls/actions.ts were located SEPARATELY",
+  ok("8: the two calls in ai-poll-publish.ts were located SEPARATELY",
      pollCreate.length > 100 && pollIngest.length > 100 && pollCreate !== pollIngest,
      `create=${pollCreate.length} ingest=${pollIngest.length}`);
   ok("8: the candidates createMarket call was located", candCreate.length > 100, `${candCreate.length}`);
+  // ⛔ AND THE MODULE THIS SECTION READS IS THE ONE THE OFFICER'S BUTTON ACTUALLY RUNS.
+  // Re-anchoring a guard onto a new file is only sound while that file is still on the
+  // path; otherwise the section becomes a reading of dead code that can never fail.
+  ok("8: …and publishPollAction still delegates to that module, so this is live code",
+     /publishApprovedPoll\s*\(/.test(pollAction) && /ai-poll-publish/.test(pollAction));
 
   ok("8: publishing an AI poll carries both into THE createMarket CALL",
      /resolutionCriterionSw:\s*poll\.resolutionCriterionSw/.test(pollCreate) &&

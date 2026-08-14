@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>50pick — How rates and payouts are calculated</title>
+<style>
+  /* Matches the margins scripts/generate-rates-pdf.mjs sets, so printing this file straight
+     from a browser lands the same way the generated PDF does. */
+  @page { size: A4; margin: 16mm 14mm; }
+
+  body {
+    margin: 0; background: #fff; color: #000;
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 10.5pt; line-height: 1.5;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  h1 { font-size: 18pt; margin: 0 0 4px; }
+  h2 { font-size: 13pt; margin: 14px 0 7px; border-bottom: 1pt solid #000; padding-bottom: 3px; }
+  /* A heading must never print alone at the foot of a page, separated from the
+     table it introduces. */
+  h2, h3, h4 { page-break-after: avoid; break-after: avoid; }
+  h3 { font-size: 11pt; margin: 12px 0 5px; }
+  h4 { font-size: 10.5pt; margin: 10px 0 4px; }
+  p { margin: 0 0 8px; }
+  ol, ul { margin: 0 0 8px; padding-left: 20px; }
+  li { margin-bottom: 3px; }
+  .sub { font-size: 10pt; color: #444; margin-bottom: 14px; }
+
+  /* No table in this guide is taller than a page, so keeping each one whole is safe
+     and stops a header row printing alone at the foot of a page. */
+  table { border-collapse: collapse; width: 100%; font-size: 10pt; margin: 5px 0 8px; page-break-inside: avoid; }
+  th, td { border: 0.75pt solid #999; padding: 4px 7px; text-align: left; vertical-align: top; }
+  th { background: #EEE; font-weight: 600; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  tr.sum td { font-weight: 700; background: #F5F5F5; }
+
+  .block { page-break-inside: avoid; margin-bottom: 10px; }
+  .note { border: 0.75pt solid #999; background: #F5F5F5; padding: 7px 10px; margin: 7px 0 10px; font-size: 10pt; }
+  .tie { font-size: 9.5pt; margin: -4px 0 10px; }
+  .pagebreak { page-break-before: always; }
+  footer { margin-top: 16px; border-top: 0.75pt solid #999; padding-top: 6px; font-size: 9pt; color: #444; }
+</style>
+</head>
+<body>
+
+<h1>50pick — how rates and payouts are calculated</h1>
+<p class="sub">A guide for administrators. Covers both games: normal polls and Up &amp; Down.</p>
+
+<p>50pick does not set odds. Both games are <strong>pari-mutuel</strong>: the players' own money makes the price.
+We take a fee from the losing side, and everyone on the winning side shares what is left, in proportion to what
+they staked.</p>
+
+<p><strong>One rule, both games.</strong> Up &amp; Down and normal polls are charged in exactly the same way. The
+games differ in how the result is decided and how long they last — never in how the money is worked out.</p>
+
+<h2>1. The rates</h2>
+
+<table>
+  <tr><th style="width:32%">Item</th><th>Normal polls and Up &amp; Down — identical</th></tr>
+  <tr><td><strong>Our fee</strong></td><td><strong>13% of the losing side</strong> (Platform 3% + Operator 10%). Nothing is taken from the winners' stakes.</td></tr>
+  <tr><td>Tax on our fee</td><td>TRA 10% + GBT 5% <em>of the fee we earned</em>. Never taken from a player's payout.</td></tr>
+  <tr><td>Minimum stake</td><td class="n">TZS 1,000</td></tr>
+  <tr><td>Maximum stake</td><td class="n">TZS 1,000,000 — <strong>per bet</strong></td></tr>
+  <tr><td>Positions per market</td><td>As many as the player wants, on either or both sides.</td></tr>
+  <tr><td>Bonus betting requirement</td><td>Only <strong>one side</strong> of a market counts toward clearing a bonus. The player is warned before confirming, and the bet still goes ahead.</td></tr>
+  <tr><td>Free cancellation</td><td>5 minutes after placing the bet, full refund. After that the bet is locked.</td></tr>
+  <tr><td>Withdrawal fee</td><td>1.5% of the amount withdrawn</td></tr>
+</table>
+
+<div class="note"><strong>Rates are frozen when a market is created.</strong> Changing a rate today affects new
+polls and new rounds only — never a bet that has already been placed. Two markets running side by side can
+legitimately settle on different rates, so if a player disputes a payout, read the rates on <em>their</em> market.</div>
+
+<div class="note"><strong>Because the maximum is per bet</strong>, and players may place as many bets as they like,
+a player's total money on one market is not limited by that maximum. Their balance and the daily loss limit are
+what bound it.</div>
+
+<h2>2. How every payout is worked out</h2>
+<ol>
+  <li><strong>The pool</strong> — all the money in the market: winning side + losing side.</li>
+  <li><strong>Our fee</strong> — 13% of the losing side.</li>
+  <li><strong>The net pool</strong> — pool minus fee. This is what gets shared out.</li>
+  <li><strong>Each payout</strong> — the player's stake ÷ the winning side × the net pool.</li>
+</ol>
+<p>A payout always <strong>includes the stake</strong>. A player who stakes 60,000 and is paid 86,100 has made a
+profit of 26,100.</p>
+
+<div class="note"><strong>A winning bet is never paid less than it staked.</strong> The fee only ever comes out of
+the losing side, so the winners' own stakes are untouched — whatever the shape of the market. Even on a market as
+lopsided as 999,000 against 1,000, a winning 10,000 bet on the crowded side still pays 10,009.</div>
+
+<h2>3. Game one — normal polls</h2>
+<p>The result is decided by an officer, on evidence, after the event. Polls can run for days or weeks.</p>
+
+<h3>Example 1 — a two-sided poll: “Will Simba win the derby?”</h3>
+<table>
+  <tr><th>Player</th><th>Side</th><th class="n">Stake</th></tr>
+  <tr><td>Amina</td><td>YES</td><td class="n">60,000</td></tr>
+  <tr><td>Juma</td><td>YES</td><td class="n">40,000</td></tr>
+  <tr><td>Neema</td><td>YES</td><td class="n">100,000</td></tr>
+  <tr><td>Bakari</td><td>NO</td><td class="n">80,000</td></tr>
+  <tr><td>Chausiku</td><td>NO</td><td class="n">20,000</td></tr>
+  <tr class="sum"><td colspan="2">YES 200,000 · NO 100,000</td><td class="n">Pool 300,000</td></tr>
+</table>
+
+<div class="block">
+<h4>In this case: YES wins</h4>
+<p>Losing side = NO 100,000. Fee = 13% × 100,000 = <strong>13,000</strong>. Net pool = <strong>287,000</strong>.</p>
+<table>
+  <tr><th>&nbsp;</th><th>Player</th><th class="n">Stake</th><th class="n">Paid</th><th class="n">Profit / loss</th></tr>
+  <tr><td rowspan="3">From the winners</td><td>Amina</td><td class="n">60,000</td><td class="n">86,100</td><td class="n">+26,100</td></tr>
+  <tr><td>Juma</td><td class="n">40,000</td><td class="n">57,400</td><td class="n">+17,400</td></tr>
+  <tr><td>Neema</td><td class="n">100,000</td><td class="n">143,500</td><td class="n">+43,500</td></tr>
+  <tr><td rowspan="2">From the losers</td><td>Bakari</td><td class="n">80,000</td><td class="n">0</td><td class="n">−80,000</td></tr>
+  <tr><td>Chausiku</td><td class="n">20,000</td><td class="n">0</td><td class="n">−20,000</td></tr>
+  <tr><td rowspan="3">From the house</td><td>Fee earned</td><td class="n">&nbsp;</td><td class="n">13,000</td><td class="n">&nbsp;</td></tr>
+  <tr><td>TRA 10% · GBT 5%</td><td class="n">&nbsp;</td><td class="n">−1,300 · −650</td><td class="n">&nbsp;</td></tr>
+  <tr class="sum"><td>50pick keeps</td><td class="n">&nbsp;</td><td class="n">11,050</td><td class="n">&nbsp;</td></tr>
+</table>
+<p class="tie">Check: 287,000 paid + 13,000 fee = 300,000 pool. Every winner returned 1.435× their stake.</p>
+</div>
+
+<div class="block">
+<h4>In this case: NO wins</h4>
+<p>Losing side = YES 200,000. Fee = 13% × 200,000 = <strong>26,000</strong>. Net pool = <strong>274,000</strong>.</p>
+<table>
+  <tr><th>&nbsp;</th><th>Player</th><th class="n">Stake</th><th class="n">Paid</th><th class="n">Profit / loss</th></tr>
+  <tr><td rowspan="2">From the winners</td><td>Bakari</td><td class="n">80,000</td><td class="n">219,200</td><td class="n">+139,200</td></tr>
+  <tr><td>Chausiku</td><td class="n">20,000</td><td class="n">54,800</td><td class="n">+34,800</td></tr>
+  <tr><td rowspan="3">From the losers</td><td>Amina</td><td class="n">60,000</td><td class="n">0</td><td class="n">−60,000</td></tr>
+  <tr><td>Juma</td><td class="n">40,000</td><td class="n">0</td><td class="n">−40,000</td></tr>
+  <tr><td>Neema</td><td class="n">100,000</td><td class="n">0</td><td class="n">−100,000</td></tr>
+  <tr><td rowspan="3">From the house</td><td>Fee earned</td><td class="n">&nbsp;</td><td class="n">26,000</td><td class="n">&nbsp;</td></tr>
+  <tr><td>TRA 10% · GBT 5%</td><td class="n">&nbsp;</td><td class="n">−2,600 · −1,300</td><td class="n">&nbsp;</td></tr>
+  <tr class="sum"><td>50pick keeps</td><td class="n">&nbsp;</td><td class="n">22,100</td><td class="n">&nbsp;</td></tr>
+</table>
+<p class="tie">Check: 274,000 paid + 26,000 fee = 300,000 pool. Every winner returned 2.740× their stake.</p>
+</div>
+
+<div class="note"><strong>What this shows.</strong> Same poll, same rate — a winning NO ticket returned 2.740×
+while a winning YES ticket returned 1.435×. Nobody set those numbers. NO was the smaller side, so fewer people
+shared a bigger prize. <strong>The smaller side always pays better.</strong></div>
+
+<h3>Example 2 — a lopsided poll: a heavy favourite</h3>
+<table>
+  <tr><th>Player</th><th>Side</th><th class="n">Stake</th></tr>
+  <tr><td>Amina</td><td>YES (favourite)</td><td class="n">300,000</td></tr>
+  <tr><td>Juma</td><td>YES (favourite)</td><td class="n">150,000</td></tr>
+  <tr><td>Bakari</td><td>NO (outsider)</td><td class="n">50,000</td></tr>
+  <tr class="sum"><td colspan="2">YES 450,000 · NO 50,000</td><td class="n">Pool 500,000</td></tr>
+</table>
+
+<div class="block">
+<h4>In this case: the favourite (YES) wins</h4>
+<p>Losing side = NO 50,000. Fee = 13% × 50,000 = <strong>6,500</strong>. Net pool = <strong>493,500</strong>.</p>
+<table>
+  <tr><th>&nbsp;</th><th>Player</th><th class="n">Stake</th><th class="n">Paid</th><th class="n">Profit / loss</th></tr>
+  <tr><td rowspan="2">From the winners</td><td>Amina</td><td class="n">300,000</td><td class="n">329,000</td><td class="n">+29,000</td></tr>
+  <tr><td>Juma</td><td class="n">150,000</td><td class="n">164,500</td><td class="n">+14,500</td></tr>
+  <tr><td>From the loser</td><td>Bakari</td><td class="n">50,000</td><td class="n">0</td><td class="n">−50,000</td></tr>
+  <tr><td rowspan="3">From the house</td><td>Fee earned</td><td class="n">&nbsp;</td><td class="n">6,500</td><td class="n">&nbsp;</td></tr>
+  <tr><td>TRA 10% · GBT 5%</td><td class="n">&nbsp;</td><td class="n">−650 · −325</td><td class="n">&nbsp;</td></tr>
+  <tr class="sum"><td>50pick keeps</td><td class="n">&nbsp;</td><td class="n">5,525</td><td class="n">&nbsp;</td></tr>
+</table>
+<p class="tie">Check: 493,500 paid + 6,500 fee = 500,000 pool. Every winner returned 1.097× their stake.</p>
+</div>
+
+<div class="block">
+<h4>In this case: the outsider (NO) wins</h4>
+<p>Losing side = YES 450,000. Fee = 13% × 450,000 = <strong>58,500</strong>. Net pool = <strong>441,500</strong>.</p>
+<table>
+  <tr><th>&nbsp;</th><th>Player</th><th class="n">Stake</th><th class="n">Paid</th><th class="n">Profit / loss</th></tr>
+  <tr><td>From the winner</td><td>Bakari</td><td class="n">50,000</td><td class="n">441,500</td><td class="n">+391,500</td></tr>
+  <tr><td rowspan="2">From the losers</td><td>Amina</td><td class="n">300,000</td><td class="n">0</td><td class="n">−300,000</td></tr>
+  <tr><td>Juma</td><td class="n">150,000</td><td class="n">0</td><td class="n">−150,000</td></tr>
+  <tr><td rowspan="3">From the house</td><td>Fee earned</td><td class="n">&nbsp;</td><td class="n">58,500</td><td class="n">&nbsp;</td></tr>
+  <tr><td>TRA 10% · GBT 5%</td><td class="n">&nbsp;</td><td class="n">−5,850 · −2,925</td><td class="n">&nbsp;</td></tr>
+  <tr class="sum"><td>50pick keeps</td><td class="n">&nbsp;</td><td class="n">49,725</td><td class="n">&nbsp;</td></tr>
+</table>
+<p class="tie">Check: 441,500 paid + 58,500 fee = 500,000 pool. The winner returned 8.830× their stake.</p>
+</div>
+
+<div class="note"><strong>The complaint this answers: “I won but got almost nothing.”</strong>
+Backing an overwhelming favourite means splitting a small prize among a large side — 1.097×, or 9.7% profit.
+It is not a fee problem: our fee there was 6,500 on a pool of 500,000, about 1.3%. Show the player the two pool
+figures on their poll.</div>
+
+<div class="note"><strong>If one side is empty.</strong> With nobody on the other side there is no prize and no fee.
+Every stake is returned in full, whichever way the event went, and 50pick earns nothing.</div>
+
+<div class="pagebreak"></div>
+
+<h2>4. Game two — Up &amp; Down</h2>
+<p><strong>The money works exactly as in section 2 — 13% of the losing side.</strong> What is different is that
+Up &amp; Down asks two separate questions: <strong>the price band decides who wins, the pool decides how much</strong>.
+A player can be right about the direction and still be refunded, if the price did not move far enough.</p>
+
+<h4>Who wins — the band</h4>
+<p>When the round opens we freeze the price and set two boundaries around it:</p>
+<ul>
+  <li>Close <strong>at or above the upper boundary</strong> → UP wins.</li>
+  <li>Close <strong>at or below the lower boundary</strong> → DOWN wins.</li>
+  <li>Close <strong>anywhere in between</strong> → the round voids: every stake refunded in full, and we charge nothing.</li>
+</ul>
+<p>Today the band is the asset's smallest meaningful move — on Bitcoin's 5-minute round that is four hundredths of
+a dollar — so in practice the round is simply “higher or lower” and refunds are rare. Gold's 15-minute round is the
+exception: it runs a wider 0.05% band, so a void there is normal.</p>
+
+<h3>Example 1 — a two-sided round (Bitcoin, 5 minutes)</h3>
+<table>
+  <tr><th>Player</th><th>Side</th><th class="n">Stake</th></tr>
+  <tr><td>Amina</td><td>UP</td><td class="n">120,000</td></tr>
+  <tr><td>Juma</td><td>UP</td><td class="n">80,000</td></tr>
+  <tr><td>Bakari</td><td>DOWN</td><td class="n">100,000</td></tr>
+  <tr><td>Chausiku</td><td>DOWN</td><td class="n">50,000</td></tr>
+  <tr class="sum"><td colspan="2">UP 200,000 · DOWN 150,000</td><td class="n">Pool 350,000</td></tr>
+</table>
+
+<div class="block">
+<h4>In this case: the price closes higher → UP wins</h4>
+<p>Losing side = DOWN 150,000. Fee = 13% × 150,000 = <strong>19,500</strong>. Net pool = <strong>330,500</strong>.</p>
+<table>
+  <tr><th>&nbsp;</th><th>Player</th><th class="n">Stake</th><th class="n">Paid</th><th class="n">Profit / loss</th></tr>
+  <tr><td rowspan="2">From the winners</td><td>Amina</td><td class="n">120,000</td><td class="n">198,300</td><td class="n">+78,300</td></tr>
+  <tr><td>Juma</td><td class="n">80,000</td><td class="n">132,200</td><td class="n">+52,200</td></tr>
+  <tr><td rowspan="2">From the losers</td><td>Bakari</td><td class="n">100,000</td><td class="n">0</td><td class="n">−100,000</td></tr>
+  <tr><td>Chausiku</td><td class="n">50,000</td><td class="n">0</td><td class="n">−50,000</td></tr>
+  <tr><td rowspan="3">From the house</td><td>Fee earned</td><td class="n">&nbsp;</td><td class="n">19,500</td><td class="n">&nbsp;</td></tr>
+  <tr><td>TRA 10% · GBT 5%</td><td class="n">&nbsp;</td><td class="n">−1,950 · −975</td><td class="n">&nbsp;</td></tr>
+  <tr class="sum"><td>50pick keeps</td><td class="n">&nbsp;</td><td class="n">16,575</td><td class="n">&nbsp;</td></tr>
+</table>
+<p class="tie">Check: 330,500 paid + 19,500 fee = 350,000 pool. Every winner returned 1.653× their stake.</p>
+</div>
+
+<div class="block">
+<h4>In this case: the price closes lower → DOWN wins</h4>
+<p>Losing side = UP 200,000. Fee = 13% × 200,000 = <strong>26,000</strong>. Net pool = <strong>324,000</strong>.</p>
+<table>
+  <tr><th>&nbsp;</th><th>Player</th><th class="n">Stake</th><th class="n">Paid</th><th class="n">Profit / loss</th></tr>
+  <tr><td rowspan="2">From the winners</td><td>Bakari</td><td class="n">100,000</td><td class="n">216,000</td><td class="n">+116,000</td></tr>
+  <tr><td>Chausiku</td><td class="n">50,000</td><td class="n">108,000</td><td class="n">+58,000</td></tr>
+  <tr><td rowspan="2">From the losers</td><td>Amina</td><td class="n">120,000</td><td class="n">0</td><td class="n">−120,000</td></tr>
+  <tr><td>Juma</td><td class="n">80,000</td><td class="n">0</td><td class="n">−80,000</td></tr>
+  <tr><td rowspan="3">From the house</td><td>Fee earned</td><td class="n">&nbsp;</td><td class="n">26,000</td><td class="n">&nbsp;</td></tr>
+  <tr><td>TRA 10% · GBT 5%</td><td class="n">&nbsp;</td><td class="n">−2,600 · −1,300</td><td class="n">&nbsp;</td></tr>
+  <tr class="sum"><td>50pick keeps</td><td class="n">&nbsp;</td><td class="n">22,100</td><td class="n">&nbsp;</td></tr>
+</table>
+<p class="tie">Check: 324,000 paid + 26,000 fee = 350,000 pool. Every winner returned 2.160× their stake.</p>
+</div>
+
+<div class="note"><strong>And if the price barely moves:</strong> the round voids. All four players get their full
+stake back — Amina 120,000, Juma 80,000, Bakari 100,000, Chausiku 50,000 — and our fee is zero. This is a designed
+outcome, not a fault.</div>
+
+<h3>Example 2 — almost everyone on one side</h3>
+<table>
+  <tr><th>Player</th><th>Side</th><th class="n">Stake</th></tr>
+  <tr><td>Amina</td><td>UP</td><td class="n">200,000</td></tr>
+  <tr><td>Juma</td><td>UP</td><td class="n">100,000</td></tr>
+  <tr><td>Bakari</td><td>DOWN</td><td class="n">30,000</td></tr>
+  <tr class="sum"><td colspan="2">UP 300,000 · DOWN 30,000</td><td class="n">Pool 330,000</td></tr>
+</table>
+
+<div class="block">
+<h4>In this case: UP wins — the crowded side</h4>
+<p>Losing side = DOWN 30,000. Fee = 13% × 30,000 = <strong>3,900</strong>. Net pool = <strong>326,100</strong>.</p>
+<table>
+  <tr><th>&nbsp;</th><th>Player</th><th class="n">Stake</th><th class="n">Paid</th><th class="n">Profit / loss</th></tr>
+  <tr><td rowspan="2">From the winners</td><td>Amina</td><td class="n">200,000</td><td class="n">217,400</td><td class="n">+17,400</td></tr>
+  <tr><td>Juma</td><td class="n">100,000</td><td class="n">108,700</td><td class="n">+8,700</td></tr>
+  <tr><td>From the loser</td><td>Bakari</td><td class="n">30,000</td><td class="n">0</td><td class="n">−30,000</td></tr>
+  <tr><td rowspan="3">From the house</td><td>Fee earned</td><td class="n">&nbsp;</td><td class="n">3,900</td><td class="n">&nbsp;</td></tr>
+  <tr><td>TRA 10% · GBT 5%</td><td class="n">&nbsp;</td><td class="n">−390 · −195</td><td class="n">&nbsp;</td></tr>
+  <tr class="sum"><td>50pick keeps</td><td class="n">&nbsp;</td><td class="n">3,315</td><td class="n">&nbsp;</td></tr>
+</table>
+<p class="tie">Check: 326,100 paid + 3,900 fee = 330,000 pool. Every winner returned 1.087× their stake.</p>
+</div>
+
+<div class="block">
+<h4>In this case: DOWN wins — the thin side</h4>
+<p>Losing side = UP 300,000. Fee = 13% × 300,000 = <strong>39,000</strong>. Net pool = <strong>291,000</strong>.</p>
+<table>
+  <tr><th>&nbsp;</th><th>Player</th><th class="n">Stake</th><th class="n">Paid</th><th class="n">Profit / loss</th></tr>
+  <tr><td>From the winner</td><td>Bakari</td><td class="n">30,000</td><td class="n">291,000</td><td class="n">+261,000</td></tr>
+  <tr><td rowspan="2">From the losers</td><td>Amina</td><td class="n">200,000</td><td class="n">0</td><td class="n">−200,000</td></tr>
+  <tr><td>Juma</td><td class="n">100,000</td><td class="n">0</td><td class="n">−100,000</td></tr>
+  <tr><td rowspan="3">From the house</td><td>Fee earned</td><td class="n">&nbsp;</td><td class="n">39,000</td><td class="n">&nbsp;</td></tr>
+  <tr><td>TRA 10% · GBT 5%</td><td class="n">&nbsp;</td><td class="n">−3,900 · −1,950</td><td class="n">&nbsp;</td></tr>
+  <tr class="sum"><td>50pick keeps</td><td class="n">&nbsp;</td><td class="n">33,150</td><td class="n">&nbsp;</td></tr>
+</table>
+<p class="tie">Check: 291,000 paid + 39,000 fee = 330,000 pool. The winner returned 9.700× their stake.</p>
+</div>
+
+<div class="note"><strong>Notice what the fee did.</strong> When the crowded side won we earned 3,900; when the thin
+side won we earned 39,000. That is the same 13% rule both times — it is the losing side that changed size. Our
+income follows how the players lined up, and never comes out of a winner's own stake.</div>
+
+<h2>5. The two games, side by side</h2>
+<table>
+  <tr><th style="width:34%">&nbsp;</th><th>Normal polls</th><th>Up &amp; Down</th></tr>
+  <tr><td>Our fee</td><td colspan="2" style="text-align:center"><strong>13% of the losing side — identical</strong></td></tr>
+  <tr><td>Stake limits</td><td colspan="2" style="text-align:center"><strong>1,000 minimum · 1,000,000 maximum per bet — identical</strong></td></tr>
+  <tr><td>Who decides the result</td><td>An officer, on evidence, with an objection window</td><td>The price feed, automatically, at the boundary</td></tr>
+  <tr><td>How long it runs</td><td>Days or weeks</td><td>3 to 60 minutes</td></tr>
+  <tr><td>Can everyone be refunded?</td><td>If one side is empty, or the poll is cancelled</td><td>Also whenever the price stays inside the band</td></tr>
+</table>
+
+<div class="note"><strong>If a customer asks what we charge, there is now one answer for the whole platform:</strong>
+13% of the losing side, and nothing from the winners.</div>
+
+<footer>50pick — internal guide for administrators. Rules agreed 14 August 2026. Every figure was produced by
+50pick's own settlement calculation at the rates in section 1. Markets opened before these rules take effect settle
+on the rates that were frozen onto them at the time.</footer>
+
+</body>
+</html>

@@ -6,6 +6,62 @@
 
 ---
 
+## 2026-08-14 · A human approval wins — the AI confidence threshold is an autopilot gate, not a licence rule
+
+**Owner decision:** Ali, 2026-08-14, after three false "publish failed" reports on live markets.
+
+**The decision, in one line:** *the 75-confidence threshold applies only to publishing with
+no human in the loop.* Where an officer has read a candidate and approved it, that approval
+is the authority, and the score does not overrule it.
+
+**Why the question arose.** `/admin/ai-polls` publishes a poll an officer has ALREADY
+approved by running it through the market-candidate pipeline — ingest → filter → verify →
+score → approve — so the candidate record carries the same audit trail as one that came
+through the unattended route. `scoreCandidate` sent anything below
+`CONFIDENCE_PUBLISH_THRESHOLD = 75` to `FILTERED_OUT`. `approveCandidate` then returned
+`null`, **and its return value was discarded**, so `createMarket` ran anyway and put a LIVE,
+bettable market on the board; `markPublished` refused because the candidate was not
+`APPROVED`; and the officer was told the publish had **failed**.
+
+It fired three times on production, every one of them on a market that was live:
+
+| when | market | state |
+|---|---|---|
+| 2026-08-11 05:05 | `mkt_034555d0c988640474d8` | LIVE · 2 bettors |
+| 2026-08-14 08:25 | `mkt_49303bbf4faec0e38524` | LIVE · TZS 15,000 staked |
+| 2026-08-14 08:36 | `mkt_02fe245420ecec12fc80` | LIVE · 0 bettors |
+
+All three audit rows read `pollLinked: true, marketPublished: false`. The console told an
+officer a market did not exist while players were betting in it — and the error text said
+*"Do NOT retry"*, which is the one instruction that would have made it worse.
+
+**What the threshold is for, stated so it is not re-litigated.** It is the **autopilot's
+admission test**: it stops the unattended pipeline (news → extract → filter → verify →
+score) promoting a weak candidate on its own. That is a real control and it is unchanged —
+an unattended candidate scoring 52 is still `FILTERED_OUT`, and `test:aipoll-publish` asserts
+it in the same run as the waiver, so "fix the false alarm" and "delete the gate" cannot pass
+the suite identically. What changed is only its **scope**.
+
+**Nothing is hidden.** The confidence is still recorded on the candidate and still shown to
+the officer. A waived gate is written into the candidate's own layer-4 trace
+(`scored:52:human_approved:{…}`) and audited as `candidate.confidence_gate_waived`
+(category COMPLIANCE), so an auditor reading the record months later sees the override
+rather than inferring it from a gap.
+
+**And a second, independent rule — nothing goes live off a broken pipeline.** Every
+pipeline step's return value is now checked, and checked **before** `createMarket`. Creating
+a market is the irreversible act — it can only be voided with refunds, never un-created — so
+it is the last thing that happens, after everything that can still fail has. That ordering is
+the safety property; the scoping decision above is what stops it being exercised.
+
+**Where this lives.** `src/lib/server/ai-poll-publish.ts` (extracted from
+`publishPollAction` so it can be executed by a test at all) ·
+`scoreCandidate({ humanApproved })` in `src/lib/server/market-candidate.ts` ·
+`npm run test:aipoll-publish` (33 assertions) · `npm run red:aipoll-publish` (6 mutations,
+including the production defect verbatim, with a positive control).
+
+---
+
 ## 2026-07-24 · "Up & Down" product line — fee basis, instant settlement, notification digest
 
 > ⏳ **DECIDED, NOT YET LIVE.** The decisions below are owner-authorised as of

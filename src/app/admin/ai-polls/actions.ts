@@ -20,18 +20,10 @@ import {
   type FilterReason,
 } from "@/lib/server/ai-poll-generation";
 import { updateAIPollConfig } from "@/lib/server/ai-poll-config";
-import {
-  ingestCandidate,
-  filterCandidate,
-  attachVerification,
-  scoreCandidate,
-  approveCandidate,
-  markPublished,
-} from "@/lib/server/market-candidate";
-import { createMarket, emergencyVoidMarket, resolvePublishCategory } from "@/lib/server/market-service";
+import { publishApprovedPoll } from "@/lib/server/ai-poll-publish";
+import { emergencyVoidMarket, resolvePublishCategory } from "@/lib/server/market-service";
 import { isSourceTrusted, seedDefaultSources } from "@/lib/server/source-registry";
 import { safeError } from "@/lib/server/safe-error";
-import { withLock } from "@/lib/server/locks";
 import { requireStaff } from "@/lib/server/rbac-guard";
 
 // RBAC: authorization is data-driven — requireStaff checks canAct for this domain
@@ -312,121 +304,19 @@ export async function publishPollAction(formData: FormData) {
   }
 
   try {
-  // 🔴 SERIALISED, AND THE STATE IS RE-CHECKED INSIDE THE LOCK.
-  //
-  // Publishing is an eight-step pipeline — ingest candidate, filter, verify, score,
-  // approve, createMarket, markPublished, markAIPollPublished — and the only thing
-  // that stopped it running twice was an `APPROVED` check made BEFORE any of it, on a
-  // read that anyone could race. A double-click, a retried request, or two officers on
-  // the same queue both passed that check and both reached `createMarket`, which
-  // creates a market **status: "LIVE"** unconditionally.
-  //
-  // ⛔ The result is two live markets asking the same question, each taking real
-  // stakes into its own pool, each resolving separately. Nothing downstream can merge
-  // them and nothing detects them: `markAIPollPublished` records only the LAST market
-  // id, so the first duplicate is orphaned the moment it is created — live, bettable
-  // and unreferenced.
-  //
-  // The re-check inside the lock is what actually closes it: the second caller now
-  // reads PUBLISHED and refuses. Same shape as proposals-service's listing path.
-  return await withLock(`aipoll:publish:${id}`, async () => {
-  const fresh = await getAIPoll(id);
-  if (!fresh) return { ok: false as const, error: "Poll not found." };
-  if (fresh.state !== "APPROVED") {
-    return { ok: false as const, error: "Poll is no longer approved — it may already have been published." };
-  }
-  // Create a market candidate through the existing pipeline
-  // The candidate pipeline's category type has no tech/other (it predates them),
-  // so fold those into macro for the intermediate record only. The market itself
-  // (below) keeps the faithful resolvePublishCategory value.
-  const candidateCategory = (publishCategory === "tech" || publishCategory === "other") ? "macro" : publishCategory;
-  const candidate = await ingestCandidate({
-    category: candidateCategory as "sports" | "macro" | "weather" | "crypto" | "culture" | "infrastructure",
-    proposedTitleEn: poll.titleEn,
-    proposedTitleSw: poll.titleSw || undefined,
-    proposedTitleZh: poll.titleZh || undefined,
-    resolutionCriterion: poll.resolutionCriterion,
-    resolutionCriterionSw: poll.resolutionCriterionSw,
-    resolutionCriterionZh: poll.resolutionCriterionZh,
-    resolutionAt: poll.resolutionAt,
-    sources: poll.sources.map((s) => ({
-      url: s.url,
-      publisher: s.publisher,
-      retrievedAt: new Date().toISOString(),
-    })),
-    tokensSpent: poll.tokensUsed,
-    costUsd: poll.costUsd,
-    actorId: officerId,
-  });
+    // The eight-step pipeline — ingest, filter, verify, score, approve, createMarket,
+    // markPublished, markAIPollPublished — lives in `ai-poll-publish.ts`, serialised on
+    // the poll id with the state re-read inside the lock. It moved out of this closure
+    // because a "use server" action cannot be executed by a test, and the one chain in
+    // this codebase that could put a LIVE market on the board was therefore covered by
+    // nothing that runs it. `npm run test:aipoll-publish` runs it now.
+    await seedDefaultSources();
+    const result = await publishApprovedPoll({ pollId: id, officerId, publishCategory });
 
-  // Fast-track through the candidate pipeline (already validated by AI poll service)
-  await filterCandidate(candidate.id, { passes: true });
-  await attachVerification(candidate.id, {
-    confirmingSources: [],
-    tokensSpent: 0,
-    costUsd: 0,
-  });
-  await scoreCandidate(candidate.id, {
-    confidence: poll.confidence,
-    tokensSpent: 0,
-    costUsd: 0,
-    rubric: { aiPollQuality: poll.overallQuality },
-  });
-  await approveCandidate(candidate.id, { officerId, note: `Auto-approved from AI poll ${poll.id}` });
-
-  // Create the actual market — SAME category the trusted-source gate above used.
-  await seedDefaultSources();
-  const market = await createMarket({
-    titleEn: poll.titleEn,
-    titleSw: poll.titleSw || poll.titleEn,
-    titleZh: poll.titleZh || null,
-    category: publishCategory,
-    sourceUrl: poll.sources[0]?.url ?? "",
-    resolutionCriterion: poll.resolutionCriterion,
-    // ⭐ THE POINT OF F6c. Without these two lines the model's Swahili criterion is
-    // generated, validated, stored, shown to the officer — and then dropped at the
-    // one boundary that matters, leaving the player told "no translation available"
-    // about a translation that exists. A write-only field, in the file that files
-    // write-only fields as a defect class.
-    resolutionCriterionSw: poll.resolutionCriterionSw,
-    resolutionCriterionZh: poll.resolutionCriterionZh,
-    resolutionAt: poll.resolutionAt,
-    selectionClosedAt: poll.selectionClosedAt,
-    proposedBy: officerId,
-  });
-
-  // ⚠️ THE LINK-BACK IS CHECKED, NOT ASSUMED. These two writes are what tie the new
-  // LIVE market to the poll it came from. Their return values were discarded, so a
-  // failure here left a market live and bettable with nothing recording where it came
-  // from — and the poll still APPROVED, so the next publish made a second one. Failing
-  // loudly cannot un-create the market (it is already live by design), but it stops the
-  // silent duplicate and puts the orphan in front of an operator instead of in a log.
-  const pub = await markPublished(candidate.id, market.id, officerId);
-  const linked = await markAIPollPublished(poll.id, {
-    candidateId: candidate.id,
-    marketId: market.id,
-    officerId,
-  });
-  if (!pub || !linked) {
-    audit({
-      category: "SYSTEM",
-      action: "aipoll.publish_link_failed",
-      actorId: officerId,
-      targetType: "Market",
-      targetId: market.id,
-      payload: { pollId: poll.id, candidateId: candidate.id, marketPublished: !!pub, pollLinked: !!linked },
-    });
-    return {
-      ok: false as const,
-      error: `Market ${market.id} was created and is LIVE, but the poll could not be marked published. Do NOT retry — check /admin/markets first.`,
-    };
-  }
-
-  revalidatePath("/admin/ai-polls");
-  revalidatePath("/admin/candidates");
-  revalidatePath("/admin/markets");
-  return { ok: true as const, marketId: market.id, candidateId: candidate.id };
-  });
+    revalidatePath("/admin/ai-polls");
+    revalidatePath("/admin/candidates");
+    revalidatePath("/admin/markets");
+    return result;
   } catch (err) {
     return { ok: false as const, error: safeError(err, "Publish failed") };
   }

@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>50pick — betting rules and rates: decisions taken</title>
+<style>
+  @page { size: A4; margin: 16mm 14mm; }
+
+  body {
+    margin: 0; background: #fff; color: #000;
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 10.5pt; line-height: 1.5;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  h1 { font-size: 18pt; margin: 0 0 4px; }
+  h2 { font-size: 13pt; margin: 14px 0 7px; border-bottom: 1pt solid #000; padding-bottom: 3px; }
+  h2, h3, h4 { page-break-after: avoid; break-after: avoid; }
+  h3 { font-size: 11pt; margin: 12px 0 5px; }
+  h4 { font-size: 10.5pt; margin: 10px 0 4px; }
+  p { margin: 0 0 8px; }
+  ol, ul { margin: 0 0 8px; padding-left: 20px; }
+  li { margin-bottom: 3px; }
+  .sub { font-size: 10pt; color: #444; margin-bottom: 14px; }
+
+  table { border-collapse: collapse; width: 100%; font-size: 10pt; margin: 5px 0 8px; page-break-inside: avoid; }
+  th, td { border: 0.75pt solid #999; padding: 4px 7px; text-align: left; vertical-align: top; }
+  th { background: #EEE; font-weight: 600; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  tr.sum td { font-weight: 700; background: #F5F5F5; }
+
+  .block { page-break-inside: avoid; margin-bottom: 10px; }
+  .note { border: 0.75pt solid #999; background: #F5F5F5; padding: 7px 10px; margin: 7px 0 10px; font-size: 10pt; }
+  /* The worked example is one unit — its heading must never print on a page whose
+     table has been pushed to the next one, which leaves an empty box. */
+  .example { border: 0.75pt solid #000; border-left: 3pt solid #000; padding: 8px 11px; margin: 8px 0 10px; font-size: 10pt; page-break-inside: avoid; }
+  .example .h { font-weight: 700; margin-bottom: 4px; }
+  .quote { border: 0.75pt dashed #666; padding: 8px 11px; margin: 6px 0 10px; font-size: 10pt; background: #FAFAFA; }
+  .decided { font-weight: 700; }
+  .box { border: 0.75pt solid #000; height: 34px; }
+  footer { margin-top: 16px; border-top: 0.75pt solid #999; padding-top: 6px; font-size: 9pt; color: #444; }
+</style>
+</head>
+<body>
+
+<h1>Betting rules and rates — final</h1>
+<p class="sub">50pick administration · 14 August 2026 · all rules settled, nothing outstanding.</p>
+
+<p>These are the final betting rules. Nothing here is open. They are being written once into the player rules, the
+administrator guide, the Up &amp; Down documentation and the system itself, so that every document on the platform
+says the same thing before we go live. Every figure was calculated by the platform's own settlement code.</p>
+
+<h2>1 · The rules</h2>
+<table>
+  <tr><th style="width:25%">Rule</th><th>What it means</th><th style="width:16%">Decided by</th></tr>
+  <tr>
+    <td class="decided">Up &amp; Down charges like polls</td>
+    <td>Our fee on Up &amp; Down becomes <strong>13% of the losing side</strong>, exactly as on normal polls.
+        No second charge model anywhere on the platform. On a balanced round our income halves — accepted
+        deliberately, to keep one rule customers can understand.</td>
+    <td>Administration, 14 Aug</td>
+  </tr>
+  <tr>
+    <td class="decided">Players may take as many positions as they want</td>
+    <td>Any number of bets on a market, on <strong>either or both sides</strong>. The "one side per market"
+        restriction is removed.</td>
+    <td>Administration, 14 Aug</td>
+  </tr>
+  <tr>
+    <td class="decided">All bets count normally</td>
+    <td>Two-sided betting is <strong>not</strong> a special case. Every bet counts toward leaderboards, affiliate
+        volume and daily activity targets exactly like any other bet.</td>
+    <td>Owner, 14 Aug</td>
+  </tr>
+  <tr>
+    <td class="decided">Two-sided betting does not clear a bonus</td>
+    <td>The one exception. Only <strong>one side</strong> of a market counts toward a bonus betting requirement.
+        The player is warned clearly, and the bet is still placed. Reasoning on page 2.</td>
+    <td>Owner, 14 Aug</td>
+  </tr>
+  <tr>
+    <td class="decided">Stake limits: 1,000 minimum, 1,000,000 maximum</td>
+    <td>The same on <strong>both games</strong>. The maximum is <strong>per bet</strong> — it is checked on each
+        individual bet, not on a player's total across a market. Production currently runs 500 / 100,000 on
+        Up &amp; Down and must be corrected to match.</td>
+    <td>Owner, 14 Aug</td>
+  </tr>
+  <tr>
+    <td class="decided">Every failure must explain itself</td>
+    <td>Any message telling a player something did not work must say <strong>why</strong> and what to do next —
+        and must not always be a red error. A problem the player can fix is a warning, not a fault.</td>
+    <td>Owner, 14 Aug</td>
+  </tr>
+</table>
+
+<div class="note"><strong>One consequence, on the record.</strong> Allowing both sides <em>and</em> keeping the cap
+per bet means a player's total money on one market is no longer limited by the stake maximum — three bets of
+100,000 put 300,000 on one round. The remaining controls are the player's own balance and the daily loss limit.
+The largest total any player has ever had on one Up &amp; Down round is 85,000. Accepted, not an open question.</div>
+
+<h2>2 · Why two-sided betting cannot clear a bonus</h2>
+
+<p><strong>How bonuses work.</strong> Bonus money cannot be withdrawn straight away. The player must bet it first —
+currently <strong>five times</strong> the amount granted, within 30 days. Once they have bet that much, the bonus
+becomes real, withdrawable cash.</p>
+
+<p>Now that a player may back both sides of the same round, that requirement could be met without taking any risk
+at all:</p>
+
+<div class="example">
+  <p class="h">What the rule prevents — a 10,000 bonus, cleared without a single prediction</p>
+  <table>
+    <tr><td>We grant Amina a bonus of</td><td class="n">10,000</td></tr>
+    <tr><td>She must bet 5 × that before withdrawing</td><td class="n">50,000</td></tr>
+    <tr><td>She bets 25,000 on UP and 25,000 on DOWN of the same round</td><td class="n">50,000 — requirement met</td></tr>
+    <tr><td>One side wins, one loses. She receives back</td><td class="n">46,750</td></tr>
+    <tr class="sum"><td>Her total cost — just our fee</td><td class="n">3,250</td></tr>
+    <tr class="sum"><td>Her net gain on a 10,000 bonus</td><td class="n">6,750</td></tr>
+  </table>
+  <p style="margin:0">She never predicted anything. Without this rule, every bonus we issue would be worth roughly
+  two-thirds of its face value in cash on the day it is issued, to anyone who knows the trick.</p>
+</div>
+
+<p><strong>The rule, precisely.</strong> When a player holds bets on both sides of the same market, only one side
+counts toward a bonus betting requirement. Everything else about the bet is normal: it is placed, it can win, it
+counts toward leaderboards and activity like any other bet. This is the <em>only</em> place where two-sided betting
+is treated differently, and only because the money at the end of it is ours.</p>
+
+<div class="note"><strong>Nothing is affected today.</strong> Production currently holds <strong>zero bonus grants
+and zero bonus balance</strong>. This rule takes effect before the first grant is issued — including for the VIP
+rewards scheme, which will run on this same machinery.</div>
+
+<h3>What the player is told</h3>
+
+<p>The player must never discover this after the fact. When someone holding a bonus takes the opposite side of a
+market they are already on, they get a clear warning <em>before</em> confirming — a warning, not an error, and the
+bet still goes ahead if they want it:</p>
+
+<div class="quote">
+  <strong>This bet won't count toward your bonus.</strong><br>
+  You already have money on the other side of this market. Only one side counts toward the
+  <strong>TZS 32,000</strong> you still need to bet before your bonus can be withdrawn.<br>
+  <span style="color:#444">Place bet anyway · Cancel</span>
+</div>
+
+<p>The same rule is written into the bonus terms shown when a bonus is granted, the player rules, the wallet screen
+where the remaining requirement is displayed, and the administrator guide — in the player's own language, in all
+three languages the app supports.</p>
+
+<h2>3 · What has to change in the system</h2>
+
+<p>Three of the rules above do not match what production enforces today. All three are being corrected before we
+go live, and every document on the platform is being brought into line with this page at the same time.</p>
+
+<table>
+  <tr><th>Rule</th><th class="n">Production today</th><th class="n">Corrected to</th></tr>
+  <tr><td>Up &amp; Down fee</td><td class="n">13% of the whole pool, capped</td><td class="n">13% of the losing side</td></tr>
+  <tr><td>Minimum stake</td><td class="n">500</td><td class="n">1,000</td></tr>
+  <tr><td>Maximum stake — Up &amp; Down</td><td class="n">100,000</td><td class="n">1,000,000</td></tr>
+  <tr><td>Maximum stake — normal polls</td><td class="n">1,000,000</td><td class="n">1,000,000 — already correct</td></tr>
+  <tr><td>Positions per market</td><td class="n">one side only</td><td class="n">either or both sides</td></tr>
+</table>
+
+<div class="note"><strong>Markets already running are not repriced.</strong> Every market freezes its rates when it
+is created and settles on those rates for its whole life — that is a deliberate protection, so a rule change can
+never alter a bet someone has already placed. The new rules apply to everything created from the change onward.</div>
+
+<h2>Sign-off</h2>
+
+<table>
+  <tr><th style="width:34%">Approved by</th><th>Signature</th><th style="width:22%">Date</th></tr>
+  <tr><td class="box">&nbsp;</td><td class="box">&nbsp;</td><td class="box">&nbsp;</td></tr>
+</table>
+
+<p style="font-size:10pt">On sign-off these rules are applied to the system and written into the player rules, the
+administrator guide, the Up &amp; Down documentation and the bonus terms — one rule set, stated identically
+everywhere, checked document by document.</p>
+
+<footer>50pick — internal decision record, final. All figures calculated by 50pick's own settlement code at the
+rates agreed on 14 August 2026 (13% of the losing side). Bonus terms shown are the platform defaults: 5× betting
+requirement, 30-day validity. The warning wording on page 2 is a draft for approval.</footer>
+
+</body>
+</html>
