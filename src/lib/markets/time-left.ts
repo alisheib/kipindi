@@ -12,6 +12,17 @@
  * The `Math.max(1, …)` behaviour is the correct one and is what this keeps: while a market is
  * still taking bets the label must never read zero, because "0m left" says the door is shut when
  * it is open. Zero is reserved for genuinely closed, which the caller detects first.
+ *
+ * ✅ ALL FOUR COPIES ARE GONE — batch 4, 2026-08-13. Callers now: `app/page.tsx`,
+ * `components/home/landing-hero.tsx`, `app/markets/page.tsx`, `app/live/page.tsx`,
+ * `app/markets/[id]/page.tsx`.
+ *
+ * ⚠️ AND THE COUNT WAS WRONG UNTIL THIS BATCH. The plan (`design-brief/PLAN-OF-RECORD.md` §8.8)
+ * and batch 4's own prompt both recorded that only TWO copies survived — `/live` and the detail
+ * page. There were THREE: `app/markets/page.tsx` still held one, with the defective plain
+ * `Math.floor`, on the highest-traffic board on the platform. It went unnamed because this header
+ * listed it among the four originals, and a reader takes "listed here" for "already dealt with".
+ * If you ever remove a caller, re-derive the list with a grep; do not trust this line.
  */
 
 /** The four strings this needs, so the module stays pure and locale-agnostic. */

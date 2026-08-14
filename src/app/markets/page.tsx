@@ -1,5 +1,6 @@
 import { Suspense, cache } from "react";
 import { fill } from "@/lib/utils";
+import { timeLeftLabel } from "@/lib/markets/time-left";
 import Link from "next/link";
 import { SignalPip } from "@/components/brand";
 import { MarketCard } from "@/components/markets/market-card";
@@ -261,15 +262,22 @@ async function DiscoveryBoard({ searchParams }: { searchParams: Promise<SP> }) {
 
   const cause = emptyCause(state, matched.length, board.length);
 
-  function timeLeftStr(iso: string): string {
-    const ms = Date.parse(iso) - Date.now();
-    if (ms <= 0) return t.market.closed;
-    const d = Math.floor(ms / (24 * 3600_000));
-    if (d > 0) return fill(t.market.timeLeftD, { n: d });
-    const h = Math.floor(ms / 3600_000);
-    if (h > 0) return fill(t.market.timeLeftH, { n: h });
-    return fill(t.market.timeLeftM, { n: Math.floor(ms / 60_000) });
-  }
+  // 🔴 THIS WAS A COPY, AND IT WAS THE DEFECTIVE ONE — corrected in batch 4. It floored the minute
+  // branch with a plain `Math.floor`, so a market with forty seconds of betting left rendered
+  // "0m left" on the busiest board on the platform while the detail page said "1m left" for the
+  // same market at the same instant. `src/lib/markets/time-left.ts` is the ONE definition and it
+  // floors at `Math.max(1, …)`: zero is reserved for genuinely closed, which the caller detects
+  // first. ⚠️ The plan's §8.8 listed only TWO surviving copies (`/live` + the detail page) — this
+  // third one was on `/markets` itself and went unnamed. Read the helper's header before adding
+  // any new caller.
+  const nowMs = Date.now();
+  const timeLeftStr = (iso: string): string =>
+    timeLeftLabel(Date.parse(iso), nowMs, {
+      closed: t.market.closed,
+      days: t.market.timeLeftD,
+      hours: t.market.timeLeftH,
+      minutes: t.market.timeLeftM,
+    }, fill);
 
   return (
     <>

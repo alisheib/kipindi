@@ -55,9 +55,41 @@ Out of design scope, noted for an ops session, NOT touched here: root `_playbook
 `tsconfig.backup.json`, `backups/` (ops scratch), `scripts/live/ops/house-money-census.cjs`
 (another session's in-flight file). Zero stray zips remain under `docs/` or `design-brief/`.
 
+## Round 3 — batch 4's closing cite-check, 2026-08-13 (§4a). Outcome: NOTHING TO ARCHIVE
+
+The round-2 kit has now been applied to all three commissioned surfaces (hero · `/markets` ·
+landing+header+rail). §4a asked whether any duplicate or working copy of it accumulated OUTSIDE
+its one filed location during the three batches. **It did not.** Every check below was executed
+this session and its output is quoted — a previous session ran the same check as an uncommitted
+dry run, which is exactly why it is re-run and recorded here rather than cited.
+
+| Check | Command | Result |
+|---|---|---|
+| Kit cited from a functional path? | `grep -rn v3-2026-08-11` repo-wide | **2 hits outside `docs/` + `design-brief/`, both PROSE.** `src/lib/markets/discovery.ts:4` (provenance comment, expected) · `.gitignore:164` (the exception block's own explanatory comment). Neither is an import, a read, or a link |
+| Any `src/`/`scripts/` file that READS a kit file? | `grep -rnE "design-system/(v3\|v2)[^\"']*\.(html\|css\|json\|js)"` | **Zero for v3.** Three v2-era hits, out of §4a's scope and left alone: `src/app/motion.css:4` + `src/components/layout/needle.css:2` (provenance comments) and `scripts/needle-visual.mjs:76`, which is a real `<link href>` to a v2 kit path — noted for an ops session, NOT touched here |
+| Scratch leaked into git? | `git ls-files \| grep -i qa-design` | **empty** — nothing tracked under any `.qa-design*` dir. Six exist on disk (`round2` 674 files · `round3` 533 · `round4` 34 · `.qa-design` 14 · `-before` 1 · `-after` 1), all gitignored via `.qa-design-*/`, all evidence |
+| Kit working copies outside the filed path? | `git ls-files \| grep -iE 'landing-discovery\|discovery-mobile\|05-markets\|prototype'` | **none** — every hit is under `docs/design-system/v3-2026-08-11-landing-discovery/` |
+| The filed kit itself | `find … -type f` + byte sum | **32 files / 862,392 bytes** — `.` 12/214,176 · `brand` 5/5,724 · `layouts` 7/451,958 · `prototype` 3/184,810 · `prototype/brand` 5/5,724 |
+| `design-brief/` steady state | `git ls-files design-brief/` + `ls` | **exactly 3 files, tracked == on disk**: `00-NEXT-SESSION-PROMPT.md` · `CLEANUP-MANIFEST.md` · `PLAN-OF-RECORD.md` |
+
+**Therefore `F:\50pick-design-archive\2026-08-13-final\` was deliberately NOT created.** An empty
+dated archive folder is a false record — it reads as "a cleanup happened here" to the next session.
+Nothing was removed this round because nothing needed removing.
+
+⚠️ **`prototype/brand/` is a byte-identical copy of `brand/`** — verified with `cmp` per file
+(favicon 394 · lockup-horizontal 851 · mark-color 475 · mark-white 451 · mpesa 3,553; all
+IDENTICAL, 5,724 bytes each side). **It stays.** It is INSIDE the filed kit, and the prototype
+links those assets by relative path so it renders standalone. §0b files an incoming commission
+"raw and untouched" — deleting the duplicate would edit the delivered record, which is the one
+thing a provenance folder must not suffer. Do not "clean this up" in a later session.
+
 ## Protected, deliberately NOT touched
 
 - `.dc.html` previews with sibling `theme/` folders (`v2-2026-07-27/05-pages/theme`,
   `…/09-needle/theme`) — wrongly deleted once before; never again.
 - `.qa-*` scratch dirs (74 scripts cited by docs).
 - The unreferenced 8-key glyph family inside `glyphs.tsx` — a design decision, not cleanup.
+- `docs/design-system/v3-2026-08-11-landing-discovery/` in its entirety, including the
+  `prototype/brand/` duplication above — the delivered record, provenance not scratch.
+- `scripts/live/ops/house-money-census.cjs` — another session's in-flight untracked file. Three
+  sessions have now independently confirmed it is not ours to stage.

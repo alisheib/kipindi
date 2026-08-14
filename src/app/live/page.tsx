@@ -12,6 +12,7 @@
  */
 import Link from "next/link";
 import { fill } from "@/lib/utils";
+import { timeLeftLabel } from "@/lib/markets/time-left";
 import { listMarkets, impliedYesPct, isClosedByTime, isSelectionClosed, traderSeedsByMarket } from "@/lib/server/market-service";
 import { PulseRing } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
@@ -41,16 +42,18 @@ export default async function LivePage() {
     listMarkets({ status: "LIVE", productLine: "ALL" }),
   ]);
 
-  function timeLeftStr(iso: string): string {
-    const ms = Date.parse(iso) - Date.now();
-    if (ms <= 0) return t.market.closed;
-    const d = Math.floor(ms / (24 * 3600_000));
-    if (d > 0) return fill(t.market.timeLeftD, { n: d });
-    const h = Math.floor(ms / 3600_000);
-    if (h > 0) return fill(t.market.timeLeftH, { n: h });
-    const m = Math.floor(ms / 60_000);
-    return fill(t.market.timeLeftM, { n: m });
-  }
+  // ONE definition — `src/lib/markets/time-left.ts`, shared with the landing, the hero, `/markets`
+  // and the detail page's similar-market cards. This copy floored the minute branch with a plain
+  // `Math.floor`, so a market with forty seconds of betting left read "0m left" on the one board
+  // that shows BOTH product lines — i.e. it said the door was shut while the bet was still open.
+  const nowMs = Date.now();
+  const timeLeftStr = (iso: string): string =>
+    timeLeftLabel(Date.parse(iso), nowMs, {
+      closed: t.market.closed,
+      days: t.market.timeLeftD,
+      hours: t.market.timeLeftH,
+      minutes: t.market.timeLeftM,
+    }, fill);
 
   // Exclude markets whose resolution time has passed — they're closed/awaiting
   // settlement, not live, and must not show a LIVE badge on the board.

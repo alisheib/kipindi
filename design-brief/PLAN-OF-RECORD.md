@@ -166,6 +166,19 @@ topic taxonomy source of truth, whether search is server-side._
      unchanged from the batch-3 prompt's own note.
 7. **Frozen-card tap targets + type-nano/label raise:** NOT touched (kit's own contract +
    Ali's instruction). Recorded as open items for a later Phase-3-token decision.
+   ⚠️ **Partially superseded, batch 4 (2026-08-13) — and §11's numbers were STALE.** Re-measured:
+   `.mcardp-info` is **46px** and `.mcardp-actions .btn` **40px** (`--tap-min`), so ACCEPTANCE §11's
+   "38px YES/NO, 34px info" describes a tree that no longer exists — two of the three were already
+   raised piecemeal, leaving `.mcardp-details` at **17px** as the lone outlier. It now reaches
+   **40px** through an absolutely-positioned `::after`, which changes **no pixel of appearance** and
+   is therefore not the "redesign" §11 forbids: card heights, row offsets and document height are
+   byte-identical before/after, so `MARKET_CARD_H` — the actual substance of the deferral — is
+   untouched. **Still NOT touched:** the `--h-control-*` token raise and the `--type-nano`/
+   `--type-label` raise. Those remain Ali's Phase-3 decision. §8.7g has the proof.
+8. **The filtering scope is CLOSED at three surfaces.** Ali, 2026-08-13: filter UI for `/live`,
+   `/watchlist`, `/leaderboard`, `/fairness` is **not commissioned**. §8.7d's inventory is a record,
+   not a backlog. If it is ever wanted it is its own commission or its own written plan — never
+   invented at the call site (§0b).
 
 ## 6 · Batch log (updated after each push)
 
@@ -180,7 +193,7 @@ topic taxonomy source of truth, whether search is server-side._
 | 2c hero | `(this commit)` | **29 gates green individually, real exit codes, no pipes** — the 22 design gates + `hero-contract` (29 assertions) + `discovery-contract` + `board-discovery` + `product-line` + `i18n`/`trilingual` + `integrity`/`outcome`/`history`/`docs`; **3 RED harnesses**: `red:hero-contract` **6/6**, `red:discovery-contract` 7/7, `red:board-discovery` 6/6; `tsc` exit 0 / 0 lines; `npm run build` exit 0, "Compiled successfully in 14.9s" (the 2 warnings are the known pre-existing `node:crypto`-in-Edge pair at `lock-key.ts:12` / `audit.ts:38`) | **40 frames read** at 360/768/1280/1920 × en/sw/zh across **two data states** — a populated book (Σ TZS 185,500, 52% YES) and a genuinely cold platform (users 0 · markets 46 · resolved 0). `overflowX=0` and `clipped=0` on every frame; **my** smallest control **56px** at every width | Photographic hero **DELETED** (`hero-bg.webp` 193 KB + its `:80` ref, cite-checked repo-wide) → the kit's question board: mark backdrop (geometry/opacity only) · headline from a dict key, **no gold on "wisdom"** · 3-figure proof rail · aggregate conviction via `TippingBar`'s existing `empty` state · 4 real markets closing soonest · one live featured `<MarketCard/>`. ⭐ **Cold start is now ONE rule with FOUR consumers** (`pricedYesPct`) and `DESIGN_AUTHORITY` was **corrected** — it had been stating the rule as the `&& predictors === 0` conjunction the card fixed as a bug. New instrument `qa:landing-shots`. Full account + 5 unpredicted findings in §8.7e |
 | 2c-bis hero RE-VALIDATION | `(this commit)` | tsc 0 · **30 gates green individually**, real exit codes · `red:hero-contract` **7/7** (was 6/6 — a seventh case reintroduces the duplication defect) · build exit 0, 13.3s · against **PRODUCTION**: `qa:discovery-probe` 0, `qa:discovery-board` 0, `qa:filter-stress` 0 incl. all 288 combinations | authed hero shot for the FIRST time (4 widths); whole-page frames read at 4 widths; hero `40 OPEN MARKETS` **measured** equal to the board's `status:open` 40 on prod | 🔴 **Found a defect I had already shipped**: the hero stated its lead market twice (featured card == board row 1). Fixed — the card is the soonest, the board opens at the second. Plus: the authed branch had never been rendered (now `AUTH=demo`), an authed page can never reach `networkidle` (SSE), and `git checkout --` during `next dev` 500s every CSS page until `.next/dev` is cleared. Full account in §8.7e-bis |
 | 2d landing + header + rail | `(this session, batch 3)` | **33 gates green individually incl. `landing-contract` and `ticker-honesty` (new)** + `hero-contract`/`discovery-contract`/`board-discovery`/`product-line` + `i18n`/`trilingual`; **4 RED harnesses**: `red:ticker-honesty` **13/13**, `red:landing-contract` **5/5**, `red:hero-contract` 7/7, `red:discovery-contract` 7/7, `red:board-discovery` 6/6; `tsc` exit 0 / 0 lines; `npm run build` exit 0, 11.5s | **96 frames** at 360/768/1280/1920 × en/sw/zh, `FULL=1`, all 6 required bands present, **0 failures**; 0 console errors (a real hydration mismatch was found and fixed — see below); every control OPENED (language menu, rail `More`, skip link) at 9 width×locale combinations, 0 failures; header/rail cross-checked on `/markets` + `/results` (the OTHER two pages this batch's global shell components render on) — 0 failures; cold-start pair proven directly: an 8,000/8,000 control card renders a REAL 50%, a genuinely empty market renders an em-dash + "No bets yet", never both as 50% | 🔴 **§3a compliance fix, done first: the ticker was FABRICATED** — a hardcoded 12-item synthetic array on every page. Rebuilt on ONE `getPlatformStats` scan (no second unbounded query), settlements only (no individual bets — PDPA), ordered by `settledAt` DESC, a VOID carries no figure, outcome read never inferred, localised before render. `StatsBand` deleted. Landing composed on the `--rh-*` rhythm tokens (their first consumer). **The hero/grid repetition batch 2 left open is fixed**: `lib/markets/landing.ts` excludes the hero's own ids from the grid by construction and picks a lens the eyebrow states (`pool` when the book has money, `new` when it doesn't — average-of-zeros would have ordered the grid identically to the hero on a cold book). Topic tiles reconcile to the hero by construction (folds over the same open set), asserted by `landingTopicsReconcile`. Header: opaque at every scroll position (was 78%+blur), 3 nav tiers, ONE 44×44 language menu at every width (was a 3-pill capsule absent below 640 AND across 1024–1279, with a duplicate picker in the avatar menu to cover the second gap — both gone). Rail: 5 slots, `--pill-active` (aqua literals gone), `data-needle-keepout` wired to an existing-but-unused obstacle mechanism. Settled strip + RG line + trust band (M-Pesa via `PaymentLogo`, never inlined). Entry motion at 550ms on the EXISTING `kp-rise` keyframe (a second definition would have silently retuned two other consumers — caught by `test:keyframes`). Primer copy: the dict's `card3Body` was STALE against the capped-fee model (Swahili line described a fee-free split) and was corrected BEFORE the component was pointed at it, not after. Two-officer resolution copy corrected to match `requireTwoOfficer` actually being optional, not default. Full account, every defect found and how each was caught, in §8.7f below |
-| 3 remainder | _next session_ | | | |
+| 4 cleanup + the deferred trio | `(this session, batch 4)` | **40 gates green individually, real exit codes, no pipes** — the 22 design gates + `hero-contract`/`discovery-contract`/`board-discovery`/`landing-contract`/`ticker-honesty`/`product-line`/`i18n`/`trilingual`/`docs`/`orphans`/`orphan-actions`/`markets`/`selection-closed`/`grid-paging`/`needle` + **`test:time-left` (NEW, 34 assertions incl. a vacuity control)**; `red:time-left` **5/5**, each defect on its own assertion, tree restored byte-identical; `tsc --noEmit` exit 0. ⚠️ `test:responsive`/`test:motion` are server-dependent (default `:3000`, not in PLAN §3's 22) — `test:motion` exit 0 at `BASE=:3009`, 43 passed | 12 seam frames **before AND after** at 360/768/1280/1920 × en/sw/zh · 12 time-left frames · 3 minute-branch frames · **32 card hit tests**; 0 overflow, 0 console errors anywhere; card geometry diff **IDENTICAL** before/after | 🔴 **The live RG regression Ali reported, fixed first**: each of the three RG destinations appeared **twice on one page** (1 RG line, 1 footer) at all 12 combinations — counted by href, not localised text — and the void was **320px, not the 192px the finding estimated** (`.kp-rg`'s own margin-top+padding-top added 96, and **`mt-12` computes to 128px on this repo's CUSTOM scale**, `tailwind.config.ts:176`). Links deleted, dead CSS deleted in the same commit, the double-count margin removed → 96 above / 128 below, both single tokens, landing on the rhythm block's own drawing. 🔴 **§4d found a THIRD time-left copy the plan did not name** — `markets/page.tsx:271`, with the defective `Math.floor`, on the busiest board; all five callers now delegate and a gate + RED proof now guard it. 🔴 **§4e shipped** — Details hit area 17→40px with **zero** layout movement, proven by hit test because no bounding-box instrument can see it. §4a cite-check: **clean, nothing archived, no empty dated folder created**. §4b: all three carried forward (Ali). §4c: filter UI for four more surfaces **NOT commissioned** (Ali). Plus **three of this batch's own instruments were wrong before the product was** — full account in §8.7g |
 
 ## 7 · IMPLEMENTATION DOSSIER — measured facts for the next session (2026-08-12)
 
@@ -850,8 +863,24 @@ codebase does not ship.
 | **Search typeahead** (kit §3g) | `SearchBox` already delivers debounced-URL search on the shared grammar (quoted phrase, `-exclude`, `field:`), so the board searches correctly today. The typeahead is an ENHANCEMENT — combobox + listbox, `/` focus shortcut, topic/source/market suggestion kinds — not a gap in behaviour | A client combobox over the existing parser; suggestion kinds are specified in COMPONENTS §8 |
 
 | **"Predictions today" as the hero's third figure** (kit §1a, §7b) | It needs `COUNT(Position WHERE placedAt >= 00:00 EAT)`. `Position` is a never-pruned financial-record table already ~20× the poll rows on production, `placedAt` is unindexed, and the landing is the highest-traffic public page — so this is an unindexed count on the hottest surface, plus a migration inside a design batch. The hero ships **Σ `predictorCount` over the open book**, captioned "Open predictions": free (already in the board read), equally real, and it names the set it counts | A `@@index([placedAt])` migration + a DB-side count folded into `getPlatformStats`'s existing 60s memo (never a per-render query) |
-| **`a.mcardp-details` at 17px** (found in batch 2, §8.7e#3) | It is inside the FROZEN card and its row is a constant one-line height *so the card never changes height between boards*; `MARKET_CARD_H` depends on that, so raising it re-derives card geometry on `/markets`, `/live`, `/watchlist` and the landing at once | A `::after` hit-area extension — negative margins + `min-height: 44px` on the pseudo-element — which reaches the floor **without moving layout**. Belongs with the frozen-card tap-target pass (`--h-control-md: 38 → 44`), not a landing batch |
-| **The time-left formatter at its two remaining call sites** (`live/page.tsx:44`, `markets/[id]/page.tsx:800`) | Both are money/detail surfaces outside batch 2's visual sweep. The shared helper changes the minute branch from `Math.floor` to `Math.max(1, …)`, i.e. it changes displayed text — doing that on a page nobody is screenshotting this batch is how a cleanup ships a regression | Point both at `src/lib/markets/time-left.ts` and shoot `/live` + a market detail page at 360/1280 × en/sw/zh in the same batch |
+| ~~**`a.mcardp-details` at 17px**~~ | ✅ **DONE, batch 4 (2026-08-13).** Hit area 17 → **40px** (`--tap-min`) via an absolutely-positioned `::after`; painted height still 17px, card heights / row offsets / document height byte-identical, info button not swallowed on 32/32 cards. ACCEPTANCE §11's figures were **stale** — `.mcardp-info` is already 46px and `.mcardp-actions .btn` 40px, so this was the lone outlier, and a hit-area extension is not the "redesign" §11 forbids. Full account in §8.7g | — |
+| ~~**The time-left formatter's remaining call sites**~~ | ✅ **DONE, batch 4.** ⚠️ There were **THREE**, not the two recorded here — `app/markets/page.tsx:271` also held one, with the defective `Math.floor`, on the busiest board. All five callers now delegate to `src/lib/markets/time-left.ts`; `test:time-left` (34 assertions, incl. a vacuity control) + `red:time-left` 5/5 now guard it; the minute branch was driven in the live product in all three locales. §8.7g | — |
+
+### The three above, re-decided in batch 4 — CARRIED FORWARD, Ali's call 2026-08-13
+
+Asked explicitly rather than assumed. The reasons are unchanged and are restated here so the
+deferral stays a decision rather than a silence:
+
+| Deferred | Restated reason | Still needs |
+|---|---|---|
+| **Density toggle / compact list** | The label is "Compact list view" and the spec is a genuinely different DOM. A toggle bearing that label while only restyling the existing cards is a false promise — and it is a NEW component, not a restyle, so it is not a cleanup-batch item | `MarketListRow` + its own 7-column responsive table with individual hide points |
+| **The mobile filter SHEET** | Batch 1's scrolling strips remain "the right trade for a defect fix, the wrong end state". The debt is real and named. But the verification surface is larger than it looks: the sheet must not regress the strip's keyboard operability, and its focus trap / focus return / Escape-closes must be checked against the shared `<Modal>` primitive's actual contract, not the kit's spec drawing — at four widths in three locales. Half-rigor here is worse than an honest carry | A `<details>`-driven bottom sheet + scrim, sort/topic as FLAT lists inside it. ⛔ never nested `<details>` — it would clip exactly like §8.7c's defect |
+| **Search typeahead** | `SearchBox` already delivers correct debounced search on the shared grammar, so the board searches correctly today. This is a pure ENHANCEMENT, not a gap in behaviour | A client combobox over the existing parser; suggestion kinds per COMPONENTS §8 |
+
+⛔ **Not a fourth deferral: filter UI for `/live`, `/watchlist`, `/leaderboard`, `/fairness` is NOT
+COMMISSIONED** (Ali, 2026-08-13 — §8.7g). §8.7d's inventory is a record of which surfaces filter, not
+a backlog of gaps to close. Building it would be a design decision made at the call site with no
+delivered spec, which is what DESIGN_AUTHORITY §0b exists to prevent.
 
 Also **not** adopted, deliberately: the kit's `Load N more` pager. The shared `Pagination`
 component is used instead — it is already built, already tested, and shared with `/results` and
@@ -1180,6 +1209,189 @@ control opened at 9 width×locale combinations (language menu ≥90% visible + d
 + Escape-closes, rail `More` ≥90% visible, skip link first-Tab), 0 failures. `qa:discovery-probe`,
 `qa:discovery-board`, `qa:results-board`, `qa:filter-stress` all exit 0 against the local server
 with the new header/rail in place.
+
+## 8.7g · BATCH 4 — the cleanup batch, and the three things it found that were not on its list
+
+**Shipped:** the live RG regression Ali reported, the time-left consolidation, the frozen card's
+Details tap target, and §4a's cite-check recorded rather than assumed. The round-2 kit inheritance
+is CLOSED: all three commissioned surfaces (hero · `/markets` · landing+header+rail) are applied,
+and what remains deferred is enhancement with no commission behind it.
+
+### 🔴 §0 — the RG line duplicated the footer, and the void was 320px, not 192px
+
+Ali, reading the live page: *"this section now feels redundant, find a way to make it better."*
+Both halves of that were real, and the batch-4 prompt's own arithmetic understated the second:
+
+- **Duplication, measured:** each of the three RG destinations (`/profile/responsible-gambling`,
+  `/legal/responsible-gambling`, `tel:` helpline) appeared **exactly twice on one page — 1 in the
+  RG line, 1 in the footer's PLAY SAFE column — at all 12 width×locale combinations.** Counted by
+  HREF, not by localised text, because the href is the stable identity across en/sw/zh. Both copies
+  were visible in a single 1280 frame.
+- **The spacing was worse than the finding said.** The finding named 96 + 48 + 48 = 192px. Measured:
+  **144px above the rule and 176px below it — 320px of blank around a 93px strip.** Two sources it
+  never counted: `.kp-rg`'s own `margin-top` (48) AND `padding-top` (48), and — the real surprise —
+  **`mt-12` on the footer computes to 128px, not 48px.** This project has a CUSTOM spacing scale
+  (`tailwind.config.ts:176` → `"12": "128px"`), so reading a Tailwind class as its default-scale
+  value is wrong here. ⛔ Do not reason about a spacing class in this repo from the Tailwind docs.
+
+**Fixed:** the three links deleted from `RgLine` (badge + motto stay, so the duty-of-care message
+keeps the visibility §5.6 decided on without restating the footer's navigation); `.kp-rg__links` and
+`.kp-rg__link` deleted from `globals.css` in the SAME commit, verified beforehand to have exactly one
+citer; `.kp-rg`'s `margin-top` removed — the double-count the `--rh-*` comment forbids — and the RG
+wrapper's own `paddingBottom`. **After: 96px above the rule, 128px below, both single tokens.**
+That lands on the rhythm block's own drawing (`why trusted pad 48 / 96` … `footer → continuous with
+the trust surface`), not on an invented number.
+
+⭐ `kp-band--closes` was NOT touched, though it looked like the cleaner fix: `page.tsx:218` (Up &
+Down) shares it, so changing it would have silently retuned another band's closing.
+
+⚠️ The residual 216px gap at 360/768 is **correct and not ours**: `<main>` carries
+`pb-[calc(88px+env(safe-area-inset-bottom))] lg:pb-0` so the page cannot end beneath the fixed
+`kp-rail` (65px + safe area). 128 (footer) + 88 (rail keepout) = 216. Do not "fix" it.
+
+### 🔴 §4d — there were THREE copies of the time-left formatter, and the plan said two
+
+§8.8 and batch 4's own prompt both recorded two survivors (`/live`, the detail page).
+**`app/markets/page.tsx:271` held a third, with the defective plain `Math.floor` — on the busiest
+board on the platform.** It went unnamed because `time-left.ts`'s own header listed it among the
+four originals, and a reader takes "listed here" for "already dealt with". A doc that names a file
+is not evidence the file was changed.
+
+All five callers now delegate. `/live`'s copy was also defective; the detail page's was already
+correct, which is precisely why the drift was ever visible — one page disagreed with three.
+
+**A gate now exists, because nothing was watching and that is why three copies drifted:**
+`test:time-left` — 34 assertions, 5 consumers checked — asserts BOTH halves, since either alone is
+satisfiable by a broken tree: §1 the minute branch never renders zero while open; §2 no file outside
+the helper re-expresses the label. §2 carries its own **positive control (2.0)**: a rule shaped
+"every file that does X must also do Y" passes vacuously once the set of X becomes empty, and an
+i18n key rename would have done exactly that. `red:time-left` **5/5**, each defect on its own
+assertion, and case 5 proves 2.0 itself goes red rather than reporting a clean sweep of nothing.
+
+### 🔴 §4e — the Details tap target was fixed, and ACCEPTANCE §11's numbers are stale
+
+Deferred twice on the reading that it belongs to a coordinated frozen-card pass. **Re-measured
+today, that reading no longer holds:** `.mcardp-info` is **46px** (already above the floor) and
+`.mcardp-actions .btn` is **40px** (at `--tap-min`), so ACCEPTANCE §11's "38px YES/NO, 34px info"
+describes a tree that no longer exists — two of the three have already been raised piecemeal, and
+`.mcardp-details` at **17px** was the lone outlier at under half the floor.
+
+§11 forbids *redesign*. A hit-area extension changes **no pixel of appearance**, so it is not one:
+an absolutely-positioned `::after` grows the target and not the box. `top:-9px; bottom:-14px` →
+9 + 17 + 14 = **40px = `--tap-min`**.
+
+⛔ **The upward reach is capped by a NEIGHBOUR, not by taste.** `.mcardp-info` sits 10px above and
+opens an explainer rather than the market; swallowing its clicks would have traded one defect for
+another. 9px leaves 1px clear.
+
+Proven, not asserted — and this needed a hit test, because **a bounding-box measurement cannot see
+this fix at all**: every driver still reports the row at 17px, before AND after, so no existing
+instrument could distinguish the fix from its absence.
+- `details-hit-test.mjs`: **32 cards** across `/markets` + the landing × 360/768/1280/1920 —
+  hit area **40px** on every one, painted height still **17px** on every one, and the info button
+  still owned its own centre on **32/32**.
+- `card-geometry.mjs` before/after: **IDENTICAL** — card heights `[312,349,356]`, every card's row
+  offset, and the document height unchanged at 360/1280/1920 on both boards. `MARKET_CARD_H = 349`
+  is safe, which was the whole reason for the deferral.
+
+### What this batch's own instruments got wrong first (three of them)
+
+Same shape as every prior batch: the instruments were wrong before the product was.
+
+1. **A clip that framed the wrong thing.** `boundingBox()` and a non-fullPage `clip` are BOTH
+   viewport-relative, and this seam sits above the final scroll position at 360 — so the frame
+   captured the sticky header and still looked plausible. Only the 1280 frame was accidentally
+   right. Fixed to document coordinates + `fullPage`.
+2. **A zero that was correct.** The time-left shoot reported "1 label renders a ZERO count" in
+   Swahili. It was `00 SIKU` from the zero-padded **countdown clock**, where padding is the intended
+   format. It would have condemned correct code. Worse, the inverse: Swahili renders the label as
+   `dakika {n} zimebaki` — **the number in the middle** — so a `(\d+)(unit)` pattern could never
+   match the sw label at all. The probe was measuring the countdown in every locale and the label in
+   none. Rebuilt on the product's own i18n templates, with a control asserting all 9 templates still
+   exist verbatim in `i18n-dict.ts`.
+3. **A hit test that probed nothing.** 5 of 8 combinations had no card in the viewport, so it
+   measured zero cards — and correctly refused to report a pass. The answer was to scroll each card
+   into view, not to shrink the claim.
+
+Plus two in the local harness itself: `stress-bulk-bet`'s `userPrefix` is **truncated to two
+characters**, so `b4s0`…`b4s11` all collapse to one pool of synthetic users who then run out of
+wallet and have later bets **rejected** — and `poolMath: "PASS"` stays green through that, because it
+only proves the delta matches the bets that WERE accepted. `accepted === n` is the assertion that
+catches it. And `yesRatio` is **probabilistic** (`Math.random() < yesRatio`), so 0.5 does not split
+8 bets 4/4 — it gave 6000/10000. Only the extremes are deterministic, so the 8,000/8,000 control is
+built as two one-sided passes.
+
+⚠️ **`resolve-seed-markets` reports `resolved: N` for ATTEMPTS.** It said `resolved: 6` while only
+**2 of 6** markets reached `complete` (2 stopped at `bets`, 2 at `stage1`). Assert on the per-market
+`state`, never on that number. `objectionWindowHours` must be `0` first, set through the real
+`/admin/config` form — and `/admin/*` client-redirects to `/admin/2fa/setup` without
+`DISABLE_ADMIN_TOTP=true` at boot, which a `domcontentloaded` read reports as a clean 200 on
+`/admin/config` because the redirect has not fired yet.
+
+### §4a · the cite-check: clean, and therefore nothing was archived
+
+Full quoted output in `CLEANUP-MANIFEST.md`'s round-3 section. Two `v3-2026-08-11` references exist
+outside `docs/` + `design-brief/` and both are prose (`discovery.ts:4`, `.gitignore:164`); zero
+files are tracked under any `.qa-design*` dir; every kit file is under the one filed path (32 files
+/ 862,392 bytes). **`F:\50pick-design-archive\2026-08-13-final\` was deliberately NOT created** — an
+empty dated archive folder reads to the next session as "a cleanup happened here".
+
+### §4b / §4c · the decisions, taken explicitly
+
+**§4b — all three carried forward, Ali's call on 2026-08-13** (the batch's own guidance: a rushed
+build verified at half rigor is a worse outcome than an honest deferral). Reasons restated in §8.8.
+
+**§4c — the filtering boundary: NOT commissioned. Ali's call.** Extending the discovery bar to
+`/live`, `/watchlist`, `/leaderboard` or `/fairness` has **no design source** — the kit commissioned
+exactly three surfaces. §8.7d's inventory of which surfaces filter stays accurate and stays a
+record; it is **not** a licence to close the gaps it names. If this is ever wanted it is its own
+commission, or at minimum its own written plan (pin the definitions, resolve the contradictions,
+THEN build) — never a paragraph inside a cleanup batch.
+
+### Gates and verification, in full
+
+⭐ **AND SIX CONTRACT GATES WERE NOT IN `predeploy` AT ALL — INCLUDING FIVE FROM BATCHES 2 AND 3.**
+`test:discovery-contract`, `test:hero-contract`, `test:board-discovery`, `test:landing-contract`,
+`test:ticker-honesty` were written, proven with RED harnesses, recorded in §6 as "green" — and then
+nothing in the deploy chain ever ran them. Batch 4's `test:time-left` would have been the sixth.
+A gate nothing runs is not a guard; it is a file. All six are verified static (no `localhost`, no
+`BASE`, no browser) and are now wired in after `test:chip-contract`: **predeploy 72 → 78 steps, all
+78 resolving to a real script** (parsed, the same check PLAN §3 used to find the two ghost steps).
+⛔ When you add a contract gate, add it to `predeploy` in the SAME commit.
+
+**40 gates green individually, real exit codes, no pipes** (a piped gate reports `tail`'s status):
+the 22 design gates + `hero-contract` · `discovery-contract` · `board-discovery` ·
+`landing-contract` · `ticker-honesty` · `product-line` · `i18n` · `trilingual` · `docs` ·
+`orphans` · `orphan-actions` · `markets` · `selection-closed` · `grid-paging` · `needle` +
+**`time-left` (new)**. RED: `red:time-left` **5/5**. `tsc --noEmit` exit 0.
+⚠️ `test:responsive` and `test:motion` are **server-dependent, not static** — they default to
+`localhost:3000` and fail with `ECONNREFUSED` on a 3009 harness. `BASE=http://localhost:3009`
+→ `test:motion` exit 0 (43 passed). They are not part of PLAN §3's 22.
+
+#### `test:responsive` is RED, and it is PRE-EXISTING — proven against production, not argued
+
+3714 passed · 81 failed · 469 warnings. The 81 are 27 routes × 3 widths of the SAME global-chrome
+findings, so they appear on `/` and `/markets` too, and none is on a code path this batch touched.
+⭐ **Established by running the identical audit against `https://www.50pick.tz`** — batch-3 code,
+without batch 4's changes — which reproduces them exactly. Classified rather than guessed:
+
+| Finding | Verdict |
+|---|---|
+| `button[KiswahiliSW]` / `button[中文ZH]` at `l-71 r123>vw320` on every route | **INSTRUMENT ARTIFACT.** The language listbox is in the DOM on load and positioned `left:-137px` under a closed trigger; the audit measures its option boxes. `display:flex`/`visible`/`opacity:1` and nothing hides it, so the audit's own test cannot tell — but `elementFromPoint` at each centre returns TICKER elements, i.e. it is painted under, and **a 320px frame shows no dropdown at all**. Batch 3 separately proved the OPEN panel ≥90% visible at 9 width×locale combinations. Not a user-visible defect |
+| `a[Sign up] l239 r337>vw320` | **REAL, and visible in the frame** — the anonymous header's Sign up button is cut off. ⚠️ But only at **320px**, and PLAN §5.3 pins mobile verification at **360**, where it does NOT reproduce. Below the supported floor |
+| `button[Account menu] l1003 r1043>vw1024` at tabletL | **REAL, signed-in only** (absent anonymously on prod, which is why prod reported 2 failures and local 3). This is the known top-bar 1024–1279px constraint — keep the right cluster minimal |
+
+⛔ None of the three is fixed here: all are GLOBAL HEADER, none is batch 4's, and the header is
+exactly the surface that should not be edited as a side effect of a cleanup batch. Recorded so the
+next session inherits a classified list instead of a red gate with 81 unexplained lines.
+
+Frames: 12 seam frames read before AND after at 360/768/1280/1920 × en/sw/zh; 12 time-left frames;
+3 minute-branch frames; 32 card hit tests. 0 overflow, 0 console errors anywhere.
+⚠️ A `fullPage` frame renders the **sticky header at its scroll position, mid-page** — an artifact,
+confirmed by a viewport shot plus `elementFromPoint` returning `main` in the gap. Not a defect.
+
+**The minute branch was driven in the real product**, not just unit-tested: a market pulled to 40
+seconds from close renders `1m left` / `dakika 1 zimebaki` / `1分钟后` — never `0m left`.
 
 ## 8.8b · 🔴 THE BUILD CAN FAIL ON RAILWAY FOR A REASON THAT IS NOT IN THE CODE
 

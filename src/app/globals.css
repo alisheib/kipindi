@@ -3226,6 +3226,32 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
 }
 /* Details link — its own constant 1-line row so it never shifts card height. */
 .mcardp-details { display:inline-flex; align-items:center; justify-content:flex-end; gap:4px; font-family: var(--font-display); font-weight:600; font-size:11.5px; text-decoration:none; color: var(--accent-400); }
+/* ⭐ THE TAP FLOOR, REACHED WITHOUT MOVING LAYOUT — batch 4, §4e. Deferred twice because the row
+   PAINTS 17px and must keep painting 17px: `MARKET_CARD_H` (349, card-geometry.ts) is derived from
+   it and BOTH /markets skeletons consume that number, so raising the row re-derives card geometry
+   on /markets, /live, /watchlist and the landing at once.
+   An absolutely-positioned pseudo-element is out of flow, so it grows the TARGET and not the box —
+   verified, not assumed: card heights, every card's row offset and the document height are
+   byte-identical before and after at 360/1280/1920 on both /markets and the landing.
+   ⛔ THE UPWARD REACH IS CAPPED BY A NEIGHBOUR, NOT BY TASTE. `.mcardp-info` (46px) sits in the
+   meta row with exactly 10px of clearance above this row, and it opens an explainer rather than
+   the market — swallowing its clicks would trade one defect for another. Measured room: 10 above,
+   14 below (the card's 13px padding-bottom plus the gap). 9 + 17 + 14 = 40px = `--tap-min`, Law 9's
+   floor, leaving 1px clear beneath the info button. If `--tap-min` is ever raised, this cannot
+   simply consume the difference upward — re-measure the neighbour first.
+   The positioning context is `.mcardp > *` at globals.css:3149, which already makes every direct
+   child `position: relative`; this deliberately does not restate it.
+   ⚠️ A bounding-box measurement CANNOT see this fix — the drivers keep reporting the row at 17px,
+   which is correct. The hit area is provable only by hit-testing (`elementFromPoint`), which is
+   what `.qa-design-round4/details-hit-test.mjs` does. */
+.mcardp-details::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -9px;
+  bottom: -14px;
+}
 .mcardp-timeleft { display:inline-flex; align-items:center; gap:6px; }
 
 /* ── Cold-start (2026-07-29) ────────────────────────────────────────────────
@@ -3886,13 +3912,20 @@ textarea::-webkit-resizer {
    ⚠️ EVERY STRING IS VERBATIM FROM `public-footer.tsx` — no new RG copy exists anywhere in this
    work, and the footer itself is untouched. Placement above the footer is a REGULATORY question
    (LCCP §SR 5.1.5 governs where RG messaging must appear); it is built as designed and flagged
-   for compliance sign-off. It is one deletion if refused. */
+   for compliance sign-off. It is one deletion if refused.
+
+   ⭐ NO `margin-top` HERE — batch 4. It used to carry `margin-top: var(--rh-close)` ON TOP of the
+   trust band's own `.kp-band--closes` padding-bottom (96px), which is precisely the double-count
+   the `--rh-*` tokens' comment at the top of this file warns about: 96 + 48 = **144px of blank
+   measured** above a one-line strip, at all 12 width×locale combinations. The gap above this rule
+   is now the trust band's `--rh-section` and nothing else — ONE definition, one token, identical at
+   every width. ⛔ Do not add a margin here; if this seam ever needs a different gap, change the
+   band's padding, not both. */
 .kp-rg {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--sp-3) var(--sp-4);
-  margin-top: var(--rh-close);
   padding-top: var(--rh-close);
   border-top: 1px solid var(--border);
 }
@@ -3911,16 +3944,9 @@ textarea::-webkit-resizer {
   color: var(--no-300);
 }
 .kp-rg__say { font-size: var(--type-small); font-style: italic; color: var(--text-subtle); }
-.kp-rg__links { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-4); }
-.kp-rg__link {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  font-size: var(--type-small);
-  color: var(--text-muted);
-  transition: color var(--t-quick) ease-out;
-}
-.kp-rg__link:hover { color: var(--text); }
+/* `.kp-rg__links` / `.kp-rg__link` DELETED in batch 4 with their only consumer (the three links
+   that duplicated the footer's PLAY SAFE column). They had exactly one citer — `rg-line.tsx` —
+   so they went in the same commit rather than being left for `test:orphans` to find later. */
 
 
 /* =====================================================================

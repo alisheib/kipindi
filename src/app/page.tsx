@@ -247,9 +247,14 @@ export default async function LandingPage() {
       <TrustBand t={t} locale={locale} settlements={stats.recentSettlements.slice(0, 5)} />
 
       {/* The RG line sits inside the trust surface, above the footer. Rendered in its own
-          container so the band above can close its own padding. */}
+          container so the band above can close its own padding.
+          ⭐ NO `paddingBottom` HERE — batch 4. `<PublicFooter>` (rendered by `app-shell.tsx`,
+          outside this page) opens with `mt-12`, and on THIS project's spacing scale that is
+          **128px**, not the 48px the Tailwind default would suggest (`tailwind.config.ts:176`).
+          A `--rh-close` here stacked on top of it, giving 176px of measured blank below a
+          one-line strip. The gap into the footer is the footer's own margin, on every page. */}
       <div className="kp-band kp-band--overlay kp-band--seam" style={{ paddingBlock: 0, borderTop: 0 }}>
-        <div className="kp-band__inner" style={{ paddingBottom: "var(--rh-close)" }}>
+        <div className="kp-band__inner">
           <RgLine />
         </div>
       </div>

@@ -19,6 +19,7 @@ import { SellButton } from "@/components/markets/sell-button";
 import { ResolutionPanel } from "@/components/markets/resolution-panel";
 import { Chip } from "@/components/ui/chip";
 import { cashOutValue, getMarket, impliedYesPct, isClosedByTime, isSelectionClosed, listPositionsForUser, ratesFor } from "@/lib/server/market-service";
+import { timeLeftLabel } from "@/lib/markets/time-left";
 import { poolFee } from "@/lib/payout";
 import { getEffectiveConfig } from "@/lib/server/market-config";
 import { getProbabilityChart } from "@/lib/server/market-history";
@@ -795,15 +796,17 @@ export default async function MarketDetail({
 }
 
 /** Compact "time left" for a similar-market card — mirrors the board's phrasing so a
- *  card reads the same here as it does on /markets. */
+ *  card reads the same here as it does on /markets.
+ *  This copy already floored at `Math.max(1, …)`, i.e. it was the CORRECT one of the four and the
+ *  reason the drift was visible at all: it disagreed with three boards that rendered "0m left".
+ *  Pointed at `src/lib/markets/time-left.ts` in batch 4 — behaviour-identical, one definition. */
 function similarTimeLeft(iso: string, t: Awaited<ReturnType<typeof getServerT>>["t"]): string {
-  const ms = Date.parse(iso) - Date.now();
-  if (ms <= 0) return t.market.closed;
-  const d = Math.floor(ms / (24 * 3600_000));
-  if (d > 0) return fill(t.market.timeLeftD, { n: d });
-  const h = Math.floor(ms / 3600_000);
-  if (h > 0) return fill(t.market.timeLeftH, { n: h });
-  return fill(t.market.timeLeftM, { n: Math.max(1, Math.floor(ms / 60_000)) });
+  return timeLeftLabel(Date.parse(iso), Date.now(), {
+    closed: t.market.closed,
+    days: t.market.timeLeftD,
+    hours: t.market.timeLeftH,
+    minutes: t.market.timeLeftM,
+  }, fill);
 }
 
 function KPI({ label, value, icon, mono }: { label: string; value: string; icon?: React.ReactNode; mono?: boolean }) {

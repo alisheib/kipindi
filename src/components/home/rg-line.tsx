@@ -14,11 +14,23 @@
  * the kit designed it and flagged for compliance sign-off; if the answer is "footer only", this
  * component is ONE deletion and the page still works. Recorded in ACCEPTANCE §10 and PLAN §5.6.
  *
- * Client component only because the footer's own strings come through `useT()` and the helpline
- * comes from `support-config`, exactly as the footer reads them.
+ * 🔴 IT CARRIED THE FOOTER'S THREE LINKS AND WAS REDUNDANT — corrected in batch 4, on Ali reading
+ * the live page. This line used to render `setLimits`, `takeABreak`/`selfExclude` and `helpline`,
+ * which is EXACTLY what the footer's own "PLAY SAFE" column renders a few hundred pixels below
+ * (`public-footer.tsx:49-56`). Measured on the live composition: each of the three destinations
+ * appeared **twice** on one page, at all 12 width×locale combinations, and both copies were
+ * visible in a single 1280 frame.
+ *
+ * What stays is the part that is not restated anywhere above the footer: the 18+ badge and the
+ * motto. That keeps the duty-of-care message where §5.6 decided it should be (more RG visibility
+ * is the conservative direction) without restating navigation the footer already owns one scroll
+ * away. ⛔ Do not re-add the links here: the footer is their one home. If RG navigation is ever
+ * wanted above the footer, that is a NEW decision — and it means REMOVING it from the footer, not
+ * rendering it in both places.
+ *
+ * Client component only because the footer's own strings come through `useT()`, exactly as the
+ * footer reads them.
  */
-import Link from "next/link";
-import { HELPLINE, HELPLINE_TEL } from "@/lib/support-config";
 import { useT } from "@/lib/i18n";
 
 export function RgLine() {
@@ -27,16 +39,6 @@ export function RgLine() {
     <div className="kp-rg" data-band="rg">
       <span aria-label={t.footer.eighteenPlus} className="kp-rg__18">{t.footer.eighteenPlus}</span>
       <span className="kp-rg__say">{t.footer.stopGambling}</span>
-      <span className="kp-rg__links">
-        <Link href={"/profile/responsible-gambling" as never} className="kp-rg__link">{t.footer.setLimits}</Link>
-        <Link href={"/legal/responsible-gambling" as never} className="kp-rg__link">
-          {t.footer.takeABreak} / {t.footer.selfExclude}
-        </Link>
-        {/* A tel: link, like the footer's — on a phone the helpline should be one tap. */}
-        <a href={`tel:${HELPLINE_TEL()}`} className="kp-rg__link">
-          {t.footer.helpline} · {HELPLINE()}
-        </a>
-      </span>
     </div>
   );
 }

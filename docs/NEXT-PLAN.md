@@ -50,6 +50,43 @@ frozen and shipped. **Revised 2026-07-31 against the live platform, not against 
 > payload classes × every param of both boards; **all 288** status×sort×odds×pool combinations).
 > ⚠️ Three of this session's own new instruments were wrong before any product defect was found.
 > Full account in §8.7d.
+>
+> ⭐ **BATCHES 2, 3 AND 4 ARE LIVE — THE ROUND-2 DESIGN LANE IS CLOSED (2026-08-13).** All three
+> commissioned surfaces are applied: the **hero** (photographic `hero-bg.webp` deleted, replaced by
+> the kit's question board built from real market data; cold start is ONE rule — `pricedYesPct` —
+> with five consumers), the **landing composition + header + rail**, and `/markets`. 🔴 The ticker
+> had been **fabricated** — a hardcoded 12-item synthetic array on every page — and is now REAL
+> settlements only, off one `getPlatformStats` scan (settlements never individual bets, PDPA; a VOID
+> carries no figure). Two new gates: `test:ticker-honesty` (59 assertions, RED 13/13) and
+> `test:landing-contract` (23 assertions, RED 5/5).
+>
+> **Batch 4 (cleanup) closed it, and found three things that were not on its list:**
+> 1. 🔴 **The RG line above the footer duplicated the footer.** Each of its three destinations
+>    appeared **twice on one page** at all 12 width×locale combinations, and the dead space was
+>    **320px, not the 192px** the finding estimated. ⛔ Two lessons that generalise: `.kp-rg` wrote a
+>    `margin` at a boundary whose padding already summed (the `--rh-*` comment forbids exactly this),
+>    and **`mt-12` computes to 128px on this repo's CUSTOM spacing scale** (`tailwind.config.ts:176`)
+>    — never read a spacing class here as its Tailwind default.
+> 2. 🔴 **There were THREE copies of the time-left formatter, not the two the plan recorded** — the
+>    third was on `/markets`, the busiest board, with the defective `Math.floor` that renders
+>    **"0m left" while a market is still taking bets**. All five callers now delegate to
+>    `src/lib/markets/time-left.ts`, and **`test:time-left`** (34 assertions, incl. a vacuity control)
+>    + **`red:time-left`** (5/5) now guard it. A doc naming a file is not evidence the file changed.
+> 3. ✅ **The frozen card's `Details` link reached the tap floor** (17 → 40px) via an
+>    absolutely-positioned `::after` — **zero** layout movement, proven by a before/after geometry
+>    diff plus 32 card hit tests, because no bounding-box instrument can see this fix at all.
+>
+> ⬜ **Deferred, with reasons, Ali's call:** the density toggle / compact list, the mobile filter
+> sheet, and search typeahead (all in §8.8). ⛔ **Filter UI for `/live`, `/watchlist`,
+> `/leaderboard`, `/fairness` is NOT commissioned** — the kit covers exactly three surfaces.
+> ⚠️ **`test:responsive` is RED (81 failures) and it is PRE-EXISTING** — reproduced against
+> `www.50pick.tz`, all of it global-header chrome, classified in §8.7g: one instrument artifact (the
+> closed language listbox), one real defect only at 320px (below the supported 360 floor), and the
+> known signed-in tabletL `Account menu` overflow. Not batch 4's, and deliberately not fixed here.
+>
+> **▶ The design lane's pick-up point is this file, not a numbered prompt** — `design-brief/`
+> is back to its three-file steady state and `00-NEXT-SESSION-PROMPT.md` now carries no open work
+> order.
 
 **Items 1, 2, 3 and 4 are DONE and live.** ✅ **Item 3 (withdrawals) CLOSED 2026-08-10:** the
 rail works (four real payouts settled 2026-07-31), the block was ours to lift, and it has been
