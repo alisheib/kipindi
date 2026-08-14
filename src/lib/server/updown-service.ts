@@ -1408,22 +1408,35 @@ function auditHealed(round: StoredRound, action: HealOutcome, payload: Record<st
  * whole product. That is what makes "don't rush the AI" compatible with a continuous
  * game.
  */
-export async function advanceChain(chainId: string): Promise<{
+export async function advanceChain(
+  chainId: string,
+  /**
+   * ⭐ THE CLOCK IS INJECTED, NEVER PATCHED — the same shape `healStuckRounds({ now })` uses,
+   * and for the same reason. The two branches that decline to advance are decided by a
+   * CALENDAR (is this instant inside a closed session?) and by a DEADLINE (how old is this
+   * boundary?), so a suite that cannot move `now` can only test whichever case the day it
+   * runs on happens to produce — and `updown-heal.test.mts` already records what that costs:
+   * *"a suite whose verdict depends on the day it runs is a suite that lies."*
+   * ⛔ Production never passes it. The scheduler calls `advanceChain(id)` and gets `Date.now()`.
+   */
+  opts?: { now?: number },
+): Promise<{
   observation: "confirmed" | "pending" | "failed" | "skipped";
   closed: RoundOutcome | null;
   opened: boolean;
   detail?: string;
 }> {
+  const now = opts?.now ?? Date.now();
   const chain = await chainStore.get(chainId);
   if (!chain || chain.state !== "RUNNING") return { observation: "skipped", closed: null, opened: false, detail: "chain not running" };
   const asset = await assetStore.get(chain.assetId);
   if (!asset || !asset.enabled) return { observation: "skipped", closed: null, opened: false, detail: "asset missing or disabled" };
 
   const anchorMs = Date.parse(chain.gridAnchorAt);
-  const boundaryIso = chain.nextBoundaryAt ?? new Date(boundaryAfter(anchorMs, chain.durationMinutes, Date.now())).toISOString();
+  const boundaryIso = chain.nextBoundaryAt ?? new Date(boundaryAfter(anchorMs, chain.durationMinutes, now)).toISOString();
 
   // 1 · The shared reading for this instant.
-  const obs = await acquireObservation(asset, boundaryIso);
+  const obs = await acquireObservation(asset, boundaryIso, now);
 
   // 2 · Close the round that ENDS here (if any).
   let closed: RoundOutcome | null = null;
@@ -1460,6 +1473,29 @@ export async function advanceChain(chainId: string): Promise<{
   const alreadyOpen = latest && latest.opensAt === boundaryIso;
   const openSession = marketSessionAt(asset.category, boundaryIso, await deadHoursFor(asset.symbol));
   if (!openSession.open) {
+    // ⛔ RE-ARM BEFORE RETURNING, OR THE CHAIN DEADLOCKS ON THIS BOUNDARY FOREVER.
+    //
+    // 🔴 Measured on production 2026-08-14 (`docs/FINDING-GOLD-CHAINS-STALLED.md`): all three
+    // XAU chains read `RUNNING` and had opened NO round for 19.9 hours / 3.8 days. Without
+    // this line the return below leaves `nextBoundaryAt` pinned at a boundary INSIDE the
+    // closed session, and every later tick re-evaluates the gate at that same stale instant —
+    // never at now — so the chain can never reopen. A deadlock by construction, not a race,
+    // and immune only for crypto (`sessionKindFor` → "always"), which never reaches here.
+    //
+    // ⛔ FROM `max(boundaryIso, now)`, NOT FROM `now`. All weekend a gold chain sits pinned to
+    // a boundary that is still in the FUTURE and already shut; `boundaryAfter(…, now)` alone
+    // would rewind it to a boundary BEFORE the one it was holding, and a rewound chain can
+    // re-open a boundary it has already passed. Taking the later of the two is what makes the
+    // re-arm strictly forward on both sides of the boundary. §5 of `test:updown-rearm`.
+    //
+    // ⚠️ If the next boundary is ALSO inside the closed session, arming it and waiting is the
+    // correct outcome — it costs one tick per boundary until the market reopens, which is what
+    // the scheduler's timer is for. What must never happen is a patch that writes back the
+    // value it read: that reproduces the deadlock while looking busy, so the equality check is
+    // load-bearing rather than defensive. Same shape as the abandon branch above.
+    const fromMs = Math.max(Date.parse(boundaryIso), now);
+    const skipTo = new Date(boundaryAfter(anchorMs, chain.durationMinutes, fromMs)).toISOString();
+    if (skipTo !== boundaryIso) await chainStore.patch(chain.id, { nextBoundaryAt: skipTo });
     return {
       observation: obs.state, closed, opened: false,
       detail: describeClosure(openSession),
@@ -1482,7 +1518,7 @@ export async function advanceChain(chainId: string): Promise<{
     // by which point the bar has landed. That is the same retry promise step 2 already makes
     // for the close, and the reason the re-arm below had to move inside this branch.
     if (obs.state !== "confirmed") {
-      const ageMs = Date.now() - Date.parse(boundaryIso);
+      const ageMs = now - Date.parse(boundaryIso);
       // ⛔ BUT BOUNDED. If a boundary can never be priced, grinding on it forever would stop
       // the chain producing anything at all — a silent outage. Past the same deadline the
       // close side uses, give up on this boundary and re-arm to the next one at or after now,
@@ -1491,7 +1527,7 @@ export async function advanceChain(chainId: string): Promise<{
       // up waiting for this boundary" is exactly the drift this file keeps paying for.
       const abandonMs = abandonAfterSeconds(await getUpDownConfig()) * 1000;
       if (ageMs > abandonMs) {
-        const skipTo = new Date(boundaryAfter(anchorMs, chain.durationMinutes, Date.now())).toISOString();
+        const skipTo = new Date(boundaryAfter(anchorMs, chain.durationMinutes, now)).toISOString();
         await chainStore.patch(chain.id, { nextBoundaryAt: skipTo });
         return {
           observation: obs.state, closed, opened: false,
