@@ -1,5 +1,15 @@
 # Live QA campaign — every player & operator flow, driven against production
 
+> ⛔ **THE FEE MODEL CHANGED ON 2026-08-14, AND EVERY FEE FIGURE BELOW PREDATES IT.**
+> [`docs/RULES.md`](RULES.md) is the authority: the platform now charges **13% of the LOSING
+> side** on **both** products, with no ⅓ ceiling. Rounds frozen before 13:08 that day still
+> settle by `capped-commission` — `min(13% × pool, ⅓ × smaller side)` — and 4,220 of them do.
+>
+> ⚠️ **NOTHING IN THIS FILE HAS BEEN RESTATED, AND NOTHING SHOULD BE.** Every fee number here
+> records a settlement that REALLY HAPPENED, at the rate that market froze. Rewriting one to
+> match today's rule would turn a measurement into a fiction — the campaign's own standard,
+> applied to the campaign. Read the figures as history, and read the rule from RULES.md.
+
 **Started** 2026-07-31 · **Branch** `qa/live-experience` (worktree `F:\kipindi-liveqa`, off `origin/main` @`3f24a30`)
 
 > 💻 **TWO MACHINES NOW RUN THIS CAMPAIGN — check which one you are on before trusting a path.**
@@ -3993,6 +4003,20 @@ say, and re-shaping pari-mutuel rounding (largest-remainder allocation would mak
 **money-model decision for Ali**, not a QA fix — the same reasoning that keeps §6b ⑥(a) open.
 ⚠️ It is worth his ruling because the ⅓ is a **printed promise** (*"we never take more than a
 third of what you win"*) and 3,668 > 3,666.67 technically breaches it, by 0.012%.
+
+> ✅ **CLOSED 2026-08-14 — DISSOLVED, NOT FIXED.** This item needed Ali's ruling on whether a
+> 0.012% rounding overshoot breaches a printed ⅓ ceiling. He retired the ceiling instead:
+> the fee is now **13% of the LOSING side** ([`docs/RULES.md`](RULES.md)), so there is no
+> "more than a third of what you win" promise left to breach, and no ceiling for rounding to
+> overshoot. ⛔ The measurement above stands exactly as recorded — the round it describes is
+> frozen at `capped-commission` and settled by that maths, and 4,220 rounds still do.
+>
+> ⚠️ The *rounding* question itself did not vanish with the ceiling — dust direction is not
+> random when a pool holds many identical stakes. It is answered on the new model by
+> `allocateFeeShares`' largest-remainder allocation, which was driven with real money on
+> production on 2026-08-14: poll `mkt_3254d2723f3443358300` split 12,068.75 / 4,827.50 /
+> 2,413.75 — figures that do not divide — into 12,069 / 4,827 / 2,414, summing to **exactly**
+> 19,310 with a **zero** pool residual.
 
 ## 6at. ⭐ THE GATE LEARNED THE ASSET, WATCHED FROM ZERO — and a second operator arrived mid-session (2026-08-05, session 27)
 

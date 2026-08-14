@@ -146,8 +146,14 @@ The tick **floor**: `computeTargets` never lets the margin fall below the asset'
 
 The margin only changes **which outcome is selected** (UP/DOWN/VOID). The money math is unchanged:
 `buyPosition` / `settleMarket` / `payout.ts` are pool-and-outcome driven and never read a price. Pari-mutuel
-payout, the winner floor, the capped-commission fee (13%), one-sided refunds, and the audit chain are all
-as before. The `× 1.4 est.` headline is a display estimate of payout, unrelated to the price band. Up & Down
+payout, the winner floor, the fee, one-sided refunds, and the audit chain are all
+as before.
+
+> ⚠️ **This paragraph used to name the fee as "the capped-commission fee (13%)".** Since
+> 2026-08-14 the platform charges **13% of the LOSING side** on both products
+> ([`docs/RULES.md`](RULES.md) is the authority; the ⅓ ceiling applies only to rounds frozen
+> before the cutover). The containment claim itself is unchanged and is the point of this
+> section: the price band decides the OUTCOME, never the money, so it is unaffected either way. The `× 1.4 est.` headline is a display estimate of payout, unrelated to the price band. Up & Down
 stays contained to `productLine: "UPDOWN"`.
 
 ## Backward compatibility

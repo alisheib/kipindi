@@ -118,10 +118,17 @@ VOID is a **neutral** outcome, not a failure. Copy and design must treat it that
 
 ## 5 · Money rules
 
-**Fee.** 13% of the pool, capped at one third of the smaller side, frozen onto each
-round at creation. On a balanced TZS 10,000 pool that is TZS 1,300. Long-form polls use
-a different model; the two never mix. Rationale and mechanism:
-[`UPDOWN-ARCHITECTURE.md`](UPDOWN-ARCHITECTURE.md) §8.
+**Fee.** ⛔ **SUPERSEDED 2026-08-14 — [`docs/RULES.md`](RULES.md) is the authority.**
+Up & Down and long-form polls now charge the **same** rule: **13% of the LOSING side**
+(platform 3% + operator 10%). There is no ⅓ ceiling on a new round, and the two products no
+longer use different models.
+
+⚠️ The paragraph this replaced said *"13% of the pool, capped at one third of the smaller
+side … Long-form polls use a different model"*. That was true of every round frozen before
+2026-08-14 13:08 and is true of **none** created after it. A round settles by the model it
+FROZE, so both statements are live facts about different rows — which is exactly why the rate
+is not restated here. Verified on production 2026-08-14: Up & Down round #267 charged
+1,820.00 = 13% × 14,000, and poll `mkt_3254d2723f3443358300` charged 1,690.00 = 13% × 13,000.
 
 **A winner is never paid less than their stake.** Platform invariant, unchanged.
 

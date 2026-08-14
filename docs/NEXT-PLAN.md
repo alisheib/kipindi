@@ -328,8 +328,10 @@ procedure is in D2's dossier), and **item D2 below — narrowing the R2 token**.
    ⚠️ `admin/layout.tsx` **forces** enrolment, so flipping with zero enrolled admins locks Ali out
    with no admin able to readmit him.
 2. **Wave 2 — the money core** (G1–G4, then E1–E3). This resolves the orphan TZS 100,000 wallet and
-   the broken audit-chain link. ⚠️ **G3 is blocked** until Ali rules on the fee basis
-   ([`FEE-MODEL-DECISION-2026-07-14.md`](FEE-MODEL-DECISION-2026-07-14.md) — **closed:** loser-share is live and frozen per poll).
+   the broken audit-chain link. ✅ **G3 IS NO LONGER BLOCKED** — Ali ruled on the fee basis on
+   2026-08-14: **13% of the LOSING side, both products** ([`RULES.md`](RULES.md) is the
+   authority; `FEE-MODEL-DECISION-2026-07-14.md` is superseded history). Driven with real money
+   on production, both products, tying out to the ledger with a zero pool residual.
 3. **F1's remaining gates** — G3 (double-pay adversarial) and G7 (rail-failure resilience). G8 is done.
 
 ### ⛔ Do NOT do these — each would undo a deliberate decision

@@ -373,6 +373,21 @@ found was made data-driven rather than recorded as a duplicate:
 | the in-app assistant taught the retired rule, a "base TZS 500" stake and a "1x-200x multiplier" | the current rule, the real bounds, and that the maximum is **per bet** |
 | 🔴 leaderboard `tierSovereign`/`tierDiamond`/`tierGold` restated the ROI thresholds — the **same numbers the classifier tests**, in three languages | `{roi}`/`{resolved}`, interpolated from `TIER_THRESHOLDS` |
 
+### ⛔ Two rates that no guard can reach — the `.docx` hand-outs
+
+`test:rate-copy` scans the dictionaries. It cannot open a Word file, so the two documents below
+state retired rates that nothing in this repo can fail on:
+
+| File | What it still says |
+|---|---|
+| `docs/50pick-fee-decision.docx` (2026-07-14) | the fee comes from the whole pool; proposes charging on "matched money" |
+| `docs/50pick-fee-model-examples.docx` (2026-07-14) | *"Fee = **10%** of the matched money"*, TRA **4%**, Commission **3%**, Reserve **2%**, providers **1%**, early-exit **9%** |
+
+⛔ Every one of those figures is wrong today, and both files describe themselves as hand-outs
+"for the team to read and decide". They are kept as the record of a real decision — and marked
+in [`FEE-DOCX-SUPERSEDED.md`](FEE-DOCX-SUPERSEDED.md), because a binary cannot carry its own
+banner. ⚠️ Regenerate from this file before either is handed to anyone again.
+
 > ⭐ **THE LAST ROW WAS FOUND BY THE GUARD ITSELF, ON ITS FIRST RUN.** Nobody had listed it:
 > `leaderboard/page.tsx` tested `roi >= 60` and the copy said "≥60% ROI". Whoever tuned a
 > tier would have moved one and left the other, and the board would have awarded a badge its

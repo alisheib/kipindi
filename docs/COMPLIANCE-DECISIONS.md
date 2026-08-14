@@ -150,7 +150,11 @@ Architecture: `docs/UPDOWN-ARCHITECTURE.md`.
 > ⛔ **SUPERSEDED 2026-08-14.** Up & Down now charges `loser-share` — 13% of the LOSING
 > side — exactly as long-form polls do. See the § 2026-08-14 entry at the top of this file,
 > and [`docs/RULES.md`](RULES.md) §2.1. **Everything below remains a true account of the
-> 2026-07-24 decision and of how the 4,146 rounds frozen before the cutover still settle** —
+> 2026-07-24 decision and of how the rounds frozen before the cutover still settle** —
+> ⚠️ (**4,220** of them as of 2026-08-14 18:28 — read the live count from
+> `scripts/live/ops/loser-share-settled.cjs` §4, never from a number typed here: it grew from
+> 4,146 between this note being written and the cutover, and a stale count in a compliance
+> document is exactly the kind of thing a regulator checks.)
 > it is history, not the current rule. In particular the outcome-neutrality argument it makes
 > no longer describes Up & Down; the 2026-08-14 entry records that consequence explicitly.
 

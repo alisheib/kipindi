@@ -31,7 +31,13 @@
 ## 1. Product in one paragraph
 **50pick** — a Tanzania-licensed, regulator-ready **pari-mutuel prediction market**. Players back
 **YES**/**NO** on real-world outcomes (sport, weather, macro, crypto, culture, tech); all stakes
-join one pool; the correct side shares it (after ~9% tax+commission). Live implied probability.
+join one pool; the correct side shares it, after our fee. Live implied probability.
+
+> ⚠️ **This line used to say "after ~9% tax+commission", and that figure is retired.** The rule
+> is **13% of the LOSING side** (platform 3% + operator 10%), with TRA and GBT levied on **our
+> fee only** — never on a player's payout. ⛔ The rate is deliberately not restated here:
+> [`docs/RULES.md`](RULES.md) is the single authority, and a number written twice is a number
+> that will disagree with itself.
 **Mobile-first, dark-first, trilingual EN/SW/ZH.** Real money under a gambling licence → **trust
 and clarity over spectacle.** Voice: editorial confidence — "the wisdom of YES & NO."
 

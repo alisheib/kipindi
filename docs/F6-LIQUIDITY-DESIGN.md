@@ -1,5 +1,11 @@
 # F6 · Seeded / guaranteed liquidity — compliance & risk design
 
+> ⚠️ **FEE ARITHMETIC IN THIS FILE IS THE RETIRED MODEL.** It reasons in
+> `min(commissionRate × pool, feeCeilingRate × smaller side)`, which since 2026-08-14 describes
+> only rounds frozen before the cutover. The platform charges **13% of the LOSING side** on both
+> products — [`docs/RULES.md`](RULES.md) is the authority. The liquidity/risk argument below is
+> unaffected in shape, but any figure in it must be re-derived before it is used.
+>
 > **Status: DESIGN ONLY. No code has been written.** The backlog requires this:
 > *"Plan this one carefully with compliance first; may need Ali/regulator input
 > before build… produce the mechanic + risk/accounting/compliance model in

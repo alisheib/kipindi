@@ -349,21 +349,38 @@ we did not witness — and guarded by `AND capturedSourceUrl IS NULL` so it is i
 
 ## 8 · The fee profile
 
-Ali's decision, 2026-07-24: Up & Down rounds freeze **`capped-commission` at 13% of the
-pool**, ceiling ⅓ of the smaller side.
+> ⛔ **SUPERSEDED 2026-08-14. [`docs/RULES.md`](RULES.md) is the single authority on what this
+> platform charges.** Ali replaced the split model: **both** products now freeze
+> **`loser-share` — 13% of the LOSING side** (platform 3% + operator 10%). There is no ⅓
+> ceiling on a new round, and Up & Down and long-form polls no longer differ.
+>
+> ⚠️ **THE TEXT BELOW IS NOT DELETED, AND THAT IS DELIBERATE.** A round settles by the model it
+> FROZE at creation, so `capped-commission` is still the live, correct arithmetic for **4,220
+> Up & Down rounds** on production and must keep working exactly as described — `test:updown-cutover`
+> and `loser-share-settled.cjs` §4 both re-verify a sample of them on every run. Read what
+> follows as the definition of the LEGACY model, not as what the platform charges today.
+
+Ali's decision, 2026-07-24 (**retired 2026-08-14**): Up & Down rounds froze
+**`capped-commission` at 13% of the pool**, ceiling ⅓ of the smaller side.
 
 ```
-fee = min(0.13 × pool, ⅓ × smaller side)
+fee = min(0.13 × pool, ⅓ × smaller side)          ← LEGACY rounds only
 ```
 
 On a balanced TZS 10,000 pool that is exactly **TZS 1,300** — the figure the management
-proposal is built on — using maths that already exists and is already tested
-(`test:fee-model`, 77 assertions). It is **outcome-neutral**, which is a better fit for
-the pari-mutuel licence than `loser-share`, and the ceiling preserves the winner floor.
+proposal was built on — using maths that already exists and is already tested
+(`test:fee-model`, 77 assertions). It is **outcome-neutral**, which was the argument for it
+over `loser-share`, and the ceiling preserves the winner floor.
 
-Long-form polls keep `loser-share` (13% of the *losing* pool). **The two never mix**,
-because the model is frozen per poll at creation and `snapshotOrLegacy` reads only what
-that poll froze.
+⭐ **What replaced it, and why the ⅓ ceiling went with it.** Under `loser-share` the fee is
+taken from the losing side only, so it can never exceed that side — the ceiling the old model
+needed to protect the winner floor is structural in the new one rather than bolted on.
+`docs/RULES.md` §1 records the accepted consequence: on a balanced round our income halves,
+deliberately, in exchange for one charge model a customer can understand.
+
+Long-form polls kept `loser-share` throughout. **The two never mix**, because the model is
+frozen per poll at creation and `snapshotOrLegacy` reads only what that poll froze — which is
+what makes the cutover safe and is why the paragraph above still has to be true.
 
 Mechanism: `UpDownChain.rateProfile` (a partial `RateConfig`) is passed to
 `createMarket` as `rateOverrides` and stamped through the **same**

@@ -1,6 +1,21 @@
 # The fee model — decision record
 
-**Date:** 2026-07-14 · **Decided by:** Ali (owner) · **Status:** SHIPPED
+**Date:** 2026-07-14 · **Decided by:** Ali (owner) · **Status:** ⛔ **SUPERSEDED 2026-08-14**
+
+> ⛔ **THIS IS HISTORY. [`docs/RULES.md`](RULES.md) is the authority on what 50pick charges.**
+> Ali replaced this model on 2026-08-14: **13% of the LOSING side, both products, no ⅓
+> ceiling**. The `commissionRate × pool` arithmetic described below is retired for anything
+> created after 13:08 that day.
+>
+> ⚠️ **KEPT, NOT DELETED, AND NOT REWRITTEN.** 4,220 Up & Down rounds on production are frozen
+> at the model this record describes and settle by it forever, so this remains the definition
+> of how their money was computed — a regulator asking why a July round paid what it paid is
+> asking about this document. What must never happen is a reader taking it for current: hence
+> the banner rather than an edit, and hence no third version of the rate anywhere in it.
+>
+> ⭐ This record also asked an open question — *whether to adopt the flat 13%-of-losing-pool
+> basis* — which `MODULE-CERTIFICATION-PROGRAM.md` used to block G3 on. That question is now
+> answered: yes, and it is driven with real money on production.
 
 ---
 

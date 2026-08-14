@@ -713,9 +713,13 @@ it is detected · 🔴 does the admin UI show drift honestly, or round it away?
 **Owns** `HousePoolLedger`, `payout.ts` · **Existing** `test:fee-model` `test:loser-share-fee` `test:win-share` `test:payout-alloc`
 **Attack** A market where one side has zero stake · a single participant · rounding across many
 small stakes (does the pool leak a shilling per settlement?) · a fee that exceeds the pool ·
-🟡 **an OPEN owner decision:** [`FEE-MODEL-DECISION-2026-07-14.md`](FEE-MODEL-DECISION-2026-07-14.md) (2026-07-22) asks
-whether to adopt Jay's flat 13%-of-losing-pool basis. **Do not certify G3 while the fee basis is
-undecided.**
+✅ **DECIDED AND IMPLEMENTED, 2026-08-14 — this no longer blocks G3.** Ali adopted the flat
+**13%-of-the-losing-side** basis for **both** products; [`docs/RULES.md`](RULES.md) is the
+authority and `FEE-MODEL-DECISION-2026-07-14.md` is superseded history. Driven with real money
+on production: Up & Down round #267 charged 1,820.00 = 13% × 14,000 and poll
+`mkt_3254d2723f3443358300` charged 1,690.00 = 13% × 13,000, both tying out to the ledger with a
+zero pool residual. ⚠️ The zero-shilling-leak exit criterion below is unchanged and still
+stands on its own.
 **Exit** Ali's fee ruling recorded and implemented, zero-shilling leak proven across 10k settlements.
 
 ### G4 · Audit chain — `cert:g4`

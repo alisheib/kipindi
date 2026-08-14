@@ -108,6 +108,13 @@ that was never charged — narrowed on verification to one-sided loser-share pol
 `loserRate × losingPool`. On a one-sided win `losingPool` is 0, so **`fee` is 0 while `commission`
 is 13% of the whole pool**. The two numbers disagree by design, and one of them is a fiction.
 
+> ⚠️ **Still true, and now true of BOTH products.** Since 2026-08-14 Up & Down freezes
+> `loser-share` as well ([`docs/RULES.md`](RULES.md)), so this `commission`-vs-`fee` trap is no
+> longer confined to long-form polls — any consumer of `.commission` that was safe only because
+> Up & Down used a different model is now exposed. The three consumers named below were gated
+> correctly, and `loser-share-settled.cjs` re-checks the real figure against the LEDGER on every
+> run rather than against `.commission`.
+
 **What session 42 could NOT confirm — and this is recorded as an open question, not a defect:**
 the three consumers of `.commission` all appear to be correctly gated.
 
