@@ -32,7 +32,7 @@ import { rateCheck } from "./rate-limit";
 import { normaliseCriterionTranslation } from "../localized";
 import { getEffectiveConfig, getEffectiveResolutionMode, snapshotFromConfig, snapshotOrLegacy, type RateConfig } from "./market-config";
 import { stakeBoundsForUpDownMarket } from "./updown-config";
-import { payoutFor, settledPayoutFor, allocateWinnerPayouts, allocateFeeShares, poolFee, levySplit, type FeeSnapshot } from "@/lib/payout";
+import { payoutFor, settledPayoutFor, allocateWinnerPayouts, allocateFeeShares, poolFee, levySplit, leanFor, resolveFeeModel, THIN_SMALLER_SIDE_SHARE, type FeeSnapshot } from "@/lib/payout";
 import { getRequireTwoOfficerResolution } from "./resolution-policy";
 import { isMaintenanceMode, maintenanceMessage } from "./platform-config";
 import { recordSnapshot } from "./market-history";
@@ -1344,15 +1344,50 @@ export async function notifySelectionClosedForMarket(marketId: string): Promise<
     })).catch(() => {});
   }
 
-  // ── ADMIN: flag a lopsided / thin poll at close, while it can still be managed
+  // ── ADMIN: flag a lopsided / thin market at close, while it can still be managed
   //
-  // The fee being CAPPED is the signal: it means 10%-of-pool exceeded a third of
-  // the prize, i.e. the poll is lopsided enough that an uncapped rake would have
-  // bitten into the winners. Winners are safe — that is what the ceiling is for —
-  // but their upside is thin, we earn less than the headline rate, and an officer
-  // should know before the result lands.
-  const winnerRatio = closeFee.larger > 0 ? closeFee.netPool / closeFee.larger : 0;
-  if (closeFee.capped || closeFee.smaller === 0) {
+  // 🔴 F1 · THIS ALERT WAS HALF-DEAD FOR THREE WEEKS AND THEN COMPLETELY SILENT.
+  //
+  // It used to fire on `closeFee.capped || closeFee.smaller === 0`, and `capped` is a
+  // CAPPED-COMMISSION CONCEPT: `poolFee`'s loser-share arm returns `capped: false`
+  // ALWAYS, because there is no ceiling in that model. So from 2026-07-23 (polls) it
+  // could only fire on a fully one-sided market, and after A2 (2026-08-14) the same was
+  // true of every Up & Down round. An officer stopped being told that a poll was lopsided
+  // and nothing anywhere said so — the alert did not error, it simply never fired.
+  //
+  // ⛔ AND THE PAYLOAD WAS WORSE THAN THE TRIGGER. `closeFee` above is computed with NO
+  // winning side, which is correct for a pre-outcome read — but under loser-share that
+  // means `fee: 0` and `ceiling: 0`, so the alert reported `feeCharged: 0` on every poll,
+  // and `worstWinnerRatio` was `netPool/larger` with NO fee deducted: a ratio that
+  // OVERSTATES what a winner on the big side will actually get. A number that reads
+  // plausible and is wrong is worse than a missing alert.
+  //
+  // ⭐ THE REPLACEMENT USES WHAT THE MONEY PATH ALREADY COMPUTED. `payoutByPosition` was
+  // built above by `settledPayoutFor` — the function that actually settles — and it IS
+  // told the side, so it is model-correct under both. The worst ratio any real position
+  // faces is therefore an exact figure about real money, not a re-derivation.
+  //
+  //   oneSided       nobody to lose to: every stake refunded, we earn nothing
+  //   thin upside    some real position would be paid under `thinProfitRatio` if it won
+  //   lopsided book  the smaller side is under 15% of the pool
+  //
+  // ⚠️ ALL THREE, not one. `thin` alone misses a lopsided book that happens to still pay
+  // well; `smallerShare` alone misses a balanced-looking poll whose thin side is tiny in
+  // absolute terms. They are different questions about the same close.
+  const rates = ratesFor(m);
+  // The fee for EACH outcome — the only honest pre-outcome statement under a model whose
+  // fee depends on who wins. Under capped-commission both come out identical, which is
+  // itself the outcome-neutrality property stated as data.
+  const feeIfYes = poolFee(m.yesPool, m.noPool, rates, "YES");
+  const feeIfNo = poolFee(m.yesPool, m.noPool, rates, "NO");
+  // ⛔ Over POSITIONS, not over sides: a side with no positions has no winner to be thin.
+  const ratios = open.map((p) => (p.stake > 0 ? (payoutByPosition.get(p.id) ?? 0) / p.stake : Infinity));
+  const worstWinnerRatio = ratios.length ? Math.min(...ratios) : 0;
+  const smallerShare = closeFee.pool > 0 ? closeFee.smaller / closeFee.pool : 0;
+  const oneSided = closeFee.smaller === 0;
+  const thinUpside = ratios.length > 0 && leanFor(worstWinnerRatio, rates.thinProfitRatio) === "thin";
+  const lopsidedBook = !oneSided && smallerShare < THIN_SMALLER_SIDE_SHARE;
+  if (oneSided || thinUpside || lopsidedBook) {
     audit({
       category: "ADMIN",
       action: "market.selection_closed.thin_poll",
@@ -1361,16 +1396,21 @@ export async function notifySelectionClosedForMarket(marketId: string): Promise<
       targetId: m.id,
       payload: {
         titleEn: m.titleEn,
+        feeModel: resolveFeeModel(rates),
         yesPool: m.yesPool, noPool: m.noPool,
         pool: closeFee.pool, smallerSide: closeFee.smaller,
-        smallerPctOfPool: closeFee.pool > 0 ? +(closeFee.smaller / closeFee.pool * 100).toFixed(1) : 0,
-        commissionUncapped: Math.round(closeFee.commission),
-        feeCharged: Math.round(closeFee.fee),
-        feeWasCapped: closeFee.capped,
-        worstWinnerRatio: +winnerRatio.toFixed(4),
-        reason: closeFee.smaller === 0
-          ? "ONE-SIDED — no opposing pool. Every stake will be refunded in full; this poll earns nothing."
-          : "LOPSIDED — the fee hit the ceiling. Winners are protected (never below stake) but upside is thin and our take is below the headline rate.",
+        smallerPctOfPool: +(smallerShare * 100).toFixed(1),
+        // ⛔ NOT a single `feeCharged`. Under loser-share the fee IS the outcome.
+        feeIfYesWins: Math.round(feeIfYes.fee),
+        feeIfNoWins: Math.round(feeIfNo.fee),
+        worstWinnerRatio: +worstWinnerRatio.toFixed(4),
+        thinProfitRatio: rates.thinProfitRatio,
+        triggers: { oneSided, thinUpside, lopsidedBook },
+        reason: oneSided
+          ? "ONE-SIDED — no opposing pool. Every stake will be refunded in full; this market earns nothing."
+          : thinUpside
+            ? "THIN UPSIDE — a real position would be paid under the thin-profit ratio if its side wins. Winners are protected (never below stake) but there is little in it for them."
+            : "LOPSIDED BOOK — the smaller side is a small fraction of the pool. Winners on the big side share a thin losing pool.",
       },
     });
   }

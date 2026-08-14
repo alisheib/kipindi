@@ -115,6 +115,22 @@ export const DEFAULT_TRA_TAX_ON_COMMISSION_RATE = 0.10;
 export const DEFAULT_GBT_LEVY_ON_COMMISSION_RATE = 0.05;
 /** Warn "thin upside" below this payout/stake ratio. */
 export const THIN_PROFIT_RATIO = 1.05;
+/**
+ * A market whose SMALLER side is below this share of the pool is a lopsided book, and an
+ * officer is told at selection-close (`market.selection_closed.thin_poll`).
+ *
+ * ⚠️ SEPARATE FROM `THIN_PROFIT_RATIO`, and deliberately so. The ratio asks "is there
+ * anything in it for a winner"; this asks "is there anyone on the other side at all". A
+ * market can fail either without failing the other: a 5% side can still pay its holders
+ * handsomely, and a near-balanced book can pay thinly once the fee comes out. The alert
+ * fires on EITHER, because they call for different responses.
+ *
+ * ⛔ Model-INDEPENDENT by construction — it reads only the two pool sizes, so unlike the
+ * `capped` flag it replaced it means the same thing under both fee models. `capped` is a
+ * capped-commission concept that `poolFee` returns `false` for under loser-share, always,
+ * which is how this alert came to be silent for three weeks.
+ */
+export const THIN_SMALLER_SIDE_SHARE = 0.15;
 
 // ── Stake bounds — A RULE, NOT A DEFAULT ────────────────────────────────────
 /**

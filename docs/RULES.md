@@ -78,7 +78,21 @@ file is worthless the moment it describes an intention as a fact.
 | **Frozen per market** | Every market stamps `PredictionMarket.feeSnapshot` at creation and settles by it **forever**. ⛔ A snapshot is never rewritten, backfilled or migrated. Changing a rate affects FUTURE markets only, and the two models never mix. |
 | **Stated to players** | `/legal/terms` §4 · the in-app assistant's system prompt (`src/app/_actions/chat.ts`) · `/help` FAQ · the conviction dial's "how it works" hint. |
 | **Stated to admins** | `/admin/config` (fee model + simulator) · `/admin/updown` · `/admin/markets/[id]`. |
-| **Guarded by** | `npm run test:fee-model` · `npm run test:loser-share-fee` · `npm run test:money-invariants` · `npm run test:settlement-gate` · `npm run test:fee-model-caption` / `red:fee-model-caption` (the model NAMED on an admin screen is the model CHARGED) |
+| **Guarded by** | `npm run test:fee-model` · `npm run test:loser-share-fee` · `npm run test:money-invariants` · `npm run test:settlement-gate` · `npm run test:fee-model-caption` / `red:fee-model-caption` (the model NAMED on an admin screen is the model CHARGED) · `npm run test:thin-alert` / `red:thin-alert` (the lopsided-market alert, model-aware) |
+| **Monitored by** | `market.selection_closed.thin_poll` — fires at selection-close on `oneSided`, `thinUpside` (a real position would be paid under `thinProfitRatio`) or `lopsidedBook` (the smaller side under 15% of the pool), and states the fee **per outcome** because under loser-share a single pre-outcome figure cannot exist. |
+
+> 🔴 **THAT ALERT WAS SILENT FOR THREE WEEKS AND NOBODY COULD TELL.** It used to fire on
+> `closeFee.capped`, and `capped` is a **capped-commission concept** — `poolFee`'s loser-share
+> arm returns `false` for it always. So from 2026-07-23 it could only fire on a fully
+> one-sided poll, and after A2 the same became true of every Up & Down round. It never
+> errored; it simply stopped firing.
+>
+> ⛔ **And its payload was worse than its trigger.** `worstWinnerRatio` was derived from a fee
+> computed with no winning side — which under loser-share is **zero** — so it OVERSTATED what
+> a big-side winner would receive. On a 200,000/10,000 book it read exactly `1.0500`, at the
+> thin floor, where the real figure is `1.0435`, under it. An officer would have been told the
+> upside was fine. Both fixed 2026-08-14 (F1); the ratio now comes from `settledPayoutFor`,
+> the function that actually settles.
 
 > 🔴 **A NUMBER CAN BE RIGHT UNDER A LAW THAT IS WRONG.** `/admin/updown` priced its fee
 > tile through the real `poolFee` and captioned it with the literal `capped-commission 13%`.

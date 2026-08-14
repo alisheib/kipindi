@@ -175,7 +175,31 @@ it would have meant re-reading the positions a second time inside the money path
   EN/SW/ZH at `docs/FAILURE-INVENTORY.md` §2.4.
 - ~~**B3**~~ — ✅ done in the B commit, see above.
 
-### ▶ F1 — the lopsided-poll alert (do it as soon as B lands, it is a live capability)
+### ✅ F1 — the lopsided-market alert (session 2)
+
+Trigger and payload both replaced. `oneSided || thinUpside || lopsidedBook`, where the ratio
+comes from `payoutByPosition` — built above by `settledPayoutFor`, the function that actually
+settles, and told the side, so it is model-correct under both models. The fee is reported
+**per outcome** (`feeIfYesWins` / `feeIfNoWins`), because under loser-share a single
+pre-outcome figure cannot exist; under capped-commission the two come out identical, which is
+outcome-neutrality stated as data rather than claimed.
+
+`test:thin-alert` (19 checks, every one driving the REAL `notifySelectionClosedForMarket` on
+a real market with real positions and reading the audit chain) · `red:thin-alert` **6/6**.
+Mutations 1 and 2 are the shipped source verbatim; 4, 5 and 6 make the alert fire on
+everything, which is the opposite failure and just as useless.
+
+⚠️ **What §5 cost, and what it now says.** It first asserted *"each trigger catches a market
+the others miss"* — and **passed while proving nothing**: both fixtures fired both triggers,
+and the assertion was loose enough to be green anyway. Worked out properly the relation is
+arithmetic: under loser-share a big-side winner is paid `1 + (1 − r)·k` for `k = small/big`,
+so `thinUpside ⇔ k < 0.05/(1 − r)` and `lopsidedBook ⇔ k < 0.1765`. **At the shipped 13% rate
+`thinUpside` is a strict SUBSET of `lopsidedBook` and cannot fire alone**; they separate only
+above `r ≈ 71.7%`. ⛔ That does not make `thinUpside` dead code — it is the only trigger that
+reacts to the RATE, and the rate is an operator lever up to 100%. §5.4 drives it at 80%,
+where a healthy-looking 16.7% book fires on `thinUpside` alone.
+
+### ~~▶ F1 — the lopsided-poll alert~~ (the original brief, for reference)
 
 `market.selection_closed.thin_poll` fires on `closeFee.capped || closeFee.smaller === 0`.
 **`poolFee` returns `capped: false` for loser-share, always** — so it has been half-dead for
