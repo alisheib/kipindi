@@ -360,6 +360,7 @@ export function UpDownCard(props: UpDownCardProps) {
       up: t.market.udUp, down: t.market.udDown, insufficient: t.market.udInsufficientBalance,
     },
     errCopy: t.market,
+    reasonCopy: t.error as unknown as Record<string, string>,
   });
   // A placed bet pulses the whole card (non-intrusive confirmation, reduced-motion aware).
   const cardPulse = usePlacePulse(bet.justPlaced?.nonce);

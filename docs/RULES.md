@@ -217,9 +217,31 @@ find yourself adding a deduction to a player's money, stop.
 
 ### 2.9 · Failure messages
 
-> ⏳ **LANDING.** Workstream C. Today `INVALID` is returned from 108 server sites carrying no
-> reason, four disagreeing copy mappers exist, 12 player surfaces render a raw server string
-> and 8 say only that something failed. Inventory: `docs/FAILURE-INVENTORY.md`.
+> ⏳ **LANDING — the BETTING and CASH-OUT paths shipped 2026-08-14 (C2–C5).** The wallet,
+> KYC, auth, proposals and objections reasons are the next tranche and are enumerated at
+> `docs/FAILURE-INVENTORY.md` §2.3; until they emit a `reason` they render exactly as before.
+> ⛔ Do not read this rule as fully live for those surfaces.
+
+| | |
+|---|---|
+| **Enforced in** | `src/lib/failure-reasons.ts` — the registry (22 reasons), each with a severity, a channel and a dictionary key. The server emits a machine `reason` alongside the `code`, and carries the FIGURES in `detail` as **numbers**. |
+| **Rendered by** | `renderFailure()` — one function, used by the poll dial and the Up & Down quick-bet surface. ⛔ It never renders `r.error`: the server's English prose is API/audit truth and has no business being a headline in front of a Swahili or Chinese player. |
+| **Guarded by** | `npm run test:failure-reasons` (48 checks) · `npm run red:failure-reasons` (9/9) |
+
+> ⭐ **THIS IS WHAT CLOSES §2.3.** A 999 stake is now refused with *"Minimum bet is TZS 1,000.
+> Enter TZS 1,000 or more and try again."* — driven through the real `buyPosition` and
+> rendered through the real surface mappers, **in all three languages, on both products**.
+> Before today the server named both bounds in its own sentence and NEITHER surface showed
+> one: the poll dial fell through `errorCopy`'s INVALID phrase tests (which have no bounds
+> test) to *"That didn't go through"*, and Up & Down mapped every INVALID to one generic line
+> and discarded the server string by design.
+>
+> 🔴 **AND THE FIRST VERSION OF THAT SENTENCE SHIPPED A LITERAL `{min}` INTO IT.**
+> `String.replace` with a string pattern substitutes only the FIRST occurrence, and the copy
+> uses `{min}` twice — so it rendered *"Minimum bet is TZS 1,000. Enter {min} or more…"*.
+> Every "does it name the minimum" assertion was GREEN, in all three languages. Only reading
+> the rendered output caught it. `test:failure-reasons` §1.5b and §2.render now assert that
+> **no placeholder survives** and that **every declared figure changes the sentence**.
 
 Every player-facing refusal states **the reason** and **the next step**, at a severity that
 matches what happened:

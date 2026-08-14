@@ -33,6 +33,7 @@ import { normaliseCriterionTranslation } from "../localized";
 import { getEffectiveConfig, getEffectiveResolutionMode, snapshotFromConfig, snapshotOrLegacy, type RateConfig } from "./market-config";
 import { stakeBoundsForUpDownMarket } from "./updown-config";
 import { payoutFor, settledPayoutFor, allocateWinnerPayouts, allocateFeeShares, poolFee, levySplit, leanFor, resolveFeeModel, THIN_SMALLER_SIDE_SHARE, type FeeSnapshot } from "@/lib/payout";
+import type { FailureReason } from "@/lib/failure-reasons";
 import { getRequireTwoOfficerResolution } from "./resolution-policy";
 import { isMaintenanceMode, maintenanceMessage } from "./platform-config";
 import { recordSnapshot } from "./market-history";
@@ -634,7 +635,10 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
   // the correct trade — a burst-control on betting is far less important than a
   // bet never waiting on a cache. Every other action uses rateCheckAsync.
   const rl = rateCheck(userId, "bet.place");
-  if (!rl.allowed) return { ok: false, error: "Slow down.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
+  // ⚠️ "Slow down." contains neither "rate" nor "limit", which is exactly why the old
+  // phrase-matching mapper never recognised a RATE_LIMITED refusal and discarded
+  // `retryAfterSec` with it (docs/FAILURE-INVENTORY.md §1.6).
+  if (!rl.allowed) return { ok: false, error: "Slow down.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec, reason: "rate_limited" };
 
   // Global maintenance switch (§9.3 #1) — new bets are paused platform-wide.
   // Withdrawals/cash-outs stay open so funds are never trapped.
@@ -691,9 +695,21 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
     if (b) { minStake = b.min; maxStake = b.max; }
   }
   if (!Number.isInteger(opts.stake) || opts.stake < minStake || opts.stake > maxStake) {
-    return { ok: false, error: `Stake must be a whole number between ${formatTzs(minStake)} and ${formatTzs(maxStake)}.`, code: "INVALID" };
+    // C2 · the SERVER already named both bounds in this sentence and NEITHER player
+    // surface showed it: polls fell through errorCopy's INVALID phrase tests (which have
+    // no bounds test) to "That didn't go through", and Up & Down mapped INVALID to a
+    // generic line and DISCARDED the server string by design. So docs/RULES.md §2.3's
+    // requirement — refused with a message NAMING the minimum — was met by neither product.
+    // The reason and the two figures now travel as DATA.
+    return {
+      ok: false,
+      error: `Stake must be a whole number between ${formatTzs(minStake)} and ${formatTzs(maxStake)}.`,
+      code: "INVALID",
+      reason: !Number.isInteger(opts.stake) ? "stake_not_whole" : opts.stake < minStake ? "stake_below_min" : "stake_above_max",
+      detail: { min: minStake, max: maxStake },
+    };
   }
-  if (opts.side !== "YES" && opts.side !== "NO") return { ok: false, error: "Invalid side.", code: "INVALID" };
+  if (opts.side !== "YES" && opts.side !== "NO") return { ok: false, error: "Invalid side.", code: "INVALID", reason: "market_not_live" };
 
   // Daily loss-limit gate (RG / GLI-19) is re-checked INSIDE the wallet lock
   // below (audit C4), not here — checking outside the lock let two concurrent
@@ -718,7 +734,20 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
     }
 
     const wallet = await db.wallet.findByUserId(userId, lockTx);
-    if (!wallet || wallet.status !== "ACTIVE") return { ok: false as const, error: "Wallet unavailable.", code: "NOT_FOUND" as const };
+    // 🔴 FAILURE-INVENTORY §3.1 · ONE CODE, TWO COMPLETELY DIFFERENT STATES. `NOT_FOUND`
+    // covered both "no wallet row at all" and "a wallet that exists but is FROZEN", and
+    // `errorCopy` renders NOT_FOUND as "We couldn't find that. Refresh and try again." —
+    // so a player whose wallet had been frozen was told to refresh the page. Wrong reason,
+    // wrong severity, wrong next step. The code is unchanged for API/audit compatibility;
+    // the REASON is what tells them apart now.
+    if (!wallet || wallet.status !== "ACTIVE") {
+      return {
+        ok: false as const,
+        error: "Wallet unavailable.",
+        code: "NOT_FOUND" as const,
+        reason: (wallet ? "wallet_frozen" : "wallet_missing") satisfies FailureReason as FailureReason,
+      };
+    }
 
     // ── UNLIMITED POSITIONS, EITHER OR BOTH SIDES (docs/RULES.md §2.4) ────────
     //
@@ -756,7 +785,7 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
     const lossCheck = await checkLossLimit(userId, opts.stake, lockTx);
     if (!lossCheck.allowed) {
       audit({ category: "COMPLIANCE", action: "bet.loss_limit_blocked", actorId: userId, targetType: "User", targetId: userId, payload: { stake: opts.stake, reason: lossCheck.reason } });
-      return { ok: false as const, error: lossCheck.reason ?? "Daily loss limit reached.", code: "INVALID" as const };
+      return { ok: false as const, error: lossCheck.reason ?? "Daily loss limit reached.", code: "INVALID" as const, reason: "loss_limit_daily" as const };
     }
 
     // Real-first funding: spend the player's own (withdrawable) balance first,
@@ -769,7 +798,17 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
     const bonusAvail = wallet.bonusBalance ?? 0;
     const realPart = Math.min(opts.stake, realAvail);
     const bonusPart = opts.stake - realPart;
-    if (bonusPart > bonusAvail) return { ok: false as const, error: "Not enough balance.", code: "INVALID" as const };
+    if (bonusPart > bonusAvail) {
+      return {
+        ok: false as const,
+        error: "Not enough balance.",
+        code: "INVALID" as const,
+        reason: "balance_insufficient" as const,
+        // ⛔ The FIGURES, as numbers. `errorCopy` recovers money from the English sentence
+        // with a regex today; a reworded sentence silently drops it off the screen.
+        detail: { balance: realAvail + bonusAvail, needed: opts.stake },
+      };
+    }
 
     const payoutIfWin = await projectedPayout(market, opts.side, opts.stake);
     const positionId = `pos_${randomId(10)}`;
@@ -937,7 +976,7 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
         targetId: opts.marketId,
         payload: { side: opts.side, stake: opts.stake, moneyMoved: false },
       });
-      return { ok: false as const, error: "Selections closed while placing your bet. · Uchaguzi umefungwa.", code: "SELECTION_CLOSED" as const };
+      return { ok: false as const, error: "Selections closed while placing your bet. · Uchaguzi umefungwa.", code: "SELECTION_CLOSED" as const, reason: "selection_closed" as const };
     }
     // The bet's audit trail, inbox receipt and email all moved BELOW the lock.
     // They are fire-and-forget and need no lock, but the market advisory lock is
@@ -1006,7 +1045,7 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
     // the same clean rejection the player always saw. (In-memory there is no
     // rollback, so spendBonusLocked's hand-compensation above still applies.)
     if (err instanceof BetAbort) {
-      return { ok: false, error: "Not enough balance.", code: "INVALID" };
+      return { ok: false, error: "Not enough balance.", code: "INVALID", reason: "balance_insufficient" };
     }
     throw err;
   }
@@ -1951,15 +1990,15 @@ export async function cashOutPosition(
 
   // Cheap pre-lock fast-fail (avoids taking the lock for obviously-bad calls).
   const pre = await positionStore.get(positionId);
-  if (!pre) return { ok: false, error: "Position not found.", code: "NOT_FOUND" };
-  if (pre.userId !== userId) return { ok: false, error: "Not your position.", code: "INVALID" };
+  if (!pre) return { ok: false, error: "Position not found.", code: "NOT_FOUND", reason: "not_your_position" };
+  if (pre.userId !== userId) return { ok: false, error: "Not your position.", code: "INVALID", reason: "not_your_position" };
 
   return withLock(`wallet:${userId}`, async () => {
     // Learn the market so we can nest its lock. Lock order is ALWAYS
     // wallet→market (identical to buyPosition), so this nesting cannot deadlock.
     const owned = await positionStore.get(positionId);
-    if (!owned) return { ok: false as const, error: "Position not found.", code: "NOT_FOUND" as const };
-    if (owned.userId !== userId) return { ok: false as const, error: "Not your position.", code: "INVALID" as const };
+    if (!owned) return { ok: false as const, error: "Position not found.", code: "NOT_FOUND" as const, reason: "not_your_position" as const };
+    if (owned.userId !== userId) return { ok: false as const, error: "Not your position.", code: "INVALID" as const, reason: "not_your_position" as const };
     // The pool mutation + position settlement below MUST hold the market lock.
     // resolveMarket holds market:<id> while it settles positions, so nesting it
     // here serializes cash-out against resolve (and buyPosition): a concurrent
@@ -1975,20 +2014,20 @@ export async function cashOutPosition(
     // read above and acquiring the lock. Validating the live state here is what
     // prevents a double-settle / double-credit.
     const p = await positionStore.get(positionId);
-    if (!p) return { ok: false as const, error: "Position not found.", code: "NOT_FOUND" as const };
-    if (p.userId !== userId) return { ok: false as const, error: "Not your position.", code: "INVALID" as const };
-    if (p.status !== "OPEN") return { ok: false as const, error: "Position is no longer open.", code: "INVALID" as const };
+    if (!p) return { ok: false as const, error: "Position not found.", code: "NOT_FOUND" as const, reason: "not_your_position" as const };
+    if (p.userId !== userId) return { ok: false as const, error: "Not your position.", code: "INVALID" as const, reason: "not_your_position" as const };
+    if (p.status !== "OPEN") return { ok: false as const, error: "Position is no longer open.", code: "INVALID" as const, reason: "position_not_open" as const };
 
     // Bonus-funded bets cannot be cashed out — cash-out pays into the REAL
     // wallet, which would convert non-withdrawable bonus into withdrawable cash
     // and bypass the wagering requirement. Such bets must ride to settlement.
     if ((p.bonusStakeTzs ?? 0) > 0) {
-      return { ok: false as const, error: "Bonus-funded bets can't be cashed out — play them through to settlement · Dau la bonasi haliwezi kuuzwa mapema.", code: "INVALID" as const };
+      return { ok: false as const, error: "Bonus-funded bets can't be cashed out — play them through to settlement · Dau la bonasi haliwezi kuuzwa mapema.", code: "INVALID" as const, reason: "bonus_funded_no_exit" as const };
     }
 
     const m = await marketStore.get(p.marketId);
-    if (!m) return { ok: false as const, error: "Market not found.", code: "NOT_FOUND" as const };
-    if (m.status === "RESOLVED" || m.status === "VOIDED") return { ok: false as const, error: "Market has been settled — position is final.", code: "INVALID" as const };
+    if (!m) return { ok: false as const, error: "Market not found.", code: "NOT_FOUND" as const, reason: "market_not_live" as const };
+    if (m.status === "RESOLVED" || m.status === "VOIDED") return { ok: false as const, error: "Market has been settled — position is final.", code: "INVALID" as const, reason: "market_settled" as const };
 
     // THE EXIT SHUTS WHEN THE ENTRY SHUTS.
     //
@@ -2018,11 +2057,12 @@ export async function cashOutPosition(
         ok: false as const,
         error: "Selections are closed — this position now rides to settlement and can't be sold. · Uchaguzi umefungwa — dau hili litaenda hadi malipo, haliwezi kuuzwa.",
         code: "SELECTION_CLOSED" as const,
+        reason: "selection_closed" as const,
       };
     }
 
     const wallet = await db.wallet.findByUserId(userId);
-    if (!wallet) return { ok: false as const, error: "Wallet not found.", code: "NOT_FOUND" as const };
+    if (!wallet) return { ok: false as const, error: "Wallet not found.", code: "NOT_FOUND" as const, reason: "wallet_missing" as const };
 
     // The poll's frozen rates — the levies on our cash-out fee are booked at the
     // rates this poll was created under, exactly like a settlement fee.
@@ -2051,10 +2091,11 @@ export async function cashOutPosition(
           ? "This bet was placed too close to the finish to be sold — it rides to settlement. · Dau hili liliwekwa karibu mno na mwisho ili kuuzwa — litaenda hadi malipo."
           : "The sell-out window for this bet has closed — it now rides to settlement. · Muda wa kuuza dau hili umefungwa — litaenda hadi malipo.",
         code: "SELECTION_CLOSED" as const,
+        reason: "exit_window_closed" as const,
       };
     }
     if (value <= 0) {
-      return { ok: false as const, error: "Current cash-out value is zero — your side has no live pool.", code: "INVALID" as const };
+      return { ok: false as const, error: "Current cash-out value is zero — your side has no live pool.", code: "INVALID" as const, reason: "cashout_value_zero" as const };
     }
 
     const ownYes = p.side === "YES";

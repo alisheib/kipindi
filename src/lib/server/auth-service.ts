@@ -8,6 +8,7 @@
  *  - Terms version recorded with timestamp.
  */
 import { headers } from "next/headers";
+import type { FailureReason, FailureDetail } from "@/lib/failure-reasons";
 import { audit } from "./audit";
 import { db, type StoredUser } from "./store";
 import { generateOtp, hashOtp, hashPassword, randomId, verifyOtp, verifyPassword } from "./crypto";
@@ -72,7 +73,16 @@ export type ServiceResult<T = void> =
   // EMAIL_UNVERIFIED is distinct from INVALID on purpose: the deposit surface
   // renders it as a recoverable "confirm your inbox" step with a resend action,
   // not as a form error the player cannot act on.
-  | { ok: false; error: string; code?: "RATE_LIMITED" | "INVALID" | "EXPIRED" | "ALREADY_EXISTS" | "EMAIL_EXISTS" | "NOT_FOUND" | "TOO_MANY_ATTEMPTS" | "SUSPENDED" | "SELECTION_CLOSED" | "CONFLICT" | "TOO_EARLY" | "OBJECTION_OPEN" | "EMAIL_UNVERIFIED" | "BUSY"; retryAfterSec?: number };
+  // C2 · `reason` and `detail` are ADDITIVE and OPTIONAL. The `code` STAYS — it is API and
+  // audit truth and ~200 sites and every caller depend on it. What `code` cannot do is say
+  // WHY: `INVALID` alone is returned from 108 server sites covering bad input, stake bounds,
+  // RG limits, four KYC families and insufficient balance, which is why four separate copy
+  // mappers ended up substring-matching English prose to guess (docs/FAILURE-INVENTORY.md
+  // §1.6). `reason` is the machine token that drives the copy; `detail` carries the FIGURES
+  // as numbers, so a reworded service sentence can never drop a bound off the player's
+  // screen the way `tzsFigures`' regex does.
+  // ⚠️ A service that has not been converted simply omits both and renders exactly as before.
+  | { ok: false; error: string; code?: "RATE_LIMITED" | "INVALID" | "EXPIRED" | "ALREADY_EXISTS" | "EMAIL_EXISTS" | "NOT_FOUND" | "TOO_MANY_ATTEMPTS" | "SUSPENDED" | "SELECTION_CLOSED" | "CONFLICT" | "TOO_EARLY" | "OBJECTION_OPEN" | "EMAIL_UNVERIFIED" | "BUSY"; retryAfterSec?: number; reason?: FailureReason; detail?: FailureDetail };
 
 /** Step 1: request OTP for login (existing user). */
 export async function requestLoginOtp(input: z.input<typeof LoginRequestSchema>): Promise<ServiceResult<{ otpId: string; expiresAt: string }>> {

@@ -327,7 +327,7 @@ A count of mapped surfaces is not enough — that check passes by never growing.
 | Step | | Status |
 |---|---|---|
 | C1 | this inventory | ✅ committed before any C fix |
-| C2 | the reason registry + servers emit it | ⏳ |
-| C3 | one renderer, three severities | ⏳ |
-| C4 | kill the BUSY lie | ⏳ |
-| C5 | the guard, red first | ⏳ |
+| C2 | the reason registry + servers emit it | ✅ betting + cash-out (22 reasons). ⏳ wallet/KYC/auth — §2.3 |
+| C3 | one renderer, three severities | ✅ `renderFailure`, both bet surfaces |
+| C4 | kill the BUSY lie | ✅ `system_busy` vs `system_error`; the same-key retry kept |
+| C5 | the guard, red first | ✅ `test:failure-reasons` 48 · `red:failure-reasons` 9/9 |

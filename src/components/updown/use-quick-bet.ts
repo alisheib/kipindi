@@ -88,8 +88,12 @@ export function useUpDownQuickBet(opts: {
   copy: { placed: string; failed: string; up: string; down: string; insufficient?: string };
   /** UD-4 · the udErr* dictionary slice for `udBetErrorCopy`. */
   errCopy: Parameters<typeof udBetErrorCopy>[2];
+  /** C2/C3 · the `t.error` dictionary, which carries the reason-driven `fail*` copy.
+   *  Separate from `errCopy` (`t.market`) because the two live in different dictionary
+   *  sections and merging them would put money-refusal copy in the market namespace. */
+  reasonCopy: Record<string, string>;
 }) {
-  const { marketId, myUpStake = 0, myDownStake = 0, copy, errCopy } = opts;
+  const { marketId, myUpStake = 0, myDownStake = 0, copy, errCopy, reasonCopy } = opts;
   const min = opts.minStake ?? 1_000;
   const max = opts.maxStake ?? 1_000_000;
   const stakes = useMemo(() => quickStakes(min, max), [min, max]);
@@ -312,7 +316,11 @@ export function useUpDownQuickBet(opts: {
           // read); compliance/account block → the acknowledge-modal the surface hosts.
           const code = r && "code" in r ? (r as { code?: string }).code : undefined;
           const serverError = r && "error" in r ? (r as { error?: string }).error : undefined;
-          const fail = udBetErrorCopy(code, serverError, errCopy);
+          // C2/C3 · the machine REASON and its figures, when the service emits them. This is
+          // what lets a 999 stake be refused with a sentence NAMING the minimum on THIS
+          // surface — it mapped every INVALID to one generic line and discarded the server
+          // string by design, so docs/RULES.md §2.3 was unmet here (FAILURE-INVENTORY §3.4).
+          const fail = udBetErrorCopy(code, serverError, errCopy, r as never, reasonCopy, formatTzs);
           if (fail.kind === "blocked") {
             setBlocked(fail);
           } else {

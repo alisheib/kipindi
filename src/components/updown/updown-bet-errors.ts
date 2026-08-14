@@ -20,6 +20,7 @@
  * the failure mode is a sticky toast instead of a modal — quieter than intended,
  * never silent. Flagged for Ali in MASTER-PLAN §9: a dedicated code would be cleaner.
  */
+import { renderFailure, hasReason, type FailureDetail } from "@/lib/failure-reasons";
 
 /** How the surface must present the refusal (§5 decision matrix). */
 export type UdBetFailure =
@@ -53,7 +54,35 @@ export function udBetErrorCopy(
   code: string | undefined,
   serverError: string | undefined,
   m: UdErrDict,
+  /** C2/C3 — the machine reason and its figures, when the service emits them. */
+  r?: { reason?: string; detail?: FailureDetail; retryAfterSec?: number },
+  /** The `t.error` dictionary and a TZS formatter, for the reason-driven copy. */
+  reasonDict?: Record<string, string>,
+  money?: (n: number) => string,
 ): UdBetFailure {
+  // ── C3 · THE REASON WINS, WHEN THERE IS ONE ────────────────────────────────
+  //
+  // 🔴 THIS IS THE SURFACE docs/RULES.md §2.3 WAS FAILING ON. The rule requires a 999 stake
+  // to be refused "with a message NAMING the minimum". The server has always named both
+  // bounds — and the INVALID branch below maps every one of them to "The bet was refused —
+  // check the amount and your balance" and DISCARDS the server string BY DESIGN (correctly:
+  // it is English audit prose, and rendering it raw is how a ZH player got an English
+  // sentence). The fix was never to render the prose; it was for the server to say WHY in a
+  // token and carry the figures as NUMBERS.
+  //
+  // ⚠️ The `switch` below stays and is NOT dead code: it still serves every service that
+  // has not been converted (docs/FAILURE-INVENTORY.md §2.3), and the RG string test with it.
+  if (r?.reason && reasonDict && money && hasReason(r)) {
+    const f = renderFailure(r as never, reasonDict, m.udErrInvalid, money);
+    // ⛔ SEVERITY DECIDES THE CHANNEL, and `modal` is reserved for what must be
+    // acknowledged: the RG daily-loss cap (LCCP informed consent) and hard account blocks.
+    // Everything a player can fix stays a sticky toast — a money refusal stays until read,
+    // but it does not seize the screen.
+    if (f.channel === "modal") {
+      return { kind: "blocked", title: f.severity === "error" ? m.udErrSuspendedTitle : m.udErrRgLimitTitle, body: f.body };
+    }
+    return { kind: "transient", description: f.body, lockNow: f.reason === "selection_closed" };
+  }
   switch (code) {
     case "SELECTION_CLOSED":
       return { kind: "transient", description: m.udErrSelectionClosed, lockNow: true };

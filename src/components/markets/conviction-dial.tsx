@@ -28,6 +28,7 @@ import { payoutFor, leanFor, DEFAULT_COMMISSION_RATE, DEFAULT_FEE_CEILING_RATE, 
 import { haptics, motionReduced } from "@/lib/haptics";
 import { formatTzs, formatNumber, fill, fmtRate, pctNum } from "@/lib/utils";
 import { errorCopy } from "@/lib/error-copy";
+import { renderFailure, hasReason, type FailureDetail } from "@/lib/failure-reasons";
 
 type Side = "YES" | "NO" | "NEUTRAL";
 
@@ -801,7 +802,39 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
   const errorToToast = (
     code: string | undefined,
     err: string,
-  ): { title: string; body: string; variant: "danger" | "warning"; retryable?: boolean } => {
+    r?: { reason?: string; detail?: FailureDetail; retryAfterSec?: number },
+  ): { title: string; body: string; variant: "danger" | "warning" | "factual"; retryable?: boolean } => {
+    // ── C3 · THE REASON WINS, WHEN THERE IS ONE ────────────────────────────────
+    //
+    // ⭐ THIS IS WHAT CLOSES docs/RULES.md §2.3. The server has always named both stake
+    // bounds in its sentence — and this surface DISCARDED it, falling through the INVALID
+    // branch below (which has no bounds test) to the generic "That didn't go through".
+    // A player who typed 999 was told nothing about the minimum. Now the reason carries
+    // the figures as NUMBERS and the copy interpolates them.
+    //
+    // ⛔ `warning` IS A GOLD TOAST ON THIS PLATFORM (`toast.tsx` paints it `bg-gold-500`)
+    // and gold means EARNED MONEY. A refusal the player can fix is `factual` — muted ink,
+    // an info glyph, nothing that congratulates or alarms. Only a genuine fault is `danger`.
+    //
+    // ⚠️ The `switch` below is NOT dead: the wallet / KYC / auth services have not been
+    // converted yet (docs/FAILURE-INVENTORY.md §2.3), so a refusal from one of those still
+    // arrives with a code and no reason and must keep rendering exactly as it did.
+    if (hasReason(r)) {
+      const f = renderFailure(r as never, t.error as unknown as Record<string, string>, t.common.couldNotPlace, (n) => formatTzs(n));
+      return {
+        title: f.severity === "error" ? t.common.couldNotPlace : t.common.checkThis,
+        body: f.body,
+        variant: f.severity === "error" ? "danger" : "factual",
+        // ⭐ C4 · BOTH `system_busy` AND `system_error` ARE RETRYABLE, and that is not a
+        // compromise. `retrySubmit` REUSES `betIdempotencyKey.current`, so if the bet did
+        // land before the connection dropped, retrying returns the SAME position instead of
+        // opening a second one. That is exactly what an unknown outcome needs. What changed
+        // is only what the player is TOLD: `system_busy` says the stake has not moved,
+        // because admission shed it and we know that; `system_error` does not, because we
+        // do not.
+        retryable: f.reason === "system_busy" || f.reason === "system_error",
+      };
+    }
     switch (code) {
       case "BUSY":
         // Saturation, not a refusal. The stake has not moved and the same
@@ -892,17 +925,26 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
       // connection dropped, retrying returns the same position instead of placing a
       // second one. A terminal error would instead wipe the dial and mint a fresh key,
       // which is exactly the wrong response to an unknown outcome.
+      //
+      // 🔴 C4 · AND IT USED TO CALL THAT THROW "BUSY", WHICH IS A CLAIM WE CANNOT SUPPORT.
+      // `BUSY` copy tells the player *"we're busy — your stake has NOT moved"*. That is TRUE
+      // when admission shed the request, because admission sheds BEFORE any money moves. It
+      // is NOT true of an unexpected throw or a dropped connection: the bet may well have
+      // committed and only its response been lost. A genuine server crash therefore read to
+      // the player as ordinary load, with a reassurance about their money that nobody had
+      // checked. `system_error` says what is actually known — check your wallet before
+      // retrying — and keeps the same-key retry, which is what makes retrying safe either way.
       let r: Awaited<ReturnType<typeof buyPositionAction>>;
       try {
         r = await buyPositionAction(fd);
       } catch {
-        r = { ok: false as const, error: "", code: "BUSY" } as Awaited<ReturnType<typeof buyPositionAction>>;
+        r = { ok: false as const, error: "", code: "BUSY", reason: "system_error" } as Awaited<ReturnType<typeof buyPositionAction>>;
       }
       // Whether success or failure, the modal MUST close — leaving it
       // open with the same locked quote was racing into double-place.
       setConfirmOpen(false);
       if (!r.ok) {
-        const mapped = errorToToast((r as { code?: string }).code, r.error);
+        const mapped = errorToToast((r as { code?: string }).code, r.error, r as { reason?: string; detail?: FailureDetail; retryAfterSec?: number });
         // Centered failure modal — a corner toast alone is too easy to miss
         // for a money-handling failure. Toast still fires as a secondary
         // signal in the corner so the user has both.

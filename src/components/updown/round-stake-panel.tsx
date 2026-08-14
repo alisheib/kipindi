@@ -57,6 +57,7 @@ export function RoundStakePanel(props: {
       up: t.market.udUp, down: t.market.udDown, insufficient: t.market.udInsufficientBalance,
     },
     errCopy: t.market,
+    reasonCopy: t.error as unknown as Record<string, string>,
   });
   const pulse = usePlacePulse(bet.justPlaced?.nonce);
 
