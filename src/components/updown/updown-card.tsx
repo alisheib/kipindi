@@ -678,10 +678,21 @@ export function UpDownCard(props: UpDownCardProps) {
         )}
       </div>
 
-      {/* ── Footer: the trust line. Never dropped, even at 360px. ──────── */}
-      <div className="mt-3 flex items-center justify-between gap-2 pt-2.5 font-mono text-[9.5px] text-text-faint"
+      {/* ── Footer: the trust line. Never dropped, even at 360px. ────────
+          🔴 AND IT WAS BEING DROPPED — `truncate` painted "Live metals market · quoted 17:5…"
+          on production, measured 2026-08-14 on the first gold round after the chain stall was
+          fixed: content 205px in a 191px box at **1024**, and 205 in 196 at **360**. This line
+          exists to say WHICH source priced the round and WHEN it quoted — an integrity signal —
+          so an ellipsis eating the timestamp removes the only thing it is for. `truncate` sets
+          `white-space: nowrap`, so the text could not wrap even when there was a second line to
+          be had.
+          ⛔ Do not "fix" this by dropping the seconds. E-47b's whole finding was a source that
+          had quoted 14 minutes before we read it; second-level precision is the evidence.
+          ⚠️ Found by LOOKING, at a width a suite had no reason to visit — `document.scrollWidth`
+          cannot see clipping INSIDE a card, which is why `qa:asset-board` measures elements. */}
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 pt-2.5 font-mono text-[9.5px] text-text-faint"
            style={{ borderTop: "1px solid color-mix(in oklab, var(--border) 55%, transparent)" }}>
-        <span className="truncate">
+        <span className="min-w-0">
           {t.market[SOURCE_CLASS_KEY[sourceClass]]}{quoted ? ` · ${t.market.udQuoted} ${quoted}` : ""}
         </span>
         {openPrice != null && (

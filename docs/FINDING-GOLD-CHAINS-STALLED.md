@@ -167,6 +167,44 @@ branch does on the first tick after deploy — ⛔ **verify that by reading `nex
 
 ---
 
+## §5 · 🟢 RECOVERED ON PRODUCTION — measured, not assumed
+
+Deployed `73f70024` at 2026-08-14 17:43 UTC. **A deploy alone does not do this**, so both
+halves were read back independently.
+
+**① The chain rows moved** — `scripts/live/ops/chain-stall-census.cjs`, 17:44 UTC:
+
+| Chain | `nextBoundaryAt` before | after | was stalled |
+|---|---|---|---|
+| XAU 15m | 2026-08-13 21:08 | **2026-08-14 17:50** | 20.1 h |
+| XAU 30m | 2026-08-10 21:08 | **2026-08-14 18:08** | 3.8 d |
+| XAU 60m | 2026-08-10 21:49 | **2026-08-14 18:13** | 3.8 d |
+
+Census verdict: `✅ GREEN — every RUNNING chain's next boundary is current.`
+
+**② A round actually opened** — which is the claim that matters, because a column is not a
+product. XAU 15m **round #267**, boundary 2026-08-14 18:08, opens 17:50, created 17:51:46 —
+a 106-second open latency, the same as every crypto chain in the same minute. Gold's first
+round in **20.9 hours**, and its 267th ever.
+
+**③ A player can see it and bet on it** — `SHOT_DIR=./shots/gold ASSET=XAU DUR=15 npm run
+qa:asset-board`, signed in as a real fleet player on the real board at 360/768/1024/1440:
+*"Gold Up & Down · 15 MIN · ● LIVE · XAU"*, **BETTING CLOSES IN 11:13**, targets ≥ $4,378.93 /
+≤ $4,374.55, and the UP/DOWN stake controls enabled. Not the closed-and-settled wall the stall
+painted.
+
+🔴 **AND LOOKING AT IT FOUND A DEFECT NOTHING ELSE COULD.** The card's footer — the trust line
+naming the source and the instant it quoted — was **ellipsised**: `Live metals market · quoted
+17:5…`, content 205px in a 191px box at **1024** and 205 in 196 at **360**. Its own comment
+says *"Never dropped, even at 360px"*, and `truncate` had been dropping it. That line is an
+integrity signal; an ellipsis eating the timestamp removes the only thing it is for. Fixed by
+letting it wrap instead of truncate. ⛔ Not by dropping the seconds — E-47b's finding was a
+source that had quoted 14 minutes before we read it, and second-level precision is the
+evidence. ⚠️ `document.scrollWidth` cannot see clipping inside a card, which is why
+`qa:asset-board` measures elements and reports the budget in px.
+
+---
+
 ## §4 · WHAT IT IS NOT
 
 - ⚠️ **Not the instrument.** The stall was measured from the DATABASE (chain rows, round

@@ -110,6 +110,34 @@ fires out" is spacing them past the moment the price becomes readable — which 
 round's open into its own betting window, and would be invisible in the very logs the original
 defect filled. A harness that only proved "fewer fires" would be green on it.
 
+---
+
+## §4 · 🟢 MEASURED ON PRODUCTION AFTER THE DEPLOY
+
+Deployed `e27ea9dd` at 2026-08-14 17:54 UTC. Same instrument, same 45-second window, same
+database, chains all running:
+
+| `pg_stat_database` | before | after | |
+|---|---|---|---|
+| transactions/sec | **2,269.2** | **3.5** | **648× less** |
+| rows returned/sec | **20,105** | **110** | **183× less** |
+| rows fetched/sec | 875 | 61 | |
+
+⭐ **AND THE CADENCE IS UNCHANGED, which is the claim that had to be checked rather than
+asserted.** Open latency — how long after its own boundary a round row is created — is the
+number that moves if the fix delayed any read:
+
+| | rounds | min | median | max |
+|---|---|---|---|---|
+| before the deploy | 179 | 80s | **92s** | 303s |
+| after | *re-measured with a full sample at the end of the session* | | **91s** | |
+
+The gold chain's recovered round #267 opened at +106s in the same minute three crypto chains
+opened at +106s. ⚠️ The "after" figure was n=1 at the moment of the deploy and is re-measured
+below with a real sample — a median over one round is an anecdote, not a measurement.
+
+---
+
 ⚠️ **§5's first fixture was wrong and the suite said so.** It left the mock feed to decline a
 boundary two seconds old — and the mock quotes the present instant, so the boundary was
 CONFIRMED, a round opened, and the chain re-armed six minutes out on the ordinary path. The
