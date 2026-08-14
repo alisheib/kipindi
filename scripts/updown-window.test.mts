@@ -1,5 +1,5 @@
 /**
- * Up & Down — THE BETTING WINDOW, and one side per round.
+ * Up & Down — THE BETTING WINDOW, and how many positions one account may hold.
  *
  *   npx tsx scripts/updown-window.test.mts     (npm run test:updown-window)
  *
@@ -15,10 +15,12 @@
  * anyone. Shipping open-from-bar WITHOUT the window would widen the hole while looking like a
  * fairness improvement — §5 pins that the two cannot be separated.
  *
- * 🔴 AND ONE ACCOUNT MAY NOT HOLD BOTH SIDES (Ali's decision, 2026-08-04). In a pari-mutuel
- * pool that is a hedge risking only the fee: stake both ways and one leg always wins, so the
- * stake comes back less commission. Near-zero-risk volume, on a platform whose leaderboards
- * and bonus wagering both count volume.
+ * ⚠️ AND ONE ACCOUNT MAY NOW HOLD BOTH SIDES AGAIN (Ali, 2026-08-14 — docs/RULES.md §2.4),
+ * superseding the 2026-08-04 guard this file used to pin. The hedge is still a hedge — both
+ * ways staked, one leg always wins, the stake back less the commission on the loser — but it
+ * is answered where it actually bites: a stake taken while an OPEN position exists on the
+ * other side accrues NO turnover toward a bonus (RULES.md §2.5). §6 pins the bet half;
+ * `npm run test:bonus-one-side` pins the money half, and the two shipped in ONE commit.
  *
  * ⛔ THE ASSERTIONS ARE ABOUT `buyPosition`, NEVER ABOUT A DISABLED BUTTON. A disabled button
  * is decoration; a device clock 40 seconds fast must not be able to place a bet the server
@@ -36,7 +38,7 @@ import { openRound, acquireObservation } from "../src/lib/server/updown-service.
 import { roundState } from "../src/lib/server/updown-board.ts";
 import { roundPhase } from "../src/lib/updown-card-phase.ts";
 import { buyPosition, isSelectionClosed } from "../src/lib/server/market-service.ts";
-import { marketStore } from "../src/lib/server/market-dal.ts";
+import { marketStore, positionStore } from "../src/lib/server/market-dal.ts";
 import { seedDefaultSources, addSource } from "../src/lib/server/source-registry.ts";
 import {
   selectionCloseLeadSeconds, selectionClosesAt,
@@ -237,8 +239,23 @@ async function freshRound() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 6 · ONE ACCOUNT, ONE SIDE — the hedge that risks only the fee
+// 6 · UNLIMITED POSITIONS, EITHER OR BOTH SIDES (docs/RULES.md §2.4)
 // ═══════════════════════════════════════════════════════════════════════════
+//
+// ⚠️ THIS SECTION ASSERTED THE EXACT OPPOSITE UNTIL 2026-08-14, AND IT WAS RIGHT WHEN
+// WRITTEN. A "ONE ACCOUNT, ONE SIDE" guard in `buyPosition` refused the second side from
+// 2026-08-04; Ali superseded that decision on 2026-08-14 and the guard is gone.
+//
+// ⛔ THE HEDGE ITSELF IS UNCHANGED AND THE OLD COMMENT WAS NOT WRONG ABOUT IT. Holding both
+// sides of a pari-mutuel pool still risks only the fee. What changed is WHERE that is
+// answered: the hedge is now permitted as a bet and refused as WAGERING PROGRESS — a stake
+// taken while an OPEN position exists on the other side accrues nothing toward a bonus
+// requirement (RULES.md §2.5, guarded by `npm run test:bonus-one-side`, which is where the
+// money property lives because it needs a grant to be visible at all).
+//
+// ⛔ SO A GREEN HERE PROVES ONLY HALF. The two changes shipped in ONE commit because the
+// window between them is the exploit; a suite that checked only this half would pass over
+// a build that had opened it.
 {
   const round = await freshRound();
 
@@ -246,16 +263,24 @@ async function freshRound() {
   ok("6.1 · the first side is accepted", first.ok, first.ok ? "" : first.error);
 
   const hedge = await buyPosition(alpha, { marketId: round.marketId, side: "NO", stake: 1_000 });
-  ok("6.2 · ⭐ the SAME account is refused the opposite side — hedging both ways risks only the fee",
-     !hedge.ok, hedge.ok ? "ACCEPTED — the hedge landed" : hedge.error);
-  ok("6.3 · and the refusal names the side they already hold, so it does not read as a bug",
-     !hedge.ok && /UP/.test(hedge.error), hedge.ok ? "" : hedge.error);
-  ok("6.4 · in Swahili too", !hedge.ok && /JUU|CHINI/.test(hedge.error), hedge.ok ? "" : hedge.error);
+  ok("6.2 · ⭐ the SAME account may now take the OPPOSITE side — the guard is gone",
+     hedge.ok, hedge.ok ? "" : `REFUSED — ${hedge.error}`);
 
-  // ⭐ Topping up the SAME side is normal play and must still work — a rule that blocked it
-  // would stop a player backing their own view harder, which is not what was decided.
+  // ⭐ And the money really moved for BOTH legs — an "accepted" that quietly dropped the
+  // second stake would read identically at this line.
+  const both = await positionStore.listForUserAndMarket(alpha, round.marketId);
+  ok("6.3 · ⭐ both positions exist, one per side, both OPEN",
+     both.filter((p) => p.side === "YES" && p.status === "OPEN").length === 1
+     && both.filter((p) => p.side === "NO" && p.status === "OPEN").length === 1,
+     both.map((p) => `${p.side}:${p.status}:${p.stake}`).join(" "));
+  ok("6.4 · …and the pools carry both stakes",
+     (await marketStore.get(round.marketId))!.yesPool === 1_000
+     && (await marketStore.get(round.marketId))!.noPool === 1_000,
+     `yes ${(await marketStore.get(round.marketId))!.yesPool} no ${(await marketStore.get(round.marketId))!.noPool}`);
+
+  // ⭐ Topping up a side was always fine and still is — the removed rule was never a stake cap.
   const more = await buyPosition(alpha, { marketId: round.marketId, side: "YES", stake: 1_000 });
-  ok("6.5 · ⭐ but MORE on the same side is still fine — this is a hedge rule, not a stake cap",
+  ok("6.5 · ⭐ and MORE on a side already held is still fine — no per-market cap",
      more.ok, more.ok ? "" : more.error);
 
   // ⭐ Two DIFFERENT accounts on opposite sides is what a pari-mutuel market IS.

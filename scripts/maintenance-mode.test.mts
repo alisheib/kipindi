@@ -76,9 +76,11 @@ ok("setPlatformConfig OFF ok", setOff.ok);
 ok("isMaintenanceMode() reflects OFF", (await isMaintenanceMode()) === false);
 {
   // ⚠️ `YES`, matching the opening bet at the top of this suite. It read `NO`, incidentally —
-  // this section is about MAINTENANCE being reversible, not about sides — and since 2026-08-04
-  // one account may hold only one side of a round, so the flip made the assertion fail for a
-  // reason that has nothing to do with maintenance mode. Same side, same question, honest pass.
+  // this section is about MAINTENANCE being reversible, not about sides — and from 2026-08-04
+  // to 2026-08-14 one account could hold only one side of a round, so the flip made the
+  // assertion fail for a reason that had nothing to do with maintenance mode. The guard is
+  // gone now (docs/RULES.md §2.4) so `NO` would pass again, but the side is DELIBERATELY still
+  // `YES`: a maintenance test must not depend on the bet-logic rule in either direction.
   const r = await buyPosition("mm_u", { marketId: market.id, side: "YES", stake: 5_000 });
   ok("OFF again: bet places", r.ok, r.ok ? "" : (r as { error?: string }).error);
 }

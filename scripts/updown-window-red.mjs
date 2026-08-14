@@ -20,7 +20,9 @@ import { execSync } from "node:child_process";
 const SERVICE = new URL("../src/lib/server/updown-service.ts", import.meta.url);
 const DURATIONS = new URL("../src/lib/updown-durations.ts", import.meta.url);
 const BOARD = new URL("../src/lib/server/updown-board.ts", import.meta.url);
-const MARKET = new URL("../src/lib/server/market-service.ts", import.meta.url);
+// ⛔ `MARKET` (market-service.ts) is gone from this harness with the two ONE-ACCOUNT-ONE-SIDE
+// mutations it existed for — see the note at the end of MUTATIONS. A file handle left behind
+// after its last mutation is how a harness starts looking like it still covers something.
 
 const MUTATIONS = [
   {
@@ -60,20 +62,18 @@ const MUTATIONS = [
     from: `  if (selectionClosedAt && Date.parse(selectionClosedAt) <= now) return "locked";`,
     to: `  if (!selectionClosedAt || Date.parse(selectionClosedAt) <= now) return "locked";`,
   },
-  {
-    name: "hedge-allowed — one account holds both sides again",
-    file: MARKET,
-    from: `    const opposite = mine.find((p) => p.status === "OPEN" && p.side !== opts.side);`,
-    to: `    const opposite = undefined;`,
-  },
-  {
-    // The over-correction: blocking a TOP-UP on the same side. That is not a hedge, and a
-    // rule that stops a player backing their own view harder was never decided.
-    name: "same-side-blocked — topping up your own side is refused",
-    file: MARKET,
-    from: `    const opposite = mine.find((p) => p.status === "OPEN" && p.side !== opts.side);`,
-    to: `    const opposite = mine.find((p) => p.status === "OPEN");`,
-  },
+  // ⛔ TWO MUTATIONS WERE DELETED HERE ON 2026-08-14, and deleting them was the correct
+  // move rather than a relaxation. `hedge-allowed` and `same-side-blocked` both mutated the
+  // ONE-ACCOUNT-ONE-SIDE guard in `buyPosition`. Ali REMOVED that guard (docs/RULES.md §2.4),
+  // so both mutations now describe the SHIPPED behaviour: a harness asserting they go red
+  // would be demanding the defect back. Keeping them would have made `red:all` fail over a
+  // stale anchor rather than over a defect — the "assertion the fix invalidates" shape.
+  //
+  // ⭐ WHAT REPLACED THEM. `opposite` did not disappear; it became the BONUS-WAGERING
+  // predicate. Its mutations live in `red:bonus-one-side`, which proves both directions —
+  // crediting the opposite side (the exploit) AND suppressing a same-side top-up when no
+  // opposite position exists (the over-correction) — against `test:bonus-one-side`, where a
+  // grant exists to make either visible. The coverage moved with the rule; it did not shrink.
 ];
 
 let caught = 0;

@@ -30,7 +30,11 @@ import { ensureAffiliateAccount } from "@/lib/server/affiliate-service";
 import { listComments } from "@/lib/server/comments-store";
 import { CommentsThread } from "@/components/markets/comments-thread";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
-import { formatDateTime, formatDayTime, formatTzsCompact, formatTzs, fill, pctNum } from "@/lib/utils";
+// ⛔ `pctNum` went with `feeHeadlinePct` (B3) — its only consumer here was the hedge copy,
+// which no longer interpolates a rate. An import kept "just in case" is how a deleted rate
+// quietly comes back. ⚠️ `fill` STAYS: `similarTimeLeft` passes it to `timeLeftLabel`, a use
+// tsc caught the moment the import was removed on the strength of a grep for `fill(`.
+import { formatDateTime, formatDayTime, formatTzsCompact, formatTzs, fill } from "@/lib/utils";
 import { appUrl } from "@/lib/app-url";
 import { getServerT } from "@/lib/i18n-server";
 import { pickLocalized, pickCriterion, marketCategoryLabel } from "@/lib/localized";
@@ -139,11 +143,11 @@ export default async function MarketDetail({
     marketRates,
     m.resolvedOutcome === "YES" || m.resolvedOutcome === "NO" ? m.resolvedOutcome : undefined,
   );
-  // The headline fee % to cite in player copy — loser-share's combined rate, else
-  // the capped commission. Keeps the hedge/fee copy honest per the poll's model.
-  const feeHeadlinePct = marketRates.feeModel === "loser-share"
-    ? pctNum((marketRates.platformFeeRate ?? 0) + (marketRates.operatorFeeRate ?? 0))
-    : pctNum(marketRates.commissionRate);
+  // ⛔ `feeHeadlinePct` WAS REMOVED HERE (2026-08-14, B3). It existed for exactly one
+  // consumer — the two hedge bodies — and those now quote no rate at all, because the fee
+  // is stated by the payout projection in the same panel and RULES.md §7 exists to keep a
+  // rate from being written twice. A computed rate with no reader is the next inline number
+  // waiting to go stale; it is deleted rather than left for tsc to ignore.
   // Stake BOUNDS are entry-time, so they correctly read LIVE config (a poll does
   // not freeze how much you may stake) — and buyPosition re-validates them
   // server-side anyway, so the dial showing a stale bound cannot cost anyone
@@ -639,10 +643,16 @@ export default async function MarketDetail({
                     {t.market.youAlreadyHold} {heldLabel} {t.market.here}
                   </p>
                   <p className="mt-1 text-[12px] leading-snug text-text-muted">
+                    {/* ⛔ NO `fill({pct})` HERE ANY MORE. Both hedge bodies stated the
+                        RETIRED capped-commission rule and were unreachable behind the
+                        2026-08-04 guard; RULES.md §2.4 makes them live. They now quote no
+                        rate at all — the fee is stated by the payout projection directly
+                        below, and RULES.md §7 exists because a number written twice is a
+                        number that will disagree with itself. */}
                     {hedgeBoth
-                      ? fill(t.market.hedgeBothBody, { pct: feeHeadlinePct })
+                      ? t.market.hedgeBothBody
                       : hedgeOpposite
-                        ? fill(t.market.hedgeOppositeBody, { pct: feeHeadlinePct })
+                        ? t.market.hedgeOppositeBody
                         : t.market.hedgeAddBody}
                   </p>
                 </div>

@@ -331,21 +331,51 @@ async function recordWageringCore(userId: string, amount: number, tx?: Prisma.Tr
 export async function reverseWagering(userId: string, stakeTzs: number): Promise<number> {
   const amount = tzs(stakeTzs);
   if (!(amount > 0)) return 0;
-  return withLock(`wallet:${userId}`, async () => {
-    let toReverse = amount;
-    let reversed = 0;
-    const active = (await db.bonusGrant.listActiveByUser(userId)).reverse(); // newest-first
-    for (const g of active) {
-      if (toReverse <= 0) break;
-      const take = Math.min(toReverse, g.wageredTzs);
-      if (take <= 0) continue;
-      await db.bonusGrant.update(g.id, { wageredTzs: g.wageredTzs - take });
-      reversed += take;
-      toReverse -= take;
-    }
-    if (reversed > 0) audit({ category: "WALLET", action: "bonus.wagering_reversed", actorId: userId, targetType: "Wallet", targetId: userId, payload: { requested: amount, reversed } });
-    return reversed;
-  });
+  return withLock(`wallet:${userId}`, () => reverseWageringCore(userId, amount));
+}
+
+/**
+ * Lock-free variant for callers ALREADY holding `withLock("wallet:<userId>")` —
+ * `cashOutPosition` does, and takes the market lock inside it.
+ *
+ * 🔴 WHY THIS EXISTS (B1b, found 2026-08-14 and NOT in the work order). `cashOutPosition`
+ * never reversed anything. A player could bet, cancel FREE inside the 5-minute grace, get
+ * the whole stake back — **and keep the turnover credit**. That is a second, entirely
+ * independent zero-cost route to clearing a bonus, repeatable as fast as the rate limiter
+ * allows, and it is larger than the hedge it sat beside because cancellation costs nothing
+ * at all rather than the fee on one leg. Every OTHER refund path (void, one-sided,
+ * emergency, orphan) already called `reverseWagering`; the exit a player uses most did not.
+ *
+ * ⚠️ NOT `reverseWagering` DIRECTLY. `withLock` IS re-entrant on both stores today, so the
+ * call would happen to work — but relying on that makes a money guarantee depend on a
+ * property nothing in this file states. The explicit variant says what it needs.
+ *
+ * ⚠️ AND NO `tx` FROM THE CASH-OUT PATH. Every write in `cashOutPosition` is
+ * self-committing (`db.wallet.adjust`, `positionStore.set`, `db.txn.create` all run without
+ * the lock's transaction). Threading the reversal alone would make it the ONE write that
+ * rolls back with the lock while the payout stood — a worse asymmetry than the one it fixes.
+ * The parameter exists for a caller that IS inside a money transaction.
+ */
+export async function reverseWageringLocked(userId: string, stakeTzs: number, tx?: Prisma.TransactionClient | null): Promise<number> {
+  const amount = tzs(stakeTzs);
+  if (!(amount > 0)) return 0;
+  return reverseWageringCore(userId, amount, tx);
+}
+
+async function reverseWageringCore(userId: string, amount: number, tx?: Prisma.TransactionClient | null): Promise<number> {
+  let toReverse = amount;
+  let reversed = 0;
+  const active = (await db.bonusGrant.listActiveByUser(userId)).reverse(); // newest-first
+  for (const g of active) {
+    if (toReverse <= 0) break;
+    const take = Math.min(toReverse, g.wageredTzs);
+    if (take <= 0) continue;
+    await db.bonusGrant.update(g.id, { wageredTzs: g.wageredTzs - take }, tx);
+    reversed += take;
+    toReverse -= take;
+  }
+  if (reversed > 0) audit({ category: "WALLET", action: "bonus.wagering_reversed", actorId: userId, targetType: "Wallet", targetId: userId, payload: { requested: amount, reversed } });
+  return reversed;
 }
 
 /**

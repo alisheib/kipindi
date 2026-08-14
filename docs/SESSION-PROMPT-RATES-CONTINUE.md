@@ -131,38 +131,49 @@ under the smaller fee**, measured rather than impressed.
 ⏳ **Still open on A4** — needs a settled round of each shape:
 - a one-sided round refunding in full, and a VOID charging nothing, **on a real one**.
 
-### ▶ B — bet logic (the largest remaining piece)
+### ✅ B1 / B1b / B3 — bet logic, in ONE commit (session 2)
 
-⛔ **B1 and the wagering rule ship in ONE commit.** The window between them is the exploit; the
-work order quantifies it at 6,750 per grant.
+The guard is gone, the wagering rule is in the same commit, and so is the second hole.
 
-An exact, ordered edit list — pre-flight checks, the two surgical edits, the tests to invert
-red-first, and the surfaces built on "this state cannot exist" — is in the session-1 inventory
-at `docs/FAILURE-INVENTORY.md` §3 and in the notes below. The essentials:
+- **B1** — the "ONE ACCOUNT, ONE SIDE" refusal is deleted from `buyPosition`. **Both** reads
+  stay: `mine` still feeds `predictorCount`; `opposite` is now the WAGERING predicate.
+- **B1 wagering** — `recordWageringLocked` is gated on `!opposite`. A stake taken while an
+  OPEN position exists on the other side of that market accrues NOTHING, and the suppression
+  is audited (`bonus.wagering_skipped_opposite_side`).
+- **B1b** — `cashOutPosition` now calls `reverseWageringLocked`. ⚠️ NOT `reverseWagering`:
+  `withLock` happens to be re-entrant on both stores, but a money guarantee must not rest on
+  a property nothing in the file states.
+- **B3** — the cash-out `TOO_SHORT` branch no longer says "poll" on a path shared with Up &
+  Down; both hedge bodies rewritten EN/SW/ZH; `feeHeadlinePct` and its `fill({pct})` call
+  site deleted.
+- **`test:bonus-one-side`** 22 checks · **`red:bonus-one-side` 6/6** — mutations 1 and 2 are
+  the pre-fix source VERBATIM, and 4/5/6 are over-corrections, so "no exploit" and "no bonus
+  ever clears" cannot be confused.
+- Tests inverted, not deleted: `updown-window` §6 · `updown-quickbet` §4 (and §5's knock-on)
+  · `updown-engine` §8B · `maintenance-mode` (comment). Two `updown-window-red` mutations
+  DELETED — they now describe shipped behaviour, and a harness demanding the defect back is
+  the "assertion the fix invalidates" shape.
 
-- `market-service.ts` — delete **only** the `if (opposite) {…}` block and the `const opposite =`
-  line. ⛔ **KEEP `const mine = …`**: it feeds `predictorCount`, which feeds the UD card, the
-  admin economics panel, the regulator match-integrity report and the public share card.
-- **Same commit:** gate the `recordWageringLocked` call on `!opposite`. The predicate is already
-  computed in the same lock, in the same transaction, still in scope — no new query, no new lock.
-- Invert red-first, do NOT delete: `updown-window.test.mts` §6 · `updown-quickbet.test.mts`
-  (⚠️ §5 breaks as a side effect) · `updown-engine.test.mts` · `maintenance-mode.test.mts`
-  (comment only). Delete mutation 6 of `updown-window-red.mjs` or `red:all` goes red on a stale
-  anchor rather than a defect.
-- **B1b — a SECOND hole, found in session 1 and not in the work order.** `cashOutPosition` never
-  calls `reverseWagering`. A grant holder can bet, cancel free inside 5 minutes, get the full
-  stake back **and keep the turnover credit** — clearing a 5× bonus at zero cost, repeatedly.
-  This exists today, independently of the hedge exploit, and is arguably larger now cancellation
-  is free for 5 minutes on both products. Fix it in the B commit.
+🔴 **What this cost me, and it is worth reading.** A first draft of `updown-engine` 8b.12
+asserted *"hedging both sides COSTS the player — they end down, never level"*. Executed, it
+went **RED**: the hedged account finished **6,750 UP**, because its winning leg was the entire
+winning pool. That is the SAME false claim the retired player copy made (*"hedging here locks
+in a loss"*) — I wrote the correct explanation into the i18n comment and the wrong assertion
+into the test, an hour apart. 8b.12/8b.13 now prove the honest property: +6,750 on the outcome
+that landed, −7,170 on the other, from the same pools through the same fee function.
+
+### ▶ B2 — the warning before confirming (still open)
+
+⚠️ **The session-1 edit list said to delete `const opposite =` as well. It was kept** — the
+wagering gate needs exactly that predicate, in the same lock, in the same transaction. Deleting
+it would have meant re-reading the positions a second time inside the money path.
+
 - **B2** — the warning before confirming. ⛔ It **cannot** be computed inside the bet
   transaction: `getBonusSummary` issues its own wallet read and would block on the bet's own
   uncommitted row (the P2028 self-deadlock documented at `bonus-service.ts:235-243`). It belongs
   on the READ path — which is fine, because it is a warning, not a gate. Copy is drafted in
   EN/SW/ZH at `docs/FAILURE-INVENTORY.md` §2.4.
-- **B3** — `market-service.ts:1970` tells an Up & Down player about a **"poll"**, on a path with
-  no productLine branch; on a 5-minute round it is the ORDINARY branch. And
-  `hedgeBothBody`/`hedgeOppositeBody` (EN/SW/ZH) state the retired fee model and become
-  REACHABLE the moment the guard goes.
+- ~~**B3**~~ — ✅ done in the B commit, see above.
 
 ### ▶ F1 — the lopsided-poll alert (do it as soon as B lands, it is a live capability)
 

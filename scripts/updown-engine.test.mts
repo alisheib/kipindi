@@ -440,17 +440,18 @@ let round1Id = "";
   ok("8b.8 · ★ and costs the players nothing net — wallets return to pre-round",
      (await walletsTotal()) === beforeQ, `${beforeQ} → ${await walletsTotal()}`);
 
-  // Round R — THE HEDGE IS NOW REFUSED (Ali's decision, 2026-08-04).
+  // Round R — ONE ACCOUNT, BOTH SIDES, SETTLING PER POSITION (Ali, 2026-08-14).
   //
-  // ⚠️ THIS SECTION TESTED THE OPPOSITE, AND IT WAS CORRECT WHEN WRITTEN: one player backing
-  // both sides, settling per-position, the winner paying and the loser losing. The MECHANICS it
-  // proved are unchanged and still matter — what changed is that a single account may no longer
-  // reach that state, because in a pari-mutuel pool holding both sides risks only the fee and is
-  // therefore near-zero-risk volume (leaderboards and bonus wagering both count volume).
+  // ⚠️ THIS SECTION HAS BEEN WRITTEN THREE TIMES AND THE MECHANICS NEVER MOVED. It originally
+  // proved exactly what it proves again now: one player backing both sides, each position
+  // settling on its own, the winning leg paying and the losing leg losing. From 2026-08-04 a
+  // "one account, one side" guard made the state unreachable and the section was re-framed as
+  // a refusal. RULES.md §2.4 removed the guard on 2026-08-14, so the original scenario is the
+  // live one again — and it is now the ONLY place the per-position settlement of a single
+  // account's opposing legs is exercised at all.
   //
-  // ⭐ So the scenario is re-framed rather than deleted: the hedge is REFUSED, and the very same
-  // per-position settlement is proven across TWO players — which is the shape the product
-  // actually runs, and the one the live drive exercises.
+  // ⛔ THE HEDGE IS PERMITTED AS A BET AND WORTHLESS AS WAGERING. That second half is
+  // `npm run test:bonus-one-side`; it needs a grant to be visible, so it cannot live here.
   const or = await stubObservation(B(24), 2400.00);
   const rr = await openRound(chain, B(24), or, 2400.00);
   if (!rr.ok) throw new Error(rr.error);
@@ -460,19 +461,46 @@ let round1Id = "";
   const legTwo = await buyPosition(alice, { marketId: mr.id, side: "NO", stake: 15_000, idempotencyKey: "hedge-no" });
   await buyPosition(bob, { marketId: mr.id, side: "NO", stake: 10_000 });
   const afterStakes = (await db.wallet.findByUserId(alice))!.balance;
-  ok("8b.9 · ⭐ the SECOND side is refused — one account, one side per round",
-     legOne.ok && !legTwo.ok, `first=${legOne.ok} second=${legTwo.ok}`);
-  ok("8b.9b · and only the FIRST stake left the wallet — a refusal moves no money",
-     beforeR - afterStakes === 15_000, `Δ${beforeR - afterStakes}`);
+  ok("8b.9 · ⭐ ONE account holds BOTH sides — the 2026-08-04 guard is gone",
+     legOne.ok && legTwo.ok, `first=${legOne.ok} second=${legTwo.ok}`);
+  ok("8b.9b · and BOTH stakes left the wallet — an 'accepted' that dropped the second stake would read the same",
+     beforeR - afterStakes === 30_000, `Δ${beforeR - afterStakes}`);
   await closeRound(rr.data.id, await stubObservation(B(25), 2415.00), 2415.00);
   const pr = await listPositionsForMarket(mr.id);
   const aliceYes = pr.find((p) => p.userId === alice && p.side === "YES")!;
+  const aliceNo = pr.find((p) => p.userId === alice && p.side === "NO")!;
   const bobNo = pr.find((p) => p.userId === bob && p.side === "NO")!;
-  ok("8b.10 · ⛔ positions still settle INDEPENDENTLY — the winner wins, the loser loses",
-     aliceYes.status === "WIN" && bobNo.status === "LOSS", `alice=${aliceYes.status} bob=${bobNo.status}`);
+  ok("8b.10 · ⛔ positions settle INDEPENDENTLY — the SAME account's winning leg wins and its losing leg loses",
+     aliceYes.status === "WIN" && aliceNo.status === "LOSS" && bobNo.status === "LOSS",
+     `aliceYES=${aliceYes.status} aliceNO=${aliceNo.status} bob=${bobNo.status}`);
   const afterSettle = (await db.wallet.findByUserId(alice))!.balance;
-  ok("8b.11 · the winner's wallet moves by exactly the payout",
-     afterSettle - afterStakes === (aliceYes.finalPayout ?? 0), `Δ${afterSettle - afterStakes} vs payout ${aliceYes.finalPayout}`);
+  ok("8b.11 · the wallet moves by exactly the winning leg's payout — the losing leg returns nothing",
+     afterSettle - afterStakes === (aliceYes.finalPayout ?? 0) && (aliceNo.finalPayout ?? 0) === 0,
+     `Δ${afterSettle - afterStakes} vs payout ${aliceYes.finalPayout} · losing leg ${aliceNo.finalPayout}`);
+  // ⭐ THE HEDGE IS A GAMBLE, NOT A FREE LUNCH — AND NOT A GUARANTEED LOSS EITHER.
+  //
+  // 🔴 THIS ASSERTION FIRST READ *"hedging both sides COSTS the player — they end down,
+  // never level"* AND IT WAS FALSE. Executed, it went red: Alice staked 30,000 and finished
+  // **6,750 UP**, because her YES leg was the ENTIRE winning pool and Bob's 10,000 funded it.
+  // The claim was wrong for exactly the reason the player copy rewritten in the same commit
+  // now states (`hedgeBothBody` — a small hedge on the thin side of a lopsided market can pay
+  // many times both stakes). A test asserting a slogan rather than a fact is how a slogan
+  // gets shipped onto a money surface.
+  //
+  // What is TRUE, and is what this now proves by computing the other outcome from the SAME
+  // pools through the SAME fee function: the two legs pay a PROFIT on one result and a LOSS
+  // on the other, so holding both sides is a genuine market position with a genuine risk.
+  // ⛔ The property the rules rely on is not "hedging loses money" — it is "hedging earns no
+  // WAGERING progress", and that lives in `npm run test:bonus-one-side`.
+  const hedgeStaked = 30_000;
+  const wonWith = afterSettle - afterStakes;                       // YES won: the realised return
+  const feeIfNo = poolFee(mr.yesPool, mr.noPool, ratesFor(mr), "NO");
+  const wouldHaveWith = Math.round((15_000 / mr.noPool) * feeIfNo.netPool); // her NO leg alone
+  ok("8b.12 · ⭐ this hedge PROFITED on the outcome that landed",
+     wonWith > hedgeStaked, `staked ${hedgeStaked}, returned ${wonWith}`);
+  ok("8b.13 · ⭐ …and the SAME two legs would have LOST on the other outcome — it is a real risk",
+     wouldHaveWith < hedgeStaked,
+     `if NO had won: ${wouldHaveWith} on ${hedgeStaked} staked (Δ${wouldHaveWith - hedgeStaked})`);
 }
 
 // ── 8B · Stake bounds are ENFORCED on the money path, not merely DISPLAYED ───

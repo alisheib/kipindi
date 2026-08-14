@@ -29,8 +29,8 @@ file is worthless the moment it describes an intention as a fact.
 | Withdrawal fee 1.5% | ✅ live — production has charged 1.5% since before 2026-08-10 |
 | Taxes only on our fee · free cancellation 5 min | ✅ live, unchanged by this programme |
 | Our fee: 13% of the losing side, **both** games | ✅ **live, verified on production 2026-08-14 13:08** — `updown.config` reconciled, 16/16 chain rows migrated and read back off the DB, and a NEW round froze `loser-share` while all 4,220 legacy rounds still hold `capped-commission` |
-| Positions per market: unlimited, both sides | ⏳ LANDING |
-| Bonus wagering: one side only | ⏳ LANDING — ships in the same commit as the line above |
+| Positions per market: unlimited, both sides | ⏳ LANDING — shipped in code 2026-08-14 with the line below; needs a both-sides bet on production |
+| Bonus wagering: one side only | ⏳ LANDING — same commit. ⚠️ production has **zero grants**, so nothing exercises it live yet |
 | Failure messages explain themselves | ⏳ LANDING |
 
 ---
@@ -120,22 +120,43 @@ are levied on the fee *we* earned. Enforced in `payout.ts` → `levySplit`; rate
 
 ### 2.4 · Positions per market — unlimited, either or both sides
 
-> ⏳ **LANDING.** The "ONE ACCOUNT, ONE SIDE" guard in `buyPosition` still refuses the
-> opposite side. Removal is workstream B1, in one commit with §2.5.
+> ⏳ **LANDING — code shipped, awaiting production verification.** The guard is removed and
+> the wagering rule is in the same commit; what remains is a real both-sides bet driven on
+> production. ⛔ Do not clear this marker from a passing suite.
 
 A player may hold as many positions as they like on one market, on one side or on both. There
 is no per-market cap and no hedging block. Enforced by the *absence* of a guard in
 `buyPosition` — the "ONE ACCOUNT, ONE SIDE" block was removed 2026-08-14. See §2.5: the two
 changes are inseparable.
 
+| | |
+|---|---|
+| **Decided** | Ali, 2026-08-14, superseding the 2026-08-04 decision that added the guard. |
+| **Guarded by** | `npm run test:updown-window` §6 · `npm run test:updown-quickbet` §4 · `npm run test:updown-engine` §8B · `npm run test:bonus-one-side` §1 |
+
+> ⚠️ **HEDGING IS A REAL MARKET POSITION, NOT A GUARANTEED LOSS — and no surface may say
+> otherwise.** `test:updown-engine` 8b.12/8b.13 drive it: the same two legs return **+6,750**
+> on one outcome and **−7,170** on the other, from the same pools through the same fee
+> function. The retired player copy said *"hedging here locks in a loss"*, and a first draft
+> of that very test asserted the same thing and went RED. On a lopsided market a small hedge
+> on the thin side can pay many times both stakes.
+
 ### 2.5 · Bonus wagering — only one side counts
 
-> ⏳ **LANDING.** `recordWageringLocked` still credits turnover on every stake, with no
-> market or side dimension. Today the exposure is masked by the guard named in §2.4 — which
-> is exactly why the two may not ship apart.
+> ⏳ **LANDING — code shipped, awaiting production verification.** Ships in the same commit
+> as §2.4. There are **zero grants and zero bonus balance on production**, so this rule has
+> no live subject yet; verification means driving a grant through it.
 
-Only the side of a market a player was **already on** accrues turnover toward a bonus
-requirement. A stake on the opposite side of a market they already hold contributes nothing.
+A stake placed while the player holds an **OPEN position on the opposite side of that market**
+accrues **no** turnover toward a bonus requirement.
+
+⚠️ **That includes a top-up on the side they started on**, while the opposite leg is open. The
+rule is deliberately the conservative form. The looser reading — *"credit whichever side they
+were on first"* — still amplifies: UP 10,000 (credited) · DOWN 10,000 (not) · UP 10,000
+(credited) yields **20,000 of turnover for 10,000 of net exposure**. This form can only ever
+UNDER-credit, and no arrangement of bets turns a hedge into wagering progress. It is not a
+trap: closing the opposite leg is free inside 5 minutes, and the next stake counts again
+(`test:bonus-one-side` §2.5).
 
 ⛔ **This rule and §2.4 are one change and must never ship apart.** The window between them is
 the exploit: at the agreed rates, a TZS 10,000 bonus with a 5× requirement clears for 3,250 of
@@ -143,6 +164,19 @@ fee — a 6,750 gift per grant, same day, no risk taken.
 
 A player holding an unfulfilled grant who takes the opposite side is **warned before
 confirming, and may proceed** — it is a warning, not a refusal (see §2.9).
+
+> 🔴 **AND A SECOND, INDEPENDENT ROUTE WAS FOUND IN THE SAME PLACE (B1b, 2026-08-14).**
+> `cashOutPosition` never called `reverseWagering`. A player could bet, cancel **free** inside
+> the 5-minute grace, get the whole stake back **and keep the turnover credit** — clearing a
+> 5× requirement at **zero** cost, repeatable. Every other refund path (void, one-sided,
+> emergency, orphan) already reversed; the exit a player actually uses did not. Closed by
+> `reverseWageringLocked` in the same commit. It was not in the work order.
+
+| | |
+|---|---|
+| **Enforced in** | `market-service.ts` → `buyPosition` (the `opposite` predicate gates `recordWageringLocked`) and `cashOutPosition` (`reverseWageringLocked`). |
+| **Guarded by** | `npm run test:bonus-one-side` (22 checks) · `npm run red:bonus-one-side` (6/6, incl. both pre-fix sources verbatim AND three over-corrections) |
+| **Audited** | `bonus.wagering_skipped_opposite_side` on the suppressed stake · `bonus.wagering_reversed` on the cancellation |
 
 ### 2.6 · Free cancellation — 5 minutes
 

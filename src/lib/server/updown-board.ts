@@ -304,21 +304,24 @@ async function toBoardRound(
     // DOWN money: a silently wrong figure on a money surface (A-5). One number cannot state
     // a two-sided position; the surfaces suppress the line rather than print a half-truth.
     //
-    // ⚠️ CORRECTED 2026-08-10. This comment used to open with *"Holding both sides is legal
-    // (repeat taps, either side)"*, and that has been FALSE since 2026-08-04 — the UX audit
-    // that filed UD-20 was written on a premise the money engine had already retired.
-    // **ONE ACCOUNT, ONE SIDE** (`market-service.ts:671`) refuses any bet whose opposite side
-    // the account already holds OPEN, inside the wallet lock, unconditionally, and every
-    // Up & Down bet routes through `buyPosition`. `myUpStake`/`myDownStake` count OPEN
-    // positions only (see the accumulator below), so `myUpStake > 0 && myDownStake > 0` is
-    // **unreachable** for anything placed after that date, and no sell path can create it.
-    // Guarded three times: `updown-engine.test.mts:455`, `updown-quickbet.test.mts:134`,
-    // `updown-window.test.mts:233`.
+    // ⚠️ THIS COMMENT HAS BEEN WRONG TWICE, IN OPPOSITE DIRECTIONS, AND THAT IS THE POINT.
+    // It first read *"Holding both sides is legal (repeat taps, either side)"*, which the
+    // 2026-08-04 ONE-ACCOUNT-ONE-SIDE guard falsified. On 2026-08-10 it was rewritten to say
+    // the hedged state was **unreachable** and UD-20 was "closed as moot". On 2026-08-14 Ali
+    // REMOVED that guard (docs/RULES.md §2.4), so the original sentence is true again.
     //
-    // ⭐ So the branch stays as DEFENCE-IN-DEPTH for pre-2026-08-04 legacy rows, not because
-    // the state is expected. ⛔ And "quote both outcomes" is NOT an open question for Ali:
-    // it would be building a surface for a state the money engine refuses to create. UD-20
-    // is closed as moot.
+    // ⛔ THE BEHAVIOUR BELOW IS UNCHANGED AND STILL CORRECT — but its reason has changed from
+    // "defence-in-depth for legacy rows" to "the ordinary case". One number cannot state a
+    // two-sided position: pricing `myUpStake + myDownStake` as if it all sat on UP is what
+    // UD-20 filed, and suppressing the line is still better than printing a half-truth on a
+    // money surface (A-5). What is NO LONGER TRUE is that this is rare.
+    //
+    // ⭐ SO UD-20 IS RE-OPENED AS A DECISION FOR ALI, not closed as moot: a hedged holder on
+    // a locked round now sees NO payout figure at all, on a state the product deliberately
+    // permits. "Quote both outcomes" is a real question again. ⛔ Do not answer it by
+    // resurrecting the single-number form — that is the defect, not the gap.
+    //
+    // `myUpStake`/`myDownStake` count OPEN positions only (see the accumulator below).
     myExactPayout:
       state === "locked" && myStake > 0 && (myUpStake === 0 || myDownStake === 0)
         ? await projectedPayout(m, myUpStake > 0 ? "YES" : "NO", myStake)

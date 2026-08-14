@@ -22,7 +22,7 @@ import { withLock } from "./locks";
 import { withAdmission, AdmissionBusy } from "./admission";
 import { withTransientRetry } from "./retry";
 import { emit } from "./event-bus";
-import { spendBonusLocked, recordWageringLocked, reverseWagering, refundBonusToActive, refundBonusLocked, expireActiveGrants, type BonusAllocation } from "./bonus-service";
+import { spendBonusLocked, recordWageringLocked, reverseWagering, reverseWageringLocked, refundBonusToActive, refundBonusLocked, expireActiveGrants, type BonusAllocation } from "./bonus-service";
 import { notifyBonusFulfilled } from "./notification-service";
 import { isLockedOut, checkLossLimit } from "./responsible-gambling";
 import { rateCheck } from "./rate-limit";
@@ -720,35 +720,35 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
     const wallet = await db.wallet.findByUserId(userId, lockTx);
     if (!wallet || wallet.status !== "ACTIVE") return { ok: false as const, error: "Wallet unavailable.", code: "NOT_FOUND" as const };
 
-    // ── ONE ACCOUNT, ONE SIDE (Ali's decision, 2026-08-04) ────────────────────
+    // ── UNLIMITED POSITIONS, EITHER OR BOTH SIDES (docs/RULES.md §2.4) ────────
     //
-    // ⛔ IN A PARI-MUTUEL POOL, HOLDING BOTH SIDES IS A HEDGE THAT RISKS ONLY THE FEE.
-    // Stake 1,000 UP and 1,000 DOWN and one leg always wins: whichever way the round goes the
-    // stake comes back less the commission on the losing leg. That is near-zero-risk volume,
-    // and this platform pays attention to volume — leaderboards and bonus wagering both count
-    // it — so an account could farm both without ever taking a market view.
+    // ⛔ THE "ONE ACCOUNT, ONE SIDE" REFUSAL THAT STOOD HERE IS GONE (Ali, 2026-08-14). It
+    // superseded the 2026-08-04 decision that put it here. A player may now hold as many
+    // positions as they like on one market, on one side or on both.
     //
-    // ⚠️ INSIDE THE WALLET LOCK, DELIBERATELY. `withLock("wallet:${userId}")` serialises one
-    // account's bets, so two taps on opposite sides arriving together are ordered rather than
-    // both reading a clean slate. Outside the lock this check would pass twice and the hedge
-    // would land anyway — the same race that let two concurrent bets each clear a loss cap
-    // only one should (audit C4).
+    // ⭐ AND IT COULD ONLY GO IN THE SAME COMMIT AS THE WAGERING RULE BELOW. The guard was
+    // load-bearing for something it never mentioned: in a pari-mutuel pool, holding both
+    // sides is a hedge that risks only the fee — stake both ways and one leg always wins, so
+    // the stake comes back less the commission on the losing leg. This platform counts
+    // TURNOVER toward a bonus requirement, so removing the guard while turnover still accrued
+    // on every stake would open a same-day, no-risk bonus clearance: at 13% of the losing
+    // side, a TZS 10,000 grant with a 5× requirement clears for 3,250 of fee — a 6,750 gift
+    // per grant, repeatable. The window between the two changes IS the exploit; there is no
+    // ordering of two commits that does not open it.
     //
-    // ⭐ Two DIFFERENT accounts on opposite sides is normal play and is untouched — that is
-    // what a pari-mutuel market is for, and it is exactly what the live drive exercises.
+    // ⚠️ BOTH READS STAY, AND BOTH ARE STILL PAID FOR EXACTLY ONCE, INSIDE THE WALLET LOCK.
+    //  · `mine`     feeds `predictorCount` (people, not bets) at the pool increment below —
+    //               which also feeds the UD card, the admin economics panel, the regulator
+    //               match-integrity report and the public share card.
+    //  · `opposite` is now the WAGERING predicate rather than a refusal. Same lock, same
+    //               transaction, still in scope: no new query, no new lock.
+    //
+    // `withLock("wallet:${userId}")` serialises one account's bets, so two taps on opposite
+    // sides arriving together are ORDERED rather than both reading a clean slate. That
+    // matters more now, not less: it is what stops a simultaneous UP+DOWN pair from each
+    // seeing "no opposite side" and both accruing turnover.
     const mine = await positionStore.listForUserAndMarket(userId, opts.marketId, lockTx);
     const opposite = mine.find((p) => p.status === "OPEN" && p.side !== opts.side);
-    if (opposite) {
-      return {
-        ok: false as const,
-        // Says WHICH side they already hold, because "pick one side" without naming the one
-        // they are on reads as a bug to someone who has forgotten they bet.
-        error:
-          `You already backed ${opposite.side === "YES" ? "UP" : "DOWN"} on this round — one side per round. ` +
-          `· Tayari umeweka dau ${opposite.side === "YES" ? "JUU" : "CHINI"} kwenye raundi hii — upande mmoja kwa kila raundi.`,
-        code: "INVALID" as const,
-      };
-    }
 
     // Daily loss-limit gate (RG / GLI-19), re-read INSIDE the lock so a concurrent
     // bet that already committed its stake is counted (audit C4). Before any debit,
@@ -944,18 +944,51 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
     // now held until the outer transaction ends (it rides the same tx), so any
     // work left in here extends the hold on a hot market for no benefit.
 
+    // ── BONUS WAGERING: ONE SIDE ONLY (docs/RULES.md §2.5) ────────────────────
+    //
     // Wagering accrues on the FULL stake (turnover) INSIDE this wallet lock, so
     // spend + wagering + any fulfilment are one atomic unit (no race with a
     // concurrent second bet on the same wallet). Turnover from this bet is
     // reversed if the bet is later refunded (see reverseWagering in the void
-    // paths) — that's what prevents bonus from clearing to cash with no risk.
+    // paths, and reverseWageringLocked in cashOutPosition) — that's what prevents
+    // bonus from clearing to cash with no risk.
     // Best-effort: a wagering hiccup must never fail a placed bet.
+    //
+    // ⛔ EXCEPT WHEN THE PLAYER ALREADY HOLDS THE OPPOSITE SIDE. `opposite` is the
+    // same predicate the removed ONE-ACCOUNT-ONE-SIDE guard used, read once above,
+    // in this lock, in this transaction. A stake taken while an OPEN position on
+    // the other side of this market exists accrues NOTHING toward a bonus
+    // requirement — the hedge is now permitted, and it buys no wagering progress.
+    //
+    // ⚠️ THIS IS DELIBERATELY THE CONSERVATIVE FORM, AND IT IS WHAT RULES.md §2.5
+    // SAYS. It suppresses a TOP-UP on the side they started on too, once any
+    // opposite position is open. The looser reading — "credit whichever side they
+    // were on first" — still amplifies: UP 10k (credited) · DOWN 10k (not) · UP 10k
+    // (credited) gives 20,000 of turnover for 10,000 of net exposure. This form can
+    // only ever UNDER-credit, and there is no arrangement of bets that turns a hedge
+    // into wagering progress. A player who wants the credit can close the opposite
+    // leg first — free inside 5 minutes, and that exit now reverses its own turnover.
+    //
+    // ⭐ It is a WARNING, not a refusal: `bonusOppositeSideWarning` on the READ path
+    // tells a grant-holder before they confirm. It cannot be computed here —
+    // `getBonusSummary` issues its own wallet read and would block on this bet's own
+    // uncommitted row (the P2028 self-deadlock at bonus-service.ts:235-243).
     try {
       // lockTx: this runs after the wallet debit inside the SAME transaction, so
       // its wallet/grant UPDATEs must ride that transaction — on a separate
       // connection they would block on our own uncommitted wallet row (P2028).
-      const wr = await recordWageringLocked(userId, opts.stake, lockTx);
+      const wr = opposite ? { fulfilled: [], creditedToRealTzs: 0 } : await recordWageringLocked(userId, opts.stake, lockTx);
       wageringFulfilled = wr.fulfilled;
+      if (opposite) {
+        audit({
+          category: "WALLET",
+          action: "bonus.wagering_skipped_opposite_side",
+          actorId: userId,
+          targetType: "Position",
+          targetId: positionId,
+          payload: { marketId: opts.marketId, side: opts.side, stake: opts.stake, oppositePositionId: opposite.id, oppositeSide: opposite.side },
+        });
+      }
     } catch (err) {
       // Never block a placed bet — but DON'T fail silently: a lost turnover
       // accrual stalls bonus clearing, so leave a trace (mirrors the affiliate
@@ -1966,8 +1999,16 @@ export async function cashOutPosition(
     if (!sellable) {
       return {
         ok: false as const,
+        // 🔴 B3 / FAILURE-INVENTORY §3.2 · THIS BRANCH SAID "poll" ON A SHARED PATH.
+        // `cashOutPosition` serves BOTH products, and `TOO_SHORT` fires when a bet was
+        // placed with too little betting runway left to offer an exit. On a 5-minute Up &
+        // Down round under a 5-minute free-exit grace that is not an edge case — it is the
+        // ORDINARY branch — so an Up & Down player was routinely told about a "poll".
+        // Its sibling below already used the neutral "this bet"; this one now does too.
+        // ⛔ Same class as the removed hedge block's UP/DOWN copy on a shared path: product
+        // vocabulary belongs where the product is known, and here it is not.
         error: reason === "TOO_SHORT"
-          ? "This poll is closing too soon to sell out — your position rides to settlement. · Kura hii inafungwa hivi karibuni — dau lako litaenda hadi malipo."
+          ? "This bet was placed too close to the finish to be sold — it rides to settlement. · Dau hili liliwekwa karibu mno na mwisho ili kuuzwa — litaenda hadi malipo."
           : "The sell-out window for this bet has closed — it now rides to settlement. · Muda wa kuuza dau hili umefungwa — litaenda hadi malipo.",
         code: "SELECTION_CLOSED" as const,
       };
@@ -2026,6 +2067,30 @@ export async function cashOutPosition(
     p.finalPayout = paid;
     p.settledAt = now;
     await positionStore.set(p);
+
+    // ── B1b · THE TURNOVER GOES BACK OUT WITH THE BET ─────────────────────────
+    //
+    // 🔴 THIS CALL DID NOT EXIST until 2026-08-14, and its absence was a live, zero-cost
+    // route to clearing a bonus. A cash-out inside the 5-minute grace is a FULL refund
+    // (`paidExitWindowMinutes: 0`, so there is no other kind on a current poll): the player
+    // gets the whole stake back and, before this, kept the wagering credit it earned.
+    // Bet → cancel → repeat cleared a 5× requirement for nothing at all. Every other refund
+    // path (void, one-sided, emergency, orphan) already reversed; the exit a player actually
+    // uses did not.
+    //
+    // ⚠️ THE FULL STAKE, not `paid`. Turnover was credited on the stake, so the reversal is
+    // of the stake — identical to every void path. A legacy poll carrying a non-zero paid
+    // window returns less than the stake, and the player still took no market risk: the bet
+    // was cancelled before the outcome existed.
+    //
+    // Best-effort and AUDITED, matching the accrual on the bet path: the money has already
+    // moved by this line, so throwing here would fail a cash-out that already paid. A silent
+    // failure would leave the exploit open, so it must leave a trace.
+    try {
+      await reverseWageringLocked(userId, p.stake);
+    } catch (err) {
+      audit({ category: "SYSTEM", action: "bonus.wagering_reverse_error", actorId: userId, targetType: "Position", targetId: p.id, payload: { stake: p.stake, error: String((err as Error)?.message ?? err) } });
+    }
 
     // Credit wallet + record the txn (atomic +delta on the live row).
     const credited = await db.wallet.adjust(wallet.id, { balance: paid });

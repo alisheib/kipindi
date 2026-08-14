@@ -39,14 +39,39 @@
 import { BASE, SHOT, browser, login, bodyText, shot } from "./live/harness.mjs";
 
 const QUERY = process.argv[2] ?? "asset=BTC&d=5";
-const PLAN = [
-  { idx: "01", side: "UP",   chip: "5K"  },
-  { idx: "03", side: "UP",   chip: "2K"  },
-  { idx: "05", side: "UP",   chip: "1K"  },
-  { idx: "02", side: "DOWN", chip: "10K" },
-  { idx: "04", side: "DOWN", chip: "1K"  },
-  { idx: "06", side: "DOWN", chip: "2K"  },
-];
+
+/**
+ * The three A4 shapes. `two-sided` is the headline; the other two exist because production
+ * had NO settled loser-share round of either kind and a suite is not production.
+ *
+ * ⛔ `void` MUST run on Gold or Solana. Those chains void ~100% of rounds (campaign finding
+ * E-58) — betting on Bitcoin to observe a VOID is waiting for a coin to land on its edge.
+ * Conversely `two-sided` must NOT run there, or it proves only that refunds work.
+ */
+const PLANS = {
+  "two-sided": [
+    { idx: "01", side: "UP",   chip: "5K"  },
+    { idx: "03", side: "UP",   chip: "2K"  },
+    { idx: "05", side: "UP",   chip: "1K"  },
+    { idx: "02", side: "DOWN", chip: "10K" },
+    { idx: "04", side: "DOWN", chip: "1K"  },
+    { idx: "06", side: "DOWN", chip: "2K"  },
+  ],
+  // Nobody on the other side: the winning pool IS the whole pool, so there are no losers
+  // to take a slice of. Two players, so "refunded in full" is more than one row.
+  "one-sided": [
+    { idx: "07", side: "UP", chip: "2K" },
+    { idx: "08", side: "UP", chip: "1K" },
+  ],
+  // Both sides, on a chain whose price band the price will not clear.
+  "void": [
+    { idx: "09", side: "UP",   chip: "2K" },
+    { idx: "10", side: "DOWN", chip: "1K" },
+  ],
+};
+const PLAN_NAME = process.env.A4_PLAN ?? "two-sided";
+const PLAN = PLANS[PLAN_NAME];
+if (!PLAN) throw new Error(`unknown A4_PLAN "${PLAN_NAME}" — have ${Object.keys(PLANS).join(", ")}`);
 
 /** One fleet player places one side on whatever round is open right now. */
 async function play({ idx, side, chip }) {
@@ -118,9 +143,9 @@ async function play({ idx, side, chip }) {
   }
 }
 
-console.log(`\nA4 · a REAL two-sided loser-share round · ${BASE}/updown?${QUERY}\n`);
-console.log(`  UP    ${PLAN.filter((p) => p.side === "UP").map((p) => `fleet:${p.idx} ${p.chip}`).join(" · ")}`);
-console.log(`  DOWN  ${PLAN.filter((p) => p.side === "DOWN").map((p) => `fleet:${p.idx} ${p.chip}`).join(" · ")}\n`);
+console.log(`\nA4 · plan "${PLAN_NAME}" on a REAL loser-share round · ${BASE}/updown?${QUERY}\n`);
+console.log(`  UP    ${PLAN.filter((p) => p.side === "UP").map((p) => `fleet:${p.idx} ${p.chip}`).join(" · ") || "—"}`);
+console.log(`  DOWN  ${PLAN.filter((p) => p.side === "DOWN").map((p) => `fleet:${p.idx} ${p.chip}`).join(" · ") || "—"}\n`);
 
 // ⛔ CONCURRENTLY, ON PURPOSE. Six sequential sign-ins take ~4 minutes and a 5-minute round
 // would close underneath the last of them — the bets would land on two different rounds and

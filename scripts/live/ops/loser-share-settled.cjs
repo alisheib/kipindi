@@ -149,7 +149,9 @@ const ok = (name, cond, detail = "") => {
   // reporting a green that means nothing.
   ok("1.★★ …and at least ONE of them had real money on it",
      twoSided + oneSided + voided > 0,
-     `${emptyRounds}/${settled.length} settled rounds had NO stake at all — this section proves nothing until a real bet settles`);
+     twoSided + oneSided + voided > 0
+       ? `${twoSided + oneSided + voided} of ${settled.length} carried a stake`
+       : `${emptyRounds}/${settled.length} settled rounds had NO stake at all — this section proves nothing until a real bet settles`);
 
   // ── §2 · a one-sided round charges nothing and refunds in full ──────────────
   console.log("\n=== §2 · a REAL one-sided round ===");

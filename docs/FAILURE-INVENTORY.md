@@ -233,13 +233,15 @@ and **a wallet that exists but is FROZEN**. `errorCopy` renders `NOT_FOUND` as *
 find that. Refresh and try again."* — so a player whose wallet has been frozen is told to
 refresh the page. Wrong reason, wrong severity, wrong next step. → `wallet_frozen`, **error**.
 
-### 3.2 · 🔴 A poll player is told about a "round"
+### 3.2 · ✅ FIXED (B3, 2026-08-14) · A poll player was told about a "round"
 
-`market-service.ts:1970` (cash-out) returns *"This poll is closing too soon to sell out · Kura
-hii…"* from a path with **no `productLine` branch**. On a 5-minute Up & Down round under a
-5-minute free-exit grace this is the ORDINARY branch, so an Up & Down player is told about a
-"poll". Its sibling at `:1971` already uses the neutral "this bet". Same class as the hedge
-block's UP/DOWN copy on a shared path (workstream B3).
+`cashOutPosition`'s `TOO_SHORT` branch returned *"This poll is closing too soon to sell out ·
+Kura hii…"* from a path with **no `productLine` branch**. On a 5-minute Up & Down round under
+a 5-minute free-exit grace that is the ORDINARY branch, so an Up & Down player was routinely
+told about a "poll". Its sibling already used the neutral "this bet".
+
+Now: *"This bet was placed too close to the finish to be sold — it rides to settlement."*
+Product vocabulary belongs where the product is known, and on this path it is not.
 
 ### 3.3 · 🔴 The BUSY lie
 
@@ -275,12 +277,30 @@ rule without §2.4's warning and a player whose wagering silently stops advancin
 to read. `bonus-service.ts` cannot even express it: `BonusGrant` (`schema.prisma:500-523`) has
 no market, side or product column — turnover is a single scalar counter with no provenance.
 
-### 3.7 · ⚠️ Three surfaces carry a rate the new rules change
+### 3.7 · ✅ FIXED (B3, 2026-08-14) · Copy that was dead only because of the guard
 
-`i18n-dict.ts` `hedgeBothBody`/`hedgeOppositeBody` (EN `:720/:721`, SW `:2320/:2321`, ZH
-`:3829/:3830`) say the commission *"applies to the pool"* — the retired model. They are dead
-code **only because of the guard workstream B1 removes**; they become reachable on exactly the
-both-sides play the new rules permit. Workstream B3/F2.
+`i18n-dict.ts` `hedgeBothBody`/`hedgeOppositeBody` (EN, SW **and** ZH) said the commission
+*"applies to the pool"* — the retired model — and became reachable the instant B1 removed the
+guard. Rewritten in all three languages, and the rewrite found a second, worse claim:
+
+> 🔴 **`hedgeBothBody` also asserted *"hedging here locks in a loss"*, and that is FALSE.**
+> On a lopsided market a small hedge on the thin side can pay many times both stakes:
+> YES 100,000 / NO 0, bet 1,000 each way, NO wins → the NO leg alone returns ~88,870 on
+> 2,000 staked. It would have been a fabricated claim on a money surface (A-5) the moment it
+> could render. The new copy states the facts and draws no conclusion, and **quotes no rate
+> at all** — `feeHeadlinePct` and its `fill({pct})` call site are deleted, because the fee is
+> already stated by the payout projection in the same panel (RULES.md §7).
+>
+> ⚠️ A first draft of `test:updown-engine` 8b.12 asserted the same slogan and went **RED**:
+> the hedged account finished **6,750 UP**. The test and the copy were wrong in the same way,
+> written an hour apart. It now proves the honest property instead — the same two legs return
+> +6,750 on one outcome and −7,170 on the other.
+
+**A third surface, not in the original list:** `updown-board.ts`'s `myExactPayout` comment
+declared the hedged state **"unreachable"** and closed UD-20 "as moot". It is reachable again.
+The behaviour (suppress the figure rather than price a two-sided position as one-sided) is
+unchanged and still right; **UD-20 is re-opened as a decision for Ali** — a hedged holder on a
+locked round now sees no payout figure at all, on a state the product deliberately permits.
 
 ---
 

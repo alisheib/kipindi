@@ -717,8 +717,25 @@ export const dict = {
       browseForFree: "Browse for free, but a verified phone is required before any bet can be placed.",
       youAlreadyHold: "You already hold",
       here: "here",
-      hedgeBothBody: "You're backing both sides — our {pct}% commission applies to the pool either way, so hedging here locks in a loss.",
-      hedgeOppositeBody: "Backing the other side now hedges against your position — our {pct}% commission applies to the pool and only one side can win.",
+      // 🔴 B3/F2 · THESE TWO WERE DEAD CODE, AND ONLY BECAUSE OF A GUARD THAT IS NOW GONE.
+      // From 2026-08-04 to 2026-08-14 `buyPosition` refused the opposite side, so neither
+      // string could render. RULES.md §2.4 makes both REACHABLE on exactly the both-sides
+      // play the new rules permit — and they said two wrong things:
+      //
+      //   1. "our {pct}% commission applies to the pool" is the RETIRED capped-commission
+      //      rule. Under loser-share the fee is a slice of the LOSING side (RULES.md §2.1).
+      //   2. "hedging here locks in a loss" is simply FALSE in general, and it would have
+      //      been a fabricated claim on a money surface (A-5). On a lopsided market a small
+      //      hedge on the thin side can pay many times both stakes: YES 100,000 / NO 0, bet
+      //      1,000 each way, NO wins → the NO leg alone returns ~88,870 on 2,000 staked.
+      //
+      // ⛔ So they state the FACTS and draw no conclusion, and they quote NO rate — the rate
+      // lives in config and in the payout projection right below this panel, and a number
+      // written twice is a number that will disagree with itself (RULES.md §7). The bonus
+      // consequence is NOT here: it is `bonusOppositeSideWarning`, shown only to a player
+      // who actually holds an unfulfilled grant.
+      hedgeBothBody: "You're backing both sides of this market. Both bets stand and settle separately, but only one side can win — and our fee comes out before winners are paid, so the two stakes cannot both come back in full.",
+      hedgeOppositeBody: "You already hold the other side of this market. Both bets stand and settle separately — only one side can win, and our fee comes out before winners are paid.",
       hedgeAddBody: "Placing again adds to your stake on this market.",
       selectionClosedBadge: "Selection closed",
       waitingForResultsAside: "Waiting for results",
@@ -2317,8 +2334,9 @@ export const dict = {
       browseForFree: "Tazama bure, lakini simu iliyothibitishwa inahitajika kabla ya kuweka dau.",
       youAlreadyHold: "Tayari unashikilia",
       here: "hapa",
-      hedgeBothBody: "Unaweka dau pande zote mbili — kamisheni yetu ya {pct}% inatumika kwenye bwawa vyovyote vile, kwa hiyo hii inahakikisha hasara.",
-      hedgeOppositeBody: "Kuweka dau upande mwingine sasa kunapingana na dau lako — kamisheni yetu ya {pct}% inatumika kwenye bwawa na upande mmoja tu unaweza kushinda.",
+      // 🔴 B3/F2 — see the EN note. Rate removed; no conclusion drawn.
+      hedgeBothBody: "Unaweka dau pande zote mbili za soko hili. Dau zote mbili zinabaki na kila moja hulipwa peke yake, lakini upande mmoja tu unaweza kushinda — na ada yetu hutolewa kabla washindi hawajalipwa, kwa hiyo dau zako zote mbili haziwezi kurudi zote.",
+      hedgeOppositeBody: "Tayari una dau upande mwingine wa soko hili. Dau zote mbili zinabaki na kila moja hulipwa peke yake — upande mmoja tu unaweza kushinda, na ada yetu hutolewa kabla washindi hawajalipwa.",
       hedgeAddBody: "Kuweka tena kunaongeza dau lako kwenye soko hili.",
       selectionClosedBadge: "Uchaguzi umefungwa",
       waitingForResultsAside: "Inasubiri matokeo",
@@ -3826,8 +3844,9 @@ export const dict = {
       browseForFree: "可免费浏览，但下注前需要验证手机号。",
       youAlreadyHold: "您已持有",
       here: "在此",
-      hedgeBothBody: "您同时投注双方 — 无论结果如何，我们都会收取奖池 {pct}% 的佣金，因此这样对冲必然亏损。",
-      hedgeOppositeBody: "现在投注对方会对冲您的持仓 — 我们仍按奖池收取 {pct}% 佣金，而只有一方能获胜。",
+      // 🔴 B3/F2 — see the EN note. Rate removed; no conclusion drawn.
+      hedgeBothBody: "您在本市场同时投注了双方。两笔投注都成立并各自结算，但只有一方能获胜 — 我们的费用在派彩前扣除，因此两笔投注无法都全额返还。",
+      hedgeOppositeBody: "您已持有本市场的另一方。两笔投注都成立并各自结算 — 只有一方能获胜，我们的费用在派彩前扣除。",
       hedgeAddBody: "再次投注将增加您在此市场的投注额。",
       selectionClosedBadge: "选择已关闭",
       waitingForResultsAside: "等待结果",

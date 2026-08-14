@@ -136,27 +136,27 @@ async function mine(userId: string | undefined): Promise<{ up: number; down: num
   ok("8 · 'you're in' sums every distinct UP tap", m.up === 10_000, `up ${m.up}`);
 }
 
-// ── 4 · ONE ACCOUNT, ONE SIDE — the hedge is refused (Ali's decision, 2026-08-04) ──
+// ── 4 · BOTH SIDES, ONE ACCOUNT — and the chip sums each side separately ──────
 //
-// ⚠️ THIS SECTION ASSERTED THE OPPOSITE UNTIL 2026-08-04, AND THE OLD ASSERTION WAS NOT WRONG
-// AT THE TIME. It pinned that the "you're in" chip sums each side independently — which it
-// still does. What changed is a PRODUCT RULE, not an implementation: in a pari-mutuel pool,
-// holding both sides is a hedge that risks only the fee, so one leg always wins and the stake
-// comes back less commission. That is near-zero-risk volume on a platform whose leaderboards
-// and bonus wagering both count volume. `buyPosition` now refuses it, and
-// `test:updown-window` §6 is the dedicated guard.
+// ⚠️ THIS SECTION HAS NOW SWUNG BACK. Before 2026-08-04 it pinned that the "you're in" chip
+// sums each side independently; from 2026-08-04 it pinned a refusal; since 2026-08-14 (Ali,
+// docs/RULES.md §2.4) the guard is gone and the ORIGINAL question is live again. The chip's
+// implementation never changed through any of it — only the product rule did.
 //
-// ⭐ What is re-pinned HERE is that the refusal is CLEAN: the first side is untouched, no
-// money moves, and the chip still reads the truth afterwards. A refusal that corrupted the
-// position it declined would be worse than the hedge it prevented.
+// ⭐ What matters here is that the chip tells a player holding BOTH sides the truth about
+// each. It is the one surface built on "this state cannot exist", so it is the one most
+// likely to have quietly stopped being right while nothing could produce the state.
+//
+// ⛔ AND THE HEDGE COSTS NO WAGERING PROGRESS — that half is `npm run test:bonus-one-side`,
+// because it needs a bonus grant to be visible at all. A green here is half the rule.
 {
   const before = (await db.wallet.findByUserId(alice))!.balance;
   const res = await buyPosition(alice, { marketId, side: "NO", stake: 4_000, idempotencyKey: "qb-a-down" });
-  ok("9 · ⭐ a DOWN tap is REFUSED for an account already holding UP", !res.ok, res.ok ? "the hedge landed" : res.error);
+  ok("9 · ⭐ a DOWN tap is ACCEPTED for an account already holding UP", res.ok, res.ok ? "" : `REFUSED — ${res.error}`);
   const m = await mine(alice);
   const after = (await db.wallet.findByUserId(alice))!.balance;
-  ok("10 · ⭐ and the refusal moves NO money and leaves the UP side intact",
-     m.up === 10_000 && m.down === 0 && after === before, `up ${m.up} down ${m.down} balance ${before}→${after}`);
+  ok("10 · ⭐ the chip reads BOTH sides separately, and exactly the DOWN stake left the wallet",
+     m.up === 10_000 && m.down === 4_000 && before - after === 4_000, `up ${m.up} down ${m.down} balance ${before}→${after}`);
 }
 
 // ── 5 · 'you're in' is PER-VIEWER — never leaks between players ───────────────
@@ -165,7 +165,11 @@ async function mine(userId: string | undefined): Promise<{ up: number; down: num
   const mb = await mine(bob);
   const ma = await mine(alice);
   ok("11 · Bob sees only Bob's stake", mb.up === 0 && mb.down === 7_000, `bob up ${mb.up} down ${mb.down}`);
-  ok("12 · Alice is unchanged by Bob's bet", ma.up === 10_000 && ma.down === 0, `alice up ${ma.up} down ${ma.down}`);
+  // ⚠️ Alice now holds 4,000 DOWN of her own (§4), so "unchanged by BOB's bet" is 10,000/4,000
+  // — not 10,000/0. Bob's 7,000 is on the same side as Alice's 4,000, which is exactly the
+  // leak this line exists to catch, and it could not have been caught while the guard stood.
+  ok("12 · Alice is unchanged by Bob's bet on the SAME side she holds",
+     ma.up === 10_000 && ma.down === 4_000, `alice up ${ma.up} down ${ma.down}`);
   const anon = await mine(undefined);
   ok("13 · a signed-out board shows no 'you're in'", anon.up === 0 && anon.down === 0, `anon up ${anon.up} down ${anon.down}`);
 }
