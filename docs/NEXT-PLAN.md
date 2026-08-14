@@ -36,7 +36,22 @@ frozen and shipped. **Revised 2026-07-31 against the live platform, not against 
 > chart range's 40-vs-44, the `rounded-pill` literal, admin rails, `/wallet`'s section tabs.
 > ⚠️ **Pre-existing and NOT this batch's:** `red:updown-digest` is 6/7 — its `ungate-refunds`
 > anchor in `market-service.ts` went stale at `354bc307` (2026-08-10), four days earlier.
-> 🔴 **AND ALI HAS ONE THING TO DO: the QA player personas cannot sign in on production.**
+> ✅ **RESOLVED SAME DAY — and ALL EIGHT RAILS ARE NOW VERIFIED ON PRODUCTION.** Ali authorised a
+> re-mint (he was on the office PC; the working file was at home): `ops-remint-qa-passwords.mts`
+> ran **6/6 re-minted and verified**, his own console login untouched (the tool re-reads `role` off
+> the row and refuses any ADMIN), and `qa:filter-scan -- https://50pick.tz --as=alpha` then reported
+> **8 of 8 surfaces**, every rail 999px / ≥44px / 0 inline / 0 unselected outlines, with the
+> `/updown/history` day rail proven promise-vs-delivery on real data (6 promised, 6 delivered).
+> ⚠️ **The HOME laptop's `.env.qa.local` is now stale** until Ali copies the new one across.
+>
+> ▶ **BATCH 6 IS COMMISSIONED** (Ali, 2026-08-14, chosen from the deferred register):
+> **the mobile filter sheet** — the `/markets` filter bar eats ~220px on a phone and the kit's
+> answer takes it under 120 — **and the chart's time-range buttons raised 40 → 44px**.
+> ⛔ Ruled OUT in the same breath, do not re-ask: compact list · search typeahead · admin filter
+> rails · `/wallet` tabs · the `/markets` aria wording · the `rounded-pill` sweep.
+> Brief: `design-brief/00-NEXT-SESSION-PROMPT.md`.
+>
+> 🗄️ **(history) The QA login block, and how it was diagnosed —**
 > `login(page, "alpha")` and `"echo"` both land back on the signed-out shell — the identifier
 > reaches the server and is rejected. Confirmed with an instrument that is not this session's:
 > unmodified `scripts/live-updown-digest.mjs` fails identically. **This blocks every live driver

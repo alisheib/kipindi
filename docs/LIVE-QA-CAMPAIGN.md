@@ -282,9 +282,29 @@ this laptop's clock is not evidence about the server's.)
 | `lockedUntil NULL`, `failedLoginCount 3` (alpha) / `1` (echo) — **exactly this session's attempts** | not a lockout; the counter is our own footprint |
 | `lastLoginAt 2026-08-10 23:40` for BOTH, `updatedAt 2026-08-14 09:42` | the last SUCCESSFUL sign-in was four days ago; everything since is failures |
 
-⇒ **This laptop's `.env.qa.local` is stale.** ⛔ **Not re-minted** — the block above forbids it and
-the reason still holds: another session was live in this working tree at the time. **Ali: copy
-`.env.qa.local` from whichever machine last signed in successfully (2026-08-10 23:40 UTC).**
+⇒ **This laptop's `.env.qa.local` is stale.**
+
+✅ **RE-MINT AUTHORISED BY ALI — 2026-08-14, explicitly, and this OVERRIDES the standing ⛔ above
+for this instance.** He was asked which route he wanted, given the trade in plain terms, and chose
+*"issue new passwords now"*: **"ok mint new ccounts · u have ful access"**. He is on the OFFICE PC;
+the file with the working passwords is on the HOME laptop, so copying it was not available to him.
+
+⚠️ **What the next session must know before running it:**
+1. The tool is **`npx tsx scripts/ops-remint-qa-passwords.mts`** — run it under
+   `railway run --service 50pick --` so `DATABASE_URL` is injected (it rewrites the internal host
+   onto the public proxy itself, so the `railway run` internal-host trap does not bite here).
+2. It **ignores its arguments and re-mints all six** QA personas. That is expected, not a bug.
+3. ✅ **It cannot touch Ali's own console login** — verified by reading it: `777777777` is absent
+   from its list, AND it reads `role` back off the row and refuses any `ADMIN` whatever the list
+   says. It also clears `failedLoginCount` / `lockedUntil`, which is what a stale-password
+   diagnosis leaves behind.
+4. It does a **read-your-write**: re-reads the stored hash and verifies the new secret against it
+   before reporting the password at all.
+5. ⛔ **The consequence Ali accepted:** the HOME laptop's `.env.qa.local` stops working the moment
+   this runs. He copies the new file across when he is next at that machine. **Say so in §6b with
+   the instant**, because the other machine has no way to detect it except by failing to log in.
+6. ⛔ Write the new values into `.env.qa.local` ONLY — never a tracked file, a commit, a doc, a
+   screenshot or a transcript.
 
 **What it cost:** four authed player rails — `/positions`, `/profile/activity`, `/profile/account`,
 `/updown/history` — could not be verified on production in batch 5. They are verified on localhost

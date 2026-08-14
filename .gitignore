@@ -10,6 +10,14 @@ dist
 # Notepad / VS Code "save as" can append .txt — refuse those too.
 .env.local.txt
 .env.*.txt
+# 🔴 And a SUFFIX after `.local` escapes the `.env.*.local` glob entirely — measured
+# 2026-08-14: re-minting the QA passwords wrote a `.env.qa.local.bak` holding the OLD
+# secrets, and it showed up as a plain untracked file that any `git add -A` would have
+# committed. The glob above requires the name to END in `.local`; a backup does not.
+.env*.bak
+.env*.old
+.env*.orig
+.env*~
 .prisma-smoke-probe.mjs
 coverage
 .vercel

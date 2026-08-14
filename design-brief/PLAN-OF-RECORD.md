@@ -889,15 +889,27 @@ deferral stays a decision rather than a silence:
 | Deferred | Restated reason | Still needs |
 |---|---|---|
 | **Density toggle / compact list** | The label is "Compact list view" and the spec is a genuinely different DOM. A toggle bearing that label while only restyling the existing cards is a false promise — and it is a NEW component, not a restyle, so it is not a cleanup-batch item | `MarketListRow` + its own 7-column responsive table with individual hide points |
-| **The mobile filter SHEET** | Batch 1's scrolling strips remain "the right trade for a defect fix, the wrong end state". The debt is real and named. But the verification surface is larger than it looks: the sheet must not regress the strip's keyboard operability, and its focus trap / focus return / Escape-closes must be checked against the shared `<Modal>` primitive's actual contract, not the kit's spec drawing — at four widths in three locales. Half-rigor here is worse than an honest carry | A `<details>`-driven bottom sheet + scrim, sort/topic as FLAT lists inside it. ⛔ never nested `<details>` — it would clip exactly like §8.7c's defect |
+| ~~**The mobile filter SHEET**~~ | ▶ **COMMISSIONED — Ali 2026-08-14, chosen over the other two carried pieces. This is BATCH 6.** The reason it was carried still describes the WORK, not a reason to avoid it: batch 1's scrolling strips are "the right trade for a defect fix, the wrong end state", and the verification surface is larger than it looks — the sheet must not regress the strip's keyboard operability, and its focus trap / focus return / Escape-closes must be checked against the shared `<Modal>` primitive's ACTUAL contract, not the kit's spec drawing, at four widths in three locales. **Half-rigor here is worse than the carry was** | A `<details>`-driven bottom sheet + scrim, sort/topic as FLAT lists inside it. ⛔ never nested `<details>` — it would clip exactly like §8.7c's defect. ⛔ And it must not re-parent a menu inside `.kp-thin-scroll` / `.kp-strip-fade`: a mask clips an absolutely-positioned panel exactly as an overflow does |
 | **Search typeahead** | `SearchBox` already delivers correct debounced search on the shared grammar, so the board searches correctly today. This is a pure ENHANCEMENT, not a gap in behaviour | A client combobox over the existing parser; suggestion kinds per COMPONENTS §8 |
+
+### ⚖️ ALI'S RULINGS — 2026-08-14, asked explicitly and answered
+
+Put to him as four plain-English choices at the close of batch 5, with the trade stated in each.
+⛔ These are DECISIONS. Do not re-open them, and do not re-ask.
+
+| Question | Ali's answer | What it means |
+|---|---|---|
+| The three carried-forward kit pieces | ▶ **The mobile filter SHEET — build it.** ⬜ Compact list and search typeahead **stay deferred** | The sheet is BATCH 6's subject. The other two keep their §8.8 reasons unchanged |
+| The three small consistency items | ▶ **Chart buttons to 44px — do it.** ⬜ The `/markets` screen-reader wording and the `rounded-pill` literal **stay deferred** | `.pchart-range` joins the rails at 44. The other two stay named in §8.8 |
+| Admin filter rails · `/wallet`'s section tabs | ⛔ **Leave both as they are** | The exclusions are now RULED, not merely defensible. ⛔ Do not propose them again |
+| The stale QA credentials | ▶ **Re-mint from the office PC** | Done — 6/6, and all eight rails then verified on production |
 
 ### Batch 5's own deferrals — named, with the reason (2026-08-14)
 
 | Deferred | Why | What it needs |
 |---|---|---|
 | **`/markets`' chips announce `aria-pressed`, on an `<a>`** | `aria-pressed` is only valid on `role="button"`; on a link it is a role mismatch a screen reader may ignore or misreport. Every other rail is `aria-current="page"`, which is the accurate reading for a link that reflects current state. But it is the shipped semantics of the REFERENCE surface, changing it is an a11y behaviour change the batch was not asked for, and it deserves its own verification rather than a side effect of a shape batch. The primitive already supports both, so the change is one prop | A screen-reader pass on `/markets` at 360/1280, then flip `semantics="toggle"` → `"tab"` in `discovery-bar.tsx`'s local `Chip` wrapper |
-| **`.pchart-range` sits at 40px, not the rails' 44px** | 40 is Law 9's floor and the control now genuinely clears it (measured 41px of hit area). It is a compact SEGMENTED sub-control inside a chart header, not a standalone rail, and 44 per segment would make the rail 48px tall in a header line whose label is 10px mono. Defensible, but it IS a difference and it is recorded rather than smoothed over | Ali's eye on whether a chart header can carry a 48px rail |
+| ~~**`.pchart-range` sits at 40px, not the rails' 44px**~~ | ▶ **COMMISSIONED — Ali 2026-08-14: raise it to 44.** He was given the trade (40 already clears Law 9's floor; 44 makes the rail ~48px tall in a chart header whose label is 10px mono) and chose consistency. **BATCH 6** | `min-height: var(--tap-min)` → 44px in `.pchart-range`, then re-measure the hit area and READ the chart header at 4 widths — the header must not wrap or push the chart |
 | **`rounded-pill` is a hard-typed `"999px"` in `tailwind.config.ts:199`** | Two homes for one truth (`--r-pill: 999px` is the other), and B10 rule 4 names `rounded-chip` — which reads `var(--r-pill)` — as the canonical semantic key for new design. ⛔ NOT changed here on purpose: switching one call site to `rounded-chip` while ~40 others say `rounded-pill` creates TWO names for one value, which is worse than the single duplication it fixes. §0a says delete one, not add a third | A platform-wide `rounded-pill` → `rounded-chip` sweep, its own change |
 | ~~**`red:updown-digest`'s `ungate-refunds` anchor is stale**~~ | ✅ **DONE, same session (2026-08-14), `b70b5a82`** — Ali: *"fix anything found as u go."* Re-anchored against the current `notifyRefund` call and **proven: 7/7, the case failing EXACTLY 1 assertion — §5's own "notifyRefund: every round call site is gated"** — with `market-service.ts` restored byte-identical. ⛔ The repair had to **move** the call, not negate the gate: §5 is a SOURCE assertion that looks back 400 chars for `!perEventNotificationsSuppressed(`, so `if (true \|\| !pred(m))` would leave the text in place and the suite would stay GREEN over a genuinely ungated refund. ⭐ It had been printing 6/7 for four days, which reads as "known red" rather than as a case that had stopped testing its defect — see [[an-instrument-reports-its-own-staleness]]'s fifth shape | — |
 | **Admin filter rails are untouched** | `/admin/**` has its own density rules and a different audience, and `DateTimeRangeFilter` is a genuinely different control (a range, not a set of options) already shared across 7 admin routes. Ali's instruction named the player platform | A separate decision about whether admin should share the player pill |
@@ -1480,13 +1492,19 @@ doing real damage, and it is why the primitive keeps `min-h-[44px]` as an arbitr
   now has a day rail derived from the player's own rounds (`eatDayKey` over rows already in hand,
   **zero extra I/O**), each day carrying a round count proven promise-vs-delivery.
 
-### ⚠️ FOUR OF THE EIGHT RAILS ARE NOT VERIFIED ON PRODUCTION — say so, do not round it up
+### ✅ ALL EIGHT RAILS VERIFIED ON PRODUCTION — the login gap is CLOSED
 
-Verified on production after the deploy: `/markets`, `/results`, `/proposals`, `/updown` — **432
-controls at 4 widths × 3 locales, all 999px / ≥44px / 0 inline / 0 unselected outlines**, plus all
-four board probes green. `/positions`, `/profile/activity`, `/profile/account` and
-`/updown/history` are behind a login and were measured **on localhost against the identical
-committed code**, not on production.
+**`8 of 8 surfaces reached` on `https://50pick.tz`**, every rail 999px / ≥44px / **0** inline styles
+/ **0** unselected outlines — including the four behind a login. The `/updown/history` day rail was
+proven promise-vs-delivery on REAL production data (`?day=2026-08-05` promises **6**, delivers
+**6**; `?day=lol` falls back to unfiltered with "All days" selected, so the dead end is closed
+there too). Plus the earlier public-surface sweep at 4 widths × 3 locales and all four board probes.
+
+⚠️ **It took a credential fix to get here, and the interim state is worth keeping** — for four
+hours this batch could only say *"verified on localhost against the identical committed code"* for
+`/positions`, `/profile/activity`, `/profile/account` and `/updown/history`. **That is what an
+honest report of a blocked verification looks like; it is not the same as verified.** The block and
+its diagnosis are below.
 
 🔴 **The reason is not this batch's, and it blocks every live authed driver in the repo.** The QA
 player personas will not sign in on production: `login(page, "alpha")` and `"echo"` both land back
@@ -1506,9 +1524,17 @@ this session's own attempts**. `lastLoginAt` is `2026-08-10 23:40` for both, fou
 So it is **not** a lockout, **not** a suspension, and **not** a missing account: **this laptop's
 `.env.qa.local` is stale.** That is the two-laptop credential trap `docs/LIVE-QA-CAMPAIGN.md` §1
 already documents, recurring — the full query and table are recorded there.
-⛔ **Not re-minted**, because §1 forbids it in as many words (*"a second re-mint just moves the
-lockout to the other laptop"*) and another session was live in this working tree at the time.
-**Ali: copy `.env.qa.local` from whichever machine last signed in successfully (2026-08-10 23:40).**
+✅ **RESOLVED THE SAME DAY — Ali authorised a re-mint and it is done.** He was on the OFFICE PC and
+the working file was on the HOME laptop, so copying it was not available to him; asked which route
+he wanted, he chose *"mint new accounts · u have ful access"*. `ops-remint-qa-passwords.mts` ran
+**6/6 re-minted and verified** (read-your-write against the stored hash), it **refused nothing** and
+**could not** touch his own console login — `777777777` is absent from its list and it re-reads
+`role` off the row and refuses any `ADMIN`. `QA_ADMIN_PASSWORD` and `ADMIN_LOGIN_*` were preserved
+byte-for-byte in `.env.qa.local`; the run's stdout was redirected to a scratch file, merged by
+key-name only and **deleted**, so no secret reached a transcript or a tracked file.
+⚠️ **The cost Ali accepted: the HOME laptop's `.env.qa.local` no longer works** until he copies the
+new one across. Recorded in `docs/LIVE-QA-CAMPAIGN.md` §1 with the instant, because the other
+machine has no way to detect it except by failing to log in.
 
 `npm run qa:filter-scan -- https://50pick.tz --as=alpha` is the command that closes this the moment
 the credentials work; it **exits non-zero** when a requested sign-in fails, so a future run cannot

@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Set-Location:*)",
+      "PowerShell(Get-Location:*)",
+      "PowerShell(Select-Object:*)",
+      "PowerShell(Select-String:*)",
+      "PowerShell(Out-String:*)",
+      "PowerShell(Format-Table:*)",
+      "PowerShell(Format-List:*)",
+      "PowerShell(Where-Object:*)",
+      "PowerShell(ForEach-Object:*)",
+      "PowerShell(Measure-Object:*)",
+      "PowerShell(Sort-Object:*)",
+      "PowerShell(Group-Object:*)",
+      "PowerShell(Compare-Object:*)",
+      "PowerShell(ConvertFrom-Json:*)",
+      "PowerShell(ConvertTo-Json:*)",
+      "PowerShell(Get-Item:*)",
+      "PowerShell(Get-Date:*)",
+      "PowerShell(Get-Process:*)",
+      "PowerShell(Get-NetTCPConnection:*)",
+      "PowerShell(Get-FileHash:*)",
+      "PowerShell(Get-CimInstance:*)",
+      "PowerShell(Get-Command:*)",
+      "PowerShell(Resolve-Path:*)",
+      "PowerShell(netstat:*)"
+    ]
+  }
+}
