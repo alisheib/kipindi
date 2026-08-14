@@ -29,7 +29,7 @@
  * RED harness: `node scripts/fee-model-caption-red.mjs`.
  */
 import { readFileSync } from "node:fs";
-import { poolFee, describeFeeModel, resolveFeeModel, MAX_LOSER_SHARE_RATE } from "../src/lib/payout.ts";
+import { poolFee, describeFeeModel, resolveFeeModel, MAX_LOSER_SHARE_RATE, FEE_CAPTION_MAX_CHARS } from "../src/lib/payout.ts";
 import { rateProfileOf, boardFeeSummary, DEFAULT_UPDOWN_CONFIG } from "../src/lib/server/updown-config.ts";
 import type { UpDownConfig } from "../src/lib/server/updown-config.ts";
 
@@ -82,7 +82,8 @@ const quoted = (caption: string) => [...caption.matchAll(/([\d.]+)%/g)].map((m) 
      Math.abs(rate * no - f.fee) < 1e-9, `${rate} × ${no} = ${rate * no} vs fee ${f.fee}`);
   ok("2.3 · …and it is not accidentally the rate on the whole pool",
      Math.abs(rate * (yes + no) - f.fee) > 1, `${rate * (yes + no)} vs ${f.fee}`);
-  ok("2.4 · the caption says whose money it is", describeFeeModel(LOSER_SHARE).caption.includes("of losers"),
+  ok("2.4 · the caption NAMES the model — the half that was hardcoded and wrong",
+     describeFeeModel(LOSER_SHARE).caption.includes("loser-share"),
      describeFeeModel(LOSER_SHARE).caption);
 }
 
@@ -153,7 +154,7 @@ console.log("\n§3 · the split a default-only console cannot see");
 
   const done = boardFeeSummary([migrated, inheriting], cfg);
   ok("3.7 · a fully migrated board is NOT flagged as split", done.split === false, done.caption);
-  ok("3.8 · …and captions the live law and its rate", done.caption === "loser-share · 13% of losers", done.caption);
+  ok("3.8 · …and captions the live law and its rate", done.caption === "loser-share 13%", done.caption);
 
   // ⚠️ THE LATENT SPLIT. A STOPPED chain still carries its profile and freezes it onto
   // the first round an operator restarts it with. It counts.
@@ -168,7 +169,7 @@ console.log("\n§3 · the split a default-only console cannot see");
   ok("3.10 · ★ chains migrated but the DEFAULT left behind is a split too", chainsAhead.split === true, chainsAhead.caption);
 
   ok("3.11 · a board with no chains at all falls back to the default, without claiming a split",
-     boardFeeSummary([], cfg).split === false && boardFeeSummary([], cfg).caption === "loser-share · 13% of losers",
+     boardFeeSummary([], cfg).split === false && boardFeeSummary([], cfg).caption === "loser-share 13%",
      boardFeeSummary([], cfg).caption);
 }
 
@@ -248,6 +249,41 @@ console.log("\n§5 · the checker can say no");
 
   ok("5.5 · a source with no tile at all returns null, never a silent pass",
      feeTileDelta("const x = 1;") === null, String(feeTileDelta("const x = 1;")));
+}
+
+// ── §6 · the caption has to FIT, not merely be right ────────────────────────
+console.log("\n§6 · a correct caption an operator cannot read is still a defect");
+
+{
+  // 🔴 MEASURED ON PRODUCTION, NOT CHOSEN. `loser-share · 13% of losers` (27 chars) shipped
+  // and was ELLIPSISED at exactly 1024px — the `lg` breakpoint where the KPI row goes 4-up.
+  // `qa:admin-updown-widths` read the chip: a 144px box against 210px of content, 7.24px per
+  // character, so ~19 rendered characters fit and `AdminKpi` spends 2 on its direction glyph.
+  // ⛔ Clipping INSIDE a card never reaches `document.scrollWidth`, so no page-level overflow
+  // check can ever see this. Only a per-element read finds it — which is why it is asserted
+  // here, on the string, where it costs nothing to keep checking.
+  for (const [name, rates] of [
+    ["loser-share", LOSER_SHARE],
+    ["capped-commission", CAPPED],
+    ["a bare legacy snapshot", LEGACY_BARE],
+    ["undefined rates", undefined],
+  ] as const) {
+    const c = describeFeeModel(rates).caption;
+    ok(`6.${name} fits the 1024px tile (≤ ${FEE_CAPTION_MAX_CHARS} chars)`,
+       c.length <= FEE_CAPTION_MAX_CHARS, `${c.length} chars: "${c}"`);
+  }
+
+  // ⭐ AND THE BUDGET IS NOT VACUOUS. The string this replaced must still fail it, or a
+  // future edit could restore the prose and this section would wave it through.
+  ok("6.★ the ELLIPSISED original would still be rejected",
+     "loser-share · 13% of losers".length > FEE_CAPTION_MAX_CHARS,
+     `${"loser-share · 13% of losers".length} > ${FEE_CAPTION_MAX_CHARS}`);
+
+  // A pathological operator rate must not blow the budget either — 100% is the clamp.
+  const maxed = { feeModel: "loser-share" as const, platformFeeRate: 0.6, operatorFeeRate: 0.6, feeCeilingRate: 1 / 3 };
+  ok("6.★★ …and it still fits at the maximum rate an operator can configure",
+     describeFeeModel(maxed).caption.length <= FEE_CAPTION_MAX_CHARS,
+     `"${describeFeeModel(maxed).caption}"`);
 }
 
 console.log(`\nfee-model-caption: ${pass} passed, ${fail} failed`);

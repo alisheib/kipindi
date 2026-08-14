@@ -84,8 +84,8 @@ const MUTATIONS = [
     name: "caption-drops-the-clamp",
     why: "the caption quotes the raw sum while `poolFee` clamps it — an operator on 60%+60% is charged 100% of the losing side and told 120%",
     file: PAY,
-    from: "    const loserRate = clamp(r.platformFeeRate + r.operatorFeeRate, 0, MAX_LOSER_SHARE_RATE);\n    return { model: r.feeModel, caption: `loser-share · ${pct(loserRate)} of losers` };",
-    to: "    return { model: r.feeModel, caption: `loser-share · ${pct(r.platformFeeRate + r.operatorFeeRate)} of losers` };",
+    from: "    const loserRate = clamp(r.platformFeeRate + r.operatorFeeRate, 0, MAX_LOSER_SHARE_RATE);\n    return { model: r.feeModel, caption: `loser-share ${pct(loserRate)}` };",
+    to: "    return { model: r.feeModel, caption: `loser-share ${pct(r.platformFeeRate + r.operatorFeeRate)}` };",
   },
   {
     name: "legacy-snapshot-captioned-as-loser-share",
@@ -93,6 +93,13 @@ const MUTATIONS = [
     file: PAY,
     from: '    feeModel: rates?.feeModel === "loser-share" ? "loser-share" : "capped-commission",',
     to: '    feeModel: rates?.feeModel === "capped-commission" ? "capped-commission" : "loser-share",',
+  },
+  {
+    name: "caption-grows-back-past-the-tile",
+    why: "⚠️ NOT ARITHMETIC — the caption is restored to the prose that SHIPPED and was ELLIPSISED at 1024px on the live console. It is correct, tied out, and unreadable. Only §6's measured budget can see it",
+    file: PAY,
+    from: "    return { model: r.feeModel, caption: `loser-share ${pct(loserRate)}` };",
+    to: "    return { model: r.feeModel, caption: `loser-share · ${pct(loserRate)} of losers` };",
   },
   {
     name: "anchor-renamed-so-the-guard-finds-nothing",

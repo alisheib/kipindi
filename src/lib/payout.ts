@@ -390,10 +390,32 @@ export function describeFeeModel(rates: Partial<FeeRates> | undefined): { model:
   if (r.feeModel === "loser-share") {
     // The SAME clamp `poolFee` applies to the summed slices — not the raw sum.
     const loserRate = clamp(r.platformFeeRate + r.operatorFeeRate, 0, MAX_LOSER_SHARE_RATE);
-    return { model: r.feeModel, caption: `loser-share · ${pct(loserRate)} of losers` };
+    return { model: r.feeModel, caption: `loser-share ${pct(loserRate)}` };
   }
-  return { model: r.feeModel, caption: `capped · ${pct(r.commissionRate)} of pool, ${pct(r.feeCeilingRate)} cap` };
+  return { model: r.feeModel, caption: `capped ${pct(r.commissionRate)}/${pct(r.feeCeilingRate)}` };
 }
+
+/**
+ * How many characters a fee caption may be. **MEASURED, not chosen.**
+ *
+ * 🔴 The first version of `describeFeeModel` returned `loser-share · 13% of losers` (27
+ * chars), it shipped, and it was ELLIPSISED on the live console at exactly 1024px — the
+ * `lg` breakpoint, where `/admin/updown`'s KPI row goes 4-up and the tile is at its
+ * narrowest with the delta still on one line. Measured off production by
+ * `qa:admin-updown-widths`: the chip's box is **144px** there and the string needed
+ * **210px** — 7.24px per character, so **~19 rendered characters fit**, and `AdminKpi`
+ * spends 2 of them on the direction glyph.
+ *
+ * ⛔ THIS IS WHY THE CAPTION DROPPED "of losers" AND THE " · " SEPARATORS. The model NAME is
+ * the load-bearing half — naming the wrong law is the defect A4 existed to fix — and the
+ * base it charges on is what the name "loser-share" already says. Do not restore the prose:
+ * `test:fee-model-caption` §6 fails when a caption exceeds this budget, because a caption
+ * that is correct and ellipsised is still a caption an operator cannot read.
+ *
+ * ⚠️ Clipping INSIDE a card never reaches `document.scrollWidth`, so no page-level overflow
+ * check can see this. Only a per-element read or a human looking at the screenshot finds it.
+ */
+export const FEE_CAPTION_MAX_CHARS = 17;
 
 // ── THE FEE ─────────────────────────────────────────────────────────────────
 

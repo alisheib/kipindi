@@ -404,7 +404,8 @@
     "test:bonus-one-side": "tsx scripts/bonus-one-side.test.mts",
     "red:bonus-one-side": "node scripts/bonus-one-side-red.mjs",
     "test:thin-alert": "tsx scripts/thin-market-alert.test.mts",
-    "red:thin-alert": "node scripts/thin-market-alert-red.mjs"
+    "red:thin-alert": "node scripts/thin-market-alert-red.mjs",
+    "qa:admin-updown-widths": "node scripts/live-admin-updown-widths.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

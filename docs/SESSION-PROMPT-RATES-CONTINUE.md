@@ -128,8 +128,32 @@ under the smaller fee**, measured rather than impressed.
 - **An empty round reads `× 1.00` under BOTH fee models** — one-sided, so the stake simply
   comes back. The first drive photographed six `× 1.00` buttons and proved nothing.
 
-⏳ **Still open on A4** — needs a settled round of each shape:
-- a one-sided round refunding in full, and a VOID charging nothing, **on a real one**.
+**Then looked at the CONSOLE, and it found a second defect the suite could not.** The tile
+deployed reading `TZS 650 · loser-share · 13% of losers` — correct, tied out, and **ELLIPSISED
+at exactly 1024px**, the `lg` breakpoint where the KPI row goes 4-up. Measured off production
+by `qa:admin-updown-widths`: a **144px** chip box against **210px** of content, 7.24px per
+character, so ~19 rendered characters fit and `AdminKpi` spends 2 on its direction glyph.
+⛔ Clipping INSIDE a card never reaches `document.scrollWidth`, so no page-level overflow
+check could ever have seen it — only a per-element read or a human looking at the screenshot.
+The caption is now `loser-share 13%` (15 chars) and `FEE_CAPTION_MAX_CHARS = 17` is a
+**measured** budget with its own guard (§6) and its own RED mutation.
+
+⚠️ Two harness traps in that driver, both now written into it:
+- the label is CSS-`uppercase`, so a case-sensitive `startsWith` reported the tile **missing
+  at all four widths** on a console rendering it perfectly — the trap `live/harness.mjs`
+  documents about `bodyText()`, walked into one file over;
+- `AdminKpi` renders `{▲|▼|·} {delta}` but sets `title={delta}`, so comparing rendered text
+  against the title flags every width as broken.
+
+✅ **A one-sided round, on a REAL one** (`mkt_228cf35c866dae`, 2026-08-14 13:49): YES 3,000 /
+NO 0 → **fee 0.00, all 3,000 refunded over 2 positions, pool residual 0.00**.
+
+⏳ **Still open on A4** — a VOID **charging nothing, on a real one**. Not yet observable:
+production's void rate is **1.7% over 24h** (30 of 1,761), and the three drives placed since
+the cutover all decided. ⛔ `test:updown-cutover` §5b proves it on the real settlement path,
+which is NOT production. `loser-share-settled.cjs` §3 stays RED until a real one lands.
+⚠️ **Gold is the highest-void asset (11 of those 30) and cannot be used** — see
+[`FINDING-GOLD-CHAINS-STALLED.md`](FINDING-GOLD-CHAINS-STALLED.md).
 
 ### ✅ B1 / B1b / B3 — bet logic, in ONE commit (session 2)
 
