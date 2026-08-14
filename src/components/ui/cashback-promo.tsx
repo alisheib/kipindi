@@ -17,12 +17,17 @@ import { useT } from "@/lib/i18n";
 
 export function CashbackPromo({
   percent = 10,
+  // F5 · the wagering multiple was a literal 5 in the copy. It is `defaultWagerMultiplier`
+  // in bonus-config, admin-editable from 1 to 100 — a number written twice.
+  wagerMultiplier = 5,
   mode = "REQUEST",
   cta = true,
   compact = false,
   className,
 }: {
   percent?: number;
+  /** Turnover multiple required before the bonus can be withdrawn. Reads bonus-config. */
+  wagerMultiplier?: number;
   /** "REQUEST" = loss-based cashback (Management Rules §2), "AUTO" = legacy every-deposit */
   mode?: "REQUEST" | "AUTO";
   cta?: boolean;
@@ -70,7 +75,9 @@ export function CashbackPromo({
         </p>
 
         <p className={cn("text-text/85 leading-snug", compact ? "mt-1.5 text-[12px]" : "mt-2 text-[13px]")}>
-          {(isRequest ? t.common.cashbackRequestSubtitle : t.common.cashbackSubtitle).replace("{pct}", String(percent))}
+          {(isRequest ? t.common.cashbackRequestSubtitle : t.common.cashbackSubtitle)
+            .replace("{pct}", String(percent))
+            .replace("{wager}", String(wagerMultiplier))}
         </p>
 
         {cta && !isRequest && (

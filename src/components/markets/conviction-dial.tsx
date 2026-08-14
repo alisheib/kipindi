@@ -1522,7 +1522,9 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
               <InfoHint
                 size={10}
                 label={showEstimate
-                  ? t.dialog.estimateHowItWorks
+                  // F2/F5 · the multiple is READ, not written. It was the literal "1.5×" in the
+                  // copy, and Up & Down runs 1.4× — so the hint disagreed with the button beside it.
+                  ? fill(t.dialog.estimateHowItWorks, { mult: String(Number((1 + (rates?.estimatedWinningsRate ?? 0)).toFixed(2))) })
                   : fill(t.dialog.payoutHowItWorks, { pct: pctNum(rates?.commissionRate ?? DEFAULT_COMMISSION_RATE), ceiling: fmtRate(rates?.feeCeilingRate ?? DEFAULT_FEE_CEILING_RATE) })}
               />
             </p>

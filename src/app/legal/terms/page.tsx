@@ -61,11 +61,14 @@ const CONTENT: Record<Locale, React.ReactNode> = {
           side&apos;s pool.
         </p>
         <p>
-          <strong className="text-text">Our commission is 10% of the pool, but never more than a third of the
-          smaller side.</strong> The smaller side is the prize — it is all the money the winning side can win —
-          so capping our commission below it means that{" "}
-          <strong className="text-text">a winning bet is never paid less than it staked</strong>. We never take
-          more than a third of what you win.
+          <strong className="text-text">Our commission is 13% of the losing side.</strong> The winning side&apos;s
+          stakes are returned in full and are never touched; our commission comes only out of the money staked on
+          the outcome that did not happen. It follows that{" "}
+          <strong className="text-text">a winning bet is never paid less than it staked</strong>.
+        </p>
+        <p>
+          If every stake is on one side, there is no losing side, so we charge nothing and every stake is
+          returned in full. The same applies to a market that is voided.
         </p>
         <p>
           The rates that apply to a market are <strong className="text-text">fixed when that market is
@@ -94,7 +97,7 @@ const CONTENT: Record<Locale, React.ReactNode> = {
           review for up to 24 hours.
         </p>
         <p>
-          <strong className="text-text">A withdrawal is charged a 1% fee, and nothing else. No tax is withheld
+          <strong className="text-text">A withdrawal is charged a 1.5% fee, and nothing else. No tax is withheld
           from your money.</strong> Taxes and statutory levies are paid by 50pick out of its own commission —
           they are never deducted from your balance or your winnings. The fee is shown on the withdrawal screen
           before you confirm.
@@ -177,11 +180,14 @@ const CONTENT: Record<Locale, React.ReactNode> = {
           linagawanywa kwa upande ulioshinda, kwa uwiano wa mchango wa kila dau sahihi katika bwawa la upande ulioshinda.
         </p>
         <p>
-          <strong className="text-text">Kamisheni yetu ni 10% ya bwawa, lakini kamwe si zaidi ya theluthi moja ya upande
-          mdogo.</strong> Upande mdogo ndiyo zawadi — ndiyo pesa zote ambazo upande ulioshinda unaweza kushinda — kwa hiyo
-          kuweka kikomo cha kamisheni chini yake kunamaanisha kwamba{" "}
-          <strong className="text-text">dau lililoshinda halilipwi chini ya dau lake kamwe</strong>. Hatuchukui zaidi ya
-          theluthi moja ya unachoshinda.
+          <strong className="text-text">Kamisheni yetu ni 13% ya upande ulioshindwa.</strong> Dau za upande ulioshinda
+          zinarudishwa zote na haziguswi kamwe; kamisheni yetu inatoka tu kwenye fedha zilizowekwa kwenye matokeo
+          yasiyotokea. Kwa hiyo{" "}
+          <strong className="text-text">dau lililoshinda halilipwi chini ya dau lake kamwe</strong>.
+        </p>
+        <p>
+          Kama dau zote ziko upande mmoja, hakuna upande ulioshindwa, kwa hiyo hatutozi chochote na kila dau
+          linarudishwa lote. Vivyo hivyo kwa soko lililofutwa.
         </p>
         <p>
           Viwango vinavyotumika kwenye soko <strong className="text-text">vinawekwa soko linapoundwa</strong> na haviwezi
@@ -211,7 +217,7 @@ const CONTENT: Record<Locale, React.ReactNode> = {
           kwa ukaguzi wa AML kwa hadi saa 24.
         </p>
         <p>
-          <strong className="text-text">Utoaji wa fedha hutozwa ada ya 1%, na si kitu kingine. Hakuna kodi inayokatwa
+          <strong className="text-text">Utoaji wa fedha hutozwa ada ya 1.5%, na si kitu kingine. Hakuna kodi inayokatwa
           kwenye pesa zako.</strong> Kodi na tozo za kisheria hulipwa na 50pick kutoka kamisheni yake yenyewe — hazikatwi
           kamwe kwenye salio lako wala kwenye ushindi wako. Ada inaonyeshwa kwenye skrini ya kutoa fedha kabla
           hujathibitisha.
@@ -290,9 +296,12 @@ const CONTENT: Record<Locale, React.ReactNode> = {
           按比例分配给获胜方。
         </p>
         <p>
-          <strong className="text-text">我们的佣金为资金池的 10%，但绝不超过较小一方的三分之一。</strong>
-          较小一方就是奖金——它是获胜方所能赢得的全部金额——因此将佣金上限设在其之下，就意味着
-          <strong className="text-text">获胜的投注绝不会拿到低于本金的金额</strong>。我们收取的绝不超过您赢得金额的三分之一。
+          <strong className="text-text">我们的佣金为失败一方的 13%。</strong>
+          获胜一方的本金全额退回，永不被动；我们的佣金仅从未发生结果一方的投注中扣取。因此
+          <strong className="text-text">获胜的投注绝不会拿到低于本金的金额</strong>。
+        </p>
+        <p>
+          若所有投注都在同一方，则不存在失败一方，我们不收取任何费用，所有注金全额退还。市场被作废时同理。
         </p>
         <p>
           适用于某个市场的费率<strong className="text-text">在该市场创建时即已固定</strong>，此后不可更改。我们日后调整费率
@@ -315,7 +324,7 @@ const CONTENT: Record<Locale, React.ReactNode> = {
           可能因 AML 审查而被暂扣最长 24 小时。
         </p>
         <p>
-          <strong className="text-text">提现收取 1% 手续费，除此之外别无其他。我们不会从您的资金中预扣任何税款。</strong>
+          <strong className="text-text">提现收取 1.5% 手续费，除此之外别无其他。我们不会从您的资金中预扣任何税款。</strong>
           税款及法定征费由 50pick 从自己的佣金中缴纳——绝不会从您的余额或奖金中扣除。手续费会在您确认提现前显示于提现界面。
         </p>
       </LegalSection>

@@ -10,62 +10,73 @@
  *
  * ── THE RULE ───────────────────────────────────────────────────────────────
  *
- *   "Our commission is 10% of the pool, but never more than a third of the
- *    smaller side."
+ * ⛔ THIS BLOCK STATED THE RETIRED RULE AS **THE** RULE UNTIL 2026-08-14, with a long
+ * justification for a ceiling the live model does not have. It is the first thing any
+ * engineer reads about our money, and it was describing a formula that had not priced a
+ * new market since 2026-07-23. Corrected in F4; `docs/RULES.md` is the authority.
  *
- *   pool       = yesPool + noPool
- *   smaller    = min(yesPool, noPool)          // the prize — all the winners can win
- *   commission = commissionRate * pool         // 10%
- *   ceiling    = feeCeilingRate  * smaller     // a third
- *   fee        = min(commission, ceiling)      // <- the whole thing
- *   netPool    = pool - fee
- *   payout(p)  = round(p.stake / winningPool * netPool)
+ *   ⭐ CURRENT — `loser-share`, BOTH GAMES, identical:
  *
- * WHY THE CEILING EXISTS. The smaller side IS the prize. A flat 10%-of-pool fee
- * on a lopsided poll grows LARGER THAN THE ENTIRE PRIZE, so the balance can only
- * come out of the winners' own returned stakes — and every winner takes a loss on
- * a correct call. That is not a hypothetical: on a real poll (YES 300,000 /
- * NO 10,500) the old 9%-of-pool fee was 31,050 against a prize of 10,500, and a
- * 100,000 stake on the winning side paid back 93,150. The ceiling is what makes
- * that arithmetically impossible.
+ *        "Our fee is 13% of the LOSING side."
  *
- * WHY A THIRD. At a ceiling of one half we would take exactly as much as all the
- * winners put together; above a half we take more than they do. At a third the
- * winners always keep at least twice what we take — a promise we can print:
- * "We never take more than a third of what you win."
+ *        losingPool = the pool on the side that did NOT happen
+ *        fee        = (platformFeeRate + operatorFeeRate) * losingPool   // 3% + 10%
+ *        netPool    = pool - fee
+ *        payout(p)  = round(p.stake / winningPool * netPool)
  *
- * NO CLIFF, NO BRANCH. "The full 10% whenever the smaller side is >= 30% of the
- * pool" and "never more than a third of the smaller side" are the SAME RULE. They
- * cross over seamlessly at exactly 70/30 (10% of 100,000 = 10,000; a third of
- * 30,000 = 10,000). `min()` finds the seam by itself. Do not reintroduce a
- * threshold `if` — a threshold is a step function, and a step function is gameable
- * by a bettor who nudges the pools across the line.
+ *      The winners' own stakes are never touched: the fee comes out of money staked on
+ *      an outcome that did not happen. One-sided market ⇒ no losing side ⇒ fee 0 and
+ *      every stake refunded. VOID ⇒ no outcome ⇒ fee 0.
+ *
+ *   ⚫ LEGACY — `capped-commission`, retained ONLY because markets created before the
+ *      cutover froze it and must settle by what they froze:
+ *
+ *        fee = min(commissionRate * pool, feeCeilingRate * min(yesPool, noPool))
+ *
+ *      The ceiling existed because a flat share OF THE WHOLE POOL can exceed the entire
+ *      prize on a lopsided market, which would take the balance out of the winners' own
+ *      returned stakes. Measured on a real poll (YES 300,000 / NO 10,500): a 9%-of-pool
+ *      fee was 31,050 against a prize of 10,500, and a 100,000 winning stake paid back
+ *      93,150. ⚠️ `loser-share` cannot reach that state at all — its fee is a share of the
+ *      losing pool and so is bounded by it by construction — which is why the ceiling is
+ *      not carried forward rather than being merely retuned.
+ *
+ * ⛔ THE TWO MATHS NEVER MIX. The model is frozen per market in `feeSnapshot` at creation
+ * and settlement reads only the snapshot. On production, 4,220 Up & Down rounds and 58
+ * legacy polls still settle by the legacy arm. Do not "harmonise" history.
  *
  * ── THE INVARIANTS (see scripts/money-invariants.test.mts) ─────────────────
  *
- *  1. A WIN IS NEVER PAID BELOW ITS STAKE. Because fee <= (1/3)*smaller:
- *       - if the winning side is the BIGGER one, smaller == losingPool, so
- *         netPool >= winningPool + (2/3)*losingPool  ->  ratio >= 1 + (2/3)*L/W > 1
- *       - if the winning side is the SMALLER one, fee <= (1/3)*winningPool, so
- *         netPool >= (2/3)*winningPool + losingPool  ->  ratio >= 2/3 + L/W > 5/3
- *     This holds for ANY commissionRate an admin can type — the ceiling seals the
- *     system against admin error too. It needs only feeCeilingRate <= 1, which
- *     validation enforces. `assertWinnerFloor` re-checks it at runtime and THROWS,
- *     because refusing to settle is safe and paying a winner less than he staked
- *     is not.
+ *  1. A WIN IS NEVER PAID BELOW ITS STAKE — under BOTH models, for different reasons.
+ *       · loser-share: the fee removes at most 100% of the LOSING pool, so
+ *         netPool = winningPool + losingPool*(1 - rate) >= winningPool, hence ratio >= 1.
+ *       · capped-commission: fee <= (1/3)*smaller, so
+ *         - winning side BIGGER: smaller == losingPool ⇒ ratio >= 1 + (2/3)*L/W > 1
+ *         - winning side SMALLER: fee <= (1/3)*winningPool ⇒ ratio >= 2/3 + L/W > 5/3
+ *     `assertWinnerFloor` re-checks it at runtime and THROWS, because refusing to settle
+ *     is safe and paying a winner less than he staked is not.
  *
- *  2. OUTCOME-NEUTRAL. `poolFee` reads the two pool numbers and nothing else. It
- *     cannot see the outcome, so it is byte-identical for a YES win and a NO win
- *     on the same final pools. The pari-mutuel licence rests on this
- *     (docs/F6-LIQUIDITY-DESIGN.md §3.1) — do not pass an outcome into it.
+ *  2. 🔴 OUTCOME-NEUTRALITY IS A PROPERTY OF THE LEGACY MODEL ONLY, AND THAT IS A
+ *     DELIBERATE, RECORDED DECISION — not an oversight. `capped-commission` reads the two
+ *     pool numbers and nothing else, so it is byte-identical for a YES win and a NO win on
+ *     the same final pools; `docs/F6-LIQUIDITY-DESIGN.md` §3.1 names that as the
+ *     pari-mutuel licence anchor. `loser-share` charges a slice of whichever side LOST and
+ *     is therefore outcome-DEPENDENT: `poolFee` MUST be told the winning side. Polls have
+ *     been outcome-dependent since 2026-07-23 and Up & Down since 2026-08-14, both under
+ *     Ali's explicit override, recorded in `docs/COMPLIANCE-DECISIONS.md` and flagged for
+ *     the GBT file. ⛔ Do not re-litigate it in code.
  *
  *  3. NO MINT / NO LEAK. sum(payouts) + fee == pool, to rounding dust.
  *
- *  4. BALANCED POLL. yesPool == noPool -> fee == commissionRate * pool exactly
- *     (the ceiling is slack: a third of half the pool > a tenth of the pool).
+ *  4. BALANCED MARKET. yesPool == noPool ⇒ loser-share charges rate * half the pool
+ *     (13% of 5,000 on a 10,000 book = 650); capped-commission charges commissionRate *
+ *     pool exactly, the ceiling being slack. ⚠️ Our income on a balanced book therefore
+ *     HALVED at the cutover — 26% → 13% of the losers' money. Deliberate: one charge model
+ *     the customer can understand (`docs/RULES.md` §1, accepted consequences).
  *
- *  5. ONE-SIDED. smaller == 0 -> fee == 0 -> everybody is refunded. This now falls
- *     out of the maths; settlement keeps an explicit branch only for audit clarity.
+ *  5. ONE-SIDED. Under loser-share there is no losing pool; under capped-commission
+ *     smaller == 0. Either way fee == 0 and everybody is refunded. It falls out of the
+ *     maths under both; settlement keeps an explicit branch only for audit clarity.
  *
  * Taxes (TRA/GBT) come out of OUR fee, never out of the player — see `levySplit`.
  */

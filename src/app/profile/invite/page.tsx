@@ -12,6 +12,8 @@ import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ReferralShare } from "./invite-client";
+import { fill } from "@/lib/utils";
+import { getBonusConfig } from "@/lib/server/bonus-config";
 import { formatDateShort as fmtDate, formatNumber } from "@/lib/utils";
 import { getServerT } from "@/lib/i18n-server";
 
@@ -103,6 +105,8 @@ export default async function InvitePage() {
   // program off" to a player with real referral earnings. Throw to
   // profile/error.tsx instead.
   const s = await getPlayerReferralSummary(session.userId);
+  // F5 · the wagering multiple the requirements list quotes — READ, never written.
+  const bonusCfg = getBonusConfig();
   const ringValue = s.recruitCount === 0 ? 0 : Math.min(100, 30 + s.recruitCount * 12);
   const ringLabel = s.earnedTzs > 0 ? compact(s.earnedTzs) : "0";
   const shareText = t.profile.shareText;
@@ -277,7 +281,8 @@ export default async function InvitePage() {
           <li>{t.profile.inviteReqRegister}</li>
           <li>{t.profile.inviteReqDeposit}</li>
           <li>{t.profile.inviteReqBet}</li>
-          <li>{t.profile.inviteReqWager}</li>
+          {/* F5 · the multiple is READ from bonus-config, not written into the copy. */}
+          <li>{fill(t.profile.inviteReqWager, { wager: bonusCfg.defaultWagerMultiplier })}</li>
           <li>{t.profile.inviteReqExpiry}</li>
           <li>{t.profile.inviteReqSequential}</li>
         </ul>

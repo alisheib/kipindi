@@ -196,10 +196,15 @@ export type RateConfig = {
 };
 
 export const DEFAULT_GLOBAL_CONFIG: RateConfig = {
-  // THE RULE: "our commission is 10% of the pool, but never more than a third of
-  // the smaller side." These two numbers are that sentence. They cross over
-  // seamlessly at 70/30 — see payout.ts.
-  commissionRate: DEFAULT_COMMISSION_RATE,   // 0.10
+  // ⚫ LEGACY FIELDS, and the comment that stood here called them "THE RULE". They are
+  // not: THE rule is 13% of the LOSING side (docs/RULES.md §2.1, live since 2026-07-23 on
+  // polls and 2026-08-14 on Up & Down), and it is expressed by platformFeeRate +
+  // operatorFeeRate below. These two describe the RETIRED capped-commission formula —
+  // fee = min(commissionRate × pool, feeCeilingRate × smaller) — and they stay defined for
+  // exactly one reason: 4,220 Up & Down rounds and 58 polls are FROZEN at that model and
+  // must settle by it forever. ⛔ A cold start must never leave a reader of an old snapshot
+  // looking at `undefined`.
+  commissionRate: DEFAULT_COMMISSION_RATE,   // 0.10 — legacy arm only
   feeCeilingRate: DEFAULT_FEE_CEILING_RATE,  // 1/3 — the exact fraction, not 0.33
   // Early exit after the free window. Goes to the HOUSE (it used to be left in
   // the pool, so we earned nothing on an early exit).

@@ -248,8 +248,10 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
             </>
           ) : (
             <>
-              <strong className="text-text">Capped commission.</strong> The fee is a percentage of the whole pool,
-              but never more than a third of the smaller side, and it is the <strong>same whichever side wins</strong>.
+              <strong className="text-text">Capped commission (legacy).</strong> Retired 2026-07-23 for polls and
+              2026-08-14 for Up &amp; Down; it is shown here because markets created before those dates froze it and
+              settle by it forever. The fee is a percentage of the whole pool, but never more than a third of the
+              smaller side, and it is the <strong>same whichever side wins</strong>.
               No payout figure is shown to players before they bet. Uses the commission + ceiling fields above.
             </>
           )}

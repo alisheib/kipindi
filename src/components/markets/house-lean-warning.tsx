@@ -10,10 +10,14 @@
  * and came out of the winners' own stakes. We warned people about a bug instead
  * of fixing it.
  *
- * The fee is now capped at a third of the smaller side, so a winning position can
- * no longer be paid below its stake — for ANY admin-set rate. The `negative` level
- * was deleted from the `LeanLevel` union so the compiler would find every last
- * consumer of that lie.
+ * A winning position can no longer be paid below its stake, and the `negative` level was
+ * deleted from the `LeanLevel` union so the compiler would find every last consumer of
+ * that lie. ⚠️ THE REASON CHANGED IN 2026-08 AND THIS COMMENT DID NOT, so it is corrected
+ * here: it said the fee is "capped at a third of the smaller side", which is the RETIRED
+ * capped-commission formula. Under `loser-share` — the live model on both games — there is
+ * no ceiling at all; the floor holds because the fee comes ONLY out of the losing pool and
+ * is therefore bounded by it. The conclusion is unchanged and now holds under both models,
+ * for two different reasons (see the invariants block in `payout.ts`).
  *
  * What remains is the honest message, and the only honest message: on a lopsided
  * poll THE UPSIDE IS THIN, because the other side is small and the other side is

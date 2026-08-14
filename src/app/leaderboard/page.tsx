@@ -6,6 +6,7 @@
  * ranked players (a genuine empty state until players settle predictions);
  * sample data is generated for the empty demo store in non-production only.
  */
+import { fill } from "@/lib/utils";
 import { db } from "@/lib/server/store";
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
@@ -49,12 +50,32 @@ type Row = {
   spark: number[];
 };
 
+/**
+ * The tier thresholds, written ONCE.
+ *
+ * 🔴 FOUND BY `test:rate-copy` ON ITS FIRST RUN, 2026-08-14. The classifier tested
+ * `roi >= 60` and the dictionary string said "≥60% ROI" — the same number written twice,
+ * in three languages, with nothing tying them together. Whoever tuned a tier would have
+ * moved one and left the other, and the board would have awarded a badge its own caption
+ * denied. That is the exact defect class F5 exists to close, and the guard found an
+ * instance nobody had listed.
+ *
+ * ⛔ The copy interpolates from THIS table. Do not restate a threshold in a string.
+ */
+export const TIER_THRESHOLDS = {
+  sovereign: { resolved: 50, roi: 60 },
+  diamond:   { resolved: 20, roi: 30 },
+  gold:      { resolved: 10, roi: 15 },
+  silver:    { resolved: 5,  roi: 0 },
+} as const;
+
 function tierFor(roi: number, resolved: number): Tier {
   // Sovereign sits above Diamond — heraldic top-of-board honour.
-  if (resolved >= 50 && roi >= 60) return "sovereign";
-  if (resolved >= 20 && roi >= 30) return "diamond";
-  if (resolved >= 10 && roi >= 15) return "gold";
-  if (resolved >= 5  && roi >= 0)  return "silver";
+  const T = TIER_THRESHOLDS;
+  if (resolved >= T.sovereign.resolved && roi >= T.sovereign.roi) return "sovereign";
+  if (resolved >= T.diamond.resolved   && roi >= T.diamond.roi)   return "diamond";
+  if (resolved >= T.gold.resolved      && roi >= T.gold.roi)      return "gold";
+  if (resolved >= T.silver.resolved    && roi >= T.silver.roi)    return "silver";
   return "bronze";
 }
 
@@ -356,9 +377,9 @@ function Podium({ top, t }: { top: Row[]; t: Dict }) {
 // in the leaderboard's richer tooltip describing each tier's threshold.
 function TierBadge({ tier, t }: { tier: Tier; t: Dict }) {
   const desc = {
-    sovereign: t.leaderboard.tierSovereign,
-    diamond:   t.leaderboard.tierDiamond,
-    gold:      t.leaderboard.tierGold,
+    sovereign: fill(t.leaderboard.tierSovereign, TIER_THRESHOLDS.sovereign),
+    diamond:   fill(t.leaderboard.tierDiamond, TIER_THRESHOLDS.diamond),
+    gold:      fill(t.leaderboard.tierGold, TIER_THRESHOLDS.gold),
     silver:    t.leaderboard.tierSilver,
     bronze:    t.leaderboard.tierBronze,
   }[tier];

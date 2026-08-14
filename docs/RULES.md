@@ -312,10 +312,28 @@ display rate, the Up & Down round margin and tick floor, and the per-chain stake
 
 Every entry here is a number this file also states. When a rate changes, these change with it.
 
-⏳ The guard that enforces the list — `test:rate-copy`, which fails when a player-facing
-string hardcodes a rate figure not recorded here — is **workstream F5 and is not yet written**.
-Until it exists this table is maintained by hand, which is exactly why it must stay short.
+✅ The guard that enforces the list — **`npm run test:rate-copy`**, which fails when a
+player-facing string hardcodes a rate figure — shipped 2026-08-14 (F5). It scans every
+string in all three dictionaries, and it carries its own positive control: the exact strings
+this sweep fixed must still be REJECTED by it, so a green run means the copy is clean rather
+than that the scanner has gone blind.
+
+**The table is EMPTY, and that is the goal state — not an oversight.** Every rate the sweep
+found was made data-driven rather than recorded as a duplicate:
+
+| Was | Now |
+|---|---|
+| `estimateHowItWorks` hardcoded **"1.5×"** | `{mult}` — read from `estimatedWinningsRate`. ⚠️ Up & Down runs **1.4×**, so the hint explaining the figure was quoting a different figure from the button beside it. |
+| `card3Body` · `howStep3B` stated the retired ceiling, ungated, to every new player | rewritten to the rule that is actually true, with no figure at all |
+| `/legal/terms` §4 stated the retired rule in **all three languages**; §5 said the withdrawal fee was **1%** | 13% of the losing side; 1.5% — what production has charged all along |
+| the in-app assistant taught the retired rule, a "base TZS 500" stake and a "1x-200x multiplier" | the current rule, the real bounds, and that the maximum is **per bet** |
+| 🔴 leaderboard `tierSovereign`/`tierDiamond`/`tierGold` restated the ROI thresholds — the **same numbers the classifier tests**, in three languages | `{roi}`/`{resolved}`, interpolated from `TIER_THRESHOLDS` |
+
+> ⭐ **THE LAST ROW WAS FOUND BY THE GUARD ITSELF, ON ITS FIRST RUN.** Nobody had listed it:
+> `leaderboard/page.tsx` tested `roi >= 60` and the copy said "≥60% ROI". Whoever tuned a
+> tier would have moved one and left the other, and the board would have awarded a badge its
+> own caption denied.
 
 | File | What it hardcodes | Why it cannot read config |
 |---|---|---|
-| _(none yet — populated as the sweep finds them)_ | | |
+| _(none — every rate found by the sweep was made data-driven instead)_ | | |

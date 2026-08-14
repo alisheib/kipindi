@@ -52,9 +52,15 @@ type Props = {
    * against a poll whose fee was capped at 1.1% of the pool would be a lie in the
    * one place a player goes to check we paid him correctly.
    *
-   * So we show him the actual arithmetic instead: what 10% of the pool WOULD have
-   * been, what the third-of-the-smaller-side ceiling was, and which one we charged.
-   * He can check it himself.
+   * So we show him the actual arithmetic instead: what the commission on the pool WOULD
+   * have been, what the ceiling was, and which one we charged. He can check it himself.
+   *
+   * ⚫ LEGACY-ONLY, and deliberately kept. Everything in this paragraph describes
+   * `capped-commission`; the `resFeeCappedNote` callout that renders it is gated on
+   * `fee.capped`, and `poolFee` returns `capped: false` for `loser-share` ALWAYS — so on a
+   * current market this disclosure cannot fire. It exists for the 4,220 Up & Down rounds
+   * and 58 polls frozen at the old model, which still settle by it and whose players are
+   * still owed the arithmetic. ⛔ Do not delete it as dead code.
    */
   fee: {
     /** yesPool + noPool. */

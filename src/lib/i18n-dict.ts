@@ -272,7 +272,7 @@ export const dict = {
       onRequest: "On request",
       getCashbackPercent: "Get {pct}% back on every deposit",
       cashbackSubtitle: "Lands in your bonus wallet \u2014 play it through and it\u2019s yours to withdraw.",
-      cashbackRequestSubtitle: "Lost your deposit? Request a {pct}% cash back bonus \u2014 subject to management approval. Credited to your bonus wallet with 5\u00d7 wagering requirement.",
+      cashbackRequestSubtitle: "Lost your deposit? Request a {pct}% cash back bonus \u2014 subject to management approval. Credited to your bonus wallet with {wager}\u00d7 wagering requirement.",
       depositNow: "Deposit now",
       // fairness page
       resolutionAttestation: "Resolution attestation",
@@ -548,7 +548,7 @@ export const dict = {
       howStep2H: "Every result has a named source",
       howStep2B: "Every market settles against a named public source: the meteorological agency, the league table, the Bank of Tanzania mid-rate. An officer signs it off — two, when two-officer authorization is enabled.",
       howStep3H: "Winners split the pool",
-      howStep3B: "The pool is shared between everyone who was right, minus a commission capped at a third of the smaller side. Paid to your M-Pesa wallet in seconds.",
+      howStep3B: "The pool is shared between everyone who was right, minus a commission taken only from the losing side. Paid to your M-Pesa wallet in seconds.",
 
       /* ── §1c THE GRID'S LENS ───────────────────────────────────────────────────────────
          The eyebrow NAMES THE ORDERING, so the grid is a claim rather than a sample (kit
@@ -679,6 +679,9 @@ export const dict = {
       resPoolWord: "pool",
       resPlatformFee: "Platform fee",
       resFeeCapped: "Fee capped at",
+      // ⚫ LEGACY-ONLY. Gated on `fee.capped`, which `poolFee` returns FALSE for under
+      // loser-share always — so this cannot render on a current market. Kept for the
+      // markets frozen at capped-commission, whose players are still owed the arithmetic.
       resFeeCappedNote: "This poll was lopsided, so our commission was capped. {commission} of the pool would have been {uncapped} — more than we allow ourselves to take — so we charged {charged}, which is {ceiling} of the smaller side. We never take more than a third of what you win.",
       resVoidRefund: "All stakes were refunded in full — no fee taken.",
       resYourPayoutNote: "Your own payout is shown under Your positions above.",
@@ -1125,7 +1128,7 @@ export const dict = {
       inviteReqRegister: "Your friend must register using your referral link.",
       inviteReqDeposit: "They must deposit funds into their account.",
       inviteReqBet: "They must place at least one position worth TZS 20,000 or more.",
-      inviteReqWager: "Bonus credited to your Bonus Wallet — 5\u00d7 wagering required before withdrawal.",
+      inviteReqWager: "Bonus credited to your Bonus Wallet — {wager}\u00d7 wagering required before withdrawal.",
       inviteReqExpiry: "Bonuses expire 30 days after being credited if not played through.",
       inviteReqSequential: "Bonuses are used one at a time. A new bonus queues until the current one completes.",
       noReferralsYet: "No referrals yet",
@@ -1360,9 +1363,12 @@ export const dict = {
       tablePredictor: "Predictor", tableRoi: "ROI",
       tableStakes: "14-day stakes", tableStreak: "Streak", tableResolved: "Resolved",
       winLabel: "win", winsLabel: "wins",
-      tierSovereign: "Sovereign · ≥50 resolved · ≥60% ROI · heraldic honour",
-      tierDiamond: "Diamond · ≥20 resolved · ≥30% ROI",
-      tierGold: "Gold · ≥10 resolved · ≥15% ROI",
+      // F5 · the thresholds are INTERPOLATED from TIER_THRESHOLDS in leaderboard/page.tsx.
+      // They used to be written out here as well — the same numbers in two places, in three
+      // languages, with nothing tying them together.
+      tierSovereign: "Sovereign · ≥{resolved} resolved · ≥{roi}% ROI · heraldic honour",
+      tierDiamond: "Diamond · ≥{resolved} resolved · ≥{roi}% ROI",
+      tierGold: "Gold · ≥{resolved} resolved · ≥{roi}% ROI",
       tierSilver: "Silver · ≥5 resolved · positive ROI",
       tierBronze: "Bronze · entry tier",
     },
@@ -1468,7 +1474,11 @@ export const dict = {
       card2Body: "One gesture sets both your side and your stake. Drag toward YES or NO — the further from centre, the higher your conviction multiplier.",
       card3Eyebrow: "how payouts work",
       card3Title: "Winners share the losers' pool.",
-      card3Body: "No fixed odds. Winners share the pool by the size of their stake, after our commission — which is capped at a third of the smaller side, so being right never costs you money. When betting closes we tell you the exact amount you'll receive.",
+      // F2 · these three stated the RETIRED capped-commission rule as marketing copy, ungated,
+      // to every new player. The fee is 13% of the LOSING side (docs/RULES.md §2.1); the promise
+      // they were making — being right never costs you money — is still true and now rests on the
+      // reason it is actually true, which is that the winners' own stakes are never touched.
+      card3Body: "No fixed odds. Winners share the pool by the size of their stake. Our commission comes only out of the losing side — the winners' stakes are returned in full and never touched — so being right never costs you money. When betting closes we tell you the exact amount you'll receive.",
       poolCaption: "losers fund winners · a correct call never loses",
       dragToCommit: "drag to commit",
       skipPrimer: "Skip primer",
@@ -1671,7 +1681,11 @@ export const dict = {
       payoutCalcBody: "Calculated at resolution from the final pool. We'll tell you the exact amount as soon as betting closes.",
       estimatedWinningsLabel: "Possible winnings",
       estimateDisclaimer: "Estimate only — the actual amount is set by the pool when betting closes, and may be higher or lower.",
-      estimateHowItWorks: "A rough guide (1.5× your stake). Your real winnings come from the pool: winners share the losing side's money after our fee, so the final amount can be higher or lower than this.",
+      // 🔴 F2/F5 · THIS HARDCODED "1.5×" AND IT WAS WRONG ON UP & DOWN. The multiple is
+      // `1 + estimatedWinningsRate`, which is admin-configurable and is **0.4 on Up & Down**
+      // (a 1.4× headline) against 0.5 on polls. The sentence explaining the number beside it
+      // therefore quoted a different number from the one on the button. It reads the rate now.
+      estimateHowItWorks: "A rough guide ({mult}× your stake). Your real winnings come from the pool: winners share the losing side's money after our fee, so the final amount can be higher or lower than this.",
       payoutHowItWorks: "Winners share the pool in proportion to their stake, after our commission. The commission is {pct}% of the pool but never more than {ceiling} of the smaller side — so a winning bet is never paid less than it staked.",
       /** ⚠️ {mins} — NEVER a hard number. This read "5-min free exit" while the body
        *  beside it interpolated the poll's OWN frozen freeExitGraceMinutes, so a poll
@@ -1993,7 +2007,7 @@ export const dict = {
       onRequest: "Kwa ombi",
       getCashbackPercent: "Pata {pct}% ya kila amana unayoweka",
       cashbackSubtitle: "Hupokea kwenye pochi ya bonasi \u2014 icheze kisha unaweza kuitoa.",
-      cashbackRequestSubtitle: "Umepoteza amana yako? Omba bonasi ya marejesho ya {pct}% \u2014 inakaguliwa na wasimamizi. Inapokelewa kwenye pochi ya bonasi na masharti ya mchezo 5\u00d7.",
+      cashbackRequestSubtitle: "Umepoteza amana yako? Omba bonasi ya marejesho ya {pct}% \u2014 inakaguliwa na wasimamizi. Inapokelewa kwenye pochi ya bonasi na masharti ya mchezo {wager}\u00d7.",
       depositNow: "Weka sasa",
       resolutionAttestation: "Uthibitisho wa utatuzi",
       howAMarketResolves: "Soko linatatuliwa vipi",
@@ -2234,7 +2248,7 @@ export const dict = {
       howStep2H: "Kila matokeo yana chanzo kilichotajwa",
       howStep2B: "Kila soko linatatuliwa kwa chanzo rasmi cha umma kilichotajwa: wakala wa hali ya hewa, jedwali la ligi, kiwango cha kati cha Benki Kuu ya Tanzania. Afisa anathibitisha — wawili, pale idhini ya maafisa wawili inapowashwa.",
       howStep3H: "Washindi wanagawana bwawa",
-      howStep3B: "Bwawa linagawanywa kati ya wote waliokuwa sahihi, kasoro kamisheni ambayo haizidi theluthi moja ya upande mdogo. Hulipwa kwenye pochi yako ya M-Pesa kwa sekunde.",
+      howStep3B: "Bwawa linagawanywa kati ya wote waliokuwa sahihi, kasoro kamisheni inayotozwa kwenye upande ulioshindwa pekee. Hulipwa kwenye pochi yako ya M-Pesa kwa sekunde.",
 
       gridEyebrowPool: "Bwawa kubwa kwanza",
       gridEyebrowNew: "Yamefunguliwa hivi punde",
@@ -2703,7 +2717,7 @@ export const dict = {
       inviteReqRegister: "Rafiki yako lazima ajisajili kwa kutumia kiungo chako.",
       inviteReqDeposit: "Lazima aweke fedha kwenye akaunti yake.",
       inviteReqBet: "Lazima aweke angalau dau moja la TZS 20,000 au zaidi.",
-      inviteReqWager: "Bonasi inapokelewa kwenye Pochi ya Bonasi \u2014 mchezo 5\u00d7 unahitajika kabla ya kutoa.",
+      inviteReqWager: "Bonasi inapokelewa kwenye Pochi ya Bonasi \u2014 mchezo {wager}\u00d7 unahitajika kabla ya kutoa.",
       inviteReqExpiry: "Bonasi zinaisha siku 30 baada ya kupokelewa zisipochezwa.",
       inviteReqSequential: "Bonasi zinatumika moja kwa moja. Bonasi mpya inasubiri ile ya sasa ikamilike.",
       noReferralsYet: "Bado hakuna marafiki",
@@ -2935,9 +2949,9 @@ export const dict = {
       tablePredictor: "Mtabiri", tableRoi: "ROI",
       tableStakes: "Madau ya siku 14", tableStreak: "Mfululizo", tableResolved: "Imetatuliwa",
       winLabel: "ushindi", winsLabel: "ushindi",
-      tierSovereign: "Mfalme · ≥50 imetatuliwa · ≥60% ROI · heshima ya juu",
-      tierDiamond: "Almasi · ≥20 imetatuliwa · ≥30% ROI",
-      tierGold: "Dhahabu · ≥10 imetatuliwa · ≥15% ROI",
+      tierSovereign: "Mfalme · ≥{resolved} imetatuliwa · ≥{roi}% ROI · heshima ya juu",
+      tierDiamond: "Almasi · ≥{resolved} imetatuliwa · ≥{roi}% ROI",
+      tierGold: "Dhahabu · ≥{resolved} imetatuliwa · ≥{roi}% ROI",
       tierSilver: "Fedha · ≥5 imetatuliwa · ROI chanya",
       tierBronze: "Shaba · kiwango cha kuanza",
     },
@@ -3024,7 +3038,7 @@ export const dict = {
          the English beside it at least said "minus a small margin". A Swahili player reading it
          would have been told the whole losing pool is shared out. Corrected to the same promise
          the other two locales make. */
-      card3Body: "Hakuna odds. Washindi wanagawana bwawa kulingana na dau lao, baada ya kamisheni yetu — ambayo haizidi theluthi moja ya upande mdogo, kwa hiyo kuwa sahihi hakukugharimu pesa kamwe. Dau likifungwa tutakuambia kiasi kamili utakachopata.",
+      card3Body: "Hakuna odds. Washindi wanagawana bwawa kulingana na dau lao. Kamisheni yetu inatoka tu kwenye upande ulioshindwa — dau za washindi zinarudishwa zote na haziguswi kamwe — kwa hiyo kuwa sahihi hakukugharimu pesa kamwe. Dau likifungwa tutakuambia kiasi kamili utakachopata.",
       poolCaption: "wapotezao hulipa washindi · jibu sahihi halipotezi",
       dragToCommit: "sogeza kujitolea",
       skipPrimer: "Ruka utangulizi",
@@ -3213,7 +3227,7 @@ export const dict = {
       payoutCalcBody: "Inahesabiwa wakati wa matokeo kutoka bwawa la mwisho. Tutakuambia kiasi kamili mara dau litakapofungwa.",
       estimatedWinningsLabel: "Ushindi unaowezekana",
       estimateDisclaimer: "Ni makadirio tu — kiasi halisi hupangwa na bwawa dau litakapofungwa, na kinaweza kuwa zaidi au chini.",
-      estimateHowItWorks: "Mwongozo wa jumla (mara 1.5 ya dau lako). Ushindi wako halisi hutoka kwenye bwawa: washindi hugawana fedha za upande ulioshindwa baada ya ada yetu, hivyo kiasi cha mwisho kinaweza kuwa zaidi au chini ya hiki.",
+      estimateHowItWorks: "Mwongozo wa jumla (mara {mult} ya dau lako). Ushindi wako halisi hutoka kwenye bwawa: washindi hugawana fedha za upande ulioshindwa baada ya ada yetu, hivyo kiasi cha mwisho kinaweza kuwa zaidi au chini ya hiki.",
       payoutHowItWorks: "Washindi wanagawana bwawa kulingana na dau lao, baada ya kamisheni yetu. Kamisheni ni {pct}% ya bwawa lakini kamwe si zaidi ya {ceiling} ya upande mdogo — kwa hiyo dau lililoshinda halilipwi chini ya dau lake.",
       freeExitLabel: "Dakika {mins} bila gharama",
       freeExitBody: "Uza ndani ya dakika {mins} upate marejesho kamili — bila ada. Kisha ada ya {pct}% itatumika, na baada ya dakika {lock} kwa jumla kuuza kunafungwa na dau litaenda hadi malipo.",
@@ -3528,7 +3542,7 @@ export const dict = {
       onRequest: "按申请",
       getCashbackPercent: "每次充值返还{pct}%",
       cashbackSubtitle: "到账奖金钱包 \u2014 完成打码即可提现。",
-      cashbackRequestSubtitle: "亏损了充值金额？申请{pct}%返现奖金 \u2014 需管理层审批。到账奖金钱包，需5\u00d7打码。",
+      cashbackRequestSubtitle: "亏损了充值金额？申请{pct}%返现奖金 \u2014 需管理层审批。到账奖金钱包，需{wager}\u00d7打码。",
       depositNow: "立即充值",
       resolutionAttestation: "结算证明",
       howAMarketResolves: "市场如何结算",
@@ -3768,7 +3782,7 @@ export const dict = {
       howStep2H: "每个结果都有指定来源",
       howStep2B: "每个市场都以指定的官方公开来源结算：气象局、联赛积分榜、坦桑尼亚银行中间价。由一名审核员签核 — 启用双审核员授权时为两名。",
       howStep3H: "赢家分享奖池",
-      howStep3B: "奖池由所有判断正确的人分享，扣除佣金 — 佣金上限为较小一方的三分之一。数秒内支付到您的 M-Pesa 钱包。",
+      howStep3B: "奖池由所有判断正确的人分享，扣除仅从失败一方收取的佣金。数秒内支付到您的 M-Pesa 钱包。",
 
       gridEyebrowPool: "奖池最大优先",
       gridEyebrowNew: "刚刚开放",
@@ -4238,7 +4252,7 @@ export const dict = {
       inviteReqRegister: "您的朋友必须使用您的推荐链接注册。",
       inviteReqDeposit: "他们必须向账户充值。",
       inviteReqBet: "他们必须至少投注一次，金额不低于 TZS 20,000。",
-      inviteReqWager: "奖金到账奖金钱包 \u2014 提现前需完成5\u00d7打码要求。",
+      inviteReqWager: "奖金到账奖金钱包 \u2014 提现前需完成{wager}\u00d7打码要求。",
       inviteReqExpiry: "奖金在到账后30天内未完成打码将过期。",
       inviteReqSequential: "奖金一次使用一个。新奖金将排队等待当前奖金完成。",
       noReferralsYet: "暂无推荐",
@@ -4470,9 +4484,9 @@ export const dict = {
       tablePredictor: "预测者", tableRoi: "ROI",
       tableStakes: "14天投注", tableStreak: "连胜", tableResolved: "已结算",
       winLabel: "胜", winsLabel: "胜",
-      tierSovereign: "至尊 · ≥50已结算 · ≥60% ROI · 至高荣誉",
-      tierDiamond: "钻石 · ≥20已结算 · ≥30% ROI",
-      tierGold: "黄金 · ≥10已结算 · ≥15% ROI",
+      tierSovereign: "至尊 · ≥{resolved}已结算 · ≥{roi}% ROI · 至高荣誉",
+      tierDiamond: "钻石 · ≥{resolved}已结算 · ≥{roi}% ROI",
+      tierGold: "黄金 · ≥{resolved}已结算 · ≥{roi}% ROI",
       tierSilver: "白银 · ≥5已结算 · 正ROI",
       tierBronze: "青铜 · 入门等级",
     },
@@ -4555,7 +4569,7 @@ export const dict = {
       card2Body: "一个手势设置您的立场和投注额。向「是」或「否」拖动 — 离中心越远，信念倍数越高。",
       card3Eyebrow: "赔付如何运作",
       card3Title: "赢家分享输家的奖池。",
-      card3Body: "没有固定赔率。赢家按投注额比例分享奖池（扣除我们的佣金后）— 佣金上限为较小一方的三分之一，因此判断正确绝不会让您亏钱。投注关闭时，我们会告知您将收到的确切金额。",
+      card3Body: "没有固定赔率。赢家按投注额比例分享奖池。我们的佣金仅从失败一方扣取 — 赢家的本金全额退回，永不被动 — 因此判断正确绝不会让您亏钱。投注关闭时，我们会告知您将收到的确切金额。",
       poolCaption: "输家资助赢家 · 判断正确绝不亏损",
       dragToCommit: "拖动确认",
       skipPrimer: "跳过引导",
@@ -4744,7 +4758,7 @@ export const dict = {
       payoutCalcBody: "根据最终奖池在结算时计算。投注一关闭，我们就会告知您确切金额。",
       estimatedWinningsLabel: "可能的赢额",
       estimateDisclaimer: "仅为估算 — 实际金额在投注关闭时由奖池确定，可能更高或更低。",
-      estimateHowItWorks: "仅供大致参考（您投注额的1.5倍）。您的实际赢额来自奖池：赢家在扣除我们的费用后分享失败方的资金，因此最终金额可能高于或低于此数。",
+      estimateHowItWorks: "仅供大致参考（您投注额的 {mult} 倍）。您的实际赢额来自奖池：赢家在扣除我们的费用后分享失败方的资金，因此最终金额可能高于或低于此数。",
       payoutHowItWorks: "获胜者按投注比例分享奖池（扣除佣金后）。佣金为奖池的 {pct}%，但绝不超过较小一方的 {ceiling} — 因此获胜的投注绝不会拿到低于本金的金额。",
       freeExitLabel: "{mins} 分钟免费退出",
       freeExitBody: "在 {mins} 分钟内卖出可获全额退款 — 无手续费。之后收取 {pct}% 手续费；满 {lock} 分钟后卖出关闭，投注保留至结算。",
