@@ -27,10 +27,12 @@ import { execSync } from "node:child_process";
 const MARKET = new URL("../src/lib/server/market-service.ts", import.meta.url);
 const REASONS = new URL("../src/lib/failure-reasons.ts", import.meta.url);
 const DICT = new URL("../src/lib/i18n-dict.ts", import.meta.url);
+const PAGE = new URL("../src/app/markets/[id]/page.tsx", import.meta.url);
 const originals = new Map([
   [MARKET, readFileSync(MARKET, "utf8")],
   [REASONS, readFileSync(REASONS, "utf8")],
   [DICT, readFileSync(DICT, "utf8")],
+  [PAGE, readFileSync(PAGE, "utf8")],
 ]);
 const restore = () => { for (const [f, s] of originals) writeFileSync(f, s); };
 
@@ -111,6 +113,20 @@ const MUTATIONS = [
     file: DICT,
     from: `      failCashoutValueZero: "There’s nothing on the other side yet, so this bet has no sell value.",`,
     to: `      // copy removed`,
+  },
+  {
+    name: "bonus-warning-shown-to-everyone-who-hedges",
+    why: "⚠️ B2 · the warning loses its grant gate, so every player taking the other side is told their bonus will not advance — most of them have no bonus. A warning shown to people it does not apply to is noise, and noise is how a real warning stops being read",
+    file: PAGE,
+    from: "      if (b.activeCount > 0 && b.activeWagerRemainingTzs > 0) {",
+    to: "      if (true) {",
+  },
+  {
+    name: "bonus-warning-loses-the-figure",
+    why: "⭐ B2 · the {remaining} detail goes, so the sentence tells a player only one side counts toward \"—\". The rule the copy exists to explain is the AMOUNT they still owe",
+    file: PAGE,
+    from: "          { ok: false, error: \"\", reason: \"bonus_wagering_one_side\", detail: { remaining: b.activeWagerRemainingTzs } },",
+    to: "          { ok: false, error: \"\", reason: \"bonus_wagering_one_side\" },",
   },
 ];
 

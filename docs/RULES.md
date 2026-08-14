@@ -179,6 +179,16 @@ fee — a 6,750 gift per grant, same day, no risk taken.
 A player holding an unfulfilled grant who takes the opposite side is **warned before
 confirming, and may proceed** — it is a warning, not a refusal (see §2.9).
 
+> ✅ **Shipped 2026-08-14 (B2).** An inline warning on `/markets/[id]`, naming the amount
+> they still have to wager, in EN/SW/ZH, shown ONLY to a player who actually holds an
+> unfulfilled grant. ⛔ Computed on the READ path: `getBonusSummary` issues its own wallet
+> read and would block on the bet's own uncommitted row — the P2028 self-deadlock at
+> `bonus-service.ts:235-243`. That is the right place for it, because the SERVER applies
+> this rule whatever the panel showed.
+>
+> ⚠️ **Production has ZERO grants and ZERO bonus balance**, so this surface has no live
+> subject yet. Verifying it means granting a bonus to a QA-fleet player and driving it.
+
 > 🔴 **AND A SECOND, INDEPENDENT ROUTE WAS FOUND IN THE SAME PLACE (B1b, 2026-08-14).**
 > `cashOutPosition` never called `reverseWagering`. A player could bet, cancel **free** inside
 > the 5-minute grace, get the whole stake back **and keep the turnover credit** — clearing a

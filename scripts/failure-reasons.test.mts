@@ -27,6 +27,7 @@
  */
 process.env.SESSION_SECRET ??= "test-only-session-secret-32chars-min-aaaa";
 
+import { readFileSync } from "node:fs";
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import { createMarket, buyPosition } from "../src/lib/server/market-service.ts";
 import { REASONS, renderFailure, hasReason, type FailureReason } from "../src/lib/failure-reasons.ts";
@@ -273,6 +274,57 @@ console.log("\n§6 · gold means earned money");
      REASONS.loss_limit_daily.severity === "error" && REASONS.loss_limit_daily.channel === "modal", "");
   ok("6.4 · ★ a frozen wallet is an ERROR, not the NOT_FOUND 'refresh and try again' it used to render as",
      REASONS.wallet_frozen.severity === "error", REASONS.wallet_frozen.severity);
+}
+
+// ── §7 · B2 · the bonus warning, shown before confirming ────────────────────
+console.log("\n§7 · B2 · the warning a grant-holder gets before taking the other side");
+{
+  const dict = DICT.en.error as unknown as Record<string, string>;
+  const w = renderFailure(
+    { ok: false, error: "", reason: "bonus_wagering_one_side", detail: { remaining: 40_000 } },
+    dict, "fallback", formatTzs,
+  );
+  ok("7.1 · ★ it is a WARNING, never an error — the bet still goes through if they choose",
+     w.severity === "warning", w.severity);
+  ok("7.2 · ★ …and it names the amount they still have to wager, as a figure",
+     w.body.includes(formatTzs(40_000)), w.body);
+  ok("7.3 · …and says WHY: they already hold the other side of this market",
+     /other side of this market/i.test(w.body), w.body);
+  // ⛔ INLINE, not a modal. It is information before a decision, not a block on one — a
+  // modal would read as a refusal and this is explicitly not one (docs/RULES.md §2.5).
+  ok("7.4 · ★ it renders INLINE, beside the control — a modal would read as a refusal",
+     REASONS.bonus_wagering_one_side.channel === "inline", REASONS.bonus_wagering_one_side.channel);
+  for (const loc of LOCALES) {
+    const body = renderFailure(
+      { ok: false, error: "", reason: "bonus_wagering_one_side", detail: { remaining: 40_000 } },
+      DICT[loc].error as unknown as Record<string, string>, "fallback", formatTzs,
+    ).body;
+    ok(`7.5.${loc} · a finished sentence, with the figure`,
+       !/\{\w+\}/.test(body) && body.includes(formatTzs(40_000)) && body !== "fallback", body.slice(0, 60));
+  }
+
+  // ⭐ AND THE SURFACE ONLY SHOWS IT TO SOMEONE WHO HOLDS A GRANT. The market page gates on
+  // `activeCount > 0 && activeWagerRemainingTzs > 0`; asserted here as the RULE it is,
+  // because production has ZERO grants and the branch is therefore unreachable live today.
+  const page = readFileSync(new URL("../src/app/markets/[id]/page.tsx", import.meta.url), "utf8");
+  ok("7.6 · ★ the market page gates the warning on an UNFULFILLED grant, not on merely hedging",
+     /activeCount > 0 && b\.activeWagerRemainingTzs > 0/.test(page), "");
+  // ⚠️ ASSERT THE CALL SITE, NOT THE SYMBOL. A first version tested that the string
+  // "getBonusSummary" was ABSENT from market-service.ts — and it is present there, in the
+  // COMMENT explaining why the call must not be made. The check went red over the
+  // documentation of the very rule it was checking.
+  const svc = readFileSync(new URL("../src/lib/server/market-service.ts", import.meta.url), "utf8");
+  const callsIt = (src: string) => /(?<!\/\/[^\n]*)\bawait\s+getBonusSummary\s*\(/.test(src)
+    || src.split("\n").some((l) => !l.trim().startsWith("//") && !l.trim().startsWith("*") && /\bgetBonusSummary\s*\(/.test(l));
+  ok("7.7 · ★ …computed on the READ path, and NOT called inside the bet transaction (P2028)",
+     callsIt(page) && !callsIt(svc), `page=${callsIt(page)} market-service=${callsIt(svc)}`);
+  // ⛔ AND THE PAGE MUST ACTUALLY PASS THE FIGURE. §7.2 proves the RENDERER interpolates
+  // `remaining` when given it; nothing above proves the CALL SITE supplies it, and without
+  // it the player is told only one side counts toward "—". ⚠️ A red here means the call was
+  // renamed or reshaped: RE-ANCHOR it, never delete the assertion.
+  ok("7.8 · ★ …and the page passes the remaining wagering as `detail.remaining`",
+     /reason:\s*"bonus_wagering_one_side"[\s\S]{0,120}?remaining:\s*b\.activeWagerRemainingTzs/.test(page),
+     "renderFailure({ … reason: \"bonus_wagering_one_side\", detail: { remaining: … } }) ?");
 }
 
 console.log(`\nfailure-reasons: ${pass} passed, ${fail} failed`);

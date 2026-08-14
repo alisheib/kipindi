@@ -37,6 +37,8 @@ import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { formatDateTime, formatDayTime, formatTzsCompact, formatTzs, fill } from "@/lib/utils";
 import { appUrl } from "@/lib/app-url";
 import { getServerT } from "@/lib/i18n-server";
+import { renderFailure } from "@/lib/failure-reasons";
+import { getBonusSummary } from "@/lib/server/bonus-service";
 import { pickLocalized, pickCriterion, marketCategoryLabel } from "@/lib/localized";
 
 
@@ -303,6 +305,41 @@ export default async function MarketDetail({
   const hedgeBoth = heldSides.has("YES") && heldSides.has("NO");
   const hedgeOpposite = (side === "YES" && heldSides.has("NO")) || (side === "NO" && heldSides.has("YES"));
   const heldLabel = [...heldSides].join(" + ");
+
+  // ── B2 · THE BONUS WARNING, BEFORE THEY CONFIRM (docs/RULES.md §2.5) ────────
+  //
+  // A stake taken while an OPEN position exists on the other side of this market accrues NO
+  // turnover toward a bonus requirement. That is a rule the player cannot see happening — the
+  // bet succeeds, the money moves, and their wagering counter simply does not advance. Telling
+  // them afterwards is not an option, so they are told before.
+  //
+  // ⛔ IT IS A WARNING, NOT A GATE. The bet still goes through if they choose. And it is shown
+  // ONLY to a player who actually holds an unfulfilled grant — production has zero grants
+  // today, so for everyone else this renders nothing at all.
+  //
+  // ⛔ AND IT CANNOT BE COMPUTED INSIDE THE BET TRANSACTION. `getBonusSummary` issues its own
+  // wallet read and would block on the bet's own uncommitted row — the P2028 self-deadlock
+  // documented at `bonus-service.ts:235-243`. It belongs on the READ path, which is exactly
+  // right for a warning: the server still applies the rule regardless of what was shown.
+  let bonusWagerWarning: string | null = null;
+  if (session && hedgeOpposite) {
+    try {
+      const b = await getBonusSummary(session.userId);
+      if (b.activeCount > 0 && b.activeWagerRemainingTzs > 0) {
+        bonusWagerWarning = renderFailure(
+          { ok: false, error: "", reason: "bonus_wagering_one_side", detail: { remaining: b.activeWagerRemainingTzs } },
+          t.error as unknown as Record<string, string>,
+          "",
+          formatTzs,
+        ).body;
+      }
+    } catch {
+      // ⚠️ A failed bonus read must not take the market page down, and must not invent a
+      // warning either. Silence here is correct: the SERVER still applies §2.5 whatever this
+      // panel showed, so the worst case is a player who is surprised, not one who is wronged.
+      bonusWagerWarning = null;
+    }
+  }
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -655,6 +692,15 @@ export default async function MarketDetail({
                         ? t.market.hedgeOppositeBody
                         : t.market.hedgeAddBody}
                   </p>
+                  {/* B2 · the bonus consequence, and ONLY for a player who holds an
+                      unfulfilled grant. Separated from the hedge body above because it is a
+                      different fact about a different thing — one is what the market will do,
+                      this is what their bonus will not do. */}
+                  {bonusWagerWarning && (
+                    <p className="mt-2 pt-2 border-t border-warning-border/50 text-[12px] leading-snug font-semibold text-warning-fg">
+                      {bonusWagerWarning}
+                    </p>
+                  )}
                 </div>
               )}
               <SidePicker
