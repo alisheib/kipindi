@@ -9,6 +9,11 @@
 > Found 2026-08-14 while driving workstream A4. It was written up rather than shipped inside
 > that programme because a change to the money engine's scheduler deserves its own commit, its
 > own RED harness and its own live verification — not a ride-along in a fee-and-copy sweep.
+>
+> ⚠️ **SIBLING FINDING: `docs/FINDING-SCHEDULER-BUSY-WAIT.md`.** Measuring this one exposed a
+> second defect in the same re-arm — the scheduler re-fired a past boundary at **0 ms**, at
+> 2,269 transactions/sec on production. The gold deadlock made one chain stop; that one made
+> every chain spin, and the three stalled gold chains were spinning hardest of all, silently.
 
 ---
 

@@ -32,6 +32,58 @@ const MAX_TIMEOUT_MS = 2_147_483_647; // setTimeout's signed-32-bit ceiling (~24
 const BOOT_GRACE_MS = 20_000;         // a boundary missed while DOWN fires after this
 const FIRE_RETRY_MS = 30_000;         // back-off when a fire throws
 
+/**
+ * ⛔ THE BUSY-WAIT FLOOR. A chain whose boundary is already in the past may never be re-armed
+ * at 0 ms.
+ *
+ * 🔴 MEASURED ON PRODUCTION, 2026-08-14. Two branches of `advanceChain` deliberately decline
+ * to move `nextBoundaryAt` — the bar for this boundary has not published yet (retry THIS
+ * boundary, which is correct and is why the round opens at all), and the market-hours closure.
+ * On both, `fireChain`'s `finally` re-armed with `minDelayMs: 0`, `armChain` saw a boundary in
+ * the past and computed `delay = 0`, and the chain re-fired immediately. Fire → decline →
+ * re-arm at 0 → fire, as fast as the database could answer, for the whole ~90–130 s a bar
+ * takes to appear, on EVERY boundary of EVERY chain.
+ *
+ * What that cost, from `pg_stat_database` and the live log stream:
+ *   · **2,269 transactions/sec and 20,105 rows returned/sec** on a platform with 75 users.
+ *   · 6 chains × ~1.15 fires/sec each, sustained, every one of them producing nothing.
+ *   · 150 samples of `pg_stat_activity` caught only Up & Down scheduler statements. Nothing else.
+ *   · ⛔ And the log showed HALF of it: `fireChain` logs only when the observation reads
+ *     `pending`, so the three gold chains — pinned since 2026-08-10, session-closed, returning
+ *     above that log line — turned the same loop in total silence.
+ *
+ * ⭐ IT BOUGHT NOTHING. The provider is gated by the observation backoff ladder (E-86), so the
+ * extra fires never re-read the price: they returned `waiting Ns before attempt N+1` and threw
+ * away a database round-trip each time. Measured on the live tape, a BTC 5-minute round's bar
+ * publishes at ~+90 s and the round opened at +91 s — with ~450 fires. Under the ladder hint
+ * below it opens at +91 s with 6. The cadence of the game is unchanged; only the waste is gone.
+ *
+ * This is the backstop, not the cadence. The real spacing comes from `retryAfterMs`, which
+ * `advanceChain` derives from the same ladder `acquireObservation` gates reads with — one
+ * source of truth, so the scheduler cannot drift out of step with the reader.
+ */
+export const REFIRE_FLOOR_MS = 1_000;
+
+/**
+ * When should this chain's timer fire? Pure, so the busy-wait is provable without a clock.
+ *
+ * ⛔ `graceOnPast` is the BOOT path (a boundary missed while the server was down) and keeps its
+ * own, longer grace. Collapsing the two would make a restart hammer every chain at once.
+ */
+export function nextFireDelayMs(o: {
+  nextBoundaryMs: number;
+  nowMs: number;
+  graceOnPast?: boolean;
+  minDelayMs?: number;
+}): number {
+  const raw = o.nextBoundaryMs - o.nowMs;
+  // ⛔ NOT `: 0`. That was the defect. A boundary at or before now cannot produce a different
+  // answer if we ask again in the same millisecond.
+  let delay = raw > 0 ? raw : (o.graceOnPast ? BOOT_GRACE_MS : REFIRE_FLOOR_MS);
+  if (o.minDelayMs) delay = Math.max(delay, o.minDelayMs);
+  return delay;
+}
+
 function enabled(): boolean {
   return process.env.UPDOWN_SCHEDULER !== "false";
 }
@@ -119,9 +171,11 @@ export async function armChain(id: string, opts?: { graceOnPast?: boolean; minDe
 
   disarmChain(id);
 
-  const raw = nextMs - Date.now();
-  let delay = raw <= 0 ? (opts?.graceOnPast ? BOOT_GRACE_MS : 0) : raw;
-  if (opts?.minDelayMs) delay = Math.max(delay, opts.minDelayMs);
+  const now = Date.now();
+  const delay = nextFireDelayMs({
+    nextBoundaryMs: nextMs, nowMs: now,
+    graceOnPast: opts?.graceOnPast, minDelayMs: opts?.minDelayMs,
+  });
 
   const hop = delay > MAX_TIMEOUT_MS;
   const timeout = setTimeout(() => {
@@ -131,7 +185,12 @@ export async function armChain(id: string, opts?: { graceOnPast?: boolean; minDe
   // Don't hold a test/CLI process open (harmless on the server, whose HTTP listener
   // keeps the loop alive regardless).
   (timeout as { unref?: () => void }).unref?.();
-  timers.set(id, { timeout, at: nextMs });
+  // ⛔ WHEN IT WILL FIRE, NOT WHICH BOUNDARY IT IS FOR. `at` feeds the admin console's
+  // "next fire" readout, and storing the boundary meant a chain pinned to a stale instant
+  // reported a next fire in the PAST — an operator reading that sees a scheduler that has
+  // stopped, whether or not it has. The two agree whenever the boundary is ahead of now,
+  // which is why the difference stayed invisible until three chains were not.
+  timers.set(id, { timeout, at: now + delay });
 }
 
 /** Fire one chain's boundary transition, then re-arm for the next. */
@@ -148,8 +207,12 @@ async function fireChain(id: string): Promise<void> {
       const fresh = await chainStore.get(id);
       if (!fresh || fresh.state !== "RUNNING") return;
       const r = await advanceChain(id);
+      // The one branch that leaves the boundary alone says when it is worth asking again.
+      // ⛔ `max`, so a throw's back-off can never be SHORTENED by a hint from a healthy call.
+      if (r.retryAfterMs != null) retryMs = Math.max(retryMs, r.retryAfterMs);
       if (r.observation === "pending") {
-        console.log(`[updown] ${id} boundary pending — ${r.detail ?? "awaiting a confirmed reading"}`);
+        console.log(`[updown] ${id} boundary pending — ${r.detail ?? "awaiting a confirmed reading"}` +
+          (r.retryAfterMs != null ? ` — next attempt in ${Math.round(r.retryAfterMs / 1000)}s` : ""));
       }
     });
   } catch (e) {

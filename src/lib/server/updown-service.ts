@@ -479,7 +479,23 @@ export async function acquireObservation(
    * N+1's open, and no late-settlement convenience is worth relaxing that.
    */
   opts?: { pastDeadline?: boolean },
-): Promise<{ state: "confirmed"; price: number; id: string } | { state: "pending" | "failed"; id: string; detail: string }> {
+): Promise<
+  | { state: "confirmed"; price: number; id: string }
+  | {
+      state: "pending" | "failed"; id: string; detail: string;
+      /**
+       * ⭐ HOW LONG BEFORE ANOTHER CALL COULD POSSIBLY DO ANYTHING DIFFERENT.
+       *
+       * The reader already knows: the backoff ladder decides when the next provider read is
+       * allowed, and until then every call returns the same `pending` from the same row. The
+       * scheduler used to guess — it guessed zero, and re-fired ~450 times per boundary for
+       * a reading that could not change. Publishing the number here rather than re-deriving
+       * it in the caller is what keeps the two from drifting: `retryDelaySeconds` is read in
+       * exactly one place, which is the rule this file already keeps for the ladder itself.
+       */
+      retryAfterMs?: number;
+    }
+> {
   const cfg = await getUpDownConfig();
   const obs = await observationStore.ensure(asset.id, boundaryAtIso);
 
@@ -540,6 +556,8 @@ export async function acquireObservation(
         state: "pending",
         id: obs.id,
         detail: `waiting ${Math.ceil((readyAt - now) / 1000)}s before attempt ${obs.attempts + 1}`,
+        // The gate's own number. Asking again before this instant returns this same line.
+        retryAfterMs: readyAt - now,
       };
     }
   }
@@ -559,7 +577,8 @@ export async function acquireObservation(
     // bar that has simply not published yet — measured at +10s, against a first attempt
     // taken at +0s.
     const elapsedSeconds = Math.round((now - Date.parse(boundaryAtIso)) / 1000);
-    if (refusalCostsAnAttempt(reading.reason, elapsedSeconds, cfg)) {
+    const charged = refusalCostsAnAttempt(reading.reason, elapsedSeconds, cfg);
+    if (charged) {
       await observationStore.recordAttempt(obs.id, detail);
     } else {
       // ⛔ E-86. A refusal that costs no LIFE still costs a paid provider READ, and the next
@@ -567,7 +586,13 @@ export async function acquireObservation(
       // budget, and the ladder still decides when we may ask again.
       await observationStore.touchAttempt(obs.id, detail);
     }
-    return { state: "pending", id: obs.id, detail };
+    // A read was just taken, so the gate above will hold the NEXT one for one rung. Same
+    // expression the gate uses, against the attempt count as it now stands — a refusal that
+    // spent a life has moved one rung up the ladder, one that did not has not.
+    return {
+      state: "pending", id: obs.id, detail,
+      retryAfterMs: retryDelaySeconds(cfg, Math.max(1, obs.attempts + (charged ? 1 : 0))) * 1000,
+    };
   }
 
   // Claim-the-row: only the first confirmation sticks. A loser here is not an error —
@@ -1425,6 +1450,13 @@ export async function advanceChain(
   closed: RoundOutcome | null;
   opened: boolean;
   detail?: string;
+  /**
+   * ⛔ HOW LONG BEFORE FIRING THIS CHAIN AGAIN COULD ACHIEVE ANYTHING — set only on the branch
+   * that deliberately leaves `nextBoundaryAt` where it found it, which is the branch that made
+   * the scheduler spin. Absent everywhere else, because everywhere else the boundary moved and
+   * the timer derives its own delay from it. See `REFIRE_FLOOR_MS` in `updown-scheduler.ts`.
+   */
+  retryAfterMs?: number;
 }> {
   const now = opts?.now ?? Date.now();
   const chain = await chainStore.get(chainId);
@@ -1534,9 +1566,25 @@ export async function advanceChain(
           detail: `no open price for ${boundaryIso} after ${Math.round(ageMs / 1000)}s — boundary abandoned, next ${skipTo}`,
         };
       }
+      // ⛔ TELL THE CALLER WHEN TO COME BACK, OR IT COMES BACK IMMEDIATELY — 450 times per
+      // boundary, measured on production 2026-08-14 (see `REFIRE_FLOOR_MS` in
+      // `updown-scheduler.ts`). This branch is the one that must NOT move the boundary, so it
+      // is the one that owes the scheduler a delay.
+      //
+      // Two bounds, and both are load-bearing:
+      //   · the LADDER, because until the next read is allowed every call returns this same
+      //     line from the same row — `obs.retryAfterMs`, published by the one function that
+      //     climbs the ladder, so the two cannot drift;
+      //   · the DEADLINE, because when the ladder outlasts it the next useful act is to
+      //     ABANDON the boundary, and sleeping past that would strand the round waiting.
+      // ⚠️ A FAILED reading is terminal — no rung will ever change it — so for that one only
+      // the deadline is left.
+      const toDeadlineMs = abandonMs - ageMs + 1;
+      const ladderMs = obs.state === "failed" ? Number.POSITIVE_INFINITY : (obs.retryAfterMs ?? 0);
       return {
         observation: obs.state, closed, opened: false,
         detail: `open price for ${boundaryIso} not published yet (${Math.round(ageMs / 1000)}s) — not opening a round that could only void; will retry this boundary`,
+        retryAfterMs: Math.max(0, Math.min(ladderMs, toDeadlineMs)),
       };
     }
     const o = await openRound(chain, boundaryIso, obs.id, obs.price);
