@@ -23,12 +23,26 @@ import { execSync } from "node:child_process";
 
 const MUTATIONS = [
   {
+    // ⚠️ RE-ANCHORED 2026-08-14. This case had been reporting "the source moved" — and
+    // therefore proving NOTHING — since `354bc307` (2026-08-10), when `positionId: p.id`
+    // joined the call and E-57 added the `else { pushOnly(…) }` branch beside it. Four days
+    // of `red:updown-digest` printing 6/7, which reads as a known-red harness rather than as
+    // a case that had quietly stopped testing its defect.
+    //
+    // ⛔ THE MUTATION MUST *MOVE* THE CALL, NOT NEGATE THE GATE. §5 of the guard is a SOURCE
+    // assertion: it anchors on the emitter in statement position and looks BACK 400 characters
+    // for `!perEventNotificationsSuppressed(`. So `if (true || !perEventNotificationsSuppressed(m))`
+    // would leave the text in place and the suite would stay GREEN over an ungated refund —
+    // a mutation that looks like a defect and is not one. Hoisting the call above the gate is
+    // what actually reproduces E-43: a refund emitter nobody had gated.
     name: "ungate-refunds (E-43 as it shipped)",
     file: "src/lib/server/market-service.ts",
     from: `      if (!perEventNotificationsSuppressed(m)) {
-        notifyRefund(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id });
-      }`,
-    to: `      notifyRefund(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id });`,
+        notifyRefund(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id, positionId: p.id });
+      } else {`,
+    to: `      notifyRefund(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id, positionId: p.id });
+      if (false) {
+      } else {`,
   },
   {
     name: "no-idempotence (a digest every 15 minutes, forever)",

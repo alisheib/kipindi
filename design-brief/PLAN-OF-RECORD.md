@@ -1498,9 +1498,17 @@ the accounts, not the filter work and not a new probe.
 
 ⛔ **Stopped at three attempts on purpose** (alpha ×2, echo ×1). Login locks an account for 30
 minutes after five failures and these are live accounts on a board shared with another operator;
-brute-forcing a fourth and fifth would have cost more than it proved. **Ali: the QA persona
-passwords in `.env.qa.local` need re-checking or the accounts unlocking** — until then no live
-driver can reach any authed player surface.
+brute-forcing a fourth and fifth would have cost more than it proved.
+
+✅ **DIAGNOSED READ-ONLY INSTEAD, from the live DB — no further attempts spent.** Both personas are
+`status ACTIVE` with a `passwordHash`, `lockedUntil NULL`, and `failedLoginCount` **3 and 1 — exactly
+this session's own attempts**. `lastLoginAt` is `2026-08-10 23:40` for both, four days before.
+So it is **not** a lockout, **not** a suspension, and **not** a missing account: **this laptop's
+`.env.qa.local` is stale.** That is the two-laptop credential trap `docs/LIVE-QA-CAMPAIGN.md` §1
+already documents, recurring — the full query and table are recorded there.
+⛔ **Not re-minted**, because §1 forbids it in as many words (*"a second re-mint just moves the
+lockout to the other laptop"*) and another session was live in this working tree at the time.
+**Ali: copy `.env.qa.local` from whichever machine last signed in successfully (2026-08-10 23:40).**
 
 `npm run qa:filter-scan -- https://50pick.tz --as=alpha` is the command that closes this the moment
 the credentials work; it **exits non-zero** when a requested sign-in fails, so a future run cannot

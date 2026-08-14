@@ -44,9 +44,16 @@ frozen and shipped. **Revised 2026-07-31 against the live platform, not against 
 > `/profile/account` and `/updown/history` are verified on localhost against the identical
 > committed code and **not on production**. Stopped at three attempts deliberately — five
 > failures lock an account for 30 minutes and these are live accounts on a shared board.
-> Re-check the passwords in `.env.qa.local` (or unlock the accounts), then
-> `npm run qa:filter-scan -- https://50pick.tz --as=alpha` closes it; that command exits
-> non-zero on a failed sign-in, so it cannot pass over surfaces it never loaded.
+> ✅ **Diagnosed read-only from the live DB instead** — both are `ACTIVE` with a password,
+> `lockedUntil NULL`, and `failedLoginCount` **3 and 1, exactly this session's own attempts**;
+> `lastLoginAt` is `2026-08-10 23:40` for both. Not a lockout, not a suspension: **this laptop's
+> `.env.qa.local` is STALE** — the two-laptop credential trap `LIVE-QA-CAMPAIGN.md` §1 already
+> documents, recurring. ⛔ **Not re-minted** (§1 forbids it: a second re-mint just moves the
+> lockout to the other machine, and another session was live in this tree).
+> **▶ Ali: copy `.env.qa.local` from whichever machine last signed in successfully (2026-08-10
+> 23:40 UTC).** Then `npm run qa:filter-scan -- https://50pick.tz --as=alpha` closes it in one
+> run; that command exits non-zero on a failed sign-in, so it cannot pass over surfaces it
+> never loaded.
 >
 > 🎨 **DESIGN LANE (2026-08-12):** the round-2 design delivery (landing + `/markets`
 > discovery) was accepted and filed at `docs/design-system/v3-2026-08-11-landing-discovery/`;

@@ -238,7 +238,7 @@ them a fresh session on any machine can reach everything in under a minute:
 | Store | Holds | How a session reads it | Travels between laptops? |
 |---|---|---|---|
 | **Railway `50pick` service env** | every *platform* secret: `DATABASE_URL`, `SESSION_SECRET`, `AUDIT_CHAIN_SECRET`, `SELCOM_*`, `POSTMARK_*`, R2, the backup seal key, `ANTHROPIC_API_KEY`, **`TWELVEDATA_API_KEY`** | `railway run -s 50pick -- node -e "console.log(!!process.env.NAME)"` — and `railway run` injects them into any script, so **a secret never has to be written to a file or a transcript** | ✅ yes — it is the shared store |
-| **`C:\kipindi-main\.env.qa.local`** | ONLY the QA-persona passwords — `QA_ALPHA_PASSWORD`, `QA_ECHO_PASSWORD`, `QA_OFFICER_PASSWORD`, `QA_TRADING_PASSWORD`, `QA_GROWTH_PASSWORD`, **`QA_FINANCE_PASSWORD`**, and `QA_ADMIN_PASSWORD` (⛔ Ali's own — never re-mint) | `harness.mjs`'s `qaEnv(name)` reads it directly | ❌ **no** — gitignored (`.gitignore:9`); copy this one 4-line file to a new machine, or re-mint with `live/mkpw.cjs` (§1) |
+| **`C:\kipindi-main\.env.qa.local`** | ONLY the QA-persona passwords — `QA_ALPHA_PASSWORD`, `QA_ECHO_PASSWORD`, `QA_OFFICER_PASSWORD`, `QA_TRADING_PASSWORD`, `QA_GROWTH_PASSWORD`, **`QA_FINANCE_PASSWORD`**, and `QA_ADMIN_PASSWORD` (⛔ Ali's own — never re-mint) | `harness.mjs`'s `qaEnv(name)` reads it directly | ❌ **no** — gitignored (`.gitignore:9`); copy this one file to a new machine. ⛔ Re-minting is the LAST resort, not the fix — see the block below. The committed tool is **`scripts/ops-remint-qa-passwords.mts`** (⚠️ it IGNORES its arguments and re-mints ALL SIX); `live/mkpw.cjs` is scratchpad-only and is NOT in the repo |
 
 🔴 **A RE-MINT ON ONE LAPTOP LOCKS THE OTHER ONE OUT — measured 2026-08-03 13:30 UTC.**
 Session 18 re-minted the QA persona passwords against production from **laptop A**, which was
@@ -256,6 +256,41 @@ the two machines would take turns breaking each other for the rest of the campai
 with the instant, because the other machine has no way to detect it except by failing to log in.
 📌 One failed attempt is harmless — the lockout threshold is well above 1 — but do not retry in a
 loop while diagnosing, or you will lock a persona the other session is using.
+
+### 🔴 IT HAS HAPPENED AGAIN — laptop A, 2026-08-14 09:42 UTC (batch 5)
+
+Same symptom, same cause, and this time diagnosed **without spending a single extra login attempt**.
+`login(page, "alpha")` and `"echo"` both landed on the signed-out shell. Confirmed as *not the
+harness* by running an instrument nobody had touched — unmodified `scripts/live-updown-digest.mjs`
+failed identically on its first try.
+
+**Read the DB instead of guessing. Three explanations look identical from outside, and one query
+separates them:**
+
+```sql
+select "phoneE164", role, status, "failedLoginCount",
+       coalesce("lockedUntil"::text,'—') as locked_until,
+       coalesce("lastLoginAt"::text,'NEVER') as last_login, "updatedAt"::text
+  from "User" where "phoneE164" = any('{+255712000101,+255712000105}'::text[]);
+```
+(Connect with `scripts/live/ops/.env` — minted by `mkenv.cjs`; ⛔ always `::text`-cast a timestamp,
+this laptop's clock is not evidence about the server's.)
+
+| what it returned | what it rules out |
+|---|---|
+| `status ACTIVE`, `passwordHash` present | the account is not suspended, closed or gone |
+| `lockedUntil NULL`, `failedLoginCount 3` (alpha) / `1` (echo) — **exactly this session's attempts** | not a lockout; the counter is our own footprint |
+| `lastLoginAt 2026-08-10 23:40` for BOTH, `updatedAt 2026-08-14 09:42` | the last SUCCESSFUL sign-in was four days ago; everything since is failures |
+
+⇒ **This laptop's `.env.qa.local` is stale.** ⛔ **Not re-minted** — the block above forbids it and
+the reason still holds: another session was live in this working tree at the time. **Ali: copy
+`.env.qa.local` from whichever machine last signed in successfully (2026-08-10 23:40 UTC).**
+
+**What it cost:** four authed player rails — `/positions`, `/profile/activity`, `/profile/account`,
+`/updown/history` — could not be verified on production in batch 5. They are verified on localhost
+against the identical committed code. `npm run qa:filter-scan -- https://50pick.tz --as=alpha`
+closes it in one run, and **exits non-zero on a failed sign-in** so it can never report a clean
+verdict over surfaces it never loaded.
 
 ⛔ **And the one rule that does not bend: no secret VALUE is ever written into this repo.**
 It is pushed to `github.com/alisheib/kipindi`, and a leaked key in git history is permanent
@@ -316,7 +351,11 @@ railway login && railway link     # pick: 50pick · production
 
 3. **Copy `.env.qa.local` into the repo root** — it is gitignored (`.gitignore:9`) and is the
    ONLY thing that does not travel. Seven lines, one per persona (§1 table above). If it is
-   lost, every QA persona except ADMIN can be re-minted with `live/mkpw.cjs`;
+   lost, every QA persona except ADMIN can be re-minted with **`npx tsx
+   scripts/ops-remint-qa-passwords.mts`** — the COMMITTED tool. ⚠️ It **ignores its arguments
+   and re-mints all six**, so it cannot be scoped to one persona. (`live/mkpw.cjs`, which this
+   line used to name, is scratchpad-only and has never been in the repo — see the instrument
+   table near the end of this file.)
    ⛔ **`QA_ADMIN_PASSWORD` is Ali's own console login and must NEVER be re-minted.**
 
 4. **Prove the link works** before trusting anything:
