@@ -1,5 +1,52 @@
 # Changelog (reconstructed)
 
+## 2026-08-14 (design-system · filter-pill) — eight filter rails, one control, and the reference was breaking its own law
+
+**New component: `FilterPill` + `FilterGroupKey`** (`src/components/ui/filter-pill.tsx`, spec at
+`02-components/filter-pill/spec.md`). Extracted from the module-private `Chip` inside
+`discovery-bar.tsx` and adopted by every player filter rail: `/markets`, `/results`,
+`/proposals`, `/positions`, `/updown` (assets + durations), `/updown/history`,
+`/profile/activity`, `/profile/account`.
+
+**Measured in a browser against production before anything was touched** — four control heights
+(**40 / 44 / 48 / 64px**), two radii (8px `rounded-md` on five rails against the pill's 999px),
+an inline `style` at the call site on every diverging rail, and the defect that is not cosmetic:
+**every diverging rail outlined EVERY control**, against COMPONENTS §3's *"only the selected chip
+carries an outline"*. After: 999px, 44px, zero inline styles, zero unselected outlines, on 516
+controls across 96 surface × width × locale combinations.
+
+🔴 **The reference was breaking the law it set.** `discovery-bar.tsx`'s chip painted
+`background: var(--pill-active)` + `boxShadow: var(--glow-selected)` **inline** — B9/B10 law 82 —
+and the five rails told to match it had copied the habit. The extraction fixed it rather than
+propagating it: the selected state is `.kp-fchip[data-on]` in `globals.css`, one definition site,
+plus `.kp-fopt[data-on]` (fill, no halo) for a selected listbox row. ⛔ `test:design-frozen` was
+green over all six the whole time — its rules are exempted by any line containing `var(--`, and
+every one of those inline styles did.
+
+🔴 **And a filter control was wearing the money ink.** `.pchart-range.is-active` (the market
+detail chart's time-range) painted `var(--gilt)` on `var(--gold-fg)` — struck gold, which Q5
+reserves for money that was *earned* — on a control that chooses a chart window. The discovery
+bar had already made this exact call in as many words (*"NO GOLD — sort is view state"*). It is
+`--pill-active` now. `test:gold-is-money` could not see it: that gate is scoped to two IDENTITY
+surfaces on purpose, because money surfaces MUST use those tokens.
+
+**Two accessibility fixes that came out of the measurement, not the brief.** `/updown`'s duration
+tabs were **40px** and are 44. `.pchart-range` was **24.5px painted**; the first fix was batch 4's
+`::after` overlay technique and it **measured 36px, not 40** — paint order handed the pixels back
+to the chart wrapper below it — so the control is genuinely `min-height: var(--tap-min)` instead.
+An invisible overlay whose reach depends on stacking cannot be told from a working one without
+walking real pixels.
+
+**`/updown/history` gained a filter it never had.** It had a `?day=` filter reachable only from the
+daily digest's deep link, a chip that could report the active day and a link that could clear it —
+and no control that could *choose* one. It now has a day rail derived from the player's own rounds
+(`eatDayKey` over rows already in hand, zero extra I/O), each day carrying an honest round count.
+
+**Guards:** `test:filter-language` (66 assertions incl. a vacuity control, wired into `predeploy`)
+· `red:filter-language` (8/8, each defect on its own assertion, plus a case that proves the gate
+refuses to pass over an EMPTY subject set) · `qa:filter-scan` (live geometry at 4 widths × 3
+locales, frames, every menu opened, and the day rail's promise-vs-delivery).
+
 ## 2026-08-08 (design-system · celebration) — the struck seal replaces the gilt trophy; the celebration vocabulary gains its first consumer
 
 **The win moment is the spec's §3 now, built in place** (`markets/win-celebration.tsx` — the

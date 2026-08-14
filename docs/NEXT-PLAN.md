@@ -1,6 +1,42 @@
 STATUS: the next plan. Written 2026-07-29, immediately after the design system was
 frozen and shipped. **Revised 2026-07-31 against the live platform, not against memory.**
 
+> ⭐ **BATCH 5 IS LIVE (2026-08-14): every player filter control is ONE control.** Ali, reading
+> the live platform: *"filtering is not designed properly, markets has a different filter design
+> than up and down."* Measured in a browser before anything moved: **four control heights (40 /
+> 44 / 48 / 64px), two radii, an inline `style` at every diverging call site — and every
+> diverging rail outlined EVERY control**, against the round-2 rule that only the selected one
+> carries an outline. One primitive now (`src/components/ui/filter-pill.tsx`) serves **eight**
+> rails: `/markets`, `/results`, `/proposals`, `/positions`, `/updown` (assets + durations),
+> `/updown/history`, `/profile/activity`, `/profile/account`. After: 516 controls measured at
+> 360/768/1280/1920 × en/sw/zh — 999px, ≥44px, **0** inline styles, **0** unselected outlines.
+> 🔴 **The brief's own scan was wrong in three places, and only re-measuring found it**:
+> `/profile/activity` + `/profile/account` were missed entirely (byte-identical rails);
+> `/positions` renders **48px, not the 32 it recorded** (`h-8` is 48 on this repo's overridden
+> scale); `/markets` had **five** inline-styled controls, not two.
+> 🔴 **The reference was breaking the law it set** — `/markets`' chip painted `--pill-active` and
+> `--glow-selected` inline, and the five rails told to match it copied the habit. The selected
+> state is `.kp-fchip[data-on]` in `globals.css` now, one definition site.
+> ⛔ **`test:design-frozen` was green over all six the whole time** — its rules are exempted by any
+> line containing `var(--`, and every one of those inline styles did. A green ratchet was not
+> evidence.
+> 🔴 **A filter control was wearing the money ink**: `.pchart-range.is-active` (the market-detail
+> chart's time range) painted `var(--gilt)`. `test:gold-is-money` is scoped to two IDENTITY
+> surfaces on purpose, so it could not see it — *a law with a scope is not a law with a gate
+> everywhere*. It is `--pill-active` now, and the control reaches the tap floor: batch 4's
+> `::after` overlay trick **measured 36px, not 40** (paint order gave the pixels back), so it is
+> `min-height` instead.
+> ⭐ **`/updown/history` had a filter with no control** — `?day=` arrived only from the daily
+> digest's deep link. It now has a day rail derived from the player's own rounds, zero extra I/O,
+> each day carrying a count proven promise-vs-delivery.
+> **Guards:** `test:filter-language` (66 assertions, in `predeploy`) · `red:filter-language`
+> (8/8, each defect on its own assertion — the 8th proves the gate refuses to pass over an EMPTY
+> subject set) · `qa:filter-scan` (live geometry, frames, day-rail honesty).
+> ⚠️ Deferred with reasons in PLAN-OF-RECORD §8.8: `/markets`' `aria-pressed`-on-a-link, the
+> chart range's 40-vs-44, the `rounded-pill` literal, admin rails, `/wallet`'s section tabs.
+> ⚠️ **Pre-existing and NOT this batch's:** `red:updown-digest` is 6/7 — its `ungate-refunds`
+> anchor in `market-service.ts` went stale at `354bc307` (2026-08-10), four days earlier.
+>
 > 🎨 **DESIGN LANE (2026-08-12):** the round-2 design delivery (landing + `/markets`
 > discovery) was accepted and filed at `docs/design-system/v3-2026-08-11-landing-discovery/`;
 > all 22 static design gates now run in `predeploy` (were 4, and the chain was broken).

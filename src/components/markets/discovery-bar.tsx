@@ -18,6 +18,7 @@
  */
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
+import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";
 import { cn } from "@/lib/utils";
 import {
   ODDS_IDS,
@@ -41,23 +42,26 @@ import { MenuShell } from "./menu-shell";
 /* ───────────────────────────────────── the chip ───────────────────────────────────────── */
 
 /**
- * COMPONENTS §3. The governing rule, in the kit's own words: **only the SELECTED chip carries
- * an outline** — an unselected chip is text on transparent. Fifteen outlined capsules in one
- * bar was the single biggest source of the "chunky" criticism the round-2 brief was answering.
+ * ⭐ THE CHIP LEFT THIS FILE IN BATCH 5 (2026-08-14). It is now
+ * `src/components/ui/filter-pill.tsx`, and it is the control EVERY player filter rail renders —
+ * `/results`, `/positions`, `/proposals`, `/updown`, `/updown/history`, `/profile/activity`,
+ * `/profile/account`. Read that file's header for the governing rule and the 44px note; both
+ * moved with it rather than being restated here, because a rule in two places drifts.
  *
- * ⚠️ `min-h-[44px]` is written as an arbitrary value on purpose. Tailwind's spacing scale is
- * OVERRIDDEN in this repo (`h-8` = 48px, `h-10` = 80px, `tailwind.config.ts:156-171`), so a
- * scale class here would silently be the wrong size.
+ * 🔴 AND THE EXTRACTION FIXED THE REFERENCE, IT DID NOT COPY IT. The chip this bar shipped
+ * carried `style={{ background: "var(--pill-active)", boxShadow: "var(--glow-selected)" }}` —
+ * a law-82 breach (a paint value at the call site) on the very surface the other five were
+ * told to match. Five of them had duly copied the inline-style habit. The selected fill now
+ * lives in `.kp-fchip[data-on]` in `globals.css`, one definition site for the whole product.
+ *
+ * ⛔ `test:design-frozen` never saw any of this: its rules are exempted by any line containing
+ * `var(--`, and every one of those inline styles did. A green ratchet was not evidence.
+ *
+ * A thin local wrapper survives only to bind this bar's two invariants — `replace scroll=false`
+ * ("a filter is not a navigation") and `aria-pressed` (the semantics these chips have always
+ * shipped) — so no call site below can forget either.
  */
-function Chip({
-  href,
-  label,
-  count,
-  pressed,
-  glyph,
-  title,
-  testId,
-}: {
+function Chip(props: {
   href: string;
   label: string;
   count?: number;
@@ -67,33 +71,8 @@ function Chip({
   /** "axis:value" — lets a driver read the promised count and press exactly this control. */
   testId?: string;
 }) {
-  return (
-    <Link
-      href={href as never}
-      replace
-      scroll={false}
-      aria-pressed={pressed}
-      title={title}
-      data-chip={testId}
-      data-count={count}
-      className={cn(
-        "kp-fchip inline-flex min-h-[44px] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-pill border text-[13px] font-semibold",
-        pressed ? "px-4" : "px-3",
-        pressed ? "border-brand-400 text-text" : "border-transparent text-text-muted hover:bg-bg-overlay hover:text-text",
-      )}
-      style={pressed ? { background: "var(--pill-active)", boxShadow: "var(--glow-selected)" } : undefined}
-    >
-      {glyph}
-      {label}
-      {count != null && (
-        <span
-          className={cn("font-mono text-[11px] font-bold tabular-nums", pressed ? "text-brand-200" : "text-text-faint")}
-        >
-          {count}
-        </span>
-      )}
-    </Link>
-  );
+  const { pressed, ...rest } = props;
+  return <FilterPill {...rest} on={pressed} semantics="toggle" replace scroll={false} />;
 }
 
 /* ─────────────────────────────────────── the bar ──────────────────────────────────────── */
@@ -171,7 +150,7 @@ export function DiscoveryBar({
      * JavaScript, unlike the kit's mobile filter sheet. The strips bleed to the viewport edge
      * (`-mx-3 px-3`) so a half-visible chip signals "more this way".
      */
-    <div className="kp-discovery-bar sticky top-[56px] z-20 -mx-3 bg-bg-base px-3 lg:-mx-6 lg:px-6">
+    <div data-filter-rail className="kp-discovery-bar sticky top-[56px] z-20 -mx-3 bg-bg-base px-3 lg:-mx-6 lg:px-6">
       {/* ── row 1 · status · count ───────────────────────────────────────────────────── */}
       <div className="flex items-center gap-x-3 pt-2.5">
         <nav
@@ -252,11 +231,13 @@ export function DiscoveryBar({
                 scroll={false}
                 role="option"
                 aria-selected={state.sort === s}
+                /* The selected fill is `.kp-fopt[data-on]` in globals.css — the same token the
+                   selected pill uses, so a menu row and a chip can never drift apart. */
+                data-on={state.sort === s || undefined}
                 className={cn(
-                  "flex min-h-[44px] items-center justify-between gap-4 px-3 text-[13px] font-semibold",
+                  "kp-fopt flex min-h-[44px] items-center justify-between gap-4 px-3 text-[13px] font-semibold",
                   state.sort === s ? "text-text" : "text-text-muted hover:bg-bg-overlay hover:text-text",
                 )}
-                style={state.sort === s ? { background: "var(--pill-active)" } : undefined}
               >
                 {SORT_LABEL[s]}
                 <span className="font-mono text-[11px] text-text-faint">
@@ -298,9 +279,7 @@ export function DiscoveryBar({
             by side and neither says what it clears. The key uses the same quiet mono treatment
             as the sort and topic menus, so all four groups read as one family. */}
         <nav aria-label={t.market.oddsAria} className="flex shrink-0 items-center gap-1">
-          <span className="shrink-0 pr-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-text-subtle">
-            {t.market.oddsKey}
-          </span>
+          <FilterGroupKey>{t.market.oddsKey}</FilterGroupKey>
           {ODDS_IDS.map((o) => (
             <Chip
               key={o}
@@ -316,9 +295,7 @@ export function DiscoveryBar({
         <span aria-hidden className="mx-0.5 hidden h-5 w-px shrink-0 bg-border lg:block" />
 
         <nav aria-label={t.market.poolAria} className="flex shrink-0 items-center gap-1">
-          <span className="shrink-0 pr-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-text-subtle">
-            {t.market.poolKey}
-          </span>
+          <FilterGroupKey>{t.market.poolKey}</FilterGroupKey>
           {POOL_IDS.map((p) => (
             <Chip
               key={p}
@@ -360,11 +337,11 @@ export function DiscoveryBar({
               scroll={false}
               role="option"
               aria-selected={state.topic === tp.id}
+              data-on={state.topic === tp.id || undefined}
               className={cn(
-                "flex min-h-[44px] items-center justify-between gap-4 px-3 text-[13px] font-semibold",
+                "kp-fopt flex min-h-[44px] items-center justify-between gap-4 px-3 text-[13px] font-semibold",
                 state.topic === tp.id ? "text-text" : "text-text-muted hover:bg-bg-overlay hover:text-text",
               )}
-              style={state.topic === tp.id ? { background: "var(--pill-active)" } : undefined}
             >
               <span className="truncate">{tp.label}</span>
               <span className="shrink-0 font-mono text-[11px] tabular-nums text-text-faint">

@@ -13,6 +13,7 @@ import { BackLink } from "@/components/ui/back-link";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Cash } from "@/components/ui/cash";
+import { FilterPill } from "@/components/ui/filter-pill";
 import { getSession } from "@/lib/server/session";
 import { getActivitySummary, getRgUsage, type ActivityPeriod } from "@/lib/server/activity-summary";
 import { formatTzs, cn } from "@/lib/utils";
@@ -53,25 +54,21 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
       <BackLink fallbackHref="/profile" label={t.profile.title} />
       <PageHeader tone="info" icon={<I.chart s={22} />} eyebrow={t.activity.eyebrow} title={t.activity.title} />
 
-      {/* Period tabs — server-rendered searchParam pills (positions idiom) */}
-      <nav className="flex flex-wrap items-center gap-1.5 -mx-1 px-1 overflow-x-auto" aria-label={t.activity.periodAria}>
-        {PERIODS.map((p) => {
-          const on = p === period;
-          return (
-            <Link
-              key={p}
-              href={`/profile/activity${p === "month" ? "" : `?period=${p}`}` as never}
-              className={cn(
-                "inline-flex h-8 items-center rounded-md border px-3.5 font-mono text-[12px] font-semibold whitespace-nowrap transition-all",
-                on ? "border-brand-500 text-text" : "border-border bg-bg-elevated/60 text-text-muted hover:border-brand-400 hover:text-text",
-              )}
-              style={on ? { background: "var(--pill-active)" } : undefined}
-              aria-current={on ? "page" : undefined}
-            >
-              {periodLabel[p]}
-            </Link>
-          );
-        })}
+      {/* Period tabs. ⚠️ The comment here used to read "positions idiom" and it was exactly
+          right — this rail carried the same class string as /positions, /proposals, /results
+          and /profile/account, byte for byte. That is why batch 5's scan, which listed six
+          surfaces, missed it: it is not a *variant* of the divergence, it IS the divergence.
+          One primitive now, like every other rail. */}
+      <nav className="flex flex-wrap items-center gap-1.5 -mx-1 px-1 overflow-x-auto" aria-label={t.activity.periodAria} data-filter-rail>
+        {PERIODS.map((p) => (
+          <FilterPill
+            key={p}
+            href={`/profile/activity${p === "month" ? "" : `?period=${p}`}`}
+            label={periodLabel[p]}
+            on={p === period}
+            semantics="tab"
+          />
+        ))}
       </nav>
 
       {summary.empty ? (

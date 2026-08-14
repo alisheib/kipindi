@@ -697,6 +697,19 @@ Extends §B5 (one definition site per motion token) and §M2 (a surface picks a 
    they drift. The live file is the truth.
 5. **Extend the kit; never fork it.** A one-off that duplicates a primitive is how a design
    system dies — not in one decision, but in fifteen reasonable-looking ones.
+6. ⛔ **THERE IS ONE FILTER CONTROL, AND IT IS `FilterPill`** (added 2026-08-14, batch 5).
+   Every player-facing control that chooses which rows are shown renders through
+   `src/components/ui/filter-pill.tsx` — no exceptions, no per-surface variant. **Only the
+   SELECTED pill carries an outline; an unselected pill is text on transparent.** The rule is
+   not taste: *"fifteen outlined capsules in one bar was the single biggest source of the
+   'chunky' criticism the round-2 brief was answering."* A rail may differ from its neighbour in
+   exactly one way — `rank`, a prop on the primitive — and never by an inline style at the call
+   site. Its rail carries `data-filter-rail`. Spec:
+   `docs/design-system/v2-2026-07-27/02-components/filter-pill/spec.md`.
+   Guarded by `npm run test:filter-language` + `npm run red:filter-language`.
+   ⚠️ This is rule 5 restated because rule 5 was not enough: five surfaces each wrote their own
+   filter control while the kit's own reference sat one import away, and the divergence reached
+   four control heights and two radii before anyone measured it.
 
 **Definition of Done — every design task, no exceptions:**
 

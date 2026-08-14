@@ -207,6 +207,7 @@ topic taxonomy source of truth, whether search is server-side._
 | 2c hero | `(this commit)` | **29 gates green individually, real exit codes, no pipes** — the 22 design gates + `hero-contract` (29 assertions) + `discovery-contract` + `board-discovery` + `product-line` + `i18n`/`trilingual` + `integrity`/`outcome`/`history`/`docs`; **3 RED harnesses**: `red:hero-contract` **6/6**, `red:discovery-contract` 7/7, `red:board-discovery` 6/6; `tsc` exit 0 / 0 lines; `npm run build` exit 0, "Compiled successfully in 14.9s" (the 2 warnings are the known pre-existing `node:crypto`-in-Edge pair at `lock-key.ts:12` / `audit.ts:38`) | **40 frames read** at 360/768/1280/1920 × en/sw/zh across **two data states** — a populated book (Σ TZS 185,500, 52% YES) and a genuinely cold platform (users 0 · markets 46 · resolved 0). `overflowX=0` and `clipped=0` on every frame; **my** smallest control **56px** at every width | Photographic hero **DELETED** (`hero-bg.webp` 193 KB + its `:80` ref, cite-checked repo-wide) → the kit's question board: mark backdrop (geometry/opacity only) · headline from a dict key, **no gold on "wisdom"** · 3-figure proof rail · aggregate conviction via `TippingBar`'s existing `empty` state · 4 real markets closing soonest · one live featured `<MarketCard/>`. ⭐ **Cold start is now ONE rule with FOUR consumers** (`pricedYesPct`) and `DESIGN_AUTHORITY` was **corrected** — it had been stating the rule as the `&& predictors === 0` conjunction the card fixed as a bug. New instrument `qa:landing-shots`. Full account + 5 unpredicted findings in §8.7e |
 | 2c-bis hero RE-VALIDATION | `(this commit)` | tsc 0 · **30 gates green individually**, real exit codes · `red:hero-contract` **7/7** (was 6/6 — a seventh case reintroduces the duplication defect) · build exit 0, 13.3s · against **PRODUCTION**: `qa:discovery-probe` 0, `qa:discovery-board` 0, `qa:filter-stress` 0 incl. all 288 combinations | authed hero shot for the FIRST time (4 widths); whole-page frames read at 4 widths; hero `40 OPEN MARKETS` **measured** equal to the board's `status:open` 40 on prod | 🔴 **Found a defect I had already shipped**: the hero stated its lead market twice (featured card == board row 1). Fixed — the card is the soonest, the board opens at the second. Plus: the authed branch had never been rendered (now `AUTH=demo`), an authed page can never reach `networkidle` (SSE), and `git checkout --` during `next dev` 500s every CSS page until `.next/dev` is cleared. Full account in §8.7e-bis |
 | 2d landing + header + rail | `(this session, batch 3)` | **33 gates green individually incl. `landing-contract` and `ticker-honesty` (new)** + `hero-contract`/`discovery-contract`/`board-discovery`/`product-line` + `i18n`/`trilingual`; **4 RED harnesses**: `red:ticker-honesty` **13/13**, `red:landing-contract` **5/5**, `red:hero-contract` 7/7, `red:discovery-contract` 7/7, `red:board-discovery` 6/6; `tsc` exit 0 / 0 lines; `npm run build` exit 0, 11.5s | **96 frames** at 360/768/1280/1920 × en/sw/zh, `FULL=1`, all 6 required bands present, **0 failures**; 0 console errors (a real hydration mismatch was found and fixed — see below); every control OPENED (language menu, rail `More`, skip link) at 9 width×locale combinations, 0 failures; header/rail cross-checked on `/markets` + `/results` (the OTHER two pages this batch's global shell components render on) — 0 failures; cold-start pair proven directly: an 8,000/8,000 control card renders a REAL 50%, a genuinely empty market renders an em-dash + "No bets yet", never both as 50% | 🔴 **§3a compliance fix, done first: the ticker was FABRICATED** — a hardcoded 12-item synthetic array on every page. Rebuilt on ONE `getPlatformStats` scan (no second unbounded query), settlements only (no individual bets — PDPA), ordered by `settledAt` DESC, a VOID carries no figure, outcome read never inferred, localised before render. `StatsBand` deleted. Landing composed on the `--rh-*` rhythm tokens (their first consumer). **The hero/grid repetition batch 2 left open is fixed**: `lib/markets/landing.ts` excludes the hero's own ids from the grid by construction and picks a lens the eyebrow states (`pool` when the book has money, `new` when it doesn't — average-of-zeros would have ordered the grid identically to the hero on a cold book). Topic tiles reconcile to the hero by construction (folds over the same open set), asserted by `landingTopicsReconcile`. Header: opaque at every scroll position (was 78%+blur), 3 nav tiers, ONE 44×44 language menu at every width (was a 3-pill capsule absent below 640 AND across 1024–1279, with a duplicate picker in the avatar menu to cover the second gap — both gone). Rail: 5 slots, `--pill-active` (aqua literals gone), `data-needle-keepout` wired to an existing-but-unused obstacle mechanism. Settled strip + RG line + trust band (M-Pesa via `PaymentLogo`, never inlined). Entry motion at 550ms on the EXISTING `kp-rise` keyframe (a second definition would have silently retuned two other consumers — caught by `test:keyframes`). Primer copy: the dict's `card3Body` was STALE against the capped-fee model (Swahili line described a fee-free split) and was corrected BEFORE the component was pointed at it, not after. Two-officer resolution copy corrected to match `requireTwoOfficer` actually being optional, not default. Full account, every defect found and how each was caught, in §8.7f below |
+| 5 ONE filter language | `(this session, batch 5)` | **`test:filter-language` (NEW, 66 assertions incl. a vacuity control) wired into `predeploy`**; `red:filter-language` **8/8, each defect on its own assertion** — the 8th being the INSTRUMENT's own failure mode (an empty subject set); `test:design-frozen` · `ui-consistency` · `i18n` · `bridge` · `tokens` · `measure` · `design-one-door` · `chip-contract` · `discovery-contract` · `board-discovery` · `updown-digest` · `gold-is-money` · `trilingual` · `position-permalink` · `orphans` all green; `red:discovery-contract` / `red:board-discovery` / `red:time-left` green; `tsc --noEmit` exit 0; `npm run build` exit 0 | **516 controls measured in a browser at 360/768/1280/1920 × en/sw/zh** — 999px, ≥44px, 0 inline styles, 0 unselected outlines on every one; **120 frames read**, every `<details>` menu OPENED; all four board probes green (`qa:discovery-probe` · `qa:discovery-board` · `qa:results-board` · `qa:filter-stress`); `qa:tap-hit` green; the day rail proven promise == delivery | ONE primitive (`ui/filter-pill.tsx`) for **eight** rails — the brief said six. 🔴 The reference broke its own law-82 and the extraction FIXED it (`.kp-fchip[data-on]` in globals.css) rather than copying it; `test:design-frozen` was green over all six inline styles because `var(--` exempts the line. 🔴 A filter control was wearing the money ink (`.pchart-range.is-active` = `--gilt`), outside `test:gold-is-money`'s deliberate two-file scope. 🔴 Batch 4's `::after` hit-area trick **measured 36px, not 40** — paint order — now `min-height`. 🔴 `/updown/history` had a filter with NO control; it has a derived day rail with honest counts and zero extra I/O. Three corrections to §8.7h's own scan: 8 surfaces not 6, `/positions` is 48px not 32, `/markets` had 5 inline-styled controls not 2. Full account in §8.7h |
 | 4 cleanup + the deferred trio | `(this session, batch 4)` | **40 gates green individually, real exit codes, no pipes** — the 22 design gates + `hero-contract`/`discovery-contract`/`board-discovery`/`landing-contract`/`ticker-honesty`/`product-line`/`i18n`/`trilingual`/`docs`/`orphans`/`orphan-actions`/`markets`/`selection-closed`/`grid-paging`/`needle` + **`test:time-left` (NEW, 34 assertions incl. a vacuity control)**; `red:time-left` **5/5**, each defect on its own assertion, tree restored byte-identical; `tsc --noEmit` exit 0. ⚠️ `test:responsive`/`test:motion` are server-dependent (default `:3000`, not in PLAN §3's 22) — `test:motion` exit 0 at `BASE=:3009`, 43 passed | 12 seam frames **before AND after** at 360/768/1280/1920 × en/sw/zh · 12 time-left frames · 3 minute-branch frames · **32 card hit tests**; 0 overflow, 0 console errors anywhere; card geometry diff **IDENTICAL** before/after | 🔴 **The live RG regression Ali reported, fixed first**: each of the three RG destinations appeared **twice on one page** (1 RG line, 1 footer) at all 12 combinations — counted by href, not localised text — and the void was **320px, not the 192px the finding estimated** (`.kp-rg`'s own margin-top+padding-top added 96, and **`mt-12` computes to 128px on this repo's CUSTOM scale**, `tailwind.config.ts:176`). Links deleted, dead CSS deleted in the same commit, the double-count margin removed → 96 above / 128 below, both single tokens, landing on the rhythm block's own drawing. 🔴 **§4d found a THIRD time-left copy the plan did not name** — `markets/page.tsx:271`, with the defective `Math.floor`, on the busiest board; all five callers now delegate and a gate + RED proof now guard it. 🔴 **§4e shipped** — Details hit area 17→40px with **zero** layout movement, proven by hit test because no bounding-box instrument can see it. §4a cite-check: **clean, nothing archived, no empty dated folder created**. §4b: all three carried forward (Ali). §4c: filter UI for four more surfaces **NOT commissioned** (Ali). Plus **three of this batch's own instruments were wrong before the product was** — full account in §8.7g |
 
 ## 7 · IMPLEMENTATION DOSSIER — measured facts for the next session (2026-08-12)
@@ -891,6 +892,17 @@ deferral stays a decision rather than a silence:
 | **The mobile filter SHEET** | Batch 1's scrolling strips remain "the right trade for a defect fix, the wrong end state". The debt is real and named. But the verification surface is larger than it looks: the sheet must not regress the strip's keyboard operability, and its focus trap / focus return / Escape-closes must be checked against the shared `<Modal>` primitive's actual contract, not the kit's spec drawing — at four widths in three locales. Half-rigor here is worse than an honest carry | A `<details>`-driven bottom sheet + scrim, sort/topic as FLAT lists inside it. ⛔ never nested `<details>` — it would clip exactly like §8.7c's defect |
 | **Search typeahead** | `SearchBox` already delivers correct debounced search on the shared grammar, so the board searches correctly today. This is a pure ENHANCEMENT, not a gap in behaviour | A client combobox over the existing parser; suggestion kinds per COMPONENTS §8 |
 
+### Batch 5's own deferrals — named, with the reason (2026-08-14)
+
+| Deferred | Why | What it needs |
+|---|---|---|
+| **`/markets`' chips announce `aria-pressed`, on an `<a>`** | `aria-pressed` is only valid on `role="button"`; on a link it is a role mismatch a screen reader may ignore or misreport. Every other rail is `aria-current="page"`, which is the accurate reading for a link that reflects current state. But it is the shipped semantics of the REFERENCE surface, changing it is an a11y behaviour change the batch was not asked for, and it deserves its own verification rather than a side effect of a shape batch. The primitive already supports both, so the change is one prop | A screen-reader pass on `/markets` at 360/1280, then flip `semantics="toggle"` → `"tab"` in `discovery-bar.tsx`'s local `Chip` wrapper |
+| **`.pchart-range` sits at 40px, not the rails' 44px** | 40 is Law 9's floor and the control now genuinely clears it (measured 41px of hit area). It is a compact SEGMENTED sub-control inside a chart header, not a standalone rail, and 44 per segment would make the rail 48px tall in a header line whose label is 10px mono. Defensible, but it IS a difference and it is recorded rather than smoothed over | Ali's eye on whether a chart header can carry a 48px rail |
+| **`rounded-pill` is a hard-typed `"999px"` in `tailwind.config.ts:199`** | Two homes for one truth (`--r-pill: 999px` is the other), and B10 rule 4 names `rounded-chip` — which reads `var(--r-pill)` — as the canonical semantic key for new design. ⛔ NOT changed here on purpose: switching one call site to `rounded-chip` while ~40 others say `rounded-pill` creates TWO names for one value, which is worse than the single duplication it fixes. §0a says delete one, not add a third | A platform-wide `rounded-pill` → `rounded-chip` sweep, its own change |
+| **`red:updown-digest`'s `ungate-refunds` anchor is stale** | Broken since `354bc307` (2026-08-10), in `market-service.ts`, which this batch never touched. It is a money-NOTIFICATION proof and repairing its anchor requires re-establishing what E-43's defect shape is today — a remedy written inside a design batch inherits that batch's blind spot | Re-anchor against the current `notifyRefund` call, then re-prove the defect it names |
+| **Admin filter rails are untouched** | `/admin/**` has its own density rules and a different audience, and `DateTimeRangeFilter` is a genuinely different control (a range, not a set of options) already shared across 7 admin routes. Ali's instruction named the player platform | A separate decision about whether admin should share the player pill |
+| **`/wallet`'s `<Tabs variant="line">`** | Section navigation, not row filtering — the code says so at its own call site. Excluded deliberately. ⚠️ But it IS a horizontal tab rail on a player surface at `h-10` (**80px**) with an inline-styled active underline, and a reader comparing it side by side with `/positions`' rail will see two languages for what looks like one idea | A ruling on whether a section tab and a filter tab may look different |
+
 🔴 **CORRECTED 2026-08-14 — see §5.8.** The line that used to sit here said filter UI for `/live`,
 `/watchlist`, `/leaderboard`, `/fairness` was "not commissioned". The premise was wrong: `/markets`'
 pill language is already the law for every filter control, so applying it is enforcement, not a new
@@ -1409,7 +1421,86 @@ confirmed by a viewport shot plus `elementFromPoint` returning `main` in the gap
 **The minute branch was driven in the real product**, not just unit-tested: a market pulled to 40
 seconds from close renders `1m left` / `dakika 1 zimebaki` / `1分钟后` — never `0m left`.
 
-## 8.7h · BATCH 5 (NEXT) — ONE filter language. The scan, measured 2026-08-14
+## 8.7h · BATCH 5 — ONE filter language. SHIPPED 2026-08-14, and the scan below was wrong in three places
+
+**What shipped:** one primitive (`src/components/ui/filter-pill.tsx`), consumed by **eight**
+player filter rails. Measured after, in a browser, at 4 widths × 3 locales: **516 controls, all
+999px, all ≥44px, zero inline styles, zero unselected outlines.**
+
+### 🔴 The scan in this section was measured, and it was still wrong in three places
+
+Every correction came from re-running it rather than reading it — which is the whole argument for
+re-measuring before acting on a table someone else wrote, even when that someone was this project.
+
+1. **It listed SIX surfaces. There are EIGHT.** `/profile/activity` and `/profile/account` carry
+   filter rails built from the *byte-identical* class string as `/positions`, `/proposals` and
+   `/results` — `/profile/activity`'s own comment even reads *"positions idiom"*. They were not a
+   variant of the divergence, they **were** the divergence, and a scan that enumerated surfaces by
+   walking the routes the brief already suspected could not see them. ⭐ The lesson is the same one
+   §5.8 records one level up: a search shaped by the answer you expect returns that answer.
+2. **`/positions` does NOT render 32px. It renders 48px.** The table said 32. In source it is
+   `h-8`, and on this repo's overridden scale `h-8` is **48px**; in a browser it measured 48 at
+   360 and 1280. The only genuinely sub-floor control in the product was `/updown`'s duration rail
+   at **40px**. Filing "/positions breaks the tap floor" would have been a defect report about
+   nothing.
+3. **`/markets` had FIVE inline-styled controls, not 2.** Three pressed chips plus the two
+   selected menu OPTIONS, which the table did not count as controls at all.
+
+### What the eight rails looked like, before and after
+
+| | before | after |
+|---|---|---|
+| control heights | **40 / 44 / 48 / 64px** | 44px |
+| radii | 8px on five rails, 999px on one | 999px |
+| inline `style` at the call site | every diverging rail — **and `/markets` itself** | none |
+| unselected controls outlined | all of them, on five rails | none |
+| rails announcing no state to a screen reader | `/results`, `/proposals` | none |
+
+⚠️ **`h-9` is 64px here.** `/updown`'s asset tabs were the worst divergence in the product and
+nobody typed "64" — they typed `h-9`, which reads like 36. That is the overridden-scale trap
+doing real damage, and it is why the primitive keeps `min-h-[44px]` as an arbitrary value.
+
+### Three things the batch found that were not on its list
+
+- 🔴 **A filter control was wearing the money ink.** `.pchart-range.is-active` — the market-detail
+  chart's time-range — painted `var(--gilt)` on `var(--gold-fg)`. Gold is money (Q5); a chart
+  window is view state, and `discovery-bar.tsx` had already made this exact call in as many words.
+  ⛔ **`test:gold-is-money` could not see it** and was right not to: it is scoped to two IDENTITY
+  surfaces on purpose, because money surfaces MUST use those tokens. *A law with a scope is not a
+  law with a gate everywhere.*
+- 🔴 **The `::after` hit-area technique does not always work, and it lies quietly when it fails.**
+  `.pchart-range` painted 24.5px. Batch 4's proven trick — an absolutely-positioned pseudo-element
+  that grows the target without moving layout — **measured 36px, not 40**: `up 16 / down 19`,
+  stopped above by `div.pt-3` and below by `div.pchart`. A pseudo-element painted outside its
+  parent is still subject to **paint order**, and the chart wrapper following it in the DOM took
+  the pixels back. It is `min-height: var(--tap-min)` now. ⭐ Nothing but walking real pixels could
+  have told a working overlay from a broken one — a bounding box shows neither.
+- 🔴 **`/updown/history` had a filter with no control.** `?day=` was reachable only from the daily
+  digest's deep link; the page could report the active day and clear it, but never *choose* one. It
+  now has a day rail derived from the player's own rounds (`eatDayKey` over rows already in hand,
+  **zero extra I/O**), each day carrying a round count proven promise-vs-delivery.
+
+### The guards
+
+`test:filter-language` — **66 assertions**, wired into `predeploy`. `red:filter-language` —
+**8/8, each defect on its own assertion**, tree restored byte-identical.
+
+⭐ **The eighth RED case is not a product defect.** `vacuity` renames the rail hook so the gate's
+subject set goes EMPTY, and proves §0's positive control refuses that. A rule of the form *"every
+filter surface must do X"* passes over an empty set, and that is precisely how a third copy of the
+time-left formatter lived through two batches under a green gate. If `vacuity` ever returns GREEN,
+every case above it proved nothing.
+
+⚠️ **A pre-existing RED harness failure, NOT this batch's and not fixed by it.**
+`red:updown-digest` reports 6/7: its `ungate-refunds` anchor names a line in
+`src/lib/server/market-service.ts` that stopped existing at **`354bc307` (2026-08-10)**, when
+`positionId: p.id` joined the `notifyRefund` call — four days before this session. Proven by
+`git show HEAD:…`, and the file is untouched here. Both of *this* batch's anchors in that same
+harness (`dead-link`, `raw-param-filter`) went ✓ RED, which is what proves the `/updown/history`
+edits kept the guard's contract. ⛔ It is a money-NOTIFICATION proof; repairing its anchor inside a
+design batch would be a remedy written in the wrong session, so it is filed rather than patched.
+
+## 8.7h-bis · The original scan, as written 2026-08-14 (kept for the corrections above)
 
 **Ali, reading the live platform:** *"filtering is not designed properly, markets has a different
 filter design than up and down. This is not acceptable in a consistent professional platform...
@@ -1508,6 +1599,7 @@ production**, and they are now registered npm scripts:
 |---|---|
 | `npm run qa:discovery-probe -- https://50pick.tz` | every control's promised count equals what pressing it delivers, incl. cross-filtering · URL hygiene · sorting reorders · empty-state exits are non-empty |
 | `npm run qa:discovery-board -- https://50pick.tz` | the GRID draws a page of that set — counted in a real browser DOM, because response byte order ≠ DOM order under streaming · the mobile bar height in **real** sw and zh · and ⭐ that **every menu actually OPENS** (≥90% of its panel visible at 360), the check §8.7c's defect proved was missing |
+| `npm run qa:filter-scan -- https://50pick.tz` | ⭐ batch 5. Every player filter rail, measured in a real browser: computed radius, painted height, font-size, the presence of an inline `style`, and whether an UNSELECTED control is outlined — per surface, per width, per locale. Colours go through a 1×1 canvas, never a regex (this system's tokens are `oklch()`). Rails are addressed by the `data-filter-rail` hook, never by shape — the first version reached for `nav[aria-label] a[href^="/positions"]` and measured a **bottom-nav link**. `--shots=<dir>` captures a frame per rail and OPENS every `<details>` menu. Ends with the `/updown/history` day rail's promise-vs-delivery, which SKIPS loudly (never passes) when no authed Up & Down history exists |
 | `npm run qa:results-board -- https://50pick.tz` | /results' category rail: promise == delivery per category, with and without a search; a search may only narrow; a no-match query zeroes every count; a zero-count category offers a real exit. Its RED proof is `red:results-filter` — ⛔ running it against production reds for the WRONG reason (no `data-chip` there yet) |
 | `npm run qa:filter-stress -- https://50pick.tz` | 12 hostile payload classes × every param of both boards (no 500, nothing executes) · **all 288** status×sort×odds×pool combinations keep promise == delivery · the same URL twice gives the same board |
 | `LOCALES=en,sw,zh npm run qa:discovery-shots -- .qa-design-round2/after` | 360 + 1280 × en/sw/zh, failing on any horizontal overflow. ⚠️ Shots are EVIDENCE — write them under `.qa-design-*/`, never into the tree (§0b) |

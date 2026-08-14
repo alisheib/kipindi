@@ -13,6 +13,7 @@ import { listPositionsForUser, getMarket, cashOutValue, isSelectionClosed } from
 import { currentSession } from "@/lib/server/auth-service";
 import { ensureAffiliateAccount } from "@/lib/server/affiliate-service";
 import { EmptyState } from "@/components/ui/empty-state";
+import { FilterPill } from "@/components/ui/filter-pill";
 import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { getServerT } from "@/lib/i18n-server";
@@ -139,31 +140,22 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
              container. Removed with the identical pair on /results. */
           className="flex flex-wrap items-center gap-1.5"
           aria-label={t.positions.filterAria}
+          data-filter-rail
         >
           {([
             { id: "all", label: t.positions.tabAll, count: positions.length },
             { id: "open", label: t.positions.tabOpen, count: open.length },
             { id: "settled", label: t.positions.tabSettled, count: settled.length },
-          ] as const).map((tab) => {
-            const on = activeTab === tab.id;
-            return (
-              <Link
-                key={tab.id}
-                href={`/positions${tab.id === "all" ? "" : `?tab=${tab.id}`}` as never}
-                className={
-                  "inline-flex h-8 items-center rounded-md border px-3.5 font-mono text-[12px] font-semibold whitespace-nowrap transition-all " +
-                  (on
-                    ? "border-brand-500 text-text"
-                    : "border-border bg-bg-elevated/60 text-text-muted hover:border-brand-400 hover:text-text")
-                }
-                style={on ? { background: "var(--pill-active)" } : undefined}
-                aria-current={on ? "page" : undefined}
-              >
-                {tab.label}
-                <span className="ml-1.5 font-mono text-[10px] tabular-nums opacity-60">{tab.count}</span>
-              </Link>
-            );
-          })}
+          ] as const).map((tab) => (
+            <FilterPill
+              key={tab.id}
+              href={`/positions${tab.id === "all" ? "" : `?tab=${tab.id}`}`}
+              label={tab.label}
+              count={tab.count}
+              on={activeTab === tab.id}
+              semantics="tab"
+            />
+          ))}
         </nav>
       )}
 

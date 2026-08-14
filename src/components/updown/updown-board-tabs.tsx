@@ -18,9 +18,9 @@
  * behaviour fall through to the browser (the same cases NavProgress ignores —
  * UD-10); only a plain left-click becomes a transition.
  */
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { FilterPill } from "@/components/ui/filter-pill";
 
 export type BoardTab = { key: string; href: string; label: string };
 
@@ -64,45 +64,50 @@ export function UpDownBoardTabs({
 
   return (
     <>
-      {/* ── Asset tabs (primary) ─────────────────────────────────────────── */}
-      <nav aria-label={assetsLabel} className="mt-4 flex flex-wrap gap-2">
-        {assetTabs.map((tab) => {
-          const on = assetOn(tab);
-          return (
-            <Link key={tab.key} href={tab.href as never} onClick={go(tab.href)}
-                  aria-current={on ? "page" : undefined}
-                  className="inline-flex h-9 items-center rounded-md px-4 text-[13.5px] font-semibold transition-colors"
-                  style={{
-                    border: `1px solid ${on ? "var(--brand-500)" : "var(--border)"}`,
-                    background: on ? "var(--pill-active)" : "color-mix(in oklab, var(--bg-elevated) 60%, transparent)",
-                    color: on ? "var(--text)" : "var(--text-muted)",
-                    textDecoration: "none",
-                  }}>
-              {tab.label}
-            </Link>
-          );
-        })}
+      {/* ── Asset tabs (primary) ─────────────────────────────────────────────────────────
+          🔴 THESE WERE THE WORST DIVERGENCE IN THE PRODUCT — measured on production
+          2026-08-14, not argued: `h-9` reads like 36px and renders **64px** on this repo's
+          overridden spacing scale, every one of the five was OUTLINED, and all four paint
+          values were written inline at the call site. They are the pill now, like every other
+          filter rail. ⛔ No count: `BoardAsset` carries none and the board reads rounds for the
+          ACTIVE chain only, so a number here would be invented — A-5 forbids that, and
+          `durations.length` is a count of chains wearing the costume of a count of games. */}
+      <nav aria-label={assetsLabel} data-filter-rail className="mt-4 flex flex-wrap gap-2">
+        {assetTabs.map((tab) => (
+          <FilterPill
+            key={tab.key}
+            href={tab.href}
+            label={tab.label}
+            on={assetOn(tab)}
+            semantics="tab"
+            /* ⚠️ `go()` needs the RAW MouseEvent — it reads `e.button` and the four modifier
+               keys to hand new-tab clicks back to the browser. The primitive passes it through
+               untouched for exactly this. */
+            onClick={go(tab.href)}
+          />
+        ))}
       </nav>
 
-      {/* ── Duration tabs (secondary — deliberately quieter) ─────────────── */}
+      {/* ── Duration tabs (secondary — deliberately quieter) ──────────────────────────────
+          ⭐ The hierarchy is REAL and it survives: the asset is the subject, the duration
+          refines it. It is now expressed as `rank="secondary"` — a decision made once, inside
+          the primitive — rather than as four inline style values per control. Consistency
+          means one control language, not one volume.
+          These were the only genuinely sub-floor controls in the product at **40px** (`h-7`);
+          they are 44px now, so this is a hit-area fix as well as a shape one. */}
       {durationTabs.length > 0 && (
-        <nav aria-label={durationsLabel} className="mt-2 flex flex-wrap gap-1.5">
-          {durationTabs.map((tItem) => {
-            const on = durationOn(tItem);
-            return (
-              <Link key={tItem.d} href={tItem.href as never} onClick={go(tItem.href)}
-                    aria-current={on ? "page" : undefined}
-                    className="inline-flex h-7 items-center rounded-md px-3 font-mono text-[11.5px] transition-colors"
-                    style={{
-                      border: `1px solid ${on ? "var(--border-strong)" : "transparent"}`,
-                      background: on ? "var(--bg-inset)" : "transparent",
-                      color: on ? "var(--text)" : "var(--text-subtle)",
-                      textDecoration: "none",
-                    }}>
-                {tItem.d} {minLabel}
-              </Link>
-            );
-          })}
+        <nav aria-label={durationsLabel} data-filter-rail className="mt-2 flex flex-wrap gap-1.5">
+          {durationTabs.map((tItem) => (
+            <FilterPill
+              key={tItem.d}
+              href={tItem.href}
+              label={`${tItem.d} ${minLabel}`}
+              on={durationOn(tItem)}
+              semantics="tab"
+              rank="secondary"
+              onClick={go(tItem.href)}
+            />
+          ))}
         </nav>
       )}
 

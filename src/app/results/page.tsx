@@ -3,6 +3,7 @@ import Link from "next/link";
 import { I, categoryGlyph } from "@/components/ui/glyphs";
 import { MarketCard } from "@/components/markets/market-card";
 import { Chip } from "@/components/ui/chip";
+import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";
 import { TippingBar } from "@/components/brand";
 import { listMarkets, impliedYesPct, MARKET_CATEGORIES } from "@/lib/server/market-service";
 import { categoryOptions } from "@/lib/markets/category-label";
@@ -243,65 +244,57 @@ async function ResultsContent({
                 360 and 768 in all three languages. Same shape as the `-mx-3` bleed removed from
                 the /markets strips. */}
             <nav aria-label={t.results.sortAria} className="flex flex-wrap items-center gap-1.5 lg:flex-col lg:flex-nowrap lg:items-stretch lg:gap-1">
-              <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle pr-1 lg:pr-0 lg:mb-1">{t.common.sort}</span>
-              {SORT_OPTIONS.map((o) => {
-                const active = o.id === activeSort;
-                return (
-                  <Link
-                    key={o.id}
-                    /* ⛔ `replace`, not a push — a filter is not a navigation (kit README §3, and
-                       every /markets control does this). Without it, pressing five filters left
-                       five history entries and Back walked the player backwards through their own
-                       filter states instead of leaving the page. */
-                    replace
-                    scroll={false}
-                    href={buildHref({ sort: o.id, page: 1 }) as never}
-                    className={
-                      "inline-flex h-8 items-center rounded-md border px-3.5 font-mono text-[12px] font-semibold whitespace-nowrap transition-all lg:w-full lg:justify-start " +
-                      (active
-                        ? "border-brand-500 text-text"
-                        : "border-border bg-bg-elevated/60 text-text-muted hover:border-brand-400 hover:text-text")
-                    }
-                    style={active ? { background: "var(--pill-active)" } : undefined}
-                  >
-                    {o.label}
-                  </Link>
-                );
-              })}
+              <FilterGroupKey className="pr-1 lg:pr-0 lg:mb-1">{t.common.sort}</FilterGroupKey>
+              {SORT_OPTIONS.map((o) => (
+                <FilterPill
+                  key={o.id}
+                  /* ⛔ `replace`, not a push — a filter is not a navigation (kit README §3, and
+                     every /markets control does this). Without it, pressing five filters left
+                     five history entries and Back walked the player backwards through their own
+                     filter states instead of leaving the page. */
+                  replace
+                  scroll={false}
+                  href={buildHref({ sort: o.id, page: 1 })}
+                  label={o.label}
+                  on={o.id === activeSort}
+                  /* A rail where exactly one option is in force: `aria-current`, not
+                     `aria-pressed`. It had NEITHER before batch 5 — this rail announced no
+                     state at all to a screen reader. */
+                  semantics="tab"
+                  /* The desktop sidebar makes each pill a full-width row; the mobile rail wraps
+                     them as pills. Both stay the same control — only the box it fills changes. */
+                  className="lg:w-full lg:justify-start"
+                />
+              ))}
             </nav>
 
             {/* Categories */}
             <nav aria-label={t.results.categoriesAria} className="flex flex-wrap items-center gap-1.5 lg:flex-col lg:flex-nowrap lg:items-stretch lg:gap-1">
-              <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle pr-1 lg:pr-0 lg:mb-1">{t.common.topic}</span>
+              <FilterGroupKey className="pr-1 lg:pr-0 lg:mb-1">{t.common.topic}</FilterGroupKey>
               {CATEGORIES.map((c) => {
                 const active = c.id === activeCat;
                 const Glyph = c.id === "all" ? I.layoutGrid : I[categoryGlyph(c.id)];
                 return (
-                  <Link
+                  <FilterPill
                     key={c.id}
                     replace
                     scroll={false}
-                    href={buildHref({ cat: c.id, page: 1 }) as never}
+                    href={buildHref({ cat: c.id, page: 1 })}
                     /* Machine-readable so a driver can read the promise and press exactly this
-                       control — the same contract `/markets` chips carry. */
-                    data-chip={`cat:${c.id}`}
-                    data-count={catCounts[c.id] ?? 0}
-                    className={
-                      "inline-flex h-8 items-center gap-1.5 rounded-md border px-3 font-mono text-[12px] font-semibold whitespace-nowrap transition-all lg:w-full lg:justify-start " +
-                      (active
-                        ? "border-brand-500 text-text"
-                        : "border-border bg-bg-elevated/60 text-text-muted hover:border-brand-400 hover:text-text")
-                    }
-                    style={active ? { background: "var(--pill-active)" } : undefined}
-                  >
-                    <Glyph s={14} className={"shrink-0 " + (active ? "text-brand-300" : "opacity-70")} />
-                    {c.label}
-                    {/* Every count names the set pressing it would show — cross-filtered by the
-                        active search, so it can never promise 22 and deliver 4. */}
-                    <span className={"ml-auto pl-1.5 font-mono text-[11px] font-bold tabular-nums " + (active ? "text-brand-200" : "text-text-faint")}>
-                      {catCounts[c.id] ?? 0}
-                    </span>
-                  </Link>
+                       control — the same contract `/markets` chips carry. ⛔ `qa:results-board`
+                       slices this by INDEX (`data-chip`.slice(4)), so the `cat:` prefix is not
+                       decoration; and every count names the set pressing it would show —
+                       cross-filtered by the active search, so it can never promise 22 and
+                       deliver 4. */
+                    testId={`cat:${c.id}`}
+                    count={catCounts[c.id] ?? 0}
+                    label={c.label}
+                    on={active}
+                    semantics="tab"
+                    glyph={<Glyph s={14} className={"shrink-0 " + (active ? "text-brand-300" : "opacity-70")} />}
+                    className="lg:w-full lg:justify-start"
+                    countClassName="lg:ml-auto lg:pl-1.5"
+                  />
                 );
               })}
             </nav>
@@ -324,16 +317,23 @@ async function ResultsContent({
               search, a search can come back empty because of the category rather than the words —
               a different cause, so it gets a different way out, and it is only offered when it
               actually leads somewhere non-empty. */}
+          {/* ⚠️ It used to be painted as a SELECTED pill — outlined, filled, an inline
+              `background` — which said "this is the category you are on" about the one control
+              on the page that is the way OFF it. It is now the quiet pill every rail uses for a
+              destination, the same treatment `/markets` gives its own Clear-all, and it still
+              carries the real count so the exit names where it leads.
+              ⛔ It must stay an `<a>` whose href OMITS `cat` — `qa:results-board` finds this
+              exit by looking for a `/results` link with a `q=` and no `cat=`. */}
           {totalCount === 0 && activeCat !== "all" && catCounts.all > 0 && (
-            <Link
+            <FilterPill
               scroll={false}
-              href={buildHref({ cat: "all", page: 1 }) as never}
-              className="mb-3 inline-flex min-h-[44px] items-center gap-1.5 rounded-pill border border-brand-400 px-4 text-[13px] font-semibold text-text"
-              style={{ background: "var(--pill-active)" }}
-            >
-              {t.market.catAll}
-              <span className="font-mono text-[11px] font-bold tabular-nums text-brand-200">{catCounts.all}</span>
-            </Link>
+              href={buildHref({ cat: "all", page: 1 })}
+              label={t.market.catAll}
+              count={catCounts.all}
+              on={false}
+              glyph={<I.layoutGrid s={14} className="shrink-0 opacity-70" />}
+              className="mb-3"
+            />
           )}
 
           {paged.length > 0 ? (

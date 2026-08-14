@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { BackLink } from "@/components/ui/back-link";
@@ -6,6 +5,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { PageHero } from "@/components/ui/page-hero";
 import { BrandTopo } from "@/components/brand-topo";
 import { Chip } from "@/components/ui/chip";
+import { FilterPill } from "@/components/ui/filter-pill";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { Pagination, PLAYER_PER_PAGE, parsePage, buildBaseHref } from "@/components/ui/pagination";
 import { currentSession } from "@/lib/server/auth-service";
@@ -131,26 +131,23 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
             {activity.length} {t.common.events}
           </span>
         </div>
+        {/* ⚠️ This rail was `h-7` — 40px on this repo's overridden scale — while its four
+            siblings were `h-8` (48px). So it was already a divergence INSIDE the divergent
+            idiom, and the batch-5 scan listed neither. `rank="secondary"` keeps its quieter
+            mono voice, which is a real hierarchy (this is a sub-filter inside a panel), while
+            the geometry joins the one language. */}
         {activityCategories.length > 1 && (
-          <nav className="flex flex-wrap items-center gap-1.5" aria-label={t.profile.activityFilter}>
-            {[{ id: "all", label: t.common.all }, ...activityCategories.map((c) => ({ id: c, label: c }))].map((f) => {
-              const on = actFilter === f.id;
-              return (
-                <Link
-                  key={f.id}
-                  href={`/profile/account${f.id === "all" ? "" : `?act=${f.id}`}` as never}
-                  className={
-                    "inline-flex h-7 items-center rounded-md border px-3 font-mono text-[11px] font-semibold whitespace-nowrap transition-all " +
-                    (on
-                      ? "border-brand-500 text-text"
-                      : "border-border bg-bg-elevated/60 text-text-muted hover:border-brand-400 hover:text-text")
-                  }
-                  style={on ? { background: "var(--pill-active)" } : undefined}
-                >
-                  {f.label}
-                </Link>
-              );
-            })}
+          <nav className="flex flex-wrap items-center gap-1.5" aria-label={t.profile.activityFilter} data-filter-rail>
+            {[{ id: "all", label: t.common.all }, ...activityCategories.map((c) => ({ id: c, label: c }))].map((f) => (
+              <FilterPill
+                key={f.id}
+                href={`/profile/account${f.id === "all" ? "" : `?act=${f.id}`}`}
+                label={f.label}
+                on={actFilter === f.id}
+                semantics="tab"
+                rank="secondary"
+              />
+            ))}
           </nav>
         )}
         <ScrollX label="Account activity" className="rounded-md border border-border">

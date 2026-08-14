@@ -2597,16 +2597,40 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
 .pchart-readout b { color: var(--yes-300); font-weight: 600; }
 .pchart-readout .lean-no { color: var(--no-300); }
 
-/* Range selector — reuse the kit's gold-underline-slides motion idea */
+/* The chart's time-range selector — a FILTER control, and it speaks the one filter language.
+   🔴 IT WAS GOLD, AND GOLD IS MONEY (Q5, Ali 2026-08-10). `is-active` painted `var(--gilt)` on
+   `var(--gold-fg)`: the ink the money surfaces own, on a control that chooses a chart window.
+   The discovery bar had already made this exact call in as many words — "NO GOLD — sort is view
+   state, and the kit's own round-2 final withdrew the gilt shell it had proposed" — and this
+   control, on the market DETAIL page, kept the shell the board had rejected.
+   ⛔ `test:gold-is-money` did NOT catch it: that gate is deliberately scoped to two IDENTITY
+   surfaces, because money surfaces must keep using these tokens. A law with a scope is not a
+   law with a gate everywhere, and this sat outside it for the whole of its life.
+   The selected range is now `--pill-active`, the same token every selected filter pill in the
+   product uses — one fill, one meaning. */
 .pchart-ranges { display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--r-pill); background: var(--bg-overlay); border: 1px solid var(--border); }
 .pchart-range {
   appearance: none; border: none; background: transparent; cursor: pointer;
   font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
   color: var(--text-subtle); padding: 4px 11px; border-radius: var(--r-pill);
   transition: color var(--dur-micro) var(--ease-micro), background-color var(--dur-micro) var(--ease-micro);
+  /* ⭐ THE TAP FLOOR, MEASURED RATHER THAN ASSUMED — Law 9 / DESIGN_AUTHORITY §A2. This control
+     shipped at 24.5px painted, which is a touch target roughly half the floor.
+     🔴 THE FIRST FIX WAS AN ABSOLUTELY-POSITIONED `::after`, the technique batch 4 proved on
+     `.mcardp-details` — grow the TARGET, not the box, so nothing moves. It measured **36px, not
+     40**: `up 16 / down 19`, stopped above by `div.pt-3` and below by `div.pchart`. A pseudo-
+     element painted outside its parent is still subject to PAINT ORDER, and the chart wrapper
+     that follows it in the DOM took the pixels back. An invisible overlay whose reach depends
+     on stacking cannot be relied on, and — worse — cannot be told apart from a working one
+     without walking real pixels.
+     So the control is genuinely tall instead. It costs ~15px of height in a COLLAPSED chart
+     panel, which is the right price for a target a thumb can actually hit. ⚠️ 40 is the FLOOR,
+     not the 44px the filter pills use: this is a compact segmented sub-control inside a chart
+     header, not a standalone rail. That 40-vs-44 call is recorded in PLAN-OF-RECORD §8.8. */
+  min-height: var(--tap-min);
 }
-.pchart-range.is-active { color: var(--gold-fg); background: var(--gilt); }
-.pchart-range:not(.is-active):hover { color: var(--gilt); background: color-mix(in oklab, var(--gilt) 8%, transparent); }
+.pchart-range.is-active { color: var(--text); background: var(--pill-active); }
+.pchart-range:not(.is-active):hover { color: var(--text); background: var(--bg-overlay); }
 
 @media (prefers-reduced-motion: reduce) {
   .pchart-line.is-drawn { animation: none; stroke-dashoffset: 0; }
@@ -2674,10 +2698,17 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
   grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
 }
 
-/* ───────────────────────────── /markets discovery bar ─────────────────────────────
-   The round-2 kit's filter surface (2026-08-13), replacing the 13-pill vertical rail.
-   Geometry and the six chip states live on the components; only what CANNOT be expressed as a
-   utility is here. */
+/* ─────────────────────────── the ONE filter-pill language ───────────────────────────
+   The round-2 kit's filter surface (2026-08-13), replacing the 13-pill vertical rail — and
+   since batch 5 (2026-08-14) the language EVERY player filter rail speaks, through the single
+   primitive `src/components/ui/filter-pill.tsx`.
+
+   ⚠️ THIS BLOCK'S RULE CHANGED, AND THE OLD SENTENCE IS KEPT HERE BECAUSE IT WAS WRONG.
+   It used to read: "Geometry and the six chip states live on the components; only what CANNOT
+   be expressed as a utility is here." That is what put the SELECTED state into an inline
+   `style` at the call site — a law-82 breach on the reference surface itself, which five other
+   surfaces then copied. The rule now: geometry stays on the primitive as utilities; every
+   PAINT value is a token consumed through a class, and the selected state is one of them. */
 
 /* COMPONENTS §3 — the transition is named property-by-property. ⛔ `transition: all` must never
    appear: it animates properties nobody chose, including layout ones, and it is the reason a
@@ -2691,6 +2722,25 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
 }
 /* Press feedback — 1px, the same nudge every other control in the system uses. */
 .kp-fchip:active { transform: translateY(1px); }
+
+/* ⭐ THE SELECTED PILL — one definition site, for every filter rail in the product.
+   `--pill-active` already calls itself "one active filter/tab fill everywhere" at its own line;
+   until batch 5 it was reached by six call sites writing their own inline style, which is two
+   homes for one truth and exactly what B9 forbids. The border and the type live on the
+   primitive as utilities (they are geometry and ink, and Tailwind owns those); the FILL and the
+   halo live here, because a paint value belongs to the system.
+   ⛔ Do not add a `:hover` fill for the selected state — the pill is already the answer to
+   "which one is on", and a hover that repaints it makes the answer flicker under the cursor. */
+.kp-fchip[data-on] {
+  background: var(--pill-active);
+  box-shadow: var(--glow-selected);
+}
+
+/* The same truth for a listbox ROW — the sort and topic menus. Fill only, no halo: a glow
+   inside a panel would light one row against its own neighbours rather than against the page,
+   and the row already has the panel's edge to sit inside. Same token, so the selected sort
+   option and the selected status pill can never drift apart. */
+.kp-fopt[data-on] { background: var(--pill-active); }
 
 /* ⭐ THE STRIPS MUST LOOK LIKE THEY SCROLL — measured 2026-08-13 at 360px.
    The chip strip hides 660 of its 1020px of controls in Swahili, and a hard cut at the viewport

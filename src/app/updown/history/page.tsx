@@ -18,7 +18,8 @@ import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { currentSession } from "@/lib/server/auth-service";
 import { getMyUpDownHistory, type MyRoundRow } from "@/lib/server/updown-board";
 import { getServerT } from "@/lib/i18n-server";
-import { eatDayWindow, isInEatDay, formatEatDay } from "@/lib/eat-day";
+import { eatDayWindow, isInEatDay, eatDayKey, formatEatDay } from "@/lib/eat-day";
+import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";
 import { pickLocalized } from "@/lib/localized";
 import { formatTzs, formatTzsSigned } from "@/lib/utils";
 
@@ -42,6 +43,14 @@ const fmtDate = (iso: string) => {
 };
 const usd = (n: number | null, d: number) => (n == null ? "—" : `$${n.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d })}`);
 
+/**
+ * How many recent EAT days the picker offers. A week is the span a player reasons about on a
+ * game whose rounds turn over in minutes, and it keeps the rail on ONE line at 360px in
+ * Swahili — the constraint that actually binds here. Older days stay reachable through the
+ * digest's own deep link, which is where this filter came from in the first place.
+ */
+const DAY_PICKER_DAYS = 7;
+
 export default async function UpDownHistoryPage({ searchParams }: {
   searchParams?: Promise<{ day?: string }>;
 }) {
@@ -61,16 +70,18 @@ export default async function UpDownHistoryPage({ searchParams }: {
   // EAT days; this page must cut on the identical boundary or the two disagree for
   // the three hours either side of midnight. `test:updown-digest` asserts that this
   // file imports the shared helper rather than growing its own copy.
-  // 🔴 ONE VALIDATED VALUE DRIVES ALL THREE USES — the filter, the chip and the empty
+  // 🔴 ONE VALIDATED VALUE DRIVES ALL THREE USES — the filter, the day rail and the empty
   // state. The first version validated for the chip but filtered on the RAW param, so
   // `?day=lol` matched no round, hid every card, and then — because the chip only
   // renders for a VALID day — showed "no rounds" with no indication of what had been
   // filtered and no control to clear it. A dead end reached by one typo. Caught by
   // `live-updown-digest.mjs` against production, not by reasoning about it.
+  // ⭐ Batch 5 made that dead end structurally impossible rather than merely fixed: the day
+  // rail below renders from the player's OWN rounds and always offers "All days", so an
+  // unparseable `?day=` now lands on a page whose way out is a control, not just a link.
   const rawDay = (await searchParams)?.day ?? null;
   const dayWindow = rawDay ? eatDayWindow(rawDay) : null;
   const dayKey = dayWindow ? rawDay : null;   // null ⇒ no filter, no chip, no empty state
-  const dayLabel = dayKey ? formatEatDay(dayKey, t.common.monthsShort, locale) : null;
 
   // ⛔ UD-15 · no swallow: a failed read must never render as "you have no bets"
   // (B-1's exact defect class, on a money history). Throws reach error.tsx.
@@ -81,6 +92,34 @@ export default async function UpDownHistoryPage({ searchParams }: {
   const rows = dayKey
     ? allRows.filter((r) => isInEatDay(r.settledAt ?? r.placedAt, dayKey))
     : allRows;
+
+  /* ⭐ THE DAY PICKER — batch 5. Until now this page had a FILTER WITH NO CONTROL: `?day=` was
+     reachable only from the daily digest's deep link, so a player who cleared it could never
+     get back to a single day, and the page's own comment above cites the rule ("§0.1b rule 2")
+     that every grid should filter.
+     ⛔ IT IS DERIVED, NOT QUERIED. `allRows` is already in hand and `eatDayKey` is the SAME
+     shared arithmetic the filter and the digest use, so both the day list and its counts cost
+     zero extra I/O — and a day can never be offered that pressing it would not deliver,
+     because the option only exists if a round produced it.
+     ⚠️ It lists the days inside the most recent 400 positions — `getMyUpDownHistory`'s cap —
+     not all time. That is a real limit and it is why the rail is capped at a week rather than
+     pretending to be a calendar. */
+  const dayRounds = new Map<string, Set<string>>();
+  for (const r of allRows) {
+    const at = Date.parse(r.settledAt ?? r.placedAt);
+    if (!Number.isFinite(at)) continue;
+    const k = eatDayKey(at);
+    // Count ROUNDS, not bets — the cards below are one per round, so a count of positions
+    // would promise 9 and deliver 3 on a day the player quick-bet the same round three times.
+    const seen = dayRounds.get(k) ?? new Set<string>();
+    seen.add(r.marketId);
+    dayRounds.set(k, seen);
+  }
+  const recentDays = [...dayRounds.keys()].sort().reverse().slice(0, DAY_PICKER_DAYS);
+  // A digest link can name a day older than the rail's window. Never drop the ACTIVE day from
+  // the rail: a selected control that is not on screen is how a player concludes the filter is
+  // stuck. It is appended in date order, so the rail still reads newest-first.
+  const dayOptions = dayKey && !recentDays.includes(dayKey) ? [...recentDays, dayKey] : recentDays;
 
   // GROUP BY ROUND. Up & Down is a fast game — placing many bets on one 5-minute round is
   // normal, so a per-position list reads as a redundant cluster and miscounts "rounds".
@@ -130,18 +169,39 @@ export default async function UpDownHistoryPage({ searchParams }: {
         <PageHeader eyebrow={t.market.udTitle} title={t.market.udHistoryTitle} subtitle={t.market.udHistoryBody} />
       </div>
 
-      {/* The active day filter, and the way back out of it. A filter with no
-          visible state and no clear control is how a player concludes their
-          history has vanished. */}
-      {dayKey && (
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-faint">{t.market.udShowingDay}</span>
-          {/* `chip-pending` (brand blue), NOT `chip-live` — the first version used the
-              live treatment, and a red pulsing chip on a static date filter reads as
-              "something is happening right now" on a page of finished rounds. */}
-          <span className="chip chip-pending">{dayLabel}</span>
-          <Link href="/updown/history" className="btn btn-ghost btn-sm">{t.market.udAllDays}</Link>
-        </div>
+      {/* The day rail — the filter's state AND the way in and out of it, in one control.
+          ⚠️ IT REPLACES A CHIP THAT ONLY REPORTED. The old row was a `chip-pending` badge
+          naming the active day beside a `btn-ghost` clear link: it could say which day was in
+          force and it could clear it, but it could not CHOOSE one. The selected pill now says
+          both — which is the whole point of the one filter language, and it is why the group
+          key reads "Showing": the rail is a sentence.
+          ⛔ No `?day=` link may ever match `a[href^="/updown/udr_"]` — that is how
+          `live-updown-digest.mjs` counts round cards. Query links are safe by construction. */}
+      {dayOptions.length > 0 && (
+        <nav aria-label={t.market.udHistoryTitle} data-filter-rail className="mt-4 flex flex-wrap items-center gap-1.5">
+          <FilterGroupKey>{t.market.udShowingDay}</FilterGroupKey>
+          <FilterPill
+            href="/updown/history"
+            label={t.market.udAllDays}
+            on={!dayKey}
+            semantics="tab"
+            replace
+            scroll={false}
+          />
+          {dayOptions.map((d) => (
+            <FilterPill
+              key={d}
+              href={`/updown/history?day=${d}`}
+              label={formatEatDay(d, t.common.monthsShort, locale)}
+              count={dayRounds.get(d)?.size}
+              on={d === dayKey}
+              semantics="tab"
+              rank="secondary"
+              replace
+              scroll={false}
+            />
+          ))}
+        </nav>
       )}
 
       {rows.length === 0 ? (

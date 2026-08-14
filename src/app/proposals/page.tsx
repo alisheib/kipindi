@@ -5,6 +5,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { listBoard, type BoardFilter, type ProposalView } from "@/lib/server/proposals-service";
 import { getProposalsConfig, isProposalsActive } from "@/lib/server/proposals-config";
 import { Chip } from "@/components/ui/chip";
+import { FilterPill } from "@/components/ui/filter-pill";
 import { Button } from "@/components/ui/button";
 import { PageHero } from "@/components/ui/page-hero";
 import { PageHeader } from "@/components/ui/page-header";
@@ -114,26 +115,20 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
       {/* Stats + filters */}
       <div className="flex flex-wrap items-center justify-between gap-2.5">
         <p className="font-mono text-[12px] text-text-muted">{totalProposals.toLocaleString()} {t.proposals.proposalsCount} · {totalVotes.toLocaleString()} {t.proposals.votesCount}</p>
-        <div className="flex flex-wrap gap-1.5">
-          {FILTERS.map((f) => {
-            const active = f.id === filter;
-            return (
-              <Link
-                key={f.id}
-                href={`/proposals?f=${f.id}` as never}
-                className={
-                  "inline-flex h-8 items-center rounded-md border px-3.5 font-mono text-[12px] font-semibold whitespace-nowrap transition-all " +
-                  (active
-                    ? "border-brand-500 text-text"
-                    : "border-border bg-bg-elevated/60 text-text-muted hover:border-brand-400 hover:text-text")
-                }
-                style={active ? { background: "var(--pill-active)" } : undefined}
-              >
-                {f.label}
-              </Link>
-            );
-          })}
-        </div>
+        {/* ⚠️ It was a bare `<div>` with no `aria-label` and no per-control state — the only one
+            of the eight rails that announced NOTHING to a screen reader. It is a `<nav>` with a
+            label now, and each pill states `aria-current`. */}
+        <nav aria-label={t.proposals.filterAria} data-filter-rail className="flex flex-wrap gap-1.5">
+          {FILTERS.map((f) => (
+            <FilterPill
+              key={f.id}
+              href={`/proposals?f=${f.id}`}
+              label={f.label}
+              on={f.id === filter}
+              semantics="tab"
+            />
+          ))}
+        </nav>
       </div>
 
       {/* List / empty */}
