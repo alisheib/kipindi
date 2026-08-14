@@ -1,79 +1,179 @@
-# NO OPEN WORK ORDER — the round-2 design lane is CLOSED (batch 4, 2026-08-13)
+# NEXT SESSION — A6: turn admin 2FA ON in production (the last Wave 1 licence exposure)
 
-**There is nothing to paste from this file.** It is kept because `.gitignore` tracks exactly three
-files in `design-brief/` and this is one of them — but it no longer carries a brief. Four batches
-inherited the round-2 kit, all three commissioned surfaces are applied, and every deferred item has
-an explicit, dated decision behind it.
+**Paste this whole file as your opening prompt.**
 
-**▶ Pick up from [`docs/NEXT-PLAN.md`](../docs/NEXT-PLAN.md)'s own "PICK UP HERE"**, which is the
-platform's current-state doc. Do not write a new numbered prompt here; a second place that says
-what to do next is the failure mode `DESIGN_AUTHORITY.md` §0 exists to prevent.
+**The round-2 design lane is CLOSED** at `69f516cd` (batch 4, 2026-08-13) — all three commissioned
+surfaces shipped and verified live. That work is finished; its record is
+[`PLAN-OF-RECORD.md`](PLAN-OF-RECORD.md) and nothing in it is open. **This session leaves the design
+lane and rejoins the programme that commands the remaining work:**
+[`docs/MODULE-CERTIFICATION-PROGRAM.md`](../docs/MODULE-CERTIFICATION-PROGRAM.md) — 52 modules, 12
+domains, **4 certified**. Its §5 order-of-work names exactly one remaining Wave 1 item, and it is
+this one.
 
 ---
 
-## What shipped, and where the record lives
+## ⛔ THE BAR — Ali, verbatim, unchanged
 
-| Batch | What | Commit |
-|---|---|---|
-| 1 | `/markets` rebuilt on the inherited contract + the validation pass that found two controls 1% usable on a phone; `/results` category filter fixed | `78b7f000` · `c7cb34ec` · `fd66292b` |
-| 2 | The hero — photographic backdrop deleted, question board built from the live book | see §6 |
-| 3 | The landing composition, header and rail; **the ticker was fabricated and was fixed first** | `6f97911e` |
-| 4 | Cleanup: the live RG regression, the time-left consolidation, the Details tap target, the cite-check | _this session_ |
+> *"perfectly working, no glitches, 100% functional, no workarounds, clean code"* ·
+> *"no half work accepted. only full work"* · *"visually perfect and data perfect and ready for
+> live manipulation instinctively"* · *"you should perfectly finish, tested, validated,
+> re-validated and re-analysed, then we push"*
 
-**The full account is [`PLAN-OF-RECORD.md`](PLAN-OF-RECORD.md)** — §6 is the batch log, §8.7a–§8.7g
-are the per-batch accounts including every defect found and how each was caught, §8.8 is the
-deferred register, and §8.9 lists the instruments this work leaves behind. The archive/cleanup
-record is [`CLEANUP-MANIFEST.md`](CLEANUP-MANIFEST.md).
+**You act as ALL NINE roles on every change** (`.claude/skills/50pick-standards/SKILL.md` §1).
+A change is not done until every lens signs off.
 
-## What is deliberately NOT done — decided, not forgotten
+### The five rules that override convenience
 
-Three kit pieces are carried forward with their reasons in **§8.8** (Ali's call, 2026-08-13): the
-**density toggle / compact list**, the **mobile filter sheet**, and **search typeahead**. Each has a
-real reason, not an absence of time — a false-promise label, a documented trade whose replacement
-needs the shared `<Modal>` contract verified at four widths in three locales, and a pure
-enhancement over a search box that already works.
+1. **VERIFIED MEANS EXECUTED.** Run it, quote the output. A doc that names a file is **not**
+   evidence the file changed — batch 4 found a third copy of a formatter the plan said had two, and
+   it was on the busiest board, rendering "0m left" while a market was still taking bets.
+2. **ASK OF EVERY CHECK: would this still pass if the feature were absent? Would it fail even if the
+   product were fine?** Every refusal check needs a positive control **in the same run**.
+3. **A DEFECT CAN BE INVISIBLE TO EVERY GATE AND OBVIOUS IN A FRAME.** Read every screenshot.
+4. **NEVER `git add -A`.** Stage by explicit path. `git branch --show-current` first, `git fetch`
+   before every batch. Every push to `main` is a LIVE deploy.
+5. **DOCS TRAVEL WITH THE CODE, IN THE SAME COMMIT.** And a gate nothing runs is not a guard —
+   wire every new gate into `predeploy` in the same commit, then parse the chain and assert all
+   steps resolve to a real script.
 
-⛔ **Filter UI for `/live`, `/watchlist`, `/leaderboard` and `/fairness` is NOT COMMISSIONED**
-(Ali, 2026-08-13). §8.7d's inventory of which surfaces filter is a *record*, not a backlog. Building
-it would be a design decision invented at the call site with no delivered spec. If it is ever
-wanted, it is its own commission — or at minimum its own written plan.
+---
 
-⚠️ **Still Ali's Phase-3 decision, untouched:** the `--h-control-*` token raise and the
-`--type-nano`/`--type-label` raise (§5.7).
+## ▶ START HERE
 
-## Two things a later session will otherwise re-learn the hard way
+1. `cd F:\kipindi-main` · `git fetch origin` · `git status` — expect **`main`, clean**, at or past
+   `69f516cd`. ⚠️ One untracked file is **not yours**: `scripts/live/ops/house-money-census.cjs`.
+   Never stage it — four sessions have now independently confirmed this.
+2. `npm install` is normally **not** needed — if `package-lock.json` and
+   `node_modules/.package-lock.json` share a timestamp, the tree matches the lockfile.
+3. `.env.qa.local` exists on this machine and holds the five QA operator passwords. Gitignored.
+   ⛔ Never `git clean -x` — it takes that file.
+4. There is **no `.env`**, and there must not be: no `DATABASE_URL` → in-memory store, zero-risk
+   local work.
 
-1. **`test:responsive` is RED with 81 failures and none of them are new.** Reproduced against
-   `https://www.50pick.tz`. All are global-header chrome, classified in §8.7g: one is an
-   **instrument artifact** (the language listbox sits in the DOM under a closed trigger, so the
-   audit measures option boxes a user never sees — a 320px frame shows no dropdown), one is real but
-   only at **320px**, below the 360 floor PLAN §5.3 pins, and one is the known signed-in tabletL
-   `Account menu` overflow. Do not read that red as batch 4's, and do not "fix" the artifact.
-2. **`test:responsive` and `test:motion` are server-dependent**, defaulting to `localhost:3000`.
-   They are NOT among PLAN §3's 22 static design gates. On a 3009 harness pass
-   `BASE=http://localhost:3009` or they die with `ECONNREFUSED` and look like product failures.
+**Boot + seed — one command now** (batch 4 promoted the whole sequence into a script):
 
-## The trap list this lane added (all in PLAN-OF-RECORD §8.7c–§8.7g)
+```
+$env:SESSION_SECRET='qa_local_session_secret_at_least_32_chars_long'
+$env:OTP_PEPPER='qa_local_otp_pepper_16plus'
+$env:DISABLE_ADMIN_TOTP='true'          # ⛔ REQUIRED or /admin/* redirects to /admin/2fa/setup
+npx next dev -p 3009
+npm run qa:board-bootstrap              # seed -> objection window 0 -> funded spread -> settle
+```
 
-- **A doc that names a file is not evidence the file changed.** §8.8 recorded two surviving
-  time-left copies; there were three, and the unnamed one was on the busiest board.
-- **`mt-12` is 128px here.** This repo has a custom spacing scale — never reason about a spacing
-  class from the Tailwind defaults.
-- **A `margin` at a boundary whose padding already sums is a double-count** — the `--rh-*` tokens'
-  own comment says so, and the RG seam did it anyway.
-- **A bounding-box measurement cannot see a hit-area fix.** `.mcardp-details` still measures 17px
-  before and after; only `elementFromPoint` can tell the fix from its absence.
-- **`boundingBox()` and a non-fullPage `clip` are both viewport-relative** — pair document
+⭐ `qa:board-bootstrap` reads every step's result BACK, because three separate things lie here:
+`resolve-seed-markets` reports **attempts** (`resolved: 6` while 2 settled — assert the per-market
+`state`), `stress-bulk-bet`'s `userPrefix` is **truncated to two characters** (distinct-looking
+prefixes share one user pool, later bets are silently **rejected**, and `poolMath: "PASS"` stays
+green through it — assert `accepted === n`), and its `yesRatio` is **probabilistic**, so only `0`
+and `1` are deterministic.
+
+---
+
+## THE WORK — A6 · admin TOTP ON in production
+
+### Why this one
+
+`docs/MODULE-CERTIFICATION-PROGRAM.md` §5: *"Licence exposures that need no Selcom. **Start with
+A6.**"* It is the only Wave 1 item that is an engineering task — **H6 needs Ali's ruling, not code**
+(a hard-lock would reverse the owner decision of 2026-07-24 and break `test:two-admin`), and **G3
+needs Ali's fee ruling** before the money core can start.
+
+**The exposure is live and confirmed this session.** `https://www.50pick.tz/api/health` reports:
+
+```
+"security": { "adminTotp": "DISABLED" }
+```
+
+On a licensed real-money platform, the admin console — which holds the payment rail kill-switches,
+balance adjustment and KYC override — is behind a password and an OTP, and **not** behind 2FA.
+`test:cert-a6` (16 assertions) already exists and already pins the bypass to a closed set of four
+doors; the honesty work is done. **What is missing is the switch actually being ON.**
+
+### What this session owes
+
+1. **Read the A6 dossier first** in `MODULE-CERTIFICATION-PROGRAM.md`, then
+   `src/app/admin/layout.tsx:116` (`DISABLE_ADMIN_TOTP !== "true"`), `src/app/admin/totp-verify/`,
+   `src/app/auth/admin/page.tsx:30`, and `src/lib/server/totp*`. The four bypass doors are named in
+   the dossier — verify the list against the code, do not inherit it.
+2. ⛔ **THE LOCKOUT HAZARD IS THE WHOLE RISK, AND IT IS NOT THEORETICAL.** Turning TOTP on for an
+   account with no enrolled authenticator locks that account out of `/admin/*`, and
+   **recovery is documented as identity verification with the AML lead — there is no self-service
+   reset** (`/admin/2fa/setup` says so on screen). Before the flag flips on Railway:
+   - enumerate **every** live account with `ADMIN`/`COMPLIANCE`/`MODERATOR` role on production,
+   - confirm which of them have a TOTP secret enrolled **by querying, not by asking the UI**,
+   - enrol the rest FIRST, and keep a proven second admin path open,
+   - and have the rollback (`DISABLE_ADMIN_TOTP=true`) ready to paste, timed.
+   ⚠️ `RoleDomainGrant` is **EMPTY on prod** and `AUDITOR`/`SUPPORT` have **no account anywhere** —
+   so the enumeration may be shorter than the roles suggest. Verify; do not assume either way.
+3. **This is an OPERATOR action, not only a code change.** The flag lives in Railway env, so the
+   change is: enrol → verify enrolment → flip → verify the gate → verify `/api/health` flips to
+   `"ENABLED"` → verify a real admin can still sign in. **Ask Ali before flipping it**, with the
+   enrolment evidence in hand. Locking the owner out of his own console is not a recoverable
+   mistake made at 2am.
+4. **Certify the module properly** — all eight gates in §1's standard, each behind a named
+   `npm run` script, with a RED proof per defect class. Then update the §9 status board and the
+   §5 wave table in the same commit.
+
+### After A6 — the order is already decided, do not re-derive it
+
+**Wave 2 = the money core: G1 G2 G3 G4 → E1 E2 E3.** ⛔ **G3 needs Ali's fee ruling first**, so open
+that question early rather than discovering it mid-wave. The G domain also resolves a known
+**orphan TZS 100,000** and a broken chain.
+
+---
+
+## WHAT IS SETTLED — do not re-open
+
+- **The round-2 design lane is closed.** Three pieces are **carried forward by decision** (density
+  toggle / compact list · the mobile filter sheet · search typeahead — §8.8), and **filter UI for
+  `/live`, `/watchlist`, `/leaderboard`, `/fairness` is NOT COMMISSIONED** (Ali, 2026-08-13).
+  §8.7d's inventory is a *record*, not a backlog.
+- **Still Ali's Phase-3 call:** the `--h-control-*` raise and the `--type-nano`/`--type-label` raise.
+- **`test:responsive` is RED with 81 failures and they are PRE-EXISTING** — reproduced against
+  `www.50pick.tz`. All global-header chrome, classified in §8.7g: one instrument artifact (the
+  language listbox sits in the DOM under a *closed* trigger, so the audit measures options a user
+  never sees), one real but only at **320px** (below the 360 floor PLAN §5.3 pins), and the known
+  signed-in tabletL `Account menu` overflow. ⛔ Do not read that red as new, and do not "fix" the
+  artifact. If you touch the global header, fix the two real ones deliberately, with frames.
+- **`test:responsive` and `test:motion` are server-dependent** (default `:3000`, NOT among the 22
+  static design gates). Pass `BASE=http://localhost:3009` or they die with `ECONNREFUSED` and look
+  like product failures.
+
+## The traps that cost time in the last four sessions
+
+- ⛔ **Git Bash rewrites a leading `/` argument** into `C:/Program Files/Git/…`. Use
+  `MSYS_NO_PATHCONV=1`. It struck three times in one session, and once made a QA sweep exit **0
+  having measured nothing at all**. Redirect to a file and read it — never `| tail`, which reports
+  `tail`'s exit code, and which truncated the evidence twice.
+- ⛔ **`mt-12` is 128px here**, not 48 — this repo has a CUSTOM Tailwind spacing scale
+  (`tailwind.config.ts`). Never read a spacing class from the Tailwind defaults.
+- ⛔ **`boundingBox()` and a non-fullPage `clip` are both viewport-relative.** Pair document
   coordinates with `fullPage`, or the frame captures the sticky header and still looks plausible.
-- **A zero can be correct.** `00 SIKU` is the countdown's intended zero-padding, not a defect — and
-  Swahili renders time-left as `dakika {n} zimebaki`, with the number in the middle, so a
-  `(\d+)(unit)` probe matches the countdown in every locale and the label in none.
-- **`stress-bulk-bet`'s `userPrefix` is truncated to TWO characters**, so distinct-looking prefixes
-  share one pool of synthetic users who then run out of wallet and have bets silently **rejected** —
-  and `poolMath: "PASS"` stays green through it. Assert `accepted === n`. Its `yesRatio` is
-  probabilistic, so only `0` and `1` are deterministic.
-- **`resolve-seed-markets` counts ATTEMPTS**: it reported `resolved: 6` while 2 of 6 settled. Assert
-  the per-market `state`. And `/admin/*` needs `DISABLE_ADMIN_TOTP=true` at boot, or it
-  client-redirects to `/admin/2fa/setup` — which a `domcontentloaded` read reports as a clean 200.
-- **Git Bash rewrites a leading `/` argument** into `C:/Program Files/Git/…`. It hit three times in
-  one session, and once it made a QA sweep exit **0 having measured nothing at all**.
+  And a `fullPage` frame renders the sticky header **mid-page** — an artifact, not a defect.
+- ⛔ **A bounding-box measurement cannot see a hit-area fix.** Use `npm run qa:tap-hit`.
+- ⛔ **A zero can be correct** — `00 SIKU` is the countdown's intended padding. And Swahili renders
+  time-left as `dakika {n} zimebaki`, with the number in the **middle**, so a `(\d+)(unit)` probe
+  matches the countdown in every locale and the label in none. Anchor probes on the product's own
+  i18n templates, and assert the templates still exist.
+- ⚠️ Write files containing regex or backslashes with the editor, not a shell heredoc — a heredoc
+  ate a `\\` and produced an invalid regular expression.
+
+## The instruments (all read-only, local OR production)
+
+`qa:landing-seam` · `qa:tap-hit` · `qa:card-geometry` · `qa:board-bootstrap` (new in batch 4) ·
+`qa:landing-shots` · `qa:discovery-probe` · `qa:discovery-board` · `qa:results-board` ·
+`qa:filter-stress`. Contract gates: `test:hero-contract` · `test:discovery-contract` ·
+`test:board-discovery` · `test:landing-contract` · `test:ticker-honesty` · `test:time-left` — **all
+six are now in `predeploy` (78 steps); they were not before, in any batch.**
+⛔ Screenshots are EVIDENCE: write them under `.qa-design-*/` (gitignored), never into the tree.
+
+## DEFINITION OF DONE
+
+- A6 is either **CERTIFIED** (eight gates, RED proofs, status board updated) or **explicitly
+  blocked on Ali** with the enrolment evidence gathered and the question asked — not left ambiguous.
+- ⛔ **The production flag is not flipped without Ali's go-ahead and a proven enrolment list.**
+- Every gate green individually with real exit codes; any new gate has its own RED proof and is in
+  `predeploy` in the same commit.
+- `git fetch` shows no surprise commits; `git branch --show-current` is `main`; the push verified
+  live (HTTP 200, clean `railway logs`, `/api/health` read, and a frame actually looked at).
+- Docs updated in the SAME commit as the code they describe.

@@ -1450,6 +1450,16 @@ production**, and they are now registered npm scripts:
 | `npm run qa:filter-stress -- https://50pick.tz` | 12 hostile payload classes × every param of both boards (no 500, nothing executes) · **all 288** status×sort×odds×pool combinations keep promise == delivery · the same URL twice gives the same board |
 | `LOCALES=en,sw,zh npm run qa:discovery-shots -- .qa-design-round2/after` | 360 + 1280 × en/sw/zh, failing on any horizontal overflow. ⚠️ Shots are EVIDENCE — write them under `.qa-design-*/`, never into the tree (§0b) |
 
+**Batch 4 added four more, promoted out of the gitignored scratch for the same reason** — they were
+written in `.qa-design-round4/` and would have died with the machine:
+
+| Command | What it proves |
+|---|---|
+| `LOCALES=en,sw,zh npm run qa:landing-seam -- <dir> [url]` | The RG↔footer seam: that each of the three RG destinations appears **exactly once** on the page (counted by HREF, so it survives translation), and the real geometry of the four spacing sources that meet there. This is the guard against batch 4's own regression returning |
+| `npm run qa:tap-hit -- [url]` | ⭐ **The only instrument here that can see a hit area.** `.mcardp-details` measures 17px before AND after its `::after` extension, so every bounding-box driver reports it unchanged. This probes real coordinates with `elementFromPoint`, asserts the target reaches `--tap-min`, that the PAINTED height has not moved, and that the neighbouring info button still owns its own centre |
+| `npm run qa:card-geometry -- <before\|after> [url]` | Card heights, every card's row offset and the document height at 360/1280/1920 on `/markets` + the landing, written to JSON and **diffed against its counterpart**. Run it either side of any card change to prove `MARKET_CARD_H` did not move |
+| `npm run qa:board-bootstrap` | Local only. The whole in-memory harness in one reproducible sequence: seed → `objectionWindowHours=0` through the REAL admin form → a varied funded spread with a cold tail preserved → a control market at **exactly 8,000/8,000** → settle. Every step reads its result BACK; it took three restarts to get right, and its comments carry the four harness traps that caused them |
+
 ⛔ Screenshots stay gitignored. The *drivers* travel; the *evidence* is re-derived.
 
 **Two shared modules the drivers now depend on — read them before writing another driver:**
