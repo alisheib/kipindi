@@ -56,10 +56,13 @@ export function RoundActionPanel(props: {
   };
   /** The frozen figure for the locked presentation — server-computed, never derived here. */
   myExactPayout: number | null;
+  /** UD-20 · what the viewer receives under EACH outcome. Both, or neither. */
+  myPayoutIfUp?: number | null;
+  myPayoutIfDown?: number | null;
   ariaStake: string;
 }) {
   const { t } = useT();
-  const { state, selectionClosedAt, closesAt, serverNowMs, stakePanel, myExactPayout } = props;
+  const { state, selectionClosedAt, closesAt, serverNowMs, stakePanel, myExactPayout, myPayoutIfUp, myPayoutIfDown } = props;
   const selectionClosesAtMs = selectionClosedAt ? Date.parse(selectionClosedAt) : null;
 
   const now = useServerNow(serverNowMs);
@@ -89,20 +92,48 @@ export function RoundActionPanel(props: {
       ? new Date(selectionClosesAtMs).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" })
       : null;
     const mySide = stakePanel.myUpStake > 0 ? "UP" : stakePanel.myDownStake > 0 ? "DOWN" : null;
+    const bothSides = stakePanel.myUpStake > 0 && stakePanel.myDownStake > 0;
+    // ⚠️ BOTH OR NEITHER. Rendering one row would be the single-number half-truth again,
+    // wearing a different label.
+    const payoutIfUp = myPayoutIfUp ?? null;
+    const payoutIfDown = myPayoutIfDown ?? null;
+    void mySide; void myExactPayout;
     return (
       <section aria-label={t.market.udLockedTitle} style={{ ...insetStyle, padding: 16 }}>
         <span className="chip chip-pending">{t.market.udLockedTitle}</span>
         <p className="mt-2.5 m-0 text-[12.5px] leading-[1.55] text-text-muted">
           {t.market.udLockedWhy.replace("{time}", lockClock ?? "—")}
         </p>
-        {myExactPayout != null && mySide != null && (
-          <p
-            className="mt-3 m-0 font-mono text-[15px] font-bold tabular-nums"
-            style={{ color: mySide === "UP" ? "var(--yes-300)" : "var(--no-300)" }}
-          >
-            {t.market.udYouWin} {formatTzs(myExactPayout)}{" "}
-            {mySide === "UP" ? t.market.udIfUp : t.market.udIfDown}
-          </p>
+        {/* ⭐ UD-20 · BOTH OUTCOMES, QUOTED — Ali's decision, 2026-08-14.
+            A hedged holder used to see NOTHING here: `myExactPayout` is null for them, because
+            one number cannot state a two-sided position and printing `up + down` as if it all
+            sat on UP was a confident wrong figure on a money surface (A-5). Suppressing it was
+            right; leaving the player with no figure at all was the gap, and RULES.md §2.4 turned
+            that from a rare state into an ordinary one.
+            ⛔ NOT ANSWERED BY RESURRECTING THE SINGLE NUMBER. Two rows, one per outcome, both
+            priced by the server's own `projectedPayout`.
+            ⚠️ A one-sided holder gets the same two rows, and their losing outcome reads 0 —
+            genuinely true, and more honest than leaving it unsaid. */}
+        {payoutIfUp != null && payoutIfDown != null && (
+          <div className="mt-3">
+            {bothSides && (
+              <p className="m-0 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-text-subtle">
+                {t.market.udBothSidesHeld}
+              </p>
+            )}
+            <p className="mt-1.5 m-0 flex items-baseline justify-between gap-3 text-[12.5px] text-text-muted">
+              <span>{t.market.udIfClosesUp}</span>
+              <span className="font-mono text-[15px] font-bold tabular-nums" style={{ color: "var(--yes-300)" }}>
+                {t.market.udYouGet} {formatTzs(payoutIfUp)}
+              </span>
+            </p>
+            <p className="mt-1 m-0 flex items-baseline justify-between gap-3 text-[12.5px] text-text-muted">
+              <span>{t.market.udIfClosesDown}</span>
+              <span className="font-mono text-[15px] font-bold tabular-nums" style={{ color: "var(--no-300)" }}>
+                {t.market.udYouGet} {formatTzs(payoutIfDown)}
+              </span>
+            </p>
+          </div>
         )}
       </section>
     );

@@ -343,6 +343,8 @@ export default async function UpDownRoundPage({
                 closesAt={round.closesAt}
                 serverNowMs={round.serverNowMs}
                 myExactPayout={round.myExactPayout}
+                myPayoutIfUp={round.myPayoutIfUp}
+                myPayoutIfDown={round.myPayoutIfDown}
                 ariaStake={t.market.udStake}
                 stakePanel={{
                   marketId: round.marketId,

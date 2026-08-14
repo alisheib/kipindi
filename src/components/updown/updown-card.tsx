@@ -86,6 +86,9 @@ export type UpDownCardProps = {
    * from the pool split would print a confident wrong number on a money screen.
    */
   myExactPayout?: number | null;
+  /** UD-20 · what the viewer receives under EACH outcome. Both, or neither. */
+  myPayoutIfUp?: number | null;
+  myPayoutIfDown?: number | null;
   volumeTzs: number;
   players: number;
   /** 0..100. Down is derived — one number, one source. */
@@ -225,7 +228,7 @@ export function UpDownCard(props: UpDownCardProps) {
     livePrice, openPrice, upTarget, downTarget, movePct, closesAtMs, volumeTzs, players, upPct,
     pricing, state, outcome, closePrice, voidReason,
     sourceClass, sourceQuotedAt, className,
-    selectionClosesAtMs, serverNowMs, myExactPayout, myRefundedStake,
+    selectionClosesAtMs, serverNowMs, myExactPayout, myPayoutIfUp, myPayoutIfDown, myRefundedStake,
     marketId, isAuthed, minStake, maxStake, walletBalance, myUpStake = 0, myDownStake = 0,
     expectedResultAtMs = null,
   } = props;
@@ -315,6 +318,15 @@ export function UpDownCard(props: UpDownCardProps) {
   // `projectedPayout` the money path pays out with. One rule, one answer.
   const mySide: "UP" | "DOWN" | null = myUpStake > 0 ? "UP" : myDownStake > 0 ? "DOWN" : null;
   const exactWin = locked ? myExactPayout ?? null : null;
+  // ⭐ UD-20 (Ali, 2026-08-14) · both outcomes, or neither. Rendering just one would be the
+  // single-number half-truth again, wearing a different label.
+  const ifUp = locked ? myPayoutIfUp ?? null : null;
+  const ifDown = locked ? myPayoutIfDown ?? null : null;
+  const holdsBoth = (myUpStake ?? 0) > 0 && (myDownStake ?? 0) > 0;
+  // ⚠️ `exactWin`/`mySide` stay in the payload and are no longer painted on the locked card —
+  // the pair above replaces that line. Kept because other surfaces and suites still read them,
+  // and because `myExactPayout` must remain the ONE-SIDED-ONLY field it was fixed to be.
+  void exactWin;
 
   // ⭐ WHY THIS VIEWER GOT THEIR STAKE BACK — one shared rule (E-65). Covers both the round
   // voiding AND the round deciding with nobody on the other side, which are opposite events
@@ -625,12 +637,33 @@ export function UpDownCard(props: UpDownCardProps) {
             <p className="mt-2 text-[11.5px] leading-[1.5] text-text-muted">
               {lockClock ? t.market.udLockedWhy.replace("{time}", lockClock) : t.market.udLockedWhy.replace("{time}", "—")}
             </p>
-            {/* ⭐ The estimate is GONE here — the pool is frozen, so this is the real figure. */}
-            {exactWin != null && mySide && (
-              <p className="mt-2 font-mono text-[12.5px] font-bold tabular-nums"
-                 style={{ color: mySide === "UP" ? "var(--yes-300)" : "var(--no-300)" }}>
-                {t.market.udYouWin} {formatTzs(exactWin)} {mySide === "UP" ? t.market.udIfUp : t.market.udIfDown}
-              </p>
+            {/* ⭐ The estimate is GONE here — the pool is frozen, so these are the real figures.
+                ⭐ UD-20 (Ali, 2026-08-14) · BOTH OUTCOMES. A hedged holder saw nothing at all
+                here: `myExactPayout` is null for them, because one number cannot state a
+                two-sided position and pricing `up + down` as if it all sat on UP printed a
+                confident wrong figure on a money surface (A-5). Two numbers can. ⚠️ A one-sided
+                holder gets the same two rows and their losing row reads 0 — simply true, and
+                better than leaving it unsaid. */}
+            {ifUp != null && ifDown != null && (
+              <div className="mt-2">
+                {holdsBoth && (
+                  <p className="m-0 font-mono text-[9.5px] font-bold uppercase tracking-[0.14em] text-text-subtle">
+                    {t.market.udBothSidesHeld}
+                  </p>
+                )}
+                <p className="mt-1 m-0 flex items-baseline justify-between gap-2 text-[11.5px] text-text-muted">
+                  <span>{t.market.udIfClosesUp}</span>
+                  <span className="font-mono text-[12.5px] font-bold tabular-nums" style={{ color: "var(--yes-300)" }}>
+                    {formatTzs(ifUp)}
+                  </span>
+                </p>
+                <p className="mt-0.5 m-0 flex items-baseline justify-between gap-2 text-[11.5px] text-text-muted">
+                  <span>{t.market.udIfClosesDown}</span>
+                  <span className="font-mono text-[12.5px] font-bold tabular-nums" style={{ color: "var(--no-300)" }}>
+                    {formatTzs(ifDown)}
+                  </span>
+                </p>
+              </div>
             )}
           </div>
         ) : state === "confirming" ? (

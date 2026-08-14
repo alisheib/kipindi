@@ -181,6 +181,23 @@ export type BoardRound = {
    */
   myExactPayout: number | null;
   /**
+   * ⭐ UD-20 · WHAT THIS VIEWER RECEIVES UNDER **EACH** OUTCOME — Ali's decision, 2026-08-14:
+   * *quote both outcomes.*
+   *
+   * Null unless the round is LOCKED and the viewer holds something. Otherwise both are always
+   * present together, so a surface can render the pair without asking whether the holder is
+   * hedged: a one-sided holder's losing outcome is genuinely **0**, and saying so is more
+   * honest than leaving it unsaid.
+   *
+   * ⛔ WHY THE PAIR EXISTS AT ALL. `myExactPayout` is one number, and one number cannot state
+   * a two-sided position — it used to price `up + down` as though it all sat on the UP side,
+   * printing a confident wrong figure on a money surface (A-5). Suppressing it was the right
+   * fix and left a hedged holder seeing NOTHING, which `docs/RULES.md` §2.4 turned from a rare
+   * state into an ordinary one. Two figures state the position exactly; one never can.
+   */
+  myPayoutIfUp: number | null;
+  myPayoutIfDown: number | null;
+  /**
    * ⭐ WHEN THE RESULT IS ACTUALLY EXPECTED — Ali's decision, 2026-08-05. E-99.
    *
    * The betting timer runs to the lock and the result-phase timer runs to the close, and then
@@ -316,15 +333,36 @@ async function toBoardRound(
     // UD-20 filed, and suppressing the line is still better than printing a half-truth on a
     // money surface (A-5). What is NO LONGER TRUE is that this is rare.
     //
-    // ⭐ SO UD-20 IS RE-OPENED AS A DECISION FOR ALI, not closed as moot: a hedged holder on
-    // a locked round now sees NO payout figure at all, on a state the product deliberately
-    // permits. "Quote both outcomes" is a real question again. ⛔ Do not answer it by
-    // resurrecting the single-number form — that is the defect, not the gap.
+    // ✅ UD-20 ANSWERED — Ali, 2026-08-14: **quote both outcomes.** The gap is closed by
+    // `myPayoutIfUp` / `myPayoutIfDown` below, NOT by resurrecting the single number.
+    //
+    // ⚠️ `myExactPayout` IS KEPT AND IS STILL NULL FOR A HEDGED HOLDER. It is the one-number
+    // field, and one number cannot state a two-sided position — that is the whole finding. It
+    // stays because surfaces and suites still read it for the ordinary one-sided card; it must
+    // never learn to answer for a hedge.
     //
     // `myUpStake`/`myDownStake` count OPEN positions only (see the accumulator below).
     myExactPayout:
       state === "locked" && myStake > 0 && (myUpStake === 0 || myDownStake === 0)
         ? await projectedPayout(m, myUpStake > 0 ? "YES" : "NO", myStake)
+        : null,
+    // ⭐ UD-20 · BOTH OUTCOMES, PRICED SEPARATELY — the only form that states a two-sided
+    // position honestly. Each figure is what this viewer receives IF THAT SIDE WINS, so the
+    // stake on the losing side is simply not in it:
+    //     if UP wins   → their UP stake pays, their DOWN stake is lost   → payout(YES, up)
+    //     if DOWN wins → their DOWN stake pays, their UP stake is lost   → payout(NO, down)
+    // ⛔ THE SAME `projectedPayout` THE MONEY PATH SETTLES WITH, twice — never `up + down`
+    // priced as if it all sat on one side, which is exactly the half-truth UD-20 filed. And
+    // never re-derived on the client from percentages, which ignores the frozen fee snapshot.
+    // ⚠️ A one-sided holder is not a special case: their losing outcome is genuinely 0, and
+    // saying so is more honest than leaving it unsaid.
+    myPayoutIfUp:
+      state === "locked" && myStake > 0
+        ? (myUpStake > 0 ? await projectedPayout(m, "YES", myUpStake) : 0)
+        : null,
+    myPayoutIfDown:
+      state === "locked" && myStake > 0
+        ? (myDownStake > 0 ? await projectedPayout(m, "NO", myDownStake) : 0)
         : null,
     // ⭐ E-99 · the instant the result is genuinely expected, from THIS asset's own record.
     // ⛔ Null when unmeasured — see the field comment. A guessed lag on a money surface is a

@@ -204,6 +204,8 @@ export default async function UpDownPage({
                 expectedResultAtMs={/* E-99 · null under the sample floor → no clock, never a
                                         guessed one. */ r.expectedResultAtMs}
                 myExactPayout={r.myExactPayout}
+                myPayoutIfUp={r.myPayoutIfUp}
+                myPayoutIfDown={r.myPayoutIfDown}
                 volumeTzs={r.volumeTzs}
                 players={r.players}
                 upPct={r.upPct}

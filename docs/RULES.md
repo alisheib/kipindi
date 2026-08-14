@@ -150,6 +150,23 @@ changes are inseparable.
 | **Decided** | Ali, 2026-08-14, superseding the 2026-08-04 decision that added the guard. |
 | **Guarded by** | `npm run test:updown-window` §6 · `npm run test:updown-quickbet` §4 · `npm run test:updown-engine` §8B · `npm run test:bonus-one-side` §1 |
 
+> ✅ **AND A HEDGED HOLDER IS QUOTED BOTH OUTCOMES — Ali, 2026-08-14 (UD-20).** On a locked
+> round the round page and the card each show two rows, one per outcome, priced by the money
+> path's own `projectedPayout` from **that side's own stake**:
+>
+> ```
+>   YOU HOLD BOTH SIDES          UP 7,000 · DOWN 3,000
+>   If it closes UP     you get  11,487
+>   If it closes DOWN   you get   4,842
+> ```
+>
+> ⛔ **Not by resurrecting the single number.** `myExactPayout` used to price `up + down` as if
+> it all sat on UP — on the figures above it would say **15,536**, overstating by 4,049 on a
+> money surface (A-5). That field stays NULL for a hedge, permanently, and
+> `npm run test:updown-hedge-quote` §1.5 fails if it ever learns to answer again.
+> ⚠️ A one-sided holder gets the same two rows and their losing row reads **0** — simply true,
+> and better than leaving it unsaid.
+>
 > ⚠️ **HEDGING IS A REAL MARKET POSITION, NOT A GUARANTEED LOSS — and no surface may say
 > otherwise.** `test:updown-engine` 8b.12/8b.13 drive it: the same two legs return **+6,750**
 > on one outcome and **−7,170** on the other, from the same pools through the same fee
