@@ -306,3 +306,52 @@ export async function waitForText(page, re, timeoutMs = 120_000) {
     return true;
   } catch { return false; }
 }
+
+/**
+ * TEXT THAT IS ACTUALLY BEING CUT OFF INSIDE A CARD — measured, with the budget in px.
+ *
+ * ⛔ WHY THIS IS A SHARED HELPER AND NOT A ONE-LINER PER SCRIPT. Clipping INSIDE a card never
+ * reaches `document.scrollWidth`, so no page-level overflow check can see it — that is how the
+ * Up & Down trust line shipped reading "Live metals market · quoted 17:5…". But the naive test
+ * (`scrollWidth > clientWidth`) is a GUARD THAT CRIES WOLF: on the market page it reported
+ *     "Pool-share payout. Your exact …"   box 1px < content 415px
+ * which is a screen-reader-only node (`sr-only` is a 1px clipped box, by design) and not a
+ * defect at all. Four false positives in every one of twelve cells is how a real finding stops
+ * being read.
+ *
+ * So the definition here is the honest one — text is CLIPPED only when the box is too small
+ * AND the element is actually hiding the overflow:
+ *   · `overflow-x` is hidden/clip/auto/scroll, or `text-overflow: ellipsis` — otherwise the
+ *     text simply spills and is still legible (a different defect, if it is one at all);
+ *   · the box is a real, painted box (≥ 12px wide and ≥ 6px tall), which excludes `sr-only`;
+ *   · the element is a leaf, so a scrolling container is not reported for its children.
+ *
+ * ⚠️ A WRAP satisfies `scrollWidth === clientWidth` exactly as a fit does, so this finds
+ * truncation, never a line that merely wrapped. Report the px budget, never just a verdict.
+ */
+export async function measureClipping(page, scope = "main") {
+  return page.evaluate((sel) => {
+    const out = [];
+    const root = document.querySelector(sel) ?? document.body;
+    for (const el of root.querySelectorAll("*")) {
+      if (el.children.length) continue;                       // leaves only
+      const text = (el.textContent || "").trim();
+      if (!text) continue;
+      const w = el.clientWidth, h = el.clientHeight;
+      if (w < 12 || h < 6) continue;                           // sr-only and hairlines
+      const cs = getComputedStyle(el);
+      if (cs.visibility === "hidden" || cs.display === "none" || cs.opacity === "0") continue;
+      const hides = /hidden|clip|auto|scroll/.test(cs.overflowX) || cs.textOverflow === "ellipsis";
+      if (!hides) continue;                                    // it spills, it does not clip
+      if (el.scrollWidth > w + 1) {
+        out.push({ text: text.slice(0, 44), box: w, content: el.scrollWidth, over: el.scrollWidth - w });
+      }
+    }
+    return out.slice(0, 8);
+  }, scope);
+}
+
+/** One-line rendering of `measureClipping`, with the px budget spelled out. */
+export function describeClipping(list) {
+  return list.map((c) => `"${c.text}" box ${c.box}px < content ${c.content}px (over by ${c.over}px)`).join(" · ");
+}

@@ -29,8 +29,8 @@ file is worthless the moment it describes an intention as a fact.
 | Withdrawal fee 1.5% | ✅ live — production has charged 1.5% since before 2026-08-10 |
 | Taxes only on our fee · free cancellation 5 min | ✅ live, unchanged by this programme |
 | Our fee: 13% of the losing side, **both** games | ✅ **live, verified on production 2026-08-14 13:08** — `updown.config` reconciled, 16/16 chain rows migrated and read back off the DB, and a NEW round froze `loser-share` while all 4,220 legacy rounds still hold `capped-commission` |
-| Positions per market: unlimited, both sides | ⏳ LANDING — shipped in code 2026-08-14 with the line below; needs a both-sides bet on production |
-| Bonus wagering: one side only | ⏳ LANDING — same commit. ⚠️ production has **zero grants**, so nothing exercises it live yet |
+| Positions per market: unlimited, both sides | ✅ **live, verified on production 2026-08-14** — one player held BOTH sides of Up & Down round #268, and another held YES then added NO on a long-form poll; the wallet moved both times |
+| Bonus wagering: one side only | ✅ **live, verified on production 2026-08-14** — the first two grants in production's history were issued, and `wageredTzs` did **not** move for the hedge or for a top-up taken while the opposite leg was open. A free exit gave the credit back. §2.5 |
 | Failure messages explain themselves | ⏳ LANDING |
 
 ---
@@ -134,9 +134,11 @@ are levied on the fee *we* earned. Enforced in `payout.ts` → `levySplit`; rate
 
 ### 2.4 · Positions per market — unlimited, either or both sides
 
-> ⏳ **LANDING — code shipped, awaiting production verification.** The guard is removed and
-> the wagering rule is in the same commit; what remains is a real both-sides bet driven on
-> production. ⛔ Do not clear this marker from a passing suite.
+> ✅ **LIVE, VERIFIED ON PRODUCTION 2026-08-14.** Driven with real money, not from a suite:
+> **QA Fleet 09 held BOTH sides of Up & Down round #268** (YES 2,000 + NO 1,000) and both
+> stakes stood; and **QA Fleet 01 held YES 3,000 then added NO 2,000** on
+> `mkt_85d2b28535bcc68a86ae`, wallet 191,740 → 189,740, i.e. the money really moved. The
+> hedge is accepted with no cap and no block.
 
 A player may hold as many positions as they like on one market, on one side or on both. There
 is no per-market cap and no hedging block. Enforced by the *absence* of a guard in
@@ -157,9 +159,24 @@ changes are inseparable.
 
 ### 2.5 · Bonus wagering — only one side counts
 
-> ⏳ **LANDING — code shipped, awaiting production verification.** Ships in the same commit
-> as §2.4. There are **zero grants and zero bonus balance on production**, so this rule has
-> no live subject yet; verification means driving a grant through it.
+> ✅ **LIVE, VERIFIED ON PRODUCTION 2026-08-14 — the grants now exist.** This rule had no live
+> subject until the GROWTH officer issued the **first two bonus grants in production's
+> history** (TZS 10,000 × 5 to QA Fleet 01 and 02). Every figure below is read off the GRANT
+> ROW by `scripts/live/ops/bonus-census.cjs`, never from a number a page rendered:
+>
+> | step | wallet cash | `wageredTzs` |
+> |---|---|---|
+> | grant issued | 194,740 | 0 / 50,000 |
+> | YES 3,000 — first side | 191,740 | **3,000** |
+> | NO 2,000 — the hedge | 189,740 | **3,000 — unchanged** |
+> | YES 4,000 — a top-up while the opposite leg is open | 185,740 | **3,000 — still unchanged** |
+>
+> ⭐ The third row is the conservative form this section describes, caught live: the money
+> moved 4,000 and the turnover counter did not advance by a shilling.
+>
+> **B1b, on a second player so the accrual was clean** — QA Fleet 02: bet YES 5,000, turnover
+> 0 → **5,000**; free exit inside the window, turnover **5,000 → 0** and cash 200,094 →
+> 205,094. The credit leaves with the stake.
 
 A stake placed while the player holds an **OPEN position on the opposite side of that market**
 accrues **no** turnover toward a bonus requirement.

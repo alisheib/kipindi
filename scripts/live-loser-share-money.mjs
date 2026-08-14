@@ -64,9 +64,28 @@ const PLANS = {
     { idx: "08", side: "UP", chip: "1K" },
   ],
   // Both sides, on a chain whose price band the price will not clear.
+  //
+  // ⛔ SIX PLAYERS AND SEVEN POSITIONS, NOT TWO — Ali's standing instruction, given twice, and
+  // the two-player version could not see any of the three things a refund can get wrong:
+  //   · MORE THAN ONE POSITION PER SIDE. With one row per side there is no distribution to
+  //     get wrong, which is the same blindness the two-sided plan's comment already records.
+  //   · A HEDGED PLAYER — `fleet:09` holds BOTH sides. Unlimited positions on either side is
+  //     ordinary since B, so a void must return BOTH of that player's stakes, not net them.
+  //   · UNEQUAL, NON-DIVIDING STAKES. UP 8,000 vs DOWN 14,000, so a refund computed from a
+  //     pool share rather than from the position itself lands on the wrong number visibly.
+  // A VOID must charge nothing and return every one of the seven in full.
+  //
+  // ⚠️ `wave: 1` runs AFTER the others. The rest go concurrently (see the note by
+  // `Promise.all`), but the hedge is the SAME account as an earlier row, and two concurrent
+  // sign-ins to one account is precisely the attempt-limiting that reads as a wrong password.
   "void": [
-    { idx: "09", side: "UP",   chip: "2K" },
-    { idx: "10", side: "DOWN", chip: "1K" },
+    { idx: "09", side: "UP",   chip: "2K"  },
+    { idx: "11", side: "UP",   chip: "5K"  },
+    { idx: "13", side: "UP",   chip: "1K"  },
+    { idx: "10", side: "DOWN", chip: "1K"  },
+    { idx: "12", side: "DOWN", chip: "2K"  },
+    { idx: "14", side: "DOWN", chip: "10K" },
+    { idx: "09", side: "DOWN", chip: "1K", wave: 1 },
   ],
 };
 const PLAN_NAME = process.env.A4_PLAN ?? "two-sided";
@@ -151,7 +170,17 @@ console.log(`  DOWN  ${PLAN.filter((p) => p.side === "DOWN").map((p) => `fleet:$
 // would close underneath the last of them — the bets would land on two different rounds and
 // neither would be the two-sided round this exists to produce. Different accounts, so the
 // per-account attempt limiting `loginOnce` exists for does not apply.
-const placed = await Promise.all(PLAN.map(play));
+//
+// ⚠️ EXCEPT WHERE THE SAME ACCOUNT APPEARS TWICE. A hedged player is two positions on one
+// login, and firing both at once IS the attempt-limiting case — which fails looking exactly
+// like a wrong password. Those rows carry `wave: 1` and go after the rest.
+const wave0 = PLAN.filter((p) => !p.wave);
+const wave1 = PLAN.filter((p) => p.wave);
+const placed = await Promise.all(wave0.map(play));
+if (wave1.length) {
+  console.log(`\n  … wave 2: ${wave1.length} hedge position(s), after the first wave\n`);
+  placed.push(...(await Promise.all(wave1.map(play))));
+}
 
 const good = placed.filter((p) => p.ok).length;
 console.log(`\n${good}/${placed.length} bets placed`);
