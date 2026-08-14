@@ -44,8 +44,8 @@ const MUTATIONS = [
     name: "pair-priced-from-the-sum",
     why: "🔴 THE ORIGINAL DEFECT — the whole two-sided position priced as if it all sat on UP. On this fixture that quotes 15,536 to a player whose UP leg is worth 11,487",
     file: BOARD,
-    from: `        ? (myUpStake > 0 ? await projectedPayout(m, "YES", myUpStake) : 0)`,
-    to: `        ? (myUpStake > 0 ? await projectedPayout(m, "YES", myStake) : 0)`,
+    from: `        ? (myUpStake > 0 ? await heldPayout(m, "YES", myUpStake) : 0)`,
+    to: `        ? (myUpStake > 0 ? await heldPayout(m, "YES", myStake) : 0)`,
   },
   {
     name: "pair-suppressed-for-a-hedge",
@@ -61,16 +61,16 @@ const MUTATIONS = [
     why: "⛔ THE OPPOSITE UNDOING — `myExactPayout` loses its one-sided gate, so the single-number half-truth is back beside the honest pair. Suppressing that field for a hedge is not optional",
     file: BOARD,
     from: `      state === "locked" && myStake > 0 && (myUpStake === 0 || myDownStake === 0)
-        ? await projectedPayout(m, myUpStake > 0 ? "YES" : "NO", myStake)`,
+        ? await heldPayout(m, myUpStake > 0 ? "YES" : "NO", myStake)`,
     to: `      state === "locked" && myStake > 0
-        ? await projectedPayout(m, myUpStake > 0 ? "YES" : "NO", myStake)`,
+        ? await heldPayout(m, myUpStake > 0 ? "YES" : "NO", myStake)`,
   },
   {
     name: "losing-side-nulled-instead-of-zero",
     why: "⚠️ the empty side returns null rather than 0, so the surface — which renders the pair only when BOTH are present — silently stops quoting a one-sided holder at all",
     file: BOARD,
-    from: `        ? (myDownStake > 0 ? await projectedPayout(m, "NO", myDownStake) : 0)`,
-    to: `        ? (myDownStake > 0 ? await projectedPayout(m, "NO", myDownStake) : null)`,
+    from: `        ? (myDownStake > 0 ? await heldPayout(m, "NO", myDownStake) : 0)`,
+    to: `        ? (myDownStake > 0 ? await heldPayout(m, "NO", myDownStake) : null)`,
   },
   {
     name: "quoted-while-the-pool-can-still-move",
@@ -89,6 +89,20 @@ const MUTATIONS = [
       state === "locked" && myStake > 0`,
     to: `    myPayoutIfDown:
       state === "locked"`,
+  },
+  {
+    // 🔴 THE DEFECT §5 CAUGHT, AND IT HAD BEEN SHIPPING. `projectedPayout` answers "what if I
+    // bet X MORE", so it ADDS the stake to the pool. Handing it an already-placed stake counts
+    // that money twice: on production's gold round #267 the locked card quoted 9,685 to a
+    // player settlement then paid 12,612 — 23% under. ⛔ Only the settlement tie-out sees it;
+    // every assertion that compares the board against the same misuse stays green.
+    name: "own-stake-counted-twice",
+    why: "🔴 the holder's own stake is left in its own pool before pricing, so their share is halved and the quote understates what settlement pays — 9,685 quoted against 12,612 paid, measured on production",
+    file: BOARD,
+    from: `  const pools = side === "YES"
+    ? { ...m, yesPool: Math.max(0, m.yesPool - myStake) }
+    : { ...m, noPool: Math.max(0, m.noPool - myStake) };`,
+    to: `  const pools = m;`,
   },
   {
     name: "the-panel-stops-rendering-the-pair",

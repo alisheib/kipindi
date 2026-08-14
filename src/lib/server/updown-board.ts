@@ -244,6 +244,41 @@ export function roundState(
   return "open";
 }
 
+/**
+ * What a stake ALREADY IN THE POOL is paid if its side wins.
+ *
+ * 🔴 WHY THIS EXISTS, AND IT IS A MONEY DEFECT THAT WAS SHIPPING. `projectedPayout` answers a
+ * different question — *"what would I get if I bet X **more** right now"* — so it ADDS the
+ * stake to the pool before dividing. Handing it a stake the player has already placed counts
+ * that money **twice**: once in `yesPool`, once again as the new bet.
+ *
+ * Measured against a real production settlement, gold round #267 (YES 8,000 / NO 14,000, YES
+ * won). QA Fleet 11 held **5,000** on the winning side:
+ *
+ *     quoted on the locked card   9,685      ← stake counted twice: share read 5,000/13,000
+ *     what settlement PAID       12,612
+ *
+ * ⛔ An understatement of 2,927 shillings — **23%** — on a screen whose own comment promised
+ * *"this figure and the settled one cannot disagree"*. It did, on every locked round, for as
+ * long as the field has existed.
+ *
+ * ⭐ THE FIX REUSES THE SAME FUNCTION RATHER THAN WRITING A SECOND ARITHMETIC. Remove the
+ * player's own money from their side's pool and ask `payoutFor` the question it is built for:
+ * the pool it then reconstructs is exactly the real one, and the share is exactly theirs.
+ * A separate fee calculation here would be a second answer to "what does this round pay",
+ * which is the drift this file already refuses everywhere else.
+ */
+async function heldPayout(
+  m: Parameters<typeof projectedPayout>[0] & { yesPool: number; noPool: number },
+  side: "YES" | "NO",
+  myStake: number,
+): Promise<number> {
+  const pools = side === "YES"
+    ? { ...m, yesPool: Math.max(0, m.yesPool - myStake) }
+    : { ...m, noPool: Math.max(0, m.noPool - myStake) };
+  return projectedPayout(pools, side, myStake);
+}
+
 async function toBoardRound(
   r: StoredRound,
   chain: StoredChain,
@@ -344,7 +379,7 @@ async function toBoardRound(
     // `myUpStake`/`myDownStake` count OPEN positions only (see the accumulator below).
     myExactPayout:
       state === "locked" && myStake > 0 && (myUpStake === 0 || myDownStake === 0)
-        ? await projectedPayout(m, myUpStake > 0 ? "YES" : "NO", myStake)
+        ? await heldPayout(m, myUpStake > 0 ? "YES" : "NO", myStake)
         : null,
     // ⭐ UD-20 · BOTH OUTCOMES, PRICED SEPARATELY — the only form that states a two-sided
     // position honestly. Each figure is what this viewer receives IF THAT SIDE WINS, so the
@@ -358,11 +393,11 @@ async function toBoardRound(
     // saying so is more honest than leaving it unsaid.
     myPayoutIfUp:
       state === "locked" && myStake > 0
-        ? (myUpStake > 0 ? await projectedPayout(m, "YES", myUpStake) : 0)
+        ? (myUpStake > 0 ? await heldPayout(m, "YES", myUpStake) : 0)
         : null,
     myPayoutIfDown:
       state === "locked" && myStake > 0
-        ? (myDownStake > 0 ? await projectedPayout(m, "NO", myDownStake) : 0)
+        ? (myDownStake > 0 ? await heldPayout(m, "NO", myDownStake) : 0)
         : null,
     // ⭐ E-99 · the instant the result is genuinely expected, from THIS asset's own record.
     // ⛔ Null when unmeasured — see the field comment. A guessed lag on a money surface is a

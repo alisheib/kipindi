@@ -49,8 +49,15 @@ const MUTATIONS = [
     name: "history-repriced",
     why: "⭐ THE MISTAKE, NOT THE BUG. `poolFee` stops reading the frozen model and charges loser-share for everything — the 4,146 legacy rounds on production would settle by maths they never froze. The no-mix guarantee is what this catches",
     file: PAY,
-    from: '  if (r.feeModel === "loser-share") {',
-    to: "  if (true) {",
+    // 🔴 RE-ANCHORED 2026-08-14, AND IT HAD BEEN AN ABSENT TEST SINCE `22215fec`. That commit
+    // (A4, the fee caption) added `describeFeeModel`, which opens with the SAME line —
+    // `if (r.feeModel === "loser-share") {` — so payout.ts now has two. The harness replaced
+    // the FIRST, found the anchor still present on disk, and reported "HARNESS ERROR" while
+    // presenting itself as a guard over six defects. It has been scoring 5/6 ever since.
+    // ⛔ Anchored on the MONEY function's own comment line: this mutation is about `poolFee`
+    // charging the wrong basis, not about the caption, and the two must not be confused.
+    from: '  if (r.feeModel === "loser-share") {\n    // loser-share: fee = (platformFeeRate + operatorFeeRate) × the LOSING pool.',
+    to: '  if (true) {\n    // loser-share: fee = (platformFeeRate + operatorFeeRate) × the LOSING pool.',
   },
   {
     name: "migration-missing",

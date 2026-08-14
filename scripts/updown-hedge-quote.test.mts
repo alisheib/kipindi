@@ -28,12 +28,12 @@ process.env.SESSION_SECRET ??= "test-only-session-secret-32chars-min-aaaa";
 
 import { readFileSync } from "node:fs";
 import { db } from "../src/lib/server/store.ts";
-import { buyPosition, projectedPayout } from "../src/lib/server/market-service.ts";
+import { buyPosition, projectedPayout, listPositionsForMarket } from "../src/lib/server/market-service.ts";
 import { getBoard, getRoundDetail } from "../src/lib/server/updown-board.ts";
 import { marketStore } from "../src/lib/server/market-dal.ts";
 import { createAsset, setAssetEnabled, createChain, setChainState, __resetUpDownConfig } from "../src/lib/server/updown-config.ts";
 import { chainStore, observationStore, __resetUpDownMemoryStores } from "../src/lib/server/updown-dal.ts";
-import { openRound } from "../src/lib/server/updown-service.ts";
+import { openRound, closeRound } from "../src/lib/server/updown-service.ts";
 import { seedDefaultSources, addSource } from "../src/lib/server/source-registry.ts";
 import { dict as DICT } from "../src/lib/i18n-dict.ts";
 
@@ -136,10 +136,18 @@ ok("0.4 · fixture · the round is LOCKED", row.state === "locked", row.state);
 // ═══════════════════════════════════════════════════════════════════════════
 {
   const m = (await marketStore.get(marketId))!;
-  const expUp = await projectedPayout(m, "YES", 7_000);
-  const expDown = await projectedPayout(m, "NO", 3_000);
+  // ⛔ THE OWN STAKE COMES OUT OF ITS OWN POOL FIRST, and these three lines used to not do
+  // that. `projectedPayout` answers "what if I bet X MORE", so it ADDS the stake — handing
+  // it an already-placed stake counts that money twice and understates the payout. It quoted
+  // 9,685 on a production round that PAID 12,612. §5 is what caught it: these assertions
+  // compared the board against the same misuse and were green throughout.
+  const held = (side: "YES" | "NO", stake: number) => projectedPayout(
+    side === "YES" ? { ...m, yesPool: m.yesPool - stake } : { ...m, noPool: m.noPool - stake },
+    side, stake);
+  const expUp = await held("YES", 7_000);
+  const expDown = await held("NO", 3_000);
   // The half-truth this whole finding is about: the whole position priced as if on one side.
-  const halfTruth = await projectedPayout(m, "YES", 10_000);
+  const halfTruth = await projectedPayout({ ...m, yesPool: m.yesPool - 7_000 }, "YES", 10_000);
 
   ok("1.1 · ★ a hedged holder is quoted a figure for EACH outcome",
      row.myPayoutIfUp != null && row.myPayoutIfDown != null,
@@ -170,7 +178,8 @@ ok("0.4 · fixture · the round is LOCKED", row.state === "locked", row.state);
 {
   const x = (await getRoundDetail(r.data.id, oneSided))!.round;
   const m = (await marketStore.get(marketId))!;
-  const expUp = await projectedPayout(m, "YES", 5_000);
+  // Own stake removed first — see §1.
+  const expUp = await projectedPayout({ ...m, yesPool: m.yesPool - 5_000 }, "YES", 5_000);
   ok("2.1 · a one-sided holder gets the pair as well", x.myPayoutIfUp != null && x.myPayoutIfDown != null);
   ok("2.2 · …their winning outcome is their real payout", x.myPayoutIfUp === expUp, `${x.myPayoutIfUp} vs ${expUp}`);
   ok("2.3 · ★ …and their LOSING outcome is exactly 0, not null and not blank",
@@ -230,6 +239,72 @@ ok("0.4 · fixture · the round is LOCKED", row.state === "locked", row.state);
        !!m.udIfClosesUp && !!m.udIfClosesDown && !!m.udYouGet && !!m.udBothSidesHeld,
        `${m.udIfClosesUp} / ${m.udIfClosesDown}`);
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 5 · ⭐ THE QUOTE IS WHAT SETTLEMENT ACTUALLY PAYS — driven, not asserted
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔴 THIS SECTION EXISTS BECAUSE EVERYTHING ABOVE PASSED WHILE THE FIGURE WAS WRONG.
+// §1 and §2 compare the quote against `projectedPayout` — the same function the board calls —
+// so they are self-consistent by construction and cannot see a MISUSE of it. And it was being
+// misused: `projectedPayout` answers *"what if I bet X MORE"*, so it adds the stake to the
+// pool, and handing it an already-placed stake counted that money twice.
+//
+// Measured on production, gold round #267 (YES 8,000 / NO 14,000, YES won), QA Fleet 11
+// holding 5,000 of the winning side:
+//     the locked card quoted   9,685
+//     settlement PAID         12,612      ← 23% more than the player was told
+//
+// ⛔ SO THE ONLY HONEST CHECK IS AGAINST THE MONEY. Close the round, settle it, and compare
+// the quote to `finalPayout` on the position. That is the one comparison the product cannot
+// satisfy by agreeing with itself.
+console.log("\n§5 · the quoted figure is what the player is actually paid");
+{
+  const before = (await getRoundDetail(r.data.id, hedger))!.round;
+  const quotedIfUp = before.myPayoutIfUp;
+  const oneSidedQuote = (await getRoundDetail(r.data.id, oneSided))!.round.myPayoutIfUp;
+  ok("5.0 · fixture · both holders are quoted before settlement",
+     quotedIfUp != null && oneSidedQuote != null, `${quotedIfUp} / ${oneSidedQuote}`);
+
+  // Settle the round UP through the real engine, on the real close path.
+  const closeIso = new Date(Date.parse(openIso) + 6 * 60_000).toISOString();
+  const co = await observationStore.ensure(asset.data.id, closeIso);
+  await observationStore.confirm(co.id, {
+    price: 2600, sourceUrl: asset.data.priceSourceUrl, sourceQuotedAt: closeIso,
+    evidence: "close", confidence: 95, model: "t", rawHash: "h2",
+  });
+  const closed = await closeRound(r.data.id, co.id, 2600);
+  ok("5.1 · fixture · the round closed UP", closed.ok && closed.data.outcome === "UP",
+     closed.ok ? closed.data.outcome : (closed as { error: string }).error);
+
+  const paid = async (uid: string) => {
+    const ps = await listPositionsForMarket(marketId);
+    return ps.filter((p) => p.userId === uid).reduce((n, p) => n + (p.finalPayout ?? 0), 0);
+  };
+  const hedgerPaid = await paid(hedger);
+  const onePaid = await paid(oneSided);
+
+  // ⭐ THE ASSERTION. ⚠️ A ONE-SHILLING TOLERANCE, and only one: settlement allocates across
+  // ALL winners by largest remainder, while the quote prices one position on its own, so the
+  // dust can land a shilling either way. The defect this catches was 2,927 shillings.
+  ok("5.2 · ★ the hedged holder's UP quote is what they were PAID",
+     Math.abs(hedgerPaid - (quotedIfUp ?? -1)) <= 1,
+     `quoted ${quotedIfUp}, paid ${hedgerPaid}`);
+  ok("5.3 · ★ …and the one-sided holder's quote is what THEY were paid",
+     Math.abs(onePaid - (oneSidedQuote ?? -1)) <= 1,
+     `quoted ${oneSidedQuote}, paid ${onePaid}`);
+  // ⛔ And the hedger's DOWN leg paid nothing, which is what the other row was quoting against.
+  // ⚠️ THE LOSING LEG SPECIFICALLY. The first spelling of this asserted the hedger's TOTAL
+  // payout was under their total stake — which is simply not what a hedge does: they staked
+  // 10,000 and were paid 14,105, because the winning leg more than covers the losing one.
+  // A wrong assertion about a correct product is still a red, and it was mine.
+  const legs = (await listPositionsForMarket(marketId)).filter((p) => p.userId === hedger);
+  const downLeg = legs.find((p) => p.side === "NO");
+  const upLeg = legs.find((p) => p.side === "YES");
+  ok("5.4 · …the LOSING leg paid nothing, as the DOWN row implied it would",
+     (downLeg?.finalPayout ?? -1) === 0, `down leg paid ${downLeg?.finalPayout}`);
+  ok("5.5 · …and the winning leg alone carried the whole payout",
+     (upLeg?.finalPayout ?? 0) === hedgerPaid, `up leg ${upLeg?.finalPayout} of ${hedgerPaid}`);
 }
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);

@@ -60,8 +60,17 @@ const MUTATIONS = [
     name: "updown-ceiling-left-behind",
     why: "Up & Down keeps its TZS 100,000 ceiling, so the same bet is legal on a poll and refused on a round",
     file: UD,
-    from: '    bump("defaultMaxStake", 100_000);\n  }\n  return { config: c, changed };',
-    to: "  }\n  return { config: c, changed };",
+    // 🔴 RE-ANCHORED 2026-08-14, AND IT HAD BEEN AN ABSENT TEST. The anchor used to run to the
+    // end of the function — `bump("defaultMaxStake", 100_000);\n  }\n  return { config: c, … }`
+    // — and the A2 fee cutover inserted a `fromVersion < 4` block after it. The text stopped
+    // matching, this mutation reported "HARNESS ERROR: anchor not found", and the harness had
+    // been scoring 5/6 while presenting itself as a guard over 6 defects. ⚠️ A RED harness with
+    // a stale anchor is an ABSENT test, and it fails quietly in the direction of looking fine.
+    // ⛔ Anchored on the v3 PAIR now: `fromVersion < 2` bumps a min of 100, so the two lines
+    // below are unique to the migration this mutation is about and do not depend on whatever
+    // is appended to the function next.
+    from: '    bump("defaultMinStake", 500);\n    bump("defaultMaxStake", 100_000);',
+    to: '    bump("defaultMinStake", 500);',
   },
   {
     name: "migration-overwrites-a-deliberate-choice",
