@@ -89,19 +89,47 @@ guarantee holding on real production data, not on a fixture.
 
 The original §8 order, with what is done struck out:
 
-~~1. D~~ · ~~2. A1~~ · ~~3. C1~~ · ~~4. A2–A3~~ · **→ 5. A4 · 6. B · 7. F1 · 8. C2–C5 · 9. F2–F5 + E**
+~~1. D~~ · ~~2. A1~~ · ~~3. C1~~ · ~~4. A2–A3~~ · ~~5. A4 (code + guard)~~ · **→ 6. B · 7. F1 · 8. C2–C5 · 9. F2–F5 + E**
 
-### ▶ A4 — LOOK at the consequences on the live board (start here; it is small)
+### ✅ A4 — the caption beside the money (session 2)
 
-A2 is verified in the database. It has **not been looked at**. Per §0.3 of the work order:
+The hardcoded `delta="capped-commission 13%"` at `/admin/updown` page.tsx:210 is gone, and so
+is the reason it could exist:
 
-- The Up & Down card multiplier is pool-derived and **will read higher** now the fee is smaller.
-  Confirm on the live board at **360 / 768 / 1024 / 1440**.
-- A one-sided round still refunds in full and charges nothing — confirm on a real one.
-- A VOID still charges nothing — confirm on a real voided round.
-- ⚠️ `/admin/updown` page.tsx:210 has a **hardcoded** `delta="capped-commission 13%"` beside a
-  value that DOES branch on the model. It is now actively wrong on the live console. It is
-  listed under F3 but it is the single worst wrong number on any admin screen — fix it here.
+- **`describeFeeModel(rates)`** (`payout.ts`) derives the model NAME and its rate from the
+  same resolved rates `poolFee` charges. A caption can no longer disagree with the fee
+  beside it.
+- **`boardFeeSummary(chains, cfg)`** (`updown-config.ts`) answers "what is this game on"
+  from EVERY configured chain, not from `defaultRateProfile` — which is what a NEW chain
+  would freeze and what no live chain reads. A half-migrated board now renders `split`
+  with a danger-toned value instead of one law printed as if it were all.
+- **`test:fee-model-caption` (39 checks) / `red:fee-model-caption` (8/8 red)** — mutation 1
+  is the `8c06517f` source verbatim; mutation 8 is not a defect at all, it renames the tile
+  so the guard's anchor goes stale, and proves the guard goes RED rather than finding
+  nothing and reporting clean.
+- **`scripts/live/ops/loser-share-settled.cjs`** — READ-ONLY, asks production the three A4
+  money questions. On 2026-08-14 13:29 it reported **4.2 green: 10/10 settled LEGACY rounds
+  still settle by `min(commission × pool, ⅓ × smaller)`** — the no-mix guarantee on real
+  money — and **1.★★ RED: all 18 settled loser-share rounds were EMPTY**, so nothing about
+  the new model had been proven with a shilling on it. That red is what forced the money
+  drive below; a probe that counted empty rounds as one-sided would have reported 16 green.
+
+**Looked at, on production, 2026-08-14 13:38** — six QA-fleet players put **TZS 21,000** of
+real money on ONE round (`mkt_39b5c1731ae41480406e`, YES 8,000 / NO 13,000, `loser-share`)
+via `npm run qa:loser-share-money`, and `npm run qa:updown-card-widths` photographed the card
+at **360 / 768 / 1024 / 1440**. All four read **`Up × 2.25 est.` · `Down × 1.49 est.`** over
+`VOL TZS 21,000 · ≈ 6 · Up 38% / 62% Down`. Priced through the same `payoutFor` under the
+RETIRED profile those same pools give **× 2.12 / × 1.38** — so the multiplier reads **higher
+under the smaller fee**, measured rather than impressed.
+
+⚠️ Two harness traps this cost, both now written into the scripts:
+- **The card FLOORS the multiplier to 2 dp, it does not round.** 2.2567 renders `2.25`. A
+  probe that rounded reported a 0.01 disagreement with a card that was exactly right.
+- **An empty round reads `× 1.00` under BOTH fee models** — one-sided, so the stake simply
+  comes back. The first drive photographed six `× 1.00` buttons and proved nothing.
+
+⏳ **Still open on A4** — needs a settled round of each shape:
+- a one-sided round refunding in full, and a VOID charging nothing, **on a real one**.
 
 ### ▶ B — bet logic (the largest remaining piece)
 

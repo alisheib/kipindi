@@ -28,7 +28,7 @@ import { randomId } from "./crypto";
 import { loadConfig, saveConfig } from "./config-store";
 import { isSourceTrusted, normalizeDomain } from "./source-registry";
 import { validateRateConfig } from "./market-config";
-import { PLATFORM_MIN_STAKE, PLATFORM_MAX_STAKE } from "@/lib/payout";
+import { PLATFORM_MIN_STAKE, PLATFORM_MAX_STAKE, resolveFeeModel, describeFeeModel, type FeeModel } from "@/lib/payout";
 import type { RefusalReason } from "./updown-oracle";
 // The money lives on the market row, never in the Up & Down tables — the source lock needs
 // it to tell an operator what is actually riding on the rounds it is refusing to strand.
@@ -1181,10 +1181,70 @@ export async function stakeBoundsForUpDownMarket(marketId: string): Promise<{ mi
   return stakeBoundsFor(chain);
 }
 
+/**
+ * The rate profile a chain freezes onto its rounds — its own, else the default —
+ * resolved against a config the caller ALREADY HAS.
+ *
+ * ⛔ The one place this rule is written. A console that restates it as
+ * `chain.rateProfile ?? cfg.defaultRateProfile` is a second copy that can drift from
+ * what the engine freezes, and the whole point of A2 was that the 16 chain rows do NOT
+ * inherit the default: a surface that reads the default alone reports a fee model no
+ * running chain uses.
+ */
+export function rateProfileOf(chain: Pick<StoredChain, "rateProfile">, cfg: UpDownConfig): Partial<RateConfig> {
+  return (chain.rateProfile as Partial<RateConfig> | null) ?? cfg.defaultRateProfile;
+}
+
 /** The rate profile a chain freezes onto its rounds — its own, else the default. */
 export async function rateProfileFor(chain: StoredChain): Promise<Partial<RateConfig>> {
-  const cfg = await getUpDownConfig();
-  return (chain.rateProfile as Partial<RateConfig> | null) ?? cfg.defaultRateProfile;
+  return rateProfileOf(chain, await getUpDownConfig());
+}
+
+/** What `/admin/updown`'s fee tile shows, and why. */
+export interface BoardFeeSummary {
+  /** The profile a fee preview should be priced through. */
+  profile: Partial<RateConfig>;
+  /** The distinct fee models in force, in the order encountered. */
+  models: FeeModel[];
+  /** True when the board is NOT on one law. */
+  split: boolean;
+  /** A short admin caption naming the model(s) and the rate they charge. */
+  caption: string;
+}
+
+/**
+ * The fee model this game is actually on, across every configured chain and the default.
+ *
+ * ⭐ A4. `/admin/updown` used to answer this question in JSX, from `cfg.defaultRateProfile`
+ * alone, under a HARDCODED caption. Two separate ways to be wrong:
+ *
+ *   - the default is what a NEW chain would freeze. The 16 live chains carry their OWN
+ *     `rateProfile` and do NOT inherit, so a console reading the default alone is blind to
+ *     the exact half-migrated state A2 had to be driven out of — default moved, chains not.
+ *   - a literal caption cannot move when the model does. On 2026-08-14 the tile showed
+ *     TZS 650 (loser-share) captioned `capped-commission 13%`: a correct number under a
+ *     retired law.
+ *
+ * ⚠️ EVERY CONFIGURED CHAIN COUNTS, not just the running ones. A STOPPED chain still
+ * carries its profile and freezes it onto the first round it opens when an operator
+ * restarts it — a stopped chain left on the old model is a latent split, and the console
+ * that would have to notice is this one.
+ *
+ * When the board IS split the preview is priced through the DEFAULT — the one profile that
+ * can be named unambiguously ("what a new chain freezes") — and the caption says `split`,
+ * so no single figure is presented as the whole answer.
+ *
+ * Executed by `npm run test:fee-model-caption` §3.
+ */
+export function boardFeeSummary(chains: Pick<StoredChain, "rateProfile">[], cfg: UpDownConfig): BoardFeeSummary {
+  const profiles = chains.map((c) => rateProfileOf(c, cfg));
+  const models = [...new Set([...profiles, cfg.defaultRateProfile].map(resolveFeeModel))];
+  const split = models.length > 1;
+  const profile = split ? cfg.defaultRateProfile : (profiles[0] ?? cfg.defaultRateProfile);
+  const caption = split
+    ? `split · ${models.map((m) => (m === "loser-share" ? "loser-share" : "capped")).join(" + ")}`
+    : describeFeeModel(profile).caption;
+  return { profile, models, split, caption };
 }
 
 /**

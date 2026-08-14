@@ -67,6 +67,11 @@ scripts/_walkthrough/
 .qa-f6*/
 # Per-market override panel shots (npm run qa:override-visual --shots). Same rule.
 .qa-f3/
+# Live-drive evidence shots (SHOT_DIR=./shots/... — qa:loser-share-money,
+# qa:updown-card-widths, and the live-*.mjs drivers generally). Same rule again: the
+# DRIVER is committed so the shot can be re-taken against production at any width; a
+# checked-in PNG is a claim nobody can re-derive.
+shots/
 
 # Test images (user reference, not for production)
 Test Images/

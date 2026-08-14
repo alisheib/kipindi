@@ -339,6 +339,46 @@ function readRates(rates: Partial<FeeRates> | undefined): ResolvedRates {
   };
 }
 
+/**
+ * The fee model a set of rates RESOLVES to — the exact predicate `poolFee` applies,
+ * exported so a LABEL beside a fee number can never disagree with the arithmetic that
+ * produced it.
+ *
+ * ⛔ Do not re-derive this at a call site with `rates.feeModel === "loser-share"`. An
+ * ABSENT `feeModel` is `capped-commission` (the no-mix guarantee, `readRates`); a call
+ * site that tests the raw field reads `undefined` for every legacy snapshot and will
+ * label a legacy poll as neither model — or, worse, hardcode one. That is precisely the
+ * defect this exists to close: `/admin/updown` displayed a hardcoded
+ * `capped-commission 13%` beside a value that had already moved to loser-share.
+ */
+export function resolveFeeModel(rates: Partial<FeeRates> | undefined): FeeModel {
+  return readRates(rates).feeModel;
+}
+
+/**
+ * A short admin caption for a set of rates: the model NAMED and the rate that model
+ * actually charges — both derived from the same resolved rates `poolFee` will use.
+ *
+ * ⭐ WHY THIS IS A FUNCTION AND NOT A STRING AT THE CALL SITE. `/admin/updown` captioned
+ * its fee tile with the literal `"capped-commission 13%"` beside a value computed by
+ * `poolFee`. The value moved when the model moved; the caption could not. The tile then
+ * read a CORRECT number under a RETIRED law — the worst of the two possible lies, because
+ * an operator who checks the arithmetic finds it sound.
+ *
+ * The percentages are the ones the arithmetic uses, clamped identically — `test:fee-model-caption`
+ * ties the quoted rate back to a fee `poolFee` really charged, so the caption cannot drift.
+ */
+export function describeFeeModel(rates: Partial<FeeRates> | undefined): { model: FeeModel; caption: string } {
+  const r = readRates(rates);
+  const pct = (n: number) => `${Number((n * 100).toFixed(2))}%`;
+  if (r.feeModel === "loser-share") {
+    // The SAME clamp `poolFee` applies to the summed slices — not the raw sum.
+    const loserRate = clamp(r.platformFeeRate + r.operatorFeeRate, 0, MAX_LOSER_SHARE_RATE);
+    return { model: r.feeModel, caption: `loser-share · ${pct(loserRate)} of losers` };
+  }
+  return { model: r.feeModel, caption: `capped · ${pct(r.commissionRate)} of pool, ${pct(r.feeCeilingRate)} cap` };
+}
+
 // ── THE FEE ─────────────────────────────────────────────────────────────────
 
 /**

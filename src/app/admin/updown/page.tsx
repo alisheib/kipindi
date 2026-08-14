@@ -1,7 +1,7 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ScrollX } from "@/components/ui/scroll-x";
-import { listAssets, listChains, getUpDownConfig, ALLOWED_DURATIONS, resolveScheduledMarginBps } from "@/lib/server/updown-config";
+import { listAssets, listChains, getUpDownConfig, ALLOWED_DURATIONS, resolveScheduledMarginBps, boardFeeSummary } from "@/lib/server/updown-config";
 // E-46: the Add-asset form is driven by the catalogue, so a symbol/category pair that
 // cannot work is not offerable. The server enforces the same rule in `createAsset`.
 import { SYMBOL_CATALOGUE, symbolReadiness, readinessMark, findSymbol } from "@/lib/server/updown-symbols";
@@ -156,7 +156,29 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
     return { ...v, nextOpen: v.open ? null : nextOpenAfter(a.category, nowIso) };
   };
 
-  const feePreview = poolFee(FEE_PREVIEW_POOL / 2, FEE_PREVIEW_POOL / 2, cfg.defaultRateProfile, "YES");
+  // ── What this game ACTUALLY charges ────────────────────────────────────────
+  //
+  // 🔴 A4. This tile used to price `cfg.defaultRateProfile` and caption it with a
+  // HARDCODED `capped-commission 13%`. Both halves were wrong on 2026-08-14, in two
+  // different ways, and they were wrong in opposite directions:
+  //
+  //   1. The CAPTION was a literal. The value branches on the model through `poolFee`,
+  //      so the moment A2 moved the default to loser-share the tile read a right number
+  //      (TZS 650) under a retired law (capped-commission would have charged 1,300).
+  //   2. The PROFILE was the DEFAULT — which is what a NEW chain would freeze. Every
+  //      one of the 16 live chains carries its OWN `rateProfile` and does NOT inherit
+  //      (`rateProfileOf`). A console that reads only the default cannot see the exact
+  //      half-done state A2 had to be migrated out of: default moved, chains not.
+  //
+  // So: ONE reducer, in a tested module — not a second copy of the rule living in JSX.
+  // `boardFeeSummary` reads every configured chain through the same resolver the engine
+  // freezes with, and derives the caption from the same profile the number came out of.
+  // Executed by `npm run test:fee-model-caption` §3.
+  const boardFee = boardFeeSummary(chains, cfg);
+  // Balanced pools, so the winning side is immaterial to the figure — but loser-share is
+  // outcome-DEPENDENT and `poolFee` charges NOTHING when it is not told a winner, so one
+  // must be passed here or the preview would read TZS 0 on the current model.
+  const feePreview = poolFee(FEE_PREVIEW_POOL / 2, FEE_PREVIEW_POOL / 2, boardFee.profile, "YES");
 
   // This game's OWN economics — 30-day money split (Up & Down only) + its own AI spend.
   // GGR is TZS (commission we keep on this game); AI cost is USD (what the oracle spent
@@ -207,7 +229,18 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <AdminKpi label="Enabled assets" sw="Bidhaa hai" value={String(enabledAssets.length)} delta={`${assets.length} total`} spark={false} />
           <AdminKpi label="Running chains" sw="Minyororo hai" value={String(running.length)} delta={`${chains.length} configured`} spark={false} />
-          <AdminKpi label="Fee · balanced 10,000" sw="Ada" value={formatTzs(Math.round(feePreview.fee))} delta="capped-commission 13%" spark={false} />
+          {/* `flat`, not the default `up`: a fee model is a FACT, not good news — and a
+              split board must never render under a green ▲. `danger` on the value says
+              the figure beside it is not what every running chain charges. */}
+          <AdminKpi
+            label="Fee · balanced 10,000"
+            sw="Ada"
+            value={formatTzs(Math.round(feePreview.fee))}
+            delta={boardFee.caption}
+            deltaDir="flat"
+            tone={boardFee.split ? "danger" : undefined}
+            spark={false}
+          />
           <AdminKpi label="Staleness window" sw="Muda wa bei" value={`${cfg.maxStalenessSeconds}s`} delta={`confidence ≥ ${cfg.confidenceThreshold}`} spark={false} />
         </div>
 

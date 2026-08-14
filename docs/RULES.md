@@ -78,7 +78,20 @@ file is worthless the moment it describes an intention as a fact.
 | **Frozen per market** | Every market stamps `PredictionMarket.feeSnapshot` at creation and settles by it **forever**. ⛔ A snapshot is never rewritten, backfilled or migrated. Changing a rate affects FUTURE markets only, and the two models never mix. |
 | **Stated to players** | `/legal/terms` §4 · the in-app assistant's system prompt (`src/app/_actions/chat.ts`) · `/help` FAQ · the conviction dial's "how it works" hint. |
 | **Stated to admins** | `/admin/config` (fee model + simulator) · `/admin/updown` · `/admin/markets/[id]`. |
-| **Guarded by** | `npm run test:fee-model` · `npm run test:loser-share-fee` · `npm run test:money-invariants` · `npm run test:settlement-gate` |
+| **Guarded by** | `npm run test:fee-model` · `npm run test:loser-share-fee` · `npm run test:money-invariants` · `npm run test:settlement-gate` · `npm run test:fee-model-caption` / `red:fee-model-caption` (the model NAMED on an admin screen is the model CHARGED) |
+
+> 🔴 **A NUMBER CAN BE RIGHT UNDER A LAW THAT IS WRONG.** `/admin/updown` priced its fee
+> tile through the real `poolFee` and captioned it with the literal `capped-commission 13%`.
+> When A2 landed, the value moved (1,300 → 650) and the caption could not: a correct figure
+> under a retired rule, which is worse than a wrong one because an operator who checks the
+> arithmetic finds it sound. Corrected 2026-08-14 (A4). Every fee caption is now derived
+> from the same resolved rates the arithmetic uses — `describeFeeModel` in `payout.ts`.
+>
+> ⛔ **And the tile read `defaultRateProfile`, which no live chain reads.** All 16
+> `UpDownChain` rows carry their own copy and do NOT inherit, so the one console that would
+> have to notice a half-migrated board was structurally blind to it. `boardFeeSummary` now
+> reads every configured chain — including STOPPED ones, which freeze their profile onto
+> the first round a restart opens — and renders `split` rather than picking one.
 
 ### 2.2 · Taxes are only ever on OUR commission
 
