@@ -28,7 +28,7 @@ file is worthless the moment it describes an intention as a fact.
 | Stake bounds 1,000 / 1,000,000 | ✅ live — config reconciled and read back from the production DB |
 | Withdrawal fee 1.5% | ✅ live — production has charged 1.5% since before 2026-08-10 |
 | Taxes only on our fee · free cancellation 5 min | ✅ live, unchanged by this programme |
-| Our fee: 13% of the losing side, **both** games | ⏳ LANDING — code + guards committed; **not verified on production until the deploy has reconciled `updown.config` AND `ops:updown-loser-share` has migrated the 16 chain rows and read them back** |
+| Our fee: 13% of the losing side, **both** games | ✅ **live, verified on production 2026-08-14 13:08** — `updown.config` reconciled, 16/16 chain rows migrated and read back off the DB, and a NEW round froze `loser-share` while all 4,220 legacy rounds still hold `capped-commission` |
 | Positions per market: unlimited, both sides | ⏳ LANDING |
 | Bonus wagering: one side only | ⏳ LANDING — ships in the same commit as the line above |
 | Failure messages explain themselves | ⏳ LANDING |
