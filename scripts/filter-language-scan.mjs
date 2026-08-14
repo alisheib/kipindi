@@ -11,10 +11,18 @@
  *    back as real RGBA — which is also the only way to learn a border's ALPHA (the whole
  *    question behind "is this control outlined?").
  *
- * Usage:  node filter-scan.mjs [BASE] [--widths=360,1280] [--locales=en,sw,zh]
+ * Usage:
+ *   node scripts/filter-language-scan.mjs [BASE] [--widths=360,1280] [--locales=en,sw,zh]
+ *                                         [--shots=<dir>] [--as=<persona>]
+ *
+ * ⭐ `--as` IS NOT OPTIONAL POLISH — four of the eight rails are behind a login. Without it a
+ * production run measures the four PUBLIC surfaces and SKIPS the rest, which is honest but is
+ * not coverage. `/auth/demo` is dev-only (404 in production, correctly), so a live run needs a
+ * real persona: `--as=alpha` signs in through the shared `login()` every other live driver uses.
  */
 import { chromium } from "playwright";
 import { mkdirSync } from "node:fs";
+import { login } from "./live/harness.mjs";
 
 const BASE = (process.argv[2] && !process.argv[2].startsWith("--") ? process.argv[2] : process.env.BASE) || "http://localhost:3009";
 const arg = (name, dflt) => {
@@ -24,6 +32,8 @@ const arg = (name, dflt) => {
 const WIDTHS = arg("widths", "360,1280").split(",").map(Number);
 const LOCALES = arg("locales", "en").split(",");
 const SHOTS = arg("shots", null);
+/** A QA persona key (`alpha`, `echo`, …). Omit to use the dev-only `/auth/demo` bootstrap. */
+const AS = arg("as", null);
 const LANG_ATTR = { en: "en", sw: "sw", zh: "zh" };
 if (SHOTS) mkdirSync(SHOTS, { recursive: true });
 
@@ -115,6 +125,7 @@ function MEASURE(sel) {
 const rows = [];
 const notes = [];
 const dayRail = { checked: false, why: "not reached", lines: [], fails: 0 };
+let signInFailed = false;
 
 const browser = await chromium.launch();
 try {
@@ -131,12 +142,32 @@ try {
       ]);
       const page = await ctx.newPage();
 
-      // Local demo session for the two authed surfaces (404s in production).
+      // Four of the eight rails are behind a login. `--as=<persona>` signs in for real (the
+      // only route that works against production); with no persona we fall back to the
+      // dev-only `/auth/demo` bootstrap, which 404s in production BY DESIGN.
       let authed = false;
       if (SURFACES.some((s) => s.auth)) {
-        const res = await page.goto(`${BASE}/auth/demo`, { waitUntil: "domcontentloaded", timeout: 45000 }).catch(() => null);
-        authed = !!res && res.status() < 400;
-        if (!authed) notes.push(`[${locale} ${width}] /auth/demo unavailable (status ${res ? res.status() : "no response"}) — authed surfaces SKIPPED, not reported as empty`);
+        if (AS) {
+          try {
+            // ⚠️ The shared `login()` — never a hand-rolled sign-in. Its predicate is
+            //    trilingual and its PhoneInput sync assertion turns "the field was filled
+            //    before React hydrated" into a named error instead of a phantom bad password.
+            await login(page, AS);
+            authed = true;
+          } catch (e) {
+            // ⛔ REFUSE TO CONTINUE QUIETLY. A run that was ASKED to sign in and could not has
+            //    measured half the product; reporting "every rail speaks one language" over
+            //    four surfaces it never loaded is the exact shape of a check that lies. The
+            //    fallback path (no --as) may skip and still exit 0 — being asked is what makes
+            //    the skip a failure.
+            notes.push(`🔴 [${locale} ${width}] sign-in as "${AS}" FAILED (${String(e.message).slice(0, 120)}) — authed surfaces NOT measured`);
+            signInFailed = true;
+          }
+        } else {
+          const res = await page.goto(`${BASE}/auth/demo`, { waitUntil: "domcontentloaded", timeout: 45000 }).catch(() => null);
+          authed = !!res && res.status() < 400;
+          if (!authed) notes.push(`[${locale} ${width}] /auth/demo unavailable (status ${res ? res.status() : "no response"}) — authed surfaces SKIPPED, not reported as empty. Pass --as=<persona> to sign in for real.`);
+        }
       }
 
       for (const s of SURFACES) {
@@ -276,7 +307,17 @@ for (const [surface, rs] of bySurface) {
     pad(inline ? `${inline} 🔴` : "0", 9) + pad(unselOutlined ? `${unselOutlined} 🔴` : "0", 16),
   );
 }
-console.log(`\n${defects === 0 ? "✓ every rail speaks ONE language" : `🔴 ${defects} surface(s) still diverge`}`);
+// ⚠️ The verdict names WHAT IT MEASURED. "Every rail" over four of eight rails is a false
+//    sentence, and a reader skims the last line.
+const measured = bySurface.size;
+console.log(`\n${defects === 0
+  ? `✓ every rail MEASURED speaks ONE language (${measured} of ${SURFACES.length} surfaces reached)`
+  : `🔴 ${defects} of ${measured} surface(s) measured still diverge`}`);
+if (defects > 0) process.exitCode = 1;
+if (signInFailed) {
+  console.log(`🔴 a sign-in was requested and failed — the four authed rails were NOT measured`);
+  process.exitCode = 1;
+}
 
 if (notes.length) {
   console.log(`\n${"=".repeat(120)}\nNOTES\n`);

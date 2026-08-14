@@ -1480,6 +1480,32 @@ doing real damage, and it is why the primitive keeps `min-h-[44px]` as an arbitr
   now has a day rail derived from the player's own rounds (`eatDayKey` over rows already in hand,
   **zero extra I/O**), each day carrying a round count proven promise-vs-delivery.
 
+### ⚠️ FOUR OF THE EIGHT RAILS ARE NOT VERIFIED ON PRODUCTION — say so, do not round it up
+
+Verified on production after the deploy: `/markets`, `/results`, `/proposals`, `/updown` — **432
+controls at 4 widths × 3 locales, all 999px / ≥44px / 0 inline / 0 unselected outlines**, plus all
+four board probes green. `/positions`, `/profile/activity`, `/profile/account` and
+`/updown/history` are behind a login and were measured **on localhost against the identical
+committed code**, not on production.
+
+🔴 **The reason is not this batch's, and it blocks every live authed driver in the repo.** The QA
+player personas will not sign in on production: `login(page, "alpha")` and `"echo"` both land back
+on the signed-out shell — the harness's own *"looks exactly like a wrong password"* branch, and its
+PhoneInput sync assertion did NOT fire, so the identifier reached the server and was rejected.
+⭐ **Confirmed against an instrument that is not mine**: `scripts/live-updown-digest.mjs`, unmodified
+and predating this session, fails identically on its first attempt. So this is the credentials or
+the accounts, not the filter work and not a new probe.
+
+⛔ **Stopped at three attempts on purpose** (alpha ×2, echo ×1). Login locks an account for 30
+minutes after five failures and these are live accounts on a board shared with another operator;
+brute-forcing a fourth and fifth would have cost more than it proved. **Ali: the QA persona
+passwords in `.env.qa.local` need re-checking or the accounts unlocking** — until then no live
+driver can reach any authed player surface.
+
+`npm run qa:filter-scan -- https://50pick.tz --as=alpha` is the command that closes this the moment
+the credentials work; it **exits non-zero** when a requested sign-in fails, so a future run cannot
+report "every rail speaks one language" over the four surfaces it never loaded.
+
 ### The guards
 
 `test:filter-language` — **66 assertions**, wired into `predeploy`. `red:filter-language` —
