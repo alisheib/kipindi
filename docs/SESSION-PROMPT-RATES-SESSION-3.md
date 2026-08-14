@@ -5,25 +5,28 @@ Continue the 50pick rates / bet-logic / failure-messaging programme.
 
 ---
 
-## §0 · STANDING AUTHORISATION — Ali, 2026-08-14. DO NOT ASK AGAIN FOR ANY OF THIS.
+## §0 · STANDING AUTHORISATION — ASKED AND GRANTED BY ALI, 2026-08-14. DO NOT ASK AGAIN.
 
-You have my **advance, blanket permission**, for the whole of this session, to do all of the
-following on **PRODUCTION** without stopping to ask me:
+Four questions were put to Ali at the close of session 2 and answered. These are his answers,
+not an assumption made on his behalf. **You have advance permission for all of it, on
+PRODUCTION, for the whole session:**
 
-- **Mint players.** Create as many test accounts as the case needs — QA fleet, new accounts,
-  whatever shape the scenario requires. ⛔ Not two. Two personas are structurally blind.
-- **Mint polls and markets.** Create, publish, resolve, void and settle test markets on either
-  product. Create Up & Down assets and chains, start and stop them.
-- **Mint money.** Credit test wallets, place real bets with real balances, take real fees, run
-  withdrawals. Use whatever amounts the test needs.
-- **Mint bonus grants and tokens.** Issue bonus grants at any multiplier, mint invite/referral
-  tokens, mint share tokens, mint OTPs and sessions.
-- **Drive anything a player or an officer can drive**, in any language, at any width.
+| Asked | Granted |
+|---|---|
+| Mint test data on production without stopping to ask? | ✅ **ALL OF IT** — players, markets/polls, Up & Down assets and chains, bonus grants, invite/share tokens, and crediting test wallets |
+| Create a temporary Up & Down asset/chain on the LIVE board to force a VOID? | ✅ **YES — create it, then remove it.** Name it obviously (e.g. `QA-VOID`), stop and retire it when done, and say so in the commit |
+| How much real money may move through QA-fleet wallets in one session? | ✅ **NO CAP — whatever the test needs.** For scale: session 2 moved ~47,000 across nine drives; fleet wallets hold 46k–200k each |
+| The Gold outage — ship the fix or wait? | ✅ **SHIP IT FIRST**, red-first, before the rules work. It is now §4 item 1 |
 
-⭐ **This exists because the last session had to leave things unproven.** B2 has never been
-exercised because production has no bonus grants; the VOID case is unproven because nobody bet
-on a round that voided. **Both of those are now yours to create.** If a rule cannot be proven
-because the state does not exist on production, **create the state.**
+⭐ **WHY THIS EXISTS.** Session 2 had to leave things unproven, and in every case the reason
+was that the STATE did not exist on production rather than that the code was wrong: B2 has
+never been exercised because there are ZERO bonus grants; the VOID case is unproven because
+nobody bet on a round that voided. **Those are now yours to create.** If a rule cannot be
+proven because the state does not exist, **create the state.**
+
+⛔ **AND MINT A REAL FLEET, NOT TWO PLAYERS.** As many test players as the case needs, playing
+BOTH sides. Two personas are structurally blind — that is a standing instruction of Ali's, given
+twice, and it is why the two-sided settlement drive used six.
 
 **The only limits:**
 1. ⛔ **Never rewrite, backfill or migrate an existing `feeSnapshot`.** Frozen money is frozen.
@@ -32,8 +35,10 @@ because the state does not exist on production, **create the state.**
 3. ⛔ **Never hand-write an `INSERT INTO "AuditLog"`** — it is an HMAC chain. Go through
    `audit()`.
 4. ⛔ **Never put a credential in a tracked file, a commit, a doc or a screenshot.**
-5. ⚠️ **Say what you minted**, in the commit and in the handoff, so it can be cleaned up.
-   Production data is wiped before public launch, so test DATA is fine — a CODE path that
+5. ⚠️ **The board is SHARED with another operator.** Anything you create on it is visible to
+   them — name it so it is obviously QA, and retire it when you are done.
+6. ⚠️ **Say what you minted**, in the commit and in the handoff, so it can be cleaned up.
+   Production DATA is wiped before public launch, so test data is fine — a CODE path that
    produces bad data is not.
 
 ---
@@ -63,7 +68,7 @@ hit something that genuinely contradicts this document.**
 1. **`docs/RULES.md`** — the single authoritative statement of the money rules. Every task
    either enforces it or points at it. Its roll-out table marks each rule ✅ live or ⏳ LANDING.
    ⛔ **Never delete a ⏳ marker without verifying on production.**
-2. **`docs/FINDING-GOLD-CHAINS-STALLED.md`** — a live outage, unfixed, waiting on a decision.
+2. **`docs/FINDING-GOLD-CHAINS-STALLED.md`** — a live outage. ⭐ Ali has decided: **fix it FIRST**. It is §4 item 1.
 3. **`docs/FAILURE-INVENTORY.md`** — the map for the remaining C work.
 4. **`docs/SESSION-PROMPT-RATES-AND-FAILURES.md`** — the original work order. Still the
    authority. ⚠️ Parts of its file lists have gone stale — see §7.
@@ -109,7 +114,36 @@ read exactly like a wrong password.
 
 ## §4 · WHAT IS LEFT — in order
 
-### ▶ 1. PROVE THE THREE THINGS PRODUCTION COULD NOT SHOW ME
+### ▶ 1. FIX GOLD. FIRST. — Ali's decision, 2026-08-14
+
+**`docs/FINDING-GOLD-CHAINS-STALLED.md` has the mechanism, the one-line fix and the red-first
+plan.** Gold is a dead asset on the live player board and has been for days; it goes before the
+rules work.
+
+`advanceChain`'s market-hours gate `return`s **before** the re-arm at step 4, so when a session
+closes the chain stays pinned to a boundary INSIDE that closed session — and every later tick
+re-evaluates the gate at that same stale instant. It can never reopen. Deterministic, and immune
+only for crypto (`sessionKindFor` → `"always"`).
+
+**Prove it RED first, with a positive control in the same run:**
+1. A `commodity` chain armed at a boundary inside a closed session, advanced twice: the second
+   tick must arm a boundary at or after now. Against today's code the boundary never moves.
+2. ⭐ **The positive control that matters:** the same chain with the session OPEN must still
+   open a round. A fix that re-armed unconditionally would SKIP live boundaries, and a suite
+   that only checked "the boundary moved" is green on it.
+3. A crypto chain is unaffected in both directions — it never reaches this branch.
+
+⚠️ **The re-arm must not write back the value it read.** If the NEXT boundary is also inside the
+closed session, re-arming to it and waiting is correct; re-arming to the SAME instant reproduces
+the bug while looking busy. Guard the patch with an equality check.
+
+⛔ **A DEPLOY ALONE DOES NOT RECOVER THE THREE STALLED CHAINS.** `nextBoundaryAt` is persisted,
+so each is still pinned to its 2026-08-10 / 2026-08-13 boundary. The fixed branch re-arms them
+on the first tick after deploy — **verify that by reading `nextBoundaryAt` and `opensAt` off the
+live DB afterwards, and by looking at `/updown?asset=XAU` on the real board.** Do not assume the
+deploy did it.
+
+### ▶ 2. PROVE THE THREE THINGS PRODUCTION COULD NOT SHOW ME
 
 All three are unproven only because the state did not exist. **§0 authorises you to create it.**
 
@@ -117,8 +151,9 @@ All three are unproven only because the state did not exist. **§0 authorises yo
 `scripts/live/ops/loser-share-settled.cjs` §3 stays RED until one lands. Production's void rate
 is **1.7%** (30 of 1,761 in 24h) and **all five drives last session decided** — BTC 5m, BTC 3m,
 SOL 30m, XRP 15m, ~26,000 of fleet money across them. ⚠️ Gold voids most (11 of those 30) and
-**cannot open a round at all** — see §6.1. ⭐ **You can force one:** create your own asset and
-chain and drive a round whose price cannot clear the band. ⛔ `test:updown-cutover` §5b proves
+**cannot open a round at all** — see §6.1. ⭐ **You can force one, and you are authorised to:** create a temporary asset and chain
+(§0 — name it obviously, e.g. `QA-VOID`, and retire it when done) and drive a round whose price
+cannot clear the band. ⛔ `test:updown-cutover` §5b proves
 it on the real settlement path, and the settlement path is not production.
 
 **(b) B2 and the one-side wagering rule, exercised by a real bonus.**
@@ -135,7 +170,7 @@ wallet. **Then clear the ⏳ on `RULES.md` §2.4 and §2.5.**
 done says *both products*; only Up & Down has been driven. Create the poll, bet both sides
 across several fleet players, resolve it, settle it, tie out the ledger.
 
-### ▶ 2. C2's SECOND TRANCHE — wallet, KYC, auth, proposals, objections
+### ▶ 3. C2's SECOND TRANCHE — wallet, KYC, auth, proposals, objections
 
 The reason registry (`src/lib/failure-reasons.ts`) covers **betting and cash-out**. The rest are
 enumerated at `FAILURE-INVENTORY.md` §2.3 and still render through `error-copy.ts`'s **15 phrase
@@ -147,7 +182,7 @@ without copy, a severity, or a fillable placeholder.
 ⭐ Also open from `FAILURE-INVENTORY.md` §1.5: **12 surfaces render a raw server string** and
 **8 say only that something failed**. None are on the betting path. Fix them; drive each one.
 
-### ▶ 3. E2 — the remaining documents
+### ▶ 4. E2 — the remaining documents
 
 Swept already: `updown-operator-guide.html` (+ PDF regenerated, **rasterised, 42 distinct frames
 over 22 pages, read**), `rates-decisions-needed.html`, `RULES.md`, `FAILURE-INVENTORY.md`,
@@ -193,9 +228,10 @@ by the old maths**.
 
 ---
 
-## §6 · THREE THINGS WAITING ON ALI
+## §6 · WHAT ALI HAS DECIDED, AND THE ONE THING STILL OPEN
 
-**1. 🔴 GOLD IS A LIVE OUTAGE AND IT IS NOT FIXED.** `docs/FINDING-GOLD-CHAINS-STALLED.md`.
+**1. ✅ DECIDED 2026-08-14 — SHIP THE GOLD FIX FIRST.** It is §4 item 1; the detail below is
+the evidence, and `docs/FINDING-GOLD-CHAINS-STALLED.md` is the plan.
 All three XAU chains read `RUNNING` and have opened **no round** since their last session close
 — 15m for ~17 hours, 30m and 60m for **four days**. `advanceChain`'s market-hours gate `return`s
 **before** the re-arm, so the chain stays pinned to a boundary inside the closed session and the
@@ -203,6 +239,8 @@ gate is re-evaluated at that same stale instant forever: a **deadlock by constru
 only for crypto. Measured from the database AND from the product. One-line fix and a red-first
 plan are in the file. ⛔ A deploy alone does NOT recover the three stalled chains —
 `nextBoundaryAt` is persisted; verify by reading it back off the live DB afterwards.
+
+**So §6 now carries ONE open question, not three: UD-20, below.**
 
 **2. ⚠️ UD-20 IS RE-OPENED.** A hedged holder now sees **no payout figure at all** on a locked
 round. `updown-board.ts` suppresses it because one number cannot state a two-sided position —

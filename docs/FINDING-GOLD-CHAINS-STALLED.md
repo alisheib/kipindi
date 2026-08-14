@@ -1,12 +1,14 @@
 # 🔴 FINDING — GOLD HAS BEEN DEAD SINCE ITS LAST SESSION CLOSE, AND CANNOT RESTART ITSELF
 
-> **STATUS: 🔴 OPEN, LIVE ON PRODUCTION, NOT FIXED.** Found 2026-08-14 14:10 UTC while driving
-> workstream A4 of the rates programme. It is **outside** that programme's scope (§10 forbids
-> touching the engine's timing), so it is written up here rather than shipped inside it.
+> **STATUS: 🟠 OPEN ON PRODUCTION · ✅ CLEARED TO FIX — Ali, 2026-08-14: "ship it first".**
+> It is item 1 of `docs/SESSION-PROMPT-RATES-SESSION-3.md` §4, ahead of the remaining rules work.
 >
-> ⚠️ This is a one-line fix with an obvious red-first proof. It is unshipped because a change
-> to the money engine's scheduler deserves its own commit, its own RED harness and its own
-> live verification — not a ride-along in a fee-and-copy programme.
+> Found 2026-08-14 14:10 UTC while driving workstream A4. It was written up rather than shipped
+> inside that programme because a change to the money engine's scheduler deserves its own commit,
+> its own RED harness and its own live verification — not a ride-along in a fee-and-copy sweep.
+> That reasoning still holds; what has changed is that it now has its own slot, at the front.
+>
+> ⛔ **A deploy alone does NOT recover the three stalled chains** — see §3.
 
 ---
 
