@@ -80,7 +80,39 @@ export type FailureReason =
   | "cashout_value_zero"
   | "exit_window_closed"
   // ── B2 · a WARNING shown before confirming, not a refusal ─────────────────
-  | "bonus_wagering_one_side";
+  | "bonus_wagering_one_side"
+  // ── C2 SECOND TRANCHE · wallet, KYC, auth, proposals, objections ──────────
+  // `docs/FAILURE-INVENTORY.md` §2.3. ⭐ EVERY ONE OF THESE ALREADY HAS A DISTINCT SERVER
+  // CODE — the services were never the problem here. What was missing is what §1.4 counts:
+  // "five tone vocabularies, and no shared `Severity` type", so each of these refusals was
+  // rendered at whatever volume its surface happened to choose. Mapping the CODE to a row in
+  // this registry gives every one of them a severity and a channel, without changing a single
+  // service and without inventing copy that already exists in three languages.
+  | "deposit_limit"
+  | "sof_required"
+  | "kyc_required"
+  | "nida_taken"
+  | "nida_not_verified"
+  | "doc_image_type"
+  | "doc_too_large"
+  | "docs_locked"
+  | "docs_required"
+  | "extra_docs_required"
+  | "no_extra_request"
+  | "withdraw_below_min"
+  | "email_invalid"
+  | "email_taken"
+  | "name_invalid"
+  | "avatar_type"
+  | "avatar_size"
+  | "password_wrong"
+  | "password_weak"
+  | "voting_closed"
+  | "proposals_paused"
+  | "break_active"
+  | "account_suspended"
+  | "not_found"
+  | "signin_required";
 
 export interface ReasonSpec {
   severity: Severity;
@@ -88,7 +120,7 @@ export interface ReasonSpec {
   /** The dictionary key under `t.fail`. */
   key: string;
   /** Figures this reason's copy interpolates. Declared so the guard can check them. */
-  needs?: readonly ("min" | "max" | "balance" | "needed" | "retryAfterSec" | "until" | "remaining")[];
+  needs?: readonly ("min" | "max" | "balance" | "needed" | "retryAfterSec" | "until" | "remaining" | "net")[];
 }
 
 /**
@@ -136,7 +168,96 @@ export const REASONS: Record<FailureReason, ReasonSpec> = {
   exit_window_closed:   { severity: "info",    channel: "toast",  key: "failExitWindowClosed" },
 
   bonus_wagering_one_side: { severity: "warning", channel: "inline", key: "failBonusWageringOneSide", needs: ["remaining"] },
+
+  // ── C2 SECOND TRANCHE ─────────────────────────────────────────────────────
+  // ⭐ THESE POINT AT THE EXISTING `error.*` KEYS, ON PURPOSE. The copy is already written,
+  // already translated into all three languages, and already proven by `test:i18n`. Inventing
+  // 72 new strings to say the same things would be the "a number written twice" defect
+  // (RULES.md §7) applied to sentences: two wordings for one refusal, drifting apart.
+  // ⛔ The severity is the NEW information, and it is the whole point — §0's standard is that
+  // a fixable problem is a WARNING and only a genuine block is an ERROR.
+  //
+  // Fixable by the player, right now → warning:
+  deposit_limit:        { severity: "warning", channel: "inline", key: "errDepositLimit" },
+  sof_required:         { severity: "warning", channel: "inline", key: "errSofRequired" },
+  // ⚠️  DECLARES BOTH FIGURES, and the guard is why.  interpolates
+  // {net} AND {min}; declaring only one leaves a literal placeholder on screen — the exact
+  // defect §7 of the work order records shipping in all three languages.
+  withdraw_below_min:   { severity: "warning", channel: "inline", key: "errWithdrawMin", needs: ["net", "min"] },
+  email_invalid:        { severity: "warning", channel: "inline", key: "errEmailInvalid" },
+  email_taken:          { severity: "warning", channel: "inline", key: "errEmailTaken" },
+  name_invalid:         { severity: "warning", channel: "inline", key: "errNameInvalid" },
+  avatar_type:          { severity: "warning", channel: "inline", key: "errAvatarType" },
+  avatar_size:          { severity: "warning", channel: "inline", key: "errAvatarSize" },
+  doc_image_type:       { severity: "warning", channel: "inline", key: "errDocImage" },
+  doc_too_large:        { severity: "warning", channel: "inline", key: "errDocTooLarge" },
+  docs_required:        { severity: "warning", channel: "inline", key: "errDocsRequired" },
+  extra_docs_required:  { severity: "warning", channel: "inline", key: "errExtraDocsRequired" },
+  password_wrong:       { severity: "warning", channel: "inline", key: "errPwCurrentWrong" },
+  password_weak:        { severity: "warning", channel: "inline", key: "errPwWeak" },
+  // Nothing is wrong; a state the player cannot change and does not need to act on:
+  docs_locked:          { severity: "info",    channel: "inline", key: "errDocsLocked" },
+  no_extra_request:     { severity: "info",    channel: "inline", key: "errNoExtraRequest" },
+  voting_closed:        { severity: "info",    channel: "toast",  key: "errVotingClosed" },
+  proposals_paused:     { severity: "info",    channel: "toast",  key: "errProposalsPaused" },
+  not_found:            { severity: "info",    channel: "toast",  key: "errNotFound" },
+  // A hard block the player cannot lift, or an identity/compliance gate:
+  // ⛔ `nida_taken` is an ERROR and a MODAL: the National ID is already linked to another
+  // account, which is a fraud-shaped fact, not a typo to fix in place.
+  nida_taken:           { severity: "error",   channel: "modal",  key: "errNidaTaken" },
+  nida_not_verified:    { severity: "warning", channel: "inline", key: "errNidaNotVerified" },
+  kyc_required:         { severity: "error",   channel: "modal",  key: "errVerifyIdentity" },
+  // ⛔ A BREAK THE PLAYER SET THEMSELVES IS NOT A FAULT — it is the tool working. Error
+  // severity, because they cannot lift it, but never phrased or coloured as a malfunction.
+  break_active:         { severity: "error",   channel: "modal",  key: "errBreakActive" },
+  account_suspended:    { severity: "error",   channel: "modal",  key: "errSuspended" },
+  signin_required:      { severity: "warning", channel: "toast",  key: "errSignIn" },
 };
+
+/**
+ * The reason a KNOWN server code implies, when the service has not yet been taught to emit
+ * a `reason` of its own.
+ *
+ * ⛔ THIS IS NOT PHRASE-MATCHING, AND THE DIFFERENCE IS THE WHOLE POINT. `errorCopy` recovers
+ * meaning by substring-matching English prose, and `docs/FAILURE-INVENTORY.md` §1.6 records
+ * what that cost: `RATE_LIMITED` never matched because the server says "Slow down.", and
+ * "Wallet unavailable." matched the *balance* branch and told the player to top up. A CODE is
+ * a machine token the service already commits to — mapping it is exact and cannot drift with
+ * a reworded sentence.
+ *
+ * ⚠️ Codes that genuinely overload several meanings (`INVALID`, `SUSPENDED`) are deliberately
+ * ABSENT: mapping them here would pick one meaning for a token that has four. Those stay with
+ * `errorCopy`'s disambiguation until each service emits its own reason — and
+ * `test:failure-reasons` §8 now pins every one of those phrase tests against the real server
+ * string, so the seam cannot rot silently while it waits.
+ */
+const REASON_BY_CODE: Readonly<Record<string, FailureReason>> = {
+  RATE_LIMITED: "rate_limited",
+  BUSY: "system_busy",
+  NOT_FOUND: "not_found",
+  PAUSED: "proposals_paused",
+  AUTH: "signin_required",
+  EMAIL_INVALID: "email_invalid",
+  EMAIL_TAKEN: "email_taken",
+  NAME_INVALID: "name_invalid",
+  AVATAR_TYPE: "avatar_type",
+  AVATAR_SIZE: "avatar_size",
+  DOC_IMAGE: "doc_image_type",
+  DOC_TOO_LARGE: "doc_too_large",
+  DOCS_LOCKED: "docs_locked",
+  NO_EXTRA_REQUEST: "no_extra_request",
+  NIDA_TAKEN: "nida_taken",
+  PW_CURRENT_WRONG: "password_wrong",
+  PW_WEAK: "password_weak",
+  VOTING_CLOSED: "voting_closed",
+  MAINTENANCE: "maintenance",
+};
+
+/** The reason for a code, or null when the code is absent, unknown, or overloaded. */
+export function reasonForCode(code: string | null | undefined): FailureReason | null {
+  if (!code) return null;
+  return Object.prototype.hasOwnProperty.call(REASON_BY_CODE, code) ? REASON_BY_CODE[code] : null;
+}
 
 /**
  * The figures a refusal carries. ⛔ NUMBERS, not formatted strings, and never recovered
@@ -152,6 +273,8 @@ export interface FailureDetail {
   until?: string;
   /** TZS still to be wagered before a bonus can be withdrawn. */
   remaining?: number;
+  /** What would actually land after the withdrawal fee — the NET, beside the minimum. */
+  net?: number;
 }
 
 /** What every refusing service returns. `code` is unchanged; `reason`/`detail` are additive. */
@@ -197,13 +320,19 @@ export function renderFailure(
   fallback: string,
   money: MoneyFormat,
 ): RenderedFailure {
-  if (!hasReason(r)) {
+  // ⭐ C2 SECOND TRANCHE · fall back to the CODE before falling back to nothing. Most of the
+  // wallet / KYC / auth / proposals refusals already carry a distinct machine code; until
+  // their services emit a `reason` of their own, the code is an exact, non-prose way to reach
+  // the same registry row — so those surfaces get a severity and a channel today instead of
+  // whichever volume each one happened to pick.
+  const reason: FailureReason | null = hasReason(r) ? r.reason : reasonForCode(r?.code);
+  if (!reason) {
     // ⚠️ NOT an "error": a refusal we cannot classify is most often an old response shape
     // or a transport blip, and shouting is worse than saying plainly that it did not go
     // through. It is a WARNING with the caller's own generic line.
     return { severity: "warning", channel: "toast", body: fallback, reason: null };
   }
-  const spec = REASONS[r.reason];
+  const spec = REASONS[reason];
   const template = dict[spec.key] ?? fallback;
   const d = (r as ReasonedFailure).detail ?? {};
   const values: Record<string, string> = {
@@ -212,6 +341,7 @@ export function renderFailure(
     balance: d.balance != null ? money(d.balance) : "—",
     needed: d.needed != null ? money(d.needed) : "—",
     remaining: d.remaining != null ? money(d.remaining) : "—",
+    net: d.net != null ? money(d.net) : "—",
     sec: String(Math.max(1, Math.ceil((r as ReasonedFailure).retryAfterSec ?? d.retryAfterSec ?? 60))),
     until: d.until ?? "—",
   };
@@ -224,5 +354,5 @@ export function renderFailure(
   // languages. Only reading the rendered output caught it.
   const body = template.replace(/\{(\w+)\}/g, (whole, key: string) =>
     Object.prototype.hasOwnProperty.call(values, key) ? values[key] : whole);
-  return { severity: spec.severity, channel: spec.channel, body, reason: r.reason };
+  return { severity: spec.severity, channel: spec.channel, body, reason };
 }

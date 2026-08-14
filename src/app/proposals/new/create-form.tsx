@@ -10,6 +10,9 @@ import { DateSelect } from "@/components/ui/date-select";
 import { Button } from "@/components/ui/button";
 import { OperationResultModal } from "@/components/markets/operation-result-modal";
 import { useToast } from "@/components/ui/toast";
+// ⛔ NEVER THE RAW SERVER STRING — `docs/FAILURE-INVENTORY.md` §1.5/§1.6: the server's
+// English audit prose reaching a Swahili or Chinese player at the moment something failed.
+import { errorCopy } from "@/lib/error-copy";
 import { CategoryIcon, categoryLabel } from "@/components/proposals/category-icon";
 import { createProposalAction } from "../actions";
 import { useT } from "@/lib/i18n";
@@ -74,7 +77,7 @@ export function CreateProposalForm({ rateLimit, openCount, platformTz }: { rateL
         return;
       }
       if (r.ok) setDone(true);
-      else toast({ title: t.toast.couldntSubmit, description: r.error, variant: "danger" });
+      else toast({ title: t.toast.couldntSubmit, description: errorCopy(t, r), variant: "danger" });
     });
   };
 

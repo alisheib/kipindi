@@ -13,6 +13,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Chip } from "@/components/ui/chip";
 import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
+// ⛔ NEVER THE RAW SERVER STRING. `docs/FAILURE-INVENTORY.md` §1.5 counts twelve surfaces
+// that put `r.error` — English audit prose — in front of the player, and §1.6 records what
+// that costs: a Swahili or Chinese player reading an English sentence at the moment something
+// failed. `errorCopy` renders THIS player's language off the machine code.
+import { errorCopy } from "@/lib/error-copy";
 import { haptics } from "@/lib/haptics";
 import { Avatar } from "@/components/ui/avatar";
 import { postCommentAction, reportCommentAction, deleteCommentAction } from "@/app/markets/actions";
@@ -80,7 +85,7 @@ export function CommentsThread({
         setBody("");
         haptics.confirm();
       } else {
-        toast({ title: r.ok ? t.toast.posted : r.error, variant: r.ok ? "success" : "danger" });
+        toast({ title: r.ok ? t.toast.posted : errorCopy(t, r), variant: r.ok ? "success" : "danger" });
       }
     });
   };
@@ -100,7 +105,7 @@ export function CommentsThread({
         );
         toast({ title: ("hidden" in r && r.hidden) ? t.toast.reportedHidden : t.toast.reported, variant: "warning" });
       } else {
-        toast({ title: r.error, variant: "danger" });
+        toast({ title: errorCopy(t, r), variant: "danger" });
       }
     });
   };
@@ -115,7 +120,7 @@ export function CommentsThread({
         haptics.confirm();
         setComments((prev) => prev.filter((c) => c.id !== id));
       } else {
-        toast({ title: r.error, variant: "danger" });
+        toast({ title: errorCopy(t, r), variant: "danger" });
       }
     });
   };

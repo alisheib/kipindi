@@ -28,11 +28,17 @@ const MARKET = new URL("../src/lib/server/market-service.ts", import.meta.url);
 const REASONS = new URL("../src/lib/failure-reasons.ts", import.meta.url);
 const DICT = new URL("../src/lib/i18n-dict.ts", import.meta.url);
 const PAGE = new URL("../src/app/markets/[id]/page.tsx", import.meta.url);
+// C2 second tranche · §8 pins the phrase tests to the SERVER's own wording, so the harness
+// has to be able to reword a server sentence and watch the guard notice.
+const KYC = new URL("../src/lib/server/kyc-service.ts", import.meta.url);
+const COPY = new URL("../src/lib/error-copy.ts", import.meta.url);
 const originals = new Map([
   [MARKET, readFileSync(MARKET, "utf8")],
   [REASONS, readFileSync(REASONS, "utf8")],
   [DICT, readFileSync(DICT, "utf8")],
   [PAGE, readFileSync(PAGE, "utf8")],
+  [KYC, readFileSync(KYC, "utf8")],
+  [COPY, readFileSync(COPY, "utf8")],
 ]);
 const restore = () => { for (const [f, s] of originals) writeFileSync(f, s); };
 
@@ -128,6 +134,64 @@ const MUTATIONS = [
     from: "          { ok: false, error: \"\", reason: \"bonus_wagering_one_side\", detail: { remaining: b.activeWagerRemainingTzs } },",
     to: "          { ok: false, error: \"\", reason: \"bonus_wagering_one_side\" },",
   },
+
+  // ── C2 SECOND TRANCHE · §8 and §9 ────────────────────────────────────────
+  {
+    // 🔴 THE DEFECT §8 EXISTS FOR, AND IT IS SILENT. Reword one server sentence and the
+    // phrase test stops matching: nothing throws, nothing logs, the refusal simply falls
+    // through to "That didn't go through" and the player is no longer told what to do.
+    // `docs/FAILURE-INVENTORY.md` §1.6 calls this "the single largest risk any new mapper
+    // inherits" — and until now literally nothing in the tree would have noticed.
+    name: "server-sentence-reworded",
+    why: "🔴 §1.6's risk, made real: the KYC sentence is reworded, the phrase test no longer matches it, and the player silently gets the generic line instead of being told their ID is already linked",
+    file: KYC,
+    // ⚠️ BOTH SITES. The sentence is returned from TWO places in kyc-service; rewording one
+    // and leaving the other would leave the phrase test still matching, and the harness would
+    // score its own half-mutation as a MISS by the guard.
+    all: true,
+    from: "This National ID is already linked to another account.",
+    to: "That identity number is already registered to another account.",
+  },
+  {
+    // ⚠️ The mirror: the PATTERN drifts away from a sentence that never moved. Same outcome,
+    // opposite cause, and equally invisible without §8.
+    name: "phrase-test-drifts-from-the-server",
+    why: "the mapper's own pattern is edited so it no longer matches the string the server still sends",
+    file: COPY,
+    from: "/locked while your submission/i",
+    to: "/locked while the submission/i",
+  },
+  {
+    // ⛔ OVER-CORRECTION. Mapping an OVERLOADED code picks ONE meaning for a token that has
+    // four — precisely the mistranslation the registry retires ("Wallet unavailable." reading
+    // as an empty balance). §9's control is the only thing that says no.
+    name: "overloaded-code-mapped",
+    why: "⛔ INVALID is mapped to a single reason, so bad input, RG limits, source-of-funds and four KYC families all render as the same sentence",
+    file: REASONS,
+    // ⚠️ The `to` REPLACES the anchor rather than wrapping it — the harness verifies the
+    // anchor is gone after the write, so a mutation whose replacement contains its own anchor
+    // scores as a harness error rather than as a red.
+    from: "  MAINTENANCE: \"maintenance\",",
+    to: "  INVALID: \"stake_below_min\",",
+  },
+  {
+    // ⚠️ A severity is a promise about how alarmed to be. An identity already linked to
+    // another account is a fraud-shaped fact, not a typo to fix in place.
+    name: "nida-taken-demoted-to-a-nudge",
+    why: "the National-ID-already-linked block is demoted from an error modal to a quiet inline warning",
+    file: REASONS,
+    from: "  nida_taken:           { severity: \"error\",   channel: \"modal\",  key: \"errNidaTaken\" },",
+    to: "  nida_taken:           { severity: \"info\",    channel: \"inline\", key: \"errNidaTaken\" },",
+  },
+  {
+    // ⚠️ The code must never outrank an explicit reason, or a service taught to emit its own
+    // reason would be silently overridden by its legacy code.
+    name: "code-outranks-an-explicit-reason",
+    why: "the code is consulted BEFORE the reason, so a service that learned to say why is ignored",
+    file: REASONS,
+    from: "  const reason: FailureReason | null = hasReason(r) ? r.reason : reasonForCode(r?.code);",
+    to: "  const reason: FailureReason | null = reasonForCode(r?.code) ?? (hasReason(r) ? r.reason : null);",
+  },
 ];
 
 let caught = 0;
@@ -140,7 +204,12 @@ for (const m of MUTATIONS) {
   const anchor = src.includes(m.from) ? m.from : src.includes(asCRLF) ? asCRLF : null;
   if (anchor === null) { problems.push(`${m.name} — HARNESS ERROR: anchor not found`); continue; }
 
-  writeFileSync(m.file, src.replace(anchor, anchor === asCRLF ? m.to.replace(/\n/g, "\r\n") : m.to));
+  // ⚠️ `all: true` for a sentence the server returns from MORE THAN ONE site. Rewording only
+  // the first leaves the phrase test still matching the second, and the harness would then
+  // score its own half-mutation as a guard that missed. `kyc-service` returns the
+  // National-ID-already-linked sentence from two places.
+  const replacement = anchor === asCRLF ? m.to.replace(/\n/g, "\r\n") : m.to;
+  writeFileSync(m.file, m.all ? src.split(anchor).join(replacement) : src.replace(anchor, replacement));
   if (readFileSync(m.file, "utf8").includes(anchor)) {
     problems.push(`${m.name} — HARNESS ERROR: anchor still present after write`); continue;
   }

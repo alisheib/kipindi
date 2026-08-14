@@ -27,7 +27,7 @@
  */
 process.env.SESSION_SECRET ??= "test-only-session-secret-32chars-min-aaaa";
 
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import { createMarket, buyPosition } from "../src/lib/server/market-service.ts";
 import { REASONS, renderFailure, hasReason, type FailureReason } from "../src/lib/failure-reasons.ts";
@@ -327,5 +327,278 @@ console.log("\n§7 · B2 · the warning a grant-holder gets before taking the ot
      "renderFailure({ … reason: \"bonus_wagering_one_side\", detail: { remaining: … } }) ?");
 }
 
-console.log(`\nfailure-reasons: ${pass} passed, ${fail} failed`);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §8 · ⭐ THE PHRASE TESTS ARE PINNED TO THE STRINGS THEY MATCH
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔴 `docs/FAILURE-INVENTORY.md` §1.5's last row and §1.6 name this as **the single largest
+// risk any new mapper inherits**: `error-copy.ts` carries fifteen phrase tests matched against
+// service strings that live in OTHER FILES, and *"no check anywhere asserts those strings
+// still contain those phrases."* `conviction-dial.tsx` records what that already cost —
+// `RATE_LIMITED` never matched because the server says "Slow down.", and "Wallet unavailable."
+// matched the BALANCE branch and told the player to top up.
+//
+// ⛔ A REWORDING IS SILENT. Nothing throws, nothing logs; the refusal simply falls through to
+// the generic line and the player stops being told what to do. That is invisible in review, in
+// production logs, and in every existing suite.
+//
+// So each phrase test below is pinned two ways:
+//   ① the pattern still matches at least one real STRING LITERAL in `src/lib/server/**`, and
+//   ② feeding that literal through `errorCopy` returns the SPECIFIC line it was written for —
+//      never the generic `errInvalid` / `errSuspended` fallback.
+// ② is the one that matters: ① alone would pass on a match in an unrelated sentence.
+console.log("\n§8 · the phrase tests still match the server's own words");
+{
+  const { errorCopy } = await import("../src/lib/error-copy.ts");
+  const t = DICT.en;
+
+  // ⛔ THE WHOLE SERVER TREE, WALKED — never a hand-written file list. §7 of the work order is
+  // a list of times a hard-coded inventory went stale and the CHECK then reported the PRODUCT
+  // as broken. The first draft of this section named eight files, THREE OF WHICH DO NOT EXIST,
+  // and duly reported all fourteen phrases as "moved" on a codebase where every one of them
+  // was present. Ask "is this the product, or my list?" — and then delete the list.
+  // ⚠️ Comments are stripped first, so a phrase surviving only in a code comment cannot hold
+  // the guard up.
+  const walk = (dir: string, out: string[] = []): string[] => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const p = `${dir}/${e.name}`;
+      if (e.isDirectory()) walk(p, out);
+      else if (e.name.endsWith(".ts")) out.push(p);
+    }
+    return out;
+  };
+  const files = walk("src/lib/server");
+  const literals: string[] = [];
+  for (const f of files) {
+    const stripped = readFileSync(f, "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, " ")
+      .replace(/(^|[^:])\/\/.*$/gm, "$1");
+    for (const m of stripped.matchAll(/"([^"\n]{8,400})"|`([^`\n]{8,400})`/g)) {
+      const raw = m[1] ?? m[2] ?? "";
+      literals.push(raw);
+      // ⚠️ AND THE RUNTIME SHAPE OF A TEMPLATE LITERAL, which is what the mapper actually
+      // sees. `kyc-service.ts` returns
+      //     `Please upload the ${n} requested document${n > 1 ? "s" : ""} before submitting.`
+      // and the phrase test /requested document(s)? before submitting/ matches the SENTENCE,
+      // not the source — the `${…}` sits between "document" and " before". Comparing the
+      // pattern against source text reported that branch as dead on a codebase where it works
+      // perfectly. Strip the interpolations and the sentence reappears.
+      if (raw.includes("${")) literals.push(raw.replace(/\$\{[^}]*\}/g, ""));
+    }
+  }
+  ok("8.0 · fixture · the server tree was walked and read",
+     files.length > 20 && literals.length > 500, `${files.length} files, ${literals.length} literals`);
+
+  /** A phrase test, the code it lives under, and the line it must produce. */
+  const PINS: Array<{ name: string; code: string; re: RegExp; expect: string }> = [
+    { name: "deposit limit",        code: "INVALID",   re: /deposit limit .* exceeded|deposit limit reached/i, expect: t.error.errDepositLimit },
+    { name: "loss limit",           code: "INVALID",   re: /loss limit/i,                       expect: t.error.errLossLimit },
+    { name: "source of funds",      code: "INVALID",   re: /source.of.funds|source-of-funds/i,  expect: t.error.errSofRequired },
+    { name: "verify your identity", code: "INVALID",   re: /verify your identity/i,             expect: t.error.errVerifyIdentity },
+    { name: "NIDA already linked",  code: "INVALID",   re: /National ID is already linked/i,    expect: t.error.errNidaTaken },
+    { name: "doc image type",       code: "INVALID",   re: /JPG, PNG, or WebP|Empty image/i,    expect: t.error.errDocImage },
+    { name: "doc too large",        code: "INVALID",   re: /Image too large|under 3 MB/i,       expect: t.error.errDocTooLarge },
+    { name: "docs locked",          code: "INVALID",   re: /locked while your submission/i,     expect: t.error.errDocsLocked },
+    { name: "no extra request",     code: "INVALID",   re: /No extra documents/i,               expect: t.error.errNoExtraRequest },
+    { name: "NIDA not verified",    code: "INVALID",   re: /NIDA not yet verified/i,            expect: t.error.errNidaNotVerified },
+    { name: "all three documents",  code: "INVALID",   re: /All three documents required/i,     expect: t.error.errDocsRequired },
+    { name: "extra docs required",  code: "INVALID",   re: /requested document(s)? before submitting/i, expect: t.error.errExtraDocsRequired },
+    { name: "self-exclusion",       code: "SUSPENDED", re: /self-exclusion|cooling-off/i,       expect: t.error.errBreakActive },
+    { name: "wallet frozen",        code: "SUSPENDED", re: /frozen/i,                           expect: t.error.errWalletFrozen },
+  ];
+
+  // ⛔ A CANDIDATE MAY NOT CONTAIN "·", AND THAT IS NOT A CONVENIENCE. `errorCopy`'s INVALID
+  // branch passes any string containing "·" through UNCHANGED — deliberate bilingual EN·SW
+  // gateway copy, documented in its header. The first run of this guard picked the notification
+  // title "Action needed · Please re-verify your identity" as its witness for the identity
+  // phrase, watched it pass straight through, and reported the mapper as broken. The decoy is
+  // excluded here, and the passthrough it relies on is asserted below rather than assumed.
+  for (const p of PINS) {
+    const hits = literals.filter((s) => p.re.test(s) && !s.includes("·"));
+    ok(`8.${p.name} · a real server string still matches`, hits.length > 0,
+       hits.length ? `${hits.length} candidate(s), e.g. "${hits[0].slice(0, 58)}"`
+                   : `NO server literal matches ${p.re} — the phrase moved, and the mapper is now silently generic`);
+    if (hits.length) {
+      const got = errorCopy(t, { code: p.code, error: hits[0] });
+      ok(`8.${p.name} · …and it still maps to its OWN line, not the generic fallback`,
+         got === p.expect, `got "${got.slice(0, 60)}" — expected "${p.expect.slice(0, 60)}"`);
+    }
+  }
+
+  // The passthrough the exclusion above depends on — asserted, not assumed.
+  const bilingual = "Payment declined by your provider · Malipo yamekataliwa na mtoa huduma wako";
+  ok("8.passthrough · ⚠️ a bilingual EN·SW gateway line passes through untranslated, BY DESIGN",
+     errorCopy(t, { code: "INVALID", error: bilingual }) === bilingual);
+
+  // ⭐ THE POSITIVE CONTROL, in the same run. If a reworded string mapped to its own line
+  // anyway, every assertion above would be vacuous — so prove the fallback really is reachable.
+  const bogus = errorCopy(t, { code: "INVALID", error: "Something entirely reworded happened." });
+  ok("8.control · ⚠️ an unrecognised INVALID string DOES fall through to the generic line",
+     bogus === t.error.errInvalid, `got "${bogus.slice(0, 60)}"`);
+  const bogus2 = errorCopy(t, { code: "SUSPENDED", error: "Reworded suspension sentence." });
+  ok("8.control · …and so does an unrecognised SUSPENDED string",
+     bogus2 === t.error.errSuspended, `got "${bogus2.slice(0, 60)}"`);
+
+  // ⛔ AND THE WITHDRAWAL MINIMUM CARRIES TWO FIGURES RECOVERED FROM PROSE — the very defect
+  // `detail` exists to retire. Pin that it still finds both, so the day it stops the player
+  // does not silently get "{net}" and "{min}" back.
+  const wmin = literals.find((s) => /smallest amount we can send/i.test(s));
+  ok("8.withdraw-min · the withdrawal-minimum sentence still exists on the server", !!wmin,
+     wmin ? `"${wmin.slice(0, 62)}"` : "the phrase moved");
+  const rendered = errorCopy(t, { code: "INVALID", error: "That leaves TZS 900 after the fee, and the smallest amount we can send is TZS 1,000." });
+  ok("8.withdraw-min · …and both figures are interpolated, with no placeholder left behind",
+     rendered.includes("900") && rendered.includes("1,000") && !/\{\w+\}/.test(rendered), rendered.slice(0, 90));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §9 · C2 SECOND TRANCHE — every coded refusal now knows HOW LOUD to be
+// ═══════════════════════════════════════════════════════════════════════════
+// `docs/FAILURE-INVENTORY.md` §1.4 counts the actual gap: *"five tone vocabularies, and no
+// shared `Severity` type"*. Each of these refusals already carries a distinct machine CODE —
+// the services were never the problem here. What no surface had was a rule for how loud to be,
+// so one refusal was a red toast on one screen and a grey line on another.
+//
+// ⛔ MAPPING A CODE IS NOT PHRASE-MATCHING, and the difference is the whole point. A code is a
+// token the service commits to; a sentence is prose that gets reworded. §8 pins the prose that
+// is still unavoidable; this pins the part that never needed prose at all.
+console.log("\n§9 · a coded refusal knows how loud to be");
+{
+  const t = DICT.en;
+  const dict = t.error as unknown as Record<string, string>;
+  const CASES: Array<[string, FailureReason, "info" | "warning" | "error"]> = [
+    ["EMAIL_INVALID", "email_invalid", "warning"],
+    ["EMAIL_TAKEN", "email_taken", "warning"],
+    ["NAME_INVALID", "name_invalid", "warning"],
+    ["AVATAR_TYPE", "avatar_type", "warning"],
+    ["AVATAR_SIZE", "avatar_size", "warning"],
+    ["DOC_IMAGE", "doc_image_type", "warning"],
+    ["DOC_TOO_LARGE", "doc_too_large", "warning"],
+    ["DOCS_LOCKED", "docs_locked", "info"],
+    ["NO_EXTRA_REQUEST", "no_extra_request", "info"],
+    ["NIDA_TAKEN", "nida_taken", "error"],
+    ["PW_CURRENT_WRONG", "password_wrong", "warning"],
+    ["PW_WEAK", "password_weak", "warning"],
+    ["VOTING_CLOSED", "voting_closed", "info"],
+    ["PAUSED", "proposals_paused", "info"],
+    ["AUTH", "signin_required", "warning"],
+    ["NOT_FOUND", "not_found", "info"],
+    ["BUSY", "system_busy", "warning"],
+  ];
+  for (const [code, reason, severity] of CASES) {
+    // ⚠️ NO `reason` ON THE OBJECT — the whole point is that the CODE alone is enough.
+    const r = renderFailure(
+      { ok: false, error: "English audit prose nobody should read", code } as never,
+      dict, "GENERIC", formatTzs);
+    ok(`9.${code} · resolves to ${reason}`, r.reason === reason, String(r.reason));
+    ok(`9.${code} · …at severity ${severity}`, r.severity === severity, r.severity);
+    ok(`9.${code} · …and shows neither the server prose nor the generic line`,
+       r.body !== "GENERIC" && !r.body.includes("audit prose"), r.body.slice(0, 50));
+  }
+
+  // ⭐ POSITIVE CONTROL, SAME RUN. An OVERLOADED code must NOT be mapped: `INVALID` covers bad
+  // input, RG limits, source-of-funds and four KYC families, so picking one meaning for it
+  // would be exactly the mistranslation this registry exists to retire. Without this, a
+  // mutation that mapped everything would satisfy every assertion above.
+  for (const overloaded of ["INVALID", "SUSPENDED"]) {
+    const r = renderFailure({ ok: false, error: "x", code: overloaded } as never, dict, "GENERIC", formatTzs);
+    ok(`9.control · ${overloaded} is deliberately NOT mapped — it means four different things`,
+       r.reason === null && r.body === "GENERIC", `${r.reason} / ${r.body.slice(0, 30)}`);
+  }
+  const unknown = renderFailure({ ok: false, error: "x", code: "NEVER_SEEN_BEFORE" } as never, dict, "GENERIC", formatTzs);
+  ok("9.control · an unknown code falls back to the caller's own generic line",
+     unknown.reason === null && unknown.body === "GENERIC");
+
+  // ⛔ And an explicit `reason` still WINS over the code — the code is the fallback, not the
+  // authority, or a service that learns to emit its own reason would be silently overridden.
+  const both = renderFailure({ ok: false, error: "x", code: "BUSY", reason: "maintenance" } as never, dict, "GENERIC", formatTzs);
+  ok("9.precedence · an explicit reason beats the code", both.reason === "maintenance", String(both.reason));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §10 · THE RAW-SERVER-STRING RATCHET — the count may only go down
+// ═══════════════════════════════════════════════════════════════════════════
+// `docs/FAILURE-INVENTORY.md` §1.5 counts the surfaces that put `r.error` — the server's
+// ENGLISH audit prose — straight in front of the player. Fixing every one of them is a long
+// tail across two dozen files; letting NEW ones appear while that tail is worked is how the
+// list grew in the first place.
+//
+// ⛔ A RATCHET, NOT A TARGET. It fails when the number goes UP, and it fails when the number
+// goes DOWN without the ceiling being lowered — because a ceiling nobody lowers is a ceiling
+// nobody reads. ⚠️ `docs/` records unwindowed ratchets crying wolf: this one is scoped to
+// exactly one pattern in exactly two directories, and prints the files, so a red says WHERE.
+console.log("\n§10 · raw server strings in front of a player — the ratchet");
+{
+  // ⭐ THE CEILING IS **ZERO**, and it got there by fixing the tail rather than by managing it.
+  // Once the population was measured correctly — player surfaces only, and `t.error.…`
+  // excluded as the DICTIONARY it is — the real count was six, not the 73 the first two
+  // spellings of this check reported. All six are converted:
+  //     comments-thread.tsx ×3 · objection-dialog.tsx ×1  (the dispute dialog: a player
+  //     formally contesting money was reading English audit prose as the failure's TITLE)
+  //     export-data-button.tsx ×1 · create-form.tsx ×1
+  // ⛔ It may never go up. A new surface that renders `r.error` fails this suite.
+  const CEILING = 0;
+
+  // ⛔ PLAYER SURFACES ONLY, AND THE EXCLUSION IS THE POINT OF THE MEASUREMENT. The defect
+  // §1.5 counts is *"a Swahili or Chinese player got an English sentence"*. The ADMIN console
+  // is an English-only staff surface by design, so counting its toasts here would have made
+  // this ratchet fail on 30-odd non-defects — a guard that cries wolf, which is how a real
+  // finding stops being read. The first run of this section did exactly that.
+  const isAdmin = (p: string) => /(^|\/)admin(\/|$)/.test(p);
+  const walkTsx = (dir: string, out: string[] = []): string[] => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const p = `${dir}/${e.name}`;
+      if (e.isDirectory()) { if (!isAdmin(p)) walkTsx(p, out); }
+      else if (e.name.endsWith(".tsx") && !isAdmin(p)) out.push(p);
+    }
+    return out;
+  };
+  // ⚠️ `t.error.…` IS THE DICTIONARY, NOT A SERVER STRING, and the first version of this
+  // pattern counted it. `description: t.error.somethingDidntWork` is exactly the RIGHT thing
+  // to render — a localized line — and flagging it made two of the four "offenders" fixes that
+  // would have made the product worse. The negative lookahead is what tells the two apart.
+  // ⛔ The trailing `\b(?!\.)` matters too: `r.error` is the raw string, `t.error.foo` is not.
+  const RAW = /\b(?:title|description):\s*(?!t\.)[A-Za-z_$][\w$]*\.error\b(?!\.)/g;
+  const offenders: string[] = [];
+  let count = 0;
+  const files0 = [...walkTsx("src/app"), ...walkTsx("src/components")];
+  for (const f of files0) {
+    const n = (readFileSync(f, "utf8").match(RAW) ?? []).length;
+    if (n) { count += n; offenders.push(`${f.replace("src/", "")}×${n}`); }
+  }
+  // The excluded population, counted for the record (see the note by `isAdmin`).
+  const walkAll = (dir: string, out: string[] = []): string[] => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const p = `${dir}/${e.name}`;
+      if (e.isDirectory()) walkAll(p, out);
+      else if (e.name.endsWith(".tsx")) out.push(p);
+    }
+    return out;
+  };
+  const adminCount = walkAll("src/app").concat(walkAll("src/components"))
+    .filter((p) => isAdmin(p))
+    .reduce((n, f) => n + (readFileSync(f, "utf8").match(RAW) ?? []).length, 0);
+  ok(`10.1 · ★ NO player surface renders a raw server string (${count} ≤ ${CEILING})`,
+     count <= CEILING, offenders.slice(0, 8).join(" · "));
+  ok(`10.2 · ⛔ …and if the count ever drops below the ceiling, LOWER IT (${count} vs ${CEILING})`,
+     count === CEILING,
+     count < CEILING ? `${CEILING - count} were fixed — set CEILING = ${count} in this file` : "");
+
+  // ⭐ THE POSITIVE CONTROL, AND AT ZERO IT HAS TO CHANGE SHAPE. "The pattern found something"
+  // is the usual proof that a scanner is alive — but the whole point of this section is that
+  // there is nothing left to find, so that control would now fail on success. Instead, prove
+  // the pattern still DISCRIMINATES: it must catch a raw render and must NOT catch the
+  // dictionary. Without this, deleting the regex body would leave §10.1 permanently green.
+  const probe = (line: string) => new RegExp(RAW.source).test(line);
+  ok("10.3 · control · the pattern still CATCHES a raw server string",
+     probe('toast({ title: t.toast.oops, description: r.error, variant: "danger" });'));
+  ok("10.4 · control · …and still IGNORES the dictionary, which is the correct thing to render",
+     !probe('toast({ title: t.toast.oops, description: t.error.somethingDidntWork, variant: "danger" });'));
+  ok("10.5 · control · …and the tree really was walked", files0.length > 40, `${files0.length} player .tsx files`);
+  // ℹ️ Recorded, not asserted: the ADMIN console is an English-only staff surface by design,
+  // so its raw renders are excluded above. Printing the number keeps that decision visible
+  // rather than hidden inside a filter.
+  console.log(`     (admin surfaces, excluded by design: ${adminCount} raw renders across the staff console)`);
+}
+
+console.log(`\nfailure-reasons (with §8 + §9 + §10): ${pass} passed, ${fail} failed`);
 process.exit(fail > 0 ? 1 : 0);

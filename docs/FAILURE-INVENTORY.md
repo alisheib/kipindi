@@ -101,10 +101,20 @@ gold on this platform means **earned money only**. A warning-severity refusal us
 | | Count | Where |
 |---|---:|---|
 | Player-facing failure toast sites | **46**, across 21 files | plus 3 modal surfaces and 12 inline `role="alert"` banners |
-| …that render a **raw server string** | **12** | `comments-thread.tsx:83/:103/:118` · `objection-dialog.tsx:61` · `create-form.tsx:77` · `export-data-button.tsx:19` · `profile/account/page.tsx:75` · `profile/source-of-funds/page.tsx:71` · `profile/responsible-gambling/page.tsx:79` · `auth/otp/page.tsx:65` · `auth/2fa/page.tsx:47` · raw `Error.message` at `avatar-uploader.tsx:94`, `kyc-doc-uploader.tsx:49`, `:154` |
+| …that render a **raw server string** | ✅ **0 as of 2026-08-14** — was 12 |  `comments-thread.tsx:83/:103/:118` · `objection-dialog.tsx:61` · `create-form.tsx:77` · `export-data-button.tsx:19` · `profile/account/page.tsx:75` · `profile/source-of-funds/page.tsx:71` · `profile/responsible-gambling/page.tsx:79` · `auth/otp/page.tsx:65` · `auth/2fa/page.tsx:47` · raw `Error.message` at `avatar-uploader.tsx:94`, `kyc-doc-uploader.tsx:49`, `:154` |
 | …that say only that something failed | **8** | `watch-star.tsx:81` · `position-share.tsx:56` · `push-settings.tsx:58/:62/:80` · `security-client.tsx` generic branch · `password-section.tsx:47` (title is the bare word "Failed") |
 | …that are **SILENT** | **1** | `auth/login/page.tsx:138` — `default: return null` |
-| Nothing tests any mapper | — | grep for `error-copy` / `errorCopy` under `scripts/` returns **no matches**. `test:i18n` guards the dict KEYS; nothing guards the code→copy MAPPING, the phrase tests, or the severity choice |
+| Nothing tests any mapper | ✅ **closed 2026-08-14** | `test:failure-reasons` §8 pins every phrase test against the **server's own string**, §9 pins the code→reason→severity mapping, §10 is a ratchet at **zero** on raw renders. `red:failure-reasons` catches 16/16, including a reworded server sentence and a drifted pattern |
+
+> ⭐ **THE RAW-STRING COUNT WAS SIX, NOT TWELVE — AND MEASURING IT WRONG COST TWO WOLF-CRIES.**
+> The first ratchet counted 75 and the second 73, because it swept the **admin console** (an
+> English-only staff surface by design) and counted `t.error.somethingDidntWork` — the
+> DICTIONARY, which is the correct thing to render. Scoped to player surfaces, with the
+> dictionary excluded, the real population was six, and all six are now converted:
+> `comments-thread.tsx` ×3 · `objection-dialog.tsx` ×1 · `export-data-button.tsx` ×1 ·
+> `create-form.tsx` ×1. The ceiling is **0** and may only stay there.
+> ⚠️ 71 raw renders remain on the **staff** console. They are excluded deliberately, counted
+> and printed by §10 rather than hidden inside a filter, and are not this inventory's subject.
 
 ### 1.6 · The documented bug this must not repeat
 
@@ -165,8 +175,26 @@ the way `tzsFigures` does today.
 
 ### 2.3 · Wallet, KYC, auth, proposals, objections
 
-The same treatment, driven by the phrase tests `error-copy.ts` already performs — each becomes
-a reason emitted by the server instead of recovered from prose:
+> ✅ **LANDED 2026-08-14, and by a shorter route than this section assumed.** It reads as
+> though every one of these needs a service change. Most do not: **19 of them already carry a
+> distinct machine CODE** (`EMAIL_TAKEN`, `NIDA_TAKEN`, `DOC_TOO_LARGE`, `PW_WEAK`,
+> `VOTING_CLOSED`, `PAUSED`, `AUTH`, …). The services were never the problem — what was missing
+> is what §1.4 counts: *"five tone vocabularies, and no shared `Severity` type"*.
+>
+> So `reasonForCode()` maps the CODE to a registry row, and `renderFailure` consults it when a
+> service has not yet learned to emit a `reason` of its own. Every one of those refusals now has
+> a **severity** and a **channel** without a single service edit and without inventing copy —
+> the rows point at the existing `error.*` keys, already translated and already guarded by
+> `test:i18n`. Pinned by §9, with `red:failure-reasons` proving a demoted severity goes red.
+>
+> ⛔ **`INVALID` and `SUSPENDED` are deliberately NOT mapped.** They mean four things each, so
+> picking one would be exactly the mistranslation the registry exists to retire — the
+> "Wallet unavailable." → *top up your balance* defect, restored. Those keep `errorCopy`'s
+> phrase disambiguation, and §8 now pins each of those phrases to the server's own sentence so
+> the seam cannot rot silently while it waits for per-service reasons.
+
+The remaining wallet/KYC reasons still recovered from prose, for whenever their services are
+taught to emit a reason directly:
 `deposit_limit`, `sof_required`, `kyc_required`, `nida_taken`, `nida_not_verified`,
 `doc_image_type`, `doc_too_large`, `docs_locked`, `docs_required`, `extra_docs_required`,
 `no_extra_request`, `withdraw_below_min`, `email_invalid`, `email_taken`, `email_unverified`,
