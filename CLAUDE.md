@@ -188,42 +188,32 @@ prediction-markets platform. Players pick YES or NO on a proposition
 (sports, weather, macro, crypto, culture); winners share the pool minus
 our commission. Mobile-first, trilingual EN + SW + ZH, regulator-ready.
 
-**THE FEE RULE (2026-07-14, Ali's signed-off decision — do not change):**
-> Our commission is **10% of the pool, but never more than a third of the
-> smaller side.**
+## ⭐ THE MONEY RULES LIVE IN ONE FILE — [`docs/RULES.md`](docs/RULES.md)
 
-```
-fee = min(commissionRate * pool, feeCeilingRate * min(yesPool, noPool))
-```
+**What we charge, what we permit and what we refuse is stated in `docs/RULES.md` and
+nowhere else.** Fee, taxes, stake bounds, positions per market, bonus wagering, free
+cancellation, the withdrawal fee, and the standard every failure message must meet — each
+with where it is enforced in code, where it is configured, and which surfaces state it.
 
-The smaller side **is the prize** — all the money the winners can win. Capping the
-fee below it makes **"a winning bet is never paid less than it staked"** true
-arithmetically, for *any* rate an admin can set. Before this, a flat 9%-of-pool fee
-on a lopsided poll grew **bigger than the entire prize** and was paid out of the
-winners' own stakes: a real poll (YES 300,000 / NO 10,500) paid a man who staked
-100,000 on the **winning** side just **93,150**. He now gets **102,333**.
+⛔ **Do not restate a rate here or anywhere else.** This block used to carry the fee rule in
+full, and on 2026-08-14 it was the *first thing every session read* and it was **wrong** — it
+still described `capped-commission` ("10% of the pool, never more than a third of the smaller
+side") as THE rule under a "do not change" flag. An administrator was misled by exactly this
+class of stale restatement. A number written twice is a number that will disagree with itself.
 
-Write it as `min(commission, ceiling)` — **never as a threshold `if`**. The two
-rules cross over seamlessly at 70/30; a threshold would be a step function, and a
-step function is gameable.
+The one thing worth repeating here, because it is a mechanic and not a number:
 
-⚠️ **AND A SECOND MODEL JOINED IT — 2026-07-23, Ali's ruling (recorded in
-`docs/COMPLIANCE-DECISIONS.md` § 2026-07-23).** The rule above is the `capped-commission`
-model and everything it says stays true — but it is no longer the only frozen model.
-NEW long-form polls freeze **`loser-share`** (platform 3% + operator 10% of the LOSING
-pool); **Up & Down rounds freeze `capped-commission` at 13%** with the same ⅓ ceiling
-(fee = min(0.13·pool, ⅓·smaller) — outcome-neutral, the licence posture). ⛔ The two
-maths NEVER mix: the model is frozen per poll at creation and settlement reads only the
-snapshot. Both live in `payout.ts`; both are under `test:fee-model`.
-
-- Single source of truth: **`src/lib/payout.ts`** (isomorphic — client *and* server).
-- **Rates stick to the poll.** Every market freezes its rates at creation
+- **RATES STICK TO THE MARKET.** Every market freezes its rates at creation
   (`PredictionMarket.feeSnapshot`). Settlement, cash-out and every preview read the
-  snapshot, **never live config** — so retuning a rate cannot reprice a bet already
-  placed. Use `ratesFor(market)`, not `getEffectiveConfig()`, in any money path.
-- The `negative` lean level is **deleted** — a winner cannot be paid below stake, so
-  never write copy that says they might be.
-- Proof: `npm run test:fee-model` (77 assertions), `npm run test:withdrawal`.
+  **snapshot**, never live config — so retuning a rate cannot reprice a bet already placed.
+  Use `ratesFor(market)`, not `getEffectiveConfig()`, in any money path. ⛔ A snapshot is
+  never rewritten, backfilled or migrated; the two fee models never mix.
+- Single source of the arithmetic: **`src/lib/payout.ts`** (isomorphic — client *and* server).
+- The `negative` lean level is **deleted** — a winner cannot be paid below stake, so never
+  write copy that says they might be.
+
+- Proof: `npm run test:fee-model` · `test:loser-share-fee` · `test:money-invariants` ·
+  `test:withdrawal` · `test:config` (+ `red:stake-bounds`).
 
 - **Repo:** `F:\kipindi-main` on laptop A ⚠️ corrected again 2026-08-13 — this said
   `C:\kipindi-main`, which does not exist on laptop A either, so a session copying the `cd`

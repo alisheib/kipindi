@@ -61,7 +61,12 @@ const bal = async (uid: string) => (await db.wallet.findByUserId(uid))?.balance 
 
 // ════════════════════════════════════════════════════════════════════════════
 // ★ THE HEADLINE CASE — deposit, never bet, withdraw. You get it all back
-//   minus the 1%. Under the old code this man received 85,000.
+//   minus the withdrawal fee. Under the old code this man received 85,000.
+//
+// ⚠️ 2026-08-14: this section asserted a 1% fee. PRODUCTION HAS CHARGED 1.5% SINCE BEFORE
+// 2026-08-10 — the live config said 1.5%, the code default said 1%, and this suite was
+// green on the default for weeks. The test was the thing out of step with reality, not the
+// platform. The rule is 1.5% (docs/RULES.md §2.7); 0.5 points of it is the gateway's share.
 // ════════════════════════════════════════════════════════════════════════════
 {
   await kycdUser("wd_neverbet", 100_000);
@@ -70,10 +75,10 @@ const bal = async (uid: string) => (await db.wallet.findByUserId(uid))?.balance 
   ok("★ withdrawal succeeded", r.ok, r.ok ? "" : (r as { error?: string }).error);
 
   if (r.ok) {
-    ok("★ the fee is 1,000 — exactly 1% of 100,000", r.data.fee === 1_000, `fee=${r.data.fee}`);
-    ok("★ HE RECEIVES 99,000 (the old code paid him 85,000 — a 15% 'tax' on his own deposit)",
-       r.data.net === 99_000, `net=${r.data.net}`);
-    ok("★ NO withholding tax was taken", r.data.fee === 1_000 && r.data.net === 100_000 - r.data.fee);
+    ok("★ the fee is 1,500 — exactly 1.5% of 100,000", r.data.fee === 1_500, `fee=${r.data.fee}`);
+    ok("★ HE RECEIVES 98,500 (the old code paid him 85,000 — a 15% 'tax' on his own deposit)",
+       r.data.net === 98_500, `net=${r.data.net}`);
+    ok("★ NO withholding tax was taken", r.data.fee === 1_500 && r.data.net === 100_000 - r.data.fee);
   }
 
   // The wallet is fully debited (the gross leaves; the fee is ours, the rest is his).

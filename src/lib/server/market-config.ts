@@ -35,6 +35,8 @@ import {
   DEFAULT_TRA_TAX_ON_COMMISSION_RATE,
   DEFAULT_GBT_LEVY_ON_COMMISSION_RATE,
   THIN_PROFIT_RATIO,
+  PLATFORM_MIN_STAKE,
+  PLATFORM_MAX_STAKE,
   MAX_COMMISSION_RATE,
   MAX_FEE_CEILING_RATE,
   FEE_CEILING_WARN_ABOVE,
@@ -205,14 +207,15 @@ export const DEFAULT_GLOBAL_CONFIG: RateConfig = {
   freeExitGraceMinutes: DEFAULT_FREE_EXIT_GRACE_MINUTES,      // 5
   paidExitWindowMinutes: DEFAULT_PAID_EXIT_WINDOW_MINUTES,    // 0 → exit locks at the free window (no paid exit)
   // Withdrawal. The ONLY thing a player is charged directly. No withholding tax.
-  withdrawalFeeRate: DEFAULT_WITHDRAWAL_FEE_RATE,                     // 0.01 (1%)
+  withdrawalFeeRate: DEFAULT_WITHDRAWAL_FEE_RATE,                     // 0.015 (1.5%) — matches live
   withdrawalGatewayShareRate: DEFAULT_WITHDRAWAL_GATEWAY_SHARE_RATE,  // 0.005 → gateway
-  // Platform stake floor — 1,000 TZS across ALL products (markets, polls, Up & Down),
-  // owner decision 2026-07-26. Enforced server-side in buyPosition via getEffectiveConfig.
-  minStake: 1_000,
-  // Platform stake ceiling — 1,000,000 TZS across all products (owner, 2026-07-26).
-  // The server enforces exactly what the UI offers; a crafted POST above this is rejected.
-  maxStake: 1_000_000,
+  // Stake floor and ceiling — TZS 1,000 / 1,000,000 PER BET across ALL products
+  // (owner, 2026-07-26; re-affirmed and made a rule 2026-08-14, docs/RULES.md).
+  // Enforced server-side in buyPosition via getEffectiveConfig, and the admin door
+  // below validates against the same two constants so the platform cannot be
+  // configured out of its own rule.
+  minStake: PLATFORM_MIN_STAKE,
+  maxStake: PLATFORM_MAX_STAKE,
   thinProfitRatio: THIN_PROFIT_RATIO,
   // Starter balance for new wallets. 0 in production — only tester phones
   // (TESTER_BOOTSTRAP_PHONES env) get 100K for QA. Admin can raise this
@@ -382,10 +385,17 @@ const store =
 const MARKET_CONFIG_KEY = "market.config";
 /**
  * Persisted-config schema version. Bump when a DEFAULT that a live config may have
- * frozen at an old value must be reconciled forward (see `migrateLegacyConfig`).
+ * frozen at an old value must be reconciled forward (see `reconcileConfigDefaults`).
  *  v2 (2026-07-27): stake bounds default 100/100,000 → 1,000/1,000,000.
+ *  v3 (2026-08-14): minStake 500 → 1,000. Production was measured on **500** on
+ *      2026-08-14 while this file's default had read 1,000 since 2026-07-26, because
+ *      `persist()` writes the WHOLE snapshot — so an unrelated config save on
+ *      2026-08-10 re-froze the old floor. v2's reconcile could not see it: it bumps a
+ *      minStake sitting on exactly 100. ⛔ A CODE DEFAULT IS NOT A LIVE SETTING, and
+ *      a green `config-persist.test.mts` asserting the constant would have passed with
+ *      production on 500 the whole time. Verify this one by READING THE DB.
  */
-const CONFIG_VERSION = 2;
+const CONFIG_VERSION = 3;
 type PersistedMarketConfig = { global: RateConfig; perMarket: Array<[string, Partial<RateConfig>]>; v?: number };
 
 declare global {
@@ -407,6 +417,12 @@ export function reconcileConfigDefaults(global: RateConfig, fromVersion: number)
     // Stake bounds: 100/100,000 (legacy defaults) → the current 1,000/1,000,000.
     if (g.minStake === 100) { g.minStake = DEFAULT_GLOBAL_CONFIG.minStake; changed = true; }
     if (g.maxStake === 100_000) { g.maxStake = DEFAULT_GLOBAL_CONFIG.maxStake; changed = true; }
+  }
+  if (fromVersion < 3) {
+    // 500 → 1,000. THE MINIMUM STAKE IS A RULE, NOT A PREFERENCE (Ali, 2026-08-14):
+    // TZS 1,000 minimum and TZS 1,000,000 maximum PER BET, on both products. 500 was
+    // the floor between the 100 era and 2026-07-26, and production was still on it.
+    if (g.minStake === 500) { g.minStake = DEFAULT_GLOBAL_CONFIG.minStake; changed = true; }
   }
   return { global: g, changed };
 }
@@ -556,14 +572,18 @@ function validate(updates: Partial<RateConfig>): { ok: true; warn?: string } | {
       return { ok: false, reason: "Resolve offset must be 0-1440 minutes (0 = fire at resolution time)." };
     }
   }
+  // ⛔ THE BOUNDS ARE A RULE, SO THE DOOR ENFORCES THEM. These read >= 100 and >= 1,000
+  // until 2026-08-14, which meant the platform could be configured out of its own
+  // published minimum from the admin console — and had been: production sat on a TZS 500
+  // floor. An operator may NARROW the window inside 1,000 … 1,000,000; never widen it.
   if (updates.minStake !== undefined) {
-    if (updates.minStake < 100 || !Number.isFinite(updates.minStake)) {
-      return { ok: false, reason: "Min stake must be >= TZS 100." };
+    if (!Number.isFinite(updates.minStake) || updates.minStake < PLATFORM_MIN_STAKE || updates.minStake > PLATFORM_MAX_STAKE) {
+      return { ok: false, reason: `Min stake must be between TZS ${PLATFORM_MIN_STAKE.toLocaleString("en-GB")} and TZS ${PLATFORM_MAX_STAKE.toLocaleString("en-GB")} — the platform minimum is a rule, not a setting.` };
     }
   }
   if (updates.maxStake !== undefined) {
-    if (updates.maxStake < 1000 || !Number.isFinite(updates.maxStake)) {
-      return { ok: false, reason: "Max stake must be >= TZS 1,000." };
+    if (!Number.isFinite(updates.maxStake) || updates.maxStake < PLATFORM_MIN_STAKE || updates.maxStake > PLATFORM_MAX_STAKE) {
+      return { ok: false, reason: `Max stake must be between TZS ${PLATFORM_MIN_STAKE.toLocaleString("en-GB")} and TZS ${PLATFORM_MAX_STAKE.toLocaleString("en-GB")} — the platform maximum is a rule, not a setting.` };
     }
   }
   // Cross-check: max must not fall below min, or every stake is rejected and

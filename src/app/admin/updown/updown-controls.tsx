@@ -22,6 +22,7 @@
 import { useTransition, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useDeferredToast } from "@/components/ui/toast";
+import { PLATFORM_MIN_STAKE, PLATFORM_MAX_STAKE } from "@/lib/payout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -293,10 +294,10 @@ export function EditChainForm({
           />
         </Field>
         <Field label="Min stake (blank = inherit)">
-          <Input name="minStake" type="number" size="sm" defaultValue={minStake != null ? String(minStake) : ""} placeholder="inherit" />
+          <Input name="minStake" type="number" size="sm" min={PLATFORM_MIN_STAKE} max={PLATFORM_MAX_STAKE} defaultValue={minStake != null ? String(minStake) : ""} placeholder="inherit" />
         </Field>
         <Field label="Max stake (blank = inherit)">
-          <Input name="maxStake" type="number" size="sm" defaultValue={maxStake != null ? String(maxStake) : ""} placeholder="inherit" />
+          <Input name="maxStake" type="number" size="sm" min={PLATFORM_MIN_STAKE} max={PLATFORM_MAX_STAKE} defaultValue={maxStake != null ? String(maxStake) : ""} placeholder="inherit" />
         </Field>
       </div>
       {/* ⛔ THIS PARAGRAPH WARNED AGAINST THE CURRENT DESIGN. It said 0 "lets a single tick
@@ -903,8 +904,8 @@ export function AddChainForm({
               hint: m.hint,
             }))} />
         </Field>
-        <Field label="Min stake (optional)"><Input name="minStake" type="number" placeholder="inherit" size="sm" /></Field>
-        <Field label="Max stake (optional)"><Input name="maxStake" type="number" placeholder="inherit" size="sm" /></Field>
+        <Field label="Min stake (optional)"><Input name="minStake" type="number" min={PLATFORM_MIN_STAKE} max={PLATFORM_MAX_STAKE} placeholder="inherit" size="sm" /></Field>
+        <Field label="Max stake (optional)"><Input name="maxStake" type="number" min={PLATFORM_MIN_STAKE} max={PLATFORM_MAX_STAKE} placeholder="inherit" size="sm" /></Field>
       </div>
       {/* ⛔ NEVER PRINT A CONFIGURED NUMBER AS A LITERAL. This line said "blank inherits the
           product default (0.5%)" — a hardcoded string, while the live `defaultMarginBps` is 0,
@@ -1159,10 +1160,10 @@ export function ThresholdsForm({
           <Input name="maxObservationAttempts" type="number" defaultValue={String(maxObservationAttempts)} min="1" max="10" size="sm" />
         </Field>
         <Field label="Default min stake">
-          <Input name="defaultMinStake" type="number" defaultValue={String(defaultMinStake)} min="1" size="sm" />
+          <Input name="defaultMinStake" type="number" defaultValue={String(defaultMinStake)} min={PLATFORM_MIN_STAKE} max={PLATFORM_MAX_STAKE} size="sm" />
         </Field>
         <Field label="Default max stake">
-          <Input name="defaultMaxStake" type="number" defaultValue={String(defaultMaxStake)} min="1" size="sm" />
+          <Input name="defaultMaxStake" type="number" defaultValue={String(defaultMaxStake)} min={PLATFORM_MIN_STAKE} max={PLATFORM_MAX_STAKE} size="sm" />
         </Field>
       </div>
       <p className="text-[11.5px] leading-[1.55] text-text-subtle max-w-[80ch]">

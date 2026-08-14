@@ -101,8 +101,12 @@ export const DEFAULT_FREE_EXIT_GRACE_MINUTES = 5;
  * as safe against a late exit that could gut a winner's prize.
  */
 export const DEFAULT_PAID_EXIT_WINDOW_MINUTES = 0;
-/** Charged to the player on withdrawal. */
-export const DEFAULT_WITHDRAWAL_FEE_RATE = 0.01;
+/** Charged to the player on withdrawal. 1.5% — the rule, and what production has been
+ *  charging since before 2026-08-10. ⚠️ This constant read 0.01 until 2026-08-14 while the
+ *  LIVE config read 0.015, so a cold start would have quietly under-charged and the Terms
+ *  page's "1%" had a constant to point at. A cold-start fallback that disagrees with the
+ *  live setting is a second version of the truth. See `docs/RULES.md`. */
+export const DEFAULT_WITHDRAWAL_FEE_RATE = 0.015;
 /** The slice of the withdrawal fee that goes to the payment gateway. */
 export const DEFAULT_WITHDRAWAL_GATEWAY_SHARE_RATE = 0.005;
 /** Of OUR fee, to TRA. */
@@ -111,6 +115,30 @@ export const DEFAULT_TRA_TAX_ON_COMMISSION_RATE = 0.10;
 export const DEFAULT_GBT_LEVY_ON_COMMISSION_RATE = 0.05;
 /** Warn "thin upside" below this payout/stake ratio. */
 export const THIN_PROFIT_RATIO = 1.05;
+
+// ── Stake bounds — A RULE, NOT A DEFAULT ────────────────────────────────────
+/**
+ * TZS 1,000 minimum and TZS 1,000,000 maximum **PER BET**, on BOTH products
+ * (Ali, 2026-08-14 — see `docs/RULES.md`). Unlike the rates above, these are not
+ * merely cold-start fallbacks: they are the floor and ceiling the admin doors
+ * themselves validate against, so an operator cannot configure the platform out of
+ * its own rule. `/admin/config` and `/admin/updown` may narrow the window inside
+ * them; they may not widen it past these.
+ *
+ * ⚠️ PER BET, not per player per market. A player may hold unlimited positions on a
+ * market, either or both sides, so total exposure on one market is NOT bounded by
+ * the maximum — the wallet balance and the daily loss limit are what bound it. Do
+ * not write copy anywhere that implies otherwise.
+ *
+ * ⛔ AND A CONSTANT IS NOT A LIVE SETTING. These are what the persisted
+ * SystemConfig rows are reconciled TOWARD (market-config `reconcileConfigDefaults`,
+ * updown-config `reconcileUpDownDefaults`); the money path reads the config, never
+ * these. Production ran a TZS 500 floor for two and a half weeks while these read
+ * 1,000 — verify a bound change by READING THE DB, not by reading this file.
+ */
+export const PLATFORM_MIN_STAKE = 1_000;
+/** @see PLATFORM_MIN_STAKE */
+export const PLATFORM_MAX_STAKE = 1_000_000;
 
 // ── Fee model ("loser-share" — owner decision 2026-07-23) ─────────────────────
 // See docs/COMPLIANCE-DECISIONS.md and docs/FEE-MODEL-DECISION-2026-07-14.md. The model is

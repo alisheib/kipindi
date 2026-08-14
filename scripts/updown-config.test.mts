@@ -318,8 +318,19 @@ let goldId = "";
        bounds.min === DEFAULT_UPDOWN_CONFIG.defaultMinStake && bounds.max === DEFAULT_UPDOWN_CONFIG.defaultMaxStake,
        `${bounds.min}..${bounds.max}`);
 
-    const okUpdate = await updateChain(chains[0].id, { minStake: 500, maxStake: 50_000 }, OFFICER);
-    ok("4.8 · valid stake bounds are accepted", okUpdate.ok);
+    const okUpdate = await updateChain(chains[0].id, { minStake: 1_000, maxStake: 50_000 }, OFFICER);
+    ok("4.8 · valid stake bounds are accepted", okUpdate.ok, okUpdate.ok ? "" : okUpdate.error);
+
+    // ⛔ THE PLATFORM FLOOR IS A RULE, NOT A SETTING (2026-08-14). This line asserted that
+    //    500 was "valid" — and production was running on exactly that floor. The door must
+    //    refuse it now; an operator may narrow the window inside 1,000…1,000,000, never
+    //    widen it past either end.
+    const belowFloor = await updateChain(chains[0].id, { minStake: 500 }, OFFICER);
+    ok("4.8b · a sub-floor chain minimum is REFUSED at the door", !belowFloor.ok,
+       belowFloor.ok ? "ACCEPTED — the rule is not enforced" : belowFloor.error);
+    const aboveCeiling = await updateChain(chains[0].id, { maxStake: 5_000_000 }, OFFICER);
+    ok("4.8c · a chain maximum above the platform ceiling is REFUSED", !aboveCeiling.ok,
+       aboveCeiling.ok ? "ACCEPTED — the rule is not enforced" : aboveCeiling.error);
 
     const inverted = await updateChain(chains[0].id, { minStake: 900_000 }, OFFICER);
     ok("4.9 · min > max is refused", !inverted.ok);

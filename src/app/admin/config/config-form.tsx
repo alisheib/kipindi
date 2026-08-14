@@ -15,6 +15,7 @@ import {
 } from "./actions";
 import type { RateConfig } from "@/lib/server/market-config";
 import { formatTzs } from "@/lib/utils";
+import { PLATFORM_MIN_STAKE, PLATFORM_MAX_STAKE } from "@/lib/payout";
 import { useMayAct, useActDisabledReason } from "@/components/admin/act-gate";
 
 export function GlobalConfigForm({ config }: { config: RateConfig }) {
@@ -138,10 +139,10 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
           <Input name="withdrawalGatewayShareRate" type="number" step="0.01" min="0" max="5" defaultValue={gwPct} mono />
         </Field>
         <Field label="Min stake (TZS)" hint={`Current ${formatTzs(config.minStake)}`}>
-          <Input name="minStake" type="number" step="100" min="100" defaultValue={config.minStake} mono />
+          <Input name="minStake" type="number" step="100" min={PLATFORM_MIN_STAKE} max={PLATFORM_MAX_STAKE} defaultValue={config.minStake} mono />
         </Field>
         <Field label="Max stake (TZS)" hint={`Current ${formatTzs(config.maxStake)}`}>
-          <Input name="maxStake" type="number" step="1000" min="1000" defaultValue={config.maxStake} mono />
+          <Input name="maxStake" type="number" step="1000" min={PLATFORM_MIN_STAKE} max={PLATFORM_MAX_STAKE} defaultValue={config.maxStake} mono />
         </Field>
         <Field
           label="Thin-profit threshold"
@@ -382,10 +383,10 @@ export function MarketOverrideForm({ globalConfig }: { globalConfig: RateConfig 
       </p>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <Field label="Min stake (TZS)" hint={`Leave blank to inherit ${globalConfig.minStake.toLocaleString()}`}>
-          <Input name="minStake" type="number" step="100" min="100" placeholder="" mono />
+          <Input name="minStake" type="number" step="100" min={PLATFORM_MIN_STAKE} max={PLATFORM_MAX_STAKE} placeholder="" mono />
         </Field>
         <Field label="Max stake (TZS)" hint={`Leave blank to inherit ${globalConfig.maxStake.toLocaleString()}`}>
-          <Input name="maxStake" type="number" step="1000" min="1000" placeholder="" mono />
+          <Input name="maxStake" type="number" step="1000" min={PLATFORM_MIN_STAKE} max={PLATFORM_MAX_STAKE} placeholder="" mono />
         </Field>
       </div>
       <Button type="submit" variant="primary" loading={pending} disabled={!mayAct} title={disabledReason}>

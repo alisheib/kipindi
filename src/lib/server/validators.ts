@@ -68,11 +68,14 @@ export const dateOfBirth = z
 
 export const fullName = z.string().trim().min(2).max(120);
 
-export const stakeAmount = z
-  .number()
-  .int("Stake must be a whole TZS amount")
-  .min(100, "Minimum stake is TZS 100")
-  .max(500_000, "Maximum stake is TZS 500,000");
+// ⛔ `stakeAmount` and `PlaceBetSchema` were DELETED here on 2026-08-14. They declared a
+// TZS 100 minimum and a TZS 500,000 maximum against a football-match bet shape this
+// platform does not have, and NOTHING imported them — so they were a fourth, unenforced
+// version of the stake rule sitting in the file named "validators". The real bounds are
+// PLATFORM_MIN_STAKE / PLATFORM_MAX_STAKE in src/lib/payout.ts, resolved per market by
+// getEffectiveConfig + stakeBoundsForUpDownMarket and enforced in buyPosition. A rule
+// stated in a place that never runs is the second version of the truth this whole
+// programme exists to remove — see docs/RULES.md.
 
 // Single-transaction money caps — the single source of truth. These drive BOTH
 // server enforcement (the schemas below) AND the wallet "Limits" tab display, so
@@ -140,14 +143,6 @@ export const KycNidaSchema = z.object({
   email: z.string().trim().toLowerCase().email("Enter a valid email.").max(254).or(z.literal("")).optional(),
 });
 export type KycNidaInput = z.infer<typeof KycNidaSchema>;
-
-export const PlaceBetSchema = z.object({
-  matchId: z.string().min(1),
-  windowKind: z.enum(["W_0_15", "W_15_30", "W_30_45", "W_45_60", "W_FT"]),
-  outcome: z.enum(["home", "away", "draw"]),
-  stake: stakeAmount,
-});
-export type PlaceBetInput = z.infer<typeof PlaceBetSchema>;
 
 export const DepositSchema = z.object({
   provider: z.enum(["MPESA", "AIRTEL_MONEY", "HALO_PESA", "MIXX", "CARD"]),

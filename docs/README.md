@@ -38,6 +38,7 @@ reference in `docs/` must resolve on disk. Broken on purpose and observed to go 
 
 | Doc | | What it is |
 |---|---|---|
+| [`RULES.md`](RULES.md) | 🟢 LAW | ⭐ **THE MONEY RULES — THE ONLY STATEMENT OF THEM.** What we charge (13% of the losing side, both games), the stake bounds (1,000/1,000,000 **per bet**), positions per market, bonus wagering, free cancellation, the withdrawal fee, and the standard a failure message must meet — each with where it is enforced in code, where it is configured, and which surfaces state it. ⛔ **No other document restates a rate.** If anything anywhere disagrees with this file, that thing is the defect. Read it before touching money, and before writing any copy that mentions a fee or a limit. ⚠️ Not the design-law file of the same name under `design-system/`. |
 | [`NEXT-PLAN.md`](NEXT-PLAN.md) | 🔵 LIVE | **The one live plan.** Opens with "PICK UP HERE" — the state at the close of the last session, what is done, what is left. Start every session here. |
 | [`LIVE-QA-CAMPAIGN.md`](LIVE-QA-CAMPAIGN.md) | 🔵 LIVE | **The finding register (E-1…) + the §6b session handoffs** — the newest handoff sits at the TOP of §6b, and a commit newer than the newest handoff means another session is IN FLIGHT. Guarded by `test:tracker-hygiene`. |
 | [`ux-audit-2026-08/MASTER-PLAN.md`](ux-audit-2026-08/MASTER-PLAN.md) | 🔵 LIVE | The 2026-08 UX-audit implementation tracker — Sessions A/B/C, the DS/DA design sweeps, §9 open decisions for Ali. |

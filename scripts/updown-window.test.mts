@@ -151,7 +151,14 @@ const c = await createChain({ assetId: asset.id, durationMinutes: 15 }, OFFICER)
 if (!c.ok) throw new Error(c.error);
 await setChainState(c.data.id, "RUNNING", OFFICER);
 const chain = (await chainStore.get(c.data.id))!;
-await setUpDownConfig({ defaultMinStake: 500, feedProvider: "mock-bars" }, OFFICER);
+// ⛔ 2026-08-14 · setUpDownConfig REFUSES a sub-floor minimum now — 500 is below the
+// platform rule of TZS 1,000. And its result is CHECKED: the first version of this line
+// discarded it, so when the write started failing the run died 30 lines later on
+// "open price did not confirm" and blamed the price feed for a config refusal.
+{
+  const cfgSet = await setUpDownConfig({ defaultMinStake: 1_000, feedProvider: "mock-bars" }, OFFICER);
+  if (!cfgSet.ok) throw new Error("fixture: setUpDownConfig refused — " + cfgSet.error);
+}
 
 /**
  * A round on its own FUTURE boundary, with a real open price and frozen targets.

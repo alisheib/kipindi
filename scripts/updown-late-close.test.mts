@@ -180,7 +180,14 @@ const anchorMs = Date.parse(chain.gridAnchorAt);
 // refuses a past resolution date and `buyPosition` refuses a stake after it, so a back-dated
 // round cannot be built through the real code at all. The clock moves, not the rows.
 const B = (k: number) => new Date(anchorMs + k * 5 * 60_000).toISOString();
-await setUpDownConfig({ defaultMinStake: 500 }, OFFICER);
+// ⛔ 2026-08-14 · setUpDownConfig REFUSES a sub-floor minimum now — 500 is below the
+// platform rule of TZS 1,000. And its result is CHECKED: the first version of this line
+// discarded it, so when the write started failing the run died 30 lines later on
+// "open price did not confirm" and blamed the price feed for a config refusal.
+{
+  const cfgSet = await setUpDownConfig({ defaultMinStake: 1_000 }, OFFICER);
+  if (!cfgSet.ok) throw new Error("fixture: setUpDownConfig refused — " + cfgSet.error);
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 3 · E-69 REPRODUCED, THEN SETTLED — a real stake, closed 529s late
@@ -209,9 +216,9 @@ await setUpDownConfig({ defaultMinStake: 500 }, OFFICER);
   ok("3.0b · …and therefore carries frozen winning targets",
      (await roundStore.get(roundId))!.upTarget != null);
 
-  const bet = await buyPosition(alpha, { marketId: opened.data.marketId, side: "YES", stake: 500 });
+  const bet = await buyPosition(alpha, { marketId: opened.data.marketId, side: "YES", stake: 1_000 });   // the platform floor (2026-08-14)
   ok("3.1 · a real stake enters the round", bet.ok, bet.ok ? "" : bet.error);
-  ok("3.2 · the money has left the wallet", (await balanceOf(alpha)) === START - 500);
+  ok("3.2 · the money has left the wallet", (await balanceOf(alpha)) === START - 1_000);
 
   const cfg = await getUpDownConfig();
   const lateBy = 529; // E-69's own lateness, to the second

@@ -157,7 +157,14 @@ const SEC = 1000;
 // Production's GOLD chain takes TZS 500 stakes, and the incident being reproduced is a
 // 500 stake, so the floor is lowered to match rather than the reproduction being
 // rounded up to fit the default.
-await setUpDownConfig({ defaultMinStake: 500 }, OFFICER);
+// ⛔ 2026-08-14 · setUpDownConfig REFUSES a sub-floor minimum now — 500 is below the
+// platform rule of TZS 1,000. And its result is CHECKED: the first version of this line
+// discarded it, so when the write started failing the run died 30 lines later on
+// "open price did not confirm" and blamed the price feed for a config refusal.
+{
+  const cfgSet = await setUpDownConfig({ defaultMinStake: 1_000 }, OFFICER);
+  if (!cfgSet.ok) throw new Error("fixture: setUpDownConfig refused — " + cfgSet.error);
+}
 
 /**
  * Set an observation's `lastAttemptAt` to a chosen instant.
@@ -225,9 +232,9 @@ let strandedMarketId = "";
   strandedRoundId = opened.data.id;
   strandedMarketId = opened.data.marketId;
 
-  const bet = await buyPosition(alpha, { marketId: strandedMarketId, side: "YES", stake: 500 });
+  const bet = await buyPosition(alpha, { marketId: strandedMarketId, side: "YES", stake: 1_000 });   // the platform floor (2026-08-14)
   ok("2.1 · a real stake enters the round", bet.ok, bet.ok ? "" : bet.error);
-  ok("2.2 · the money has left the wallet", (await balanceOf(alpha)) === START_BALANCE - 500, String(await balanceOf(alpha)));
+  ok("2.2 · the money has left the wallet", (await balanceOf(alpha)) === START_BALANCE - 1_000, String(await balanceOf(alpha)));
 
   // ① ORPHANING. The boundary passes with no confirmed reading, so the round stays
   // pending — and `advanceChain` opens the NEXT round, moving `currentRoundId` off it.
@@ -260,7 +267,7 @@ let strandedMarketId = "";
   ok("2.8 · ⚠️ THE BUG — stopping the chain does NOT void its open round",
      !(await roundStore.get(strandedRoundId))!.resolvedAt);
   ok("2.9 · ⚠️ THE BUG — the player's money is still gone",
-     (await balanceOf(alpha)) === START_BALANCE - 500, String(await balanceOf(alpha)));
+     (await balanceOf(alpha)) === START_BALANCE - 1_000, String(await balanceOf(alpha)));
 
   // ── THE FIX. One hour after the boundary, with the chain still STOPPED. ────
   const report = await healStuckRounds({ now: Date.parse(B(1)) + 3600 * SEC });
@@ -728,7 +735,7 @@ console.log("\n── 11 · an ops-state refusal does not spend a round's retrie
     const opened = await openRound(chain, B(201), null, null);
     if (!opened.ok) throw new Error(opened.error);
     const round = (await roundStore.get(opened.data.id))!;
-    const bought = await buyPosition(alpha, { marketId: round.marketId, side: "YES", stake: 500 });
+    const bought = await buyPosition(alpha, { marketId: round.marketId, side: "YES", stake: 1_000 });   // the platform floor (2026-08-14)
     ok("11.4a · a real stake entered the round", bought.ok, bought.ok ? "" : String(bought.error));
     const staked = await balanceOf(alpha);
 
@@ -741,7 +748,7 @@ console.log("\n── 11 · an ops-state refusal does not spend a round's retrie
     ok("11.4c · ⭐ …and the round STILL terminated, on the deadline rather than the budget",
        healed.outcome === "VOID" && !!healed.resolvedAt, `${healed.outcome} resolved=${healed.resolvedAt}`);
     ok("11.4d · ⛔ the stake came back in full — an ops mistake costs a round, never a player",
-       (await balanceOf(alpha)) === staked + 500, `${staked} → ${await balanceOf(alpha)} (staked 500)`);
+       (await balanceOf(alpha)) === staked + 1_000, `${staked} → ${await balanceOf(alpha)} (staked 1,000)`);
   }
 
   // 11b · A GENUINE source failure, by contrast, MUST burn an attempt — otherwise a

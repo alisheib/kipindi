@@ -60,7 +60,9 @@ async function funded(id: string, bal: number): Promise<string> {
 const asset = await createAsset({ key: `XAU${stamp % 10000}`, symbol: "BTC/USD", nameEn: "Bitcoin", nameSw: "Bitcoin", nameZh: "比特币", iconKey: "crypto", priceSourceUrl: "https://www.kitco.com/price/precious-metals", category: "crypto", decimals: 2, minMoveTicks: 2 }, "off");
 if (!asset.ok) throw new Error(asset.error);
 await setAssetEnabled(asset.data.id, true, "off");
-const chainR = await createChain({ assetId: asset.data.id, durationMinutes: 5, minStake: 100, maxStake: 100_000 }, "off");
+// 2026-08-14: minStake was 100. The admin door now refuses a sub-floor minimum — the
+// platform floor of TZS 1,000 is a rule, not a setting (docs/RULES.md §2.3).
+const chainR = await createChain({ assetId: asset.data.id, durationMinutes: 5, minStake: 1_000, maxStake: 100_000 }, "off");
 if (!chainR.ok) throw new Error(chainR.error);
 await setChainState(chainR.data.id, "RUNNING", "off");
 const chain = (await chainStore.get(chainR.data.id))!;

@@ -28,6 +28,7 @@ import { randomId } from "./crypto";
 import { loadConfig, saveConfig } from "./config-store";
 import { isSourceTrusted, normalizeDomain } from "./source-registry";
 import { validateRateConfig } from "./market-config";
+import { PLATFORM_MIN_STAKE, PLATFORM_MAX_STAKE } from "@/lib/payout";
 import type { RefusalReason } from "./updown-oracle";
 // The money lives on the market row, never in the Up & Down tables — the source lock needs
 // it to tell an operator what is actually riding on the rounds it is refusing to strand.
@@ -296,8 +297,49 @@ function cfgStore(): UpDownConfig {
 }
 
 /** Persisted-config schema version — bump when a frozen legacy default must move forward.
- *  v2 (2026-07-27): default stake bounds 100/100,000 → 1,000/1,000,000. */
-const UPDOWN_CONFIG_VERSION = 2;
+ *  v2 (2026-07-27): default stake bounds 100/100,000 → 1,000/1,000,000.
+ *  v3 (2026-08-14): 500 → 1,000 and 100,000 → 1,000,000. Production was measured on
+ *      **500 / 100,000** on 2026-08-14 while this file had read 1,000/1,000,000 since
+ *      2026-07-27 — v2's reconcile only moves a bound sitting on exactly 100/100,000,
+ *      so a stored 500 was invisible to it. ⛔ A CODE DEFAULT IS NOT A LIVE SETTING.
+ *      All 16 chains carry NULL min/max and therefore inherit these two numbers; the
+ *      chain rows must NOT be touched for this. */
+const UPDOWN_CONFIG_VERSION = 3;
+
+/**
+ * Forward-reconcile a config persisted under an older UPDOWN_CONFIG_VERSION.
+ *
+ * `saveConfig` writes the WHOLE blob, so a value that was merely the OLD default freezes
+ * in the DB and shadows a new code default forever. This bumps ONLY values still sitting
+ * on a known legacy default, so a deliberate operator choice is never overwritten.
+ *
+ * ⛔ Pure and EXPORTED on purpose. It used to be four lines inside `ensureHydrated`,
+ * where nothing could execute it — so `test:updown-config` could assert the CONSTANT was
+ * 1,000 and pass green while production sat on 500 for two and a half weeks. A migration
+ * that cannot be run by a test is a migration nobody has ever seen work.
+ */
+export function reconcileUpDownDefaults(
+  config: UpDownConfig,
+  fromVersion: number,
+): { config: UpDownConfig; changed: boolean } {
+  const c = { ...config };
+  let changed = false;
+  const bump = (key: "defaultMinStake" | "defaultMaxStake", legacy: number) => {
+    if (c[key] === legacy) { c[key] = DEFAULT_UPDOWN_CONFIG[key]; changed = true; }
+  };
+  if (fromVersion < 2) {
+    bump("defaultMinStake", 100);
+    bump("defaultMaxStake", 100_000);
+  }
+  if (fromVersion < 3) {
+    // 500 → 1,000 and 100,000 → 1,000,000. THE BOUNDS ARE A RULE, NOT A PREFERENCE
+    // (Ali, 2026-08-14): TZS 1,000 minimum and TZS 1,000,000 maximum PER BET, on BOTH
+    // products. Up & Down was the product still on 500 / 100,000 in production.
+    bump("defaultMinStake", 500);
+    bump("defaultMaxStake", 100_000);
+  }
+  return { config: c, changed };
+}
 
 async function ensureHydrated(): Promise<void> {
   if (globalThis.__50PICK_UPDOWN_CONFIG_HYDRATED) return;
@@ -309,11 +351,12 @@ async function ensureHydrated(): Promise<void> {
     globalThis.__50PICK_UPDOWN_CONFIG = { ...DEFAULT_UPDOWN_CONFIG, ...stored };
     // One-time forward migration: bump default stake bounds still on the legacy defaults
     // (a deliberate custom value is untouched). Self-heals on first read after deploy.
-    if ((stored.v ?? 1) < UPDOWN_CONFIG_VERSION) {
-      const c = globalThis.__50PICK_UPDOWN_CONFIG;
-      if (c.defaultMinStake === 100) c.defaultMinStake = DEFAULT_UPDOWN_CONFIG.defaultMinStake;
-      if (c.defaultMaxStake === 100_000) c.defaultMaxStake = DEFAULT_UPDOWN_CONFIG.defaultMaxStake;
-      void saveConfig(UPDOWN_CONFIG_KEY, { ...c, v: UPDOWN_CONFIG_VERSION });
+    const storedVersion = stored.v ?? 1;
+    if (storedVersion < UPDOWN_CONFIG_VERSION) {
+      const { config, changed } = reconcileUpDownDefaults(globalThis.__50PICK_UPDOWN_CONFIG, storedVersion);
+      globalThis.__50PICK_UPDOWN_CONFIG = config;
+      void saveConfig(UPDOWN_CONFIG_KEY, { ...config, v: UPDOWN_CONFIG_VERSION });
+      if (changed) console.log(`[updown-config] reconciled v${storedVersion} → v${UPDOWN_CONFIG_VERSION}: stake bounds now ${config.defaultMinStake}/${config.defaultMaxStake}`);
     }
   }
 }
@@ -386,8 +429,8 @@ export async function setUpDownConfig(
   if (updates.defaultMinStake !== undefined || updates.defaultMaxStake !== undefined) {
     const lo = updates.defaultMinStake ?? cfgStore().defaultMinStake;
     const hi = updates.defaultMaxStake ?? cfgStore().defaultMaxStake;
-    if (!Number.isFinite(lo) || lo < 1) return { ok: false, error: "Minimum stake must be at least TZS 1." };
-    if (!Number.isFinite(hi) || hi < lo) return { ok: false, error: "Maximum stake must be at least the minimum stake." };
+    if (!Number.isFinite(lo) || lo < PLATFORM_MIN_STAKE || lo > PLATFORM_MAX_STAKE) return { ok: false, error: `Minimum stake must be between TZS ${PLATFORM_MIN_STAKE.toLocaleString("en-GB")} and TZS ${PLATFORM_MAX_STAKE.toLocaleString("en-GB")} — the platform bounds are a rule, not a setting.` };
+    if (!Number.isFinite(hi) || hi < lo || hi > PLATFORM_MAX_STAKE) return { ok: false, error: `Maximum stake must be between the minimum and TZS ${PLATFORM_MAX_STAKE.toLocaleString("en-GB")}.` };
   }
   if (updates.defaultMarginBps !== undefined) {
     const m = updates.defaultMarginBps;
@@ -931,8 +974,8 @@ export async function createChain(input: ChainInput, officerId: string): Promise
   const cfg = await getUpDownConfig();
   const lo = input.minStake ?? cfg.defaultMinStake;
   const hi = input.maxStake ?? cfg.defaultMaxStake;
-  if (!Number.isFinite(lo) || lo < 1) return { ok: false, error: "Minimum stake must be at least TZS 1." };
-  if (!Number.isFinite(hi) || hi < lo) return { ok: false, error: "Maximum stake must be at least the minimum stake." };
+  if (!Number.isFinite(lo) || lo < PLATFORM_MIN_STAKE || lo > PLATFORM_MAX_STAKE) return { ok: false, error: `Minimum stake must be between TZS ${PLATFORM_MIN_STAKE.toLocaleString("en-GB")} and TZS ${PLATFORM_MAX_STAKE.toLocaleString("en-GB")} — the platform bounds are a rule, not a setting.` };
+  if (!Number.isFinite(hi) || hi < lo || hi > PLATFORM_MAX_STAKE) return { ok: false, error: `Maximum stake must be between the minimum and TZS ${PLATFORM_MAX_STAKE.toLocaleString("en-GB")}.` };
 
   const profile = input.rateProfile ?? cfg.defaultRateProfile;
   const v = validateRateConfig(profile);
@@ -980,8 +1023,8 @@ export async function updateChain(
   const cfg = await getUpDownConfig();
   const lo = updates.minStake !== undefined ? (updates.minStake ?? cfg.defaultMinStake) : (cur.minStake ?? cfg.defaultMinStake);
   const hi = updates.maxStake !== undefined ? (updates.maxStake ?? cfg.defaultMaxStake) : (cur.maxStake ?? cfg.defaultMaxStake);
-  if (!Number.isFinite(lo) || lo < 1) return { ok: false, error: "Minimum stake must be at least TZS 1." };
-  if (!Number.isFinite(hi) || hi < lo) return { ok: false, error: "Maximum stake must be at least the minimum stake." };
+  if (!Number.isFinite(lo) || lo < PLATFORM_MIN_STAKE || lo > PLATFORM_MAX_STAKE) return { ok: false, error: `Minimum stake must be between TZS ${PLATFORM_MIN_STAKE.toLocaleString("en-GB")} and TZS ${PLATFORM_MAX_STAKE.toLocaleString("en-GB")} — the platform bounds are a rule, not a setting.` };
+  if (!Number.isFinite(hi) || hi < lo || hi > PLATFORM_MAX_STAKE) return { ok: false, error: `Maximum stake must be between the minimum and TZS ${PLATFORM_MAX_STAKE.toLocaleString("en-GB")}.` };
 
   const patch: Partial<StoredChain> = {};
   if (updates.minStake !== undefined) patch.minStake = updates.minStake;

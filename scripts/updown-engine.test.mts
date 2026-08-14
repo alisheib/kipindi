@@ -509,11 +509,22 @@ let round1Id = "";
 
   // (b) A stale chain min stored BELOW the platform floor (100) must be FLOORED to 1,000 on
   //     BOTH surfaces — display and money path — so no sub-floor stake can ever be placed.
-  const cS = await createChain({ assetId: asset.id, durationMinutes: 30, minStake: 100, maxStake: 50_000 }, OFFICER);
-  ok("8B.8 · stale-min chain (stored min 100) created", cS.ok, cS.ok ? "" : cS.error);
+  // ⛔ THE DOOR NOW REFUSES A SUB-FLOOR MIN (2026-08-14) — the platform minimum is a rule,
+  //    not a setting — so this scenario can no longer be built through createChain. That is
+  //    the point: it is a LEGACY ROW, not an operator action, and it is written straight
+  //    through the DAL to say so. Both halves are asserted: the door refuses, AND the
+  //    read-path floor still catches a row that predates the door. Defence in depth means
+  //    tightening the door must not delete the proof that the floor works without it.
+  const refusedLow = await createChain({ assetId: asset.id, durationMinutes: 45, minStake: 100, maxStake: 50_000 }, OFFICER);
+  ok("8B.7 · the admin door REFUSES a sub-floor chain minimum", !refusedLow.ok,
+     refusedLow.ok ? "ACCEPTED — the rule is not enforced at the door" : refusedLow.error);
+  const cS = await createChain({ assetId: asset.id, durationMinutes: 30, minStake: 1_000, maxStake: 50_000 }, OFFICER);
+  ok("8B.8 · stale-min chain created legally, then back-dated to a stored min of 100", cS.ok, cS.ok ? "" : cS.error);
   if (cS.ok) {
+    await chainStore.patch(cS.data.id, { minStake: 100 });   // the legacy row, as it exists on disk
     await setChainState(cS.data.id, "RUNNING", OFFICER);
     const sChain = (await chainStore.get(cS.data.id))!;
+    ok("8B.8b · …and the row really does hold 100", sChain.minStake === 100, String(sChain.minStake));
     const obsS = await stubObservation(B(36), 2400.0);
     const rS = await openRound(sChain, B(36), obsS, 2400.0);
     ok("8B.9 · stale-min round opens LIVE", rS.ok, rS.ok ? "" : rS.error);
