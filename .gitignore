@@ -204,3 +204,6 @@ shots/*.png
 docs/design-brief/*.zip
 design-brief-ALL.txt
 design-brief-lite/
+
+# Live config snapshots taken either side of a deliberate operator change (ops drill).
+scripts/live/ops/.cfg-snapshots/

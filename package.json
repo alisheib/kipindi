@@ -290,6 +290,7 @@
     "qa:asset-board": "node scripts/live-asset-board.mjs",
     "qa:poll-drive": "node scripts/live-poll-drive.mjs",
     "qa:bonus-live": "node scripts/live-bonus-live-proof.mjs",
+    "qa:poll-settle-drill": "node scripts/live-poll-settle-drill.mjs",
     "qa:updown-play": "node scripts/live-s27-play.mjs",
     "qa:updown-controls": "node scripts/live-s27-controls.mjs",
     "qa:updown-band": "node scripts/live-updown-band.mjs",
