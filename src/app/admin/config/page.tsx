@@ -115,6 +115,19 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
             <I.settings size={18} className="text-info shrink-0 mt-0.5" />
             <div className="text-caption text-text-secondary space-y-1.5">
               <p className="text-text font-bold">Capped-fee pari-mutuel {config.feeModel === "loser-share" ? "(legacy / existing polls)" : ""}</p>
+              {/* ⚫ F3 · SAY IT IN A SENTENCE, NOT ONLY IN A PARENTHESIS. Everything below is
+                  written in the present tense and describes `capped-commission` — including
+                  the "no cliff" crossover, which does not exist under loser-share at all. A
+                  suffix on the heading is easy to skim past; an officer reading the formula
+                  needs to know before they read it that it prices NO new market. */}
+              {config.feeModel === "loser-share" && (
+                <p className="text-warning-fg">
+                  ⚠️ <strong className="text-text">This model prices no new market.</strong> New polls freeze
+                  loser-share (above). Everything below describes how the {" "}
+                  <strong className="text-text">already-frozen</strong> markets settle, and is kept because they
+                  settle by it forever.
+                </p>
+              )}
               <p>
                 Every stake — YES and NO — joins one pool. At settlement:{" "}
                 <code className="font-mono text-text">fee = min(commission × pool, ceiling × smallerSide)</code>,{" "}

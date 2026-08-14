@@ -117,9 +117,17 @@ produces a winner</b>. Under the previous 0.50% setting only <b>63%</b> of round
 <em>At 0.50% Bitcoin must move ±$316 within five minutes; in testing that refunded every round. A
 refunded round earns no commission, so a wide band does not increase revenue — it removes it.</em></div>
 
-<div><b>One account may hold only one side of a round.</b> A player cannot back UP and DOWN on the
-same round. <em>Holding both sides is not a bet; it is a way to move funds while paying only the
-commission, and on an unbalanced pool it can profit regardless of the result.</em></div>
+<div><b>A player may hold as many positions as they like, on one side or on both.</b> There is no
+per-round cap and no hedging block (owner decision, 14 August 2026). <em>A player who backs both UP
+and DOWN takes a real position either way: one leg wins, the other loses, and what they end up with
+depends on the pools. It is not free money and it is not a loss either — on a lopsided round a small
+stake on the thin side can pay many times both stakes.</em></div>
+
+<div><b>But only ONE side counts toward a bonus.</b> If a player already holds a position and then
+backs the other side of the same round, that second stake earns <b>no</b> wagering credit toward an
+unfulfilled bonus. <em>Nothing to do here — the platform applies it automatically and tells the
+player before they confirm. It exists because matched stakes on both sides carry almost no risk, so
+without it a bonus could be cleared for the cost of one leg's commission.</em></div>
 
 <div><b>A round that closes late still settles.</b> Prices come from a <b>dated one-minute record</b>,
 so the price for 13:52 remains available an hour later. If a close is delayed the platform returns to
@@ -313,41 +321,47 @@ closing price  63,832.00   which is &lt;= 63,855.98   ->   DOWN WINS</div>
 <h3>4.3 · The money</h3>
 
 <p>Up &amp; Down is a pool game: all stakes form one pot, and the winning side shares it in
-proportion to each stake. Commission is <b>13%</b>, never more than <b>one third of the smaller
-side</b>.</p>
+proportion to each stake. Commission is <b>13% of the LOSING side</b> — the same charge as long-form
+markets, in the same words (owner decision, 14 August 2026).</p>
 
 <div class="f">pool        = UP money + DOWN money
-smaller     = whichever side holds less money
-commission  = 13% x pool
-ceiling     = 33.33% x smaller
-fee         = the SMALLER of commission and ceiling
+losing side = whichever side did NOT happen
+fee         = 13% x the losing side
 net pool    = pool - fee
 
 a winner's payout = round( their stake / winning side's total x net pool )</div>
 
 <div class="box good">
-<p><span class="pill g">WHY THE CEILING EXISTS</span> <b>It guarantees a winner can never receive
-less than they staked.</b> Because the fee cannot exceed a third of the smaller side, the net pool is
-always at least as large as the winning side, so every winner receives at least their stake. Where
-that would not hold, the platform <b>refuses to settle</b> rather than pay a winner less than they
-put in. You will never have to explain such a case, because it cannot occur.</p>
+<p><span class="pill g">WHY A WINNER CAN NEVER RECEIVE LESS THAN THEY STAKED</span> <b>The winning
+side's stakes are never touched.</b> The fee comes only out of money staked on the outcome that did
+not happen, so the net pool is always at least as large as the winning side. Where that would not
+hold, the platform <b>refuses to settle</b> rather than pay a winner less than they put in. You will
+never have to explain such a case, because it cannot occur.</p>
+</div>
+
+<div class="box warn">
+<p><span class="pill a">THE FEE NOW DEPENDS ON WHO WINS</span> Under the previous model the
+commission was the same whichever side won. It is not any more: <b>13% of the UP pool if DOWN wins,
+13% of the DOWN pool if UP wins</b>. On a lopsided round those two figures are very different, and
+the admin console shows both before the result lands. <em>Rounds that opened before 14 August 2026
+keep the old model and settle by it — the two are never mixed.</em></p>
 </div>
 
 <div class="f eg">A · a balanced round
-UP 500 + DOWN 500      pool 1,000    smaller 500
-commission   13% x 1,000  = 130
-ceiling      33.33% x 500 = 166.67
-fee          min(130, 166.67) = 130          net pool 870
-DOWN wins; its backer staked 500 of the 500 on DOWN:
-payout = 500/500 x 870 = 870                 commission retained 130
+UP 500 + DOWN 500      pool 1,000
+DOWN wins, so UP is the losing side:
+fee          13% x 500 = 65                  net pool 935
+DOWN's backer staked 500 of the 500 on DOWN:
+payout = 500/500 x 935 = 935                 commission retained 65
 
-B · an unbalanced round, showing the ceiling apply
-UP 900 + DOWN 100      pool 1,000    smaller 100
-commission   13% x 1,000  = 130
-ceiling      33.33% x 100 = 33.33
-fee          min(130, 33.33) = 33.33  CAPPED  net pool 966.67
-If DOWN wins, its single 100 backer receives 966 - nearly ten times the stake.
-If UP wins, the 900 receives 966. Either way, above the stake.</div>
+B · an unbalanced round
+UP 900 + DOWN 100      pool 1,000
+If DOWN wins:  fee = 13% x 900 = 117   net pool 883
+               DOWN's single 100 backer receives 883 - nearly nine times the stake.
+If UP wins:    fee = 13% x 100 = 13    net pool 987
+               the 900 receives 987. Either way, above the stake.
+
+Note the fee itself: 117 one way, 13 the other. The result decides it.</div>
 
 <h3>4.4 · The two parts of a round</h3>
 
@@ -465,7 +479,8 @@ recorded on the round and shown to the player.</p>
 <div class="f eg">A CLEAR WINNER — Bitcoin, 5 minutes
 open  63,856.00      band ±0.02      targets  63,856.02 / 63,855.98
 close 63,832.00      moved 24.00 — about 1,200 times the band
-result  DOWN.  Pool 1,000, commission 130, the winning 500 paid 870.</div>
+result  DOWN.  Pool 1,000. UP lost, so the fee is 13% x 500 = 65;
+               the winning 500 paid 935.</div>
 
 <p>This is why the smallest band works: Bitcoin routinely moves <i>hundreds of times</i> the distance
 needed, so the result is unambiguous and a winner is paid.</p>

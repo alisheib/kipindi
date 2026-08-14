@@ -409,7 +409,8 @@
     "test:failure-reasons": "tsx scripts/failure-reasons.test.mts",
     "red:failure-reasons": "node scripts/failure-reasons-red.mjs",
     "test:rate-copy": "tsx scripts/rate-copy.test.mts",
-    "red:rate-copy": "node scripts/rate-copy-red.mjs"
+    "red:rate-copy": "node scripts/rate-copy-red.mjs",
+    "qa:rasterise-pdf": "node scripts/rasterise-pdf.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",
