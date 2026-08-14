@@ -112,9 +112,14 @@ await closeRound(r.data.id, co, 2415);
   // Combined GGR from the split must equal each game summed — the additive guarantee.
   const combinedGgr = g.market.ggr + g.updown.ggr;
   ok("8 · combined GGR = MARKET + UPDOWN (additive, no double-count)", Number.isFinite(combinedGgr) && combinedGgr === g.market.ggr + g.updown.ggr);
-  // UPDOWN GGR must equal 13% capped-commission on its 40,000 balanced-ish pool.
-  // pool 40,000, YES 25k / NO 15k, YES wins → fee = min(0.13*40000, (1/3)*15000) = min(5200,5000)=5000
-  ok("9 · UPDOWN GGR = the 13% capped-commission fee (min(5200, 5000) = 5000)", Math.round(g.updown.ggr) === 5000, `got ${Math.round(g.updown.ggr)}`);
+  // ⭐ INVERTED 2026-08-14 (A2). Up & Down charges `loser-share` now, so the regulator-facing
+  // GGR figure moves with it — and it is worth pinning the exact number, because this is the
+  // line a statutory report is built from.
+  // pool 40,000, YES 25k / NO 15k, YES wins → the LOSING side is the 15,000 on NO
+  //   new: 0.13 × 15,000                        = 1,950
+  //   old: min(0.13 × 40,000, ⅓ × 15,000)       = 5,000
+  ok("9 · UPDOWN GGR = 13% of the LOSING side (0.13 × 15,000 = 1,950), not the retired 5,000",
+     Math.round(g.updown.ggr) === 1950, `got ${Math.round(g.updown.ggr)}`);
   ok("10 · hold % is per-game and sane", g.updown.holdPct > 0 && g.updown.holdPct < 100 && g.market.holdPct > 0);
 }
 

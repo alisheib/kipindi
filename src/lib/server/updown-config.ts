@@ -148,13 +148,31 @@ export type UpDownConfig = {
   defaultMinStake: number;
   defaultMaxStake: number;
   /**
-   * The fee profile a NEW chain gets by default. Ali, 2026-07-24:
-   * `capped-commission` at 13% of the pool, ceiling ⅓ of the smaller side —
-   * exactly TZS 1,300 on a balanced TZS 10,000 pool, using maths that already
-   * exists and is already tested. Outcome-NEUTRAL, unlike the `loser-share` model
-   * the long-form polls use, and the ceiling preserves the winner floor.
+   * The fee profile a NEW chain gets by default.
    *
-   * Frozen onto each round at creation, so the two models never mix.
+   * ⭐ **`loser-share` — 13% of the LOSING side (Platform 3% + Operator 10%).**
+   * Ali, 2026-08-14. **This SUPERSEDES the 2026-07-24 ruling** that gave Up & Down
+   * `capped-commission` at 13% of the pool with a ⅓ ceiling. Both games now charge the
+   * same thing, in the same words. See `docs/RULES.md` §2.1 and
+   * `docs/COMPLIANCE-DECISIONS.md` § 2026-08-14.
+   *
+   * ⚠️ THE INCOME CONSEQUENCE IS ACCEPTED AND RECORDED. On a balanced round the fee
+   * halves — 13% of the whole pool becomes 13% of half of it (TZS 1,300 → TZS 650 on a
+   * balanced TZS 10,000 round). That is deliberate: one charge model the customer can
+   * understand beats two that need a diagram. Do not "restore" the ceiling.
+   *
+   * ⚠️ `feeCeilingRate` stays present and INERT. `poolFee`'s loser-share arm never reads
+   * it, but a snapshot written from this profile is read back by code that may look for
+   * the field; leaving it defined means an old reader sees a number rather than
+   * `undefined`. It governs nothing here.
+   *
+   * ⛔ Frozen onto each round at creation, so the two models never mix — and a round that
+   * opened before the switch settles by the ceiling maths forever. Nothing may rewrite,
+   * backfill or migrate a `feeSnapshot`.
+   *
+   * ⛔ AND THE 16 CHAIN ROWS DO NOT INHERIT THIS. `rateProfileFor` returns
+   * `chain.rateProfile ?? cfg.defaultRateProfile`, and every live chain carries its own
+   * copy — changing this constant alone would leave the whole board on the old model.
    */
   defaultRateProfile: Partial<RateConfig>;
   /**
@@ -238,11 +256,20 @@ export const DEFAULT_UPDOWN_CONFIG: UpDownConfig = {
   // 24h — longer than any outage this platform has had, shorter than the provider's history.
   maxSettleLookbackSeconds: 86_400,
   retryBackoffSeconds: [15, 45, 120],
-  defaultMinStake: 1_000,
-  defaultMaxStake: 1_000_000,
+  // TZS 1,000 / 1,000,000 PER BET — the platform rule, shared with polls (docs/RULES.md
+  // §2.3). All 16 chains carry NULL min/max and inherit these; `stakeBoundsFor` also
+  // FLOORS every chain at the product minimum, so a legacy row below it can never take a
+  // sub-floor stake.
+  defaultMinStake: PLATFORM_MIN_STAKE,
+  defaultMaxStake: PLATFORM_MAX_STAKE,
   defaultRateProfile: {
-    feeModel: "capped-commission",
-    commissionRate: 0.13,
+    // ⭐ loser-share, 13% of the LOSING side — see the field's doc-comment above for why
+    // this superseded capped-commission on 2026-08-14 and what it costs us.
+    feeModel: "loser-share",
+    platformFeeRate: 0.03,
+    operatorFeeRate: 0.10,
+    // ⚠️ INERT under loser-share — `poolFee` never reads it. Kept defined so a reader of
+    // an old snapshot never sees `undefined` where it expects a number. It governs nothing.
     feeCeilingRate: 1 / 3,
     // Display-only: the "× 1.4 est." headline on the Up/Down buttons. It is an
     // ESTIMATE, never fixed odds — the card carries the qualifier that says so.
@@ -303,8 +330,11 @@ function cfgStore(): UpDownConfig {
  *      2026-07-27 — v2's reconcile only moves a bound sitting on exactly 100/100,000,
  *      so a stored 500 was invisible to it. ⛔ A CODE DEFAULT IS NOT A LIVE SETTING.
  *      All 16 chains carry NULL min/max and therefore inherit these two numbers; the
- *      chain rows must NOT be touched for this. */
-const UPDOWN_CONFIG_VERSION = 3;
+ *      chain rows must NOT be touched for this.
+ *  v4 (2026-08-14): defaultRateProfile capped-commission → loser-share (A2). ⛔ The 16
+ *      UpDownChain rows carry their OWN rateProfile and are NOT reached by this — see
+ *      `ops:updown-loser-share`. */
+const UPDOWN_CONFIG_VERSION = 4;
 
 /**
  * Forward-reconcile a config persisted under an older UPDOWN_CONFIG_VERSION.
@@ -337,6 +367,25 @@ export function reconcileUpDownDefaults(
     // products. Up & Down was the product still on 500 / 100,000 in production.
     bump("defaultMinStake", 500);
     bump("defaultMaxStake", 100_000);
+  }
+  if (fromVersion < 4) {
+    // A2 · capped-commission → loser-share (Ali, 2026-08-14; docs/RULES.md §2.1).
+    //
+    // ⛔ ONLY a profile still sitting on the exact retired default is moved. An operator
+    // who deliberately set something else keeps it — same rule as every bump above.
+    // ⛔ THIS MOVES THE DEFAULT ONLY. Every UpDownChain row carries its OWN rateProfile
+    // and `rateProfileFor` prefers it, so the 16 live chains are NOT reached from here.
+    // They are migrated by `ops:updown-loser-share`, audited one at a time. A session
+    // that changes this constant and stops has changed nothing a player can see.
+    const p = c.defaultRateProfile ?? {};
+    const isRetiredDefault =
+      p.feeModel === "capped-commission" &&
+      p.commissionRate === 0.13 &&
+      Math.abs((p.feeCeilingRate ?? 0) - 1 / 3) < 1e-9;
+    if (isRetiredDefault) {
+      c.defaultRateProfile = { ...DEFAULT_UPDOWN_CONFIG.defaultRateProfile };
+      changed = true;
+    }
   }
   return { config: c, changed };
 }

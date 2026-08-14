@@ -28,7 +28,7 @@ file is worthless the moment it describes an intention as a fact.
 | Stake bounds 1,000 / 1,000,000 | ✅ live — config reconciled and read back from the production DB |
 | Withdrawal fee 1.5% | ✅ live — production has charged 1.5% since before 2026-08-10 |
 | Taxes only on our fee · free cancellation 5 min | ✅ live, unchanged by this programme |
-| Our fee: 13% of the losing side, **both** games | ⏳ LANDING — live for polls; Up & Down still freezes the legacy model |
+| Our fee: 13% of the losing side, **both** games | ⏳ LANDING — code + guards committed; **not verified on production until the deploy has reconciled `updown.config` AND `ops:updown-loser-share` has migrated the 16 chain rows and read them back** |
 | Positions per market: unlimited, both sides | ⏳ LANDING |
 | Bonus wagering: one side only | ⏳ LANDING — ships in the same commit as the line above |
 | Failure messages explain themselves | ⏳ LANDING |
@@ -63,9 +63,12 @@ file is worthless the moment it describes an intention as a fact.
 
 ### 2.1 · Our fee — 13% of the losing side
 
-> ⏳ **LANDING.** Live for long-form polls since 2026-07-23. Up & Down still freezes
-> `capped-commission` on every one of its 16 chains; the switch is workstream A2. Until it
-> lands, an Up & Down round settles at min(13% × pool, ⅓ × smaller side).
+> 🔴 **Up & Down is outcome-DEPENDENT under this model, by decision.** `capped-commission`
+> read only the two pool sizes and was byte-identical whichever side won — the licence anchor
+> in `docs/F6-LIQUIDITY-DESIGN.md` §3.1. `loser-share` charges a slice of whichever side LOST.
+> Long-form polls have been outcome-dependent since 2026-07-23 under Ali's explicit override;
+> 2026-08-14 extends that override to Up & Down so the platform has ONE posture. Recorded in
+> full at `docs/COMPLIANCE-DECISIONS.md` § 2026-08-14 and flagged for the GBT file.
 
 | | |
 |---|---|

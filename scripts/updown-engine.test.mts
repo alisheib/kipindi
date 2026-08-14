@@ -187,15 +187,19 @@ let round1Id = "";
   ok("2.2 · the round IS a PredictionMarket with productLine UPDOWN", m.productLine === "UPDOWN", m.productLine);
 
   // THE FEE PROFILE actually frozen onto the round.
+  // ⭐ INVERTED 2026-08-14 (A2): Up & Down charges `loser-share`, 13% of the LOSING side,
+  // the same as long-form polls. It froze capped-commission @ 13% of the pool until then.
+  // docs/RULES.md §2.1. The full cutover proof, with a legacy round settling beside a new
+  // one, is `npm run test:updown-cutover`.
   const rates = ratesFor(m);
-  ok("2.3 · the round froze capped-commission @ 13%",
-     rates.feeModel === "capped-commission" && rates.commissionRate === 0.13,
-     `${rates.feeModel} @ ${rates.commissionRate}`);
+  ok("2.3 · the round froze loser-share @ 3% + 10% of the losing side",
+     rates.feeModel === "loser-share" && rates.platformFeeRate === 0.03 && rates.operatorFeeRate === 0.10,
+     `${rates.feeModel} @ ${rates.platformFeeRate}+${rates.operatorFeeRate}`);
 
-  // The "× 1.4 est." headline is display-only, but it must SURVIVE the snapshot on a
-  // capped-commission poll — those two fields used to be zeroed on any non-loser-share
-  // model, which would have made the card impossible to build honestly.
-  ok("2.3b · the display estimate survives on a capped-commission round (× 1.4)",
+  // The "× 1.4 est." headline is display-only, but it must SURVIVE the snapshot — those
+  // two fields used to be zeroed on any non-loser-share model, which would have made the
+  // card impossible to build honestly.
+  ok("2.3b · the display estimate survives the snapshot (× 1.4)",
      rates.showEstimatedWinnings === true && rates.estimatedWinningsRate === 0.4,
      `show=${rates.showEstimatedWinnings} rate=${rates.estimatedWinningsRate}`);
 
@@ -223,9 +227,13 @@ let round1Id = "";
      `${wins.length} win / ${losses.length} loss`);
 
   // The fee actually charged must equal the fee the frozen profile implies.
+  // ⭐ INVERTED 2026-08-14 (A2). A balanced 200,000 pool used to yield TZS 26,000 (13% of
+  // the pool). Under loser-share it yields TZS 13,000 — 13% of the 100,000 that lost.
+  // Halving our income on a balanced round is the accepted, recorded cost of one charge
+  // model the customer can understand (docs/RULES.md §1).
   const expected = poolFee(100_000, 100_000, rates, "YES");
-  ok("2.9 · fee on a balanced 200,000 pool is 13% = TZS 26,000", Math.round(expected.fee) === 26_000,
-     String(Math.round(expected.fee)));
+  ok("2.9 · fee on a balanced 200,000 pool is 13% of the LOSING 100,000 = TZS 13,000",
+     Math.round(expected.fee) === 13_000, String(Math.round(expected.fee)));
 
   // No winner may be paid below stake — the platform invariant, on this product.
   const belowStake = wins.filter((p) => (p.finalPayout ?? 0) < p.stake);

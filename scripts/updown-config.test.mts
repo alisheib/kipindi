@@ -282,26 +282,64 @@ let goldId = "";
 // ═══════════════════════════════════════════════════════════════════════════
 
 {
+  // ⭐ INVERTED 2026-08-14 (A2). This section asserted capped-commission @ 13% of the pool,
+  // a balanced TZS 10,000 round yielding TZS 1,300, a biting ⅓ ceiling, and OUTCOME
+  // NEUTRALITY. All four were true, and all four are now false by decision — Up & Down
+  // charges `loser-share`, 13% of the LOSING side, the same as long-form polls
+  // (docs/RULES.md §2.1, docs/COMPLIANCE-DECISIONS.md § 2026-08-14).
+  //
+  // ⛔ THE ASSERTIONS ARE INVERTED, NOT DELETED. Each one now states the new rule AND
+  // names the retired number it replaced, so the change stays visible in the suite that
+  // used to enforce the old one. A test quietly removed is a rule quietly forgotten.
   const cfg = await getUpDownConfig();
-  ok("4.1 · the default profile is capped-commission @ 13%",
-     cfg.defaultRateProfile.feeModel === "capped-commission" && cfg.defaultRateProfile.commissionRate === 0.13,
+  ok("4.1 · the default profile is loser-share, 3% + 10% of the LOSING side",
+     cfg.defaultRateProfile.feeModel === "loser-share" &&
+     cfg.defaultRateProfile.platformFeeRate === 0.03 &&
+     cfg.defaultRateProfile.operatorFeeRate === 0.10,
      JSON.stringify(cfg.defaultRateProfile));
 
-  // THE NUMBER THE BUSINESS CASE RESTS ON: a balanced TZS 10,000 pool must yield
-  // exactly TZS 1,300 — computed through the REAL fee function, not restated here.
+  // THE INCOME CONSEQUENCE, PINNED. A balanced TZS 10,000 round used to yield TZS 1,300
+  // (13% of the pool); it now yields TZS 650 (13% of the 5,000 that lost). Halving our
+  // income on a balanced round is the accepted, recorded cost of one charge model the
+  // customer can understand — see RULES.md §1. This number is here so that cost can never
+  // be re-discovered as a surprise.
   const fee = poolFee(5000, 5000, cfg.defaultRateProfile, "YES");
-  ok("4.2 · balanced TZS 10,000 pool yields exactly TZS 1,300", fee.fee === 1300, `got ${fee.fee}`);
+  ok("4.2 · a balanced TZS 10,000 round yields TZS 650 — half the retired model's 1,300",
+     fee.fee === 650, `got ${fee.fee}`);
 
-  // …and the ceiling must bite on a lopsided pool, protecting the winners.
+  // …and on a lopsided pool the fee follows the LOSING side down, with no ceiling involved.
+  // The retired model charged min(13% × 10,000, ⅓ × 1,000) = 333 here.
   const lop = poolFee(9000, 1000, cfg.defaultRateProfile, "YES");
-  ok("4.3 · the ⅓ ceiling bites on a lopsided pool", Math.round(lop.fee) === 333 && lop.capped,
+  ok("4.3 · a lopsided pool is charged 13% of the small losing side — 130, not the old 333",
+     Math.round(lop.fee) === 130 && lop.capped === false,
      `fee ${Math.round(lop.fee)}, capped ${lop.capped}`);
 
-  // OUTCOME-NEUTRALITY — the licence property. Same pools, either winner, same fee.
+  // 🔴 OUTCOME-NEUTRALITY IS DELIBERATELY GIVEN UP ON THIS PRODUCT.
+  //
+  // `capped-commission` reads only the two pool sizes, so its fee is byte-identical for a
+  // YES win and a NO win — the property `docs/F6-LIQUIDITY-DESIGN.md` §3.1 names as the
+  // pari-mutuel licence anchor, and the reason the 2026-07-24 ruling put Up & Down on it.
+  // `loser-share` charges a slice of whichever side LOST, so it is outcome-DEPENDENT by
+  // construction. Long-form polls have been outcome-dependent since 2026-07-23 under Ali's
+  // explicit override; 2026-08-14 extends that same override to Up & Down.
+  //
+  // ⛔ This is asserted rather than removed BECAUSE it is a licence-bearing property. A
+  // future reader must find it stated, dated and deliberate — not absent.
   const yesWins = poolFee(7000, 3000, cfg.defaultRateProfile, "YES").fee;
   const noWins = poolFee(7000, 3000, cfg.defaultRateProfile, "NO").fee;
-  ok("4.4 · outcome-NEUTRAL: identical fee whichever side wins", yesWins === noWins,
-     `${yesWins} vs ${noWins}`);
+  ok("4.4 · 🔴 outcome-DEPENDENT by decision: the fee follows whichever side lost",
+     yesWins !== noWins && Math.round(yesWins) === 390 && Math.round(noWins) === 910,
+     `YES wins → ${Math.round(yesWins)} (13% of 3,000) · NO wins → ${Math.round(noWins)} (13% of 7,000)`);
+
+  // ⭐ POSITIVE CONTROL — the retired model is still outcome-NEUTRAL, and every one of the
+  // 4,146 production rounds frozen on it still settles that way. Without this, "we moved
+  // the default" and "we broke outcome-neutrality everywhere" pass identically.
+  const legacyProfile = { feeModel: "capped-commission" as const, commissionRate: 0.13, feeCeilingRate: 1 / 3 };
+  const legacyYes = poolFee(7000, 3000, legacyProfile, "YES").fee;
+  const legacyNo = poolFee(7000, 3000, legacyProfile, "NO").fee;
+  ok("4.4b · ⭐ a round frozen on the LEGACY model is still outcome-neutral",
+     legacyYes === legacyNo && Math.round(legacyYes) === 1000,
+     `${Math.round(legacyYes)} vs ${Math.round(legacyNo)}`);
 
   // The winner floor, through the SAME validator global config uses.
   const bad = await setUpDownConfig({ defaultRateProfile: { feeModel: "capped-commission", commissionRate: 0.13, feeCeilingRate: 1.5 } }, OFFICER);
@@ -337,7 +375,8 @@ let goldId = "";
 
     const profile = await rateProfileFor(chains[0]);
     ok("4.10 · the chain's frozen profile is what it will stamp on rounds",
-       profile.commissionRate === 0.13);
+       profile.feeModel === "loser-share" && profile.platformFeeRate === 0.03 && profile.operatorFeeRate === 0.10,
+       JSON.stringify(profile));
   }
 }
 

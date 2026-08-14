@@ -6,6 +6,72 @@
 
 ---
 
+## 2026-08-14 · ONE fee for both games — Up & Down moves to `loser-share`
+
+**Owner decision:** Ali, 2026-08-14. **This SUPERSEDES § 2026-07-24 item 1** below, which put
+Up & Down on `capped-commission` at 13% of the pool with a ⅓ ceiling.
+
+**The rule, for both games, identically:** our fee is **13% of the LOSING side** — Platform 3%
++ Operator 10%. Full statement, with enforcement and configuration for every rule:
+[`docs/RULES.md`](RULES.md).
+
+**Why.** Two charge models needed a diagram to explain and produced two different answers to
+"what do you take?". One model the customer can understand is worth more than the difference.
+
+### The two consequences, both accepted, both recorded
+
+**1. Our income halves on a balanced round.** 13% of the whole pool becomes 13% of half of it:
+a balanced TZS 10,000 round yields **TZS 650** where it used to yield TZS 1,300. On the
+lopsided case the fall is larger still — a 9,000/1,000 pool goes from 333 to 130. Deliberate.
+⛔ Do not "restore" the ceiling to protect income. `test:updown-config` §4.2/§4.3 pin both
+numbers, and `red:updown-cutover` includes the mutation that takes the fee on the whole pool
+precisely because it is the tempting one.
+
+**2. 🔴 UP & DOWN IS NO LONGER OUTCOME-NEUTRAL — and that needs saying plainly.**
+
+`capped-commission` reads only the two pool sizes, so its fee is byte-identical whether YES or
+NO wins. `docs/F6-LIQUIDITY-DESIGN.md` §3.1 names that as the pari-mutuel licence anchor, and
+it is the reason the 2026-07-24 ruling chose it for Up & Down — that entry says in as many
+words that Up & Down therefore sat *closer* to the licence posture than long-form polls.
+
+`loser-share` charges a slice of whichever side **lost**, so it is outcome-DEPENDENT by
+construction. On a 7,000/3,000 pool the fee is 390 if YES wins and 910 if NO wins.
+
+This is **not new to the platform**: long-form polls have been outcome-dependent since
+2026-07-23, under Ali's explicit override of the same property. What 2026-08-14 does is
+**extend that existing override to the second product**, so that the platform now has one
+posture rather than two. It is recorded here, rather than left implicit, because a compliance
+record that documents an override for one product and silently applies it to another has a
+hole in exactly the place an auditor will look.
+
+⚠️ **Flagged for Ali and for the GBT file.** The fee remains a function of the pools and the
+outcome only — never of the identity of a bettor, never adjustable after a round opens, and
+always disclosed before the bet. The winner floor still holds by construction under
+loser-share (a winner keeps their stake plus a share of a net pool that can never be smaller
+than the winning pool). If the Gaming Board's position on outcome-neutrality needs testing,
+test it once, for both products, on this entry.
+
+### What was NOT touched
+
+- ⛔ **No `feeSnapshot` was rewritten, backfilled or migrated.** 4,146 Up & Down rounds and 58
+  legacy polls stay frozen on `capped-commission` and settle by it forever. `test:updown-cutover`
+  settles a legacy round beside a new one in the same process and asserts they differ.
+- ⛔ The price band, the tick floor and `computeTargets` are untouched. This was a fee change.
+- The ⅓ `feeCeilingRate` remains present in the profile and **inert** — `poolFee`'s loser-share
+  arm never reads it. It is kept defined so a reader of an old snapshot never sees `undefined`.
+
+### Where it lives
+
+`DEFAULT_UPDOWN_CONFIG.defaultRateProfile` (`src/lib/server/updown-config.ts`) ·
+`reconcileUpDownDefaults` v4, which moves a persisted config still on the exact retired default
+and leaves a deliberate operator profile alone · **`ops:updown-loser-share`**, which migrates
+the 16 `UpDownChain.rateProfile` rows one at a time, audited — they carry their own copy and do
+**not** inherit the default, so the constant alone changes nothing a player can see.
+Guards: `npm run test:updown-cutover` (23 assertions, both models settling on the real path) ·
+`npm run red:updown-cutover` (6 mutations, including "history repriced" and "not switched").
+
+---
+
 ## 2026-08-14 · A human approval wins — the AI confidence threshold is an autopilot gate, not a licence rule
 
 **Owner decision:** Ali, 2026-08-14, after three false "publish failed" reports on live markets.
@@ -80,6 +146,13 @@ refund, ledger, audit — is the existing, proven code.** Spec: `docs/UPDOWN-SPE
 Architecture: `docs/UPDOWN-ARCHITECTURE.md`.
 
 ### 1. Fee basis — `capped-commission` at 13% of the pool
+
+> ⛔ **SUPERSEDED 2026-08-14.** Up & Down now charges `loser-share` — 13% of the LOSING
+> side — exactly as long-form polls do. See the § 2026-08-14 entry at the top of this file,
+> and [`docs/RULES.md`](RULES.md) §2.1. **Everything below remains a true account of the
+> 2026-07-24 decision and of how the 4,146 rounds frozen before the cutover still settle** —
+> it is history, not the current rule. In particular the outcome-neutrality argument it makes
+> no longer describes Up & Down; the 2026-08-14 entry records that consequence explicitly.
 
 Up & Down rounds freeze `feeModel: "capped-commission"`, `commissionRate: 0.13`,
 `feeCeilingRate: 1/3` — i.e. `fee = min(0.13 × pool, ⅓ × smaller side)`.
