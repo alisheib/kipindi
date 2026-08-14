@@ -84,15 +84,22 @@ frozen and shipped. **Revised 2026-07-31 against the live platform, not against 
 > closed language listbox), one real defect only at 320px (below the supported 360 floor), and the
 > known signed-in tabletL `Account menu` overflow. Not batch 4's, and deliberately not fixed here.
 >
-> **▶ NEXT: the design lane is done — rejoin `MODULE-CERTIFICATION-PROGRAM.md`.** Its §5 names one
-> remaining Wave 1 engineering item: **A6 — turn admin TOTP ON in production.** Confirmed live this
-> session: `/api/health` reports `"security": { "adminTotp": "DISABLED" }`, so the console holding
-> the payment kill-switches, balance adjustment and KYC override sits behind a password and an OTP
-> only. `test:cert-a6` already makes that *honest*; what is missing is the switch being ON.
-> ⛔ **The lockout hazard is the whole risk** — there is no self-service TOTP reset, so enrol every
-> live ADMIN/COMPLIANCE/MODERATOR account and verify enrolment **by query** before the flag flips,
-> and get Ali's go-ahead. The brief is written: `design-brief/00-NEXT-SESSION-PROMPT.md`.
-> (H6 and G3 are **Ali's rulings**, not engineering; Wave 2 is the money core, G3 gating it.)
+> **▶ NEXT IS BATCH 5 — ONE filter language across the platform.** Ali, 2026-08-14, reading the
+> live platform: *"markets has different filter design than up and down... not acceptable in a
+> consistent professional platform."* **Measured, not opinion:** six player surfaces filter,
+> `/markets` is the reference by law (pill, 44px), and **five diverge** — `/updown` (assets 44/64px,
+> durations **40px**), `/results` (48px), `/proposals` (48px), `/positions` (**32px**) and
+> `/updown/history`, all on `rounded-md` 8px with **inline `style` at the call site** (law 82).
+> ⚠️ `/markets` breaks law 82 too, so extracting the primitive must fix the reference, not copy it.
+> 🔴 The deepest defect is not cosmetic: the round-2 rule is **only the selected chip is outlined**
+> — the answer to the "chunky" criticism — and every diverging surface outlines everything.
+> ⭐ `/leaderboard` + `/fairness` are **pagination-only** and `/live` + `/watchlist` have **no
+> filtering at all**, so they are out of scope for a reason that survives scrutiny.
+> The brief is written: `design-brief/00-NEXT-SESSION-PROMPT.md`; the scan is PLAN §8.7h.
+>
+> ⛔ **A6 / admin 2FA is PARKED at Ali's instruction (2026-08-14)** — *"we don't care now about it,
+> later, we do keep pending."* It remains the last Wave 1 item and prod still reports
+> `"adminTotp": "DISABLED"`; do not start it, and do not lose it.
 
 **Items 1, 2, 3 and 4 are DONE and live.** ✅ **Item 3 (withdrawals) CLOSED 2026-08-10:** the
 rail works (four real payouts settled 2026-07-31), the block was ours to lift, and it has been

@@ -175,10 +175,24 @@ topic taxonomy source of truth, whether search is server-side._
    byte-identical before/after, so `MARKET_CARD_H` — the actual substance of the deferral — is
    untouched. **Still NOT touched:** the `--h-control-*` token raise and the `--type-nano`/
    `--type-label` raise. Those remain Ali's Phase-3 decision. §8.7g has the proof.
-8. **The filtering scope is CLOSED at three surfaces.** Ali, 2026-08-13: filter UI for `/live`,
-   `/watchlist`, `/leaderboard`, `/fairness` is **not commissioned**. §8.7d's inventory is a record,
-   not a backlog. If it is ever wanted it is its own commission or its own written plan — never
-   invented at the call site (§0b).
+8. ~~**The filtering scope is CLOSED at three surfaces.**~~ 🔴 **SUPERSEDED 2026-08-14 — the premise
+   was WRONG.** On 2026-08-13 this was recorded as "not commissioned" because batch 4 put the
+   question to Ali as *"extending the discovery bar to four more surfaces has no design source"*.
+   **It has one.** `/markets`' pill language IS the source and was already law
+   ([[50pick-one-filter-language]]: *every filter control matches `/markets`' pill design*), so
+   applying it is not a new commission — it is an existing rule not being enforced. Ali, reading the
+   live platform 2026-08-14: *"markets has different filter design than up and down... this is not
+   acceptable in a consistent professional platform. Revise all filtering systems."* **That is
+   batch 5.**
+   ⚠️ **What survives of the old entry, and is still true:** the four surfaces it named are not
+   where the divergence lives. `/leaderboard` and `/fairness` are **pagination-only** (`?page=`,
+   already on the shared `Pagination`) and `/live` + `/watchlist` have **no `searchParams` at all** —
+   so there is no filtering on them to unify, and ADDING it would be a new feature, not a
+   consistency fix. The real divergence is on `/updown`, `/results`, `/proposals`, `/positions` and
+   `/updown/history` — surfaces batch 4 never surveyed, because the question asked was the wrong one.
+   ⭐ **The lesson:** a question framed on a false premise gets a correct answer to the wrong
+   question, and the answer then hardens into a recorded decision. Before asking Ali to close a
+   scope, check whether a law already governs it.
 
 ## 6 · Batch log (updated after each push)
 
@@ -877,10 +891,12 @@ deferral stays a decision rather than a silence:
 | **The mobile filter SHEET** | Batch 1's scrolling strips remain "the right trade for a defect fix, the wrong end state". The debt is real and named. But the verification surface is larger than it looks: the sheet must not regress the strip's keyboard operability, and its focus trap / focus return / Escape-closes must be checked against the shared `<Modal>` primitive's actual contract, not the kit's spec drawing — at four widths in three locales. Half-rigor here is worse than an honest carry | A `<details>`-driven bottom sheet + scrim, sort/topic as FLAT lists inside it. ⛔ never nested `<details>` — it would clip exactly like §8.7c's defect |
 | **Search typeahead** | `SearchBox` already delivers correct debounced search on the shared grammar, so the board searches correctly today. This is a pure ENHANCEMENT, not a gap in behaviour | A client combobox over the existing parser; suggestion kinds per COMPONENTS §8 |
 
-⛔ **Not a fourth deferral: filter UI for `/live`, `/watchlist`, `/leaderboard`, `/fairness` is NOT
-COMMISSIONED** (Ali, 2026-08-13 — §8.7g). §8.7d's inventory is a record of which surfaces filter, not
-a backlog of gaps to close. Building it would be a design decision made at the call site with no
-delivered spec, which is what DESIGN_AUTHORITY §0b exists to prevent.
+🔴 **CORRECTED 2026-08-14 — see §5.8.** The line that used to sit here said filter UI for `/live`,
+`/watchlist`, `/leaderboard`, `/fairness` was "not commissioned". The premise was wrong: `/markets`'
+pill language is already the law for every filter control, so applying it is enforcement, not a new
+commission. **Batch 5 unifies the five surfaces that actually diverge** — `/updown`, `/results`,
+`/proposals`, `/positions`, `/updown/history` — and the four named above stay out for a *different*
+and still-valid reason: two are pagination-only and two have no filtering at all.
 
 Also **not** adopted, deliberately: the kit's `Load N more` pager. The shared `Pagination`
 component is used instead — it is already built, already tested, and shared with `/results` and
@@ -1392,6 +1408,52 @@ confirmed by a viewport shot plus `elementFromPoint` returning `main` in the gap
 
 **The minute branch was driven in the real product**, not just unit-tested: a market pulled to 40
 seconds from close renders `1m left` / `dakika 1 zimebaki` / `1分钟后` — never `0m left`.
+
+## 8.7h · BATCH 5 (NEXT) — ONE filter language. The scan, measured 2026-08-14
+
+**Ali, reading the live platform:** *"filtering is not designed properly, markets has a different
+filter design than up and down. This is not acceptable in a consistent professional platform...
+put all efforts, make them consistent and perfect and aesthetic, based on our newest design
+patterns."* ⛔ A6 / admin 2FA is **PARKED** at his instruction, not dropped.
+
+**Six player surfaces filter; `/markets` is the reference by law; five diverge.** Measured against
+production with `borderRadius` / height / font-size / presence of an inline `style` on the real
+rendered control:
+
+| Surface | Control | Shape | Height | Inline style |
+|---|---|---|---|---|
+| `/markets` | status · sort · odds · pool · topic · search | **pill `999px`** | **44px** | 2 controls |
+| `/results` | category rail | `8px` | 48px | yes |
+| `/updown` | asset tabs | `8px` | 44 / 64px | **all** |
+| `/updown` | duration tabs | `8px` | **40px** | **all** |
+| `/positions` | 3 tabs | `8px` | **32px** | yes |
+| `/proposals` | hot · new · listed · mine | `8px` | 48px | yes |
+| `/updown/history` | day indicator + "All days" | `chip` + `btn-sm` | — | — |
+
+⭐ **Out of scope, and for a reason that survives scrutiny:** `/leaderboard` + `/fairness` are
+**pagination-only** and already share `Pagination`; `/live` + `/watchlist` have **no `searchParams`
+at all**. There is no filtering on them to make consistent, and adding some would be a new feature.
+
+**Three defects, in increasing order of importance:**
+1. **Shape** — five surfaces use `rounded-md` (8px) against the pill (999px).
+2. **Tap floor** — `/positions` renders **32px**, `/updown` durations **40px**; `/markets` holds 44.
+3. **Inline styles** — every diverging surface writes `style={{ background, border, color }}` at the
+   call site (B9/B10 law 82). ⚠️ **`/markets` breaks this too** — its pressed chip carries an inline
+   `background` + `boxShadow` — so extracting the primitive must fix the reference, not copy it.
+
+🔴 **And the one that is not cosmetic.** `discovery-bar.tsx` §COMPONENTS 3: *only the SELECTED chip
+carries an outline; an unselected chip is text on transparent* — because *"fifteen outlined capsules
+in one bar was the single biggest source of the 'chunky' criticism the round-2 brief was
+answering."* **Every diverging surface outlines EVERY control.** They do not merely look different;
+they contradict the reasoning the current design exists to embody.
+
+**The plan** is in `00-NEXT-SESSION-PROMPT.md`: extract ONE `FilterPill` primitive (fixing
+`/markets`' own law-82 breach in the process), convert the five, guard it with
+`test:filter-language` + a RED proof carrying a vacuity control, and prove the **counts did not
+move** — `qa:discovery-probe` / `qa:results-board` / `qa:filter-stress` stay green against
+production, because promise == delivery is money-adjacent and this batch is cosmetic.
+⚠️ `/updown`'s tabs are a `startTransition` filter that deliberately keeps the live board on screen
+while it streams; plain `<Link>`s used to blank a live board mid-countdown. Preserve that.
 
 ## 8.8b · 🔴 THE BUILD CAN FAIL ON RAILWAY FOR A REASON THAT IS NOT IN THE CODE
 
