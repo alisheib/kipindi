@@ -1,43 +1,173 @@
-# SESSION PROMPT — CONTINUE THE RULES PROGRAMME (session 3 of N)
+# SESSION PROMPT — RULES PROGRAMME, SESSION 3
 
-> Written 2026-08-14 at the close of session 2. The work order is
-> [`docs/SESSION-PROMPT-RATES-AND-FAILURES.md`](SESSION-PROMPT-RATES-AND-FAILURES.md);
-> [`docs/RULES.md`](RULES.md) is the authority on what the platform charges and permits.
-> Session 1's handoff is [`SESSION-PROMPT-RATES-CONTINUE.md`](SESSION-PROMPT-RATES-CONTINUE.md).
->
-> **Read RULES.md first.** Everything below either enforces it or points at it.
+Continue the 50pick rates / bet-logic / failure-messaging programme.
+**Repo: `F:\kipindi-main`, branch `main`.** Every push to `main` deploys LIVE to 50pick.tz.
 
 ---
 
-## §0 · THREE THINGS FOR ALI — none of them are code questions
+## §0 · STANDING AUTHORISATION — Ali, 2026-08-14. DO NOT ASK AGAIN FOR ANY OF THIS.
 
-**1. 🔴 GOLD HAS BEEN DEAD FOR DAYS AND CANNOT RESTART ITSELF.**
-[`FINDING-GOLD-CHAINS-STALLED.md`](FINDING-GOLD-CHAINS-STALLED.md). All three XAU chains read
-`RUNNING` and have opened **no round** since their last session close — 15m for ~17 hours,
-30m and 60m for **four days**. `advanceChain`'s market-hours gate returns BEFORE the re-arm,
-so the chain stays pinned to a boundary inside the closed session and the gate is re-evaluated
-at that same stale instant forever: a deadlock by construction, immune only for crypto.
-Measured from the database AND from the product. **It is a one-line fix with an obvious
-red-first plan and it is NOT SHIPPED** — an engine-timing change deserves its own commit,
-harness and live verification, not a ride-along in a fee-and-copy programme. Your call whether
-it goes next or waits.
+You have my **advance, blanket permission**, for the whole of this session, to do all of the
+following on **PRODUCTION** without stopping to ask me:
 
-**2. ⚠️ UD-20 IS RE-OPENED — a hedged holder sees no payout figure at all.**
-`updown-board.ts` suppresses `myExactPayout` when a player holds both sides, because one
-number cannot state a two-sided position. That was right, and it was documented as
-*unreachable* — a state the money engine refused to create. **B made it reachable and
-ordinary.** The behaviour is unchanged and still better than printing a half-truth, but the
-gap is now a real one on a locked round. "Quote both outcomes" is a design question again.
-⛔ Do not answer it by resurrecting the single-number form; that is the defect, not the gap.
+- **Mint players.** Create as many test accounts as the case needs — QA fleet, new accounts,
+  whatever shape the scenario requires. ⛔ Not two. Two personas are structurally blind.
+- **Mint polls and markets.** Create, publish, resolve, void and settle test markets on either
+  product. Create Up & Down assets and chains, start and stop them.
+- **Mint money.** Credit test wallets, place real bets with real balances, take real fees, run
+  withdrawals. Use whatever amounts the test needs.
+- **Mint bonus grants and tokens.** Issue bonus grants at any multiplier, mint invite/referral
+  tokens, mint share tokens, mint OTPs and sessions.
+- **Drive anything a player or an officer can drive**, in any language, at any width.
 
-**3. ⚠️ THE THREE ITEMS SESSION 1 RAISED ARE ALL NOW SETTLED IN CODE** — outcome-dependence
-is recorded in `COMPLIANCE-DECISIONS.md` and written into `payout.ts`'s invariant 2; the free
-cancellation exploit is closed (B1b); the Terms page now says 1.5%. Nothing is waiting on you
-for those.
+⭐ **This exists because the last session had to leave things unproven.** B2 has never been
+exercised because production has no bonus grants; the VOID case is unproven because nobody bet
+on a round that voided. **Both of those are now yours to create.** If a rule cannot be proven
+because the state does not exist on production, **create the state.**
+
+**The only limits:**
+1. ⛔ **Never rewrite, backfill or migrate an existing `feeSnapshot`.** Frozen money is frozen.
+2. ⛔ **Never re-add `AUTO_SETTLE`.** Never touch the price band, the tick floor or
+   `computeTargets`.
+3. ⛔ **Never hand-write an `INSERT INTO "AuditLog"`** — it is an HMAC chain. Go through
+   `audit()`.
+4. ⛔ **Never put a credential in a tracked file, a commit, a doc or a screenshot.**
+5. ⚠️ **Say what you minted**, in the commit and in the handoff, so it can be cleaned up.
+   Production data is wiped before public launch, so test DATA is fine — a CODE path that
+   produces bad data is not.
 
 ---
 
-## §1 · WHAT SESSION 2 SHIPPED — eight commits, all pushed and live
+## §1 · HOW THIS SESSION MUST WORK
+
+**Do not stop until the workstreams in §4 are complete and verified. Do not ask permission
+between workstreams — the decisions are already made. Come back when it is done, or when you
+hit something that genuinely contradicts this document.**
+
+1. **A green suite is not evidence.** Every claim is driven against production and looked at.
+   Ask of every check: *would this still pass if the feature were absent?*
+2. **Every guard proven RED first**, with a **positive control in the same run**, and at least
+   one **over-correction** mutation — or "no defect" and "no feature" are indistinguishable.
+3. **LOOK AT IT.** Details in §3. A passing test is not a screen.
+4. **One fix, one commit, docs in the SAME commit.** Full validation before *each* commit.
+5. **`git branch --show-current` before every commit. Never `git add -A`.** The working tree is
+   shared with another session.
+6. **Perfect code and logic only. No workarounds.** If a rule change breaks a fixture, correct
+   the fixture to the real scenario — never weaken the rule to keep a test green.
+7. **When you need a new session: stop, update the docs, and write the next prompt.**
+
+---
+
+## §2 · READ FIRST, IN THIS ORDER
+
+1. **`docs/RULES.md`** — the single authoritative statement of the money rules. Every task
+   either enforces it or points at it. Its roll-out table marks each rule ✅ live or ⏳ LANDING.
+   ⛔ **Never delete a ⏳ marker without verifying on production.**
+2. **`docs/FINDING-GOLD-CHAINS-STALLED.md`** — a live outage, unfixed, waiting on a decision.
+3. **`docs/FAILURE-INVENTORY.md`** — the map for the remaining C work.
+4. **`docs/SESSION-PROMPT-RATES-AND-FAILURES.md`** — the original work order. Still the
+   authority. ⚠️ Parts of its file lists have gone stale — see §7.
+5. `docs/SESSION-PROMPT-RATES-CONTINUE.md` — session 1's handoff, for background.
+
+---
+
+## §3 · WHAT "LOOKED AT" MEANS HERE — the visual contract
+
+**Every player-facing change is verified by driving the real UI on production and viewing it at
+360 / 768 / 1024 / 1440.** Not one width. The 1024 case has already caught a defect this
+programme shipped.
+
+- ⛔ **Clipping INSIDE a card never reaches `document.scrollWidth`.** No page-level overflow
+  check can see it. Measure the element (`scrollWidth > clientWidth`) and **report the budget in
+  px** — box width, content width, px-per-character — not just the verdict. Guessing costs a
+  deploy per attempt.
+- ⛔ **`innerText` returns the full string whatever the ellipsis paints**, and a WRAP satisfies
+  `scrollWidth === clientWidth` exactly as a fit does.
+- ⛔ **A CSS-`uppercase` label reads back UPPERCASE.** Lowercase both sides of any text match,
+  or a working screen reports as missing.
+- ⛔ **Every PDF is verified by RASTERISING THE REAL PDF and viewing every page** — never by
+  screenshotting the HTML, which is a different document and hides pagination faults.
+  `npm run qa:rasterise-pdf -- <file.pdf> <outDir>`. ⚠️ **It must run HEADED** — headless
+  Chromium *downloads* a PDF instead of displaying it. It hashes every frame and **refuses to
+  report a document as rasterised with fewer distinct frames than the file declares pages**.
+- ⚠️ **`/updown` holds an open event stream, so `waitUntil: "networkidle"` NEVER fires.** Use
+  `domcontentloaded` and wait for a control.
+- ⚠️ **There is not always an open round.** A fixed wait measures when the run started, not
+  whether the product works. Poll across a boundary.
+- ⚠️ **Match on rendered TEXT, not the accessible name**, and use ASCII in selectors — `×`
+  (U+00D7) does not survive every shell/encoding path.
+
+**Credentials:** `.env.qa.local` (gitignored) holds the QA personas and the admin login.
+`scripts/live/harness.mjs` exposes `PERSONA` (alpha, echo, officer, trading, growth, finance,
+admin) and `fleetPersona(nn)` for `fleet:01`…`fleet:30` on `+2557990000NN`.
+⚠️ Sign in as the **role that owns the page** — ADMIN bypasses every domain check, so a sweep
+run as ADMIN measures nothing about RBAC.
+⚠️ Use `loginOnce()` for any matrix — repeated sign-ins to one account trip attempt limiting and
+read exactly like a wrong password.
+
+---
+
+## §4 · WHAT IS LEFT — in order
+
+### ▶ 1. PROVE THE THREE THINGS PRODUCTION COULD NOT SHOW ME
+
+All three are unproven only because the state did not exist. **§0 authorises you to create it.**
+
+**(a) A REAL VOID round, charging nothing, refunding both sides in full.**
+`scripts/live/ops/loser-share-settled.cjs` §3 stays RED until one lands. Production's void rate
+is **1.7%** (30 of 1,761 in 24h) and **all five drives last session decided** — BTC 5m, BTC 3m,
+SOL 30m, XRP 15m, ~26,000 of fleet money across them. ⚠️ Gold voids most (11 of those 30) and
+**cannot open a round at all** — see §6.1. ⭐ **You can force one:** create your own asset and
+chain and drive a round whose price cannot clear the band. ⛔ `test:updown-cutover` §5b proves
+it on the real settlement path, and the settlement path is not production.
+
+**(b) B2 and the one-side wagering rule, exercised by a real bonus.**
+Production has **ZERO grants and ZERO bonus balance**. `RULES.md` §2.5 keeps its ⏳ for that
+reason alone. **Grant a bonus to a fleet player and drive both routes:**
+- the **hedge** — first side accrues, second side accrues nothing, and the warning appears
+  before they confirm (inline, naming the remaining amount, EN/SW/ZH, at all four widths);
+- the **cancellation** — bet, cancel free inside 5 minutes, and the turnover credit comes back.
+
+Both are proven on the real path by `npm run test:bonus-one-side`. Neither has been proven in a
+wallet. **Then clear the ⏳ on `RULES.md` §2.4 and §2.5.**
+
+**(c) A real bet on a long-form POLL**, settling at 13% of the losing side. The definition of
+done says *both products*; only Up & Down has been driven. Create the poll, bet both sides
+across several fleet players, resolve it, settle it, tie out the ledger.
+
+### ▶ 2. C2's SECOND TRANCHE — wallet, KYC, auth, proposals, objections
+
+The reason registry (`src/lib/failure-reasons.ts`) covers **betting and cash-out**. The rest are
+enumerated at `FAILURE-INVENTORY.md` §2.3 and still render through `error-copy.ts`'s **15 phrase
+tests** — matched against service strings that live in *other files*, with **nothing asserting
+those strings still contain those phrases**. That is the largest remaining risk in the C
+workstream. Extend the registry the same way; the guard already fails when a reason ships
+without copy, a severity, or a fillable placeholder.
+
+⭐ Also open from `FAILURE-INVENTORY.md` §1.5: **12 surfaces render a raw server string** and
+**8 say only that something failed**. None are on the betting path. Fix them; drive each one.
+
+### ▶ 3. E2 — the remaining documents
+
+Swept already: `updown-operator-guide.html` (+ PDF regenerated, **rasterised, 42 distinct frames
+over 22 pages, read**), `rates-decisions-needed.html`, `RULES.md`, `FAILURE-INVENTORY.md`,
+`README.md`, both session prompts.
+
+⏳ **Not yet swept:** `UPDOWN-PRICING.md` · `UPDOWN-SPEC.md` · `UPDOWN-ARCHITECTURE.md` ·
+`FEE-MODEL-DECISION-2026-07-14.md` · `F6-LIQUIDITY-DESIGN.md` · `GO-LIVE-RUNBOOK.md` ·
+`MODULE-CERTIFICATION-PROGRAM.md` · `NEXT-PLAN.md` · `POLL-OPEN-FINDINGS.md` ·
+`design-master-brief.md` · `50pick-fee-decision.docx` · `50pick-fee-model-examples.docx`.
+
+Each: **correct it, or mark it superseded with a pointer to `docs/RULES.md`.** ⛔ Do not leave a
+third version of the truth anywhere.
+
+⚠️ **`LIVE-QA-CAMPAIGN.md`: DO NOT TOUCH THE MEASUREMENT ROWS.** Every fee figure in it records
+a settlement that really happened at the rate that market froze. One banner at §0. Its open item
+at :3994 (the ⅓ rounding breach) is **dissolved** by the new rule — close it explicitly.
+
+---
+
+## §5 · WHAT SESSION 2 SHIPPED — eight commits, all live
 
 | Commit | | Proven |
 |---|---|---|
@@ -47,164 +177,121 @@ for those.
 | `d175cd01` | **A4 (2/2)** — the caption was ellipsised at 1024px | `red:fee-model-caption` 9/9 |
 | `19ac78ec` | **C2–C5** — the reason registry, one renderer, the BUSY lie | `red:failure-reasons` 9/9 |
 | `0a45a05a` | **F2/F4/F5** — the legal document, the assistant, the header, the guard | `red:rate-copy` 7/7 |
-| `7625986d` | **F3/E** — the operator guide, both rates PDFs, the rasteriser | 22 pages, 42 distinct frames, read |
+| `7625986d` | **F3/E** — the operator guide, both rates PDFs, the rasteriser | 22 pages, 42 frames, read |
 | `5c1959ef` | **B2** — the bonus warning before confirming | `red:failure-reasons` **11/11** |
 
-`npm run test:all` → **215/215** green. Five new suites, five new RED harnesses, **41 mutations
+`npm run test:all` → **215/215** green. Five new suites, five RED harnesses, **41 mutations
 caught**, every one with a positive control in the same run.
 
-### Verified on PRODUCTION, not from a suite
-
-- **A real two-sided bet settled at 13% of the losing side and tied out exactly.** Six QA-fleet
-  players put **TZS 21,000** on one round (`mkt_39b5c1731ae414`, YES 8,000 / NO 13,000):
-  **fee 1,040.00 = 13% × 8,000**, paid 19,960.00, **pool residual 0.00**. A second
-  (`mkt_7b463119d4f23e`) tied out the same way.
-- **A REAL one-sided round** (`mkt_228cf35c866dae`, YES 3,000 / NO 0) charged **nothing** and
-  refunded all 3,000 across 2 positions.
-- **The card multiplier reads higher**, at 360/768/1024/1440: `Up × 2.25` / `Down × 1.49`
-  against `× 2.12` / `× 1.38` for the same pools under the retired model.
-- **The admin fee tile** reads `TZS 650 · loser-share 13%` at all four widths, untruncated.
-- **10/10 settled LEGACY rounds still settle by the old maths** — the no-mix guarantee, on
-  real money.
+**Verified on production, not from a suite:** a real two-sided bet settled at
+**fee 1,040.00 = 13% × 8,000**, paid 19,960.00, **pool residual 0.00** (`mkt_39b5c1731ae414`,
+YES 8,000 / NO 13,000, six fleet players) · a real one-sided round charged nothing and refunded
+3,000 in full · the card multiplier reads **× 2.25 / × 1.49** against **× 2.12 / × 1.38** for the
+same pools under the retired model, at all four widths · the admin tile reads
+`TZS 650 · loser-share 13%` untruncated at all four · **10/10 settled legacy rounds still settle
+by the old maths**.
 
 ---
 
-## §2 · WHAT IS LEFT
+## §6 · THREE THINGS WAITING ON ALI
 
-### ▶ 1. A REAL **VOID** ROUND, ON PRODUCTION — the last A4 item
+**1. 🔴 GOLD IS A LIVE OUTAGE AND IT IS NOT FIXED.** `docs/FINDING-GOLD-CHAINS-STALLED.md`.
+All three XAU chains read `RUNNING` and have opened **no round** since their last session close
+— 15m for ~17 hours, 30m and 60m for **four days**. `advanceChain`'s market-hours gate `return`s
+**before** the re-arm, so the chain stays pinned to a boundary inside the closed session and the
+gate is re-evaluated at that same stale instant forever: a **deadlock by construction**, immune
+only for crypto. Measured from the database AND from the product. One-line fix and a red-first
+plan are in the file. ⛔ A deploy alone does NOT recover the three stalled chains —
+`nextBoundaryAt` is persisted; verify by reading it back off the live DB afterwards.
 
-`loser-share-settled.cjs` §3 stays RED until one lands. Production's void rate is **1.7%**
-(30 of 1,761 in 24h) and **all five drives placed this session decided** — BTC 5m, BTC 3m, SOL 30m and XRP 15m, 26,000 of real fleet money across them.
-⚠️ **Gold is the highest-void asset (11 of those 30) and cannot be used** — see §0.1.
-⛔ `test:updown-cutover` §5b proves it on the real settlement path. That is not production.
+**2. ⚠️ UD-20 IS RE-OPENED.** A hedged holder now sees **no payout figure at all** on a locked
+round. `updown-board.ts` suppresses it because one number cannot state a two-sided position —
+still right — but the state was documented as *unreachable* and B made it ordinary. "Quote both
+outcomes" is a design question again. ⛔ Do not answer it by resurrecting the single-number form;
+that is the defect, not the gap.
 
-```
-SHOT_DIR=./shots/x A4_PLAN=void npm run qa:loser-share-money -- "asset=XRP&d=15"
-KP_REPO=F:/kipindi-main node scripts/live/ops/loser-share-settled.cjs
-```
-
-### ✅ 2. B2 — the bonus warning before confirming (shipped `5c1959ef`)
-
-Inline on `/markets/[id]`, EN/SW/ZH, naming the amount still to wager, shown ONLY to a player
-who holds an unfulfilled grant, computed on the READ path.
-
-⏳ **But it has no live subject.** Production has **zero grants and zero bonus balance**, so
-neither this warning nor the §2.5 rule it explains has ever been exercised by a real player.
-⛔ `RULES.md` §2.5 keeps its ⏳ for exactly that reason. **Verifying it means granting a bonus
-to a QA-fleet player and driving both routes** — the hedge (second side accrues nothing) and
-the cancellation (turnover comes back). Both are proven on the real path by
-`test:bonus-one-side`; neither has been proven in a wallet.
-
-### ▶ 3. C2's SECOND TRANCHE — wallet, KYC, auth, proposals, objections
-
-The registry covers **betting and cash-out**. The rest are enumerated at
-[`FAILURE-INVENTORY.md`](FAILURE-INVENTORY.md) §2.3 and still render through `errorCopy`'s
-**15 phrase tests** — matched against service strings in other files, with nothing asserting
-those strings still contain those phrases. That is the single largest remaining risk in the C
-workstream, and `RULES.md` §2.9 keeps its ⏳ for it.
-⭐ Also still open from FAILURE-INVENTORY §1.5: **12 surfaces render a raw server string** and
-**8 say only that something failed**. None are on the betting path.
-
-### ▶ 4. E2 — the remaining documents
-
-Done this session: `updown-operator-guide.html` (+ PDF regenerated and **rasterised, 42
-distinct frames over 22 pages, looked at**), `rates-decisions-needed.html`, `RULES.md`,
-`FAILURE-INVENTORY.md`, `README.md`, both session prompts.
-
-⏳ **Not yet swept**, from the work order's list: `UPDOWN-PRICING.md` · `UPDOWN-SPEC.md` ·
-`UPDOWN-ARCHITECTURE.md` · `FEE-MODEL-DECISION-2026-07-14.md` · `F6-LIQUIDITY-DESIGN.md` ·
-`GO-LIVE-RUNBOOK.md` · `MODULE-CERTIFICATION-PROGRAM.md` · `NEXT-PLAN.md` ·
-`POLL-OPEN-FINDINGS.md` · `design-master-brief.md` · `50pick-fee-decision.docx` ·
-`50pick-fee-model-examples.docx`.
-
-⚠️ **`LIVE-QA-CAMPAIGN.md`: do not touch the measurement rows.** Every fee figure in it records
-a settlement that really happened at the rate that market froze. One banner at §0. Its open
-item at :3994 (the ⅓ rounding breach) is **dissolved** by the new rule — close it explicitly.
+**3. ✅ Session 1's three items are settled in code.** Outcome-dependence is recorded in
+`COMPLIANCE-DECISIONS.md` and written into `payout.ts`'s invariant 2; the free-cancellation
+exploit is closed (B1b); the Terms page says 1.5%.
 
 ---
 
-## §3 · WHAT THIS SESSION LEARNED THE HARD WAY
+## §7 · SIX GREENS THAT MEANT NOTHING — every one needed a human to look
 
-Six of these cost real time. They are here because each one produced a GREEN that meant nothing.
-
-1. **A correct number under a retired law is worse than a wrong one.** `/admin/updown` showed
-   TZS 650 — right — captioned `capped-commission 13%`. An operator who checks the arithmetic
+1. **A right number under a retired law.** `/admin/updown` showed TZS 650 — correct — captioned
+   `capped-commission 13%`. Worse than a wrong number: an operator who checks the arithmetic
    finds it sound and trusts the label.
-2. **"It contains the figure" is not "it is a finished sentence".** The stake-bounds copy
-   rendered *"Minimum bet is TZS 1,000. Enter {min} or more…"* — `String.replace` with a
-   string pattern fills only the FIRST occurrence. Every "does it name the minimum" assertion
-   was green, in three languages. Only reading the output caught it.
-3. **A caption can be right, tied out, and unreadable.** The same caption was ELLIPSISED at
-   exactly 1024px. Clipping inside a card never reaches `document.scrollWidth`, so no
-   page-level overflow check could ever see it. `qa:admin-updown-widths` now reports the
-   BUDGET (144px box, 210px content, 7.24px/char) rather than just the verdict — guessing
-   costs a deploy per attempt.
-4. **A test that asserts a slogan ships a slogan.** `updown-engine` 8b.12 first asserted
-   *"hedging both sides COSTS the player"*. Executed, it went RED: the hedger finished **6,750
-   UP**. That is the SAME false claim the retired player copy made — I wrote the correct
-   explanation into the i18n comment and the wrong assertion into the test, an hour apart.
-5. **A section can pass while proving nothing.** `thin-alert` §5 asserted "each trigger catches
-   a market the others miss" — both fixtures fired both triggers and the assertion was loose
-   enough to be green anyway. Worked out properly, `thinUpside` is a strict SUBSET of
-   `lopsidedBook` at the shipped 13% rate and cannot fire alone; they separate only above
-   r ≈ 71.7%.
-6. **"N frames captured" is not "N pages looked at".** The first rasteriser wrote 22 files that
-   were all page 1 and reported success. The second landed 17 of 22. `#page=N` navigation
-   reloads the viewer and landed 1 of 22. It now sweeps in small steps and **hashes each
-   frame**, and refuses to report a document as rasterised with fewer distinct frames than
-   pages. ⚠️ It must run HEADED — headless Chromium downloads a PDF instead of displaying it.
+2. **"Contains the figure" ≠ "a finished sentence".** `String.replace` with a STRING pattern
+   fills only the FIRST occurrence, so the stake-bounds copy rendered *"Enter **{min}** or
+   more"*. Green in all three languages.
+3. **Right, tied out, and ELLIPSISED** at exactly 1024px, where the KPI row goes 4-up.
+4. **A test that asserts a slogan ships a slogan.** *"Hedging both sides costs the player"* went
+   RED — the hedger finished **6,750 UP**. The same false claim the retired player copy made.
+5. **A section that passes while proving nothing.** "Each trigger catches what the others miss"
+   — both fixtures fired both triggers and the assertion was loose enough to be green anyway.
+6. **"N frames captured" ≠ "N pages looked at".** Three rasteriser attempts each reported
+   success: 22 copies of page 1, then 17 of 22, then 1 of 22.
 
-⚠️ **And the work order's own lists have gone stale in places.** `/admin/markets/new/wizard.tsx`
-and `/admin/markets/[id]` were listed under F3 as "do not branch on the model". **Both branch
-correctly** — they were fixed after the order was measured. Ask "is this the product, or my
-list?" before filing.
+⚠️ **And the work order's own lists go stale.** Two F3 items listed as "do not branch on the
+model" already branched correctly — they were fixed after the order was measured. Ask *"is this
+the product, or my list?"* before filing.
 
 ---
 
-## §4 · TOOLS SESSION 2 LEFT YOU
+## §8 · TOOLS
 
 | | |
 |---|---|
-| `node scripts/live/ops/loser-share-settled.cjs` | READ-ONLY. The three A4 money questions, asked of production. ⭐ Counts EMPTY rounds separately and goes RED when the whole population is empty — a probe that scored 18 empty rounds as "16 one-sided verified" is what it was written to replace |
-| `npm run qa:loser-share-money` | places real fleet money on production. `A4_PLAN=two-sided\|one-sided\|void` |
-| `npm run qa:updown-card-widths` | the player card at 4 widths + the retired-model counterfactual |
-| `npm run qa:admin-updown-widths` | the admin fee tile at 4 widths, with the truncation BUDGET in px |
-| `npm run qa:rasterise-pdf -- <file.pdf> <outDir>` | ⛔ headed; refuses to claim pages it did not capture |
-| `npm run test:fee-model-caption` / `red:` | 45 / 9 |
-| `npm run test:bonus-one-side` / `red:` | 22 / 6 |
-| `npm run test:thin-alert` / `red:` | 19 / 6 |
-| `npm run test:failure-reasons` / `red:` | 48 / 9 |
-| `npm run test:rate-copy` / `red:` | 20 / 7 |
+| `railway run -s 50pick -- node scripts/live/ops/mkenv.cjs` | mint a live `DATABASE_URL`; asserts the internal host was rewritten |
+| `KP_REPO=F:/kipindi-main node scripts/live/ops/rates-census.cjs` | what the platform ACTUALLY charges — persisted config, every chain, every frozen snapshot |
+| `KP_REPO=F:/kipindi-main node scripts/live/ops/loser-share-settled.cjs` | the A4 money questions. ⭐ counts EMPTY rounds separately and goes RED when the whole population is empty |
+| `SHOT_DIR=./shots/x A4_PLAN=two-sided\|one-sided\|void npm run qa:loser-share-money -- "asset=BTC&d=5"` | real fleet money on a production round |
+| `SHOT_DIR=./shots/x A4_YES=8000 A4_NO=13000 npm run qa:updown-card-widths` | the player card at 4 widths + the retired-model counterfactual |
+| `SHOT_DIR=./shots/x npm run qa:admin-updown-widths` | the admin fee tile at 4 widths, with the truncation budget in px |
+| `npm run qa:rasterise-pdf -- <file.pdf> <outDir>` | ⛔ HEADED; refuses to claim pages it did not capture |
+| `npm run test:all -- --skip responsive,motion` | the full net (215 suites) |
+| `npm run red:all` | every RED harness |
+| `node scripts/generate-pdfs.mjs` · `node scripts/generate-rates-pdf.mjs` | regenerate the three PDFs |
 
-⚠️ Session 1's traps all still apply: the audit table is an HMAC chain (never hand-write an
-INSERT), `Transaction` has no `marketId`, `railway run` reads the internal DB host, and a
-column name in backticks inside a template literal closes the string.
+**New suites, each with a `red:` twin:** `test:fee-model-caption` (45) · `test:bonus-one-side`
+(22) · `test:thin-alert` (19) · `test:failure-reasons` (58) · `test:rate-copy` (20).
 
-⚠️ **New:** the i18n dictionary stores some characters as LITERAL `\u00d7` escape text and
-others as real characters, in the same file. An anchor built with `\u00d7` in a JS template
-literal will not match the former. Check with `JSON.stringify` before trusting an anchor.
+### Traps that have each cost a diagnosis
+
+- ⛔ `railway run` injects `postgres.railway.internal`, which resolves nowhere off-platform —
+  **every read silently returns DEFAULTS.** `mkenv.cjs` rewrites the host and asserts it.
+- ⛔ The **AuditLog is an HMAC chain** (`prevHash`/`entryHash`, both UNIQUE). Use `audit()`.
+- ⛔ **`Transaction` has no `marketId`.** Reach the ledger side of a market through its
+  positions, or through the `POOL:<marketId>` ledger account.
+- ⛔ **Do not write a column name in backticks inside a template literal** — it closes the
+  string and the parse error lands on a line you did not touch.
+- ⚠️ **`i18n-dict.ts` stores some characters as LITERAL `\u00d7` escape TEXT and others as real
+  characters, in the same file.** Check with `JSON.stringify` before trusting an anchor.
+- ⚠️ **`allocateFeeShares` FLOORS the fee** (`Math.floor`), so a probe comparing against the
+  unrounded figure reports perfectly correct rounds as defects.
+- ⚠️ **The UD card FLOORS its multiplier to 2dp**; a probe that rounds manufactures a 0.01
+  disagreement with a card that is exactly right.
+- ⚠️ **An EMPTY round reads `× 1.00` under BOTH fee models** and proves nothing.
+- ⚠️ **`orphan-scripts` fails any new top-level `scripts/*.mjs` not wired into `package.json`.**
+  Wire it as you write it.
 
 ---
 
-## §5 · DEFINITION OF DONE — where it stands
+## §9 · DEFINITION OF DONE
 
 | | |
 |---|---|
 | ✅ | A market frozen before the change still settles on its old rates — 4,220 rows, 10/10 sampled |
-| ✅ | The stranded candidate rows corrected |
 | ✅ | `docs/RULES.md` exists and is the authority |
-| ✅ | **A real bet on production settling at 13% of the losing side, tying out exactly** — Up & Down. ⏳ a long-form POLL has not been driven |
-| ✅ | A player can hold both sides; the second side accrues no wagering credit | 
-| ✅ | …and a bonus-holding player is **warned first** — B2 shipped. ⏳ never exercised live: production has ZERO grants |
-| ✅ | **999 refused with a message naming the minimum; 1,000,000 accepted** — both products, three languages |
-| ⏳ | Every failure encountered while driving states a reason at a matching severity — betting/cash-out done, §2.3 open |
+| ✅ | A real bet on production settling at 13% of the losing side, tying out exactly — **Up & Down** |
+| ⏳ | …the same on a long-form **POLL** |
+| ✅ | A player can hold both sides; the second side accrues no wagering credit |
+| ⏳ | …and a bonus-holding player is **warned first** — shipped, but **never exercised live** |
+| ✅ | 999 refused **with a message naming the minimum**; 1,000,000 accepted — both products, 3 languages |
+| ⏳ | Every player-facing failure states a reason at a matching severity — betting/cash-out done, §2.3 open |
 | ✅ | The **Terms page** and the **in-app assistant** state the current fee rule |
 | ✅ | The lopsided-market alert fires under the new model, proven on a fixture |
 | ✅ | A search for the old phrasing returns only deliberate, labelled legacy references |
-| ✅ | Operator guide + both rates PDFs regenerated, **rasterised, pages viewed** |
+| ✅ | All three PDFs regenerated, **rasterised, pages viewed** |
 | ⏳ | A **VOID** on production charging nothing, on a real one |
 | ✅ | `npm run test:all` green and every new guard seen red first |
-
-⛔ **§10 of the work order still binds.** No rewriting any `feeSnapshot`. No re-adding
-`AUTO_SETTLE`. No touching the price band, the tick floor or `computeTargets`. No `git add -A`.
-No commit without checking the branch. No claiming any of it is done from a passing suite.
