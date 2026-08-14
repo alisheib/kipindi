@@ -130,11 +130,13 @@ number that moves if the fix delayed any read:
 | | rounds | min | median | max |
 |---|---|---|---|---|
 | before the deploy | 179 | 80s | **92s** | 303s |
-| after | *re-measured with a full sample at the end of the session* | | **91s** | |
+| after (full sample) | **172** | 76s | **92s** | 306s |
 
 The gold chain's recovered round #267 opened at +106s in the same minute three crypto chains
-opened at +106s. ⚠️ The "after" figure was n=1 at the moment of the deploy and is re-measured
-below with a real sample — a median over one round is an anecdote, not a measurement.
+opened at +106s. ✅ **RE-MEASURED AT THE END OF THE SESSION WITH 172 ROUNDS: the median is IDENTICAL, 92s to
+92s.** The wasted fires are gone and not one read was postponed. ⚠️ The first reading of this
+was n=1 — a median over a single round is an anecdote, and it was labelled as one until a real
+sample existed.
 
 ---
 

@@ -161,12 +161,12 @@ changes are inseparable.
 > ```
 >
 > 🔴 **AND THE LOCKED QUOTE HAD BEEN UNDERSTATING, ON EVERY ROUND, FOR AS LONG AS IT HAS
-> EXISTED.**  answers *"what if I bet X **more**"*, so it ADDS the stake to
+> EXISTED.** `projectedPayout` answers *"what if I bet X **more**"*, so it ADDS the stake to
 > the pool — and the board handed it a stake the player had ALREADY placed, counting that money
 > twice. Measured against a real settlement, gold round #267: the card would have quoted
-> **9,685** to a holder settlement then paid **12,612**. A 23% understatement on a money
+> **9,685** to a holder whom settlement then paid **12,612**. A 23% understatement on a money
 > surface, caught only by tying the quote to what settlement actually pays
-> ( §5). Fixed by removing the holder’s own money from their own
+> (`test:updown-hedge-quote` §5). Fixed by removing the holder's own money from their own
 > pool before pricing — the same function, asked the question it is built for.
 >
 > ⛔ **Not by resurrecting the single number.** `myExactPayout` used to price `up + down` as if
