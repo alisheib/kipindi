@@ -37,7 +37,7 @@ for those.
 
 ---
 
-## §1 · WHAT SESSION 2 SHIPPED — six commits, all pushed and live
+## §1 · WHAT SESSION 2 SHIPPED — eight commits, all pushed and live
 
 | Commit | | Proven |
 |---|---|---|
@@ -47,8 +47,10 @@ for those.
 | `d175cd01` | **A4 (2/2)** — the caption was ellipsised at 1024px | `red:fee-model-caption` 9/9 |
 | `19ac78ec` | **C2–C5** — the reason registry, one renderer, the BUSY lie | `red:failure-reasons` 9/9 |
 | `0a45a05a` | **F2/F4/F5** — the legal document, the assistant, the header, the guard | `red:rate-copy` 7/7 |
+| `7625986d` | **F3/E** — the operator guide, both rates PDFs, the rasteriser | 22 pages, 42 distinct frames, read |
+| `5c1959ef` | **B2** — the bonus warning before confirming | `red:failure-reasons` **11/11** |
 
-`npm run test:all` → **215/215** green. Five new suites, five new RED harnesses, **37 mutations
+`npm run test:all` → **215/215** green. Five new suites, five new RED harnesses, **41 mutations
 caught**, every one with a positive control in the same run.
 
 ### Verified on PRODUCTION, not from a suite
@@ -72,7 +74,7 @@ caught**, every one with a positive control in the same run.
 ### ▶ 1. A REAL **VOID** ROUND, ON PRODUCTION — the last A4 item
 
 `loser-share-settled.cjs` §3 stays RED until one lands. Production's void rate is **1.7%**
-(30 of 1,761 in 24h) and the four drives placed this session all decided.
+(30 of 1,761 in 24h) and **all five drives placed this session decided** — BTC 5m, BTC 3m, SOL 30m and XRP 15m, 26,000 of real fleet money across them.
 ⚠️ **Gold is the highest-void asset (11 of those 30) and cannot be used** — see §0.1.
 ⛔ `test:updown-cutover` §5b proves it on the real settlement path. That is not production.
 
@@ -81,17 +83,17 @@ SHOT_DIR=./shots/x A4_PLAN=void npm run qa:loser-share-money -- "asset=XRP&d=15"
 KP_REPO=F:/kipindi-main node scripts/live/ops/loser-share-settled.cjs
 ```
 
-### ▶ 2. B2 — the bonus warning before confirming
+### ✅ 2. B2 — the bonus warning before confirming (shipped `5c1959ef`)
 
-Deliberately deferred until C3 existed, and it now does. Everything is in place:
-- the reason **`bonus_wagering_one_side`** is in the registry with copy in EN/SW/ZH and the
-  `{remaining}` figure declared;
-- `renderFailure` will produce the sentence;
-- ⛔ it **cannot** be computed inside the bet transaction — `getBonusSummary` issues its own
-  wallet read and would block on the bet's own uncommitted row (the P2028 self-deadlock at
-  `bonus-service.ts:235-243`). It belongs on the READ path, which is fine: it is a warning.
-- ⚠️ **Production has ZERO grants and ZERO bonus balance**, so this surface has no live
-  subject. Verification means granting one to a QA-fleet player and driving it.
+Inline on `/markets/[id]`, EN/SW/ZH, naming the amount still to wager, shown ONLY to a player
+who holds an unfulfilled grant, computed on the READ path.
+
+⏳ **But it has no live subject.** Production has **zero grants and zero bonus balance**, so
+neither this warning nor the §2.5 rule it explains has ever been exercised by a real player.
+⛔ `RULES.md` §2.5 keeps its ⏳ for exactly that reason. **Verifying it means granting a bonus
+to a QA-fleet player and driving both routes** — the hedge (second side accrues nothing) and
+the cancellation (turnover comes back). Both are proven on the real path by
+`test:bonus-one-side`; neither has been proven in a wallet.
 
 ### ▶ 3. C2's SECOND TRANCHE — wallet, KYC, auth, proposals, objections
 
@@ -193,7 +195,7 @@ literal will not match the former. Check with `JSON.stringify` before trusting a
 | ✅ | `docs/RULES.md` exists and is the authority |
 | ✅ | **A real bet on production settling at 13% of the losing side, tying out exactly** — Up & Down. ⏳ a long-form POLL has not been driven |
 | ✅ | A player can hold both sides; the second side accrues no wagering credit | 
-| ⏳ | …and a bonus-holding player is **warned first** — B2 |
+| ✅ | …and a bonus-holding player is **warned first** — B2 shipped. ⏳ never exercised live: production has ZERO grants |
 | ✅ | **999 refused with a message naming the minimum; 1,000,000 accepted** — both products, three languages |
 | ⏳ | Every failure encountered while driving states a reason at a matching severity — betting/cash-out done, §2.3 open |
 | ✅ | The **Terms page** and the **in-app assistant** state the current fee rule |
