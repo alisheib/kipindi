@@ -551,6 +551,33 @@ explained, not merely look small.
 
 ### 7.2c · FILED, not fixed — these need a decision, not a session's guess
 
+- 🔴 **A RED-HARNESS MUTATION IS COMMITTED AND LIVE — `markets/[id]/page.tsx:329`.** Found
+  2026-08-15 by the refusal-tranche session's §0 sweep. Commit `76efe614` (*"Unit B — the side
+  word comes from the lexicon"*, 12:52) carries **three** hunks into that file: two are the real
+  `sideWord`/`outcomeWord` work, and the third is not —
+  `if (b.activeCount > 0 && b.activeWagerRemainingTzs > 0)` → **`if (true)`**. It was pushed to
+  `main`, so it is deployed on `50pick.tz`.
+  **What a player reads.** The §2.5 bonus warning is gated on holding an unfulfilled grant — the
+  comment three lines above the mutation says so in as many words (*"shown ONLY to a player who
+  actually holds an unfulfilled grant … for everyone else this renders nothing at all"*). With
+  the gate forced true, any signed-in player who opens a market while holding the **opposite**
+  side — the hedge `RULES.md` §2.4 explicitly permits, driven with real money on 2026-08-14 —
+  reads *"…only one side counts toward the **TZS 0** you still need to bet before your bonus can
+  be withdrawn."* Production has had **two** grants in its entire history, so for essentially
+  every hedging player this is a false statement about their money naming a nonsense figure, on
+  a money surface. It puts `RULES.md` §2.5's ✅ *"shown ONLY to a player who holds a grant"* out
+  of step with what is deployed.
+  ⭐ **The restore already exists on disk, uncommitted** — `page.tsx` was restored at 13:41,
+  after the 12:52 commit, and never committed, which is why live kept the mutation. This is the
+  §0 `git add -A` hazard, realised: a harness mutation swept into an unrelated commit.
+  ⛔ **Not fixed here by decision** — this session's mandate is what a refusal *says*, not what
+  it *refuses*, and the restore is another session's uncommitted work. It needs an owner.
+  ⚠️ **Every other commit from 2026-08-14/15 was swept for the same shape and is clean**: no
+  other `if (true)`/`if (false)` anywhere in `src/`, no NUL bytes, no zeroed files.
+- ⚠️ **`red:all` exits 1 before it reaches most guards** — see the `red:updown-readiness` entry
+  below. Any session whose definition of done says "`npm run red:all` green" cannot meet it
+  until those five anchors are re-pointed; the failure is unrelated to whatever that session
+  changed.
 - 🔴 **`trust-band.tsx:127` has no null arm.** `SettlementRow.outcome` is
   `"YES" | "NO" | "VOID" | null`, so an unrecorded outcome falls through and renders **"NO"
   in red** on the landing page, under a header reading *"THE OUTCOME IS READ, NEVER
