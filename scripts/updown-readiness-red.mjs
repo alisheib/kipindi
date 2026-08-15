@@ -42,8 +42,15 @@ const MUTATIONS = [
     name: "server-gate-unmeasured — the console greys the pairing and the server accepts it",
     file: CONFIG,
     suite: "updown-readiness",
-    from: `  const durationErr = validateSymbolDuration(asset.symbol, input.durationMinutes, measured);`,
-    to: `  const durationErr = validateSymbolDuration(asset.symbol, input.durationMinutes);`,
+    // ⚠️ RE-ANCHORED 2026-08-15. The old anchor was the one-line three-argument call
+    // `validateSymbolDuration(asset.symbol, input.durationMinutes, measured)`. The gate has
+    // since grown two more axes (movement, playbook) and wrapped across three lines, so from
+    // that day this mutation could not be injected at all — the harness said ANCHOR NOT FOUND,
+    // honestly, into an `&&` chain that had already exited (§8).
+    // ⛔ The DEFECT is unchanged: drop the measured record and the server accepts a pairing the
+    // console greys. Only the argument's position moved.
+    from: `    asset.symbol, input.durationMinutes, measured, movement, toReadinessAdvice(playbook),`,
+    to: `    asset.symbol, input.durationMinutes, undefined, movement, toReadinessAdvice(playbook),`,
   },
   {
     // Keyed on the symbol, the lookup finds nothing, reads UNMEASURED, and disarms the gate
@@ -51,14 +58,21 @@ const MUTATIONS = [
     name: "record-keyed-on-symbol — the lookup finds nothing and everything reads unmeasured",
     file: CONFIG,
     suite: "updown-readiness",
-    from: `  const measured = await feedAdviceFor(asset.key, input.durationMinutes);`,
-    to: `  const measured = await feedAdviceFor(asset.symbol, input.durationMinutes);`,
+    // ⚠️ RE-ANCHORED 2026-08-15 — the call moved inside a `Promise.all`. ⛔ The defect is the
+    // same and is worth restating: `asset.key` is OURS ("BTC"), `asset.symbol` is the
+    // PROVIDER's ("BTC/USD"). Key the lookup on the wrong one and it finds nothing, every asset
+    // reads UNMEASURED, and the gate silently stops gating — while every screen still looks
+    // right, because "no record" renders exactly like "a clean record".
+    from: `    feedAdviceFor(asset.key, input.durationMinutes),`,
+    to: `    feedAdviceFor(asset.symbol, input.durationMinutes),`,
   },
   {
     name: "console-half-unmeasured — the Add-chain duration list stops reading the record",
     file: PAGE,
     suite: "updown-admin-options",
-    from: `                    const r = symbolReadiness(findSymbol(a.symbol), d, feed?.advise(a.key, d));`,
+    // ⚠️ RE-ANCHORED 2026-08-15 — the call gained the movement and playbook axes and wrapped.
+    from: `                    const r = symbolReadiness(findSymbol(a.symbol), d, feed?.advise(a.key, d), feed?.movement(a.key, d),
+                      toReadinessAdvice(book?.choice(a.symbol, d, findSymbol(a.symbol)?.minDurationMinutes ?? null)));`,
     to: `                    const r = symbolReadiness(findSymbol(a.symbol), d);`,
   },
   {
@@ -80,8 +94,19 @@ const MUTATIONS = [
     name: "band-column-narrowed — the winning band clips back to \"Smallest possible…\"",
     file: new URL("../src/app/admin/updown/updown-controls.tsx", import.meta.url),
     suite: "updown-admin-options",
-    from: `      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">`,
-    to: `      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">`,
+    // ⚠️ RE-ANCHORED 2026-08-15, AND RE-AIMED — the two are different and the second matters.
+    // The old mutation narrowed `lg:grid-cols-6` → `lg:grid-cols-5`. That anchor is stale (the
+    // form runs ten columns now), but re-pointing it at `grid-cols-10` would have produced a
+    // mutation NOTHING CATCHES: `updown-admin-options` §6.11 was deliberately rewritten on
+    // 2026-08-07 to pin the RATIO rather than the literals, precisely because pinning the
+    // numbers failed a tree on which the invariant had got stronger. Its words: *"whatever the
+    // grid, the band's span must beat a stake box's."*
+    //
+    // ⛔ So the mutation now attacks what the guard actually protects — the band's own span.
+    // A re-anchor that restores the injection without restoring the PROOF would have converted
+    // an honest ANCHOR NOT FOUND into a silent MISS, which is strictly worse.
+    from: `        <Field label="Winning band" className="lg:col-span-4">`,
+    to: `        <Field label="Winning band" className="lg:col-span-1">`,
   },
   {
     name: "record-column-removed — the operator cannot see what refuses their duration",
@@ -134,7 +159,11 @@ const MUTATIONS = [
     name: "server-gate-removed — the console greys it and the server accepts it",
     file: CONFIG,
     suite: "updown-readiness",
-    from: `  const durationErr = validateSymbolDuration(asset.symbol, input.durationMinutes, measured);
+    // ⚠️ RE-ANCHORED 2026-08-15 to the wrapped call. The gate deleted outright, rather than
+    // merely weakened: the dropdown still greys the option and the server takes it anyway.
+    from: `  const durationErr = validateSymbolDuration(
+    asset.symbol, input.durationMinutes, measured, movement, toReadinessAdvice(playbook),
+  );
   if (durationErr) return { ok: false, error: durationErr };`,
     to: `  const durationErr: string | null = null;
   if (durationErr) return { ok: false, error: durationErr };`,
