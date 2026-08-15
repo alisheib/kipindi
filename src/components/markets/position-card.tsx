@@ -9,12 +9,21 @@ import { Chip } from "@/components/ui/chip";
 import { Stat } from "@/components/ui/stat";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
+import { sideWord, type LabelProductLine } from "@/lib/side-label";
 import { PositionShare } from "@/components/markets/position-share";
 
 type Props = {
   marketId: string;
   marketTitle: string;
   side: "YES" | "NO";
+  /**
+   * Which product this position belongs to — REQUIRED, and deliberately not defaulted
+   * (DESIGN_AUTHORITY §L2). A side is stored `YES | NO` on BOTH product lines, so the
+   * stored token cannot tell this card whether to say "Yes" or "Up". Today every caller
+   * is `/positions`, which filters to `"MARKET"` at `page.tsx:41` — but a card that
+   * silently assumed that would start lying the day a caller stopped filtering.
+   */
+  productLine: LabelProductLine;
   stake: number;
   current: number;          // current value if open, final if settled
   payout: number;           // potentialPayout if open, finalPayout if settled
@@ -40,7 +49,7 @@ type Props = {
   className?: string;
 };
 
-export function PositionCard({ marketId, marketTitle, side, stake, current, payout, status, bettingClosed, placedAt, positionId, refCode, className }: Props) {
+export function PositionCard({ marketId, marketTitle, side, productLine, stake, current, payout, status, bettingClosed, placedAt, positionId, refCode, className }: Props) {
   const { t } = useT();
   const statusLabel = {
     OPEN: t.common.pending,
@@ -56,7 +65,10 @@ export function PositionCard({ marketId, marketTitle, side, stake, current, payo
     >
       <div className="mb-2.5 flex items-center justify-between">
         <div className="flex items-center gap-1.5">
-          <Chip size="sm" variant={side === "YES" ? "yes" : "no"}>{side}</Chip>
+          {/* §L2 — the chip printed the stored enum, so a Swahili player read "YES" where the
+              market page beside it read "NDIO". The tone stays keyed off the stored token
+              (a colour is not a word); only the LABEL comes from the lexicon. */}
+          <Chip size="sm" variant={side === "YES" ? "yes" : "no"}>{sideWord(t, side, productLine)}</Chip>
           <Chip size="sm" variant={
             status === "WIN" ? "gold"
             : status === "LOSS" ? "no"

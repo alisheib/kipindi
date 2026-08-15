@@ -17,6 +17,7 @@ import { useState, useTransition } from "react";
 import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
+import { sideWord } from "@/lib/side-label";
 import { cn, formatTzs } from "@/lib/utils";
 import { mintWinShareTokenAction } from "@/app/markets/actions";
 
@@ -68,7 +69,9 @@ export function PositionShare({
 
     const qs = params.toString();
     const url = `${origin}/markets/${marketId}${qs ? `?${qs}` : ""}`;
-    const text = t.share.pickedText.replace("{side}", side).replace("{title}", marketTitle);
+    // §L3 — the share sentence is the reader's language, so the side inside it must be too.
+    // This is the one label that leaves the product: it lands in someone else's WhatsApp.
+    const text = t.share.pickedText.replace("{side}", sideWord(t, side, "MARKET")).replace("{title}", marketTitle);
     return { url, text };
   }
 

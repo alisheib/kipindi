@@ -25,6 +25,7 @@ import { I } from "@/components/ui/glyphs";
 import { haptics } from "@/lib/haptics";
 import { HouseLeanWarning } from "./house-lean-warning";
 import { useT } from "@/lib/i18n";
+import { sideWord } from "@/lib/side-label";
 import { DEFAULT_CASHOUT_FEE_RATE, DEFAULT_FREE_EXIT_GRACE_MINUTES, DEFAULT_PAID_EXIT_WINDOW_MINUTES, type LeanLevel, type PollRates } from "@/lib/payout";
 import { formatTzs, formatNumber } from "@/lib/utils";
 
@@ -263,8 +264,13 @@ export function BetConfirmModal({
           <div className="flex items-baseline justify-between">
             <div>
               <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-text-subtle mb-1">{t.common.youArePicking}</p>
+              {/* ⛔ THIS USED TO PRINT THE STORED ENUM. On the Chinese money-commit dialog the
+                  26px headline read "YES" while the pool-share sentence three rows below read
+                  "是" — one fact, two answers, one screen. Both now come out of §L's one map,
+                  so they cannot disagree again. This modal is poll-only (its sole caller is
+                  `conviction-dial.tsx`; Up & Down confirms through `UpDownBetReceiptModal`). */}
               <p className="font-display font-bold text-[26px] leading-none" style={{ color: sideTone.fg, letterSpacing: "-0.025em" }}>
-                {side}
+                {sideWord(t, side, "MARKET")}
               </p>
             </div>
             <div className="text-right">
@@ -302,10 +308,7 @@ export function BetConfirmModal({
                 on the medium confirm: the player must see that a win means
                 sharing the pool, not a fixed odds payout. */}
             <p className="text-[12.5px] font-semibold leading-relaxed text-text">
-              {t.dialog.poolShareIfWins.replace(
-                "{side}",
-                side === "YES" ? t.market.sideYesWord.toUpperCase() : t.market.sideNoWord.toUpperCase(),
-              )}
+              {t.dialog.poolShareIfWins.replace("{side}", sideWord(t, side, "MARKET"))}
             </p>
             <p className="mt-1 text-[12px] leading-relaxed text-text-muted">
               {t.dialog.payoutCalcBody}

@@ -16,12 +16,25 @@
 
 import { useState } from "react";
 import { useT } from "@/lib/i18n";
+import { sideWord } from "@/lib/side-label";
 import { formatTzsCompact } from "@/lib/utils";
 import type { TickerEvent } from "@/lib/markets/ticker";
 
 type Verbs = { settled: string; on: string; voided: string };
 
-function Items({ events, prefix, verbs }: { events: TickerEvent[]; prefix: string; verbs: Verbs }) {
+/**
+ * The side words, resolved once by `LiveTicker` and handed down.
+ *
+ * ⛔ This strip used to print `ev.side` — the stored enum — between two TRANSLATED
+ * connectives, so the Chinese strip read "TZS 180K 已结算 YES 在 …" on every page of the
+ * site. That is the SAME defect this file's header records having fixed for the market
+ * TITLE, one field over: a localised sentence closing around an English token. The feed is
+ * long-form only (`platform-stats.ts:103` filters to `productLine === "MARKET"`), which is
+ * why "MARKET" is the honest vocabulary here rather than a guess.
+ */
+type Sides = { YES: string; NO: string };
+
+function Items({ events, prefix, verbs, sides }: { events: TickerEvent[]; prefix: string; verbs: Verbs; sides: Sides }) {
   return (
     <>
       {events.map((ev) => (
@@ -38,7 +51,7 @@ function Items({ events, prefix, verbs }: { events: TickerEvent[]; prefix: strin
                   zero standing in for an unknown, and a bare TZS 0 reads as a broken figure. */}
               {ev.amount !== undefined && <span className="text-text-muted">{formatTzsCompact(ev.amount)} </span>}
               <span className="text-text-muted">{verbs.settled} </span>
-              <span className={`font-bold ${ev.side === "YES" ? "text-yes-400" : "text-no-400"}`}>{ev.side}</span>
+              <span className={`font-bold ${ev.side === "YES" ? "text-yes-400" : "text-no-400"}`}>{ev.side === "YES" ? sides.YES : sides.NO}</span>
             </>
           )}
           <span className="text-text-muted"> {verbs.on} {ev.title}</span>
@@ -57,6 +70,7 @@ export function LiveTicker({ events }: { events: TickerEvent[] }) {
     on: t.market.tickerOn,
     voided: t.market.tickerVoided,
   };
+  const sides: Sides = { YES: sideWord(t, "YES", "MARKET"), NO: sideWord(t, "NO", "MARKET") };
 
   // A platform with no settlements has no strip. ⛔ Not an empty rail, not a placeholder line —
   // A-5: nothing over a guess.
@@ -129,8 +143,8 @@ export function LiveTicker({ events }: { events: TickerEvent[] }) {
           instrument's is how the next reader "protects" behaviour nothing ever needed. */}
       <div style={{ flex: "1 1 auto", minWidth: 0, overflow: "hidden", display: "flex", alignItems: "center", paddingLeft: 8 }}>
         <div className="ticker-track" style={{ animationPlayState: paused ? "paused" : "running" }}>
-          <Items events={events} prefix="a" verbs={verbs} />
-          <Items events={events} prefix="b" verbs={verbs} />
+          <Items events={events} prefix="a" verbs={verbs} sides={sides} />
+          <Items events={events} prefix="b" verbs={verbs} sides={sides} />
         </div>
       </div>
     </div>

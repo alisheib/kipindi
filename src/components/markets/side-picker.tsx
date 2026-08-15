@@ -16,6 +16,7 @@ import { Chip } from "@/components/ui/chip";
 import { ConvictionDial } from "./conviction-dial";
 import { NotifyPrompt } from "./notify-prompt";
 import { useT } from "@/lib/i18n";
+import { sideWord } from "@/lib/side-label";
 import type { PollRates } from "@/lib/payout";
 
 type Props = {
@@ -69,7 +70,9 @@ export function SidePicker({
           <div className="flex items-center gap-2">
             {/* Same rule as the pick buttons: no percentage exists on an empty pool. */}
             <Chip variant={side === "YES" ? "yes" : "no"} size="lg">
-              {side}{hasPool ? ` ${side === "YES" ? yesPct : 100 - yesPct}%` : ""}
+              {/* §L2 — the word comes from the lexicon, never the stored token. This picker
+                  is poll-only; `/markets/[id]` redirects an Up & Down round to `/updown`. */}
+              {sideWord(t, side, "MARKET")}{hasPool ? ` ${side === "YES" ? yesPct : 100 - yesPct}%` : ""}
             </Chip>
             <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{t.common.yourPick}</span>
           </div>

@@ -222,6 +222,9 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
                     marketId={p.marketId}
                     marketTitle={pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}
                     side={p.side}
+                    // §L2 — stated, not assumed. This page filters to long-form at line 41,
+                    // so YES/NO really is this position's vocabulary.
+                    productLine="MARKET"
                     stake={p.stake}
                     current={liveValue ?? p.potentialPayout}
                     payout={p.potentialPayout}
@@ -314,6 +317,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
                     marketId={p.marketId}
                     marketTitle={pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}
                     side={p.side}
+                    productLine="MARKET"
                     stake={p.stake}
                     current={p.finalPayout ?? 0}
                     payout={p.finalPayout ?? 0}
