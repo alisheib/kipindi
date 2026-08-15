@@ -324,17 +324,28 @@ check("§3 no enum is interpolated into a sentence on a player surface",
 const PRIVATE_MAP = /===\s*"(YES|NO|UP|DOWN)"\s*\?\s*t\./;
 
 /**
- * ⛔ THIS NUMBER MAY ONLY EVER GO DOWN. It is 15 because that is what was MEASURED after
- * Unit B–D, not a target that was picked. Each remaining site has a reason it survived:
+ * ⛔ THIS NUMBER MAY ONLY EVER GO DOWN. It is MEASURED, never picked.
+ *
+ * ⭐ 15 → 14 on 2026-08-15: `trust-band.tsx` is folded into the lexicon. It was listed below
+ * as needing "a product decision about what the landing shows for an unrecorded outcome" —
+ * and it did not: `ticker.ts` rule 5 (law 25) had already made that decision, *"a row whose
+ * outcome is absent is DROPPED rather than guessed"*. The landing was simply bypassing it,
+ * because `page.tsx` feeds the band from `recentSettlements` directly. Applying an existing
+ * rule to a surface that was skipping it is not a new decision.
+ *
+ * Each remaining site has a reason it survived:
  *   · 7 Up & Down files were being edited by a parallel session in the same hour, and a
  *     collision there costs more than the tidy-up is worth;
  *   · `market-card.tsx` is pinned by `test:outcome` §3, which asserts its literal
  *     `resolvedOutcome === "YES"` shape — folding it in needs that guard rewritten and
- *     re-proved in the same commit, not a quiet edit;
- *   · `trust-band.tsx` has no null arm (filed), and unifying it forces a product decision
- *     about what the landing shows for an unrecorded outcome.
+ *     re-proved in the same commit, not a quiet edit.
+ *
+ * ⚠️ AND A COMMENT CAN BE THE VIOLATION. The first draft of the trust-band fix QUOTED the
+ * line it had just deleted, and the count stayed at 15 — the note explaining the fix was
+ * itself the fifteenth private word-map, because this scanner reads raw lines and cannot tell
+ * code from prose about code. Describe the old shape; do not paste it.
  */
-const PRIVATE_MAP_RATCHET = 15;
+const PRIVATE_MAP_RATCHET = 14;
 
 const privateMaps: string[] = [];
 for (const f of walk(SRC)) {

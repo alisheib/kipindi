@@ -103,6 +103,15 @@ export async function getPlatformStats(): Promise<PlatformStats> {
     .filter((m) => m.productLine === "MARKET")
     .map(toSettlementRow)
     .filter((r) => typeof r.settledAtMs === "number" && Number.isFinite(r.settledAtMs) && r.settledAtMs > 0)
+    // 🔴 RULE 5, WHICH THIS FEED WAS BYPASSING. `ticker.ts` states it as law 25 — *"the outcome
+    // is READ, never inferred: a row whose outcome is absent is DROPPED rather than guessed"* —
+    // and drops null rows at `ticker.ts:106`. The landing's trust band is fed from
+    // `recentSettlements` **directly** (`page.tsx:247`), so it never saw that filter: a RESOLVED
+    // market with no `resolvedOutcome` fell through `outcome === "YES" ? … : …` and rendered
+    // **"NO", in red**, on a panel headed *"THE OUTCOME IS READ, NEVER INFERRED"*.
+    // ⛔ This is not a new product decision about what the landing shows for an absent outcome —
+    // it is the decision the ticker already made, applied to the surface that was skipping it.
+    .filter((r) => r.outcome === "YES" || r.outcome === "NO" || r.outcome === "VOID")
     // Most recently settled first. ⛔ Never the board's order — slicing a board-ordered list once
     // pinned three July markets as "recent" on production.
     .sort((a, b) => (b.settledAtMs! - a.settledAtMs!) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))

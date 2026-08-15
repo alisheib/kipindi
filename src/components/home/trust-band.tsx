@@ -18,6 +18,7 @@ import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { PaymentLogo } from "@/components/wallet/payment-logo";
 import { pickLocalized } from "@/lib/localized";
+import { outcomeWord } from "@/lib/side-label";
 import { formatTzs } from "@/lib/utils";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 import { Reveal } from "@/components/layout/reveal";
@@ -123,8 +124,33 @@ export function TrustBand({
  * never as an error (licence condition 4 / §C4: a refund is neutral).
  */
 function SettledRow({ row, t, locale }: { row: SettlementRow; t: Dict; locale: Locale }) {
+  // 🔴 THE NULL ARM, WHICH DID NOT EXIST. `SettlementRow.outcome` is
+  // `"YES" | "NO" | "VOID" | null`, and the old line was a two-armed dictionary ternary on the
+  // YES token — so an UNRECORDED outcome fell through to the NO arm and rendered **"NO", in
+  // red**, on a panel whose own header says *"THE OUTCOME IS READ, NEVER INFERRED"*. An enum
+  // word used to mean absence is the worst case of §7's defect: it does not look like a bug,
+  // it looks like a result.
+  //
+  // ⚠️ THE OLD LINE IS DESCRIBED, NOT QUOTED, AND THAT IS DELIBERATE. `test:labels` §4 scans
+  // raw lines for exactly that shape, so pasting it here kept the count at 15 — the comment
+  // explaining the fix WAS the fifteenth private word-map. Same decoy-anchor trap that made
+  // `red:failure-reasons` mutate a comment earlier today: a scanner cannot tell code from
+  // prose about code.
+  //
+  // ⛔ Belt and braces, deliberately. `platform-stats.ts` now applies the ticker's rule 5 and
+  // drops null rows before they get here, so this arm should be unreachable — but the type
+  // permits null, and the previous version of this file was ALSO written when it "could not
+  // happen". A component that cannot describe its input renders nothing rather than a word
+  // it made up.
+  if (row.outcome === null) return null;
   const isVoid = row.outcome === "VOID";
-  const label = isVoid ? t.common.voided : row.outcome === "YES" ? t.common.yes : t.common.no;
+  // ⭐ Through the ONE map (`side-label.ts`), not a private copy — §7's whole point. VOID gets
+  // its own word there, because a refund is neutral and printing a direction over one is a
+  // false statement about someone's money.
+  const label = outcomeWord(t, row.outcome, "MARKET");
+  // ⚠️ A TONE IS NOT A WORD. This ternary stays local by design: `test:labels` §4 explicitly
+  // does not count colour ternaries, because "fixing" them would push a colour through a
+  // vocabulary map that has no opinion about colour.
   const tone = isVoid ? "chip-pending" : row.outcome === "YES" ? "chip-yes" : "chip-no";
   const question = pickLocalized(locale, row.titleEn, row.titleSw, row.titleZh);
   return (

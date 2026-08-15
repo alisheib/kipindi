@@ -118,5 +118,36 @@ check(
   "",
 );
 
+// ---------------------------------------------------------------------------
+// 4. THE LANDING'S TRUST BAND — law 25 on the surface that was bypassing it.
+//
+// 🔴 `SettlementRow.outcome` is `"YES" | "NO" | "VOID" | null`, and `trust-band.tsx` had a
+//    two-armed dictionary ternary on the YES token — so an UNRECORDED outcome fell through to
+//    the NO arm and rendered "NO", IN RED, on a panel headed "THE OUTCOME IS READ, NEVER
+//    INFERRED". `ticker.ts` rule 5 drops null rows; `page.tsx` feeds this band from
+//    `recentSettlements` DIRECTLY and never saw that filter.
+//
+// ⛔ BOTH ENDS ARE PINNED, because either alone can rot. The feed must drop the row, AND the
+//    component must refuse to describe an outcome it does not have — the previous version was
+//    also written when null "could not happen".
+// ---------------------------------------------------------------------------
+const band = readFileSync(join(SRC, "components/home/trust-band.tsx"), "utf8");
+check(
+  "the trust band refuses to name an outcome it does not have",
+  /if \(row\.outcome === null\) return null;/.test(band),
+  "an absent outcome must render nothing — never the NO arm of a two-armed ternary",
+);
+check(
+  "…and it reads the word from the ONE lexicon, not a private map",
+  /outcomeWord\(t, row\.outcome, "MARKET"\)/.test(band),
+  "",
+);
+const stats = readFileSync(join(SRC, "lib/server/platform-stats.ts"), "utf8");
+check(
+  "…and the feed drops an unrecorded outcome before it can reach a surface (ticker rule 5)",
+  /\.filter\(\(r\) => r\.outcome === "YES" \|\| r\.outcome === "NO" \|\| r\.outcome === "VOID"\)/.test(stats),
+  "recentSettlements must apply the same rule the ticker does",
+);
+
 log(`\n${fail === 0 ? "ALL PASS" : `${fail} FAILED`} — scanned ${files.length} ts/tsx files`);
 process.exit(fail === 0 ? 0 : 1);
