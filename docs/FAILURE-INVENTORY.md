@@ -656,22 +656,18 @@ explained, not merely look small.
 
 ### 7.2c · FILED, not fixed — these need a decision, not a session's guess
 
-- ⚠️ **`red:all` exits 1 before it reaches most guards** — see the `red:updown-readiness` entry
-  below. Any session whose definition of done says "`npm run red:all` green" cannot meet it
-  until those five anchors are re-pointed; the failure is unrelated to whatever that session
-  changed.
+- ✅ **`red:all` exits 1 before it reaches most guards** — **CLOSED 2026-08-15**, and what it was
+  hiding is now measured rather than estimated. See **§8** below for the first full-fleet run.
 - 🔴 **`trust-band.tsx:127` has no null arm.** `SettlementRow.outcome` is
   `"YES" | "NO" | "VOID" | null`, so an unrecorded outcome falls through and renders **"NO"
   in red** on the landing page, under a header reading *"THE OUTCOME IS READ, NEVER
   INFERRED"*. `ticker.ts` rule 5 drops null rows; `page.tsx:247` feeds trust-band from
   `stats.recentSettlements` **directly** and bypasses that filter. Latent, not observed.
   What the landing shows for an absent outcome is a product decision.
-- ⚠️ **`red:updown-readiness` has FIVE stale anchors** and reports 11/16 — *"ANCHOR NOT
-  FOUND — the harness is broken, not the guard."* It anchors into
-  `src/app/admin/updown/*`, `updown-config.ts`, `updown-symbols.ts`, `updown-durations.ts`;
-  last touched 2026-08-05. ⛔ **This makes `red:all` exit 1 today**, and because that chain is
-  `&&`, everything after it is starved. Unrelated to the label work (zero file overlap) but
-  it is the tail-guard failure mode §5 warns about, now live.
+- ⚠️ **`red:updown-readiness` has FIVE stale anchors** and reports 11/16 — measured again by the
+  full-fleet run and **confirmed at exactly 11/16**, the third independent measurement to agree.
+  ⛔ It is no longer what starves the fleet: `red:all` is a reporting runner now (§8). See §8 for
+  what it was starving.
 - ⚠️ **Notification titles are English-only across all three languages.** `notifyWin` takes a
   `label` that the caller builds from `m.titleEn`, so a Chinese player's inbox reads a
   Chinese sentence around an English market question. The ticker fixed exactly this for its
@@ -689,3 +685,77 @@ explained, not merely look small.
   `admin-status-lexicon.ts` for officers). That is *defensible* — the audiences differ and the
   admin console is monolingual — but it is two sites for one family and is recorded here so the
   next session decides deliberately rather than discovering it.
+
+---
+
+## §8 · THE RED FLEET, MEASURED — the first run in which every harness actually ran
+
+> Run 2026-08-15 on an isolated worktree, `npm run red:all` (the reporting runner, `255c1782`).
+> **68 harnesses · 58 green · 10 failing · 778.5s.** ⛔ Every figure below is from that run's
+> table. This section replaces four estimates that were circulating, two of which were wrong.
+
+### 8.1 · What the `&&` chain was hiding
+
+| | Before | Measured |
+|---|---|---|
+| `red:*` declared in `package.json` | — | **68** |
+| Reachable from `red:all` | **41** | 68 |
+| **Never ran at all** | — | **27** |
+| Harnesses that fail | "some tail after segment 32" | **10** |
+| Harnesses with unresolvable anchors | "~27 anchors across ~6 harnesses" (a static *lead*) | **23 anchors across 6 harnesses** |
+| Harnesses that corrupt the tree | unknown — nothing looked | **1** |
+
+⭐ **The lead was right about the harness count and wrong about the rest.** A static sweep had
+guessed "~27 non-matching anchors across ~6 harnesses" and cautioned that CSS-targeting harnesses
+were *"almost certainly false positives"* because it only scanned `src/**.{ts,tsx,mts}`. The real
+six are `red:updown-readiness` (10 anchor reports · 5 mutations), `red:m1-light` (6),
+`red:updown-chart` (2), `red:updown-movement` (2), `red:keyframes` (2) and
+`red:updown-result-clock` (1) — and **`red:keyframes` is exactly the CSS-targeting kind the sweep
+excused**. ⛔ A lead is a place to look, never a count; the 27 it produced turned out to be the
+number of harnesses *outside the runner*, which it was not measuring at all.
+
+### 8.2 · The ten, and why each fails
+
+| Harness | Score | Why |
+|---|---|---|
+| `red:updown-readiness` | 11/16 | 5 stale anchors — §7.2c, now measured a third time |
+| `red:m1-light` | 5/8 | 6 unresolved anchors |
+| `red:updown-movement` | 10/12 | 2 unresolved anchors |
+| `red:keyframes` | 6/7 | 2 unresolved anchors |
+| `red:updown-chart` | 2/3 | 2 unresolved anchors |
+| `red:updown-result-clock` | 3/4 | 1 unresolved anchor |
+| `red:updown-playbook` | — | exits in 0.5s — it never reaches a mutation |
+| `red:admin-soft-gate` | — | exits in 0.9s — same shape |
+| `red:results-filter` | — | fails with no anchor complaint |
+| `red:updown-bars` | 8/8 | ⭐ **caught the tree, not the guard** — see 8.3 |
+
+### 8.3 · 🔴 `red:updown-bars` rewrote 740 lines of tracked source on every run
+
+The runner's tree fingerprint flagged it `DIRTY` on the first full run. `updown-bars-red.mjs`
+carried its own copy of the line-ending rule — normalise to `\n`, match, mutate — and then
+restored with the **normalised** copy:
+
+```js
+const original = lf(originalRaw);          // 740 CRLF → LF
+…
+} finally { writeFileSync(FEED, original); }   // ← writes back the NORMALISED bytes
+```
+
+⛔ **The comment three lines above it stated the opposite, in as many words**: *"Restoration
+writes back the ORIGINAL bytes, not the normalised copy."*
+
+> ⭐ **AND IT WAS INVISIBLE IN EXACTLY THE WAY §3.8's `if (true)` WAS.** `git diff` normalises
+> line endings, so it printed **nothing**. Only `git status` showed the file modified — which is
+> indistinguishable from an edit the session made itself, and §3.8 records that ambiguity costing
+> two hours of a false statement about money on production. The harness printed `7/7 caught` and
+> exited **0** over it, every time, for as long as it has existed.
+
+Fixed the way §3.9 was — by deleting the local rule, not by correcting the restore line. It uses
+`red-anchor.mjs`'s `injectDefect`, which re-expresses the anchor in the FILE's own convention
+instead of dragging the file into the anchor's. Verified byte-for-byte: 740 CRLF before, 740 CRLF
+after, **8/8 caught** (the shared resolver found a ninth anchor the local matcher had been
+silently missing — 7/7 became 8/8 without a new mutation being written).
+
+⛔ **This is why `red:all` fingerprints the tree per harness and why it must never repair it.**
+A runner that ran `git checkout` would have hidden this defect *and* destroyed the session's own
+uncommitted work.

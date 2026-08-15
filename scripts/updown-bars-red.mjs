@@ -12,6 +12,7 @@
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { execSync } from "node:child_process";
+import { injectDefect } from "./red-anchor.mjs";
 
 const FEED = new URL("../src/lib/server/updown-feed.ts", import.meta.url);
 
@@ -81,23 +82,39 @@ let caught = 0;
 const missed = [];
 const cwd = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
 
-// ⛔ NORMALISE LINE ENDINGS BEFORE MATCHING. `updown-feed.ts` is a tracked file with CRLF
-// endings, so a multi-line anchor written with \n matches NOTHING — the file is rewritten
-// unchanged and the run reports "defect not caught" as if the guard were weak. That exact trap
-// has fooled three sessions of this campaign. Two of the seven mutations below hit it on the
-// first run; the harness reported ANCHOR NOT FOUND rather than MISS, which is why it was
-// visible at all. Restoration writes back the ORIGINAL bytes, not the normalised copy.
-const lf = (s) => s.replace(/\r\n/g, "\n");
-
+// ⛔ LINE ENDINGS GO THROUGH `red-anchor.mjs`, NOT THROUGH A LOCAL COPY OF THE RULE.
+// `updown-feed.ts` is a tracked file that checks out with CRLF, so a multi-line anchor written
+// with \n matches NOTHING — the file is rewritten unchanged and the run reports "defect not
+// caught" as if the guard were weak. That trap has fooled three sessions of this campaign.
+//
+// 🔴 AND THE LOCAL COPY OF THE RULE WAS SILENTLY BREAKING THE TREE. This block used to
+// normalise with `const original = lf(originalRaw)` and then restore with
+// `writeFileSync(FEED, original)` — the NORMALISED copy, not the original bytes. The comment
+// sitting here claimed the opposite in as many words: *"Restoration writes back the ORIGINAL
+// bytes, not the normalised copy."* So every single run silently rewrote 740 lines of a
+// tracked source file from CRLF to LF and left it that way.
+//
+// ⛔ IT WAS INVISIBLE IN EXACTLY THE WAY §3.8's `if (true)` WAS. `git diff` normalises line
+// endings, so it printed NOTHING; only `git status` showed the file as modified, which is
+// indistinguishable from an edit a session made itself. The harness printed `7/7 caught` and
+// exited 0 over it. Measured by `red:all`'s tree fingerprint on 2026-08-15 — the first run of
+// the reporting runner flagged this harness DIRTY, which is the whole reason that check exists.
+//
+// ⭐ Fixed the way §3.9 was: not by correcting the restore line, but by deleting the local rule.
+// `injectDefect` re-expresses the anchor in the FILE's own convention instead of dragging the
+// file into the anchor's, so the bytes on disk never change convention and the snapshot restored
+// is the snapshot taken.
 for (const m of MUTATIONS) {
-  const originalRaw = readFileSync(FEED, "utf8");
-  const original = lf(originalRaw);
-  if (!original.includes(m.from)) {
-    console.log(`  ✗ ${m.name}\n      ⛔ ANCHOR NOT FOUND — the harness is broken, not the guard.`);
+  const original = readFileSync(FEED, "utf8");
+  let mutated;
+  try {
+    mutated = injectDefect(original, m.from, m.to);
+  } catch (e) {
+    console.log(`  ✗ ${m.name}\n      ⛔ ANCHOR NOT FOUND — the harness is broken, not the guard. (${e.message})`);
     missed.push(`${m.name} (anchor missing)`);
     continue;
   }
-  writeFileSync(FEED, original.replace(m.from, m.to));
+  writeFileSync(FEED, mutated);
   try {
     if (readFileSync(FEED, "utf8") === original) throw new Error("mutation did not land on disk");
     let exitCode = 0, out = "";
