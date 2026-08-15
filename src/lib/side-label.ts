@@ -114,3 +114,37 @@ export function sideWordIn(locale: Locale, side: StoredSide | Direction, product
 export function outcomeWordIn(locale: Locale, outcome: StoredOutcome | Direction, productLine: LabelProductLine): string {
   return outcomeWord(dict[locale] as Dict, outcome, productLine);
 }
+
+/** How a position's own state is STORED (`PositionStatus` in the schema). */
+export type PositionStatusValue = "OPEN" | "WIN" | "LOSS" | "VOID" | "CASHED_OUT";
+
+/**
+ * What a player's own position is CALLED, in their language and their product.
+ *
+ * ⛔ THE ENUM ITSELF WAS REACHING PEOPLE. `notify-poller.tsx` put `p.status` straight into
+ * an **OS-level** browser notification title — so a Swahili player's phone read
+ * *"Soko limetatuliwa · WIN"* while the in-app toast three lines above it was fully
+ * localised. One event, two channels, one of them in English.
+ *
+ * ⚠️ Up & Down has its OWN words for these states and always has (`udPos*`) — which is
+ * exactly why this is product-aware rather than one flat map. `CASHED_OUT` is shared: the
+ * product has one word for it and there is no `udPosCashedOut` to disagree with.
+ */
+export function positionStatusWord(t: Dict, status: PositionStatusValue, productLine: LabelProductLine): string {
+  if (productLine === "UPDOWN") {
+    switch (status) {
+      case "OPEN": return t.market.udPosOpen;
+      case "WIN": return t.market.udPosWon;
+      case "LOSS": return t.market.udPosLost;
+      case "VOID": return t.market.udPosRefunded;
+      case "CASHED_OUT": return t.common.cashedOut;
+    }
+  }
+  switch (status) {
+    case "OPEN": return t.common.pending;
+    case "WIN": return t.market.resolvedWin;
+    case "LOSS": return t.market.resolvedLoss;
+    case "VOID": return t.common.voided;
+    case "CASHED_OUT": return t.common.cashedOut;
+  }
+}

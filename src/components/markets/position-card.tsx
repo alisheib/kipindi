@@ -9,7 +9,7 @@ import { Chip } from "@/components/ui/chip";
 import { Stat } from "@/components/ui/stat";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
-import { sideWord, type LabelProductLine } from "@/lib/side-label";
+import { sideWord, positionStatusWord, type LabelProductLine } from "@/lib/side-label";
 import { PositionShare } from "@/components/markets/position-share";
 
 type Props = {
@@ -51,13 +51,9 @@ type Props = {
 
 export function PositionCard({ marketId, marketTitle, side, productLine, stake, current, payout, status, bettingClosed, placedAt, positionId, refCode, className }: Props) {
   const { t } = useT();
-  const statusLabel = {
-    OPEN: t.common.pending,
-    WIN: t.market.resolvedWin,
-    LOSS: t.market.resolvedLoss,
-    VOID: t.common.voided,
-    CASHED_OUT: t.common.cashedOut,
-  }[status];
+  // §L2 — this local map was the second definition site for the position-status family;
+  // `notify-poller` had no map at all and printed the enum. One lexicon now serves both.
+  const statusLabel = positionStatusWord(t, status, productLine);
   return (
     <Link
       href={`/markets/${marketId}` as never}
