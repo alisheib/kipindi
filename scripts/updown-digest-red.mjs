@@ -37,10 +37,14 @@ const MUTATIONS = [
     // what actually reproduces E-43: a refund emitter nobody had gated.
     name: "ungate-refunds (E-43 as it shipped)",
     file: "src/lib/server/market-service.ts",
+    // ⚠️ RE-ANCHORED 2026-08-15: the title is `localizedText(...)` now, so every player
+    // notification carries all three market titles (§7.2c). The MUTATION is unchanged — the
+    // refund emitter comes out from behind `perEventNotificationsSuppressed`, which is E-43
+    // exactly as it shipped.
     from: `      if (!perEventNotificationsSuppressed(m)) {
-        notifyRefund(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id, positionId: p.id });
+        notifyRefund(p.userId, { stake: p.stake, marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh), marketId: m.id, positionId: p.id });
       } else {`,
-    to: `      notifyRefund(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id, positionId: p.id });
+    to: `      notifyRefund(p.userId, { stake: p.stake, marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh), marketId: m.id, positionId: p.id });
       if (false) {
       } else {`,
   },

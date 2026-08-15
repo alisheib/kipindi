@@ -47,8 +47,11 @@ const MUTATIONS = [
   {
     name: "notifyWin-default-href-restored (a default that is wrong for one of two products)",
     file: "src/lib/server/notification-service.ts",
-    find: `export function notifyWin(userId: string, amount: number, label: string, href: string) {`,
-    with: `export function notifyWin(userId: string, amount: number, label: string, href = "/positions") {`,
+    // ⚠️ RE-ANCHORED 2026-08-15: `label` became `LocalizedText` so every player notification
+    // carries all three market titles (§7.2c). The MUTATION is unchanged — restore the default
+    // href, which is wrong for one of two products.
+    find: `export function notifyWin(userId: string, amount: number, label: LocalizedText, href: string) {`,
+    with: `export function notifyWin(userId: string, amount: number, label: LocalizedText, href = "/positions") {`,
   },
   {
     name: "updown-position-falls-back-to-the-long-form-list (the rule itself)",
