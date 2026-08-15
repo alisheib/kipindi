@@ -326,7 +326,7 @@ export default async function MarketDetail({
   if (session && hedgeOpposite) {
     try {
       const b = await getBonusSummary(session.userId);
-      if (true) {
+      if (b.activeCount > 0 && b.activeWagerRemainingTzs > 0) {
         bonusWagerWarning = renderFailure(
           { ok: false, error: "", reason: "bonus_wagering_one_side", detail: { remaining: b.activeWagerRemainingTzs } },
           t.error as unknown as Record<string, string>,
@@ -449,6 +449,8 @@ export default async function MarketDetail({
             resolved={isResolved}
             empty={noPriceMarket}
             emptyLabel={t.market.noBetsYet}
+            probabilityLabel={t.market.probBarAria}
+            labels={{ yes: t.common.yes, no: t.common.no, tipping: t.market.tipping, leansYes: t.market.leansYes, leansNo: t.market.leansNo }}
           />
           {freshMarket && (
             <p className="-mt-3 text-center font-mono text-[11px] tracking-[0.06em] text-text-faint">
