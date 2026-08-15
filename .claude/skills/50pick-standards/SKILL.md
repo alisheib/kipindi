@@ -309,6 +309,22 @@ deployment**, which is the one safe failure mode here, and it is luck rather tha
 paths whatever else sits in the index. Fix forward rather than reverting: the other session's
 commit carries its own work too.
 
+🔴 **IT HAPPENED AGAIN — 2026-08-15, and staging surgically YOURSELF is not enough.** The
+labelling session staged only its own paths, every commit, all session. It was still hit: the
+*other* session's `git add -A` swept its in-flight `markets/[id]/page.tsx` — which passed a
+new `labels={{…}}` prop — into commit `690aa237` and pushed it, while `brand.tsx`, which
+*defines* that prop, sat uncommitted in the first session's tree. `main` could not typecheck,
+so `next build` failed and Railway could not deploy. Production was again untouched, again by
+luck.
+
+⭐ **THE LESSON THE FIRST INSTANCE DID NOT TEACH: your own discipline does not protect you —
+only the other session's does.** So when a change spans two files where one *types* the other
+(a prop and its call site, a type and its consumer), **commit them in the SAME commit, and do
+it promptly** — the window in which they sit uncommitted together is exactly the window an
+`add -A` can split them. ⚠️ And `git status` showing your file as clean is NOT proof it is
+unchanged: it can mean the other session committed it. Check `git show HEAD:<path>` before
+concluding anything about a file you edited.
+
 ⚠️ **AND A SHARED REGISTER MEANS SHARED IDS.** The same session filed a finding as `E-111`; the
 other session had already taken `E-111` minutes earlier. `test:tracker-hygiene` §1 caught it (one
 id claiming both *"FILED, NOT FIXED"* and *"FIXED + proven RED"*). **Re-grep the ids at the moment
