@@ -21,7 +21,7 @@
  *   3. Every design doc that is record carries a "RECORD, NOT RULE" banner, so a reader
  *      who lands in the middle of one knows what they are holding.
  */
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { globSync } from "node:fs";
 
 const AUTHORITY = "docs/DESIGN_AUTHORITY.md";
@@ -161,6 +161,32 @@ if (authorityCopies.length === 0) {
 } else {
   for (const c of authorityCopies) {
     bad(`${c} is a SECOND copy of the rulebook — delete it and link to ${AUTHORITY} instead (§0a: fix a duplicate by deleting one, never by keeping both in sync)`);
+  }
+}
+
+// ── 6 · the doc INDEX states a count it can actually be held to ──────────────
+// ⚠️ `docs/README.md` states how many files sit beside it. That number has been WRONG TWICE —
+// it once read "46 files … plus 45 documents" against a real 60, and `CLAUDE.md` carried a
+// third, different figure at the same time. A count written by hand next to the thing it
+// counts is `RULES.md` §7's *"a number written twice"*, and it goes stale the next time
+// anybody adds a document.
+//
+// ⛔ THE FIX IS NOT TO DELETE THE NUMBER. A reader genuinely wants to know whether the index
+// is complete, and "no count" cannot answer that. The fix is to make the number FALSIFIABLE:
+// derive the real one by LISTING, and fail here the moment the prose disagrees.
+{
+  const atLevel = readdirSync("docs", { withFileTypes: true }).filter((e) => e.isFile()).length;
+  const readme = readFileSync("docs/README.md", "utf8");
+  const claimed = /There are \*\*(\d+) files\*\* at this level — this index plus (\d+) documents/.exec(readme);
+  if (!claimed) {
+    bad("docs/README.md no longer states its file count in the form this guard reads — change the guard WITH the prose, never one without the other");
+  } else {
+    const total = Number(claimed[1]);
+    const docs = Number(claimed[2]);
+    if (total !== atLevel) bad(`docs/README.md claims ${total} files at its level; listing finds ${atLevel} — update the prose`);
+    else ok(`docs/README.md's count is derived-checkable and agrees with listing (${atLevel} files)`);
+    if (docs !== atLevel - 1) bad(`docs/README.md says "plus ${docs} documents", but ${atLevel} files means ${atLevel - 1} besides the index`);
+    else ok("…and its index-plus-documents arithmetic is self-consistent");
   }
 }
 

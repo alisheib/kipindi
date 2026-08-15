@@ -753,6 +753,28 @@ explained, not merely look small.
    that never went through the dictionary, so a Chinese screen-reader user **heard** it.
 3. 🔴 `conviction-dial.tsx`'s bet-placed TOAST was the notification defect one channel over.
 
+### 7.2b-tsc · 🔴 FILED 2026-08-15 · `npx tsc --noEmit` DOES NOT TYPECHECK THE TEST SUITE
+
+`tsconfig.json`'s `include` names `scripts/**/*.ts` — and **every test in this repo is `.mts`**.
+So the definition-of-done gate that every session runs, and that this one ran clean before
+pushing, covers **none of the ~226 suites**.
+
+⭐ **Measured, not suspected.** The 2026-08-15 `LocalizedText` change (§7.2c) altered a widely
+called signature. `npx tsc --noEmit` reported **clean**; `test:all` then failed **two** suites
+(`test:cert-c3`, `test:updown-digest`) on fixtures still passing bare strings. The compiler had
+the information and was not asked.
+
+⚠️ **The fix is not one line, which is why it is filed rather than done.** Adding
+`scripts/**/*.mts` to `include` produces **1324 errors**, and essentially all of them are
+`TS5097` — *"an import path can only end with a '.ts' extension when
+`allowImportingTsExtensions` is enabled"*. The suites import `../src/lib/foo.ts` **with** the
+extension because that is what `tsx` wants. So closing this means enabling
+`allowImportingTsExtensions` (legal here — the gate is already `--noEmit`) and then reading
+whatever REAL errors remain underneath, which nobody has ever seen.
+
+⛔ **Do not "fix" it by deleting the extensions**: that would break every suite at runtime.
+⛔ And do not raise it as a small tidy-up — the value is precisely in the unknown remainder.
+
 ### 7.2c · FILED, not fixed — these need a decision, not a session's guess
 
 - ✅ **`red:all` exits 1 before it reaches most guards** — **CLOSED 2026-08-15**, and what it was
@@ -767,11 +789,34 @@ explained, not merely look small.
   full-fleet run and **confirmed at exactly 11/16**, the third independent measurement to agree.
   ⛔ It is no longer what starves the fleet: `red:all` is a reporting runner now (§8). See §8 for
   what it was starving.
-- ⚠️ **Notification titles are English-only across all three languages.** `notifyWin` takes a
-  `label` that the caller builds from `m.titleEn`, so a Chinese player's inbox reads a
-  Chinese sentence around an English market question. The ticker fixed exactly this for its
-  own titles (`ticker-feed.ts` header); the notification path never did. It needs the notify
-  signature to carry all three titles — a shape change, not a word change.
+- ✅ **Notification titles are English-only across all three languages** — **CLOSED
+  2026-08-15.** It was exactly the shape change this entry predicted: `LocalizedText
+  { en, sw, zh }`, built by `localizedText()` and carried by every player emitter. Nine
+  callers in `market-service` and the two `alertWatchers*` entry points now pass all three
+  titles. ⚠️ `notifyAdminObjectionFiled` deliberately stays a bare string — the console is
+  monolingual English by design — and `test:labels` §7f pins it as the ONLY survivor, so the
+  guard cannot be satisfied by quietly reverting a player emitter. Emails are untouched:
+  EN+SW in one message is a recorded position, and two call sites one line apart in
+  `market-service` are one notify and one email.
+- ✅ **`trust-band.tsx` has no null arm** — **CLOSED 2026-08-15**, and it needed no product
+  decision after all. This entry said unifying it "forces a product decision about what the
+  landing shows for an unrecorded outcome". `ticker.ts` rule 5 (law 25) had already made
+  that decision — *"a row whose outcome is absent is DROPPED rather than guessed"* — and the
+  landing was simply bypassing it, because `page.tsx` feeds the band from
+  `recentSettlements` directly. Applying an existing rule to the surface that was skipping
+  it is not a new decision. Both ends are pinned by `test:outcome`.
+- ✅ **UD-20 — a hedged holder is quoted BOTH outcomes on `/updown/[roundId]`.** Measured
+  2026-08-15 and found **already shipped**, in `209a97da`: `getRoundDetail` returns
+  `myPayoutIfUp`/`myPayoutIfDown` from the same `projectedPayout` settlement uses, the round
+  page passes them, and `round-action-panel.tsx`'s locked branch renders both rows. Guarded
+  at `test:updown-hedge-quote` (28) and `red:updown-hedge-quote` (8/8) — whose
+  `the-panel-stops-rendering-the-pair` mutation reads the COMPONENT, because a payload
+  nobody paints is not a fix. ⚠️ Recorded here because the finish-line commission listed it
+  as open; no change was needed and none was invented.
+  ⚠️ **One cosmetic difference is left deliberately**: the round page reads *"If it closes UP
+  **you get** X"* while the board card omits *"you get"*. The card is the visual sweep's
+  territory this session, and the omission is a density choice on a small card, not a
+  defect — filed rather than edited across a session boundary.
 
 ### 7.3 · Where the lexicon says the platform is already right — ⛔ do not "fix" these
 

@@ -5760,6 +5760,103 @@ state**, 1,338,504 of players' stakes in escrow, and every ledger entry ever wri
 > landing one atom per commit. Read the block directly below this note before touching
 > `src/app/globals.css`, `src/app/motion.css`, or anything under `src/components/ui/`.
 
+### 🟢 Laptop B, session 47 (2026-08-15) — ⭐ THE FINISH LINE: THE INSTRUMENTS FIRST, AND THEY WERE WORSE THAN ANYBODY HAD MEASURED
+
+#### ⏭️ **RESUME AT (session 48):** ⭐ **`qa:refusal-frames`' DRIVE HALF — the one commissioned item this session did NOT close.**
+
+> 💰 **THE MONEY POSITION, FIRST AND PLAINLY.** ⛔ **No money path was changed by this session,
+> and no money defect was found to file.** Every commit is instruments, refusal *copy/routing*,
+> a landing label, a notification shape and a toast/modal layering rule. `src/lib/payout.ts`,
+> `market-service`'s settlement arithmetic, the ledger, the fee snapshot and the wallet were
+> not touched — the two edits inside `market-service.ts` add a `reason:` token to an existing
+> refusal and swap a notification's title argument, neither of which moves a shilling.
+> `e2e:money`, `test:money-invariants`, `test:ledger`, `test:fee-model` and `test:trial-balance`
+> all ran green in `test:all` (222 suites, 316s).
+
+**WHAT WAS COMMISSIONED, AND WHAT LANDED.** Twelve units, A–L. **Eleven closed, one left open
+and named below.** Order was not negotiable: the instruments came first, because fixing product
+defects while the fleet that protects them is disarmed is how the last `if (true)` shipped.
+
+**▶ THE INSTRUMENTS (A–E) — and what they found the moment they could see.**
+
+- ⭐ **`red:all` is a reporting runner** (`255c1782`). It was a 41-segment `&&` chain, so it
+  reported the FIRST failure and went silent — and a RED harness exits non-zero for two
+  entirely different reasons (the guard missed a defect, or the harness cannot find its own
+  anchor). **68 harnesses are declared; the chain named 41. TWENTY-SEVEN HAD NEVER RUN.**
+- 🔴 **The first full run found ONE HARNESS CORRUPTING THE TREE.** `red:updown-bars` rewrote
+  740 lines of `src/lib/server/updown-feed.ts` from CRLF to LF **on every run it has ever
+  done**, and restored the normalised copy while its own comment three lines up claimed it
+  restored the original bytes. ⛔ **`git diff` normalises line endings, so it printed NOTHING** —
+  §3.8's exact invisibility, on a harness printing `7/7 caught` and exiting 0. This is why the
+  runner fingerprints the tree per harness, and why it must never repair it.
+- **10 of 68 harnesses were failing.** Six could not resolve their own anchors (23 anchors);
+  one had **never run on Windows at all** (`execFileSync("npx", …)` is ENOENT here, and its
+  catch turned that into "the suite is already red" against a suite passing 82/82); two were
+  hiding **real defects in the gates they protect** — `test:m1-light` could not see any shadow
+  declaration preceded by a `//` comment, and `qa:results-board` passed 32 assertions on a
+  board with **zero rows**, where every promise/delivery pair is `0 ≤ 0`.
+- ⭐ **`test:red-anchors`** (`e8f6d51e`) — a static audit that reads and never mutates, so it is
+  safe inside `test:all`. It proves reachability from `red:all` (the check with a body count:
+  `red-e64` sat outside every runner for eight days) and resolves declared anchors through
+  `red-anchor.mjs`'s own resolver. ⚠️ **Its coverage is stated, not implied**: ONE harness
+  declares today; §4 ratchets the other 67 and prints all of them every run.
+
+**▶ THE REFUSALS (F–G).**
+
+- `RULES.md` §2.9's last ⏳ premise **was false when it was written** — the service had emitted
+  `loss_limit_daily` since `19ac78ec`. Removing the dead phrase test **exposed a live defect it
+  had been masking**: the acknowledge modal took its HEADING from SEVERITY, and every
+  modal-channel reason is `error`, so a player who hit the cap **they set themselves** read
+  *"Betting unavailable"*.
+- **No action layer decides a refusal by phrase-matching English any more.** Three did; in one,
+  `PW_WEAK` was the FALLBACK arm, so any unmatched refusal told the player to choose a stronger
+  password. And **six `REASON_BY_CODE` rows mapped codes NOTHING has ever emitted**, while §9
+  proved them "working" by synthesising the code itself.
+
+**▶ THE PRODUCT (I–K).**
+
+- **UD-20 was already shipped** (`209a97da`) — measured, verified at 28 + 8/8, and **not
+  re-done**. Recorded in §7.2c so it is not re-found.
+- 🔴 **The toast/modal fix was WRONG on its first implementation and every static guard was
+  GREEN over it.** §10 passed all nine assertions and `red:feedback-law` caught all three of its
+  mutations — then a real bet at 360 in three languages showed the toast on screen over the
+  receipt anyway. ⛔ **Only the rendered frame could see it.** The driver that caught it is now
+  `npm run qa:toast-modal`, because the one thing that found the defect should not be the one
+  thing thrown away.
+
+**⛔ WHAT IS OPEN, AND WHY — READ THIS BEFORE PLANNING SESSION 48.**
+
+1. **`qa:refusal-frames`' drive half (unit H) — NOT STARTED.** The locale half passes 12/12; the
+   drive half cannot reach the banners because they are client-gated or post through the kit
+   `Select`'s hidden input. ⛔ **Do not "fix" it by navigating to `?reason=…`** — that proves the
+   renderer renders and nothing else. Mint a real reset token, or drive `/profile/kyc`
+   submit-for-review with fewer than three documents. It was left because the session's
+   remaining capacity was spent on the verification and deploy the other eleven units needed,
+   and half-driving it would have been worse than leaving it honestly named.
+2. 🔴 **`npx tsc --noEmit` DOES NOT TYPECHECK THE TEST SUITE** — filed at §7.2b-tsc, and it bit
+   this session. `tsconfig` includes `scripts/**/*.ts`; every suite is `.mts`. The gate ran
+   clean and `test:all` then failed two suites on stale fixtures. Closing it means enabling
+   `allowImportingTsExtensions` and reading the ~real errors underneath **1324** mostly-`TS5097`
+   noise. ⛔ Not a tidy-up: the value is the unknown remainder.
+3. **66 harnesses still do not declare their anchors** (`test:red-anchors` §4 ratchet at 67,
+   minus the one converted). Each conversion is a `scripts/anchors/<name>.anchors.mjs` sidecar
+   and lowers the ceiling in the same commit.
+4. **`test:labels` §4 is at 14** (was 15). The remaining sites are named in that file with the
+   reason each survived; `market-card.tsx` needs `test:outcome` §3 rewritten in the same commit.
+
+**⚠️ TWO TRAPS THIS SESSION PAID FOR TWICE EACH — they will cost you the same hour.**
+
+- ⛔ **A COMMENT THAT QUOTES DELETED CODE IS A DECOY ANCHOR.** `red:failure-reasons` found its
+  mutation anchor **inside the comment explaining the deletion** — uniquely, so `red-anchor.mjs`
+  was satisfied — mutated prose, changed nothing, and reported the guard as having missed. The
+  same shape kept `test:labels` §4 at 15: the note explaining the trust-band fix quoted the line
+  it had just removed, and **was itself the fifteenth private word-map.** Describe old code; do
+  not paste it.
+- ⛔ **APPENDING A SECTION TO A SUITE PUTS IT AFTER THE VERDICT.** Twice, `cat >>` placed new
+  assertions below the summary and `process.exit`, so they printed after the result and could
+  not fail the run. Insert above the summary, and compute the total after the last assertion.
+
+
 ### 🟢 Laptop A, session 45 (2026-08-15) — ⭐ THE FEEDBACK LAYER GETS A LAW, AND A BACKGROUND POLL WAS BUZZING THE WIN PATTERN OVER LOSSES
 
 #### ⏭️ **RESUME AT (session 46):** ⭐ **LABELLING — the whole platform, every layer, three languages. The prompt is [`docs/SESSION-PROMPT-LABELLING.md`](SESSION-PROMPT-LABELLING.md).**

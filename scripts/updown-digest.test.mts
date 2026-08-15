@@ -224,8 +224,12 @@ for (const emitter of ["notifyRefund", "notifyOneSidedRefund", "notifyWin", "not
     callIdx.length - gated.length === allowedUngated,
     `ungated=${callIdx.length - gated.length}`);
 }
+// ⚠️ RE-ANCHORED 2026-08-15: the title is `localizedText("Orphaned position")` now — every
+// player emitter carries all three languages (§7.2c), so the bare-string form is gone. The
+// assertion is unchanged in substance: the ONE ungated `notifyRefund` must be the orphan
+// repair, and it is identified by that phrase rather than by its position in the file.
 ok("the one exempt notifyRefund is the orphan repair, not a round",
-  /Orphaned position/.test(ms.slice(ms.indexOf("notifyRefund(p.userId, { stake: p.stake, marketTitle: \"Orphaned position\"")-200 || 0, ms.indexOf("Orphaned position") + 40)));
+  /notifyRefund\(p\.userId, \{ stake: p\.stake, marketTitle: localizedText\("Orphaned position"\)/.test(ms));
 
 // ── 6 · Idempotence, DRIVEN ───────────────────────────────────────────────────
 section("6 · run it twice — the second run must send nothing");
