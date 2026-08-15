@@ -22,19 +22,32 @@
  * email (no ZH variant exists there by decision). Those pass through unchanged.
  */
 import type { Dict } from "@/lib/i18n-dict";
+import { hasReason, renderFailure, type FailureReason, type FailureDetail } from "@/lib/failure-reasons";
+import { formatTzs } from "@/lib/utils";
 
 export type ActionFailure = {
   code?: string;
   error?: string;
   retryAfterSec?: number;
+  /** The machine reason, when the service emits one. Beats every phrase test below. */
+  reason?: string;
+  /** The figures, as NUMBERS. Never parsed back out of `error`. */
+  detail?: FailureDetail;
 };
 
-/** Extract "TZS 1,234" style figures from a service string, in order. */
-function tzsFigures(s: string): string[] {
-  return s.match(/TZS\s?[\d,]+/g) ?? [];
-}
-
 export function errorCopy(t: Dict, r: ActionFailure): string {
+  // ⭐ THE REGISTRY FIRST, AND THIS IS WHAT LETS A PHRASE TEST BE DELETED RATHER THAN LEFT
+  // BESIDE ITS REPLACEMENT. Once a service says WHY in a machine token, nothing below needs to
+  // guess it back out of English prose — same row, same copy, same figures as `renderFailure`
+  // hands every other surface, so the two mappers cannot drift into two wordings for one refusal.
+  if (hasReason(r)) {
+    return renderFailure(
+      { ok: false, error: r.error ?? "", code: r.code, reason: r.reason as FailureReason, detail: r.detail, retryAfterSec: r.retryAfterSec },
+      t.error as unknown as Record<string, string>,
+      t.error.somethingDidntWork,
+      formatTzs,
+    ).body;
+  }
   const err = r.error ?? "";
   switch (r.code) {
     case "RATE_LIMITED":
@@ -83,16 +96,18 @@ export function errorCopy(t: Dict, r: ActionFailure): string {
     case "INVALID": {
       // Bilingual EN·SW gateway copy passes through (see header).
       if (err.includes("·")) return err;
-      if (/deposit limit .* exceeded|deposit limit reached/i.test(err)) return t.error.errDepositLimit;
+      // ⛔ THREE PHRASE TESTS WERE DELETED HERE, and their services now emit a `reason`:
+      //   · `deposit limit … exceeded`      → wallet-service, reason "deposit_limit"
+      //   · `source.of.funds`               → wallet-service, reason "sof_required"
+      //   · `smallest amount we can send`   → wallet-service, reason "withdraw_below_min"
+      // The last one took `tzsFigures` with it — a regex that pulled "TZS 1,234" figures OUT OF
+      // THE ENGLISH SENTENCE and fed match[0] into {net} and match[1] into {min}. A reworded
+      // sentence, a third TZS figure, or a translated one and the player got the wrong number,
+      // or a literal "{net}", on a money screen. The figures are `detail` numbers now.
+      // ⛔ Do not re-add a phrase test for any of the three: a reason beats prose, and two
+      // routes to one refusal is how they drift apart.
       if (/loss limit/i.test(err)) return t.error.errLossLimit;
-      if (/source.of.funds|source-of-funds/i.test(err)) return t.error.errSofRequired;
       if (/verify your identity/i.test(err)) return t.error.errVerifyIdentity;
-      if (/smallest amount we can send/i.test(err)) {
-        const figs = tzsFigures(err);
-        if (figs.length >= 2) {
-          return t.error.errWithdrawMin.replace("{net}", figs[0]).replace("{min}", figs[1]);
-        }
-      }
       // KYC families (kyc-service keeps one code; the strings are stable).
       if (/National ID is already linked/i.test(err)) return t.error.errNidaTaken;
       if (/JPG, PNG, or WebP|Empty image/i.test(err)) return t.error.errDocImage;

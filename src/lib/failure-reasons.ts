@@ -102,6 +102,7 @@ export type FailureReason =
   | "withdraw_below_min"
   | "email_invalid"
   | "email_taken"
+  | "email_unverified"
   | "name_invalid"
   | "avatar_type"
   | "avatar_size"
@@ -186,6 +187,13 @@ export const REASONS: Record<FailureReason, ReasonSpec> = {
   withdraw_below_min:   { severity: "warning", channel: "inline", key: "errWithdrawMin", needs: ["net", "min"] },
   email_invalid:        { severity: "warning", channel: "inline", key: "errEmailInvalid" },
   email_taken:          { severity: "warning", channel: "inline", key: "errEmailTaken" },
+  // ⛔ NOT an error, and not a money fault: the deposit was refused because the address that
+  // will carry the receipt is not confirmed yet. The player fixes it by opening a link that is
+  // already in their inbox, so it is a WARNING with the next step named — never a red failure
+  // on the money-in path. `EMAIL_UNVERIFIED` has been a distinct server code since the
+  // email gate shipped, and until now nothing rendered it: `errorCopy` had no branch for it, so
+  // it fell to `default:` and printed the SERVER'S OWN ENGLISH SENTENCE to a SW/ZH player.
+  email_unverified:     { severity: "warning", channel: "inline", key: "errEmailUnverified" },
   name_invalid:         { severity: "warning", channel: "inline", key: "errNameInvalid" },
   avatar_type:          { severity: "warning", channel: "inline", key: "errAvatarType" },
   avatar_size:          { severity: "warning", channel: "inline", key: "errAvatarSize" },
@@ -239,6 +247,7 @@ const REASON_BY_CODE: Readonly<Record<string, FailureReason>> = {
   AUTH: "signin_required",
   EMAIL_INVALID: "email_invalid",
   EMAIL_TAKEN: "email_taken",
+  EMAIL_UNVERIFIED: "email_unverified",
   NAME_INVALID: "name_invalid",
   AVATAR_TYPE: "avatar_type",
   AVATAR_SIZE: "avatar_size",
@@ -287,8 +296,16 @@ export interface ReasonedFailure {
   retryAfterSec?: number;
 }
 
-/** True when `r` carries a reason this registry knows. */
-export function hasReason(r: { reason?: string } | null | undefined): r is { reason: FailureReason } {
+/**
+ * True when `r` carries a reason this registry knows.
+ *
+ * ⚠️ GENERIC ON PURPOSE. The first version narrowed to the bare `{ reason: FailureReason }`,
+ * which REPLACES the caller's type instead of refining it — so inside the `if`, every other
+ * field (`error`, `code`, `detail`, `retryAfterSec`) vanished from the type and the narrowed
+ * value could no longer be passed to `renderFailure` at all. Intersecting keeps the object the
+ * caller actually has.
+ */
+export function hasReason<T extends { reason?: string }>(r: T | null | undefined): r is T & { reason: FailureReason } {
   return !!r?.reason && Object.prototype.hasOwnProperty.call(REASONS, r.reason);
 }
 

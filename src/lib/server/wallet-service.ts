@@ -22,6 +22,7 @@ import { isMaintenanceMode, maintenanceMessage } from "./platform-config";
 import { rateCheckAsync } from "./rate-limit";
 import { DepositSchema, AdminDepositSchema, WithdrawSchema } from "./validators";
 import { checkDepositLimit, isLockedOut } from "./responsible-gambling";
+import type { FailureReason, FailureDetail } from "@/lib/failure-reasons";
 import { notifyDeposit, notifyWithdraw, notifyAdminsAmlReview } from "./notification-service";
 import { withLock } from "./locks";
 import { emit } from "./event-bus";
@@ -152,9 +153,13 @@ export async function deposit(
   // deliberately kept OUT of the lock (below) — a network call must never hold it.
   const thirtyDaysAgo = Date.now() - 30 * 24 * 3600_000;
 
+  // ⭐ C2 SECOND TRANCHE · the refusal carries a machine `reason` beside the code. `code` stays
+  // "INVALID" — it is API and audit truth and callers depend on it — but INVALID means four
+  // things here (cap, SOF, bad input, …), so the copy layer used to recover the meaning by
+  // substring-matching this English prose. `reason` makes that exact.
   type Reservation =
     | { ok: true; txn: StoredTxn; reused: boolean }
-    | { ok: false; error: string; code: "INVALID" };
+    | { ok: false; error: string; code: "INVALID"; reason?: FailureReason };
 
   const reservation: Reservation = await withLock(`wallet:${userId}`, async (): Promise<Reservation> => {
     // Responsible-gambling deposit-limit (daily / weekly / monthly), re-read
@@ -163,7 +168,7 @@ export async function deposit(
       const limitCheck = await checkDepositLimit(userId, parse.data.amount);
       if (!limitCheck.allowed) {
         await audit({ category: "COMPLIANCE", action: "deposit.limit_blocked", actorId: userId, targetType: "User", targetId: userId, payload: { reason: limitCheck.reason } });
-        return { ok: false, error: limitCheck.reason ?? "Deposit limit reached.", code: "INVALID" };
+        return { ok: false, error: limitCheck.reason ?? "Deposit limit reached.", code: "INVALID", reason: "deposit_limit" };
       }
     }
 
@@ -195,7 +200,7 @@ export async function deposit(
           parse.data.amount >= SOF_SINGLE_TXN_TZS
             ? `Deposits of ${formatTzs(SOF_SINGLE_TXN_TZS)} or more require a Source of Funds declaration on file.`
             : `Your rolling 30-day deposits would exceed ${formatTzs(SOF_ROLLING_30D_TZS)}, which requires a Source of Funds declaration on file.`;
-        return { ok: false, error: `${reasonEn} Submit one at /profile/source-of-funds and wait for compliance to accept it.`, code: "INVALID" };
+        return { ok: false, error: `${reasonEn} Submit one at /profile/source-of-funds and wait for compliance to accept it.`, code: "INVALID", reason: "sof_required" };
       }
     }
 
@@ -237,7 +242,7 @@ export async function deposit(
     }
   });
 
-  if (!reservation.ok) return { ok: false, error: reservation.error, code: reservation.code };
+  if (!reservation.ok) return { ok: false, error: reservation.error, code: reservation.code, reason: reservation.reason };
   const txn = reservation.txn;
   const txnId = txn.id;
   if (reservation.reused) {
@@ -1299,6 +1304,14 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
       ok: false,
       error: `The smallest amount we can send is TZS ${PROVIDER_MIN_PAYOUT_TZS.toLocaleString()} after the fee. Withdraw at least TZS ${minGross.toLocaleString()}.`,
       code: "INVALID",
+      // ⛔ THE FIGURES ARE NUMBERS, AND THIS IS THE ONE THAT PROVES WHY. `errorCopy` used to
+      // recover both of them by running a regex over the sentence above (`tzsFigures`) and
+      // feeding match[0] into {net} and match[1] into {min}. Reword the sentence, add a third
+      // TZS figure, or translate it, and the player silently gets the wrong number — or a bare
+      // "{net}" — on a money screen, with every "does it name the minimum" assertion still
+      // green. docs/RULES.md §2.9 records that exact defect shipping in all three languages.
+      reason: "withdraw_below_min" as FailureReason,
+      detail: { net: PROVIDER_MIN_PAYOUT_TZS, min: minGross } satisfies FailureDetail,
     };
   }
   const providerLabel = friendlyProvider(parse.data.provider);

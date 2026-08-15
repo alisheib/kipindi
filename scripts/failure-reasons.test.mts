@@ -391,9 +391,11 @@ console.log("\n§8 · the phrase tests still match the server's own words");
 
   /** A phrase test, the code it lives under, and the line it must produce. */
   const PINS: Array<{ name: string; code: string; re: RegExp; expect: string }> = [
-    { name: "deposit limit",        code: "INVALID",   re: /deposit limit .* exceeded|deposit limit reached/i, expect: t.error.errDepositLimit },
+    // ⛔ `deposit limit`, `source of funds` and `smallest amount we can send` USED TO BE PINNED
+    // HERE. Their services now emit a machine `reason`, the phrase tests are deleted, and §8b
+    // below proves the replacement. A pin left beside its replacement is two routes to one
+    // refusal — exactly what drifts apart.
     { name: "loss limit",           code: "INVALID",   re: /loss limit/i,                       expect: t.error.errLossLimit },
-    { name: "source of funds",      code: "INVALID",   re: /source.of.funds|source-of-funds/i,  expect: t.error.errSofRequired },
     { name: "verify your identity", code: "INVALID",   re: /verify your identity/i,             expect: t.error.errVerifyIdentity },
     { name: "NIDA already linked",  code: "INVALID",   re: /National ID is already linked/i,    expect: t.error.errNidaTaken },
     { name: "doc image type",       code: "INVALID",   re: /JPG, PNG, or WebP|Empty image/i,    expect: t.error.errDocImage },
@@ -439,15 +441,71 @@ console.log("\n§8 · the phrase tests still match the server's own words");
   ok("8.control · …and so does an unrecognised SUSPENDED string",
      bogus2 === t.error.errSuspended, `got "${bogus2.slice(0, 60)}"`);
 
-  // ⛔ AND THE WITHDRAWAL MINIMUM CARRIES TWO FIGURES RECOVERED FROM PROSE — the very defect
-  // `detail` exists to retire. Pin that it still finds both, so the day it stops the player
-  // does not silently get "{net}" and "{min}" back.
-  const wmin = literals.find((s) => /smallest amount we can send/i.test(s));
-  ok("8.withdraw-min · the withdrawal-minimum sentence still exists on the server", !!wmin,
-     wmin ? `"${wmin.slice(0, 62)}"` : "the phrase moved");
-  const rendered = errorCopy(t, { code: "INVALID", error: "That leaves TZS 900 after the fee, and the smallest amount we can send is TZS 1,000." });
-  ok("8.withdraw-min · …and both figures are interpolated, with no placeholder left behind",
-     rendered.includes("900") && rendered.includes("1,000") && !/\{\w+\}/.test(rendered), rendered.slice(0, 90));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §8b · THE REPLACEMENT — a machine reason beats every phrase test above
+// ═══════════════════════════════════════════════════════════════════════════
+// ⭐ THIS SECTION IS THE OTHER HALF OF DELETING A PHRASE TEST. §8 proves the tests that REMAIN
+// still match; this proves the ones that were REMOVED were replaced by something exact rather
+// than simply dropped. Each case feeds `errorCopy` the shape the SERVICE now returns — reason
+// plus numeric `detail` — and asserts the player's own line comes back.
+//
+// ⛔ AND IT ASSERTS THE FIGURES CAME FROM `detail`, NOT FROM THE PROSE. The `error` string in
+// each fixture below is deliberately WRONG or empty: if any figure still leaked out of the
+// sentence, these would render it and fail.
+console.log("\n§8b · the reasons that replaced the deleted phrase tests");
+{
+  const { errorCopy } = await import("../src/lib/error-copy.ts");
+
+  for (const [lang, t] of [["en", DICT.en], ["sw", DICT.sw], ["zh", DICT.zh]] as const) {
+    // ── withdraw_below_min · the one that retired `tzsFigures` ────────────────
+    const w = errorCopy(t, {
+      code: "INVALID",
+      // ⚠️ Prose that names DIFFERENT figures on purpose. If the mapper ever reads the sentence
+      // again, 7,777 shows up in the output and this fails.
+      error: "The smallest amount we can send is TZS 7,777 after the fee. Withdraw at least TZS 8,888.",
+      reason: "withdraw_below_min",
+      detail: { net: 1000, min: 1016 },
+    });
+    ok(`8b.withdraw-min.${lang} · renders its OWN line, not the generic fallback`,
+       w !== t.error.somethingDidntWork && w !== t.error.errInvalid, w.slice(0, 70));
+    ok(`8b.withdraw-min.${lang} · ⛔ NO placeholder survives — the {min}-twice defect`,
+       !/\{\w+\}/.test(w), w.slice(0, 70));
+    ok(`8b.withdraw-min.${lang} · both figures come from detail, as numbers`,
+       w.includes("1,000") && w.includes("1,016"), w.slice(0, 90));
+    ok(`8b.withdraw-min.${lang} · ⛔ and NOTHING was scraped out of the prose`,
+       !w.includes("7,777") && !w.includes("8,888"), w.slice(0, 90));
+
+    // ── deposit_limit / sof_required / email_unverified ───────────────────────
+    for (const [reason, key] of [
+      ["deposit_limit", "errDepositLimit"],
+      ["sof_required", "errSofRequired"],
+      ["email_unverified", "errEmailUnverified"],
+    ] as const) {
+      const got = errorCopy(t, { code: "INVALID", error: "Something entirely reworded happened.", reason });
+      ok(`8b.${reason}.${lang} · the reason wins over the prose`,
+         got === (t.error as unknown as Record<string, string>)[key], got.slice(0, 70));
+    }
+  }
+
+  // ⭐ THE POSITIVE CONTROL. Without it, a `hasReason` that always returned false would leave
+  // every assertion above passing through the OLD path — and on `en` several of them would
+  // still look right. Prove an unknown reason really does fall through.
+  const t = DICT.en;
+  const bogus = errorCopy(t, { code: "INVALID", error: "Something entirely reworded happened.", reason: "not_a_real_reason" });
+  ok("8b.control · ⚠️ an UNKNOWN reason falls through to the phrase tests, not to a blank",
+     bogus === t.error.errInvalid, bogus.slice(0, 70));
+  // ⛔ And the deleted phrase tests are really gone — feeding the old sentences with NO reason
+  // must now reach the generic line. If any still mapped, the deletion was cosmetic.
+  for (const [name, sentence] of [
+    ["deposit limit", "Daily deposit limit of TZS 50,000 would be exceeded."],
+    ["source of funds", "Deposits of TZS 1,000,000 or more require a Source of Funds declaration on file."],
+    ["withdraw min", "The smallest amount we can send is TZS 1,000 after the fee. Withdraw at least TZS 1,016."],
+  ] as const) {
+    ok(`8b.deleted · "${name}" no longer has a phrase test`,
+       errorCopy(t, { code: "INVALID", error: sentence }) === t.error.errInvalid);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
