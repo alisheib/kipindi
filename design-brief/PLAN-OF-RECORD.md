@@ -906,6 +906,14 @@ Put to him as four plain-English choices at the close of batch 5, with the trade
 | Admin filter rails · `/wallet`'s section tabs | ⛔ **Leave both as they are** | The exclusions are now RULED, not merely defensible. ⛔ Do not propose them again |
 | The stale QA credentials | ▶ **Re-mint from the office PC** | Done — 6/6, and all eight rails then verified on production |
 
+### Found by batch 6, NOT batch 6's — filed rather than fixed (2026-08-15)
+
+| Finding | Measured | Why it is not fixed here |
+|---|---|---|
+| 🔴 **The language menu's panel hangs off the LEFT edge of the screen at ≤390px** | `responsive-audit` against **production**: `/markets@xs button[KiswahiliSW] l-71 r123 > vw320`, `@sm l-63 r131 > vw360`, `@md l-33 r161 > vw390`. Identical on `/admin/markets`, so it is the shared top bar, on every page. `a[Sign up]` is clipped at `xs` too (`l239 r337 > vw320`) | `ui/language-menu.tsx` is a cross-cutting shell component on **every** surface, and a second session is working this clone. Changing it inside a filter batch that has already shipped and been verified would put an unverified edit on every page. It needs its own pass at the four widths × three locales, which is what it will get |
+| ⚠️ **The board does not render at all with JavaScript disabled** | `.kp-discovery-bar` 0px inside a `display: none` holder, 19 streamed `<template>`s, on production. See §8.7i | A page-architecture change (the Suspense boundary and streaming strategy), not a filter one, and not commissioned. `qa:discovery-board` prints it on every run so it cannot go quiet |
+| ⚠️ **`a[Details]` is 17px painted at all ten widths** | `responsive-audit` soft-warns 6 per board | ⛔ NOT a defect — batch 4 grew the HIT AREA to 40px with an `::after` while deliberately keeping the paint at 17px, and `qa:tap-hit` proves it by walking `elementFromPoint`. A bounding-box audit cannot see that, which is why the warning is a warning |
+
 ### Batch 5's own deferrals — named, with the reason (2026-08-14)
 
 | Deferred | Why | What it needs |
