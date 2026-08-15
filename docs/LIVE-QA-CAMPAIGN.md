@@ -5778,6 +5778,29 @@ state**, 1,338,504 of players' stakes in escrow, and every ledger entry ever wri
 
 ⚠️ **A PROCESS LESSON, PAID FOR IN THIS SESSION:** killing a mutation harness mid-run **zeroed two source files** (`round-action-panel.tsx`, `updown-board.ts`). Their "restored byte-for-byte" contract only holds if the run completes. Caught by scanning for NUL bytes; restored from git and re-applied. ⛔ **Never `TaskStop` a red harness.**
 
+---
+
+### 🔴 UNFILED LIVE PRODUCTION DEFECT — UP & DOWN CANNOT OPEN A ROUND, AND IT IS NOW DIAGNOSED
+
+⚠️ **NEEDS AN `E-` ID.** Deliberately not claimed here: the register is shared and an id must be re-grepped at the moment of filing (it stood at **E-160** at 2026-08-15 ~12:5x). Whoever files it, take the next free one.
+
+**Symptom** — the session-44 record already flagged this and left it uninvestigated: *"every Up & Down chain refusing to open on `open price for <boundary> not published yet`, retrying every 15s across at least five chains."* It is still happening, and it is **not** a weekend effect: the FX/metals chains report the Saturday closure separately and correctly, while the CRYPTO chains fail for a different reason.
+
+**The cause, read off `railway logs -s 50pick` on 2026-08-15:**
+
+```
+Invalid `prisma.upDownObservation.create()` invocation:
+Unique constraint failed on the fields: (`assetId`,`boundaryAt`)
+```
+
+**The chain of consequence.** Several chains share a boundary instant — that is the whole point of the epoch lattice in `updown-durations.ts` (*"one paid provider read still serves every chain whose boundary meets there"*). Each of them independently **`create`s** the observation for `(assetId, boundaryAt)`. The first wins; every other one throws `P2002` against the unique constraint. The write is **not idempotent**, so for those chains no CONFIRMED observation is recorded → no open price exists for that boundary → `openRound` correctly declines to open a round that could only void → **the product is dark on production.**
+
+⭐ **The guard is behaving correctly and is not the bug.** Declining to open a priceless round is right. The bug is one layer down: a shared read is being written as if it were exclusive.
+
+**Likely shape of the fix** (not attempted here — it is money-adjacent settlement data, and this session had no mandate for it): make the observation write idempotent — an `upsert` on the `(assetId, boundaryAt)` unique key, or catch `P2002` and re-read the row the winner wrote. ⛔ Whichever, the losing racer must end up **reading the same observation**, never fabricating a second one — two prices for one boundary is a settlement fork.
+
+⚠️ **VERIFY THE BLAST RADIUS BEFORE FIXING:** how long has this been live, and did any round settle against a partially-written observation set? `UpDownObservation` rows plus the round table answer it. This session did not check.
+
 ### 🟢 Laptop A, session 44 (2026-08-11) — ⭐ A READ-ONLY AUDITOR WAS OFFERED THE EMERGENCY STOP FOR THE PAYMENT RAIL
 
 #### ⏭️ **RESUME AT (session 45):** ⭐ **READ [`docs/ADMIN-CONSOLE-FINDINGS.md`](ADMIN-CONSOLE-FINDINGS.md) FIRST — it is the record and it carries a COVERAGE section in three buckets; this block is only the pointer.** Six findings (**A1–A6**) filed and **all six shipped**, each one fix + one RED-proven guard + docs in ONE commit, pushed and verified separately.
