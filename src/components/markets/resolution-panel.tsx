@@ -27,6 +27,7 @@ import { cn, formatTzs } from "@/lib/utils";
 import { formatDateTime } from "@/lib/utils";
 import { Callout } from "@/components/ui/callout";
 import { useT } from "@/lib/i18n";
+import { outcomeWord } from "@/lib/side-label";
 import { ObjectionDialog } from "./objection-dialog";
 
 type Props = {
@@ -123,7 +124,7 @@ export function ResolutionPanel({
           {t.market.resTitle}
         </h2>
         <span className={cn("chip", isVoid ? "chip-pending" : "chip-resolved")}>
-          {isVoid ? t.market.resVoided : `${t.market.resolvedOutcome} · ${outcome === "YES" ? t.common.yes : t.common.no}`}
+          {isVoid ? t.market.resVoided : `${t.market.resolvedOutcome} · ${outcomeWord(t, outcome, "MARKET")}`}
         </span>
       </div>
 
