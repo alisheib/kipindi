@@ -36,7 +36,38 @@ const DICT = "src/lib/i18n-dict.ts";
 const TIMING = "src/lib/feedback-timing.ts";
 const ANNOUNCER = "src/components/updown/updown-result-announcer.tsx";
 
+const PRESENCE = "src/lib/result-modal-presence.ts";
+
 const MUTATIONS = [
+  // ── §10 · the secondary standing down, and the three ways to get it wrong ──────────────
+  {
+    // 🔴 THE SUPPRESSION SIMPLY STOPS. The toast paints over the receipt's crest at 360 again.
+    name: "⭐ the viewport stops holding — the toast covers the receipt crest at 360 again",
+    file: TOAST,
+    find: `  if (held) return null;`,
+    with: `  void held;`,
+  },
+  {
+    // ⛔ THE ONE THAT LOSES TIME NOBODY SAW. Holding without pausing means a 3s toast burns its
+    // whole dwell behind the modal and is gone — or half-gone — by the time the player can see
+    // it. "Held" then means "silently expired", which is the drop this design exists to avoid.
+    name: "held toasts keep counting down behind the modal — the dwell burns unseen",
+    file: TOAST,
+    find: `    if (resultModalOpen) for (const id of ids) pause(id);
+    else for (const id of ids) resume(id);`,
+    with: `    void resultModalOpen; void ids; void pause; void resume;`,
+  },
+  {
+    // ⚠️ THE LEAK. The count is taken and never released, so after the first result modal the
+    // site never shows another toast — total, silent, and only visible on the SECOND action.
+    name: "presence is never released — every toast on the site goes silent after one modal",
+    file: PRESENCE,
+    find: `    return () => {
+      openCount = Math.max(0, openCount - 1);
+      publish();
+    };`,
+    with: `    return () => {};`,
+  },
   {
     name: "⭐ the poll buzzes again — a vibration for a render nobody asked for",
     file: PANEL,

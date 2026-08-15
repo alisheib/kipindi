@@ -514,7 +514,80 @@ console.log("\n§9 · How long a moment stays — one definition site, and the i
 }
 
 // ───────────────────────────────────────────────────────────────────────────────
+console.log("\n§10 · The secondary stands down while the primary is up — and NOTHING is dropped");
+// ───────────────────────────────────────────────────────────────────────────────
+//
+// ⭐ §F1 says the popup is the PRIMARY signal on a consequential mutation and the corner toast
+// is the SECONDARY one. At 360px the toast stack covered the bet receipt's CREST for the
+// toast's first 3 seconds; at 768 and above there is room for both, which is exactly why it
+// survived — the two fire together by design and only the narrowest viewport collides.
+//
+// ⛔ THE TWO WAYS OF GETTING THIS WRONG, BOTH ASSERTED AGAINST:
+//
+//   ① RESTACK Z-INDEX GLOBALLY. Toasts sit ABOVE modals on purpose, so a failure fired while a
+//      CONFIRM dialog is open stays readable. That ordering is a safety property; trading it
+//      for a 360px overlap would swap a cosmetic collision for a lost failure message.
+//   ② DROP THE HELD TOAST. A sticky money-path failure (`durationMs: 0`, the shape UD-3
+//      requires so a refusal stays until read) swallowed because a modal happened to be open
+//      is a refusal the player NEVER SAW — strictly worse than the overlap being fixed.
+{
+  const PRESENCE = read("src/lib/result-modal-presence.ts");
+
+  ok("10.1 · the result modal registers its presence — one place, so every result popup counts",
+    /useResultModalPresence\(open\)/.test(ORM),
+    "OperationResultModal is the bet receipt, the block, the wallet result and the sell result");
+  ok("10.2 · the toast provider SUBSCRIBES, rather than the modal reaching up to hide it",
+    /subscribeResultModal\(setResultModalOpen\)/.test(TOAST));
+
+  // ⛔ ① — no z-index anywhere in the suppression. The mechanism is presence, not stacking.
+  // ⚠️ COMMENTS STRIPPED FIRST. The first version of this line searched the raw file and failed
+  // on the module's OWN header, which explains at length why this is NOT a z-index change — a
+  // guard tripping over the prose that documents it is a false positive, and one that would
+  // have been "fixed" by deleting the explanation.
+  ok("10.3 · ⛔ the fix touches NO z-index — a confirm-dialog failure must stay readable",
+    !/z-?index/i.test(stripComments(PRESENCE)) && !/zIndex/.test(stripComments(PRESENCE)),
+    "restacking toasts under modals would trade a cosmetic overlap for a lost failure message");
+
+  // ⛔ ② — NOTHING IS DROPPED, and the mechanism is what guarantees it.
+  //
+  // 🔴 THE FIRST IMPLEMENTATION ASKED `isResultModalOpen()` INSIDE `toast()` and pushed to a
+  // queue. Every assertion here passed, `red:feedback-law` caught all three of its mutations,
+  // and driving a real bet at 360 in three languages showed the toast ON SCREEN over the
+  // receipt anyway: the quick-bet fires its toast in the same commit that mounts the modal, and
+  // presence is registered from an EFFECT, so at that instant the modal was not open yet.
+  // ⛔ A check whose answer depends on which effect ran first is a coin flip — and it landed
+  // the same way every time, which is exactly what made it look like a working fix.
+  //
+  // ⭐ So the assertions below pin the REACTIVE shape, which has no such instant: the toast is
+  // stacked normally and the VIEWPORT holds it, with countdowns paused meanwhile.
+  ok("10.4 · ⭐ the viewport HOLDS rather than the arrival path deciding",
+    /if \(held\) return null;/.test(TOAST) && /held=\{resultModalOpen\}/.test(TOAST),
+    "a decision taken when the toast arrives races the effect that registers the modal");
+  ok("10.5 · ⛔ …and a held toast is never removed from the stack — nothing to re-queue, nothing to lose",
+    !/heldRef/.test(TOAST),
+    "a side queue is a second place a money-path refusal can be dropped from");
+  ok("10.6 · ⭐ countdowns PAUSE while held and resume after, so nothing expires unseen",
+    /if \(resultModalOpen\) for \(const id of ids\) pause\(id\);/.test(TOAST) &&
+    /else for \(const id of ids\) resume\(id\);/.test(TOAST),
+    "reusing the hover machinery gives a held toast its full dwell once it is actually on screen");
+  ok("10.7 · ⛔ a STICKY money-path failure has no countdown to lose in the first place",
+    /Sticky \(durationMs 0\): no countdown at all/.test(TOAST));
+
+  // ⚠️ THE CLEANUP IS THE LOAD-BEARING HALF. A modal that unmounts while open — a route change
+  // during the 5s auto-close, an ordinary thing for a player to do — must still release its
+  // count. A leaked count silences EVERY toast on the site until reload: total, and silent.
+  ok("10.8 · ⚠️ presence is released on unmount, not only on a close prop",
+    /return \(\) => \{\s*openCount = Math\.max\(0, openCount - 1\);/.test(PRESENCE),
+    "a leaked count would silence every toast on the site until reload");
+  ok("10.9 · …and it COUNTS rather than flags, so overlapping modals cannot clear each other",
+    /let openCount = 0;/.test(PRESENCE) && /openCount \+\+|openCount\+\+/.test(PRESENCE));
+}
+
+// ⛔ COUNTED AFTER THE LAST ASSERTION, NOT BEFORE. Appending §10 below this line once put the
+// total — and `process.exit` — ahead of nine checks, so they printed after the verdict and
+// could not fail the run.
 const total = pass + fails.length;
+
 console.log(`\nfeedback-law: ${pass} passed, ${fails.length} failed  (of ${total})`);
 if (fails.length) {
   console.log("\nFAILURES:");

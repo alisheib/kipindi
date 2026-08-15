@@ -49,6 +49,7 @@ import { useEffect, useRef } from "react";
 import { Modal } from "@/components/ui/modal";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
+import { useResultModalPresence } from "@/lib/result-modal-presence";
 
 const DEFAULT_AUTO_CLOSE_MS = 5_000;
 
@@ -159,6 +160,13 @@ export function OperationResultModal({
   const closeRef = useRef(onClose);
   const primaryRef = useRef<HTMLButtonElement>(null);
   useEffect(() => { closeRef.current = onClose; }, [onClose]);
+
+  // ⭐ §F1 · THE SECONDARY STANDS DOWN WHILE THE PRIMARY IS UP (Ali, 2026-08-15).
+  // Registering here covers every result popup in the product in one place — the bet receipt,
+  // the compliance block, the wallet result, the sell result and the dial — because all of
+  // them ARE this component. ⛔ Not a z-index change: toasts sit above modals deliberately so
+  // a failure fired during a confirm dialog stays readable. See `result-modal-presence.ts`.
+  useResultModalPresence(open);
 
   // RAF-driven gold strip. Same pattern as BetConfirmModal — direct
   // DOM mutation each frame keeps the bar exactly aligned with the

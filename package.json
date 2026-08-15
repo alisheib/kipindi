@@ -125,6 +125,7 @@
     "test:motion": "node scripts/motion-adoption-verify.mjs",
     "test:all": "node scripts/test-all.mjs",
     "backfill:zh": "tsx scripts/backfill-zh-titles.mts",
+    "qa:toast-modal": "node scripts/qa-toast-modal.mjs",
     "qa:live": "node scripts/pre-deploy-live-check.mjs",
     "perf:smoke": "node scripts/perf-smoke.mjs",
     "qa:cards": "node scripts/marketing-invite-stress.mjs",
