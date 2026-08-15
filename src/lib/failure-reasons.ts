@@ -280,16 +280,34 @@ const REASON_BY_CODE: Readonly<Record<string, FailureReason>> = {
   NAME_INVALID: "name_invalid",
   AVATAR_TYPE: "avatar_type",
   AVATAR_SIZE: "avatar_size",
-  DOC_IMAGE: "doc_image_type",
-  DOC_TOO_LARGE: "doc_too_large",
-  DOCS_LOCKED: "docs_locked",
-  NO_EXTRA_REQUEST: "no_extra_request",
-  NIDA_TAKEN: "nida_taken",
   PW_CURRENT_WRONG: "password_wrong",
   PW_WEAK: "password_weak",
   VOTING_CLOSED: "voting_closed",
-  MAINTENANCE: "maintenance",
+  // ⛔ SIX ROWS WERE DELETED HERE (2026-08-15), AND NOT BECAUSE THEIR REFUSALS WENT AWAY.
+  //   · DOC_IMAGE · DOC_TOO_LARGE · DOCS_LOCKED · NO_EXTRA_REQUEST · NIDA_TAKEN
+  //   · MAINTENANCE
+  // ⭐ Measured, not assumed: **no service or action anywhere emitted any of those six codes**
+  // — not on the day they were added, not since. The five KYC families reach the registry
+  // through the `reason` that `kyc-service.ts` emits at the same eight sites, which is the
+  // better route and the one that works. Maintenance is refused with `code: "SUSPENDED"`
+  // (four families share it), and its services now emit `reason: "maintenance"` instead.
+  //
+  // ⛔ A MAPPING FOR A CODE NOBODY SENDS IS NOT HARMLESS DEFENCE. It is a second, plausible
+  // route to a refusal that the code has never taken, so a reader answering *"how does a
+  // too-large document reach the player?"* finds this table and stops — which is exactly how
+  // the previous session concluded those refusals were handled when they were arriving
+  // through phrase tests. `test:failure-reasons` §9b now walks the tree and fails on any row
+  // here whose code no service emits, so a dead row cannot be added back silently.
 };
+
+/**
+ * Every code this table maps, for the guard that proves each one is really emitted.
+ *
+ * ⛔ EXPORTED SO `test:failure-reasons` §9b CANNOT HAND-LIST THEM. A guard that enumerates the
+ * codes it checks from its own literal is the exact shape that let six dead rows sit here
+ * unnoticed while the suite reported them working.
+ */
+export const REASON_BY_CODE_KEYS: readonly string[] = Object.keys(REASON_BY_CODE);
 
 /** The reason for a code, or null when the code is absent, unknown, or overloaded. */
 export function reasonForCode(code: string | null | undefined): FailureReason | null {

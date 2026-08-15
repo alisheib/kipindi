@@ -24,20 +24,18 @@ export async function exportDataAction(): Promise<{ ok: true; payload: string; f
   };
 }
 
-export async function changePasswordAction(formData: FormData): Promise<{ ok: true } | { ok: false; error: string; code?: string }> {
+export async function changePasswordAction(formData: FormData): Promise<{ ok: true } | { ok: false; error: string; code?: string; reason?: string }> {
   const session = await currentSession();
   if (!session) redirect("/auth/login");
   const current = String(formData.get("current") ?? "");
   const next = String(formData.get("new") ?? "");
   const { changePassword } = await import("@/lib/server/password-reset");
-  const r = await changePassword(session.userId, current, next);
-  if (r.ok) return r;
-  // B-7 — attach the code here (the service string is shared with admin flows);
-  // the profile editor maps it to the player's language via errorCopy.
-  const code =
-    /current password is incorrect/i.test(r.error) ? "PW_CURRENT_WRONG" :
-    /not found/i.test(r.error) ? "NOT_FOUND" : "PW_WEAK";
-  return { ...r, code };
+  // ⭐ THE SERVICE SAYS WHICH REFUSAL THIS IS. This action used to mint the code itself by
+  // matching `changePassword`'s own English back out of the string it had just returned —
+  // and `PW_WEAK` was the fallback arm, so any sentence the two patterns missed told the
+  // player to choose a stronger password. `changePassword` now returns `code` and `reason`
+  // at each of its three refusal sites; this action carries them, unread.
+  return changePassword(session.userId, current, next);
 }
 
 export async function closeAccountAction(formData: FormData) {

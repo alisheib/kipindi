@@ -220,8 +220,26 @@ const MUTATIONS = [
     // ⚠️ The `to` REPLACES the anchor rather than wrapping it — the harness verifies the
     // anchor is gone after the write, so a mutation whose replacement contains its own anchor
     // scores as a harness error rather than as a red.
-    from: "  MAINTENANCE: \"maintenance\",",
+    // ⚠️ RE-ANCHORED 2026-08-15: this pointed at `MAINTENANCE: "maintenance",`, one of the six
+    // rows deleted for mapping a code no service emits. `VOTING_CLOSED` is a row with a real
+    // emitter, so it cannot go the same way without §9b failing first.
+    from: "  VOTING_CLOSED: \"voting_closed\",",
     to: "  INVALID: \"stake_below_min\",",
+  },
+  {
+    // ⭐ THE DEAD-ROW DEFECT, RE-INJECTED. `REASON_BY_CODE` carried six rows for codes NO
+    // service emitted — five KYC families and `MAINTENANCE`. §9 proved each of them "worked"
+    // by synthesising the code itself, so the suite was green on six routes the product cannot
+    // take, and a session reading that table concluded those refusals were handled while every
+    // one was arriving through a phrase test. §9b is the only thing that says no.
+    name: "a-dead-code-row-returns",
+    why: "⛔ a row is added for a code nothing emits — §9 would prove it 'works' by minting the code itself, which is how five KYC families looked handled while they were not",
+    file: REASONS,
+    // ⚠️ The anchor CARRIES ITS NEWLINE, and that is not cosmetic: the harness verifies the
+    // anchor is gone after the write, so a `to` that merely prepends to its own `from` scores
+    // as a harness error rather than as a red. Appending on the same line consumes it.
+    from: "  VOTING_CLOSED: \"voting_closed\",\n",
+    to: "  VOTING_CLOSED: \"voting_closed\", DOC_IMAGE: \"doc_image_type\",\n",
   },
   {
     // ⚠️ A severity is a promise about how alarmed to be. An identity already linked to

@@ -16,14 +16,11 @@ export async function voteAction(proposalId: string, dir: "up" | "down" | null) 
   const s = await currentSession();
   // B-7 — carry a code so VoteControl renders its own localized line.
   if (!s) return { ok: false as const, error: "Sign in to vote.", code: "AUTH" as const };
-  const r = await castVote(s.userId, proposalId, dir);
-  if (r.ok) return r;
-  // castVote's refusals: the feature gate (any proposalsBlockedReason phrasing),
-  // voting closed, or a missing proposal.
-  const code =
-    /unavailable|available right now|coming soon/i.test(r.error) ? ("PAUSED" as const) :
-    /voting has closed/i.test(r.error) ? ("VOTING_CLOSED" as const) : ("NOT_FOUND" as const);
-  return { ...r, code };
+  // ⭐ `castVote` SAYS WHICH REFUSAL THIS IS. This action used to phrase-match the service's
+  // own English to mint the code — and its feature-gate pattern was a guess at wording that
+  // an operator CONFIGURES, so a paused feature usually fell through to `NOT_FOUND` and told
+  // the player to refresh. The service returns `code` and `reason` now; this carries them.
+  return castVote(s.userId, proposalId, dir);
 }
 
 /** Submit a new proposal. Returns the new id on success (client shows the modal). */

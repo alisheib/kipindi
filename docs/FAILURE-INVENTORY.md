@@ -513,6 +513,57 @@ assertion that `checkLossLimit` still has exactly one caller) · `test:updown-qu
 drives the TOKEN with a deliberately unrelated sentence, 29.5b pins the heading, 29.5c controls it)
 · `red:failure-reasons` 18/18 · `test:i18n` 1846×3 after deleting the orphaned `errLossLimit`.
 
+### 3.11 · 🔴 FIXED (2026-08-15) · The ACTION layer minted codes by reading the SERVICE's English
+
+Three server actions recovered a machine code by matching, with a regex, the English sentence the
+service they had just called had returned. `§1.6` records what that pattern cost when
+`error-copy.ts` did it; these did the same thing **one layer up**, where it is harder to see
+because the code that comes out *looks* like a machine token.
+
+| Where | What it did | What went wrong |
+|---|---|---|
+| `profile/account/actions.ts` | `/current password is incorrect/i → PW_CURRENT_WRONG`, `/not found/i → NOT_FOUND`, **else `PW_WEAK`** | 🔴 `PW_WEAK` was the FALLBACK. `validatePasswordStrength` returns **six** different sentences and the two patterns matched none of them — they landed correctly only because the ordering left them last. Any unmatched refusal told the player *"choose a stronger password"*, which is the one answer that makes them change a field that was never the problem. |
+| `proposals/actions.ts` | `/unavailable\|available right now\|coming soon/i → PAUSED`, `/voting has closed/i → VOTING_CLOSED`, else `NOT_FOUND` | 🔴 The gate arm returns `proposalsBlockedReason(cfg.state)`, whose wording an **operator configures**. The three alternatives were a guess at what someone might type; any other phrasing fell through to `NOT_FOUND` — so a paused feature told the player *"We couldn't find that. Refresh and try again."* about a proposal that exists. |
+| `profile/actions.ts` | `/already linked/i → EMAIL_TAKEN`, else `NOT_FOUND` | Rewording the duplicate-address sentence would silently turn "that inbox is taken" into "we couldn't find that", on the surface that gates depositing. |
+
+**Fixed at the source.** `changePassword`, `castVote` and `setUserEmail` each return `code` **and**
+`reason` at every refusal site; the three actions now carry them, unread. ⛔ No action layer
+decides a refusal by phrase-matching English.
+
+### 3.12 · 🔴 FIXED (2026-08-15) · Six `REASON_BY_CODE` rows mapped codes NOTHING emits
+
+`DOC_IMAGE` · `DOC_TOO_LARGE` · `DOCS_LOCKED` · `NO_EXTRA_REQUEST` · `NIDA_TAKEN` ·
+`MAINTENANCE`. **Measured across `src/lib/server` and `src/app`: zero emitters, for any of them,
+on the day they were added and since.** `error-copy.ts` carried five matching dead switch arms.
+
+> ⭐ **AND THE SUITE WAS GREEN ON ALL SIX, WHICH IS THE POINT.** `test:failure-reasons` §9 proved
+> each row "worked" by **synthesising the code itself** — `renderFailure({ code: "DOC_IMAGE" })` —
+> a route the product cannot take. So the previous session read a passing table and concluded the
+> KYC refusals were handled, while every one of them was in fact arriving through a phrase test.
+> A test that manufactures its own input proves the mapper, never the wiring.
+
+**Both ends fixed.** The five KYC families reach the registry through the `reason` that
+`kyc-service.ts` emits — the better route, and the one that works; their rows are deleted rather
+than left as a second, plausible, dead one. **Maintenance went the other way**: `market-service`
+and `wallet-service` refuse with `code: "SUSPENDED"` (four families share it, which is why the
+registry leaves `SUSPENDED` unmapped by design), and they now emit `reason: "maintenance"` — so a
+stake refused mid-maintenance reads *"Betting is paused for maintenance. **Nothing has been
+charged.**"* instead of the generic *"This service is temporarily paused."* That row existed and
+no service had ever reached it.
+
+⛔ **The structural fix is `test:failure-reasons` §9b**: it walks the tree from
+`REASON_BY_CODE_KEYS` — exported so the guard cannot hand-list — and fails on any mapped code
+with no emitter. ⚠️ **Its first draft would have passed `MAINTENANCE`**, because
+`proposals-config.ts` declares `ProposalsState = … | "MAINTENANCE" | …` and a bare token search
+cannot tell an unrelated enum member from a refusal. It now requires a `code:` position and
+excludes type-union membership. §9c re-pins the loudness of all six on the route they really take
+— found by `red:failure-reasons`, not by reading: deleting §9's rows had silently un-guarded
+`nida_taken`, and the harness's demote-to-a-nudge mutation stopped being caught by anything.
+
+**Proof.** `test:failure-reasons` 240 · `red:failure-reasons` **19/19** (a new mutation re-injects
+a dead row) · `test:proposals` 48 · `test:proposals-state` 28 · `test:kyc` · `test:maintenance` 13
+· `test:i18n` 1846×3 · `tsc` clean.
+
 ---
 
 ## §4 · WHAT C5's GUARD MUST DO

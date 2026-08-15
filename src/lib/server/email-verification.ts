@@ -27,6 +27,7 @@ import { sendEmail, sendEmailToUser, emailVerifyHtml, emailChangedHtml } from ".
 import type { SendResult } from "./email";
 import { notify } from "./notification-service";
 import { displayLabel } from "@/lib/display-label";
+import type { FailureReason } from "@/lib/failure-reasons";
 
 const VERIFY_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 const BASE_URL = () => process.env.NEXT_PUBLIC_APP_URL || "https://kipindi-production.up.railway.app";
@@ -100,10 +101,18 @@ export async function sendEmailVerification(userId: string, email: string, name?
 export async function setUserEmail(
   userId: string,
   email: string,
-): Promise<{ ok: true; changed: boolean; verificationSent: boolean; deliveryIssue?: SendResult["reason"] } | { ok: false; error: string }> {
+): Promise<
+  | { ok: true; changed: boolean; verificationSent: boolean; deliveryIssue?: SendResult["reason"] }
+  | { ok: false; error: string; code: "NOT_FOUND" | "EMAIL_TAKEN"; reason: FailureReason }
+> {
+  // ⛔ THE CODE IS MINTED HERE, NOT IN THE ACTION. `profile/actions.ts` used to write
+  // `code: /already linked/i.test(r.error) ? "EMAIL_TAKEN" : "NOT_FOUND"` — matching this
+  // function's own English back out of the string it had just returned. Rewording the
+  // duplicate-address sentence below would have silently turned a "that inbox is taken"
+  // refusal into "we couldn't find that", on the surface that gates depositing.
   const next = email.trim().toLowerCase();
   const user = await db.user.findById(userId);
-  if (!user) return { ok: false, error: "User not found." };
+  if (!user) return { ok: false, error: "User not found.", code: "NOT_FOUND", reason: "not_found" };
 
   const current = (user.email ?? "").trim().toLowerCase();
 
@@ -134,7 +143,7 @@ export async function setUserEmail(
   const holder = await db.user.findByEmail(next);
   if (holder && holder.id !== userId) {
     audit({ category: "SECURITY", action: "user.email.duplicate_blocked", actorId: userId, targetType: "User", targetId: userId, payload: { conflictUserId: holder.id } });
-    return { ok: false, error: "That email is already linked to another account." };
+    return { ok: false, error: "That email is already linked to another account.", code: "EMAIL_TAKEN", reason: "email_taken" };
   }
 
   // New / changed address: store it, reset verification, send a fresh link.

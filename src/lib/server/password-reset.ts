@@ -19,6 +19,7 @@ import { sendEmail, sendEmailToUser, passwordResetHtml, passwordChangedHtml } fr
 import { resolvePhoneEmail } from "./email-map";
 import { validatePasswordStrength } from "./password-policy";
 import { notifyPasswordChanged } from "./notification-service";
+import type { FailureReason } from "@/lib/failure-reasons";
 
 /** Security alert on any password change — in-app (always seen, even for
  *  email-less users) + email (durable record). Best-effort; never blocks. */
@@ -201,18 +202,35 @@ export async function changePassword(
   userId: string,
   currentPassword: string,
   newPassword: string,
-): Promise<{ ok: true } | { ok: false; error: string }> {
+): Promise<
+  | { ok: true }
+  | { ok: false; error: string; code: "PW_WEAK" | "NOT_FOUND" | "PW_CURRENT_WRONG"; reason: FailureReason }
+> {
+  // ⛔ THE CODE IS MINTED HERE, NOT IN THE ACTION. `profile/account/actions.ts` used to recover
+  // it by matching this function's OWN English back out of the string it had just returned:
+  //
+  //     /current password is incorrect/i.test(r.error) ? "PW_CURRENT_WRONG"
+  //       : /not found/i.test(r.error) ? "NOT_FOUND" : "PW_WEAK";
+  //
+  // ⛔ TWO SEPARATE DEFECTS IN FOUR LINES, AND THE SECOND IS THE WORSE ONE. First, it is the
+  // §1.6 hazard one layer up: reword any sentence here and the action silently mints the wrong
+  // code, with nothing red anywhere. Second, `PW_WEAK` was the FALLBACK — so ANY refusal the
+  // two patterns missed was reported to the player as *"choose a stronger password"*. A
+  // password-strength complaint is the one answer that makes the player change a field that
+  // was never the problem, and `validatePasswordStrength` returns SIX different sentences
+  // (length, common-list, …) of which the patterns matched none — they landed on the right
+  // code only because the ordering happened to leave them last.
   const pwError = validatePasswordStrength(newPassword);
-  if (pwError) return { ok: false, error: pwError };
+  if (pwError) return { ok: false, error: pwError, code: "PW_WEAK", reason: "password_weak" };
 
   const user = await db.user.findById(userId);
-  if (!user) return { ok: false, error: "User not found." };
+  if (!user) return { ok: false, error: "User not found.", code: "NOT_FOUND", reason: "not_found" };
 
   // If the user already has a password, verify the current one.
   if (user.passwordHash && user.passwordSalt) {
     const { verifyPassword } = await import("./crypto");
     const valid = await verifyPassword(currentPassword, user.passwordSalt, user.passwordHash);
-    if (!valid) return { ok: false, error: "Current password is incorrect." };
+    if (!valid) return { ok: false, error: "Current password is incorrect.", code: "PW_CURRENT_WRONG", reason: "password_wrong" };
   }
 
   const salt = randomId(32);

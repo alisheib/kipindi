@@ -628,11 +628,10 @@ console.log("\n§9 · a coded refusal knows how loud to be");
     ["NAME_INVALID", "name_invalid", "warning"],
     ["AVATAR_TYPE", "avatar_type", "warning"],
     ["AVATAR_SIZE", "avatar_size", "warning"],
-    ["DOC_IMAGE", "doc_image_type", "warning"],
-    ["DOC_TOO_LARGE", "doc_too_large", "warning"],
-    ["DOCS_LOCKED", "docs_locked", "info"],
-    ["NO_EXTRA_REQUEST", "no_extra_request", "info"],
-    ["NIDA_TAKEN", "nida_taken", "error"],
+    // ⛔ DOC_IMAGE, DOC_TOO_LARGE, DOCS_LOCKED, NO_EXTRA_REQUEST, NIDA_TAKEN and MAINTENANCE
+    // were listed here and are gone with their `REASON_BY_CODE` rows — no service emitted any
+    // of those six codes, so every case above proved a route nothing could take. §9b below is
+    // what replaced them: it walks the tree and fails on any mapped code with no emitter.
     ["PW_CURRENT_WRONG", "password_wrong", "warning"],
     ["PW_WEAK", "password_weak", "warning"],
     ["VOTING_CLOSED", "voting_closed", "info"],
@@ -669,6 +668,119 @@ console.log("\n§9 · a coded refusal knows how loud to be");
   // authority, or a service that learns to emit its own reason would be silently overridden.
   const both = renderFailure({ ok: false, error: "x", code: "BUSY", reason: "maintenance" } as never, dict, "GENERIC", formatTzs);
   ok("9.precedence · an explicit reason beats the code", both.reason === "maintenance", String(both.reason));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §9b · ⛔ EVERY MAPPED CODE IS ACTUALLY EMITTED — no row for a code nobody sends
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔴 THE DEFECT THIS EXISTS FOR, MEASURED 2026-08-15. `REASON_BY_CODE` carried rows for
+// `DOC_IMAGE`, `DOC_TOO_LARGE`, `DOCS_LOCKED`, `NO_EXTRA_REQUEST`, `NIDA_TAKEN` and
+// `MAINTENANCE`. **No service or action anywhere emitted any of those six codes** — not on the
+// day they were added, not since. `error-copy.ts` carried five matching dead switch arms.
+//
+// ⛔ AND THAT IS NOT A HARMLESS SPARE TYRE. §9 above proved each of those rows "worked" by
+// synthesising the code itself, so the suite was GREEN on six routes the product cannot take —
+// and the previous session read the same table and concluded those KYC refusals were handled,
+// while every one of them was in fact arriving through a phrase test.
+//
+// ⭐ THE RULE: a code may be mapped here only if something really sends it. Walked from
+// `REASON_BY_CODE` itself — never a hand-list, which is what went stale in the first place.
+console.log("\n§9b · every mapped code is emitted by something");
+{
+  const { REASON_BY_CODE_KEYS } = await import("../src/lib/failure-reasons.ts");
+  const walkCode = (dir: string, out: string[] = []): string[] => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const p = `${dir}/${e.name}`;
+      if (e.isDirectory()) walkCode(p, out);
+      else if (/\.(ts|tsx)$/.test(e.name)) out.push(p);
+    }
+    return out;
+  };
+  // ⛔ The registry's OWN file is excluded, and so is the mapper's: a row citing itself, or a
+  // `case "X":` in `error-copy.ts`, is not an emitter. An emitter is something that RETURNS it.
+  const sources = [...walkCode("src/lib/server"), ...walkCode("src/app")]
+    .filter((f) => !f.endsWith("failure-reasons.ts") && !f.endsWith("error-copy.ts"))
+    .map((f) => readFileSync(f, "utf8").replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:])\/\/.*$/gm, "$1"));
+
+  ok("9b.0 · fixture · the emitting tree was walked and read", sources.length > 100, `${sources.length} files`);
+
+  /**
+   * Does anything RETURN this code?
+   *
+   * ⛔ NOT a bare search for the quoted token, and the first draft of this guard was exactly
+   * that — which would have passed `MAINTENANCE`, one of the six dead rows, because
+   * `proposals-config.ts` declares `ProposalsState = "ACTIVE" | "COMING_SOON" | "MAINTENANCE"
+   * | "DISABLED"`. An unrelated enum member spelled the same way is not an emitter, and a
+   * guard that cannot tell the difference would have reported the defect it exists to catch
+   * as already fixed.
+   *
+   * So: the token must sit in a `code:` position — which admits `code: "X"` and the ternary
+   * form `code: a ? "X" : "Y"` that `profile/actions.ts` really uses — and must NOT be a
+   * member of a TYPE UNION (`code: "A" | "B"`), which declares what a code may be rather than
+   * sending one.
+   */
+  const emits = (code: string) => sources.some((s) => {
+    const re = new RegExp(`\\bcode:\\s*[^;\\n]{0,200}?["']${code}["']([^\\n]*)`, "g");
+    for (const m of s.matchAll(re)) {
+      const before = m[0].slice(0, m[0].length - (m[1]?.length ?? 0));
+      const after = m[1] ?? "";
+      if (/\|\s*$/.test(before.slice(0, before.lastIndexOf(code) - 1))) continue; // "A" | "X"
+      if (/^\s*\|/.test(after)) continue;                                          // "X" | "B"
+      return true;
+    }
+    return false;
+  });
+  for (const code of REASON_BY_CODE_KEYS) {
+    ok(`9b.${code} · something really returns this code`, emits(code),
+       `no emitter for "${code}" — the row maps a refusal the product never sends, and §9 would still pass by synthesising it`);
+  }
+  // ⭐ CONTROL · the walk must be capable of saying NO, or every line above passes vacuously.
+  ok("9b.control · a code nothing emits reads as absent", !emits("NEVER_EMITTED_ANYWHERE_XYZ"));
+  // ⭐ AND THE SIX DELETED ROWS ARE PINNED AS STILL-UNEMITTED — the live control, on the real
+  // finding. ⛔ If one of these ever gains an emitter, this line fails and the answer is to
+  // put its row BACK, not to relax the assertion.
+  for (const dead of ["DOC_IMAGE", "DOC_TOO_LARGE", "DOCS_LOCKED", "NO_EXTRA_REQUEST", "NIDA_TAKEN", "MAINTENANCE"]) {
+    ok(`9b.deleted.${dead} · still emitted by nothing — which is why its row is gone`, !emits(dead),
+       `something now returns "${dead}" — restore its REASON_BY_CODE row`);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §9c · THE SAME PROMISE, ON THE ROUTE THESE REFUSALS ACTUALLY TAKE
+// ═══════════════════════════════════════════════════════════════════════════
+// ⛔ DELETING A DEAD ROW MUST NOT DELETE ITS COVERAGE. §9 used to assert the loudness of the
+// six KYC/maintenance families by feeding their CODE in — a route the product never takes. The
+// rows are gone; the refusals are not. They arrive as a `reason`, so their severity and channel
+// are pinned here, on the route that is real.
+//
+// ⚠️ Caught by `red:failure-reasons`, not by reading: removing §9's rows silently un-guarded
+// `nida_taken`, and the harness's `nida-taken-demoted-to-a-nudge` mutation — which demotes a
+// fraud-shaped block to a quiet inline nudge — stopped being caught by anything.
+console.log("\n§9c · loudness is pinned on the reason route, not only the code route");
+{
+  const dict = DICT.en.error as unknown as Record<string, string>;
+  const CASES: Array<[FailureReason, "info" | "warning" | "error", "inline" | "toast" | "modal"]> = [
+    // ⛔ An identity already linked to another account is a fraud-shaped fact, not a typo to
+    // fix in place — error, and it must be acknowledged.
+    ["nida_taken", "error", "modal"],
+    ["doc_image_type", "warning", "inline"],
+    ["doc_too_large", "warning", "inline"],
+    // Nothing is wrong; a state the player cannot change and need not act on.
+    ["docs_locked", "info", "inline"],
+    ["no_extra_request", "info", "inline"],
+    // ⭐ The row a service reached for the first time today — and the sentence is the point:
+    // "Nothing has been charged", on a refusal that happens mid-stake.
+    ["maintenance", "error", "toast"],
+  ];
+  for (const [reason, severity, channel] of CASES) {
+    const r = renderFailure({ ok: false, error: "English audit prose nobody should read", reason } as never,
+                            dict, "GENERIC", formatTzs);
+    ok(`9c.${reason} · resolves through the REASON`, r.reason === reason, String(r.reason));
+    ok(`9c.${reason} · …at severity ${severity}`, r.severity === severity, r.severity);
+    ok(`9c.${reason} · …on the ${channel} channel`, r.channel === channel, r.channel);
+    ok(`9c.${reason} · …and shows neither the server prose nor the generic line`,
+       r.body !== "GENERIC" && !r.body.includes("audit prose"), r.body.slice(0, 50));
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

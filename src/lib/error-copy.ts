@@ -70,16 +70,11 @@ export function errorCopy(t: Dict, r: ActionFailure): string {
       return t.error.errAvatarType;
     case "AVATAR_SIZE":
       return t.error.errAvatarSize;
-    case "DOC_IMAGE":
-      return t.error.errDocImage;
-    case "DOC_TOO_LARGE":
-      return t.error.errDocTooLarge;
-    case "DOCS_LOCKED":
-      return t.error.errDocsLocked;
-    case "NO_EXTRA_REQUEST":
-      return t.error.errNoExtraRequest;
-    case "NIDA_TAKEN":
-      return t.error.errNidaTaken;
+    // ⛔ FIVE DEAD ARMS WERE DELETED HERE (2026-08-15): DOC_IMAGE, DOC_TOO_LARGE, DOCS_LOCKED,
+    // NO_EXTRA_REQUEST and NIDA_TAKEN. Measured: no service or action anywhere emits any of
+    // those codes — `kyc-service.ts` returns INVALID and says which refusal it is through the
+    // `reason`, which `renderFailure` reads. The dictionary lines they returned are still live
+    // and still reached, through the registry rather than through this switch.
     case "PW_CURRENT_WRONG":
       return t.error.errPwCurrentWrong;
     case "PW_WEAK":

@@ -72,8 +72,10 @@ export async function deposit(
 
   // Global maintenance switch (§9.3 #1) — new deposits are paused platform-wide.
   // Withdrawals + cash-outs deliberately stay open so funds are never trapped.
+  // ⭐ `reason: "maintenance"` — see the twin site in `market-service.ts` for why the code
+  // stays `SUSPENDED` and the reason is what makes this refusal distinguishable.
   if (await isMaintenanceMode()) {
-    return { ok: false, error: await maintenanceMessage(), code: "SUSPENDED" };
+    return { ok: false, error: await maintenanceMessage(), code: "SUSPENDED", reason: "maintenance" as const };
   }
 
   // ── TEMPORARY admin test-funding bypass ────────────────────────────────

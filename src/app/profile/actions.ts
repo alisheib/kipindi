@@ -33,7 +33,7 @@ const BasicsSchema = z.object({
   email: z.string().trim().toLowerCase().email("Enter a valid email.").max(254).or(z.literal("")).optional(),
 });
 
-export async function updateProfileBasicsAction(formData: FormData): Promise<{ ok: true; emailVerificationSent?: boolean } | { ok: false; error: string; code?: string }> {
+export async function updateProfileBasicsAction(formData: FormData): Promise<{ ok: true; emailVerificationSent?: boolean } | { ok: false; error: string; code?: string; reason?: string }> {
   // B-7 — failures carry a `code` so the trilingual editors can render their own
   // localized line (src/lib/error-copy.ts); `error` stays the audit/API truth.
   const session = await currentSession();
@@ -65,7 +65,8 @@ export async function updateProfileBasicsAction(formData: FormData): Promise<{ o
   let emailVerificationSent = false;
   if (parsed.data.email !== undefined) {
     const r = await setUserEmail(session.userId, parsed.data.email);
-    if (!r.ok) return { ok: false, error: r.error, code: /already linked/i.test(r.error) ? "EMAIL_TAKEN" : "NOT_FOUND" };
+    // ⭐ `setUserEmail` says which refusal this is; this line used to phrase-match its English.
+    if (!r.ok) return { ok: false, error: r.error, code: r.code, reason: r.reason };
     emailVerificationSent = r.verificationSent;
   }
 

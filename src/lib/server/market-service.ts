@@ -660,8 +660,16 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
 
   // Global maintenance switch (§9.3 #1) — new bets are paused platform-wide.
   // Withdrawals/cash-outs stay open so funds are never trapped.
+  //
+  // ⭐ THE REASON IS WHAT SEPARATES THIS FROM THE THREE OTHER `SUSPENDED` FAMILIES. The code
+  // stays `SUSPENDED` (API/audit truth, and four refusals genuinely share it — which is why
+  // the registry deliberately leaves it unmapped). Without a reason, this fell to `errorCopy`'s
+  // SUSPENDED fallback — *"This service is temporarily paused."* — which is true but says
+  // nothing about the player's money. `failMaintenance` says *"Betting is paused for
+  // maintenance. **Nothing has been charged.**"*, which is the sentence a player wants at the
+  // instant a stake was refused. The registry row existed and no service reached it.
   if (await isMaintenanceMode()) {
-    return { ok: false, error: await maintenanceMessage(), code: "SUSPENDED" };
+    return { ok: false, error: await maintenanceMessage(), code: "SUSPENDED", reason: "maintenance" as const };
   }
 
   const lockout = await isLockedOut(userId);
