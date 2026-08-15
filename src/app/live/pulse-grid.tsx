@@ -187,7 +187,7 @@ function PulseCard({ market, index }: { market: Market; index: number }) {
         {title}
       </h3>
       <div className="mt-3">
-        <TippingBar yesPct={yes} height={9} showLabels={false} recastOnHover={false} />
+        <TippingBar yesPct={yes} height={9} showLabels={false} recastOnHover={false} probabilityLabel={t.market.probBarAria} />
       </div>
       <div className="mt-2.5 flex items-center justify-between font-mono text-[12px] tabular-nums">
         <span className="font-bold text-yes-300">{isUpDown ? t.market.udUp : t.common.yes} <span className="opacity-75">@ {yes}%</span></span>

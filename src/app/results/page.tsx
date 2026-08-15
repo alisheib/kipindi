@@ -438,9 +438,11 @@ function FeaturedResult({ m, t, locale }: { m: Awaited<ReturnType<typeof listMar
     >
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <Chip variant="cat" size="sm">{m.category}</Chip>
+        {/* §L3 — the featured card is a SECOND code path from the grid above, and it kept
+            the raw enum: "Imetatuliwa · NO" / "已结算 · NO" on production. */}
         {isVoid
           ? <Chip variant="pending" size="sm">{t.common.voided}</Chip>
-          : <Chip variant="resolved" size="sm">{t.market.resolvedOutcome} · {m.resolvedOutcome}</Chip>}
+          : <Chip variant="resolved" size="sm">{t.market.resolvedOutcome} · {outcomeWord(t, m.resolvedOutcome ?? "VOID", "MARKET")}</Chip>}
         <span className="ml-auto inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">
           <I.crown s={13} /> {t.results.notableResult}
         </span>
@@ -448,7 +450,9 @@ function FeaturedResult({ m, t, locale }: { m: Awaited<ReturnType<typeof listMar
       <h2 className="mb-4 max-w-[70ch] font-display text-[18px] lg:text-[22px] font-semibold leading-tight text-text group-hover:text-gold-100">
         {pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}
       </h2>
-      <TippingBar yesPct={yesPct} height={28} showLabels resolved={!isVoid} recastOnHover={false} />
+      <TippingBar yesPct={yesPct} height={28} showLabels resolved={!isVoid} recastOnHover={false}
+        probabilityLabel={t.market.probBarAria}
+        labels={{ yes: t.common.yes, no: t.common.no, tipping: t.market.tipping, leansYes: t.market.leansYes, leansNo: t.market.leansNo }} />
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px] tabular-nums text-text-muted">
         <span>{formatTzsCompact(m.yesPool + m.noPool)} {t.common.settled}</span>
         <span className="flex items-center gap-1"><I.users s={11} /> {m.predictorCount} {t.market.predictors}</span>

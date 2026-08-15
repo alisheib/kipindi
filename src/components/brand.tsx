@@ -206,6 +206,7 @@ export function TippingBar({
   empty = false,
   emptyLabel = "No bets yet",
   probabilityLabel = "YES probability {pct}%",
+  labels = { yes: "YES", no: "NO", tipping: "tipping", leansYes: "leans yes", leansNo: "leans no" },
 }: {
   yesPct?: number;
   height?: number;
@@ -231,6 +232,8 @@ export function TippingBar({
   /** The bar's accessible name, `{pct}` substituted. Callers with a dictionary pass
    *  `t.market.probBarAria`; the English default keeps the brand primitive dict-free. */
   probabilityLabel?: string;
+  /** The five words under the bar when `showLabels`. Same rule as `probabilityLabel`. */
+  labels?: { yes: string; no: string; tipping: string; leansYes: string; leansNo: string };
 }) {
   const target = Math.max(0, Math.min(100, yesPct));
   const [animYes, setAnimYes] = React.useState(target);
@@ -325,16 +328,22 @@ export function TippingBar({
         {resolved && <div className="tipbar-shimmer" aria-hidden />}
         {recastOnHover && sweepKey > 0 && <div key={sweepKey} className="tipbar-sweep" aria-hidden />}
       </div>
+      {/* ⛔ ALL FIVE OF THESE WERE HARDCODED ENGLISH — "YES", "NO", and the three lean
+          words — so a Swahili or Chinese reader met them under the bar on `/results`,
+          `/live` and the market detail. The dictionary has had every one of them the whole
+          time (`common.yes`, `common.no`, `market.tipping`, `leansYes`, `leansNo`).
+          Props with English defaults, like `emptyLabel`: this is a brand primitive and
+          deliberately does not import the dictionary. */}
       {showLabels && (
         <div className="tipbar-labels">
           <span className="tb-yes">
-            YES <strong data-lead={target >= 50 || undefined}>{target}%</strong>
+            {labels.yes} <strong data-lead={target >= 50 || undefined}>{target}%</strong>
           </span>
           <span className="tipbar-lean">
-            {Math.abs(target - 50) < 3 ? "tipping" : target > 50 ? "leans yes" : "leans no"}
+            {Math.abs(target - 50) < 3 ? labels.tipping : target > 50 ? labels.leansYes : labels.leansNo}
           </span>
           <span className="tb-no">
-            <strong data-lead={target < 50 || undefined}>{100 - target}%</strong> NO
+            <strong data-lead={target < 50 || undefined}>{100 - target}%</strong> {labels.no}
           </span>
         </div>
       )}
