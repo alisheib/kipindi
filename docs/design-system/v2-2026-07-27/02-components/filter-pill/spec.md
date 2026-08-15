@@ -108,11 +108,33 @@ every control.
   addresses. Without it, a selector that describes the *shape* of a filter control also finds a
   bottom-nav link, which is how the first version of the scan reported a 0px-tall "filter".
 
+## Where the pills LIVE on a phone — the filter sheet (batch 6, 2026-08-15)
+
+Below `lg`, `/markets`' odds, pool and topic pills move inside
+`src/components/markets/filter-sheet.tsx` — a `<details>` bottom sheet behind one `Filters`
+button. The pill is unchanged; only its container is. Sticky bar: **214px → 116px** at 360.
+
+- **Topic arrives as pills there**, on the kit's `1fr 1fr` grid (COMPONENTS §21), where the
+  desktop row renders it as a menu. Same axis, same single-select, two layouts — and it means the
+  sheet holds **no nested disclosure** to be clipped by its own scrolling body (§8.7c).
+- ⛔ **Sort and status never enter the sheet, at any width** — the kit's ruling: *"they answer the
+  first two questions a punter has and must never cost a tap."*
+- The `Filters` trigger wears the pill's own selected language (`--pill-active` + `--glow-selected`
+  via `.kp-fsheet-btn[data-on]`) when any of the three is on, because at that width it stands in
+  for them. Its badge is `--brand-200` on `--pill-active` — the pairing a selected pill's count
+  already ships, rather than a new one.
+- ⚠️ **A control inside the closed sheet still has a real bounding box.** Chrome hides
+  `<details>` content through the `::details-content` slot: a chip in the closed sheet reports
+  `display: flex`, `visibility: visible` and an **81×44 box**. Any driver measuring these pills
+  must use `checkVisibility()`, and must OPEN the sheet — `qa:filter-scan` does both, and reports
+  how many controls it skipped.
+
 ## Guarded by
 
-`npm run test:filter-language` (66 assertions, incl. a vacuity control) · RED proof
-`npm run red:filter-language` (8/8, each defect on its own assertion) · live geometry + day-rail
-count honesty `npm run qa:filter-scan`.
+`npm run test:filter-language` (**91** assertions, incl. a vacuity control — §5 covers the sheet)
+· RED proof `npm run red:filter-language` (**17/17**, each defect on its own assertion) · live
+geometry + day-rail count honesty `npm run qa:filter-scan` · the sheet opened and measured at 360
+in sw + zh by `npm run qa:discovery-board`.
 
 ## Consumers (eight rails, eight files)
 

@@ -20,7 +20,20 @@
  *   · split-attrs     — `data-chip` and `data-count` no longer adjacent, which makes
  *                       `qa:discovery-probe` find ZERO controls and blame the product
  *
- * ⭐ AND AN EIGHTH CASE THAT IS NOT A PRODUCT DEFECT AT ALL — `vacuity`. It renames the rail hook
+ * Batch 6 adds seven more, for the phone filter sheet — the surface that now holds EVERY filter
+ * at 360px, so every way it can break is a way the board loses its filters entirely:
+ *
+ *   · nested-details  — a disclosure inside the scrolling sheet: §8.7c's 4px listbox, re-created
+ *   · sheet-as-menu   — the sheet joins the `.kp-menu` count and breaks `qa:discovery-board`
+ *   · focus-thrash    — the effect dependency that dragged focus onto a MONEY dialog's confirm
+ *   · sheet-under-nav — the stacking lift dropped, so the sheet opens under the bottom nav
+ *   · sheet-captured  — `transform:none` for `animation:none`: the fix that looks right and does
+ *                       nothing, because an animation's applied value beats a normal declaration
+ *   · panel-scrolls   — the scroll moves to the panel and the dismiss button scrolls away
+ *   · range-reverted  — `44px` swapped for `var(--tap-min)`: Ali's ruling, silently undone
+ *   · both-layouts    — the sheet loses `lg:hidden` and renders beside the desktop row
+ *
+ * ⭐ AND A CASE THAT IS NOT A PRODUCT DEFECT AT ALL — `vacuity`. It renames the rail hook
  * so the gate's subject set goes EMPTY. A structural rule of the form "every filter surface must
  * do X" passes vacuously over an empty set, and this harness exists partly to prove that §0's
  * positive control refuses that. If `vacuity` ever comes back GREEN, the gate has stopped looking
@@ -38,6 +51,8 @@ const GATE = "scripts/filter-language.test.mts";
 const PRIMITIVE = "src/components/ui/filter-pill.tsx";
 const CSS = "src/app/globals.css";
 const POSITIONS = "src/app/positions/page.tsx";
+const SHEET = "src/components/markets/filter-sheet.tsx";
+const BAR = "src/components/markets/discovery-bar.tsx";
 
 const CASES = [
   {
@@ -103,6 +118,95 @@ const CASES = [
     from: `          data-filter-rail\n`,
     to: ``,
     expect: "0.5",
+  },
+
+  /* ── batch 6 · the phone sheet ─────────────────────────────────────────────────────────
+     Seven more, and not one of them is hypothetical: every case below is either a defect
+     this surface has ALREADY shipped, or the exact silent reversal of a ruling Ali made. */
+  {
+    // 🔴 §8.7c, verbatim: a 362px panel clipped to FOUR PIXELS by a scrolling ancestor — 1%,
+    //    zero of eight topics reachable, every automated check green, closed control perfect.
+    name: "nested-details (a disclosure inside the sheet — the 4px listbox, re-created)",
+    file: SHEET,
+    from: `        <div className="kp-fsheet-body">{children}</div>`,
+    to: `        <details className="kp-fsheet-body">{children}</details>`,
+    expect: "5.2",
+  },
+  {
+    // `qa:discovery-board` asserts EXACTLY TWO `details.kp-menu > summary` under the bar.
+    name: "sheet-as-menu (the sheet joins the menu count and breaks a guard that is right)",
+    file: SHEET,
+    from: `      className="kp-fsheet lg:hidden"`,
+    to: `      className="kp-fsheet kp-menu lg:hidden"`,
+    expect: "5.3",
+  },
+  {
+    // 🔴 THE MONEY-DIALOG DEFECT. A non-`[open]` dependency re-runs the effect on every render
+    //    and drags focus onto the first control — on the bet-confirm that happened once a
+    //    second, so a keyboard user who tabbed to Cancel had focus pulled onto Confirm.
+    name: "focus-thrash (the effect re-runs on every render and drags focus — Modal's own bug)",
+    file: SHEET,
+    from: `  }, [open]);`,
+    to: `  }, [open, close]);`,
+    expect: "5.6",
+  },
+  {
+    // The bar is z-20, the bottom nav z-40: without the lift the sheet opens UNDER the nav.
+    name: "sheet-under-nav (the no-JavaScript stacking lift is dropped)",
+    file: CSS,
+    from: `.kp-discovery-bar:has(.kp-fsheet[open]),\nhtml[data-sheet-open] .kp-discovery-bar { z-index: 100; }`,
+    to: `html[data-sheet-open] .kp-discovery-bar { z-index: 100; }`,
+    expect: "5.9",
+  },
+  {
+    /* 🔴 MEASURED, NOT IMAGINED — this is the state the sheet's first build actually shipped in:
+       `top: -32px, bottom: 608px` in a 780px window, heading off the top of the screen, and a
+       scrim covering neither end. ⛔ The mutation swaps `animation: none` for `transform: none`
+       precisely because that is the fix that LOOKS right and does nothing: an animation's
+       applied value beats a normal author declaration. A gate that accepts it is green over a
+       sheet that is still captured by the page-transition wrapper. */
+    name: "sheet-captured (transform:none instead of animation:none — the fix that does nothing)",
+    file: CSS,
+    from: `.route-enter:has(.kp-fsheet[open]),\nhtml[data-sheet-open] .route-enter { animation: none; }`,
+    to: `.route-enter:has(.kp-fsheet[open]),\nhtml[data-sheet-open] .route-enter { transform: none; }`,
+    expect: "5.11",
+  },
+  {
+    // If the PANEL scrolls, the heading and the dismiss button scroll away with the content —
+    // so the count a player is accepting is the thing they must scroll past to accept it.
+    name: "panel-scrolls (the scroll moves off the body and onto the panel)",
+    file: CSS,
+    from: `  position: fixed; left: 0; right: 0; bottom: 0; z-index: 2;\n  display: flex; flex-direction: column;`,
+    to: `  position: fixed; left: 0; right: 0; bottom: 0; z-index: 2;\n  display: flex; flex-direction: column; overflow-y: auto;`,
+    expect: "5.15",
+  },
+  {
+    // ⭐ A RULING, SILENTLY UNDONE. `--tap-min` is 40; swapping the literal back for the token
+    //    reads like respecting a floor and is actually reverting Ali's 2026-08-14 decision.
+    name: "range-reverted (the chart range back to 40 via the token, which reads like a floor)",
+    file: CSS,
+    from: `  min-height: 44px;\n}`,
+    to: `  min-height: var(--tap-min);\n}`,
+    expect: "4.3",
+  },
+  {
+    // Two live copies of one control on one screen, every count rendered twice.
+    name: "both-layouts (the sheet loses lg:hidden and renders beside the desktop groups)",
+    file: SHEET,
+    from: `      className="kp-fsheet lg:hidden"`,
+    to: `      className="kp-fsheet"`,
+    expect: "5.17",
+  },
+  {
+    /* ⛔ THE DRIFT THAT ALREADY HAPPENED ONCE. The kit says in four places that sort stays in the
+       bar at every width — *"they answer the first two questions a punter has and must never cost
+       a tap"* — and this sheet's first build put it inside anyway, following a PLAN-OF-RECORD
+       line whose real concern was nested `<details>`. Nothing but this assertion notices. */
+    name: "sort-in-the-sheet (sort moves behind the Filters button, against COMPONENTS §21)",
+    file: BAR,
+    from: `          <FilterSheetGroup label={t.market.oddsKey}>`,
+    to: `          <FilterSheetGroup label={t.common.sort}>{null}</FilterSheetGroup>\n          <FilterSheetGroup label={t.market.oddsKey}>`,
+    expect: "5.20",
   },
 ];
 

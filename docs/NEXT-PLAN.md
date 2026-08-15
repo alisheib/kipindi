@@ -34,6 +34,36 @@ frozen and shipped. **Revised 2026-07-31 against the live platform, not against 
 > quotes the defect it replaced, so the absence check matched the prose. Source assertions run
 > comment-stripped now — a check that fails when the product is fine is worth nothing.
 >
+> ⭐ **BATCH 6 IS LIVE (2026-08-15): the phone filter sheet, and the chart rail at 44px.** Both
+> pieces Ali commissioned on 2026-08-14 are shipped. Below `lg`, `/markets` puts **odds, pool and
+> topic** behind one `Filters` button — a `<details>` bottom sheet with a scrim, so it opens with
+> **no JavaScript** on a mid-range Android. The sticky bar went **214px → 116px** at 360×780,
+> measured in **both** Swahili and Chinese. ⛔ Sort and status stay in the bar at every width:
+> the kit's ruling, *"they answer the first two questions a punter has and must never cost a tap"*.
+> `.pchart-range` is **44px**, a literal (`--tap-min` is 40 and would silently revert it).
+> 🔴 **The first build put sort inside the sheet** — following PLAN-OF-RECORD §8.8, which the kit
+> contradicts in four documents. §8.8 is corrected, and `red:filter-language` case 17 now catches
+> the drift. Nothing else would have: that build passed every gate, probe and screenshot.
+> 🔴 **`position: fixed` was not fixed to the viewport.** `.route-enter`'s `both`-filled animation
+> retains its transform for ever, making it the containing block for fixed descendants on EVERY
+> route — the panel measured `top: -32px` with its bottom 172px clear of the window and a scrim
+> covering neither end. `<Modal>` escapes this only by portalling to `document.body`.
+> ⛔ `transform: none` does not undo it; an animation's applied value beats a normal declaration.
+> 🔴 **Three of the batch's own instruments were wrong before the product was** — a "≥90% visible"
+> ratio that passed at 95% over that broken layout, a flat timeout that reported a keyframe as a
+> layout, and a bounding-box visibility test (a chip inside a CLOSED `<details>` reports
+> `display: flex` and a real 81×44 box — `checkVisibility()` is the only primitive that knows).
+> 🔴 **AND "the board works with no JavaScript" was false — measured, on production.** Both
+> `discovery-bar.tsx` and `menu-shell.tsx` claimed it since batch 1, and §8.8 records it as the
+> reason the scrolling strips were chosen **over** this sheet. With scripts disabled the board
+> streams through Suspense and React never relocates it: `.kp-discovery-bar` is **0px inside a
+> `display: none` holder**, cards in `<template>`s, nothing reachable — the strips no more than
+> the sheet. All three files now say the measured thing, and `qa:discovery-board` prints what a
+> scripts-off browser sees. ⬜ Making the board render without scripts is a page-architecture
+> change, not a filter one; recorded, not half-attempted.
+> **Guards:** `test:filter-language` **91 assertions** (was 66) · `red:filter-language` **17/17**.
+> Full account: PLAN-OF-RECORD §8.7i.
+>
 > ⭐ **BATCH 5 IS LIVE (2026-08-14): every player filter control is ONE control.** Ali, reading
 > the live platform: *"filtering is not designed properly, markets has a different filter design
 > than up and down."* Measured in a browser before anything moved: **four control heights (40 /
@@ -77,12 +107,13 @@ frozen and shipped. **Revised 2026-07-31 against the live platform, not against 
 > `/updown/history` day rail proven promise-vs-delivery on real data (6 promised, 6 delivered).
 > ⚠️ **The HOME laptop's `.env.qa.local` is now stale** until Ali copies the new one across.
 >
-> ▶ **BATCH 6 IS COMMISSIONED** (Ali, 2026-08-14, chosen from the deferred register):
-> **the mobile filter sheet** — the `/markets` filter bar eats ~220px on a phone and the kit's
-> answer takes it under 120 — **and the chart's time-range buttons raised 40 → 44px**.
-> ⛔ Ruled OUT in the same breath, do not re-ask: compact list · search typeahead · admin filter
-> rails · `/wallet` tabs · the `/markets` aria wording · the `rounded-pill` sweep.
-> Brief: `design-brief/00-NEXT-SESSION-PROMPT.md`.
+> ✅ **BATCH 6 IS DONE** (commissioned by Ali 2026-08-14, shipped 2026-08-15) — the record is the
+> block above and PLAN-OF-RECORD §8.7i. ⚠️ Its brief, `design-brief/00-NEXT-SESSION-PROMPT.md`,
+> is now EMPTY on purpose: a spent brief that still says "paste this as your opening prompt"
+> sends the next session to redo finished work.
+> ⛔ Ruled OUT by Ali in the same breath, do not re-ask: compact list / density toggle · search
+> typeahead · admin filter rails · `/wallet` tabs · the `/markets` `aria-pressed` wording ·
+> the `rounded-pill` → `rounded-chip` sweep. All six keep their reasons in PLAN-OF-RECORD §8.8.
 >
 > 🗄️ **(history) The QA login block, and how it was diagnosed —**
 > `login(page, "alpha")` and `"echo"` both land back on the signed-out shell — the identifier

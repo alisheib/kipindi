@@ -8,10 +8,20 @@
  * ⭐ WHY THIS IS SERVER-RENDERED LINKS, NOT CLIENT STATE. The kit asks for a server-renderable
  * URL contract and for `replaceState` writes ("a filter is not a navigation"). `<Link replace
  * scroll={false}>` is exactly `replaceState`, and it keeps three properties the client version
- * would cost: every filter combination is a real shareable URL, the board still works with no
- * JavaScript, and the counts are computed on the server against the SAME cached board read the
- * grid uses — so a count can never disagree with the grid it sits above. Client islands are
- * used only where the interaction genuinely needs one (density, which is pure presentation).
+ * would cost: every filter combination is a real shareable URL, every control is a real anchor
+ * that needs no JavaScript to apply a filter, and the counts are computed on the server against
+ * the SAME cached board read the grid uses — so a count can never disagree with the grid it sits
+ * above. Client islands are used only where the interaction genuinely needs one.
+ *
+ * 🔴 THIS COMMENT USED TO SAY "the board still works with no JavaScript". IT DOES NOT, AND HAS
+ * NOT SINCE IT WAS BUILT. Measured 2026-08-15 with scripts disabled, on **production** as well as
+ * locally: the board streams through a Suspense boundary, React relocates streamed content with
+ * an inline `<script>`, and with scripts off that never runs — `.kp-discovery-bar` measures 0px
+ * inside a `display: none` `div#S:3`, cards sitting in `<template>`s. ⛔ It mattered: that
+ * sentence was the stated reason batch 1 chose scrolling strips over the kit's filter SHEET, a
+ * trade made on a premise nobody had measured. The markup being native is still worth keeping —
+ * it is what makes the page recoverable if the streaming ever changes — but it is not the same
+ * claim. `qa:discovery-board` now prints what a scripts-off browser actually sees.
  *
  * ⛔ Every href comes from `buildDiscoveryHref`. Never hand-assemble a query string here — the
  * page this replaces had four independent builders and one of them had drifted.
@@ -30,6 +40,7 @@ import {
   clearedState,
   effectiveDir,
   hasActiveFilters,
+  sheetFilterCount,
   type DiscoveryState,
   type OddsId,
   type PoolId,
@@ -38,6 +49,7 @@ import {
 } from "@/lib/markets/discovery";
 import type { Dict } from "@/lib/i18n-dict";
 import { MenuShell } from "./menu-shell";
+import { FilterSheet, FilterSheetGroup } from "./filter-sheet";
 
 /* ───────────────────────────────────── the chip ───────────────────────────────────────── */
 
@@ -70,6 +82,9 @@ function Chip(props: {
   title?: string;
   /** "axis:value" — lets a driver read the promised count and press exactly this control. */
   testId?: string;
+  /** Layout only, for the sheet's `1fr 1fr` topic grid (kit COMPONENTS §21). ⛔ Never paint
+   *  through this — the selected fill is `.kp-fchip[data-on]`, one definition site (law 82). */
+  className?: string;
 }) {
   const { pressed, ...rest } = props;
   return <FilterPill {...rest} on={pressed} semantics="toggle" replace scroll={false} />;
@@ -135,6 +150,64 @@ export function DiscoveryBar({
   // Offering a control that cannot be anything but empty is a dead end, not a filter.
   const statuses = STATUS_IDS.filter((s) => s !== "watch" || signedIn);
 
+  /* The phrase the bar, the pager and the sheet's dismiss button all read — ONE variable, so
+     the number a player leaves the sheet with is the number they arrive at. */
+  const resultPhrase =
+    resultCount === 1 ? t.market.oneResult : t.market.nResults.replace("{n}", String(resultCount));
+  const sheetCount = sheetFilterCount(state);
+
+  /**
+   * One flat option row — the shape shared by the desktop menus and the mobile sheet.
+   *
+   * ⭐ EXTRACTED IN BATCH 6 because it had already been written twice in this file (sort and
+   * topic), and the sheet would have made it four. The selected fill is `.kp-fopt[data-on]` in
+   * globals.css — the same token the selected pill uses, so a menu row, a sheet row and a chip
+   * can never drift apart.
+   */
+  const Opt = ({
+    href: optHref,
+    on,
+    children,
+    trailing,
+  }: {
+    href: string;
+    on: boolean;
+    children: React.ReactNode;
+    trailing?: React.ReactNode;
+  }) => (
+    <Link
+      href={optHref as never}
+      replace
+      scroll={false}
+      role="option"
+      aria-selected={on}
+      data-on={on || undefined}
+      className={cn(
+        "kp-fopt flex min-h-[44px] items-center justify-between gap-4 px-3 text-[13px] font-semibold",
+        on ? "text-text" : "text-text-muted hover:bg-bg-overlay hover:text-text",
+      )}
+    >
+      {children}
+      {trailing}
+    </Link>
+  );
+
+  /* `Clear all`, shared by both layouts. On a phone it lives in the sheet's footer rather than
+     beside the result count: the kit puts it on the count line, but at 360 in Swahili
+     "Futa zote" lands hard against "masoko 40" — the exact collision §8.7c removed from the
+     status strip ("Mpymasoko 40"). Same control, one line lower, no width fight. */
+  const clearAll = active ? (
+    <Link
+      href={buildDiscoveryHref(clearedState(state)) as never}
+      replace
+      scroll={false}
+      className="inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-pill px-3 text-[13px] font-semibold text-text-muted hover:text-text lg:ml-auto"
+    >
+      <I.x s={14} aria-hidden />
+      {t.market.clearAll}
+    </Link>
+  ) : null;
+
   return (
     /**
      * ⚠️ MOBILE SCROLLS, IT DOES NOT WRAP — and this was measured, not assumed.
@@ -187,63 +260,54 @@ export function DiscoveryBar({
         </p>
       </div>
 
-      {/* ── row 2 · sort + direction · odds · pool · topic · clear ──────────────────────
-          🔴 THE TWO `<details>` MENUS MUST NOT SIT INSIDE A HORIZONTALLY SCROLLING BOX.
-          Measured on production 2026-08-13: they did, and both were unusable on a phone. A box
-          that scrolls on one axis cannot let a child escape on the other — CSS coerces
-          `overflow-y: visible` to `auto` the moment `overflow-x` scrolls — so the listbox panel
-          (274px for sort, 362px for topic) was clipped by the 62px strip to a FOUR-PIXEL sliver:
-          1% of the panel, 0 of 6 sort options and 0 of 8 topics reachable at 360px.
-          ⛔ Every automated check passed while that was true — zero horizontal overflow, every
-          tap target 44px, no element overflowing its own box, and the closed menus look correct
-          in a screenshot. Only OPENING the control found it.
-          So the layout is now: the chips keep the scrolling strip (that is what fixed the 448px
-          wrapped bar), and the menus live outside it. `order-*` puts sort and topic together on
-          the first mobile line while the DOM keeps the kit's sort → odds → pool → topic order,
-          and `lg:contents` dissolves the strip at desktop so the row is byte-identical to before
-          this fix. Still no JavaScript: `<details>` opens natively either way.
+      {/* ── row 2 · sort + direction, then EITHER the phone sheet OR the desktop groups ──
+          ⭐ BATCH 6. These groups used to stack here as a one-column grid: correct, readable, and
+          **214px of sticky bar at 360×780 before a single market was visible**. The kit's mobile
+          answer (`layouts/05-markets-discovery-mobile.html`, COMPONENTS §21) puts odds, pool and
+          topic behind one `Filters` button and takes the bar back under 120px.
 
-          ⭐ MOBILE IS A ONE-COLUMN GRID, so the four groups stack in the kit's own
-          sort → odds → pool → topic order with no placement classes and no reordering. Two
-          arrangements were measured at 360 and rejected: sort and topic sharing a line fits in
-          168px but truncates the Swahili sort value mid-word ("Zinazofunga kwa") and squeezes the
-          fused direction button to nothing, and flex-wrap cannot help because it breaks a line
-          BEFORE it shrinks. Stacked costs 52px of sticky height and every control reads in full,
-          which is the trade this surface should make.
-          ⬜ The kit's own mobile answer is a filter SHEET behind one button
-          (`05-markets-discovery-mobile.html`), which would take the bar back under 120px. It is
-          not built here — recorded in PLAN-OF-RECORD §8.8 with this measurement, not dropped. */}
-      <div className="grid grid-cols-1 justify-items-start gap-y-1.5 pb-2.5 pt-1.5 lg:flex lg:flex-wrap lg:items-center lg:gap-x-2">
-        {/* Sort. ⛔ NO GOLD — sort is view state, and the kit's own round-2 final withdrew the
-            gilt shell it had proposed. Gold is money on this platform (test:gold-is-money). */}
-        <div className="flex max-w-full items-center">
+          ⭐ SORT AND STATUS STAY IN THE BAR AT EVERY WIDTH — the kit's ruling, not a convenience:
+          *"they answer the first two questions a punter has and must never cost a tap"*
+          (COMPONENTS §21, and again in SPEC's responsive table, README §discovery and
+          DISCOVERY-RATIONALE). The sheet holds exactly three groups, which is what §21 lists.
+          ⚠️ PLAN-OF-RECORD §8.8 read as though sort belonged inside the sheet. Its actual concern
+          was that sort and topic must not become NESTED `<details>` in there — §8.7c's 4px
+          listbox — not that sort should leave the bar. The kit is followed and §8.8 is corrected,
+          rather than leaving two documents to disagree.
+
+          🔴 AND THE MENU MUST NOT SIT INSIDE A HORIZONTALLY SCROLLING BOX. Measured on production
+          2026-08-13: sort and topic did, and both were unusable on a phone. A box that scrolls on
+          one axis cannot let a child escape on the other — CSS coerces `overflow-y: visible` to
+          `auto` the moment `overflow-x` scrolls — so the 274px sort panel and the 362px topic
+          panel were clipped by a 62px strip to a FOUR-PIXEL sliver: 1% of the panel, 0 of 6 sort
+          options and 0 of 8 topics reachable at 360px. ⛔ Every automated check passed while that
+          was true; only OPENING the control found it. This row WRAPS, it does not scroll, on
+          either axis — which is what lets sort keep its panel here at every width. */}
+      <div className="flex flex-wrap items-center gap-x-2 pb-2.5 pt-1.5">
+        {/* ⛔ NO GOLD — sort is view state, and the kit's round-2 final withdrew the gilt shell it
+            had proposed. Gold is money on this platform (test:gold-is-money). */}
+        <div className="flex min-w-0 flex-1 items-center lg:flex-none">
           <MenuShell
+            /* At 360 sort shares its line with the Filters button, so it is the control that
+               gives: the KEY never truncates and the VALUE ellipsises, which is MenuShell's own
+               rule. ⛔ An ellipsis is not a defect — the hidden tail IS the "…" — but the amount
+               hidden in Swahili is reported by `qa:filter-scan` so a person can judge it. */
+            rootClassName="min-w-0 shrink"
             label={t.common.sort}
             value={SORT_LABEL[state.sort]}
             ariaLabel={t.market.sortAria}
-            className="rounded-l-pill rounded-r-none border-r-0"
+            className="min-w-0 rounded-l-pill rounded-r-none border-r-0"
           >
             {SORT_IDS.map((s) => (
-              <Link
-                key={s}
-                href={href({ sort: s, dir: null }) as never}
-                replace
-                scroll={false}
-                role="option"
-                aria-selected={state.sort === s}
-                /* The selected fill is `.kp-fopt[data-on]` in globals.css — the same token the
-                   selected pill uses, so a menu row and a chip can never drift apart. */
-                data-on={state.sort === s || undefined}
-                className={cn(
-                  "kp-fopt flex min-h-[44px] items-center justify-between gap-4 px-3 text-[13px] font-semibold",
-                  state.sort === s ? "text-text" : "text-text-muted hover:bg-bg-overlay hover:text-text",
-                )}
+              <Opt key={s} href={href({ sort: s, dir: null })} on={state.sort === s}
+                trailing={
+                  <span className="font-mono text-[11px] text-text-faint">
+                    {SORT_NATURAL_DIR[s] === "asc" ? "↑" : "↓"}
+                  </span>
+                }
               >
                 {SORT_LABEL[s]}
-                <span className="font-mono text-[11px] text-text-faint">
-                  {SORT_NATURAL_DIR[s] === "asc" ? "↑" : "↓"}
-                </span>
-              </Link>
+              </Opt>
             ))}
           </MenuShell>
           {/* Direction is fused to the sort control's right edge (COMPONENTS §4). Choosing a
@@ -266,19 +330,68 @@ export function DiscoveryBar({
           </Link>
         </div>
 
-        {/* The group dividers are a desktop device: on a phone the groups already sit on their
-            own line, and a 1px rule between two scrolled strips reads as a glitch. */}
-        <span aria-hidden className="mx-0.5 hidden h-5 w-px shrink-0 bg-border lg:block" />
+        {/* ── PHONE · odds, pool and topic behind one button (kit COMPONENTS §21) ──────────
+            ⛔ EVERYTHING IN HERE IS A PILL. §21 lists the sheet's groups as "Odds, Pool size,
+            Topic (a 1fr 1fr grid of chips)" — so topic arrives as chips rather than as the
+            desktop row's menu, which also means the sheet contains no nested disclosure to be
+            clipped by its own scrolling body (§8.7c). One control language, one primitive. */}
+        <FilterSheet
+          label={t.market.filtersOpen}
+          title={t.market.filtersTitle}
+          ariaLabel={
+            sheetCount > 0
+              ? t.market.filtersAriaN.replace("{n}", String(sheetCount))
+              : t.market.filtersOpen
+          }
+          closeLabel={t.market.filtersClose}
+          applyLabel={t.market.filtersApply.replace("{n}", resultPhrase)}
+          count={sheetCount}
+          footer={clearAll}
+        >
+          <FilterSheetGroup label={t.market.oddsKey}>
+            {ODDS_IDS.map((o) => (
+              <Chip key={o} href={href({ odds: o })} label={ODDS_LABEL[o]} count={counts.odds[o]}
+                pressed={state.odds === o} testId={`odds:${o}`} />
+            ))}
+          </FilterSheetGroup>
 
-        {/* The chips keep the scrolling strip — that is what took the bar from 448px to 116px in
-            Swahili. `lg:contents` removes this box at desktop so odds and pool become direct
-            children of the row again, exactly as they were before the menus moved out. */}
-        <div className="kp-thin-scroll kp-strip-fade flex w-full items-center gap-x-2 overflow-x-auto lg:contents">
-        {/* ⚠️ THE GROUP KEY IS LOAD-BEARING, NOT DECORATION. Odds and pool each open with an
+          <FilterSheetGroup label={t.market.poolKey}>
+            {POOL_IDS.map((p) => (
+              <Chip key={p} href={href({ pool: p })} label={POOL_LABEL[p]} count={counts.pool[p]}
+                pressed={state.pool === p} testId={`pool:${p}`} />
+            ))}
+          </FilterSheetGroup>
+
+          {/* Topic stays SINGLE-select — DISCOVERY-RATIONALE rejects multi-select by name
+              ("doubles the state space"). A grid rather than a wrap, so eight topics read as a
+              block: §21's figure is `1fr 1fr`, which is what `minmax(148px, 1fr)` gives at the
+              390px the kit drew.
+              🔴 IT WAS A LITERAL `grid-cols-2` AND THAT WAS WRONG ABOVE THE PHONE. Read at 768:
+              two columns meant two ~380px cells, and a pill stretched to fill one stops looking
+              like a pill and starts looking like a button bar. `auto-fill` keeps the cell the
+              size of a control instead of the size of the sheet, so the same rule gives 2 columns
+              at 360 and 4 at 768. ⛔ And the pills size to their content (`justify-self-start`),
+              never to the cell — a filter pill's width is its label, at every width. */}
+          <FilterSheetGroup
+            label={t.common.topic}
+            className="grid grid-cols-[repeat(auto-fill,minmax(148px,1fr))] gap-1.5"
+          >
+            {topics.map((tp) => (
+              <Chip key={tp.id} href={href({ topic: tp.id })} label={tp.label}
+                count={counts.topic[tp.id] ?? 0} pressed={state.topic === tp.id}
+                testId={`topic:${tp.id}`} className="justify-self-start" />
+            ))}
+          </FilterSheetGroup>
+        </FilterSheet>
+
+        {/* ── DESKTOP · the same three groups, laid out along the bar ─────────────────────
+            ⚠️ THE GROUP KEY IS LOAD-BEARING, NOT DECORATION. Odds and pool each open with an
             "Any" chip, so without a visible key the bar renders two identical "Any" pills side
             by side and neither says what it clears. The key uses the same quiet mono treatment
             as the sort and topic menus, so all four groups read as one family. */}
-        <nav aria-label={t.market.oddsAria} className="flex shrink-0 items-center gap-1">
+        <span aria-hidden className="mx-0.5 hidden h-5 w-px shrink-0 bg-border lg:block" />
+
+        <nav aria-label={t.market.oddsAria} className="hidden shrink-0 items-center gap-1 lg:flex">
           <FilterGroupKey>{t.market.oddsKey}</FilterGroupKey>
           {ODDS_IDS.map((o) => (
             <Chip
@@ -294,7 +407,7 @@ export function DiscoveryBar({
 
         <span aria-hidden className="mx-0.5 hidden h-5 w-px shrink-0 bg-border lg:block" />
 
-        <nav aria-label={t.market.poolAria} className="flex shrink-0 items-center gap-1">
+        <nav aria-label={t.market.poolAria} className="hidden shrink-0 items-center gap-1 lg:flex">
           <FilterGroupKey>{t.market.poolKey}</FilterGroupKey>
           {POOL_IDS.map((p) => (
             <Chip
@@ -308,21 +421,17 @@ export function DiscoveryBar({
           ))}
         </nav>
 
-        </div>
-
         <span aria-hidden className="mx-0.5 hidden h-5 w-px shrink-0 bg-border lg:block" />
 
-        {/* Topic is ONE menu, not eight pills. The kit flipped this twice; correction round 2.6
-            — the LAST one — replaced the eight-pill wall with a single menu, and "round 2 final"
-            means the last round wins. It is also single-select: DISCOVERY-RATIONALE rejects
-            multi-select by name ("doubles the state space"). */}
-        {/* Topic and Clear share one grid cell so pressing a filter never grows the sticky bar by
-            another 52px on a phone — it measured 272px with Clear on its own row, past the 260px
-            ceiling the mobile guard holds. `lg:contents` returns both to the desktop row, where
-            Clear keeps its `lg:ml-auto` and sits at the far end. */}
-        <div className="flex max-w-full items-center gap-x-2 lg:contents">
+        {/* Topic is ONE menu HERE, not eight pills. The kit flipped this twice; correction round
+            2.6 — the LAST one — replaced the eight-pill wall with a single menu, and "round 2
+            final" means the last round wins.
+            ⚠️ IN THE SHEET IT IS CHIPS, and that is not a contradiction: §21 specifies "Topic (a
+            1fr 1fr grid of chips)" for the sheet, because a menu inside a scrolling sheet is the
+            nested disclosure §8.7c forbids. Same axis, same single-select, two layouts — which is
+            exactly what a responsive design is. */}
         <MenuShell
-          rootClassName="max-w-full"
+          rootClassName="hidden max-w-full lg:block"
           label={t.common.topic}
           value={topics.find((x) => x.id === state.topic)?.label ?? t.market.catAll}
           count={counts.topic[state.topic]}
@@ -330,39 +439,21 @@ export function DiscoveryBar({
           className="rounded-pill"
         >
           {topics.map((tp) => (
-            <Link
-              key={tp.id}
-              href={href({ topic: tp.id }) as never}
-              replace
-              scroll={false}
-              role="option"
-              aria-selected={state.topic === tp.id}
-              data-on={state.topic === tp.id || undefined}
-              className={cn(
-                "kp-fopt flex min-h-[44px] items-center justify-between gap-4 px-3 text-[13px] font-semibold",
-                state.topic === tp.id ? "text-text" : "text-text-muted hover:bg-bg-overlay hover:text-text",
-              )}
+            <Opt key={tp.id} href={href({ topic: tp.id })} on={state.topic === tp.id}
+              trailing={
+                <span className="shrink-0 font-mono text-[11px] tabular-nums text-text-faint">
+                  {counts.topic[tp.id] ?? 0}
+                </span>
+              }
             >
               <span className="truncate">{tp.label}</span>
-              <span className="shrink-0 font-mono text-[11px] tabular-nums text-text-faint">
-                {counts.topic[tp.id] ?? 0}
-              </span>
-            </Link>
+            </Opt>
           ))}
         </MenuShell>
 
-        {active && (
-          <Link
-            href={buildDiscoveryHref(clearedState(state)) as never}
-            replace
-            scroll={false}
-            className="inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-pill px-3 text-[13px] font-semibold text-text-muted hover:text-text lg:ml-auto"
-          >
-            <I.x s={14} aria-hidden />
-            {t.market.clearAll}
-          </Link>
-        )}
-        </div>
+        {/* `Clear all` sits at the end of the desktop row. On a phone it is the sheet's footer
+            button instead — the kit's own placement, and it costs the bar no height. */}
+        <span className="hidden lg:contents">{clearAll}</span>
       </div>
     </div>
   );

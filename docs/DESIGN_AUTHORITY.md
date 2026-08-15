@@ -697,6 +697,21 @@ Extends §B5 (one definition site per motion token) and §M2 (a surface picks a 
    they drift. The live file is the truth.
 5. **Extend the kit; never fork it.** A one-off that duplicates a primitive is how a design
    system dies — not in one decision, but in fifteen reasonable-looking ones.
+6b. ⭐ **AND AT PHONE WIDTH THE FILTERS LIVE IN A SHEET** (added 2026-08-15, batch 6).
+   Below `lg`, `/markets` puts **odds, pool and topic** behind one `Filters` button —
+   `src/components/markets/filter-sheet.tsx`, a `<details>` bottom sheet with a scrim, so it
+   opens with **no JavaScript**. It took the sticky bar from 214px to **116px** at 360.
+   ⛔ **Sort and status stay in the bar at EVERY width** — the round-2 kit's ruling, stated in
+   four of its documents: *"they answer the first two questions a punter has and must never cost
+   a tap"* (COMPONENTS §21). ⛔ **Never nest a `<details>` inside the sheet**: its body scrolls,
+   and a box that scrolls on one axis clips an absolutely-positioned child on the other — the
+   4px listbox of PLAN-OF-RECORD §8.7c. Everything in the sheet is a `FilterPill`.
+   ⚠️ **`position: fixed` is not viewport-fixed inside page content.** `.route-enter` carries a
+   `both`-filled animation, so its retained transform is the containing block for fixed
+   descendants on every route; the sheet drops that animation while open. The shared `<Modal>`
+   never meets this because it portals to `document.body`. Guarded by `test:filter-language` §5
+   + `red:filter-language` (17/17).
+
 6. ⛔ **THERE IS ONE FILTER CONTROL, AND IT IS `FilterPill`** (added 2026-08-14, batch 5).
    Every player-facing control that chooses which rows are shown renders through
    `src/components/ui/filter-pill.tsx` — no exceptions, no per-surface variant. **Only the

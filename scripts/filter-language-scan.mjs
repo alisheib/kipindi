@@ -77,7 +77,38 @@ function MEASURE(sel) {
     return { r: d[0], g: d[1], b: d[2], a: +(d[3] / 255).toFixed(3) };
   };
   const rails = Array.from(document.querySelectorAll("[data-filter-rail]"));
-  const els = rails.flatMap((rail) => Array.from(rail.querySelectorAll(sel)));
+  const all = rails.flatMap((rail) => Array.from(rail.querySelectorAll(sel)));
+  /**
+   * ⭐ MEASURE WHAT IS RENDERED, AND SAY HOW MUCH WAS NOT — batch 6.
+   *
+   * `/markets` now carries TWO layouts of one rail: the phone sheet (`lg:hidden`) and the
+   * desktop menu row (`hidden lg:flex`). Exactly one is ever rendered, so at any width the
+   * other measures 0×0 — and every rule here ("≥44px", "999px radius") would fail on a display
+   * that is CORRECT. A control inside a closed `<details>` is hidden for the same honest reason.
+   *
+   * ⛔ SO THE SKIP IS COUNTED AND REPORTED, NEVER SILENT. A scan that quietly drops what it
+   * cannot measure is the failure mode this whole instrument exists to avoid: its first version
+   * swept a bottom-nav link into the results and reported a 0px "filter control". A number of
+   * hidden controls is a fact the reader needs — if it ever equals the total, the surface is
+   * rendering nothing and the run must not read as clean.
+   */
+  /**
+   * 🔴 A RECT IS NOT VISIBILITY, AND A CLOSED `<details>` PROVES IT — measured 2026-08-15.
+   * A chip inside the CLOSED filter sheet reports `display: flex`, `visibility: visible`,
+   * `content-visibility: visible` and a real **81×44 box at y=765**. Chrome hides closed
+   * disclosure content through the `::details-content` slot, which shows up in none of those
+   * three properties and does not zero the rect. Every bounding-box test calls it visible.
+   * ⭐ `checkVisibility()` is the one primitive that answers the question actually being asked,
+   * and it returns false for BOTH hidden cases here — the closed sheet and the `hidden lg:flex`
+   * row. The rect test survives only as a fallback for an engine without it (Chrome < 105).
+   */
+  const els = all.filter((el) => {
+    if (typeof el.checkVisibility === "function") {
+      return el.checkVisibility({ contentVisibilityAuto: true, opacityProperty: true, visibilityProperty: true });
+    }
+    const r = el.getBoundingClientRect();
+    return r.width > 0 && r.height > 0;
+  });
   const out = els.map((el) => {
     const cs = getComputedStyle(el);
     const r = el.getBoundingClientRect();
@@ -119,7 +150,7 @@ function MEASURE(sel) {
       count: el.getAttribute("data-count"),
     };
   });
-  return { rails: rails.length, controls: out };
+  return { rails: rails.length, controls: out, hidden: all.length - els.length, total: all.length };
 }
 
 const rows = [];
@@ -185,6 +216,50 @@ try {
         }
 
         const found = await page.evaluate(MEASURE, CONTROLS);
+
+        /**
+         * ⛔ OPEN THE SHEET, OR MEASURE ALMOST NOTHING — batch 6. At phone widths `/markets`
+         * renders ONE visible filter control: the `Filters` trigger. Every pill, the sort list
+         * and the topic list live inside a closed `<details>`, so a scan of the closed bar would
+         * report a single control and read as a clean surface.
+         *
+         * ⭐ THIS IS THE SAME RULE THAT FOUND THE 4px LISTBOX: a closed control photographs
+         * perfectly. The only way to measure a filter surface is to open it.
+         */
+        const trigger = page.locator(".kp-discovery-bar .kp-fsheet > summary");
+        if ((await trigger.count()) === 1 && (await trigger.isVisible())) {
+          await trigger.click();
+          // Await the rise rather than guessing at it — a flat timeout once reported a keyframe
+          // as a layout and would have filed the animation as a 5% clipping defect.
+          await page.evaluate(async () => {
+            const p = document.querySelector(".kp-fsheet-panel");
+            if (p) await Promise.all(p.getAnimations().map((a) => a.finished.catch(() => {})));
+          });
+          await page.waitForTimeout(120);
+          const opened = await page.evaluate(MEASURE, CONTROLS);
+          const seen = new Set(found.controls.map((c) => `${c.tag}|${c.chip}|${c.name}`));
+          const extra = opened.controls.filter((c) => !seen.has(`${c.tag}|${c.chip}|${c.name}`));
+          found.controls.push(...extra);
+          notes.push(`[${locale} ${width}] ${s.id} filter sheet OPENED — ${extra.length} controls measured inside it`);
+          if (extra.length === 0) {
+            notes.push(`🔴 [${locale} ${width}] ${s.id} the sheet opened and added ZERO controls — the instrument, or the product`);
+          }
+          if (SHOTS) {
+            await page.screenshot({ path: `${SHOTS}/markets-sheet-open-${width}-${locale}.png` }).catch(() => {});
+          }
+          await page.keyboard.press("Escape").catch(() => {});
+          await page.waitForTimeout(120);
+        }
+
+        // ⭐ SAY WHAT WAS NOT MEASURED. Two layouts of one rail means the inactive one is always
+        //    0×0; that is correct and must be reported rather than quietly dropped. If EVERY
+        //    control is hidden the surface is rendering nothing, and the run must not read clean.
+        if (found.hidden > 0) {
+          notes.push(`[${locale} ${width}] ${s.id} ${found.hidden}/${found.total} controls not rendered at this width (the other layout, or a closed disclosure)`);
+        }
+        if (found.total > 0 && found.controls.length === 0) {
+          notes.push(`🔴 [${locale} ${width}] ${s.id} every control in the rail is hidden — nothing was measured`);
+        }
         // ⭐ THE VACUITY GUARD, and it is the whole reason this instrument can be believed.
         //    A surface reporting zero rails or zero controls is a broken selector or a deleted
         //    feature — never "clean". A scan that prints an empty table under a green heading

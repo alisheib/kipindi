@@ -21,6 +21,7 @@
  *   §2 THE PAINT — the selected fill is a token consumed through a CLASS, never inline (law 82).
  *   §3 EVERY SURFACE consumes the primitive and re-expresses nothing.
  *   §4 THE CHART RANGE — the eighth filter control, which was painted in the money ink.
+ *   §5 THE PHONE SHEET — batch 6: the whole filter surface at 360, and the ways it can vanish.
  *
  * ⚠️ §0 IS THE POSITIVE CONTROL AND IT IS THE POINT. A rule of the form "every filter surface
  * must do X" passes vacuously the moment the set of filter surfaces becomes empty — a renamed
@@ -223,8 +224,146 @@ ok(!!rangeRule && /var\(--pill-active\)/.test(rangeRule[1]),
 // ⚠️ `min-height` ON THE CONTROL, not a pseudo-element overlay. The overlay was tried first and
 //    MEASURED 36px — paint order gave the pixels back to the chart wrapper below it. See the
 //    rule's own comment in globals.css.
-ok(/\.pchart-range\s*\{[^}]*min-height:\s*var\(--tap-min\)/.test(css),
-  "4.3 the chart range control genuinely reaches the 40px tap floor");
+// ⭐ 44, NOT 40 — Ali's ruling 2026-08-14, shipped in batch 6. The eighth filter control now
+//    stands at the height of the other seven rails.
+const rangeBox = css.match(/\.pchart-range\s*\{([^}]*)\}/);
+ok(!!rangeBox, "4.0b CONTROL: the chart range's own rule still exists to be checked");
+ok(!!rangeBox && /min-height:\s*44px/.test(rangeBox[1]),
+  "4.3 the chart range control genuinely reaches 44px — the height every other filter rail uses",
+  rangeBox?.[1]?.trim().slice(0, 120));
+// ⛔ AND IT MUST NOT BE `var(--tap-min)`. That token is 40, so "tidying" the literal back into it
+//    would silently undo Ali's ruling while still reading like a floor was being respected.
+ok(!!rangeBox && !/min-height:\s*var\(--tap-min\)/.test(rangeBox[1]),
+  "4.4 …and it is not reached through --tap-min, which is 40 and would silently revert it");
+
+// ── §5 · THE PHONE FILTER SHEET — batch 6 ─────────────────────────────────────────────────────
+
+/**
+ * ⭐ THE SHEET IS THE PHONE'S ENTIRE FILTER SURFACE, so the ways it can be wrong are the ways
+ * the bar can lose its filters altogether. Every assertion below names a defect this codebase
+ * has ALREADY shipped once, on this exact surface.
+ *
+ * ⚠️ THESE ARE SOURCE ASSERTIONS AND THEY ARE NOT THE PROOF OF BEHAVIOUR. Focus trap, focus
+ * return, Escape and the 120px budget are proven by opening the real control in a real browser
+ * (`qa:discovery-board`, `qa:filter-scan`). What lives here is the set of facts a diff can
+ * destroy silently — the ones no screenshot of a CLOSED control would ever show.
+ */
+const SHEET = "src/components/markets/filter-sheet.tsx";
+const sheetSrc = existsSync(join(ROOT, SHEET)) ? read(SHEET) : "";
+// ⭐ THE POSITIVE CONTROL. Without it every rule below passes vacuously the moment the file is
+//    renamed — which is precisely how a third copy of the time-left formatter survived two batches.
+ok(sheetSrc.length > 0, "5.0 CONTROL: the sheet component exists to be checked", SHEET);
+
+const sheetCode = strip(sheetSrc);
+ok(/<details\b/.test(sheetCode),
+  "5.1 the sheet is a <details> — it opens and operates with JavaScript disabled");
+// ⛔ §8.7c: a sheet that scrolls clips an absolutely-positioned panel. A nested disclosure here
+//    re-creates the 4px listbox exactly, and a screenshot of the closed sheet cannot show it.
+ok((sheetCode.match(/<details\b/g) ?? []).length === 1,
+  "5.2 exactly ONE <details> — no nested disclosure to be clipped by the scrolling body");
+// ⛔ `qa:discovery-board` asserts EXACTLY TWO `details.kp-menu > summary` under the bar. A sheet
+//    wearing that class reads as a third menu and fails a guard that is right.
+ok(!/kp-menu/.test(sheetCode),
+  "5.3 the sheet is not a .kp-menu — the desktop row's two menus stay countable");
+// The primitive, not a second dialect of it.
+ok(!/kp-fchip/.test(sheetCode) && !/var\(--pill-active\)/.test(sheetCode),
+  "5.4 the sheet re-expresses no pill of its own — its chips come from the primitive");
+// Rung 3 is PICKED, not composed (M2). A second wash/shadow here is a second definition of
+// "sheet with a scrim", which the elevation ladder already owns.
+ok(/mat-modal/.test(sheetCode) && /m-sheet-in/.test(sheetCode) && /m-scrim/.test(sheetCode),
+  "5.5 the panel picks the shipped rung-3 material and the shipped sheet/scrim motion");
+
+/**
+ * 🔴 THE FOCUS DEFECT THE SHARED MODAL PAID FOR. Its focus effect once depended on
+ * `[open, onClose, initialFocus]`; every caller passed a fresh inline arrow, so the effect
+ * re-ran on EVERY render and dragged focus onto the primary button — once a second on the
+ * bet-confirm dialog, whose countdown ticks. A keyboard user who tabbed to Cancel had focus
+ * pulled onto Confirm inside the second, on a money dialog. Any dependency but `[open]` here
+ * reintroduces it, and nothing else in the suite would notice.
+ */
+ok(/\}, \[open\]\);/.test(sheetCode),
+  "5.6 the focus effect depends on [open] alone — the defect that moved focus on a money dialog");
+ok(/useModalLock\(open\)/.test(sheetCode),
+  "5.7 the sheet takes the SAME body scroll/zoom lock the shared <Modal> takes");
+ok(/e\.key === "Escape"/.test(sheetCode) && /restoreTo\?\.focus\?\.\(\)/.test(sheetCode),
+  "5.8 Escape closes it, and focus returns to the trigger that opened it");
+
+/**
+ * 🔴 THE BAR IS `z-20` AND THE BOTTOM NAV IS `z-40`. Without the lift, the sheet opens
+ * UNDERNEATH the navigation — a scrim you can tap through on a dialog claiming `aria-modal`.
+ * ⛔ Both selectors are required: `:has()` is the no-JavaScript path and the attribute is the
+ * fallback. Losing either leaves a class of browser with a broken modal.
+ */
+ok(/\.kp-discovery-bar:has\(\.kp-fsheet\[open\]\)/.test(css),
+  "5.9 the bar is lifted above the bottom nav while the sheet is open, with no JavaScript");
+ok(/html\[data-sheet-open\] \.kp-discovery-bar/.test(css),
+  "5.10 …and by attribute too, for a browser without :has()");
+
+/**
+ * 🔴 `position: fixed` IS NOT "RELATIVE TO THE VIEWPORT" INSIDE PAGE CONTENT — measured
+ * 2026-08-15 on this sheet's first build: `top: -32px, bottom: 608px` in a 780px window. The
+ * heading sat above the top of the screen, the sheet floated 172px clear of the bottom, and
+ * the scrim covered neither.
+ *
+ * `.route-enter` is `animation: m-settle-in … both`, and a `both` fill retains the final
+ * keyframe's transform for ever — so the page-transition wrapper is the containing block for
+ * every fixed descendant, on every route. The shared `<Modal>` never meets it because it
+ * portals to `document.body`; this sheet cannot, because it must open with no JavaScript.
+ * ⛔ AND `transform: none` DOES NOT UNDO IT — an animation's applied value beats a normal
+ * author declaration, so the rule must drop the ANIMATION. A gate that accepted
+ * `transform: none` here would be green over a sheet that is still captured.
+ */
+ok(/\.route-enter:has\(\.kp-fsheet\[open\]\)[\s\S]{0,80}\{[^}]*animation:\s*none/.test(css),
+  "5.11 the route wrapper's retained transform is dropped while the sheet is open (no JavaScript)");
+ok(/html\[data-sheet-open\] \.route-enter/.test(css),
+  "5.12 …and by attribute too, for a browser without :has()");
+
+// ⭐ THE BODY SCROLLS, THE PANEL DOES NOT — so the heading and the dismiss button survive any
+//    content length. If the panel became the scroller, the count a player is accepting would be
+//    the thing they have to scroll past to reach it.
+const panelRule = css.match(/\.kp-fsheet-panel\s*\{([^}]*)\}/);
+const bodyRule = css.match(/\.kp-fsheet-body\s*\{([^}]*)\}/);
+ok(!!panelRule && !!bodyRule, "5.13 CONTROL: the sheet's panel and body rules exist to be checked");
+ok(!!bodyRule && /overflow-y:\s*auto/.test(bodyRule[1]) && /min-height:\s*0/.test(bodyRule[1]),
+  "5.14 the sheet's BODY is the scroll container, and can actually shrink to become one");
+ok(!!panelRule && !/overflow-y:\s*auto/.test(panelRule[1]),
+  "5.15 …and the panel itself does not scroll, so the header and footer stay put");
+
+/**
+ * ⭐ THE TWO LAYOUTS ARE MUTUALLY EXCLUSIVE. The sheet and the desktop row hold the same
+ * filters; a width that renders BOTH would show a player two live copies of one control, and
+ * every count would appear twice on the page.
+ */
+const barSrc = strip(read("src/components/markets/discovery-bar.tsx"));
+ok(/<FilterSheet\b/.test(barSrc), "5.16 the bar actually renders the sheet");
+ok(/className="kp-fsheet lg:hidden"/.test(sheetCode),
+  "5.17 the sheet is phone-only (lg:hidden)");
+// The desktop copies of the SAME three groups must be desktop-only, or both render at once.
+ok((barSrc.match(/className="hidden shrink-0 items-center gap-1 lg:flex"/g) ?? []).length === 2,
+  "5.18 …and both desktop chip groups are desktop-only (hidden … lg:flex) — no width renders both");
+ok(/rootClassName="hidden max-w-full lg:block"/.test(barSrc),
+  "5.19 …and so is the desktop topic menu");
+
+/**
+ * ⭐ THE SHEET HOLDS EXACTLY WHAT THE KIT SAYS IT HOLDS — odds, pool, topic (COMPONENTS §21).
+ *
+ * ⛔ SORT AND STATUS STAY IN THE BAR AT EVERY WIDTH: *"they answer the first two questions a
+ * punter has and must never cost a tap"*. The kit states this in four places (COMPONENTS §21,
+ * SPEC's responsive table, README §discovery, DISCOVERY-RATIONALE) and the first build of this
+ * sheet put sort inside it anyway, following a PLAN-OF-RECORD line whose real concern was
+ * nested `<details>`. This assertion is what stops that drift happening twice.
+ */
+/* ⚠️ TOLERANT OF FORMATTING, DELIBERATELY. The first version required `label` to sit on the same
+   line as the tag; reformatting the topic group onto three lines — a whitespace change — dropped
+   it from the match and the gate reported TWO groups over a correct product. A guard that a
+   prettier run can break is a guard that will be "fixed" by loosening it at the worst moment. */
+const sheetGroups = [...barSrc.matchAll(/<FilterSheetGroup[\s\S]{0,160}?label=\{([^}]+)\}/g)].map((m) => m[1].trim());
+ok(sheetGroups.length === 3,
+  "5.20 the sheet holds exactly three groups, as COMPONENTS §21 lists", sheetGroups.join(", "));
+ok(!sheetGroups.some((g) => /common\.sort/.test(g)),
+  "5.21 …and sort is NOT one of them — it stays in the bar at every width", sheetGroups.join(", "));
+ok(sheetGroups.some((g) => /oddsKey/.test(g)) && sheetGroups.some((g) => /poolKey/.test(g)) && sheetGroups.some((g) => /common\.topic/.test(g)),
+  "5.22 …they are odds, pool and topic", sheetGroups.join(", "));
 
 console.log(`filter-language: ${pass} assertions passed · ${SURFACES.length} rails · ${discovered.length} discovered`);
 if (fails.length) {

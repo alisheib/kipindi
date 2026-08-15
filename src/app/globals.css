@@ -2622,12 +2622,15 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
      element painted outside its parent is still subject to PAINT ORDER, and the chart wrapper
      that follows it in the DOM took the pixels back. An invisible overlay whose reach depends
      on stacking cannot be relied on, and — worse — cannot be told apart from a working one
-     without walking real pixels.
-     So the control is genuinely tall instead. It costs ~15px of height in a COLLAPSED chart
-     panel, which is the right price for a target a thumb can actually hit. ⚠️ 40 is the FLOOR,
-     not the 44px the filter pills use: this is a compact segmented sub-control inside a chart
-     header, not a standalone rail. That 40-vs-44 call is recorded in PLAN-OF-RECORD §8.8. */
-  min-height: var(--tap-min);
+     without walking real pixels. So the control is genuinely tall instead.
+     ⭐ 44px, NOT THE 40px FLOOR — Ali's ruling, 2026-08-14, batch 6. This is the eighth filter
+     control on the platform, and the other seven rails are all 44. He was given the trade (40
+     already clears Law 9; 44 makes the rail ~48px tall in a chart header whose label is 10px
+     mono) and chose consistency. ⛔ The literal is deliberate, exactly as it is on
+     `filter-pill.tsx`: `--tap-min` is 40 and would silently undo this, and there is no
+     `--h-control-*` rung at 44 (`--h-input: 44px` is named for inputs, and borrowing an input's
+     token for a chart button would be a second meaning for one name). */
+  min-height: 44px;
 }
 .pchart-range.is-active { color: var(--text); background: var(--pill-active); }
 .pchart-range:not(.is-active):hover { color: var(--text); background: var(--bg-overlay); }
@@ -2762,11 +2765,111 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
 }
 
 /* The sort/topic menus are <details>, so they open with no JavaScript. The native marker is
-   replaced by the caret glyph inside the summary. */
+   replaced by the caret glyph inside the summary.
+   ⚠️ DESKTOP ONLY since batch 6 — the phone layout is `.kp-fsheet` below. */
 .kp-menu > summary { list-style: none; }
 .kp-menu > summary::-webkit-details-marker { display: none; }
 .kp-menu[open] > summary .kp-menu-caret { transform: rotate(180deg); }
 .kp-menu-caret { transition: transform var(--t-quick) ease-out; }
+
+/* ──────────────────── the phone filter SHEET — batch 6, 2026-08-15 ────────────────────
+   The kit's mobile answer (`05-markets-discovery-mobile.html`): every filter behind ONE
+   button, taking the sticky bar from **214px measured at 360×780** back under 120.
+
+   ⭐ GEOMETRY ONLY LIVES HERE. The MATERIAL is `.mat-modal` (rung 3, motion.css) and the
+   MOTION is `.m-sheet-in` / `.m-scrim` — the same three the shared `<Modal sheet>` picks. A
+   bottom sheet with a scrim is already defined in this system; batch 6 adopts that definition
+   rather than composing a second one. ⛔ Do not add a wash, a shadow or a keyframe here.
+
+   ⛔ AND NOTHING INSIDE THE SHEET MAY BE ABSOLUTELY POSITIONED. `.kp-fsheet-body` is a scroll
+   container, and a box that scrolls on one axis coerces `overflow-y: visible` to `auto` on the
+   other — which is exactly how a 362px topic panel was clipped to **4px, 1%, zero of eight
+   topics reachable** at 360px (§8.7c), while every automated check passed and the closed
+   control photographed perfectly. Sort and topic are FLAT LISTS in there for that reason. */
+.kp-fsheet > summary { list-style: none; }
+.kp-fsheet > summary::-webkit-details-marker { display: none; }
+
+/* The trigger wears the SAME selected language as a pill when filters are on — `--pill-active`
+   plus the halo — because it is standing in for those pills at this width. One fill, one
+   meaning; a second treatment invented here would be a second definition of "this is on".
+   ⚠️ NAMED `-trigger`, NOT `-btn`: it is a `<summary>`, and `test:ui-consistency`'s
+   `btn-inline-height-override` rule matches `\bbtn\b` in a class VALUE — where `-` is a word
+   boundary, so `kp-fsheet-btn` read as a `.btn` carrying a height override and the linter
+   reported drift that did not exist. The accurate name is also the one that does not lie. */
+.kp-fsheet-trigger { transition: background 140ms ease-out, border-color 140ms ease-out, color 140ms ease-out, box-shadow 140ms ease-out; }
+.kp-fsheet-trigger[data-on] { background: var(--pill-active); border-color: var(--brand-400); color: var(--text); box-shadow: var(--glow-selected); }
+.kp-fsheet[open] > summary { border-color: var(--brand-400); color: var(--text); }
+
+/* `--pill-active` behind `--brand-200` is the pairing a SELECTED pill's count already ships
+   (`filter-pill.tsx`), so the badge inherits a combination that has been measured rather than
+   introducing one that has not. */
+.kp-fsheet-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 18px; padding: 0 5px;
+  border-radius: var(--r-pill);
+  background: var(--pill-active); color: var(--brand-200);
+}
+
+/* 🔴 THE BAR IS `z-20` AND THE BOTTOM NAV IS `z-40`, BOTH FIXED/STICKY. A sheet painted inside
+   the bar's own stacking context therefore opens UNDERNEATH the navigation — a scrim you can
+   tap through, on a dialog that claims `aria-modal`. The bar is lifted to the dialog rung (100,
+   the shared `<Modal>`'s default) only while the sheet is open, so normal scrolling is
+   untouched. Two selectors, deliberately: `:has()` needs no JavaScript and is the primary path;
+   `[data-sheet-open]` is set by the component so a browser without `:has()` still stacks
+   correctly once hydrated. Same declaration, no second rule to keep in step. */
+.kp-discovery-bar:has(.kp-fsheet[open]),
+html[data-sheet-open] .kp-discovery-bar { z-index: 100; }
+
+/* 🔴 AND `position: fixed` DOES NOT MEAN "RELATIVE TO THE VIEWPORT" INSIDE PAGE CONTENT.
+   MEASURED 2026-08-15, batch 6, on the first build of this sheet: the panel reported
+   `top: -32px, bottom: 608px` in a 780px viewport — the heading cut off the top of the screen
+   and the sheet floating 172px clear of the bottom, with a scrim that covered neither.
+
+   `.route-enter` (§1.8) is `animation: m-settle-in … both`, and a `both` fill KEEPS the final
+   keyframe's `transform` applied for ever after the animation ends. A transformed element is
+   the containing block for every fixed-position descendant, so `bottom: 0` resolved to the
+   bottom of the page-transition wrapper rather than the window — permanently, on every route.
+
+   ⭐ THIS IS WHY THE SHARED `<Modal>` PORTALS TO `document.body`, and why nothing else in the
+   product has ever hit it: the sheet is the first fixed element that has to live inside page
+   content, because it must open with no JavaScript and a portal cannot.
+   ⛔ `transform: none` would NOT fix it — an animation's applied value beats a normal author
+   declaration in the cascade, so only killing the animation returns the base value.
+   ⚠️ Scoped to "while a sheet is open" on purpose. The route animation has long finished by the
+   time a player can press the trigger (the retained matrix is the IDENTITY), so dropping it is
+   visually a no-op; neutralising it unconditionally would delete the entrance every page has. */
+.route-enter:has(.kp-fsheet[open]),
+html[data-sheet-open] .route-enter { animation: none; }
+
+/* ⛔ GEOMETRY ONLY. The wash is `bg-black/60` on the element, which is byte-for-byte what the
+   shared `<Modal>`'s scrim carries — ONE definition of "a dialog's scrim" in the product rather
+   than two that can drift apart. */
+.kp-fsheet-scrim {
+  position: fixed; inset: 0; z-index: 1;
+  border: 0; padding: 0; margin: 0;
+}
+
+/* ⭐ THE PANEL DOES NOT SCROLL — ITS BODY DOES. A column with a `min-height: 0` scrolling
+   middle keeps the heading and the dismiss button on screen at every content length, so the
+   count a player is about to accept is never the thing they have to scroll past to reach. */
+.kp-fsheet-panel {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 2;
+  display: flex; flex-direction: column;
+  max-height: min(82vh, 640px);
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
+  padding: 10px var(--gutter) calc(env(safe-area-inset-bottom, 0px) + 14px);
+}
+.kp-fsheet-grab {
+  display: block; width: 44px; height: 4px; margin: 0 auto 12px;
+  border-radius: var(--r-pill); background: var(--border-strong);
+}
+.kp-fsheet-body {
+  flex: 1 1 auto; min-height: 0;
+  overflow-y: auto; overscroll-behavior: contain;
+  margin-top: 14px; display: grid; gap: 18px; align-content: start;
+}
+.kp-fsheet-grp { display: grid; gap: 8px; }
+.kp-fsheet-foot { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; padding-top: 14px; }
 
 /* The direction button's arrow points the way the board is ordered. One glyph, rotated —
    never two glyphs, which would be two things to keep in agreement. */
